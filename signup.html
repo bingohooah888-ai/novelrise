@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>会員登録 | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    header {
+      height: 72px;
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+
+      display: flex;
+      align-items: center;
+    }
+
+    .header-inner {
+      width: 100%;
+      max-width: 1200px;
+      margin: auto;
+      padding: 0 24px;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      color: #6d4aff;
+    }
+
+    .back {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .main {
+      min-height: calc(100vh - 72px);
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      padding: 50px 20px;
+    }
+
+    .signup-card {
+      width: 100%;
+      max-width: 460px;
+
+      background: white;
+      border-radius: 16px;
+
+      padding: 38px;
+
+      box-shadow: 0 10px 40px rgba(0,0,0,0.07);
+    }
+
+    .signup-card h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .description {
+      text-align: center;
+      color: #777;
+      font-size: 14px;
+
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px 14px;
+
+      border: 1px solid #d9d9df;
+      border-radius: 8px;
+
+      font-size: 15px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #6d4aff;
+      box-shadow: 0 0 0 3px rgba(109,74,255,0.1);
+    }
+
+    .signup-button {
+      width: 100%;
+
+      padding: 14px;
+
+      border: none;
+      border-radius: 9px;
+
+      background: #6d4aff;
+      color: white;
+
+      font-size: 15px;
+      font-weight: 800;
+
+      cursor: pointer;
+    }
+
+    .signup-button:hover {
+      background: #5938e8;
+    }
+
+    .terms {
+      color: #888;
+      font-size: 12px;
+      line-height: 1.7;
+
+      text-align: center;
+
+      margin-top: 18px;
+    }
+
+    .login-link {
+      text-align: center;
+      margin-top: 26px;
+
+      font-size: 14px;
+      color: #666;
+    }
+
+    .login-link a {
+      color: #6d4aff;
+      font-weight: 700;
+    }
+
+    .author-box {
+      background: #f5f3ff;
+      border-radius: 10px;
+
+      padding: 15px;
+
+      margin-bottom: 23px;
+
+      font-size: 13px;
+      color: #555;
+      line-height: 1.7;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<header>
+
+  <div class="header-inner">
+
+    <a href="index.html" class="logo">
+      NovelRise
+    </a>
+
+    <a href="index.html" class="back">
+      ← トップページへ
+    </a>
+
+  </div>
+
+</header>
+
+
+<main class="main">
+
+  <div class="signup-card">
+
+    <h1>
+      NovelRiseを始める
+    </h1>
+
+    <p class="description">
+      無料アカウントを作成
+    </p>
+
+
+    <div class="author-box">
+      ✍️ NovelRiseは、小説をもっと多くの読者へ届けたい作者のための投稿プラットフォームです。
+    </div>
+
+
+    <form>
+
+      <div class="form-group">
+
+        <label for="name">
+          ユーザー名
+        </label>
+
+        <input
+          id="name"
+          type="text"
+          placeholder="例：小説太郎"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="email">
+          メールアドレス
+        </label>
+
+        <input
+          id="email"
+          type="email"
+          placeholder="example@email.com"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="password">
+          パスワード
+        </label>
+
+        <input
+          id="password"
+          type="password"
+          placeholder="8文字以上"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="password-confirm">
+          パスワード確認
+        </label>
+
+        <input
+          id="password-confirm"
+          type="password"
+          placeholder="もう一度入力してください"
+          required
+        >
+
+      </div>
+
+
+      <button
+        class="signup-button"
+        type="submit"
+      >
+        無料で会員登録
+      </button>
+
+    </form>
+
+
+    <p class="terms">
+      会員登録することで、利用規約および
+      プライバシーポリシーに同意したものとみなされます。
+    </p>
+
+
+    <div class="login-link">
+
+      すでにアカウントをお持ちですか？
+
+      <a href="login.html">
+        ログイン
+      </a>
+
+    </div>
+
+  </div>
+
+</main>
+
+</body>
+</html>
