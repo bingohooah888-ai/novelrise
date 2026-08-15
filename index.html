@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>NovelRise - 小説投稿サイト</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+      line-height: 1.6;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* =========================
+       ヘッダー
+    ========================= */
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      height: 72px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      padding: 0 24px;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      color: #6d4aff;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 26px;
+    }
+
+    nav a {
+      font-size: 14px;
+      font-weight: 600;
+      color: #444;
+    }
+
+    nav a:hover {
+      color: #6d4aff;
+    }
+
+    .header-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 11px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      transition: 0.2s;
+    }
+
+    .btn-outline {
+      background: #ffffff;
+      border: 1px solid #6d4aff;
+      color: #6d4aff;
+    }
+
+    .btn-primary {
+      background: #6d4aff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5838e8;
+    }
+
+    /* =========================
+       メインビジュアル
+    ========================= */
+
+    .hero {
+      background:
+        linear-gradient(
+          135deg,
+          #6d4aff 0%,
+          #9075ff 100%
+        );
+
+      color: white;
+      padding: 85px 24px;
+    }
+
+    .hero-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 70px;
+      align-items: center;
+    }
+
+    .hero-label {
+      display: inline-block;
+      background: rgba(255,255,255,0.17);
+      border: 1px solid rgba(255,255,255,0.28);
+
+      padding: 7px 14px;
+      border-radius: 999px;
+
+      font-size: 13px;
+      font-weight: 700;
+
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      line-height: 1.25;
+      margin-bottom: 22px;
+    }
+
+    .hero h1 span {
+      color: #ffe86a;
+    }
+
+    .hero p {
+      font-size: 17px;
+      line-height: 1.9;
+
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 30px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 14px;
+    }
+
+    .hero-main-btn {
+      background: #ffffff;
+      color: #5d3ae5;
+
+      padding: 15px 28px;
+      border-radius: 10px;
+
+      font-weight: 800;
+    }
+
+    .hero-sub-btn {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.35);
+
+      color: white;
+
+      padding: 15px 28px;
+      border-radius: 10px;
+
+      font-weight: 700;
+    }
+
+    /* =========================
+       小説カード風UI
+    ========================= */
+
+    .hero-preview {
+      background: white;
+      border-radius: 18px;
+
+      padding: 22px;
+      color: #222;
+
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    }
+
+    .preview-title {
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    .preview-card {
+      background: #f5f4ff;
+      border-radius: 12px;
+
+      padding: 18px;
+
+      margin-bottom: 12px;
+    }
+
+    .preview-rank {
+      color: #6d4aff;
+      font-weight: 800;
+      font-size: 13px;
+
+      margin-bottom: 8px;
+    }
+
+    .preview-novel-title {
+      font-weight: 800;
+      font-size: 17px;
+    }
+
+    .preview-meta {
+      color: #777;
+      font-size: 13px;
+      margin-top: 7px;
+    }
+
+    /* =========================
+       共通セクション
+    ========================= */
+
+    section {
+      padding: 80px 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .section-title h2 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .section-title p {
+      color: #777;
+    }
+
+    /* =========================
+       特徴
+    ========================= */
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .feature-card {
+      background: white;
+      border-radius: 14px;
+
+      padding: 28px;
+
+      box-shadow: 0 6px 25px rgba(0,0,0,0.05);
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 15px;
+    }
+
+    .feature-card h3 {
+      margin-bottom: 10px;
+    }
+
+    .feature-card p {
+      color: #666;
+      font-size: 14px;
+    }
+
+    /* =========================
+       小説一覧
+    ========================= */
+
+    .novel-section {
+      background: white;
+    }
+
+    .novel-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .novel-card {
+      border: 1px solid #e8e8ee;
+      border-radius: 13px;
+      overflow: hidden;
+
+      background: white;
+
+      transition: 0.2s;
+    }
+
+    .novel-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.09);
+    }
+
+    .novel-cover {
+      height: 180px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background:
+        linear-gradient(
+          135deg,
+          #ded8ff,
+          #f2efff
+        );
+
+      font-size: 60px;
+    }
+
+    .novel-body {
+      padding: 20px;
+    }
+
+    .genre {
+      display: inline-block;
+
+      padding: 4px 9px;
+      border-radius: 5px;
+
+      background: #f0edff;
+      color: #6d4aff;
+
+      font-size: 11px;
+      font-weight: 700;
+
+      margin-bottom: 9px;
+    }
+
+    .novel-title {
+      font-weight: 800;
+      font-size: 17px;
+
+      margin-bottom: 7px;
+    }
+
+    .author {
+      color: #777;
+      font-size: 13px;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-between;
+
+      margin-top: 14px;
+
+      font-size: 13px;
+      color: #777;
+    }
+
+    /* =========================
+       料金プラン
+    ========================= */
+
+    .pricing-wrapper {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+
+      gap: 25px;
+      max-width: 950px;
+
+      margin: auto;
+    }
+
+    .price-card {
+      background: white;
+      border-radius: 16px;
+
+      padding: 32px 28px;
+
+      border: 1px solid #e7e7ec;
+
+      text-align: center;
+
+      position: relative;
+    }
+
+    .price-card.recommended {
+      border: 2px solid #6d4aff;
+      transform: scale(1.04);
+    }
+
+    .recommend-label {
+      position: absolute;
+
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+
+      background: #6d4aff;
+      color: white;
+
+      padding: 5px 14px;
+      border-radius: 999px;
+
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .plan-title {
+      font-size: 21px;
+      font-weight: 800;
+
+      margin-bottom: 12px;
+    }
+
+    .price {
+      font-size: 38px;
+      font-weight: 900;
+
+      margin-bottom: 18px;
+    }
+
+    .price span {
+      font-size: 13px;
+      font-weight: 500;
+      color: #777;
+    }
+
+    .plan-features {
+      list-style: none;
+
+      text-align: left;
+
+      margin: 24px 0;
+    }
+
+    .plan-features li {
+      padding: 8px 0;
+      color: #555;
+
+      font-size: 14px;
+    }
+
+    .plan-features li::before {
+      content: "✓";
+      color: #6d4aff;
+
+      font-weight: 900;
+      margin-right: 8px;
+    }
+
+    .price-button {
+      width: 100%;
+
+      background: #6d4aff;
+      color: white;
+
+      padding: 13px;
+
+      border-radius: 8px;
+      font-weight: 800;
+    }
+
+    /* =========================
+       CTA
+    ========================= */
+
+    .cta {
+      background: #1e1d27;
+      color: white;
+
+      text-align: center;
+    }
+
+    .cta h2 {
+      font-size: 32px;
+      margin-bottom: 13px;
+    }
+
+    .cta p {
+      color: #bcbcc5;
+
+      margin-bottom: 25px;
+    }
+
+    /* =========================
+       フッター
+    ========================= */
+
+    footer {
+      background: #111118;
+      color: #999;
+
+      padding: 40px 24px;
+
+      text-align: center;
+
+      font-size: 13px;
+    }
+
+    /* =========================
+       スマホ
+    ========================= */
+
+    @media (max-width: 900px) {
+
+      nav {
+        display: none;
+      }
+
+      .hero-inner {
+        grid-template-columns: 1fr;
+      }
+
+      .hero h1 {
+        font-size: 36px;
+      }
+
+      .features,
+      .novel-grid,
+      .pricing-wrapper {
+        grid-template-columns: 1fr;
+      }
+
+      .price-card.recommended {
+        transform: none;
+      }
+
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <!-- ヘッダー -->
+  <header>
+
+    <div class="header-inner">
+
+      <div class="logo">
+        NovelRise
+      </div>
+
+      <nav>
+        <a href="#novels">作品を探す</a>
+        <a href="#features">特徴</a>
+        <a href="#pricing">料金プラン</a>
+        <a href="#">ランキング</a>
+      </nav>
+
+      <div class="header-buttons">
+
+        <button class="btn btn-outline">
+          ログイン
+        </button>
+
+        <button class="btn btn-primary">
+          小説を投稿
+        </button>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- メイン -->
+  <main>
+
+    <!-- ファーストビュー -->
+    <section class="hero">
+
+      <div class="hero-inner">
+
+        <div>
+
+          <div class="hero-label">
+            小説家のための投稿プラットフォーム
+          </div>
+
+          <h1>
+            あなたの作品を、<br>
+            <span>埋もれさせない。</span>
+          </h1>
+
+          <p>
+            NovelRiseは、本気で小説を書きたい作者のための投稿サイト。
+            有料会員になることで作品の露出を増やし、
+            より多くの読者にあなたの作品を届けます。
+          </p>
+
+          <div class="hero-buttons">
+
+            <button class="hero-main-btn">
+              無料で始める
+            </button>
+
+            <button class="hero-sub-btn">
+              料金を見る
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div class="hero-preview">
+
+          <div class="preview-title">
+            🔥 本日の注目作品
+          </div>
+
+          <div class="preview-card">
+
+            <div class="preview-rank">
+              RANK 1
+            </div>
+
+            <div class="preview-novel-title">
+              最弱魔術師の学園革命
+            </div>
+
+            <div class="preview-meta">
+              ファンタジー ｜ 125,420 PV
+            </div>
+
+          </div>
+
+
+          <div class="preview-card">
+
+            <div class="preview-rank">
+              RANK 2
+            </div>
+
+            <div class="preview-novel-title">
+              転生した俺だけ魔法が使えない
+            </div>
+
+            <div class="preview-meta">
+              ローファンタジー ｜ 98,021 PV
+            </div>
+
+          </div>
+
+
+          <div class="preview-card">
+
+            <div class="preview-rank">
+              RANK 3
+            </div>
+
+            <div class="preview-novel-title">
+              放課後の異世界研究部
+            </div>
+
+            <div class="preview-meta">
+              学園 ｜ 76,512 PV
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- 特徴 -->
+    <section id="features">
+
+      <div class="container">
+
+        <div class="section-title">
+
+          <h2>
+            作品が読まれる仕組み
+          </h2>
+
+          <p>
+            投稿しただけで終わらせない、小説家のための仕組み。
+          </p>
+
+        </div>
+
+
+        <div class="features">
+
+          <div class="feature-card">
+
+            <div class="feature-icon">
+              👀
+            </div>
+
+            <h3>
+              作品が埋もれにくい
+            </h3>
+
+            <p>
+              投稿作品数を適切にコントロールし、
+              新人作者でも読者に発見される機会を作ります。
+            </p>
+
+          </div>
+
+
+          <div class="feature-card">
+
+            <div class="feature-icon">
+              🚀
+            </div>
+
+            <h3>
+              露出アップ
+            </h3>
+
+            <p>
+              上位プランではおすすめ欄や注目作品など、
+              作品を見てもらう機会を増やせます。
+            </p>
+
+          </div>
+
+
+          <div class="feature-card">
+
+            <div class="feature-icon">
+              📊
+            </div>
+
+            <h3>
+              詳細なアクセス分析
+            </h3>
+
+            <p>
+              PV数、読了率、お気に入り率などを確認し、
+              読まれる作品作りに役立てられます。
+            </p>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- 作品一覧 -->
+    <section
+      class="novel-section"
+      id="novels"
+    >
+
+      <div class="container">
+
+        <div class="section-title">
+
+          <h2>
+            注目の作品
+          </h2>
+
+          <p>
+            今、読者から注目されている作品。
+          </p>
+
+        </div>
+
+
+        <div class="novel-grid">
+
+          <article class="novel-card">
+
+            <div class="novel-cover">
+              ⚔️
+            </div>
+
+            <div class="novel-body">
+
+              <div class="genre">
+                ローファンタジー
+              </div>
+
+              <div class="novel-title">
+                魔術学園の落ちこぼれ
+              </div>
+
+              <div class="author">
+                作者：桐谷
+              </div>
+
+              <div class="stats">
+                <span>👁 52,421</span>
+                <span>★ 1,230</span>
+              </div>
+
+            </div>
+
+          </article>
+
+
+          <article class="novel-card">
+
+            <div class="novel-cover">
+              🐉
+            </div>
+
+            <div class="novel-body">
+
+              <div class="genre">
+                異世界
+              </div>
+
+              <div class="novel-title">
+                最弱職から始める異世界生活
+              </div>
+
+              <div class="author">
+                作者：山田太郎
+              </div>
+
+              <div class="stats">
+                <span>👁 41,921</span>
+                <span>★ 921</span>
+              </div>
+
+            </div>
+
+          </article>
+
+
+          <article class="novel-card">
+
+            <div class="novel-cover">
+              🌙
+            </div>
+
+            <div class="novel-body">
+
+              <div class="genre">
+                恋愛
+              </div>
+
+              <div class="novel-title">
+                月が綺麗な夜に君と
+              </div>
+
+              <div class="author">
+                作者：水瀬
+              </div>
+
+              <div class="stats">
+                <span>👁 38,114</span>
+                <span>★ 811</span>
+              </div>
+
+            </div>
+
+          </article>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- 料金 -->
+    <section id="pricing">
+
+      <div class="container">
+
+        <div class="section-title">
+
+          <h2>
+            作者向け料金プラン
+          </h2>
+
+          <p>
+            本気度に合わせてプランを選択できます。
+          </p>
+
+        </div>
+
+
+        <div class="pricing-wrapper">
+
+          <div class="price-card">
+
+            <div class="plan-title">
+              Free
+            </div>
+
+            <div class="price">
+              ¥0
+              <span>/ 月</span>
+            </div>
+
+            <ul class="plan-features">
+              <li>小説1作品まで投稿</li>
+              <li>基本アクセス解析</li>
+              <li>通常検索への掲載</li>
+            </ul>
+
+            <button class="price-button">
+              無料で始める
+            </button>
+
+          </div>
+
+
+          <div class="price-card recommended">
+
+            <div class="recommend-label">
+              おすすめ
+            </div>
+
+            <div class="plan-title">
+              Standard
+            </div>
+
+            <div class="price">
+              ¥980
+              <span>/ 月</span>
+            </div>
+
+            <ul class="plan-features">
+              <li>小説10作品まで投稿</li>
+              <li>詳細アクセス解析</li>
+              <li>おすすめ欄掲載対象</li>
+              <li>検索順位優遇</li>
+            </ul>
+
+            <button class="price-button">
+              Standardを始める
+            </button>
+
+          </div>
+
+
+          <div class="price-card">
+
+            <div class="plan-title">
+              Premium
+            </div>
+
+            <div class="price">
+              ¥1,980
+              <span>/ 月</span>
+            </div>
+
+            <ul class="plan-features">
+              <li>投稿作品数無制限</li>
+              <li>詳細アクセス解析</li>
+              <li>注目作品枠への掲載</li>
+              <li>検索順位優遇</li>
+              <li>優先サポート</li>
+            </ul>
+
+            <button class="price-button">
+              Premiumを始める
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- 最後のCTA -->
+    <section class="cta">
+
+      <div class="container">
+
+        <h2>
+          あなたの物語を、もっと多くの人へ。
+        </h2>
+
+        <p>
+          NovelRiseで、今日から作品を公開してみませんか？
+        </p>
+
+        <button class="hero-main-btn">
+          小説を投稿してみる
+        </button>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <footer>
+    © 2026 NovelRise. All Rights Reserved.
+  </footer>
+
+
+</body>
+</html>
