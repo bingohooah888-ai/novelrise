@@ -560,7 +560,77 @@
       }
 
     }
+.latest-novels {
+  padding: 80px 20px;
+  background: #f7f8fb;
+}
 
+.latest-novels h2 {
+  font-size: 32px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.latest-novels > .container > p {
+  text-align: center;
+  color: #777;
+  margin-bottom: 35px;
+}
+
+.latest-novels-list {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(280px, 1fr)
+    );
+  gap: 20px;
+}
+
+.latest-novel-card {
+  display: block;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 22px;
+  transition: 0.2s;
+}
+
+.latest-novel-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 8px 25px
+    rgba(0, 0, 0, 0.07);
+}
+
+.latest-novel-genre {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #eeeaff;
+  color: #6d4aff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.latest-novel-title {
+  font-size: 19px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.latest-novel-description {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 15px;
+}
+
+.latest-novel-date {
+  color: #999;
+  font-size: 12px;
+}
   </style>
 </head>
 
@@ -899,7 +969,29 @@
 
     </section>
 
+<!-- 新着作品 -->
+<section class="latest-novels">
 
+  <div class="container">
+
+    <h2>
+      新着作品
+    </h2>
+
+    <p>
+      最近公開された作品をチェック
+    </p>
+
+    <div
+      id="latestNovelsList"
+      class="latest-novels-list"
+    >
+      読み込み中...
+    </div>
+
+  </div>
+
+</section>
     <!-- 料金 -->
     <section id="pricing">
 
@@ -1033,6 +1125,146 @@
     © 2026 NovelRise. All Rights Reserved.
   </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<script>
+  const SUPABASE_URL =
+    'https://fiepaguycecrredwrcwx.supabase.co';
+
+  const SUPABASE_KEY =
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  function escapeHtml(value) {
+
+    const div =
+      document.createElement('div');
+
+    div.textContent =
+      value ?? '';
+
+    return div.innerHTML;
+  }
+
+
+  async function loadLatestNovels() {
+
+    const latestNovelsList =
+      document.getElementById(
+        'latestNovelsList'
+      );
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from('novels')
+        .select('*')
+        .eq(
+          'status',
+          'published'
+        )
+        .order(
+          'created_at',
+          {
+            ascending: false
+          }
+        )
+        .limit(6);
+
+
+    if (error) {
+
+      console.error(error);
+
+      latestNovelsList.innerHTML =
+        '作品の読み込みに失敗しました。';
+
+      return;
+    }
+
+
+    if (
+      !data ||
+      data.length === 0
+    ) {
+
+      latestNovelsList.innerHTML =
+        'まだ公開作品がありません。';
+
+      return;
+    }
+
+
+    latestNovelsList.innerHTML = '';
+
+
+    data.forEach(
+      (novel) => {
+
+        const createdAt =
+          new Date(
+            novel.created_at
+          ).toLocaleDateString(
+            'ja-JP'
+          );
+
+
+        const card =
+          document.createElement(
+            'a'
+          );
+
+
+        card.href =
+          'novel.html?id=' +
+          novel.id;
+
+
+        card.className =
+          'latest-novel-card';
+
+
+        card.innerHTML = `
+          <div class="latest-novel-genre">
+            ${escapeHtml(novel.genre)}
+          </div>
+
+          <div class="latest-novel-title">
+            ${escapeHtml(novel.title)}
+          </div>
+
+          <div class="latest-novel-description">
+            ${escapeHtml(novel.description)}
+          </div>
+
+          <div class="latest-novel-date">
+            投稿日 ${createdAt}
+          </div>
+        `;
+
+
+        latestNovelsList.appendChild(
+          card
+        );
+
+      }
+    );
+
+  }
+
+
+  loadLatestNovels();
+
+</script>
 </body>
 </html>
