@@ -253,20 +253,58 @@
       return;
 
     }
-// 作品のPVを1増やす
-const { error: pvError } =
-  await supabaseClient.rpc(
-    'increment_novel_pv',
-    {
-      target_novel_id: episode.novel_id
-    }
-  );
+// 同じエピソードは6時間に1回だけPVを増やす
+const pvKey =
+  'novelrise_pv_episode_' +
+  episode.id;
 
-if (pvError) {
-  console.error(
-    'PVの更新に失敗しました:',
-    pvError
-  );
+const lastViewedAt =
+  Number(
+    localStorage.getItem(
+      pvKey
+    )
+  ) || 0;
+
+const now =
+  Date.now();
+
+const sixHours =
+  6 * 60 * 60 * 1000;
+
+
+if (
+  now - lastViewedAt >=
+  sixHours
+) {
+
+  const {
+    error: pvError
+  } =
+    await supabaseClient.rpc(
+      'increment_novel_pv',
+      {
+        target_novel_id:
+          episode.novel_id
+      }
+    );
+
+
+  if (pvError) {
+
+    console.error(
+      'PVの更新に失敗しました:',
+      pvError
+    );
+
+  } else {
+
+    localStorage.setItem(
+      pvKey,
+      String(now)
+    );
+
+  }
+
 }
 
     const {
