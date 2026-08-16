@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>自分の作品 | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      max-width: 1100px;
+      height: 72px;
+      margin: auto;
+      padding: 0 24px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      color: #6d4aff;
+    }
+
+    .back {
+      color: #666;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1000px;
+      margin: auto;
+      padding: 50px 24px;
+    }
+
+    .page-title {
+      margin-bottom: 30px;
+    }
+
+    .page-title h1 {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .page-title p {
+      color: #777;
+    }
+
+    .top-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 20px;
+    }
+
+    .new-button {
+      display: inline-block;
+      background: #6d4aff;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 9px;
+      font-weight: 800;
+    }
+
+    .novel-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .novel-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 24px;
+    }
+
+    .novel-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .novel-title {
+      font-size: 21px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .genre {
+      display: inline-block;
+      background: #f0edff;
+      color: #6d4aff;
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .description {
+      color: #666;
+      line-height: 1.7;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    .meta {
+      display: flex;
+      gap: 18px;
+      color: #888;
+      font-size: 13px;
+    }
+
+    .status {
+      flex-shrink: 0;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #ecfdf3;
+      color: #16803d;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .empty {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 50px 20px;
+      text-align: center;
+      color: #777;
+    }
+
+    .error {
+      background: #fff0f0;
+      color: #b42318;
+      border-radius: 10px;
+      padding: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+
+    <a href="index.html" class="logo">
+      NovelRise
+    </a>
+
+    <a href="mypage.html" class="back">
+      ← マイページへ戻る
+    </a>
+
+  </div>
+</header>
+
+
+<main>
+
+  <div class="page-title">
+    <h1>自分の作品</h1>
+    <p>
+      投稿した作品を確認できます。
+    </p>
+  </div>
+
+
+  <div class="top-actions">
+    <a href="post.html" class="new-button">
+      ＋ 新しい作品を投稿
+    </a>
+  </div>
+
+
+  <div
+    id="novelList"
+    class="novel-list"
+  >
+    読み込み中...
+  </div>
+
+</main>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+  const SUPABASE_URL =
+    'https://fiepaguycecrredwrcwx.supabase.co';
+
+  const SUPABASE_KEY =
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  async function loadNovels() {
+
+    const {
+      data: {
+        session
+      }
+    } =
+      await supabaseClient.auth.getSession();
+
+
+    if (!session) {
+
+      window.location.href =
+        'login.html';
+
+      return;
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from('novels')
+        .select('*')
+        .eq(
+          'user_id',
+          session.user.id
+        )
+        .order(
+          'created_at',
+          {
+            ascending: false
+          }
+        );
+
+
+    const novelList =
+      document.getElementById(
+        'novelList'
+      );
+
+
+    if (error) {
+
+      console.error(error);
+
+      novelList.innerHTML =
+        '<div class="error">' +
+        '作品の読み込みに失敗しました。' +
+        '</div>';
+
+      return;
+    }
+
+
+    if (!data || data.length === 0) {
+
+      novelList.innerHTML =
+        '<div class="empty">' +
+        'まだ投稿した作品がありません。' +
+        '</div>';
+
+      return;
+    }
+
+
+    novelList.innerHTML = '';
+
+
+    data.forEach(
+      (novel) => {
+
+        const card =
+          document.createElement(
+            'div'
+          );
+
+        card.className =
+          'novel-card';
+
+
+        const createdAt =
+          new Date(
+            novel.created_at
+          ).toLocaleDateString(
+            'ja-JP'
+          );
+
+
+        const safeTitle =
+          escapeHtml(
+            novel.title || ''
+          );
+
+        const safeGenre =
+          escapeHtml(
+            novel.genre || ''
+          );
+
+        const safeDescription =
+          escapeHtml(
+            novel.description || ''
+          );
+
+
+        card.innerHTML = `
+          <div class="novel-top">
+
+            <div>
+
+              <div class="genre">
+                ${safeGenre}
+              </div>
+
+              <div class="novel-title">
+                ${safeTitle}
+              </div>
+
+              <div class="description">
+                ${safeDescription}
+              </div>
+
+              <div class="meta">
+                <span>
+                  👁 ${novel.pv ?? 0} PV
+                </span>
+
+                <span>
+                  ★ ${novel.favorites ?? 0}
+                </span>
+
+                <span>
+                  投稿日 ${createdAt}
+                </span>
+              </div>
+
+            </div>
+
+            <div class="status">
+              ${
+                novel.status ===
+                'published'
+                ? '公開中'
+                : '下書き'
+              }
+            </div>
+
+          </div>
+        `;
+
+
+        novelList.appendChild(
+          card
+        );
+
+      }
+    );
+
+  }
+
+
+  function escapeHtml(value) {
+
+    const div =
+      document.createElement('div');
+
+    div.textContent = value;
+
+    return div.innerHTML;
+  }
+
+
+  loadNovels();
+
+</script>
+
+</body>
+</html>
