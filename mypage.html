@@ -363,7 +363,10 @@
     <div class="stats-grid">
 
       <div class="stat-box">
-        <div class="stat-number">
+        <div
+  id="novelStatCount"
+  class="stat-number"
+>
           0
         </div>
 
@@ -373,7 +376,10 @@
       </div>
 
       <div class="stat-box">
-        <div class="stat-number">
+        <div
+  id="totalPvCount"
+  class="stat-number"
+>
           0
         </div>
 
@@ -717,9 +723,70 @@ async function loadFavoriteNovels() {
     count ?? 0;
 
 }
+  async function loadAuthorStats() {
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await supabaseClient.auth.getSession();
+
+
+  if (!session) {
+    return;
+  }
+
+
+  const {
+    data: novels,
+    error
+  } =
+    await supabaseClient
+      .from('novels')
+      .select('pv')
+      .eq(
+        'user_id',
+        session.user.id
+      );
+
+
+  if (error) {
+
+    console.error(error);
+
+    return;
+  }
+
+
+  const novelCount =
+    novels?.length ?? 0;
+
+
+  const totalPv =
+    (novels ?? []).reduce(
+      (total, novel) =>
+        total + (novel.pv ?? 0),
+      0
+    );
+
+
+  document.getElementById(
+    'novelStatCount'
+  ).textContent =
+    novelCount;
+
+
+  document.getElementById(
+    'totalPvCount'
+  ).textContent =
+    totalPv;
+
+}
 checkLogin();
 loadFavoriteNovels();
 loadFavoriteStat();
+loadAuthorStats();
 
 </script>
 
