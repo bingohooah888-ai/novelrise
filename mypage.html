@@ -405,7 +405,30 @@
     </div>
 
   </section>
+<section
+  style="
+    margin-top:30px;
+    background:white;
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    padding:28px;
+  "
+>
 
+  <h2
+    style="
+      font-size:22px;
+      margin-bottom:18px;
+    "
+  >
+    お気に入り作品
+  </h2>
+
+  <div id="favoriteNovelsList">
+    読み込み中...
+  </div>
+
+</section>
 </main>
 
 
@@ -486,8 +509,165 @@
     }
   );
 
+async function loadFavoriteNovels() {
 
-  checkLogin();
+  const favoriteNovelsList =
+    document.getElementById(
+      'favoriteNovelsList'
+    );
+
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await supabaseClient.auth.getSession();
+
+
+  if (!session) {
+
+    favoriteNovelsList.innerHTML =
+      'ログインが必要です。';
+
+    return;
+  }
+
+
+  const {
+    data: favoriteRows,
+    error
+  } =
+    await supabaseClient
+      .from('favorites')
+      .select(
+        `
+        novel_id,
+        novels (
+          id,
+          title,
+          genre,
+          description,
+          created_at,
+          status
+        )
+        `
+      )
+      .eq(
+        'user_id',
+        session.user.id
+      );
+
+
+  if (error) {
+
+    console.error(error);
+
+    favoriteNovelsList.innerHTML =
+      'お気に入り作品を読み込めませんでした。';
+
+    return;
+  }
+
+
+  const novels =
+    (favoriteRows ?? [])
+      .map(
+        row => row.novels
+      )
+      .filter(
+        novel =>
+          novel &&
+          novel.status ===
+            'published'
+      );
+
+
+  if (novels.length === 0) {
+
+    favoriteNovelsList.innerHTML =
+      '<div style="color:#777;">' +
+      'お気に入り作品はまだありません。' +
+      '</div>';
+
+    return;
+  }
+
+
+  favoriteNovelsList.innerHTML =
+    '';
+
+
+  novels.forEach(
+    novel => {
+
+      const card =
+        document.createElement(
+          'a'
+        );
+
+
+      card.href =
+        'novel.html?id=' +
+        novel.id;
+
+
+      card.style.display =
+        'block';
+
+      card.style.padding =
+        '16px 0';
+
+      card.style.borderBottom =
+        '1px solid #eee';
+
+
+      card.innerHTML = `
+
+        <div
+          style="
+            font-size:12px;
+            color:#6d4aff;
+            font-weight:700;
+            margin-bottom:6px;
+          "
+        >
+          ${novel.genre ?? ''}
+        </div>
+
+        <div
+          style="
+            font-size:17px;
+            font-weight:800;
+            margin-bottom:6px;
+          "
+        >
+          ${novel.title ?? ''}
+        </div>
+
+        <div
+          style="
+            color:#777;
+            font-size:14px;
+            line-height:1.6;
+          "
+        >
+          ${novel.description ?? ''}
+        </div>
+
+      `;
+
+
+      favoriteNovelsList.appendChild(
+        card
+      );
+
+    }
+  );
+
+}
+ checkLogin();
+loadFavoriteNovels();
 
 </script>
 
