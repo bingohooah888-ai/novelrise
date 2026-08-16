@@ -188,7 +188,14 @@
 
     </div>
 
-
+<a
+  id="editNovelButton"
+  href="#"
+  class="new-episode-button"
+  style="display:none; margin-right:10px;"
+>
+  作品を編集
+</a>
     <a
       id="newEpisodeButton"
       href="episode-post.html"
@@ -447,6 +454,24 @@ if (episodesError) {
   );
 
 }
+const editNovelButton =
+  document.getElementById(
+    'editNovelButton'
+  );
+
+if (
+  session &&
+  data.user_id === session.user.id
+) {
+
+  editNovelButton.style.display =
+    'inline-block';
+
+  editNovelButton.href =
+    'novel-edit.html?id=' +
+    data.id;
+
+}    
 const newEpisodeButton =
   document.getElementById(
     'newEpisodeButton'
