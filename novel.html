@@ -472,24 +472,7 @@ if (
     data.id;
 
 }  
-const editNovelButton =
-  document.getElementById(
-    'editNovelButton'
-  );
 
-if (
-  session &&
-  data.user_id === session.user.id
-) {
-
-  editNovelButton.style.display =
-    'inline-block';
-
-  editNovelButton.href =
-    'novel-edit.html?id=' +
-    data.id;
-
-}    
 const newEpisodeButton =
   document.getElementById(
     'newEpisodeButton'
