@@ -466,11 +466,40 @@ if (episodesError) {
   );
 
 }
-    document.getElementById(
-      'newEpisodeButton'
-    ).href =
-      'episode-post.html?novel_id=' +
-      data.id;
+const newEpisodeButton =
+  document.getElementById(
+    'newEpisodeButton'
+  );
+
+newEpisodeButton.href =
+  'episode-post.html?novel_id=' +
+  data.id;
+
+
+let nextEpisodeNumber = 1;
+
+if (
+  episodes &&
+  episodes.length > 0
+) {
+
+  const maxEpisodeNumber =
+    Math.max(
+      ...episodes.map(
+        episode =>
+          episode.episode_number
+      )
+    );
+
+  nextEpisodeNumber =
+    maxEpisodeNumber + 1;
+
+}
+
+newEpisodeButton.textContent =
+  '＋ 第' +
+  nextEpisodeNumber +
+  '話を追加';
 
   }
 
