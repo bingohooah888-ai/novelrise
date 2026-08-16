@@ -188,6 +188,32 @@
         font-size: 20px;
       }
     }
+    .ranking-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.ranking-tab {
+  padding: 10px 18px;
+  border: 1px solid #d8d8df;
+  border-radius: 9px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ranking-tab:hover {
+  border-color: #6d4aff;
+  color: #6d4aff;
+}
+
+.ranking-tab.active {
+  background: #6d4aff;
+  border-color: #6d4aff;
+  color: white;
+}
   </style>
 
 </head>
@@ -227,7 +253,30 @@
   <p class="subtitle">
     読者から注目されている作品を紹介します。
   </p>
+<div class="ranking-tabs">
 
+  <button
+    class="ranking-tab active"
+    data-ranking="total"
+  >
+    総合
+  </button>
+
+  <button
+    class="ranking-tab"
+    data-ranking="pv"
+  >
+    PV
+  </button>
+
+  <button
+    class="ranking-tab"
+    data-ranking="favorites"
+  >
+    お気に入り
+  </button>
+
+</div>
 
   <div
     id="rankingList"
@@ -380,86 +429,164 @@ const rankedNovels =
   );
 
 
-rankedNovels.sort(
-  (a, b) =>
-    b.score -
-    a.score
-);
+let currentRanking =
+  'total';
 
 
-    rankingList.innerHTML =
-      '';
+function sortRanking() {
+
+  if (
+    currentRanking ===
+    'pv'
+  ) {
+
+    rankedNovels.sort(
+      (a, b) =>
+        (b.pv ?? 0) -
+        (a.pv ?? 0)
+    );
+
+  } else if (
+    currentRanking ===
+    'favorites'
+  ) {
+
+    rankedNovels.sort(
+      (a, b) =>
+        (b.favorite_count ?? 0) -
+        (a.favorite_count ?? 0)
+    );
+
+  } else {
+
+    rankedNovels.sort(
+      (a, b) =>
+        b.score -
+        a.score
+    );
+
+  }
+
+}
 
 
-    rankedNovels.forEach(
-      (
-        novel,
-        index
-      ) => {
+   function renderRanking() {
 
-        const card =
-          document.createElement(
-            'a'
-          );
+  sortRanking();
+
+  rankingList.innerHTML =
+    '';
 
 
-        card.href =
-          'novel.html?id=' +
-          novel.id;
+  rankedNovels.forEach(
+    (
+      novel,
+      index
+    ) => {
 
-
-        card.className =
-          'ranking-card';
-
-
-        card.innerHTML = `
-
-          <div class="rank">
-            ${index + 1}位
-          </div>
-
-
-          <div>
-
-            <div class="genre">
-              ${escapeHtml(
-                novel.genre
-              )}
-            </div>
-
-
-            <div class="title">
-              ${escapeHtml(
-                novel.title
-              )}
-            </div>
-
-
-            <div class="description">
-              ${escapeHtml(
-                novel.description
-              )}
-            </div>
-
-
-            <div class="meta">
-              👁 ${novel.pv ?? 0} PV
-              ・
-              ★ ${novel.favorite_count ?? 0}
-            </div>
-
-          </div>
-
-        `;
-
-
-        rankingList.appendChild(
-          card
+      const card =
+        document.createElement(
+          'a'
         );
+
+
+      card.href =
+        'novel.html?id=' +
+        novel.id;
+
+
+      card.className =
+        'ranking-card';
+
+
+      card.innerHTML = `
+
+        <div class="rank">
+          ${index + 1}位
+        </div>
+
+        <div>
+
+          <div class="genre">
+            ${escapeHtml(
+              novel.genre
+            )}
+          </div>
+
+          <div class="title">
+            ${escapeHtml(
+              novel.title
+            )}
+          </div>
+
+          <div class="description">
+            ${escapeHtml(
+              novel.description
+            )}
+          </div>
+
+          <div class="meta">
+            👁 ${novel.pv ?? 0} PV
+            ・
+            ★ ${novel.favorite_count ?? 0}
+          </div>
+
+        </div>
+
+      `;
+
+
+      rankingList.appendChild(
+        card
+      );
+
+    }
+  );
+
+}
+
+
+const rankingTabs =
+  document.querySelectorAll(
+    '.ranking-tab'
+  );
+
+
+rankingTabs.forEach(
+  tab => {
+
+    tab.addEventListener(
+      'click',
+      () => {
+
+        currentRanking =
+          tab.dataset.ranking;
+
+
+        rankingTabs.forEach(
+          button => {
+            button.classList.remove(
+              'active'
+            );
+          }
+        );
+
+
+        tab.classList.add(
+          'active'
+        );
+
+
+        renderRanking();
 
       }
     );
 
+  }
+);
+
+
+renderRanking(); 
   }
 
 
