@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>作品を探す | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      max-width: 1100px;
+      height: 72px;
+      margin: auto;
+      padding: 0 24px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      color: #6d4aff;
+    }
+
+    .back {
+      color: #666;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: auto;
+      padding: 50px 24px 80px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #777;
+      margin-bottom: 30px;
+    }
+
+    .search-area {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 30px;
+
+      display: grid;
+      grid-template-columns: 1fr 240px;
+      gap: 15px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid #d8d8df;
+      border-radius: 9px;
+      font-size: 15px;
+      background: white;
+    }
+
+    .result-count {
+      color: #777;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    .novel-list {
+      display: grid;
+      gap: 18px;
+    }
+
+    .novel-card {
+      display: block;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 22px;
+      transition: 0.2s;
+    }
+
+    .novel-card:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 8px 24px
+        rgba(0, 0, 0, 0.06);
+    }
+
+    .genre {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 5px 9px;
+      border-radius: 6px;
+      background: #eeeaff;
+      color: #6d4aff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .description {
+      color: #666;
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+
+    .meta {
+      color: #999;
+      font-size: 12px;
+    }
+
+    .empty {
+      text-align: center;
+      color: #777;
+      padding: 50px 20px;
+      background: white;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+    }
+
+    @media (max-width: 700px) {
+      .search-area {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="index.html" class="logo">
+      NovelRise
+    </a>
+
+    <a href="index.html" class="back">
+      ← トップへ戻る
+    </a>
+  </div>
+</header>
+
+<main>
+
+  <h1>作品を探す</h1>
+
+  <p class="subtitle">
+    タイトルやジャンルから作品を探せます。
+  </p>
+
+
+  <div class="search-area">
+
+    <input
+      id="keywordInput"
+      type="text"
+      placeholder="タイトル・あらすじを検索"
+    >
+
+    <select id="genreSelect">
+
+      <option value="">
+        すべてのジャンル
+      </option>
+
+      <option value="異世界ファンタジー">
+        異世界ファンタジー
+      </option>
+
+      <option value="現代ファンタジー">
+        現代ファンタジー
+      </option>
+
+      <option value="恋愛">
+        恋愛
+      </option>
+
+      <option value="ラブコメ">
+        ラブコメ
+      </option>
+
+      <option value="SF">
+        SF
+      </option>
+
+      <option value="ミステリー">
+        ミステリー
+      </option>
+
+      <option value="ホラー">
+        ホラー
+      </option>
+
+      <option value="歴史">
+        歴史
+      </option>
+
+      <option value="現代ドラマ">
+        現代ドラマ
+      </option>
+
+      <option value="その他">
+        その他
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div
+    id="resultCount"
+    class="result-count"
+  >
+    読み込み中...
+  </div>
+
+
+  <div
+    id="novelList"
+    class="novel-list"
+  ></div>
+
+</main>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+  const SUPABASE_URL =
+    'https://fiepaguycecrredwrcwx.supabase.co';
+
+  const SUPABASE_KEY =
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  let allNovels = [];
+
+
+  function escapeHtml(value) {
+
+    const div =
+      document.createElement('div');
+
+    div.textContent =
+      value ?? '';
+
+    return div.innerHTML;
+  }
+
+
+  function renderNovels() {
+
+    const keyword =
+      document.getElementById(
+        'keywordInput'
+      ).value
+        .trim()
+        .toLowerCase();
+
+
+    const genre =
+      document.getElementById(
+        'genreSelect'
+      ).value;
+
+
+    const filtered =
+      allNovels.filter(
+        (novel) => {
+
+          const title =
+            (novel.title ?? '')
+              .toLowerCase();
+
+          const description =
+            (novel.description ?? '')
+              .toLowerCase();
+
+
+          const keywordMatch =
+            !keyword ||
+            title.includes(keyword) ||
+            description.includes(keyword);
+
+
+          const genreMatch =
+            !genre ||
+            novel.genre === genre;
+
+
+          return (
+            keywordMatch &&
+            genreMatch
+          );
+
+        }
+      );
+
+
+    document.getElementById(
+      'resultCount'
+    ).textContent =
+      filtered.length +
+      '作品';
+
+
+    const novelList =
+      document.getElementById(
+        'novelList'
+      );
+
+
+    if (filtered.length === 0) {
+
+      novelList.innerHTML =
+        '<div class="empty">' +
+        '条件に合う作品がありません。' +
+        '</div>';
+
+      return;
+    }
+
+
+    novelList.innerHTML = '';
+
+
+    filtered.forEach(
+      (novel) => {
+
+        const createdAt =
+          new Date(
+            novel.created_at
+          ).toLocaleDateString(
+            'ja-JP'
+          );
+
+
+        const card =
+          document.createElement(
+            'a'
+          );
+
+
+        card.href =
+          'novel.html?id=' +
+          novel.id;
+
+
+        card.className =
+          'novel-card';
+
+
+        card.innerHTML = `
+          <div class="genre">
+            ${escapeHtml(novel.genre)}
+          </div>
+
+          <div class="title">
+            ${escapeHtml(novel.title)}
+          </div>
+
+          <div class="description">
+            ${escapeHtml(novel.description)}
+          </div>
+
+          <div class="meta">
+            投稿日 ${createdAt}
+            ・ 👁 ${novel.pv ?? 0} PV
+            ・ ★ ${novel.favorites ?? 0}
+          </div>
+        `;
+
+
+        novelList.appendChild(
+          card
+        );
+
+      }
+    );
+
+  }
+
+
+  async function loadNovels() {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from('novels')
+        .select('*')
+        .eq(
+          'status',
+          'published'
+        )
+        .order(
+          'created_at',
+          {
+            ascending: false
+          }
+        );
+
+
+    if (error) {
+
+      console.error(error);
+
+      document.getElementById(
+        'resultCount'
+      ).textContent =
+        '読み込みエラー';
+
+
+      document.getElementById(
+        'novelList'
+      ).innerHTML =
+        '<div class="empty">' +
+        '作品を読み込めませんでした。' +
+        '</div>';
+
+      return;
+    }
+
+
+    allNovels =
+      data ?? [];
+
+
+    renderNovels();
+
+  }
+
+
+  document.getElementById(
+    'keywordInput'
+  ).addEventListener(
+    'input',
+    renderNovels
+  );
+
+
+  document.getElementById(
+    'genreSelect'
+  ).addEventListener(
+    'change',
+    renderNovels
+  );
+
+
+  loadNovels();
+
+</script>
+
+</body>
+</html>
