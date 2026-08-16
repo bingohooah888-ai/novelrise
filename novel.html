@@ -367,7 +367,103 @@
       </div>
     `;
 
+const {
+  data: episodes,
+  error: episodesError
+} =
+  await supabaseClient
+    .from('episodes')
+    .select('*')
+    .eq(
+      'novel_id',
+      data.id
+    )
+    .order(
+      'episode_number',
+      {
+        ascending: true
+      }
+    );
 
+
+const episodeList =
+  document.getElementById(
+    'episodeList'
+  );
+
+
+if (episodesError) {
+
+  console.error(
+    episodesError
+  );
+
+  episodeList.innerHTML =
+    '<div class="empty">' +
+    'エピソードを読み込めませんでした。' +
+    '</div>';
+
+} else if (
+  !episodes ||
+  episodes.length === 0
+) {
+
+  episodeList.innerHTML =
+    '<div class="empty">' +
+    'まだエピソードがありません。' +
+    '</div>';
+
+} else {
+
+  episodeList.innerHTML = '';
+
+
+  episodes.forEach(
+    (episode) => {
+
+      const episodeItem =
+        document.createElement(
+          'div'
+        );
+
+
+      episodeItem.style.padding =
+        '18px 0';
+
+      episodeItem.style.borderBottom =
+        '1px solid #e5e7eb';
+
+
+      episodeItem.innerHTML = `
+        <div
+          style="
+            font-size:13px;
+            color:#888;
+            margin-bottom:6px;
+          "
+        >
+          第${episode.episode_number}話
+        </div>
+
+        <div
+          style="
+            font-size:18px;
+            font-weight:800;
+          "
+        >
+          ${escapeHtml(episode.title)}
+        </div>
+      `;
+
+
+      episodeList.appendChild(
+        episodeItem
+      );
+
+    }
+  );
+
+}
     document.getElementById(
       'newEpisodeButton'
     ).href =
