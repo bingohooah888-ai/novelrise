@@ -445,14 +445,16 @@ if (episodesError) {
           第${episode.episode_number}話
         </div>
 
-        <div
-          style="
-            font-size:18px;
-            font-weight:800;
-          "
-        >
-          ${escapeHtml(episode.title)}
-        </div>
+<a
+  href="episode.html?id=${episode.id}"
+  style="
+    display:block;
+    font-size:18px;
+    font-weight:800;
+  "
+>
+  ${escapeHtml(episode.title)}
+</a>
       `;
 
 
