@@ -326,33 +326,65 @@
     }
 
 
-    const rankedNovels =
-      data
-        .map(
-          novel => {
+const rankedNovels =
+  await Promise.all(
+    data.map(
+      async (novel) => {
 
-            const pv =
-              novel.pv ?? 0;
+        const {
+          count,
+          error: favoriteError
+        } =
+          await supabaseClient
+            .from('favorites')
+            .select(
+              '*',
+              {
+                count: 'exact',
+                head: true
+              }
+            )
+            .eq(
+              'novel_id',
+              novel.id
+            );
 
-            const favorites =
-              novel.favorites ?? 0;
+
+        if (favoriteError) {
+          console.error(
+            favoriteError
+          );
+        }
 
 
-            return {
-              ...novel,
+        const pv =
+          novel.pv ?? 0;
 
-              score:
-                pv +
-                favorites * 10
-            };
+        const favorites =
+          count ?? 0;
 
-          }
-        )
-        .sort(
-          (a, b) =>
-            b.score -
-            a.score
-        );
+
+        return {
+          ...novel,
+
+          favorite_count:
+            favorites,
+
+          score:
+            pv +
+            favorites * 10
+        };
+
+      }
+    )
+  );
+
+
+rankedNovels.sort(
+  (a, b) =>
+    b.score -
+    a.score
+);
 
 
     rankingList.innerHTML =
@@ -413,7 +445,7 @@
             <div class="meta">
               👁 ${novel.pv ?? 0} PV
               ・
-              ★ ${novel.favorites ?? 0}
+              ★ ${novel.favorite_count ?? 0}
             </div>
 
           </div>
