@@ -352,9 +352,16 @@
           👁 ${data.pv ?? 0} PV
         </span>
 
-        <span>
-          ★ ${data.favorites ?? 0}
-        </span>
+<button
+  id="favoriteButton"
+  type="button"
+>
+  ☆ お気に入り
+</button>
+
+<span id="favoriteCount">
+  ${data.favorites ?? 0}
+</span>
 
         <span>
           投稿日 ${createdAt}
@@ -641,8 +648,236 @@ newEpisodeButton.textContent =
 
   }
 
+async function setupFavorite() {
 
-  loadNovel();
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const novelId =
+    params.get('id');
+
+
+  const favoriteButton =
+    document.getElementById(
+      'favoriteButton'
+    );
+
+  const favoriteCount =
+    document.getElementById(
+      'favoriteCount'
+    );
+
+
+  if (
+    !favoriteButton ||
+    !favoriteCount ||
+    !novelId
+  ) {
+    return;
+  }
+
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await supabaseClient.auth.getSession();
+
+
+  let favoriteId = null;
+
+
+  async function refreshFavorite() {
+
+    const {
+      count,
+      error: countError
+    } =
+      await supabaseClient
+        .from('favorites')
+        .select(
+          '*',
+          {
+            count: 'exact',
+            head: true
+          }
+        )
+        .eq(
+          'novel_id',
+          novelId
+        );
+
+
+    if (!countError) {
+
+      favoriteCount.textContent =
+        count ?? 0;
+
+    }
+
+
+    favoriteId = null;
+
+
+    if (!session) {
+
+      favoriteButton.textContent =
+        '☆ お気に入り';
+
+      return;
+    }
+
+
+    const {
+      data: favorite,
+      error
+    } =
+      await supabaseClient
+        .from('favorites')
+        .select('id')
+        .eq(
+          'novel_id',
+          novelId
+        )
+        .eq(
+          'user_id',
+          session.user.id
+        )
+        .maybeSingle();
+
+
+    if (error) {
+
+      console.error(error);
+
+      return;
+    }
+
+
+    if (favorite) {
+
+      favoriteId =
+        favorite.id;
+
+      favoriteButton.textContent =
+        '★ お気に入り済み';
+
+    } else {
+
+      favoriteButton.textContent =
+        '☆ お気に入り';
+
+    }
+
+  }
+
+
+  favoriteButton.addEventListener(
+    'click',
+    async () => {
+
+      if (!session) {
+
+        alert(
+          'お気に入りするにはログインが必要です。'
+        );
+
+        window.location.href =
+          'login.html';
+
+        return;
+      }
+
+
+      favoriteButton.disabled =
+        true;
+
+
+      if (favoriteId) {
+
+        const {
+          error
+        } =
+          await supabaseClient
+            .from('favorites')
+            .delete()
+            .eq(
+              'id',
+              favoriteId
+            );
+
+
+        if (error) {
+
+          console.error(error);
+
+          alert(
+            'お気に入り解除に失敗しました。'
+          );
+
+          favoriteButton.disabled =
+            false;
+
+          return;
+        }
+
+      } else {
+
+        const {
+          error
+        } =
+          await supabaseClient
+            .from('favorites')
+            .insert({
+              user_id:
+                session.user.id,
+
+              novel_id:
+                Number(novelId)
+            });
+
+
+        if (error) {
+
+          console.error(error);
+
+          alert(
+            'お気に入り登録に失敗しました。\n' +
+            error.message
+          );
+
+          favoriteButton.disabled =
+            false;
+
+          return;
+        }
+
+      }
+
+
+      await refreshFavorite();
+
+
+      favoriteButton.disabled =
+        false;
+
+    }
+  );
+
+
+  await refreshFavorite();
+
+}
+  (async () => {
+
+  await loadNovel();
+
+  await setupFavorite();
+
+})();
 
 </script>
 
