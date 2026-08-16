@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>エピソード | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      max-width: 900px;
+      height: 72px;
+      margin: auto;
+      padding: 0 24px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      color: #6d4aff;
+    }
+
+    .back {
+      color: #666;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 820px;
+      margin: auto;
+      padding: 50px 24px 100px;
+    }
+
+    .episode-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 40px 45px;
+    }
+
+    .novel-title {
+      color: #6d4aff;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 22px;
+    }
+
+    .episode-number {
+      color: #777;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 30px;
+      margin-bottom: 35px;
+      line-height: 1.5;
+    }
+
+    .content {
+      font-size: 17px;
+      line-height: 2.1;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .meta {
+      margin-top: 45px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+
+      color: #888;
+      font-size: 13px;
+    }
+
+    .error {
+      background: #fff0f0;
+      color: #b42318;
+      padding: 18px;
+      border-radius: 10px;
+    }
+
+    @media (max-width: 600px) {
+
+      .episode-card {
+        padding: 28px 22px;
+      }
+
+      h1 {
+        font-size: 25px;
+      }
+
+      .content {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+
+    <a href="index.html" class="logo">
+      NovelRise
+    </a>
+
+    <a
+      id="backLink"
+      href="index.html"
+      class="back"
+    >
+      ← 作品へ戻る
+    </a>
+
+  </div>
+</header>
+
+
+<main>
+
+  <article
+    id="episodeCard"
+    class="episode-card"
+  >
+    読み込み中...
+  </article>
+
+</main>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+  const SUPABASE_URL =
+    'https://fiepaguycecrredwrcwx.supabase.co';
+
+  const SUPABASE_KEY =
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  function escapeHtml(value) {
+
+    const div =
+      document.createElement('div');
+
+    div.textContent =
+      value ?? '';
+
+    return div.innerHTML;
+
+  }
+
+
+  async function loadEpisode() {
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+
+    const episodeId =
+      params.get('id');
+
+
+    const episodeCard =
+      document.getElementById(
+        'episodeCard'
+      );
+
+
+    if (!episodeId) {
+
+      episodeCard.innerHTML =
+        '<div class="error">' +
+        'エピソードIDが指定されていません。' +
+        '</div>';
+
+      return;
+
+    }
+
+
+    const {
+      data: episode,
+      error
+    } =
+      await supabaseClient
+        .from('episodes')
+        .select('*')
+        .eq(
+          'id',
+          episodeId
+        )
+        .single();
+
+
+    if (
+      error ||
+      !episode
+    ) {
+
+      console.error(error);
+
+      episodeCard.innerHTML =
+        '<div class="error">' +
+        'エピソードを読み込めませんでした。' +
+        '</div>';
+
+      return;
+
+    }
+
+
+    const {
+      data: novel,
+      error: novelError
+    } =
+      await supabaseClient
+        .from('novels')
+        .select(
+          'id, title'
+        )
+        .eq(
+          'id',
+          episode.novel_id
+        )
+        .single();
+
+
+    if (
+      novelError ||
+      !novel
+    ) {
+
+      console.error(novelError);
+
+      episodeCard.innerHTML =
+        '<div class="error">' +
+        '作品情報を読み込めませんでした。' +
+        '</div>';
+
+      return;
+
+    }
+
+
+    document.getElementById(
+      'backLink'
+    ).href =
+      'novel.html?id=' +
+      novel.id;
+
+
+    episodeCard.innerHTML = `
+
+      <div class="novel-title">
+
+        <a href="novel.html?id=${novel.id}">
+          ${escapeHtml(novel.title)}
+        </a>
+
+      </div>
+
+
+      <div class="episode-number">
+        第${episode.episode_number}話
+      </div>
+
+
+      <h1>
+        ${escapeHtml(episode.title)}
+      </h1>
+
+
+      <div class="content">${escapeHtml(episode.content)}</div>
+
+
+      <div class="meta">
+        👁 ${episode.pv ?? 0} PV
+      </div>
+
+    `;
+
+  }
+
+
+  loadEpisode();
+
+</script>
+
+</body>
+</html>
