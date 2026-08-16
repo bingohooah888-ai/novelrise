@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>マイページ | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: auto;
+      height: 72px;
+      padding: 0 24px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      color: #6d4aff;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .back-button {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .logout-button {
+      background: white;
+      color: #6d4aff;
+      border: 1px solid #6d4aff;
+
+      padding: 10px 18px;
+      border-radius: 8px;
+
+      font-weight: 700;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: auto;
+      padding: 50px 24px;
+    }
+
+    .welcome {
+      background:
+        linear-gradient(
+          135deg,
+          #6d4aff,
+          #8b72ff
+        );
+
+      color: white;
+
+      border-radius: 18px;
+      padding: 35px;
+
+      margin-bottom: 30px;
+    }
+
+    .welcome h1 {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .welcome p {
+      color: rgba(255,255,255,0.85);
+    }
+
+    .user-email {
+      margin-top: 14px;
+      font-size: 14px;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+
+      border-radius: 14px;
+      padding: 25px;
+
+      border: 1px solid #e7e7ed;
+
+      min-height: 170px;
+    }
+
+    .card-icon {
+      font-size: 30px;
+      margin-bottom: 15px;
+    }
+
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      color: #777;
+      font-size: 14px;
+
+      margin-bottom: 18px;
+    }
+
+    .card-button {
+      display: inline-block;
+
+      background: #6d4aff;
+      color: white;
+
+      padding: 10px 16px;
+      border-radius: 8px;
+
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .stats {
+      margin-top: 30px;
+
+      background: white;
+
+      border-radius: 14px;
+      padding: 28px;
+
+      border: 1px solid #e7e7ed;
+    }
+
+    .stats h2 {
+      margin-bottom: 20px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+
+      gap: 15px;
+    }
+
+    .stat-box {
+      background: #f6f4ff;
+
+      border-radius: 10px;
+      padding: 20px;
+
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 28px;
+      font-weight: 900;
+
+      color: #6d4aff;
+    }
+
+    .stat-label {
+      color: #777;
+      font-size: 13px;
+
+      margin-top: 4px;
+    }
+
+    @media (max-width: 800px) {
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+
+  <div class="header-inner">
+
+    <a href="index.html" class="logo">
+      NovelRise
+    </a>
+
+    <div class="header-right">
+
+      <a
+        href="index.html"
+        class="back-button"
+      >
+        トップページ
+      </a>
+
+      <button
+        id="logoutButton"
+        class="logout-button"
+      >
+        ログアウト
+      </button>
+
+    </div>
+
+  </div>
+
+</header>
+
+
+<main>
+
+  <section class="welcome">
+
+    <h1 id="welcomeName">
+      マイページ
+    </h1>
+
+    <p>
+      あなたの作品を管理しましょう。
+    </p>
+
+    <div
+      class="user-email"
+      id="userEmail"
+    >
+    </div>
+
+  </section>
+
+
+  <section class="dashboard-grid">
+
+    <div class="card">
+
+      <div class="card-icon">
+        ✍️
+      </div>
+
+      <h2>
+        小説を投稿
+      </h2>
+
+      <p>
+        新しい作品をNovelRiseに投稿します。
+      </p>
+
+      <a
+        href="#"
+        class="card-button"
+      >
+        投稿する
+      </a>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="card-icon">
+        📚
+      </div>
+
+      <h2>
+        自分の作品
+      </h2>
+
+      <p>
+        投稿した小説の編集・管理を行います。
+      </p>
+
+      <a
+        href="#"
+        class="card-button"
+      >
+        作品を見る
+      </a>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="card-icon">
+        💎
+      </div>
+
+      <h2>
+        契約プラン
+      </h2>
+
+      <p>
+        現在のプランやアップグレードを確認します。
+      </p>
+
+      <a
+        href="#"
+        class="card-button"
+      >
+        プランを見る
+      </a>
+
+    </div>
+
+  </section>
+
+
+  <section class="stats">
+
+    <h2>
+      アクセス状況
+    </h2>
+
+    <div class="stats-grid">
+
+      <div class="stat-box">
+        <div class="stat-number">
+          0
+        </div>
+
+        <div class="stat-label">
+          投稿作品
+        </div>
+      </div>
+
+      <div class="stat-box">
+        <div class="stat-number">
+          0
+        </div>
+
+        <div class="stat-label">
+          総PV
+        </div>
+      </div>
+
+      <div class="stat-box">
+        <div class="stat-number">
+          0
+        </div>
+
+        <div class="stat-label">
+          お気に入り
+        </div>
+      </div>
+
+      <div class="stat-box">
+        <div class="stat-number">
+          Free
+        </div>
+
+        <div class="stat-label">
+          現在のプラン
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
+</main>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+  const SUPABASE_URL =
+    'https://fiepaguycecrredwrcwx.supabase.co';
+
+  const SUPABASE_KEY =
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  async function checkLogin() {
+
+    const {
+      data: {
+        session
+      }
+    } =
+      await supabaseClient.auth.getSession();
+
+
+    if (!session) {
+
+      window.location.href =
+        'login.html';
+
+      return;
+    }
+
+
+    const user =
+      session.user;
+
+
+    document.getElementById(
+      'userEmail'
+    ).textContent =
+      user.email;
+
+
+    const displayName =
+      user.user_metadata.display_name;
+
+
+    if (displayName) {
+
+      document.getElementById(
+        'welcomeName'
+      ).textContent =
+        displayName +
+        ' さんのマイページ';
+
+    }
+
+  }
+
+
+  document.getElementById(
+    'logoutButton'
+  ).addEventListener(
+    'click',
+    async () => {
+
+      await supabaseClient.auth.signOut();
+
+      window.location.href =
+        'index.html';
+
+    }
+  );
+
+
+  checkLogin();
+
+</script>
+
+</body>
+</html>
