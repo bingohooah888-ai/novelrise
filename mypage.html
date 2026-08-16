@@ -383,7 +383,10 @@
       </div>
 
       <div class="stat-box">
-        <div class="stat-number">
+        <div
+  id="favoriteStatCount"
+  class="stat-number"
+>
           0
         </div>
 
@@ -666,8 +669,57 @@ async function loadFavoriteNovels() {
   );
 
 }
- checkLogin();
+  async function loadFavoriteStat() {
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await supabaseClient.auth.getSession();
+
+
+  if (!session) {
+    return;
+  }
+
+
+  const {
+    count,
+    error
+  } =
+    await supabaseClient
+      .from('favorites')
+      .select(
+        '*',
+        {
+          count: 'exact',
+          head: true
+        }
+      )
+      .eq(
+        'user_id',
+        session.user.id
+      );
+
+
+  if (error) {
+
+    console.error(error);
+
+    return;
+  }
+
+
+  document.getElementById(
+    'favoriteStatCount'
+  ).textContent =
+    count ?? 0;
+
+}
+checkLogin();
 loadFavoriteNovels();
+loadFavoriteStat();
 
 </script>
 
