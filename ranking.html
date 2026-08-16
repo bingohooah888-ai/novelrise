@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>ランキング | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      max-width: 1000px;
+      height: 72px;
+      margin: auto;
+      padding: 0 24px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      color: #6d4aff;
+      font-size: 25px;
+      font-weight: 800;
+    }
+
+    .back {
+      color: #666;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 900px;
+      margin: auto;
+      padding: 50px 24px 80px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #777;
+      margin-bottom: 35px;
+    }
+
+    .ranking-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .ranking-card {
+      display: grid;
+
+      grid-template-columns:
+        70px 1fr;
+
+      gap: 18px;
+
+      background: white;
+
+      border:
+        1px solid #e5e7eb;
+
+      border-radius: 14px;
+
+      padding: 22px;
+
+      transition: 0.2s;
+    }
+
+    .ranking-card:hover {
+      transform:
+        translateY(-2px);
+
+      box-shadow:
+        0 8px 24px
+        rgba(0, 0, 0, 0.06);
+    }
+
+    .rank {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-size: 24px;
+      font-weight: 900;
+
+      color: #6d4aff;
+    }
+
+    .genre {
+      display: inline-block;
+
+      padding: 5px 9px;
+
+      margin-bottom: 9px;
+
+      border-radius: 6px;
+
+      background: #eeeaff;
+
+      color: #6d4aff;
+
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .description {
+      color: #666;
+
+      line-height: 1.7;
+
+      margin-bottom: 12px;
+    }
+
+    .meta {
+      color: #999;
+      font-size: 13px;
+    }
+
+    .empty {
+      background: white;
+
+      border:
+        1px solid #e5e7eb;
+
+      border-radius: 14px;
+
+      padding: 50px 20px;
+
+      text-align: center;
+
+      color: #777;
+    }
+
+    @media (
+      max-width: 600px
+    ) {
+
+      .ranking-card {
+        grid-template-columns:
+          50px 1fr;
+      }
+
+      .rank {
+        font-size: 20px;
+      }
+    }
+  </style>
+
+</head>
+
+
+<body>
+
+<header>
+
+  <div class="header-inner">
+
+    <a
+      href="index.html"
+      class="logo"
+    >
+      NovelRise
+    </a>
+
+    <a
+      href="index.html"
+      class="back"
+    >
+      ← トップへ戻る
+    </a>
+
+  </div>
+
+</header>
+
+
+<main>
+
+  <h1>
+    作品ランキング
+  </h1>
+
+  <p class="subtitle">
+    読者から注目されている作品を紹介します。
+  </p>
+
+
+  <div
+    id="rankingList"
+    class="ranking-list"
+  >
+    読み込み中...
+  </div>
+
+</main>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<script>
+
+  const SUPABASE_URL =
+    'https://fiepaguycecrredwrcwx.supabase.co';
+
+  const SUPABASE_KEY =
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  function escapeHtml(
+    value
+  ) {
+
+    const div =
+      document.createElement(
+        'div'
+      );
+
+    div.textContent =
+      value ?? '';
+
+    return div.innerHTML;
+  }
+
+
+  async function loadRanking() {
+
+    const rankingList =
+      document.getElementById(
+        'rankingList'
+      );
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from('novels')
+        .select('*')
+        .eq(
+          'status',
+          'published'
+        );
+
+
+    if (error) {
+
+      console.error(
+        error
+      );
+
+      rankingList.innerHTML =
+        '<div class="empty">' +
+        'ランキングを読み込めませんでした。' +
+        '</div>';
+
+      return;
+    }
+
+
+    if (
+      !data ||
+      data.length === 0
+    ) {
+
+      rankingList.innerHTML =
+        '<div class="empty">' +
+        'まだランキング対象の作品がありません。' +
+        '</div>';
+
+      return;
+    }
+
+
+    const rankedNovels =
+      data
+        .map(
+          novel => {
+
+            const pv =
+              novel.pv ?? 0;
+
+            const favorites =
+              novel.favorites ?? 0;
+
+
+            return {
+              ...novel,
+
+              score:
+                pv +
+                favorites * 10
+            };
+
+          }
+        )
+        .sort(
+          (a, b) =>
+            b.score -
+            a.score
+        );
+
+
+    rankingList.innerHTML =
+      '';
+
+
+    rankedNovels.forEach(
+      (
+        novel,
+        index
+      ) => {
+
+        const card =
+          document.createElement(
+            'a'
+          );
+
+
+        card.href =
+          'novel.html?id=' +
+          novel.id;
+
+
+        card.className =
+          'ranking-card';
+
+
+        card.innerHTML = `
+
+          <div class="rank">
+            ${index + 1}位
+          </div>
+
+
+          <div>
+
+            <div class="genre">
+              ${escapeHtml(
+                novel.genre
+              )}
+            </div>
+
+
+            <div class="title">
+              ${escapeHtml(
+                novel.title
+              )}
+            </div>
+
+
+            <div class="description">
+              ${escapeHtml(
+                novel.description
+              )}
+            </div>
+
+
+            <div class="meta">
+              👁 ${novel.pv ?? 0} PV
+              ・
+              ★ ${novel.favorites ?? 0}
+            </div>
+
+          </div>
+
+        `;
+
+
+        rankingList.appendChild(
+          card
+        );
+
+      }
+    );
+
+  }
+
+
+  loadRanking();
+
+</script>
+
+</body>
+
+</html>
