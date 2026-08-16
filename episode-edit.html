@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>エピソード編集 | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      max-width: 900px;
+      height: 72px;
+      margin: auto;
+      padding: 0 24px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      color: #6d4aff;
+    }
+
+    .back {
+      color: #666;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 850px;
+      margin: auto;
+      padding: 50px 24px;
+    }
+
+    .page-title {
+      margin-bottom: 30px;
+    }
+
+    .page-title h1 {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .page-title p {
+      color: #777;
+    }
+
+    .form-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 35px;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 9px;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #d8d8df;
+      border-radius: 9px;
+      padding: 13px 14px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #6d4aff;
+      box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.1);
+    }
+
+    textarea {
+      min-height: 500px;
+      resize: vertical;
+      line-height: 1.9;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .cancel-button {
+      padding: 13px 22px;
+      border-radius: 9px;
+      border: 1px solid #d6d6dc;
+      background: white;
+      color: #555;
+      font-weight: 700;
+    }
+
+    .save-button {
+      padding: 13px 28px;
+      border: none;
+      border-radius: 9px;
+      background: #6d4aff;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .save-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+
+    <a href="index.html" class="logo">
+      NovelRise
+    </a>
+
+    <a
+      id="backLink"
+      href="my-novels.html"
+      class="back"
+    >
+      ← エピソードへ戻る
+    </a>
+
+  </div>
+</header>
+
+
+<main>
+
+  <div class="page-title">
+    <h1>エピソードを編集</h1>
+
+    <p id="episodeInfo">
+      読み込み中...
+    </p>
+  </div>
+
+
+  <div class="form-card">
+
+    <form id="editForm">
+
+      <div class="form-group">
+
+        <label for="title">
+          エピソードタイトル
+        </label>
+
+        <input
+          id="title"
+          type="text"
+          maxlength="150"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="content">
+          本文
+        </label>
+
+        <textarea
+          id="content"
+          required
+        ></textarea>
+
+      </div>
+
+
+      <div class="buttons">
+
+        <a
+          id="cancelButton"
+          href="#"
+          class="cancel-button"
+        >
+          キャンセル
+        </a>
+
+        <button
+          id="saveButton"
+          type="submit"
+          class="save-button"
+        >
+          変更を保存
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</main>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+  const SUPABASE_URL =
+    'https://fiepaguycecrredwrcwx.supabase.co';
+
+  const SUPABASE_KEY =
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const episodeId =
+    params.get('id');
+
+
+  let currentEpisode = null;
+
+
+  async function initializePage() {
+
+    if (!episodeId) {
+
+      alert(
+        'エピソードIDが指定されていません。'
+      );
+
+      window.location.href =
+        'my-novels.html';
+
+      return;
+    }
+
+
+    const {
+      data: {
+        session
+      }
+    } =
+      await supabaseClient.auth.getSession();
+
+
+    if (!session) {
+
+      alert(
+        '編集するにはログインが必要です。'
+      );
+
+      window.location.href =
+        'login.html';
+
+      return;
+    }
+
+
+    const {
+      data: episode,
+      error
+    } =
+      await supabaseClient
+        .from('episodes')
+        .select('*')
+        .eq(
+          'id',
+          episodeId
+        )
+        .single();
+
+
+    if (
+      error ||
+      !episode
+    ) {
+
+      console.error(error);
+
+      alert(
+        'エピソードを読み込めませんでした。'
+      );
+
+      return;
+    }
+
+
+    if (
+      episode.user_id !==
+      session.user.id
+    ) {
+
+      alert(
+        'このエピソードを編集する権限がありません。'
+      );
+
+      window.location.href =
+        'index.html';
+
+      return;
+    }
+
+
+    currentEpisode =
+      episode;
+
+
+    document.getElementById(
+      'episodeInfo'
+    ).textContent =
+      '第' +
+      episode.episode_number +
+      '話';
+
+
+    document.getElementById(
+      'title'
+    ).value =
+      episode.title;
+
+
+    document.getElementById(
+      'content'
+    ).value =
+      episode.content;
+
+
+    const episodeUrl =
+      'episode.html?id=' +
+      episode.id;
+
+
+    document.getElementById(
+      'backLink'
+    ).href =
+      episodeUrl;
+
+
+    document.getElementById(
+      'cancelButton'
+    ).href =
+      episodeUrl;
+
+  }
+
+
+  document.getElementById(
+    'editForm'
+  ).addEventListener(
+    'submit',
+    async (event) => {
+
+      event.preventDefault();
+
+
+      if (!currentEpisode) {
+        return;
+      }
+
+
+      const saveButton =
+        document.getElementById(
+          'saveButton'
+        );
+
+
+      saveButton.disabled =
+        true;
+
+      saveButton.textContent =
+        '保存中...';
+
+
+      const title =
+        document.getElementById(
+          'title'
+        ).value.trim();
+
+
+      const content =
+        document.getElementById(
+          'content'
+        ).value.trim();
+
+
+      if (
+        !title ||
+        !content
+      ) {
+
+        alert(
+          'タイトルと本文を入力してください。'
+        );
+
+        saveButton.disabled =
+          false;
+
+        saveButton.textContent =
+          '変更を保存';
+
+        return;
+      }
+
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from('episodes')
+          .update({
+            title:
+              title,
+
+            content:
+              content
+          })
+          .eq(
+            'id',
+            currentEpisode.id
+          );
+
+
+      if (error) {
+
+        console.error(error);
+
+        alert(
+          '保存に失敗しました。\n' +
+          error.message
+        );
+
+        saveButton.disabled =
+          false;
+
+        saveButton.textContent =
+          '変更を保存';
+
+        return;
+      }
+
+
+      alert(
+        '変更を保存しました！'
+      );
+
+
+      window.location.href =
+        'episode.html?id=' +
+        currentEpisode.id;
+
+    }
+  );
+
+
+  initializePage();
+
+</script>
+
+</body>
+</html>
