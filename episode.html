@@ -253,7 +253,21 @@
       return;
 
     }
+// 作品のPVを1増やす
+const { error: pvError } =
+  await supabaseClient.rpc(
+    'increment_novel_pv',
+    {
+      target_novel_id: episode.novel_id
+    }
+  );
 
+if (pvError) {
+  console.error(
+    'PVの更新に失敗しました:',
+    pvError
+  );
+}
 
     const {
       data: novel,
