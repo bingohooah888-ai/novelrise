@@ -318,6 +318,67 @@
   </div>
 
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<script>
+  const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co/rest/v1/';
+  const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+  const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+  const form = document.querySelector('form');
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const passwordConfirm =
+      document.getElementById('password-confirm').value;
+
+    if (password !== passwordConfirm) {
+      alert('パスワードが一致していません。');
+      return;
+    }
+
+    if (password.length < 8) {
+      alert('パスワードは8文字以上にしてください。');
+      return;
+    }
+
+    const { data, error } =
+      await supabaseClient.auth.signUp({
+        email: email,
+        password: password,
+
+        options: {
+          data: {
+            display_name: name
+          },
+
+          emailRedirectTo:
+            'https://novelrise.vercel.app'
+        }
+      });
+
+    if (error) {
+      alert(
+        '会員登録に失敗しました。\n' +
+        error.message
+      );
+
+      return;
+    }
+
+    alert(
+      '登録確認メールを送信しました。\n' +
+      'メール内のリンクを押して登録を完了してください。'
+    );
+  });
+</script>
 </body>
 </html>
