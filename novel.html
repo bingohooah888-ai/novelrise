@@ -196,6 +196,23 @@
 >
   作品を編集
 </a>
+    <button
+  id="deleteNovelButton"
+  type="button"
+  style="
+    display:none;
+    margin-right:10px;
+    padding:11px 18px;
+    background:white;
+    color:#d92d20;
+    border:1px solid #d92d20;
+    border-radius:8px;
+    font-weight:800;
+    cursor:pointer;
+  "
+>
+  作品を削除
+</button>
     <a
       id="newEpisodeButton"
       href="episode-post.html"
@@ -470,7 +487,114 @@ if (
   editNovelButton.href =
     'novel-edit.html?id=' +
     data.id;
+const deleteNovelButton =
+  document.getElementById(
+    'deleteNovelButton'
+  );
 
+deleteNovelButton.style.display =
+  'inline-block';
+
+
+deleteNovelButton.addEventListener(
+  'click',
+  async () => {
+
+    const confirmed =
+      confirm(
+        'この作品を本当に削除しますか？\n' +
+        '作品内のエピソードも削除する必要があります。\n' +
+        'この操作は元に戻せません。'
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    deleteNovelButton.disabled =
+      true;
+
+    deleteNovelButton.textContent =
+      '削除中...';
+
+
+    const {
+      error: episodeDeleteError
+    } =
+      await supabaseClient
+        .from('episodes')
+        .delete()
+        .eq(
+          'novel_id',
+          data.id
+        );
+
+
+    if (episodeDeleteError) {
+
+      console.error(
+        episodeDeleteError
+      );
+
+      alert(
+        'エピソードの削除に失敗しました。\n' +
+        episodeDeleteError.message
+      );
+
+      deleteNovelButton.disabled =
+        false;
+
+      deleteNovelButton.textContent =
+        '作品を削除';
+
+      return;
+    }
+
+
+    const {
+      error: novelDeleteError
+    } =
+      await supabaseClient
+        .from('novels')
+        .delete()
+        .eq(
+          'id',
+          data.id
+        );
+
+
+    if (novelDeleteError) {
+
+      console.error(
+        novelDeleteError
+      );
+
+      alert(
+        '作品の削除に失敗しました。\n' +
+        novelDeleteError.message
+      );
+
+      deleteNovelButton.disabled =
+        false;
+
+      deleteNovelButton.textContent =
+        '作品を削除';
+
+      return;
+    }
+
+
+    alert(
+      '作品を削除しました。'
+    );
+
+
+    window.location.href =
+      'my-novels.html';
+
+  }
+);
 }  
 
 const newEpisodeButton =
