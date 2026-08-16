@@ -296,20 +296,7 @@
     }
 
 
-    if (
-      data.user_id !==
-      session.user.id
-    ) {
 
-      document.getElementById(
-        'novelHeader'
-      ).innerHTML =
-        '<div class="error">' +
-        'この作品を編集する権限がありません。' +
-        '</div>';
-
-      return;
-    }
 
 
     const createdAt =
