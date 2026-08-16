@@ -303,8 +303,7 @@
     novelList.innerHTML = '';
 
 
-    data.forEach(
-      (novel) => {
+for (const novel of data) {
 
         const card =
           document.createElement(
@@ -337,7 +336,29 @@
           escapeHtml(
             novel.description || ''
           );
+const {
+  count: favoriteCount,
+  error: favoriteError
+} =
+  await supabaseClient
+    .from('favorites')
+    .select(
+      '*',
+      {
+        count: 'exact',
+        head: true
+      }
+    )
+    .eq(
+      'novel_id',
+      novel.id
+    );
 
+if (favoriteError) {
+  console.error(
+    favoriteError
+  );
+}
 
         card.innerHTML = `
           <div class="novel-top">
@@ -361,7 +382,7 @@
                 </span>
 
                 <span>
-                  ★ ${novel.favorites ?? 0}
+                ★ ${favoriteCount ?? 0}
                 </span>
 
                 <span>
@@ -389,7 +410,7 @@
         );
 
       }
-    );
+    
 
   }
 
