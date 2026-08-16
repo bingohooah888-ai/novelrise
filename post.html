@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>小説を投稿 | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      max-width: 1100px;
+      height: 72px;
+      margin: auto;
+      padding: 0 24px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      color: #6d4aff;
+    }
+
+    .back {
+      color: #666;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 850px;
+      margin: auto;
+      padding: 50px 24px;
+    }
+
+    .page-title {
+      margin-bottom: 30px;
+    }
+
+    .page-title h1 {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .page-title p {
+      color: #777;
+    }
+
+    .form-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 35px;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 9px;
+    }
+
+    .required {
+      color: #e14c4c;
+      font-size: 12px;
+      margin-left: 4px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid #d8d8df;
+      border-radius: 9px;
+      padding: 13px 14px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      background: white;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #6d4aff;
+      box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.1);
+    }
+
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.7;
+    }
+
+    .help {
+      margin-top: 7px;
+      color: #888;
+      font-size: 12px;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .cancel-button {
+      padding: 13px 22px;
+      border-radius: 9px;
+      border: 1px solid #d6d6dc;
+      background: white;
+      color: #555;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .submit-button {
+      padding: 13px 28px;
+      border: none;
+      border-radius: 9px;
+      background: #6d4aff;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .submit-button:hover {
+      background: #5938e8;
+    }
+
+    .submit-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 600px) {
+      .form-card {
+        padding: 24px;
+      }
+
+      .buttons {
+        flex-direction: column;
+      }
+
+      .buttons a,
+      .buttons button {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+
+    <a href="index.html" class="logo">
+      NovelRise
+    </a>
+
+    <a href="mypage.html" class="back">
+      ← マイページへ戻る
+    </a>
+
+  </div>
+</header>
+
+
+<main>
+
+  <div class="page-title">
+    <h1>新しい小説を投稿</h1>
+    <p>
+      まず作品の基本情報を登録します。
+    </p>
+  </div>
+
+
+  <div class="form-card">
+
+    <form id="novelForm">
+
+      <div class="form-group">
+
+        <label for="title">
+          作品タイトル
+          <span class="required">必須</span>
+        </label>
+
+        <input
+          id="title"
+          type="text"
+          maxlength="100"
+          placeholder="例：最弱魔術師の学園革命"
+          required
+        >
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="genre">
+          ジャンル
+          <span class="required">必須</span>
+        </label>
+
+        <select id="genre" required>
+
+          <option value="">
+            選択してください
+          </option>
+
+          <option value="異世界ファンタジー">
+            異世界ファンタジー
+          </option>
+
+          <option value="現代ファンタジー">
+            現代ファンタジー
+          </option>
+
+          <option value="恋愛">
+            恋愛
+          </option>
+
+          <option value="ラブコメ">
+            ラブコメ
+          </option>
+
+          <option value="SF">
+            SF
+          </option>
+
+          <option value="ミステリー">
+            ミステリー
+          </option>
+
+          <option value="ホラー">
+            ホラー
+          </option>
+
+          <option value="歴史">
+            歴史
+          </option>
+
+          <option value="現代ドラマ">
+            現代ドラマ
+          </option>
+
+          <option value="その他">
+            その他
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="description">
+          あらすじ
+          <span class="required">必須</span>
+        </label>
+
+        <textarea
+          id="description"
+          maxlength="2000"
+          placeholder="作品のあらすじを入力してください。"
+          required
+        ></textarea>
+
+        <div class="help">
+          最大2000文字
+        </div>
+
+      </div>
+
+
+      <div class="buttons">
+
+        <a
+          href="mypage.html"
+          class="cancel-button"
+        >
+          キャンセル
+        </a>
+
+        <button
+          id="submitButton"
+          type="submit"
+          class="submit-button"
+        >
+          作品を登録
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</main>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+  const SUPABASE_URL =
+    'https://fiepaguycecrredwrcwx.supabase.co';
+
+  const SUPABASE_KEY =
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  const form =
+    document.getElementById('novelForm');
+
+  const submitButton =
+    document.getElementById('submitButton');
+
+
+  async function checkLogin() {
+
+    const {
+      data: {
+        session
+      }
+    } =
+      await supabaseClient.auth.getSession();
+
+
+    if (!session) {
+
+      alert(
+        '小説を投稿するにはログインが必要です。'
+      );
+
+      window.location.href =
+        'login.html';
+
+      return null;
+    }
+
+
+    return session;
+  }
+
+
+  form.addEventListener(
+    'submit',
+    async (event) => {
+
+      event.preventDefault();
+
+      submitButton.disabled = true;
+      submitButton.textContent =
+        '登録中...';
+
+
+      const session =
+        await checkLogin();
+
+
+      if (!session) {
+        return;
+      }
+
+
+      const title =
+        document
+          .getElementById('title')
+          .value
+          .trim();
+
+      const genre =
+        document
+          .getElementById('genre')
+          .value;
+
+      const description =
+        document
+          .getElementById('description')
+          .value
+          .trim();
+
+
+      if (
+        !title ||
+        !genre ||
+        !description
+      ) {
+
+        alert(
+          'すべての必須項目を入力してください。'
+        );
+
+        submitButton.disabled = false;
+        submitButton.textContent =
+          '作品を登録';
+
+        return;
+      }
+
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from('novels')
+          .insert({
+            user_id:
+              session.user.id,
+
+            title:
+              title,
+
+            description:
+              description,
+
+            genre:
+              genre,
+
+            status:
+              'published',
+
+            pv:
+              0,
+
+            favorites:
+              0
+          });
+
+
+      if (error) {
+
+        console.error(error);
+
+        alert(
+          '作品の登録に失敗しました。\n' +
+          error.message
+        );
+
+        submitButton.disabled = false;
+        submitButton.textContent =
+          '作品を登録';
+
+        return;
+      }
+
+
+      alert(
+        '作品を登録しました！'
+      );
+
+
+      window.location.href =
+        'mypage.html';
+
+    }
+  );
+
+
+  checkLogin();
+
+</script>
+
+</body>
+</html>
