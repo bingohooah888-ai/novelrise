@@ -470,7 +470,14 @@ const newEpisodeButton =
   document.getElementById(
     'newEpisodeButton'
   );
-
+if (
+  !session ||
+  data.user_id !== session.user.id
+) {
+  newEpisodeButton.style.display = 'none';
+} else {
+  newEpisodeButton.style.display = 'inline-block';
+}
 newEpisodeButton.href =
   'episode-post.html?novel_id=' +
   data.id;
