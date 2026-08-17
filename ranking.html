@@ -275,7 +275,12 @@
   >
     お気に入り
   </button>
-
+<button
+  class="ranking-tab"
+  data-ranking="new"
+>
+  新着
+</button>
 </div>
 
   <div
@@ -435,11 +440,21 @@ let currentRanking =
 
 function sortRanking() {
 
-  if (
-    currentRanking ===
-    'pv'
-  ) {
+if (
+  currentRanking ===
+  'new'
+) {
 
+  rankedNovels.sort(
+    (a, b) =>
+      new Date(b.created_at) -
+      new Date(a.created_at)
+  );
+
+} else if (
+  currentRanking ===
+  'pv'
+) {
     rankedNovels.sort(
       (a, b) =>
         (b.pv ?? 0) -
