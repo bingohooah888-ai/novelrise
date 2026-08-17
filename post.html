@@ -512,6 +512,16 @@ if (
   );
   return;
 }
+      // Standardプランは10作品まで
+if (
+  currentPlan === 'standard' &&
+  (novelCount ?? 0) >= 10
+) {
+  alert(
+    'Standardプランでは投稿できる作品は10作品までです。'
+  );
+  return;
+}
       const {
         error
       } =
