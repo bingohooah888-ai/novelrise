@@ -244,7 +244,11 @@
       </option>
 
     </select>
-
+<select id="sortSelect">
+  <option value="new">新着順</option>
+  <option value="pv">PV順</option>
+  <option value="favorites">お気に入り順</option>
+</select>
   </div>
 
 
@@ -345,6 +349,59 @@
         }
       );
 
+      await Promise.all(
+    filtered.map(async (novel) => {
+      const {
+        count,
+        error
+      } = await supabaseClient
+        .from('favorites')
+        .select('*', {
+          count: 'exact',
+          head: true
+        })
+        .eq('novel_id', novel.id);
+
+      if (error) {
+        console.error(error);
+        novel.favorite_count = 0;
+      } else {
+        novel.favorite_count = count ?? 0;
+      }
+    })
+  );
+    const sort =
+      document.getElementById(
+        'sortSelect'
+      ).value;
+
+    if (sort === 'pv') {
+
+      filtered.sort(
+        (a, b) =>
+          (b.pv ?? 0) -
+          (a.pv ?? 0)
+      );
+
+    } else if (
+      sort === 'favorites'
+    ) {
+
+      filtered.sort(
+        (a, b) =>
+          (b.favorite_count ?? 0) -
+          (a.favorite_count ?? 0)
+      );
+
+    } else {
+
+      filtered.sort(
+        (a, b) =>
+          new Date(b.created_at) -
+          new Date(a.created_at)
+      );
+
+    }
 
     document.getElementById(
       'resultCount'
