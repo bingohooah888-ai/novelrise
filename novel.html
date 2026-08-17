@@ -318,7 +318,17 @@
 
       return;
     }
+const {
+  data: profileData,
+  error: profileError
+} = await supabaseClient
+  .from('profiles')
+  .select('display_name')
+  .eq('id', data.user_id)
+  .maybeSingle();
 
+const authorName =
+  profileData?.display_name || '名前未設定';
 
 
 
@@ -341,7 +351,28 @@
       <h1 class="title">
         ${escapeHtml(data.title)}
       </h1>
-
+<div
+  id="authorArea"
+  style="
+    margin-top:8px;
+    margin-bottom:14px;
+    font-size:14px;
+    color:#666;
+  "
+>
+  作者：
+  <a
+    id="authorLink"
+    href="author.html?id=${data.user_id}"
+    style="
+      color:#6d4aff;
+      font-weight:700;
+      text-decoration:none;
+    "
+  >
+   ${escapeHtml(authorName)}
+  </a>
+</div>
       <div class="description">
         ${escapeHtml(data.description)}
       </div>
