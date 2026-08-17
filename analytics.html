@@ -376,7 +376,7 @@
       return;
     }
 
-
+novelList.innerHTML = '';
     let totalPv = 0;
     let totalFavorites = 0;
 
@@ -413,24 +413,25 @@
       }
 
 
-      const {
-        count: episodeCount,
-        error: episodeError
-      } =
-        await supabaseClient
-          .from('episodes')
-          .select(
-            '*',
-            {
-              count: 'exact',
-              head: true
-            }
-          )
-          .eq(
-            'novel_id',
-            novel.id
-          );
-
+const {
+  data: episodeRows,
+  error: episodeError
+} =
+  await supabaseClient
+    .from('episodes')
+    .select(
+      'id, title, pv, created_at'
+    )
+    .eq(
+      'novel_id',
+      novel.id
+    )
+    .order(
+      'created_at',
+      {
+        ascending: true
+      }
+    );
 
       if (episodeError) {
         console.error(
@@ -443,7 +444,10 @@
         favoriteCount ?? 0;
 
       const episodes =
-        episodeCount ?? 0;
+  episodeRows ?? [];
+
+const episodeCount =
+  episodes.length;
 
 
       totalFavorites +=
@@ -459,6 +463,30 @@
       card.className =
         'novel-card';
 
+const episodeHtml =
+  episodes.length > 0
+    ? episodes.map(
+        (episode, index) => `
+          <div
+            style="
+              display:flex;
+              justify-content:space-between;
+              padding:10px 0;
+              border-bottom:1px solid #eee;
+            "
+          >
+            <span>
+              第${index + 1}話
+              ${escapeHtml(episode.title)}
+            </span>
+
+            <span>
+              👁 ${episode.pv ?? 0} PV
+            </span>
+          </div>
+        `
+      ).join('')
+    : '<div style="color:#888;">エピソードはありません。</div>';
 
       card.innerHTML = `
 
@@ -507,7 +535,18 @@
           </div>
 
         </div>
+<div style="margin-top:22px;">
+  <div
+    style="
+      font-weight:700;
+      margin-bottom:8px;
+    "
+  >
+    エピソード別PV
+  </div>
 
+  ${episodeHtml}
+</div>
       `;
 
 
