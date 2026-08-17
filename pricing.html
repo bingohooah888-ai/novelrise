@@ -487,6 +487,52 @@
   </div>
 
 </main>
+<script>
+  async function startCheckout(plan) {
+    try {
+      const response = await fetch(
+        '/api/create-checkout-session',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ plan })
+        }
+      );
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || '決済画面を開けませんでした。'
+        );
+      }
+
+      window.location.href = data.url;
+
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        '決済画面を開けませんでした。もう一度お試しください。'
+      );
+    }
+  }
+
+  document
+    .getElementById('standardButton')
+    .addEventListener(
+      'click',
+      () => startCheckout('standard')
+    );
+
+  document
+    .getElementById('premiumButton')
+    .addEventListener(
+      'click',
+      () => startCheckout('premium')
+    );
+</script>
 </body>
 </html>
