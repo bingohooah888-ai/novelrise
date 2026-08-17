@@ -253,6 +253,16 @@
       return;
 
     }
+
+    // ログイン中のユーザーを取得
+const {
+  data: { session: pvSession }
+} = await supabaseClient.auth.getSession();
+
+// 作者本人かどうか
+const isAuthor =
+  pvSession &&
+  episode.user_id === pvSession.user.id;
 // 同じエピソードは6時間に1回だけPVを増やす
 const pvKey =
   'novelrise_pv_episode_' +
@@ -273,6 +283,7 @@ const sixHours =
 
 
 if (
+  !isAuthor &&
   now - lastViewedAt >=
   sixHours
 ) {
