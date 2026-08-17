@@ -576,7 +576,12 @@ if (favoriteError) {
     renderNovels
   );
 
-
+document.getElementById(
+  'sortSelect'
+).addEventListener(
+  'change',
+  renderNovels
+);
   loadNovels();
 
 </script>
