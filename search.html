@@ -438,82 +438,53 @@ const requestId =
     novelList.innerHTML = '';
 
 
-await Promise.all(
-  filtered.map(
-    async (novel) => {
-const {
-  count: favoriteCount,
-  error: favoriteError
-} =
-  await supabaseClient
-    .from('favorites')
-    .select(
-      '*',
-      {
-        count: 'exact',
-        head: true
-      }
-    )
-    .eq(
-      'novel_id',
-      novel.id
+filtered.forEach(
+  (novel) => {
+
+    const createdAt =
+      new Date(
+        novel.created_at
+      ).toLocaleDateString(
+        'ja-JP'
+      );
+
+    const card =
+      document.createElement(
+        'a'
+      );
+
+    card.href =
+      'novel.html?id=' +
+      novel.id;
+
+    card.className =
+      'novel-card';
+
+    card.innerHTML = `
+      <div class="genre">
+        ${escapeHtml(novel.genre)}
+      </div>
+
+      <div class="title">
+        ${escapeHtml(novel.title)}
+      </div>
+
+      <div class="description">
+        ${escapeHtml(novel.description)}
+      </div>
+
+      <div class="meta">
+        投稿日 ${createdAt}
+        ・ 👁 ${novel.pv ?? 0} PV
+        ・ ★ ${novel.favorite_count ?? 0}
+      </div>
+    `;
+
+    novelList.appendChild(
+      card
     );
 
-if (favoriteError) {
-  console.error(
-    favoriteError
-  );
-}
-        const createdAt =
-          new Date(
-            novel.created_at
-          ).toLocaleDateString(
-            'ja-JP'
-          );
-
-
-        const card =
-          document.createElement(
-            'a'
-          );
-
-
-        card.href =
-          'novel.html?id=' +
-          novel.id;
-
-
-        card.className =
-          'novel-card';
-
-
-        card.innerHTML = `
-          <div class="genre">
-            ${escapeHtml(novel.genre)}
-          </div>
-
-          <div class="title">
-            ${escapeHtml(novel.title)}
-          </div>
-
-          <div class="description">
-            ${escapeHtml(novel.description)}
-          </div>
-
-          <div class="meta">
-            投稿日 ${createdAt}
-            ・ 👁 ${novel.pv ?? 0} PV
-            ・ ★ ${favoriteCount ?? 0}
-          </div>
-        `;
-
-
-        novelList.appendChild(
-          card
-        );
-
-    }
-  )
+  }
 );
   }
 
