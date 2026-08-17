@@ -297,7 +297,7 @@
   }
 
 
-  function renderNovels() {
+  async function renderNovels() {
 
     const keyword =
       document.getElementById(
@@ -373,9 +373,32 @@
     novelList.innerHTML = '';
 
 
-    filtered.forEach(
-      (novel) => {
+await Promise.all(
+  filtered.map(
+    async (novel) => {
+const {
+  count: favoriteCount,
+  error: favoriteError
+} =
+  await supabaseClient
+    .from('favorites')
+    .select(
+      '*',
+      {
+        count: 'exact',
+        head: true
+      }
+    )
+    .eq(
+      'novel_id',
+      novel.id
+    );
 
+if (favoriteError) {
+  console.error(
+    favoriteError
+  );
+}
         const createdAt =
           new Date(
             novel.created_at
@@ -415,7 +438,7 @@
           <div class="meta">
             投稿日 ${createdAt}
             ・ 👁 ${novel.pv ?? 0} PV
-            ・ ★ ${novel.favorites ?? 0}
+            ・ ★ ${favoriteCount ?? 0}
           </div>
         `;
 
@@ -424,9 +447,9 @@
           card
         );
 
-      }
-    );
-
+    }
+  )
+);
   }
 
 
