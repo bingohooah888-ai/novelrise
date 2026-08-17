@@ -448,7 +448,70 @@
         return;
       }
 
+// 現在の契約プランを取得
+const {
+  data: profile,
+  error: profileError
+} =
+  await supabaseClient
+    .from('profiles')
+    .select('plan')
+    .eq(
+      'id',
+      session.user.id
+    )
+    .single();
 
+if (profileError) {
+  console.error(profileError);
+  alert(
+    '契約プランを確認できませんでした。'
+  );
+  return;
+}
+
+const currentPlan =
+  profile?.plan ?? 'free';
+
+
+// 現在の投稿作品数を取得
+const {
+  count: novelCount,
+  error: countError
+} =
+  await supabaseClient
+    .from('novels')
+    .select(
+      '*',
+      {
+        count: 'exact',
+        head: true
+      }
+    )
+    .eq(
+      'user_id',
+      session.user.id
+    );
+
+if (countError) {
+  console.error(countError);
+  alert(
+    '投稿作品数を確認できませんでした。'
+  );
+  return;
+}
+
+
+// Freeプランは1作品まで
+if (
+  currentPlan === 'free' &&
+  (novelCount ?? 0) >= 1
+) {
+  alert(
+    'Freeプランでは投稿できる作品は1作品までです。'
+  );
+  return;
+}
       const {
         error
       } =
