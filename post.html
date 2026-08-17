@@ -522,6 +522,16 @@ if (
   );
   return;
 }
+      // Premiumプランは30作品まで
+if (
+  currentPlan === 'premium' &&
+  (novelCount ?? 0) >= 30
+) {
+  alert(
+    'Premiumプランでは投稿できる作品は30作品までです。'
+  );
+  return;
+}
       const {
         error
       } =
