@@ -287,7 +287,26 @@ if (
           episode.novel_id
       }
     );
+const {
+  error: episodePvError
+} =
+  await supabaseClient.rpc(
+    'increment_episode_pv',
+    {
+      target_episode_id:
+        episode.id
+    }
+  );
 
+if (episodePvError) {
+  console.error(
+    'エピソードPVの更新に失敗しました:',
+    episodePvError
+  );
+} else {
+  episode.pv =
+    (episode.pv ?? 0) + 1;
+}
 
   if (pvError) {
 
