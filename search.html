@@ -300,9 +300,10 @@
     return div.innerHTML;
   }
 
-
+let renderRequestId = 0;
   async function renderNovels() {
-
+const requestId =
+  ++renderRequestId;
     const keyword =
       document.getElementById(
         'keywordInput'
@@ -370,6 +371,13 @@
       }
     })
   );
+
+        })
+  );
+
+  if (requestId !== renderRequestId) {
+    return;
+  }
     const sort =
       document.getElementById(
         'sortSelect'
