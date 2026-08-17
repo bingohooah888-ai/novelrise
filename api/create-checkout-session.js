@@ -1,14 +1,10 @@
-const Stripe = require('stripe');
+import Stripe from 'stripe';
 
 const stripe = new Stripe(
   process.env.STRIPE_SECRET_KEY
 );
 
-module.exports = async function handler(
-  req,
-  res
-) {
-
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({
       error: 'Method not allowed'
@@ -16,23 +12,18 @@ module.exports = async function handler(
   }
 
   try {
-
-    const {
-      plan
-    } = req.body;
+    const { plan } = req.body;
 
     let priceId;
 
     if (plan === 'standard') {
       priceId =
-        process.env
-          .STRIPE_STANDARD_PRICE_ID;
+        process.env.STRIPE_STANDARD_PRICE_ID;
     }
 
     if (plan === 'premium') {
       priceId =
-        process.env
-          .STRIPE_PREMIUM_PRICE_ID;
+        process.env.STRIPE_PREMIUM_PRICE_ID;
     }
 
     if (!priceId) {
@@ -64,7 +55,6 @@ module.exports = async function handler(
     });
 
   } catch (error) {
-
     console.error(error);
 
     return res.status(500).json({
@@ -72,4 +62,4 @@ module.exports = async function handler(
         'Checkout session creation failed'
     });
   }
-};
+}
