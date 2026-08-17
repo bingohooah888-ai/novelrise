@@ -489,6 +489,8 @@
 </main>
 <script>
   async function startCheckout(plan) {
+
+    alert('ボタンが押されました: ' + plan);
     try {
       const response = await fetch(
         '/api/create-checkout-session',
