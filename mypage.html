@@ -353,7 +353,101 @@
 
   </section>
 
+<section
+  style="
+    background:white;
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    padding:28px;
+    margin-bottom:28px;
+  "
+>
 
+  <h2 style="margin-bottom:20px;">
+    プロフィール
+  </h2>
+
+  <div style="margin-bottom:18px;">
+    <label
+      for="displayNameInput"
+      style="
+        display:block;
+        font-weight:700;
+        margin-bottom:8px;
+      "
+    >
+      表示名
+    </label>
+
+    <input
+      id="displayNameInput"
+      type="text"
+      maxlength="40"
+      placeholder="表示名を入力"
+      style="
+        width:100%;
+        padding:12px;
+        border:1px solid #d1d5db;
+        border-radius:8px;
+        font-size:15px;
+      "
+    >
+  </div>
+
+  <div style="margin-bottom:18px;">
+    <label
+      for="bioInput"
+      style="
+        display:block;
+        font-weight:700;
+        margin-bottom:8px;
+      "
+    >
+      自己紹介
+    </label>
+
+    <textarea
+      id="bioInput"
+      maxlength="300"
+      placeholder="自己紹介を入力"
+      style="
+        width:100%;
+        min-height:110px;
+        padding:12px;
+        border:1px solid #d1d5db;
+        border-radius:8px;
+        font-size:15px;
+        resize:vertical;
+      "
+    ></textarea>
+  </div>
+
+  <button
+    id="saveProfileButton"
+    type="button"
+    style="
+      padding:11px 20px;
+      background:#6d4aff;
+      color:white;
+      border:none;
+      border-radius:8px;
+      font-weight:700;
+      cursor:pointer;
+    "
+  >
+    プロフィールを保存
+  </button>
+
+  <div
+    id="profileMessage"
+    style="
+      margin-top:12px;
+      color:#666;
+      font-size:14px;
+    "
+  ></div>
+
+</section>
   <section class="stats">
 
     <h2>
@@ -815,7 +909,118 @@ async function loadFavoriteNovels() {
     totalPv;
 
 }
+  async function loadProfile() {
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await supabaseClient.auth.getSession();
+
+  if (!session) {
+    return;
+  }
+
+  const {
+    data: profile,
+    error
+  } =
+    await supabaseClient
+      .from('profiles')
+      .select(
+        'display_name, bio, plan'
+      )
+      .eq(
+        'id',
+        session.user.id
+      )
+      .single();
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  document.getElementById(
+    'displayNameInput'
+  ).value =
+    profile?.display_name ?? '';
+
+  document.getElementById(
+    'bioInput'
+  ).value =
+    profile?.bio ?? '';
+
+}
+
+
+async function saveProfile() {
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await supabaseClient.auth.getSession();
+
+  if (!session) {
+    return;
+  }
+
+  const displayName =
+    document.getElementById(
+      'displayNameInput'
+    ).value.trim();
+
+  const bio =
+    document.getElementById(
+      'bioInput'
+    ).value.trim();
+
+  const profileMessage =
+    document.getElementById(
+      'profileMessage'
+    );
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from('profiles')
+      .update({
+        display_name: displayName,
+        bio: bio
+      })
+      .eq(
+        'id',
+        session.user.id
+      );
+
+  if (error) {
+
+    console.error(error);
+
+    profileMessage.textContent =
+      '保存に失敗しました。';
+
+    return;
+  }
+
+  profileMessage.textContent =
+    'プロフィールを保存しました。';
+
+}
+
+
+document.getElementById(
+  'saveProfileButton'
+).addEventListener(
+  'click',
+  saveProfile
+);
 checkLogin();
+loadProfile();
 loadFavoriteNovels();
 loadFavoriteStat();
 loadAuthorStats();
