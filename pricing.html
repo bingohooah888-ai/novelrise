@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>料金プラン | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      max-width: 1100px;
+      height: 72px;
+      margin: auto;
+      padding: 0 24px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      color: #6d4aff;
+      font-size: 25px;
+      font-weight: 800;
+    }
+
+    .back {
+      color: #666;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1150px;
+      margin: auto;
+      padding: 60px 24px 90px;
+    }
+
+    .heading {
+      text-align: center;
+      margin-bottom: 45px;
+    }
+
+    .heading h1 {
+      font-size: 38px;
+      margin-bottom: 12px;
+    }
+
+    .heading p {
+      color: #777;
+      line-height: 1.7;
+    }
+
+    .plans {
+      display: grid;
+      grid-template-columns:
+        repeat(3, 1fr);
+
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .plan-card {
+      position: relative;
+
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+
+      padding: 32px 28px;
+
+      display: flex;
+      flex-direction: column;
+    }
+
+    .plan-card.standard {
+      border: 2px solid #6d4aff;
+    }
+
+    .plan-card.premium {
+      border: 2px solid #9a5cff;
+      box-shadow:
+        0 14px 35px
+        rgba(109, 74, 255, 0.12);
+    }
+
+    .badge {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+
+      padding: 7px 14px;
+      border-radius: 999px;
+
+      background: #6d4aff;
+      color: white;
+
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .premium .badge {
+      background: #8d4df4;
+    }
+
+    .plan-name {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .plan-description {
+      min-height: 48px;
+      color: #777;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    .price {
+      font-size: 38px;
+      font-weight: 900;
+      margin-bottom: 5px;
+    }
+
+    .price span {
+      font-size: 14px;
+      font-weight: 500;
+      color: #777;
+    }
+
+    .limit {
+      color: #6d4aff;
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 25px;
+    }
+
+    .features {
+      list-style: none;
+      display: grid;
+      gap: 13px;
+      margin-bottom: 30px;
+      flex: 1;
+    }
+
+    .features li {
+      position: relative;
+      padding-left: 26px;
+      line-height: 1.6;
+      color: #444;
+      font-size: 14px;
+    }
+
+    .features li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: #6d4aff;
+      font-weight: 900;
+    }
+
+    .plan-button {
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+
+      padding: 14px 18px;
+
+      font-size: 15px;
+      font-weight: 800;
+
+      cursor: pointer;
+    }
+
+    .free-button {
+      background: #f1f1f4;
+      color: #444;
+    }
+
+    .standard-button {
+      background: #6d4aff;
+      color: white;
+    }
+
+    .premium-button {
+      background: #8d4df4;
+      color: white;
+    }
+
+    .note {
+      margin-top: 45px;
+      padding: 22px;
+
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+
+      color: #666;
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+
+      .plans {
+        grid-template-columns: 1fr;
+      }
+
+      .plan-description {
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+
+    <a
+      href="index.html"
+      class="logo"
+    >
+      NovelRise
+    </a>
+
+    <a
+      href="mypage.html"
+      class="back"
+    >
+      ← マイページへ戻る
+    </a>
+
+  </div>
+</header>
+
+
+<main>
+
+  <div class="heading">
+
+    <h1>
+      料金プラン
+    </h1>
+
+    <p>
+      作品を届けたい規模に合わせて、最適なプランを選べます。
+      <br>
+      課金によってランキング順位を直接購入する仕組みではなく、
+      読者に見つけてもらう機会を増やします。
+    </p>
+
+  </div>
+
+
+  <div class="plans">
+
+    <!-- Free -->
+    <section class="plan-card">
+
+      <div class="plan-name">
+        Free
+      </div>
+
+      <div class="plan-description">
+        まずはNovelRiseを試してみたい作者向け。
+      </div>
+
+      <div class="price">
+        ¥0
+        <span>/ 月</span>
+      </div>
+
+      <div class="limit">
+        投稿作品：1作品まで
+      </div>
+
+      <ul class="features">
+
+        <li>
+          作品投稿・エピソード投稿
+        </li>
+
+        <li>
+          基本アクセス解析
+        </li>
+
+        <li>
+          通常の新着・検索掲載
+        </li>
+
+        <li>
+          作者プロフィール
+        </li>
+
+        <li>
+          お気に入り機能
+        </li>
+
+      </ul>
+
+      <button
+        class="plan-button free-button"
+        type="button"
+      >
+        現在のプラン
+      </button>
+
+    </section>
+
+
+    <!-- Standard -->
+    <section class="plan-card standard">
+
+      <div class="badge">
+        おすすめ
+      </div>
+
+      <div class="plan-name">
+        Standard
+      </div>
+
+      <div class="plan-description">
+        継続して作品を投稿し、より多くの読者に届けたい作者向け。
+      </div>
+
+      <div class="price">
+        ¥980
+        <span>/ 月</span>
+      </div>
+
+      <div class="limit">
+        投稿作品：10作品まで
+      </div>
+
+      <ul class="features">
+
+        <li>
+          Freeの全機能
+        </li>
+
+        <li>
+          詳細アクセス解析
+        </li>
+
+        <li>
+          おすすめ欄掲載対象
+        </li>
+
+        <li>
+          検索での露出優遇
+        </li>
+
+        <li>
+          作品ごとの分析強化
+        </li>
+
+        <li>
+          Standard向け作者機能
+        </li>
+
+      </ul>
+
+      <button
+        id="standardButton"
+        class="plan-button standard-button"
+        type="button"
+      >
+        Standardを始める
+      </button>
+
+    </section>
+
+
+    <!-- Premium -->
+    <section class="plan-card premium">
+
+      <div class="badge">
+        本気で読者を増やしたい作者へ
+      </div>
+
+      <div class="plan-name">
+        Premium
+      </div>
+
+      <div class="plan-description">
+        露出・分析・新作の初動支援を最大限活用したい作者向け。
+      </div>
+
+      <div class="price">
+        ¥1,980
+        <span>/ 月</span>
+      </div>
+
+      <div class="limit">
+        投稿作品：30作品まで
+      </div>
+
+      <ul class="features">
+
+        <li>
+          Standardの全機能
+        </li>
+
+        <li>
+          新作48時間の初動ブースト
+        </li>
+
+        <li>
+          おすすめ優先掲載
+        </li>
+
+        <li>
+          Premium専用露出枠
+        </li>
+
+        <li>
+          高度アクセス解析
+        </li>
+
+        <li>
+          読者流入元分析
+        </li>
+
+        <li>
+          曜日・時間帯別PV分析
+        </li>
+
+        <li>
+          Premiumバッジ
+          （任意表示）
+        </li>
+
+      </ul>
+
+      <button
+        id="premiumButton"
+        class="plan-button premium-button"
+        type="button"
+      >
+        Premiumを始める
+      </button>
+
+    </section>
+
+  </div>
+
+
+  <div class="note">
+
+    有料プランは、ランキング順位そのものを購入する仕組みではありません。
+    作品が読者の目に触れる機会や、作者が改善に使える分析機能を強化するプランです。
+    決済機能はこの料金ページにStripeを接続して実装します。
+
+  </div>
+
+</main>
+
+</body>
+</html>
