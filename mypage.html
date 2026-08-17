@@ -436,7 +436,18 @@
   <div id="favoriteNovelsList">
     読み込み中...
   </div>
-
+<div style="margin-top: 16px;">
+  <a
+    href="favorites.html"
+    style="
+      color: #6d4aff;
+      font-weight: bold;
+      text-decoration: none;
+    "
+  >
+    お気に入りをすべて見る →
+  </a>
+</div>
 </section>
 </main>
 
@@ -584,12 +595,16 @@ async function loadFavoriteNovels() {
       .map(
         row => row.novels
       )
-      .filter(
-        novel =>
-          novel &&
-          novel.status ===
-            'published'
-      );
+.filter(
+  novel =>
+    novel &&
+    novel.status ===
+      'published'
+)
+.slice(
+  0,
+  3
+);
 
 
   if (novels.length === 0) {
