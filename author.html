@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>作者プロフィール | NovelRise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+
+      background: #f7f8fb;
+      color: #222;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      max-width: 1000px;
+      height: 72px;
+      margin: auto;
+      padding: 0 24px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      color: #6d4aff;
+      font-size: 25px;
+      font-weight: 800;
+    }
+
+    .back {
+      color: #666;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1000px;
+      margin: auto;
+      padding: 50px 24px 80px;
+    }
+
+    .profile-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+
+    .author-name {
+      font-size: 30px;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    .author-bio {
+      color: #555;
+      line-height: 1.8;
+      white-space: pre-wrap;
+    }
+
+    .section-title {
+      font-size: 24px;
+      margin-bottom: 18px;
+    }
+
+    .novel-list {
+      display: grid;
+      gap: 18px;
+    }
+
+    .novel-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 22px;
+      transition: 0.15s;
+    }
+
+    .novel-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .genre {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 6px;
+      background: #eeeaff;
+      color: #6d4aff;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .novel-title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .description {
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .meta {
+      color: #888;
+      font-size: 13px;
+    }
+
+    .empty,
+    .error {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 40px 20px;
+      text-align: center;
+      color: #777;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+
+    <a
+      href="index.html"
+      class="logo"
+    >
+      NovelRise
+    </a>
+
+    <a
+      href="index.html"
+      class="back"
+    >
+      ← トップへ戻る
+    </a>
+
+  </div>
+</header>
+
+<main>
+
+  <section
+    id="profileCard"
+    class="profile-card"
+  >
+    読み込み中...
+  </section>
+
+  <h2 class="section-title">
+    投稿作品
+  </h2>
+
+  <div
+    id="novelList"
+    class="novel-list"
+  >
+    読み込み中...
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+  const SUPABASE_URL =
+    'https://fiepaguycecrredwrcwx.supabase.co';
+
+  const SUPABASE_KEY =
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  function escapeHtml(value) {
+
+    const div =
+      document.createElement('div');
+
+    div.textContent =
+      value ?? '';
+
+    return div.innerHTML;
+  }
+
+
+  async function loadAuthor() {
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const authorId =
+      params.get('id');
+
+    const profileCard =
+      document.getElementById(
+        'profileCard'
+      );
+
+    const novelList =
+      document.getElementById(
+        'novelList'
+      );
+
+
+    if (!authorId) {
+
+      profileCard.innerHTML =
+        '<div class="error">' +
+        '作者情報が指定されていません。' +
+        '</div>';
+
+      novelList.innerHTML = '';
+
+      return;
+    }
+
+
+    const {
+      data: profile,
+      error: profileError
+    } =
+      await supabaseClient
+        .from('profiles')
+        .select(
+          'id, display_name, bio'
+        )
+        .eq(
+          'id',
+          authorId
+        )
+        .single();
+
+
+    if (
+      profileError ||
+      !profile
+    ) {
+
+      console.error(
+        profileError
+      );
+
+      profileCard.innerHTML =
+        '<div class="error">' +
+        '作者情報を読み込めませんでした。' +
+        '</div>';
+
+      novelList.innerHTML = '';
+
+      return;
+    }
+
+
+    profileCard.innerHTML = `
+
+      <div class="author-name">
+        ${escapeHtml(
+          profile.display_name ||
+          '名前未設定'
+        )}
+      </div>
+
+      <div class="author-bio">
+        ${escapeHtml(
+          profile.bio ||
+          '自己紹介はまだありません。'
+        )}
+      </div>
+
+    `;
+
+
+    const {
+      data: novels,
+      error: novelError
+    } =
+      await supabaseClient
+        .from('novels')
+        .select(
+          'id, title, description, genre, pv, created_at, status'
+        )
+        .eq(
+          'user_id',
+          authorId
+        )
+        .eq(
+          'status',
+          'published'
+        )
+        .order(
+          'created_at',
+          {
+            ascending: false
+          }
+        );
+
+
+    if (novelError) {
+
+      console.error(
+        novelError
+      );
+
+      novelList.innerHTML =
+        '<div class="error">' +
+        '作品一覧を読み込めませんでした。' +
+        '</div>';
+
+      return;
+    }
+
+
+    novelList.innerHTML = '';
+
+
+    if (
+      !novels ||
+      novels.length === 0
+    ) {
+
+      novelList.innerHTML =
+        '<div class="empty">' +
+        '公開中の作品はありません。' +
+        '</div>';
+
+      return;
+    }
+
+
+    for (const novel of novels) {
+
+      const {
+        count: favoriteCount
+      } =
+        await supabaseClient
+          .from('favorites')
+          .select(
+            '*',
+            {
+              count: 'exact',
+              head: true
+            }
+          )
+          .eq(
+            'novel_id',
+            novel.id
+          );
+
+
+      const card =
+        document.createElement(
+          'a'
+        );
+
+      card.href =
+        'novel.html?id=' +
+        novel.id;
+
+      card.className =
+        'novel-card';
+
+
+      const createdAt =
+        new Date(
+          novel.created_at
+        ).toLocaleDateString(
+          'ja-JP'
+        );
+
+
+      card.innerHTML = `
+
+        <div class="genre">
+          ${escapeHtml(
+            novel.genre
+          )}
+        </div>
+
+        <div class="novel-title">
+          ${escapeHtml(
+            novel.title
+          )}
+        </div>
+
+        <div class="description">
+          ${escapeHtml(
+            novel.description
+          )}
+        </div>
+
+        <div class="meta">
+          投稿日 ${createdAt}
+          ・ 👁 ${novel.pv ?? 0} PV
+          ・ ★ ${favoriteCount ?? 0}
+        </div>
+
+      `;
+
+
+      novelList.appendChild(
+        card
+      );
+    }
+
+  }
+
+
+  loadAuthor();
+
+</script>
+
+</body>
+</html>
