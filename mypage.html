@@ -341,7 +341,18 @@
       <p>
         現在のプランやアップグレードを確認します。
       </p>
-
+<p
+  style="
+    margin-top:10px;
+    font-weight:700;
+    color:#6d4aff;
+  "
+>
+  現在のプラン：
+  <span id="currentPlanText">
+    読み込み中...
+  </span>
+</p>
       <a
         href="#"
         class="card-button"
@@ -946,7 +957,18 @@ async function loadFavoriteNovels() {
     'displayNameInput'
   ).value =
     profile?.display_name ?? '';
+const planNames = {
+  free: 'Free',
+  standard: 'Standard',
+  premium: 'Premium'
+};
 
+document.getElementById(
+  'currentPlanText'
+).textContent =
+  planNames[
+    profile?.plan ?? 'free'
+  ] ?? 'Free';
   document.getElementById(
     'bioInput'
   ).value =
