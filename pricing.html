@@ -507,7 +507,7 @@ const {
 
 if (sessionError || !session) {
   alert('有料プランを申し込むにはログインしてください。');
-  window.location.href = 'login.html';
+  window.location.href = 'login.html?redirect=pricing.html';
   return;
 }
     alert('ボタンが押されました: ' + plan);
