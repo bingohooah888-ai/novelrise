@@ -59,20 +59,29 @@ export default async function handler(req, res) {
         throw new Error('Missing userId or plan in metadata');
       }
 
-      const { error } = await supabaseAdmin
-        .from('profiles')
-        .update({
-          plan: plan,
-        })
-        .eq('id', userId);
+      const { data: updatedProfiles, error } = await supabaseAdmin
+  .from('profiles')
+  .update({
+    plan: plan,
+  })
+  .eq('id', userId)
+  .select('id, plan');
 
-      if (error) {
-        throw new Error(
-          `Supabase update failed: ${error.message}`
-        );
-      }
+if (error) {
+  throw new Error(
+    `Supabase update failed: ${error.message}`
+  );
+}
 
-      console.log('Plan updated successfully:', plan);
+console.log('Updated profiles:', updatedProfiles);
+
+if (!updatedProfiles || updatedProfiles.length === 0) {
+  throw new Error(
+    `Profile not found for userId: ${userId}`
+  );
+}
+
+console.log('Plan updated successfully:', updatedProfiles[0]);
     }
 
     return res.status(200).json({
