@@ -500,7 +500,16 @@
 </script>
 <script>
   async function startCheckout(plan) {
+const {
+  data: { session },
+  error: sessionError
+} = await supabaseClient.auth.getSession();
 
+if (sessionError || !session) {
+  alert('有料プランを申し込むにはログインしてください。');
+  window.location.href = 'login.html';
+  return;
+}
     alert('ボタンが押されました: ' + plan);
     try {
       const response = await fetch(
@@ -510,7 +519,11 @@
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ plan })
+         body: JSON.stringify({
+  plan: plan,
+  userId: session.user.id,
+  email: session.user.email
+})
         }
       );
 
