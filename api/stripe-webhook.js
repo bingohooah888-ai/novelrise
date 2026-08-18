@@ -152,7 +152,19 @@ if (event.type === 'customer.subscription.deleted') {
       `Profile not found for customerId: ${customerId}`
     );
   }
+const { error: paymentStatusError } =
+  await supabaseAdmin
+    .from('profiles')
+    .update({
+      payment_status: 'failed',
+    })
+    .eq('id', profiles[0].id);
 
+if (paymentStatusError) {
+  throw new Error(
+    `Payment status update failed: ${paymentStatusError.message}`
+  );
+}
   console.log('Payment failed for profile:', profiles[0]);
 }
     return res.status(200).json({
