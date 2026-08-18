@@ -487,6 +487,17 @@
   </div>
 
 </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  const SUPABASE_URL = 'https://fiepaguyeccrredwrcwx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7iaGg_XVonmJRE';
+
+  const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+</script>
 <script>
   async function startCheckout(plan) {
 
