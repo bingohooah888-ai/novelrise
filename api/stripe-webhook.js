@@ -84,7 +84,48 @@ if (!updatedProfiles || updatedProfiles.length === 0) {
 
 console.log('Plan updated successfully:', updatedProfiles[0]);
     }
+if (event.type === 'customer.subscription.deleted') {
+  const subscription = event.data.object;
 
+  const customerId = subscription.customer;
+
+  console.log('Subscription deleted:', subscription.id);
+  console.log('Customer ID:', customerId);
+
+  const { data: profiles, error: findError } =
+    await supabaseAdmin
+      .from('profiles')
+      .select('id, stripe_customer_id')
+      .eq('stripe_customer_id', customerId);
+
+  if (findError) {
+    throw new Error(
+      `Profile lookup failed: ${findError.message}`
+    );
+  }
+
+  if (!profiles || profiles.length === 0) {
+    throw new Error(
+      `Profile not found for customerId: ${customerId}`
+    );
+  }
+
+  const { error: updateError } =
+    await supabaseAdmin
+      .from('profiles')
+      .update({
+        plan: 'free',
+      })
+      .eq('id', profiles[0].id);
+
+  if (updateError) {
+    throw new Error(
+      `Plan reset failed: ${updateError.message}`
+    );
+  }
+
+  console.log('Plan reset to free:', profiles[0].id);
+}
     return res.status(200).json({
       received: true,
     });
