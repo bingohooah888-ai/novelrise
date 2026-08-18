@@ -168,6 +168,48 @@ if (paymentStatusError) {
 }
   console.log('Payment failed for profile:', profiles[0]);
 }
+    if (event.type === 'invoice.paid') {
+  const invoice = event.data.object;
+
+  const customerId = invoice.customer;
+
+  console.log('Invoice paid:', invoice.id);
+  console.log('Customer ID:', customerId);
+
+  const { data: profiles, error: findError } =
+    await supabaseAdmin
+      .from('profiles')
+      .select('id, stripe_customer_id')
+      .eq('stripe_customer_id', customerId);
+
+  if (findError) {
+    throw new Error(
+      `Profile lookup failed: ${findError.message}`
+    );
+  }
+
+  if (!profiles || profiles.length === 0) {
+    throw new Error(
+      `Profile not found for customerId: ${customerId}`
+    );
+  }
+
+  const { error: paymentStatusError } =
+    await supabaseAdmin
+      .from('profiles')
+      .update({
+        payment_status: 'active',
+      })
+      .eq('id', profiles[0].id);
+
+  if (paymentStatusError) {
+    throw new Error(
+      `Payment status update failed: ${paymentStatusError.message}`
+    );
+  }
+
+  console.log('Payment status restored to active:', profiles[0].id);
+}
     return res.status(200).json({
       received: true,
     });
