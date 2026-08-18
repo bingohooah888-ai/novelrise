@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { plan } = req.body;
+    const { plan, userId, email } = req.body;
 
     let priceId;
 
@@ -35,7 +35,14 @@ export default async function handler(req, res) {
     const session =
       await stripe.checkout.sessions.create({
         mode: 'subscription',
+customer_email: email,
 
+client_reference_id: userId,
+
+metadata: {
+  userId: userId,
+  plan: plan
+},
         line_items: [
           {
             price: priceId,
