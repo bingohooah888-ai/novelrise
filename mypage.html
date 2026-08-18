@@ -353,6 +353,16 @@
     読み込み中...
   </span>
 </p>
+      <p
+  id="paymentStatusText"
+  style="
+    margin-top:8px;
+    font-weight:700;
+    font-size:14px;
+  "
+>
+  支払い状態：読み込み中...
+</p>
       <a
         href="pricing.html"
         class="card-button"
@@ -943,7 +953,7 @@ async function loadFavoriteNovels() {
     await supabaseClient
       .from('profiles')
       .select(
-        'display_name, bio, plan'
+        'display_name, bio, plan, payment_status'
       )
       .eq(
         'id',
@@ -979,6 +989,27 @@ document.getElementById(
   planNames[
     profile?.plan ?? 'free'
   ] ?? 'Free';
+
+    const paymentStatusText =
+  document.getElementById(
+    'paymentStatusText'
+  );
+
+if (
+  profile?.payment_status === 'failed'
+) {
+  paymentStatusText.textContent =
+    '⚠️ 支払い状態：お支払いを確認してください';
+
+  paymentStatusText.style.color =
+    '#dc2626';
+} else {
+  paymentStatusText.textContent =
+    '✓ 支払い状態：正常';
+
+  paymentStatusText.style.color =
+    '#16a34a';
+}
   document.getElementById(
     'bioInput'
   ).value =
