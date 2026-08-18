@@ -61,12 +61,13 @@ export default async function handler(req, res) {
 
       const { data: updatedProfiles, error } = await supabaseAdmin
   .from('profiles')
-  .update({
-    plan: plan,
-    stripe_customer_id: session.customer,
-  })
+.update({
+  plan: plan,
+  stripe_customer_id: session.customer,
+  payment_status: 'active',
+})
   .eq('id', userId)
-  .select('id, plan, stripe_customer_id');
+  .select('id, plan, stripe_customer_id, payment_status');
 
 if (error) {
   throw new Error(
