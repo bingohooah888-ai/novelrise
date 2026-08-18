@@ -40,13 +40,20 @@ export default async function handler(req, res) {
       process.env.STRIPE_WEBHOOK_SECRET
     );
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
+if (event.type === 'checkout.session.completed') {
+  const session = event.data.object;
 
-      console.log('Checkout completed:', session.id);
-      console.log('Metadata:', session.metadata);
-    }
+  const userId = session.metadata?.userId;
+  const plan = session.metadata?.plan;
 
+  console.log('Checkout completed:', session.id);
+  console.log('User ID:', userId);
+  console.log('Plan:', plan);
+
+  if (!userId || !plan) {
+    throw new Error('Missing userId or plan in metadata');
+  }
+}
     return res.status(200).json({
       received: true,
     });
