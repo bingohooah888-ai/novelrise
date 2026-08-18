@@ -126,6 +126,35 @@ if (event.type === 'customer.subscription.deleted') {
 
   console.log('Plan reset to free:', profiles[0].id);
 }
+
+    if (event.type === 'invoice.payment_failed') {
+  const invoice = event.data.object;
+
+  const customerId = invoice.customer;
+
+  console.log('Payment failed:', invoice.id);
+  console.log('Customer ID:', customerId);
+
+  const { data: profiles, error: findError } =
+    await supabaseAdmin
+      .from('profiles')
+      .select('id, stripe_customer_id, plan')
+      .eq('stripe_customer_id', customerId);
+
+  if (findError) {
+    throw new Error(
+      `Profile lookup failed: ${findError.message}`
+    );
+  }
+
+  if (!profiles || profiles.length === 0) {
+    throw new Error(
+      `Profile not found for customerId: ${customerId}`
+    );
+  }
+
+  console.log('Payment failed for profile:', profiles[0]);
+}
     return res.status(200).json({
       received: true,
     });
