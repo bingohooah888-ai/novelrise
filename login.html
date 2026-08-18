@@ -329,7 +329,9 @@
 
     alert('ログインしました！');
 
-    window.location.href = 'mypage.html';
+    const params = new URLSearchParams(window.location.search);
+const redirect = params.get('redirect') || 'mypage.html';
+window.location.href = redirect;
   });
 </script>
 </body>
