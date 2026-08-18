@@ -63,9 +63,10 @@ export default async function handler(req, res) {
   .from('profiles')
   .update({
     plan: plan,
+    stripe_customer_id: session.customer,
   })
   .eq('id', userId)
-  .select('id, plan');
+  .select('id, plan, stripe_customer_id');
 
 if (error) {
   throw new Error(
