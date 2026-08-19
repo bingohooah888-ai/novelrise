@@ -505,29 +505,41 @@ const {
   error: sessionError
 } = await supabaseClient.auth.getSession();
 
-if (sessionError || !session) {
+if (
+  sessionError ||
+  !session ||
+  !session.access_token
+) {
   alert('有料プランを申し込むにはログインしてください。');
   window.location.href = 'login.html?redirect=pricing.html';
   return;
 }
-    alert('ボタンが押されました: ' + plan);
     try {
       const response = await fetch(
         '/api/create-checkout-session',
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization':
+              `Bearer ${session.access_token}`
           },
          body: JSON.stringify({
-  plan: plan,
-  userId: session.user.id,
-  email: session.user.email
+  plan: plan
 })
         }
       );
 
       const data = await response.json();
+
+      if (response.status === 401) {
+        await supabaseClient.auth.signOut({
+          scope: 'local'
+        });
+        alert('セッションの有効期限が切れました。もう一度ログインしてください。');
+        window.location.href = 'login.html?redirect=pricing.html';
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
