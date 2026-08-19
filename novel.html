@@ -217,6 +217,7 @@
       id="newEpisodeButton"
       href="episode-post.html"
       class="new-episode-button"
+      style="display:none;"
     >
       ＋ 第1話を追加
     </a>
@@ -514,10 +515,11 @@ const editNovelButton =
     'editNovelButton'
   );
 
-if (
+const isOwner =
   session &&
-  data.user_id === session.user.id
-) {
+  data.user_id === session.user.id;
+
+if (isOwner) {
 
   editNovelButton.style.display =
     'inline-block';
@@ -639,43 +641,41 @@ const newEpisodeButton =
   document.getElementById(
     'newEpisodeButton'
   );
-if (
-  !session ||
-  data.user_id !== session.user.id
-) {
-  newEpisodeButton.style.display = 'none';
-} else {
-  newEpisodeButton.style.display = 'inline-block';
+
+if (isOwner) {
+
+  let nextEpisodeNumber = 1;
+
+  if (
+    episodes &&
+    episodes.length > 0
+  ) {
+
+    const maxEpisodeNumber =
+      Math.max(
+        ...episodes.map(
+          episode =>
+            episode.episode_number
+        )
+      );
+
+    nextEpisodeNumber =
+      maxEpisodeNumber + 1;
+
+  }
+
+  newEpisodeButton.href =
+    'episode-post.html?novel_id=' +
+    data.id;
+
+  newEpisodeButton.textContent =
+    '＋ 第' +
+    nextEpisodeNumber +
+    '話を追加';
+
+  newEpisodeButton.style.display =
+    'inline-block';
 }
-newEpisodeButton.href =
-  'episode-post.html?novel_id=' +
-  data.id;
-
-
-let nextEpisodeNumber = 1;
-
-if (
-  episodes &&
-  episodes.length > 0
-) {
-
-  const maxEpisodeNumber =
-    Math.max(
-      ...episodes.map(
-        episode =>
-          episode.episode_number
-      )
-    );
-
-  nextEpisodeNumber =
-    maxEpisodeNumber + 1;
-
-}
-
-newEpisodeButton.textContent =
-  '＋ 第' +
-  nextEpisodeNumber +
-  '話を追加';
 
   }
 
