@@ -2,7 +2,7 @@ name: Dependabot Safe Auto Merge
 
 on:
   workflow_run:
-    workflows: ["NOVELIGHT CI", "CodeQL"]
+    workflows: ["NOVELIGHT CI", CodeQL]
     types: [completed]
 
 permissions:
