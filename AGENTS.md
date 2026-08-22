@@ -40,6 +40,8 @@ MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈�
 - `npm run lint`: `api/**/*.js` と `tests/**/*.js` をESLintで検査する。
 - `npm run format`: API、テスト、設定ファイル、JSON/YAMLをPrettierで整形する。
 - `npm run format:check`: Prettier整形が必要なファイルがないか検査する。
+- `npm run syntax:check`: Vercel APIのJavaScript構文を検査する。
+- `npm run preflight`: Prettier整形、ESLint、自動テスト、API構文確認、`git diff --check` をまとめて実行する。通常のコード変更ではcommit/push前に必ず実行する。
 - `npx serve .`: 静的ページをローカル配信する。
 - `npx vercel dev`: 環境変数を設定した状態で静的ページと `/api/*` を実行する。
 - `supabase migration list --linked`: link済み本番projectのlocal/remote migration historyを比較する。
