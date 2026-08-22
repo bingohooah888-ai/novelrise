@@ -8,11 +8,11 @@ begin;
 
 select pg_advisory_xact_lock(hashtext('novelrise:20260823083500'));
 
-revoke all on function public.plant_light_seed(uuid) from public, anon, authenticated;
-revoke all on function public.light_seed_status(uuid) from public, anon, authenticated;
+revoke all on function public.plant_light_seed(text) from public, anon, authenticated;
+revoke all on function public.light_seed_status(text) from public, anon, authenticated;
 
-drop function if exists public.plant_light_seed(uuid);
-drop function if exists public.light_seed_status(uuid);
+drop function if exists public.plant_light_seed(text);
+drop function if exists public.light_seed_status(text);
 
 drop table if exists public.light_seeds;
 drop table if exists public.light_seed_rules;
