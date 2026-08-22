@@ -12,11 +12,7 @@ function getBearerToken(authorization) {
   return bearerMatch?.[1] ?? null;
 }
 
-export function createCheckoutHandler({
-  stripe,
-  supabase,
-  env = process.env
-}) {
+export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
   return async function handler(req, res) {
     if (req.method !== 'POST') {
       return res.status(405).json({
