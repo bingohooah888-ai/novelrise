@@ -78,7 +78,8 @@ export function createCheckoutHandler({
             quantity: 1
           }
         ],
-        success_url: 'https://novelrise.vercel.app/mypage.html?checkout=success',
+        success_url:
+          'https://novelrise.vercel.app/mypage.html?checkout=success',
         cancel_url: 'https://novelrise.vercel.app/pricing.html?checkout=cancel'
       });
 
