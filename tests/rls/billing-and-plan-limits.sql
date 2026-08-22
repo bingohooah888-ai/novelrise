@@ -41,7 +41,7 @@ do $$
 begin
   begin
     update public.profiles
-    set payment_status = 'active'
+    set payment_status = 'failed'
     where id = '33333333-3333-3333-3333-333333333333';
     raise exception 'user unexpectedly changed payment_status';
   exception
