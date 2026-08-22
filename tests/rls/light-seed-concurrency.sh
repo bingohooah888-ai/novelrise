@@ -26,7 +26,7 @@ for i in $(seq 11 21); do
       >"$workdir/$i.log" 2>&1 <<SQL
 set role authenticated;
 select set_config('request.jwt.claim.sub', '$READER_ID', false);
-select public.plant_light_seed('$novel_id'::uuid);
+select public.plant_light_seed('$novel_id');
 SQL
     echo "$?" >"$workdir/$i.status"
   ) &
