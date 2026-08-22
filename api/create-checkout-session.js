@@ -1,9 +1,7 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-const stripe = new Stripe(
-  process.env.STRIPE_SECRET_KEY
-);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -41,8 +39,9 @@ export default async function handler(req, res) {
       });
     }
 
-    const { data, error: authError } =
-      await supabase.auth.getUser(bearerMatch[1]);
+    const { data, error: authError } = await supabase.auth.getUser(
+      bearerMatch[1]
+    );
 
     if (authError || !data.user || !data.user.email) {
       return res.status(401).json({
@@ -53,10 +52,7 @@ export default async function handler(req, res) {
     const plan = req.body?.plan;
     const isAllowedPlan =
       typeof plan === 'string' &&
-      Object.prototype.hasOwnProperty.call(
-        PRICE_ENV_BY_PLAN,
-        plan
-      );
+      Object.prototype.hasOwnProperty.call(PRICE_ENV_BY_PLAN, plan);
 
     if (!isAllowedPlan) {
       return res.status(400).json({
@@ -68,9 +64,7 @@ export default async function handler(req, res) {
     const priceId = process.env[priceEnvName];
 
     if (!priceId) {
-      console.error(
-        `Missing Stripe price configuration: ${priceEnvName}`
-      );
+      console.error(`Missing Stripe price configuration: ${priceEnvName}`);
 
       return res.status(500).json({
         error: 'Checkout is not configured'
@@ -80,33 +74,27 @@ export default async function handler(req, res) {
     const userId = data.user.id;
     const email = data.user.email;
 
-    const session =
-      await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        customer_email: email,
-        client_reference_id: userId,
-        metadata: {
-          userId: userId,
-          plan: plan
-        },
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1
-          }
-        ],
-
-        success_url:
-          'https://novelrise.vercel.app/mypage.html?checkout=success',
-
-        cancel_url:
-          'https://novelrise.vercel.app/pricing.html?checkout=cancel'
-      });
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer_email: email,
+      client_reference_id: userId,
+      metadata: {
+        userId: userId,
+        plan: plan
+      },
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1
+        }
+      ],
+      success_url: 'https://novelrise.vercel.app/mypage.html?checkout=success',
+      cancel_url: 'https://novelrise.vercel.app/pricing.html?checkout=cancel'
+    });
 
     return res.status(200).json({
       url: session.url
     });
-
   } catch (error) {
     console.error('Checkout session creation failed', {
       name: error?.name,
@@ -115,8 +103,7 @@ export default async function handler(req, res) {
     });
 
     return res.status(500).json({
-      error:
-        'Checkout session creation failed'
+      error: 'Checkout session creation failed'
     });
   }
 }
