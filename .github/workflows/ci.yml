@@ -70,15 +70,15 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823073000_enforce_billing_permissions_and_novel_limits.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823074300_stripe_subscription_state_precheck.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823074300_add_stripe_subscription_state.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/light-seed-fixture.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823083500_light_seed_mvp_precheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823083500_light_seed_mvp.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/read-access.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/write-access.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/billing-and-plan-limits.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/stripe-lifecycle-columns.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/light-seed-mvp.sql
           bash tests/rls/plan-limit-concurrency.sh
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/light-seed-fixture.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823083500_light_seed_mvp_precheck.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823083500_light_seed_mvp.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/light-seed-mvp.sql
           bash tests/rls/light-seed-concurrency.sh
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260822_content_write_rls_postcheck.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823073000_billing_permissions_and_novel_limits_postcheck.sql
