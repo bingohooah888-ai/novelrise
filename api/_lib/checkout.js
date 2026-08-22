@@ -89,9 +89,18 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
       }
 
       if (profile.plan !== 'free') {
-        return res.status(409).json({
-          error: 'Manage the existing subscription in the billing portal',
-          code: 'SUBSCRIPTION_MANAGED_IN_PORTAL'
+        if (!profile.stripe_customer_id) {
+          throw new Error('Paid profile is missing stripe_customer_id');
+        }
+
+        const portalSession = await stripe.billingPortal.sessions.create({
+          customer: profile.stripe_customer_id,
+          return_url: `${getAppBaseUrl(env)}/pricing.html`
+        });
+
+        return res.status(200).json({
+          url: portalSession.url,
+          mode: 'portal'
         });
       }
 
@@ -121,7 +130,8 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
       });
 
       return res.status(200).json({
-        url: session.url
+        url: session.url,
+        mode: 'checkout'
       });
     } catch (error) {
       console.error('Checkout session creation failed', {

@@ -42,11 +42,15 @@ function createDependencies({
   },
   checkout = async () => ({
     url: 'https://checkout.stripe.test/session'
+  }),
+  portal = async () => ({
+    url: 'https://billing.stripe.test/session'
   })
 } = {}) {
   const calls = {
     tokens: [],
     checkoutSessions: [],
+    portalSessions: [],
     profileUserIds: []
   };
 
@@ -89,6 +93,14 @@ function createDependencies({
         async create(payload) {
           calls.checkoutSessions.push(payload);
           return checkout(payload);
+        }
+      }
+    },
+    billingPortal: {
+      sessions: {
+        async create(payload) {
+          calls.portalSessions.push(payload);
+          return portal(payload);
         }
       }
     }
@@ -193,7 +205,7 @@ test('rejects plans outside Standard and Premium', async () => {
   assert.equal(dependencies.calls.checkoutSessions.length, 0);
 });
 
-test('blocks a second checkout while a paid plan is already active', async () => {
+test('paid users are redirected to the billing portal instead of a second checkout', async () => {
   const dependencies = createDependencies({
     profile: {
       plan: 'standard',
@@ -214,11 +226,17 @@ test('blocks a second checkout while a paid plan is already active', async () =>
     res
   );
 
-  assert.equal(state.statusCode, 409);
+  assert.equal(state.statusCode, 200);
   assert.deepEqual(state.body, {
-    error: 'Manage the existing subscription in the billing portal',
-    code: 'SUBSCRIPTION_MANAGED_IN_PORTAL'
+    url: 'https://billing.stripe.test/session',
+    mode: 'portal'
   });
+  assert.deepEqual(dependencies.calls.portalSessions, [
+    {
+      customer: 'cus_existing',
+      return_url: 'https://novelight.test/pricing.html'
+    }
+  ]);
   assert.equal(dependencies.calls.checkoutSessions.length, 0);
 });
 
@@ -240,7 +258,8 @@ test('creates a subscription checkout with trusted metadata', async () => {
 
   assert.equal(state.statusCode, 200);
   assert.deepEqual(state.body, {
-    url: 'https://checkout.stripe.test/session'
+    url: 'https://checkout.stripe.test/session',
+    mode: 'checkout'
   });
 
   const payload = dependencies.calls.checkoutSessions[0];
@@ -310,6 +329,15 @@ test('returns a generic error when profile lookup or Stripe fails', async (t) =>
     createDependencies({
       checkout: async () => {
         throw new Error('Stripe unavailable');
+      }
+    }),
+    createDependencies({
+      profile: {
+        plan: 'premium',
+        stripe_customer_id: 'cus_existing'
+      },
+      portal: async () => {
+        throw new Error('Portal unavailable');
       }
     })
   ]) {
