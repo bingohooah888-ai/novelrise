@@ -63,15 +63,6 @@ begin
     raise exception 'Episode user_id differs from the owning novel user_id';
   end if;
 
-  if to_regclass('novelrise_migration_backup.write_migration_state') is not null
-     and exists (
-       select 1
-       from novelrise_migration_backup.write_migration_state
-       where migration_id = '20260822194000'
-     ) then
-    raise exception 'Write RLS migration 20260822194000 already has backup state';
-  end if;
-
   if exists (
     select 1
     from pg_policies
