@@ -8,50 +8,78 @@ const env = {
   STRIPE_PREMIUM_PRICE_ID: 'price_premium'
 };
 
-function createSupabase(initialProfiles) {
-  const profiles = initialProfiles.map((profile) => ({ ...profile }));
+function baseProfile(overrides = {}) {
+  return {
+    id: 'user-123',
+    plan: 'free',
+    payment_status: null,
+    stripe_customer_id: 'cus_123',
+    stripe_subscription_id: null,
+    stripe_subscription_created_at: null,
+    subscription_status: null,
+    subscription_cancel_at_period_end: false,
+    subscription_current_period_end: null,
+    ...overrides
+  };
+}
+
+function subscription({
+  id = 'sub_123',
+  customer = 'cus_123',
+  status = 'active',
+  priceId = 'price_standard',
+  created = 100,
+  cancelAtPeriodEnd = false,
+  userId = 'user-123'
+} = {}) {
+  return {
+    id,
+    customer,
+    status,
+    created,
+    cancel_at_period_end: cancelAtPeriodEnd,
+    metadata: userId ? { userId } : {},
+    items: {
+      data: [
+        {
+          current_period_end: 1893456000,
+          price: { id: priceId }
+        }
+      ]
+    }
+  };
+}
+
+function createDependencies({ profiles = [baseProfile()], subscriptionsByCustomer = {} } = {}) {
+  const storedProfiles = profiles.map((profile) => ({ ...profile }));
   const calls = {
+    subscriptionLists: [],
     updates: []
   };
 
-  return {
-    calls,
-    profiles,
+  const supabase = {
     from(table) {
       assert.equal(table, 'profiles');
-
       let updatePayload = null;
       const filters = [];
 
-      const query = {
+      return {
         select() {
           if (!updatePayload) {
             return this;
           }
 
-          const profile = profiles.find((candidate) =>
-            filters.every(([column, value]) => candidate[column] === value)
+          const matches = storedProfiles.filter((profile) =>
+            filters.every(([column, value]) => profile[column] === value)
           );
 
-          if (!profile) {
-            return Promise.resolve({ data: [], error: null });
+          for (const profile of matches) {
+            Object.assign(profile, updatePayload);
           }
 
-          const previousEventCreated = profile.stripe_last_event_created_at;
-          const incomingEventCreated = updatePayload.stripe_last_event_created_at;
-
-          if (
-            Number.isInteger(previousEventCreated) &&
-            previousEventCreated > incomingEventCreated
-          ) {
-            return Promise.resolve({ data: [], error: null });
-          }
-
-          Object.assign(profile, updatePayload);
           calls.updates.push({ ...updatePayload });
-
           return Promise.resolve({
-            data: [{ id: profile.id }],
+            data: matches.map((profile) => ({ id: profile.id })),
             error: null
           });
         },
@@ -63,15 +91,12 @@ function createSupabase(initialProfiles) {
           filters.push([column, value]);
           return this;
         },
-        or() {
-          return this;
-        },
         async limit(limit) {
           assert.equal(limit, 2);
           return {
-            data: profiles
-              .filter((candidate) =>
-                filters.every(([column, value]) => candidate[column] === value)
+            data: storedProfiles
+              .filter((profile) =>
+                filters.every(([column, value]) => profile[column] === value)
               )
               .slice(0, limit)
               .map((profile) => ({ ...profile })),
@@ -79,254 +104,360 @@ function createSupabase(initialProfiles) {
           };
         }
       };
-
-      return query;
     }
   };
-}
 
-function baseProfile(overrides = {}) {
-  return {
-    id: 'user-123',
-    plan: 'free',
-    stripe_customer_id: 'cus_123',
-    stripe_subscription_id: null,
-    stripe_last_event_id: null,
-    stripe_last_event_created_at: null,
-    ...overrides
-  };
-}
-
-function subscriptionEvent({
-  id = 'evt_1',
-  created = 100,
-  type = 'customer.subscription.updated',
-  status = 'active',
-  priceId = 'price_standard',
-  cancelAtPeriodEnd = false,
-  customer = 'cus_123',
-  subscriptionId = 'sub_123'
-} = {}) {
-  return {
-    id,
-    created,
-    type,
-    data: {
-      object: {
-        id: subscriptionId,
-        customer,
-        status,
-        cancel_at_period_end: cancelAtPeriodEnd,
-        items: {
-          data: [
-            {
-              current_period_end: 1893456000,
-              price: { id: priceId }
-            }
-          ]
-        }
+  const stripe = {
+    subscriptions: {
+      async list(payload) {
+        calls.subscriptionLists.push(payload);
+        return {
+          data: subscriptionsByCustomer[payload.customer] ?? []
+        };
       }
     }
   };
+
+  return {
+    stripe,
+    supabase,
+    profiles: storedProfiles,
+    calls
+  };
 }
 
-test('active subscription grants the mapped plan and stores lifecycle state', async () => {
-  const supabase = createSupabase([baseProfile()]);
+function event(type, object, id = 'evt_1') {
+  return {
+    id,
+    type,
+    data: { object }
+  };
+}
+
+test('checkout completion syncs the actual Stripe subscription rather than trusting requested plan metadata', async () => {
+  const dependencies = createDependencies({
+    profiles: [baseProfile({ stripe_customer_id: null })],
+    subscriptionsByCustomer: {
+      cus_new: [
+        subscription({
+          customer: 'cus_new',
+          priceId: 'price_standard'
+        })
+      ]
+    }
+  });
 
   const result = await processStripeEvent({
-    supabase,
-    event: subscriptionEvent(),
-    env
-  });
-
-  assert.equal(result, 'updated');
-  assert.equal(supabase.profiles[0].plan, 'standard');
-  assert.equal(supabase.profiles[0].payment_status, 'active');
-  assert.equal(supabase.profiles[0].subscription_status, 'active');
-  assert.equal(supabase.profiles[0].stripe_subscription_id, 'sub_123');
-  assert.equal(
-    supabase.profiles[0].subscription_cancel_at_period_end,
-    false
-  );
-  assert.match(
-    supabase.profiles[0].subscription_current_period_end,
-    /^2030-01-01T00:00:00\.000Z$/
-  );
-});
-
-test('scheduled cancellation keeps access until Stripe ends the subscription', async () => {
-  const supabase = createSupabase([baseProfile()]);
-
-  await processStripeEvent({
-    supabase,
-    event: subscriptionEvent({ cancelAtPeriodEnd: true }),
-    env
-  });
-
-  assert.equal(supabase.profiles[0].plan, 'standard');
-  assert.equal(supabase.profiles[0].subscription_cancel_at_period_end, true);
-});
-
-test('past_due keeps the paid plan during recovery but marks payment failed', async () => {
-  const supabase = createSupabase([baseProfile()]);
-
-  await processStripeEvent({
-    supabase,
-    event: subscriptionEvent({
-      status: 'past_due',
-      priceId: 'price_premium'
+    ...dependencies,
+    event: event('checkout.session.completed', {
+      client_reference_id: 'user-123',
+      metadata: { userId: 'user-123', plan: 'premium' },
+      customer: 'cus_new',
+      subscription: 'sub_ignored_snapshot'
     }),
     env
   });
 
-  assert.equal(supabase.profiles[0].plan, 'premium');
-  assert.equal(supabase.profiles[0].payment_status, 'failed');
+  assert.equal(result, 'synced');
+  assert.equal(dependencies.profiles[0].plan, 'standard');
+  assert.equal(dependencies.profiles[0].stripe_customer_id, 'cus_new');
+  assert.equal(dependencies.profiles[0].stripe_subscription_id, 'sub_123');
 });
 
-test('unpaid or canceled subscription revokes paid entitlement', async () => {
+test('subscription webhook uses Stripe current state, not the possibly stale event snapshot', async () => {
+  const dependencies = createDependencies({
+    subscriptionsByCustomer: {
+      cus_123: [
+        subscription({
+          id: 'sub_current',
+          status: 'active',
+          priceId: 'price_premium',
+          created: 300
+        })
+      ]
+    }
+  });
+
+  await processStripeEvent({
+    ...dependencies,
+    event: event(
+      'customer.subscription.updated',
+      subscription({
+        id: 'sub_old_snapshot',
+        status: 'canceled',
+        priceId: 'price_standard',
+        created: 100
+      })
+    ),
+    env
+  });
+
+  assert.equal(dependencies.profiles[0].plan, 'premium');
+  assert.equal(dependencies.profiles[0].stripe_subscription_id, 'sub_current');
+  assert.equal(dependencies.profiles[0].subscription_status, 'active');
+});
+
+test('delayed cancellation for an old subscription cannot revoke a newer active subscription', async () => {
+  const dependencies = createDependencies({
+    profiles: [
+      baseProfile({
+        plan: 'premium',
+        stripe_subscription_id: 'sub_new'
+      })
+    ],
+    subscriptionsByCustomer: {
+      cus_123: [
+        subscription({
+          id: 'sub_old',
+          status: 'canceled',
+          created: 100
+        }),
+        subscription({
+          id: 'sub_new',
+          status: 'active',
+          priceId: 'price_premium',
+          created: 200
+        })
+      ]
+    }
+  });
+
+  await processStripeEvent({
+    ...dependencies,
+    event: event(
+      'customer.subscription.deleted',
+      subscription({ id: 'sub_old', status: 'canceled', created: 100 })
+    ),
+    env
+  });
+
+  assert.equal(dependencies.profiles[0].plan, 'premium');
+  assert.equal(dependencies.profiles[0].stripe_subscription_id, 'sub_new');
+});
+
+test('past_due keeps paid access during recovery while marking payment failed', async () => {
+  const dependencies = createDependencies({
+    subscriptionsByCustomer: {
+      cus_123: [
+        subscription({
+          status: 'past_due',
+          priceId: 'price_premium',
+          cancelAtPeriodEnd: true
+        })
+      ]
+    }
+  });
+
+  await processStripeEvent({
+    ...dependencies,
+    event: event(
+      'customer.subscription.updated',
+      subscription({ status: 'past_due', priceId: 'price_premium' })
+    ),
+    env
+  });
+
+  assert.equal(dependencies.profiles[0].plan, 'premium');
+  assert.equal(dependencies.profiles[0].payment_status, 'failed');
+  assert.equal(
+    dependencies.profiles[0].subscription_cancel_at_period_end,
+    true
+  );
+});
+
+test('unpaid or canceled current subscription revokes paid entitlement', async () => {
   for (const status of ['unpaid', 'canceled']) {
-    const supabase = createSupabase([
-      baseProfile({ plan: 'premium', stripe_subscription_id: 'sub_123' })
-    ]);
+    const dependencies = createDependencies({
+      profiles: [baseProfile({ plan: 'premium' })],
+      subscriptionsByCustomer: {
+        cus_123: [subscription({ status, priceId: 'price_premium' })]
+      }
+    });
 
     await processStripeEvent({
-      supabase,
-      event: subscriptionEvent({ status, priceId: 'unknown_price' }),
+      ...dependencies,
+      event: event(
+        status === 'canceled'
+          ? 'customer.subscription.deleted'
+          : 'customer.subscription.updated',
+        subscription({ status, priceId: 'price_premium' })
+      ),
       env
     });
 
-    assert.equal(supabase.profiles[0].plan, 'free');
+    assert.equal(dependencies.profiles[0].plan, 'free');
   }
 });
 
-test('unknown paid price fails closed instead of granting a plan', async () => {
-  const supabase = createSupabase([baseProfile()]);
+test('an active subscription is canonical over a newer ended subscription', async () => {
+  const dependencies = createDependencies({
+    subscriptionsByCustomer: {
+      cus_123: [
+        subscription({
+          id: 'sub_active',
+          status: 'active',
+          priceId: 'price_standard',
+          created: 100
+        }),
+        subscription({
+          id: 'sub_canceled_newer',
+          status: 'canceled',
+          created: 999
+        })
+      ]
+    }
+  });
+
+  await processStripeEvent({
+    ...dependencies,
+    event: event(
+      'customer.subscription.deleted',
+      subscription({ id: 'sub_canceled_newer', status: 'canceled' })
+    ),
+    env
+  });
+
+  assert.equal(dependencies.profiles[0].plan, 'standard');
+  assert.equal(dependencies.profiles[0].stripe_subscription_id, 'sub_active');
+});
+
+test('the newest subscription wins when multiple accessible subscriptions exist', async () => {
+  const dependencies = createDependencies({
+    subscriptionsByCustomer: {
+      cus_123: [
+        subscription({
+          id: 'sub_older',
+          priceId: 'price_standard',
+          created: 100
+        }),
+        subscription({
+          id: 'sub_newer',
+          priceId: 'price_premium',
+          created: 200
+        })
+      ]
+    }
+  });
+
+  await processStripeEvent({
+    ...dependencies,
+    event: event('customer.subscription.updated', subscription()),
+    env
+  });
+
+  assert.equal(dependencies.profiles[0].plan, 'premium');
+  assert.equal(dependencies.profiles[0].stripe_subscription_id, 'sub_newer');
+});
+
+test('unknown active Stripe price fails closed without changing entitlement', async () => {
+  const dependencies = createDependencies({
+    subscriptionsByCustomer: {
+      cus_123: [subscription({ priceId: 'price_unknown' })]
+    }
+  });
 
   await assert.rejects(
     processStripeEvent({
-      supabase,
-      event: subscriptionEvent({ priceId: 'price_unknown' }),
+      ...dependencies,
+      event: event('customer.subscription.updated', subscription()),
       env
     }),
     /unknown Stripe price/
   );
 
-  assert.equal(supabase.profiles[0].plan, 'free');
-  assert.equal(supabase.calls.updates.length, 0);
+  assert.equal(dependencies.profiles[0].plan, 'free');
+  assert.equal(dependencies.calls.updates.length, 0);
 });
 
-test('duplicate and stale events cannot roll billing state backward', async () => {
-  const supabase = createSupabase([
-    baseProfile({
-      plan: 'premium',
-      stripe_last_event_id: 'evt_new',
-      stripe_last_event_created_at: 200
-    })
-  ]);
+test('invoice event also reconciles from current subscription state', async () => {
+  const dependencies = createDependencies({
+    profiles: [baseProfile({ plan: 'standard', payment_status: 'failed' })],
+    subscriptionsByCustomer: {
+      cus_123: [subscription({ status: 'active', priceId: 'price_standard' })]
+    }
+  });
 
-  const duplicateResult = await processStripeEvent({
-    supabase,
-    event: subscriptionEvent({
-      id: 'evt_new',
-      created: 200,
-      priceId: 'price_standard'
-    }),
+  await processStripeEvent({
+    ...dependencies,
+    event: event('invoice.payment_failed', { customer: 'cus_123' }),
     env
   });
-  assert.equal(duplicateResult, 'duplicate');
 
-  const staleResult = await processStripeEvent({
-    supabase,
-    event: subscriptionEvent({
-      id: 'evt_old',
-      created: 100,
-      priceId: 'price_standard'
-    }),
-    env
-  });
-  assert.equal(staleResult, 'stale');
-  assert.equal(supabase.profiles[0].plan, 'premium');
+  assert.equal(dependencies.profiles[0].payment_status, 'active');
+  assert.equal(dependencies.profiles[0].plan, 'standard');
 });
 
-test('checkout completion records Stripe identifiers without granting entitlement', async () => {
-  const supabase = createSupabase([
-    baseProfile({ stripe_customer_id: null })
-  ]);
+test('no remaining Stripe subscriptions resets the profile to Free', async () => {
+  const dependencies = createDependencies({
+    profiles: [baseProfile({ plan: 'standard', payment_status: 'active' })],
+    subscriptionsByCustomer: { cus_123: [] }
+  });
 
   const result = await processStripeEvent({
-    supabase,
-    event: {
-      id: 'evt_checkout',
-      created: 100,
-      type: 'checkout.session.completed',
-      data: {
-        object: {
-          client_reference_id: 'user-123',
-          metadata: { userId: 'user-123', plan: 'premium' },
+    ...dependencies,
+    event: event('customer.subscription.deleted', subscription({ status: 'canceled' })),
+    env
+  });
+
+  assert.equal(result, 'synced-free');
+  assert.equal(dependencies.profiles[0].plan, 'free');
+  assert.equal(dependencies.profiles[0].payment_status, 'canceled');
+  assert.equal(dependencies.profiles[0].stripe_subscription_id, null);
+});
+
+test('subscription metadata can bind a customer before checkout completion arrives', async () => {
+  const dependencies = createDependencies({
+    profiles: [baseProfile({ stripe_customer_id: null })],
+    subscriptionsByCustomer: {
+      cus_new: [
+        subscription({
           customer: 'cus_new',
-          subscription: 'sub_new'
-        }
-      }
-    },
+          userId: 'user-123',
+          priceId: 'price_standard'
+        })
+      ]
+    }
+  });
+
+  await processStripeEvent({
+    ...dependencies,
+    event: event(
+      'customer.subscription.created',
+      subscription({ customer: 'cus_new', userId: 'user-123' })
+    ),
     env
   });
 
-  assert.equal(result, 'updated');
-  assert.equal(supabase.profiles[0].stripe_customer_id, 'cus_new');
-  assert.equal(supabase.profiles[0].stripe_subscription_id, 'sub_new');
-  assert.equal(supabase.profiles[0].plan, 'free');
+  assert.equal(dependencies.profiles[0].stripe_customer_id, 'cus_new');
+  assert.equal(dependencies.profiles[0].plan, 'standard');
 });
 
-test('invoice events update payment state only for paid profiles', async () => {
-  const paidSupabase = createSupabase([
-    baseProfile({ plan: 'standard' })
-  ]);
-
-  const result = await processStripeEvent({
-    supabase: paidSupabase,
-    event: {
-      id: 'evt_invoice',
-      created: 300,
-      type: 'invoice.payment_failed',
-      data: { object: { customer: 'cus_123' } }
-    },
-    env
+test('repeated delivery is idempotent because reconciliation writes the same current state', async () => {
+  const dependencies = createDependencies({
+    subscriptionsByCustomer: {
+      cus_123: [subscription({ priceId: 'price_standard' })]
+    }
   });
+  const repeatedEvent = event('customer.subscription.updated', subscription());
 
-  assert.equal(result, 'updated');
-  assert.equal(paidSupabase.profiles[0].payment_status, 'failed');
-  assert.equal(paidSupabase.profiles[0].plan, 'standard');
+  await processStripeEvent({ ...dependencies, event: repeatedEvent, env });
+  await processStripeEvent({ ...dependencies, event: repeatedEvent, env });
 
-  const freeSupabase = createSupabase([baseProfile()]);
-  const ignored = await processStripeEvent({
-    supabase: freeSupabase,
-    event: {
-      id: 'evt_invoice_free',
-      created: 300,
-      type: 'invoice.paid',
-      data: { object: { customer: 'cus_123' } }
-    },
-    env
-  });
-
-  assert.equal(ignored, 'ignored-free-profile');
-  assert.equal(freeSupabase.calls.updates.length, 0);
+  assert.equal(dependencies.profiles[0].plan, 'standard');
+  assert.equal(dependencies.profiles[0].stripe_subscription_id, 'sub_123');
+  assert.equal(dependencies.calls.updates.length, 2);
 });
 
-test('unrelated Stripe events are acknowledged without profile changes', async () => {
-  const supabase = createSupabase([baseProfile()]);
+test('unrelated Stripe events are acknowledged without database changes', async () => {
+  const dependencies = createDependencies();
 
   const result = await processStripeEvent({
-    supabase,
-    event: {
-      id: 'evt_other',
-      created: 100,
-      type: 'customer.updated',
-      data: { object: {} }
-    },
+    ...dependencies,
+    event: event('customer.updated', {}),
     env
   });
 
   assert.equal(result, 'ignored');
-  assert.equal(supabase.calls.updates.length, 0);
+  assert.equal(dependencies.calls.subscriptionLists.length, 0);
+  assert.equal(dependencies.calls.updates.length, 0);
 });

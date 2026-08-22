@@ -15,11 +15,10 @@ create table novelrise_migration_backup.stripe_lifecycle_20260823074300 as
 select
   id,
   stripe_subscription_id,
+  stripe_subscription_created_at,
   subscription_status,
   subscription_cancel_at_period_end,
-  subscription_current_period_end,
-  stripe_last_event_created_at,
-  stripe_last_event_id
+  subscription_current_period_end
 from public.profiles;
 
 revoke all on novelrise_migration_backup.stripe_lifecycle_20260823074300 from public;
@@ -30,10 +29,9 @@ drop index if exists public.novelight_profiles_stripe_customer_id_unique;
 
 alter table public.profiles
   drop column if exists stripe_subscription_id,
+  drop column if exists stripe_subscription_created_at,
   drop column if exists subscription_status,
   drop column if exists subscription_cancel_at_period_end,
-  drop column if exists subscription_current_period_end,
-  drop column if exists stripe_last_event_created_at,
-  drop column if exists stripe_last_event_id;
+  drop column if exists subscription_current_period_end;
 
 commit;

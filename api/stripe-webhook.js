@@ -49,6 +49,7 @@ export default async function handler(req, res) {
     );
 
     const result = await processStripeEvent({
+      stripe,
       supabase: supabaseAdmin,
       event,
       env: process.env

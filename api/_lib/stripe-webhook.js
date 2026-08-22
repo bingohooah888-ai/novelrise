@@ -1,10 +1,8 @@
 const ACCESS_STATUSES = new Set(['active', 'trialing', 'past_due']);
-const REVOKE_STATUSES = new Set([
+const NON_RENEWABLE_STATUSES = new Set([
   'canceled',
   'unpaid',
-  'incomplete',
-  'incomplete_expired',
-  'paused'
+  'incomplete_expired'
 ]);
 
 function stripeId(value) {
@@ -15,41 +13,19 @@ function stripeId(value) {
   return value?.id ?? null;
 }
 
-function priceIdForPlan(plan, env) {
-  if (plan === 'standard') {
-    return env.STRIPE_STANDARD_PRICE_ID;
-  }
-
-  if (plan === 'premium') {
-    return env.STRIPE_PREMIUM_PRICE_ID;
-  }
-
-  return null;
-}
-
 function planForPriceId(priceId, env) {
-  if (priceId && priceId === priceIdForPlan('standard', env)) {
+  if (priceId && priceId === env.STRIPE_STANDARD_PRICE_ID) {
     return 'standard';
   }
 
-  if (priceId && priceId === priceIdForPlan('premium', env)) {
+  if (priceId && priceId === env.STRIPE_PREMIUM_PRICE_ID) {
     return 'premium';
   }
 
   return null;
 }
 
-function currentPeriodEnd(subscription) {
-  const epochSeconds = subscription.items?.data?.[0]?.current_period_end;
-
-  if (!Number.isInteger(epochSeconds)) {
-    return null;
-  }
-
-  return new Date(epochSeconds * 1000).toISOString();
-}
-
-function subscriptionPaymentStatus(status) {
+function paymentStatusForSubscription(status) {
   switch (status) {
     case 'active':
     case 'trialing':
@@ -65,189 +41,221 @@ function subscriptionPaymentStatus(status) {
     case 'paused':
       return 'paused';
     default:
-      return null;
+      return 'unknown';
   }
 }
 
-async function findProfile(supabase, column, value) {
-  const { data, error } = await supabase
+function currentPeriodEnd(subscription) {
+  const epochSeconds = subscription.items?.data?.[0]?.current_period_end;
+
+  return Number.isInteger(epochSeconds)
+    ? new Date(epochSeconds * 1000).toISOString()
+    : null;
+}
+
+function compareSubscriptions(a, b) {
+  const accessDifference =
+    Number(ACCESS_STATUSES.has(b.status)) - Number(ACCESS_STATUSES.has(a.status));
+
+  if (accessDifference !== 0) {
+    return accessDifference;
+  }
+
+  const createdDifference = (b.created ?? 0) - (a.created ?? 0);
+
+  if (createdDifference !== 0) {
+    return createdDifference;
+  }
+
+  return String(b.id).localeCompare(String(a.id));
+}
+
+function chooseCanonicalSubscription(subscriptions) {
+  return [...subscriptions].sort(compareSubscriptions)[0] ?? null;
+}
+
+async function findProfile(supabase, { userId, customerId }) {
+  let query = supabase
     .from('profiles')
-    .select(
-      'id, plan, stripe_customer_id, stripe_subscription_id, stripe_last_event_id, stripe_last_event_created_at'
-    )
-    .eq(column, value)
-    .limit(2);
+    .select('id, plan, stripe_customer_id, stripe_subscription_id');
+
+  if (userId) {
+    query = query.eq('id', userId);
+  } else if (customerId) {
+    query = query.eq('stripe_customer_id', customerId);
+  } else {
+    throw new Error('No profile identifier was supplied');
+  }
+
+  const { data, error } = await query.limit(2);
 
   if (error) {
     throw new Error(`Profile lookup failed: ${error.message}`);
   }
 
   if (!data || data.length === 0) {
-    throw new Error(`Profile not found for ${column}`);
+    throw new Error('Billing profile was not found');
   }
 
   if (data.length > 1) {
-    throw new Error(`Multiple profiles matched ${column}`);
+    throw new Error('Billing profile lookup was ambiguous');
   }
 
   return data[0];
 }
 
-async function applyEventUpdate({ supabase, profile, event, changes }) {
-  if (!Number.isInteger(event.created)) {
-    throw new Error('Stripe event is missing a valid created timestamp');
-  }
-
-  if (profile.stripe_last_event_id === event.id) {
-    return 'duplicate';
-  }
-
-  const updatePayload = {
-    ...changes,
-    stripe_last_event_id: event.id,
-    stripe_last_event_created_at: event.created
-  };
-
+async function updateProfile(supabase, profileId, changes) {
   const { data, error } = await supabase
     .from('profiles')
-    .update(updatePayload)
-    .eq('id', profile.id)
-    .or(
-      `stripe_last_event_created_at.is.null,stripe_last_event_created_at.lte.${event.created}`
-    )
+    .update(changes)
+    .eq('id', profileId)
     .select('id');
 
   if (error) {
     throw new Error(`Billing state update failed: ${error.message}`);
   }
 
-  return data?.length ? 'updated' : 'stale';
+  if (!data?.length) {
+    throw new Error('Billing state update matched no profile');
+  }
 }
 
-async function handleCheckoutCompleted({ supabase, event }) {
-  const session = event.data.object;
-  const userId = session.metadata?.userId || session.client_reference_id;
-
-  if (!userId) {
-    throw new Error('Checkout session is missing a user identifier');
-  }
-
-  const profile = await findProfile(supabase, 'id', userId);
-  const customerId = stripeId(session.customer);
-  const subscriptionId = stripeId(session.subscription);
-
+export async function syncCustomerSubscription({
+  stripe,
+  supabase,
+  customerId,
+  userId,
+  env = process.env
+}) {
   if (!customerId) {
-    throw new Error('Checkout session is missing a Stripe customer');
+    throw new Error('Stripe customer ID is required for subscription sync');
   }
 
-  return applyEventUpdate({
-    supabase,
-    profile,
-    event,
-    changes: {
-      stripe_customer_id: customerId,
-      ...(subscriptionId ? { stripe_subscription_id: subscriptionId } : {})
-    }
+  const profile = await findProfile(supabase, { userId, customerId });
+
+  if (
+    profile.stripe_customer_id &&
+    profile.stripe_customer_id !== customerId
+  ) {
+    throw new Error('Stripe customer does not match the billing profile');
+  }
+
+  const subscriptions = await stripe.subscriptions.list({
+    customer: customerId,
+    status: 'all',
+    limit: 100
   });
-}
 
-async function handleSubscriptionChange({ supabase, event, env }) {
-  const subscription = event.data.object;
-  const customerId = stripeId(subscription.customer);
+  const canonical = chooseCanonicalSubscription(subscriptions.data ?? []);
 
-  if (!customerId || !subscription.id || !subscription.status) {
-    throw new Error('Subscription event is missing required identifiers');
+  if (!canonical) {
+    await updateProfile(supabase, profile.id, {
+      plan: 'free',
+      payment_status: 'canceled',
+      stripe_customer_id: customerId,
+      stripe_subscription_id: null,
+      stripe_subscription_created_at: null,
+      subscription_status: null,
+      subscription_cancel_at_period_end: false,
+      subscription_current_period_end: null
+    });
+
+    return 'synced-free';
   }
 
-  const profile = await findProfile(supabase, 'stripe_customer_id', customerId);
-  const status = subscription.status;
-  let plan;
+  const status = canonical.status;
+  let plan = 'free';
 
   if (ACCESS_STATUSES.has(status)) {
-    const priceId = subscription.items?.data?.[0]?.price?.id;
+    const priceId = canonical.items?.data?.[0]?.price?.id;
     plan = planForPriceId(priceId, env);
 
     if (!plan) {
-      throw new Error('Subscription uses an unknown Stripe price');
+      throw new Error('Active subscription uses an unknown Stripe price');
     }
-  } else if (REVOKE_STATUSES.has(status)) {
-    plan = 'free';
-  } else {
+  } else if (!NON_RENEWABLE_STATUSES.has(status) && status !== 'incomplete' && status !== 'paused') {
     throw new Error(`Unsupported Stripe subscription status: ${status}`);
   }
 
-  const paymentStatus = subscriptionPaymentStatus(status);
-
-  if (!paymentStatus) {
-    throw new Error(`Unsupported payment state for subscription: ${status}`);
-  }
-
-  return applyEventUpdate({
-    supabase,
-    profile,
-    event,
-    changes: {
-      plan,
-      payment_status: paymentStatus,
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscription.id,
-      subscription_status: status,
-      subscription_cancel_at_period_end:
-        subscription.cancel_at_period_end === true,
-      subscription_current_period_end: currentPeriodEnd(subscription)
-    }
+  await updateProfile(supabase, profile.id, {
+    plan,
+    payment_status: paymentStatusForSubscription(status),
+    stripe_customer_id: customerId,
+    stripe_subscription_id: canonical.id,
+    stripe_subscription_created_at: Number.isInteger(canonical.created)
+      ? canonical.created
+      : null,
+    subscription_status: status,
+    subscription_cancel_at_period_end:
+      canonical.cancel_at_period_end === true,
+    subscription_current_period_end: currentPeriodEnd(canonical)
   });
-}
 
-async function handleInvoiceEvent({ supabase, event, paymentStatus }) {
-  const invoice = event.data.object;
-  const customerId = stripeId(invoice.customer);
-
-  if (!customerId) {
-    throw new Error('Invoice event is missing a Stripe customer');
-  }
-
-  const profile = await findProfile(supabase, 'stripe_customer_id', customerId);
-
-  if (profile.plan === 'free') {
-    return 'ignored-free-profile';
-  }
-
-  return applyEventUpdate({
-    supabase,
-    profile,
-    event,
-    changes: {
-      payment_status: paymentStatus
-    }
-  });
+  return 'synced';
 }
 
 export async function processStripeEvent({
+  stripe,
   supabase,
   event,
   env = process.env
 }) {
   switch (event.type) {
-    case 'checkout.session.completed':
-      return handleCheckoutCompleted({ supabase, event });
+    case 'checkout.session.completed': {
+      const session = event.data.object;
+      const customerId = stripeId(session.customer);
+      const userId = session.metadata?.userId || session.client_reference_id;
+
+      if (!customerId || !userId) {
+        throw new Error('Checkout session is missing billing identifiers');
+      }
+
+      return syncCustomerSubscription({
+        stripe,
+        supabase,
+        customerId,
+        userId,
+        env
+      });
+    }
+
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
-    case 'customer.subscription.deleted':
-      return handleSubscriptionChange({ supabase, event, env });
+    case 'customer.subscription.deleted': {
+      const subscription = event.data.object;
+      const customerId = stripeId(subscription.customer);
+      const userId = subscription.metadata?.userId || null;
+
+      if (!customerId) {
+        throw new Error('Subscription event is missing a Stripe customer');
+      }
+
+      return syncCustomerSubscription({
+        stripe,
+        supabase,
+        customerId,
+        userId,
+        env
+      });
+    }
+
     case 'invoice.paid':
-      return handleInvoiceEvent({
-        supabase,
-        event,
-        paymentStatus: 'active'
-      });
     case 'invoice.payment_failed':
-    case 'invoice.finalization_failed':
-      return handleInvoiceEvent({
+    case 'invoice.finalization_failed': {
+      const customerId = stripeId(event.data.object.customer);
+
+      if (!customerId) {
+        throw new Error('Invoice event is missing a Stripe customer');
+      }
+
+      return syncCustomerSubscription({
+        stripe,
         supabase,
-        event,
-        paymentStatus: 'failed'
+        customerId,
+        env
       });
+    }
+
     default:
       return 'ignored';
   }

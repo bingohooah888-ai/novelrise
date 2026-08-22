@@ -8,11 +8,10 @@ select public.test_assert(
       and table_name = 'profiles'
       and column_name in (
         'stripe_subscription_id',
+        'stripe_subscription_created_at',
         'subscription_status',
         'subscription_cancel_at_period_end',
-        'subscription_current_period_end',
-        'stripe_last_event_created_at',
-        'stripe_last_event_id'
+        'subscription_current_period_end'
       )
   ),
   'Stripe lifecycle columns must be removed by rollback'
@@ -29,7 +28,8 @@ select public.test_assert(
     from novelrise_migration_backup.stripe_lifecycle_20260823074300
     where id = '33333333-3333-3333-3333-333333333333'
       and stripe_subscription_id = 'sub_admin_test'
-      and stripe_last_event_id = 'evt_admin_test'
+      and stripe_subscription_created_at = 123
+      and subscription_status = 'active'
   ),
   'Stripe lifecycle rollback must preserve derivative state in backup'
 );

@@ -40,11 +40,10 @@ begin
       and table_name = 'profiles'
       and column_name in (
         'stripe_subscription_id',
+        'stripe_subscription_created_at',
         'subscription_status',
         'subscription_cancel_at_period_end',
-        'subscription_current_period_end',
-        'stripe_last_event_created_at',
-        'stripe_last_event_id'
+        'subscription_current_period_end'
       )
   ) then
     raise exception 'Stripe lifecycle columns already exist or migration is partial';

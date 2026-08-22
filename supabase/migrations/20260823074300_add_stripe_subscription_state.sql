@@ -6,11 +6,10 @@ select pg_advisory_xact_lock(hashtext('novelrise:20260823074300'));
 
 alter table public.profiles
   add column stripe_subscription_id text,
+  add column stripe_subscription_created_at bigint,
   add column subscription_status text,
   add column subscription_cancel_at_period_end boolean not null default false,
-  add column subscription_current_period_end timestamptz,
-  add column stripe_last_event_created_at bigint,
-  add column stripe_last_event_id text;
+  add column subscription_current_period_end timestamptz;
 
 create unique index novelight_profiles_stripe_customer_id_unique
   on public.profiles (stripe_customer_id)

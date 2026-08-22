@@ -12,9 +12,10 @@ do $$
 begin
   begin
     update public.profiles
-    set stripe_subscription_id = 'sub_hijacked'
+    set stripe_subscription_id = 'sub_hijacked',
+        stripe_subscription_created_at = 999999
     where id = '33333333-3333-3333-3333-333333333333';
-    raise exception 'user unexpectedly changed stripe_subscription_id';
+    raise exception 'user unexpectedly changed Stripe subscription identifiers';
   exception
     when sqlstate '42501' then null;
   end;
@@ -36,29 +37,14 @@ begin
 end
 $$;
 
-do $$
-begin
-  begin
-    update public.profiles
-    set stripe_last_event_created_at = 999999,
-        stripe_last_event_id = 'evt_hijacked'
-    where id = '33333333-3333-3333-3333-333333333333';
-    raise exception 'user unexpectedly changed Stripe event ordering fields';
-  exception
-    when sqlstate '42501' then null;
-  end;
-end
-$$;
-
 reset role;
 
 -- Administrative webhook writes remain possible.
 update public.profiles
 set stripe_subscription_id = 'sub_admin_test',
+    stripe_subscription_created_at = 123,
     subscription_status = 'active',
-    subscription_cancel_at_period_end = false,
-    stripe_last_event_created_at = 123,
-    stripe_last_event_id = 'evt_admin_test'
+    subscription_cancel_at_period_end = false
 where id = '33333333-3333-3333-3333-333333333333';
 
 select public.test_assert(
@@ -67,8 +53,8 @@ select public.test_assert(
     from public.profiles
     where id = '33333333-3333-3333-3333-333333333333'
       and stripe_subscription_id = 'sub_admin_test'
+      and stripe_subscription_created_at = 123
       and subscription_status = 'active'
-      and stripe_last_event_id = 'evt_admin_test'
   ),
   'administrative Stripe lifecycle updates must remain possible'
 );

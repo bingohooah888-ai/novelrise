@@ -11,15 +11,14 @@ begin
     and table_name = 'profiles'
     and column_name in (
       'stripe_subscription_id',
+      'stripe_subscription_created_at',
       'subscription_status',
       'subscription_cancel_at_period_end',
-      'subscription_current_period_end',
-      'stripe_last_event_created_at',
-      'stripe_last_event_id'
+      'subscription_current_period_end'
     );
 
-  if lifecycle_column_count <> 6 then
-    raise exception 'Expected 6 Stripe lifecycle columns, found %', lifecycle_column_count;
+  if lifecycle_column_count <> 5 then
+    raise exception 'Expected 5 Stripe lifecycle columns, found %', lifecycle_column_count;
   end if;
 
   if not exists (
@@ -40,17 +39,6 @@ begin
       and indexname = 'novelight_profiles_stripe_subscription_id_unique'
   ) then
     raise exception 'Unique Stripe subscription index is missing';
-  end if;
-
-  if exists (
-    select 1
-    from public.profiles
-    where stripe_customer_id is not null
-      and stripe_customer_id <> ''
-    group by stripe_customer_id
-    having count(*) > 1
-  ) then
-    raise exception 'Duplicate Stripe customer mappings remain after migration';
   end if;
 end
 $$;

@@ -3,6 +3,15 @@ const PRICE_ENV_BY_PLAN = Object.freeze({
   premium: 'STRIPE_PREMIUM_PRICE_ID'
 });
 
+const PORTAL_STATUSES = new Set([
+  'active',
+  'trialing',
+  'past_due',
+  'unpaid',
+  'incomplete',
+  'paused'
+]);
+
 function getBearerToken(authorization) {
   const bearerMatch =
     typeof authorization === 'string'
@@ -31,6 +40,26 @@ async function getProfile(supabase, userId) {
   }
 
   return data?.[0] ?? null;
+}
+
+async function shouldUsePortal(stripe, profile) {
+  if (!profile.stripe_customer_id) {
+    return profile.plan !== 'free';
+  }
+
+  if (profile.plan !== 'free') {
+    return true;
+  }
+
+  const subscriptions = await stripe.subscriptions.list({
+    customer: profile.stripe_customer_id,
+    status: 'all',
+    limit: 100
+  });
+
+  return (subscriptions.data ?? []).some((subscription) =>
+    PORTAL_STATUSES.has(subscription.status)
+  );
 }
 
 export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
@@ -88,7 +117,7 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
         });
       }
 
-      if (profile.plan !== 'free') {
+      if (await shouldUsePortal(stripe, profile)) {
         if (!profile.stripe_customer_id) {
           throw new Error('Paid profile is missing stripe_customer_id');
         }
