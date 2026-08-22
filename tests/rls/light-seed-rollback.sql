@@ -11,12 +11,12 @@ select public.test_assert(
 );
 
 select public.test_assert(
-  to_regprocedure('public.light_seed_status(uuid)') is null,
+  to_regprocedure('public.light_seed_status(text)') is null,
   'light_seed_status function must be removed by rollback'
 );
 
 select public.test_assert(
-  to_regprocedure('public.plant_light_seed(uuid)') is null,
+  to_regprocedure('public.plant_light_seed(text)') is null,
   'plant_light_seed function must be removed by rollback'
 );
 
