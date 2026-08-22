@@ -5,7 +5,7 @@ set role anon;
 select set_config('request.jwt.claim.sub', '', false);
 
 select public.test_assert(
-  public.light_seed_status('10000000-0000-0000-0000-000000000001'::uuid)->>'reason' = 'login_required',
+  public.light_seed_status('10000000-0000-0000-0000-000000000001')->>'reason' = 'login_required',
   'anonymous published/unknown status should require login'
 );
 
@@ -22,7 +22,7 @@ select set_config(
 do $$
 begin
   begin
-    perform public.plant_light_seed('10000000-0000-0000-0000-000000000001'::uuid);
+    perform public.plant_light_seed('10000000-0000-0000-0000-000000000001');
     raise exception 'author unexpectedly seeded own work';
   exception
     when sqlstate '42501' then null;
@@ -43,7 +43,6 @@ begin
   begin
     insert into public.light_seeds (
       reader_id,
-      novel_id,
       novel_id_snapshot,
       author_id_snapshot,
       seed_month,
@@ -52,7 +51,6 @@ begin
       rule_version
     ) values (
       '33333333-3333-3333-3333-333333333333',
-      '10000000-0000-0000-0000-000000000001',
       '10000000-0000-0000-0000-000000000001',
       '11111111-1111-1111-1111-111111111111',
       date_trunc('month', timezone('Asia/Tokyo', now()))::date,
@@ -68,14 +66,14 @@ end
 $$;
 
 select public.test_assert(
-  public.light_seed_status('20000000-0000-0000-0000-000000000001'::uuid)->>'reason' = 'no_longer_unknown',
+  public.light_seed_status('20000000-0000-0000-0000-000000000001')->>'reason' = 'no_longer_unknown',
   'high-PV work should no longer be LIGHT SEED eligible'
 );
 
 do $$
 begin
   begin
-    perform public.plant_light_seed('20000000-0000-0000-0000-000000000001'::uuid);
+    perform public.plant_light_seed('20000000-0000-0000-0000-000000000001');
     raise exception 'reader unexpectedly seeded high-PV work';
   exception
     when check_violation then null;
@@ -84,23 +82,23 @@ end
 $$;
 
 select public.plant_light_seed(
-  '10000000-0000-0000-0000-000000000001'::uuid
+  '10000000-0000-0000-0000-000000000001'
 );
 
 select public.test_assert(
-  (public.light_seed_status('10000000-0000-0000-0000-000000000001'::uuid)->>'already_seeded')::boolean,
+  (public.light_seed_status('10000000-0000-0000-0000-000000000001')->>'already_seeded')::boolean,
   'seeded work should report already_seeded'
 );
 
 select public.test_assert(
-  (public.light_seed_status('70000000-0000-0000-0000-000000000001'::uuid)->>'remaining_this_month')::integer = 9,
+  (public.light_seed_status('70000000-0000-0000-0000-000000000001')->>'remaining_this_month')::integer = 9,
   'one successful seed should leave nine monthly seeds'
 );
 
 do $$
 begin
   begin
-    perform public.plant_light_seed('10000000-0000-0000-0000-000000000001'::uuid);
+    perform public.plant_light_seed('10000000-0000-0000-0000-000000000001');
     raise exception 'reader unexpectedly seeded same work twice';
   exception
     when unique_violation then null;
@@ -114,7 +112,7 @@ declare
 begin
   for i in 1..9 loop
     perform public.plant_light_seed(
-      ('70000000-0000-0000-0000-' || lpad(i::text, 12, '0'))::uuid
+      '70000000-0000-0000-0000-' || lpad(i::text, 12, '0')
     );
   end loop;
 end
@@ -129,14 +127,14 @@ select public.test_assert(
 );
 
 select public.test_assert(
-  (public.light_seed_status('70000000-0000-0000-0000-000000000010'::uuid)->>'reason') = 'monthly_limit_reached',
+  (public.light_seed_status('70000000-0000-0000-0000-000000000010')->>'reason') = 'monthly_limit_reached',
   'status should report monthly limit after ten seeds'
 );
 
 do $$
 begin
   begin
-    perform public.plant_light_seed('70000000-0000-0000-0000-000000000010'::uuid);
+    perform public.plant_light_seed('70000000-0000-0000-0000-000000000010');
     raise exception 'reader unexpectedly exceeded monthly seed limit';
   exception
     when check_violation then null;
@@ -166,7 +164,7 @@ select set_config(
   false
 );
 
-select public.plant_light_seed('70000000-0000-0000-0000-000000000024'::uuid);
+select public.plant_light_seed('70000000-0000-0000-0000-000000000024');
 
 reset role;
 
@@ -185,7 +183,6 @@ select public.test_assert(
     select 1
     from public.light_seeds
     where reader_id = '66666666-6666-6666-6666-666666666666'
-      and novel_id is null
       and novel_id_snapshot = '70000000-0000-0000-0000-000000000024'
   ),
   'seed history must survive later novel deletion'
