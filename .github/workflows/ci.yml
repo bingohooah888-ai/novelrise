@@ -37,6 +37,11 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Show formatting diff
+        run: |
+          npm run format
+          git diff -- .github/workflows/supabase-production.yml
+
       - name: Check formatting
         run: npm run format:check
 
