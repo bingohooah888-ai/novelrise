@@ -48,7 +48,7 @@ MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈�
 
 GitHub Actionsではmainへのpushとmain向けPull Requestに対して、Node.js 24、`npm ci`、Prettierチェック、ESLint、JavaScript自動テスト、PostgreSQL 17上のRLS統合テスト、API JavaScript構文チェックを自動実行する。RLS統合テストは `tests/rls/` のfixtureへ対象migrationを実際に適用し、anon・作者本人・別作者の閲覧境界に加え、作品・エピソードの作成、所有権変更防止、他作者による更新・削除拒否を検証する。write RLS migrationはprecheck・postcheck・rollbackもCIで実行し、復旧可能性まで確認する。依存関係を変更した場合は `package.json` と `package-lock.json` を必ず同じ変更として扱う。現時点でbuildスクリプトはない。追加時は `package.json` と本書を同時に更新する。
 
-本番Supabaseへのmigrationは `.github/workflows/supabase-production.yml` の `workflow_dispatch` だけから実行する。通常のmain pushでは自動適用しない。`status` でmigration historyを確認し、`dry-run` でpending migrationを確認してから、`deploy` と正確な確認文字列 `DEPLOY` を指定した場合だけ本番へ適用する。workflowは `production` environmentを使用し、`SUPABASE_ACCESS_TOKEN` と `PRODUCTION_DB_PASSWORD` をGitHub Secretsから受け取る。初回CLI移行時は、SQL Editor等から既に適用したmigrationがremote historyに記録されていない可能性があるため、想定外のmigrationがpendingならdeployせずhistory alignmentを先に行う。詳細は `docs/SUPABASE-PRODUCTION-DEPLOY.md` を参照する。
+本番Supabaseへのmigrationは `.github/workflows/supabase-production.yml` の `workflow_dispatch` だけから実行する。通常のmain pushでは自動適用しない。`status` でmigration historyを確認し、`dry-run` でpending migrationを確認してから、`deploy` と正確な確認文字列 `DEPLOY` を指定した場合だけ本番へ適用する。初回CLI移行時のhistory alignmentは、本番適用済みをDB実状態で確認した既知versionに限り `repair-history` と正確な確認文字列 `REPAIR` で実行し、schema SQLは再実行しない。workflowは `production` environmentを使用し、`SUPABASE_ACCESS_TOKEN` と `PRODUCTION_DB_PASSWORD` をGitHub Secretsから受け取る。想定外のmigrationがpendingならdeployせずhistory alignmentを先に行う。詳細は `docs/SUPABASE-PRODUCTION-DEPLOY.md` を参照する。
 
 ## Coding Style & Naming Conventions
 
