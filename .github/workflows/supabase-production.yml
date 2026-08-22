@@ -1,6 +1,11 @@
 name: Supabase Production Migration
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/supabase-production.yml'
   workflow_dispatch:
     inputs:
       mode:
@@ -28,10 +33,11 @@ concurrency:
 
 jobs:
   migrate:
-    name: ${{ inputs.mode }} production migrations
+    name: ${{ github.event_name == 'push' && 'automatic status + dry-run' || inputs.mode }} production migrations
     runs-on: ubuntu-latest
     environment: production
     env:
+      MIGRATION_MODE: ${{ github.event_name == 'push' && 'dry-run' || inputs.mode }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
@@ -67,7 +73,7 @@ jobs:
         run: supabase migration list --linked
 
       - name: Require explicit history repair confirmation
-        if: inputs.mode == 'repair-history'
+        if: env.MIGRATION_MODE == 'repair-history'
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
         shell: bash
@@ -78,7 +84,7 @@ jobs:
           fi
 
       - name: Align verified production migration history
-        if: inputs.mode == 'repair-history'
+        if: env.MIGRATION_MODE == 'repair-history'
         shell: bash
         run: |
           test -f supabase/migrations/20260819190000_secure_content_rls_and_constraints.sql
@@ -87,11 +93,11 @@ jobs:
           supabase migration repair --status applied 20260822194000
 
       - name: Dry-run pending migrations
-        if: inputs.mode == 'dry-run' || inputs.mode == 'deploy'
+        if: env.MIGRATION_MODE == 'dry-run' || env.MIGRATION_MODE == 'deploy'
         run: supabase db push --linked --dry-run
 
       - name: Require explicit deploy confirmation
-        if: inputs.mode == 'deploy'
+        if: env.MIGRATION_MODE == 'deploy'
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
         shell: bash
@@ -102,9 +108,9 @@ jobs:
           fi
 
       - name: Apply pending migrations
-        if: inputs.mode == 'deploy'
+        if: env.MIGRATION_MODE == 'deploy'
         run: supabase db push --linked --yes
 
       - name: Verify production migration status
-        if: inputs.mode == 'deploy' || inputs.mode == 'repair-history'
+        if: env.MIGRATION_MODE == 'deploy' || env.MIGRATION_MODE == 'repair-history'
         run: supabase migration list --linked
