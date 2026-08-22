@@ -33,7 +33,9 @@ MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈�
 
 ## Build, Test, and Development Commands
 
-- `npm install`: Supabase、Stripe、開発用チェックツールの依存関係をインストールする。
+- Node.jsは24系を使用する。`.nvmrc` と `package.json` の `engines.node` を基準にする。
+- `npm ci`: `package-lock.json` に固定された依存関係を再現可能な状態でインストールする。通常の開発・CIではこちらを優先する。
+- `npm install`: 依存関係を追加・更新して `package-lock.json` を更新するときに使用する。
 - `npm run lint`: `api/**/*.js` をESLintで検査する。
 - `npm run format`: API、設定ファイル、JSON/YAMLをPrettierで整形する。
 - `npm run format:check`: Prettier整形が必要なファイルがないか検査する。
@@ -41,7 +43,7 @@ MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈�
 - `npx vercel dev`: 環境変数を設定した状態で静的ページと `/api/*` を実行する。
 - `git diff --check`: 不正な空白を検査する。
 
-GitHub Actionsではmainへのpushとmain向けPull Requestに対して、依存関係のインストール、Prettierチェック、ESLint、API JavaScript構文チェックを自動実行する。現時点で自動テスト・buildスクリプトはない。追加時は `npm test` 等として `package.json` に定義し、本書も更新する。
+GitHub Actionsではmainへのpushとmain向けPull Requestに対して、Node.js 24、`npm ci`、Prettierチェック、ESLint、API JavaScript構文チェックを自動実行する。依存関係を変更した場合は `package.json` と `package-lock.json` を必ず同じ変更として扱う。現時点で自動テスト・buildスクリプトはない。追加時は `npm test` 等として `package.json` に定義し、本書も更新する。
 
 ## Coding Style & Naming Conventions
 
