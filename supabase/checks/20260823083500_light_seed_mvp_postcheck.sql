@@ -51,24 +51,24 @@ begin
     raise exception 'LIGHT SEED rules must not be directly exposed';
   end if;
 
-  if to_regprocedure('public.light_seed_status(uuid)') is null then
-    raise exception 'public.light_seed_status(uuid) is missing';
+  if to_regprocedure('public.light_seed_status(text)') is null then
+    raise exception 'public.light_seed_status(text) is missing';
   end if;
 
-  if to_regprocedure('public.plant_light_seed(uuid)') is null then
-    raise exception 'public.plant_light_seed(uuid) is missing';
+  if to_regprocedure('public.plant_light_seed(text)') is null then
+    raise exception 'public.plant_light_seed(text) is missing';
   end if;
 
-  if not has_function_privilege('authenticated', 'public.plant_light_seed(uuid)', 'EXECUTE') then
+  if not has_function_privilege('authenticated', 'public.plant_light_seed(text)', 'EXECUTE') then
     raise exception 'authenticated must be able to execute plant_light_seed';
   end if;
 
-  if has_function_privilege('anon', 'public.plant_light_seed(uuid)', 'EXECUTE') then
+  if has_function_privilege('anon', 'public.plant_light_seed(text)', 'EXECUTE') then
     raise exception 'anon must not be able to execute plant_light_seed';
   end if;
 
-  if not has_function_privilege('authenticated', 'public.light_seed_status(uuid)', 'EXECUTE')
-     or not has_function_privilege('anon', 'public.light_seed_status(uuid)', 'EXECUTE') then
+  if not has_function_privilege('authenticated', 'public.light_seed_status(text)', 'EXECUTE')
+     or not has_function_privilege('anon', 'public.light_seed_status(text)', 'EXECUTE') then
     raise exception 'status function must be readable by anon and authenticated';
   end if;
 
