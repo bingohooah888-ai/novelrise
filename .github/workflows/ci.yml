@@ -41,6 +41,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Preview Dependabot workflow formatting
+        run: npx prettier .github/workflows/dependabot-safe-auto-merge.yml
+
       - name: Check formatting
         run: npm run format:check
 
