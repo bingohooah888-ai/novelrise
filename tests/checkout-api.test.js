@@ -198,7 +198,14 @@ test('paid users are redirected to the billing portal', async () => {
 });
 
 test('Stripe-side pending or active subscription blocks a duplicate checkout during webhook lag', async () => {
-  for (const status of ['active', 'trialing', 'past_due', 'unpaid', 'incomplete', 'paused']) {
+  for (const status of [
+    'active',
+    'trialing',
+    'past_due',
+    'unpaid',
+    'incomplete',
+    'paused'
+  ]) {
     const dependencies = createDependencies({
       profile: { plan: 'free', stripe_customer_id: 'cus_existing' },
       existingSubscriptions: [{ id: `sub_${status}`, status }]

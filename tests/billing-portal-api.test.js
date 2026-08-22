@@ -102,10 +102,7 @@ test('billing portal requires POST and authentication', async () => {
   const authenticatedHandler = createBillingPortalHandler(dependencies);
   const second = createResponse();
 
-  await authenticatedHandler(
-    { method: 'POST', headers: {} },
-    second.res
-  );
+  await authenticatedHandler({ method: 'POST', headers: {} }, second.res);
 
   assert.equal(second.state.statusCode, 401);
   assert.equal(dependencies.calls.tokens.length, 0);

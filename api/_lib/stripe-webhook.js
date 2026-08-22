@@ -55,7 +55,8 @@ function currentPeriodEnd(subscription) {
 
 function compareSubscriptions(a, b) {
   const accessDifference =
-    Number(ACCESS_STATUSES.has(b.status)) - Number(ACCESS_STATUSES.has(a.status));
+    Number(ACCESS_STATUSES.has(b.status)) -
+    Number(ACCESS_STATUSES.has(a.status));
 
   if (accessDifference !== 0) {
     return accessDifference;
@@ -133,10 +134,7 @@ export async function syncCustomerSubscription({
 
   const profile = await findProfile(supabase, { userId, customerId });
 
-  if (
-    profile.stripe_customer_id &&
-    profile.stripe_customer_id !== customerId
-  ) {
+  if (profile.stripe_customer_id && profile.stripe_customer_id !== customerId) {
     throw new Error('Stripe customer does not match the billing profile');
   }
 
@@ -173,7 +171,11 @@ export async function syncCustomerSubscription({
     if (!plan) {
       throw new Error('Active subscription uses an unknown Stripe price');
     }
-  } else if (!NON_RENEWABLE_STATUSES.has(status) && status !== 'incomplete' && status !== 'paused') {
+  } else if (
+    !NON_RENEWABLE_STATUSES.has(status) &&
+    status !== 'incomplete' &&
+    status !== 'paused'
+  ) {
     throw new Error(`Unsupported Stripe subscription status: ${status}`);
   }
 
@@ -186,8 +188,7 @@ export async function syncCustomerSubscription({
       ? canonical.created
       : null,
     subscription_status: status,
-    subscription_cancel_at_period_end:
-      canonical.cancel_at_period_end === true,
+    subscription_cancel_at_period_end: canonical.cancel_at_period_end === true,
     subscription_current_period_end: currentPeriodEnd(canonical)
   });
 

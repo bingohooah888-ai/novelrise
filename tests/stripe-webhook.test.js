@@ -50,7 +50,10 @@ function subscription({
   };
 }
 
-function createDependencies({ profiles = [baseProfile()], subscriptionsByCustomer = {} } = {}) {
+function createDependencies({
+  profiles = [baseProfile()],
+  subscriptionsByCustomer = {}
+} = {}) {
   const storedProfiles = profiles.map((profile) => ({ ...profile }));
   const calls = {
     subscriptionLists: [],
@@ -395,7 +398,10 @@ test('no remaining Stripe subscriptions resets the profile to Free', async () =>
 
   const result = await processStripeEvent({
     ...dependencies,
-    event: event('customer.subscription.deleted', subscription({ status: 'canceled' })),
+    event: event(
+      'customer.subscription.deleted',
+      subscription({ status: 'canceled' })
+    ),
     env
   });
 
