@@ -52,7 +52,13 @@ jobs:
         run: |
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/fixture.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260819190000_secure_content_rls_and_constraints.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260822_content_write_rls_precheck.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260822194000_manage_content_write_rls.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/read-access.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/write-access.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260822_content_write_rls_postcheck.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260822194000_manage_content_write_rls_rollback.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/write-rollback.sql
 
       - name: Check API JavaScript syntax
         run: |

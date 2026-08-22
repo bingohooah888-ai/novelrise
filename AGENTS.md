@@ -44,7 +44,7 @@ MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈�
 - `npx vercel dev`: 環境変数を設定した状態で静的ページと `/api/*` を実行する。
 - `git diff --check`: 不正な空白を検査する。
 
-GitHub Actionsではmainへのpushとmain向けPull Requestに対して、Node.js 24、`npm ci`、Prettierチェック、ESLint、JavaScript自動テスト、PostgreSQL 17上のRLS統合テスト、API JavaScript構文チェックを自動実行する。RLS統合テストは `tests/rls/` のfixtureへ対象migrationを実際に適用し、anon・作者本人・別作者の閲覧境界を検証する。依存関係を変更した場合は `package.json` と `package-lock.json` を必ず同じ変更として扱う。現時点でbuildスクリプトはない。追加時は `package.json` と本書を同時に更新する。
+GitHub Actionsではmainへのpushとmain向けPull Requestに対して、Node.js 24、`npm ci`、Prettierチェック、ESLint、JavaScript自動テスト、PostgreSQL 17上のRLS統合テスト、API JavaScript構文チェックを自動実行する。RLS統合テストは `tests/rls/` のfixtureへ対象migrationを実際に適用し、anon・作者本人・別作者の閲覧境界に加え、作品・エピソードの作成、所有権変更防止、他作者による更新・削除拒否を検証する。write RLS migrationはprecheck・postcheck・rollbackもCIで実行し、復旧可能性まで確認する。依存関係を変更した場合は `package.json` と `package-lock.json` を必ず同じ変更として扱う。現時点でbuildスクリプトはない。追加時は `package.json` と本書を同時に更新する。
 
 ## Coding Style & Naming Conventions
 
@@ -54,7 +54,7 @@ HTML/CSS/JavaScriptは2スペースでインデントする。APIではES Module
 
 変更ページはデスクトップ・モバイル、認証状態、所有者限定状態を手動確認する。APIでは不正メソッド、認証不備、成功応答、安全なエラー内容を確認する。チェックアウトAPIの認証・プラン制限・Stripeへ渡すユーザー情報は自動テストで保護し、Stripe webhookは署名付きテストイベントで検証する。DB変更は対応するprecheck、migration、postcheck、非本番でのrollback確認を一組とする。
 
-novels/episodesのSELECT RLSは、公開作品・下書き・親作品の公開状態・所有者境界をCIのPostgreSQL統合テストでも確認する。INSERT/UPDATE/DELETEポリシーは既存DBの定義を推測してテストへ写さず、正式なmigrationとしてリポジトリに記録されたものから自動テスト対象へ追加する。
+novels/episodesのSELECT RLSは、公開作品・下書き・親作品の公開状態・所有者境界をCIのPostgreSQL統合テストで確認する。INSERT/UPDATE/DELETE RLSは正式なmigrationとして管理し、認証ユーザー本人だけが自分の作品を作成・更新・削除できること、エピソードは本人所有の作品にだけ追加できること、`user_id` や `novel_id` を使った所有権のすり替えができないことを自動テストする。既存write policyを置き換えるmigrationでは適用前ポリシーをバックアップし、rollbackで復元可能にする。
 
 認証、Supabase RLS、Stripe、課金、権限、個人情報、セキュリティ、データ削除・移行は高リスク変更として扱う。影響範囲、権限境界、失敗時の挙動を確認し、速度より安全性を優先する。破壊的変更の前にバックアップ、rollback、または再生成手段があり、実際に復旧可能かを確認する。
 
