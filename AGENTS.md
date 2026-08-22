@@ -29,21 +29,22 @@ MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈�
 
 ## Project Structure & Module Organization
 
-ユーザー向けページはルートのHTML（`index.html`、`novel.html`、`episode-post.html` など）で、CSSとブラウザJavaScriptも各ページ内にある。Vercel APIは `api/`、正式な方針・設計資料は `docs/` に置く。Supabase関連は、適用SQLを `supabase/migrations/`、復旧SQLを `supabase/rollback/`、適用前後の検証SQLを `supabase/checks/` に配置する。
+ユーザー向けページはルートのHTML（`index.html`、`novel.html`、`episode-post.html` など）で、CSSとブラウザJavaScriptも各ページ内にある。Vercel APIは `api/`、自動テストは `tests/`、正式な方針・設計資料は `docs/` に置く。Supabase関連は、適用SQLを `supabase/migrations/`、復旧SQLを `supabase/rollback/`、適用前後の検証SQLを `supabase/checks/` に配置する。
 
 ## Build, Test, and Development Commands
 
 - Node.jsは24系を使用する。`.nvmrc` と `package.json` の `engines.node` を基準にする。
 - `npm ci`: `package-lock.json` に固定された依存関係を再現可能な状態でインストールする。通常の開発・CIではこちらを優先する。
 - `npm install`: 依存関係を追加・更新して `package-lock.json` を更新するときに使用する。
-- `npm run lint`: `api/**/*.js` をESLintで検査する。
-- `npm run format`: API、設定ファイル、JSON/YAMLをPrettierで整形する。
+- `npm test`: Node.js標準テストランナーで `tests/` の自動テストを実行する。
+- `npm run lint`: `api/**/*.js` と `tests/**/*.js` をESLintで検査する。
+- `npm run format`: API、テスト、設定ファイル、JSON/YAMLをPrettierで整形する。
 - `npm run format:check`: Prettier整形が必要なファイルがないか検査する。
 - `npx serve .`: 静的ページをローカル配信する。
 - `npx vercel dev`: 環境変数を設定した状態で静的ページと `/api/*` を実行する。
 - `git diff --check`: 不正な空白を検査する。
 
-GitHub Actionsではmainへのpushとmain向けPull Requestに対して、Node.js 24、`npm ci`、Prettierチェック、ESLint、API JavaScript構文チェックを自動実行する。依存関係を変更した場合は `package.json` と `package-lock.json` を必ず同じ変更として扱う。現時点で自動テスト・buildスクリプトはない。追加時は `npm test` 等として `package.json` に定義し、本書も更新する。
+GitHub Actionsではmainへのpushとmain向けPull Requestに対して、Node.js 24、`npm ci`、Prettierチェック、ESLint、自動テスト、API JavaScript構文チェックを自動実行する。依存関係を変更した場合は `package.json` と `package-lock.json` を必ず同じ変更として扱う。現時点でbuildスクリプトはない。追加時は `package.json` と本書を同時に更新する。
 
 ## Coding Style & Naming Conventions
 
@@ -51,7 +52,7 @@ HTML/CSS/JavaScriptは2スペースでインデントする。APIではES Module
 
 ## Testing & High-Risk Changes
 
-変更ページはデスクトップ・モバイル、認証状態、所有者限定状態を手動確認する。APIでは不正メソッド、認証不備、成功応答、安全なエラー内容を確認し、Stripe webhookは署名付きテストイベントで検証する。DB変更は対応するprecheck、migration、postcheck、非本番でのrollback確認を一組とする。
+変更ページはデスクトップ・モバイル、認証状態、所有者限定状態を手動確認する。APIでは不正メソッド、認証不備、成功応答、安全なエラー内容を確認する。チェックアウトAPIの認証・プラン制限・Stripeへ渡すユーザー情報は自動テストで保護し、Stripe webhookは署名付きテストイベントで検証する。DB変更は対応するprecheck、migration、postcheck、非本番でのrollback確認を一組とする。
 
 認証、Supabase RLS、Stripe、課金、権限、個人情報、セキュリティ、データ削除・移行は高リスク変更として扱う。影響範囲、権限境界、失敗時の挙動を確認し、速度より安全性を優先する。破壊的変更の前にバックアップ、rollback、または再生成手段があり、実際に復旧可能かを確認する。
 

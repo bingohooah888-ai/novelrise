@@ -1,8 +1,9 @@
 {
   "scripts": {
-    "lint": "eslint \"api/**/*.js\"",
-    "format": "prettier --write \"api/**/*.js\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
-    "format:check": "prettier --check \"api/**/*.js\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\""
+    "test": "node --test",
+    "lint": "eslint \"api/**/*.js\" \"tests/**/*.js\"",
+    "format": "prettier --write \"api/**/*.js\" \"tests/**/*.js\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
+    "format:check": "prettier --check \"api/**/*.js\" \"tests/**/*.js\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\""
   },
   "engines": {
     "node": "24.x"

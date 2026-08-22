@@ -26,8 +26,11 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Lint API JavaScript
+      - name: Lint JavaScript
         run: npm run lint
+
+      - name: Run automated tests
+        run: npm test
 
       - name: Check API JavaScript syntax
         run: |
