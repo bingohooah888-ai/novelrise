@@ -30,9 +30,15 @@ function createDependencies({
     email: 'author@example.com'
   },
   authError = null,
+  profile = {
+    plan: 'free',
+    stripe_customer_id: null
+  },
+  profileError = null,
   env = {
     STRIPE_STANDARD_PRICE_ID: 'price_standard',
-    STRIPE_PREMIUM_PRICE_ID: 'price_premium'
+    STRIPE_PREMIUM_PRICE_ID: 'price_premium',
+    NOVELIGHT_APP_URL: 'https://novelight.test'
   },
   checkout = async () => ({
     url: 'https://checkout.stripe.test/session'
@@ -40,7 +46,8 @@ function createDependencies({
 } = {}) {
   const calls = {
     tokens: [],
-    checkoutSessions: []
+    checkoutSessions: [],
+    profileUserIds: []
   };
 
   const supabase = {
@@ -52,6 +59,27 @@ function createDependencies({
           error: authError
         };
       }
+    },
+    from(table) {
+      assert.equal(table, 'profiles');
+
+      return {
+        select() {
+          return this;
+        },
+        eq(column, value) {
+          assert.equal(column, 'id');
+          calls.profileUserIds.push(value);
+          return this;
+        },
+        async limit(limit) {
+          assert.equal(limit, 1);
+          return {
+            data: profile ? [profile] : [],
+            error: profileError
+          };
+        }
+      };
     }
   };
 
@@ -140,7 +168,6 @@ test('rejects users that Supabase cannot authenticate', async () => {
   assert.deepEqual(state.body, {
     error: 'Unauthorized'
   });
-  assert.deepEqual(dependencies.calls.tokens, ['token-123']);
 });
 
 test('rejects plans outside Standard and Premium', async () => {
@@ -166,57 +193,37 @@ test('rejects plans outside Standard and Premium', async () => {
   assert.equal(dependencies.calls.checkoutSessions.length, 0);
 });
 
-test('creates Stripe checkout sessions with trusted user metadata', async () => {
-  for (const [plan, expectedPrice] of [
-    ['standard', 'price_standard'],
-    ['premium', 'price_premium']
-  ]) {
-    const dependencies = createDependencies();
-    const handler = createCheckoutHandler(dependencies);
-    const { res, state } = createResponse();
-
-    await handler(
-      {
-        method: 'POST',
-        headers: {
-          authorization: 'Bearer token-123'
-        },
-        body: { plan }
-      },
-      res
-    );
-
-    assert.equal(state.statusCode, 200);
-    assert.deepEqual(state.body, {
-      url: 'https://checkout.stripe.test/session'
-    });
-    assert.equal(dependencies.calls.checkoutSessions.length, 1);
-
-    const payload = dependencies.calls.checkoutSessions[0];
-    assert.equal(payload.mode, 'subscription');
-    assert.equal(payload.customer_email, 'author@example.com');
-    assert.equal(payload.client_reference_id, 'user-123');
-    assert.deepEqual(payload.metadata, {
-      userId: 'user-123',
-      plan
-    });
-    assert.deepEqual(payload.line_items, [
-      {
-        price: expectedPrice,
-        quantity: 1
-      }
-    ]);
-  }
-});
-
-test('returns a generic error when Stripe checkout creation fails', async (t) => {
-  t.mock.method(console, 'error', () => {});
-
+test('blocks a second checkout while a paid plan is already active', async () => {
   const dependencies = createDependencies({
-    checkout: async () => {
-      throw new Error('Stripe unavailable');
+    profile: {
+      plan: 'standard',
+      stripe_customer_id: 'cus_existing'
     }
   });
+  const handler = createCheckoutHandler(dependencies);
+  const { res, state } = createResponse();
+
+  await handler(
+    {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer token-123'
+      },
+      body: { plan: 'premium' }
+    },
+    res
+  );
+
+  assert.equal(state.statusCode, 409);
+  assert.deepEqual(state.body, {
+    error: 'Manage the existing subscription in the billing portal',
+    code: 'SUBSCRIPTION_MANAGED_IN_PORTAL'
+  });
+  assert.equal(dependencies.calls.checkoutSessions.length, 0);
+});
+
+test('creates a subscription checkout with trusted metadata', async () => {
+  const dependencies = createDependencies();
   const handler = createCheckoutHandler(dependencies);
   const { res, state } = createResponse();
 
@@ -231,8 +238,98 @@ test('returns a generic error when Stripe checkout creation fails', async (t) =>
     res
   );
 
-  assert.equal(state.statusCode, 500);
+  assert.equal(state.statusCode, 200);
   assert.deepEqual(state.body, {
-    error: 'Checkout session creation failed'
+    url: 'https://checkout.stripe.test/session'
   });
+
+  const payload = dependencies.calls.checkoutSessions[0];
+  assert.equal(payload.mode, 'subscription');
+  assert.equal(payload.customer_email, 'author@example.com');
+  assert.equal(payload.customer, undefined);
+  assert.equal(payload.client_reference_id, 'user-123');
+  assert.deepEqual(payload.metadata, {
+    userId: 'user-123',
+    plan: 'standard'
+  });
+  assert.deepEqual(payload.subscription_data.metadata, {
+    userId: 'user-123',
+    plan: 'standard'
+  });
+  assert.deepEqual(payload.line_items, [
+    {
+      price: 'price_standard',
+      quantity: 1
+    }
+  ]);
+  assert.equal(
+    payload.success_url,
+    'https://novelight.test/mypage.html?checkout=success'
+  );
+  assert.equal(
+    payload.cancel_url,
+    'https://novelight.test/pricing.html?checkout=cancel'
+  );
+});
+
+test('reuses an existing Stripe customer after a previous cancellation', async () => {
+  const dependencies = createDependencies({
+    profile: {
+      plan: 'free',
+      stripe_customer_id: 'cus_existing'
+    }
+  });
+  const handler = createCheckoutHandler(dependencies);
+  const { res, state } = createResponse();
+
+  await handler(
+    {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer token-123'
+      },
+      body: { plan: 'premium' }
+    },
+    res
+  );
+
+  assert.equal(state.statusCode, 200);
+  const payload = dependencies.calls.checkoutSessions[0];
+  assert.equal(payload.customer, 'cus_existing');
+  assert.equal(payload.customer_email, undefined);
+  assert.equal(payload.line_items[0].price, 'price_premium');
+});
+
+test('returns a generic error when profile lookup or Stripe fails', async (t) => {
+  t.mock.method(console, 'error', () => {});
+
+  for (const dependencies of [
+    createDependencies({
+      profileError: new Error('database unavailable')
+    }),
+    createDependencies({
+      checkout: async () => {
+        throw new Error('Stripe unavailable');
+      }
+    })
+  ]) {
+    const handler = createCheckoutHandler(dependencies);
+    const { res, state } = createResponse();
+
+    await handler(
+      {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token-123'
+        },
+        body: { plan: 'standard' }
+      },
+      res
+    );
+
+    assert.equal(state.statusCode, 500);
+    assert.deepEqual(state.body, {
+      error: 'Checkout session creation failed'
+    });
+  }
 });

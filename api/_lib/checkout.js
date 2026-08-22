@@ -12,6 +12,27 @@ function getBearerToken(authorization) {
   return bearerMatch?.[1] ?? null;
 }
 
+function getAppBaseUrl(env) {
+  return (env.NOVELIGHT_APP_URL || 'https://novelrise.vercel.app').replace(
+    /\/+$/,
+    ''
+  );
+}
+
+async function getProfile(supabase, userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('plan, stripe_customer_id')
+    .eq('id', userId)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Profile lookup failed: ${error.message}`);
+  }
+
+  return data?.[0] ?? null;
+}
+
 export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
   return async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -59,14 +80,35 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
 
       const userId = data.user.id;
       const email = data.user.email;
+      const profile = await getProfile(supabase, userId);
 
+      if (!profile) {
+        return res.status(409).json({
+          error: 'Author profile is not ready'
+        });
+      }
+
+      if (profile.plan !== 'free') {
+        return res.status(409).json({
+          error: 'Manage the existing subscription in the billing portal',
+          code: 'SUBSCRIPTION_MANAGED_IN_PORTAL'
+        });
+      }
+
+      const customer = profile.stripe_customer_id || undefined;
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
-        customer_email: email,
+        ...(customer ? { customer } : { customer_email: email }),
         client_reference_id: userId,
         metadata: {
-          userId: userId,
-          plan: plan
+          userId,
+          plan
+        },
+        subscription_data: {
+          metadata: {
+            userId,
+            plan
+          }
         },
         line_items: [
           {
@@ -74,9 +116,8 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
             quantity: 1
           }
         ],
-        success_url:
-          'https://novelrise.vercel.app/mypage.html?checkout=success',
-        cancel_url: 'https://novelrise.vercel.app/pricing.html?checkout=cancel'
+        success_url: `${getAppBaseUrl(env)}/mypage.html?checkout=success`,
+        cancel_url: `${getAppBaseUrl(env)}/pricing.html?checkout=cancel`
       });
 
       return res.status(200).json({

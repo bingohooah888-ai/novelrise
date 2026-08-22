@@ -5,7 +5,7 @@
     "lint": "eslint \"api/**/*.js\" \"tests/**/*.js\" \"tests/**/*.mjs\"",
     "format": "prettier --write \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
     "format:check": "prettier --check \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
-    "syntax:check": "node --input-type=module --check < api/create-checkout-session.js && node --input-type=module --check < api/stripe-webhook.js",
+    "syntax:check": "node --input-type=module --check < api/create-checkout-session.js && node --input-type=module --check < api/create-billing-portal-session.js && node --input-type=module --check < api/stripe-webhook.js",
     "preflight": "npm run format && npm run lint && npm test && npm run syntax:check && git diff --check"
   },
   "engines": {
