@@ -19,9 +19,8 @@ begin
     where table_schema = 'public'
       and table_name = 'novels'
       and column_name = 'id'
-      and data_type = 'uuid'
   ) then
-    raise exception 'public.novels.id must be uuid';
+    raise exception 'public.novels.id is required';
   end if;
 
   if not exists (
@@ -61,9 +60,8 @@ begin
     where table_schema = 'public'
       and table_name = 'favorites'
       and column_name = 'novel_id'
-      and data_type = 'uuid'
   ) then
-    raise exception 'public.favorites.novel_id must be uuid';
+    raise exception 'public.favorites.novel_id is required';
   end if;
 
   if to_regclass('public.light_seeds') is not null
@@ -71,8 +69,8 @@ begin
     raise exception 'LIGHT SEED tables already exist; review before applying';
   end if;
 
-  if to_regprocedure('public.light_seed_status(uuid)') is not null
-     or to_regprocedure('public.plant_light_seed(uuid)') is not null then
+  if to_regprocedure('public.light_seed_status(text)') is not null
+     or to_regprocedure('public.plant_light_seed(text)') is not null then
     raise exception 'LIGHT SEED functions already exist; review before applying';
   end if;
 end
