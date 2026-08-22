@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: write
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -16,32 +13,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Commit generated package lock
-        if: github.event_name == 'pull_request'
-        run: |
-          if [ ! -f package-lock.json ]; then
-            echo 'package-lock.json was not generated' >&2
-            exit 1
-          fi
-          if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add package-lock.json
-          git commit -m 'Lock npm dependencies'
-          git push origin HEAD:${{ github.head_ref }}
+      - name: Install locked dependencies
+        run: npm ci
 
       - name: Check formatting
         run: npm run format:check
