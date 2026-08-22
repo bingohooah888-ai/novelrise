@@ -7,6 +7,11 @@
 -- - only published, still-unknown works are eligible
 -- - paid plans do not affect LIGHT SEED
 -- - LIGHT SEED does not modify rankings or ratings
+--
+-- Novel identifiers are persisted as text snapshots on purpose. Early NOVELIGHT
+-- environments used numeric novel IDs while integration fixtures use UUIDs.
+-- Treating the public URL identifier as opaque text keeps LIGHT SEED compatible
+-- with both without rewriting historical discovery records if ID storage evolves.
 
 begin;
 
@@ -42,8 +47,7 @@ revoke all on table public.light_seed_rules from public, anon, authenticated;
 create table public.light_seeds (
   id uuid primary key default gen_random_uuid(),
   reader_id uuid not null,
-  novel_id uuid references public.novels(id) on delete set null,
-  novel_id_snapshot uuid not null,
+  novel_id_snapshot text not null,
   author_id_snapshot uuid not null,
   seeded_at timestamptz not null default now(),
   seed_month date not null,
@@ -74,7 +78,7 @@ using (
   and reader_id = (select auth.uid())
 );
 
-create or replace function public.light_seed_status(p_novel_id uuid)
+create or replace function public.light_seed_status(p_novel_id text)
 returns jsonb
 language plpgsql
 security definer
@@ -98,6 +102,19 @@ declare
   v_can_plant boolean := false;
   v_reason text := 'not_published';
 begin
+  if p_novel_id is null or btrim(p_novel_id) = '' then
+    return jsonb_build_object(
+      'eligible', false,
+      'can_plant', false,
+      'reason', 'invalid_novel_id',
+      'monthly_limit', 0,
+      'used_this_month', 0,
+      'remaining_this_month', 0,
+      'already_seeded', false,
+      'total_seed_count', 0
+    );
+  end if;
+
   select
     r.monthly_limit,
     r.max_pv,
@@ -118,7 +135,7 @@ begin
   select n.user_id, coalesce(n.pv, 0)::bigint
   into v_author_id, v_pv
   from public.novels n
-  where n.id = p_novel_id
+  where n.id::text = p_novel_id
     and n.status = 'published';
 
   if not found then
@@ -138,7 +155,7 @@ begin
   select count(*)::integer
   into v_favorites
   from public.favorites f
-  where f.novel_id = p_novel_id;
+  where f.novel_id::text = p_novel_id;
 
   select count(*)::bigint
   into v_total_seeds
@@ -194,10 +211,10 @@ begin
 end
 $$;
 
-revoke all on function public.light_seed_status(uuid) from public;
-grant execute on function public.light_seed_status(uuid) to anon, authenticated;
+revoke all on function public.light_seed_status(text) from public;
+grant execute on function public.light_seed_status(text) to anon, authenticated;
 
-create or replace function public.plant_light_seed(p_novel_id uuid)
+create or replace function public.plant_light_seed(p_novel_id text)
 returns jsonb
 language plpgsql
 security definer
@@ -220,6 +237,12 @@ begin
     raise exception using
       errcode = '42501',
       message = 'LIGHT SEED requires authentication';
+  end if;
+
+  if p_novel_id is null or btrim(p_novel_id) = '' then
+    raise exception using
+      errcode = '23514',
+      message = 'A valid novel identifier is required';
   end if;
 
   -- Serialize all LIGHT SEED writes for the same reader/month so concurrent
@@ -251,7 +274,7 @@ begin
   select n.user_id, coalesce(n.pv, 0)::bigint
   into v_author_id, v_pv
   from public.novels n
-  where n.id = p_novel_id
+  where n.id::text = p_novel_id
     and n.status = 'published'
   for share;
 
@@ -293,7 +316,7 @@ begin
   select count(*)::integer
   into v_favorites
   from public.favorites f
-  where f.novel_id = p_novel_id;
+  where f.novel_id::text = p_novel_id;
 
   if v_pv >= v_max_pv or v_favorites >= v_max_favorites then
     raise exception using
@@ -303,7 +326,6 @@ begin
 
   insert into public.light_seeds (
     reader_id,
-    novel_id,
     novel_id_snapshot,
     author_id_snapshot,
     seed_month,
@@ -312,7 +334,6 @@ begin
     rule_version
   ) values (
     v_uid,
-    p_novel_id,
     p_novel_id,
     v_author_id,
     v_month,
@@ -338,7 +359,7 @@ begin
 end
 $$;
 
-revoke all on function public.plant_light_seed(uuid) from public, anon;
-grant execute on function public.plant_light_seed(uuid) to authenticated;
+revoke all on function public.plant_light_seed(text) from public, anon;
+grant execute on function public.plant_light_seed(text) to authenticated;
 
 commit;
