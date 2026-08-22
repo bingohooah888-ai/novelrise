@@ -11,8 +11,8 @@ set pv = 1500
 where id = '20000000-0000-0000-0000-000000000001';
 
 -- A pool of eligible published works used for allowance and concurrency tests.
--- Administrative fixture inserts have no auth.uid(), so the author plan trigger
--- correctly treats these as import/test setup rather than user posting.
+-- Use a dedicated fixture-only author so these rows cannot pollute the later
+-- Free/Standard/Premium posting-limit counts.
 do $$
 declare
   i integer;
@@ -20,7 +20,7 @@ begin
   for i in 1..24 loop
     insert into public.novels (id, user_id, status, pv) values (
       ('70000000-0000-0000-0000-' || lpad(i::text, 12, '0'))::uuid,
-      '55555555-5555-5555-5555-555555555555',
+      '77777777-7777-7777-7777-777777777777',
       'published',
       0
     );
