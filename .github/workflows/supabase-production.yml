@@ -11,9 +11,10 @@ on:
         options:
           - status
           - dry-run
+          - repair-history
           - deploy
       confirmation:
-        description: Type DEPLOY only when mode is deploy
+        description: Type REPAIR for repair-history or DEPLOY for deploy
         required: false
         default: ''
         type: string
@@ -65,6 +66,26 @@ jobs:
       - name: Show migration status
         run: supabase migration list --linked
 
+      - name: Require explicit history repair confirmation
+        if: inputs.mode == 'repair-history'
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        shell: bash
+        run: |
+          if [ "$CONFIRMATION" != "REPAIR" ]; then
+            echo "History repair blocked: confirmation must be exactly REPAIR."
+            exit 1
+          fi
+
+      - name: Align verified production migration history
+        if: inputs.mode == 'repair-history'
+        shell: bash
+        run: |
+          test -f supabase/migrations/20260819190000_secure_content_rls_and_constraints.sql
+          test -f supabase/migrations/20260822194000_manage_content_write_rls.sql
+          supabase migration repair --status applied 20260819190000
+          supabase migration repair --status applied 20260822194000
+
       - name: Dry-run pending migrations
         if: inputs.mode == 'dry-run' || inputs.mode == 'deploy'
         run: supabase db push --linked --dry-run
@@ -85,5 +106,5 @@ jobs:
         run: supabase db push --linked --yes
 
       - name: Verify production migration status
-        if: inputs.mode == 'deploy'
+        if: inputs.mode == 'deploy' || inputs.mode == 'repair-history'
         run: supabase migration list --linked
