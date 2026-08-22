@@ -22,6 +22,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint API JavaScript
+        run: npm run lint
+
       - name: Check API JavaScript syntax
         run: |
           node --input-type=module --check < api/create-checkout-session.js

@@ -33,12 +33,15 @@ MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈�
 
 ## Build, Test, and Development Commands
 
-- `npm install`: SupabaseとStripeの依存関係をインストールする。
+- `npm install`: Supabase、Stripe、開発用チェックツールの依存関係をインストールする。
+- `npm run lint`: `api/**/*.js` をESLintで検査する。
+- `npm run format`: API、設定ファイル、JSON/YAMLをPrettierで整形する。
+- `npm run format:check`: Prettier整形が必要なファイルがないか検査する。
 - `npx serve .`: 静的ページをローカル配信する。
 - `npx vercel dev`: 環境変数を設定した状態で静的ページと `/api/*` を実行する。
 - `git diff --check`: 不正な空白を検査する。
 
-現時点で自動テスト・lint・buildスクリプトはない。追加時は `npm test` や `npm run lint` として `package.json` に定義し、本書も更新する。
+GitHub Actionsではmainへのpushとmain向けPull Requestに対して、依存関係のインストール、Prettierチェック、ESLint、API JavaScript構文チェックを自動実行する。現時点で自動テスト・buildスクリプトはない。追加時は `npm test` 等として `package.json` に定義し、本書も更新する。
 
 ## Coding Style & Naming Conventions
 

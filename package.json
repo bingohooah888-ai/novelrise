@@ -1,6 +1,15 @@
 {
+  "scripts": {
+    "lint": "eslint \"api/**/*.js\"",
+    "format": "prettier --write \"api/**/*.js\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
+    "format:check": "prettier --check \"api/**/*.js\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\""
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
     "stripe": "^20.4.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
   }
 }
