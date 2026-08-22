@@ -15,7 +15,7 @@ on:
       confirmation:
         description: Type DEPLOY only when mode is deploy
         required: false
-        default: ""
+        default: ''
         type: string
 
 permissions:
