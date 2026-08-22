@@ -13,7 +13,7 @@
     "stripe": "^20.4.0"
   },
   "devDependencies": {
-    "eslint": "^9.0.0",
+    "eslint": "^10.8.1",
     "prettier": "^3.0.0"
   }
 }
