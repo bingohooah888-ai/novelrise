@@ -1,6 +1,10 @@
 # Supabase production migration deployment
 
-NOVELIGHTの本番Supabase migrationは、`.github/workflows/supabase-production.yml` から手動起動する。
+NOVELIGHTの本番Supabase migrationは、`.github/workflows/supabase-production.yml` で管理する。
+
+`main` に `supabase/migrations/**` の変更が入った場合は、`status` と `dry-run` を自動実行する。これらは本番DBを変更しない安全確認であり、通常運用ではユーザーの手動起動を不要とする。
+
+本番DBを実際に変更する `deploy` と、migration historyを書き換える `repair-history` は自動実行しない。これらは引き続き `workflow_dispatch` から明示的に起動し、確認文字列を要求する。
 
 ## GitHub Secrets
 
@@ -13,13 +17,19 @@ Project ref `fiepaguycecrredwrcwx` はworkflow内で固定しており、secret�
 
 ## Workflow modes
 
+### automatic status + dry-run
+
+`main` へSupabase migration、またはproduction migration workflow自体の変更が入ると自動起動する。
+
+最初に `supabase migration list --linked` でlocal/remote migration historyを表示し、続けて `supabase db push --linked --dry-run` を実行する。本番DBは変更しない。
+
 ### status
 
-本番projectへlinkし、`supabase migration list --linked` だけを実行する。DB schemaは変更しない。
+手動確認が必要な場合に `workflow_dispatch` から利用できる。本番projectへlinkし、`supabase migration list --linked` だけを実行する。DB schemaは変更しない。
 
 ### dry-run
 
-migration statusを表示した後、`supabase db push --linked --dry-run` を実行する。どのmigrationが適用対象になるかを確認するだけで、本番DBは変更しない。
+手動再確認が必要な場合に `workflow_dispatch` から利用できる。migration statusを表示した後、`supabase db push --linked --dry-run` を実行する。どのmigrationが適用対象になるかを確認するだけで、本番DBは変更しない。
 
 ### repair-history
 
@@ -34,12 +44,14 @@ confirmationが正確に `REPAIR` の場合だけ実行する。`supabase migrat
 
 ### deploy
 
-statusとdry-runを先に実行し、confirmationが正確に `DEPLOY` の場合だけ `supabase db push --linked --yes` を実行する。最後にmigration statusを再表示する。
+`workflow_dispatch` からのみ実行する。statusとdry-runを先に実行し、confirmationが正確に `DEPLOY` の場合だけ `supabase db push --linked --yes` を実行する。最後にmigration statusを再表示する。
 
 ## Safety rules
 
 - 本番DB変更は必ずPRのCI成功後に行う。
-- まず `status`、次に `dry-run` を確認し、想定したmigrationだけがpendingであることを確認する。
+- `main` にmigrationが入ったら、自動 `status` + `dry-run` の結果を確認する。
+- 自動チェックは本番DBを変更しない。`deploy` は絶対に自動化しない。
+- `deploy` 前に、想定したmigrationだけがpendingであることを確認する。
 - 想定外の古いmigrationがpendingに出た場合は `deploy` しない。
 - `repair-history` は、対象versionが本番へ適用済みであることをDB実状態から確認した場合だけ実行する。
 - migrationには可能な限りprecheck、postcheck、rollbackを用意する。
