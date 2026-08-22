@@ -120,16 +120,14 @@ select public.test_assert(
 );
 
 select public.test_assert(
-  exists (
-    select 1
+  (
+    select count(*)
     from public.episodes
     where id in (
       '11000000-0000-0000-0000-000000000002',
       '11000000-0000-0000-0000-000000000003'
     )
-    group by true
-    having count(*) = 2
-  ),
+  ) = 2,
   'author A must see own draft episode and own episode under a draft novel'
 );
 
@@ -179,6 +177,18 @@ select public.test_assert(
 select public.test_assert(
   (select count(*) from public.episodes) = 4,
   'author B must see public episodes plus all episodes belonging to own novels'
+);
+
+select public.test_assert(
+  (
+    select count(*)
+    from public.episodes
+    where id in (
+      '22000000-0000-0000-0000-000000000002',
+      '22000000-0000-0000-0000-000000000003'
+    )
+  ) = 2,
+  'author B must see own draft episode and own episode under a draft novel'
 );
 
 select public.test_assert(
