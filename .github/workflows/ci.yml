@@ -14,9 +14,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  quality:
+    name: Quality, RLS, and browser tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -72,3 +73,70 @@ jobs:
 
       - name: Check API JavaScript syntax
         run: npm run syntax:check
+
+      - name: Install browser test dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser smoke tests
+        working-directory: tests/e2e
+        run: npm test
+
+  dependency-audit:
+    name: Dependency vulnerability audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/e2e/package-lock.json
+
+      - name: Audit application dependencies
+        run: npm audit --audit-level=high
+
+      - name: Audit browser test dependencies
+        working-directory: tests/e2e
+        run: npm audit --audit-level=high
+
+  check:
+    name: check
+    if: always()
+    needs: [quality, dependency-audit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Verify required gates
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          DEPENDENCY_AUDIT_RESULT: ${{ needs.dependency-audit.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "$QUALITY_RESULT" != "success" ]; then
+            echo "Quality gate failed: $QUALITY_RESULT"
+            exit 1
+          fi
+
+          if [ "$DEPENDENCY_AUDIT_RESULT" != "success" ]; then
+            echo "Dependency audit gate failed: $DEPENDENCY_AUDIT_RESULT"
+            exit 1
+          fi
+
+          echo "All required NOVELIGHT CI gates passed."

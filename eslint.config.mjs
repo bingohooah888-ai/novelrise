@@ -1,6 +1,6 @@
 export default [
   {
-    files: ['api/**/*.js', 'tests/**/*.js'],
+    files: ['api/**/*.js', 'tests/**/*.js', 'tests/**/*.mjs'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
