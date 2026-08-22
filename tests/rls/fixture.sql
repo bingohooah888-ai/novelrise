@@ -44,7 +44,7 @@ create table public.favorites (
   novel_id uuid not null references public.novels(id)
 );
 
-grant select on public.novels, public.episodes to anon, authenticated;
+grant select, insert, update, delete on public.novels, public.episodes to anon, authenticated;
 
 insert into public.novels (id, user_id, status) values
   ('10000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'published'),
