@@ -98,8 +98,20 @@ test('author dashboard exposes beta author KPI shell', async ({ request }) => {
   expect(html).toContain('第1話10秒閲覧');
   expect(html).toContain('第2話まで継続');
   expect(html).toContain('露出後のお気に入り');
-  expect(html).toContain("novelight_author_exposure_funnel");
+  expect(html).toContain('novelight_author_exposure_funnel');
   expect(html).not.toContain('NovelRise');
+});
+
+test('author dashboard starts without JavaScript page errors', async ({ page }) => {
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+
+  await page.goto('/mypage.html', {
+    waitUntil: 'domcontentloaded'
+  });
+  await page.waitForTimeout(750);
+
+  expect(pageErrors).toEqual([]);
 });
 
 test('reader pages wire exposure conversion recording', async ({ request }) => {
