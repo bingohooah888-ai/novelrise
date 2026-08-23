@@ -247,7 +247,7 @@
         <h2>🌱 LIGHT SEED</h2>
         <p id="lightSeedMessage">この作品を「まだ埋もれている作品」として発掘・応援できます。</p>
       </div>
-      <button id="lightSeedButton" class="seed-button" type="button">🌱 LIGHT SEED</button>
+      <button id="lightSeedButton" class="seed-button" type="button">🌱 LIGHT SEEDを贈る</button>
     </div>
     <div class="seed-stats">
       <span id="lightSeedRemaining"></span>
@@ -567,24 +567,24 @@
     total.textContent = `この作品のSEED ${status.total_seed_count ?? 0}`;
 
     button.disabled = false;
-    button.textContent = '🌱 LIGHT SEED';
+    button.textContent = '🌱 LIGHT SEEDを贈る';
 
     switch (status.reason) {
       case 'eligible':
-        message.textContent = 'まだ埋もれているこの作品を発掘した記録を残せます。SEEDは1作品につき1回です。';
+        message.textContent = 'SCOUTとして、まだ埋もれているこの作品を発掘した記録を残せます。LIGHT SEEDは1作品につき1回です。';
         break;
       case 'login_required':
-        message.textContent = 'LIGHT SEEDを使うにはログインが必要です。';
+        message.textContent = 'LIGHT SEEDを贈るにはログインが必要です。';
         break;
       case 'own_novel':
-        message.textContent = '自分の作品にはLIGHT SEEDを使えません。';
+        message.textContent = '自分の作品にはLIGHT SEEDを贈れません。';
         button.disabled = true;
         button.textContent = '自分の作品';
         break;
       case 'already_seeded':
-        message.textContent = 'あなたはこの作品をすでに発掘済みです。';
+        message.textContent = 'あなたはこの作品にすでにLIGHT SEEDを贈っています。';
         button.disabled = true;
-        button.textContent = '🌱 SEED済み';
+        button.textContent = '🌱 LIGHT SEED済み';
         break;
       case 'monthly_limit_reached':
         message.textContent = '今月のLIGHT SEEDを使い切りました。翌月に回復します。';
@@ -625,12 +625,12 @@
       }
 
       const confirmed = confirm(
-        'この作品にLIGHT SEEDを使いますか？\n同じ作品には1回だけ使えます。'
+        'この作品にLIGHT SEEDを贈りますか？\n同じ作品には1回だけ贈れます。'
       );
       if (!confirmed) return;
 
       button.disabled = true;
-      button.textContent = 'SEED中...';
+      button.textContent = '贈っています...';
 
       const { error: plantError } = await supabaseClient.rpc('plant_light_seed', {
         p_novel_id: String(novelId)
@@ -638,7 +638,7 @@
 
       if (plantError) {
         console.error('LIGHT SEED plant error', plantError);
-        alert('LIGHT SEEDを記録できませんでした。状態を更新します。');
+        alert('LIGHT SEEDを贈れませんでした。状態を更新します。');
       }
 
       const { data: refreshed, error: refreshError } = await supabaseClient.rpc(
@@ -647,7 +647,7 @@
       );
 
       if (!refreshError && refreshed) renderLightSeedStatus(refreshed);
-    }, { once: true });
+    });
   }
 
   (async () => {
