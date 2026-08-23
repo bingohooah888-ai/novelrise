@@ -11,7 +11,8 @@ const publicPages = [
   ['privacy', '/privacy.html'],
   ['content guidelines', '/content-guidelines.html'],
   ['billing policy', '/billing-policy.html'],
-  ['commerce disclosure', '/commerce-disclosure.html']
+  ['commerce disclosure', '/commerce-disclosure.html'],
+  ['contact', '/contact.html']
 ];
 
 for (const [name, path] of publicPages) {
