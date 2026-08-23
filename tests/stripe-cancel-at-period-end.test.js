@@ -64,7 +64,9 @@ function dependencies() {
         },
         async limit(limit) {
           assert.equal(limit, 2);
-          const matches = filters.every(([column, value]) => profile[column] === value);
+          const matches = filters.every(
+            ([column, value]) => profile[column] === value
+          );
           return { data: matches ? [{ ...profile }] : [], error: null };
         }
       };
