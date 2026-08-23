@@ -86,6 +86,22 @@ test('analytics exposes the exposure KPI shell without authentication', async ({
   expect(html).not.toContain('本文読了');
 });
 
+test('author dashboard exposes beta author KPI shell', async ({ request }) => {
+  const response = await request.get('/mypage.html');
+  expect(response.ok()).toBeTruthy();
+
+  const html = await response.text();
+  expect(html).toContain('<title>作者ダッシュボード | NOVELIGHT</title>');
+  expect(html).toContain('id="authorExposureSummary"');
+  expect(html).toContain('id="authorStats"');
+  expect(html).toContain('id="receivedFavoriteCount"');
+  expect(html).toContain('第1話10秒閲覧');
+  expect(html).toContain('第2話まで継続');
+  expect(html).toContain('露出後のお気に入り');
+  expect(html).toContain("novelight_author_exposure_funnel");
+  expect(html).not.toContain('NovelRise');
+});
+
 test('reader pages wire exposure conversion recording', async ({ request }) => {
   const novelResponse = await request.get('/novel.html');
   expect(novelResponse.ok()).toBeTruthy();
