@@ -1,0 +1,319 @@
+name: NOVELIGHT Approved Supabase Production Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: supabase-production-migration
+  cancel-in-progress: false
+
+env:
+  SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+
+jobs:
+  plan:
+    name: Plan production migrations safely
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      changed_versions: ${{ steps.changes.outputs.changed_versions }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Detect migration versions introduced by this push
+        id: changes
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$PUSH_BEFORE" ] || [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then
+            echo 'Automatic deploy blocked: previous main revision cannot be proven.'
+            exit 1
+          fi
+
+          git cat-file -e "${PUSH_BEFORE}^{commit}"
+          git cat-file -e "${PUSH_AFTER}^{commit}"
+
+          git diff --name-only "$PUSH_BEFORE" "$PUSH_AFTER" -- 'supabase/migrations/*.sql' \
+            | sed -nE 's#^supabase/migrations/([0-9]{14})_.*\.sql$#\1#p' \
+            | sort -u \
+            > /tmp/changed-migration-versions.txt
+
+          if [ ! -s /tmp/changed-migration-versions.txt ]; then
+            echo 'Automatic deploy blocked: no migration version was detected.'
+            exit 1
+          fi
+
+          changed_versions="$(paste -sd, /tmp/changed-migration-versions.txt)"
+          echo "changed_versions=$changed_versions" >> "$GITHUB_OUTPUT"
+          echo "Changed migration versions: $changed_versions"
+
+      - name: Verify required production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          }
+          test -n "$SUPABASE_DB_PASSWORD" || {
+            echo 'PRODUCTION_DB_PASSWORD is not configured.'
+            exit 1
+          }
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Show production migration status
+        shell: bash
+        run: |
+          set -o pipefail
+          supabase migration list --linked | tee /tmp/migration-list.txt
+
+      - name: Require pending migrations to match this push exactly
+        env:
+          CHANGED_VERSIONS: ${{ steps.changes.outputs.changed_versions }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          printf '%s\n' "$CHANGED_VERSIONS" \
+            | tr ',' '\n' \
+            | sed '/^$/d' \
+            | sort -u \
+            > /tmp/expected-pending.txt
+
+          awk -F '│' '
+            {
+              local=$1
+              remote=$2
+              gsub(/[^0-9]/, "", local)
+              gsub(/[^0-9]/, "", remote)
+              if (length(local) == 14 && length(remote) == 0) print local
+            }
+          ' /tmp/migration-list.txt \
+            | sort -u \
+            > /tmp/actual-pending.txt
+
+          echo 'Expected pending migrations:'
+          cat /tmp/expected-pending.txt
+          echo 'Actual pending migrations:'
+          cat /tmp/actual-pending.txt
+
+          if ! diff -u /tmp/expected-pending.txt /tmp/actual-pending.txt; then
+            echo 'Automatic deploy blocked: production has unexpected or missing pending migrations.'
+            exit 1
+          fi
+
+      - name: Dry-run pending migrations
+        run: supabase db push --linked --dry-run
+
+      - name: Explain approval gate state
+        env:
+          GATE_READY: ${{ vars.PRODUCTION_APPROVAL_GATE_READY }}
+        shell: bash
+        run: |
+          if [ "$GATE_READY" = 'true' ]; then
+            echo 'Safety plan passed. Production deploy will wait for environment approval.'
+          else
+            echo 'Safety plan passed, but automatic deploy is SAFE-DISABLED.'
+            echo 'Set repository Actions variable PRODUCTION_APPROVAL_GATE_READY=true only after'
+            echo 'the production-approval environment has a required reviewer.'
+          fi
+
+  approval:
+    name: Human approval for production database change
+    needs: plan
+    if: vars.PRODUCTION_APPROVAL_GATE_READY == 'true'
+    runs-on: ubuntu-latest
+    environment: production-approval
+
+    steps:
+      - name: Record approval
+        run: echo 'Production database migration approved through GitHub Environment protection.'
+
+  deploy:
+    name: Deploy approved production migrations
+    needs:
+      - plan
+      - approval
+    if: vars.PRODUCTION_APPROVAL_GATE_READY == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+      CHANGED_VERSIONS: ${{ needs.plan.outputs.changed_versions }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify required production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          }
+          test -n "$SUPABASE_DB_PASSWORD" || {
+            echo 'PRODUCTION_DB_PASSWORD is not configured.'
+            exit 1
+          }
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Re-check pending migrations after approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+
+          supabase migration list --linked | tee /tmp/migration-list.txt
+
+          printf '%s\n' "$CHANGED_VERSIONS" \
+            | tr ',' '\n' \
+            | sed '/^$/d' \
+            | sort -u \
+            > /tmp/expected-pending.txt
+
+          awk -F '│' '
+            {
+              local=$1
+              remote=$2
+              gsub(/[^0-9]/, "", local)
+              gsub(/[^0-9]/, "", remote)
+              if (length(local) == 14 && length(remote) == 0) print local
+            }
+          ' /tmp/migration-list.txt \
+            | sort -u \
+            > /tmp/actual-pending.txt
+
+          if ! diff -u /tmp/expected-pending.txt /tmp/actual-pending.txt; then
+            echo 'Deploy blocked: pending migrations changed while approval was waiting.'
+            exit 1
+          fi
+
+      - name: Re-run dry-run immediately before deploy
+        run: supabase db push --linked --dry-run
+
+      - name: Apply approved pending migrations
+        run: supabase db push --linked --yes
+
+      - name: Verify no pending local migrations remain
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+
+          supabase migration list --linked | tee /tmp/post-deploy-migration-list.txt
+
+          if awk -F '│' '
+            {
+              local=$1
+              remote=$2
+              gsub(/[^0-9]/, "", local)
+              gsub(/[^0-9]/, "", remote)
+              if (length(local) == 14 && length(remote) == 0) found=1
+            }
+            END { exit(found ? 0 : 1) }
+          ' /tmp/post-deploy-migration-list.txt; then
+            echo 'Production still has pending migrations after deploy.'
+            exit 1
+          fi
+
+      - name: Verify production beta observability
+        id: observability
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          jq -Rs '{query: .}' \
+            supabase/checks/production_beta_observability.sql \
+            > /tmp/production-beta-query.json
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/database/query/read-only" \
+            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --data-binary @/tmp/production-beta-query.json \
+            > /tmp/production-beta-result.json
+
+          jq -e '
+            (if type == "array" then .[0]
+             elif (.result? | type) == "array" then .result[0]
+             else . end)
+            | .ok == true
+          ' /tmp/production-beta-result.json >/dev/null
+
+      - name: Publish production beta verification status
+        if: always()
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+          VERIFY_OUTCOME: ${{ steps.observability.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          state=failure
+          description='Production beta verification failed'
+          if [ "$VERIFY_OUTCOME" = 'success' ]; then
+            state=success
+            description='Production beta verification passed'
+          fi
+
+          jq -n \
+            --arg state "$state" \
+            --arg description "$description" \
+            '{state: $state, context: "production-beta-verification", description: $description}' \
+            > /tmp/production-beta-status.json
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            --header "Authorization: Bearer ${GH_STATUS_TOKEN}" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            --data-binary @/tmp/production-beta-status.json \
+            >/dev/null
+
+      - name: Enforce production beta verification result
+        if: steps.observability.outcome == 'failure'
+        shell: bash
+        run: |
+          echo 'Production beta observability verification failed.'
+          exit 1
