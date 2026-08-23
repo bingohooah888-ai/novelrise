@@ -67,7 +67,10 @@ test('core pages expose the approved beta names and SCOUT RECORD route', async (
 });
 
 test('LIGHT ANALYTICS keeps the beta A basic funnel visible', async () => {
-  const analytics = await readFile(join(root.pathname, 'analytics.html'), 'utf8');
+  const analytics = await readFile(
+    join(root.pathname, 'analytics.html'),
+    'utf8'
+  );
 
   assert.doesNotMatch(analytics, /LIGHT REPORT/);
   assert.match(analytics, /インプレッション/);
