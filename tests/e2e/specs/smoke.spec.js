@@ -6,7 +6,12 @@ const publicPages = [
   ['pricing', '/pricing.html'],
   ['login', '/login.html'],
   ['signup', '/signup.html'],
-  ['novel detail', '/novel.html']
+  ['novel detail', '/novel.html'],
+  ['terms', '/terms.html'],
+  ['privacy', '/privacy.html'],
+  ['content guidelines', '/content-guidelines.html'],
+  ['billing policy', '/billing-policy.html'],
+  ['commerce disclosure', '/commerce-disclosure.html']
 ];
 
 for (const [name, path] of publicPages) {
@@ -58,6 +63,46 @@ test('login form exposes the required controls', async ({ page }) => {
   await expect(page.locator('#email')).toBeVisible();
   await expect(page.locator('#password')).toBeVisible();
   await expect(page.locator('button[type="submit"]')).toBeVisible();
+});
+
+test('signup requires explicit legal consent', async ({ page }) => {
+  await page.goto('/signup.html', {
+    waitUntil: 'domcontentloaded'
+  });
+
+  await expect(page.locator('#termsConsent')).toBeVisible();
+  await expect(page.locator('#termsConsent')).not.toBeChecked();
+  await expect(page.getByRole('link', { name: '利用規約', exact: true })).toHaveCount(2);
+  await expect(page.getByRole('link', { name: 'プライバシー' })).toHaveCount(1);
+  await expect(page.getByRole('link', { name: '投稿ガイドライン' })).toHaveCount(2);
+});
+
+test('pricing clearly states recurring billing and legal links', async ({ page }) => {
+  await page.goto('/pricing.html', {
+    waitUntil: 'domcontentloaded'
+  });
+
+  await expect(page.getByText('月額・解約まで自動更新')).toHaveCount(2);
+  await expect(page.getByText('申込み前に確認してください')).toBeVisible();
+  await expect(page.getByRole('link', { name: '課金・解約ポリシー' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '特定商取引法に基づく表記' })).toBeVisible();
+});
+
+test('beta legal pages keep critical disclosures visible', async ({ request }) => {
+  const terms = await (await request.get('/terms.html')).text();
+  const privacy = await (await request.get('/privacy.html')).text();
+  const content = await (await request.get('/content-guidelines.html')).text();
+  const billing = await (await request.get('/billing-policy.html')).text();
+  const commerce = await (await request.get('/commerce-disclosure.html')).text();
+
+  expect(terms).toContain('高評価、ランキング順位、読者数、売上、出版等の成果を保証しません');
+  expect(privacy).toContain('訪問者トークン');
+  expect(privacy).toContain('Supabase、Vercel、Stripe');
+  expect(content).toContain('性的満足を主目的とするポルノグラフィー');
+  expect(content).toContain('AI生成主体');
+  expect(billing).toContain('解約されるまで月ごとに自動更新');
+  expect(commerce).toContain('消費者から請求があった場合、法令に従い遅滞なく開示します');
+  expect(commerce).toContain('β公開前に実際に連絡可能な窓口を設定します');
 });
 
 test('novel detail includes the LIGHT SEED UI shell', async ({ page }) => {
