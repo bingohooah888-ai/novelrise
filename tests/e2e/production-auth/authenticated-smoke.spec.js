@@ -23,7 +23,7 @@ async function login(page, account, redirect) {
     url.pathname.endsWith(`/${redirect.split('?')[0]}`)
   );
   const visitorToken = await page.evaluate(() =>
-    localStorage.getItem('novelight_visitor_token')
+    window.localStorage.getItem('novelight_visitor_token')
   );
   expect(visitorToken).toBeTruthy();
   return visitorToken;
@@ -64,7 +64,9 @@ test('authenticated beta-critical product flow works in production', async ({
     await authorPage.locator('#submitButton').click();
     await authorPage.waitForURL(/\/episode-post\.html\?novel_id=/);
 
-    const novelId = new URL(authorPage.url()).searchParams.get('novel_id');
+    const novelId = new globalThis.URL(authorPage.url()).searchParams.get(
+      'novel_id'
+    );
     expect(novelId).toBeTruthy();
 
     await authorPage.locator('#episodeNumber').fill('1');
