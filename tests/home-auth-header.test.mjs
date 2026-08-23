@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const clientScript = await readFile(
-  new URL('../novelight-client.js', import.meta.url),
-  'utf8'
-);
+const clientScript = await readFile('novelight-client.js', 'utf8');
 
 test('shared client syncs homepage login link with Supabase session', () => {
   assert.match(clientScript, /async function syncAuthHeader\(client\)/);
