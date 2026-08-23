@@ -3,1092 +3,561 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>マイページ | NovelRise</title>
-
+  <title>作者ダッシュボード | NOVELIGHT</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        "Hiragino Kaku Gothic ProN",
-        "Yu Gothic",
-        sans-serif;
-
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
       background: #f7f8fb;
       color: #222;
     }
-
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-
-    button {
-      font: inherit;
-      cursor: pointer;
-      border: none;
-    }
-
-    header {
-      background: white;
-      border-bottom: 1px solid #e5e7eb;
-    }
-
+    a { color: inherit; text-decoration: none; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    header { background: white; border-bottom: 1px solid #e5e7eb; }
     .header-inner {
-      max-width: 1200px;
-      margin: auto;
+      max-width: 1120px;
       height: 72px;
+      margin: auto;
       padding: 0 24px;
-
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 16px;
     }
-
-    .logo {
-      font-size: 25px;
-      font-weight: 800;
-      color: #6d4aff;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .back-button {
-      color: #666;
-      font-size: 14px;
-    }
-
+    .logo { color: #6d4aff; font-size: 25px; font-weight: 900; }
+    .header-right { display: flex; align-items: center; gap: 14px; }
+    .top-link { color: #666; font-size: 14px; }
     .logout-button {
+      border: 1px solid #6d4aff;
+      border-radius: 9px;
+      padding: 9px 15px;
       background: white;
       color: #6d4aff;
-      border: 1px solid #6d4aff;
-
-      padding: 10px 18px;
-      border-radius: 8px;
-
-      font-weight: 700;
+      font-weight: 800;
     }
-
-    main {
-      max-width: 1100px;
-      margin: auto;
-      padding: 50px 24px;
-    }
-
-    .welcome {
-      background:
-        linear-gradient(
-          135deg,
-          #6d4aff,
-          #8b72ff
-        );
-
-      color: white;
-
+    main { max-width: 1120px; margin: auto; padding: 42px 24px 80px; }
+    .hero {
+      padding: 30px;
       border-radius: 18px;
-      padding: 35px;
-
-      margin-bottom: 30px;
+      background: linear-gradient(135deg, #6d4aff, #8b72ff);
+      color: white;
     }
-
-    .welcome h1 {
-      font-size: 30px;
-      margin-bottom: 8px;
+    .hero h1 { font-size: 30px; margin-bottom: 7px; }
+    .hero p { color: rgba(255,255,255,.88); line-height: 1.7; }
+    .hero-email { margin-top: 12px; font-size: 13px; color: rgba(255,255,255,.8); }
+    .section { margin-top: 28px; }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 18px;
+      margin-bottom: 14px;
     }
-
-    .welcome p {
-      color: rgba(255,255,255,0.85);
-    }
-
-    .user-email {
-      margin-top: 14px;
-      font-size: 14px;
-    }
-
-    .dashboard-grid {
+    .section-title { font-size: 22px; }
+    .section-note { margin-top: 5px; color: #6b7280; font-size: 13px; line-height: 1.6; }
+    .text-link { color: #6d4aff; font-size: 13px; font-weight: 800; white-space: nowrap; }
+    .action-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-
-      gap: 20px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
     }
-
-    .card {
+    .action-card,
+    .panel,
+    .metric-card,
+    .profile-panel,
+    .reader-panel {
       background: white;
-
+      border: 1px solid #e5e7eb;
       border-radius: 14px;
-      padding: 25px;
-
-      border: 1px solid #e7e7ed;
-
-      min-height: 170px;
     }
-
-    .card-icon {
-      font-size: 30px;
-      margin-bottom: 15px;
-    }
-
-    .card h2 {
-      font-size: 18px;
-      margin-bottom: 8px;
-    }
-
-    .card p {
-      color: #777;
-      font-size: 14px;
-
-      margin-bottom: 18px;
-    }
-
-    .card-button {
+    .action-card { padding: 20px; }
+    .action-icon { font-size: 25px; margin-bottom: 10px; }
+    .action-card h2 { font-size: 17px; margin-bottom: 7px; }
+    .action-card p { min-height: 42px; color: #6b7280; font-size: 13px; line-height: 1.6; }
+    .action-button {
       display: inline-block;
-
+      margin-top: 15px;
+      padding: 9px 13px;
+      border-radius: 8px;
       background: #6d4aff;
       color: white;
-
-      padding: 10px 16px;
-      border-radius: 8px;
-
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .stats {
-      margin-top: 30px;
-
-      background: white;
-
-      border-radius: 14px;
-      padding: 28px;
-
-      border: 1px solid #e7e7ed;
-    }
-
-    .stats h2 {
-      margin-bottom: 20px;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-
-      gap: 15px;
-    }
-
-    .stat-box {
-      background: #f6f4ff;
-
-      border-radius: 10px;
-      padding: 20px;
-
-      text-align: center;
-    }
-
-    .stat-number {
-      font-size: 28px;
-      font-weight: 900;
-
-      color: #6d4aff;
-    }
-
-    .stat-label {
-      color: #777;
       font-size: 13px;
-
-      margin-top: 4px;
+      font-weight: 800;
     }
-
-    @media (max-width: 800px) {
-
-      .dashboard-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
+    .plan-line { margin-top: 10px; color: #6d4aff; font-size: 14px; font-weight: 900; }
+    .billing-status { margin-top: 7px; color: #6b7280; font-size: 12px; line-height: 1.5; }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .metric-card { padding: 18px; }
+    .metric-value { color: #6d4aff; font-size: 27px; font-weight: 900; }
+    .metric-label { margin-top: 5px; color: #4b5563; font-size: 12px; line-height: 1.45; }
+    .metric-sub { margin-top: 7px; color: #6b7280; font-size: 11px; line-height: 1.45; }
+    .status-box {
+      margin-top: 12px;
+      padding: 13px 15px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      background: white;
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .status-box.error { color: #991b1b; background: #fff7f7; border-color: #fecaca; }
+    .author-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .panel { padding: 24px; }
+    .profile-panel { padding: 24px; }
+    .form-grid { display: grid; gap: 17px; }
+    label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 800; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 9px;
+      padding: 11px 12px;
+      background: white;
+      color: #222;
+    }
+    textarea { min-height: 105px; resize: vertical; line-height: 1.7; }
+    .save-button {
+      justify-self: start;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 17px;
+      background: #6d4aff;
+      color: white;
+      font-weight: 800;
+    }
+    .profile-message { color: #6b7280; font-size: 13px; }
+    .reader-panel { padding: 24px; }
+    .favorite-list { display: grid; gap: 0; }
+    .favorite-item { display: block; padding: 14px 0; border-bottom: 1px solid #eee; }
+    .favorite-genre { color: #6d4aff; font-size: 11px; font-weight: 800; margin-bottom: 5px; }
+    .favorite-title { font-weight: 900; margin-bottom: 5px; }
+    .favorite-description {
+      display: -webkit-box;
+      overflow: hidden;
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.55;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+    .empty { color: #6b7280; font-size: 13px; padding: 8px 0; }
+    @media (max-width: 980px) {
+      .action-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .metrics-grid, .author-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .header-inner { height: auto; min-height: 68px; padding: 12px 16px; }
+      .header-right { gap: 9px; }
+      .top-link { display: none; }
+      main { padding: 28px 16px 60px; }
+      .hero { padding: 24px 20px; }
+      .hero h1 { font-size: 25px; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+      .action-grid, .metrics-grid, .author-grid { grid-template-columns: 1fr; }
+      .action-card p { min-height: 0; }
     }
   </style>
 </head>
-
 <body>
-
 <header>
-
   <div class="header-inner">
-
-    <a href="index.html" class="logo">
-      NovelRise
-    </a>
-
+    <a href="index.html" class="logo">NOVELIGHT</a>
     <div class="header-right">
-
-      <a
-        href="index.html"
-        class="back-button"
-      >
-        トップページ
-      </a>
-
-      <button
-        id="logoutButton"
-        class="logout-button"
-      >
-        ログアウト
-      </button>
-
+      <a href="index.html" class="top-link">トップページ</a>
+      <button id="logoutButton" class="logout-button" type="button">ログアウト</button>
     </div>
-
   </div>
-
 </header>
 
-
 <main>
-
-  <section class="welcome">
-
-    <h1 id="welcomeName">
-      マイページ
-    </h1>
-
-    <p>
-      あなたの作品を管理しましょう。
-    </p>
-
-    <div
-      class="user-email"
-      id="userEmail"
-    >
-    </div>
-
+  <section class="hero">
+    <h1 id="welcomeName">作者ダッシュボード</h1>
+    <p>作品管理と、読者へ届いたあとの動きをここから確認できます。</p>
+    <div id="userEmail" class="hero-email"></div>
   </section>
 
-
-  <section class="dashboard-grid">
-
-    <div class="card">
-
-      <div class="card-icon">
-        ✍️
+  <section class="section" aria-labelledby="actionsHeading">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="actionsHeading">よく使う操作</h2>
       </div>
-
-      <h2>
-        小説を投稿
-      </h2>
-
-      <p>
-        新しい作品をNovelRiseに投稿します。
-      </p>
-
-      <a
-        href="post.html"
-        class="card-button"
-      >
-        投稿する
-      </a>
-
     </div>
-
-
-    <div class="card">
-
-      <div class="card-icon">
-        📚
-      </div>
-
-      <h2>
-        自分の作品
-      </h2>
-
-      <p>
-        投稿した小説の編集・管理を行います。
-      </p>
-
-      <a
-        href="my-novels.html"
-        class="card-button"
-      >
-        作品を見る
-      </a>
-
+    <div class="action-grid">
+      <article class="action-card">
+        <div class="action-icon">✍️</div>
+        <h2>小説を投稿</h2>
+        <p>新しい作品をNOVELIGHTに投稿します。</p>
+        <a href="post.html" class="action-button">投稿する</a>
+      </article>
+      <article class="action-card">
+        <div class="action-icon">📚</div>
+        <h2>自分の作品</h2>
+        <p>投稿した作品やエピソードを編集・管理します。</p>
+        <a href="my-novels.html" class="action-button">作品を見る</a>
+      </article>
+      <article class="action-card">
+        <div class="action-icon">📈</div>
+        <h2>アクセス解析</h2>
+        <p>作品別の露出、読書継続、お気に入り転換を確認します。</p>
+        <a href="analytics.html" class="action-button" id="dashboardAnalyticsLink">詳しく見る</a>
+      </article>
+      <article class="action-card">
+        <div class="action-icon">💎</div>
+        <h2>契約プラン</h2>
+        <p>現在の契約状態とプランを確認します。</p>
+        <div class="plan-line">現在：<span id="currentPlanText">読み込み中...</span></div>
+        <div class="billing-status" id="paymentStatusText">契約状態を確認中...</div>
+        <a href="pricing.html" class="action-button">プランを見る</a>
+      </article>
     </div>
-
-
-    <div class="card">
-
-      <div class="card-icon">
-        💎
-      </div>
-
-      <h2>
-        契約プラン
-      </h2>
-
-      <p>
-        現在のプランやアップグレードを確認します。
-      </p>
-<p
-  style="
-    margin-top:10px;
-    font-weight:700;
-    color:#6d4aff;
-  "
->
-  現在のプラン：
-  <span id="currentPlanText">
-    読み込み中...
-  </span>
-</p>
-      <p
-  id="paymentStatusText"
-  style="
-    margin-top:8px;
-    font-weight:700;
-    font-size:14px;
-  "
->
-  支払い状態：読み込み中...
-</p>
-      <a
-        href="pricing.html"
-        class="card-button"
-      >
-        プランを見る
-      </a>
-
-    </div>
-
   </section>
 
-<section
-  style="
-    background:white;
-    border:1px solid #e5e7eb;
-    border-radius:16px;
-    padding:28px;
-    margin-bottom:28px;
-  "
->
-
-  <h2 style="margin-bottom:20px;">
-    プロフィール
-  </h2>
-
-  <div style="margin-bottom:18px;">
-    <label
-      for="displayNameInput"
-      style="
-        display:block;
-        font-weight:700;
-        margin-bottom:8px;
-      "
-    >
-      表示名
-    </label>
-
-    <input
-      id="displayNameInput"
-      type="text"
-      maxlength="40"
-      placeholder="表示名を入力"
-      style="
-        width:100%;
-        padding:12px;
-        border:1px solid #d1d5db;
-        border-radius:8px;
-        font-size:15px;
-      "
-    >
-  </div>
-
-  <div style="margin-bottom:18px;">
-    <label
-      for="bioInput"
-      style="
-        display:block;
-        font-weight:700;
-        margin-bottom:8px;
-      "
-    >
-      自己紹介
-    </label>
-
-    <textarea
-      id="bioInput"
-      maxlength="300"
-      placeholder="自己紹介を入力"
-      style="
-        width:100%;
-        min-height:110px;
-        padding:12px;
-        border:1px solid #d1d5db;
-        border-radius:8px;
-        font-size:15px;
-        resize:vertical;
-      "
-    ></textarea>
-  </div>
-
-  <button
-    id="saveProfileButton"
-    type="button"
-    style="
-      padding:11px 20px;
-      background:#6d4aff;
-      color:white;
-      border:none;
-      border-radius:8px;
-      font-weight:700;
-      cursor:pointer;
-    "
-  >
-    プロフィールを保存
-  </button>
-
-  <div
-    id="profileMessage"
-    style="
-      margin-top:12px;
-      color:#666;
-      font-size:14px;
-    "
-  ></div>
-
-</section>
-  <section class="stats">
-
-    <h2>
-      アクセス状況
-    </h2>
-
-    <div class="stats-grid">
-
-      <div class="stat-box">
-        <div
-  id="novelStatCount"
-  class="stat-number"
->
-          0
-        </div>
-
-        <div class="stat-label">
-          投稿作品
-        </div>
+  <section class="section" aria-labelledby="exposureHeading">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="exposureHeading">露出から読書まで・直近30日</h2>
+        <p class="section-note">「どれだけ表示されたか」と「表示されたあと読者がどこまで進んだか」を全作品合計で確認します。10秒閲覧は読了ではありません。</p>
       </div>
-
-      <div class="stat-box">
-        <div
-  id="totalPvCount"
-  class="stat-number"
->
-          0
-        </div>
-
-        <div class="stat-label">
-          総PV
-        </div>
-      </div>
-
-      <div class="stat-box">
-        <div
-  id="favoriteStatCount"
-  class="stat-number"
->
-          0
-        </div>
-
-        <div class="stat-label">
-          お気に入り
-        </div>
-      </div>
-
-      <div class="stat-box">
-        <div
-  id="currentPlanStat"
-  class="stat-number"
->
-  読み込み中...
-</div>
-
-        <div class="stat-label">
-          現在のプラン
-        </div>
-      </div>
-
+      <a href="analytics.html" class="text-link">作品別の詳細を見る →</a>
     </div>
-
+    <div class="metrics-grid" id="authorExposureSummary">
+      <div class="metric-card">
+        <div class="metric-value" id="exposureImpressions">0</div>
+        <div class="metric-label">インプレッション</div>
+        <div class="metric-sub">読者の画面に表示された回数</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="exposureDetailOpens">0</div>
+        <div class="metric-label">作品ページ到達</div>
+        <div class="metric-sub" id="exposureDetailRate">表示→作品ページ 0%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="exposureFirstReads">0</div>
+        <div class="metric-label">第1話10秒閲覧</div>
+        <div class="metric-sub" id="exposureFirstReadRate">表示→第1話 0%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="exposureContinuation">0</div>
+        <div class="metric-label">第2話まで継続</div>
+        <div class="metric-sub" id="exposureContinuationRate">第1話→第2話 0%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="exposureFavorites">0</div>
+        <div class="metric-label">露出後のお気に入り</div>
+        <div class="metric-sub" id="exposureFavoriteRate">表示→お気に入り 0%</div>
+      </div>
+    </div>
+    <div id="exposureStatus" aria-live="polite"></div>
   </section>
-<section
-  style="
-    margin-top:30px;
-    background:white;
-    border:1px solid #e5e7eb;
-    border-radius:16px;
-    padding:28px;
-  "
->
 
-  <h2
-    style="
-      font-size:22px;
-      margin-bottom:18px;
-    "
-  >
-    お気に入り作品
-  </h2>
+  <section class="section" aria-labelledby="worksHeading">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="worksHeading">作品状況</h2>
+        <p class="section-note">作者として公開している作品全体の基本状況です。</p>
+      </div>
+    </div>
+    <div class="author-grid" id="authorStats">
+      <div class="metric-card"><div class="metric-value" id="novelStatCount">0</div><div class="metric-label">投稿作品</div></div>
+      <div class="metric-card"><div class="metric-value" id="publishedStatCount">0</div><div class="metric-label">公開中</div></div>
+      <div class="metric-card"><div class="metric-value" id="draftStatCount">0</div><div class="metric-label">下書き</div></div>
+      <div class="metric-card"><div class="metric-value" id="totalPvCount">0</div><div class="metric-label">総PV</div></div>
+      <div class="metric-card"><div class="metric-value" id="receivedFavoriteCount">0</div><div class="metric-label">受け取ったお気に入り</div></div>
+    </div>
+  </section>
 
-  <div id="favoriteNovelsList">
-    読み込み中...
-  </div>
-<div style="margin-top: 16px;">
-  <a
-    href="favorites.html"
-    style="
-      color: #6d4aff;
-      font-weight: bold;
-      text-decoration: none;
-    "
-  >
-    お気に入りをすべて見る →
-  </a>
-</div>
+  <section class="section profile-panel" aria-labelledby="profileHeading">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="profileHeading">プロフィール</h2>
+        <p class="section-note">読者に表示される作者情報を編集します。</p>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div>
+        <label for="displayNameInput">表示名</label>
+        <input id="displayNameInput" type="text" maxlength="40" placeholder="表示名を入力">
+      </div>
+      <div>
+        <label for="bioInput">自己紹介</label>
+        <textarea id="bioInput" maxlength="300" placeholder="自己紹介を入力"></textarea>
+      </div>
+      <button id="saveProfileButton" class="save-button" type="button">プロフィールを保存</button>
+      <div id="profileMessage" class="profile-message" aria-live="polite"></div>
+    </div>
+  </section>
 
-  <div style="margin-top:16px;">
-  <a
-    href="analytics.html"
-    style="
-      display:inline-block;
-      padding:10px 18px;
-      background:#6d4aff;
-      color:white;
-      font-weight:bold;
-      text-decoration:none;
-      border-radius:8px;
-    "
-  >
-    アクセス解析を見る
-  </a>
-</div>
-</section>
+  <section class="section reader-panel" aria-labelledby="favoritesHeading">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="favoritesHeading">自分がお気に入りした作品</h2>
+        <p class="section-note">ここは読者として保存した作品です。作者として受け取ったお気に入り数とは別です。</p>
+      </div>
+      <a href="favorites.html" class="text-link">すべて見る →</a>
+    </div>
+    <div id="favoriteNovelsList" class="favorite-list">読み込み中...</div>
+  </section>
 </main>
 
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
+  const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let currentSession = null;
 
-  const SUPABASE_URL =
-    'https://fiepaguycecrredwrcwx.supabase.co';
+  function formatNumber(value) {
+    return Number(value ?? 0).toLocaleString('ja-JP');
+  }
 
-  const SUPABASE_KEY =
-    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  function formatRate(numerator, denominator) {
+    const safeNumerator = Number(numerator ?? 0);
+    const safeDenominator = Number(denominator ?? 0);
+    if (safeDenominator <= 0) return '0%';
+    return `${((safeNumerator / safeDenominator) * 100).toFixed(2)}%`;
+  }
 
-  const supabaseClient =
-    supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    );
+  function formatDate(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('ja-JP');
+  }
 
+  function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value ?? '';
+    return div.innerHTML;
+  }
 
-  async function checkLogin() {
-
-    const {
-      data: {
-        session
-      }
-    } =
-      await supabaseClient.auth.getSession();
-
-
+  async function requireSession() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {
+      window.location.href = 'login.html';
+      return null;
+    }
+    currentSession = session;
+    document.getElementById('userEmail').textContent = session.user.email ?? '';
+    return session;
+  }
 
-      window.location.href =
-        'login.html';
+  function renderPlan(profile) {
+    const planNames = { free: 'Free', standard: 'Standard', premium: 'Premium' };
+    const plan = profile?.plan ?? 'free';
+    document.getElementById('currentPlanText').textContent = planNames[plan] ?? 'Free';
 
+    const status = document.getElementById('paymentStatusText');
+    if (plan === 'free') {
+      status.textContent = 'Freeプランを利用中';
+      status.style.color = '#6b7280';
       return;
     }
 
-
-    const user =
-      session.user;
-
-
-    document.getElementById(
-      'userEmail'
-    ).textContent =
-      user.email;
-
-
-    const displayName =
-      user.user_metadata.display_name;
-
-
-    if (displayName) {
-
-      document.getElementById(
-        'welcomeName'
-      ).textContent =
-        displayName +
-        ' さんのマイページ';
-
+    if (profile?.payment_status === 'failed' || profile?.subscription_status === 'past_due') {
+      status.textContent = '⚠️ お支払い状態を確認してください';
+      status.style.color = '#dc2626';
+      return;
     }
 
-  }
-
-
-  document.getElementById(
-    'logoutButton'
-  ).addEventListener(
-    'click',
-    async () => {
-
-      await supabaseClient.auth.signOut();
-
-      window.location.href =
-        'index.html';
-
+    if (profile?.subscription_cancel_at_period_end) {
+      const endDate = formatDate(profile.subscription_current_period_end);
+      status.textContent = endDate
+        ? `解約予約中・${endDate}まで利用できます`
+        : '解約予約中・現在の契約期間までは利用できます';
+      status.style.color = '#b45309';
+      return;
     }
-  );
 
-async function loadFavoriteNovels() {
-
-  const favoriteNovelsList =
-    document.getElementById(
-      'favoriteNovelsList'
-    );
-
-
-  const {
-    data: {
-      session
-    }
-  } =
-    await supabaseClient.auth.getSession();
-
-
-  if (!session) {
-
-    favoriteNovelsList.innerHTML =
-      'ログインが必要です。';
-
-    return;
+    status.textContent = '✓ 契約状態：利用中';
+    status.style.color = '#15803d';
   }
 
-
-  const {
-    data: favoriteRows,
-    error
-  } =
-    await supabaseClient
-      .from('favorites')
-      .select(
-        `
-        novel_id,
-        novels (
-          id,
-          title,
-          genre,
-          description,
-          created_at,
-          status
-        )
-        `
-      )
-      .eq(
-        'user_id',
-        session.user.id
-      );
-
-
-  if (error) {
-
-    console.error(error);
-
-    favoriteNovelsList.innerHTML =
-      'お気に入り作品を読み込めませんでした。';
-
-    return;
-  }
-
-
-  const novels =
-    (favoriteRows ?? [])
-      .map(
-        row => row.novels
-      )
-.filter(
-  novel =>
-    novel &&
-    novel.status ===
-      'published'
-)
-.slice(
-  0,
-  3
-);
-
-
-  if (novels.length === 0) {
-
-    favoriteNovelsList.innerHTML =
-      '<div style="color:#777;">' +
-      'お気に入り作品はまだありません。' +
-      '</div>';
-
-    return;
-  }
-
-
-  favoriteNovelsList.innerHTML =
-    '';
-
-
-  novels.forEach(
-    novel => {
-
-      const card =
-        document.createElement(
-          'a'
-        );
-
-
-      card.href =
-        'novel.html?id=' +
-        novel.id;
-
-
-      card.style.display =
-        'block';
-
-      card.style.padding =
-        '16px 0';
-
-      card.style.borderBottom =
-        '1px solid #eee';
-
-
-      card.innerHTML = `
-
-        <div
-          style="
-            font-size:12px;
-            color:#6d4aff;
-            font-weight:700;
-            margin-bottom:6px;
-          "
-        >
-          ${novel.genre ?? ''}
-        </div>
-
-        <div
-          style="
-            font-size:17px;
-            font-weight:800;
-            margin-bottom:6px;
-          "
-        >
-          ${novel.title ?? ''}
-        </div>
-
-        <div
-          style="
-            color:#777;
-            font-size:14px;
-            line-height:1.6;
-          "
-        >
-          ${novel.description ?? ''}
-        </div>
-
-      `;
-
-
-      favoriteNovelsList.appendChild(
-        card
-      );
-
-    }
-  );
-
-}
-  async function loadFavoriteStat() {
-
-  const {
-    data: {
-      session
-    }
-  } =
-    await supabaseClient.auth.getSession();
-
-
-  if (!session) {
-    return;
-  }
-
-
-  const {
-    count,
-    error
-  } =
-    await supabaseClient
-      .from('favorites')
-      .select(
-        '*',
-        {
-          count: 'exact',
-          head: true
-        }
-      )
-      .eq(
-        'user_id',
-        session.user.id
-      );
-
-
-  if (error) {
-
-    console.error(error);
-
-    return;
-  }
-
-
-  document.getElementById(
-    'favoriteStatCount'
-  ).textContent =
-    count ?? 0;
-
-}
-  async function loadAuthorStats() {
-
-  const {
-    data: {
-      session
-    }
-  } =
-    await supabaseClient.auth.getSession();
-
-
-  if (!session) {
-    return;
-  }
-
-
-  const {
-    data: novels,
-    error
-  } =
-    await supabaseClient
-      .from('novels')
-      .select('pv')
-      .eq(
-        'user_id',
-        session.user.id
-      );
-
-
-  if (error) {
-
-    console.error(error);
-
-    return;
-  }
-
-
-  const novelCount =
-    novels?.length ?? 0;
-
-
-  const totalPv =
-    (novels ?? []).reduce(
-      (total, novel) =>
-        total + (novel.pv ?? 0),
-      0
-    );
-
-
-  document.getElementById(
-    'novelStatCount'
-  ).textContent =
-    novelCount;
-
-
-  document.getElementById(
-    'totalPvCount'
-  ).textContent =
-    totalPv;
-
-}
   async function loadProfile() {
-
-  const {
-    data: {
-      session
-    }
-  } =
-    await supabaseClient.auth.getSession();
-
-  if (!session) {
-    return;
-  }
-
-  const {
-    data: profile,
-    error
-  } =
-    await supabaseClient
+    const { data: profile, error } = await supabaseClient
       .from('profiles')
-      .select(
-        'display_name, bio, plan, payment_status'
-      )
-      .eq(
-        'id',
-        session.user.id
-      )
+      .select('display_name, bio, plan, payment_status, subscription_status, subscription_cancel_at_period_end, subscription_current_period_end')
+      .eq('id', currentSession.user.id)
       .single();
 
-  if (error) {
-    console.error(error);
-    return;
-  }
-
-  document.getElementById(
-    'displayNameInput'
-  ).value =
-    profile?.display_name ?? '';
-const planNames = {
-  free: 'Free',
-  standard: 'Standard',
-  premium: 'Premium'
-};
-
-document.getElementById(
-  'currentPlanText'
-).textContent =
-  planNames[
-    profile?.plan ?? 'free'
-  ] ?? 'Free';
-
-  document.getElementById(
-  'currentPlanStat'
-).textContent =
-  planNames[
-    profile?.plan ?? 'free'
-  ] ?? 'Free';
-
-    const paymentStatusText =
-  document.getElementById(
-    'paymentStatusText'
-  );
-
-if (
-  profile?.payment_status === 'failed'
-) {
-  paymentStatusText.textContent =
-    '⚠️ 支払い状態：お支払いを確認してください';
-
-  paymentStatusText.style.color =
-    '#dc2626';
-} else {
-  paymentStatusText.textContent =
-    '✓ 支払い状態：正常';
-
-  paymentStatusText.style.color =
-    '#16a34a';
-}
-  document.getElementById(
-    'bioInput'
-  ).value =
-    profile?.bio ?? '';
-
-}
-
-
-async function saveProfile() {
-
-  const {
-    data: {
-      session
+    if (error) {
+      console.error(error);
+      document.getElementById('profileMessage').textContent = 'プロフィールを読み込めませんでした。';
+      return;
     }
-  } =
-    await supabaseClient.auth.getSession();
 
-  if (!session) {
-    return;
+    const displayName = profile?.display_name || currentSession.user.user_metadata?.display_name || '';
+    if (displayName) document.getElementById('welcomeName').textContent = `${displayName} さんの作者ダッシュボード`;
+    document.getElementById('displayNameInput').value = profile?.display_name ?? '';
+    document.getElementById('bioInput').value = profile?.bio ?? '';
+    renderPlan(profile);
   }
 
-  const displayName =
-    document.getElementById(
-      'displayNameInput'
-    ).value.trim();
+  async function loadExposureSummary() {
+    const status = document.getElementById('exposureStatus');
+    status.innerHTML = '<div class="status-box">直近30日の露出データを読み込み中...</div>';
 
-  const bio =
-    document.getElementById(
-      'bioInput'
-    ).value.trim();
+    const { data, error } = await supabaseClient.rpc('novelight_author_exposure_funnel', { p_days: 30 });
+    if (error) {
+      console.error(error);
+      status.innerHTML = '<div class="status-box error">露出・読書データを読み込めませんでした。詳細なアクセス解析から再度お試しください。</div>';
+      return;
+    }
 
-  const profileMessage =
-    document.getElementById(
-      'profileMessage'
+    const totals = (data ?? []).reduce(
+      (acc, row) => {
+        acc.impressions += Number(row.impressions ?? 0);
+        acc.detailOpens += Number(row.detail_opens ?? 0);
+        acc.firstReads += Number(row.first_episode_reads_10s ?? 0);
+        acc.continuations += Number(row.continued_to_episode_2 ?? 0);
+        acc.favorites += Number(row.favorites ?? 0);
+        return acc;
+      },
+      { impressions: 0, detailOpens: 0, firstReads: 0, continuations: 0, favorites: 0 }
     );
 
-  const {
-    error
-  } =
-    await supabaseClient
-      .from('profiles')
-      .update({
-        display_name: displayName,
-        bio: bio
-      })
-      .eq(
-        'id',
-        session.user.id
-      );
+    document.getElementById('exposureImpressions').textContent = formatNumber(totals.impressions);
+    document.getElementById('exposureDetailOpens').textContent = formatNumber(totals.detailOpens);
+    document.getElementById('exposureFirstReads').textContent = formatNumber(totals.firstReads);
+    document.getElementById('exposureContinuation').textContent = formatNumber(totals.continuations);
+    document.getElementById('exposureFavorites').textContent = formatNumber(totals.favorites);
+    document.getElementById('exposureDetailRate').textContent = `表示→作品ページ ${formatRate(totals.detailOpens, totals.impressions)}`;
+    document.getElementById('exposureFirstReadRate').textContent = `表示→第1話 ${formatRate(totals.firstReads, totals.impressions)}`;
+    document.getElementById('exposureContinuationRate').textContent = `第1話→第2話 ${formatRate(totals.continuations, totals.firstReads)}`;
+    document.getElementById('exposureFavoriteRate').textContent = `表示→お気に入り ${formatRate(totals.favorites, totals.impressions)}`;
 
-  if (error) {
-
-    console.error(error);
-
-    profileMessage.textContent =
-      '保存に失敗しました。';
-
-    return;
+    status.innerHTML = (data ?? []).length
+      ? ''
+      : '<div class="status-box">まだ露出データがありません。作品が読者の発見枠に表示されると、ここに数字が入ります。</div>';
   }
 
-  profileMessage.textContent =
-    'プロフィールを保存しました。';
+  async function loadAuthorStats() {
+    const { data: novels, error } = await supabaseClient
+      .from('novels')
+      .select('id, pv, status')
+      .eq('user_id', currentSession.user.id);
 
-}
+    if (error) {
+      console.error(error);
+      return;
+    }
 
+    const rows = novels ?? [];
+    const published = rows.filter((novel) => novel.status === 'published').length;
+    const drafts = rows.filter((novel) => novel.status !== 'published').length;
+    const totalPv = rows.reduce((total, novel) => total + Number(novel.pv ?? 0), 0);
 
-document.getElementById(
-  'saveProfileButton'
-).addEventListener(
-  'click',
-  saveProfile
-);
-checkLogin();
-loadProfile();
-loadFavoriteNovels();
-loadFavoriteStat();
-loadAuthorStats();
+    document.getElementById('novelStatCount').textContent = formatNumber(rows.length);
+    document.getElementById('publishedStatCount').textContent = formatNumber(published);
+    document.getElementById('draftStatCount').textContent = formatNumber(drafts);
+    document.getElementById('totalPvCount').textContent = formatNumber(totalPv);
 
+    if (!rows.length) {
+      document.getElementById('receivedFavoriteCount').textContent = '0';
+      return;
+    }
+
+    const { count, error: favoriteError } = await supabaseClient
+      .from('favorites')
+      .select('*', { count: 'exact', head: true })
+      .in('novel_id', rows.map((novel) => novel.id));
+
+    if (favoriteError) {
+      console.error(favoriteError);
+      return;
+    }
+
+    document.getElementById('receivedFavoriteCount').textContent = formatNumber(count ?? 0);
+  }
+
+  async function loadFavoriteNovels() {
+    const list = document.getElementById('favoriteNovelsList');
+    const { data: favoriteRows, error } = await supabaseClient
+      .from('favorites')
+      .select(`novel_id, novels (id, title, genre, description, status)`)
+      .eq('user_id', currentSession.user.id);
+
+    if (error) {
+      console.error(error);
+      list.innerHTML = '<div class="empty">お気に入り作品を読み込めませんでした。</div>';
+      return;
+    }
+
+    const novels = (favoriteRows ?? [])
+      .map((row) => row.novels)
+      .filter((novel) => novel && novel.status === 'published')
+      .slice(0, 3);
+
+    if (!novels.length) {
+      list.innerHTML = '<div class="empty">お気に入り作品はまだありません。</div>';
+      return;
+    }
+
+    list.innerHTML = novels
+      .map(
+        (novel) => `
+          <a class="favorite-item" href="novel.html?id=${encodeURIComponent(novel.id)}">
+            <div class="favorite-genre">${escapeHtml(novel.genre || 'ジャンル未設定')}</div>
+            <div class="favorite-title">${escapeHtml(novel.title || 'タイトル未設定')}</div>
+            <div class="favorite-description">${escapeHtml(novel.description || '')}</div>
+          </a>
+        `
+      )
+      .join('');
+  }
+
+  async function saveProfile() {
+    const button = document.getElementById('saveProfileButton');
+    const message = document.getElementById('profileMessage');
+    const displayName = document.getElementById('displayNameInput').value.trim();
+    const bio = document.getElementById('bioInput').value.trim();
+
+    button.disabled = true;
+    message.textContent = '保存中...';
+
+    const { error } = await supabaseClient
+      .from('profiles')
+      .update({ display_name: displayName, bio })
+      .eq('id', currentSession.user.id);
+
+    button.disabled = false;
+    if (error) {
+      console.error(error);
+      message.textContent = '保存に失敗しました。';
+      return;
+    }
+
+    message.textContent = 'プロフィールを保存しました。';
+    document.getElementById('welcomeName').textContent = displayName
+      ? `${displayName} さんの作者ダッシュボード`
+      : '作者ダッシュボード';
+  }
+
+  document.getElementById('logoutButton').addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'index.html';
+  });
+
+  document.getElementById('saveProfileButton').addEventListener('click', saveProfile);
+
+  (async () => {
+    const session = await requireSession();
+    if (!session) return;
+    await Promise.all([
+      loadProfile(),
+      loadExposureSummary(),
+      loadAuthorStats(),
+      loadFavoriteNovels()
+    ]);
+  })();
 </script>
-
 </body>
 </html>
