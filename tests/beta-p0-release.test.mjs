@@ -46,7 +46,10 @@ test('publish path requires AI declaration and content-policy zoning', async () 
   assert.match(post, /status:'draft'/);
   assert.match(episodePost, /update\(\{status:'published'\}\)/);
   assert.match(migration, /enforce_novel_beta_classification/);
-  assert.match(migration, /ai_usage in \('unspecified', 'human', 'ai_assisted', 'ai_generated'\)/);
+  assert.match(
+    migration,
+    /ai_usage in \('unspecified', 'human', 'ai_assisted', 'ai_generated'\)/
+  );
   assert.match(migration, /content_rating in \('general', 'mature'\)/);
 });
 
@@ -60,7 +63,10 @@ test('moderation route is structured and private', async () => {
   assert.match(novel, /submit_content_report/);
   assert.match(episode, /submit_content_report/);
   assert.match(migration, /create table public\.content_reports/);
-  assert.match(migration, /revoke all on table public\.content_reports from public, anon, authenticated/);
+  assert.match(
+    migration,
+    /revoke all on table public\.content_reports from public, anon, authenticated/
+  );
   assert.match(migration, /copyright/);
   assert.match(migration, /ai_misclassification/);
 });
@@ -112,7 +118,10 @@ test('LIGHT ANALYTICS uses the required funnel denominators', async () => {
   assert.match(analytics, /rate\(t\.d,t\.i\)/);
   assert.match(analytics, /rate\(t\.f,t\.d\)/);
   assert.match(analytics, /rate\(t\.s,t\.f\)/);
-  assert.match(analytics, /rate\(r\.first_episode_reads_10s,r\.detail_opens\)/);
+  assert.match(
+    analytics,
+    /rate\(r\.first_episode_reads_10s,r\.detail_opens\)/
+  );
 });
 
 test('all search sorts preserve impression data', async () => {
@@ -127,15 +136,17 @@ test('all search sorts preserve impression data', async () => {
 });
 
 test('major public landing surfaces expose legal navigation', async () => {
-  const pages = await Promise.all([
-    'index.html',
-    'search.html',
-    'pricing.html',
-    'signup.html',
-    'login.html',
-    'mypage.html',
-    'analytics.html'
-  ].map(read));
+  const pages = await Promise.all(
+    [
+      'index.html',
+      'search.html',
+      'pricing.html',
+      'signup.html',
+      'login.html',
+      'mypage.html',
+      'analytics.html'
+    ].map(read)
+  );
 
   for (const html of pages) {
     assert.match(html, /terms\.html/);
