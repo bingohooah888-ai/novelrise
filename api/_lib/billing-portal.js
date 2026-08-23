@@ -14,6 +14,11 @@ function getAppBaseUrl(env) {
   );
 }
 
+function getPortalConfiguration(env) {
+  const configuration = env.STRIPE_PORTAL_CONFIGURATION_ID;
+  return configuration ? { configuration } : {};
+}
+
 export function createBillingPortalHandler({
   stripe,
   supabase,
@@ -64,7 +69,8 @@ export function createBillingPortalHandler({
 
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        return_url: `${getAppBaseUrl(env)}/mypage.html`
+        return_url: `${getAppBaseUrl(env)}/mypage.html`,
+        ...getPortalConfiguration(env)
       });
 
       return res.status(200).json({

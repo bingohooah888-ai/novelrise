@@ -1,0 +1,182 @@
+name: NOVELIGHT Stripe Production Bootstrap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-stripe-production-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    name: Provision Stripe live billing and sync Vercel
+    runs-on: ubuntu-latest
+    environment: production-approval
+    env:
+      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_SCOPE: ranobe1
+      VERCEL_PROJECT: novelrise
+      NOVELIGHT_APP_URL: https://novelrise.vercel.app
+      STRIPE_BOOTSTRAP_OUTPUT: /tmp/novelight-stripe-bootstrap.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify one-time production credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$STRIPE_LIVE_SECRET_KEY" != sk_live_* ]]; then
+            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not a live Stripe secret key.'
+            exit 1
+          fi
+          test -n "$VERCEL_TOKEN" || {
+            echo 'VERCEL_TOKEN is not configured.'
+            exit 1
+          }
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@52.0.0
+
+      - name: Link the intended Vercel production project
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel link \
+            --yes \
+            --project "$VERCEL_PROJECT" \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN"
+          vercel project inspect \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN" \
+            --non-interactive
+
+      - name: Detect whether a webhook secret is already configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel env ls production \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN" \
+            > /tmp/vercel-production-env-before.txt
+
+          if grep -F 'STRIPE_WEBHOOK_SECRET' /tmp/vercel-production-env-before.txt >/dev/null; then
+            echo 'VERCEL_HAS_WEBHOOK_SECRET=true' >> "$GITHUB_ENV"
+          else
+            echo 'VERCEL_HAS_WEBHOOK_SECRET=false' >> "$GITHUB_ENV"
+          fi
+
+      - name: Provision and verify Stripe live objects
+        run: node scripts/stripe-production-bootstrap.mjs
+
+      - name: Sync Stripe production variables to Vercel
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          set_sensitive_env() {
+            local key="$1"
+            local value="$2"
+            printf '::add-mask::%s\n' "$value"
+            printf '%s' "$value" \
+              | vercel env add "$key" production \
+                  --force \
+                  --yes \
+                  --sensitive \
+                  --scope "$VERCEL_SCOPE" \
+                  --token "$VERCEL_TOKEN" \
+                  >/dev/null
+          }
+
+          standard_price="$(jq -er '.standardPriceId' "$STRIPE_BOOTSTRAP_OUTPUT")"
+          premium_price="$(jq -er '.premiumPriceId' "$STRIPE_BOOTSTRAP_OUTPUT")"
+          portal_configuration="$(jq -er '.portalConfigurationId' "$STRIPE_BOOTSTRAP_OUTPUT")"
+          webhook_secret="$(jq -r '.webhookSecret // empty' "$STRIPE_BOOTSTRAP_OUTPUT")"
+
+          set_sensitive_env STRIPE_SECRET_KEY "$STRIPE_LIVE_SECRET_KEY"
+          set_sensitive_env STRIPE_STANDARD_PRICE_ID "$standard_price"
+          set_sensitive_env STRIPE_PREMIUM_PRICE_ID "$premium_price"
+          set_sensitive_env STRIPE_PORTAL_CONFIGURATION_ID "$portal_configuration"
+          set_sensitive_env NOVELIGHT_APP_URL "$NOVELIGHT_APP_URL"
+
+          if [ -n "$webhook_secret" ]; then
+            set_sensitive_env STRIPE_WEBHOOK_SECRET "$webhook_secret"
+          fi
+
+      - name: Verify Vercel production variable names
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel env ls production \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN" \
+            > /tmp/vercel-production-env-after.txt
+
+          for key in \
+            STRIPE_SECRET_KEY \
+            STRIPE_STANDARD_PRICE_ID \
+            STRIPE_PREMIUM_PRICE_ID \
+            STRIPE_PORTAL_CONFIGURATION_ID \
+            STRIPE_WEBHOOK_SECRET \
+            NOVELIGHT_APP_URL; do
+            grep -F "$key" /tmp/vercel-production-env-after.txt >/dev/null || {
+              echo "Missing Vercel production variable: $key"
+              exit 1
+            }
+          done
+
+      - name: Trigger production redeploy with the new variables
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel deploy \
+            --prod \
+            --yes \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN" \
+            > /tmp/vercel-production-deploy.txt
+          tail -n 1 /tmp/vercel-production-deploy.txt
+
+      - name: Wait for production Stripe API routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            checkout_code="$(curl --silent --show-error --output /tmp/checkout-response \
+              --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
+              "$NOVELIGHT_APP_URL/api/create-checkout-session")"
+            webhook_code="$(curl --silent --show-error --output /tmp/webhook-response \
+              --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
+              "$NOVELIGHT_APP_URL/api/stripe-webhook")"
+
+            if [[ "$checkout_code" =~ ^(401|405)$ ]] && [ "$webhook_code" = '405' ]; then
+              echo 'Production Stripe API routes are reachable after redeploy.'
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo 'Production Stripe API routes did not become healthy in time.'
+          exit 1
+
+      - name: Remove bootstrap output containing the webhook secret
+        if: always()
+        run: rm -f /tmp/novelight-stripe-bootstrap.json
