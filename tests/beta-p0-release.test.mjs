@@ -54,14 +54,20 @@ test('publish path requires AI declaration and content-policy zoning', async () 
 });
 
 test('moderation route is structured and private', async () => {
-  const [novel, episode, migration] = await Promise.all([
+  const [novel, episode, migration, opsRunbook] = await Promise.all([
     read('novel.html'),
     read('episode.html'),
-    read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql')
+    read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql'),
+    read('docs/BETA-OPERATIONS-RUNBOOK.md')
   ]);
 
   assert.match(novel, /submit_content_report/);
+  assert.match(novel, /p_novel_id:String\(novel\.id\),p_episode_id:null/);
   assert.match(episode, /submit_content_report/);
+  assert.match(
+    episode,
+    /p_novel_id:String\(novel\.id\),p_episode_id:String\(episode\.id\)/
+  );
   assert.match(migration, /create table public\.content_reports/);
   assert.match(
     migration,
@@ -69,6 +75,9 @@ test('moderation route is structured and private', async () => {
   );
   assert.match(migration, /copyright/);
   assert.match(migration, /ai_misclassification/);
+  assert.match(opsRunbook, /content_reports/);
+  assert.match(opsRunbook, /contact_inquiries/);
+  assert.match(opsRunbook, /every 6 hours|6時間|6 hours/);
 });
 
 test('beta-start attribution, revisit, Founding Authors, and subscription ledgers exist', async () => {

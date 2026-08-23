@@ -69,7 +69,12 @@ $$;
 set role anon;
 select public.submit_content_report('99000000-0000-0000-0000-000000000002',null,'copyright','Potential unauthorized reproduction for integration test.','visitor-report-test-token','');
 reset role;
-select public.test_assert((select count(*) from public.content_reports where novel_id_snapshot='99000000-0000-0000-0000-000000000002')=1,'structured report stored server-side');
+select public.test_assert((select count(*) from public.content_reports where novel_id_snapshot='99000000-0000-0000-0000-000000000002' and episode_id_snapshot is null)=1,'novel report stored server-side');
+
+set role anon;
+select public.submit_content_report('10000000-0000-0000-0000-000000000001','11000000-0000-0000-0000-000000000001','prohibited_content','Episode moderation integration test report.','visitor-episode-report-token','');
+reset role;
+select public.test_assert((select count(*) from public.content_reports where novel_id_snapshot='10000000-0000-0000-0000-000000000001' and episode_id_snapshot='11000000-0000-0000-0000-000000000001')=1,'episode report stored server-side');
 
 set role anon;
 select public.record_acquisition_touch('visitor-x-test-token','x','social','beta-launch','post-001','/index.html','t.co');
