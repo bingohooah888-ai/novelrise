@@ -38,7 +38,8 @@ test('home exposes the discovery feed shell', async ({ page }) => {
   await expect(
     page.getByText('Free / Standard / Premium すべてが一般枠の対象です')
   ).toHaveCount(1);
-  await expect(page.getByText('LIGHT ANALYTICS', { exact: true }).first()).toBeVisible();
+  const analyticsLabel = page.getByText('LIGHT ANALYTICS', { exact: true });
+  await expect(analyticsLabel.first()).toBeVisible();
 });
 
 test('search exposes recommended and neutral sorts', async ({ page }) => {
@@ -73,8 +74,9 @@ test('novel detail includes the LIGHT SEED UI shell', async ({ page }) => {
   });
 
   await expect(page.locator('#lightSeedArea')).toHaveCount(1);
-  await expect(page.locator('#lightSeedButton')).toHaveCount(1);
-  await expect(page.locator('#lightSeedButton')).toHaveText(/LIGHT SEEDを贈る/);
+  const seedButton = page.locator('#lightSeedButton');
+  await expect(seedButton).toHaveCount(1);
+  await expect(seedButton).toHaveText(/LIGHT SEEDを贈る/);
   await expect(page.locator('#lightSeedRemaining')).toHaveCount(1);
 });
 
@@ -96,7 +98,7 @@ test('LIGHT ANALYTICS exposes the exposure KPI shell without authentication', as
   expect(html).not.toContain('本文読了');
 });
 
-test('author home exposes beta author KPI and feature routes', async ({ request }) => {
+test('author home exposes beta routes', async ({ request }) => {
   const response = await request.get('/mypage.html');
   expect(response.ok()).toBeTruthy();
 
