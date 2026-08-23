@@ -38,6 +38,22 @@ test('home exposes the discovery feed shell', async ({ page }) => {
   await expect(
     page.getByText('Free / Standard / Premium すべてが一般枠の対象です')
   ).toHaveCount(1);
+  const analyticsLabel = page.getByText('LIGHT ANALYTICS', { exact: true });
+  await expect(analyticsLabel.first()).toBeVisible();
+});
+
+test('key renamed public pages avoid mobile horizontal overflow', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const path of ['/index.html', '/pricing.html']) {
+    await page.goto(path, { waitUntil: 'domcontentloaded' });
+    const fitsViewport = await page
+      .locator('html')
+      .evaluate((html) => html.scrollWidth <= html.clientWidth);
+    expect(fitsViewport).toBeTruthy();
+  }
 });
 
 test('search exposes recommended and neutral sorts', async ({ page }) => {
@@ -72,45 +88,50 @@ test('novel detail includes the LIGHT SEED UI shell', async ({ page }) => {
   });
 
   await expect(page.locator('#lightSeedArea')).toHaveCount(1);
-  await expect(page.locator('#lightSeedButton')).toHaveCount(1);
+  const seedButton = page.locator('#lightSeedButton');
+  await expect(seedButton).toHaveCount(1);
+  await expect(seedButton).toHaveText(/LIGHT SEEDを贈る/);
   await expect(page.locator('#lightSeedRemaining')).toHaveCount(1);
 });
 
-test('analytics exposes the exposure KPI shell without authentication', async ({
+test('LIGHT ANALYTICS exposes the exposure KPI shell without authentication', async ({
   request
 }) => {
   const response = await request.get('/analytics.html');
   expect(response.ok()).toBeTruthy();
 
   const html = await response.text();
+  expect(html).toContain('<title>LIGHT ANALYTICS | NOVELIGHT</title>');
   expect(html).toContain('id="exposureSummary"');
   expect(html).toContain('id="exposurePeriodSwitcher"');
   expect(html).toContain('id="exposureNovelList"');
   expect(html).toContain('本文10秒閲覧');
   expect(html).toContain('第1話→第2話 継続率');
   expect(html).toContain('露出後のお気に入り');
+  expect(html).toContain('プランによる追加露出');
   expect(html).not.toContain('本文読了');
 });
 
-test('author dashboard exposes beta author KPI shell', async ({ request }) => {
+test('author home exposes beta routes', async ({ request }) => {
   const response = await request.get('/mypage.html');
   expect(response.ok()).toBeTruthy();
 
   const html = await response.text();
-  expect(html).toContain('<title>作者ダッシュボード | NOVELIGHT</title>');
+  expect(html).toContain('<title>作者ホーム | NOVELIGHT</title>');
   expect(html).toContain('id="authorExposureSummary"');
   expect(html).toContain('id="authorStats"');
   expect(html).toContain('id="receivedFavoriteCount"');
   expect(html).toContain('第1話10秒閲覧');
   expect(html).toContain('第2話まで継続');
   expect(html).toContain('露出後のお気に入り');
+  expect(html).toContain('LIGHT ANALYTICS');
+  expect(html).toContain('SCOUT RECORD');
+  expect(html).toContain('scout-record.html');
   expect(html).toContain('novelight_author_exposure_funnel');
   expect(html).not.toContain('NovelRise');
 });
 
-test('author dashboard starts without JavaScript page errors', async ({
-  page
-}) => {
+test('author home starts without JavaScript page errors', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
@@ -120,6 +141,22 @@ test('author dashboard starts without JavaScript page errors', async ({
   await page.waitForTimeout(750);
 
   expect(pageErrors).toEqual([]);
+});
+
+test('SCOUT RECORD shell uses existing private LIGHT SEED history', async ({
+  request
+}) => {
+  const response = await request.get('/scout-record.html');
+  expect(response.ok()).toBeTruthy();
+
+  const html = await response.text();
+  expect(html).toContain('<title>SCOUT RECORD | NOVELIGHT</title>');
+  expect(html).toContain("from('light_seeds')");
+  expect(html).toContain('novel_id_snapshot, seeded_at');
+  expect(html).toContain('現在非公開または削除済み');
+  expect(html).toContain('まだLIGHT SEEDを贈った作品はありません');
+  expect(html).not.toContain('Gold');
+  expect(html).not.toContain('Silver');
 });
 
 test('reader pages wire exposure conversion recording', async ({ request }) => {

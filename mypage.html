@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>作者ダッシュボード | NOVELIGHT</title>
+  <title>作者ホーム | NOVELIGHT</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -59,7 +59,7 @@
     .text-link { color: #6d4aff; font-size: 13px; font-weight: 800; white-space: nowrap; }
     .action-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 14px;
     }
     .action-card,
@@ -180,7 +180,7 @@
 
 <main>
   <section class="hero">
-    <h1 id="welcomeName">作者ダッシュボード</h1>
+    <h1 id="welcomeName">作者ホーム</h1>
     <p>作品管理と、読者へ届いたあとの動きをここから確認できます。</p>
     <div id="userEmail" class="hero-email"></div>
   </section>
@@ -206,9 +206,15 @@
       </article>
       <article class="action-card">
         <div class="action-icon">📈</div>
-        <h2>アクセス解析</h2>
+        <h2>LIGHT ANALYTICS</h2>
         <p>作品別の露出、読書継続、お気に入り転換を確認します。</p>
         <a href="analytics.html" class="action-button" id="dashboardAnalyticsLink">詳しく見る</a>
+      </article>
+      <article class="action-card">
+        <div class="action-icon">🌱</div>
+        <h2>SCOUT RECORD</h2>
+        <p>LIGHT SEEDを贈って発掘した作品の履歴を確認します。</p>
+        <a href="scout-record.html" class="action-button">履歴を見る</a>
       </article>
       <article class="action-card">
         <div class="action-icon">💎</div>
@@ -224,10 +230,10 @@
   <section class="section" aria-labelledby="exposureHeading">
     <div class="section-head">
       <div>
-        <h2 class="section-title" id="exposureHeading">露出から読書まで・直近30日</h2>
+        <h2 class="section-title" id="exposureHeading">LIGHT ANALYTICS・直近30日</h2>
         <p class="section-note">「どれだけ表示されたか」と「表示されたあと読者がどこまで進んだか」を全作品合計で確認します。10秒閲覧は読了ではありません。</p>
       </div>
-      <a href="analytics.html" class="text-link">作品別の詳細を見る →</a>
+      <a href="analytics.html" class="text-link">作品別のLIGHT ANALYTICSを見る →</a>
     </div>
     <div class="metrics-grid" id="authorExposureSummary">
       <div class="metric-card">
@@ -395,7 +401,7 @@
     }
 
     const displayName = profile?.display_name || currentSession.user.user_metadata?.display_name || '';
-    if (displayName) document.getElementById('welcomeName').textContent = `${displayName} さんの作者ダッシュボード`;
+    if (displayName) document.getElementById('welcomeName').textContent = `${displayName} さんの作者ホーム`;
     document.getElementById('displayNameInput').value = profile?.display_name ?? '';
     document.getElementById('bioInput').value = profile?.bio ?? '';
     renderPlan(profile);
@@ -408,7 +414,7 @@
     const { data, error } = await supabaseClient.rpc('novelight_author_exposure_funnel', { p_days: 30 });
     if (error) {
       console.error(error);
-      status.innerHTML = '<div class="status-box error">露出・読書データを読み込めませんでした。詳細なアクセス解析から再度お試しください。</div>';
+      status.innerHTML = '<div class="status-box error">露出・読書データを読み込めませんでした。LIGHT ANALYTICSから再度お試しください。</div>';
       return;
     }
 
@@ -537,8 +543,8 @@
 
     message.textContent = 'プロフィールを保存しました。';
     document.getElementById('welcomeName').textContent = displayName
-      ? `${displayName} さんの作者ダッシュボード`
-      : '作者ダッシュボード';
+      ? `${displayName} さんの作者ホーム`
+      : '作者ホーム';
   }
 
   document.getElementById('logoutButton').addEventListener('click', async () => {
