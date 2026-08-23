@@ -25,7 +25,8 @@ test('user-facing HTML uses the current NOVELIGHT feature names', async () => {
     'アクセス解析',
     '作者ダッシュボード',
     '新作48時間初動ブースト',
-    '新作の初動支援'
+    '新作の初動支援',
+    'LIGHT REPORT'
   ];
 
   for (const file of files) {
@@ -57,6 +58,13 @@ test('core pages expose the approved beta names and SCOUT RECORD route', async (
 
   assert.match(novel, /LIGHT SEEDを贈る/);
   assert.match(analytics, /LIGHT ANALYTICS/);
+  assert.doesNotMatch(analytics, /LIGHT REPORT/);
+  assert.match(analytics, /インプレッション/);
+  assert.match(analytics, /作品ページ到達/);
+  assert.match(analytics, /formatRate\(detailOpens, impressions\)/);
+  assert.match(analytics, /第1話10秒閲覧/);
+  assert.match(analytics, /第1話→第2話 継続率/);
+  assert.match(analytics, /露出後のお気に入り/);
   assert.match(mypage, /作者ホーム/);
   assert.match(mypage, /SCOUT RECORD/);
   assert.match(pricing, /新作48時間ブースト/);
