@@ -146,7 +146,10 @@ test('all search sorts preserve impression data', async () => {
   for (const sort of ['recommended', 'new', 'pv', 'favorites']) {
     assert.match(search, new RegExp(`<option value="${sort}">`));
   }
-  assert.match(search, /s==='recommended'\?await recommended\(k,g,current\):await neutral\(k,g,s,current\)/);
+  assert.match(
+    search,
+    /s==='recommended'\?await recommended\(k,g,current\):await neutral\(k,g,s,current\)/
+  );
   assert.match(search, /record_novel_impressions_v2/);
   assert.match(search, /record_neutral_search_impressions/);
   assert.match(migration, /search_results/);
