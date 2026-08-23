@@ -515,8 +515,9 @@
       }
 
       button.disabled = true;
+      const wasFavorite = Boolean(favoriteId);
 
-      const response = favoriteId
+      const response = wasFavorite
         ? await supabaseClient.from('favorites').delete().eq('id', favoriteId)
         : await supabaseClient.from('favorites').insert({
             user_id: currentSession.user.id,
@@ -527,6 +528,22 @@
         console.error(response.error);
         alert('お気に入りの更新に失敗しました。');
       } else {
+        if (!wasFavorite) {
+          const { error: conversionError } = await supabaseClient.rpc(
+            'record_novel_exposure_conversion',
+            {
+              p_event_type: 'favorite_added',
+              p_novel_id: String(currentNovel.id),
+              p_episode_id: null,
+              p_visitor_token: getVisitorToken()
+            }
+          );
+
+          if (conversionError) {
+            console.error('favorite exposure conversion failed', conversionError);
+          }
+        }
+
         await refresh();
       }
 
