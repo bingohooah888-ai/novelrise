@@ -1,0 +1,112 @@
+name: NOVELIGHT Beta P0 Database Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'tests/rls/**'
+      - '.github/workflows/beta-p0-database.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'tests/rls/**'
+      - '.github/workflows/beta-p0-database.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: beta-p0-db-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  beta-p0-db:
+    name: Beta P0 migrations, RLS, and rollback safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: novelight_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d novelight_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build beta schema through current prerequisites
+        env:
+          PGPASSWORD: postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          DB="psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1"
+
+          $DB -f tests/rls/fixture.sql
+          $DB -f supabase/migrations/20260819190000_secure_content_rls_and_constraints.sql
+          $DB -f supabase/checks/20260822_content_write_rls_precheck.sql
+          $DB -f supabase/migrations/20260822194000_manage_content_write_rls.sql
+
+          $DB -f tests/rls/billing-fixture.sql
+          $DB -f supabase/checks/20260823073000_billing_permissions_and_novel_limits_precheck.sql
+          $DB -f supabase/migrations/20260823073000_enforce_billing_permissions_and_novel_limits.sql
+          $DB -f supabase/checks/20260823074300_stripe_subscription_state_precheck.sql
+          $DB -f supabase/migrations/20260823074300_add_stripe_subscription_state.sql
+
+          $DB -f tests/rls/light-seed-fixture.sql
+          $DB -f supabase/checks/20260823083500_light_seed_mvp_precheck.sql
+          $DB -f supabase/migrations/20260823083500_light_seed_mvp.sql
+
+          $DB -f tests/rls/exposure-fixture.sql
+          $DB -f supabase/checks/20260823112000_exposure_allocation_precheck.sql
+          $DB -f supabase/migrations/20260823112000_exposure_allocation.sql
+          $DB -f supabase/checks/20260823115300_exposure_funnel_precheck.sql
+          $DB -f supabase/migrations/20260823115300_exposure_funnel.sql
+          $DB -f supabase/checks/20260823133000_exposure_funnel_retention_precheck.sql
+          $DB -f supabase/migrations/20260823133000_exposure_funnel_retention.sql
+
+      - name: Apply, rollback, and reapply beta P0 migrations
+        env:
+          PGPASSWORD: postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          DB="psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1"
+
+          $DB -f supabase/checks/20260823170000_beta_launch_data_foundations_precheck.sql
+          $DB -f supabase/migrations/20260823170000_beta_launch_data_foundations.sql
+          $DB -f supabase/checks/20260823170000_beta_launch_data_foundations_postcheck.sql
+          $DB -f supabase/rollback/20260823170000_beta_launch_data_foundations_rollback.sql
+          $DB -f supabase/checks/20260823170000_beta_launch_data_foundations_precheck.sql
+          $DB -f supabase/migrations/20260823170000_beta_launch_data_foundations.sql
+          $DB -f supabase/checks/20260823170000_beta_launch_data_foundations_postcheck.sql
+
+          $DB -f supabase/checks/20260823171000_initial_and_paid_exposure_precheck.sql
+          $DB -f supabase/migrations/20260823171000_initial_and_paid_exposure.sql
+          $DB -f supabase/checks/20260823171000_initial_and_paid_exposure_postcheck.sql
+          $DB -f supabase/rollback/20260823171000_initial_and_paid_exposure_rollback.sql
+          $DB -f supabase/checks/20260823171000_initial_and_paid_exposure_precheck.sql
+          $DB -f supabase/migrations/20260823171000_initial_and_paid_exposure.sql
+          $DB -f supabase/checks/20260823171000_initial_and_paid_exposure_postcheck.sql
+
+          $DB -f supabase/migrations/20260823171500_neutral_search_impressions.sql
+          $DB -f supabase/rollback/20260823171500_neutral_search_impressions_rollback.sql
+          $DB -f supabase/migrations/20260823171500_neutral_search_impressions.sql
+
+      - name: Run beta P0 database behavior tests
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/beta-p0-foundations.sql
