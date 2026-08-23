@@ -34,9 +34,7 @@ async function closeContextSafely(context) {
     await context.close();
   } catch (error) {
     if (
-      !String(error).includes(
-        'Target page, context or browser has been closed'
-      )
+      !String(error).includes('Target page, context or browser has been closed')
     ) {
       throw error;
     }
