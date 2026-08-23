@@ -54,22 +54,18 @@ jobs:
         run: |
           set -euo pipefail
           DB="psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1"
-
           $DB -f tests/rls/fixture.sql
           $DB -f supabase/migrations/20260819190000_secure_content_rls_and_constraints.sql
           $DB -f supabase/checks/20260822_content_write_rls_precheck.sql
           $DB -f supabase/migrations/20260822194000_manage_content_write_rls.sql
-
           $DB -f tests/rls/billing-fixture.sql
           $DB -f supabase/checks/20260823073000_billing_permissions_and_novel_limits_precheck.sql
           $DB -f supabase/migrations/20260823073000_enforce_billing_permissions_and_novel_limits.sql
           $DB -f supabase/checks/20260823074300_stripe_subscription_state_precheck.sql
           $DB -f supabase/migrations/20260823074300_add_stripe_subscription_state.sql
-
           $DB -f tests/rls/light-seed-fixture.sql
           $DB -f supabase/checks/20260823083500_light_seed_mvp_precheck.sql
           $DB -f supabase/migrations/20260823083500_light_seed_mvp.sql
-
           $DB -f tests/rls/exposure-fixture.sql
           $DB -f supabase/checks/20260823112000_exposure_allocation_precheck.sql
           $DB -f supabase/migrations/20260823112000_exposure_allocation.sql
@@ -105,6 +101,12 @@ jobs:
           $DB -f supabase/migrations/20260823171500_neutral_search_impressions.sql
           $DB -f supabase/rollback/20260823171500_neutral_search_impressions_rollback.sql
           $DB -f supabase/migrations/20260823171500_neutral_search_impressions.sql
+
+          $DB -f supabase/migrations/20260823172000_lock_first_publication_time.sql
+          $DB -f supabase/checks/20260823172000_lock_first_publication_time_postcheck.sql
+          $DB -f supabase/rollback/20260823172000_lock_first_publication_time_rollback.sql
+          $DB -f supabase/migrations/20260823172000_lock_first_publication_time.sql
+          $DB -f supabase/checks/20260823172000_lock_first_publication_time_postcheck.sql
 
       - name: Run beta P0 database behavior tests
         env:
