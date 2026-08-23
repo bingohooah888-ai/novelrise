@@ -16,16 +16,21 @@ async function rootHtmlFiles() {
 test('user-facing HTML uses the current NOVELIGHT feature names', async () => {
   const files = await rootHtmlFiles();
   const violations = [];
+  const forbiddenNames = [
+    '目利き',
+    '目利き実績',
+    '目利きレベル',
+    '発掘履歴',
+    'アクセス解析',
+    '作者ダッシュボード',
+    '新作48時間初動ブースト',
+    '新作の初動支援'
+  ];
 
   for (const file of files) {
     const html = await readFile(join(root.pathname, file), 'utf8');
 
-    for (const forbidden of [
-      '目利き',
-      '目利き実績',
-      '目利きレベル',
-      '新作48時間初動ブースト'
-    ]) {
+    for (const forbidden of forbiddenNames) {
       if (html.includes(forbidden)) violations.push(`${file}: ${forbidden}`);
     }
 
