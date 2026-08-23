@@ -68,7 +68,10 @@ test('production search can reach a real novel and episode without writing metri
     }
   }
 
-  expect(episodeHref, 'at least one published work should expose an episode').toBeTruthy();
+  expect(
+    episodeHref,
+    'at least one published work should expose an episode'
+  ).toBeTruthy();
 
   await page.goto(episodeHref, { waitUntil: 'domcontentloaded' });
 
