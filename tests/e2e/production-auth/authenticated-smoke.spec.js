@@ -23,7 +23,7 @@ async function login(page, account, redirect) {
     url.pathname.endsWith(`/${redirect.split('?')[0]}`)
   );
   const visitorToken = await page.evaluate(() =>
-    window.localStorage.getItem('novelight_visitor_token')
+    globalThis.localStorage.getItem('novelight_visitor_token')
   );
   expect(visitorToken).toBeTruthy();
   return visitorToken;
