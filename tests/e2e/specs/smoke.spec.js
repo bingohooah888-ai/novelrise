@@ -102,7 +102,9 @@ test('author dashboard exposes beta author KPI shell', async ({ request }) => {
   expect(html).not.toContain('NovelRise');
 });
 
-test('author dashboard starts without JavaScript page errors', async ({ page }) => {
+test('author dashboard starts without JavaScript page errors', async ({
+  page
+}) => {
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
