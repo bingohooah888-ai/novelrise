@@ -164,7 +164,7 @@ select public.test_assert(
     from public.novelight_author_exposure_funnel(30)
     where novel_id = '10000000-0000-0000-0000-000000000001'
   ),
-  'authors must not receive another author\'s funnel rows'
+  'authors must not receive another author''s funnel rows'
 );
 
 select set_config(
