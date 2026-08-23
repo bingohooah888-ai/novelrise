@@ -277,7 +277,7 @@
       </div>
 
       <div id="premiumWrap" class="premium-wrap" hidden>
-        <div class="premium-heading">Premium追加露出枠（一般枠とは別枠）</div>
+        <div class="premium-heading">Premiumのプランによる追加露出枠（一般枠とは別枠）</div>
         <div id="premiumGrid" class="discovery-grid"></div>
       </div>
 
@@ -302,12 +302,12 @@
         <article class="feature">
           <div class="feature-icon">🌱</div>
           <h3>LIGHT SEED</h3>
-          <p>読者が無名作品を発掘して応援できる仕組み。過去の発掘履歴も残ります。</p>
+          <p>SCOUTがまだ知られていない作品を発掘して応援できる仕組み。贈った記録はSCOUT RECORDに残ります。</p>
         </article>
         <article class="feature">
           <div class="feature-icon">📊</div>
-          <h3>実際に見られた露出を計測</h3>
-          <p>候補取得ではなく画面に表示された作品をインプレッションとして記録し、β改善に使います。</p>
+          <h3>LIGHT ANALYTICS</h3>
+          <p>画面に表示された作品をインプレッションとして記録し、その後の読書行動まで作者が確認できます。</p>
         </article>
       </div>
     </div>
@@ -326,7 +326,7 @@
           <ul>
             <li>1作品まで投稿</li>
             <li>一般発見枠の対象</li>
-            <li>基本アクセス解析</li>
+            <li>基本LIGHT ANALYTICS</li>
           </ul>
           <p class="plan-note">無料でも作品が発見対象から外れることはありません。</p>
         </article>
@@ -335,8 +335,8 @@
           <div class="price">¥980 <small>/ 月</small></div>
           <ul>
             <li>10作品まで投稿</li>
-            <li>一般枠で発見機会を追加</li>
-            <li>詳細アクセス解析</li>
+            <li>一般枠でプランによる追加露出</li>
+            <li>LIGHT ANALYTICS</li>
           </ul>
           <p class="plan-note">βでは露出効果を計測し、Freeとのバランスを継続調整します。</p>
         </article>
@@ -346,9 +346,10 @@
           <ul>
             <li>30作品まで投稿</li>
             <li>Standardより多い発見機会</li>
-            <li>一般枠を奪わない追加露出枠</li>
+            <li>一般枠を奪わないプランによる追加露出枠</li>
+            <li>新作48時間ブースト</li>
           </ul>
-          <p class="plan-note">新作にはβ版の短時間ブーストがありますが、ランキング評価には加点しません。</p>
+          <p class="plan-note">新作48時間ブーストは公開後48時間、通常より発見される機会を増やします。ランキング順位や作品評価そのものを上げる機能ではありません。</p>
         </article>
       </div>
     </div>
@@ -402,7 +403,7 @@
         <div class="genre">${escapeHtml(novel.genre || '未設定')}</div>
         <div class="novel-title">
           ${escapeHtml(novel.title)}
-          ${premiumSlot ? '<span class="premium-badge">追加露出</span>' : ''}
+          ${premiumSlot ? '<span class="premium-badge">プランによる追加露出</span>' : ''}
         </div>
         <div class="description">${escapeHtml(novel.description || '')}</div>
         <div class="meta">投稿日 ${createdAt} ・ 👁 ${Number(novel.pv || 0).toLocaleString()} ・ ★ ${Number(novel.favorite_count || 0).toLocaleString()}</div>
