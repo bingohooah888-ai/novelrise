@@ -65,54 +65,66 @@ test('login form exposes the required controls', async ({ page }) => {
   await expect(page.locator('button[type="submit"]')).toBeVisible();
 });
 
-test('signup requires explicit legal consent', async ({ page }) => {
+test('signup legal consent', async ({ page }) => {
   await page.goto('/signup.html', {
     waitUntil: 'domcontentloaded'
   });
 
-  await expect(page.locator('#termsConsent')).toBeVisible();
-  await expect(page.locator('#termsConsent')).not.toBeChecked();
-  await expect(page.locator('a[href="terms.html"]')).toHaveCount(2);
-  await expect(page.locator('a[href="privacy.html"]')).toHaveCount(2);
-  await expect(page.locator('a[href="content-guidelines.html"]')).toHaveCount(2);
+  const consent = page.locator('#termsConsent');
+  const terms = page.locator('a[href="terms.html"]');
+  const privacy = page.locator('a[href="privacy.html"]');
+  const guidelines = page.locator('a[href="content-guidelines.html"]');
+
+  await expect(consent).toBeVisible();
+  await expect(consent).not.toBeChecked();
+  await expect(terms).toHaveCount(2);
+  await expect(privacy).toHaveCount(2);
+  await expect(guidelines).toHaveCount(2);
 });
 
-test('pricing states recurring billing and legal links', async ({ page }) => {
+test('pricing legal notices', async ({ page }) => {
   await page.goto('/pricing.html', {
     waitUntil: 'domcontentloaded'
   });
 
-  await expect(page.getByText('月額・解約まで自動更新')).toHaveCount(2);
-  await expect(page.getByText('申込み前に確認してください')).toBeVisible();
-  await expect(page.locator('a[href="billing-policy.html"]')).toBeVisible();
-  await expect(page.locator('a[href="commerce-disclosure.html"]')).toBeVisible();
+  const recurring = page.getByText('月額・解約まで自動更新');
+  const notice = page.getByText('申込み前に確認してください');
+  const billing = page.locator('a[href="billing-policy.html"]');
+  const commerce = page.locator('a[href="commerce-disclosure.html"]');
+
+  await expect(recurring).toHaveCount(2);
+  await expect(notice).toBeVisible();
+  await expect(billing).toBeVisible();
+  await expect(commerce).toBeVisible();
 });
 
-test('beta legal pages keep critical disclosures visible', async ({
-  request
-}) => {
-  const terms = await (await request.get('/terms.html')).text();
-  const privacy = await (await request.get('/privacy.html')).text();
-  const content = await (await request.get('/content-guidelines.html')).text();
-  const billing = await (await request.get('/billing-policy.html')).text();
-  const commerce = await (
-    await request.get('/commerce-disclosure.html')
-  ).text();
+test('legal critical disclosures', async ({ request }) => {
+  const termsRes = await request.get('/terms.html');
+  const privacyRes = await request.get('/privacy.html');
+  const contentRes = await request.get('/content-guidelines.html');
+  const billingRes = await request.get('/billing-policy.html');
+  const commerceRes = await request.get('/commerce-disclosure.html');
 
-  expect(terms).toContain(
-    '高評価、ランキング順位、読者数、売上、出版等の成果を保証しません'
-  );
+  const terms = await termsRes.text();
+  const privacy = await privacyRes.text();
+  const content = await contentRes.text();
+  const billing = await billingRes.text();
+  const commerce = await commerceRes.text();
+
+  const noGuarantee =
+    '高評価、ランキング順位、読者数、売上、出版等の成果を保証しません';
+  const disclosure =
+    '消費者から請求があった場合、法令に従い遅滞なく開示します';
+  const contactBlocker = 'β公開前に実際に連絡可能な窓口を設定します';
+
+  expect(terms).toContain(noGuarantee);
   expect(privacy).toContain('訪問者トークン');
   expect(privacy).toContain('Supabase、Vercel、Stripe');
   expect(content).toContain('性的満足を主目的とするポルノグラフィー');
   expect(content).toContain('AI生成主体');
   expect(billing).toContain('解約されるまで月ごとに自動更新');
-  expect(commerce).toContain(
-    '消費者から請求があった場合、法令に従い遅滞なく開示します'
-  );
-  expect(commerce).toContain(
-    'β公開前に実際に連絡可能な窓口を設定します'
-  );
+  expect(commerce).toContain(disclosure);
+  expect(commerce).toContain(contactBlocker);
 });
 
 test('novel detail includes the LIGHT SEED UI shell', async ({ page }) => {
