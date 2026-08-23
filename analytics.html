@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>アクセス解析 | NOVELIGHT</title>
+  <title>LIGHT ANALYTICS | NOVELIGHT</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -149,13 +149,13 @@
 <header>
   <div class="header-inner">
     <a href="index.html" class="logo">NOVELIGHT</a>
-    <a href="mypage.html" class="back">← マイページへ戻る</a>
+    <a href="mypage.html" class="back">← 作者ホームへ戻る</a>
   </div>
 </header>
 <main>
   <div class="page-heading">
     <div>
-      <h1>アクセス解析</h1>
+      <h1>LIGHT ANALYTICS</h1>
       <p class="subtitle">作品が「表示されたあと、どこまで読者が進んだか」を確認できます。</p>
     </div>
     <div class="period-switcher" id="exposurePeriodSwitcher" aria-label="集計期間">
@@ -186,7 +186,7 @@
 
   <section class="section" aria-labelledby="basicHeading">
     <div class="section-heading">
-      <h2 class="section-title" id="basicHeading">基本アクセス解析</h2>
+      <h2 class="section-title" id="basicHeading">基本分析</h2>
       <p class="section-note">従来のPV・お気に入り・エピソード別PVも確認できます。</p>
     </div>
     <div class="basic-grid">
@@ -322,7 +322,7 @@
               本文10秒閲覧（いずれかの話） ${formatNumber(bodyReads)} ・ 表示→本文 ${formatRate(bodyReads, impressions)}
             </div>
             <div class="premium-box">
-              <div class="premium-title">Premium専用露出枠</div>
+              <div class="premium-title">プランによる追加露出（Premium専用枠）</div>
               <div class="premium-stats">
                 <span>表示 ${formatNumber(premiumImpressions)}</span>
                 <span>作品ページ ${formatNumber(premiumDetailOpens)}</span>
@@ -360,7 +360,7 @@
   async function loadBasicAnalytics(userId) {
     const basicStatus = document.getElementById('basicStatus');
     const novelList = document.getElementById('novelList');
-    basicStatus.innerHTML = '<div class="empty">基本アクセス解析を読み込み中...</div>';
+    basicStatus.innerHTML = '<div class="empty">基本分析を読み込み中...</div>';
     novelList.innerHTML = '';
 
     const { data: novels, error } = await supabaseClient
@@ -371,7 +371,7 @@
 
     if (error) {
       console.error(error);
-      basicStatus.innerHTML = '<div class="error">基本アクセス解析を読み込めませんでした。</div>';
+      basicStatus.innerHTML = '<div class="error">基本分析を読み込めませんでした。</div>';
       return;
     }
 
