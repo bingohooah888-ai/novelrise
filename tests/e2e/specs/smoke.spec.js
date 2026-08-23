@@ -43,9 +43,9 @@ test('search exposes recommended and neutral sort controls', async ({ page }) =>
   await expect(page.locator('#genreSelect')).toHaveCount(1);
   await expect(page.locator('#sortSelect')).toHaveCount(1);
 
-  const values = await page.locator('#sortSelect option').evaluateAll((options) =>
-    options.map((option) => option.value)
-  );
+  const values = await page
+    .locator('#sortSelect option')
+    .evaluateAll((options) => options.map((option) => option.value));
 
   expect(values).toEqual(['recommended', 'new', 'pv', 'favorites']);
 });
