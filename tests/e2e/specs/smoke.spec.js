@@ -34,7 +34,7 @@ test('home exposes the discovery feed shell', async ({ page }) => {
   ).toHaveCount(1);
 });
 
-test('search exposes recommended and neutral sort controls', async ({ page }) => {
+test('search exposes recommended and neutral sorts', async ({ page }) => {
   await page.goto('/search.html', {
     waitUntil: 'domcontentloaded'
   });
