@@ -1,3 +1,4 @@
+import { URL } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 const blockedWriteRpcs = new Set([
