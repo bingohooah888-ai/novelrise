@@ -201,10 +201,10 @@ begin
   aggregate_rows as (
     select
       e.novel_id_snapshot,
-      count(*)::bigint as impressions,
+      count(distinct e.id)::bigint as impressions,
       count(c.id) filter (where c.event_type = 'detail_open')::bigint as detail_opens,
       count(c.id) filter (where c.event_type = 'episode_read_10s')::bigint as body_reads,
-      count(*) filter (where e.surface = 'home_premium_slot')::bigint as premium_impressions,
+      count(distinct e.id) filter (where e.surface = 'home_premium_slot')::bigint as premium_impressions,
       count(c.id) filter (
         where e.surface = 'home_premium_slot'
           and c.event_type = 'detail_open'
