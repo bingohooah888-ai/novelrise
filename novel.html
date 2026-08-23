@@ -429,7 +429,9 @@
   async function deleteNovel() {
     const button = document.getElementById('deleteNovelButton');
     const confirmed = confirm(
-      'この作品を本当に削除しますか？\n作品内のエピソードも削除されます。\nこの操作は元に戻せません。'
+      'この作品を本当に削除しますか？\
+作品内のエピソードも削除されます。\
+この操作は元に戻せません。'
     );
 
     if (!confirmed) return;
@@ -564,7 +566,7 @@
     remaining.textContent = status.monthly_limit
       ? `今月あと ${status.remaining_this_month}/${status.monthly_limit}`
       : '';
-    total.textContent = `この作品のSEED ${status.total_seed_count ?? 0}`;
+    total.textContent = `この作品のLIGHT SEED ${status.total_seed_count ?? 0}`;
 
     button.disabled = false;
     button.textContent = '🌱 LIGHT SEEDを贈る';
@@ -625,7 +627,8 @@
       }
 
       const confirmed = confirm(
-        'この作品にLIGHT SEEDを贈りますか？\n同じ作品には1回だけ贈れます。'
+        'この作品にLIGHT SEEDを贈りますか？\
+同じ作品には1回だけ贈れます。'
       );
       if (!confirmed) return;
 
