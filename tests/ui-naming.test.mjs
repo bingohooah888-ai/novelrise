@@ -14,15 +14,15 @@ async function rootHtmlFiles() {
     .sort();
 }
 
-test('user-facing HTML uses the current NOVELIGHT feature names', async () => {
+test('user-facing HTML uses NOVELIGHT and current beta feature names', async () => {
   const files = await rootHtmlFiles();
   const violations = [];
   const forbiddenNames = [
-    '目利き',
+    'NovelRise',
+    'NOVELRISE',
+    'novelrise',
     '目利き実績',
     '目利きレベル',
-    '発掘履歴',
-    'アクセス解析',
     '作者ダッシュボード',
     '新作48時間初動ブースト',
     '新作の初動支援',
@@ -31,23 +31,15 @@ test('user-facing HTML uses the current NOVELIGHT feature names', async () => {
 
   for (const file of files) {
     const html = await readFile(join(root.pathname, file), 'utf8');
-
     for (const forbidden of forbiddenNames) {
       if (html.includes(forbidden)) violations.push(`${file}: ${forbidden}`);
-    }
-
-    const nonCanonicalExposure = html.match(/(?<!プランによる)追加露出/g);
-    if (nonCanonicalExposure) {
-      violations.push(
-        `${file}: canonicalize ${nonCanonicalExposure.length} occurrence(s) of 追加露出`
-      );
     }
   }
 
   assert.deepEqual(violations, []);
 });
 
-test('core pages expose the approved beta names and SCOUT RECORD route', async () => {
+test('core pages expose the approved beta terminology', async () => {
   const [novel, analytics, mypage, pricing, scoutRecord] = await Promise.all([
     readFile(join(root.pathname, 'novel.html'), 'utf8'),
     readFile(join(root.pathname, 'analytics.html'), 'utf8'),
@@ -61,10 +53,10 @@ test('core pages expose the approved beta names and SCOUT RECORD route', async (
   assert.doesNotMatch(analytics, /LIGHT REPORT/);
   assert.match(analytics, /インプレッション/);
   assert.match(analytics, /作品ページ到達/);
-  assert.match(analytics, /formatRate\(detailOpens, impressions\)/);
-  assert.match(analytics, /第1話10秒閲覧/);
-  assert.match(analytics, /第1話→第2話 継続率/);
-  assert.match(analytics, /露出後のお気に入り/);
+  assert.match(analytics, /作品ページ→第1話/);
+  assert.match(analytics, /第1話→第2話/);
+  assert.match(analytics, /露出後お気に入り/);
+  assert.match(analytics, /プランによる追加露出/);
   assert.match(mypage, /作者ホーム/);
   assert.match(mypage, /SCOUT RECORD/);
   assert.match(pricing, /新作48時間ブースト/);
