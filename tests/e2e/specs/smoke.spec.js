@@ -42,6 +42,20 @@ test('home exposes the discovery feed shell', async ({ page }) => {
   await expect(analyticsLabel.first()).toBeVisible();
 });
 
+test('key renamed public pages avoid mobile horizontal overflow', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const path of ['/index.html', '/pricing.html']) {
+    await page.goto(path, { waitUntil: 'domcontentloaded' });
+    const fitsViewport = await page
+      .locator('html')
+      .evaluate((html) => html.scrollWidth <= html.clientWidth);
+    expect(fitsViewport).toBeTruthy();
+  }
+});
+
 test('search exposes recommended and neutral sorts', async ({ page }) => {
   await page.goto('/search.html', {
     waitUntil: 'domcontentloaded'
