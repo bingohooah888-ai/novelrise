@@ -77,8 +77,7 @@ jobs:
             --state open \
             --search "${ALERT_TITLE} in:title" \
             --json number,title \
-            --jq ".[] | select(.title == env.ALERT_TITLE) | .number" \
-            | head -n 1)"
+            --jq '.[0].number // empty')"
 
           now="$(date -u '+%Y-%m-%d %H:%M UTC')"
 
@@ -90,7 +89,7 @@ jobs:
           - New contact inquiries: ${inquiries}
           - Checked: ${now}
 
-          Review the private rows in Supabase production and follow `docs/BETA-OPERATIONS-RUNBOOK.md`. Do not paste report or inquiry contents into this GitHub issue.
+          Review the private rows in Supabase production and follow docs/BETA-OPERATIONS-RUNBOOK.md. Do not paste report or inquiry contents into this GitHub issue.
           EOF
           )
 
