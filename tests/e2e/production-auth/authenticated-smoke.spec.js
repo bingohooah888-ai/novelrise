@@ -2,8 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const fixturePath = process.env.PRODUCTION_AUTH_SMOKE_FIXTURE;
-if (!fixturePath)
-  throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
+if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 
 function loadFixture() {
   return JSON.parse(readFileSync(fixturePath, 'utf8'));
