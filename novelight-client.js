@@ -9,9 +9,10 @@
     let token = localStorage.getItem(VISITOR_KEY);
     if (token && token.length >= 8) return token;
 
-    token = window.crypto && typeof window.crypto.randomUUID === 'function'
-      ? window.crypto.randomUUID()
-      : `visitor-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    token =
+      window.crypto && typeof window.crypto.randomUUID === 'function'
+        ? window.crypto.randomUUID()
+        : `visitor-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     localStorage.setItem(VISITOR_KEY, token);
     return token;
   }
@@ -31,7 +32,14 @@
     const host = referrerHost();
 
     if (utmSource) return utmSource.slice(0, 40);
-    if (host && (host === 'x.com' || host.endsWith('.x.com') || host === 't.co' || host === 'twitter.com' || host.endsWith('.twitter.com'))) {
+    if (
+      host &&
+      (host === 'x.com' ||
+        host.endsWith('.x.com') ||
+        host === 't.co' ||
+        host === 'twitter.com' ||
+        host.endsWith('.twitter.com'))
+    ) {
       return 'x';
     }
     return host ? 'referral' : 'direct';
@@ -59,8 +67,37 @@
     return null;
   }
 
+  async function syncAuthHeader(client) {
+    if (!client) return false;
+
+    const headerActions = document.querySelector('.header-actions');
+    const loginLink = headerActions?.querySelector('a[href="login.html"]');
+    if (!loginLink) return false;
+
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      console.error('auth header session lookup failed', error);
+      return false;
+    }
+
+    if (data?.session) {
+      loginLink.textContent = '作者ホーム';
+      loginLink.href = 'mypage.html';
+      loginLink.dataset.authState = 'authenticated';
+      return true;
+    }
+
+    loginLink.textContent = 'ログイン';
+    loginLink.href = 'login.html';
+    loginLink.dataset.authState = 'anonymous';
+    return false;
+  }
+
   async function captureAcquisition(client) {
     if (!client) return;
+
+    await syncAuthHeader(client);
+
     const touch = currentTouch();
     let stored = getStoredTouch();
     if (!stored) {
@@ -134,6 +171,7 @@
     recordVisit,
     claimAcquisition,
     recordJourney,
-    storedSource
+    storedSource,
+    syncAuthHeader
   };
 })();
