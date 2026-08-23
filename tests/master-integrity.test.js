@@ -29,12 +29,15 @@ const REQUIRED_ANCHORS = [
   '作品別インプレッション',
   'インプレッション→作品ページCTR',
   'インプレッション、CTR、読書開始、第1話→第2話継続率、お気に入り等の基本ファネル',
-  'MASTER管理・正本保護原則',
+  'MASTER管理・正本保護原則'
 ];
 
 test('NOVELIGHT MASTER keeps all protected policy anchors', () => {
   for (const anchor of REQUIRED_ANCHORS) {
-    assert.ok(master.includes(anchor), `MASTERから重要項目が欠落しています: ${anchor}`);
+    assert.ok(
+      master.includes(anchor),
+      `MASTERから重要項目が欠落しています: ${anchor}`
+    );
   }
 });
 
@@ -42,20 +45,39 @@ test('NOVELIGHT MASTER keeps a contiguous unique numbered section structure', ()
   const matches = [...master.matchAll(/^##\s+(\d+)\.\s+.+$/gm)];
   const numbers = matches.map((match) => Number(match[1]));
 
-  assert.ok(numbers.length >= 35, `MASTERの章数が少なすぎます: ${numbers.length}`);
-  assert.equal(new Set(numbers).size, numbers.length, 'MASTERに重複した章番号があります');
+  assert.ok(
+    numbers.length >= 35,
+    `MASTERの章数が少なすぎます: ${numbers.length}`
+  );
+  assert.equal(
+    new Set(numbers).size,
+    numbers.length,
+    'MASTERに重複した章番号があります'
+  );
 
   for (let expected = 1; expected <= numbers.length; expected += 1) {
-    assert.equal(numbers[expected - 1], expected, `MASTERの章番号が欠落・逆転しています: expected ${expected}`);
+    assert.equal(
+      numbers[expected - 1],
+      expected,
+      `MASTERの章番号が欠落・逆転しています: expected ${expected}`
+    );
   }
 });
 
 test('NOVELIGHT MASTER is not suspiciously truncated', () => {
-  const nonBlankLines = master.split(/\r?\n/).filter((line) => line.trim()).length;
+  const nonBlankLines = master
+    .split(/\r?\n/)
+    .filter((line) => line.trim()).length;
   const byteLength = Buffer.byteLength(master, 'utf8');
 
-  assert.ok(byteLength >= 40_000, `MASTERのファイルサイズが異常に小さいです: ${byteLength} bytes`);
-  assert.ok(nonBlankLines >= 650, `MASTERの実質行数が異常に少ないです: ${nonBlankLines}`);
+  assert.ok(
+    byteLength >= 40_000,
+    `MASTERのファイルサイズが異常に小さいです: ${byteLength} bytes`
+  );
+  assert.ok(
+    nonBlankLines >= 650,
+    `MASTERの実質行数が異常に少ないです: ${nonBlankLines}`
+  );
 });
 
 test('NOVELIGHT MASTER identifies GitHub file as the single source of truth', () => {
