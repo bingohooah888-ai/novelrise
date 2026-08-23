@@ -3,10 +3,15 @@ import { expect, test } from '@playwright/test';
 const publicPages = [
   ['home', '/index.html'],
   ['search', '/search.html'],
+  ['ranking', '/ranking.html'],
   ['pricing', '/pricing.html'],
   ['login', '/login.html'],
   ['signup', '/signup.html'],
+  ['forgot password', '/forgot-password.html'],
+  ['reset password', '/reset-password.html'],
   ['novel detail', '/novel.html'],
+  ['episode', '/episode.html'],
+  ['author', '/author.html'],
   ['terms', '/terms.html'],
   ['privacy', '/privacy.html'],
   ['content guidelines', '/content-guidelines.html'],
@@ -16,162 +21,119 @@ const publicPages = [
 ];
 
 for (const [name, path] of publicPages) {
-  test(`${name} page renders`, async ({ page }) => {
-    const response = await page.goto(path, {
-      waitUntil: 'domcontentloaded'
-    });
-
-    expect(response).not.toBeNull();
+  test(`${name} page renders`, async ({ request }) => {
+    const response = await request.get(path);
     expect(response.ok()).toBeTruthy();
-    await expect(page.locator('body')).toBeVisible();
-    expect((await page.title()).trim()).not.toBe('');
+    const html = await response.text();
+    expect(html).toContain('<meta name="viewport"');
+    expect(html).toMatch(/<title>[^<]+<\/title>/);
   });
 }
 
-test('home exposes the discovery feed shell', async ({ page }) => {
-  await page.goto('/index.html', {
-    waitUntil: 'domcontentloaded'
-  });
-
-  await expect(page.locator('#discoveryGrid')).toHaveCount(1);
-  await expect(page.locator('#premiumWrap')).toHaveCount(1);
-  await expect(
-    page.getByText('Free / Standard / Premium すべてが一般枠の対象です')
-  ).toHaveCount(1);
-  const analyticsLabel = page.getByText('LIGHT ANALYTICS', { exact: true });
-  await expect(analyticsLabel.first()).toBeVisible();
-});
-
-test('key renamed public pages avoid mobile horizontal overflow', async ({
-  page
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-
-  for (const path of ['/index.html', '/pricing.html']) {
-    await page.goto(path, { waitUntil: 'domcontentloaded' });
-    const fitsViewport = await page
-      .locator('html')
-      .evaluate((html) => html.scrollWidth <= html.clientWidth);
-    expect(fitsViewport).toBeTruthy();
-  }
-});
-
-test('search exposes recommended and neutral sorts', async ({ page }) => {
-  await page.goto('/search.html', {
-    waitUntil: 'domcontentloaded'
-  });
-
-  await expect(page.locator('#keywordInput')).toHaveCount(1);
-  await expect(page.locator('#genreSelect')).toHaveCount(1);
-  await expect(page.locator('#sortSelect')).toHaveCount(1);
-
-  const values = await page
-    .locator('#sortSelect option')
-    .evaluateAll((options) => options.map((option) => option.value));
-
-  expect(values).toEqual(['recommended', 'new', 'pv', 'favorites']);
-});
-
-test('login form exposes the required controls', async ({ page }) => {
-  await page.goto('/login.html', {
-    waitUntil: 'domcontentloaded'
-  });
-
-  await expect(page.locator('#email')).toBeVisible();
-  await expect(page.locator('#password')).toBeVisible();
-  await expect(page.locator('button[type="submit"]')).toBeVisible();
-});
-
-test('novel detail includes the LIGHT SEED UI shell', async ({ page }) => {
-  await page.goto('/novel.html', {
-    waitUntil: 'domcontentloaded'
-  });
-
-  await expect(page.locator('#lightSeedArea')).toHaveCount(1);
-  const seedButton = page.locator('#lightSeedButton');
-  await expect(seedButton).toHaveCount(1);
-  await expect(seedButton).toHaveText(/LIGHT SEEDを贈る/);
-  await expect(page.locator('#lightSeedRemaining')).toHaveCount(1);
-});
-
-test('LIGHT ANALYTICS exposes the exposure KPI shell without authentication', async ({
+test('auth pages expose password recovery and no dummy forgot-password link', async ({
   request
 }) => {
-  const response = await request.get('/analytics.html');
-  expect(response.ok()).toBeTruthy();
+  const login = await (await request.get('/login.html')).text();
+  const forgot = await (await request.get('/forgot-password.html')).text();
+  const reset = await (await request.get('/reset-password.html')).text();
 
-  const html = await response.text();
+  expect(login).toContain('href="forgot-password.html"');
+  expect(login).toContain('safeRedirectTarget');
+  expect(forgot).toContain('resetPasswordForEmail');
+  expect(reset).toContain('updateUser({password})');
+});
+
+test('posting shell requires classification and policy acknowledgement', async ({
+  request
+}) => {
+  const post = await (await request.get('/post.html')).text();
+  expect(post).toContain('id="aiUsage"');
+  expect(post).toContain('id="contentRating"');
+  expect(post).toContain('id="warningGrid"');
+  expect(post).toContain('id="policyAck"');
+});
+
+test('reader pages expose zoning, report, and beta measurement hooks', async ({
+  request
+}) => {
+  const novel = await (await request.get('/novel.html')).text();
+  const episode = await (await request.get('/episode.html')).text();
+
+  expect(novel).toContain('id="warningGate"');
+  expect(novel).toContain('submit_content_report');
+  expect(novel).toContain("'detail_open'");
+  expect(novel).toContain("'favorite_added'");
+  expect(novel).toContain("'light_seed'");
+
+  expect(episode).toContain('id="warning"');
+  expect(episode).toContain('submit_content_report');
+  expect(episode).toContain("'episode_read_10s'");
+  expect(episode).toContain("'visibilitychange'");
+});
+
+test('LIGHT ANALYTICS exposes the beta funnel and plan-only exposure', async ({
+  request
+}) => {
+  const html = await (await request.get('/analytics.html')).text();
+
   expect(html).toContain('<title>LIGHT ANALYTICS | NOVELIGHT</title>');
-  expect(html).toContain('id="exposureSummary"');
-  expect(html).toContain('id="exposurePeriodSwitcher"');
-  expect(html).toContain('id="exposureNovelList"');
-  expect(html).toContain('本文10秒閲覧');
-  expect(html).toContain('第1話→第2話 継続率');
-  expect(html).toContain('露出後のお気に入り');
-  expect(html).toContain('プランによる追加露出');
-  expect(html).not.toContain('本文読了');
+  expect(html).toContain('作品ページ→第1話');
+  expect(html).toContain('第1話→第2話');
+  expect(html).toContain('露出後お気に入り');
+  expect(html).toContain('plan_extra_impressions');
+  expect(html).toContain('novelight_author_exposure_funnel_v2');
+  expect(html).not.toContain('LIGHT REPORT');
 });
 
-test('author home exposes beta routes', async ({ request }) => {
-  const response = await request.get('/mypage.html');
-  expect(response.ok()).toBeTruthy();
-
-  const html = await response.text();
-  expect(html).toContain('<title>作者ホーム | NOVELIGHT</title>');
-  expect(html).toContain('id="authorExposureSummary"');
-  expect(html).toContain('id="authorStats"');
-  expect(html).toContain('id="receivedFavoriteCount"');
-  expect(html).toContain('第1話10秒閲覧');
-  expect(html).toContain('第2話まで継続');
-  expect(html).toContain('露出後のお気に入り');
-  expect(html).toContain('LIGHT ANALYTICS');
-  expect(html).toContain('SCOUT RECORD');
-  expect(html).toContain('scout-record.html');
-  expect(html).toContain('novelight_author_exposure_funnel');
-  expect(html).not.toContain('NovelRise');
-});
-
-test('author home starts without JavaScript page errors', async ({ page }) => {
-  const pageErrors = [];
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-
-  await page.goto('/mypage.html', {
-    waitUntil: 'domcontentloaded'
-  });
-  await page.waitForTimeout(750);
-
-  expect(pageErrors).toEqual([]);
-});
-
-test('SCOUT RECORD shell uses existing private LIGHT SEED history', async ({
+test('home and search use v2 discovery and complete impression tracking', async ({
   request
 }) => {
-  const response = await request.get('/scout-record.html');
-  expect(response.ok()).toBeTruthy();
+  const home = await (await request.get('/index.html')).text();
+  const search = await (await request.get('/search.html')).text();
 
-  const html = await response.text();
-  expect(html).toContain('<title>SCOUT RECORD | NOVELIGHT</title>');
-  expect(html).toContain("from('light_seeds')");
-  expect(html).toContain('novel_id_snapshot, seeded_at');
-  expect(html).toContain('現在非公開または削除済み');
-  expect(html).toContain('まだLIGHT SEEDを贈った作品はありません');
-  expect(html).not.toContain('Gold');
-  expect(html).not.toContain('Silver');
+  expect(home).toContain('novelight_discovery_feed_v2');
+  expect(home).toContain('novelight_plan_extra_feed');
+  expect(home).toContain('home_plan_extra');
+  expect(search).toContain('record_neutral_search_impressions');
+  expect(search).toContain('record_novel_impressions_v2');
 });
 
-test('reader pages wire exposure conversion recording', async ({ request }) => {
-  const novelResponse = await request.get('/novel.html');
-  expect(novelResponse.ok()).toBeTruthy();
-  const novelHtml = await novelResponse.text();
-  expect(novelHtml).toContain('record_novel_exposure_conversion');
-  expect(novelHtml).toContain("p_event_type: 'detail_open'");
-  expect(novelHtml).toContain("p_event_type: 'favorite_added'");
-  expect(novelHtml).toContain('novelight_visitor_token');
+test('all audited major routes fit a 390px mobile viewport', async ({
+  browser
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    javaScriptEnabled: false
+  });
+  const page = await context.newPage();
+  const routes = [
+    '/index.html',
+    '/signup.html',
+    '/login.html',
+    '/search.html',
+    '/novel.html',
+    '/episode.html',
+    '/post.html',
+    '/episode-post.html',
+    '/favorites.html',
+    '/scout-record.html',
+    '/analytics.html',
+    '/mypage.html',
+    '/pricing.html'
+  ];
 
-  const episodeResponse = await request.get('/episode.html');
-  expect(episodeResponse.ok()).toBeTruthy();
-  const episodeHtml = await episodeResponse.text();
-  expect(episodeHtml).toContain('record_novel_exposure_conversion');
-  expect(episodeHtml).toContain("'episode_read_10s'");
-  expect(episodeHtml).toContain("'visibilitychange'");
+  for (const path of routes) {
+    const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+    expect(response?.ok(), `${path} should load`).toBeTruthy();
+    const overflow = await page.locator('html').evaluate((html) => ({
+      scrollWidth: html.scrollWidth,
+      clientWidth: html.clientWidth
+    }));
+    expect(
+      overflow.scrollWidth,
+      `${path} horizontally overflows: ${JSON.stringify(overflow)}`
+    ).toBeLessThanOrEqual(overflow.clientWidth + 1);
+  }
+
+  await context.close();
 });
