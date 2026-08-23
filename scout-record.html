@@ -75,6 +75,7 @@
       font-size: 13px;
       font-weight: 900;
     }
+    .record-link.unavailable { background: #e5e7eb; color: #6b7280; }
     .state-box {
       padding: 32px 20px;
       border: 1px dashed #d8dbe2;
@@ -188,6 +189,9 @@
         const isAvailable = novel?.status === 'published';
         const title = isAvailable ? novel.title : '現在表示できない作品';
         const state = isAvailable ? '公開中' : '現在非公開または削除済み';
+        const workAction = isAvailable
+          ? `<a class="record-link" href="novel.html?id=${encodeURIComponent(novelId)}">作品ページを確認</a>`
+          : '<span class="record-link unavailable">現在表示不可</span>';
 
         return `
           <article class="record-card">
@@ -196,7 +200,7 @@
               <div class="record-meta">LIGHT SEEDを贈った日時：${escapeHtml(formatSeededAt(seed.seeded_at))}</div>
               <span class="record-state ${isAvailable ? '' : 'unavailable'}">${escapeHtml(state)}</span>
             </div>
-            <a class="record-link" href="novel.html?id=${encodeURIComponent(novelId)}">作品ページを確認</a>
+            ${workAction}
           </article>
         `;
       })
