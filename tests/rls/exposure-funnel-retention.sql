@@ -2,7 +2,28 @@
 
 begin;
 
--- Dedicated published episodes for a discovery work that has no prior funnel data.
+-- Use a dedicated work so earlier exposure-allocation tests cannot change the
+-- expected impression count for this retention test.
+insert into public.novels (
+  id,
+  user_id,
+  title,
+  genre,
+  description,
+  status,
+  pv,
+  created_at
+) values (
+  '82000000-0000-0000-0000-000000000001',
+  '33333333-3333-3333-3333-333333333333',
+  'Retention funnel work',
+  'SF',
+  'isolated retention fixture',
+  'published',
+  0,
+  now() - interval '1 day'
+);
+
 insert into public.episodes (
   id,
   novel_id,
@@ -10,8 +31,8 @@ insert into public.episodes (
   episode_number,
   status
 ) values
-  ('81100000-0000-0000-0000-000000000001', '81000000-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 1, 'published'),
-  ('81100000-0000-0000-0000-000000000002', '81000000-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 2, 'published');
+  ('82100000-0000-0000-0000-000000000001', '82000000-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 1, 'published'),
+  ('82100000-0000-0000-0000-000000000002', '82000000-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 2, 'published');
 
 -- One exposure can now retain separate first- and second-episode read signals.
 set role anon;
@@ -20,7 +41,7 @@ select set_config('request.jwt.claim.sub', '', false);
 select public.test_assert(
   public.record_novel_impressions(
     'home_discovery',
-    array['81000000-0000-0000-0000-000000000001'],
+    array['82000000-0000-0000-0000-000000000001'],
     'visitor-retention-reader-0001'
   ) = 1,
   'retention fixture impression must be recorded'
@@ -29,7 +50,7 @@ select public.test_assert(
 select public.test_assert(
   public.record_novel_exposure_conversion(
     'detail_open',
-    '81000000-0000-0000-0000-000000000001',
+    '82000000-0000-0000-0000-000000000001',
     null,
     'visitor-retention-reader-0001'
   ),
@@ -39,8 +60,8 @@ select public.test_assert(
 select public.test_assert(
   public.record_novel_exposure_conversion(
     'episode_read_10s',
-    '81000000-0000-0000-0000-000000000001',
-    '81100000-0000-0000-0000-000000000001',
+    '82000000-0000-0000-0000-000000000001',
+    '82100000-0000-0000-0000-000000000001',
     'visitor-retention-reader-0001'
   ),
   'first episode 10-second read must be attributed'
@@ -49,8 +70,8 @@ select public.test_assert(
 select public.test_assert(
   public.record_novel_exposure_conversion(
     'episode_read_10s',
-    '81000000-0000-0000-0000-000000000001',
-    '81100000-0000-0000-0000-000000000002',
+    '82000000-0000-0000-0000-000000000001',
+    '82100000-0000-0000-0000-000000000002',
     'visitor-retention-reader-0001'
   ),
   'second episode 10-second read must be stored separately'
@@ -59,8 +80,8 @@ select public.test_assert(
 select public.test_assert(
   not public.record_novel_exposure_conversion(
     'episode_read_10s',
-    '81000000-0000-0000-0000-000000000001',
-    '81100000-0000-0000-0000-000000000002',
+    '82000000-0000-0000-0000-000000000001',
+    '82100000-0000-0000-0000-000000000002',
     'visitor-retention-reader-0001'
   ),
   'the same episode read must not be counted twice for one exposure'
@@ -80,7 +101,7 @@ select set_config(
 select public.test_assert(
   public.record_novel_impressions(
     'home_discovery',
-    array['81000000-0000-0000-0000-000000000001'],
+    array['82000000-0000-0000-0000-000000000001'],
     null
   ) = 1,
   'authenticated favorite fixture impression must be recorded'
@@ -89,7 +110,7 @@ select public.test_assert(
 select public.test_assert(
   not public.record_novel_exposure_conversion(
     'favorite_added',
-    '81000000-0000-0000-0000-000000000001',
+    '82000000-0000-0000-0000-000000000001',
     null,
     null
   ),
@@ -100,7 +121,7 @@ reset role;
 
 insert into public.favorites (user_id, novel_id) values (
   '44444444-4444-4444-4444-444444444444',
-  '81000000-0000-0000-0000-000000000001'
+  '82000000-0000-0000-0000-000000000001'
 );
 
 set role authenticated;
@@ -113,7 +134,7 @@ select set_config(
 select public.test_assert(
   public.record_novel_exposure_conversion(
     'favorite_added',
-    '81000000-0000-0000-0000-000000000001',
+    '82000000-0000-0000-0000-000000000001',
     null,
     null
   ),
@@ -123,7 +144,7 @@ select public.test_assert(
 select public.test_assert(
   not public.record_novel_exposure_conversion(
     'favorite_added',
-    '81000000-0000-0000-0000-000000000001',
+    '82000000-0000-0000-0000-000000000001',
     null,
     null
   ),
@@ -145,7 +166,7 @@ select public.test_assert(
   exists (
     select 1
     from public.novelight_author_exposure_funnel(30)
-    where novel_id = '81000000-0000-0000-0000-000000000001'
+    where novel_id = '82000000-0000-0000-0000-000000000001'
       and impressions = 2
       and detail_opens = 1
       and body_reads_10s = 1
@@ -165,7 +186,7 @@ select public.test_assert(
     select count(*)
     from public.novel_exposure_conversions c
     join public.novel_exposure_events e on e.id = c.exposure_id
-    where e.novel_id_snapshot = '81000000-0000-0000-0000-000000000001'
+    where e.novel_id_snapshot = '82000000-0000-0000-0000-000000000001'
       and c.event_type = 'episode_read_10s'
   ) = 2,
   'raw ledger must preserve separate first- and second-episode read signals'
