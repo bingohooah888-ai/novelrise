@@ -22,8 +22,14 @@ begin
     raise exception 'Postcheck failed: RLS is not enabled on contact_inquiries';
   end if;
 
-  if has_table_privilege('anon', 'public.contact_inquiries', 'SELECT,INSERT,UPDATE,DELETE')
-     or has_table_privilege('authenticated', 'public.contact_inquiries', 'SELECT,INSERT,UPDATE,DELETE') then
+  if has_table_privilege('anon', 'public.contact_inquiries', 'SELECT')
+     or has_table_privilege('anon', 'public.contact_inquiries', 'INSERT')
+     or has_table_privilege('anon', 'public.contact_inquiries', 'UPDATE')
+     or has_table_privilege('anon', 'public.contact_inquiries', 'DELETE')
+     or has_table_privilege('authenticated', 'public.contact_inquiries', 'SELECT')
+     or has_table_privilege('authenticated', 'public.contact_inquiries', 'INSERT')
+     or has_table_privilege('authenticated', 'public.contact_inquiries', 'UPDATE')
+     or has_table_privilege('authenticated', 'public.contact_inquiries', 'DELETE') then
     raise exception 'Postcheck failed: client roles have direct contact_inquiries privileges';
   end if;
 
