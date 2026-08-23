@@ -29,6 +29,24 @@ async function login(page, account, redirect) {
   return visitorToken;
 }
 
+async function assertLiveCheckoutSession(page, buttonSelector) {
+  await page.goto('/pricing.html');
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/create-checkout-session') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.locator(buttonSelector).click();
+  const response = await responsePromise;
+  expect(response.status()).toBe(200);
+
+  const body = await response.json();
+  expect(body.mode).toBe('checkout');
+  expect(body.url).toContain('cs_live_');
+  expect(new globalThis.URL(body.url).hostname).toBe('checkout.stripe.com');
+}
+
 async function closeContextSafely(context) {
   try {
     await context.close();
@@ -168,6 +186,11 @@ test('authenticated beta-critical product flow works in production', async ({
       ).toBeVisible();
       await expect(authorPage.locator('#novelCount')).toHaveText('1');
       await expect(authorPage.locator('#favoriteTotal')).toHaveText('1');
+    });
+
+    await test.step('Verify live Stripe Checkout session creation without charging', async () => {
+      await assertLiveCheckoutSession(authorPage, '#standard');
+      await assertLiveCheckoutSession(authorPage, '#premium');
     });
   } finally {
     await closeContextSafely(authorContext);
