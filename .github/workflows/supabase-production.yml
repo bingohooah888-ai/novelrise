@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: supabase-production-migration
@@ -117,6 +118,8 @@ jobs:
         run: supabase migration list --linked
 
       - name: Verify production beta observability
+        id: production_beta_observability
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -162,3 +165,41 @@ jobs:
           fi
 
           echo "Production beta observability checks passed."
+
+      - name: Publish production beta verification status
+        if: always()
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+          VERIFY_OUTCOME: ${{ steps.production_beta_observability.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          state=failure
+          description='Production beta verification failed'
+          if [ "$VERIFY_OUTCOME" = 'success' ]; then
+            state=success
+            description='Production beta verification passed'
+          fi
+
+          jq -n \
+            --arg state "$state" \
+            --arg description "$description" \
+            '{state: $state, context: "production-beta-verification", description: $description}' \
+            > /tmp/production-beta-status.json
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            --header "Authorization: Bearer ${GH_STATUS_TOKEN}" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            --data-binary @/tmp/production-beta-status.json \
+            >/dev/null
+
+      - name: Enforce production beta verification result
+        if: steps.production_beta_observability.outcome == 'failure'
+        shell: bash
+        run: |
+          echo 'Production beta observability verification failed.'
+          exit 1
