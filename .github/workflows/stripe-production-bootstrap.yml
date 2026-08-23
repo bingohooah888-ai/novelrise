@@ -58,13 +58,14 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Install pinned Vercel CLI
-        run: npm install --global vercel@52.0.0
+      - name: Install current Vercel CLI
+        run: npm install --global vercel@59.1.4
 
       - name: Link the intended Vercel production project
         shell: bash
         run: |
           set -euo pipefail
+          vercel --version
           vercel link \
             --yes \
             --project "$VERCEL_PROJECT" \
