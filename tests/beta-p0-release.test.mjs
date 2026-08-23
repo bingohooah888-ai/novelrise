@@ -100,6 +100,9 @@ test('beta-start attribution, revisit, Founding Authors, and subscription ledger
   assert.match(migration, /create table public\.subscription_event_log/);
   assert.match(webhook, /subscription_event_log/);
   assert.match(webhook, /stripe_event_id/);
+  assert.match(webhook, /\.upsert\(/);
+  assert.match(webhook, /onConflict: 'stripe_event_id'/);
+  assert.match(webhook, /ignoreDuplicates: true/);
 });
 
 test('discovery v2 gives new works initial priority and measures plan-only exposure', async () => {
@@ -114,11 +117,15 @@ test('discovery v2 gives new works initial priority and measures plan-only expos
   assert.match(migration, /author_plan = 'premium'/);
   assert.match(migration, /novelight_plan_extra_feed/);
   assert.match(migration, /home_plan_extra/);
+  assert.match(migration, /home_premium_slot/);
+  assert.match(migration, /premium_slot_impressions/);
   assert.match(home, /novelight_discovery_feed_v2/);
   assert.match(home, /novelight_plan_extra_feed/);
   assert.match(home, /home_plan_extra/);
+  assert.match(home, /home_premium_slot/);
   assert.match(analytics, /novelight_author_exposure_funnel_v2/);
   assert.match(analytics, /plan_extra_impressions/);
+  assert.match(analytics, /premium_slot_impressions/);
 });
 
 test('LIGHT ANALYTICS uses the required funnel denominators', async () => {
@@ -136,6 +143,10 @@ test('all search sorts preserve impression data', async () => {
     read('supabase/migrations/20260823171500_neutral_search_impressions.sql')
   ]);
 
+  for (const sort of ['recommended', 'new', 'pv', 'favorites']) {
+    assert.match(search, new RegExp(`<option value="${sort}">`));
+  }
+  assert.match(search, /s==='recommended'\?await recommended\(k,g,current\):await neutral\(k,g,s,current\)/);
   assert.match(search, /record_novel_impressions_v2/);
   assert.match(search, /record_neutral_search_impressions/);
   assert.match(migration, /search_results/);
