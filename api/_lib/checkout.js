@@ -28,6 +28,11 @@ function getAppBaseUrl(env) {
   );
 }
 
+function getPortalConfiguration(env) {
+  const configuration = env.STRIPE_PORTAL_CONFIGURATION_ID;
+  return configuration ? { configuration } : {};
+}
+
 async function getProfile(supabase, userId) {
   const { data, error } = await supabase
     .from('profiles')
@@ -124,7 +129,8 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
 
         const portalSession = await stripe.billingPortal.sessions.create({
           customer: profile.stripe_customer_id,
-          return_url: `${getAppBaseUrl(env)}/pricing.html`
+          return_url: `${getAppBaseUrl(env)}/pricing.html`,
+          ...getPortalConfiguration(env)
         });
 
         return res.status(200).json({
