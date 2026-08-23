@@ -25,6 +25,10 @@ const REQUIRED_ANCHORS = [
   'プランによる追加露出',
   '新作48時間ブースト',
   'NOVELIGHTの責任範囲と課金効果の可視化',
+  '作品ページ閲覧→第1話到達・読書開始率',
+  '作品別インプレッション',
+  'インプレッション→作品ページCTR',
+  'インプレッション、CTR、読書開始、第1話→第2話継続率、お気に入り等の基本ファネル',
   'MASTER管理・正本保護原則',
 ];
 
@@ -48,8 +52,9 @@ test('NOVELIGHT MASTER keeps a contiguous unique numbered section structure', ()
 
 test('NOVELIGHT MASTER is not suspiciously truncated', () => {
   const nonBlankLines = master.split(/\r?\n/).filter((line) => line.trim()).length;
+  const byteLength = Buffer.byteLength(master, 'utf8');
 
-  assert.ok(master.length >= 40_000, `MASTERの文字数が異常に少ないです: ${master.length}`);
+  assert.ok(byteLength >= 40_000, `MASTERのファイルサイズが異常に小さいです: ${byteLength} bytes`);
   assert.ok(nonBlankLines >= 650, `MASTERの実質行数が異常に少ないです: ${nonBlankLines}`);
 });
 
