@@ -103,9 +103,27 @@ select public.test_assert(
   'Premium dedicated slot remains separate from the general feed'
 );
 select public.test_assert(
-  exists(select 1 from public.novelight_plan_extra_feed(3,'{}'::text[],'visitor-plan-extra-test-token') where author_plan='standard')
-  and exists(select 1 from public.novelight_plan_extra_feed(3,'{}'::text[],'visitor-plan-extra-test-token') where author_plan='premium'),
-  'plan-extra feed includes both Standard and Premium works'
+  exists(
+    select 1 from public.novelight_plan_extra_feed(
+      1,
+      array[
+        '99000000-0000-0000-0000-000000000002',
+        '10000000-0000-0000-0000-000000000001',
+        '20000000-0000-0000-0000-000000000001',
+        '81000000-0000-0000-0000-000000000003',
+        '81000000-0000-0000-0000-000000000004'
+      ]::text[],
+      'visitor-standard-plan-extra-token'
+    ) where author_plan='standard'
+  )
+  and exists(
+    select 1 from public.novelight_plan_extra_feed(
+      1,
+      array['81000000-0000-0000-0000-000000000002']::text[],
+      'visitor-premium-plan-extra-token'
+    ) where author_plan='premium'
+  ),
+  'plan-extra feed makes both Standard and Premium eligible'
 );
 
 select public.record_novel_impressions_v2('home_discovery',array['81000000-0000-0000-0000-000000000001']::text[],'visitor-free-initial-token');
