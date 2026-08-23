@@ -20,13 +20,20 @@ test('user-facing HTML uses the current NOVELIGHT feature names', async () => {
   for (const file of files) {
     const html = await readFile(join(root.pathname, file), 'utf8');
 
-    for (const forbidden of ['目利き', '目利き実績', '目利きレベル', '新作48時間初動ブースト']) {
+    for (const forbidden of [
+      '目利き',
+      '目利き実績',
+      '目利きレベル',
+      '新作48時間初動ブースト'
+    ]) {
       if (html.includes(forbidden)) violations.push(`${file}: ${forbidden}`);
     }
 
     const nonCanonicalExposure = html.match(/(?<!プランによる)追加露出/g);
     if (nonCanonicalExposure) {
-      violations.push(`${file}: canonicalize ${nonCanonicalExposure.length} occurrence(s) of 追加露出`);
+      violations.push(
+        `${file}: canonicalize ${nonCanonicalExposure.length} occurrence(s) of 追加露出`
+      );
     }
   }
 
