@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { join } from 'node:path';
+import { URL } from 'node:url';
 
 const root = new URL('../', import.meta.url);
 
