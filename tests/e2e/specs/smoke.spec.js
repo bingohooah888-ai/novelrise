@@ -83,3 +83,19 @@ test('analytics exposes the exposure KPI shell without authentication', async ({
   expect(html).toContain('本文10秒閲覧');
   expect(html).not.toContain('本文読了');
 });
+
+test('reader pages wire exposure conversion recording', async ({ request }) => {
+  const novelResponse = await request.get('/novel.html');
+  expect(novelResponse.ok()).toBeTruthy();
+  const novelHtml = await novelResponse.text();
+  expect(novelHtml).toContain('record_novel_exposure_conversion');
+  expect(novelHtml).toContain("p_event_type: 'detail_open'");
+  expect(novelHtml).toContain('novelight_visitor_token');
+
+  const episodeResponse = await request.get('/episode.html');
+  expect(episodeResponse.ok()).toBeTruthy();
+  const episodeHtml = await episodeResponse.text();
+  expect(episodeHtml).toContain('record_novel_exposure_conversion');
+  expect(episodeHtml).toContain("'episode_read_10s'");
+  expect(episodeHtml).toContain("'visibilitychange'");
+});
