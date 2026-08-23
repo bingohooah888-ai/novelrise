@@ -3,583 +3,435 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>アクセス解析 | NovelRise</title>
-
+  <title>アクセス解析 | NOVELIGHT</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        "Hiragino Kaku Gothic ProN",
-        "Yu Gothic",
-        sans-serif;
-
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
       background: #f7f8fb;
       color: #222;
     }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    header {
-      background: white;
-      border-bottom: 1px solid #e5e7eb;
-    }
-
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    header { background: white; border-bottom: 1px solid #e5e7eb; }
     .header-inner {
       max-width: 1050px;
       height: 72px;
       margin: auto;
       padding: 0 24px;
-
       display: flex;
       align-items: center;
       justify-content: space-between;
-    }
-
-    .logo {
-      color: #6d4aff;
-      font-size: 25px;
-      font-weight: 800;
-    }
-
-    .back {
-      color: #666;
-      font-size: 14px;
-    }
-
-    main {
-      max-width: 1050px;
-      margin: auto;
-      padding: 50px 24px 80px;
-    }
-
-    h1 {
-      font-size: 32px;
-      margin-bottom: 10px;
-    }
-
-    .subtitle {
-      color: #777;
-      margin-bottom: 30px;
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns:
-        repeat(3, 1fr);
-
       gap: 16px;
-      margin-bottom: 30px;
     }
-
-    .summary-card {
+    .logo { color: #6d4aff; font-size: 25px; font-weight: 800; }
+    .back { color: #666; font-size: 14px; }
+    main { max-width: 1050px; margin: auto; padding: 42px 24px 80px; }
+    .page-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    h1 { font-size: 32px; margin-bottom: 8px; }
+    .subtitle { color: #6b7280; line-height: 1.7; }
+    .period-switcher {
+      display: inline-flex;
+      gap: 6px;
+      padding: 5px;
       background: white;
       border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 22px;
-      text-align: center;
+      border-radius: 12px;
     }
-
-    .summary-number {
-      color: #6d4aff;
-      font-size: 30px;
-      font-weight: 900;
-    }
-
-    .summary-label {
-      color: #777;
-      font-size: 13px;
-      margin-top: 5px;
-    }
-
-    .novel-list {
-      display: grid;
-      gap: 18px;
-    }
-
-    .novel-card {
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 24px;
-    }
-
-    .genre {
-      display: inline-block;
-
-      background: #eeeaff;
-      color: #6d4aff;
-
-      border-radius: 6px;
-
-      padding: 5px 9px;
-      margin-bottom: 10px;
-
-      font-size: 12px;
+    .period-button {
+      min-width: 58px;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: transparent;
+      color: #6b7280;
+      cursor: pointer;
       font-weight: 700;
     }
-
-    .title {
-      font-size: 21px;
-      font-weight: 800;
-      margin-bottom: 18px;
-    }
-
-    .stats {
+    .period-button.active { background: #6d4aff; color: white; }
+    .section { margin-top: 30px; }
+    .section-heading { margin-bottom: 14px; }
+    .section-title { font-size: 21px; font-weight: 800; }
+    .section-note { color: #6b7280; font-size: 13px; line-height: 1.6; margin-top: 5px; }
+    .summary-grid {
       display: grid;
-      grid-template-columns:
-        repeat(3, 1fr);
-
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 12px;
     }
-
-    .stat {
+    .summary-card,
+    .novel-card,
+    .empty,
+    .error,
+    .basic-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+    }
+    .summary-card { padding: 18px; }
+    .summary-number { color: #6d4aff; font-size: 27px; font-weight: 900; }
+    .summary-label { color: #6b7280; font-size: 12px; margin-top: 6px; line-height: 1.45; }
+    .status-message { margin-top: 18px; }
+    .error { padding: 18px; color: #991b1b; background: #fff7f7; border-color: #fecaca; }
+    .empty { padding: 34px 20px; text-align: center; color: #6b7280; }
+    .novel-list { display: grid; gap: 16px; }
+    .novel-card { padding: 22px; }
+    .novel-title { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+    .funnel {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+    .funnel-step {
+      position: relative;
       background: #f8f7ff;
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 16px;
     }
-
-    .stat-number {
-      color: #6d4aff;
-      font-size: 22px;
+    .funnel-step:not(:last-child)::after {
+      content: '→';
+      position: absolute;
+      right: -12px;
+      top: 50%;
+      transform: translate(50%, -50%);
+      color: #9ca3af;
       font-weight: 900;
+      z-index: 1;
     }
-
-    .stat-label {
-      color: #777;
-      font-size: 12px;
-      margin-top: 4px;
+    .funnel-value { color: #6d4aff; font-size: 24px; font-weight: 900; }
+    .funnel-label { color: #4b5563; font-size: 12px; margin-top: 5px; }
+    .funnel-rate { color: #6b7280; font-size: 12px; margin-top: 8px; }
+    .premium-box {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border: 1px solid #eadfff;
+      border-radius: 12px;
+      background: #fcfaff;
     }
-
-    .empty {
-      background: white;
-
-      border:
-        1px solid #e5e7eb;
-
-      border-radius: 14px;
-
-      padding: 50px 20px;
-
-      text-align: center;
-      color: #777;
+    .premium-title { color: #6d4aff; font-weight: 800; font-size: 13px; margin-bottom: 8px; }
+    .premium-stats { display: flex; flex-wrap: wrap; gap: 10px 18px; color: #4b5563; font-size: 13px; }
+    .basic-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .basic-card { padding: 18px; text-align: center; }
+    .basic-number { color: #6d4aff; font-size: 24px; font-weight: 900; }
+    .basic-label { color: #6b7280; font-size: 12px; margin-top: 5px; }
+    .episode-list { margin-top: 16px; border-top: 1px solid #eee; }
+    .episode-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+    @media (max-width: 900px) {
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-
     @media (max-width: 700px) {
-
+      main { padding: 32px 16px 60px; }
+      .header-inner { padding: 0 16px; }
+      .page-heading { align-items: stretch; flex-direction: column; }
+      .period-switcher { align-self: flex-start; }
       .summary-grid,
-      .stats {
-        grid-template-columns: 1fr;
-      }
+      .funnel,
+      .basic-grid { grid-template-columns: 1fr; }
+      .funnel-step:not(:last-child)::after { content: '↓'; right: 50%; top: auto; bottom: -14px; transform: translate(50%, 50%); }
+      .episode-row { flex-direction: column; }
     }
   </style>
 </head>
-
 <body>
-
 <header>
   <div class="header-inner">
-
-    <a
-      href="index.html"
-      class="logo"
-    >
-      NovelRise
-    </a>
-
-    <a
-      href="mypage.html"
-      class="back"
-    >
-      ← マイページへ戻る
-    </a>
-
+    <a href="index.html" class="logo">NOVELIGHT</a>
+    <a href="mypage.html" class="back">← マイページへ戻る</a>
   </div>
 </header>
-
-
 <main>
-
-  <h1>
-    アクセス解析
-  </h1>
-
-  <p class="subtitle">
-    あなたの作品がどれくらい読まれているか確認できます。
-  </p>
-
-
-  <div class="summary-grid">
-
-    <div class="summary-card">
-      <div
-        id="totalNovels"
-        class="summary-number"
-      >
-        0
-      </div>
-
-      <div class="summary-label">
-        投稿作品
-      </div>
+  <div class="page-heading">
+    <div>
+      <h1>アクセス解析</h1>
+      <p class="subtitle">作品が「表示されたあと、どこまで読者が進んだか」を確認できます。</p>
     </div>
-
-
-    <div class="summary-card">
-      <div
-        id="totalPv"
-        class="summary-number"
-      >
-        0
-      </div>
-
-      <div class="summary-label">
-        総PV
-      </div>
+    <div class="period-switcher" id="exposurePeriodSwitcher" aria-label="集計期間">
+      <button class="period-button" type="button" data-days="7">7日</button>
+      <button class="period-button active" type="button" data-days="30">30日</button>
+      <button class="period-button" type="button" data-days="90">90日</button>
     </div>
-
-
-    <div class="summary-card">
-      <div
-        id="totalFavorites"
-        class="summary-number"
-      >
-        0
-      </div>
-
-      <div class="summary-label">
-        総お気に入り
-      </div>
-    </div>
-
   </div>
 
+  <section class="section" aria-labelledby="exposureHeading">
+    <div class="section-heading">
+      <h2 class="section-title" id="exposureHeading">露出から読書まで</h2>
+      <p class="section-note">本文10秒閲覧は「読了」ではなく、露出後に本文を10秒以上読んだ回数です。</p>
+    </div>
+    <div class="summary-grid" id="exposureSummary">
+      <div class="summary-card"><div class="summary-number" id="totalImpressions">0</div><div class="summary-label">インプレッション</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalDetailOpens">0</div><div class="summary-label">作品ページ到達</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalBodyReads">0</div><div class="summary-label">本文10秒閲覧</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalDetailRate">0%</div><div class="summary-label">作品ページ到達率</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalBodyReadRate">0%</div><div class="summary-label">本文10秒閲覧率</div></div>
+    </div>
+    <div id="exposureStatus" class="status-message" aria-live="polite"></div>
+    <div id="exposureNovelList" class="novel-list"></div>
+  </section>
 
-  <div
-    id="novelList"
-    class="novel-list"
-  >
-    読み込み中...
-  </div>
-
+  <section class="section" aria-labelledby="basicHeading">
+    <div class="section-heading">
+      <h2 class="section-title" id="basicHeading">基本アクセス解析</h2>
+      <p class="section-note">従来のPV・お気に入り・エピソード別PVも確認できます。</p>
+    </div>
+    <div class="basic-grid">
+      <div class="basic-card"><div id="totalNovels" class="basic-number">0</div><div class="basic-label">投稿作品</div></div>
+      <div class="basic-card"><div id="totalPv" class="basic-number">0</div><div class="basic-label">総PV</div></div>
+      <div class="basic-card"><div id="totalFavorites" class="basic-number">0</div><div class="basic-label">総お気に入り</div></div>
+    </div>
+    <div id="basicStatus" class="status-message" aria-live="polite"></div>
+    <div id="novelList" class="novel-list"></div>
+  </section>
 </main>
 
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
-
-  const SUPABASE_URL =
-    'https://fiepaguycecrredwrcwx.supabase.co';
-
-  const SUPABASE_KEY =
-    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
-
-
-  const supabaseClient =
-    supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    );
-
+  const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let selectedDays = 30;
 
   function escapeHtml(value) {
-
-    const div =
-      document.createElement('div');
-
-    div.textContent =
-      value ?? '';
-
+    const div = document.createElement('div');
+    div.textContent = value ?? '';
     return div.innerHTML;
   }
 
+  function formatNumber(value) {
+    return Number(value ?? 0).toLocaleString('ja-JP');
+  }
 
-  async function loadAnalytics() {
+  function formatRate(numerator, denominator) {
+    const safeNumerator = Number(numerator ?? 0);
+    const safeDenominator = Number(denominator ?? 0);
+    if (safeDenominator <= 0) return '0%';
+    return `${((safeNumerator / safeDenominator) * 100).toFixed(2)}%`;
+  }
 
-    const novelList =
-      document.getElementById(
-        'novelList'
-      );
+  function setExposureLoading() {
+    document.getElementById('exposureStatus').innerHTML = '<div class="empty">露出データを読み込み中...</div>';
+    document.getElementById('exposureNovelList').innerHTML = '';
+  }
 
+  function renderExposureSummary(rows) {
+    const totals = rows.reduce(
+      (acc, row) => {
+        acc.impressions += Number(row.impressions ?? 0);
+        acc.detailOpens += Number(row.detail_opens ?? 0);
+        acc.bodyReads += Number(row.body_reads_10s ?? 0);
+        return acc;
+      },
+      { impressions: 0, detailOpens: 0, bodyReads: 0 }
+    );
 
-    const {
-      data: {
-        session
-      }
-    } =
-      await supabaseClient.auth.getSession();
+    document.getElementById('totalImpressions').textContent = formatNumber(totals.impressions);
+    document.getElementById('totalDetailOpens').textContent = formatNumber(totals.detailOpens);
+    document.getElementById('totalBodyReads').textContent = formatNumber(totals.bodyReads);
+    document.getElementById('totalDetailRate').textContent = formatRate(totals.detailOpens, totals.impressions);
+    document.getElementById('totalBodyReadRate').textContent = formatRate(totals.bodyReads, totals.impressions);
+  }
 
+  function renderExposureRows(rows) {
+    const exposureStatus = document.getElementById('exposureStatus');
+    const exposureNovelList = document.getElementById('exposureNovelList');
 
-    if (!session) {
-
-      window.location.href =
-        'login.html';
-
+    if (!rows.length) {
+      exposureStatus.innerHTML = '<div class="empty">まだ露出データがありません。</div>';
+      exposureNovelList.innerHTML = '';
       return;
     }
 
+    exposureStatus.innerHTML = '';
+    exposureNovelList.innerHTML = rows
+      .map((row) => {
+        const impressions = Number(row.impressions ?? 0);
+        const detailOpens = Number(row.detail_opens ?? 0);
+        const bodyReads = Number(row.body_reads_10s ?? 0);
+        const premiumImpressions = Number(row.premium_slot_impressions ?? 0);
+        const premiumDetailOpens = Number(row.premium_slot_detail_opens ?? 0);
+        const premiumBodyReads = Number(row.premium_slot_body_reads_10s ?? 0);
 
-    const {
-      data: novels,
-      error
-    } =
-      await supabaseClient
-        .from('novels')
-        .select('*')
-        .eq(
-          'user_id',
-          session.user.id
-        )
-        .order(
-          'created_at',
-          {
-            ascending: false
-          }
-        );
+        return `
+          <article class="novel-card">
+            <div class="novel-title">${escapeHtml(row.title || 'タイトル未設定')}</div>
+            <div class="funnel">
+              <div class="funnel-step">
+                <div class="funnel-value">${formatNumber(impressions)}</div>
+                <div class="funnel-label">表示</div>
+                <div class="funnel-rate">インプレッション</div>
+              </div>
+              <div class="funnel-step">
+                <div class="funnel-value">${formatNumber(detailOpens)}</div>
+                <div class="funnel-label">作品ページ</div>
+                <div class="funnel-rate">到達率 ${formatRate(detailOpens, impressions)}</div>
+              </div>
+              <div class="funnel-step">
+                <div class="funnel-value">${formatNumber(bodyReads)}</div>
+                <div class="funnel-label">本文10秒閲覧</div>
+                <div class="funnel-rate">表示→本文 ${formatRate(bodyReads, impressions)}</div>
+              </div>
+            </div>
+            <div class="premium-box">
+              <div class="premium-title">Premium専用露出枠</div>
+              <div class="premium-stats">
+                <span>表示 ${formatNumber(premiumImpressions)}</span>
+                <span>作品ページ ${formatNumber(premiumDetailOpens)}</span>
+                <span>本文10秒閲覧 ${formatNumber(premiumBodyReads)}</span>
+                <span>表示→本文 ${formatRate(premiumBodyReads, premiumImpressions)}</span>
+              </div>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+  }
 
+  async function loadExposureAnalytics() {
+    setExposureLoading();
+
+    const { data, error } = await supabaseClient.rpc('novelight_author_exposure_funnel', {
+      p_days: selectedDays
+    });
 
     if (error) {
-
       console.error(error);
-
-      novelList.innerHTML =
-        '<div class="empty">' +
-        'アクセス解析を読み込めませんでした。' +
-        '</div>';
-
+      renderExposureSummary([]);
+      document.getElementById('exposureStatus').innerHTML =
+        '<div class="error">露出データを読み込めませんでした。時間をおいて再度お試しください。</div>';
+      document.getElementById('exposureNovelList').innerHTML = '';
       return;
     }
 
+    const rows = data ?? [];
+    renderExposureSummary(rows);
+    renderExposureRows(rows);
+  }
 
-    if (
-      !novels ||
-      novels.length === 0
-    ) {
+  async function loadBasicAnalytics(userId) {
+    const basicStatus = document.getElementById('basicStatus');
+    const novelList = document.getElementById('novelList');
+    basicStatus.innerHTML = '<div class="empty">基本アクセス解析を読み込み中...</div>';
+    novelList.innerHTML = '';
 
-      novelList.innerHTML =
-        '<div class="empty">' +
-        'まだ投稿作品がありません。' +
-        '</div>';
+    const { data: novels, error } = await supabaseClient
+      .from('novels')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
+    if (error) {
+      console.error(error);
+      basicStatus.innerHTML = '<div class="error">基本アクセス解析を読み込めませんでした。</div>';
       return;
     }
 
-novelList.innerHTML = '';
+    const rows = novels ?? [];
+    document.getElementById('totalNovels').textContent = formatNumber(rows.length);
+
+    if (!rows.length) {
+      basicStatus.innerHTML = '<div class="empty">まだ投稿作品がありません。</div>';
+      return;
+    }
+
+    const detailRows = await Promise.all(
+      rows.map(async (novel) => {
+        const [favoritesResult, episodesResult] = await Promise.all([
+          supabaseClient
+            .from('favorites')
+            .select('*', { count: 'exact', head: true })
+            .eq('novel_id', novel.id),
+          supabaseClient
+            .from('episodes')
+            .select('id, title, pv, created_at')
+            .eq('novel_id', novel.id)
+            .order('created_at', { ascending: true })
+        ]);
+
+        if (favoritesResult.error) console.error(favoritesResult.error);
+        if (episodesResult.error) console.error(episodesResult.error);
+
+        return {
+          novel,
+          favorites: favoritesResult.count ?? 0,
+          episodes: episodesResult.data ?? []
+        };
+      })
+    );
+
     let totalPv = 0;
     let totalFavorites = 0;
 
+    novelList.innerHTML = detailRows
+      .map(({ novel, favorites, episodes }) => {
+        totalPv += Number(novel.pv ?? 0);
+        totalFavorites += Number(favorites ?? 0);
 
-    for (const novel of novels) {
+        const episodeHtml = episodes.length
+          ? episodes
+              .map(
+                (episode, index) => `
+                  <div class="episode-row">
+                    <span>第${index + 1}話 ${escapeHtml(episode.title)}</span>
+                    <span>${formatNumber(episode.pv)} PV</span>
+                  </div>
+                `
+              )
+              .join('')
+          : '<div class="episode-row"><span>エピソードはありません。</span></div>';
 
-      totalPv +=
-        novel.pv ?? 0;
-
-
-      const {
-        count: favoriteCount,
-        error: favoriteError
-      } =
-        await supabaseClient
-          .from('favorites')
-          .select(
-            '*',
-            {
-              count: 'exact',
-              head: true
-            }
-          )
-          .eq(
-            'novel_id',
-            novel.id
-          );
-
-
-      if (favoriteError) {
-        console.error(
-          favoriteError
-        );
-      }
-
-
-const {
-  data: episodeRows,
-  error: episodeError
-} =
-  await supabaseClient
-    .from('episodes')
-    .select(
-      'id, title, pv, created_at'
-    )
-    .eq(
-      'novel_id',
-      novel.id
-    )
-    .order(
-      'created_at',
-      {
-        ascending: true
-      }
-    );
-
-      if (episodeError) {
-        console.error(
-          episodeError
-        );
-      }
-
-
-      const favorites =
-        favoriteCount ?? 0;
-
-      const episodes =
-  episodeRows ?? [];
-
-const episodeCount =
-  episodes.length;
-
-
-      totalFavorites +=
-        favorites;
-
-
-      const card =
-        document.createElement(
-          'div'
-        );
-
-
-      card.className =
-        'novel-card';
-
-const episodeHtml =
-  episodes.length > 0
-    ? episodes.map(
-        (episode, index) => `
-          <div
-            style="
-              display:flex;
-              justify-content:space-between;
-              padding:10px 0;
-              border-bottom:1px solid #eee;
-            "
-          >
-            <span>
-              第${index + 1}話
-              ${escapeHtml(episode.title)}
-            </span>
-
-            <span>
-              👁 ${episode.pv ?? 0} PV
-            </span>
-          </div>
-        `
-      ).join('')
-    : '<div style="color:#888;">エピソードはありません。</div>';
-
-      card.innerHTML = `
-
-        <div class="genre">
-          ${escapeHtml(
-            novel.genre
-          )}
-        </div>
-
-        <div class="title">
-          ${escapeHtml(
-            novel.title
-          )}
-        </div>
-
-        <div class="stats">
-
-          <div class="stat">
-            <div class="stat-number">
-              ${novel.pv ?? 0}
+        return `
+          <article class="novel-card">
+            <div class="novel-title">${escapeHtml(novel.title)}</div>
+            <div class="basic-grid">
+              <div class="basic-card"><div class="basic-number">${formatNumber(novel.pv)}</div><div class="basic-label">PV</div></div>
+              <div class="basic-card"><div class="basic-number">${formatNumber(favorites)}</div><div class="basic-label">お気に入り</div></div>
+              <div class="basic-card"><div class="basic-number">${formatNumber(episodes.length)}</div><div class="basic-label">エピソード数</div></div>
             </div>
+            <div class="episode-list">${episodeHtml}</div>
+          </article>
+        `;
+      })
+      .join('');
 
-            <div class="stat-label">
-              PV
-            </div>
-          </div>
-
-          <div class="stat">
-            <div class="stat-number">
-              ${favorites}
-            </div>
-
-            <div class="stat-label">
-              お気に入り
-            </div>
-          </div>
-
-          <div class="stat">
-            <div class="stat-number">
-             ${episodeCount}
-            </div>
-
-            <div class="stat-label">
-              エピソード数
-            </div>
-          </div>
-
-        </div>
-<div style="margin-top:22px;">
-  <div
-    style="
-      font-weight:700;
-      margin-bottom:8px;
-    "
-  >
-    エピソード別PV
-  </div>
-
-  ${episodeHtml}
-</div>
-      `;
-
-
-      novelList.appendChild(
-        card
-      );
-
-    }
-
-
-    document.getElementById(
-      'totalNovels'
-    ).textContent =
-      novels.length;
-
-
-    document.getElementById(
-      'totalPv'
-    ).textContent =
-      totalPv;
-
-
-    document.getElementById(
-      'totalFavorites'
-    ).textContent =
-      totalFavorites;
-
+    document.getElementById('totalPv').textContent = formatNumber(totalPv);
+    document.getElementById('totalFavorites').textContent = formatNumber(totalFavorites);
+    basicStatus.innerHTML = '';
   }
 
+  function bindPeriodSwitcher() {
+    const buttons = document.querySelectorAll('.period-button');
+    buttons.forEach((button) => {
+      button.addEventListener('click', async () => {
+        const days = Number(button.dataset.days);
+        if (![7, 30, 90].includes(days) || days === selectedDays) return;
+        selectedDays = days;
+        buttons.forEach((item) => item.classList.toggle('active', item === button));
+        await loadExposureAnalytics();
+      });
+    });
+  }
+
+  async function loadAnalytics() {
+    bindPeriodSwitcher();
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    await Promise.all([
+      loadExposureAnalytics(),
+      loadBasicAnalytics(session.user.id)
+    ]);
+  }
 
   loadAnalytics();
-
 </script>
-
 </body>
 </html>

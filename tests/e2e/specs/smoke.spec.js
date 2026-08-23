@@ -69,3 +69,17 @@ test('novel detail includes the LIGHT SEED UI shell', async ({ page }) => {
   await expect(page.locator('#lightSeedButton')).toHaveCount(1);
   await expect(page.locator('#lightSeedRemaining')).toHaveCount(1);
 });
+
+test('analytics exposes the exposure KPI shell without authentication', async ({
+  request
+}) => {
+  const response = await request.get('/analytics.html');
+  expect(response.ok()).toBeTruthy();
+
+  const html = await response.text();
+  expect(html).toContain('id="exposureSummary"');
+  expect(html).toContain('id="exposurePeriodSwitcher"');
+  expect(html).toContain('id="exposureNovelList"');
+  expect(html).toContain('本文10秒閲覧');
+  expect(html).not.toContain('本文読了');
+});
