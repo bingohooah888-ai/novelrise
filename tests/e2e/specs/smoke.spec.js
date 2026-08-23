@@ -30,7 +30,9 @@ for (const [name, path] of publicPages) {
   });
 }
 
-test('auth pages expose password recovery and no dummy forgot-password link', async ({ request }) => {
+test('auth pages expose password recovery and no dummy forgot-password link', async ({
+  request
+}) => {
   const login = await (await request.get('/login.html')).text();
   const forgot = await (await request.get('/forgot-password.html')).text();
   const reset = await (await request.get('/reset-password.html')).text();
@@ -41,7 +43,9 @@ test('auth pages expose password recovery and no dummy forgot-password link', as
   expect(reset).toContain('updateUser({password})');
 });
 
-test('posting shell requires classification and policy acknowledgement', async ({ request }) => {
+test('posting shell requires classification and policy acknowledgement', async ({
+  request
+}) => {
   const post = await (await request.get('/post.html')).text();
   expect(post).toContain('id="aiUsage"');
   expect(post).toContain('id="contentRating"');
@@ -49,7 +53,9 @@ test('posting shell requires classification and policy acknowledgement', async (
   expect(post).toContain('id="policyAck"');
 });
 
-test('reader pages expose zoning, report, and beta measurement hooks', async ({ request }) => {
+test('reader pages expose zoning, report, and beta measurement hooks', async ({
+  request
+}) => {
   const novel = await (await request.get('/novel.html')).text();
   const episode = await (await request.get('/episode.html')).text();
 
@@ -65,7 +71,9 @@ test('reader pages expose zoning, report, and beta measurement hooks', async ({ 
   expect(episode).toContain("'visibilitychange'");
 });
 
-test('LIGHT ANALYTICS exposes the beta funnel and plan-only exposure', async ({ request }) => {
+test('LIGHT ANALYTICS exposes the beta funnel and plan-only exposure', async ({
+  request
+}) => {
   const html = await (await request.get('/analytics.html')).text();
 
   expect(html).toContain('<title>LIGHT ANALYTICS | NOVELIGHT</title>');
@@ -77,7 +85,9 @@ test('LIGHT ANALYTICS exposes the beta funnel and plan-only exposure', async ({ 
   expect(html).not.toContain('LIGHT REPORT');
 });
 
-test('home and search use v2 discovery and complete impression tracking', async ({ request }) => {
+test('home and search use v2 discovery and complete impression tracking', async ({
+  request
+}) => {
   const home = await (await request.get('/index.html')).text();
   const search = await (await request.get('/search.html')).text();
 
@@ -88,7 +98,9 @@ test('home and search use v2 discovery and complete impression tracking', async 
   expect(search).toContain('record_novel_impressions_v2');
 });
 
-test('all audited major routes fit a 390px mobile viewport', async ({ browser }) => {
+test('all audited major routes fit a 390px mobile viewport', async ({
+  browser
+}) => {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     javaScriptEnabled: false
