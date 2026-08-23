@@ -81,6 +81,8 @@ test('analytics exposes the exposure KPI shell without authentication', async ({
   expect(html).toContain('id="exposurePeriodSwitcher"');
   expect(html).toContain('id="exposureNovelList"');
   expect(html).toContain('本文10秒閲覧');
+  expect(html).toContain('第1話→第2話 継続率');
+  expect(html).toContain('露出後のお気に入り');
   expect(html).not.toContain('本文読了');
 });
 
@@ -90,6 +92,7 @@ test('reader pages wire exposure conversion recording', async ({ request }) => {
   const novelHtml = await novelResponse.text();
   expect(novelHtml).toContain('record_novel_exposure_conversion');
   expect(novelHtml).toContain("p_event_type: 'detail_open'");
+  expect(novelHtml).toContain("p_event_type: 'favorite_added'");
   expect(novelHtml).toContain('novelight_visitor_token');
 
   const episodeResponse = await request.get('/episode.html');
