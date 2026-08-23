@@ -58,20 +58,6 @@ test('core pages expose the approved beta names and SCOUT RECORD route', async (
 
   assert.match(novel, /LIGHT SEEDを贈る/);
   assert.match(analytics, /LIGHT ANALYTICS/);
-  assert.match(mypage, /作者ホーム/);
-  assert.match(mypage, /SCOUT RECORD/);
-  assert.match(pricing, /新作48時間ブースト/);
-  assert.match(pricing, /プランによる追加露出/);
-  assert.match(scoutRecord, /SCOUT RECORD/);
-  assert.match(scoutRecord, /from\('light_seeds'\)/);
-});
-
-test('LIGHT ANALYTICS keeps the beta A basic funnel visible', async () => {
-  const analytics = await readFile(
-    join(root.pathname, 'analytics.html'),
-    'utf8'
-  );
-
   assert.doesNotMatch(analytics, /LIGHT REPORT/);
   assert.match(analytics, /インプレッション/);
   assert.match(analytics, /作品ページ到達/);
@@ -79,4 +65,10 @@ test('LIGHT ANALYTICS keeps the beta A basic funnel visible', async () => {
   assert.match(analytics, /第1話10秒閲覧/);
   assert.match(analytics, /第1話→第2話 継続率/);
   assert.match(analytics, /露出後のお気に入り/);
+  assert.match(mypage, /作者ホーム/);
+  assert.match(mypage, /SCOUT RECORD/);
+  assert.match(pricing, /新作48時間ブースト/);
+  assert.match(pricing, /プランによる追加露出/);
+  assert.match(scoutRecord, /SCOUT RECORD/);
+  assert.match(scoutRecord, /from\('light_seeds'\)/);
 });
