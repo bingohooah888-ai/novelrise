@@ -33,7 +33,11 @@ async function closeContextSafely(context) {
   try {
     await context.close();
   } catch (error) {
-    if (!String(error).includes('Target page, context or browser has been closed')) {
+    if (
+      !String(error).includes(
+        'Target page, context or browser has been closed'
+      )
+    ) {
       throw error;
     }
   }
@@ -80,7 +84,9 @@ test('authenticated beta-critical product flow works in production', async ({
       await authorPage.locator('#submitButton').click();
       await authorPage.waitForURL(/\/episode-post\.html\?novel_id=/);
 
-      novelId = new globalThis.URL(authorPage.url()).searchParams.get('novel_id');
+      novelId = new globalThis.URL(authorPage.url()).searchParams.get(
+        'novel_id'
+      );
       expect(novelId).toBeTruthy();
     });
 
