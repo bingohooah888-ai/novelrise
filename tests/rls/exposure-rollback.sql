@@ -20,4 +20,18 @@ select public.test_assert(
   'record_novel_impressions must be removed by rollback'
 );
 
-select 'PASS: exposure allocation rollback' as result;
+-- Remove only the rows created by exposure-fixture.sql so later rollback tests
+-- continue from the same baseline they had before exposure tests were added.
+delete from public.novels
+where id::text like '81000000-0000-0000-0000-%';
+
+select public.test_assert(
+  not exists (
+    select 1
+    from public.novels
+    where id::text like '81000000-0000-0000-0000-%'
+  ),
+  'exposure test novel fixtures must be cleaned up'
+);
+
+select 'PASS: exposure allocation rollback and fixture cleanup' as result;
