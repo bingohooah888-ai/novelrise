@@ -1,0 +1,149 @@
+name: NOVELIGHT Beta Ops Inbox Watch
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/beta-ops-inbox.yml'
+      - 'docs/BETA-OPERATIONS-RUNBOOK.md'
+
+permissions:
+  contents: read
+  issues: write
+  statuses: write
+
+concurrency:
+  group: novelight-beta-ops-inbox
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Check production moderation and support inbox
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+      ALERT_TITLE: '[OPS] NOVELIGHT beta inbox needs review'
+
+    steps:
+      - name: Check beta operations inbox
+        id: ops_watch
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          fi
+
+          query="select
+            (select count(*)::integer from public.content_reports where status = 'new') as new_content_reports,
+            (select count(*)::integer from public.contact_inquiries where status = 'new') as new_contact_inquiries;"
+
+          jq -n --arg query "$query" '{query: $query}' > /tmp/ops-query.json
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/database/query/read-only" \
+            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --data-binary @/tmp/ops-query.json \
+            > /tmp/ops-result.json
+
+          row="$(jq -c '
+            if type == "array" then .[0]
+            elif (.result? | type) == "array" then .result[0]
+            else . end
+          ' /tmp/ops-result.json)"
+
+          reports="$(jq -r '.new_content_reports // 0' <<<"$row")"
+          inquiries="$(jq -r '.new_contact_inquiries // 0' <<<"$row")"
+
+          if ! [[ "$reports" =~ ^[0-9]+$ && "$inquiries" =~ ^[0-9]+$ ]]; then
+            echo 'Unexpected production inbox query response.'
+            exit 1
+          fi
+
+          open_issue="$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "${ALERT_TITLE} in:title" \
+            --json number,title \
+            --jq '.[0].number // empty')"
+
+          now="$(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          if [ "$reports" -gt 0 ] || [ "$inquiries" -gt 0 ]; then
+            body=$(cat <<EOF
+          Automated production inbox check detected work waiting for operator review.
+
+          - New content reports: ${reports}
+          - New contact inquiries: ${inquiries}
+          - Checked: ${now}
+
+          Review the private rows in Supabase production and follow docs/BETA-OPERATIONS-RUNBOOK.md. Do not paste report or inquiry contents into this GitHub issue.
+          EOF
+          )
+
+            if [ -n "$open_issue" ]; then
+              gh issue comment "$open_issue" --repo "$GITHUB_REPOSITORY" --body "$body"
+            else
+              gh issue create \
+                --repo "$GITHUB_REPOSITORY" \
+                --title "$ALERT_TITLE" \
+                --body "$body"
+            fi
+          elif [ -n "$open_issue" ]; then
+            gh issue comment "$open_issue" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "Automated production inbox check is clear as of ${now}; closing this alert."
+            gh issue close "$open_issue" --repo "$GITHUB_REPOSITORY"
+          fi
+
+          echo "New content reports: ${reports}; new contact inquiries: ${inquiries}."
+
+      - name: Publish ops inbox watch status
+        if: always()
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+          WATCH_OUTCOME: ${{ steps.ops_watch.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          state=failure
+          description='Beta ops inbox watch failed'
+          if [ "$WATCH_OUTCOME" = 'success' ]; then
+            state=success
+            description='Beta ops inbox watch passed'
+          fi
+
+          jq -n \
+            --arg state "$state" \
+            --arg description "$description" \
+            '{state: $state, context: "ops-inbox-watch", description: $description}' \
+            > /tmp/ops-status.json
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            --header "Authorization: Bearer ${GH_STATUS_TOKEN}" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            --data-binary @/tmp/ops-status.json \
+            >/dev/null
+
+      - name: Enforce ops inbox watch result
+        if: steps.ops_watch.outcome == 'failure'
+        shell: bash
+        run: |
+          echo 'Beta operations inbox watch failed.'
+          exit 1
