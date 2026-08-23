@@ -89,6 +89,8 @@ test('authenticated beta-critical product flow works in production', async ({
     });
 
     await test.step('Publish first episode', async () => {
+      const publishButton = authorPage.locator('#publish');
+      await expect(publishButton).toBeEnabled();
       await authorPage.locator('#episodeNumber').fill('1');
       await authorPage.locator('#title').fill(episodeTitle);
       await authorPage
@@ -96,7 +98,7 @@ test('authenticated beta-critical product flow works in production', async ({
         .fill(
           'これはNOVELIGHTの本番認証スモーク用本文です。読書画面と10秒読書記録を検証します。'
         );
-      await authorPage.locator('#publish').click();
+      await publishButton.click();
       await authorPage.waitForURL(/\/novel\.html\?id=/);
       await expect(authorPage.locator('.title')).toHaveText(novelTitle);
       await expect(authorPage.locator('.episode-title').first()).toHaveText(
