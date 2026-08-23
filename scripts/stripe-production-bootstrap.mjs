@@ -112,7 +112,6 @@ async function ensurePrice(plan) {
     nickname: `${plan.name} monthly JPY`,
     product_data: {
       name: plan.name,
-      description: 'NOVELIGHT author subscription for additional discovery opportunities and analytics.',
       metadata: {
         novelight_managed: 'true',
         novelight_plan: plan.key
