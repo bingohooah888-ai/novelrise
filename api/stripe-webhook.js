@@ -52,7 +52,9 @@ async function recordSubscriptionAuditEvent(event) {
   const { data: profiles, error: profileError } = await query.limit(2);
 
   if (profileError) {
-    throw new Error(`Stripe audit profile lookup failed: ${profileError.message}`);
+    throw new Error(
+      `Stripe audit profile lookup failed: ${profileError.message}`
+    );
   }
   if (!profiles?.length) throw new Error('Stripe audit profile was not found');
   if (profiles.length > 1) {
