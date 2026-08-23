@@ -116,6 +116,15 @@ jobs:
           $DB -f supabase/migrations/20260823192500_profile_display_name_from_signup_metadata.sql
           $DB -f supabase/checks/20260823192500_profile_display_name_from_signup_metadata_postcheck.sql
 
+          $DB -f tests/rls/founding-internal-exclusion-fixture.sql
+          $DB -f supabase/checks/20260823204500_exclude_internal_test_founding_authors_precheck.sql
+          $DB -f supabase/migrations/20260823204500_exclude_internal_test_founding_authors.sql
+          $DB -f supabase/checks/20260823204500_exclude_internal_test_founding_authors_postcheck.sql
+          $DB -f supabase/rollback/20260823204500_exclude_internal_test_founding_authors_rollback.sql
+          $DB -f supabase/checks/20260823204500_exclude_internal_test_founding_authors_precheck.sql
+          $DB -f supabase/migrations/20260823204500_exclude_internal_test_founding_authors.sql
+          $DB -f supabase/checks/20260823204500_exclude_internal_test_founding_authors_postcheck.sql
+
       - name: Run beta P0 database behavior tests
         env:
           PGPASSWORD: postgres
@@ -123,5 +132,6 @@ jobs:
         run: |
           set -euo pipefail
           DB="psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1"
+          $DB -f tests/rls/founding-internal-exclusion.sql
           $DB -f tests/rls/beta-p0-foundations.sql
           $DB -f tests/rls/signup-display-name.sql
