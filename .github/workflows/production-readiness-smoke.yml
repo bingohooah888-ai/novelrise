@@ -8,6 +8,10 @@ on:
       - 'novelight-client.js'
       - 'api/**'
       - 'supabase/checks/production_beta_observability.sql'
+      - 'tests/e2e/production/**'
+      - 'tests/e2e/playwright.production.config.mjs'
+      - 'tests/e2e/package.json'
+      - 'tests/e2e/package-lock.json'
       - '.github/workflows/production-readiness-smoke.yml'
   schedule:
     - cron: '15 22 * * *'
@@ -127,6 +131,27 @@ jobs:
             echo "Unexpected Stripe webhook GET status: $webhook_code"
             exit 1
           fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install production browser smoke dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install Chromium for production smoke
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run read-only production reader smoke
+        working-directory: tests/e2e
+        env:
+          E2E_BASE_URL: https://novelrise.vercel.app
+        run: npx playwright test --config=playwright.production.config.mjs
 
       - name: Verify production beta observability
         id: observability
