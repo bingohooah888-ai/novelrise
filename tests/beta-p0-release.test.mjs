@@ -118,10 +118,7 @@ test('LIGHT ANALYTICS uses the required funnel denominators', async () => {
   assert.match(analytics, /rate\(t\.d,t\.i\)/);
   assert.match(analytics, /rate\(t\.f,t\.d\)/);
   assert.match(analytics, /rate\(t\.s,t\.f\)/);
-  assert.match(
-    analytics,
-    /rate\(r\.first_episode_reads_10s,r\.detail_opens\)/
-  );
+  assert.match(analytics, /rate\(r\.first_episode_reads_10s,r\.detail_opens\)/);
 });
 
 test('all search sorts preserve impression data', async () => {
