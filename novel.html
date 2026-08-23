@@ -3,33 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>作品詳細 | NovelRise</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        "Hiragino Kaku Gothic ProN",
-        "Yu Gothic",
-        sans-serif;
-
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
       background: #f7f8fb;
       color: #222;
     }
 
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
 
     header {
       background: white;
@@ -38,25 +24,22 @@
 
     .header-inner {
       max-width: 1100px;
-      margin: auto;
       height: 72px;
+      margin: auto;
       padding: 0 24px;
-
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 16px;
     }
 
     .logo {
+      color: #6d4aff;
       font-size: 25px;
       font-weight: 800;
-      color: #6d4aff;
     }
 
-    .back {
-      color: #666;
-      font-size: 14px;
-    }
+    .back { color: #666; font-size: 14px; }
 
     main {
       max-width: 900px;
@@ -64,853 +47,573 @@
       padding: 50px 24px;
     }
 
-    .novel-header {
+    .panel {
       background: white;
       border: 1px solid #e5e7eb;
       border-radius: 16px;
+    }
+
+    .novel-header {
       padding: 32px;
-      margin-bottom: 25px;
+      margin-bottom: 18px;
     }
 
     .genre {
       display: inline-block;
-
-      background: #f0edff;
-      color: #6d4aff;
-
+      margin-bottom: 14px;
       padding: 5px 10px;
       border-radius: 6px;
-
+      background: #f0edff;
+      color: #6d4aff;
       font-size: 12px;
       font-weight: 700;
-
-      margin-bottom: 14px;
     }
 
-    .title {
-      font-size: 32px;
-      margin-bottom: 14px;
+    .title { margin-bottom: 10px; font-size: 32px; }
+
+    .author {
+      margin-bottom: 16px;
+      color: #666;
+      font-size: 14px;
     }
+
+    .author a { color: #6d4aff; font-weight: 700; }
 
     .description {
+      margin-bottom: 20px;
       color: #666;
       line-height: 1.9;
-      margin-bottom: 20px;
+      white-space: pre-wrap;
     }
 
     .meta {
       display: flex;
-      gap: 20px;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
       color: #888;
       font-size: 13px;
+    }
+
+    .favorite-button {
+      padding: 7px 10px;
+      border: 1px solid #d8d8df;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .favorite-button:disabled { cursor: wait; opacity: .65; }
+
+    .light-seed {
+      display: none;
+      margin-bottom: 18px;
+      padding: 24px;
+      border: 1px solid #ddd7ff;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #faf9ff, #f1efff);
+    }
+
+    .light-seed.visible { display: block; }
+
+    .light-seed-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
       flex-wrap: wrap;
     }
 
-    .episodes {
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 16px;
-      padding: 28px;
+    .light-seed h2 {
+      margin-bottom: 7px;
+      color: #5535d8;
+      font-size: 20px;
     }
 
-    .episodes h2 {
-      font-size: 22px;
-      margin-bottom: 20px;
+    .light-seed p {
+      max-width: 620px;
+      color: #666;
+      font-size: 14px;
+      line-height: 1.7;
     }
 
-    .empty {
-      color: #777;
-      text-align: center;
-      padding: 35px 15px;
-    }
-
-    .new-episode-button {
-      display: inline-block;
-
-      margin-top: 20px;
-
+    .seed-button {
+      min-width: 170px;
+      padding: 12px 18px;
+      border: 0;
+      border-radius: 10px;
       background: #6d4aff;
       color: white;
+      font-weight: 800;
+      cursor: pointer;
+    }
 
-      padding: 11px 18px;
-      border-radius: 8px;
+    .seed-button:disabled {
+      background: #aaa2d6;
+      cursor: not-allowed;
+    }
 
+    .seed-stats {
+      margin-top: 14px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      color: #645b7d;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .episodes { padding: 28px; }
+    .episodes h2 { margin-bottom: 20px; font-size: 22px; }
+
+    .episode-item {
+      padding: 18px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .episode-number {
+      margin-bottom: 6px;
+      color: #888;
+      font-size: 13px;
+    }
+
+    .episode-title {
+      display: block;
+      font-size: 18px;
       font-weight: 800;
     }
 
+    .owner-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .action-button {
+      display: none;
+      padding: 11px 18px;
+      border-radius: 8px;
+      border: 0;
+      background: #6d4aff;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .action-button.delete {
+      border: 1px solid #d92d20;
+      background: white;
+      color: #d92d20;
+    }
+
+    .empty {
+      padding: 35px 15px;
+      color: #777;
+      text-align: center;
+    }
+
     .error {
-      background: #fff0f0;
-      color: #b42318;
       padding: 16px;
       border-radius: 10px;
+      background: #fff0f0;
+      color: #b42318;
+    }
+
+    @media (max-width: 640px) {
+      main { padding: 28px 16px; }
+      .novel-header, .episodes, .light-seed { padding: 22px; }
+      .title { font-size: 27px; }
+      .seed-button { width: 100%; }
+      .header-inner { padding: 0 16px; }
     }
   </style>
 </head>
-
 <body>
-
 <header>
   <div class="header-inner">
-
-    <a href="index.html" class="logo">
-      NovelRise
-    </a>
-
-    <a href="my-novels.html" class="back">
-      ← 自分の作品へ戻る
-    </a>
-
+    <a href="index.html" class="logo">NovelRise</a>
+    <a href="my-novels.html" class="back">← 自分の作品へ戻る</a>
   </div>
 </header>
 
-
 <main>
+  <section id="novelHeader" class="panel novel-header">読み込み中...</section>
 
-  <section
-    id="novelHeader"
-    class="novel-header"
-  >
-    読み込み中...
-  </section>
-
-
-  <section class="episodes">
-
-    <h2>
-      エピソード
-    </h2>
-
-    <div id="episodeList">
-
-      <div class="empty">
-        まだエピソードがありません。
+  <section id="lightSeedArea" class="light-seed" aria-live="polite">
+    <div class="light-seed-top">
+      <div>
+        <h2>🌱 LIGHT SEED</h2>
+        <p id="lightSeedMessage">この作品を「まだ埋もれている作品」として発掘・応援できます。</p>
       </div>
-
+      <button id="lightSeedButton" class="seed-button" type="button">🌱 LIGHT SEED</button>
     </div>
-
-<a
-  id="editNovelButton"
-  href="#"
-  class="new-episode-button"
-  style="display:none; margin-right:10px;"
->
-  作品を編集
-</a>
-    <button
-  id="deleteNovelButton"
-  type="button"
-  style="
-    display:none;
-    margin-right:10px;
-    padding:11px 18px;
-    background:white;
-    color:#d92d20;
-    border:1px solid #d92d20;
-    border-radius:8px;
-    font-weight:800;
-    cursor:pointer;
-  "
->
-  作品を削除
-</button>
-    <a
-      id="newEpisodeButton"
-      href="episode-post.html"
-      class="new-episode-button"
-      style="display:none;"
-    >
-      ＋ 第1話を追加
-    </a>
-
+    <div class="seed-stats">
+      <span id="lightSeedRemaining"></span>
+      <span id="lightSeedTotal"></span>
+    </div>
   </section>
 
+  <section class="panel episodes">
+    <h2>エピソード</h2>
+    <div id="episodeList"><div class="empty">まだエピソードがありません。</div></div>
+
+    <div class="owner-actions">
+      <a id="editNovelButton" href="#" class="action-button">作品を編集</a>
+      <button id="deleteNovelButton" type="button" class="action-button delete">作品を削除</button>
+      <a id="newEpisodeButton" href="episode-post.html" class="action-button">＋ 第1話を追加</a>
+    </div>
+  </section>
 </main>
 
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
+  const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  const SUPABASE_URL =
-    'https://fiepaguycecrredwrcwx.supabase.co';
-
-  const SUPABASE_KEY =
-    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
-
-
-  const supabaseClient =
-    supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    );
-
+  const params = new URLSearchParams(window.location.search);
+  const novelId = params.get('id');
+  let currentSession = null;
+  let currentNovel = null;
 
   function escapeHtml(value) {
-
-    const div =
-      document.createElement('div');
-
-    div.textContent =
-      value ?? '';
-
+    const div = document.createElement('div');
+    div.textContent = value ?? '';
     return div.innerHTML;
   }
 
+  function showNovelError(message) {
+    document.getElementById('novelHeader').innerHTML =
+      '<div class="error">' + escapeHtml(message) + '</div>';
+  }
 
   async function loadNovel() {
-
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
-
-    const novelId =
-      params.get('id');
-
-
     if (!novelId) {
-
-      document.getElementById(
-        'novelHeader'
-      ).innerHTML =
-        '<div class="error">' +
-        '作品IDが指定されていません。' +
-        '</div>';
-
-      return;
+      showNovelError('作品IDが指定されていません。');
+      return false;
     }
 
+    const { data: authData } = await supabaseClient.auth.getSession();
+    currentSession = authData.session;
 
-    const {
-      data: {
-        session
-      }
-    } =
-      await supabaseClient.auth.getSession();
+    const { data: novel, error } = await supabaseClient
+      .from('novels')
+      .select('*')
+      .eq('id', novelId)
+      .single();
 
-
-
-
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from('novels')
-        .select('*')
-        .eq(
-          'id',
-          novelId
-        )
-        .single();
-
-
-    if (error || !data) {
-
+    if (error || !novel) {
       console.error(error);
-
-      document.getElementById(
-        'novelHeader'
-      ).innerHTML =
-        '<div class="error">' +
-        '作品を読み込めませんでした。' +
-        '</div>';
-
-      return;
+      showNovelError('作品を読み込めませんでした。');
+      return false;
     }
-const {
-  data: profileData,
-  error: profileError
-} = await supabaseClient
-  .from('profiles')
-  .select('display_name')
-  .eq('id', data.user_id)
-  .maybeSingle();
 
-const authorName =
-  profileData?.display_name || '名前未設定';
+    currentNovel = novel;
 
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('display_name')
+      .eq('id', novel.user_id)
+      .maybeSingle();
 
+    const authorName = profile?.display_name || '名前未設定';
+    const createdAt = new Date(novel.created_at).toLocaleDateString('ja-JP');
 
-
-    const createdAt =
-      new Date(
-        data.created_at
-      ).toLocaleDateString(
-        'ja-JP'
-      );
-
-
-    document.getElementById(
-      'novelHeader'
-    ).innerHTML = `
-      <div class="genre">
-        ${escapeHtml(data.genre)}
+    document.getElementById('novelHeader').innerHTML = `
+      <div class="genre">${escapeHtml(novel.genre)}</div>
+      <h1 class="title">${escapeHtml(novel.title)}</h1>
+      <div class="author">
+        作者：<a href="author.html?id=${encodeURIComponent(novel.user_id)}">${escapeHtml(authorName)}</a>
       </div>
-
-      <h1 class="title">
-        ${escapeHtml(data.title)}
-      </h1>
-<div
-  id="authorArea"
-  style="
-    margin-top:8px;
-    margin-bottom:14px;
-    font-size:14px;
-    color:#666;
-  "
->
-  作者：
-  <a
-    id="authorLink"
-    href="author.html?id=${data.user_id}"
-    style="
-      color:#6d4aff;
-      font-weight:700;
-      text-decoration:none;
-    "
-  >
-   ${escapeHtml(authorName)}
-  </a>
-</div>
-      <div class="description">
-        ${escapeHtml(data.description)}
-      </div>
-
+      <div class="description">${escapeHtml(novel.description)}</div>
       <div class="meta">
-
-        <span>
-          👁 ${data.pv ?? 0} PV
-        </span>
-
-<button
-  id="favoriteButton"
-  type="button"
->
-  ☆ お気に入り
-</button>
-
-<span id="favoriteCount">
-  ${data.favorites ?? 0}
-</span>
-
-        <span>
-          投稿日 ${createdAt}
-        </span>
-
-        <span>
-          ${
-            data.status ===
-            'published'
-              ? '公開中'
-              : '下書き'
-          }
-        </span>
-
+        <span>👁 ${novel.pv ?? 0} PV</span>
+        <button id="favoriteButton" class="favorite-button" type="button">☆ お気に入り</button>
+        <span id="favoriteCount">0</span>
+        <span>投稿日 ${createdAt}</span>
+        <span>${novel.status === 'published' ? '公開中' : '下書き'}</span>
       </div>
     `;
 
-const {
-  data: episodes,
-  error: episodesError
-} =
-  await supabaseClient
-    .from('episodes')
-    .select('*')
-    .eq(
-      'novel_id',
-      data.id
-    )
-    .order(
-      'episode_number',
-      {
-        ascending: true
-      }
-    );
-
-
-const episodeList =
-  document.getElementById(
-    'episodeList'
-  );
-
-
-if (episodesError) {
-
-  console.error(
-    episodesError
-  );
-
-  episodeList.innerHTML =
-    '<div class="empty">' +
-    'エピソードを読み込めませんでした。' +
-    '</div>';
-
-} else if (
-  !episodes ||
-  episodes.length === 0
-) {
-
-  episodeList.innerHTML =
-    '<div class="empty">' +
-    'まだエピソードがありません。' +
-    '</div>';
-
-} else {
-
-  episodeList.innerHTML = '';
-
-
-  episodes.forEach(
-    (episode) => {
-
-      const episodeItem =
-        document.createElement(
-          'div'
-        );
-
-
-      episodeItem.style.padding =
-        '18px 0';
-
-      episodeItem.style.borderBottom =
-        '1px solid #e5e7eb';
-
-
-      episodeItem.innerHTML = `
-        <div
-          style="
-            font-size:13px;
-            color:#888;
-            margin-bottom:6px;
-          "
-        >
-          第${episode.episode_number}話
-        </div>
-
-<a
-  href="episode.html?id=${episode.id}"
-  style="
-    display:block;
-    font-size:18px;
-    font-weight:800;
-  "
->
-  ${escapeHtml(episode.title)}
-</a>
-      `;
-
-
-      episodeList.appendChild(
-        episodeItem
-      );
-
-    }
-  );
-
-}
-const editNovelButton =
-  document.getElementById(
-    'editNovelButton'
-  );
-
-const isOwner =
-  session &&
-  data.user_id === session.user.id;
-
-if (isOwner) {
-
-  editNovelButton.style.display =
-    'inline-block';
-
-  editNovelButton.href =
-    'novel-edit.html?id=' +
-    data.id;
-const deleteNovelButton =
-  document.getElementById(
-    'deleteNovelButton'
-  );
-
-deleteNovelButton.style.display =
-  'inline-block';
-
-
-deleteNovelButton.addEventListener(
-  'click',
-  async () => {
-
-    const confirmed =
-      confirm(
-        'この作品を本当に削除しますか？\n' +
-        '作品内のエピソードも削除する必要があります。\n' +
-        'この操作は元に戻せません。'
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-
-    deleteNovelButton.disabled =
-      true;
-
-    deleteNovelButton.textContent =
-      '削除中...';
-
-
-    const {
-      error: episodeDeleteError
-    } =
-      await supabaseClient
-        .from('episodes')
-        .delete()
-        .eq(
-          'novel_id',
-          data.id
-        );
-
-
-    if (episodeDeleteError) {
-
-      console.error(
-        episodeDeleteError
-      );
-
-      alert(
-        'エピソードの削除に失敗しました。\n' +
-        episodeDeleteError.message
-      );
-
-      deleteNovelButton.disabled =
-        false;
-
-      deleteNovelButton.textContent =
-        '作品を削除';
-
-      return;
-    }
-
-
-    const {
-      error: novelDeleteError
-    } =
-      await supabaseClient
-        .from('novels')
-        .delete()
-        .eq(
-          'id',
-          data.id
-        );
-
-
-    if (novelDeleteError) {
-
-      console.error(
-        novelDeleteError
-      );
-
-      alert(
-        '作品の削除に失敗しました。\n' +
-        novelDeleteError.message
-      );
-
-      deleteNovelButton.disabled =
-        false;
-
-      deleteNovelButton.textContent =
-        '作品を削除';
-
-      return;
-    }
-
-
-    alert(
-      '作品を削除しました。'
-    );
-
-
-    window.location.href =
-      'my-novels.html';
-
-  }
-);
-}  
-
-const newEpisodeButton =
-  document.getElementById(
-    'newEpisodeButton'
-  );
-
-if (isOwner) {
-
-  let nextEpisodeNumber = 1;
-
-  if (
-    episodes &&
-    episodes.length > 0
-  ) {
-
-    const maxEpisodeNumber =
-      Math.max(
-        ...episodes.map(
-          episode =>
-            episode.episode_number
-        )
-      );
-
-    nextEpisodeNumber =
-      maxEpisodeNumber + 1;
-
+    await loadEpisodes();
+    setupOwnerActions();
+    return true;
   }
 
-  newEpisodeButton.href =
-    'episode-post.html?novel_id=' +
-    data.id;
+  async function loadEpisodes() {
+    const { data: episodes, error } = await supabaseClient
+      .from('episodes')
+      .select('*')
+      .eq('novel_id', currentNovel.id)
+      .order('episode_number', { ascending: true });
 
-  newEpisodeButton.textContent =
-    '＋ 第' +
-    nextEpisodeNumber +
-    '話を追加';
-
-  newEpisodeButton.style.display =
-    'inline-block';
-}
-
-  }
-
-async function setupFavorite() {
-
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const novelId =
-    params.get('id');
-
-
-  const favoriteButton =
-    document.getElementById(
-      'favoriteButton'
-    );
-
-  const favoriteCount =
-    document.getElementById(
-      'favoriteCount'
-    );
-
-
-  if (
-    !favoriteButton ||
-    !favoriteCount ||
-    !novelId
-  ) {
-    return;
-  }
-
-
-  const {
-    data: {
-      session
-    }
-  } =
-    await supabaseClient.auth.getSession();
-
-
-  let favoriteId = null;
-
-
-  async function refreshFavorite() {
-
-    const {
-      count,
-      error: countError
-    } =
-      await supabaseClient
-        .from('favorites')
-        .select(
-          '*',
-          {
-            count: 'exact',
-            head: true
-          }
-        )
-        .eq(
-          'novel_id',
-          novelId
-        );
-
-
-    if (!countError) {
-
-      favoriteCount.textContent =
-        count ?? 0;
-
-    }
-
-
-    favoriteId = null;
-
-
-    if (!session) {
-
-      favoriteButton.textContent =
-        '☆ お気に入り';
-
-      return;
-    }
-
-
-    const {
-      data: favorite,
-      error
-    } =
-      await supabaseClient
-        .from('favorites')
-        .select('id')
-        .eq(
-          'novel_id',
-          novelId
-        )
-        .eq(
-          'user_id',
-          session.user.id
-        )
-        .maybeSingle();
-
+    const list = document.getElementById('episodeList');
 
     if (error) {
-
       console.error(error);
-
+      list.innerHTML = '<div class="empty">エピソードを読み込めませんでした。</div>';
       return;
     }
 
-
-    if (favorite) {
-
-      favoriteId =
-        favorite.id;
-
-      favoriteButton.textContent =
-        '★ お気に入り済み';
-
-    } else {
-
-      favoriteButton.textContent =
-        '☆ お気に入り';
-
+    if (!episodes || episodes.length === 0) {
+      list.innerHTML = '<div class="empty">まだエピソードがありません。</div>';
+      return;
     }
 
+    list.innerHTML = episodes.map((episode) => `
+      <div class="episode-item">
+        <div class="episode-number">第${episode.episode_number}話</div>
+        <a class="episode-title" href="episode.html?id=${encodeURIComponent(episode.id)}">${escapeHtml(episode.title)}</a>
+      </div>
+    `).join('');
   }
 
+  function setupOwnerActions() {
+    const isOwner = currentSession && currentNovel.user_id === currentSession.user.id;
+    if (!isOwner) return;
 
-  favoriteButton.addEventListener(
-    'click',
-    async () => {
+    const editButton = document.getElementById('editNovelButton');
+    const deleteButton = document.getElementById('deleteNovelButton');
+    const newEpisodeButton = document.getElementById('newEpisodeButton');
 
-      if (!session) {
+    editButton.style.display = 'inline-block';
+    editButton.href = 'novel-edit.html?id=' + encodeURIComponent(currentNovel.id);
+    deleteButton.style.display = 'inline-block';
+    newEpisodeButton.style.display = 'inline-block';
+    newEpisodeButton.href = 'episode-post.html?novel_id=' + encodeURIComponent(currentNovel.id);
 
-        alert(
-          'お気に入りするにはログインが必要です。'
-        );
+    deleteButton.addEventListener('click', deleteNovel);
 
-        window.location.href =
-          'login.html';
+    supabaseClient
+      .from('episodes')
+      .select('episode_number')
+      .eq('novel_id', currentNovel.id)
+      .order('episode_number', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        const next = data?.length ? data[0].episode_number + 1 : 1;
+        newEpisodeButton.textContent = '＋ 第' + next + '話を追加';
+      });
+  }
 
+  async function deleteNovel() {
+    const button = document.getElementById('deleteNovelButton');
+    const confirmed = confirm(
+      'この作品を本当に削除しますか？\n作品内のエピソードも削除されます。\nこの操作は元に戻せません。'
+    );
+
+    if (!confirmed) return;
+
+    button.disabled = true;
+    button.textContent = '削除中...';
+
+    const { error: episodeError } = await supabaseClient
+      .from('episodes')
+      .delete()
+      .eq('novel_id', currentNovel.id);
+
+    if (episodeError) {
+      console.error(episodeError);
+      alert('エピソードの削除に失敗しました。');
+      button.disabled = false;
+      button.textContent = '作品を削除';
+      return;
+    }
+
+    const { error: novelError } = await supabaseClient
+      .from('novels')
+      .delete()
+      .eq('id', currentNovel.id);
+
+    if (novelError) {
+      console.error(novelError);
+      alert('作品の削除に失敗しました。');
+      button.disabled = false;
+      button.textContent = '作品を削除';
+      return;
+    }
+
+    alert('作品を削除しました。');
+    window.location.href = 'my-novels.html';
+  }
+
+  async function setupFavorite() {
+    const button = document.getElementById('favoriteButton');
+    const count = document.getElementById('favoriteCount');
+    if (!button || !count || !novelId) return;
+
+    let favoriteId = null;
+
+    async function refresh() {
+      const { count: total, error: countError } = await supabaseClient
+        .from('favorites')
+        .select('*', { count: 'exact', head: true })
+        .eq('novel_id', novelId);
+
+      if (!countError) count.textContent = total ?? 0;
+
+      favoriteId = null;
+      if (!currentSession) {
+        button.textContent = '☆ お気に入り';
         return;
       }
 
+      const { data, error } = await supabaseClient
+        .from('favorites')
+        .select('id')
+        .eq('novel_id', novelId)
+        .eq('user_id', currentSession.user.id)
+        .maybeSingle();
 
-      favoriteButton.disabled =
-        true;
-
-
-      if (favoriteId) {
-
-        const {
-          error
-        } =
-          await supabaseClient
-            .from('favorites')
-            .delete()
-            .eq(
-              'id',
-              favoriteId
-            );
-
-
-        if (error) {
-
-          console.error(error);
-
-          alert(
-            'お気に入り解除に失敗しました。'
-          );
-
-          favoriteButton.disabled =
-            false;
-
-          return;
-        }
-
-      } else {
-
-        const {
-          error
-        } =
-          await supabaseClient
-            .from('favorites')
-            .insert({
-              user_id:
-                session.user.id,
-
-              novel_id:
-                Number(novelId)
-            });
-
-
-        if (error) {
-
-          console.error(error);
-
-          alert(
-            'お気に入り登録に失敗しました。\n' +
-            error.message
-          );
-
-          favoriteButton.disabled =
-            false;
-
-          return;
-        }
-
+      if (error) {
+        console.error(error);
+        return;
       }
 
-
-      await refreshFavorite();
-
-
-      favoriteButton.disabled =
-        false;
-
+      if (data) {
+        favoriteId = data.id;
+        button.textContent = '★ お気に入り済み';
+      } else {
+        button.textContent = '☆ お気に入り';
+      }
     }
-  );
 
+    button.addEventListener('click', async () => {
+      if (!currentSession) {
+        window.location.href = 'login.html';
+        return;
+      }
 
-  await refreshFavorite();
+      button.disabled = true;
 
-}
+      const response = favoriteId
+        ? await supabaseClient.from('favorites').delete().eq('id', favoriteId)
+        : await supabaseClient.from('favorites').insert({
+            user_id: currentSession.user.id,
+            novel_id: currentNovel.id
+          });
+
+      if (response.error) {
+        console.error(response.error);
+        alert('お気に入りの更新に失敗しました。');
+      } else {
+        await refresh();
+      }
+
+      button.disabled = false;
+    });
+
+    await refresh();
+  }
+
+  function renderLightSeedStatus(status) {
+    const area = document.getElementById('lightSeedArea');
+    const button = document.getElementById('lightSeedButton');
+    const message = document.getElementById('lightSeedMessage');
+    const remaining = document.getElementById('lightSeedRemaining');
+    const total = document.getElementById('lightSeedTotal');
+
+    area.classList.add('visible');
+    remaining.textContent = status.monthly_limit
+      ? `今月あと ${status.remaining_this_month}/${status.monthly_limit}`
+      : '';
+    total.textContent = `この作品のSEED ${status.total_seed_count ?? 0}`;
+
+    button.disabled = false;
+    button.textContent = '🌱 LIGHT SEED';
+
+    switch (status.reason) {
+      case 'eligible':
+        message.textContent = 'まだ埋もれているこの作品を発掘した記録を残せます。SEEDは1作品につき1回です。';
+        break;
+      case 'login_required':
+        message.textContent = 'LIGHT SEEDを使うにはログインが必要です。';
+        break;
+      case 'own_novel':
+        message.textContent = '自分の作品にはLIGHT SEEDを使えません。';
+        button.disabled = true;
+        button.textContent = '自分の作品';
+        break;
+      case 'already_seeded':
+        message.textContent = 'あなたはこの作品をすでに発掘済みです。';
+        button.disabled = true;
+        button.textContent = '🌱 SEED済み';
+        break;
+      case 'monthly_limit_reached':
+        message.textContent = '今月のLIGHT SEEDを使い切りました。翌月に回復します。';
+        button.disabled = true;
+        button.textContent = '今月分を使用済み';
+        break;
+      case 'no_longer_unknown':
+        message.textContent = 'この作品はすでに一定以上発見されているため、現在はLIGHT SEED対象外です。';
+        button.disabled = true;
+        button.textContent = '対象外';
+        break;
+      default:
+        message.textContent = 'この作品では現在LIGHT SEEDを利用できません。';
+        button.disabled = true;
+        button.textContent = '利用不可';
+    }
+  }
+
+  async function setupLightSeed() {
+    if (!novelId || !currentNovel || currentNovel.status !== 'published') return;
+
+    const { data: status, error } = await supabaseClient.rpc('light_seed_status', {
+      p_novel_id: String(novelId)
+    });
+
+    if (error) {
+      console.error('LIGHT SEED status error', error);
+      return;
+    }
+
+    renderLightSeedStatus(status);
+
+    const button = document.getElementById('lightSeedButton');
+    button.addEventListener('click', async () => {
+      if (!currentSession) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      const confirmed = confirm(
+        'この作品にLIGHT SEEDを使いますか？\n同じ作品には1回だけ使えます。'
+      );
+      if (!confirmed) return;
+
+      button.disabled = true;
+      button.textContent = 'SEED中...';
+
+      const { error: plantError } = await supabaseClient.rpc('plant_light_seed', {
+        p_novel_id: String(novelId)
+      });
+
+      if (plantError) {
+        console.error('LIGHT SEED plant error', plantError);
+        alert('LIGHT SEEDを記録できませんでした。状態を更新します。');
+      }
+
+      const { data: refreshed, error: refreshError } = await supabaseClient.rpc(
+        'light_seed_status',
+        { p_novel_id: String(novelId) }
+      );
+
+      if (!refreshError && refreshed) renderLightSeedStatus(refreshed);
+    }, { once: true });
+  }
+
   (async () => {
+    const loaded = await loadNovel();
+    if (!loaded) return;
 
-  await loadNovel();
-
-  await setupFavorite();
-
-})();
-
+    await Promise.all([
+      setupFavorite(),
+      setupLightSeed()
+    ]);
+  })();
 </script>
-
 </body>
 </html>

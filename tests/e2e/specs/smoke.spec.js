@@ -4,7 +4,8 @@ const publicPages = [
   ['home', '/index.html'],
   ['pricing', '/pricing.html'],
   ['login', '/login.html'],
-  ['signup', '/signup.html']
+  ['signup', '/signup.html'],
+  ['novel detail', '/novel.html']
 ];
 
 for (const [name, path] of publicPages) {
@@ -28,4 +29,14 @@ test('login form exposes the required controls', async ({ page }) => {
   await expect(page.locator('#email')).toBeVisible();
   await expect(page.locator('#password')).toBeVisible();
   await expect(page.locator('button[type="submit"]')).toBeVisible();
+});
+
+test('novel detail includes the LIGHT SEED UI shell', async ({ page }) => {
+  await page.goto('/novel.html', {
+    waitUntil: 'domcontentloaded'
+  });
+
+  await expect(page.locator('#lightSeedArea')).toHaveCount(1);
+  await expect(page.locator('#lightSeedButton')).toHaveCount(1);
+  await expect(page.locator('#lightSeedRemaining')).toHaveCount(1);
 });
