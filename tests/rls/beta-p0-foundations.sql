@@ -4,6 +4,7 @@ select public.test_assert(not has_table_privilege('anon','public.content_reports
 select public.test_assert(not has_table_privilege('anon','public.acquisition_touches','SELECT') and not has_table_privilege('authenticated','public.acquisition_touches','SELECT'),'acquisition touches are private');
 select public.test_assert(not has_table_privilege('anon','public.beta_activity_days','SELECT') and not has_table_privilege('authenticated','public.beta_activity_days','SELECT'),'activity days are private');
 select public.test_assert(not has_table_privilege('anon','public.reader_journey_events','SELECT') and not has_table_privilege('authenticated','public.reader_journey_events','SELECT'),'reader journey events are private');
+select public.test_assert(not has_table_privilege('anon','public.subscription_event_log','SELECT') and not has_table_privilege('authenticated','public.subscription_event_log','SELECT'),'subscription event history is private');
 
 do $$
 begin
@@ -88,12 +89,77 @@ select public.record_reader_journey_event('detail_open','99000000-0000-0000-0000
 reset role;
 select public.test_assert(exists(select 1 from public.reader_journey_events where novel_id_snapshot='99000000-0000-0000-0000-000000000002' and event_type='detail_open' and source='x'),'external reader journey preserved');
 
+-- Discovery must keep every plan in the general feed while reserving paid-plan
+-- extras as independently measurable surfaces.
 set role anon;
-select public.test_assert(exists(select 1 from public.novelight_discovery_feed_v2('home_discovery',100,null,null,'visitor-discovery-test-token') where author_plan='free'),'Free works remain in v2 discovery');
-select public.test_assert(exists(select 1 from public.novelight_plan_extra_feed(3,'{}'::text[],'visitor-plan-extra-test-token') where author_plan in ('standard','premium')),'plan-extra feed returns paid-plan work');
+select public.test_assert(
+  exists(select 1 from public.novelight_discovery_feed_v2('home_discovery',100,null,null,'visitor-all-plan-feed-token') where author_plan='free' and not is_premium_slot)
+  and exists(select 1 from public.novelight_discovery_feed_v2('home_discovery',100,null,null,'visitor-all-plan-feed-token') where author_plan='standard' and not is_premium_slot)
+  and exists(select 1 from public.novelight_discovery_feed_v2('home_discovery',100,null,null,'visitor-all-plan-feed-token') where author_plan='premium' and not is_premium_slot),
+  'general discovery includes Free, Standard, and Premium works'
+);
+select public.test_assert(
+  exists(select 1 from public.novelight_discovery_feed_v2('home_discovery',1,null,null,'visitor-premium-slot-token') where author_plan='premium' and is_premium_slot),
+  'Premium dedicated slot remains separate from the general feed'
+);
+select public.test_assert(
+  exists(select 1 from public.novelight_plan_extra_feed(3,'{}'::text[],'visitor-plan-extra-test-token') where author_plan='standard')
+  and exists(select 1 from public.novelight_plan_extra_feed(3,'{}'::text[],'visitor-plan-extra-test-token') where author_plan='premium'),
+  'plan-extra feed includes both Standard and Premium works'
+);
+
+select public.record_novel_impressions_v2('home_discovery',array['81000000-0000-0000-0000-000000000001']::text[],'visitor-free-initial-token');
+select public.record_novel_impressions_v2('home_plan_extra',array['81000000-0000-0000-0000-000000000002']::text[],'visitor-standard-extra-token');
+select public.record_novel_impressions_v2('home_premium_slot',array['81000000-0000-0000-0000-000000000003']::text[],'visitor-premium-extra-token');
 reset role;
+
+select public.test_assert(
+  exists(select 1 from public.novel_exposure_events where novel_id_snapshot='81000000-0000-0000-0000-000000000001' and surface='home_discovery' and allocation_reason='initial_exposure'),
+  'new Free work receives measurable initial exposure'
+);
+select public.test_assert(
+  exists(select 1 from public.novel_exposure_events where novel_id_snapshot='81000000-0000-0000-0000-000000000002' and surface='home_plan_extra' and allocation_reason='plan_extra'),
+  'Standard plan-extra exposure is recorded separately'
+);
+select public.test_assert(
+  exists(select 1 from public.novel_exposure_events where novel_id_snapshot='81000000-0000-0000-0000-000000000003' and surface='home_premium_slot' and allocation_reason='premium_extra'),
+  'Premium dedicated exposure is recorded separately'
+);
+
+select set_config('request.jwt.claim.sub','44444444-4444-4444-4444-444444444444',false);
+set role authenticated;
+select public.test_assert(
+  exists(select 1 from public.novelight_author_exposure_funnel_v2(30) where novel_id='81000000-0000-0000-0000-000000000002' and plan_extra_impressions >= 1),
+  'Standard author analytics reads actual plan-added impressions'
+);
+reset role;
+select set_config('request.jwt.claim.sub','55555555-5555-5555-5555-555555555555',false);
+set role authenticated;
+select public.test_assert(
+  exists(select 1 from public.novelight_author_exposure_funnel_v2(30) where novel_id='81000000-0000-0000-0000-000000000003' and premium_slot_impressions >= 1),
+  'Premium author analytics reads actual dedicated-slot impressions'
+);
+reset role;
+select set_config('request.jwt.claim.sub','',false);
 
 set role anon;
 select public.record_neutral_search_impressions(array['81000000-0000-0000-0000-000000000001']::text[],'visitor-neutral-search-token');
 reset role;
 select public.test_assert(exists(select 1 from public.novel_exposure_events where surface='search_results' and novel_id_snapshot='81000000-0000-0000-0000-000000000001'),'neutral search impression recorded');
+
+-- Stripe audit history must be private and event IDs must be idempotent.
+insert into public.subscription_event_log (
+  stripe_event_id,event_type,user_id,stripe_customer_id,stripe_subscription_id,
+  plan_snapshot,subscription_status,payment_status,event_created_at
+) values (
+  'evt_beta_idempotency','customer.subscription.updated','44444444-4444-4444-4444-444444444444',
+  'cus_standard','sub_standard','standard','active','active',now()
+);
+insert into public.subscription_event_log (
+  stripe_event_id,event_type,user_id,stripe_customer_id,stripe_subscription_id,
+  plan_snapshot,subscription_status,payment_status,event_created_at
+) values (
+  'evt_beta_idempotency','customer.subscription.updated','44444444-4444-4444-4444-444444444444',
+  'cus_standard','sub_standard','standard','active','active',now()
+) on conflict (stripe_event_id) do nothing;
+select public.test_assert((select count(*) from public.subscription_event_log where stripe_event_id='evt_beta_idempotency')=1,'Stripe event history is idempotent by event ID');
