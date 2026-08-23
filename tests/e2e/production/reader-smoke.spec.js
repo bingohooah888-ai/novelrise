@@ -30,16 +30,15 @@ async function suppressMeasurementWrites(page) {
   });
 }
 
-test('production search can reach a real novel and episode without writing metrics', async ({
-  page
-}) => {
+test('production reader flow is healthy and read-only', async ({ page }) => {
   await suppressMeasurementWrites(page);
 
   await page.goto('/search.html', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('#resultCount')).not.toHaveText('読み込み中...', {
+  const resultCount = page.locator('#resultCount');
+  await expect(resultCount).not.toHaveText('読み込み中...', {
     timeout: 20_000
   });
-  await expect(page.locator('#resultCount')).not.toHaveText('読み込みエラー');
+  await expect(resultCount).not.toHaveText('読み込みエラー');
 
   const cards = page.locator('.novel-card');
   await expect(cards.first()).toBeVisible({ timeout: 20_000 });
@@ -57,7 +56,8 @@ test('production search can reach a real novel and episode without writing metri
       await page.locator('#continueButton').click();
     }
 
-    await expect(page.locator('#novelHeader')).not.toContainText('読み込み中...', {
+    const novelHeader = page.locator('#novelHeader');
+    await expect(novelHeader).not.toContainText('読み込み中...', {
       timeout: 20_000
     });
 
@@ -81,6 +81,7 @@ test('production search can reach a real novel and episode without writing metri
   }
 
   await expect(page.locator('#card h1')).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('#card .content')).toBeVisible();
-  await expect(page.locator('#card .content')).not.toHaveText('');
+  const content = page.locator('#card .content');
+  await expect(content).toBeVisible();
+  await expect(content).not.toHaveText('');
 });
