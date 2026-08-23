@@ -3,381 +3,95 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>会員登録 | NovelRise</title>
-
+  <title>会員登録 | NOVELIGHT</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        "Hiragino Kaku Gothic ProN",
-        "Yu Gothic",
-        sans-serif;
-
-      background: #f7f8fb;
-      color: #222;
-    }
-
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-
-    header {
-      height: 72px;
-      background: white;
-      border-bottom: 1px solid #e5e7eb;
-
-      display: flex;
-      align-items: center;
-    }
-
-    .header-inner {
-      width: 100%;
-      max-width: 1200px;
-      margin: auto;
-      padding: 0 24px;
-
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .logo {
-      font-size: 25px;
-      font-weight: 800;
-      color: #6d4aff;
-    }
-
-    .back {
-      color: #666;
-      font-size: 14px;
-    }
-
-    .main {
-      min-height: calc(100vh - 72px);
-
-      display: flex;
-      justify-content: center;
-      align-items: center;
-
-      padding: 50px 20px;
-    }
-
-    .signup-card {
-      width: 100%;
-      max-width: 460px;
-
-      background: white;
-      border-radius: 16px;
-
-      padding: 38px;
-
-      box-shadow: 0 10px 40px rgba(0,0,0,0.07);
-    }
-
-    .signup-card h1 {
-      font-size: 28px;
-      margin-bottom: 8px;
-      text-align: center;
-    }
-
-    .description {
-      text-align: center;
-      color: #777;
-      font-size: 14px;
-
-      margin-bottom: 30px;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    label {
-      display: block;
-      font-size: 14px;
-      font-weight: 700;
-
-      margin-bottom: 8px;
-    }
-
-    input {
-      width: 100%;
-      padding: 13px 14px;
-
-      border: 1px solid #d9d9df;
-      border-radius: 8px;
-
-      font-size: 15px;
-      outline: none;
-    }
-
-    input:focus {
-      border-color: #6d4aff;
-      box-shadow: 0 0 0 3px rgba(109,74,255,0.1);
-    }
-
-    .signup-button {
-      width: 100%;
-
-      padding: 14px;
-
-      border: none;
-      border-radius: 9px;
-
-      background: #6d4aff;
-      color: white;
-
-      font-size: 15px;
-      font-weight: 800;
-
-      cursor: pointer;
-    }
-
-    .signup-button:hover {
-      background: #5938e8;
-    }
-
-    .terms {
-      color: #888;
-      font-size: 12px;
-      line-height: 1.7;
-
-      text-align: center;
-
-      margin-top: 18px;
-    }
-
-    .login-link {
-      text-align: center;
-      margin-top: 26px;
-
-      font-size: 14px;
-      color: #666;
-    }
-
-    .login-link a {
-      color: #6d4aff;
-      font-weight: 700;
-    }
-
-    .author-box {
-      background: #f5f3ff;
-      border-radius: 10px;
-
-      padding: 15px;
-
-      margin-bottom: 23px;
-
-      font-size: 13px;
-      color: #555;
-      line-height: 1.7;
-    }
-
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif; background:#f7f8fb; color:#222; }
+    a { color:#6d4aff; }
+    header { height:72px; background:#fff; border-bottom:1px solid #e5e7eb; }
+    .header-inner { max-width:1100px; height:100%; margin:auto; padding:0 22px; display:flex; align-items:center; justify-content:space-between; }
+    .logo { text-decoration:none; color:#6d4aff; font-size:25px; font-weight:900; }
+    .back { text-decoration:none; color:#666; font-size:14px; }
+    main { min-height:calc(100vh - 72px); display:grid; place-items:center; padding:42px 18px 70px; }
+    .card { width:100%; max-width:480px; background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:34px; box-shadow:0 12px 40px rgba(0,0,0,.06); }
+    h1 { margin:0 0 8px; text-align:center; font-size:29px; }
+    .lead { margin:0 0 26px; text-align:center; color:#777; font-size:14px; }
+    .author-box { margin-bottom:22px; padding:14px; border-radius:10px; background:#f5f3ff; color:#555; font-size:13px; line-height:1.7; }
+    .form-group { margin-bottom:18px; }
+    label { display:block; margin-bottom:7px; font-size:14px; font-weight:800; }
+    input[type="text"], input[type="email"], input[type="password"] { width:100%; padding:12px 13px; border:1px solid #d9d9df; border-radius:9px; font:inherit; outline:none; }
+    input:focus { border-color:#6d4aff; box-shadow:0 0 0 3px rgba(109,74,255,.1); }
+    .consent { display:flex; gap:10px; align-items:flex-start; margin:22px 0 18px; padding:14px; border:1px solid #e5e7eb; border-radius:10px; background:#fafafa; color:#555; font-size:12px; line-height:1.7; }
+    .consent input { margin-top:3px; flex:0 0 auto; }
+    button { width:100%; padding:14px; border:0; border-radius:9px; background:#6d4aff; color:#fff; font:inherit; font-weight:900; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .login { margin-top:22px; text-align:center; color:#666; font-size:14px; }
+    .legal-links { margin-top:18px; display:flex; flex-wrap:wrap; justify-content:center; gap:8px 14px; font-size:11px; }
+    .status { min-height:20px; margin-top:12px; color:#666; font-size:13px; line-height:1.6; }
+    @media (max-width:560px) { .card { padding:26px 20px; } }
   </style>
 </head>
-
 <body>
-
-<header>
-
-  <div class="header-inner">
-
-    <a href="index.html" class="logo">
-      NovelRise
-    </a>
-
-    <a href="index.html" class="back">
-      ← トップページへ
-    </a>
-
-  </div>
-
-</header>
-
-
-<main class="main">
-
-  <div class="signup-card">
-
-    <h1>
-      NovelRiseを始める
-    </h1>
-
-    <p class="description">
-      無料アカウントを作成
-    </p>
-
-
-    <div class="author-box">
-      ✍️ NovelRiseは、小説をもっと多くの読者へ届けたい作者のための投稿プラットフォームです。
-    </div>
-
-
-    <form>
-
-      <div class="form-group">
-
-        <label for="name">
-          ユーザー名
-        </label>
-
-        <input
-          id="name"
-          type="text"
-          placeholder="例：小説太郎"
-          required
-        >
-
-      </div>
-
-
-      <div class="form-group">
-
-        <label for="email">
-          メールアドレス
-        </label>
-
-        <input
-          id="email"
-          type="email"
-          placeholder="example@email.com"
-          required
-        >
-
-      </div>
-
-
-      <div class="form-group">
-
-        <label for="password">
-          パスワード
-        </label>
-
-        <input
-          id="password"
-          type="password"
-          placeholder="8文字以上"
-          required
-        >
-
-      </div>
-
-
-      <div class="form-group">
-
-        <label for="password-confirm">
-          パスワード確認
-        </label>
-
-        <input
-          id="password-confirm"
-          type="password"
-          placeholder="もう一度入力してください"
-          required
-        >
-
-      </div>
-
-
-      <button
-        class="signup-button"
-        type="submit"
-      >
-        無料で会員登録
-      </button>
-
+<header><div class="header-inner"><a href="index.html" class="logo">NOVELIGHT</a><a href="index.html" class="back">← トップページ</a></div></header>
+<main>
+  <section class="card" aria-labelledby="signupHeading">
+    <h1 id="signupHeading">NOVELIGHTを始める</h1>
+    <p class="lead">無料アカウントを作成</p>
+    <div class="author-box">✍️ NOVELIGHTは、作品が評価される前の「読者に届く機会」を増やす小説投稿プラットフォームです。</div>
+    <form id="signupForm">
+      <div class="form-group"><label for="name">ユーザー名</label><input id="name" type="text" maxlength="40" autocomplete="nickname" placeholder="例：小説太郎" required></div>
+      <div class="form-group"><label for="email">メールアドレス</label><input id="email" type="email" autocomplete="email" placeholder="example@email.com" required></div>
+      <div class="form-group"><label for="password">パスワード</label><input id="password" type="password" minlength="8" autocomplete="new-password" placeholder="8文字以上" required></div>
+      <div class="form-group"><label for="passwordConfirm">パスワード確認</label><input id="passwordConfirm" type="password" minlength="8" autocomplete="new-password" placeholder="もう一度入力してください" required></div>
+      <label class="consent" for="termsConsent"><input id="termsConsent" type="checkbox" required><span><a href="terms.html" target="_blank" rel="noopener">利用規約</a>、<a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>、<a href="content-guidelines.html" target="_blank" rel="noopener">投稿ガイドライン</a>を確認し、同意します。</span></label>
+      <button id="signupButton" type="submit">無料で会員登録</button>
+      <div id="signupStatus" class="status" aria-live="polite"></div>
     </form>
-
-
-    <p class="terms">
-      会員登録することで、利用規約および
-      プライバシーポリシーに同意したものとみなされます。
-    </p>
-
-
-    <div class="login-link">
-
-      すでにアカウントをお持ちですか？
-
-      <a href="login.html">
-        ログイン
-      </a>
-
-    </div>
-
-  </div>
-
+    <div class="login">すでにアカウントをお持ちですか？ <a href="login.html">ログイン</a></div>
+    <nav class="legal-links" aria-label="法務情報"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="commerce-disclosure.html">特商法表記</a></nav>
+  </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
   const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
-
-  const supabaseClient = supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
-
-  const form = document.querySelector('form');
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const form = document.getElementById('signupForm');
+  const button = document.getElementById('signupButton');
+  const status = document.getElementById('signupStatus');
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-
     const name = document.getElementById('name').value.trim();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
-    const passwordConfirm =
-      document.getElementById('password-confirm').value;
+    const passwordConfirm = document.getElementById('passwordConfirm').value;
+    const consent = document.getElementById('termsConsent').checked;
 
-    if (password !== passwordConfirm) {
-      alert('パスワードが一致していません。');
-      return;
-    }
+    if (!consent) { status.textContent = '規約・プライバシーポリシー・投稿ガイドラインへの同意が必要です。'; return; }
+    if (password !== passwordConfirm) { status.textContent = 'パスワードが一致していません。'; return; }
+    if (password.length < 8) { status.textContent = 'パスワードは8文字以上にしてください。'; return; }
 
-    if (password.length < 8) {
-      alert('パスワードは8文字以上にしてください。');
-      return;
-    }
+    button.disabled = true;
+    status.textContent = '登録処理中...';
 
-    const { data, error } =
-      await supabaseClient.auth.signUp({
-        email: email,
-        password: password,
-
-        options: {
-          data: {
-            display_name: name
-          },
-
-          emailRedirectTo:
-            'https://novelrise.vercel.app'
-        }
-      });
+    const { error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { display_name: name },
+        emailRedirectTo: window.location.origin + '/index.html'
+      }
+    });
 
     if (error) {
-      alert(
-        '会員登録に失敗しました。\n' +
-        error.message
-      );
-
+      console.error(error);
+      status.textContent = '会員登録に失敗しました。入力内容を確認してもう一度お試しください。';
+      button.disabled = false;
       return;
     }
 
-    alert(
-      '登録確認メールを送信しました。\n' +
-      'メール内のリンクを押して登録を完了してください。'
-    );
+    status.textContent = '登録確認メールを送信しました。メール内のリンクから登録を完了してください。';
   });
 </script>
 </body>

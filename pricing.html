@@ -3,574 +3,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>料金プラン | NovelRise</title>
-
+  <title>料金プラン | NOVELIGHT</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        "Hiragino Kaku Gothic ProN",
-        "Yu Gothic",
-        sans-serif;
-
-      background: #f7f8fb;
-      color: #222;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    header {
-      background: white;
-      border-bottom: 1px solid #e5e7eb;
-    }
-
-    .header-inner {
-      max-width: 1100px;
-      height: 72px;
-      margin: auto;
-      padding: 0 24px;
-
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .logo {
-      color: #6d4aff;
-      font-size: 25px;
-      font-weight: 800;
-    }
-
-    .back {
-      color: #666;
-      font-size: 14px;
-    }
-
-    main {
-      max-width: 1150px;
-      margin: auto;
-      padding: 60px 24px 90px;
-    }
-
-    .heading {
-      text-align: center;
-      margin-bottom: 45px;
-    }
-
-    .heading h1 {
-      font-size: 38px;
-      margin-bottom: 12px;
-    }
-
-    .heading p {
-      color: #777;
-      line-height: 1.7;
-    }
-
-    .plans {
-      display: grid;
-      grid-template-columns:
-        repeat(3, 1fr);
-
-      gap: 22px;
-      align-items: stretch;
-    }
-
-    .plan-card {
-      position: relative;
-
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 18px;
-
-      padding: 32px 28px;
-
-      display: flex;
-      flex-direction: column;
-    }
-
-    .plan-card.standard {
-      border: 2px solid #6d4aff;
-    }
-
-    .plan-card.premium {
-      border: 2px solid #9a5cff;
-      box-shadow:
-        0 14px 35px
-        rgba(109, 74, 255, 0.12);
-    }
-
-    .badge {
-      position: absolute;
-      top: -14px;
-      left: 50%;
-      transform: translateX(-50%);
-
-      padding: 7px 14px;
-      border-radius: 999px;
-
-      background: #6d4aff;
-      color: white;
-
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .premium .badge {
-      background: #8d4df4;
-    }
-
-    .plan-name {
-      font-size: 24px;
-      font-weight: 900;
-      margin-bottom: 10px;
-    }
-
-    .plan-description {
-      min-height: 48px;
-      color: #777;
-      font-size: 14px;
-      line-height: 1.6;
-      margin-bottom: 22px;
-    }
-
-    .price {
-      font-size: 38px;
-      font-weight: 900;
-      margin-bottom: 5px;
-    }
-
-    .price span {
-      font-size: 14px;
-      font-weight: 500;
-      color: #777;
-    }
-
-    .limit {
-      color: #6d4aff;
-      font-size: 14px;
-      font-weight: 800;
-      margin-bottom: 25px;
-    }
-
-    .features {
-      list-style: none;
-      display: grid;
-      gap: 13px;
-      margin-bottom: 30px;
-      flex: 1;
-    }
-
-    .features li {
-      position: relative;
-      padding-left: 26px;
-      line-height: 1.6;
-      color: #444;
-      font-size: 14px;
-    }
-
-    .features li::before {
-      content: "✓";
-      position: absolute;
-      left: 0;
-      top: 0;
-      color: #6d4aff;
-      font-weight: 900;
-    }
-
-    .plan-button {
-      width: 100%;
-      border: none;
-      border-radius: 10px;
-
-      padding: 14px 18px;
-
-      font-size: 15px;
-      font-weight: 800;
-
-      cursor: pointer;
-    }
-
-    .free-button {
-      background: #f1f1f4;
-      color: #444;
-    }
-
-    .standard-button {
-      background: #6d4aff;
-      color: white;
-    }
-
-    .premium-button {
-      background: #8d4df4;
-      color: white;
-    }
-
-    .note {
-      margin-top: 45px;
-      padding: 22px;
-
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-
-      color: #666;
-      line-height: 1.7;
-      font-size: 14px;
-    }
-
-    @media (max-width: 900px) {
-
-      .plans {
-        grid-template-columns: 1fr;
-      }
-
-      .plan-description {
-        min-height: auto;
-      }
-    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif; background:#f7f8fb; color:#222; }
+    a { color:#6d4aff; }
+    header { background:#fff; border-bottom:1px solid #e5e7eb; }
+    .header-inner { max-width:1120px; height:72px; margin:auto; padding:0 22px; display:flex; align-items:center; justify-content:space-between; }
+    .logo { text-decoration:none; color:#6d4aff; font-size:25px; font-weight:900; }
+    .back { text-decoration:none; color:#666; font-size:14px; }
+    main { max-width:1120px; margin:auto; padding:56px 22px 80px; }
+    .heading { text-align:center; margin-bottom:38px; }
+    .heading h1 { margin:0 0 10px; font-size:38px; }
+    .heading p { margin:0; color:#666; line-height:1.75; }
+    .plans { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+    .plan { position:relative; display:flex; flex-direction:column; padding:30px 26px; background:#fff; border:1px solid #e5e7eb; border-radius:18px; }
+    .plan.standard { border:2px solid #6d4aff; }
+    .plan.premium { border:2px solid #9a5cff; box-shadow:0 14px 35px rgba(109,74,255,.1); }
+    .badge { position:absolute; top:-13px; left:50%; transform:translateX(-50%); padding:6px 12px; border-radius:999px; background:#6d4aff; color:#fff; font-size:11px; font-weight:900; white-space:nowrap; }
+    .plan-name { font-size:24px; font-weight:900; }
+    .description { min-height:48px; color:#777; font-size:14px; line-height:1.6; margin:8px 0 20px; }
+    .price { font-size:38px; font-weight:900; margin-bottom:5px; }
+    .price small { font-size:13px; color:#777; font-weight:500; }
+    .renewal { color:#7c3aed; font-size:12px; font-weight:800; margin-bottom:15px; }
+    .limit { color:#6d4aff; font-size:14px; font-weight:800; margin-bottom:20px; }
+    .features { list-style:none; padding:0; margin:0 0 26px; flex:1; }
+    .features li { position:relative; padding:6px 0 6px 24px; color:#444; font-size:14px; line-height:1.55; }
+    .features li::before { content:'✓'; position:absolute; left:0; color:#6d4aff; font-weight:900; }
+    button { width:100%; border:0; border-radius:10px; padding:14px 16px; font:inherit; font-weight:900; cursor:pointer; }
+    .free-button { background:#f1f1f4; color:#555; cursor:default; }
+    .standard-button { background:#6d4aff; color:#fff; }
+    .premium-button { background:#8d4df4; color:#fff; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .billing-box { margin-top:30px; padding:22px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; color:#555; line-height:1.75; font-size:14px; }
+    .billing-box strong { color:#222; }
+    .billing-box ul { margin:10px 0 0; padding-left:20px; }
+    .legal-links { margin-top:18px; display:flex; flex-wrap:wrap; gap:10px 18px; font-size:13px; }
+    .status { margin-top:14px; min-height:20px; color:#666; font-size:13px; }
+    @media (max-width:900px) { .plans { grid-template-columns:1fr; } .description { min-height:0; } }
   </style>
 </head>
-
 <body>
-
-<header>
-  <div class="header-inner">
-
-    <a
-      href="index.html"
-      class="logo"
-    >
-      NovelRise
-    </a>
-
-    <a
-      href="mypage.html"
-      class="back"
-    >
-      ← マイページへ戻る
-    </a>
-
-  </div>
-</header>
-
-
+<header><div class="header-inner"><a href="index.html" class="logo">NOVELIGHT</a><a href="mypage.html" class="back">← 作者ダッシュボード</a></div></header>
 <main>
-
-  <div class="heading">
-
-    <h1>
-      料金プラン
-    </h1>
-
-    <p>
-      作品を届けたい規模に合わせて、最適なプランを選べます。
-      <br>
-      課金によってランキング順位を直接購入する仕組みではなく、
-      読者に見つけてもらう機会を増やします。
-    </p>
-
-  </div>
-
-
+  <div class="heading"><h1>料金プラン</h1><p>課金で買えるのは「高評価」や「ランキング順位」ではありません。<br>作品が読者に見つけてもらう機会と、作者が改善に使える機能を強化します。</p></div>
   <div class="plans">
-
-    <!-- Free -->
-    <section class="plan-card">
-
-      <div class="plan-name">
-        Free
-      </div>
-
-      <div class="plan-description">
-        まずはNovelRiseを試してみたい作者向け。
-      </div>
-
-      <div class="price">
-        ¥0
-        <span>/ 月</span>
-      </div>
-
-      <div class="limit">
-        投稿作品：1作品まで
-      </div>
-
-      <ul class="features">
-
-        <li>
-          作品投稿・エピソード投稿
-        </li>
-
-        <li>
-          基本アクセス解析
-        </li>
-
-        <li>
-          通常の新着・検索掲載
-        </li>
-
-        <li>
-          作者プロフィール
-        </li>
-
-        <li>
-          お気に入り機能
-        </li>
-
-      </ul>
-
-      <button
-        class="plan-button free-button"
-        type="button"
-      >
-        現在のプラン
-      </button>
-
-    </section>
-
-
-    <!-- Standard -->
-    <section class="plan-card standard">
-
-      <div class="badge">
-        おすすめ
-      </div>
-
-      <div class="plan-name">
-        Standard
-      </div>
-
-      <div class="plan-description">
-        継続して作品を投稿し、より多くの読者に届けたい作者向け。
-      </div>
-
-      <div class="price">
-        ¥980
-        <span>/ 月</span>
-      </div>
-
-      <div class="limit">
-        投稿作品：10作品まで
-      </div>
-
-      <ul class="features">
-
-        <li>
-          Freeの全機能
-        </li>
-
-        <li>
-          詳細アクセス解析
-        </li>
-
-        <li>
-          おすすめ欄掲載対象
-        </li>
-
-        <li>
-          検索での露出優遇
-        </li>
-
-        <li>
-          作品ごとの分析強化
-        </li>
-
-        <li>
-          Standard向け作者機能
-        </li>
-
-      </ul>
-
-      <button
-        id="standardButton"
-        class="plan-button standard-button"
-        type="button"
-      >
-        Standardを始める
-      </button>
-
-    </section>
-
-
-    <!-- Premium -->
-    <section class="plan-card premium">
-
-      <div class="badge">
-        本気で読者を増やしたい作者へ
-      </div>
-
-      <div class="plan-name">
-        Premium
-      </div>
-
-      <div class="plan-description">
-        露出・分析・新作の初動支援を最大限活用したい作者向け。
-      </div>
-
-      <div class="price">
-        ¥1,980
-        <span>/ 月</span>
-      </div>
-
-      <div class="limit">
-        投稿作品：30作品まで
-      </div>
-
-      <ul class="features">
-
-        <li>
-          Standardの全機能
-        </li>
-
-        <li>
-          新作48時間の初動ブースト
-        </li>
-
-        <li>
-          おすすめ優先掲載
-        </li>
-
-        <li>
-          Premium専用露出枠
-        </li>
-
-        <li>
-          高度アクセス解析
-        </li>
-
-        <li>
-          読者流入元分析
-        </li>
-
-        <li>
-          曜日・時間帯別PV分析
-        </li>
-
-        <li>
-          Premiumバッジ
-          （任意表示）
-        </li>
-
-      </ul>
-
-      <button
-        id="premiumButton"
-        class="plan-button premium-button"
-        type="button"
-      >
-        Premiumを始める
-      </button>
-
-    </section>
-
+    <section class="plan"><div class="plan-name">Free</div><div class="description">無料でも作品が発見対象に残る基本プラン。</div><div class="price">¥0 <small>/ 月</small></div><div class="limit">投稿作品：1作品まで</div><ul class="features"><li>作品・エピソード投稿</li><li>一般発見枠の対象</li><li>基本アクセス解析</li><li>LIGHT SEED対象</li><li>作者プロフィール</li></ul><button class="free-button" type="button" disabled>Free</button></section>
+    <section class="plan standard"><div class="badge">中心プラン</div><div class="plan-name">Standard</div><div class="description">継続投稿と作品発見の機会を増やしたい作者向け。</div><div class="price">¥980 <small>/ 月</small></div><div class="renewal">月額・解約まで自動更新</div><div class="limit">投稿作品：10作品まで</div><ul class="features"><li>Freeの全機能</li><li>一般枠で追加の発見機会</li><li>詳細アクセス解析</li><li>作品ごとの分析強化</li></ul><button id="standardButton" class="standard-button" type="button">Standardを申し込む / 管理</button></section>
+    <section class="plan premium"><div class="badge">追加露出＋高度分析</div><div class="plan-name">Premium</div><div class="description">追加露出枠と高度な作者向け分析を活用したい作者向け。</div><div class="price">¥1,980 <small>/ 月</small></div><div class="renewal">月額・解約まで自動更新</div><div class="limit">投稿作品：30作品まで</div><ul class="features"><li>Standardの全機能</li><li>Premium専用の追加露出枠</li><li>新作の初動支援</li><li>高度アクセス解析</li><li>Premiumバッジ（任意表示）</li></ul><button id="premiumButton" class="premium-button" type="button">Premiumを申し込む / 管理</button></section>
   </div>
-
-
-  <div class="note">
-
-    有料プランは、ランキング順位そのものを購入する仕組みではありません。
-    作品が読者の目に触れる機会や、作者が改善に使える分析機能を強化するプランです。
-    決済機能はこの料金ページにStripeを接続して実装します。
-
-  </div>
-
+  <section class="billing-box" aria-labelledby="billingNotice"><strong id="billingNotice">申込み前に確認してください</strong><ul><li>Standard / Premiumは月額の継続契約で、解約手続きが完了するまで自動更新されます。</li><li>申込直前のStripe決済画面で、契約プラン、請求額、課金周期等を必ず確認してください。</li><li>解約・プラン変更は、ログイン後にStripe顧客ポータルから行えます。</li><li>有料プランは露出機会や分析機能を提供しますが、読者数・高評価・ランキング順位・収益等を保証しません。</li><li>返金条件は課金・解約ポリシーをご確認ください。</li></ul><nav class="legal-links"><a href="billing-policy.html">課金・解約ポリシー</a><a href="terms.html">利用規約</a><a href="commerce-disclosure.html">特定商取引法に基づく表記</a><a href="privacy.html">プライバシー</a></nav><div id="checkoutStatus" class="status" aria-live="polite"></div></section>
 </main>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
   const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
-    
-  const supabaseClient = supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
-</script>
-<script>
-  async function startCheckout(plan) {
-const {
-  data: { session },
-  error: sessionError
-} = await supabaseClient.auth.getSession();
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const checkoutStatus = document.getElementById('checkoutStatus');
 
-if (
-  sessionError ||
-  !session ||
-  !session.access_token
-) {
-  alert('有料プランを申し込むにはログインしてください。');
-  window.location.href = 'login.html?redirect=pricing.html';
-  return;
-}
+  async function startCheckout(plan, button) {
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session?.access_token) {
+      window.location.href = 'login.html?redirect=pricing.html';
+      return;
+    }
+
+    button.disabled = true;
+    checkoutStatus.textContent = '契約管理画面を準備しています...';
     try {
-      const response = await fetch(
-        '/api/create-checkout-session',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization':
-              `Bearer ${session.access_token}`
-          },
-         body: JSON.stringify({
-  plan: plan
-})
-        }
-      );
-
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ plan })
+      });
       const data = await response.json();
-
       if (response.status === 401) {
-        await supabaseClient.auth.signOut({
-          scope: 'local'
-        });
-        alert('セッションの有効期限が切れました。もう一度ログインしてください。');
+        await supabaseClient.auth.signOut({ scope: 'local' });
         window.location.href = 'login.html?redirect=pricing.html';
         return;
       }
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || '決済画面を開けませんでした。'
-        );
-      }
-
+      if (!response.ok || !data.url) throw new Error(data.error || 'checkout unavailable');
       window.location.href = data.url;
-
     } catch (error) {
       console.error(error);
-
-      alert(
-        '決済画面を開けませんでした。もう一度お試しください。'
-      );
+      checkoutStatus.textContent = '決済・契約管理画面を開けませんでした。時間をおいてもう一度お試しください。';
+      button.disabled = false;
     }
   }
 
-  document
-    .getElementById('standardButton')
-    .addEventListener(
-      'click',
-      () => startCheckout('standard')
-    );
-
-  document
-    .getElementById('premiumButton')
-    .addEventListener(
-      'click',
-      () => startCheckout('premium')
-    );
+  const standardButton = document.getElementById('standardButton');
+  const premiumButton = document.getElementById('premiumButton');
+  standardButton.addEventListener('click', () => startCheckout('standard', standardButton));
+  premiumButton.addEventListener('click', () => startCheckout('premium', premiumButton));
 </script>
 </body>
 </html>

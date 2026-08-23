@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お問い合わせ | NOVELIGHT</title>
+  <link rel="stylesheet" href="legal.css">
+  <style>
+    .contact-form{display:grid;gap:18px}.contact-field{display:grid;gap:7px}.contact-field label{font-size:14px;font-weight:800}.contact-field input,.contact-field select,.contact-field textarea{width:100%;border:1px solid #d7d7e2;border-radius:9px;padding:12px 13px;background:#fff;color:#222;font:inherit}.contact-field textarea{min-height:180px;resize:vertical}.contact-field input:focus,.contact-field select:focus,.contact-field textarea:focus{outline:3px solid rgba(109,74,255,.12);border-color:#6d4aff}.contact-submit{border:0;border-radius:9px;padding:13px 18px;background:#6d4aff;color:#fff;font:inherit;font-weight:900;cursor:pointer}.contact-submit:disabled{opacity:.55;cursor:wait}.contact-state{min-height:24px;font-size:13px;line-height:1.7}.contact-state.error{color:#b42318}.contact-state.success{color:#067647}.contact-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}
+  </style>
+</head>
+<body>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-logo" href="index.html">NOVELIGHT</a>
+    <a class="site-back" href="index.html">← トップページ</a>
+  </div>
+</header>
+<main class="legal-main">
+  <div class="legal-hero">
+    <div class="legal-kicker">NOVELIGHT SUPPORT</div>
+    <h1>お問い合わせ</h1>
+    <p class="legal-lead">課金・解約、投稿、プライバシー、特定商取引法に基づく表示事項の開示請求などを受け付けます。</p>
+  </div>
+
+  <section class="legal-card">
+    <div class="legal-note" style="margin-bottom:20px">
+      パスワード、クレジットカード番号、本人確認書類などの機密情報は入力しないでください。返信に必要なメールアドレスと、お問い合わせ内容のみ送信してください。
+    </div>
+
+    <form id="contactForm" class="contact-form">
+      <div class="contact-field">
+        <label for="contactEmail">返信先メールアドレス</label>
+        <input id="contactEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
+      </div>
+
+      <div class="contact-field">
+        <label for="contactSubject">お問い合わせ種別</label>
+        <select id="contactSubject" name="subject" required>
+          <option value="">選択してください</option>
+          <option value="特定商取引法に基づく表示事項の開示請求">特定商取引法に基づく表示事項の開示請求</option>
+          <option value="課金・解約">課金・解約</option>
+          <option value="投稿・作品">投稿・作品</option>
+          <option value="プライバシー">プライバシー</option>
+          <option value="不具合・技術的な問題">不具合・技術的な問題</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+
+      <div class="contact-field">
+        <label for="contactMessage">お問い合わせ内容</label>
+        <textarea id="contactMessage" name="message" minlength="10" maxlength="4000" required placeholder="10文字以上4000文字以内で入力してください。"></textarea>
+      </div>
+
+      <div class="contact-honeypot" aria-hidden="true">
+        <label for="contactWebsite">ウェブサイト</label>
+        <input id="contactWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+
+      <button id="contactSubmit" class="contact-submit" type="submit">送信する</button>
+      <div id="contactState" class="contact-state" role="status" aria-live="polite"></div>
+    </form>
+  </section>
+
+  <section class="legal-card">
+    <h2>特定商取引法に基づく開示請求について</h2>
+    <p>「特定商取引法に基づく表示事項の開示請求」を選び、返信先メールアドレスを入力して送信してください。法令に従い、申込みの意思決定に先立って十分な時間的余裕をもって確認できるよう、遅滞なく必要事項を提供します。</p>
+  </section>
+
+  <div class="legal-links">
+    <a href="terms.html">利用規約</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+    <a href="content-guidelines.html">投稿ガイドライン</a>
+    <a href="billing-policy.html">課金・解約ポリシー</a>
+    <a href="commerce-disclosure.html">特商法表記</a>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span>© NOVELIGHT</span>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="terms.html">利用規約</a>
+    <a href="privacy.html">プライバシー</a>
+    <a href="commerce-disclosure.html">特商法表記</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function getVisitorToken() {
+    const key = 'novelight_visitor_token';
+    let token = localStorage.getItem(key);
+    if (token && token.length >= 8) return token;
+
+    token = window.crypto && typeof window.crypto.randomUUID === 'function'
+      ? window.crypto.randomUUID()
+      : 'visitor-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    localStorage.setItem(key, token);
+    return token;
+  }
+
+  const form = document.getElementById('contactForm');
+  const submitButton = document.getElementById('contactSubmit');
+  const state = document.getElementById('contactState');
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    state.textContent = '';
+    state.className = 'contact-state';
+    submitButton.disabled = true;
+
+    try {
+      const email = document.getElementById('contactEmail').value.trim();
+      const subject = document.getElementById('contactSubject').value;
+      const message = document.getElementById('contactMessage').value.trim();
+      const website = document.getElementById('contactWebsite').value;
+
+      const { error } = await supabaseClient.rpc('submit_contact_inquiry', {
+        p_email: email,
+        p_subject: subject,
+        p_message: message,
+        p_visitor_token: getVisitorToken(),
+        p_website: website
+      });
+
+      if (error) throw error;
+
+      form.reset();
+      state.textContent = 'お問い合わせを受け付けました。内容を確認後、必要に応じて返信します。';
+      state.className = 'contact-state success';
+    } catch (error) {
+      console.error('contact submission failed', error);
+      const message = error && typeof error.message === 'string'
+        ? error.message
+        : '';
+      state.textContent = message.includes('短時間に送信できる回数')
+        ? '短時間に送信できる回数を超えました。時間をおいてお試しください。'
+        : '送信できませんでした。入力内容を確認し、時間をおいてもう一度お試しください。';
+      state.className = 'contact-state error';
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
