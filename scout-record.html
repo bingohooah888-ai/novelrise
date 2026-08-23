@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCOUT RECORD | NOVELIGHT</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: #f7f8fb;
+      color: #222;
+    }
+    a { color: inherit; text-decoration: none; }
+    header { background: white; border-bottom: 1px solid #e5e7eb; }
+    .header-inner {
+      max-width: 980px;
+      min-height: 72px;
+      margin: auto;
+      padding: 12px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .logo { color: #6d4aff; font-size: 25px; font-weight: 900; }
+    .back { color: #666; font-size: 14px; }
+    main { max-width: 980px; margin: auto; padding: 48px 22px 80px; }
+    .hero {
+      padding: 28px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #6d4aff, #8b72ff);
+      color: white;
+    }
+    .kicker { font-size: 12px; font-weight: 900; letter-spacing: .08em; opacity: .86; }
+    h1 { margin-top: 7px; font-size: 34px; }
+    .hero p { margin-top: 10px; max-width: 680px; color: rgba(255,255,255,.9); line-height: 1.75; }
+    .section { margin-top: 28px; }
+    .section-head { margin-bottom: 14px; }
+    .section-title { font-size: 22px; }
+    .section-note { margin-top: 6px; color: #6b7280; font-size: 13px; line-height: 1.7; }
+    .record-list { display: grid; gap: 12px; }
+    .record-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      background: white;
+    }
+    .record-title { font-size: 17px; font-weight: 900; }
+    .record-meta { margin-top: 7px; color: #6b7280; font-size: 13px; line-height: 1.6; }
+    .record-state {
+      display: inline-block;
+      margin-top: 9px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #f0edff;
+      color: #5d45c4;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .record-state.unavailable { background: #f3f4f6; color: #6b7280; }
+    .record-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 128px;
+      padding: 10px 13px;
+      border-radius: 9px;
+      background: #6d4aff;
+      color: white;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .state-box {
+      padding: 32px 20px;
+      border: 1px dashed #d8dbe2;
+      border-radius: 14px;
+      background: white;
+      color: #6b7280;
+      text-align: center;
+      line-height: 1.75;
+    }
+    .state-box.error { border-style: solid; border-color: #fecaca; background: #fff7f7; color: #991b1b; }
+    @media (max-width: 640px) {
+      .header-inner { padding: 12px 16px; }
+      main { padding: 30px 16px 60px; }
+      .hero { padding: 24px 20px; }
+      h1 { font-size: 28px; }
+      .record-card { grid-template-columns: 1fr; }
+      .record-link { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a class="logo" href="index.html">NOVELIGHT</a>
+    <a class="back" href="mypage.html">← 作者ホームへ</a>
+  </div>
+</header>
+<main>
+  <section class="hero">
+    <div class="kicker">SCOUT</div>
+    <h1>SCOUT RECORD</h1>
+    <p>あなたが「LIGHT SEEDを贈る」で発掘した作品の履歴です。β版では履歴の確認のみを提供し、SCOUTランクやポイント等はまだ計算しません。</p>
+  </section>
+
+  <section class="section" aria-labelledby="recordHeading">
+    <div class="section-head">
+      <h2 class="section-title" id="recordHeading">LIGHT SEEDの履歴</h2>
+      <p class="section-note">履歴は作品が後から非公開・削除されても保持されます。表示できる作品情報は現在の公開状態に基づきます。</p>
+    </div>
+    <div id="recordList" class="record-list" aria-live="polite">
+      <div class="state-box">SCOUT RECORDを読み込み中...</div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value ?? '';
+    return div.innerHTML;
+  }
+
+  function formatSeededAt(value) {
+    if (!value) return '日時不明';
+    return new Date(value).toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  async function loadScoutRecord() {
+    const list = document.getElementById('recordList');
+    const { data: authData, error: authError } = await supabaseClient.auth.getSession();
+    const session = authData?.session;
+
+    if (authError || !session) {
+      window.location.href = 'login.html?redirect=scout-record.html';
+      return;
+    }
+
+    const { data: seeds, error: seedError } = await supabaseClient
+      .from('light_seeds')
+      .select('novel_id_snapshot, seeded_at')
+      .order('seeded_at', { ascending: false });
+
+    if (seedError) {
+      console.error(seedError);
+      list.innerHTML = '<div class="state-box error">SCOUT RECORDを読み込めませんでした。時間をおいて再度お試しください。</div>';
+      return;
+    }
+
+    if (!seeds?.length) {
+      list.innerHTML = '<div class="state-box">まだLIGHT SEEDを贈った作品はありません。作品ページから気になる作品を発掘すると、ここにSCOUT RECORDが残ります。</div>';
+      return;
+    }
+
+    const novelIds = [...new Set(seeds.map((seed) => String(seed.novel_id_snapshot)))];
+    const { data: novels, error: novelError } = await supabaseClient
+      .from('novels')
+      .select('id, title, status')
+      .in('id', novelIds);
+
+    if (novelError) console.error(novelError);
+
+    const novelMap = new Map(
+      (novels ?? []).map((novel) => [String(novel.id), novel])
+    );
+
+    list.innerHTML = seeds
+      .map((seed) => {
+        const novelId = String(seed.novel_id_snapshot);
+        const novel = novelMap.get(novelId);
+        const isAvailable = novel?.status === 'published';
+        const title = isAvailable ? novel.title : '現在表示できない作品';
+        const state = isAvailable ? '公開中' : '現在非公開または削除済み';
+
+        return `
+          <article class="record-card">
+            <div>
+              <div class="record-title">${escapeHtml(title)}</div>
+              <div class="record-meta">LIGHT SEEDを贈った日時：${escapeHtml(formatSeededAt(seed.seeded_at))}</div>
+              <span class="record-state ${isAvailable ? '' : 'unavailable'}">${escapeHtml(state)}</span>
+            </div>
+            <a class="record-link" href="novel.html?id=${encodeURIComponent(novelId)}">作品ページを確認</a>
+          </article>
+        `;
+      })
+      .join('');
+  }
+
+  loadScoutRecord();
+</script>
+</body>
+</html>
