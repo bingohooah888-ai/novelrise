@@ -30,7 +30,7 @@ async function getRawBody(req) {
 }
 
 function stripeId(value) {
-  return typeof value === 'string' ? value : value?.id ?? null;
+  return typeof value === 'string' ? value : (value?.id ?? null);
 }
 
 async function recordSubscriptionAuditEvent(event) {
@@ -46,12 +46,18 @@ async function recordSubscriptionAuditEvent(event) {
       'id, plan, payment_status, stripe_customer_id, stripe_subscription_id, subscription_status'
     );
 
-  query = userId ? query.eq('id', userId) : query.eq('stripe_customer_id', customerId);
+  query = userId
+    ? query.eq('id', userId)
+    : query.eq('stripe_customer_id', customerId);
   const { data: profiles, error: profileError } = await query.limit(2);
 
-  if (profileError) throw new Error(`Stripe audit profile lookup failed: ${profileError.message}`);
+  if (profileError) {
+    throw new Error(`Stripe audit profile lookup failed: ${profileError.message}`);
+  }
   if (!profiles?.length) throw new Error('Stripe audit profile was not found');
-  if (profiles.length > 1) throw new Error('Stripe audit profile lookup was ambiguous');
+  if (profiles.length > 1) {
+    throw new Error('Stripe audit profile lookup was ambiguous');
+  }
 
   const profile = profiles[0];
   const eventCreatedAt = Number.isInteger(event.created)
@@ -78,7 +84,9 @@ async function recordSubscriptionAuditEvent(event) {
       }
     );
 
-  if (auditError) throw new Error(`Stripe audit event write failed: ${auditError.message}`);
+  if (auditError) {
+    throw new Error(`Stripe audit event write failed: ${auditError.message}`);
+  }
 }
 
 export default async function handler(req, res) {
