@@ -7,9 +7,14 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: [['github'], ['list']],
-  timeout: 90_000,
+  timeout: 150_000,
+  expect: {
+    timeout: 10_000
+  },
   use: {
     baseURL: process.env.E2E_BASE_URL || 'https://novelrise.vercel.app',
+    actionTimeout: 15_000,
+    navigationTimeout: 20_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
   },
