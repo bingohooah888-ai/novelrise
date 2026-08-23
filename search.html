@@ -3,566 +3,277 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>作品を探す | NovelRise</title>
-
+  <title>作品を探す | NOVELIGHT</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --primary:#6d4aff; --line:#e5e7eb; --soft:#f7f8fb; --muted:#6b7280; }
     body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        "Hiragino Kaku Gothic ProN",
-        "Yu Gothic",
-        sans-serif;
-      background: #f7f8fb;
-      color: #222;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: var(--soft); color:#222; line-height:1.6;
     }
-
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-
-    header {
-      background: white;
-      border-bottom: 1px solid #e5e7eb;
-    }
-
+    a { color:inherit; text-decoration:none; }
+    header { background:white; border-bottom:1px solid var(--line); }
     .header-inner {
-      max-width: 1100px;
-      height: 72px;
-      margin: auto;
-      padding: 0 24px;
-
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      max-width:1100px; height:70px; margin:auto; padding:0 22px;
+      display:flex; align-items:center; justify-content:space-between;
     }
-
-    .logo {
-      font-size: 25px;
-      font-weight: 800;
-      color: #6d4aff;
-    }
-
-    .back {
-      color: #666;
-      font-size: 14px;
-    }
-
-    main {
-      max-width: 1100px;
-      margin: auto;
-      padding: 50px 24px 80px;
-    }
-
-    h1 {
-      font-size: 32px;
-      margin-bottom: 10px;
-    }
-
-    .subtitle {
-      color: #777;
-      margin-bottom: 30px;
-    }
-
+    .logo { font-size:24px; font-weight:900; color:var(--primary); letter-spacing:.04em; }
+    .back { font-size:14px; color:#666; font-weight:700; }
+    main { max-width:1100px; margin:auto; padding:46px 22px 78px; }
+    h1 { font-size:32px; margin-bottom:7px; }
+    .subtitle { color:var(--muted); margin-bottom:24px; }
     .search-area {
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 20px;
-      margin-bottom: 30px;
-
-      display: grid;
-      grid-template-columns: 1fr 240px;
-      gap: 15px;
+      display:grid; grid-template-columns:1fr 220px 220px; gap:12px;
+      padding:18px; margin-bottom:18px; background:white;
+      border:1px solid var(--line); border-radius:14px;
     }
-
-    input,
-    select {
-      width: 100%;
-      padding: 13px 14px;
-      border: 1px solid #d8d8df;
-      border-radius: 9px;
-      font-size: 15px;
-      background: white;
+    input, select {
+      width:100%; padding:12px 13px; border:1px solid #d7d9df;
+      border-radius:9px; background:white; font-size:15px;
     }
-
-    .result-count {
-      color: #777;
-      font-size: 14px;
-      margin-bottom: 15px;
+    .policy-note {
+      padding:10px 13px; margin-bottom:20px; border-radius:9px;
+      background:#f0edff; color:#5c45be; font-size:12px; font-weight:700;
     }
-
-    .novel-list {
-      display: grid;
-      gap: 18px;
-    }
-
+    .result-count { color:var(--muted); font-size:14px; margin-bottom:13px; }
+    .novel-list { display:grid; gap:14px; }
     .novel-card {
-      display: block;
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 22px;
-      transition: 0.2s;
+      display:block; padding:20px; background:white; border:1px solid var(--line);
+      border-radius:13px; transition:.18s;
     }
-
-    .novel-card:hover {
-      transform: translateY(-2px);
-      box-shadow:
-        0 8px 24px
-        rgba(0, 0, 0, 0.06);
-    }
-
+    .novel-card:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgba(0,0,0,.06); }
     .genre {
-      display: inline-block;
-      margin-bottom: 10px;
-      padding: 5px 9px;
-      border-radius: 6px;
-      background: #eeeaff;
-      color: #6d4aff;
-      font-size: 12px;
-      font-weight: 700;
+      display:inline-block; margin-bottom:8px; padding:4px 8px; border-radius:6px;
+      background:#eeeaff; color:var(--primary); font-size:12px; font-weight:800;
     }
-
-    .title {
-      font-size: 20px;
-      font-weight: 800;
-      margin-bottom: 10px;
-    }
-
-    .description {
-      color: #666;
-      line-height: 1.7;
-      margin-bottom: 14px;
-    }
-
-    .meta {
-      color: #999;
-      font-size: 12px;
-    }
-
+    .title { font-size:19px; font-weight:900; margin-bottom:7px; }
+    .description { color:#626773; font-size:14px; margin-bottom:11px; }
+    .meta { color:#90949d; font-size:12px; }
     .empty {
-      text-align: center;
-      color: #777;
-      padding: 50px 20px;
-      background: white;
-      border-radius: 14px;
-      border: 1px solid #e5e7eb;
+      text-align:center; padding:42px 20px; color:var(--muted);
+      background:white; border:1px dashed #d8dbe2; border-radius:13px;
     }
-
-    @media (max-width: 700px) {
-      .search-area {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width:760px) {
+      .search-area { grid-template-columns:1fr; }
+      main { padding-top:30px; }
     }
   </style>
 </head>
-
 <body>
-
 <header>
   <div class="header-inner">
-    <a href="index.html" class="logo">
-      NovelRise
-    </a>
-
-    <a href="index.html" class="back">
-      ← トップへ戻る
-    </a>
+    <a class="logo" href="index.html">NOVELIGHT</a>
+    <a class="back" href="index.html">← トップへ戻る</a>
   </div>
 </header>
 
 <main>
-
   <h1>作品を探す</h1>
-
-  <p class="subtitle">
-    タイトルやジャンルから作品を探せます。
-  </p>
-
+  <p class="subtitle">タイトル・あらすじ・ジャンルから、次に読む物語を探せます。</p>
 
   <div class="search-area">
-
-    <input
-      id="keywordInput"
-      type="text"
-      placeholder="タイトル・あらすじを検索"
-    >
-
+    <input id="keywordInput" type="search" placeholder="タイトル・あらすじを検索">
     <select id="genreSelect">
-
-      <option value="">
-        すべてのジャンル
-      </option>
-
-      <option value="異世界ファンタジー">
-        異世界ファンタジー
-      </option>
-
-      <option value="現代ファンタジー">
-        現代ファンタジー
-      </option>
-
-      <option value="恋愛">
-        恋愛
-      </option>
-
-      <option value="ラブコメ">
-        ラブコメ
-      </option>
-
-      <option value="SF">
-        SF
-      </option>
-
-      <option value="ミステリー">
-        ミステリー
-      </option>
-
-      <option value="ホラー">
-        ホラー
-      </option>
-
-      <option value="歴史">
-        歴史
-      </option>
-
-      <option value="現代ドラマ">
-        現代ドラマ
-      </option>
-
-      <option value="その他">
-        その他
-      </option>
-
+      <option value="">すべてのジャンル</option>
+      <option value="異世界ファンタジー">異世界ファンタジー</option>
+      <option value="現代ファンタジー">現代ファンタジー</option>
+      <option value="恋愛">恋愛</option>
+      <option value="ラブコメ">ラブコメ</option>
+      <option value="SF">SF</option>
+      <option value="ミステリー">ミステリー</option>
+      <option value="ホラー">ホラー</option>
+      <option value="歴史">歴史</option>
+      <option value="現代ドラマ">現代ドラマ</option>
+      <option value="その他">その他</option>
     </select>
-<select id="sortSelect">
-  <option value="new">新着順</option>
-  <option value="pv">PV順</option>
-  <option value="favorites">お気に入り順</option>
-</select>
+    <select id="sortSelect">
+      <option value="recommended">おすすめ</option>
+      <option value="new">新着順</option>
+      <option value="pv">PV順</option>
+      <option value="favorites">お気に入り順</option>
+    </select>
   </div>
 
-
-  <div
-    id="resultCount"
-    class="result-count"
-  >
-    読み込み中...
+  <div id="sortPolicy" class="policy-note">
+    おすすめ順は露出の偏りを抑えながら発見機会を配分します。新着・PV・お気に入り順は課金プランで並び替えません。
   </div>
 
-
-  <div
-    id="novelList"
-    class="novel-list"
-  ></div>
-
+  <div id="resultCount" class="result-count">読み込み中...</div>
+  <div id="novelList" class="novel-list"></div>
 </main>
 
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
+  const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  const SUPABASE_URL =
-    'https://fiepaguycecrredwrcwx.supabase.co';
-
-  const SUPABASE_KEY =
-    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
-
-
-  const supabaseClient =
-    supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    );
-
-
-  let allNovels = [];
-
+  let requestId = 0;
+  let debounceTimer = null;
 
   function escapeHtml(value) {
-
-    const div =
-      document.createElement('div');
-
-    div.textContent =
-      value ?? '';
-
+    const div = document.createElement('div');
+    div.textContent = value ?? '';
     return div.innerHTML;
   }
 
-let renderRequestId = 0;
-  async function renderNovels() {
-const requestId =
-  ++renderRequestId;
-    const keyword =
-      document.getElementById(
-        'keywordInput'
-      ).value
-        .trim()
-        .toLowerCase();
+  function getVisitorToken() {
+    const storageKey = 'novelight_visitor_token';
+    let token = localStorage.getItem(storageKey);
+    if (token && token.length >= 8) return token;
 
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      token = window.crypto.randomUUID();
+    } else {
+      token = 'visitor-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    }
 
-    const genre =
-      document.getElementById(
-        'genreSelect'
-      ).value;
+    localStorage.setItem(storageKey, token);
+    return token;
+  }
 
+  function cardHtml(novel) {
+    const createdAt = novel.created_at
+      ? new Date(novel.created_at).toLocaleDateString('ja-JP')
+      : '';
+    const id = novel.novel_id ?? novel.id;
 
-    const filtered =
-      allNovels.filter(
-        (novel) => {
+    return `
+      <a class="novel-card" href="novel.html?id=${encodeURIComponent(id)}">
+        <div class="genre">${escapeHtml(novel.genre || '未設定')}</div>
+        <div class="title">${escapeHtml(novel.title)}</div>
+        <div class="description">${escapeHtml(novel.description || '')}</div>
+        <div class="meta">
+          投稿日 ${createdAt}
+          ・ 👁 ${Number(novel.pv || 0).toLocaleString()} PV
+          ・ ★ ${Number(novel.favorite_count || 0).toLocaleString()}
+        </div>
+      </a>
+    `;
+  }
 
-          const title =
-            (novel.title ?? '')
-              .toLowerCase();
+  function renderRows(rows) {
+    const novelList = document.getElementById('novelList');
+    document.getElementById('resultCount').textContent = rows.length + '作品';
 
-          const description =
-            (novel.description ?? '')
-              .toLowerCase();
+    if (!rows.length) {
+      novelList.innerHTML = '<div class="empty">条件に合う作品がありません。</div>';
+      return;
+    }
 
+    novelList.innerHTML = rows.map(cardHtml).join('');
+  }
 
-          const keywordMatch =
-            !keyword ||
-            title.includes(keyword) ||
-            description.includes(keyword);
+  async function recordRecommendedImpressions(rows, visitorToken) {
+    const ids = rows.map((row) => String(row.novel_id));
+    if (!ids.length) return;
 
+    const { error } = await supabaseClient.rpc('record_novel_impressions', {
+      p_surface: 'search_recommended',
+      p_novel_ids: ids.slice(0, 24),
+      p_visitor_token: visitorToken
+    });
 
-          const genreMatch =
-            !genre ||
-            novel.genre === genre;
+    if (error) console.error('impression record failed', error);
+  }
 
+  async function loadRecommended(keyword, genre, currentRequest) {
+    const visitorToken = getVisitorToken();
+    const { data, error } = await supabaseClient.rpc('novelight_discovery_feed', {
+      p_surface: 'search_recommended',
+      p_limit: 24,
+      p_keyword: keyword || null,
+      p_genre: genre || null,
+      p_visitor_token: visitorToken
+    });
 
-          return (
-            keywordMatch &&
-            genreMatch
-          );
+    if (currentRequest !== requestId) return;
+    if (error) throw error;
 
-        }
-      );
+    const rows = (data || []).filter((row) => !row.is_premium_slot);
+    renderRows(rows);
+    await recordRecommendedImpressions(rows, visitorToken);
+  }
 
-      await Promise.all(
-    filtered.map(async (novel) => {
-      const {
-        count,
-        error
-      } = await supabaseClient
+  async function fetchFavoriteCounts(rows) {
+    await Promise.all(rows.map(async (novel) => {
+      const { count, error } = await supabaseClient
         .from('favorites')
-        .select('*', {
-          count: 'exact',
-          head: true
-        })
+        .select('*', { count: 'exact', head: true })
         .eq('novel_id', novel.id);
 
-      if (error) {
-        console.error(error);
-        novel.favorite_count = 0;
-      } else {
-        novel.favorite_count = count ?? 0;
-      }
-    })
-  );
-
-
-
-  if (requestId !== renderRequestId) {
-    return;
+      novel.favorite_count = error ? 0 : (count ?? 0);
+    }));
   }
-    const sort =
-      document.getElementById(
-        'sortSelect'
-      ).value;
+
+  async function loadNeutral(keyword, genre, sort, currentRequest) {
+    const { data, error } = await supabaseClient
+      .from('novels')
+      .select('id,title,genre,description,created_at,pv')
+      .eq('status', 'published');
+
+    if (currentRequest !== requestId) return;
+    if (error) throw error;
+
+    const lowered = keyword.toLowerCase();
+    let rows = (data || []).filter((novel) => {
+      const keywordMatch =
+        !lowered ||
+        (novel.title || '').toLowerCase().includes(lowered) ||
+        (novel.description || '').toLowerCase().includes(lowered);
+      const genreMatch = !genre || novel.genre === genre;
+      return keywordMatch && genreMatch;
+    });
+
+    await fetchFavoriteCounts(rows);
+    if (currentRequest !== requestId) return;
 
     if (sort === 'pv') {
-
-      filtered.sort(
-        (a, b) =>
-          (b.pv ?? 0) -
-          (a.pv ?? 0)
-      );
-
-    } else if (
-      sort === 'favorites'
-    ) {
-
-      filtered.sort(
-        (a, b) =>
-          (b.favorite_count ?? 0) -
-          (a.favorite_count ?? 0)
-      );
-
+      rows.sort((a, b) => Number(b.pv || 0) - Number(a.pv || 0));
+    } else if (sort === 'favorites') {
+      rows.sort((a, b) => Number(b.favorite_count || 0) - Number(a.favorite_count || 0));
     } else {
-
-      filtered.sort(
-        (a, b) =>
-          new Date(b.created_at) -
-          new Date(a.created_at)
-      );
-
+      rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
 
-    document.getElementById(
-      'resultCount'
-    ).textContent =
-      filtered.length +
-      '作品';
-
-
-    const novelList =
-      document.getElementById(
-        'novelList'
-      );
-
-
-    if (filtered.length === 0) {
-
-      novelList.innerHTML =
-        '<div class="empty">' +
-        '条件に合う作品がありません。' +
-        '</div>';
-
-      return;
-    }
-
-
-    novelList.innerHTML = '';
-
-
-filtered.forEach(
-  (novel) => {
-
-    const createdAt =
-      new Date(
-        novel.created_at
-      ).toLocaleDateString(
-        'ja-JP'
-      );
-
-    const card =
-      document.createElement(
-        'a'
-      );
-
-    card.href =
-      'novel.html?id=' +
-      novel.id;
-
-    card.className =
-      'novel-card';
-
-    card.innerHTML = `
-      <div class="genre">
-        ${escapeHtml(novel.genre)}
-      </div>
-
-      <div class="title">
-        ${escapeHtml(novel.title)}
-      </div>
-
-      <div class="description">
-        ${escapeHtml(novel.description)}
-      </div>
-
-      <div class="meta">
-        投稿日 ${createdAt}
-        ・ 👁 ${novel.pv ?? 0} PV
-        ・ ★ ${novel.favorite_count ?? 0}
-      </div>
-    `;
-
-    novelList.appendChild(
-      card
-    );
-
-  }
-);
+    renderRows(rows);
   }
 
+  async function renderSearch() {
+    const currentRequest = ++requestId;
+    const keyword = document.getElementById('keywordInput').value.trim();
+    const genre = document.getElementById('genreSelect').value;
+    const sort = document.getElementById('sortSelect').value;
 
-  async function loadNovels() {
+    document.getElementById('resultCount').textContent = '読み込み中...';
+    document.getElementById('novelList').innerHTML = '';
 
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from('novels')
-        .select('*')
-        .eq(
-          'status',
-          'published'
-        )
-        .order(
-          'created_at',
-          {
-            ascending: false
-          }
-        );
-
-
-    if (error) {
-
+    try {
+      if (sort === 'recommended') {
+        await loadRecommended(keyword, genre, currentRequest);
+      } else {
+        await loadNeutral(keyword, genre, sort, currentRequest);
+      }
+    } catch (error) {
+      if (currentRequest !== requestId) return;
       console.error(error);
-
-      document.getElementById(
-        'resultCount'
-      ).textContent =
-        '読み込みエラー';
-
-
-      document.getElementById(
-        'novelList'
-      ).innerHTML =
-        '<div class="empty">' +
-        '作品を読み込めませんでした。' +
-        '</div>';
-
-      return;
+      document.getElementById('resultCount').textContent = '読み込みエラー';
+      document.getElementById('novelList').innerHTML =
+        '<div class="empty">作品を読み込めませんでした。少し時間をおいて再読み込みしてください。</div>';
     }
-
-
-    allNovels =
-      data ?? [];
-
-
-    renderNovels();
-
   }
 
+  function queueSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(renderSearch, 250);
+  }
 
-  document.getElementById(
-    'keywordInput'
-  ).addEventListener(
-    'input',
-    renderNovels
-  );
+  document.getElementById('keywordInput').addEventListener('input', queueSearch);
+  document.getElementById('genreSelect').addEventListener('change', renderSearch);
+  document.getElementById('sortSelect').addEventListener('change', renderSearch);
 
-
-  document.getElementById(
-    'genreSelect'
-  ).addEventListener(
-    'change',
-    renderNovels
-  );
-
-document.getElementById(
-  'sortSelect'
-).addEventListener(
-  'change',
-  renderNovels
-);
-  loadNovels();
-
+  renderSearch();
 </script>
-
 </body>
 </html>

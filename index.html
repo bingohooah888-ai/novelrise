@@ -3,1283 +3,473 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>NovelRise - 小説投稿サイト</title>
-
+  <title>NOVELIGHT - すべての物語に、光を。</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6d4aff;
+      --primary-dark: #5838e8;
+      --ink: #222;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --soft: #f7f8fb;
+      --premium: #6a4a00;
+      --premium-bg: #fff8de;
     }
-
     body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        "Hiragino Kaku Gothic ProN",
-        "Yu Gothic",
-        sans-serif;
-
-      background: #f7f8fb;
-      color: #222;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: var(--soft);
+      color: var(--ink);
       line-height: 1.6;
     }
-
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-
-    button {
-      font: inherit;
-      cursor: pointer;
-      border: none;
-    }
-
-    /* =========================
-       ヘッダー
-    ========================= */
-
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; border: 0; }
     header {
-      background: #ffffff;
-      border-bottom: 1px solid #e5e7eb;
       position: sticky;
       top: 0;
-      z-index: 100;
+      z-index: 20;
+      background: rgba(255,255,255,.96);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
     }
-
     .header-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      height: 72px;
-
+      max-width: 1180px;
+      height: 70px;
+      margin: auto;
+      padding: 0 22px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-
-      padding: 0 24px;
+      gap: 20px;
     }
-
-    .logo {
-      font-size: 25px;
-      font-weight: 800;
-      color: #6d4aff;
-    }
-
-    nav {
-      display: flex;
-      align-items: center;
-      gap: 26px;
-    }
-
-    nav a {
-      font-size: 14px;
-      font-weight: 600;
-      color: #444;
-    }
-
-    nav a:hover {
-      color: #6d4aff;
-    }
-
-    .header-buttons {
-      display: flex;
-      gap: 10px;
-    }
-
+    .logo { font-size: 24px; font-weight: 900; color: var(--primary); letter-spacing: .04em; }
+    nav { display: flex; gap: 24px; align-items: center; }
+    nav a { color: #4b5563; font-size: 14px; font-weight: 700; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
     .btn {
-      padding: 11px 20px;
-      border-radius: 8px;
-      font-weight: 700;
-      transition: 0.2s;
-    }
-
-    .btn-outline {
-      background: #ffffff;
-      border: 1px solid #6d4aff;
-      color: #6d4aff;
-    }
-
-    .btn-primary {
-      background: #6d4aff;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #5838e8;
-    }
-
-    /* =========================
-       メインビジュアル
-    ========================= */
-
-    .hero {
-      background:
-        linear-gradient(
-          135deg,
-          #6d4aff 0%,
-          #9075ff 100%
-        );
-
-      color: white;
-      padding: 85px 24px;
-    }
-
-    .hero-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 70px;
-      align-items: center;
-    }
-
-    .hero-label {
-      display: inline-block;
-      background: rgba(255,255,255,0.17);
-      border: 1px solid rgba(255,255,255,0.28);
-
-      padding: 7px 14px;
-      border-radius: 999px;
-
-      font-size: 13px;
-      font-weight: 700;
-
-      margin-bottom: 20px;
-    }
-
-    .hero h1 {
-      font-size: 48px;
-      line-height: 1.25;
-      margin-bottom: 22px;
-    }
-
-    .hero h1 span {
-      color: #ffe86a;
-    }
-
-    .hero p {
-      font-size: 17px;
-      line-height: 1.9;
-
-      color: rgba(255,255,255,0.9);
-      margin-bottom: 30px;
-    }
-
-    .hero-buttons {
-      display: flex;
-      gap: 14px;
-    }
-
-    .hero-main-btn {
-      background: #ffffff;
-      color: #5d3ae5;
-
-      padding: 15px 28px;
-      border-radius: 10px;
-
-      font-weight: 800;
-    }
-
-    .hero-sub-btn {
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.35);
-
-      color: white;
-
-      padding: 15px 28px;
-      border-radius: 10px;
-
-      font-weight: 700;
-    }
-
-    /* =========================
-       小説カード風UI
-    ========================= */
-
-    .hero-preview {
-      background: white;
-      border-radius: 18px;
-
-      padding: 22px;
-      color: #222;
-
-      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
-    }
-
-    .preview-title {
-      font-weight: 800;
-      margin-bottom: 16px;
-    }
-
-    .preview-card {
-      background: #f5f4ff;
-      border-radius: 12px;
-
-      padding: 18px;
-
-      margin-bottom: 12px;
-    }
-
-    .preview-rank {
-      color: #6d4aff;
-      font-weight: 800;
-      font-size: 13px;
-
-      margin-bottom: 8px;
-    }
-
-    .preview-novel-title {
-      font-weight: 800;
-      font-size: 17px;
-    }
-
-    .preview-meta {
-      color: #777;
-      font-size: 13px;
-      margin-top: 7px;
-    }
-
-    /* =========================
-       共通セクション
-    ========================= */
-
-    section {
-      padding: 80px 24px;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .section-title {
-      text-align: center;
-      margin-bottom: 48px;
-    }
-
-    .section-title h2 {
-      font-size: 32px;
-      margin-bottom: 10px;
-    }
-
-    .section-title p {
-      color: #777;
-    }
-
-    /* =========================
-       特徴
-    ========================= */
-
-    .features {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 22px;
-    }
-
-    .feature-card {
-      background: white;
-      border-radius: 14px;
-
-      padding: 28px;
-
-      box-shadow: 0 6px 25px rgba(0,0,0,0.05);
-    }
-
-    .feature-icon {
-      font-size: 32px;
-      margin-bottom: 15px;
-    }
-
-    .feature-card h3 {
-      margin-bottom: 10px;
-    }
-
-    .feature-card p {
-      color: #666;
-      font-size: 14px;
-    }
-
-    /* =========================
-       小説一覧
-    ========================= */
-
-    .novel-section {
-      background: white;
-    }
-
-    .novel-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-    }
-
-    .novel-card {
-      border: 1px solid #e8e8ee;
-      border-radius: 13px;
-      overflow: hidden;
-
-      background: white;
-
-      transition: 0.2s;
-    }
-
-    .novel-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.09);
-    }
-
-    .novel-cover {
-      height: 180px;
-
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-
-      background:
-        linear-gradient(
-          135deg,
-          #ded8ff,
-          #f2efff
-        );
-
-      font-size: 60px;
-    }
-
-    .novel-body {
-      padding: 20px;
-    }
-
-    .genre {
-      display: inline-block;
-
-      padding: 4px 9px;
-      border-radius: 5px;
-
-      background: #f0edff;
-      color: #6d4aff;
-
-      font-size: 11px;
-      font-weight: 700;
-
-      margin-bottom: 9px;
-    }
-
-    .novel-title {
+      padding: 10px 17px;
+      border-radius: 9px;
       font-weight: 800;
-      font-size: 17px;
-
-      margin-bottom: 7px;
     }
+    .btn-outline { border: 1px solid var(--primary); color: var(--primary); background: white; }
+    .btn-primary { color: white; background: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); }
 
-    .author {
-      color: #777;
-      font-size: 13px;
-    }
-
-    .stats {
-      display: flex;
-      justify-content: space-between;
-
-      margin-top: 14px;
-
-      font-size: 13px;
-      color: #777;
-    }
-
-    /* =========================
-       料金プラン
-    ========================= */
-
-    .pricing-wrapper {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-
-      gap: 25px;
-      max-width: 950px;
-
-      margin: auto;
-    }
-
-    .price-card {
-      background: white;
-      border-radius: 16px;
-
-      padding: 32px 28px;
-
-      border: 1px solid #e7e7ec;
-
-      text-align: center;
-
-      position: relative;
-    }
-
-    .price-card.recommended {
-      border: 2px solid #6d4aff;
-      transform: scale(1.04);
-    }
-
-    .recommend-label {
-      position: absolute;
-
-      top: -15px;
-      left: 50%;
-      transform: translateX(-50%);
-
-      background: #6d4aff;
+    .hero {
       color: white;
-
-      padding: 5px 14px;
+      background: linear-gradient(135deg, #6540f4 0%, #9175ff 100%);
+      padding: 76px 22px;
+    }
+    .hero-inner {
+      max-width: 1180px;
+      margin: auto;
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 56px;
+      align-items: center;
+    }
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 12px;
+      border: 1px solid rgba(255,255,255,.3);
       border-radius: 999px;
+      background: rgba(255,255,255,.13);
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+    .hero h1 { font-size: clamp(38px, 5vw, 58px); line-height: 1.2; margin-bottom: 20px; }
+    .hero h1 span { color: #ffe870; }
+    .hero p { max-width: 680px; color: rgba(255,255,255,.91); font-size: 17px; margin-bottom: 28px; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hero-primary, .hero-secondary {
+      padding: 14px 24px;
+      border-radius: 10px;
+      font-weight: 900;
+    }
+    .hero-primary { background: white; color: var(--primary-dark); }
+    .hero-secondary { border: 1px solid rgba(255,255,255,.42); background: rgba(255,255,255,.12); color: white; }
+    .hero-note {
+      background: white;
+      color: var(--ink);
+      border-radius: 18px;
+      padding: 25px;
+      box-shadow: 0 22px 60px rgba(35, 20, 93, .22);
+    }
+    .hero-note strong { display: block; color: var(--primary); margin-bottom: 9px; }
+    .hero-note p { color: #5f6470; font-size: 14px; margin: 0; }
 
+    section { padding: 70px 22px; }
+    .container { max-width: 1180px; margin: auto; }
+    .section-head { margin-bottom: 28px; }
+    .section-head h2 { font-size: 31px; margin-bottom: 7px; }
+    .section-head p { color: var(--muted); }
+    .discovery-note {
+      display: inline-flex;
+      gap: 7px;
+      align-items: center;
+      margin-top: 10px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: #f1efff;
+      color: #5b43bf;
       font-size: 12px;
       font-weight: 800;
     }
-
-    .plan-title {
-      font-size: 21px;
-      font-weight: 800;
-
-      margin-bottom: 12px;
+    .discovery-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
     }
-
-    .price {
-      font-size: 38px;
-      font-weight: 900;
-
-      margin-bottom: 18px;
+    .novel-card {
+      display: block;
+      padding: 21px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: white;
+      transition: transform .18s, box-shadow .18s;
     }
-
-    .price span {
-      font-size: 13px;
-      font-weight: 500;
-      color: #777;
-    }
-
-    .plan-features {
-      list-style: none;
-
-      text-align: left;
-
-      margin: 24px 0;
-    }
-
-    .plan-features li {
-      padding: 8px 0;
-      color: #555;
-
-      font-size: 14px;
-    }
-
-    .plan-features li::before {
-      content: "✓";
-      color: #6d4aff;
-
-      font-weight: 900;
-      margin-right: 8px;
-    }
-
-    .price-button {
-      width: 100%;
-
-      background: #6d4aff;
-      color: white;
-
-      padding: 13px;
-
-      border-radius: 8px;
+    .novel-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(0,0,0,.07); }
+    .genre {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #f0edff;
+      color: var(--primary);
+      font-size: 12px;
       font-weight: 800;
     }
-
-    /* =========================
-       CTA
-    ========================= */
-
+    .novel-title { font-size: 18px; font-weight: 900; margin-bottom: 8px; }
+    .description { color: #626773; font-size: 14px; margin-bottom: 14px; }
+    .meta { color: #8a909b; font-size: 12px; }
+    .premium-wrap { margin-top: 24px; }
+    .premium-heading { font-size: 13px; font-weight: 900; color: var(--premium); margin-bottom: 9px; }
+    .premium-card { border-color: #ead99b; background: var(--premium-bg); }
+    .premium-badge {
+      display: inline-block;
+      margin-left: 7px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      color: var(--premium);
+      background: #f8e9ad;
+      font-size: 10px;
+      font-weight: 900;
+      vertical-align: 2px;
+    }
+    .state {
+      grid-column: 1 / -1;
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+      background: white;
+      border: 1px dashed #d7d9df;
+      border-radius: 12px;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .feature {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .feature-icon { font-size: 28px; margin-bottom: 10px; }
+    .feature h3 { margin-bottom: 7px; }
+    .feature p { color: var(--muted); font-size: 14px; }
+    .pricing { background: white; }
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .plan {
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      padding: 26px;
+      background: #fff;
+    }
+    .plan.recommended { border: 2px solid var(--primary); }
+    .plan-name { font-weight: 900; font-size: 21px; }
+    .price { font-size: 34px; font-weight: 900; margin: 10px 0 15px; }
+    .price small { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .plan ul { list-style: none; color: #505562; font-size: 14px; }
+    .plan li { padding: 6px 0; }
+    .plan li::before { content: "✓ "; color: var(--primary); font-weight: 900; }
+    .plan-note { margin-top: 13px; color: var(--muted); font-size: 12px; }
     .cta {
-      background: #1e1d27;
+      text-align: center;
       color: white;
-
-      text-align: center;
+      background: #1e1d27;
     }
+    .cta h2 { font-size: 31px; margin-bottom: 10px; }
+    .cta p { color: #c2c3cb; margin-bottom: 22px; }
+    footer { text-align: center; padding: 34px 20px; background: #111118; color: #92939c; font-size: 13px; }
 
-    .cta h2 {
-      font-size: 32px;
-      margin-bottom: 13px;
+    @media (max-width: 860px) {
+      nav { display: none; }
+      .hero-inner, .discovery-grid, .features, .plans { grid-template-columns: 1fr; }
+      .hero { padding-top: 54px; }
+      .header-actions .btn-outline { display: none; }
     }
-
-    .cta p {
-      color: #bcbcc5;
-
-      margin-bottom: 25px;
-    }
-
-    /* =========================
-       フッター
-    ========================= */
-
-    footer {
-      background: #111118;
-      color: #999;
-
-      padding: 40px 24px;
-
-      text-align: center;
-
-      font-size: 13px;
-    }
-
-    /* =========================
-       スマホ
-    ========================= */
-
-    @media (max-width: 900px) {
-
-      nav {
-        display: none;
-      }
-
-      .hero-inner {
-        grid-template-columns: 1fr;
-      }
-
-      .hero h1 {
-        font-size: 36px;
-      }
-
-      .features,
-      .novel-grid,
-      .pricing-wrapper {
-        grid-template-columns: 1fr;
-      }
-
-      .price-card.recommended {
-        transform: none;
-      }
-
-    }
-.latest-novels {
-  padding: 80px 20px;
-  background: #f7f8fb;
-}
-
-.latest-novels h2 {
-  font-size: 32px;
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-.latest-novels > .container > p {
-  text-align: center;
-  color: #777;
-  margin-bottom: 35px;
-}
-
-.latest-novels-list {
-  display: grid;
-  grid-template-columns:
-    repeat(
-      auto-fit,
-      minmax(280px, 1fr)
-    );
-  gap: 20px;
-}
-
-.latest-novel-card {
-  display: block;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 22px;
-  transition: 0.2s;
-}
-
-.latest-novel-card:hover {
-  transform: translateY(-3px);
-  box-shadow:
-    0 8px 25px
-    rgba(0, 0, 0, 0.07);
-}
-
-.latest-novel-genre {
-  display: inline-block;
-  margin-bottom: 12px;
-  padding: 5px 9px;
-  border-radius: 6px;
-  background: #eeeaff;
-  color: #6d4aff;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.latest-novel-title {
-  font-size: 19px;
-  font-weight: 800;
-  margin-bottom: 10px;
-}
-
-.latest-novel-description {
-  color: #666;
-  font-size: 14px;
-  line-height: 1.7;
-  margin-bottom: 15px;
-}
-
-.latest-novel-date {
-  color: #999;
-  font-size: 12px;
-}
   </style>
 </head>
-
 <body>
-
-  <!-- ヘッダー -->
-  <header>
-
-    <div class="header-inner">
-
-      <div class="logo">
-        NovelRise
-      </div>
-
-      <nav>
-        <a href="search.html">作品を探す</a>
-        <a href="#features">特徴</a>
-        <a href="#pricing">料金プラン</a>
-        <a href="ranking.html">ランキング</a>
-      </nav>
-
-      <div class="header-buttons">
-
-<a href="login.html" class="btn btn-outline">
-  ログイン
-</a>
-        <button class="btn btn-primary">
-          小説を投稿
-        </button>
-
-      </div>
-
+<header>
+  <div class="header-inner">
+    <a class="logo" href="index.html">NOVELIGHT</a>
+    <nav>
+      <a href="#discover">作品を見つける</a>
+      <a href="search.html">作品を探す</a>
+      <a href="#features">特徴</a>
+      <a href="#pricing">料金</a>
+      <a href="ranking.html">ランキング</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-outline" href="login.html">ログイン</a>
+      <a class="btn btn-primary" href="novel-post.html">小説を投稿</a>
     </div>
-
-  </header>
-
-
-  <!-- メイン -->
-  <main>
-
-    <!-- ファーストビュー -->
-    <section class="hero">
-
-      <div class="hero-inner">
-
-        <div>
-
-          <div class="hero-label">
-            小説家のための投稿プラットフォーム
-          </div>
-
-          <h1>
-            あなたの作品を、<br>
-            <span>埋もれさせない。</span>
-          </h1>
-
-          <p>
-            NovelRiseは、本気で小説を書きたい作者のための投稿サイト。
-            有料会員になることで作品の露出を増やし、
-            より多くの読者にあなたの作品を届けます。
-          </p>
-
-          <div class="hero-buttons">
-
-<a href="signup.html" class="hero-main-btn">
-  無料で始める
-</a>
-
-            <button class="hero-sub-btn">
-              料金を見る
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <div class="hero-preview">
-
-          <div class="preview-title">
-            🔥 本日の注目作品
-          </div>
-
-          <div class="preview-card">
-
-            <div class="preview-rank">
-              RANK 1
-            </div>
-
-            <div class="preview-novel-title">
-              最弱魔術師の学園革命
-            </div>
-
-            <div class="preview-meta">
-              ファンタジー ｜ 125,420 PV
-            </div>
-
-          </div>
-
-
-          <div class="preview-card">
-
-            <div class="preview-rank">
-              RANK 2
-            </div>
-
-            <div class="preview-novel-title">
-              転生した俺だけ魔法が使えない
-            </div>
-
-            <div class="preview-meta">
-              ローファンタジー ｜ 98,021 PV
-            </div>
-
-          </div>
-
-
-          <div class="preview-card">
-
-            <div class="preview-rank">
-              RANK 3
-            </div>
-
-            <div class="preview-novel-title">
-              放課後の異世界研究部
-            </div>
-
-            <div class="preview-meta">
-              学園 ｜ 76,512 PV
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- 特徴 -->
-    <section id="features">
-
-      <div class="container">
-
-        <div class="section-title">
-
-          <h2>
-            作品が読まれる仕組み
-          </h2>
-
-          <p>
-            投稿しただけで終わらせない、小説家のための仕組み。
-          </p>
-
-        </div>
-
-
-        <div class="features">
-
-          <div class="feature-card">
-
-            <div class="feature-icon">
-              👀
-            </div>
-
-            <h3>
-              作品が埋もれにくい
-            </h3>
-
-            <p>
-              投稿作品数を適切にコントロールし、
-              新人作者でも読者に発見される機会を作ります。
-            </p>
-
-          </div>
-
-
-          <div class="feature-card">
-
-            <div class="feature-icon">
-              🚀
-            </div>
-
-            <h3>
-              露出アップ
-            </h3>
-
-            <p>
-              上位プランではおすすめ欄や注目作品など、
-              作品を見てもらう機会を増やせます。
-            </p>
-
-          </div>
-
-
-          <div class="feature-card">
-
-            <div class="feature-icon">
-              📊
-            </div>
-
-            <h3>
-              詳細なアクセス分析
-            </h3>
-
-            <p>
-              PV数、読了率、お気に入り率などを確認し、
-              読まれる作品作りに役立てられます。
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- 作品一覧 -->
-    <section
-      class="novel-section"
-      id="novels"
-    >
-
-      <div class="container">
-
-        <div class="section-title">
-
-          <h2>
-            注目の作品
-          </h2>
-
-          <p>
-            今、読者から注目されている作品。
-          </p>
-
-        </div>
-
-
-        <div class="novel-grid">
-
-          <article class="novel-card">
-
-            <div class="novel-cover">
-              ⚔️
-            </div>
-
-            <div class="novel-body">
-
-              <div class="genre">
-                ローファンタジー
-              </div>
-
-              <div class="novel-title">
-                魔術学園の落ちこぼれ
-              </div>
-
-              <div class="author">
-                作者：桐谷
-              </div>
-
-              <div class="stats">
-                <span>👁 52,421</span>
-                <span>★ 1,230</span>
-              </div>
-
-            </div>
-
-          </article>
-
-
-          <article class="novel-card">
-
-            <div class="novel-cover">
-              🐉
-            </div>
-
-            <div class="novel-body">
-
-              <div class="genre">
-                異世界
-              </div>
-
-              <div class="novel-title">
-                最弱職から始める異世界生活
-              </div>
-
-              <div class="author">
-                作者：山田太郎
-              </div>
-
-              <div class="stats">
-                <span>👁 41,921</span>
-                <span>★ 921</span>
-              </div>
-
-            </div>
-
-          </article>
-
-
-          <article class="novel-card">
-
-            <div class="novel-cover">
-              🌙
-            </div>
-
-            <div class="novel-body">
-
-              <div class="genre">
-                恋愛
-              </div>
-
-              <div class="novel-title">
-                月が綺麗な夜に君と
-              </div>
-
-              <div class="author">
-                作者：水瀬
-              </div>
-
-              <div class="stats">
-                <span>👁 38,114</span>
-                <span>★ 811</span>
-              </div>
-
-            </div>
-
-          </article>
-
-        </div>
-
-      </div>
-
-    </section>
-
-<!-- 新着作品 -->
-<section class="latest-novels">
-
-  <div class="container">
-
-    <h2>
-      新着作品
-    </h2>
-
-    <p>
-      最近公開された作品をチェック
-    </p>
-
-    <div
-      id="latestNovelsList"
-      class="latest-novels-list"
-    >
-      読み込み中...
-    </div>
-<div style="text-align: center; margin-top: 28px;">
-  <a
-    href="search.html"
-    style="
-      display: inline-block;
-      padding: 12px 28px;
-      background: #6c4cff;
-      color: white;
-      border-radius: 8px;
-      font-weight: bold;
-      text-decoration: none;
-    "
-  >
-    もっと作品を見る
-  </a>
-</div>
   </div>
+</header>
 
-</section>
-    <!-- 料金 -->
-    <section id="pricing">
-
-      <div class="container">
-
-        <div class="section-title">
-
-          <h2>
-            作者向け料金プラン
-          </h2>
-
-          <p>
-            本気度に合わせてプランを選択できます。
-          </p>
-
-        </div>
-
-
-        <div class="pricing-wrapper">
-
-          <div class="price-card">
-
-            <div class="plan-title">
-              Free
-            </div>
-
-            <div class="price">
-              ¥0
-              <span>/ 月</span>
-            </div>
-
-            <ul class="plan-features">
-              <li>小説1作品まで投稿</li>
-              <li>基本アクセス解析</li>
-              <li>通常検索への掲載</li>
-            </ul>
-
-            <button class="price-button">
-              無料で始める
-            </button>
-
-          </div>
-
-
-          <div class="price-card recommended">
-
-            <div class="recommend-label">
-              おすすめ
-            </div>
-
-            <div class="plan-title">
-              Standard
-            </div>
-
-            <div class="price">
-              ¥980
-              <span>/ 月</span>
-            </div>
-
-            <ul class="plan-features">
-              <li>小説10作品まで投稿</li>
-              <li>詳細アクセス解析</li>
-              <li>おすすめ欄掲載対象</li>
-              <li>検索順位優遇</li>
-            </ul>
-
-            <button class="price-button">
-              Standardを始める
-            </button>
-
-          </div>
-
-
-          <div class="price-card">
-
-            <div class="plan-title">
-              Premium
-            </div>
-
-            <div class="price">
-              ¥1,980
-              <span>/ 月</span>
-            </div>
-
-            <ul class="plan-features">
-              <li>投稿作品数無制限</li>
-              <li>詳細アクセス解析</li>
-              <li>注目作品枠への掲載</li>
-              <li>検索順位優遇</li>
-              <li>優先サポート</li>
-            </ul>
-
-            <button class="price-button">
-              Premiumを始める
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- 最後のCTA -->
-    <section class="cta">
-
-      <div class="container">
-
-        <h2>
-          あなたの物語を、もっと多くの人へ。
-        </h2>
-
+<main>
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="eyebrow">作者にも、まだ知られていない物語にも発見の機会を。</div>
+        <h1>すべての物語に、<span>光を。</span></h1>
         <p>
-          NovelRiseで、今日から作品を公開してみませんか？
+          NOVELIGHTは、ランキングだけに頼らず作品を読者の前へ運ぶ小説投稿サービスです。
+          Free作品も発見対象に残し、有料プランは順位ではなく「見つけてもらう機会」を増やします。
         </p>
+        <div class="hero-actions">
+          <a class="hero-primary" href="signup.html">無料で始める</a>
+          <a class="hero-secondary" href="search.html">作品を探す</a>
+        </div>
+      </div>
+      <aside class="hero-note">
+        <strong>露出は「順位購入」ではありません</strong>
+        <p>
+          同じ作者・同じ作品だけに表示が偏らないよう、直近の露出量を見ながら発見機会を配分します。
+          明示的な新着順・PV順・お気に入り順は課金プランで並び替えません。
+        </p>
+      </aside>
+    </div>
+  </section>
 
-        <button class="hero-main-btn">
-          小説を投稿してみる
-        </button>
-
+  <section id="discover">
+    <div class="container">
+      <div class="section-head">
+        <h2>あなたへの発見フィード</h2>
+        <p>まだ見ていない作品、露出が少ない作者・作品から次の一冊を届けます。</p>
+        <div class="discovery-note">Free / Standard / Premium すべてが一般枠の対象です</div>
       </div>
 
-    </section>
+      <div id="discoveryGrid" class="discovery-grid">
+        <div class="state">作品を選んでいます...</div>
+      </div>
 
-  </main>
+      <div id="premiumWrap" class="premium-wrap" hidden>
+        <div class="premium-heading">Premium追加露出枠（一般枠とは別枠）</div>
+        <div id="premiumGrid" class="discovery-grid"></div>
+      </div>
 
+      <div style="text-align:center;margin-top:26px">
+        <a class="btn btn-primary" href="search.html">もっと作品を見る</a>
+      </div>
+    </div>
+  </section>
 
-  <footer>
-    © 2026 NovelRise. All Rights Reserved.
-  </footer>
+  <section id="features">
+    <div class="container">
+      <div class="section-head">
+        <h2>埋もれにくさを仕組みにする</h2>
+        <p>「投稿しただけで終わる」を減らすためのβ版設計です。</p>
+      </div>
+      <div class="features">
+        <article class="feature">
+          <div class="feature-icon">🔄</div>
+          <h3>露出をローテーション</h3>
+          <p>作者単位・作品単位の直近露出を見て、特定の人気作品だけに機会が集中しにくくします。</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon">🌱</div>
+          <h3>LIGHT SEED</h3>
+          <p>読者が無名作品を発掘して応援できる仕組み。過去の発掘履歴も残ります。</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon">📊</div>
+          <h3>実際に見られた露出を計測</h3>
+          <p>候補取得ではなく画面に表示された作品をインプレッションとして記録し、β改善に使います。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="pricing">
+    <div class="container">
+      <div class="section-head">
+        <h2>作者向け料金プラン</h2>
+        <p>有料プランは評価やランキング順位ではなく、追加の発見機会と機能に対して課金します。</p>
+      </div>
+      <div class="plans">
+        <article class="plan">
+          <div class="plan-name">Free</div>
+          <div class="price">¥0 <small>/ 月</small></div>
+          <ul>
+            <li>1作品まで投稿</li>
+            <li>一般発見枠の対象</li>
+            <li>基本アクセス解析</li>
+          </ul>
+          <p class="plan-note">無料でも作品が発見対象から外れることはありません。</p>
+        </article>
+        <article class="plan recommended">
+          <div class="plan-name">Standard</div>
+          <div class="price">¥980 <small>/ 月</small></div>
+          <ul>
+            <li>10作品まで投稿</li>
+            <li>一般枠で発見機会を追加</li>
+            <li>詳細アクセス解析</li>
+          </ul>
+          <p class="plan-note">βでは露出効果を計測し、Freeとのバランスを継続調整します。</p>
+        </article>
+        <article class="plan">
+          <div class="plan-name">Premium</div>
+          <div class="price">¥1,980 <small>/ 月</small></div>
+          <ul>
+            <li>30作品まで投稿</li>
+            <li>Standardより多い発見機会</li>
+            <li>一般枠を奪わない追加露出枠</li>
+          </ul>
+          <p class="plan-note">新作にはβ版の短時間ブーストがありますが、ランキング評価には加点しません。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <h2>あなたの物語を、読者の前へ。</h2>
+      <p>投稿数だけで埋もれない場所を、β版から育てていきます。</p>
+      <a class="hero-primary" href="signup.html">NOVELIGHTを始める</a>
+    </div>
+  </section>
+</main>
+
+<footer>© 2026 NOVELIGHT. All Rights Reserved.</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
-  const SUPABASE_URL =
-    'https://fiepaguycecrredwrcwx.supabase.co';
-
-  const SUPABASE_KEY =
-    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
-
-
-  const supabaseClient =
-    supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    );
-
+  const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   function escapeHtml(value) {
-
-    const div =
-      document.createElement('div');
-
-    div.textContent =
-      value ?? '';
-
+    const div = document.createElement('div');
+    div.textContent = value ?? '';
     return div.innerHTML;
   }
 
+  function getVisitorToken() {
+    const storageKey = 'novelight_visitor_token';
+    let token = localStorage.getItem(storageKey);
+    if (token && token.length >= 8) return token;
 
-  async function loadLatestNovels() {
-
-    const latestNovelsList =
-      document.getElementById(
-        'latestNovelsList'
-      );
-
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from('novels')
-        .select('*')
-        .eq(
-          'status',
-          'published'
-        )
-        .order(
-          'created_at',
-          {
-            ascending: false
-          }
-        )
-        .limit(6);
-
-
-    if (error) {
-
-      console.error(error);
-
-      latestNovelsList.innerHTML =
-        '作品の読み込みに失敗しました。';
-
-      return;
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      token = window.crypto.randomUUID();
+    } else {
+      token = 'visitor-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     }
 
-
-    if (
-      !data ||
-      data.length === 0
-    ) {
-
-      latestNovelsList.innerHTML =
-        'まだ公開作品がありません。';
-
-      return;
-    }
-
-
-    latestNovelsList.innerHTML = '';
-
-
-    data.forEach(
-      (novel) => {
-
-        const createdAt =
-          new Date(
-            novel.created_at
-          ).toLocaleDateString(
-            'ja-JP'
-          );
-
-
-        const card =
-          document.createElement(
-            'a'
-          );
-
-
-        card.href =
-          'novel.html?id=' +
-          novel.id;
-
-
-        card.className =
-          'latest-novel-card';
-
-
-        card.innerHTML = `
-          <div class="latest-novel-genre">
-            ${escapeHtml(novel.genre)}
-          </div>
-
-          <div class="latest-novel-title">
-            ${escapeHtml(novel.title)}
-          </div>
-
-          <div class="latest-novel-description">
-            ${escapeHtml(novel.description)}
-          </div>
-
-          <div class="latest-novel-date">
-            投稿日 ${createdAt}
-          </div>
-        `;
-
-
-        latestNovelsList.appendChild(
-          card
-        );
-
-      }
-    );
-
+    localStorage.setItem(storageKey, token);
+    return token;
   }
 
+  function renderCard(novel, premiumSlot = false) {
+    const createdAt = novel.created_at
+      ? new Date(novel.created_at).toLocaleDateString('ja-JP')
+      : '';
 
-  loadLatestNovels();
+    return `
+      <a class="novel-card ${premiumSlot ? 'premium-card' : ''}" href="novel.html?id=${encodeURIComponent(novel.novel_id)}">
+        <div class="genre">${escapeHtml(novel.genre || '未設定')}</div>
+        <div class="novel-title">
+          ${escapeHtml(novel.title)}
+          ${premiumSlot ? '<span class="premium-badge">追加露出</span>' : ''}
+        </div>
+        <div class="description">${escapeHtml(novel.description || '')}</div>
+        <div class="meta">投稿日 ${createdAt} ・ 👁 ${Number(novel.pv || 0).toLocaleString()} ・ ★ ${Number(novel.favorite_count || 0).toLocaleString()}</div>
+      </a>
+    `;
+  }
 
+  async function recordImpressions(surface, ids, visitorToken) {
+    if (!ids.length) return;
+    const { error } = await supabaseClient.rpc('record_novel_impressions', {
+      p_surface: surface,
+      p_novel_ids: ids,
+      p_visitor_token: visitorToken
+    });
+    if (error) console.error('impression record failed', error);
+  }
+
+  async function loadDiscovery() {
+    const grid = document.getElementById('discoveryGrid');
+    const premiumWrap = document.getElementById('premiumWrap');
+    const premiumGrid = document.getElementById('premiumGrid');
+    const visitorToken = getVisitorToken();
+
+    const { data, error } = await supabaseClient.rpc('novelight_discovery_feed', {
+      p_surface: 'home_discovery',
+      p_limit: 6,
+      p_keyword: null,
+      p_genre: null,
+      p_visitor_token: visitorToken
+    });
+
+    if (error) {
+      console.error(error);
+      grid.innerHTML = '<div class="state">作品の読み込みに失敗しました。少し時間をおいて再読み込みしてください。</div>';
+      return;
+    }
+
+    const rows = data || [];
+    const general = rows.filter((row) => !row.is_premium_slot);
+    const premium = rows.filter((row) => row.is_premium_slot);
+
+    if (!general.length) {
+      grid.innerHTML = '<div class="state">まだ公開作品がありません。</div>';
+    } else {
+      grid.innerHTML = general.map((row) => renderCard(row)).join('');
+      await recordImpressions(
+        'home_discovery',
+        general.map((row) => String(row.novel_id)),
+        visitorToken
+      );
+    }
+
+    if (premium.length) {
+      premiumWrap.hidden = false;
+      premiumGrid.innerHTML = premium.map((row) => renderCard(row, true)).join('');
+      await recordImpressions(
+        'home_premium_slot',
+        premium.map((row) => String(row.novel_id)),
+        visitorToken
+      );
+    } else {
+      premiumWrap.hidden = true;
+      premiumGrid.innerHTML = '';
+    }
+  }
+
+  loadDiscovery();
 </script>
 </body>
 </html>
