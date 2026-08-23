@@ -2,6 +2,12 @@ name: NOVELIGHT Stripe Production Bootstrap
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/stripe-production-bootstrap.yml'
+      - 'scripts/stripe-production-bootstrap.mjs'
 
 permissions:
   contents: read
@@ -12,6 +18,7 @@ concurrency:
 
 jobs:
   bootstrap:
+    if: ${{ vars.PRODUCTION_APPROVAL_GATE_READY == 'true' }}
     name: Provision Stripe live billing and sync Vercel
     runs-on: ubuntu-latest
     environment: production-approval
