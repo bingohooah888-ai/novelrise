@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const publicPages = [
   ['home', '/index.html'],
+  ['search', '/search.html'],
   ['pricing', '/pricing.html'],
   ['login', '/login.html'],
   ['signup', '/signup.html'],
@@ -20,6 +21,34 @@ for (const [name, path] of publicPages) {
     expect((await page.title()).trim()).not.toBe('');
   });
 }
+
+test('home exposes the discovery feed shell', async ({ page }) => {
+  await page.goto('/index.html', {
+    waitUntil: 'domcontentloaded'
+  });
+
+  await expect(page.locator('#discoveryGrid')).toHaveCount(1);
+  await expect(page.locator('#premiumWrap')).toHaveCount(1);
+  await expect(
+    page.getByText('Free / Standard / Premium すべてが一般枠の対象です')
+  ).toHaveCount(1);
+});
+
+test('search exposes recommended and neutral sort controls', async ({ page }) => {
+  await page.goto('/search.html', {
+    waitUntil: 'domcontentloaded'
+  });
+
+  await expect(page.locator('#keywordInput')).toHaveCount(1);
+  await expect(page.locator('#genreSelect')).toHaveCount(1);
+  await expect(page.locator('#sortSelect')).toHaveCount(1);
+
+  const values = await page.locator('#sortSelect option').evaluateAll((options) =>
+    options.map((option) => option.value)
+  );
+
+  expect(values).toEqual(['recommended', 'new', 'pv', 'favorites']);
+});
 
 test('login form exposes the required controls', async ({ page }) => {
   await page.goto('/login.html', {
