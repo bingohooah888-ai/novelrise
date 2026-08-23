@@ -87,6 +87,12 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823115300_exposure_funnel_precheck.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823115300_exposure_funnel.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-funnel.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823133000_exposure_funnel_retention_precheck.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823133000_exposure_funnel_retention.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-funnel-retention.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823133000_exposure_funnel_retention_postcheck.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260823133000_exposure_funnel_retention_rollback.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-funnel-retention-rollback.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260822_content_write_rls_postcheck.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823073000_billing_permissions_and_novel_limits_postcheck.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823074300_stripe_subscription_state_postcheck.sql

@@ -61,7 +61,7 @@
     .section-note { color: #6b7280; font-size: 13px; line-height: 1.6; margin-top: 5px; }
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }
     .summary-card,
@@ -84,7 +84,7 @@
     .novel-title { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
     .funnel {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 12px;
       align-items: stretch;
     }
@@ -106,7 +106,13 @@
     }
     .funnel-value { color: #6d4aff; font-size: 24px; font-weight: 900; }
     .funnel-label { color: #4b5563; font-size: 12px; margin-top: 5px; }
-    .funnel-rate { color: #6b7280; font-size: 12px; margin-top: 8px; }
+    .funnel-rate { color: #6b7280; font-size: 12px; margin-top: 8px; line-height: 1.45; }
+    .funnel-overview {
+      margin-top: 12px;
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.6;
+    }
     .premium-box {
       margin-top: 16px;
       padding: 14px 16px;
@@ -124,6 +130,8 @@
     .episode-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 13px; }
     @media (max-width: 900px) {
       .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .funnel-step:not(:last-child)::after { content: none; }
     }
     @media (max-width: 700px) {
       main { padding: 32px 16px 60px; }
@@ -133,7 +141,6 @@
       .summary-grid,
       .funnel,
       .basic-grid { grid-template-columns: 1fr; }
-      .funnel-step:not(:last-child)::after { content: '↓'; right: 50%; top: auto; bottom: -14px; transform: translate(50%, 50%); }
       .episode-row { flex-direction: column; }
     }
   </style>
@@ -160,15 +167,18 @@
 
   <section class="section" aria-labelledby="exposureHeading">
     <div class="section-heading">
-      <h2 class="section-title" id="exposureHeading">露出から読書まで</h2>
-      <p class="section-note">本文10秒閲覧は「読了」ではなく、露出後に本文を10秒以上読んだ回数です。</p>
+      <h2 class="section-title" id="exposureHeading">露出から読書継続まで</h2>
+      <p class="section-note">10秒閲覧は「読了」ではありません。第2話まで継続は、同じ露出から第1話と第2話をそれぞれ10秒以上閲覧した読者行動です。お気に入りは露出後に実際に登録されたものだけを数えます。</p>
     </div>
     <div class="summary-grid" id="exposureSummary">
       <div class="summary-card"><div class="summary-number" id="totalImpressions">0</div><div class="summary-label">インプレッション</div></div>
       <div class="summary-card"><div class="summary-number" id="totalDetailOpens">0</div><div class="summary-label">作品ページ到達</div></div>
-      <div class="summary-card"><div class="summary-number" id="totalBodyReads">0</div><div class="summary-label">本文10秒閲覧</div></div>
-      <div class="summary-card"><div class="summary-number" id="totalDetailRate">0%</div><div class="summary-label">作品ページ到達率</div></div>
-      <div class="summary-card"><div class="summary-number" id="totalBodyReadRate">0%</div><div class="summary-label">本文10秒閲覧率</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalBodyReads">0</div><div class="summary-label">本文10秒閲覧（いずれかの話）</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalFirstEpisodeReads">0</div><div class="summary-label">第1話10秒閲覧</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalContinuedEpisode2">0</div><div class="summary-label">第2話まで継続</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalEpisodeRetentionRate">0%</div><div class="summary-label">第1話→第2話 継続率</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalAttributedFavorites">0</div><div class="summary-label">露出後のお気に入り</div></div>
+      <div class="summary-card"><div class="summary-number" id="totalFavoriteRate">0%</div><div class="summary-label">表示→お気に入り率</div></div>
     </div>
     <div id="exposureStatus" class="status-message" aria-live="polite"></div>
     <div id="exposureNovelList" class="novel-list"></div>
@@ -224,16 +234,35 @@
         acc.impressions += Number(row.impressions ?? 0);
         acc.detailOpens += Number(row.detail_opens ?? 0);
         acc.bodyReads += Number(row.body_reads_10s ?? 0);
+        acc.firstEpisodeReads += Number(row.first_episode_reads_10s ?? 0);
+        acc.continuedEpisode2 += Number(row.continued_to_episode_2 ?? 0);
+        acc.favorites += Number(row.favorites ?? 0);
         return acc;
       },
-      { impressions: 0, detailOpens: 0, bodyReads: 0 }
+      {
+        impressions: 0,
+        detailOpens: 0,
+        bodyReads: 0,
+        firstEpisodeReads: 0,
+        continuedEpisode2: 0,
+        favorites: 0
+      }
     );
 
     document.getElementById('totalImpressions').textContent = formatNumber(totals.impressions);
     document.getElementById('totalDetailOpens').textContent = formatNumber(totals.detailOpens);
     document.getElementById('totalBodyReads').textContent = formatNumber(totals.bodyReads);
-    document.getElementById('totalDetailRate').textContent = formatRate(totals.detailOpens, totals.impressions);
-    document.getElementById('totalBodyReadRate').textContent = formatRate(totals.bodyReads, totals.impressions);
+    document.getElementById('totalFirstEpisodeReads').textContent = formatNumber(totals.firstEpisodeReads);
+    document.getElementById('totalContinuedEpisode2').textContent = formatNumber(totals.continuedEpisode2);
+    document.getElementById('totalEpisodeRetentionRate').textContent = formatRate(
+      totals.continuedEpisode2,
+      totals.firstEpisodeReads
+    );
+    document.getElementById('totalAttributedFavorites').textContent = formatNumber(totals.favorites);
+    document.getElementById('totalFavoriteRate').textContent = formatRate(
+      totals.favorites,
+      totals.impressions
+    );
   }
 
   function renderExposureRows(rows) {
@@ -252,6 +281,9 @@
         const impressions = Number(row.impressions ?? 0);
         const detailOpens = Number(row.detail_opens ?? 0);
         const bodyReads = Number(row.body_reads_10s ?? 0);
+        const firstEpisodeReads = Number(row.first_episode_reads_10s ?? 0);
+        const continuedEpisode2 = Number(row.continued_to_episode_2 ?? 0);
+        const favorites = Number(row.favorites ?? 0);
         const premiumImpressions = Number(row.premium_slot_impressions ?? 0);
         const premiumDetailOpens = Number(row.premium_slot_detail_opens ?? 0);
         const premiumBodyReads = Number(row.premium_slot_body_reads_10s ?? 0);
@@ -271,10 +303,23 @@
                 <div class="funnel-rate">到達率 ${formatRate(detailOpens, impressions)}</div>
               </div>
               <div class="funnel-step">
-                <div class="funnel-value">${formatNumber(bodyReads)}</div>
-                <div class="funnel-label">本文10秒閲覧</div>
-                <div class="funnel-rate">表示→本文 ${formatRate(bodyReads, impressions)}</div>
+                <div class="funnel-value">${formatNumber(firstEpisodeReads)}</div>
+                <div class="funnel-label">第1話10秒閲覧</div>
+                <div class="funnel-rate">表示→第1話 ${formatRate(firstEpisodeReads, impressions)}</div>
               </div>
+              <div class="funnel-step">
+                <div class="funnel-value">${formatNumber(continuedEpisode2)}</div>
+                <div class="funnel-label">第2話まで継続</div>
+                <div class="funnel-rate">第1話→第2話 ${formatRate(continuedEpisode2, firstEpisodeReads)}</div>
+              </div>
+              <div class="funnel-step">
+                <div class="funnel-value">${formatNumber(favorites)}</div>
+                <div class="funnel-label">露出後お気に入り</div>
+                <div class="funnel-rate">表示→お気に入り ${formatRate(favorites, impressions)}</div>
+              </div>
+            </div>
+            <div class="funnel-overview">
+              本文10秒閲覧（いずれかの話） ${formatNumber(bodyReads)} ・ 表示→本文 ${formatRate(bodyReads, impressions)}
             </div>
             <div class="premium-box">
               <div class="premium-title">Premium専用露出枠</div>
