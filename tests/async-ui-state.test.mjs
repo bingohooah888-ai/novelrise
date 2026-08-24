@@ -13,6 +13,9 @@ const episodePost = await readFile('episode-post.html', 'utf8');
 const episodeEdit = await readFile('episode-edit.html', 'utf8');
 const scoutRecord = await readFile('scout-record.html', 'utf8');
 const pricing = await readFile('pricing.html', 'utf8');
+const myNovels = await readFile('my-novels.html', 'utf8');
+const ranking = await readFile('ranking.html', 'utf8');
+const author = await readFile('author.html', 'utf8');
 
 test('search drops stale async results', () => {
   assert.match(search, /rows=await enrich\(rows\)/);
@@ -78,4 +81,13 @@ test('billing prevents parallel checkout starts and recovers after failure', () 
   assert.match(pricing, /function disablePaid\(v\)/);
   assert.match(pricing, /finally\{busy=false;disablePaid\(false\)\}/);
   assert.match(pricing, /void NovelightClient\.claimAcquisition\(client\)/);
+});
+
+test('remaining list pages distinguish unavailable data from real empty states', () => {
+  assert.match(myNovels, /favoriteCount=null/);
+  assert.match(myNovels, /favorite count unavailable/);
+  assert.match(ranking, /ランキングを正しく計算できませんでした/);
+  assert.match(ranking, /if\(f\.error\)throw f\.error/);
+  assert.match(author, /公開作品を読み込めませんでした/);
+  assert.match(author, /if\(n\.error\)/);
 });
