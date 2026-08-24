@@ -29,16 +29,41 @@ async function login(page, account, redirect) {
   return visitorToken;
 }
 
-async function assertLiveCheckoutSession(page, buttonSelector) {
-  await page.goto('/pricing.html');
-  const responsePromise = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/api/create-checkout-session') &&
-      response.request().method() === 'POST'
-  );
+async function getSupabaseAccessToken(page) {
+  const accessToken = await page.evaluate(() => {
+    for (let index = 0; index < globalThis.localStorage.length; index += 1) {
+      const key = globalThis.localStorage.key(index);
+      if (!key?.startsWith('sb-') || !key.endsWith('-auth-token')) continue;
 
-  await page.locator(buttonSelector).click();
-  const response = await responsePromise;
+      const raw = globalThis.localStorage.getItem(key);
+      if (!raw) continue;
+
+      try {
+        const stored = JSON.parse(raw);
+        const token =
+          stored?.access_token ?? stored?.currentSession?.access_token;
+        if (token) return token;
+      } catch {
+        // Ignore unrelated or malformed local storage values.
+      }
+    }
+
+    return null;
+  });
+
+  expect(accessToken).toBeTruthy();
+  return accessToken;
+}
+
+async function assertLiveCheckoutSession(page, plan) {
+  const accessToken = await getSupabaseAccessToken(page);
+  const response = await page.request.post('/api/create-checkout-session', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: { plan }
+  });
+
   expect(response.status()).toBe(200);
 
   const body = await response.json();
@@ -189,8 +214,8 @@ test('authenticated beta-critical product flow works in production', async ({
     });
 
     await test.step('Verify live Stripe Checkout session creation without charging', async () => {
-      await assertLiveCheckoutSession(authorPage, '#standard');
-      await assertLiveCheckoutSession(authorPage, '#premium');
+      await assertLiveCheckoutSession(authorPage, 'standard');
+      await assertLiveCheckoutSession(authorPage, 'premium');
     });
   } finally {
     await closeContextSafely(authorContext);
