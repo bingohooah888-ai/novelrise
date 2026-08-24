@@ -45,12 +45,29 @@ function paymentStatusForSubscription(status) {
   }
 }
 
-function currentPeriodEnd(subscription) {
+function currentPeriodEndEpoch(subscription) {
   const epochSeconds = subscription.items?.data?.[0]?.current_period_end;
+
+  return Number.isInteger(epochSeconds) ? epochSeconds : null;
+}
+
+function currentPeriodEnd(subscription) {
+  const epochSeconds = currentPeriodEndEpoch(subscription);
 
   return Number.isInteger(epochSeconds)
     ? new Date(epochSeconds * 1000).toISOString()
     : null;
+}
+
+function cancellationScheduledAtCurrentPeriodEnd(subscription) {
+  const periodEnd = currentPeriodEndEpoch(subscription);
+
+  return (
+    subscription.cancel_at_period_end === true ||
+    (Number.isInteger(subscription.cancel_at) &&
+      Number.isInteger(periodEnd) &&
+      subscription.cancel_at === periodEnd)
+  );
 }
 
 function compareSubscriptions(a, b) {
@@ -188,7 +205,8 @@ export async function syncCustomerSubscription({
       ? canonical.created
       : null,
     subscription_status: status,
-    subscription_cancel_at_period_end: canonical.cancel_at_period_end === true,
+    subscription_cancel_at_period_end:
+      cancellationScheduledAtCurrentPeriodEnd(canonical),
     subscription_current_period_end: currentPeriodEnd(canonical)
   });
 

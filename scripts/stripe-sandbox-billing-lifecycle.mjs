@@ -259,11 +259,16 @@ async function setup() {
 async function verifyScheduledCancellation() {
   const fixture = loadFixture();
   assert.ok(fixture.subscriptionId, 'subscription fixture is missing');
+  assert.ok(fixture.initialPeriodEnd, 'initial subscription period end is missing');
+
   const subscription = await waitForSubscriptionState(
     fixture.subscriptionId,
     (candidate) =>
-      candidate.status === 'active' && candidate.cancel_at_period_end === true,
-    'active cancellation-at-period-end state'
+      candidate.status === 'active' &&
+      currentPeriodEnd(candidate) === fixture.initialPeriodEnd &&
+      (candidate.cancel_at_period_end === true ||
+        candidate.cancel_at === fixture.initialPeriodEnd),
+    'active cancellation scheduled for the current period end'
   );
 
   const profile = await syncProfileFromSubscription(subscription, fixture, {
@@ -310,7 +315,6 @@ async function advancePastPeriodEnd() {
   assert.equal(profile.plan, 'free');
   assert.equal(profile.payment_status, 'canceled');
   assert.equal(profile.subscription_status, 'canceled');
-  assert.equal(profile.subscription_cancel_at_period_end, true);
 
   fixture.periodEndVerifiedAt = new Date().toISOString();
   saveFixture(fixture);

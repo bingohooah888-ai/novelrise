@@ -8,9 +8,12 @@ const env = {
   STRIPE_PREMIUM_PRICE_ID: 'price_premium'
 };
 
+const periodEnd = 1893456000;
+
 function subscription({
   status = 'active',
   cancelAtPeriodEnd = true,
+  cancelAt = null,
   priceId = 'price_standard'
 } = {}) {
   return {
@@ -19,11 +22,12 @@ function subscription({
     status,
     created: 100,
     cancel_at_period_end: cancelAtPeriodEnd,
+    cancel_at: cancelAt,
     metadata: { userId: 'user-cancel-at-period-end' },
     items: {
       data: [
         {
-          current_period_end: 1893456000,
+          current_period_end: periodEnd,
           price: { id: priceId }
         }
       ]
@@ -31,7 +35,7 @@ function subscription({
   };
 }
 
-function dependencies() {
+function dependencies(subscriptionOverrides = {}) {
   const profile = {
     id: 'user-cancel-at-period-end',
     plan: 'standard',
@@ -79,7 +83,7 @@ function dependencies() {
         assert.equal(customer, 'cus_cancel_at_period_end');
         assert.equal(status, 'all');
         assert.equal(limit, 100);
-        return { data: [subscription()] };
+        return { data: [subscription(subscriptionOverrides)] };
       }
     }
   };
@@ -87,18 +91,22 @@ function dependencies() {
   return { stripe, supabase, profile };
 }
 
-test('active subscription scheduled to cancel keeps Standard access until period end', async () => {
-  const deps = dependencies();
-
-  const result = await processStripeEvent({
+async function sync(deps, subscriptionOverrides = {}) {
+  return processStripeEvent({
     ...deps,
     event: {
       id: 'evt_cancel_at_period_end',
       type: 'customer.subscription.updated',
-      data: { object: subscription() }
+      data: { object: subscription(subscriptionOverrides) }
     },
     env
   });
+}
+
+test('active subscription scheduled to cancel keeps Standard access until period end', async () => {
+  const deps = dependencies();
+
+  const result = await sync(deps);
 
   assert.equal(result, 'synced');
   assert.equal(deps.profile.plan, 'standard');
@@ -109,4 +117,36 @@ test('active subscription scheduled to cancel keeps Standard access until period
     deps.profile.subscription_current_period_end,
     '2030-01-01T00:00:00.000Z'
   );
+});
+
+test('Stripe cancel_at matching current period end is treated as scheduled period-end cancellation', async () => {
+  const overrides = {
+    cancelAtPeriodEnd: false,
+    cancelAt: periodEnd
+  };
+  const deps = dependencies(overrides);
+
+  const result = await sync(deps, overrides);
+
+  assert.equal(result, 'synced');
+  assert.equal(deps.profile.plan, 'standard');
+  assert.equal(deps.profile.payment_status, 'active');
+  assert.equal(deps.profile.subscription_status, 'active');
+  assert.equal(deps.profile.subscription_cancel_at_period_end, true);
+});
+
+test('Stripe cancel_at beyond current period is not treated as current-period cancellation', async () => {
+  const overrides = {
+    cancelAtPeriodEnd: false,
+    cancelAt: periodEnd + 86400
+  };
+  const deps = dependencies(overrides);
+
+  const result = await sync(deps, overrides);
+
+  assert.equal(result, 'synced');
+  assert.equal(deps.profile.plan, 'standard');
+  assert.equal(deps.profile.payment_status, 'active');
+  assert.equal(deps.profile.subscription_status, 'active');
+  assert.equal(deps.profile.subscription_cancel_at_period_end, false);
 });
