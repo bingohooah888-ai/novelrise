@@ -58,6 +58,9 @@ jobs:
           checkout_code="$(curl --silent --show-error --output /tmp/checkout-response \
             --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
             "$BASE_URL/api/create-checkout-session")"
+          portal_code="$(curl --silent --show-error --output /tmp/portal-response \
+            --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
+            "$BASE_URL/api/create-billing-portal-session")"
           webhook_code="$(curl --silent --show-error --output /tmp/webhook-response \
             --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
             "$BASE_URL/api/stripe-webhook")"
@@ -66,6 +69,11 @@ jobs:
             401|405) ;;
             *) echo "Unexpected checkout GET status: $checkout_code"; exit 1 ;;
           esac
+
+          if [ "$portal_code" != '405' ]; then
+            echo "Unexpected billing portal GET status: $portal_code"
+            exit 1
+          fi
 
           if [ "$webhook_code" != '405' ]; then
             echo "Unexpected Stripe webhook GET status: $webhook_code"
