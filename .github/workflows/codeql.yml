@@ -3,14 +3,23 @@ name: CodeQL
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
+    paths: &codeql_paths
+      - '*.html'
+      - 'novelight-client.js'
+      - 'api/**/*.js'
+      - 'scripts/**/*.js'
+      - 'scripts/**/*.mjs'
+      - 'tests/**/*.js'
+      - 'tests/**/*.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tests/e2e/package.json'
+      - 'tests/e2e/package-lock.json'
+      - 'eslint.config.mjs'
+      - '.github/workflows/codeql.yml'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
+    paths: *codeql_paths
   schedule:
     - cron: '17 3 * * 1'
 
