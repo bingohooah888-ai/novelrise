@@ -15,6 +15,17 @@ const blockedWriteRpcs = new Set([
 ]);
 
 async function suppressKnownWrites(page) {
+  await page.route('**/rest/v1/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname.includes('/rpc/') || request.method() === 'GET') {
+      await route.continue();
+      return;
+    }
+
+    await route.abort('blockedbyclient');
+  });
+
   await page.route('**/rest/v1/rpc/**', async (route) => {
     const url = new URL(route.request().url());
     const rpcName = url.pathname.split('/').pop();
@@ -30,20 +41,11 @@ async function suppressKnownWrites(page) {
       body: 'null'
     });
   });
-
-  await page.route('**/rest/v1/**', async (route) => {
-    const request = route.request();
-    const url = new URL(request.url());
-    if (url.pathname.includes('/rpc/') || request.method() === 'GET') {
-      await route.continue();
-      return;
-    }
-
-    await route.abort('blockedbyclient');
-  });
 }
 
-test('staging target is HTTPS and not the production host', async ({ baseURL }) => {
+test('staging target is HTTPS and not the production host', async ({
+  baseURL
+}) => {
   const url = new URL(baseURL);
   expect(url.protocol).toBe('https:');
   expect(url.hostname).not.toBe(productionHost);
@@ -87,7 +89,9 @@ test('beta-critical public routes are deployed', async ({ request }) => {
   }
 });
 
-test('safe API contracts respond without state-changing requests', async ({ request }) => {
+test('safe API contracts respond without state-changing requests', async ({
+  request
+}) => {
   const checkout = await request.get('/api/create-checkout-session');
   expect([401, 405]).toContain(checkout.status());
 
@@ -98,12 +102,16 @@ test('safe API contracts respond without state-changing requests', async ({ requ
   expect(webhook.status()).toBe(405);
 });
 
-test('reader discovery flow renders while measurement writes are suppressed', async ({ page }) => {
+test('reader discovery flow renders while measurement writes are suppressed', async ({
+  page
+}) => {
   await suppressKnownWrites(page);
 
   await page.goto('/search.html', { waitUntil: 'domcontentloaded' });
   const resultCount = page.locator('#resultCount');
-  await expect(resultCount).not.toHaveText('読み込み中...', { timeout: 20_000 });
+  await expect(resultCount).not.toHaveText('読み込み中...', {
+    timeout: 20_000
+  });
   await expect(resultCount).not.toHaveText('読み込みエラー');
 
   const cards = page.locator('.novel-card');
@@ -121,7 +129,8 @@ test('reader discovery flow renders while measurement writes are suppressed', as
     await page.locator('#continueButton').click();
   }
 
-  await expect(page.locator('#novelHeader')).not.toContainText('読み込み中...', {
-    timeout: 20_000
-  });
+  await expect(page.locator('#novelHeader')).not.toContainText(
+    '読み込み中...',
+    { timeout: 20_000 }
+  );
 });
