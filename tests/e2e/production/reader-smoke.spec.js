@@ -31,29 +31,24 @@ async function suppressMeasurementWrites(page) {
   });
 }
 
-function novelIdFromHref(href) {
+function resourceIdFromHref(href) {
   return new URL(href, 'https://novelight.invalid').searchParams.get('id');
 }
 
 async function findPublishedEpisode(page, novelHrefs) {
   const novelIds = novelHrefs
     .slice(0, 24)
-    .map(novelIdFromHref)
+    .map(resourceIdFromHref)
     .filter(Boolean);
 
   expect(novelIds.length).toBeGreaterThan(0);
 
-  const scriptText = (await page.locator('script').allTextContents()).join(
-    '\n'
-  );
-  const configMatch = scriptText.match(
-    /supabase\.createClient\('([^']+)','([^']+)'\)/
-  );
+  const scripts = await page.locator('script').allTextContents();
+  const scriptText = scripts.join('\n');
+  const clientPattern = /supabase\.createClient\('([^']+)','([^']+)'\)/;
+  const configMatch = scriptText.match(clientPattern);
 
-  expect(
-    configMatch,
-    'search page should expose its public Supabase client configuration'
-  ).toBeTruthy();
+  expect(configMatch).toBeTruthy();
 
   const [, supabaseUrl, publishableKey] = configMatch;
   const response = await page.request.get(`${supabaseUrl}/rest/v1/episodes`, {
@@ -91,13 +86,10 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
   );
 
   const episode = await findPublishedEpisode(page, novelHrefs);
-  expect(
-    episode,
-    'at least one published search result should expose a published episode'
-  ).toBeTruthy();
+  expect(episode).toBeTruthy();
 
   const novelHref = novelHrefs.find(
-    (href) => novelIdFromHref(href) === String(episode.novel_id)
+    (href) => resourceIdFromHref(href) === String(episode.novel_id)
   );
   expect(novelHref).toBeTruthy();
 
@@ -113,24 +105,13 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     timeout: 20_000
   });
 
-  const episodeHref = await page.locator('.episode-title').evaluateAll(
-    (nodes, expectedEpisodeId) =>
-      nodes
-        .map((node) => node.getAttribute('href'))
-        .find(
-          (href) =>
-            href &&
-            new globalThis.URL(href, globalThis.location.href).searchParams.get(
-              'id'
-            ) === expectedEpisodeId
-        ) ?? null,
-    String(episode.id)
+  const episodeHrefs = await page.locator('.episode-title').evaluateAll(
+    (nodes) => nodes.map((node) => node.getAttribute('href')).filter(Boolean)
   );
-
-  expect(
-    episodeHref,
-    'selected episode should appear on its novel page'
-  ).toBeTruthy();
+  const episodeHref = episodeHrefs.find(
+    (href) => resourceIdFromHref(href) === String(episode.id)
+  );
+  expect(episodeHref).toBeTruthy();
 
   await page.goto(episodeHref, { waitUntil: 'domcontentloaded' });
 
