@@ -106,11 +106,13 @@ jobs:
             fi
           done < /tmp/changed-files.txt
 
-          echo "fast=$fast" >> "$GITHUB_OUTPUT"
-          echo "db=$db" >> "$GITHUB_OUTPUT"
-          echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
-          echo "audit=$audit" >> "$GITHUB_OUTPUT"
-          echo "workflow=$workflow" >> "$GITHUB_OUTPUT"
+          {
+            echo "fast=$fast"
+            echo "db=$db"
+            echo "e2e=$e2e"
+            echo "audit=$audit"
+            echo "workflow=$workflow"
+          } >> "$GITHUB_OUTPUT"
 
   preflight:
     name: Preflight
