@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+const search = await readFile('search.html', 'utf8');
+const analytics = await readFile('analytics.html', 'utf8');
+
+test('search drops stale async results', () => {
+  assert.match(search, /rows=await enrich\(rows\)/);
+  assert.match(search, /if\(current!==requestId\)return;render\(rows\)/);
+  assert.match(search, /if\(r\.error\)throw r\.error/);
+});
+
+test('analytics drops stale period results', () => {
+  assert.match(analytics, /funnelRequestId=0/);
+  assert.match(analytics, /if\(current!==funnelRequestId\)return/);
+  assert.match(analytics, /clearFunnel\('取得できませんでした'\)/);
+  assert.match(analytics, /基本分析を読み込めませんでした/);
+});
