@@ -6,10 +6,12 @@
     "format": "prettier --write \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
     "format:check": "prettier --check \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
     "syntax:check": "node scripts/check-js-syntax.mjs",
-    "preflight": "npm run format:check && npm run lint && npm test && npm run syntax:check && git diff --check",
+    "preflight": "npm run preflight:fast",
+    "preflight:fast": "npm run format:check && npm run lint && npm test && npm run syntax:check && git diff --check",
+    "preflight:fix": "npm run format && npm run lint && npm test && npm run syntax:check && git diff --check",
     "preflight:db": "bash scripts/run-rls-integration.sh",
     "preflight:e2e": "npm --prefix tests/e2e test",
-    "preflight:full": "npm run preflight && npm run preflight:db && npm run preflight:e2e"
+    "preflight:full": "npm run preflight:fast && npm run preflight:db && npm run preflight:e2e"
   },
   "engines": {
     "node": "24.x"
