@@ -6,11 +6,13 @@ async function installSupabaseStub(page, overrides = {}) {
     window.__NOVELIGHT_E2E_CALLS__ = [];
   }, overrides);
 
-  await page.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/javascript',
-      body: `
+  await page.route(
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/javascript',
+        body: `
         (() => {
           const state = window.__NOVELIGHT_E2E_STATE__ || {};
           const calls = window.__NOVELIGHT_E2E_CALLS__ || [];
@@ -114,8 +116,9 @@ async function installSupabaseStub(page, overrides = {}) {
           window.supabase = { createClient: () => client };
         })();
       `
-    });
-  });
+      });
+    }
+  );
 }
 
 function collectPageErrors(page) {
@@ -124,7 +127,9 @@ function collectPageErrors(page) {
   return errors;
 }
 
-test('home discovery leaves the loading state after async data resolves', async ({ page }) => {
+test('home discovery leaves the loading state after async data resolves', async ({
+  page
+}) => {
   await installSupabaseStub(page, {
     rpcDelayMs: 80,
     rpcData: {
@@ -161,7 +166,10 @@ test('login prevents duplicate submission while pending and recovers after an er
   await expect(page.locator('#loginButton')).toBeEnabled();
 
   const signInCalls = await page.evaluate(
-    () => window.__NOVELIGHT_E2E_CALLS__.filter((call) => call.type === 'signInWithPassword').length
+    () =>
+      window.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'signInWithPassword'
+      ).length
   );
   expect(signInCalls).toBe(1);
   expect(pageErrors).toEqual([]);
@@ -187,7 +195,10 @@ test('signup exposes loading state and restores the form after async completion'
   await expect(page.locator('#signupButton')).toBeEnabled();
 
   const signUpCalls = await page.evaluate(
-    () => window.__NOVELIGHT_E2E_CALLS__.filter((call) => call.type === 'signUp').length
+    () =>
+      window.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'signUp'
+      ).length
   );
   expect(signUpCalls).toBe(1);
   expect(pageErrors).toEqual([]);
@@ -212,10 +223,15 @@ test('novel posting validates synchronously and recovers from an async save fail
   await page.locator('#policyAck').check();
 
   await page.locator('#submitButton').click();
-  await expect(page.locator('#status')).toHaveText('成熟したテーマには内容警告を1つ以上設定してください。');
+  await expect(page.locator('#status')).toHaveText(
+    '成熟したテーマには内容警告を1つ以上設定してください。'
+  );
 
   const insertsBeforeWarning = await page.evaluate(
-    () => window.__NOVELIGHT_E2E_CALLS__.filter((call) => call.type === 'insert').length
+    () =>
+      window.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'insert'
+      ).length
   );
   expect(insertsBeforeWarning).toBe(0);
 
@@ -228,7 +244,10 @@ test('novel posting validates synchronously and recovers from an async save fail
   await expect(page.locator('#submitButton')).toBeEnabled();
 
   const insertsAfterWarning = await page.evaluate(
-    () => window.__NOVELIGHT_E2E_CALLS__.filter((call) => call.type === 'insert').length
+    () =>
+      window.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'insert'
+      ).length
   );
   expect(insertsAfterWarning).toBe(1);
   expect(pageErrors).toEqual([]);
