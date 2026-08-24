@@ -1,0 +1,128 @@
+name: NOVELIGHT Staging Readiness Smoke
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      staging_url:
+        description: 'HTTPS Vercel Preview/Staging URL'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-readiness-${{ github.event.deployment.id || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Verify read-only staging surface
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment != 'Production' &&
+       github.event.deployment.environment != 'production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MANUAL_STAGING_URL: ${{ inputs.staging_url }}
+      DEPLOYMENT_ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
+      DEPLOYMENT_TARGET_URL: ${{ github.event.deployment_status.target_url }}
+
+    steps:
+      - name: Checkout deployed revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.deployment.sha || github.sha }}
+
+      - name: Resolve and validate staging URL
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          url="$MANUAL_STAGING_URL"
+          if [ -z "$url" ]; then
+            url="$DEPLOYMENT_ENVIRONMENT_URL"
+          fi
+          if [ -z "$url" ]; then
+            url="$DEPLOYMENT_TARGET_URL"
+          fi
+
+          case "$url" in
+            https://*) ;;
+            *)
+              echo 'Staging smoke requires an HTTPS Preview/Staging URL.'
+              exit 1
+              ;;
+          esac
+
+          host="${url#https://}"
+          host="${host%%/*}"
+          host="${host%%\?*}"
+          host="${host%%#*}"
+          host="${host%%:*}"
+
+          if [ "$host" = 'novelrise.vercel.app' ]; then
+            echo 'Refusing to run the staging workflow against the production host.'
+            exit 1
+          fi
+
+          printf 'STAGING_BASE_URL=%s\n' "${url%/}" >> "$GITHUB_ENV"
+          echo "Validated staging target host: $host"
+
+      - name: Verify preview matches the checked-out revision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          matched=false
+          for attempt in $(seq 1 18); do
+            if curl --fail --silent --show-error --location \
+              --connect-timeout 10 --max-time 20 \
+              "$STAGING_BASE_URL/index.html" > /tmp/staging-index.html; then
+              if cmp -s index.html /tmp/staging-index.html; then
+                matched=true
+                break
+              fi
+            fi
+            echo "Staging index has not converged to the checked-out revision (attempt ${attempt}/18)."
+            sleep 5
+          done
+
+          if [ "$matched" != true ]; then
+            echo 'Staging deployment does not match the checked-out revision.'
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install browser test dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run read-only staging smoke
+        working-directory: tests/e2e
+        run: npm run test:staging
+
+      - name: Upload staging failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tests/e2e/staging-playwright-report
+            tests/e2e/staging-test-results
+          if-no-files-found: warn
+          retention-days: 14

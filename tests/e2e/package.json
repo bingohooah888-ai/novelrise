@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:staging": "playwright test --config=playwright.staging.config.mjs"
   },
   "engines": {
     "node": "24.x"
