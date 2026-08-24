@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/diagnostic-test.js';
 
 async function installSupabaseStub(page, overrides = {}) {
   await page.addInitScript((state) => {
