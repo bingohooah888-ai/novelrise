@@ -269,6 +269,29 @@ jobs:
         working-directory: tests/e2e
         run: npm test
 
+      - name: Summarize Playwright failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '## Browser E2E failure diagnostics'
+            echo ''
+            echo 'Playwright trace, screenshots, video, HTML report, and raw test output are attached to this run.'
+            echo ''
+            echo '### Failure files'
+          } >> "$GITHUB_STEP_SUMMARY"
+          find tests/e2e/test-results -maxdepth 3 -type f -printf '%p (%k KB)\n' 2>/dev/null | sort | tee /tmp/e2e-failure-files.txt
+          if [ -s /tmp/e2e-failure-files.txt ]; then
+            {
+              echo '```text'
+              cat /tmp/e2e-failure-files.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No files were found under tests/e2e/test-results.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload Playwright failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
