@@ -43,7 +43,9 @@ async function findPublishedEpisode(page, novelHrefs) {
 
   expect(novelIds.length).toBeGreaterThan(0);
 
-  const scriptText = (await page.locator('script').allTextContents()).join('\n');
+  const scriptText = (await page.locator('script').allTextContents()).join(
+    '\n'
+  );
   const configMatch = scriptText.match(
     /supabase\.createClient\('([^']+)','([^']+)'\)/
   );
@@ -125,7 +127,10 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     String(episode.id)
   );
 
-  expect(episodeHref, 'selected episode should appear on its novel page').toBeTruthy();
+  expect(
+    episodeHref,
+    'selected episode should appear on its novel page'
+  ).toBeTruthy();
 
   await page.goto(episodeHref, { waitUntil: 'domcontentloaded' });
 
