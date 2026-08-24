@@ -1,9 +1,8 @@
 name: Temporary MASTER chat continuation gate update
 
 on:
-  push:
-    branches:
-      - docs/chat-continuation-gate
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
@@ -14,9 +13,10 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Checkout branch
+      - name: Checkout PR branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.head_ref }}
           persist-credentials: true
           fetch-depth: 0
 
