@@ -46,7 +46,8 @@ export default defineConfig({
       name: 'staging-desktop-chromium',
       use: {
         ...devices['Desktop Chrome'],
-        browserName: 'chromium'
+        browserName: 'chromium',
+        ...(process.env.CI ? { channel: 'chrome' } : {})
       }
     }
   ]
