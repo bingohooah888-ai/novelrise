@@ -7,10 +7,7 @@ const reporters = process.env.CI
       ['list'],
       ['html', { outputFolder: 'playwright-report', open: 'never' }]
     ]
-  : [
-      ['list'],
-      ['html', { outputFolder: 'playwright-report', open: 'never' }]
-    ];
+  : [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]];
 
 export default defineConfig({
   testDir: './specs',
