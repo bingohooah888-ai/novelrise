@@ -147,12 +147,12 @@ jobs:
           }
           node scripts/check-merge-readiness.mjs
 
-  preflight:
-    name: Preflight
+  static-quality:
+    name: Static quality
     needs: changes
     if: needs.changes.outputs.fast == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
 
     steps:
       - name: Checkout repository
@@ -169,12 +169,46 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Run non-mutating preflight
-        run: npm run preflight
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check JavaScript syntax
+        run: npm run syntax:check
+
+      - name: Check whitespace errors
+        run: git diff --check
 
       - name: Check shell script syntax
         shell: bash
         run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r bash -n
+
+  node-tests:
+    name: Node tests
+    needs: changes
+    if: needs.changes.outputs.fast == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run Node test suite
+        run: npm test
 
   workflow-lint:
     name: GitHub Actions semantic lint
@@ -238,11 +272,19 @@ jobs:
         run: bash scripts/run-rls-integration.sh
 
   browser:
-    name: Browser E2E
+    name: Browser E2E (${{ matrix.name }})
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: smoke
+            spec: specs/smoke.spec.js
+          - name: async-ui
+            spec: specs/async-ui.spec.js
 
     steps:
       - name: Checkout repository
@@ -265,17 +307,19 @@ jobs:
         working-directory: tests/e2e
         run: npx playwright install ffmpeg
 
-      - name: Run browser smoke and async UI tests with runner Chrome
+      - name: Run ${{ matrix.name }} browser tests with runner Chrome
         working-directory: tests/e2e
-        run: npm test
+        run: npx playwright test "${{ matrix.spec }}"
 
       - name: Summarize Playwright failure diagnostics
         if: failure()
         shell: bash
+        env:
+          E2E_SUITE: ${{ matrix.name }}
         run: |
           set +e
           {
-            echo '## Browser E2E failure diagnostics'
+            echo "## Browser E2E failure diagnostics: $E2E_SUITE"
             echo ''
             echo 'Playwright trace, screenshots, video, HTML report, and raw test output are attached to this run.'
             echo ''
@@ -296,7 +340,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          name: playwright-failure-${{ matrix.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             tests/e2e/playwright-report
             tests/e2e/test-results
@@ -338,7 +382,8 @@ jobs:
     needs:
       - changes
       - merge-readiness
-      - preflight
+      - static-quality
+      - node-tests
       - workflow-lint
       - rls
       - browser
@@ -351,7 +396,8 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           MERGE_READINESS_RESULT: ${{ needs.merge-readiness.result }}
-          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          STATIC_QUALITY_RESULT: ${{ needs.static-quality.result }}
+          NODE_TESTS_RESULT: ${{ needs.node-tests.result }}
           WORKFLOW_LINT_RESULT: ${{ needs.workflow-lint.result }}
           RLS_RESULT: ${{ needs.rls.result }}
           BROWSER_RESULT: ${{ needs.browser.result }}
@@ -374,7 +420,8 @@ jobs:
 
           check_result changes "$CHANGES_RESULT"
           check_result merge-readiness "$MERGE_READINESS_RESULT"
-          check_result preflight "$PREFLIGHT_RESULT"
+          check_result static-quality "$STATIC_QUALITY_RESULT"
+          check_result node-tests "$NODE_TESTS_RESULT"
           check_result workflow-lint "$WORKFLOW_LINT_RESULT"
           check_result rls "$RLS_RESULT"
           check_result browser "$BROWSER_RESULT"
