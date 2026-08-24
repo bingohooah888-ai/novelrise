@@ -18,7 +18,7 @@ on:
       - 'eslint.config.mjs'
       - 'AGENTS.md'
       - 'docs/NOVELIGHT-MASTER.md'
-      - '.github/workflows/codeql.yml'
+      - '.github/workflows/*.yml'
   pull_request:
     branches: [main]
     paths: *codeql_paths
