@@ -8,6 +8,9 @@ on:
       - 'novelight-client.js'
       - 'api/**'
       - 'supabase/checks/production_beta_observability.sql'
+      - 'scripts/verify-production-static.sh'
+      - 'scripts/verify-production-observability.sh'
+      - 'scripts/publish-commit-status.sh'
       - 'tests/e2e/production/**'
       - 'tests/e2e/playwright.production.config.mjs'
       - 'tests/e2e/package.json'
@@ -23,7 +26,7 @@ permissions:
 
 concurrency:
   group: novelight-production-readiness-smoke
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   smoke:
@@ -34,81 +37,18 @@ jobs:
       BASE_URL: https://novelrise.vercel.app
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+      STATIC_CHECK_MODE: ${{ github.event_name == 'push' && 'changed' || 'all' }}
+      BASE_SHA: ${{ github.event.before }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
-      - name: Wait for production deployment
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          matched=false
-          for attempt in $(seq 1 24); do
-            if curl --fail --silent --show-error --location \
-              --connect-timeout 10 --max-time 20 \
-              "$BASE_URL/index.html" > /tmp/live-index.html; then
-              if cmp -s index.html /tmp/live-index.html; then
-                matched=true
-                break
-              fi
-            fi
-            echo "Production has not matched the checked-out index.html yet (attempt ${attempt}/24)."
-            sleep 10
-          done
-
-          if [ "$matched" != true ]; then
-            echo 'Production deployment did not converge to the checked-out public index within 4 minutes.'
-            exit 1
-          fi
-
-      - name: Verify production static routes exactly match repository
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          routes=(
-            index.html
-            search.html
-            pricing.html
-            signup.html
-            login.html
-            forgot-password.html
-            reset-password.html
-            novel.html
-            episode.html
-            post.html
-            episode-post.html
-            favorites.html
-            scout-record.html
-            analytics.html
-            mypage.html
-            terms.html
-            privacy.html
-            content-guidelines.html
-            billing-policy.html
-            commerce-disclosure.html
-            contact.html
-          )
-
-          for route in "${routes[@]}"; do
-            target="/tmp/live-${route}"
-            curl --fail --silent --show-error --location \
-              --connect-timeout 10 --max-time 20 \
-              "$BASE_URL/$route" > "$target"
-            if ! cmp -s "$route" "$target"; then
-              echo "Production route differs from repository: $route"
-              exit 1
-            fi
-          done
-
-          if grep -Eqi 'NovelRise|NOVELRISE' /tmp/live-*.html; then
-            echo 'Legacy user-facing NovelRise branding found in production HTML.'
-            exit 1
-          fi
+      - name: Verify production static routes
+        run: bash scripts/verify-production-static.sh
 
       - name: Verify safe API route contracts
         shell: bash
@@ -133,7 +73,7 @@ jobs:
           fi
 
       - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.1.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
           cache: npm
@@ -143,10 +83,6 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
-      - name: Install Chromium for production smoke
-        working-directory: tests/e2e
-        run: npx playwright install --with-deps chromium
-
       - name: Run read-only production reader smoke
         working-directory: tests/e2e
         env:
@@ -155,35 +91,7 @@ jobs:
 
       - name: Verify production beta observability
         id: observability
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
-            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
-            exit 1
-          fi
-
-          jq -Rs '{query: .}' \
-            supabase/checks/production_beta_observability.sql \
-            > /tmp/production-beta-query.json
-
-          curl --fail-with-body --silent --show-error \
-            --request POST \
-            --url "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/database/query/read-only" \
-            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-            --header 'Content-Type: application/json' \
-            --data-binary @/tmp/production-beta-query.json \
-            > /tmp/production-beta-result.json
-
-          jq -e '
-            (if type == "array" then .[0]
-             elif (.result? | type) == "array" then .result[0]
-             else . end)
-            | .ok == true
-          ' /tmp/production-beta-result.json >/dev/null
-
-          echo 'Production beta observability checks passed.'
+        run: bash scripts/verify-production-observability.sh
 
       - name: Publish production readiness status
         if: always()
@@ -192,26 +100,10 @@ jobs:
           JOB_STATUS: ${{ job.status }}
         shell: bash
         run: |
-          set -euo pipefail
-
           state=failure
           description='Production readiness smoke failed'
           if [ "$JOB_STATUS" = 'success' ]; then
             state=success
             description='Production readiness smoke passed'
           fi
-
-          jq -n \
-            --arg state "$state" \
-            --arg description "$description" \
-            '{state: $state, context: "production-readiness-smoke", description: $description}' \
-            > /tmp/readiness-status.json
-
-          curl --fail-with-body --silent --show-error \
-            --request POST \
-            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            --header "Authorization: Bearer ${GH_STATUS_TOKEN}" \
-            --header 'Accept: application/vnd.github+json' \
-            --header 'X-GitHub-Api-Version: 2022-11-28' \
-            --data-binary @/tmp/readiness-status.json \
-            >/dev/null
+          bash scripts/publish-commit-status.sh "$state" production-readiness-smoke "$description"
