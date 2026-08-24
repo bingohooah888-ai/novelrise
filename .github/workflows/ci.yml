@@ -309,58 +309,6 @@ jobs:
         working-directory: tests/e2e
         run: npm audit --audit-level=high
 
-  temporary-master-patch:
-    name: Temporary MASTER chat gate patch
-    if: github.head_ref == 'docs/chat-continuation-gate'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.head_ref }}
-          persist-credentials: true
-          fetch-depth: 0
-
-      - name: Patch MASTER and push branch
-        env:
-          ANCHOR_B64: Tk9WRUxJR0hU44Gu5L2c5qWt44OB44Oj44OD44OI44GM6ZW344GP44Gq44KK44CB5b+c562U6YCf5bqm44CB5Y+C54Wn5Yq5546H44CB5L2c5qWt57K+5bqm44CB5pON5L2c44Gu5YiG44GL44KK44KE44GZ44GV562J44GM5L2O5LiL44GZ44KL5Y+v6IO95oCn44GM44GC44KL5aC05ZCI44CBQ2hhdEdQVOOBr+ODpuODvOOCtuODvOOBi+OCieiBnuOBi+OCjOOCi+OBvuOBp+W+heOBn+OBmuOAgeOCreODquOBruiJr+OBhOW3peeoi+OBp+aWsOOBl+OBhOODgeODo+ODg+ODiOOBuOOBruWIh+abv+OCkuaPkOahiOOBmeOCi+OAggoK
-          ADDITION_B64: 44OB44Oj44OD44OI57aZ57aa5Yik5a6a44Ky44O844OICgpOT1ZFTElHSFTjga7kuLvopoHlt6XnqIvjgYzlrozkuobjgZfjgZ/mmYLngrnjgafjgIFDaGF0R1BU44Gv5b+F44Ga44CM54++5Zyo44Gu44OB44Oj44OD44OI44KS57aZ57aa44GZ44KL44GL44CB5paw44GX44GE44OB44Oj44OD44OI44G45YiH44KK5pu/44GI44KL44GL44CN44KS5Yik5a6a44GZ44KL44CC44Om44O844K244O844GL44KJ5YiH5pu/5pmC5pyf44KS6LOq5ZWP44GV44KM44KL44G+44Gn44CB44GT44Gu5Yik5a6a44KS5YWI6YCB44KK44GX44Gq44GE44CCCgrnibnjgavjgIFQUuOBrm1lcmdl5a6M5LqG44CB5aSn6KaP5qih44OG44K544OI44O7RTJF44Gu5a6M5LqG44CBTUFTVEVS5pu05paw5a6M5LqG44CB5b6p5pen5L2c5qWt44Gu5a6M5LqG44CBMeOBpOOBrumWi+eZuuODu+S8geeUu+ODu+WItuS9nOODhuODvOODnuOBruWujOS6huetieOAgeaYjueiuuOBquWMuuWIh+OCiuOBp+OBr+ODgeODo+ODg+ODiOe2mee2muWIpOWumuOCkuecgeeVpeOBl+OBquOBhOOAggoK5Yik5a6a5pmC44Gv44CB44OB44Oj44OD44OI44Gu6ZW344GV44Gg44GR44Gn44Gq44GP44CB5Y+C54Wn5a++6LGh44Go44Gq44KLUFLjg7tXb3JrZmxvdyBSdW7jg7vjg5bjg6njg7Pjg4Hjg7vmsbrlrprkuovpoIXjga7lopfliqDjgIHopIfmlbDjg4bjg7zjg57jga7mt7flnKjjgIHkv67mraPjgoTlho3oqabooYzjga7ok4TnqY3jgIHlv5znrZTpgJ/luqbjg7vlj4Lnhaflirnnjofjg7vkvZzmpa3nsr7luqbjg7vmk43kvZzjga7liIbjgYvjgorjgoTjgZnjgZXjgbjjga7lvbHpn7/jgpLnt4/lkIjjgZfjgabliKTmlq3jgZnjgovjgIIKCuODgeODo+ODg+ODiOWIh+abv+OBjOacieWIqeOBqOWIpOaWreOBl+OBn+WgtOWQiOOBr+OAgeasoeOBruS4u+imgeS9nOalreOBuOmAsuOCgOWJjeOBq0NoYXRHUFTlgbTjgYvjgonliIfmm7/jgpLmj5DmoYjjgZnjgovjgILjgZ3jga7pmpvjga/jgIHnj77lnKjjga7lt6XnqIvjgYzlronlhajjgavlrozkuobjgZfjgabjgYTjgovjgZPjgajjgpLmmI7npLrjgZfjgIHmrKHjg4Hjg6Pjg4Pjg4jjgbjjgZ3jga7jgb7jgb7osrzjgorku5jjgZHjgonjgozjgovlvJXjgY3ntpnjgY7mjIfnpLrmlofjgpLlkIzmmYLjgavmj5DnpLrjgZnjgovjgIIKCuePvuWcqOOBruODgeODo+ODg+ODiOOCkue2mee2muOBl+OBn+aWueOBjOaWh+iEiOS/neaMgeODu+S9nOalreWKueeOh+S4iuacieWIqeOBquWgtOWQiOOBr+OAgeOBneOBruOBvuOBvue2mee2muOBl+OBpuOCiOOBhOOAguOBn+OBoOOBl+OAjOWIpOWumuOBneOBruOCguOBruOAjeOCkuecgeeVpeOBl+OBpuOBr+OBquOCieOBquOBhOOAggoK5Li76KaB5bel56iL44Gu5a6M5LqG5aCx5ZGK44Gn44Gv44CB5Y6f5YmH44Go44GX44Gm44CM5a6M5LqG44GX44Gf5YaF5a6544CN44CM5qyh44Gr6KGM44GG5L2c5qWt44CN44CM44OB44Oj44OD44OI57aZ57aa5Yik5a6a44CN44KS5LiA6YCj44Gu57WC5LqG56K66KqN44Go44GX44Gm5omx44GG44CC5YiH5pu/5o6o5aWo44Gu5aC05ZCI44Gv5b+F44Ga44Om44O844K244O844GL44KJ6IGe44GL44KM44KL5YmN44Gr5Lyd44GI44KL44CCCgo=
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import base64
-          import os
-          from pathlib import Path
-
-          path = Path('docs/NOVELIGHT-MASTER.md')
-          text = path.read_text(encoding='utf-8')
-          marker = 'チャット継続判定ゲート'
-          if marker in text:
-              print('Chat continuation decision gate is already present.')
-              raise SystemExit(0)
-          anchor = base64.b64decode(os.environ['ANCHOR_B64']).decode('utf-8')
-          addition = base64.b64decode(os.environ['ADDITION_B64']).decode('utf-8')
-          if text.count(anchor) != 1:
-              raise SystemExit('Expected chat-switch anchor exactly once; refusing to modify MASTER.')
-          path.write_text(text.replace(anchor, anchor + addition, 1), encoding='utf-8')
-          PY
-
-          git diff --check
-          if git diff --quiet -- docs/NOVELIGHT-MASTER.md; then
-            echo 'No MASTER change required.'
-            exit 0
-          fi
-          git config user.name 'NOVELIGHT Automation'
-          git config user.email 'actions@users.noreply.github.com'
-          git add docs/NOVELIGHT-MASTER.md
-          git commit -m 'Add chat continuation decision gate'
-          git push origin HEAD:docs/chat-continuation-gate
-
   check:
     name: check
     if: always()
