@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const fixturePath = process.env.STRIPE_SANDBOX_FIXTURE;
-const completionUrl = /example\.com\/novelight-billing-e2e-canceled/;
 
 if (!fixturePath) throw new Error('STRIPE_SANDBOX_FIXTURE is required.');
 
@@ -14,7 +13,9 @@ async function waitForVisibleAction(page, candidates, timeout = 30_000) {
   const deadline = Date.now() + timeout;
 
   while (Date.now() < deadline) {
-    if (completionUrl.test(page.url())) return null;
+    if (/example\.com\/novelight-billing-e2e-canceled/.test(page.url())) {
+      return null;
+    }
 
     for (const candidate of candidates) {
       const locator = page
@@ -49,16 +50,19 @@ test('Stripe Customer Portal schedules cancellation at period end', async ({
   ];
 
   for (let step = 0; step < 5; step += 1) {
-    if (completionUrl.test(page.url())) break;
+    if (/example\.com\/novelight-billing-e2e-canceled/.test(page.url())) {
+      break;
+    }
 
     const action = await waitForVisibleAction(
       page,
       candidates,
       step === 0 ? 30_000 : 15_000
     );
-
     if (!action) {
-      if (completionUrl.test(page.url())) break;
+      if (/example\.com\/novelight-billing-e2e-canceled/.test(page.url())) {
+        break;
+      }
 
       const bodyText = (await page.locator('body').innerText()).slice(0, 2500);
       throw new Error(
@@ -70,11 +74,15 @@ test('Stripe Customer Portal schedules cancellation at period end', async ({
 
     await Promise.race([
       page
-        .waitForURL(completionUrl, { timeout: 10_000 })
+        .waitForURL(/example\.com\/novelight-billing-e2e-canceled/, {
+          timeout: 10_000
+        })
         .catch(() => null),
       page.waitForTimeout(750)
     ]);
   }
 
-  await page.waitForURL(completionUrl, { timeout: 60_000 });
+  await page.waitForURL(/example\.com\/novelight-billing-e2e-canceled/, {
+    timeout: 60_000
+  });
 });
