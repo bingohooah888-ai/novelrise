@@ -105,9 +105,11 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     timeout: 20_000
   });
 
-  const episodeHrefs = await page.locator('.episode-title').evaluateAll(
-    (nodes) => nodes.map((node) => node.getAttribute('href')).filter(Boolean)
-  );
+  const episodeHrefs = await page
+    .locator('.episode-title')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('href')).filter(Boolean)
+    );
   const episodeHref = episodeHrefs.find(
     (href) => resourceIdFromHref(href) === String(episode.id)
   );
