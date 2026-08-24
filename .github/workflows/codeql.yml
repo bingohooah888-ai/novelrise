@@ -16,6 +16,7 @@ on:
       - 'tests/e2e/package.json'
       - 'tests/e2e/package-lock.json'
       - 'eslint.config.mjs'
+      - 'AGENTS.md'
       - '.github/workflows/codeql.yml'
   pull_request:
     branches: [main]
