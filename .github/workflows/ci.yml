@@ -114,6 +114,39 @@ jobs:
             echo "workflow=$workflow"
           } >> "$GITHUB_OUTPUT"
 
+  merge-readiness:
+    name: Merge readiness preflight
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Verify current base and merge-readiness contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GITHUB_BASE_REF:-}" || {
+            echo 'GITHUB_BASE_REF is unavailable for this pull request.'
+            exit 1
+          }
+          git fetch --no-tags origin "${GITHUB_BASE_REF}:refs/remotes/origin/${GITHUB_BASE_REF}"
+          git merge-base --is-ancestor "origin/${GITHUB_BASE_REF}" HEAD || {
+            echo "Pull request merge ref does not contain current origin/${GITHUB_BASE_REF}."
+            exit 1
+          }
+          node scripts/check-merge-readiness.mjs
+
   preflight:
     name: Preflight
     needs: changes
@@ -279,7 +312,7 @@ jobs:
   check:
     name: check
     if: always()
-    needs: [changes, preflight, workflow-lint, rls, browser, dependency-audit]
+    needs: [changes, merge-readiness, preflight, workflow-lint, rls, browser, dependency-audit]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -287,6 +320,7 @@ jobs:
       - name: Verify required gates
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
+          MERGE_READINESS_RESULT: ${{ needs.merge-readiness.result }}
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
           WORKFLOW_LINT_RESULT: ${{ needs.workflow-lint.result }}
           RLS_RESULT: ${{ needs.rls.result }}
@@ -309,6 +343,7 @@ jobs:
           }
 
           check_result changes "$CHANGES_RESULT"
+          check_result merge-readiness "$MERGE_READINESS_RESULT"
           check_result preflight "$PREFLIGHT_RESULT"
           check_result workflow-lint "$WORKFLOW_LINT_RESULT"
           check_result rls "$RLS_RESULT"
