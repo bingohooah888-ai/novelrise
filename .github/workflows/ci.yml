@@ -187,6 +187,10 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
+      - name: Install Playwright ffmpeg for failure video
+        working-directory: tests/e2e
+        run: npx playwright install ffmpeg
+
       - name: Run browser smoke and async UI tests with runner Chrome
         working-directory: tests/e2e
         run: npm test
