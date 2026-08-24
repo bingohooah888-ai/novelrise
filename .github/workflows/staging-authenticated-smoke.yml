@@ -1,0 +1,139 @@
+name: NOVELIGHT Staging Authenticated Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'login.html'
+      - 'post.html'
+      - 'episode-post.html'
+      - 'novel.html'
+      - 'episode.html'
+      - 'scout-record.html'
+      - 'analytics.html'
+      - 'novelight-client.js'
+      - 'api/**'
+      - 'scripts/production-auth-smoke-fixture.mjs'
+      - 'tests/e2e/production-auth/**'
+      - 'tests/e2e/playwright.production-auth.config.mjs'
+      - '.github/workflows/staging-authenticated-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-staging-authenticated-smoke
+  cancel-in-progress: false
+
+jobs:
+  authenticated-smoke:
+    if: vars.STAGING_E2E_READY == 'true'
+    name: Verify authenticated beta-critical staging flows
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      E2E_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+      SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      PRODUCTION_AUTH_SMOKE_FIXTURE: /tmp/novelight-staging-auth-smoke.json
+      AUTH_SMOKE_LABEL: ステージング認証スモーク
+      CHECKOUT_SESSION_PREFIX: cs_test_
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify staging configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$E2E_BASE_URL" || {
+            echo 'STAGING_BASE_URL is not configured.'
+            exit 1
+          }
+          test -n "$SUPABASE_URL" || {
+            echo 'STAGING_SUPABASE_URL is not configured.'
+            exit 1
+          }
+          test -n "$SUPABASE_SECRET_KEY" || {
+            echo 'STAGING_SUPABASE_SECRET_KEY is not configured.'
+            exit 1
+          }
+
+      - name: Wait for staging critical pages to match the checked-out revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          routes=(
+            login.html
+            post.html
+            episode-post.html
+            novel.html
+            episode.html
+            scout-record.html
+            analytics.html
+            novelight-client.js
+          )
+
+          matched=false
+          for attempt in $(seq 1 24); do
+            matched=true
+            for route in "${routes[@]}"; do
+              target="/tmp/staging-${route//\//-}"
+              if ! curl --fail --silent --show-error --location \
+                --connect-timeout 10 --max-time 20 \
+                "$E2E_BASE_URL/$route" > "$target"; then
+                matched=false
+                break
+              fi
+              if ! cmp -s "$route" "$target"; then
+                matched=false
+                break
+              fi
+            done
+
+            if [ "$matched" = true ]; then
+              break
+            fi
+            echo "Staging has not converged to the checked-out revision yet (attempt ${attempt}/24)."
+            sleep 10
+          done
+
+          if [ "$matched" != true ]; then
+            echo 'Staging did not converge to the checked-out revision within 4 minutes.'
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/e2e/package-lock.json
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install browser smoke dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Create ephemeral staging smoke users
+        run: node scripts/production-auth-smoke-fixture.mjs setup
+
+      - name: Run authenticated staging smoke with Stripe test mode
+        working-directory: tests/e2e
+        run: npx playwright test --config=playwright.production-auth.config.mjs
+
+      - name: Clean ephemeral staging smoke data
+        if: always()
+        run: node scripts/production-auth-smoke-fixture.mjs cleanup
+
+      - name: Remove temporary staging fixture
+        if: always()
+        run: rm -f "$PRODUCTION_AUTH_SMOKE_FIXTURE"
