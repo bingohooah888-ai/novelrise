@@ -6,7 +6,7 @@
     "format": "prettier --write \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
     "format:check": "prettier --check \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
     "syntax:check": "node --input-type=module --check < api/create-checkout-session.js && node --input-type=module --check < api/create-billing-portal-session.js && node --input-type=module --check < api/stripe-webhook.js && node --check scripts/stripe-production-bootstrap.mjs && node --check scripts/production-auth-smoke-fixture.mjs",
-    "preflight": "npm run format && git diff --exit-code && npm run lint && npm test && npm run syntax:check && git diff --check"
+    "preflight": "npm run format:check && npm run lint && npm test && npm run syntax:check && git diff --check"
   },
   "engines": {
     "node": "24.x"
