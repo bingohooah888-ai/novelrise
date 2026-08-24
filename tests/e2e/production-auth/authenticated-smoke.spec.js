@@ -213,13 +213,10 @@ test('authenticated beta-critical product flow works in production', async ({
       await expect(authorPage.locator('#favoriteTotal')).toHaveText('1');
     });
 
-    await test.step(
-      'Verify live Stripe Checkout session creation without charging',
-      async () => {
-        await assertLiveCheckoutSession(authorPage, 'standard');
-        await assertLiveCheckoutSession(authorPage, 'premium');
-      }
-    );
+    await test.step('Verify live Stripe Checkout session creation without charging', async () => {
+      await assertLiveCheckoutSession(authorPage, 'standard');
+      await assertLiveCheckoutSession(authorPage, 'premium');
+    });
   } finally {
     await closeContextSafely(authorContext);
     await closeContextSafely(readerContext);
