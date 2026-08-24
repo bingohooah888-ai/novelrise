@@ -2,10 +2,18 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+const home = await readFile('index.html', 'utf8');
 const search = await readFile('search.html', 'utf8');
 const analytics = await readFile('analytics.html', 'utf8');
 const episode = await readFile('episode.html', 'utf8');
 const mypage = await readFile('mypage.html', 'utf8');
+
+test('home discovery is independent of attribution and impression telemetry', () => {
+  assert.match(home, /void NovelightClient\.claimAcquisition\(client\)/);
+  assert.match(home, /void record\('home_discovery'/);
+  assert.match(home, /作品を読み込めませんでした。時間をおいて再度お試しください。/);
+  assert.match(home, /catch\(e\)\{console\.error\('impression record failed'/);
+});
 
 test('search drops stale async results', () => {
   assert.match(search, /rows=await enrich\(rows\)/);
