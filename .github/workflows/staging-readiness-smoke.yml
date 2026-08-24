@@ -116,6 +116,29 @@ jobs:
         working-directory: tests/e2e
         run: npm run test:staging
 
+      - name: Summarize staging failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '## Read-only staging smoke failure diagnostics'
+            echo ''
+            echo 'Playwright trace, screenshots, video, HTML report, and raw test results are attached when available.'
+            echo ''
+            echo '### Failure files'
+          } >> "$GITHUB_STEP_SUMMARY"
+          find tests/e2e/staging-test-results -maxdepth 3 -type f -printf '%p (%k KB)\n' 2>/dev/null | sort | tee /tmp/staging-failure-files.txt
+          if [ -s /tmp/staging-failure-files.txt ]; then
+            {
+              echo '```text'
+              cat /tmp/staging-failure-files.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No Playwright failure files were found.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload staging failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
