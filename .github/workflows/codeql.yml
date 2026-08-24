@@ -17,6 +17,7 @@ on:
       - 'tests/e2e/package-lock.json'
       - 'eslint.config.mjs'
       - 'AGENTS.md'
+      - 'docs/NOVELIGHT-MASTER.md'
       - '.github/workflows/codeql.yml'
   pull_request:
     branches: [main]
