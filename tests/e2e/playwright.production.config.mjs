@@ -14,10 +14,11 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'production-desktop-chromium',
+      name: 'production-chromium',
       use: {
         ...devices['Desktop Chrome'],
-        browserName: 'chromium'
+        browserName: 'chromium',
+        channel: 'chrome'
       }
     }
   ]
