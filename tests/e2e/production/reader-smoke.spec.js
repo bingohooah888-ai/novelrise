@@ -31,6 +31,47 @@ async function suppressMeasurementWrites(page) {
   });
 }
 
+function novelIdFromHref(href) {
+  return new URL(href, 'https://novelight.invalid').searchParams.get('id');
+}
+
+async function findPublishedEpisode(page, novelHrefs) {
+  const novelIds = novelHrefs
+    .slice(0, 24)
+    .map(novelIdFromHref)
+    .filter(Boolean);
+
+  expect(novelIds.length).toBeGreaterThan(0);
+
+  const scriptText = (await page.locator('script').allTextContents()).join('\n');
+  const configMatch = scriptText.match(
+    /supabase\.createClient\('([^']+)','([^']+)'\)/
+  );
+
+  expect(
+    configMatch,
+    'search page should expose its public Supabase client configuration'
+  ).toBeTruthy();
+
+  const [, supabaseUrl, publishableKey] = configMatch;
+  const response = await page.request.get(`${supabaseUrl}/rest/v1/episodes`, {
+    headers: {
+      apikey: publishableKey,
+      Authorization: `Bearer ${publishableKey}`
+    },
+    params: {
+      select: 'id,novel_id',
+      novel_id: `in.(${novelIds.join(',')})`,
+      status: 'eq.published',
+      limit: '1'
+    }
+  });
+
+  expect(response.ok()).toBeTruthy();
+  const rows = await response.json();
+  return rows[0] ?? null;
+}
+
 test('production reader flow is healthy and read-only', async ({ page }) => {
   await suppressMeasurementWrites(page);
 
@@ -47,32 +88,44 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     nodes.map((node) => node.getAttribute('href')).filter(Boolean)
   );
 
-  let episodeHref = null;
+  const episode = await findPublishedEpisode(page, novelHrefs);
+  expect(
+    episode,
+    'at least one published search result should expose a published episode'
+  ).toBeTruthy();
 
-  for (const novelHref of novelHrefs.slice(0, 12)) {
-    await page.goto(novelHref, { waitUntil: 'domcontentloaded' });
+  const novelHref = novelHrefs.find(
+    (href) => novelIdFromHref(href) === String(episode.novel_id)
+  );
+  expect(novelHref).toBeTruthy();
 
-    const warningGate = page.locator('#warningGate.visible');
-    if (await warningGate.isVisible().catch(() => false)) {
-      await page.locator('#continueButton').click();
-    }
+  await page.goto(novelHref, { waitUntil: 'domcontentloaded' });
 
-    const novelHeader = page.locator('#novelHeader');
-    await expect(novelHeader).not.toContainText('読み込み中...', {
-      timeout: 20_000
-    });
-
-    const episodeLinks = page.locator('.episode-title');
-    if ((await episodeLinks.count()) > 0) {
-      episodeHref = await episodeLinks.first().getAttribute('href');
-      break;
-    }
+  const warningGate = page.locator('#warningGate.visible');
+  if (await warningGate.isVisible().catch(() => false)) {
+    await page.locator('#continueButton').click();
   }
 
-  expect(
-    episodeHref,
-    'at least one published work should expose an episode'
-  ).toBeTruthy();
+  const novelHeader = page.locator('#novelHeader');
+  await expect(novelHeader).not.toContainText('読み込み中...', {
+    timeout: 20_000
+  });
+
+  const episodeHref = await page.locator('.episode-title').evaluateAll(
+    (nodes, expectedEpisodeId) =>
+      nodes
+        .map((node) => node.getAttribute('href'))
+        .find(
+          (href) =>
+            href &&
+            new globalThis.URL(href, globalThis.location.href).searchParams.get(
+              'id'
+            ) === expectedEpisodeId
+        ) ?? null,
+    String(episode.id)
+  );
+
+  expect(episodeHref, 'selected episode should appear on its novel page').toBeTruthy();
 
   await page.goto(episodeHref, { waitUntil: 'domcontentloaded' });
 
