@@ -3,16 +3,31 @@ name: NOVELIGHT Beta P0 Database Gate
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'supabase/**'
-      - 'tests/rls/**'
+    paths: &beta_p0_paths
+      - 'scripts/run-beta-p0-db-tests.sh'
+      - 'tests/rls/fixture.sql'
+      - 'tests/rls/billing-fixture.sql'
+      - 'tests/rls/light-seed-fixture.sql'
+      - 'tests/rls/exposure-fixture.sql'
+      - 'tests/rls/beta-p0-foundations.sql'
+      - 'tests/rls/signup-display-name.sql'
+      - 'tests/rls/founding-internal-exclusion*.sql'
+      - 'supabase/**/20260819190000_*.sql'
+      - 'supabase/**/20260822_content_write_rls_*.sql'
+      - 'supabase/**/20260822194000_*.sql'
+      - 'supabase/**/20260823073000_*.sql'
+      - 'supabase/**/20260823074300_*.sql'
+      - 'supabase/**/20260823083500_*.sql'
+      - 'supabase/**/20260823112000_*.sql'
+      - 'supabase/**/20260823115300_*.sql'
+      - 'supabase/**/20260823133000_*.sql'
+      - 'supabase/**/2026082317*.sql'
+      - 'supabase/**/20260823192500_*.sql'
+      - 'supabase/**/20260823204500_*.sql'
       - '.github/workflows/beta-p0-database.yml'
   push:
     branches: [main]
-    paths:
-      - 'supabase/**'
-      - 'tests/rls/**'
-      - '.github/workflows/beta-p0-database.yml'
+    paths: *beta_p0_paths
 
 permissions:
   contents: read
@@ -37,9 +52,9 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d novelight_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 8
 
     steps:
       - name: Checkout repository
@@ -47,91 +62,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build beta schema through current prerequisites
+      - name: Run beta P0 database gate
         env:
           PGPASSWORD: postgres
-        shell: bash
-        run: |
-          set -euo pipefail
-          DB="psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1"
-          $DB -f tests/rls/fixture.sql
-          $DB -f supabase/migrations/20260819190000_secure_content_rls_and_constraints.sql
-          $DB -f supabase/checks/20260822_content_write_rls_precheck.sql
-          $DB -f supabase/migrations/20260822194000_manage_content_write_rls.sql
-          $DB -f tests/rls/billing-fixture.sql
-          $DB -f supabase/checks/20260823073000_billing_permissions_and_novel_limits_precheck.sql
-          $DB -f supabase/migrations/20260823073000_enforce_billing_permissions_and_novel_limits.sql
-          $DB -f supabase/checks/20260823074300_stripe_subscription_state_precheck.sql
-          $DB -f supabase/migrations/20260823074300_add_stripe_subscription_state.sql
-          $DB -f tests/rls/light-seed-fixture.sql
-          $DB -f supabase/checks/20260823083500_light_seed_mvp_precheck.sql
-          $DB -f supabase/migrations/20260823083500_light_seed_mvp.sql
-          $DB -f tests/rls/exposure-fixture.sql
-          $DB -f supabase/checks/20260823112000_exposure_allocation_precheck.sql
-          $DB -f supabase/migrations/20260823112000_exposure_allocation.sql
-          $DB -f supabase/checks/20260823115300_exposure_funnel_precheck.sql
-          $DB -f supabase/migrations/20260823115300_exposure_funnel.sql
-          $DB -f supabase/checks/20260823133000_exposure_funnel_retention_precheck.sql
-          $DB -f supabase/migrations/20260823133000_exposure_funnel_retention.sql
-
-      - name: Apply, rollback, and reapply beta P0 migrations
-        env:
-          PGPASSWORD: postgres
-        shell: bash
-        run: |
-          set -euo pipefail
-          DB="psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1"
-
-          $DB -f supabase/checks/20260823170000_beta_launch_data_foundations_precheck.sql
-          $DB -f supabase/migrations/20260823170000_beta_launch_data_foundations.sql
-          $DB -f supabase/checks/20260823170000_beta_launch_data_foundations_postcheck.sql
-          $DB -f supabase/rollback/20260823170000_beta_launch_data_foundations_rollback.sql
-          $DB -f supabase/checks/20260823170000_beta_launch_data_foundations_precheck.sql
-          $DB -f supabase/migrations/20260823170000_beta_launch_data_foundations.sql
-          $DB -f supabase/checks/20260823170000_beta_launch_data_foundations_postcheck.sql
-
-          $DB -f supabase/checks/20260823171000_initial_and_paid_exposure_precheck.sql
-          $DB -f supabase/migrations/20260823171000_initial_and_paid_exposure.sql
-          $DB -f supabase/checks/20260823171000_initial_and_paid_exposure_postcheck.sql
-          $DB -f supabase/rollback/20260823171000_initial_and_paid_exposure_rollback.sql
-          $DB -f supabase/checks/20260823171000_initial_and_paid_exposure_precheck.sql
-          $DB -f supabase/migrations/20260823171000_initial_and_paid_exposure.sql
-          $DB -f supabase/checks/20260823171000_initial_and_paid_exposure_postcheck.sql
-
-          $DB -f supabase/migrations/20260823171500_neutral_search_impressions.sql
-          $DB -f supabase/rollback/20260823171500_neutral_search_impressions_rollback.sql
-          $DB -f supabase/migrations/20260823171500_neutral_search_impressions.sql
-
-          $DB -f supabase/migrations/20260823172000_lock_first_publication_time.sql
-          $DB -f supabase/checks/20260823172000_lock_first_publication_time_postcheck.sql
-          $DB -f supabase/rollback/20260823172000_lock_first_publication_time_rollback.sql
-          $DB -f supabase/migrations/20260823172000_lock_first_publication_time.sql
-          $DB -f supabase/checks/20260823172000_lock_first_publication_time_postcheck.sql
-
-          $DB -f supabase/checks/20260823192500_profile_display_name_from_signup_metadata_precheck.sql
-          $DB -f supabase/migrations/20260823192500_profile_display_name_from_signup_metadata.sql
-          $DB -f supabase/checks/20260823192500_profile_display_name_from_signup_metadata_postcheck.sql
-          $DB -f supabase/rollback/20260823192500_profile_display_name_from_signup_metadata_rollback.sql
-          $DB -f supabase/checks/20260823192500_profile_display_name_from_signup_metadata_precheck.sql
-          $DB -f supabase/migrations/20260823192500_profile_display_name_from_signup_metadata.sql
-          $DB -f supabase/checks/20260823192500_profile_display_name_from_signup_metadata_postcheck.sql
-
-          $DB -f tests/rls/founding-internal-exclusion-fixture.sql
-          $DB -f supabase/checks/20260823204500_exclude_internal_test_founding_authors_precheck.sql
-          $DB -f supabase/migrations/20260823204500_exclude_internal_test_founding_authors.sql
-          $DB -f supabase/checks/20260823204500_exclude_internal_test_founding_authors_postcheck.sql
-          $DB -f supabase/rollback/20260823204500_exclude_internal_test_founding_authors_rollback.sql
-          $DB -f supabase/checks/20260823204500_exclude_internal_test_founding_authors_precheck.sql
-          $DB -f supabase/migrations/20260823204500_exclude_internal_test_founding_authors.sql
-          $DB -f supabase/checks/20260823204500_exclude_internal_test_founding_authors_postcheck.sql
-
-      - name: Run beta P0 database behavior tests
-        env:
-          PGPASSWORD: postgres
-        shell: bash
-        run: |
-          set -euo pipefail
-          DB="psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1"
-          $DB -f tests/rls/founding-internal-exclusion.sql
-          $DB -f tests/rls/beta-p0-foundations.sql
-          $DB -f tests/rls/signup-display-name.sql
+        run: bash scripts/run-beta-p0-db-tests.sh
