@@ -14,10 +14,22 @@ test('page telemetry is best-effort and storage failures cannot block core UI', 
   assert.match(client, /function safeStorageSet\(/);
   assert.match(client, /memoryVisitorToken/);
   assert.match(client, /void syncAuthHeader\(client\)/);
-  assert.match(client, /void Promise\.resolve\(\s*client\.rpc\('record_acquisition_touch'/);
-  assert.match(client, /void Promise\.resolve\(\s*client\.rpc\('record_beta_visit'/);
-  assert.match(client, /\.catch\(\(error\) => console\.error\('acquisition touch failed'/);
-  assert.match(client, /\.catch\(\(error\) => console\.error\('beta visit record failed'/);
+  assert.match(
+    client,
+    /void Promise\.resolve\(\s*client\.rpc\('record_acquisition_touch'/
+  );
+  assert.match(
+    client,
+    /void Promise\.resolve\(\s*client\.rpc\('record_beta_visit'/
+  );
+  assert.match(
+    client,
+    /\.catch\(\(error\) => console\.error\('acquisition touch failed'/
+  );
+  assert.match(
+    client,
+    /\.catch\(\(error\) => console\.error\('beta visit record failed'/
+  );
 });
 
 test('auth and reader journey helpers fail closed instead of rejecting into page UI', async () => {
@@ -25,5 +37,8 @@ test('auth and reader journey helpers fail closed instead of rejecting into page
 
   assert.match(client, /async function syncAuthHeader\(client\)[\s\S]*?try \{/);
   assert.match(client, /async function claimAcquisition\(client\)[\s\S]*?try \{/);
-  assert.match(client, /async function recordJourney\(client, eventType, novelId, episodeId = null\)[\s\S]*?try \{/);
+  assert.match(
+    client,
+    /async function recordJourney\(client, eventType, novelId, episodeId = null\)[\s\S]*?try \{/
+  );
 });
