@@ -246,7 +246,9 @@ test('novel posting validates synchronously and recovers from an async save fail
 
   await expect(page.locator('#submitButton')).toBeDisabled();
   await expect(page.locator('#status')).toHaveText('保存しています...');
-  await expect(page.locator('#status')).toHaveText('temporary database error');
+  await expect(page.locator('#status')).toHaveText(
+    '作品を保存できませんでした。時間をおいて再度お試しください。'
+  );
   await expect(page.locator('#submitButton')).toBeEnabled();
 
   const insertsAfterWarning = await page.evaluate(
