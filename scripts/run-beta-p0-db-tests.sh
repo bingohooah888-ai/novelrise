@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${PGPASSWORD:=postgres}"
+export PGPASSWORD
+DB=(psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}" -d "${PGDATABASE:-novelight_test}" -v ON_ERROR_STOP=1)
+
+run_sql() {
+  echo "::group::$1"
+  "${DB[@]}" -f "$1"
+  echo "::endgroup::"
+}
+
+# Build the exact prerequisite schema used by the beta-P0 migrations.
+run_sql tests/rls/fixture.sql
+run_sql supabase/migrations/20260819190000_secure_content_rls_and_constraints.sql
+run_sql supabase/checks/20260822_content_write_rls_precheck.sql
+run_sql supabase/migrations/20260822194000_manage_content_write_rls.sql
+run_sql tests/rls/billing-fixture.sql
+run_sql supabase/checks/20260823073000_billing_permissions_and_novel_limits_precheck.sql
+run_sql supabase/migrations/20260823073000_enforce_billing_permissions_and_novel_limits.sql
+run_sql supabase/checks/20260823074300_stripe_subscription_state_precheck.sql
+run_sql supabase/migrations/20260823074300_add_stripe_subscription_state.sql
+run_sql tests/rls/light-seed-fixture.sql
+run_sql supabase/checks/20260823083500_light_seed_mvp_precheck.sql
+run_sql supabase/migrations/20260823083500_light_seed_mvp.sql
+run_sql tests/rls/exposure-fixture.sql
+run_sql supabase/checks/20260823112000_exposure_allocation_precheck.sql
+run_sql supabase/migrations/20260823112000_exposure_allocation.sql
+run_sql supabase/checks/20260823115300_exposure_funnel_precheck.sql
+run_sql supabase/migrations/20260823115300_exposure_funnel.sql
+run_sql supabase/checks/20260823133000_exposure_funnel_retention_precheck.sql
+run_sql supabase/migrations/20260823133000_exposure_funnel_retention.sql
+
+# P0 migrations are deliberately exercised as apply -> rollback -> reapply where rollback exists.
+run_sql supabase/checks/20260823170000_beta_launch_data_foundations_precheck.sql
+run_sql supabase/migrations/20260823170000_beta_launch_data_foundations.sql
+run_sql supabase/checks/20260823170000_beta_launch_data_foundations_postcheck.sql
+run_sql supabase/rollback/20260823170000_beta_launch_data_foundations_rollback.sql
+run_sql supabase/checks/20260823170000_beta_launch_data_foundations_precheck.sql
+run_sql supabase/migrations/20260823170000_beta_launch_data_foundations.sql
+run_sql supabase/checks/20260823170000_beta_launch_data_foundations_postcheck.sql
+
+run_sql supabase/checks/20260823171000_initial_and_paid_exposure_precheck.sql
+run_sql supabase/migrations/20260823171000_initial_and_paid_exposure.sql
+run_sql supabase/checks/20260823171000_initial_and_paid_exposure_postcheck.sql
+run_sql supabase/rollback/20260823171000_initial_and_paid_exposure_rollback.sql
+run_sql supabase/checks/20260823171000_initial_and_paid_exposure_precheck.sql
+run_sql supabase/migrations/20260823171000_initial_and_paid_exposure.sql
+run_sql supabase/checks/20260823171000_initial_and_paid_exposure_postcheck.sql
+
+run_sql supabase/migrations/20260823171500_neutral_search_impressions.sql
+run_sql supabase/rollback/20260823171500_neutral_search_impressions_rollback.sql
+run_sql supabase/migrations/20260823171500_neutral_search_impressions.sql
+
+run_sql supabase/migrations/20260823172000_lock_first_publication_time.sql
+run_sql supabase/checks/20260823172000_lock_first_publication_time_postcheck.sql
+run_sql supabase/rollback/20260823172000_lock_first_publication_time_rollback.sql
+run_sql supabase/migrations/20260823172000_lock_first_publication_time.sql
+run_sql supabase/checks/20260823172000_lock_first_publication_time_postcheck.sql
+
+run_sql supabase/checks/20260823192500_profile_display_name_from_signup_metadata_precheck.sql
+run_sql supabase/migrations/20260823192500_profile_display_name_from_signup_metadata.sql
+run_sql supabase/checks/20260823192500_profile_display_name_from_signup_metadata_postcheck.sql
+run_sql supabase/rollback/20260823192500_profile_display_name_from_signup_metadata_rollback.sql
+run_sql supabase/checks/20260823192500_profile_display_name_from_signup_metadata_precheck.sql
+run_sql supabase/migrations/20260823192500_profile_display_name_from_signup_metadata.sql
+run_sql supabase/checks/20260823192500_profile_display_name_from_signup_metadata_postcheck.sql
+
+run_sql tests/rls/founding-internal-exclusion-fixture.sql
+run_sql supabase/checks/20260823204500_exclude_internal_test_founding_authors_precheck.sql
+run_sql supabase/migrations/20260823204500_exclude_internal_test_founding_authors.sql
+run_sql supabase/checks/20260823204500_exclude_internal_test_founding_authors_postcheck.sql
+run_sql supabase/rollback/20260823204500_exclude_internal_test_founding_authors_rollback.sql
+run_sql supabase/checks/20260823204500_exclude_internal_test_founding_authors_precheck.sql
+run_sql supabase/migrations/20260823204500_exclude_internal_test_founding_authors.sql
+run_sql supabase/checks/20260823204500_exclude_internal_test_founding_authors_postcheck.sql
+
+run_sql tests/rls/founding-internal-exclusion.sql
+run_sql tests/rls/beta-p0-foundations.sql
+run_sql tests/rls/signup-display-name.sql

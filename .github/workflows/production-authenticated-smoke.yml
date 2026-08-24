@@ -12,6 +12,8 @@ on:
       - 'scout-record.html'
       - 'analytics.html'
       - 'novelight-client.js'
+      - 'api/create-checkout-session.js'
+      - 'api/_lib/checkout.js'
       - 'scripts/production-auth-smoke-fixture.mjs'
       - 'tests/e2e/production-auth/**'
       - 'tests/e2e/playwright.production-auth.config.mjs'
@@ -27,6 +29,7 @@ concurrency:
 
 jobs:
   approval:
+    if: github.event_name == 'workflow_dispatch' || vars.STAGING_E2E_READY != 'true'
     name: Approve production write smoke
     runs-on: ubuntu-latest
     environment: production-approval
@@ -45,6 +48,8 @@ jobs:
       SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PRODUCTION_AUTH_SMOKE_FIXTURE: /tmp/novelight-production-auth-smoke.json
+      AUTH_SMOKE_LABEL: 本番認証スモーク
+      CHECKOUT_SESSION_PREFIX: cs_live_
 
     steps:
       - name: Checkout repository
@@ -97,10 +102,13 @@ jobs:
           fi
 
       - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.1.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/e2e/package-lock.json
 
       - name: Install application dependencies
         run: npm ci
@@ -139,11 +147,7 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
-      - name: Install Chromium
-        working-directory: tests/e2e
-        run: npx playwright install --with-deps chromium
-
-      - name: Run authenticated production smoke
+      - name: Run authenticated production smoke with runner Chrome
         working-directory: tests/e2e
         run: npx playwright test --config=playwright.production-auth.config.mjs
 

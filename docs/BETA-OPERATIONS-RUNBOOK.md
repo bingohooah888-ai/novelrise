@@ -1,6 +1,6 @@
 # NOVELIGHT controlled-beta operations runbook
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 
 ## Purpose
 
@@ -17,11 +17,13 @@ It reads **counts only** for:
 
 It never copies report bodies, inquiry messages, email addresses, user IDs, visitor hashes, or other raw production rows into GitHub.
 
-If either count is greater than zero, the workflow creates or updates one open GitHub issue titled:
+If either count is greater than zero, the workflow creates one open GitHub issue titled:
 
 `[OPS] NOVELIGHT beta inbox needs review`
 
-When both counts return to zero, the workflow closes that alert issue automatically.
+While the issue remains open, its body is updated only when the report/inquiry counts actually change. An unchanged count does not generate another six-hour comment or edit. This keeps the alert actionable without creating repetitive operational noise.
+
+When both counts return to zero, the workflow records one clear-resolution comment and closes the alert issue automatically.
 
 The workflow also publishes an `ops-inbox-watch` commit status so the health of the automated watch can be checked without opening Supabase.
 
