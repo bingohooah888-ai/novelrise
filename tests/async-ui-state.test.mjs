@@ -7,6 +7,10 @@ const analytics = await readFile('analytics.html', 'utf8');
 const episode = await readFile('episode.html', 'utf8');
 const mypage = await readFile('mypage.html', 'utf8');
 const novel = await readFile('novel.html', 'utf8');
+const post = await readFile('post.html', 'utf8');
+const novelEdit = await readFile('novel-edit.html', 'utf8');
+const episodePost = await readFile('episode-post.html', 'utf8');
+const episodeEdit = await readFile('episode-edit.html', 'utf8');
 
 test('search drops stale async results', () => {
   assert.match(search, /rows=await enrich\(rows\)/);
@@ -46,4 +50,16 @@ test('novel detail renders independently of optional async work', () => {
   assert.match(novel, /void setupSeed\(\)/);
   assert.match(novel, /void recordOpen\(\)/);
   assert.match(novel, /エピソードも読み込めません/);
+});
+
+test('author forms recover from async failures and prevent duplicate submits', () => {
+  for (const page of [post, novelEdit, episodePost, episodeEdit]) {
+    assert.match(page, /busy=false/);
+    assert.match(page, /if\([^)]*busy/);
+    assert.match(page, /finally\{/);
+  }
+  assert.match(post, /void NovelightClient\.claimAcquisition\(client\)/);
+  assert.match(novelEdit, /type="submit" disabled/);
+  assert.match(episodePost, /episodeSaved=false/);
+  assert.match(episodeEdit, /type="submit" disabled/);
 });
