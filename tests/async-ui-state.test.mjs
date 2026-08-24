@@ -11,6 +11,8 @@ const post = await readFile('post.html', 'utf8');
 const novelEdit = await readFile('novel-edit.html', 'utf8');
 const episodePost = await readFile('episode-post.html', 'utf8');
 const episodeEdit = await readFile('episode-edit.html', 'utf8');
+const scoutRecord = await readFile('scout-record.html', 'utf8');
+const pricing = await readFile('pricing.html', 'utf8');
 
 test('search drops stale async results', () => {
   assert.match(search, /rows=await enrich\(rows\)/);
@@ -62,4 +64,18 @@ test('author forms recover from async failures and prevent duplicate submits', (
   assert.match(novelEdit, /type="submit" disabled/);
   assert.match(episodePost, /episodeSaved=false/);
   assert.match(episodeEdit, /type="submit" disabled/);
+});
+
+test('scout record separates metadata failures from unpublished works', () => {
+  assert.match(scoutRecord, /metadataUnavailable=false/);
+  assert.match(scoutRecord, /作品情報の取得エラー/);
+  assert.match(scoutRecord, /void NovelightClient\.claimAcquisition\(client\)/);
+});
+
+test('billing prevents parallel checkout starts and recovers after failure', () => {
+  assert.match(pricing, /busy=false/);
+  assert.match(pricing, /if\(busy\)return/);
+  assert.match(pricing, /function disablePaid\(v\)/);
+  assert.match(pricing, /finally\{busy=false;disablePaid\(false\)\}/);
+  assert.match(pricing, /void NovelightClient\.claimAcquisition\(client\)/);
 });
