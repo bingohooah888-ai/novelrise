@@ -14,10 +14,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: Quality, RLS, and browser tests
+  preflight:
+    name: Preflight
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run non-mutating preflight
+        run: npm run preflight
+
+  rls:
+    name: RLS integration and rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     services:
       postgres:
@@ -38,24 +61,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Check formatting
-        run: npm run format:check
-
-      - name: Lint JavaScript
-        run: npm run lint
-
-      - name: Run automated tests
-        run: npm test
 
       - name: Run RLS integration tests
         env:
@@ -112,8 +117,23 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260822194000_manage_content_write_rls_rollback.sql
           psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/write-rollback.sql
 
-      - name: Check API JavaScript syntax
-        run: npm run syntax:check
+  browser:
+    name: Browser E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
 
       - name: Install browser test dependencies
         working-directory: tests/e2e
@@ -123,9 +143,20 @@ jobs:
         working-directory: tests/e2e
         run: npx playwright install --with-deps chromium
 
-      - name: Run browser smoke tests
+      - name: Run browser smoke and async UI tests
         working-directory: tests/e2e
         run: npm test
+
+      - name: Upload Playwright failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tests/e2e/playwright-report
+            tests/e2e/test-results
+          if-no-files-found: warn
+          retention-days: 14
 
   dependency-audit:
     name: Dependency vulnerability audit
@@ -157,21 +188,33 @@ jobs:
   check:
     name: check
     if: always()
-    needs: [quality, dependency-audit]
+    needs: [preflight, rls, browser, dependency-audit]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
       - name: Verify required gates
         env:
-          QUALITY_RESULT: ${{ needs.quality.result }}
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          RLS_RESULT: ${{ needs.rls.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
           DEPENDENCY_AUDIT_RESULT: ${{ needs.dependency-audit.result }}
         shell: bash
         run: |
           set -euo pipefail
 
-          if [ "$QUALITY_RESULT" != "success" ]; then
-            echo "Quality gate failed: $QUALITY_RESULT"
+          if [ "$PREFLIGHT_RESULT" != "success" ]; then
+            echo "Preflight gate failed: $PREFLIGHT_RESULT"
+            exit 1
+          fi
+
+          if [ "$RLS_RESULT" != "success" ]; then
+            echo "RLS gate failed: $RLS_RESULT"
+            exit 1
+          fi
+
+          if [ "$BROWSER_RESULT" != "success" ]; then
+            echo "Browser gate failed: $BROWSER_RESULT"
             exit 1
           fi
 
