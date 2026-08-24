@@ -1,0 +1,118 @@
+name: NOVELIGHT Stripe Sandbox Billing Lifecycle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-stripe-sandbox-billing-lifecycle
+  cancel-in-progress: false
+
+jobs:
+  billing-lifecycle:
+    name: Verify portal cancellation and entitlement lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      STRIPE_SANDBOX_FIXTURE: /tmp/novelight-stripe-sandbox.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/e2e/package-lock.json
+
+      - name: Validate Stripe sandbox credential
+        env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$STRIPE_TEST_SECRET_KEY" || {
+            echo 'STRIPE_TEST_SECRET_KEY is not configured as a GitHub Actions secret.'
+            exit 1
+          }
+          case "$STRIPE_TEST_SECRET_KEY" in
+            sk_test_*) ;;
+            *)
+              echo 'Refusing to run with a non-test Stripe key.'
+              exit 1
+              ;;
+          esac
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Create isolated Stripe sandbox subscription
+        env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+        run: node scripts/stripe-sandbox-billing-lifecycle.mjs setup
+
+      - name: Install browser smoke dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install Playwright ffmpeg for failure video
+        working-directory: tests/e2e
+        run: npx playwright install ffmpeg
+
+      - name: Cancel through Stripe Customer Portal
+        working-directory: tests/e2e
+        run: npx playwright test --config=playwright.stripe-sandbox.config.mjs
+
+      - name: Verify cancellation scheduling and retained access
+        env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+        run: node scripts/stripe-sandbox-billing-lifecycle.mjs verify-scheduled
+
+      - name: Advance billing period and verify Free fallback
+        env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+        run: node scripts/stripe-sandbox-billing-lifecycle.mjs advance-and-verify
+
+      - name: Record successful lifecycle evidence
+        shell: bash
+        run: |
+          {
+            echo '### Stripe sandbox billing lifecycle: PASS'
+            echo '- Customer Portal cancellation completed.'
+            echo '- cancel_at_period_end=true was observed.'
+            echo '- Standard access remained active until period end.'
+            echo '- Stripe Test Clock advanced past the period end.'
+            echo '- NOVELIGHT webhook reconciliation returned the profile to Free.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Stripe portal failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: stripe-sandbox-billing-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tests/e2e/stripe-sandbox-playwright-report
+            tests/e2e/stripe-sandbox-test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Clean Stripe sandbox objects
+        if: always()
+        env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+        run: |
+          if [ -n "${STRIPE_TEST_SECRET_KEY:-}" ]; then
+            node scripts/stripe-sandbox-billing-lifecycle.mjs cleanup
+          fi
+
+      - name: Remove temporary Stripe fixture
+        if: always()
+        run: rm -f "$STRIPE_SANDBOX_FIXTURE"
