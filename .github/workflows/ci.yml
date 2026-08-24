@@ -23,6 +23,7 @@ jobs:
       db: ${{ steps.classify.outputs.db }}
       e2e: ${{ steps.classify.outputs.e2e }}
       audit: ${{ steps.classify.outputs.audit }}
+      workflow: ${{ steps.classify.outputs.workflow }}
 
     steps:
       - name: Checkout repository history
@@ -57,6 +58,7 @@ jobs:
           db=false
           e2e=false
           audit=false
+          workflow=false
 
           while IFS= read -r file; do
             [ -n "$file" ] || continue
@@ -89,18 +91,28 @@ jobs:
                 ;;
             esac
 
+            case "$file" in
+              .github/workflows/*.yml)
+                workflow=true
+                ;;
+            esac
+
             if [ "$file" = '.github/workflows/ci.yml' ]; then
               fast=true
               db=true
               e2e=true
               audit=true
+              workflow=true
             fi
           done < /tmp/changed-files.txt
 
-          echo "fast=$fast" >> "$GITHUB_OUTPUT"
-          echo "db=$db" >> "$GITHUB_OUTPUT"
-          echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
-          echo "audit=$audit" >> "$GITHUB_OUTPUT"
+          {
+            echo "fast=$fast"
+            echo "db=$db"
+            echo "e2e=$e2e"
+            echo "audit=$audit"
+            echo "workflow=$workflow"
+          } >> "$GITHUB_OUTPUT"
 
   preflight:
     name: Preflight
@@ -130,6 +142,35 @@ jobs:
       - name: Check shell script syntax
         shell: bash
         run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r bash -n
+
+  workflow-lint:
+    name: GitHub Actions semantic lint
+    needs: changes
+    if: needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install verified actionlint 1.7.12
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=/tmp/actionlint.tar.gz
+          curl --fail --silent --show-error --location \
+            --output "$archive" \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tar.gz' \
+            | sha256sum --check --strict
+          tar -xzf "$archive" -C /tmp actionlint
+          /tmp/actionlint -version
+
+      - name: Validate GitHub Actions workflows
+        run: /tmp/actionlint
 
   rls:
     name: RLS integration and rollback
@@ -238,7 +279,7 @@ jobs:
   check:
     name: check
     if: always()
-    needs: [changes, preflight, rls, browser, dependency-audit]
+    needs: [changes, preflight, workflow-lint, rls, browser, dependency-audit]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -247,6 +288,7 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          WORKFLOW_LINT_RESULT: ${{ needs.workflow-lint.result }}
           RLS_RESULT: ${{ needs.rls.result }}
           BROWSER_RESULT: ${{ needs.browser.result }}
           DEPENDENCY_AUDIT_RESULT: ${{ needs.dependency-audit.result }}
@@ -268,6 +310,7 @@ jobs:
 
           check_result changes "$CHANGES_RESULT"
           check_result preflight "$PREFLIGHT_RESULT"
+          check_result workflow-lint "$WORKFLOW_LINT_RESULT"
           check_result rls "$RLS_RESULT"
           check_result browser "$BROWSER_RESULT"
           check_result dependency-audit "$DEPENDENCY_AUDIT_RESULT"

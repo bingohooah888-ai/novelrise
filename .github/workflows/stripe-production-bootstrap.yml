@@ -173,6 +173,7 @@ jobs:
               exit 0
             fi
 
+            echo "Production Stripe API routes not ready (attempt ${attempt}/24)."
             sleep 10
           done
 

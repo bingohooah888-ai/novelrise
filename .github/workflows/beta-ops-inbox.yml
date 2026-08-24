@@ -13,7 +13,6 @@ on:
 permissions:
   contents: read
   issues: write
-  statuses: write
 
 concurrency:
   group: novelight-beta-ops-inbox
@@ -31,8 +30,6 @@ jobs:
 
     steps:
       - name: Check beta operations inbox
-        id: ops_watch
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -117,41 +114,3 @@ jobs:
           fi
 
           echo "New content reports: ${reports}; new contact inquiries: ${inquiries}."
-
-      - name: Publish ops inbox watch status
-        if: always()
-        env:
-          GH_STATUS_TOKEN: ${{ github.token }}
-          WATCH_OUTCOME: ${{ steps.ops_watch.outcome }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          state=failure
-          description='Beta ops inbox watch failed'
-          if [ "$WATCH_OUTCOME" = 'success' ]; then
-            state=success
-            description='Beta ops inbox watch passed'
-          fi
-
-          jq -n \
-            --arg state "$state" \
-            --arg description "$description" \
-            '{state: $state, context: "ops-inbox-watch", description: $description}' \
-            > /tmp/ops-status.json
-
-          curl --fail-with-body --silent --show-error \
-            --request POST \
-            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            --header "Authorization: Bearer ${GH_STATUS_TOKEN}" \
-            --header 'Accept: application/vnd.github+json' \
-            --header 'X-GitHub-Api-Version: 2022-11-28' \
-            --data-binary @/tmp/ops-status.json \
-            >/dev/null
-
-      - name: Enforce ops inbox watch result
-        if: steps.ops_watch.outcome == 'failure'
-        shell: bash
-        run: |
-          echo 'Beta operations inbox watch failed.'
-          exit 1
