@@ -9,17 +9,23 @@ function loadFixture() {
   return JSON.parse(readFileSync(fixturePath, 'utf8'));
 }
 
-async function clickVisible(page, candidates) {
-  for (const candidate of candidates) {
-    const locator = page
-      .getByRole(candidate.role, { name: candidate.name })
-      .last();
-    if (await locator.isVisible().catch(() => false)) {
-      await locator.click();
-      return true;
+async function waitForVisibleAction(page, candidates, timeout = 30_000) {
+  const deadline = Date.now() + timeout;
+
+  while (Date.now() < deadline) {
+    for (const candidate of candidates) {
+      const locator = page
+        .getByRole(candidate.role, { name: candidate.name })
+        .last();
+      if (await locator.isVisible().catch(() => false)) {
+        return locator;
+      }
     }
+
+    await page.waitForTimeout(250);
   }
-  return false;
+
+  return null;
 }
 
 test('Stripe Customer Portal schedules cancellation at period end', async ({
@@ -44,15 +50,28 @@ test('Stripe Customer Portal schedules cancellation at period end', async ({
       break;
     }
 
-    const clicked = await clickVisible(page, candidates);
-    if (!clicked) {
+    const action = await waitForVisibleAction(
+      page,
+      candidates,
+      step === 0 ? 30_000 : 15_000
+    );
+    if (!action) {
       const bodyText = (await page.locator('body').innerText()).slice(0, 2500);
       throw new Error(
-        `No cancellation action was visible in Stripe portal. URL=${page.url()} BODY=${bodyText}`
+        `No cancellation action became visible in Stripe portal. URL=${page.url()} BODY=${bodyText}`
       );
     }
 
-    await page.waitForLoadState('domcontentloaded').catch(() => {});
+    await action.click();
+
+    await Promise.race([
+      page
+        .waitForURL(/example\.com\/novelight-billing-e2e-canceled/, {
+          timeout: 10_000
+        })
+        .catch(() => null),
+      page.waitForTimeout(750)
+    ]);
   }
 
   await page.waitForURL(/example\.com\/novelight-billing-e2e-canceled/, {
