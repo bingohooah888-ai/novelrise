@@ -12,6 +12,8 @@ on:
       - 'scout-record.html'
       - 'analytics.html'
       - 'novelight-client.js'
+      - 'api/create-checkout-session.js'
+      - 'api/_lib/checkout.js'
       - 'scripts/production-auth-smoke-fixture.mjs'
       - 'tests/e2e/production-auth/**'
       - 'tests/e2e/playwright.production-auth.config.mjs'
