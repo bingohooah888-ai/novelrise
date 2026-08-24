@@ -36,6 +36,16 @@ function extractIndentedBlock(text, key, indent = 2) {
   return lines.slice(start, end).join('\n');
 }
 
+function extractFastClassificationPatterns(changesJob) {
+  const match = changesJob.match(
+    /case "\$file" in\n\s+([^\n]+)\n\s+fast=true\n\s+;;/,
+  );
+  if (!match) {
+    fail('could not identify the fast change-classification case block');
+  }
+  return match[1];
+}
+
 const [ci, codeql, packageSource] = await Promise.all([
   readFile(CI_PATH, 'utf8'),
   readFile(CODEQL_PATH, 'utf8'),
@@ -53,6 +63,23 @@ const codeqlPullRequest = extractIndentedBlock(codeql, 'pull_request');
 requireIncludes(codeqlPullRequest, 'branches: [main]', 'CodeQL pull_request trigger');
 if (codeqlPullRequest.includes('paths:') || codeqlPullRequest.includes('paths-ignore:')) {
   fail('CodeQL must run for every pull request targeting main so Repository Rules always receive a result');
+}
+
+const changesJob = extractIndentedBlock(ci, 'changes');
+const fastPatterns = extractFastClassificationPatterns(changesJob);
+for (const requiredPattern of [
+  '*.html',
+  'novelight-client.js',
+  'docs/*.md',
+  'supabase/migrations/*.sql',
+  'tests/*.js',
+  'tests/*.mjs',
+]) {
+  requireIncludes(
+    fastPatterns,
+    requiredPattern,
+    'fast change classification for repository contract tests',
+  );
 }
 
 const mergeReadinessJob = extractIndentedBlock(ci, 'merge-readiness');
@@ -93,5 +120,6 @@ requireIncludes(
 console.log('Merge readiness contract passed.');
 console.log('- NOVELIGHT CI runs on every PR targeting main.');
 console.log('- CodeQL runs on every PR targeting main.');
+console.log('- Static repository contract inputs trigger fast preflight.');
 console.log('- Merge readiness verifies the PR merge ref contains the current base branch.');
 console.log('- Aggregate check depends on merge readiness.');

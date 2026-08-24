@@ -11,5 +11,5 @@ test('shared client syncs homepage login link with Supabase session', () => {
   assert.match(clientScript, /loginLink\.href = 'mypage\.html'/);
   assert.match(clientScript, /loginLink\.textContent = 'ログイン'/);
   assert.match(clientScript, /loginLink\.href = 'login\.html'/);
-  assert.match(clientScript, /await syncAuthHeader\(client\)/);
+  assert.match(clientScript, /void syncAuthHeader\(client\)/);
 });
