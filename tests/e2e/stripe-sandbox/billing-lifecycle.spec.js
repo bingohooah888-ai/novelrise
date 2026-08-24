@@ -13,6 +13,10 @@ async function waitForVisibleAction(page, candidates, timeout = 30_000) {
   const deadline = Date.now() + timeout;
 
   while (Date.now() < deadline) {
+    if (/example\.com\/novelight-billing-e2e-canceled/.test(page.url())) {
+      return null;
+    }
+
     for (const candidate of candidates) {
       const locator = page
         .getByRole(candidate.role, { name: candidate.name })
@@ -56,6 +60,10 @@ test('Stripe Customer Portal schedules cancellation at period end', async ({
       step === 0 ? 30_000 : 15_000
     );
     if (!action) {
+      if (/example\.com\/novelight-billing-e2e-canceled/.test(page.url())) {
+        break;
+      }
+
       const bodyText = (await page.locator('body').innerText()).slice(0, 2500);
       throw new Error(
         `No cancellation action became visible in Stripe portal. URL=${page.url()} BODY=${bodyText}`
