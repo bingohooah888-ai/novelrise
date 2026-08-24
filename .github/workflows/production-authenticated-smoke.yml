@@ -97,10 +97,13 @@ jobs:
           fi
 
       - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.1.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/e2e/package-lock.json
 
       - name: Install application dependencies
         run: npm ci
@@ -139,11 +142,7 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
-      - name: Install Chromium
-        working-directory: tests/e2e
-        run: npx playwright install --with-deps chromium
-
-      - name: Run authenticated production smoke
+      - name: Run authenticated production smoke with runner Chrome
         working-directory: tests/e2e
         run: npx playwright test --config=playwright.production-auth.config.mjs
 
