@@ -312,7 +312,8 @@ jobs:
   check:
     name: check
     if: always()
-    needs: [changes, merge-readiness, preflight, workflow-lint, rls, browser, dependency-audit]
+    needs:
+      [changes, merge-readiness, preflight, workflow-lint, rls, browser, dependency-audit]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
