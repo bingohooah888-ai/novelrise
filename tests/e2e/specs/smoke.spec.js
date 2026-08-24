@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/diagnostic-test.js';
+import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
 const publicPages = [
   ['home', '/index.html'],
