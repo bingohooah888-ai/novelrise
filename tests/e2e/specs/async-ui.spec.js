@@ -1,10 +1,13 @@
 import { expect, test } from '../fixtures/diagnostic-test.js';
 
 async function installSupabaseStub(page, overrides = {}) {
-  await page.addInitScript((state) => {
-    window.__NOVELIGHT_E2E_STATE__ = state;
-    window.__NOVELIGHT_E2E_CALLS__ = [];
-  }, overrides);
+  await page.addInitScript(
+    (state) => {
+      window.__NOVELIGHT_E2E_STATE__ = state;
+      window.__NOVELIGHT_E2E_CALLS__ = [];
+    },
+    overrides
+  );
 
   await page.route(
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
