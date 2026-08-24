@@ -1,5 +1,5 @@
 import { URL } from 'node:url';
-import { expect, test } from '../fixtures/diagnostic-test.js';
+import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
 const productionHost = 'novelrise.vercel.app';
 const blockedWriteRpcs = new Set([
