@@ -3,8 +3,7 @@ import { expect, test } from '@playwright/test';
 
 const fixturePath = process.env.PRODUCTION_AUTH_SMOKE_FIXTURE;
 const smokeLabel = process.env.AUTH_SMOKE_LABEL || '本番認証スモーク';
-const checkoutSessionPrefix =
-  process.env.CHECKOUT_SESSION_PREFIX || 'cs_live_';
+const checkoutSessionPrefix = process.env.CHECKOUT_SESSION_PREFIX || 'cs_live_';
 
 if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 
@@ -88,7 +87,7 @@ async function closeContextSafely(context) {
   }
 }
 
-test('authenticated beta-critical product flow works in the target environment', async ({
+test('authenticated beta-critical product flow works in target', async ({
   browser,
   baseURL
 }) => {
@@ -215,7 +214,7 @@ test('authenticated beta-critical product flow works in the target environment',
       await expect(authorPage.locator('#favoriteTotal')).toHaveText('1');
     });
 
-    await test.step('Verify Stripe Checkout session creation without charging', async () => {
+    await test.step('Verify Stripe Checkout without charging', async () => {
       await assertCheckoutSession(authorPage, 'standard');
       await assertCheckoutSession(authorPage, 'premium');
     });
