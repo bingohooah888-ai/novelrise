@@ -87,14 +87,22 @@ jobs:
 
           - New content reports: ${reports}
           - New contact inquiries: ${inquiries}
-          - Checked: ${now}
+          - Last changed count observed: ${now}
 
           Review the private rows in Supabase production and follow docs/BETA-OPERATIONS-RUNBOOK.md. Do not paste report or inquiry contents into this GitHub issue.
           EOF
           )
 
             if [ -n "$open_issue" ]; then
-              gh issue comment "$open_issue" --repo "$GITHUB_REPOSITORY" --body "$body"
+              current_body="$(gh issue view "$open_issue" --repo "$GITHUB_REPOSITORY" --json body --jq '.body')"
+              current_reports="$(grep -oE 'New content reports: [0-9]+' <<<"$current_body" | grep -oE '[0-9]+' | head -n1 || true)"
+              current_inquiries="$(grep -oE 'New contact inquiries: [0-9]+' <<<"$current_body" | grep -oE '[0-9]+' | head -n1 || true)"
+
+              if [ "$current_reports" != "$reports" ] || [ "$current_inquiries" != "$inquiries" ]; then
+                gh issue edit "$open_issue" --repo "$GITHUB_REPOSITORY" --body "$body"
+              else
+                echo 'Open alert already reflects the current counts; no issue update needed.'
+              fi
             else
               gh issue create \
                 --repo "$GITHUB_REPOSITORY" \
