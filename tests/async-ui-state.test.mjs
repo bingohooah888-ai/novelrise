@@ -5,6 +5,7 @@ import test from 'node:test';
 const search = await readFile('search.html', 'utf8');
 const analytics = await readFile('analytics.html', 'utf8');
 const episode = await readFile('episode.html', 'utf8');
+const mypage = await readFile('mypage.html', 'utf8');
 
 test('search drops stale async results', () => {
   assert.match(search, /rows=await enrich\(rows\)/);
@@ -24,4 +25,11 @@ test('episode renders before optional PV telemetry', () => {
   assert.match(episode, /void updatePv\(\)/);
   assert.match(episode, /pv storage unavailable/);
   assert.match(episode, /送信中\.\.\./);
+});
+
+test('author home distinguishes loading and failure states', () => {
+  assert.match(mypage, /function analyticsUnavailable\(\)/);
+  assert.match(mypage, /void NovelightClient\.claimAcquisition\(client\)/);
+  assert.match(mypage, /保存中\.\.\./);
+  assert.match(mypage, /finally\{b\.disabled=false\}/);
 });
