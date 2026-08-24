@@ -1,0 +1,52 @@
+name: Temporary Favorite Initialization Fix
+
+on:
+  push:
+    branches:
+      - fix/favorite-initialization-race
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Patch favorite initialization race
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('novel.html')
+          text = path.read_text(encoding='utf-8')
+
+          old_button = '<button id="favoriteButton" class="favorite" type="button">☆ お気に入り</button>'
+          new_button = '<button id="favoriteButton" class="favorite" type="button" disabled>☆ お気に入り</button>'
+          old_tail = 'await refresh();b.disabled=false};await refresh()}'
+          new_tail = 'await refresh();b.disabled=false};await refresh();b.disabled=false}'
+
+          if text.count(old_button) != 1:
+              raise SystemExit(f'Expected exactly one favorite button target, found {text.count(old_button)}')
+          if text.count(old_tail) != 1:
+              raise SystemExit(f'Expected exactly one favorite init tail target, found {text.count(old_tail)}')
+
+          text = text.replace(old_button, new_button, 1)
+          text = text.replace(old_tail, new_tail, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- novel.html; then
+            echo 'No favorite initialization changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add novel.html
+          git commit -m 'Fix favorite button initialization race'
+          git push origin HEAD:fix/favorite-initialization-race
