@@ -2,6 +2,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const fixturePath = process.env.PRODUCTION_AUTH_SMOKE_FIXTURE;
+const smokeLabel = process.env.AUTH_SMOKE_LABEL || '本番認証スモーク';
+const checkoutSessionPrefix =
+  process.env.CHECKOUT_SESSION_PREFIX || 'cs_live_';
+
 if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 
 function loadFixture() {
@@ -55,7 +59,7 @@ async function getSupabaseAccessToken(page) {
   return accessToken;
 }
 
-async function assertLiveCheckoutSession(page, plan) {
+async function assertCheckoutSession(page, plan) {
   const accessToken = await getSupabaseAccessToken(page);
   const response = await page.request.post('/api/create-checkout-session', {
     headers: {
@@ -68,7 +72,7 @@ async function assertLiveCheckoutSession(page, plan) {
 
   const body = await response.json();
   expect(body.mode).toBe('checkout');
-  expect(body.url).toContain('cs_live_');
+  expect(body.url).toContain(checkoutSessionPrefix);
   expect(new globalThis.URL(body.url).hostname).toBe('checkout.stripe.com');
 }
 
@@ -84,14 +88,14 @@ async function closeContextSafely(context) {
   }
 }
 
-test('authenticated beta-critical product flow works in production', async ({
+test('authenticated beta-critical product flow works in the target environment', async ({
   browser,
   baseURL
 }) => {
   const fixture = loadFixture();
   const unique = `E2E-${fixture.runId}`;
-  const novelTitle = `本番認証スモーク作品 ${unique}`;
-  const episodeTitle = `第1話 本番認証スモーク ${unique}`;
+  const novelTitle = `${smokeLabel}作品 ${unique}`;
+  const episodeTitle = `第1話 ${smokeLabel} ${unique}`;
 
   const authorContext = await browser.newContext({ baseURL });
   const readerContext = await browser.newContext({ baseURL });
@@ -117,7 +121,7 @@ test('authenticated beta-critical product flow works in production', async ({
       await authorPage
         .locator('#description')
         .fill(
-          'β公開前の認証済み本番スモーク専用作品です。テスト終了時に自動削除されます。'
+          `β公開前の${smokeLabel}専用作品です。テスト終了時に自動削除されます。`
         );
       await authorPage.locator('#aiUsage').selectOption('human');
       await authorPage.locator('#contentRating').selectOption('general');
@@ -139,7 +143,7 @@ test('authenticated beta-critical product flow works in production', async ({
       await authorPage
         .locator('#content')
         .fill(
-          'これはNOVELIGHTの本番認証スモーク用本文です。読書画面と10秒読書記録を検証します。'
+          `これはNOVELIGHTの${smokeLabel}用本文です。読書画面と10秒読書記録を検証します。`
         );
       await publishButton.click();
       await authorPage.waitForURL(/\/novel\.html\?id=/);
@@ -198,9 +202,7 @@ test('authenticated beta-critical product flow works in production', async ({
     await test.step('Read episode and record engaged reading', async () => {
       await readerPage.goto(`/${episodeHref}`);
       await expect(readerPage.locator('#card h1')).toHaveText(episodeTitle);
-      await expect(readerPage.locator('#card .content')).toContainText(
-        '本番認証スモーク用本文'
-      );
+      await expect(pageContent(readerPage)).toContainText(smokeLabel);
       await readerPage.waitForTimeout(10_500);
     });
 
@@ -213,12 +215,16 @@ test('authenticated beta-critical product flow works in production', async ({
       await expect(authorPage.locator('#favoriteTotal')).toHaveText('1');
     });
 
-    await test.step('Verify live Stripe Checkout session creation without charging', async () => {
-      await assertLiveCheckoutSession(authorPage, 'standard');
-      await assertLiveCheckoutSession(authorPage, 'premium');
+    await test.step('Verify Stripe Checkout session creation without charging', async () => {
+      await assertCheckoutSession(authorPage, 'standard');
+      await assertCheckoutSession(authorPage, 'premium');
     });
   } finally {
     await closeContextSafely(authorContext);
     await closeContextSafely(readerContext);
   }
 });
+
+function pageContent(page) {
+  return page.locator('#card .content');
+}
