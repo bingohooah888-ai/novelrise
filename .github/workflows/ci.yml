@@ -62,7 +62,7 @@ jobs:
             [ -n "$file" ] || continue
 
             case "$file" in
-              package.json|package-lock.json|api/*|scripts/*|tests/*.js|tests/*.mjs|eslint.config.mjs|docs/NOVELIGHT-MASTER.md|AGENTS.md)
+              package.json|package-lock.json|api/*|scripts/*|tests/*.js|tests/*.mjs|eslint.config.mjs|docs/NOVELIGHT-MASTER.md|AGENTS.md|.github/workflows/*.yml)
                 fast=true
                 ;;
             esac
@@ -130,6 +130,14 @@ jobs:
 
       - name: Check formatting
         run: npm run format:check
+
+      - name: Check shell script syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            bash -n "$file"
+          done < <(find scripts -type f -name '*.sh' -print0)
 
       - name: Lint JavaScript
         run: npm run lint
