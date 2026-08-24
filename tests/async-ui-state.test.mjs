@@ -30,6 +30,9 @@ test('episode renders before optional PV telemetry', () => {
 test('author home distinguishes loading and failure states', () => {
   assert.match(mypage, /function analyticsUnavailable\(\)/);
   assert.match(mypage, /void NovelightClient\.claimAcquisition\(client\)/);
-  assert.match(mypage, /保存中\.\.\./);
-  assert.match(mypage, /finally\{b\.disabled=false\}/);
+  assert.match(mypage, /profileReady=false/);
+  assert.match(mypage, /type="submit" disabled/);
+  assert.match(mypage, /profileReady=true;save\.disabled=false/);
+  assert.match(mypage, /if\(!profileReady\)/);
+  assert.match(mypage, /finally\{b\.disabled=!profileReady\}/);
 });
