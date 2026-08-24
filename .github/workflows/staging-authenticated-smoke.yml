@@ -32,6 +32,7 @@ jobs:
     if: vars.STAGING_E2E_READY == 'true'
     name: Verify authenticated beta-critical staging flows
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: staging
     env:
       E2E_BASE_URL: ${{ vars.STAGING_BASE_URL }}
@@ -63,6 +64,27 @@ jobs:
             echo 'STAGING_SUPABASE_SECRET_KEY is not configured.'
             exit 1
           }
+
+          case "$E2E_BASE_URL" in
+            https://*) ;;
+            *)
+              echo 'Authenticated staging smoke requires an HTTPS URL.'
+              exit 1
+              ;;
+          esac
+
+          host="${E2E_BASE_URL#https://}"
+          host="${host%%/*}"
+          host="${host%%\?*}"
+          host="${host%%#*}"
+          host="${host%%:*}"
+
+          if [ "$host" = 'novelrise.vercel.app' ]; then
+            echo 'Refusing to run authenticated staging writes against the production host.'
+            exit 1
+          fi
+
+          echo "Validated authenticated staging target host: $host"
 
       - name: Wait for staging critical pages to match the checked-out revision
         shell: bash
@@ -130,6 +152,38 @@ jobs:
       - name: Run authenticated staging smoke with Stripe test mode
         working-directory: tests/e2e
         run: npx playwright test --config=playwright.production-auth.config.mjs
+
+      - name: Summarize authenticated staging failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '## Authenticated staging smoke failure diagnostics'
+            echo ''
+            echo 'Playwright traces, screenshots, and raw test results are attached when available.'
+            echo ''
+            echo '### Failure files'
+          } >> "$GITHUB_STEP_SUMMARY"
+          find tests/e2e/test-results -maxdepth 3 -type f -printf '%p (%k KB)\n' 2>/dev/null | sort | tee /tmp/staging-auth-failure-files.txt
+          if [ -s /tmp/staging-auth-failure-files.txt ]; then
+            {
+              echo '```text'
+              cat /tmp/staging-auth-failure-files.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No Playwright failure files were found.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload authenticated staging failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-auth-playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/e2e/test-results
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Clean ephemeral staging smoke data
         if: always()
