@@ -87,7 +87,7 @@ jobs:
           {
             echo '### Stripe sandbox billing lifecycle: PASS'
             echo '- Customer Portal cancellation completed.'
-            echo '- cancel_at_period_end=true was observed.'
+            echo '- Stripe period-end cancellation scheduling was observed.'
             echo '- Standard access remained active until period end.'
             echo '- Stripe Test Clock advanced past the period end.'
             echo '- NOVELIGHT webhook reconciliation returned the profile to Free.'
