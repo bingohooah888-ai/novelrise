@@ -2,8 +2,8 @@ import { expect, test } from '../fixtures/diagnostic-test.js';
 
 async function installSupabaseStub(page, overrides = {}) {
   await page.addInitScript((state) => {
-    window.__NOVELIGHT_E2E_STATE__ = state;
-    window.__NOVELIGHT_E2E_CALLS__ = [];
+    globalThis.__NOVELIGHT_E2E_STATE__ = state;
+    globalThis.__NOVELIGHT_E2E_CALLS__ = [];
   }, overrides);
 
   await page.route(
@@ -171,7 +171,7 @@ test('login prevents duplicate submission while pending and recovers after an er
 
   const signInCalls = await page.evaluate(
     () =>
-      window.__NOVELIGHT_E2E_CALLS__.filter(
+      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
         (call) => call.type === 'signInWithPassword'
       ).length
   );
@@ -202,8 +202,9 @@ test('signup exposes loading state and restores the form after async completion'
 
   const signUpCalls = await page.evaluate(
     () =>
-      window.__NOVELIGHT_E2E_CALLS__.filter((call) => call.type === 'signUp')
-        .length
+      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'signUp'
+      ).length
   );
   expect(signUpCalls).toBe(1);
   expect(pageErrors).toEqual([]);
@@ -234,8 +235,9 @@ test('novel posting validates synchronously and recovers from an async save fail
 
   const insertsBeforeWarning = await page.evaluate(
     () =>
-      window.__NOVELIGHT_E2E_CALLS__.filter((call) => call.type === 'insert')
-        .length
+      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'insert'
+      ).length
   );
   expect(insertsBeforeWarning).toBe(0);
 
@@ -249,8 +251,9 @@ test('novel posting validates synchronously and recovers from an async save fail
 
   const insertsAfterWarning = await page.evaluate(
     () =>
-      window.__NOVELIGHT_E2E_CALLS__.filter((call) => call.type === 'insert')
-        .length
+      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'insert'
+      ).length
   );
   expect(insertsAfterWarning).toBe(1);
   expect(pageErrors).toEqual([]);
