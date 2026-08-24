@@ -64,7 +64,7 @@ jobs:
             [ -n "$file" ] || continue
 
             case "$file" in
-              package.json|package-lock.json|api/*|scripts/*|tests/*.js|tests/*.mjs|eslint.config.mjs|.github/workflows/*.yml)
+              package.json|package-lock.json|*.html|novelight-client.js|api/*|scripts/*|tests/*.js|tests/*.mjs|docs/*.md|supabase/migrations/*.sql|eslint.config.mjs|.github/workflows/*.yml)
                 fast=true
                 ;;
             esac
