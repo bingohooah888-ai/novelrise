@@ -3,7 +3,7 @@ name: CodeQL
 on:
   push:
     branches: [main]
-    paths: &codeql_paths
+    paths:
       - '*.html'
       - 'novelight-client.js'
       - 'api/**/*.js'
@@ -21,7 +21,6 @@ on:
       - '.github/workflows/*.yml'
   pull_request:
     branches: [main]
-    paths: *codeql_paths
   schedule:
     - cron: '17 3 * * 1'
 
