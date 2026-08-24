@@ -4,10 +4,10 @@ const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:4173';
 
 export default defineConfig({
   testDir: './specs',
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 2 : undefined,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: {
     baseURL,
@@ -22,17 +22,11 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'desktop-chromium',
+      name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        browserName: 'chromium'
-      }
-    },
-    {
-      name: 'mobile-chromium',
-      use: {
-        ...devices['Pixel 7'],
-        browserName: 'chromium'
+        browserName: 'chromium',
+        channel: 'chrome'
       }
     }
   ]
