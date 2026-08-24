@@ -35,9 +35,15 @@ AIの「問題ない」という判断だけをmerge根拠にしない。CI、RL
 
 commitとpushは既存ルールどおりユーザーの明示指示を必要とする。`main`へのmerge、本番DB変更、その他本番影響のある操作は意図的な承認ポイントとして扱う。
 
+## 自動化・効率化原則
+
+MASTERの自動化効率基準に従い、「自動化されている」ことだけを完成条件にしない。変更範囲に応じた差分実行、独立処理の並列化、安定した共通処理の再利用、不要な二重実行の削除、失敗した箇所だけを再実行しやすい構造を優先する。
+
+安全上意味のある重複は削らない。特に本番DBの承認前確認と承認後再確認、rollback検証、権限境界検証は効率化の名目で省略しない。一方、別Workflowが同じ変更で同じ準備・検査を無意味に繰り返す構造は整理する。新しいWorkflowを足す前に、既存Workflowの責務・path filter・共通スクリプトで解決できないか確認する。
+
 ## Project Structure & Module Organization
 
-ユーザー向けページはルートのHTML（`index.html`、`novel.html`、`episode-post.html` など）で、CSSとブラウザJavaScriptも各ページ内にある。Vercel APIは `api/`、Node/RLS自動テストは `tests/`、Playwrightブラウザテストは `tests/e2e/`、正式な方針・設計資料は `docs/` に置く。Supabase関連は、適用SQLを `supabase/migrations/`、復旧SQLを `supabase/rollback/`、適用前後の検証SQLを `supabase/checks/` に配置する。
+ユーザー向けページはルートのHTML（`index.html`、`novel.html`、`episode-post.html` など）で、CSSとブラウザJavaScriptも各ページ内にある。Vercel APIは `api/`、Node/RLS自動テストは `tests/`、Playwrightブラウザテストは `tests/e2e/`、正式な方針・設計資料は `docs/` に置く。Supabase関連は、適用SQLを `supabase/migrations/`、復旧SQLを `supabase/rollback/`、適用前後の検証SQLを `supabase/checks/` に配置する。共通のCI/運用ロジックは `scripts/` に置き、同じ処理を複数Workflowへコピペしない。
 
 ## Build, Test, and Development Commands
 
@@ -46,13 +52,16 @@ commitとpushは既存ルールどおりユーザーの明示指示を必要と�
 - `npm install`: 依存関係を追加・更新して `package-lock.json` を更新するときに使用する。
 - `npm test`: Node.js標準テストランナーで `tests/` のJavaScript自動テストを実行する。
 - `npm run lint`: `api/**/*.js`、`tests/**/*.js`、`tests/**/*.mjs` をESLintで検査する。
-- `npm run format`: API、テスト、設定ファイル、JSON/YAMLをPrettierで整形する。
-- `npm run format:check`: Prettier整形が必要なファイルがないか検査する。
-- `npm run syntax:check`: Vercel APIのJavaScript構文を検査する。
-- `npm run preflight`: Prettier整形、ESLint、自動テスト、API構文確認、`git diff --check` をまとめて実行する。通常のコード変更ではcommit/push前に必ず実行する。
+- `npm run format`: API、テスト、設定ファイル、JSON/YAMLをPrettierで整形する。これは明示的な修正操作として使う。
+- `npm run format:check`: ファイルを書き換えず、Prettier整形が必要なファイルがないか検査する。
+- `npm run syntax:check`: `api/` と `scripts/` のJavaScript/ESM対象を自動検出して構文検査する。
+- `npm run preflight` / `npm run preflight:fast`: 通常のread-only preflight。format check、ESLint、Node tests、syntax check、`git diff --check` を実行する。
+- `npm run preflight:fix`: 意図的にPrettier整形を適用してからfast checksを実行する。
+- `npm run preflight:db`: core RLS integration/rollback runnerを実行する。ローカルPostgreSQL test DBが必要。
+- `npm run preflight:e2e`: `tests/e2e/` のPlaywright smoke/async UIを実行する。互換Google Chromeが必要。
+- `npm run preflight:full`: fast + DB + E2E。高リスク・横断変更に限定し、通常変更で機械的に毎回実行しない。
 - `cd tests/e2e && npm ci`: Playwrightの固定依存関係をインストールする。
-- `cd tests/e2e && npx playwright install chromium`: ローカル用Chromiumをインストールする。CIでは`--with-deps chromium`を使用する。
-- `cd tests/e2e && npm test`: PC・モバイルのChromiumで主要公開ページのブラウザsmoke testを実行する。
+- `cd tests/e2e && npm test`: 主要公開ページ、非同期UI、明示的な390px mobile viewport検証を実行する。CIはGitHub Runner既存Chromeを利用し、毎回別Chromiumをダウンロードしない。
 - `npm audit --audit-level=high`: 本体の既知high/critical脆弱性を監査する。
 - `cd tests/e2e && npm audit --audit-level=high`: Playwright側の既知high/critical脆弱性を監査する。
 - `npx serve .`: 静的ページをローカル配信する。
@@ -61,13 +70,21 @@ commitとpushは既存ルールどおりユーザーの明示指示を必要と�
 - `supabase db push --linked --dry-run`: 本番へ適用されるpending migrationを変更なしで確認する。
 - `git diff --check`: 不正な空白を検査する。
 
-GitHub Actionsではmainへのpushとmain向けPull Requestに対して、Node.js 24、`npm ci`、Prettierチェック、ESLint、JavaScript自動テスト、PostgreSQL 17上のRLS統合テスト、API JavaScript構文チェック、Playwrightブラウザsmoke testを自動実行する。さらに本体と`tests/e2e/`の両lockfileに対して `npm audit --audit-level=high` を実行し、既知のhigh/critical脆弱性を拒否する。既存の必須status `check` はこれらを集約する最終gateとする。
+GitHub Actionsの必須status `check` は、最初に変更ファイルを分類し、必要なgateだけを集約する。preflight、core DB/RLS、browser E2E、dependency auditは独立jobとして可能な限り並列実行し、無関係なjobはskipする。skipはclassifierが不要と判定した場合のみ正常として扱い、classifier自体や必要jobのfailureは`check`を失敗させる。
 
-RLS統合テストは `tests/rls/` のfixtureへ対象migrationを実際に適用し、anon・作者本人・別作者の閲覧境界に加え、作品・エピソードの作成、所有権変更防止、他作者による更新・削除拒否を検証する。write RLS migrationはprecheck・postcheck・rollbackもCIで実行し、復旧可能性まで確認する。依存関係を変更した場合は対応する `package.json` と `package-lock.json` を必ず同じ変更として扱う。`tests/e2e/` は独立したpackage/lockfileを持ち、ブラウザテスト依存を本体runtimeから分離する。現時点でbuildスクリプトはない。追加時は `package.json` と本書を同時に更新する。
+CodeQLはコードを含むPR/main変更と定期scanで実行し、docs-only変更では重複実行しない。Playwrightのrequest-only・非同期UI検証をDesktop/Mobileの全projectで二重実行しない。mobile layoutはテスト内の明示viewportで担保する。Playwright failure時はtrace、screenshot、video、HTML report、console/page/request diagnosticsをartifactへ残す。
+
+RLS統合テストは `scripts/run-rls-integration.sh` をSingle Sourceとして、fixtureへ対象migrationを実際に適用し、閲覧・write権限境界、plan limit、LIGHT SEED、露出系、precheck/postcheck/rollbackを検証する。beta-P0やcontact inquiryのような専用DB gateは、そのWorkflowが実際に参照するファイルだけをpath filterへ含める。専用gate対象の変更だけで無関係なcore DB suiteを起動しない。
+
+依存関係を変更した場合は対応する `package.json` と `package-lock.json` を必ず同じ変更として扱う。`tests/e2e/` は独立したpackage/lockfileを持ち、ブラウザテスト依存を本体runtimeから分離する。現時点でbuildスクリプトはない。追加時は `package.json` と本書を同時に更新する。
 
 Vercelは `main` をproduction branchとして扱い、通常のfeature/fix/security branchはPreview対象とする。デプロイ枠浪費を避けるため、`vercel.json` で `chore/**`、`test/**`、`docs/**`、`dependabot/**` の自動Vercel deploymentを無効化する。これらのbranchで実際にdeploy確認が必要な変更を行った場合は、deploy-enabled branchへ移すか意図的にmanual previewを作成する。
 
-本番Supabase migrationの通常運用は `.github/workflows/supabase-production-auto-deploy.yml` を使う。`main` に `supabase/migrations/**` が入ると、今回のpushで追加されたmigrationと本番pendingが完全一致することを確認し、`status` と `dry-run` を自動実行する。安全確認後は `production-approval` GitHub Environmentで人間の承認を1回だけ要求し、承認後にpendingを再確認してから自動deployし、migration historyとproduction observabilityを検証する。`PRODUCTION_APPROVAL_GATE_READY=true` はRequired reviewers設定後にのみ有効化し、未設定なら自動deployしない。`.github/workflows/supabase-production.yml` の手動 `status` / `dry-run` / `repair-history` / `deploy` はフォールバックとして残す。`repair-history` は本番適用済みをDB実状態で確認した既知versionに限り、正確な確認文字列 `REPAIR` で実行する。workflowは `production` environmentの `SUPABASE_ACCESS_TOKEN` と `PRODUCTION_DB_PASSWORD` を使用し、想定外のmigrationがpendingなら自動・手動ともdeployしない。詳細は `docs/SUPABASE-PRODUCTION-DEPLOY.md` を参照する。
+Stagingの現行自動検証は `docs/STAGING-RUNBOOK.md` を基準とし、独立Staging SupabaseとStripe test modeが未接続の間はread-onlyを維持する。独立環境が完成した場合のみ、認証・作品投稿・お気に入り・LIGHT SEED・分析・Stripe test Checkoutを含むwrite E2Eを `STAGING_E2E_READY` で有効化する。本番ホスト・本番Supabase・Stripe live modeをStagingへ混入させない。
+
+本番Supabase migrationの通常運用は `.github/workflows/supabase-production-auto-deploy.yml` を使う。`main` に `supabase/migrations/**` が入ると、今回のpushで追加されたmigrationと本番pendingが完全一致することを確認し、dry-run後に `production-approval` GitHub Environmentで人間の承認を要求する。承認後にpending一致を再確認し、dry-runを再実行してから自動deployし、migration historyとproduction observabilityを検証する。承認前後の再確認は安全上必要な重複なので削除しない。
+
+`.github/workflows/supabase-production.yml` は手動 `status` / `dry-run` / `repair-history` / `deploy` 専用のfallbackであり、通常のmigration pushでは起動しない。`repair-history` は本番適用済みをDB実状態で確認した既知versionに限り、正確な確認文字列 `REPAIR` で実行する。詳細は `docs/SUPABASE-PRODUCTION-DEPLOY.md` を参照する。
 
 ## Coding Style & Naming Conventions
 
