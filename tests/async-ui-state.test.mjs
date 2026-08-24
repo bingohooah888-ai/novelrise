@@ -6,6 +6,7 @@ const search = await readFile('search.html', 'utf8');
 const analytics = await readFile('analytics.html', 'utf8');
 const episode = await readFile('episode.html', 'utf8');
 const mypage = await readFile('mypage.html', 'utf8');
+const novel = await readFile('novel.html', 'utf8');
 
 test('search drops stale async results', () => {
   assert.match(search, /rows=await enrich\(rows\)/);
@@ -35,4 +36,14 @@ test('author home distinguishes loading and failure states', () => {
   assert.match(mypage, /profileReady=true;save\.disabled=false/);
   assert.match(mypage, /if\(!profileReady\)/);
   assert.match(mypage, /finally\{b\.disabled=!profileReady\}/);
+});
+
+test('novel detail renders independently of optional async work', () => {
+  assert.match(novel, /function renderNovel\(\)/);
+  assert.match(novel, /void loadAuthorMeta\(\)/);
+  assert.match(novel, /void loadEpisodes\(\)/);
+  assert.match(novel, /void setupFavorite\(\)/);
+  assert.match(novel, /void setupSeed\(\)/);
+  assert.match(novel, /void recordOpen\(\)/);
+  assert.match(novel, /エピソードも読み込めません/);
 });
