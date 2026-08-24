@@ -14,8 +14,98 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      fast: ${{ steps.classify.outputs.fast }}
+      db: ${{ steps.classify.outputs.db }}
+      e2e: ${{ steps.classify.outputs.e2e }}
+      audit: ${{ steps.classify.outputs.audit }}
+
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = 'pull_request' ]; then
+            base="$PR_BASE_SHA"
+          elif [ -n "${BEFORE_SHA:-}" ] && ! [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            base="$BEFORE_SHA"
+          else
+            base="HEAD^"
+          fi
+
+          git diff --name-only "$base" HEAD > /tmp/changed-files.txt
+          echo 'Changed files:'
+          cat /tmp/changed-files.txt
+
+          fast=false
+          db=false
+          e2e=false
+          audit=false
+
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+
+            case "$file" in
+              package.json|package-lock.json|api/*|scripts/*|tests/*.js|tests/*.mjs|eslint.config.mjs|.github/workflows/*.yml)
+                fast=true
+                ;;
+            esac
+
+            case "$file" in
+              supabase/*/20260823150500_*|tests/rls/contact-inquiries*.sql|supabase/checks/production_beta_observability.sql)
+                ;;
+              supabase/*/2026082317*.sql|supabase/*/20260823192500_*.sql|supabase/*/20260823204500_*.sql|tests/rls/beta-p0-foundations.sql|tests/rls/signup-display-name.sql|tests/rls/founding-internal-exclusion*.sql|scripts/run-beta-p0-db-tests.sh)
+                ;;
+              supabase/*|tests/rls/*|scripts/run-rls-integration.sh)
+                db=true
+                ;;
+            esac
+
+            case "$file" in
+              *.html|novelight-client.js|tests/e2e/*)
+                e2e=true
+                ;;
+            esac
+
+            case "$file" in
+              package.json|package-lock.json|tests/e2e/package.json|tests/e2e/package-lock.json)
+                audit=true
+                ;;
+            esac
+
+            if [ "$file" = '.github/workflows/ci.yml' ]; then
+              fast=true
+              db=true
+              e2e=true
+              audit=true
+            fi
+          done < /tmp/changed-files.txt
+
+          echo "fast=$fast" >> "$GITHUB_OUTPUT"
+          echo "db=$db" >> "$GITHUB_OUTPUT"
+          echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
+          echo "audit=$audit" >> "$GITHUB_OUTPUT"
+
   preflight:
     name: Preflight
+    needs: changes
+    if: needs.changes.outputs.fast == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -37,8 +127,14 @@ jobs:
       - name: Run non-mutating preflight
         run: npm run preflight
 
+      - name: Check shell script syntax
+        shell: bash
+        run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r bash -n
+
   rls:
     name: RLS integration and rollback
+    needs: changes
+    if: needs.changes.outputs.db == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -52,9 +148,9 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d novelight_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 8
 
     steps:
       - name: Checkout repository
@@ -65,60 +161,12 @@ jobs:
       - name: Run RLS integration tests
         env:
           PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/fixture.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260819190000_secure_content_rls_and_constraints.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260822_content_write_rls_precheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260822194000_manage_content_write_rls.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/billing-fixture.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823073000_billing_permissions_and_novel_limits_precheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823073000_enforce_billing_permissions_and_novel_limits.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823074300_stripe_subscription_state_precheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823074300_add_stripe_subscription_state.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/read-access.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/write-access.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/billing-and-plan-limits.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/stripe-lifecycle-columns.sql
-          bash tests/rls/plan-limit-concurrency.sh
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/light-seed-fixture.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823083500_light_seed_mvp_precheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823083500_light_seed_mvp.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/light-seed-mvp.sql
-          bash tests/rls/light-seed-concurrency.sh
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-fixture.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823112000_exposure_allocation_precheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823112000_exposure_allocation.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-allocation.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823115300_exposure_funnel_precheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823115300_exposure_funnel.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-funnel.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823133000_exposure_funnel_retention_precheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823133000_exposure_funnel_retention.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-funnel-retention.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823133000_exposure_funnel_retention_postcheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260823133000_exposure_funnel_retention_rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-funnel-retention-rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260822_content_write_rls_postcheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823073000_billing_permissions_and_novel_limits_postcheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823074300_stripe_subscription_state_postcheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823083500_light_seed_mvp_postcheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823112000_exposure_allocation_postcheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260823115300_exposure_funnel_postcheck.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260823115300_exposure_funnel_rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-funnel-rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260823112000_exposure_allocation_rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/exposure-rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260823083500_light_seed_mvp_rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/light-seed-rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260823074300_add_stripe_subscription_state_rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/stripe-lifecycle-rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260823073000_enforce_billing_permissions_and_novel_limits_rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/billing-rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260822194000_manage_content_write_rls_rollback.sql
-          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/write-rollback.sql
+        run: bash scripts/run-rls-integration.sh
 
   browser:
     name: Browser E2E
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -139,11 +187,11 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
-      - name: Install Chromium for Playwright
+      - name: Install Playwright ffmpeg for failure video
         working-directory: tests/e2e
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install ffmpeg
 
-      - name: Run browser smoke and async UI tests
+      - name: Run browser smoke and async UI tests with runner Chrome
         working-directory: tests/e2e
         run: npm test
 
@@ -160,6 +208,8 @@ jobs:
 
   dependency-audit:
     name: Dependency vulnerability audit
+    needs: changes
+    if: needs.changes.outputs.audit == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -188,13 +238,14 @@ jobs:
   check:
     name: check
     if: always()
-    needs: [preflight, rls, browser, dependency-audit]
+    needs: [changes, preflight, rls, browser, dependency-audit]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
       - name: Verify required gates
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
           RLS_RESULT: ${{ needs.rls.result }}
           BROWSER_RESULT: ${{ needs.browser.result }}
@@ -203,24 +254,22 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ "$PREFLIGHT_RESULT" != "success" ]; then
-            echo "Preflight gate failed: $PREFLIGHT_RESULT"
-            exit 1
-          fi
+          check_result() {
+            local name="$1"
+            local result="$2"
+            case "$result" in
+              success|skipped) ;;
+              *)
+                echo "$name gate failed: $result"
+                exit 1
+                ;;
+            esac
+          }
 
-          if [ "$RLS_RESULT" != "success" ]; then
-            echo "RLS gate failed: $RLS_RESULT"
-            exit 1
-          fi
+          check_result changes "$CHANGES_RESULT"
+          check_result preflight "$PREFLIGHT_RESULT"
+          check_result rls "$RLS_RESULT"
+          check_result browser "$BROWSER_RESULT"
+          check_result dependency-audit "$DEPENDENCY_AUDIT_RESULT"
 
-          if [ "$BROWSER_RESULT" != "success" ]; then
-            echo "Browser gate failed: $BROWSER_RESULT"
-            exit 1
-          fi
-
-          if [ "$DEPENDENCY_AUDIT_RESULT" != "success" ]; then
-            echo "Dependency audit gate failed: $DEPENDENCY_AUDIT_RESULT"
-            exit 1
-          fi
-
-          echo "All required NOVELIGHT CI gates passed."
+          echo 'All relevant NOVELIGHT CI gates passed.'

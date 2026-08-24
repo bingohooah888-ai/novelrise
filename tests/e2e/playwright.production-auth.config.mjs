@@ -20,10 +20,11 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'production-authenticated-desktop-chromium',
+      name: 'production-authenticated-chromium',
       use: {
         ...devices['Desktop Chrome'],
-        browserName: 'chromium'
+        browserName: 'chromium',
+        channel: 'chrome'
       }
     }
   ]

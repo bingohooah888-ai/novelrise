@@ -108,11 +108,11 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
-      - name: Install Chromium
+      - name: Install Playwright ffmpeg for failure video
         working-directory: tests/e2e
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install ffmpeg
 
-      - name: Run read-only staging smoke
+      - name: Run read-only staging smoke with runner Chrome
         working-directory: tests/e2e
         run: npm run test:staging
 
