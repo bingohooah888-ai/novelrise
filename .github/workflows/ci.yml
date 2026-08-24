@@ -60,26 +60,37 @@ jobs:
 
           while IFS= read -r file; do
             [ -n "$file" ] || continue
+
             case "$file" in
               package.json|package-lock.json|api/*|scripts/*|tests/*.js|tests/*.mjs|eslint.config.mjs|docs/NOVELIGHT-MASTER.md|AGENTS.md)
                 fast=true
                 ;;
             esac
+
             case "$file" in
+              supabase/*/20260823150500_*|tests/rls/contact-inquiries*.sql|supabase/checks/production_beta_observability.sql)
+                # Dedicated contact/security or production-observability workflows own these files.
+                ;;
+              supabase/*/2026082317*.sql|supabase/*/20260823192500_*.sql|supabase/*/20260823204500_*.sql|tests/rls/beta-p0-foundations.sql|tests/rls/signup-display-name.sql|tests/rls/founding-internal-exclusion*.sql|scripts/run-beta-p0-db-tests.sh)
+                # The beta-P0 gate owns these migrations/tests.
+                ;;
               supabase/*|tests/rls/*|scripts/run-rls-integration.sh)
                 db=true
                 ;;
             esac
+
             case "$file" in
               *.html|novelight-client.js|tests/e2e/*)
                 e2e=true
                 ;;
             esac
+
             case "$file" in
               package.json|package-lock.json|tests/e2e/package.json|tests/e2e/package-lock.json)
                 audit=true
                 ;;
             esac
+
             case "$file" in
               .github/workflows/ci.yml)
                 fast=true
