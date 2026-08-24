@@ -126,6 +126,28 @@ async function waitForClockReady(clockId) {
   throw new Error('Stripe test clock did not become ready in time.');
 }
 
+async function waitForSubscriptionState(
+  subscriptionId,
+  predicate,
+  description,
+  attempts = 30
+) {
+  let subscription = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    if (predicate(subscription)) return subscription;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error(
+    `Stripe subscription did not reach ${description}. ` +
+      `status=${subscription?.status ?? 'unknown'} ` +
+      `cancel_at_period_end=${subscription?.cancel_at_period_end ?? 'unknown'} ` +
+      `cancel_at=${subscription?.cancel_at ?? 'unknown'}`
+  );
+}
+
 async function setup() {
   const frozenTime = Math.floor(Date.now() / 1000);
   const fixture = { runId, createdAt: new Date().toISOString() };
@@ -237,10 +259,12 @@ async function setup() {
 async function verifyScheduledCancellation() {
   const fixture = loadFixture();
   assert.ok(fixture.subscriptionId, 'subscription fixture is missing');
-  const subscription = await stripe.subscriptions.retrieve(fixture.subscriptionId);
-
-  assert.equal(subscription.status, 'active');
-  assert.equal(subscription.cancel_at_period_end, true);
+  const subscription = await waitForSubscriptionState(
+    fixture.subscriptionId,
+    (candidate) =>
+      candidate.status === 'active' && candidate.cancel_at_period_end === true,
+    'active cancellation-at-period-end state'
+  );
 
   const profile = await syncProfileFromSubscription(subscription, fixture, {
     plan: 'standard',
