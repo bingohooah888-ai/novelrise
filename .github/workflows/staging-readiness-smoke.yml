@@ -102,22 +102,7 @@ jobs:
               "$STAGING_BASE_URL/api/deployment-revision" \
               > /tmp/staging-revision.json; then
               content_type="$(awk 'BEGIN { IGNORECASE=1 } /^content-type:/ { value=$0 } END { sub(/^[^:]*:[[:space:]]*/, "", value); gsub(/\r/, "", value); print value }' /tmp/staging-revision.headers)"
-              deployed_sha="$(python3 - /tmp/staging-revision.json <<'PY'
-import json
-import re
-import sys
-
-try:
-    with open(sys.argv[1], encoding='utf-8') as handle:
-        data = json.load(handle)
-except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-    print('')
-    raise SystemExit(0)
-
-value = data.get('commitSha') if isinstance(data, dict) else None
-print(value if isinstance(value, str) and re.fullmatch(r'[0-9a-f]{40}', value) else '')
-PY
-              )"
+              deployed_sha="$(python3 -c 'import json,re,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); value=data.get("commitSha") if isinstance(data, dict) else None; print(value if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value) else "")' /tmp/staging-revision.json 2>/dev/null || true)"
               if [ "$deployed_sha" = "$EXPECTED_REVISION" ]; then
                 matched=true
                 break
