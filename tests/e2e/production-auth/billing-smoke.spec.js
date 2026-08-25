@@ -8,7 +8,8 @@ const completeBilling = process.env.E2E_COMPLETE_BILLING === 'true';
 const checkoutSessionPrefix = process.env.CHECKOUT_SESSION_PREFIX || '';
 const productionSupabaseHost = 'fiepaguycecrredwrcwx.supabase.co';
 
-if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
+if (!fixturePath)
+  throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 
 test.skip(
   !completeBilling,
