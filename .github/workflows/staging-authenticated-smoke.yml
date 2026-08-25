@@ -12,6 +12,7 @@ on:
       - 'scout-record.html'
       - 'analytics.html'
       - 'novelight-client.js'
+      - 'api/deployment-revision.js'
       - 'api/create-checkout-session.js'
       - 'api/_lib/checkout.js'
       - 'scripts/production-auth-smoke-fixture.mjs'
@@ -45,6 +46,7 @@ jobs:
       SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
       E2E_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      EXPECTED_REVISION: ${{ github.sha }}
       PRODUCTION_AUTH_SMOKE_FIXTURE: /tmp/novelight-staging-auth-smoke.json
       AUTH_SMOKE_LABEL: ステージング認証スモーク
       CHECKOUT_SESSION_PREFIX: cs_test_
@@ -120,7 +122,36 @@ jobs:
           echo "Validated authenticated staging target host: $host"
           echo "Validated isolated staging Supabase host: $supabase_host"
 
-      - name: Wait for staging critical pages to match the checked-out revision
+      - name: Wait for staging deployment revision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          matched=false
+          deployed_sha=''
+          for attempt in $(seq 1 24); do
+            if curl --fail --silent --show-error --location \
+              --connect-timeout 10 --max-time 20 \
+              "$E2E_BASE_URL/api/deployment-revision" > /tmp/staging-auth-revision.json; then
+              deployed_sha="$(grep -oE '[0-9a-f]{40}' /tmp/staging-auth-revision.json | head -n 1 || true)"
+              if [ "$deployed_sha" = "$EXPECTED_REVISION" ]; then
+                matched=true
+                break
+              fi
+            fi
+            echo "Authenticated staging revision has not converged (attempt ${attempt}/24, expected ${EXPECTED_REVISION}, observed ${deployed_sha:-unavailable})."
+            sleep 10
+          done
+
+          if [ "$matched" != true ]; then
+            echo 'Authenticated staging deployment revision does not match the workflow revision.'
+            echo 'Ensure Vercel Automatically expose System Environment Variables is enabled.'
+            exit 1
+          fi
+
+          echo "Verified authenticated staging revision: $deployed_sha"
+
+      - name: Verify staging critical pages are reachable
         shell: bash
         run: |
           set -euo pipefail
@@ -135,34 +166,11 @@ jobs:
             novelight-client.js
           )
 
-          matched=false
-          for attempt in $(seq 1 24); do
-            matched=true
-            for route in "${routes[@]}"; do
-              target="/tmp/staging-${route//\//-}"
-              if ! curl --fail --silent --show-error --location \
-                --connect-timeout 10 --max-time 20 \
-                "$E2E_BASE_URL/$route" > "$target"; then
-                matched=false
-                break
-              fi
-              if ! cmp -s "$route" "$target"; then
-                matched=false
-                break
-              fi
-            done
-
-            if [ "$matched" = true ]; then
-              break
-            fi
-            echo "Staging has not converged to the checked-out revision yet (attempt ${attempt}/24)."
-            sleep 10
+          for route in "${routes[@]}"; do
+            curl --fail --silent --show-error --location \
+              --connect-timeout 10 --max-time 20 \
+              "$E2E_BASE_URL/$route" > /dev/null
           done
-
-          if [ "$matched" != true ]; then
-            echo 'Staging did not converge to the checked-out revision within 4 minutes.'
-            exit 1
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
