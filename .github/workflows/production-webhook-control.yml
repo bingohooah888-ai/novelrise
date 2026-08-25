@@ -2,12 +2,10 @@ name: NOVELIGHT Production Webhook Control
 
 on:
   push:
-    branches:
-      - test/production-webhook-control
+    branches: [main]
     paths:
       - 'scripts/production-webhook-control.mjs'
       - '.github/workflows/production-webhook-control.yml'
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,7 +24,7 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_SCOPE: ranobe1
       VERCEL_PROJECT: novelrise
-      EXPECTED_BRANCH: test/production-webhook-control
+      EXPECTED_BRANCH: main
       PRODUCTION_ENV_FILE: /tmp/novelight-production-webhook-control.env
 
     steps:
@@ -35,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/$EXPECTED_BRANCH" || {
-            echo 'Refusing to run outside the dedicated control-test branch.'
+            echo 'Refusing to run outside main.'
             exit 1
           }
           [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
@@ -47,17 +45,21 @@ jobs:
             exit 1
           }
 
-      - name: Checkout dedicated control-test branch
+      - name: Checkout approved main revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
 
-      - name: Verify the branch only adds the controlled test harness
+      - name: Verify this main commit only introduced the control harness
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --no-tags origin main
-          mapfile -t changed < <(git diff --name-only origin/main...HEAD)
+          mapfile -t changed < <(git diff --name-only HEAD^1 HEAD)
+          test "${#changed[@]}" -gt 0 || {
+            echo 'No changed files detected for the control-test commit.'
+            exit 1
+          }
           printf 'Control-test changed files:\n'
           printf ' - %s\n' "${changed[@]}"
           for path in "${changed[@]}"; do
@@ -65,7 +67,7 @@ jobs:
               scripts/production-webhook-control.mjs|.github/workflows/production-webhook-control.yml)
                 ;;
               *)
-                echo "Unexpected changed file on control-test branch: $path"
+                echo "Unexpected changed file in control-test commit: $path"
                 exit 1
                 ;;
             esac
