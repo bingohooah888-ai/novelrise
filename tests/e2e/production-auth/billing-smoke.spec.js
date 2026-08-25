@@ -296,18 +296,6 @@ async function cancelThroughPortal(page) {
   );
   await openCancelDialog.press('Enter');
 
-  const reasonTrigger = await firstVisibleAcrossFrames(
-    page,
-    [
-      '[role="alertdialog"] [role="button"]:has-text("Choose an option")',
-      '[role="alertdialog"] [role="button"]:has-text("理由")'
-    ],
-    20_000
-  );
-  await reasonTrigger.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-
   const continueCancellation = await firstVisibleAcrossFrames(
     page,
     [
@@ -319,6 +307,21 @@ async function cancelThroughPortal(page) {
   );
   await continueCancellation.press('Enter');
   await expect(continueCancellation).toBeHidden({ timeout: 30_000 });
+
+  const finalCancellation = await firstVisibleAcrossFrames(
+    page,
+    [
+      '[data-testid="confirm"]',
+      'button:has-text("Cancel subscription")',
+      'button:has-text("Cancel plan")',
+      'button:has-text("プランをキャンセル")',
+      'button:has-text("解約する")'
+    ],
+    20_000
+  );
+  await finalCancellation.press('Enter');
+  await expect(finalCancellation).toBeHidden({ timeout: 30_000 });
+  await page.waitForTimeout(2_000);
 }
 
 test('Stripe test checkout, entitlement, portal, and cancellation work in staging', async ({
