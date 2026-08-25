@@ -6,7 +6,8 @@ const master = await readFile('docs/NOVELIGHT-MASTER.md', 'utf8');
 const workflow = await readFile('docs/development-workflow.md', 'utf8');
 const preflight = await readFile('docs/WORK-EXECUTION-PREFLIGHT.md', 'utf8');
 
-const workPurpose = /目的は作業することではない。NOVELIGHTを完成・成長させることである。/;
+const workPurpose =
+  /目的は作業することではない。NOVELIGHTを完成・成長させることである。/;
 const externalWorkGate = /before changing code or operating external services/i;
 
 test('MASTER work gates', () => {
