@@ -10,7 +10,7 @@ NOVELIGHTでは「壊れない」だけでなく「壊れても戻せる」こ�
 
 現時点のHTMLはSupabase接続先を静的に保持しているため、Vercel Previewだけを作成してもバックエンドまで自動的に独立Stagingへ切り替わるわけではない。
 
-そのため、現在の自動Staging smokeは **read-only** とする。
+そのため、通常の自動Staging smokeは **read-only** とする。
 
 - 公開ページの配備確認
 - Previewが対象commitと一致することの確認
@@ -78,6 +78,41 @@ Staging Playwright失敗時は以下を14日間GitHub Actions artifactへ保存�
 8. E2E用ユーザー・作品・お気に入り・LIGHT SEED等を毎回生成し、`finally` / cleanup stepで削除する。
 9. cleanup失敗を成功扱いにしない。
 10. production host / production project / live Stripe IDを検出した場合はfail closedする。
+
+### Authenticated smokeの設定場所
+
+Workflow: `.github/workflows/staging-authenticated-smoke.yml`
+
+現行Workflowでは、job開始前に判定・展開する非機密値はGitHub Repository Actions Variablesへ置く。
+
+- `STAGING_E2E_READY`
+- `STAGING_BASE_URL`
+- `STAGING_SUPABASE_URL`
+
+秘密値はGitHub `staging` Environment Secretsへ置く。
+
+- `STAGING_SUPABASE_SECRET_KEY`
+- `STAGING_SUPABASE_PUBLISHABLE_KEY`
+
+`STAGING_E2E_READY` は独立Stagingが完成するまで未設定または `false` のまま維持する。ほかの値が未完成の状態で先に `true` にしない。
+
+`workflow_dispatch` では `staging_url` を指定すると `STAGING_BASE_URL` を一時的に上書きできる。PRのVercel Preview等を明示的に検証する場合に使用する。
+
+Vercel Preview/Staging側のServerless APIも本番から分離する。少なくとも以下をPreview/StagingスコープでStaging/Test用に設定し、本番値を流用しない。
+
+- `SUPABASE_URL`
+- `SUPABASE_SECRET_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_STANDARD_PRICE_ID`
+- `STRIPE_PREMIUM_PRICE_ID`
+- 必要に応じて `STRIPE_PORTAL_CONFIGURATION_ID`
+- `NOVELIGHT_APP_URL`
+
+ブラウザ側HTMLは現時点で本番Supabase URL/keyを静的保持している。そのためAuthenticated smokeではPlaywrightがページスクリプト実行前にStaging Supabase URL / publishable keyを注入し、ブラウザの `supabase.createClient()` をStagingへ差し替える。
+
+この差し替えはAuthenticated smokeのBrowserContext内だけで有効とし、通常ユーザーがPreviewを開いた場合のアプリ設定を書き換えるものではない。したがって、独立した通常Staging UIが完成するまでは、手動Preview操作を安全な書き込み環境とみなさず、通常のPreview検証はread-only境界を維持する。
+
+Authenticated smokeはログイン後のSupabase auth localStorage keyが指定したStaging project refと一致し、本番project refではないことも確認する。Staging Supabase URLとして本番 `fiepaguycecrredwrcwx.supabase.co` が指定された場合は実行を拒否する。
 
 ## 独立Staging完成後の書き込みE2E
 
