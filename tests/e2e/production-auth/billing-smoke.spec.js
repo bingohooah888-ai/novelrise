@@ -8,8 +8,7 @@ const completeBilling = process.env.E2E_COMPLETE_BILLING === 'true';
 const checkoutSessionPrefix = process.env.CHECKOUT_SESSION_PREFIX || '';
 const productionSupabaseHost = 'fiepaguycecrredwrcwx.supabase.co';
 
-if (!fixturePath)
-  throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
+if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 
 test.skip(
   !completeBilling,
@@ -46,26 +45,23 @@ function resolveStagingSupabaseOverride() {
 const stagingSupabase = resolveStagingSupabaseOverride();
 
 async function installStagingSupabaseOverride(context) {
-  await context.addInitScript(
-    ({ url, key }) => {
-      let assignedSupabase;
-      Object.defineProperty(globalThis, 'supabase', {
-        configurable: true,
-        get() {
-          return assignedSupabase;
-        },
-        set(value) {
-          assignedSupabase = value;
-          if (!value || typeof value.createClient !== 'function') return;
+  await context.addInitScript(({ url, key }) => {
+    let assignedSupabase;
+    Object.defineProperty(globalThis, 'supabase', {
+      configurable: true,
+      get() {
+        return assignedSupabase;
+      },
+      set(value) {
+        assignedSupabase = value;
+        if (!value || typeof value.createClient !== 'function') return;
 
-          const originalCreateClient = value.createClient.bind(value);
-          value.createClient = (_url, _key, options) =>
-            originalCreateClient(url, key, options);
-        }
-      });
-    },
-    stagingSupabase
-  );
+        const originalCreateClient = value.createClient.bind(value);
+        value.createClient = (_url, _key, options) =>
+          originalCreateClient(url, key, options);
+      }
+    });
+  }, stagingSupabase);
 }
 
 async function login(page, account) {
@@ -214,19 +210,21 @@ async function completeStripeCheckout(page, checkoutUrl, appOrigin) {
 
   const appHost = new globalThis.URL(appOrigin).hostname;
   await page.waitForURL(
-    (url) =>
-      url.hostname === appHost && url.pathname.endsWith('/mypage.html'),
+    (url) => url.hostname === appHost && url.pathname.endsWith('/mypage.html'),
     { timeout: 60_000 }
   );
 }
 
 async function openBillingPortal(page) {
   const accessToken = await getAccessToken(page);
-  const response = await page.request.post('/api/create-billing-portal-session', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
+  const response = await page.request.post(
+    '/api/create-billing-portal-session',
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
     }
-  });
+  );
 
   expect(response.status()).toBe(200);
   const body = await response.json();
@@ -276,7 +274,10 @@ async function cancelThroughPortal(page) {
   await expect
     .poll(
       async () => {
-        const body = await page.locator('body').innerText().catch(() => '');
+        const body = await page
+          .locator('body')
+          .innerText()
+          .catch(() => '');
         return /canceled|cancelled|ends on|expires|解約|終了/i.test(body);
       },
       { timeout: 30_000 }
@@ -284,71 +285,71 @@ async function cancelThroughPortal(page) {
     .toBeTruthy();
 }
 
-test(
-  'Stripe test checkout, entitlement, portal, and cancellation work in staging',
-  async ({ browser, baseURL }) => {
-    test.setTimeout(210_000);
-    const fixture = loadFixture();
-    const context = await browser.newContext({ baseURL, locale: 'en-US' });
-    await installStagingSupabaseOverride(context);
-    const page = await context.newPage();
+test('Stripe test checkout, entitlement, portal, and cancellation work in staging', async ({
+  browser,
+  baseURL
+}) => {
+  test.setTimeout(210_000);
+  const fixture = loadFixture();
+  const context = await browser.newContext({ baseURL, locale: 'en-US' });
+  await installStagingSupabaseOverride(context);
+  const page = await context.newPage();
 
-    try {
-      await login(page, fixture.author);
+  try {
+    await login(page, fixture.author);
 
-      const accessToken = await getAccessToken(page);
-      const checkoutResponse = await page.request.post(
-        '/api/create-checkout-session',
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          },
-          data: { plan: 'standard' }
-        }
-      );
-      expect(checkoutResponse.status()).toBe(200);
-      const checkoutBody = await checkoutResponse.json();
-      expect(checkoutBody.mode).toBe('checkout');
+    const accessToken = await getAccessToken(page);
+    const checkoutResponse = await page.request.post(
+      '/api/create-checkout-session',
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
+        data: { plan: 'standard' }
+      }
+    );
+    expect(checkoutResponse.status()).toBe(200);
+    const checkoutBody = await checkoutResponse.json();
+    expect(checkoutBody.mode).toBe('checkout');
 
-      await completeStripeCheckout(page, checkoutBody.url, baseURL);
+    await completeStripeCheckout(page, checkoutBody.url, baseURL);
 
-      await expect
-        .poll(
-          async () => {
-            await page.goto('/mypage.html?checkout=success');
-            await expect(page.locator('#plan')).not.toHaveText('確認中');
-            return (await getBillingState(page)).plan;
-          },
-          { timeout: 45_000, intervals: [1000, 2000, 3000] }
-        )
-        .toBe('standard');
+    await expect
+      .poll(
+        async () => {
+          await page.goto('/mypage.html?checkout=success');
+          await expect(page.locator('#plan')).not.toHaveText('確認中');
+          return (await getBillingState(page)).plan;
+        },
+        { timeout: 45_000, intervals: [1000, 2000, 3000] }
+      )
+      .toBe('standard');
 
-      const paidState = await getBillingState(page);
-      expect(paidState.stripe_customer_id).toMatch(/^cus_/);
-      expect(paidState.stripe_subscription_id).toMatch(/^sub_/);
-      expect(['active', 'trialing', 'past_due']).toContain(
-        paidState.subscription_status
-      );
+    const paidState = await getBillingState(page);
+    expect(paidState.stripe_customer_id).toMatch(/^cus_/);
+    expect(paidState.stripe_subscription_id).toMatch(/^sub_/);
+    expect(['active', 'trialing', 'past_due']).toContain(
+      paidState.subscription_status
+    );
 
-      await openBillingPortal(page);
-      await cancelThroughPortal(page);
+    await openBillingPortal(page);
+    await cancelThroughPortal(page);
 
-      await page.goto('/mypage.html');
-      await expect
-        .poll(
-          async () => {
-            const state = await getBillingState(page);
-            return (
-              state.plan === 'free' ||
-              state.subscription_status === 'canceled' ||
-              state.subscription_cancel_at_period_end === true
-            );
-          },
-          { timeout: 45_000, intervals: [1000, 2000, 3000] }
-        )
-        .toBeTruthy();
-    } finally {
-      await context.close();
-    }
+    await page.goto('/mypage.html');
+    await expect
+      .poll(
+        async () => {
+          const state = await getBillingState(page);
+          return (
+            state.plan === 'free' ||
+            state.subscription_status === 'canceled' ||
+            state.subscription_cancel_at_period_end === true
+          );
+        },
+        { timeout: 45_000, intervals: [1000, 2000, 3000] }
+      )
+      .toBeTruthy();
+  } finally {
+    await context.close();
   }
-);
+});
