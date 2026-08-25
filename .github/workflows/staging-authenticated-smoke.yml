@@ -41,7 +41,7 @@ jobs:
     timeout-minutes: 30
     environment: staging
     env:
-      E2E_BASE_URL: ${{ inputs.staging_url || vars.STAGING_BASE_URL }}
+      E2E_BASE_URL: ${{ inputs.staging_url || vars.STAGING_BASE_URL || 'https://novelrise-git-ci-isolate-staging-auth-smoke-ranobe1.vercel.app' }}
       SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
       E2E_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
@@ -225,6 +225,7 @@ jobs:
         run: npm ci
 
       - name: Create ephemeral staging smoke users
+        id: staging_fixture
         run: node scripts/production-auth-smoke-fixture.mjs setup
 
       - name: Run authenticated staging smoke with Stripe test mode
@@ -264,7 +265,7 @@ jobs:
           retention-days: 14
 
       - name: Clean ephemeral staging smoke data
-        if: always()
+        if: ${{ always() && steps.staging_fixture.outcome != 'skipped' }}
         run: node scripts/production-auth-smoke-fixture.mjs cleanup
 
       - name: Remove temporary staging fixture
