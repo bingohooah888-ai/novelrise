@@ -31,6 +31,7 @@ jobs:
       DEPLOYMENT_ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
       DEPLOYMENT_TARGET_URL: ${{ github.event.deployment_status.target_url }}
       EXPECTED_REVISION: ${{ github.event.deployment.sha || github.sha }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
     steps:
       - name: Checkout deployed revision
@@ -79,25 +80,65 @@ jobs:
         run: |
           set -euo pipefail
 
+          curl_args=(
+            --fail
+            --silent
+            --show-error
+            --location
+            --connect-timeout 10
+            --max-time 20
+          )
+          if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            curl_args+=(--header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
+          fi
+
           matched=false
           deployed_sha=''
+          content_type=''
           for attempt in $(seq 1 18); do
-            if curl --fail --silent --show-error --location \
-              --connect-timeout 10 --max-time 20 \
-              "$STAGING_BASE_URL/api/deployment-revision" > /tmp/staging-revision.json; then
-              deployed_sha="$(grep -oE '[0-9a-f]{40}' /tmp/staging-revision.json | head -n 1 || true)"
+            rm -f /tmp/staging-revision.json /tmp/staging-revision.headers
+            if curl "${curl_args[@]}" \
+              --dump-header /tmp/staging-revision.headers \
+              "$STAGING_BASE_URL/api/deployment-revision" \
+              > /tmp/staging-revision.json; then
+              content_type="$(awk 'BEGIN { IGNORECASE=1 } /^content-type:/ { value=$0 } END { sub(/^[^:]*:[[:space:]]*/, "", value); gsub(/\r/, "", value); print value }' /tmp/staging-revision.headers)"
+              deployed_sha="$(python3 - /tmp/staging-revision.json <<'PY'
+import json
+import re
+import sys
+
+try:
+    with open(sys.argv[1], encoding='utf-8') as handle:
+        data = json.load(handle)
+except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+    print('')
+    raise SystemExit(0)
+
+value = data.get('commitSha') if isinstance(data, dict) else None
+print(value if isinstance(value, str) and re.fullmatch(r'[0-9a-f]{40}', value) else '')
+PY
+              )"
               if [ "$deployed_sha" = "$EXPECTED_REVISION" ]; then
                 matched=true
                 break
               fi
+
+              if [ -z "$deployed_sha" ] && grep -qi '^www-authenticate:' /tmp/staging-revision.headers; then
+                echo 'Vercel Deployment Protection blocked the staging revision endpoint.'
+                echo 'Configure VERCEL_AUTOMATION_BYPASS_SECRET in Vercel and the matching GitHub Actions repository secret.'
+                break
+              fi
             fi
-            echo "Staging revision has not converged (attempt ${attempt}/18, expected ${EXPECTED_REVISION}, observed ${deployed_sha:-unavailable})."
+            echo "Staging revision has not converged (attempt ${attempt}/18, expected ${EXPECTED_REVISION}, observed ${deployed_sha:-unavailable}, content-type ${content_type:-unknown})."
             sleep 5
           done
 
           if [ "$matched" != true ]; then
             echo 'Staging deployment revision does not match the workflow revision.'
             echo 'Ensure Vercel Automatically expose System Environment Variables is enabled.'
+            if [ -z "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+              echo 'If Preview Deployment Protection is enabled, configure VERCEL_AUTOMATION_BYPASS_SECRET for automation.'
+            fi
             exit 1
           fi
 
