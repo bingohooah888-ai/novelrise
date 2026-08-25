@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createStagingBillingReconcileHandler } from '../api/_lib/staging-billing-reconcile.js';
+import {
+  createStagingBillingReconcileHandler
+} from '../api/_lib/staging-billing-reconcile.js';
 
 function createResponse() {
   const state = { statusCode: null, body: null };
@@ -209,10 +211,7 @@ test('syncs a Stripe test checkout into the isolated staging profile', async () 
   assert.deepEqual(state.body, { synced: true, result: 'synced' });
   assert.equal(dependencies.profile.plan, 'standard');
   assert.equal(dependencies.profile.payment_status, 'active');
-  assert.equal(
-    dependencies.profile.stripe_customer_id,
-    'cus_test_example'
-  );
+  assert.equal(dependencies.profile.stripe_customer_id, 'cus_test_example');
   assert.equal(
     dependencies.profile.stripe_subscription_id,
     'sub_test_example'
@@ -222,34 +221,37 @@ test('syncs a Stripe test checkout into the isolated staging profile', async () 
   ]);
 });
 
-test('can reconcile later subscription changes from the stored customer', async () => {
-  const dependencies = createDependencies({
-    profile: {
-      id: 'user-123',
-      plan: 'standard',
-      stripe_customer_id: 'cus_test_example',
-      stripe_subscription_id: 'sub_test_example'
-    },
-    subscription: {
-      id: 'sub_test_example',
-      status: 'active',
-      created: 1_700_000_000,
-      cancel_at_period_end: true,
-      cancel_at: 1_800_000_000,
-      items: {
-        data: [
-          {
-            price: { id: 'price_standard' },
-            current_period_end: 1_800_000_000
-          }
-        ]
+test(
+  'can reconcile later subscription changes from the stored customer',
+  async () => {
+    const dependencies = createDependencies({
+      profile: {
+        id: 'user-123',
+        plan: 'standard',
+        stripe_customer_id: 'cus_test_example',
+        stripe_subscription_id: 'sub_test_example'
+      },
+      subscription: {
+        id: 'sub_test_example',
+        status: 'active',
+        created: 1_700_000_000,
+        cancel_at_period_end: true,
+        cancel_at: 1_800_000_000,
+        items: {
+          data: [
+            {
+              price: { id: 'price_standard' },
+              current_period_end: 1_800_000_000
+            }
+          ]
+        }
       }
-    }
-  });
-  const handler = createStagingBillingReconcileHandler(dependencies);
-  const state = await invoke(handler, {});
+    });
+    const handler = createStagingBillingReconcileHandler(dependencies);
+    const state = await invoke(handler, {});
 
-  assert.equal(state.statusCode, 200);
-  assert.equal(dependencies.profile.plan, 'standard');
-  assert.equal(dependencies.profile.subscription_cancel_at_period_end, true);
-});
+    assert.equal(state.statusCode, 200);
+    assert.equal(dependencies.profile.plan, 'standard');
+    assert.equal(dependencies.profile.subscription_cancel_at_period_end, true);
+  }
+);
