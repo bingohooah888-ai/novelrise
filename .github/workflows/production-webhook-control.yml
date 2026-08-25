@@ -25,6 +25,7 @@ jobs:
       VERCEL_SCOPE: ranobe1
       VERCEL_PROJECT: novelrise
       EXPECTED_BRANCH: main
+      EXPECTED_PRODUCTION_SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
       PRODUCTION_ENV_FILE: /tmp/novelight-production-webhook-control.env
 
     steps:
@@ -85,7 +86,7 @@ jobs:
       - name: Install pinned Vercel CLI
         run: npm install --global vercel@59.1.4
 
-      - name: Pull canonical Vercel Production environment into runner memory
+      - name: Pull Vercel Production environment into runner memory
         shell: bash
         run: |
           set -euo pipefail
@@ -125,10 +126,99 @@ jobs:
             printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
           done
 
+      - name: Verify Production Supabase secret against the canonical project
+        id: supabase_alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_host="${SUPABASE_URL#https://}"
+          current_host="${current_host%%/*}"
+          echo "Observed Vercel Production Supabase host: $current_host"
+
+          if [ "$SUPABASE_URL" = "$EXPECTED_PRODUCTION_SUPABASE_URL" ]; then
+            echo 'Production Supabase URL is already canonical.'
+            echo 'repair_needed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          response_code="$(curl --silent --show-error --output /tmp/canonical-supabase-probe.json \
+            --write-out '%{http_code}' \
+            --connect-timeout 10 \
+            --max-time 20 \
+            --url "$EXPECTED_PRODUCTION_SUPABASE_URL/rest/v1/profiles?select=id&limit=1" \
+            --header "apikey: $SUPABASE_SECRET_KEY" \
+            --header "Authorization: Bearer $SUPABASE_SECRET_KEY")"
+
+          if [[ "$response_code" =~ ^2 ]]; then
+            echo 'Current Production Supabase secret authenticates against the canonical Production project.'
+            echo 'Only SUPABASE_URL is misaligned; guarded repair is allowed.'
+            echo 'repair_needed=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Canonical Production Supabase probe failed with HTTP $response_code."
+          echo 'Refusing to change Vercel because SUPABASE_SECRET_KEY may also be misaligned.'
+          exit 1
+
+      - name: Repair canonical Production Supabase URL in Vercel
+        if: steps.supabase_alignment.outputs.repair_needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$EXPECTED_PRODUCTION_SUPABASE_URL" \
+            | vercel env add SUPABASE_URL production \
+                --force \
+                --yes \
+                --sensitive \
+                --scope "$VERCEL_SCOPE" \
+                --token "$VERCEL_TOKEN" \
+                >/dev/null
+
+          echo 'Vercel Production SUPABASE_URL repaired to the canonical Production project.'
+
+      - name: Redeploy Production after guarded Supabase URL repair
+        if: steps.supabase_alignment.outputs.repair_needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel deploy \
+            --prod \
+            --yes \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN" \
+            > /tmp/production-supabase-repair-deploy.txt
+          tail -n 1 /tmp/production-supabase-repair-deploy.txt
+
+      - name: Wait for Production webhook route after repair
+        if: steps.supabase_alignment.outputs.repair_needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            code="$(curl --silent --show-error --output /tmp/webhook-health-response \
+              --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
+              "$NOVELIGHT_APP_URL/api/stripe-webhook")"
+            if [ "$code" = '405' ]; then
+              echo 'Production webhook route is reachable after redeploy.'
+              exit 0
+            fi
+            echo "Production webhook route not ready (attempt ${attempt}/24, HTTP ${code})."
+            sleep 10
+          done
+          echo 'Production webhook route did not become healthy in time.'
+          exit 1
+
+      - name: Use canonical Production Supabase URL for control verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'SUPABASE_URL=%s\n' "$EXPECTED_PRODUCTION_SUPABASE_URL" >> "$GITHUB_ENV"
+
       - name: Run no-charge Production webhook control proof
         run: node scripts/production-webhook-control.mjs
 
       - name: Remove temporary Production environment material
         if: always()
         shell: bash
-        run: rm -f "$PRODUCTION_ENV_FILE"
+        run: rm -f "$PRODUCTION_ENV_FILE" /tmp/canonical-supabase-probe.json /tmp/production-supabase-repair-deploy.txt /tmp/webhook-health-response
