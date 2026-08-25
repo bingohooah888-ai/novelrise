@@ -285,39 +285,49 @@ async function cancelThroughPortal(page) {
   );
   await cancellationEntry.click();
 
-  const firstRadio = page.locator('input[type="radio"]').first();
-  if (
-    (await firstRadio.count()) > 0 &&
-    (await firstRadio.isVisible().catch(() => false))
-  ) {
-    await firstRadio.check();
-  }
-
-  const confirm = await firstVisibleAcrossFrames(
+  const openCancelDialog = await firstVisibleAcrossFrames(
     page,
     [
-      'button:has-text("Cancel plan")',
+      '[data-testid="confirm"]',
       'button:has-text("Cancel subscription")',
-      'button:has-text("Confirm cancellation")',
-      'button:has-text("プランをキャンセル")',
-      'button:has-text("解約する")'
+      'button:has-text("Cancel plan")'
     ],
     20_000
   );
-  await confirm.press('Enter');
+  await openCancelDialog.press('Enter');
 
-  await expect
-    .poll(
-      async () => {
-        const body = await page
-          .locator('body')
-          .innerText()
-          .catch(() => '');
-        return /canceled|cancelled|ends on|expires|解約|終了/i.test(body);
-      },
-      { timeout: 30_000 }
-    )
-    .toBeTruthy();
+  const reasonTrigger = await firstVisibleAcrossFrames(
+    page,
+    [
+      '[role="alertdialog"] [role="button"]:has-text("Choose an option")',
+      '[role="alertdialog"] [role="button"]:has-text("理由")'
+    ],
+    20_000
+  );
+  await reasonTrigger.click();
+
+  const reasonOption = await firstVisibleAcrossFrames(
+    page,
+    [
+      '[role="option"][data-key="unused"]',
+      '[role="option"]:has-text("I no longer need it")',
+      '[role="option"]'
+    ],
+    10_000
+  );
+  await reasonOption.click();
+
+  const continueCancellation = await firstVisibleAcrossFrames(
+    page,
+    [
+      '[role="alertdialog"] [role="button"]:has-text("Continue to cancellation")',
+      '[role="alertdialog"] a:has-text("Continue to cancellation")',
+      '[role="alertdialog"] [role="button"]:has-text("解約")'
+    ],
+    20_000
+  );
+  await continueCancellation.press('Enter');
+  await expect(continueCancellation).toBeHidden({ timeout: 30_000 });
 }
 
 test('Stripe test checkout, entitlement, portal, and cancellation work in staging', async ({
