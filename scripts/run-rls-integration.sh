@@ -4,6 +4,8 @@ set -euo pipefail
 : "${PGPASSWORD:=postgres}"
 export PGPASSWORD
 
+bash scripts/run-migration-replay.sh
+
 DB=(psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}" -d "${PGDATABASE:-novelight_test}" -v ON_ERROR_STOP=1)
 
 run_sql() {
