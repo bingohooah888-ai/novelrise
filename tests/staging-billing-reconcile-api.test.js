@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  createStagingBillingReconcileHandler
+  createStagingBillingReconcileHandler,
 } from '../api/_lib/staging-billing-reconcile.js';
 
 function createResponse() {
