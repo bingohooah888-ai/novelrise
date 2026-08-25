@@ -19,11 +19,18 @@ function resolveStagingSupabaseOverride() {
   }
 
   const target = new globalThis.URL(e2eSupabaseUrl);
-  if (target.protocol !== 'https:' || !target.hostname.endsWith('.supabase.co')) {
-    throw new Error('Authenticated staging E2E requires an HTTPS Supabase project URL.');
+  if (
+    target.protocol !== 'https:' ||
+    !target.hostname.endsWith('.supabase.co')
+  ) {
+    throw new Error(
+      'Authenticated staging E2E requires an HTTPS Supabase project URL.'
+    );
   }
   if (target.hostname === productionSupabaseHost) {
-    throw new Error('Authenticated staging E2E refuses the production Supabase project.');
+    throw new Error(
+      'Authenticated staging E2E refuses the production Supabase project.'
+    );
   }
 
   return {
@@ -118,7 +125,8 @@ async function getSupabaseAccessToken(page) {
 
       try {
         const stored = JSON.parse(raw);
-        const token = stored?.access_token ?? stored?.currentSession?.access_token;
+        const token =
+          stored?.access_token ?? stored?.currentSession?.access_token;
         if (token) return token;
       } catch {
         // Ignore unrelated or malformed local storage values.
@@ -153,7 +161,9 @@ async function closeContextSafely(context) {
   try {
     await context.close();
   } catch (error) {
-    if (!String(error).includes('Target page, context or browser has been closed')) {
+    if (
+      !String(error).includes('Target page, context or browser has been closed')
+    ) {
       throw error;
     }
   }
@@ -204,7 +214,9 @@ test('authenticated beta-critical product flow works in target', async ({
       await authorPage.locator('#submitButton').click();
       await authorPage.waitForURL(/\/episode-post\.html\?novel_id=/);
 
-      novelId = new globalThis.URL(authorPage.url()).searchParams.get('novel_id');
+      novelId = new globalThis.URL(authorPage.url()).searchParams.get(
+        'novel_id'
+      );
       expect(novelId).toBeTruthy();
     });
 
@@ -267,7 +279,9 @@ test('authenticated beta-critical product flow works in target', async ({
       await expect(
         readerPage.getByRole('heading', { name: 'SCOUT RECORD' })
       ).toBeVisible();
-      await expect(readerPage.getByText(novelTitle, { exact: true })).toBeVisible();
+      await expect(
+        readerPage.getByText(novelTitle, { exact: true })
+      ).toBeVisible();
     });
 
     await test.step('Read episode and record engaged reading', async () => {
