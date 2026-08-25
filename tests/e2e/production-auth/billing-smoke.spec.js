@@ -304,7 +304,7 @@ async function cancelThroughPortal(page) {
     ],
     20_000
   );
-  await confirm.click();
+  await confirm.press('Enter');
 
   await expect
     .poll(
