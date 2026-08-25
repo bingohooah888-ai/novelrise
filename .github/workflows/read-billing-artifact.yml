@@ -18,10 +18,50 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh run download 32856798862 --repo "$GITHUB_REPOSITORY" --name staging-billing-playwright-failure-32856798862-1 --dir /tmp/billing-artifact
-      - name: Print Playwright error context
+      - name: OCR failed checkout screenshot
+        shell: bash
         run: |
-          find /tmp/billing-artifact -maxdepth 5 -type f -printf '%p\n'
-          context_file="$(find /tmp/billing-artifact -name error-context.md -type f -print -quit)"
-          test -n "$context_file"
-          echo '===== error-context.md ====='
-          cat "$context_file"
+          set -euo pipefail
+          screenshot="$(find /tmp/billing-artifact -name 'test-failed-1.png' -type f -print -quit)"
+          test -n "$screenshot"
+          if ! command -v tesseract >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq tesseract-ocr
+          fi
+          echo '===== screenshot OCR ====='
+          tesseract "$screenshot" stdout 2>/dev/null || true
+      - name: Print sanitized trace URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          trace_zip="$(find /tmp/billing-artifact -name trace.zip -type f -print -quit)"
+          test -n "$trace_zip"
+          rm -rf /tmp/billing-trace
+          mkdir -p /tmp/billing-trace
+          unzip -q "$trace_zip" -d /tmp/billing-trace
+          python3 - <<'PY'
+          import pathlib, re
+          from urllib.parse import urlsplit
+
+          seen=[]
+          for path in pathlib.Path('/tmp/billing-trace').rglob('*'):
+              if not path.is_file() or path.stat().st_size > 40_000_000:
+                  continue
+              try:
+                  text=path.read_text('utf-8', errors='ignore')
+              except Exception:
+                  continue
+              for raw in re.findall(r'https://[^"\\\s<>]+', text):
+                  try:
+                      u=urlsplit(raw)
+                  except Exception:
+                      continue
+                  if not u.hostname:
+                      continue
+                  value=f'{u.scheme}://{u.hostname}{u.path}'
+                  if value not in seen:
+                      seen.append(value)
+          print('===== sanitized trace URLs (last 30 unique) =====')
+          for value in seen[-30:]:
+              print(value)
+          PY
