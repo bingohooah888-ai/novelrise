@@ -19,4 +19,5 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx prettier tests/e2e/production-auth/billing-smoke.spec.js
+      - name: Print exact formatted file as base64
+        run: npx prettier tests/e2e/production-auth/billing-smoke.spec.js | base64 -w0
