@@ -10,6 +10,8 @@ const productionSupabaseHost = 'fiepaguycecrredwrcwx.supabase.co';
 const productionSupabaseUrl = `https://${productionSupabaseHost}`;
 const productionSupabasePublishableKey =
   'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+const exposureConversionRpcPath =
+  '/rest/v1/rpc/record_novel_exposure_conversion';
 
 if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 
@@ -152,12 +154,12 @@ async function recordDiscoveryImpression(page, novelId) {
   await page.waitForFunction(
     () => typeof globalThis.supabase?.createClient === 'function'
   );
-  const result = await page.evaluate(
+  await page.evaluate(
     async ({ url, key, workId }) => {
       const client = globalThis.supabase.createClient(url, key);
       const session = await client.auth.getSession();
       if (!session.data.session) {
-        return { data: null, error: 'Authenticated session was unavailable.' };
+        throw new Error('Authenticated session was unavailable.');
       }
 
       const response = await client.rpc('record_novel_impressions_v2', {
@@ -165,26 +167,22 @@ async function recordDiscoveryImpression(page, novelId) {
         p_novel_ids: [workId],
         p_visitor_token: null
       });
-      return {
-        data: response.data,
-        error: response.error?.message || null
-      };
+      if (response.error) throw new Error(response.error.message);
     },
     { url: target.url, key: target.key, workId: String(novelId) }
   );
-
-  expect(result.error).toBeNull();
 }
 
 function waitForExposureConversion(page, eventType) {
   return page.waitForResponse((response) => {
     if (
-      !response.url().includes('/rest/v1/rpc/record_novel_exposure_conversion') ||
+      !response.url().includes(exposureConversionRpcPath) ||
       response.request().method() !== 'POST'
     ) {
       return false;
     }
-    return response.request().postData()?.includes(`"${eventType}"`) ?? false;
+    const body = response.request().postData();
+    return body?.includes(`"${eventType}"`) ?? false;
   });
 }
 
@@ -401,7 +399,9 @@ test('authenticated beta-critical product flow works in target', async ({
       ).toBeVisible();
       await expect(authorPage.locator('#novelCount')).toHaveText('1');
       await expect(authorPage.locator('#favoriteTotal')).toHaveText('1');
-      await expect(authorPage.locator('.work').filter({ hasText: novelTitle })).toBeVisible();
+      await expect(
+        authorPage.locator('.work').filter({ hasText: novelTitle })
+      ).toBeVisible();
       await expect(authorPage.locator('#impressions')).toHaveText('1');
       await expect(authorPage.locator('#detail')).toHaveText('1');
       await expect(authorPage.locator('#first')).toHaveText('1');
