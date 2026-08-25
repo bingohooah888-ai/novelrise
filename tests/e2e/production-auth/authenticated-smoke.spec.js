@@ -327,7 +327,7 @@ test('authenticated beta-critical product flow works in target', async ({
       const readerVisitorToken = await login(
         readerPage,
         fixture.reader,
-        'index.html'
+        'mypage.html'
       );
       saveVisitorToken('reader', readerVisitorToken);
       await recordDiscoveryImpression(readerPage, novelId);
