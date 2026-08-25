@@ -1,0 +1,134 @@
+name: NOVELIGHT Production Webhook Control
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/production-webhook-control.mjs'
+      - '.github/workflows/production-webhook-control.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-production-webhook-control
+  cancel-in-progress: false
+
+jobs:
+  control:
+    name: Prove external Stripe live webhook delivery without a live charge
+    runs-on: ubuntu-latest
+    environment: production-approval
+    env:
+      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_SCOPE: ranobe1
+      VERCEL_PROJECT: novelrise
+      EXPECTED_BRANCH: main
+      PRODUCTION_ENV_FILE: /tmp/novelight-production-webhook-control.env
+
+    steps:
+      - name: Refuse unexpected ref or credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/$EXPECTED_BRANCH" || {
+            echo 'Refusing to run outside main.'
+            exit 1
+          }
+          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
+            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live.'
+            exit 1
+          }
+          test -n "$VERCEL_TOKEN" || {
+            echo 'VERCEL_TOKEN is not configured.'
+            exit 1
+          }
+
+      - name: Checkout approved main revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Verify this main commit only introduced the control harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only HEAD^1 HEAD)
+          test "${#changed[@]}" -gt 0 || {
+            echo 'No changed files detected for the control-test commit.'
+            exit 1
+          }
+          printf 'Control-test changed files:\n'
+          printf ' - %s\n' "${changed[@]}"
+          for path in "${changed[@]}"; do
+            case "$path" in
+              scripts/production-webhook-control.mjs|.github/workflows/production-webhook-control.yml)
+                ;;
+              *)
+                echo "Unexpected changed file in control-test commit: $path"
+                exit 1
+                ;;
+            esac
+          done
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked application dependencies
+        run: npm ci
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@59.1.4
+
+      - name: Pull canonical Vercel Production environment into runner memory
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel link \
+            --yes \
+            --project "$VERCEL_PROJECT" \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN" \
+            >/dev/null
+
+          vercel env pull "$PRODUCTION_ENV_FILE" \
+            --environment=production \
+            --yes \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN" \
+            >/dev/null
+
+          set -a
+          # shellcheck disable=SC1090
+          source "$PRODUCTION_ENV_FILE"
+          set +a
+
+          required=(
+            SUPABASE_URL
+            SUPABASE_SECRET_KEY
+            STRIPE_STANDARD_PRICE_ID
+            NOVELIGHT_APP_URL
+          )
+
+          for key in "${required[@]}"; do
+            value="${!key:-}"
+            test -n "$value" || {
+              echo "Missing Vercel Production variable: $key"
+              exit 1
+            }
+            printf '::add-mask::%s\n' "$value"
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
+          done
+
+      - name: Run no-charge Production webhook control proof
+        run: node scripts/production-webhook-control.mjs
+
+      - name: Remove temporary Production environment material
+        if: always()
+        shell: bash
+        run: rm -f "$PRODUCTION_ENV_FILE"
