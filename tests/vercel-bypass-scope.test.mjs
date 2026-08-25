@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const configPath = new URL(
+const configPath = new globalThis.URL(
   '../tests/e2e/playwright.production-auth.config.mjs',
   import.meta.url
 );
-const setupPath = new URL(
+const setupPath = new globalThis.URL(
   '../tests/e2e/production-auth/vercel-bypass-global-setup.mjs',
   import.meta.url
 );
