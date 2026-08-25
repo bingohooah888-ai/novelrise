@@ -4,7 +4,7 @@ This document defines the normal development path after the initial environment 
 
 ## Standard flow
 
-1. Read `docs/NOVELIGHT-MASTER.md` and `AGENTS.md` before changing code.
+1. Read `docs/NOVELIGHT-MASTER.md`, `docs/WORK-EXECUTION-PREFLIGHT.md`, and `AGENTS.md` before changing code or operating external services. The MASTER remains the higher-level authority; the execution preflight is the mandatory runtime checklist that prevents timing, automation, manual-operation, and completion gates from being skipped.
 2. Work on a dedicated branch. Do not make feature changes directly on `main`.
 3. Keep each change focused. Authentication, Supabase RLS, Stripe/billing, permissions, personal data, destructive migrations, and production deployment are high-risk changes and require extra review plus a rollback or recovery plan.
 4. Run the smallest relevant local gate. `npm run preflight` is the normal read-only fast gate. Add `preflight:db` for core DB/RLS changes, `preflight:e2e` for browser-facing changes, and `preflight:full` only for high-risk or broad changes. Use `preflight:fix` only when intentional formatting changes are wanted.
@@ -12,6 +12,10 @@ This document defines the normal development path after the initial environment 
 6. Merge only after the required `check` status succeeds. The CI classifier runs only relevant preflight, DB/RLS, browser, and dependency gates, while preserving the final aggregate `check`. CodeQL must also be clean when it applies.
 7. Use squash merge for the normal solo-development flow so `main` stays easy to audit and revert.
 8. Production Supabase migrations use the dedicated auto-deploy workflow with explicit production approval. The manual Supabase workflow is fallback/recovery only.
+
+## Execution preflight
+
+`docs/WORK-EXECUTION-PREFLIGHT.md` is mandatory for tool-backed NOVELIGHT work. In particular, estimate total and phase time before execution, estimate how many user-only manual operations are expected, and re-check automation whenever the same phase would require more than three user operations. Repeated UI failure must trigger a route reassessment instead of repeating the same instruction indefinitely. Secret entry, 2FA, OAuth approval, destructive actions, and production approvals remain deliberate user-controlled boundaries.
 
 ## Automation efficiency
 
