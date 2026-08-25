@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  createStagingBillingReconcileHandler,
+  createStagingBillingReconcileHandler
 } from '../api/_lib/staging-billing-reconcile.js';
 
 function createResponse() {
@@ -128,7 +128,10 @@ function createDependencies({
   return { stripe, supabase, env, profile, calls };
 }
 
-async function invoke(handler, body = { checkoutSessionId: 'cs_test_example' }) {
+async function invoke(
+  handler,
+  body = { checkoutSessionId: 'cs_test_example' }
+) {
   const { res, state } = createResponse();
   await handler(
     {
