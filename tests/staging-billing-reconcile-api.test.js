@@ -205,24 +205,27 @@ test('rejects a checkout session owned by another user', async () => {
   assert.equal(dependencies.calls.subscriptionLists.length, 0);
 });
 
-test('syncs a Stripe test checkout into the isolated staging profile', async () => {
-  const dependencies = createDependencies();
-  const handler = createStagingBillingReconcileHandler(dependencies);
-  const state = await invoke(handler);
+test(
+  'syncs a Stripe test checkout into the isolated staging profile',
+  async () => {
+    const dependencies = createDependencies();
+    const handler = createStagingBillingReconcileHandler(dependencies);
+    const state = await invoke(handler);
 
-  assert.equal(state.statusCode, 200);
-  assert.deepEqual(state.body, { synced: true, result: 'synced' });
-  assert.equal(dependencies.profile.plan, 'standard');
-  assert.equal(dependencies.profile.payment_status, 'active');
-  assert.equal(dependencies.profile.stripe_customer_id, 'cus_test_example');
-  assert.equal(
-    dependencies.profile.stripe_subscription_id,
-    'sub_test_example'
-  );
-  assert.deepEqual(dependencies.calls.subscriptionLists, [
-    { customer: 'cus_test_example', status: 'all', limit: 100 }
-  ]);
-});
+    assert.equal(state.statusCode, 200);
+    assert.deepEqual(state.body, { synced: true, result: 'synced' });
+    assert.equal(dependencies.profile.plan, 'standard');
+    assert.equal(dependencies.profile.payment_status, 'active');
+    assert.equal(dependencies.profile.stripe_customer_id, 'cus_test_example');
+    assert.equal(
+      dependencies.profile.stripe_subscription_id,
+      'sub_test_example'
+    );
+    assert.deepEqual(dependencies.calls.subscriptionLists, [
+      { customer: 'cus_test_example', status: 'all', limit: 100 }
+    ]);
+  }
+);
 
 test(
   'can reconcile later subscription changes from the stored customer',
