@@ -83,9 +83,7 @@ async function login(page, account) {
     return keys;
   });
 
-  expect(authKeys).toContain(
-    `sb-${stagingSupabase.projectRef}-auth-token`
-  );
+  expect(authKeys).toContain(`sb-${stagingSupabase.projectRef}-auth-token`);
   expect(authKeys).not.toContain('sb-fiepaguycecrredwrcwx-auth-token');
 }
 
@@ -142,7 +140,10 @@ async function firstVisibleAcrossFrames(page, selectors, timeout = 20_000) {
     for (const frame of page.frames()) {
       for (const selector of selectors) {
         const locator = frame.locator(selector).first();
-        if ((await locator.count()) > 0 && (await locator.isVisible().catch(() => false))) {
+        if (
+          (await locator.count()) > 0 &&
+          (await locator.isVisible().catch(() => false))
+        ) {
           return locator;
         }
       }
@@ -157,7 +158,10 @@ async function fillOptionalAcrossFrames(page, selectors, value) {
   for (const frame of page.frames()) {
     for (const selector of selectors) {
       const locator = frame.locator(selector).first();
-      if ((await locator.count()) > 0 && (await locator.isVisible().catch(() => false))) {
+      if (
+        (await locator.count()) > 0 &&
+        (await locator.isVisible().catch(() => false))
+      ) {
         await locator.fill(value);
         return true;
       }
@@ -202,7 +206,9 @@ async function completeStripeCheckout(page, checkoutUrl, appOrigin) {
     '10001'
   );
 
-  const submit = await firstVisibleAcrossFrames(page, ['button[type="submit"]']);
+  const submit = await firstVisibleAcrossFrames(page, [
+    'button[type="submit"]'
+  ]);
   await submit.click();
 
   const appHost = new globalThis.URL(appOrigin).hostname;
@@ -246,7 +252,10 @@ async function cancelThroughPortal(page) {
   await cancellationEntry.click();
 
   const firstRadio = page.locator('input[type="radio"]').first();
-  if ((await firstRadio.count()) > 0 && (await firstRadio.isVisible().catch(() => false))) {
+  if (
+    (await firstRadio.count()) > 0 &&
+    (await firstRadio.isVisible().catch(() => false))
+  ) {
     await firstRadio.check();
   }
 
@@ -274,71 +283,71 @@ async function cancelThroughPortal(page) {
     .toBeTruthy();
 }
 
-test('Stripe test checkout, entitlement, portal, and cancellation work in staging', async ({
-  browser,
-  baseURL
-}) => {
-  test.setTimeout(210_000);
-  const fixture = loadFixture();
-  const context = await browser.newContext({ baseURL, locale: 'en-US' });
-  await installStagingSupabaseOverride(context);
-  const page = await context.newPage();
+test(
+  'Stripe test checkout, entitlement, portal, and cancellation work in staging',
+  async ({ browser, baseURL }) => {
+    test.setTimeout(210_000);
+    const fixture = loadFixture();
+    const context = await browser.newContext({ baseURL, locale: 'en-US' });
+    await installStagingSupabaseOverride(context);
+    const page = await context.newPage();
 
-  try {
-    await login(page, fixture.author);
+    try {
+      await login(page, fixture.author);
 
-    const accessToken = await getAccessToken(page);
-    const checkoutResponse = await page.request.post(
-      '/api/create-checkout-session',
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        },
-        data: { plan: 'standard' }
-      }
-    );
-    expect(checkoutResponse.status()).toBe(200);
-    const checkoutBody = await checkoutResponse.json();
-    expect(checkoutBody.mode).toBe('checkout');
+      const accessToken = await getAccessToken(page);
+      const checkoutResponse = await page.request.post(
+        '/api/create-checkout-session',
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          },
+          data: { plan: 'standard' }
+        }
+      );
+      expect(checkoutResponse.status()).toBe(200);
+      const checkoutBody = await checkoutResponse.json();
+      expect(checkoutBody.mode).toBe('checkout');
 
-    await completeStripeCheckout(page, checkoutBody.url, baseURL);
+      await completeStripeCheckout(page, checkoutBody.url, baseURL);
 
-    await expect
-      .poll(
-        async () => {
-          await page.goto('/mypage.html?checkout=success');
-          await expect(page.locator('#plan')).not.toHaveText('確認中');
-          return (await getBillingState(page)).plan;
-        },
-        { timeout: 45_000, intervals: [1000, 2000, 3000] }
-      )
-      .toBe('standard');
+      await expect
+        .poll(
+          async () => {
+            await page.goto('/mypage.html?checkout=success');
+            await expect(page.locator('#plan')).not.toHaveText('確認中');
+            return (await getBillingState(page)).plan;
+          },
+          { timeout: 45_000, intervals: [1000, 2000, 3000] }
+        )
+        .toBe('standard');
 
-    const paidState = await getBillingState(page);
-    expect(paidState.stripe_customer_id).toMatch(/^cus_/);
-    expect(paidState.stripe_subscription_id).toMatch(/^sub_/);
-    expect(['active', 'trialing', 'past_due']).toContain(
-      paidState.subscription_status
-    );
+      const paidState = await getBillingState(page);
+      expect(paidState.stripe_customer_id).toMatch(/^cus_/);
+      expect(paidState.stripe_subscription_id).toMatch(/^sub_/);
+      expect(['active', 'trialing', 'past_due']).toContain(
+        paidState.subscription_status
+      );
 
-    await openBillingPortal(page);
-    await cancelThroughPortal(page);
+      await openBillingPortal(page);
+      await cancelThroughPortal(page);
 
-    await page.goto('/mypage.html');
-    await expect
-      .poll(
-        async () => {
-          const state = await getBillingState(page);
-          return (
-            state.plan === 'free' ||
-            state.subscription_status === 'canceled' ||
-            state.subscription_cancel_at_period_end === true
-          );
-        },
-        { timeout: 45_000, intervals: [1000, 2000, 3000] }
-      )
-      .toBeTruthy();
-  } finally {
-    await context.close();
+      await page.goto('/mypage.html');
+      await expect
+        .poll(
+          async () => {
+            const state = await getBillingState(page);
+            return (
+              state.plan === 'free' ||
+              state.subscription_status === 'canceled' ||
+              state.subscription_cancel_at_period_end === true
+            );
+          },
+          { timeout: 45_000, intervals: [1000, 2000, 3000] }
+        )
+        .toBeTruthy();
+    } finally {
+      await context.close();
+    }
   }
-});
+);
