@@ -167,6 +167,22 @@ async function fillOptionalAcrossFrames(page, selectors, value) {
   return false;
 }
 
+async function disableStripeLinkOptIn(page) {
+  for (const frame of page.frames()) {
+    const checkbox = frame
+      .getByRole('checkbox', { name: /save my information/i })
+      .first();
+    if (
+      (await checkbox.count()) > 0 &&
+      (await checkbox.isVisible().catch(() => false))
+    ) {
+      if (await checkbox.isChecked()) await checkbox.uncheck();
+      return true;
+    }
+  }
+  return false;
+}
+
 async function completeStripeCheckout(page, checkoutUrl, appOrigin) {
   const checkout = new globalThis.URL(checkoutUrl);
   expect(checkout.hostname).toBe('checkout.stripe.com');
@@ -202,6 +218,7 @@ async function completeStripeCheckout(page, checkoutUrl, appOrigin) {
     ['input[name="billingPostalCode"]', 'input[autocomplete="postal-code"]'],
     '10001'
   );
+  await disableStripeLinkOptIn(page);
 
   const submit = await firstVisibleAcrossFrames(page, [
     'button[type="submit"]'
