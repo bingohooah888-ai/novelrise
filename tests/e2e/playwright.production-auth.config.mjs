@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const vercelBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+const baseURL = process.env.E2E_BASE_URL || 'https://novelrise.vercel.app';
+const bypassStorageState =
+  process.env.VERCEL_BYPASS_STORAGE_STATE ||
+  '/tmp/novelight-vercel-bypass-storage-state.json';
 
 export default defineConfig({
   testDir: './production-auth',
@@ -13,17 +16,12 @@ export default defineConfig({
   expect: {
     timeout: 10_000
   },
+  globalSetup: './production-auth/vercel-bypass-global-setup.mjs',
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'https://novelrise.vercel.app',
+    baseURL,
+    storageState: bypassStorageState,
     actionTimeout: 15_000,
     navigationTimeout: 20_000,
-    ...(vercelBypassSecret
-      ? {
-          extraHTTPHeaders: {
-            'x-vercel-protection-bypass': vercelBypassSecret
-          }
-        }
-      : {}),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
   },

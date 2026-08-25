@@ -1,0 +1,159 @@
+name: NOVELIGHT Staging Billing Smoke
+
+on:
+  push:
+    branches: [ci/isolate-staging-auth-smoke]
+    paths:
+      - 'pricing.html'
+      - 'mypage.html'
+      - 'api/create-checkout-session.js'
+      - 'api/create-billing-portal-session.js'
+      - 'api/stripe-webhook.js'
+      - 'api/_lib/checkout.js'
+      - 'api/_lib/billing-portal.js'
+      - 'api/_lib/stripe-webhook.js'
+      - 'scripts/production-auth-smoke-fixture.mjs'
+      - 'tests/e2e/production-auth/billing-smoke.spec.js'
+      - 'tests/e2e/production-auth/vercel-bypass-global-setup.mjs'
+      - 'tests/e2e/playwright.production-auth.config.mjs'
+      - '.github/workflows/staging-billing-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-staging-billing-smoke
+  cancel-in-progress: false
+
+jobs:
+  billing-smoke:
+    if: vars.STAGING_E2E_READY == 'true'
+    name: Verify Stripe test checkout and cancellation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    env:
+      E2E_BASE_URL: ${{ vars.STAGING_BASE_URL || 'https://novelrise-git-ci-isolate-staging-auth-smoke-ranobe1.vercel.app' }}
+      SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      E2E_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      EXPECTED_REVISION: ${{ github.sha }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PRODUCTION_AUTH_SMOKE_FIXTURE: /tmp/novelight-staging-billing-smoke.json
+      AUTH_SMOKE_LABEL: ステージング課金スモーク
+      CHECKOUT_SESSION_PREFIX: cs_test_
+      E2E_COMPLETE_BILLING: 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify isolated staging target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$E2E_BASE_URL"
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_SECRET_KEY"
+          test -n "$E2E_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+
+          case "$E2E_BASE_URL" in
+            https://*) ;;
+            *) echo 'Billing smoke requires an HTTPS staging URL.'; exit 1 ;;
+          esac
+          host="${E2E_BASE_URL#https://}"
+          host="${host%%/*}"
+          host="${host%%:*}"
+          if [ "$host" = 'novelrise.vercel.app' ]; then
+            echo 'Refusing Stripe billing smoke against production.'
+            exit 1
+          fi
+
+          case "$E2E_SUPABASE_URL" in
+            https://*.supabase.co) ;;
+            *) echo 'Billing smoke requires an HTTPS Supabase project URL.'; exit 1 ;;
+          esac
+          if [ "$E2E_SUPABASE_URL" = 'https://fiepaguycecrredwrcwx.supabase.co' ]; then
+            echo 'Refusing Stripe billing smoke against production Supabase.'
+            exit 1
+          fi
+          if [ "$E2E_SUPABASE_URL" != "$SUPABASE_URL" ]; then
+            echo 'Browser and fixture Supabase targets must match.'
+            exit 1
+          fi
+
+      - name: Wait for staging deployment revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl_args=(
+            --fail
+            --silent
+            --show-error
+            --location
+            --connect-timeout 10
+            --max-time 20
+            --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"
+          )
+
+          matched=false
+          for attempt in $(seq 1 24); do
+            observed="$(curl "${curl_args[@]}" "$E2E_BASE_URL/api/deployment-revision" | jq -r '.commitSha // empty' 2>/dev/null || true)"
+            if [ "$observed" = "$EXPECTED_REVISION" ]; then
+              matched=true
+              break
+            fi
+            echo "Staging billing revision has not converged (attempt ${attempt}/24)."
+            sleep 10
+          done
+
+          if [ "$matched" != true ]; then
+            echo 'Staging billing deployment revision does not match the workflow revision.'
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/e2e/package-lock.json
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install browser smoke dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Create ephemeral staging billing user
+        id: staging_fixture
+        run: node scripts/production-auth-smoke-fixture.mjs setup
+
+      - name: Run complete Stripe test billing smoke
+        working-directory: tests/e2e
+        run: npx playwright test production-auth/billing-smoke.spec.js --config=playwright.production-auth.config.mjs
+
+      - name: Upload billing smoke failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-billing-playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/e2e/test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Clean ephemeral staging billing data
+        if: ${{ always() && steps.staging_fixture.outcome != 'skipped' }}
+        run: node scripts/production-auth-smoke-fixture.mjs cleanup
+
+      - name: Remove temporary staging billing fixture
+        if: always()
+        run: rm -f "$PRODUCTION_AUTH_SMOKE_FIXTURE"
