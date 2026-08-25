@@ -42,7 +42,12 @@ async function getProfile(supabase, userId) {
   return data?.[0] ?? null;
 }
 
-async function resolveCustomerId({ stripe, profile, userId, checkoutSessionId }) {
+async function resolveCustomerId({
+  stripe,
+  profile,
+  userId,
+  checkoutSessionId
+}) {
   if (!checkoutSessionId) {
     return profile.stripe_customer_id ?? null;
   }
