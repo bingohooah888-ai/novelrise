@@ -59,7 +59,9 @@ export default async function globalSetup() {
     );
 
     if (!hasScopedCookie) {
-      throw new Error('Vercel bypass bootstrap did not create a host-scoped cookie.');
+      throw new Error(
+        'Vercel bypass bootstrap did not create a host-scoped cookie.'
+      );
     }
   } finally {
     await context.dispose();
