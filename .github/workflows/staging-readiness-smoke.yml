@@ -30,6 +30,7 @@ jobs:
       MANUAL_STAGING_URL: ${{ inputs.staging_url }}
       DEPLOYMENT_ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
       DEPLOYMENT_TARGET_URL: ${{ github.event.deployment_status.target_url }}
+      EXPECTED_REVISION: ${{ github.event.deployment.sha || github.sha }}
 
     steps:
       - name: Checkout deployed revision
@@ -73,29 +74,34 @@ jobs:
           printf 'STAGING_BASE_URL=%s\n' "${url%/}" >> "$GITHUB_ENV"
           echo "Validated staging target host: $host"
 
-      - name: Verify preview matches the checked-out revision
+      - name: Verify deployed revision
         shell: bash
         run: |
           set -euo pipefail
 
           matched=false
+          deployed_sha=''
           for attempt in $(seq 1 18); do
             if curl --fail --silent --show-error --location \
               --connect-timeout 10 --max-time 20 \
-              "$STAGING_BASE_URL/index.html" > /tmp/staging-index.html; then
-              if cmp -s index.html /tmp/staging-index.html; then
+              "$STAGING_BASE_URL/api/deployment-revision" > /tmp/staging-revision.json; then
+              deployed_sha="$(grep -oE '[0-9a-f]{40}' /tmp/staging-revision.json | head -n 1 || true)"
+              if [ "$deployed_sha" = "$EXPECTED_REVISION" ]; then
                 matched=true
                 break
               fi
             fi
-            echo "Staging index has not converged to the checked-out revision (attempt ${attempt}/18)."
+            echo "Staging revision has not converged (attempt ${attempt}/18, expected ${EXPECTED_REVISION}, observed ${deployed_sha:-unavailable})."
             sleep 5
           done
 
           if [ "$matched" != true ]; then
-            echo 'Staging deployment does not match the checked-out revision.'
+            echo 'Staging deployment revision does not match the workflow revision.'
+            echo 'Ensure Vercel Automatically expose System Environment Variables is enabled.'
             exit 1
           fi
+
+          echo "Verified deployed revision: $deployed_sha"
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
