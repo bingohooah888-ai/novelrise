@@ -54,6 +54,28 @@ Vercel側のbypass secretを変更・再生成・失効した場合は、GitHub�
 
 `/api/deployment-revision` はJSONとして厳密に解析し、任意のHTML内に偶然含まれる40文字のハッシュをcommit SHAとして扱わない。Vercel Authentication等に遮断され `WWW-Authenticate` が返った場合は、bypass設定不足として明示的に失敗する。
 
+### Stripe Webhookと保護Preview
+
+Stripe等の外部サービスは、GitHub ActionsやPlaywrightのように `x-vercel-protection-bypass` headerを付与できない。そのためVercel Deployment Protectionで保護されたPreviewへStripe Webhookを直接配送することは、通常のStaging Billing Smokeの前提にしない。
+
+`VERCEL_AUTOMATION_BYPASS_SECRET` をWebhook URLのquery parameterや共有URLへ埋め込んで回避しない。SecretはURL、Stripe endpoint URL、ログ、クライアントコードへ出さない。
+
+保護Previewでの課金統合確認では `api/staging-billing-reconcile.js` を使用する。このAPIは実際のStripe test mode Checkout / Customer Portal操作後に、Stripe上のsubscription状態をStaging Supabaseへ再同期し、Webhook内部処理と同じ `syncCustomerSubscription` を通してentitlementを検証する。
+
+このAPIは以下をすべて満たさない限りfail closedする。
+
+- `VERCEL_ENV=preview`
+- `STRIPE_SECRET_KEY` が `sk_test_` で始まる
+- `SUPABASE_URL` がHTTPSのSupabase projectで、本番project `fiepaguycecrredwrcwx` ではない
+- 有効なBearer tokenでStagingユーザー本人を認証できる
+- 初回同期時は `cs_test_` Checkout Sessionがその本人に属する
+
+したがってProductionへ同じrouteが配備されても、このStaging再同期APIを本番課金状態の変更には使用できない。
+
+この再同期がPASSしても、**Stripe外部ネットワークからVercel Webhook endpointへ実際に配送された証拠とは扱わない。** Productionは公開Webhook endpointを使用するため、本番公開前のハードゲートとして、Stripe live/testの適切な環境で外部Webhook配送、署名検証、Supabase entitlement反映、event historyを別途確認する。
+
+将来Deployment Protection Exceptions等でWebhook専用の安全な公開経路を用意する場合も、Preview全体の保護解除やbypass secretのURL埋め込みより優先し、費用と運用負荷に見合う場合だけ採用する。
+
 ### 手動実行
 
 GitHub Actionsの `NOVELIGHT Staging Readiness Smoke` から `workflow_dispatch` を実行し、HTTPSのPreview/Staging URLを指定する。
