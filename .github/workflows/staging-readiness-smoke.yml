@@ -30,6 +30,7 @@ jobs:
       MANUAL_STAGING_URL: ${{ inputs.staging_url }}
       DEPLOYMENT_ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
       DEPLOYMENT_TARGET_URL: ${{ github.event.deployment_status.target_url }}
+      STAGING_FALLBACK_URL: ${{ vars.STAGING_BASE_URL || 'https://novelrise-git-ci-isolate-staging-auth-smoke-ranobe1.vercel.app' }}
       EXPECTED_REVISION: ${{ github.event.deployment.sha || github.sha }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
@@ -45,6 +46,32 @@ jobs:
         run: |
           set -euo pipefail
 
+          host_for_url() {
+            local value="$1"
+            local host="${value#https://}"
+            host="${host%%/*}"
+            host="${host%%\?*}"
+            host="${host%%#*}"
+            host="${host%%:*}"
+            printf '%s' "$host"
+          }
+
+          is_allowed_staging_url() {
+            local value="$1"
+            local host
+            [ -n "$value" ] || return 1
+            case "$value" in
+              https://*) ;;
+              *) return 1 ;;
+            esac
+            host="$(host_for_url "$value")"
+            [ "$host" != 'novelrise.vercel.app' ] || return 1
+            case "$host" in
+              *.vercel.app) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
           url="$MANUAL_STAGING_URL"
           if [ -z "$url" ]; then
             url="$DEPLOYMENT_ENVIRONMENT_URL"
@@ -53,25 +80,19 @@ jobs:
             url="$DEPLOYMENT_TARGET_URL"
           fi
 
-          case "$url" in
-            https://*) ;;
-            *)
-              echo 'Staging smoke requires an HTTPS Preview/Staging URL.'
-              exit 1
-              ;;
-          esac
+          if ! is_allowed_staging_url "$url"; then
+            if [ -n "$url" ]; then
+              echo "Ignoring non-Vercel staging candidate host: $(host_for_url "$url")"
+            fi
+            url="$STAGING_FALLBACK_URL"
+          fi
 
-          host="${url#https://}"
-          host="${host%%/*}"
-          host="${host%%\?*}"
-          host="${host%%#*}"
-          host="${host%%:*}"
-
-          if [ "$host" = 'novelrise.vercel.app' ]; then
-            echo 'Refusing to run the staging workflow against the production host.'
+          if ! is_allowed_staging_url "$url"; then
+            echo 'Staging smoke requires a non-production HTTPS Vercel Preview/Staging URL.'
             exit 1
           fi
 
+          host="$(host_for_url "$url")"
           printf 'STAGING_BASE_URL=%s\n' "${url%/}" >> "$GITHUB_ENV"
           echo "Validated staging target host: $host"
 
