@@ -15,17 +15,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  control:
-    name: Prove external Stripe live webhook delivery without a live charge
+  approval:
+    name: Approve Production webhook control
     runs-on: ubuntu-latest
     environment: production-approval
+    steps:
+      - name: Record approval gate
+        run: echo 'Production webhook control approved.'
+
+  control:
+    name: Prove external Stripe live webhook delivery without a live charge
+    needs: approval
+    runs-on: ubuntu-latest
+    environment: Production
     env:
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       VERCEL_SCOPE: ranobe1
       VERCEL_PROJECT: novelrise
       EXPECTED_BRANCH: main
       EXPECTED_PRODUCTION_SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
       PRODUCTION_ENV_FILE: /tmp/novelight-production-webhook-control.env
 
     steps:
@@ -38,11 +49,15 @@ jobs:
             exit 1
           }
           [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
-            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live.'
+            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live in the Production environment.'
             exit 1
           }
           test -n "$VERCEL_TOKEN" || {
-            echo 'VERCEL_TOKEN is not configured.'
+            echo 'VERCEL_TOKEN is not configured in the Production environment.'
+            exit 1
+          }
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured in the Production environment.'
             exit 1
           }
 
@@ -86,6 +101,28 @@ jobs:
       - name: Install pinned Vercel CLI
         run: npm install --global vercel@59.1.4
 
+      - name: Retrieve canonical Production Supabase secret for this approved run
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            --url "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/api-keys?reveal=true" \
+            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            > /tmp/supabase-api-keys.json
+
+          canonical_secret="$(jq -er '
+            ([.[] | select(.type == "secret") | .api_key][0]) //
+            ([.[] | select(.name == "service_role") | .api_key][0]) //
+            empty
+          ' /tmp/supabase-api-keys.json)"
+
+          test -n "$canonical_secret" || {
+            echo 'No revealable canonical Production Supabase secret/service-role key was returned.'
+            exit 1
+          }
+          printf '::add-mask::%s\n' "$canonical_secret"
+          printf 'SUPABASE_SECRET_KEY=%s\n' "$canonical_secret" >> "$GITHUB_ENV"
+
       - name: Pull Vercel Production environment into runner memory
         shell: bash
         run: |
@@ -123,61 +160,54 @@ jobs:
               exit 1
             }
             printf '::add-mask::%s\n' "$value"
-            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
           done
 
-      - name: Verify Production Supabase secret against the canonical project
+          printf 'VERCEL_SUPABASE_URL=%s\n' "$SUPABASE_URL" >> "$GITHUB_ENV"
+          printf 'VERCEL_SUPABASE_SECRET_KEY=%s\n' "$SUPABASE_SECRET_KEY" >> "$GITHUB_ENV"
+          printf 'STRIPE_STANDARD_PRICE_ID=%s\n' "$STRIPE_STANDARD_PRICE_ID" >> "$GITHUB_ENV"
+          printf 'NOVELIGHT_APP_URL=%s\n' "$NOVELIGHT_APP_URL" >> "$GITHUB_ENV"
+
+      - name: Compare Vercel Production Supabase credentials with canonical Production
         id: supabase_alignment
         shell: bash
         run: |
           set -euo pipefail
 
-          current_host="${SUPABASE_URL#https://}"
-          current_host="${current_host%%/*}"
-          echo "Observed Vercel Production Supabase host: $current_host"
-
-          if [ "$SUPABASE_URL" = "$EXPECTED_PRODUCTION_SUPABASE_URL" ]; then
-            echo 'Production Supabase URL is already canonical.'
+          if [ "$VERCEL_SUPABASE_URL" = "$EXPECTED_PRODUCTION_SUPABASE_URL" ] && \
+             [ "$VERCEL_SUPABASE_SECRET_KEY" = "$SUPABASE_SECRET_KEY" ]; then
+            echo 'Vercel Production Supabase URL and secret already match canonical Production.'
             echo 'repair_needed=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          response_code="$(curl --silent --show-error --output /tmp/canonical-supabase-probe.json \
-            --write-out '%{http_code}' \
-            --connect-timeout 10 \
-            --max-time 20 \
-            --url "$EXPECTED_PRODUCTION_SUPABASE_URL/rest/v1/profiles?select=id&limit=1" \
-            --header "apikey: $SUPABASE_SECRET_KEY" \
-            --header "Authorization: Bearer $SUPABASE_SECRET_KEY")"
+          echo 'Vercel Production Supabase credentials are misaligned; guarded pair repair is required.'
+          echo 'repair_needed=true' >> "$GITHUB_OUTPUT"
 
-          if [[ "$response_code" =~ ^2 ]]; then
-            echo 'Current Production Supabase secret authenticates against the canonical Production project.'
-            echo 'Only SUPABASE_URL is misaligned; guarded repair is allowed.'
-            echo 'repair_needed=true' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "Canonical Production Supabase probe failed with HTTP $response_code."
-          echo 'Refusing to change Vercel because SUPABASE_SECRET_KEY may also be misaligned.'
-          exit 1
-
-      - name: Repair canonical Production Supabase URL in Vercel
+      - name: Repair canonical Production Supabase URL and secret in Vercel
         if: steps.supabase_alignment.outputs.repair_needed == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s' "$EXPECTED_PRODUCTION_SUPABASE_URL" \
-            | vercel env add SUPABASE_URL production \
-                --force \
-                --yes \
-                --sensitive \
-                --scope "$VERCEL_SCOPE" \
-                --token "$VERCEL_TOKEN" \
-                >/dev/null
 
-          echo 'Vercel Production SUPABASE_URL repaired to the canonical Production project.'
+          set_sensitive_env() {
+            local key="$1"
+            local value="$2"
+            printf '::add-mask::%s\n' "$value"
+            printf '%s' "$value" \
+              | vercel env add "$key" production \
+                  --force \
+                  --yes \
+                  --sensitive \
+                  --scope "$VERCEL_SCOPE" \
+                  --token "$VERCEL_TOKEN" \
+                  >/dev/null
+          }
 
-      - name: Redeploy Production after guarded Supabase URL repair
+          set_sensitive_env SUPABASE_URL "$EXPECTED_PRODUCTION_SUPABASE_URL"
+          set_sensitive_env SUPABASE_SECRET_KEY "$SUPABASE_SECRET_KEY"
+          echo 'Vercel Production Supabase URL and secret repaired as one canonical pair.'
+
+      - name: Redeploy Production after guarded Supabase credential repair
         if: steps.supabase_alignment.outputs.repair_needed == 'true'
         shell: bash
         run: |
@@ -209,7 +239,7 @@ jobs:
           echo 'Production webhook route did not become healthy in time.'
           exit 1
 
-      - name: Use canonical Production Supabase URL for control verification
+      - name: Use canonical Production Supabase credentials for control verification
         shell: bash
         run: |
           set -euo pipefail
@@ -218,7 +248,7 @@ jobs:
       - name: Run no-charge Production webhook control proof
         run: node scripts/production-webhook-control.mjs
 
-      - name: Remove temporary Production environment material
+      - name: Remove temporary Production credential material
         if: always()
         shell: bash
-        run: rm -f "$PRODUCTION_ENV_FILE" /tmp/canonical-supabase-probe.json /tmp/production-supabase-repair-deploy.txt /tmp/webhook-health-response
+        run: rm -f "$PRODUCTION_ENV_FILE" /tmp/supabase-api-keys.json /tmp/production-supabase-repair-deploy.txt /tmp/webhook-health-response
