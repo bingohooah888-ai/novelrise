@@ -1,0 +1,48 @@
+name: Patch MASTER work-start gate
+
+on:
+  push:
+    branches:
+      - docs/strengthen-work-start-gate
+    paths:
+      - .github/workflows/patch-master-work-start-gate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-master:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/strengthen-work-start-gate
+          fetch-depth: 0
+
+      - name: Insert mandatory total-time gate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/NOVELIGHT-MASTER.md')
+          text = path.read_text(encoding='utf-8')
+          anchor = "作業時間の見積もりが未提示の場合は、原則として実作業を開始しない。担当名やチャットの役割が変わっても、このルールの適用範囲は変わらない。"
+          addition = "この開始ゲートでは、『全体（トータル）の予想所要時間』と『主要工程ごとの予想所要時間』の両方が提示済みであることを必須条件とする。どちらか一方でも未提示の場合、最初のツール操作、コード変更、画像生成、編集、更新、外部サービス操作へ進んではならない。継続作業、前日の続き、既存PR・CI・デプロイの続行も例外としない。"
+
+          if addition in text:
+              raise SystemExit('MASTER already contains the required gate')
+          if text.count(anchor) != 1:
+              raise SystemExit(f'Expected exactly one anchor, found {text.count(anchor)}')
+
+          text = text.replace(anchor, anchor + "\n\n" + addition, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit MASTER-only net change
+        run: |
+          rm .github/workflows/patch-master-work-start-gate.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/NOVELIGHT-MASTER.md .github/workflows/patch-master-work-start-gate.yml
+          git commit -m "Strengthen MASTER work-start time gate"
+          git push origin HEAD:docs/strengthen-work-start-gate
