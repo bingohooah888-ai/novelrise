@@ -130,6 +130,25 @@ async function getBillingState(page) {
   }, stagingSupabase);
 }
 
+function checkoutSessionIdFromUrl(checkoutUrl) {
+  const match = checkoutUrl.match(/cs_test_[A-Za-z0-9_]+/);
+  expect(match?.[0]).toBeTruthy();
+  return match[0];
+}
+
+async function reconcileStagingBilling(page, accessToken, checkoutSessionId) {
+  const response = await page.request.post('/api/staging-billing-reconcile', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: checkoutSessionId ? { checkoutSessionId } : {}
+  });
+
+  expect(response.status()).toBe(200);
+  const body = await response.json();
+  expect(body.synced).toBe(true);
+}
+
 async function firstVisibleAcrossFrames(page, selectors, timeout = 20_000) {
   const deadline = Date.now() + timeout;
 
@@ -232,8 +251,7 @@ async function completeStripeCheckout(page, checkoutUrl, appOrigin) {
   );
 }
 
-async function openBillingPortal(page) {
-  const accessToken = await getAccessToken(page);
+async function openBillingPortal(page, accessToken) {
   const response = await page.request.post(
     '/api/create-billing-portal-session',
     {
@@ -328,8 +346,10 @@ test('Stripe test checkout, entitlement, portal, and cancellation work in stagin
     expect(checkoutResponse.status()).toBe(200);
     const checkoutBody = await checkoutResponse.json();
     expect(checkoutBody.mode).toBe('checkout');
+    const checkoutSessionId = checkoutSessionIdFromUrl(checkoutBody.url);
 
     await completeStripeCheckout(page, checkoutBody.url, baseURL);
+    await reconcileStagingBilling(page, accessToken, checkoutSessionId);
 
     await expect
       .poll(
@@ -349,13 +369,14 @@ test('Stripe test checkout, entitlement, portal, and cancellation work in stagin
       paidState.subscription_status
     );
 
-    await openBillingPortal(page);
+    await openBillingPortal(page, accessToken);
     await cancelThroughPortal(page);
 
     await page.goto('/mypage.html');
     await expect
       .poll(
         async () => {
+          await reconcileStagingBilling(page, accessToken);
           const state = await getBillingState(page);
           return (
             state.plan === 'free' ||
