@@ -36,9 +36,23 @@ Revision endpoint: `api/deployment-revision.js`
 
 GitHubへ成功した非Production deployment statusが届いた場合、WorkflowはPreview URLを取得してread-only smokeを実行する。
 
-最初に `/api/deployment-revision` が返すVercel Git commit SHAと、GitHub Workflowが検証対象としているrevisionを照合し、別revisionや古いPreviewを誤って検証しない。HTML本文のbyte-for-byte比較は、配信時の変換によって正しいdeploymentでも不一致になり得るためrevision判定には使用しない。
+最初に `/api/deployment-revision` が返すVercel Git commit SHAと、GitHub Workflowが検証対象としているrevisionを照合し、別revisionや古いPreviewを誤って検証しない。HTML本文のbyte-for-byte比較は、配信時の変換やDeployment Protectionの中間ページによって正しいdeploymentでも不一致になり得るためrevision判定には使用しない。
 
 Vercel Project Settingsでは **Automatically expose System Environment Variables** を有効にし、Serverless APIから `VERCEL_GIT_COMMIT_SHA` を取得できる状態を維持する。revisionを取得できない場合は安全側に倒してStaging smokeを失敗させる。
+
+### Vercel Deployment Protection
+
+Preview Deployment Protectionを有効にしたまま自動テストする場合は、Vercelの **Protection Bypass for Automation** を使用する。
+
+Vercel Project Settings > Deployment Protection でautomation bypass secretを作成し、同じ値をGitHub Repository Actions Secretとして以下の名前で登録する。
+
+- `VERCEL_AUTOMATION_BYPASS_SECRET`
+
+このSecretはURL、ログ、HTML、クライアントコードへ埋め込まない。GitHub ActionsのcurlとPlaywrightが `x-vercel-protection-bypass` request headerとしてのみ送信する。
+
+Vercel側のbypass secretを変更・再生成・失効した場合は、GitHub側Secretも同じ値へ同期する。
+
+`/api/deployment-revision` はJSONとして厳密に解析し、任意のHTML内に偶然含まれる40文字のハッシュをcommit SHAとして扱わない。Vercel Authentication等に遮断され `WWW-Authenticate` が返った場合は、bypass設定不足として明示的に失敗する。
 
 ### 手動実行
 
@@ -49,6 +63,8 @@ GitHub Actionsの `NOVELIGHT Staging Readiness Smoke` から `workflow_dispatch`
 ```bash
 STAGING_BASE_URL=https://<preview-host> npm run test:staging
 ```
+
+Deployment Protection対象へローカル実行する場合は `VERCEL_AUTOMATION_BYPASS_SECRET` も安全なローカル環境変数として渡す。
 
 本番URLを指定した場合はconfig側で拒否する。
 
@@ -98,11 +114,13 @@ Workflow: `.github/workflows/staging-authenticated-smoke.yml`
 - `STAGING_SUPABASE_SECRET_KEY`
 - `STAGING_SUPABASE_PUBLISHABLE_KEY`
 
+Vercel Deployment Protection用の `VERCEL_AUTOMATION_BYPASS_SECRET` はread-only smokeでも利用するため、GitHub Repository Actions Secretとして管理する。
+
 `STAGING_E2E_READY` は独立Stagingが完成するまで未設定または `false` のまま維持する。ほかの値が未完成の状態で先に `true` にしない。
 
 `workflow_dispatch` では `staging_url` を指定すると `STAGING_BASE_URL` を一時的に上書きできる。PRのVercel Preview等を明示的に検証する場合に使用する。
 
-Authenticated smokeも書き込み開始前に `/api/deployment-revision` を確認し、Workflowの `github.sha` と一致しないStaging deploymentでは実行しない。対象ページについてはrevision確認後に到達可能性を確認する。
+Authenticated smokeも書き込み開始前に `/api/deployment-revision` を確認し、Workflowの `github.sha` と一致しないStaging deploymentでは実行しない。対象ページについてはrevision確認後に到達可能性を確認する。Deployment Protectionが有効な場合はrevision確認、ページ到達確認、Playwrightのすべてで同じautomation bypass secretを使用する。
 
 Vercel Preview/Staging側のServerless APIも本番から分離する。少なくとも以下をPreview/StagingスコープでStaging/Test用に設定し、本番値を流用しない。
 
