@@ -12,6 +12,7 @@ on:
       - 'scout-record.html'
       - 'analytics.html'
       - 'novelight-client.js'
+      - 'api/deployment-revision.js'
       - 'api/create-checkout-session.js'
       - 'api/_lib/checkout.js'
       - 'scripts/production-auth-smoke-fixture.mjs'
@@ -19,6 +20,11 @@ on:
       - 'tests/e2e/playwright.production-auth.config.mjs'
       - '.github/workflows/staging-authenticated-smoke.yml'
   workflow_dispatch:
+    inputs:
+      staging_url:
+        description: 'Optional HTTPS Vercel Preview/Staging URL override'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -35,9 +41,13 @@ jobs:
     timeout-minutes: 30
     environment: staging
     env:
-      E2E_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+      E2E_BASE_URL: ${{ inputs.staging_url || vars.STAGING_BASE_URL }}
       SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      E2E_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      EXPECTED_REVISION: ${{ github.sha }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       PRODUCTION_AUTH_SMOKE_FIXTURE: /tmp/novelight-staging-auth-smoke.json
       AUTH_SMOKE_LABEL: ステージング認証スモーク
       CHECKOUT_SESSION_PREFIX: cs_test_
@@ -53,7 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$E2E_BASE_URL" || {
-            echo 'STAGING_BASE_URL is not configured.'
+            echo 'STAGING_BASE_URL or workflow_dispatch staging_url is not configured.'
             exit 1
           }
           test -n "$SUPABASE_URL" || {
@@ -62,6 +72,10 @@ jobs:
           }
           test -n "$SUPABASE_SECRET_KEY" || {
             echo 'STAGING_SUPABASE_SECRET_KEY is not configured.'
+            exit 1
+          }
+          test -n "$E2E_SUPABASE_PUBLISHABLE_KEY" || {
+            echo 'STAGING_SUPABASE_PUBLISHABLE_KEY is not configured.'
             exit 1
           }
 
@@ -84,9 +98,86 @@ jobs:
             exit 1
           fi
 
-          echo "Validated authenticated staging target host: $host"
+          case "$E2E_SUPABASE_URL" in
+            https://*.supabase.co) ;;
+            *)
+              echo 'Authenticated staging smoke requires an HTTPS Supabase project URL.'
+              exit 1
+              ;;
+          esac
 
-      - name: Wait for staging critical pages to match the checked-out revision
+          supabase_host="${E2E_SUPABASE_URL#https://}"
+          supabase_host="${supabase_host%%/*}"
+          supabase_host="${supabase_host%%:*}"
+
+          if [ "$supabase_host" = 'fiepaguycecrredwrcwx.supabase.co' ]; then
+            echo 'Refusing to run authenticated staging writes against the production Supabase project.'
+            exit 1
+          fi
+
+          if [ "$E2E_SUPABASE_URL" != "$SUPABASE_URL" ]; then
+            echo 'Browser and fixture Supabase targets must match.'
+            exit 1
+          fi
+
+          echo "Validated authenticated staging target host: $host"
+          echo "Validated isolated staging Supabase host: $supabase_host"
+
+      - name: Wait for staging deployment revision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl_args=(
+            --fail
+            --silent
+            --show-error
+            --location
+            --connect-timeout 10
+            --max-time 20
+          )
+          if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            curl_args+=(--header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
+          fi
+
+          matched=false
+          deployed_sha=''
+          content_type=''
+          for attempt in $(seq 1 24); do
+            rm -f /tmp/staging-auth-revision.json /tmp/staging-auth-revision.headers
+            if curl "${curl_args[@]}" \
+              --dump-header /tmp/staging-auth-revision.headers \
+              "$E2E_BASE_URL/api/deployment-revision" \
+              > /tmp/staging-auth-revision.json; then
+              content_type="$(awk 'BEGIN { IGNORECASE=1 } /^content-type:/ { value=$0 } END { sub(/^[^:]*:[[:space:]]*/, "", value); gsub(/\r/, "", value); print value }' /tmp/staging-auth-revision.headers)"
+              deployed_sha="$(python3 -c 'import json,re,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); value=data.get("commitSha") if isinstance(data, dict) else None; print(value if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value) else "")' /tmp/staging-auth-revision.json 2>/dev/null || true)"
+              if [ "$deployed_sha" = "$EXPECTED_REVISION" ]; then
+                matched=true
+                break
+              fi
+
+              if [ -z "$deployed_sha" ] && grep -qi '^www-authenticate:' /tmp/staging-auth-revision.headers; then
+                echo 'Vercel Deployment Protection blocked the authenticated staging revision endpoint.'
+                echo 'Configure VERCEL_AUTOMATION_BYPASS_SECRET in Vercel and the matching GitHub Actions repository secret.'
+                break
+              fi
+            fi
+            echo "Authenticated staging revision has not converged (attempt ${attempt}/24, expected ${EXPECTED_REVISION}, observed ${deployed_sha:-unavailable}, content-type ${content_type:-unknown})."
+            sleep 10
+          done
+
+          if [ "$matched" != true ]; then
+            echo 'Authenticated staging deployment revision does not match the workflow revision.'
+            echo 'Ensure Vercel Automatically expose System Environment Variables is enabled.'
+            if [ -z "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+              echo 'If Preview Deployment Protection is enabled, configure VERCEL_AUTOMATION_BYPASS_SECRET for automation.'
+            fi
+            exit 1
+          fi
+
+          echo "Verified authenticated staging revision: $deployed_sha"
+
+      - name: Verify staging critical pages are reachable
         shell: bash
         run: |
           set -euo pipefail
@@ -101,34 +192,21 @@ jobs:
             novelight-client.js
           )
 
-          matched=false
-          for attempt in $(seq 1 24); do
-            matched=true
-            for route in "${routes[@]}"; do
-              target="/tmp/staging-${route//\//-}"
-              if ! curl --fail --silent --show-error --location \
-                --connect-timeout 10 --max-time 20 \
-                "$E2E_BASE_URL/$route" > "$target"; then
-                matched=false
-                break
-              fi
-              if ! cmp -s "$route" "$target"; then
-                matched=false
-                break
-              fi
-            done
-
-            if [ "$matched" = true ]; then
-              break
-            fi
-            echo "Staging has not converged to the checked-out revision yet (attempt ${attempt}/24)."
-            sleep 10
-          done
-
-          if [ "$matched" != true ]; then
-            echo 'Staging did not converge to the checked-out revision within 4 minutes.'
-            exit 1
+          curl_args=(
+            --fail
+            --silent
+            --show-error
+            --location
+            --connect-timeout 10
+            --max-time 20
+          )
+          if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            curl_args+=(--header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
           fi
+
+          for route in "${routes[@]}"; do
+            curl "${curl_args[@]}" "$E2E_BASE_URL/$route" > /dev/null
+          done
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0

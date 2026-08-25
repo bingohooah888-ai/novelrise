@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const vercelBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
 export default defineConfig({
   testDir: './production-auth',
   fullyParallel: false,
@@ -15,6 +17,13 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL || 'https://novelrise.vercel.app',
     actionTimeout: 15_000,
     navigationTimeout: 20_000,
+    ...(vercelBypassSecret
+      ? {
+          extraHTTPHeaders: {
+            'x-vercel-protection-bypass': vercelBypassSecret
+          }
+        }
+      : {}),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
   },

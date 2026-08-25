@@ -15,6 +15,8 @@ if (
   throw new Error('Refusing to run staging smoke against the production host.');
 }
 
+const vercelBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
 export default defineConfig({
   testDir: './staging',
   outputDir: 'staging-test-results',
@@ -37,6 +39,13 @@ export default defineConfig({
     baseURL: parsedBaseURL.toString(),
     actionTimeout: 15_000,
     navigationTimeout: 20_000,
+    ...(vercelBypassSecret
+      ? {
+          extraHTTPHeaders: {
+            'x-vercel-protection-bypass': vercelBypassSecret
+          }
+        }
+      : {}),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'

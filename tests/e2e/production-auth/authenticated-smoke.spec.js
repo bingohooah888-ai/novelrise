@@ -4,8 +4,43 @@ import { expect, test } from '@playwright/test';
 const fixturePath = process.env.PRODUCTION_AUTH_SMOKE_FIXTURE;
 const smokeLabel = process.env.AUTH_SMOKE_LABEL || '本番認証スモーク';
 const checkoutSessionPrefix = process.env.CHECKOUT_SESSION_PREFIX || 'cs_live_';
+const e2eSupabaseUrl = process.env.E2E_SUPABASE_URL;
+const e2eSupabasePublishableKey = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
+const productionSupabaseHost = 'fiepaguycecrredwrcwx.supabase.co';
 
 if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
+
+function resolveStagingSupabaseOverride() {
+  if (!e2eSupabaseUrl && !e2eSupabasePublishableKey) return null;
+  if (!e2eSupabaseUrl || !e2eSupabasePublishableKey) {
+    throw new Error(
+      'E2E_SUPABASE_URL and E2E_SUPABASE_PUBLISHABLE_KEY must be configured together.'
+    );
+  }
+
+  const target = new globalThis.URL(e2eSupabaseUrl);
+  if (
+    target.protocol !== 'https:' ||
+    !target.hostname.endsWith('.supabase.co')
+  ) {
+    throw new Error(
+      'Authenticated staging E2E requires an HTTPS Supabase project URL.'
+    );
+  }
+  if (target.hostname === productionSupabaseHost) {
+    throw new Error(
+      'Authenticated staging E2E refuses the production Supabase project.'
+    );
+  }
+
+  return {
+    url: target.origin,
+    key: e2eSupabasePublishableKey,
+    projectRef: target.hostname.split('.')[0]
+  };
+}
+
+const stagingSupabaseOverride = resolveStagingSupabaseOverride();
 
 function loadFixture() {
   return JSON.parse(readFileSync(fixturePath, 'utf8'));
@@ -17,6 +52,52 @@ function saveVisitorToken(role, token) {
   writeFileSync(fixturePath, JSON.stringify(fixture, null, 2), { mode: 0o600 });
 }
 
+async function installStagingSupabaseOverride(context) {
+  if (!stagingSupabaseOverride) return;
+
+  await context.addInitScript(
+    ({ url, key }) => {
+      let assignedSupabase;
+      Object.defineProperty(globalThis, 'supabase', {
+        configurable: true,
+        get() {
+          return assignedSupabase;
+        },
+        set(value) {
+          assignedSupabase = value;
+          if (!value || typeof value.createClient !== 'function') return;
+
+          const originalCreateClient = value.createClient.bind(value);
+          value.createClient = (_url, _key, options) =>
+            originalCreateClient(url, key, options);
+        }
+      });
+    },
+    {
+      url: stagingSupabaseOverride.url,
+      key: stagingSupabaseOverride.key
+    }
+  );
+}
+
+async function assertExpectedSupabaseSession(page) {
+  if (!stagingSupabaseOverride) return;
+
+  const authKeys = await page.evaluate(() => {
+    const keys = [];
+    for (let index = 0; index < globalThis.localStorage.length; index += 1) {
+      const key = globalThis.localStorage.key(index);
+      if (key?.startsWith('sb-') && key.endsWith('-auth-token')) keys.push(key);
+    }
+    return keys;
+  });
+
+  expect(authKeys).toContain(
+    `sb-${stagingSupabaseOverride.projectRef}-auth-token`
+  );
+  expect(authKeys).not.toContain('sb-fiepaguycecrredwrcwx-auth-token');
+}
+
 async function login(page, account, redirect) {
   await page.goto(`/login.html?redirect=${encodeURIComponent(redirect)}`);
   await page.locator('#email').fill(account.email);
@@ -25,6 +106,7 @@ async function login(page, account, redirect) {
   await page.waitForURL((url) =>
     url.pathname.endsWith(`/${redirect.split('?')[0]}`)
   );
+  await assertExpectedSupabaseSession(page);
   const visitorToken = await page.evaluate(() =>
     globalThis.localStorage.getItem('novelight_visitor_token')
   );
@@ -98,6 +180,10 @@ test('authenticated beta-critical product flow works in target', async ({
 
   const authorContext = await browser.newContext({ baseURL });
   const readerContext = await browser.newContext({ baseURL });
+  await Promise.all([
+    installStagingSupabaseOverride(authorContext),
+    installStagingSupabaseOverride(readerContext)
+  ]);
   const authorPage = await authorContext.newPage();
   const readerPage = await readerContext.newPage();
 
