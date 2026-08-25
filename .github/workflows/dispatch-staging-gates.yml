@@ -1,0 +1,24 @@
+name: Temporary Staging Gate Dispatcher
+
+on:
+  push:
+    branches: [ci/dispatch-staging-billing-gate]
+    paths:
+      - '.github/workflows/dispatch-staging-gates.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch authenticated staging smoke
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run staging-authenticated-smoke.yml --repo "$GITHUB_REPOSITORY" --ref ci/isolate-staging-auth-smoke
+      - name: Dispatch Stripe billing staging smoke
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run staging-billing-smoke.yml --repo "$GITHUB_REPOSITORY" --ref ci/isolate-staging-auth-smoke
