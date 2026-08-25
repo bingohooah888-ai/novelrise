@@ -304,18 +304,9 @@ async function cancelThroughPortal(page) {
     ],
     20_000
   );
-  await reasonTrigger.click();
-
-  const reasonOption = await firstVisibleAcrossFrames(
-    page,
-    [
-      '[role="option"][data-key="unused"]',
-      '[role="option"]:has-text("I no longer need it")',
-      '[role="option"]'
-    ],
-    10_000
-  );
-  await reasonOption.click();
+  await reasonTrigger.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
 
   const continueCancellation = await firstVisibleAcrossFrames(
     page,
