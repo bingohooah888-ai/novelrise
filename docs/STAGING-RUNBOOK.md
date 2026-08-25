@@ -30,11 +30,15 @@ Playwright config: `tests/e2e/playwright.staging.config.mjs`
 
 Test suite: `tests/e2e/staging/read-only-smoke.spec.js`
 
+Revision endpoint: `api/deployment-revision.js`
+
 ### Vercel Previewからの自動実行
 
 GitHubへ成功した非Production deployment statusが届いた場合、WorkflowはPreview URLを取得してread-only smokeを実行する。
 
-最初に `index.html` がcheckoutしたrevisionと一致するまで確認し、別revisionや古いPreviewを誤って検証しない。
+最初に `/api/deployment-revision` が返すVercel Git commit SHAと、GitHub Workflowが検証対象としているrevisionを照合し、別revisionや古いPreviewを誤って検証しない。HTML本文のbyte-for-byte比較は、配信時の変換によって正しいdeploymentでも不一致になり得るためrevision判定には使用しない。
+
+Vercel Project Settingsでは **Automatically expose System Environment Variables** を有効にし、Serverless APIから `VERCEL_GIT_COMMIT_SHA` を取得できる状態を維持する。revisionを取得できない場合は安全側に倒してStaging smokeを失敗させる。
 
 ### 手動実行
 
@@ -97,6 +101,8 @@ Workflow: `.github/workflows/staging-authenticated-smoke.yml`
 `STAGING_E2E_READY` は独立Stagingが完成するまで未設定または `false` のまま維持する。ほかの値が未完成の状態で先に `true` にしない。
 
 `workflow_dispatch` では `staging_url` を指定すると `STAGING_BASE_URL` を一時的に上書きできる。PRのVercel Preview等を明示的に検証する場合に使用する。
+
+Authenticated smokeも書き込み開始前に `/api/deployment-revision` を確認し、Workflowの `github.sha` と一致しないStaging deploymentでは実行しない。対象ページについてはrevision確認後に到達可能性を確認する。
 
 Vercel Preview/Staging側のServerless APIも本番から分離する。少なくとも以下をPreview/StagingスコープでStaging/Test用に設定し、本番値を流用しない。
 
