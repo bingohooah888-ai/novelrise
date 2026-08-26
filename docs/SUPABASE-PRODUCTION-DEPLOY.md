@@ -77,10 +77,12 @@ Safety planが成功し、`PRODUCTION_APPROVAL_GATE_READY=true` の場合だけ�
 ### status
 
 `supabase migration list --linked` だけを実行する。DB schemaは変更しない。
+`production-approval` の承認は要求せず、状態確認をすぐ実行できる。
 
 ### dry-run
 
 migration statusを表示した後、`supabase db push --linked --dry-run` を実行する。本番DBは変更しない。
+`production-approval` の承認は要求せず、安全計画をすぐ確認できる。
 
 ### repair-history
 
@@ -92,10 +94,13 @@ SQL Editor等で本番適用済みであることを確認した既知migration�
 - `20260822194000`
 
 confirmationが正確に `REPAIR` の場合だけ実行する。
+実行前に通常の自動deployと同じ `production-approval` Environmentで1回だけ人間の承認を要求する。承認後のhistory repair、status再確認、observability検証は、その1回の承認を受けた同じ操作として継続する。
 
 ### deploy
 
 自動承認フローが利用できない場合のフォールバック。`workflow_dispatch` から `deploy` を選び、confirmationが正確に `DEPLOY` の場合だけ適用する。
+
+通常の自動deployと同じ `production-approval` Environmentで1回だけ人間の承認を要求する。承認後のstatus確認、dry-run、適用、post-mutation確認、observability検証は、その1回の承認を受けた同じ操作として継続する。`PRODUCTION_APPROVAL_GATE_READY=true` でなければmutationはfail closedで停止する。
 
 通常運用ではこの手動deployを使わず、承認ゲート付き自動workflowを使う。
 
@@ -103,6 +108,7 @@ confirmationが正確に `REPAIR` の場合だけ実行する。
 
 - 本番DB変更はPRのCI成功後、`main` に入ったmigrationだけを対象にする。
 - 自動deployは完全無人化しない。GitHub Environmentの人間承認を必須にする。
+- 手動workflowの `deploy` / `repair-history` も `production-approval` Environmentの人間承認を必須にし、`status` / `dry-run` にはmutation承認を要求しない。
 - 承認前と承認後の両方でpending migrationを確認する。
 - 今回のpushと本番pendingが完全一致しなければdeployしない。
 - `PRODUCTION_APPROVAL_GATE_READY=true` はRequired reviewers設定後にのみ有効化する。
