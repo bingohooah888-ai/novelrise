@@ -1,11 +1,7 @@
 name: NOVELIGHT Production Webhook Control
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/production-webhook-control.mjs'
-      - '.github/workflows/production-webhook-control.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -48,6 +44,10 @@ jobs:
             echo 'SUPABASE_SECRET_KEY is not configured in the Production environment.'
             exit 1
           }
+          test "$SUPABASE_URL" = 'https://fiepaguycecrredwrcwx.supabase.co' || {
+            echo 'SUPABASE_URL is not the canonical Production Supabase project.'
+            exit 1
+          }
           test "$NOVELIGHT_APP_URL" = 'https://novelrise.vercel.app' || {
             echo 'NOVELIGHT_APP_URL is not the canonical Production application URL.'
             exit 1
@@ -57,29 +57,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 2
-
-      - name: Verify this main commit only introduced the control harness
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t changed < <(git diff --name-only HEAD^1 HEAD)
-          test "${#changed[@]}" -gt 0 || {
-            echo 'No changed files detected for the control-test commit.'
-            exit 1
-          }
-          printf 'Control-test changed files:\n'
-          printf ' - %s\n' "${changed[@]}"
-          for path in "${changed[@]}"; do
-            case "$path" in
-              scripts/production-webhook-control.mjs|.github/workflows/production-webhook-control.yml)
-                ;;
-              *)
-                echo "Unexpected changed file in control-test commit: $path"
-                exit 1
-                ;;
-            esac
-          done
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
