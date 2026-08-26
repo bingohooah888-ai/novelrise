@@ -47,3 +47,26 @@ test('approval-button elimination contract', async () => {
     'トータル予想時間',
   ]);
 });
+
+test('per-step runtime execution gate contract', async () => {
+  const source = await read(AUTOMATION_PATH);
+  assertIncludesAll(source, [
+    '主要工程 Runtime Execution Gate',
+    '正式基準',
+    '禁止・ロック',
+    '可視時間カード',
+    '自動化経路',
+    'その主要工程のツール実行・外部操作・ファイル更新を開始しない',
+    'ユーザーの追加の「はい」を待たず実行へ進む',
+  ]);
+});
+
+test('screenshot verification gate contract', async () => {
+  const source = await read(AUTOMATION_PATH);
+  assertIncludesAll(source, [
+    'スクリーンショット・画面確認ゲート',
+    '過去画像・別画面・推測を現在画面として扱わない',
+    '画像内で確認できない情報を「見えている」と断定していないか',
+    '画像から確認できない項目は推測で補完しない',
+  ]);
+});
