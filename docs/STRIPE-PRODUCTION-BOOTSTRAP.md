@@ -46,7 +46,27 @@ Priceは次のlookup keyを正式キーとする。
 
 Customer Portal configurationはmetadata `novelight_managed=true` を持つものだけを更新対象とする。複数存在する場合は曖昧な更新を避けて停止する。
 
-Webhook URLが既に存在する場合はイベント設定だけを同期する。Stripeは既存endpointのsigning secretをAPIから再取得できないため、Vercelに `STRIPE_WEBHOOK_SECRET` が既に存在することを条件に再利用する。Endpointだけ存在してVercel secretが無い状態では停止し、秘密値を推測・上書きしない。
+Webhook URLが既に存在する場合、通常実行ではイベント設定だけを同期する。Stripeは既存endpointのsigning secretをAPIから再取得できないため、通常実行ではVercelに `STRIPE_WEBHOOK_SECRET` が既に存在することを条件に再利用する。Endpointだけ存在してVercel secretが無い状態では停止し、秘密値を推測・上書きしない。
+
+## Webhook signing secret repair
+
+Stripe側のライブWebhook endpointとVercel Productionの `STRIPE_WEBHOOK_SECRET` が不一致、欠落、または古い可能性がある場合は、`NOVELIGHT Stripe Production Bootstrap` の `rotate_webhook_secret` を明示的に有効化して修復する。
+
+この修復モードも通常のbootstrapと同じ `production-approval` Environmentの承認内でのみ実行する。
+
+修復モードでは以下の順序を固定する。
+
+1. `https://novelrise.vercel.app/api/stripe-webhook` に一致するライブendpointが0件または1件であることを確認する。複数件なら曖昧なため停止する。
+2. 既存endpointがある場合でも、まず同じURL・購読イベントを持つreplacement endpointを新規作成し、ライブendpointであることと新しいsigning secretが返されたことを確認する。
+3. replacementが成立した後でのみ旧endpointを削除する。
+4. 旧endpoint削除に失敗した場合はreplacementをbest-effortで削除し、旧endpointを残したままfail closedする。
+5. replacementの新しいsigning secretをVercel Productionの `STRIPE_WEBHOOK_SECRET` へsensitive variableとして上書きする。
+6. Standard/Premium等の本番変数も既存bootstrapと同じ手順で同期し、Vercel Productionを再deployする。
+7. 再deploy後に公開Stripe API route contractを確認する。
+
+修復モードは、signing secretをチャット、repository、PR、ログへ表示しない。workflow outputの一時ファイルは従来どおり最後に削除する。
+
+replacement作成から旧endpoint削除までの短時間は同じStripe eventが2 endpointへ配送される可能性がある。NOVELIGHTのWebhook処理は契約状態の再同期を中心とし、監査eventはStripe event IDで重複抑止するため、唯一のendpointを先に削除して配送断を作るより、この短時間の重複可能性を許容する方を安全側とする。
 
 ## Webhook events
 
@@ -71,6 +91,8 @@ Webhook URLが既に存在する場合はイベント設定だけを同期する
 ## 実行方法
 
 GitHub Actionsから `NOVELIGHT Stripe Production Bootstrap` を手動起動する。
+
+通常の整合確認では `rotate_webhook_secret` を無効のまま実行する。Webhook signing secretの修復が必要な場合だけ、意図を確認したうえで `rotate_webhook_secret` を有効化する。
 
 workflowは `production-approval` Environmentで停止し、Required reviewerの承認後にだけStripe/Vercelへ書き込む。
 
