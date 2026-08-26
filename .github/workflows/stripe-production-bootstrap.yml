@@ -2,6 +2,12 @@ name: NOVELIGHT Stripe Production Bootstrap
 
 on:
   workflow_dispatch:
+    inputs:
+      rotate_webhook_secret:
+        description: Replace the live NOVELIGHT webhook endpoint and rotate its signing secret
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,6 +29,7 @@ jobs:
       VERCEL_PROJECT: novelrise
       NOVELIGHT_APP_URL: https://novelrise.vercel.app
       STRIPE_BOOTSTRAP_OUTPUT: /tmp/novelight-stripe-bootstrap.json
+      STRIPE_ROTATE_WEBHOOK_SECRET: ${{ inputs.rotate_webhook_secret }}
 
     steps:
       - name: Checkout repository
@@ -42,6 +49,14 @@ jobs:
             echo 'VERCEL_TOKEN is not configured.'
             exit 1
           }
+          case "$STRIPE_ROTATE_WEBHOOK_SECRET" in
+            true|false)
+              ;;
+            *)
+              echo 'STRIPE_ROTATE_WEBHOOK_SECRET must be true or false.'
+              exit 1
+              ;;
+          esac
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -112,6 +127,11 @@ jobs:
           portal_configuration="$(jq -er '.portalConfigurationId' "$STRIPE_BOOTSTRAP_OUTPUT")"
           webhook_secret="$(jq -r '.webhookSecret // empty' "$STRIPE_BOOTSTRAP_OUTPUT")"
 
+          if [ "$STRIPE_ROTATE_WEBHOOK_SECRET" = 'true' ] && [ -z "$webhook_secret" ]; then
+            echo 'Webhook secret rotation was requested, but Stripe returned no replacement signing secret.'
+            exit 1
+          fi
+
           set_sensitive_env STRIPE_SECRET_KEY "$STRIPE_LIVE_SECRET_KEY"
           set_sensitive_env STRIPE_STANDARD_PRICE_ID "$standard_price"
           set_sensitive_env STRIPE_PREMIUM_PRICE_ID "$premium_price"
@@ -179,6 +199,10 @@ jobs:
 
           echo 'Production Stripe API routes did not become healthy in time.'
           exit 1
+
+      - name: Remove previous webhook endpoint after successful rotation
+        if: ${{ inputs.rotate_webhook_secret }}
+        run: node scripts/stripe-production-webhook-rotation-finalize.mjs
 
       - name: Remove bootstrap output containing the webhook secret
         if: always()
