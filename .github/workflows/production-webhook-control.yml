@@ -105,6 +105,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
           curl --fail-with-body --silent --show-error \
             --url "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/api-keys?reveal=true" \
             --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
@@ -121,12 +122,16 @@ jobs:
             exit 1
           }
           printf '::add-mask::%s\n' "$canonical_secret"
-          printf 'SUPABASE_SECRET_KEY=%s\n' "$canonical_secret" >> "$GITHUB_ENV"
+          {
+            printf 'SUPABASE_URL=%s\n' "$EXPECTED_PRODUCTION_SUPABASE_URL"
+            printf 'SUPABASE_SECRET_KEY=%s\n' "$canonical_secret"
+          } >> "$GITHUB_ENV"
 
-      - name: Pull Vercel Production environment into runner memory
+      - name: Pull only non-Sensitive Production inputs from Vercel
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
           vercel link \
             --yes \
             --project "$VERCEL_PROJECT" \
@@ -146,9 +151,11 @@ jobs:
           source "$PRODUCTION_ENV_FILE"
           set +a
 
+          # Vercel Sensitive values are placeholders in `vercel env pull`.
+          # Never compare or probe with pulled SUPABASE_URL/SUPABASE_SECRET_KEY;
+          # the control proof uses the canonical URL and Management API secret.
+          unset SUPABASE_URL SUPABASE_SECRET_KEY
           required=(
-            SUPABASE_URL
-            SUPABASE_SECRET_KEY
             STRIPE_STANDARD_PRICE_ID
             NOVELIGHT_APP_URL
           )
@@ -162,88 +169,10 @@ jobs:
             printf '::add-mask::%s\n' "$value"
           done
 
-          printf 'VERCEL_SUPABASE_URL=%s\n' "$SUPABASE_URL" >> "$GITHUB_ENV"
-          printf 'VERCEL_SUPABASE_SECRET_KEY=%s\n' "$SUPABASE_SECRET_KEY" >> "$GITHUB_ENV"
-          printf 'STRIPE_STANDARD_PRICE_ID=%s\n' "$STRIPE_STANDARD_PRICE_ID" >> "$GITHUB_ENV"
-          printf 'NOVELIGHT_APP_URL=%s\n' "$NOVELIGHT_APP_URL" >> "$GITHUB_ENV"
-
-      - name: Compare Vercel Production Supabase credentials with canonical Production
-        id: supabase_alignment
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ "$VERCEL_SUPABASE_URL" = "$EXPECTED_PRODUCTION_SUPABASE_URL" ] && \
-             [ "$VERCEL_SUPABASE_SECRET_KEY" = "$SUPABASE_SECRET_KEY" ]; then
-            echo 'Vercel Production Supabase URL and secret already match canonical Production.'
-            echo 'repair_needed=false' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo 'Vercel Production Supabase credentials are misaligned; guarded pair repair is required.'
-          echo 'repair_needed=true' >> "$GITHUB_OUTPUT"
-
-      - name: Repair canonical Production Supabase URL and secret in Vercel
-        if: steps.supabase_alignment.outputs.repair_needed == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          set_sensitive_env() {
-            local key="$1"
-            local value="$2"
-            printf '::add-mask::%s\n' "$value"
-            printf '%s' "$value" \
-              | vercel env add "$key" production \
-                  --force \
-                  --yes \
-                  --sensitive \
-                  --scope "$VERCEL_SCOPE" \
-                  --token "$VERCEL_TOKEN" \
-                  >/dev/null
-          }
-
-          set_sensitive_env SUPABASE_URL "$EXPECTED_PRODUCTION_SUPABASE_URL"
-          set_sensitive_env SUPABASE_SECRET_KEY "$SUPABASE_SECRET_KEY"
-          echo 'Vercel Production Supabase URL and secret repaired as one canonical pair.'
-
-      - name: Redeploy Production after guarded Supabase credential repair
-        if: steps.supabase_alignment.outputs.repair_needed == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          vercel deploy \
-            --prod \
-            --yes \
-            --scope "$VERCEL_SCOPE" \
-            --token "$VERCEL_TOKEN" \
-            > /tmp/production-supabase-repair-deploy.txt
-          tail -n 1 /tmp/production-supabase-repair-deploy.txt
-
-      - name: Wait for Production webhook route after repair
-        if: steps.supabase_alignment.outputs.repair_needed == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in $(seq 1 24); do
-            code="$(curl --silent --show-error --output /tmp/webhook-health-response \
-              --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
-              "$NOVELIGHT_APP_URL/api/stripe-webhook")"
-            if [ "$code" = '405' ]; then
-              echo 'Production webhook route is reachable after redeploy.'
-              exit 0
-            fi
-            echo "Production webhook route not ready (attempt ${attempt}/24, HTTP ${code})."
-            sleep 10
-          done
-          echo 'Production webhook route did not become healthy in time.'
-          exit 1
-
-      - name: Use canonical Production Supabase credentials for control verification
-        shell: bash
-        run: |
-          set -euo pipefail
-          printf 'SUPABASE_URL=%s\n' "$EXPECTED_PRODUCTION_SUPABASE_URL" >> "$GITHUB_ENV"
+          {
+            printf 'STRIPE_STANDARD_PRICE_ID=%s\n' "$STRIPE_STANDARD_PRICE_ID"
+            printf 'NOVELIGHT_APP_URL=%s\n' "$NOVELIGHT_APP_URL"
+          } >> "$GITHUB_ENV"
 
       - name: Run no-charge Production webhook control proof
         run: node scripts/production-webhook-control.mjs
@@ -251,4 +180,4 @@ jobs:
       - name: Remove temporary Production credential material
         if: always()
         shell: bash
-        run: rm -f "$PRODUCTION_ENV_FILE" /tmp/supabase-api-keys.json /tmp/production-supabase-repair-deploy.txt /tmp/webhook-health-response
+        run: rm -f "$PRODUCTION_ENV_FILE" /tmp/supabase-api-keys.json
