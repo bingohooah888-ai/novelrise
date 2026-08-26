@@ -19,13 +19,24 @@ jobs:
           PRODUCTION_SUPABASE_HOST: fiepaguycecrredwrcwx.supabase.co
         run: |
           set -euo pipefail
-          body="$(curl --fail --silent --show-error --max-time 20 "$PREVIEW_URL/api/staging-browser-config")"
+          tmp_body="$(mktemp)"
+          tmp_headers="$(mktemp)"
+          status="$(curl --location --silent --show-error --max-time 20 --dump-header "$tmp_headers" --output "$tmp_body" --write-out '%{http_code}' "$PREVIEW_URL/api/staging-browser-config")"
+          echo "Final HTTP status: $status"
+          content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {gsub(/\r/,""); value=$0} END{sub(/^[^:]+:[[:space:]]*/,"",value); print value}' "$tmp_headers")"
+          echo "Final Content-Type: ${content_type:-unknown}"
+          if [ "$status" != "200" ]; then
+            echo "Preview endpoint did not return HTTP 200"
+            head -c 300 "$tmp_body" || true
+            exit 1
+          fi
           node -e '
-            const body = JSON.parse(process.argv[1]);
+            const fs = require("node:fs");
+            const body = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
             const productionHost = process.env.PRODUCTION_SUPABASE_HOST;
             const url = new URL(body.supabaseUrl);
             if (url.hostname === productionHost) throw new Error("Preview returned Production Supabase host");
             if (!/^sb_publishable_/.test(body.supabasePublishableKey || "")) throw new Error("Preview did not return browser-safe publishable key");
             if (/secret/i.test(body.supabasePublishableKey || "")) throw new Error("Preview exposed secret-class key");
             console.log(`Verified isolated Preview Supabase host: ${url.hostname}`);
-          ' "$body"
+          ' "$tmp_body"
