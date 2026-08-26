@@ -19,7 +19,7 @@ test(
     assert.match(source, /手動操作/);
     assert.match(source, /待機要否/);
     assert.match(source, /ツール実行禁止/);
-  }
+  },
 );
 
 test(
@@ -31,8 +31,8 @@ test(
     assert.match(source, /概ね10分以内/);
     assert.match(
       source,
-      /同じターンで結果確認・必要なログ診断・安全に自動実行できる次工程まで続行/
+      /同じターンで結果確認・必要なログ診断・安全に自動実行できる次工程まで続行/,
     );
     assert.match(source, /「実行中です」だけで返していない/);
-  }
+  },
 );
