@@ -4,7 +4,102 @@
   const VISITOR_KEY = 'novelight_visitor_token';
   const TRAFFIC_KEY = 'novelight_first_touch';
   const TOUCH_SESSION_KEY = 'novelight_touch_recorded';
+  const PRODUCTION_VERCEL_HOST = 'novelrise.vercel.app';
+  const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
+  const STAGING_BROWSER_CONFIG_PATH = '/api/staging-browser-config';
   let memoryVisitorToken = null;
+
+  function isVercelPreviewHost() {
+    const host = window.location.hostname.toLowerCase();
+    return host.endsWith('.vercel.app') && host !== PRODUCTION_VERCEL_HOST;
+  }
+
+  function validateStagingBrowserConfig(config) {
+    if (!config || typeof config !== 'object') {
+      throw new Error('CONFIG_DRIFT: Staging browser config is unavailable.');
+    }
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(config.supabaseUrl);
+    } catch {
+      throw new Error('CONFIG_DRIFT: Staging Supabase URL is invalid.');
+    }
+
+    if (
+      parsedUrl.protocol !== 'https:' ||
+      parsedUrl.username ||
+      parsedUrl.password ||
+      !parsedUrl.hostname.endsWith('.supabase.co') ||
+      parsedUrl.hostname === PRODUCTION_SUPABASE_HOST
+    ) {
+      throw new Error('CONFIG_DRIFT: Refusing unsafe Staging Supabase target.');
+    }
+
+    const publishableKey = config.supabasePublishableKey;
+    const isModernPublishable =
+      typeof publishableKey === 'string' &&
+      publishableKey.startsWith('sb_publishable_');
+    const isLegacyAnon =
+      typeof publishableKey === 'string' && publishableKey.startsWith('eyJ');
+
+    if (!isModernPublishable && !isLegacyAnon) {
+      throw new Error('CONFIG_DRIFT: Staging browser key is not publishable.');
+    }
+
+    return {
+      supabaseUrl: parsedUrl.origin,
+      supabasePublishableKey: publishableKey
+    };
+  }
+
+  function loadStagingBrowserConfigSync() {
+    const request = new XMLHttpRequest();
+    request.open('GET', STAGING_BROWSER_CONFIG_PATH, false);
+    request.setRequestHeader('Accept', 'application/json');
+
+    try {
+      request.send(null);
+    } catch {
+      throw new Error('CONFIG_DRIFT: Staging browser config request failed.');
+    }
+
+    if (request.status !== 200) {
+      throw new Error(
+        `CONFIG_DRIFT: Staging browser config returned HTTP ${request.status}.`
+      );
+    }
+
+    let config;
+    try {
+      config = JSON.parse(request.responseText);
+    } catch {
+      throw new Error('CONFIG_DRIFT: Staging browser config is not valid JSON.');
+    }
+
+    return validateStagingBrowserConfig(config);
+  }
+
+  function installPreviewSupabaseBootstrap() {
+    if (!isVercelPreviewHost()) return;
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      throw new Error('CONFIG_DRIFT: Supabase browser library is unavailable.');
+    }
+
+    const originalCreateClient = window.supabase.createClient.bind(window.supabase);
+    let cachedConfig = null;
+
+    window.supabase.createClient = function (...args) {
+      if (!cachedConfig) cachedConfig = loadStagingBrowserConfigSync();
+      return originalCreateClient(
+        cachedConfig.supabaseUrl,
+        cachedConfig.supabasePublishableKey,
+        ...args.slice(2)
+      );
+    };
+  }
+
+  installPreviewSupabaseBootstrap();
 
   function safeStorageGet(storage, key) {
     try {

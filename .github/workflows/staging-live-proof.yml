@@ -1,0 +1,68 @@
+name: Staging Live Proof
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove-preview-target:
+    if: github.event.pull_request.number == 149 || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check automation credentials without revealing values
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ACCESS_TOKEN: ${{ secrets.VERCEL_ACCESS_TOKEN }}
+          STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          set -euo pipefail
+          [ -n "${VERCEL_TOKEN:-}" ] && echo "VERCEL_TOKEN=present" || echo "VERCEL_TOKEN=missing"
+          [ -n "${VERCEL_ACCESS_TOKEN:-}" ] && echo "VERCEL_ACCESS_TOKEN=present" || echo "VERCEL_ACCESS_TOKEN=missing"
+          [ -n "${STAGING_SUPABASE_PUBLISHABLE_KEY:-}" ] && echo "STAGING_SUPABASE_PUBLISHABLE_KEY=present" || echo "STAGING_SUPABASE_PUBLISHABLE_KEY=missing"
+          [ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ] && echo "SUPABASE_PUBLISHABLE_KEY=present" || echo "SUPABASE_PUBLISHABLE_KEY=missing"
+          [ -n "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ] && echo "VERCEL_AUTOMATION_BYPASS_SECRET=present" || echo "VERCEL_AUTOMATION_BYPASS_SECRET=missing"
+
+      - name: Diagnose deployed Preview environment safely
+        env:
+          PREVIEW_URL: https://novelrise-git-fix-staging-client-bootstrap-ranobe1.vercel.app
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ]; then
+            echo "VERCEL_AUTOMATION_BYPASS_SECRET is not configured in GitHub Actions secrets."
+            exit 2
+          fi
+          diagnostic="$(curl --location --fail --silent --show-error --max-time 20 --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" "$PREVIEW_URL/api/staging-browser-config-diagnostic")"
+          echo "Safe diagnostic: $diagnostic"
+          echo "$diagnostic" | jq -e '.previewEnvironment == true and .hasValidStagingSupabaseUrl == true and .hasValidPublishableKey == true' >/dev/null
+
+      - name: Verify deployed Preview browser config is isolated Staging
+        env:
+          PREVIEW_URL: https://novelrise-git-fix-staging-client-bootstrap-ranobe1.vercel.app
+          PRODUCTION_SUPABASE_HOST: fiepaguycecrredwrcwx.supabase.co
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          set -euo pipefail
+          body="$(curl --location --fail --silent --show-error --max-time 20 --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" "$PREVIEW_URL/api/staging-browser-config")"
+          supabase_url="$(echo "$body" | jq -r '.supabaseUrl')"
+          publishable_key="$(echo "$body" | jq -r '.supabasePublishableKey')"
+          supabase_host="$(printf '%s' "$supabase_url" | sed -E 's#^https://([^/]+).*$#\1#')"
+          if [ "$supabase_host" = "$PRODUCTION_SUPABASE_HOST" ]; then
+            echo "Preview returned Production Supabase host"
+            exit 1
+          fi
+          if [[ "$publishable_key" != sb_publishable_* ]]; then
+            echo "Preview did not return browser-safe publishable key"
+            exit 1
+          fi
+          if [[ "$publishable_key" == *secret* ]]; then
+            echo "Preview exposed secret-class key"
+            exit 1
+          fi
+          echo "Verified isolated Preview Supabase host: $supabase_host"
