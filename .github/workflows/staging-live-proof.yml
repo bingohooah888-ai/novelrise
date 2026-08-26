@@ -13,6 +13,21 @@ jobs:
     if: github.event.pull_request.number == 149 || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Check automation credentials without revealing values
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ACCESS_TOKEN: ${{ secrets.VERCEL_ACCESS_TOKEN }}
+          STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          set -euo pipefail
+          [ -n "${VERCEL_TOKEN:-}" ] && echo "VERCEL_TOKEN=present" || echo "VERCEL_TOKEN=missing"
+          [ -n "${VERCEL_ACCESS_TOKEN:-}" ] && echo "VERCEL_ACCESS_TOKEN=present" || echo "VERCEL_ACCESS_TOKEN=missing"
+          [ -n "${STAGING_SUPABASE_PUBLISHABLE_KEY:-}" ] && echo "STAGING_SUPABASE_PUBLISHABLE_KEY=present" || echo "STAGING_SUPABASE_PUBLISHABLE_KEY=missing"
+          [ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ] && echo "SUPABASE_PUBLISHABLE_KEY=present" || echo "SUPABASE_PUBLISHABLE_KEY=missing"
+          [ -n "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ] && echo "VERCEL_AUTOMATION_BYPASS_SECRET=present" || echo "VERCEL_AUTOMATION_BYPASS_SECRET=missing"
+
       - name: Verify deployed Preview browser config is isolated Staging
         env:
           PREVIEW_URL: https://novelrise-git-fix-staging-client-bootstrap-ranobe1.vercel.app
