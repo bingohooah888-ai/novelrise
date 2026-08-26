@@ -1,0 +1,31 @@
+name: Staging Live Proof
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove-preview-target:
+    if: github.event.pull_request.number == 149 || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify deployed Preview browser config is isolated Staging
+        env:
+          PREVIEW_URL: https://novelrise-git-fix-staging-client-bootstrap-ranobe1.vercel.app
+          PRODUCTION_SUPABASE_HOST: fiepaguycecrredwrcwx.supabase.co
+        run: |
+          set -euo pipefail
+          body="$(curl --fail --silent --show-error --max-time 20 "$PREVIEW_URL/api/staging-browser-config")"
+          node -e '
+            const body = JSON.parse(process.argv[1]);
+            const productionHost = process.env.PRODUCTION_SUPABASE_HOST;
+            const url = new URL(body.supabaseUrl);
+            if (url.hostname === productionHost) throw new Error("Preview returned Production Supabase host");
+            if (!/^sb_publishable_/.test(body.supabasePublishableKey || "")) throw new Error("Preview did not return browser-safe publishable key");
+            if (/secret/i.test(body.supabasePublishableKey || "")) throw new Error("Preview exposed secret-class key");
+            console.log(`Verified isolated Preview Supabase host: ${url.hostname}`);
+          ' "$body"
