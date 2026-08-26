@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const REQUIRED_MAIN_FILES = [
   'docs/NOVELIGHT-MASTER.md',
@@ -64,7 +65,12 @@ function readAuthoritativeMainFile(path) {
 function ensureLatestMainAvailable() {
   git(['rev-parse', '--is-inside-work-tree']);
   git(['remote', 'get-url', 'origin']);
-  git(['fetch', '--quiet', 'origin', 'main']);
+  git([
+    'fetch',
+    '--quiet',
+    'origin',
+    '+refs/heads/main:refs/remotes/origin/main',
+  ]);
 
   const mainSha = git(['rev-parse', 'origin/main']);
   if (!/^[0-9a-f]{40}$/u.test(mainSha)) {
@@ -112,7 +118,8 @@ export function runRuntimeGate(argv = process.argv.slice(2)) {
 }
 
 const invokedDirectly =
-  process.argv[1] && new URL(import.meta.url).pathname === process.argv[1];
+  Boolean(process.argv[1]) &&
+  resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1]);
 
 if (invokedDirectly) {
   try {
