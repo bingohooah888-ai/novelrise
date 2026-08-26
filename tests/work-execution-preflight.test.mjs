@@ -10,7 +10,10 @@ async function readPreflight() {
 
 function assertIncludesAll(source, tokens) {
   for (const token of tokens) {
-    assert.ok(source.includes(token), `Missing preflight contract: ${token}`);
+    assert.ok(
+      source.includes(token),
+      `Missing preflight contract: ${token}`,
+    );
   }
 }
 
