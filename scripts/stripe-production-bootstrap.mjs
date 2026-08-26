@@ -200,6 +200,7 @@ const output = {
   premiumPriceId: premium.priceId,
   portalConfigurationId,
   webhookEndpointId: webhook.endpointId,
+  webhookPreviousEndpointId: webhook.previousEndpointId,
   webhookSecret: webhook.secret
 };
 
@@ -210,6 +211,6 @@ fs.writeFileSync(outputPath, `${JSON.stringify(output)}\n`, {
 
 console.log(
   rotateWebhookSecret && webhook.rotated
-    ? 'Stripe live billing objects are configured and the webhook signing secret was rotated.'
+    ? 'Stripe live billing objects are configured and a replacement webhook endpoint is ready for secret sync.'
     : 'Stripe live billing objects are configured and validated.'
 );
