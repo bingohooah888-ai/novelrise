@@ -22,12 +22,11 @@ jobs:
     env:
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
       VERCEL_SCOPE: ranobe1
       VERCEL_PROJECT: novelrise
       EXPECTED_BRANCH: main
-      EXPECTED_PRODUCTION_SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
-      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
       PRODUCTION_ENV_FILE: /tmp/novelight-production-webhook-control.env
 
     steps:
@@ -47,8 +46,8 @@ jobs:
             echo 'VERCEL_TOKEN is not configured in the Production environment.'
             exit 1
           }
-          test -n "$SUPABASE_ACCESS_TOKEN" || {
-            echo 'SUPABASE_ACCESS_TOKEN is not configured in the Production environment.'
+          test -n "$SUPABASE_SECRET_KEY" || {
+            echo 'SUPABASE_SECRET_KEY is not configured in the Production environment.'
             exit 1
           }
 
@@ -92,32 +91,6 @@ jobs:
       - name: Install pinned Vercel CLI
         run: npm install --global vercel@59.1.4
 
-      - name: Retrieve canonical Production Supabase secret for this approved run
-        shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          curl --fail-with-body --silent --show-error \
-            --url "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/api-keys?reveal=true" \
-            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-            > /tmp/supabase-api-keys.json
-
-          canonical_secret="$(jq -er '
-            ([.[] | select(.type == "secret") | .api_key][0]) //
-            ([.[] | select(.name == "service_role") | .api_key][0]) //
-            empty
-          ' /tmp/supabase-api-keys.json)"
-
-          test -n "$canonical_secret" || {
-            echo 'No revealable canonical Production Supabase secret/service-role key was returned.'
-            exit 1
-          }
-          printf '::add-mask::%s\n' "$canonical_secret"
-          {
-            printf 'SUPABASE_URL=%s\n' "$EXPECTED_PRODUCTION_SUPABASE_URL"
-            printf 'SUPABASE_SECRET_KEY=%s\n' "$canonical_secret"
-          } >> "$GITHUB_ENV"
-
       - name: Pull only non-Sensitive Production inputs from Vercel
         shell: bash
         run: |
@@ -144,7 +117,7 @@ jobs:
 
           # Vercel Sensitive values are placeholders in `vercel env pull`.
           # Never compare or probe with pulled SUPABASE_URL/SUPABASE_SECRET_KEY;
-          # the control proof uses the canonical URL and Management API secret.
+          # the control proof uses the canonical URL and GitHub Environment secret.
           unset SUPABASE_URL SUPABASE_SECRET_KEY
           required=(
             STRIPE_STANDARD_PRICE_ID
@@ -171,4 +144,4 @@ jobs:
       - name: Remove temporary Production credential material
         if: always()
         shell: bash
-        run: rm -f "$PRODUCTION_ENV_FILE" /tmp/supabase-api-keys.json
+        run: rm -f "$PRODUCTION_ENV_FILE"
