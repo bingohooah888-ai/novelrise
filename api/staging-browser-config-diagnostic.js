@@ -1,19 +1,33 @@
 const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
 
-function hasValidStagingSupabaseUrl(value) {
-  if (!value) return false;
+function inspectStagingSupabaseUrl(value) {
+  const result = {
+    present: Boolean(value),
+    parseable: false,
+    https: false,
+    noEmbeddedCredentials: false,
+    supabaseHost: false,
+    nonProductionHost: false,
+    valid: false
+  };
+
+  if (!value) return result;
 
   try {
     const parsed = new globalThis.URL(value);
-    return (
-      parsed.protocol === 'https:' &&
-      !parsed.username &&
-      !parsed.password &&
-      parsed.hostname.endsWith('.supabase.co') &&
-      parsed.hostname !== PRODUCTION_SUPABASE_HOST
-    );
+    result.parseable = true;
+    result.https = parsed.protocol === 'https:';
+    result.noEmbeddedCredentials = !parsed.username && !parsed.password;
+    result.supabaseHost = parsed.hostname.endsWith('.supabase.co');
+    result.nonProductionHost = parsed.hostname !== PRODUCTION_SUPABASE_HOST;
+    result.valid =
+      result.https &&
+      result.noEmbeddedCredentials &&
+      result.supabaseHost &&
+      result.nonProductionHost;
+    return result;
   } catch {
-    return false;
+    return result;
   }
 }
 
@@ -43,11 +57,12 @@ export default function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const supabaseUrl = inspectStagingSupabaseUrl(process.env.SUPABASE_URL);
+
   return res.status(200).json({
     previewEnvironment: process.env.VERCEL_ENV === 'preview',
-    hasValidStagingSupabaseUrl: hasValidStagingSupabaseUrl(
-      process.env.SUPABASE_URL
-    ),
+    hasValidStagingSupabaseUrl: supabaseUrl.valid,
+    supabaseUrl,
     hasValidPublishableKey: hasValidPublishableKey(
       process.env.SUPABASE_PUBLISHABLE_KEY
     )
