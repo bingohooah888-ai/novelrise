@@ -15,6 +15,12 @@ permissions:
 
 jobs:
   prove-preview-target:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (!startsWith(github.head_ref, 'chore/') &&
+      !startsWith(github.head_ref, 'test/') &&
+      !startsWith(github.head_ref, 'docs/') &&
+      !startsWith(github.head_ref, 'dependabot/'))
     runs-on: ubuntu-latest
     steps:
       - name: Resolve Preview URL
