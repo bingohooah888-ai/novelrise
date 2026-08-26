@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   ensureWebhookEndpoint,
+  finalizeWebhookRotation,
   inspectWebhookEndpoint,
   requiredWebhookEvents
 } from '../scripts/stripe-production-webhook-endpoint.mjs';
@@ -47,6 +48,7 @@ test('existing webhook is updated without rotation by default', async () => {
 
   assert.deepEqual(result, {
     endpointId: 'we_old',
+    previousEndpointId: null,
     secret: null,
     rotated: false
   });
@@ -56,7 +58,7 @@ test('existing webhook is updated without rotation by default', async () => {
   assert.deepEqual(calls[0][2].enabled_events, requiredWebhookEvents);
 });
 
-test('rotation creates a replacement, deletes the old endpoint, and returns the new secret', async () => {
+test('rotation prepares a replacement while keeping the previous endpoint until deployment succeeds', async () => {
   const calls = [];
   const existing = liveEndpoint('we_old');
   const stripe = {
@@ -67,7 +69,7 @@ test('rotation creates a replacement, deletes the old endpoint, and returns the 
       },
       async del(id) {
         calls.push(['delete', id]);
-        return { id, deleted: true };
+        throw new Error('delete should not be called during prepare');
       }
     }
   };
@@ -81,56 +83,58 @@ test('rotation creates a replacement, deletes the old endpoint, and returns the 
 
   assert.deepEqual(result, {
     endpointId: 'we_new',
+    previousEndpointId: 'we_old',
     secret: 'whsec_replacement',
     rotated: true
   });
-  assert.deepEqual(
-    calls.map((call) => [call[0], call[1]?.id ?? call[1]]),
-    [
-      ['create', webhookUrl],
-      ['delete', 'we_old']
-    ]
-  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], 'create');
+  assert.equal(calls[0][1].url, webhookUrl);
   assert.deepEqual(calls[0][1].enabled_events, requiredWebhookEvents);
 });
 
-test('rotation cleans up the replacement and fails closed when old endpoint deletion fails', async () => {
+test('rotation finalization removes only the previous endpoint after deployment', async () => {
   const calls = [];
-  const existing = liveEndpoint('we_old');
   const stripe = {
     webhookEndpoints: {
-      async create(payload) {
-        calls.push(['create', payload]);
-        return liveEndpoint('we_new', { secret: 'whsec_replacement' });
-      },
       async del(id) {
-        calls.push(['delete', id]);
-        if (id === 'we_old') {
-          throw new Error('cannot delete old endpoint');
-        }
+        calls.push(id);
         return { id, deleted: true };
       }
     }
   };
 
+  const removed = await finalizeWebhookRotation({
+    stripe,
+    previousEndpointId: 'we_old',
+    currentEndpointId: 'we_new'
+  });
+
+  assert.equal(removed, true);
+  assert.deepEqual(calls, ['we_old']);
+});
+
+test('rotation finalization fails without deleting the replacement when old endpoint deletion fails', async () => {
+  const calls = [];
+  const stripe = {
+    webhookEndpoints: {
+      async del(id) {
+        calls.push(id);
+        throw new Error('cannot delete old endpoint');
+      }
+    }
+  };
+
   await assert.rejects(
-    ensureWebhookEndpoint({
+    finalizeWebhookRotation({
       stripe,
-      webhookUrl,
-      existingEndpoint: existing,
-      rotateWebhookSecret: true
+      previousEndpointId: 'we_old',
+      currentEndpointId: 'we_new'
     }),
-    /replacement endpoint was removed and the previous endpoint was preserved/
+    /cannot delete old endpoint/
   );
 
-  assert.deepEqual(
-    calls.map((call) => [call[0], call[1]?.id ?? call[1]]),
-    [
-      ['create', webhookUrl],
-      ['delete', 'we_old'],
-      ['delete', 'we_new']
-    ]
-  );
+  assert.deepEqual(calls, ['we_old']);
 });
 
 test('rotation mode allows repair when Vercel has no existing webhook secret', async () => {
