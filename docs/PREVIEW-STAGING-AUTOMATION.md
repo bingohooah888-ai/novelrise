@@ -29,9 +29,18 @@ After the Preview-wide values are confirmed, old branch-specific duplicates may 
 
 ## Automatic deployment proof
 
-`.github/workflows/staging-live-proof.yml` runs on pull requests to `main`.
+`.github/workflows/staging-live-proof.yml` runs automatically for pull requests to `main` **when Vercel Git deployment is enabled for the head branch**.
 
-The workflow:
+The repository intentionally disables automatic Vercel deployment for these branch families in `vercel.json`:
+
+- `chore/**`
+- `test/**`
+- `docs/**`
+- `dependabot/**`
+
+The Live Proof workflow mirrors that policy so it does not wait five minutes against a Preview URL that Vercel is intentionally never going to create.
+
+For automatically deployed PR branches, the workflow:
 
 1. derives the Vercel branch Preview URL automatically;
 2. waits and retries for up to five minutes while Vercel is still deploying;
@@ -41,7 +50,9 @@ The workflow:
 6. fails if the key is not browser-safe;
 7. never prints the publishable key.
 
-A manual `workflow_dispatch` may provide an explicit `preview_url` only when Vercel's generated branch alias cannot be derived predictably.
+For a deployment-disabled branch that genuinely needs Preview verification, create an intentional/manual Preview and run `workflow_dispatch` with its explicit `preview_url`. This is an exceptional verification route, not a return to per-branch environment-variable setup.
+
+A manual `workflow_dispatch` may also provide an explicit `preview_url` when Vercel's generated branch alias cannot be derived predictably.
 
 ## Agent / implementation preflight
 
@@ -51,7 +62,7 @@ Before an implementation agent commits JavaScript, tests, JSON, or GitHub Action
 npm run preflight:agent
 ```
 
-`preflight:agent` runs the formatting fixer before lint, tests, syntax checks, merge-readiness checks, and whitespace checks. This exists to prevent avoidable CI round-trips caused only by Prettier formatting.
+`preflight:agent` first runs the executable Runtime Execution Gate, which refreshes `origin/main` and verifies access to the authoritative MASTER / Preflight. It then runs the formatting fixer before lint, tests, syntax checks, merge-readiness checks, and whitespace checks. This prevents both stale-policy execution and avoidable CI round trips caused only by Prettier formatting.
 
 CI remains authoritative and check-only; CI does not auto-commit formatting changes.
 
@@ -64,4 +75,5 @@ Manual UI work is reserved for:
 - the one-time Preview-wide `NOVELIGHT_STAGING_*` setup;
 - secret rotation;
 - account/OAuth/2FA steps that cannot be automated safely;
+- intentional Preview creation for a branch family whose automatic Vercel deployment is disabled;
 - exceptional recovery when automated deployment proof cannot resolve a Preview alias.
