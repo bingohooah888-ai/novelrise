@@ -61,16 +61,6 @@ export function buildStagingBrowserConfig(env = process.env) {
   };
 }
 
-function buildSafeDiagnostic(env = process.env) {
-  return {
-    previewEnvironment: env.VERCEL_ENV === 'preview',
-    hasValidStagingSupabaseUrl: Boolean(normalizeSupabaseUrl(env.SUPABASE_URL)),
-    hasValidPublishableKey: Boolean(
-      normalizePublishableKey(env.SUPABASE_PUBLISHABLE_KEY)
-    )
-  };
-}
-
 export default function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
 
@@ -80,10 +70,7 @@ export default function handler(req, res) {
 
   const config = buildStagingBrowserConfig();
   if (!config) {
-    return res.status(404).json({
-      error: 'Not found',
-      diagnostic: buildSafeDiagnostic()
-    });
+    return res.status(404).json({ error: 'Not found' });
   }
 
   return res.status(200).json(config);
