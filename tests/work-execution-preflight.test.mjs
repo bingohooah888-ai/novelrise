@@ -8,6 +8,7 @@ import {
   shouldRequireUserDecision,
 } from '../scripts/runtime-execution-gate.mjs';
 
+const AGENTS_PATH = 'AGENTS.md';
 const PREFLIGHT_PATH = 'docs/WORK-EXECUTION-PREFLIGHT.md';
 const AUTOMATION_PATH = 'docs/AUTOMATION-CONTINUATION-GATE.md';
 const PACKAGE_PATH = 'package.json';
@@ -32,6 +33,7 @@ test('timing gate contract', async () => {
     '手動操作',
     '待機要否',
     '実行環境の上位制約',
+    'Degraded-Continue',
   ]);
 });
 
@@ -70,6 +72,17 @@ test('per-step runtime execution gate contract', async () => {
   ]);
 });
 
+test('repository agent instructions require the executable gate', async () => {
+  const source = await read(AGENTS_PATH);
+  assertIncludesAll(source, [
+    '## Runtime Execution Gate',
+    'npm run runtime:gate -- --phase=<phase>',
+    'GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得',
+    '単なる続行ボタンになる場合は要求しない',
+    'Degraded-Continue',
+  ]);
+});
+
 test('runtime gate is wired into agent preflight', async () => {
   const packageJson = JSON.parse(await read(PACKAGE_PATH));
   assert.equal(
@@ -80,9 +93,10 @@ test('runtime gate is wired into agent preflight', async () => {
 
   const source = await read(RUNTIME_GATE_PATH);
   assertIncludesAll(source, [
-    "git(['fetch', '--quiet', 'origin', 'main'])",
-    'origin/main:docs/NOVELIGHT-MASTER.md',
-    'origin/main:docs/WORK-EXECUTION-PREFLIGHT.md',
+    '+refs/heads/main:refs/remotes/origin/main',
+    'origin/main:${path}',
+    'docs/NOVELIGHT-MASTER.md',
+    'docs/WORK-EXECUTION-PREFLIGHT.md',
     'NOVELIGHT Runtime Execution Gate: PASS',
     'do not ask for a continuation-only yes',
   ]);
