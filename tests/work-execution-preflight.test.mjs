@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   classifyHardStop,
   parsePhase,
-  shouldRequireUserDecision,
+  shouldRequireUserDecision
 } from '../scripts/runtime-execution-gate.mjs';
 
 const AGENTS_PATH = 'AGENTS.md';
@@ -33,7 +33,7 @@ test('timing gate contract', async () => {
     '手動操作',
     '待機要否',
     '実行環境の上位制約',
-    'Degraded-Continue',
+    'Degraded-Continue'
   ]);
 });
 
@@ -42,7 +42,7 @@ test('wait continuation contract', async () => {
   assertIncludesAll(source, [
     '短時間外部待機・自動継続ゲート',
     '概ね10分以内',
-    '「実行中です」だけで返していない',
+    '「実行中です」だけで返していない'
   ]);
 });
 
@@ -54,7 +54,7 @@ test('approval-button elimination contract', async () => {
     '1回目から自動化対象',
     '承認質問は禁止し、自動継続する',
     '自動停止を残す場面',
-    '実行環境の上位制約',
+    '実行環境の上位制約'
   ]);
 });
 
@@ -68,7 +68,7 @@ test('per-step runtime execution gate contract', async () => {
     '自動化経路',
     'npm run runtime:gate',
     'ユーザーの追加の「はい」を待たず実行へ進む',
-    '作業開始時だけでなく、主要工程の切替ごとに必須とする',
+    '作業開始時だけでなく、主要工程の切替ごとに必須とする'
   ]);
 });
 
@@ -79,7 +79,7 @@ test('repository agent instructions require the executable gate', async () => {
     'npm run runtime:gate -- --phase=<phase>',
     'GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得',
     '単なる続行ボタンになる場合は要求しない',
-    'Degraded-Continue',
+    'Degraded-Continue'
   ]);
 });
 
@@ -87,7 +87,7 @@ test('runtime gate is wired into agent preflight', async () => {
   const packageJson = JSON.parse(await read(PACKAGE_PATH));
   assert.equal(
     packageJson.scripts['runtime:gate'],
-    'node scripts/runtime-execution-gate.mjs',
+    'node scripts/runtime-execution-gate.mjs'
   );
   assert.match(packageJson.scripts['preflight:agent'], /runtime:gate/u);
 
@@ -98,7 +98,7 @@ test('runtime gate is wired into agent preflight', async () => {
     'docs/NOVELIGHT-MASTER.md',
     'docs/WORK-EXECUTION-PREFLIGHT.md',
     'NOVELIGHT Runtime Execution Gate: PASS',
-    'do not ask for a continuation-only yes',
+    'do not ask for a continuation-only yes'
   ]);
 });
 
@@ -108,18 +108,18 @@ test('runtime gate hard stops are limited to real decision boundaries', () => {
       production: true,
       secret: false,
       destructive: false,
-      payment: false,
+      payment: false
     }),
-    true,
+    true
   );
   assert.equal(
     classifyHardStop({
       production: false,
       secret: false,
       destructive: false,
-      payment: false,
+      payment: false
     }),
-    false,
+    false
   );
   assert.equal(shouldRequireUserDecision({ genuineChoice: true }), true);
   assert.equal(shouldRequireUserDecision({}), false);
@@ -133,6 +133,6 @@ test('screenshot verification gate contract', async () => {
     'スクリーンショット・画面確認ゲート',
     '過去画像・別画面・推測を現在画面として扱わない',
     '画像内で確認できない情報を「見えている」と断定していないか',
-    '画像から確認できない項目は推測で補完しない',
+    '画像から確認できない項目は推測で補完しない'
   ]);
 });
