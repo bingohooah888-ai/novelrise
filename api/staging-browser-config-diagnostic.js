@@ -3,7 +3,11 @@ const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
 function inspectStagingSupabaseUrl(value) {
   const result = {
     present: Boolean(value),
+    hasLeadingOrTrailingWhitespace: false,
+    quoted: false,
     parseable: false,
+    parseableAfterTrim: false,
+    parseableAfterUnquoteAndTrim: false,
     https: false,
     noEmbeddedCredentials: false,
     supabaseHost: false,
@@ -12,6 +16,24 @@ function inspectStagingSupabaseUrl(value) {
   };
 
   if (!value) return result;
+
+  const trimmed = value.trim();
+  result.hasLeadingOrTrailingWhitespace = trimmed !== value;
+  result.quoted =
+    trimmed.length >= 2 &&
+    ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'")));
+
+  try {
+    new globalThis.URL(trimmed);
+    result.parseableAfterTrim = true;
+  } catch {}
+
+  const unquoted = result.quoted ? trimmed.slice(1, -1).trim() : trimmed;
+  try {
+    new globalThis.URL(unquoted);
+    result.parseableAfterUnquoteAndTrim = true;
+  } catch {}
 
   try {
     const parsed = new globalThis.URL(value);
