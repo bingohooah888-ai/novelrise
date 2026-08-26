@@ -1,2 +1,0 @@
-NOVELIGHT Preview-wide staging environment validation marker.
-This file exists only to trigger a pull_request synchronize event and must not be merged.
