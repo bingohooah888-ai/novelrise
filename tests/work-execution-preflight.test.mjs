@@ -13,6 +13,8 @@ const PREFLIGHT_PATH = 'docs/WORK-EXECUTION-PREFLIGHT.md';
 const AUTOMATION_PATH = 'docs/AUTOMATION-CONTINUATION-GATE.md';
 const PACKAGE_PATH = 'package.json';
 const RUNTIME_GATE_PATH = 'scripts/runtime-execution-gate.mjs';
+const STAGING_PROOF_PATH = '.github/workflows/staging-live-proof.yml';
+const VERCEL_PATH = 'vercel.json';
 
 async function read(path) {
   return readFile(path, 'utf8');
@@ -125,6 +127,36 @@ test('runtime gate hard stops are limited to real decision boundaries', () => {
   assert.equal(shouldRequireUserDecision({}), false);
   assert.equal(parsePhase(['--phase=vercel']), 'vercel');
   assert.throws(() => parsePhase(['--phase=unknown']), /Unsupported/u);
+});
+
+test('staging live proof mirrors Vercel deployment-disabled branches', async () => {
+  const workflow = await read(STAGING_PROOF_PATH);
+  const vercel = JSON.parse(await read(VERCEL_PATH));
+  const deploymentEnabled = vercel.git?.deploymentEnabled ?? {};
+  const disabledPrefixes = Object.entries(deploymentEnabled)
+    .filter(([, enabled]) => enabled === false)
+    .map(([pattern]) => pattern.replace('/**', '/'));
+
+  assert.deepEqual(disabledPrefixes, [
+    'chore/',
+    'test/',
+    'docs/',
+    'dependabot/'
+  ]);
+
+  for (const prefix of disabledPrefixes) {
+    assert.equal(
+      workflow.includes(`!startsWith(github.head_ref, '${prefix}')`),
+      true,
+      `Live Proof must skip Vercel-disabled branch prefix: ${prefix}`
+    );
+  }
+
+  assertIncludesAll(workflow, [
+    "github.event_name == 'workflow_dispatch'",
+    'MANUAL_PREVIEW_URL',
+    'Preview URL is required for workflow_dispatch.'
+  ]);
 });
 
 test('screenshot verification gate contract', async () => {
