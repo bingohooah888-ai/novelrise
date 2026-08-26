@@ -2,8 +2,16 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+import {
+  classifyHardStop,
+  parsePhase,
+  shouldRequireUserDecision,
+} from '../scripts/runtime-execution-gate.mjs';
+
 const PREFLIGHT_PATH = 'docs/WORK-EXECUTION-PREFLIGHT.md';
 const AUTOMATION_PATH = 'docs/AUTOMATION-CONTINUATION-GATE.md';
+const PACKAGE_PATH = 'package.json';
+const RUNTIME_GATE_PATH = 'scripts/runtime-execution-gate.mjs';
 
 async function read(path) {
   return readFile(path, 'utf8');
@@ -23,7 +31,7 @@ test('timing gate contract', async () => {
     '主要工程',
     '手動操作',
     '待機要否',
-    'ツール実行禁止',
+    '実行環境の上位制約',
   ]);
 });
 
@@ -44,7 +52,7 @@ test('approval-button elimination contract', async () => {
     '1回目から自動化対象',
     '承認質問は禁止し、自動継続する',
     '自動停止を残す場面',
-    'トータル予想時間',
+    '実行環境の上位制約',
   ]);
 });
 
@@ -54,12 +62,55 @@ test('per-step runtime execution gate contract', async () => {
     '主要工程 Runtime Execution Gate',
     '正式基準',
     '禁止・ロック',
-    '可視時間カード',
+    '可視実行カード',
     '自動化経路',
-    'その主要工程のツール実行・外部操作・ファイル更新を開始しない',
+    'npm run runtime:gate',
     'ユーザーの追加の「はい」を待たず実行へ進む',
     '作業開始時だけでなく、主要工程の切替ごとに必須とする',
   ]);
+});
+
+test('runtime gate is wired into agent preflight', async () => {
+  const packageJson = JSON.parse(await read(PACKAGE_PATH));
+  assert.equal(
+    packageJson.scripts['runtime:gate'],
+    'node scripts/runtime-execution-gate.mjs',
+  );
+  assert.match(packageJson.scripts['preflight:agent'], /runtime:gate/u);
+
+  const source = await read(RUNTIME_GATE_PATH);
+  assertIncludesAll(source, [
+    "git(['fetch', '--quiet', 'origin', 'main'])",
+    'origin/main:docs/NOVELIGHT-MASTER.md',
+    'origin/main:docs/WORK-EXECUTION-PREFLIGHT.md',
+    'NOVELIGHT Runtime Execution Gate: PASS',
+    'do not ask for a continuation-only yes',
+  ]);
+});
+
+test('runtime gate hard stops are limited to real decision boundaries', () => {
+  assert.equal(
+    classifyHardStop({
+      production: true,
+      secret: false,
+      destructive: false,
+      payment: false,
+    }),
+    true,
+  );
+  assert.equal(
+    classifyHardStop({
+      production: false,
+      secret: false,
+      destructive: false,
+      payment: false,
+    }),
+    false,
+  );
+  assert.equal(shouldRequireUserDecision({ genuineChoice: true }), true);
+  assert.equal(shouldRequireUserDecision({}), false);
+  assert.equal(parsePhase(['--phase=vercel']), 'vercel');
+  assert.throws(() => parsePhase(['--phase=unknown']), /Unsupported/u);
 });
 
 test('screenshot verification gate contract', async () => {
