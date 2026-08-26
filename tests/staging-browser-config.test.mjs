@@ -44,8 +44,11 @@ async function withEnvironment(values, callback) {
 test('Preview browser config exposes only browser-safe isolated Supabase values', () => {
   const config = buildStagingBrowserConfig({
     VERCEL_ENV: 'preview',
-    SUPABASE_URL: 'https://staging-project.supabase.co',
-    SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_staging_example',
+    NOVELIGHT_STAGING_SUPABASE_URL: 'https://staging-project.supabase.co',
+    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY:
+      'sb_publishable_staging_example',
+    SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co',
+    SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_production_example',
     SUPABASE_SECRET_KEY: 'sb_secret_must_not_leak'
   });
 
@@ -53,6 +56,7 @@ test('Preview browser config exposes only browser-safe isolated Supabase values'
     supabaseUrl: 'https://staging-project.supabase.co',
     supabasePublishableKey: 'sb_publishable_staging_example'
   });
+  assert.doesNotMatch(JSON.stringify(config), /production_example/);
   assert.doesNotMatch(JSON.stringify(config), /sb_secret_must_not_leak/);
 });
 
@@ -60,8 +64,10 @@ test('Preview browser config fails closed on Production or secret-class targets'
   assert.equal(
     buildStagingBrowserConfig({
       VERCEL_ENV: 'preview',
-      SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co',
-      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_staging_example'
+      NOVELIGHT_STAGING_SUPABASE_URL:
+        'https://fiepaguycecrredwrcwx.supabase.co',
+      NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY:
+        'sb_publishable_staging_example'
     }),
     null
   );
@@ -69,8 +75,9 @@ test('Preview browser config fails closed on Production or secret-class targets'
   assert.equal(
     buildStagingBrowserConfig({
       VERCEL_ENV: 'preview',
-      SUPABASE_URL: 'https://staging-project.supabase.co',
-      SUPABASE_PUBLISHABLE_KEY: 'sb_secret_not_browser_safe'
+      NOVELIGHT_STAGING_SUPABASE_URL: 'https://staging-project.supabase.co',
+      NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY:
+        'sb_secret_not_browser_safe'
     }),
     null
   );
@@ -78,11 +85,28 @@ test('Preview browser config fails closed on Production or secret-class targets'
   assert.equal(
     buildStagingBrowserConfig({
       VERCEL_ENV: 'production',
-      SUPABASE_URL: 'https://staging-project.supabase.co',
-      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_staging_example'
+      NOVELIGHT_STAGING_SUPABASE_URL: 'https://staging-project.supabase.co',
+      NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY:
+        'sb_publishable_staging_example'
     }),
     null
   );
+});
+
+test('generic Supabase integration variables cannot override isolated Preview config', () => {
+  const config = buildStagingBrowserConfig({
+    VERCEL_ENV: 'preview',
+    NOVELIGHT_STAGING_SUPABASE_URL: 'https://staging-project.supabase.co',
+    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY:
+      'sb_publishable_staging_example',
+    SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co',
+    SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_production_example'
+  });
+
+  assert.deepEqual(config, {
+    supabaseUrl: 'https://staging-project.supabase.co',
+    supabasePublishableKey: 'sb_publishable_staging_example'
+  });
 });
 
 test('browser config route is unavailable outside Preview', async () => {
