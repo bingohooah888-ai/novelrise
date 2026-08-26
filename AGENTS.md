@@ -8,6 +8,30 @@ MASTERを確認する際は、必ずGitHub上の最新 `main` ブランチにあ
 
 MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈で進めず、具体的な矛盾点と影響をユーザーへ指摘して判断を求める。MASTERの根本思想や既存方針を独断で変更・削除してはならない。新しい重要方針が決定した場合は、MASTER更新候補として扱う。
 
+## Runtime Execution Gate
+
+NOVELIGHTの実作業では、MASTER / Preflightを「一度読んだので以後は記憶で運用する」方式に戻さない。コード変更、GitHub、CI/E2E、deploy、Vercel、Supabase、Stripe、外部サービス設定、ファイル更新等の主要工程へ入る直前に `docs/WORK-EXECUTION-PREFLIGHT.md` と `docs/AUTOMATION-CONTINUATION-GATE.md` のRuntime Execution Gateを適用する。
+
+ローカルリポジトリを操作できる実装エージェントは、主要工程の入口で必ず次を実行する。
+
+```text
+npm run runtime:gate -- --phase=<phase>
+```
+
+このコマンドは `origin/main` を再取得し、最新mainのMASTER / Preflightを直接取得可能であることを確認する。`npm run preflight:agent` も実装用Runtime Gateを先頭で実行する。Connector等でローカルコマンドを使えない場合は、GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得する同等確認を行う。
+
+主要工程では次の順序を固定する。
+
+1. 正式基準：最新mainのMASTER / Preflightと現在の明示指示を確認する
+2. 禁止・ロック：Production、Secret、破壊的操作、担当ツール境界等を確認する
+3. 可視実行カード：目的、主要工程、手動操作、待機要否をユーザーへ可視化する。実行環境が時間見積もりを許可する場合は時間も含める
+4. 自動化経路：Connector / API / CLI / Workflow / ScriptをUI手動操作より先に比較する
+5. 実行：1〜4を満たした場合だけ進む
+
+最新main、禁止・ロック、安全境界を確認できない場合はFail-Closedする。一方、実行環境の上位制約によって時間見積もり等の一部表示だけが禁止・非対応の場合、それだけを理由に安全・可逆・既承認スコープの作業まで停止しない。可能な実行カードを提示してDegraded-Continueする。これをProduction、Secret、課金、破壊的操作等の承認回避には使わない。
+
+ユーザーの「はい」「続けて」「次へ」が判断を伴わない単なる続行ボタンになる場合は要求しない。安全・可逆・既承認スコープ内で、追加の本人判断・Secret・2FA・OAuth・Production承認を必要としない工程は自動継続する。
+
 ## 「MASTER更新」運用
 
 ユーザーが「MASTER更新：〜」と指示した場合は、次の手順を自動で実行する。
@@ -86,6 +110,8 @@ MASTERの自動化効率基準に従い、「自動化されている」こと�
 - `npm run format`: API、テスト、設定ファイル、JSON/YAMLをPrettierで整形する。これは明示的な修正操作として使う。
 - `npm run format:check`: ファイルを書き換えず、Prettier整形が必要なファイルがないか検査する。
 - `npm run syntax:check`: `api/` と `scripts/` のJavaScript/ESM対象を自動検出して構文検査する。
+- `npm run runtime:gate -- --phase=<phase>`: 主要工程の入口で `origin/main`、MASTER、Preflightの正式基準を機械確認する。
+- `npm run preflight:agent`: 実装エージェント向け。Runtime Gateを通してからformat fixer、lint、tests、syntax、merge-readiness、whitespace checksを実行する。
 - `npm run preflight` / `npm run preflight:fast`: 通常のread-only preflight。format check、ESLint、Node tests、syntax check、`git diff --check` を実行する。
 - `npm run preflight:fix`: 意図的にPrettier整形を適用してからfast checksを実行する。
 - `npm run preflight:db`: core RLS integration/rollback runnerを実行する。ローカルPostgreSQL test DBが必要。
