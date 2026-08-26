@@ -24,6 +24,8 @@ jobs:
     environment: production-approval
     env:
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_SCOPE: ranobe1
       VERCEL_PROJECT: novelrise
@@ -45,6 +47,14 @@ jobs:
             echo 'STRIPE_LIVE_SECRET_KEY is missing or is not a live Stripe secret key.'
             exit 1
           fi
+          test -n "$SUPABASE_SECRET_KEY" || {
+            echo 'SUPABASE_SECRET_KEY is not configured.'
+            exit 1
+          }
+          test "$SUPABASE_URL" = 'https://fiepaguycecrredwrcwx.supabase.co' || {
+            echo 'SUPABASE_URL is not the canonical Production Supabase project.'
+            exit 1
+          }
           test -n "$VERCEL_TOKEN" || {
             echo 'VERCEL_TOKEN is not configured.'
             exit 1
@@ -103,7 +113,7 @@ jobs:
       - name: Provision and verify Stripe live objects
         run: node scripts/stripe-production-bootstrap.mjs
 
-      - name: Sync Stripe production variables to Vercel
+      - name: Sync Production variables to Vercel
         shell: bash
         run: |
           set -euo pipefail
@@ -117,6 +127,18 @@ jobs:
                   --force \
                   --yes \
                   --sensitive \
+                  --scope "$VERCEL_SCOPE" \
+                  --token "$VERCEL_TOKEN" \
+                  >/dev/null
+          }
+
+          set_plain_env() {
+            local key="$1"
+            local value="$2"
+            printf '%s' "$value" \
+              | vercel env add "$key" production \
+                  --force \
+                  --yes \
                   --scope "$VERCEL_SCOPE" \
                   --token "$VERCEL_TOKEN" \
                   >/dev/null
@@ -136,6 +158,8 @@ jobs:
           set_sensitive_env STRIPE_STANDARD_PRICE_ID "$standard_price"
           set_sensitive_env STRIPE_PREMIUM_PRICE_ID "$premium_price"
           set_sensitive_env STRIPE_PORTAL_CONFIGURATION_ID "$portal_configuration"
+          set_sensitive_env SUPABASE_SECRET_KEY "$SUPABASE_SECRET_KEY"
+          set_plain_env SUPABASE_URL "$SUPABASE_URL"
           set_sensitive_env NOVELIGHT_APP_URL "$NOVELIGHT_APP_URL"
 
           if [ -n "$webhook_secret" ]; then
@@ -157,6 +181,8 @@ jobs:
             STRIPE_PREMIUM_PRICE_ID \
             STRIPE_PORTAL_CONFIGURATION_ID \
             STRIPE_WEBHOOK_SECRET \
+            SUPABASE_SECRET_KEY \
+            SUPABASE_URL \
             NOVELIGHT_APP_URL; do
             grep -F "$key" /tmp/vercel-production-env-after.txt >/dev/null || {
               echo "Missing Vercel production variable: $key"
@@ -203,6 +229,27 @@ jobs:
       - name: Remove previous webhook endpoint after successful rotation
         if: ${{ inputs.rotate_webhook_secret }}
         run: node scripts/stripe-production-webhook-rotation-finalize.mjs
+
+      - name: Run no-charge Production webhook control proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          standard_price="$(jq -er '.standardPriceId' "$STRIPE_BOOTSTRAP_OUTPUT")"
+
+          for attempt in 1 2; do
+            echo "Running Production webhook control proof (attempt ${attempt}/2)."
+            if STRIPE_STANDARD_PRICE_ID="$standard_price" node scripts/production-webhook-control.mjs; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 1 ]; then
+              echo 'Production webhook control proof failed; retrying only the proof once after 15 seconds.'
+              sleep 15
+            fi
+          done
+
+          echo 'Production webhook control proof failed after two attempts.'
+          exit 1
 
       - name: Remove bootstrap output containing the webhook secret
         if: always()
