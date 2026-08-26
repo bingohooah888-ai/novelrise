@@ -21,16 +21,14 @@ jobs:
     environment: production-approval
     env:
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      STRIPE_STANDARD_PRICE_ID: ${{ secrets.STRIPE_STANDARD_PRICE_ID }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
-      VERCEL_SCOPE: ranobe1
-      VERCEL_PROJECT: novelrise
+      NOVELIGHT_APP_URL: https://novelrise.vercel.app
       EXPECTED_BRANCH: main
-      PRODUCTION_ENV_FILE: /tmp/novelight-production-webhook-control.env
 
     steps:
-      - name: Refuse unexpected ref or credentials
+      - name: Refuse unexpected ref or approval-scoped inputs
         shell: bash
         run: |
           set -euo pipefail
@@ -42,12 +40,16 @@ jobs:
             echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live in the Production environment.'
             exit 1
           }
-          test -n "$VERCEL_TOKEN" || {
-            echo 'VERCEL_TOKEN is not configured in the Production environment.'
+          [[ "$STRIPE_STANDARD_PRICE_ID" == price_* ]] || {
+            echo 'STRIPE_STANDARD_PRICE_ID is missing or is not a Stripe price ID in the Production environment.'
             exit 1
           }
           test -n "$SUPABASE_SECRET_KEY" || {
             echo 'SUPABASE_SECRET_KEY is not configured in the Production environment.'
+            exit 1
+          }
+          test "$NOVELIGHT_APP_URL" = 'https://novelrise.vercel.app' || {
+            echo 'NOVELIGHT_APP_URL is not the canonical Production application URL.'
             exit 1
           }
 
@@ -88,60 +90,5 @@ jobs:
       - name: Install locked application dependencies
         run: npm ci
 
-      - name: Install pinned Vercel CLI
-        run: npm install --global vercel@59.1.4
-
-      - name: Pull only non-Sensitive Production inputs from Vercel
-        shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          vercel link \
-            --yes \
-            --project "$VERCEL_PROJECT" \
-            --scope "$VERCEL_SCOPE" \
-            --token "$VERCEL_TOKEN" \
-            >/dev/null
-
-          vercel env pull "$PRODUCTION_ENV_FILE" \
-            --environment=production \
-            --yes \
-            --scope "$VERCEL_SCOPE" \
-            --token "$VERCEL_TOKEN" \
-            >/dev/null
-
-          set -a
-          # shellcheck disable=SC1090
-          source "$PRODUCTION_ENV_FILE"
-          set +a
-
-          # Vercel Sensitive values are placeholders in `vercel env pull`.
-          # Never compare or probe with pulled SUPABASE_URL/SUPABASE_SECRET_KEY;
-          # the control proof uses the canonical URL and GitHub Environment secret.
-          unset SUPABASE_URL SUPABASE_SECRET_KEY
-          required=(
-            STRIPE_STANDARD_PRICE_ID
-            NOVELIGHT_APP_URL
-          )
-
-          for key in "${required[@]}"; do
-            value="${!key:-}"
-            test -n "$value" || {
-              echo "Missing Vercel Production variable: $key"
-              exit 1
-            }
-            printf '::add-mask::%s\n' "$value"
-          done
-
-          {
-            printf 'STRIPE_STANDARD_PRICE_ID=%s\n' "$STRIPE_STANDARD_PRICE_ID"
-            printf 'NOVELIGHT_APP_URL=%s\n' "$NOVELIGHT_APP_URL"
-          } >> "$GITHUB_ENV"
-
       - name: Run no-charge Production webhook control proof
         run: node scripts/production-webhook-control.mjs
-
-      - name: Remove temporary Production credential material
-        if: always()
-        shell: bash
-        run: rm -f "$PRODUCTION_ENV_FILE"
