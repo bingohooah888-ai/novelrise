@@ -115,7 +115,7 @@ Production authenticated/write smoke remains approval-gated while independent St
 
 Normal migration pushes use `.github/workflows/supabase-production-auto-deploy.yml` only. The workflow verifies expected pending migrations, runs a dry-run, waits for `production-approval`, then re-verifies pending state and dry-run before deployment. This second verification is intentional safety redundancy.
 
-`.github/workflows/supabase-production.yml` is manual fallback for `status`, `dry-run`, `repair-history`, and deliberate `deploy`; it does not auto-run on normal migration pushes. Repeated observability and pending-migration logic lives in shared scripts rather than being copied between workflows.
+`.github/workflows/supabase-production.yml` is manual fallback for `status`, `dry-run`, `repair-history`, and deliberate `deploy`; it does not auto-run on normal migration pushes. Read-only `status` and `dry-run` remain immediately available, while `repair-history` and `deploy` each require one `production-approval` Environment approval before the mutation job. All bounded rechecks, mutation, and post-mutation verification stay inside that single approved operation. Repeated observability and pending-migration logic lives in shared scripts rather than being copied between workflows.
 
 ## Vercel deployment policy
 
