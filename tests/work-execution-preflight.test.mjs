@@ -8,15 +8,14 @@ async function readPreflight() {
   return readFile(PREFLIGHT_PATH, 'utf8');
 }
 
+// prettier-ignore
 function assertIncludesAll(source, tokens) {
   for (const token of tokens) {
-    assert.ok(
-      source.includes(token),
-      `Missing preflight contract: ${token}`,
-    );
+    assert.ok(source.includes(token), `Missing preflight contract: ${token}`);
   }
 }
 
+// prettier-ignore
 test('timing gate contract', async () => {
   const source = await readPreflight();
   assertIncludesAll(source, [
@@ -29,6 +28,7 @@ test('timing gate contract', async () => {
   ]);
 });
 
+// prettier-ignore
 test('wait continuation contract', async () => {
   const source = await readPreflight();
   assertIncludesAll(source, [
