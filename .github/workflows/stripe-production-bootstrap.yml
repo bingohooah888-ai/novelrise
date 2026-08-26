@@ -200,6 +200,10 @@ jobs:
           echo 'Production Stripe API routes did not become healthy in time.'
           exit 1
 
+      - name: Remove previous webhook endpoint after successful rotation
+        if: ${{ inputs.rotate_webhook_secret }}
+        run: node scripts/stripe-production-webhook-rotation-finalize.mjs
+
       - name: Remove bootstrap output containing the webhook secret
         if: always()
         run: rm -f /tmp/novelight-stripe-bootstrap.json
