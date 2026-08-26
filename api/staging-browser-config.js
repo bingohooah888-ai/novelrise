@@ -48,9 +48,11 @@ function normalizePublishableKey(value) {
 export function buildStagingBrowserConfig(env = process.env) {
   if (env.VERCEL_ENV !== 'preview') return null;
 
-  const supabaseUrl = normalizeSupabaseUrl(env.SUPABASE_URL);
+  const supabaseUrl = normalizeSupabaseUrl(
+    env.NOVELIGHT_STAGING_SUPABASE_URL
+  );
   const supabasePublishableKey = normalizePublishableKey(
-    env.SUPABASE_PUBLISHABLE_KEY
+    env.NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY
   );
 
   if (!supabaseUrl || !supabasePublishableKey) return null;
