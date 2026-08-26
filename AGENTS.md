@@ -35,7 +35,36 @@ NOVELIGHTの標準AI開発フローは `docs/development-workflow.md` を基準�
 
 AIの「問題ない」という判断だけをmerge根拠にしない。CI、RLS統合テスト、Playwright、依存脆弱性監査、CodeQL等の機械検証が失敗している場合は、原因が解決するまで未完了として扱う。AIを増やすこと自体を目的にせず、速度・品質・安全性を実際に改善する最小構成を使う。
 
-commitとpushは既存ルールどおりユーザーの明示指示を必要とする。`main`へのmerge、本番DB変更、その他本番影響のある操作は意図的な承認ポイントとして扱う。
+commitとpushは既存ルールどおりユーザーの明示指示を必要とする。`main`へのmergeは下記の条件付き自動merge方針に従う。本番DB、Stripe live、Secret、外部Production state、その他明示承認対象の本番操作は、PR mergeとは別の承認ポイントとして扱う。
+
+## 条件付き自動merge方針
+
+ユーザーが着手を承認した通常の低リスクPRは、追加の「マージして」確認を毎回求めず、以下をすべて満たした時点でsquash mergeしてよい。
+
+- PRがdraftではなく、意図した変更範囲だけを含む
+- 最新 `main` を基準にしており、mergeableで競合がない
+- 必須aggregate status `check` がsuccessしている
+- CodeQLが適用される変更ではCodeQLがsuccessしている
+- 依存関係、DB/RLS、browser E2E等、その差分に必要と判定されたgateがすべてsuccessしている
+- deploy-relevant変更では必要なVercel Preview確認が完了している
+- Secretや資格情報が差分・ログ・PR本文へ混入していない
+- unresolvedなREQUEST_CHANGES、重大なreview指摘、原因未解決の失敗がない
+- 下記の明示承認必須カテゴリに該当しない
+
+通常の低リスクPRの例は、軽微なUI/文言修正、非機密の小規模バグ修正、テスト改善、非安全系ドキュメント修正、挙動を変えない限定的refactor等とする。低リスクPRのmergeに伴ってVercelが通常のProduction deployを行うことは、この条件付き自動merge方針の範囲に含める。ただし外部本番データ・課金・Secret等を変更する追加操作まで自動承認したことにはしない。
+
+次は必ずユーザーの個別明示承認を得てからmergeする。
+
+- 認証、Supabase RLS、Stripe/課金、料金・entitlement、権限、個人情報、セキュリティ境界
+- Secret、API key、環境変数の秘密値、Production credentialsを扱う変更
+- Supabase migration、本番DB schema/data変更、データ削除・移行、破壊的変更
+- Production workflow、deploy infrastructure、approval gate、rollback/recovery経路を変更するPR
+- `docs/NOVELIGHT-MASTER.md` の方針変更
+- `AGENTS.md`、`docs/WORK-EXECUTION-PREFLIGHT.md`、`docs/development-workflow.md` 等で安全ゲート・承認境界・auto-merge条件そのものを変更するPR
+- CI/CodeQL/テストgateを弱める変更、または失敗gateを例外扱いしてmergeしようとする変更
+- リスク分類が曖昧、影響範囲が不明、rollback不能、またはユーザー判断が必要な変更
+
+判定に迷う場合は自動mergeしない。高リスクPRではCIが全成功していてもユーザー承認を省略しない。
 
 ## 自動化・効率化原則
 
