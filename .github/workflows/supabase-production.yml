@@ -28,8 +28,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  approval:
+    name: Approve manual production mutation
+    if: inputs.mode == 'deploy' || inputs.mode == 'repair-history'
+    runs-on: ubuntu-latest
+    environment: production-approval
+
+    steps:
+      - name: Verify approval gate and typed confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          GATE_READY: ${{ vars.PRODUCTION_APPROVAL_GATE_READY }}
+          MIGRATION_MODE: ${{ inputs.mode }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "$GATE_READY" != 'true' ]; then
+            echo 'Production mutation blocked: the approval gate is SAFE-DISABLED.'
+            exit 1
+          fi
+
+          if [ "$MIGRATION_MODE" = 'repair-history' ] && [ "$CONFIRMATION" != 'REPAIR' ]; then
+            echo 'History repair blocked: confirmation must be exactly REPAIR.'
+            exit 1
+          fi
+
+          if [ "$MIGRATION_MODE" = 'deploy' ] && [ "$CONFIRMATION" != 'DEPLOY' ]; then
+            echo 'Production deployment blocked: confirmation must be exactly DEPLOY.'
+            exit 1
+          fi
+
+          echo "Manual $MIGRATION_MODE approved through GitHub Environment protection."
+
   migrate:
     name: ${{ inputs.mode }} production migrations
+    needs: approval
+    if: >-
+      always() &&
+      (inputs.mode == 'status' ||
+      inputs.mode == 'dry-run' ||
+      needs.approval.result == 'success')
     runs-on: ubuntu-latest
     environment: production
     env:
