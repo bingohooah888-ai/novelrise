@@ -15,19 +15,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  approval:
-    name: Approve Production webhook control
-    runs-on: ubuntu-latest
-    environment: production-approval
-    steps:
-      - name: Record approval gate
-        run: echo 'Production webhook control approved.'
-
   control:
     name: Prove external Stripe live webhook delivery without a live charge
-    needs: approval
     runs-on: ubuntu-latest
-    environment: Production
+    environment: production-approval
     env:
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
