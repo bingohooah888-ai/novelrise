@@ -19,11 +19,22 @@ function webhookPayload(webhookUrl) {
 async function createValidatedEndpoint(stripe, webhookUrl) {
   const endpoint = await stripe.webhookEndpoints.create(webhookPayload(webhookUrl));
 
-  if (!endpoint.livemode || !endpoint.secret) {
-    throw new Error('Stripe did not return a live webhook signing secret');
+  if (endpoint.livemode && endpoint.secret) {
+    return endpoint;
   }
 
-  return endpoint;
+  if (endpoint.id) {
+    try {
+      await stripe.webhookEndpoints.del(endpoint.id);
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [cleanupError],
+        'Stripe returned an invalid replacement webhook endpoint and it could not be cleaned up'
+      );
+    }
+  }
+
+  throw new Error('Stripe did not return a live webhook signing secret');
 }
 
 export async function inspectWebhookEndpoint({
@@ -75,6 +86,7 @@ export async function ensureWebhookEndpoint({
 
     return {
       endpointId: endpoint.id,
+      previousEndpointId: null,
       secret: null,
       rotated: false
     };
@@ -82,35 +94,27 @@ export async function ensureWebhookEndpoint({
 
   const replacement = await createValidatedEndpoint(stripe, webhookUrl);
 
-  if (!existingEndpoint) {
-    return {
-      endpointId: replacement.id,
-      secret: replacement.secret,
-      rotated: false
-    };
-  }
-
-  try {
-    await stripe.webhookEndpoints.del(existingEndpoint.id);
-  } catch (deleteError) {
-    try {
-      await stripe.webhookEndpoints.del(replacement.id);
-    } catch (cleanupError) {
-      throw new AggregateError(
-        [deleteError, cleanupError],
-        'Webhook secret rotation failed and the replacement endpoint could not be cleaned up'
-      );
-    }
-
-    throw new Error(
-      'Webhook secret rotation failed while deleting the previous endpoint; the replacement endpoint was removed and the previous endpoint was preserved',
-      { cause: deleteError }
-    );
-  }
-
   return {
     endpointId: replacement.id,
+    previousEndpointId: existingEndpoint?.id ?? null,
     secret: replacement.secret,
-    rotated: true
+    rotated: Boolean(existingEndpoint)
   };
+}
+
+export async function finalizeWebhookRotation({
+  stripe,
+  previousEndpointId,
+  currentEndpointId
+}) {
+  if (!previousEndpointId) {
+    return false;
+  }
+
+  if (!currentEndpointId || previousEndpointId === currentEndpointId) {
+    throw new Error('Webhook rotation endpoint IDs are invalid');
+  }
+
+  await stripe.webhookEndpoints.del(previousEndpointId);
+  return true;
 }
