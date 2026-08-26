@@ -1,10 +1,15 @@
 import fs from 'node:fs';
 import Stripe from 'stripe';
+import {
+  ensureWebhookEndpoint,
+  inspectWebhookEndpoint
+} from './stripe-production-webhook-endpoint.mjs';
 
 const stripeKey = process.env.STRIPE_LIVE_SECRET_KEY;
 const outputPath = process.env.STRIPE_BOOTSTRAP_OUTPUT;
 const appUrl = (process.env.NOVELIGHT_APP_URL || 'https://novelrise.vercel.app').replace(/\/+$/, '');
 const hasExistingWebhookSecret = process.env.VERCEL_HAS_WEBHOOK_SECRET === 'true';
+const rotateWebhookSecret = process.env.STRIPE_ROTATE_WEBHOOK_SECRET === 'true';
 
 if (!stripeKey?.startsWith('sk_live_')) {
   throw new Error('STRIPE_LIVE_SECRET_KEY must be a live Stripe secret key');
@@ -31,44 +36,8 @@ const plans = [
   }
 ];
 
-const requiredWebhookEvents = [
-  'checkout.session.completed',
-  'customer.subscription.created',
-  'customer.subscription.updated',
-  'customer.subscription.deleted',
-  'invoice.paid',
-  'invoice.payment_failed',
-  'invoice.finalization_failed'
-];
-
 function productId(price) {
   return typeof price.product === 'string' ? price.product : price.product?.id;
-}
-
-async function inspectWebhookEndpoint() {
-  const webhookUrl = `${appUrl}/api/stripe-webhook`;
-  const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
-  const matching = endpoints.data.filter((endpoint) => endpoint.url === webhookUrl);
-
-  if (matching.length > 1) {
-    throw new Error(`Multiple Stripe webhook endpoints target ${webhookUrl}`);
-  }
-
-  if (matching.length === 1) {
-    if (!matching[0].livemode) {
-      throw new Error('Existing NOVELIGHT webhook endpoint is not in live mode');
-    }
-
-    if (!hasExistingWebhookSecret) {
-      throw new Error(
-        'A live NOVELIGHT webhook endpoint already exists, but Vercel has no STRIPE_WEBHOOK_SECRET. Rotate or recreate the endpoint before continuing.'
-      );
-    }
-
-    return matching[0];
-  }
-
-  return null;
 }
 
 async function ensurePrice(plan) {
@@ -209,42 +178,22 @@ async function ensurePortalConfiguration(standard, premium) {
   return config.id;
 }
 
-async function ensureWebhookEndpoint(existingEndpoint) {
-  const webhookUrl = `${appUrl}/api/stripe-webhook`;
-
-  if (existingEndpoint) {
-    const endpoint = await stripe.webhookEndpoints.update(existingEndpoint.id, {
-      description: 'NOVELIGHT production subscription synchronization',
-      enabled_events: requiredWebhookEvents
-    });
-
-    return {
-      endpointId: endpoint.id,
-      secret: null
-    };
-  }
-
-  const endpoint = await stripe.webhookEndpoints.create({
-    url: webhookUrl,
-    description: 'NOVELIGHT production subscription synchronization',
-    enabled_events: requiredWebhookEvents
-  });
-
-  if (!endpoint.livemode || !endpoint.secret) {
-    throw new Error('Stripe did not return a live webhook signing secret');
-  }
-
-  return {
-    endpointId: endpoint.id,
-    secret: endpoint.secret
-  };
-}
-
-const existingWebhook = await inspectWebhookEndpoint();
+const webhookUrl = `${appUrl}/api/stripe-webhook`;
+const existingWebhook = await inspectWebhookEndpoint({
+  stripe,
+  webhookUrl,
+  hasExistingWebhookSecret,
+  rotateWebhookSecret
+});
 const standard = await ensurePrice(plans[0]);
 const premium = await ensurePrice(plans[1]);
 const portalConfigurationId = await ensurePortalConfiguration(standard, premium);
-const webhook = await ensureWebhookEndpoint(existingWebhook);
+const webhook = await ensureWebhookEndpoint({
+  stripe,
+  webhookUrl,
+  existingEndpoint: existingWebhook,
+  rotateWebhookSecret
+});
 
 const output = {
   standardPriceId: standard.priceId,
@@ -259,4 +208,8 @@ fs.writeFileSync(outputPath, `${JSON.stringify(output)}\n`, {
   mode: 0o600
 });
 
-console.log('Stripe live billing objects are configured and validated.');
+console.log(
+  rotateWebhookSecret && webhook.rotated
+    ? 'Stripe live billing objects are configured and the webhook signing secret was rotated.'
+    : 'Stripe live billing objects are configured and validated.'
+);
