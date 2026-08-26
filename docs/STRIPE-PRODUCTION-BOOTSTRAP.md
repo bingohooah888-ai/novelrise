@@ -54,15 +54,14 @@ Stripe側のライブWebhook endpointとVercel Productionの `STRIPE_WEBHOOK_SEC
 
 この修復モードも通常のbootstrapと同じ `production-approval` Environmentの承認内でのみ実行する。
 
-修復モードでは以下の順序を固定する。
+修復モードでは、配送断を避けるため次の二段階の順序を固定する。
 
 1. `https://novelrise.vercel.app/api/stripe-webhook` に一致するライブendpointが0件または1件であることを確認する。複数件なら曖昧なため停止する。
-2. 既存endpointがある場合でも、まず同じURL・購読イベントを持つreplacement endpointを新規作成し、ライブendpointであることと新しいsigning secretが返されたことを確認する。
-3. replacementが成立した後でのみ旧endpointを削除する。
-4. 旧endpoint削除に失敗した場合はreplacementをbest-effortで削除し、旧endpointを残したままfail closedする。
-5. replacementの新しいsigning secretをVercel Productionの `STRIPE_WEBHOOK_SECRET` へsensitive variableとして上書きする。
-6. Standard/Premium等の本番変数も既存bootstrapと同じ手順で同期し、Vercel Productionを再deployする。
-7. 再deploy後に公開Stripe API route contractを確認する。
+2. 既存endpointがある場合でも、まず同じURL・購読イベントを持つreplacement endpointを新規作成し、ライブendpointであることと新しいsigning secretが返されたことを確認する。旧endpointはこの時点では残す。
+3. replacementの新しいsigning secretをVercel Productionの `STRIPE_WEBHOOK_SECRET` へsensitive variableとして上書きする。
+4. Standard/Premium等の本番変数も既存bootstrapと同じ手順で同期し、Vercel Productionを再deployする。
+5. 再deploy後に公開Stripe API route contractが到達可能になったことを確認する。
+6. 新しいProduction deploymentが到達可能になった後でのみ旧endpointを削除する。削除は短い再試行を行い、失敗した場合はworkflowを失敗扱いにして旧endpointを残す。replacementは削除しないため、新しいsigning secretを使うProduction経路を維持する。
 
 修復モードは、signing secretをチャット、repository、PR、ログへ表示しない。workflow outputの一時ファイルは従来どおり最後に削除する。
 
