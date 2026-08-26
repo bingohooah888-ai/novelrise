@@ -28,10 +28,9 @@ jobs:
           [ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ] && echo "SUPABASE_PUBLISHABLE_KEY=present" || echo "SUPABASE_PUBLISHABLE_KEY=missing"
           [ -n "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ] && echo "VERCEL_AUTOMATION_BYPASS_SECRET=present" || echo "VERCEL_AUTOMATION_BYPASS_SECRET=missing"
 
-      - name: Verify deployed Preview browser config is isolated Staging
+      - name: Diagnose deployed Preview environment safely
         env:
           PREVIEW_URL: https://novelrise-git-fix-staging-client-bootstrap-ranobe1.vercel.app
-          PRODUCTION_SUPABASE_HOST: fiepaguycecrredwrcwx.supabase.co
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           set -euo pipefail
@@ -39,23 +38,31 @@ jobs:
             echo "VERCEL_AUTOMATION_BYPASS_SECRET is not configured in GitHub Actions secrets."
             exit 2
           fi
-          tmp_body="$(mktemp)"
-          tmp_headers="$(mktemp)"
-          status="$(curl --location --silent --show-error --max-time 20 --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" --dump-header "$tmp_headers" --output "$tmp_body" --write-out '%{http_code}' "$PREVIEW_URL/api/staging-browser-config")"
-          echo "Final HTTP status: $status"
-          content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {gsub(/\r/,""); value=$0} END{sub(/^[^:]+:[[:space:]]*/,"",value); print value}' "$tmp_headers")"
-          echo "Final Content-Type: ${content_type:-unknown}"
-          if [ "$status" != "200" ]; then
-            echo "Preview endpoint did not return HTTP 200"
+          diagnostic="$(curl --location --fail --silent --show-error --max-time 20 --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" "$PREVIEW_URL/api/staging-browser-config-diagnostic")"
+          echo "Safe diagnostic: $diagnostic"
+          echo "$diagnostic" | jq -e '.previewEnvironment == true and .hasValidStagingSupabaseUrl == true and .hasValidPublishableKey == true' >/dev/null
+
+      - name: Verify deployed Preview browser config is isolated Staging
+        env:
+          PREVIEW_URL: https://novelrise-git-fix-staging-client-bootstrap-ranobe1.vercel.app
+          PRODUCTION_SUPABASE_HOST: fiepaguycecrredwrcwx.supabase.co
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          set -euo pipefail
+          body="$(curl --location --fail --silent --show-error --max-time 20 --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" "$PREVIEW_URL/api/staging-browser-config")"
+          supabase_url="$(echo "$body" | jq -r '.supabaseUrl')"
+          publishable_key="$(echo "$body" | jq -r '.supabasePublishableKey')"
+          supabase_host="$(printf '%s' "$supabase_url" | sed -E 's#^https://([^/]+).*$#\1#')"
+          if [ "$supabase_host" = "$PRODUCTION_SUPABASE_HOST" ]; then
+            echo "Preview returned Production Supabase host"
             exit 1
           fi
-          node -e '
-            const fs = require("node:fs");
-            const body = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-            const productionHost = process.env.PRODUCTION_SUPABASE_HOST;
-            const url = new URL(body.supabaseUrl);
-            if (url.hostname === productionHost) throw new Error("Preview returned Production Supabase host");
-            if (!/^sb_publishable_/.test(body.supabasePublishableKey || "")) throw new Error("Preview did not return browser-safe publishable key");
-            if (/secret/i.test(body.supabasePublishableKey || "")) throw new Error("Preview exposed secret-class key");
-            console.log(`Verified isolated Preview Supabase host: ${url.hostname}`);
-          ' "$tmp_body"
+          if [[ "$publishable_key" != sb_publishable_* ]]; then
+            echo "Preview did not return browser-safe publishable key"
+            exit 1
+          fi
+          if [[ "$publishable_key" == *secret* ]]; then
+            echo "Preview exposed secret-class key"
+            exit 1
+          fi
+          echo "Verified isolated Preview Supabase host: $supabase_host"
