@@ -1,3 +1,5 @@
+import { getAppBaseUrl } from './app-base-url.js';
+
 const PRICE_ENV_BY_PLAN = Object.freeze({
   standard: 'STRIPE_STANDARD_PRICE_ID',
   premium: 'STRIPE_PREMIUM_PRICE_ID'
@@ -19,13 +21,6 @@ function getBearerToken(authorization) {
       : null;
 
   return bearerMatch?.[1] ?? null;
-}
-
-function getAppBaseUrl(env) {
-  return (env.NOVELIGHT_APP_URL || 'https://novelrise.vercel.app').replace(
-    /\/+$/,
-    ''
-  );
 }
 
 function getPortalConfiguration(env) {

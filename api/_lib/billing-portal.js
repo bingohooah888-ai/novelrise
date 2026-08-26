@@ -1,3 +1,5 @@
+import { getAppBaseUrl } from './app-base-url.js';
+
 function getBearerToken(authorization) {
   const bearerMatch =
     typeof authorization === 'string'
@@ -5,13 +7,6 @@ function getBearerToken(authorization) {
       : null;
 
   return bearerMatch?.[1] ?? null;
-}
-
-function getAppBaseUrl(env) {
-  return (env.NOVELIGHT_APP_URL || 'https://novelrise.vercel.app').replace(
-    /\/+$/,
-    ''
-  );
 }
 
 function getPortalConfiguration(env) {
