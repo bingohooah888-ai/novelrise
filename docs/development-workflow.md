@@ -10,12 +10,43 @@ This document defines the normal development path after the initial environment 
 4. Run the smallest relevant local gate. `npm run preflight` is the normal read-only fast gate. Add `preflight:db` for core DB/RLS changes, `preflight:e2e` for browser-facing changes, and `preflight:full` only for high-risk or broad changes. Use `preflight:fix` only when intentional formatting changes are wanted.
 5. Open a pull request to `main` and record purpose, impact, verification, security/data-safety checks, Vercel Preview status when relevant, and rollback notes.
 6. Merge only after the required `check` status succeeds. The CI classifier runs only relevant preflight, DB/RLS, browser, and dependency gates, while preserving the final aggregate `check`. CodeQL must also be clean when it applies.
-7. Use squash merge for the normal solo-development flow so `main` stays easy to audit and revert.
+7. Classify the PR before merge. Eligible low-risk PRs may be squash-merged automatically after all required evidence is green; high-risk or ambiguous PRs remain explicit user approval points. Use squash merge for the normal solo-development flow so `main` stays easy to audit and revert.
 8. Production Supabase migrations use the dedicated auto-deploy workflow with explicit production approval. The manual Supabase workflow is fallback/recovery only.
 
 ## Execution preflight
 
 `docs/WORK-EXECUTION-PREFLIGHT.md` is mandatory for tool-backed NOVELIGHT work. In particular, estimate total and phase time before execution, estimate how many user-only manual operations are expected, and re-check automation whenever the same phase would require more than three user operations. Repeated UI failure must trigger a route reassessment instead of repeating the same instruction indefinitely. Secret entry, 2FA, OAuth approval, destructive actions, and production approvals remain deliberate user-controlled boundaries.
+
+## Conditional auto-merge
+
+The user has pre-authorized automatic squash merge for ordinary low-risk PRs once the task itself has been authorized and all required evidence is green. Do not ask for a separate `merge` confirmation for every eligible PR.
+
+A PR is eligible only when all of the following are true:
+
+- the PR is not draft and the diff matches the intended focused scope
+- the branch is current with `main`, mergeable, and has no conflict
+- the aggregate required `check` is successful
+- CodeQL is successful whenever CodeQL applies
+- every diff-relevant DB/RLS, browser, dependency, security, or other required gate is successful
+- deploy-relevant work has the required Vercel Preview evidence
+- there are no secrets or credentials in the diff, logs, or PR text
+- there are no unresolved REQUEST_CHANGES or material review findings
+- the change is clearly outside the manual-approval categories below
+
+Typical eligible work includes small UI/copy changes, non-sensitive scoped bug fixes, test improvements, non-governance documentation, and behavior-preserving limited refactors. A normal Vercel Production deployment caused by merging an eligible low-risk PR is covered by this standing auto-merge authorization. This does not authorize additional writes to external Production data, billing, secrets, or infrastructure outside the ordinary deploy resulting from the merge.
+
+Require explicit user approval before merging any PR that touches or materially changes:
+
+- authentication, Supabase RLS, Stripe/billing, pricing or entitlements, permissions, personal data, or security boundaries
+- secrets, API keys, sensitive environment variables, or Production credentials
+- Supabase migrations, Production DB schema/data, deletion/migration of stored data, or other destructive changes
+- Production workflows, deployment infrastructure, approval gates, rollback/recovery paths, or other operational safety controls
+- `docs/NOVELIGHT-MASTER.md`
+- `AGENTS.md`, `docs/WORK-EXECUTION-PREFLIGHT.md`, or `docs/development-workflow.md` when changing approval boundaries, safety gates, or auto-merge rules
+- CI, CodeQL, or test changes that weaken a required gate or attempt to bypass a failing gate
+- any change whose risk classification, impact radius, or rollback path is unclear
+
+When uncertain, fail closed and request approval. A high-risk PR does not become auto-mergeable merely because CI and CodeQL are green.
 
 ## Automation efficiency
 
@@ -116,13 +147,13 @@ The default NOVELIGHT AI development flow is:
 3. Automated gates provide objective evidence.
 4. Authentication, RLS, Stripe/billing, permissions, personal data, destructive migrations, and other high-risk changes receive an independent second-model review such as Claude Code when practical.
 5. AI approval never overrides a failing automated gate.
-6. Main merge, production database changes, and other production-impacting operations remain deliberate approval points.
+6. Eligible low-risk `main` merges may proceed automatically after the required gates pass; high-risk merges, production database changes, external Production state changes, and other explicit categories above remain deliberate user approval points.
 
 Use the smallest set of agents/tools that materially improves speed, quality, or safety.
 
 ## Ready-to-merge definition
 
-A change is ready to merge when its scope is understood, the relevant selective gates have passed, secrets are absent, high-risk boundaries have been reviewed, dependency changes are safe, deploy-relevant UI has been previewed when appropriate, rollback/recovery is known where needed, and the branch is current with `main`.
+A change is ready to merge when its scope is understood, the relevant selective gates have passed, secrets are absent, high-risk boundaries have been reviewed, dependency changes are safe, deploy-relevant UI has been previewed when appropriate, rollback/recovery is known where needed, and the branch is current with `main`. Being ready to merge does not remove an explicit approval requirement for a high-risk PR.
 
 ## Environment work stopping rule
 
