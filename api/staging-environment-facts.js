@@ -65,13 +65,16 @@ function classifyStripeSecret(value) {
 }
 
 export function buildStagingEnvironmentFacts(env = process.env) {
-  const publishableKeyClass = classifyPublishableKey(
-    env.SUPABASE_PUBLISHABLE_KEY
-  );
+  // Validation-branch proof: read the Preview-wide browser-safe Staging pair
+  // directly so the existing authenticated smoke can compare it with the
+  // GitHub-owned Staging expectation. This branch is never merged.
+  const previewSupabaseUrl = env.NOVELIGHT_STAGING_SUPABASE_URL;
+  const previewPublishableKey = env.NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY;
+  const publishableKeyClass = classifyPublishableKey(previewPublishableKey);
   const publishableKeyFingerprint = ['publishable', 'legacy-anon'].includes(
     publishableKeyClass
   )
-    ? fingerprint(env.SUPABASE_PUBLISHABLE_KEY)
+    ? fingerprint(previewPublishableKey)
     : null;
 
   let appBaseUrl = null;
@@ -88,7 +91,7 @@ export function buildStagingEnvironmentFacts(env = process.env) {
     vercelEnv: env.VERCEL_ENV || 'missing',
     appBaseUrl,
     supabase: {
-      url: normalizeSupabaseUrl(env.SUPABASE_URL),
+      url: normalizeSupabaseUrl(previewSupabaseUrl),
       publishableKeyClass,
       publishableKeyFingerprint,
       serverSecretPresent: Boolean(env.SUPABASE_SECRET_KEY)
