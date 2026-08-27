@@ -10,6 +10,7 @@ on:
       - 'scripts/production-webhook-*'
       - 'scripts/stripe-production-*'
       - '.github/workflows/production-billing-guard.yml'
+      - '.github/workflows/production-chat-approval.yml'
       - '.github/workflows/production-billing-health.yml'
       - '.github/workflows/production-webhook-control.yml'
       - '.github/workflows/production-webhook-legacy-cleanup.yml'
@@ -21,10 +22,11 @@ on:
 permissions:
   contents: read
   id-token: write
+  issues: write
 
 concurrency:
   group: novelight-production-billing-guard
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   audit:
@@ -32,7 +34,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       repair_required: ${{ steps.guard.outputs.repair_required }}
+      repair_fingerprint: ${{ steps.guard.outputs.repair_fingerprint }}
       cleanup_required: ${{ steps.guard.outputs.cleanup_required }}
+      cleanup_fingerprint: ${{ steps.guard.outputs.cleanup_fingerprint }}
       blocking_issue_count: ${{ steps.guard.outputs.blocking_issue_count }}
     steps:
       - name: Request GitHub OIDC token and query deployed Production guard
@@ -41,7 +45,7 @@ jobs:
         env:
           BASE_URL: https://novelrise.vercel.app
           OIDC_AUDIENCE: novelight-production-billing-guard
-          EXPECTED_GUARD_VERSION: stale-paid-remediation-v1
+          EXPECTED_GUARD_VERSION: chat-approval-v1
         run: |
           set -euo pipefail
 
@@ -92,7 +96,10 @@ jobs:
 
           repair_required="$(jq -r '.repairRequired' /tmp/production-billing-guard.json)"
           repair_candidate_count="$(jq -r '.repairCandidateCount' /tmp/production-billing-guard.json)"
+          repair_fingerprint="$(jq -r '.repairFingerprint // empty' /tmp/production-billing-guard.json)"
           cleanup_required="$(jq -r '.cleanupRequired' /tmp/production-billing-guard.json)"
+          cleanup_endpoint_count="$(jq -r '.cleanupEndpointCount' /tmp/production-billing-guard.json)"
+          cleanup_fingerprint="$(jq -r '.cleanupFingerprint // empty' /tmp/production-billing-guard.json)"
           blocking_issue_count="$(jq -r '.blockingIssueCount' /tmp/production-billing-guard.json)"
           issue_codes="$(jq -c '.issueCodes' /tmp/production-billing-guard.json)"
           warning_codes="$(jq -c '.warningCodes' /tmp/production-billing-guard.json)"
@@ -107,15 +114,31 @@ jobs:
             echo 'Guard returned an invalid repairCandidateCount value.'
             exit 1
           }
+          [[ "$cleanup_endpoint_count" =~ ^[0-9]+$ ]] || {
+            echo 'Guard returned an invalid cleanupEndpointCount value.'
+            exit 1
+          }
           [[ "$blocking_issue_count" =~ ^[0-9]+$ ]] || {
             echo 'Guard returned an invalid blockingIssueCount value.'
             exit 1
           }
+          if [ "$repair_required" = 'true' ] && [[ ! "$repair_fingerprint" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo 'Guard did not return a valid repair scope fingerprint.'
+            exit 1
+          fi
+          if [ "$cleanup_required" = 'true' ] && [[ ! "$cleanup_fingerprint" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo 'Guard did not return a valid cleanup scope fingerprint.'
+            exit 1
+          fi
 
           {
             echo "repair_required=$repair_required"
+            echo "repair_fingerprint=$repair_fingerprint"
             echo "cleanup_required=$cleanup_required"
+            echo "cleanup_fingerprint=$cleanup_fingerprint"
             echo "blocking_issue_count=$blocking_issue_count"
+            echo "issue_codes=$issue_codes"
+            echo "warning_codes=$warning_codes"
           } >> "$GITHUB_OUTPUT"
           echo "Production billing issue codes: $issue_codes"
           echo "Production billing warning codes: $warning_codes"
@@ -126,75 +149,56 @@ jobs:
           fi
 
           if [ "$repair_required" = 'true' ] || [ "$cleanup_required" = 'true' ]; then
-            echo 'Verified repairable Production billing drift detected; requesting one Production approval.'
+            echo 'Verified repairable Production billing drift detected; recording a chat approval request.'
           else
             echo 'PASS: Production billing guard found no approval-requiring remediation.'
           fi
 
-  remediate:
-    name: Approved billing remediation and no-charge proof
-    needs: audit
-    if: >-
-      needs.audit.result == 'success' &&
-      needs.audit.outputs.blocking_issue_count == '0' &&
-      (needs.audit.outputs.repair_required == 'true' ||
-       needs.audit.outputs.cleanup_required == 'true')
-    runs-on: ubuntu-latest
-    environment: production-approval
-    env:
-      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
-      STRIPE_STANDARD_PRICE_ID: ${{ secrets.STRIPE_STANDARD_PRICE_ID }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
-      NOVELIGHT_APP_URL: https://novelrise.vercel.app
-      EXPECTED_BRANCH: main
-
-    steps:
-      - name: Refuse unexpected ref or approval-scoped inputs
+      - name: Record one scoped chat approval request
+        if: >-
+          steps.guard.outputs.blocking_issue_count == '0' &&
+          (steps.guard.outputs.repair_required == 'true' ||
+           steps.guard.outputs.cleanup_required == 'true')
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LEDGER_ISSUE: '165'
+          REPAIR_REQUIRED: ${{ steps.guard.outputs.repair_required }}
+          REPAIR_FINGERPRINT: ${{ steps.guard.outputs.repair_fingerprint }}
+          CLEANUP_REQUIRED: ${{ steps.guard.outputs.cleanup_required }}
+          CLEANUP_FINGERPRINT: ${{ steps.guard.outputs.cleanup_fingerprint }}
+          ISSUE_CODES: ${{ steps.guard.outputs.issue_codes }}
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = "refs/heads/$EXPECTED_BRANCH" || {
-            echo 'Refusing Production remediation outside main.'
-            exit 1
-          }
-          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
-            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live.'
-            exit 1
-          }
-          [[ "$STRIPE_STANDARD_PRICE_ID" == price_* ]] || {
-            echo 'STRIPE_STANDARD_PRICE_ID is missing.'
-            exit 1
-          }
-          test -n "$SUPABASE_SECRET_KEY" || {
-            echo 'SUPABASE_SECRET_KEY is not configured.'
-            exit 1
-          }
 
-      - name: Checkout approved main revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+          request_id="billing-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          issued_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          expires_at="$(date -u -d '+30 minutes' +'%Y-%m-%dT%H:%M:%SZ')"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: 24
-          cache: npm
+          payload="$(
+            jq -cn \
+              --arg requestId "$request_id" \
+              --arg operation 'production-billing-remediation' \
+              --arg mainSha "$GITHUB_SHA" \
+              --arg issuedAt "$issued_at" \
+              --arg expiresAt "$expires_at" \
+              --arg sourceRunId "$GITHUB_RUN_ID" \
+              --arg repairFingerprint "$REPAIR_FINGERPRINT" \
+              --arg cleanupFingerprint "$CLEANUP_FINGERPRINT" \
+              --argjson repairRequired "$REPAIR_REQUIRED" \
+              --argjson cleanupRequired "$CLEANUP_REQUIRED" \
+              --argjson issueCodes "$ISSUE_CODES" \
+              '{requestId:$requestId,operation:$operation,mainSha:$mainSha,issuedAt:$issuedAt,expiresAt:$expiresAt,sourceRunId:$sourceRunId,repairRequired:$repairRequired,repairFingerprint:(if $repairRequired then $repairFingerprint else null end),cleanupRequired:$cleanupRequired,cleanupFingerprint:(if $cleanupRequired then $cleanupFingerprint else null end),issueCodes:$issueCodes}'
+          )"
+          body="NOVELIGHT_PRODUCTION_REQUEST $payload"
 
-      - name: Install locked dependencies
-        run: npm ci
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
 
-      - name: Repair exactly one re-verified stale paid profile
-        if: needs.audit.outputs.repair_required == 'true'
-        run: node scripts/production-billing-auto-remediate.mjs
-
-      - name: Remove only re-verified legacy live webhook endpoints
-        if: needs.audit.outputs.cleanup_required == 'true'
-        run: node scripts/production-webhook-legacy-cleanup.mjs
-
-      - name: Prove canonical webhook delivery without a live charge
-        run: node scripts/production-webhook-control.mjs
-
-      - name: Audit final Production billing consistency
-        run: node scripts/production-billing-audit.mjs
+          echo "Recorded scoped Production approval request $request_id in issue #$LEDGER_ISSUE."
