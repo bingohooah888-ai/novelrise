@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
   issues: write
 
 concurrency:
@@ -22,13 +23,11 @@ jobs:
       startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_APPROVE ')
     runs-on: ubuntu-latest
     env:
-      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
-      STRIPE_STANDARD_PRICE_ID: ${{ secrets.STRIPE_STANDARD_PRICE_ID }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
-      NOVELIGHT_APP_URL: https://novelrise.vercel.app
       GH_TOKEN: ${{ github.token }}
       LEDGER_ISSUE: '165'
+      REMEDIATION_URL: https://novelrise.vercel.app/api/production-billing-remediate
+      EXPECTED_REMEDIATION_VERSION: chat-approval-oidc-v1
+      OIDC_AUDIENCE: novelight-production-chat-approval
 
     steps:
       - name: Validate one-time scoped approval against the ledger
@@ -192,63 +191,114 @@ jobs:
             -d "$(jq -cn --arg body "$body" '{body:$body}')" \
             >/dev/null
 
-      - name: Checkout exact approved main revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ steps.approval.outputs.main_sha }}
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Refuse unexpected Production secrets or target
+      - name: Wait for exact Production remediation API version
         shell: bash
         run: |
           set -euo pipefail
-          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
-            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live.'
-            exit 1
-          }
-          [[ "$STRIPE_STANDARD_PRICE_ID" == price_* ]] || {
-            echo 'STRIPE_STANDARD_PRICE_ID is missing.'
-            exit 1
-          }
-          test -n "$SUPABASE_SECRET_KEY" || {
-            echo 'SUPABASE_SECRET_KEY is not configured.'
-            exit 1
-          }
-          test "$SUPABASE_URL" = 'https://fiepaguycecrredwrcwx.supabase.co' || {
-            echo 'Refusing non-canonical Production Supabase URL.'
-            exit 1
-          }
-          test "$NOVELIGHT_APP_URL" = 'https://novelrise.vercel.app' || {
-            echo 'Refusing non-canonical Production app URL.'
-            exit 1
-          }
+          version=''
+          for attempt in $(seq 1 36); do
+            status="$(
+              curl --silent --show-error \
+                --output /tmp/remediation-version.json \
+                --write-out '%{http_code}' \
+                --connect-timeout 10 \
+                --max-time 20 \
+                "$REMEDIATION_URL"
+            )"
+            if [ "$status" = '200' ]; then
+              version="$(jq -r '.remediationVersion // empty' /tmp/remediation-version.json)"
+              if [ "$version" = "$EXPECTED_REMEDIATION_VERSION" ]; then
+                echo "Production remediation API version is current: $version"
+                break
+              fi
+            fi
+            if [ "$attempt" -eq 36 ]; then
+              echo "Safety stop: Production remediation API version did not converge; HTTP $status version=${version:-missing}."
+              exit 1
+            fi
+            sleep 5
+          done
 
-      - name: Repair only the exact approved stale billing target
-        if: steps.approval.outputs.repair_required == 'true'
+      - name: Re-check approved main immediately before Production call
+        shell: bash
         env:
-          EXPECTED_REPAIR_FINGERPRINT: ${{ steps.approval.outputs.repair_fingerprint }}
-        run: node scripts/production-billing-auto-remediate.mjs
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$MAIN_SHA" || {
+            echo 'Safety stop: main changed before Production mutation.'
+            exit 1
+          }
 
-      - name: Remove only the exact approved legacy webhook scope
-        if: steps.approval.outputs.cleanup_required == 'true'
+      - name: Execute exact approved scope through GitHub OIDC
+        shell: bash
         env:
-          EXPECTED_LEGACY_WEBHOOK_FINGERPRINT: ${{ steps.approval.outputs.cleanup_fingerprint }}
-        run: node scripts/production-webhook-legacy-cleanup.mjs
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          REPAIR_REQUIRED: ${{ steps.approval.outputs.repair_required }}
+          REPAIR_FINGERPRINT: ${{ steps.approval.outputs.repair_fingerprint }}
+          CLEANUP_REQUIRED: ${{ steps.approval.outputs.cleanup_required }}
+          CLEANUP_FINGERPRINT: ${{ steps.approval.outputs.cleanup_fingerprint }}
+        run: |
+          set -euo pipefail
 
-      - name: Prove canonical webhook delivery without a live charge
-        run: node scripts/production-webhook-control.mjs
+          oidc_token="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}" \
+              | jq -er '.value'
+          )"
+          printf '::add-mask::%s\n' "$oidc_token"
 
-      - name: Audit final Production billing consistency
-        run: node scripts/production-billing-audit.mjs
+          scope="$(
+            jq -cn \
+              --arg operation 'production-billing-remediation' \
+              --arg requestId "$REQUEST_ID" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg repairFingerprint "$REPAIR_FINGERPRINT" \
+              --arg cleanupFingerprint "$CLEANUP_FINGERPRINT" \
+              --argjson repairRequired "$REPAIR_REQUIRED" \
+              --argjson cleanupRequired "$CLEANUP_REQUIRED" \
+              '{operation:$operation,requestId:$requestId,mainSha:$mainSha,repairRequired:$repairRequired,repairFingerprint:(if $repairRequired then $repairFingerprint else null end),cleanupRequired:$cleanupRequired,cleanupFingerprint:(if $cleanupRequired then $cleanupFingerprint else null end)}'
+          )"
+
+          status="$(
+            curl --silent --show-error \
+              --output /tmp/remediation-result.json \
+              --write-out '%{http_code}' \
+              --connect-timeout 10 \
+              --max-time 290 \
+              -X POST \
+              -H "Authorization: Bearer $oidc_token" \
+              -H 'Content-Type: application/json' \
+              --data "$scope" \
+              "$REMEDIATION_URL"
+          )"
+
+          if [ "$status" != '200' ]; then
+            echo "Production remediation API failed safely with HTTP $status."
+            cat /tmp/remediation-result.json
+            exit 1
+          fi
+
+          jq -e \
+            --arg version "$EXPECTED_REMEDIATION_VERSION" \
+            '.remediationVersion == $version and .ok == true and .noChargeWebhookProof == true and .finalIssueCount == 0' \
+            /tmp/remediation-result.json >/dev/null || {
+              echo 'Safety stop: Production remediation result did not satisfy completion gate.'
+              cat /tmp/remediation-result.json
+              exit 1
+            }
+
+          echo 'PASS: exact chat-approved Production remediation, no-charge external webhook proof, and final billing audit completed.'
 
       - name: Record consumed approval
         shell: bash
