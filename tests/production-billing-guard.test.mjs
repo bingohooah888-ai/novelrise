@@ -19,6 +19,7 @@ test('one missing paid Stripe customer is approval-repairable', () => {
     result(['paid_profile_customer_missing_in_stripe'])
   );
 
+  assert.equal(summary.guardVersion, 'stale-paid-remediation-v1');
   assert.equal(summary.repairRequired, true);
   assert.equal(summary.repairCandidateCount, 1);
   assert.equal(summary.blockingIssueCount, 0);
