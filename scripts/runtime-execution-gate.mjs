@@ -330,7 +330,7 @@ export function runRuntimeGate(argv = process.argv.slice(2), env = process.env) 
   }
   console.log(`state: ${statePath}`);
   console.log(
-    'Next: read the fetched main MASTER/Preflight/execution-card/evidence-freshness contracts, apply current locks, prefer fresher execution evidence over stale status snapshots, and do not repeat a Production mutation that current proof already satisfies.'
+    'Next: read the fetched main MASTER/Preflight/execution-card/evidence-freshness contracts, apply current locks, prefer fresher execution evidence over stale status snapshots, do not repeat a Production mutation that current proof already satisfies, and do not ask for a continuation-only yes.'
   );
 }
 
