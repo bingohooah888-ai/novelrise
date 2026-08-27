@@ -105,6 +105,9 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     timeout: 20_000
   });
 
+  const firstEpisodeLink = page.locator('#episodeList .episode-title').first();
+  await expect(firstEpisodeLink).toBeVisible({ timeout: 20_000 });
+
   const episodeHrefs = await page
     .locator('.episode-title')
     .evaluateAll((nodes) =>
