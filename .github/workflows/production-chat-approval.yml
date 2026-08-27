@@ -1,0 +1,269 @@
+name: NOVELIGHT Chat-Mediated Production Approval
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-production-chat-approval
+  cancel-in-progress: false
+
+jobs:
+  remediate:
+    name: Execute one scoped chat-approved Production remediation
+    if: >-
+      github.event.issue.number == 165 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_APPROVE ')
+    runs-on: ubuntu-latest
+    env:
+      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      STRIPE_STANDARD_PRICE_ID: ${{ secrets.STRIPE_STANDARD_PRICE_ID }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
+      NOVELIGHT_APP_URL: https://novelrise.vercel.app
+      GH_TOKEN: ${{ github.token }}
+      LEDGER_ISSUE: '165'
+
+    steps:
+      - name: Validate one-time scoped approval against the ledger
+        id: approval
+        shell: bash
+        env:
+          APPROVAL_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+
+          approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_APPROVE }"
+          echo "$approval_json" | jq -e '
+            type == "object" and
+            .operation == "production-billing-remediation" and
+            (.requestId | type == "string" and test("^billing-[0-9a-f]{40}-[0-9]+-[0-9]+$")) and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            ((keys | sort) == (["mainSha", "operation", "requestId"] | sort))
+          ' >/dev/null || {
+            echo 'Safety stop: invalid chat approval record.'
+            exit 1
+          }
+
+          request_id="$(echo "$approval_json" | jq -r '.requestId')"
+          approved_sha="$(echo "$approval_json" | jq -r '.mainSha')"
+
+          rm -f /tmp/ledger-page-*.json /tmp/ledger-comments.json
+          page=1
+          while :; do
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments?per_page=100&page=$page" \
+              > "/tmp/ledger-page-$page.json"
+            count="$(jq 'length' "/tmp/ledger-page-$page.json")"
+            if [ "$count" -lt 100 ]; then
+              break
+            fi
+            page=$((page + 1))
+            if [ "$page" -gt 20 ]; then
+              echo 'Safety stop: approval ledger exceeded bounded pagination.'
+              exit 1
+            fi
+          done
+          jq -s 'add' /tmp/ledger-page-*.json > /tmp/ledger-comments.json
+
+          request_json="$(
+            jq -c --arg requestId "$request_id" '
+              [
+                .[]
+                | select(.user.login == "github-actions[bot]")
+                | .body
+                | select(startswith("NOVELIGHT_PRODUCTION_REQUEST "))
+                | sub("^NOVELIGHT_PRODUCTION_REQUEST "; "")
+                | fromjson?
+                | select(.requestId == $requestId)
+              ]
+              | if length == 1 then .[0] else empty end
+            ' /tmp/ledger-comments.json
+          )"
+          if [ -z "$request_json" ]; then
+            echo 'Safety stop: expected exactly one matching Production request.'
+            exit 1
+          fi
+
+          echo "$request_json" | jq -e '
+            type == "object" and
+            .operation == "production-billing-remediation" and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.expiresAt | type == "string") and
+            (.repairRequired | type == "boolean") and
+            (.cleanupRequired | type == "boolean") and
+            ((.repairRequired == false) or (.repairFingerprint | type == "string" and test("^sha256:[0-9a-f]{64}$"))) and
+            ((.cleanupRequired == false) or (.cleanupFingerprint | type == "string" and test("^sha256:[0-9a-f]{64}$")))
+          ' >/dev/null || {
+            echo 'Safety stop: malformed Production request record.'
+            exit 1
+          }
+
+          request_sha="$(echo "$request_json" | jq -r '.mainSha')"
+          if [ "$request_sha" != "$approved_sha" ]; then
+            echo 'Safety stop: approval SHA does not match request SHA.'
+            exit 1
+          fi
+
+          expires_at="$(echo "$request_json" | jq -r '.expiresAt')"
+          expiry_epoch="$(date -u -d "$expires_at" +%s)" || {
+            echo 'Safety stop: invalid request expiry.'
+            exit 1
+          }
+          now_epoch="$(date -u +%s)"
+          if [ "$now_epoch" -ge "$expiry_epoch" ]; then
+            echo 'Safety stop: Production approval request expired.'
+            exit 1
+          fi
+
+          used_count="$(
+            jq --arg requestId "$request_id" '[
+              .[]
+              | select(
+                  (.body | startswith("NOVELIGHT_PRODUCTION_CLAIMED ")) or
+                  (.body | startswith("NOVELIGHT_PRODUCTION_CONSUMED "))
+                )
+              | select(.body | contains($requestId))
+            ] | length' /tmp/ledger-comments.json
+          )"
+          if [ "$used_count" -ne 0 ]; then
+            echo 'Safety stop: this Production approval request was already used.'
+            exit 1
+          fi
+
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          if [ "$current_main" != "$approved_sha" ]; then
+            echo 'Safety stop: main changed after the user approved this scope.'
+            exit 1
+          fi
+
+          repair_required="$(echo "$request_json" | jq -r '.repairRequired')"
+          cleanup_required="$(echo "$request_json" | jq -r '.cleanupRequired')"
+          repair_fingerprint="$(echo "$request_json" | jq -r '.repairFingerprint // empty')"
+          cleanup_fingerprint="$(echo "$request_json" | jq -r '.cleanupFingerprint // empty')"
+
+          if [ "$repair_required" != 'true' ] && [ "$cleanup_required" != 'true' ]; then
+            echo 'Safety stop: request contains no Production mutation.'
+            exit 1
+          fi
+
+          {
+            echo "request_id=$request_id"
+            echo "main_sha=$approved_sha"
+            echo "repair_required=$repair_required"
+            echo "repair_fingerprint=$repair_fingerprint"
+            echo "cleanup_required=$cleanup_required"
+            echo "cleanup_fingerprint=$cleanup_fingerprint"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Validated chat approval for request $request_id at exact main $approved_sha."
+
+      - name: Claim approval before any Production mutation
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg runId "$GITHUB_RUN_ID" '{requestId:$requestId,mainSha:$mainSha,runId:$runId}')"
+          body="NOVELIGHT_PRODUCTION_CLAIMED $payload"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Checkout exact approved main revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Refuse unexpected Production secrets or target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
+            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live.'
+            exit 1
+          }
+          [[ "$STRIPE_STANDARD_PRICE_ID" == price_* ]] || {
+            echo 'STRIPE_STANDARD_PRICE_ID is missing.'
+            exit 1
+          }
+          test -n "$SUPABASE_SECRET_KEY" || {
+            echo 'SUPABASE_SECRET_KEY is not configured.'
+            exit 1
+          }
+          test "$SUPABASE_URL" = 'https://fiepaguycecrredwrcwx.supabase.co' || {
+            echo 'Refusing non-canonical Production Supabase URL.'
+            exit 1
+          }
+          test "$NOVELIGHT_APP_URL" = 'https://novelrise.vercel.app' || {
+            echo 'Refusing non-canonical Production app URL.'
+            exit 1
+          }
+
+      - name: Repair only the exact approved stale billing target
+        if: steps.approval.outputs.repair_required == 'true'
+        env:
+          EXPECTED_REPAIR_FINGERPRINT: ${{ steps.approval.outputs.repair_fingerprint }}
+        run: node scripts/production-billing-auto-remediate.mjs
+
+      - name: Remove only the exact approved legacy webhook scope
+        if: steps.approval.outputs.cleanup_required == 'true'
+        env:
+          EXPECTED_LEGACY_WEBHOOK_FINGERPRINT: ${{ steps.approval.outputs.cleanup_fingerprint }}
+        run: node scripts/production-webhook-legacy-cleanup.mjs
+
+      - name: Prove canonical webhook delivery without a live charge
+        run: node scripts/production-webhook-control.mjs
+
+      - name: Audit final Production billing consistency
+        run: node scripts/production-billing-audit.mjs
+
+      - name: Record consumed approval
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg runId "$GITHUB_RUN_ID" '{requestId:$requestId,mainSha:$mainSha,runId:$runId,result:"success"}')"
+          body="NOVELIGHT_PRODUCTION_CONSUMED $payload"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
