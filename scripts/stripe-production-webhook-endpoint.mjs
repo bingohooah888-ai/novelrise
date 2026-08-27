@@ -8,12 +8,49 @@ export const requiredWebhookEvents = [
   'invoice.finalization_failed'
 ];
 
+export const managedWebhookDescription =
+  'NOVELIGHT production subscription synchronization';
+
 function webhookPayload(webhookUrl) {
   return {
     url: webhookUrl,
-    description: 'NOVELIGHT production subscription synchronization',
+    description: managedWebhookDescription,
     enabled_events: requiredWebhookEvents
   };
+}
+
+function normalizePathname(pathname) {
+  return String(pathname || '').replace(/\/+$/, '') || '/';
+}
+
+function endpointIsEnabled(endpoint) {
+  return !endpoint?.status || endpoint.status === 'enabled';
+}
+
+export function isLegacyNovelightWebhookEndpoint(endpoint, webhookUrl) {
+  if (!endpoint?.url || endpoint.url === webhookUrl) return false;
+  if (!endpointIsEnabled(endpoint)) return false;
+
+  let endpointUrl;
+  let canonicalUrl;
+  try {
+    endpointUrl = new URL(endpoint.url);
+    canonicalUrl = new URL(webhookUrl);
+  } catch {
+    return false;
+  }
+
+  if (
+    normalizePathname(endpointUrl.pathname) !==
+    normalizePathname(canonicalUrl.pathname)
+  ) {
+    return false;
+  }
+
+  if (endpoint.description === managedWebhookDescription) return true;
+
+  const host = endpointUrl.hostname.toLowerCase();
+  return host.endsWith('.vercel.app') && host.startsWith('novelrise');
 }
 
 async function createValidatedEndpoint(stripe, webhookUrl) {
@@ -68,6 +105,13 @@ export async function inspectWebhookEndpoint({
   return endpoint;
 }
 
+export async function findLegacyWebhookEndpoints({ stripe, webhookUrl }) {
+  const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
+  return endpoints.data.filter((endpoint) =>
+    isLegacyNovelightWebhookEndpoint(endpoint, webhookUrl)
+  );
+}
+
 export async function ensureWebhookEndpoint({
   stripe,
   webhookUrl,
@@ -117,4 +161,38 @@ export async function finalizeWebhookRotation({
 
   await stripe.webhookEndpoints.del(previousEndpointId);
   return true;
+}
+
+export async function removeVerifiedLegacyWebhookEndpoints({
+  stripe,
+  webhookUrl,
+  legacyEndpointIds,
+  currentEndpointId
+}) {
+  const requestedIds = [...new Set(legacyEndpointIds || [])];
+  if (requestedIds.length === 0) return [];
+
+  const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
+  const byId = new Map(endpoints.data.map((endpoint) => [endpoint.id, endpoint]));
+  const removed = [];
+
+  for (const endpointId of requestedIds) {
+    if (endpointId === currentEndpointId) {
+      throw new Error('Refusing to remove the current NOVELIGHT webhook endpoint');
+    }
+
+    const endpoint = byId.get(endpointId);
+    if (!endpoint) continue;
+
+    if (!isLegacyNovelightWebhookEndpoint(endpoint, webhookUrl)) {
+      throw new Error(
+        `Refusing to delete webhook endpoint ${endpointId}: it no longer matches the verified legacy NOVELIGHT endpoint criteria`
+      );
+    }
+
+    await stripe.webhookEndpoints.del(endpointId);
+    removed.push(endpointId);
+  }
+
+  return removed;
 }
