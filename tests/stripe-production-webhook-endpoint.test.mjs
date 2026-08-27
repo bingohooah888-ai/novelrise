@@ -5,6 +5,8 @@ import {
   ensureWebhookEndpoint,
   finalizeWebhookRotation,
   inspectWebhookEndpoint,
+  isLegacyNovelightWebhookEndpoint,
+  removeVerifiedLegacyWebhookEndpoints,
   requiredWebhookEvents
 } from '../scripts/stripe-production-webhook-endpoint.mjs';
 
@@ -15,6 +17,7 @@ function liveEndpoint(id, extra = {}) {
     id,
     url: webhookUrl,
     livemode: true,
+    status: 'enabled',
     ...extra
   };
 }
@@ -174,5 +177,80 @@ test('multiple matching webhook endpoints fail closed', async () => {
       rotateWebhookSecret: true
     }),
     /Multiple Stripe webhook endpoints target/
+  );
+});
+
+test('old NOVELIGHT Vercel webhook aliases are recognized as legacy live endpoints', () => {
+  assert.equal(
+    isLegacyNovelightWebhookEndpoint(
+      liveEndpoint('we_legacy', {
+        url: 'https://novelrise-old-preview-ranobe1.vercel.app/api/stripe-webhook'
+      }),
+      webhookUrl
+    ),
+    true
+  );
+  assert.equal(
+    isLegacyNovelightWebhookEndpoint(liveEndpoint('we_current'), webhookUrl),
+    false
+  );
+});
+
+test('legacy cleanup re-verifies endpoints and preserves the canonical endpoint', async () => {
+  const calls = [];
+  const current = liveEndpoint('we_current');
+  const legacy = liveEndpoint('we_legacy', {
+    url: 'https://novelrise-old-preview-ranobe1.vercel.app/api/stripe-webhook'
+  });
+  const stripe = {
+    webhookEndpoints: {
+      async list() {
+        return { data: [current, legacy] };
+      },
+      async del(id) {
+        calls.push(id);
+        return { id, deleted: true };
+      }
+    }
+  };
+
+  const removed = await removeVerifiedLegacyWebhookEndpoints({
+    stripe,
+    webhookUrl,
+    legacyEndpointIds: ['we_legacy'],
+    currentEndpointId: 'we_current'
+  });
+
+  assert.deepEqual(removed, ['we_legacy']);
+  assert.deepEqual(calls, ['we_legacy']);
+});
+
+test('legacy cleanup refuses an endpoint that changed before deletion', async () => {
+  const stripe = {
+    webhookEndpoints: {
+      async list() {
+        return {
+          data: [
+            liveEndpoint('we_current'),
+            liveEndpoint('we_candidate', {
+              url: 'https://unrelated.example.com/api/stripe-webhook'
+            })
+          ]
+        };
+      },
+      async del() {
+        throw new Error('delete should not run');
+      }
+    }
+  };
+
+  await assert.rejects(
+    removeVerifiedLegacyWebhookEndpoints({
+      stripe,
+      webhookUrl,
+      legacyEndpointIds: ['we_candidate'],
+      currentEndpointId: 'we_current'
+    }),
+    /Refusing to delete webhook endpoint/
   );
 });
