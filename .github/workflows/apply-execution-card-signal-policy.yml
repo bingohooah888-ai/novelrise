@@ -1,0 +1,49 @@
+name: Apply execution card signal policy
+
+on:
+  push:
+    branches:
+      - fix/execution-card-signal-only
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.event.head_commit.message != 'Apply execution card signal-only policy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout policy branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/execution-card-signal-only
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Apply signal-only execution card policy
+        run: node scripts/apply-execution-card-signal-policy.mjs
+
+      - name: Normalize changed JavaScript
+        run: npx prettier --write scripts/runtime-execution-gate.mjs tests/execution-turn-card-gate.test.mjs tests/work-execution-preflight.test.mjs
+
+      - name: Run focused governance regression tests
+        run: node --test tests/execution-turn-card-gate.test.mjs tests/work-execution-preflight.test.mjs
+
+      - name: Verify diff and commit migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git status --short
+          test -n "$(git status --porcelain)" || {
+            echo 'No migration changes were produced.'
+            exit 1
+          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AGENTS.md docs/EXECUTION-TURN-CARD-GATE.md docs/WORK-EXECUTION-PREFLIGHT.md docs/AUTOMATION-CONTINUATION-GATE.md scripts/runtime-execution-gate.mjs tests/execution-turn-card-gate.test.mjs tests/work-execution-preflight.test.mjs
+          git commit -m 'Apply execution card signal-only policy'
+          git push origin HEAD:fix/execution-card-signal-only
