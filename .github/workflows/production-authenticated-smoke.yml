@@ -43,6 +43,17 @@ jobs:
         run: |
           set -euo pipefail
 
+          existing="$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "auth-smoke-${GITHUB_SHA}- in:title" \
+            --json number \
+            --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            echo "An approval request for main $GITHUB_SHA is already open as issue #$existing."
+            exit 0
+          fi
+
           request_id="auth-smoke-${GITHUB_SHA}-${GITHUB_RUN_ID}"
           challenge="$(openssl rand -hex 4 | tr '[:lower:]' '[:upper:]')"
           expires_at="$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:%SZ')"
@@ -74,7 +85,7 @@ jobs:
           - request ID: $request_id
           - expires at: $expires_at
           - creates only ephemeral Production smoke users/data
-          - cleanup runs with [1malways()[0m after the smoke
+          - cleanup runs with always() after the smoke
           - no Stripe charge is created by this workflow
 
           Exact approval comment:
@@ -82,19 +93,6 @@ jobs:
           NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE $approval_json
           EOF
           )
-
-          existing="$(gh issue list \
-            --repo "$GITHUB_REPOSITORY" \
-            --state open \
-            --search "$request_id in:title" \
-            --json number,title \
-            --jq 'map(select(.title == env.title)) | .[0].number // empty' \
-            2>/dev/null || true)"
-
-          if [ -n "$existing" ]; then
-            echo "Approval request already exists as issue #$existing."
-            exit 0
-          fi
 
           gh issue create \
             --repo "$GITHUB_REPOSITORY" \
