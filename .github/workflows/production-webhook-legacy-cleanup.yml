@@ -1,0 +1,69 @@
+name: NOVELIGHT Production Webhook Legacy Cleanup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-production-webhook-legacy-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Remove only verified legacy NOVELIGHT live webhook endpoints
+    runs-on: ubuntu-latest
+    environment: production-approval
+    env:
+      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      STRIPE_STANDARD_PRICE_ID: ${{ secrets.STRIPE_STANDARD_PRICE_ID }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
+      NOVELIGHT_APP_URL: https://novelrise.vercel.app
+      EXPECTED_BRANCH: main
+
+    steps:
+      - name: Refuse unexpected ref or approval-scoped inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/$EXPECTED_BRANCH" || {
+            echo 'Refusing to run outside main.'
+            exit 1
+          }
+          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
+            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live.'
+            exit 1
+          }
+          [[ "$STRIPE_STANDARD_PRICE_ID" == price_* ]] || {
+            echo 'STRIPE_STANDARD_PRICE_ID is missing.'
+            exit 1
+          }
+          test -n "$SUPABASE_SECRET_KEY" || {
+            echo 'SUPABASE_SECRET_KEY is not configured.'
+            exit 1
+          }
+
+      - name: Checkout approved main revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Remove verified legacy live webhook endpoints
+        run: node scripts/production-webhook-legacy-cleanup.mjs
+
+      - name: Prove canonical webhook delivery without a live charge
+        run: node scripts/production-webhook-control.mjs
+
+      - name: Audit final Production billing consistency
+        run: node scripts/production-billing-audit.mjs
