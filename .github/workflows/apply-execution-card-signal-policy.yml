@@ -33,10 +33,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # The regression test intentionally contains the forbidden filler text
-          # inside a negative assertion, so exclude the test fixture itself from
-          # the migration script's post-rewrite document scan.
-          sed -i "/  'tests\/execution-turn-card-gate.test.mjs'/d" scripts/apply-execution-card-signal-policy.mjs
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'scripts/apply-execution-card-signal-policy.mjs';
+          let source = fs.readFileSync(path, 'utf8');
+          const before = "  'docs/AUTOMATION-CONTINUATION-GATE.md',\n  'tests/execution-turn-card-gate.test.mjs'";
+          const after = "  'docs/AUTOMATION-CONTINUATION-GATE.md'";
+          if (!source.includes(before)) {
+            throw new Error('Expected final forbidden-scan list was not found.');
+          }
+          source = source.replace(before, after);
+          fs.writeFileSync(path, source);
+          NODE
           node scripts/apply-execution-card-signal-policy.mjs
 
       - name: Normalize changed JavaScript
