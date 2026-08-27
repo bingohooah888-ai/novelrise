@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { processStripeEvent } from './_lib/stripe-webhook.js';
+import { webhookFailureLog } from './_lib/webhook-observability.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -119,12 +120,12 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ received: true, result });
   } catch (error) {
-    console.error('Webhook processing failed', {
-      name: error?.name,
-      type: error?.type,
-      code: error?.code,
-      message: error?.message
-    });
+    const failure = webhookFailureLog(error, req);
+    if (failure.level === 'warn') {
+      console.warn(failure.message, failure.details);
+    } else {
+      console.error(failure.message, failure.details);
+    }
 
     return res.status(400).json({ error: 'Webhook processing failed' });
   }

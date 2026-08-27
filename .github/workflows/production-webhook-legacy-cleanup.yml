@@ -1,28 +1,23 @@
-name: NOVELIGHT Production Billing Repair
+name: NOVELIGHT Production Webhook Legacy Cleanup
 
 on:
   workflow_dispatch:
-    inputs:
-      target_display_name:
-        description: Exact Production profile display_name to repair
-        required: true
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: novelight-production-billing-repair
+  group: novelight-production-webhook-legacy-cleanup
   cancel-in-progress: false
 
 jobs:
-  repair:
-    name: Reset a stale paid profile only when its Stripe customer is missing
+  cleanup:
+    name: Remove only verified legacy NOVELIGHT live webhook endpoints
     runs-on: ubuntu-latest
     environment: production-approval
     env:
-      TARGET_DISPLAY_NAME: ${{ inputs.target_display_name }}
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      STRIPE_STANDARD_PRICE_ID: ${{ secrets.STRIPE_STANDARD_PRICE_ID }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
       NOVELIGHT_APP_URL: https://novelrise.vercel.app
@@ -37,20 +32,16 @@ jobs:
             echo 'Refusing to run outside main.'
             exit 1
           }
-          test -n "$TARGET_DISPLAY_NAME" || {
-            echo 'target_display_name is required.'
+          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
+            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live.'
             exit 1
           }
-          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
-            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live in the Production environment.'
+          [[ "$STRIPE_STANDARD_PRICE_ID" == price_* ]] || {
+            echo 'STRIPE_STANDARD_PRICE_ID is missing.'
             exit 1
           }
           test -n "$SUPABASE_SECRET_KEY" || {
-            echo 'SUPABASE_SECRET_KEY is not configured in the Production environment.'
-            exit 1
-          }
-          test "$SUPABASE_URL" = 'https://fiepaguycecrredwrcwx.supabase.co' || {
-            echo 'SUPABASE_URL is not the canonical Production Supabase project.'
+            echo 'SUPABASE_SECRET_KEY is not configured.'
             exit 1
           }
 
@@ -65,11 +56,14 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Install locked application dependencies
+      - name: Install locked dependencies
         run: npm ci
 
-      - name: Verify missing Stripe customer and repair exactly one Production profile
-        run: node scripts/production-billing-repair.mjs
+      - name: Remove verified legacy live webhook endpoints
+        run: node scripts/production-webhook-legacy-cleanup.mjs
+
+      - name: Prove canonical webhook delivery without a live charge
+        run: node scripts/production-webhook-control.mjs
 
       - name: Audit final Production billing consistency
         run: node scripts/production-billing-audit.mjs

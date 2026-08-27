@@ -24,12 +24,17 @@ if (appUrl !== EXPECTED_APP_URL) fail('Refusing non-canonical Production app URL
 const admin = createClient(supabaseUrl, supabaseSecretKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
+const authClient = createClient(supabaseUrl, supabaseSecretKey, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
 const stripe = new Stripe(stripeSecretKey);
 
 const fixture = {
   userId: null,
   customerId: null,
   subscriptionId: null,
+  checkoutSessionId: null,
+  password: `Nl!${randomBytes(24).toString('base64url')}9a`,
   email: `novelight-prod-webhook-${runId}-${randomBytes(4).toString('hex')}@example.com`
 };
 
@@ -49,11 +54,10 @@ async function waitFor(label, probe, { attempts = 36, delayMs = 5000 } = {}) {
 }
 
 async function createEphemeralUser() {
-  const password = `Nl!${randomBytes(24).toString('base64url')}9a`;
   const data = assertNoError(
     await admin.auth.admin.createUser({
       email: fixture.email,
-      password,
+      password: fixture.password,
       email_confirm: true,
       user_metadata: {
         display_name: `NOVELIGHT Production Webhook Control ${runId}`,
@@ -84,16 +88,98 @@ async function createEphemeralUser() {
   );
 }
 
-async function createTrialSubscription() {
-  const customer = await stripe.customers.create({
-    email: fixture.email,
-    metadata: {
-      userId: fixture.userId,
-      novelightControlTest: 'true',
-      githubRunId: runId
-    }
+async function verifyCheckoutApiWithoutCharge() {
+  const auth = assertNoError(
+    await authClient.auth.signInWithPassword({
+      email: fixture.email,
+      password: fixture.password
+    }),
+    'sign in Production checkout canary user'
+  );
+  const accessToken = auth.session?.access_token;
+  if (!accessToken) fail('Production checkout canary did not receive an access token.');
+
+  const response = await fetch(`${appUrl}/api/create-checkout-session`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ plan: 'standard' })
   });
-  fixture.customerId = customer.id;
+  const body = await response.json().catch(() => null);
+
+  if (response.status !== 200 || body?.mode !== 'checkout' || !body?.url) {
+    fail(
+      `Production checkout API canary failed: HTTP ${response.status}, mode=${body?.mode ?? 'missing'}`
+    );
+  }
+
+  const checkoutUrl = new URL(body.url);
+  if (checkoutUrl.hostname !== 'checkout.stripe.com') {
+    fail(`Production checkout API returned unexpected host ${checkoutUrl.hostname}`);
+  }
+
+  const sessionId = body.url.match(/cs_live_[A-Za-z0-9_]+/)?.[0];
+  if (!sessionId) fail('Production checkout API did not return a live Checkout Session URL.');
+  fixture.checkoutSessionId = sessionId;
+
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ['line_items']
+  });
+  if (!session.livemode || session.mode !== 'subscription') {
+    fail('Production checkout canary returned a non-live or non-subscription session.');
+  }
+  if (session.client_reference_id !== fixture.userId) {
+    fail('Production checkout canary session references the wrong user.');
+  }
+  if (session.payment_status === 'paid') {
+    fail('Production checkout canary unexpectedly created a paid session.');
+  }
+
+  const prices = (session.line_items?.data || []).map((item) =>
+    typeof item.price === 'string' ? item.price : item.price?.id
+  );
+  if (!prices.includes(standardPriceId)) {
+    fail('Production checkout canary did not use the expected Standard price.');
+  }
+
+  if (typeof session.customer === 'string') {
+    const customer = await stripe.customers.retrieve(session.customer);
+    if (customer.deleted || customer.email !== fixture.email) {
+      fail('Production checkout canary created an unexpected Stripe customer.');
+    }
+    fixture.customerId = customer.id;
+  }
+
+  if (session.status === 'open') {
+    await stripe.checkout.sessions.expire(sessionId);
+  }
+
+  console.log('PASS: Production checkout API created a live unpaid Checkout Session and it was expired without payment.');
+}
+
+async function createTrialSubscription() {
+  let customer;
+  if (fixture.customerId) {
+    customer = await stripe.customers.update(fixture.customerId, {
+      metadata: {
+        userId: fixture.userId,
+        novelightControlTest: 'true',
+        githubRunId: runId
+      }
+    });
+  } else {
+    customer = await stripe.customers.create({
+      email: fixture.email,
+      metadata: {
+        userId: fixture.userId,
+        novelightControlTest: 'true',
+        githubRunId: runId
+      }
+    });
+    fixture.customerId = customer.id;
+  }
 
   if (customer.invoice_settings?.default_payment_method) {
     fail('Control customer unexpectedly has a default payment method.');
@@ -152,6 +238,8 @@ async function verifyStandardReflection() {
 }
 
 async function verifyNoCharge() {
+  if (!fixture.customerId) return;
+
   const charges = await stripe.charges.list({ customer: fixture.customerId, limit: 10 });
   if ((charges.data || []).some((charge) => charge.amount > 0 || charge.amount_captured > 0)) {
     fail('A live Stripe charge was unexpectedly created during the control test.');
@@ -199,6 +287,17 @@ async function cancelAndVerifyFreeReflection() {
 
 async function cleanup() {
   const errors = [];
+
+  if (fixture.checkoutSessionId) {
+    try {
+      const checkout = await stripe.checkout.sessions.retrieve(fixture.checkoutSessionId);
+      if (checkout.status === 'open') {
+        await stripe.checkout.sessions.expire(fixture.checkoutSessionId);
+      }
+    } catch (error) {
+      if (error?.code !== 'resource_missing') errors.push(`expire Checkout Session: ${error.message}`);
+    }
+  }
 
   if (fixture.subscriptionId) {
     try {
@@ -252,14 +351,16 @@ async function cleanup() {
 
 let mainError = null;
 try {
-  console.log('Starting controlled Stripe live -> Production webhook delivery proof (no live charge path).');
+  console.log('Starting controlled Production checkout + Stripe live webhook proof (no live charge path).');
   await createEphemeralUser();
+  await verifyCheckoutApiWithoutCharge();
+  await verifyNoCharge();
   await createTrialSubscription();
   await verifyStandardReflection();
   await verifyNoCharge();
   await cancelAndVerifyFreeReflection();
   await verifyNoCharge();
-  console.log('PASS: external Stripe live webhook delivery updated and then revoked the ephemeral Production entitlement without a live charge.');
+  console.log('PASS: Production checkout API and external Stripe live webhook delivery were proven without a live charge.');
 } catch (error) {
   mainError = error;
   console.error(`Control test failed: ${error.message}`);

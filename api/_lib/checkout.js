@@ -14,6 +14,15 @@ const PORTAL_STATUSES = new Set([
   'paused'
 ]);
 
+class BillingStateConflictError extends Error {
+  constructor(message, details = {}) {
+    super(message);
+    this.name = 'BillingStateConflictError';
+    this.code = 'billing_state_conflict';
+    this.details = details;
+  }
+}
+
 function getBearerToken(authorization) {
   const bearerMatch =
     typeof authorization === 'string'
@@ -33,6 +42,10 @@ function isMissingStripeResource(error) {
     error?.type === 'StripeInvalidRequestError' &&
     error?.code === 'resource_missing'
   );
+}
+
+function isMissingStripeCustomer(error) {
+  return isMissingStripeResource(error) && error?.param === 'customer';
 }
 
 async function getProfile(supabase, userId) {
@@ -189,19 +202,32 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
 
       if (usePortal) {
         if (!customer) {
-          throw new Error('Paid profile is missing stripe_customer_id');
+          throw new BillingStateConflictError(
+            'Paid profile is missing stripe_customer_id',
+            { reason: 'missing_customer_reference', userId }
+          );
         }
 
-        const portalSession = await stripe.billingPortal.sessions.create({
-          customer,
-          return_url: `${getAppBaseUrl(env)}/pricing.html`,
-          ...getPortalConfiguration(env)
-        });
+        try {
+          const portalSession = await stripe.billingPortal.sessions.create({
+            customer,
+            return_url: `${getAppBaseUrl(env)}/pricing.html`,
+            ...getPortalConfiguration(env)
+          });
 
-        return res.status(200).json({
-          url: portalSession.url,
-          mode: 'portal'
-        });
+          return res.status(200).json({
+            url: portalSession.url,
+            mode: 'portal'
+          });
+        } catch (error) {
+          if (isMissingStripeCustomer(error)) {
+            throw new BillingStateConflictError(
+              'Paid profile references a Stripe customer that does not exist',
+              { reason: 'stripe_customer_missing', userId }
+            );
+          }
+          throw error;
+        }
       }
 
       const session = await stripe.checkout.sessions.create({
@@ -233,6 +259,19 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
         mode: 'checkout'
       });
     } catch (error) {
+      if (error?.code === 'billing_state_conflict') {
+        console.error('Checkout billing state conflict', {
+          code: error.code,
+          reason: error.details?.reason,
+          userId: error.details?.userId
+        });
+
+        return res.status(409).json({
+          error: 'Billing account needs repair',
+          code: 'billing_state_conflict'
+        });
+      }
+
       console.error('Checkout session creation failed', {
         name: error?.name,
         type: error?.type,

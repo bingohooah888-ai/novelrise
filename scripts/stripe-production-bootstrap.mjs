@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import Stripe from 'stripe';
 import {
   ensureWebhookEndpoint,
+  findLegacyWebhookEndpoints,
   inspectWebhookEndpoint
 } from './stripe-production-webhook-endpoint.mjs';
 
@@ -185,6 +186,7 @@ const existingWebhook = await inspectWebhookEndpoint({
   hasExistingWebhookSecret,
   rotateWebhookSecret
 });
+const legacyWebhooks = await findLegacyWebhookEndpoints({ stripe, webhookUrl });
 const standard = await ensurePrice(plans[0]);
 const premium = await ensurePrice(plans[1]);
 const portalConfigurationId = await ensurePortalConfiguration(standard, premium);
@@ -201,6 +203,7 @@ const output = {
   portalConfigurationId,
   webhookEndpointId: webhook.endpointId,
   webhookPreviousEndpointId: webhook.previousEndpointId,
+  webhookLegacyEndpointIds: legacyWebhooks.map((endpoint) => endpoint.id),
   webhookSecret: webhook.secret
 };
 
@@ -208,6 +211,12 @@ fs.writeFileSync(outputPath, `${JSON.stringify(output)}\n`, {
   encoding: 'utf8',
   mode: 0o600
 });
+
+if (legacyWebhooks.length) {
+  console.warn(
+    `Detected ${legacyWebhooks.length} active legacy NOVELIGHT webhook endpoint(s); cleanup is deferred until the replacement/current Production deployment is reachable.`
+  );
+}
 
 console.log(
   rotateWebhookSecret && webhook.rotated

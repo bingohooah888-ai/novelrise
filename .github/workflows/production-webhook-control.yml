@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   control:
-    name: Prove external Stripe live webhook delivery without a live charge
+    name: Prove Production checkout and external Stripe live webhook delivery without a live charge
     runs-on: ubuntu-latest
     environment: production-approval
     env:
@@ -67,5 +67,8 @@ jobs:
       - name: Install locked application dependencies
         run: npm ci
 
-      - name: Run no-charge Production webhook control proof
+      - name: Run no-charge Production checkout and webhook control proof
         run: node scripts/production-webhook-control.mjs
+
+      - name: Audit final Production billing consistency
+        run: node scripts/production-billing-audit.mjs
