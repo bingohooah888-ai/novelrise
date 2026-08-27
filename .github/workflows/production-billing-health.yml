@@ -1,20 +1,17 @@
-name: NOVELIGHT Production Billing Health
+name: NOVELIGHT Production Billing Health Manual Fallback
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '17 18 * * *'
 
 permissions:
   contents: read
 
 concurrency:
-  group: novelight-production-billing-health
+  group: novelight-production-billing-health-manual
   cancel-in-progress: false
 
 jobs:
-  manual-audit:
-    if: github.event_name == 'workflow_dispatch'
+  audit:
     name: Audit Production billing state with explicit approval
     runs-on: ubuntu-latest
     environment: production-approval
@@ -43,49 +40,6 @@ jobs:
           }
 
       - name: Checkout approved main revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Audit Stripe, Supabase, and Production webhook consistency
-        run: node scripts/production-billing-audit.mjs
-
-  scheduled-audit:
-    if: >-
-      github.event_name == 'schedule' &&
-      vars.PRODUCTION_BILLING_AUDIT_READY == 'true'
-    name: Scheduled read-only Production billing audit
-    runs-on: ubuntu-latest
-    environment: production-observability
-    env:
-      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
-      NOVELIGHT_APP_URL: https://novelrise.vercel.app
-    steps:
-      - name: Verify read-only audit credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
-            echo 'Scheduled billing audit is enabled but STRIPE_LIVE_SECRET_KEY is unavailable.'
-            exit 1
-          }
-          test -n "$SUPABASE_SECRET_KEY" || {
-            echo 'Scheduled billing audit is enabled but SUPABASE_SECRET_KEY is unavailable.'
-            exit 1
-          }
-
-      - name: Checkout main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
