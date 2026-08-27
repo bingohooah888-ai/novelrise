@@ -1,0 +1,181 @@
+name: NOVELIGHT Staging Smoke
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      staging_url:
+        description: 'Optional HTTPS Vercel Preview/Staging URL; otherwise STAGING_BASE_URL is used'
+        required: false
+        type: string
+      revision:
+        description: 'Exact 40-character commit SHA deployed at the manual Staging URL'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-staging-smoke-${{ github.event.deployment.id || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Verify staging surface, auth, and test billing once
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment != 'Production' &&
+       github.event.deployment.environment != 'production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: staging
+    env:
+      STAGING_TRIGGER: ${{ github.event_name }}
+      MANUAL_STAGING_URL: ${{ inputs.staging_url }}
+      CANONICAL_STAGING_URL: ${{ vars.STAGING_BASE_URL }}
+      DEPLOYMENT_ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
+      DEPLOYMENT_TARGET_URL: ${{ github.event.deployment_status.target_url }}
+      EXPECTED_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.revision || github.event.deployment.sha }}
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      E2E_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PRODUCTION_AUTH_SMOKE_FIXTURE: /tmp/novelight-staging-smoke.json
+      CHECKOUT_SESSION_PREFIX: cs_test_
+
+    steps:
+      - name: Checkout deployed revision once
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.revision || github.event.deployment.sha }}
+
+      - name: Setup Node.js once
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/e2e/package-lock.json
+
+      - name: Verify read-only Staging deployment contract
+        env:
+          STAGING_REQUIRE_WRITE_CONFIG: 'false'
+        run: node scripts/verify-staging-deployment.mjs
+
+      - name: Install browser test dependencies once
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install Playwright ffmpeg once
+        working-directory: tests/e2e
+        run: npx playwright install ffmpeg
+
+      - name: Run read-only staging smoke
+        working-directory: tests/e2e
+        run: npm run test:staging
+
+      - name: Upload read-only staging diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-readonly-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tests/e2e/staging-playwright-report
+            tests/e2e/staging-test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Verify authenticated Staging credentials
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_SECRET_KEY" || {
+            echo 'CONFIG_DRIFT: STAGING_SUPABASE_SECRET_KEY is not configured.'
+            exit 1
+          }
+          test -n "$E2E_SUPABASE_PUBLISHABLE_KEY" || {
+            echo 'CONFIG_DRIFT: STAGING_SUPABASE_PUBLISHABLE_KEY is not configured.'
+            exit 1
+          }
+
+      - name: Verify write-capable Staging deployment contract
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        env:
+          STAGING_REQUIRE_WRITE_CONFIG: 'true'
+        run: node scripts/verify-staging-deployment.mjs
+
+      - name: Install application dependencies once
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        run: npm ci
+
+      - name: Create ephemeral authenticated staging user
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        id: auth_fixture
+        env:
+          AUTH_SMOKE_LABEL: ステージング認証スモーク
+        run: node scripts/production-auth-smoke-fixture.mjs setup
+
+      - name: Run authenticated staging smoke
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        working-directory: tests/e2e
+        env:
+          AUTH_SMOKE_LABEL: ステージング認証スモーク
+          E2E_COMPLETE_BILLING: 'false'
+        run: npx playwright test --config=playwright.production-auth.config.mjs
+
+      - name: Upload authenticated staging diagnostics
+        if: failure() && steps.auth_fixture.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-auth-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/e2e/test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Clean ephemeral authenticated staging data
+        if: always() && steps.auth_fixture.outcome != 'skipped'
+        env:
+          AUTH_SMOKE_LABEL: ステージング認証スモーク
+        run: node scripts/production-auth-smoke-fixture.mjs cleanup
+
+      - name: Create fresh ephemeral staging billing user
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        id: billing_fixture
+        env:
+          AUTH_SMOKE_LABEL: ステージング課金スモーク
+        run: node scripts/production-auth-smoke-fixture.mjs setup
+
+      - name: Run complete Stripe test billing smoke
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        working-directory: tests/e2e
+        env:
+          AUTH_SMOKE_LABEL: ステージング課金スモーク
+          E2E_COMPLETE_BILLING: 'true'
+        run: npx playwright test production-auth/billing-smoke.spec.js --config=playwright.production-auth.config.mjs
+
+      - name: Upload billing staging diagnostics
+        if: failure() && steps.billing_fixture.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-billing-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/e2e/test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Clean ephemeral staging billing data
+        if: always() && steps.billing_fixture.outcome != 'skipped'
+        env:
+          AUTH_SMOKE_LABEL: ステージング課金スモーク
+        run: node scripts/production-auth-smoke-fixture.mjs cleanup
+
+      - name: Remove temporary staging fixture
+        if: always()
+        run: rm -f "$PRODUCTION_AUTH_SMOKE_FIXTURE"

@@ -1,0 +1,136 @@
+name: NOVELIGHT High-Risk PR Approval Relay
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: novelight-high-risk-pr-approval-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  rerun-ci:
+    name: Validate owner approval and re-run failed CI gates
+    if: >-
+      github.event.issue.pull_request != null &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_HIGH_RISK_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVAL_BODY: ${{ github.event.comment.body }}
+      PR_NUMBER: ${{ github.event.issue.number }}
+
+    steps:
+      - name: Checkout trusted main approval logic
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: main
+
+      - name: Validate exact PR head and one-time challenge
+        id: approval
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          approval_json="${APPROVAL_BODY#NOVELIGHT_HIGH_RISK_APPROVE }"
+          echo "$approval_json" | jq -e '
+            type == "object" and
+            .operation == "merge-high-risk-pr" and
+            (.pr | type == "number" and . > 0 and floor == .) and
+            (.headSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            ((keys | sort) == (["challenge", "headSha", "operation", "pr"] | sort))
+          ' >/dev/null || {
+            echo 'Safety stop: malformed high-risk approval comment.'
+            exit 1
+          }
+
+          approved_pr="$(echo "$approval_json" | jq -r '.pr')"
+          approved_sha="$(echo "$approval_json" | jq -r '.headSha')"
+          approved_challenge="$(echo "$approval_json" | jq -r '.challenge')"
+          test "$approved_pr" = "$PR_NUMBER" || {
+            echo 'Safety stop: approval PR number does not match this pull request.'
+            exit 1
+          }
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
+            > /tmp/pr.json
+
+          jq -e \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg sha "$approved_sha" \
+            '.state == "open" and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha' \
+            /tmp/pr.json >/dev/null || {
+              echo 'Safety stop: PR is closed, targets another base, or head SHA changed.'
+              exit 1
+            }
+
+          expected_challenge="$(node scripts/high-risk-approval-lib.mjs challenge "$PR_NUMBER" "$approved_sha")"
+          test "$approved_challenge" = "$expected_challenge" || {
+            echo 'Safety stop: approval challenge does not match the exact PR head.'
+            exit 1
+          }
+
+          echo "head_sha=$approved_sha" >> "$GITHUB_OUTPUT"
+          echo "Validated owner approval for PR #$PR_NUMBER at $approved_sha."
+
+      - name: Re-run failed NOVELIGHT CI automatically
+        shell: bash
+        env:
+          HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          run_id=''
+          conclusion=''
+          status=''
+          for _ in $(seq 1 24); do
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=pull_request&head_sha=$HEAD_SHA&per_page=20" \
+              > /tmp/ci-runs.json
+
+            run_id="$(jq -r '.workflow_runs[0].id // empty' /tmp/ci-runs.json)"
+            status="$(jq -r '.workflow_runs[0].status // empty' /tmp/ci-runs.json)"
+            conclusion="$(jq -r '.workflow_runs[0].conclusion // empty' /tmp/ci-runs.json)"
+            if [ -n "$run_id" ] && [ "$status" = 'completed' ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          if [ -z "$run_id" ] || [ "$status" != 'completed' ]; then
+            echo 'Could not find a completed NOVELIGHT CI run for the approved head within two minutes.'
+            exit 1
+          fi
+
+          if [ "$conclusion" = 'success' ]; then
+            echo "NOVELIGHT CI run $run_id already succeeded; no re-run needed."
+            exit 0
+          fi
+
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/rerun-failed-jobs" \
+            >/dev/null
+
+          echo "Re-ran failed jobs for NOVELIGHT CI run $run_id after exact owner approval."
