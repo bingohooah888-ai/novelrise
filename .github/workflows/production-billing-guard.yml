@@ -41,6 +41,7 @@ jobs:
         env:
           BASE_URL: https://novelrise.vercel.app
           OIDC_AUDIENCE: novelight-production-billing-guard
+          EXPECTED_GUARD_VERSION: stale-paid-remediation-v1
         run: |
           set -euo pipefail
 
@@ -53,6 +54,7 @@ jobs:
           printf '::add-mask::%s\n' "$oidc_token"
 
           status=''
+          guard_version=''
           for attempt in $(seq 1 24); do
             status="$(
               curl --silent --show-error \
@@ -67,20 +69,24 @@ jobs:
             )"
 
             if [ "$status" = '200' ]; then
-              break
-            fi
-
-            if [[ "$status" =~ ^(401|403)$ ]]; then
+              guard_version="$(jq -r '.guardVersion // empty' /tmp/production-billing-guard.json)"
+              if [ "$guard_version" = "$EXPECTED_GUARD_VERSION" ]; then
+                echo "Production billing guard version is current: $guard_version"
+                break
+              fi
+              echo "Production billing guard is still an older deployment (version '${guard_version:-none}', attempt ${attempt}/24)."
+            elif [[ "$status" =~ ^(401|403)$ ]]; then
               echo "Production billing guard rejected GitHub OIDC authentication (HTTP $status)."
               exit 1
+            else
+              echo "Production billing guard is not ready yet (HTTP $status, attempt ${attempt}/24)."
             fi
 
-            echo "Production billing guard is not ready yet (HTTP $status, attempt ${attempt}/24)."
             sleep 10
           done
 
-          if [ "$status" != '200' ]; then
-            echo "Production billing guard did not become available in time (last HTTP $status)."
+          if [ "$status" != '200' ] || [ "$guard_version" != "$EXPECTED_GUARD_VERSION" ]; then
+            echo "Production billing guard did not reach expected version '$EXPECTED_GUARD_VERSION' in time."
             exit 1
           fi
 
