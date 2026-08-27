@@ -37,20 +37,20 @@ The card must include the exact meaning of:
 
 Omitting the time field entirely is invalid. Adding the degraded explanation later in the turn is also invalid.
 
-## 3. First-message evidence
+## 3. Local/runtime-capable path
 
-Local/runtime-capable agents must provide all of the following to the Runtime Execution Gate:
+Local/runtime-capable agents must pass the existing Runtime Execution Gate with current-turn card evidence.
 
-- card visible in the current assistant turn
-- card was the first user-visible message of the turn
-- explicit card mode (`timed` or `degraded`)
-- a fresh execution-turn ID
-- major steps
-- manual-operation state/count
-- wait requirement
-- total time for timed mode, or omission reason for degraded mode
+The Runtime Execution Gate continues to validate:
 
-The Runtime Execution Gate must fail if any evidence is missing. It must not silently default the mode to timed.
+- current-turn card visibility acknowledgement;
+- major steps;
+- manual-operation state/count;
+- wait requirement;
+- total time in timed mode;
+- omission reason in degraded mode.
+
+This file is also part of the authoritative files fetched by the Runtime Execution Gate, so the dedicated first-message contract cannot be removed without breaking regression checks.
 
 ## 4. Cloud / Connector path
 
@@ -61,19 +61,19 @@ Its protocol is:
 1. Send the execution card as the first visible message.
 2. Only then call GitHub/Connector/API tools.
 3. Re-fetch latest `main`, MASTER, Preflight, and this file before any mutation.
-4. If the assistant notices that a tool was called before the card, stop mutations for that turn, report the gate failure, and start the next tool-using turn with a fresh card.
+4. If the assistant notices that a tool was called before the card, stop mutations for that turn, report the gate failure, and do not treat a later card in the same turn as valid recovery.
+5. The next tool-using turn must begin with a fresh card.
 
-The cloud path cannot rely on `I remembered the rule` as evidence. The visible ordering in the conversation is the source of truth.
+The cloud path cannot rely on `I remembered the rule` as evidence. The visible ordering in the conversation is the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
 
 ## 5. Regression rule
 
 CI must keep tests that assert:
 
+- AGENTS, Preflight, and Automation Continuation Gate retain the first-visible-message rule;
 - this file remains part of the Runtime Gate authoritative file set;
-- card mode is explicit;
-- first-message evidence is mandatory;
-- a fresh turn ID is mandatory;
 - degraded mode requires an omission reason;
-- timed mode requires a total estimate.
+- timed mode requires a total estimate;
+- the cloud path explicitly treats a late card as invalid for that turn.
 
-The purpose is to make a missing execution card a detectable contract violation instead of a style preference.
+The purpose is to make a missing execution card a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
