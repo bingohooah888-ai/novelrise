@@ -20,14 +20,19 @@ function createSupabase(profiles) {
         },
         async limit(limit) {
           assert.equal(limit, 10000);
-          return { data: profiles.map((profile) => ({ ...profile })), error: null };
+          return {
+            data: profiles.map((profile) => ({ ...profile })),
+            error: null
+          };
         }
       };
     }
   };
 }
 
-function createStripe({ customers = {}, subscriptions = {}, endpoints = [] } = {}) {
+function createStripe(
+  { customers = {}, subscriptions = {}, endpoints = [] } = {}
+) {
   return {
     customers: {
       async retrieve(customerId) {
@@ -99,36 +104,39 @@ test('healthy Production billing state passes', async () => {
   assert.equal(result.summary.legacyWebhookCount, 0);
 });
 
-test('stale paid Stripe customer is an issue while stale free customer is a warning', async () => {
-  const result = await auditProductionBilling({
-    supabase: createSupabase([
-      paidProfile({ stripe_customer_id: 'cus_missing_paid' }),
-      {
-        id: 'user-free',
-        display_name: 'Free Author',
-        plan: 'free',
-        payment_status: 'canceled',
-        stripe_customer_id: 'cus_missing_free',
-        stripe_subscription_id: null,
-        subscription_status: null
-      }
-    ]),
-    stripe: createStripe({ endpoints: [canonicalEndpoint()] }),
-    canonicalWebhookUrl
-  });
+test(
+  'stale paid Stripe customer is an issue while stale free customer is a warning',
+  async () => {
+    const result = await auditProductionBilling({
+      supabase: createSupabase([
+        paidProfile({ stripe_customer_id: 'cus_missing_paid' }),
+        {
+          id: 'user-free',
+          display_name: 'Free Author',
+          plan: 'free',
+          payment_status: 'canceled',
+          stripe_customer_id: 'cus_missing_free',
+          stripe_subscription_id: null,
+          subscription_status: null
+        }
+      ]),
+      stripe: createStripe({ endpoints: [canonicalEndpoint()] }),
+      canonicalWebhookUrl
+    });
 
-  assert.equal(result.ok, false);
-  assert.ok(
-    result.issues.some(
-      (item) => item.code === 'paid_profile_customer_missing_in_stripe'
-    )
-  );
-  assert.ok(
-    result.warnings.some(
-      (item) => item.code === 'free_profile_stale_customer_reference'
-    )
-  );
-});
+    assert.equal(result.ok, false);
+    assert.ok(
+      result.issues.some(
+        (item) => item.code === 'paid_profile_customer_missing_in_stripe'
+      )
+    );
+    assert.ok(
+      result.warnings.some(
+        (item) => item.code === 'free_profile_stale_customer_reference'
+      )
+    );
+  }
+);
 
 test('free profile with a live entitled subscription fails closed', async () => {
   const result = await auditProductionBilling({
@@ -159,33 +167,36 @@ test('free profile with a live entitled subscription fails closed', async () => 
   );
 });
 
-test('legacy Vercel webhook endpoint targeting the Production webhook path is detected', async () => {
-  const legacy = {
-    id: 'we_legacy',
-    url: 'https://novelrise-old-deploy-ranobe1.vercel.app/api/stripe-webhook',
-    status: 'enabled',
-    enabled_events: [...REQUIRED_PRODUCTION_WEBHOOK_EVENTS]
-  };
+test(
+  'legacy Vercel webhook endpoint targeting the Production webhook path is detected',
+  async () => {
+    const legacy = {
+      id: 'we_legacy',
+      url: 'https://novelrise-old-deploy-ranobe1.vercel.app/api/stripe-webhook',
+      status: 'enabled',
+      enabled_events: [...REQUIRED_PRODUCTION_WEBHOOK_EVENTS]
+    };
 
-  assert.equal(
-    isLegacyNovelightWebhookEndpoint(legacy, canonicalWebhookUrl),
-    true
-  );
+    assert.equal(
+      isLegacyNovelightWebhookEndpoint(legacy, canonicalWebhookUrl),
+      true
+    );
 
-  const result = await auditProductionBilling({
-    supabase: createSupabase([]),
-    stripe: createStripe({ endpoints: [canonicalEndpoint(), legacy] }),
-    canonicalWebhookUrl
-  });
+    const result = await auditProductionBilling({
+      supabase: createSupabase([]),
+      stripe: createStripe({ endpoints: [canonicalEndpoint(), legacy] }),
+      canonicalWebhookUrl
+    });
 
-  assert.equal(result.ok, false);
-  assert.ok(
-    result.issues.some(
-      (item) => item.code === 'legacy_novelight_webhook_endpoint'
-    )
-  );
-  assert.equal(result.summary.legacyWebhookCount, 1);
-});
+    assert.equal(result.ok, false);
+    assert.ok(
+      result.issues.some(
+        (item) => item.code === 'legacy_novelight_webhook_endpoint'
+      )
+    );
+    assert.equal(result.summary.legacyWebhookCount, 1);
+  }
+);
 
 test('unrelated webhook endpoints are ignored', () => {
   assert.equal(
