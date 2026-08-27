@@ -37,24 +37,37 @@ test('billing guard creates a scoped approval request', async () => {
   assert.match(workflow, /repair_fingerprint/);
   assert.match(workflow, /cleanup_fingerprint/);
   assert.doesNotMatch(workflow, /environment: production-approval/);
-  assert.doesNotMatch(workflow, /production-billing-auto-remediate\.mjs/);
 });
 
-test('chat approval is one-time and scope-bound', async () => {
+test('chat approval is one-time, scope-bound, and secretless in Actions', async () => {
   const workflow = await text('.github/workflows/production-chat-approval.yml');
 
   assert.match(workflow, /issue_comment:/);
   assert.match(workflow, /github\.event\.issue\.number == 165/);
-  assert.match(workflow, /github\.event\.comment\.user\.login/);
   assert.match(workflow, /author_association == 'OWNER'/);
   assert.match(workflow, /NOVELIGHT_PRODUCTION_APPROVE/);
   assert.match(workflow, /Production approval request expired/);
   assert.match(workflow, /main changed after the user approved this scope/);
   assert.match(workflow, /NOVELIGHT_PRODUCTION_CLAIMED/);
   assert.match(workflow, /NOVELIGHT_PRODUCTION_CONSUMED/);
-  assert.match(workflow, /EXPECTED_REPAIR_FINGERPRINT/);
-  assert.match(workflow, /EXPECTED_LEGACY_WEBHOOK_FINGERPRINT/);
-  assert.match(workflow, /production-webhook-control\.mjs/);
-  assert.match(workflow, /production-billing-audit\.mjs/);
+  assert.match(workflow, /id-token: write/);
+  assert.match(workflow, /novelight-production-chat-remediation/);
+  assert.match(workflow, /api\/production-billing-remediate/);
+  assert.doesNotMatch(workflow, /secrets\.STRIPE_LIVE_SECRET_KEY/);
+  assert.doesNotMatch(workflow, /secrets\.SUPABASE_SECRET_KEY/);
   assert.doesNotMatch(workflow, /environment: production-approval/);
+});
+
+test('Production remediation endpoint binds scope to Vercel Production', async () => {
+  const endpoint = await text('api/production-billing-remediate.js');
+
+  assert.match(endpoint, /verifyGitHubActionsOidcToken/);
+  assert.match(endpoint, /novelight-production-chat-remediation/);
+  assert.match(endpoint, /VERCEL_GIT_COMMIT_SHA/);
+  assert.match(endpoint, /repairCandidateFingerprint/);
+  assert.match(endpoint, /legacyWebhookFingerprint/);
+  assert.match(endpoint, /repairMissingProductionCustomer/);
+  assert.match(endpoint, /removeVerifiedLegacyWebhookEndpoints/);
+  assert.match(endpoint, /No-charge webhook proof failed/);
+  assert.match(endpoint, /Final Production billing audit is not healthy/);
 });
