@@ -16,7 +16,16 @@ The first visible message must contain all of the following:
 - `主要工程`
 - `手動操作`
 - `待機`
+- `作業量`
+- `別作業`
+- `次のユーザー操作`
 - one of the two time modes below
+
+`作業量` is a qualitative estimate that remains required even when numeric time estimates are prohibited. Use a clear level such as `ごく短い`, `短い`, `中程度`, `長い`, or `かなり長い`.
+
+`別作業` must state whether the user can safely switch to other work while NOVELIGHT work proceeds. Prefer a direct statement such as `して大丈夫です` or `この工程では画面確認が必要です`.
+
+`次のユーザー操作` must state the next condition that genuinely requires user involvement. If no user action is expected, say `なし` rather than inventing a confirmation step.
 
 ### Timed mode
 
@@ -33,7 +42,9 @@ Use when a higher-level execution constraint prohibits time estimates.
 
 The card must include the exact meaning of:
 
-`時間見積もり：実行環境の上位制約により省略。`
+`具体的な所要時間：実行環境の制約により表示できません。`
+
+In degraded mode, `作業量`, `別作業`, and `次のユーザー操作` are the required replacement decision-support information. The user must be able to decide whether to stay on the current task or switch to other work without needing a numeric duration.
 
 Omitting the time field entirely is invalid. Adding the degraded explanation later in the turn is also invalid.
 
@@ -47,6 +58,9 @@ The Runtime Execution Gate continues to validate:
 - major steps;
 - manual-operation state/count;
 - wait requirement;
+- qualitative workload;
+- whether other work is safe;
+- the next user-action condition;
 - total time in timed mode;
 - omission reason in degraded mode.
 
@@ -72,7 +86,8 @@ CI must keep tests that assert:
 
 - AGENTS, Preflight, and Automation Continuation Gate retain the first-visible-message rule;
 - this file remains part of the Runtime Gate authoritative file set;
-- degraded mode requires an omission reason;
+- every execution card carries workload, other-work guidance, and the next user-action condition;
+- degraded mode requires an omission reason and the qualitative replacement guidance;
 - timed mode requires a total estimate;
 - the cloud path explicitly treats a late card as invalid for that turn.
 
