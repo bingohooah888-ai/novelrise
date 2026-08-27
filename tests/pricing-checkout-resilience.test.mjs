@@ -8,7 +8,7 @@ const root = new URL('../', import.meta.url);
 
 async function pricingScript() {
   const html = await readFile(new URL('pricing.html', root), 'utf8');
-  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)];
   assert.ok(scripts.length > 0, 'pricing inline script is missing');
   return scripts.at(-1)[1];
 }
