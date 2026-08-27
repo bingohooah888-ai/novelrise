@@ -42,7 +42,9 @@ function resolveStagingSupabaseOverride() {
   };
 }
 
-const stagingSupabase = resolveStagingSupabaseOverride();
+const stagingSupabase = completeBilling
+  ? resolveStagingSupabaseOverride()
+  : null;
 
 async function installStagingSupabaseOverride(context) {
   await context.addInitScript(({ url, key }) => {
