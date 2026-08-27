@@ -74,21 +74,37 @@ Its protocol is:
 
 1. Send the execution card as the first visible message.
 2. Only then call GitHub/Connector/API tools.
-3. Re-fetch latest `main`, MASTER, Preflight, and this file before any mutation.
+3. Re-fetch latest `main`, MASTER, Preflight, this file, and `docs/EVIDENCE-FRESHNESS-GATE.md` before any mutation.
 4. If the assistant notices that a tool was called before the card, stop mutations for that turn, report the gate failure, and do not treat a later card in the same turn as valid recovery.
 5. The next tool-using turn must begin with a fresh card.
 
 The cloud path cannot rely on `I remembered the rule` as evidence. The visible ordering in the conversation is the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
 
-## 5. Regression rule
+## 5. Evidence Freshness Gate
+
+Before making a current-state claim about beta readiness, or before entering `deploy`, `vercel`, `supabase`, or `stripe` work, apply `docs/EVIDENCE-FRESHNESS-GATE.md`.
+
+Historical release-evidence documents are snapshots. An older `OPEN`, `PENDING`, `NOT YET RECORDED`, or unchecked item must not be treated as current when a later same-scope workflow or Production approval ledger proves success. Conversely, an older `PASS` must be re-evaluated when later relevant changes can invalidate that proof.
+
+Before repeating a Production mutation, the assistant must search for the newest same-purpose successful proof, inspect the decisive workflow job/log and approval ledger when applicable, compare the proof SHA against current `main` for later relevant changes, and classify the evidence as `current`, `refresh-required`, or `unknown`.
+
+- `current`: the same Production mutation is already satisfied and must not be repeated.
+- `refresh-required`: explain the invalidating change and continue only inside the currently approved Production scope.
+- `unknown`: fail closed and gather better read-only evidence before mutation.
+
+A cloud/Connector assistant must perform this resolution with Connector/API reads. A local/runtime-capable agent must additionally provide the evidence-freshness fields required by the Runtime Gate. A historical evidence document alone is never sufficient to justify a repeated Production operation.
+
+## 6. Regression rule
 
 CI must keep tests that assert:
 
 - AGENTS, Preflight, and Automation Continuation Gate retain the first-visible-message rule;
-- this file remains part of the Runtime Gate authoritative file set;
+- this file and `docs/EVIDENCE-FRESHNESS-GATE.md` remain part of the Runtime Gate authoritative file set;
 - every execution card carries workload, other-work guidance, and the next user-action condition;
 - degraded mode requires an omission reason and the qualitative replacement guidance;
 - timed mode requires a total estimate;
-- the cloud path explicitly treats a late card as invalid for that turn.
+- the cloud path explicitly treats a late card as invalid for that turn;
+- deploy/Vercel/Supabase/Stripe phases fail closed without evidence-freshness proof;
+- current evidence blocks duplicate external-state mutation.
 
-The purpose is to make a missing execution card a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
+The purpose is to make a missing execution card or stale-state assumption a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
