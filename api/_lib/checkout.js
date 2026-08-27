@@ -5,6 +5,13 @@ const PRICE_ENV_BY_PLAN = Object.freeze({
   premium: 'STRIPE_PREMIUM_PRICE_ID'
 });
 
+const CHECKOUT_LEGAL_NOTICE_BY_PLAN = Object.freeze({
+  standard:
+    'Standardは月額980円の継続契約です。申込完了時に初回決済し、解約するまで毎月自動更新され、更新回数に上限はありません。1年間利用した場合の支払総額目安は11,760円です（1年契約を意味しません）。決済完了・契約状態確認後に有料機能を利用できます。解約はStripe顧客ポータルから行えます。法令上必要な場合、重複請求、NOVELIGHT側の重大な決済障害等を除き、利用者都合の途中返金・日割り返金は原則行いません。18歳未満の方は法定代理人の同意を得て申し込んでください。',
+  premium:
+    'Premiumは月額1,980円の継続契約です。申込完了時に初回決済し、解約するまで毎月自動更新され、更新回数に上限はありません。1年間利用した場合の支払総額目安は23,760円です（1年契約を意味しません）。決済完了・契約状態確認後に有料機能を利用できます。解約はStripe顧客ポータルから行えます。法令上必要な場合、重複請求、NOVELIGHT側の重大な決済障害等を除き、利用者都合の途中返金・日割り返金は原則行いません。18歳未満の方は法定代理人の同意を得て申し込んでください。'
+});
+
 const PORTAL_STATUSES = new Set([
   'active',
   'trialing',
@@ -250,6 +257,11 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
             quantity: 1
           }
         ],
+        custom_text: {
+          submit: {
+            message: CHECKOUT_LEGAL_NOTICE_BY_PLAN[plan]
+          }
+        },
         success_url: `${getAppBaseUrl(env)}/mypage.html?checkout=success`,
         cancel_url: `${getAppBaseUrl(env)}/pricing.html?checkout=cancel`
       });

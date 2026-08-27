@@ -264,6 +264,37 @@ test('creates a subscription checkout with trusted metadata', async () => {
   );
 });
 
+test('checkout confirmation includes plan-specific recurring-contract disclosures', async () => {
+  for (const [plan, annualTotal] of [
+    ['standard', '11,760円'],
+    ['premium', '23,760円']
+  ]) {
+    const dependencies = createDependencies();
+    const handler = createCheckoutHandler(dependencies);
+    const { res, state } = createResponse();
+
+    await handler(
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer token-123' },
+        body: { plan }
+      },
+      res
+    );
+
+    assert.equal(state.statusCode, 200);
+    const message =
+      dependencies.calls.checkoutSessions[0].custom_text.submit.message;
+    assert.match(message, new RegExp(annualTotal));
+    assert.match(message, /毎月自動更新/);
+    assert.match(message, /更新回数に上限はありません/);
+    assert.match(message, /1年契約を意味しません/);
+    assert.match(message, /Stripe顧客ポータル/);
+    assert.match(message, /途中返金・日割り返金は原則行いません/);
+    assert.match(message, /18歳未満.*法定代理人の同意/);
+  }
+});
+
 test('reuses an existing customer when only ended subscriptions remain', async () => {
   const dependencies = createDependencies({
     profile: { plan: 'free', stripe_customer_id: 'cus_existing' },

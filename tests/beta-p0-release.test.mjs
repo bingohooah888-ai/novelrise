@@ -177,3 +177,29 @@ test('major public landing surfaces expose legal navigation', async () => {
   assert.match(pages[0], /commerce-disclosure\.html/);
   assert.match(pages[0], /contact\.html/);
 });
+
+test('paid-plan legal disclosures stay aligned before beta release', async () => {
+  const [checkout, pricing, billing, commerce, privacy] = await Promise.all([
+    read('api/_lib/checkout.js'),
+    read('pricing.html'),
+    read('billing-policy.html'),
+    read('commerce-disclosure.html'),
+    read('privacy.html')
+  ]);
+
+  assert.match(checkout, /custom_text/);
+  assert.match(checkout, /CHECKOUT_LEGAL_NOTICE_BY_PLAN/);
+  for (const source of [checkout, pricing, billing, commerce]) {
+    assert.match(source, /11,760円/);
+    assert.match(source, /23,760円/);
+  }
+  for (const source of [checkout, pricing, billing, commerce]) {
+    assert.match(source, /自動更新/);
+    assert.match(source, /更新回数に上限|更新上限なし/);
+  }
+  assert.match(pricing, /1年契約ではありません/);
+  assert.match(billing, /1年契約を意味しません/);
+  assert.match(commerce, /年間支払総額は契約期間ではなく目安/);
+  assert.match(privacy, /個人情報保護法第32条第1項/);
+  assert.match(privacy, /本人から求めがあった場合、法令に従い遅滞なく回答/);
+});
