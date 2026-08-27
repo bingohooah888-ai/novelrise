@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   issues: write
+  id-token: write
 
 concurrency:
   group: novelight-production-chat-approval
@@ -22,13 +23,9 @@ jobs:
       startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_APPROVE ')
     runs-on: ubuntu-latest
     env:
-      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
-      STRIPE_STANDARD_PRICE_ID: ${{ secrets.STRIPE_STANDARD_PRICE_ID }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
-      NOVELIGHT_APP_URL: https://novelrise.vercel.app
       GH_TOKEN: ${{ github.token }}
       LEDGER_ISSUE: '165'
+      NOVELIGHT_APP_URL: https://novelrise.vercel.app
 
     steps:
       - name: Validate one-time scoped approval against the ledger
@@ -64,9 +61,7 @@ jobs:
               "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments?per_page=100&page=$page" \
               > "/tmp/ledger-page-$page.json"
             count="$(jq 'length' "/tmp/ledger-page-$page.json")"
-            if [ "$count" -lt 100 ]; then
-              break
-            fi
+            if [ "$count" -lt 100 ]; then break; fi
             page=$((page + 1))
             if [ "$page" -gt 20 ]; then
               echo 'Safety stop: approval ledger exceeded bounded pagination.'
@@ -119,8 +114,7 @@ jobs:
             echo 'Safety stop: invalid request expiry.'
             exit 1
           }
-          now_epoch="$(date -u +%s)"
-          if [ "$now_epoch" -ge "$expiry_epoch" ]; then
+          if [ "$(date -u +%s)" -ge "$expiry_epoch" ]; then
             echo 'Safety stop: Production approval request expired.'
             exit 1
           fi
@@ -157,21 +151,27 @@ jobs:
           cleanup_required="$(echo "$request_json" | jq -r '.cleanupRequired')"
           repair_fingerprint="$(echo "$request_json" | jq -r '.repairFingerprint // empty')"
           cleanup_fingerprint="$(echo "$request_json" | jq -r '.cleanupFingerprint // empty')"
-
           if [ "$repair_required" != 'true' ] && [ "$cleanup_required" != 'true' ]; then
             echo 'Safety stop: request contains no Production mutation.'
             exit 1
           fi
 
+          request_body="$(
+            echo "$request_json" | jq -c '{
+              requestId,
+              mainSha,
+              repairRequired,
+              repairFingerprint,
+              cleanupRequired,
+              cleanupFingerprint
+            }'
+          )"
+
           {
             echo "request_id=$request_id"
             echo "main_sha=$approved_sha"
-            echo "repair_required=$repair_required"
-            echo "repair_fingerprint=$repair_fingerprint"
-            echo "cleanup_required=$cleanup_required"
-            echo "cleanup_fingerprint=$cleanup_fingerprint"
+            echo "request_body=$request_body"
           } >> "$GITHUB_OUTPUT"
-
           echo "Validated chat approval for request $request_id at exact main $approved_sha."
 
       - name: Claim approval before any Production mutation
@@ -192,63 +192,43 @@ jobs:
             -d "$(jq -cn --arg body "$body" '{body:$body}')" \
             >/dev/null
 
-      - name: Checkout exact approved main revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ steps.approval.outputs.main_sha }}
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Refuse unexpected Production secrets or target
+      - name: Execute exact approved scope through Production OIDC gate
         shell: bash
+        env:
+          REQUEST_BODY: ${{ steps.approval.outputs.request_body }}
         run: |
           set -euo pipefail
-          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
-            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live.'
+          oidc_url="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=novelight-production-chat-remediation"
+          oidc_token="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$oidc_url" | jq -er '.value'
+          )"
+          response_file="$(mktemp)"
+          status="$(
+            curl --silent --show-error \
+              --output "$response_file" \
+              --write-out '%{http_code}' \
+              -X POST \
+              -H "Authorization: Bearer $oidc_token" \
+              -H 'Content-Type: application/json' \
+              --data "$REQUEST_BODY" \
+              "$NOVELIGHT_APP_URL/api/production-billing-remediate"
+          )"
+          if [ "$status" != '200' ]; then
+            echo "Production remediation endpoint returned HTTP $status."
+            cat "$response_file"
+            exit 1
+          fi
+          jq -e '
+            .ok == true and
+            .noChargeWebhookProof == true and
+            .finalAuditHealthy == true
+          ' "$response_file" >/dev/null || {
+            echo 'Safety stop: Production remediation proof was incomplete.'
+            cat "$response_file"
             exit 1
           }
-          [[ "$STRIPE_STANDARD_PRICE_ID" == price_* ]] || {
-            echo 'STRIPE_STANDARD_PRICE_ID is missing.'
-            exit 1
-          }
-          test -n "$SUPABASE_SECRET_KEY" || {
-            echo 'SUPABASE_SECRET_KEY is not configured.'
-            exit 1
-          }
-          test "$SUPABASE_URL" = 'https://fiepaguycecrredwrcwx.supabase.co' || {
-            echo 'Refusing non-canonical Production Supabase URL.'
-            exit 1
-          }
-          test "$NOVELIGHT_APP_URL" = 'https://novelrise.vercel.app' || {
-            echo 'Refusing non-canonical Production app URL.'
-            exit 1
-          }
-
-      - name: Repair only the exact approved stale billing target
-        if: steps.approval.outputs.repair_required == 'true'
-        env:
-          EXPECTED_REPAIR_FINGERPRINT: ${{ steps.approval.outputs.repair_fingerprint }}
-        run: node scripts/production-billing-auto-remediate.mjs
-
-      - name: Remove only the exact approved legacy webhook scope
-        if: steps.approval.outputs.cleanup_required == 'true'
-        env:
-          EXPECTED_LEGACY_WEBHOOK_FINGERPRINT: ${{ steps.approval.outputs.cleanup_fingerprint }}
-        run: node scripts/production-webhook-legacy-cleanup.mjs
-
-      - name: Prove canonical webhook delivery without a live charge
-        run: node scripts/production-webhook-control.mjs
-
-      - name: Audit final Production billing consistency
-        run: node scripts/production-billing-audit.mjs
 
       - name: Record consumed approval
         shell: bash
