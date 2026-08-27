@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const REQUIRED_MAIN_FILES = [
   'docs/NOVELIGHT-MASTER.md',
-  'docs/WORK-EXECUTION-PREFLIGHT.md',
+  'docs/WORK-EXECUTION-PREFLIGHT.md'
 ];
 
 const ALLOWED_PHASES = new Set([
@@ -18,19 +18,25 @@ const ALLOWED_PHASES = new Set([
   'vercel',
   'supabase',
   'stripe',
-  'files',
+  'files'
 ]);
 
 function git(args, options = {}) {
   return execFileSync('git', args, {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
-    ...options,
+    ...options
   }).trim();
 }
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function optionValue(argv, name) {
+  const prefix = `--${name}=`;
+  const option = argv.find((arg) => arg.startsWith(prefix));
+  return option ? option.slice(prefix.length).trim() : '';
 }
 
 export function parsePhase(argv) {
@@ -42,6 +48,62 @@ export function parsePhase(argv) {
   return phase;
 }
 
+export function parseExecutionCardEvidence(argv, env = process.env) {
+  const visible =
+    argv.includes('--card-visible') ||
+    env.NOVELIGHT_EXECUTION_CARD_VISIBLE === '1';
+  const mode =
+    optionValue(argv, 'card-mode') ||
+    env.NOVELIGHT_EXECUTION_CARD_MODE ||
+    'timed';
+  const total =
+    optionValue(argv, 'card-total') ||
+    env.NOVELIGHT_EXECUTION_CARD_TOTAL ||
+    '';
+  const steps =
+    optionValue(argv, 'card-steps') ||
+    env.NOVELIGHT_EXECUTION_CARD_STEPS ||
+    '';
+  const manual =
+    optionValue(argv, 'card-manual') ||
+    env.NOVELIGHT_EXECUTION_CARD_MANUAL ||
+    '';
+  const wait =
+    optionValue(argv, 'card-wait') ||
+    env.NOVELIGHT_EXECUTION_CARD_WAIT ||
+    '';
+  const reason =
+    optionValue(argv, 'card-reason') ||
+    env.NOVELIGHT_EXECUTION_CARD_REASON ||
+    '';
+
+  if (!visible) {
+    throw new Error(
+      'Execution turn card is not acknowledged as user-visible in this assistant turn.'
+    );
+  }
+  if (!['timed', 'degraded'].includes(mode)) {
+    throw new Error(`Unsupported execution card mode: ${mode}`);
+  }
+  if (!steps) {
+    throw new Error('Execution turn card must include major steps.');
+  }
+  if (!manual) {
+    throw new Error('Execution turn card must include manual-operation count/state.');
+  }
+  if (!wait) {
+    throw new Error('Execution turn card must include wait requirement.');
+  }
+  if (mode === 'timed' && !total) {
+    throw new Error('Timed execution turn card must include total estimated time.');
+  }
+  if (mode === 'degraded' && !reason) {
+    throw new Error('Degraded execution turn card must include the omission reason.');
+  }
+
+  return { visible, mode, total, steps, manual, wait, reason };
+}
+
 export function classifyHardStop({ production, secret, destructive, payment }) {
   return Boolean(production || secret || destructive || payment);
 }
@@ -51,7 +113,7 @@ export function shouldRequireUserDecision({
   secret = false,
   destructive = false,
   payment = false,
-  genuineChoice = false,
+  genuineChoice = false
 } = {}) {
   return (
     classifyHardStop({ production, secret, destructive, payment }) || genuineChoice
@@ -69,7 +131,7 @@ function ensureLatestMainAvailable() {
     'fetch',
     '--quiet',
     'origin',
-    '+refs/heads/main:refs/remotes/origin/main',
+    '+refs/heads/main:refs/remotes/origin/main'
   ]);
 
   const mainSha = git(['rev-parse', 'origin/main']);
@@ -84,36 +146,39 @@ function ensureLatestMainAvailable() {
         throw new Error(`Authoritative main file is empty or unavailable: ${path}`);
       }
       return [path, { sha256: sha256(content), bytes: Buffer.byteLength(content) }];
-    }),
+    })
   );
 
   return { mainSha, files };
 }
 
-function writeGateState({ phase, mainSha, files }) {
+function writeGateState({ phase, mainSha, files, executionCard }) {
   const gitDir = git(['rev-parse', '--git-dir']);
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = {
-    version: 1,
+    version: 2,
     passedAt: new Date().toISOString(),
     phase,
     mainSha,
-    authoritativeFiles: files,
+    executionCard,
+    authoritativeFiles: files
   };
   writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
   return statePath;
 }
 
-export function runRuntimeGate(argv = process.argv.slice(2)) {
+export function runRuntimeGate(argv = process.argv.slice(2), env = process.env) {
   const phase = parsePhase(argv);
+  const executionCard = parseExecutionCardEvidence(argv, env);
   const { mainSha, files } = ensureLatestMainAvailable();
-  const statePath = writeGateState({ phase, mainSha, files });
+  const statePath = writeGateState({ phase, mainSha, files, executionCard });
 
   console.log(`NOVELIGHT Runtime Execution Gate: PASS (${phase})`);
   console.log(`authoritative main: ${mainSha}`);
+  console.log(`execution card mode: ${executionCard.mode}`);
   console.log(`state: ${statePath}`);
   console.log(
-    'Next: read the fetched main MASTER/Preflight, apply current locks, choose the safest automated route, and do not ask for a continuation-only yes.',
+    'Next: read the fetched main MASTER/Preflight, apply current locks, choose the safest automated route, and do not ask for a continuation-only yes.'
   );
 }
 

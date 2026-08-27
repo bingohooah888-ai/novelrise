@@ -12,25 +12,47 @@ MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈�
 
 NOVELIGHTの実作業では、MASTER / Preflightを「一度読んだので以後は記憶で運用する」方式に戻さない。コード変更、GitHub、CI/E2E、deploy、Vercel、Supabase、Stripe、外部サービス設定、ファイル更新等の主要工程へ入る直前に `docs/WORK-EXECUTION-PREFLIGHT.md` と `docs/AUTOMATION-CONTINUATION-GATE.md` のRuntime Execution Gateを適用する。
 
-ローカルリポジトリを操作できる実装エージェントは、主要工程の入口で必ず次を実行する。
+### Execution Turn Card Gate
+
+NOVELIGHTでツールを1回でも使用するアシスタントターンは、**そのターンの最初のユーザー可視メッセージを可視実行カードにする。カード送信前のツール呼び出しは禁止する。** GitHub/Connectorの読み取り、最新main取得、状態確認、ツールdiscoveryも例外にしない。
+
+可視実行カードは現在のアシスタントターンだけで有効とする。**ユーザーから新しいメッセージを受けた時点で前ターンのカードは失効し、再利用禁止**とする。「はい」「続けて」「次へ」、スクリーンショット、ログ、手動操作完了報告、設定保存・再デプロイ完了報告もすべて新しい実行ターンとしてカードを再発火する。
+
+時間見積もりを提示できる環境のカードには、少なくとも `トータル予想時間`、主要工程別時間、手動操作の有無/概算回数、待機要否を含める。実行環境の上位制約により時間を提示できない場合だけDegraded-Continueを使い、目的、主要工程、手動操作、待機要否、時間省略理由を現在のターンで可視化する。
+
+順序は固定する。
+
+1. 現在の実行ターンの可視実行カードを送信する
+2. 読み取り専用Bootstrapで最新main、MASTER、Preflightを取得する
+3. 禁止・ロック、Production、Secret、Environment / Branch境界を確認する
+4. 自動化経路を比較する
+5. 実作業を開始する
+
+前ターンのカードを流用した状態、または現在のターンでカードを送信していない状態では、Connector/API/CLI/Workflow/ファイル更新等へ進まない。
+
+ローカルリポジトリを操作できる実装エージェントは、主要工程の入口でRuntime Gateを実行する。Runtime Gateはカード証跡がなければFAILする。
+
+通常の時間見積もりカードでは、例えば次を使う。
 
 ```text
-npm run runtime:gate -- --phase=<phase>
+npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --card-steps=<steps> --card-manual=<manual> --card-wait=<wait>
 ```
 
-このコマンドは `origin/main` を再取得し、最新mainのMASTER / Preflightを直接取得可能であることを確認する。`npm run preflight:agent` も実装用Runtime Gateを先頭で実行する。Connector等でローカルコマンドを使えない場合は、GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得する同等確認を行う。
+Degraded-Continueでは `--card-mode=degraded --card-reason=<reason>` を追加し、`--card-total` を省略できる。同等の `NOVELIGHT_EXECUTION_CARD_*` 環境変数も使用できる。
+
+このコマンドはカード証跡を確認した後に `origin/main` を再取得し、最新mainのMASTER / Preflightを直接取得可能であることを確認する。`npm run preflight:agent` も実装用Runtime Gateを先頭で実行する。Connector等でローカルコマンドを使えない場合は、**現在のアシスタントターンでカードを先に送信したうえで** GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得する同等確認を行う。
 
 主要工程では次の順序を固定する。
 
-1. 正式基準：最新mainのMASTER / Preflightと現在の明示指示を確認する
-2. 禁止・ロック：Production、Secret、破壊的操作、担当ツール境界等を確認する
-3. 可視実行カード：目的、主要工程、手動操作、待機要否をユーザーへ可視化する。実行環境が時間見積もりを許可する場合は時間も含める
+1. 可視実行カード：現在の実行ターンの最初のユーザー可視メッセージとして送信する
+2. 正式基準：最新mainのMASTER / Preflightと現在の明示指示を確認する
+3. 禁止・ロック：Production、Secret、破壊的操作、担当ツール境界等を確認する
 4. 自動化経路：Connector / API / CLI / Workflow / ScriptをUI手動操作より先に比較する
 5. 実行：1〜4を満たした場合だけ進む
 
 最新main、禁止・ロック、安全境界を確認できない場合はFail-Closedする。一方、実行環境の上位制約によって時間見積もり等の一部表示だけが禁止・非対応の場合、それだけを理由に安全・可逆・既承認スコープの作業まで停止しない。可能な実行カードを提示してDegraded-Continueする。これをProduction、Secret、課金、破壊的操作等の承認回避には使わない。
 
-ユーザーの「はい」「続けて」「次へ」が判断を伴わない単なる続行ボタンになる場合は要求しない。安全・可逆・既承認スコープ内で、追加の本人判断・Secret・2FA・OAuth・Production承認を必要としない工程は自動継続する。
+ユーザーの「はい」「続けて」「次へ」が判断を伴わない単なる続行ボタンになる場合は要求しない。安全・可逆・既承認スコープ内で、追加の本人判断・Secret・2FA・OAuth・Production承認を必要としない工程は自動継続する。ただしユーザーへ一度ターンを返した後は、次の実行ターンで新しい可視実行カードを送ってから再開する。
 
 ## 「MASTER更新」運用
 
@@ -110,8 +132,8 @@ MASTERの自動化効率基準に従い、「自動化されている」こと�
 - `npm run format`: API、テスト、設定ファイル、JSON/YAMLをPrettierで整形する。これは明示的な修正操作として使う。
 - `npm run format:check`: ファイルを書き換えず、Prettier整形が必要なファイルがないか検査する。
 - `npm run syntax:check`: `api/` と `scripts/` のJavaScript/ESM対象を自動検出して構文検査する。
-- `npm run runtime:gate -- --phase=<phase>`: 主要工程の入口で `origin/main`、MASTER、Preflightの正式基準を機械確認する。
-- `npm run preflight:agent`: 実装エージェント向け。Runtime Gateを通してからformat fixer、lint、tests、syntax、merge-readiness、whitespace checksを実行する。
+- `npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --card-steps=<steps> --card-manual=<manual> --card-wait=<wait>`: 現在の実行ターンのカード証跡を確認したうえで、`origin/main`、MASTER、Preflightの正式基準を機械確認する。
+- `npm run preflight:agent`: 実装エージェント向け。可視実行カード証跡を環境変数等で与えた状態でRuntime Gateを通してからformat fixer、lint、tests、syntax、merge-readiness、whitespace checksを実行する。
 - `npm run preflight` / `npm run preflight:fast`: 通常のread-only preflight。format check、ESLint、Node tests、syntax check、`git diff --check` を実行する。
 - `npm run preflight:fix`: 意図的にPrettier整形を適用してからfast checksを実行する。
 - `npm run preflight:db`: core RLS integration/rollback runnerを実行する。ローカルPostgreSQL test DBが必要。

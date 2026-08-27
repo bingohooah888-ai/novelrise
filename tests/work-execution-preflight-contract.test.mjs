@@ -30,6 +30,6 @@ test('preflight automation gates', () => {
   assert.match(preflight, /同じ.*2回連続/s);
   assert.match(preflight, /2FA/);
   assert.match(preflight, /工程切替・再見積もりゲート/);
-  assert.match(preflight, /全体の予想所要時間/);
+  assert.match(preflight, /(?:全体の予想所要時間|トータル予想時間)/);
   assert.match(preflight, /主要工程ごとの予想所要時間/);
 });
