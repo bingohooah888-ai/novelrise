@@ -21,7 +21,10 @@ test('high-risk approval is head-bound and narrowly classified', () => {
       '.github/workflows/production-billing-guard.yml',
       'tests/safe.test.mjs',
     ]),
-    ['.github/workflows/production-billing-guard.yml', 'api/create-checkout-session.js'],
+    [
+      '.github/workflows/production-billing-guard.yml',
+      'api/create-checkout-session.js',
+    ],
   );
   assert.equal(
     highRiskApprovalCommentMatches(
@@ -64,8 +67,14 @@ test('Production approval is one-request-per-issue and challenge-bound', async (
   const approval = await read('.github/workflows/production-chat-approval.yml');
   assert.equal(approval.includes("LEDGER_ISSUE: '165'"), false);
   assert.equal(approval.includes('ledger-page-'), false);
-  assert.match(approval, /github\.event\.issue\.user\.login == 'github-actions\[bot\]'/);
-  assert.match(approval, /approval challenge does not match this one-time request/);
+  assert.match(
+    approval,
+    /github\.event\.issue\.user\.login == 'github-actions\[bot\]'/,
+  );
+  assert.match(
+    approval,
+    /approval challenge does not match this one-time request/,
+  );
   assert.match(approval, /issues\/\$ISSUE_NUMBER\/comments\?per_page=100/);
   assert.match(approval, /Record consumed approval and close dedicated issue/);
 });

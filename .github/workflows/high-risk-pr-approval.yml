@@ -98,7 +98,7 @@ jobs:
           run_id=''
           conclusion=''
           status=''
-          for attempt in $(seq 1 24); do
+          for _ in $(seq 1 24); do
             curl --silent --show-error --fail \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H 'Accept: application/vnd.github+json' \
@@ -115,10 +115,10 @@ jobs:
             sleep 5
           done
 
-          test -n "$run_id" && [ "$status" = 'completed' ] || {
+          if [ -z "$run_id" ] || [ "$status" != 'completed' ]; then
             echo 'Could not find a completed NOVELIGHT CI run for the approved head within two minutes.'
             exit 1
-          }
+          fi
 
           if [ "$conclusion" = 'success' ]; then
             echo "NOVELIGHT CI run $run_id already succeeded; no re-run needed."

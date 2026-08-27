@@ -49,15 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          body="@bingohooah888-ai Production Billing Guard failed closed.
-
-- Run: $RUN_URL
-- Run ID: $RUN_ID
-- main/head SHA: $HEAD_SHA
-- Conclusion: $CONCLUSION
-- Detected: $timestamp
-
-No Production mutation is authorized by this incident. Diagnose from the failed guard evidence before changing code or Production state."
+          body="$(printf '@bingohooah888-ai Production Billing Guard failed closed.\n\n- Run: %s\n- Run ID: %s\n- main/head SHA: %s\n- Conclusion: %s\n- Detected: %s\n\nNo Production mutation is authorized by this incident. Diagnose from the failed guard evidence before changing code or Production state.' "$RUN_URL" "$RUN_ID" "$HEAD_SHA" "$CONCLUSION" "$timestamp")"
           if [ -n "$ISSUE_NUMBER" ]; then
             curl --silent --show-error --fail \
               -X POST \

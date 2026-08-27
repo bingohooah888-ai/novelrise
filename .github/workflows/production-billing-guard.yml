@@ -263,10 +263,7 @@ jobs:
               '{requestId:$requestId,operation:$operation,mainSha:$mainSha,issuedAt:$issuedAt,expiresAt:$expiresAt,sourceRunId:$sourceRunId,challenge:$challenge,repairRequired:$repairRequired,repairFingerprint:(if $repairRequired then $repairFingerprint else null end),cleanupRequired:$cleanupRequired,cleanupFingerprint:(if $cleanupRequired then $cleanupFingerprint else null end),issueCodes:$issueCodes}'
           )"
           title="[Production Approval] $request_id"
-          body="NOVELIGHT_PRODUCTION_REQUEST $payload
-
-This issue is a one-request approval ledger and expires automatically.
-Approval challenge: $challenge"
+          body="$(printf 'NOVELIGHT_PRODUCTION_REQUEST %s\n\nThis issue is a one-request approval ledger and expires automatically.\nApproval challenge: %s' "$payload" "$challenge")"
 
           response="$(
             curl --silent --show-error --fail \
