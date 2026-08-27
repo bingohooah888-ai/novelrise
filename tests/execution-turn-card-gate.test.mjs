@@ -244,7 +244,10 @@ test('freshness contract prevents stale release snapshots from winning', () => {
     evidenceFreshnessContract,
     /older `OPEN`.*must not override a later successful workflow/s
   );
-  assert.match(evidenceFreshnessContract, /Duplicate Production mutation block/);
+  assert.match(
+    evidenceFreshnessContract,
+    /Duplicate Production mutation block/
+  );
   assert.match(
     evidenceFreshnessContract,
     /A historical evidence document alone is never sufficient/
