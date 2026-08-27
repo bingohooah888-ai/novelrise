@@ -62,7 +62,10 @@ test('every execution card carries practical scheduling guidance', () => {
   assert.match(contract, /`作業量`/);
   assert.match(contract, /`別作業`/);
   assert.match(contract, /`次のユーザー操作`/);
-  assert.match(contract, /具体的な所要時間：実行環境の制約により表示できません。/);
+  assert.match(
+    contract,
+    /具体的な所要時間：実行環境の制約により表示できません。/
+  );
 
   const requiredOptions = [
     ['--card-workload=', /must include qualitative workload/],
