@@ -28,9 +28,7 @@ test('approval fingerprints are scoped hashes', () => {
 });
 
 test('billing guard creates a scoped approval request', async () => {
-  const workflow = await text(
-    '.github/workflows/production-billing-guard.yml'
-  );
+  const workflow = await text('.github/workflows/production-billing-guard.yml');
 
   assert.match(workflow, /issues: write/);
   assert.match(workflow, /NOVELIGHT_PRODUCTION_REQUEST/);
@@ -43,9 +41,7 @@ test('billing guard creates a scoped approval request', async () => {
 });
 
 test('chat approval is one-time and scope-bound', async () => {
-  const workflow = await text(
-    '.github/workflows/production-chat-approval.yml'
-  );
+  const workflow = await text('.github/workflows/production-chat-approval.yml');
 
   assert.match(workflow, /issue_comment:/);
   assert.match(workflow, /github\.event\.issue\.number == 165/);
