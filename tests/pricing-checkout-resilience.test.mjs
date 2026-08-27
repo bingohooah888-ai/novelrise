@@ -66,7 +66,10 @@ test('pricing buttons still open checkout when Supabase CDN is unavailable', asy
 
   assert.equal(requests.length, 1);
   assert.equal(requests[0].url, '/api/create-checkout-session');
-  assert.equal(requests[0].options.headers.Authorization, 'Bearer stored-access-token');
+  assert.equal(
+    requests[0].options.headers.Authorization,
+    'Bearer stored-access-token'
+  );
   assert.equal(
     location.href,
     'https://checkout.stripe.com/c/pay/cs_live_novelight'
