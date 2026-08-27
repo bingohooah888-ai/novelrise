@@ -6,7 +6,10 @@ import { summarizeAudit } from '../api/production-billing-guard.js';
 function result(issueCodes = [], warningCodes = []) {
   return {
     ok: issueCodes.length === 0,
-    issues: issueCodes.map((code, index) => ({ code, profileId: `p-${index}` })),
+    issues: issueCodes.map((code, index) => ({
+      code,
+      profileId: `p-${index}`
+    })),
     warnings: warningCodes.map((code) => ({ code }))
   };
 }
