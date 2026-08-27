@@ -5,10 +5,13 @@ import {
   inspectWebhookEndpoint,
   removeVerifiedLegacyWebhookEndpoints
 } from './stripe-production-webhook-endpoint.mjs';
+import { legacyWebhookFingerprint } from './production-approval-fingerprint.mjs';
 
 const CANONICAL_APP_URL = 'https://novelrise.vercel.app';
 const stripeKey = process.env.STRIPE_LIVE_SECRET_KEY;
 const appUrl = (process.env.NOVELIGHT_APP_URL || '').replace(/\/+$/, '');
+const expectedCleanupFingerprint =
+  process.env.EXPECTED_LEGACY_WEBHOOK_FINGERPRINT || null;
 
 if (!stripeKey?.startsWith('sk_live_')) {
   throw new Error('STRIPE_LIVE_SECRET_KEY must be a live Stripe secret key');
@@ -31,6 +34,15 @@ if (!current?.id) {
 }
 
 const legacy = await findLegacyWebhookEndpoints({ stripe, webhookUrl });
+if (expectedCleanupFingerprint) {
+  const actualFingerprint = legacyWebhookFingerprint(
+    legacy.map((endpoint) => endpoint.id)
+  );
+  if (actualFingerprint !== expectedCleanupFingerprint) {
+    throw new Error('Safety stop: Production webhook cleanup scope changed after approval');
+  }
+}
+
 if (legacy.length === 0) {
   console.log('No active legacy NOVELIGHT webhook endpoints require cleanup.');
   process.exit(0);
