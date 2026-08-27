@@ -73,6 +73,18 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
     optionValue(argv, 'card-wait') ||
     env.NOVELIGHT_EXECUTION_CARD_WAIT ||
     '';
+  const workload =
+    optionValue(argv, 'card-workload') ||
+    env.NOVELIGHT_EXECUTION_CARD_WORKLOAD ||
+    '';
+  const otherWork =
+    optionValue(argv, 'card-other-work') ||
+    env.NOVELIGHT_EXECUTION_CARD_OTHER_WORK ||
+    '';
+  const nextUserAction =
+    optionValue(argv, 'card-next-user-action') ||
+    env.NOVELIGHT_EXECUTION_CARD_NEXT_USER_ACTION ||
+    '';
   const reason =
     optionValue(argv, 'card-reason') ||
     env.NOVELIGHT_EXECUTION_CARD_REASON ||
@@ -95,6 +107,15 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
   if (!wait) {
     throw new Error('Execution turn card must include wait requirement.');
   }
+  if (!workload) {
+    throw new Error('Execution turn card must include qualitative workload.');
+  }
+  if (!otherWork) {
+    throw new Error('Execution turn card must state whether other work is safe.');
+  }
+  if (!nextUserAction) {
+    throw new Error('Execution turn card must include the next user-action condition.');
+  }
   if (mode === 'timed' && !total) {
     throw new Error('Timed execution turn card must include total estimated time.');
   }
@@ -102,7 +123,18 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
     throw new Error('Degraded execution turn card must include the omission reason.');
   }
 
-  return { visible, mode, total, steps, manual, wait, reason };
+  return {
+    visible,
+    mode,
+    total,
+    steps,
+    manual,
+    wait,
+    workload,
+    otherWork,
+    nextUserAction,
+    reason
+  };
 }
 
 export function classifyHardStop({ production, secret, destructive, payment }) {
@@ -157,7 +189,7 @@ function writeGateState({ phase, mainSha, files, executionCard }) {
   const gitDir = git(['rev-parse', '--git-dir']);
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = {
-    version: 3,
+    version: 4,
     passedAt: new Date().toISOString(),
     phase,
     mainSha,
