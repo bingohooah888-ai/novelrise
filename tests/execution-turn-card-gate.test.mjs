@@ -10,8 +10,14 @@ const continuation = await readFile(
   'docs/AUTOMATION-CONTINUATION-GATE.md',
   'utf8'
 );
-const contract = await readFile('docs/EXECUTION-TURN-CARD-GATE.md', 'utf8');
-const runtimeGate = await readFile('scripts/runtime-execution-gate.mjs', 'utf8');
+const contract = await readFile(
+  'docs/EXECUTION-TURN-CARD-GATE.md',
+  'utf8'
+);
+const runtimeGate = await readFile(
+  'scripts/runtime-execution-gate.mjs',
+  'utf8'
+);
 
 function validTimedArgs() {
   return [
