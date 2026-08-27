@@ -31,7 +31,10 @@ test('all execution governance layers retain the first-visible-message rule', ()
 
   assert.match(contract, /Zero-tool rule/);
   assert.match(contract, /first visible message/i);
-  assert.match(contract, /Adding the degraded explanation later in the turn is also invalid/);
+  assert.match(
+    contract,
+    /Adding the degraded explanation later in the turn is also invalid/
+  );
   assert.match(contract, /late card as invalid for that turn/);
 });
 
