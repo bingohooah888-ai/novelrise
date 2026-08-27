@@ -11,6 +11,7 @@ const EXPECTED_REF = 'refs/heads/main';
 const EXPECTED_WORKFLOW_REF =
   'bingohooah888-ai/novelrise/.github/workflows/production-billing-guard.yml@refs/heads/main';
 const OIDC_AUDIENCE = 'novelight-production-billing-guard';
+const GUARD_VERSION = 'stale-paid-remediation-v1';
 const LEGACY_WEBHOOK_ISSUE = 'legacy_novelight_webhook_endpoint';
 const STALE_PAID_CUSTOMER_ISSUE = 'paid_profile_customer_missing_in_stripe';
 
@@ -57,6 +58,7 @@ export function summarizeAudit(result) {
   });
 
   return {
+    guardVersion: GUARD_VERSION,
     healthy: result.ok,
     repairRequired: exactlyOneRepairCandidate,
     repairCandidateCount: repairCandidates.length,
