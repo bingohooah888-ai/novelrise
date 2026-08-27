@@ -6,12 +6,33 @@ import { URL } from 'node:url';
 
 const root = new URL('../', import.meta.url);
 
+async function pricingHtml() {
+  return readFile(new URL('pricing.html', root), 'utf8');
+}
+
 async function pricingScript() {
-  const html = await readFile(new URL('pricing.html', root), 'utf8');
+  const html = await pricingHtml();
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)];
   assert.ok(scripts.length > 0, 'pricing inline script is missing');
   return scripts.at(-1)[1];
 }
+
+test('pricing wires checkout without blocking on optional analytics dependencies', async () => {
+  const html = await pricingHtml();
+  const inlineIndex = html.indexOf("const AUTH_STORAGE_KEY='sb-");
+  const sharedClientIndex = html.indexOf(
+    '<script async src="novelight-client.js"'
+  );
+  const supabaseIndex = html.indexOf(
+    '<script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"'
+  );
+
+  assert.notEqual(inlineIndex, -1);
+  assert.notEqual(sharedClientIndex, -1);
+  assert.notEqual(supabaseIndex, -1);
+  assert.ok(sharedClientIndex < inlineIndex);
+  assert.ok(inlineIndex < supabaseIndex);
+});
 
 test('pricing buttons still open checkout when Supabase CDN is unavailable', async () => {
   const script = await pricingScript();
