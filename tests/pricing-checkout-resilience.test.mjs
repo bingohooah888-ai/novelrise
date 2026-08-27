@@ -34,12 +34,12 @@ test('pricing wires checkout without blocking on optional analytics dependencies
   assert.ok(inlineIndex < supabaseIndex);
 });
 
-test('pricing buttons still open checkout when Supabase CDN is unavailable', async () => {
+test('pricing uses the stored access token without waiting on a stuck Supabase auth lock', async () => {
   const script = await pricingScript();
   const elements = {
     status: { textContent: '' },
-    standard: { disabled: false, onclick: null },
-    premium: { disabled: false, onclick: null }
+    standard: { disabled: false, onclick: null, textContent: '' },
+    premium: { disabled: false, onclick: null, textContent: '' }
   };
   const storage = new Map([
     [
@@ -49,6 +49,7 @@ test('pricing buttons still open checkout when Supabase CDN is unavailable', asy
   ]);
   const requests = [];
   const location = { href: 'pricing.html' };
+  let getSessionCalls = 0;
 
   const context = vm.createContext({
     console: { error() {} },
@@ -66,6 +67,19 @@ test('pricing buttons still open checkout when Supabase CDN is unavailable', asy
       }
     },
     location,
+    supabase: {
+      createClient() {
+        return {
+          auth: {
+            getSession() {
+              getSessionCalls += 1;
+              return new Promise(() => {});
+            },
+            async signOut() {}
+          }
+        };
+      }
+    },
     fetch: async (url, options) => {
       requests.push({ url, options });
       return {
@@ -85,6 +99,7 @@ test('pricing buttons still open checkout when Supabase CDN is unavailable', asy
 
   await elements.standard.onclick();
 
+  assert.equal(getSessionCalls, 0);
   assert.equal(requests.length, 1);
   assert.equal(requests[0].url, '/api/create-checkout-session');
   assert.equal(
@@ -101,8 +116,8 @@ test('pricing redirects anonymous users even when Supabase CDN is unavailable', 
   const script = await pricingScript();
   const elements = {
     status: { textContent: '' },
-    standard: { disabled: false, onclick: null },
-    premium: { disabled: false, onclick: null }
+    standard: { disabled: false, onclick: null, textContent: '' },
+    premium: { disabled: false, onclick: null, textContent: '' }
   };
   const location = { href: 'pricing.html' };
 
