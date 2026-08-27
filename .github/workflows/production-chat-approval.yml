@@ -147,11 +147,8 @@ jobs:
             exit 1
           fi
 
-          repair_required="$(echo "$request_json" | jq -r '.repairRequired')"
-          cleanup_required="$(echo "$request_json" | jq -r '.cleanupRequired')"
-          repair_fingerprint="$(echo "$request_json" | jq -r '.repairFingerprint // empty')"
-          cleanup_fingerprint="$(echo "$request_json" | jq -r '.cleanupFingerprint // empty')"
-          if [ "$repair_required" != 'true' ] && [ "$cleanup_required" != 'true' ]; then
+          has_mutation="$(echo "$request_json" | jq -r '(.repairRequired or .cleanupRequired)')"
+          if [ "$has_mutation" != 'true' ]; then
             echo 'Safety stop: request contains no Production mutation.'
             exit 1
           fi
