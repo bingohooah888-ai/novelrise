@@ -19,27 +19,96 @@ on:
       - 'tests/e2e/playwright.production-auth.config.mjs'
       - '.github/workflows/production-authenticated-smoke.yml'
   workflow_dispatch:
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: novelight-production-authenticated-smoke
   cancel-in-progress: false
 
 jobs:
-  approval:
-    if: github.event_name == 'workflow_dispatch' || vars.STAGING_E2E_READY != 'true'
-    name: Approve production write smoke
+  request-approval:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    name: Create scoped chat approval request
     runs-on: ubuntu-latest
-    environment: production-approval
     steps:
-      - name: Record approval gate
-        run: echo 'Production authenticated smoke approved.'
+      - name: Create one-time approval issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          existing="$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "auth-smoke-${GITHUB_SHA}- in:title" \
+            --json number \
+            --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            echo "An approval request for main $GITHUB_SHA is already open as issue #$existing."
+            exit 0
+          fi
+
+          request_id="auth-smoke-${GITHUB_SHA}-${GITHUB_RUN_ID}"
+          challenge="$(openssl rand -hex 4 | tr '[:lower:]' '[:upper:]')"
+          expires_at="$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:%SZ')"
+          request_json="$(
+            jq -cn \
+              --arg operation 'production-authenticated-smoke' \
+              --arg requestId "$request_id" \
+              --arg mainSha "$GITHUB_SHA" \
+              --arg expiresAt "$expires_at" \
+              --arg challenge "$challenge" \
+              '{operation:$operation,requestId:$requestId,mainSha:$mainSha,expiresAt:$expiresAt,challenge:$challenge}'
+          )"
+          approval_json="$(
+            jq -cn \
+              --arg operation 'production-authenticated-smoke' \
+              --arg requestId "$request_id" \
+              --arg mainSha "$GITHUB_SHA" \
+              --arg challenge "$challenge" \
+              '{operation:$operation,requestId:$requestId,mainSha:$mainSha,challenge:$challenge}'
+          )"
+          title="[Production Auth Smoke Approval] $request_id"
+          body=$(cat <<EOF
+          NOVELIGHT_PRODUCTION_AUTH_SMOKE_REQUEST $request_json
+
+          A Production Authenticated Smoke is ready for explicit owner approval.
+
+          Scope:
+          - exact main SHA: $GITHUB_SHA
+          - request ID: $request_id
+          - expires at: $expires_at
+          - creates only ephemeral Production smoke users/data
+          - cleanup runs with always() after the smoke
+          - no Stripe charge is created by this workflow
+
+          Exact approval comment:
+
+          NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE $approval_json
+          EOF
+          )
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --body "$body"
 
   authenticated-smoke:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.user.login == 'github-actions[bot]' &&
+      startsWith(github.event.issue.title, '[Production Auth Smoke Approval] auth-smoke-') &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE ')
     name: Verify authenticated beta-critical production flows
-    needs: approval
     runs-on: ubuntu-latest
     environment: Production
     env:
@@ -50,14 +119,179 @@ jobs:
       PRODUCTION_AUTH_SMOKE_FIXTURE: /tmp/novelight-production-auth-smoke.json
       AUTH_SMOKE_LABEL: 本番認証スモーク
       CHECKOUT_SESSION_PREFIX: cs_live_
+      GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Checkout repository
+      - name: Validate one-time chat approval
+        id: approval
+        shell: bash
+        env:
+          APPROVAL_BODY: ${{ github.event.comment.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+
+          approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE }"
+          echo "$approval_json" | jq -e '
+            type == "object" and
+            .operation == "production-authenticated-smoke" and
+            (.requestId | type == "string" and test("^auth-smoke-[0-9a-f]{40}-[0-9]+$")) and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            ((keys | sort) == (["challenge", "mainSha", "operation", "requestId"] | sort))
+          ' >/dev/null || {
+            echo 'Safety stop: invalid Production Authenticated Smoke approval record.'
+            exit 1
+          }
+
+          request_json="$(
+            printf '%s\n' "$ISSUE_BODY" \
+              | head -n 1 \
+              | sed 's/^NOVELIGHT_PRODUCTION_AUTH_SMOKE_REQUEST //' \
+              | jq -c '.'
+          )"
+          echo "$request_json" | jq -e '
+            type == "object" and
+            .operation == "production-authenticated-smoke" and
+            (.requestId | type == "string" and test("^auth-smoke-[0-9a-f]{40}-[0-9]+$")) and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.expiresAt | type == "string") and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            ((keys | sort) == (["challenge", "expiresAt", "mainSha", "operation", "requestId"] | sort))
+          ' >/dev/null || {
+            echo 'Safety stop: malformed Production Authenticated Smoke request issue.'
+            exit 1
+          }
+
+          request_id="$(echo "$request_json" | jq -r '.requestId')"
+          request_sha="$(echo "$request_json" | jq -r '.mainSha')"
+          request_challenge="$(echo "$request_json" | jq -r '.challenge')"
+          approved_request_id="$(echo "$approval_json" | jq -r '.requestId')"
+          approved_sha="$(echo "$approval_json" | jq -r '.mainSha')"
+          approved_challenge="$(echo "$approval_json" | jq -r '.challenge')"
+
+          test "$ISSUE_TITLE" = "[Production Auth Smoke Approval] $request_id" || {
+            echo 'Safety stop: request issue title does not match request ID.'
+            exit 1
+          }
+          test "$approved_request_id" = "$request_id" || {
+            echo 'Safety stop: approval request ID does not match this issue.'
+            exit 1
+          }
+          test "$approved_sha" = "$request_sha" || {
+            echo 'Safety stop: approval SHA does not match request SHA.'
+            exit 1
+          }
+          test "$approved_challenge" = "$request_challenge" || {
+            echo 'Safety stop: approval challenge does not match this one-time request.'
+            exit 1
+          }
+
+          expires_at="$(echo "$request_json" | jq -r '.expiresAt')"
+          expiry_epoch="$(date -u -d "$expires_at" +%s)" || {
+            echo 'Safety stop: invalid request expiry.'
+            exit 1
+          }
+          now_epoch="$(date -u +%s)"
+          if [ "$now_epoch" -ge "$expiry_epoch" ]; then
+            echo 'Safety stop: Production Authenticated Smoke approval request expired.'
+            exit 1
+          fi
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > /tmp/request-comments.json
+          comment_count="$(jq 'length' /tmp/request-comments.json)"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: dedicated approval issue exceeded the bounded comment contract.'
+            exit 1
+          }
+          used_count="$(
+            jq --arg requestId "$request_id" '[
+              .[]
+              | select(
+                  (.body | startswith("NOVELIGHT_PRODUCTION_AUTH_SMOKE_CLAIMED ")) or
+                  (.body | startswith("NOVELIGHT_PRODUCTION_AUTH_SMOKE_CONSUMED ")) or
+                  (.body | startswith("NOVELIGHT_PRODUCTION_AUTH_SMOKE_FAILED "))
+                )
+              | select(.body | contains($requestId))
+            ] | length' /tmp/request-comments.json
+          )"
+          if [ "$used_count" -ne 0 ]; then
+            echo 'Safety stop: this Production Authenticated Smoke approval request was already used.'
+            exit 1
+          fi
+
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          if [ "$current_main" != "$approved_sha" ]; then
+            echo 'Safety stop: main changed after the user approved this Production Authenticated Smoke.'
+            exit 1
+          fi
+
+          {
+            echo "request_id=$request_id"
+            echo "main_sha=$approved_sha"
+            echo "issue_number=$ISSUE_NUMBER"
+          } >> "$GITHUB_OUTPUT"
+          echo "Validated one-time Production Authenticated Smoke approval for $request_id at exact main $approved_sha."
+
+      - name: Claim approval before any Production write
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg runId "$GITHUB_RUN_ID" '{requestId:$requestId,mainSha:$mainSha,runId:$runId}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_SMOKE_CLAIMED $payload"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Re-check approved main immediately before Production write
+        shell: bash
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$MAIN_SHA" || {
+            echo 'Safety stop: main changed before Production Authenticated Smoke write.'
+            exit 1
+          }
+
+      - name: Checkout approved main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ steps.approval.outputs.main_sha }}
           persist-credentials: false
 
-      - name: Wait for beta-critical production pages to match main
+      - name: Wait for beta-critical production pages to match approved main
         shell: bash
         run: |
           set -euo pipefail
@@ -92,12 +326,12 @@ jobs:
             if [ "$matched" = true ]; then
               break
             fi
-            echo "Production critical pages have not converged to main yet (attempt ${attempt}/24)."
+            echo "Production critical pages have not converged to approved main yet (attempt ${attempt}/24)."
             sleep 10
           done
 
           if [ "$matched" != true ]; then
-            echo 'Production critical pages did not converge to the checked-out main within 4 minutes.'
+            echo 'Production critical pages did not converge to the approved main within the bounded wait.'
             exit 1
           fi
 
@@ -158,4 +392,56 @@ jobs:
       - name: Remove temporary production credentials and fixture files
         if: always()
         shell: bash
-        run: rm -f /tmp/supabase-api-keys.json "$PRODUCTION_AUTH_SMOKE_FIXTURE"
+        run: rm -f /tmp/supabase-api-keys.json "$PRODUCTION_AUTH_SMOKE_FIXTURE" /tmp/request-comments.json
+
+      - name: Record consumed approval and close dedicated issue
+        if: success() && steps.approval.outputs.request_id != ''
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg runId "$GITHUB_RUN_ID" '{requestId:$requestId,mainSha:$mainSha,runId:$runId,result:"success"}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_SMOKE_CONSUMED $payload"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null
+          curl --silent --show-error --fail \
+            -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" \
+            -d '{"state":"closed"}' >/dev/null
+
+      - name: Record failed claimed request and close dedicated issue
+        if: failure() && steps.approval.outputs.request_id != ''
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        run: |
+          set +e
+          payload="$(jq -cn --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg runId "$GITHUB_RUN_ID" '{requestId:$requestId,mainSha:$mainSha,runId:$runId,result:"failure"}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_SMOKE_FAILED $payload"
+          curl --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null
+          curl --silent --show-error \
+            -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" \
+            -d '{"state":"closed"}' >/dev/null
