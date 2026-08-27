@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 
 import { auditProductionBilling } from './production-billing-audit-lib.mjs';
+import { repairCandidateFingerprint } from './production-approval-fingerprint.mjs';
 import { repairMissingProductionCustomer } from './production-billing-repair-lib.mjs';
 
 const CANONICAL_PRODUCTION_SUPABASE_URL =
@@ -37,7 +38,8 @@ function requireProductionEnvironment(env) {
     supabaseUrl,
     supabaseSecretKey,
     stripeLiveSecretKey,
-    appUrl
+    appUrl,
+    expectedRepairFingerprint: env.EXPECTED_REPAIR_FINGERPRINT || null
   };
 }
 
@@ -74,6 +76,19 @@ if (repairCandidates.length > 1) {
   throw new Error(
     `Safety stop: expected at most 1 stale paid profile, found ${repairCandidates.length}`
   );
+}
+
+if (config.expectedRepairFingerprint) {
+  if (repairCandidates.length !== 1) {
+    throw new Error(
+      `Safety stop: approved repair expected exactly 1 stale paid profile, found ${repairCandidates.length}`
+    );
+  }
+
+  const actualFingerprint = repairCandidateFingerprint(repairCandidates[0]);
+  if (actualFingerprint !== config.expectedRepairFingerprint) {
+    throw new Error('Safety stop: Production repair target changed after approval');
+  }
 }
 
 if (repairCandidates.length === 0) {
