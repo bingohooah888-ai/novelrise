@@ -27,34 +27,50 @@ test('approval fingerprints are scoped hashes', () => {
   assert.equal(cleanupA, cleanupB);
 });
 
-test('billing guard creates a scoped approval request', async () => {
+test('billing guard creates requests and re-audits owner approval runs', async () => {
   const workflow = await text('.github/workflows/production-billing-guard.yml');
 
-  assert.match(workflow, /issues: write/);
   assert.match(workflow, /NOVELIGHT_PRODUCTION_REQUEST/);
-  assert.match(workflow, /issues\/\$LEDGER_ISSUE\/comments/);
   assert.match(workflow, /date -u -d '\+30 minutes'/);
   assert.match(workflow, /repair_fingerprint/);
   assert.match(workflow, /cleanup_fingerprint/);
+  assert.match(workflow, /workflow_run:/);
+  assert.match(workflow, /NOVELIGHT Chat-Mediated Production Approval/);
+  assert.match(workflow, /workflow_run\.actor\.login == 'bingohooah888-ai'/);
   assert.doesNotMatch(workflow, /environment: production-approval/);
-  assert.doesNotMatch(workflow, /production-billing-auto-remediate\.mjs/);
 });
 
-test('chat approval is one-time and scope-bound', async () => {
+test('chat approval is one-time, scope-bound, and secretless', async () => {
   const workflow = await text('.github/workflows/production-chat-approval.yml');
 
   assert.match(workflow, /issue_comment:/);
-  assert.match(workflow, /github\.event\.issue\.number == 165/);
-  assert.match(workflow, /github\.event\.comment\.user\.login/);
+  assert.match(workflow, /id-token: write/);
   assert.match(workflow, /author_association == 'OWNER'/);
   assert.match(workflow, /NOVELIGHT_PRODUCTION_APPROVE/);
   assert.match(workflow, /Production approval request expired/);
   assert.match(workflow, /main changed after the user approved this scope/);
   assert.match(workflow, /NOVELIGHT_PRODUCTION_CLAIMED/);
   assert.match(workflow, /NOVELIGHT_PRODUCTION_CONSUMED/);
-  assert.match(workflow, /EXPECTED_REPAIR_FINGERPRINT/);
-  assert.match(workflow, /EXPECTED_LEGACY_WEBHOOK_FINGERPRINT/);
-  assert.match(workflow, /production-webhook-control\.mjs/);
-  assert.match(workflow, /production-billing-audit\.mjs/);
+  assert.match(workflow, /novelight-production-chat-approval/);
+  assert.match(workflow, /production-billing-remediate/);
+  assert.match(workflow, /EXPECTED_REMEDIATION_VERSION/);
   assert.doesNotMatch(workflow, /environment: production-approval/);
+  assert.doesNotMatch(workflow, /STRIPE_LIVE_SECRET_KEY/);
+  assert.doesNotMatch(workflow, /SUPABASE_SECRET_KEY/);
+});
+
+test('Production remediation endpoint re-verifies OIDC, scope, proof, and final audit', async () => {
+  const source = await text('api/production-billing-remediate.js');
+
+  assert.match(source, /verifyGitHubActionsOidcToken/);
+  assert.match(source, /production-chat-approval\.yml@refs\/heads\/main/);
+  assert.match(source, /claims\.sha !== scope\.mainSha/);
+  assert.match(source, /claims\.actor !== 'bingohooah888-ai'/);
+  assert.match(source, /repairCandidateFingerprint/);
+  assert.match(source, /legacyWebhookFingerprint/);
+  assert.match(source, /repairMissingProductionCustomer/);
+  assert.match(source, /trial_period_days: 1/);
+  assert.match(source, /verifyNoCharge/);
+  assert.match(source, /auditProductionBilling/);
+  assert.match(source, /finalIssueCount/);
 });
