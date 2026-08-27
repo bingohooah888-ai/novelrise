@@ -29,7 +29,7 @@ export async function verifyGitHubActionsOidcToken(
     repository,
     ref,
     workflowRef,
-    fetchImpl = fetch,
+    fetchImpl = globalThis.fetch,
     now = Date.now()
   }
 ) {
