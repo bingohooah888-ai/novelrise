@@ -47,6 +47,19 @@ jobs:
           NODE
           node scripts/apply-execution-card-signal-policy.mjs
 
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'tests/execution-turn-card-gate.test.mjs';
+          let source = fs.readFileSync(path, 'utf8');
+          const before = `  assert.match(\n    contract,\n    /Adding the degraded explanation later in the turn is also invalid/\n  );`;
+          const after = `  assert.match(contract, /omit time information from the user-visible card/);`;
+          if (!source.includes(before)) {
+            throw new Error('Expected legacy late-degraded assertion was not found.');
+          }
+          source = source.replace(before, after);
+          fs.writeFileSync(path, source);
+          NODE
+
       - name: Normalize changed JavaScript
         run: npx prettier --write scripts/runtime-execution-gate.mjs tests/execution-turn-card-gate.test.mjs tests/work-execution-preflight.test.mjs
 
