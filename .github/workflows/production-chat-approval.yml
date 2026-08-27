@@ -17,20 +17,24 @@ jobs:
   remediate:
     name: Execute one scoped chat-approved Production remediation
     if: >-
-      github.event.issue.number == 165 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.user.login == 'github-actions[bot]' &&
+      startsWith(github.event.issue.title, '[Production Approval] billing-') &&
       github.event.comment.user.login == 'bingohooah888-ai' &&
       github.event.comment.author_association == 'OWNER' &&
       startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_APPROVE ')
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      LEDGER_ISSUE: '165'
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_TITLE: ${{ github.event.issue.title }}
+      ISSUE_BODY: ${{ github.event.issue.body }}
       REMEDIATION_URL: https://novelrise.vercel.app/api/production-billing-remediate
       EXPECTED_REMEDIATION_VERSION: chat-approval-oidc-v1
       OIDC_AUDIENCE: novelight-production-chat-approval
 
     steps:
-      - name: Validate one-time scoped approval against the ledger
+      - name: Validate one-time scoped approval against its dedicated issue
         id: approval
         shell: bash
         env:
@@ -44,74 +48,58 @@ jobs:
             .operation == "production-billing-remediation" and
             (.requestId | type == "string" and test("^billing-[0-9a-f]{40}-[0-9]+-[0-9]+$")) and
             (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
-            ((keys | sort) == (["mainSha", "operation", "requestId"] | sort))
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            ((keys | sort) == (["challenge", "mainSha", "operation", "requestId"] | sort))
           ' >/dev/null || {
             echo 'Safety stop: invalid chat approval record.'
             exit 1
           }
 
-          request_id="$(echo "$approval_json" | jq -r '.requestId')"
-          approved_sha="$(echo "$approval_json" | jq -r '.mainSha')"
-
-          rm -f /tmp/ledger-page-*.json /tmp/ledger-comments.json
-          page=1
-          while :; do
-            curl --silent --show-error --fail \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H 'Accept: application/vnd.github+json' \
-              -H 'X-GitHub-Api-Version: 2022-11-28' \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments?per_page=100&page=$page" \
-              > "/tmp/ledger-page-$page.json"
-            count="$(jq 'length' "/tmp/ledger-page-$page.json")"
-            if [ "$count" -lt 100 ]; then
-              break
-            fi
-            page=$((page + 1))
-            if [ "$page" -gt 20 ]; then
-              echo 'Safety stop: approval ledger exceeded bounded pagination.'
-              exit 1
-            fi
-          done
-          jq -s 'add' /tmp/ledger-page-*.json > /tmp/ledger-comments.json
-
           request_json="$(
-            jq -c --arg requestId "$request_id" '
-              [
-                .[]
-                | select(.user.login == "github-actions[bot]")
-                | .body
-                | select(startswith("NOVELIGHT_PRODUCTION_REQUEST "))
-                | sub("^NOVELIGHT_PRODUCTION_REQUEST "; "")
-                | fromjson?
-                | select(.requestId == $requestId)
-              ]
-              | if length == 1 then .[0] else empty end
-            ' /tmp/ledger-comments.json
+            printf '%s\n' "$ISSUE_BODY" \
+              | head -n 1 \
+              | sed 's/^NOVELIGHT_PRODUCTION_REQUEST //' \
+              | jq -c '.'
           )"
-          if [ -z "$request_json" ]; then
-            echo 'Safety stop: expected exactly one matching Production request.'
-            exit 1
-          fi
-
           echo "$request_json" | jq -e '
             type == "object" and
             .operation == "production-billing-remediation" and
+            (.requestId | type == "string" and test("^billing-[0-9a-f]{40}-[0-9]+-[0-9]+$")) and
             (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
             (.expiresAt | type == "string") and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
             (.repairRequired | type == "boolean") and
             (.cleanupRequired | type == "boolean") and
             ((.repairRequired == false) or (.repairFingerprint | type == "string" and test("^sha256:[0-9a-f]{64}$"))) and
             ((.cleanupRequired == false) or (.cleanupFingerprint | type == "string" and test("^sha256:[0-9a-f]{64}$")))
           ' >/dev/null || {
-            echo 'Safety stop: malformed Production request record.'
+            echo 'Safety stop: malformed Production request issue.'
             exit 1
           }
 
+          request_id="$(echo "$request_json" | jq -r '.requestId')"
           request_sha="$(echo "$request_json" | jq -r '.mainSha')"
-          if [ "$request_sha" != "$approved_sha" ]; then
+          request_challenge="$(echo "$request_json" | jq -r '.challenge')"
+          approved_request_id="$(echo "$approval_json" | jq -r '.requestId')"
+          approved_sha="$(echo "$approval_json" | jq -r '.mainSha')"
+          approved_challenge="$(echo "$approval_json" | jq -r '.challenge')"
+
+          test "$ISSUE_TITLE" = "[Production Approval] $request_id" || {
+            echo 'Safety stop: request issue title does not match request ID.'
+            exit 1
+          }
+          test "$approved_request_id" = "$request_id" || {
+            echo 'Safety stop: approval request ID does not match this issue.'
+            exit 1
+          }
+          test "$approved_sha" = "$request_sha" || {
             echo 'Safety stop: approval SHA does not match request SHA.'
             exit 1
-          fi
+          }
+          test "$approved_challenge" = "$request_challenge" || {
+            echo 'Safety stop: approval challenge does not match this one-time request.'
+            exit 1
+          }
 
           expires_at="$(echo "$request_json" | jq -r '.expiresAt')"
           expiry_epoch="$(date -u -d "$expires_at" +%s)" || {
@@ -124,6 +112,17 @@ jobs:
             exit 1
           fi
 
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > /tmp/request-comments.json
+          comment_count="$(jq 'length' /tmp/request-comments.json)"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: dedicated approval issue exceeded the bounded comment contract.'
+            exit 1
+          }
           used_count="$(
             jq --arg requestId "$request_id" '[
               .[]
@@ -132,7 +131,7 @@ jobs:
                   (.body | startswith("NOVELIGHT_PRODUCTION_CONSUMED "))
                 )
               | select(.body | contains($requestId))
-            ] | length' /tmp/ledger-comments.json
+            ] | length' /tmp/request-comments.json
           )"
           if [ "$used_count" -ne 0 ]; then
             echo 'Safety stop: this Production approval request was already used.'
@@ -156,7 +155,6 @@ jobs:
           cleanup_required="$(echo "$request_json" | jq -r '.cleanupRequired')"
           repair_fingerprint="$(echo "$request_json" | jq -r '.repairFingerprint // empty')"
           cleanup_fingerprint="$(echo "$request_json" | jq -r '.cleanupFingerprint // empty')"
-
           if [ "$repair_required" != 'true' ] && [ "$cleanup_required" != 'true' ]; then
             echo 'Safety stop: request contains no Production mutation.'
             exit 1
@@ -170,8 +168,7 @@ jobs:
             echo "cleanup_required=$cleanup_required"
             echo "cleanup_fingerprint=$cleanup_fingerprint"
           } >> "$GITHUB_OUTPUT"
-
-          echo "Validated chat approval for request $request_id at exact main $approved_sha."
+          echo "Validated one-time chat approval for request $request_id at exact main $approved_sha."
 
       - name: Claim approval before any Production mutation
         shell: bash
@@ -187,7 +184,7 @@ jobs:
             -H "Authorization: Bearer $GH_TOKEN" \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
             -d "$(jq -cn --arg body "$body" '{body:$body}')" \
             >/dev/null
 
@@ -282,7 +279,6 @@ jobs:
               --data "$scope" \
               "$REMEDIATION_URL"
           )"
-
           if [ "$status" != '200' ]; then
             echo "Production remediation API failed safely with HTTP $status."
             cat /tmp/remediation-result.json
@@ -297,10 +293,9 @@ jobs:
               cat /tmp/remediation-result.json
               exit 1
             }
-
           echo 'PASS: exact chat-approved Production remediation, no-charge external webhook proof, and final billing audit completed.'
 
-      - name: Record consumed approval
+      - name: Record consumed approval and close dedicated issue
         shell: bash
         env:
           REQUEST_ID: ${{ steps.approval.outputs.request_id }}
@@ -314,6 +309,35 @@ jobs:
             -H "Authorization: Bearer $GH_TOKEN" \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" \
-            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
-            >/dev/null
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null
+          curl --silent --show-error --fail \
+            -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" \
+            -d '{"state":"closed"}' >/dev/null
+
+      - name: Close claimed request after a failed remediation
+        if: failure() && steps.approval.outputs.request_id != ''
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+        run: |
+          set +e
+          body="NOVELIGHT_PRODUCTION_FAILED {\"requestId\":\"$REQUEST_ID\",\"runId\":\"$GITHUB_RUN_ID\"}"
+          curl --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null
+          curl --silent --show-error \
+            -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" \
+            -d '{"state":"closed"}' >/dev/null

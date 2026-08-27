@@ -1,0 +1,103 @@
+name: NOVELIGHT Production Billing Incident Relay
+
+on:
+  workflow_run:
+    workflows: ['NOVELIGHT Production Billing Guard']
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-production-billing-incident
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    name: Keep one actionable Production billing incident
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      INCIDENT_TITLE: '[Production Incident] Billing guard failed'
+      RUN_URL: ${{ github.event.workflow_run.html_url }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+
+    steps:
+      - name: Find existing open incident
+        id: incident
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            > /tmp/open-issues.json
+          issue_number="$(jq -r --arg title "$INCIDENT_TITLE" '[.[] | select(.pull_request == null and .title == $title) | .number] | first // empty' /tmp/open-issues.json)"
+          echo "issue_number=$issue_number" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update incident on guard failure
+        if: env.CONCLUSION != 'success'
+        shell: bash
+        env:
+          ISSUE_NUMBER: ${{ steps.incident.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          body="@bingohooah888-ai Production Billing Guard failed closed.
+
+- Run: $RUN_URL
+- Run ID: $RUN_ID
+- main/head SHA: $HEAD_SHA
+- Conclusion: $CONCLUSION
+- Detected: $timestamp
+
+No Production mutation is authorized by this incident. Diagnose from the failed guard evidence before changing code or Production state."
+          if [ -n "$ISSUE_NUMBER" ]; then
+            curl --silent --show-error --fail \
+              -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+              -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null
+            echo "Updated existing Production billing incident #$ISSUE_NUMBER."
+          else
+            curl --silent --show-error --fail \
+              -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues" \
+              -d "$(jq -cn --arg title "$INCIDENT_TITLE" --arg body "$body" '{title:$title,body:$body,assignees:["bingohooah888-ai"]}')" >/dev/null
+            echo 'Created one actionable Production billing incident issue.'
+          fi
+
+      - name: Resolve prior incident after a healthy guard run
+        if: env.CONCLUSION == 'success' && steps.incident.outputs.issue_number != ''
+        shell: bash
+        env:
+          ISSUE_NUMBER: ${{ steps.incident.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          body="Resolved automatically: Production Billing Guard succeeded at $HEAD_SHA. Run: $RUN_URL"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null
+          curl --silent --show-error --fail \
+            -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" \
+            -d '{"state":"closed"}' >/dev/null
+          echo "Closed resolved Production billing incident #$ISSUE_NUMBER."
