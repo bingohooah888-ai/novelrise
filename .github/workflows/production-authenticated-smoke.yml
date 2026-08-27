@@ -26,15 +26,14 @@ permissions:
   contents: read
   issues: write
 
-concurrency:
-  group: novelight-production-authenticated-smoke
-  cancel-in-progress: false
-
 jobs:
   request-approval:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     name: Create scoped chat approval request
     runs-on: ubuntu-latest
+    concurrency:
+      group: novelight-production-auth-request-${{ github.sha }}
+      cancel-in-progress: false
     steps:
       - name: Create one-time approval issue
         env:
@@ -42,6 +41,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          current_main="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              --jq '.object.sha'
+          )"
+          if [ "$GITHUB_SHA" != "$current_main" ]; then
+            echo "Skipping approval request: run SHA $GITHUB_SHA is not current main $current_main."
+            exit 0
+          fi
 
           existing="$(gh issue list \
             --repo "$GITHUB_REPOSITORY" \
@@ -110,6 +119,9 @@ jobs:
       startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE ')
     name: Verify authenticated beta-critical production flows
     runs-on: ubuntu-latest
+    concurrency:
+      group: novelight-production-authenticated-smoke-execution
+      cancel-in-progress: false
     environment: Production
     env:
       E2E_BASE_URL: https://novelrise.vercel.app
