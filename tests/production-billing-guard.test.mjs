@@ -8,20 +8,29 @@ function result(issueCodes = [], warningCodes = []) {
     ok: issueCodes.length === 0,
     issues: issueCodes.map((code, index) => ({
       code,
-      profileId: `p-${index}`
+      profileId: `p-${index}`,
+      stripeCustomerId:
+        code === 'paid_profile_customer_missing_in_stripe'
+          ? `cus_missing_${index}`
+          : undefined,
+      endpointId:
+        code === 'legacy_novelight_webhook_endpoint'
+          ? `we_legacy_${index}`
+          : undefined
     })),
     warnings: warningCodes.map((code) => ({ code }))
   };
 }
 
-test('one missing paid Stripe customer is approval-repairable', () => {
+test('one missing paid Stripe customer is approval-repairable with a hashed scope', () => {
   const summary = summarizeAudit(
     result(['paid_profile_customer_missing_in_stripe'])
   );
 
-  assert.equal(summary.guardVersion, 'stale-paid-remediation-v1');
+  assert.equal(summary.guardVersion, 'chat-approval-v1');
   assert.equal(summary.repairRequired, true);
   assert.equal(summary.repairCandidateCount, 1);
+  assert.match(summary.repairFingerprint, /^sha256:[0-9a-f]{64}$/);
   assert.equal(summary.blockingIssueCount, 0);
 });
 
@@ -35,10 +44,11 @@ test('multiple missing paid Stripe customers fail closed', () => {
 
   assert.equal(summary.repairRequired, false);
   assert.equal(summary.repairCandidateCount, 2);
+  assert.equal(summary.repairFingerprint, null);
   assert.equal(summary.blockingIssueCount, 2);
 });
 
-test('legacy webhook cleanup can share the same Production approval', () => {
+test('legacy webhook cleanup can share the same scoped Production approval', () => {
   const summary = summarizeAudit(
     result([
       'paid_profile_customer_missing_in_stripe',
@@ -48,6 +58,8 @@ test('legacy webhook cleanup can share the same Production approval', () => {
 
   assert.equal(summary.repairRequired, true);
   assert.equal(summary.cleanupRequired, true);
+  assert.equal(summary.cleanupEndpointCount, 1);
+  assert.match(summary.cleanupFingerprint, /^sha256:[0-9a-f]{64}$/);
   assert.equal(summary.blockingIssueCount, 0);
 });
 
