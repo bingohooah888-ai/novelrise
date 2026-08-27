@@ -76,16 +76,25 @@ function requireRequestBody(body) {
   if (!/^[0-9a-f]{40}$/.test(body.mainSha || '')) {
     throw new Error('Invalid mainSha');
   }
-  if (typeof body.repairRequired !== 'boolean' || typeof body.cleanupRequired !== 'boolean') {
+  if (
+    typeof body.repairRequired !== 'boolean' ||
+    typeof body.cleanupRequired !== 'boolean'
+  ) {
     throw new Error('Invalid remediation scope flags');
   }
-  if (body.repairRequired && !/^sha256:[0-9a-f]{64}$/.test(body.repairFingerprint || '')) {
+  if (
+    body.repairRequired &&
+    !/^sha256:[0-9a-f]{64}$/.test(body.repairFingerprint || '')
+  ) {
     throw new Error('Invalid repair fingerprint');
   }
   if (!body.repairRequired && body.repairFingerprint !== null) {
     throw new Error('Unexpected repair fingerprint');
   }
-  if (body.cleanupRequired && !/^sha256:[0-9a-f]{64}$/.test(body.cleanupFingerprint || '')) {
+  if (
+    body.cleanupRequired &&
+    !/^sha256:[0-9a-f]{64}$/.test(body.cleanupFingerprint || '')
+  ) {
     throw new Error('Invalid cleanup fingerprint');
   }
   if (!body.cleanupRequired && body.cleanupFingerprint !== null) {
@@ -151,24 +160,43 @@ export default async function handler(req, res) {
 
   try {
     const { appUrl } = requireProductionEnvironment(process.env);
+    if (process.env.VERCEL_GIT_COMMIT_SHA !== body.mainSha) {
+      throw new Error('Production deployment SHA does not match approved main SHA');
+    }
+
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SECRET_KEY,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
     const webhookUrl = `${appUrl}/api/stripe-webhook`;
 
-    const audit = await auditProductionBilling({ supabase, stripe, canonicalWebhookUrl: webhookUrl });
-    const unsupported = audit.issues.filter((item) => !ALLOWED_REMEDIATION_ISSUES.has(item.code));
+    const audit = await auditProductionBilling({
+      supabase,
+      stripe,
+      canonicalWebhookUrl: webhookUrl
+    });
+    const unsupported = audit.issues.filter(
+      (item) => !ALLOWED_REMEDIATION_ISSUES.has(item.code)
+    );
     if (unsupported.length) {
       throw new Error('Unsupported Production billing drift is present');
     }
 
-    const repairCandidates = audit.issues.filter((item) => item.code === STALE_PAID_CUSTOMER_ISSUE);
+    const repairCandidates = audit.issues.filter(
+      (item) => item.code === STALE_PAID_CUSTOMER_ISSUE
+    );
     if (body.repairRequired) {
       if (repairCandidates.length !== 1) {
-        throw new Error(`Expected exactly 1 approved repair candidate, found ${repairCandidates.length}`);
+        throw new Error(
+          `Expected exactly 1 approved repair candidate, found ${repairCandidates.length}`
+        );
       }
-      if (repairCandidateFingerprint(repairCandidates[0]) !== body.repairFingerprint) {
+      if (
+        repairCandidateFingerprint(repairCandidates[0]) !==
+        body.repairFingerprint
+      ) {
         throw new Error('Production repair target changed after approval');
       }
       if (!repairCandidates[0].displayName) {
@@ -194,7 +222,10 @@ export default async function handler(req, res) {
     }
     const legacy = await findLegacyWebhookEndpoints({ stripe, webhookUrl });
     if (body.cleanupRequired) {
-      if (legacyWebhookFingerprint(legacy.map((item) => item.id)) !== body.cleanupFingerprint) {
+      if (
+        legacyWebhookFingerprint(legacy.map((item) => item.id)) !==
+        body.cleanupFingerprint
+      ) {
         throw new Error('Production webhook cleanup target changed after approval');
       }
       await removeVerifiedLegacyWebhookEndpoints({
@@ -207,9 +238,16 @@ export default async function handler(req, res) {
       throw new Error('Unapproved legacy webhook cleanup is required');
     }
 
-    await proveWebhook({ appUrl, webhookSecret: process.env.STRIPE_WEBHOOK_SECRET });
+    await proveWebhook({
+      appUrl,
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET
+    });
 
-    const finalAudit = await auditProductionBilling({ supabase, stripe, canonicalWebhookUrl: webhookUrl });
+    const finalAudit = await auditProductionBilling({
+      supabase,
+      stripe,
+      canonicalWebhookUrl: webhookUrl
+    });
     if (!finalAudit.ok) {
       throw new Error('Final Production billing audit is not healthy');
     }
