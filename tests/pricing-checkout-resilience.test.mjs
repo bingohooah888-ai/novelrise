@@ -144,7 +144,7 @@ test('pricing recovers when checkout response body never finishes', async () => 
     },
     location,
     setTimeout(callback) {
-      queueMicrotask(callback);
+      Promise.resolve().then(callback);
       return 1;
     },
     fetch: async () => ({
