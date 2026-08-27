@@ -14,18 +14,21 @@ async function text(path) {
   return readFile(new URL(path, root), 'utf8');
 }
 
-test('Production approval scope fingerprints are deterministic and hide raw identifiers', () => {
-  const repair = repairCandidateFingerprint({
-    profileId: 'profile-secret-value',
-    stripeCustomerId: 'cus_secret_value'
-  });
-  const cleanupA = legacyWebhookFingerprint(['we_b', 'we_a']);
-  const cleanupB = legacyWebhookFingerprint(['we_a', 'we_b']);
+test(
+  'Production approval scope fingerprints are deterministic and hide raw identifiers',
+  () => {
+    const repair = repairCandidateFingerprint({
+      profileId: 'profile-secret-value',
+      stripeCustomerId: 'cus_secret_value'
+    });
+    const cleanupA = legacyWebhookFingerprint(['we_b', 'we_a']);
+    const cleanupB = legacyWebhookFingerprint(['we_a', 'we_b']);
 
-  assert.match(repair, /^sha256:[0-9a-f]{64}$/);
-  assert.doesNotMatch(repair, /profile-secret-value|cus_secret_value/);
-  assert.equal(cleanupA, cleanupB);
-});
+    assert.match(repair, /^sha256:[0-9a-f]{64}$/);
+    assert.doesNotMatch(repair, /profile-secret-value|cus_secret_value/);
+    assert.equal(cleanupA, cleanupB);
+  }
+);
 
 test(
   'billing guard records a short-lived scoped request instead of mutating Production',
