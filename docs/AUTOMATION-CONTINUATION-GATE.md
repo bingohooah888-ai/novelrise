@@ -33,7 +33,7 @@ NOVELIGHTでツールを1回でも使うアシスタントターンは、**そ�
 
 「同じ作業の続き」「前ターンで時間を出した」「数分しか経っていない」はカード省略理由にしない。
 
-時間見積もりを提示できる環境では、カードにトータル予想時間、主要工程別時間、手動操作の有無/概算回数、待機要否を含める。時間見積もりを提示できない実行環境だけDegraded-Continueを使い、目的、主要工程、手動操作、待機要否、時間を省略する理由を現在のターンで可視化する。
+時間見積もりを提示できる環境では、カードにトータル予想時間、主要工程別時間、手動操作の有無/概算回数、待機要否を含める。時間見積もりを提示できない実行環境ではDegraded-Continueを使うが、時間を省略する理由の固定表示は要求しない。カードは目的、主要工程、手動操作、待機要否、作業量、次のユーザー操作を中心とし、`別作業`はユーザー判断に実益がある場合だけ表示する。
 
 ## 主要工程 Runtime Execution Gate
 
@@ -47,7 +47,7 @@ MASTERやPreflightを「一度読んだ資料」として扱わない。**新し
 npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --card-steps=<steps> --card-manual=<manual> --card-wait=<wait>
 ```
 
-Degraded-Continueでは `--card-mode=degraded --card-reason=<reason>` を追加し、`--card-total` を省略できる。
+Degraded-Continueでは `--card-mode=degraded` を追加し、`--card-total` を省略できる。`--card-reason=<reason>` は任意の内部メタデータであり、ユーザー可視カードには要求しない。
 
 `phase` は `start`、`implementation`、`github`、`ci`、`deploy`、`vercel`、`supabase`、`stripe`、`files` のいずれかとする。コマンドは、カード証跡を確認した後に `origin/main` を再取得し、最新mainのMASTER / Preflightを直接読めることを確認して、通過状態を `.git/novelight-runtime-gate.json` に記録する。最新版を取得できない場合はFail-Closedする。
 
@@ -74,7 +74,7 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 
 時間見積もりを提示できる実行環境で、現在の実行ターンの可視実行カードをまだ送信していない場合は、**読み取り専用Bootstrapを含めツール呼び出し自体をFail-Closedする。**
 
-一方、実行環境の上位制約によって時間見積もり等の一部表示が禁止・非対応である場合、それだけを理由に安全・可逆・既承認スコープ内の作業まで停止しない。この場合は **Degraded-Continue** とし、可能な可視情報（目的、主要工程、手動操作、待機要否、制約理由）を提示したうえで自動継続する。ただしDegraded-Continueでも現在の実行ターンでカード自体を送信する。
+一方、実行環境の上位制約によって時間見積もり等の一部表示が禁止・非対応である場合、それだけを理由に安全・可逆・既承認スコープ内の作業まで停止しない。この場合は **Degraded-Continue** とし、可能な可視情報（目的、主要工程、手動操作、待機要否、作業量、次のユーザー操作）を提示したうえで自動継続する。時間を表示できない旨の定型文は不要とし、`別作業`も通常状態と異なる場合など判断材料になるときだけ表示する。ただしDegraded-Continueでも現在の実行ターンでカード自体を送信する。
 
 実行環境の上位制約を無視して禁止された表示を行ってはならない。また、Degraded-ContinueをProduction/Secret/破壊的操作等のHard Fail-Closed回避に使ってはならない。
 

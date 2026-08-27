@@ -31,7 +31,6 @@ function validTimedArgs() {
     '--card-manual=0',
     '--card-wait=none',
     '--card-workload=medium',
-    '--card-other-work=allowed',
     '--card-next-user-action=none'
   ];
 }
@@ -44,9 +43,7 @@ function validDegradedArgs() {
     '--card-manual=0',
     '--card-wait=none',
     '--card-workload=medium',
-    '--card-other-work=allowed',
-    '--card-next-user-action=none',
-    '--card-reason=higher-level execution constraint'
+    '--card-next-user-action=none'
   ];
 }
 
@@ -69,25 +66,21 @@ test('all execution governance layers retain the first-visible-message rule', ()
 
   assert.match(contract, /Zero-tool rule/);
   assert.match(contract, /first visible message/i);
-  assert.match(
-    contract,
-    /Adding the degraded explanation later in the turn is also invalid/
-  );
+  assert.match(contract, /omit time information from the user-visible card/);
   assert.match(contract, /late card as invalid for that turn/);
 });
 
-test('every execution card carries practical scheduling guidance', () => {
+test('execution cards keep only decision-useful required guidance', () => {
   assert.match(contract, /`作業量`/);
-  assert.match(contract, /`別作業`/);
+  assert.match(contract, /`別作業` is optional/);
   assert.match(contract, /`次のユーザー操作`/);
-  assert.match(
+  assert.doesNotMatch(
     contract,
     /具体的な所要時間：実行環境の制約により表示できません。/
   );
 
   const requiredOptions = [
     ['--card-workload=', /must include qualitative workload/],
-    ['--card-other-work=', /must state whether other work is safe/],
     ['--card-next-user-action=', /must include the next user-action condition/]
   ];
 
@@ -104,31 +97,22 @@ test('every execution card carries practical scheduling guidance', () => {
 
   const evidence = parseExecutionCardEvidence(validTimedArgs(), {});
   assert.equal(evidence.workload, 'medium');
-  assert.equal(evidence.otherWork, 'allowed');
+  assert.equal(evidence.otherWork, '');
   assert.equal(evidence.nextUserAction, 'none');
 });
 
-test('degraded mode can never omit the time-omission explanation', () => {
-  assert.match(
+test('degraded mode omits fixed time-unavailable filler', () => {
+  assert.doesNotMatch(
     contract,
     /具体的な所要時間：実行環境の制約により表示できません。/
-  );
-
-  assert.throws(
-    () =>
-      parseExecutionCardEvidence(
-        validDegradedArgs().filter((arg) => !arg.startsWith('--card-reason=')),
-        {}
-      ),
-    /must include the omission reason/
   );
 
   const evidence = parseExecutionCardEvidence(validDegradedArgs(), {});
   assert.equal(evidence.mode, 'degraded');
   assert.equal(evidence.total, '');
-  assert.equal(evidence.reason, 'higher-level execution constraint');
+  assert.equal(evidence.reason, '');
   assert.equal(evidence.workload, 'medium');
-  assert.equal(evidence.otherWork, 'allowed');
+  assert.equal(evidence.otherWork, '');
   assert.equal(evidence.nextUserAction, 'none');
 });
 
@@ -265,5 +249,5 @@ test('runtime gate treats execution and freshness contracts as authoritative', (
   assert.match(runtimeGate, /NOVELIGHT_EVIDENCE_FRESHNESS_CHECKED/);
   assert.match(runtimeGate, /NOVELIGHT_EVIDENCE_DUPLICATE_CHECK/);
   assert.match(runtimeGate, /NOVELIGHT_MUTATION_PLANNED/);
-  assert.match(runtimeGate, /version: 5/);
+  assert.match(runtimeGate, /version: 6/);
 });

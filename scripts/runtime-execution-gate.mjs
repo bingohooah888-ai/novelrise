@@ -66,21 +66,15 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
     env.NOVELIGHT_EXECUTION_CARD_MODE ||
     'timed';
   const total =
-    optionValue(argv, 'card-total') ||
-    env.NOVELIGHT_EXECUTION_CARD_TOTAL ||
-    '';
+    optionValue(argv, 'card-total') || env.NOVELIGHT_EXECUTION_CARD_TOTAL || '';
   const steps =
-    optionValue(argv, 'card-steps') ||
-    env.NOVELIGHT_EXECUTION_CARD_STEPS ||
-    '';
+    optionValue(argv, 'card-steps') || env.NOVELIGHT_EXECUTION_CARD_STEPS || '';
   const manual =
     optionValue(argv, 'card-manual') ||
     env.NOVELIGHT_EXECUTION_CARD_MANUAL ||
     '';
   const wait =
-    optionValue(argv, 'card-wait') ||
-    env.NOVELIGHT_EXECUTION_CARD_WAIT ||
-    '';
+    optionValue(argv, 'card-wait') || env.NOVELIGHT_EXECUTION_CARD_WAIT || '';
   const workload =
     optionValue(argv, 'card-workload') ||
     env.NOVELIGHT_EXECUTION_CARD_WORKLOAD ||
@@ -110,7 +104,9 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
     throw new Error('Execution turn card must include major steps.');
   }
   if (!manual) {
-    throw new Error('Execution turn card must include manual-operation count/state.');
+    throw new Error(
+      'Execution turn card must include manual-operation count/state.'
+    );
   }
   if (!wait) {
     throw new Error('Execution turn card must include wait requirement.');
@@ -118,17 +114,15 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
   if (!workload) {
     throw new Error('Execution turn card must include qualitative workload.');
   }
-  if (!otherWork) {
-    throw new Error('Execution turn card must state whether other work is safe.');
-  }
   if (!nextUserAction) {
-    throw new Error('Execution turn card must include the next user-action condition.');
+    throw new Error(
+      'Execution turn card must include the next user-action condition.'
+    );
   }
   if (mode === 'timed' && !total) {
-    throw new Error('Timed execution turn card must include total estimated time.');
-  }
-  if (mode === 'degraded' && !reason) {
-    throw new Error('Degraded execution turn card must include the omission reason.');
+    throw new Error(
+      'Timed execution turn card must include total estimated time.'
+    );
   }
 
   return {
@@ -145,11 +139,7 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
   };
 }
 
-export function parseEvidenceFreshnessEvidence(
-  phase,
-  argv,
-  env = process.env
-) {
+export function parseEvidenceFreshnessEvidence(phase, argv, env = process.env) {
   const required = EVIDENCE_REQUIRED_PHASES.has(phase);
   const checked =
     argv.includes('--evidence-freshness-checked') ||
@@ -158,9 +148,7 @@ export function parseEvidenceFreshnessEvidence(
     argv.includes('--evidence-duplicate-check') ||
     env.NOVELIGHT_EVIDENCE_DUPLICATE_CHECK === '1';
   const source =
-    optionValue(argv, 'evidence-source') ||
-    env.NOVELIGHT_EVIDENCE_SOURCE ||
-    '';
+    optionValue(argv, 'evidence-source') || env.NOVELIGHT_EVIDENCE_SOURCE || '';
   const observedAt =
     optionValue(argv, 'evidence-observed-at') ||
     env.NOVELIGHT_EVIDENCE_OBSERVED_AT ||
@@ -201,9 +189,15 @@ export function parseEvidenceFreshnessEvidence(
     );
   }
   if (!source) {
-    throw new Error('Evidence Freshness Gate requires a decisive evidence source.');
+    throw new Error(
+      'Evidence Freshness Gate requires a decisive evidence source.'
+    );
   }
-  if (!/(workflow|run|ledger|current-state|live|deployment|audit|compare)/iu.test(source)) {
+  if (
+    !/(workflow|run|ledger|current-state|live|deployment|audit|compare)/iu.test(
+      source
+    )
+  ) {
     throw new Error(
       'Evidence source must identify execution/current-state evidence, not only a historical status document.'
     );
@@ -219,7 +213,9 @@ export function parseEvidenceFreshnessEvidence(
     );
   }
   if (proofSha && !/^[0-9a-f]{40}$/u.test(proofSha)) {
-    throw new Error('Evidence proof SHA must be a 40-character lowercase hex SHA.');
+    throw new Error(
+      'Evidence proof SHA must be a 40-character lowercase hex SHA.'
+    );
   }
   if (mutationPlanned && verdict === 'current') {
     throw new Error(
@@ -251,7 +247,8 @@ export function shouldRequireUserDecision({
   genuineChoice = false
 } = {}) {
   return (
-    classifyHardStop({ production, secret, destructive, payment }) || genuineChoice
+    classifyHardStop({ production, secret, destructive, payment }) ||
+    genuineChoice
   );
 }
 
@@ -278,9 +275,14 @@ function ensureLatestMainAvailable() {
     REQUIRED_MAIN_FILES.map((path) => {
       const content = readAuthoritativeMainFile(path);
       if (!content) {
-        throw new Error(`Authoritative main file is empty or unavailable: ${path}`);
+        throw new Error(
+          `Authoritative main file is empty or unavailable: ${path}`
+        );
       }
-      return [path, { sha256: sha256(content), bytes: Buffer.byteLength(content) }];
+      return [
+        path,
+        { sha256: sha256(content), bytes: Buffer.byteLength(content) }
+      ];
     })
   );
 
@@ -297,7 +299,7 @@ function writeGateState({
   const gitDir = git(['rev-parse', '--git-dir']);
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = {
-    version: 5,
+    version: 6,
     passedAt: new Date().toISOString(),
     phase,
     mainSha,
@@ -309,7 +311,10 @@ function writeGateState({
   return statePath;
 }
 
-export function runRuntimeGate(argv = process.argv.slice(2), env = process.env) {
+export function runRuntimeGate(
+  argv = process.argv.slice(2),
+  env = process.env
+) {
   const phase = parsePhase(argv);
   const executionCard = parseExecutionCardEvidence(argv, env);
   const evidenceFreshness = parseEvidenceFreshnessEvidence(phase, argv, env);

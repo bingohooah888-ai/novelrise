@@ -153,7 +153,6 @@ test('runtime gate fails closed without current-turn card evidence', () => {
       '--card-manual=0',
       '--card-wait=none',
       '--card-workload=medium',
-      '--card-other-work=allowed',
       '--card-next-user-action=none'
     ]),
     {
@@ -164,7 +163,7 @@ test('runtime gate fails closed without current-turn card evidence', () => {
       manual: '0',
       wait: 'none',
       workload: 'medium',
-      otherWork: 'allowed',
+      otherWork: '',
       nextUserAction: 'none',
       reason: ''
     }
@@ -178,9 +177,7 @@ test('runtime gate fails closed without current-turn card evidence', () => {
       '--card-manual=0',
       '--card-wait=none',
       '--card-workload=medium',
-      '--card-other-work=allowed',
-      '--card-next-user-action=none',
-      '--card-reason=host-policy'
+      '--card-next-user-action=none'
     ]),
     {
       visible: true,
@@ -190,9 +187,9 @@ test('runtime gate fails closed without current-turn card evidence', () => {
       manual: '0',
       wait: 'none',
       workload: 'medium',
-      otherWork: 'allowed',
+      otherWork: '',
       nextUserAction: 'none',
-      reason: 'host-policy'
+      reason: ''
     }
   );
 });

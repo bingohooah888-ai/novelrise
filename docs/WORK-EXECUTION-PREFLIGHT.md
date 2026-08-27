@@ -95,7 +95,8 @@ NOVELIGHTでツールを1回でも使う実行ターンでは、**そのター�
 - 主要工程
 - 手動操作の有無
 - 待機要否
-- 時間見積もりを省略する実行環境上の理由
+- 作業量
+- 次のユーザー操作
 
 Degraded-Continueでもカード自体は現在の実行ターンで送信し、前ターンのカードを再利用しない。
 
@@ -113,9 +114,7 @@ Degraded-ContinueはProduction、Secret、課金、破壊的操作、安全境�
 
 文言は状況に応じて自然に変更してよいが、時間見積もりを提示する場合は**トータル時間を落とさない**。工程別だけを伝えてトータルを省略しない。
 
-実行環境の上位制約で時間見積もりを提示できない場合は、次の形式へ切り替える。
-
-`目的：○○。主要工程：①○○、②○○、③○○。手動操作：0回（または約○回）。待機：不要（または外部処理中は待機不要）。時間見積もり：実行環境の上位制約により省略。`
+実行環境の上位制約で時間見積もりを提示できない場合、時間に関する固定文は表示しない。`目的`、`主要工程`、`手動操作`、`待機`、`作業量`、`次のユーザー操作`を中心に、ユーザーの判断に必要な情報だけを表示する。`別作業`は通常状態と異なる場合など、判断材料になるときだけ表示する。
 
 ### 2.3 実行可能 Runtime Gate
 
@@ -127,7 +126,7 @@ Degraded-ContinueはProduction、Secret、課金、破壊的操作、安全境�
 npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --card-steps=<steps> --card-manual=<manual> --card-wait=<wait>
 ```
 
-実行環境の上位制約により時間見積もりを出せないDegraded-Continueでは、`--card-mode=degraded` と `--card-reason=<reason>` を追加し、`--card-total` を省略できる。
+実行環境の上位制約により時間見積もりを出せないDegraded-Continueでは、`--card-mode=degraded` を追加し、`--card-total` を省略できる。`--card-reason=<reason>` は内部監査用の任意メタデータであり、ユーザー可視カードへの固定表示は要求しない。
 
 同じ情報は `NOVELIGHT_EXECUTION_CARD_VISIBLE`、`NOVELIGHT_EXECUTION_CARD_MODE`、`NOVELIGHT_EXECUTION_CARD_TOTAL`、`NOVELIGHT_EXECUTION_CARD_STEPS`、`NOVELIGHT_EXECUTION_CARD_MANUAL`、`NOVELIGHT_EXECUTION_CARD_WAIT`、`NOVELIGHT_EXECUTION_CARD_REASON` の環境変数でも渡せる。
 
