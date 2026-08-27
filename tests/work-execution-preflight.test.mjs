@@ -131,6 +131,9 @@ test('runtime gate is wired into agent preflight', async () => {
     'NOVELIGHT Runtime Execution Gate: PASS',
     'do not ask for a continuation-only yes',
     'NOVELIGHT_EXECUTION_CARD_VISIBLE',
+    'NOVELIGHT_EXECUTION_CARD_WORKLOAD',
+    'NOVELIGHT_EXECUTION_CARD_OTHER_WORK',
+    'NOVELIGHT_EXECUTION_CARD_NEXT_USER_ACTION',
     'Execution turn card is not acknowledged as user-visible in this assistant turn.',
     'Timed execution turn card must include total estimated time.'
   ]);
@@ -148,7 +151,10 @@ test('runtime gate fails closed without current-turn card evidence', () => {
       '--card-total=15-25m',
       '--card-steps=3',
       '--card-manual=0',
-      '--card-wait=none'
+      '--card-wait=none',
+      '--card-workload=medium',
+      '--card-other-work=allowed',
+      '--card-next-user-action=none'
     ]),
     {
       visible: true,
@@ -157,6 +163,9 @@ test('runtime gate fails closed without current-turn card evidence', () => {
       steps: '3',
       manual: '0',
       wait: 'none',
+      workload: 'medium',
+      otherWork: 'allowed',
+      nextUserAction: 'none',
       reason: ''
     }
   );
@@ -168,6 +177,9 @@ test('runtime gate fails closed without current-turn card evidence', () => {
       '--card-steps=3',
       '--card-manual=0',
       '--card-wait=none',
+      '--card-workload=medium',
+      '--card-other-work=allowed',
+      '--card-next-user-action=none',
       '--card-reason=host-policy'
     ]),
     {
@@ -177,6 +189,9 @@ test('runtime gate fails closed without current-turn card evidence', () => {
       steps: '3',
       manual: '0',
       wait: 'none',
+      workload: 'medium',
+      otherWork: 'allowed',
+      nextUserAction: 'none',
       reason: 'host-policy'
     }
   );
