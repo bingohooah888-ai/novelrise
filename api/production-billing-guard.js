@@ -11,7 +11,8 @@ const EXPECTED_REF = 'refs/heads/main';
 const EXPECTED_WORKFLOW_REF =
   'bingohooah888-ai/novelrise/.github/workflows/production-billing-guard.yml@refs/heads/main';
 const OIDC_AUDIENCE = 'novelight-production-billing-guard';
-const AUTO_CLEANUP_ISSUE_CODES = new Set(['legacy_novelight_webhook_endpoint']);
+const LEGACY_WEBHOOK_ISSUE = 'legacy_novelight_webhook_endpoint';
+const STALE_PAID_CUSTOMER_ISSUE = 'paid_profile_customer_missing_in_stripe';
 
 function bearerToken(req) {
   const header = String(req.headers?.authorization || '');
@@ -38,16 +39,27 @@ function requireProductionEnvironment(env) {
   return { appUrl };
 }
 
-function summarizeAudit(result) {
-  const blockingIssues = result.issues.filter(
-    (item) => !AUTO_CLEANUP_ISSUE_CODES.has(item.code)
+export function summarizeAudit(result) {
+  const repairCandidates = result.issues.filter(
+    (item) => item.code === STALE_PAID_CUSTOMER_ISSUE
   );
-  const cleanupRequired = result.issues.some((item) =>
-    AUTO_CLEANUP_ISSUE_CODES.has(item.code)
+  const exactlyOneRepairCandidate = repairCandidates.length === 1;
+  const cleanupRequired = result.issues.some(
+    (item) => item.code === LEGACY_WEBHOOK_ISSUE
   );
+
+  const blockingIssues = result.issues.filter((item) => {
+    if (item.code === LEGACY_WEBHOOK_ISSUE) return false;
+    if (item.code === STALE_PAID_CUSTOMER_ISSUE) {
+      return !exactlyOneRepairCandidate;
+    }
+    return true;
+  });
 
   return {
     healthy: result.ok,
+    repairRequired: exactlyOneRepairCandidate,
+    repairCandidateCount: repairCandidates.length,
     cleanupRequired,
     blockingIssueCount: blockingIssues.length,
     warningCount: result.warnings.length,
