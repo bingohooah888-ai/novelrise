@@ -80,7 +80,10 @@ test('billing prevents parallel checkout starts and recovers after failure', () 
   assert.match(pricing, /if\(busy\)return/);
   assert.match(pricing, /function disablePaid\(v\)/);
   assert.match(pricing, /finally\{busy=false;disablePaid\(false\)\}/);
-  assert.match(pricing, /void NovelightClient\.claimAcquisition\(client\)/);
+  assert.match(
+    pricing,
+    /void NovelightClient\.claimAcquisition\(analyticsClient\)/
+  );
 });
 
 test('remaining list pages distinguish unavailable data from real empty states', () => {
