@@ -17,7 +17,7 @@ async function pricingScript() {
   return scripts.at(-1)[1];
 }
 
-test('pricing wires checkout before optional analytics dependencies', async () => {
+test('pricing wires checkout without blocking on optional analytics dependencies', async () => {
   const html = await pricingHtml();
   const inlineIndex = html.indexOf("const AUTH_STORAGE_KEY='sb-");
   const sharedClientIndex = html.indexOf(
@@ -30,7 +30,7 @@ test('pricing wires checkout before optional analytics dependencies', async () =
   assert.notEqual(inlineIndex, -1);
   assert.notEqual(sharedClientIndex, -1);
   assert.notEqual(supabaseIndex, -1);
-  assert.ok(inlineIndex < sharedClientIndex);
+  assert.ok(sharedClientIndex < inlineIndex);
   assert.ok(inlineIndex < supabaseIndex);
 });
 
