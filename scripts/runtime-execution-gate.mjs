@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const REQUIRED_MAIN_FILES = [
   'docs/NOVELIGHT-MASTER.md',
-  'docs/WORK-EXECUTION-PREFLIGHT.md'
+  'docs/WORK-EXECUTION-PREFLIGHT.md',
+  'docs/EXECUTION-TURN-CARD-GATE.md'
 ];
 
 const ALLOWED_PHASES = new Set([
@@ -156,7 +157,7 @@ function writeGateState({ phase, mainSha, files, executionCard }) {
   const gitDir = git(['rev-parse', '--git-dir']);
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = {
-    version: 2,
+    version: 3,
     passedAt: new Date().toISOString(),
     phase,
     mainSha,
@@ -178,7 +179,7 @@ export function runRuntimeGate(argv = process.argv.slice(2), env = process.env) 
   console.log(`execution card mode: ${executionCard.mode}`);
   console.log(`state: ${statePath}`);
   console.log(
-    'Next: read the fetched main MASTER/Preflight, apply current locks, choose the safest automated route, and do not ask for a continuation-only yes.'
+    'Next: read the fetched main MASTER/Preflight/execution-card contract, apply current locks, choose the safest automated route, and do not ask for a continuation-only yes.'
   );
 }
 
