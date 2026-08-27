@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   classifyHardStop,
+  parseExecutionCardEvidence,
   parsePhase,
   shouldRequireUserDecision
 } from '../scripts/runtime-execution-gate.mjs';
@@ -36,6 +37,32 @@ test('timing gate contract', async () => {
     '待機要否',
     '実行環境の上位制約',
     'Degraded-Continue'
+  ]);
+});
+
+test('execution card resets on every tool-using assistant turn', async () => {
+  const preflight = await read(PREFLIGHT_PATH);
+  const agents = await read(AGENTS_PATH);
+  const automation = await read(AUTOMATION_PATH);
+
+  for (const source of [preflight, agents, automation]) {
+    assertIncludesAll(source, [
+      '実行ターン',
+      '最初のユーザー可視メッセージ',
+      '前ターンのカード',
+      'スクリーンショット'
+    ]);
+  }
+
+  assertIncludesAll(preflight, [
+    'カード送信前のツール呼び出しは禁止',
+    '次のユーザーメッセージを受けた時点で必ず失効する',
+    '読み取り専用Bootstrap'
+  ]);
+  assertIncludesAll(automation, [
+    '同じアシスタントターンで可視実行カードを先に送信していなければConnector/APIを呼び出さない',
+    'ユーザーから新しいメッセージを受けた場合',
+    'スクリーンショットを受けてGitHub/Vercel/Connector等のツール作業を再開する場合'
   ]);
 });
 
@@ -78,10 +105,12 @@ test('repository agent instructions require the executable gate', async () => {
   const source = await read(AGENTS_PATH);
   assertIncludesAll(source, [
     '## Runtime Execution Gate',
+    '### Execution Turn Card Gate',
     'npm run runtime:gate -- --phase=<phase>',
     'GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得',
     '単なる続行ボタンになる場合は要求しない',
-    'Degraded-Continue'
+    'Degraded-Continue',
+    'ユーザーから新しいメッセージを受けた時点で前ターンのカードは失効'
   ]);
 });
 
@@ -100,8 +129,57 @@ test('runtime gate is wired into agent preflight', async () => {
     'docs/NOVELIGHT-MASTER.md',
     'docs/WORK-EXECUTION-PREFLIGHT.md',
     'NOVELIGHT Runtime Execution Gate: PASS',
-    'do not ask for a continuation-only yes'
+    'do not ask for a continuation-only yes',
+    'NOVELIGHT_EXECUTION_CARD_VISIBLE',
+    'Execution turn card is not acknowledged as user-visible in this assistant turn.',
+    'Timed execution turn card must include total estimated time.'
   ]);
+});
+
+test('runtime gate fails closed without current-turn card evidence', () => {
+  assert.throws(
+    () => parseExecutionCardEvidence([], {}),
+    /not acknowledged as user-visible/u
+  );
+
+  assert.deepEqual(
+    parseExecutionCardEvidence([
+      '--card-visible',
+      '--card-total=15-25m',
+      '--card-steps=3',
+      '--card-manual=0',
+      '--card-wait=none'
+    ]),
+    {
+      visible: true,
+      mode: 'timed',
+      total: '15-25m',
+      steps: '3',
+      manual: '0',
+      wait: 'none',
+      reason: ''
+    }
+  );
+
+  assert.deepEqual(
+    parseExecutionCardEvidence([
+      '--card-visible',
+      '--card-mode=degraded',
+      '--card-steps=3',
+      '--card-manual=0',
+      '--card-wait=none',
+      '--card-reason=host-policy'
+    ]),
+    {
+      visible: true,
+      mode: 'degraded',
+      total: '',
+      steps: '3',
+      manual: '0',
+      wait: 'none',
+      reason: 'host-policy'
+    }
+  );
 });
 
 test('runtime gate hard stops are limited to real decision boundaries', () => {
