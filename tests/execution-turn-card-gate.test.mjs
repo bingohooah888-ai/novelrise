@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { parseExecutionCardEvidence } from '../scripts/runtime-execution-gate.mjs';
+import {
+  parseEvidenceFreshnessEvidence,
+  parseExecutionCardEvidence
+} from '../scripts/runtime-execution-gate.mjs';
 
 const agents = await readFile('AGENTS.md', 'utf8');
 const preflight = await readFile('docs/WORK-EXECUTION-PREFLIGHT.md', 'utf8');
@@ -11,6 +14,10 @@ const continuation = await readFile(
   'utf8'
 );
 const contract = await readFile('docs/EXECUTION-TURN-CARD-GATE.md', 'utf8');
+const evidenceFreshnessContract = await readFile(
+  'docs/EVIDENCE-FRESHNESS-GATE.md',
+  'utf8'
+);
 const runtimeGate = await readFile(
   'scripts/runtime-execution-gate.mjs',
   'utf8'
@@ -40,6 +47,17 @@ function validDegradedArgs() {
     '--card-other-work=allowed',
     '--card-next-user-action=none',
     '--card-reason=higher-level execution constraint'
+  ];
+}
+
+function validFreshnessArgs(verdict = 'refresh-required') {
+  return [
+    '--evidence-freshness-checked',
+    '--evidence-duplicate-check',
+    '--evidence-source=workflow-run:33065836764+approval-ledger:165+compare:proof-to-main',
+    '--evidence-observed-at=2026-08-28T00:00:00+09:00',
+    `--evidence-verdict=${verdict}`,
+    '--evidence-proof-sha=944c2232a577ebeae32798c29a508b8540a26807'
   ];
 }
 
@@ -129,10 +147,123 @@ test('timed mode still requires total estimated time', () => {
   );
 });
 
-test('runtime gate treats the dedicated execution-card contract as authoritative', () => {
+test('external-state phases require explicit evidence freshness proof', () => {
+  for (const phase of ['deploy', 'vercel', 'supabase', 'stripe']) {
+    assert.throws(
+      () => parseEvidenceFreshnessEvidence(phase, [], {}),
+      /requires an Evidence Freshness Gate check/
+    );
+
+    const evidence = parseEvidenceFreshnessEvidence(
+      phase,
+      validFreshnessArgs(),
+      {}
+    );
+    assert.equal(evidence.required, true);
+    assert.equal(evidence.checked, true);
+    assert.equal(evidence.duplicateCheck, true);
+    assert.equal(evidence.verdict, 'refresh-required');
+  }
+});
+
+test('evidence freshness rejects historical-only or unknown evidence', () => {
+  assert.throws(
+    () =>
+      parseEvidenceFreshnessEvidence(
+        'stripe',
+        [
+          '--evidence-freshness-checked',
+          '--evidence-duplicate-check',
+          '--evidence-source=release-evidence:2026-08-26',
+          '--evidence-observed-at=2026-08-28T00:00:00+09:00',
+          '--evidence-verdict=refresh-required'
+        ],
+        {}
+      ),
+    /must identify execution\/current-state evidence/
+  );
+
+  assert.throws(
+    () =>
+      parseEvidenceFreshnessEvidence(
+        'stripe',
+        validFreshnessArgs().map((arg) =>
+          arg.startsWith('--evidence-verdict=')
+            ? '--evidence-verdict=unknown'
+            : arg
+        ),
+        {}
+      ),
+    /must be current or refresh-required/
+  );
+});
+
+test('current evidence blocks duplicate external-state mutation', () => {
+  assert.throws(
+    () =>
+      parseEvidenceFreshnessEvidence(
+        'stripe',
+        [...validFreshnessArgs('current'), '--mutation-planned'],
+        {}
+      ),
+    /Duplicate external-state mutation blocked/
+  );
+
+  const readOnlyEvidence = parseEvidenceFreshnessEvidence(
+    'stripe',
+    validFreshnessArgs('current'),
+    {}
+  );
+  assert.equal(readOnlyEvidence.verdict, 'current');
+  assert.equal(readOnlyEvidence.mutationPlanned, false);
+});
+
+test('refresh-required evidence can pass freshness without bypassing approvals', () => {
+  const evidence = parseEvidenceFreshnessEvidence(
+    'stripe',
+    [...validFreshnessArgs('refresh-required'), '--mutation-planned'],
+    {}
+  );
+  assert.equal(evidence.verdict, 'refresh-required');
+  assert.equal(evidence.mutationPlanned, true);
+
+  assert.match(
+    evidenceFreshnessContract,
+    /continue only within the currently approved Production scope/
+  );
+});
+
+test('non external-state phases do not require freshness fields', () => {
+  const evidence = parseEvidenceFreshnessEvidence('implementation', [], {});
+  assert.equal(evidence.required, false);
+});
+
+test('freshness contract prevents stale release snapshots from winning', () => {
+  assert.match(evidenceFreshnessContract, /Historical documents are snapshots/);
+  assert.match(
+    evidenceFreshnessContract,
+    /older `OPEN`.*must not override a later successful workflow/s
+  );
+  assert.match(
+    evidenceFreshnessContract,
+    /Duplicate Production mutation block/
+  );
+  assert.match(
+    evidenceFreshnessContract,
+    /A historical evidence document alone is never sufficient/
+  );
+  assert.match(contract, /Evidence Freshness Gate/);
+  assert.match(contract, /same-purpose successful proof/);
+});
+
+test('runtime gate treats execution and freshness contracts as authoritative', () => {
   assert.match(runtimeGate, /docs\/EXECUTION-TURN-CARD-GATE\.md/);
+  assert.match(runtimeGate, /docs\/EVIDENCE-FRESHNESS-GATE\.md/);
   assert.match(runtimeGate, /NOVELIGHT_EXECUTION_CARD_WORKLOAD/);
   assert.match(runtimeGate, /NOVELIGHT_EXECUTION_CARD_OTHER_WORK/);
   assert.match(runtimeGate, /NOVELIGHT_EXECUTION_CARD_NEXT_USER_ACTION/);
-  assert.match(runtimeGate, /version: 4/);
+  assert.match(runtimeGate, /NOVELIGHT_EVIDENCE_FRESHNESS_CHECKED/);
+  assert.match(runtimeGate, /NOVELIGHT_EVIDENCE_DUPLICATE_CHECK/);
+  assert.match(runtimeGate, /NOVELIGHT_MUTATION_PLANNED/);
+  assert.match(runtimeGate, /version: 5/);
 });

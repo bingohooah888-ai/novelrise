@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 const REQUIRED_MAIN_FILES = [
   'docs/NOVELIGHT-MASTER.md',
   'docs/WORK-EXECUTION-PREFLIGHT.md',
-  'docs/EXECUTION-TURN-CARD-GATE.md'
+  'docs/EXECUTION-TURN-CARD-GATE.md',
+  'docs/EVIDENCE-FRESHNESS-GATE.md'
 ];
 
 const ALLOWED_PHASES = new Set([
@@ -20,6 +21,13 @@ const ALLOWED_PHASES = new Set([
   'supabase',
   'stripe',
   'files'
+]);
+
+const EVIDENCE_REQUIRED_PHASES = new Set([
+  'deploy',
+  'vercel',
+  'supabase',
+  'stripe'
 ]);
 
 function git(args, options = {}) {
@@ -137,6 +145,100 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
   };
 }
 
+export function parseEvidenceFreshnessEvidence(
+  phase,
+  argv,
+  env = process.env
+) {
+  const required = EVIDENCE_REQUIRED_PHASES.has(phase);
+  const checked =
+    argv.includes('--evidence-freshness-checked') ||
+    env.NOVELIGHT_EVIDENCE_FRESHNESS_CHECKED === '1';
+  const duplicateCheck =
+    argv.includes('--evidence-duplicate-check') ||
+    env.NOVELIGHT_EVIDENCE_DUPLICATE_CHECK === '1';
+  const source =
+    optionValue(argv, 'evidence-source') ||
+    env.NOVELIGHT_EVIDENCE_SOURCE ||
+    '';
+  const observedAt =
+    optionValue(argv, 'evidence-observed-at') ||
+    env.NOVELIGHT_EVIDENCE_OBSERVED_AT ||
+    '';
+  const verdict =
+    optionValue(argv, 'evidence-verdict') ||
+    env.NOVELIGHT_EVIDENCE_VERDICT ||
+    '';
+  const proofSha =
+    optionValue(argv, 'evidence-proof-sha') ||
+    env.NOVELIGHT_EVIDENCE_PROOF_SHA ||
+    '';
+  const mutationPlanned =
+    argv.includes('--mutation-planned') ||
+    env.NOVELIGHT_MUTATION_PLANNED === '1';
+
+  if (!required) {
+    return {
+      required,
+      checked,
+      duplicateCheck,
+      source,
+      observedAt,
+      verdict,
+      proofSha,
+      mutationPlanned
+    };
+  }
+
+  if (!checked) {
+    throw new Error(
+      `Runtime phase ${phase} requires an Evidence Freshness Gate check.`
+    );
+  }
+  if (!duplicateCheck) {
+    throw new Error(
+      `Runtime phase ${phase} requires a same-purpose duplicate-operation check.`
+    );
+  }
+  if (!source) {
+    throw new Error('Evidence Freshness Gate requires a decisive evidence source.');
+  }
+  if (!/(workflow|run|ledger|current-state|live|deployment|audit|compare)/iu.test(source)) {
+    throw new Error(
+      'Evidence source must identify execution/current-state evidence, not only a historical status document.'
+    );
+  }
+  if (!observedAt || Number.isNaN(Date.parse(observedAt))) {
+    throw new Error(
+      'Evidence Freshness Gate requires a valid ISO-8601 observation time.'
+    );
+  }
+  if (!['current', 'refresh-required'].includes(verdict)) {
+    throw new Error(
+      'Evidence Freshness Gate verdict must be current or refresh-required.'
+    );
+  }
+  if (proofSha && !/^[0-9a-f]{40}$/u.test(proofSha)) {
+    throw new Error('Evidence proof SHA must be a 40-character lowercase hex SHA.');
+  }
+  if (mutationPlanned && verdict === 'current') {
+    throw new Error(
+      'Duplicate external-state mutation blocked: current evidence already satisfies this scope.'
+    );
+  }
+
+  return {
+    required,
+    checked,
+    duplicateCheck,
+    source,
+    observedAt,
+    verdict,
+    proofSha,
+    mutationPlanned
+  };
+}
+
 export function classifyHardStop({ production, secret, destructive, payment }) {
   return Boolean(production || secret || destructive || payment);
 }
@@ -185,15 +287,22 @@ function ensureLatestMainAvailable() {
   return { mainSha, files };
 }
 
-function writeGateState({ phase, mainSha, files, executionCard }) {
+function writeGateState({
+  phase,
+  mainSha,
+  files,
+  executionCard,
+  evidenceFreshness
+}) {
   const gitDir = git(['rev-parse', '--git-dir']);
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = {
-    version: 4,
+    version: 5,
     passedAt: new Date().toISOString(),
     phase,
     mainSha,
     executionCard,
+    evidenceFreshness,
     authoritativeFiles: files
   };
   writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
@@ -203,15 +312,25 @@ function writeGateState({ phase, mainSha, files, executionCard }) {
 export function runRuntimeGate(argv = process.argv.slice(2), env = process.env) {
   const phase = parsePhase(argv);
   const executionCard = parseExecutionCardEvidence(argv, env);
+  const evidenceFreshness = parseEvidenceFreshnessEvidence(phase, argv, env);
   const { mainSha, files } = ensureLatestMainAvailable();
-  const statePath = writeGateState({ phase, mainSha, files, executionCard });
+  const statePath = writeGateState({
+    phase,
+    mainSha,
+    files,
+    executionCard,
+    evidenceFreshness
+  });
 
   console.log(`NOVELIGHT Runtime Execution Gate: PASS (${phase})`);
   console.log(`authoritative main: ${mainSha}`);
   console.log(`execution card mode: ${executionCard.mode}`);
+  if (evidenceFreshness.required) {
+    console.log(`evidence freshness verdict: ${evidenceFreshness.verdict}`);
+  }
   console.log(`state: ${statePath}`);
   console.log(
-    'Next: read the fetched main MASTER/Preflight/execution-card contract, apply current locks, choose the safest automated route, and do not ask for a continuation-only yes.'
+    'Next: read the fetched main MASTER/Preflight/execution-card/evidence-freshness contracts, apply current locks, prefer fresher execution evidence over stale status snapshots, do not repeat a Production mutation that current proof already satisfies, and do not ask for a continuation-only yes.'
   );
 }
 
