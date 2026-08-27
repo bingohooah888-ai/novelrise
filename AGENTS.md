@@ -18,7 +18,7 @@ NOVELIGHTでツールを1回でも使用するアシスタントターンは、*
 
 可視実行カードは現在のアシスタントターンだけで有効とする。**ユーザーから新しいメッセージを受けた時点で前ターンのカードは失効し、再利用禁止**とする。「はい」「続けて」「次へ」、スクリーンショット、ログ、手動操作完了報告、設定保存・再デプロイ完了報告もすべて新しい実行ターンとしてカードを再発火する。
 
-時間見積もりを提示できる環境のカードには、少なくとも `トータル予想時間`、主要工程別時間、手動操作の有無/概算回数、待機要否を含める。実行環境の上位制約により時間を提示できない場合だけDegraded-Continueを使い、目的、主要工程、手動操作、待機要否、時間省略理由を現在のターンで可視化する。
+時間見積もりを提示できる環境のカードには、少なくとも `トータル予想時間`、主要工程別時間、手動操作の有無/概算回数、待機要否を含める。実行環境の上位制約により時間を提示できない場合はDegraded-Continueを使うが、時間を表示できない旨の固定文は出さない。カードは目的、主要工程、手動操作、待機要否、作業量、次のユーザー操作を中心とし、`別作業`は通常状態と異なる等、ユーザー判断に役立つ場合だけ表示する。
 
 順序は固定する。
 
@@ -38,7 +38,7 @@ NOVELIGHTでツールを1回でも使用するアシスタントターンは、*
 npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --card-steps=<steps> --card-manual=<manual> --card-wait=<wait>
 ```
 
-Degraded-Continueでは `--card-mode=degraded --card-reason=<reason>` を追加し、`--card-total` を省略できる。同等の `NOVELIGHT_EXECUTION_CARD_*` 環境変数も使用できる。
+Degraded-Continueでは `--card-mode=degraded` を追加し、`--card-total` を省略できる。`--card-reason=<reason>` は任意の内部メタデータとし、ユーザー可視カードには要求しない。同等の `NOVELIGHT_EXECUTION_CARD_*` 環境変数も使用できる。
 
 このコマンドはカード証跡を確認した後に `origin/main` を再取得し、最新mainのMASTER / Preflightを直接取得可能であることを確認する。`npm run preflight:agent` も実装用Runtime Gateを先頭で実行する。Connector等でローカルコマンドを使えない場合は、**現在のアシスタントターンでカードを先に送信したうえで** GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得する同等確認を行う。
 

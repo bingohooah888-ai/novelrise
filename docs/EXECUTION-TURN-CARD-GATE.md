@@ -17,36 +17,19 @@ The first visible message must contain all of the following:
 - `手動操作`
 - `待機`
 - `作業量`
-- `別作業`
 - `次のユーザー操作`
-- one of the two time modes below
 
 `作業量` is a qualitative estimate that remains required even when numeric time estimates are prohibited. Use a clear level such as `ごく短い`, `短い`, `中程度`, `長い`, or `かなり長い`.
 
-`別作業` must state whether the user can safely switch to other work while NOVELIGHT work proceeds. Prefer a direct statement such as `して大丈夫です` or `この工程では画面確認が必要です`.
+`別作業` is optional. Show it only when it provides non-default decision value, such as when the user must remain available, should not switch away, or a meaningful waiting window makes switching work useful. Do not emit a default `して大丈夫です` line on every card.
 
 `次のユーザー操作` must state the next condition that genuinely requires user involvement. If no user action is expected, say `なし` rather than inventing a confirmation step.
 
-### Timed mode
+### Time information
 
-Use only when the execution environment permits time estimates.
+When the execution environment permits time estimates and the estimate is useful, include `トータル予想時間` and major-step estimates.
 
-The card must include:
-
-- `トータル予想時間`
-- major-step estimates
-
-### Degraded mode
-
-Use when a higher-level execution constraint prohibits time estimates.
-
-The card must include the exact meaning of:
-
-`具体的な所要時間：実行環境の制約により表示できません。`
-
-In degraded mode, `作業量`, `別作業`, and `次のユーザー操作` are the required replacement decision-support information. The user must be able to decide whether to stay on the current task or switch to other work without needing a numeric duration.
-
-Omitting the time field entirely is invalid. Adding the degraded explanation later in the turn is also invalid.
+When higher-level execution constraints prohibit time estimates, omit time information from the user-visible card. Do not print a fixed explanation that time cannot be displayed. Local/runtime callers may still use `--card-mode=degraded`; `--card-reason` is optional internal metadata and is not a required user-visible field.
 
 ## 3. Local/runtime-capable path
 
@@ -59,10 +42,10 @@ The Runtime Execution Gate continues to validate:
 - manual-operation state/count;
 - wait requirement;
 - qualitative workload;
-- whether other work is safe;
 - the next user-action condition;
-- total time in timed mode;
-- omission reason in degraded mode.
+- total time in timed mode.
+
+Optional `other work` and degraded-mode reason metadata may be recorded when useful, but they are not required card fields.
 
 This file is also part of the authoritative files fetched by the Runtime Execution Gate, so the dedicated first-message contract cannot be removed without breaking regression checks.
 
@@ -100,8 +83,9 @@ CI must keep tests that assert:
 
 - AGENTS, Preflight, and Automation Continuation Gate retain the first-visible-message rule;
 - this file and `docs/EVIDENCE-FRESHNESS-GATE.md` remain part of the Runtime Gate authoritative file set;
-- every execution card carries workload, other-work guidance, and the next user-action condition;
-- degraded mode requires an omission reason and the qualitative replacement guidance;
+- every execution card carries workload and the next user-action condition;
+- other-work guidance is optional and must not be emitted as a default filler line;
+- degraded mode may omit both the time estimate and a user-visible omission explanation;
 - timed mode requires a total estimate;
 - the cloud path explicitly treats a late card as invalid for that turn;
 - deploy/Vercel/Supabase/Stripe phases fail closed without evidence-freshness proof;
