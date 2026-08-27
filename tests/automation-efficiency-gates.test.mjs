@@ -80,7 +80,9 @@ test('Production approval is one-request-per-issue and challenge-bound', async (
 });
 
 test('failed Production billing guard runs create one actionable incident', async () => {
-  const incident = await read('.github/workflows/production-billing-incident.yml');
+  const incident = await read(
+    '.github/workflows/production-billing-incident.yml'
+  );
   assert.match(incident, /workflow_run/);
   assert.match(incident, /NOVELIGHT Production Billing Guard/);
   assert.match(incident, /\[Production Incident\] Billing guard failed/);
