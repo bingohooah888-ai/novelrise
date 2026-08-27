@@ -226,30 +226,32 @@ jobs:
           echo 'Production Stripe API routes did not become healthy in time.'
           exit 1
 
-      - name: Remove previous webhook endpoint after successful rotation
-        if: ${{ inputs.rotate_webhook_secret }}
+      - name: Remove superseded or verified legacy webhook endpoints after successful deployment
         run: node scripts/stripe-production-webhook-rotation-finalize.mjs
 
-      - name: Run no-charge Production webhook control proof
+      - name: Run no-charge Production checkout and webhook control proof
         shell: bash
         run: |
           set -euo pipefail
           standard_price="$(jq -er '.standardPriceId' "$STRIPE_BOOTSTRAP_OUTPUT")"
 
           for attempt in 1 2; do
-            echo "Running Production webhook control proof (attempt ${attempt}/2)."
+            echo "Running Production checkout + webhook control proof (attempt ${attempt}/2)."
             if STRIPE_STANDARD_PRICE_ID="$standard_price" node scripts/production-webhook-control.mjs; then
               exit 0
             fi
 
             if [ "$attempt" -eq 1 ]; then
-              echo 'Production webhook control proof failed; retrying only the proof once after 15 seconds.'
+              echo 'Production control proof failed; retrying only the proof once after 15 seconds.'
               sleep 15
             fi
           done
 
-          echo 'Production webhook control proof failed after two attempts.'
+          echo 'Production checkout + webhook control proof failed after two attempts.'
           exit 1
+
+      - name: Audit final Production billing consistency
+        run: node scripts/production-billing-audit.mjs
 
       - name: Remove bootstrap output containing the webhook secret
         if: always()
