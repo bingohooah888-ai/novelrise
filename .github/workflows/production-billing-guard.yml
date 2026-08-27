@@ -15,6 +15,9 @@ on:
       - '.github/workflows/production-webhook-control.yml'
       - '.github/workflows/production-webhook-legacy-cleanup.yml'
       - '.github/workflows/stripe-production-bootstrap.yml'
+  workflow_run:
+    workflows: ['NOVELIGHT Chat-Mediated Production Approval']
+    types: [completed]
   schedule:
     - cron: '17 18 * * *'
   workflow_dispatch:
@@ -31,6 +34,9 @@ concurrency:
 jobs:
   audit:
     name: Audit Production billing without operator action
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.actor.login == 'bingohooah888-ai'
     runs-on: ubuntu-latest
     outputs:
       repair_required: ${{ steps.guard.outputs.repair_required }}
