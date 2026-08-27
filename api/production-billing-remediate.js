@@ -172,7 +172,9 @@ async function proveExternalWebhookWithoutCharge({
       customer: fixture.customerId,
       limit: 10
     });
-    if ((invoices.data || []).some((invoice) => (invoice.amount_paid || 0) > 0)) {
+    if (
+      (invoices.data || []).some((invoice) => (invoice.amount_paid || 0) > 0)
+    ) {
       fail('No-charge proof unexpectedly paid a live Stripe invoice');
     }
   }
@@ -394,10 +396,13 @@ async function remediateApprovedScope({ supabase, stripe, appUrl, scope }) {
   );
   if (scope.repairRequired) {
     if (repairCandidates.length !== 1) {
-      fail('Safety stop: approved repair scope no longer contains exactly one target');
+      fail(
+        'Safety stop: approved repair scope no longer contains exactly one target'
+      );
     }
     if (
-      repairCandidateFingerprint(repairCandidates[0]) !== scope.repairFingerprint
+      repairCandidateFingerprint(repairCandidates[0]) !==
+      scope.repairFingerprint
     ) {
       fail('Safety stop: Production repair target changed after approval');
     }
@@ -414,15 +419,20 @@ async function remediateApprovedScope({ supabase, stripe, appUrl, scope }) {
       legacyWebhookFingerprint(legacy.map((endpoint) => endpoint.id)) !==
       scope.cleanupFingerprint
     ) {
-      fail('Safety stop: Production webhook cleanup scope changed after approval');
+      fail(
+        'Safety stop: Production webhook cleanup scope changed after approval'
+      );
     }
   } else if (legacy.length !== 0) {
-    fail('Safety stop: unapproved legacy webhook scope appeared after approval');
+    fail(
+      'Safety stop: unapproved legacy webhook scope appeared after approval'
+    );
   }
 
   if (scope.repairRequired) {
     const candidate = repairCandidates[0];
-    if (!candidate.displayName) fail('Safety stop: repair target has no display name');
+    if (!candidate.displayName)
+      fail('Safety stop: repair target has no display name');
     await repairMissingProductionCustomer({
       supabase,
       stripe,
@@ -439,7 +449,8 @@ async function remediateApprovedScope({ supabase, stripe, appUrl, scope }) {
       hasExistingWebhookSecret: true,
       rotateWebhookSecret: false
     });
-    if (!current?.id) fail('Canonical Production Stripe webhook endpoint is missing');
+    if (!current?.id)
+      fail('Canonical Production Stripe webhook endpoint is missing');
 
     const removed = await removeVerifiedLegacyWebhookEndpoints({
       stripe,
