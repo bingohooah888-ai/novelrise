@@ -1,3 +1,9 @@
+import {
+  isLegacyNovelightWebhookEndpoint,
+  managedWebhookDescription,
+  requiredWebhookEvents
+} from './stripe-production-webhook-endpoint.mjs';
+
 const PAID_PLANS = new Set(['standard', 'premium']);
 const ENTITLED_SUBSCRIPTION_STATUSES = new Set([
   'active',
@@ -8,18 +14,7 @@ const ENTITLED_SUBSCRIPTION_STATUSES = new Set([
   'paused'
 ]);
 
-export const REQUIRED_PRODUCTION_WEBHOOK_EVENTS = [
-  'checkout.session.completed',
-  'customer.subscription.created',
-  'customer.subscription.updated',
-  'customer.subscription.deleted',
-  'invoice.paid',
-  'invoice.payment_failed',
-  'invoice.finalization_failed'
-];
-
-const MANAGED_WEBHOOK_DESCRIPTION =
-  'NOVELIGHT production subscription synchronization';
+export const REQUIRED_PRODUCTION_WEBHOOK_EVENTS = requiredWebhookEvents;
 
 function isMissingStripeResource(error) {
   return (
@@ -36,29 +31,7 @@ function endpointIsEnabled(endpoint) {
   return !endpoint?.status || endpoint.status === 'enabled';
 }
 
-export function isLegacyNovelightWebhookEndpoint(endpoint, canonicalWebhookUrl) {
-  if (!endpoint?.url || endpoint.url === canonicalWebhookUrl) return false;
-  if (!endpointIsEnabled(endpoint)) return false;
-
-  let endpointUrl;
-  let canonicalUrl;
-  try {
-    endpointUrl = new URL(endpoint.url);
-    canonicalUrl = new URL(canonicalWebhookUrl);
-  } catch {
-    return false;
-  }
-
-  const sameWebhookPath =
-    normalizePathname(endpointUrl.pathname) ===
-    normalizePathname(canonicalUrl.pathname);
-  if (!sameWebhookPath) return false;
-
-  if (endpoint.description === MANAGED_WEBHOOK_DESCRIPTION) return true;
-
-  const host = endpointUrl.hostname.toLowerCase();
-  return host.endsWith('.vercel.app') && host.startsWith('novelrise');
-}
+export { isLegacyNovelightWebhookEndpoint };
 
 function issue(code, details = {}) {
   return { code, ...details };
@@ -77,7 +50,9 @@ async function listProfiles(supabase) {
     .limit(10000);
 
   if (error) {
-    throw new Error(`Production billing audit profile lookup failed: ${error.message}`);
+    throw new Error(
+      `Production billing audit profile lookup failed: ${error.message}`
+    );
   }
 
   return data || [];
@@ -159,6 +134,31 @@ function auditDuplicateCustomers(profiles, issues) {
   }
 }
 
+function isDisabledLegacyEndpoint(endpoint, canonicalWebhookUrl) {
+  if (endpoint?.status !== 'disabled' || endpoint?.url === canonicalWebhookUrl) {
+    return false;
+  }
+
+  try {
+    const endpointUrl = new URL(endpoint.url);
+    const canonicalUrl = new URL(canonicalWebhookUrl);
+    if (
+      normalizePathname(endpointUrl.pathname) !==
+      normalizePathname(canonicalUrl.pathname)
+    ) {
+      return false;
+    }
+
+    return (
+      endpoint.description === managedWebhookDescription ||
+      (endpointUrl.hostname.endsWith('.vercel.app') &&
+        endpointUrl.hostname.startsWith('novelrise'))
+    );
+  } catch {
+    return false;
+  }
+}
+
 function auditWebhookEndpoints(endpoints, canonicalWebhookUrl, issues, warnings) {
   const exact = endpoints.filter(
     (endpoint) =>
@@ -176,7 +176,7 @@ function auditWebhookEndpoints(endpoints, canonicalWebhookUrl, issues, warnings)
 
   if (exact.length === 1) {
     const enabledEvents = new Set(exact[0].enabled_events || []);
-    const missingEvents = REQUIRED_PRODUCTION_WEBHOOK_EVENTS.filter(
+    const missingEvents = requiredWebhookEvents.filter(
       (event) => !enabledEvents.has(event)
     );
     if (missingEvents.length) {
@@ -201,28 +201,9 @@ function auditWebhookEndpoints(endpoints, canonicalWebhookUrl, issues, warnings)
     );
   }
 
-  const disabledLegacy = endpoints.filter(
-    (endpoint) =>
-      endpoint?.status === 'disabled' &&
-      endpoint?.url !== canonicalWebhookUrl &&
-      (() => {
-        try {
-          const endpointUrl = new URL(endpoint.url);
-          const canonicalUrl = new URL(canonicalWebhookUrl);
-          return (
-            normalizePathname(endpointUrl.pathname) ===
-              normalizePathname(canonicalUrl.pathname) &&
-            (endpoint.description === MANAGED_WEBHOOK_DESCRIPTION ||
-              (endpointUrl.hostname.endsWith('.vercel.app') &&
-                endpointUrl.hostname.startsWith('novelrise')))
-          );
-        } catch {
-          return false;
-        }
-      })()
-  );
-
-  for (const endpoint of disabledLegacy) {
+  for (const endpoint of endpoints.filter((item) =>
+    isDisabledLegacyEndpoint(item, canonicalWebhookUrl)
+  )) {
     warnings.push(
       warning('disabled_legacy_novelight_webhook_endpoint', {
         endpointId: endpoint.id,
