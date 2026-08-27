@@ -106,9 +106,11 @@ jobs:
             exit 1
           }
 
-          echo "repair_required=$repair_required" >> "$GITHUB_OUTPUT"
-          echo "cleanup_required=$cleanup_required" >> "$GITHUB_OUTPUT"
-          echo "blocking_issue_count=$blocking_issue_count" >> "$GITHUB_OUTPUT"
+          {
+            echo "repair_required=$repair_required"
+            echo "cleanup_required=$cleanup_required"
+            echo "blocking_issue_count=$blocking_issue_count"
+          } >> "$GITHUB_OUTPUT"
           echo "Production billing issue codes: $issue_codes"
           echo "Production billing warning codes: $warning_codes"
 
