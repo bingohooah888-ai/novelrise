@@ -31,6 +31,7 @@ jobs:
     name: Audit Production billing without operator action
     runs-on: ubuntu-latest
     outputs:
+      repair_required: ${{ steps.guard.outputs.repair_required }}
       cleanup_required: ${{ steps.guard.outputs.cleanup_required }}
       blocking_issue_count: ${{ steps.guard.outputs.blocking_issue_count }}
     steps:
@@ -83,20 +84,29 @@ jobs:
             exit 1
           fi
 
+          repair_required="$(jq -r '.repairRequired' /tmp/production-billing-guard.json)"
+          repair_candidate_count="$(jq -r '.repairCandidateCount' /tmp/production-billing-guard.json)"
           cleanup_required="$(jq -r '.cleanupRequired' /tmp/production-billing-guard.json)"
           blocking_issue_count="$(jq -r '.blockingIssueCount' /tmp/production-billing-guard.json)"
           issue_codes="$(jq -c '.issueCodes' /tmp/production-billing-guard.json)"
           warning_codes="$(jq -c '.warningCodes' /tmp/production-billing-guard.json)"
 
-          case "$cleanup_required" in
-            true|false) ;;
-            *) echo 'Guard returned an invalid cleanupRequired value.'; exit 1 ;;
-          esac
+          for value in "$repair_required" "$cleanup_required"; do
+            case "$value" in
+              true|false) ;;
+              *) echo 'Guard returned an invalid remediation boolean.'; exit 1 ;;
+            esac
+          done
+          [[ "$repair_candidate_count" =~ ^[0-9]+$ ]] || {
+            echo 'Guard returned an invalid repairCandidateCount value.'
+            exit 1
+          }
           [[ "$blocking_issue_count" =~ ^[0-9]+$ ]] || {
             echo 'Guard returned an invalid blockingIssueCount value.'
             exit 1
           }
 
+          echo "repair_required=$repair_required" >> "$GITHUB_OUTPUT"
           echo "cleanup_required=$cleanup_required" >> "$GITHUB_OUTPUT"
           echo "blocking_issue_count=$blocking_issue_count" >> "$GITHUB_OUTPUT"
           echo "Production billing issue codes: $issue_codes"
@@ -107,19 +117,20 @@ jobs:
             exit 1
           fi
 
-          if [ "$cleanup_required" = 'true' ]; then
-            echo 'Verified legacy NOVELIGHT webhook cleanup is required; requesting Production approval.'
+          if [ "$repair_required" = 'true' ] || [ "$cleanup_required" = 'true' ]; then
+            echo 'Verified repairable Production billing drift detected; requesting one Production approval.'
           else
-            echo 'PASS: Production billing guard found no approval-requiring cleanup.'
+            echo 'PASS: Production billing guard found no approval-requiring remediation.'
           fi
 
-  cleanup:
-    name: Approved legacy webhook cleanup and no-charge proof
+  remediate:
+    name: Approved billing remediation and no-charge proof
     needs: audit
     if: >-
       needs.audit.result == 'success' &&
-      needs.audit.outputs.cleanup_required == 'true' &&
-      needs.audit.outputs.blocking_issue_count == '0'
+      needs.audit.outputs.blocking_issue_count == '0' &&
+      (needs.audit.outputs.repair_required == 'true' ||
+       needs.audit.outputs.cleanup_required == 'true')
     runs-on: ubuntu-latest
     environment: production-approval
     env:
@@ -136,7 +147,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/$EXPECTED_BRANCH" || {
-            echo 'Refusing Production cleanup outside main.'
+            echo 'Refusing Production remediation outside main.'
             exit 1
           }
           [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
@@ -166,7 +177,12 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Repair exactly one re-verified stale paid profile
+        if: needs.audit.outputs.repair_required == 'true'
+        run: node scripts/production-billing-auto-remediate.mjs
+
       - name: Remove only re-verified legacy live webhook endpoints
+        if: needs.audit.outputs.cleanup_required == 'true'
         run: node scripts/production-webhook-legacy-cleanup.mjs
 
       - name: Prove canonical webhook delivery without a live charge
