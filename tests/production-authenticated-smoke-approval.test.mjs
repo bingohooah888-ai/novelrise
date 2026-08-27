@@ -47,3 +47,25 @@ test('auth smoke stays SHA-bound and always cleans up', async () => {
   assert.ok(workflow.includes('CHECKOUT_SESSION_PREFIX: cs_live_'));
   assert.ok(!workflow.includes('STRIPE_LIVE_SECRET_KEY'));
 });
+
+test('auth smoke keeps unrelated comments out of the production concurrency queue', async () => {
+  const workflow = await text(workflowPath);
+  const jobsIndex = workflow.indexOf('\njobs:\n');
+  const beforeJobs = workflow.slice(0, jobsIndex);
+  const requestGroup = 'novelight-production-auth-request-${{ github.sha }}';
+  const executionGroup = 'novelight-production-authenticated-smoke-execution';
+  const legacyGroup = 'group: novelight-production-authenticated-smoke\n';
+  const staleRequest = 'Skipping approval request: run SHA';
+  const currentMainLookup = '"repos/$GITHUB_REPOSITORY/git/ref/heads/main"';
+  const requestLookup = workflow.indexOf('existing="$(gh issue list');
+
+  assert.ok(jobsIndex > 0);
+  assert.ok(!beforeJobs.includes('\nconcurrency:\n'));
+  assert.ok(workflow.includes(requestGroup));
+  assert.ok(workflow.includes(executionGroup));
+  assert.ok(!workflow.includes(legacyGroup));
+  assert.ok(workflow.includes(staleRequest));
+  assert.ok(workflow.includes('is not current main $current_main.'));
+  assert.ok(workflow.includes(currentMainLookup));
+  assert.ok(workflow.indexOf(currentMainLookup) < requestLookup);
+});
