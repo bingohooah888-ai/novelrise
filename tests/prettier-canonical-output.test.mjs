@@ -8,7 +8,8 @@ for (const path of [
 ]) {
   test(`print canonical prettier output for ${path}`, async () => {
     const source = await readFile(path, 'utf8');
-    const formatted = await prettier.format(source, { parser: 'babel' });
+    const config = (await prettier.resolveConfig(path)) ?? {};
+    const formatted = await prettier.format(source, { ...config, filepath: path });
     console.log(`PRETTIER_BEGIN:${path}`);
     console.log(Buffer.from(formatted, 'utf8').toString('base64'));
     console.log(`PRETTIER_END:${path}`);
