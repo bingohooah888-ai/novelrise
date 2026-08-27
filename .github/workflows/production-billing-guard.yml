@@ -1,0 +1,176 @@
+name: NOVELIGHT Production Billing Guard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'pricing.html'
+      - 'scripts/production-billing-*'
+      - 'scripts/production-webhook-*'
+      - 'scripts/stripe-production-*'
+      - '.github/workflows/production-billing-guard.yml'
+      - '.github/workflows/production-billing-health.yml'
+      - '.github/workflows/production-webhook-control.yml'
+      - '.github/workflows/production-webhook-legacy-cleanup.yml'
+      - '.github/workflows/stripe-production-bootstrap.yml'
+  schedule:
+    - cron: '17 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: novelight-production-billing-guard
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Audit Production billing without operator action
+    runs-on: ubuntu-latest
+    outputs:
+      cleanup_required: ${{ steps.guard.outputs.cleanup_required }}
+      blocking_issue_count: ${{ steps.guard.outputs.blocking_issue_count }}
+    steps:
+      - name: Request GitHub OIDC token and query deployed Production guard
+        id: guard
+        shell: bash
+        env:
+          BASE_URL: https://novelrise.vercel.app
+          OIDC_AUDIENCE: novelight-production-billing-guard
+        run: |
+          set -euo pipefail
+
+          oidc_token="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}" \
+              | jq -er '.value'
+          )"
+          printf '::add-mask::%s\n' "$oidc_token"
+
+          status=''
+          for attempt in $(seq 1 24); do
+            status="$(
+              curl --silent --show-error \
+                --output /tmp/production-billing-guard.json \
+                --write-out '%{http_code}' \
+                --connect-timeout 10 \
+                --max-time 30 \
+                -X POST \
+                -H "Authorization: Bearer $oidc_token" \
+                -H 'Content-Type: application/json' \
+                "$BASE_URL/api/production-billing-guard"
+            )"
+
+            if [ "$status" = '200' ]; then
+              break
+            fi
+
+            if [[ "$status" =~ ^(401|403)$ ]]; then
+              echo "Production billing guard rejected GitHub OIDC authentication (HTTP $status)."
+              exit 1
+            fi
+
+            echo "Production billing guard is not ready yet (HTTP $status, attempt ${attempt}/24)."
+            sleep 10
+          done
+
+          if [ "$status" != '200' ]; then
+            echo "Production billing guard did not become available in time (last HTTP $status)."
+            exit 1
+          fi
+
+          cleanup_required="$(jq -r '.cleanupRequired' /tmp/production-billing-guard.json)"
+          blocking_issue_count="$(jq -r '.blockingIssueCount' /tmp/production-billing-guard.json)"
+          issue_codes="$(jq -c '.issueCodes' /tmp/production-billing-guard.json)"
+          warning_codes="$(jq -c '.warningCodes' /tmp/production-billing-guard.json)"
+
+          case "$cleanup_required" in
+            true|false) ;;
+            *) echo 'Guard returned an invalid cleanupRequired value.'; exit 1 ;;
+          esac
+          [[ "$blocking_issue_count" =~ ^[0-9]+$ ]] || {
+            echo 'Guard returned an invalid blockingIssueCount value.'
+            exit 1
+          }
+
+          echo "cleanup_required=$cleanup_required" >> "$GITHUB_OUTPUT"
+          echo "blocking_issue_count=$blocking_issue_count" >> "$GITHUB_OUTPUT"
+          echo "Production billing issue codes: $issue_codes"
+          echo "Production billing warning codes: $warning_codes"
+
+          if [ "$blocking_issue_count" -gt 0 ]; then
+            echo 'Blocking Production billing drift detected. No automatic mutation will run.'
+            exit 1
+          fi
+
+          if [ "$cleanup_required" = 'true' ]; then
+            echo 'Verified legacy NOVELIGHT webhook cleanup is required; requesting Production approval.'
+          else
+            echo 'PASS: Production billing guard found no approval-requiring cleanup.'
+          fi
+
+  cleanup:
+    name: Approved legacy webhook cleanup and no-charge proof
+    needs: audit
+    if: >-
+      needs.audit.result == 'success' &&
+      needs.audit.outputs.cleanup_required == 'true' &&
+      needs.audit.outputs.blocking_issue_count == '0'
+    runs-on: ubuntu-latest
+    environment: production-approval
+    env:
+      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      STRIPE_STANDARD_PRICE_ID: ${{ secrets.STRIPE_STANDARD_PRICE_ID }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
+      NOVELIGHT_APP_URL: https://novelrise.vercel.app
+      EXPECTED_BRANCH: main
+
+    steps:
+      - name: Refuse unexpected ref or approval-scoped inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/$EXPECTED_BRANCH" || {
+            echo 'Refusing Production cleanup outside main.'
+            exit 1
+          }
+          [[ "$STRIPE_LIVE_SECRET_KEY" == sk_live_* ]] || {
+            echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live.'
+            exit 1
+          }
+          [[ "$STRIPE_STANDARD_PRICE_ID" == price_* ]] || {
+            echo 'STRIPE_STANDARD_PRICE_ID is missing.'
+            exit 1
+          }
+          test -n "$SUPABASE_SECRET_KEY" || {
+            echo 'SUPABASE_SECRET_KEY is not configured.'
+            exit 1
+          }
+
+      - name: Checkout approved main revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Remove only re-verified legacy live webhook endpoints
+        run: node scripts/production-webhook-legacy-cleanup.mjs
+
+      - name: Prove canonical webhook delivery without a live charge
+        run: node scripts/production-webhook-control.mjs
+
+      - name: Audit final Production billing consistency
+        run: node scripts/production-billing-audit.mjs
