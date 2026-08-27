@@ -3,6 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 
 import { verifyGitHubActionsOidcToken } from './_lib/github-actions-oidc.js';
 import { auditProductionBilling } from '../scripts/production-billing-audit-lib.mjs';
+import {
+  legacyWebhookFingerprint,
+  repairCandidateFingerprint
+} from '../scripts/production-approval-fingerprint.mjs';
 
 const CANONICAL_SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
 const CANONICAL_APP_URL = 'https://novelrise.vercel.app';
@@ -11,7 +15,7 @@ const EXPECTED_REF = 'refs/heads/main';
 const EXPECTED_WORKFLOW_REF =
   'bingohooah888-ai/novelrise/.github/workflows/production-billing-guard.yml@refs/heads/main';
 const OIDC_AUDIENCE = 'novelight-production-billing-guard';
-const GUARD_VERSION = 'stale-paid-remediation-v1';
+const GUARD_VERSION = 'chat-approval-v1';
 const LEGACY_WEBHOOK_ISSUE = 'legacy_novelight_webhook_endpoint';
 const STALE_PAID_CUSTOMER_ISSUE = 'paid_profile_customer_missing_in_stripe';
 
@@ -45,9 +49,10 @@ export function summarizeAudit(result) {
     (item) => item.code === STALE_PAID_CUSTOMER_ISSUE
   );
   const exactlyOneRepairCandidate = repairCandidates.length === 1;
-  const cleanupRequired = result.issues.some(
+  const legacyEndpoints = result.issues.filter(
     (item) => item.code === LEGACY_WEBHOOK_ISSUE
   );
+  const cleanupRequired = legacyEndpoints.length > 0;
 
   const blockingIssues = result.issues.filter((item) => {
     if (item.code === LEGACY_WEBHOOK_ISSUE) return false;
@@ -62,7 +67,16 @@ export function summarizeAudit(result) {
     healthy: result.ok,
     repairRequired: exactlyOneRepairCandidate,
     repairCandidateCount: repairCandidates.length,
+    repairFingerprint: exactlyOneRepairCandidate
+      ? repairCandidateFingerprint(repairCandidates[0])
+      : null,
     cleanupRequired,
+    cleanupEndpointCount: legacyEndpoints.length,
+    cleanupFingerprint: cleanupRequired
+      ? legacyWebhookFingerprint(
+          legacyEndpoints.map((item) => item.endpointId).filter(Boolean)
+        )
+      : null,
     blockingIssueCount: blockingIssues.length,
     warningCount: result.warnings.length,
     issueCodes: [...new Set(result.issues.map((item) => item.code))].sort(),
