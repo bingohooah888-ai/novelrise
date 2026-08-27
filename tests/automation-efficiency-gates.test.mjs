@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   classifyHighRiskPaths,
   highRiskApprovalChallenge,
-  highRiskApprovalCommentMatches,
+  highRiskApprovalCommentMatches
 } from '../scripts/high-risk-approval-lib.mjs';
 
 const read = (path) => readFile(path, 'utf8');
@@ -19,12 +19,12 @@ test('high-risk approval is head-bound and narrowly classified', () => {
       'README.md',
       'api/create-checkout-session.js',
       '.github/workflows/production-billing-guard.yml',
-      'tests/safe.test.mjs',
+      'tests/safe.test.mjs'
     ]),
     [
       '.github/workflows/production-billing-guard.yml',
-      'api/create-checkout-session.js',
-    ],
+      'api/create-checkout-session.js'
+    ]
   );
   assert.equal(
     highRiskApprovalCommentMatches(
@@ -32,11 +32,11 @@ test('high-risk approval is head-bound and narrowly classified', () => {
         operation: 'merge-high-risk-pr',
         pr: 170,
         headSha: sha,
-        challenge,
+        challenge
       })}`,
-      { pr: 170, headSha: sha, challenge },
+      { pr: 170, headSha: sha, challenge }
     ),
-    true,
+    true
   );
   assert.equal(
     highRiskApprovalCommentMatches(
@@ -44,11 +44,11 @@ test('high-risk approval is head-bound and narrowly classified', () => {
         operation: 'merge-high-risk-pr',
         pr: 170,
         headSha: 'b'.repeat(40),
-        challenge,
+        challenge
       })}`,
-      { pr: 170, headSha: sha, challenge },
+      { pr: 170, headSha: sha, challenge }
     ),
-    false,
+    false
   );
 });
 
@@ -69,11 +69,11 @@ test('Production approval is one-request-per-issue and challenge-bound', async (
   assert.equal(approval.includes('ledger-page-'), false);
   assert.match(
     approval,
-    /github\.event\.issue\.user\.login == 'github-actions\[bot\]'/,
+    /github\.event\.issue\.user\.login == 'github-actions\[bot\]'/
   );
   assert.match(
     approval,
-    /approval challenge does not match this one-time request/,
+    /approval challenge does not match this one-time request/
   );
   assert.match(approval, /issues\/\$ISSUE_NUMBER\/comments\?per_page=100/);
   assert.match(approval, /Record consumed approval and close dedicated issue/);
@@ -100,7 +100,7 @@ test('staging validation is consolidated into one deployment-status workflow', a
   for (const legacy of [
     '.github/workflows/staging-readiness-smoke.yml',
     '.github/workflows/staging-authenticated-smoke.yml',
-    '.github/workflows/staging-billing-smoke.yml',
+    '.github/workflows/staging-billing-smoke.yml'
   ]) {
     await assert.rejects(access(legacy));
   }

@@ -5,7 +5,7 @@ import test from 'node:test';
 const workflow = await readFile('.github/workflows/staging-smoke.yml', 'utf8');
 const verifier = await readFile(
   'scripts/verify-staging-deployment.mjs',
-  'utf8',
+  'utf8'
 );
 const checkout = await readFile('api/_lib/checkout.js', 'utf8');
 const portal = await readFile('api/_lib/billing-portal.js', 'utf8');
@@ -20,7 +20,7 @@ test('Staging workflow is not coupled to the historical temporary branch', () =>
 
 test('consolidated Staging workflow runs the shared deployment contract before package installation', () => {
   const verifierIndex = workflow.indexOf(
-    'node scripts/verify-staging-deployment.mjs',
+    'node scripts/verify-staging-deployment.mjs'
   );
   const installIndex = workflow.indexOf('npm ci');
   assert.notEqual(verifierIndex, -1);
