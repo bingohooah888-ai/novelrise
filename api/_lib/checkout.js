@@ -28,6 +28,13 @@ function getPortalConfiguration(env) {
   return configuration ? { configuration } : {};
 }
 
+function isMissingStripeResource(error) {
+  return (
+    error?.type === 'StripeInvalidRequestError' &&
+    error?.code === 'resource_missing'
+  );
+}
+
 async function getProfile(supabase, userId) {
   const { data, error } = await supabase
     .from('profiles')
@@ -42,24 +49,80 @@ async function getProfile(supabase, userId) {
   return data?.[0] ?? null;
 }
 
-async function shouldUsePortal(stripe, profile) {
-  if (!profile.stripe_customer_id) {
-    return profile.plan !== 'free';
+async function clearStaleFreeCustomer(supabase, { userId, customerId }) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({
+      payment_status: 'canceled',
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      stripe_subscription_created_at: null,
+      subscription_status: null,
+      subscription_cancel_at_period_end: false,
+      subscription_current_period_end: null
+    })
+    .eq('id', userId)
+    .eq('plan', 'free')
+    .eq('stripe_customer_id', customerId)
+    .select('id')
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Stale Stripe customer repair failed: ${error.message}`);
+  }
+
+  if (!data?.length) {
+    throw new Error('Stale Stripe customer repair matched no free profile');
+  }
+}
+
+async function resolveCustomerUsage(stripe, supabase, profile, userId) {
+  const customer = profile.stripe_customer_id || undefined;
+
+  if (!customer) {
+    return {
+      customer: undefined,
+      usePortal: profile.plan !== 'free'
+    };
   }
 
   if (profile.plan !== 'free') {
-    return true;
+    return {
+      customer,
+      usePortal: true
+    };
   }
 
-  const subscriptions = await stripe.subscriptions.list({
-    customer: profile.stripe_customer_id,
-    status: 'all',
-    limit: 100
-  });
+  try {
+    const subscriptions = await stripe.subscriptions.list({
+      customer,
+      status: 'all',
+      limit: 100
+    });
 
-  return (subscriptions.data ?? []).some((subscription) =>
-    PORTAL_STATUSES.has(subscription.status)
-  );
+    return {
+      customer,
+      usePortal: (subscriptions.data ?? []).some((subscription) =>
+        PORTAL_STATUSES.has(subscription.status)
+      )
+    };
+  } catch (error) {
+    if (!isMissingStripeResource(error)) {
+      throw error;
+    }
+
+    await clearStaleFreeCustomer(supabase, {
+      userId,
+      customerId: customer
+    });
+
+    console.warn('Cleared stale Stripe customer reference for a free profile');
+
+    return {
+      customer: undefined,
+      usePortal: false
+    };
+  }
 }
 
 export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
@@ -117,13 +180,20 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
         });
       }
 
-      if (await shouldUsePortal(stripe, profile)) {
-        if (!profile.stripe_customer_id) {
+      const { customer, usePortal } = await resolveCustomerUsage(
+        stripe,
+        supabase,
+        profile,
+        userId
+      );
+
+      if (usePortal) {
+        if (!customer) {
           throw new Error('Paid profile is missing stripe_customer_id');
         }
 
         const portalSession = await stripe.billingPortal.sessions.create({
-          customer: profile.stripe_customer_id,
+          customer,
           return_url: `${getAppBaseUrl(env)}/pricing.html`,
           ...getPortalConfiguration(env)
         });
@@ -134,7 +204,6 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
         });
       }
 
-      const customer = profile.stripe_customer_id || undefined;
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         ...(customer ? { customer } : { customer_email: email }),
@@ -167,7 +236,8 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
       console.error('Checkout session creation failed', {
         name: error?.name,
         type: error?.type,
-        code: error?.code
+        code: error?.code,
+        param: error?.param
       });
 
       return res.status(500).json({
