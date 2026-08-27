@@ -25,6 +25,7 @@ jobs:
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
+      NOVELIGHT_APP_URL: https://novelrise.vercel.app
       EXPECTED_BRANCH: main
 
     steps:
@@ -69,3 +70,6 @@ jobs:
 
       - name: Verify missing Stripe customer and repair exactly one Production profile
         run: node scripts/production-billing-repair.mjs
+
+      - name: Audit final Production billing consistency
+        run: node scripts/production-billing-audit.mjs
