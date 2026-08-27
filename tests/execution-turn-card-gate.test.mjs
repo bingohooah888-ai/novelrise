@@ -22,7 +22,24 @@ function validTimedArgs() {
     '--card-total=20-30m',
     '--card-steps=a,b,c',
     '--card-manual=0',
-    '--card-wait=none'
+    '--card-wait=none',
+    '--card-workload=medium',
+    '--card-other-work=allowed',
+    '--card-next-user-action=none'
+  ];
+}
+
+function validDegradedArgs() {
+  return [
+    '--card-visible',
+    '--card-mode=degraded',
+    '--card-steps=a,b,c',
+    '--card-manual=0',
+    '--card-wait=none',
+    '--card-workload=medium',
+    '--card-other-work=allowed',
+    '--card-next-user-action=none',
+    '--card-reason=higher-level execution constraint'
   ];
 }
 
@@ -41,38 +58,57 @@ test('all execution governance layers retain the first-visible-message rule', ()
   assert.match(contract, /late card as invalid for that turn/);
 });
 
+test('every execution card carries practical scheduling guidance', () => {
+  assert.match(contract, /`作業量`/);
+  assert.match(contract, /`別作業`/);
+  assert.match(contract, /`次のユーザー操作`/);
+  assert.match(contract, /具体的な所要時間：実行環境の制約により表示できません。/);
+
+  const requiredOptions = [
+    ['--card-workload=', /must include qualitative workload/],
+    ['--card-other-work=', /must state whether other work is safe/],
+    ['--card-next-user-action=', /must include the next user-action condition/]
+  ];
+
+  for (const [prefix, errorPattern] of requiredOptions) {
+    assert.throws(
+      () =>
+        parseExecutionCardEvidence(
+          validTimedArgs().filter((arg) => !arg.startsWith(prefix)),
+          {}
+        ),
+      errorPattern
+    );
+  }
+
+  const evidence = parseExecutionCardEvidence(validTimedArgs(), {});
+  assert.equal(evidence.workload, 'medium');
+  assert.equal(evidence.otherWork, 'allowed');
+  assert.equal(evidence.nextUserAction, 'none');
+});
+
 test('degraded mode can never omit the time-omission explanation', () => {
-  assert.match(contract, /時間見積もり：実行環境の上位制約により省略。/);
+  assert.match(
+    contract,
+    /具体的な所要時間：実行環境の制約により表示できません。/
+  );
 
   assert.throws(
     () =>
       parseExecutionCardEvidence(
-        [
-          '--card-visible',
-          '--card-mode=degraded',
-          '--card-steps=a,b,c',
-          '--card-manual=0',
-          '--card-wait=none'
-        ],
+        validDegradedArgs().filter((arg) => !arg.startsWith('--card-reason=')),
         {}
       ),
     /must include the omission reason/
   );
 
-  const evidence = parseExecutionCardEvidence(
-    [
-      '--card-visible',
-      '--card-mode=degraded',
-      '--card-steps=a,b,c',
-      '--card-manual=0',
-      '--card-wait=none',
-      '--card-reason=higher-level execution constraint'
-    ],
-    {}
-  );
+  const evidence = parseExecutionCardEvidence(validDegradedArgs(), {});
   assert.equal(evidence.mode, 'degraded');
   assert.equal(evidence.total, '');
   assert.equal(evidence.reason, 'higher-level execution constraint');
+  assert.equal(evidence.workload, 'medium');
+  assert.equal(evidence.otherWork, 'allowed');
+  assert.equal(evidence.nextUserAction, 'none');
 });
 
 test('timed mode still requires total estimated time', () => {
@@ -92,5 +128,8 @@ test('timed mode still requires total estimated time', () => {
 
 test('runtime gate treats the dedicated execution-card contract as authoritative', () => {
   assert.match(runtimeGate, /docs\/EXECUTION-TURN-CARD-GATE\.md/);
-  assert.match(runtimeGate, /version: 3/);
+  assert.match(runtimeGate, /NOVELIGHT_EXECUTION_CARD_WORKLOAD/);
+  assert.match(runtimeGate, /NOVELIGHT_EXECUTION_CARD_OTHER_WORK/);
+  assert.match(runtimeGate, /NOVELIGHT_EXECUTION_CARD_NEXT_USER_ACTION/);
+  assert.match(runtimeGate, /version: 4/);
 });
