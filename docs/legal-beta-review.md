@@ -1,137 +1,182 @@
 # NOVELIGHT β legal review
 
-Reviewed: 2026-08-26
+Reviewed: 2026-08-28
 
-This document records the implementation basis and the remaining release work for the beta legal surfaces. It is an engineering/operations checklist, not legal advice and not a substitute for review by a qualified Japanese attorney.
+This document records the implementation basis and remaining release work for the beta legal surfaces. It is an engineering/operations status document, not legal advice and not a substitute for review by qualified Japanese counsel.
 
 ## Review status
 
 - Qualified Japanese counsel review: **PENDING**.
-- Explicit owner decision to accept residual Japanese legal risk instead of counsel review: **NOT RECORDED**.
+- Explicit owner residual-risk decision: **NOT RECORDED**.
 - Public-beta legal GO: **NOT YET RECORDED**.
+- Current baseline revision for this review: `0ba72358b5213ff409aed2fca24e3af7bf1ff025`.
+
+The current counsel handoff is `docs/LEGAL-COUNSEL-HANDOFF-2026-08-28.md`.
 
 ## Implemented public surfaces
 
 - `terms.html`: service terms, author rights, platform license, exposure/result disclaimer, prohibited conduct, moderation, AI rules, billing references.
 - `privacy.html`: collected data, purposes, processors, visitor-token analytics, support-inquiry data, payment identifiers, security, retention, data-subject requests.
-- `content-guidelines.html`: rights, prohibited content, AI classification, abuse/visibility manipulation rules, beta adult-content rule.
+- `content-guidelines.html`: rights, prohibited content, AI classification, abuse/visibility-manipulation rules, beta adult-content rule.
 - `billing-policy.html`: monthly renewal, plan changes, cancellation, payment failure, refund baseline, and the live billing/support contact route.
 - `commerce-disclosure.html`: 特定商取引法 disclosure draft and legal-information request route.
-- `contact.html`: public support/legal request form. Raw inquiries are stored privately in Supabase and are not client-readable.
+- `contact.html`: public support/legal request form; raw inquiries are stored privately and are not ordinary-client readable.
 - `signup.html`: explicit checkbox consent and live links to terms/privacy/content guidelines.
-- `pricing.html`: recurring-subscription notice, cancellation/refund/legal links before Stripe checkout.
-- `index.html`: current top-page footer exposes terms, privacy, content guidelines, billing/cancellation, commerce disclosure, and contact links.
+- `pricing.html`: recurring-subscription notice, cancellation/refund/legal links before Stripe Checkout.
+- `api/_lib/checkout.js`: Stripe Checkout custom text with recurring-contract details by paid plan.
+- `index.html`: top-page links to the public legal/contact surfaces.
 
-The top page and the legal surfaces were rechecked on 2026-08-26. A claim that every major product page has the full global legal-link set should still be treated as a separate final UI/release-checklist observation unless it is explicitly audited.
+The final claim that every intended public surface exposes all required legal/contact links remains a **final-candidate read-only observation**, not something inferred from an older checklist checkbox.
 
-## Official references rechecked on 2026-08-26
+## Legal-copy implementation status
 
-### 特定商取引法 / recurring subscription disclosure
+The current implementation includes the following aligned paid-plan disclosures:
 
-- Consumer Affairs Agency, 通信販売広告Q&A:
-  https://www.no-trouble.caa.go.jp/qa/advertising.html
-  - Individual operators normally need the legal name rather than only a trade/site name.
-  - Name/address/phone may be omitted from the advertisement only when the advertisement states that the information will be provided without delay upon request and the operator has an actual mechanism to provide it in time for the purchase decision.
-- Consumer Affairs Agency, 通信販売広告について:
-  https://www.no-trouble.caa.go.jp/what/mailorder/advertising.php
-- Consumer Affairs Agency material on final confirmation for mail-order subscriptions:
-  https://www.caa.go.jp/policies/policy/consumer_transaction/amendment/2021/notice03/
-  - The final confirmation must clearly present the contract information required by the applicable rules, including price/payment and cancellation-related conditions for recurring purchases.
+- Standard: 980円/月; Premium: 1,980円/月;
+- monthly recurring contract;
+- automatic renewal until cancellation with no renewal-count cap;
+- initial charge at application completion;
+- one-year payment estimates (Standard 11,760円 / Premium 23,760円) stated as estimates rather than one-year contract terms;
+- service availability after payment/contract-state confirmation;
+- cancellation through Stripe Customer Portal;
+- refund/no-proration baseline with legal/duplicate-charge/major NOVELIGHT billing-failure exceptions;
+- parental/legal-representative consent wording for paid subscription by minors;
+- explicit statement that paid exposure does not guarantee views, ratings, rankings, revenue, or publication.
 
-### 個人情報保護法
+Regression coverage exists to keep Checkout/pricing/billing/commerce/privacy paid-plan wording aligned. Engineering alignment does not determine legal sufficiency.
 
-- Personal Information Protection Commission, Guidelines (general rules):
-  https://www.ppc.go.jp/personalinfo/legal/guidelines_tsusoku/
-- Personal Information Protection Commission, APPI Q&A:
-  https://www.ppc.go.jp/personalinfo/faq/APPI_QA/
-  - Direct collection through a web input form generally requires the purpose of use to be made explicit, subject to statutory exceptions.
-- Personal Information Protection Commission, foreign handling guidance:
-  https://www.ppc.go.jp/personalinfo/legal/guidelines_offshore/
-
-### Stripe / commerce disclosure / content restrictions
-
-- Stripe, Commercial Disclosure guidance for Japan:
-  https://support.stripe.com/questions/how-to-create-and-display-a-commerce-disclosure-page?locale=ja-JP
-- Stripe, prohibited/restricted businesses FAQ (Japanese):
-  https://support.stripe.com/questions/prohibited-and-restricted-businesses-list-faqs?locale=ja-JP
-  - Stripe currently states that adult content/services are unsupported, including sexually explicit literature/materials designed for sexual gratification.
-
-These references are implementation inputs only. Their presence here is not a legal-compliance determination.
-
-## Decisions confirmed on 2026-08-23
+## Decisions confirmed for beta
 
 ### Adult-content beta rule — APPROVED
 
-The owner explicitly approved the following beta rule:
-
 - Sexually explicit/pornographic content whose primary purpose is sexual gratification is prohibited while NOVELIGHT relies on Stripe.
-- Mature themes that are not in that prohibited category are not blanket-banned; warnings, age/content notices, and zoning should be used where appropriate.
-- External law, payment-provider, hosting-provider, and other platform rules override the general zoning policy when necessary.
+- Mature themes outside that prohibited category are not blanket-banned; warnings, age/content notices, and zoning are used where appropriate.
+- Applicable law and payment/hosting/platform requirements override the general zoning policy where necessary.
 
-This is the concrete beta interpretation of MASTER section 30 and should be kept synchronized with MASTER and the public content guidelines.
+This policy must remain synchronized with MASTER and `content-guidelines.html`.
 
 ## Legal/contact request channel — IMPLEMENTED
 
-`contact.html` submits through `submit_contact_inquiry` into `public.contact_inquiries`.
+`contact.html` provides categories including:
 
-Security/operations rules:
+- 特定商取引法に基づく表示事項の開示請求
+- 課金・解約
+- 投稿・作品
+- プライバシー
+- 不具合・技術的な問題
+- その他
 
-- Anonymous/authenticated clients have no direct SELECT/INSERT/UPDATE/DELETE access to raw inquiry rows.
-- Public submission is only through a validated SECURITY DEFINER RPC.
-- The RPC validates field lengths/email format, uses a honeypot, and rate-limits repeated submissions.
-- Only a one-way visitor-token hash is stored for rate limiting; the raw token is not stored in the inquiry table.
-- The 特商法 page directs legal-information requests to this form.
-- `billing-policy.html` now points billing/cancellation/refund/duplicate-charge inquiries to the live `contact.html` route instead of saying that a future contact route will be decided.
+Current engineering/operations controls include validated submission, anti-abuse measures, private raw inquiry storage, and operator prioritization for legal/payment/safety matters. Counsel must determine the required identity-verification, response-time, retention and escalation rules.
 
 ## Support / moderation operations — IMPLEMENTED FOR CONTROLLED BETA
 
-`docs/BETA-OPERATIONS-RUNBOOK.md` records the current controlled-beta routine.
-
-- `.github/workflows/beta-ops-inbox.yml` checks production every 6 hours using a read-only query path.
-- Only counts of new `content_reports` and `contact_inquiries` are copied into GitHub automation.
-- Waiting work creates/updates one operator alert issue; a clear inbox closes it.
-- Raw report/inquiry bodies, email addresses, user IDs, and visitor hashes are not copied to the alert.
-- Legal-information/payment/safety requests are prioritized by the operator routine.
-
-If the watcher fails, the runbook requires manual checks until automation is repaired.
+`docs/BETA-OPERATIONS-RUNBOOK.md` records the controlled-beta routine. Production monitoring uses read-only observation, copies counts rather than raw sensitive bodies into GitHub automation, and prioritizes legal/payment/safety work. If automated observation fails, the runbook requires manual fallback until repaired.
 
 ## Controlled technical evidence relevant to legal/billing review
 
-The following engineering evidence exists as of 2026-08-26:
+The following is technical evidence, not a legal conclusion.
 
-- authenticated isolated-Staging smoke exercises posting, reading/favorite-related product flows, LIGHT SEED / SCOUT RECORD, and LIGHT ANALYTICS including the basic discovery-to-reading funnel;
-- isolated Stripe test-mode billing smoke exercises Checkout, Standard entitlement reconciliation, Stripe Billing Portal, cancellation, and resulting Staging subscription-state reconciliation;
-- temporary Staging users/data are cleaned after the smoke;
-- raw card numbers are handled by Stripe and are not stored by NOVELIGHT;
-- production and Staging Supabase targets are explicitly separated in the relevant automated gates.
+### Current Staging product/auth/billing lifecycle
 
-Important limitation: the protected-Staging reconciliation test is **not** evidence that an external Stripe webhook can reach the production Vercel endpoint. External Stripe → Production webhook delivery remains a separate production-release technical gate.
+Staging Smoke #98, run `33135672826`, succeeded against current main `0ba72358b5213ff409aed2fca24e3af7bf1ff025` and covered:
 
-## Remaining release work before public beta
+- read-only Staging deployment contract;
+- read-only product smoke;
+- authenticated Staging credentials;
+- write-capable Staging deployment contract;
+- authenticated product smoke;
+- authenticated-data cleanup;
+- fresh ephemeral billing user creation;
+- complete Stripe **test-mode** billing smoke;
+- billing-data cleanup;
+- temporary-fixture removal.
 
-1. **Qualified Japanese legal review or an explicit residual-risk decision — OPEN HARD GATE**
-   - Have a qualified Japanese lawyer review the final launch-state terms, privacy policy, billing policy, commerce disclosure, content rules, signup consent, pricing/checkout disclosures, and contact route.
-   - If the owner chooses to launch without that review, the residual-risk decision must be explicit and recorded; silence does not satisfy the gate.
+This scope is `current`. Do not repeat it solely for documentary freshness.
 
-2. **Questions requiring qualified legal review**
-   - 特商法: whether the current on-request omission of legal name/address/phone and the response operation satisfy the exact launch circumstances.
-   - recurring subscription / final confirmation: whether the NOVELIGHT + Stripe hosted Checkout presentation satisfies the required Japanese consumer disclosures for the actual plan configuration.
-   - Consumer Contract Act / liability: limitation-of-liability, disclaimer, service-change, and dispute provisions.
-   - refunds/cancellation: the current no-proration/refund baseline and any mandatory exceptions.
-   - minors: signup wording and paid-subscription parental-consent treatment.
-   - APPI/privacy: purposes, retention wording, overseas processors, security disclosures, data-subject requests, UTM/pseudonymous analytics, moderation/support data.
-   - UGC/copyright: platform license, notice/report handling, takedown process, repeat abuse, and operator liability risk.
-   - mature/adult content: consistency among Japanese law, NOVELIGHT zoning, and Stripe/payment-provider restrictions.
-   - governing law/jurisdiction wording.
+### Production Authenticated Smoke
 
-3. **Final release observations still separate from legal analysis**
-   - complete the final checklist observation that required legal/contact links are reachable from all intended major public surfaces;
-   - perform and record the separate external Stripe → Production webhook delivery check before relying on production paid entitlements;
-   - re-run/re-observe the release checklist after any material legal, billing, privacy, moderation, or production-configuration changes.
+Existing successful Production Authenticated Smoke evidence remains accepted as `current` for its proved scope under `docs/EVIDENCE-FRESHNESS-GATE.md`. Later main changes do not by themselves require another Production execution.
 
-## Notes
+### Production external Stripe webhook delivery — PASS / CURRENT
 
-- Do not claim that paid exposure guarantees views, favorites, ratings, rankings, sales, or publication.
-- Do not store raw card numbers in NOVELIGHT. Stripe handles card details.
-- Keep privacy documentation aligned with actual data flows whenever analytics, advertising, email, moderation, or processors change.
-- Do not mark the public beta legal gate complete solely because this engineering review exists.
+The earlier 2026-08-26 statement that external Stripe -> Production webhook delivery remained open is superseded.
+
+Decisive later evidence:
+
+- workflow: `NOVELIGHT Chat-Mediated Production Approval`;
+- run `33065836764`;
+- proof SHA `944c2232a577ebeae32798c29a508b8540a26807`;
+- workflow conclusion: `success`;
+- approval ledger: issue `#165` records the request as consumed successfully;
+- completion contract required a no-charge webhook proof and zero final billing-audit issues.
+
+The scoped proof is:
+
+`Stripe Live event creation without artificial paid charge -> Production Vercel webhook -> Production Supabase entitlement/cancellation reflection -> final billing audit`.
+
+A freshness comparison through current main found no material change to the decisive webhook-handler boundary that would invalidate that proof. Therefore the same Production proof **must not be repeated merely because `main` advanced**.
+
+## Official-reference baseline
+
+The engineering review has used the following official sources as implementation inputs. Their presence does not establish compliance:
+
+### 特定商取引法 / recurring subscription
+
+- Consumer Affairs Agency, 通信販売広告Q&A: https://www.no-trouble.caa.go.jp/qa/advertising.html
+- Consumer Affairs Agency, 通信販売広告について: https://www.no-trouble.caa.go.jp/what/mailorder/advertising.php
+- Consumer Affairs Agency, final-confirmation materials: https://www.caa.go.jp/policies/policy/consumer_transaction/amendment/2021/notice03/
+
+### 個人情報保護法
+
+- Personal Information Protection Commission, general guidelines: https://www.ppc.go.jp/personalinfo/legal/guidelines_tsusoku/
+- APPI Q&A: https://www.ppc.go.jp/personalinfo/faq/APPI_QA/
+- foreign handling guidance: https://www.ppc.go.jp/personalinfo/legal/guidelines_offshore/
+
+### Stripe
+
+- Japan commerce-disclosure guidance: https://support.stripe.com/questions/how-to-create-and-display-a-commerce-disclosure-page?locale=ja-JP
+- prohibited/restricted-business FAQ: https://support.stripe.com/questions/prohibited-and-restricted-businesses-list-faqs?locale=ja-JP
+
+## Remaining hard legal gate
+
+### 1. Qualified Japanese counsel review — OPEN
+
+Counsel should review the launch-state terms, privacy policy, billing policy, commerce disclosure, content rules, signup consent, pricing/Checkout disclosures, contact route and relevant operations.
+
+Primary P0 topics:
+
+- 特商法: whether on-request omission of legal name/address/phone is permitted for the actual operator and launch circumstances;
+- recurring subscription/final confirmation: whether NOVELIGHT + Stripe hosted Checkout satisfies the actual Japanese disclosure requirements;
+- Consumer Contract Act / liability: disclaimer, limitation, service-change and dispute provisions;
+- refunds/cancellation: no-proration/no-refund baseline, mandatory exceptions, cancellation effect;
+- minors: free registration, paid subscription and parental-consent handling;
+- APPI/privacy: purposes, retention, overseas processors, security disclosures, data-subject rights, UTM/pseudonymous analytics, support/moderation data;
+- UGC/copyright: platform license, takedown/report procedures, evidence preservation, appeals/counter-notice, repeat abuse and operator liability;
+- mature content: consistency of Japanese-law, NOVELIGHT zoning and Stripe constraints;
+- AI-assisted/generated works: rights warranty, disclosure and abuse boundaries;
+- governing law/jurisdiction wording.
+
+Counsel findings should be classified as `BLOCKER / HIGH / MEDIUM / LOW`, with affected file/flow and proposed wording or operational requirement.
+
+### 2. Owner residual-risk decision — SEPARATE GATE
+
+Owner residual-risk acceptance is not legal analysis and must not be used to treat a mandatory legal requirement as satisfied.
+
+Preferred order:
+
+`qualified counsel review -> required BLOCKER/HIGH remediation -> affected-scope verification -> residual-risk record -> owner acceptance/rejection -> legal GO`.
+
+Only non-sensitive metadata should be recorded publicly. Operator identity/address/phone and privileged/private advice should be shared with counsel through a secure channel, not committed to GitHub.
+
+## Final release observations after legal P0
+
+After counsel review and any required legal changes are merged:
+
+1. apply Evidence Freshness analysis only to scopes actually affected by those changes;
+2. confirm the latest Supabase Production backup/recovery point through the approved read-only route;
+3. perform final read-only Production observation of legal/public surfaces and intended legal/contact links;
+4. refresh `docs/BETA-RELEASE-EVIDENCE-LATEST.md` against the then-current final candidate;
+5. resolve any truly unknown hard checklist item using current evidence rather than historical unchecked boxes;
+6. record public-beta GO only when every hard gate is satisfied.
+
+Production/Secret/Stripe live/Supabase Production/Vercel Production mutations remain approval-gated. Existing current Staging/Production proofs are not to be repeated for convenience.
