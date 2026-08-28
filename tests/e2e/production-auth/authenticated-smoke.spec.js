@@ -61,8 +61,8 @@ function contextOptionsForProject(baseURL, projectName) {
   const descriptor = projectName.includes('mobile')
     ? devices['Pixel 7']
     : devices['Desktop Chrome'];
-  const { defaultBrowserType: _defaultBrowserType, ...deviceOptions } =
-    descriptor;
+  const deviceOptions = { ...descriptor };
+  delete deviceOptions.defaultBrowserType;
   return { ...deviceOptions, baseURL };
 }
 
