@@ -16,36 +16,36 @@ const stateCheck = await readFile(
 );
 const docs = await readFile('docs/SUPABASE-PRODUCTION-DEPLOY.md', 'utf8');
 
-const versions = ['20260815000000', '20260819190000', '20260822194000'];
-
-test('history repair selects one allowlisted version', () => {
-  assert.equal(workflow.includes('repair_version:'), true);
-  for (const version of versions) {
-    assert.equal(workflow.includes(`- '${version}'`), true);
-  }
+test('history repair is restricted to the initial baseline', () => {
+  assert.equal(workflow.includes('repair_version:'), false);
+  assert.equal(
+    workflow.includes("REPAIR_VERSION: '20260815000000'"),
+    true
+  );
   assert.equal(
     workflow.includes(
       'supabase migration repair --status applied "$REPAIR_VERSION"'
     ),
     true
   );
-  assert.equal(
-    workflow.includes('supabase migration repair --status applied 202608'),
-    false
-  );
+  for (const version of ['20260819190000', '20260822194000']) {
+    assert.equal(workflow.includes(`REPAIR_VERSION: '${version}'`), false);
+  }
 });
 
-test('history repair requires the selected version to be pending', () => {
+test('history repair requires the baseline version to be pending', () => {
   assert.equal(workflow.includes('extract-supabase-pending.sh'), true);
   assert.equal(
     workflow.includes('grep -Fxq "$REPAIR_VERSION" /tmp/repair-pending.txt'),
     true
   );
-  assert.equal(workflow.includes('is not currently pending in Production'), true);
+  assert.equal(
+    workflow.includes('is not currently pending in Production'),
+    true
+  );
 });
 
 test('baseline repair requires a fresh read-only Production check', () => {
-  assert.equal(workflow.includes("REPAIR_VERSION == '20260815000000'"), true);
   assert.equal(
     workflow.includes('verify-production-initial-baseline-state.sh'),
     true
@@ -59,10 +59,10 @@ test('baseline repair requires a fresh read-only Production check', () => {
   }
 });
 
-test('docs preserve fail-closed one-version history repair', () => {
-  assert.equal(docs.includes('一度に1versionだけ'), true);
+test('docs preserve fail-closed baseline-only history repair', () => {
+  assert.equal(docs.includes('`20260815000000` だけ'), true);
   assert.equal(docs.includes('4つのhistorical core table'), true);
-  assert.equal(docs.includes('read-only'), true);
+  assert.equal(docs.includes('fresh read-only'), true);
   assert.equal(docs.includes('production-approval'), true);
-  assert.equal(docs.includes('1versionずつ承認・整合'), true);
+  assert.equal(docs.includes('現在のrepair workflowの対象外'), true);
 });
