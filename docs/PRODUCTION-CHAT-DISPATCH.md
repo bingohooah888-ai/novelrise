@@ -82,7 +82,8 @@ Before the new chat-approved execution starts, the bridge checks active manual S
 
 - any human-started active run causes a fail-closed stop;
 - more than one active bot-started manual run causes a fail-closed stop;
-- one bot-started run from an older main may be cancelled and must reach `cancelled` before the repair can continue;
+- a single bot-started run is cancellable only when issue #165 contains exactly one matching prior `NOVELIGHT_PRODUCTION_DISPATCHED` record for the same old main, fixed baseline repair version, and `supabase-production.yml` target;
+- one verified bot-started run from an older main may be cancelled and must reach `cancelled` before the repair can continue;
 - a bot-started run already targeting the newly approved main causes a fail-closed duplicate stop.
 
 After that cleanup, the Production repair job uses the same `supabase-production-migration` concurrency group as the manual workflow, so the two mutation paths cannot intentionally execute concurrently.
