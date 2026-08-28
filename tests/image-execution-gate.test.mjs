@@ -102,7 +102,11 @@ test('image phase accepts explicit current-message evidence', () => {
 });
 
 test('non-image phases do not require image evidence', () => {
-  const evidence = runtime.parseImageExecutionEvidence('implementation', [], {});
+  const evidence = runtime.parseImageExecutionEvidence(
+    'implementation',
+    [],
+    {}
+  );
   assert.deepEqual(evidence, {
     required: false,
     decision: '',
