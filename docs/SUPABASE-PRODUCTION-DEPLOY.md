@@ -88,12 +88,16 @@ migration statusを表示した後、`supabase db push --linked --dry-run` を�
 
 SQL Editor等で本番適用済みであることを確認した既知migrationだけをremote migration historyへ `applied` として記録する一時整合作業用。
 
-現時点では次の2versionだけを固定でrepairする。
+`repair-history` は一度に1versionだけを対象にする。`repair_version` で選択できるallowlistは次の3versionに固定する。
 
-- `20260819190000`
-- `20260822194000`
+- `20260815000000` — initial schema baseline
+- `20260819190000` — secure content RLS / constraints
+- `20260822194000` — manage content write RLS
 
-confirmationが正確に `REPAIR` の場合だけ実行する。
+confirmationが正確に `REPAIR` の場合だけ実行する。対象versionがProductionで実際にpendingでなければ停止する。
+
+`20260815000000` をrepairする場合は、history変更前にSupabase Management APIのread-only database queryで `profiles` / `novels` / `episodes` / `favorites` の4つのhistorical core tableが現在のProductionにすべて存在することを確認する。1つでも欠ける、read-only確認に失敗する、または結果が曖昧な場合はfail closedし、historyを変更しない。このbaseline migration自体は4tableが既存ならstrict no-opであるため、実DB状態を確認してからhistoryだけを整合する。
+
 実行前に通常の自動deployと同じ `production-approval` Environmentで1回だけ人間の承認を要求する。承認後のhistory repair、status再確認、observability検証は、その1回の承認を受けた同じ操作として継続する。
 
 ### deploy
@@ -114,14 +118,16 @@ confirmationが正確に `REPAIR` の場合だけ実行する。
 - `PRODUCTION_APPROVAL_GATE_READY=true` はRequired reviewers設定後にのみ有効化する。
 - 想定外のmigrationがpendingなら自動・手動ともdeployしない。
 - `repair-history` は本番適用済みをDB実状態から確認した場合だけ実行する。
+- `repair-history` は選択した1version以外のmigration historyへ同じ操作で触れない。
+- initial baselineのhistory repairでは4つのcore tableをread-onlyで直前確認し、その確認を省略しない。
 - migrationには可能な限りprecheck、postcheck、rollbackを用意し、CIで検証する。
 - rollbackは自動実行しない。障害内容とデータ影響を確認してから明示的に実行する。
 - secretsをrepository、workflow、ログ、SQL、issue、PR本文へ直接書かない。
 
 ## One-time migration history alignment
 
-NOVELIGHTではCLI導入前にSQL Editorから適用したmigrationが存在する。すでに本番へ適用済みのmigrationがpendingとして表示された場合は、そのまま再適用しない。
+NOVELIGHTではCLI導入前にSQL Editorまたは手動構築で適用・作成したDB状態が存在する。すでに本番へ反映済みの状態に対応するmigrationがpendingとして表示された場合は、そのまま再適用しない。
 
 DBの実状態とGitHub上のmigration内容が一致していることを確認したうえで、Supabase CLIの `migration repair --status applied` を使ってremote migration historyだけを合わせる。
 
-2026-08-22時点で、SQL Editorのmigration backup stateから `20260819190000` と `20260822194000` の本番適用を確認済み。history alignmentでは手動workflowの `repair-history` を使い、この2versionだけをremote historyへ反映する。
+`20260815000000` はProductionのhistorical core tablesがmigration管理開始前から存在していたことをfresh read-only checkで確認した場合のみrepairする。`20260819190000` と `20260822194000` は2026-08-22時点のSQL Editor migration backup stateで本番適用を確認済みだが、再度history repairが必要になった場合も対象versionを明示選択し、1versionずつ承認・整合する。
