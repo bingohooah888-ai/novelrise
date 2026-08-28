@@ -30,28 +30,43 @@ test('history repair is restricted to one allowlisted selected version', () => {
 
 test('history repair requires the selected version to be pending', () => {
   assert.match(workflow, /extract-supabase-pending\.sh/);
-  assert.match(workflow, /grep -Fxq "\$REPAIR_VERSION" \/tmp\/repair-pending\.txt/);
+  assert.match(
+    workflow,
+    /grep -Fxq "\$REPAIR_VERSION" \/tmp\/repair-pending\.txt/
+  );
   assert.match(workflow, /is not currently pending in Production/);
 });
 
-test('initial baseline history repair requires a fresh read-only Production state check', () => {
-  assert.match(
-    workflow,
-    /env\.REPAIR_VERSION == '20260815000000'[\s\S]*?verify-production-initial-baseline-state\.sh/
-  );
-  assert.match(verifier, /database\/query\/read-only/);
-  assert.match(verifier, /\$row\.ok == true/);
+test(
+  'initial baseline history repair requires a fresh read-only Production state check',
+  () => {
+    assert.match(
+      workflow,
+      /env\.REPAIR_VERSION == '20260815000000'[\s\S]*?verify-production-initial-baseline-state\.sh/
+    );
+    assert.match(verifier, /database\/query\/read-only/);
+    assert.match(verifier, /\$row\.ok == true/);
 
-  for (const table of ['profiles', 'novels', 'episodes', 'favorites']) {
-    assert.match(stateCheck, new RegExp(`to_regclass\\('public\\.${table}'\\)`));
-    assert.match(verifier, new RegExp(`\\$row\\.${table}_exists == true`));
+    for (const table of ['profiles', 'novels', 'episodes', 'favorites']) {
+      assert.match(
+        stateCheck,
+        new RegExp(`to_regclass\\('public\\.${table}'\\)`)
+      );
+      assert.match(
+        verifier,
+        new RegExp(`\\$row\\.${table}_exists == true`)
+      );
+    }
   }
-});
+);
 
-test('production deployment docs preserve approval and fail-closed baseline repair semantics', () => {
-  assert.match(docs, /repair-history.*一度に1version/s);
-  assert.match(docs, /4つのhistorical core table/);
-  assert.match(docs, /read-only/);
-  assert.match(docs, /production-approval/);
-  assert.match(docs, /1versionずつ承認・整合/);
-});
+test(
+  'production deployment docs preserve approval and fail-closed baseline repair semantics',
+  () => {
+    assert.match(docs, /repair-history.*一度に1version/s);
+    assert.match(docs, /4つのhistorical core table/);
+    assert.match(docs, /read-only/);
+    assert.match(docs, /production-approval/);
+    assert.match(docs, /1versionずつ承認・整合/);
+  }
+);
