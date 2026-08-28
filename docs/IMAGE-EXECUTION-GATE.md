@@ -4,25 +4,35 @@ This file is the fail-closed contract for any NOVELIGHT image-generation or imag
 
 `docs/NOVELIGHT-MASTER.md` remains the highest project authority. This contract strengthens the image-specific execution rule already defined in `docs/WORK-EXECUTION-PREFLIGHT.md` and does not relax any stronger Noctar/ComfyUI lock.
 
-## 1. Current-message-only binary decision
+## 1. Project-wide ChatGPT image-tool hard lock
 
-Before image generation or image editing is even considered as a tool candidate, set exactly one internal decision for the current user message:
+ChatGPT-side image-generation and image-editing tools are **LOCKED by default for every NOVELIGHT user message**.
+
+Before an image tool is even considered as a candidate, make two independent current-message decisions:
+
+`CURRENT_MESSAGE_IMAGE_TOOL_UNLOCK = YES | NO`
 
 `CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = YES | NO`
 
-The default is always `NO` on every new user message.
+The default is always `NO` for both decisions on every new user message.
 
-Set it to `YES` only when the current user message itself contains an unambiguous instruction to actually generate, draw, create, edit, modify, fix, composite, or otherwise execute image work, and the assistant can quote the exact current-message phrase that authorizes that execution.
+An image tool may be considered only when **both decisions are `YES` from the same current user message**.
 
-Do not infer `YES` from prior turns, attached images, screenshots, the surrounding design discussion, likely user intent, assistant convenience, or a generic image-tool preference.
+Set `CURRENT_MESSAGE_IMAGE_TOOL_UNLOCK = YES` only when the current user message itself explicitly and directly states that the ChatGPT-side image-generation/editing lock should be解除/unlocked/re-enabled, and the assistant can quote that exact current-message phrase.
 
-If the exact authorizing phrase cannot be quoted from the current user message, the decision is `NO`.
+Set `CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = YES` only when the same current user message itself contains an unambiguous instruction to actually generate, draw, create, edit, modify, fix, composite, or otherwise execute image work, and the assistant can quote that exact current-message phrase.
 
-## 2. Consultation and desired-state language are not execution
+A normal image execution instruction is **not** a lock-unlock instruction. For example, `作って`, `生成して`, `編集して`, `修正して`, and `改善して` can describe requested image work, but by themselves they do not unlock ChatGPT-side image tools.
 
-A statement about a desired visual state is not automatically an instruction to perform the edit.
+Do not infer either `YES` from prior turns, attached images, screenshots, surrounding design discussion, likely user intent, assistant convenience, or generic tool-routing preferences.
 
-The following examples remain `NO` by themselves:
+If either exact authorizing phrase cannot be quoted from the current user message, the corresponding decision remains `NO` and ChatGPT-side image tools remain denied.
+
+## 2. Consultation, approval, and desired-state language are not execution or unlock
+
+A statement about a desired visual state, an evaluation of a result, or approval of a completed image is not automatically an instruction to perform another edit.
+
+The following examples remain non-executable and do not unlock image tools by themselves:
 
 - `文字をもう少し小さくしたい`
 - `両側にロゴでも入れる？`
@@ -31,46 +41,59 @@ The following examples remain `NO` by themselves:
 - `どっちがいい？`
 - `この画像どう？`
 - `作れる？`
-- an image or screenshot attached without an explicit execution instruction
+- `完璧`
+- `いいね`
+- `これでOK`
+- `はい`
+- `続けて`
+- an image or screenshot attached without both explicit current-message proofs
 
-In particular, Japanese forms such as `〜したい`, `〜入れる？`, `〜した方がいい？`, and other consultation, preference, proposal, or feasibility language must not be silently rewritten into `〜して` or `作って`.
+In particular, Japanese forms such as `〜したい`, `〜入れる？`, `〜した方がいい？`, and other consultation, preference, proposal, feasibility, approval, or reaction language must not be silently rewritten into `〜して`, `作って`, or a lock-unlock command.
 
-If the same current message also contains an explicit execution instruction, quote that actual execution phrase and evaluate that phrase rather than relying on the desired-state wording.
+If the same current message contains an explicit execution instruction but no explicit lock-unlock instruction, execution remains prohibited.
 
 ## 3. Pre-routing deny rule
 
-The binary decision happens before generic tool routing.
+The binary decisions happen before generic tool routing.
 
-When `CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = NO`:
+When either `CURRENT_MESSAGE_IMAGE_TOOL_UNLOCK = NO` or `CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = NO`:
 
 - image-generation and image-editing tools must be removed from the candidate tool set;
 - they must be placed in `denied_tools` for the turn;
 - they must not appear in `allowed_tools`;
 - no automatic router, image attachment, default image-edit preference, efficiency argument, or assistant initiative may add them back;
-- respond with text-only consultation, analysis, or clarification as appropriate.
+- respond with text-only consultation, analysis, acknowledgement, or clarification as appropriate.
 
-This is a pre-routing gate, not a post-hoc reminder.
+This is a pre-routing hard lock, not a post-hoc reminder.
 
-When `CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = YES`, only the explicitly requested image scope is eligible. Additional variants, edits, or generations are not implicitly authorized.
+When both decisions are `YES`, only the explicitly requested image scope is eligible. Additional variants, edits, or generations are not implicitly authorized.
 
-## 4. Permission expires every user message
+## 4. Both permissions expire on every user message
 
-Image execution permission is current-message-only.
+Image-tool unlock and image execution permission are current-message-only.
 
 A new user message always resets:
 
+`CURRENT_MESSAGE_IMAGE_TOOL_UNLOCK = NO`
+
 `CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = NO`
 
-A prior `作って`, `生成して`, `編集して`, or similar instruction cannot be carried forward. `はい`, `続けて`, a screenshot, a result review, or a new design question does not inherit the prior permission.
+A prior `画像ツールのロックを解除して`, `作って`, `生成して`, `編集して`, or similar instruction cannot be carried forward. `はい`, `続けて`, a screenshot, a result review, approval such as `完璧`, or a new design question does not inherit either permission.
+
+The user must supply both current-message proofs again for every later image-tool call turn.
 
 ## 5. User-visible execution-card proof
 
-If an NOVELIGHT assistant turn intends to call an image-generation or image-editing tool, the current-turn execution card must be sent before the tool call and must additionally include:
+If a NOVELIGHT assistant turn intends to call an image-generation or image-editing tool, the current-turn execution card must be sent before the tool call and must additionally contain all four fields:
 
+- `画像ツールロック解除: YES`
+- `ロック解除命令引用: <current user messageからの原文引用>`
 - `画像実行判定: YES`
 - `明示命令引用: <current user messageからの原文引用>`
 
-If either field cannot truthfully be supplied, the image tool call is prohibited.
+If any field cannot truthfully be supplied from the current user message, the image tool call is prohibited.
+
+The unlock quote and execution quote may be separate phrases inside the same current user message. A generic execution phrase must not be reused as fake unlock evidence.
 
 This conditional image proof is in addition to the ordinary execution-card fields and does not replace them.
 
@@ -85,40 +108,69 @@ Calling an image-generation or image-editing tool counts as image execution for 
 
 Therefore a prohibited tool call cannot be treated as harmless merely because no visible image appeared.
 
-If an unauthorized image-tool call is detected, stop further image execution in that turn, report the gate failure, and require a fresh current-message decision on the next user turn.
+If an unauthorized image-tool call is detected, stop further image execution in that turn, report the gate failure, and require a fresh current-message unlock plus execution decision on the next user turn.
 
 ## 7. Stronger individual locks win
 
-A `YES` decision under this general gate does not override a stronger project-specific lock.
+A project-wide unlock plus explicit execution instruction does not override a stronger project-specific lock.
 
-In particular, the current Noctar/ComfyUI lock remains authoritative: general wording such as `作って` does not by itself authorize ChatGPT-side image generation or editing for Noctar when a stronger lock forbids that tool/environment.
+In particular, the current Noctar/ComfyUI lock remains authoritative. ChatGPT-side image generation or editing for Noctar remains prohibited unless that stronger lock is separately and explicitly changed according to its own contract.
 
 ## 8. Local/runtime enforcement
 
 For local/runtime-capable image execution, use the Runtime Execution Gate `image` phase.
 
-The image phase must receive all of the following evidence:
+The image phase must receive all of the following current-message evidence:
 
+- `--image-lock=unlocked`
+- `--image-unlock-current-message-confirmed`
+- `--image-unlock-trigger=<verbatim current-message lock-unlock phrase>`
 - `--image-execution=allowed`
 - `--image-current-message-confirmed`
 - `--image-trigger=<verbatim current-message execution phrase>`
 
-Equivalent `NOVELIGHT_IMAGE_EXECUTION`, `NOVELIGHT_IMAGE_CURRENT_MESSAGE_CONFIRMED`, and `NOVELIGHT_IMAGE_TRIGGER` environment variables may be used.
+Equivalent environment variables are:
 
-Missing, denied, stale, or non-current-message evidence must fail closed before image execution.
+- `NOVELIGHT_IMAGE_LOCK`
+- `NOVELIGHT_IMAGE_UNLOCK_CURRENT_MESSAGE_CONFIRMED`
+- `NOVELIGHT_IMAGE_UNLOCK_TRIGGER`
+- `NOVELIGHT_IMAGE_EXECUTION`
+- `NOVELIGHT_IMAGE_CURRENT_MESSAGE_CONFIRMED`
+- `NOVELIGHT_IMAGE_TRIGGER`
 
-The runtime evidence is an auditable assertion; it cannot mechanically inspect the chat transcript. Cloud assistants therefore remain responsible for the pre-routing decision and visible exact-quote proof above.
+Missing, denied, locked, stale, continuation-only, or non-current-message evidence must fail closed before image execution.
 
-## 9. Regression requirement
+The unlock trigger must explicitly describe unlocking/re-enabling ChatGPT-side image generation/editing. Ordinary execution-only wording such as `作って`, `編集して`, `修正して`, or `改善して` must not satisfy the unlock field.
+
+The runtime evidence is an auditable assertion; it cannot mechanically inspect the full chat transcript. Cloud assistants therefore remain responsible for the pre-routing decision and visible exact-quote proofs above.
+
+## 9. Cloud / connector enforcement
+
+A cloud assistant that cannot run the local Runtime Gate is not exempt.
+
+Before an image tool call it must:
+
+1. Reset both image decisions to `NO` for the new user message.
+2. Find and quote an explicit current-message ChatGPT image-tool unlock phrase.
+3. Find and quote an explicit current-message image execution phrase.
+4. Send the ordinary current-turn Execution Card plus all four image proof fields.
+5. Only then allow the image tool into the candidate set.
+
+If either proof is missing, the turn remains text-only for image-related discussion. A previous-turn unlock, a previous-turn execution command, a screenshot, an approval reaction, or automatic routing can never substitute for the current-message proofs.
+
+## 10. Regression requirement
 
 CI must retain tests proving that:
 
 - the dedicated image contract remains part of the Runtime Gate authoritative-file set;
-- the Runtime Gate supports an `image` phase and rejects it without explicit current-message image evidence;
-- an image phase cannot pass without a verbatim trigger string;
-- the project contracts explicitly classify `文字をもう少し小さくしたい` and `両側にロゴでも入れる？` as non-execution examples;
-- `NO` removes image tools before generic routing;
-- permission resets on every new user message;
+- the Runtime Gate supports an `image` phase and rejects it without explicit current-message lock-unlock evidence;
+- explicit image execution without a separate lock unlock fails closed;
+- an image phase cannot pass without verbatim unlock and execution trigger strings;
+- ordinary execution wording such as `作って`, `編集して`, `修正して`, and `改善して` cannot satisfy the unlock trigger;
+- the project contracts explicitly classify `文字をもう少し小さくしたい`, `両側にロゴでも入れる？`, `完璧`, `いいね`, and `これでOK` as non-execution examples;
+- either `NO` decision removes image tools before generic routing;
+- both permissions reset on every new user message;
+- the user-visible execution card requires both unlock and execution proof before image-tool routing;
 - an attempted prohibited image-tool call is itself a gate violation even if no image renders.
 
-The purpose is to prevent consultation language from being converted into image execution by inference, automatic routing, or convenience.
+The purpose is to prevent consultation, approval, continuation, or ordinary editing language from being converted into ChatGPT-side image execution by inference, automatic routing, context carry-over, or convenience.
