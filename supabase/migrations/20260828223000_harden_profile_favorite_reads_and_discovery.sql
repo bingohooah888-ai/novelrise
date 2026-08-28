@@ -4,7 +4,7 @@
 -- - raw profile rows are readable only by their owner; public author cards use a narrow RPC
 -- - raw favorite rows are readable only by their owner; public counts use aggregate RPCs
 -- - neutral search and ranking aggregate favorite counts in PostgreSQL instead of N+1 browser queries
--- - preserve the previous SELECT policies/grants so rollback is deterministic
+-- - preserve the previous SELECT policies/grants and RLS state so rollback is deterministic
 
 begin;
 
@@ -35,6 +35,14 @@ create table if not exists novelrise_migration_backup.select_policies (
   primary key (migration_id, schemaname, tablename, policyname)
 );
 
+create table if not exists novelrise_migration_backup.table_rls_state (
+  migration_id text not null,
+  table_name text not null,
+  was_enabled boolean not null,
+  was_forced boolean not null,
+  primary key (migration_id, table_name)
+);
+
 do $$
 begin
   if to_regclass('public.profiles') is null
@@ -50,6 +58,10 @@ begin
   ) or exists (
     select 1
     from novelrise_migration_backup.select_policies
+    where migration_id = '20260828223000'
+  ) or exists (
+    select 1
+    from novelrise_migration_backup.table_rls_state
     where migration_id = '20260828223000'
   ) then
     raise exception 'Migration 20260828223000 already has backup state; stop and inspect before retrying';
@@ -103,6 +115,23 @@ from pg_policies
 where schemaname = 'public'
   and tablename in ('profiles', 'favorites')
   and cmd = 'SELECT';
+
+insert into novelrise_migration_backup.table_rls_state (
+  migration_id,
+  table_name,
+  was_enabled,
+  was_forced
+)
+select
+  '20260828223000',
+  c.relname,
+  c.relrowsecurity,
+  c.relforcerowsecurity
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname in ('profiles', 'favorites')
+  and c.relkind in ('r', 'p');
 
 do $$
 declare
