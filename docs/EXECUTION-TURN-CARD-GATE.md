@@ -8,6 +8,22 @@ Before any GitHub/Connector/API/CLI/Workflow/file operation, including read-only
 
 A card from a previous user turn is invalid. A user message such as `はい`, `続けて`, a screenshot, a log, or a manual-operation completion report always starts a new execution turn and invalidates the previous card.
 
+## 1.5 MASTER-first read gate
+
+After the current-turn execution card is visible, the first read-only bootstrap must establish the latest `main` commit SHA and then **immediately fetch and read the current `main` version of `docs/NOVELIGHT-MASTER.md` before reading any other project document, PR, workflow, issue, deployment state, or implementation file.**
+
+`MASTERを確認した` means the assistant actually read the current MASTER content. A filename check, existence check, blob/SHA lookup, search snippet, cached summary, prior-chat memory, project attachment, File Library copy, or a statement such as `MASTERに書いてある` is not sufficient evidence of reading it.
+
+If the tool truncates the MASTER, the assistant must continue fetching the remaining ranges/chunks until the full current MASTER has been read. A partial excerpt is not a completed MASTER read.
+
+The only repository-state read allowed before the MASTER content is the minimum lookup needed to resolve the repository and latest `main` SHA. Once that SHA is known, MASTER reading takes priority over all other repository reads.
+
+The MASTER-read evidence is current-turn only. Every new user message that leads to a tool-using NOVELIGHT turn invalidates the previous turn's MASTER read together with the previous execution card. The assistant must repeat the latest-main lookup and current-MASTER read before continuing tool work.
+
+If the latest `main` MASTER cannot be retrieved and read, fail closed: do not substitute an old copy and do not continue mutation or project-state work.
+
+The purpose of this gate is to prevent a rule from existing in MASTER while the assistant acts without actually reading that rule in the current execution turn.
+
 ## 2. Required card fields
 
 The first visible message must contain all of the following:
@@ -45,6 +61,8 @@ The Runtime Execution Gate continues to validate:
 - the next user-action condition;
 - total time in timed mode.
 
+Passing a Runtime Gate check that files are reachable is not a substitute for reading MASTER. The agent must read the current `main` MASTER before interpreting project rules or entering implementation/state work; if the agent cannot read it in full, it must fail closed.
+
 Optional `other work` and degraded-mode reason metadata may be recorded when useful, but they are not required card fields.
 
 This file is also part of the authoritative files fetched by the Runtime Execution Gate, so the dedicated first-message contract cannot be removed without breaking regression checks.
@@ -56,12 +74,14 @@ A cloud assistant that cannot run the local Runtime Execution Gate is not exempt
 Its protocol is:
 
 1. Send the execution card as the first visible message.
-2. Only then call GitHub/Connector/API tools.
-3. Re-fetch latest `main`, MASTER, Preflight, this file, and `docs/EVIDENCE-FRESHNESS-GATE.md` before any mutation.
-4. If the assistant notices that a tool was called before the card, stop mutations for that turn, report the gate failure, and do not treat a later card in the same turn as valid recovery.
-5. The next tool-using turn must begin with a fresh card.
+2. Only then call the minimum read-only lookup needed to resolve latest `main`.
+3. Fetch and read the **full current `main` MASTER** from that resolved SHA before any other project-state or project-document read; if truncated, continue range/chunk reads until complete.
+4. Only after MASTER reading is complete, re-fetch Preflight, this file, and `docs/EVIDENCE-FRESHNESS-GATE.md`, then gather any PR/workflow/deployment/implementation evidence needed for the task.
+5. Do not mutate anything until the MASTER-first bootstrap and the remaining required authoritative-file bootstrap are complete.
+6. If the assistant notices that a tool was called before the card, or that project-state/project-document reads were performed before the current MASTER was actually read, stop mutations for that turn, report the gate failure, and do not treat a later card or later MASTER read in the same turn as valid recovery.
+7. The next tool-using turn must begin with a fresh card and a fresh latest-main/current-MASTER read.
 
-The cloud path cannot rely on `I remembered the rule` as evidence. The visible ordering in the conversation is the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
+The cloud path cannot rely on `I remembered the rule`, `MASTERに書いてある`, a prior-turn read, or cached/project-attached copies as evidence. The visible ordering plus current-turn GitHub reads are the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
 
 ## 5. Evidence Freshness Gate
 
@@ -88,7 +108,9 @@ CI must keep tests that assert:
 - degraded mode may omit both the time estimate and a user-visible omission explanation;
 - timed mode requires a total estimate;
 - the cloud path explicitly treats a late card as invalid for that turn;
+- the current-turn bootstrap requires latest-main resolution followed by a full current-MASTER read before other project reads;
+- a prior-turn MASTER read, cached summary, attachment, existence/SHA check, or partial snippet cannot satisfy the MASTER-read gate;
 - deploy/Vercel/Supabase/Stripe phases fail closed without evidence-freshness proof;
 - current evidence blocks duplicate external-state mutation.
 
-The purpose is to make a missing execution card or stale-state assumption a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
+The purpose is to make a missing execution card, an unread MASTER, or stale-state assumption a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
