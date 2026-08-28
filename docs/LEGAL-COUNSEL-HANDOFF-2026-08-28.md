@@ -2,9 +2,11 @@
 
 Prepared: 2026-08-28 JST
 
-Base revision: `0ba72358b5213ff409aed2fca24e3af7bf1ff025`
+Reviewed implementation baseline: `0ba72358b5213ff409aed2fca24e3af7bf1ff025`
 
 This document is a factual engineering/operations handoff for qualified Japanese counsel. It is **not legal advice** and does not itself establish compliance.
+
+The SHA above is the launch-state implementation baseline reviewed for the legal packet, not a permanently hardcoded claim about the repository's latest `main`. Documentation-only merges may advance `main` without invalidating that implementation evidence. At the time of any release decision, fetch the latest `main` and apply `docs/EVIDENCE-FRESHNESS-GATE.md` before treating any evidence as current.
 
 It supersedes the technical-status portions of `docs/LEGAL-REVIEW-PACKET-2026-08-26.md` where later same-scope evidence exists. The older dated packet remains useful for background and the original legal question set.
 
@@ -12,9 +14,9 @@ It supersedes the technical-status portions of `docs/LEGAL-REVIEW-PACKET-2026-08
 
 | Scope | Freshness | Current state |
 | --- | --- | --- |
-| Current `main` | `current` | `0ba72358b5213ff409aed2fca24e3af7bf1ff025` |
-| CI | `current` | run #833, success |
-| CodeQL | `current` | run #773, success |
+| Reviewed launch-state implementation baseline | `current for reviewed scope` | `0ba72358b5213ff409aed2fca24e3af7bf1ff025`; resolve latest `main` again at use time |
+| CI for reviewed implementation baseline | `current` | run #833, success |
+| CodeQL for reviewed implementation baseline | `current` | run #773, success |
 | Staging product/auth/billing lifecycle | `current` | Staging Smoke #98 / run `33135672826`, success |
 | Production Authenticated Smoke | `current` | existing successful proof remains accepted; do not repeat solely because `main` advanced |
 | Production external Stripe webhook proof | `current` | run `33065836764`, proof SHA `944c2232a577ebeae32798c29a508b8540a26807`; no-charge live-event proof and final audit succeeded |
@@ -24,7 +26,7 @@ It supersedes the technical-status portions of `docs/LEGAL-REVIEW-PACKET-2026-08
 | Public-beta legal GO | `unknown / not recorded` | fail closed |
 | Final Production legal/public-surface observation | `refresh-required at final candidate` | perform read-only immediately before GO |
 | Latest Production backup/recovery-point observation | `refresh-required at final candidate` | perform immediately before GO |
-| `docs/BETA-RELEASE-EVIDENCE-LATEST.md` | `refresh-required` | rolling index still names older main and should be refreshed only at the final release-evidence stage |
+| `docs/BETA-RELEASE-EVIDENCE-LATEST.md` | `refresh-required` | rolling index still names an older main and should be refreshed only at the final release-evidence stage |
 
 The technical scopes marked `current` above must not be re-executed merely to make the SHA look newer. Apply `docs/EVIDENCE-FRESHNESS-GATE.md`: invalidate only after a material same-scope change.
 
