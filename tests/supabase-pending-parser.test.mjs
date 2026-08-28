@@ -43,7 +43,7 @@ test(
 `);
 
     assert.deepEqual(pending, ['20260815000000']);
-  }
+  },
 );
 
 test(
@@ -58,7 +58,7 @@ test(
 `);
 
     assert.deepEqual(pending, ['20260815000000']);
-  }
+  },
 );
 
 test(
@@ -73,7 +73,7 @@ test(
 `);
 
     assert.deepEqual(pending, []);
-  }
+  },
 );
 
 test('production migration checks share the same parser implementation', async () => {
@@ -84,11 +84,11 @@ test('production migration checks share the same parser implementation', async (
 
   assert.match(
     verifyScript,
-    /bash scripts\/extract-supabase-pending\.sh "\$output_file"/
+    /bash scripts\/extract-supabase-pending\.sh "\$output_file"/,
   );
   assert.match(
     workflow,
-    /pending_migrations="\$\(bash scripts\/extract-supabase-pending\.sh \/tmp\/post-deploy-migration-list\.txt\)"/
+    /pending_migrations="\$\(bash scripts\/extract-supabase-pending\.sh \/tmp\/post-deploy-migration-list\.txt\)"/,
   );
   assert.doesNotMatch(verifyScript, /awk -F '│'/);
   assert.doesNotMatch(workflow, /awk -F '│'/);
