@@ -233,245 +233,235 @@ async function closeContextSafely(context) {
   }
 }
 
-test(
-  'authenticated beta-critical product flow works in target',
-  async ({ browser, baseURL }, testInfo) => {
-    const fixture = loadFixture();
-    const deviceLabel = testInfo.project.name.includes('mobile')
-      ? 'mobile'
-      : 'desktop';
-    const unique = `E2E-${fixture.runId}-${deviceLabel}`;
-    const novelTitle = `${smokeLabel}作品 ${unique}`;
-    const firstEpisodeTitle = `第1話 ${smokeLabel} ${unique}`;
-    const secondEpisodeTitle = `第2話 ${smokeLabel} ${unique}`;
-    const contextOptions = contextOptionsForProject(
-      baseURL,
-      testInfo.project.name
-    );
+test('authenticated beta-critical product flow works in target', async ({
+  browser,
+  baseURL
+}, testInfo) => {
+  const fixture = loadFixture();
+  const deviceLabel = testInfo.project.name.includes('mobile')
+    ? 'mobile'
+    : 'desktop';
+  const unique = `E2E-${fixture.runId}-${deviceLabel}`;
+  const novelTitle = `${smokeLabel}作品 ${unique}`;
+  const firstEpisodeTitle = `第1話 ${smokeLabel} ${unique}`;
+  const secondEpisodeTitle = `第2話 ${smokeLabel} ${unique}`;
+  const contextOptions = contextOptionsForProject(
+    baseURL,
+    testInfo.project.name
+  );
 
-    const authorContext = await browser.newContext(contextOptions);
-    const readerContext = await browser.newContext(contextOptions);
-    await Promise.all([
-      installStagingSupabaseOverride(authorContext),
-      installStagingSupabaseOverride(readerContext)
-    ]);
-    const authorPage = await authorContext.newPage();
-    const readerPage = await readerContext.newPage();
+  const authorContext = await browser.newContext(contextOptions);
+  const readerContext = await browser.newContext(contextOptions);
+  await Promise.all([
+    installStagingSupabaseOverride(authorContext),
+    installStagingSupabaseOverride(readerContext)
+  ]);
+  const authorPage = await authorContext.newPage();
+  const readerPage = await readerContext.newPage();
 
-    let novelId;
-    let firstEpisodeHref;
-    let secondEpisodeHref;
+  let novelId;
+  let firstEpisodeHref;
+  let secondEpisodeHref;
 
-    try {
-      await test.step('Author login', async () => {
-        const authorVisitorToken = await login(
-          authorPage,
-          fixture.author,
-          'post.html'
-        );
-        saveVisitorToken(`author-${deviceLabel}`, authorVisitorToken);
-      });
-
-      await test.step('Create novel', async () => {
-        await authorPage.locator('#title').fill(novelTitle);
-        await authorPage
-          .locator('#genre')
-          .selectOption({ label: '現代ドラマ' });
-        await authorPage
-          .locator('#description')
-          .fill(
-            `β公開前の${smokeLabel}専用作品です。テスト終了時に自動削除されます。`
-          );
-        await authorPage.locator('#aiUsage').selectOption('human');
-        await authorPage.locator('#contentRating').selectOption('general');
-        await authorPage.locator('#policyAck').check();
-        await authorPage.locator('#submitButton').click();
-        await authorPage.waitForURL(/\/episode-post\.html\?novel_id=/);
-
-        novelId = new globalThis.URL(authorPage.url()).searchParams.get(
-          'novel_id'
-        );
-        expect(novelId).toBeTruthy();
-      });
-
-      await test.step('Publish first episode', async () => {
-        const publishButton = authorPage.locator('#publish');
-        await expect(publishButton).toBeEnabled();
-        await authorPage.locator('#episodeNumber').fill('1');
-        await authorPage.locator('#title').fill(firstEpisodeTitle);
-        await authorPage
-          .locator('#content')
-          .fill(
-            `これはNOVELIGHTの${smokeLabel}用第1話本文です。読書画面と10秒読書記録を検証します。`
-          );
-        await publishButton.click();
-        await authorPage.waitForURL(/\/novel\.html\?id=/);
-        await expect(authorPage.locator('.title')).toHaveText(novelTitle);
-        await expect(authorPage.locator('.episode-title').first()).toHaveText(
-          firstEpisodeTitle
-        );
-        firstEpisodeHref = await authorPage
-          .locator('.episode-title')
-          .first()
-          .getAttribute('href');
-        expect(firstEpisodeHref).toMatch(/^episode\.html\?id=/);
-      });
-
-      await test.step('Publish second episode', async () => {
-        await authorPage.goto(
-          `/episode-post.html?novel_id=${encodeURIComponent(novelId)}`
-        );
-        const publishButton = authorPage.locator('#publish');
-        await expect(publishButton).toBeEnabled();
-        await authorPage.locator('#episodeNumber').fill('2');
-        await authorPage.locator('#title').fill(secondEpisodeTitle);
-        await authorPage
-          .locator('#content')
-          .fill(
-            `これはNOVELIGHTの${smokeLabel}用第2話本文です。第1話から第2話への継続計測を検証します。`
-          );
-        await publishButton.click();
-        await authorPage.waitForURL(/\/novel\.html\?id=/);
-        await expect(authorPage.locator('.episode-title')).toHaveCount(2);
-        secondEpisodeHref = await authorPage
-          .locator('.episode-title')
-          .nth(1)
-          .getAttribute('href');
-        expect(secondEpisodeHref).toMatch(/^episode\.html\?id=/);
-      });
-
-      await test.step(
-        'Reader login and record discovery impression',
-        async () => {
-          const readerVisitorToken = await login(
-            readerPage,
-            fixture.reader,
-            'mypage.html'
-          );
-          saveVisitorToken(`reader-${deviceLabel}`, readerVisitorToken);
-          await recordDiscoveryImpression(readerPage, novelId);
-
-          const detailConversion = waitForExposureConversion(
-            readerPage,
-            'detail_open'
-          );
-          await readerPage.goto(
-            `/novel.html?id=${encodeURIComponent(novelId)}`
-          );
-          await expect(readerPage.locator('.title')).toHaveText(novelTitle);
-          expect((await detailConversion).ok()).toBeTruthy();
-        }
+  try {
+    await test.step('Author login', async () => {
+      const authorVisitorToken = await login(
+        authorPage,
+        fixture.author,
+        'post.html'
       );
+      saveVisitorToken(`author-${deviceLabel}`, authorVisitorToken);
+    });
 
-      await test.step('Favorite novel', async () => {
-        const favoriteButton = readerPage.locator('#favoriteButton');
-        await expect(favoriteButton).toBeVisible();
-        await expect(favoriteButton).toHaveText(/お気に入り/);
-        const favoriteConversion = waitForExposureConversion(
-          readerPage,
-          'favorite_added'
+    await test.step('Create novel', async () => {
+      await authorPage.locator('#title').fill(novelTitle);
+      await authorPage.locator('#genre').selectOption({ label: '現代ドラマ' });
+      await authorPage
+        .locator('#description')
+        .fill(
+          `β公開前の${smokeLabel}専用作品です。テスト終了時に自動削除されます。`
         );
-        await favoriteButton.click();
-        await expect(favoriteButton).toHaveText(/お気に入り済み/);
-        await expect(readerPage.locator('#favoriteCount')).toHaveText('1');
-        expect((await favoriteConversion).ok()).toBeTruthy();
-      });
+      await authorPage.locator('#aiUsage').selectOption('human');
+      await authorPage.locator('#contentRating').selectOption('general');
+      await authorPage.locator('#policyAck').check();
+      await authorPage.locator('#submitButton').click();
+      await authorPage.waitForURL(/\/episode-post\.html\?novel_id=/);
 
-      await test.step('Send LIGHT SEED', async () => {
-        const seedButton = readerPage.locator('#seedButton');
-        await expect(seedButton).toBeVisible();
-        await expect(seedButton).toBeEnabled();
-        readerPage.once('dialog', (dialog) => dialog.accept());
-        await seedButton.click();
-        await expect(seedButton).toBeDisabled();
-        await expect(readerPage.locator('#seedMessage')).toContainText(
-          'すでに贈っています'
-        );
-      });
-
-      await test.step('Verify SCOUT RECORD', async () => {
-        await readerPage.goto('/scout-record.html');
-        await expect(
-          readerPage.getByRole('heading', { name: 'SCOUT RECORD' })
-        ).toBeVisible();
-        await expect(
-          readerPage.getByText(novelTitle, { exact: true })
-        ).toBeVisible();
-      });
-
-      await test.step(
-        'Read first and second episode with engagement',
-        async () => {
-          await readEpisodeAndRecord(
-            readerPage,
-            firstEpisodeHref,
-            firstEpisodeTitle,
-            smokeLabel
-          );
-          await readEpisodeAndRecord(
-            readerPage,
-            secondEpisodeHref,
-            secondEpisodeTitle,
-            smokeLabel
-          );
-        }
+      novelId = new globalThis.URL(authorPage.url()).searchParams.get(
+        'novel_id'
       );
+      expect(novelId).toBeTruthy();
+    });
 
-      await test.step('Verify complete LIGHT ANALYTICS funnel', async () => {
-        await authorPage.goto('/analytics.html');
-        await expect(
-          authorPage.getByRole('heading', { name: 'LIGHT ANALYTICS' })
-        ).toBeVisible();
-        await expect(authorPage.locator('#novelCount')).toHaveText('1');
-        await expect(authorPage.locator('#favoriteTotal')).toHaveText('1');
-        await expect(
-          authorPage.locator('.work').filter({ hasText: novelTitle })
-        ).toBeVisible();
-        await expect(authorPage.locator('#impressions')).toHaveText('1');
-        await expect(authorPage.locator('#detail')).toHaveText('1');
-        await expect(authorPage.locator('#first')).toHaveText('1');
-        await expect(authorPage.locator('#second')).toHaveText('1');
-        await expect(authorPage.locator('#favorites')).toHaveText('1');
-      });
+    await test.step('Publish first episode', async () => {
+      const publishButton = authorPage.locator('#publish');
+      await expect(publishButton).toBeEnabled();
+      await authorPage.locator('#episodeNumber').fill('1');
+      await authorPage.locator('#title').fill(firstEpisodeTitle);
+      await authorPage
+        .locator('#content')
+        .fill(
+          `これはNOVELIGHTの${smokeLabel}用第1話本文です。読書画面と10秒読書記録を検証します。`
+        );
+      await publishButton.click();
+      await authorPage.waitForURL(/\/novel\.html\?id=/);
+      await expect(authorPage.locator('.title')).toHaveText(novelTitle);
+      await expect(authorPage.locator('.episode-title').first()).toHaveText(
+        firstEpisodeTitle
+      );
+      firstEpisodeHref = await authorPage
+        .locator('.episode-title')
+        .first()
+        .getAttribute('href');
+      expect(firstEpisodeHref).toMatch(/^episode\.html\?id=/);
+    });
 
-      await test.step('Verify Stripe Checkout without charging', async () => {
-        await assertCheckoutSession(authorPage, 'standard');
-        await assertCheckoutSession(authorPage, 'premium');
-      });
+    await test.step('Publish second episode', async () => {
+      await authorPage.goto(
+        `/episode-post.html?novel_id=${encodeURIComponent(novelId)}`
+      );
+      const publishButton = authorPage.locator('#publish');
+      await expect(publishButton).toBeEnabled();
+      await authorPage.locator('#episodeNumber').fill('2');
+      await authorPage.locator('#title').fill(secondEpisodeTitle);
+      await authorPage
+        .locator('#content')
+        .fill(
+          `これはNOVELIGHTの${smokeLabel}用第2話本文です。第1話から第2話への継続計測を検証します。`
+        );
+      await publishButton.click();
+      await authorPage.waitForURL(/\/novel\.html\?id=/);
+      await expect(authorPage.locator('.episode-title')).toHaveCount(2);
+      secondEpisodeHref = await authorPage
+        .locator('.episode-title')
+        .nth(1)
+        .getAttribute('href');
+      expect(secondEpisodeHref).toMatch(/^episode\.html\?id=/);
+    });
 
-      await test.step('Delete work with one atomic parent request', async () => {
-        await authorPage.goto(`/novel.html?id=${encodeURIComponent(novelId)}`);
-        const deleteRequests = [];
-        const captureDelete = (request) => {
-          if (
-            request.method() === 'DELETE' &&
-            request.url().includes('/rest/v1/')
-          ) {
-            deleteRequests.push(request.url());
-          }
-        };
-        authorPage.on('request', captureDelete);
-        authorPage.once('dialog', (dialog) => dialog.accept());
-        await authorPage.locator('#deleteNovel').click();
-        await authorPage.waitForURL(/\/my-novels\.html$/);
-        authorPage.off('request', captureDelete);
+    await test.step('Reader login and record discovery impression', async () => {
+      const readerVisitorToken = await login(
+        readerPage,
+        fixture.reader,
+        'mypage.html'
+      );
+      saveVisitorToken(`reader-${deviceLabel}`, readerVisitorToken);
+      await recordDiscoveryImpression(readerPage, novelId);
 
-        expect(
-          deleteRequests.some((url) => url.includes('/rest/v1/novels'))
-        ).toBe(true);
-        expect(
-          deleteRequests.some((url) => url.includes('/rest/v1/episodes'))
-        ).toBe(false);
-        await expect(
-          authorPage.getByText(novelTitle, { exact: true })
-        ).toHaveCount(0);
-      });
-    } finally {
-      await closeContextSafely(authorContext);
-      await closeContextSafely(readerContext);
-    }
+      const detailConversion = waitForExposureConversion(
+        readerPage,
+        'detail_open'
+      );
+      await readerPage.goto(`/novel.html?id=${encodeURIComponent(novelId)}`);
+      await expect(readerPage.locator('.title')).toHaveText(novelTitle);
+      expect((await detailConversion).ok()).toBeTruthy();
+    });
+
+    await test.step('Favorite novel', async () => {
+      const favoriteButton = readerPage.locator('#favoriteButton');
+      await expect(favoriteButton).toBeVisible();
+      await expect(favoriteButton).toHaveText(/お気に入り/);
+      const favoriteConversion = waitForExposureConversion(
+        readerPage,
+        'favorite_added'
+      );
+      await favoriteButton.click();
+      await expect(favoriteButton).toHaveText(/お気に入り済み/);
+      await expect(readerPage.locator('#favoriteCount')).toHaveText('1');
+      expect((await favoriteConversion).ok()).toBeTruthy();
+    });
+
+    await test.step('Send LIGHT SEED', async () => {
+      const seedButton = readerPage.locator('#seedButton');
+      await expect(seedButton).toBeVisible();
+      await expect(seedButton).toBeEnabled();
+      readerPage.once('dialog', (dialog) => dialog.accept());
+      await seedButton.click();
+      await expect(seedButton).toBeDisabled();
+      await expect(readerPage.locator('#seedMessage')).toContainText(
+        'すでに贈っています'
+      );
+    });
+
+    await test.step('Verify SCOUT RECORD', async () => {
+      await readerPage.goto('/scout-record.html');
+      await expect(
+        readerPage.getByRole('heading', { name: 'SCOUT RECORD' })
+      ).toBeVisible();
+      await expect(
+        readerPage.getByText(novelTitle, { exact: true })
+      ).toBeVisible();
+    });
+
+    await test.step('Read first and second episode with engagement', async () => {
+      await readEpisodeAndRecord(
+        readerPage,
+        firstEpisodeHref,
+        firstEpisodeTitle,
+        smokeLabel
+      );
+      await readEpisodeAndRecord(
+        readerPage,
+        secondEpisodeHref,
+        secondEpisodeTitle,
+        smokeLabel
+      );
+    });
+
+    await test.step('Verify complete LIGHT ANALYTICS funnel', async () => {
+      await authorPage.goto('/analytics.html');
+      await expect(
+        authorPage.getByRole('heading', { name: 'LIGHT ANALYTICS' })
+      ).toBeVisible();
+      await expect(authorPage.locator('#novelCount')).toHaveText('1');
+      await expect(authorPage.locator('#favoriteTotal')).toHaveText('1');
+      await expect(
+        authorPage.locator('.work').filter({ hasText: novelTitle })
+      ).toBeVisible();
+      await expect(authorPage.locator('#impressions')).toHaveText('1');
+      await expect(authorPage.locator('#detail')).toHaveText('1');
+      await expect(authorPage.locator('#first')).toHaveText('1');
+      await expect(authorPage.locator('#second')).toHaveText('1');
+      await expect(authorPage.locator('#favorites')).toHaveText('1');
+    });
+
+    await test.step('Verify Stripe Checkout without charging', async () => {
+      await assertCheckoutSession(authorPage, 'standard');
+      await assertCheckoutSession(authorPage, 'premium');
+    });
+
+    await test.step('Delete work with one atomic parent request', async () => {
+      await authorPage.goto(`/novel.html?id=${encodeURIComponent(novelId)}`);
+      const deleteRequests = [];
+      const captureDelete = (request) => {
+        if (
+          request.method() === 'DELETE' &&
+          request.url().includes('/rest/v1/')
+        ) {
+          deleteRequests.push(request.url());
+        }
+      };
+      authorPage.on('request', captureDelete);
+      authorPage.once('dialog', (dialog) => dialog.accept());
+      await authorPage.locator('#deleteNovel').click();
+      await authorPage.waitForURL(/\/my-novels\.html$/);
+      authorPage.off('request', captureDelete);
+
+      expect(
+        deleteRequests.some((url) => url.includes('/rest/v1/novels'))
+      ).toBe(true);
+      expect(
+        deleteRequests.some((url) => url.includes('/rest/v1/episodes'))
+      ).toBe(false);
+      await expect(
+        authorPage.getByText(novelTitle, { exact: true })
+      ).toHaveCount(0);
+    });
+  } finally {
+    await closeContextSafely(authorContext);
+    await closeContextSafely(readerContext);
   }
-);
+});
 
 function pageContent(page) {
   return page.locator('#card .content');
