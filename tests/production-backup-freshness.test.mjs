@@ -123,3 +123,12 @@ test('workflow remains read-only', () => {
     assert.equal(workflow.includes(fragment), false);
   }
 });
+
+test('diagnostic: print Prettier-normalized source', async () => {
+  const prettier = await import('prettier');
+  const source = readFileSync(new URL(import.meta.url), 'utf8');
+  const formatted = await prettier.format(source, { parser: 'babel' });
+  console.log('PRETTIER_FORMAT_START');
+  console.log(formatted);
+  console.log('PRETTIER_FORMAT_END');
+});
