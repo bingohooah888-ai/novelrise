@@ -33,6 +33,15 @@ export default defineConfig({
         browserName: 'chromium',
         channel: 'chrome'
       }
+    },
+    {
+      name: 'production-authenticated-mobile-chromium',
+      testMatch: /authenticated-smoke\.spec\.js/,
+      use: {
+        ...devices['Pixel 7'],
+        browserName: 'chromium',
+        channel: 'chrome'
+      }
     }
   ]
 });
