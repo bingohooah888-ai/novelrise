@@ -272,7 +272,7 @@ jobs:
         run: bash scripts/run-rls-integration.sh
 
   browser:
-    name: Browser E2E (${{ matrix.name }})
+    name: Browser E2E (${{ matrix.device }} / ${{ matrix.name }})
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
@@ -281,9 +281,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: smoke
+          - device: desktop
+            name: smoke
+            project: chromium
             spec: specs/smoke.spec.js
-          - name: async-ui
+          - device: desktop
+            name: async-ui
+            project: chromium
+            spec: specs/async-ui.spec.js
+          - device: mobile
+            name: smoke
+            project: mobile-chromium
+            spec: specs/smoke.spec.js
+          - device: mobile
+            name: async-ui
+            project: mobile-chromium
             spec: specs/async-ui.spec.js
 
     steps:
@@ -307,19 +319,20 @@ jobs:
         working-directory: tests/e2e
         run: npx playwright install ffmpeg
 
-      - name: Run ${{ matrix.name }} browser tests with runner Chrome
+      - name: Run ${{ matrix.device }} ${{ matrix.name }} browser tests with runner Chrome
         working-directory: tests/e2e
-        run: npx playwright test "${{ matrix.spec }}"
+        run: npx playwright test "${{ matrix.spec }}" --project="${{ matrix.project }}"
 
       - name: Summarize Playwright failure diagnostics
         if: failure()
         shell: bash
         env:
+          E2E_DEVICE: ${{ matrix.device }}
           E2E_SUITE: ${{ matrix.name }}
         run: |
           set +e
           {
-            echo "## Browser E2E failure diagnostics: $E2E_SUITE"
+            echo "## Browser E2E failure diagnostics: $E2E_DEVICE / $E2E_SUITE"
             echo ''
             echo 'Playwright trace, screenshots, video, HTML report, and raw test output are attached to this run.'
             echo ''
@@ -340,7 +353,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: playwright-failure-${{ matrix.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: playwright-failure-${{ matrix.device }}-${{ matrix.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             tests/e2e/playwright-report
             tests/e2e/test-results
