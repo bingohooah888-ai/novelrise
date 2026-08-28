@@ -172,21 +172,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          set -o pipefail
 
           supabase migration list --linked | tee /tmp/post-deploy-migration-list.txt
+          pending_migrations="$(bash scripts/extract-supabase-pending.sh /tmp/post-deploy-migration-list.txt)"
 
-          if awk -F '│' '
-            {
-              local=$1
-              remote=$2
-              gsub(/[^0-9]/, "", local)
-              gsub(/[^0-9]/, "", remote)
-              if (length(local) == 14 && length(remote) == 0) found=1
-            }
-            END { exit(found ? 0 : 1) }
-          ' /tmp/post-deploy-migration-list.txt; then
+          if [ -n "$pending_migrations" ]; then
             echo 'Production still has pending migrations after deploy.'
+            printf '%s\n' "$pending_migrations"
             exit 1
           fi
 
