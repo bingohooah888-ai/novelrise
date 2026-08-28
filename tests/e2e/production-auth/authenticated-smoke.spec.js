@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
 
 const fixturePath = process.env.PRODUCTION_AUTH_SMOKE_FIXTURE;
 const smokeLabel = process.env.AUTH_SMOKE_LABEL || '本番認証スモーク';
@@ -55,6 +55,14 @@ function saveVisitorToken(role, token) {
   const fixture = loadFixture();
   fixture.visitorTokens = { ...(fixture.visitorTokens || {}), [role]: token };
   writeFileSync(fixturePath, JSON.stringify(fixture, null, 2), { mode: 0o600 });
+}
+
+function contextOptionsForProject(baseURL, projectName) {
+  const descriptor = projectName.includes('mobile')
+    ? devices['Pixel 7']
+    : devices['Desktop Chrome'];
+  const { defaultBrowserType: _defaultBrowserType, ...deviceOptions } = descriptor;
+  return { ...deviceOptions, baseURL };
 }
 
 async function installStagingSupabaseOverride(context) {
@@ -227,15 +235,17 @@ async function closeContextSafely(context) {
 test('authenticated beta-critical product flow works in target', async ({
   browser,
   baseURL
-}) => {
+}, testInfo) => {
   const fixture = loadFixture();
-  const unique = `E2E-${fixture.runId}`;
+  const deviceLabel = testInfo.project.name.includes('mobile') ? 'mobile' : 'desktop';
+  const unique = `E2E-${fixture.runId}-${deviceLabel}`;
   const novelTitle = `${smokeLabel}作品 ${unique}`;
   const firstEpisodeTitle = `第1話 ${smokeLabel} ${unique}`;
   const secondEpisodeTitle = `第2話 ${smokeLabel} ${unique}`;
+  const contextOptions = contextOptionsForProject(baseURL, testInfo.project.name);
 
-  const authorContext = await browser.newContext({ baseURL });
-  const readerContext = await browser.newContext({ baseURL });
+  const authorContext = await browser.newContext(contextOptions);
+  const readerContext = await browser.newContext(contextOptions);
   await Promise.all([
     installStagingSupabaseOverride(authorContext),
     installStagingSupabaseOverride(readerContext)
@@ -254,7 +264,7 @@ test('authenticated beta-critical product flow works in target', async ({
         fixture.author,
         'post.html'
       );
-      saveVisitorToken('author', authorVisitorToken);
+      saveVisitorToken(`author-${deviceLabel}`, authorVisitorToken);
     });
 
     await test.step('Create novel', async () => {
@@ -329,7 +339,7 @@ test('authenticated beta-critical product flow works in target', async ({
         fixture.reader,
         'mypage.html'
       );
-      saveVisitorToken('reader', readerVisitorToken);
+      saveVisitorToken(`reader-${deviceLabel}`, readerVisitorToken);
       await recordDiscoveryImpression(readerPage, novelId);
 
       const detailConversion = waitForExposureConversion(
@@ -412,6 +422,34 @@ test('authenticated beta-critical product flow works in target', async ({
     await test.step('Verify Stripe Checkout without charging', async () => {
       await assertCheckoutSession(authorPage, 'standard');
       await assertCheckoutSession(authorPage, 'premium');
+    });
+
+    await test.step('Delete work with one atomic parent request', async () => {
+      await authorPage.goto(`/novel.html?id=${encodeURIComponent(novelId)}`);
+      const deleteRequests = [];
+      const captureDelete = (request) => {
+        if (
+          request.method() === 'DELETE' &&
+          request.url().includes('/rest/v1/')
+        ) {
+          deleteRequests.push(request.url());
+        }
+      };
+      authorPage.on('request', captureDelete);
+      authorPage.once('dialog', (dialog) => dialog.accept());
+      await authorPage.locator('#deleteNovel').click();
+      await authorPage.waitForURL(/\/my-novels\.html$/);
+      authorPage.off('request', captureDelete);
+
+      expect(deleteRequests.some((url) => url.includes('/rest/v1/novels'))).toBe(
+        true
+      );
+      expect(deleteRequests.some((url) => url.includes('/rest/v1/episodes'))).toBe(
+        false
+      );
+      await expect(
+        authorPage.getByText(novelTitle, { exact: true })
+      ).toHaveCount(0);
     });
   } finally {
     await closeContextSafely(authorContext);
