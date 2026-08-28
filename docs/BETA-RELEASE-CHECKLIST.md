@@ -2,13 +2,15 @@
 
 This checklist is the final operational gate after code review/CI. A checked box must represent an observed result, not an assumption.
 
-**Reconciled: 2026-08-28 JST against main `97a67fc423c6be79280c861a2a3d5659877b351f`.**
+**Reconciled: 2026-08-28 JST for the controlled public-beta GO decision.**
 
-Under `docs/EVIDENCE-FRESHNESS-GATE.md`, `[x]` means the scope is supported by current or still-valid decisive evidence. It does not mean every external operation was repeated on this exact SHA. Existing current Production proofs must not be re-run merely for documentary freshness.
+Decision baseline: `1a5ca5dc5a90e4336ab5de74a21e2f2843e22bb1`.
 
-Qualified Japanese counsel review is **deferred/pending**, not completed. The owner residual-risk decision and the deferred status are recorded in `docs/legal-beta-review.md`; checking the legal-status item below does not assert legal sufficiency.
+Under `docs/EVIDENCE-FRESHNESS-GATE.md`, `[x]` means the scope is supported by current or still-valid decisive evidence. It does not mean every external operation was repeated on the decision baseline. Existing current Production proofs must not be re-run merely for documentary freshness.
 
-Controlled public-beta GO is **not yet recorded** and remains a separate explicit final release decision.
+Qualified Japanese counsel review is **deferred/pending**, not completed. The owner residual-risk decision and deferred status are recorded in `docs/legal-beta-review.md`; checking the legal-status item below does not assert legal sufficiency.
+
+**Controlled public-beta GO: RECORDED 2026-08-28.** See `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
 ## Git / CI
 
@@ -31,7 +33,7 @@ Controlled public-beta GO is **not yet recorded** and remains a separate explici
 
 - [x] Production Supabase automatic backup capability was verified in the actual project; beta recovery posture is Pro scheduled backups rather than PITR.
 - [x] Recovery window and 7-day scheduled-backup retention were recorded.
-- [x] A sufficiently recent recovery point exists before the final release decision; automated read-only freshness run `33172222421` passed on current main.
+- [x] A sufficiently recent recovery point existed before the final release decision; automated read-only freshness run `33172222421` passed and no later backup-state/control-path change invalidated it.
 - [x] `docs/BACKUP-RESTORE-RUNBOOK.md` was reviewed.
 - [x] Non-production restore rehearsal completed and was recorded without a destructive Production restore.
 
@@ -91,10 +93,21 @@ Controlled public-beta GO is **not yet recorded** and remains a separate explici
 - [x] Pricing/checkout test mode or approved controlled production check
 - [x] Billing portal/cancel flow
 
+## Final release decision
+
+- [x] Latest `main` and authoritative release rules were re-fetched immediately before the decision.
+- [x] The change since the prior reconciled evidence baseline was checked for material invalidation and was documentation-only.
+- [x] Current main CI evidence was checked; `NOVELIGHT CI` run `33173431807` (#866) and aggregate `check` succeeded.
+- [x] No newly unknown non-deferred hard gate was identified.
+- [x] Qualified Japanese counsel review remains explicitly deferred/pending rather than being represented as completed.
+- [x] Controlled public-beta GO is recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
+
 ## Reconciliation result
 
-All non-deferred hard-gate scopes above have current or still-valid evidence under `docs/EVIDENCE-FRESHNESS-GATE.md`. No newly unknown non-deferred hard item was identified at this reconciliation.
+All non-deferred hard-gate scopes above had current or still-valid decisive evidence under `docs/EVIDENCE-FRESHNESS-GATE.md` at the decision baseline.
 
 Qualified Japanese counsel review remains explicitly deferred/pending and is not represented as completed or as proof of legal compliance.
 
-**Controlled public-beta GO remains NOT YET RECORDED.** Record GO only as a separate explicit release decision after re-fetching the then-current `main` and confirming that no material change has invalidated any scope above.
+**Controlled public-beta GO: RECORDED 2026-08-28.**
+
+The GO record does not authorize unrelated Production/Secret/Stripe live/Supabase Production/Vercel Production mutations. If a material change alters the launch state before actual beta opening, refresh only the affected scope before relying on the recorded GO.
