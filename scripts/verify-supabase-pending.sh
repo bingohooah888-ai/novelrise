@@ -13,16 +13,7 @@ printf '%s\n' "$CHANGED_VERSIONS" \
   | sort -u \
   > /tmp/expected-pending.txt
 
-awk -F '│' '
-  {
-    local=$1
-    remote=$2
-    gsub(/[^0-9]/, "", local)
-    gsub(/[^0-9]/, "", remote)
-    if (length(local) == 14 && length(remote) == 0) print local
-  }
-' "$output_file" \
-  | sort -u \
+bash scripts/extract-supabase-pending.sh "$output_file" \
   > /tmp/actual-pending.txt
 
 echo 'Expected pending migrations:'
