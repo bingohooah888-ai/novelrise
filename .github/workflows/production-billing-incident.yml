@@ -42,7 +42,13 @@ jobs:
           echo "issue_number=$issue_number" >> "$GITHUB_OUTPUT"
 
       - name: Open or update incident on guard failure
-        if: env.CONCLUSION != 'success'
+        if: >-
+          env.CONCLUSION == 'failure' ||
+          env.CONCLUSION == 'cancelled' ||
+          env.CONCLUSION == 'timed_out' ||
+          env.CONCLUSION == 'action_required' ||
+          env.CONCLUSION == 'stale' ||
+          env.CONCLUSION == 'startup_failure'
         shell: bash
         env:
           ISSUE_NUMBER: ${{ steps.incident.outputs.issue_number }}

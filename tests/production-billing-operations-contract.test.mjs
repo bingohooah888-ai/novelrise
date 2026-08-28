@@ -45,6 +45,30 @@ test('Production control proof includes the real checkout API without a live pay
   assert.match(script, /charges\.list/);
 });
 
+test('Production billing incident relay ignores skipped guard runs', async () => {
+  const workflow = await text(
+    '.github/workflows/production-billing-incident.yml'
+  );
+
+  assert.doesNotMatch(workflow, /env\.CONCLUSION != 'success'/);
+  assert.match(workflow, /env\.CONCLUSION == 'failure'/);
+  assert.match(workflow, /env\.CONCLUSION == 'cancelled'/);
+  assert.match(workflow, /env\.CONCLUSION == 'timed_out'/);
+  assert.match(workflow, /env\.CONCLUSION == 'action_required'/);
+  assert.match(workflow, /env\.CONCLUSION == 'stale'/);
+  assert.match(workflow, /env\.CONCLUSION == 'startup_failure'/);
+
+  const openStep = workflow.slice(
+    workflow.indexOf('- name: Open or update incident on guard failure'),
+    workflow.indexOf('- name: Resolve prior incident after a healthy guard run')
+  );
+  assert.doesNotMatch(openStep, /env\.CONCLUSION == 'skipped'/);
+  assert.match(
+    workflow,
+    /env\.CONCLUSION == 'success' && steps\.incident\.outputs\.issue_number != ''/
+  );
+});
+
 test('incident runbook makes evidence-first diagnosis and automation escalation explicit', async () => {
   const runbook = await text('docs/PRODUCTION-BILLING-INCIDENT-RUNBOOK.md');
 
