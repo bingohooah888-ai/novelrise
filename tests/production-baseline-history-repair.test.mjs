@@ -18,10 +18,7 @@ const docs = await readFile('docs/SUPABASE-PRODUCTION-DEPLOY.md', 'utf8');
 
 test('history repair is restricted to the initial baseline', () => {
   assert.equal(workflow.includes('repair_version:'), false);
-  assert.equal(
-    workflow.includes("REPAIR_VERSION: '20260815000000'"),
-    true
-  );
+  assert.equal(workflow.includes("REPAIR_VERSION: '20260815000000'"), true);
   assert.equal(
     workflow.includes(
       'supabase migration repair --status applied "$REPAIR_VERSION"'
