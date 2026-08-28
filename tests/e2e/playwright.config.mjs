@@ -38,6 +38,14 @@ export default defineConfig({
         browserName: 'chromium',
         ...(process.env.CI ? { channel: 'chrome' } : {})
       }
+    },
+    {
+      name: 'mobile-chromium',
+      use: {
+        ...devices['Pixel 7'],
+        browserName: 'chromium',
+        ...(process.env.CI ? { channel: 'chrome' } : {})
+      }
     }
   ]
 });
