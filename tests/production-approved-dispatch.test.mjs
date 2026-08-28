@@ -65,7 +65,10 @@ test('chat-approved bridge can execute only the fixed baseline repair', () => {
 });
 
 test('Production boundary re-validates the exact claimed chat approval', () => {
-  assert.match(bridge, /Re-validate claimed chat approval at Production boundary/);
+  assert.match(
+    bridge,
+    /Re-validate claimed chat approval at Production boundary/
+  );
   assert.match(bridge, /main changed before the Production boundary/);
   assert.match(bridge, /bridgeRunId == \$bridgeRunId/);
   assert.match(
@@ -73,7 +76,10 @@ test('Production boundary re-validates the exact claimed chat approval', () => {
     /exact claimed chat approval was not found at the Production boundary/
   );
   assert.match(bridge, /Checkout approved main/);
-  assert.match(bridge, /test "\$\(git rev-parse HEAD\)" = "\$APPROVED_MAIN_SHA"/);
+  assert.match(
+    bridge,
+    /test "\$\(git rev-parse HEAD\)" = "\$APPROVED_MAIN_SHA"/
+  );
 });
 
 test('bridge cancels only one stale bot-dispatched manual run and blocks human overlap', () => {
