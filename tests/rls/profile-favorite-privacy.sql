@@ -121,4 +121,25 @@ select public.test_assert(
   'author aggregate metrics must count reader favorites without exposing reader identity'
 );
 
+select public.test_assert(
+  (
+    select favorite_count
+    from public.novelight_author_favorite_counts(
+      array['20000000-0000-0000-0000-000000000001']::text[]
+    )
+    where novel_id = '20000000-0000-0000-0000-000000000001'
+  ) >= 1,
+  'author work-list aggregate must count favorites without exposing reader rows'
+);
+
+select public.test_assert(
+  not exists (
+    select 1
+    from public.novelight_author_favorite_counts(
+      array['10000000-0000-0000-0000-000000000001']::text[]
+    )
+  ),
+  'author bulk aggregate must not return another author work'
+);
+
 reset role;
