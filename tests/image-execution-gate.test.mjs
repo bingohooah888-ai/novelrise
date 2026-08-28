@@ -56,7 +56,10 @@ test('image permission expires and a tool attempt counts as execution', () => {
 
 test('image phase fails closed without current-message evidence', () => {
   assert.equal(runtime.parsePhase(['--phase=image']), 'image');
-  assert.throws(parseImage, /requires explicit allowed image-execution evidence/u);
+  assert.throws(
+    () => parseImage([]),
+    /requires explicit allowed image-execution evidence/u
+  );
 
   assert.throws(
     () => parseImage(['--image-execution=allowed']),
@@ -99,11 +102,7 @@ test('image phase accepts explicit current-message evidence', () => {
 });
 
 test('non-image phases do not require image evidence', () => {
-  const evidence = runtime.parseImageExecutionEvidence(
-    'implementation',
-    [],
-    {}
-  );
+  const evidence = runtime.parseImageExecutionEvidence('implementation', [], {});
   assert.deepEqual(evidence, {
     required: false,
     decision: '',
