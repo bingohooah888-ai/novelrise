@@ -19,7 +19,10 @@ test('Production dispatch bridge accepts only the owner approval ledger event', 
     bridge,
     /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
   );
-  assert.match(bridge, /github\.event\.comment\.author_association == 'OWNER'/);
+  assert.match(
+    bridge,
+    /github\.event\.comment\.author_association == 'OWNER'/
+  );
   assert.match(bridge, /NOVELIGHT_PRODUCTION_DISPATCH_APPROVE/);
 });
 
@@ -32,11 +35,20 @@ test('Production dispatch approval is exact-scope, SHA-bound, and one-time', () 
     bridge,
     /\["challenge", "mainSha", "operation", "repairVersion"\]/
   );
-  assert.match(bridge, /main changed after the user approved this Production dispatch/);
-  assert.match(bridge, /main changed before Production workflow dispatch/);
+  assert.match(
+    bridge,
+    /main changed after the user approved this Production dispatch/
+  );
+  assert.match(
+    bridge,
+    /main changed before Production workflow dispatch/
+  );
   assert.match(bridge, /NOVELIGHT_PRODUCTION_DISPATCH_CLAIMED/);
   assert.match(bridge, /NOVELIGHT_PRODUCTION_DISPATCHED/);
-  assert.match(bridge, /this Production dispatch approval was already used/);
+  assert.match(
+    bridge,
+    /this Production dispatch approval was already used/
+  );
 });
 
 test('bridge can dispatch only the fixed baseline repair target', () => {
@@ -61,7 +73,10 @@ test('automatic dispatch does not bypass downstream Production approval or repai
   assert.match(target, /PRODUCTION_APPROVAL_GATE_READY/);
   assert.match(target, /REPAIR_VERSION: '20260815000000'/);
   assert.match(target, /verify-production-initial-baseline-state\.sh/);
-  assert.match(target, /supabase migration repair --status applied "\$REPAIR_VERSION"/);
+  assert.match(
+    target,
+    /supabase migration repair --status applied "\$REPAIR_VERSION"/
+  );
   assert.match(target, /Verify production beta observability/);
 });
 
