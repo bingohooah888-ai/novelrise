@@ -1,0 +1,51 @@
+name: NOVELIGHT Production Backup Freshness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/production-backup-freshness.yml'
+      - 'scripts/check-production-backup-freshness.mjs'
+  schedule:
+    - cron: '45 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-production-backup-freshness
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify latest Production backup is fresh
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+      MAX_BACKUP_AGE_HOURS: '36'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Verify required read-only credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          }
+
+      - name: Verify latest Production backup freshness
+        run: node scripts/check-production-backup-freshness.mjs
