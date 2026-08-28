@@ -29,14 +29,20 @@ test('public author and favorite reads use narrow aggregate RPCs', () => {
   const novel = read('novel.html');
 
   assert.match(author, /rpc\('novelight_public_profile'/);
-  assert.doesNotMatch(author, /from\('profiles'\)\.select\('display_name,bio'\)/);
+  assert.doesNotMatch(
+    author,
+    /from\('profiles'\)\.select\('display_name,bio'\)/
+  );
   assert.match(novel, /rpc\('novelight_public_profile'/);
   assert.match(novel, /rpc\('novelight_favorite_count'/);
 });
 
 test('no browser page performs a global raw favorite count', () => {
-  const forbidden = /from\('favorites'\)\.select\('\*',\s*\{count:'exact',head:true\}\)/;
-  const offenders = rootHtmlFiles().filter((name) => forbidden.test(read(name)));
+  const forbidden =
+    /from\('favorites'\)\.select\('\*',\s*\{count:'exact',head:true\}\)/;
+  const offenders = rootHtmlFiles().filter((name) =>
+    forbidden.test(read(name))
+  );
   assert.deepEqual(
     offenders,
     [],
