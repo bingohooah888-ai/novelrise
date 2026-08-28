@@ -106,7 +106,10 @@ test('fetchProductionBackups uses only the read-only backup-list endpoint', asyn
 
 test('workflow remains read-only and checks the Production backup gate', () => {
   const workflow = readFileSync(
-    new URL('../.github/workflows/production-backup-freshness.yml', import.meta.url),
+    new URL(
+      '../.github/workflows/production-backup-freshness.yml',
+      import.meta.url,
+    ),
     'utf8',
   );
 
