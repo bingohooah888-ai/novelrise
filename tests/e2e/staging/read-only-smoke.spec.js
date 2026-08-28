@@ -90,7 +90,9 @@ test('beta-critical public routes are deployed', async ({ request }) => {
   }
 });
 
-test('browser security headers are active on deployed pages', async ({ request }) => {
+test('browser security headers are active on deployed pages', async ({
+  request
+}) => {
   const response = await request.get('/index.html');
   const headers = response.headers();
 
@@ -144,12 +146,16 @@ test('reader discovery, neutral search, ranking and novel detail render while wr
   await expect(page.locator('#list')).not.toContainText('読み込み中...', {
     timeout: 20_000
   });
-  await expect(page.locator('#list')).not.toContainText('正しく計算できませんでした');
+  await expect(page.locator('#list')).not.toContainText(
+    '正しく計算できませんでした'
+  );
   await page.locator('.tab[data-type="favorites"]').click();
   await expect(page.locator('#list')).not.toContainText('読み込み中...', {
     timeout: 20_000
   });
-  await expect(page.locator('#list')).not.toContainText('正しく計算できませんでした');
+  await expect(page.locator('#list')).not.toContainText(
+    '正しく計算できませんでした'
+  );
 
   if (!novelHref) {
     await expect(page.locator('body')).toContainText(/作品|ランキング/);
@@ -170,7 +176,8 @@ test('reader discovery, neutral search, ranking and novel detail render while wr
   await expect(page.locator('#favoriteCount')).not.toHaveText('—', {
     timeout: 20_000
   });
-  await expect(page.locator('#authorName')).not.toHaveText('作者情報を確認中...', {
-    timeout: 20_000
-  });
+  await expect(page.locator('#authorName')).not.toHaveText(
+    '作者情報を確認中...',
+    { timeout: 20_000 }
+  );
 });
