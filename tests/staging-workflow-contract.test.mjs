@@ -55,10 +55,7 @@ test('chat-controlled Staging smoke only accepts the dedicated owner-reopened co
     workflow,
     /github\.event\.issue\.user\.login == 'bingohooah888-ai'/
   );
-  assert.match(
-    workflow,
-    /github\.event\.sender\.login == 'bingohooah888-ai'/
-  );
+  assert.match(workflow, /github\.event\.sender\.login == 'bingohooah888-ai'/);
 });
 
 test('chat-controlled Staging smoke resolves and rechecks current main before write-capable verification', () => {
