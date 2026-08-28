@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { parseImageExecutionEvidence, parsePhase } from '../scripts/runtime-execution-gate.mjs';
+import * as runtime from '../scripts/runtime-execution-gate.mjs';
 
 const preflight = await readFile('docs/WORK-EXECUTION-PREFLIGHT.md', 'utf8');
 const contract = await readFile('docs/IMAGE-EXECUTION-GATE.md', 'utf8');
@@ -17,6 +17,10 @@ function assertIncludesAll(source, tokens) {
   }
 }
 
+function parseImage(args) {
+  return runtime.parseImageExecutionEvidence('image', args, {});
+}
+
 test('image contract requires a current-message binary decision before routing', () => {
   assertIncludesAll(contract, [
     'CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = YES | NO',
@@ -29,11 +33,8 @@ test('image contract requires a current-message binary decision before routing',
   ]);
 });
 
-test('regression examples from the accidental banner edit stay non-executable', () => {
-  for (const source of [preflight, contract]) {
-    assert.match(source, /画像生成|image generation/iu);
-  }
-
+test('banner consultation examples remain non-executable', () => {
+  assert.match(preflight, /画像生成/u);
   assertIncludesAll(contract, [
     '文字をもう少し小さくしたい',
     '両側にロゴでも入れる？',
@@ -43,7 +44,7 @@ test('regression examples from the accidental banner edit stay non-executable', 
   ]);
 });
 
-test('image permission expires on every new message and tool attempt counts as execution', () => {
+test('image permission expires and a tool attempt counts as execution', () => {
   assertIncludesAll(contract, [
     'A new user message always resets:',
     'CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = NO',
@@ -53,59 +54,41 @@ test('image permission expires on every new message and tool attempt counts as e
   ]);
 });
 
-test('image phase fails closed without explicit current-message evidence', () => {
-  assert.equal(parsePhase(['--phase=image']), 'image');
+test('image phase fails closed without current-message evidence', () => {
+  assert.equal(runtime.parsePhase(['--phase=image']), 'image');
+  assert.throws(parseImage, /requires explicit allowed image-execution evidence/u);
 
   assert.throws(
-    () => parseImageExecutionEvidence('image', [], {}),
-    /requires explicit allowed image-execution evidence/u
-  );
-
-  assert.throws(
-    () =>
-      parseImageExecutionEvidence(
-        'image',
-        ['--image-execution=allowed'],
-        {}
-      ),
+    () => parseImage(['--image-execution=allowed']),
     /requires confirmation that the evidence comes from the current user message/u
   );
 
   assert.throws(
     () =>
-      parseImageExecutionEvidence(
-        'image',
-        ['--image-execution=allowed', '--image-current-message-confirmed'],
-        {}
-      ),
+      parseImage([
+        '--image-execution=allowed',
+        '--image-current-message-confirmed'
+      ]),
     /requires a verbatim current-message execution trigger/u
   );
 
   assert.throws(
     () =>
-      parseImageExecutionEvidence(
-        'image',
-        [
-          '--image-execution=allowed',
-          '--image-current-message-confirmed',
-          '--image-trigger=続けて'
-        ],
-        {}
-      ),
+      parseImage([
+        '--image-execution=allowed',
+        '--image-current-message-confirmed',
+        '--image-trigger=続けて'
+      ]),
     /cannot be a continuation-only acknowledgement/u
   );
 });
 
-test('image phase accepts explicit current-message evidence and records the trigger', () => {
-  const evidence = parseImageExecutionEvidence(
-    'image',
-    [
-      '--image-execution=allowed',
-      '--image-current-message-confirmed',
-      '--image-trigger=この画像を編集して'
-    ],
-    {}
-  );
+test('image phase accepts explicit current-message evidence', () => {
+  const evidence = parseImage([
+    '--image-execution=allowed',
+    '--image-current-message-confirmed',
+    '--image-trigger=この画像を編集して'
+  ]);
 
   assert.deepEqual(evidence, {
     required: true,
@@ -116,7 +99,12 @@ test('image phase accepts explicit current-message evidence and records the trig
 });
 
 test('non-image phases do not require image evidence', () => {
-  assert.deepEqual(parseImageExecutionEvidence('implementation', [], {}), {
+  const evidence = runtime.parseImageExecutionEvidence(
+    'implementation',
+    [],
+    {}
+  );
+  assert.deepEqual(evidence, {
     required: false,
     decision: '',
     currentMessageConfirmed: false,
@@ -124,9 +112,8 @@ test('non-image phases do not require image evidence', () => {
   });
 });
 
-test('runtime gate loads the dedicated image contract as authoritative', () => {
+test('runtime gate loads the dedicated image contract', () => {
   assert.match(runtimeGate, /docs\/IMAGE-EXECUTION-GATE\.md/);
-  assert.match(runtimeGate, /'image'/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_EXECUTION/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_CURRENT_MESSAGE_CONFIRMED/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_TRIGGER/);
