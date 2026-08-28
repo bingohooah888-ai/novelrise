@@ -8,7 +8,8 @@ const REQUIRED_MAIN_FILES = [
   'docs/NOVELIGHT-MASTER.md',
   'docs/WORK-EXECUTION-PREFLIGHT.md',
   'docs/EXECUTION-TURN-CARD-GATE.md',
-  'docs/EVIDENCE-FRESHNESS-GATE.md'
+  'docs/EVIDENCE-FRESHNESS-GATE.md',
+  'docs/IMAGE-EXECUTION-GATE.md'
 ];
 
 const ALLOWED_PHASES = new Set([
@@ -20,7 +21,8 @@ const ALLOWED_PHASES = new Set([
   'vercel',
   'supabase',
   'stripe',
-  'files'
+  'files',
+  'image'
 ]);
 
 const EVIDENCE_REQUIRED_PHASES = new Set([
@@ -136,6 +138,54 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
     otherWork,
     nextUserAction,
     reason
+  };
+}
+
+export function parseImageExecutionEvidence(phase, argv, env = process.env) {
+  const required = phase === 'image';
+  const decision =
+    optionValue(argv, 'image-execution') || env.NOVELIGHT_IMAGE_EXECUTION || '';
+  const currentMessageConfirmed =
+    argv.includes('--image-current-message-confirmed') ||
+    env.NOVELIGHT_IMAGE_CURRENT_MESSAGE_CONFIRMED === '1';
+  const trigger =
+    optionValue(argv, 'image-trigger') || env.NOVELIGHT_IMAGE_TRIGGER || '';
+
+  if (!required) {
+    return {
+      required,
+      decision,
+      currentMessageConfirmed,
+      trigger
+    };
+  }
+
+  if (decision !== 'allowed') {
+    throw new Error(
+      'Image runtime phase requires explicit allowed image-execution evidence from the current user message.'
+    );
+  }
+  if (!currentMessageConfirmed) {
+    throw new Error(
+      'Image runtime phase requires confirmation that the evidence comes from the current user message.'
+    );
+  }
+  if (!trigger) {
+    throw new Error(
+      'Image runtime phase requires a verbatim current-message execution trigger.'
+    );
+  }
+  if (/^(はい|続けて|次へ|ok|okay)$/iu.test(trigger)) {
+    throw new Error(
+      'Image execution trigger cannot be a continuation-only acknowledgement.'
+    );
+  }
+
+  return {
+    required,
+    decision,
+    currentMessageConfirmed,
+    trigger
   };
 }
 
@@ -294,16 +344,18 @@ function writeGateState({
   mainSha,
   files,
   executionCard,
+  imageExecution,
   evidenceFreshness
 }) {
   const gitDir = git(['rev-parse', '--git-dir']);
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = {
-    version: 6,
+    version: 7,
     passedAt: new Date().toISOString(),
     phase,
     mainSha,
     executionCard,
+    imageExecution,
     evidenceFreshness,
     authoritativeFiles: files
   };
@@ -317,6 +369,7 @@ export function runRuntimeGate(
 ) {
   const phase = parsePhase(argv);
   const executionCard = parseExecutionCardEvidence(argv, env);
+  const imageExecution = parseImageExecutionEvidence(phase, argv, env);
   const evidenceFreshness = parseEvidenceFreshnessEvidence(phase, argv, env);
   const { mainSha, files } = ensureLatestMainAvailable();
   const statePath = writeGateState({
@@ -324,18 +377,22 @@ export function runRuntimeGate(
     mainSha,
     files,
     executionCard,
+    imageExecution,
     evidenceFreshness
   });
 
   console.log(`NOVELIGHT Runtime Execution Gate: PASS (${phase})`);
   console.log(`authoritative main: ${mainSha}`);
   console.log(`execution card mode: ${executionCard.mode}`);
+  if (imageExecution.required) {
+    console.log('image execution: current-message explicit permission confirmed');
+  }
   if (evidenceFreshness.required) {
     console.log(`evidence freshness verdict: ${evidenceFreshness.verdict}`);
   }
   console.log(`state: ${statePath}`);
   console.log(
-    'Next: read the fetched main MASTER/Preflight/execution-card/evidence-freshness contracts, apply current locks, prefer fresher execution evidence over stale status snapshots, do not repeat a Production mutation that current proof already satisfies, and do not ask for a continuation-only yes.'
+    'Next: read the fetched main MASTER/Preflight/execution-card/evidence-freshness/image-execution contracts, apply current locks, keep image tools out of the candidate set unless the current message explicitly authorizes image execution, prefer fresher execution evidence over stale status snapshots, do not repeat a Production mutation that current proof already satisfies, and do not ask for a continuation-only yes.'
   );
 }
 
