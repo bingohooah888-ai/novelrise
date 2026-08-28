@@ -4,7 +4,7 @@ This file is the fail-closed contract for the first user-visible message of ever
 
 ## 1. Zero-tool rule
 
-Before any GitHub/Connector/API/CLI/Workflow/file operation, including read-only discovery or latest-main lookup, the assistant must first send one user-visible execution card in the current turn.
+Before any GitHub/Connector/API/CLI/Workflow/file operation, including read-only discovery or latest-main lookup, the assistant must first send one user-visible execution card in the current turn. In other words, the execution card is the first visible message for a tool-using NOVELIGHT turn.
 
 A card from a previous user turn is invalid. A user message such as `はい`, `続けて`, a screenshot, a log, or a manual-operation completion report always starts a new execution turn and invalidates the previous card.
 
@@ -41,24 +41,34 @@ The first visible message must contain all of the following:
 
 `次のユーザー操作` must state the next condition that genuinely requires user involvement. If no user action is expected, say `なし` rather than inventing a confirmation step.
 
-### Conditional image-execution proof
+### Conditional image-execution proof: project-wide hard lock
 
-If the turn intends to call an image-generation or image-editing tool, the execution card must additionally contain both of the following before that tool call:
+ChatGPT-side image-generation and image-editing tools are locked by default for every new NOVELIGHT user message. Before generic tool routing, the assistant must independently decide both the current-message image-tool unlock and the current-message image execution permission defined in `docs/IMAGE-EXECUTION-GATE.md`.
 
+If the turn intends to call an image-generation or image-editing tool, the execution card must additionally contain all four fields before that tool call:
+
+- `画像ツールロック解除: YES`
+- `ロック解除命令引用: <現在のユーザーメッセージからの原文引用>`
 - `画像実行判定: YES`
 - `明示命令引用: <現在のユーザーメッセージからの原文引用>`
 
-The assistant must make the binary decision defined in `docs/IMAGE-EXECUTION-GATE.md` **before generic tool routing**. The default on every new user message is `CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = NO`.
+The default on every new user message is both:
 
-If the exact current-message phrase authorizing actual image execution cannot be quoted, the decision remains `NO`, image-generation/editing tools are excluded from the candidate set, and the turn must remain text-only for image consultation.
+`CURRENT_MESSAGE_IMAGE_TOOL_UNLOCK = NO`
 
-Desired-state or consultation wording such as `文字をもう少し小さくしたい` or `両側にロゴでも入れる？` is not an execution instruction by itself and must not be silently rewritten into an editing command.
+`CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = NO`
 
-A previous-turn image instruction cannot satisfy this conditional proof. A new user message invalidates image permission just as it invalidates the ordinary execution card.
+A normal editing/generation instruction is not enough to unlock ChatGPT-side image tools. Wording such as `作って`, `生成して`, `編集して`, `修正して`, or `改善して` may express execution intent, but the image tool still stays locked unless the same current user message also explicitly and directly unlocks/re-enables the ChatGPT image-tool lock.
+
+If the exact current-message lock-unlock phrase cannot be quoted, the unlock decision remains `NO`. If the exact current-message phrase authorizing actual image execution cannot be quoted, the execution decision remains `NO`. If either is `NO`, image-generation/editing tools are excluded from the candidate set and the turn must remain text-only for image consultation or acknowledgement.
+
+Desired-state, consultation, continuation, and approval wording such as `文字をもう少し小さくしたい`, `両側にロゴでも入れる？`, `完璧`, `いいね`, `これでOK`, `はい`, or `続けて` does not satisfy either proof by itself and must not be silently rewritten into an editing or unlock command.
+
+A previous-turn lock unlock or image instruction cannot satisfy the current proof. A new user message invalidates both permissions just as it invalidates the ordinary execution card.
 
 A prohibited image-tool call is a gate violation at call time even if no image ultimately renders.
 
-Stronger individual locks, including the current Noctar/ComfyUI lock, remain higher priority than this general conditional proof.
+Stronger individual locks, including the current Noctar/ComfyUI lock, remain higher priority than this general hard-lock proof.
 
 ### Time information
 
@@ -79,11 +89,21 @@ The Runtime Execution Gate continues to validate:
 - qualitative workload;
 - the next user-action condition;
 - total time in timed mode;
-- current-message explicit image-execution evidence when `--phase=image` is used.
+- current-message image-tool unlock evidence when `--phase=image` is used;
+- separate current-message explicit image-execution evidence when `--phase=image` is used.
 
 Passing a Runtime Gate check that files are reachable is not a substitute for reading MASTER. The agent must read the current `main` MASTER before interpreting project rules or entering implementation/state work; if the agent cannot read it in full, it must fail closed.
 
-For an image phase, a visible card alone is not enough. The runtime caller must also provide `--image-execution=allowed`, `--image-current-message-confirmed`, and `--image-trigger=<verbatim current-message execution phrase>`. Missing or stale image evidence must fail closed.
+For an image phase, a visible card alone is not enough. The runtime caller must provide all of the following:
+
+- `--image-lock=unlocked`
+- `--image-unlock-current-message-confirmed`
+- `--image-unlock-trigger=<verbatim current-message lock-unlock phrase>`
+- `--image-execution=allowed`
+- `--image-current-message-confirmed`
+- `--image-trigger=<verbatim current-message execution phrase>`
+
+Missing, stale, generic, or non-current-message unlock/execution evidence must fail closed. Ordinary execution wording cannot be reused as fake lock-unlock evidence.
 
 Optional `other work` and degraded-mode reason metadata may be recorded when useful, but they are not required card fields.
 
@@ -96,15 +116,15 @@ A cloud assistant that cannot run the local Runtime Execution Gate is not exempt
 Its protocol is:
 
 1. Send the execution card as the first visible message.
-2. If an image-generation/editing tool is intended, include the conditional image-execution proof in that same card; if the proof cannot be supplied, remove image tools from the candidate set and do not call them.
+2. If an image-generation/editing tool is intended, first reset both image decisions to `NO`, then require an explicit current-message ChatGPT image-tool lock-unlock phrase and a separate explicit current-message image execution phrase. Include all four image proof fields in the same card. If either proof cannot be supplied, remove image tools from the candidate set and do not call them.
 3. Only then call the minimum read-only lookup needed to resolve latest `main`.
 4. Fetch and read the **full current `main` MASTER** from that resolved SHA before any other project-state or project-document read; if truncated, continue range/chunk reads until complete.
 5. Only after MASTER reading is complete, re-fetch Preflight, this file, `docs/EVIDENCE-FRESHNESS-GATE.md`, and `docs/IMAGE-EXECUTION-GATE.md`, then gather any PR/workflow/deployment/implementation evidence needed for the task.
 6. Do not mutate anything until the MASTER-first bootstrap and the remaining required authoritative-file bootstrap are complete.
-7. If the assistant notices that a tool was called before the card, that project-state/project-document reads were performed before the current MASTER was actually read, or that an image tool was called without valid current-message image proof, stop mutations/image execution for that turn, report the gate failure, and do not treat a later card or later proof in the same turn as valid recovery.
-8. The next tool-using turn must begin with a fresh card and a fresh latest-main/current-MASTER read. Any image permission must also be decided again from that new current user message.
+7. If the assistant notices that a tool was called before the card, that project-state/project-document reads were performed before the current MASTER was actually read, or that an image tool was called without both valid current-message image proofs, stop mutations/image execution for that turn, report the gate failure, and do not treat a late card as invalid for that turn recovery; a late card cannot repair the ordering violation in the same turn.
+8. The next tool-using turn must begin with a fresh card and a fresh latest-main/current-MASTER read. Both image decisions must also reset and be proven again from that new current user message.
 
-The cloud path cannot rely on `I remembered the rule`, `MASTERに書いてある`, a prior-turn read, prior-turn image permission, or cached/project-attached copies as evidence. The visible ordering plus current-turn GitHub reads are the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
+The cloud path cannot rely on `I remembered the rule`, `MASTERに書いてある`, a prior-turn read, prior-turn lock unlock, prior-turn image permission, or cached/project-attached copies as evidence. The visible ordering plus current-turn GitHub reads are the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
 
 ## 5. Evidence Freshness Gate
 
@@ -130,15 +150,16 @@ CI must keep tests that assert:
 - other-work guidance is optional and must not be emitted as a default filler line;
 - degraded mode may omit both the time estimate and a user-visible omission explanation;
 - timed mode requires a total estimate;
-- the cloud path explicitly treats a late card as invalid for that turn;
+- the cloud path explicitly treats a late card as invalid for that turn recovery;
 - the current-turn bootstrap requires latest-main resolution followed by a full current-MASTER read before other project reads;
 - a prior-turn MASTER read, cached summary, attachment, existence/SHA check, or partial snippet cannot satisfy the MASTER-read gate;
-- image execution requires a current-message YES decision plus an exact quoted execution phrase before image-tool routing;
-- consultation/desire wording such as `文字をもう少し小さくしたい` and `両側にロゴでも入れる？` remains non-execution by itself;
-- a new user message invalidates prior image permission;
-- the local `image` Runtime Gate phase fails without explicit current-message image evidence;
+- image execution requires a current-message image-tool unlock plus a separate current-message YES execution decision and exact quoted phrases before image-tool routing;
+- ordinary execution wording such as `作って`, `編集して`, `修正して`, and `改善して` cannot unlock image tools;
+- consultation/approval wording such as `文字をもう少し小さくしたい`, `両側にロゴでも入れる？`, `完璧`, `いいね`, and `これでOK` remains non-execution by itself;
+- a new user message invalidates both image permissions;
+- the local `image` Runtime Gate phase fails without both explicit current-message image proofs;
 - an unauthorized image-tool attempt is a violation even when no image renders;
 - deploy/Vercel/Supabase/Stripe phases fail closed without evidence-freshness proof;
 - current evidence blocks duplicate external-state mutation.
 
-The purpose is to make a missing execution card, an unread MASTER, an inferred image command, or stale-state assumption a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
+The purpose is to make a missing execution card, an unread MASTER, an inferred image command, an unproven image-tool unlock, or stale-state assumption a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
