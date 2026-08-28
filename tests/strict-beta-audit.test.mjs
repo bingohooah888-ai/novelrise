@@ -88,10 +88,7 @@ test('profile and favorite raw reads are own-only in the hardening migration', (
   );
   assert.match(migration, /create policy novelight_profiles_select_own/i);
   assert.match(migration, /create policy novelight_favorites_select_own/i);
-  assert.match(
-    migration,
-    /novelight_public_profile[\s\S]*?security definer/i
-  );
+  assert.match(migration, /novelight_public_profile[\s\S]*?security definer/i);
 });
 
 test('only self-service pages read raw profiles directly', () => {
@@ -137,7 +134,10 @@ test('Vercel applies baseline browser security headers', () => {
   const headers = config.headers?.[0]?.headers || [];
   const map = new Map(headers.map(({ key, value }) => [key, value]));
 
-  assert.match(map.get('Content-Security-Policy') || '', /frame-ancestors 'none'/);
+  assert.match(
+    map.get('Content-Security-Policy') || '',
+    /frame-ancestors 'none'/
+  );
   assert.match(map.get('Content-Security-Policy') || '', /object-src 'none'/);
   assert.equal(map.get('X-Content-Type-Options'), 'nosniff');
   assert.equal(map.get('X-Frame-Options'), 'DENY');
