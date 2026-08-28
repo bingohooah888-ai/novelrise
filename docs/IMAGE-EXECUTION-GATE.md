@@ -54,7 +54,7 @@ If the same current message contains an explicit execution instruction but no ex
 
 ## 3. Pre-routing deny rule
 
-Both binary decisions happen before generic tool routing.
+The binary decisions happen before generic tool routing.
 
 When either `CURRENT_MESSAGE_IMAGE_TOOL_UNLOCK = NO` or `CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = NO`:
 
