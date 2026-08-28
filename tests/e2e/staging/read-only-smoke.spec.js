@@ -55,6 +55,7 @@ test('beta-critical public routes are deployed', async ({ request }) => {
   const routes = [
     '/index.html',
     '/search.html',
+    '/ranking.html',
     '/pricing.html',
     '/signup.html',
     '/login.html',
@@ -89,6 +90,22 @@ test('beta-critical public routes are deployed', async ({ request }) => {
   }
 });
 
+test('browser security headers are active on deployed pages', async ({
+  request
+}) => {
+  const response = await request.get('/index.html');
+  const headers = response.headers();
+
+  expect(headers['x-content-type-options']).toBe('nosniff');
+  expect(headers['x-frame-options']).toBe('DENY');
+  expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+  expect(headers['permissions-policy']).toContain('camera=()');
+  expect(headers['content-security-policy']).toContain(
+    "frame-ancestors 'none'"
+  );
+  expect(headers['content-security-policy']).toContain("object-src 'none'");
+});
+
 test('safe API contracts respond without state-changing requests', async ({
   request
 }) => {
@@ -102,7 +119,7 @@ test('safe API contracts respond without state-changing requests', async ({
   expect(webhook.status()).toBe(405);
 });
 
-test('reader discovery flow renders while measurement writes are suppressed', async ({
+test('reader discovery, neutral search, ranking and novel detail render while writes are suppressed', async ({
   page
 }) => {
   await suppressKnownWrites(page);
@@ -114,14 +131,39 @@ test('reader discovery flow renders while measurement writes are suppressed', as
   });
   await expect(resultCount).not.toHaveText('読み込みエラー');
 
+  await page.locator('#sortSelect').selectOption('new');
+  await expect(resultCount).not.toHaveText('読み込み中...', {
+    timeout: 20_000
+  });
+  await expect(resultCount).not.toHaveText('読み込みエラー');
+
   const cards = page.locator('.novel-card');
-  if ((await cards.count()) === 0) {
-    await expect(page.locator('body')).toContainText(/作品|検索/);
+  let novelHref = null;
+  if ((await cards.count()) > 0) {
+    novelHref = await cards.first().getAttribute('href');
+    expect(novelHref).toBeTruthy();
+  }
+
+  await page.goto('/ranking.html', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#list')).not.toContainText('読み込み中...', {
+    timeout: 20_000
+  });
+  await expect(page.locator('#list')).not.toContainText(
+    '正しく計算できませんでした'
+  );
+  await page.locator('.tab[data-type="favorites"]').click();
+  await expect(page.locator('#list')).not.toContainText('読み込み中...', {
+    timeout: 20_000
+  });
+  await expect(page.locator('#list')).not.toContainText(
+    '正しく計算できませんでした'
+  );
+
+  if (!novelHref) {
+    await expect(page.locator('body')).toContainText(/作品|ランキング/);
     return;
   }
 
-  const novelHref = await cards.first().getAttribute('href');
-  expect(novelHref).toBeTruthy();
   await page.goto(novelHref, { waitUntil: 'domcontentloaded' });
 
   const warningGate = page.locator('#warningGate.visible');
@@ -131,6 +173,13 @@ test('reader discovery flow renders while measurement writes are suppressed', as
 
   await expect(page.locator('#novelHeader')).not.toContainText(
     '読み込み中...',
+    { timeout: 20_000 }
+  );
+  await expect(page.locator('#favoriteCount')).not.toHaveText('—', {
+    timeout: 20_000
+  });
+  await expect(page.locator('#authorName')).not.toHaveText(
+    '作者情報を確認中...',
     { timeout: 20_000 }
   );
 });

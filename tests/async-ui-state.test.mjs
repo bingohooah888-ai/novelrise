@@ -87,10 +87,11 @@ test('billing prevents parallel checkout starts and recovers after failure', () 
 });
 
 test('remaining list pages distinguish unavailable data from real empty states', () => {
-  assert.match(myNovels, /favoriteCount=null/);
-  assert.match(myNovels, /favorite count unavailable/);
+  assert.match(myNovels, /favoriteCountsAvailable=true/);
+  assert.match(myNovels, /favorite counts unavailable/);
+  assert.match(myNovels, /rpc\('novelight_author_favorite_counts'/);
   assert.match(ranking, /ランキングを正しく計算できませんでした/);
-  assert.match(ranking, /if\(f\.error\)throw f\.error/);
+  assert.match(ranking, /if\(r\.error\)throw r\.error/);
   assert.match(author, /公開作品を読み込めませんでした/);
   assert.match(author, /if\(n\.error\)/);
 });
