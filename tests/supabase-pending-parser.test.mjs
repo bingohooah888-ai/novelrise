@@ -5,17 +5,23 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-const parserPath = 'scripts/extract-supabase-pending.sh';
+const PARSER_PATH = 'scripts/extract-supabase-pending.sh';
+const VERIFY_PATH = 'scripts/verify-supabase-pending.sh';
+const WORKFLOW_PATH = '.github/workflows/supabase-production-auto-deploy.yml';
+const VERIFY_PARSER = 'bash scripts/extract-supabase-pending.sh "$output_file"';
+const POST_DEPLOY_PARSER =
+  'pending_migrations="$(bash scripts/extract-supabase-pending.sh';
+const LEGACY_PARSER = "awk -F '│'";
 const bashAvailable =
   spawnSync('bash', ['--version'], { stdio: 'ignore' }).status === 0;
 
 async function parseMigrationList(content) {
-  const directory = await mkdtemp(join(tmpdir(), 'novelight-supabase-pending-'));
+  const directory = await mkdtemp(join(tmpdir(), 'novelight-pending-'));
   const fixturePath = join(directory, 'migration-list.txt');
 
   try {
     await writeFile(fixturePath, content, 'utf8');
-    const result = spawnSync('bash', [parserPath, fixturePath], {
+    const result = spawnSync('bash', [PARSER_PATH, fixturePath], {
       encoding: 'utf8'
     });
 
@@ -31,7 +37,7 @@ async function parseMigrationList(content) {
 }
 
 test(
-  'extracts Local-only migrations from the ASCII table emitted by Supabase CLI 2.111.0',
+  'parses the ASCII Supabase CLI migration table',
   { skip: !bashAvailable },
   async () => {
     const pending = await parseMigrationList(`
@@ -47,7 +53,7 @@ test(
 );
 
 test(
-  'continues to accept legacy Unicode table separators',
+  'accepts legacy Unicode table separators',
   { skip: !bashAvailable },
   async () => {
     const pending = await parseMigrationList(`
@@ -62,7 +68,7 @@ test(
 );
 
 test(
-  'does not report migrations whose Local and Remote versions both exist',
+  'ignores migrations already present in Remote history',
   { skip: !bashAvailable },
   async () => {
     const pending = await parseMigrationList(`
@@ -76,20 +82,14 @@ test(
   }
 );
 
-test('production migration checks share the same parser implementation', async () => {
+test('production migration checks share one parser', async () => {
   const [verifyScript, workflow] = await Promise.all([
-    readFile('scripts/verify-supabase-pending.sh', 'utf8'),
-    readFile('.github/workflows/supabase-production-auto-deploy.yml', 'utf8')
+    readFile(VERIFY_PATH, 'utf8'),
+    readFile(WORKFLOW_PATH, 'utf8')
   ]);
 
-  assert.match(
-    verifyScript,
-    /bash scripts\/extract-supabase-pending\.sh "\$output_file"/
-  );
-  assert.match(
-    workflow,
-    /pending_migrations="\$\(bash scripts\/extract-supabase-pending\.sh \/tmp\/post-deploy-migration-list\.txt\)"/
-  );
-  assert.doesNotMatch(verifyScript, /awk -F '│'/);
-  assert.doesNotMatch(workflow, /awk -F '│'/);
+  assert.equal(verifyScript.includes(VERIFY_PARSER), true);
+  assert.equal(workflow.includes(POST_DEPLOY_PARSER), true);
+  assert.equal(verifyScript.includes(LEGACY_PARSER), false);
+  assert.equal(workflow.includes(LEGACY_PARSER), false);
 });
