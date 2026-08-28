@@ -16,7 +16,7 @@ async function parseMigrationList(content) {
   try {
     await writeFile(fixturePath, content, 'utf8');
     const result = spawnSync('bash', [parserPath, fixturePath], {
-      encoding: 'utf8',
+      encoding: 'utf8'
     });
 
     assert.equal(result.status, 0, result.stderr);
@@ -43,7 +43,7 @@ test(
 `);
 
     assert.deepEqual(pending, ['20260815000000']);
-  },
+  }
 );
 
 test(
@@ -58,7 +58,7 @@ test(
 `);
 
     assert.deepEqual(pending, ['20260815000000']);
-  },
+  }
 );
 
 test(
@@ -73,22 +73,22 @@ test(
 `);
 
     assert.deepEqual(pending, []);
-  },
+  }
 );
 
 test('production migration checks share the same parser implementation', async () => {
   const [verifyScript, workflow] = await Promise.all([
     readFile('scripts/verify-supabase-pending.sh', 'utf8'),
-    readFile('.github/workflows/supabase-production-auto-deploy.yml', 'utf8'),
+    readFile('.github/workflows/supabase-production-auto-deploy.yml', 'utf8')
   ]);
 
   assert.match(
     verifyScript,
-    /bash scripts\/extract-supabase-pending\.sh "\$output_file"/,
+    /bash scripts\/extract-supabase-pending\.sh "\$output_file"/
   );
   assert.match(
     workflow,
-    /pending_migrations="\$\(bash scripts\/extract-supabase-pending\.sh \/tmp\/post-deploy-migration-list\.txt\)"/,
+    /pending_migrations="\$\(bash scripts\/extract-supabase-pending\.sh \/tmp\/post-deploy-migration-list\.txt\)"/
   );
   assert.doesNotMatch(verifyScript, /awk -F '│'/);
   assert.doesNotMatch(workflow, /awk -F '│'/);
