@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import {
-  parseImageExecutionEvidence,
-  parsePhase
-} from '../scripts/runtime-execution-gate.mjs';
+import { parseImageExecutionEvidence, parsePhase } from '../scripts/runtime-execution-gate.mjs';
 
 const preflight = await readFile('docs/WORK-EXECUTION-PREFLIGHT.md', 'utf8');
 const contract = await readFile('docs/IMAGE-EXECUTION-GATE.md', 'utf8');
