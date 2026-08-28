@@ -46,3 +46,40 @@ test('Preview billing return URLs use the exact Vercel deployment helper', () =>
   assert.doesNotMatch(checkout, /function getAppBaseUrl/);
   assert.doesNotMatch(portal, /function getAppBaseUrl/);
 });
+
+test('chat-controlled Staging smoke only accepts the dedicated owner-reopened control issue', () => {
+  assert.match(workflow, /issues:\s*\n\s+types: \[reopened\]/);
+  assert.doesNotMatch(workflow, /issue_comment:/);
+  assert.match(workflow, /github\.event\.issue\.number == 188/);
+  assert.match(
+    workflow,
+    /github\.event\.issue\.user\.login == 'bingohooah888-ai'/
+  );
+  assert.match(
+    workflow,
+    /github\.event\.sender\.login == 'bingohooah888-ai'/
+  );
+});
+
+test('chat-controlled Staging smoke resolves and rechecks current main before write-capable verification', () => {
+  assert.match(workflow, /git\/ref\/heads\/main/);
+  assert.match(workflow, /EXPECTED_REVISION=\$target/);
+  assert.match(workflow, /Confirm controlled revision is still current main/);
+  assert.match(
+    workflow,
+    /chat-controlled Staging Smoke requires STAGING_E2E_READY=true/
+  );
+  assert.match(
+    workflow,
+    /github\.event_name == 'issues' && 'workflow_dispatch'/
+  );
+});
+
+test('Staging execution concurrency is job-scoped so skipped issue events cannot cancel a real smoke', () => {
+  const jobsIndex = workflow.indexOf('jobs:');
+  const concurrencyIndex = workflow.indexOf('concurrency:');
+  assert.notEqual(jobsIndex, -1);
+  assert.notEqual(concurrencyIndex, -1);
+  assert.ok(concurrencyIndex > jobsIndex);
+  assert.match(workflow, /'chat-control'/);
+});
