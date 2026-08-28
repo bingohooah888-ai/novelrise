@@ -19,10 +19,7 @@ test('Production dispatch bridge accepts only the owner approval ledger event', 
     bridge,
     /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
   );
-  assert.match(
-    bridge,
-    /github\.event\.comment\.author_association == 'OWNER'/
-  );
+  assert.match(bridge, /github\.event\.comment\.author_association == 'OWNER'/);
   assert.match(bridge, /NOVELIGHT_PRODUCTION_DISPATCH_APPROVE/);
 });
 
@@ -39,26 +36,17 @@ test('Production dispatch approval is exact-scope, SHA-bound, and one-time', () 
     bridge,
     /main changed after the user approved this Production dispatch/
   );
-  assert.match(
-    bridge,
-    /main changed before Production workflow dispatch/
-  );
+  assert.match(bridge, /main changed before Production workflow dispatch/);
   assert.match(bridge, /NOVELIGHT_PRODUCTION_DISPATCH_CLAIMED/);
   assert.match(bridge, /NOVELIGHT_PRODUCTION_DISPATCHED/);
-  assert.match(
-    bridge,
-    /this Production dispatch approval was already used/
-  );
+  assert.match(bridge, /this Production dispatch approval was already used/);
 });
 
 test('bridge can dispatch only the fixed baseline repair target', () => {
   assert.match(bridge, /actions: write/);
   assert.match(bridge, /TARGET_WORKFLOW: supabase-production\.yml/);
   assert.match(bridge, /TARGET_REF: main/);
-  assert.match(
-    bridge,
-    /actions\/workflows\/\$TARGET_WORKFLOW\/dispatches/
-  );
+  assert.match(bridge, /actions\/workflows\/\$TARGET_WORKFLOW\/dispatches/);
   assert.match(
     bridge,
     /inputs:\{mode:"repair-history",confirmation:"REPAIR"\}/
