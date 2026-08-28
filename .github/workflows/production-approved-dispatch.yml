@@ -172,6 +172,30 @@ jobs:
               exit 1
             fi
 
+            prior_bridge_dispatch_count="$(
+              jq \
+                --arg staleMainSha "$stale_head_sha" \
+                --arg repairVersion "$REPAIR_VERSION" \
+                --arg targetWorkflow "$MANUAL_WORKFLOW" \
+                '[
+                  .[]
+                  | .body as $body
+                  | select($body | startswith("NOVELIGHT_PRODUCTION_DISPATCHED "))
+                  | ($body | sub("^[^ ]+ "; "") | fromjson?)
+                  | select(
+                      .operation == "supabase-baseline-history-repair" and
+                      .mainSha == $staleMainSha and
+                      .repairVersion == $repairVersion and
+                      .targetWorkflow == $targetWorkflow
+                    )
+                ] | length' \
+                /tmp/ledger-comments.json
+            )"
+            if [ "$prior_bridge_dispatch_count" -ne 1 ]; then
+              echo 'Safety stop: active bot Production run is not uniquely backed by the prior bridge ledger.'
+              exit 1
+            fi
+
             cancel_status="$(
               curl --silent --show-error \
                 --output /tmp/cancel-response.txt \
