@@ -6,12 +6,12 @@ This document records the implementation basis and remaining release work for th
 
 ## Review status
 
-- Qualified Japanese counsel review: **PENDING**.
-- Explicit owner residual-risk decision: **NOT RECORDED**.
-- Public-beta legal GO: **NOT YET RECORDED**.
-- Current baseline revision for this review: `0ba72358b5213ff409aed2fca24e3af7bf1ff025`.
+- Qualified Japanese counsel review: **DEFERRED BY OWNER UNTIL AFTER CONTROLLED BETA LAUNCH / STILL PENDING**.
+- Explicit owner residual-risk decision: **RECORDED 2026-08-28**.
+- Public-beta legal GO: **NOT YET RECORDED — final release observations and non-deferred hard gates remain**.
+- Current baseline revision for this review: `39d75d8f6022587c5ce35c7bc63cb7b76ec4e933`.
 
-The current counsel handoff is `docs/LEGAL-COUNSEL-HANDOFF-2026-08-28.md`.
+The current counsel handoff is `docs/LEGAL-COUNSEL-HANDOFF-2026-08-28.md` and remains available for later use.
 
 ## Implemented public surfaces
 
@@ -55,6 +55,16 @@ Regression coverage exists to keep Checkout/pricing/billing/commerce/privacy pai
 
 This policy must remain synchronized with MASTER and `content-guidelines.html`.
 
+### Qualified-counsel timing / residual-risk decision — OWNER APPROVED 2026-08-28
+
+The owner has decided not to require qualified Japanese counsel review before the initial controlled beta launch. The review remains pending and its timing will be reconsidered after observing real beta usage, user acquisition, and whether continued operation justifies the external legal-review cost and effort.
+
+The owner explicitly recognizes that launching the controlled beta before qualified counsel review leaves unresolved legal uncertainty. This is a release-risk/timing decision only. It is **not** a conclusion that the current terms, privacy policy, billing disclosures, commerce disclosure, content rules, consent flow, or operations are legally sufficient.
+
+This decision also does not waive or override mandatory law, regulator requirements, court orders, payment-provider rules, hosting/platform requirements, or any legal issue that becomes known before or during beta. If a material legal concern is identified, the affected launch or feature must be reassessed rather than relying on this residual-risk decision as a substitute for compliance.
+
+The later counsel review should still cover the launch-state terms, privacy policy, billing policy, commerce disclosure, content rules, signup consent, pricing/Checkout disclosures, contact route and relevant operations, including the topics listed below.
+
 ## Legal/contact request channel — IMPLEMENTED
 
 `contact.html` provides categories including:
@@ -66,7 +76,7 @@ This policy must remain synchronized with MASTER and `content-guidelines.html`.
 - 不具合・技術的な問題
 - その他
 
-Current engineering/operations controls include validated submission, anti-abuse measures, private raw inquiry storage, and operator prioritization for legal/payment/safety matters. Counsel must determine the required identity-verification, response-time, retention and escalation rules.
+Current engineering/operations controls include validated submission, anti-abuse measures, private raw inquiry storage, and operator prioritization for legal/payment/safety matters. Qualified counsel review remains the preferred later mechanism for determining any required identity-verification, response-time, retention and escalation rules that cannot be established by engineering evidence alone.
 
 ## Support / moderation operations — IMPLEMENTED FOR CONTROLLED BETA
 
@@ -78,7 +88,7 @@ The following is technical evidence, not a legal conclusion.
 
 ### Current Staging product/auth/billing lifecycle
 
-Staging Smoke #98, run `33135672826`, succeeded against current main `0ba72358b5213ff409aed2fca24e3af7bf1ff025` and covered:
+Staging Smoke #98, run `33135672826`, succeeded against main `0ba72358b5213ff409aed2fca24e3af7bf1ff025` and covered:
 
 - read-only Staging deployment contract;
 - read-only product smoke;
@@ -91,7 +101,7 @@ Staging Smoke #98, run `33135672826`, succeeded against current main `0ba72358b5
 - billing-data cleanup;
 - temporary-fixture removal.
 
-This scope is `current`. Do not repeat it solely for documentary freshness.
+This scope remains accepted as `current` unless later material changes invalidate it under `docs/EVIDENCE-FRESHNESS-GATE.md`. Do not repeat it solely for documentary freshness.
 
 ### Production Authenticated Smoke
 
@@ -114,7 +124,7 @@ The scoped proof is:
 
 `Stripe Live event creation without artificial paid charge -> Production Vercel webhook -> Production Supabase entitlement/cancellation reflection -> final billing audit`.
 
-A freshness comparison through current main found no material change to the decisive webhook-handler boundary that would invalidate that proof. Therefore the same Production proof **must not be repeated merely because `main` advanced**.
+A freshness comparison through the review baseline found no material change to the decisive webhook-handler boundary that would invalidate that proof. Therefore the same Production proof **must not be repeated merely because `main` advanced**.
 
 ## Official-reference baseline
 
@@ -137,13 +147,11 @@ The engineering review has used the following official sources as implementation
 - Japan commerce-disclosure guidance: https://support.stripe.com/questions/how-to-create-and-display-a-commerce-disclosure-page?locale=ja-JP
 - prohibited/restricted-business FAQ: https://support.stripe.com/questions/prohibited-and-restricted-businesses-list-faqs?locale=ja-JP
 
-## Remaining hard legal gate
+## Deferred qualified-counsel review scope
 
-### 1. Qualified Japanese counsel review — OPEN
+Qualified Japanese counsel review remains **PENDING / DEFERRED**, not completed.
 
-Counsel should review the launch-state terms, privacy policy, billing policy, commerce disclosure, content rules, signup consent, pricing/Checkout disclosures, contact route and relevant operations.
-
-Primary P0 topics:
+Primary topics for the later review remain:
 
 - 特商法: whether on-request omission of legal name/address/phone is permitted for the actual operator and launch circumstances;
 - recurring subscription/final confirmation: whether NOVELIGHT + Stripe hosted Checkout satisfies the actual Japanese disclosure requirements;
@@ -156,27 +164,17 @@ Primary P0 topics:
 - AI-assisted/generated works: rights warranty, disclosure and abuse boundaries;
 - governing law/jurisdiction wording.
 
-Counsel findings should be classified as `BLOCKER / HIGH / MEDIUM / LOW`, with affected file/flow and proposed wording or operational requirement.
+Counsel findings, when the review is commissioned, should be classified as `BLOCKER / HIGH / MEDIUM / LOW`, with affected file/flow and proposed wording or operational requirement.
 
-### 2. Owner residual-risk decision — SEPARATE GATE
+## Final release observations before controlled beta
 
-Owner residual-risk acceptance is not legal analysis and must not be used to treat a mandatory legal requirement as satisfied.
+The owner decision above changes the timing of qualified-counsel review but does not automatically declare the beta ready. Before recording controlled public-beta GO:
 
-Preferred order:
-
-`qualified counsel review -> required BLOCKER/HIGH remediation -> affected-scope verification -> residual-risk record -> owner acceptance/rejection -> legal GO`.
-
-Only non-sensitive metadata should be recorded publicly. Operator identity/address/phone and privileged/private advice should be shared with counsel through a secure channel, not committed to GitHub.
-
-## Final release observations after legal P0
-
-After counsel review and any required legal changes are merged:
-
-1. apply Evidence Freshness analysis only to scopes actually affected by those changes;
+1. apply Evidence Freshness analysis only to scopes actually affected by later changes;
 2. confirm the latest Supabase Production backup/recovery point through the approved read-only route;
 3. perform final read-only Production observation of legal/public surfaces and intended legal/contact links;
 4. refresh `docs/BETA-RELEASE-EVIDENCE-LATEST.md` against the then-current final candidate;
-5. resolve any truly unknown hard checklist item using current evidence rather than historical unchecked boxes;
-6. record public-beta GO only when every hard gate is satisfied.
+5. resolve any truly unknown non-deferred hard checklist item using current evidence rather than historical unchecked boxes;
+6. record controlled public-beta GO only when every non-deferred hard gate is satisfied and the deferred-counsel status remains explicit.
 
 Production/Secret/Stripe live/Supabase Production/Vercel Production mutations remain approval-gated. Existing current Staging/Production proofs are not to be repeated for convenience.
