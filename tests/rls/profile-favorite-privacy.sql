@@ -113,4 +113,12 @@ select public.test_assert(
   'another authenticated user must not infer reader A favorites from raw rows'
 );
 
+select public.test_assert(
+  (
+    select total_favorites
+    from public.novelight_author_basic_metrics()
+  ) >= 1,
+  'author aggregate metrics must count reader favorites without exposing reader identity'
+);
+
 reset role;
