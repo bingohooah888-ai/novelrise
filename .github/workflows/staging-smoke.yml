@@ -2,6 +2,8 @@ name: NOVELIGHT Staging Smoke
 
 on:
   deployment_status:
+  issues:
+    types: [reopened]
   workflow_dispatch:
     inputs:
       staging_url:
@@ -16,30 +18,34 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: novelight-staging-smoke-${{ github.event.deployment.id || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   smoke:
     name: Verify staging surface, auth, and test billing once
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' &&
+       github.event.action == 'reopened' &&
+       github.event.issue.number == 188 &&
+       github.event.issue.user.login == 'bingohooah888-ai' &&
+       github.event.sender.login == 'bingohooah888-ai') ||
       (github.event.deployment_status.state == 'success' &&
        github.event.deployment.environment != 'Production' &&
        github.event.deployment.environment != 'production')
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    concurrency:
+      group: novelight-staging-smoke-${{ github.event_name == 'issues' && 'chat-control' || github.event.deployment.id || github.ref }}
+      cancel-in-progress: true
     environment: staging
     env:
-      STAGING_TRIGGER: ${{ github.event_name }}
+      STAGING_TRIGGER: ${{ github.event_name == 'issues' && 'workflow_dispatch' || github.event_name }}
       MANUAL_STAGING_URL: ${{ inputs.staging_url }}
       CANONICAL_STAGING_URL: ${{ vars.STAGING_BASE_URL }}
       DEPLOYMENT_ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
       DEPLOYMENT_TARGET_URL: ${{ github.event.deployment_status.target_url }}
-      EXPECTED_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.revision || github.event.deployment.sha }}
       STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
       SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
       E2E_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
@@ -49,11 +55,83 @@ jobs:
       CHECKOUT_SESSION_PREFIX: cs_test_
 
     steps:
+      - name: Resolve exact Staging revision
+        id: revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_REVISION: ${{ inputs.revision }}
+          DEPLOYMENT_REVISION: ${{ github.event.deployment.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "$GITHUB_EVENT_NAME" in
+            issues)
+              target="$(
+                gh api \
+                  "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+                  --jq '.object.sha'
+              )"
+              ;;
+            workflow_dispatch)
+              target="$DISPATCH_REVISION"
+              ;;
+            deployment_status)
+              target="$DEPLOYMENT_REVISION"
+              ;;
+            *)
+              echo "CONFIG_DRIFT: unexpected Staging Smoke trigger $GITHUB_EVENT_NAME."
+              exit 1
+              ;;
+          esac
+
+          if [[ ! "$target" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'CONFIG_DRIFT: resolved Staging revision is not an exact 40-character commit SHA.'
+            exit 1
+          fi
+
+          echo "sha=$target" >> "$GITHUB_OUTPUT"
+          echo "EXPECTED_REVISION=$target" >> "$GITHUB_ENV"
+
+      - name: Require write-ready Staging for chat control
+        if: github.event_name == 'issues'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$STAGING_E2E_READY" != 'true' ]; then
+            echo 'CONFIG_DRIFT: chat-controlled Staging Smoke requires STAGING_E2E_READY=true.'
+            exit 1
+          fi
+
       - name: Checkout deployed revision once
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.revision || github.event.deployment.sha }}
+          ref: ${{ steps.revision.outputs.sha }}
+
+      - name: Confirm controlled revision is still current main
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REVISION: ${{ steps.revision.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          checked_revision="$(git rev-parse HEAD)"
+          current_main="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              --jq '.object.sha'
+          )"
+
+          if [ "$checked_revision" != "$TARGET_REVISION" ]; then
+            echo "CONFIG_DRIFT: checkout revision $checked_revision does not match resolved target $TARGET_REVISION."
+            exit 1
+          fi
+          if [ "$current_main" != "$TARGET_REVISION" ]; then
+            echo "CONFIG_DRIFT: current main moved to $current_main after chat control resolved $TARGET_REVISION."
+            exit 1
+          fi
 
       - name: Setup Node.js once
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
