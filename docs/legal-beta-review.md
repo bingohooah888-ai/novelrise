@@ -2,16 +2,18 @@
 
 Reviewed: 2026-08-28
 
-This document records the implementation basis and remaining release work for the beta legal surfaces. It is an engineering/operations status document, not legal advice and not a substitute for review by qualified Japanese counsel.
+This document records the implementation basis and release status for the beta legal surfaces. It is an engineering/operations status document, not legal advice and not a substitute for review by qualified Japanese counsel.
 
 ## Review status
 
 - Qualified Japanese counsel review: **DEFERRED BY OWNER UNTIL AFTER CONTROLLED BETA LAUNCH / STILL PENDING**.
 - Explicit owner residual-risk decision: **RECORDED 2026-08-28**.
-- Public-beta legal GO: **NOT YET RECORDED — final release observations and non-deferred hard gates remain**.
-- Current baseline revision for this review: `39d75d8f6022587c5ce35c7bc63cb7b76ec4e933`.
+- Controlled public-beta GO: **RECORDED 2026-08-28** in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
+- Decision baseline revision: `1a5ca5dc5a90e4336ab5de74a21e2f2843e22bb1`.
 
 The current counsel handoff is `docs/LEGAL-COUNSEL-HANDOFF-2026-08-28.md` and remains available for later use.
+
+The controlled-beta GO is an operational release decision under the explicitly accepted residual legal uncertainty. It is not a legal-sufficiency finding and does not convert the deferred counsel review into a completed gate.
 
 ## Implemented public surfaces
 
@@ -26,7 +28,7 @@ The current counsel handoff is `docs/LEGAL-COUNSEL-HANDOFF-2026-08-28.md` and re
 - `api/_lib/checkout.js`: Stripe Checkout custom text with recurring-contract details by paid plan.
 - `index.html`: top-page links to the public legal/contact surfaces.
 
-The final claim that every intended public surface exposes all required legal/contact links remains a **final-candidate read-only observation**, not something inferred from an older checklist checkbox.
+Final-candidate read-only reachability was reconciled before GO using current Production surface evidence. This remains an engineering observation, not a legal conclusion.
 
 ## Legal-copy implementation status
 
@@ -64,6 +66,14 @@ The owner explicitly recognizes that launching the controlled beta before qualif
 This decision also does not waive or override mandatory law, regulator requirements, court orders, payment-provider rules, hosting/platform requirements, or any legal issue that becomes known before or during beta. If a material legal concern is identified, the affected launch or feature must be reassessed rather than relying on this residual-risk decision as a substitute for compliance.
 
 The later counsel review should still cover the launch-state terms, privacy policy, billing policy, commerce disclosure, content rules, signup consent, pricing/Checkout disclosures, contact route and relevant operations, including the topics listed below.
+
+### Controlled public-beta release decision — GO RECORDED 2026-08-28
+
+The final operational GO decision is recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md` after re-fetching the then-current main and applying the Evidence Freshness Gate.
+
+The GO was based on all non-deferred hard checklist scopes being current or supported by still-valid decisive evidence, with no newly unknown non-deferred hard gate identified. The qualified-counsel exception remains explicit and unresolved.
+
+The GO does not authorize unrelated Production database, Stripe live, Secret/environment, destructive, or other separately approval-gated operations.
 
 ## Legal/contact request channel — IMPLEMENTED
 
@@ -124,11 +134,11 @@ The scoped proof is:
 
 `Stripe Live event creation without artificial paid charge -> Production Vercel webhook -> Production Supabase entitlement/cancellation reflection -> final billing audit`.
 
-A freshness comparison through the review baseline found no material change to the decisive webhook-handler boundary that would invalidate that proof. Therefore the same Production proof **must not be repeated merely because `main` advanced**.
+A freshness comparison through the GO decision baseline found no material change to the decisive webhook-handler boundary that would invalidate that proof. Therefore the same Production proof **must not be repeated merely because `main` advanced**.
 
 ## Official-reference baseline
 
-The engineering review has used the following official sources as implementation inputs. Their presence does not establish compliance:
+The engineering review used the following official sources as implementation inputs. Their presence does not establish compliance:
 
 ### 特定商取引法 / recurring subscription
 
@@ -166,15 +176,17 @@ Primary topics for the later review remain:
 
 Counsel findings, when the review is commissioned, should be classified as `BLOCKER / HIGH / MEDIUM / LOW`, with affected file/flow and proposed wording or operational requirement.
 
-## Final release observations before controlled beta
+## Final release observations — SATISFIED FOR GO 2026-08-28
 
-The owner decision above changes the timing of qualified-counsel review but does not automatically declare the beta ready. Before recording controlled public-beta GO:
+Before GO, the release process:
 
-1. apply Evidence Freshness analysis only to scopes actually affected by later changes;
-2. confirm the latest Supabase Production backup/recovery point through the approved read-only route;
-3. perform final read-only Production observation of legal/public surfaces and intended legal/contact links;
-4. refresh `docs/BETA-RELEASE-EVIDENCE-LATEST.md` against the then-current final candidate;
-5. resolve any truly unknown non-deferred hard checklist item using current evidence rather than historical unchecked boxes;
-6. record controlled public-beta GO only when every non-deferred hard gate is satisfied and the deferred-counsel status remains explicit.
+1. applied Evidence Freshness analysis only to scopes actually affected by later changes;
+2. confirmed Production backup/recovery freshness through the approved read-only workflow (`33172222421`);
+3. reconciled final read-only Production legal/public-surface evidence (`NOVELIGHT Production Readiness Smoke` run `33145249649`);
+4. refreshed `docs/BETA-RELEASE-EVIDENCE-LATEST.md`;
+5. resolved the non-deferred checklist with no newly unknown hard item;
+6. recorded controlled public-beta GO in `docs/BETA-RELEASE-DECISION-2026-08-28.md` while keeping deferred counsel status explicit.
 
-Production/Secret/Stripe live/Supabase Production/Vercel Production mutations remain approval-gated. Existing current Staging/Production proofs are not to be repeated for convenience.
+If the launch state materially changes after this decision, only the affected scope must be refreshed under `docs/EVIDENCE-FRESHNESS-GATE.md`.
+
+Production/Secret/Stripe live/Supabase Production/Vercel Production mutations remain separately approval-gated. Existing current Staging/Production proofs are not to be repeated for convenience.
