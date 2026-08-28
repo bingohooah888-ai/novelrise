@@ -121,7 +121,7 @@ Its protocol is:
 4. Fetch and read the **full current `main` MASTER** from that resolved SHA before any other project-state or project-document read; if truncated, continue range/chunk reads until complete.
 5. Only after MASTER reading is complete, re-fetch Preflight, this file, `docs/EVIDENCE-FRESHNESS-GATE.md`, and `docs/IMAGE-EXECUTION-GATE.md`, then gather any PR/workflow/deployment/implementation evidence needed for the task.
 6. Do not mutate anything until the MASTER-first bootstrap and the remaining required authoritative-file bootstrap are complete.
-7. If the assistant notices that a tool was called before the card, that project-state/project-document reads were performed before the current MASTER was actually read, or that an image tool was called without both valid current-message image proofs, stop mutations/image execution for that turn, report the gate failure, and do not treat a late card as invalid for that turn recovery; a late card cannot repair the ordering violation in the same turn.
+7. If the assistant notices that a tool was called before the card, that project-state/project-document reads were performed before the current MASTER was actually read, or that an image tool was called without both valid current-message image proofs, stop mutations/image execution for that turn, report the gate failure, and treat any later card or later proof in the same turn as invalid recovery. A late card cannot repair the ordering violation in the same turn.
 8. The next tool-using turn must begin with a fresh card and a fresh latest-main/current-MASTER read. Both image decisions must also reset and be proven again from that new current user message.
 
 The cloud path cannot rely on `I remembered the rule`, `MASTERに書いてある`, a prior-turn read, prior-turn lock unlock, prior-turn image permission, or cached/project-attached copies as evidence. The visible ordering plus current-turn GitHub reads are the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
@@ -150,7 +150,7 @@ CI must keep tests that assert:
 - other-work guidance is optional and must not be emitted as a default filler line;
 - degraded mode may omit both the time estimate and a user-visible omission explanation;
 - timed mode requires a total estimate;
-- the cloud path explicitly treats a late card as invalid for that turn recovery;
+- the cloud path explicitly treats a late card as invalid for that turn;
 - the current-turn bootstrap requires latest-main resolution followed by a full current-MASTER read before other project reads;
 - a prior-turn MASTER read, cached summary, attachment, existence/SHA check, or partial snippet cannot satisfy the MASTER-read gate;
 - image execution requires a current-message image-tool unlock plus a separate current-message YES execution decision and exact quoted phrases before image-tool routing;
