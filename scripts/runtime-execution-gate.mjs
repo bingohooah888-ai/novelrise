@@ -32,6 +32,9 @@ const EVIDENCE_REQUIRED_PHASES = new Set([
   'stripe'
 ]);
 
+const EXPLICIT_IMAGE_UNLOCK_PATTERN =
+  /(?:(?:画像|image)[^\n]{0,80}(?:ロック|lock)[^\n]{0,40}(?:解除|unlock|解禁|再有効|使用可能|enable))|(?:(?:解除|unlock|解禁|再有効|enable)[^\n]{0,80}(?:画像|image)[^\n]{0,40}(?:ロック|lock)?)/iu;
+
 function git(args, options = {}) {
   return execFileSync('git', args, {
     encoding: 'utf8',
@@ -143,6 +146,15 @@ export function parseExecutionCardEvidence(argv, env = process.env) {
 
 export function parseImageExecutionEvidence(phase, argv, env = process.env) {
   const required = phase === 'image';
+  const lock =
+    optionValue(argv, 'image-lock') || env.NOVELIGHT_IMAGE_LOCK || '';
+  const unlockCurrentMessageConfirmed =
+    argv.includes('--image-unlock-current-message-confirmed') ||
+    env.NOVELIGHT_IMAGE_UNLOCK_CURRENT_MESSAGE_CONFIRMED === '1';
+  const unlockTrigger =
+    optionValue(argv, 'image-unlock-trigger') ||
+    env.NOVELIGHT_IMAGE_UNLOCK_TRIGGER ||
+    '';
   const decision =
     optionValue(argv, 'image-execution') || env.NOVELIGHT_IMAGE_EXECUTION || '';
   const currentMessageConfirmed =
@@ -154,12 +166,35 @@ export function parseImageExecutionEvidence(phase, argv, env = process.env) {
   if (!required) {
     return {
       required,
+      lock,
+      unlockCurrentMessageConfirmed,
+      unlockTrigger,
       decision,
       currentMessageConfirmed,
       trigger
     };
   }
 
+  if (lock !== 'unlocked') {
+    throw new Error(
+      'Image runtime phase requires an explicit ChatGPT image-tool lock unlock from the current user message.'
+    );
+  }
+  if (!unlockCurrentMessageConfirmed) {
+    throw new Error(
+      'Image runtime phase requires confirmation that the lock-unlock evidence comes from the current user message.'
+    );
+  }
+  if (!unlockTrigger) {
+    throw new Error(
+      'Image runtime phase requires a verbatim current-message image-tool lock-unlock trigger.'
+    );
+  }
+  if (!EXPLICIT_IMAGE_UNLOCK_PATTERN.test(unlockTrigger)) {
+    throw new Error(
+      'Image-tool unlock trigger must explicitly describe unlocking or re-enabling the image-tool lock; ordinary execution wording is insufficient.'
+    );
+  }
   if (decision !== 'allowed') {
     throw new Error(
       'Image runtime phase requires explicit allowed image-execution evidence from the current user message.'
@@ -167,7 +202,7 @@ export function parseImageExecutionEvidence(phase, argv, env = process.env) {
   }
   if (!currentMessageConfirmed) {
     throw new Error(
-      'Image runtime phase requires confirmation that the evidence comes from the current user message.'
+      'Image runtime phase requires confirmation that the execution evidence comes from the current user message.'
     );
   }
   if (!trigger) {
@@ -175,14 +210,17 @@ export function parseImageExecutionEvidence(phase, argv, env = process.env) {
       'Image runtime phase requires a verbatim current-message execution trigger.'
     );
   }
-  if (/^(はい|続けて|次へ|ok|okay)$/iu.test(trigger)) {
+  if (/^(はい|続けて|次へ|ok|okay|完璧|いいね|これでok)$/iu.test(trigger)) {
     throw new Error(
-      'Image execution trigger cannot be a continuation-only acknowledgement.'
+      'Image execution trigger cannot be a continuation-only acknowledgement or approval reaction.'
     );
   }
 
   return {
     required,
+    lock,
+    unlockCurrentMessageConfirmed,
+    unlockTrigger,
     decision,
     currentMessageConfirmed,
     trigger
@@ -350,7 +388,7 @@ function writeGateState({
   const gitDir = git(['rev-parse', '--git-dir']);
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = {
-    version: 7,
+    version: 8,
     passedAt: new Date().toISOString(),
     phase,
     mainSha,
@@ -385,14 +423,16 @@ export function runRuntimeGate(
   console.log(`authoritative main: ${mainSha}`);
   console.log(`execution card mode: ${executionCard.mode}`);
   if (imageExecution.required) {
-    console.log('image execution: current-message explicit permission confirmed');
+    console.log(
+      'image execution: current-message image-tool unlock and explicit execution permission confirmed'
+    );
   }
   if (evidenceFreshness.required) {
     console.log(`evidence freshness verdict: ${evidenceFreshness.verdict}`);
   }
   console.log(`state: ${statePath}`);
   console.log(
-    'Next: read the fetched main MASTER/Preflight/execution-card/evidence-freshness/image-execution contracts, apply current locks, keep image tools out of the candidate set unless the current message explicitly authorizes image execution, prefer fresher execution evidence over stale status snapshots, do not repeat a Production mutation that current proof already satisfies, and do not ask for a continuation-only yes.'
+    'Next: read the fetched main MASTER/Preflight/execution-card/evidence-freshness/image-execution contracts, apply current locks, keep image tools out of the candidate set unless the current message explicitly unlocks ChatGPT image tools and separately authorizes image execution, prefer fresher execution evidence over stale status snapshots, do not repeat a Production mutation that current proof already satisfies, and do not ask for a continuation-only yes.'
   );
 }
 
