@@ -13,6 +13,15 @@ on:
           - dry-run
           - repair-history
           - deploy
+      repair_version:
+        description: Migration version to align when mode is repair-history
+        required: false
+        default: '20260815000000'
+        type: choice
+        options:
+          - '20260815000000'
+          - '20260819190000'
+          - '20260822194000'
       confirmation:
         description: Type REPAIR for repair-history or DEPLOY for deploy
         required: false
@@ -73,6 +82,7 @@ jobs:
     environment: production
     env:
       MIGRATION_MODE: ${{ inputs.mode }}
+      REPAIR_VERSION: ${{ inputs.repair_version }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
@@ -118,15 +128,37 @@ jobs:
             exit 1
           fi
 
-      - name: Align verified production migration history
+      - name: Require selected history version to be pending and allowlisted
         if: env.MIGRATION_MODE == 'repair-history'
         shell: bash
         run: |
           set -euo pipefail
-          test -f supabase/migrations/20260819190000_secure_content_rls_and_constraints.sql
-          test -f supabase/migrations/20260822194000_manage_content_write_rls.sql
-          supabase migration repair --status applied 20260819190000
-          supabase migration repair --status applied 20260822194000
+
+          case "$REPAIR_VERSION" in
+            20260815000000|20260819190000|20260822194000) ;;
+            *)
+              echo "History repair blocked: unsupported migration version $REPAIR_VERSION."
+              exit 1
+              ;;
+          esac
+
+          test -f "supabase/migrations/${REPAIR_VERSION}_"*.sql
+          supabase migration list --linked | tee /tmp/repair-migration-list.txt
+          bash scripts/extract-supabase-pending.sh /tmp/repair-migration-list.txt \
+            | tee /tmp/repair-pending.txt
+
+          if ! grep -Fxq "$REPAIR_VERSION" /tmp/repair-pending.txt; then
+            echo "History repair blocked: $REPAIR_VERSION is not currently pending in Production."
+            exit 1
+          fi
+
+      - name: Verify Production core tables before baseline history repair
+        if: env.MIGRATION_MODE == 'repair-history' && env.REPAIR_VERSION == '20260815000000'
+        run: bash scripts/verify-production-initial-baseline-state.sh
+
+      - name: Align selected verified production migration history
+        if: env.MIGRATION_MODE == 'repair-history'
+        run: supabase migration repair --status applied "$REPAIR_VERSION"
 
       - name: Dry-run pending migrations
         if: env.MIGRATION_MODE == 'dry-run' || env.MIGRATION_MODE == 'deploy'
