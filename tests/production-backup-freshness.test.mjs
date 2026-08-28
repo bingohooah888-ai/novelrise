@@ -55,7 +55,11 @@ test('assessDailyBackupFreshness fails closed for stale or missing backups', () 
   );
 
   assert.throws(
-    () => assessDailyBackupFreshness(payload([]), { nowMs: NOW, maxAgeHours: 36 }),
+    () =>
+      assessDailyBackupFreshness(payload([]), {
+        nowMs: NOW,
+        maxAgeHours: 36,
+      }),
     /No completed Production backup/,
   );
 });
@@ -108,9 +112,18 @@ test('workflow remains read-only and checks the Production backup gate', () => {
 
   assert.match(workflow, /name: NOVELIGHT Production Backup Freshness/);
   assert.match(workflow, /environment: production/);
-  assert.match(workflow, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
+  assert.match(
+    workflow,
+    /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/,
+  );
   assert.match(workflow, /SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx/);
   assert.match(workflow, /MAX_BACKUP_AGE_HOURS: '36'/);
-  assert.match(workflow, /node scripts\/check-production-backup-freshness\.mjs/);
-  assert.doesNotMatch(workflow, /restore-pitr|restore-to-new-project|curl\s+-X\s+POST|--request\s+POST/i);
+  assert.match(
+    workflow,
+    /node scripts\/check-production-backup-freshness\.mjs/,
+  );
+  assert.doesNotMatch(
+    workflow,
+    /restore-pitr|restore-to-new-project|curl\s+-X\s+POST|--request\s+POST/i,
+  );
 });
