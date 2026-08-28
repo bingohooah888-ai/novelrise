@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   assessDailyBackupFreshness,
   fetchProductionBackups,
-  findLatestCompletedBackup,
+  findLatestCompletedBackup
 } from '../scripts/check-production-backup-freshness.mjs';
 
 const NOW = Date.parse('2026-08-28T12:00:00.000Z');
@@ -17,7 +17,7 @@ function payload(backups, extra = {}) {
   return {
     pitr_enabled: false,
     backups,
-    ...extra,
+    ...extra
   };
 }
 
@@ -29,7 +29,7 @@ test('selects the newest completed backup', () => {
   const backups = [
     completed(OLDER),
     { status: 'FAILED', inserted_at: '2026-08-28T11:00:00Z' },
-    completed(RECENT),
+    completed(RECENT)
   ];
   const latest = findLatestCompletedBackup(payload(backups));
 
@@ -39,7 +39,7 @@ test('selects the newest completed backup', () => {
 test('accepts a recent completed backup', () => {
   const result = assessDailyBackupFreshness(
     payload([completed(RECENT), completed(OLDER)]),
-    { nowMs: NOW, maxAgeHours: 36 },
+    { nowMs: NOW, maxAgeHours: 36 }
   );
 
   assert.equal(result.latestInsertedAt, '2026-08-28T04:00:00.000Z');
@@ -53,11 +53,11 @@ test('rejects stale or missing backups', () => {
 
   assert.throws(
     () => assessDailyBackupFreshness(stalePayload, options),
-    /stale/,
+    /stale/
   );
   assert.throws(
     () => assessDailyBackupFreshness(payload([]), options),
-    /No completed Production backup/,
+    /No completed Production backup/
   );
 });
 
@@ -66,7 +66,7 @@ test('rejects PITR because it needs a different proof model', () => {
 
   assert.throws(
     () => assessDailyBackupFreshness(pitrPayload),
-    /PITR is enabled/,
+    /PITR is enabled/
   );
 });
 
@@ -81,14 +81,14 @@ test('uses only the read-only backup-list endpoint', async () => {
       status: 200,
       async json() {
         return payload([]);
-      },
+      }
     };
   };
 
   await fetchProductionBackups({
     token: 'test-token',
     projectRef: 'project-ref',
-    fetchImpl: fakeFetch,
+    fetchImpl: fakeFetch
   });
 
   const expectedUrl =
@@ -101,7 +101,7 @@ test('uses only the read-only backup-list endpoint', async () => {
 test('workflow remains read-only', () => {
   const workflowPath = new URL(
     '../.github/workflows/production-backup-freshness.yml',
-    import.meta.url,
+    import.meta.url
   );
   const workflow = readFileSync(workflowPath, 'utf8');
 
@@ -117,18 +117,9 @@ test('workflow remains read-only', () => {
     'restore-pitr',
     'restore-to-new-project',
     'curl -X POST',
-    '--request POST',
+    '--request POST'
   ];
   for (const fragment of forbidden) {
     assert.equal(workflow.includes(fragment), false);
   }
-});
-
-test('diagnostic: print Prettier-normalized source', async () => {
-  const prettier = await import('prettier');
-  const source = readFileSync(new URL(import.meta.url), 'utf8');
-  const formatted = await prettier.format(source, { parser: 'babel' });
-  console.log('PRETTIER_FORMAT_START');
-  console.log(formatted);
-  console.log('PRETTIER_FORMAT_END');
 });
