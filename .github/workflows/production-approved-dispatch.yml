@@ -1,4 +1,4 @@
-name: NOVELIGHT Approved Production Dispatch
+name: NOVELIGHT Approved Production Execution
 
 on:
   issue_comment:
@@ -8,14 +8,15 @@ permissions:
   actions: write
   contents: read
   issues: write
+  statuses: write
 
 concurrency:
   group: novelight-production-approved-dispatch
   cancel-in-progress: false
 
 jobs:
-  dispatch:
-    name: Dispatch one fixed chat-approved Production action
+  authorize:
+    name: Validate one fixed chat-approved Production action
     if: >-
       github.event.issue.pull_request == null &&
       github.event.issue.number == 165 &&
@@ -27,12 +28,16 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       APPROVAL_BODY: ${{ github.event.comment.body }}
-      TARGET_WORKFLOW: supabase-production.yml
-      TARGET_REF: main
+      MANUAL_WORKFLOW: supabase-production.yml
       REPAIR_VERSION: '20260815000000'
+    outputs:
+      operation: ${{ steps.approval.outputs.operation }}
+      main_sha: ${{ steps.approval.outputs.main_sha }}
+      challenge: ${{ steps.approval.outputs.challenge }}
+      repair_version: ${{ steps.approval.outputs.repair_version }}
 
     steps:
-      - name: Validate exact one-time Production dispatch approval
+      - name: Validate exact one-time Production approval
         id: approval
         shell: bash
         run: |
@@ -47,7 +52,7 @@ jobs:
             .repairVersion == $repairVersion and
             ((keys | sort) == (["challenge", "mainSha", "operation", "repairVersion"] | sort))
           ' >/dev/null || {
-            echo 'Safety stop: invalid Production dispatch approval record.'
+            echo 'Safety stop: invalid Production approval record.'
             exit 1
           }
 
@@ -65,7 +70,7 @@ jobs:
               | jq -er '.object.sha'
           )"
           if [ "$current_main" != "$main_sha" ]; then
-            echo 'Safety stop: main changed after the user approved this Production dispatch.'
+            echo 'Safety stop: main changed after the user approved this Production action.'
             exit 1
           fi
 
@@ -92,7 +97,8 @@ jobs:
                 | .body as $body
                 | select(
                     ($body | startswith("NOVELIGHT_PRODUCTION_DISPATCH_CLAIMED ")) or
-                    ($body | startswith("NOVELIGHT_PRODUCTION_DISPATCHED "))
+                    ($body | startswith("NOVELIGHT_PRODUCTION_DISPATCHED ")) or
+                    ($body | startswith("NOVELIGHT_PRODUCTION_EXECUTED "))
                   )
                 | ($body | sub("^[^ ]+ "; "") | fromjson?)
                 | select(
@@ -104,7 +110,7 @@ jobs:
               /tmp/ledger-comments.json
           )"
           if [ "$used_count" -ne 0 ]; then
-            echo 'Safety stop: this Production dispatch approval was already used.'
+            echo 'Safety stop: this Production approval was already used.'
             exit 1
           fi
 
@@ -114,15 +120,124 @@ jobs:
             echo "challenge=$challenge"
             echo "repair_version=$repair_version"
           } >> "$GITHUB_OUTPUT"
-          echo "Validated one-time Production dispatch approval for exact main $main_sha."
+          echo "Validated one-time Production approval for exact main $main_sha."
 
-      - name: Claim approval before dispatch
+      - name: Remove only stale bridge-dispatched manual approval run
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
         shell: bash
+        run: |
+          set -euo pipefail
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/$MANUAL_WORKFLOW/runs?per_page=100" \
+            > /tmp/manual-production-runs.json
+
+          jq '[.workflow_runs[] | select(.status != "completed")]' \
+            /tmp/manual-production-runs.json > /tmp/active-manual-production-runs.json
+
+          human_active_count="$(
+            jq '[.[] | select(.actor.login != "github-actions[bot]")] | length' \
+              /tmp/active-manual-production-runs.json
+          )"
+          if [ "$human_active_count" -ne 0 ]; then
+            echo 'Safety stop: a human-started Supabase Production workflow is still active.'
+            exit 1
+          fi
+
+          bot_active_count="$(
+            jq '[.[] | select(.actor.login == "github-actions[bot]" and .event == "workflow_dispatch")] | length' \
+              /tmp/active-manual-production-runs.json
+          )"
+          if [ "$bot_active_count" -gt 1 ]; then
+            echo 'Safety stop: multiple stale bot-dispatched Production runs require manual investigation.'
+            exit 1
+          fi
+
+          if [ "$bot_active_count" -eq 1 ]; then
+            stale_run_id="$(
+              jq -r '.[] | select(.actor.login == "github-actions[bot]" and .event == "workflow_dispatch") | .id' \
+                /tmp/active-manual-production-runs.json
+            )"
+            stale_head_sha="$(
+              jq -r '.[] | select(.actor.login == "github-actions[bot]" and .event == "workflow_dispatch") | .head_sha' \
+                /tmp/active-manual-production-runs.json
+            )"
+
+            if [ "$stale_head_sha" = "$MAIN_SHA" ]; then
+              echo 'Safety stop: a bot-dispatched Production run already exists for the approved main.'
+              exit 1
+            fi
+
+            cancel_status="$(
+              curl --silent --show-error \
+                --output /tmp/cancel-response.txt \
+                --write-out '%{http_code}' \
+                -X POST \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H 'Accept: application/vnd.github+json' \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$stale_run_id/cancel"
+            )"
+            if [ "$cancel_status" != '202' ]; then
+              echo "Safety stop: stale Production run cancellation failed with HTTP $cancel_status."
+              cat /tmp/cancel-response.txt
+              exit 1
+            fi
+
+            cancelled=false
+            for _ in $(seq 1 20); do
+              curl --silent --show-error --fail \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H 'Accept: application/vnd.github+json' \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$stale_run_id" \
+                > /tmp/stale-run.json
+              run_status="$(jq -r '.status' /tmp/stale-run.json)"
+              run_conclusion="$(jq -r '.conclusion // ""' /tmp/stale-run.json)"
+              if [ "$run_status" = 'completed' ] && [ "$run_conclusion" = 'cancelled' ]; then
+                cancelled=true
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$cancelled" != 'true' ]; then
+              echo 'Safety stop: stale Production run did not reach cancelled state.'
+              exit 1
+            fi
+            echo "Cancelled stale bridge-dispatched Production run $stale_run_id."
+          fi
+
+      - name: Re-check approved main immediately before claim
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$MAIN_SHA" || {
+            echo 'Safety stop: main changed before Production approval claim.'
+            exit 1
+          }
+
+      - name: Claim approval before Production execution
         env:
           OPERATION: ${{ steps.approval.outputs.operation }}
           MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
           CHALLENGE: ${{ steps.approval.outputs.challenge }}
           REPAIR_VERSION_OUTPUT: ${{ steps.approval.outputs.repair_version }}
+        shell: bash
         run: |
           set -euo pipefail
           payload="$(
@@ -144,12 +259,37 @@ jobs:
             -d "$(jq -cn --arg body "$body" '{body:$body}')" \
             >/dev/null
 
-      - name: Re-check approved main immediately before dispatch
+  repair:
+    name: Execute fixed chat-approved baseline history repair
+    needs: authorize
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: supabase-production-migration
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: '165'
+      OPERATION: ${{ needs.authorize.outputs.operation }}
+      APPROVED_MAIN_SHA: ${{ needs.authorize.outputs.main_sha }}
+      APPROVAL_CHALLENGE: ${{ needs.authorize.outputs.challenge }}
+      REPAIR_VERSION: '20260815000000'
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+
+    steps:
+      - name: Re-validate claimed chat approval at Production boundary
         shell: bash
-        env:
-          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
         run: |
           set -euo pipefail
+
+          test "$GITHUB_EVENT_NAME" = 'issue_comment'
+          test "$OPERATION" = 'supabase-baseline-history-repair'
+          test "$REPAIR_VERSION" = '20260815000000'
+          [[ "$APPROVED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$APPROVAL_CHALLENGE" =~ ^[A-F0-9]{8}$ ]]
+
           current_main="$(
             curl --silent --show-error --fail \
               -H "Authorization: Bearer $GH_TOKEN" \
@@ -158,48 +298,166 @@ jobs:
               "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
               | jq -er '.object.sha'
           )"
-          test "$current_main" = "$MAIN_SHA" || {
-            echo 'Safety stop: main changed before Production workflow dispatch.'
+          test "$current_main" = "$APPROVED_MAIN_SHA" || {
+            echo 'Safety stop: main changed before the Production boundary.'
             exit 1
           }
 
-      - name: Dispatch fixed baseline history repair workflow
-        shell: bash
-        run: |
-          set -euo pipefail
-          payload="$(
-            jq -cn \
-              --arg ref "$TARGET_REF" \
-              '{ref:$ref,inputs:{mode:"repair-history",confirmation:"REPAIR"}}'
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > /tmp/ledger-comments.json
+
+          comment_count="$(jq 'length' /tmp/ledger-comments.json)"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: Production Approval Ledger exceeded the bounded comment contract.'
+            exit 1
+          }
+
+          claim_count="$(
+            jq \
+              --arg operation "$OPERATION" \
+              --arg mainSha "$APPROVED_MAIN_SHA" \
+              --arg challenge "$APPROVAL_CHALLENGE" \
+              --arg repairVersion "$REPAIR_VERSION" \
+              --arg bridgeRunId "$GITHUB_RUN_ID" \
+              '[
+                .[]
+                | .body as $body
+                | select($body | startswith("NOVELIGHT_PRODUCTION_DISPATCH_CLAIMED "))
+                | ($body | sub("^[^ ]+ "; "") | fromjson?)
+                | select(
+                    .operation == $operation and
+                    .mainSha == $mainSha and
+                    .challenge == $challenge and
+                    .repairVersion == $repairVersion and
+                    .bridgeRunId == $bridgeRunId
+                  )
+              ] | length' \
+              /tmp/ledger-comments.json
           )"
-          status="$(
-            curl --silent --show-error \
-              --output /tmp/dispatch-response.txt \
-              --write-out '%{http_code}' \
-              -X POST \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H 'Accept: application/vnd.github+json' \
-              -H 'X-GitHub-Api-Version: 2022-11-28' \
-              -H 'Content-Type: application/json' \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/$TARGET_WORKFLOW/dispatches" \
-              -d "$payload"
-          )"
-          if [ "$status" != '204' ]; then
-            echo "Safety stop: Production workflow dispatch failed with HTTP $status."
-            cat /tmp/dispatch-response.txt
+          if [ "$claim_count" -ne 1 ]; then
+            echo 'Safety stop: exact claimed chat approval was not found at the Production boundary.'
             exit 1
           fi
-          echo 'PASS: fixed baseline history repair workflow was dispatched.'
 
-      - name: Record dispatched approval
+      - name: Checkout approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.authorize.outputs.main_sha }}
+          persist-credentials: false
+
+      - name: Verify checked-out commit
         shell: bash
-        env:
-          OPERATION: ${{ steps.approval.outputs.operation }}
-          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
-          CHALLENGE: ${{ steps.approval.outputs.challenge }}
-          REPAIR_VERSION_OUTPUT: ${{ steps.approval.outputs.repair_version }}
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+
+      - name: Verify required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          }
+          test -n "$SUPABASE_DB_PASSWORD" || {
+            echo 'PRODUCTION_DB_PASSWORD is not configured.'
+            exit 1
+          }
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Show migration status
+        run: supabase migration list --linked
+
+      - name: Require baseline history version to be pending
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test "$REPAIR_VERSION" = '20260815000000'
+          test -f supabase/migrations/20260815000000_initial_schema_baseline.sql
+          supabase migration list --linked | tee /tmp/repair-migration-list.txt
+          bash scripts/extract-supabase-pending.sh /tmp/repair-migration-list.txt \
+            | tee /tmp/repair-pending.txt
+
+          if ! grep -Fxq "$REPAIR_VERSION" /tmp/repair-pending.txt; then
+            echo "History repair blocked: $REPAIR_VERSION is not currently pending in Production."
+            exit 1
+          fi
+
+      - name: Verify Production core tables before baseline history repair
+        run: bash scripts/verify-production-initial-baseline-state.sh
+
+      - name: Align verified Production baseline migration history
+        run: supabase migration repair --status applied "$REPAIR_VERSION"
+
+      - name: Verify production migration status after repair
+        run: supabase migration list --linked
+
+      - name: Verify production beta observability
+        id: production_beta_observability
+        continue-on-error: true
+        run: bash scripts/verify-production-observability.sh
+
+      - name: Publish production beta verification status
+        if: always()
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+          VERIFY_OUTCOME: ${{ steps.production_beta_observability.outcome }}
+        shell: bash
+        run: |
+          state=failure
+          description='Production beta verification failed'
+          if [ "$VERIFY_OUTCOME" = 'success' ]; then
+            state=success
+            description='Production beta verification passed'
+          fi
+          bash scripts/publish-commit-status.sh "$state" production-beta-verification "$description"
+
+      - name: Enforce production beta verification result
+        if: steps.production_beta_observability.outcome == 'failure'
+        run: |
+          echo 'Production beta observability verification failed.'
+          exit 1
+
+  record:
+    name: Record chat-approved Production execution result
+    needs:
+      - authorize
+      - repair
+    if: always() && needs.authorize.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: '165'
+      OPERATION: ${{ needs.authorize.outputs.operation }}
+      MAIN_SHA: ${{ needs.authorize.outputs.main_sha }}
+      CHALLENGE: ${{ needs.authorize.outputs.challenge }}
+      REPAIR_VERSION_OUTPUT: ${{ needs.authorize.outputs.repair_version }}
+      REPAIR_RESULT: ${{ needs.repair.result }}
+
+    steps:
+      - name: Record Production execution result
+        shell: bash
+        run: |
+          set -euo pipefail
+          marker='NOVELIGHT_PRODUCTION_EXECUTION_FAILED'
+          result="$REPAIR_RESULT"
+          if [ "$REPAIR_RESULT" = 'success' ]; then
+            marker='NOVELIGHT_PRODUCTION_EXECUTED'
+            result='success'
+          fi
+
           payload="$(
             jq -cn \
               --arg operation "$OPERATION" \
@@ -207,38 +465,11 @@ jobs:
               --arg challenge "$CHALLENGE" \
               --arg repairVersion "$REPAIR_VERSION_OUTPUT" \
               --arg bridgeRunId "$GITHUB_RUN_ID" \
-              --arg targetWorkflow "$TARGET_WORKFLOW" \
-              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,repairVersion:$repairVersion,bridgeRunId:$bridgeRunId,targetWorkflow:$targetWorkflow}'
+              --arg result "$result" \
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,repairVersion:$repairVersion,bridgeRunId:$bridgeRunId,result:$result}'
           )"
-          body="NOVELIGHT_PRODUCTION_DISPATCHED $payload"
+          body="$marker $payload"
           curl --silent --show-error --fail \
-            -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
-            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
-            >/dev/null
-
-      - name: Record failed dispatch attempt
-        if: failure() && steps.approval.outputs.challenge != ''
-        shell: bash
-        env:
-          OPERATION: ${{ steps.approval.outputs.operation }}
-          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
-          CHALLENGE: ${{ steps.approval.outputs.challenge }}
-        run: |
-          set +e
-          payload="$(
-            jq -cn \
-              --arg operation "$OPERATION" \
-              --arg mainSha "$MAIN_SHA" \
-              --arg challenge "$CHALLENGE" \
-              --arg bridgeRunId "$GITHUB_RUN_ID" \
-              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,bridgeRunId:$bridgeRunId}'
-          )"
-          body="NOVELIGHT_PRODUCTION_DISPATCH_FAILED $payload"
-          curl --silent --show-error \
             -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H 'Accept: application/vnd.github+json' \
