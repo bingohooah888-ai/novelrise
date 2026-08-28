@@ -4,7 +4,7 @@ NOVELIGHTの本番Supabase migrationは、次の2本のGitHub Actionsで管理�
 
 - `.github/workflows/supabase-production.yml`
   - 手動の `status` / `dry-run` / `repair-history` / `deploy` 用
-  - 緊急時・再確認・history repair用の安全なフォールバックとして残す
+  - 緊急時・再確認・限定的なhistory repair用の安全なフォールバックとして残す
 - `.github/workflows/supabase-production-auto-deploy.yml`
   - `main` に新しいmigrationが入ったときの通常運用
   - 自動安全確認 → GitHub Environment承認1回 → 自動deploy → 自動検証
@@ -86,17 +86,13 @@ migration statusを表示した後、`supabase db push --linked --dry-run` を�
 
 ### repair-history
 
-SQL Editor等で本番適用済みであることを確認した既知migrationだけをremote migration historyへ `applied` として記録する一時整合作業用。
+Productionでhistorical core tablesが既に存在するのに、migration管理開始前のinitial baseline `20260815000000` だけがremote migration history上でpendingになっている場合に限って使う、一時整合作業用。
 
-`repair-history` は一度に1versionだけを対象にする。`repair_version` で選択できるallowlistは次の3versionに固定する。
+現在のworkflowでrepairできるversionは **`20260815000000` だけ** に固定する。任意versionを入力・選択する機能は持たせない。ほかのmigration historyに将来ずれが出た場合は、過去の確認を使い回さず、その時点のfresh evidenceに基づく別の修正・承認手順を作る。
 
-- `20260815000000` — initial schema baseline
-- `20260819190000` — secure content RLS / constraints
-- `20260822194000` — manage content write RLS
+confirmationが正確に `REPAIR` の場合だけ実行する。`20260815000000` がProductionで実際にpendingでなければ停止する。
 
-confirmationが正確に `REPAIR` の場合だけ実行する。対象versionがProductionで実際にpendingでなければ停止する。
-
-`20260815000000` をrepairする場合は、history変更前にSupabase Management APIのread-only database queryで `profiles` / `novels` / `episodes` / `favorites` の4つのhistorical core tableが現在のProductionにすべて存在することを確認する。1つでも欠ける、read-only確認に失敗する、または結果が曖昧な場合はfail closedし、historyを変更しない。このbaseline migration自体は4tableが既存ならstrict no-opであるため、実DB状態を確認してからhistoryだけを整合する。
+history変更前にSupabase Management APIのread-only database queryで `profiles` / `novels` / `episodes` / `favorites` の4つのhistorical core tableが現在のProductionにすべて存在することを確認する。1つでも欠ける、read-only確認に失敗する、または結果が曖昧な場合はfail closedし、historyを変更しない。このbaseline migration自体は4tableが既存ならstrict no-opであるため、実DB状態を確認してからhistoryだけを整合する。
 
 実行前に通常の自動deployと同じ `production-approval` Environmentで1回だけ人間の承認を要求する。承認後のhistory repair、status再確認、observability検証は、その1回の承認を受けた同じ操作として継続する。
 
@@ -117,9 +113,9 @@ confirmationが正確に `REPAIR` の場合だけ実行する。対象versionが
 - 今回のpushと本番pendingが完全一致しなければdeployしない。
 - `PRODUCTION_APPROVAL_GATE_READY=true` はRequired reviewers設定後にのみ有効化する。
 - 想定外のmigrationがpendingなら自動・手動ともdeployしない。
-- `repair-history` は本番適用済みをDB実状態から確認した場合だけ実行する。
-- `repair-history` は選択した1version以外のmigration historyへ同じ操作で触れない。
-- initial baselineのhistory repairでは4つのcore tableをread-onlyで直前確認し、その確認を省略しない。
+- `repair-history` は `20260815000000` 以外を受け付けない。
+- initial baselineのhistory repairでは4つのcore tableをfresh read-only queryで直前確認し、その確認を省略しない。
+- ほかのmigration history異常へ、過去の確認結果やこのbaseline repair経路を流用しない。
 - migrationには可能な限りprecheck、postcheck、rollbackを用意し、CIで検証する。
 - rollbackは自動実行しない。障害内容とデータ影響を確認してから明示的に実行する。
 - secretsをrepository、workflow、ログ、SQL、issue、PR本文へ直接書かない。
@@ -128,6 +124,6 @@ confirmationが正確に `REPAIR` の場合だけ実行する。対象versionが
 
 NOVELIGHTではCLI導入前にSQL Editorまたは手動構築で適用・作成したDB状態が存在する。すでに本番へ反映済みの状態に対応するmigrationがpendingとして表示された場合は、そのまま再適用しない。
 
-DBの実状態とGitHub上のmigration内容が一致していることを確認したうえで、Supabase CLIの `migration repair --status applied` を使ってremote migration historyだけを合わせる。
+今回の `20260815000000` は、Productionのhistorical core tablesがmigration管理開始前から存在していたことをfresh read-only checkで確認できた場合だけ、Supabase CLIの `migration repair --status applied` を使ってremote migration historyだけを合わせる。
 
-`20260815000000` はProductionのhistorical core tablesがmigration管理開始前から存在していたことをfresh read-only checkで確認した場合のみrepairする。`20260819190000` と `20260822194000` は2026-08-22時点のSQL Editor migration backup stateで本番適用を確認済みだが、再度history repairが必要になった場合も対象versionを明示選択し、1versionずつ承認・整合する。
+`20260819190000` と `20260822194000` は過去にhistory alignment済みで、現在のrepair workflowの対象外とする。将来これらを含む別versionのhistory異常が発生した場合は、当時の証拠をcurrentとして再利用せず、DB実状態をfreshに確認したうえで専用の修正・承認経路を作る。
