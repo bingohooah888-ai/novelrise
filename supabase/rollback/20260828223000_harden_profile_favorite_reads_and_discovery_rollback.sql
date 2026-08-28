@@ -64,10 +64,38 @@ begin
 end
 $$;
 
+do $$
+declare
+  s record;
+begin
+  for s in
+    select table_name, was_enabled, was_forced
+    from novelrise_migration_backup.table_rls_state
+    where migration_id = '20260828223000'
+    order by table_name
+  loop
+    if s.was_enabled then
+      execute format('alter table public.%I enable row level security', s.table_name);
+    else
+      execute format('alter table public.%I disable row level security', s.table_name);
+    end if;
+
+    if s.was_forced then
+      execute format('alter table public.%I force row level security', s.table_name);
+    else
+      execute format('alter table public.%I no force row level security', s.table_name);
+    end if;
+  end loop;
+end
+$$;
+
 delete from novelrise_migration_backup.select_policies
 where migration_id = '20260828223000';
 
 delete from novelrise_migration_backup.table_select_grants
+where migration_id = '20260828223000';
+
+delete from novelrise_migration_backup.table_rls_state
 where migration_id = '20260828223000';
 
 commit;
