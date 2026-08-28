@@ -21,7 +21,7 @@ function parseImage(args) {
   return runtime.parseImageExecutionEvidence('image', args, {});
 }
 
-test('image contract requires a current-message binary decision before routing', () => {
+test('image decision happens before tool routing', () => {
   assertIncludesAll(contract, [
     'CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = YES | NO',
     'The default is always `NO` on every new user message.',
