@@ -1,0 +1,248 @@
+name: NOVELIGHT Approved Production Dispatch
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-production-approved-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Dispatch one fixed chat-approved Production action
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 165 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_DISPATCH_APPROVE ')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      APPROVAL_BODY: ${{ github.event.comment.body }}
+      TARGET_WORKFLOW: supabase-production.yml
+      TARGET_REF: main
+      REPAIR_VERSION: '20260815000000'
+
+    steps:
+      - name: Validate exact one-time Production dispatch approval
+        id: approval
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_DISPATCH_APPROVE }"
+          echo "$approval_json" | jq -e --arg repairVersion "$REPAIR_VERSION" '
+            type == "object" and
+            .operation == "supabase-baseline-history-repair" and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            .repairVersion == $repairVersion and
+            ((keys | sort) == (["challenge", "mainSha", "operation", "repairVersion"] | sort))
+          ' >/dev/null || {
+            echo 'Safety stop: invalid Production dispatch approval record.'
+            exit 1
+          }
+
+          operation="$(echo "$approval_json" | jq -r '.operation')"
+          main_sha="$(echo "$approval_json" | jq -r '.mainSha')"
+          challenge="$(echo "$approval_json" | jq -r '.challenge')"
+          repair_version="$(echo "$approval_json" | jq -r '.repairVersion')"
+
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          if [ "$current_main" != "$main_sha" ]; then
+            echo 'Safety stop: main changed after the user approved this Production dispatch.'
+            exit 1
+          fi
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > /tmp/ledger-comments.json
+
+          comment_count="$(jq 'length' /tmp/ledger-comments.json)"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: Production Approval Ledger exceeded the bounded comment contract.'
+            exit 1
+          }
+
+          used_count="$(
+            jq \
+              --arg operation "$operation" \
+              --arg mainSha "$main_sha" \
+              --arg challenge "$challenge" \
+              '[
+                .[]
+                | .body as $body
+                | select(
+                    ($body | startswith("NOVELIGHT_PRODUCTION_DISPATCH_CLAIMED ")) or
+                    ($body | startswith("NOVELIGHT_PRODUCTION_DISPATCHED "))
+                  )
+                | ($body | sub("^[^ ]+ "; "") | fromjson?)
+                | select(
+                    .operation == $operation and
+                    .mainSha == $mainSha and
+                    .challenge == $challenge
+                  )
+              ] | length' \
+              /tmp/ledger-comments.json
+          )"
+          if [ "$used_count" -ne 0 ]; then
+            echo 'Safety stop: this Production dispatch approval was already used.'
+            exit 1
+          fi
+
+          {
+            echo "operation=$operation"
+            echo "main_sha=$main_sha"
+            echo "challenge=$challenge"
+            echo "repair_version=$repair_version"
+          } >> "$GITHUB_OUTPUT"
+          echo "Validated one-time Production dispatch approval for exact main $main_sha."
+
+      - name: Claim approval before dispatch
+        shell: bash
+        env:
+          OPERATION: ${{ steps.approval.outputs.operation }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          REPAIR_VERSION_OUTPUT: ${{ steps.approval.outputs.repair_version }}
+        run: |
+          set -euo pipefail
+          payload="$(
+            jq -cn \
+              --arg operation "$OPERATION" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg challenge "$CHALLENGE" \
+              --arg repairVersion "$REPAIR_VERSION_OUTPUT" \
+              --arg bridgeRunId "$GITHUB_RUN_ID" \
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,repairVersion:$repairVersion,bridgeRunId:$bridgeRunId}'
+          )"
+          body="NOVELIGHT_PRODUCTION_DISPATCH_CLAIMED $payload"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Re-check approved main immediately before dispatch
+        shell: bash
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$MAIN_SHA" || {
+            echo 'Safety stop: main changed before Production workflow dispatch.'
+            exit 1
+          }
+
+      - name: Dispatch fixed baseline history repair workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(
+            jq -cn \
+              --arg ref "$TARGET_REF" \
+              '{ref:$ref,inputs:{mode:"repair-history",confirmation:"REPAIR"}}'
+          )"
+          status="$(
+            curl --silent --show-error \
+              --output /tmp/dispatch-response.txt \
+              --write-out '%{http_code}' \
+              -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              -H 'Content-Type: application/json' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/$TARGET_WORKFLOW/dispatches" \
+              -d "$payload"
+          )"
+          if [ "$status" != '204' ]; then
+            echo "Safety stop: Production workflow dispatch failed with HTTP $status."
+            cat /tmp/dispatch-response.txt
+            exit 1
+          fi
+          echo 'PASS: fixed baseline history repair workflow was dispatched.'
+
+      - name: Record dispatched approval
+        shell: bash
+        env:
+          OPERATION: ${{ steps.approval.outputs.operation }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          REPAIR_VERSION_OUTPUT: ${{ steps.approval.outputs.repair_version }}
+        run: |
+          set -euo pipefail
+          payload="$(
+            jq -cn \
+              --arg operation "$OPERATION" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg challenge "$CHALLENGE" \
+              --arg repairVersion "$REPAIR_VERSION_OUTPUT" \
+              --arg bridgeRunId "$GITHUB_RUN_ID" \
+              --arg targetWorkflow "$TARGET_WORKFLOW" \
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,repairVersion:$repairVersion,bridgeRunId:$bridgeRunId,targetWorkflow:$targetWorkflow}'
+          )"
+          body="NOVELIGHT_PRODUCTION_DISPATCHED $payload"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Record failed dispatch attempt
+        if: failure() && steps.approval.outputs.challenge != ''
+        shell: bash
+        env:
+          OPERATION: ${{ steps.approval.outputs.operation }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+        run: |
+          set +e
+          payload="$(
+            jq -cn \
+              --arg operation "$OPERATION" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg challenge "$CHALLENGE" \
+              --arg bridgeRunId "$GITHUB_RUN_ID" \
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,bridgeRunId:$bridgeRunId}'
+          )"
+          body="NOVELIGHT_PRODUCTION_DISPATCH_FAILED $payload"
+          curl --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
