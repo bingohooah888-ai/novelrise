@@ -41,6 +41,25 @@ The first visible message must contain all of the following:
 
 `次のユーザー操作` must state the next condition that genuinely requires user involvement. If no user action is expected, say `なし` rather than inventing a confirmation step.
 
+### Conditional image-execution proof
+
+If the turn intends to call an image-generation or image-editing tool, the execution card must additionally contain both of the following before that tool call:
+
+- `画像実行判定: YES`
+- `明示命令引用: <現在のユーザーメッセージからの原文引用>`
+
+The assistant must make the binary decision defined in `docs/IMAGE-EXECUTION-GATE.md` **before generic tool routing**. The default on every new user message is `CURRENT_MESSAGE_EXPLICIT_IMAGE_EXECUTION = NO`.
+
+If the exact current-message phrase authorizing actual image execution cannot be quoted, the decision remains `NO`, image-generation/editing tools are excluded from the candidate set, and the turn must remain text-only for image consultation.
+
+Desired-state or consultation wording such as `文字をもう少し小さくしたい` or `両側にロゴでも入れる？` is not an execution instruction by itself and must not be silently rewritten into an editing command.
+
+A previous-turn image instruction cannot satisfy this conditional proof. A new user message invalidates image permission just as it invalidates the ordinary execution card.
+
+A prohibited image-tool call is a gate violation at call time even if no image ultimately renders.
+
+Stronger individual locks, including the current Noctar/ComfyUI lock, remain higher priority than this general conditional proof.
+
 ### Time information
 
 When the execution environment permits time estimates and the estimate is useful, include `トータル予想時間` and major-step estimates.
@@ -59,9 +78,12 @@ The Runtime Execution Gate continues to validate:
 - wait requirement;
 - qualitative workload;
 - the next user-action condition;
-- total time in timed mode.
+- total time in timed mode;
+- current-message explicit image-execution evidence when `--phase=image` is used.
 
 Passing a Runtime Gate check that files are reachable is not a substitute for reading MASTER. The agent must read the current `main` MASTER before interpreting project rules or entering implementation/state work; if the agent cannot read it in full, it must fail closed.
+
+For an image phase, a visible card alone is not enough. The runtime caller must also provide `--image-execution=allowed`, `--image-current-message-confirmed`, and `--image-trigger=<verbatim current-message execution phrase>`. Missing or stale image evidence must fail closed.
 
 Optional `other work` and degraded-mode reason metadata may be recorded when useful, but they are not required card fields.
 
@@ -74,20 +96,21 @@ A cloud assistant that cannot run the local Runtime Execution Gate is not exempt
 Its protocol is:
 
 1. Send the execution card as the first visible message.
-2. Only then call the minimum read-only lookup needed to resolve latest `main`.
-3. Fetch and read the **full current `main` MASTER** from that resolved SHA before any other project-state or project-document read; if truncated, continue range/chunk reads until complete.
-4. Only after MASTER reading is complete, re-fetch Preflight, this file, and `docs/EVIDENCE-FRESHNESS-GATE.md`, then gather any PR/workflow/deployment/implementation evidence needed for the task.
-5. Do not mutate anything until the MASTER-first bootstrap and the remaining required authoritative-file bootstrap are complete.
-6. If the assistant notices that a tool was called before the card, or that project-state/project-document reads were performed before the current MASTER was actually read, stop mutations for that turn, report the gate failure, and do not treat a later card or later MASTER read in the same turn as valid recovery.
-7. The next tool-using turn must begin with a fresh card and a fresh latest-main/current-MASTER read.
+2. If an image-generation/editing tool is intended, include the conditional image-execution proof in that same card; if the proof cannot be supplied, remove image tools from the candidate set and do not call them.
+3. Only then call the minimum read-only lookup needed to resolve latest `main`.
+4. Fetch and read the **full current `main` MASTER** from that resolved SHA before any other project-state or project-document read; if truncated, continue range/chunk reads until complete.
+5. Only after MASTER reading is complete, re-fetch Preflight, this file, `docs/EVIDENCE-FRESHNESS-GATE.md`, and `docs/IMAGE-EXECUTION-GATE.md`, then gather any PR/workflow/deployment/implementation evidence needed for the task.
+6. Do not mutate anything until the MASTER-first bootstrap and the remaining required authoritative-file bootstrap are complete.
+7. If the assistant notices that a tool was called before the card, that project-state/project-document reads were performed before the current MASTER was actually read, or that an image tool was called without valid current-message image proof, stop mutations/image execution for that turn, report the gate failure, and do not treat a later card or later proof in the same turn as valid recovery.
+8. The next tool-using turn must begin with a fresh card and a fresh latest-main/current-MASTER read. Any image permission must also be decided again from that new current user message.
 
-The cloud path cannot rely on `I remembered the rule`, `MASTERに書いてある`, a prior-turn read, or cached/project-attached copies as evidence. The visible ordering plus current-turn GitHub reads are the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
+The cloud path cannot rely on `I remembered the rule`, `MASTERに書いてある`, a prior-turn read, prior-turn image permission, or cached/project-attached copies as evidence. The visible ordering plus current-turn GitHub reads are the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
 
 ## 5. Evidence Freshness Gate
 
 Before making a current-state claim about beta readiness, or before entering `deploy`, `vercel`, `supabase`, or `stripe` work, apply `docs/EVIDENCE-FRESHNESS-GATE.md`.
 
-Historical release-evidence documents are snapshots. An older `OPEN`, `PENDING`, `NOT YET RECORDED`, or unchecked item must not be treated as current when a later same-scope workflow or Production approval ledger proves success. Conversely, an older `PASS` must be re-evaluated when later relevant changes can invalidate that proof.
+Historical release-evidence files are snapshots. An older `OPEN`, `PENDING`, `NOT YET RECORDED`, or unchecked item must not be treated as current when a later same-scope workflow or Production approval ledger proves success. Conversely, an older `PASS` must be re-evaluated when later relevant changes can invalidate that proof.
 
 Before repeating a Production mutation, the assistant must search for the newest same-purpose successful proof, inspect the decisive workflow job/log and approval ledger when applicable, compare the proof SHA against current `main` for later relevant changes, and classify the evidence as `current`, `refresh-required`, or `unknown`.
 
@@ -102,7 +125,7 @@ A cloud/Connector assistant must perform this resolution with Connector/API read
 CI must keep tests that assert:
 
 - AGENTS, Preflight, and Automation Continuation Gate retain the first-visible-message rule;
-- this file and `docs/EVIDENCE-FRESHNESS-GATE.md` remain part of the Runtime Gate authoritative file set;
+- this file, `docs/EVIDENCE-FRESHNESS-GATE.md`, and `docs/IMAGE-EXECUTION-GATE.md` remain part of the Runtime Gate authoritative file set;
 - every execution card carries workload and the next user-action condition;
 - other-work guidance is optional and must not be emitted as a default filler line;
 - degraded mode may omit both the time estimate and a user-visible omission explanation;
@@ -110,7 +133,12 @@ CI must keep tests that assert:
 - the cloud path explicitly treats a late card as invalid for that turn;
 - the current-turn bootstrap requires latest-main resolution followed by a full current-MASTER read before other project reads;
 - a prior-turn MASTER read, cached summary, attachment, existence/SHA check, or partial snippet cannot satisfy the MASTER-read gate;
+- image execution requires a current-message YES decision plus an exact quoted execution phrase before image-tool routing;
+- consultation/desire wording such as `文字をもう少し小さくしたい` and `両側にロゴでも入れる？` remains non-execution by itself;
+- a new user message invalidates prior image permission;
+- the local `image` Runtime Gate phase fails without explicit current-message image evidence;
+- an unauthorized image-tool attempt is a violation even when no image renders;
 - deploy/Vercel/Supabase/Stripe phases fail closed without evidence-freshness proof;
 - current evidence blocks duplicate external-state mutation.
 
-The purpose is to make a missing execution card, an unread MASTER, or stale-state assumption a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
+The purpose is to make a missing execution card, an unread MASTER, an inferred image command, or stale-state assumption a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
