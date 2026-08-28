@@ -100,7 +100,9 @@ test('browser security headers are active on deployed pages', async ({
   expect(headers['x-frame-options']).toBe('DENY');
   expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
   expect(headers['permissions-policy']).toContain('camera=()');
-  expect(headers['content-security-policy']).toContain("frame-ancestors 'none'");
+  expect(headers['content-security-policy']).toContain(
+    "frame-ancestors 'none'"
+  );
   expect(headers['content-security-policy']).toContain("object-src 'none'");
 });
 
