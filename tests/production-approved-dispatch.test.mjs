@@ -90,6 +90,12 @@ test('bridge cancels only one stale bot-dispatched manual run and blocks human o
   );
   assert.match(bridge, /bot_active_count" -gt 1/);
   assert.match(bridge, /stale_head_sha" = "\$MAIN_SHA/);
+  assert.match(bridge, /NOVELIGHT_PRODUCTION_DISPATCHED/);
+  assert.match(bridge, /targetWorkflow == \$targetWorkflow/);
+  assert.match(
+    bridge,
+    /active bot Production run is not uniquely backed by the prior bridge ledger/
+  );
   assert.match(bridge, /actions\/runs\/\$stale_run_id\/cancel/);
   assert.match(bridge, /run_conclusion" = 'cancelled'/);
 });
