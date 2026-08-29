@@ -18,9 +18,38 @@ on:
         required: false
         default: ''
         type: string
+      approval_source:
+        description: Deploy approval source (manual fallback or chat bridge)
+        required: false
+        default: manual
+        type: choice
+        options:
+          - manual
+          - chat
+      approved_main_sha:
+        description: Exact approved main SHA for deploy
+        required: false
+        default: ''
+        type: string
+      approved_migrations:
+        description: Canonical comma-separated approved migration versions for deploy
+        required: false
+        default: ''
+        type: string
+      approval_challenge:
+        description: One-time chat approval challenge (chat source only)
+        required: false
+        default: ''
+        type: string
+      approval_bridge_run_id:
+        description: Chat approval bridge run id (chat source only)
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
+  issues: read
   statuses: write
 
 concurrency:
@@ -28,9 +57,211 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  deploy_preflight:
+    name: Verify approved Production deploy scope
+    if: inputs.mode == 'deploy'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      APPROVAL_SOURCE: ${{ inputs.approval_source }}
+      APPROVED_MAIN_SHA: ${{ inputs.approved_main_sha }}
+      APPROVED_MIGRATIONS: ${{ inputs.approved_migrations }}
+      APPROVAL_CHALLENGE: ${{ inputs.approval_challenge }}
+      APPROVAL_BRIDGE_RUN_ID: ${{ inputs.approval_bridge_run_id }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: '165'
+      REPAIR_VERSION: '20260815000000'
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+
+    steps:
+      - name: Validate approved deploy inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          [ "$CONFIRMATION" = 'DEPLOY' ] || {
+            echo 'Production deployment blocked: confirmation must be exactly DEPLOY.'
+            exit 1
+          }
+
+          case "$APPROVAL_SOURCE" in
+            manual|chat) ;;
+            *)
+              echo 'Production deployment blocked: approval_source must be manual or chat.'
+              exit 1
+              ;;
+          esac
+
+          [[ "$APPROVED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo 'Production deployment blocked: approved_main_sha must be exactly 40 lowercase hex characters.'
+            exit 1
+          }
+
+          [ -n "$APPROVED_MIGRATIONS" ] || {
+            echo 'Production deployment blocked: approved_migrations is required.'
+            exit 1
+          }
+
+          printf '%s\n' "$APPROVED_MIGRATIONS" \
+            | tr ',' '\n' \
+            | sed '/^$/d' \
+            > /tmp/approved-migrations.txt
+
+          approved_count="$(wc -l < /tmp/approved-migrations.txt | tr -d ' ')"
+          [ "$approved_count" -ge 1 ] && [ "$approved_count" -le 20 ] || {
+            echo 'Production deployment blocked: approved migration count must be between 1 and 20.'
+            exit 1
+          }
+
+          while IFS= read -r version; do
+            [[ "$version" =~ ^[0-9]{14}$ ]] || {
+              echo "Production deployment blocked: invalid migration version $version."
+              exit 1
+            }
+            [ "$version" != "$REPAIR_VERSION" ] || {
+              echo 'Production deployment blocked: baseline history repair version cannot be deployed through this route.'
+              exit 1
+            }
+          done < /tmp/approved-migrations.txt
+
+          canonical="$(
+            sort -u /tmp/approved-migrations.txt | paste -sd, -
+          )"
+          [ "$canonical" = "$APPROVED_MIGRATIONS" ] || {
+            echo 'Production deployment blocked: approved_migrations must be sorted, unique, and canonical.'
+            exit 1
+          }
+
+          if [ "$APPROVAL_SOURCE" = 'chat' ]; then
+            [[ "$APPROVAL_CHALLENGE" =~ ^[A-F0-9]{8}$ ]] || {
+              echo 'Production deployment blocked: chat approval challenge is invalid.'
+              exit 1
+            }
+            [[ "$APPROVAL_BRIDGE_RUN_ID" =~ ^[0-9]+$ ]] || {
+              echo 'Production deployment blocked: chat approval bridge run id is invalid.'
+              exit 1
+            }
+          else
+            [ -z "$APPROVAL_CHALLENGE" ] && [ -z "$APPROVAL_BRIDGE_RUN_ID" ] || {
+              echo 'Production deployment blocked: manual approval must not provide chat bridge metadata.'
+              exit 1
+            }
+          fi
+
+      - name: Checkout latest main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Bind deploy to current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main_sha="$(git rev-parse HEAD)"
+          if [ "$current_main_sha" != "$APPROVED_MAIN_SHA" ]; then
+            echo 'Production deployment blocked: main changed after deploy approval.'
+            echo "approved=$APPROVED_MAIN_SHA"
+            echo "current=$current_main_sha"
+            exit 1
+          fi
+
+      - name: Verify claimed chat approval
+        if: env.APPROVAL_SOURCE == 'chat'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          : > /tmp/ledger-comments.jsonl
+          page=1
+          while :; do
+            response="$(
+              curl --silent --show-error --fail \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H 'Accept: application/vnd.github+json' \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100&page=$page"
+            )"
+            count="$(jq 'length' <<<"$response")"
+            [ "$count" -gt 0 ] || break
+            jq -c '.[]' <<<"$response" >> /tmp/ledger-comments.jsonl
+            [ "$count" -eq 100 ] || break
+            page=$((page + 1))
+            [ "$page" -le 20 ] || {
+              echo 'Production deployment blocked: approval ledger pagination limit exceeded.'
+              exit 1
+            }
+          done
+          jq -s '.' /tmp/ledger-comments.jsonl > /tmp/ledger-comments.json
+
+          claim_count="$(
+            jq \
+              --arg mainSha "$APPROVED_MAIN_SHA" \
+              --arg challenge "$APPROVAL_CHALLENGE" \
+              --arg bridgeRunId "$APPROVAL_BRIDGE_RUN_ID" \
+              --arg migrations "$APPROVED_MIGRATIONS" \
+              '[
+                .[]
+                | .body as $body
+                | select($body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED "))
+                | ($body | sub("^[^ ]+ "; "") | fromjson?)
+                | select(
+                    .operation == "supabase-migration-deploy" and
+                    .mainSha == $mainSha and
+                    .challenge == $challenge and
+                    .bridgeRunId == $bridgeRunId and
+                    ((.migrations | join(",")) == $migrations) and
+                    .targetWorkflow == "supabase-production.yml"
+                  )
+              ] | length' \
+              /tmp/ledger-comments.json
+          )"
+
+          if [ "$claim_count" -ne 1 ]; then
+            echo 'Production deployment blocked: exact claimed chat approval was not found.'
+            exit 1
+          fi
+
+      - name: Verify required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          }
+          test -n "$SUPABASE_DB_PASSWORD" || {
+            echo 'PRODUCTION_DB_PASSWORD is not configured.'
+            exit 1
+          }
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Require approved pending migrations before human approval
+        env:
+          CHANGED_VERSIONS: ${{ inputs.approved_migrations }}
+        run: bash scripts/verify-supabase-pending.sh /tmp/deploy-preflight-migration-list.txt
+
+      - name: Dry-run approved pending migrations before human approval
+        run: supabase db push --linked --dry-run
+
   approval:
     name: Approve manual production mutation
-    if: inputs.mode == 'deploy' || inputs.mode == 'repair-history'
+    needs: deploy_preflight
+    if: >-
+      always() &&
+      (inputs.mode == 'repair-history' ||
+      (inputs.mode == 'deploy' && needs.deploy_preflight.result == 'success'))
     runs-on: ubuntu-latest
     environment: production-approval
 
@@ -59,30 +290,62 @@ jobs:
             exit 1
           fi
 
-          echo "Manual $MIGRATION_MODE approved through GitHub Environment protection."
+          echo "$MIGRATION_MODE approved through GitHub Environment protection."
 
   migrate:
     name: ${{ inputs.mode }} production migrations
-    needs: approval
+    needs:
+      - deploy_preflight
+      - approval
     if: >-
       always() &&
       (inputs.mode == 'status' ||
       inputs.mode == 'dry-run' ||
-      needs.approval.result == 'success')
+      (inputs.mode == 'repair-history' && needs.approval.result == 'success') ||
+      (inputs.mode == 'deploy' &&
+      needs.deploy_preflight.result == 'success' &&
+      needs.approval.result == 'success'))
     runs-on: ubuntu-latest
     environment: production
     env:
       MIGRATION_MODE: ${{ inputs.mode }}
+      APPROVAL_SOURCE: ${{ inputs.approval_source }}
+      APPROVED_MAIN_SHA: ${{ inputs.approved_main_sha }}
+      APPROVED_MIGRATIONS: ${{ inputs.approved_migrations }}
       REPAIR_VERSION: '20260815000000'
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
 
     steps:
+      - name: Checkout approved deploy main
+        if: env.MIGRATION_MODE == 'deploy'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.approved_main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
       - name: Checkout repository
+        if: env.MIGRATION_MODE != 'deploy'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Re-bind approved deploy to current main
+        if: env.MIGRATION_MODE == 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          current_main_sha="$(git rev-parse FETCH_HEAD)"
+          if [ "$current_main_sha" != "$APPROVED_MAIN_SHA" ]; then
+            echo 'Production deployment blocked: main changed while waiting for human approval.'
+            echo "approved=$APPROVED_MAIN_SHA"
+            echo "current=$current_main_sha"
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
 
       - name: Verify required secrets
         shell: bash
@@ -145,7 +408,17 @@ jobs:
         run: supabase migration repair --status applied "$REPAIR_VERSION"
 
       - name: Dry-run pending migrations
-        if: env.MIGRATION_MODE == 'dry-run' || env.MIGRATION_MODE == 'deploy'
+        if: env.MIGRATION_MODE == 'dry-run'
+        run: supabase db push --linked --dry-run
+
+      - name: Re-confirm approved pending migrations after human approval
+        if: env.MIGRATION_MODE == 'deploy'
+        env:
+          CHANGED_VERSIONS: ${{ inputs.approved_migrations }}
+        run: bash scripts/verify-supabase-pending.sh /tmp/deploy-approved-migration-list.txt
+
+      - name: Dry-run approved pending migrations after human approval
+        if: env.MIGRATION_MODE == 'deploy'
         run: supabase db push --linked --dry-run
 
       - name: Require explicit deploy confirmation
@@ -159,7 +432,7 @@ jobs:
             exit 1
           fi
 
-      - name: Apply pending migrations
+      - name: Apply approved pending migrations
         if: env.MIGRATION_MODE == 'deploy'
         run: supabase db push --linked --yes
 

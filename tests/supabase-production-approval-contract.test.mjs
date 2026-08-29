@@ -7,10 +7,32 @@ const workflow = await readFile(
   'utf8'
 );
 
-test('manual production mutations use exactly one production approval job', () => {
+test('production deploy verifies exact approved scope before human approval', () => {
   assert.match(
     workflow,
-    /approval:\n[\s\S]*?if: inputs\.mode == 'deploy' \|\| inputs\.mode == 'repair-history'[\s\S]*?environment: production-approval/
+    /deploy_preflight:\n[\s\S]*?if: inputs\.mode == 'deploy'[\s\S]*?environment: production/
+  );
+  assert.match(workflow, /APPROVED_MAIN_SHA: \$\{\{ inputs\.approved_main_sha \}\}/);
+  assert.match(
+    workflow,
+    /APPROVED_MIGRATIONS: \$\{\{ inputs\.approved_migrations \}\}/
+  );
+  assert.match(workflow, /Bind deploy to current main/);
+  assert.match(workflow, /Verify claimed chat approval/);
+  assert.match(
+    workflow,
+    /Require approved pending migrations before human approval/
+  );
+  assert.match(
+    workflow,
+    /Dry-run approved pending migrations before human approval/
+  );
+});
+
+test('production mutations use exactly one production approval job', () => {
+  assert.match(
+    workflow,
+    /approval:\n[\s\S]*?needs: deploy_preflight[\s\S]*?environment: production-approval/
   );
   assert.equal(
     workflow.match(/^\s+environment: production-approval$/gm)?.length,
@@ -24,9 +46,13 @@ test('manual production mutations use exactly one production approval job', () =
 });
 
 test('read-only modes bypass approval while mutations require its success', () => {
-  assert.match(workflow, /needs: approval/);
   assert.match(workflow, /inputs\.mode == 'status'/);
   assert.match(workflow, /inputs\.mode == 'dry-run'/);
+  assert.match(
+    workflow,
+    /inputs\.mode == 'repair-history' && needs\.approval\.result == 'success'/
+  );
+  assert.match(workflow, /needs\.deploy_preflight\.result == 'success'/);
   assert.match(workflow, /needs\.approval\.result == 'success'/);
 });
 
@@ -37,4 +63,17 @@ test('typed confirmations and mutation verification remain enforced', () => {
   assert.match(workflow, /supabase db push --linked --yes/);
   assert.match(workflow, /Verify production migration status after mutation/);
   assert.match(workflow, /Verify production beta observability/);
+});
+
+test('approved deploy scope is revalidated after Environment approval', () => {
+  assert.match(workflow, /Re-bind approved deploy to current main/);
+  assert.match(
+    workflow,
+    /Re-confirm approved pending migrations after human approval/
+  );
+  assert.match(
+    workflow,
+    /Dry-run approved pending migrations after human approval/
+  );
+  assert.match(workflow, /Apply approved pending migrations/);
 });
