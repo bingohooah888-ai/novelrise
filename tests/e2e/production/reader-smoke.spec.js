@@ -1,5 +1,9 @@
 import { URL } from 'node:url';
 import { expect, test } from '@playwright/test';
+import {
+  SEARCH_EMPTY_MESSAGE,
+  resolveSearchCatalogState
+} from './search-catalog-state.js';
 
 const blockedWriteRpcs = new Set([
   'record_acquisition_touch',
@@ -80,6 +84,21 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
   await expect(resultCount).not.toHaveText('読み込みエラー');
 
   const cards = page.locator('.novel-card');
+  const emptyStates = page.locator('#novelList .empty');
+  const catalogState = resolveSearchCatalogState({
+    resultText: await resultCount.textContent(),
+    cardCount: await cards.count(),
+    emptyText:
+      (await emptyStates.count()) > 0
+        ? await emptyStates.first().textContent()
+        : null
+  });
+
+  if (catalogState === 'empty') {
+    await expect(emptyStates.first()).toHaveText(SEARCH_EMPTY_MESSAGE);
+    return;
+  }
+
   await expect(cards.first()).toBeVisible({ timeout: 20_000 });
   const novelHrefs = await cards.evaluateAll((nodes) =>
     nodes.map((node) => node.getAttribute('href')).filter(Boolean)
