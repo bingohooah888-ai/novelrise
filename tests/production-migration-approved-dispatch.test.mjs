@@ -111,14 +111,23 @@ test('bridge uses the shared stale waiting-run cleanup contract before claim', (
   );
   assert.doesNotMatch(bridge, /actions\/runs\/\$stale_run_id\/cancel/);
 
-  assert.match(cleanup, /a human-started Supabase Production workflow is still active/);
+  assert.match(
+    cleanup,
+    /a human-started Supabase Production workflow is still active/
+  );
   assert.match(
     cleanup,
     /multiple stale bot-dispatched Production migration runs require manual investigation/
   );
   assert.match(cleanup, /status !== 'waiting'/);
-  assert.match(cleanup, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/);
-  assert.match(cleanup, /active bot Production migration run is not uniquely backed by the prior bridge ledger/);
+  assert.match(
+    cleanup,
+    /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/
+  );
+  assert.match(
+    cleanup,
+    /active bot Production migration run is not uniquely backed by the prior bridge ledger/
+  );
   assert.match(cleanup, /\/actions\/runs\/\$\{staleRun\.id\}\/cancel/);
   assert.match(cleanup, /run\.conclusion === 'cancelled'/);
 });
