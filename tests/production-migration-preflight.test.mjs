@@ -16,16 +16,22 @@ test('Production migration preflight is owner-only and chat-triggered', () => {
     workflow,
     /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
   );
-  assert.match(workflow, /github\.event\.comment\.author_association == 'OWNER'/);
+  assert.match(
+    workflow,
+    /github\.event\.comment\.author_association == 'OWNER'/
+  );
   assert.match(workflow, /NOVELIGHT_PRODUCTION_MIGRATION_PREFLIGHT/);
 });
 
-test('Production migration preflight is bound to the requested current main SHA', () => {
-  assert.match(workflow, /\^\[0-9a-f\]\{40\}\$/);
-  assert.match(workflow, /Checkout latest main/);
-  assert.match(workflow, /git rev-parse HEAD/);
-  assert.match(workflow, /main changed after the request was created/);
-});
+test(
+  'Production migration preflight is bound to the requested current main SHA',
+  () => {
+    assert.match(workflow, /\^\[0-9a-f\]\{40\}\$/);
+    assert.match(workflow, /Checkout latest main/);
+    assert.match(workflow, /git rev-parse HEAD/);
+    assert.match(workflow, /main changed after the request was created/);
+  }
+);
 
 test('Production migration preflight is read-only', () => {
   assert.match(workflow, /supabase migration list --linked/);
@@ -40,7 +46,10 @@ test('Production migration preflight is read-only', () => {
   assert.doesNotMatch(workflow, /environment: production-approval/);
 });
 
-test('Production migration preflight shares the Production migration concurrency lock', () => {
-  assert.match(workflow, /group: supabase-production-migration/);
-  assert.match(workflow, /cancel-in-progress: false/);
-});
+test(
+  'Production migration preflight shares the Production migration concurrency lock',
+  () => {
+    assert.match(workflow, /group: supabase-production-migration/);
+    assert.match(workflow, /cancel-in-progress: false/);
+  }
+);
