@@ -1,5 +1,3 @@
-import '../scripts/prettier-diagnostic.mjs';
-
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -201,85 +199,74 @@ test('standard cancellation succeeds without force cancellation', async () => {
   );
 });
 
-test(
-  'force cancellation is used only when standard cancellation leaves the exact run waiting',
-  async () => {
-    const staleRun = botRun();
-    const fixture = cancellationRequest([
-      { ...staleRun },
-      { ...staleRun, status: 'completed', conclusion: 'cancelled' }
-    ]);
+test('force cancellation is used only when standard cancellation leaves the exact run waiting', async () => {
+  const staleRun = botRun();
+  const fixture = cancellationRequest([
+    { ...staleRun },
+    { ...staleRun, status: 'completed', conclusion: 'cancelled' }
+  ]);
 
-    const result = await cancelStaleProductionMigrationRun({
-      request: fixture.request,
-      sleep: noSleep,
-      apiBase: 'https://api.github.test/repos/owner/repo',
-      staleRun,
-      token: 'test-token',
-      pollAttempts: 1,
-      pollDelayMs: 0
-    });
+  const result = await cancelStaleProductionMigrationRun({
+    request: fixture.request,
+    sleep: noSleep,
+    apiBase: 'https://api.github.test/repos/owner/repo',
+    staleRun,
+    token: 'test-token',
+    pollAttempts: 1,
+    pollDelayMs: 0
+  });
 
-    assert.deepEqual(result, { cancelledRunId: staleRun.id, forced: true });
-    assert.equal(
-      fixture.calls.filter((call) => call.url.endsWith('/force-cancel')).length,
-      1
-    );
-  }
-);
+  assert.deepEqual(result, { cancelledRunId: staleRun.id, forced: true });
+  assert.equal(
+    fixture.calls.filter((call) => call.url.endsWith('/force-cancel')).length,
+    1
+  );
+});
 
-test(
-  'force cancellation fails closed if the run stops waiting before fallback',
-  async () => {
-    const staleRun = botRun();
-    const fixture = cancellationRequest([
-      { ...staleRun, status: 'in_progress' }
-    ]);
+test('force cancellation fails closed if the run stops waiting before fallback', async () => {
+  const staleRun = botRun();
+  const fixture = cancellationRequest([{ ...staleRun, status: 'in_progress' }]);
 
-    await assert.rejects(
-      () =>
-        cancelStaleProductionMigrationRun({
-          request: fixture.request,
-          sleep: noSleep,
-          apiBase: 'https://api.github.test/repos/owner/repo',
-          staleRun,
-          token: 'test-token',
-          pollAttempts: 1,
-          pollDelayMs: 0
-        }),
-      /changed to in_progress before force cancellation/
-    );
+  await assert.rejects(
+    () =>
+      cancelStaleProductionMigrationRun({
+        request: fixture.request,
+        sleep: noSleep,
+        apiBase: 'https://api.github.test/repos/owner/repo',
+        staleRun,
+        token: 'test-token',
+        pollAttempts: 1,
+        pollDelayMs: 0
+      }),
+    /changed to in_progress before force cancellation/
+  );
 
-    assert.equal(
-      fixture.calls.some((call) => call.url.endsWith('/force-cancel')),
-      false
-    );
-  }
-);
+  assert.equal(
+    fixture.calls.some((call) => call.url.endsWith('/force-cancel')),
+    false
+  );
+});
 
-test(
-  'force cancellation must itself reach cancelled or cleanup fails closed',
-  async () => {
-    const staleRun = botRun();
-    const fixture = cancellationRequest([{ ...staleRun }, { ...staleRun }]);
+test('force cancellation must itself reach cancelled or cleanup fails closed', async () => {
+  const staleRun = botRun();
+  const fixture = cancellationRequest([{ ...staleRun }, { ...staleRun }]);
 
-    await assert.rejects(
-      () =>
-        cancelStaleProductionMigrationRun({
-          request: fixture.request,
-          sleep: noSleep,
-          apiBase: 'https://api.github.test/repos/owner/repo',
-          staleRun,
-          token: 'test-token',
-          pollAttempts: 1,
-          pollDelayMs: 0
-        }),
-      /did not reach cancelled state after force cancellation/
-    );
+  await assert.rejects(
+    () =>
+      cancelStaleProductionMigrationRun({
+        request: fixture.request,
+        sleep: noSleep,
+        apiBase: 'https://api.github.test/repos/owner/repo',
+        staleRun,
+        token: 'test-token',
+        pollAttempts: 1,
+        pollDelayMs: 0
+      }),
+    /did not reach cancelled state after force cancellation/
+  );
 
-    assert.equal(
-      fixture.calls.filter((call) => call.url.endsWith('/force-cancel')).length,
-      1
-    );
-  }
-);
+  assert.equal(
+    fixture.calls.filter((call) => call.url.endsWith('/force-cancel')).length,
+    1
+  );
+});
