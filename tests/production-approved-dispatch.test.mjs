@@ -111,3 +111,35 @@ test('chat-approved execution preserves post-mutation verification', () => {
   assert.match(bridge, /production-beta-verification/);
   assert.match(bridge, /Production beta observability verification failed/);
 });
+
+test('ledger distinguishes mutation result from postcheck result', () => {
+  assert.match(
+    bridge,
+    /mutation_result: \$\{\{ steps\.execution_phase\.outputs\.mutation_result \}\}/
+  );
+  assert.match(
+    bridge,
+    /postcheck_result: \$\{\{ steps\.execution_phase\.outputs\.postcheck_result \}\}/
+  );
+  assert.match(
+    bridge,
+    /failure_phase: \$\{\{ steps\.execution_phase\.outputs\.failure_phase \}\}/
+  );
+  assert.match(bridge, /id: baseline_history_mutation/);
+  assert.match(bridge, /id: migration_status_postcheck/);
+  assert.match(bridge, /id: execution_phase/);
+  assert.match(bridge, /failure_phase='pre-mutation'/);
+  assert.match(bridge, /failure_phase='mutation'/);
+  assert.match(bridge, /failure_phase='postcheck:migration-status'/);
+  assert.match(bridge, /failure_phase='postcheck:integrity'/);
+  assert.match(bridge, /failure_phase='none'/);
+  assert.match(bridge, /MUTATION_RESULT: \$\{\{ needs\.repair\.outputs\.mutation_result \}\}/);
+  assert.match(bridge, /POSTCHECK_RESULT: \$\{\{ needs\.repair\.outputs\.postcheck_result \}\}/);
+  assert.match(bridge, /FAILURE_PHASE: \$\{\{ needs\.repair\.outputs\.failure_phase \}\}/);
+  assert.match(bridge, /--arg mutation_result "\$mutation_result"/);
+  assert.match(bridge, /--arg postcheck_result "\$postcheck_result"/);
+  assert.match(bridge, /--arg failure_phase "\$failure_phase"/);
+  assert.match(bridge, /result:\$result,mutation_result:\$mutation_result,postcheck_result:\$postcheck_result,failure_phase:\$failure_phase/);
+  assert.match(bridge, /NOVELIGHT_PRODUCTION_EXECUTION_FAILED/);
+  assert.match(bridge, /NOVELIGHT_PRODUCTION_EXECUTED/);
+});
