@@ -19,10 +19,8 @@ function localHtmlTargets(source) {
     if (
       !href ||
       href.startsWith('#') ||
-      href.startsWith('mailto:') ||
-      href.startsWith('tel:') ||
-      href.startsWith('javascript:') ||
-      /^(?:https?:)?\/\//u.test(href)
+      href.startsWith('//') ||
+      /^[a-z][a-z0-9+.-]*:/iu.test(href)
     ) {
       continue;
     }
