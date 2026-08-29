@@ -111,10 +111,10 @@ jobs:
             > /tmp/approved-migrations.txt
 
           approved_count="$(wc -l < /tmp/approved-migrations.txt | tr -d ' ')"
-          [ "$approved_count" -ge 1 ] && [ "$approved_count" -le 20 ] || {
+          if [ "$approved_count" -lt 1 ] || [ "$approved_count" -gt 20 ]; then
             echo 'Production deployment blocked: approved migration count must be between 1 and 20.'
             exit 1
-          }
+          fi
 
           while IFS= read -r version; do
             [[ "$version" =~ ^[0-9]{14}$ ]] || {
@@ -145,10 +145,10 @@ jobs:
               exit 1
             }
           else
-            [ -z "$APPROVAL_CHALLENGE" ] && [ -z "$APPROVAL_BRIDGE_RUN_ID" ] || {
+            if [ -n "$APPROVAL_CHALLENGE" ] || [ -n "$APPROVAL_BRIDGE_RUN_ID" ]; then
               echo 'Production deployment blocked: manual approval must not provide chat bridge metadata.'
               exit 1
-            }
+            fi
           fi
 
       - name: Checkout latest main
