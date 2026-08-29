@@ -131,10 +131,7 @@ test('Production static verification requires stable all-route convergence', asy
   assert.match(verification, /required_stable_passes=2/);
   assert.match(verification, /for attempt in \$\(seq 1 24\); do/);
   assert.match(verification, /all_routes_match=true/);
-  assert.match(
-    verification,
-    /stable_passes=\$\(\(stable_passes \+ 1\)\)/
-  );
+  assert.match(verification, /stable_passes=\$\(\(stable_passes \+ 1\)\)/);
   assert.match(
     verification,
     /\[ "\$stable_passes" -ge "\$required_stable_passes" \]/
