@@ -21,20 +21,14 @@ test('migration deploy bridge accepts only the Issue 165 owner approval record',
     /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
   );
   assert.match(bridge, /github\.event\.comment\.author_association == 'OWNER'/);
-  assert.match(
-    bridge,
-    /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE/
-  );
+  assert.match(bridge, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE/);
 });
 
 test('chat migration deploy approval is exact-scope, SHA-bound, and one-time', () => {
   assert.match(bridge, /supabase-migration-deploy/);
   assert.match(bridge, /test\("\^\[0-9a-f\]\{40\}\$"\)/);
   assert.match(bridge, /test\("\^\[A-F0-9\]\{8\}\$"\)/);
-  assert.match(
-    bridge,
-    /\["challenge", "mainSha", "migrations", "operation"\]/
-  );
+  assert.match(bridge, /\["challenge", "mainSha", "migrations", "operation"\]/);
   assert.match(bridge, /migrations \| unique \| length/);
   assert.match(bridge, /migrations == \(\.migrations \| sort\)/);
   assert.match(bridge, /index\(\$repairVersion\)\) == null/);
@@ -42,14 +36,8 @@ test('chat migration deploy approval is exact-scope, SHA-bound, and one-time', (
     bridge,
     /main changed after the user approved this Production migration deploy/
   );
-  assert.match(
-    bridge,
-    /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED/
-  );
-  assert.match(
-    bridge,
-    /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/
-  );
+  assert.match(bridge, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED/);
+  assert.match(bridge, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/);
   assert.match(
     bridge,
     /this Production migration deploy approval was already used/
@@ -102,10 +90,7 @@ test('deploy fallback binds exact scope before and after human approval', () => 
     /Dry-run approved pending migrations after human approval/
   );
   assert.match(manual, /Apply approved pending migrations/);
-  assert.match(
-    manual,
-    /bash scripts\/verify-supabase-pending\.sh/
-  );
+  assert.match(manual, /bash scripts\/verify-supabase-pending\.sh/);
 });
 
 test('deploy fallback cannot route the fixed baseline repair through normal deploy', () => {
