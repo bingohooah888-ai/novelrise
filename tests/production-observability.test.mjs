@@ -22,10 +22,15 @@ const healthyIntegrity = Object.fromEntries(
 );
 
 test('traffic-dependent presence signals are monitoring-only', () => {
-  const integrityExpression = sql.match(
+  const summary = sql.match(
+    /summary as \(\n  select\n[\s\S]*?\n  from checks\n\)/
+  )?.[0];
+  assert.ok(summary);
+
+  const integrityExpression = summary.match(
     /signup_name_migration_applied[\s\S]*?as integrity_ok/
   )?.[0];
-  const monitoringExpression = sql.match(
+  const monitoringExpression = summary.match(
     /acquisition_claims_present[\s\S]*?as monitoring_ok/
   )?.[0];
 
