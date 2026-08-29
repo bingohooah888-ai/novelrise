@@ -119,3 +119,25 @@ test('owner high-risk approval relay validates exact SHA then reruns failed CI',
   assert.match(readiness, /author_association === 'OWNER'/);
   assert.match(readiness, /High-risk paths:/);
 });
+
+test('Production static verification requires stable all-route convergence', async () => {
+  const verification = await read('scripts/verify-production-static.sh');
+  const routeLoops = verification.match(/while IFS= read -r route; do/g) ?? [];
+  const stableResets = verification.match(/stable_passes=0/g) ?? [];
+
+  assert.equal(verification.includes('first_route='), false);
+  assert.equal(routeLoops.length, 1);
+  assert.ok(stableResets.length >= 2);
+  assert.match(verification, /required_stable_passes=2/);
+  assert.match(verification, /for attempt in \$\(seq 1 24\); do/);
+  assert.match(verification, /all_routes_match=true/);
+  assert.match(
+    verification,
+    /stable_passes=\$\(\(stable_passes \+ 1\)\)/
+  );
+  assert.match(
+    verification,
+    /\[ "\$stable_passes" -ge "\$required_stable_passes" \]/
+  );
+  assert.match(verification, /confirming stable convergence/);
+});
