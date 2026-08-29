@@ -530,6 +530,8 @@ jobs:
           if [ "$REPAIR_RESULT" = 'success' ]; then
             marker='NOVELIGHT_PRODUCTION_EXECUTED'
             result='success'
+          elif [ "$failure_phase" = 'none' ]; then
+            failure_phase='workflow'
           fi
 
           payload="$(
