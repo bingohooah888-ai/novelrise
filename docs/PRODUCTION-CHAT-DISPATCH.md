@@ -38,13 +38,13 @@ No workflow name, ref, mode, confirmation, Supabase project, credential, SQL, or
 ### Baseline repair
 
 ```text
-NOVELIGHT_PRODUCTION_DISPATCH_APPROVE {\"operation\":\"supabase-baseline-history-repair\",\"mainSha\":\"<40-hex-current-main>\",\"challenge\":\"<8-uppercase-hex>\",\"repairVersion\":\"20260815000000\"}
+NOVELIGHT_PRODUCTION_DISPATCH_APPROVE {"operation":"supabase-baseline-history-repair","mainSha":"<40-hex-current-main>","challenge":"<8-uppercase-hex>","repairVersion":"20260815000000"}
 ```
 
 ### Normal migration deploy
 
 ```text
-NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE {\"operation\":\"supabase-migration-deploy\",\"mainSha\":\"<40-hex-current-main>\",\"challenge\":\"<8-uppercase-hex>\",\"migrations\":[\"<14-digit-version>\", \"...\"]}
+NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE {"operation":"supabase-migration-deploy","mainSha":"<40-hex-current-main>","challenge":"<8-uppercase-hex>","migrations":["<14-digit-version>", "..."]}
 ```
 
 The workflows accept their approval comment only when all of the following are true:
@@ -183,7 +183,7 @@ The Production Authenticated Smoke execution remains in `.github/workflows/produ
 The exact bridge approval record is:
 
 ```text
-NOVELIGHT_PRODUCTION_AUTH_SMOKE_DISPATCH_APPROVE {\"operation\":\"production-authenticated-smoke\",\"mainSha\":\"<40-hex-current-main>\",\"challenge\":\"<8-uppercase-hex>\"}
+NOVELIGHT_PRODUCTION_AUTH_SMOKE_DISPATCH_APPROVE {"operation":"production-authenticated-smoke","mainSha":"<40-hex-current-main>","challenge":"<8-uppercase-hex>"}
 ```
 
 The bridge accepts the record only when:
