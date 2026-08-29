@@ -101,7 +101,10 @@ test('favorites leaves loading state on auth and data failures', () => {
   assert.match(favorites, /try\{const a=await client\.auth\.getSession\(\)/);
   assert.match(favorites, /if\(a\.error\)throw a\.error/);
   assert.match(favorites, /if\(r\.error\)throw r\.error/);
-  assert.match(favorites, /catch\(error\)\{console\.error\('favorites load failed'/);
+  assert.match(
+    favorites,
+    /catch\(error\)\{console\.error\('favorites load failed'/
+  );
   assert.match(
     favorites,
     /お気に入り作品を表示できませんでした。通信状況を確認して、もう一度お試しください。/
