@@ -81,7 +81,10 @@ test('existing Auth Smoke keeps final owner approval and cleanup boundary', () =
     /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
   );
   assert.match(smoke, /NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE/);
-  assert.match(smoke, /Production Authenticated Smoke approval request expired/);
+  assert.match(
+    smoke,
+    /Production Authenticated Smoke approval request expired/
+  );
   assert.match(smoke, /Create ephemeral production smoke users/);
   assert.match(smoke, /Clean ephemeral production smoke data/);
   assert.match(smoke, /production-auth-smoke-fixture\.mjs cleanup/);
