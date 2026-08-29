@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { selectStaleMigrationRunForCleanup } from '../scripts/cleanup-stale-production-migration-run.mjs';
+import {
+  selectStaleMigrationRunForCleanup,
+} from '../scripts/cleanup-stale-production-migration-run.mjs';
 
 const currentMain = 'b'.repeat(40);
 const oldMain = '9'.repeat(40);
