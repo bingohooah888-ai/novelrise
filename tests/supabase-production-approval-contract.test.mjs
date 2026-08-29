@@ -12,7 +12,10 @@ test('production deploy verifies exact approved scope before human approval', ()
     workflow,
     /deploy_preflight:\n[\s\S]*?if: inputs\.mode == 'deploy'[\s\S]*?environment: production/
   );
-  assert.match(workflow, /APPROVED_MAIN_SHA: \$\{\{ inputs\.approved_main_sha \}\}/);
+  assert.match(
+    workflow,
+    /APPROVED_MAIN_SHA: \$\{\{ inputs\.approved_main_sha \}\}/
+  );
   assert.match(
     workflow,
     /APPROVED_MIGRATIONS: \$\{\{ inputs\.approved_migrations \}\}/
