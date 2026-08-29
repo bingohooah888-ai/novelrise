@@ -1,4 +1,4 @@
-name: NOVELIGHT Approved Supabase Production Deploy
+name: NOVELIGHT Supabase Production Migration Plan
 
 on:
   push:
@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  statuses: write
 
 concurrency:
   group: supabase-production-migration
@@ -22,8 +21,6 @@ jobs:
     name: Plan production migrations safely
     runs-on: ubuntu-latest
     environment: production
-    outputs:
-      changed_versions: ${{ steps.changes.outputs.changed_versions }}
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
@@ -45,7 +42,7 @@ jobs:
           set -euo pipefail
 
           if [ -z "$PUSH_BEFORE" ] || [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then
-            echo 'Automatic deploy blocked: previous main revision cannot be proven.'
+            echo 'Production migration plan blocked: previous main revision cannot be proven.'
             exit 1
           fi
 
@@ -58,7 +55,7 @@ jobs:
             > /tmp/changed-migration-versions.txt
 
           if [ ! -s /tmp/changed-migration-versions.txt ]; then
-            echo 'Automatic deploy blocked: no migration version was detected.'
+            echo 'Production migration plan blocked: no migration version was detected.'
             exit 1
           fi
 
@@ -95,115 +92,17 @@ jobs:
       - name: Dry-run pending migrations
         run: supabase db push --linked --dry-run
 
-      - name: Explain approval gate state
+      - name: Record chat-approval handoff
         env:
-          GATE_READY: ${{ vars.PRODUCTION_APPROVAL_GATE_READY }}
+          CHANGED_VERSIONS: ${{ steps.changes.outputs.changed_versions }}
         shell: bash
         run: |
-          if [ "$GATE_READY" = 'true' ]; then
-            echo 'Safety plan passed. Production deploy will wait for environment approval.'
-          else
-            echo 'Safety plan passed, but automatic deploy is SAFE-DISABLED.'
-            echo 'Set repository Actions variable PRODUCTION_APPROVAL_GATE_READY=true only after'
-            echo 'the production-approval environment has a required reviewer.'
-          fi
-
-  approval:
-    name: Human approval for production database change
-    needs: plan
-    if: vars.PRODUCTION_APPROVAL_GATE_READY == 'true'
-    runs-on: ubuntu-latest
-    environment: production-approval
-
-    steps:
-      - name: Record approval
-        run: echo 'Production database migration approved through GitHub Environment protection.'
-
-  deploy:
-    name: Deploy approved production migrations
-    needs:
-      - plan
-      - approval
-    if: vars.PRODUCTION_APPROVAL_GATE_READY == 'true'
-    runs-on: ubuntu-latest
-    environment: production
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
-      CHANGED_VERSIONS: ${{ needs.plan.outputs.changed_versions }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Verify required production secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$SUPABASE_ACCESS_TOKEN" || {
-            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
-            exit 1
-          }
-          test -n "$SUPABASE_DB_PASSWORD" || {
-            echo 'PRODUCTION_DB_PASSWORD is not configured.'
-            exit 1
-          }
-
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
-        with:
-          version: 2.111.0
-
-      - name: Link production project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-
-      - name: Re-check pending migrations after approval
-        run: bash scripts/verify-supabase-pending.sh
-
-      - name: Re-run dry-run immediately before deploy
-        run: supabase db push --linked --dry-run
-
-      - name: Apply approved pending migrations
-        run: supabase db push --linked --yes
-
-      - name: Verify no pending local migrations remain
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          supabase migration list --linked | tee /tmp/post-deploy-migration-list.txt
-          pending_migrations="$(bash scripts/extract-supabase-pending.sh /tmp/post-deploy-migration-list.txt)"
-
-          if [ -n "$pending_migrations" ]; then
-            echo 'Production still has pending migrations after deploy.'
-            printf '%s\n' "$pending_migrations"
-            exit 1
-          fi
-
-      - name: Verify production beta observability
-        id: observability
-        continue-on-error: true
-        run: bash scripts/verify-production-observability.sh
-
-      - name: Publish production beta verification status
-        if: always()
-        env:
-          GH_STATUS_TOKEN: ${{ github.token }}
-          VERIFY_OUTCOME: ${{ steps.observability.outcome }}
-        shell: bash
-        run: |
-          state=failure
-          description='Production beta verification failed'
-          if [ "$VERIFY_OUTCOME" = 'success' ]; then
-            state=success
-            description='Production beta verification passed'
-          fi
-          bash scripts/publish-commit-status.sh "$state" production-beta-verification "$description"
-
-      - name: Enforce production beta verification result
-        if: steps.observability.outcome == 'failure'
-        run: |
-          echo 'Production beta observability verification failed.'
-          exit 1
+          {
+            echo '### Production migration plan passed'
+            echo
+            echo "Current main: \`$GITHUB_SHA\`"
+            echo "Pending migration versions: \`$CHANGED_VERSIONS\`"
+            echo
+            echo 'No Production database mutation was performed.'
+            echo 'Actual deploy requires a fresh explicit chat approval or the protected manual fallback.'
+          } >> "$GITHUB_STEP_SUMMARY"

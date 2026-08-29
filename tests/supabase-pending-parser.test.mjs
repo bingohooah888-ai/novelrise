@@ -7,7 +7,8 @@ import test from 'node:test';
 
 const PARSER_PATH = 'scripts/extract-supabase-pending.sh';
 const VERIFY_PATH = 'scripts/verify-supabase-pending.sh';
-const WORKFLOW_PATH = '.github/workflows/supabase-production-auto-deploy.yml';
+const DEPLOY_WORKFLOW_PATH =
+  '.github/workflows/production-migration-approved-dispatch.yml';
 const VERIFY_PARSER = 'bash scripts/extract-supabase-pending.sh "$output_file"';
 const POST_DEPLOY_PARSER =
   'pending_migrations="$(bash scripts/extract-supabase-pending.sh';
@@ -83,13 +84,13 @@ test(
 );
 
 test('production migration checks share one parser', async () => {
-  const [verifyScript, workflow] = await Promise.all([
+  const [verifyScript, deployWorkflow] = await Promise.all([
     readFile(VERIFY_PATH, 'utf8'),
-    readFile(WORKFLOW_PATH, 'utf8')
+    readFile(DEPLOY_WORKFLOW_PATH, 'utf8')
   ]);
 
   assert.equal(verifyScript.includes(VERIFY_PARSER), true);
-  assert.equal(workflow.includes(POST_DEPLOY_PARSER), true);
+  assert.equal(deployWorkflow.includes(POST_DEPLOY_PARSER), true);
   assert.equal(verifyScript.includes(LEGACY_PARSER), false);
-  assert.equal(workflow.includes(LEGACY_PARSER), false);
+  assert.equal(deployWorkflow.includes(LEGACY_PARSER), false);
 });
