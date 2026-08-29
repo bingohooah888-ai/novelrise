@@ -18,10 +18,7 @@ test('author home exposes billing management only for paid plans', () => {
 test('billing management opens an authenticated Stripe customer portal session', () => {
   assert.match(mypage, /fetch\('\/api\/create-billing-portal-session'/u);
   assert.match(mypage, /method:'POST'/u);
-  assert.match(
-    mypage,
-    /Authorization:'Bearer '\+session\.access_token/u
-  );
+  assert.match(mypage, /Authorization:'Bearer '\+session\.access_token/u);
   assert.match(mypage, /location\.href=data\.url/u);
 });
 
