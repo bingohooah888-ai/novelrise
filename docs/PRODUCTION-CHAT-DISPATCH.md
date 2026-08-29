@@ -167,3 +167,51 @@ Approvals are SHA-bound and one-time. If `main` advances after the approval comm
 Evidence Freshness remains mandatory before a new approval record is written. If the same Production mutation is already proven complete, it must not be repeated.
 
 New Production operation types must not be added as free-form inputs. Each new operation requires a separate reviewed code change that hard-codes the scope, adds regression tests, preserves Evidence Freshness, uses an appropriate Production concurrency lock, and keeps manual fallback protections intact.
+
+## Production Authenticated Smoke chat-approved request dispatch
+
+The Production Authenticated Smoke execution remains in `.github/workflows/production-authenticated-smoke.yml`. The chat-approved bridge only removes the manual GitHub Actions `Run workflow` click needed to create a fresh scoped approval request.
+
+- operation: `production-authenticated-smoke`
+- bridge workflow: `.github/workflows/production-auth-smoke-approved-dispatch.yml`
+- trigger: a new owner-authored dispatch approval record on Production Approval Ledger issue #165
+- approved ref: exact current `main` SHA
+- target workflow: fixed `production-authenticated-smoke.yml`
+- dispatched ref: fixed `main`
+- bridge mutation: GitHub workflow dispatch and ledger records only; no Production application/database/billing mutation
+
+The exact bridge approval record is:
+
+```text
+NOVELIGHT_PRODUCTION_AUTH_SMOKE_DISPATCH_APPROVE {"operation":"production-authenticated-smoke","mainSha":"<40-hex-current-main>","challenge":"<8-uppercase-hex>"}
+```
+
+The bridge accepts the record only when:
+
+- the event is a new comment on issue #165, not a pull request;
+- the author is repository owner `bingohooah888-ai` with `OWNER` association;
+- the JSON contains exactly `operation`, `mainSha`, and `challenge`;
+- `operation` is exactly `production-authenticated-smoke`;
+- `mainSha` is exact current `main` before validation, before claim, and immediately before dispatch;
+- the eight-character uppercase hexadecimal `challenge` has not already been claimed, dispatched, or failed for the same operation/SHA;
+- the ledger remains within the bounded comment contract.
+
+The bridge hard-codes the target workflow and `main` ref. Neither workflow name nor ref is accepted from the approval comment. The bridge has no Supabase or Stripe credentials, no `Production` environment, and cannot create smoke users or other Production application data.
+
+The bridge records `NOVELIGHT_PRODUCTION_AUTH_SMOKE_DISPATCH_CLAIMED` before dispatch. A successful dispatch records `NOVELIGHT_PRODUCTION_AUTH_SMOKE_DISPATCHED`; a claimed failure records `NOVELIGHT_PRODUCTION_AUTH_SMOKE_DISPATCH_FAILED`. The same challenge is one-time and is not silently retried.
+
+After the fixed request workflow is dispatched, the existing Auth Smoke workflow creates its bot-owned dedicated approval issue with its own random request challenge and expiry. The final `NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE` comment on that dedicated issue remains mandatory before any Production smoke write.
+
+When the user has already explicitly approved the same Production Authenticated Smoke scope in chat, ChatGPT/Connector may post that exact final owner approval comment automatically after verifying that the request SHA is still current, the request has not expired or been consumed, and the scope has not changed. A new user approval is required if `main` advances or the Production scope changes.
+
+The existing Auth Smoke workflow remains responsible for:
+
+- validating the bot-owned request issue, request ID, SHA, challenge, expiry, and one-time claim;
+- re-checking current `main` immediately before Production write;
+- creating only ephemeral Production smoke users/data;
+- running authenticated beta-critical smoke coverage;
+- cleanup with `always()`;
+- creating no Stripe charge;
+- recording consumed/failed result and closing only its dedicated approval issue.
+
+Issue #165 is the shared Production Approval Ledger and must never be closed by the Auth Smoke dispatch bridge.
