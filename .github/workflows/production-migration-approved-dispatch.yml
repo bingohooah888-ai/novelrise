@@ -1,0 +1,240 @@
+name: NOVELIGHT Approved Production Migration Deploy
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-production-migration-approved-dispatch
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Validate and dispatch one chat-approved Production migration deploy
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 165 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE ')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      APPROVAL_BODY: ${{ github.event.comment.body }}
+      TARGET_WORKFLOW: supabase-production.yml
+      REPAIR_VERSION: '20260815000000'
+
+    steps:
+      - name: Validate exact one-time Production migration deploy approval
+        id: approval
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE }"
+          echo "$approval_json" | jq -e --arg repairVersion "$REPAIR_VERSION" '
+            type == "object" and
+            .operation == "supabase-migration-deploy" and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            (.migrations | type == "array" and length >= 1 and length <= 20) and
+            (all(.migrations[]; type == "string" and test("^[0-9]{14}$"))) and
+            ((.migrations | unique | length) == (.migrations | length)) and
+            (.migrations == (.migrations | sort)) and
+            ((.migrations | index($repairVersion)) == null) and
+            ((keys | sort) == (["challenge", "mainSha", "migrations", "operation"] | sort))
+          ' >/dev/null || {
+            echo 'Safety stop: invalid Production migration deploy approval record.'
+            exit 1
+          }
+
+          operation="$(echo "$approval_json" | jq -r '.operation')"
+          main_sha="$(echo "$approval_json" | jq -r '.mainSha')"
+          challenge="$(echo "$approval_json" | jq -r '.challenge')"
+          migrations_json="$(echo "$approval_json" | jq -c '.migrations')"
+          migrations_csv="$(echo "$approval_json" | jq -r '.migrations | join(",")')"
+
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          if [ "$current_main" != "$main_sha" ]; then
+            echo 'Safety stop: main changed after the user approved this Production migration deploy.'
+            exit 1
+          fi
+
+          : > /tmp/ledger-comments.jsonl
+          page=1
+          while :; do
+            response="$(
+              curl --silent --show-error --fail \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H 'Accept: application/vnd.github+json' \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100&page=$page"
+            )"
+            count="$(jq 'length' <<<"$response")"
+            [ "$count" -gt 0 ] || break
+            jq -c '.[]' <<<"$response" >> /tmp/ledger-comments.jsonl
+            [ "$count" -eq 100 ] || break
+            page=$((page + 1))
+            [ "$page" -le 20 ] || {
+              echo 'Safety stop: Production Approval Ledger pagination limit exceeded.'
+              exit 1
+            }
+          done
+          jq -s '.' /tmp/ledger-comments.jsonl > /tmp/ledger-comments.json
+
+          used_count="$(
+            jq \
+              --arg operation "$operation" \
+              --arg mainSha "$main_sha" \
+              --arg challenge "$challenge" \
+              '[
+                .[]
+                | .body as $body
+                | select(
+                    ($body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED ")) or
+                    ($body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED "))
+                  )
+                | ($body | sub("^[^ ]+ "; "") | fromjson?)
+                | select(
+                    .operation == $operation and
+                    .mainSha == $mainSha and
+                    .challenge == $challenge
+                  )
+              ] | length' \
+              /tmp/ledger-comments.json
+          )"
+          if [ "$used_count" -ne 0 ]; then
+            echo 'Safety stop: this Production migration deploy approval was already used.'
+            exit 1
+          fi
+
+          {
+            echo "operation=$operation"
+            echo "main_sha=$main_sha"
+            echo "challenge=$challenge"
+            echo "migrations_json=$migrations_json"
+            echo "migrations_csv=$migrations_csv"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Claim approval before workflow dispatch
+        env:
+          OPERATION: ${{ steps.approval.outputs.operation }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          MIGRATIONS_JSON: ${{ steps.approval.outputs.migrations_json }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          payload="$(
+            jq -cn \
+              --arg operation "$OPERATION" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg challenge "$CHALLENGE" \
+              --argjson migrations "$MIGRATIONS_JSON" \
+              --arg bridgeRunId "$GITHUB_RUN_ID" \
+              --arg targetWorkflow "$TARGET_WORKFLOW" \
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:$migrations,bridgeRunId:$bridgeRunId,targetWorkflow:$targetWorkflow}'
+          )"
+          body="NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED $payload"
+
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Dispatch SHA-bound approved deploy workflow
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          MIGRATIONS_CSV: ${{ steps.approval.outputs.migrations_csv }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          dispatch_payload="$(
+            jq -cn \
+              --arg ref main \
+              --arg mainSha "$MAIN_SHA" \
+              --arg migrations "$MIGRATIONS_CSV" \
+              --arg challenge "$CHALLENGE" \
+              --arg bridgeRunId "$GITHUB_RUN_ID" \
+              '{
+                ref:$ref,
+                inputs:{
+                  mode:"deploy",
+                  confirmation:"DEPLOY",
+                  approval_source:"chat",
+                  approved_main_sha:$mainSha,
+                  approved_migrations:$migrations,
+                  approval_challenge:$challenge,
+                  approval_bridge_run_id:$bridgeRunId
+                }
+              }'
+          )"
+
+          dispatch_status="$(
+            curl --silent --show-error \
+              --output /tmp/dispatch-response.txt \
+              --write-out '%{http_code}' \
+              -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/$TARGET_WORKFLOW/dispatches" \
+              -d "$dispatch_payload"
+          )"
+
+          if [ "$dispatch_status" != '204' ]; then
+            echo "Safety stop: workflow dispatch failed with HTTP $dispatch_status."
+            cat /tmp/dispatch-response.txt
+            exit 1
+          fi
+
+      - name: Record successful workflow dispatch
+        env:
+          OPERATION: ${{ steps.approval.outputs.operation }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          MIGRATIONS_JSON: ${{ steps.approval.outputs.migrations_json }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          payload="$(
+            jq -cn \
+              --arg operation "$OPERATION" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg challenge "$CHALLENGE" \
+              --argjson migrations "$MIGRATIONS_JSON" \
+              --arg bridgeRunId "$GITHUB_RUN_ID" \
+              --arg targetWorkflow "$TARGET_WORKFLOW" \
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:$migrations,bridgeRunId:$bridgeRunId,targetWorkflow:$targetWorkflow}'
+          )"
+          body="NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED $payload"
+
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
