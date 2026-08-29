@@ -194,7 +194,9 @@ test('favorites redirects logged-out readers to login', async ({ page }) => {
   expect(pageErrors).toEqual([]);
 });
 
-test('favorites leaves loading state when getSession rejects', async ({ page }) => {
+test('favorites leaves loading state when getSession rejects', async ({
+  page
+}) => {
   await installSupabaseStub(page, {
     getSessionReject: 'temporary auth lookup failure'
   });
