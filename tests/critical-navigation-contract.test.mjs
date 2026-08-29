@@ -142,7 +142,10 @@ test('beta-critical data-driven navigation targets stay wired', async () => {
   for (const [page, requiredTargets] of requiredDynamicTargets) {
     const source = await read(page);
     for (const target of requiredTargets) {
-      assert.ok(source.includes(target), `${page} must keep navigation to ${target}`);
+      assert.ok(
+        source.includes(target),
+        `${page} must keep navigation to ${target}`
+      );
     }
   }
 });
