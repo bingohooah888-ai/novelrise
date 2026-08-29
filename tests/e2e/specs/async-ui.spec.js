@@ -75,10 +75,16 @@ async function installSupabaseStub(page, overrides = {}) {
 
           const client = {
             auth: {
-              getSession: async () => ({
-                data: { session: state.session || null },
-                error: null
-              }),
+              getSession: async () => {
+                await wait(state.getSessionDelayMs);
+                if (state.getSessionReject) {
+                  throw new Error(state.getSessionReject);
+                }
+                return {
+                  data: { session: state.session || null },
+                  error: errorFor(state.getSessionError)
+                };
+              },
               signInWithPassword: async (payload) => {
                 calls.push({ type: 'signInWithPassword', payload });
                 await wait(state.authDelayMs);
@@ -145,6 +151,79 @@ test('home discovery leaves the loading state after async data resolves', async 
   );
   await expect(page.locator('#planExtraWrap')).toBeHidden();
   await expect(page.locator('#premiumWrap')).toBeHidden();
+  expect(pageErrors).toEqual([]);
+});
+
+test('favorites renders a logged-in reader collection', async ({ page }) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'reader-e2e' } },
+    tableData: {
+      favorites: [
+        {
+          novel_id: 'favorite-e2e',
+          created_at: '2026-08-30T00:00:00Z',
+          novels: {
+            id: 'favorite-e2e',
+            title: 'Favorite E2E Novel',
+            genre: '現代ファンタジー',
+            description: 'お気に入り正常系の回帰テストです。',
+            pv: 12,
+            status: 'published'
+          }
+        }
+      ]
+    }
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/favorites.html');
+
+  await expect(page.locator('#list .card')).toHaveCount(1);
+  await expect(page.locator('#list')).toContainText('Favorite E2E Novel');
+  await expect(page.locator('#list')).not.toContainText('読み込み中...');
+  expect(pageErrors).toEqual([]);
+});
+
+test('favorites redirects logged-out readers to login', async ({ page }) => {
+  await installSupabaseStub(page);
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/favorites.html');
+
+  await expect(page).toHaveURL(/\/login\.html\?redirect=favorites\.html$/);
+  expect(pageErrors).toEqual([]);
+});
+
+test('favorites leaves loading state when getSession rejects', async ({ page }) => {
+  await installSupabaseStub(page, {
+    getSessionReject: 'temporary auth lookup failure'
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/favorites.html');
+
+  await expect(page.locator('#list')).toContainText(
+    'お気に入り作品を表示できませんでした。通信状況を確認して、もう一度お試しください。'
+  );
+  await expect(page.locator('#list')).not.toContainText('読み込み中...');
+  expect(pageErrors).toEqual([]);
+});
+
+test('favorites leaves loading state when favorites data loading fails', async ({
+  page
+}) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'reader-e2e' } },
+    tableErrors: { favorites: 'temporary database error' }
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/favorites.html');
+
+  await expect(page.locator('#list')).toContainText(
+    'お気に入り作品を表示できませんでした。通信状況を確認して、もう一度お試しください。'
+  );
+  await expect(page.locator('#list')).not.toContainText('読み込み中...');
   expect(pageErrors).toEqual([]);
 });
 
