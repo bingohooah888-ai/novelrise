@@ -2,45 +2,68 @@
 
 This control treats the explicit Production approval already given in ChatGPT as the human approval for one fixed Production action. It removes both the manual GitHub Actions `Run workflow` click and the duplicate `production-approval` Environment review for that chat-approved path.
 
-It does **not** remove the ordinary manual fallback approval. `.github/workflows/supabase-production.yml` remains unchanged and still requires the `production-approval` GitHub Environment for manual `repair-history` or `deploy` runs.
+It does **not** remove the ordinary manual fallback approval. `.github/workflows/supabase-production.yml` remains protected by the `production-approval` GitHub Environment for manual `repair-history` or `deploy` runs.
 
-## Initial allowed operation
+## Allowed operations
 
-The bridge is intentionally not a generic Production executor. The only accepted operation is:
+Chat approval is not a generic Production executor. Each allowed operation has a dedicated workflow and hard-coded contract.
 
-- `supabase-baseline-history-repair`
-  - trigger: a new owner-authored approval record on Production Approval Ledger issue #165
-  - approved ref: exact current `main` SHA
-  - repair version: `20260815000000`
-  - Supabase project: fixed Production project
-  - database action: `supabase migration repair --status applied 20260815000000`
+### Fixed baseline history repair
 
-No workflow name, ref, mode, confirmation, migration version, Supabase project, credential, SQL, or command is accepted from the approval comment as a free-form execution parameter.
+- operation: `supabase-baseline-history-repair`
+- workflow: `.github/workflows/production-approved-dispatch.yml`
+- trigger: a new owner-authored approval record on Production Approval Ledger issue #165
+- approved ref: exact current `main` SHA
+- repair version: `20260815000000`
+- Supabase project: fixed Production project
+- database action: `supabase migration repair --status applied 20260815000000`
 
-## Approval record
+This route remains baseline-only. If the baseline is already SATISFIED/APPLIED, it must not be rerun.
 
-After the user explicitly approves this exact Production operation in ChatGPT, the assistant may record one machine-readable approval comment on Production Approval Ledger issue #165:
+### Normal migration deploy
+
+- operation: `supabase-migration-deploy`
+- workflow: `.github/workflows/production-migration-approved-dispatch.yml`
+- trigger: a new owner-authored approval record on Production Approval Ledger issue #165
+- approved ref: exact current `main` SHA
+- approved migration set: canonical sorted unique list of 14-digit versions
+- excluded version: `20260815000000`
+- Supabase project: fixed Production project
+- database action: `supabase db push --linked --yes`, only after exact pending match and a fresh dry-run
+
+No workflow name, ref, mode, confirmation, Supabase project, credential, SQL, or shell command is accepted from either approval comment as a free-form execution parameter.
+
+## Approval records
+
+### Baseline repair
 
 ```text
 NOVELIGHT_PRODUCTION_DISPATCH_APPROVE {"operation":"supabase-baseline-history-repair","mainSha":"<40-hex-current-main>","challenge":"<8-uppercase-hex>","repairVersion":"20260815000000"}
 ```
 
-The workflow accepts the comment only when all of the following are true:
+### Normal migration deploy
+
+```text
+NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE {"operation":"supabase-migration-deploy","mainSha":"<40-hex-current-main>","challenge":"<8-uppercase-hex>","migrations":["<14-digit-version>", "..."]}
+```
+
+The workflows accept their approval comment only when all of the following are true:
 
 - the event is a new comment on issue #165, not a pull request;
-- the comment author is the repository owner `bingohooah888-ai` with `OWNER` association;
-- the JSON has exactly the four documented keys and the exact operation/version;
-- `mainSha` is exactly the current `main` commit when validation runs;
-- the one-time `challenge` has not already been claimed, dispatched, or executed for the same operation/SHA;
+- the comment author is repository owner `bingohooah888-ai` with `OWNER` association;
+- the JSON has exactly the documented keys and exact operation contract;
+- `mainSha` is exactly current `main` when validation runs;
+- the one-time `challenge` has not already been used for that operation/SHA;
+- migration deploy versions are canonical, unique, sorted, non-empty, and exclude `20260815000000`;
 - the ledger is still within the bounded comment contract.
 
-The bridge re-checks `main`, then records `NOVELIGHT_PRODUCTION_DISPATCH_CLAIMED` immediately before entering the Production execution job. The Production job independently re-reads the ledger and requires exactly one matching claim bound to the same workflow run ID, SHA, challenge, operation, and repair version.
+Each workflow re-checks `main`, then records its own `..._CLAIMED` marker immediately before entering the Production execution job. The Production job independently re-reads issue #165 and requires exactly one matching claim bound to the same workflow run ID, SHA, challenge, operation, and exact repair/migration scope.
 
-A successful repair records `NOVELIGHT_PRODUCTION_EXECUTED`. A failed Production execution records `NOVELIGHT_PRODUCTION_EXECUTION_FAILED`; it is not silently retried.
+A claimed approval is one-time. Failure does not silently reuse or retry the same approval.
 
 ## Manual fallback remains protected
 
-The manual workflow `.github/workflows/supabase-production.yml` remains the fallback for `status`, `dry-run`, `repair-history`, and `deploy`.
+`.github/workflows/supabase-production.yml` remains the fallback for `status`, `dry-run`, `repair-history`, and `deploy`.
 
 Manual mutation runs still require:
 
@@ -49,49 +72,91 @@ Manual mutation runs still require:
 - `production-approval` GitHub Environment human approval;
 - the existing Production checks inside the workflow.
 
-The chat-approved path does not weaken or bypass those checks for a manually started run.
+The chat-approved paths do not weaken or bypass those controls for manually started runs.
 
-## Chat-approved Production boundary
+## Chat-approved baseline Production boundary
 
-For the one fixed chat-approved baseline repair, `.github/workflows/production-approved-dispatch.yml` performs the Production operation directly from its owner-only `issue_comment` trigger after the ledger approval has been validated and claimed.
+For the fixed baseline repair, `.github/workflows/production-approved-dispatch.yml` performs the Production operation directly from its owner-only `issue_comment` trigger after the ledger approval has been validated and claimed.
 
 Before touching Supabase it must:
 
-- re-check that current `main` still equals the approved SHA;
-- re-read issue #165 and find exactly one matching `NOVELIGHT_PRODUCTION_DISPATCH_CLAIMED` record for the same workflow run;
+- re-check current `main` against the approved SHA;
+- re-read issue #165 and find exactly one matching baseline claim for the same workflow run;
 - check out exactly the approved commit;
 - use only the fixed Production project and fixed repair version;
-- use the repository's shared `supabase-production-migration` concurrency lock.
+- use the shared `supabase-production-migration` concurrency lock.
 
-The Production repair then retains the same database safety checks as the manual fallback:
+The repair retains:
 
-- repair version fixed to `20260815000000`;
-- proof that the baseline is still pending;
-- fresh read-only verification that the historical Production core tables exist;
-- `supabase migration repair --status applied` only for that fixed version;
+- proof that `20260815000000` is still pending;
+- fresh read-only verification of the historical Production core tables;
+- baseline-only `supabase migration repair --status applied`;
 - post-mutation migration status;
 - Production observability verification and commit status publication.
 
-The bridge contains no generic deploy path and must not execute `supabase db push --yes`.
+This workflow contains no generic migration deploy path.
+
+## Chat-approved migration Production boundary
+
+For normal migrations, `.github/workflows/production-migration-approved-dispatch.yml` performs the Production deploy directly from its owner-only `issue_comment` trigger after the exact migration approval has been validated and claimed.
+
+Before mutation it must:
+
+- re-check current `main` against the approved SHA before claim;
+- re-read issue #165 at the Production boundary and require exactly one matching migration claim for the same workflow run;
+- check out exactly the approved commit;
+- reject baseline version `20260815000000`;
+- use only the fixed Production project;
+- use the shared `supabase-production-migration` concurrency lock;
+- require Production pending migration versions to exactly equal the approved migration set;
+- run `supabase db push --linked --dry-run` again immediately before mutation.
+
+Only after all of those checks pass may it run `supabase db push --linked --yes`.
+
+After mutation it must:
+
+- verify Production migration status and require no pending local migration;
+- run Production observability read-only verification;
+- publish `production-beta-verification`;
+- classify mutation and postcheck outcomes separately.
+
+A successful workflow records `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_EXECUTED`. A failed workflow records `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_FAILED` with `mutation_result`, `postcheck_result`, and `failure_phase`.
+
+If mutation succeeded but a later postcheck failed, Evidence Freshness applies: do not repeat `db push`. Verify current migration history first and investigate the failed postcheck separately.
+
+## Automatic main-push plan
+
+`.github/workflows/supabase-production-auto-deploy.yml` is intentionally read-only with respect to the database.
+
+A push that adds `supabase/migrations/**` automatically performs:
+
+- changed-version detection;
+- exact Production pending comparison;
+- `supabase db push --linked --dry-run`;
+- an Actions summary containing main SHA, versions, and an explicit `mutation: none` handoff.
+
+It does **not** use `production-approval`, and it does **not** contain `supabase db push --linked --yes`.
+
+This avoids creating a second approval prompt before the user has approved in chat and avoids a waiting Environment run blocking the shared migration concurrency lock.
 
 ## Stale waiting-run cleanup
 
-The first version of the bridge dispatched `.github/workflows/supabase-production.yml`, which can leave a bot-started run waiting at `production-approval`.
+PR #219's first migration bridge dispatched `.github/workflows/supabase-production.yml`, which can leave a bot-started run waiting at `production-approval`.
 
-Before the new chat-approved execution starts, the bridge checks active manual Supabase Production runs:
+The normal migration chat workflow may cancel that obsolete waiting run only under a narrow migration-specific contract:
 
-- any human-started active run causes a fail-closed stop;
+- any human-started active manual Supabase Production run causes a fail-closed stop;
 - more than one active bot-started manual run causes a fail-closed stop;
-- a single bot-started run is cancellable only when issue #165 contains exactly one matching prior `NOVELIGHT_PRODUCTION_DISPATCHED` record for the same old main, fixed baseline repair version, and `supabase-production.yml` target;
-- one verified bot-started run from an older main may be cancelled and must reach `cancelled` before the repair can continue;
-- a bot-started run already targeting the newly approved main causes a fail-closed duplicate stop.
+- a single bot-started run is cancellable only when issue #165 contains exactly one matching prior `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED` record for the old main and `supabase-production.yml` target;
+- a bot-started run already targeting the newly approved main causes a fail-closed duplicate stop;
+- cancellation must reach `cancelled` before the chat-approved deploy proceeds.
 
-After that cleanup, the Production repair job uses the same `supabase-production-migration` concurrency group as the manual workflow, so the two mutation paths cannot intentionally execute concurrently.
+No unrelated Actions run may be cancelled through this cleanup.
 
 ## Freshness and replay rules
 
-Approvals are SHA-bound and one-time. If `main` advances after the approval comment, the bridge must fail closed and a fresh explicit Production approval is required. If an approval was already claimed or executed, the same approval cannot be reused.
+Approvals are SHA-bound and one-time. If `main` advances after the approval comment, execution fails closed and a fresh explicit Production approval is required. If an approval was already claimed, it cannot be reused.
 
-Evidence Freshness remains mandatory before a new approval record is written. If the same Production repair is already proven complete, it must not be repeated.
+Evidence Freshness remains mandatory before a new approval record is written. If the same Production mutation is already proven complete, it must not be repeated.
 
 New Production operation types must not be added as free-form inputs. Each new operation requires a separate reviewed code change that hard-codes the scope, adds regression tests, preserves Evidence Freshness, uses an appropriate Production concurrency lock, and keeps manual fallback protections intact.

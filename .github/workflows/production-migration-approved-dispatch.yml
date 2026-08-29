@@ -8,6 +8,7 @@ permissions:
   actions: write
   contents: read
   issues: write
+  statuses: write
 
 concurrency:
   group: novelight-production-migration-approved-dispatch
@@ -15,7 +16,7 @@ concurrency:
 
 jobs:
   authorize:
-    name: Validate and dispatch one chat-approved Production migration deploy
+    name: Validate one fixed chat-approved Production migration deploy
     if: >-
       github.event.issue.pull_request == null &&
       github.event.issue.number == 165 &&
@@ -27,8 +28,13 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       APPROVAL_BODY: ${{ github.event.comment.body }}
-      TARGET_WORKFLOW: supabase-production.yml
+      MANUAL_WORKFLOW: supabase-production.yml
       REPAIR_VERSION: '20260815000000'
+    outputs:
+      operation: ${{ steps.approval.outputs.operation }}
+      main_sha: ${{ steps.approval.outputs.main_sha }}
+      challenge: ${{ steps.approval.outputs.challenge }}
+      migrations: ${{ steps.approval.outputs.migrations }}
 
     steps:
       - name: Validate exact one-time Production migration deploy approval
@@ -44,10 +50,10 @@ jobs:
             (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
             (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
             (.migrations | type == "array" and length >= 1 and length <= 20) and
-            (all(.migrations[]; type == "string" and test("^[0-9]{14}$"))) and
-            ((.migrations | unique | length) == (.migrations | length)) and
-            (.migrations == (.migrations | sort)) and
-            ((.migrations | index($repairVersion)) == null) and
+            all(.migrations[]; type == "string" and test("^[0-9]{14}$")) and
+            (.migrations | length) == (.migrations | unique | length) and
+            .migrations == (.migrations | sort) and
+            (.migrations | index($repairVersion)) == null and
             ((keys | sort) == (["challenge", "mainSha", "migrations", "operation"] | sort))
           ' >/dev/null || {
             echo 'Safety stop: invalid Production migration deploy approval record.'
@@ -57,8 +63,7 @@ jobs:
           operation="$(echo "$approval_json" | jq -r '.operation')"
           main_sha="$(echo "$approval_json" | jq -r '.mainSha')"
           challenge="$(echo "$approval_json" | jq -r '.challenge')"
-          migrations_json="$(echo "$approval_json" | jq -c '.migrations')"
-          migrations_csv="$(echo "$approval_json" | jq -r '.migrations | join(",")')"
+          migrations="$(echo "$approval_json" | jq -r '.migrations | join(",")')"
 
           current_main="$(
             curl --silent --show-error --fail \
@@ -73,27 +78,18 @@ jobs:
             exit 1
           fi
 
-          : > /tmp/ledger-comments.jsonl
-          page=1
-          while :; do
-            response="$(
-              curl --silent --show-error --fail \
-                -H "Authorization: Bearer $GH_TOKEN" \
-                -H 'Accept: application/vnd.github+json' \
-                -H 'X-GitHub-Api-Version: 2022-11-28' \
-                "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100&page=$page"
-            )"
-            count="$(jq 'length' <<<"$response")"
-            [ "$count" -gt 0 ] || break
-            jq -c '.[]' <<<"$response" >> /tmp/ledger-comments.jsonl
-            [ "$count" -eq 100 ] || break
-            page=$((page + 1))
-            [ "$page" -le 20 ] || {
-              echo 'Safety stop: Production Approval Ledger pagination limit exceeded.'
-              exit 1
-            }
-          done
-          jq -s '.' /tmp/ledger-comments.jsonl > /tmp/ledger-comments.json
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > /tmp/ledger-comments.json
+
+          comment_count="$(jq 'length' /tmp/ledger-comments.json)"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: Production Approval Ledger exceeded the bounded comment contract.'
+            exit 1
+          }
 
           used_count="$(
             jq \
@@ -105,7 +101,8 @@ jobs:
                 | .body as $body
                 | select(
                     ($body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED ")) or
-                    ($body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED "))
+                    ($body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_EXECUTED ")) or
+                    ($body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_FAILED "))
                   )
                 | ($body | sub("^[^ ]+ "; "") | fromjson?)
                 | select(
@@ -125,32 +122,160 @@ jobs:
             echo "operation=$operation"
             echo "main_sha=$main_sha"
             echo "challenge=$challenge"
-            echo "migrations_json=$migrations_json"
-            echo "migrations_csv=$migrations_csv"
+            echo "migrations=$migrations"
           } >> "$GITHUB_OUTPUT"
+          echo "Validated one-time Production migration approval for exact main $main_sha."
 
-      - name: Claim approval before workflow dispatch
+      - name: Remove only stale bridge-dispatched manual migration run
         env:
-          OPERATION: ${{ steps.approval.outputs.operation }}
           MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
-          CHALLENGE: ${{ steps.approval.outputs.challenge }}
-          MIGRATIONS_JSON: ${{ steps.approval.outputs.migrations_json }}
         shell: bash
         run: |
           set -euo pipefail
 
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/$MANUAL_WORKFLOW/runs?per_page=100" \
+            > /tmp/manual-production-runs.json
+
+          jq '[.workflow_runs[] | select(.status != "completed")]' \
+            /tmp/manual-production-runs.json > /tmp/active-manual-production-runs.json
+
+          human_active_count="$(
+            jq '[.[] | select(.actor.login != "github-actions[bot]")] | length' \
+              /tmp/active-manual-production-runs.json
+          )"
+          if [ "$human_active_count" -ne 0 ]; then
+            echo 'Safety stop: a human-started Supabase Production workflow is still active.'
+            exit 1
+          fi
+
+          bot_active_count="$(
+            jq '[.[] | select(.actor.login == "github-actions[bot]" and .event == "workflow_dispatch")] | length' \
+              /tmp/active-manual-production-runs.json
+          )"
+          if [ "$bot_active_count" -gt 1 ]; then
+            echo 'Safety stop: multiple stale bot-dispatched Production migration runs require manual investigation.'
+            exit 1
+          fi
+
+          if [ "$bot_active_count" -eq 1 ]; then
+            stale_run_id="$(
+              jq -r '.[] | select(.actor.login == "github-actions[bot]" and .event == "workflow_dispatch") | .id' \
+                /tmp/active-manual-production-runs.json
+            )"
+            stale_head_sha="$(
+              jq -r '.[] | select(.actor.login == "github-actions[bot]" and .event == "workflow_dispatch") | .head_sha' \
+                /tmp/active-manual-production-runs.json
+            )"
+
+            if [ "$stale_head_sha" = "$MAIN_SHA" ]; then
+              echo 'Safety stop: a bot-dispatched Production migration run already exists for the approved main.'
+              exit 1
+            fi
+
+            prior_bridge_dispatch_count="$(
+              jq \
+                --arg staleMainSha "$stale_head_sha" \
+                --arg targetWorkflow "$MANUAL_WORKFLOW" \
+                '[
+                  .[]
+                  | .body as $body
+                  | select($body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED "))
+                  | ($body | sub("^[^ ]+ "; "") | fromjson?)
+                  | select(
+                      .operation == "supabase-migration-deploy" and
+                      .mainSha == $staleMainSha and
+                      .targetWorkflow == $targetWorkflow
+                    )
+                ] | length' \
+                /tmp/ledger-comments.json
+            )"
+            if [ "$prior_bridge_dispatch_count" -ne 1 ]; then
+              echo 'Safety stop: active bot Production migration run is not uniquely backed by the prior bridge ledger.'
+              exit 1
+            fi
+
+            cancel_status="$(
+              curl --silent --show-error \
+                --output /tmp/cancel-response.txt \
+                --write-out '%{http_code}' \
+                -X POST \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H 'Accept: application/vnd.github+json' \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$stale_run_id/cancel"
+            )"
+            if [ "$cancel_status" != '202' ]; then
+              echo "Safety stop: stale Production migration run cancellation failed with HTTP $cancel_status."
+              cat /tmp/cancel-response.txt
+              exit 1
+            fi
+
+            cancelled=false
+            for _ in $(seq 1 20); do
+              curl --silent --show-error --fail \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H 'Accept: application/vnd.github+json' \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$stale_run_id" \
+                > /tmp/stale-run.json
+              run_status="$(jq -r '.status' /tmp/stale-run.json)"
+              run_conclusion="$(jq -r '.conclusion // ""' /tmp/stale-run.json)"
+              if [ "$run_status" = 'completed' ] && [ "$run_conclusion" = 'cancelled' ]; then
+                cancelled=true
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$cancelled" != 'true' ]; then
+              echo 'Safety stop: stale Production migration run did not reach cancelled state.'
+              exit 1
+            fi
+            echo "Cancelled stale bridge-dispatched Production migration run $stale_run_id."
+          fi
+
+      - name: Re-check approved main immediately before claim
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$MAIN_SHA" || {
+            echo 'Safety stop: main changed before Production migration approval claim.'
+            exit 1
+          }
+
+      - name: Claim approval before Production migration execution
+        env:
+          OPERATION: ${{ steps.approval.outputs.operation }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          MIGRATIONS: ${{ steps.approval.outputs.migrations }}
+        shell: bash
+        run: |
+          set -euo pipefail
           payload="$(
             jq -cn \
               --arg operation "$OPERATION" \
               --arg mainSha "$MAIN_SHA" \
               --arg challenge "$CHALLENGE" \
-              --argjson migrations "$MIGRATIONS_JSON" \
+              --arg migrations "$MIGRATIONS" \
               --arg bridgeRunId "$GITHUB_RUN_ID" \
-              --arg targetWorkflow "$TARGET_WORKFLOW" \
-              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:$migrations,bridgeRunId:$bridgeRunId,targetWorkflow:$targetWorkflow}'
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:($migrations | split(",")),bridgeRunId:$bridgeRunId}'
           )"
           body="NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED $payload"
-
           curl --silent --show-error --fail \
             -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
@@ -160,76 +285,273 @@ jobs:
             -d "$(jq -cn --arg body "$body" '{body:$body}')" \
             >/dev/null
 
-      - name: Dispatch SHA-bound approved deploy workflow
-        env:
-          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
-          CHALLENGE: ${{ steps.approval.outputs.challenge }}
-          MIGRATIONS_CSV: ${{ steps.approval.outputs.migrations_csv }}
+  deploy:
+    name: Execute fixed chat-approved Production migration deploy
+    needs: authorize
+    outputs:
+      mutation_result: ${{ steps.execution_phase.outputs.mutation_result }}
+      postcheck_result: ${{ steps.execution_phase.outputs.postcheck_result }}
+      failure_phase: ${{ steps.execution_phase.outputs.failure_phase }}
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: supabase-production-migration
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: '165'
+      OPERATION: ${{ needs.authorize.outputs.operation }}
+      APPROVED_MAIN_SHA: ${{ needs.authorize.outputs.main_sha }}
+      APPROVAL_CHALLENGE: ${{ needs.authorize.outputs.challenge }}
+      APPROVED_MIGRATIONS: ${{ needs.authorize.outputs.migrations }}
+      CHANGED_VERSIONS: ${{ needs.authorize.outputs.migrations }}
+      REPAIR_VERSION: '20260815000000'
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+
+    steps:
+      - name: Re-validate claimed chat approval at Production boundary
         shell: bash
         run: |
           set -euo pipefail
 
-          dispatch_payload="$(
-            jq -cn \
-              --arg ref main \
-              --arg mainSha "$MAIN_SHA" \
-              --arg migrations "$MIGRATIONS_CSV" \
-              --arg challenge "$CHALLENGE" \
-              --arg bridgeRunId "$GITHUB_RUN_ID" \
-              '{
-                ref:$ref,
-                inputs:{
-                  mode:"deploy",
-                  confirmation:"DEPLOY",
-                  approval_source:"chat",
-                  approved_main_sha:$mainSha,
-                  approved_migrations:$migrations,
-                  approval_challenge:$challenge,
-                  approval_bridge_run_id:$bridgeRunId
-                }
-              }'
-          )"
+          test "$GITHUB_EVENT_NAME" = 'issue_comment'
+          test "$OPERATION" = 'supabase-migration-deploy'
+          [[ "$APPROVED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$APPROVAL_CHALLENGE" =~ ^[A-F0-9]{8}$ ]]
+          [[ "$APPROVED_MIGRATIONS" =~ ^[0-9]{14}(,[0-9]{14})*$ ]]
 
-          dispatch_status="$(
-            curl --silent --show-error \
-              --output /tmp/dispatch-response.txt \
-              --write-out '%{http_code}' \
-              -X POST \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H 'Accept: application/vnd.github+json' \
-              -H 'X-GitHub-Api-Version: 2022-11-28' \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/$TARGET_WORKFLOW/dispatches" \
-              -d "$dispatch_payload"
-          )"
-
-          if [ "$dispatch_status" != '204' ]; then
-            echo "Safety stop: workflow dispatch failed with HTTP $dispatch_status."
-            cat /tmp/dispatch-response.txt
+          printf '%s\n' "$APPROVED_MIGRATIONS" | tr ',' '\n' | sort -u > /tmp/approved-migrations-sorted.txt
+          test "$(paste -sd, /tmp/approved-migrations-sorted.txt)" = "$APPROVED_MIGRATIONS" || {
+            echo 'Safety stop: approved migration set is not canonical at the Production boundary.'
+            exit 1
+          }
+          if grep -Fxq "$REPAIR_VERSION" /tmp/approved-migrations-sorted.txt; then
+            echo 'Safety stop: baseline history repair version cannot be deployed through this route.'
             exit 1
           fi
 
-      - name: Record successful workflow dispatch
-        env:
-          OPERATION: ${{ steps.approval.outputs.operation }}
-          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
-          CHALLENGE: ${{ steps.approval.outputs.challenge }}
-          MIGRATIONS_JSON: ${{ steps.approval.outputs.migrations_json }}
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$APPROVED_MAIN_SHA" || {
+            echo 'Safety stop: main changed before the Production migration boundary.'
+            exit 1
+          }
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > /tmp/ledger-comments.json
+
+          comment_count="$(jq 'length' /tmp/ledger-comments.json)"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: Production Approval Ledger exceeded the bounded comment contract.'
+            exit 1
+          }
+
+          claim_count="$(
+            jq \
+              --arg operation "$OPERATION" \
+              --arg mainSha "$APPROVED_MAIN_SHA" \
+              --arg challenge "$APPROVAL_CHALLENGE" \
+              --arg migrations "$APPROVED_MIGRATIONS" \
+              --arg bridgeRunId "$GITHUB_RUN_ID" \
+              '[
+                .[]
+                | .body as $body
+                | select($body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED "))
+                | ($body | sub("^[^ ]+ "; "") | fromjson?)
+                | select(
+                    .operation == $operation and
+                    .mainSha == $mainSha and
+                    .challenge == $challenge and
+                    (.migrations | join(",")) == $migrations and
+                    .bridgeRunId == $bridgeRunId
+                  )
+              ] | length' \
+              /tmp/ledger-comments.json
+          )"
+          if [ "$claim_count" -ne 1 ]; then
+            echo 'Safety stop: exact claimed chat migration approval was not found at the Production boundary.'
+            exit 1
+          fi
+
+      - name: Checkout approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.authorize.outputs.main_sha }}
+          persist-credentials: false
+
+      - name: Verify approved checkout
+        run: test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+
+      - name: Verify required production secrets
         shell: bash
         run: |
           set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          }
+          test -n "$SUPABASE_DB_PASSWORD" || {
+            echo 'PRODUCTION_DB_PASSWORD is not configured.'
+            exit 1
+          }
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Require approved pending migrations at Production boundary
+        run: bash scripts/verify-supabase-pending.sh
+
+      - name: Dry-run approved pending migrations at Production boundary
+        run: supabase db push --linked --dry-run
+
+      - name: Apply approved pending migrations
+        id: migration_mutation
+        run: supabase db push --linked --yes
+
+      - name: Verify production migration status after deploy
+        id: migration_status_postcheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase migration list --linked | tee /tmp/post-deploy-migration-list.txt
+          pending_migrations="$(bash scripts/extract-supabase-pending.sh /tmp/post-deploy-migration-list.txt)"
+          if [ -n "$pending_migrations" ]; then
+            echo 'Production still has pending migrations after the approved deploy.'
+            printf '%s\n' "$pending_migrations"
+            exit 1
+          fi
+
+      - name: Verify production beta observability
+        id: production_beta_observability
+        continue-on-error: true
+        run: bash scripts/verify-production-observability.sh
+
+      - name: Publish production beta verification status
+        if: always()
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+          VERIFY_OUTCOME: ${{ steps.production_beta_observability.outcome }}
+        shell: bash
+        run: |
+          state=failure
+          description='Production beta verification failed'
+          if [ "$VERIFY_OUTCOME" = 'success' ]; then
+            state=success
+            description='Production beta verification passed'
+          fi
+          bash scripts/publish-commit-status.sh "$state" production-beta-verification "$description"
+
+      - name: Classify Production migration execution phases
+        id: execution_phase
+        if: always()
+        env:
+          MUTATION_OUTCOME: ${{ steps.migration_mutation.outcome }}
+          MIGRATION_POSTCHECK_OUTCOME: ${{ steps.migration_status_postcheck.outcome }}
+          INTEGRITY_POSTCHECK_OUTCOME: ${{ steps.production_beta_observability.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mutation_result='not-run'
+          postcheck_result='not-run'
+          failure_phase='pre-mutation'
+
+          if [ "$MUTATION_OUTCOME" = 'failure' ]; then
+            mutation_result='failure'
+            failure_phase='mutation'
+          elif [ "$MUTATION_OUTCOME" = 'success' ]; then
+            mutation_result='success'
+            if [ "$MIGRATION_POSTCHECK_OUTCOME" != 'success' ]; then
+              postcheck_result='failure'
+              failure_phase='postcheck:migration-status'
+            elif [ "$INTEGRITY_POSTCHECK_OUTCOME" != 'success' ]; then
+              postcheck_result='failure'
+              failure_phase='postcheck:integrity'
+            else
+              postcheck_result='success'
+              failure_phase='none'
+            fi
+          fi
+
+          {
+            echo "mutation_result=$mutation_result"
+            echo "postcheck_result=$postcheck_result"
+            echo "failure_phase=$failure_phase"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Enforce production beta verification result
+        if: steps.production_beta_observability.outcome == 'failure'
+        run: |
+          echo 'Production beta observability verification failed.'
+          exit 1
+
+  record:
+    name: Record chat-approved Production migration deploy result
+    needs:
+      - authorize
+      - deploy
+    if: always() && needs.authorize.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: '165'
+      OPERATION: ${{ needs.authorize.outputs.operation }}
+      MAIN_SHA: ${{ needs.authorize.outputs.main_sha }}
+      CHALLENGE: ${{ needs.authorize.outputs.challenge }}
+      MIGRATIONS: ${{ needs.authorize.outputs.migrations }}
+      DEPLOY_RESULT: ${{ needs.deploy.result }}
+      MUTATION_RESULT: ${{ needs.deploy.outputs.mutation_result }}
+      POSTCHECK_RESULT: ${{ needs.deploy.outputs.postcheck_result }}
+      FAILURE_PHASE: ${{ needs.deploy.outputs.failure_phase }}
+
+    steps:
+      - name: Record Production migration deploy result
+        shell: bash
+        run: |
+          set -euo pipefail
+          marker='NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_FAILED'
+          result="$DEPLOY_RESULT"
+          mutation_result="${MUTATION_RESULT:-unknown}"
+          postcheck_result="${POSTCHECK_RESULT:-unknown}"
+          failure_phase="${FAILURE_PHASE:-unknown}"
+          if [ "$DEPLOY_RESULT" = 'success' ]; then
+            marker='NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_EXECUTED'
+            result='success'
+          elif [ "$failure_phase" = 'none' ]; then
+            failure_phase='workflow'
+          fi
 
           payload="$(
             jq -cn \
               --arg operation "$OPERATION" \
               --arg mainSha "$MAIN_SHA" \
               --arg challenge "$CHALLENGE" \
-              --argjson migrations "$MIGRATIONS_JSON" \
+              --arg migrations "$MIGRATIONS" \
               --arg bridgeRunId "$GITHUB_RUN_ID" \
-              --arg targetWorkflow "$TARGET_WORKFLOW" \
-              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:$migrations,bridgeRunId:$bridgeRunId,targetWorkflow:$targetWorkflow}'
+              --arg result "$result" \
+              --arg mutation_result "$mutation_result" \
+              --arg postcheck_result "$postcheck_result" \
+              --arg failure_phase "$failure_phase" \
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:($migrations | split(",")),bridgeRunId:$bridgeRunId,result:$result,mutation_result:$mutation_result,postcheck_result:$postcheck_result,failure_phase:$failure_phase}'
           )"
-          body="NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED $payload"
-
+          body="$marker $payload"
           curl --silent --show-error --fail \
             -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
