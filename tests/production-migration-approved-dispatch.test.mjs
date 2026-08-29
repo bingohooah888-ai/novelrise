@@ -54,10 +54,16 @@ test('chat migration deploy approval is exact-scope, SHA-bound, and one-time', (
 });
 
 test('chat-approved migration deploy executes directly without Environment double approval', () => {
-  assert.match(bridge, /Execute fixed chat-approved Production migration deploy/);
+  assert.match(
+    bridge,
+    /Execute fixed chat-approved Production migration deploy/
+  );
   assert.match(bridge, /environment: production/);
   assert.doesNotMatch(bridge, /environment: production-approval/);
-  assert.doesNotMatch(bridge, /actions\/workflows\/\$TARGET_WORKFLOW\/dispatches/);
+  assert.doesNotMatch(
+    bridge,
+    /actions\/workflows\/\$TARGET_WORKFLOW\/dispatches/
+  );
   assert.match(bridge, /supabase db push --linked --dry-run/);
   assert.match(bridge, /id: migration_mutation/);
   assert.match(bridge, /supabase db push --linked --yes/);
@@ -99,10 +105,7 @@ test('bridge safely removes only the old bot-dispatched waiting migration fallba
     /a human-started Supabase Production workflow is still active/
   );
   assert.match(bridge, /bot_active_count" -gt 1/);
-  assert.match(
-    bridge,
-    /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/
-  );
+  assert.match(bridge, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/);
   assert.match(bridge, /targetWorkflow == \$targetWorkflow/);
   assert.match(
     bridge,
@@ -121,7 +124,10 @@ test('manual mutation fallback keeps GitHub Environment approval', () => {
 
 test('automatic main-push workflow is read-only and hands off mutation to chat approval', () => {
   assert.match(automatic, /name: NOVELIGHT Supabase Production Migration Plan/);
-  assert.match(automatic, /Require pending migrations to match this push exactly/);
+  assert.match(
+    automatic,
+    /Require pending migrations to match this push exactly/
+  );
   assert.match(automatic, /supabase db push --linked --dry-run/);
   assert.match(automatic, /Record chat-approval handoff/);
   assert.match(automatic, /No Production database mutation was performed/);
