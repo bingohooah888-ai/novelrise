@@ -70,6 +70,29 @@ A prohibited image-tool call is a gate violation at call time even if no image u
 
 Stronger individual locks, including the current Noctar/ComfyUI lock, remain higher priority than this general hard-lock proof.
 
+### Visual-input image-decision visibility: mandatory deny-state proof
+
+When the **current NOVELIGHT user message contains or attaches an image or screenshot and the assistant turn will use any tool**, the execution card must always expose both current-message image decisions **before any tool call**, even when the turn does not intend to call an image-generation or image-editing tool:
+
+- `画像ツールロック解除: YES | NO`
+- `画像実行判定: YES | NO`
+
+This is a visible pre-routing decision, not an image-execution request. Its purpose is to make the default deny state observable before a screenshot or image can accidentally trigger generic image-tool routing.
+
+An image or screenshot attachment by itself must surface:
+
+`画像ツールロック解除: NO`
+
+`画像実行判定: NO`
+
+unless the same current user message independently satisfies the explicit unlock and explicit execution requirements defined above.
+
+When a decision is `NO`, the assistant must not invent a supporting quote. `ロック解除命令引用` and `明示命令引用` are required only for the corresponding `YES` proof used to authorize actual image-tool routing. A `NO` decision may omit the quote field or show it as `なし`.
+
+This visibility requirement applies to tool-using turns whose purpose is otherwise unrelated to image generation, including GitHub investigation, bug analysis, Vercel checks, implementation work, or other tool work started from a screenshot/image message. If either decision is `NO`, image-generation/editing tools remain excluded from the candidate set for that turn.
+
+A screenshot/image message answered entirely without tools still follows the existing zero-tool path and does not require an execution card merely because visual input exists.
+
 ### Time information
 
 When the execution environment permits time estimates and the estimate is useful, include `トータル予想時間` and major-step estimates.
@@ -115,7 +138,7 @@ A cloud assistant that cannot run the local Runtime Execution Gate is not exempt
 
 Its protocol is:
 
-1. Send the execution card as the first visible message.
+1. Send the execution card as the first visible message. If the current user message contains or attaches an image/screenshot and this turn will use any tool, include `画像ツールロック解除: YES | NO` and `画像実行判定: YES | NO` in that card even when image execution is not intended.
 2. If an image-generation/editing tool is intended, first reset both image decisions to `NO`, then require an explicit current-message ChatGPT image-tool lock-unlock phrase and a separate explicit current-message image execution phrase. Include all four image proof fields in the same card. If either proof cannot be supplied, remove image tools from the candidate set and do not call them.
 3. Only then call the minimum read-only lookup needed to resolve latest `main`.
 4. Fetch and read the **full current `main` MASTER** from that resolved SHA before any other project-state or project-document read; if truncated, continue range/chunk reads until complete.
@@ -154,6 +177,8 @@ CI must keep tests that assert:
 - the current-turn bootstrap requires latest-main resolution followed by a full current-MASTER read before other project reads;
 - a prior-turn MASTER read, cached summary, attachment, existence/SHA check, or partial snippet cannot satisfy the MASTER-read gate;
 - image execution requires a current-message image-tool unlock plus a separate current-message YES execution decision and exact quoted phrases before image-tool routing;
+- **a screenshot/image-attached NOVELIGHT turn that will use any tool exposes `画像ツールロック解除: YES | NO` and `画像実行判定: YES | NO` in the execution card even when image execution is not intended;**
+- **an image/screenshot attachment without both current-message proofs surfaces `画像ツールロック解除: NO` and `画像実行判定: NO`, and quote fields are not fabricated;**
 - ordinary execution wording such as `作って`, `編集して`, `修正して`, and `改善して` cannot unlock image tools;
 - consultation/approval wording such as `文字をもう少し小さくしたい`, `両側にロゴでも入れる？`, `完璧`, `いいね`, and `これでOK` remains non-execution by itself;
 - a new user message invalidates both image permissions;
