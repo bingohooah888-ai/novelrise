@@ -120,10 +120,7 @@ test('bridge uses the shared stale waiting-run cleanup contract before claim', (
     /multiple stale bot-dispatched Production migration runs require manual investigation/
   );
   assert.match(cleanup, /status !== 'waiting'/);
-  assert.match(
-    cleanup,
-    /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/
-  );
+  assert.match(cleanup, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/);
   assert.match(
     cleanup,
     /active bot Production migration run is not uniquely backed by the prior bridge ledger/
