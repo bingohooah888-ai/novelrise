@@ -1,0 +1,129 @@
+name: NOVELIGHT Production Migration Preflight
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-production-migration
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Verify Production migration status and dry-run
+    if: >-
+      github.event.issue.number == 165 &&
+      github.event.issue.pull_request == null &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_MIGRATION_PREFLIGHT ')
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+
+    steps:
+      - name: Parse requested main SHA
+        id: request
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          prefix='NOVELIGHT_PRODUCTION_MIGRATION_PREFLIGHT '
+          requested_sha="${COMMENT_BODY#"$prefix"}"
+
+          if [ "$requested_sha" = "$COMMENT_BODY" ]; then
+            echo 'Production migration preflight ignored: command prefix mismatch.'
+            exit 1
+          fi
+
+          if ! [[ "$requested_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'Production migration preflight blocked: main SHA must be exactly 40 lowercase hex characters.'
+            exit 1
+          fi
+
+          echo "main_sha=$requested_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout latest main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Bind preflight to current main
+        env:
+          REQUESTED_MAIN_SHA: ${{ steps.request.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_main_sha="$(git rev-parse HEAD)"
+          if [ "$current_main_sha" != "$REQUESTED_MAIN_SHA" ]; then
+            echo 'Production migration preflight blocked: main changed after the request was created.'
+            echo "requested=$REQUESTED_MAIN_SHA"
+            echo "current=$current_main_sha"
+            exit 1
+          fi
+
+      - name: Verify required read-only credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          }
+          test -n "$SUPABASE_DB_PASSWORD" || {
+            echo 'PRODUCTION_DB_PASSWORD is not configured.'
+            exit 1
+          }
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Link Production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Capture Production migration status
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          supabase migration list --linked | tee /tmp/production-migration-list.txt
+          bash scripts/extract-supabase-pending.sh /tmp/production-migration-list.txt \
+            | tee /tmp/production-pending.txt
+
+          {
+            echo '### Production migration preflight'
+            echo
+            echo "- main SHA: $(git rev-parse HEAD)"
+            echo '- pending migrations:'
+            if [ -s /tmp/production-pending.txt ]; then
+              sed 's/^/  - /' /tmp/production-pending.txt
+            else
+              echo '  - none'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dry-run pending Production migrations
+        run: supabase db push --linked --dry-run
+
+      - name: Record successful read-only preflight
+        shell: bash
+        run: |
+          {
+            echo
+            echo '- status: PASS'
+            echo '- mutation: none'
+            echo '- dry-run: PASS'
+          } >> "$GITHUB_STEP_SUMMARY"
