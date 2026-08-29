@@ -286,6 +286,10 @@ jobs:
   repair:
     name: Execute fixed chat-approved baseline history repair
     needs: authorize
+    outputs:
+      mutation_result: ${{ steps.execution_phase.outputs.mutation_result }}
+      postcheck_result: ${{ steps.execution_phase.outputs.postcheck_result }}
+      failure_phase: ${{ steps.execution_phase.outputs.failure_phase }}
     runs-on: ubuntu-latest
     environment: production
     concurrency:
@@ -423,9 +427,11 @@ jobs:
         run: bash scripts/verify-production-initial-baseline-state.sh
 
       - name: Align verified Production baseline migration history
+        id: baseline_history_mutation
         run: supabase migration repair --status applied "$REPAIR_VERSION"
 
       - name: Verify production migration status after repair
+        id: migration_status_postcheck
         run: supabase migration list --linked
 
       - name: Verify production beta observability
@@ -448,6 +454,44 @@ jobs:
           fi
           bash scripts/publish-commit-status.sh "$state" production-beta-verification "$description"
 
+      - name: Classify Production execution phases
+        id: execution_phase
+        if: always()
+        env:
+          MUTATION_OUTCOME: ${{ steps.baseline_history_mutation.outcome }}
+          MIGRATION_POSTCHECK_OUTCOME: ${{ steps.migration_status_postcheck.outcome }}
+          INTEGRITY_POSTCHECK_OUTCOME: ${{ steps.production_beta_observability.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mutation_result='not-run'
+          postcheck_result='not-run'
+          failure_phase='pre-mutation'
+
+          if [ "$MUTATION_OUTCOME" = 'failure' ]; then
+            mutation_result='failure'
+            failure_phase='mutation'
+          elif [ "$MUTATION_OUTCOME" = 'success' ]; then
+            mutation_result='success'
+            if [ "$MIGRATION_POSTCHECK_OUTCOME" != 'success' ]; then
+              postcheck_result='failure'
+              failure_phase='postcheck:migration-status'
+            elif [ "$INTEGRITY_POSTCHECK_OUTCOME" != 'success' ]; then
+              postcheck_result='failure'
+              failure_phase='postcheck:integrity'
+            else
+              postcheck_result='success'
+              failure_phase='none'
+            fi
+          fi
+
+          {
+            echo "mutation_result=$mutation_result"
+            echo "postcheck_result=$postcheck_result"
+            echo "failure_phase=$failure_phase"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Enforce production beta verification result
         if: steps.production_beta_observability.outcome == 'failure'
         run: |
@@ -469,6 +513,9 @@ jobs:
       CHALLENGE: ${{ needs.authorize.outputs.challenge }}
       REPAIR_VERSION_OUTPUT: ${{ needs.authorize.outputs.repair_version }}
       REPAIR_RESULT: ${{ needs.repair.result }}
+      MUTATION_RESULT: ${{ needs.repair.outputs.mutation_result }}
+      POSTCHECK_RESULT: ${{ needs.repair.outputs.postcheck_result }}
+      FAILURE_PHASE: ${{ needs.repair.outputs.failure_phase }}
 
     steps:
       - name: Record Production execution result
@@ -477,9 +524,14 @@ jobs:
           set -euo pipefail
           marker='NOVELIGHT_PRODUCTION_EXECUTION_FAILED'
           result="$REPAIR_RESULT"
+          mutation_result="${MUTATION_RESULT:-unknown}"
+          postcheck_result="${POSTCHECK_RESULT:-unknown}"
+          failure_phase="${FAILURE_PHASE:-unknown}"
           if [ "$REPAIR_RESULT" = 'success' ]; then
             marker='NOVELIGHT_PRODUCTION_EXECUTED'
             result='success'
+          elif [ "$failure_phase" = 'none' ]; then
+            failure_phase='workflow'
           fi
 
           payload="$(
@@ -490,7 +542,10 @@ jobs:
               --arg repairVersion "$REPAIR_VERSION_OUTPUT" \
               --arg bridgeRunId "$GITHUB_RUN_ID" \
               --arg result "$result" \
-              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,repairVersion:$repairVersion,bridgeRunId:$bridgeRunId,result:$result}'
+              --arg mutation_result "$mutation_result" \
+              --arg postcheck_result "$postcheck_result" \
+              --arg failure_phase "$failure_phase" \
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,repairVersion:$repairVersion,bridgeRunId:$bridgeRunId,result:$result,mutation_result:$mutation_result,postcheck_result:$postcheck_result,failure_phase:$failure_phase}'
           )"
           body="$marker $payload"
           curl --silent --show-error --fail \

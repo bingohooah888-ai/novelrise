@@ -61,18 +61,20 @@ with checks as (
     *,
     signup_name_migration_applied
       and profile_names_present
-      and acquisition_claims_present
       and acquisition_rows_valid
-      and lifecycle_rows_present
       and lifecycle_rows_valid
-      and recent_activity_present
       and activity_rows_valid
       and acquisition_has_lifecycle
-      and acquisition_tokens_hashed as ok
+      and acquisition_tokens_hashed as integrity_ok,
+    acquisition_claims_present
+      and lifecycle_rows_present
+      and recent_activity_present as monitoring_ok
   from checks
 )
 select
-  ok,
+  integrity_ok as ok,
+  integrity_ok,
+  monitoring_ok,
   signup_name_migration_applied,
   profile_names_present,
   acquisition_claims_present,
