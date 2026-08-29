@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { selectStaleMigrationRunForCleanup } from '../scripts/cleanup-stale-production-migration-run.mjs';
+import {
+  cancelStaleProductionMigrationRun,
+  selectStaleMigrationRunForCleanup
+} from '../scripts/cleanup-stale-production-migration-run.mjs';
 
 const currentMain = 'b'.repeat(40);
 const oldMain = '9'.repeat(40);
@@ -42,6 +45,43 @@ function select({ runs = [], ledgerComments = [] } = {}) {
     manualWorkflow: 'supabase-production.yml'
   });
 }
+
+function jsonResponse(payload, status = 200) {
+  return {
+    status,
+    ok: status >= 200 && status < 300,
+    async json() {
+      return payload;
+    }
+  };
+}
+
+function cancellationRequest(sequence) {
+  const calls = [];
+  const states = [...sequence];
+
+  return {
+    calls,
+    request: async (url, _token, options = {}) => {
+      calls.push({ url, method: options.method ?? 'GET' });
+
+      if (options.method === 'POST' && url.endsWith('/cancel')) {
+        return jsonResponse({}, 202);
+      }
+      if (options.method === 'POST' && url.endsWith('/force-cancel')) {
+        return jsonResponse({}, 202);
+      }
+
+      assert.ok(
+        states.length > 0,
+        `Unexpected extra run-state poll for ${url}`
+      );
+      return jsonResponse(states.shift());
+    }
+  };
+}
+
+const noSleep = async () => {};
 
 test('no active manual run requires no cleanup', () => {
   assert.equal(select(), null);
@@ -133,4 +173,100 @@ test('exact old-main bridge evidence selects only the stale waiting bot run', ()
   });
 
   assert.equal(selected, staleRun);
+});
+
+test('standard cancellation succeeds without force cancellation', async () => {
+  const staleRun = botRun();
+  const fixture = cancellationRequest([
+    { ...staleRun },
+    { ...staleRun, status: 'completed', conclusion: 'cancelled' }
+  ]);
+
+  const result = await cancelStaleProductionMigrationRun({
+    request: fixture.request,
+    sleep: noSleep,
+    apiBase: 'https://api.github.test/repos/owner/repo',
+    staleRun,
+    token: 'test-token',
+    pollAttempts: 2,
+    pollDelayMs: 0
+  });
+
+  assert.deepEqual(result, { cancelledRunId: staleRun.id, forced: false });
+  assert.equal(
+    fixture.calls.some((call) => call.url.endsWith('/force-cancel')),
+    false
+  );
+});
+
+test('force cancellation is used only when standard cancellation leaves the exact run waiting', async () => {
+  const staleRun = botRun();
+  const fixture = cancellationRequest([
+    { ...staleRun },
+    { ...staleRun, status: 'completed', conclusion: 'cancelled' }
+  ]);
+
+  const result = await cancelStaleProductionMigrationRun({
+    request: fixture.request,
+    sleep: noSleep,
+    apiBase: 'https://api.github.test/repos/owner/repo',
+    staleRun,
+    token: 'test-token',
+    pollAttempts: 1,
+    pollDelayMs: 0
+  });
+
+  assert.deepEqual(result, { cancelledRunId: staleRun.id, forced: true });
+  assert.equal(
+    fixture.calls.filter((call) => call.url.endsWith('/force-cancel')).length,
+    1
+  );
+});
+
+test('force cancellation fails closed if the run stops waiting before fallback', async () => {
+  const staleRun = botRun();
+  const fixture = cancellationRequest([{ ...staleRun, status: 'in_progress' }]);
+
+  await assert.rejects(
+    () =>
+      cancelStaleProductionMigrationRun({
+        request: fixture.request,
+        sleep: noSleep,
+        apiBase: 'https://api.github.test/repos/owner/repo',
+        staleRun,
+        token: 'test-token',
+        pollAttempts: 1,
+        pollDelayMs: 0
+      }),
+    /changed to in_progress before force cancellation/
+  );
+
+  assert.equal(
+    fixture.calls.some((call) => call.url.endsWith('/force-cancel')),
+    false
+  );
+});
+
+test('force cancellation must itself reach cancelled or cleanup fails closed', async () => {
+  const staleRun = botRun();
+  const fixture = cancellationRequest([{ ...staleRun }, { ...staleRun }]);
+
+  await assert.rejects(
+    () =>
+      cancelStaleProductionMigrationRun({
+        request: fixture.request,
+        sleep: noSleep,
+        apiBase: 'https://api.github.test/repos/owner/repo',
+        staleRun,
+        token: 'test-token',
+        pollAttempts: 1,
+        pollDelayMs: 0
+      }),
+    /did not reach cancelled state after force cancellation/
+  );
+
+  assert.equal(
+    fixture.calls.filter((call) => call.url.endsWith('/force-cancel')).length,
+    1
+  );
 });
