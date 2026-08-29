@@ -143,15 +143,22 @@ This avoids creating a second approval prompt before the user has approved in ch
 
 PR #219's first migration bridge dispatched `.github/workflows/supabase-production.yml`, which can leave a bot-started run waiting at `production-approval`.
 
-The normal migration chat workflow may cancel that obsolete waiting run only under a narrow migration-specific contract:
+The cleanup contract is implemented once in `scripts/cleanup-stale-production-migration-run.mjs`. It is used both by the fresh read-only preflight path and by the normal chat-approved migration deploy path.
+
+For a fresh `NOVELIGHT_PRODUCTION_MIGRATION_PREFLIGHT <mainSha>` request, `.github/workflows/production-migration-preflight.yml` first binds the request to exact current `main` and runs the cleanup contract **outside** the shared `supabase-production-migration` lock. The cleanup job has no Supabase credentials and performs no database operation. Only after cleanup succeeds does the status/dry-run job enter the shared migration lock and access Production Supabase read-only.
+
+The cleanup may cancel an obsolete manual fallback run only under this narrow migration-specific contract:
 
 - any human-started active manual Supabase Production run causes a fail-closed stop;
+- any unexpected active bot event causes a fail-closed stop;
 - more than one active bot-started manual run causes a fail-closed stop;
-- a single bot-started run is cancellable only when issue #165 contains exactly one matching prior `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED` record for the old main and `supabase-production.yml` target;
-- a bot-started run already targeting the newly approved main causes a fail-closed duplicate stop;
-- cancellation must reach `cancelled` before the chat-approved deploy proceeds.
+- the single bot-started run must still be in GitHub Actions `waiting` state;
+- the waiting run must target an older SHA, never the newly requested/approved main;
+- issue #165 must contain exactly one matching prior `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED` record for that old SHA and `supabase-production.yml` target;
+- the prior dispatch must contain a valid one-time challenge, canonical non-baseline migration set, and bridge run id;
+- cancellation must reach `cancelled` before the caller proceeds.
 
-No unrelated Actions run may be cancelled through this cleanup.
+No unrelated Actions run may be cancelled through this cleanup. If no stale waiting run exists, cleanup is a no-op. The cleanup itself is not Production database mutation and cannot approve or execute a migration.
 
 ## Freshness and replay rules
 

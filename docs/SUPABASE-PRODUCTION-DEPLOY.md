@@ -52,6 +52,8 @@ Project ref `fiepaguycecrredwrcwx` はworkflow内で固定しており、secret�
 
 既存migrationが別理由でpendingになっている場合は、Issue #165の `NOVELIGHT_PRODUCTION_MIGRATION_PREFLIGHT <mainSha>` 経路でfresh read-only preflightを取り直してもよい。いずれの場合もEvidence Freshness Gateを満たすcurrent evidenceが必要。
 
+PR #219由来の旧bot-dispatched manual runが `production-approval` でwaitingのままshared migration lockを塞いでいる場合、preflight workflowはSupabaseへ触る前に `scripts/cleanup-stale-production-migration-run.mjs` を実行する。このcleanup jobはshared migration lockの外側で動き、Supabase credentialsを持たず、Production DB操作を行わない。Issue #165の旧bridge dispatchと一意に照合できる古いwaiting runが1件だけ存在する場合に限ってcancelし、そのcancel完了後にread-only status/dry-run jobがshared migration lockへ入る。人間起動run、複数bot run、waiting以外のbot run、current main向けrun、Ledger不一致はすべてfail closedする。
+
 ### 2. Chat approval
 
 read-only evidenceで対象が確定した後、ユーザーがChatGPT上でそのProduction migration deployを明示承認した場合だけ、assistantはProduction Approval Ledger issue #165へ次の形式のowner approval recordを1件記録できる。
@@ -75,9 +77,9 @@ NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE {"operation":"supabase-migration-d
 chat workflowはmutation前に次を行う。
 
 - current `main` が承認SHAと一致することを確認
+- PR #219以前のbridgeが残したbot-started `supabase-production.yml` waiting runがまだ1件だけ存在する場合、preflightと同じ共通cleanup scriptでIssue #165の対応する `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED` 記録と一意に照合できたときだけcancelする
+- human-started active manual run、複数のbot run、waiting以外のbot run、ledgerと一意に結び付かないrunがあれば停止する
 - approvalを `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED` としてone-time claimする
-- PR #219以前のbridgeが残したbot-started `supabase-production.yml` waiting runが1件だけ存在する場合、Issue #165の対応する `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED` 記録と一意に照合できたときだけcancelする
-- human-started active manual run、複数のbot run、ledgerと一意に結び付かないrunがあれば停止する
 - Production jobに入った後、current `main` と同じclaimをもう一度独立検証する
 - exactly approved SHAをcheckoutする
 - Production project refを固定値として使用する
@@ -149,6 +151,8 @@ manual deployは `production-approval` Environmentで1回だけ人間承認を�
 - 本番DB mutationには明示的な人間承認を必須にする。通常deployではSHA/version/challenge固定のchat approval、manual fallbackでは `production-approval` Environmentを使う。
 - 同一chat-approved操作にEnvironmentの二重承認を要求しない。
 - 自動main-push workflowはread-only plan/dry-runまでで、mutationしない。
+- preflightのstale-run cleanupはGitHub Actions stateだけを対象にし、Supabase DBやmigration historyを変更しない。
+- stale-run cleanupはpreflightとchat-approved deployで共通scriptを使い、人間起動run・複数bot run・waiting以外・current main・Ledger不一致をcancelしない。
 - chat-approved deployはclaim前とProduction境界でcurrent mainを再確認する。
 - mutation直前にpending migration完全一致とdry-runを再実行する。
 - approved migration集合と本番pendingが完全一致しなければdeployしない。

@@ -14,6 +14,10 @@ const automatic = await readFile(
   '.github/workflows/supabase-production-auto-deploy.yml',
   'utf8'
 );
+const cleanup = await readFile(
+  'scripts/cleanup-stale-production-migration-run.mjs',
+  'utf8'
+);
 
 test('migration deploy bridge accepts only the Issue 165 owner approval record', () => {
   assert.match(bridge, /issue_comment:/);
@@ -98,21 +102,31 @@ test('Production boundary re-validates exact claimed migration approval and scop
   assert.match(bridge, /bash scripts\/verify-supabase-pending\.sh/);
 });
 
-test('bridge safely removes only the old bot-dispatched waiting migration fallback', () => {
-  assert.match(bridge, /actor\.login != "github-actions\[bot\]"/);
+test('bridge uses the shared stale waiting-run cleanup contract before claim', () => {
+  assert.match(bridge, /Checkout approved main for shared cleanup contract/);
+  assert.match(bridge, /Verify cleanup contract checkout/);
   assert.match(
     bridge,
+    /node scripts\/cleanup-stale-production-migration-run\.mjs/
+  );
+  assert.doesNotMatch(bridge, /actions\/runs\/\$stale_run_id\/cancel/);
+
+  assert.match(
+    cleanup,
     /a human-started Supabase Production workflow is still active/
   );
-  assert.match(bridge, /bot_active_count" -gt 1/);
-  assert.match(bridge, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/);
-  assert.match(bridge, /targetWorkflow == \$targetWorkflow/);
   assert.match(
-    bridge,
+    cleanup,
+    /multiple stale bot-dispatched Production migration runs require manual investigation/
+  );
+  assert.match(cleanup, /status !== 'waiting'/);
+  assert.match(cleanup, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED/);
+  assert.match(
+    cleanup,
     /active bot Production migration run is not uniquely backed by the prior bridge ledger/
   );
-  assert.match(bridge, /actions\/runs\/\$stale_run_id\/cancel/);
-  assert.match(bridge, /run_conclusion" = 'cancelled'/);
+  assert.match(cleanup, /\/actions\/runs\/\$\{staleRun\.id\}\/cancel/);
+  assert.match(cleanup, /run\.conclusion === 'cancelled'/);
 });
 
 test('manual mutation fallback keeps GitHub Environment approval', () => {
