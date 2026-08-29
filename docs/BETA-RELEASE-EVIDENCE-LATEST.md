@@ -1,6 +1,6 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-08-28 JST**
+**Reconciled: 2026-08-29 JST**
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots. Newer same-scope workflow, approval-ledger, compare, or read-only live evidence supersedes older descriptive status when no later material change invalidates the proof.
 
@@ -115,7 +115,21 @@ Later changes through the GO decision baseline are control-plane, governance/doc
 
 ## Production authenticated path — PASS / CURRENT
 
-Existing successful Production Authenticated Smoke evidence remains accepted as `current` under `docs/EVIDENCE-FRESHNESS-GATE.md`. Later unrelated/skipped `issue_comment` invocations do not supersede the successful proof.
+Fresh decisive proof after PR #225 changed the Production Authenticated Smoke analytics assertion scope:
+
+- Workflow: `NOVELIGHT Production Authenticated Smoke`
+- Run: `33255018711` (#93)
+- Approved/current main: `4cfd79798fe7be79664263684baa1adbcf0832b8`
+- Fresh request/approval ledger: issue `#226`
+- Request: `auth-smoke-4cfd79798fe7be79664263684baa1adbcf0832b8-33254873677`
+- Conclusion: `success`
+- Authenticated Chrome smoke: `success`
+- Ephemeral Production smoke-data cleanup: `success`
+- Approval ledger: `CLAIMED` -> `CONSUMED`, `result=success`; issue closed as completed
+
+PR #225 changed the proof implementation by scoping LIGHT ANALYTICS assertions to the current work, so the prior Production Authenticated Smoke proof was treated as `refresh-required` for this scope. The fresh SHA-bound request, fresh owner Production approval, successful run #93, cleanup, and consumed ledger re-establish this scope as `current`.
+
+Issue #224 and run `33253486989` were not reused or rerun. This refresh did not perform a Production migration deploy, repair-history, `supabase migration repair`, the current external Stripe webhook proof, Secrets/Environment changes, or a Stripe live charge.
 
 ## Production external Stripe webhook delivery — PASS / CURRENT
 
