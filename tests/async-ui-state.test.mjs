@@ -16,6 +16,7 @@ const pricing = await readFile('pricing.html', 'utf8');
 const myNovels = await readFile('my-novels.html', 'utf8');
 const ranking = await readFile('ranking.html', 'utf8');
 const author = await readFile('author.html', 'utf8');
+const favorites = await readFile('favorites.html', 'utf8');
 
 test('search drops stale async results', () => {
   assert.match(search, /rows=await enrich\(rows\)/);
@@ -94,4 +95,18 @@ test('remaining list pages distinguish unavailable data from real empty states',
   assert.match(ranking, /if\(r\.error\)throw r\.error/);
   assert.match(author, /公開作品を読み込めませんでした/);
   assert.match(author, /if\(n\.error\)/);
+});
+
+test('favorites leaves loading state on auth and data failures', () => {
+  assert.match(favorites, /try\{const a=await client\.auth\.getSession\(\)/);
+  assert.match(favorites, /if\(a\.error\)throw a\.error/);
+  assert.match(favorites, /if\(r\.error\)throw r\.error/);
+  assert.match(
+    favorites,
+    /catch\(error\)\{console\.error\('favorites load failed'/
+  );
+  assert.match(
+    favorites,
+    /お気に入り作品を表示できませんでした。通信状況を確認して、もう一度お試しください。/
+  );
 });
