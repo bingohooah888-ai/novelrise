@@ -147,6 +147,123 @@ async function githubRequest(url, token, options = {}) {
   return response;
 }
 
+async function waitForCancelledRun({
+  request,
+  sleep,
+  apiBase,
+  staleRun,
+  token,
+  pollAttempts,
+  pollDelayMs,
+}) {
+  let lastRun = null;
+
+  for (let attempt = 0; attempt < pollAttempts; attempt += 1) {
+    const runResponse = await request(
+      `${apiBase}/actions/runs/${staleRun.id}`,
+      token
+    );
+    const run = await runResponse.json();
+    lastRun = run;
+
+    if (run.head_sha !== staleRun.head_sha) {
+      safetyStop('stale Production migration run head SHA changed unexpectedly.');
+    }
+
+    if (run.status === 'completed') {
+      if (run.conclusion === 'cancelled') {
+        return { cancelled: true, lastRun: run };
+      }
+
+      safetyStop(
+        `stale Production migration run completed with ${run.conclusion ?? 'unknown'} while cancellation was pending.`
+      );
+    }
+
+    await sleep(pollDelayMs);
+  }
+
+  return { cancelled: false, lastRun };
+}
+
+export async function cancelStaleProductionMigrationRun({
+  request = githubRequest,
+  sleep = delay,
+  apiBase,
+  staleRun,
+  token,
+  pollAttempts = 20,
+  pollDelayMs = 2000,
+}) {
+  if (!apiBase || !staleRun?.id || !/^[0-9a-f]{40}$/.test(staleRun.head_sha ?? '')) {
+    safetyStop('stale Production migration run cancellation input is invalid.');
+  }
+
+  const cancelResponse = await request(
+    `${apiBase}/actions/runs/${staleRun.id}/cancel`,
+    token,
+    { method: 'POST' }
+  );
+  if (cancelResponse.status !== 202) {
+    safetyStop(
+      `stale Production migration run cancellation returned HTTP ${cancelResponse.status}.`
+    );
+  }
+
+  const normalCancellation = await waitForCancelledRun({
+    request,
+    sleep,
+    apiBase,
+    staleRun,
+    token,
+    pollAttempts,
+    pollDelayMs,
+  });
+  if (normalCancellation.cancelled) {
+    console.log(
+      `Cancelled stale bridge-dispatched Production migration run ${staleRun.id}.`
+    );
+    return { cancelledRunId: staleRun.id, forced: false };
+  }
+
+  if (normalCancellation.lastRun?.status !== 'waiting') {
+    safetyStop(
+      `stale Production migration run changed to ${normalCancellation.lastRun?.status ?? 'unknown'} before force cancellation.`
+    );
+  }
+
+  const forceCancelResponse = await request(
+    `${apiBase}/actions/runs/${staleRun.id}/force-cancel`,
+    token,
+    { method: 'POST' }
+  );
+  if (forceCancelResponse.status !== 202) {
+    safetyStop(
+      `stale Production migration run force cancellation returned HTTP ${forceCancelResponse.status}.`
+    );
+  }
+
+  const forcedCancellation = await waitForCancelledRun({
+    request,
+    sleep,
+    apiBase,
+    staleRun,
+    token,
+    pollAttempts,
+    pollDelayMs,
+  });
+  if (forcedCancellation.cancelled) {
+    console.log(
+      `Force-cancelled stale bridge-dispatched Production migration run ${staleRun.id} after standard cancellation did not complete.`
+    );
+    return { cancelledRunId: staleRun.id, forced: true };
+  }
+
+  safetyStop(
+    'stale Production migration run did not reach cancelled state after force cancellation.'
+  );
+}
+
 export async function cleanupStaleProductionMigrationRun({
   token,
   repository,
@@ -201,33 +318,11 @@ export async function cleanupStaleProductionMigrationRun({
     return { cancelledRunId: null };
   }
 
-  const cancelResponse = await githubRequest(
-    `${apiBase}/actions/runs/${staleRun.id}/cancel`,
+  return cancelStaleProductionMigrationRun({
+    apiBase,
+    staleRun,
     token,
-    { method: 'POST' }
-  );
-  if (cancelResponse.status !== 202) {
-    safetyStop(
-      `stale Production migration run cancellation returned HTTP ${cancelResponse.status}.`
-    );
-  }
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const runResponse = await githubRequest(
-      `${apiBase}/actions/runs/${staleRun.id}`,
-      token
-    );
-    const run = await runResponse.json();
-    if (run.status === 'completed' && run.conclusion === 'cancelled') {
-      console.log(
-        `Cancelled stale bridge-dispatched Production migration run ${staleRun.id}.`
-      );
-      return { cancelledRunId: staleRun.id };
-    }
-    await delay(2000);
-  }
-
-  safetyStop('stale Production migration run did not reach cancelled state.');
+  });
 }
 
 async function main() {
