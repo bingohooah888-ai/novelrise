@@ -203,6 +203,30 @@ test('execution card contract requires both image proofs', () => {
   ]);
 });
 
+test('visual-input tool turns must expose image decisions even when image execution is not intended', () => {
+  assertIncludesAll(executionCardContract, [
+    'Visual-input image-decision visibility: mandatory deny-state proof',
+    'contains or attaches an image or screenshot and the assistant turn will use any tool',
+    '`画像ツールロック解除: YES | NO`',
+    '`画像実行判定: YES | NO`',
+    'even when the turn does not intend to call an image-generation or image-editing tool',
+    '`画像ツールロック解除: NO`',
+    '`画像実行判定: NO`',
+    'must not invent a supporting quote'
+  ]);
+
+  assertIncludesAll(contract, [
+    'Visual-input tool turns must expose NO/YES decisions even without image execution',
+    'contains or attaches an image or screenshot',
+    '`画像ツールロック解除: YES | NO`',
+    '`画像実行判定: YES | NO`',
+    'An image or screenshot attachment alone',
+    '`画像ツールロック解除: NO`',
+    '`画像実行判定: NO`',
+    'Do not fabricate authorizing quotes for a `NO` decision.'
+  ]);
+});
+
 test('runtime gate loads and enforces the dedicated image contract', () => {
   assert.match(runtimeGate, /docs\/IMAGE-EXECUTION-GATE\.md/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_LOCK/);
