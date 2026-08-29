@@ -44,29 +44,45 @@ check_route() {
   [ "$code" = '404' ]
 }
 
-first_route="$(head -n 1 "$routes_file")"
+required_stable_passes=2
+stable_passes=0
 converged=false
+last_failed_route=''
+
 for attempt in $(seq 1 24); do
-  if check_route "$first_route"; then
-    converged=true
-    break
+  all_routes_match=true
+  last_failed_route=''
+
+  while IFS= read -r route; do
+    [ -n "$route" ] || continue
+    if ! check_route "$route"; then
+      all_routes_match=false
+      last_failed_route="$route"
+      break
+    fi
+  done < "$routes_file"
+
+  if [ "$all_routes_match" = true ]; then
+    stable_passes=$((stable_passes + 1))
+    if [ "$stable_passes" -ge "$required_stable_passes" ]; then
+      converged=true
+      break
+    fi
+    echo "Production matched all checked routes; confirming stable convergence (${stable_passes}/${required_stable_passes})."
+  else
+    stable_passes=0
+    echo "Production has not converged for $last_failed_route yet (attempt ${attempt}/24)."
   fi
-  echo "Production has not converged for $first_route yet (attempt ${attempt}/24)."
-  sleep 10
+
+  if [ "$attempt" -lt 24 ]; then
+    sleep 10
+  fi
 done
 
 if [ "$converged" != true ]; then
-  echo "Production did not converge for $first_route within 4 minutes."
+  echo "Production did not reach stable convergence across all checked routes within the verification window."
   exit 1
 fi
-
-while IFS= read -r route; do
-  [ -n "$route" ] || continue
-  if ! check_route "$route"; then
-    echo "Production route differs from repository: $route"
-    exit 1
-  fi
-done < "$routes_file"
 
 html_targets=(/tmp/live-*.html)
 if [ -e "${html_targets[0]}" ] && grep -Eqi 'NovelRise|NOVELRISE' "${html_targets[@]}"; then
