@@ -35,13 +35,17 @@ export function resolveSearchCatalogState({
       throw new Error('Search reports 0 works but rendered novel cards.');
     }
     if (String(emptyText ?? '').trim() !== SEARCH_EMPTY_MESSAGE) {
-      throw new Error('Search empty catalog is missing the expected empty state.');
+      throw new Error(
+        'Search empty catalog is missing the expected empty state.'
+      );
     }
     return 'empty';
   }
 
   if (cardCount < 1) {
-    throw new Error(`Search reports ${total} works but rendered no novel cards.`);
+    throw new Error(
+      `Search reports ${total} works but rendered no novel cards.`
+    );
   }
 
   return 'populated';
