@@ -191,7 +191,7 @@ function waitForExposureConversion(page, eventType) {
       return false;
     }
     const body = response.request().postData();
-    return body?.includes(`"${eventType}"`) ?? false;
+    return body?.includes(`\"${eventType}\"`) ?? false;
   });
 }
 
@@ -415,14 +415,17 @@ test('authenticated beta-critical product flow works in target', async ({
       ).toBeVisible();
       await expect(authorPage.locator('#novelCount')).toHaveText('1');
       await expect(authorPage.locator('#favoriteTotal')).toHaveText('1');
-      await expect(
-        authorPage.locator('.work').filter({ hasText: novelTitle })
-      ).toBeVisible();
-      await expect(authorPage.locator('#impressions')).toHaveText('1');
-      await expect(authorPage.locator('#detail')).toHaveText('1');
-      await expect(authorPage.locator('#first')).toHaveText('1');
-      await expect(authorPage.locator('#second')).toHaveText('1');
-      await expect(authorPage.locator('#favorites')).toHaveText('1');
+
+      const work = authorPage.locator('.work').filter({ hasText: novelTitle });
+      await expect(work).toHaveCount(1);
+      await expect(work.locator('.work-title')).toHaveText(novelTitle);
+      await expect(work.locator('.funnel .step strong')).toHaveText([
+        '1',
+        '1',
+        '1',
+        '1',
+        '1'
+      ]);
     });
 
     await test.step('Verify Stripe Checkout without charging', async () => {
