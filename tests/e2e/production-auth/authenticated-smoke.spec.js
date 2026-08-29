@@ -191,7 +191,7 @@ function waitForExposureConversion(page, eventType) {
       return false;
     }
     const body = response.request().postData();
-    return body?.includes(`\"${eventType}\"`) ?? false;
+    return body?.includes(`"${eventType}"`) ?? false;
   });
 }
 
