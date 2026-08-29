@@ -97,6 +97,21 @@ The unlock quote and execution quote may be separate phrases inside the same cur
 
 This conditional image proof is in addition to the ordinary execution-card fields and does not replace them.
 
+### Visual-input tool turns must expose NO/YES decisions even without image execution
+
+If the current NOVELIGHT user message contains or attaches an image or screenshot **and the assistant turn will use any tool**, the execution card must display both current-message decisions before the first tool call:
+
+- `画像ツールロック解除: YES | NO`
+- `画像実行判定: YES | NO`
+
+This requirement applies even when the planned tools are GitHub, Vercel, file, analysis, or other non-image tools and the assistant does not intend to generate or edit an image.
+
+An image or screenshot attachment alone, without both explicit current-message proofs, must display `画像ツールロック解除: NO` and `画像実行判定: NO`. Those visible `NO` decisions keep image-generation/editing tools out of the candidate set before generic routing begins.
+
+Do not fabricate authorizing quotes for a `NO` decision. Quote fields are required only when the corresponding `YES` is being used as authorization for actual image-tool routing.
+
+A text-only response to an image/screenshot that uses no tools does not require an execution card solely because visual input was attached.
+
 ## 6. Tool-call attempt itself is execution
 
 Calling an image-generation or image-editing tool counts as image execution for this gate even when:
@@ -156,6 +171,8 @@ Before an image tool call it must:
 4. Send the ordinary current-turn Execution Card plus all four image proof fields.
 5. Only then allow the image tool into the candidate set.
 
+For a visual-input message that will use non-image tools, the cloud assistant must still surface `画像ツールロック解除: YES | NO` and `画像実行判定: YES | NO` in the current-turn execution card before those tools. If the attachment is the only image-related evidence, both values are `NO`.
+
 If either proof is missing, the turn remains text-only for image-related discussion. A previous-turn unlock, a previous-turn execution command, a screenshot, an approval reaction, or automatic routing can never substitute for the current-message proofs.
 
 ## 10. Regression requirement
@@ -171,6 +188,8 @@ CI must retain tests proving that:
 - either `NO` decision removes image tools before generic routing;
 - both permissions reset on every new user message;
 - the user-visible execution card requires both unlock and execution proof before image-tool routing;
+- **a visual-input NOVELIGHT message that will use any tool must expose both `画像ツールロック解除: YES | NO` and `画像実行判定: YES | NO` before the first tool call, even when image execution is not intended;**
+- **an image/screenshot attachment alone produces visible `NO` / `NO` decisions and does not require fabricated quote evidence;**
 - an attempted prohibited image-tool call is itself a gate violation even if no image renders.
 
 The purpose is to prevent consultation, approval, continuation, or ordinary editing language from being converted into ChatGPT-side image execution by inference, automatic routing, context carry-over, or convenience.
