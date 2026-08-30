@@ -32,9 +32,7 @@ test('publish path requires AI declaration and content-policy zoning', async () 
     read('post.html'),
     read('novel-edit.html'),
     read('episode-post.html'),
-    read(
-      'supabase/migrations/20260823170000_beta_launch_data_foundations.sql'
-    ),
+    read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql'),
     read('supabase/migrations/20260830163000_atomic_episode_publish.sql')
   ]);
   const [post, edit, episodePost, migration, atomicMigration] = files;
