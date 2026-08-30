@@ -95,4 +95,27 @@ $$;
 SQL
 echo '::endgroup::'
 
+echo '::group::Verify atomic episode publication behavior'
+"${REPLAY[@]}" -f supabase/checks/20260830163000_atomic_episode_publish_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/atomic-episode-publish.sql
+echo '::endgroup::'
+
+echo '::group::Verify atomic episode publication rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260830163000_atomic_episode_publish_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regprocedure(
+    'public.novelight_publish_episode_atomic(bigint,bigint,text,text)'
+  ) is not null then
+    raise exception 'Atomic episode publish rollback left the RPC behind';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260830163000_atomic_episode_publish_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260830163000_atomic_episode_publish.sql
+"${REPLAY[@]}" -f supabase/checks/20260830163000_atomic_episode_publish_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
