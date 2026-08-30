@@ -366,9 +366,7 @@ test('episode edit loads existing episode, saves changes, and renders the update
   await page.waitForURL(/\/episode\.html\?id=episode-edit-e2e$/);
   await expect(page.locator('#card h1')).toHaveText('編集後の第3話');
   await expect(page.locator('#card .number')).toHaveText('第3話');
-  await expect(page.locator('#card .content')).toHaveText(
-    '編集後の本文です。'
-  );
+  await expect(page.locator('#card .content')).toHaveText('編集後の本文です。');
   expect(pageErrors).toEqual([]);
 });
 
