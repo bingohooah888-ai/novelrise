@@ -28,14 +28,16 @@ test('password recovery is real and login redirect is allowlisted', async () => 
 });
 
 test('publish path requires AI declaration and content-policy zoning', async () => {
-  const [post, edit, episodePost, migration, atomicMigration] =
-    await Promise.all([
-      read('post.html'),
-      read('novel-edit.html'),
-      read('episode-post.html'),
-      read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql'),
-      read('supabase/migrations/20260830163000_atomic_episode_publish.sql')
-    ]);
+  const files = await Promise.all([
+    read('post.html'),
+    read('novel-edit.html'),
+    read('episode-post.html'),
+    read(
+      'supabase/migrations/20260823170000_beta_launch_data_foundations.sql'
+    ),
+    read('supabase/migrations/20260830163000_atomic_episode_publish.sql')
+  ]);
+  const [post, edit, episodePost, migration, atomicMigration] = files;
 
   for (const html of [post, edit]) {
     assert.match(html, /aiUsage/);
