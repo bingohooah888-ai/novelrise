@@ -39,7 +39,10 @@ test('signup catches auth rejections and restores retry', () => {
   assert.match(signup, /finally\{button\.disabled=false\}/);
   assert.match(signup, /async function runOptionalTelemetry/);
   assert.match(signup, /post-signup acquisition telemetry failed/);
-  assert.match(signup, /会員登録に失敗しました。入力内容を確認してください。/);
+  assert.match(
+    signup,
+    /会員登録に失敗しました。入力内容を確認してください。/
+  );
 });
 
 test('forgot-password keeps enumeration-safe recovery copy', () => {
