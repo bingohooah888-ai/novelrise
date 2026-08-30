@@ -29,12 +29,31 @@ function createStaleCustomerDependencies() {
     profileUpdates: [],
     subscriptionLists: []
   };
+  let attempt = null;
 
   const supabase = {
     auth: {
       async getUser() {
         return { data: { user }, error: null };
       }
+    },
+    async rpc(name, args) {
+      if (name === 'novelight_reserve_checkout_attempt') {
+        attempt ??= {
+          attempt_id: args.p_candidate_attempt_id,
+          plan: args.p_plan,
+          stripe_session_id: null,
+          expires_at: '2099-01-01T00:00:00.000Z'
+        };
+        return { data: [attempt], error: null };
+      }
+
+      if (name === 'novelight_attach_checkout_session') {
+        attempt.stripe_session_id = args.p_stripe_session_id;
+        return { data: true, error: null };
+      }
+
+      throw new Error(`Unexpected RPC ${name}`);
     },
     from(table) {
       assert.equal(table, 'profiles');
@@ -84,7 +103,11 @@ function createStaleCustomerDependencies() {
       sessions: {
         async create(payload) {
           calls.checkoutSessions.push(payload);
-          return { url: 'https://checkout.stripe.test/session' };
+          return {
+            id: 'cs_test_fresh',
+            url: 'https://checkout.stripe.test/session',
+            status: 'open'
+          };
         }
       }
     },
