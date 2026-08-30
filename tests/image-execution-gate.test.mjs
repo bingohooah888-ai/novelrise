@@ -29,6 +29,7 @@ function validUnlockArgs() {
   return [
     '--image-lock=unlocked',
     '--image-unlock-current-message-confirmed',
+    '--image-unlock-source=user-text',
     '--image-unlock-trigger=ChatGPTの画像ツールのロックを解除して'
   ];
 }
@@ -37,6 +38,7 @@ function validExecutionArgs() {
   return [
     '--image-execution=allowed',
     '--image-current-message-confirmed',
+    '--image-execution-source=user-text',
     '--image-trigger=この画像を編集して'
   ];
 }
@@ -83,6 +85,7 @@ test('ordinary image execution wording does not unlock image tools', () => {
         parseImage([
           '--image-lock=unlocked',
           '--image-unlock-current-message-confirmed',
+          '--image-unlock-source=user-text',
           `--image-unlock-trigger=${trigger}`
         ]),
       /must explicitly describe unlocking or re-enabling the image-tool lock/u
@@ -119,8 +122,47 @@ test('image phase fails closed without current-message lock-unlock evidence', ()
         '--image-lock=unlocked',
         '--image-unlock-current-message-confirmed'
       ]),
+    /source must be literal current-user text/u
+  );
+
+  assert.throws(
+    () =>
+      parseImage([
+        '--image-lock=unlocked',
+        '--image-unlock-current-message-confirmed',
+        '--image-unlock-source=user-text'
+      ]),
     /requires a verbatim current-message image-tool lock-unlock trigger/u
   );
+});
+
+test('image phase rejects screenshot, UI, assistant, and tool-output authorization sources', () => {
+  for (const source of ['screenshot', 'ocr', 'ui', 'assistant', 'tool-output']) {
+    assert.throws(
+      () =>
+        parseImage([
+          '--image-lock=unlocked',
+          '--image-unlock-current-message-confirmed',
+          `--image-unlock-source=${source}`,
+          '--image-unlock-trigger=ChatGPTの画像ツールのロックを解除して'
+        ]),
+      /source must be literal current-user text/u
+    );
+  }
+
+  for (const source of ['screenshot', 'ocr', 'ui', 'assistant', 'tool-output']) {
+    assert.throws(
+      () =>
+        parseImage([
+          ...validUnlockArgs(),
+          '--image-execution=allowed',
+          '--image-current-message-confirmed',
+          `--image-execution-source=${source}`,
+          '--image-trigger=この画像を編集して'
+        ]),
+      /source must be literal current-user text/u
+    );
+  }
 });
 
 test('explicit image execution without separate unlock fails closed', () => {
@@ -148,6 +190,17 @@ test('image phase still requires current-message execution evidence after unlock
         '--image-execution=allowed',
         '--image-current-message-confirmed'
       ]),
+    /source must be literal current-user text/u
+  );
+
+  assert.throws(
+    () =>
+      parseImage([
+        ...validUnlockArgs(),
+        '--image-execution=allowed',
+        '--image-current-message-confirmed',
+        '--image-execution-source=user-text'
+      ]),
     /requires a verbatim current-message execution trigger/u
   );
 
@@ -157,10 +210,45 @@ test('image phase still requires current-message execution evidence after unlock
         ...validUnlockArgs(),
         '--image-execution=allowed',
         '--image-current-message-confirmed',
+        '--image-execution-source=user-text',
         '--image-trigger=完璧'
       ]),
     /cannot be a continuation-only acknowledgement or approval reaction/u
   );
+});
+
+test('image execution trigger must explicitly name image work', () => {
+  for (const trigger of [
+    '動画を生成して',
+    '生成ボタン押していい？',
+    'Canvaで動画を生成して',
+    'この画面で次は？'
+  ]) {
+    assert.throws(
+      () =>
+        parseImage([
+          ...validUnlockArgs(),
+          '--image-execution=allowed',
+          '--image-current-message-confirmed',
+          '--image-execution-source=user-text',
+          `--image-trigger=${trigger}`
+        ]),
+      /explicitly request image\/photo\/illustration generation or editing|third-party UI\/navigation wording/u
+    );
+  }
+});
+
+test('third-party UI wording cannot bootstrap image authorization', () => {
+  assertIncludesAll(contract, [
+    'Raw-current-user-text authorization and third-party UI isolation',
+    'text visible inside a screenshot or image, including OCR-extracted text',
+    'third-party UI labels, menus, buttons, prompts, or generated content',
+    'An assistant instruction such as `Canvaの「動画を生成」を押してください`',
+    'The assistant\'s own wording can never bootstrap',
+    'Screenshot/UI-navigation hard deny',
+    '`生成ボタン押していい？`',
+    '`画像を作ろうとするな`'
+  ]);
 });
 
 test('image phase accepts separate explicit unlock and execution evidence', () => {
@@ -170,9 +258,11 @@ test('image phase accepts separate explicit unlock and execution evidence', () =
     required: true,
     lock: 'unlocked',
     unlockCurrentMessageConfirmed: true,
+    unlockSource: 'user-text',
     unlockTrigger: 'ChatGPTの画像ツールのロックを解除して',
     decision: 'allowed',
     currentMessageConfirmed: true,
+    executionSource: 'user-text',
     trigger: 'この画像を編集して'
   });
 });
@@ -187,9 +277,11 @@ test('non-image phases do not require image evidence', () => {
     required: false,
     lock: '',
     unlockCurrentMessageConfirmed: false,
+    unlockSource: '',
     unlockTrigger: '',
     decision: '',
     currentMessageConfirmed: false,
+    executionSource: '',
     trigger: ''
   });
 });
@@ -231,9 +323,13 @@ test('runtime gate loads and enforces the dedicated image contract', () => {
   assert.match(runtimeGate, /docs\/IMAGE-EXECUTION-GATE\.md/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_LOCK/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_UNLOCK_CURRENT_MESSAGE_CONFIRMED/);
+  assert.match(runtimeGate, /NOVELIGHT_IMAGE_UNLOCK_SOURCE/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_UNLOCK_TRIGGER/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_EXECUTION/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_CURRENT_MESSAGE_CONFIRMED/);
+  assert.match(runtimeGate, /NOVELIGHT_IMAGE_EXECUTION_SOURCE/);
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_TRIGGER/);
-  assert.match(runtimeGate, /version: 8/);
+  assert.match(runtimeGate, /THIRD_PARTY_UI_TRIGGER_PATTERN/);
+  assert.match(runtimeGate, /EXPLICIT_IMAGE_EXECUTION_PATTERN/);
+  assert.match(runtimeGate, /version: 9/);
 });
