@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { getAppBaseUrl } from './app-base-url.js';
 
 const PRICE_ENV_BY_PLAN = Object.freeze({
@@ -19,6 +21,11 @@ const PORTAL_STATUSES = new Set([
   'unpaid',
   'incomplete',
   'paused'
+]);
+
+const CHECKOUT_ATTEMPT_CONFLICT_MESSAGES = new Set([
+  'checkout_attempt_plan_conflict',
+  'checkout_profile_not_free'
 ]);
 
 class BillingStateConflictError extends Error {
@@ -53,6 +60,31 @@ function isMissingStripeResource(error) {
 
 function isMissingStripeCustomer(error) {
   return isMissingStripeResource(error) && error?.param === 'customer';
+}
+
+function firstRpcRow(data) {
+  return Array.isArray(data) ? (data[0] ?? null) : (data ?? null);
+}
+
+function checkoutAttemptConflict(error) {
+  const message = typeof error?.message === 'string' ? error.message : '';
+  return CHECKOUT_ATTEMPT_CONFLICT_MESSAGES.has(message);
+}
+
+function checkoutAttemptReason(error) {
+  return error?.message === 'checkout_attempt_plan_conflict'
+    ? 'checkout_attempt_plan_conflict'
+    : 'billing_state_changed';
+}
+
+function checkoutExpiresAtEpoch(attempt) {
+  const milliseconds = Date.parse(attempt?.expires_at);
+
+  if (!Number.isFinite(milliseconds)) {
+    throw new Error('Checkout attempt has an invalid expiration');
+  }
+
+  return Math.floor(milliseconds / 1000);
 }
 
 async function getProfile(supabase, userId) {
@@ -143,6 +175,250 @@ async function resolveCustomerUsage(stripe, supabase, profile, userId) {
       usePortal: false
     };
   }
+}
+
+async function reserveCheckoutAttempt(supabase, { userId, plan }) {
+  const { data, error } = await supabase.rpc(
+    'novelight_reserve_checkout_attempt',
+    {
+      p_user_id: userId,
+      p_plan: plan,
+      p_candidate_attempt_id: randomUUID()
+    }
+  );
+
+  if (error) {
+    if (checkoutAttemptConflict(error)) {
+      throw new BillingStateConflictError(
+        'Checkout attempt conflicts with current billing state',
+        {
+          reason: checkoutAttemptReason(error),
+          userId
+        }
+      );
+    }
+
+    throw new Error(`Checkout attempt reservation failed: ${error.message}`);
+  }
+
+  const attempt = firstRpcRow(data);
+
+  if (
+    !attempt?.attempt_id ||
+    attempt.plan !== plan ||
+    !attempt.expires_at
+  ) {
+    throw new Error('Checkout attempt reservation returned invalid state');
+  }
+
+  return attempt;
+}
+
+async function attachCheckoutSession(
+  supabase,
+  { userId, attemptId, sessionId }
+) {
+  const { data, error } = await supabase.rpc(
+    'novelight_attach_checkout_session',
+    {
+      p_user_id: userId,
+      p_attempt_id: attemptId,
+      p_stripe_session_id: sessionId
+    }
+  );
+
+  if (error) {
+    throw new Error(`Checkout session attachment failed: ${error.message}`);
+  }
+
+  if (data !== true) {
+    throw new Error('Checkout session attachment was not confirmed');
+  }
+}
+
+async function releaseCheckoutAttempt(supabase, { userId, attemptId }) {
+  const { error } = await supabase.rpc('novelight_release_checkout_attempt', {
+    p_user_id: userId,
+    p_attempt_id: attemptId
+  });
+
+  if (error) {
+    throw new Error(`Checkout attempt release failed: ${error.message}`);
+  }
+}
+
+function buildCheckoutPayload({
+  customer,
+  email,
+  env,
+  expiresAt,
+  plan,
+  priceId,
+  userId
+}) {
+  return {
+    mode: 'subscription',
+    ...(customer ? { customer } : { customer_email: email }),
+    client_reference_id: userId,
+    metadata: {
+      userId,
+      plan
+    },
+    subscription_data: {
+      metadata: {
+        userId,
+        plan
+      }
+    },
+    line_items: [
+      {
+        price: priceId,
+        quantity: 1
+      }
+    ],
+    custom_text: {
+      submit: {
+        message: CHECKOUT_LEGAL_NOTICE_BY_PLAN[plan]
+      }
+    },
+    expires_at: expiresAt,
+    success_url: `${getAppBaseUrl(env)}/mypage.html?checkout=success`,
+    cancel_url: `${getAppBaseUrl(env)}/pricing.html?checkout=cancel`
+  };
+}
+
+async function createReservedCheckoutSession({
+  stripe,
+  supabase,
+  env,
+  userId,
+  email,
+  plan,
+  priceId,
+  customer,
+  attempt
+}) {
+  const session = await stripe.checkout.sessions.create(
+    buildCheckoutPayload({
+      customer,
+      email,
+      env,
+      expiresAt: checkoutExpiresAtEpoch(attempt),
+      plan,
+      priceId,
+      userId
+    }),
+    {
+      idempotencyKey: `novelight-checkout:${userId}:${attempt.attempt_id}`
+    }
+  );
+
+  if (!session?.id || !session?.url) {
+    throw new Error('Stripe Checkout session is missing required fields');
+  }
+
+  await attachCheckoutSession(supabase, {
+    userId,
+    attemptId: attempt.attempt_id,
+    sessionId: session.id
+  });
+
+  return session;
+}
+
+async function getOrCreateCheckoutSession({
+  stripe,
+  supabase,
+  env,
+  userId,
+  email,
+  plan,
+  priceId,
+  customer,
+  retryAfterExpired = true
+}) {
+  const attempt = await reserveCheckoutAttempt(supabase, { userId, plan });
+
+  if (!attempt.stripe_session_id) {
+    return createReservedCheckoutSession({
+      stripe,
+      supabase,
+      env,
+      userId,
+      email,
+      plan,
+      priceId,
+      customer,
+      attempt
+    });
+  }
+
+  let existingSession;
+
+  try {
+    existingSession = await stripe.checkout.sessions.retrieve(
+      attempt.stripe_session_id
+    );
+  } catch (error) {
+    if (!isMissingStripeResource(error)) {
+      throw error;
+    }
+
+    if (!retryAfterExpired) {
+      throw new Error('Stripe Checkout session disappeared during retry');
+    }
+
+    await releaseCheckoutAttempt(supabase, {
+      userId,
+      attemptId: attempt.attempt_id
+    });
+
+    return getOrCreateCheckoutSession({
+      stripe,
+      supabase,
+      env,
+      userId,
+      email,
+      plan,
+      priceId,
+      customer,
+      retryAfterExpired: false
+    });
+  }
+
+  if (existingSession?.status === 'open' && existingSession.url) {
+    return existingSession;
+  }
+
+  if (existingSession?.status === 'expired' && retryAfterExpired) {
+    await releaseCheckoutAttempt(supabase, {
+      userId,
+      attemptId: attempt.attempt_id
+    });
+
+    return getOrCreateCheckoutSession({
+      stripe,
+      supabase,
+      env,
+      userId,
+      email,
+      plan,
+      priceId,
+      customer,
+      retryAfterExpired: false
+    });
+  }
+
+  throw new BillingStateConflictError(
+    'Checkout session is no longer safely reusable',
+    {
+      reason:
+        existingSession?.status === 'complete'
+          ? 'checkout_completed_pending_sync'
+          : 'checkout_session_state_conflict',
+      userId
+    }
+  );
 }
 
 export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
@@ -237,33 +513,15 @@ export function createCheckoutHandler({ stripe, supabase, env = process.env }) {
         }
       }
 
-      const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        ...(customer ? { customer } : { customer_email: email }),
-        client_reference_id: userId,
-        metadata: {
-          userId,
-          plan
-        },
-        subscription_data: {
-          metadata: {
-            userId,
-            plan
-          }
-        },
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1
-          }
-        ],
-        custom_text: {
-          submit: {
-            message: CHECKOUT_LEGAL_NOTICE_BY_PLAN[plan]
-          }
-        },
-        success_url: `${getAppBaseUrl(env)}/mypage.html?checkout=success`,
-        cancel_url: `${getAppBaseUrl(env)}/pricing.html?checkout=cancel`
+      const session = await getOrCreateCheckoutSession({
+        stripe,
+        supabase,
+        env,
+        userId,
+        email,
+        plan,
+        priceId,
+        customer
       });
 
       return res.status(200).json({
