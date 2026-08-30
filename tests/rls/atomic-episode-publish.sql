@@ -17,14 +17,20 @@ insert into public.novels (
   description,
   genre,
   status,
-  created_at
+  created_at,
+  ai_usage,
+  content_policy_ack,
+  content_policy_version
 ) values (
   '33333333-3333-3333-3333-333333333333',
   'Atomic publish success',
   'Atomic publication success fixture',
   '現代ファンタジー',
   'draft',
-  '2026-08-01T00:00:00Z'
+  '2026-08-01T00:00:00Z',
+  'human',
+  true,
+  'beta-2026-08-23'
 );
 
 -- The happy path runs as the real authenticated role, proving that the
@@ -86,14 +92,20 @@ insert into public.novels (
   description,
   genre,
   status,
-  created_at
+  created_at,
+  ai_usage,
+  content_policy_ack,
+  content_policy_version
 ) values (
   '33333333-3333-3333-3333-333333333333',
   'Atomic publish rollback',
   'Atomic publication rollback fixture',
   '現代ファンタジー',
   'draft',
-  '2026-08-02T00:00:00Z'
+  '2026-08-02T00:00:00Z',
+  'human',
+  true,
+  'beta-2026-08-23'
 );
 
 insert into public.episodes (
