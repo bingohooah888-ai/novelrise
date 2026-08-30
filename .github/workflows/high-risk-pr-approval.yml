@@ -8,7 +8,7 @@ permissions:
   actions: write
   contents: read
   issues: read
-  pull-requests: read
+  pull-requests: write
 
 concurrency:
   group: novelight-high-risk-pr-approval-${{ github.event.issue.number }}
@@ -87,6 +87,53 @@ jobs:
 
           echo "head_sha=$approved_sha" >> "$GITHUB_OUTPUT"
           echo "Validated owner approval for PR #$PR_NUMBER at $approved_sha."
+
+      - name: Mark approved draft PR ready for review
+        shell: bash
+        env:
+          HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
+            > /tmp/pr-ready-before.json
+
+          jq -e \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg sha "$HEAD_SHA" \
+            '.state == "open" and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha' \
+            /tmp/pr-ready-before.json >/dev/null || {
+              echo 'Safety stop: PR changed after approval validation.'
+              exit 1
+            }
+
+          if [ "$(jq -r '.draft' /tmp/pr-ready-before.json)" = 'true' ]; then
+            gh pr ready "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"
+          else
+            echo "PR #$PR_NUMBER is already ready for review."
+          fi
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
+            > /tmp/pr-ready-after.json
+
+          jq -e \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg sha "$HEAD_SHA" \
+            '.state == "open" and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha and .draft == false' \
+            /tmp/pr-ready-after.json >/dev/null || {
+              echo 'Safety stop: ready-for-review transition failed or PR head changed.'
+              exit 1
+            }
+
+          echo "PR #$PR_NUMBER is ready for review at approved head $HEAD_SHA."
 
       - name: Re-run failed NOVELIGHT CI automatically
         shell: bash
