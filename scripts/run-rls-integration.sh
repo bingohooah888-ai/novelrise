@@ -23,6 +23,9 @@ run_sql supabase/checks/20260823073000_billing_permissions_and_novel_limits_prec
 run_sql supabase/migrations/20260823073000_enforce_billing_permissions_and_novel_limits.sql
 run_sql supabase/checks/20260823074300_stripe_subscription_state_precheck.sql
 run_sql supabase/migrations/20260823074300_add_stripe_subscription_state.sql
+run_sql supabase/checks/20260830214000_checkout_attempt_reservations_precheck.sql
+run_sql supabase/migrations/20260830214000_checkout_attempt_reservations.sql
+run_sql tests/rls/checkout-attempt-reservations.sql
 run_sql tests/rls/read-access.sql
 run_sql tests/rls/write-access.sql
 run_sql tests/rls/billing-and-plan-limits.sql
@@ -57,6 +60,7 @@ run_sql tests/rls/exposure-funnel-retention-rollback.sql
 run_sql supabase/checks/20260822_content_write_rls_postcheck.sql
 run_sql supabase/checks/20260823073000_billing_permissions_and_novel_limits_postcheck.sql
 run_sql supabase/checks/20260823074300_stripe_subscription_state_postcheck.sql
+run_sql supabase/checks/20260830214000_checkout_attempt_reservations_postcheck.sql
 run_sql supabase/checks/20260823083500_light_seed_mvp_postcheck.sql
 run_sql supabase/checks/20260823112000_exposure_allocation_postcheck.sql
 run_sql supabase/checks/20260823115300_exposure_funnel_postcheck.sql
@@ -66,6 +70,8 @@ run_sql supabase/rollback/20260823112000_exposure_allocation_rollback.sql
 run_sql tests/rls/exposure-rollback.sql
 run_sql supabase/rollback/20260823083500_light_seed_mvp_rollback.sql
 run_sql tests/rls/light-seed-rollback.sql
+run_sql supabase/rollback/20260830214000_checkout_attempt_reservations_rollback.sql
+run_sql tests/rls/checkout-attempt-reservations-rollback.sql
 run_sql supabase/rollback/20260823074300_add_stripe_subscription_state_rollback.sql
 run_sql tests/rls/stripe-lifecycle-rollback.sql
 run_sql supabase/rollback/20260823073000_enforce_billing_permissions_and_novel_limits_rollback.sql
