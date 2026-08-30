@@ -356,30 +356,17 @@ async function getOrCreateCheckoutSession({
       attempt.stripe_session_id
     );
   } catch (error) {
-    if (!isMissingStripeResource(error)) {
-      throw error;
+    if (isMissingStripeResource(error)) {
+      throw new BillingStateConflictError(
+        'Stored Checkout session cannot be verified',
+        {
+          reason: 'checkout_session_missing',
+          userId
+        }
+      );
     }
 
-    if (!retryAfterExpired) {
-      throw new Error('Stripe Checkout session disappeared during retry');
-    }
-
-    await releaseCheckoutAttempt(supabase, {
-      userId,
-      attemptId: attempt.attempt_id
-    });
-
-    return getOrCreateCheckoutSession({
-      stripe,
-      supabase,
-      env,
-      userId,
-      email,
-      plan,
-      priceId,
-      customer,
-      retryAfterExpired: false
-    });
+    throw error;
   }
 
   if (existingSession?.status === 'open' && existingSession.url) {
