@@ -124,3 +124,30 @@ test('workflow remains read-only', () => {
     assert.equal(workflow.includes(fragment), false);
   }
 });
+
+test('workflow nominal schedule gap is at most six hours', () => {
+  const workflowPath = new URL(
+    '../.github/workflows/production-backup-freshness.yml',
+    import.meta.url
+  );
+  const workflow = readFileSync(workflowPath, 'utf8');
+  const cronMatch = workflow.match(/cron:\s*'(\d{1,2}) ([\d,]+) \* \* \*'/);
+
+  assert.ok(cronMatch, 'backup freshness cron schedule must be explicit');
+
+  const minute = Number(cronMatch[1]);
+  const hours = cronMatch[2]
+    .split(',')
+    .map(Number)
+    .sort((a, b) => a - b);
+  const gaps = hours.map((hour, index) => {
+    const nextHour = hours[(index + 1) % hours.length];
+    return (nextHour - hour + 24) % 24;
+  });
+
+  assert.equal(minute, 30);
+  assert.deepEqual(hours, [3, 9, 15, 21]);
+  assert.ok(Math.max(...gaps) <= 6);
+  assert.equal(hours.includes(21), true);
+  assert.equal(workflow.includes("cron: '45 20 * * *'"), false);
+});
