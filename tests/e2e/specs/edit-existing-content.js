@@ -197,7 +197,9 @@ test('novel edit loads existing work, saves changes, and renders the update', as
 
   await page.goto('/novel-edit.html?id=novel-edit-e2e');
   await expect(page.locator('#title')).toHaveValue('編集前の作品');
-  await expect(page.locator('#description')).toHaveValue('編集前のあらすじです。');
+  await expect(page.locator('#description')).toHaveValue(
+    '編集前のあらすじです。'
+  );
   await expect(page.locator('#aiUsage')).toHaveValue('human');
   await expect(page.locator('#save')).toBeEnabled();
 
@@ -242,7 +244,9 @@ test('novel edit loads existing work, saves changes, and renders the update', as
 
   await page.waitForURL(/\/novel\.html\?id=novel-edit-e2e$/);
   await expect(page.locator('.title')).toHaveText('編集後の作品');
-  await expect(page.locator('.description')).toHaveText('編集後のあらすじです。');
+  await expect(page.locator('.description')).toHaveText(
+    '編集後のあらすじです。'
+  );
   await expect(page.locator('.tag.ai')).toHaveText('AI支援');
   expect(pageErrors).toEqual([]);
 });
@@ -279,9 +283,13 @@ test('novel edit recovers after an async save failure', async ({ page }) => {
     '保存できませんでした。時間をおいて再度お試しください。'
   );
   await expect(page.locator('#save')).toBeEnabled();
-  await expect(page).toHaveURL(/\/novel-edit\.html\?id=novel-edit-failure-e2e$/);
+  await expect(page).toHaveURL(
+    /\/novel-edit\.html\?id=novel-edit-failure-e2e$/
+  );
 
-  const calls = await page.evaluate(() => globalThis.__NOVELIGHT_EDIT_E2E_CALLS__);
+  const calls = await page.evaluate(
+    () => globalThis.__NOVELIGHT_EDIT_E2E_CALLS__
+  );
   expect(updateEvidenceFor('novels', calls).update).toBeTruthy();
   expect(pageErrors).toEqual([]);
 });
@@ -358,7 +366,9 @@ test('episode edit loads existing episode, saves changes, and renders the update
   await page.waitForURL(/\/episode\.html\?id=episode-edit-e2e$/);
   await expect(page.locator('#card h1')).toHaveText('編集後の第3話');
   await expect(page.locator('#card .number')).toHaveText('第3話');
-  await expect(page.locator('#card .content')).toHaveText('編集後の本文です。');
+  await expect(page.locator('#card .content')).toHaveText(
+    '編集後の本文です。'
+  );
   expect(pageErrors).toEqual([]);
 });
 
@@ -395,7 +405,9 @@ test('episode edit recovers after an async save failure', async ({ page }) => {
     /\/episode-edit\.html\?id=episode-edit-failure-e2e$/
   );
 
-  const calls = await page.evaluate(() => globalThis.__NOVELIGHT_EDIT_E2E_CALLS__);
+  const calls = await page.evaluate(
+    () => globalThis.__NOVELIGHT_EDIT_E2E_CALLS__
+  );
   expect(updateEvidenceFor('episodes', calls).update).toBeTruthy();
   expect(pageErrors).toEqual([]);
 });
