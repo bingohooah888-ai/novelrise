@@ -203,11 +203,7 @@ async function reserveCheckoutAttempt(supabase, { userId, plan }) {
 
   const attempt = firstRpcRow(data);
 
-  if (
-    !attempt?.attempt_id ||
-    attempt.plan !== plan ||
-    !attempt.expires_at
-  ) {
+  if (!attempt?.attempt_id || attempt.plan !== plan || !attempt.expires_at) {
     throw new Error('Checkout attempt reservation returned invalid state');
   }
 
