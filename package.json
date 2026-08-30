@@ -20,7 +20,7 @@
     "node": "24.x"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.0",
+    "@supabase/supabase-js": "^2.112.4",
     "stripe": "^20.4.0"
   },
   "devDependencies": {
