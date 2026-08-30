@@ -17,10 +17,7 @@ test('login catches auth rejections and isolates telemetry', () => {
     login,
     /catch\(error\)\{\s*console\.error\('login request failed'/
   );
-  assert.match(
-    login,
-    /finally\{\s*if\(!authenticated\)button\.disabled=false/
-  );
+  assert.match(login, /finally\{\s*if\(!authenticated\)button\.disabled=false/);
   assert.match(login, /async function runOptionalTelemetry/);
   assert.match(login, /post-login acquisition telemetry failed/);
   assert.match(
@@ -39,10 +36,7 @@ test('signup catches auth rejections and restores retry', () => {
   assert.match(signup, /finally\{button\.disabled=false\}/);
   assert.match(signup, /async function runOptionalTelemetry/);
   assert.match(signup, /post-signup acquisition telemetry failed/);
-  assert.match(
-    signup,
-    /会員登録に失敗しました。入力内容を確認してください。/
-  );
+  assert.match(signup, /会員登録に失敗しました。入力内容を確認してください。/);
 });
 
 test('forgot-password keeps enumeration-safe recovery copy', () => {
@@ -73,10 +67,7 @@ test('reset-password catches async failures and isolates sign-out', () => {
     resetPassword,
     /再設定リンクを確認できませんでした。通信状態を確認し、ページを再読み込みしてお試しください。/
   );
-  assert.match(
-    resetPassword,
-    /if\(!recoveryReady\|\|button\.disabled\)return/
-  );
+  assert.match(resetPassword, /if\(!recoveryReady\|\|button\.disabled\)return/);
   assert.match(resetPassword, /const \{error\}=await client\.auth\.updateUser/);
   assert.match(
     resetPassword,
