@@ -75,14 +75,12 @@ function createDependencies({
           };
         }
 
-        const attempt =
-          current ??
-          {
-            attempt_id: args.p_candidate_attempt_id,
-            plan: args.p_plan,
-            stripe_session_id: null,
-            expires_at: '2099-01-01T00:00:00.000Z'
-          };
+        const attempt = current ?? {
+          attempt_id: args.p_candidate_attempt_id,
+          plan: args.p_plan,
+          stripe_session_id: null,
+          expires_at: '2099-01-01T00:00:00.000Z'
+        };
         attempts.set(args.p_user_id, attempt);
         return { data: [attempt], error: null };
       }
@@ -90,7 +88,10 @@ function createDependencies({
       if (name === 'novelight_attach_checkout_session') {
         const current = attempts.get(args.p_user_id);
         if (!current || current.attempt_id !== args.p_attempt_id) {
-          return { data: null, error: { message: 'checkout_attempt_not_current' } };
+          return {
+            data: null,
+            error: { message: 'checkout_attempt_not_current' }
+          };
         }
         current.stripe_session_id = args.p_stripe_session_id;
         return { data: true, error: null };
