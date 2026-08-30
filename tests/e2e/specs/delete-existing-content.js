@@ -295,7 +295,9 @@ test('novel deletion recovers after an async failure', async ({ page }) => {
   ]);
 });
 
-test('episode deletion cancel leaves the episode untouched', async ({ page }) => {
+test('episode deletion cancel leaves the episode untouched', async ({
+  page
+}) => {
   await installDeletionSupabaseStub(page, episodeState());
   await page.goto('/episode.html?id=episode-delete-e2e');
   await expect(page.locator('#delete')).toBeVisible();
