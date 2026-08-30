@@ -28,12 +28,14 @@ test('password recovery is real and login redirect is allowlisted', async () => 
 });
 
 test('publish path requires AI declaration and content-policy zoning', async () => {
-  const [post, edit, episodePost, migration] = await Promise.all([
-    read('post.html'),
-    read('novel-edit.html'),
-    read('episode-post.html'),
-    read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql')
-  ]);
+  const [post, edit, episodePost, migration, atomicMigration] =
+    await Promise.all([
+      read('post.html'),
+      read('novel-edit.html'),
+      read('episode-post.html'),
+      read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql'),
+      read('supabase/migrations/20260830163000_atomic_episode_publish.sql')
+    ]);
 
   for (const html of [post, edit]) {
     assert.match(html, /aiUsage/);
@@ -44,7 +46,8 @@ test('publish path requires AI declaration and content-policy zoning', async () 
   }
 
   assert.match(post, /status:'draft'/);
-  assert.match(episodePost, /update\(\{status:'published'\}\)/);
+  assert.match(episodePost, /novelight_publish_episode_atomic/);
+  assert.match(atomicMigration, /set status = 'published'/);
   assert.match(migration, /enforce_novel_beta_classification/);
   assert.match(
     migration,
