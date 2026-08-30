@@ -131,9 +131,7 @@ test('workflow nominal schedule gap is at most six hours', () => {
     import.meta.url
   );
   const workflow = readFileSync(workflowPath, 'utf8');
-  const cronMatch = workflow.match(
-    /cron:\s*'(\d{1,2}) ([\d,]+) \* \* \*'/
-  );
+  const cronMatch = workflow.match(/cron:\s*'(\d{1,2}) ([\d,]+) \* \* \*'/);
 
   assert.ok(cronMatch, 'backup freshness cron schedule must be explicit');
 
