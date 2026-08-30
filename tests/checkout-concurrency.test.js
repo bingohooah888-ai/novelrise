@@ -302,3 +302,40 @@ test('an expired stored Checkout session is released and replaced once', async (
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   );
 });
+
+test('a missing stored Checkout session fails closed without creating a replacement', async (t) => {
+  t.mock.method(console, 'error', () => {});
+
+  const missingSession = Object.assign(new Error('No such checkout.session'), {
+    type: 'StripeInvalidRequestError',
+    code: 'resource_missing',
+    param: 'session'
+  });
+  const dependencies = createConcurrentDependencies({
+    initialAttempt: {
+      attempt_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      plan: 'standard',
+      stripe_session_id: 'cs_test_missing',
+      expires_at: '2099-01-01T00:00:00.000Z'
+    },
+    retrieveSession: async () => {
+      throw missingSession;
+    }
+  });
+  const handler = createCheckoutHandler(dependencies);
+  const response = createResponse();
+
+  await handler(request(), response.res);
+
+  assert.equal(response.state.statusCode, 409);
+  assert.deepEqual(response.state.body, {
+    error: 'Billing account needs repair',
+    code: 'billing_state_conflict'
+  });
+  assert.equal(dependencies.calls.releases, 0);
+  assert.equal(dependencies.calls.backendCreates, 0);
+  assert.equal(
+    dependencies.attempts.get('user-race').attempt_id,
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  );
+});
