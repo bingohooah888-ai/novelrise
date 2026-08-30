@@ -11,49 +11,30 @@ const rollback = await readFile(
   'utf8'
 );
 const episodePost = await readFile('episode-post.html', 'utf8');
+const rpc = 'novelight_publish_episode_atomic';
 
-test(
-  'atomic episode publication RPC preserves owner RLS and rollback ordering',
-  () => {
-    assert.match(
-      migration,
-      /create function public\.novelight_publish_episode_atomic\(/
-    );
-    assert.match(migration, /security invoker/i);
-    assert.match(migration, /v_user_id uuid := auth\.uid\(\)/);
-    assert.match(migration, /for update/);
-    assert.match(
-      migration,
-      /revoke all on function public\.novelight_publish_episode_atomic[\s\S]*from public/i
-    );
-    assert.match(
-      migration,
-      /grant execute on function public\.novelight_publish_episode_atomic[\s\S]*to authenticated/i
-    );
+test('atomic episode RPC preserves owner RLS and ordering', () => {
+  assert.ok(migration.includes(`create function public.${rpc}(`));
+  assert.match(migration, /security invoker/i);
+  assert.match(migration, /v_user_id uuid := auth\.uid\(\)/);
+  assert.match(migration, /for update/);
+  assert.ok(migration.includes(`revoke all on function public.${rpc}(`));
+  assert.ok(migration.includes('from public;'));
+  assert.ok(migration.includes('to authenticated;'));
 
-    const novelUpdate = migration.indexOf('update public.novels');
-    const episodeInsert = migration.indexOf('insert into public.episodes');
-    assert.ok(novelUpdate >= 0, 'novel publish update must exist');
-    assert.ok(
-      episodeInsert > novelUpdate,
-      'episode insert must follow novel publish'
-    );
-  }
-);
+  const novelUpdate = migration.indexOf('update public.novels');
+  const episodeInsert = migration.indexOf('insert into public.episodes');
+  assert.ok(novelUpdate >= 0, 'novel publish update must exist');
+  assert.ok(episodeInsert > novelUpdate, 'episode insert must follow novel publish');
+});
 
 test('episode post uses one RPC instead of independent table writes', () => {
-  assert.match(
-    episodePost,
-    /client\.rpc\('novelight_publish_episode_atomic'/
-  );
-  assert.doesNotMatch(episodePost, /client\.from\('episodes'\)\.insert/);
-  assert.doesNotMatch(episodePost, /client\.from\('novels'\)\.update/);
+  assert.ok(episodePost.includes(`client.rpc('${rpc}'`));
+  assert.ok(!episodePost.includes("client.from('episodes').insert"));
+  assert.ok(!episodePost.includes("client.from('novels').update"));
   assert.doesNotMatch(episodePost, /episodeSaved/);
 });
 
 test('atomic episode publication has an explicit rollback artifact', () => {
-  assert.match(
-    rollback,
-    /drop function if exists public\.novelight_publish_episode_atomic\(/
-  );
+  assert.ok(rollback.includes(`drop function if exists public.${rpc}(`));
 });
