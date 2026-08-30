@@ -25,7 +25,10 @@ test('atomic episode RPC preserves owner RLS and ordering', () => {
   const novelUpdate = migration.indexOf('update public.novels');
   const episodeInsert = migration.indexOf('insert into public.episodes');
   assert.ok(novelUpdate >= 0, 'novel publish update must exist');
-  assert.ok(episodeInsert > novelUpdate, 'episode insert must follow novel publish');
+  assert.ok(
+    episodeInsert > novelUpdate,
+    'episode insert must follow novel publish'
+  );
 });
 
 test('episode post uses one RPC instead of independent table writes', () => {
