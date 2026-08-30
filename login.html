@@ -49,22 +49,36 @@
     }catch{return 'mypage.html'}
   }
 
-  (async()=>{
-    await NovelightClient.captureAcquisition(supabaseClient);
-    await NovelightClient.recordVisit(supabaseClient);
+  async function runOptionalTelemetry(label,task){
+    try{await task()}catch(error){console.error(label,error)}
+  }
+
+  void (async()=>{
+    await runOptionalTelemetry('login acquisition telemetry failed',()=>NovelightClient.captureAcquisition(supabaseClient));
+    await runOptionalTelemetry('login visit telemetry failed',()=>NovelightClient.recordVisit(supabaseClient));
   })();
 
   form.addEventListener('submit',async(event)=>{
     event.preventDefault();
+    if(button.disabled)return;
     button.disabled=true;status.textContent='ログイン中...';
     const email=document.getElementById('email').value.trim();
     const password=document.getElementById('password').value;
-    const {error}=await supabaseClient.auth.signInWithPassword({email,password});
-    if(error){console.error(error);status.textContent='ログインできませんでした。メールアドレスとパスワードを確認してください。';button.disabled=false;return;}
-    await NovelightClient.claimAcquisition(supabaseClient);
-    await NovelightClient.recordVisit(supabaseClient);
-    const redirect=new URLSearchParams(window.location.search).get('redirect');
-    window.location.href=safeRedirectTarget(redirect);
+    let authenticated=false;
+    try{
+      const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+      if(error){console.error(error);status.textContent='ログインできませんでした。メールアドレスとパスワードを確認してください。';return;}
+      await runOptionalTelemetry('post-login acquisition telemetry failed',()=>NovelightClient.claimAcquisition(supabaseClient));
+      await runOptionalTelemetry('post-login visit telemetry failed',()=>NovelightClient.recordVisit(supabaseClient));
+      authenticated=true;
+      const redirect=new URLSearchParams(window.location.search).get('redirect');
+      window.location.href=safeRedirectTarget(redirect);
+    }catch(error){
+      console.error('login request failed',error);
+      status.textContent='ログインできませんでした。通信状態を確認し、時間をおいて再度お試しください。';
+    }finally{
+      if(!authenticated)button.disabled=false;
+    }
   });
 </script>
 </body>
