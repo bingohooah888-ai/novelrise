@@ -6,8 +6,11 @@ on:
     paths:
       - '.github/workflows/production-backup-freshness.yml'
       - 'scripts/check-production-backup-freshness.mjs'
+  # Run every six hours at :30. The 21:30 UTC run follows the currently
+  # observed daily backup window (~21:03 UTC / 06:03 JST), while the cadence
+  # keeps the configured monitoring gap bounded even if provider timing drifts.
   schedule:
-    - cron: '45 20 * * *'
+    - cron: '30 3,9,15,21 * * *'
   workflow_dispatch:
 
 permissions:
