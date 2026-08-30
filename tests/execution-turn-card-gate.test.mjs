@@ -249,5 +249,5 @@ test('runtime gate treats execution and freshness contracts as authoritative', (
   assert.match(runtimeGate, /NOVELIGHT_EVIDENCE_FRESHNESS_CHECKED/);
   assert.match(runtimeGate, /NOVELIGHT_EVIDENCE_DUPLICATE_CHECK/);
   assert.match(runtimeGate, /NOVELIGHT_MUTATION_PLANNED/);
-  assert.match(runtimeGate, /version: 8/);
+  assert.match(runtimeGate, /version: 9/);
 });
