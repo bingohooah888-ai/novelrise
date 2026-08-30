@@ -204,7 +204,10 @@ test('repository contract routes runtime gate through Codex-first wrapper', asyn
     packageJson.scripts['runtime:gate'],
     'node scripts/runtime-gate-entry.mjs'
   );
-  assert.match(gateDoc, /Codexを「推奨」ではなく最初の実装経路として必須/);
+  assert.match(
+    gateDoc,
+    /Codexを「推奨」ではなく最初の実装経路として必須/
+  );
   assert.match(gateDoc, /manual-faster/);
   assert.match(wrapper, /state\.codexRouting = codexRouting/);
 });
