@@ -84,14 +84,12 @@ function createConcurrentDependencies({
           };
         }
 
-        const attempt =
-          current ??
-          {
-            attempt_id: args.p_candidate_attempt_id,
-            plan: args.p_plan,
-            stripe_session_id: null,
-            expires_at: '2099-01-01T00:00:00.000Z'
-          };
+        const attempt = current ?? {
+          attempt_id: args.p_candidate_attempt_id,
+          plan: args.p_plan,
+          stripe_session_id: null,
+          expires_at: '2099-01-01T00:00:00.000Z'
+        };
         attempts.set(args.p_user_id, attempt);
         return { data: [{ ...attempt }], error: null };
       }
