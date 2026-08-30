@@ -26,11 +26,10 @@ begin
     raise exception 'Checkout attempt table leaked client privileges';
   end if;
 
-  if not has_table_privilege(
-    'service_role',
-    'public.billing_checkout_attempts',
-    'select,insert,update,delete'
-  ) then
+  if not has_table_privilege('service_role', 'public.billing_checkout_attempts', 'select')
+     or not has_table_privilege('service_role', 'public.billing_checkout_attempts', 'insert')
+     or not has_table_privilege('service_role', 'public.billing_checkout_attempts', 'update')
+     or not has_table_privilege('service_role', 'public.billing_checkout_attempts', 'delete') then
     raise exception 'service_role is missing Checkout attempt table privileges';
   end if;
 
@@ -55,16 +54,46 @@ begin
        'authenticated',
        'public.novelight_reserve_checkout_attempt(uuid,text,uuid)',
        'execute'
+     )
+     or has_function_privilege(
+       'anon',
+       'public.novelight_attach_checkout_session(uuid,uuid,text)',
+       'execute'
+     )
+     or has_function_privilege(
+       'authenticated',
+       'public.novelight_attach_checkout_session(uuid,uuid,text)',
+       'execute'
+     )
+     or has_function_privilege(
+       'anon',
+       'public.novelight_release_checkout_attempt(uuid,uuid)',
+       'execute'
+     )
+     or has_function_privilege(
+       'authenticated',
+       'public.novelight_release_checkout_attempt(uuid,uuid)',
+       'execute'
      ) then
-    raise exception 'Checkout reservation RPC is executable by browser roles';
+    raise exception 'Checkout reservation RPCs are executable by browser roles';
   end if;
 
   if not has_function_privilege(
-    'service_role',
-    'public.novelight_reserve_checkout_attempt(uuid,text,uuid)',
-    'execute'
-  ) then
-    raise exception 'service_role cannot execute Checkout reservation RPC';
+       'service_role',
+       'public.novelight_reserve_checkout_attempt(uuid,text,uuid)',
+       'execute'
+     )
+     or not has_function_privilege(
+       'service_role',
+       'public.novelight_attach_checkout_session(uuid,uuid,text)',
+       'execute'
+     )
+     or not has_function_privilege(
+       'service_role',
+       'public.novelight_release_checkout_attempt(uuid,uuid)',
+       'execute'
+     ) then
+    raise exception 'service_role cannot execute all Checkout reservation RPCs';
   end if;
 end
 $$;
