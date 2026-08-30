@@ -26,6 +26,7 @@ run_sql supabase/migrations/20260823074300_add_stripe_subscription_state.sql
 run_sql supabase/checks/20260830214000_checkout_attempt_reservations_precheck.sql
 run_sql supabase/migrations/20260830214000_checkout_attempt_reservations.sql
 run_sql tests/rls/checkout-attempt-reservations.sql
+bash tests/rls/checkout-attempt-concurrency.sh
 run_sql tests/rls/read-access.sql
 run_sql tests/rls/write-access.sql
 run_sql tests/rls/billing-and-plan-limits.sql
