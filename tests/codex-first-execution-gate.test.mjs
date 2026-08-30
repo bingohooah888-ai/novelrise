@@ -57,11 +57,10 @@ test('fresh Codex-used evidence passes', () => {
 });
 
 test('evidence sources are enumerated', () => {
-  assert.deepEqual([...CODEX_EVIDENCE_SOURCES], [
-    'github-codex-connector',
-    'codex-work',
-    'codex-cli'
-  ]);
+  assert.deepEqual(
+    [...CODEX_EVIDENCE_SOURCES],
+    ['github-codex-connector', 'codex-work', 'codex-cli']
+  );
   const args = usedArgs();
   args[1] = '--codex-evidence-source=assistant-self-assertion';
   assert.throws(
@@ -83,12 +82,15 @@ test('fresh usage-limit bypass passes', () => {
 });
 
 test('bypass categories are enumerated', () => {
-  assert.deepEqual([...CODEX_BYPASS_CATEGORIES], [
-    'usage-limit',
-    'service-outage',
-    'auth-permission-network',
-    'unsupported-operation'
-  ]);
+  assert.deepEqual(
+    [...CODEX_BYPASS_CATEGORIES],
+    [
+      'usage-limit',
+      'service-outage',
+      'auth-permission-network',
+      'unsupported-operation'
+    ]
+  );
   const reason = 'Current change is too small to require Codex execution.';
   assert.throws(
     () =>
