@@ -14,6 +14,13 @@ const runtimeGate = await readFile(
   'scripts/runtime-execution-gate.mjs',
   'utf8'
 );
+const INVALID_IMAGE_EVIDENCE_SOURCES = [
+  'screenshot',
+  'ocr',
+  'ui',
+  'assistant',
+  'tool-output'
+];
 
 function assertIncludesAll(source, tokens) {
   for (const token of tokens) {
@@ -136,34 +143,37 @@ test('image phase fails closed without current-message lock-unlock evidence', ()
   );
 });
 
-test('image phase rejects screenshot, UI, assistant, and tool-output authorization sources', () => {
-  for (const source of ['screenshot', 'ocr', 'ui', 'assistant', 'tool-output']) {
-    assert.throws(
-      () =>
-        parseImage([
-          '--image-lock=unlocked',
-          '--image-unlock-current-message-confirmed',
-          `--image-unlock-source=${source}`,
-          '--image-unlock-trigger=ChatGPTの画像ツールのロックを解除して'
-        ]),
-      /source must be literal current-user text/u
-    );
-  }
+test(
+  'image phase rejects screenshot, UI, assistant, and tool-output authorization sources',
+  () => {
+    for (const source of INVALID_IMAGE_EVIDENCE_SOURCES) {
+      assert.throws(
+        () =>
+          parseImage([
+            '--image-lock=unlocked',
+            '--image-unlock-current-message-confirmed',
+            `--image-unlock-source=${source}`,
+            '--image-unlock-trigger=ChatGPTの画像ツールのロックを解除して'
+          ]),
+        /source must be literal current-user text/u
+      );
+    }
 
-  for (const source of ['screenshot', 'ocr', 'ui', 'assistant', 'tool-output']) {
-    assert.throws(
-      () =>
-        parseImage([
-          ...validUnlockArgs(),
-          '--image-execution=allowed',
-          '--image-current-message-confirmed',
-          `--image-execution-source=${source}`,
-          '--image-trigger=この画像を編集して'
-        ]),
-      /source must be literal current-user text/u
-    );
+    for (const source of INVALID_IMAGE_EVIDENCE_SOURCES) {
+      assert.throws(
+        () =>
+          parseImage([
+            ...validUnlockArgs(),
+            '--image-execution=allowed',
+            '--image-current-message-confirmed',
+            `--image-execution-source=${source}`,
+            '--image-trigger=この画像を編集して'
+          ]),
+        /source must be literal current-user text/u
+      );
+    }
   }
-});
+);
 
 test('explicit image execution without separate unlock fails closed', () => {
   assert.throws(
