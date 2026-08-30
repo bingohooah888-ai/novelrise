@@ -7,7 +7,6 @@ declare
   first_attempt uuid;
   follower_attempt uuid;
   other_user_attempt uuid;
-  renewed_attempt uuid;
   attached_session text;
   conflict_seen boolean := false;
 begin
@@ -79,11 +78,23 @@ begin
   if other_user_attempt = first_attempt then
     raise exception 'Checkout reservations were not isolated per user';
   end if;
+end
+$$;
 
-  update public.billing_checkout_attempts
-  set expires_at = now() - interval '1 second'
-  where user_id = '66666666-6666-6666-6666-666666666666';
+reset role;
 
+-- The synthetic test service_role intentionally has no BYPASSRLS. Simulate
+-- passage of time as the migration owner; application writes stay RPC-only.
+update public.billing_checkout_attempts
+set expires_at = now() - interval '1 second'
+where user_id = '66666666-6666-6666-6666-666666666666';
+
+set role service_role;
+
+do $$
+declare
+  renewed_attempt uuid;
+begin
   select r.attempt_id
   into renewed_attempt
   from public.novelight_reserve_checkout_attempt(
@@ -92,7 +103,7 @@ begin
     'ffffffff-ffff-4fff-8fff-ffffffffffff'
   ) as r;
 
-  if renewed_attempt = first_attempt then
+  if renewed_attempt <> 'ffffffff-ffff-4fff-8fff-ffffffffffff'::uuid then
     raise exception 'Expired Checkout attempt was not renewed';
   end if;
 
@@ -102,12 +113,12 @@ begin
   ) then
     raise exception 'Current Checkout attempt could not be released';
   end if;
-
-  delete from public.billing_checkout_attempts
-  where user_id = '77777777-7777-7777-7777-777777777777';
 end
 $$;
 
 reset role;
+
+delete from public.billing_checkout_attempts
+where user_id = '77777777-7777-7777-7777-777777777777';
 
 select 'PASS: Checkout attempt reservations serialize, isolate, renew, and release safely' as result;
