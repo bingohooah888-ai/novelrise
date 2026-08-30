@@ -187,27 +187,30 @@ test('routing evidence rejects credential-like material', () => {
   );
 });
 
-test('repository contract routes runtime gate through Codex-first wrapper', async () => {
-  const packageJson = JSON.parse(
-    await readFile(new URL('../package.json', import.meta.url), 'utf8')
-  );
-  const gateDoc = await readFile(
-    new URL('../docs/CODEX-FIRST-EXECUTION-GATE.md', import.meta.url),
-    'utf8'
-  );
-  const wrapper = await readFile(
-    new URL('../scripts/runtime-gate-entry.mjs', import.meta.url),
-    'utf8'
-  );
+test(
+  'repository contract routes runtime gate through Codex-first wrapper',
+  async () => {
+    const packageJson = JSON.parse(
+      await readFile(new URL('../package.json', import.meta.url), 'utf8')
+    );
+    const gateDoc = await readFile(
+      new URL('../docs/CODEX-FIRST-EXECUTION-GATE.md', import.meta.url),
+      'utf8'
+    );
+    const wrapper = await readFile(
+      new URL('../scripts/runtime-gate-entry.mjs', import.meta.url),
+      'utf8'
+    );
 
-  assert.equal(
-    packageJson.scripts['runtime:gate'],
-    'node scripts/runtime-gate-entry.mjs'
-  );
-  assert.match(
-    gateDoc,
-    /Codexを「推奨」ではなく最初の実装経路として必須/
-  );
-  assert.match(gateDoc, /manual-faster/);
-  assert.match(wrapper, /state\.codexRouting = codexRouting/);
-});
+    assert.equal(
+      packageJson.scripts['runtime:gate'],
+      'node scripts/runtime-gate-entry.mjs'
+    );
+    assert.match(
+      gateDoc,
+      /Codexを「推奨」ではなく最初の実装経路として必須/
+    );
+    assert.match(gateDoc, /manual-faster/);
+    assert.match(wrapper, /state\.codexRouting = codexRouting/);
+  }
+);
