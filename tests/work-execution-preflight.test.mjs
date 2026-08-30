@@ -118,7 +118,7 @@ test('runtime gate is wired into agent preflight', async () => {
   const packageJson = JSON.parse(await read(PACKAGE_PATH));
   assert.equal(
     packageJson.scripts['runtime:gate'],
-    'node scripts/runtime-execution-gate.mjs'
+    'node scripts/runtime-gate-entry.mjs'
   );
   assert.match(packageJson.scripts['preflight:agent'], /runtime:gate/u);
 
