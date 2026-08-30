@@ -6,7 +6,7 @@
     "format": "prettier --write \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
     "format:check": "prettier --check \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
     "syntax:check": "node scripts/check-js-syntax.mjs",
-    "runtime:gate": "node scripts/runtime-execution-gate.mjs",
+    "runtime:gate": "node scripts/runtime-gate-entry.mjs",
     "preflight": "npm run preflight:fast",
     "preflight:agent": "npm run runtime:gate -- --phase=implementation && npm run preflight:fix",
     "preflight:fast": "npm run format:check && npm run lint && npm test && npm run syntax:check && npm run preflight:merge-readiness && git diff --check",
