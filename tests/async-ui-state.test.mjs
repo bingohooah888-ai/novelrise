@@ -66,7 +66,10 @@ test('author forms recover from async failures and prevent duplicate submits', (
   }
   assert.match(post, /void NovelightClient\.claimAcquisition\(client\)/);
   assert.match(novelEdit, /type="submit" disabled/);
-  assert.match(episodePost, /episodeSaved=false/);
+  assert.match(episodePost, /client\.rpc\('novelight_publish_episode_atomic'/);
+  assert.doesNotMatch(episodePost, /episodeSaved/);
+  assert.doesNotMatch(episodePost, /client\.from\('episodes'\)\.insert/);
+  assert.doesNotMatch(episodePost, /client\.from\('novels'\)\.update/);
   assert.match(episodeEdit, /type="submit" disabled/);
 });
 
