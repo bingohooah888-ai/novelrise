@@ -13,8 +13,10 @@ const EXACT_HIGH_RISK_PATHS = new Set([
   'docs/development-workflow.md',
   'scripts/check-merge-readiness.mjs',
   'scripts/high-risk-approval-lib.mjs',
+  'scripts/vercel-admin-allowlist.mjs',
   '.github/workflows/ci.yml',
   '.github/workflows/high-risk-pr-approval.yml',
+  '.github/workflows/vercel-admin-allowlist.yml'
 ]);
 
 const HIGH_RISK_PREFIXES = [
@@ -31,8 +33,8 @@ const HIGH_RISK_PREFIXES = [
   '.github/workflows/stripe-production-',
   '.github/workflows/supabase-production',
   'docs/PRODUCTION-',
-  'docs/STRIPE-',
-];
+  'docs/STRIPE-'
+]);
 
 export function isHighRiskPath(file) {
   const normalized = String(file || '').replaceAll('\\', '/');
@@ -77,7 +79,7 @@ export function parseHighRiskApprovalComment(body) {
       operation: parsed.operation,
       pr: parsed.pr,
       headSha: String(parsed.headSha).toLowerCase(),
-      challenge: String(parsed.challenge),
+      challenge: String(parsed.challenge)
     };
   } catch {
     return null;
