@@ -5,11 +5,11 @@ import test from 'node:test';
 const workflow = await readFile('.github/workflows/staging-smoke.yml', 'utf8');
 const verifier = await readFile(
   'scripts/verify-staging-deployment.mjs',
-  'utf8',
+  'utf8'
 );
 const migrationParity = await readFile(
   'scripts/verify-staging-migration-parity.mjs',
-  'utf8',
+  'utf8'
 );
 const checkout = await readFile('api/_lib/checkout.js', 'utf8');
 const portal = await readFile('api/_lib/billing-portal.js', 'utf8');
@@ -24,7 +24,7 @@ test('Staging workflow is not coupled to the historical temporary branch', () =>
 
 test('consolidated Staging workflow runs the shared deployment contract before package installation', () => {
   const verifierIndex = workflow.indexOf(
-    'node scripts/verify-staging-deployment.mjs',
+    'node scripts/verify-staging-deployment.mjs'
   );
   const installIndex = workflow.indexOf('npm ci');
   assert.notEqual(verifierIndex, -1);
@@ -47,10 +47,10 @@ test('write Staging phases require deployed Supabase and Stripe isolation eviden
 
 test('write Staging fails closed on migration history drift before creating users', () => {
   const parityIndex = workflow.indexOf(
-    'node scripts/verify-staging-migration-parity.mjs',
+    'node scripts/verify-staging-migration-parity.mjs'
   );
   const fixtureIndex = workflow.indexOf(
-    'Create ephemeral authenticated Staging desktop users',
+    'Create ephemeral authenticated Staging desktop users'
   );
 
   assert.notEqual(parityIndex, -1);
@@ -64,21 +64,25 @@ test('write Staging fails closed on migration history drift before creating user
 
 test('authenticated Staging desktop and mobile projects use fresh isolated fixtures', () => {
   const desktopSetup = workflow.indexOf(
-    'Create ephemeral authenticated Staging desktop users',
+    'Create ephemeral authenticated Staging desktop users'
   );
-  const desktopRun = workflow.indexOf('Run authenticated Staging desktop smoke');
+  const desktopRun = workflow.indexOf(
+    'Run authenticated Staging desktop smoke'
+  );
   const desktopCleanup = workflow.indexOf(
-    'Clean ephemeral authenticated Staging desktop data',
+    'Clean ephemeral authenticated Staging desktop data'
   );
   const mobileSetup = workflow.indexOf(
-    'Create fresh ephemeral authenticated Staging mobile users',
+    'Create fresh ephemeral authenticated Staging mobile users'
   );
-  const mobileRun = workflow.indexOf('Run authenticated Staging mobile smoke');
+  const mobileRun = workflow.indexOf(
+    'Run authenticated Staging mobile smoke'
+  );
   const mobileCleanup = workflow.indexOf(
-    'Clean ephemeral authenticated Staging mobile data',
+    'Clean ephemeral authenticated Staging mobile data'
   );
   const aggregate = workflow.indexOf(
-    'Require authenticated Staging desktop and mobile smoke success',
+    'Require authenticated Staging desktop and mobile smoke success'
   );
 
   for (const index of [
@@ -88,7 +92,7 @@ test('authenticated Staging desktop and mobile projects use fresh isolated fixtu
     mobileSetup,
     mobileRun,
     mobileCleanup,
-    aggregate,
+    aggregate
   ]) {
     assert.notEqual(index, -1);
   }
@@ -101,10 +105,16 @@ test('authenticated Staging desktop and mobile projects use fresh isolated fixtu
   assert.match(workflow, /--project=production-authenticated-chromium/);
   assert.match(
     workflow,
-    /--project=production-authenticated-mobile-chromium/,
+    /--project=production-authenticated-mobile-chromium/
   );
-  assert.match(workflow, /id: auth_desktop[\s\S]*continue-on-error: true/);
-  assert.match(workflow, /id: auth_mobile[\s\S]*continue-on-error: true/);
+  assert.match(
+    workflow,
+    /id: auth_desktop[\s\S]*continue-on-error: true/
+  );
+  assert.match(
+    workflow,
+    /id: auth_mobile[\s\S]*continue-on-error: true/
+  );
 });
 
 test('Preview billing return URLs use the exact Vercel deployment helper', () => {
@@ -120,9 +130,12 @@ test('chat-controlled Staging smoke only accepts the dedicated owner-reopened co
   assert.match(workflow, /github\.event\.issue\.number == 188/);
   assert.match(
     workflow,
-    /github\.event\.issue\.user\.login == 'bingohooah888-ai'/,
+    /github\.event\.issue\.user\.login == 'bingohooah888-ai'/
   );
-  assert.match(workflow, /github\.event\.sender\.login == 'bingohooah888-ai'/);
+  assert.match(
+    workflow,
+    /github\.event\.sender\.login == 'bingohooah888-ai'/
+  );
 });
 
 test('chat-controlled Staging smoke resolves and rechecks current main before write-capable verification', () => {
@@ -131,11 +144,11 @@ test('chat-controlled Staging smoke resolves and rechecks current main before wr
   assert.match(workflow, /Confirm controlled revision is still current main/);
   assert.match(
     workflow,
-    /chat-controlled Staging Smoke requires STAGING_E2E_READY=true/,
+    /chat-controlled Staging Smoke requires STAGING_E2E_READY=true/
   );
   assert.match(
     workflow,
-    /github\.event_name == 'issues' && 'workflow_dispatch'/,
+    /github\.event_name == 'issues' && 'workflow_dispatch'/
   );
 });
 
