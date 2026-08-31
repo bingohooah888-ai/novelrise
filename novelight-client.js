@@ -8,6 +8,7 @@
   const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
   const STAGING_BROWSER_CONFIG_PATH = '/api/staging-browser-config';
   const BRAND_LOGO_PATH = 'assets/novelight-header-logo.webp';
+  const THEME_STYLESHEET_PATH = 'novelight-theme.css';
   let memoryVisitorToken = null;
 
   function isVercelPreviewHost() {
@@ -101,6 +102,64 @@
   }
 
   installPreviewSupabaseBootstrap();
+
+  function currentPageSlug() {
+    const file = window.location.pathname.split('/').pop() || 'index.html';
+    return file.replace(/\.html$/u, '').replace(/[^a-z0-9-]/giu, '-').toLowerCase();
+  }
+
+  function installAuthorDashboardShell() {
+    if (currentPageSlug() !== 'mypage') return false;
+
+    const main = document.querySelector('main');
+    if (!main || main.classList.contains('novelight-author-shell')) return false;
+
+    const profilePanel = main.querySelector('.panel');
+    if (profilePanel && !profilePanel.id) profilePanel.id = 'profile';
+
+    const sidebar = document.createElement('aside');
+    sidebar.className = 'novelight-author-sidebar';
+    sidebar.setAttribute('aria-label', '作者メニュー');
+    sidebar.innerHTML =
+      '<span class="novelight-author-sidebar-title">AUTHOR STUDIO</span>' +
+      '<nav class="novelight-author-nav">' +
+      '<a href="mypage.html" aria-current="page"><span class="novelight-author-nav-icon">⌂</span>ダッシュボード</a>' +
+      '<a href="my-novels.html"><span class="novelight-author-nav-icon">▣</span>作品管理</a>' +
+      '<a href="post.html"><span class="novelight-author-nav-icon">✎</span>新規投稿</a>' +
+      '<a href="analytics.html"><span class="novelight-author-nav-icon">▥</span>LIGHT ANALYTICS</a>' +
+      '<a href="scout-record.html"><span class="novelight-author-nav-icon">◇</span>SCOUT RECORD</a>' +
+      '<a href="#profile"><span class="novelight-author-nav-icon">⚙</span>設定</a>' +
+      '</nav>';
+
+    const content = document.createElement('div');
+    content.className = 'novelight-author-content';
+    while (main.firstChild) content.appendChild(main.firstChild);
+    main.append(sidebar, content);
+    main.classList.add('novelight-author-shell');
+    return true;
+  }
+
+  function installThemeStyles() {
+    const slug = currentPageSlug();
+    document.documentElement.dataset.novelightPage = slug;
+    if (document.body) {
+      document.body.classList.add('novelight-theme', `novelight-page-${slug}`);
+    }
+
+    const selector = 'link[data-novelight-theme="sitewide"]';
+    if (!document.querySelector(selector)) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = THEME_STYLESHEET_PATH;
+      link.dataset.novelightTheme = 'sitewide';
+      document.head.appendChild(link);
+    }
+
+    installAuthorDashboardShell();
+    return slug;
+  }
+
+  installThemeStyles();
 
   function installBrandLogo() {
     const logos = document.querySelectorAll('.logo, .site-logo');
@@ -362,6 +421,8 @@
     recordJourney,
     storedSource,
     syncAuthHeader,
-    installBrandLogo
+    installBrandLogo,
+    installThemeStyles,
+    installAuthorDashboardShell
   };
 })();
