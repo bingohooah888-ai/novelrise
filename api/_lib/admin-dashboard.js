@@ -1,3 +1,5 @@
+import { URL } from 'node:url';
+
 const PAGE_SIZE = 1000;
 const MAX_PAGED_ROWS = 50000;
 const UUID_PATTERN =
