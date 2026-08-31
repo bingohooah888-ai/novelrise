@@ -30,7 +30,6 @@ function jsonResponse(payload, status = 200) {
 const adminIdA = '11111111-1111-4111-8111-111111111111';
 const adminIdB = '22222222-2222-4222-8222-222222222222';
 
-
 test('admin user IDs are canonicalized and fingerprinted without retaining input order', () => {
   assert.equal(
     normalizeAdminUserIds(` ${adminIdB.toUpperCase()}, ${adminIdA} `),
@@ -46,7 +45,6 @@ test('admin user IDs are canonicalized and fingerprinted without retaining input
   );
 });
 
-
 test('admin user IDs fail closed on invalid or duplicate UUIDs', () => {
   assert.throws(() => normalizeAdminUserIds('not-a-uuid'), /valid UUIDs/);
   assert.throws(
@@ -54,7 +52,6 @@ test('admin user IDs fail closed on invalid or duplicate UUIDs', () => {
     /duplicates/
   );
 });
-
 
 test('Production admin environment selection rejects ambiguous state', () => {
   assert.equal(
@@ -78,7 +75,6 @@ test('Production admin environment selection rejects ambiguous state', () => {
     /Multiple Production/
   );
 });
-
 
 test('inspection treats only a matching sensitive managed variable as current', async () => {
   const fingerprint = fingerprintAdminUserIds(adminIdA);
@@ -107,7 +103,6 @@ test('inspection treats only a matching sensitive managed variable as current', 
   assert.equal(result.envId, 'env_1');
   assert.equal(result.updatedAt, 123456789);
 });
-
 
 test('non-sensitive existing allowlist is unknown and cannot be overwritten', async () => {
   const fetchImpl = async () =>
@@ -142,7 +137,6 @@ test('non-sensitive existing allowlist is unknown and cannot be overwritten', as
   );
 });
 
-
 test('missing allowlist is created as sensitive Production-only data', async () => {
   const calls = [];
   const fetchImpl = async (url, options) => {
@@ -169,9 +163,11 @@ test('missing allowlist is created as sensitive Production-only data', async () 
   assert.equal(body[0].type, 'sensitive');
   assert.equal(body[0].key, 'NOVELIGHT_ADMIN_USER_IDS');
   assert.equal(body[0].value, adminIdA);
-  assert.equal(body[0].comment, `NOVELIGHT managed admin allowlist ${fingerprint}`);
+  assert.equal(
+    body[0].comment,
+    `NOVELIGHT managed admin allowlist ${fingerprint}`
+  );
 });
-
 
 test('Production redeploy is pinned to the approved GitHub SHA', async () => {
   const calls = [];
@@ -200,7 +196,6 @@ test('Production redeploy is pinned to the approved GitHub SHA', async () => {
   assert.match(calls[0].url, /forceNew=1/);
 });
 
-
 test('admin endpoint verification requires an unauthenticated 401', async () => {
   await assert.doesNotReject(
     verifyAdminEndpointRequiresAuthentication({
@@ -211,10 +206,9 @@ test('admin endpoint verification requires an unauthenticated 401', async () => 
     verifyAdminEndpointRequiresAuthentication({
       fetchImpl: async () => jsonResponse({}, 200)
     }),
-    /authentication boundary/
+    /unauthenticated boundary/
   );
 });
-
 
 test('workflow keeps raw admin IDs and Vercel token in secrets and requires OWNER approval', async () => {
   const workflow = await readFile(workflowPath, 'utf8');
