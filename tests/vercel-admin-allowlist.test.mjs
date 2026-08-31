@@ -7,6 +7,7 @@ import {
   fingerprintAdminUserIds,
   inspectVercelAdminAllowlist,
   normalizeAdminUserIds,
+  resolveVercelProjectScope,
   selectProductionAdminEnv,
   syncVercelAdminAllowlist,
   verifyAdminEndpointRequiresAuthentication
@@ -73,6 +74,93 @@ test('Production admin environment selection rejects ambiguous state', () => {
         ]
       }),
     /Multiple Production/
+  );
+});
+
+test('Vercel scope discovery accepts exactly one team owning the fixed project without leaking token in URLs', async () => {
+  const calls = [];
+  const token = 'token-for-test';
+  const fetchImpl = async (url, options) => {
+    calls.push({ url: String(url), options });
+    const parsed = new URL(url);
+    if (parsed.pathname === '/v2/teams') {
+      return jsonResponse({
+        teams: [{ id: 'team_a' }, { id: 'team_target' }],
+        pagination: { next: null }
+      });
+    }
+    if (parsed.searchParams.get('teamId') === 'team_a') {
+      return jsonResponse({}, 404);
+    }
+    return jsonResponse({
+      id: 'prj_target',
+      name: 'novelrise',
+      accountId: 'team_target'
+    });
+  };
+
+  const scope = await resolveVercelProjectScope({ fetchImpl, token });
+
+  assert.deepEqual(scope, {
+    teamId: 'team_target',
+    projectId: 'prj_target',
+    project: 'novelrise'
+  });
+  assert.ok(calls.every((call) => !call.url.includes(token)));
+  assert.ok(
+    calls.every((call) => call.options.headers.Authorization === `Bearer ${token}`)
+  );
+});
+
+test('Vercel scope discovery fails closed on missing, ambiguous, or unexpected ownership', async () => {
+  await assert.rejects(
+    resolveVercelProjectScope({
+      token: 'token-for-test',
+      fetchImpl: async (url) => {
+        const parsed = new URL(url);
+        if (parsed.pathname === '/v2/teams') {
+          return jsonResponse({ teams: [{ id: 'team_a' }], pagination: { next: null } });
+        }
+        return jsonResponse({}, 404);
+      }
+    }),
+    /not found/
+  );
+
+  await assert.rejects(
+    resolveVercelProjectScope({
+      token: 'token-for-test',
+      fetchImpl: async (url) => {
+        const parsed = new URL(url);
+        if (parsed.pathname === '/v2/teams') {
+          return jsonResponse({
+            teams: [{ id: 'team_a' }, { id: 'team_b' }],
+            pagination: { next: null }
+          });
+        }
+        const teamId = parsed.searchParams.get('teamId');
+        return jsonResponse({ id: `prj_${teamId}`, name: 'novelrise', accountId: teamId });
+      }
+    }),
+    /ambiguous/
+  );
+
+  await assert.rejects(
+    resolveVercelProjectScope({
+      token: 'token-for-test',
+      fetchImpl: async (url) => {
+        const parsed = new URL(url);
+        if (parsed.pathname === '/v2/teams') {
+          return jsonResponse({ teams: [{ id: 'team_a' }], pagination: { next: null } });
+        }
+        return jsonResponse({
+          id: 'prj_target',
+          name: 'novelrise',
+          accountId: 'team_other'
+        });
+      }
+    }),
+    /ownership metadata/
   );
 });
 
@@ -214,7 +302,7 @@ test('workflow keeps raw admin IDs and Vercel token in secrets and requires OWNE
   const workflow = await readFile(workflowPath, 'utf8');
 
   assert.match(workflow, /secrets\.VERCEL_API_TOKEN/);
-  assert.match(workflow, /secrets\.VERCEL_TEAM_ID/);
+  assert.doesNotMatch(workflow, /VERCEL_TEAM_ID/);
   assert.match(workflow, /secrets\.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS/);
   assert.match(
     workflow,
