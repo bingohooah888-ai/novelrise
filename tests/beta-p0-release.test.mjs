@@ -122,10 +122,9 @@ test('discovery v2 gives new works initial priority and measures plan-only expos
   assert.match(migration, /home_plan_extra/);
   assert.match(migration, /home_premium_slot/);
   assert.match(migration, /premium_slot_impressions/);
-  assert.match(home, /novelight_discovery_feed_v2/);
-  assert.match(home, /novelight_plan_extra_feed/);
-  assert.match(home, /home_plan_extra/);
-  assert.match(home, /home_premium_slot/);
+  assert.match(home, /novelight_trusted_discovery_feed/);
+  assert.match(home, /novelight_trusted_plan_extra_feed/);
+  assert.match(home, /record_trusted_allocation_receipts/);
   assert.match(analytics, /novelight_author_exposure_funnel_v2/);
   assert.match(analytics, /plan_extra_impressions/);
   assert.match(analytics, /premium_slot_impressions/);
@@ -153,9 +152,31 @@ test('all search sorts preserve impression data', async () => {
     search,
     /s==='recommended'\?await recommended\(k,g,current\):await neutral\(k,g,s,current(?:,false)?\)/
   );
-  assert.match(search, /record_novel_impressions_v2/);
+  assert.match(search, /record_trusted_allocation_receipts/);
   assert.match(search, /record_neutral_search_impressions/);
   assert.match(migration, /search_results/);
+});
+
+test('authoritative impressions require private single-use allocation receipts', async () => {
+  const [migration, home, search, gate] = await Promise.all([
+    read('supabase/migrations/20260831210000_trusted_allocation_receipts.sql'),
+    read('index.html'),
+    read('search.html'),
+    read('scripts/run-beta-p0-db-tests.sh')
+  ]);
+
+  assert.match(migration, /create table public\.novel_allocation_receipts/);
+  assert.match(migration, /for update/);
+  assert.match(migration, /expires_at > now\(\)/);
+  assert.match(
+    migration,
+    /revoke all on function public\.record_novel_impressions_v2[^;]+from anon, authenticated/
+  );
+  assert.match(migration, /neutral_search_impression_telemetry/);
+  assert.match(home, /novelight_trusted_discovery_feed/);
+  assert.match(home, /record_trusted_allocation_receipts/);
+  assert.match(search, /record_trusted_allocation_receipts/);
+  assert.match(gate, /trusted-allocation-receipts\.sql/);
 });
 
 test('major public landing surfaces expose legal navigation', async () => {
