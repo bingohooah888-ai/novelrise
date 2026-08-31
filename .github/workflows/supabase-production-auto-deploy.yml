@@ -92,6 +92,11 @@ jobs:
       - name: Dry-run pending migrations
         run: supabase db push --linked --dry-run
 
+      - name: Require Staging migration parity before approval handoff
+        env:
+          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+        run: node scripts/verify-staging-migration-parity.mjs
+
       - name: Record chat-approval handoff
         env:
           CHANGED_VERSIONS: ${{ steps.changes.outputs.changed_versions }}
@@ -102,6 +107,7 @@ jobs:
             echo
             echo "Current main: \`$GITHUB_SHA\`"
             echo "Pending migration versions: \`$CHANGED_VERSIONS\`"
+            echo 'Staging migration parity: `PASS`'
             echo
             echo 'No Production database mutation was performed.'
             echo 'Actual deploy requires a fresh explicit chat approval or the protected manual fallback.'
