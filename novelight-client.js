@@ -7,6 +7,7 @@
   const PRODUCTION_VERCEL_HOST = 'novelrise.vercel.app';
   const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
   const STAGING_BROWSER_CONFIG_PATH = '/api/staging-browser-config';
+  const BRAND_LOGO_PATH = 'assets/novelight-header-logo.webp';
   let memoryVisitorToken = null;
 
   function isVercelPreviewHost() {
@@ -100,6 +101,50 @@
   }
 
   installPreviewSupabaseBootstrap();
+
+  function installBrandLogo() {
+    const logos = document.querySelectorAll('.logo, .site-logo');
+    if (!logos.length) return 0;
+
+    const styleId = 'novelight-brand-logo-style';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent =
+        '.novelight-brand-logo-image{display:block;width:auto;height:44px;max-width:42vw;object-fit:contain}' +
+        '@media(max-width:640px){.novelight-brand-logo-image{height:34px;max-width:55vw}}';
+      document.head.appendChild(style);
+    }
+
+    let installed = 0;
+    logos.forEach((logo) => {
+      if (logo.querySelector('img')) return;
+      if (logo.textContent.trim() !== 'NOVELIGHT') return;
+
+      const image = document.createElement('img');
+      image.className = 'novelight-brand-logo-image';
+      image.src = BRAND_LOGO_PATH;
+      image.alt = '';
+      image.decoding = 'async';
+
+      logo.textContent = '';
+      logo.style.display = 'inline-flex';
+      logo.style.alignItems = 'center';
+      logo.style.lineHeight = '0';
+      if (logo.tagName === 'A') {
+        logo.setAttribute('aria-label', 'NOVELIGHT トップへ');
+      } else {
+        logo.setAttribute('role', 'img');
+        logo.setAttribute('aria-label', 'NOVELIGHT');
+      }
+      logo.appendChild(image);
+      installed += 1;
+    });
+
+    return installed;
+  }
+
+  installBrandLogo();
 
   function safeStorageGet(storage, key) {
     try {
@@ -316,6 +361,7 @@
     claimAcquisition,
     recordJourney,
     storedSource,
-    syncAuthHeader
+    syncAuthHeader,
+    installBrandLogo
   };
 })();
