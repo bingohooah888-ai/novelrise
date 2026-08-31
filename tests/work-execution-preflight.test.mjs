@@ -247,7 +247,7 @@ test('staging live proof runs only from real Vercel deployment evidence', async 
     'deployment_status:',
     "github.event.deployment_status.state == 'success'",
     'github.event.deployment_status.environment_url',
-    'github.event.deployment_status.target_url',
+    "contains(github.event.deployment_status.environment_url, '.vercel.app')",
     'github.event.deployment.sha',
     "github.event_name == 'workflow_dispatch'",
     'MANUAL_PREVIEW_URL',
