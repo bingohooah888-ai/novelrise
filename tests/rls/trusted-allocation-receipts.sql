@@ -25,13 +25,13 @@ do $$ begin
 end $$;
 reset role;
 
+set role authenticated;
 select set_config('request.jwt.claim.sub', '44444444-4444-4444-4444-444444444444', false);
 create temporary table issued_receipts as
   select novel_id, allocation_receipt
   from public.novelight_trusted_discovery_feed('search_recommended', 3, null, null, null)
   where allocation_receipt is not null;
 
-set role authenticated;
 select public.test_assert(
   public.record_trusted_allocation_receipts(array(select allocation_receipt from issued_receipts)) >= 1,
   'legitimate server allocations must be recordable'
@@ -54,6 +54,7 @@ do $$ begin
 end $$;
 reset role;
 
+update public.novel_allocation_receipts set expires_at = now() + interval '5 minutes';
 select set_config('request.jwt.claim.sub', '55555555-5555-5555-5555-555555555555', false);
 set role authenticated;
 do $$ begin
