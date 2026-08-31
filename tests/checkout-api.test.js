@@ -32,15 +32,28 @@ function createDependencies({
     STRIPE_PREMIUM_PRICE_ID: 'price_premium',
     NOVELIGHT_APP_URL: 'https://novelight.test'
   },
-  checkout = async () => ({ url: 'https://checkout.stripe.test/session' }),
+  checkout = async () => ({
+    id: 'cs_test_session',
+    url: 'https://checkout.stripe.test/session',
+    status: 'open'
+  }),
+  retrieveCheckout = async (sessionId) => ({
+    id: sessionId,
+    url: 'https://checkout.stripe.test/session',
+    status: 'open'
+  }),
   portal = async () => ({ url: 'https://billing.stripe.test/session' })
 } = {}) {
   const calls = {
     tokens: [],
     checkoutSessions: [],
+    checkoutSessionOptions: [],
+    checkoutSessionRetrievals: [],
+    checkoutRpcs: [],
     portalSessions: [],
     subscriptionLists: []
   };
+  const attempts = new Map();
 
   const supabase = {
     auth: {
@@ -48,6 +61,52 @@ function createDependencies({
         calls.tokens.push(token);
         return { data: { user }, error: authError };
       }
+    },
+    async rpc(name, args) {
+      calls.checkoutRpcs.push({ name, args });
+
+      if (name === 'novelight_reserve_checkout_attempt') {
+        const current = attempts.get(args.p_user_id);
+
+        if (current && current.plan !== args.p_plan) {
+          return {
+            data: null,
+            error: { message: 'checkout_attempt_plan_conflict' }
+          };
+        }
+
+        const attempt = current ?? {
+          attempt_id: args.p_candidate_attempt_id,
+          plan: args.p_plan,
+          stripe_session_id: null,
+          expires_at: '2099-01-01T00:00:00.000Z'
+        };
+        attempts.set(args.p_user_id, attempt);
+        return { data: [attempt], error: null };
+      }
+
+      if (name === 'novelight_attach_checkout_session') {
+        const current = attempts.get(args.p_user_id);
+        if (!current || current.attempt_id !== args.p_attempt_id) {
+          return {
+            data: null,
+            error: { message: 'checkout_attempt_not_current' }
+          };
+        }
+        current.stripe_session_id = args.p_stripe_session_id;
+        return { data: true, error: null };
+      }
+
+      if (name === 'novelight_release_checkout_attempt') {
+        const current = attempts.get(args.p_user_id);
+        if (current?.attempt_id === args.p_attempt_id) {
+          attempts.delete(args.p_user_id);
+          return { data: true, error: null };
+        }
+        return { data: false, error: null };
+      }
+
+      throw new Error(`Unexpected RPC ${name}`);
     },
     from(table) {
       assert.equal(table, 'profiles');
@@ -80,9 +139,14 @@ function createDependencies({
     },
     checkout: {
       sessions: {
-        async create(payload) {
+        async create(payload, options) {
           calls.checkoutSessions.push(payload);
-          return checkout(payload);
+          calls.checkoutSessionOptions.push(options);
+          return checkout(payload, options);
+        },
+        async retrieve(sessionId) {
+          calls.checkoutSessionRetrievals.push(sessionId);
+          return retrieveCheckout(sessionId);
         }
       }
     },
@@ -228,7 +292,7 @@ test('Stripe-side pending or active subscription blocks a duplicate checkout dur
   }
 });
 
-test('creates a subscription checkout with trusted metadata', async () => {
+test('creates a subscription checkout with trusted metadata and attempt idempotency', async () => {
   const dependencies = createDependencies();
   const handler = createCheckoutHandler(dependencies);
   const { res, state } = createResponse();
@@ -261,6 +325,11 @@ test('creates a subscription checkout with trusted metadata', async () => {
   assert.equal(
     payload.success_url,
     'https://novelight.test/mypage.html?checkout=success'
+  );
+  assert.ok(Number.isInteger(payload.expires_at));
+  assert.match(
+    dependencies.calls.checkoutSessionOptions[0].idempotencyKey,
+    /^novelight-checkout:user-123:[0-9a-f-]{36}$/
   );
 });
 
