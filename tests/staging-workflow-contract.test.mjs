@@ -7,8 +7,8 @@ const verifier = await readFile(
   'scripts/verify-staging-deployment.mjs',
   'utf8'
 );
-const migrationParity = await readFile(
-  'scripts/verify-staging-migration-parity.mjs',
+const schemaCapabilities = await readFile(
+  'scripts/verify-staging-schema-capabilities.mjs',
   'utf8'
 );
 const checkout = await readFile('api/_lib/checkout.js', 'utf8');
@@ -36,7 +36,8 @@ test('write Staging phases require deployed Supabase and Stripe isolation eviden
   assert.match(workflow, /STAGING_REQUIRE_WRITE_CONFIG: 'true'/);
   assert.match(workflow, /STAGING_EXPECTED_SUPABASE_URL/);
   assert.match(workflow, /STAGING_EXPECTED_PUBLISHABLE_KEY/);
-  assert.match(workflow, /SUPABASE_ACCESS_TOKEN/);
+  assert.match(workflow, /SUPABASE_SECRET_KEY/);
+  assert.doesNotMatch(workflow, /SUPABASE_ACCESS_TOKEN/);
   assert.match(workflow, /environment: staging/);
 
   assert.match(verifier, /facts\.stripe\.secretKeyMode !== 'test'/);
@@ -45,21 +46,23 @@ test('write Staging phases require deployed Supabase and Stripe isolation eviden
   assert.match(verifier, /facts\.supabase\.serverSecretPresent !== true/);
 });
 
-test('write Staging fails closed on migration history drift before creating users', () => {
-  const parityIndex = workflow.indexOf(
-    'node scripts/verify-staging-migration-parity.mjs'
+test('write Staging fails closed on missing checkout schema capabilities before creating users', () => {
+  const capabilityIndex = workflow.indexOf(
+    'node scripts/verify-staging-schema-capabilities.mjs'
   );
   const fixtureIndex = workflow.indexOf(
     'Create ephemeral authenticated Staging desktop users'
   );
 
-  assert.notEqual(parityIndex, -1);
+  assert.notEqual(capabilityIndex, -1);
   assert.notEqual(fixtureIndex, -1);
-  assert.ok(parityIndex < fixtureIndex);
-  assert.match(migrationParity, /supabase_migrations\.schema_migrations/);
-  assert.match(migrationParity, /read_only: true/);
-  assert.match(migrationParity, /refusing the Production Supabase project/);
-  assert.match(migrationParity, /migration history does not exactly match/);
+  assert.ok(capabilityIndex < fixtureIndex);
+  assert.match(schemaCapabilities, /method: 'OPTIONS'/);
+  assert.match(schemaCapabilities, /novelight_reserve_checkout_attempt/);
+  assert.match(schemaCapabilities, /novelight_attach_checkout_session/);
+  assert.match(schemaCapabilities, /novelight_release_checkout_attempt/);
+  assert.match(schemaCapabilities, /refusing the Production Supabase project/);
+  assert.match(schemaCapabilities, /is not exposed as a callable RPC/);
 });
 
 test('authenticated Staging desktop and mobile projects use fresh isolated fixtures', () => {
