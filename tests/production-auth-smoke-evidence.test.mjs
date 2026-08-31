@@ -15,14 +15,15 @@ function run(overrides = {}) {
     id: runId,
     name: VERIFICATION_WORKFLOW,
     event: 'issue_comment',
+    status: 'completed',
     conclusion: 'success',
     head_sha: sha,
     ...overrides
   };
 }
 
-function jobs(conclusion = 'success') {
-  return { jobs: [{ name: DECISIVE_JOB, conclusion }] };
+function jobs(conclusion = 'success', status = 'completed') {
+  return { jobs: [{ name: DECISIVE_JOB, status, conclusion }] };
 }
 
 function consumed(overrides = {}) {
@@ -73,7 +74,10 @@ test('workflow-dispatch forwarding run can never be PASS evidence', () => {
 test('top-level success with skipped decisive job is rejected', () => {
   const result = evaluate({ jobs: jobs('skipped') });
   assert.equal(result.pass, false);
-  assert.match(result.reason, /decisive verification job conclusion is skipped/);
+  assert.match(
+    result.reason,
+    /decisive verification job conclusion is skipped/
+  );
 });
 
 test('top-level success with missing decisive job is rejected', () => {
@@ -88,10 +92,29 @@ test('failed verification is rejected', () => {
   assert.match(result.reason, /workflow conclusion is failure/);
 });
 
+test('incomplete verification run is rejected even with a success conclusion', () => {
+  const result = evaluate({ run: run({ status: 'in_progress' }) });
+  assert.equal(result.pass, false);
+});
+
+test('missing or invalid verification run ID is rejected', () => {
+  assert.equal(evaluate({ run: run({ id: undefined }) }).pass, false);
+  assert.equal(evaluate({ run: run({ id: 0 }) }).pass, false);
+  assert.equal(evaluate({ run: run({ id: '123456789' }) }).pass, false);
+});
+
+test('incomplete decisive verification job is rejected', () => {
+  const result = evaluate({ jobs: jobs('success', 'in_progress') });
+  assert.equal(result.pass, false);
+});
+
 test('unapproved or expired request without consumed ledger is rejected', () => {
   const result = evaluate({ comments: [] });
   assert.equal(result.pass, false);
-  assert.match(result.reason, /matching successful approval-consumption ledger record/);
+  assert.match(
+    result.reason,
+    /matching successful approval-consumption ledger record/
+  );
 });
 
 test('failed approval-consumption ledger is rejected', () => {
@@ -105,7 +128,9 @@ test('consumed ledger must match verification run ID', () => {
 });
 
 test('consumed ledger must match exact verification head SHA', () => {
-  const result = evaluate({ comments: [consumed({ mainSha: 'b'.repeat(40) })] });
+  const result = evaluate({
+    comments: [consumed({ mainSha: 'b'.repeat(40) })]
+  });
   assert.equal(result.pass, false);
 });
 
@@ -123,7 +148,9 @@ test('consumed ledger must be authored by GitHub Actions', () => {
 });
 
 test('bounded approval issue comment contract fails closed', () => {
-  const result = evaluate({ comments: Array.from({ length: 100 }, () => consumed()) });
+  const result = evaluate({
+    comments: Array.from({ length: 100 }, () => consumed())
+  });
   assert.equal(result.pass, false);
   assert.match(result.reason, /bounded comment contract/);
 });
