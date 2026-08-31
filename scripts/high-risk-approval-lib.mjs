@@ -34,7 +34,7 @@ const HIGH_RISK_PREFIXES = [
   '.github/workflows/supabase-production',
   'docs/PRODUCTION-',
   'docs/STRIPE-'
-]);
+];
 
 export function isHighRiskPath(file) {
   const normalized = String(file || '').replaceAll('\\', '/');
