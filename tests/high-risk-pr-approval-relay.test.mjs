@@ -7,23 +7,29 @@ const workflow = await readFile(
   'utf8'
 );
 
-test('High-Risk approval relay stays owner-only and exact-head bound', () => {
+test('relay is owner-only and exact-head bound', () => {
   assert.match(workflow, /issue_comment:/);
   assert.doesNotMatch(workflow, /workflow_dispatch:/);
   assert.match(
     workflow,
     /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
   );
-  assert.match(workflow, /github\.event\.comment\.author_association == 'OWNER'/);
+  assert.match(
+    workflow,
+    /github\.event\.comment\.author_association == 'OWNER'/
+  );
   assert.match(workflow, /NOVELIGHT_HIGH_RISK_APPROVE/);
   assert.match(workflow, /\.operation == "merge-high-risk-pr"/);
   assert.match(workflow, /\.base\.ref == "main"/);
   assert.match(workflow, /\.head\.repo\.full_name == \$repo/);
   assert.match(workflow, /\.head\.sha == \$sha/);
-  assert.match(workflow, /approval challenge does not match the exact PR head/);
+  assert.match(
+    workflow,
+    /approval challenge does not match the exact PR head/
+  );
 });
 
-test('High-Risk approval relay grants only the permissions required for ready transition and CI rerun', () => {
+test('relay grants required ready-transition permissions', () => {
   assert.match(workflow, /actions: write/);
   assert.match(workflow, /contents: write/);
   assert.match(workflow, /issues: read/);
@@ -32,17 +38,17 @@ test('High-Risk approval relay grants only the permissions required for ready tr
   assert.doesNotMatch(workflow, /secrets\.[A-Z0-9_]*TOKEN/);
 });
 
-test('High-Risk approval relay uses trusted main without persisting checkout credentials', () => {
+test('relay checks out trusted main without credentials', () => {
   assert.match(workflow, /Checkout trusted main approval logic/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /ref: main/);
 });
 
-test('draft ready transition uses one explicit GraphQL mutation and validates the returned head', () => {
+test('ready transition validates explicit GraphQL result', () => {
   assert.match(workflow, /pr_node_id=.*\.node_id/);
   assert.match(workflow, /gh api graphql/);
   assert.match(workflow, /markPullRequestReadyForReview/);
-  assert.match(workflow, /pullRequestId: \$id/);
+  assert.match(workflow, /pullRequestId: \\$id/);
   assert.match(workflow, /pullRequest \{ number isDraft headRefOid \}/);
   assert.match(
     workflow,
@@ -59,12 +65,9 @@ test('draft ready transition uses one explicit GraphQL mutation and validates th
   assert.doesNotMatch(workflow, /gh pr ready/);
 });
 
-test('ready transition re-fetches the PR and fails closed if draft or head state is unexpected', () => {
+test('ready transition re-fetches and fails closed', () => {
   assert.match(workflow, /pr-ready-after\.json/);
-  assert.match(
-    workflow,
-    /\.head\.sha == \$sha and \.draft == false/
-  );
+  assert.match(workflow, /\.head\.sha == \$sha and \.draft == false/);
   assert.match(
     workflow,
     /ready-for-review transition failed or PR head changed/
@@ -75,9 +78,13 @@ test('ready transition re-fetches the PR and fails closed if draft or head state
   );
 });
 
-test('CI rerun remains downstream of the approved ready transition', () => {
-  const readyIndex = workflow.indexOf('Mark approved draft PR ready for review');
-  const rerunIndex = workflow.indexOf('Re-run failed NOVELIGHT CI automatically');
+test('CI rerun follows ready transition', () => {
+  const readyIndex = workflow.indexOf(
+    'Mark approved draft PR ready for review'
+  );
+  const rerunIndex = workflow.indexOf(
+    'Re-run failed NOVELIGHT CI automatically'
+  );
 
   assert.notEqual(readyIndex, -1);
   assert.notEqual(rerunIndex, -1);
