@@ -49,6 +49,10 @@ run_sql supabase/checks/20260823171000_initial_and_paid_exposure_precheck.sql
 run_sql supabase/migrations/20260823171000_initial_and_paid_exposure.sql
 run_sql supabase/checks/20260823171000_initial_and_paid_exposure_postcheck.sql
 
+# Exercise the predecessor migration first so the final database state preserves
+# forward migration order after the trusted successor is applied.
+run_sql supabase/migrations/20260823171500_neutral_search_impressions.sql
+run_sql supabase/rollback/20260823171500_neutral_search_impressions_rollback.sql
 run_sql supabase/migrations/20260823171500_neutral_search_impressions.sql
 
 run_sql supabase/checks/20260831210000_trusted_allocation_receipts_precheck.sql
@@ -56,12 +60,13 @@ run_sql supabase/migrations/20260831210000_trusted_allocation_receipts.sql
 run_sql supabase/checks/20260831210000_trusted_allocation_receipts_postcheck.sql
 run_sql tests/rls/trusted-allocation-receipts.sql
 run_sql supabase/rollback/20260831210000_trusted_allocation_receipts_rollback.sql
+# The trusted rollback deliberately removes/revokes its successor objects and
+# requires the predecessor implementation before the trusted migration can be
+# exercised again.
 run_sql supabase/migrations/20260823171500_neutral_search_impressions.sql
 run_sql supabase/checks/20260831210000_trusted_allocation_receipts_precheck.sql
 run_sql supabase/migrations/20260831210000_trusted_allocation_receipts.sql
 run_sql supabase/checks/20260831210000_trusted_allocation_receipts_postcheck.sql
-run_sql supabase/rollback/20260823171500_neutral_search_impressions_rollback.sql
-run_sql supabase/migrations/20260823171500_neutral_search_impressions.sql
 
 run_sql supabase/migrations/20260823172000_lock_first_publication_time.sql
 run_sql supabase/checks/20260823172000_lock_first_publication_time_postcheck.sql
