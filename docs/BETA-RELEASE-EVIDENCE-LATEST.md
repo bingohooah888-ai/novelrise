@@ -1,43 +1,69 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-08-30 JST**
+**Reconciled: 2026-08-31 JST**
 
-This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots. Newer same-scope workflow, approval-ledger, compare, or read-only live evidence supersedes older descriptive status when no later material change invalidates the proof.
+This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Newer same-scope workflow, approval-ledger, compare, or read-only live evidence supersedes older descriptive status when no later material change invalidates the proof.
 
 ## Release decision
 
-**Controlled public-beta GO: RECORDED 2026-08-28; CURRENT LAUNCH POSTURE RECONCILED 2026-08-30.**
+**Controlled public-beta GO: RECORDED 2026-08-28; CURRENT LAUNCH POSTURE RECONCILED 2026-08-31.**
 
 Decision record: `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
 Historical decision baseline main: `1a5ca5dc5a90e4336ab5de74a21e2f2843e22bb1` (`Reconcile beta release evidence closure (#198)`).
 
-Current audited behavioral evidence baseline: `dbf0c5418262c8cec059c8b48cac3158a5e962ac` (`Harden auth forms against async rejection (#241)`).
+Current launch main at this reconciliation: `c00bf121ae261e4eca26cb7e05cfb8abb3cfbbdd` (`Add secure NOVELIGHT ADMIN dashboard (#265)`).
 
-The GO decision record remains historical and is not rewritten. After that decision baseline, material public-product/auth/release-control changes landed, so the older GO-era proof was not assumed to remain current. The affected scopes were re-evaluated under `docs/EVIDENCE-FRESHNESS-GATE.md` and are supported by newer decisive evidence on or applicable to the current audited main.
+The GO decision remains historical and is not rewritten. Material product/auth/billing/database/release-control changes landed after the historical decision baseline, so older GO-era proof is never accepted merely because it once passed. Affected scopes are classified under `docs/EVIDENCE-FRESHNESS-GATE.md` as current, still-valid for a narrower unchanged scope, or refresh-required.
 
 Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING** with owner residual risk recorded in `docs/legal-beta-review.md`. This GO is an operational release decision, not a finding of legal sufficiency.
 
 ## Git / CI — PASS / CURRENT
 
-Current audited-main evidence:
+Exact current-main evidence:
 
-- `NOVELIGHT CI` run #1048, run `33291158047`, head `dbf0c5418262c8cec059c8b48cac3158a5e962ac`: `success`.
+- `NOVELIGHT CI` #1196 / run `33368084498` / head `c00bf121ae261e4eca26cb7e05cfb8abb3cfbbdd`: `success`.
 - Required aggregate `check`: `success`.
 - Node tests: `success`.
 - Static quality: `success`.
-- Desktop and mobile browser regression gates: `success` for the relevant current-main jobs.
-- `CodeQL` run #980, run `33291157993`, head `dbf0c5418262c8cec059c8b48cac3158a5e962ac`: `success`.
-- Vercel commit status for `dbf0c5418262c8cec059c8b48cac3158a5e962ac`: `success` (`Deployment has completed`).
-- `NOVELIGHT Production Readiness Smoke` run #54, run `33291158004`, head `dbf0c5418262c8cec059c8b48cac3158a5e962ac`: `success`.
+- Desktop smoke: `success`.
+- Mobile smoke: `success`.
+- Desktop async-UI browser regression: `success`.
+- Mobile async-UI browser regression: `success`.
+- `CodeQL` #1128 / run `33368084384` / same head: `success`.
+- Vercel commit status for the same head: `success` (`Deployment has completed`).
+- `NOVELIGHT Production Readiness Smoke` #58 / run `33368084397` / same head: `success`.
 
-The compare from the historical GO decision baseline to the current audited main includes material product/auth/control changes. Therefore the old statement that later changes were documentation-only is no longer used as the freshness basis. Exact latest-main CI, CodeQL, Vercel, Production Readiness, and Production Authenticated Smoke evidence refreshes the affected current scopes without duplicating already-current Production mutations.
+The current-main CI classifier skipped RLS integration/rollback, dependency vulnerability audit, and GitHub Actions semantic lint because the #265 merge did not change the file classes that trigger those jobs. This reconciliation does **not** represent those skipped jobs as having run on `c00bf121...`; their unaffected prior evidence is reused only where the freshness gate permits it.
 
-## Supabase Production — PASS / HISTORICAL BUT STILL VALID
+Production Readiness #58 separately verified Production static-route convergence, safe API route contracts, read-only Production reader behavior, and Production beta observability on the exact current main.
 
-`docs/BETA-RELEASE-EVIDENCE-2026-08-23.md` records the Production migration sequence, status/dry-run checks, postchecks, signup/recovery redirect configuration, password-reset E2E, signup confirmation, and profile persistence.
+## Supabase Production — PASS / CURRENT VIA HISTORICAL + POST-GO LEDGER EVIDENCE
 
-No later Production Supabase schema/RLS/migration/auth-configuration change has been identified that invalidates those completed Production proofs. Later auth UI/async-handling changes are covered by current-main CI and the current Production Authenticated Smoke rather than by repeating completed Supabase Production mutations.
+Earlier Production migration/auth evidence remains recorded in `docs/BETA-RELEASE-EVIDENCE-2026-08-23.md` and related dated evidence.
+
+Two later Production migrations landed after the 2026-08-30 reconciliation and are now part of the current Production state:
+
+- `20260830163000_atomic_episode_publish.sql`
+  - approved main: `e43e8b9003b7bad5ab0b2b84b8b20b00b31e8501`
+  - central approval ledger: issue `#165`
+  - claimed bridge run: `33307362222`
+  - execution: `success`
+  - mutation result: `success`
+  - postcheck result: `success`
+  - failure phase: `none`
+- `20260830214000_checkout_attempt_reservations.sql`
+  - approved main: `79e33341c90779270dfb7ebedec7ad2d34d3e32f`
+  - central approval ledger: issue `#165`
+  - claimed bridge run: `33346664018`
+  - execution: `success`
+  - mutation result: `success`
+  - postcheck result: `success`
+  - failure phase: `none`
+
+The first migration makes episode creation plus first novel publication one database transaction. The second adds server-only checkout-attempt reservation state used to serialize initial Stripe Checkout creation. Both were already applied and postchecked successfully before this reconciliation; this document update does not repeat either Production mutation.
+
+PR #265 adds the read-only operator ADMIN surface and does **not** add a Supabase migration, Production DB write path, Stripe mutation, or committed secret.
 
 ## Backup / restore — PASS / CURRENT
 
@@ -55,15 +81,12 @@ Historical hard-gate evidence remains valid:
 Fresh read-only evidence:
 
 - Workflow: `NOVELIGHT Production Backup Freshness`
-- Run: `33274407623` (#3)
-- Head: `b3f43d2610ccc043354bfb819cca306ea671890a`
+- Run: `33354249864` (#8)
+- Head: `79e33341c90779270dfb7ebedec7ad2d34d3e32f`
 - Conclusion: `success`
-- Latest completed Production backup observed: `2026-08-28T21:03:40.759Z`
-- Age at workflow observation: `23.74h`
-- Freshness limit: `36h`
-- Completed backups returned: `7`
+- Job `Verify latest Production backup is fresh`: `success`
 
-The compare from that workflow head through the current audited main does not modify the backup workflow, backup-freshness script, or Production backup control path. The observed recovery point also remains inside the 36-hour hard-gate window at this reconciliation. Therefore this read-only proof remains current without a manual rerun.
+The compare from that backup-freshness head through `c00bf121...` does not modify the backup workflow, backup-freshness script, or Production backup control path. Therefore #8 is the current read-only backup freshness proof; no manual rerun is performed for documentary freshness.
 
 ## Content / moderation — PASS / CURRENT VIA COMBINED EVIDENCE
 
@@ -76,7 +99,9 @@ Still-valid behavioral evidence covers:
 - raw report rows unreadable by ordinary anon/authenticated clients;
 - controlled-beta operator routine in `docs/BETA-OPERATIONS-RUNBOOK.md`.
 
-Later product hardening did not identify a material change to those moderation rules/data boundaries, and current-main CI/CodeQL plus Production Readiness/Auth smoke provide current regression reinforcement. No repeat Production mutation is required for this scope.
+The new ADMIN v1 surface is read-only and was designed to expose only minimized operator data. PR #265 requires server-side bearer-token verification plus a server-side allowlist before operator data is returned; malformed/missing allowlist configuration fails closed, non-admin authenticated users receive 403 before data loaders run, and the API is GET-only with private/no-store caching. Current-main CI, CodeQL, and Production Readiness safe-API checks passed after the merge.
+
+At the 2026-08-31 reconciliation, no open issue titled `[OPS] NOVELIGHT beta inbox needs review` was found.
 
 ## Discovery / LIGHT ANALYTICS — PASS / CURRENT VIA COMBINED EVIDENCE
 
@@ -92,7 +117,7 @@ Still-valid evidence covers:
 - episode 1 -> episode 2 rate;
 - actual recorded plan-added impression counts.
 
-The historical authenticated Staging lifecycle proof remains useful for the end-to-end LIGHT ANALYTICS funnel. Later navigation/favorites/auth hardening is covered by current-main CI and the current Production Authenticated Smoke. No later material discovery-selection or analytics-pipeline change requiring a new Production mutation was identified.
+The current-main changes in PR #265 do not alter discovery selection or the reader analytics pipeline. Current-main CI/CodeQL and Production Readiness provide current regression reinforcement without a new Production mutation.
 
 ## Beta-start data — PASS / CURRENT VIA COMBINED EVIDENCE
 
@@ -105,7 +130,7 @@ Current/still-valid evidence covers:
 - concurrency-safe Founding Author #001–#100 assignment;
 - Stripe webhook idempotent subscription event history.
 
-Current-main CI/CodeQL and Production smoke evidence reinforce the affected application paths; no later material persistence/control-path invalidation was identified for the remaining beta-start data contracts.
+PR #265 changes the login redirect allowlist only to permit the same-origin `/admin.html` destination. Existing sign-in/session logic and existing author/reader redirect destinations are unchanged.
 
 ## Authenticated Staging lifecycle proof — PASS / HISTORICAL, STILL VALID WHERE UNAFFECTED
 
@@ -118,26 +143,32 @@ Accepted lifecycle proof:
 
 The run covers authentication, published content, favorite, LIGHT SEED, SCOUT RECORD, LIGHT ANALYTICS, isolated Stripe test Checkout, entitlement reconciliation, Billing Portal, cancellation, and cleanup.
 
-Because later product/auth changes did occur, this historical Staging run is no longer used by itself to claim currentness for all current UI/auth behavior. Its unaffected lifecycle/billing evidence remains still-valid, while current app/auth behavior is refreshed by latest-main CI/CodeQL and Production Authenticated Smoke #109.
+Later product/auth/database changes mean this historical Staging run is not used by itself to claim currentness for every current behavior. Its unaffected lifecycle/billing evidence remains useful alongside newer current-main CI/CodeQL, later migration ledgers, and the Production authenticated proof below.
 
-## Production authenticated path — PASS / CURRENT
+## Production authenticated author/reader path — PASS / STILL CURRENT FOR THE PROVED SCOPE
 
-Fresh decisive proof after the latest auth/product changes:
+Newest decisive Production authenticated proof for the existing beta-critical author/reader flow:
 
 - Workflow: `NOVELIGHT Production Authenticated Smoke`
-- Run: `33291747746` (#109)
-- Approved/current main: `dbf0c5418262c8cec059c8b48cac3158a5e962ac`
-- Fresh request/approval ledger: issue `#242`
+- Run: `33362071374` (#163)
+- Approved main: `d2b21f647e67104cf40476685b86afac274222ce`
+- Request/approval ledger: issue `#263`
 - Conclusion: `success`
 - OWNER approval: verified for the exact request/SHA
-- Approval ledger: `CLAIMED` -> `CONSUMED`, `result="success"`; issue closed as completed
+- Approval ledger: exact request/SHA -> `CLAIMED` with run `33362071374` -> `CONSUMED`, `result="success"`; issue closed completed
 - Immediate approved-main re-check before Production write: `success`
-- Authenticated Chrome smoke: `success`
-- Ephemeral Production smoke-data cleanup and temporary-fixture cleanup: `success`
+- Production beta-critical pages converged to the approved main before the write: `success`
+- Authenticated browser smoke: `success`
+- Ephemeral Production smoke-data cleanup: `success`
+- Temporary credential/fixture cleanup: `success`
 
-This proof is bound to the current audited main and re-establishes the authenticated Production scope after later auth/product changes. It must **not** be repeated merely to create a newer timestamp or refresh this document.
+The smoke covered the existing end-user beta-critical path, including author login, work creation, episode publication, reader login, favorite, LIGHT SEED, SCOUT RECORD, reader engagement/LIGHT ANALYTICS, no-charge Checkout-session creation, and deletion/cleanup.
 
-This refresh did not perform a Production migration deploy, repair-history, `supabase migration repair`, the current external Stripe webhook proof, Secrets/Environment changes, or a Stripe live charge.
+Freshness classification after PR #265: **still current for that pre-existing author/reader scope**. The compare from `d2b21f...` to current main `c00bf121...` adds a read-only operator ADMIN surface and adds `/admin.html` to the existing same-origin login redirect allowlist; it does not change the existing sign-in/session logic, existing author/reader destinations, user-facing billing flow, Supabase auth configuration, or user DB/RLS schema.
+
+Production Authenticated Smoke #163 is **not** claimed to prove the new operator authorization boundary. That new ADMIN boundary is separately supported by PR #265's exact-head High-Risk OWNER approval, current-main CI #1196, CodeQL #1128, Vercel success, and Production Readiness #58 safe-API/read-only checks.
+
+Do **not** repeat Production Authenticated Smoke #163 merely for a newer timestamp or to refresh this document. Any future material change to the existing beta-critical authenticated flow must be classified under the Evidence Freshness Gate and, if required, use a new separately approved Production smoke request.
 
 ## Production external Stripe webhook delivery — PASS / CURRENT
 
@@ -154,20 +185,22 @@ Scoped proof:
 
 `Stripe Live event creation without artificial paid charge -> Production Vercel webhook -> Production Supabase entitlement/cancellation reflection -> final billing audit`.
 
-No later material change to `api/stripe-webhook.js`, the decisive webhook-handler boundary, endpoint/signing-secret state, Production Supabase target, or proof implementation has been identified. The proof remains `current`; duplicate execution of the same Production mutation is prohibited.
+No later material change to `api/stripe-webhook.js`, the decisive webhook-handler boundary, endpoint/signing-secret state, or Production Supabase target has been identified. The later checkout-concurrency migration changes initial Checkout reservation, not external webhook delivery. The webhook proof remains `current`; duplicate execution of the same Production mutation is prohibited.
 
 ## Production public/legal/read-only surfaces — PASS / CURRENT
 
-Current audited-main read-only observation:
+Exact current-main read-only observation:
 
 - Workflow: `NOVELIGHT Production Readiness Smoke`
-- Run: `33291158004` (#54)
-- Head: `dbf0c5418262c8cec059c8b48cac3158a5e962ac`
+- Run: `33368084397` (#58)
+- Head: `c00bf121ae261e4eca26cb7e05cfb8abb3cfbbdd`
 - Conclusion: `success`
-- Full-route/read-only checks cover Production static-route convergence, safe API contracts, read-only Production reader behavior, Production beta observability, repository-to-Production root HTML consistency, and absence of old `NovelRise` branding.
-- Intended terms, privacy, content-guidelines, billing-policy, commerce-disclosure, and contact routes and relevant signup/pricing links remain part of the reviewed public surface.
+- Production static routes: `success`
+- Safe API route contracts: `success`
+- Read-only Production reader smoke: `success`
+- Production beta observability: `success`
 
-This exact latest-main proof supersedes the older Readiness #43 entry for current launch reliance. This is an engineering/read-only reachability observation, not legal advice.
+This supersedes older Production Readiness entries for current launch reliance. It is an engineering/read-only reachability observation, not legal advice.
 
 ## Legal / brand status — GO RECORDED WITH DEFERRED COUNSEL REVIEW
 
@@ -182,18 +215,22 @@ This exact latest-main proof supersedes the older Readiness #43 entry for curren
 
 `docs/BETA-RELEASE-CHECKLIST.md` is reconciled in parallel with this rolling index.
 
-All non-deferred hard checklist scopes have decisive current or still-valid evidence. An `[x]` means the scope is supported under the Evidence Freshness Gate; it does not imply every external operation was re-run on the current audited main.
+An `[x]` means the scope is supported by current or specifically justified still-valid evidence under the Evidence Freshness Gate. It does not imply every external operation was repeated on the current main.
 
-No newly unknown non-deferred hard gate was identified during this 2026-08-30 reconciliation.
+No current-main CI `success` is used to imply that a selectively skipped job ran. No already-current Production mutation is repeated for documentary freshness.
 
 ## Current release state
 
-**Controlled public-beta: GO — CURRENT LAUNCH POSTURE RECONCILED 2026-08-30.**
+**Controlled public-beta: GO — CURRENT LAUNCH POSTURE RECONCILED 2026-08-31.**
 
-Current audited behavioral evidence baseline: `dbf0c5418262c8cec059c8b48cac3158a5e962ac`.
+Current launch main at reconciliation: `c00bf121ae261e4eca26cb7e05cfb8abb3cfbbdd`.
 
-Qualified counsel review remains an explicit post-launch deferred item and must not be silently converted to `completed`.
+Current exact-main regression/read-only evidence: CI #1196, CodeQL #1128, Vercel success, Production Readiness #58.
 
-No additional Production mutation is authorized by this reconciliation. Existing Production/Secret/Stripe live/Supabase Production/Vercel Production approval boundaries remain in force, and already-current Production proof must not be repeated for documentary freshness.
+Current/still-valid Production authenticated author/reader proof: Production Authenticated Smoke #163 / run `33362071374` on `d2b21f...`, with freshness narrowed to the unchanged pre-existing author/reader scope after PR #265.
 
-If this reconciliation itself advances `main` only by updating release documentation, the current behavioral evidence remains valid because the proved product/Production/auth/billing/database/security/backup behavior does not change. If a later material product, Production, billing, auth, database/RLS, security, legal/public-surface, backup, or release-control change lands before or during the beta launch, refresh only the affected scope under `docs/EVIDENCE-FRESHNESS-GATE.md`.
+Qualified counsel review remains an explicit deferred item and must not be silently converted to `completed`.
+
+This reconciliation authorizes **no** Production DB/RLS mutation, Stripe live mutation, Secret/env change, manual Production workflow rerun, or unrelated Vercel Production state change. Existing approval boundaries remain in force.
+
+If this reconciliation advances `main` only by updating release documentation, the evidence classifications above remain valid. If a later material product, Production, billing, auth, database/RLS, security, legal/public-surface, backup, or release-control change lands before or during beta launch, refresh only the affected scope under `docs/EVIDENCE-FRESHNESS-GATE.md` before relying on the recorded GO.
