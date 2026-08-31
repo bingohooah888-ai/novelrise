@@ -20,6 +20,7 @@ NOVELIGHTでは「壊れない」だけでなく「壊れても戻せる」こ�
 - RESTテーブルへの非GETリクエスト遮断
 - 本番ホスト `novelrise.vercel.app` の拒否
 - write smokeでは本番Supabase project / Stripe live mode /異なるpublishable keyの拒否
+- write smokeではRepositoryのmigration historyとStaging Supabaseのmigration historyの完全一致を確認
 
 認証ユーザー作成、作品投稿、お気に入り、LIGHT SEED、Stripe Checkout等の書き込みを伴うStaging E2Eは、独立したStaging SupabaseとStripe test modeが接続され、`STAGING_E2E_READY=true` にした場合だけ実行する。
 
@@ -31,6 +32,7 @@ NOVELIGHTでは「壊れない」だけでなく「壊れても戻せる」こ�
 | --- | --- | --- |
 | アプリURL / deployment | Vercel Productionとcanonical `NOVELIGHT_APP_URL`。Production bootstrapが対象hostを検証する | 通常実行はVercel `deployment_status` が返す実Preview URLが対象。手動時だけGitHub Repository Variable `STAGING_BASE_URL`をfallback候補にできるが、必ず明示したcommit SHAと照合する。PreviewのStripe戻り先は`VERCEL_URL`から自動導出し、deploymentごとの`NOVELIGHT_APP_URL`重複入力を不要にする |
 | Supabase project URL | approval-scoped GitHub Production値をProduction bootstrapがVercelへ同期し、機能証明する | GitHub Repository Variable `STAGING_SUPABASE_URL`が期待値の正本。Vercel Preview `SUPABASE_URL`は同じprojectを指し、write前に`staging-environment-facts`経由でexact matchを検証する |
+| Supabase migration history | `supabase/migrations/*.sql`とProduction migration historyをProduction deploy gateで比較する | `supabase/migrations/*.sql`を正本とし、write smoke前に`verify-staging-migration-parity.mjs`がSupabase Management APIのread-only queryでStaging migration historyとの完全一致を確認する。Production migration planも承認handoff前に同じparityを要求する |
 | Supabase browser key | Vercel Production runtime | GitHub `staging` Environment Secret `STAGING_SUPABASE_PUBLISHABLE_KEY`がE2E期待値。Vercel Preview `SUPABASE_PUBLISHABLE_KEY`との一致は値をログへ出さずSHA-256 fingerprintで検証する |
 | Supabase server secret | approval-scoped Production credentialをbootstrapがVercelへ同期 | GitHub `staging` Environment Secretはfixture用、Vercel Preview secretはServerless用。公開APIは存在booleanだけを返し、最終的な同一project/権限の成立はauthenticated E2Eのsemantic proofで確認する |
 | Stripe credentials / Price | Stripe live resourcesが正本。Production bootstrapがVercelへ同期しno-live-charge control proofまで同一承認内で行う | Vercel PreviewはStripe test resourcesのみ。公開factsでsecret key modeが`test`、必要Priceが存在することを先行検査し、billing smokeの`cs_test_` Checkoutとsubscription lifecycleを最終semantic proofとする |
@@ -39,19 +41,24 @@ NOVELIGHTでは「壊れない」だけでなく「壊れても戻せる」こ�
 
 設定値がGitHubとVercelの両方に必要な場合、名前の存在だけでは完了扱いにしない。exact match可能な公開情報は機械比較し、secretそのものを公開比較できないものはmode/class検査とend-to-end functional proofで成立を確認する。
 
-## 共通Staging deployment contract
+## 統合Staging workflow contract
 
-3本のStaging Workflowは `scripts/verify-staging-deployment.mjs` を共有する。
+現行のStaging検証は `.github/workflows/staging-smoke.yml` をSingle Sourceとする。旧来のreadiness / authenticated / billingの別Workflowへ分割せず、1本のWorkflow内で安全境界を段階的に引き上げる。
 
-- `.github/workflows/staging-readiness-smoke.yml`
-- `.github/workflows/staging-authenticated-smoke.yml`
-- `.github/workflows/staging-billing-smoke.yml`
+1. `scripts/verify-staging-deployment.mjs` によるread-only deployment contract
+2. Desktop / Mobile read-only Playwright smoke
+3. `STAGING_E2E_READY=true` の場合のみwrite-capable environment contract
+4. `scripts/verify-staging-migration-parity.mjs` によるStaging migration history完全一致
+5. Desktop authenticated smokeを専用ephemeral fixtureで実行してcleanup
+6. Mobile authenticated smokeを新しい専用ephemeral fixtureで実行してcleanup
+7. Desktop / Mobile双方の成功をaggregate確認
+8. freshなbilling fixtureでStripe test billing smokeを実行してcleanup
 
 通常実行では、成功した非Production `deployment_status` の `environment_url` を対象とし、存在しない場合だけ同じdeploymentの `target_url` を使う。候補URLが存在するのに不正だった場合、別branchや古い固定URLへsilent fallbackしない。
 
 手動実行は `staging_url` を明示するか、GitHub Repository Variable `STAGING_BASE_URL` を使用できる。ただしどちらの場合も `revision` にexact 40-character commit SHAを指定し、配備側のSHAと一致しなければ実行しない。
 
-共通verifierはpackage install、browser起動、fixture作成より前に以下を確認する。
+共通deployment verifierはpackage install、browser起動、fixture作成より前に以下を確認する。
 
 1. 対象がHTTPSの非Production `*.vercel.app` deploymentである。
 2. `/api/staging-environment-facts` が対象commit SHAを返す。
@@ -63,9 +70,33 @@ revisionがまだ一致しない場合だけ短いbounded retryを行う。設�
 
 `api/staging-environment-facts.js` はPreviewでのみ利用でき、秘密値を返さない。Supabase URL、browser keyのclass/fingerprint、server secretの存在boolean、Stripe keyのmode class、Price存在boolean、Vercel環境、commit SHA、実効app base URLだけを返す。Vercel Productionでは404にする。
 
+## Staging migration parity gate
+
+`STAGING_E2E_READY=true` のwrite smokeでは、環境変数が正しいことだけでDB schemaが正しいとは扱わない。`scripts/verify-staging-migration-parity.mjs` がRepositoryの `supabase/migrations/*.sql` に含まれる14桁version集合と、Staging Supabaseの `supabase_migrations.schema_migrations` のversion集合を比較し、完全一致した場合だけfixture作成へ進む。
+
+migration historyの取得にはSupabase Management APIを使用し、送信するSQLは `select` のみ、requestにも `read_only: true` を指定する。Production Supabase project refを検出した場合は即時拒否する。Management API tokenそのものをログへ出してはならない。
+
+Workflowから `SUPABASE_ACCESS_TOKEN` が参照可能であることを必要条件とする。値はRepositoryまたは適切なEnvironment Secretで管理し、この文書やログへ記録しない。
+
+Stagingに不足migrationがある、Stagingだけに未知migrationがある、Management APIのread-only proofを取得できない、またはProduction projectを指している場合は `SCHEMA_DRIFT` としてfail closedする。Checkout等のsemantic E2EがHTTP 500になるまで待ってschema driftを推測しない。
+
+### migrationを含む変更の昇格順序
+
+migrationを含む変更では次の順序を維持する。
+
+1. migration / precheck / postcheck / rollbackと関連コードをCIで検証する。
+2. 専用Stagingへ対象migrationを正式な再現可能手順で同期する。
+3. Staging migration parityをPASSさせる。
+4. authenticated / billing Staging smokeをPASSさせる。
+5. Production migration planでProduction pending一致とdry-runを行う。
+6. Production migration planはStaging migration parityをもう一度read-onlyで確認し、PASSした場合だけchat-approval handoffを出す。
+7. freshなProduction承認後もProduction境界のpending一致とdry-runを再確認してから適用する。
+
+Production migration plan側のStaging parity再確認は、安全に意味がある重複確認なので削除しない。Staging同期そのものはProduction deploy workflowへ混在させず、Production mutationと別の非Production操作として扱う。
+
 ## 自動Read-only smoke
 
-Workflow: `.github/workflows/staging-readiness-smoke.yml`
+Workflow: `.github/workflows/staging-smoke.yml`
 
 Playwright config: `tests/e2e/playwright.staging.config.mjs`
 
@@ -111,7 +142,7 @@ Stripe等の外部サービスは、GitHub ActionsやPlaywrightのように `x-v
 
 ### 手動実行
 
-各Staging Workflowの `workflow_dispatch` では、必要ならHTTPSのPreview/Staging URLを指定し、必ずそのdeploymentのexact 40-character `revision` を指定する。URLを省略した場合だけRepository Variable `STAGING_BASE_URL` を使う。
+統合Staging Workflowの `workflow_dispatch` では、必要ならHTTPSのPreview/Staging URLを指定し、必ずそのdeploymentのexact 40-character `revision` を指定する。URLを省略した場合だけRepository Variable `STAGING_BASE_URL` を使う。
 
 ローカルread-only testは `tests/e2e/` で以下を使用する。
 
@@ -125,7 +156,9 @@ Deployment Protection対象へローカル実行する場合は `VERCEL_AUTOMATI
 
 Staging Playwright失敗時はtrace、screenshot、video、HTML report、browser console/page error、failed request等をGitHub Actions artifactへ保存する。
 
-まず `CONFIG_DRIFT` / `DEPLOYMENT_NOT_CONVERGED` 等の早期分類を確認し、package installやブラウザ再実行だけを繰り返して原因を隠さない。
+まず `CONFIG_DRIFT` / `SCHEMA_DRIFT` / `DEPLOYMENT_NOT_CONVERGED` 等の早期分類を確認し、package installやブラウザ再実行だけを繰り返して原因を隠さない。
+
+Authenticated Staging smokeはDesktopとMobileで同じFree作者を共有しない。Desktop専用fixtureを作成・実行・cleanupした後、Mobile用にfresh fixtureを再作成する。Desktopの途中failureで作品が残ってもMobileのFree 1作品制限へ連鎖させず、一次障害と二次障害を分離する。
 
 ## 独立Stagingへ移行する条件
 
@@ -134,7 +167,7 @@ Staging Playwright失敗時はtrace、screenshot、video、HTML report、browser
 1. Staging専用Supabase projectを用意する。
 2. Staging専用のpublishable key / server-side secretを使う。
 3. 本番Supabase project ID、service-role/secret keyをStagingに渡さない。
-4. Staging側へ本番と同じmigrationを再現可能な手順で適用する。
+4. Staging側へ本番と同じmigrationを再現可能な手順で適用し、migration parityを機械確認する。
 5. Stripeはtest modeのみを使用する。
 6. Staging専用Price、Checkout設定を使用する。
 7. GitHub `staging` EnvironmentへStaging専用Secretsだけを登録する。
@@ -154,6 +187,8 @@ Staging Playwright失敗時はtrace、screenshot、video、HTML report、browser
 
 - `STAGING_SUPABASE_SECRET_KEY`
 - `STAGING_SUPABASE_PUBLISHABLE_KEY`
+
+migration parity proofでは、WorkflowからSupabase Management API用 `SUPABASE_ACCESS_TOKEN` を参照できる状態を必要とする。既存tokenを利用する場合も値を複製・表示せず、GitHub Secrets境界を維持する。
 
 Vercel Deployment Protection用の `VERCEL_AUTOMATION_BYPASS_SECRET` はread-only smokeでも利用するため、GitHub Repository Actions Secretとして管理する。
 
@@ -181,18 +216,17 @@ PreviewのCheckout / Customer Portalの戻り先は `VERCEL_URL` から自動解
 
 以下を順番に自動化する。
 
-1. 新規登録またはテストユーザー作成
-2. ログイン
-3. 作品作成
-4. 第1話公開
-5. 別読者で作品閲覧
-6. お気に入り
-7. LIGHT SEED
-8. SCOUT RECORD確認
-9. LIGHT ANALYTICS確認
-10. Stripe test mode Checkout Session生成（`cs_test_`のみ許可）
-11. テストデータcleanup
-12. migration postcheck / rollbackの非本番確認
+1. migration parity確認
+2. Desktop用テストユーザー作成
+3. Desktopでログイン、作品作成、第1話公開、別読者閲覧、お気に入り、LIGHT SEED、SCOUT RECORD、LIGHT ANALYTICS、Stripe test Checkout確認
+4. Desktop fixture cleanup
+5. Mobile用freshテストユーザー作成
+6. Mobileで同じbeta-critical product flowを確認
+7. Mobile fixture cleanup
+8. fresh billing fixture作成
+9. Stripe test modeの完全billing lifecycle確認
+10. billing fixture cleanup
+11. migration postcheck / rollbackの非本番確認
 
 ## Go / No-Go
 
@@ -201,10 +235,13 @@ Stagingを通過しただけで本番変更を自動承認しない。
 本番反映前には少なくとも以下を確認する。
 
 - CIの最終 `check` が成功
+- Staging migration parityが成功
 - Staging smoke成功または、write Stagingがまだsafe-disabledの場合はその理由が明確
 - 高リスク変更では独立レビュー完了
 - DB変更ではprecheck / postcheck / rollbackが確認済み
 - 本番用SecretsとStaging用Secretsが混在していない
 - 復旧手段がある
+
+migrationを含むmain pushでは、Production migration plan自身もStaging parityを再確認する。Stagingがcurrent repositoryと一致しない間は、Production chat-approval handoffをREADYとして扱わない。
 
 本番DB変更、高リスクmain merge、production write smoke等は既存の承認ポイントを維持する。
