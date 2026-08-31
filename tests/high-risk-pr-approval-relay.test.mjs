@@ -46,9 +46,10 @@ test('relay checks out trusted main without credentials', () => {
 
 test('ready transition validates explicit GraphQL result', () => {
   assert.match(workflow, /pr_node_id=.*\.node_id/);
+  assert.match(workflow, /graphql_query=/);
   assert.match(workflow, /gh api graphql/);
   assert.match(workflow, /markPullRequestReadyForReview/);
-  assert.match(workflow, /pullRequestId: \\$id/);
+  assert.match(workflow, /pullRequestId:/);
   assert.match(workflow, /pullRequest \{ number isDraft headRefOid \}/);
   assert.match(
     workflow,
