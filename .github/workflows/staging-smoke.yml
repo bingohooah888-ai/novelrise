@@ -48,7 +48,6 @@ jobs:
       STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
       SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       E2E_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
@@ -184,10 +183,6 @@ jobs:
             echo 'CONFIG_DRIFT: STAGING_SUPABASE_PUBLISHABLE_KEY is not configured.'
             exit 1
           }
-          test -n "$SUPABASE_ACCESS_TOKEN" || {
-            echo 'CONFIG_DRIFT: SUPABASE_ACCESS_TOKEN is not configured for read-only Staging migration proof.'
-            exit 1
-          }
 
       - name: Verify write-capable Staging deployment contract
         if: success() && vars.STAGING_E2E_READY == 'true'
@@ -195,9 +190,9 @@ jobs:
           STAGING_REQUIRE_WRITE_CONFIG: 'true'
         run: node scripts/verify-staging-deployment.mjs
 
-      - name: Verify Staging migration parity before writes
+      - name: Verify Staging checkout schema capabilities before writes
         if: success() && vars.STAGING_E2E_READY == 'true'
-        run: node scripts/verify-staging-migration-parity.mjs
+        run: node scripts/verify-staging-schema-capabilities.mjs
 
       - name: Install application dependencies once
         if: success() && vars.STAGING_E2E_READY == 'true'
