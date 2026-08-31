@@ -61,16 +61,25 @@ function managedComment(fingerprint) {
   return `${MANAGED_COMMENT_PREFIX}${fingerprint}`;
 }
 
-function buildUrl(path, teamId, extra = {}) {
+function buildApiUrl(path, extra = {}) {
   const url = new URL(path, 'https://api.vercel.com');
-  url.searchParams.set('teamId', requireNonEmpty(teamId, 'Vercel team ID'));
   for (const [key, value] of Object.entries(extra)) {
     url.searchParams.set(key, String(value));
   }
   return url;
 }
 
-async function vercelRequest(fetchImpl, { token, url, method = 'GET', body }) {
+function buildUrl(path, teamId, extra = {}) {
+  return buildApiUrl(path, {
+    teamId: requireNonEmpty(teamId, 'Vercel team ID'),
+    ...extra
+  });
+}
+
+async function vercelRequest(
+  fetchImpl,
+  { token, url, method = 'GET', body, allowNotFound = false }
+) {
   const response = await fetchImpl(url, {
     method,
     headers: {
@@ -80,12 +89,63 @@ async function vercelRequest(fetchImpl, { token, url, method = 'GET', body }) {
     body: body === undefined ? undefined : JSON.stringify(body)
   });
 
+  if (allowNotFound && response.status === 404) return null;
+
   if (!response.ok) {
     throw new Error(`Vercel API request failed safely with HTTP ${response.status}.`);
   }
 
   if (response.status === 204) return null;
   return response.json();
+}
+
+export async function resolveVercelProjectScope({
+  fetchImpl = fetch,
+  token,
+  project = 'novelrise'
+}) {
+  const projectName = requireNonEmpty(project, 'Vercel project name');
+  const teamsPayload = await vercelRequest(fetchImpl, {
+    token,
+    url: buildApiUrl('/v2/teams', { limit: 100 })
+  });
+
+  if (!Array.isArray(teamsPayload?.teams)) {
+    throw new Error('Vercel teams response is malformed.');
+  }
+  if (teamsPayload?.pagination?.next != null) {
+    throw new Error('Vercel team discovery is paginated; refusing incomplete scope resolution.');
+  }
+
+  const matches = [];
+  for (const team of teamsPayload.teams) {
+    const teamId = requireNonEmpty(team?.id, 'Vercel team ID');
+    const projectPayload = await vercelRequest(fetchImpl, {
+      token,
+      url: buildUrl(`/v9/projects/${encodeURIComponent(projectName)}`, teamId),
+      allowNotFound: true
+    });
+
+    if (!projectPayload) continue;
+
+    if (projectPayload.name !== projectName) {
+      throw new Error('Vercel project response does not match the expected project name.');
+    }
+    if (projectPayload.accountId !== teamId) {
+      throw new Error('Vercel project ownership metadata does not match the resolved team.');
+    }
+    const projectId = requireNonEmpty(projectPayload.id, 'Vercel project ID');
+    matches.push({ teamId, projectId, project: projectName });
+  }
+
+  if (matches.length === 0) {
+    throw new Error('Expected Vercel project was not found in any token-accessible team.');
+  }
+  if (matches.length > 1) {
+    throw new Error('Multiple Vercel teams expose the expected project; scope is ambiguous.');
+  }
+
+  return matches[0];
 }
 
 export async function inspectVercelAdminAllowlist({
@@ -310,11 +370,18 @@ function printJson(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
+async function resolveCommandTeamId(common) {
+  const scope = await resolveVercelProjectScope({
+    token: common.token,
+    project: common.project
+  });
+  return scope.teamId;
+}
+
 async function main() {
   const command = process.argv[2];
   const common = {
     token: process.env.VERCEL_API_TOKEN,
-    teamId: process.env.VERCEL_TEAM_ID,
     project: process.env.VERCEL_PROJECT_NAME || 'novelrise',
     adminUserIds: process.env.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS
   };
@@ -325,14 +392,17 @@ async function main() {
   }
 
   if (command === 'inspect') {
-    printJson(await inspectVercelAdminAllowlist(common));
+    const teamId = await resolveCommandTeamId(common);
+    printJson(await inspectVercelAdminAllowlist({ ...common, teamId }));
     return;
   }
 
   if (command === 'sync') {
+    const teamId = await resolveCommandTeamId(common);
     printJson(
       await syncVercelAdminAllowlist({
         ...common,
+        teamId,
         expectedFingerprint: process.env.APPROVED_ADMIN_ALLOWLIST_FINGERPRINT
       })
     );
@@ -340,10 +410,11 @@ async function main() {
   }
 
   if (command === 'deploy') {
+    const teamId = await resolveCommandTeamId(common);
     printJson(
       await createProductionDeployment({
         token: common.token,
-        teamId: common.teamId,
+        teamId,
         project: common.project,
         repoId: process.env.GITHUB_REPOSITORY_ID,
         mainSha: process.env.APPROVED_MAIN_SHA
@@ -353,10 +424,11 @@ async function main() {
   }
 
   if (command === 'wait-deployment') {
+    const teamId = await resolveCommandTeamId(common);
     printJson(
       await waitForDeploymentReady({
         token: common.token,
-        teamId: common.teamId,
+        teamId,
         deploymentId: process.env.VERCEL_DEPLOYMENT_ID
       })
     );
