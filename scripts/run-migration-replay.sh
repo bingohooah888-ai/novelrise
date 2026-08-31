@@ -69,7 +69,8 @@ begin
      or to_regclass('public.favorites') is null
      or to_regclass('public.light_seeds') is null
      or to_regclass('public.novel_exposure_events') is null
-     or to_regclass('public.founding_authors') is null then
+     or to_regclass('public.founding_authors') is null
+     or to_regclass('public.billing_checkout_attempts') is null then
     raise exception 'Fresh migration replay is missing one or more required tables';
   end if;
 
@@ -116,6 +117,18 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260830163000_atomic_episode_publish_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260830163000_atomic_episode_publish.sql
 "${REPLAY[@]}" -f supabase/checks/20260830163000_atomic_episode_publish_postcheck.sql
+echo '::endgroup::'
+
+echo '::group::Verify Checkout attempt reservation behavior'
+"${REPLAY[@]}" -f supabase/checks/20260830214000_checkout_attempt_reservations_postcheck.sql
+echo '::endgroup::'
+
+echo '::group::Verify Checkout attempt reservation rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260830214000_checkout_attempt_reservations_rollback.sql
+"${REPLAY[@]}" -f tests/rls/checkout-attempt-reservations-rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260830214000_checkout_attempt_reservations_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260830214000_checkout_attempt_reservations.sql
+"${REPLAY[@]}" -f supabase/checks/20260830214000_checkout_attempt_reservations_postcheck.sql
 echo '::endgroup::'
 
 echo 'Fresh NOVELIGHT migration replay passed.'
