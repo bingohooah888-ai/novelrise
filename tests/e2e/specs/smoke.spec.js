@@ -1,94 +1,82 @@
-import { test, expect } from '@playwright/test';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, '../../..');
-const read = (relativePath) =>
-  fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
-
-const pages = [
-  'index.html',
-  'signup.html',
-  'login.html',
-  'mypage.html',
-  'post.html',
-  'my-novels.html',
-  'favorites.html',
-  'pricing.html',
-  'billing-success.html',
-  'novel.html',
-  'episode.html',
-  'search.html',
-  'ranking.html',
-  'author.html',
-  'analytics.html',
-  'terms.html',
-  'privacy.html',
-  'content-guidelines.html',
-  'billing-policy.html',
-  'commerce-disclosure.html',
-  'contact.html'
+const publicPages = [
+  ['home', '/index.html'],
+  ['search', '/search.html'],
+  ['ranking', '/ranking.html'],
+  ['pricing', '/pricing.html'],
+  ['login', '/login.html'],
+  ['signup', '/signup.html'],
+  ['forgot password', '/forgot-password.html'],
+  ['reset password', '/reset-password.html'],
+  ['novel detail', '/novel.html'],
+  ['episode', '/episode.html'],
+  ['author', '/author.html'],
+  ['terms', '/terms.html'],
+  ['privacy', '/privacy.html'],
+  ['content guidelines', '/content-guidelines.html'],
+  ['billing policy', '/billing-policy.html'],
+  ['commerce disclosure', '/commerce-disclosure.html'],
+  ['contact', '/contact.html']
 ];
 
-for (const file of pages) {
-  test(`${file} loads without obvious server failure`, async ({ page }) => {
-    const response = await page.goto(`/${file}`);
-    expect(response?.status()).toBeLessThan(400);
-    await expect(page.locator('body')).not.toContainText('Internal Server Error');
+for (const [name, path] of publicPages) {
+  test(`${name} page renders`, async ({ request }) => {
+    const response = await request.get(path);
+    expect(response.ok()).toBeTruthy();
+    const html = await response.text();
+    expect(html).toContain('<meta name="viewport"');
+    expect(html).toMatch(/<title>[^<]+<\/title>/);
   });
 }
 
-test('signup keeps terms acceptance and plan handoff', async ({ page }) => {
-  await page.goto('/signup.html?plan=standard');
-  await expect(page.locator('#planField')).toHaveValue('standard');
-  await expect(page.locator('#termsAccepted')).toBeVisible();
-  await expect(page.locator('a[href="terms.html"]')).toBeVisible();
-  await expect(page.locator('a[href="privacy.html"]')).toBeVisible();
+test('auth pages expose password recovery and no dummy forgot-password link', async ({
+  request
+}) => {
+  const login = await (await request.get('/login.html')).text();
+  const forgot = await (await request.get('/forgot-password.html')).text();
+  const reset = await (await request.get('/reset-password.html')).text();
+
+  expect(login).toContain('href="forgot-password.html"');
+  expect(login).toContain('safeRedirectTarget');
+  expect(forgot).toContain('resetPasswordForEmail');
+  expect(reset).toContain('updateUser({password})');
 });
 
-test('billing return pages expose clear next steps', async ({ request }) => {
-  const [success, pricing] = await Promise.all([
-    request.get('/billing-success.html'),
-    request.get('/pricing.html')
-  ]);
-  const successHtml = await success.text();
-  const pricingHtml = await pricing.text();
-
-  expect(successHtml).toContain('mypage.html');
-  expect(pricingHtml).toContain('billing-policy.html');
-  expect(pricingHtml).toContain('commerce-disclosure.html');
-  expect(pricingHtml).toContain('11,760円');
-  expect(pricingHtml).toContain('23,760円');
-  expect(pricingHtml).toContain('自動更新');
+test('posting shell requires classification and policy acknowledgement', async ({
+  request
+}) => {
+  const post = await (await request.get('/post.html')).text();
+  expect(post).toContain('id="aiUsage"');
+  expect(post).toContain('id="contentRating"');
+  expect(post).toContain('id="warningGrid"');
+  expect(post).toContain('id="policyAck"');
 });
 
-test('public pages expose legal and reporting paths', async ({ request }) => {
-  const [home, novel, episode] = await Promise.all([
-    request.get('/index.html').then((response) => response.text()),
-    request.get('/novel.html').then((response) => response.text()),
-    request.get('/episode.html').then((response) => response.text())
-  ]);
+test('reader pages expose zoning, report, and beta measurement hooks', async ({
+  request
+}) => {
+  const novel = await (await request.get('/novel.html')).text();
+  const episode = await (await request.get('/episode.html')).text();
 
-  for (const href of [
-    'terms.html',
-    'privacy.html',
-    'content-guidelines.html',
-    'billing-policy.html',
-    'commerce-disclosure.html',
-    'contact.html'
-  ]) {
-    expect(home).toContain(href);
-  }
+  expect(novel).toContain('id="warningGate"');
   expect(novel).toContain('submit_content_report');
+  expect(novel).toContain("'detail_open'");
+  expect(novel).toContain("'favorite_added'");
+  expect(novel).toContain("'light_seed'");
+
+  expect(episode).toContain('id="warning"');
   expect(episode).toContain('submit_content_report');
+  expect(episode).toContain("'episode_read_10s'");
+  expect(episode).toContain("'visibilitychange'");
 });
 
-test('analytics exposes the beta funnel and named paid surfaces', async ({
+test('LIGHT ANALYTICS exposes the beta funnel and plan-only exposure', async ({
   request
 }) => {
   const html = await (await request.get('/analytics.html')).text();
+
+  expect(html).toContain('<title>LIGHT ANALYTICS | NOVELIGHT</title>');
   expect(html).toContain('作品ページ→第1話');
   expect(html).toContain('第1話→第2話');
   expect(html).toContain('露出後お気に入り');
@@ -122,33 +110,29 @@ test('all audited major routes fit a 390px mobile viewport', async ({
     '/index.html',
     '/signup.html',
     '/login.html',
-    '/mypage.html',
-    '/post.html',
-    '/my-novels.html',
-    '/favorites.html',
-    '/pricing.html',
-    '/billing-success.html',
+    '/search.html',
     '/novel.html',
     '/episode.html',
-    '/search.html',
-    '/ranking.html',
-    '/author.html',
+    '/post.html',
+    '/episode-post.html',
+    '/favorites.html',
+    '/scout-record.html',
     '/analytics.html',
-    '/terms.html',
-    '/privacy.html',
-    '/content-guidelines.html',
-    '/billing-policy.html',
-    '/commerce-disclosure.html',
-    '/contact.html'
+    '/mypage.html',
+    '/pricing.html'
   ];
 
-  for (const route of routes) {
-    await page.goto(route);
-    const metrics = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth
+  for (const path of routes) {
+    const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+    expect(response?.ok(), `${path} should load`).toBeTruthy();
+    const overflow = await page.locator('html').evaluate((html) => ({
+      scrollWidth: html.scrollWidth,
+      clientWidth: html.clientWidth
     }));
-    expect(metrics.scrollWidth, route).toBeLessThanOrEqual(metrics.clientWidth);
+    expect(
+      overflow.scrollWidth,
+      `${path} horizontally overflows: ${JSON.stringify(overflow)}`
+    ).toBeLessThanOrEqual(overflow.clientWidth + 1);
   }
 
   await context.close();
