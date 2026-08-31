@@ -107,7 +107,7 @@ jobs:
             echo
             echo "Current main: \`$GITHUB_SHA\`"
             echo "Pending migration versions: \`$CHANGED_VERSIONS\`"
-            echo 'Staging migration parity: `PASS`'
+            echo "Staging migration parity: \`PASS\`"
             echo
             echo 'No Production database mutation was performed.'
             echo 'Actual deploy requires a fresh explicit chat approval or the protected manual fallback.'
