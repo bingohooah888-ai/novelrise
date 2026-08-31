@@ -51,23 +51,32 @@ test('bridge targets the credential-free approval handler', () => {
   assert.doesNotMatch(bridge, /production-auth-smoke-fixture\.mjs setup/);
 });
 
-test('workflow dispatch only forwards to the separately named request workflow', () => {
-  assert.match(handler, /^name: NOVELIGHT Production Auth Smoke Approval Handler/m);
-  assert.match(handler, /workflow_dispatch:/);
-  assert.match(handler, /name: Dispatch scoped Auth Smoke request workflow/);
-  assert.match(handler, /production-auth-smoke-request\.yml\/dispatches/);
-  assert.match(request, /^name: NOVELIGHT Production Auth Smoke Request/m);
-  assert.match(request, /name: Create scoped chat approval request/);
-  assert.doesNotMatch(request, /environment: Production/);
-  assert.doesNotMatch(request, /Run authenticated production smoke/);
-});
+test(
+  'workflow dispatch only forwards to the separately named request workflow',
+  () => {
+    assert.match(
+      handler,
+      /^name: NOVELIGHT Production Auth Smoke Approval Handler/m
+    );
+    assert.match(handler, /workflow_dispatch:/);
+    assert.match(handler, /name: Dispatch scoped Auth Smoke request workflow/);
+    assert.match(handler, /production-auth-smoke-request\.yml\/dispatches/);
+    assert.match(request, /^name: NOVELIGHT Production Auth Smoke Request/m);
+    assert.match(request, /name: Create scoped chat approval request/);
+    assert.doesNotMatch(request, /environment: Production/);
+    assert.doesNotMatch(request, /Run authenticated production smoke/);
+  }
+);
 
 test('actual verification keeps final approval and cleanup', () => {
   assert.match(handler, /github-actions\[bot\]/);
   assert.match(handler, /comment\.user\.login == 'bingohooah888-ai'/);
   assert.match(handler, /NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE/);
   assert.match(handler, /approval request expired/);
-  assert.match(handler, /name: Verify authenticated beta-critical production flows/);
+  assert.match(
+    handler,
+    /name: Verify authenticated beta-critical production flows/
+  );
   assert.match(handler, /Create ephemeral production smoke users/);
   assert.match(handler, /Clean ephemeral production smoke data/);
   assert.match(handler, /production-auth-smoke-fixture\.mjs cleanup/);
