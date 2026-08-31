@@ -96,7 +96,8 @@ test('staging validation is consolidated into one deployment-status workflow', a
   assert.match(staging, /Checkout deployed revision once/);
   assert.match(staging, /Install browser test dependencies once/);
   assert.match(staging, /Run read-only staging smoke/);
-  assert.match(staging, /Run authenticated staging smoke/);
+  assert.match(staging, /Run authenticated Staging desktop smoke/);
+  assert.match(staging, /Run authenticated Staging mobile smoke/);
   assert.match(staging, /Run complete Stripe test billing smoke/);
 
   for (const legacy of [
