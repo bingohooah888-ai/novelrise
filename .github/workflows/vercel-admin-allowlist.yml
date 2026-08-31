@@ -30,7 +30,6 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       CONTROL_ISSUE: '165'
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
-      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
       VERCEL_PROJECT_NAME: novelrise
       NOVELIGHT_PRODUCTION_ADMIN_USER_IDS: ${{ secrets.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS }}
       NOVELIGHT_PRODUCTION_ORIGIN: https://novelrise.vercel.app
@@ -62,10 +61,6 @@ jobs:
           set -euo pipefail
           test -n "${VERCEL_API_TOKEN:-}" || {
             echo 'Safety stop: VERCEL_API_TOKEN is not configured.'
-            exit 1
-          }
-          test -n "${VERCEL_TEAM_ID:-}" || {
-            echo 'Safety stop: VERCEL_TEAM_ID is not configured.'
             exit 1
           }
           test -n "${NOVELIGHT_PRODUCTION_ADMIN_USER_IDS:-}" || {
@@ -266,7 +261,6 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       CONTROL_ISSUE: '165'
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
-      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
       VERCEL_PROJECT_NAME: novelrise
       NOVELIGHT_PRODUCTION_ADMIN_USER_IDS: ${{ secrets.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS }}
       NOVELIGHT_PRODUCTION_ORIGIN: https://novelrise.vercel.app
@@ -391,7 +385,6 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${VERCEL_API_TOKEN:-}"
-          test -n "${VERCEL_TEAM_ID:-}"
           test -n "${NOVELIGHT_PRODUCTION_ADMIN_USER_IDS:-}"
 
           source_fingerprint="$(node scripts/vercel-admin-allowlist.mjs fingerprint | jq -er '.fingerprint')"

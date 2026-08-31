@@ -77,8 +77,11 @@ Production synchronization of `NOVELIGHT_ADMIN_USER_IDS` is handled by `.github/
 Store the following only in GitHub Actions secrets. Never paste these values into a public issue, pull request, source file, or chat transcript:
 
 - `VERCEL_API_TOKEN` — a Vercel Access Token with the minimum project/team access needed to read and update the `novelrise` project environment and create a Production deployment.
-- `VERCEL_TEAM_ID` — the Vercel team identifier used to scope API calls to the team that owns `novelrise`.
 - `NOVELIGHT_PRODUCTION_ADMIN_USER_IDS` — the canonical source allowlist, containing one or more comma-separated Supabase Auth UUIDs.
+
+`VERCEL_TEAM_ID` is not a bootstrap secret. The workflow resolves the Vercel scope at runtime from teams accessible to `VERCEL_API_TOKEN`, looks up the fixed `novelrise` project, verifies the project ownership metadata against the candidate team, and proceeds only when exactly one matching scope exists. Missing, ambiguous, paginated/incomplete, or ownership-mismatched discovery fails closed before allowlist inspection or Production mutation.
+
+The ADMIN UUID source remains explicit rather than inferred automatically. GitHub repository ownership, account email, the first Supabase Auth user, or similar heuristics are not an authoritative immutable mapping to the intended ADMIN account and could grant operator access to the wrong user. `NOVELIGHT_PRODUCTION_ADMIN_USER_IDS` therefore remains the canonical manually bootstrapped identity source until a separate authoritative identity-binding mechanism exists.
 
 The GitHub secret is the control-plane source. The workflow writes its value to Vercel as the sensitive Production variable `NOVELIGHT_ADMIN_USER_IDS`. The raw UUID list and Vercel token are not placed in approval issues or workflow summaries.
 
@@ -88,7 +91,7 @@ A request can be started by an OWNER comment on the Production control issue (`#
 
 `NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_REQUEST`
 
-The request phase is read-only. It verifies that the three bootstrap secrets exist, canonicalizes the UUID list, calculates a SHA-256 fingerprint, inspects the Vercel Production environment, checks the live deployment revision, and compares prior successful freshness proof. If the same managed sensitive value is already proven active on current `main`, the request is a no-op and no Production approval is created.
+The request phase is read-only. It verifies that the two bootstrap secrets exist, resolves one exact Vercel team/project scope for `novelrise`, canonicalizes the UUID list, calculates a SHA-256 fingerprint, inspects the Vercel Production environment, checks the live deployment revision, and compares prior successful freshness proof. If the same managed sensitive value is already proven active on current `main`, the request is a no-op and no Production approval is created.
 
 When a refresh is required, the workflow creates a dedicated approval issue containing only the exact `main` SHA, one-time request ID, expiry, challenge, fingerprint, and whether the Vercel environment value itself needs mutation. It never records the raw UUID list.
 
