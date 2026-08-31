@@ -1,13 +1,16 @@
 name: Staging Live Proof
 
 on:
-  pull_request:
-    branches: [main]
+  deployment_status:
   workflow_dispatch:
     inputs:
       preview_url:
-        description: Optional explicit Vercel Preview URL
-        required: false
+        description: Exact HTTPS Vercel Preview URL
+        required: true
+        type: string
+      revision:
+        description: Exact 40-character commit SHA deployed at the Preview URL
+        required: true
         type: string
 
 permissions:
@@ -17,42 +20,112 @@ jobs:
   prove-preview-target:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (!startsWith(github.head_ref, 'chore/') &&
-      !startsWith(github.head_ref, 'test/') &&
-      !startsWith(github.head_ref, 'docs/') &&
-      !startsWith(github.head_ref, 'dependabot/'))
+      (github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment != 'Production' &&
+      github.event.deployment.environment != 'production')
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve Preview URL
+      - name: Resolve exact Preview target
         id: preview
         env:
-          HEAD_REF: ${{ github.head_ref }}
           MANUAL_PREVIEW_URL: ${{ inputs.preview_url }}
+          MANUAL_REVISION: ${{ inputs.revision }}
+          DEPLOYMENT_ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
+          DEPLOYMENT_TARGET_URL: ${{ github.event.deployment_status.target_url }}
+          DEPLOYMENT_REVISION: ${{ github.event.deployment.sha }}
+        shell: bash
         run: |
           set -euo pipefail
 
-          if [ -n "${MANUAL_PREVIEW_URL:-}" ]; then
-            preview_url="${MANUAL_PREVIEW_URL%/}"
-          else
-            if [ -z "${HEAD_REF:-}" ]; then
-              echo "Preview URL is required for workflow_dispatch."
-              exit 2
-            fi
+          case "$GITHUB_EVENT_NAME" in
+            workflow_dispatch)
+              preview_url="${MANUAL_PREVIEW_URL%/}"
+              expected_revision="$MANUAL_REVISION"
+              ;;
+            deployment_status)
+              preview_url="${DEPLOYMENT_ENVIRONMENT_URL%/}"
+              if [ -z "$preview_url" ]; then
+                preview_url="${DEPLOYMENT_TARGET_URL%/}"
+              fi
+              expected_revision="$DEPLOYMENT_REVISION"
+              ;;
+            *)
+              echo "Unexpected Staging Live Proof trigger: $GITHUB_EVENT_NAME"
+              exit 1
+              ;;
+          esac
 
-            branch_slug="$(printf '%s' "$HEAD_REF" \
-              | tr '[:upper:]' '[:lower:]' \
-              | sed -E 's#[^a-z0-9]+#-#g; s#^-+##; s#-+$##')"
-            preview_url="https://novelrise-git-${branch_slug}-ranobe1.vercel.app"
+          if [[ ! "$preview_url" =~ ^https://[^/]+$ ]]; then
+            echo "Preview URL must be an exact HTTPS origin."
+            exit 1
+          fi
+          if [[ ! "$expected_revision" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Preview revision must be an exact 40-character commit SHA."
+            exit 1
           fi
 
           echo "url=$preview_url" >> "$GITHUB_OUTPUT"
+          echo "revision=$expected_revision" >> "$GITHUB_OUTPUT"
           echo "Resolved Preview URL: $preview_url"
+          echo "Resolved Preview revision: $expected_revision"
+
+      - name: Verify exact deployed Preview revision
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+          EXPECTED_REVISION: ${{ steps.preview.outputs.revision }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ]; then
+            echo "VERCEL_AUTOMATION_BYPASS_SECRET is not configured."
+            exit 2
+          fi
+
+          body_file="$(mktemp)"
+          trap 'rm -f "$body_file"' EXIT
+
+          ready=false
+          for attempt in $(seq 1 20); do
+            status="$(curl \
+              --location \
+              --silent \
+              --show-error \
+              --max-time 20 \
+              --output "$body_file" \
+              --write-out '%{http_code}' \
+              --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" \
+              "$PREVIEW_URL/api/deployment-revision" || true)"
+
+            if [ "$status" = "200" ]; then
+              ready=true
+              break
+            fi
+
+            echo "Preview revision not ready yet (HTTP $status, attempt $attempt/20)."
+            sleep 15
+          done
+
+          if [ "$ready" != true ]; then
+            echo "Preview revision did not become ready within 5 minutes."
+            exit 1
+          fi
+
+          deployed_revision="$(jq -er '.commitSha' "$body_file")"
+          if [ "$deployed_revision" != "$EXPECTED_REVISION" ]; then
+            echo "Preview revision mismatch: expected $EXPECTED_REVISION, got $deployed_revision."
+            exit 1
+          fi
+
+          echo "Verified exact Preview revision: $deployed_revision"
 
       - name: Verify deployed Preview browser config is isolated Staging
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
           PRODUCTION_SUPABASE_HOST: fiepaguycecrredwrcwx.supabase.co
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        shell: bash
         run: |
           set -euo pipefail
 
