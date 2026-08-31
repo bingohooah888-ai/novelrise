@@ -44,7 +44,10 @@ do $$ begin
 end $$;
 reset role;
 
-update public.novel_allocation_receipts set consumed_at = null, expires_at = now() - interval '1 second';
+update public.novel_allocation_receipts
+set consumed_at = null,
+    issued_at = now() - interval '5 minutes',
+    expires_at = now() - interval '1 second';
 set role authenticated;
 do $$ begin
   begin
