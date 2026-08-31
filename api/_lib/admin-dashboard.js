@@ -62,7 +62,9 @@ function isAllowedAdmin(user, allowlist) {
 
 function firstHeaderValue(value) {
   if (Array.isArray(value)) return value[0] ?? '';
-  return String(value ?? '').split(',')[0].trim();
+  return String(value ?? '')
+    .split(',')[0]
+    .trim();
 }
 
 export function isSameOriginRequest(req) {
@@ -272,13 +274,12 @@ export async function loadAdminOverview({
       query.eq('event_type', 'detail_open').gte('occurred_at', cutoffWindow)
     ),
     bodyReads: exactCount(supabase, 'reader_journey_events', (query) =>
-      query.eq('event_type', 'episode_read_10s').gte('occurred_at', cutoffWindow)
+      query
+        .eq('event_type', 'episode_read_10s')
+        .gte('occurred_at', cutoffWindow)
     ),
-    favoritesAdded: exactCount(
-      supabase,
-      'reader_journey_events',
-      (query) =>
-        query.eq('event_type', 'favorite_added').gte('occurred_at', cutoffWindow)
+    favoritesAdded: exactCount(supabase, 'reader_journey_events', (query) =>
+      query.eq('event_type', 'favorite_added').gte('occurred_at', cutoffWindow)
     ),
     lightSeeds: exactCount(supabase, 'reader_journey_events', (query) =>
       query.eq('event_type', 'light_seed').gte('occurred_at', cutoffWindow)
@@ -407,7 +408,9 @@ async function fetchRowsByUserIds(supabase, table, columns, userColumn, ids) {
     .in(userColumn, ids);
 
   if (error) {
-    throw new Error(`Admin user detail query failed for ${table}: ${error.message}`);
+    throw new Error(
+      `Admin user detail query failed for ${table}: ${error.message}`
+    );
   }
 
   return data ?? [];
@@ -476,9 +479,7 @@ export async function searchAdminUsers({ supabase, query }) {
   const acquisitionByUser = new Map(
     acquisition.map((row) => [row.user_id, row])
   );
-  const foundingByUser = new Map(
-    founding.map((row) => [row.author_id, row])
-  );
+  const foundingByUser = new Map(founding.map((row) => [row.author_id, row]));
 
   return matches.map((profile) => {
     const works = novels.filter((row) => row.user_id === profile.id);
@@ -547,7 +548,9 @@ export function createAdminDashboardHandler({
     } catch (error) {
       if (error instanceof AdminConfigurationError) {
         console.error('NOVELIGHT admin allowlist configuration is invalid');
-        return res.status(503).json({ error: 'Admin access is not configured' });
+        return res
+          .status(503)
+          .json({ error: 'Admin access is not configured' });
       }
       throw error;
     }
