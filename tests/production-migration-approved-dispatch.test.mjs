@@ -143,7 +143,19 @@ test('automatic main-push workflow is read-only and hands off mutation to chat a
     /Require pending migrations to match this push exactly/
   );
   assert.match(automatic, /supabase db push --linked --dry-run/);
+  assert.match(
+    automatic,
+    /Require Staging migration parity before approval handoff/
+  );
+  assert.match(automatic, /node scripts\/verify-staging-migration-parity\.mjs/);
+  assert.match(automatic, /Staging migration parity:/);
+  assert.match(automatic, /PASS/);
   assert.match(automatic, /Record chat-approval handoff/);
+  assert.ok(
+    automatic.indexOf(
+      'Require Staging migration parity before approval handoff'
+    ) < automatic.indexOf('Record chat-approval handoff')
+  );
   assert.match(automatic, /No Production database mutation was performed/);
   assert.doesNotMatch(automatic, /environment: production-approval/);
   assert.doesNotMatch(automatic, /supabase db push --linked --yes/);

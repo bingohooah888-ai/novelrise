@@ -212,10 +212,12 @@ async function assertCheckoutSession(page, plan) {
     },
     data: { plan }
   });
-
-  expect(response.status()).toBe(200);
-
   const body = await response.json();
+
+  expect(
+    response.status(),
+    `Checkout ${plan} failed: ${JSON.stringify(body)}`
+  ).toBe(200);
   expect(body.mode).toBe('checkout');
   expect(body.url).toContain(checkoutSessionPrefix);
   expect(new globalThis.URL(body.url).hostname).toBe('checkout.stripe.com');
@@ -430,7 +432,7 @@ test('authenticated beta-critical product flow works in target', async ({
 
     await test.step('Verify Stripe Checkout without charging', async () => {
       await assertCheckoutSession(authorPage, 'standard');
-      await assertCheckoutSession(authorPage, 'premium');
+      await assertCheckoutSession(readerPage, 'premium');
     });
 
     await test.step('Delete work with one atomic parent request', async () => {

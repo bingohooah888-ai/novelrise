@@ -29,6 +29,7 @@ const HIGH_RISK_PREFIXES = [
   'scripts/stripe-production-',
   '.github/workflows/production-',
   '.github/workflows/stripe-production-',
+  '.github/workflows/supabase-production',
   'docs/PRODUCTION-',
   'docs/STRIPE-',
 ];

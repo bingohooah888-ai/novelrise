@@ -190,39 +190,117 @@ jobs:
           STAGING_REQUIRE_WRITE_CONFIG: 'true'
         run: node scripts/verify-staging-deployment.mjs
 
+      - name: Verify Staging checkout schema capabilities before writes
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        run: node scripts/verify-staging-schema-capabilities.mjs
+
       - name: Install application dependencies once
         if: success() && vars.STAGING_E2E_READY == 'true'
         run: npm ci
 
-      - name: Create ephemeral authenticated staging user
+      - name: Create ephemeral authenticated Staging desktop users
         if: success() && vars.STAGING_E2E_READY == 'true'
-        id: auth_fixture
+        id: auth_fixture_desktop
         env:
           AUTH_SMOKE_LABEL: ステージング認証スモーク
         run: node scripts/production-auth-smoke-fixture.mjs setup
 
-      - name: Run authenticated staging smoke
+      - name: Run authenticated Staging desktop smoke
         if: success() && vars.STAGING_E2E_READY == 'true'
+        id: auth_desktop
+        continue-on-error: true
         working-directory: tests/e2e
         env:
           AUTH_SMOKE_LABEL: ステージング認証スモーク
           E2E_COMPLETE_BILLING: 'false'
-        run: npx playwright test --config=playwright.production-auth.config.mjs
+        run: >-
+          npx playwright test production-auth/authenticated-smoke.spec.js
+          --project=production-authenticated-chromium
+          --config=playwright.production-auth.config.mjs
 
-      - name: Upload authenticated staging diagnostics
-        if: failure() && steps.auth_fixture.outcome != 'skipped'
+      - name: Upload authenticated Staging desktop diagnostics
+        if: steps.auth_desktop.outcome == 'failure'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: staging-auth-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          name: staging-auth-desktop-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: tests/e2e/test-results
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Clean ephemeral authenticated staging data
-        if: always() && steps.auth_fixture.outcome != 'skipped'
+      - name: Clean ephemeral authenticated Staging desktop data
+        if: always() && steps.auth_fixture_desktop.outcome != 'skipped'
+        id: auth_cleanup_desktop
         env:
           AUTH_SMOKE_LABEL: ステージング認証スモーク
         run: node scripts/production-auth-smoke-fixture.mjs cleanup
+
+      - name: Create fresh ephemeral authenticated Staging mobile users
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        id: auth_fixture_mobile
+        env:
+          AUTH_SMOKE_LABEL: ステージング認証スモーク
+        run: node scripts/production-auth-smoke-fixture.mjs setup
+
+      - name: Run authenticated Staging mobile smoke
+        if: success() && vars.STAGING_E2E_READY == 'true'
+        id: auth_mobile
+        continue-on-error: true
+        working-directory: tests/e2e
+        env:
+          AUTH_SMOKE_LABEL: ステージング認証スモーク
+          E2E_COMPLETE_BILLING: 'false'
+        run: >-
+          npx playwright test production-auth/authenticated-smoke.spec.js
+          --project=production-authenticated-mobile-chromium
+          --config=playwright.production-auth.config.mjs
+
+      - name: Upload authenticated Staging mobile diagnostics
+        if: steps.auth_mobile.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-auth-mobile-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/e2e/test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Clean ephemeral authenticated Staging mobile data
+        if: always() && steps.auth_fixture_mobile.outcome != 'skipped'
+        id: auth_cleanup_mobile
+        env:
+          AUTH_SMOKE_LABEL: ステージング認証スモーク
+        run: node scripts/production-auth-smoke-fixture.mjs cleanup
+
+      - name: Require authenticated Staging desktop and mobile smoke success
+        if: always() && steps.auth_fixture_desktop.outcome != 'skipped'
+        env:
+          DESKTOP_OUTCOME: ${{ steps.auth_desktop.outcome }}
+          DESKTOP_CLEANUP_OUTCOME: ${{ steps.auth_cleanup_desktop.outcome }}
+          MOBILE_FIXTURE_OUTCOME: ${{ steps.auth_fixture_mobile.outcome }}
+          MOBILE_OUTCOME: ${{ steps.auth_mobile.outcome }}
+          MOBILE_CLEANUP_OUTCOME: ${{ steps.auth_cleanup_mobile.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$DESKTOP_OUTCOME" = 'success' || {
+            echo "Authenticated Staging desktop smoke failed: $DESKTOP_OUTCOME"
+            exit 1
+          }
+          test "$DESKTOP_CLEANUP_OUTCOME" = 'success' || {
+            echo "Authenticated Staging desktop cleanup failed: $DESKTOP_CLEANUP_OUTCOME"
+            exit 1
+          }
+          test "$MOBILE_FIXTURE_OUTCOME" = 'success' || {
+            echo "Authenticated Staging mobile fixture failed: $MOBILE_FIXTURE_OUTCOME"
+            exit 1
+          }
+          test "$MOBILE_OUTCOME" = 'success' || {
+            echo "Authenticated Staging mobile smoke failed: $MOBILE_OUTCOME"
+            exit 1
+          }
+          test "$MOBILE_CLEANUP_OUTCOME" = 'success' || {
+            echo "Authenticated Staging mobile cleanup failed: $MOBILE_CLEANUP_OUTCOME"
+            exit 1
+          }
 
       - name: Create fresh ephemeral staging billing user
         if: success() && vars.STAGING_E2E_READY == 'true'

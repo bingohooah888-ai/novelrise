@@ -219,7 +219,7 @@ test('runtime gate hard stops are limited to real decision boundaries', () => {
   assert.throws(() => parsePhase(['--phase=unknown']), /Unsupported/u);
 });
 
-test('staging live proof mirrors Vercel deployment-disabled branches', async () => {
+test('staging live proof runs only from real Vercel deployment evidence', async () => {
   const workflow = await read(STAGING_PROOF_PATH);
   const vercel = JSON.parse(await read(VERCEL_PATH));
   const deploymentEnabled = vercel.git?.deploymentEnabled ?? {};
@@ -233,19 +233,27 @@ test('staging live proof mirrors Vercel deployment-disabled branches', async () 
     'docs/',
     'dependabot/'
   ]);
+  assert.equal(workflow.includes('pull_request:'), false);
 
   for (const prefix of disabledPrefixes) {
     assert.equal(
       workflow.includes(`!startsWith(github.head_ref, '${prefix}')`),
-      true,
-      `Live Proof must skip Vercel-disabled branch prefix: ${prefix}`
+      false,
+      `Deployment-status Live Proof must not recreate PR branch filtering: ${prefix}`
     );
   }
 
   assertIncludesAll(workflow, [
+    'deployment_status:',
+    "github.event.deployment_status.state == 'success'",
+    'github.event.deployment_status.environment_url',
+    "contains(github.event.deployment_status.environment_url, '.vercel.app')",
+    'github.event.deployment.sha',
     "github.event_name == 'workflow_dispatch'",
     'MANUAL_PREVIEW_URL',
-    'Preview URL is required for workflow_dispatch.'
+    'MANUAL_REVISION',
+    'Preview URL must be an exact HTTPS origin.',
+    'Preview revision must be an exact 40-character commit SHA.'
   ]);
 });
 

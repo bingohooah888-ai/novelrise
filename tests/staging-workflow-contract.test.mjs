@@ -7,6 +7,14 @@ const verifier = await readFile(
   'scripts/verify-staging-deployment.mjs',
   'utf8'
 );
+const schemaCapabilities = await readFile(
+  'scripts/verify-staging-schema-capabilities.mjs',
+  'utf8'
+);
+const authenticatedSmoke = await readFile(
+  'tests/e2e/production-auth/authenticated-smoke.spec.js',
+  'utf8'
+);
 const checkout = await readFile('api/_lib/checkout.js', 'utf8');
 const portal = await readFile('api/_lib/billing-portal.js', 'utf8');
 
@@ -32,12 +40,93 @@ test('write Staging phases require deployed Supabase and Stripe isolation eviden
   assert.match(workflow, /STAGING_REQUIRE_WRITE_CONFIG: 'true'/);
   assert.match(workflow, /STAGING_EXPECTED_SUPABASE_URL/);
   assert.match(workflow, /STAGING_EXPECTED_PUBLISHABLE_KEY/);
+  assert.match(workflow, /SUPABASE_SECRET_KEY/);
+  assert.doesNotMatch(workflow, /SUPABASE_ACCESS_TOKEN/);
   assert.match(workflow, /environment: staging/);
 
   assert.match(verifier, /facts\.stripe\.secretKeyMode !== 'test'/);
   assert.match(verifier, /facts\.supabase\.url !== expectedSupabase/);
   assert.match(verifier, /publishableKeyFingerprint/);
   assert.match(verifier, /facts\.supabase\.serverSecretPresent !== true/);
+});
+
+test('write Staging fails closed on missing checkout schema capabilities before creating users', () => {
+  const capabilityIndex = workflow.indexOf(
+    'node scripts/verify-staging-schema-capabilities.mjs'
+  );
+  const fixtureIndex = workflow.indexOf(
+    'Create ephemeral authenticated Staging desktop users'
+  );
+
+  assert.notEqual(capabilityIndex, -1);
+  assert.notEqual(fixtureIndex, -1);
+  assert.ok(capabilityIndex < fixtureIndex);
+  assert.match(schemaCapabilities, /method: 'OPTIONS'/);
+  assert.match(schemaCapabilities, /novelight_reserve_checkout_attempt/);
+  assert.match(schemaCapabilities, /novelight_attach_checkout_session/);
+  assert.match(schemaCapabilities, /novelight_release_checkout_attempt/);
+  assert.match(schemaCapabilities, /refusing the Production Supabase project/);
+  assert.match(schemaCapabilities, /is not exposed as a callable RPC/);
+});
+
+test('authenticated Staging desktop and mobile projects use fresh isolated fixtures', () => {
+  const desktopSetup = workflow.indexOf(
+    'Create ephemeral authenticated Staging desktop users'
+  );
+  const desktopRun = workflow.indexOf(
+    'Run authenticated Staging desktop smoke'
+  );
+  const desktopCleanup = workflow.indexOf(
+    'Clean ephemeral authenticated Staging desktop data'
+  );
+  const mobileSetup = workflow.indexOf(
+    'Create fresh ephemeral authenticated Staging mobile users'
+  );
+  const mobileRun = workflow.indexOf('Run authenticated Staging mobile smoke');
+  const mobileCleanup = workflow.indexOf(
+    'Clean ephemeral authenticated Staging mobile data'
+  );
+  const aggregate = workflow.indexOf(
+    'Require authenticated Staging desktop and mobile smoke success'
+  );
+
+  for (const index of [
+    desktopSetup,
+    desktopRun,
+    desktopCleanup,
+    mobileSetup,
+    mobileRun,
+    mobileCleanup,
+    aggregate
+  ]) {
+    assert.notEqual(index, -1);
+  }
+  assert.ok(desktopSetup < desktopRun);
+  assert.ok(desktopRun < desktopCleanup);
+  assert.ok(desktopCleanup < mobileSetup);
+  assert.ok(mobileSetup < mobileRun);
+  assert.ok(mobileRun < mobileCleanup);
+  assert.ok(mobileCleanup < aggregate);
+  assert.match(workflow, /--project=production-authenticated-chromium/);
+  assert.match(workflow, /--project=production-authenticated-mobile-chromium/);
+  assert.match(workflow, /id: auth_desktop[\s\S]*continue-on-error: true/);
+  assert.match(workflow, /id: auth_mobile[\s\S]*continue-on-error: true/);
+});
+
+test('authenticated smoke checks paid plans on separate free users', () => {
+  assert.match(
+    authenticatedSmoke,
+    /assertCheckoutSession\(authorPage, 'standard'\)/
+  );
+  assert.match(
+    authenticatedSmoke,
+    /assertCheckoutSession\(readerPage, 'premium'\)/
+  );
+  assert.doesNotMatch(
+    authenticatedSmoke,
+    /assertCheckoutSession\(authorPage, 'premium'\)/
+  );
+  assert.match(authenticatedSmoke, /Checkout \$\{plan\} failed:/);
 });
 
 test('Preview billing return URLs use the exact Vercel deployment helper', () => {
