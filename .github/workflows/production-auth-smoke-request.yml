@@ -1,4 +1,4 @@
-name: NOVELIGHT Production Auth Smoke Approval Request
+name: NOVELIGHT Production Auth Smoke Request
 
 on:
   push:
