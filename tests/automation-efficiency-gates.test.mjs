@@ -113,14 +113,13 @@ test('owner high-risk approval relay validates exact SHA, marks draft ready, the
   const workflow = await read('.github/workflows/high-risk-pr-approval.yml');
   const readiness = await read('scripts/check-merge-readiness.mjs');
   assert.match(workflow, /actions: write/);
+  assert.match(workflow, /contents: write/);
   assert.match(workflow, /pull-requests: write/);
   assert.match(workflow, /NOVELIGHT_HIGH_RISK_APPROVE/);
   assert.match(workflow, /high-risk-approval-lib\.mjs challenge/);
   assert.match(workflow, /Mark approved draft PR ready for review/);
-  assert.match(
-    workflow,
-    /gh pr ready "\$PR_NUMBER" --repo "\$GITHUB_REPOSITORY"/
-  );
+  assert.match(workflow, /gh api graphql/);
+  assert.match(workflow, /markPullRequestReadyForReview/);
   assert.match(workflow, /\.draft == false/);
   assert.ok(
     workflow.indexOf('Mark approved draft PR ready for review') <

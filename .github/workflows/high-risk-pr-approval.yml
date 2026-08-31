@@ -6,7 +6,7 @@ on:
 
 permissions:
   actions: write
-  contents: read
+  contents: write
   issues: read
   pull-requests: write
 
@@ -112,7 +112,26 @@ jobs:
             }
 
           if [ "$(jq -r '.draft' /tmp/pr-ready-before.json)" = 'true' ]; then
-            gh pr ready "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"
+            pr_node_id="$(jq -r '.node_id // empty' /tmp/pr-ready-before.json)"
+            test -n "$pr_node_id" || {
+              echo 'Safety stop: PR node ID is missing before ready-for-review transition.'
+              exit 1
+            }
+
+            graphql_query="mutation(\$id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: \$id }) { pullRequest { number isDraft headRefOid } } }"
+            gh api graphql \
+              -f query="$graphql_query" \
+              -F id="$pr_node_id" \
+              > /tmp/pr-ready-mutation.json
+
+            jq -e \
+              --argjson pr "$PR_NUMBER" \
+              --arg sha "$HEAD_SHA" \
+              '.data.markPullRequestReadyForReview.pullRequest.number == $pr and .data.markPullRequestReadyForReview.pullRequest.isDraft == false and .data.markPullRequestReadyForReview.pullRequest.headRefOid == $sha' \
+              /tmp/pr-ready-mutation.json >/dev/null || {
+                echo 'Safety stop: ready-for-review mutation returned an unexpected PR state.'
+                exit 1
+              }
           else
             echo "PR #$PR_NUMBER is already ready for review."
           fi
