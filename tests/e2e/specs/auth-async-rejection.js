@@ -97,15 +97,16 @@ async function installAuthResilienceStubs(page, overrides = {}) {
       (() => {
         const state = window.__NOVELIGHT_AUTH_E2E_STATE__ || {};
         const calls = window.__NOVELIGHT_AUTH_E2E_CALLS__ || [];
-        const optional = async (type, rejectKey) => {
+        const optional = async (type, rejectKey, pendingKey) => {
           calls.push({ type });
+          if (state[pendingKey]) await new Promise(() => {});
           if (state[rejectKey]) throw new Error(state[rejectKey]);
           return true;
         };
         window.NovelightClient = {
-          captureAcquisition: () => optional('captureAcquisition', 'captureReject'),
-          recordVisit: () => optional('recordVisit', 'visitReject'),
-          claimAcquisition: () => optional('claimAcquisition', 'claimReject')
+          captureAcquisition: () => optional('captureAcquisition', 'captureReject', 'capturePending'),
+          recordVisit: () => optional('recordVisit', 'visitReject', 'visitPending'),
+          claimAcquisition: () => optional('claimAcquisition', 'claimReject', 'claimPending')
         };
       })();
     `
@@ -198,6 +199,30 @@ test('successful login is not blocked by rejected optional telemetry', async ({
   await page.locator('#loginButton').click();
 
   await expect(page).toHaveURL(/\/mypage\.html$/);
+  expect(pageErrors).toEqual([]);
+});
+
+test('pending acquisition telemetry cannot block the ADMIN return', async ({
+  page
+}) => {
+  await installAuthResilienceStubs(page, {
+    session: { user: { id: 'admin-e2e' } },
+    claimPending: true
+  });
+  await page.route('**/admin.html', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: '<!doctype html><title>admin redirect complete</title>'
+    });
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/login.html?redirect=admin.html');
+  await fillLogin(page);
+  await page.locator('#loginButton').click();
+
+  await expect(page).toHaveURL(/\/admin\.html$/);
   expect(pageErrors).toEqual([]);
 });
 
