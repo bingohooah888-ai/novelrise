@@ -23,10 +23,7 @@ test('relay is owner-only and exact-head bound', () => {
   assert.match(workflow, /\.base\.ref == "main"/);
   assert.match(workflow, /\.head\.repo\.full_name == \$repo/);
   assert.match(workflow, /\.head\.sha == \$sha/);
-  assert.match(
-    workflow,
-    /approval challenge does not match the exact PR head/
-  );
+  assert.match(workflow, /approval challenge does not match the exact PR head/);
 });
 
 test('relay grants required ready-transition permissions', () => {
