@@ -118,8 +118,9 @@ jobs:
               exit 1
             }
 
+            graphql_query="mutation(\$id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: \$id }) { pullRequest { number isDraft headRefOid } } }"
             gh api graphql \
-              -f query='mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { pullRequest { number isDraft headRefOid } } }' \
+              -f query="$graphql_query" \
               -F id="$pr_node_id" \
               > /tmp/pr-ready-mutation.json
 
