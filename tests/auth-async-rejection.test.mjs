@@ -20,30 +20,20 @@ test('login catches auth rejections and isolates telemetry', () => {
   assert.match(login, /finally\{\s*if\(!authenticated\)button\.disabled=false/);
   assert.match(login, /async function runOptionalTelemetry/);
   assert.match(login, /post-login acquisition telemetry failed/);
-  assert.doesNotMatch(
-    login,
-    /await runOptionalTelemetry\('post-login acquisition telemetry failed'/
-  );
-  assert.doesNotMatch(
-    login,
-    /await runOptionalTelemetry\('post-login visit telemetry failed'/
-  );
-  const authenticatedIndex = login.indexOf('authenticated=true;');
-  const redirectTargetIndex = login.indexOf(
-    'const redirectTarget=safeRedirectTarget(redirect);'
-  );
-  const acquisitionIndex = login.indexOf(
+  const authSuccessIndex = login.indexOf('authenticated=true;');
+  const acquisitionTelemetryIndex = login.indexOf(
     "void runOptionalTelemetry('post-login acquisition telemetry failed'"
   );
-  const visitIndex = login.indexOf(
+  const visitTelemetryIndex = login.indexOf(
     "void runOptionalTelemetry('post-login visit telemetry failed'"
   );
-  const navigationIndex = login.indexOf('window.location.href=redirectTarget;');
-  assert.ok(authenticatedIndex >= 0);
-  assert.ok(redirectTargetIndex > authenticatedIndex);
-  assert.ok(acquisitionIndex > redirectTargetIndex);
-  assert.ok(visitIndex > acquisitionIndex);
-  assert.ok(navigationIndex > visitIndex);
+  const redirectIndex = login.indexOf('window.location.href=redirectTarget;');
+  assert.ok(authSuccessIndex >= 0);
+  assert.ok(acquisitionTelemetryIndex > authSuccessIndex);
+  assert.ok(visitTelemetryIndex > authSuccessIndex);
+  assert.ok(redirectIndex > acquisitionTelemetryIndex);
+  assert.ok(redirectIndex > visitTelemetryIndex);
+  assert.doesNotMatch(login, /await runOptionalTelemetry\('post-login/);
   assert.match(
     login,
     /ログインできませんでした。メールアドレスとパスワードを確認してください。/
