@@ -3,7 +3,8 @@ import { pathToFileURL } from 'node:url';
 
 export const VERIFICATION_WORKFLOW =
   'NOVELIGHT Production Auth Smoke Approval Handler';
-export const DECISIVE_JOB = 'Verify authenticated beta-critical production flows';
+export const DECISIVE_JOB =
+  'Verify authenticated beta-critical production flows';
 export const CONSUMED_PREFIX = 'NOVELIGHT_PRODUCTION_AUTH_SMOKE_CONSUMED ';
 
 function fail(reason) {
@@ -12,13 +13,17 @@ function fail(reason) {
 
 function parseConsumedComment(comment) {
   if (comment?.user?.login !== 'github-actions[bot]') return null;
-  if (typeof comment?.body !== 'string' || !comment.body.startsWith(CONSUMED_PREFIX)) {
+  if (
+    typeof comment?.body !== 'string' ||
+    !comment.body.startsWith(CONSUMED_PREFIX)
+  ) {
     return null;
   }
 
   try {
     const payload = JSON.parse(comment.body.slice(CONSUMED_PREFIX.length));
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload))
+      return null;
     return payload;
   } catch {
     return null;
@@ -31,37 +36,53 @@ export function evaluateProductionAuthSmokeEvidence({
   comments,
   expectedHeadSha = null
 }) {
-  if (!run || typeof run !== 'object') return fail('workflow run evidence is missing');
+  if (!run || typeof run !== 'object')
+    return fail('workflow run evidence is missing');
   if (run.name !== VERIFICATION_WORKFLOW) {
     return fail(`unexpected workflow: ${String(run.name ?? '')}`);
   }
   if (run.event !== 'issue_comment') {
     return fail(`unexpected workflow event: ${String(run.event ?? '')}`);
   }
-  if (run.conclusion !== 'success') {
-    return fail(`verification workflow conclusion is ${String(run.conclusion ?? '')}`);
+  if (run.status !== 'completed' || run.conclusion !== 'success') {
+    return fail(
+      `verification workflow conclusion is ${String(run.conclusion ?? '')}`
+    );
+  }
+  if (!Number.isSafeInteger(run.id) || run.id <= 0) {
+    return fail('verification run ID is invalid');
   }
 
   const headSha = String(run.head_sha ?? '').toLowerCase();
-  if (!/^[0-9a-f]{40}$/.test(headSha)) return fail('verification head SHA is invalid');
+  if (!/^[0-9a-f]{40}$/.test(headSha))
+    return fail('verification head SHA is invalid');
   if (expectedHeadSha && headSha !== String(expectedHeadSha).toLowerCase()) {
-    return fail('verification head SHA does not match the required release SHA');
+    return fail(
+      'verification head SHA does not match the required release SHA'
+    );
   }
 
   const jobList = Array.isArray(jobs) ? jobs : jobs?.jobs;
-  if (!Array.isArray(jobList)) return fail('verification jobs evidence is missing');
+  if (!Array.isArray(jobList))
+    return fail('verification jobs evidence is missing');
   const decisiveJobs = jobList.filter((job) => job?.name === DECISIVE_JOB);
   if (decisiveJobs.length !== 1) {
-    return fail(`expected exactly one decisive verification job, found ${decisiveJobs.length}`);
+    return fail(
+      `expected exactly one decisive verification job, found ${decisiveJobs.length}`
+    );
   }
-  if (decisiveJobs[0].conclusion !== 'success') {
+  if (
+    decisiveJobs[0].status !== 'completed' ||
+    decisiveJobs[0].conclusion !== 'success'
+  ) {
     return fail(
       `decisive verification job conclusion is ${String(decisiveJobs[0].conclusion ?? '')}`
     );
   }
 
   const commentList = Array.isArray(comments) ? comments : comments?.comments;
-  if (!Array.isArray(commentList)) return fail('approval-consumption ledger evidence is missing');
+  if (!Array.isArray(commentList))
+    return fail('approval-consumption ledger evidence is missing');
   if (commentList.length >= 100) {
     return fail('approval issue exceeded the bounded comment contract');
   }
@@ -90,7 +111,8 @@ export function evaluateProductionAuthSmokeEvidence({
 
   return {
     pass: true,
-    reason: 'authenticated Production verification and consumed approval are both proven',
+    reason:
+      'authenticated Production verification and consumed approval are both proven',
     runId: String(run.id),
     headSha,
     requestId: matchingConsumed[0].requestId
@@ -128,6 +150,9 @@ async function main(argv) {
   );
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   await main(process.argv.slice(2));
 }
