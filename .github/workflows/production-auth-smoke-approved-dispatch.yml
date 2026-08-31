@@ -28,7 +28,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       ISSUE_NUMBER: '165'
       APPROVAL_BODY: ${{ github.event.comment.body }}
-      TARGET_WORKFLOW: production-auth-smoke-request.yml
+      TARGET_WORKFLOW: production-authenticated-smoke.yml
 
     steps:
       - name: Validate exact one-time Auth Smoke dispatch approval
