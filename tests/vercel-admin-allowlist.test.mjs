@@ -216,9 +216,15 @@ test('workflow keeps raw admin IDs and Vercel token in secrets and requires OWNE
   assert.match(workflow, /secrets\.VERCEL_API_TOKEN/);
   assert.match(workflow, /secrets\.VERCEL_TEAM_ID/);
   assert.match(workflow, /secrets\.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS/);
-  assert.match(workflow, /github\.event\.comment\.author_association == 'OWNER'/);
+  assert.match(
+    workflow,
+    /github\.event\.comment\.author_association == 'OWNER'/
+  );
   assert.match(workflow, /NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_APPROVE/);
-  assert.match(workflow, /main changed after this Production action was approved/);
+  assert.match(
+    workflow,
+    /main changed after this Production action was approved/
+  );
   assert.match(workflow, /NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CLAIMED/);
   assert.match(workflow, /NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED/);
   assert.match(workflow, /environment: Production/);
