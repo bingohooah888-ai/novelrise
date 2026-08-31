@@ -17,6 +17,7 @@ Qualified Japanese counsel review is **deferred/pending**, not completed. The ow
 - [x] Release evidence was reconciled against current `main` and the authoritative `docs/NOVELIGHT-MASTER.md`.
 - [x] Exact current-main `NOVELIGHT CI` #1196 / run `33368084498` completed `success`.
 - [x] Current-main aggregate `check`, Node tests, static quality, desktop/mobile smoke, and desktop/mobile async-UI browser jobs passed.
+- [x] Desktop + mobile Playwright gates pass on the current exact-main CI matrix.
 - [x] Current-main `CodeQL` #1128 / run `33368084384` passed.
 - [x] Current-main Vercel deployment status is `success`.
 - [x] Exact current-main `NOVELIGHT Production Readiness Smoke` #58 / run `33368084397` passed.
