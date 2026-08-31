@@ -7,11 +7,19 @@ const workflow = await readFile(
   'utf8'
 );
 
-test('Staging Live Proof binds to the real Vercel deployment URL and revision', () => {
+test('Staging Live Proof binds only to a real Vercel deployment URL and revision', () => {
   assert.match(workflow, /deployment_status:/);
   assert.doesNotMatch(workflow, /pull_request:/);
   assert.match(workflow, /github\.event\.deployment_status\.environment_url/);
-  assert.match(workflow, /github\.event\.deployment_status\.target_url/);
+  assert.match(
+    workflow,
+    /github\.event\.deployment_status\.environment_url != ''/
+  );
+  assert.match(
+    workflow,
+    /contains\(github\.event\.deployment_status\.environment_url, '\.vercel\.app'\)/
+  );
+  assert.doesNotMatch(workflow, /DEPLOYMENT_TARGET_URL/);
   assert.match(workflow, /github\.event\.deployment\.sha/);
   assert.match(workflow, /\/api\/deployment-revision/);
   assert.match(workflow, /deployed_revision.*EXPECTED_REVISION/);
