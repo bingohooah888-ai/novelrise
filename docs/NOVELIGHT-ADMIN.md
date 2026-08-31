@@ -67,3 +67,52 @@ Author cohorts are users who have created at least one work. Reader cohorts are 
 NOVELIGHT ADMIN v1 is read-only. It does not provide buttons for banning users, changing plans, resolving reports, deleting content, editing Production rows, or mutating Stripe/Supabase state.
 
 Any future write action must be designed as a separate high-risk capability with explicit authorization, audit logging, confirmation/rollback rules, and the existing Production approval gates.
+
+## Automated Production allowlist synchronization
+
+Production synchronization of `NOVELIGHT_ADMIN_USER_IDS` is handled by `.github/workflows/vercel-admin-allowlist.yml` after the automation change is merged. The workflow deliberately separates configuration bootstrap, request creation, OWNER approval, and the Production mutation.
+
+### One-time secret bootstrap
+
+Store the following only in GitHub Actions secrets. Never paste these values into a public issue, pull request, source file, or chat transcript:
+
+- `VERCEL_API_TOKEN` — a Vercel Access Token with the minimum project/team access needed to read and update the `novelrise` project environment and create a Production deployment.
+- `VERCEL_TEAM_ID` — the Vercel team identifier used to scope API calls to the team that owns `novelrise`.
+- `NOVELIGHT_PRODUCTION_ADMIN_USER_IDS` — the canonical source allowlist, containing one or more comma-separated Supabase Auth UUIDs.
+
+The GitHub secret is the control-plane source. The workflow writes its value to Vercel as the sensitive Production variable `NOVELIGHT_ADMIN_USER_IDS`. The raw UUID list and Vercel token are not placed in approval issues or workflow summaries.
+
+### Request and approval flow
+
+A request can be started by an OWNER comment on the Production control issue (`#165`):
+
+`NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_REQUEST`
+
+The request phase is read-only. It verifies that the three bootstrap secrets exist, canonicalizes the UUID list, calculates a SHA-256 fingerprint, inspects the Vercel Production environment, checks the live deployment revision, and compares prior successful freshness proof. If the same managed sensitive value is already proven active on current `main`, the request is a no-op and no Production approval is created.
+
+When a refresh is required, the workflow creates a dedicated approval issue containing only the exact `main` SHA, one-time request ID, expiry, challenge, fingerprint, and whether the Vercel environment value itself needs mutation. It never records the raw UUID list.
+
+Only the repository OWNER can approve, using the exact approval comment generated in that dedicated issue. The approval expires, is one-time use, is bound to the exact `main` SHA and fingerprint, and is claimed before any Production mutation. If `main`, the source GitHub secret, or the observed Vercel state changes after request creation, the workflow fails closed and a new request is required.
+
+### Production synchronization and proof
+
+For an approved request the workflow:
+
+1. re-validates the exact approval and current `main`;
+2. re-computes the source fingerprint from the GitHub secret;
+3. refuses to overwrite an existing non-sensitive Production variable;
+4. creates or updates only the sensitive Production `NOVELIGHT_ADMIN_USER_IDS` variable when the value actually needs synchronization;
+5. confirms the managed fingerprint and Vercel `updatedAt` metadata;
+6. creates a new Vercel Production deployment pinned to the approved GitHub SHA so the new environment value is actually loaded;
+7. waits for the exact deployment to reach `READY`;
+8. verifies `/api/deployment-revision` converges to the approved SHA;
+9. verifies `/api/admin-dashboard` still returns `401` without authentication;
+10. records a non-secret consumed proof on the dedicated approval issue and control issue #165.
+
+A failed deployment after an environment update does not silently count as complete. Because no successful consumed proof is written, a later request can approve only the still-open redeploy portion without rewriting an environment value already classified as current.
+
+### Fail-closed boundaries
+
+The automation does not delete or convert an existing non-sensitive `NOVELIGHT_ADMIN_USER_IDS`; that unexpected state is classified as unknown and requires investigation. It does not mutate Preview or Development values, does not change Supabase data, does not change Stripe state, and does not make the ADMIN dashboard writable.
+
+Vercel sensitive values cannot be read back as plaintext. Freshness therefore uses the managed SHA-256 fingerprint, Vercel environment metadata, the successful control ledger, and the live Production revision together instead of pretending to decrypt or compare the stored secret directly.
