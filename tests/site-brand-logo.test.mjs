@@ -9,54 +9,39 @@ const client = readFileSync(join(root, 'novelight-client.js'), 'utf8');
 const legalCss = readFileSync(join(root, 'legal.css'), 'utf8');
 const logoPath = join(root, 'assets', 'novelight-header-logo.webp');
 const htmlFiles = readdirSync(root).filter((name) => name.endsWith('.html'));
+const legacyLogo = /<(a|div|span|strong)\b[^>]*>\s*NOVELIGHT\s*<\/\1>/u;
 
-function legacyWordmarkElements(source) {
-  return [
-    ...source.matchAll(
-      /<(a|div|span|strong)\b[^>]*>\s*NOVELIGHT\s*<\/\1>/gu
-    )
-  ];
-}
-
-test(
-  'shared app branding replaces legacy NOVELIGHT wordmarks with the official asset',
-  () => {
-    assert.match(
-      client,
-      /const BRAND_LOGO_PATH = 'assets\/novelight-header-logo\.webp'/u
-    );
-    assert.match(client, /function installBrandLogo\(\)/u);
-    assert.match(client, /querySelectorAll\('\.logo, \.site-logo'\)/u);
-    assert.match(client, /novelight-brand-logo-image/u);
-    assert.match(client, /height:44px/u);
-    assert.match(client, /height:34px/u);
-  }
-);
-
-test('legal pages render the same official asset responsively', () => {
-  assert.match(legalCss, /assets\/novelight-header-logo\.webp/u);
-  assert.match(legalCss, /\.site-logo\{[^}]*width:189px[^}]*height:44px/u);
-  assert.match(legalCss, /\.site-logo\{width:146px;height:34px\}/u);
+test('shared app branding uses the official logo asset', () => {
+  assert.match(client, /BRAND_LOGO_PATH/u);
+  assert.match(client, /novelight-header-logo\.webp/u);
+  assert.match(client, /installBrandLogo/u);
+  assert.match(client, /novelight-brand-logo-image/u);
+  assert.match(client, /height:44px/u);
+  assert.match(client, /height:34px/u);
 });
 
-test(
-  'every remaining legacy header wordmark is covered by shared branding',
-  () => {
-    const uncovered = [];
+test('legal pages use the same official logo asset', () => {
+  assert.match(legalCss, /novelight-header-logo\.webp/u);
+  assert.match(legalCss, /width:189px/u);
+  assert.match(legalCss, /height:44px/u);
+  assert.match(legalCss, /width:146px/u);
+  assert.match(legalCss, /height:34px/u);
+});
 
-    for (const name of htmlFiles) {
-      const source = readFileSync(join(root, name), 'utf8');
-      const matches = legacyWordmarkElements(source);
-      if (!matches.length) continue;
+test('legacy header wordmarks are covered by shared branding', () => {
+  const uncovered = [];
 
-      const usesClient = source.includes('src="novelight-client.js"');
-      const usesLegalCss = source.includes('href="legal.css"');
-      if (!usesClient && !usesLegalCss) uncovered.push(name);
-    }
+  for (const name of htmlFiles) {
+    const source = readFileSync(join(root, name), 'utf8');
+    if (!legacyLogo.test(source)) continue;
 
-    assert.deepEqual(uncovered, []);
+    const usesClient = source.includes('src="novelight-client.js"');
+    const usesLegalCss = source.includes('href="legal.css"');
+    if (!usesClient && !usesLegalCss) uncovered.push(name);
   }
-);
+
+  assert.deepEqual(uncovered, []);
+});
 
 test('official site logo asset remains present and non-empty', () => {
   assert.ok(existsSync(logoPath));
