@@ -65,8 +65,7 @@ export async function verifyStagingSchemaCapabilities(
     const response = await fetchImpl(`${origin}/rest/v1/rpc/${rpc}`, {
       method: 'OPTIONS',
       headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`
+        apikey: serviceKey
       },
       signal: AbortSignal.timeout(20_000)
     });
