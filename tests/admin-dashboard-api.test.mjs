@@ -46,7 +46,7 @@ function createSupabase(user, authError = null) {
 
 function request(overrides = {}) {
   return {
-    method: 'GET',
+    method: overrides.method ?? 'GET',
     headers: {
       authorization: 'Bearer valid-token',
       host: 'novelight.example',
@@ -56,14 +56,6 @@ function request(overrides = {}) {
     },
     query: {
       ...overrides.query
-    },
-    ...overrides,
-    headers: {
-      authorization: 'Bearer valid-token',
-      host: 'novelight.example',
-      'x-forwarded-proto': 'https',
-      'sec-fetch-site': 'same-origin',
-      ...overrides.headers
     }
   };
 }
