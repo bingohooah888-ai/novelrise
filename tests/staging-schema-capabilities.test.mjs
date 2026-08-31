@@ -52,11 +52,7 @@ test('Staging schema capability verifier proves required Checkout RPCs with OPTI
   assert.ok(
     calls.every(({ options }) => options.headers.apikey === 'server-secret')
   );
-  assert.ok(
-    calls.every(
-      ({ options }) => options.headers.Authorization === 'Bearer server-secret'
-    )
-  );
+  assert.ok(calls.every(({ options }) => !('Authorization' in options.headers)));
 });
 
 test('Staging schema capability verifier fails closed when a required RPC is missing', async () => {
