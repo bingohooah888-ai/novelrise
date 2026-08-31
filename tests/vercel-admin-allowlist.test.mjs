@@ -82,7 +82,7 @@ test('Vercel scope discovery accepts exactly one team owning the fixed project w
   const token = 'token-for-test';
   const fetchImpl = async (url, options) => {
     calls.push({ url: String(url), options });
-    const parsed = new URL(url);
+    const parsed = new globalThis.URL(url);
     if (parsed.pathname === '/v2/teams') {
       return jsonResponse({
         teams: [{ id: 'team_a' }, { id: 'team_target' }],
@@ -108,7 +108,9 @@ test('Vercel scope discovery accepts exactly one team owning the fixed project w
   });
   assert.ok(calls.every((call) => !call.url.includes(token)));
   assert.ok(
-    calls.every((call) => call.options.headers.Authorization === `Bearer ${token}`)
+    calls.every(
+      (call) => call.options.headers.Authorization === `Bearer ${token}`
+    )
   );
 });
 
@@ -117,9 +119,12 @@ test('Vercel scope discovery fails closed on missing, ambiguous, or unexpected o
     resolveVercelProjectScope({
       token: 'token-for-test',
       fetchImpl: async (url) => {
-        const parsed = new URL(url);
+        const parsed = new globalThis.URL(url);
         if (parsed.pathname === '/v2/teams') {
-          return jsonResponse({ teams: [{ id: 'team_a' }], pagination: { next: null } });
+          return jsonResponse({
+            teams: [{ id: 'team_a' }],
+            pagination: { next: null }
+          });
         }
         return jsonResponse({}, 404);
       }
@@ -131,7 +136,7 @@ test('Vercel scope discovery fails closed on missing, ambiguous, or unexpected o
     resolveVercelProjectScope({
       token: 'token-for-test',
       fetchImpl: async (url) => {
-        const parsed = new URL(url);
+        const parsed = new globalThis.URL(url);
         if (parsed.pathname === '/v2/teams') {
           return jsonResponse({
             teams: [{ id: 'team_a' }, { id: 'team_b' }],
@@ -139,7 +144,11 @@ test('Vercel scope discovery fails closed on missing, ambiguous, or unexpected o
           });
         }
         const teamId = parsed.searchParams.get('teamId');
-        return jsonResponse({ id: `prj_${teamId}`, name: 'novelrise', accountId: teamId });
+        return jsonResponse({
+          id: `prj_${teamId}`,
+          name: 'novelrise',
+          accountId: teamId
+        });
       }
     }),
     /ambiguous/
@@ -149,9 +158,12 @@ test('Vercel scope discovery fails closed on missing, ambiguous, or unexpected o
     resolveVercelProjectScope({
       token: 'token-for-test',
       fetchImpl: async (url) => {
-        const parsed = new URL(url);
+        const parsed = new globalThis.URL(url);
         if (parsed.pathname === '/v2/teams') {
-          return jsonResponse({ teams: [{ id: 'team_a' }], pagination: { next: null } });
+          return jsonResponse({
+            teams: [{ id: 'team_a' }],
+            pagination: { next: null }
+          });
         }
         return jsonResponse({
           id: 'prj_target',
