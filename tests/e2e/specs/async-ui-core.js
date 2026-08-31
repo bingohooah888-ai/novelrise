@@ -139,8 +139,8 @@ test('home discovery leaves the loading state after async data resolves', async 
   await installSupabaseStub(page, {
     rpcDelayMs: 80,
     rpcData: {
-      novelight_discovery_feed_v2: [],
-      novelight_plan_extra_feed: []
+      novelight_trusted_discovery_feed: [],
+      novelight_trusted_plan_extra_feed: []
     }
   });
   const pageErrors = collectPageErrors(page);
