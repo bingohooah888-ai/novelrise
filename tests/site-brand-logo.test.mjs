@@ -22,10 +22,10 @@ test('shared app branding uses the official logo asset', () => {
 
 test('legal pages use the same official logo asset', () => {
   assert.match(legalCss, /novelight-header-logo\.webp/u);
-  assert.match(legalCss, /width:189px/u);
-  assert.match(legalCss, /height:44px/u);
-  assert.match(legalCss, /width:146px/u);
-  assert.match(legalCss, /height:34px/u);
+  assert.match(legalCss, /width:\s*189px/u);
+  assert.match(legalCss, /height:\s*44px/u);
+  assert.match(legalCss, /width:\s*146px/u);
+  assert.match(legalCss, /height:\s*34px/u);
 });
 
 test('legacy header wordmarks are covered by shared branding', () => {
