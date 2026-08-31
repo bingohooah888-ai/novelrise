@@ -11,6 +11,10 @@ const schemaCapabilities = await readFile(
   'scripts/verify-staging-schema-capabilities.mjs',
   'utf8'
 );
+const authenticatedSmoke = await readFile(
+  'tests/e2e/production-auth/authenticated-smoke.spec.js',
+  'utf8'
+);
 const checkout = await readFile('api/_lib/checkout.js', 'utf8');
 const portal = await readFile('api/_lib/billing-portal.js', 'utf8');
 
@@ -107,6 +111,22 @@ test('authenticated Staging desktop and mobile projects use fresh isolated fixtu
   assert.match(workflow, /--project=production-authenticated-mobile-chromium/);
   assert.match(workflow, /id: auth_desktop[\s\S]*continue-on-error: true/);
   assert.match(workflow, /id: auth_mobile[\s\S]*continue-on-error: true/);
+});
+
+test('authenticated smoke checks paid plans on separate free users', () => {
+  assert.match(
+    authenticatedSmoke,
+    /assertCheckoutSession\(authorPage, 'standard'\)/
+  );
+  assert.match(
+    authenticatedSmoke,
+    /assertCheckoutSession\(readerPage, 'premium'\)/
+  );
+  assert.doesNotMatch(
+    authenticatedSmoke,
+    /assertCheckoutSession\(authorPage, 'premium'\)/
+  );
+  assert.match(authenticatedSmoke, /Checkout \$\{plan\} failed:/);
 });
 
 test('Preview billing return URLs use the exact Vercel deployment helper', () => {
