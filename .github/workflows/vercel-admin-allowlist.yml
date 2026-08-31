@@ -1,0 +1,533 @@
+name: NOVELIGHT Vercel Admin Allowlist
+
+on:
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-vercel-admin-allowlist
+  cancel-in-progress: false
+
+jobs:
+  request-approval:
+    name: Prepare scoped Vercel admin allowlist request
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.actor == 'bingohooah888-ai') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request == null &&
+       github.event.issue.number == 165 &&
+       github.event.comment.user.login == 'bingohooah888-ai' &&
+       github.event.comment.author_association == 'OWNER' &&
+       github.event.comment.body == 'NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_REQUEST')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CONTROL_ISSUE: '165'
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+      VERCEL_PROJECT_NAME: novelrise
+      NOVELIGHT_PRODUCTION_ADMIN_USER_IDS: ${{ secrets.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS }}
+      NOVELIGHT_PRODUCTION_ORIGIN: https://novelrise.vercel.app
+
+    steps:
+      - name: Resolve exact current main
+        id: main
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          [[ "$main_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$main_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact current main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.main.outputs.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Validate secret bootstrap without exposing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_API_TOKEN:-}" || {
+            echo 'Safety stop: VERCEL_API_TOKEN is not configured.'
+            exit 1
+          }
+          test -n "${VERCEL_TEAM_ID:-}" || {
+            echo 'Safety stop: VERCEL_TEAM_ID is not configured.'
+            exit 1
+          }
+          test -n "${NOVELIGHT_PRODUCTION_ADMIN_USER_IDS:-}" || {
+            echo 'Safety stop: NOVELIGHT_PRODUCTION_ADMIN_USER_IDS is not configured.'
+            exit 1
+          }
+
+      - name: Inspect current Vercel allowlist state
+        id: inspect
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/vercel-admin-allowlist.mjs inspect > /tmp/admin-allowlist-inspect.json
+          verdict="$(jq -er '.verdict' /tmp/admin-allowlist-inspect.json)"
+          fingerprint="$(jq -er '.fingerprint' /tmp/admin-allowlist-inspect.json)"
+          updated_at="$(jq -r '.updatedAt // empty' /tmp/admin-allowlist-inspect.json)"
+
+          [[ "$fingerprint" =~ ^sha256:[0-9a-f]{64}$ ]]
+          case "$verdict" in
+            current|refresh-required) ;;
+            *)
+              echo 'Safety stop: Vercel admin allowlist state is unknown.'
+              exit 1
+              ;;
+          esac
+          if [ "$verdict" = 'current' ] && [ -z "$updated_at" ]; then
+            echo 'Safety stop: current sensitive allowlist lacks an auditable updatedAt value.'
+            exit 1
+          fi
+
+          {
+            echo "verdict=$verdict"
+            echo "fingerprint=$fingerprint"
+            echo "updated_at=$updated_at"
+          } >> "$GITHUB_OUTPUT"
+          echo "Vercel allowlist preflight verdict: $verdict"
+
+      - name: Check current live revision and prior successful proof
+        id: freshness
+        env:
+          MAIN_SHA: ${{ steps.main.outputs.sha }}
+          FINGERPRINT: ${{ steps.inspect.outputs.fingerprint }}
+          ENV_UPDATED_AT: ${{ steps.inspect.outputs.updated_at }}
+          ENV_VERDICT: ${{ steps.inspect.outputs.verdict }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          live_sha="$(
+            curl --silent --show-error --fail \
+              --connect-timeout 10 --max-time 20 \
+              -H 'Cache-Control: no-cache' \
+              "$NOVELIGHT_PRODUCTION_ORIGIN/api/deployment-revision" \
+              | jq -er '.commitSha'
+          )" || live_sha=''
+
+          gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/issues/$CONTROL_ISSUE/comments?per_page=100" \
+            --jq '.[] | select(.body | startswith("NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED ")) | .body' \
+            > /tmp/admin-allowlist-ledger-lines.txt
+
+          if [ -s /tmp/admin-allowlist-ledger-lines.txt ]; then
+            sed 's/^NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED //' \
+              /tmp/admin-allowlist-ledger-lines.txt \
+              | jq -s '.' > /tmp/admin-allowlist-ledger.json
+          else
+            echo '[]' > /tmp/admin-allowlist-ledger.json
+          fi
+
+          proof_count="$(
+            jq \
+              --arg fingerprint "$FINGERPRINT" \
+              --arg envUpdatedAt "$ENV_UPDATED_AT" \
+              '[
+                .[]
+                | select(
+                    .operation == "vercel-admin-allowlist-sync" and
+                    .fingerprint == $fingerprint and
+                    .envUpdatedAt == $envUpdatedAt and
+                    .result == "success"
+                  )
+              ] | length' \
+              /tmp/admin-allowlist-ledger.json
+          )"
+
+          fully_current=false
+          if [ "$ENV_VERDICT" = 'current' ] && \
+             [ "$proof_count" -gt 0 ] && \
+             [ "$live_sha" = "$MAIN_SHA" ]; then
+            fully_current=true
+          fi
+
+          {
+            echo "fully_current=$fully_current"
+            echo "live_sha=$live_sha"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$fully_current" = 'true' ]; then
+            echo 'CURRENT: Vercel admin allowlist and deployed Production revision already satisfy this request.'
+          else
+            echo 'REFRESH-REQUIRED: a new one-time Production approval is required.'
+          fi
+
+      - name: Create one-time owner approval issue
+        if: steps.freshness.outputs.fully_current != 'true'
+        env:
+          MAIN_SHA: ${{ steps.main.outputs.sha }}
+          FINGERPRINT: ${{ steps.inspect.outputs.fingerprint }}
+          ENV_UPDATED_AT: ${{ steps.inspect.outputs.updated_at }}
+          ENV_VERDICT: ${{ steps.inspect.outputs.verdict }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          existing="$(
+            gh issue list \
+              --repo "$GITHUB_REPOSITORY" \
+              --state open \
+              --search "admin-allowlist-${MAIN_SHA}- in:title" \
+              --json number \
+              --jq '.[0].number // empty'
+          )"
+          if [ -n "$existing" ]; then
+            echo "An approval request for main $MAIN_SHA is already open as issue #$existing."
+            exit 0
+          fi
+
+          request_id="admin-allowlist-${MAIN_SHA}-${GITHUB_RUN_ID}"
+          challenge="$(openssl rand -hex 4 | tr '[:lower:]' '[:upper:]')"
+          expires_at="$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:%SZ')"
+          if [ "$ENV_VERDICT" = 'refresh-required' ]; then
+            env_mutation_required=true
+          else
+            env_mutation_required=false
+          fi
+
+          request_json="$(
+            jq -cn \
+              --arg operation 'vercel-admin-allowlist-sync' \
+              --arg requestId "$request_id" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg expiresAt "$expires_at" \
+              --arg challenge "$challenge" \
+              --arg fingerprint "$FINGERPRINT" \
+              --arg envUpdatedAtBefore "$ENV_UPDATED_AT" \
+              --argjson envMutationRequired "$env_mutation_required" \
+              '{operation:$operation,requestId:$requestId,mainSha:$mainSha,expiresAt:$expiresAt,challenge:$challenge,fingerprint:$fingerprint,envMutationRequired:$envMutationRequired,envUpdatedAtBefore:$envUpdatedAtBefore}'
+          )"
+          approval_json="$(
+            jq -cn \
+              --arg operation 'vercel-admin-allowlist-sync' \
+              --arg requestId "$request_id" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg challenge "$challenge" \
+              --arg fingerprint "$FINGERPRINT" \
+              '{operation:$operation,requestId:$requestId,mainSha:$mainSha,challenge:$challenge,fingerprint:$fingerprint}'
+          )"
+
+          title="[Production Vercel Admin Approval] $request_id"
+          body=$(cat <<EOF
+          NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_REQUEST $request_json
+
+          A Production Vercel ADMIN allowlist synchronization is ready for explicit OWNER approval.
+
+          Scope:
+          - exact main SHA: $MAIN_SHA
+          - request ID: $request_id
+          - expires at: $expires_at
+          - allowlist value is never written to this issue or workflow logs
+          - only SHA-256 fingerprint is recorded: $FINGERPRINT
+          - Vercel target: novelrise / Production
+          - environment mutation required: $env_mutation_required
+          - a new Production deployment is created only after approval
+          - Production revision and unauthenticated ADMIN protection are verified after deployment
+
+          Exact approval comment:
+
+          NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_APPROVE $approval_json
+          EOF
+          )
+
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+
+  apply-approved-change:
+    name: Apply exact chat-approved Vercel admin allowlist
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.user.login == 'github-actions[bot]' &&
+      startsWith(github.event.issue.title, '[Production Vercel Admin Approval] admin-allowlist-') &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: Production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CONTROL_ISSUE: '165'
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+      VERCEL_PROJECT_NAME: novelrise
+      NOVELIGHT_PRODUCTION_ADMIN_USER_IDS: ${{ secrets.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS }}
+      NOVELIGHT_PRODUCTION_ORIGIN: https://novelrise.vercel.app
+      GITHUB_REPOSITORY_ID: '1335499017'
+
+    steps:
+      - name: Validate exact one-time Production approval
+        id: approval
+        env:
+          APPROVAL_BODY: ${{ github.event.comment.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          approval_json="${APPROVAL_BODY#NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_APPROVE }"
+          echo "$approval_json" | jq -e '
+            type == "object" and
+            .operation == "vercel-admin-allowlist-sync" and
+            (.requestId | type == "string" and test("^admin-allowlist-[0-9a-f]{40}-[0-9]+$")) and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            (.fingerprint | type == "string" and test("^sha256:[0-9a-f]{64}$")) and
+            ((keys | sort) == (["challenge","fingerprint","mainSha","operation","requestId"] | sort))
+          ' >/dev/null || {
+            echo 'Safety stop: invalid Vercel ADMIN approval record.'
+            exit 1
+          }
+
+          request_json="$(
+            printf '%s\n' "$ISSUE_BODY" \
+              | head -n 1 \
+              | sed 's/^NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_REQUEST //' \
+              | jq -c '.'
+          )"
+          echo "$request_json" | jq -e '
+            type == "object" and
+            .operation == "vercel-admin-allowlist-sync" and
+            (.requestId | type == "string" and test("^admin-allowlist-[0-9a-f]{40}-[0-9]+$")) and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.expiresAt | type == "string") and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            (.fingerprint | type == "string" and test("^sha256:[0-9a-f]{64}$")) and
+            (.envMutationRequired | type == "boolean") and
+            (.envUpdatedAtBefore | type == "string")
+          ' >/dev/null || {
+            echo 'Safety stop: malformed Vercel ADMIN request issue.'
+            exit 1
+          }
+
+          request_id="$(echo "$request_json" | jq -r '.requestId')"
+          main_sha="$(echo "$request_json" | jq -r '.mainSha')"
+          challenge="$(echo "$request_json" | jq -r '.challenge')"
+          fingerprint="$(echo "$request_json" | jq -r '.fingerprint')"
+          env_mutation_required="$(echo "$request_json" | jq -r '.envMutationRequired')"
+          env_updated_at_before="$(echo "$request_json" | jq -r '.envUpdatedAtBefore')"
+
+          test "$(echo "$approval_json" | jq -r '.requestId')" = "$request_id"
+          test "$(echo "$approval_json" | jq -r '.mainSha')" = "$main_sha"
+          test "$(echo "$approval_json" | jq -r '.challenge')" = "$challenge"
+          test "$(echo "$approval_json" | jq -r '.fingerprint')" = "$fingerprint"
+          test "$ISSUE_TITLE" = "[Production Vercel Admin Approval] $request_id"
+
+          expires_at="$(echo "$request_json" | jq -r '.expiresAt')"
+          expiry_epoch="$(date -u -d "$expires_at" +%s)" || {
+            echo 'Safety stop: invalid approval expiry.'
+            exit 1
+          }
+          [ "$(date -u +%s)" -lt "$expiry_epoch" ] || {
+            echo 'Safety stop: Vercel ADMIN approval request expired.'
+            exit 1
+          }
+
+          gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            --jq '.[].body' > /tmp/request-comments.txt
+          used_count="$(
+            grep -F "$request_id" /tmp/request-comments.txt \
+              | grep -Ec '^NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_(CLAIMED|CONSUMED|FAILED) ' \
+              || true
+          )"
+          [ "$used_count" -eq 0 ] || {
+            echo 'Safety stop: this Vercel ADMIN approval request was already used.'
+            exit 1
+          }
+
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_main" = "$main_sha" || {
+            echo 'Safety stop: main changed after this Production action was approved.'
+            exit 1
+          }
+
+          {
+            echo "request_id=$request_id"
+            echo "main_sha=$main_sha"
+            echo "fingerprint=$fingerprint"
+            echo "env_mutation_required=$env_mutation_required"
+            echo "env_updated_at_before=$env_updated_at_before"
+            echo "issue_number=$ISSUE_NUMBER"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Recompute secret fingerprint and re-check Vercel state
+        id: prewrite
+        env:
+          APPROVED_ADMIN_ALLOWLIST_FINGERPRINT: ${{ steps.approval.outputs.fingerprint }}
+          REQUEST_ENV_MUTATION_REQUIRED: ${{ steps.approval.outputs.env_mutation_required }}
+          REQUEST_ENV_UPDATED_AT_BEFORE: ${{ steps.approval.outputs.env_updated_at_before }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_API_TOKEN:-}"
+          test -n "${VERCEL_TEAM_ID:-}"
+          test -n "${NOVELIGHT_PRODUCTION_ADMIN_USER_IDS:-}"
+
+          source_fingerprint="$(node scripts/vercel-admin-allowlist.mjs fingerprint | jq -er '.fingerprint')"
+          test "$source_fingerprint" = "$APPROVED_ADMIN_ALLOWLIST_FINGERPRINT" || {
+            echo 'Safety stop: admin allowlist source changed after approval request creation.'
+            exit 1
+          }
+
+          node scripts/vercel-admin-allowlist.mjs inspect > /tmp/admin-allowlist-prewrite.json
+          verdict="$(jq -er '.verdict' /tmp/admin-allowlist-prewrite.json)"
+          updated_at="$(jq -r '.updatedAt // empty' /tmp/admin-allowlist-prewrite.json)"
+
+          if [ "$REQUEST_ENV_MUTATION_REQUIRED" = 'true' ]; then
+            test "$verdict" = 'refresh-required' || {
+              echo 'Safety stop: Vercel allowlist state changed after approval request creation.'
+              exit 1
+            }
+          else
+            test "$verdict" = 'current' || {
+              echo 'Safety stop: current Vercel allowlist no longer matches the approved request.'
+              exit 1
+            }
+            test "$updated_at" = "$REQUEST_ENV_UPDATED_AT_BEFORE" || {
+              echo 'Safety stop: Vercel allowlist was modified after approval request creation.'
+              exit 1
+            }
+          fi
+
+      - name: Claim approval before any Production mutation
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          FINGERPRINT: ${{ steps.approval.outputs.fingerprint }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg operation 'vercel-admin-allowlist-sync' --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg fingerprint "$FINGERPRINT" --arg runId "$GITHUB_RUN_ID" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,fingerprint:$fingerprint,runId:$runId}')"
+          gh api -X POST \
+            "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -f body="NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CLAIMED $payload" >/dev/null
+
+      - name: Synchronize sensitive Production allowlist when required
+        if: steps.approval.outputs.env_mutation_required == 'true'
+        env:
+          APPROVED_ADMIN_ALLOWLIST_FINGERPRINT: ${{ steps.approval.outputs.fingerprint }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/vercel-admin-allowlist.mjs sync > /tmp/admin-allowlist-sync.json
+          action="$(jq -er '.action' /tmp/admin-allowlist-sync.json)"
+          case "$action" in
+            created|updated) ;;
+            *)
+              echo 'Safety stop: approved Vercel allowlist mutation did not occur as expected.'
+              exit 1
+              ;;
+          esac
+          echo "Vercel allowlist mutation completed: $action"
+
+      - name: Confirm sensitive allowlist state after synchronization
+        id: envproof
+        env:
+          APPROVED_ADMIN_ALLOWLIST_FINGERPRINT: ${{ steps.approval.outputs.fingerprint }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/vercel-admin-allowlist.mjs inspect > /tmp/admin-allowlist-postwrite.json
+          test "$(jq -r '.verdict' /tmp/admin-allowlist-postwrite.json)" = 'current'
+          test "$(jq -r '.fingerprint' /tmp/admin-allowlist-postwrite.json)" = "$APPROVED_ADMIN_ALLOWLIST_FINGERPRINT"
+          env_updated_at="$(jq -er '.updatedAt' /tmp/admin-allowlist-postwrite.json)"
+          echo "updated_at=$env_updated_at" >> "$GITHUB_OUTPUT"
+
+      - name: Re-check approved main before Production deployment
+        env:
+          APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_main" = "$APPROVED_MAIN_SHA" || {
+            echo 'Safety stop: main changed before the Production deployment.'
+            exit 1
+          }
+
+      - name: Create exact-SHA Production deployment
+        id: deploy
+        env:
+          APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/vercel-admin-allowlist.mjs deploy > /tmp/admin-allowlist-deploy.json
+          deployment_id="$(jq -er '.deploymentId' /tmp/admin-allowlist-deploy.json)"
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+          echo "Created bounded Production deployment $deployment_id."
+
+      - name: Wait for exact deployment to become ready
+        env:
+          VERCEL_DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
+        shell: bash
+        run: node scripts/vercel-admin-allowlist.mjs wait-deployment
+
+      - name: Verify Production revision and ADMIN authentication boundary
+        env:
+          APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: node scripts/vercel-admin-allowlist.mjs verify-production
+
+      - name: Record consumed approval and durable freshness proof
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          FINGERPRINT: ${{ steps.approval.outputs.fingerprint }}
+          ENV_UPDATED_AT: ${{ steps.envproof.outputs.updated_at }}
+          DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg operation 'vercel-admin-allowlist-sync' --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg fingerprint "$FINGERPRINT" --arg envUpdatedAt "$ENV_UPDATED_AT" --arg deploymentId "$DEPLOYMENT_ID" --arg runId "$GITHUB_RUN_ID" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,fingerprint:$fingerprint,envUpdatedAt:$envUpdatedAt,deploymentId:$deploymentId,runId:$runId,result:"success"}')"
+          body="NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED $payload"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$body" >/dev/null
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$CONTROL_ISSUE/comments" -f body="$body" >/dev/null
+          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --reason completed >/dev/null
+
+      - name: Record failed claimed request
+        if: failure() && steps.approval.outputs.request_id != ''
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        shell: bash
+        run: |
+          set +e
+          payload="$(jq -cn --arg requestId "$REQUEST_ID" --arg runId "$GITHUB_RUN_ID" '{requestId:$requestId,runId:$runId}')"
+          gh api -X POST \
+            "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -f body="NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_FAILED $payload" >/dev/null
+          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" >/dev/null

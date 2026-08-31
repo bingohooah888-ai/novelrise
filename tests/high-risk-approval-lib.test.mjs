@@ -6,7 +6,7 @@ import {
   isHighRiskPath
 } from '../scripts/high-risk-approval-lib.mjs';
 
-test('Supabase Production workflows require explicit high-risk approval', () => {
+test('Production workflows require explicit high-risk approval', () => {
   assert.equal(
     isHighRiskPath('.github/workflows/supabase-production.yml'),
     true
@@ -15,17 +15,26 @@ test('Supabase Production workflows require explicit high-risk approval', () => 
     isHighRiskPath('.github/workflows/supabase-production-auto-deploy.yml'),
     true
   );
+  assert.equal(
+    isHighRiskPath('.github/workflows/vercel-admin-allowlist.yml'),
+    true
+  );
+  assert.equal(isHighRiskPath('scripts/vercel-admin-allowlist.mjs'), true);
   assert.equal(isHighRiskPath('.github/workflows/staging-smoke.yml'), false);
 
   assert.deepEqual(
     classifyHighRiskPaths([
       '.github/workflows/staging-smoke.yml',
       '.github/workflows/supabase-production.yml',
-      '.github/workflows/supabase-production-auto-deploy.yml'
+      '.github/workflows/supabase-production-auto-deploy.yml',
+      '.github/workflows/vercel-admin-allowlist.yml',
+      'scripts/vercel-admin-allowlist.mjs'
     ]),
     [
       '.github/workflows/supabase-production-auto-deploy.yml',
-      '.github/workflows/supabase-production.yml'
+      '.github/workflows/supabase-production.yml',
+      '.github/workflows/vercel-admin-allowlist.yml',
+      'scripts/vercel-admin-allowlist.mjs'
     ]
   );
 });
