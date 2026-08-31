@@ -28,10 +28,7 @@ test('migration deploy bridge accepts only the Issue 165 owner approval record',
     bridge,
     /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
   );
-  assert.match(
-    bridge,
-    /github\.event\.comment\.author_association == 'OWNER'/
-  );
+  assert.match(bridge, /github\.event\.comment\.author_association == 'OWNER'/);
   assert.match(bridge, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE/);
 });
 
@@ -150,16 +147,14 @@ test('automatic main-push workflow is read-only and hands off mutation to chat a
     automatic,
     /Require Staging migration parity before approval handoff/
   );
-  assert.match(
-    automatic,
-    /node scripts\/verify-staging-migration-parity\.mjs/
-  );
+  assert.match(automatic, /node scripts\/verify-staging-migration-parity\.mjs/);
   assert.match(automatic, /Staging migration parity:/);
   assert.match(automatic, /PASS/);
   assert.match(automatic, /Record chat-approval handoff/);
   assert.ok(
-    automatic.indexOf('Require Staging migration parity before approval handoff') <
-      automatic.indexOf('Record chat-approval handoff')
+    automatic.indexOf(
+      'Require Staging migration parity before approval handoff'
+    ) < automatic.indexOf('Record chat-approval handoff')
   );
   assert.match(automatic, /No Production database mutation was performed/);
   assert.doesNotMatch(automatic, /environment: production-approval/);
