@@ -19,9 +19,7 @@ function headers(allow = 'OPTIONS,POST') {
 test('Staging schema capability verifier refuses the Production Supabase project', () => {
   assert.throws(
     () =>
-      resolveStagingSupabaseOrigin(
-        'https://fiepaguycecrredwrcwx.supabase.co'
-      ),
+      resolveStagingSupabaseOrigin('https://fiepaguycecrredwrcwx.supabase.co'),
     /refusing the Production Supabase project/
   );
 });
@@ -52,7 +50,9 @@ test('Staging schema capability verifier proves required Checkout RPCs with OPTI
   assert.ok(
     calls.every(({ options }) => options.headers.apikey === 'server-secret')
   );
-  assert.ok(calls.every(({ options }) => !('Authorization' in options.headers)));
+  assert.ok(
+    calls.every(({ options }) => !('Authorization' in options.headers))
+  );
 });
 
 test('Staging schema capability verifier fails closed when a required RPC is missing', async () => {
