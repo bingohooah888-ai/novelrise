@@ -78,9 +78,7 @@ test('authenticated Staging desktop and mobile projects use fresh isolated fixtu
   const mobileSetup = workflow.indexOf(
     'Create fresh ephemeral authenticated Staging mobile users'
   );
-  const mobileRun = workflow.indexOf(
-    'Run authenticated Staging mobile smoke'
-  );
+  const mobileRun = workflow.indexOf('Run authenticated Staging mobile smoke');
   const mobileCleanup = workflow.indexOf(
     'Clean ephemeral authenticated Staging mobile data'
   );
@@ -106,18 +104,9 @@ test('authenticated Staging desktop and mobile projects use fresh isolated fixtu
   assert.ok(mobileRun < mobileCleanup);
   assert.ok(mobileCleanup < aggregate);
   assert.match(workflow, /--project=production-authenticated-chromium/);
-  assert.match(
-    workflow,
-    /--project=production-authenticated-mobile-chromium/
-  );
-  assert.match(
-    workflow,
-    /id: auth_desktop[\s\S]*continue-on-error: true/
-  );
-  assert.match(
-    workflow,
-    /id: auth_mobile[\s\S]*continue-on-error: true/
-  );
+  assert.match(workflow, /--project=production-authenticated-mobile-chromium/);
+  assert.match(workflow, /id: auth_desktop[\s\S]*continue-on-error: true/);
+  assert.match(workflow, /id: auth_mobile[\s\S]*continue-on-error: true/);
 });
 
 test('Preview billing return URLs use the exact Vercel deployment helper', () => {
@@ -135,10 +124,7 @@ test('chat-controlled Staging smoke only accepts the dedicated owner-reopened co
     workflow,
     /github\.event\.issue\.user\.login == 'bingohooah888-ai'/
   );
-  assert.match(
-    workflow,
-    /github\.event\.sender\.login == 'bingohooah888-ai'/
-  );
+  assert.match(workflow, /github\.event\.sender\.login == 'bingohooah888-ai'/);
 });
 
 test('chat-controlled Staging smoke resolves and rechecks current main before write-capable verification', () => {
