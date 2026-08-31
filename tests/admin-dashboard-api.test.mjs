@@ -99,10 +99,7 @@ test('admin allowlist fails closed on malformed configuration', () => {
     () => parseAdminAllowlist({ NOVELIGHT_ADMIN_USER_IDS: 'not-a-uuid' }),
     /malformed/
   );
-  assert.throws(
-    () => parseAdminAllowlist({}),
-    /not configured/
-  );
+  assert.throws(() => parseAdminAllowlist({}), /not configured/);
 });
 
 test('same-origin guard rejects cross-site requests', () => {
