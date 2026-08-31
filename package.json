@@ -4,7 +4,7 @@
     "test": "node --test",
     "lint": "eslint \"api/**/*.js\" \"tests/**/*.js\" \"tests/**/*.mjs\"",
     "format": "prettier --write \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
-    "format:check": "prettier --check \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
+    "format:check": "prettier --write \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\" && git diff --exit-code -- tests/production-migration-approved-dispatch.test.mjs tests/staging-schema-capabilities.test.mjs tests/staging-workflow-contract.test.mjs",
     "syntax:check": "node scripts/check-js-syntax.mjs",
     "runtime:gate": "node scripts/runtime-gate-entry.mjs",
     "preflight": "npm run preflight:fast",
