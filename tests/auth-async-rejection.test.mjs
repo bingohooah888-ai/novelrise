@@ -20,6 +20,30 @@ test('login catches auth rejections and isolates telemetry', () => {
   assert.match(login, /finally\{\s*if\(!authenticated\)button\.disabled=false/);
   assert.match(login, /async function runOptionalTelemetry/);
   assert.match(login, /post-login acquisition telemetry failed/);
+  assert.doesNotMatch(
+    login,
+    /await runOptionalTelemetry\('post-login acquisition telemetry failed'/
+  );
+  assert.doesNotMatch(
+    login,
+    /await runOptionalTelemetry\('post-login visit telemetry failed'/
+  );
+  const authenticatedIndex = login.indexOf('authenticated=true;');
+  const redirectTargetIndex = login.indexOf(
+    'const redirectTarget=safeRedirectTarget(redirect);'
+  );
+  const acquisitionIndex = login.indexOf(
+    "void runOptionalTelemetry('post-login acquisition telemetry failed'"
+  );
+  const visitIndex = login.indexOf(
+    "void runOptionalTelemetry('post-login visit telemetry failed'"
+  );
+  const navigationIndex = login.indexOf('window.location.href=redirectTarget;');
+  assert.ok(authenticatedIndex >= 0);
+  assert.ok(redirectTargetIndex > authenticatedIndex);
+  assert.ok(acquisitionIndex > redirectTargetIndex);
+  assert.ok(visitIndex > acquisitionIndex);
+  assert.ok(navigationIndex > visitIndex);
   assert.match(
     login,
     /ログインできませんでした。メールアドレスとパスワードを確認してください。/
