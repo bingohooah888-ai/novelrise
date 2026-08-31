@@ -2,8 +2,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const adminHtml = fs.readFileSync(new URL('../admin.html', import.meta.url), 'utf8');
-const loginHtml = fs.readFileSync(new URL('../login.html', import.meta.url), 'utf8');
+const adminHtml = fs.readFileSync(
+  new URL('../admin.html', import.meta.url),
+  'utf8'
+);
+const loginHtml = fs.readFileSync(
+  new URL('../login.html', import.meta.url),
+  'utf8'
+);
 const adminApi = fs.readFileSync(
   new URL('../api/admin-dashboard.js', import.meta.url),
   'utf8'
@@ -31,7 +37,10 @@ test('admin page does not add itself to ordinary site navigation', () => {
   const ordinaryPages = ['index.html', 'mypage.html', 'pricing.html'];
   for (const page of ordinaryPages) {
     if (!fs.existsSync(new URL(`../${page}`, import.meta.url))) continue;
-    const content = fs.readFileSync(new URL(`../${page}`, import.meta.url), 'utf8');
+    const content = fs.readFileSync(
+      new URL(`../${page}`, import.meta.url),
+      'utf8'
+    );
     assert.doesNotMatch(content, /href=["']admin\.html["']/);
   }
 });
