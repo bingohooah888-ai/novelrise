@@ -68,11 +68,12 @@
     try{
       const {error}=await supabaseClient.auth.signInWithPassword({email,password});
       if(error){console.error(error);status.textContent='ログインできませんでした。メールアドレスとパスワードを確認してください。';return;}
-      await runOptionalTelemetry('post-login acquisition telemetry failed',()=>NovelightClient.claimAcquisition(supabaseClient));
-      await runOptionalTelemetry('post-login visit telemetry failed',()=>NovelightClient.recordVisit(supabaseClient));
       authenticated=true;
       const redirect=new URLSearchParams(window.location.search).get('redirect');
-      window.location.href=safeRedirectTarget(redirect);
+      const redirectTarget=safeRedirectTarget(redirect);
+      void runOptionalTelemetry('post-login acquisition telemetry failed',()=>NovelightClient.claimAcquisition(supabaseClient));
+      void runOptionalTelemetry('post-login visit telemetry failed',()=>NovelightClient.recordVisit(supabaseClient));
+      window.location.href=redirectTarget;
     }catch(error){
       console.error('login request failed',error);
       status.textContent='ログインできませんでした。通信状態を確認し、時間をおいて再度お試しください。';
