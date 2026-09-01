@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       migrations:
-        description: Canonical comma-separated migration versions expected to be pending on Staging
+        description: Single canonical migration version expected to be pending on Staging
         required: true
         type: string
       confirmation:
@@ -66,8 +66,8 @@ jobs:
             > /tmp/requested-migrations.txt
 
           count="$(wc -l < /tmp/requested-migrations.txt | tr -d ' ')"
-          if [ "$count" -lt 1 ] || [ "$count" -gt 20 ]; then
-            echo 'Staging migration sync blocked: migration count must be between 1 and 20.'
+          if [ "$count" -ne 1 ]; then
+            echo 'Staging migration sync blocked: exactly one migration is supported per run.'
             exit 1
           fi
 
@@ -143,6 +143,12 @@ jobs:
             exit 1
           }
 
+      - name: Require exact Staging pending migrations
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+        run: bash scripts/verify-staging-migrations.sh pending /tmp/staging-pending-before-precheck.txt
+
       - name: Run Staging migration prechecks
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
@@ -156,12 +162,6 @@ jobs:
             echo "Running precheck for migration $version."
             psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction -f "$precheck"
           done < /tmp/staging-migration-artifacts.txt
-
-      - name: Require exact Staging pending migrations
-        env:
-          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          PGSSLMODE: require
-        run: bash scripts/verify-staging-migrations.sh pending /tmp/staging-pending-before-dry-run.txt
 
       - name: Dry-run exact Staging migration set
         env:
@@ -192,12 +192,14 @@ jobs:
           supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
 
       - name: Apply exact pending migrations to dedicated Staging
+        id: apply
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           PGSSLMODE: require
         run: supabase db push --db-url "$STAGING_DATABASE_URL" --yes
 
       - name: Run Staging migration postchecks
+        id: postchecks
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           PGSSLMODE: require
@@ -212,14 +214,33 @@ jobs:
           done < /tmp/staging-migration-artifacts.txt
 
       - name: Verify exact repository and Staging migration parity
+        id: parity
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           PGSSLMODE: require
         run: bash scripts/verify-staging-migrations.sh parity /tmp/staging-migration-list-after-apply.txt
 
       - name: Record explicit recovery boundary
+        if: always()
+        env:
+          APPLY_OUTCOME: ${{ steps.apply.outcome }}
+          POSTCHECK_OUTCOME: ${{ steps.postchecks.outcome }}
+          PARITY_OUTCOME: ${{ steps.parity.outcome }}
         shell: bash
         run: |
           set -euo pipefail
-          echo 'Staging migration sync completed with precheck, postcheck, and exact migration parity.'
-          echo 'Rollback artifacts were verified before mutation but are never executed automatically.'
+
+          if [ "$APPLY_OUTCOME" = 'success' ]; then
+            if [ "$POSTCHECK_OUTCOME" = 'success' ] && [ "$PARITY_OUTCOME" = 'success' ]; then
+              echo 'Staging migration sync completed with precheck, postcheck, and exact migration parity.'
+              echo 'Rollback artifacts were verified before mutation but are never executed automatically.'
+            else
+              echo 'STAGING_MIGRATION_RECOVERY_REQUIRED: db push completed but post-apply verification did not fully succeed.'
+              echo 'The Staging database was already mutated. Do not automatically retry the sync or execute rollback.'
+              echo 'Inspect the database state read-only and use a separately approved recovery operation.'
+            fi
+          else
+            echo 'STAGING_MIGRATION_APPLY_NOT_CONFIRMED: the apply step did not report success.'
+            echo 'Database state may be partial or unchanged. Do not automatically retry the sync or execute rollback.'
+            echo 'Inspect the database state read-only before any further mutation.'
+          fi
