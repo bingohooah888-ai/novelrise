@@ -36,6 +36,37 @@ Examples:
 
 When evidence conflicts, compare both **time** and **scope**. A newer but unrelated event does not supersede a more specific proof for another scope.
 
+## 3.5 Current-State Reconciliation Gate before retry or remediation
+
+A historical failure proves only that the operation failed at that time. It does **not** prove that the same remediation, retry, Secret setup, password reset, redeploy, migration sync, or manual UI operation is still required now.
+
+Before recommending or executing any recovery/remediation that would change external state or require user manual configuration, first reconcile the **current target state**. This applies to Production, Staging, Preview/Test, and other external services alike.
+
+Use the following order:
+
+1. Identify the exact desired end state and target Environment/resource.
+2. Gather fresh read-only evidence from the current target whenever a safe observation path exists. Prefer the target service/API/current workflow state over an older failure log.
+3. Compare the observed current state with the desired end state.
+4. Classify the result as exactly one of:
+   - `satisfied`: the desired state is already present; remediation/retry is blocked as unnecessary.
+   - `action-required`: the desired state is not present and the proposed remediation is still relevant.
+   - `unknown`: current state cannot be established safely; fail closed and gather better evidence before mutation or asking the user to perform a state-changing/manual recovery step.
+5. Only after `action-required` may the assistant proceed to the ordinary approval, Secret, destructive-operation, and environment-specific gates.
+
+The reconciliation must happen **before** asking the user to create/replace a Secret, reset a password, regenerate credentials, redeploy, rerun a one-time mutation request, or repeat a migration solely because an older run failed.
+
+A fresh screenshot supplied by the user may count as current-state evidence only for facts that are directly and unambiguously visible on that screen. Do not infer hidden state from it. When a read-only API/Connector/CLI check is available and materially safer or more specific, use it as corroborating evidence.
+
+### Staging migration recovery rule
+
+For a Staging migration failure, do not jump directly from an old workflow failure such as `STAGING_DATABASE_URL is not configured` to Secret setup or migration retry. First check the current Staging migration state through a safe current-state observation path when available.
+
+If current Staging evidence shows that the exact target migration is already applied—for example, the migration history or an unambiguous current Staging screen identifies the matching canonical migration—the Staging migration objective is `satisfied`. Do not ask for `STAGING_DATABASE_URL`, database-password reset, or a duplicate migration-sync request solely to repair the historical failed run.
+
+If the current Staging state does not contain the target migration, classify `action-required` and then follow the dedicated Staging runbook and ordinary Secret/approval boundaries. If the current state is ambiguous, classify `unknown` and stop before remediation.
+
+The purpose is to prevent a stale failure from being mistaken for a current problem and to make **current external state → need for remediation → remediation** the mandatory order.
+
 ## 4. Duplicate Production mutation block
 
 Before any Production deploy, Vercel environment synchronization, Supabase mutation, Stripe live operation, webhook repair, or equivalent external-state mutation:
@@ -69,6 +100,8 @@ A mutation with `evidence-verdict=current` must fail closed as a duplicate opera
 
 This Runtime Gate evidence does not itself prove that the remote lookup was performed correctly; it makes the check explicit, auditable, regression-tested, and impossible to omit accidentally on the local/runtime-capable path.
 
+For recovery/remediation decisions, the Runtime evidence must represent the post-reconciliation current state rather than merely restating an older failure. If the current target state already satisfies the intended outcome, treat the evidence as `current` and block mutation/remediation. If current state cannot be established, do not manufacture `refresh-required`; remain fail-closed.
+
 ## 6. Cloud / Connector path
 
 Cloud assistants that cannot run the local Runtime Gate must perform the same resolution with Connector/API reads before Production mutation or a release-state conclusion.
@@ -82,6 +115,8 @@ The minimum cloud evidence is:
 - current read-only external state when needed and available.
 
 A historical evidence document alone is never sufficient to justify repeating a Production operation.
+
+For Staging/Preview/Test recovery and user-facing remediation instructions, the same current-state reconciliation rule applies even though the target is not Production. An old failed workflow must not be used by itself to justify a new Secret operation, credential reset, rerun, redeploy, or migration sync.
 
 ### Production Authenticated Smoke classification
 
@@ -112,5 +147,9 @@ CI must retain tests that prove:
 - a planned mutation is rejected when the existing proof is `current`;
 - `refresh-required` can pass the freshness layer but does not bypass ordinary Production approvals;
 - the cloud contract forbids using an older release-evidence snapshot as the sole current-state source;
+- a historical external-operation failure alone cannot justify retry/remediation/manual Secret or password changes;
+- current-state reconciliation runs before user-facing recovery instructions for Staging/Preview/Test as well as Production;
+- a `satisfied` current target state blocks duplicate remediation, including duplicate Staging migration sync and unnecessary `STAGING_DATABASE_URL`/database-password work;
+- `unknown` current target state fails closed before mutation or state-changing manual recovery guidance;
 - Auth Smoke request-only or skipped-verification runs cannot be classified as PASS;
 - Auth Smoke PASS requires a successful decisive verification job plus a matching successful consumed-approval ledger record bound to the exact run ID and head SHA.
