@@ -8,11 +8,18 @@
 
 Production migration planは、Production承認handoff前にrepositoryとStaging migration historyの完全一致を要求する。Stagingが遅れている場合にProduction側のgateを弱めるのではなく、専用Stagingへ安全にmigrationを同期してから既存のStaging smokeとProduction planへ戻る。
 
-実行Workflowは次をSingle Sourceとする。
+実際のStaging DB mutationを行うWorkflowは次をSingle Sourceとする。
 
 - `.github/workflows/supabase-staging-sync.yml`
 
-このWorkflowはProduction migration workflow、Production approval、通常のStaging smokeとは分離する。
+通常の起動経路は次のowner-only request bridgeとする。
+
+- `.github/workflows/supabase-staging-sync-request.yml`
+- Control Issue: `#294 [Staging Control] Supabase migration sync`
+
+request bridgeはmutation SQLやDB credentialを扱わず、検証済みのexact inputだけをSingle Source workflowへ渡す。`workflow_dispatch` はfallbackとして残す。
+
+これらはProduction migration workflow、Production approval、通常のStaging smokeとは分離する。
 
 ## 2. 一度だけ必要な設定
 
@@ -34,7 +41,7 @@ Staging DBへ接続するfirst-party stepは `PGSSLMODE=require` を必須とし
 
 ## 3. 実行時入力
 
-Workflow dispatchでは次をすべて明示する。
+実際のStaging sync Workflowは次をすべて明示入力として受け取る。
 
 - `revision`: 実行対象となるexact 40-character current `main` SHA
 - `migrations`: 今回同期する14桁migration versionを**1件だけ**指定する
@@ -44,9 +51,34 @@ Workflow dispatchでは次をすべて明示する。
 
 複数のpending migrationがある場合は、依存順序どおりに1件ずつ別runとして扱い、各runでその時点のexact `main`、Staging target、actual pending stateを改めて確認する。Workflowはmigration名やSQL本文を入力から受け取らず、指定SHAのrepository artifactを唯一の実行物とする。
 
+### 3.1 通常の自動request経路
+
+手動でGitHub Actions画面へ `revision` / `migrations` / `confirmation` を繰り返し入力することを通常運用にしない。
+
+Staging DB mutationについてユーザーの明示承認が得られた後、最新mainとactual pendingをread-onlyで再確認し、Control Issue #294へrepository ownerとして次の1行だけを投稿する。
+
+```text
+NOVELIGHT_STAGING_MIGRATION_SYNC {"mainSha":"<exact-current-main-sha>","migration":"<single-14-digit-version>","confirmation":"SYNC STAGING"}
+```
+
+request bridgeは以下をFail-Closedで要求する。
+
+- Issue #294そのもの、固定title、owner作成issueであること
+- comment authorがrepository ownerであり `OWNER` associationであること
+- JSONがexactly `mainSha` / `migration` / `confirmation` の3キーだけを持つこと
+- `mainSha` が40文字lowercase hex、`migration` が14桁1件、`confirmation` がexactly `SYNC STAGING` であること
+- claim前にrequested SHAとcurrent `main` が一致すること
+- 同一request commentが過去に `CLAIMED` または `CONSUMED` されていないこと
+
+検証後、request bridgeはGitHub Actions botによる `NOVELIGHT_STAGING_MIGRATION_SYNC_CLAIMED` ledgerを先に記録し、既存の `.github/workflows/supabase-staging-sync.yml` をreusable workflowとして呼び出す。終了時はsuccess/failure/cancelled/skippedを `NOVELIGHT_STAGING_MIGRATION_SYNC_CONSUMED` ledgerへ記録する。
+
+一度claimされたrequestを自動retryしない。設定不足やprecheck failure等で停止した場合も、新しいread-only状態確認と新しい明示承認に基づく新規requestを作る。apply後failureのrecovery境界は既存Single Source workflowの規則を優先する。
+
+Control Issue、request JSON、CLAIMED/CONSUMED ledgerへSecret、database URL、password、access token、Production credentialを記録しない。
+
 ## 4. Fail-Closed実行順序
 
-Workflowは次の順序を固定する。
+Single Source workflowは次の順序を固定する。
 
 1. typed confirmation、exact SHA、**単一のcanonical migration version**を検証する。
 2. 指定SHAをcheckoutし、そのSHAが現在の `main` と一致することを確認する。
@@ -82,7 +114,7 @@ DDLが途中まで適用された可能性がある場合、自動rollbackを続
 migrationを含む変更では次を維持する。
 
 1. migration / precheck / postcheck / rollbackと関連コードをCIで検証して `main` へmergeする。
-2. `supabase-staging-sync.yml` をexact current main SHAと**単一のexact migration version**に固定して実行する。複数pendingがある場合は依存順序で1件ずつ同期する。
+2. Staging DB mutationの明示承認後、latest mainとsingle pending migrationをread-onlyで再確認し、Issue #294のowner-only request bridgeから `supabase-staging-sync.yml` をexact current main SHAと単一のexact migration versionに固定して実行する。複数pendingがある場合は依存順序で1件ずつ同期する。manual `workflow_dispatch` はfallbackとする。
 3. Staging schema capability gateをPASSさせる。
 4. authenticated / billing Staging smokeをPASSさせる。
 5. Production migration planでProduction pending一致・dry-run・Staging exact parityを確認する。
@@ -95,12 +127,14 @@ Staging同期の成功はProduction適用の承認ではない。Production muta
 
 - `PRODUCTION_DB_PASSWORD`、Production Supabase credential、Production approval environmentをStaging syncへ持ち込まない。
 - `STAGING_DATABASE_URL` をjob-level `env` やthird-party actionへ渡さない。
+- request bridgeまたはControl Issueへ `STAGING_DATABASE_URL` その他のSecretを渡さない。
 - Staging DB接続で `PGSSLMODE=require` より弱いtransport設定を許可しない。
 - Staging parity gateを無効化してProductionへ進まない。
 - exact pending setが一致しない状態でprecheck SQLまたは `db push` を実行しない。
 - malformed / noncanonicalなremote migration historyを無視してparityを成立させない。
 - 複数migrationを1runへまとめて、依存するprecheckを古いschemaへ一括実行しない。
 - stale SHAへ同期しない。
+- claim済みrequestを自動retryしない。
 - apply後の検証failureを「未変更」とみなして自動retryしない。
 - rollbackを自動実行しない。
 - Secretをecho、artifact、Issue、PR本文へ出さない。
