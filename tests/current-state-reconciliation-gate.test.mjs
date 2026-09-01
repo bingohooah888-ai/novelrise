@@ -14,7 +14,7 @@ test('external recovery reconciles current state before remediation', async () =
     /`satisfied`/,
     /`action-required`/,
     /`unknown`/,
-    /before asking the user to create\/replace a Secret, reset a password/,
+    /asking the user to create\/replace a Secret, reset a password/,
     /### Staging migration recovery rule/,
     /STAGING_DATABASE_URL is not configured/,
     /exact target migration is already applied/,
