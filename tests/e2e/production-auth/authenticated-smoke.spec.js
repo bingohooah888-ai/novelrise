@@ -202,7 +202,9 @@ async function recordDiscoveryImpression(page, novelId, novelTitle) {
       const receipt = matches[0].allocation_receipt;
       const receiptRegex = new RegExp(receiptPatternSource, 'i');
       if (typeof receipt !== 'string' || !receiptRegex.test(receipt)) {
-        throw new Error('Trusted discovery did not issue a valid allocation receipt.');
+        throw new Error(
+          'Trusted discovery did not issue a valid allocation receipt.'
+        );
       }
 
       const recorded = await client.rpc('record_trusted_allocation_receipts', {
