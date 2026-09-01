@@ -333,7 +333,7 @@ test('evidence freshness rejects historical-only or unknown evidence', () => {
             ? '--evidence-verdict=unknown'
             : arg
         ),
-        {},
+        {}
       ),
     /must be current or refresh-required/
   );
