@@ -1,0 +1,234 @@
+name: Supabase Staging Migration Sync Request
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-staging-migration-sync-request-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  request:
+    name: Validate one-time owner Staging sync request
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_MIGRATION_SYNC ')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      main_sha: ${{ steps.request.outputs.main_sha }}
+      migration: ${{ steps.request.outputs.migration }}
+      confirmation: ${{ steps.request.outputs.confirmation }}
+      request_comment_id: ${{ steps.request.outputs.request_comment_id }}
+
+    steps:
+      - name: Parse exact Staging migration sync request
+        id: request
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          REQUEST_COMMENT_ID: ${{ github.event.comment.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          prefix='NOVELIGHT_STAGING_MIGRATION_SYNC '
+          request_json="${COMMENT_BODY#"$prefix"}"
+          if [ "$request_json" = "$COMMENT_BODY" ]; then
+            echo 'Staging migration sync request blocked: command prefix mismatch.'
+            exit 1
+          fi
+
+          printf '%s\n' "$request_json" | jq -e '
+            type == "object" and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.migration | type == "string" and test("^[0-9]{14}$")) and
+            (.confirmation == "SYNC STAGING") and
+            ((keys | sort) == (["confirmation", "mainSha", "migration"] | sort))
+          ' >/dev/null || {
+            echo 'Staging migration sync request blocked: invalid request JSON.'
+            exit 1
+          }
+
+          main_sha="$(printf '%s\n' "$request_json" | jq -r '.mainSha')"
+          migration="$(printf '%s\n' "$request_json" | jq -r '.migration')"
+          confirmation="$(printf '%s\n' "$request_json" | jq -r '.confirmation')"
+
+          {
+            echo "main_sha=$main_sha"
+            echo "migration=$migration"
+            echo "confirmation=$confirmation"
+            echo "request_comment_id=$REQUEST_COMMENT_ID"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Bind request to current main before claiming
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_MAIN_SHA: ${{ steps.request.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_main_sha="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+
+          if [ "$current_main_sha" != "$REQUESTED_MAIN_SHA" ]; then
+            echo 'Staging migration sync request blocked: main changed before the request was claimed.'
+            echo "requested=$REQUESTED_MAIN_SHA"
+            echo "current=$current_main_sha"
+            exit 1
+          fi
+
+      - name: Reject already claimed or consumed request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_COMMENT_ID: ${{ steps.request.outputs.request_comment_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          : > /tmp/staging-sync-ledger.ndjson
+          page=1
+          while [ "$page" -le 20 ]; do
+            page_file="/tmp/staging-sync-comments-$page.json"
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100&page=$page" \
+              > "$page_file"
+
+            count="$(jq 'length' "$page_file")"
+            jq -c '.[]' "$page_file" >> /tmp/staging-sync-ledger.ndjson
+            if [ "$count" -lt 100 ]; then
+              break
+            fi
+            page=$((page + 1))
+          done
+
+          if [ "$page" -gt 20 ]; then
+            echo 'Staging migration sync request blocked: control ledger exceeded the bounded pagination contract.'
+            exit 1
+          fi
+
+          needle="\"requestCommentId\":\"$REQUEST_COMMENT_ID\""
+          used_count="$(
+            jq -s --arg needle "$needle" '[
+              .[]
+              | select(.user.login == "github-actions[bot]")
+              | select(
+                  (.body | startswith("NOVELIGHT_STAGING_MIGRATION_SYNC_CLAIMED ")) or
+                  (.body | startswith("NOVELIGHT_STAGING_MIGRATION_SYNC_CONSUMED "))
+                )
+              | select(.body | contains($needle))
+            ] | length' /tmp/staging-sync-ledger.ndjson
+          )"
+
+          if [ "$used_count" -ne 0 ]; then
+            echo 'Staging migration sync request blocked: this request comment was already claimed or consumed.'
+            exit 1
+          fi
+
+      - name: Claim request before invoking Staging mutation workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_COMMENT_ID: ${{ steps.request.outputs.request_comment_id }}
+          MAIN_SHA: ${{ steps.request.outputs.main_sha }}
+          MIGRATION: ${{ steps.request.outputs.migration }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          payload="$(
+            jq -cn \
+              --arg requestCommentId "$REQUEST_COMMENT_ID" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg migration "$MIGRATION" \
+              --arg runId "$GITHUB_RUN_ID" \
+              '{requestCommentId:$requestCommentId,mainSha:$mainSha,migration:$migration,runId:$runId}'
+          )"
+          body="NOVELIGHT_STAGING_MIGRATION_SYNC_CLAIMED $payload"
+
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+  sync:
+    name: Execute fail-closed Staging migration sync
+    needs: request
+    if: needs.request.result == 'success'
+    uses: ./.github/workflows/supabase-staging-sync.yml
+    with:
+      revision: ${{ needs.request.outputs.main_sha }}
+      migrations: ${{ needs.request.outputs.migration }}
+      confirmation: ${{ needs.request.outputs.confirmation }}
+
+  record:
+    name: Record Staging migration sync result
+    needs: [request, sync]
+    if: always() && needs.request.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Record consumed request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_COMMENT_ID: ${{ needs.request.outputs.request_comment_id }}
+          MAIN_SHA: ${{ needs.request.outputs.main_sha }}
+          MIGRATION: ${{ needs.request.outputs.migration }}
+          SYNC_RESULT: ${{ needs.sync.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "$SYNC_RESULT" in
+            success|failure|cancelled|skipped) ;;
+            *)
+              echo "Unexpected Staging sync result: $SYNC_RESULT"
+              exit 1
+              ;;
+          esac
+
+          payload="$(
+            jq -cn \
+              --arg requestCommentId "$REQUEST_COMMENT_ID" \
+              --arg mainSha "$MAIN_SHA" \
+              --arg migration "$MIGRATION" \
+              --arg runId "$GITHUB_RUN_ID" \
+              --arg result "$SYNC_RESULT" \
+              '{requestCommentId:$requestCommentId,mainSha:$mainSha,migration:$migration,runId:$runId,result:$result}'
+          )"
+          body="NOVELIGHT_STAGING_MIGRATION_SYNC_CONSUMED $payload"
+
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
