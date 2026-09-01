@@ -38,10 +38,10 @@ function assertNoError(result, label) {
   return result?.data;
 }
 
-async function createUser(role) {
-  const email = `novelight-e2e-${role}-${runId}-${randomBytes(4).toString('hex')}@example.com`;
+async function createUser(role, project) {
+  const email = `novelight-e2e-${project}-${role}-${runId}-${randomBytes(4).toString('hex')}@example.com`;
   const userPassword = password();
-  const displayName = `NOVELIGHT E2E ${role === 'author' ? '作者' : '読者'} ${runId}`;
+  const displayName = `NOVELIGHT E2E ${project} ${role === 'author' ? '作者' : '読者'} ${runId}`;
   const data = assertNoError(
     await admin.auth.admin.createUser({
       email,
@@ -49,7 +49,7 @@ async function createUser(role) {
       email_confirm: true,
       user_metadata: { display_name: displayName, internal_e2e: true }
     }),
-    `create ${role} user`
+    `create ${project} ${role} user`
   );
   return { id: data.user.id, email, password: userPassword, displayName };
 }
@@ -64,23 +64,52 @@ async function waitForProfiles(userIds) {
   throw new Error('Ephemeral smoke profiles were not created in time.');
 }
 
+function uniqueIds(accounts) {
+  return [
+    ...new Set((accounts || []).map((account) => account?.id).filter(Boolean))
+  ];
+}
+
+function projectAccounts(fixture, role) {
+  return [
+    ...Object.values(fixture.projects || {}).map((project) => project?.[role]),
+    fixture[role]
+  ].filter(Boolean);
+}
+
 async function setup() {
-  const fixture = { runId, createdAt: new Date().toISOString() };
+  const fixture = {
+    runId,
+    createdAt: new Date().toISOString(),
+    projects: { desktop: {}, mobile: {} }
+  };
   saveFixture(fixture);
 
-  fixture.author = await createUser('author');
-  saveFixture(fixture);
-  fixture.reader = await createUser('reader');
+  for (const project of ['desktop', 'mobile']) {
+    fixture.projects[project].author = await createUser('author', project);
+    saveFixture(fixture);
+    fixture.projects[project].reader = await createUser('reader', project);
+    saveFixture(fixture);
+  }
+
+  fixture.author = fixture.projects.desktop.author;
+  fixture.reader = fixture.projects.desktop.reader;
   saveFixture(fixture);
 
-  await waitForProfiles([fixture.author.id, fixture.reader.id]);
+  const userIds = uniqueIds([
+    ...projectAccounts(fixture, 'author'),
+    ...projectAccounts(fixture, 'reader')
+  ]);
+  await waitForProfiles(userIds);
 
-  const exclusionRows = [fixture.author.id, fixture.reader.id].map((userId) => ({
+  const exclusionRows = userIds.map((userId) => ({
     user_id: userId,
     reason: 'automated production authenticated smoke'
   }));
   assertNoError(
-    await admin.from('founding_author_exclusions').upsert(exclusionRows, { onConflict: 'user_id' }),
+    await admin
+      .from('founding_author_exclusions')
+      .upsert(exclusionRows, { onConflict: 'user_id' }),
     'exclude smoke users from Founding Authors'
   );
 
@@ -90,7 +119,10 @@ async function setup() {
 async function deleteByIds(table, column, values, label = table) {
   const filtered = [...new Set((values || []).filter(Boolean).map(String))];
   if (!filtered.length) return;
-  assertNoError(await admin.from(table).delete().in(column, filtered), `cleanup ${label}`);
+  assertNoError(
+    await admin.from(table).delete().in(column, filtered),
+    `cleanup ${label}`
+  );
 }
 
 async function deleteByUserIds(table, userIds) {
@@ -99,16 +131,16 @@ async function deleteByUserIds(table, userIds) {
 
 async function cleanup() {
   const fixture = loadFixture();
-  const authorId = fixture.author?.id;
-  const readerId = fixture.reader?.id;
-  const userIds = [authorId, readerId].filter(Boolean);
+  const authorIds = uniqueIds(projectAccounts(fixture, 'author'));
+  const readerIds = uniqueIds(projectAccounts(fixture, 'reader'));
+  const userIds = [...new Set([...authorIds, ...readerIds])];
   if (!userIds.length) {
     console.log('No ephemeral production authenticated-smoke users to clean.');
     return;
   }
 
-  const novelsResult = authorId
-    ? await admin.from('novels').select('id').eq('user_id', authorId)
+  const novelsResult = authorIds.length
+    ? await admin.from('novels').select('id').in('user_id', authorIds)
     : { data: [], error: null };
   assertNoError(novelsResult, 'find smoke novels');
   const novelIds = (novelsResult.data || []).map((row) => String(row.id));
@@ -119,19 +151,38 @@ async function cleanup() {
   assertNoError(episodesResult, 'find smoke episodes');
   const episodeIds = (episodesResult.data || []).map((row) => String(row.id));
 
-  const foundingResult = authorId
-    ? await admin.from('founding_authors').select('author_id,founding_number').eq('author_id', authorId)
+  const foundingResult = authorIds.length
+    ? await admin
+        .from('founding_authors')
+        .select('author_id,founding_number')
+        .in('author_id', authorIds)
     : { data: [], error: null };
   assertNoError(foundingResult, 'check unexpected Founding Author assignment');
   const unexpectedFounding = (foundingResult.data || []).length > 0;
 
-  await deleteByIds('novel_exposure_conversions', 'novel_id_snapshot', novelIds);
+  await deleteByIds(
+    'novel_allocation_receipts',
+    'viewer_id',
+    userIds,
+    'allocation receipts by smoke viewer'
+  );
+  await deleteByIds(
+    'novel_allocation_receipts',
+    'novel_id_snapshot',
+    novelIds,
+    'allocation receipts by smoke work'
+  );
+  await deleteByIds(
+    'novel_exposure_conversions',
+    'novel_id_snapshot',
+    novelIds
+  );
   await deleteByIds('novel_exposure_events', 'novel_id_snapshot', novelIds);
   await deleteByIds('reader_journey_events', 'novel_id_snapshot', novelIds);
   await deleteByUserIds('reader_journey_events', userIds);
   await deleteByIds('light_seeds', 'novel_id_snapshot', novelIds);
-  await deleteByIds('light_seeds', 'reader_id', [readerId]);
-  await deleteByIds('light_seeds', 'author_id_snapshot', [authorId]);
+  await deleteByIds('light_seeds', 'reader_id', readerIds);
+  await deleteByIds('light_seeds', 'author_id_snapshot', authorIds);
   await deleteByIds('favorites', 'novel_id', novelIds);
   await deleteByUserIds('favorites', userIds);
   await deleteByIds('episodes', 'id', episodeIds);
@@ -139,7 +190,7 @@ async function cleanup() {
   await deleteByIds('content_reports', 'novel_id_snapshot', novelIds);
 
   if (unexpectedFounding) {
-    await deleteByIds('founding_authors', 'author_id', [authorId]);
+    await deleteByIds('founding_authors', 'author_id', authorIds);
   }
 
   await deleteByIds('novels', 'id', novelIds);
@@ -153,7 +204,10 @@ async function cleanup() {
 
   const visitorTokens = Object.values(fixture.visitorTokens || {}).filter(Boolean);
   const acquisitionHashes = visitorTokens.map((token) => hash(token));
-  const visitorHashes = visitorTokens.flatMap((token) => [hash(`visitor:${token}`), hash(token)]);
+  const visitorHashes = visitorTokens.flatMap((token) => [
+    hash(`visitor:${token}`),
+    hash(token)
+  ]);
   await deleteByIds('beta_activity_days', 'viewer_key_hash', visitorHashes);
   await deleteByIds('acquisition_touches', 'visitor_key_hash', acquisitionHashes);
   await deleteByIds('reader_journey_events', 'viewer_key_hash', visitorHashes);
@@ -169,7 +223,9 @@ async function cleanup() {
 
   console.log('Ephemeral production authenticated-smoke data cleaned.');
   if (unexpectedFounding) {
-    throw new Error('Smoke author unexpectedly received a Founding Author number; assignment was cleaned.');
+    throw new Error(
+      'Smoke author unexpectedly received a Founding Author number; assignment was cleaned.'
+    );
   }
 }
 

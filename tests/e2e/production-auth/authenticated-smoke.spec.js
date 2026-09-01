@@ -12,6 +12,8 @@ const productionSupabasePublishableKey =
   'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
 const exposureConversionRpcPath =
   '/rest/v1/rpc/record_novel_exposure_conversion';
+const receiptPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 
@@ -49,6 +51,14 @@ const stagingSupabaseOverride = resolveStagingSupabaseOverride();
 
 function loadFixture() {
   return JSON.parse(readFileSync(fixturePath, 'utf8'));
+}
+
+function accountsForProject(fixture, deviceLabel) {
+  const accounts = fixture.projects?.[deviceLabel];
+  if (!accounts?.author || !accounts?.reader) {
+    throw new Error(`Missing isolated ${deviceLabel} smoke identities.`);
+  }
+  return accounts;
 }
 
 function saveVisitorToken(role, token) {
@@ -154,7 +164,7 @@ async function getSupabaseAccessToken(page) {
   return accessToken;
 }
 
-async function recordDiscoveryImpression(page, novelId) {
+async function recordDiscoveryImpression(page, novelId, novelTitle) {
   const target = stagingSupabaseOverride || {
     url: productionSupabaseUrl,
     key: productionSupabasePublishableKey
@@ -164,21 +174,56 @@ async function recordDiscoveryImpression(page, novelId) {
     () => typeof globalThis.supabase?.createClient === 'function'
   );
   await page.evaluate(
-    async ({ url, key, workId }) => {
+    async ({ url, key, workId, title, receiptPatternSource }) => {
       const client = globalThis.supabase.createClient(url, key);
       const session = await client.auth.getSession();
       if (!session.data.session) {
         throw new Error('Authenticated session was unavailable.');
       }
 
-      const response = await client.rpc('record_novel_impressions_v2', {
+      const allocation = await client.rpc('novelight_trusted_discovery_feed', {
         p_surface: 'home_discovery',
-        p_novel_ids: [workId],
+        p_limit: 24,
+        p_keyword: title,
+        p_genre: null,
         p_visitor_token: null
       });
-      if (response.error) throw new Error(response.error.message);
+      if (allocation.error) throw new Error(allocation.error.message);
+
+      const matches = (allocation.data || []).filter(
+        (row) => String(row.novel_id) === workId && row.title === title
+      );
+      if (matches.length !== 1) {
+        throw new Error(
+          `Trusted discovery returned ${matches.length} exact smoke targets.`
+        );
+      }
+
+      const receipt = matches[0].allocation_receipt;
+      const receiptRegex = new RegExp(receiptPatternSource, 'i');
+      if (typeof receipt !== 'string' || !receiptRegex.test(receipt)) {
+        throw new Error(
+          'Trusted discovery did not issue a valid allocation receipt.'
+        );
+      }
+
+      const recorded = await client.rpc('record_trusted_allocation_receipts', {
+        p_receipts: [receipt]
+      });
+      if (recorded.error) throw new Error(recorded.error.message);
+      if (recorded.data !== 1) {
+        throw new Error(
+          `Trusted receipt recorded unexpected impression count ${recorded.data}.`
+        );
+      }
     },
-    { url: target.url, key: target.key, workId: String(novelId) }
+    {
+      url: target.url,
+      key: target.key,
+      workId: String(novelId),
+      title: novelTitle,
+      receiptPatternSource: receiptPattern.source
+    }
   );
 }
 
@@ -243,6 +288,7 @@ test('authenticated beta-critical product flow works in target', async ({
   const deviceLabel = testInfo.project.name.includes('mobile')
     ? 'mobile'
     : 'desktop';
+  const accounts = accountsForProject(fixture, deviceLabel);
   const unique = `E2E-${fixture.runId}-${deviceLabel}`;
   const novelTitle = `${smokeLabel}作品 ${unique}`;
   const firstEpisodeTitle = `第1話 ${smokeLabel} ${unique}`;
@@ -269,7 +315,7 @@ test('authenticated beta-critical product flow works in target', async ({
     await test.step('Author login', async () => {
       const authorVisitorToken = await login(
         authorPage,
-        fixture.author,
+        accounts.author,
         'post.html'
       );
       saveVisitorToken(`author-${deviceLabel}`, authorVisitorToken);
@@ -344,11 +390,11 @@ test('authenticated beta-critical product flow works in target', async ({
     await test.step('Reader login and record discovery impression', async () => {
       const readerVisitorToken = await login(
         readerPage,
-        fixture.reader,
+        accounts.reader,
         'mypage.html'
       );
       saveVisitorToken(`reader-${deviceLabel}`, readerVisitorToken);
-      await recordDiscoveryImpression(readerPage, novelId);
+      await recordDiscoveryImpression(readerPage, novelId, novelTitle);
 
       const detailConversion = waitForExposureConversion(
         readerPage,
