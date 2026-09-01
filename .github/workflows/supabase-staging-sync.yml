@@ -33,7 +33,6 @@ jobs:
       EXPECTED_MIGRATIONS: ${{ inputs.migrations }}
       CONFIRMATION: ${{ inputs.confirmation }}
       STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
-      STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
 
     steps:
       - name: Validate explicit Staging sync request
@@ -107,6 +106,8 @@ jobs:
           fi
 
       - name: Require dedicated Staging configuration
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         shell: bash
         run: |
           set -euo pipefail
@@ -120,6 +121,9 @@ jobs:
           }
 
       - name: Verify dedicated Staging database target
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
         run: node scripts/verify-staging-migration-target.mjs
 
       - name: Setup Supabase CLI
@@ -140,6 +144,9 @@ jobs:
           }
 
       - name: Run Staging migration prechecks
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
         shell: bash
         run: |
           set -euo pipefail
@@ -151,12 +158,21 @@ jobs:
           done < /tmp/staging-migration-artifacts.txt
 
       - name: Require exact Staging pending migrations
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
         run: bash scripts/verify-staging-migrations.sh pending /tmp/staging-pending-before-dry-run.txt
 
       - name: Dry-run exact Staging migration set
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
         run: supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
 
       - name: Re-bind target and pending set immediately before mutation
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
         shell: bash
         run: |
           set -euo pipefail
@@ -176,9 +192,15 @@ jobs:
           supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
 
       - name: Apply exact pending migrations to dedicated Staging
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
         run: supabase db push --db-url "$STAGING_DATABASE_URL" --yes
 
       - name: Run Staging migration postchecks
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
         shell: bash
         run: |
           set -euo pipefail
@@ -190,6 +212,9 @@ jobs:
           done < /tmp/staging-migration-artifacts.txt
 
       - name: Verify exact repository and Staging migration parity
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
         run: bash scripts/verify-staging-migrations.sh parity /tmp/staging-migration-list-after-apply.txt
 
       - name: Record explicit recovery boundary
