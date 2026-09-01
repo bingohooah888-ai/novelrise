@@ -18,8 +18,7 @@ const STAGING_URL = `https://${STAGING_REF}.supabase.co`;
 const STAGING_DB =
   `postgresql://postgres:example-password@db.${STAGING_REF}.supabase.co` +
   ':5432/postgres';
-const SECRET_ENV =
-  'STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}';
+const SECRET_ENV = 'STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}';
 const bashAvailable =
   spawnSync('bash', ['--version'], { stdio: 'ignore' }).status === 0;
 
