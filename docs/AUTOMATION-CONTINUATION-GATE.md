@@ -35,6 +35,16 @@ NOVELIGHTでツールを1回でも使うアシスタントターンは、**そ�
 
 時間見積もりを提示できる環境では、カードにトータル予想時間、主要工程別時間、手動操作の有無/概算回数、待機要否を含める。時間見積もりを提示できない実行環境ではDegraded-Continueを使うが、時間を省略する理由の固定表示は要求しない。カードは目的、主要工程、手動操作、待機要否、作業量、次のユーザー操作を中心とし、`別作業`はユーザー判断に実益がある場合だけ表示する。
 
+### Connector capability bootstrap
+
+クラウド実行環境では、GitHub等の既接続Connectorについて、実際のread actionを呼び出せるようにするため、ツールschema・capabilityだけを先に読み込む必要がある場合がある。
+
+現在ターンの可視実行カードをすでに送信済みであり、capability discoveryが**repository / project state、Issue、PR、Workflow、file content、deployment stateその他のNOVELIGHT実データを一切読まず、利用可能なtool schemaだけを返す**場合、その最小限のdiscoveryはtransport bootstrapとして扱い、latest `main` lookupより前に1回だけ実行してよい。
+
+この例外は、`api_tool.list_resources` 等で「latest mainを取得するためのread actionそのものを露出する」用途に限定する。discovery結果をNOVELIGHTの現在状態として解釈してはならず、別Connector探索、project resource列挙、repository search、Issue/PR/file/workflow readへ拡張してはならない。
+
+capability bootstrapが完了したら、寄り道せず直ちにlatest `main` を解決し、そのSHA上のMASTER全文を読む。**カード後のcapability-only discoveryを、MASTER-first違反として扱ってユーザーへ新しい「はい」「続けて」を要求してはならない。**
+
 ## 主要工程 Runtime Execution Gate
 
 MASTERやPreflightを「一度読んだ資料」として扱わない。**新しい主要工程へ入る直前に、毎回このゲートを通す。**
@@ -83,6 +93,49 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 実行カードは承認要求ではない。表示後、安全な既承認スコープ内であればユーザーの追加の「はい」を待たず実行へ進む。
 
 **このRuntime Execution Gateは、作業開始時だけでなく、主要工程の切替ごとに必須とする。** 同じアシスタントターン内での工程切替は必要に応じて更新見積もりを出す。ユーザーへ一度ターンを返した場合は、次のツール実行前に必ず新しい実行カードを送る。
+
+### アシスタント側の回復可能エラー自動再開
+
+現在ターンの実行カードが正しく先に表示され、まだ外部state mutation、Secret操作、課金、Production操作、破壊的操作、one-time requestのclaim等を開始していない場合、ChatGPT/実行エージェント自身の回復可能な失敗でユーザーへターンを返さない。
+
+対象には、少なくとも以下を含む。
+
+- read-only API / Connectorの一時失敗
+- tool引数・URL・検索条件等の非変更操作の組み立てミス
+- capability bootstrap後に使うread actionの選択ミス
+- 同じ目的を満たす安全なread-only経路への切替
+- CI/Workflow状態取得の一時失敗
+
+安全に回復できる場合は、失敗原因を分類し、必要ならread-only bootstrapを最初からやり直し、latest `main` とMASTERをfreshに再取得して同じターンで継続する。途中で得た不確かな観測は破棄し、再取得した正式情報だけを以後の判断に使う。
+
+単なる回復可能エラーを理由に「もう一度はいと言ってください」「続けてと送ってください」「同じ承認文を再送してください」と要求してはならない。
+
+ただし、**カードより前にツールを呼んだ、MASTER前に実際のproject-state / project-documentを読んだ、無許可の画像ツールを呼んだ、外部mutationを開始した、one-time requestをclaimした**等、別の正式ゲートが同一ターン復旧を明示的に禁止する事象はこの自動再開で上書きしない。その場合も、次のユーザーメッセージに特定の「続けて」文言を要求せず、ユーザーから何らかの新しいメッセージを受けた次ターンで自動的に正しいbootstrapから再開する。
+
+### 未消費承認のcarry-forward
+
+ユーザーが具体的な操作を明示承認した後、ChatGPT/実行エージェント側の手順ミス・read-only失敗・transport失敗等で**その承認を使った外部request / claim / mutationがまだ一度も開始されていない**場合、同じ承認文を再入力させることを既定にしない。
+
+承認をcarry-forwardできるのは、freshなread-only再確認で次をすべて証明できる場合だけとする。
+
+- operation種別、対象Environment、対象resource / migration等の承認スコープが同一
+- 承認後に外部request、CLAIMED ledger、mutation、課金、Secret変更等が発生していない
+- safety boundaryと対象artifactが承認時から実質的に変わっていない
+- 別の正式契約がexact SHA、challenge、one-time token等によるfresh approvalを要求していない
+
+`main` が進んだ場合は、承認対象artifactとcontrol pathが変わっていないことを証明できるときだけcarry-forwardする。証明できない、または承認対象に関連する変更がある場合はfresh approvalを得る。
+
+次はcarry-forward禁止とする。
+
+- final-head SHA / challengeへ固定されたHigh-Risk PR承認
+- Production DB、Production Secret、Stripe live、その他Production high-impact operationで正式契約がfresh approvalを要求するもの
+- Secret、2FA、OAuth、Recovery code等の本人操作
+- destructive / irreversible operationで実行直前のfresh confirmationが契約上必要なもの
+- すでにone-time requestが `CLAIMED` または `CONSUMED` された操作
+
+one-time request bridgeでrequestがclaim/consume済みになった場合は、元の承認を未消費とは扱わず、そのrunbookのfresh approval規則へ戻る。
+
+目的は安全承認を省略することではなく、**アシスタント側の非変更ミスだけを理由に、同一スコープの未消費承認をユーザーへ何度も入力させないこと**である。
 
 ## スクリーンショット・画面確認ゲート
 
