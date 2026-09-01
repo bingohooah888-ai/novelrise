@@ -1,0 +1,191 @@
+name: Supabase Staging Migration Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Exact current main SHA to synchronize to Staging
+        required: true
+        type: string
+      migrations:
+        description: Canonical comma-separated migration versions expected to be pending on Staging
+        required: true
+        type: string
+      confirmation:
+        description: Type SYNC STAGING to allow the Staging database mutation
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-staging-migration-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Synchronize approved migrations to dedicated Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      APPROVED_REVISION: ${{ inputs.revision }}
+      EXPECTED_MIGRATIONS: ${{ inputs.migrations }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+
+    steps:
+      - name: Validate explicit Staging sync request
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          [ "$CONFIRMATION" = 'SYNC STAGING' ] || {
+            echo 'Staging migration sync blocked: confirmation must be exactly SYNC STAGING.'
+            exit 1
+          }
+
+          [[ "$APPROVED_REVISION" =~ ^[0-9a-f]{40}$ ]] || {
+            echo 'Staging migration sync blocked: revision must be exactly 40 lowercase hex characters.'
+            exit 1
+          }
+
+          [ -n "$EXPECTED_MIGRATIONS" ] || {
+            echo 'Staging migration sync blocked: migrations is required.'
+            exit 1
+          }
+
+          printf '%s\n' "$EXPECTED_MIGRATIONS" \
+            | tr ',' '\n' \
+            | sed '/^$/d' \
+            > /tmp/requested-migrations.txt
+
+          count="$(wc -l < /tmp/requested-migrations.txt | tr -d ' ')"
+          if [ "$count" -lt 1 ] || [ "$count" -gt 20 ]; then
+            echo 'Staging migration sync blocked: migration count must be between 1 and 20.'
+            exit 1
+          fi
+
+          while IFS= read -r version; do
+            [[ "$version" =~ ^[0-9]{14}$ ]] || {
+              echo "Staging migration sync blocked: invalid migration version $version."
+              exit 1
+            }
+          done < /tmp/requested-migrations.txt
+
+          canonical="$(sort -u /tmp/requested-migrations.txt | paste -sd, -)"
+          [ "$canonical" = "$EXPECTED_MIGRATIONS" ] || {
+            echo 'Staging migration sync blocked: migrations must be sorted, unique, and canonical.'
+            exit 1
+          }
+
+      - name: Checkout exact requested revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Bind request to current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_REVISION"
+          git fetch --no-tags --depth=1 origin main
+          current_main_sha="$(git rev-parse FETCH_HEAD)"
+          if [ "$current_main_sha" != "$APPROVED_REVISION" ]; then
+            echo 'Staging migration sync blocked: main changed after the request was created.'
+            echo "approved=$APPROVED_REVISION"
+            echo "current=$current_main_sha"
+            exit 1
+          fi
+
+      - name: Require dedicated Staging configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$STAGING_SUPABASE_URL" || {
+            echo 'STAGING_SUPABASE_URL is not configured.'
+            exit 1
+          }
+          test -n "$STAGING_DATABASE_URL" || {
+            echo 'STAGING_DATABASE_URL is not configured in the staging Environment.'
+            exit 1
+          }
+
+      - name: Verify dedicated Staging database target
+        run: node scripts/verify-staging-migration-target.mjs
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Require migration safety artifacts
+        run: bash scripts/verify-staging-migrations.sh artifacts /tmp/staging-migration-artifacts.txt
+
+      - name: Require PostgreSQL client for safety checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql >/dev/null || {
+            echo 'Staging migration sync blocked: psql is unavailable for precheck/postcheck execution.'
+            exit 1
+          }
+
+      - name: Run Staging migration prechecks
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS='|' read -r version migration precheck postcheck rollback; do
+            echo "Running precheck for migration $version."
+            psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction -f "$precheck"
+          done < /tmp/staging-migration-artifacts.txt
+
+      - name: Require exact Staging pending migrations
+        run: bash scripts/verify-staging-migrations.sh pending /tmp/staging-pending-before-dry-run.txt
+
+      - name: Dry-run exact Staging migration set
+        run: supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+
+      - name: Re-bind target and pending set immediately before mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --no-tags --depth=1 origin main
+          current_main_sha="$(git rev-parse FETCH_HEAD)"
+          if [ "$current_main_sha" != "$APPROVED_REVISION" ]; then
+            echo 'Staging migration sync blocked: main changed before mutation.'
+            echo "approved=$APPROVED_REVISION"
+            echo "current=$current_main_sha"
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$APPROVED_REVISION"
+
+          node scripts/verify-staging-migration-target.mjs
+          bash scripts/verify-staging-migrations.sh pending /tmp/staging-pending-before-apply.txt
+          supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+
+      - name: Apply exact pending migrations to dedicated Staging
+        run: supabase db push --db-url "$STAGING_DATABASE_URL" --yes
+
+      - name: Run Staging migration postchecks
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS='|' read -r version migration precheck postcheck rollback; do
+            echo "Running postcheck for migration $version."
+            psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction -f "$postcheck"
+          done < /tmp/staging-migration-artifacts.txt
+
+      - name: Verify exact repository and Staging migration parity
+        run: bash scripts/verify-staging-migrations.sh parity /tmp/staging-migration-list-after-apply.txt
+
+      - name: Record explicit recovery boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Staging migration sync completed with precheck, postcheck, and exact migration parity.'
+          echo 'Rollback artifacts were verified before mutation but are never executed automatically.'
