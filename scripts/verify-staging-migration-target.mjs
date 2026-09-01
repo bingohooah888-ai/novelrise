@@ -17,6 +17,9 @@ export function verifyStagingMigrationTarget(env = process.env) {
   if (!databaseUrl) {
     fail('STAGING_DATABASE_URL is not configured.');
   }
+  if (env.PGSSLMODE !== 'require') {
+    fail('PGSSLMODE must be exactly require.');
+  }
 
   let parsed;
   try {
