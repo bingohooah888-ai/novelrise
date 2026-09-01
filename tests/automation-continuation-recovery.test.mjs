@@ -21,7 +21,7 @@ test('assistant recovery stays automatic and fail-closed', async () => {
     /外部request \/ claim \/ mutation/,
     /final-head SHA \/ challenge/,
     /Production DB、Production Secret、Stripe live/,
-    /`CLAIMED` または `CONSUMED`/,
+    /`CLAIMED` または `CONSUMED`/
   ];
 
   for (const pattern of patterns) {
