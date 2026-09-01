@@ -143,7 +143,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          while IFS='|' read -r version migration precheck postcheck rollback; do
+          while IFS= read -r artifact_line; do
+            version="${artifact_line%%|*}"
+            precheck="$(printf '%s\n' "$artifact_line" | cut -d'|' -f3)"
             echo "Running precheck for migration $version."
             psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction -f "$precheck"
           done < /tmp/staging-migration-artifacts.txt
@@ -180,7 +182,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          while IFS='|' read -r version migration precheck postcheck rollback; do
+          while IFS= read -r artifact_line; do
+            version="${artifact_line%%|*}"
+            postcheck="$(printf '%s\n' "$artifact_line" | cut -d'|' -f4)"
             echo "Running postcheck for migration $version."
             psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction -f "$postcheck"
           done < /tmp/staging-migration-artifacts.txt
