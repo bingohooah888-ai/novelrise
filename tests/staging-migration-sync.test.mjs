@@ -238,7 +238,10 @@ test('Staging sync records post-apply recovery state on every outcome', () => {
   assert.match(recovery, /steps\.parity\.outcome/);
   assert.match(recovery, /STAGING_MIGRATION_RECOVERY_REQUIRED/);
   assert.match(recovery, /Staging database was already mutated/);
-  assert.match(recovery, /Do not automatically retry the sync or execute rollback/);
+  assert.match(
+    recovery,
+    /Do not automatically retry the sync or execute rollback/
+  );
   assert.match(recovery, /STAGING_MIGRATION_APPLY_NOT_CONFIRMED/);
 });
 
