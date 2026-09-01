@@ -107,7 +107,7 @@ The minimum cloud evidence is:
 - approval/claim/consumption ledger evidence when applicable;
 - proof-SHA versus current-main comparison for later material changes.
 
-A historical evidence document, failed workflow, or error log alone is never sufficient to justify repeating an operation or telling the user to alter a Secret/password/configuration.
+A historical evidence document alone is never sufficient to justify repeating an operation. A failed workflow or error log alone is likewise insufficient to tell the user to alter a Secret/password/configuration.
 
 If the fresh observation already proves the goal is satisfied, the assistant must stop the remediation path even when an older run failed. It may separately record that the cause/path of the later state change is unknown, but must not convert that uncertainty into another write.
 
