@@ -228,7 +228,10 @@ test('incomplete, truncated, stale, or noncontiguous MASTER proof fails closed',
     /digest does not match/
   );
 
-  assert.equal(parseMasterReadEvidence('start', [], {}, authoritative).required, false);
+  assert.equal(
+    parseMasterReadEvidence('start', [], {}, authoritative).required,
+    false
+  );
 });
 
 test('read-only bootstrap-order mistake resets in-turn but real safety boundaries stay hard-fail', () => {
