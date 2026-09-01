@@ -46,6 +46,42 @@ function runRemoteParser(input) {
   });
 }
 
+function runPendingVerifier(snapshot) {
+  return spawnSync(
+    'bash',
+    [
+      '-c',
+      `set -euo pipefail
+      tmp_dir="$(mktemp -d)"
+      trap 'rm -rf "$tmp_dir"' EXIT
+      snapshot_file="$tmp_dir/migration-list.txt"
+      cat > "$snapshot_file"
+      cat > "$tmp_dir/supabase" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+[ "$1" = "migration" ]
+[ "$2" = "list" ]
+cat "$STAGING_TEST_SNAPSHOT_FILE"
+SH
+      chmod +x "$tmp_dir/supabase"
+      PATH="$tmp_dir:$PATH" STAGING_TEST_SNAPSHOT_FILE="$snapshot_file" \
+        bash scripts/verify-staging-migrations.sh pending \
+        "$tmp_dir/captured-migration-list.txt"
+`
+    ],
+    {
+      input: snapshot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        EXPECTED_MIGRATIONS: '20260831210000',
+        STAGING_DATABASE_URL: STAGING_DB,
+        PGSSLMODE: 'require'
+      }
+    }
+  );
+}
+
 test('Staging target validates direct project match', () => {
   assert.deepEqual(verifyStagingMigrationTarget(stagingEnv()), {
     projectRef: STAGING_REF
@@ -207,6 +243,22 @@ test(
    Local            | Remote           | Time (UTC)
   ------------------|------------------|-----------------------
    20260819190000   | 20260819oops     | 2026-08-19 19:00:00
+`);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /malformed remote migration-history row/);
+  }
+);
+
+test(
+  'Staging pending verifier rejects malformed remote-only history',
+  { skip: !bashAvailable },
+  () => {
+    const result = runPendingVerifier(`
+   Local            | Remote           | Time (UTC)
+  ------------------|------------------|-----------------------
+                    | legacy_history   | 2026-08-30 00:00:00
+   20260831210000   |                  | 2026-08-31 21:00:00
 `);
 
     assert.notEqual(result.status, 0);
