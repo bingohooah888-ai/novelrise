@@ -17,3 +17,25 @@ General discovery remains available to all plans. Explicit new/PV/favorite sorts
 ## Data
 
 `novel_exposure_events.allocation_reason` distinguishes `initial_exposure`, `plan_extra`, `premium_extra`, and normal `balanced` exposure. Raw viewer identifiers remain server-side and authors receive only aggregates.
+
+## Authoritative impression trust boundary
+
+The forward migration `20260831210000_trusted_allocation_receipts.sql` makes an
+authoritative impression possible only after an authenticated viewer receives a
+private, opaque allocation receipt. Each receipt expires after five minutes, is
+single-use, and is bound server-side to its viewer, allocation batch, exact work,
+surface, author and plan snapshots, rule version, and allocation reason. The
+consumer locks receipt rows before validation and recording, so concurrent replay
+fails closed. Clients submit receipt UUIDs only; they cannot choose any ledger
+snapshot or promote an allocation to a paid surface.
+
+The historical caller-controlled recorders are revoked from both `anon` and
+`authenticated`. Anonymous visitors can still browse discovery, but receive no
+receipt and therefore cannot alter fairness, FIRST LIGHT, paid-exposure, or
+authoritative analytics counters by rotating visitor tokens.
+
+Neutral new/PV/favorite search telemetry is stored in
+`neutral_search_impression_telemetry`, outside `novel_exposure_events`. It is
+useful for coarse product telemetry but is never authoritative discovery evidence.
+Applying this migration to Production remains a separate owner-approved operation;
+the paired precheck, postcheck, and rollback are exercised by the Beta P0 gate.

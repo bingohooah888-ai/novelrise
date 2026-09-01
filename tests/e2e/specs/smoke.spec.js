@@ -85,17 +85,17 @@ test('LIGHT ANALYTICS exposes the beta funnel and plan-only exposure', async ({
   expect(html).not.toContain('LIGHT REPORT');
 });
 
-test('home and search use v2 discovery and complete impression tracking', async ({
+test('home and search use trusted discovery and complete impression tracking', async ({
   request
 }) => {
   const home = await (await request.get('/index.html')).text();
   const search = await (await request.get('/search.html')).text();
 
-  expect(home).toContain('novelight_discovery_feed_v2');
-  expect(home).toContain('novelight_plan_extra_feed');
-  expect(home).toContain('home_plan_extra');
+  expect(home).toContain('novelight_trusted_discovery_feed');
+  expect(home).toContain('novelight_trusted_plan_extra_feed');
+  expect(home).toContain('record_trusted_allocation_receipts');
   expect(search).toContain('record_neutral_search_impressions');
-  expect(search).toContain('record_novel_impressions_v2');
+  expect(search).toContain('record_trusted_allocation_receipts');
 });
 
 test('all audited major routes fit a 390px mobile viewport', async ({

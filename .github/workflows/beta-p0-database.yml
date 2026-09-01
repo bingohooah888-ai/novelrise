@@ -9,6 +9,7 @@ on:
       - 'tests/rls/billing-fixture.sql'
       - 'tests/rls/light-seed-fixture.sql'
       - 'tests/rls/exposure-fixture.sql'
+      - 'tests/rls/trusted-allocation-receipts.sql'
       - 'tests/rls/beta-p0-foundations.sql'
       - 'tests/rls/signup-display-name.sql'
       - 'tests/rls/founding-internal-exclusion*.sql'
@@ -24,6 +25,7 @@ on:
       - 'supabase/**/2026082317*.sql'
       - 'supabase/**/20260823192500_*.sql'
       - 'supabase/**/20260823204500_*.sql'
+      - 'supabase/**/20260831210000_*.sql'
       - '.github/workflows/beta-p0-database.yml'
   push:
     branches: [main]

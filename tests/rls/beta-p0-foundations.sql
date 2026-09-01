@@ -125,23 +125,71 @@ select public.test_assert(
   ),
   'plan-extra feed makes both Standard and Premium eligible'
 );
+reset role;
 
-select public.record_novel_impressions_v2('home_discovery',array['81000000-0000-0000-0000-000000000001']::text[],'visitor-free-initial-token');
-select public.record_novel_impressions_v2('home_plan_extra',array['81000000-0000-0000-0000-000000000002']::text[],'visitor-standard-extra-token');
-select public.record_novel_impressions_v2('home_premium_slot',array['81000000-0000-0000-0000-000000000003']::text[],'visitor-premium-extra-token');
+-- Authoritative impressions must be created only from server-issued receipts.
+select set_config('request.jwt.claim.sub','77777777-7777-7777-7777-777777777777',false);
+set role authenticated;
+select public.record_trusted_allocation_receipts(
+  array(
+    select allocation_receipt
+    from public.novelight_trusted_discovery_feed(
+      'home_discovery',1,'Free discovery work',null,null
+    )
+    where novel_id='81000000-0000-0000-0000-000000000001'
+      and not is_premium_slot
+      and allocation_receipt is not null
+  )
+);
+select public.record_trusted_allocation_receipts(
+  array(
+    select allocation_receipt
+    from public.novelight_trusted_plan_extra_feed(
+      1,
+      array[
+        '99000000-0000-0000-0000-000000000002',
+        '10000000-0000-0000-0000-000000000001',
+        '20000000-0000-0000-0000-000000000001',
+        '81000000-0000-0000-0000-000000000003',
+        '81000000-0000-0000-0000-000000000004'
+      ]::text[],
+      null
+    )
+    where novel_id='81000000-0000-0000-0000-000000000002'
+      and allocation_receipt is not null
+  )
+);
+create temporary table premium_slot_allocation as
+  select novel_id, author_id, allocation_receipt
+  from public.novelight_trusted_discovery_feed('home_discovery',1,null,null,null)
+  where is_premium_slot and allocation_receipt is not null;
+select public.test_assert(
+  (select count(*) from premium_slot_allocation)=1,
+  'trusted discovery issues exactly one receipt for the allocated Premium slot'
+);
+select public.record_trusted_allocation_receipts(
+  array(select allocation_receipt from premium_slot_allocation)
+);
 reset role;
 
 select public.test_assert(
-  exists(select 1 from public.novel_exposure_events where novel_id_snapshot='81000000-0000-0000-0000-000000000001' and surface='home_discovery' and allocation_reason='initial_exposure'),
+  exists(select 1 from public.novel_exposure_events where viewer_id='77777777-7777-7777-7777-777777777777' and novel_id_snapshot='81000000-0000-0000-0000-000000000001' and surface='home_discovery' and allocation_reason='initial_exposure'),
   'new Free work receives measurable initial exposure'
 );
 select public.test_assert(
-  exists(select 1 from public.novel_exposure_events where novel_id_snapshot='81000000-0000-0000-0000-000000000002' and surface='home_plan_extra' and allocation_reason='plan_extra'),
+  exists(select 1 from public.novel_exposure_events where viewer_id='77777777-7777-7777-7777-777777777777' and novel_id_snapshot='81000000-0000-0000-0000-000000000002' and surface='home_plan_extra' and allocation_reason='plan_extra'),
   'Standard plan-extra exposure is recorded separately'
 );
 select public.test_assert(
-  exists(select 1 from public.novel_exposure_events where novel_id_snapshot='81000000-0000-0000-0000-000000000003' and surface='home_premium_slot' and allocation_reason='premium_extra'),
-  'Premium dedicated exposure is recorded separately'
+  exists(
+    select 1
+    from public.novel_exposure_events e
+    join premium_slot_allocation p on p.novel_id=e.novel_id_snapshot
+    where e.viewer_id='77777777-7777-7777-7777-777777777777'
+      and e.surface='home_premium_slot'
+      and e.allocation_reason='premium_extra'
+  ),
+  'the actually allocated Premium dedicated exposure is recorded separately'
 );
 
 select set_config('request.jwt.claim.sub','44444444-4444-4444-4444-444444444444',false);
@@ -151,19 +199,40 @@ select public.test_assert(
   'Standard author analytics reads actual plan-added impressions'
 );
 reset role;
-select set_config('request.jwt.claim.sub','55555555-5555-5555-5555-555555555555',false);
+select set_config(
+  'request.jwt.claim.sub',
+  (select author_id::text from premium_slot_allocation limit 1),
+  false
+);
 set role authenticated;
 select public.test_assert(
-  exists(select 1 from public.novelight_author_exposure_funnel_v2(30) where novel_id='81000000-0000-0000-0000-000000000003' and premium_slot_impressions >= 1),
-  'Premium author analytics reads actual dedicated-slot impressions'
+  exists(select 1 from public.novelight_author_exposure_funnel_v2(30) where premium_slot_impressions >= 1),
+  'Premium author analytics reads the actual allocated dedicated-slot impression'
 );
 reset role;
 select set_config('request.jwt.claim.sub','',false);
 
+create temporary table neutral_search_authoritative_before as
+  select count(*)::bigint as event_count
+  from public.novel_exposure_events
+  where surface='search_results'
+    and novel_id_snapshot='81000000-0000-0000-0000-000000000001';
 set role anon;
 select public.record_neutral_search_impressions(array['81000000-0000-0000-0000-000000000001']::text[],'visitor-neutral-search-token');
 reset role;
-select public.test_assert(exists(select 1 from public.novel_exposure_events where surface='search_results' and novel_id_snapshot='81000000-0000-0000-0000-000000000001'),'neutral search impression recorded');
+select public.test_assert(
+  exists(
+    select 1 from public.neutral_search_impression_telemetry
+    where viewer_key='visitor:visitor-neutral-search-token'
+      and novel_id_snapshot='81000000-0000-0000-0000-000000000001'
+  )
+  and (
+    select count(*) from public.novel_exposure_events
+    where surface='search_results'
+      and novel_id_snapshot='81000000-0000-0000-0000-000000000001'
+  ) = (select event_count from neutral_search_authoritative_before),
+  'neutral search telemetry is recorded without changing authoritative exposure events'
+);
 
 -- Stripe audit history must be private and event IDs must be idempotent.
 insert into public.subscription_event_log (
