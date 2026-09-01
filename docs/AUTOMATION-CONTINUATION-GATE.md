@@ -45,31 +45,43 @@ NOVELIGHTでツールを1回でも使うアシスタントターンは、**そ�
 
 capability bootstrapが完了したら、寄り道せず直ちにlatest `main` を解決し、そのSHA上のMASTER全文を読む。**カード後のcapability-only discoveryを、MASTER-first違反として扱ってユーザーへ新しい「はい」「続けて」を要求してはならない。**
 
+### MASTER_READ_COMPLETE bootstrap
+
+latest `main` を解決した後は、通常のproject-state / project-documentを読む前に、そのexact SHA上の `docs/NOVELIGHT-MASTER.md` を先頭からconfirmed EOFまで全文読む。
+
+MASTER読了は「読んだつもり」ではなく `MASTER_READ_COMPLETE` という明示的な状態として扱う。少なくとも、現在ターン、exact latest-main SHA、MASTER内容digest、1行目からconfirmed EOFまでの連続coverageへ結び付いていなければ読了扱いにしない。
+
+Connector/file responseに `truncated`、`output was truncated`、途中切れその他の明示的な欠落兆候がある場合、そのrangeは未完了である。自動的にrangeを細分化して再取得し、欠落が解消した連続rangeだけをcoverageへ加える。未解消のtruncationが1件でも残る間は `MASTER_READ_COMPLETE` を成立させない。
+
+`MASTER_READ_COMPLETE` が成立するまでは、latest-main解決、上記capability-only transport bootstrap、MASTER continuation/range read以外の通常project read、実装、GitHub変更、CI、deploy、外部操作へ進まない。
+
 ## 主要工程 Runtime Execution Gate
 
 MASTERやPreflightを「一度読んだ資料」として扱わない。**新しい主要工程へ入る直前に、毎回このゲートを通す。**
 
 主要工程とは、コード変更、GitHub操作、CI/E2E、デプロイ、Vercel、Supabase、Stripe、外部サービス設定、ファイル生成・更新、その他ユーザー環境へ影響する実操作のまとまりを指す。
 
-リポジトリを操作できる実装エージェントでは、主要工程の入口でRuntime Gateを実行する。カード証跡がない場合はRuntime Gate自体がFAILする。
+リポジトリを操作できる実装エージェントでは、主要工程の入口でRuntime Gateを実行する。カード証跡がない場合はRuntime Gate自体がFAILする。`start` 以外のRuntime phaseは、カード証跡に加えて現在ターン・latest-mainへ固定された `MASTER_READ_COMPLETE` proofがなければFAILする。
 
 ```text
-npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --card-steps=<steps> --card-manual=<manual> --card-wait=<wait>
+npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --card-steps=<steps> --card-manual=<manual> --card-wait=<wait> --master-read-complete --master-main-sha=<latest-main-sha> --master-content-sha256=<digest> --master-covered-from=1 --master-covered-through=<eof-line> --master-eof-line=<eof-line>
 ```
 
 Degraded-Continueでは `--card-mode=degraded` を追加し、`--card-total` を省略できる。`--card-reason=<reason>` は任意の内部メタデータであり、ユーザー可視カードには要求しない。
 
-`phase` は `start`、`implementation`、`github`、`ci`、`deploy`、`vercel`、`supabase`、`stripe`、`files` のいずれかとする。コマンドは、カード証跡を確認した後に `origin/main` を再取得し、最新mainのMASTER / Preflightを直接読めることを確認して、通過状態を `.git/novelight-runtime-gate.json` に記録する。最新版を取得できない場合はFail-Closedする。
+`--master-unresolved-truncation` が存在する場合、またはMASTER proofのSHA / digest / coverage / EOFが最新mainの実体と一致しない場合はFail-Closedする。`MASTER_READ_COMPLETE` proofは新しいユーザーメッセージで失効し、前ターンから流用しない。
+
+`phase` は `start`、`implementation`、`github`、`ci`、`deploy`、`vercel`、`supabase`、`stripe`、`files`、`image` のいずれかとする。コマンドは、カード証跡を確認した後に `origin/main` を再取得し、最新mainのMASTER / Preflightを直接読めることを確認して、通過状態を `.git/novelight-runtime-gate.json` に記録する。最新版を取得できない場合はFail-Closedする。
 
 実操作へ進む前に、次の順序を固定する。
 
 1. `可視実行カード`: 現在の実行ターンの最初のユーザー可視メッセージとして送信する
-2. `正式基準`: `npm run runtime:gate` または同等のConnector/API確認によって、最新mainのMASTER / Preflightと現在の明示指示を基準として確認する
+2. `正式基準`: latest `main` を解決し、`MASTER_READ_COMPLETE` を成立させてから、Preflight等の残り正式基準を確認する
 3. `禁止・ロック`: 禁止事項、Production境界、秘密情報、担当ツール制約を確認する
 4. `自動化経路`: Connector / API / CLI / Workflow / Scriptを先に比較し、不要なUI手動操作や単なる「はい」を排除する
 5. `実行`: 1〜4が満たされた場合だけ実操作を開始する
 
-Connectorやクラウド実行環境でローカルnpmコマンドを実行できない場合も、**同じアシスタントターンで可視実行カードを先に送信していなければConnector/APIを呼び出さない。** その後、Connector/APIで最新main SHA、MASTER、Preflightを直接再取得する。
+Connectorやクラウド実行環境でローカルnpmコマンドを実行できない場合も、**同じアシスタントターンで可視実行カードを先に送信していなければConnector/APIを呼び出さない。** その後、Connector/APIでlatest main SHAを解決し、MASTER全文を `MASTER_READ_COMPLETE` 相当の条件で読み切ってからPreflightその他を取得する。
 
 ### Fail-Closed と Degraded-Continue の分離
 
@@ -77,7 +89,7 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 
 次は **Hard Fail-Closed** とし、未確認・不明の場合は実操作を開始しない。
 
-- 最新mainのMASTER / Preflightを確認できない
+- latest mainのMASTER / Preflightを確認できない、または `MASTER_READ_COMPLETE` を成立させられない
 - 禁止・ロック、Production境界、Secret境界が不明
 - Production、高影響変更、課金、Secret、破壊的操作等で必要な承認がない
 - 実行対象・Environment・Branch等の安全境界を確定できない
@@ -92,7 +104,7 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 
 実行カードは承認要求ではない。表示後、安全な既承認スコープ内であればユーザーの追加の「はい」を待たず実行へ進む。
 
-**このRuntime Execution Gateは、作業開始時だけでなく、主要工程の切替ごとに必須とする。** 同じアシスタントターン内での工程切替は必要に応じて更新見積もりを出す。ユーザーへ一度ターンを返した場合は、次のツール実行前に必ず新しい実行カードを送る。
+**このRuntime Execution Gateは、作業開始時だけでなく、主要工程の切替ごとに必須とする。** 同じアシスタントターン内の工程切替では、同一turn/latest-mainへ結び付いた有効な `MASTER_READ_COMPLETE` proofを再利用できるが、mainが進んだ場合またはユーザーへ一度ターンを返した場合はproofを失効させ、次工程前にbootstrapをやり直す。
 
 ### アシスタント側の回復可能エラー自動再開
 
@@ -105,12 +117,21 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 - capability bootstrap後に使うread actionの選択ミス
 - 同じ目的を満たす安全なread-only経路への切替
 - CI/Workflow状態取得の一時失敗
+- 有効なカード送信後、`MASTER_READ_COMPLETE` 前に誤って行ったread-only project-state / project-document read
 
 安全に回復できる場合は、失敗原因を分類し、必要ならread-only bootstrapを最初からやり直し、latest `main` とMASTERをfreshに再取得して同じターンで継続する。途中で得た不確かな観測は破棄し、再取得した正式情報だけを以後の判断に使う。
 
 単なる回復可能エラーを理由に「もう一度はいと言ってください」「続けてと送ってください」「同じ承認文を再送してください」と要求してはならない。
 
-ただし、**カードより前にツールを呼んだ、MASTER前に実際のproject-state / project-documentを読んだ、無許可の画像ツールを呼んだ、外部mutationを開始した、one-time requestをclaimした**等、別の正式ゲートが同一ターン復旧を明示的に禁止する事象はこの自動再開で上書きしない。その場合も、次のユーザーメッセージに特定の「続けて」文言を要求せず、ユーザーから何らかの新しいメッセージを受けた次ターンで自動的に正しいbootstrapから再開する。
+### MASTER-first違反のread-only bootstrap自動リセット
+
+現在ターンの可視実行カードが正しく先に送信済みであり、まだ外部mutation、Secret操作、Production操作、破壊的操作、課金・決済、one-time requestのCLAIM/CONSUME、無許可画像ツール実行その他の高影響境界へ入っていない場合、`MASTER_READ_COMPLETE` 前のread-only project-state / project-document readは**回復可能なread-only bootstrap-order違反**として扱う。
+
+この場合は、その誤ったbootstrapで得たproject観測をすべて破棄し、latest `main` を再取得してMASTER reading stateをゼロへ戻す。MASTERを1行目から読み直し、visibly truncatedなrangeを自動細分化・再取得し、exact latest-main SHAとdigestへ固定した連続coverageがconfirmed EOFへ到達して `MASTER_READ_COMPLETE` が成立した後だけ、残りのproject readと実作業を同じターンで再開する。
+
+このread-only bootstrap-order違反だけを理由にユーザーへ新しい「はい」「続けて」を要求してはならない。ユーザー入力を同一ターン復旧のためのダミーcontinueボタンとして使用しない。
+
+ただし、**カードより前にツールを呼んだ、無許可の画像ツールを呼んだ、外部mutation・Secret・Production・破壊的操作・課金/決済・one-time requestのCLAIM/CONSUMEを開始した**場合は、この自動リセットで復旧可能扱いにしてはならない。既存のHard Fail-Closed、安全承認、fresh approval、cleanup/rollback契約を優先する。
 
 ### 未消費承認のcarry-forward
 
