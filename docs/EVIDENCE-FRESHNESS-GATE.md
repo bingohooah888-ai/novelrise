@@ -2,9 +2,9 @@
 
 This file is the fail-closed contract for deciding whether a NOVELIGHT task, release gate, Production proof, deployment, or external-service operation is already complete or must be run again.
 
-## 1. Historical documents and failures are snapshots, not current state
+## 1. Historical documents are snapshots; failures are snapshots too
 
-Dated release-evidence files, checklists, chat summaries, issue descriptions, prior status reports, workflow failures, error logs, and earlier screenshots describe the state observed at their own point in time. They must never be treated as the current state without checking for newer evidence.
+Historical documents are snapshots, not current state. Dated release-evidence files, checklists, chat summaries, issue descriptions, prior status reports, workflow failures, error logs, and earlier screenshots describe the state observed at their own point in time. They must never be treated as the current state without checking for newer evidence.
 
 In particular, an older `OPEN`, `PENDING`, `NOT YET RECORDED`, unchecked item, failed workflow, or missing-configuration error must not override a later successful workflow, approval ledger entry, deployment observation, current database state, or live read-only verification for the same scope.
 
@@ -44,7 +44,7 @@ When evidence conflicts, compare both **time** and **scope**. A newer but unrela
 
 Do not invent the mechanism by which current state changed. If current state proves the goal is satisfied but no evidence identifies which actor/workflow applied it, report only that the goal is satisfied and that the application path is unproven.
 
-## 4. External-state remediation and duplicate-operation block
+## 4. Duplicate Production mutation block and Staging/external remediation block
 
 This block applies to **Staging and Production**, and to both assistant-executed changes and user-directed remediation steps.
 
@@ -58,7 +58,7 @@ Before any deploy, Vercel environment synchronization, Supabase mutation, Stripe
 
 If the desired state is `current`, repeating the same mutation or remediation is prohibited. Do not tell the user to add/reset/change a Secret, password, environment value, migration, or approval merely because an older run failed. Report that the old failure has been superseded for this scope and move to the next genuinely open item.
 
-If it is `refresh-required`, explain the fresh evidence showing what is still missing and continue only inside the currently approved scope and ordinary safety boundaries.
+If it is `refresh-required`, explain the fresh evidence showing what is still missing. For Production, continue only within the currently approved Production scope; for Staging, continue only within the currently approved Staging scope and ordinary safety boundaries.
 
 If it is `unknown`, stop before remediation and gather better read-only evidence. A historical failure alone is not enough to choose a corrective write.
 
@@ -70,7 +70,7 @@ When a current screenshot and an older workflow conflict, verify the exact scope
 
 ## 5. Runtime Gate evidence
 
-For `deploy`, `vercel`, `supabase`, and `stripe` Runtime Gate phases, the caller must provide evidence-freshness proof:
+For `deploy`, `vercel`, `supabase`, and `stripe` Runtime Gate phases, the caller must provide the ordinary evidence-freshness proof:
 
 - `--evidence-freshness-checked`
 - `--evidence-duplicate-check`
@@ -78,6 +78,9 @@ For `deploy`, `vercel`, `supabase`, and `stripe` Runtime Gate phases, the caller
 - `--evidence-observed-at=<ISO-8601 timestamp>`
 - `--evidence-verdict=current|refresh-required`
 - optional `--evidence-proof-sha=<40-hex commit>`
+
+When the next action will mutate external state or instruct remediation that changes external state/configuration, the caller must additionally provide:
+
 - `--current-state-checked`
 - `--current-state-source=<fresh read-only current-state source>`
 - `--mutation-planned` when the next action will mutate external state
@@ -133,7 +136,7 @@ CI must retain tests that prove:
 
 - the Runtime Gate loads this contract as an authoritative main file;
 - deploy/Vercel/Supabase/Stripe phases reject missing evidence-freshness proof;
-- external-state phases reject missing fresh current-state evidence;
+- planned external mutation/remediation rejects missing fresh current-state evidence;
 - an old workflow failure alone cannot satisfy the current-state source requirement;
 - malformed/unknown freshness verdicts fail closed;
 - a planned mutation is rejected when the existing proof is `current`;
