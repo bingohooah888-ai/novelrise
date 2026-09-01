@@ -3,8 +3,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
+  classifyBootstrapRecovery,
   parseEvidenceFreshnessEvidence,
-  parseExecutionCardEvidence
+  parseExecutionCardEvidence,
+  parseMasterReadEvidence
 } from '../scripts/runtime-execution-gate.mjs';
 
 const agents = await readFile('AGENTS.md', 'utf8');
@@ -58,6 +60,24 @@ function validFreshnessArgs(verdict = 'refresh-required') {
   ];
 }
 
+function masterFixture() {
+  const mainSha = 'a'.repeat(40);
+  const contentSha256 = 'b'.repeat(64);
+  const authoritative = {
+    mainSha,
+    master: { sha256: contentSha256, lines: 1529 }
+  };
+  const args = [
+    '--master-read-complete',
+    `--master-main-sha=${mainSha}`,
+    `--master-content-sha256=${contentSha256}`,
+    '--master-covered-from=1',
+    '--master-covered-through=1529',
+    '--master-eof-line=1529'
+  ];
+  return { mainSha, contentSha256, authoritative, args };
+}
+
 test('all execution governance layers retain the first-visible-message rule', () => {
   for (const text of [agents, preflight, continuation]) {
     assert.match(text, /最初のユーザー可視メッセージ/);
@@ -67,7 +87,7 @@ test('all execution governance layers retain the first-visible-message rule', ()
   assert.match(contract, /Zero-tool rule/);
   assert.match(contract, /first visible message/i);
   assert.match(contract, /omit time information from the user-visible card/);
-  assert.match(contract, /late card as invalid for that turn/);
+  assert.match(contract, /late card after pre-card tool use/i);
 });
 
 test('execution cards keep only decision-useful required guidance', () => {
@@ -129,6 +149,140 @@ test('timed mode still requires total estimated time', () => {
       ),
     /must include total estimated time/
   );
+});
+
+test('MASTER_READ_COMPLETE binds exact main, digest, contiguous coverage, and EOF', () => {
+  const { mainSha, contentSha256, authoritative, args } = masterFixture();
+  const evidence = parseMasterReadEvidence(
+    'implementation',
+    args,
+    {},
+    authoritative
+  );
+  assert.equal(evidence.required, true);
+  assert.equal(evidence.status, 'MASTER_READ_COMPLETE');
+  assert.equal(evidence.mainSha, mainSha);
+  assert.equal(evidence.contentSha256, contentSha256);
+  assert.equal(evidence.coveredFrom, 1);
+  assert.equal(evidence.coveredThrough, 1529);
+  assert.equal(evidence.eofLine, 1529);
+});
+
+test('incomplete, truncated, stale, or noncontiguous MASTER proof fails closed', () => {
+  const { authoritative, args } = masterFixture();
+
+  assert.throws(
+    () => parseMasterReadEvidence('implementation', [], {}, authoritative),
+    /MASTER_READ_COMPLETE/
+  );
+  assert.throws(
+    () =>
+      parseMasterReadEvidence(
+        'implementation',
+        [...args, '--master-unresolved-truncation'],
+        {},
+        authoritative
+      ),
+    /truncated or unresolved/
+  );
+  assert.throws(
+    () =>
+      parseMasterReadEvidence(
+        'implementation',
+        args.map((arg) =>
+          arg.startsWith('--master-covered-through=')
+            ? '--master-covered-through=1528'
+            : arg
+        ),
+        {},
+        authoritative
+      ),
+    /contiguous through the confirmed EOF/
+  );
+  assert.throws(
+    () =>
+      parseMasterReadEvidence(
+        'implementation',
+        args.map((arg) =>
+          arg.startsWith('--master-main-sha=')
+            ? `--master-main-sha=${'c'.repeat(40)}`
+            : arg
+        ),
+        {},
+        authoritative
+      ),
+    /different main SHA/
+  );
+  assert.throws(
+    () =>
+      parseMasterReadEvidence(
+        'implementation',
+        args.map((arg) =>
+          arg.startsWith('--master-content-sha256=')
+            ? `--master-content-sha256=${'d'.repeat(64)}`
+            : arg
+        ),
+        {},
+        authoritative
+      ),
+    /digest does not match/
+  );
+
+  assert.equal(parseMasterReadEvidence('start', [], {}, authoritative).required, false);
+});
+
+test('read-only bootstrap-order mistake resets in-turn but real safety boundaries stay hard-fail', () => {
+  assert.equal(
+    classifyBootstrapRecovery({
+      cardVisible: true,
+      readOnlyProjectReadBeforeMasterComplete: true
+    }),
+    'recoverable-reset-retry'
+  );
+  assert.equal(
+    classifyBootstrapRecovery({
+      cardVisible: false,
+      readOnlyProjectReadBeforeMasterComplete: true
+    }),
+    'hard-fail'
+  );
+
+  for (const boundary of [
+    'toolBeforeCard',
+    'unauthorizedImageTool',
+    'externalMutationStarted',
+    'secretOperationStarted',
+    'productionOperationStarted',
+    'destructiveOperationStarted',
+    'billingOperationStarted',
+    'oneTimeClaimOrConsumeStarted'
+  ]) {
+    assert.equal(
+      classifyBootstrapRecovery({
+        cardVisible: true,
+        readOnlyProjectReadBeforeMasterComplete: true,
+        [boundary]: true
+      }),
+      'hard-fail',
+      boundary
+    );
+  }
+});
+
+test('MASTER contracts require truncation retry and same-turn read-only recovery', () => {
+  assert.match(contract, /MASTER_READ_COMPLETE/);
+  assert.match(contract, /visibly truncated/i);
+  assert.match(contract, /contiguous/i);
+  assert.match(contract, /confirmed EOF/i);
+  assert.match(contract, /read-only bootstrap-order/i);
+  assert.match(contract, /same assistant turn/i);
+  assert.match(contract, /Do not ask the user for `はい`, `続けて`/i);
+
+  assert.match(continuation, /MASTER_READ_COMPLETE/);
+  assert.match(continuation, /MASTER-first違反のread-only bootstrap自動リセット/);
+  assert.match(continuation, /同じターン/);
+  assert.match(continuation, /破棄/);
+  assert.match(continuation, /新しい「はい」「続けて」を要求してはならない/);
 });
 
 test('external-state phases require explicit evidence freshness proof', () => {
@@ -240,14 +394,17 @@ test('freshness contract prevents stale release snapshots from winning', () => {
   assert.match(contract, /same-purpose successful proof/);
 });
 
-test('runtime gate treats execution and freshness contracts as authoritative', () => {
+test('runtime gate treats execution, MASTER, and freshness contracts as authoritative', () => {
   assert.match(runtimeGate, /docs\/EXECUTION-TURN-CARD-GATE\.md/);
   assert.match(runtimeGate, /docs\/EVIDENCE-FRESHNESS-GATE\.md/);
   assert.match(runtimeGate, /NOVELIGHT_EXECUTION_CARD_WORKLOAD/);
   assert.match(runtimeGate, /NOVELIGHT_EXECUTION_CARD_OTHER_WORK/);
   assert.match(runtimeGate, /NOVELIGHT_EXECUTION_CARD_NEXT_USER_ACTION/);
+  assert.match(runtimeGate, /NOVELIGHT_MASTER_READ_COMPLETE/);
+  assert.match(runtimeGate, /NOVELIGHT_MASTER_UNRESOLVED_TRUNCATION/);
+  assert.match(runtimeGate, /masterRead/);
   assert.match(runtimeGate, /NOVELIGHT_EVIDENCE_FRESHNESS_CHECKED/);
   assert.match(runtimeGate, /NOVELIGHT_EVIDENCE_DUPLICATE_CHECK/);
   assert.match(runtimeGate, /NOVELIGHT_MUTATION_PLANNED/);
-  assert.match(runtimeGate, /version: 9/);
+  assert.match(runtimeGate, /version: 11/);
 });
