@@ -94,6 +94,8 @@ case "$mode" in
   pending)
     canonical_expected
     show_migration_list
+    bash scripts/extract-supabase-remote.sh "$output_file" \
+      > /tmp/staging-validated-remote.txt
     bash scripts/extract-supabase-pending.sh "$output_file" \
       > /tmp/staging-actual-pending.txt
 
