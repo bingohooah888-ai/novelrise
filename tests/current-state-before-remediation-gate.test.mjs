@@ -8,6 +8,10 @@ const evidenceContract = await readFile(
   'docs/EVIDENCE-FRESHNESS-GATE.md',
   'utf8'
 );
+const automationContract = await readFile(
+  'docs/AUTOMATION-CONTINUATION-GATE.md',
+  'utf8'
+);
 const wrapper = await readFile('scripts/runtime-gate-entry.mjs', 'utf8');
 
 function remediationArgs(verdict = 'refresh-required') {
@@ -114,7 +118,7 @@ test('fresh current state also blocks duplicate external mutation', () => {
   );
 });
 
-test('contract covers Staging, secret guidance, and unknown application paths', () => {
+test('contracts cover Staging, secret guidance, and unknown application paths', () => {
   for (const token of [
     'failed workflow, or missing-configuration error',
     'fresh read-only observation of the current target state',
@@ -128,6 +132,16 @@ test('contract covers Staging, secret guidance, and unknown application paths', 
     '--remediation-planned'
   ]) {
     assert.equal(evidenceContract.includes(token), true, token);
+  }
+
+  for (const token of [
+    '古い失敗からのremediation再開ゲート',
+    'freshなread-only current-state',
+    'StagingとProductionの両方',
+    'Secret・password・設定変更・再承認・再実行',
+    '完了状態と適用経路の証明を分離する'
+  ]) {
+    assert.equal(automationContract.includes(token), true, token);
   }
 
   assert.match(wrapper, /state\.version = Math\.max\(Number\(state\.version\) \|\| 0, 11\)/);
