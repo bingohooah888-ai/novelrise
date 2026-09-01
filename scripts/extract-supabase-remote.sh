@@ -25,7 +25,7 @@ sed 's/│/|/g' "$input_file" \
     }
 
     {
-      if (NF == 1 && trim($0) == "") next
+      if (trim($0) == "") next
       if (NF < 2) fail_row()
 
       local_col=clean_cell($1)
