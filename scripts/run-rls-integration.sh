@@ -53,6 +53,14 @@ run_sql supabase/migrations/20260828223000_harden_profile_favorite_reads_and_dis
 run_sql supabase/migrations/20260828224000_author_basic_metrics.sql
 run_sql tests/rls/profile-favorite-privacy.sql
 run_sql supabase/checks/20260828223000_harden_profile_favorite_reads_and_discovery_postcheck.sql
+run_sql tests/rls/pv-counting-fixture.sql
+run_sql supabase/checks/20260901130000_harden_pv_counting_precheck.sql
+run_sql supabase/migrations/20260901130000_harden_pv_counting.sql
+run_sql tests/rls/pv-counting.sql
+bash tests/rls/pv-counting-concurrency.sh
+run_sql supabase/checks/20260901130000_harden_pv_counting_postcheck.sql
+run_sql supabase/rollback/20260901130000_harden_pv_counting_rollback.sql
+run_sql tests/rls/pv-counting-rollback.sql
 run_sql supabase/rollback/20260828224000_author_basic_metrics_rollback.sql
 run_sql supabase/rollback/20260828223000_harden_profile_favorite_reads_and_discovery_rollback.sql
 run_sql tests/rls/profile-favorite-privacy-rollback.sql
