@@ -338,5 +338,5 @@ test('runtime gate loads and enforces the dedicated image contract', () => {
   assert.match(runtimeGate, /NOVELIGHT_IMAGE_TRIGGER/);
   assert.match(runtimeGate, /THIRD_PARTY_UI_TRIGGER_PATTERN/);
   assert.match(runtimeGate, /EXPLICIT_IMAGE_EXECUTION_PATTERN/);
-  assert.match(runtimeGate, /version: 9/);
+  assert.match(runtimeGate, /version: 11/);
 });
