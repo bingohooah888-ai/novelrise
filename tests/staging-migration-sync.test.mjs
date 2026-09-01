@@ -67,10 +67,18 @@ test('Staging migration target rejects the Production Supabase project', () => {
   );
 });
 
-test('Staging sync workflow is environment-scoped and contains no Production credentials', () => {
+test('Staging sync workflow is owner-only, environment-scoped, and contains no Production credentials', () => {
+  assert.match(workflow, /\$GITHUB_ACTOR.*bingohooah888-ai/);
+  assert.match(workflow, /only the repository owner may dispatch this mutation/);
   assert.match(workflow, /environment: staging/);
-  assert.match(workflow, /STAGING_SUPABASE_URL: \$\{\{ vars\.STAGING_SUPABASE_URL \}\}/);
-  assert.match(workflow, /STAGING_DATABASE_URL: \$\{\{ secrets\.STAGING_DATABASE_URL \}\}/);
+  assert.match(
+    workflow,
+    /STAGING_SUPABASE_URL: \$\{\{ vars\.STAGING_SUPABASE_URL \}\}/
+  );
+  assert.match(
+    workflow,
+    /STAGING_DATABASE_URL: \$\{\{ secrets\.STAGING_DATABASE_URL \}\}/
+  );
   assert.doesNotMatch(workflow, /PRODUCTION_DB_PASSWORD/);
   assert.doesNotMatch(workflow, /SUPABASE_ACCESS_TOKEN/);
   assert.doesNotMatch(workflow, /production-approval/);
@@ -81,7 +89,8 @@ test('Staging sync requires explicit confirmation and exact current-main binding
   assert.match(workflow, /confirmation must be exactly SYNC STAGING/);
   assert.match(workflow, /\^\[0-9a-f\]\{40\}\$/);
 
-  const mainFetches = workflow.match(/git fetch --no-tags --depth=1 origin main/g) ?? [];
+  const mainFetches =
+    workflow.match(/git fetch --no-tags --depth=1 origin main/g) ?? [];
   assert.ok(mainFetches.length >= 2);
   assert.match(workflow, /main changed after the request was created/);
   assert.match(workflow, /main changed before mutation/);
@@ -105,7 +114,10 @@ test('Staging sync requires safety artifacts and never auto-runs rollback', () =
   assert.match(workflow, /verify-staging-migrations\.sh artifacts/);
   assert.match(workflow, /Running precheck for migration/);
   assert.match(workflow, /Running postcheck for migration/);
-  assert.match(workflow, /Rollback artifacts were verified before mutation but are never executed automatically/);
+  assert.match(
+    workflow,
+    /Rollback artifacts were verified before mutation but are never executed automatically/
+  );
   assert.doesNotMatch(workflow, /psql .*rollback/);
 
   assert.match(verifier, /supabase\/checks\/.*_precheck\.sql/);
@@ -117,6 +129,9 @@ test('Staging sync verifies exact repository parity after apply', () => {
   assert.match(workflow, /verify-staging-migrations\.sh parity/);
   assert.match(verifier, /extract-supabase-pending\.sh/);
   assert.match(verifier, /extract-supabase-remote\.sh/);
-  assert.match(verifier, /remote history does not exactly match the repository/);
+  assert.match(
+    verifier,
+    /remote history does not exactly match the repository/
+  );
   assert.match(remoteParser, /remote_col=\$2/);
 });
