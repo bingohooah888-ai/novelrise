@@ -1,0 +1,107 @@
+name: NOVELIGHT Production Auth Smoke Request
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'login.html'
+      - 'post.html'
+      - 'episode-post.html'
+      - 'novel.html'
+      - 'episode.html'
+      - 'scout-record.html'
+      - 'analytics.html'
+      - 'novelight-client.js'
+      - 'api/create-checkout-session.js'
+      - 'api/_lib/checkout.js'
+      - 'scripts/production-auth-smoke-fixture.mjs'
+      - 'tests/e2e/production-auth/**'
+      - 'tests/e2e/playwright.production-auth.config.mjs'
+      - '.github/workflows/production-auth-smoke-request.yml'
+      - '.github/workflows/production-authenticated-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  request-approval:
+    name: Create scoped chat approval request
+    runs-on: ubuntu-latest
+    concurrency:
+      group: novelight-production-auth-request-${{ github.sha }}
+      cancel-in-progress: false
+    steps:
+      - name: Create one-time approval issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_main="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              --jq '.object.sha'
+          )"
+          if [ "$GITHUB_SHA" != "$current_main" ]; then
+            echo "Skipping approval request: run SHA $GITHUB_SHA is not current main $current_main."
+            exit 0
+          fi
+
+          existing="$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "auth-smoke-${GITHUB_SHA}- in:title" \
+            --json number \
+            --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            echo "An approval request for main $GITHUB_SHA is already open as issue #$existing."
+            exit 0
+          fi
+
+          request_id="auth-smoke-${GITHUB_SHA}-${GITHUB_RUN_ID}"
+          challenge="$(openssl rand -hex 4 | tr '[:lower:]' '[:upper:]')"
+          expires_at="$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:%SZ')"
+          request_json="$(
+            jq -cn \
+              --arg operation 'production-authenticated-smoke' \
+              --arg requestId "$request_id" \
+              --arg mainSha "$GITHUB_SHA" \
+              --arg expiresAt "$expires_at" \
+              --arg challenge "$challenge" \
+              '{operation:$operation,requestId:$requestId,mainSha:$mainSha,expiresAt:$expiresAt,challenge:$challenge}'
+          )"
+          approval_json="$(
+            jq -cn \
+              --arg operation 'production-authenticated-smoke' \
+              --arg requestId "$request_id" \
+              --arg mainSha "$GITHUB_SHA" \
+              --arg challenge "$challenge" \
+              '{operation:$operation,requestId:$requestId,mainSha:$mainSha,challenge:$challenge}'
+          )"
+          title="[Production Auth Smoke Approval] $request_id"
+          body=$(cat <<EOF
+          NOVELIGHT_PRODUCTION_AUTH_SMOKE_REQUEST $request_json
+
+          A Production Authenticated Smoke is ready for explicit owner approval.
+
+          Scope:
+          - exact main SHA: $GITHUB_SHA
+          - request ID: $request_id
+          - expires at: $expires_at
+          - creates only ephemeral Production smoke users/data
+          - cleanup runs with always() after the smoke
+          - no Stripe charge is created by this workflow
+
+          Exact approval comment:
+
+          NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE $approval_json
+          EOF
+          )
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --body "$body"
