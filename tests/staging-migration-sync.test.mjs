@@ -228,7 +228,9 @@ test('Staging sync rechecks pending set before mutation', () => {
 });
 
 test('Staging sync records post-apply recovery state on every outcome', () => {
-  const apply = stepBlock('Apply exact pending migrations to dedicated Staging');
+  const apply = stepBlock(
+    'Apply exact pending migrations to dedicated Staging'
+  );
   const recovery = stepBlock('Record explicit recovery boundary');
 
   assert.match(apply, /id: apply/);
