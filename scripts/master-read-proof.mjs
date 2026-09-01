@@ -13,18 +13,8 @@ export function validateMasterReadProof(proof = {}, authoritative = {}) {
   const unresolvedTruncation = proof.unresolvedTruncation === true;
   const mainSha = String(proof.mainSha || '').trim();
   const contentSha256 = String(proof.contentSha256 || '').trim();
-  const coveredFrom = positiveInteger(proof.coveredFrom, 'MASTER covered-from');
-  const coveredThrough = positiveInteger(
-    proof.coveredThrough,
-    'MASTER covered-through'
-  );
-  const eofLine = positiveInteger(proof.eofLine, 'MASTER EOF line');
   const expectedMainSha = String(authoritative.mainSha || '').trim();
   const expectedDigest = String(authoritative.sha256 || '').trim();
-  const expectedLines = positiveInteger(
-    authoritative.lines,
-    'Authoritative MASTER line count'
-  );
 
   if (!complete) {
     throw new Error('MASTER_READ_COMPLETE proof is required.');
@@ -50,6 +40,18 @@ export function validateMasterReadProof(proof = {}, authoritative = {}) {
       'MASTER read proof digest does not match the authoritative latest-main MASTER.'
     );
   }
+
+  const coveredFrom = positiveInteger(proof.coveredFrom, 'MASTER covered-from');
+  const coveredThrough = positiveInteger(
+    proof.coveredThrough,
+    'MASTER covered-through'
+  );
+  const eofLine = positiveInteger(proof.eofLine, 'MASTER EOF line');
+  const expectedLines = positiveInteger(
+    authoritative.lines,
+    'Authoritative MASTER line count'
+  );
+
   if (coveredFrom !== 1) {
     throw new Error('MASTER read coverage must start at line 1.');
   }
