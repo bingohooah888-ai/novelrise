@@ -4,8 +4,6 @@ set -euo pipefail
 mode="${1:-}"
 output_file="${2:-/tmp/staging-migration-list.txt}"
 
-: "${STAGING_DATABASE_URL:?STAGING_DATABASE_URL is required}"
-
 canonical_expected() {
   : "${EXPECTED_MIGRATIONS:?EXPECTED_MIGRATIONS is required}"
 
@@ -35,7 +33,19 @@ canonical_expected() {
   fi
 }
 
+require_staging_database() {
+  if [ -z "${STAGING_DATABASE_URL:-}" ]; then
+    echo 'Staging migration sync blocked: STAGING_DATABASE_URL is required.' >&2
+    exit 1
+  fi
+  if [ "${PGSSLMODE:-}" != 'require' ]; then
+    echo 'Staging migration sync blocked: PGSSLMODE must be exactly require.' >&2
+    exit 1
+  fi
+}
+
 show_migration_list() {
+  require_staging_database
   supabase migration list --db-url "$STAGING_DATABASE_URL" | tee "$output_file"
 }
 
