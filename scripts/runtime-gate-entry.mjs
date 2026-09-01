@@ -6,6 +6,14 @@ import { fileURLToPath } from 'node:url';
 const IMPLEMENTATION_PHASE = 'implementation';
 const FRESHNESS_WINDOW_MS = 30 * 60 * 1000;
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
+const EXTERNAL_STATE_PHASES = new Set([
+  'deploy',
+  'vercel',
+  'supabase',
+  'stripe'
+]);
+const CURRENT_STATE_SOURCE_PATTERN =
+  /(?:current-state|live|remote|migration-history|migration-parity|environment-facts|deployment-state|database-state|api-read)/iu;
 
 export const CODEX_EVIDENCE_SOURCES = new Set([
   'github-codex-connector',
@@ -154,6 +162,76 @@ export function parseCodexRoutingEvidence(
   };
 }
 
+export function parseCurrentStateBeforeRemediationEvidence(
+  phase,
+  argv = process.argv.slice(2),
+  env = process.env
+) {
+  const externalPhase = EXTERNAL_STATE_PHASES.has(phase);
+  const mutationPlanned =
+    argv.includes('--mutation-planned') ||
+    env.NOVELIGHT_MUTATION_PLANNED === '1';
+  const remediationPlanned =
+    argv.includes('--remediation-planned') ||
+    env.NOVELIGHT_REMEDIATION_PLANNED === '1';
+  const required = externalPhase && (mutationPlanned || remediationPlanned);
+  const checked =
+    argv.includes('--current-state-checked') ||
+    env.NOVELIGHT_CURRENT_STATE_CHECKED === '1';
+  const source =
+    optionValue(argv, 'current-state-source') ||
+    env.NOVELIGHT_CURRENT_STATE_SOURCE ||
+    '';
+  const verdict =
+    optionValue(argv, 'evidence-verdict') || env.NOVELIGHT_EVIDENCE_VERDICT || '';
+
+  if (!required) {
+    return {
+      required,
+      checked,
+      source,
+      mutationPlanned,
+      remediationPlanned,
+      verdict
+    };
+  }
+
+  if (!checked) {
+    throw new Error(
+      `Runtime phase ${phase} requires a fresh read-only current-state check before mutation or remediation.`
+    );
+  }
+  if (!source) {
+    throw new Error(
+      'External-state mutation/remediation requires --current-state-source identifying a fresh read-only target observation.'
+    );
+  }
+  if (!CURRENT_STATE_SOURCE_PATTERN.test(source)) {
+    throw new Error(
+      'Current-state source must identify a fresh live/remote/current-state observation; an old workflow failure, log, ledger, or release document alone is insufficient.'
+    );
+  }
+  if (verdict !== 'refresh-required') {
+    if (verdict === 'current') {
+      throw new Error(
+        'Stale-failure remediation blocked: fresh current-state evidence already satisfies this scope.'
+      );
+    }
+    throw new Error(
+      'External-state mutation/remediation requires evidence-verdict=refresh-required after the fresh current-state check.'
+    );
+  }
+
+  return {
+    required,
+    checked,
+    source,
+    mutationPlanned,
+    remediationPlanned,
+    verdict
+  };
+}
+
 function runCoreRuntimeGate(argv, env) {
   const here = dirname(fileURLToPath(import.meta.url));
   const coreGate = join(here, 'runtime-execution-gate.mjs');
@@ -164,7 +242,7 @@ function runCoreRuntimeGate(argv, env) {
   });
 }
 
-function augmentRuntimeState(codexRouting, env) {
+function augmentRuntimeState(codexRouting, currentStateBeforeRemediation, env) {
   const gitDir = execFileSync('git', ['rev-parse', '--git-dir'], {
     cwd: process.cwd(),
     env,
@@ -172,8 +250,9 @@ function augmentRuntimeState(codexRouting, env) {
   }).trim();
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = JSON.parse(readFileSync(statePath, 'utf8'));
-  state.version = Math.max(Number(state.version) || 0, 10);
+  state.version = Math.max(Number(state.version) || 0, 11);
   state.codexRouting = codexRouting;
+  state.currentStateBeforeRemediation = currentStateBeforeRemediation;
   writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
 }
 
@@ -184,8 +263,10 @@ export function runRuntimeGateEntry(
 ) {
   const phase = optionValue(argv, 'phase') || env.NOVELIGHT_RUNTIME_PHASE || '';
   const codexRouting = parseCodexRoutingEvidence(phase, argv, env, nowMs);
+  const currentStateBeforeRemediation =
+    parseCurrentStateBeforeRemediationEvidence(phase, argv, env);
   runCoreRuntimeGate(argv, env);
-  augmentRuntimeState(codexRouting, env);
+  augmentRuntimeState(codexRouting, currentStateBeforeRemediation, env);
   return codexRouting;
 }
 
