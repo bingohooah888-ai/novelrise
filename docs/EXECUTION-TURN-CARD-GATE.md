@@ -14,15 +14,23 @@ After the current-turn execution card is visible, the first read-only bootstrap 
 
 `MASTERを確認した` means the assistant actually read the current MASTER content. A filename check, existence check, blob/SHA lookup, search snippet, cached summary, prior-chat memory, project attachment, File Library copy, or a statement such as `MASTERに書いてある` is not sufficient evidence of reading it.
 
-If the tool truncates the MASTER, the assistant must continue fetching the remaining ranges/chunks until the full current MASTER has been read. A partial excerpt is not a completed MASTER read.
+MASTER completeness is an explicit state named `MASTER_READ_COMPLETE`, not an inference. It is valid only when all of the following are true for the current assistant turn:
 
-The only repository-state read allowed before the MASTER content is the minimum lookup needed to resolve the repository and latest `main` SHA. Once that SHA is known, MASTER reading takes priority over all other repository reads.
+- the proof is bound to the exact latest `main` SHA resolved in this turn;
+- the proof is bound to the exact current MASTER content digest;
+- observed coverage starts at line 1 and is contiguous;
+- coverage reaches a confirmed EOF for that exact MASTER;
+- no visibly truncated or unresolved MASTER range remains.
 
-The MASTER-read evidence is current-turn only. Every new user message that leads to a tool-using NOVELIGHT turn invalidates the previous turn's MASTER read together with the previous execution card. The assistant must repeat the latest-main lookup and current-MASTER read before continuing tool work.
+If the tool response is visibly truncated, says `output was truncated`, ends at an identified truncation boundary, or otherwise reports an incomplete requested MASTER range, that range is **not read**. The assistant must automatically subdivide/re-fetch the affected range until it is fully observed. Only resolved contiguous ranges count toward `MASTER_READ_COMPLETE`.
 
-If the latest `main` MASTER cannot be retrieved and read, fail closed: do not substitute an old copy and do not continue mutation or project-state work.
+The only repository-state reads allowed before `MASTER_READ_COMPLETE` are the minimum lookup needed to resolve the repository/latest `main` SHA, a capability-only transport bootstrap that exposes the required read action without reading NOVELIGHT project state, and MASTER continuation/range reads needed to complete coverage. Normal project-state/project-document reads, implementation, GitHub mutation, CI/deploy work, and external-state work are blocked until the proof exists.
 
-The purpose of this gate is to prevent a rule from existing in MASTER while the assistant acts without actually reading that rule in the current execution turn.
+The MASTER-read evidence is current-turn only. Every new user message that leads to a tool-using NOVELIGHT turn invalidates the previous turn's MASTER read together with the previous execution card. A change to resolved latest `main` also invalidates the proof. The assistant must repeat latest-main resolution and current-MASTER full reading before continuing tool work.
+
+If the latest `main` MASTER cannot be retrieved and read to `MASTER_READ_COMPLETE`, fail closed: do not substitute an old copy and do not continue mutation or normal project-state work.
+
+The purpose of this gate is to prevent a rule from existing in MASTER while the assistant acts without actually reading that rule in the current execution turn, and to make a truncated MASTER response mechanically distinguishable from a completed read.
 
 ## 2. Required card fields
 
@@ -112,10 +120,23 @@ The Runtime Execution Gate continues to validate:
 - qualitative workload;
 - the next user-action condition;
 - total time in timed mode;
+- `MASTER_READ_COMPLETE` for every normal phase after `start`;
+- exact latest-main SHA, MASTER content digest, contiguous line-1-through-EOF coverage, and no unresolved truncation in that MASTER proof;
 - current-message image-tool unlock evidence when `--phase=image` is used;
 - separate current-message explicit image-execution evidence when `--phase=image` is used.
 
-Passing a Runtime Gate check that files are reachable is not a substitute for reading MASTER. The agent must read the current `main` MASTER before interpreting project rules or entering implementation/state work; if the agent cannot read it in full, it must fail closed.
+Passing a Runtime Gate check that files are reachable is not a substitute for reading MASTER. The agent must read the current `main` MASTER in full before interpreting project rules or entering implementation/state work. A partial or visibly truncated response cannot be asserted as proof.
+
+For normal phases after `start`, the runtime caller must additionally provide:
+
+- `--master-read-complete`
+- `--master-main-sha=<exact latest-main SHA>`
+- `--master-content-sha256=<exact MASTER content SHA-256>`
+- `--master-covered-from=1`
+- `--master-covered-through=<confirmed EOF line>`
+- `--master-eof-line=<confirmed EOF line>`
+
+`--master-unresolved-truncation` must fail closed. Equivalent `NOVELIGHT_MASTER_*` environment variables are allowed. The proof is recorded in `.git/novelight-runtime-gate.json` as auditable current-turn/latest-main state.
 
 For an image phase, a visible card alone is not enough. The runtime caller must provide all of the following:
 
@@ -130,7 +151,7 @@ Missing, stale, generic, or non-current-message unlock/execution evidence must f
 
 Optional `other work` and degraded-mode reason metadata may be recorded when useful, but they are not required card fields.
 
-This file is also part of the authoritative files fetched by the Runtime Execution Gate, so the dedicated first-message contract cannot be removed without breaking regression checks.
+This file is also part of the authoritative files fetched by the Runtime Execution Gate, so the dedicated first-message and MASTER-completeness contracts cannot be removed without breaking regression checks.
 
 ## 4. Cloud / Connector path
 
@@ -141,13 +162,15 @@ Its protocol is:
 1. Send the execution card as the first visible message. If the current user message contains or attaches an image/screenshot and this turn will use any tool, include `画像ツールロック解除: YES | NO` and `画像実行判定: YES | NO` in that card even when image execution is not intended.
 2. If an image-generation/editing tool is intended, first reset both image decisions to `NO`, then require an explicit current-message ChatGPT image-tool lock-unlock phrase and a separate explicit current-message image execution phrase. Include all four image proof fields in the same card. If either proof cannot be supplied, remove image tools from the candidate set and do not call them.
 3. Only then call the minimum read-only lookup needed to resolve latest `main`.
-4. Fetch and read the **full current `main` MASTER** from that resolved SHA before any other project-state or project-document read; if truncated, continue range/chunk reads until complete.
-5. Only after MASTER reading is complete, re-fetch Preflight, this file, `docs/EVIDENCE-FRESHNESS-GATE.md`, and `docs/IMAGE-EXECUTION-GATE.md`, then gather any PR/workflow/deployment/implementation evidence needed for the task.
-6. Do not mutate anything until the MASTER-first bootstrap and the remaining required authoritative-file bootstrap are complete.
-7. If the assistant notices that a tool was called before the card, that project-state/project-document reads were performed before the current MASTER was actually read, or that an image tool was called without both valid current-message image proofs, stop mutations/image execution for that turn, report the gate failure, and treat any later card or later proof in the same turn as invalid recovery. A late card cannot repair the ordering violation in the same turn.
-8. The next tool-using turn must begin with a fresh card and a fresh latest-main/current-MASTER read. Both image decisions must also reset and be proven again from that new current user message.
+4. Fetch and read the **full current `main` MASTER** from that resolved SHA before any other project-state or project-document read. Maintain explicit coverage from line 1. If any response is visibly truncated, mark that range incomplete and automatically subdivide/re-fetch it; do not advance normal project reads while unresolved truncation exists.
+5. Treat MASTER as complete only after contiguous coverage reaches confirmed EOF and the proof is bound to the current-turn exact latest-main SHA and exact MASTER content. This is the cloud equivalent of `MASTER_READ_COMPLETE`.
+6. Only after `MASTER_READ_COMPLETE`, re-fetch Preflight, this file, `docs/EVIDENCE-FRESHNESS-GATE.md`, and `docs/IMAGE-EXECUTION-GATE.md`, then gather any PR/workflow/deployment/implementation evidence needed for the task.
+7. Do not mutate anything until the MASTER-first bootstrap and the remaining required authoritative-file bootstrap are complete.
+8. If a tool was called before the current-turn card, a later card is invalid recovery for that turn. Likewise, an unauthorized image-tool call, begun external mutation, Secret operation, Production operation, destructive operation, billing/payment operation, or one-time request CLAIM/CONSUME is not converted into a recoverable bootstrap mistake by this rule; stop and follow the existing hard boundary.
+9. If the current-turn card **was** valid and the only ordering error is a read-only project-state/project-document read before `MASTER_READ_COMPLETE`, while no hard boundary in step 8 has begun, classify it as a recoverable `read-only bootstrap-order` violation. Discard every project observation from the invalid bootstrap, re-resolve latest `main`, reset MASTER coverage to zero, re-read from line 1 through confirmed EOF, and continue in the **same assistant turn** after `MASTER_READ_COMPLETE`. Do not ask the user for `はい`, `続けて`, or another dummy continuation message.
+10. A new user message still starts a new execution turn: reset the card, MASTER proof, and both image decisions and perform the bootstrap again.
 
-The cloud path cannot rely on `I remembered the rule`, `MASTERに書いてある`, a prior-turn read, prior-turn lock unlock, prior-turn image permission, or cached/project-attached copies as evidence. The visible ordering plus current-turn GitHub reads are the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
+The cloud path cannot rely on `I remembered the rule`, `MASTERに書いてある`, a prior-turn read, prior-turn lock unlock, prior-turn image permission, cached/project-attached copies, existence checks, or partial snippets as evidence. The visible ordering plus current-turn GitHub reads are the source of truth because the connector layer cannot inspect or block the chat UI before its first call.
 
 ## 5. Evidence Freshness Gate
 
@@ -173,9 +196,13 @@ CI must keep tests that assert:
 - other-work guidance is optional and must not be emitted as a default filler line;
 - degraded mode may omit both the time estimate and a user-visible omission explanation;
 - timed mode requires a total estimate;
-- the cloud path explicitly treats a late card as invalid for that turn;
-- the current-turn bootstrap requires latest-main resolution followed by a full current-MASTER read before other project reads;
-- a prior-turn MASTER read, cached summary, attachment, existence/SHA check, or partial snippet cannot satisfy the MASTER-read gate;
+- the cloud path explicitly treats a **late card after pre-card tool use** as invalid for that turn;
+- the current-turn bootstrap requires latest-main resolution followed by `MASTER_READ_COMPLETE` before other normal project reads;
+- a prior-turn MASTER read, cached summary, attachment, existence/SHA check, partial snippet, or visibly truncated range cannot satisfy the MASTER-read gate;
+- `MASTER_READ_COMPLETE` is bound to exact latest-main SHA, exact MASTER content digest, contiguous line-1-through-confirmed-EOF coverage, and zero unresolved truncation;
+- incomplete MASTER proof blocks normal project reads and runtime implementation/state phases;
+- a valid-card, read-only project read before MASTER completeness automatically resets/discards the invalid bootstrap and retries in the same assistant turn without a dummy `はい` / `続けて`;
+- pre-card tool use, unauthorized image-tool use, begun external mutation, Secret/Production/destructive/billing operations, and one-time request CLAIM/CONSUME remain hard fail-closed and are not reclassified as read-only recovery;
 - image execution requires a current-message image-tool unlock plus a separate current-message YES execution decision and exact quoted phrases before image-tool routing;
 - **a screenshot/image-attached NOVELIGHT turn that will use any tool exposes `画像ツールロック解除: YES | NO` and `画像実行判定: YES | NO` in the execution card even when image execution is not intended;**
 - **an image/screenshot attachment without both current-message proofs surfaces `画像ツールロック解除: NO` and `画像実行判定: NO`, and quote fields are not fabricated;**
@@ -187,4 +214,4 @@ CI must keep tests that assert:
 - deploy/Vercel/Supabase/Stripe phases fail closed without evidence-freshness proof;
 - current evidence blocks duplicate external-state mutation.
 
-The purpose is to make a missing execution card, an unread MASTER, an inferred image command, an unproven image-tool unlock, or stale-state assumption a detectable contract violation instead of a style preference, while being explicit about the platform boundary that repository code cannot directly enforce.
+The purpose is to make a missing execution card, an unread or truncated MASTER, an inferred image command, an unproven image-tool unlock, or stale-state assumption a detectable contract violation instead of a style preference, while allowing only a strictly read-only bootstrap-order mistake after a valid card to recover automatically without making the user press Continue.
