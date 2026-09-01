@@ -105,6 +105,29 @@ test('only self-service pages read raw profiles directly', () => {
   );
 });
 
+test('episode PV counting is server-authoritative and legacy raw RPCs are blocked', () => {
+  const episode = read('episode.html');
+  const migration = read(
+    'supabase/migrations/20260901130000_harden_pv_counting.sql'
+  );
+
+  assert.match(episode, /rpc\('record_episode_pv'/);
+  assert.doesNotMatch(episode, /rpc\('increment_novel_pv'/);
+  assert.doesNotMatch(episode, /rpc\('increment_episode_pv'/);
+  assert.doesNotMatch(episode, /novelight_pv_episode_/);
+  assert.match(migration, /create table public\.episode_pv_events/i);
+  assert.match(migration, /pg_advisory_xact_lock/i);
+  assert.match(migration, /interval '6 hours'/i);
+  assert.match(
+    migration,
+    /revoke all on function public\.increment_novel_pv\(bigint\) from public, anon, authenticated/i
+  );
+  assert.match(
+    migration,
+    /revoke all on function public\.increment_episode_pv\(bigint\) from public, anon, authenticated/i
+  );
+});
+
 test('authenticated smoke includes a mobile Pixel 7 product flow without duplicating billing smoke', () => {
   const config = read('tests/e2e/playwright.production-auth.config.mjs');
   const smoke = read('tests/e2e/production-auth/authenticated-smoke.spec.js');

@@ -34,7 +34,8 @@ test('analytics drops stale period results', () => {
 test('episode renders before optional PV telemetry', () => {
   assert.doesNotMatch(episode, /async function render\(\)/);
   assert.match(episode, /void updatePv\(\)/);
-  assert.match(episode, /pv storage unavailable/);
+  assert.match(episode, /rpc\('record_episode_pv'/);
+  assert.match(episode, /pv increment failed/);
   assert.match(episode, /送信中\.\.\./);
 });
 
