@@ -41,6 +41,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          [ "$GITHUB_ACTOR" = 'bingohooah888-ai' ] || {
+            echo 'Staging migration sync blocked: only the repository owner may dispatch this mutation.'
+            exit 1
+          }
+
           [ "$CONFIRMATION" = 'SYNC STAGING' ] || {
             echo 'Staging migration sync blocked: confirmation must be exactly SYNC STAGING.'
             exit 1
