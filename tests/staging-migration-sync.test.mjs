@@ -193,6 +193,29 @@ test('Staging sync binds owner and current main', () => {
   assert.match(workflow, /main changed before mutation/);
 });
 
+test('Staging sync accepts exactly one migration per run', () => {
+  const validation = stepBlock('Validate explicit Staging sync request');
+  assert.match(validation, /exactly one migration is supported per run/);
+  assert.match(validation, /\[ "\$count" -ne 1 \]/);
+  assert.doesNotMatch(validation, /migration count must be between 1 and 20/);
+});
+
+test('Staging sync validates pending history before running prechecks', () => {
+  const pendingIndex = workflow.indexOf(
+    '      - name: Require exact Staging pending migrations'
+  );
+  const precheckIndex = workflow.indexOf(
+    '      - name: Run Staging migration prechecks'
+  );
+  assert.notEqual(pendingIndex, -1);
+  assert.notEqual(precheckIndex, -1);
+  assert.ok(pendingIndex < precheckIndex);
+  assert.match(
+    stepBlock('Require exact Staging pending migrations'),
+    /verify-staging-migrations\.sh pending/
+  );
+});
+
 test('Staging sync rechecks pending set before mutation', () => {
   const pending =
     workflow.match(/verify-staging-migrations\.sh pending/g) ?? [];
@@ -202,6 +225,21 @@ test('Staging sync rechecks pending set before mutation', () => {
   assert.ok(dryRuns.length >= 2);
   assert.match(workflow, /db push --db-url "\$STAGING_DATABASE_URL" --yes/);
   assert.doesNotMatch(workflow, /migration repair/);
+});
+
+test('Staging sync records post-apply recovery state on every outcome', () => {
+  const apply = stepBlock('Apply exact pending migrations to dedicated Staging');
+  const recovery = stepBlock('Record explicit recovery boundary');
+
+  assert.match(apply, /id: apply/);
+  assert.match(recovery, /if: always\(\)/);
+  assert.match(recovery, /steps\.apply\.outcome/);
+  assert.match(recovery, /steps\.postchecks\.outcome/);
+  assert.match(recovery, /steps\.parity\.outcome/);
+  assert.match(recovery, /STAGING_MIGRATION_RECOVERY_REQUIRED/);
+  assert.match(recovery, /Staging database was already mutated/);
+  assert.match(recovery, /Do not automatically retry the sync or execute rollback/);
+  assert.match(recovery, /STAGING_MIGRATION_APPLY_NOT_CONFIRMED/);
 });
 
 test('Staging sync requires safety artifacts', () => {
