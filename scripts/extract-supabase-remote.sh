@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-input_file="${1:-/dev/stdin}"
+input_file="${1:--}"
 
 sed 's/│/|/g' "$input_file" \
   | awk -F '[|]' '
