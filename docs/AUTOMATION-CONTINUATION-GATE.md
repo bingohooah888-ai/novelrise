@@ -11,7 +11,7 @@
 対象には、少なくとも以下を含む。
 
 - CI、CodeQL、GitHub Actions、Vercel Preview等の短時間待機と結果確認
-- 失敗ログ取得、原因分類、軽微で安全な修正、再実行
+- 失敗ログ取得、原因分類、軽微で安全な修正、再実行。ただし外部stateを直す場合は後述のfresh current-state確認を先に行う
 - PR本文作成、差分確認、merge readiness確認、Smoke/Live Proof確認
 - 非機密の設定確認、読み取り専用検証、定型コマンドの実行
 - 同じ作業目的の中での安全な工程切替
@@ -137,6 +137,28 @@ one-time request bridgeでrequestがclaim/consume済みになった場合は、�
 
 目的は安全承認を省略することではなく、**アシスタント側の非変更ミスだけを理由に、同一スコープの未消費承認をユーザーへ何度も入力させないこと**である。
 
+### 古い失敗からのremediation再開ゲート
+
+外部サービスの失敗から作業を再開するときは、**古い失敗原因をそのまま現在の未解決状態として扱わない。** 失敗ログは「そのrun時点の状態」の証拠であり、その後に手動操作、別Workflow、外部サービスの自動処理、branch再作成等でtarget stateが変わっている可能性を前提とする。
+
+Supabase、Vercel、Stripe、GitHub Environmentその他の外部stateについて、Secret追加・password reset・環境値変更・migration retry・redeploy・reapproval等のremediationを実行またはユーザーへ案内する前に、次を固定順序で行う。
+
+1. exactな対象Environment / resource / migrationと望ましいend stateを確定する
+2. 旧failed run / error log / ledgerはhistorical evidenceとして読む
+3. 安全に取得できる**freshなread-only current-state**を先に確認する
+4. current stateと望ましいend stateを比較し、`current` / `refresh-required` / `unknown` を判定する
+5. `refresh-required`のときだけremediationへ進む
+
+`current`なら、旧failed runが残っていてもそのscopeのremediationは中止し、Secret・password・設定変更・再承認・再実行をユーザーへ要求しない。次の本当に未完了の工程へ移る。
+
+`unknown`ならFail-Closedし、書き込みで状態を探らない。追加のread-only証拠を集める。
+
+このルールは**StagingとProductionの両方**へ適用する。Productionだけを重複防止対象にしない。
+
+fresh current-stateから目標達成済みと分かっても、「誰が・どのWorkflowが・どの経路で反映したか」の証拠がない場合は経路を推測しない。**完了状態と適用経路の証明を分離する。**
+
+ローカル/runtime-capable経路では `--mutation-planned` または `--remediation-planned` を伴う外部state phaseについて、`--current-state-checked` と `--current-state-source=<fresh read-only source>` を必須にする。Cloud/Connector経路でも `docs/EVIDENCE-FRESHNESS-GATE.md` と同等のcurrent-state-first判定を行う。
+
 ## スクリーンショット・画面確認ゲート
 
 ユーザーが現在画面のスクリーンショットを送った場合、過去画像・別画面・推測を現在画面として扱わない。
@@ -181,7 +203,7 @@ one-time request bridgeでrequestがclaim/consume済みになった場合は、�
 
 概ね10分以内で完了が見込まれる外部処理は、原則として同じターンで完了まで追跡する。
 
-完了後は、結果確認、必要なログ診断、安全な軽微修正、再実行まで自動継続する。
+完了後は、結果確認、必要なログ診断、安全な軽微修正、再実行まで自動継続する。ただし外部stateを直す再実行は、先にfresh current-stateを確認して未達を証明する。
 
 「実行中です」「まだ待機中です」だけで応答を終了し、ユーザーの「はい」を待つ運用は禁止する。
 
