@@ -69,7 +69,10 @@ test('Staging target rejects Production project', () => {
 
 test('Staging sync has isolated credentials', () => {
   assert.match(workflow, /\$GITHUB_ACTOR.*bingohooah888-ai/);
-  assert.match(workflow, /only the repository owner may dispatch this mutation/);
+  assert.match(
+    workflow,
+    /only the repository owner may dispatch this mutation/
+  );
   assert.match(workflow, /environment: staging/);
   assert.match(workflow, /vars\.STAGING_SUPABASE_URL/);
   assert.match(workflow, /secrets\.STAGING_DATABASE_URL/);
@@ -90,8 +93,10 @@ test('Staging sync binds owner and current main', () => {
 });
 
 test('Staging sync rechecks pending set before mutation', () => {
-  const pending = workflow.match(/verify-staging-migrations\.sh pending/g) ?? [];
-  const dryRuns = workflow.match(/supabase db push --db-url .* --dry-run/g) ?? [];
+  const pending =
+    workflow.match(/verify-staging-migrations\.sh pending/g) ?? [];
+  const dryRuns =
+    workflow.match(/supabase db push --db-url .* --dry-run/g) ?? [];
   assert.ok(pending.length >= 2);
   assert.ok(dryRuns.length >= 2);
   assert.match(workflow, /db push --db-url "\$STAGING_DATABASE_URL" --yes/);
@@ -113,6 +118,9 @@ test('Staging sync verifies exact parity', () => {
   assert.match(workflow, /verify-staging-migrations\.sh parity/);
   assert.match(verifier, /extract-supabase-pending\.sh/);
   assert.match(verifier, /extract-supabase-remote\.sh/);
-  assert.match(verifier, /remote history does not exactly match the repository/);
+  assert.match(
+    verifier,
+    /remote history does not exactly match the repository/
+  );
   assert.match(parser, /remote_col=\$2/);
 });
