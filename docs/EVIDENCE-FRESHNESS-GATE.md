@@ -83,6 +83,19 @@ The minimum cloud evidence is:
 
 A historical evidence document alone is never sufficient to justify repeating a Production operation.
 
+### Production Authenticated Smoke classification
+
+A green top-level Production Auth Smoke-related workflow run is **not** sufficient PASS evidence by itself. Request-only runs, workflow-dispatch forwarding runs, expired or unapproved requests, and runs whose decisive verification job is `skipped` must never be classified as authenticated Production PASS.
+
+A Production Authenticated Smoke may be classified as PASS only when `scripts/evaluate-production-auth-smoke-evidence.mjs` accepts the evidence set for the exact required release SHA. The evaluator must require all of the following:
+
+- the expected Auth Smoke verification/approval-handler workflow and `issue_comment` execution path;
+- top-level workflow conclusion `success`;
+- exactly one `Verify authenticated beta-critical production flows` job with conclusion `success`;
+- exactly one matching `NOVELIGHT_PRODUCTION_AUTH_SMOKE_CONSUMED` record authored by GitHub Actions, with `result:"success"`, the same workflow run ID, and the same exact head SHA.
+
+If any one of those conditions is absent, malformed, duplicated, skipped, stale, or bound to a different SHA/run, the Auth Smoke proof is `unknown` or `refresh-required`, never PASS.
+
 ## 7. Release-evidence maintenance
 
 Dated evidence files remain immutable historical snapshots unless they contain a factual error in the snapshot itself.
@@ -98,4 +111,6 @@ CI must retain tests that prove:
 - malformed/unknown freshness verdicts fail closed;
 - a planned mutation is rejected when the existing proof is `current`;
 - `refresh-required` can pass the freshness layer but does not bypass ordinary Production approvals;
-- the cloud contract forbids using an older release-evidence snapshot as the sole current-state source.
+- the cloud contract forbids using an older release-evidence snapshot as the sole current-state source;
+- Auth Smoke request-only or skipped-verification runs cannot be classified as PASS;
+- Auth Smoke PASS requires a successful decisive verification job plus a matching successful consumed-approval ledger record bound to the exact run ID and head SHA.
