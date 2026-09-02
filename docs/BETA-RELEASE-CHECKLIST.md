@@ -18,6 +18,7 @@ Qualified Japanese counsel review is **deferred/pending**, not completed. The ow
 - [x] MASTER was read continuously from line 1 through confirmed EOF before repository mutation.
 - [x] Exact current-main `NOVELIGHT CI` #1367 / run `33640026505` completed `success`.
 - [x] Current-main aggregate `check`, Node tests, static quality, desktop/mobile smoke, and desktop/mobile async-UI browser jobs passed.
+- [x] Desktop + mobile Playwright gates pass on the current exact-main CI matrix.
 - [x] Current-main `CodeQL` #1298 / run `33640026461` passed.
 - [x] Current-main Vercel commit status is `success`.
 - [x] RLS integration/rollback, dependency vulnerability audit, and GitHub Actions semantic lint were selectively skipped by the current-main CI classifier because PR #311 did not change their trigger file classes; this checklist does not misrepresent those jobs as current-main executions.
