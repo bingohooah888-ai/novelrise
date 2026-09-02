@@ -16,6 +16,8 @@ const EXACT_HIGH_RISK_PATHS = new Set([
   'scripts/vercel-admin-allowlist.mjs',
   '.github/workflows/ci.yml',
   '.github/workflows/high-risk-pr-approval.yml',
+  '.github/workflows/supabase-staging-sync-request.yml',
+  '.github/workflows/supabase-staging-sync.yml',
   '.github/workflows/vercel-admin-allowlist.yml'
 ]);
 
