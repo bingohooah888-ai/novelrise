@@ -47,7 +47,7 @@ Earlier Production migration/auth evidence remains recorded in dated release evi
   - bridge run: `33307362222`
   - execution/postcheck: `success`
 - `20260830214000_checkout_attempt_reservations.sql`
-  - approved main: `79e33341c90779270df80e454bc1a8a2f18be0`
+  - approved main: `79e33341c90779270dfb7ebedec7ad2d34d3e32f`
   - ledger: issue `#165`
   - bridge run: `33346664018`
   - execution/postcheck: `success`
