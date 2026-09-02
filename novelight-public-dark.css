@@ -1,0 +1,958 @@
+/* NOVELIGHT public dark-gold surfaces: home + pricing only.
+   The existing sitewide theme remains the fallback for every other page. */
+body.novelight-public-dark {
+  --public-bg: #040b14;
+  --public-bg-deep: #02070d;
+  --public-panel: #081321;
+  --public-panel-2: #0b192a;
+  --public-gold: #d6a447;
+  --public-gold-light: #f0cb72;
+  --public-gold-soft: rgba(214, 164, 71, 0.18);
+  --public-line: rgba(214, 164, 71, 0.24);
+  --public-text: #f6f0e5;
+  --public-muted: #a9b2bf;
+  --public-blue: #6f93bd;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 76% 8%, rgba(43, 71, 111, 0.12), transparent 28%),
+    var(--public-bg);
+  color: var(--public-text);
+}
+
+body.novelight-public-dark a { color: inherit; }
+body.novelight-public-dark h1,
+body.novelight-public-dark h2,
+body.novelight-public-dark h3,
+body.novelight-public-dark .section-head h2,
+body.novelight-public-dark .hero h1 {
+  color: var(--public-text);
+}
+body.novelight-public-dark .container { width: min(1240px, calc(100% - 44px)); margin-inline: auto; }
+body.novelight-public-dark section { padding: 60px 0; }
+body.novelight-public-dark :focus-visible {
+  outline: 2px solid var(--public-gold-light);
+  outline-offset: 4px;
+}
+
+/* Shared public header */
+body.novelight-public-dark .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid rgba(214, 164, 71, 0.15);
+  background: rgba(3, 10, 18, 0.9);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(16px);
+}
+body.novelight-public-dark .public-header-inner {
+  width: min(1280px, calc(100% - 40px));
+  min-height: 72px;
+  margin: auto;
+  padding: 0;
+  gap: 28px;
+}
+body.novelight-public-dark .logo { flex: 0 0 auto; }
+body.novelight-public-dark .logo img,
+body.novelight-public-dark .novelight-brand-logo-image {
+  height: 42px;
+  max-width: min(240px, 38vw);
+}
+body.novelight-public-dark .site-nav {
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+  gap: 24px;
+  margin-left: auto;
+}
+body.novelight-public-dark .site-nav a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: #d8dce3;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+body.novelight-public-dark .site-nav a:hover { color: var(--public-gold-light); }
+body.novelight-public-dark .site-nav a[aria-current="page"] { color: var(--public-gold-light); }
+body.novelight-public-dark .site-nav a[aria-current="page"]::after {
+  position: absolute;
+  right: 0;
+  bottom: 11px;
+  left: 0;
+  height: 2px;
+  border-radius: 99px;
+  background: var(--public-gold);
+  content: "";
+}
+body.novelight-public-dark .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+body.novelight-public-dark .header-search {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--public-gold-light);
+  font-size: 25px;
+  line-height: 1;
+}
+body.novelight-public-dark .header-search:hover { border-color: var(--public-line); background: rgba(214,164,71,.06); }
+body.novelight-public-dark .btn {
+  min-height: 40px;
+  padding: 9px 16px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+body.novelight-public-dark .btn-outline {
+  border: 1px solid rgba(255,255,255,.15);
+  background: transparent;
+  color: #f3efe7;
+}
+body.novelight-public-dark .btn-primary,
+body.novelight-public-dark .gold-button {
+  border: 1px solid #e0ae4c;
+  background: linear-gradient(135deg, #b87a17, #e2ad43);
+  box-shadow: 0 8px 22px rgba(214, 164, 71, 0.18);
+  color: #0b1018;
+}
+body.novelight-public-dark .btn-primary:hover,
+body.novelight-public-dark .gold-button:hover {
+  background: linear-gradient(135deg, #c98b23, #f0c35d);
+  box-shadow: 0 10px 28px rgba(214, 164, 71, 0.27);
+  transform: translateY(-1px);
+}
+body.novelight-public-dark .mobile-menu { display: none; position: relative; }
+body.novelight-public-dark .mobile-menu summary {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--public-line);
+  border-radius: 8px;
+  color: var(--public-gold-light);
+  cursor: pointer;
+  list-style: none;
+}
+body.novelight-public-dark .mobile-menu summary::-webkit-details-marker { display: none; }
+body.novelight-public-dark .mobile-menu > nav {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  display: grid;
+  width: min(280px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid var(--public-line);
+  border-radius: 12px;
+  background: #07111f;
+  box-shadow: 0 20px 48px rgba(0,0,0,.42);
+}
+body.novelight-public-dark .mobile-menu > nav a {
+  padding: 10px 12px;
+  border-radius: 7px;
+  color: #e9e4da;
+  font-size: 13px;
+  font-weight: 700;
+}
+body.novelight-public-dark .mobile-menu > nav a:hover,
+body.novelight-public-dark .mobile-menu > nav a[aria-current="page"] { background: rgba(214,164,71,.09); color: var(--public-gold-light); }
+
+/* Home hero */
+body.novelight-page-index.novelight-public-dark .hero {
+  position: relative;
+  min-height: 590px;
+  overflow: hidden;
+  padding: 0;
+  background:
+    linear-gradient(90deg, rgba(2,8,15,.92) 0%, rgba(4,12,23,.77) 42%, rgba(5,14,26,.36) 72%, rgba(2,7,13,.72) 100%),
+    radial-gradient(circle at 72% 46%, rgba(22,55,94,.55), transparent 32%),
+    linear-gradient(150deg, #020912 0%, #09172a 58%, #04101e 100%);
+}
+body.novelight-page-index.novelight-public-dark .hero::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background-image:
+    radial-gradient(circle at 8% 18%, rgba(240,203,114,.95) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 14% 67%, rgba(255,255,255,.72) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 27% 12%, rgba(240,203,114,.8) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 39% 38%, rgba(255,255,255,.6) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 51% 13%, rgba(240,203,114,.92) 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 63% 25%, rgba(255,255,255,.76) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 73% 10%, rgba(240,203,114,.92) 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 82% 32%, rgba(255,255,255,.68) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 91% 18%, rgba(240,203,114,.82) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 95% 68%, rgba(240,203,114,.85) 0 1.3px, transparent 2.2px);
+  opacity: .9;
+}
+body.novelight-page-index.novelight-public-dark .hero::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 36%;
+  content: "";
+  background: linear-gradient(0deg, #030a13, transparent);
+  pointer-events: none;
+}
+body.novelight-page-index.novelight-public-dark .hero-inner {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: min(1320px, calc(100% - 44px));
+  min-height: 590px;
+  margin: auto;
+  grid-template-columns: minmax(0, .9fr) minmax(460px, 1.1fr);
+  align-items: center;
+  gap: 32px;
+}
+body.novelight-page-index.novelight-public-dark .hero-copy { padding: 66px 0 78px 28px; }
+body.novelight-public-dark .eyebrow,
+body.novelight-public-dark .section-kicker {
+  color: var(--public-gold-light);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+body.novelight-page-index.novelight-public-dark .eyebrow {
+  display: inline-flex;
+  margin-bottom: 20px;
+  padding: 5px 10px;
+  border: 1px solid rgba(214,164,71,.28);
+  border-radius: 999px;
+  background: rgba(214,164,71,.06);
+}
+body.novelight-page-index.novelight-public-dark .hero h1 {
+  max-width: 650px;
+  margin: 0 0 20px;
+  font-size: clamp(43px, 5.3vw, 70px);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: .03em;
+  text-wrap: balance;
+}
+body.novelight-page-index.novelight-public-dark .hero h1 span {
+  color: var(--public-gold-light);
+  text-shadow: 0 0 28px rgba(214,164,71,.24);
+}
+body.novelight-page-index.novelight-public-dark .hero p {
+  max-width: 610px;
+  margin: 0 0 30px;
+  color: #d3d8df;
+  font-size: 15px;
+  line-height: 1.85;
+}
+body.novelight-page-index.novelight-public-dark .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+body.novelight-page-index.novelight-public-dark .hero-primary,
+body.novelight-page-index.novelight-public-dark .hero-secondary,
+body.novelight-public-dark .gold-button {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 22px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 900;
+}
+body.novelight-page-index.novelight-public-dark .hero-primary {
+  border: 1px solid #e0ae4c;
+  background: linear-gradient(135deg,#ae7418,#dcaa43);
+  color: #0a1018;
+}
+body.novelight-page-index.novelight-public-dark .hero-primary:hover { background: linear-gradient(135deg,#c18620,#edc05b); transform: translateY(-1px); }
+body.novelight-page-index.novelight-public-dark .hero-secondary {
+  border: 1px solid rgba(214,164,71,.42);
+  background: rgba(2,9,16,.42);
+  color: #f4efe5;
+}
+body.novelight-page-index.novelight-public-dark .hero-secondary:hover { border-color: var(--public-gold-light); background: rgba(214,164,71,.08); }
+
+/* CSS scene: intentionally replaceable by an approved hero artwork later. */
+body.novelight-page-index.novelight-public-dark .hero-art-slot {
+  position: relative;
+  align-self: stretch;
+  min-height: 520px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 52% 78%, rgba(214,164,71,.18), transparent 25%),
+    radial-gradient(circle at 62% 34%, rgba(40,76,122,.23), transparent 37%);
+}
+body.novelight-page-index .hero-moon {
+  position: absolute;
+  top: 16%;
+  left: 31%;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  box-shadow: -14px 4px 0 -3px #d5b86b;
+  opacity: .8;
+  transform: rotate(-18deg);
+}
+body.novelight-page-index .hero-castle {
+  position: absolute;
+  bottom: 29%;
+  left: 38%;
+  z-index: 1;
+  display: flex;
+  align-items: end;
+  gap: 3px;
+  height: 170px;
+  filter: drop-shadow(0 15px 22px rgba(0,0,0,.6));
+  opacity: .92;
+}
+body.novelight-page-index .hero-castle i {
+  position: relative;
+  display: block;
+  width: 34px;
+  height: 88px;
+  border: 1px solid rgba(214,164,71,.13);
+  background: linear-gradient(#0c1420,#03070c);
+}
+body.novelight-page-index .hero-castle i::before {
+  position: absolute;
+  top: -42px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-right: 17px solid transparent;
+  border-bottom: 42px solid #080e17;
+  border-left: 17px solid transparent;
+  content: "";
+  transform: translateX(-50%);
+}
+body.novelight-page-index .hero-castle i:nth-child(2) { width: 44px; height: 128px; }
+body.novelight-page-index .hero-castle i:nth-child(3) { width: 58px; height: 156px; }
+body.novelight-page-index .hero-castle i:nth-child(4) { width: 42px; height: 116px; }
+body.novelight-page-index .hero-castle i:nth-child(5) { height: 78px; }
+body.novelight-page-index .hero-castle i:nth-child(3)::before { top: -68px; border-right-width: 29px; border-bottom-width: 68px; border-left-width: 29px; }
+body.novelight-page-index .hero-light-beam {
+  position: absolute;
+  right: 22%;
+  bottom: 20%;
+  z-index: 2;
+  width: 115px;
+  height: 370px;
+  background: linear-gradient(0deg, rgba(255,211,105,.65), rgba(255,215,117,.11) 52%, transparent);
+  filter: blur(8px);
+  opacity: .8;
+  clip-path: polygon(35% 100%, 65% 100%, 100% 0, 0 0);
+}
+body.novelight-page-index .hero-book {
+  position: absolute;
+  right: 10%;
+  bottom: 15%;
+  z-index: 5;
+  width: min(440px, 64%);
+  height: 150px;
+  perspective: 700px;
+}
+body.novelight-page-index .hero-book .book-left,
+body.novelight-page-index .hero-book .book-right {
+  position: absolute;
+  bottom: 0;
+  width: 50%;
+  height: 115px;
+  border: 1px solid rgba(240,203,114,.68);
+  background:
+    repeating-linear-gradient(0deg, rgba(108,77,28,.18) 0 1px, transparent 1px 10px),
+    linear-gradient(150deg, #e2c785, #72511d 58%, #20160a);
+  box-shadow: 0 -8px 24px rgba(240,203,114,.18), 0 22px 45px rgba(0,0,0,.52);
+}
+body.novelight-page-index .hero-book .book-left {
+  left: 1%;
+  border-radius: 6px 3px 38% 7px;
+  transform: rotateY(28deg) rotateZ(6deg);
+  transform-origin: right bottom;
+}
+body.novelight-page-index .hero-book .book-right {
+  right: 1%;
+  border-radius: 3px 6px 7px 38%;
+  transform: rotateY(-28deg) rotateZ(-6deg);
+  transform-origin: left bottom;
+}
+body.novelight-page-index .hero-book .book-spine {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  z-index: 2;
+  width: 3px;
+  height: 112px;
+  background: linear-gradient(transparent, #f4d57f 25%, #5c3d13);
+  box-shadow: 0 0 18px rgba(255,210,102,.7);
+  transform: translateX(-50%);
+}
+body.novelight-page-index .hero-glow {
+  position: absolute;
+  right: 5%;
+  bottom: 2%;
+  z-index: 3;
+  width: 520px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(242,189,69,.42), rgba(219,151,30,.12) 34%, transparent 68%);
+  filter: blur(10px);
+}
+
+/* Discovery shelves */
+body.novelight-public-dark .discovery-section,
+body.novelight-public-dark .why-section,
+body.novelight-public-dark .pricing {
+  border-top: 1px solid rgba(214,164,71,.08);
+  background: #050d18;
+}
+body.novelight-public-dark .alternate-section { background: #07111e; }
+body.novelight-public-dark .seed-section {
+  background:
+    radial-gradient(circle at 7% 45%, rgba(214,164,71,.07), transparent 24%),
+    #050e19;
+}
+body.novelight-public-dark .shelf-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 20px;
+}
+body.novelight-public-dark .shelf-head h2,
+body.novelight-public-dark .section-head h2 {
+  margin: 3px 0 3px;
+  font-size: clamp(24px, 2.7vw, 32px);
+  font-weight: 600;
+}
+body.novelight-public-dark .shelf-head p,
+body.novelight-public-dark .section-head p {
+  color: var(--public-muted);
+  font-size: 13px;
+}
+body.novelight-public-dark .shelf-more {
+  flex: 0 0 auto;
+  padding: 8px 4px;
+  color: #8ab1da;
+  font-size: 12px;
+  font-weight: 800;
+}
+body.novelight-public-dark .shelf-more:hover { color: var(--public-gold-light); }
+body.novelight-public-dark .shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+body.novelight-public-dark .shelf-card {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(214,164,71,.24);
+  border-radius: 8px;
+  background: linear-gradient(180deg,#0b1929,#07111d);
+  box-shadow: 0 9px 24px rgba(0,0,0,.16);
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+body.novelight-public-dark .shelf-card:hover {
+  border-color: rgba(240,203,114,.62);
+  box-shadow: 0 14px 28px rgba(0,0,0,.28), 0 0 18px rgba(214,164,71,.05);
+  transform: translateY(-3px);
+}
+body.novelight-public-dark .novel-cover-placeholder {
+  position: relative;
+  display: flex;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  align-items: end;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 68% 24%, rgba(235,190,89,.34), transparent 9%),
+    radial-gradient(circle at 66% 30%, rgba(37,75,123,.34), transparent 27%),
+    linear-gradient(150deg,#06101d,#102847 58%,#07101b);
+}
+body.novelight-public-dark .novel-cover-placeholder::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    radial-gradient(circle at 13% 16%, rgba(255,255,255,.7) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 76% 62%, rgba(240,203,114,.7) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 42% 44%, rgba(255,255,255,.5) 0 1px, transparent 1.5px);
+}
+body.novelight-public-dark .cover-mark {
+  position: relative;
+  z-index: 1;
+  color: var(--public-gold-light);
+  font-size: 20px;
+  text-shadow: 0 0 13px rgba(240,203,114,.45);
+}
+body.novelight-public-dark .cover-genre {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  color: rgba(255,255,255,.82);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.novelight-public-dark .card-copy { padding: 12px; }
+body.novelight-public-dark .genre {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 0 6px;
+  padding: 2px 6px;
+  overflow: hidden;
+  border: 1px solid rgba(214,164,71,.23);
+  border-radius: 4px;
+  background: rgba(214,164,71,.05);
+  color: #dac084;
+  font-size: 9px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.novelight-public-dark .novel-title {
+  display: -webkit-box;
+  min-height: 2.9em;
+  overflow: hidden;
+  color: #f3efe7;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+body.novelight-public-dark .novel-author {
+  margin-top: 5px;
+  overflow: hidden;
+  color: #a9b2bf;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.novelight-public-dark .novel-author:empty { display: none; }
+body.novelight-public-dark .meta {
+  margin-top: 7px;
+  overflow: hidden;
+  color: #778392;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.novelight-public-dark .seed-count {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  padding: 3px 7px;
+  border: 1px solid rgba(240,203,114,.45);
+  border-radius: 999px;
+  background: rgba(3,9,15,.82);
+  color: var(--public-gold-light);
+  font-size: 11px;
+  font-weight: 900;
+  backdrop-filter: blur(6px);
+}
+body.novelight-public-dark .state {
+  grid-column: 1 / -1;
+  padding: 26px;
+  border: 1px dashed rgba(214,164,71,.24);
+  border-radius: 8px;
+  background: rgba(9,20,34,.65);
+  color: var(--public-muted);
+  text-align: center;
+}
+
+/* Why NOVELIGHT */
+body.novelight-public-dark .why-section {
+  background:
+    radial-gradient(circle at 50% 100%, rgba(25,55,93,.15), transparent 38%),
+    #050d17;
+}
+body.novelight-public-dark .section-head.centered { margin-bottom: 25px; text-align: center; }
+body.novelight-public-dark .features {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 14px;
+}
+body.novelight-public-dark .feature {
+  min-height: 185px;
+  padding: 23px;
+  border: 1px solid rgba(214,164,71,.25);
+  border-radius: 8px;
+  background: linear-gradient(150deg, rgba(11,26,43,.94), rgba(6,15,26,.94));
+  box-shadow: inset 0 1px rgba(255,255,255,.02);
+}
+body.novelight-public-dark .feature:hover {
+  border-color: rgba(240,203,114,.48);
+  box-shadow: 0 12px 30px rgba(0,0,0,.22);
+  transform: translateY(-2px);
+}
+body.novelight-public-dark .feature h3 { margin: 12px 0 7px; color: var(--public-gold-light); font-size: 16px; }
+body.novelight-public-dark .feature p { color: #b8c0ca; font-size: 12px; line-height: 1.8; }
+body.novelight-public-dark .feature-symbol {
+  position: relative;
+  width: 39px;
+  height: 39px;
+  border: 1px solid rgba(214,164,71,.37);
+  border-radius: 50%;
+  box-shadow: inset 0 0 20px rgba(214,164,71,.06);
+}
+body.novelight-public-dark .feature-symbol::before,
+body.novelight-public-dark .feature-symbol::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  content: "";
+  background: var(--public-gold-light);
+  transform: translate(-50%,-50%);
+}
+body.novelight-public-dark .discovery-symbol::before { width: 20px; height: 2px; box-shadow: 0 -7px var(--public-gold),0 7px var(--public-gold); }
+body.novelight-public-dark .discovery-symbol::after { width: 2px; height: 28px; opacity: .65; }
+body.novelight-public-dark .seed-symbol::before { width: 13px; height: 21px; border-radius: 90% 10% 90% 10%; background: transparent; border: 2px solid var(--public-gold-light); transform: translate(-50%,-53%) rotate(-18deg); }
+body.novelight-public-dark .seed-symbol::after { width: 2px; height: 19px; transform: translate(-50%,-40%) rotate(28deg); }
+body.novelight-public-dark .analytics-symbol::before { width: 4px; height: 17px; box-shadow: -9px 6px var(--public-gold), 9px -6px var(--public-gold); }
+body.novelight-public-dark .analytics-symbol::after { width: 25px; height: 2px; top: 77%; }
+
+/* Home pricing */
+body.novelight-page-index.novelight-public-dark .pricing { background: #07101c; }
+body.novelight-page-index.novelight-public-dark .plans {
+  display: grid;
+  max-width: 980px;
+  margin: 0 auto;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+body.novelight-public-dark .plan {
+  position: relative;
+  min-height: 410px;
+  padding: 25px 22px;
+  border: 1px solid rgba(214,164,71,.22);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(44,78,122,.08), transparent 36%),
+    #081321;
+  box-shadow: 0 12px 26px rgba(0,0,0,.18);
+}
+body.novelight-page-index.novelight-public-dark .plan.recommended {
+  z-index: 2;
+  border: 1px solid #d9a83f;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(214,164,71,.11), transparent 36%),
+    #0a1727;
+  box-shadow: 0 0 0 1px rgba(214,164,71,.18), 0 0 28px rgba(214,164,71,.14), 0 15px 34px rgba(0,0,0,.25);
+  transform: translateY(-7px);
+}
+body.novelight-page-index.novelight-public-dark .plan.recommended:hover { transform: translateY(-9px); }
+body.novelight-public-dark .recommend-ribbon {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  min-width: 112px;
+  padding: 5px 18px;
+  border-radius: 4px 4px 9px 9px;
+  background: linear-gradient(#efc864,#c88d25);
+  box-shadow: 0 5px 14px rgba(0,0,0,.24);
+  color: #16130d;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+  transform: translateX(-50%);
+}
+body.novelight-public-dark .plan-name { color: #f4efe5; font-family: "Yu Mincho","Hiragino Mincho ProN","Noto Serif JP",serif; font-size: 22px; font-weight: 700; }
+body.novelight-public-dark .beta-price,
+body.novelight-public-dark .beta-label {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 3px 7px;
+  border: 1px solid rgba(214,164,71,.3);
+  border-radius: 999px;
+  background: rgba(214,164,71,.08);
+  color: var(--public-gold-light);
+  font-size: 10px;
+  font-weight: 900;
+}
+body.novelight-public-dark .old-price,
+body.novelight-public-dark .original-price { margin-top: 7px; color: #7f8996; font-size: 11px; text-decoration: line-through; }
+body.novelight-public-dark .price { margin: 1px 0 14px; color: #f4efe6; font-size: 34px; font-weight: 800; }
+body.novelight-public-dark .recommended .price,
+body.novelight-public-dark .standard .price { color: var(--public-gold-light); }
+body.novelight-public-dark .price small { color: #8f99a5; font-size: 11px; font-weight: 500; }
+body.novelight-public-dark .plan ul { margin: 0 0 14px; padding: 0; list-style: none; color: #c2c9d1; font-size: 12px; }
+body.novelight-public-dark .plan li { padding: 6px 0; }
+body.novelight-public-dark .plan li::before { margin-right: 5px; color: var(--public-gold); content: "✓"; font-weight: 900; }
+body.novelight-public-dark .plan-note { margin: 0 0 18px; color: #8994a1; font-size: 11px; line-height: 1.7; }
+body.novelight-public-dark .plan-cta {
+  min-height: 42px;
+  margin-top: auto;
+  border: 1px solid rgba(214,164,71,.5);
+  border-radius: 7px;
+  background: transparent;
+  color: #e5c36e;
+  font-size: 12px;
+  font-weight: 900;
+}
+body.novelight-public-dark .plan-cta:hover { border-color: var(--public-gold-light); background: rgba(214,164,71,.07); color: var(--public-gold-light); }
+body.novelight-page-index.novelight-public-dark .plan.recommended .plan-cta {
+  border-color: #e2b34e;
+  background: linear-gradient(135deg,#b97c1c,#e1ad45);
+  color: #0c1118;
+}
+body.novelight-public-dark .pricing-more-wrap { margin-top: 26px; text-align: center; }
+
+/* Final CTA + footer */
+body.novelight-page-index.novelight-public-dark .cta {
+  position: relative;
+  overflow: hidden;
+  padding: 72px 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(214,164,71,.13), transparent 35%),
+    linear-gradient(#050d17,#02070d);
+  text-align: center;
+}
+body.novelight-public-dark .cta h2 { margin: 4px 0 6px; font-size: clamp(28px,3.2vw,39px); font-weight: 600; }
+body.novelight-public-dark .cta p { margin-bottom: 22px; color: #aab3bf; }
+body.novelight-public-dark .site-footer {
+  padding: 28px 0;
+  border-top: 1px solid rgba(214,164,71,.14);
+  background: #01050a;
+  color: #77818d;
+}
+body.novelight-public-dark .footer-inner {
+  width: min(1240px, calc(100% - 44px));
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+body.novelight-public-dark .footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
+body.novelight-public-dark .footer-links a { color: #929ca8; }
+body.novelight-public-dark .footer-links a:hover { color: var(--public-gold-light); }
+
+/* Pricing page */
+body.novelight-page-pricing.novelight-public-dark .pricing-main {
+  width: min(1180px, calc(100% - 44px));
+  margin: auto;
+  padding: 0 0 76px;
+}
+body.novelight-page-pricing.novelight-public-dark .pricing-hero {
+  padding: 66px 0 50px;
+  border-bottom: 1px solid rgba(214,164,71,.28);
+  background:
+    radial-gradient(circle at 78% 24%, rgba(39,73,118,.15), transparent 24%);
+}
+body.novelight-page-pricing .pricing-hero h1 {
+  margin: 3px 0 6px;
+  font-size: clamp(36px,4.6vw,52px);
+  font-weight: 650;
+}
+body.novelight-page-pricing .pricing-lead {
+  margin: 0 0 10px;
+  color: var(--public-gold-light);
+  font-family: "Yu Mincho","Hiragino Mincho ProN","Noto Serif JP",serif;
+  font-size: clamp(19px,2.2vw,26px);
+}
+body.novelight-page-pricing .pricing-sub { max-width: 700px; margin: 0; color: #9ea8b5; font-size: 13px; line-height: 1.85; }
+body.novelight-page-pricing.novelight-public-dark .pricing-plans {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 16px;
+  padding: 56px 0 0;
+  align-items: stretch;
+}
+body.novelight-page-pricing.novelight-public-dark .pricing-card {
+  min-height: 650px;
+  padding: 34px 25px 25px;
+}
+body.novelight-page-pricing .pricing-card.standard {
+  border: 2px solid #dba63d;
+  background:
+    radial-gradient(circle at 50% 3%, rgba(214,164,71,.14), transparent 28%),
+    linear-gradient(#0c1c31,#071321);
+  box-shadow: 0 0 0 1px rgba(214,164,71,.14), 0 0 32px rgba(214,164,71,.16), 0 18px 38px rgba(0,0,0,.3);
+  transform: translateY(-12px);
+}
+body.novelight-page-pricing .pricing-card.premium { border-color: rgba(214,164,71,.36); }
+body.novelight-page-pricing .recommendation-ribbon {
+  top: -16px;
+  min-width: 132px;
+  padding: 7px 22px;
+  border-radius: 4px 4px 11px 11px;
+}
+body.novelight-page-pricing .plan-emblem {
+  display: grid;
+  width: 74px;
+  height: 74px;
+  place-items: center;
+  margin: 0 auto 22px;
+  border: 1px solid rgba(214,164,71,.28);
+  border-radius: 50%;
+  box-shadow: inset 0 0 24px rgba(214,164,71,.06);
+  color: #aab1bb;
+  font-size: 37px;
+}
+body.novelight-page-pricing .gold-emblem {
+  border-color: rgba(240,203,114,.58);
+  box-shadow: inset 0 0 26px rgba(214,164,71,.1), 0 0 17px rgba(214,164,71,.09);
+  color: var(--public-gold-light);
+}
+body.novelight-page-pricing .name {
+  color: #f4efe6;
+  font-family: "Yu Mincho","Hiragino Mincho ProN","Noto Serif JP",serif;
+  font-size: 25px;
+  font-weight: 700;
+}
+body.novelight-page-pricing .standard .name { color: var(--public-gold-light); }
+body.novelight-page-pricing .desc { min-height: 46px; margin: 7px 0 18px; color: #9ba6b3; font-size: 12px; line-height: 1.7; }
+body.novelight-page-pricing .renewal { min-height: 20px; margin: 5px 0 12px; color: #d9bb73; font-size: 10px; font-weight: 800; }
+body.novelight-page-pricing .limit { margin-bottom: 14px; color: #d3b56f; font-size: 12px; font-weight: 900; }
+body.novelight-page-pricing .features { flex: 1; margin: 0 0 24px; }
+body.novelight-page-pricing .features li { padding: 7px 0; color: #c7cdd5; font-size: 12px; line-height: 1.55; }
+body.novelight-page-pricing button {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(214,164,71,.48);
+  border-radius: 7px;
+  background: transparent;
+  color: #e6c775;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+body.novelight-page-pricing button.free { border-color: rgba(255,255,255,.12); color: #818a96; cursor: default; }
+body.novelight-page-pricing button.paid:hover:not(:disabled) { border-color: var(--public-gold-light); background: rgba(214,164,71,.07); }
+body.novelight-page-pricing .standard button.paid {
+  border-color: #e4b34e;
+  background: linear-gradient(135deg,#bd801f,#e2b34e);
+  color: #0c1118;
+}
+body.novelight-page-pricing .premium-button { background: transparent; }
+body.novelight-page-pricing .status {
+  display: none;
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(214,164,71,.26);
+  border-radius: 8px;
+  background: #091523;
+  color: #c7ced6;
+  font-size: 12px;
+  line-height: 1.65;
+}
+body.novelight-page-pricing .status[data-visible="true"] { display: block; }
+body.novelight-page-pricing .status[data-kind="error"] { border-color: rgba(225,87,87,.52); background: rgba(100,20,28,.18); color: #ffc0c3; }
+body.novelight-page-pricing .status[data-kind="success"] { border-color: rgba(75,177,121,.48); background: rgba(18,88,55,.18); color: #b7eccd; }
+body.novelight-page-pricing .billing {
+  margin-top: 34px;
+  padding: 24px 26px;
+  border: 1px solid rgba(214,164,71,.18);
+  border-radius: 9px;
+  background: #08131f;
+  color: #aeb7c3;
+  font-size: 11px;
+  line-height: 1.85;
+}
+body.novelight-page-pricing .billing strong { color: #eee6d8; font-size: 14px; }
+body.novelight-page-pricing .billing ul { margin: 10px 0 0; padding-left: 20px; }
+body.novelight-page-pricing .legal { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 17px; }
+body.novelight-page-pricing .legal a { color: #d4b66e; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Responsive */
+@media (max-width: 1080px) {
+  body.novelight-public-dark .desktop-nav { gap: 14px; }
+  body.novelight-public-dark .desktop-nav a { font-size: 12px; }
+  body.novelight-public-dark .shelf-grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(165px, 22vw);
+    overflow-x: auto;
+    padding: 0 0 10px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(214,164,71,.35) transparent;
+  }
+  body.novelight-public-dark .shelf-card { scroll-snap-align: start; }
+}
+@media (max-width: 900px) {
+  body.novelight-public-dark .desktop-nav,
+  body.novelight-public-dark .signup-action { display: none; }
+  body.novelight-public-dark .mobile-menu { display: block; }
+  body.novelight-page-index.novelight-public-dark .hero-inner {
+    grid-template-columns: minmax(0,1fr);
+    min-height: 0;
+    gap: 0;
+  }
+  body.novelight-page-index.novelight-public-dark .hero-copy { padding: 56px 2px 24px; }
+  body.novelight-page-index.novelight-public-dark .hero-art-slot { min-height: 390px; }
+  body.novelight-page-index .hero-book { right: 7%; width: min(460px,76%); }
+  body.novelight-page-index .hero-castle { left: 30%; }
+  body.novelight-page-index .hero-light-beam { right: 31%; height: 310px; }
+  body.novelight-public-dark .features,
+  body.novelight-page-index.novelight-public-dark .plans,
+  body.novelight-page-pricing.novelight-public-dark .pricing-plans { grid-template-columns: 1fr; }
+  body.novelight-page-index.novelight-public-dark .plan.recommended,
+  body.novelight-page-pricing .pricing-card.standard { transform: none; }
+  body.novelight-page-pricing.novelight-public-dark .pricing-card { min-height: 0; }
+  body.novelight-page-pricing .desc { min-height: 0; }
+}
+@media (max-width: 640px) {
+  body.novelight-public-dark .container,
+  body.novelight-public-dark .footer-inner,
+  body.novelight-page-index.novelight-public-dark .hero-inner,
+  body.novelight-page-pricing.novelight-public-dark .pricing-main {
+    width: min(100% - 32px, 1240px);
+  }
+  body.novelight-public-dark section { padding: 46px 0; }
+  body.novelight-public-dark .public-header-inner { width: calc(100% - 24px); min-height: 62px; gap: 8px; }
+  body.novelight-public-dark .logo img,
+  body.novelight-public-dark .novelight-brand-logo-image { height: 34px; max-width: 45vw; }
+  body.novelight-public-dark .header-search { width: 34px; height: 36px; }
+  body.novelight-public-dark .login-action { display: none; }
+  body.novelight-page-index.novelight-public-dark .hero h1 { font-size: clamp(36px,11vw,50px); }
+  body.novelight-page-index.novelight-public-dark .hero p { font-size: 14px; line-height: 1.75; }
+  body.novelight-page-index.novelight-public-dark .hero-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  body.novelight-page-index.novelight-public-dark .hero-primary,
+  body.novelight-page-index.novelight-public-dark .hero-secondary { padding-inline: 12px; }
+  body.novelight-page-index.novelight-public-dark .hero-art-slot { min-height: 320px; margin-inline: -16px; }
+  body.novelight-page-index .hero-book { right: 3%; width: 82%; height: 120px; }
+  body.novelight-page-index .hero-book .book-left,
+  body.novelight-page-index .hero-book .book-right { height: 92px; }
+  body.novelight-page-index .hero-book .book-spine { height: 90px; }
+  body.novelight-page-index .hero-castle { bottom: 28%; left: 24%; transform: scale(.72); transform-origin: bottom center; }
+  body.novelight-page-index .hero-light-beam { right: 27%; bottom: 19%; height: 240px; }
+  body.novelight-page-index .hero-moon { top: 12%; left: 23%; transform: scale(.75) rotate(-18deg); }
+  body.novelight-public-dark .shelf-head { align-items: start; }
+  body.novelight-public-dark .shelf-head p { max-width: 250px; }
+  body.novelight-public-dark .shelf-grid { grid-auto-columns: minmax(154px, 64vw); }
+  body.novelight-public-dark .feature { min-height: 0; }
+  body.novelight-page-index.novelight-public-dark .plans { gap: 20px; }
+  body.novelight-page-pricing.novelight-public-dark .pricing-hero { padding: 48px 0 35px; }
+  body.novelight-page-pricing.novelight-public-dark .pricing-plans { padding-top: 42px; gap: 26px; }
+  body.novelight-page-pricing.novelight-public-dark .pricing-card { padding: 30px 20px 22px; }
+}
+@media (max-width: 360px) {
+  body.novelight-public-dark .logo img,
+  body.novelight-public-dark .novelight-brand-logo-image { max-width: 52vw; }
+  body.novelight-page-index.novelight-public-dark .hero-actions { grid-template-columns: 1fr; }
+  body.novelight-public-dark .shelf-grid { grid-auto-columns: 76vw; }
+  body.novelight-public-dark .shelf-more { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.novelight-public-dark *,
+  body.novelight-public-dark *::before,
+  body.novelight-public-dark *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
