@@ -30,10 +30,7 @@ test('homepage allocation and authoritative recording use the same viewport-size
     home,
     /visible=selectVisibleDiscoveryRows\(general,planRows,premium,limit\)/
   );
-  assert.match(
-    home,
-    /grid\.innerHTML=visible\.length\?visible\.map\(card\)/
-  );
+  assert.match(home, /grid\.innerHTML=visible\.length\?visible\.map\(card\)/);
   assert.match(home, /if\(visible\.length\)void record\(visible\)/);
   assert.doesNotMatch(
     home,
@@ -52,10 +49,7 @@ test('trusted allocation stays authoritative while plan-specific sources remain 
   assert.match(home, /record_trusted_allocation_receipts/);
   assert.match(home, /rows\.filter\(x=>!x\.is_premium_slot\)/);
   assert.match(home, /rows\.filter\(x=>x\.is_premium_slot\)/);
-  assert.match(
-    home,
-    /planExtraFeed\(\{p_limit:1,p_exclude_novel_ids:excluded/
-  );
+  assert.match(home, /planExtraFeed\(\{p_limit:1,p_exclude_novel_ids:excluded/);
 
   assert.match(trustedMigration, /plan_snapshot text not null/);
   assert.match(trustedMigration, /'home_plan_extra'/);
