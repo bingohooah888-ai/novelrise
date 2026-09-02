@@ -182,7 +182,9 @@ export async function loadInquiryDetail(supabase, id) {
 }
 
 export async function updateInquiryStatus(supabase, adminUserId, id, status) {
-  const normalized = String(status ?? '').trim().toLowerCase();
+  const normalized = String(status ?? '')
+    .trim()
+    .toLowerCase();
   if (!INQUIRY_STATUSES.has(normalized)) {
     const error = new Error('Invalid inquiry status');
     error.code = 'INVALID_INPUT';
