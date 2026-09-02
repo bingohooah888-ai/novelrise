@@ -130,7 +130,7 @@ export async function createAdminAnnouncement(supabase, adminUserId, input) {
     }
   );
   if (error) throw error;
-  return Array.isArray(data) ? data[0] ?? null : data;
+  return Array.isArray(data) ? (data[0] ?? null) : data;
 }
 
 export async function updateAdminAnnouncement(
@@ -158,7 +158,7 @@ export async function updateAdminAnnouncement(
     }
   );
   if (error) throw error;
-  return Array.isArray(data) ? data[0] ?? null : data;
+  return Array.isArray(data) ? (data[0] ?? null) : data;
 }
 
 export async function loadInquirySummaries(supabase) {
@@ -198,7 +198,7 @@ export async function updateInquiryStatus(supabase, adminUserId, id, status) {
     }
   );
   if (error) throw error;
-  return Array.isArray(data) ? data[0] ?? null : data;
+  return Array.isArray(data) ? (data[0] ?? null) : data;
 }
 
 function handleAdminError(res, error, fallback) {
