@@ -36,7 +36,9 @@ function normalizeAnnouncementInput(body, { partial = false } = {}) {
   const content =
     payload.body === undefined ? undefined : String(payload.body).trim();
   const category =
-    payload.category === undefined ? undefined : String(payload.category).trim();
+    payload.category === undefined
+      ? undefined
+      : String(payload.category).trim();
   const status =
     payload.status === undefined
       ? undefined
