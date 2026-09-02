@@ -41,6 +41,10 @@ function warning(code, details = {}) {
   return { code, ...details };
 }
 
+function isBetaFreeStandard(profile) {
+  return profile.plan === 'standard' && profile.payment_status === 'beta_free';
+}
+
 async function listProfiles(supabase) {
   const { data, error } = await supabase
     .from('profiles')
@@ -227,7 +231,8 @@ export async function auditProductionBilling({
   auditDuplicateCustomers(profiles, issues);
 
   for (const profile of profiles) {
-    const paid = PAID_PLANS.has(profile.plan);
+    const betaFreeStandard = isBetaFreeStandard(profile);
+    const paid = PAID_PLANS.has(profile.plan) && !betaFreeStandard;
 
     if (paid && !profile.stripe_customer_id) {
       issues.push(
@@ -256,7 +261,7 @@ export async function auditProductionBilling({
       if (paid) {
         issues.push(issue('paid_profile_customer_missing_in_stripe', payload));
       } else {
-        warnings.push(warning('free_profile_stale_customer_reference', payload));
+        warnings.push(warning('non_paid_profile_stale_customer_reference', payload));
       }
       continue;
     }
@@ -273,7 +278,16 @@ export async function auditProductionBilling({
       );
     }
 
-    if (!paid && entitled.length > 0) {
+    if (betaFreeStandard && entitled.length > 0) {
+      issues.push(
+        issue('beta_free_standard_has_entitled_subscription', {
+          profileId: profile.id,
+          displayName: profile.display_name || null,
+          stripeCustomerId: profile.stripe_customer_id,
+          subscriptionIds: entitled.map((subscription) => subscription.id)
+        })
+      );
+    } else if (!paid && !betaFreeStandard && entitled.length > 0) {
       issues.push(
         issue('free_profile_has_entitled_subscription', {
           profileId: profile.id,
@@ -301,6 +315,7 @@ export async function auditProductionBilling({
     warnings,
     summary: {
       profileCount: profiles.length,
+      betaFreeStandardCount: profiles.filter(isBetaFreeStandard).length,
       issueCount: issues.length,
       warningCount: warnings.length,
       canonicalWebhookCount: webhook.exact.length,
