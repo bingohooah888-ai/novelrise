@@ -5,7 +5,6 @@ import { createCheckoutHandler } from '../api/_lib/checkout.js';
 
 function createResponse() {
   const state = { statusCode: null, body: null };
-
   return {
     state,
     res: {
@@ -23,7 +22,12 @@ function createResponse() {
 
 function createStaleCustomerDependencies() {
   const user = { id: 'user-123', email: 'author@example.com' };
-  const profile = { plan: 'free', stripe_customer_id: 'cus_stale' };
+  const profile = {
+    plan: 'free',
+    payment_status: 'canceled',
+    stripe_customer_id: 'cus_stale',
+    subscription_status: 'canceled'
+  };
   const calls = {
     checkoutSessions: [],
     profileUpdates: [],
@@ -47,19 +51,16 @@ function createStaleCustomerDependencies() {
         };
         return { data: [attempt], error: null };
       }
-
       if (name === 'novelight_attach_checkout_session') {
         attempt.stripe_session_id = args.p_stripe_session_id;
         return { data: true, error: null };
       }
-
       throw new Error(`Unexpected RPC ${name}`);
     },
     from(table) {
       assert.equal(table, 'profiles');
       let operation = 'select';
       const filters = [];
-
       return {
         select() {
           return this;
@@ -75,11 +76,8 @@ function createStaleCustomerDependencies() {
         },
         async limit(limit) {
           assert.equal(limit, 1);
-
-          if (operation === 'update') {
+          if (operation === 'update')
             return { data: [{ id: user.id }], error: null };
-          }
-
           return { data: [profile], error: null };
         }
       };
@@ -91,7 +89,6 @@ function createStaleCustomerDependencies() {
     code: 'resource_missing',
     param: 'customer'
   });
-
   const stripe = {
     subscriptions: {
       async list(payload) {
@@ -125,25 +122,22 @@ function createStaleCustomerDependencies() {
     supabase,
     calls,
     env: {
-      STRIPE_STANDARD_PRICE_ID: 'price_standard',
       STRIPE_PREMIUM_PRICE_ID: 'price_premium',
       NOVELIGHT_APP_URL: 'https://novelight.test'
     }
   };
 }
 
-test('free checkout repairs a stale Stripe customer and creates a fresh customer checkout', async (t) => {
+test('Premium checkout repairs a stale Stripe customer and creates a fresh customer checkout', async (t) => {
   t.mock.method(console, 'warn', () => {});
-
   const dependencies = createStaleCustomerDependencies();
   const handler = createCheckoutHandler(dependencies);
   const { res, state } = createResponse();
-
   await handler(
     {
       method: 'POST',
       headers: { authorization: 'Bearer token-123' },
-      body: { plan: 'standard' }
+      body: { plan: 'premium' }
     },
     res
   );
@@ -153,15 +147,9 @@ test('free checkout repairs a stale Stripe customer and creates a fresh customer
     url: 'https://checkout.stripe.test/session',
     mode: 'checkout'
   });
-
   assert.deepEqual(dependencies.calls.subscriptionLists, [
-    {
-      customer: 'cus_stale',
-      status: 'all',
-      limit: 100
-    }
+    { customer: 'cus_stale', status: 'all', limit: 100 }
   ]);
-
   assert.equal(dependencies.calls.profileUpdates.length, 1);
   assert.deepEqual(dependencies.calls.profileUpdates[0].changes, {
     payment_status: 'canceled',
@@ -177,11 +165,14 @@ test('free checkout repairs a stale Stripe customer and creates a fresh customer
     ['plan', 'free'],
     ['stripe_customer_id', 'cus_stale']
   ]);
-
   assert.equal(dependencies.calls.checkoutSessions.length, 1);
   assert.equal(dependencies.calls.checkoutSessions[0].customer, undefined);
   assert.equal(
     dependencies.calls.checkoutSessions[0].customer_email,
     'author@example.com'
+  );
+  assert.equal(
+    dependencies.calls.checkoutSessions[0].line_items[0].price,
+    'price_premium'
   );
 });

@@ -31,11 +31,13 @@ const plans = [
   },
   {
     key: 'premium',
-    name: 'NOVELIGHT Premium',
-    amount: 1980,
-    lookupKey: 'novelight_premium_monthly_jpy'
+    name: 'NOVELIGHT Premium Beta',
+    amount: 480,
+    lookupKey: 'novelight_premium_beta_2026_monthly_jpy'
   }
 ];
+
+const LEGACY_PREMIUM_LOOKUP_KEY = 'novelight_premium_monthly_jpy';
 
 function productId(price) {
   return typeof price.product === 'string' ? price.product : price.product?.id;
@@ -84,12 +86,14 @@ async function ensurePrice(plan) {
       name: plan.name,
       metadata: {
         novelight_managed: 'true',
-        novelight_plan: plan.key
+        novelight_plan: plan.key,
+        novelight_beta_price: plan.key === 'premium' ? '480' : 'false'
       }
     },
     metadata: {
       novelight_managed: 'true',
-      novelight_plan: plan.key
+      novelight_plan: plan.key,
+      novelight_beta_price: plan.key === 'premium' ? '480' : 'false'
     }
   });
 
@@ -103,7 +107,33 @@ async function ensurePrice(plan) {
   };
 }
 
-async function ensurePortalConfiguration(standard, premium) {
+async function findLegacyPremiumPrice() {
+  const existing = await stripe.prices.list({
+    active: true,
+    lookup_keys: [LEGACY_PREMIUM_LOOKUP_KEY],
+    limit: 10
+  });
+
+  if (existing.data.length > 1) {
+    throw new Error(`Multiple active Stripe prices use lookup key ${LEGACY_PREMIUM_LOOKUP_KEY}`);
+  }
+  if (existing.data.length === 0) return null;
+
+  const price = existing.data[0];
+  if (
+    !price.livemode ||
+    price.currency !== 'jpy' ||
+    price.unit_amount !== 1980 ||
+    price.recurring?.interval !== 'month' ||
+    price.recurring?.interval_count !== 1
+  ) {
+    throw new Error('Legacy Premium Stripe price does not match the expected 1,980 JPY monthly price');
+  }
+
+  return price.id;
+}
+
+async function ensurePortalConfiguration(premium) {
   const configs = await stripe.billingPortal.configurations.list({ limit: 100 });
   const managed = configs.data.filter(
     (config) => config.metadata?.novelight_managed === 'true'
@@ -141,26 +171,13 @@ async function ensurePortalConfiguration(standard, premium) {
         }
       },
       subscription_update: {
-        enabled: true,
-        default_allowed_updates: ['price'],
-        proration_behavior: 'create_prorations',
-        products: [
-          {
-            product: standard.productId,
-            prices: [standard.priceId]
-          },
-          {
-            product: premium.productId,
-            prices: [premium.priceId]
-          }
-        ],
-        schedule_at_period_end: {
-          conditions: [{ type: 'decreasing_item_amount' }]
-        }
+        enabled: false
       }
     },
     metadata: {
-      novelight_managed: 'true'
+      novelight_managed: 'true',
+      novelight_beta_pricing: 'standard_free_premium_480',
+      novelight_premium_price_id: premium.priceId
     }
   };
 
@@ -189,7 +206,8 @@ const existingWebhook = await inspectWebhookEndpoint({
 const legacyWebhooks = await findLegacyWebhookEndpoints({ stripe, webhookUrl });
 const standard = await ensurePrice(plans[0]);
 const premium = await ensurePrice(plans[1]);
-const portalConfigurationId = await ensurePortalConfiguration(standard, premium);
+const premiumLegacyPriceId = await findLegacyPremiumPrice();
+const portalConfigurationId = await ensurePortalConfiguration(premium);
 const webhook = await ensureWebhookEndpoint({
   stripe,
   webhookUrl,
@@ -200,6 +218,7 @@ const webhook = await ensureWebhookEndpoint({
 const output = {
   standardPriceId: standard.priceId,
   premiumPriceId: premium.priceId,
+  premiumLegacyPriceId,
   portalConfigurationId,
   webhookEndpointId: webhook.endpointId,
   webhookPreviousEndpointId: webhook.previousEndpointId,
@@ -220,6 +239,6 @@ if (legacyWebhooks.length) {
 
 console.log(
   rotateWebhookSecret && webhook.rotated
-    ? 'Stripe live billing objects are configured and a replacement webhook endpoint is ready for secret sync.'
-    : 'Stripe live billing objects are configured and validated.'
+    ? 'Stripe live beta billing objects are configured and a replacement webhook endpoint is ready for secret sync.'
+    : 'Stripe live beta billing objects are configured and validated.'
 );

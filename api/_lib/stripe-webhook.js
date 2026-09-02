@@ -18,11 +18,29 @@ function planForPriceId(priceId, env) {
     return 'standard';
   }
 
-  if (priceId && priceId === env.STRIPE_PREMIUM_PRICE_ID) {
+  if (
+    priceId &&
+    (priceId === env.STRIPE_PREMIUM_PRICE_ID ||
+      priceId === env.STRIPE_PREMIUM_LEGACY_PRICE_ID)
+  ) {
     return 'premium';
   }
 
   return null;
+}
+
+function betaStandardIsFree(env) {
+  return env.NOVELIGHT_BETA_STANDARD_FREE === 'true';
+}
+
+function fallbackPlan(env) {
+  return betaStandardIsFree(env) ? 'standard' : 'free';
+}
+
+function fallbackPaymentStatus(env, status) {
+  return betaStandardIsFree(env)
+    ? 'beta_free'
+    : paymentStatusForSubscription(status);
 }
 
 function paymentStatusForSubscription(status) {
@@ -165,8 +183,8 @@ export async function syncCustomerSubscription({
 
   if (!canonical) {
     await updateProfile(supabase, profile.id, {
-      plan: 'free',
-      payment_status: 'canceled',
+      plan: fallbackPlan(env),
+      payment_status: fallbackPaymentStatus(env, 'canceled'),
       stripe_customer_id: customerId,
       stripe_subscription_id: null,
       stripe_subscription_created_at: null,
@@ -175,11 +193,11 @@ export async function syncCustomerSubscription({
       subscription_current_period_end: null
     });
 
-    return 'synced-free';
+    return betaStandardIsFree(env) ? 'synced-beta-standard' : 'synced-free';
   }
 
   const status = canonical.status;
-  let plan = 'free';
+  let plan = fallbackPlan(env);
 
   if (ACCESS_STATUSES.has(status)) {
     const priceId = canonical.items?.data?.[0]?.price?.id;
@@ -196,9 +214,13 @@ export async function syncCustomerSubscription({
     throw new Error(`Unsupported Stripe subscription status: ${status}`);
   }
 
+  const paidAccess = ACCESS_STATUSES.has(status);
+
   await updateProfile(supabase, profile.id, {
     plan,
-    payment_status: paymentStatusForSubscription(status),
+    payment_status: paidAccess
+      ? paymentStatusForSubscription(status)
+      : fallbackPaymentStatus(env, status),
     stripe_customer_id: customerId,
     stripe_subscription_id: canonical.id,
     stripe_subscription_created_at: Number.isInteger(canonical.created)

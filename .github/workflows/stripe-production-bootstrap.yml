@@ -110,7 +110,7 @@ jobs:
             echo 'VERCEL_HAS_WEBHOOK_SECRET=false' >> "$GITHUB_ENV"
           fi
 
-      - name: Provision and verify Stripe live objects
+      - name: Provision and verify Stripe live beta objects
         run: node scripts/stripe-production-bootstrap.mjs
 
       - name: Sync Production variables to Vercel
@@ -146,6 +146,7 @@ jobs:
 
           standard_price="$(jq -er '.standardPriceId' "$STRIPE_BOOTSTRAP_OUTPUT")"
           premium_price="$(jq -er '.premiumPriceId' "$STRIPE_BOOTSTRAP_OUTPUT")"
+          premium_legacy_price="$(jq -r '.premiumLegacyPriceId // empty' "$STRIPE_BOOTSTRAP_OUTPUT")"
           portal_configuration="$(jq -er '.portalConfigurationId' "$STRIPE_BOOTSTRAP_OUTPUT")"
           webhook_secret="$(jq -r '.webhookSecret // empty' "$STRIPE_BOOTSTRAP_OUTPUT")"
 
@@ -157,10 +158,14 @@ jobs:
           set_sensitive_env STRIPE_SECRET_KEY "$STRIPE_LIVE_SECRET_KEY"
           set_sensitive_env STRIPE_STANDARD_PRICE_ID "$standard_price"
           set_sensitive_env STRIPE_PREMIUM_PRICE_ID "$premium_price"
+          if [ -n "$premium_legacy_price" ]; then
+            set_sensitive_env STRIPE_PREMIUM_LEGACY_PRICE_ID "$premium_legacy_price"
+          fi
           set_sensitive_env STRIPE_PORTAL_CONFIGURATION_ID "$portal_configuration"
           set_sensitive_env SUPABASE_SECRET_KEY "$SUPABASE_SECRET_KEY"
           set_plain_env SUPABASE_URL "$SUPABASE_URL"
-          set_sensitive_env NOVELIGHT_APP_URL "$NOVELIGHT_APP_URL"
+          set_plain_env NOVELIGHT_APP_URL "$NOVELIGHT_APP_URL"
+          set_plain_env NOVELIGHT_BETA_STANDARD_FREE 'true'
 
           if [ -n "$webhook_secret" ]; then
             set_sensitive_env STRIPE_WEBHOOK_SECRET "$webhook_secret"
@@ -183,14 +188,15 @@ jobs:
             STRIPE_WEBHOOK_SECRET \
             SUPABASE_SECRET_KEY \
             SUPABASE_URL \
-            NOVELIGHT_APP_URL; do
+            NOVELIGHT_APP_URL \
+            NOVELIGHT_BETA_STANDARD_FREE; do
             grep -F "$key" /tmp/vercel-production-env-after.txt >/dev/null || {
               echo "Missing Vercel production variable: $key"
               exit 1
             }
           done
 
-      - name: Trigger production redeploy with the new variables
+      - name: Trigger production redeploy with beta pricing variables
         shell: bash
         run: |
           set -euo pipefail
@@ -202,7 +208,7 @@ jobs:
             > /tmp/vercel-production-deploy.txt
           tail -n 1 /tmp/vercel-production-deploy.txt
 
-      - name: Wait for production Stripe API routes
+      - name: Wait for production beta billing API routes
         shell: bash
         run: |
           set -euo pipefail
@@ -210,44 +216,62 @@ jobs:
             checkout_code="$(curl --silent --show-error --output /tmp/checkout-response \
               --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
               "$NOVELIGHT_APP_URL/api/create-checkout-session")"
+            activation_code="$(curl --silent --show-error --output /tmp/activation-response \
+              --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
+              "$NOVELIGHT_APP_URL/api/activate-beta-standard")"
             webhook_code="$(curl --silent --show-error --output /tmp/webhook-response \
               --write-out '%{http_code}' --connect-timeout 10 --max-time 20 \
               "$NOVELIGHT_APP_URL/api/stripe-webhook")"
 
-            if [[ "$checkout_code" =~ ^(401|405)$ ]] && [ "$webhook_code" = '405' ]; then
-              echo 'Production Stripe API routes are reachable after redeploy.'
+            if [[ "$checkout_code" =~ ^(401|405)$ ]] && [[ "$activation_code" =~ ^(401|405)$ ]] && [ "$webhook_code" = '405' ]; then
+              echo 'Production beta billing API routes are reachable after redeploy.'
               exit 0
             fi
 
-            echo "Production Stripe API routes not ready (attempt ${attempt}/24)."
+            echo "Production beta billing API routes not ready (attempt ${attempt}/24)."
             sleep 10
           done
 
-          echo 'Production Stripe API routes did not become healthy in time.'
+          echo 'Production beta billing API routes did not become healthy in time.'
           exit 1
 
-      - name: Remove superseded or verified legacy webhook endpoints after successful deployment
-        run: node scripts/stripe-production-webhook-rotation-finalize.mjs
-
-      - name: Run no-charge Production checkout and webhook control proof
+      - name: Transition existing live subscriptions to beta pricing
         shell: bash
         run: |
           set -euo pipefail
           standard_price="$(jq -er '.standardPriceId' "$STRIPE_BOOTSTRAP_OUTPUT")"
+          premium_price="$(jq -er '.premiumPriceId' "$STRIPE_BOOTSTRAP_OUTPUT")"
+          premium_legacy_price="$(jq -r '.premiumLegacyPriceId // empty' "$STRIPE_BOOTSTRAP_OUTPUT")"
+
+          STRIPE_STANDARD_PRICE_ID="$standard_price" \
+          STRIPE_PREMIUM_PRICE_ID="$premium_price" \
+          STRIPE_PREMIUM_LEGACY_PRICE_ID="$premium_legacy_price" \
+            node scripts/stripe-production-beta-pricing-transition.mjs
+
+      - name: Remove superseded or verified legacy webhook endpoints after successful deployment
+        run: node scripts/stripe-production-webhook-rotation-finalize.mjs
+
+      - name: Run no-charge Production beta billing control proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          premium_price="$(jq -er '.premiumPriceId' "$STRIPE_BOOTSTRAP_OUTPUT")"
 
           for attempt in 1 2; do
-            echo "Running Production checkout + webhook control proof (attempt ${attempt}/2)."
-            if STRIPE_STANDARD_PRICE_ID="$standard_price" node scripts/production-webhook-control.mjs; then
+            echo "Running Production beta billing control proof (attempt ${attempt}/2)."
+            if STRIPE_PREMIUM_PRICE_ID="$premium_price" \
+               NOVELIGHT_BETA_STANDARD_FREE='true' \
+               node scripts/production-beta-billing-control.mjs; then
               exit 0
             fi
 
             if [ "$attempt" -eq 1 ]; then
-              echo 'Production control proof failed; retrying only the proof once after 15 seconds.'
+              echo 'Production beta billing control proof failed; retrying only the proof once after 15 seconds.'
               sleep 15
             fi
           done
 
-          echo 'Production checkout + webhook control proof failed after two attempts.'
+          echo 'Production beta billing control proof failed after two attempts.'
           exit 1
 
       - name: Audit final Production billing consistency

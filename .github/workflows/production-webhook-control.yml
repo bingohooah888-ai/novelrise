@@ -12,15 +12,15 @@ concurrency:
 
 jobs:
   control:
-    name: Prove Production checkout and external Stripe live webhook delivery without a live charge
+    name: Prove Production beta billing and external Stripe live webhook delivery without a live charge
     runs-on: ubuntu-latest
     environment: production-approval
     env:
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
-      STRIPE_STANDARD_PRICE_ID: ${{ secrets.STRIPE_STANDARD_PRICE_ID }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
       NOVELIGHT_APP_URL: https://novelrise.vercel.app
+      NOVELIGHT_BETA_STANDARD_FREE: 'true'
       EXPECTED_BRANCH: main
 
     steps:
@@ -36,10 +36,6 @@ jobs:
             echo 'STRIPE_LIVE_SECRET_KEY is missing or is not live in the Production environment.'
             exit 1
           }
-          [[ "$STRIPE_STANDARD_PRICE_ID" == price_* ]] || {
-            echo 'STRIPE_STANDARD_PRICE_ID is missing or is not a Stripe price ID in the Production environment.'
-            exit 1
-          }
           test -n "$SUPABASE_SECRET_KEY" || {
             echo 'SUPABASE_SECRET_KEY is not configured in the Production environment.'
             exit 1
@@ -50,6 +46,10 @@ jobs:
           }
           test "$NOVELIGHT_APP_URL" = 'https://novelrise.vercel.app' || {
             echo 'NOVELIGHT_APP_URL is not the canonical Production application URL.'
+            exit 1
+          }
+          test "$NOVELIGHT_BETA_STANDARD_FREE" = 'true' || {
+            echo 'Beta Standard free mode is not enabled for this control.'
             exit 1
           }
 
@@ -67,8 +67,8 @@ jobs:
       - name: Install locked application dependencies
         run: npm ci
 
-      - name: Run no-charge Production checkout and webhook control proof
-        run: node scripts/production-webhook-control.mjs
+      - name: Run no-charge Production beta billing and webhook control proof
+        run: node scripts/production-beta-billing-control.mjs
 
       - name: Audit final Production billing consistency
         run: node scripts/production-billing-audit.mjs

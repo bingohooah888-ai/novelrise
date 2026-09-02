@@ -3,15 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { getAppBaseUrl } from './app-base-url.js';
 
 const PRICE_ENV_BY_PLAN = Object.freeze({
-  standard: 'STRIPE_STANDARD_PRICE_ID',
   premium: 'STRIPE_PREMIUM_PRICE_ID'
 });
 
 const CHECKOUT_LEGAL_NOTICE_BY_PLAN = Object.freeze({
-  standard:
-    'Standardは月額980円の継続契約です。申込完了時に初回決済し、解約するまで毎月自動更新され、更新回数に上限はありません。1年間利用した場合の支払総額目安は11,760円です（1年契約を意味しません）。決済完了・契約状態確認後に有料機能を利用できます。解約はStripe顧客ポータルから行えます。法令上必要な場合、重複請求、NOVELIGHT側の重大な決済障害等を除き、利用者都合の途中返金・日割り返金は原則行いません。18歳未満の方は法定代理人の同意を得て申し込んでください。',
   premium:
-    'Premiumは月額1,980円の継続契約です。申込完了時に初回決済し、解約するまで毎月自動更新され、更新回数に上限はありません。1年間利用した場合の支払総額目安は23,760円です（1年契約を意味しません）。決済完了・契約状態確認後に有料機能を利用できます。解約はStripe顧客ポータルから行えます。法令上必要な場合、重複請求、NOVELIGHT側の重大な決済障害等を除き、利用者都合の途中返金・日割り返金は原則行いません。18歳未満の方は法定代理人の同意を得て申し込んでください。'
+    'Premiumはβ版特別価格の月額480円の継続契約です。申込完了時に初回決済し、解約するまで毎月自動更新されます。正式価格は月額1,980円です。β終了後の価格移行条件は事前に案内します。決済完了・契約状態確認後にPremium機能を利用できます。解約はStripe顧客ポータルから行えます。法令上必要な場合、重複請求、NOVELIGHT側の重大な決済障害等を除き、利用者都合の途中返金・日割り返金は原則行いません。18歳未満の方は法定代理人の同意を得て申し込んでください。'
 });
 
 const PORTAL_STATUSES = new Set([
@@ -62,6 +59,12 @@ function isMissingStripeCustomer(error) {
   return isMissingStripeResource(error) && error?.param === 'customer';
 }
 
+function isBetaFreeStandard(profile) {
+  return (
+    profile?.plan === 'standard' && profile?.payment_status === 'beta_free'
+  );
+}
+
 function firstRpcRow(data) {
   return Array.isArray(data) ? (data[0] ?? null) : (data ?? null);
 }
@@ -90,7 +93,7 @@ function checkoutExpiresAtEpoch(attempt) {
 async function getProfile(supabase, userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('plan, stripe_customer_id')
+    .select('plan, payment_status, stripe_customer_id, subscription_status')
     .eq('id', userId)
     .limit(1);
 
@@ -101,11 +104,12 @@ async function getProfile(supabase, userId) {
   return data?.[0] ?? null;
 }
 
-async function clearStaleFreeCustomer(supabase, { userId, customerId }) {
-  const { data, error } = await supabase
+async function clearStaleCustomer(supabase, { userId, customerId, profile }) {
+  const betaFreeStandard = isBetaFreeStandard(profile);
+  let query = supabase
     .from('profiles')
     .update({
-      payment_status: 'canceled',
+      payment_status: betaFreeStandard ? 'beta_free' : 'canceled',
       stripe_customer_id: null,
       stripe_subscription_id: null,
       stripe_subscription_created_at: null,
@@ -114,31 +118,36 @@ async function clearStaleFreeCustomer(supabase, { userId, customerId }) {
       subscription_current_period_end: null
     })
     .eq('id', userId)
-    .eq('plan', 'free')
-    .eq('stripe_customer_id', customerId)
-    .select('id')
-    .limit(1);
+    .eq('plan', profile.plan)
+    .eq('stripe_customer_id', customerId);
+
+  if (betaFreeStandard) {
+    query = query.eq('payment_status', 'beta_free');
+  }
+
+  const { data, error } = await query.select('id').limit(1);
 
   if (error) {
     throw new Error(`Stale Stripe customer repair failed: ${error.message}`);
   }
 
   if (!data?.length) {
-    throw new Error('Stale Stripe customer repair matched no free profile');
+    throw new Error('Stale Stripe customer repair matched no eligible profile');
   }
 }
 
 async function resolveCustomerUsage(stripe, supabase, profile, userId) {
   const customer = profile.stripe_customer_id || undefined;
+  const betaFreeStandard = isBetaFreeStandard(profile);
 
   if (!customer) {
     return {
       customer: undefined,
-      usePortal: profile.plan !== 'free'
+      usePortal: profile.plan !== 'free' && !betaFreeStandard
     };
   }
 
-  if (profile.plan !== 'free') {
+  if (profile.plan !== 'free' && !betaFreeStandard) {
     return {
       customer,
       usePortal: true
@@ -163,12 +172,15 @@ async function resolveCustomerUsage(stripe, supabase, profile, userId) {
       throw error;
     }
 
-    await clearStaleFreeCustomer(supabase, {
+    await clearStaleCustomer(supabase, {
       userId,
-      customerId: customer
+      customerId: customer,
+      profile
     });
 
-    console.warn('Cleared stale Stripe customer reference for a free profile');
+    console.warn(
+      'Cleared stale Stripe customer reference for a non-paid profile'
+    );
 
     return {
       customer: undefined,

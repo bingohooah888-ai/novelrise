@@ -41,7 +41,14 @@ function paidDependencies(portalError) {
         },
         async limit() {
           return {
-            data: [{ plan: 'standard', stripe_customer_id: 'cus_missing' }],
+            data: [
+              {
+                plan: 'premium',
+                payment_status: 'active',
+                stripe_customer_id: 'cus_missing',
+                subscription_status: 'active'
+              }
+            ],
             error: null
           };
         }
@@ -61,16 +68,14 @@ function paidDependencies(portalError) {
       }
     },
     env: {
-      STRIPE_STANDARD_PRICE_ID: 'price_standard',
       STRIPE_PREMIUM_PRICE_ID: 'price_premium',
       NOVELIGHT_APP_URL: 'https://novelight.test'
     }
   };
 }
 
-test('paid profile pointing at a missing Stripe customer returns an actionable 409', async (t) => {
+test('paid Premium profile pointing at a missing Stripe customer returns an actionable 409', async (t) => {
   t.mock.method(console, 'error', () => {});
-
   const stripeError = Object.assign(new Error('No such customer'), {
     name: 'Error',
     type: 'StripeInvalidRequestError',
@@ -79,16 +84,14 @@ test('paid profile pointing at a missing Stripe customer returns an actionable 4
   });
   const handler = createCheckoutHandler(paidDependencies(stripeError));
   const { res, state } = responseState();
-
   await handler(
     {
       method: 'POST',
       headers: { authorization: 'Bearer token-123' },
-      body: { plan: 'standard' }
+      body: { plan: 'premium' }
     },
     res
   );
-
   assert.equal(state.statusCode, 409);
   assert.deepEqual(state.body, {
     error: 'Billing account needs repair',
@@ -98,12 +101,10 @@ test('paid profile pointing at a missing Stripe customer returns an actionable 4
 
 test('unrelated portal failures remain generic server errors', async (t) => {
   t.mock.method(console, 'error', () => {});
-
   const handler = createCheckoutHandler(
     paidDependencies(new Error('Portal unavailable'))
   );
   const { res, state } = responseState();
-
   await handler(
     {
       method: 'POST',
@@ -112,9 +113,6 @@ test('unrelated portal failures remain generic server errors', async (t) => {
     },
     res
   );
-
   assert.equal(state.statusCode, 500);
-  assert.deepEqual(state.body, {
-    error: 'Checkout session creation failed'
-  });
+  assert.deepEqual(state.body, { error: 'Checkout session creation failed' });
 });

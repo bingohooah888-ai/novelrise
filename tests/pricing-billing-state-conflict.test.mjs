@@ -20,14 +20,13 @@ test('pricing puts checkout status immediately after plans and before legal bill
   const html = await pricingHtml();
   const statusIndex = html.indexOf('id="status"');
   const billingIndex = html.indexOf('<section class="billing">');
-
   assert.notEqual(statusIndex, -1);
   assert.notEqual(billingIndex, -1);
   assert.ok(statusIndex < billingIndex);
   assert.match(html, /aria-live="polite"/);
 });
 
-test('billing state conflict produces a visible no-charge recovery message and reenables controls', async () => {
+test('beta Standard billing conflict produces a visible recovery message and reenables controls', async () => {
   const script = await pricingScript();
   const elements = {
     status: {
@@ -48,7 +47,6 @@ test('billing state conflict produces a visible no-charge recovery message and r
     ]
   ]);
   const location = { href: 'pricing.html', hostname: 'novelrise.vercel.app' };
-
   const context = vm.createContext({
     console: { error() {} },
     document: {
@@ -70,7 +68,7 @@ test('billing state conflict produces a visible no-charge recovery message and r
       status: 409,
       async json() {
         return {
-          error: 'Billing account needs repair',
+          error: 'Billing account needs synchronization',
           code: 'billing_state_conflict'
         };
       }
@@ -82,9 +80,8 @@ test('billing state conflict produces a visible no-charge recovery message and r
 
   assert.equal(elements.standard.disabled, false);
   assert.equal(elements.premium.disabled, false);
-  assert.equal(elements.standard.textContent, 'Standardを申し込む / 管理');
-  assert.match(elements.status.textContent, /契約情報の同期に問題/);
-  assert.match(elements.status.textContent, /決済は発生していません/);
+  assert.equal(elements.standard.textContent, 'Standardを無料で利用');
+  assert.match(elements.status.textContent, /既存の有料契約状態/);
   assert.equal(elements.status.dataset.visible, 'true');
   assert.equal(elements.status.dataset.kind, 'error');
   assert.equal(elements.status.scrollIntoViewCalls, 1);

@@ -9,7 +9,6 @@ const root = new URL('../', import.meta.url);
 async function pricingHtml() {
   return readFile(new URL('pricing.html', root), 'utf8');
 }
-
 async function pricingScript() {
   const html = await pricingHtml();
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)];
@@ -17,7 +16,15 @@ async function pricingScript() {
   return scripts.at(-1)[1];
 }
 
-test('pricing wires checkout without blocking on optional analytics dependencies', async () => {
+function elements() {
+  return {
+    status: { textContent: '', dataset: {}, scrollIntoView() {} },
+    standard: { disabled: false, onclick: null, textContent: '' },
+    premium: { disabled: false, onclick: null, textContent: '' }
+  };
+}
+
+test('pricing wires Standard activation and Premium checkout without blocking on optional analytics dependencies', async () => {
   const html = await pricingHtml();
   const inlineIndex = html.indexOf("const AUTH_STORAGE_KEY='sb-");
   const sharedClientIndex = html.indexOf(
@@ -26,21 +33,18 @@ test('pricing wires checkout without blocking on optional analytics dependencies
   const supabaseIndex = html.indexOf(
     '<script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"'
   );
-
   assert.notEqual(inlineIndex, -1);
   assert.notEqual(sharedClientIndex, -1);
   assert.notEqual(supabaseIndex, -1);
   assert.ok(sharedClientIndex < inlineIndex);
   assert.ok(inlineIndex < supabaseIndex);
+  assert.match(html, /\/api\/activate-beta-standard/u);
+  assert.match(html, /\/api\/create-checkout-session/u);
 });
 
-test('pricing uses the stored access token without waiting on a stuck Supabase auth lock', async () => {
+test('Premium pricing uses the stored access token without waiting on a stuck Supabase auth lock', async () => {
   const script = await pricingScript();
-  const elements = {
-    status: { textContent: '' },
-    standard: { disabled: false, onclick: null, textContent: '' },
-    premium: { disabled: false, onclick: null, textContent: '' }
-  };
+  const els = elements();
   const storage = new Map([
     [
       'sb-fiepaguycecrredwrcwx-auth-token',
@@ -50,12 +54,11 @@ test('pricing uses the stored access token without waiting on a stuck Supabase a
   const requests = [];
   const location = { href: 'pricing.html' };
   let getSessionCalls = 0;
-
   const context = vm.createContext({
     console: { error() {} },
     document: {
       getElementById(id) {
-        return elements[id];
+        return els[id];
       }
     },
     localStorage: {
@@ -86,19 +89,16 @@ test('pricing uses the stored access token without waiting on a stuck Supabase a
         ok: true,
         status: 200,
         async json() {
-          return { url: 'https://checkout.stripe.com/c/pay/cs_live_novelight' };
+          return {
+            url: 'https://checkout.stripe.com/c/pay/cs_live_novelight',
+            mode: 'checkout'
+          };
         }
       };
     }
   });
-
   vm.runInContext(script, context);
-
-  assert.equal(typeof elements.standard.onclick, 'function');
-  assert.equal(typeof elements.premium.onclick, 'function');
-
-  await elements.standard.onclick();
-
+  await els.premium.onclick();
   assert.equal(getSessionCalls, 0);
   assert.equal(requests.length, 1);
   assert.equal(requests[0].url, '/api/create-checkout-session');
@@ -112,13 +112,66 @@ test('pricing uses the stored access token without waiting on a stuck Supabase a
   );
 });
 
-test('pricing recovers when checkout response body never finishes', async () => {
+test('Standard activation uses the stored token and never opens Stripe checkout', async () => {
   const script = await pricingScript();
-  const elements = {
-    status: { textContent: '' },
-    standard: { disabled: false, onclick: null, textContent: '' },
-    premium: { disabled: false, onclick: null, textContent: '' }
-  };
+  const els = elements();
+  const storage = new Map([
+    [
+      'sb-fiepaguycecrredwrcwx-auth-token',
+      JSON.stringify({ access_token: 'stored-access-token' })
+    ]
+  ]);
+  const requests = [];
+  const location = { href: 'pricing.html' };
+  const context = vm.createContext({
+    console: { error() {} },
+    document: {
+      getElementById(id) {
+        return els[id];
+      }
+    },
+    localStorage: {
+      getItem(key) {
+        return storage.get(key) ?? null;
+      },
+      removeItem(key) {
+        storage.delete(key);
+      }
+    },
+    location,
+    fetch: async (url, options) => {
+      requests.push({ url, options });
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            plan: 'standard',
+            paymentStatus: 'beta_free',
+            mode: 'beta_free'
+          };
+        }
+      };
+    }
+  });
+  vm.runInContext(script, context);
+  await els.standard.onclick();
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, '/api/activate-beta-standard');
+  assert.equal(
+    requests[0].options.headers.Authorization,
+    'Bearer stored-access-token'
+  );
+  assert.equal(location.href, 'pricing.html');
+  assert.match(
+    els.status.textContent,
+    /クレジットカード登録も請求もありません/u
+  );
+});
+
+test('Premium pricing recovers when checkout response body never finishes', async () => {
+  const script = await pricingScript();
+  const els = elements();
   const storage = new Map([
     [
       'sb-fiepaguycecrredwrcwx-auth-token',
@@ -126,12 +179,11 @@ test('pricing recovers when checkout response body never finishes', async () => 
     ]
   ]);
   const location = { href: 'pricing.html' };
-
   const context = vm.createContext({
     console: { error() {} },
     document: {
       getElementById(id) {
-        return elements[id];
+        return els[id];
       }
     },
     localStorage: {
@@ -155,15 +207,13 @@ test('pricing recovers when checkout response body never finishes', async () => 
       }
     })
   });
-
   vm.runInContext(script, context);
-  await elements.standard.onclick();
-
-  assert.equal(elements.standard.disabled, false);
-  assert.equal(elements.premium.disabled, false);
-  assert.equal(elements.standard.textContent, 'Standardを申し込む / 管理');
+  await els.premium.onclick();
+  assert.equal(els.standard.disabled, false);
+  assert.equal(els.premium.disabled, false);
+  assert.equal(els.premium.textContent, 'Premiumを申し込む / 管理');
   assert.equal(
-    elements.status.textContent,
+    els.status.textContent,
     '決済・契約管理画面の準備がタイムアウトしました。もう一度お試しください。'
   );
   assert.equal(location.href, 'pricing.html');
@@ -171,18 +221,13 @@ test('pricing recovers when checkout response body never finishes', async () => 
 
 test('pricing redirects anonymous users even when Supabase CDN is unavailable', async () => {
   const script = await pricingScript();
-  const elements = {
-    status: { textContent: '' },
-    standard: { disabled: false, onclick: null, textContent: '' },
-    premium: { disabled: false, onclick: null, textContent: '' }
-  };
+  const els = elements();
   const location = { href: 'pricing.html' };
-
   const context = vm.createContext({
     console: { error() {} },
     document: {
       getElementById(id) {
-        return elements[id];
+        return els[id];
       }
     },
     localStorage: {
@@ -196,9 +241,7 @@ test('pricing redirects anonymous users even when Supabase CDN is unavailable', 
       throw new Error('fetch should not run for anonymous users');
     }
   });
-
   vm.runInContext(script, context);
-  await elements.standard.onclick();
-
+  await els.standard.onclick();
   assert.equal(location.href, 'login.html?redirect=pricing.html');
 });

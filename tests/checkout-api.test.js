@@ -24,7 +24,12 @@ function createResponse() {
 function createDependencies({
   user = { id: 'user-123', email: 'author@example.com' },
   authError = null,
-  profile = { plan: 'free', stripe_customer_id: null },
+  profile = {
+    plan: 'free',
+    payment_status: 'active',
+    stripe_customer_id: null,
+    subscription_status: null
+  },
   profileError = null,
   existingSubscriptions = [],
   env = {
@@ -181,7 +186,7 @@ test('rejects missing or malformed bearer tokens', async () => {
       {
         method: 'POST',
         headers: { authorization },
-        body: { plan: 'standard' }
+        body: { plan: 'premium' }
       },
       res
     );
@@ -203,7 +208,7 @@ test('rejects users that Supabase cannot authenticate', async () => {
     {
       method: 'POST',
       headers: { authorization: 'Bearer token-123' },
-      body: { plan: 'standard' }
+      body: { plan: 'premium' }
     },
     res
   );
@@ -211,28 +216,35 @@ test('rejects users that Supabase cannot authenticate', async () => {
   assert.equal(state.statusCode, 401);
 });
 
-test('rejects plans outside Standard and Premium', async () => {
-  const dependencies = createDependencies();
-  const handler = createCheckoutHandler(dependencies);
-  const { res, state } = createResponse();
+test('Stripe checkout accepts Premium only during the beta', async () => {
+  for (const plan of ['free', 'standard']) {
+    const dependencies = createDependencies();
+    const handler = createCheckoutHandler(dependencies);
+    const { res, state } = createResponse();
 
-  await handler(
-    {
-      method: 'POST',
-      headers: { authorization: 'Bearer token-123' },
-      body: { plan: 'free' }
-    },
-    res
-  );
+    await handler(
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer token-123' },
+        body: { plan }
+      },
+      res
+    );
 
-  assert.equal(state.statusCode, 400);
-  assert.deepEqual(state.body, { error: 'Invalid plan' });
-  assert.equal(dependencies.calls.checkoutSessions.length, 0);
+    assert.equal(state.statusCode, 400);
+    assert.deepEqual(state.body, { error: 'Invalid plan' });
+    assert.equal(dependencies.calls.checkoutSessions.length, 0);
+  }
 });
 
 test('paid users are redirected to the billing portal', async () => {
   const dependencies = createDependencies({
-    profile: { plan: 'standard', stripe_customer_id: 'cus_existing' }
+    profile: {
+      plan: 'standard',
+      payment_status: 'active',
+      stripe_customer_id: 'cus_existing',
+      subscription_status: 'active'
+    }
   });
   const handler = createCheckoutHandler(dependencies);
   const { res, state } = createResponse();
@@ -261,7 +273,36 @@ test('paid users are redirected to the billing portal', async () => {
   assert.equal(dependencies.calls.checkoutSessions.length, 0);
 });
 
-test('Stripe-side pending or active subscription blocks a duplicate checkout during webhook lag', async () => {
+test('beta-free Standard can upgrade to Premium without a Stripe customer', async () => {
+  const dependencies = createDependencies({
+    profile: {
+      plan: 'standard',
+      payment_status: 'beta_free',
+      stripe_customer_id: null,
+      subscription_status: null
+    }
+  });
+  const handler = createCheckoutHandler(dependencies);
+  const { res, state } = createResponse();
+
+  await handler(
+    {
+      method: 'POST',
+      headers: { authorization: 'Bearer token-123' },
+      body: { plan: 'premium' }
+    },
+    res
+  );
+
+  assert.equal(state.statusCode, 200);
+  assert.equal(state.body.mode, 'checkout');
+  assert.equal(
+    dependencies.calls.checkoutSessions[0].line_items[0].price,
+    'price_premium'
+  );
+});
+
+test('Stripe-side pending or active subscription blocks a duplicate Premium checkout during webhook lag', async () => {
   for (const status of [
     'active',
     'trialing',
@@ -271,7 +312,12 @@ test('Stripe-side pending or active subscription blocks a duplicate checkout dur
     'paused'
   ]) {
     const dependencies = createDependencies({
-      profile: { plan: 'free', stripe_customer_id: 'cus_existing' },
+      profile: {
+        plan: 'free',
+        payment_status: 'active',
+        stripe_customer_id: 'cus_existing',
+        subscription_status: null
+      },
       existingSubscriptions: [{ id: `sub_${status}`, status }]
     });
     const handler = createCheckoutHandler(dependencies);
@@ -281,7 +327,7 @@ test('Stripe-side pending or active subscription blocks a duplicate checkout dur
       {
         method: 'POST',
         headers: { authorization: 'Bearer token-123' },
-        body: { plan: 'standard' }
+        body: { plan: 'premium' }
       },
       res
     );
@@ -292,7 +338,7 @@ test('Stripe-side pending or active subscription blocks a duplicate checkout dur
   }
 });
 
-test('creates a subscription checkout with trusted metadata and attempt idempotency', async () => {
+test('creates a Premium subscription checkout with trusted metadata and attempt idempotency', async () => {
   const dependencies = createDependencies();
   const handler = createCheckoutHandler(dependencies);
   const { res, state } = createResponse();
@@ -301,7 +347,7 @@ test('creates a subscription checkout with trusted metadata and attempt idempote
     {
       method: 'POST',
       headers: { authorization: 'Bearer token-123' },
-      body: { plan: 'standard' }
+      body: { plan: 'premium' }
     },
     res
   );
@@ -319,9 +365,9 @@ test('creates a subscription checkout with trusted metadata and attempt idempote
   assert.equal(payload.client_reference_id, 'user-123');
   assert.deepEqual(payload.subscription_data.metadata, {
     userId: 'user-123',
-    plan: 'standard'
+    plan: 'premium'
   });
-  assert.equal(payload.line_items[0].price, 'price_standard');
+  assert.equal(payload.line_items[0].price, 'price_premium');
   assert.equal(
     payload.success_url,
     'https://novelight.test/mypage.html?checkout=success'
@@ -333,40 +379,40 @@ test('creates a subscription checkout with trusted metadata and attempt idempote
   );
 });
 
-test('checkout confirmation includes plan-specific recurring-contract disclosures', async () => {
-  for (const [plan, annualTotal] of [
-    ['standard', '11,760円'],
-    ['premium', '23,760円']
-  ]) {
-    const dependencies = createDependencies();
-    const handler = createCheckoutHandler(dependencies);
-    const { res, state } = createResponse();
+test('Premium checkout confirmation discloses the beta price and normal price', async () => {
+  const dependencies = createDependencies();
+  const handler = createCheckoutHandler(dependencies);
+  const { res, state } = createResponse();
 
-    await handler(
-      {
-        method: 'POST',
-        headers: { authorization: 'Bearer token-123' },
-        body: { plan }
-      },
-      res
-    );
+  await handler(
+    {
+      method: 'POST',
+      headers: { authorization: 'Bearer token-123' },
+      body: { plan: 'premium' }
+    },
+    res
+  );
 
-    assert.equal(state.statusCode, 200);
-    const message =
-      dependencies.calls.checkoutSessions[0].custom_text.submit.message;
-    assert.match(message, new RegExp(annualTotal));
-    assert.match(message, /毎月自動更新/);
-    assert.match(message, /更新回数に上限はありません/);
-    assert.match(message, /1年契約を意味しません/);
-    assert.match(message, /Stripe顧客ポータル/);
-    assert.match(message, /途中返金・日割り返金は原則行いません/);
-    assert.match(message, /18歳未満.*法定代理人の同意/);
-  }
+  assert.equal(state.statusCode, 200);
+  const message =
+    dependencies.calls.checkoutSessions[0].custom_text.submit.message;
+  assert.match(message, /β版特別価格/);
+  assert.match(message, /月額480円/);
+  assert.match(message, /月額1,980円/);
+  assert.match(message, /毎月自動更新/);
+  assert.match(message, /Stripe顧客ポータル/);
+  assert.match(message, /途中返金・日割り返金は原則行いません/);
+  assert.match(message, /18歳未満.*法定代理人の同意/);
 });
 
 test('reuses an existing customer when only ended subscriptions remain', async () => {
   const dependencies = createDependencies({
-    profile: { plan: 'free', stripe_customer_id: 'cus_existing' },
+    profile: {
+      plan: 'free',
+      payment_status: 'canceled',
+      stripe_customer_id: 'cus_existing',
+      subscription_status: 'canceled'
+    },
     existingSubscriptions: [
       { id: 'sub_old', status: 'canceled' },
       { id: 'sub_expired', status: 'incomplete_expired' }
@@ -403,7 +449,12 @@ test('returns a generic error when profile lookup or Stripe fails', async (t) =>
       }
     }),
     createDependencies({
-      profile: { plan: 'premium', stripe_customer_id: 'cus_existing' },
+      profile: {
+        plan: 'premium',
+        payment_status: 'active',
+        stripe_customer_id: 'cus_existing',
+        subscription_status: 'active'
+      },
       portal: async () => {
         throw new Error('Portal unavailable');
       }
@@ -416,7 +467,7 @@ test('returns a generic error when profile lookup or Stripe fails', async (t) =>
       {
         method: 'POST',
         headers: { authorization: 'Bearer token-123' },
-        body: { plan: 'standard' }
+        body: { plan: 'premium' }
       },
       res
     );
