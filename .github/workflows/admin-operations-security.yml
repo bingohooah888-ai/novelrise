@@ -1,0 +1,60 @@
+name: ADMIN Operations Security
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20260903010000_admin_operations_hub.sql'
+      - 'supabase/checks/20260903010000_admin_operations_hub_*.sql'
+      - 'supabase/rollback/20260903010000_admin_operations_hub_rollback.sql'
+      - 'tests/rls/admin-operations*.sql'
+      - '.github/workflows/admin-operations-security.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20260903010000_admin_operations_hub.sql'
+      - 'supabase/checks/20260903010000_admin_operations_hub_*.sql'
+      - 'supabase/rollback/20260903010000_admin_operations_hub_rollback.sql'
+      - 'tests/rls/admin-operations*.sql'
+      - '.github/workflows/admin-operations-security.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: novelight_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d novelight_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify ADMIN operations migration, privilege boundaries, audit, and rollback
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/fixture.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260823150500_contact_inquiries.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260903010000_admin_operations_hub_precheck.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260903010000_admin_operations_hub.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/admin-operations.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/checks/20260903010000_admin_operations_hub_postcheck.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f supabase/rollback/20260903010000_admin_operations_hub_rollback.sql
+          psql -h 127.0.0.1 -U postgres -d novelight_test -v ON_ERROR_STOP=1 -f tests/rls/admin-operations-rollback.sql
