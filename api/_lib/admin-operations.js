@@ -63,7 +63,9 @@ function normalizeAnnouncementInput(body, { partial = false } = {}) {
 
 export async function loadOperationsSummary(supabase) {
   async function count(table, configure) {
-    let query = supabase.from(table).select('*', { count: 'exact', head: true });
+    let query = supabase
+      .from(table)
+      .select('*', { count: 'exact', head: true });
     query = configure(query);
     const { count: value, error } = await query;
     if (error) throw error;
@@ -115,15 +117,18 @@ export async function createAdminAnnouncement(supabase, adminUserId, input) {
     throw error;
   }
 
-  const { data, error } = await supabase.rpc('novelight_admin_create_announcement', {
-    p_admin_user_id: adminUserId,
-    p_title: normalized.title,
-    p_body: normalized.body,
-    p_category: normalized.category,
-    p_status: normalized.status ?? 'draft'
-  });
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_create_announcement',
+    {
+      p_admin_user_id: adminUserId,
+      p_title: normalized.title,
+      p_body: normalized.body,
+      p_category: normalized.category,
+      p_status: normalized.status ?? 'draft'
+    }
+  );
   if (error) throw error;
-  return Array.isArray(data) ? (data[0] ?? null) : data;
+  return Array.isArray(data) ? data[0] ?? null : data;
 }
 
 export async function updateAdminAnnouncement(
@@ -139,16 +144,19 @@ export async function updateAdminAnnouncement(
     throw error;
   }
 
-  const { data, error } = await supabase.rpc('novelight_admin_update_announcement', {
-    p_admin_user_id: adminUserId,
-    p_id: id,
-    p_title: normalized.title,
-    p_body: normalized.body,
-    p_category: normalized.category,
-    p_status: normalized.status ?? 'draft'
-  });
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_update_announcement',
+    {
+      p_admin_user_id: adminUserId,
+      p_id: id,
+      p_title: normalized.title,
+      p_body: normalized.body,
+      p_category: normalized.category,
+      p_status: normalized.status ?? 'draft'
+    }
+  );
   if (error) throw error;
-  return Array.isArray(data) ? (data[0] ?? null) : data;
+  return Array.isArray(data) ? data[0] ?? null : data;
 }
 
 export async function loadInquirySummaries(supabase) {
@@ -172,9 +180,7 @@ export async function loadInquiryDetail(supabase, id) {
 }
 
 export async function updateInquiryStatus(supabase, adminUserId, id, status) {
-  const normalized = String(status ?? '')
-    .trim()
-    .toLowerCase();
+  const normalized = String(status ?? '').trim().toLowerCase();
   if (!INQUIRY_STATUSES.has(normalized)) {
     const error = new Error('Invalid inquiry status');
     error.code = 'INVALID_INPUT';
@@ -190,7 +196,7 @@ export async function updateInquiryStatus(supabase, adminUserId, id, status) {
     }
   );
   if (error) throw error;
-  return Array.isArray(data) ? (data[0] ?? null) : data;
+  return Array.isArray(data) ? data[0] ?? null : data;
 }
 
 function handleAdminError(res, error, fallback) {
@@ -319,11 +325,7 @@ export function createAdminInquiriesHandler({
       );
       return res.status(200).json({ inquiry });
     } catch (error) {
-      return handleAdminError(
-        res,
-        error,
-        'NOVELIGHT inquiry operation failed'
-      );
+      return handleAdminError(res, error, 'NOVELIGHT inquiry operation failed');
     }
   };
 }
