@@ -60,7 +60,9 @@ function isMissingStripeCustomer(error) {
 }
 
 function isBetaFreeStandard(profile) {
-  return profile?.plan === 'standard' && profile?.payment_status === 'beta_free';
+  return (
+    profile?.plan === 'standard' && profile?.payment_status === 'beta_free'
+  );
 }
 
 function firstRpcRow(data) {
@@ -176,7 +178,9 @@ async function resolveCustomerUsage(stripe, supabase, profile, userId) {
       profile
     });
 
-    console.warn('Cleared stale Stripe customer reference for a non-paid profile');
+    console.warn(
+      'Cleared stale Stripe customer reference for a non-paid profile'
+    );
 
     return {
       customer: undefined,

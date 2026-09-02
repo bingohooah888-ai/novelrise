@@ -8,7 +8,11 @@ const root = new URL('../', import.meta.url);
 const read = (path) => readFile(join(root.pathname, path), 'utf8');
 
 test('password recovery is real and login redirect is allowlisted', async () => {
-  const [login, forgot, reset] = await Promise.all([read('login.html'), read('forgot-password.html'), read('reset-password.html')]);
+  const [login, forgot, reset] = await Promise.all([
+    read('login.html'),
+    read('forgot-password.html'),
+    read('reset-password.html')
+  ]);
   assert.match(login, /href="forgot-password\.html"/);
   assert.doesNotMatch(login, /パスワードを忘れた方<\/a>[^]*href="#"/);
   assert.match(login, /function safeRedirectTarget/);
@@ -23,7 +27,9 @@ test('password recovery is real and login redirect is allowlisted', async () => 
 
 test('publish path requires AI declaration and content-policy zoning', async () => {
   const files = await Promise.all([
-    read('post.html'), read('novel-edit.html'), read('episode-post.html'),
+    read('post.html'),
+    read('novel-edit.html'),
+    read('episode-post.html'),
     read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql'),
     read('supabase/migrations/20260830163000_atomic_episode_publish.sql')
   ]);
@@ -39,22 +45,32 @@ test('publish path requires AI declaration and content-policy zoning', async () 
   assert.match(episodePost, /novelight_publish_episode_atomic/);
   assert.match(atomicMigration, /set status = 'published'/);
   assert.match(migration, /enforce_novel_beta_classification/);
-  assert.match(migration, /ai_usage in \('unspecified', 'human', 'ai_assisted', 'ai_generated'\)/);
+  assert.match(
+    migration,
+    /ai_usage in \('unspecified', 'human', 'ai_assisted', 'ai_generated'\)/
+  );
   assert.match(migration, /content_rating in \('general', 'mature'\)/);
 });
 
 test('moderation route is structured and private', async () => {
   const [novel, episode, migration, opsRunbook] = await Promise.all([
-    read('novel.html'), read('episode.html'),
+    read('novel.html'),
+    read('episode.html'),
     read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql'),
     read('docs/BETA-OPERATIONS-RUNBOOK.md')
   ]);
   assert.match(novel, /submit_content_report/);
   assert.match(novel, /p_novel_id:String\(novel\.id\),p_episode_id:null/);
   assert.match(episode, /submit_content_report/);
-  assert.match(episode, /p_novel_id:String\(novel\.id\),p_episode_id:String\(episode\.id\)/);
+  assert.match(
+    episode,
+    /p_novel_id:String\(novel\.id\),p_episode_id:String\(episode\.id\)/
+  );
   assert.match(migration, /create table public\.content_reports/);
-  assert.match(migration, /revoke all on table public\.content_reports from public, anon, authenticated/);
+  assert.match(
+    migration,
+    /revoke all on table public\.content_reports from public, anon, authenticated/
+  );
   assert.match(migration, /copyright/);
   assert.match(migration, /ai_misclassification/);
   assert.match(opsRunbook, /content_reports/);
@@ -88,7 +104,9 @@ test('beta-start attribution, revisit, Founding Authors, and subscription ledger
 
 test('discovery v2 gives new works initial priority and measures plan-only exposure', async () => {
   const [migration, home, analytics] = await Promise.all([
-    read('supabase/migrations/20260823171000_initial_and_paid_exposure.sql'), read('index.html'), read('analytics.html')
+    read('supabase/migrations/20260823171000_initial_and_paid_exposure.sql'),
+    read('index.html'),
+    read('analytics.html')
   ]);
   assert.match(migration, /initial_exposure_target/);
   assert.match(migration, /needs_initial_exposure desc/);
@@ -114,9 +132,16 @@ test('LIGHT ANALYTICS uses the required funnel denominators', async () => {
 });
 
 test('all search sorts preserve impression data', async () => {
-  const [search, migration] = await Promise.all([read('search.html'), read('supabase/migrations/20260823171500_neutral_search_impressions.sql')]);
-  for (const sort of ['recommended', 'new', 'pv', 'favorites']) assert.match(search, new RegExp(`<option value="${sort}">`));
-  assert.match(search, /s==='recommended'\?await recommended\(k,g,current\):await neutral\(k,g,s,current(?:,false)?\)/);
+  const [search, migration] = await Promise.all([
+    read('search.html'),
+    read('supabase/migrations/20260823171500_neutral_search_impressions.sql')
+  ]);
+  for (const sort of ['recommended', 'new', 'pv', 'favorites'])
+    assert.match(search, new RegExp(`<option value="${sort}">`));
+  assert.match(
+    search,
+    /s==='recommended'\?await recommended\(k,g,current\):await neutral\(k,g,s,current(?:,false)?\)/
+  );
   assert.match(search, /record_trusted_allocation_receipts/);
   assert.match(search, /record_neutral_search_impressions/);
   assert.match(migration, /search_results/);
@@ -124,12 +149,18 @@ test('all search sorts preserve impression data', async () => {
 
 test('authoritative impressions require private single-use allocation receipts', async () => {
   const [migration, home, search, gate] = await Promise.all([
-    read('supabase/migrations/20260831210000_trusted_allocation_receipts.sql'), read('index.html'), read('search.html'), read('scripts/run-beta-p0-db-tests.sh')
+    read('supabase/migrations/20260831210000_trusted_allocation_receipts.sql'),
+    read('index.html'),
+    read('search.html'),
+    read('scripts/run-beta-p0-db-tests.sh')
   ]);
   assert.match(migration, /create table public\.novel_allocation_receipts/);
   assert.match(migration, /for update/);
   assert.match(migration, /expires_at > now\(\)/);
-  assert.match(migration, /revoke all on function public\.record_novel_impressions_v2[^;]+from anon, authenticated/);
+  assert.match(
+    migration,
+    /revoke all on function public\.record_novel_impressions_v2[^;]+from anon, authenticated/
+  );
   assert.match(migration, /neutral_search_impression_telemetry/);
   assert.match(home, /novelight_trusted_discovery_feed/);
   assert.match(home, /record_trusted_allocation_receipts/);
@@ -138,8 +169,21 @@ test('authoritative impressions require private single-use allocation receipts',
 });
 
 test('major public landing surfaces expose legal navigation', async () => {
-  const pages = await Promise.all(['index.html','search.html','pricing.html','signup.html','login.html','mypage.html','analytics.html'].map(read));
-  for (const html of pages) { assert.match(html, /terms\.html/); assert.match(html, /privacy\.html/); }
+  const pages = await Promise.all(
+    [
+      'index.html',
+      'search.html',
+      'pricing.html',
+      'signup.html',
+      'login.html',
+      'mypage.html',
+      'analytics.html'
+    ].map(read)
+  );
+  for (const html of pages) {
+    assert.match(html, /terms\.html/);
+    assert.match(html, /privacy\.html/);
+  }
   assert.match(pages[0], /content-guidelines\.html/);
   assert.match(pages[0], /commerce-disclosure\.html/);
   assert.match(pages[0], /contact\.html/);
@@ -147,7 +191,11 @@ test('major public landing surfaces expose legal navigation', async () => {
 
 test('beta paid-plan disclosures stay aligned before beta release', async () => {
   const [checkout, pricing, billing, commerce, privacy] = await Promise.all([
-    read('api/_lib/checkout.js'), read('pricing.html'), read('billing-policy.html'), read('commerce-disclosure.html'), read('privacy.html')
+    read('api/_lib/checkout.js'),
+    read('pricing.html'),
+    read('billing-policy.html'),
+    read('commerce-disclosure.html'),
+    read('privacy.html')
   ]);
   assert.match(checkout, /custom_text/);
   assert.match(checkout, /CHECKOUT_LEGAL_NOTICE_BY_PLAN/);
@@ -158,12 +206,19 @@ test('beta paid-plan disclosures stay aligned before beta release', async () => 
     assert.match(source, /480円|¥480/u);
     assert.match(source, /クレジットカード登録不要|カード登録不要/u);
   }
-  for (const source of [checkout, pricing, billing, commerce]) assert.match(source, /自動更新/u);
+  for (const source of [checkout, pricing, billing, commerce])
+    assert.match(source, /自動更新/u);
   assert.match(checkout, /月額480円/u);
   assert.match(checkout, /月額1,980円/u);
-  assert.doesNotMatch(checkout, /STRIPE_STANDARD_PRICE_ID.*PRICE_ENV_BY_PLAN/su);
+  assert.doesNotMatch(
+    checkout,
+    /STRIPE_STANDARD_PRICE_ID.*PRICE_ENV_BY_PLAN/su
+  );
   assert.match(pricing, /Standardを無料で利用/u);
-  assert.match(billing, /Standardを利用しているだけで月額料金が請求されることはありません/u);
+  assert.match(
+    billing,
+    /Standardを利用しているだけで月額料金が請求されることはありません/u
+  );
   assert.match(commerce, /Standardのβ無料利用では請求は発生しません/u);
   assert.match(privacy, /個人情報保護法第32条第1項/);
   assert.match(privacy, /本人から求めがあった場合、法令に従い遅滞なく回答/);

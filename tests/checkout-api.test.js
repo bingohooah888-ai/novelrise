@@ -296,7 +296,10 @@ test('beta-free Standard can upgrade to Premium without a Stripe customer', asyn
 
   assert.equal(state.statusCode, 200);
   assert.equal(state.body.mode, 'checkout');
-  assert.equal(dependencies.calls.checkoutSessions[0].line_items[0].price, 'price_premium');
+  assert.equal(
+    dependencies.calls.checkoutSessions[0].line_items[0].price,
+    'price_premium'
+  );
 });
 
 test('Stripe-side pending or active subscription blocks a duplicate Premium checkout during webhook lag', async () => {
@@ -391,7 +394,8 @@ test('Premium checkout confirmation discloses the beta price and normal price', 
   );
 
   assert.equal(state.statusCode, 200);
-  const message = dependencies.calls.checkoutSessions[0].custom_text.submit.message;
+  const message =
+    dependencies.calls.checkoutSessions[0].custom_text.submit.message;
   assert.match(message, /β版特別価格/);
   assert.match(message, /月額480円/);
   assert.match(message, /月額1,980円/);

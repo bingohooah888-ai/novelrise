@@ -23,7 +23,12 @@ function responseState() {
   };
 }
 
-function createDependencies({ authUser = { id: 'user-123' }, authError = null, rpcData = [{ plan: 'standard', payment_status: 'beta_free' }], rpcError = null } = {}) {
+function createDependencies({
+  authUser = { id: 'user-123' },
+  authError = null,
+  rpcData = [{ plan: 'standard', payment_status: 'beta_free' }],
+  rpcError = null
+} = {}) {
   const calls = { tokens: [], rpcs: [] };
   const supabase = {
     auth: {
@@ -62,10 +67,16 @@ test('beta Standard activation requires a valid authenticated bearer user', asyn
     assert.equal(dependencies.calls.rpcs.length, 0);
   }
 
-  const dependencies = createDependencies({ authUser: null, authError: new Error('invalid') });
+  const dependencies = createDependencies({
+    authUser: null,
+    authError: new Error('invalid')
+  });
   const handler = createBetaStandardHandler(dependencies);
   const { res, state } = responseState();
-  await handler({ method: 'POST', headers: { authorization: 'Bearer token-123' } }, res);
+  await handler(
+    { method: 'POST', headers: { authorization: 'Bearer token-123' } },
+    res
+  );
   assert.equal(state.statusCode, 401);
   assert.equal(dependencies.calls.rpcs.length, 0);
 });
@@ -78,13 +89,21 @@ test('beta Standard activation binds the entitlement to the authenticated user a
     {
       method: 'POST',
       headers: { authorization: 'Bearer token-123' },
-      body: { userId: 'attacker-selected-user', card: 'should-not-be-used', plan: 'premium' }
+      body: {
+        userId: 'attacker-selected-user',
+        card: 'should-not-be-used',
+        plan: 'premium'
+      }
     },
     res
   );
 
   assert.equal(state.statusCode, 200);
-  assert.deepEqual(state.body, { plan: 'standard', paymentStatus: 'beta_free', mode: 'beta_free' });
+  assert.deepEqual(state.body, {
+    plan: 'standard',
+    paymentStatus: 'beta_free',
+    mode: 'beta_free'
+  });
   assert.deepEqual(dependencies.calls.tokens, ['token-123']);
   assert.deepEqual(dependencies.calls.rpcs, [
     {
@@ -101,7 +120,10 @@ test('beta Standard activation fails closed when a paid or entitled billing stat
   });
   const handler = createBetaStandardHandler(dependencies);
   const { res, state } = responseState();
-  await handler({ method: 'POST', headers: { authorization: 'Bearer token-123' } }, res);
+  await handler(
+    { method: 'POST', headers: { authorization: 'Bearer token-123' } },
+    res
+  );
   assert.equal(state.statusCode, 409);
   assert.deepEqual(state.body, {
     error: 'Billing account needs synchronization',
@@ -111,10 +133,15 @@ test('beta Standard activation fails closed when a paid or entitled billing stat
 
 test('beta Standard activation rejects unexpected RPC results', async (t) => {
   t.mock.method(console, 'error', () => {});
-  const dependencies = createDependencies({ rpcData: [{ plan: 'premium', payment_status: 'active' }] });
+  const dependencies = createDependencies({
+    rpcData: [{ plan: 'premium', payment_status: 'active' }]
+  });
   const handler = createBetaStandardHandler(dependencies);
   const { res, state } = responseState();
-  await handler({ method: 'POST', headers: { authorization: 'Bearer token-123' } }, res);
+  await handler(
+    { method: 'POST', headers: { authorization: 'Bearer token-123' } },
+    res
+  );
   assert.equal(state.statusCode, 500);
   assert.deepEqual(state.body, { error: 'Beta Standard activation failed' });
 });
