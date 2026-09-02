@@ -113,14 +113,18 @@ test('authenticated Staging desktop and mobile projects use fresh isolated fixtu
   assert.match(workflow, /id: auth_mobile[\s\S]*continue-on-error: true/);
 });
 
-test('authenticated smoke checks paid plans on separate free users', () => {
+test('authenticated smoke checks beta billing paths on separate users', () => {
   assert.match(
     authenticatedSmoke,
-    /assertCheckoutSession\(authorPage, 'standard'\)/
+    /assertBetaStandardActivation\(authorPage\)/
   );
   assert.match(
     authenticatedSmoke,
     /assertCheckoutSession\(readerPage, 'premium'\)/
+  );
+  assert.doesNotMatch(
+    authenticatedSmoke,
+    /assertCheckoutSession\([^)]*,\s*'standard'\)/
   );
   assert.doesNotMatch(
     authenticatedSmoke,
