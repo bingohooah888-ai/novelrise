@@ -12,10 +12,7 @@ function isMissingAnnouncementsRelation(error) {
   );
 }
 
-export async function loadPublishedAnnouncements(
-  supabase,
-  now = new Date()
-) {
+export async function loadPublishedAnnouncements(supabase, now = new Date()) {
   const { data, error } = await supabase
     .from('announcements')
     .select('id,title,body,category,published_at')
