@@ -249,6 +249,26 @@ async function readEpisodeAndRecord(page, episodeHref, title, label) {
   expect(response.ok()).toBeTruthy();
 }
 
+async function assertBetaStandardActivation(page) {
+  const accessToken = await getSupabaseAccessToken(page);
+  const response = await page.request.post('/api/activate-beta-standard', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    }
+  });
+  const body = await response.json();
+
+  expect(
+    response.status(),
+    `Beta Standard activation failed: ${JSON.stringify(body)}`
+  ).toBe(200);
+  expect(body).toMatchObject({
+    plan: 'standard',
+    paymentStatus: 'beta_free',
+    mode: 'beta_free'
+  });
+}
+
 async function assertCheckoutSession(page, plan) {
   const accessToken = await getSupabaseAccessToken(page);
   const response = await page.request.post('/api/create-checkout-session', {
@@ -476,8 +496,8 @@ test('authenticated beta-critical product flow works in target', async ({
       ]);
     });
 
-    await test.step('Verify Stripe Checkout without charging', async () => {
-      await assertCheckoutSession(authorPage, 'standard');
+    await test.step('Verify beta billing without charging', async () => {
+      await assertBetaStandardActivation(authorPage);
       await assertCheckoutSession(readerPage, 'premium');
     });
 
