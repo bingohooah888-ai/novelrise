@@ -7,15 +7,33 @@ import { URL } from 'node:url';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFile(join(root.pathname, path), 'utf8');
 
-test('homepage exposes one natural recommendation shelf and the beta new-arrivals path', async () => {
+test('homepage exposes recommendations, real new arrivals, and a data-backed conditional LIGHT SEED shelf', async () => {
   const home = await read('index.html');
 
   assert.match(home, /<h2>あなたへのおすすめ<\/h2>/u);
+  assert.match(home, /id="newGrid"/u);
   assert.match(home, /href="search\.html\?sort=new"/);
-  assert.match(home, />もっと見る<\/a>/u);
+  assert.match(home, /id="seedShelfSection"[^>]*hidden/u);
+  assert.match(home, /<h2>LIGHT SEEDで発掘中<\/h2>/u);
+  assert.match(home, /novelight_neutral_search/u);
+  assert.match(home, /light_seed_status/u);
+  assert.match(home, /total_seed_count/u);
+  assert.match(home, /section\.hidden=!seeded\.length/u);
   assert.doesNotMatch(home, /id="planExtraWrap"|id="planExtraGrid"/);
   assert.doesNotMatch(home, /id="premiumWrap"|id="premiumGrid"/);
-  assert.doesNotMatch(home, /LIGHT SEEDで発掘中/u);
+});
+
+test('homepage dark redesign keeps an approved-art replacement slot and avoids fake scale metrics', async () => {
+  const home = await read('index.html');
+  const css = await read('novelight-public-dark.css');
+
+  assert.match(home, /class="hero-art-slot"/u);
+  assert.match(home, /まだ知られていない/u);
+  assert.match(home, /物語に、<span>光を。<\/span>/u);
+  assert.match(home, /class="recommend-ribbon">おすすめ<\/div>/u);
+  assert.match(css, /--public-gold:/u);
+  assert.match(css, /prefers-reduced-motion/u);
+  assert.doesNotMatch(home, /25万|210万|15万|4\.9/u);
 });
 
 test('homepage allocation and authoritative recording use the same viewport-sized visible set', async () => {
@@ -70,7 +88,7 @@ test('controlled rotation and fairness do not make paid status an unconditional 
 
   assert.match(
     home,
-    /const key=visitor\(\)\+':'\+Math\.floor\(Date\.now\(\)\/3600000\)/
+    /const key=visitor\(\)\+':'+Math\.floor\(Date\.now\(\)\/3600000\)/
   );
   assert.match(
     home,
