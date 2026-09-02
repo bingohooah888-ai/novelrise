@@ -31,8 +31,10 @@ function parsePositiveId(value) {
 
 function normalizeAnnouncementInput(body, { partial = false } = {}) {
   const payload = body && typeof body === 'object' ? body : {};
-  const title = payload.title === undefined ? undefined : String(payload.title).trim();
-  const content = payload.body === undefined ? undefined : String(payload.body).trim();
+  const title =
+    payload.title === undefined ? undefined : String(payload.title).trim();
+  const content =
+    payload.body === undefined ? undefined : String(payload.body).trim();
   const category =
     payload.category === undefined ? undefined : String(payload.category).trim();
   const status =
@@ -121,7 +123,7 @@ export async function createAdminAnnouncement(supabase, adminUserId, input) {
     p_status: normalized.status ?? 'draft'
   });
   if (error) throw error;
-  return Array.isArray(data) ? data[0] ?? null : data;
+  return Array.isArray(data) ? (data[0] ?? null) : data;
 }
 
 export async function updateAdminAnnouncement(
@@ -146,7 +148,7 @@ export async function updateAdminAnnouncement(
     p_status: normalized.status ?? 'draft'
   });
   if (error) throw error;
-  return Array.isArray(data) ? data[0] ?? null : data;
+  return Array.isArray(data) ? (data[0] ?? null) : data;
 }
 
 export async function loadInquirySummaries(supabase) {
@@ -170,7 +172,9 @@ export async function loadInquiryDetail(supabase, id) {
 }
 
 export async function updateInquiryStatus(supabase, adminUserId, id, status) {
-  const normalized = String(status ?? '').trim().toLowerCase();
+  const normalized = String(status ?? '')
+    .trim()
+    .toLowerCase();
   if (!INQUIRY_STATUSES.has(normalized)) {
     const error = new Error('Invalid inquiry status');
     error.code = 'INVALID_INPUT';
@@ -186,14 +190,17 @@ export async function updateInquiryStatus(supabase, adminUserId, id, status) {
     }
   );
   if (error) throw error;
-  return Array.isArray(data) ? data[0] ?? null : data;
+  return Array.isArray(data) ? (data[0] ?? null) : data;
 }
 
 function handleAdminError(res, error, fallback) {
   if (error?.code === 'INVALID_INPUT') {
     return res.status(400).json({ error: 'Invalid request' });
   }
-  if (error?.code === 'SCHEMA_NOT_READY' || isMissingRelation(error, 'announcements')) {
+  if (
+    error?.code === 'SCHEMA_NOT_READY' ||
+    isMissingRelation(error, 'announcements')
+  ) {
     return res.status(503).json({ error: 'Announcements are not available yet' });
   }
   if (error?.code === 'P0002') {
@@ -219,7 +226,11 @@ export function createOperationsSummaryHandler({
       const operations = await loadSummary(supabase);
       return res.status(200).json({ operations });
     } catch (error) {
-      return handleAdminError(res, error, 'NOVELIGHT operations summary failed');
+      return handleAdminError(
+        res,
+        error,
+        'NOVELIGHT operations summary failed'
+      );
     }
   };
 }
@@ -260,7 +271,11 @@ export function createAdminAnnouncementsHandler({
       );
       return res.status(200).json({ announcement: updated });
     } catch (error) {
-      return handleAdminError(res, error, 'NOVELIGHT announcement operation failed');
+      return handleAdminError(
+        res,
+        error,
+        'NOVELIGHT announcement operation failed'
+      );
     }
   };
 }
@@ -289,7 +304,9 @@ export function createAdminInquiriesHandler({
           return res.status(200).json({ inquiry });
         }
 
-        return res.status(200).json({ inquiries: await listInquiries(supabase) });
+        return res
+          .status(200)
+          .json({ inquiries: await listInquiries(supabase) });
       }
 
       const id = parsePositiveId(req.body?.id);
@@ -302,7 +319,11 @@ export function createAdminInquiriesHandler({
       );
       return res.status(200).json({ inquiry });
     } catch (error) {
-      return handleAdminError(res, error, 'NOVELIGHT inquiry operation failed');
+      return handleAdminError(
+        res,
+        error,
+        'NOVELIGHT inquiry operation failed'
+      );
     }
   };
 }
