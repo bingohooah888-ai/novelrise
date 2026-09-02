@@ -4,29 +4,119 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>NOVELIGHT - すべての物語に、光を。</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}:root{--primary:#6d4aff;--primary-dark:#5838e8;--ink:#222;--muted:#6b7280;--line:#e5e7eb;--soft:#f7f8fb;--premium:#6a4a00;--premium-bg:#fff8de;--plan:#245fa9;--plan-bg:#eef6ff}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--soft);color:var(--ink);line-height:1.6}a{color:inherit;text-decoration:none}header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}.header-inner{max-width:1180px;height:70px;margin:auto;padding:0 22px;display:flex;align-items:center;justify-content:space-between;gap:20px}.logo{display:inline-flex;align-items:center;flex:0 0 auto}.logo img{display:block;width:auto;height:44px;max-width:42vw;object-fit:contain}nav{display:flex;gap:24px;align-items:center}nav a{color:#4b5563;font-size:14px;font-weight:700}.header-actions{display:flex;gap:10px}.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 17px;border-radius:9px;font-weight:800}.btn-outline{border:1px solid var(--primary);color:var(--primary);background:#fff}.btn-primary{color:#fff;background:var(--primary)}.hero{color:#fff;background:linear-gradient(135deg,#6540f4,#9175ff);padding:76px 22px}.hero-inner{max-width:1180px;margin:auto;display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center}.eyebrow{display:inline-block;padding:6px 12px;border:1px solid rgba(255,255,255,.3);border-radius:999px;background:rgba(255,255,255,.13);font-size:13px;font-weight:800;margin-bottom:18px}.hero h1{font-size:clamp(38px,5vw,58px);line-height:1.2;margin-bottom:20px}.hero h1 span{color:#ffe870}.hero p{max-width:680px;color:rgba(255,255,255,.91);font-size:17px;margin-bottom:28px}.hero-actions{display:flex;gap:12px;flex-wrap:wrap}.hero-primary,.hero-secondary{padding:14px 24px;border-radius:10px;font-weight:900}.hero-primary{background:#fff;color:var(--primary-dark)}.hero-secondary{border:1px solid rgba(255,255,255,.42);background:rgba(255,255,255,.12);color:#fff}.hero-note{background:#fff;color:var(--ink);border-radius:18px;padding:25px;box-shadow:0 22px 60px rgba(35,20,93,.22)}.hero-note strong{display:block;color:var(--primary);margin-bottom:9px}.hero-note p{color:#5f6470;font-size:14px;margin:0}section{padding:70px 22px}.container{max-width:1180px;margin:auto}.section-head{margin-bottom:28px}.section-head h2{font-size:31px;margin-bottom:7px}.section-head p{color:var(--muted)}.discovery-note{display:inline-flex;margin-top:10px;padding:7px 10px;border-radius:8px;background:#f1efff;color:#5b43bf;font-size:12px;font-weight:800}.discovery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.novel-card{display:block;padding:21px;border-radius:14px;border:1px solid var(--line);background:#fff;transition:.18s}.novel-card:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(0,0,0,.07)}.genre{display:inline-block;margin-bottom:10px;padding:4px 8px;border-radius:6px;background:#f0edff;color:var(--primary);font-size:12px;font-weight:800}.novel-title{font-size:18px;font-weight:900;margin-bottom:8px}.description{color:#626773;font-size:14px;margin-bottom:14px}.meta{color:#8a909b;font-size:12px}.extra-wrap{margin-top:24px}.extra-heading{font-size:13px;font-weight:900;margin-bottom:9px}.plan-heading{color:var(--plan)}.premium-heading{color:var(--premium)}.plan-card{border-color:#b9d4f4;background:var(--plan-bg)}.premium-card{border-color:#ead99b;background:var(--premium-bg)}.badge{display:inline-block;margin-left:7px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:900;vertical-align:2px}.plan-badge{color:var(--plan);background:#d7e9ff}.premium-badge{color:var(--premium);background:#f8e9ad}.state{grid-column:1/-1;padding:28px;text-align:center;color:var(--muted);background:#fff;border:1px dashed #d7d9df;border-radius:12px}.discovery-actions{text-align:center;margin-top:26px}.new-arrivals{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:28px;padding:20px 22px;border:1px solid var(--line);border-radius:14px;background:#fff}.new-arrivals strong{display:block;font-size:18px}.new-arrivals span{display:block;color:var(--muted);font-size:13px;margin-top:3px}.new-arrivals a{color:var(--primary);font-weight:900;white-space:nowrap}.features,.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.feature,.plan{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px}.plan{display:flex;flex-direction:column}.feature-icon{font-size:28px;margin-bottom:10px}.feature h3{margin-bottom:7px}.feature p,.plan-note{color:var(--muted);font-size:14px}.plan-note{margin-bottom:18px}.pricing{background:#fff}.plan.recommended{border:2px solid var(--primary)}.plan-name{font-weight:900;font-size:21px}.beta-price{display:inline-block;align-self:flex-start;margin-top:8px;padding:4px 8px;border-radius:999px;background:#fff4d8;color:#8a5a00;font-size:11px;font-weight:900}.old-price{color:#8a909b;font-size:13px;text-decoration:line-through;margin-top:7px}.price{font-size:34px;font-weight:900;margin:2px 0 15px}.price small{font-size:13px;color:var(--muted);font-weight:500}.plan ul{list-style:none;color:#505562;font-size:14px}.plan li{padding:6px 0}.plan li:before{content:"✓ ";color:var(--primary);font-weight:900}.plan-cta{display:flex;align-items:center;justify-content:center;margin-top:auto;padding:11px 14px;border:1px solid var(--primary);border-radius:9px;background:#fff;color:var(--primary);font-weight:900}.plan.recommended .plan-cta{background:var(--primary);color:#fff}.cta{text-align:center;color:#fff;background:#1e1d27}.cta h2{font-size:31px;margin-bottom:10px}.cta p{color:#c2c3cb;margin-bottom:22px}footer{padding:30px 20px;background:#111118;color:#92939c;font-size:13px}.footer-inner{max-width:1180px;margin:auto;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}.footer-links{display:flex;gap:16px;flex-wrap:wrap}.footer-links a:hover{color:#fff}@media(max-width:860px){nav{display:none}.hero-inner,.discovery-grid,.features,.plans{grid-template-columns:1fr}.hero{padding-top:54px}.header-actions .btn-outline{display:none}.logo img{height:34px}.new-arrivals{align-items:flex-start;flex-direction:column}.new-arrivals a{white-space:normal}}
+    *{box-sizing:border-box;margin:0;padding:0}:root{--primary:#d6a447;--primary-dark:#081426;--ink:#f7f4ed;--muted:#aeb7c4;--line:#40351f;--soft:#06101d;--premium:#d6a447;--premium-bg:#111b2c;--plan:#d6a447;--plan-bg:#0d1a2d}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--soft);color:var(--ink);line-height:1.6}a{color:inherit;text-decoration:none}.logo img{display:block;width:auto;height:44px;max-width:42vw;object-fit:contain}.plan{display:flex;flex-direction:column}.plan-cta{display:flex;align-items:center;justify-content:center;margin-top:auto}.plan.recommended .plan-cta{background:var(--primary);color:#fff}@media(max-width:860px){.logo img{height:34px;max-width:42vw}}
   </style>
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-public-dark.css">
 </head>
-<body>
-<header><div class="header-inner"><a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT" width="500" height="117"></a><nav><a href="#discover">作品を見つける</a><a href="search.html">作品を探す</a><a href="#features">特徴</a><a href="#pricing">料金</a><a href="ranking.html">ランキング</a></nav><div class="header-actions"><a class="btn btn-outline" href="login.html">ログイン</a><a class="btn btn-primary" href="post.html">小説を投稿</a></div></div></header>
+<body class="novelight-theme novelight-page-index novelight-public-dark">
+<header class="site-header">
+  <div class="header-inner public-header-inner">
+    <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT" width="500" height="117"></a>
+    <nav class="site-nav desktop-nav" aria-label="メインナビ">
+      <a href="index.html" aria-current="page">ホーム</a>
+      <a href="search.html">作品を探す</a>
+      <a href="ranking.html">ランキング</a>
+      <a href="#features">特徴</a>
+      <a href="pricing.html">料金プラン</a>
+    </nav>
+    <div class="header-actions">
+      <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
+      <a class="btn btn-outline login-action" href="login.html">ログイン</a>
+      <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
+      <details class="mobile-menu">
+        <summary aria-label="メニューを開く">☰</summary>
+        <nav aria-label="モバイルナビ">
+          <a href="index.html" aria-current="page">ホーム</a><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="#features">特徴</a><a href="pricing.html">料金プラン</a><a href="login.html">ログイン</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
 <main>
-<section class="hero"><div class="hero-inner"><div><div class="eyebrow">作者にも、まだ知られていない物語にも発見の機会を。</div><h1>すべての物語に、<span>光を。</span></h1><p>NOVELIGHTは、ランキングだけに頼らず作品を読者の前へ運ぶ小説投稿サービスです。Free作品も発見対象に残し、有料プランは順位ではなく「見つけてもらう機会」を増やします。</p><div class="hero-actions"><a class="hero-primary" href="signup.html">無料で始める</a><a class="hero-secondary" href="search.html">作品を探す</a></div></div><aside class="hero-note"><strong>露出は「順位購入」ではありません</strong><p>新しい作品には最初の表示機会を優先し、その後は同じ作者・作品だけに偏らないよう直近露出を見ながら配分します。新着・PV・お気に入り順は課金で並び替えません。</p></aside></div></section>
-<section id="discover"><div class="container"><div class="section-head"><h2>あなたへのおすすめ</h2><p>まだ見ていない作品、新作、露出が少ない作者・作品を組み合わせ、少数の作品を安定したローテーションで届けます。</p><div class="discovery-note">短時間の再読込では大きく入れ替えず、再訪や時間経過に合わせて次の作品へつなぎます。</div></div><div id="discoveryGrid" class="discovery-grid"><div class="state">作品を選んでいます...</div></div><div class="discovery-actions"><a class="btn btn-primary" href="search.html">もっと見る</a></div><div class="new-arrivals"><div><strong>新着作品</strong><span>公開されたばかりの作品を、新着順で見つける。</span></div><a href="search.html?sort=new">新着作品を見る →</a></div></div></section>
-<section id="features"><div class="container"><div class="section-head"><h2>埋もれにくさを仕組みにする</h2><p>「投稿しただけで終わる」を減らすためのβ版設計です。</p></div><div class="features"><article class="feature"><div class="feature-icon">🔄</div><h3>初期露出＋バランス配分</h3><p>Freeを含む新作の初期表示を優先し、その後は作者単位・作品単位の偏りを抑えます。</p></article><article class="feature"><div class="feature-icon">🌱</div><h3>LIGHT SEED</h3><p>SCOUTがまだ知られていない作品を発掘して応援でき、履歴はSCOUT RECORDに残ります。</p></article><article class="feature"><div class="feature-icon">📊</div><h3>LIGHT ANALYTICS</h3><p>表示→作品ページ→第1話→第2話→お気に入りまでを分けて確認できます。</p></article></div></div></section>
-<section id="pricing" class="pricing"><div class="container"><div class="section-head"><h2>作者向け料金プラン</h2><p>β期間中はStandardを無料開放し、Premiumも特別価格で提供します。課金で評価やランキング順位そのものは変わりません。</p></div><div class="plans"><article class="plan"><div class="plan-name">Free</div><div class="price">¥0 <small>/ 月</small></div><ul><li>1作品まで投稿</li><li>一般発見枠・新作初期露出の対象</li><li>基本LIGHT ANALYTICS</li></ul><p class="plan-note">無料でも作品が発見対象から外れることはありません。</p><a class="plan-cta" href="signup.html">無料で始める</a></article><article class="plan recommended"><div class="plan-name">Standard</div><div class="beta-price">β版特別価格</div><div class="old-price">通常 月額¥980</div><div class="price">¥0 <small>/ 月</small></div><ul><li>10作品まで投稿</li><li>計測可能なプランによる追加露出</li><li>LIGHT ANALYTICSで追加露出を確認</li><li>β期間中はカード登録不要</li></ul><p class="plan-note">β期間中は無料。一般枠の順位を購入するのではなく、別の追加発見機会を提供します。</p><a class="plan-cta" href="pricing.html">Standardを無料で利用</a></article><article class="plan"><div class="plan-name">Premium</div><div class="beta-price">β版特別価格</div><div class="old-price">通常 月額¥1,980</div><div class="price">¥480 <small>/ 月</small></div><ul><li>30作品まで投稿</li><li>Standardより多い追加発見機会</li><li>Premium専用追加露出枠</li><li>新作48時間ブースト</li></ul><p class="plan-note">β期間中は月額480円。ランキング順位や作品評価そのものを上げる機能ではありません。</p><a class="plan-cta" href="pricing.html">Premiumを始める</a></article></div></div></section>
-<section class="cta"><div class="container"><h2>あなたの物語を、読者の前へ。</h2><p>投稿数だけで埋もれない場所を、β版から育てていきます。</p><a class="hero-primary" href="signup.html">NOVELIGHTを始める</a></div></section>
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <div class="eyebrow">NOVELIGHT — すべての物語に、光を。</div>
+      <h1>まだ知られていない<br>物語に、<span>光を。</span></h1>
+      <p>ランキングだけでは出会えない物語がここにある。あなたの発見が、まだ知られていない作品を次の読者へつなぎます。</p>
+      <div class="hero-actions"><a class="hero-primary" href="search.html">作品を探す</a><a class="hero-secondary" href="post.html">小説を投稿する</a></div>
+    </div>
+    <div class="hero-art-slot" aria-label="本と城の正式ヒーローアート差し替え領域" role="img">
+      <div class="hero-moon" aria-hidden="true"></div>
+      <div class="hero-castle" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="hero-light-beam" aria-hidden="true"></div>
+      <div class="hero-book" aria-hidden="true"><span class="book-left"></span><span class="book-right"></span><span class="book-spine"></span></div>
+      <div class="hero-glow" aria-hidden="true"></div>
+    </div>
+  </div>
+</section>
+
+<section id="discover" class="discovery-section">
+  <div class="container">
+    <div class="shelf-head"><div><span class="section-kicker">DISCOVER</span><h2>あなたへのおすすめ</h2><p>まだ見ていない作品、新作、露出の偏りを抑えた作品を組み合わせて届けます。</p></div><a class="shelf-more" href="search.html">すべて見る <span aria-hidden="true">›</span></a></div>
+    <div id="discoveryGrid" class="shelf-grid"><div class="state">作品を選んでいます...</div></div>
+  </div>
+</section>
+
+<section id="new-arrivals" class="discovery-section alternate-section">
+  <div class="container">
+    <div class="shelf-head"><div><span class="section-kicker">NEW STORIES</span><h2>新着作品</h2><p>今日も新しい物語が生まれています。</p></div><a class="shelf-more" href="search.html?sort=new">すべて見る <span aria-hidden="true">›</span></a></div>
+    <div id="newGrid" class="shelf-grid"><div class="state">新着作品を読み込んでいます...</div></div>
+  </div>
+</section>
+
+<section id="seedShelfSection" class="discovery-section seed-section" hidden>
+  <div class="container">
+    <div class="shelf-head"><div><span class="section-kicker">LIGHT SEED</span><h2>LIGHT SEEDで発掘中</h2><p>読者たちが見つけた、これからが楽しみな物語たち。</p></div><a class="shelf-more" href="search.html">すべて見る <span aria-hidden="true">›</span></a></div>
+    <div id="seedGrid" class="shelf-grid"></div>
+  </div>
+</section>
+
+<section id="features" class="why-section">
+  <div class="container">
+    <div class="section-head centered"><span class="section-kicker">WHY NOVELIGHT</span><h2>なぜNOVELIGHTなのか</h2><p>すべての物語に、光を届けるための仕組み。</p></div>
+    <div class="features">
+      <article class="feature"><div class="feature-symbol discovery-symbol" aria-hidden="true"></div><h3>埋もれにくい発見設計</h3><p>新作やまだ露出の少ない作品にも、まず読者と出会う機会をつくり、同じ作品への偏りを抑えます。</p></article>
+      <article class="feature"><div class="feature-symbol seed-symbol" aria-hidden="true"></div><h3>LIGHT SEED</h3><p>人気になる前の作品を読者が発掘・応援し、その発見履歴をSCOUT RECORDへつなげます。</p></article>
+      <article class="feature"><div class="feature-symbol analytics-symbol" aria-hidden="true"></div><h3>LIGHT ANALYTICS</h3><p>作品がどこまで届いたかを段階ごとに把握し、作者が次の改善へつなげられる分析機能です。</p></article>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" class="pricing">
+  <div class="container">
+    <div class="section-head centered"><span class="section-kicker">FOR AUTHORS</span><h2>あなたの物語にも、光を。</h2><p>作品の届け方に合わせて選べる3つのプラン。料金はβ版の現在条件をそのまま表示しています。</p></div>
+    <div class="plans">
+      <article class="plan"><div class="plan-name">Free</div><div class="price">¥0 <small>/ 月</small></div><ul><li>1作品まで投稿</li><li>一般発見枠・新作初期露出の対象</li><li>基本LIGHT ANALYTICS</li></ul><p class="plan-note">無料でも作品が発見対象から外れることはありません。</p><a class="plan-cta" href="signup.html">無料で始める</a></article>
+      <article class="plan recommended"><div class="recommend-ribbon">おすすめ</div><div class="plan-name">Standard</div><div class="beta-price">β版特別価格</div><div class="old-price">通常 月額¥980</div><div class="price">¥0 <small>/ 月</small></div><ul><li>10作品まで投稿</li><li>計測可能なプランによる追加露出</li><li>作品別LIGHT ANALYTICS</li><li>β期間中はカード登録不要</li></ul><p class="plan-note">β期間中は無料。評価やランキング順位を購入する仕組みではありません。</p><a class="plan-cta" href="pricing.html">Standardを無料で利用</a></article>
+      <article class="plan premium-plan"><div class="plan-name">Premium</div><div class="beta-price">β版特別価格</div><div class="old-price">通常 月額¥1,980</div><div class="price">¥480 <small>/ 月</small></div><ul><li>30作品まで投稿</li><li>Standardより多い追加発見機会</li><li>Premium専用追加露出枠</li><li>新作48時間ブースト</li></ul><p class="plan-note">β期間中は月額480円。Premiumも評価そのものを買うプランではありません。</p><a class="plan-cta" href="pricing.html">Premiumを始める</a></article>
+    </div>
+    <div class="pricing-more-wrap"><a class="gold-button" href="pricing.html">料金プランを見る</a></div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="container cta-inner"><span class="section-kicker">START WRITING</span><h2>あなたの物語にも、光を。</h2><p>書き始めたその先に、まだ出会っていない読者がいます。</p><a class="gold-button" href="post.html">小説を投稿する</a></div>
+</section>
 </main>
-<footer><div class="footer-inner"><span>© 2026 NOVELIGHT</span><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="billing-policy.html">課金・解約</a><a href="commerce-disclosure.html">特商法表記</a><a href="contact.html">お知らせ・お問い合わせ</a></div></div></footer>
+<footer class="site-footer"><div class="footer-inner"><span>© 2026 NOVELIGHT</span><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="billing-policy.html">課金・解約</a><a href="commerce-disclosure.html">特商法表記</a><a href="contact.html">お知らせ・お問い合わせ</a></div></div></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="novelight-client.js"></script><script>
 const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}function visitor(){return NovelightClient.getVisitorToken()}
 function missingTrustedRpc(error,name){const text=[error?.message,error?.details,error?.hint].filter(Boolean).join(' ').toLowerCase();return error?.code==='PGRST202'||(text.includes(name.toLowerCase())&&(text.includes('schema cache')||text.includes('could not find')))}
 async function discoveryFeed(args){const trusted=await client.rpc('novelight_trusted_discovery_feed',args);if(!trusted.error)return trusted;if(!missingTrustedRpc(trusted.error,'novelight_trusted_discovery_feed'))return trusted;console.warn('trusted discovery unavailable; using read-only legacy feed');return client.rpc('novelight_discovery_feed_v2',args)}
 async function planExtraFeed(args){const trusted=await client.rpc('novelight_trusted_plan_extra_feed',args);if(!trusted.error)return trusted;if(!missingTrustedRpc(trusted.error,'novelight_trusted_plan_extra_feed'))return trusted;console.warn('trusted plan-extra feed unavailable; using read-only legacy feed');return client.rpc('novelight_plan_extra_feed',args)}
-function card(n){const created=n.created_at?new Date(n.created_at).toLocaleDateString('ja-JP'):'';return `<a class="novel-card" href="novel.html?id=${encodeURIComponent(n.novel_id)}"><div class="genre">${esc(n.genre||'未設定')}</div><div class="novel-title">${esc(n.title)}</div><div class="description">${esc(n.description||'')}</div><div class="meta">投稿日 ${created} ・ 👁 ${Number(n.pv||0).toLocaleString()} ・ ★ ${Number(n.favorite_count||0).toLocaleString()}</div></a>`}
+function novelId(n){return n.novel_id??n.id}
+function coverMarkup(n){return `<div class="novel-cover-placeholder" aria-hidden="true"><span class="cover-mark">✦</span><span class="cover-genre">${esc(n.genre||'NOVELIGHT')}</span></div>`}
+function card(n){const created=n.created_at?new Date(n.created_at).toLocaleDateString('ja-JP'):'';return `<a class="novel-card shelf-card" href="novel.html?id=${encodeURIComponent(novelId(n))}">${coverMarkup(n)}<div class="card-copy"><div class="genre">${esc(n.genre||'未設定')}</div><div class="novel-title">${esc(n.title)}</div><div class="novel-author">${esc(n.author_name||n.pen_name||'')}</div><div class="meta">投稿日 ${created} ・ 👁 ${Number(n.pv||0).toLocaleString()} ・ ★ ${Number(n.favorite_count||0).toLocaleString()}</div></div></a>`}
+function seedCard(n){const count=Number(n.light_seed_count||0);const created=n.created_at?new Date(n.created_at).toLocaleDateString('ja-JP'):'';return `<a class="novel-card shelf-card seed-card" href="novel.html?id=${encodeURIComponent(novelId(n))}"><div class="seed-count">✦ ${count.toLocaleString()}</div>${coverMarkup(n)}<div class="card-copy"><div class="genre">${esc(n.genre||'未設定')}</div><div class="novel-title">${esc(n.title)}</div><div class="novel-author">${esc(n.author_name||n.pen_name||'')}</div><div class="meta">投稿日 ${created}</div></div></a>`}
 async function record(rows){const receipts=rows.map(x=>x.allocation_receipt).filter(Boolean);if(!receipts.length)return;try{const r=await client.rpc('record_trusted_allocation_receipts',{p_receipts:receipts});if(r.error)throw r.error}catch(e){console.error('impression record failed',e)}}
 function discoveryVisibleLimit(){return window.matchMedia('(max-width:860px)').matches?4:6}
 function rotationParity(){const key=visitor()+':'+Math.floor(Date.now()/3600000);let hash=0;for(let i=0;i<key.length;i++)hash=(hash*31+key.charCodeAt(i))>>>0;return hash%2}
 function selectVisibleDiscoveryRows(general,plan,premium,limit){const extras=rotationParity()?[...premium,...plan]:[...plan,...premium],ordered=[];let gi=0,ei=0;while(gi<general.length||ei<extras.length){if(gi<general.length)ordered.push(general[gi++]);if(gi<general.length)ordered.push(general[gi++]);if(ei<extras.length)ordered.push(extras[ei++])}const novelIds=new Set(),unique=[];for(const row of ordered){const id=String(row.novel_id);if(novelIds.has(id))continue;novelIds.add(id);unique.push(row)}const authors=new Set(),primary=[],deferred=[];for(const row of unique){const author=String(row.author_id||'');if(author&&authors.has(author))deferred.push(row);else{primary.push(row);if(author)authors.add(author)}}return primary.concat(deferred).slice(0,limit)}
 async function loadDiscovery(){const grid=document.getElementById('discoveryGrid'),limit=discoveryVisibleLimit();let r;try{r=await discoveryFeed({p_surface:'home_discovery',p_limit:limit,p_keyword:null,p_genre:null,p_visitor_token:visitor()})}catch(e){console.error(e);grid.innerHTML='<div class="state">作品を読み込めませんでした。時間をおいて再度お試しください。</div>';return}if(r.error){console.error(r.error);grid.innerHTML='<div class="state">作品を読み込めませんでした。時間をおいて再度お試しください。</div>';return}const rows=r.data||[],general=rows.filter(x=>!x.is_premium_slot),premium=rows.filter(x=>x.is_premium_slot),excluded=[...general,...premium].map(x=>String(x.novel_id));let pe;try{pe=await planExtraFeed({p_limit:1,p_exclude_novel_ids:excluded,p_visitor_token:visitor()})}catch(e){console.error('plan extra feed failed',e);pe={error:e,data:[]}}const planRows=pe.error?[]:(pe.data||[]),visible=selectVisibleDiscoveryRows(general,planRows,premium,limit);grid.innerHTML=visible.length?visible.map(card).join(''):'<div class="state">まだ公開作品がありません。</div>';if(visible.length)void record(visible)}
-(async()=>{await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);void NovelightClient.claimAcquisition(client);await loadDiscovery()})();
+async function neutralNew(limit){return client.rpc('novelight_neutral_search',{p_keyword:null,p_genre:null,p_sort:'new',p_limit:limit,p_offset:0})}
+async function loadSeedShelf(candidates){const section=document.getElementById('seedShelfSection'),grid=document.getElementById('seedGrid');const checks=await Promise.all((candidates||[]).slice(0,10).map(async row=>{try{const status=await client.rpc('light_seed_status',{p_novel_id:String(novelId(row))});if(status.error)return null;const count=Number(status.data?.total_seed_count||0);return count>0?Object.assign({},row,{light_seed_count:count}):null}catch(e){console.error('LIGHT SEED status failed',e);return null}}));const seeded=checks.filter(Boolean).sort((a,b)=>b.light_seed_count-a.light_seed_count).slice(0,discoveryVisibleLimit());section.hidden=!seeded.length;if(seeded.length)grid.innerHTML=seeded.map(seedCard).join('')}
+async function loadNewArrivals(){const grid=document.getElementById('newGrid'),limit=discoveryVisibleLimit();try{const r=await neutralNew(10);if(r.error)throw r.error;const rows=Array.isArray(r.data)?r.data:[];grid.innerHTML=rows.length?rows.slice(0,limit).map(card).join(''):'<div class="state">まだ新着作品がありません。</div>';void loadSeedShelf(rows)}catch(e){console.error(e);grid.innerHTML='<div class="state">新着作品を読み込めませんでした。時間をおいて再度お試しください。</div>'}}
+(async()=>{await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);void NovelightClient.claimAcquisition(client);await Promise.all([loadDiscovery(),loadNewArrivals()])})();
 </script></body></html>

@@ -1,3 +1,92 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>料金プラン | NOVELIGHT</title><style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:#6d4aff}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:1120px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{text-decoration:none;color:#6d4aff;font-size:25px;font-weight:900}.back{text-decoration:none;color:#666;font-size:14px}main{max-width:1120px;margin:auto;padding:50px 22px 78px}.heading{text-align:center;margin-bottom:36px}.heading h1{font-size:37px}.heading p{color:#666;margin-top:9px;line-height:1.7}.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.plan{position:relative;display:flex;flex-direction:column;padding:28px 24px;background:#fff;border:1px solid #e5e7eb;border-radius:17px}.standard{border:2px solid #6d4aff}.premium{border:2px solid #9a5cff}.badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);padding:5px 10px;border-radius:999px;background:#6d4aff;color:#fff;font-size:10px;font-weight:900;white-space:nowrap}.name{font-size:23px;font-weight:900}.desc{color:#777;font-size:13px;line-height:1.6;margin:8px 0 18px}.beta-label{display:inline-block;align-self:flex-start;margin-bottom:6px;padding:4px 8px;border-radius:999px;background:#fff4d8;color:#8a5a00;font-size:11px;font-weight:900}.original-price{font-size:14px;color:#888;text-decoration:line-through;margin-bottom:2px}.price{font-size:37px;font-weight:900}.price small{font-size:12px;color:#777}.renewal{color:#7c3aed;font-size:11px;font-weight:900;margin:5px 0 14px}.limit{color:#6d4aff;font-size:13px;font-weight:900;margin-bottom:17px}.features{list-style:none;padding:0;margin:0 0 22px;flex:1}.features li{padding:6px 0;color:#444;font-size:13px}.features li:before{content:'✓ ';color:#6d4aff;font-weight:900}button{width:100%;border:0;border-radius:9px;padding:13px;font:inherit;font-weight:900;cursor:pointer}.free{background:#f1f1f4;color:#555}.paid{background:#6d4aff;color:#fff}.paid:disabled{opacity:.6;cursor:not-allowed}.premium-button{background:#8d4df4}.status{display:none;margin:18px 0 0;padding:13px 15px;border:1px solid #d8d5e8;border-radius:10px;background:#fff;color:#555;font-size:13px;line-height:1.6}.status[data-visible="true"]{display:block}.status[data-kind="error"]{border-color:#dc2626;background:#fef2f2;color:#991b1b}.status[data-kind="success"]{border-color:#16a34a;background:#f0fdf4;color:#166534}.billing{margin-top:28px;padding:21px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;color:#555;line-height:1.75;font-size:13px}.billing ul{margin:9px 0 0;padding-left:20px}.legal{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px}@media(max-width:900px){.plans{grid-template-columns:1fr}}</style></head><body><header><div class="header-inner"><a href="index.html" class="logo">NOVELIGHT</a><a href="mypage.html" class="back">← 作者ホーム</a></div></header><main><div class="heading"><h1>料金プラン</h1><p>課金で買えるのは高評価やランキング順位ではありません。<br>読者に見つけてもらう追加機会と、その効果を確認する分析を提供します。</p></div><div class="plans"><section class="plan"><div class="name">Free</div><div class="desc">無料でも一般発見枠と新作の初期露出対象に残ります。</div><div class="price">¥0 <small>/ 月</small></div><div class="limit">投稿作品：1作品まで</div><ul class="features"><li>一般発見枠</li><li>新作の初期表示機会</li><li>基本LIGHT ANALYTICS</li><li>LIGHT SEED対象</li></ul><button class="free" disabled>Free</button></section><section class="plan standard"><div class="badge">中心プラン</div><div class="name">Standard</div><div class="desc">一般枠に加え、別枠の「プランによる追加露出」を実測して提供します。</div><div class="beta-label">β版特別価格</div><div class="original-price">通常 月額¥980</div><div class="price">¥0 <small>/ 月</small></div><div class="renewal">β期間中無料・クレジットカード登録不要</div><div class="limit">投稿作品：10作品まで</div><ul class="features"><li>Freeの全機能</li><li>計測可能なプランによる追加露出</li><li>追加露出→作品ページ→読書を可視化</li><li>作品別LIGHT ANALYTICS</li></ul><button id="standard" class="paid">Standardを無料で利用</button></section><section class="plan premium"><div class="badge">追加露出＋Premium専用枠</div><div class="name">Premium</div><div class="desc">Standardの追加露出にPremium専用枠と新作48時間ブーストを加えます。</div><div class="beta-label">β版特別価格</div><div class="original-price">通常 月額¥1,980</div><div class="price">¥480 <small>/ 月</small></div><div class="renewal">β期間中 月額480円・解約まで自動更新</div><div class="limit">投稿作品：30作品まで</div><ul class="features"><li>Standardの全機能</li><li>Premium専用追加露出枠</li><li>新作48時間ブースト</li><li>Premium専用枠の効果を可視化</li></ul><button id="premium" class="paid premium-button">Premiumを申し込む / 管理</button></section></div><div id="status" class="status" role="status" aria-live="polite"></div><section class="billing"><strong>申込み前に確認してください</strong><ul><li>Standardはβ版特別価格0円です。β期間中はクレジットカード登録なしで利用でき、Standard利用だけで請求は発生しません。</li><li>Premiumは通常月額1,980円のところ、β版特別価格として月額480円です。申込完了時に初回決済し、解約まで毎月自動更新されます。</li><li>β終了後のPremium価格移行条件・適用時期は事前に案内します。利用者が継続・解約を判断できる状態を作ります。</li><li>Premiumの決済が正常に完了し、NOVELIGHT側で契約状態を確認できた後、Premium機能を利用できます。</li><li>Premiumの解約はStripe顧客ポータルから行えます。法令上必要な場合等を除き、利用者都合の契約期間途中の返金・日割り返金は原則行いません。</li><li>18歳未満の方がPremiumを申し込む場合は、法定代理人の同意を得てください。</li><li>追加露出は読者数、PV、高評価、ランキング、収益を保証しません。</li><li>性的満足を主目的とする露骨な性的・ポルノグラフィックな作品はStripe利用中のβでは投稿できません。</li></ul><nav class="legal"><a href="billing-policy.html">課金・解約ポリシー</a><a href="terms.html">利用規約</a><a href="commerce-disclosure.html">特商法表記</a><a href="privacy.html">プライバシー</a><a href="contact.html">お問い合わせ</a></nav></section></main><script async src="novelight-client.js" onload="globalThis.initPricingAnalytics?.()" onerror="console.error('Pricing analytics client failed to load; billing remains available.')"></script><script>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>料金プラン | NOVELIGHT</title>
+  <style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#06101d;color:#f7f4ed}a{color:#d6a447}.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.plan{position:relative;display:flex;flex-direction:column}.features{list-style:none;padding:0}.paid:disabled{opacity:.6;cursor:not-allowed}@media(max-width:900px){.plans{grid-template-columns:1fr}}</style>
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-public-dark.css">
+</head>
+<body class="novelight-theme novelight-page-pricing novelight-public-dark">
+<header class="site-header">
+  <div class="header-inner public-header-inner">
+    <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT" width="500" height="117"></a>
+    <nav class="site-nav desktop-nav" aria-label="メインナビ">
+      <a href="index.html">ホーム</a><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="index.html#features">特徴</a><a href="pricing.html" aria-current="page">料金プラン</a>
+    </nav>
+    <div class="header-actions">
+      <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
+      <a class="btn btn-outline login-action" href="login.html">ログイン</a>
+      <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
+      <details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ"><a href="index.html">ホーム</a><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="index.html#features">特徴</a><a href="pricing.html" aria-current="page">料金プラン</a><a href="mypage.html">作者ホーム</a></nav></details>
+    </div>
+  </div>
+</header>
+<main class="pricing-main">
+  <section class="pricing-hero">
+    <span class="section-kicker">PLANS</span>
+    <h1>料金プラン</h1>
+    <p class="pricing-lead">あなたの創作を、もっと多くの読者へ。</p>
+    <p class="pricing-sub">作品の届け方に合わせて、あなたに合ったプランを選べます。課金で高評価やランキング順位そのものを買う仕組みではありません。</p>
+  </section>
+
+  <div class="plans pricing-plans">
+    <section class="plan pricing-card free-plan">
+      <div class="plan-emblem" aria-hidden="true">✧</div>
+      <div class="name">Free</div>
+      <div class="desc">まずは無料で創作を始めたい作者へ</div>
+      <div class="price">¥0 <small>/ 月</small></div>
+      <div class="limit">投稿作品：1作品まで</div>
+      <ul class="features"><li>一般発見枠</li><li>新作の初期表示機会</li><li>基本LIGHT ANALYTICS</li><li>LIGHT SEED対象</li></ul>
+      <button class="free" disabled>Free</button>
+    </section>
+
+    <section class="plan pricing-card standard">
+      <div class="badge recommend-ribbon recommendation-ribbon">おすすめ</div>
+      <div class="plan-emblem gold-emblem" aria-hidden="true">✦</div>
+      <div class="name">Standard</div>
+      <div class="desc">作品をもっと読者へ届けたい作者へ</div>
+      <div class="beta-label">β版特別価格</div>
+      <div class="original-price">通常 月額¥980</div>
+      <div class="price">¥0 <small>/ 月</small></div>
+      <div class="renewal">β期間中無料・クレジットカード登録不要</div>
+      <div class="limit">投稿作品：10作品まで</div>
+      <ul class="features"><li>Freeの全機能</li><li>計測可能なプランによる追加露出</li><li>追加露出→作品ページ→読書を可視化</li><li>作品別LIGHT ANALYTICS</li></ul>
+      <button id="standard" class="paid">Standardを無料で利用</button>
+    </section>
+
+    <section class="plan pricing-card premium">
+      <div class="plan-emblem" aria-hidden="true">✥</div>
+      <div class="name">Premium</div>
+      <div class="desc">本格的に作品を育てたい作者へ</div>
+      <div class="beta-label">β版特別価格</div>
+      <div class="original-price">通常 月額¥1,980</div>
+      <div class="price">¥480 <small>/ 月</small></div>
+      <div class="renewal">β期間中 月額480円・解約まで自動更新</div>
+      <div class="limit">投稿作品：30作品まで</div>
+      <ul class="features"><li>Standardの全機能</li><li>Premium専用追加露出枠</li><li>新作48時間ブースト</li><li>Premium専用枠の効果を可視化</li></ul>
+      <button id="premium" class="paid premium-button">Premiumを申し込む / 管理</button>
+    </section>
+  </div>
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <section class="billing">
+    <strong>申込み前に確認してください</strong>
+    <ul>
+      <li>Standardはβ版特別価格0円です。β期間中はクレジットカード登録なしで利用でき、Standard利用だけで請求は発生しません。</li>
+      <li>Premiumは通常月額1,980円のところ、β版特別価格として月額480円です。申込完了時に初回決済し、解約まで毎月自動更新されます。</li>
+      <li>β終了後のPremium価格移行条件・適用時期は事前に案内します。利用者が継続・解約を判断できる状態を作ります。</li>
+      <li>Premiumの決済が正常に完了し、NOVELIGHT側で契約状態を確認できた後、Premium機能を利用できます。</li>
+      <li>Premiumの解約はStripe顧客ポータルから行えます。法令上必要な場合等を除き、利用者都合の契約期間途中の返金・日割り返金は原則行いません。</li>
+      <li>18歳未満の方がPremiumを申し込む場合は、法定代理人の同意を得てください。</li>
+      <li>追加露出は読者数、PV、高評価、ランキング、収益を保証しません。</li>
+      <li>性的満足を主目的とする露骨な性的・ポルノグラフィックな作品はStripe利用中のβでは投稿できません。</li>
+    </ul>
+    <nav class="legal"><a href="billing-policy.html">課金・解約ポリシー</a><a href="terms.html">利用規約</a><a href="commerce-disclosure.html">特商法表記</a><a href="privacy.html">プライバシー</a><a href="contact.html">お問い合わせ</a></nav>
+  </section>
+</main>
+<footer class="site-footer"><div class="footer-inner"><span>© 2026 NOVELIGHT</span><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="billing-policy.html">課金・解約</a><a href="commerce-disclosure.html">特商法表記</a><a href="contact.html">お知らせ・お問い合わせ</a></div></div></footer>
+
+<script async src="novelight-client.js" onload="globalThis.initPricingAnalytics?.()" onerror="console.error('Pricing analytics client failed to load; billing remains available.')"></script><script>
 const AUTH_STORAGE_KEY='sb-fiepaguycecrredwrcwx-auth-token',STANDARD_LABEL='Standardを無料で利用',PREMIUM_LABEL='Premiumを申し込む / 管理',status=document.getElementById('status'),sb=document.getElementById('standard'),pb=document.getElementById('premium');let busy=false,client=null,analyticsStarted=false;function disablePaid(v){sb.disabled=v;pb.disabled=v;sb.textContent=v?'準備中…':STANDARD_LABEL;pb.textContent=v?'準備中…':PREMIUM_LABEL}function showStatus(message,kind='info'){status.textContent=message||'';if(status.dataset){status.dataset.visible=message?'true':'false';status.dataset.kind=kind}if(message&&kind==='error'&&typeof status.scrollIntoView==='function')status.scrollIntoView({block:'nearest',behavior:'smooth'})}function readStoredSession(){try{const parsed=JSON.parse(globalThis.localStorage?.getItem(AUTH_STORAGE_KEY)||'null');return parsed?.access_token?parsed:parsed?.currentSession?.access_token?parsed.currentSession:null}catch(e){console.error(e);return null}}function isVercelHost(){const host=String(globalThis.location?.hostname||'').toLowerCase();return host.endsWith('.vercel.app')}function getClient(){if(client)return client;if(isVercelHost()&&!globalThis.NovelightClient)return null;if(typeof globalThis.supabase?.createClient!=='function')return null;client=globalThis.supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');return client}function withTimeout(promise,ms,message){if(typeof globalThis.setTimeout!=='function')return promise;return Promise.race([promise,new Promise((_,reject)=>globalThis.setTimeout(()=>reject(new Error(message)),ms))])}async function getAccessToken(){const storedToken=readStoredSession()?.access_token;if(storedToken)return storedToken;const activeClient=getClient();if(activeClient){try{const auth=await withTimeout(activeClient.auth.getSession(),2500,'auth session timeout'),token=auth.data.session?.access_token;if(token)return token}catch(e){console.error(e)}}return null}async function clearLocalAuth(){try{globalThis.localStorage?.removeItem(AUTH_STORAGE_KEY)}catch(e){console.error(e)}const activeClient=getClient();if(activeClient){try{await withTimeout(activeClient.auth.signOut({scope:'local'}),1500,'auth signout timeout')}catch(e){console.error(e)}}}async function authenticatedRequest(path,body){const accessToken=await getAccessToken();if(!accessToken){location.href='login.html?redirect=pricing.html';return null}const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${accessToken}`},body:body?JSON.stringify(body):undefined});const data=await response.json().catch(()=>({}));if(response.status===401){await clearLocalAuth();location.href='login.html?redirect=pricing.html';return null}return {response,data}}async function activateStandard(){if(busy)return;busy=true;disablePaid(true);showStatus('Standardを有効にしています...');try{const result=await withTimeout(authenticatedRequest('/api/activate-beta-standard'),12000,'standard activation timeout');if(!result)return;const {response,data}=result;if(!response.ok||data?.mode!=='beta_free'){const error=new Error(data?.error||'activation unavailable');error.code=data?.code||null;throw error}showStatus('Standardを有効にしました。β期間中はクレジットカード登録も請求もありません。','success')}catch(e){console.error(e);if(e?.code==='billing_state_conflict'){showStatus('既存の有料契約状態を確認する必要があります。Premium利用中の場合は契約管理から変更・解約してください。','error')}else{showStatus('Standardを有効にできませんでした。時間をおいてもう一度お試しください。','error')}}finally{busy=false;disablePaid(false)}}async function startPremium(){if(busy)return;busy=true;disablePaid(true);showStatus('Premiumの決済・契約管理画面を準備しています...');try{const result=await withTimeout(authenticatedRequest('/api/create-checkout-session',{plan:'premium'}),12000,'checkout request timeout');if(!result)return;const {response,data}=result;if(!response.ok||!data.url){const error=new Error(data?.error||'checkout unavailable');error.code=data?.code||null;throw error}location.href=data.url}catch(e){console.error(e);if(e?.message==='checkout request timeout'){showStatus('決済・契約管理画面の準備がタイムアウトしました。もう一度お試しください。','error')}else if(e?.code==='billing_state_conflict'){showStatus('契約情報の同期に問題が見つかりました。決済は発生していません。時間をおいて再度お試しいただくか、お問い合わせください。','error')}else{showStatus('決済・契約管理画面を開けませんでした。決済は発生していません。時間をおいてお試しください。','error')}}finally{busy=false;disablePaid(false)}}function initPricingAnalytics(){if(analyticsStarted||!globalThis.NovelightClient)return;const analyticsClient=getClient();if(!analyticsClient)return;analyticsStarted=true;void NovelightClient.captureAcquisition(analyticsClient);void NovelightClient.recordVisit(analyticsClient);void NovelightClient.claimAcquisition(analyticsClient)}globalThis.initPricingAnalytics=initPricingAnalytics;sb.onclick=activateStandard;pb.onclick=startPremium;initPricingAnalytics();
 </script><script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onload="globalThis.initPricingAnalytics?.()" onerror="console.error('Supabase browser library failed to load; auth-storage fallback remains available.')"></script></body></html>
