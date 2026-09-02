@@ -12,7 +12,10 @@ test('Production Auth Smoke follows the beta billing contract', () => {
     authenticatedSmoke,
     /page\.request\.post\('\/api\/activate-beta-standard'/
   );
-  assert.match(authenticatedSmoke, /assertBetaStandardActivation\(authorPage\)/);
+  assert.match(
+    authenticatedSmoke,
+    /assertBetaStandardActivation\(authorPage\)/
+  );
   assert.match(
     authenticatedSmoke,
     /assertCheckoutSession\(readerPage, 'premium'\)/
