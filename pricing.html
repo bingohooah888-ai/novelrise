@@ -6,11 +6,12 @@
   <style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#06101d;color:#f7f4ed}a{color:#d6a447}.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.plan{position:relative;display:flex;flex-direction:column}.features{list-style:none;padding:0}.paid:disabled{opacity:.6;cursor:not-allowed}@media(max-width:900px){.plans{grid-template-columns:1fr}}</style>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
   <link rel="stylesheet" href="novelight-public-dark.css">
+  <link rel="stylesheet" href="novelight-brand-refinement.css">
 </head>
 <body class="novelight-theme novelight-page-pricing novelight-public-dark">
 <header class="site-header">
   <div class="header-inner public-header-inner">
-    <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT" width="500" height="117"></a>
+    <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
     <nav class="site-nav desktop-nav" aria-label="メインナビ">
       <a href="index.html">ホーム</a><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="index.html#features">特徴</a><a href="pricing.html" aria-current="page">料金プラン</a>
     </nav>
@@ -32,7 +33,7 @@
 
   <div class="plans pricing-plans">
     <section class="plan pricing-card free-plan">
-      <div class="plan-emblem" aria-hidden="true">✧</div>
+      <div class="plan-emblem free-emblem" aria-hidden="true"></div>
       <div class="name">Free</div>
       <div class="desc">まずは無料で創作を始めたい作者へ</div>
       <div class="price">¥0 <small>/ 月</small></div>
@@ -43,7 +44,7 @@
 
     <section class="plan pricing-card standard">
       <div class="badge recommend-ribbon recommendation-ribbon">おすすめ</div>
-      <div class="plan-emblem gold-emblem" aria-hidden="true">✦</div>
+      <div class="plan-emblem standard-emblem" aria-hidden="true"></div>
       <div class="name">Standard</div>
       <div class="desc">作品をもっと読者へ届けたい作者へ</div>
       <div class="beta-label">β版特別価格</div>
@@ -56,7 +57,7 @@
     </section>
 
     <section class="plan pricing-card premium">
-      <div class="plan-emblem" aria-hidden="true">✥</div>
+      <div class="plan-emblem premium-emblem" aria-hidden="true"></div>
       <div class="name">Premium</div>
       <div class="desc">本格的に作品を育てたい作者へ</div>
       <div class="beta-label">β版特別価格</div>
