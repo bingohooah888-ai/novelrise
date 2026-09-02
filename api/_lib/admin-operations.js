@@ -323,12 +323,7 @@ export function createAdminInquiriesHandler({
 
       const id = parsePositiveId(req.body?.id);
       if (!id) return res.status(400).json({ error: 'Invalid request' });
-      const inquiry = await setStatus(
-        supabase,
-        admin.id,
-        id,
-        req.body?.status
-      );
+      const inquiry = await setStatus(supabase, admin.id, id, req.body?.status);
       return res.status(200).json({ inquiry });
     } catch (error) {
       return handleAdminError(res, error, 'NOVELIGHT inquiry operation failed');
