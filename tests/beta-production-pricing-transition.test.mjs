@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const read = (path) =>
-  readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('Production Stripe bootstrap fixes beta Premium at 480 JPY and keeps Standard 980 as legacy-only reference', async () => {
   const [bootstrap, runbook] = await Promise.all([
