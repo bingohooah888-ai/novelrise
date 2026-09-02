@@ -88,7 +88,7 @@ test('controlled rotation and fairness do not make paid status an unconditional 
 
   assert.match(
     home,
-    /const key=visitor\(\)\+':'+Math\.floor\(Date\.now\(\)\/3600000\)/
+    /const key=visitor\(\)\+':'\+Math\.floor\(Date\.now\(\)\/3600000\)/
   );
   assert.match(
     home,
