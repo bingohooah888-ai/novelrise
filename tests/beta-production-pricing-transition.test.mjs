@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+const read = (path) =>
+  readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('Production Stripe bootstrap fixes beta Premium at 480 JPY and keeps Standard 980 as legacy-only reference', async () => {
   const [bootstrap, runbook] = await Promise.all([
@@ -24,16 +25,28 @@ test('Production subscription transition stops recurring Standard 980 without a 
     'scripts/stripe-production-beta-pricing-transition.mjs'
   );
 
-  assert.match(transition, /stripe\.subscriptions\.cancel\(subscription\.id,[\s\S]*invoice_now: false,[\s\S]*prorate: false/u);
-  assert.match(transition, /stripe\.subscriptions\.update\(subscription\.id,[\s\S]*price: premiumPriceId/u);
+  assert.match(
+    transition,
+    /stripe\.subscriptions\.cancel\(subscription\.id,[\s\S]*invoice_now: false,[\s\S]*prorate: false/u
+  );
+  assert.match(
+    transition,
+    /stripe\.subscriptions\.update\(subscription\.id,[\s\S]*price: premiumPriceId/u
+  );
   assert.match(transition, /proration_behavior: 'none'/u);
   assert.match(transition, /novelightBetaPrice: '480'/u);
 });
 
 test('Production workflow deploys beta-aware runtime before mutating legacy subscriptions', async () => {
-  const workflow = await read('.github/workflows/stripe-production-bootstrap.yml');
-  const deployIndex = workflow.indexOf('Deploy Production with synchronized billing configuration');
-  const transitionIndex = workflow.indexOf('Transition existing subscriptions to beta pricing');
+  const workflow = await read(
+    '.github/workflows/stripe-production-bootstrap.yml'
+  );
+  const deployIndex = workflow.indexOf(
+    'Trigger production redeploy with beta pricing variables'
+  );
+  const transitionIndex = workflow.indexOf(
+    'Transition existing live subscriptions to beta pricing'
+  );
 
   assert.notEqual(deployIndex, -1);
   assert.notEqual(transitionIndex, -1);
@@ -48,7 +61,13 @@ test('beta Standard migration has a fail-closed rollback artifact', async () => 
   );
 
   assert.match(rollback, /payment_status = 'beta_free'/u);
-  assert.match(rollback, /beta_standard_rollback_requires_profile_reconciliation/u);
-  assert.match(rollback, /drop function if exists public\.novelight_activate_beta_standard/u);
+  assert.match(
+    rollback,
+    /beta_standard_rollback_requires_profile_reconciliation/u
+  );
+  assert.match(
+    rollback,
+    /drop function if exists public\.novelight_activate_beta_standard/u
+  );
   assert.match(rollback, /checkout_profile_not_free/u);
 });
