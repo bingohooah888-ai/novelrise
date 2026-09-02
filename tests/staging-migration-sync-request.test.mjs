@@ -54,7 +54,8 @@ test('Staging request delegates to fail-closed sync', () => {
     /uses: \.\/\.github\/workflows\/supabase-staging-sync\.yml/,
     /revision: \$\{\{ needs\.request\.outputs\.main_sha \}\}/,
     /migrations: \$\{\{ needs\.request\.outputs\.migration \}\}/,
-    /confirmation: \$\{\{ needs\.request\.outputs\.confirmation \}\}/
+    /confirmation: \$\{\{ needs\.request\.outputs\.confirmation \}\}/,
+    /secrets: inherit/
   ]);
   requirePatterns(syncWorkflow, [
     /workflow_call:/,

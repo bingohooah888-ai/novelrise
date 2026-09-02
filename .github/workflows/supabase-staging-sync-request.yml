@@ -183,6 +183,7 @@ jobs:
       revision: ${{ needs.request.outputs.main_sha }}
       migrations: ${{ needs.request.outputs.migration }}
       confirmation: ${{ needs.request.outputs.confirmation }}
+    secrets: inherit
 
   record:
     name: Record Staging migration sync result
