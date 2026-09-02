@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>お問い合わせ | NOVELIGHT</title>
+  <title>お知らせ・お問い合わせ | NOVELIGHT</title>
   <link rel="stylesheet" href="legal.css">
   <style>
-    .contact-form{display:grid;gap:18px}.contact-field{display:grid;gap:7px}.contact-field label{font-size:14px;font-weight:800}.contact-field input,.contact-field select,.contact-field textarea{width:100%;border:1px solid #d7d7e2;border-radius:9px;padding:12px 13px;background:#fff;color:#222;font:inherit}.contact-field textarea{min-height:180px;resize:vertical}.contact-field input:focus,.contact-field select:focus,.contact-field textarea:focus{outline:3px solid rgba(109,74,255,.12);border-color:#6d4aff}.contact-submit{border:0;border-radius:9px;padding:13px 18px;background:#6d4aff;color:#fff;font:inherit;font-weight:900;cursor:pointer}.contact-submit:disabled{opacity:.55;cursor:wait}.contact-state{min-height:24px;font-size:13px;line-height:1.7}.contact-state.error{color:#b42318}.contact-state.success{color:#067647}.contact-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}
+    .announcement-list{display:grid;gap:14px}.announcement-item{padding:18px;border:1px solid #e4e4ec;border-radius:12px;background:#fff}.announcement-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.announcement-title{margin:0;font-size:18px}.announcement-category{flex:0 0 auto;padding:4px 8px;border-radius:999px;background:#f0edff;color:#6d4aff;font-size:11px;font-weight:900}.announcement-date{margin-top:6px;color:#85858f;font-size:12px}.announcement-body{margin:13px 0 0;white-space:pre-wrap;line-height:1.8}.announcement-state{padding:20px;text-align:center;color:#777;border:1px dashed #d7d7e2;border-radius:10px}.contact-form{display:grid;gap:18px}.contact-field{display:grid;gap:7px}.contact-field label{font-size:14px;font-weight:800}.contact-field input,.contact-field select,.contact-field textarea{width:100%;border:1px solid #d7d7e2;border-radius:9px;padding:12px 13px;background:#fff;color:#222;font:inherit}.contact-field textarea{min-height:180px;resize:vertical}.contact-field input:focus,.contact-field select:focus,.contact-field textarea:focus{outline:3px solid rgba(109,74,255,.12);border-color:#6d4aff}.contact-submit{border:0;border-radius:9px;padding:13px 18px;background:#6d4aff;color:#fff;font:inherit;font-weight:900;cursor:pointer}.contact-submit:disabled{opacity:.55;cursor:wait}.contact-state{min-height:24px;font-size:13px;line-height:1.7}.contact-state.error{color:#b42318}.contact-state.success{color:#067647}.contact-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}@media(max-width:620px){.announcement-head{flex-direction:column;gap:8px}}
   </style>
 </head>
 <body>
@@ -18,12 +18,21 @@
 </header>
 <main class="legal-main">
   <div class="legal-hero">
-    <div class="legal-kicker">NOVELIGHT SUPPORT</div>
-    <h1>お問い合わせ</h1>
-    <p class="legal-lead">課金・解約、投稿、プライバシー、特定商取引法に基づく表示事項の開示請求などを受け付けます。</p>
+    <div class="legal-kicker">NOVELIGHT INFORMATION & SUPPORT</div>
+    <h1>お知らせ・お問い合わせ</h1>
+    <p class="legal-lead">NOVELIGHT運営からのお知らせ確認と、お問い合わせ送信をこのページで行えます。</p>
   </div>
 
-  <section class="legal-card">
+  <section class="legal-card" aria-labelledby="announcementHeading">
+    <h2 id="announcementHeading">お知らせ</h2>
+    <div id="announcementList" class="announcement-list" aria-live="polite">
+      <div class="announcement-state">お知らせを読み込んでいます...</div>
+    </div>
+  </section>
+
+  <section class="legal-card" aria-labelledby="contactHeading">
+    <h2 id="contactHeading">お問い合わせ</h2>
+    <p>課金・解約、投稿、プライバシー、特定商取引法に基づく表示事項の開示請求などを受け付けます。</p>
     <div class="legal-note" style="margin-bottom:20px">
       パスワード、クレジットカード番号、本人確認書類などの機密情報は入力しないでください。返信に必要なメールアドレスと、お問い合わせ内容のみ送信してください。
     </div>
@@ -78,7 +87,7 @@
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span>© NOVELIGHT</span>
-    <a href="contact.html">お問い合わせ</a>
+    <a href="contact.html">お知らせ・お問い合わせ</a>
     <a href="terms.html">利用規約</a>
     <a href="privacy.html">プライバシー</a>
     <a href="commerce-disclosure.html">特商法表記</a>
@@ -102,6 +111,64 @@
       : 'visitor-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     localStorage.setItem(key, token);
     return token;
+  }
+
+  function renderAnnouncements(rows) {
+    const container = document.getElementById('announcementList');
+    container.replaceChildren();
+    if (!rows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'announcement-state';
+      empty.textContent = '現在公開中のお知らせはありません。';
+      container.appendChild(empty);
+      return;
+    }
+
+    rows.forEach((row) => {
+      const article = document.createElement('article');
+      article.className = 'announcement-item';
+      const head = document.createElement('div');
+      head.className = 'announcement-head';
+      const title = document.createElement('h3');
+      title.className = 'announcement-title';
+      title.textContent = row.title;
+      const category = document.createElement('span');
+      category.className = 'announcement-category';
+      category.textContent = row.category;
+      head.append(title, category);
+      const date = document.createElement('div');
+      date.className = 'announcement-date';
+      date.textContent = row.published_at
+        ? `公開 ${new Date(row.published_at).toLocaleString('ja-JP')}`
+        : '';
+      const body = document.createElement('p');
+      body.className = 'announcement-body';
+      body.textContent = row.body;
+      article.append(head, date, body);
+      container.appendChild(article);
+    });
+  }
+
+  async function loadAnnouncements() {
+    try {
+      const response = await fetch('/api/announcements', {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+        credentials: 'same-origin'
+      });
+      if (!response.ok) throw new Error(`announcements ${response.status}`);
+      const data = await response.json();
+      renderAnnouncements(data.announcements || []);
+    } catch (error) {
+      console.error('announcements load failed', error);
+      const container = document.getElementById('announcementList');
+      container.replaceChildren();
+      const state = document.createElement('div');
+      state.className = 'announcement-state';
+      state.textContent = 'お知らせを読み込めませんでした。時間をおいて再度お試しください。';
+      container.appendChild(state);
+    }
   }
 
   const form = document.getElementById('contactForm');
@@ -146,6 +213,8 @@
       submitButton.disabled = false;
     }
   });
+
+  void loadAnnouncements();
 </script>
 </body>
 </html>

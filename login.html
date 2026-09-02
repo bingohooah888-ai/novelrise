@@ -21,7 +21,7 @@
       <div id="loginStatus" class="status" role="status" aria-live="polite"></div>
     </form>
     <div class="row"><a href="forgot-password.html">パスワードを忘れた方</a><a href="signup.html">会員登録</a></div>
-    <div class="legal"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="contact.html">お問い合わせ</a></div>
+    <div class="legal"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="contact.html">お知らせ・お問い合わせ</a></div>
   </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,7 +36,8 @@
 
   const ALLOWED_PATHS=new Set([
     '/mypage.html','/pricing.html','/scout-record.html','/post.html','/favorites.html',
-    '/novel.html','/episode.html','/analytics.html','/my-novels.html','/admin.html'
+    '/novel.html','/episode.html','/analytics.html','/my-novels.html','/admin.html',
+    '/admin-announcements.html','/admin-inquiries.html','/admin-reports.html'
   ]);
 
   function safeRedirectTarget(raw){
