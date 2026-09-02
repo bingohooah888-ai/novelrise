@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>お問い合わせ管理 | NOVELIGHT ADMIN</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#0f1020;color:#f4f4f8}a{color:inherit;text-decoration:none}button,select{font:inherit}button{cursor:pointer}.hidden{display:none!important}header{border-bottom:1px solid #292b47;background:#121326}.header-inner{max-width:1120px;margin:auto;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px}.brand{font-size:21px;font-weight:950}.badge{margin-left:8px;color:#c7c1ff;font-size:11px}.actions{display:flex;gap:8px}.ghost,.primary{border-radius:9px;padding:10px 13px;font-weight:900}.ghost{border:1px solid #393c61;background:#17182c;color:#ddd}.primary{border:0;background:#6d4aff;color:#fff}main{max-width:1120px;margin:auto;padding:30px 20px 70px}.hero h1{margin:0;font-size:30px}.hero p{color:#999db9;line-height:1.6}.status{margin:16px 0;padding:12px 14px;border:1px solid #303253;border-radius:10px;background:#17182c;color:#b7bad0}.status.error{border-color:#7c3039;color:#ffb8c0}.grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:18px}.panel{border:1px solid #2d2f4d;background:#17182c;border-radius:14px;padding:18px}.panel h2{margin:0 0 14px;font-size:18px}.list{display:grid;gap:9px}.item{width:100%;text-align:left;border:1px solid #303253;border-radius:11px;background:#121326;color:#fff;padding:13px}.item:hover{border-color:#5d50cc}.subject{font-weight:900}.meta{margin-top:6px;color:#8f93b0;font-size:11px;line-height:1.55}.chip{display:inline-block;margin-right:6px;padding:3px 6px;border-radius:999px;background:#252744;color:#c9c5ff;font-size:10px;font-weight:900}.detail{display:grid;gap:13px}.kv{padding:11px;border-radius:9px;background:#101121}.kv span{display:block;color:#8589a8;font-size:10px;font-weight:900}.kv strong,.kv p{display:block;margin:5px 0 0;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.65}.status-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.status-form select{padding:10px;border:1px solid #393c61;border-radius:9px;background:#101121;color:#fff}.privacy{color:#8589a8;font-size:11px;line-height:1.6}.empty{padding:20px;text-align:center;color:#8589a8;border:1px dashed #343755;border-radius:10px}.gate{max-width:640px;margin:60px auto;padding:24px;border:1px solid #393c61;border-radius:14px;background:#17182c}@media(max-width:780px){.grid{grid-template-columns:1fr}.header-inner{align-items:flex-start}.actions{flex-wrap:wrap;justify-content:flex-end}}
+  </style>
+</head>
+<body>
+<header><div class="header-inner"><div class="brand">NOVELIGHT <span class="badge">ADMIN</span></div><div class="actions"><a class="ghost" href="admin.html">ADMINトップ</a><a class="ghost" href="admin-announcements.html">お知らせ管理</a><button id="logout" class="ghost" type="button">ログアウト</button></div></div></header>
+<main>
+  <section id="gate" class="gate hidden"><h1 id="gateTitle">アクセスを確認しています</h1><p id="gateMessage">管理者権限を確認しています。</p></section>
+  <div id="app" class="hidden">
+    <section class="hero"><h1>お問い合わせ管理</h1><p>一覧には必要最小限の情報だけを表示し、メールアドレス・本文・user_idは詳細を開いた時だけ取得します。</p></section>
+    <div id="status" class="status">読み込み中...</div>
+    <div class="grid">
+      <section class="panel"><h2>受信一覧</h2><div id="inquiryList" class="list"><div class="empty">読み込み中...</div></div></section>
+      <section class="panel"><h2>詳細</h2><div id="inquiryDetail" class="empty">問い合わせを選択してください。</div></section>
+    </div>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+  let selectedId=null;
+  const statusEl=document.getElementById('status');
+  const dt=(value)=>value?new Date(value).toLocaleString('ja-JP'):'—';
+  const statusLabel=(value)=>value==='resolved'?'対応済み':value==='reviewing'?'対応中':'未対応';
+  function showGate(title,message){document.getElementById('app').classList.add('hidden');document.getElementById('gate').classList.remove('hidden');document.getElementById('gateTitle').textContent=title;document.getElementById('gateMessage').textContent=message}
+  function showApp(){document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden')}
+  async function session(){const {data:{session},error}=await client.auth.getSession();if(error)throw error;if(!session){location.href='login.html?redirect=admin-inquiries.html';return null}return session}
+  async function adminFetch(url,options={}){const current=await session();if(!current)return null;const response=await fetch(url,{...options,headers:{Authorization:`Bearer ${current.access_token}`,Accept:'application/json','Content-Type':'application/json',...(options.headers||{})},cache:'no-store',credentials:'same-origin'});if(response.status===401){location.href='login.html?redirect=admin-inquiries.html';return null}if(response.status===403){showGate('アクセスできません','このアカウントにはNOVELIGHT ADMINの管理者権限がありません。');return null}if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.error||`ADMIN API ${response.status}`)}return response.json()}
+  function renderList(rows){const list=document.getElementById('inquiryList');list.replaceChildren();if(!rows.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='問い合わせはまだありません。';list.appendChild(empty);return}rows.forEach(row=>{const button=document.createElement('button');button.type='button';button.className='item';const subject=document.createElement('div');subject.className='subject';subject.textContent=row.subject;const meta=document.createElement('div');meta.className='meta';const chip=document.createElement('span');chip.className='chip';chip.textContent=statusLabel(row.status);meta.append(chip,document.createTextNode(`#${row.id} / ${dt(row.created_at)}`));button.append(subject,meta);button.addEventListener('click',()=>void openDetail(row.id));list.appendChild(button)})}
+  function kv(label,value,isBody=false){const box=document.createElement('div');box.className='kv';const l=document.createElement('span');l.textContent=label;const v=document.createElement(isBody?'p':'strong');v.textContent=value??'—';box.append(l,v);return box}
+  function renderDetail(row){selectedId=row.id;const detail=document.getElementById('inquiryDetail');detail.className='detail';detail.replaceChildren();detail.append(kv('返信先メールアドレス',row.email),kv('問い合わせ種別',row.subject),kv('本文',row.message,true),kv('受信日時',dt(row.created_at)),kv('user_id',row.user_id||'—'));const form=document.createElement('div');form.className='status-form';const select=document.createElement('select');[['new','未対応'],['reviewing','対応中'],['resolved','対応済み']].forEach(([value,label])=>{const option=document.createElement('option');option.value=value;option.textContent=label;option.selected=row.status===value;select.appendChild(option)});const save=document.createElement('button');save.type='button';save.className='primary';save.textContent='statusを変更';save.addEventListener('click',()=>void changeStatus(select.value));form.append(select,save);detail.append(form);const note=document.createElement('p');note.className='privacy';note.textContent='この詳細は認証済み＋allowlist確認済みのserver-side ADMIN endpointから取得しています。公開一覧APIには含まれません。';detail.appendChild(note)}
+  async function openDetail(id){try{statusEl.textContent='詳細を取得中...';const data=await adminFetch(`/api/admin-inquiries?id=${encodeURIComponent(id)}`);if(!data)return;renderDetail(data.inquiry);statusEl.textContent=`問い合わせ #${id} を表示しています。`}catch(error){console.error(error);statusEl.className='status error';statusEl.textContent='詳細を取得できませんでした。'}}
+  async function loadList(){try{statusEl.className='status';statusEl.textContent='読み込み中...';const data=await adminFetch('/api/admin-inquiries');if(!data)return;showApp();renderList(data.inquiries||[]);statusEl.textContent=`${(data.inquiries||[]).length}件を読み込みました。`}catch(error){console.error(error);showApp();statusEl.className='status error';statusEl.textContent='問い合わせ一覧を取得できませんでした。'}}
+  async function changeStatus(next){if(!selectedId)return;try{statusEl.className='status';statusEl.textContent='statusを更新中...';await adminFetch('/api/admin-inquiries',{method:'PATCH',body:JSON.stringify({id:selectedId,status:next})});await loadList();await openDetail(selectedId);statusEl.textContent=`${statusLabel(next)}へ変更しました。`}catch(error){console.error(error);statusEl.className='status error';statusEl.textContent='statusを変更できませんでした。'}}
+  document.getElementById('logout').addEventListener('click',async()=>{await client.auth.signOut();location.href='index.html'});
+  void loadList();
+</script>
+</body>
+</html>
