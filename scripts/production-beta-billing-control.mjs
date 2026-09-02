@@ -4,11 +4,12 @@ import Stripe from 'stripe';
 
 const EXPECTED_SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
 const EXPECTED_APP_URL = 'https://novelrise.vercel.app';
+const PREMIUM_BETA_LOOKUP_KEY = 'novelight_premium_beta_2026_monthly_jpy';
 const runId = String(process.env.GITHUB_RUN_ID || Date.now());
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 const stripeSecretKey = process.env.STRIPE_LIVE_SECRET_KEY;
-const premiumPriceId = process.env.STRIPE_PREMIUM_PRICE_ID;
+const configuredPremiumPriceId = process.env.STRIPE_PREMIUM_PRICE_ID || null;
 const appUrl = process.env.NOVELIGHT_APP_URL;
 
 function fail(message) {
@@ -18,7 +19,9 @@ function fail(message) {
 if (supabaseUrl !== EXPECTED_SUPABASE_URL) fail('Refusing non-canonical Production Supabase target.');
 if (!supabaseSecretKey) fail('SUPABASE_SECRET_KEY is required.');
 if (!stripeSecretKey?.startsWith('sk_live_')) fail('A Stripe live secret key is required.');
-if (!premiumPriceId?.startsWith('price_')) fail('STRIPE_PREMIUM_PRICE_ID is required.');
+if (configuredPremiumPriceId && !configuredPremiumPriceId.startsWith('price_')) {
+  fail('STRIPE_PREMIUM_PRICE_ID is invalid.');
+}
 if (appUrl !== EXPECTED_APP_URL) fail('Refusing non-canonical Production app URL.');
 
 const admin = createClient(supabaseUrl, supabaseSecretKey, {
@@ -28,6 +31,7 @@ const authClient = createClient(supabaseUrl, supabaseSecretKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 const stripe = new Stripe(stripeSecretKey);
+let premiumPriceId = configuredPremiumPriceId;
 
 const fixture = {
   userId: null,
@@ -41,6 +45,35 @@ const fixture = {
 function assertNoError(result, label) {
   if (result?.error) fail(`${label}: ${result.error.message}`);
   return result?.data;
+}
+
+async function resolvePremiumBetaPrice() {
+  const found = await stripe.prices.list({
+    active: true,
+    lookup_keys: [PREMIUM_BETA_LOOKUP_KEY],
+    limit: 10
+  });
+
+  if (found.data.length !== 1) {
+    fail(`Expected exactly one active Premium beta price, found ${found.data.length}.`);
+  }
+
+  const price = found.data[0];
+  if (
+    !price.livemode ||
+    price.currency !== 'jpy' ||
+    price.unit_amount !== 480 ||
+    price.recurring?.interval !== 'month' ||
+    price.recurring?.interval_count !== 1
+  ) {
+    fail('Premium beta Stripe price does not match 480 JPY monthly billing.');
+  }
+
+  if (premiumPriceId && premiumPriceId !== price.id) {
+    fail('Configured Premium price does not match the canonical beta lookup price.');
+  }
+
+  premiumPriceId = price.id;
 }
 
 async function waitFor(label, probe, { attempts = 36, delayMs = 5000 } = {}) {
@@ -305,6 +338,7 @@ async function cleanup() {
 let mainError = null;
 try {
   console.log('Starting controlled Production beta billing proof (no live charge path).');
+  await resolvePremiumBetaPrice();
   await createEphemeralUser();
   const accessToken = await signIn();
   await activateCardlessStandard(accessToken);
