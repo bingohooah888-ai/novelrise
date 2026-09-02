@@ -20,60 +20,30 @@ test('pricing puts checkout status immediately after plans and before legal bill
   const html = await pricingHtml();
   const statusIndex = html.indexOf('id="status"');
   const billingIndex = html.indexOf('<section class="billing">');
-
   assert.notEqual(statusIndex, -1);
   assert.notEqual(billingIndex, -1);
   assert.ok(statusIndex < billingIndex);
   assert.match(html, /aria-live="polite"/);
 });
 
-test('billing state conflict produces a visible no-charge recovery message and reenables controls', async () => {
+test('beta Standard billing conflict produces a visible recovery message and reenables controls', async () => {
   const script = await pricingScript();
   const elements = {
-    status: {
-      textContent: '',
-      dataset: {},
-      scrollIntoViewCalls: 0,
-      scrollIntoView() {
-        this.scrollIntoViewCalls += 1;
-      }
-    },
+    status: { textContent: '', dataset: {}, scrollIntoViewCalls: 0, scrollIntoView() { this.scrollIntoViewCalls += 1; } },
     standard: { disabled: false, onclick: null, textContent: '' },
     premium: { disabled: false, onclick: null, textContent: '' }
   };
-  const storage = new Map([
-    [
-      'sb-fiepaguycecrredwrcwx-auth-token',
-      JSON.stringify({ access_token: 'stored-access-token' })
-    ]
-  ]);
+  const storage = new Map([['sb-fiepaguycecrredwrcwx-auth-token', JSON.stringify({ access_token: 'stored-access-token' })]]);
   const location = { href: 'pricing.html', hostname: 'novelrise.vercel.app' };
-
   const context = vm.createContext({
     console: { error() {} },
-    document: {
-      getElementById(id) {
-        return elements[id];
-      }
-    },
-    localStorage: {
-      getItem(key) {
-        return storage.get(key) ?? null;
-      },
-      removeItem(key) {
-        storage.delete(key);
-      }
-    },
+    document: { getElementById(id) { return elements[id]; } },
+    localStorage: { getItem(key) { return storage.get(key) ?? null; }, removeItem(key) { storage.delete(key); } },
     location,
     fetch: async () => ({
       ok: false,
       status: 409,
-      async json() {
-        return {
-          error: 'Billing account needs repair',
-          code: 'billing_state_conflict'
-        };
-      }
+      async json() { return { error: 'Billing account needs synchronization', code: 'billing_state_conflict' }; }
     })
   });
 
@@ -82,9 +52,8 @@ test('billing state conflict produces a visible no-charge recovery message and r
 
   assert.equal(elements.standard.disabled, false);
   assert.equal(elements.premium.disabled, false);
-  assert.equal(elements.standard.textContent, 'Standardを申し込む / 管理');
-  assert.match(elements.status.textContent, /契約情報の同期に問題/);
-  assert.match(elements.status.textContent, /決済は発生していません/);
+  assert.equal(elements.standard.textContent, 'Standardを無料で利用');
+  assert.match(elements.status.textContent, /既存の有料契約状態/);
   assert.equal(elements.status.dataset.visible, 'true');
   assert.equal(elements.status.dataset.kind, 'error');
   assert.equal(elements.status.scrollIntoViewCalls, 1);
