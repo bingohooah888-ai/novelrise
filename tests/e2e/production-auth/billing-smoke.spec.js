@@ -346,7 +346,7 @@ test('Stripe test checkout, entitlement, portal, and cancellation work in stagin
         headers: {
           Authorization: `Bearer ${accessToken}`
         },
-        data: { plan: 'standard' }
+        data: { plan: 'premium' }
       }
     );
     expect(checkoutResponse.status()).toBe(200);
@@ -366,7 +366,7 @@ test('Stripe test checkout, entitlement, portal, and cancellation work in stagin
         },
         { timeout: 45_000, intervals: [1000, 2000, 3000] }
       )
-      .toBe('standard');
+      .toBe('premium');
 
     const paidState = await getBillingState(page);
     expect(paidState.stripe_customer_id).toMatch(/^cus_/);

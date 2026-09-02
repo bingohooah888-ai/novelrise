@@ -15,6 +15,10 @@ const authenticatedSmoke = await readFile(
   'tests/e2e/production-auth/authenticated-smoke.spec.js',
   'utf8'
 );
+const billingSmoke = await readFile(
+  'tests/e2e/production-auth/billing-smoke.spec.js',
+  'utf8'
+);
 const checkout = await readFile('api/_lib/checkout.js', 'utf8');
 const portal = await readFile('api/_lib/billing-portal.js', 'utf8');
 
@@ -131,6 +135,13 @@ test('authenticated smoke checks beta billing paths on separate users', () => {
     /assertCheckoutSession\(authorPage, 'premium'\)/
   );
   assert.match(authenticatedSmoke, /Checkout \$\{plan\} failed:/);
+});
+
+test('complete Staging billing smoke uses Premium Checkout', () => {
+  assert.match(billingSmoke, /data: \{ plan: 'premium' \}/);
+  assert.match(billingSmoke, /\.toBe\('premium'\)/);
+  assert.doesNotMatch(billingSmoke, /data: \{ plan: 'standard' \}/);
+  assert.doesNotMatch(billingSmoke, /\.toBe\('standard'\)/);
 });
 
 test('Preview billing return URLs use the exact Vercel deployment helper', () => {
