@@ -211,7 +211,9 @@ function handleAdminError(res, error, fallback) {
     error?.code === 'SCHEMA_NOT_READY' ||
     isMissingRelation(error, 'announcements')
   ) {
-    return res.status(503).json({ error: 'Announcements are not available yet' });
+    return res
+      .status(503)
+      .json({ error: 'Announcements are not available yet' });
   }
   if (error?.code === 'P0002') {
     return res.status(404).json({ error: 'Not found' });
