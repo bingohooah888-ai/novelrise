@@ -30,9 +30,15 @@ test('homepage allocation and authoritative recording use the same viewport-size
     home,
     /visible=selectVisibleDiscoveryRows\(general,planRows,premium,limit\)/
   );
-  assert.match(home, /grid\.innerHTML=visible\.length\?visible\.map\(card\)/);
+  assert.match(
+    home,
+    /grid\.innerHTML=visible\.length\?visible\.map\(card\)/
+  );
   assert.match(home, /if\(visible\.length\)void record\(visible\)/);
-  assert.doesNotMatch(home, /record\(general\)|record\(planRows\)|record\(premium\)/);
+  assert.doesNotMatch(
+    home,
+    /record\(general\)|record\(planRows\)|record\(premium\)/
+  );
 });
 
 test('trusted allocation stays authoritative while plan-specific sources remain internally measurable', async () => {
@@ -46,7 +52,10 @@ test('trusted allocation stays authoritative while plan-specific sources remain 
   assert.match(home, /record_trusted_allocation_receipts/);
   assert.match(home, /rows\.filter\(x=>!x\.is_premium_slot\)/);
   assert.match(home, /rows\.filter\(x=>x\.is_premium_slot\)/);
-  assert.match(home, /planExtraFeed\(\{p_limit:1,p_exclude_novel_ids:excluded/);
+  assert.match(
+    home,
+    /planExtraFeed\(\{p_limit:1,p_exclude_novel_ids:excluded/
+  );
 
   assert.match(trustedMigration, /plan_snapshot text not null/);
   assert.match(trustedMigration, /'home_plan_extra'/);
@@ -78,7 +87,9 @@ test('controlled rotation and fairness do not make paid status an unconditional 
   assert.match(allocation, /date_trunc\('hour', now\(\)\)/);
 
   const initialPriority = allocation.indexOf('r.needs_initial_exposure desc');
-  const weightedAuthorExposure = allocation.indexOf('r.normalized_author_exposure asc');
+  const weightedAuthorExposure = allocation.indexOf(
+    'r.normalized_author_exposure asc'
+  );
   assert.ok(initialPriority >= 0);
   assert.ok(weightedAuthorExposure > initialPriority);
 });
@@ -87,14 +98,20 @@ test('homepage selection protects author diversity before filling remaining slot
   const home = await read('index.html');
 
   assert.match(home, /const authors=new Set\(\),primary=\[\],deferred=\[\]/);
-  assert.match(home, /if\(author&&authors\.has\(author\)\)deferred\.push\(row\)/);
+  assert.match(
+    home,
+    /if\(author&&authors\.has\(author\)\)deferred\.push\(row\)/
+  );
   assert.match(home, /primary\.concat\(deferred\)\.slice\(0,limit\)/);
 });
 
 test('new-arrivals homepage link selects neutral new ordering on search', async () => {
   const search = await read('search.html');
 
-  assert.match(search, /allowedSorts=new Set\(\['recommended','new','pv','favorites'\]\)/);
+  assert.match(
+    search,
+    /allowedSorts=new Set\(\['recommended','new','pv','favorites'\]\)/
+  );
   assert.match(
     search,
     /new URLSearchParams\(window\.location\.search\)\.get\('sort'\)/
