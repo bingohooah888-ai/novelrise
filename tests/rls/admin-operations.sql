@@ -70,11 +70,17 @@ select public.test_assert(
   'announcement create must emit one audit row'
 );
 
+select id as announcement_id
+  from public.announcements
+ order by id
+ limit 1
+\gset
+
 set role service_role;
 select *
   from public.novelight_admin_update_announcement(
     '11111111-1111-1111-1111-111111111111',
-    (select id from public.announcements limit 1),
+    :announcement_id,
     'β版公開のお知らせ',
     '公開テスト本文です。',
     '運営',
@@ -120,17 +126,18 @@ select public.test_assert(
   'inquiry fixture must start new'
 );
 
+select id as inquiry_id
+  from public.contact_inquiries
+ where email = 'ops-test@example.com'
+ order by id desc
+ limit 1
+\gset
+
 set role service_role;
 select *
   from public.novelight_admin_update_contact_inquiry_status(
     '11111111-1111-1111-1111-111111111111',
-    (
-      select id
-        from public.contact_inquiries
-       where email = 'ops-test@example.com'
-       order by id desc
-       limit 1
-    ),
+    :inquiry_id,
     'reviewing'
   );
 reset role;
