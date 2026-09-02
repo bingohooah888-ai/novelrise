@@ -124,7 +124,12 @@ test('announcement writes bind the authenticated admin id on the server', async 
     handler,
     adminRequest({
       method: 'POST',
-      body: { title: '障害情報', body: '復旧しました。', category: '障害', status: 'draft' }
+      body: {
+        title: '障害情報',
+        body: '復旧しました。',
+        category: '障害',
+        status: 'draft'
+      }
     })
   );
   assert.equal(created.statusCode, 201);
@@ -155,7 +160,12 @@ test('inquiry list omits sensitive fields until an explicit detail request', asy
     supabase: createSupabase(),
     env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID },
     listInquiries: async () => [
-      { id: 7, subject: '課金・解約', status: 'new', created_at: '2026-09-03T00:00:00Z' }
+      {
+        id: 7,
+        subject: '課金・解約',
+        status: 'new',
+        created_at: '2026-09-03T00:00:00Z'
+      }
     ],
     getInquiry: async (supabase, id) => {
       detailCalls += 1;
@@ -176,7 +186,10 @@ test('inquiry list omits sensitive fields until an explicit detail request', asy
   assert.equal(list.statusCode, 200);
   assert.equal(detailCalls, 0);
   assert.equal(JSON.stringify(list.body).includes('author@example.com'), false);
-  assert.equal(JSON.stringify(list.body).includes('確認したいことがあります。'), false);
+  assert.equal(
+    JSON.stringify(list.body).includes('確認したいことがあります。'),
+    false
+  );
 
   const detail = await run(handler, adminRequest({ query: { id: '7' } }));
   assert.equal(detail.statusCode, 200);
@@ -199,13 +212,19 @@ test('inquiry status changes bind the admin id and reject malformed ids', async 
 
   const invalid = await run(
     handler,
-    adminRequest({ method: 'PATCH', body: { id: 'not-an-id', status: 'reviewing' } })
+    adminRequest({
+      method: 'PATCH',
+      body: { id: 'not-an-id', status: 'reviewing' }
+    })
   );
   assert.equal(invalid.statusCode, 400);
 
   const changed = await run(
     handler,
-    adminRequest({ method: 'PATCH', body: { id: 9, status: 'reviewing' } })
+    adminRequest({
+      method: 'PATCH',
+      body: { id: 9, status: 'reviewing' }
+    })
   );
   assert.equal(changed.statusCode, 200);
   assert.equal(statusArgs[1], ADMIN_ID);
