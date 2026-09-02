@@ -2,7 +2,7 @@
 
 NOVELIGHTのStripe本番準備は、`.github/workflows/stripe-production-bootstrap.yml` を使って実行する。
 
-目的は、Stripe DashboardとVercel Dashboardでの反復手作業を最小化しつつ、ライブ課金に関わる変更をGitHub Environment承認の内側に置くことである。通常の本番整合・修復では、同じ承認済みworkflowの中でVercel Production設定同期、再deploy、Webhook到達確認、**実課金なしのCheckout API + Webhook control proof**まで完了させる。
+目的は、Stripe DashboardとVercel Dashboardでの反復手作業を最小化しつつ、ライブ課金に関わる変更をGitHub Environment承認の内側に置くことである。β期間中は、**Standardを0円・カード登録不要の非Stripe entitlementとして提供し、Premiumだけを月額480円のStripe継続課金として扱う**。通常の本番整合・修復では、同じ承認済みworkflowの中でVercel Production設定同期、再deploy、既存契約のβ価格移行、Webhook到達確認、**実課金なしのβ billing control proof**まで完了させる。
 
 Production billing障害の切り分け・自動化・修復は `docs/PRODUCTION-BILLING-INCIDENT-RUNBOOK.md` を併用する。
 
@@ -16,7 +16,7 @@ GitHubの `production-approval` Environment secretsへ次を登録する。
 
 これらの値をissue、PR、チャット、repository file、workflow logへ貼らない。
 
-Standaloneの `NOVELIGHT Production Webhook Control` と `NOVELIGHT Production Webhook Legacy Cleanup` を手動実行する場合は、同Environmentの `STRIPE_STANDARD_PRICE_ID` も使用する。
+Standaloneの `NOVELIGHT Production Webhook Control` を手動実行する場合は、同Environmentの `STRIPE_PREMIUM_PRICE_ID` も使用する。Legacy Cleanupはcanonical billing状態の確認に必要なProduction secretsを同Environmentから取得する。
 
 `production-approval` EnvironmentにはRequired reviewerを設定し、管理者によるbypassは無効のまま維持する。
 
@@ -26,39 +26,47 @@ Standaloneの `NOVELIGHT Production Webhook Control` と `NOVELIGHT Production W
 
 1. ライブStripe key、本番Supabase Secret Key、canonical Supabase URL、Vercel tokenをfail-closedで確認する。
 2. Vercelの `ranobe1 / novelrise` projectへ明示的にlinkする。
-3. Standard月額980円とPremium月額1,980円のライブPriceをlookup keyで冪等に確認・作成する。
-4. NOVELIGHT専用Customer Portal configurationを作成または更新する。
-5. Customer Portalで支払方法更新、請求履歴、期間末解約、Standard/Premiumのprice変更を可能にする。
+3. β版Premium月額480円のライブPriceを専用lookup keyで冪等に確認・作成する。Standard月額980円の既存Priceは、新規申込みには使用せず、β無料化時の既存Standard契約停止対象を識別するためにのみ参照する。
+4. 旧Premium月額1,980円のlive Priceが存在する場合は、金額・通貨・課金周期を検証し、既存Premium契約の移行元として識別する。
+5. NOVELIGHT専用Customer Portal configurationを作成または更新する。β期間中はStandardが非Stripe entitlementのため、Portal内のStandard/Premium price切替は無効にする。
 6. `https://novelrise.vercel.app/api/stripe-webhook` のライブWebhook endpointを確認または作成する。
 7. 古いNOVELIGHT Vercel alias等へ向いたactiveなlive webhook endpointがあれば検出し、安全なcleanup候補として記録する。
 8. Vercel Productionへ本番変数を同期する。Secret類はログへ出さずsensitive variableとして扱う。
    - `STRIPE_SECRET_KEY`
-   - `STRIPE_STANDARD_PRICE_ID`
-   - `STRIPE_PREMIUM_PRICE_ID`
+   - `STRIPE_STANDARD_PRICE_ID`（既存Standard 980円契約の移行識別用。新規Standard Checkoutには使用しない）
+   - `STRIPE_PREMIUM_PRICE_ID`（β版Premium 480円）
+   - `STRIPE_PREMIUM_LEGACY_PRICE_ID`（旧Premium 1,980円Priceが存在する場合）
    - `STRIPE_PORTAL_CONFIGURATION_ID`
    - `STRIPE_WEBHOOK_SECRET`
    - `SUPABASE_SECRET_KEY`
    - `SUPABASE_URL=https://fiepaguycecrredwrcwx.supabase.co`
    - `NOVELIGHT_APP_URL`
+   - `NOVELIGHT_BETA_STANDARD_FREE=true`
 9. Vercel Productionを再deployする。
-10. Checkout APIとWebhook APIの公開route contractが到達可能であることを確認する。
-11. signing secret rotation時は、新deploymentが到達可能になった後で旧canonical endpointを削除する。
-12. 最終deploy状態に対して `scripts/production-webhook-control.mjs` を実行する。
-13. control proofだけが失敗した場合は、Stripe/Vercel同期やdeployをやり直さず15秒後にcontrol proofだけを1回再試行する。
-14. signing secretを含み得る一時bootstrap outputは、後段の検証失敗時を含めて必ず削除する。
+10. Premium Checkout API、Standard β無料activation API、Webhook APIの公開route contractが到達可能であることを確認する。
+11. redeploy後、既存の非terminal Standard 980円subscriptionを `invoice_now=false` / `prorate=false` で停止し、以後980円が自動請求されないようにする。Webhookはβ期間中Standard無料へ復帰させる。
+12. 旧Premium 1,980円subscriptionが存在する場合、`proration_behavior=none` でPremium 480円Priceへ移し、移行時の追加請求・日割り請求を発生させず次回更新以降を480円にする。
+13. signing secret rotation時は、新deploymentが到達可能になった後で旧canonical endpointを削除する。
+14. 最終deploy状態に対して `scripts/production-beta-billing-control.mjs` を実行する。
+15. control proofだけが失敗した場合は、Stripe/Vercel同期や契約移行をやり直さず15秒後にcontrol proofだけを1回再試行する。
+16. Production Billing Health Auditで最終整合性をread-only確認する。
+17. signing secretを含み得る一時bootstrap outputは、後段の検証失敗時を含めて必ず削除する。
 
 古いalias endpointの削除は、通常のbootstrapとは別に `NOVELIGHT Production Webhook Legacy Cleanup` を使える。これはcanonical endpointを維持したまま、削除直前にもlegacy条件を再検証し、cleanup後にno-charge controlとBilling Health Auditを実行する。
 
 ## Stripe object safety
 
-Priceは次のlookup keyを正式キーとする。
+β期間中のPrice識別は次を正式キーとする。
 
-- Standard: `novelight_standard_monthly_jpy`
-- Premium: `novelight_premium_monthly_jpy`
+- Standard legacy: `novelight_standard_monthly_jpy` — 月額980円。**β中の新規Standard申込みには使わず、既存有料Standard契約の停止対象識別専用**。
+- Premium beta: `novelight_premium_beta_2026_monthly_jpy` — 月額480円。β期間中の新規Premium申込みと更新に使用する。
+- Premium legacy: `novelight_premium_monthly_jpy` — 月額1,980円。既存Premium契約の移行元識別専用。
 
-同じlookup keyが既に存在する場合、workflowは金額・通貨・課金周期を検証し、不一致なら新しいPriceを勝手に作らず停止する。
+同じlookup keyが複数存在する、想定金額・通貨・課金周期と一致しない、または対象subscriptionが単一itemの想定NOVELIGHT契約として確認できない場合は、勝手に修復・移行せずfail closedで停止する。
 
-Customer Portal configurationはmetadata `novelight_managed=true` を持つものだけを更新対象とする。複数存在する場合は曖昧な更新を避けて停止する。
+既存Standard有料subscriptionの停止は `invoice_now=false` / `prorate=false` とし、β無料化のための追加請求や日割り請求を発生させない。旧Premiumから480円への移行は `proration_behavior=none` とし、移行時の即時差額請求を発生させない。
+
+Customer Portal configurationはmetadata `novelight_managed=true` を持つものだけを更新対象とする。複数存在する場合は曖昧な更新を避けて停止する。β期間中はStandardがStripe subscriptionではないため、Portalのsubscription price切替機能は無効にする。
 
 Webhook URLが既に存在する場合、通常実行ではイベント設定だけを同期する。Stripeは既存endpointのsigning secretをAPIから再取得できないため、通常実行ではVercelに `STRIPE_WEBHOOK_SECRET` が既に存在することを条件に再利用する。Endpointだけ存在してVercel secretが無い状態では停止し、秘密値を推測・上書きしない。
 
@@ -75,7 +83,7 @@ Stripe側のcanonical live webhook endpointとVercel Productionの `STRIPE_WEBHO
 3. replacementのsigning secretをVercel Productionの `STRIPE_WEBHOOK_SECRET` へsensitive variableとして同期する。
 4. Productionを再deployする。
 5. 新deploymentのroute contractが到達可能になった後だけ旧canonical endpointを削除する。
-6. 最終状態に対してno-charge control proofを実行する。
+6. 最終状態に対してno-charge beta billing control proofを実行する。
 
 修復モードはsigning secretをチャット、repository、PR、ログへ表示しない。
 
@@ -93,23 +101,23 @@ canonical endpointのcontrol proofが成功している一方、Vercel Runtime L
 
 このcleanupはPrice、Customer、Subscription、Webhook secretを変更しない。canonical endpoint IDの削除は明示的に拒否する。
 
-## No-charge Production checkout + webhook control
+## No-charge Production beta billing control
 
 Production controlでは、固定テスト作者を使い回さず、毎回一時Supabaseユーザーを作成する。
 
 control proofは次を確認する。
 
-1. 一時ユーザーで本番 `/api/create-checkout-session` を呼ぶ。
-2. Stripe Liveのsubscription Checkout Sessionが作られることを確認する。
-3. Sessionが`unpaid`で、Standardのlive Priceと正しいuser referenceを持つことを確認する。
-4. 支払い前にCheckout Sessionをexpireする。
-5. 支払方法なしの1日trial subscriptionを作る。
-6. `customer.subscription.created` によるStandard entitlement反映と監査event記録を確認する。
-7. subscription cancelによるFree復帰と監査event記録を確認する。
-8. chargeとpaid invoiceが0であることを確認する。
+1. 一時ユーザーを作成し、本番 `/api/activate-beta-standard` を認証付きで呼ぶ。
+2. profileが `plan=standard` / `payment_status=beta_free` となり、Standard利用開始にStripe Customer、subscription、支払方法が不要であることを確認する。
+3. 同じ作者で本番 `/api/create-checkout-session` からPremium申込みを開始する。
+4. Stripe Liveのsubscription Checkout Sessionが`unpaid`で、β版Premium 480円のlive Priceと正しいuser referenceを持つことを確認し、支払い前にSessionをexpireする。
+5. Webhook lifecycle確認専用に、支払方法なし・1日trialのPremium subscriptionを作成する。
+6. `customer.subscription.created` によりPremium entitlementと監査状態が反映されることを確認する。
+7. trial subscriptionをcancelし、β期間中のfallbackとして `plan=standard` / `payment_status=beta_free` へ戻ることを確認する。
+8. control全体を通じてchargeとpaid invoiceが0であることを確認する。
 9. 一時Stripe/Supabaseデータをcleanupする。
 
-これにより、Production Checkout API、Stripe Live object作成、Production Webhook、Supabase entitlement反映を**実課金なし**で継続検証できる。
+これにより、**Standardカード不要・Premium 480円Checkout・Stripe Live → Webhook → Supabase反映・Premium解約後のβ無料Standard復帰**を、人工的な実課金なしで継続検証できる。
 
 `.github/workflows/production-webhook-control.yml` は独立した診断・復旧用fallbackとして残す。自動push triggerは持たず、`workflow_dispatch` で明示起動した場合だけ `production-approval` を要求する。
 
@@ -117,10 +125,13 @@ control proofは次を確認する。
 
 `NOVELIGHT Production Billing Health` はStripe/Supabase/Webhookの状態差分をread-onlyで検査する。
 
+β期間中は `plan=standard` / `payment_status=beta_free` を正常な**非Stripe entitlement**として扱う。この状態にStripeのactive/trialing等のentitled subscriptionが同時に残っている場合はdriftとして停止する。
+
 検査例:
 
-- Paid profileなのにStripe Customerが存在しない
-- Paid profileなのにentitled Subscriptionが存在しない
+- Premium等のpaid profileなのにStripe Customerが存在しない
+- Premium等のpaid profileなのにentitled Subscriptionが存在しない
+- beta-free Standardなのにlive entitled subscriptionが残っている
 - Free profileなのにactive/trialing等のSubscriptionが存在する
 - 同一Customerを複数profileが参照する
 - canonical webhook endpoint数・event設定の不整合
@@ -144,10 +155,10 @@ Auditはread-onlyとし、修復は `NOVELIGHT Production Billing Repair` やLeg
 
 ## Customer Portal policy
 
-- 解約は `at_period_end` とし、現在期間の終了までは契約権利を維持する。
-- 支払方法変更と請求履歴を有効にする。
-- Standard / Premium間のprice変更を有効にする。
-- 安いプランへの変更は期間末へscheduleし、上位プランへの変更ではprorationを利用する。
+- β期間中、Stripe顧客ポータルはPremium subscriptionの契約管理に使用する。Standard β無料利用者はStripe顧客ポータルを必要としない。
+- Premiumの解約は `at_period_end` とし、現在期間の終了まではPremium権利を維持する。
+- Premium利用者の支払方法変更と請求履歴を有効にする。
+- β期間中はStandard / Premium間のPortal price切替を無効にする。Standardへの復帰はPremium終了をWebhook同期した後、β無料entitlementとして処理する。
 - Portal session作成時は `STRIPE_PORTAL_CONFIGURATION_ID` を明示し、Stripe Dashboardのdefault configurationに依存しない。
 
 ## 実行方法と承認境界
@@ -156,9 +167,11 @@ GitHub Actionsから `NOVELIGHT Stripe Production Bootstrap` を手動起動す�
 
 通常の整合確認では `rotate_webhook_secret` を無効のまま実行する。Webhook signing secretの修復が必要な場合だけ、意図を確認したうえで有効化する。
 
-workflowは `production-approval` Environmentで停止し、Required reviewerの承認後にだけProduction stateへ書き込む。その1回の承認は、そのworkflow run内の設定同期、redeploy、承認されたcleanup、no-charge control、最大1回のcontrol再試行までを対象とする。
+workflowは `production-approval` Environmentで停止し、Required reviewerの承認後にだけProduction stateへ書き込む。その1回の承認は、そのworkflow run内のStripe βPrice作成・Vercel設定同期・redeploy・既存Standard/Premium subscriptionの承認されたβ価格移行・Webhook cleanup・no-charge control・最大1回のcontrol再試行・最終auditまでを対象とする。
 
 別の日・別workflow run・別のProduction mutationには別の明示承認が必要である。Production承認そのものを無効化・自動承認する運用にはしない。
+
+Supabase migrationのProduction適用はStripe bootstrapとは別の承認境界であり、`docs/SUPABASE-PRODUCTION-DEPLOY.md` のexact-main / migration-version / one-time challenge手順に従う。PR承認やStripe Environment承認をSupabase migration承認へ流用しない。
 
 ## β公開前の課金検証方針
 
@@ -166,8 +179,8 @@ workflowは `production-approval` Environmentで停止し、Required reviewerの
 
 β公開前の技術検証は次で構成する。
 
-- Staging: Stripe test modeでCheckout、支払い成功、Portal、プラン変更、解約まで検証する。
-- Production: no-charge controlで本番Checkout Session生成、Stripe Live → Webhook → Supabase反映、cleanupを検証する。
+- Staging: isolatedなStripe test modeとSupabaseで、β版のStandard activation・Premium Checkout・Webhook同期・解約後fallback等、Productionへ入る同等経路を可能な範囲で検証する。
+- Production: no-charge beta billing controlで、Standardカード不要activation、Premium 480円Checkout Session生成、Stripe Live → Webhook → Supabase反映、Premium cancel後のβ無料Standard復帰、cleanupを検証する。
 - Production Billing Health AuditでStripe/Supabase/Webhookの整合性を検証する。
 
 実際のβユーザーによる正規取引が発生した後は、決済情報そのものを取得・表示せず、Stripeの取引状態、Webhook event history、Supabase entitlementの一致を監査する。
