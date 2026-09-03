@@ -40,7 +40,10 @@ test('shared runtime public header removes the redundant Home item and keeps the
   }
 
   assert.doesNotMatch(markup, />ホーム</u);
-  assert.match(markup, /class="header-search"[\s\S]*?href="search\.html"/u);
+  assert.match(
+    markup,
+    /class="header-search"[\s\S]*?href="search\.html"/u
+  );
   assert.match(markup, /login-action[\s\S]*?>ログイン</u);
   assert.match(markup, /signup-action[\s\S]*?>会員登録</u);
 });
@@ -76,20 +79,38 @@ test('shared light header CSS gives non-dark public pages the pricing-style comp
     headerCss,
     /novelight-public-header-page:not\(\.novelight-public-dark\) \.public-header-inner/u
   );
-  assert.match(headerCss, /grid-template-columns:\s*auto minmax\(520px, 1fr\) auto\s*!important/u);
+  assert.match(
+    headerCss,
+    /grid-template-columns:\s*auto minmax\(520px, 1fr\) auto\s*!important/u
+  );
   assert.match(headerCss, /height:\s*104\.4px\s*!important/u);
   assert.match(headerCss, /font-size:\s*18px\s*!important/u);
   assert.match(headerCss, /font-size:\s*19px\s*!important/u);
-  assert.match(headerCss, /@media \(max-width: 900px\)[\s\S]*?\.mobile-menu \{[\s\S]*?display:\s*block/u);
+  assert.match(
+    headerCss,
+    /@media \(max-width: 900px\)[\s\S]*?\.mobile-menu \{[\s\S]*?display:\s*block/u
+  );
 });
 
 test('legal and support pages use the same full public navigation instead of a back-only header', () => {
   for (const name of staticPublicPages) {
     const source = readFileSync(join(root, name), 'utf8');
     const header = headerMarkup(source);
-    assert.match(source, /href="novelight-header-light\.css"/u, `${name} loads shared header CSS`);
-    assert.match(source, /class="novelight-public-header-page"/u, `${name} opts into shared header`);
-    assert.match(header, /aria-label="NOVELIGHT ホーム"/u, `${name} logo is the Home control`);
+    assert.match(
+      source,
+      /href="novelight-header-light\.css"/u,
+      `${name} loads shared header CSS`
+    );
+    assert.match(
+      source,
+      /class="novelight-public-header-page"/u,
+      `${name} opts into shared header`
+    );
+    assert.match(
+      header,
+      /aria-label="NOVELIGHT ホーム"/u,
+      `${name} logo is the Home control`
+    );
     assert.match(header, />作品を探す</u);
     assert.match(header, />特徴</u);
     assert.match(header, />料金プラン</u);
