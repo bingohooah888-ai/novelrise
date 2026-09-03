@@ -6,7 +6,8 @@ import test from 'node:test';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const client = readFileSync(join(root, 'novelight-client.js'), 'utf8');
-const headerCss = readFileSync(join(root, 'novelight-header-light.css'), 'utf8');
+const headerPath = join(root, 'novelight-header-light.css');
+const headerCss = readFileSync(headerPath, 'utf8');
 const staticPublicPages = [
   'terms.html',
   'privacy.html',
@@ -23,7 +24,7 @@ function headerMarkup(source) {
   return source.slice(start, end + '</header>'.length);
 }
 
-test('shared runtime public header removes the redundant Home item and keeps the requested order', () => {
+test('public header keeps requested navigation order', () => {
   assert.match(client, /function installPublicHeader\(\)/u);
   assert.match(client, /novelight-public-header-page/u);
   assert.match(client, /aria-label="NOVELIGHT ホーム"/u);
@@ -35,7 +36,7 @@ test('shared runtime public header removes the redundant Home item and keeps the
   let previous = -1;
   for (const label of labels) {
     const index = markup.indexOf(label);
-    assert.ok(index > previous, `${label} must follow the requested desktop order`);
+    assert.ok(index > previous, `${label} order`);
     previous = index;
   }
 
@@ -48,7 +49,7 @@ test('shared runtime public header removes the redundant Home item and keeps the
   assert.match(markup, /signup-action[\s\S]*?>会員登録</u);
 });
 
-test('reader and anonymous-account pages are routed through the shared public header', () => {
+test('public pages use the shared public header', () => {
   for (const slug of [
     'index',
     'pricing',
@@ -74,7 +75,7 @@ test('reader and anonymous-account pages are routed through the shared public he
   }
 });
 
-test('shared light header CSS gives non-dark public pages the pricing-style composition', () => {
+test('shared light header uses pricing-style composition', () => {
   assert.match(
     headerCss,
     /novelight-public-header-page:not\(\.novelight-public-dark\) \.public-header-inner/u
@@ -92,7 +93,7 @@ test('shared light header CSS gives non-dark public pages the pricing-style comp
   );
 });
 
-test('legal and support pages use the same full public navigation instead of a back-only header', () => {
+test('legal pages use full public navigation', () => {
   for (const name of staticPublicPages) {
     const source = readFileSync(join(root, name), 'utf8');
     const header = headerMarkup(source);
