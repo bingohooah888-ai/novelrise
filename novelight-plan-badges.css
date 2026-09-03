@@ -1,0 +1,55 @@
+/* NOVELIGHT plan badge artwork shared by Home and Pricing. */
+body.novelight-page-pricing .plan-emblem {
+  display: block;
+  width: 176px;
+  height: 176px;
+  margin: 0 auto 18px;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  box-shadow: none;
+  color: transparent;
+}
+body.novelight-page-pricing .plan-emblem::before,
+body.novelight-page-pricing .plan-emblem::after {
+  display: none;
+  content: none;
+}
+body.novelight-page-pricing .free-emblem,
+body.novelight-page-index.novelight-public-dark .plans > .plan:first-child::before {
+  background-image: url("assets/plan-badge-free.svg");
+}
+body.novelight-page-pricing .standard-emblem,
+body.novelight-page-index.novelight-public-dark .plans > .plan.recommended::before {
+  background-image: url("assets/plan-badge-standard.svg");
+}
+body.novelight-page-pricing .premium-emblem,
+body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::before {
+  background-image: url("assets/plan-badge-premium.svg");
+}
+body.novelight-page-pricing .standard-emblem,
+body.novelight-page-pricing .premium-emblem {
+  filter: drop-shadow(0 8px 15px rgba(214,164,71,.15));
+}
+body.novelight-page-index.novelight-public-dark .plans > .plan::before {
+  display: block;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto 14px;
+  background-color: transparent;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  content: "";
+}
+body.novelight-page-index.novelight-public-dark .plans > .plan.recommended::before,
+body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::before {
+  filter: drop-shadow(0 8px 15px rgba(214,164,71,.14));
+}
+@media (max-width: 380px) {
+  body.novelight-page-pricing .plan-emblem { width: 138px; height: 138px; }
+  body.novelight-page-index.novelight-public-dark .plans > .plan::before { width: 126px; height: 126px; }
+}

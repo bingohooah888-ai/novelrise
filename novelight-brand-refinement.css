@@ -1,3 +1,5 @@
+@import url("novelight-plan-badges.css");
+
 /* NOVELIGHT brand refinement for public dark surfaces.
    Uses the existing approved logo asset; no replacement or generated artwork. */
 body.novelight-public-dark {
@@ -188,72 +190,6 @@ body.novelight-page-pricing .recommendation-ribbon {
   letter-spacing: .08em;
 }
 
-/* Ornate compass medallions built in CSS so no new image asset is created. */
-body.novelight-page-pricing .plan-emblem {
-  position: relative;
-  display: grid;
-  width: 112px;
-  height: 112px;
-  place-items: center;
-  margin: 0 auto 24px;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 26%, rgba(255,255,255,.16), transparent 13%),
-    radial-gradient(circle, rgba(255,255,255,.035) 0 47%, transparent 48%),
-    conic-gradient(from 0deg, transparent 0 10deg, currentColor 10deg 11deg, transparent 11deg 34deg, currentColor 34deg 35deg, transparent 35deg 55deg, currentColor 55deg 56deg, transparent 56deg 79deg, currentColor 79deg 80deg, transparent 80deg 100%);
-  box-shadow: inset 0 0 0 7px rgba(255,255,255,.02), inset 0 0 26px rgba(255,255,255,.06), 0 10px 24px rgba(0,0,0,.25);
-  color: #bfc6cf;
-}
-body.novelight-page-pricing .plan-emblem::before {
-  position: absolute;
-  inset: 21px;
-  content: "";
-  background: linear-gradient(145deg,#f6f7f8 0%,currentColor 35%,#69727d 52%,currentColor 68%,#f5f6f7 100%);
-  clip-path: polygon(50% 0,58% 38%,100% 50%,58% 62%,50% 100%,42% 62%,0 50%,42% 38%);
-  filter: drop-shadow(0 0 5px rgba(255,255,255,.16));
-}
-body.novelight-page-pricing .plan-emblem::after {
-  position: absolute;
-  inset: 11px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 8px rgba(0,0,0,.08);
-  content: "";
-}
-body.novelight-page-pricing .free-emblem {
-  color: #b9c0c8;
-  background-color: #0a1420;
-  box-shadow: inset 0 0 0 7px rgba(255,255,255,.025), inset 0 0 28px rgba(185,192,200,.08), 0 10px 24px rgba(0,0,0,.27);
-}
-body.novelight-page-pricing .standard-emblem {
-  color: #e8b13c;
-  background-color: #0b1725;
-  box-shadow: inset 0 0 0 7px rgba(245,205,102,.045), inset 0 0 34px rgba(214,164,71,.17), 0 0 24px rgba(214,164,71,.25), 0 12px 26px rgba(0,0,0,.32);
-}
-body.novelight-page-pricing .standard-emblem::before {
-  background: linear-gradient(145deg,#fff0a8 0%,#e9b23c 31%,#9d6413 50%,#e0a52d 67%,#fff1ad 100%);
-  filter: drop-shadow(0 0 9px rgba(240,203,114,.55));
-}
-body.novelight-page-pricing .premium-emblem {
-  width: 116px;
-  height: 116px;
-  color: #dba133;
-  background:
-    repeating-conic-gradient(from 0deg, rgba(240,203,114,.38) 0 2deg, transparent 2deg 15deg),
-    radial-gradient(circle, #0b1725 0 64%, transparent 65%);
-  box-shadow: inset 0 0 0 6px rgba(240,203,114,.035), inset 0 0 32px rgba(214,164,71,.12), 0 0 16px rgba(214,164,71,.12), 0 12px 26px rgba(0,0,0,.32);
-}
-body.novelight-page-pricing .premium-emblem::after {
-  inset: 14px;
-  border-width: 2px;
-  box-shadow: 0 0 0 6px rgba(214,164,71,.05), inset 0 0 0 7px rgba(0,0,0,.09);
-}
-body.novelight-page-pricing .premium-emblem::before {
-  inset: 20px;
-  background: linear-gradient(145deg,#ffe695 0%,#d99d27 34%,#704910 50%,#d89b25 66%,#ffe99f 100%);
-}
-
 body.novelight-page-pricing .name {
   font-size: 31px;
   font-weight: 700;
@@ -393,6 +329,4 @@ body.novelight-page-index.novelight-public-dark .plan-cta {
 @media (max-width: 380px) {
   body.novelight-public-dark .logo img,
   body.novelight-public-dark .novelight-brand-logo-image { max-width: 62vw; }
-  body.novelight-page-pricing .plan-emblem { width: 102px; height: 102px; }
-  body.novelight-page-pricing .premium-emblem { width: 106px; height: 106px; }
 }
