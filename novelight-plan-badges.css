@@ -20,7 +20,7 @@ body.novelight-page-pricing .plan-emblem::after {
 }
 body.novelight-page-pricing .free-emblem,
 body.novelight-page-index.novelight-public-dark .plans > .plan:first-child::before {
-  background-image: url("assets/plan-badge-free.svg");
+  background-image: url("assets/plan-badge-free.webp");
 }
 body.novelight-page-pricing .standard-emblem,
 body.novelight-page-index.novelight-public-dark .plans > .plan.recommended::before {
@@ -28,7 +28,7 @@ body.novelight-page-index.novelight-public-dark .plans > .plan.recommended::befo
 }
 body.novelight-page-pricing .premium-emblem,
 body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::before {
-  background-image: url("assets/plan-badge-premium.svg");
+  background-image: url("assets/plan-badge-premium.webp");
 }
 body.novelight-page-pricing .standard-emblem,
 body.novelight-page-pricing .premium-emblem {
