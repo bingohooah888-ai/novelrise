@@ -70,6 +70,27 @@ test('home and pricing use the approved plan badge artwork', async () => {
   }
 });
 
+test('desktop pricing cards align plan rows and use a two-by-two feature grid', async () => {
+  const badgeCss = await read('novelight-plan-badges.css');
+
+  assert.match(
+    badgeCss,
+    /@media \(min-width: 901px\)[\s\S]*?\.pricing-card\s*\{[^}]*display:\s*grid;[^}]*grid-template-rows:/s
+  );
+  assert.match(
+    badgeCss,
+    /@media \(min-width: 901px\)[\s\S]*?\.plan-emblem\s*\{[^}]*width:\s*189px;[^}]*height:\s*189px;/s
+  );
+  assert.match(
+    badgeCss,
+    /@media \(min-width: 901px\)[\s\S]*?\.features\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s
+  );
+  assert.match(badgeCss, /\.name\s*\{[^}]*font-size:\s*32px;/s);
+  assert.match(badgeCss, /\.desc\s*\{[^}]*font-size:\s*17px;/s);
+  assert.match(badgeCss, /\.price\s*\{[^}]*font-size:\s*50px;/s);
+  assert.match(badgeCss, /\.features li\s*\{[^}]*font-size:\s*16px;/s);
+});
+
 test('pricing typography raises legibility', async () => {
   const css = await read('novelight-brand-refinement.css');
 
