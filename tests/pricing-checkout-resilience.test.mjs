@@ -211,7 +211,7 @@ test('Premium pricing recovers when checkout response body never finishes', asyn
   await els.premium.onclick();
   assert.equal(els.standard.disabled, false);
   assert.equal(els.premium.disabled, false);
-  assert.equal(els.premium.textContent, 'Premiumを申し込む / 管理');
+  assert.equal(els.premium.textContent, 'Premiumを申し込む');
   assert.equal(
     els.status.textContent,
     '決済・契約管理画面の準備がタイムアウトしました。もう一度お試しください。'
