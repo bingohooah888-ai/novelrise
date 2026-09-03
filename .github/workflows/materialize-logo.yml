@@ -1,0 +1,43 @@
+name: Materialize supplied NOVELIGHT logo
+
+on:
+  push:
+    branches:
+      - fix/unify-header-branding
+    paths:
+      - .github/workflows/materialize-logo.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize-logo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/unify-header-branding
+          fetch-depth: 0
+
+      - name: Reconstruct supplied logo without image transformation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .tmp-logo/chunk0.b64 .tmp-logo/chunk1.b64 .tmp-logo/chunk2.b64 .tmp-logo/chunk3.b64 .tmp-logo/chunk4.b64 > /tmp/novelight-logo.b64
+          base64 --decode /tmp/novelight-logo.b64 > assets/novelight-header-logo.webp
+          echo "0d5311df435be00700c900ce7cbf87ec8016e23550af9d633d132090fc14aa6f  assets/novelight-header-logo.webp" | sha256sum --check --strict
+
+      - name: Commit reconstructed binary asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/novelight-header-logo.webp
+          if git diff --cached --quiet; then
+            echo "Logo asset already matches supplied artwork."
+            exit 0
+          fi
+          git commit -m "Replace header logo with supplied artwork"
+          git push origin HEAD:fix/unify-header-branding
