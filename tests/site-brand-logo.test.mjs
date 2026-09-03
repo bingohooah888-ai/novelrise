@@ -38,7 +38,7 @@ test('public headers share the expanded pricing-style desktop composition', () =
 test('selected public navigation relies on highlighted text without a second underline', () => {
   assert.match(
     client,
-    /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important\}/u
+    /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important\}/u,
   );
 });
 
