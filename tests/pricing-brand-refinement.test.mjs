@@ -39,6 +39,10 @@ test('home and pricing use the approved plan badge artwork', async () => {
   assert.match(badgeCss, /assets\/plan-badge-premium\.webp/);
   assert.doesNotMatch(badgeCss, /assets\/plan-badge-(?:free|premium)\.svg/);
   assert.match(badgeCss, /novelight-page-index[^}]*\.plans > \.plan::before/s);
+  assert.match(
+    badgeCss,
+    /\.plans > \.plan::before\s*\{[^}]*position:\s*static;[^}]*inset:\s*auto;[^}]*flex:\s*0 0 auto;/s
+  );
 
   for (const assetPath of embeddedBadgeAssets) {
     const asset = await read(assetPath);
