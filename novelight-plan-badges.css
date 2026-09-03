@@ -241,10 +241,16 @@ html body.novelight-page-pricing.novelight-public-dark .features li::before {
 
 /* Desktop Home pricing preview: keep every badge, price and CTA on the same row. */
 @media (min-width: 901px) {
+  html body.novelight-page-index.novelight-public-dark .plans {
+    grid-auto-rows: 1fr;
+    align-items: stretch;
+  }
   html body.novelight-page-index.novelight-public-dark .plans > .plan {
     display: grid;
     min-height: 660px;
+    height: 100%;
     grid-template-rows: 225px 44px 30px 26px 64px minmax(150px, 1fr) minmax(66px, auto) 48px;
+    align-self: stretch;
     align-items: stretch;
   }
   html body.novelight-page-index.novelight-public-dark .plans > .plan.recommended,
