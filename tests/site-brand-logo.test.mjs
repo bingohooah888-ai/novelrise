@@ -6,6 +6,7 @@ import test from 'node:test';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const client = readFileSync(join(root, 'novelight-client.js'), 'utf8');
+const themeCss = readFileSync(join(root, 'novelight-theme.css'), 'utf8');
 const legalCss = readFileSync(join(root, 'legal.css'), 'utf8');
 const lightCss = readFileSync(join(root, 'novelight-header-light.css'), 'utf8');
 const planCss = readFileSync(join(root, 'novelight-plan-badges.css'), 'utf8');
@@ -66,13 +67,28 @@ test('selected public navigation relies on highlighted text without a second und
   );
 });
 
-test('legacy app headers receive a larger reading floor and wider spacing', () => {
+test('legacy app headers use the refreshed responsive action reading floor', () => {
   assert.match(client, /min-height:96px!important;gap:32px!important/u);
   assert.match(
-    client,
-    /header \.right>a\{font-size:16px!important;font-weight:700\}/u
+    themeCss,
+    /html body\.novelight-theme:not\(\.novelight-public-dark\) header \.right > a \{[\s\S]*?font-size:\s*19px\s*!important/u
   );
-  assert.match(client, /header \.logout\{min-height:46px/u);
+  assert.match(
+    themeCss,
+    /html body\.novelight-theme:not\(\.novelight-public-dark\) header \.logout \{[\s\S]*?min-height:\s*52px;[\s\S]*?font-size:\s*19px\s*!important/u
+  );
+  assert.match(
+    themeCss,
+    /@media \(min-width: 641px\) and \(max-width: 1180px\)[\s\S]*?header \.right > a \{[\s\S]*?font-size:\s*17px\s*!important/u
+  );
+  assert.match(
+    themeCss,
+    /@media \(max-width: 640px\)[\s\S]*?header \.right > a \{[\s\S]*?font-size:\s*16px\s*!important/u
+  );
+  assert.match(
+    themeCss,
+    /@media \(max-width: 640px\)[\s\S]*?header \.logout \{[\s\S]*?font-size:\s*16px\s*!important/u
+  );
 });
 
 test('legal pages use the same official logo asset at the enlarged size', () => {
