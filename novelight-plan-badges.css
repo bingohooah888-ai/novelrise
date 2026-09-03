@@ -53,6 +53,21 @@ body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::bef
   filter: drop-shadow(0 8px 15px rgba(214,164,71,.14));
 }
 
+/* Keep wrapped feature copy aligned with the text rather than under the checkmark.
+   Chromium's Japanese phrase-aware wrapping avoids unnatural mid-phrase breaks. */
+html body.novelight-page-pricing.novelight-public-dark .features li {
+  position: relative;
+  padding-left: 1.45em;
+  word-break: normal;
+  word-break: auto-phrase;
+}
+html body.novelight-page-pricing.novelight-public-dark .features li::before {
+  position: absolute;
+  top: .55em;
+  left: 0;
+  margin-right: 0;
+}
+
 /* Desktop pricing composition: aligned plan rows with a stronger reading floor.
    Keep these pricing-specific selectors stronger than later public-brand rules. */
 @media (min-width: 901px) {
@@ -210,7 +225,7 @@ body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::bef
   }
   html body.novelight-page-pricing.novelight-public-dark .features li {
     min-width: 0;
-    padding: 8px 0;
+    padding: 8px 0 8px 1.45em;
     font-size: 16px;
     line-height: 1.55;
   }
