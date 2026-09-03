@@ -52,6 +52,149 @@ body.novelight-page-index.novelight-public-dark .plans > .plan.recommended::befo
 body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::before {
   filter: drop-shadow(0 8px 15px rgba(214,164,71,.14));
 }
+
+/* Desktop pricing composition: compact cards with a stronger reading floor.
+   Keep these pricing-specific selectors stronger than later public-brand rules. */
+@media (min-width: 901px) {
+  html body.novelight-page-pricing.novelight-public-dark .public-header-inner {
+    display: grid;
+    width: min(1500px, calc(100% - 64px));
+    min-height: 88px;
+    grid-template-columns: auto minmax(520px, 1fr) auto;
+    align-items: center;
+    gap: clamp(32px, 3.4vw, 64px);
+  }
+  html body.novelight-page-pricing.novelight-public-dark .logo {
+    min-width: 0;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .site-nav {
+    align-self: stretch;
+    justify-content: space-between;
+    gap: clamp(24px, 2.4vw, 48px);
+    margin-left: 0;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .site-nav a {
+    font-size: 17px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .header-actions {
+    gap: 16px;
+    margin-left: 0;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .header-search {
+    width: 46px;
+    height: 46px;
+    font-size: 28px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .btn {
+    min-height: 48px;
+    padding: 11px 22px;
+    font-size: 16px;
+  }
+
+  html body.novelight-page-pricing.novelight-public-dark .pricing-main {
+    width: min(1160px, calc(100% - 64px));
+    padding-bottom: 88px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .pricing-hero {
+    padding: 28px 0 24px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .pricing-hero h1 {
+    margin: 2px 0 8px;
+    font-size: clamp(40px, 3.4vw, 50px);
+    letter-spacing: .045em;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .pricing-lead {
+    margin-bottom: 10px;
+    font-size: clamp(23px, 2vw, 28px);
+  }
+  html body.novelight-page-pricing.novelight-public-dark .pricing-sub {
+    max-width: 820px;
+    margin: 0 auto;
+    font-size: 17px;
+    line-height: 1.75;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .pricing-plans {
+    gap: 18px;
+    padding-top: 34px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .pricing-card {
+    min-height: 570px;
+    padding: 28px 24px 18px;
+    text-align: center;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .pricing-card.standard {
+    transform: none;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .plan-emblem {
+    width: 126px;
+    height: 126px;
+    margin: 0 auto 8px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .standard .plan-emblem {
+    margin-top: 12px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .recommendation-ribbon {
+    z-index: 4;
+    top: -15px;
+    min-width: 160px;
+    padding: 9px 24px;
+    font-size: 16px;
+    letter-spacing: .075em;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .name {
+    font-size: 29px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .desc {
+    min-height: 34px;
+    margin: 3px 0 8px;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .beta-label {
+    align-self: center;
+    margin-top: 1px;
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .original-price,
+  html body.novelight-page-pricing.novelight-public-dark .old-price {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .price {
+    margin: 0 0 3px;
+    font-size: 44px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .price small {
+    font-size: 14px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .renewal {
+    min-height: 18px;
+    margin: 3px 0;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .limit {
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .features {
+    margin: 4px 0 14px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(214,164,71,.22);
+    text-align: left;
+  }
+  html body.novelight-page-pricing.novelight-public-dark .features li {
+    padding: 4px 0;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  html body.novelight-page-pricing.novelight-public-dark button {
+    min-height: 50px;
+    font-size: 15px;
+  }
+}
+
 @media (max-width: 380px) {
   body.novelight-page-pricing .plan-emblem { width: 207px; height: 207px; }
   body.novelight-page-index.novelight-public-dark .plans > .plan::before { width: 189px; height: 189px; }
