@@ -41,10 +41,7 @@ test('public header keeps requested navigation order', () => {
   }
 
   assert.doesNotMatch(markup, />ホーム</u);
-  assert.match(
-    markup,
-    /class="header-search"[\s\S]*?href="search\.html"/u
-  );
+  assert.match(markup, /class="header-search"[\s\S]*?href="search\.html"/u);
   assert.match(markup, /login-action[\s\S]*?>ログイン</u);
   assert.match(markup, /signup-action[\s\S]*?>会員登録</u);
 });
