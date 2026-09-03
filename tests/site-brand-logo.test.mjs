@@ -26,7 +26,7 @@ test(
     assert.match(client, /height:72px!important/u);
     assert.match(client, /filter:none!important/u);
     assert.match(client, /mix-blend-mode:normal!important/u);
-  },
+  }
 );
 
 test(
@@ -34,14 +34,14 @@ test(
   () => {
     assert.match(
       client,
-      /grid-template-columns:auto minmax\(520px,1fr\) auto!important/u,
+      /grid-template-columns:auto minmax\(520px,1fr\) auto!important/u
     );
     assert.match(client, /gap:clamp\(24px,2\.4vw,48px\)!important/u);
     assert.match(client, /site-nav a\{font-size:18px!important/u);
     assert.match(client, /header-actions\{gap:18px!important/u);
     assert.match(client, /min-height:52px!important/u);
     assert.match(client, /font-size:17px!important/u);
-  },
+  }
 );
 
 test(
@@ -49,9 +49,9 @@ test(
   () => {
     assert.match(
       client,
-      /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important\}/u,
+      /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important\}/u
     );
-  },
+  }
 );
 
 test(
@@ -60,10 +60,10 @@ test(
     assert.match(client, /min-height:96px!important;gap:32px!important/u);
     assert.match(
       client,
-      /header \.right>a\{font-size:16px!important;font-weight:700\}/u,
+      /header \.right>a\{font-size:16px!important;font-weight:700\}/u
     );
     assert.match(client, /header \.logout\{min-height:46px/u);
-  },
+  }
 );
 
 test('legal pages use the same official logo asset at the enlarged size', () => {
