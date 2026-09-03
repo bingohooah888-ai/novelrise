@@ -27,17 +27,17 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  max-width: 980px;
-  height: 72px;
+  gap: 28px;
+  max-width: 1380px;
+  height: 104px;
   margin: auto;
   padding: 0 22px;
 }
 
 .site-logo {
   display: block;
-  width: 226.8px;
-  height: 52.8px;
+  width: 340.2px;
+  height: 79.2px;
   flex: 0 0 auto;
   background: url("assets/novelight-header-logo.webp") center / contain no-repeat;
   color: transparent;
@@ -48,7 +48,8 @@ a {
 
 .site-back {
   color: #5d6671;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -219,12 +220,17 @@ a {
 
 @media (max-width: 640px) {
   .site-header-inner {
-    height: 64px;
+    gap: 14px;
+    height: 84px;
   }
 
   .site-logo {
-    width: 175.2px;
-    height: 40.8px;
+    width: 262.8px;
+    height: 61.2px;
+  }
+
+  .site-back {
+    font-size: 14px;
   }
 
   .legal-main {

@@ -16,22 +16,51 @@ test('shared app branding uses the official logo asset at the enlarged sitewide 
   assert.match(client, /novelight-header-logo\.webp/u);
   assert.match(client, /installBrandLogo/u);
   assert.match(client, /novelight-brand-logo-image/u);
-  assert.match(client, /height:50\.4px!important/u);
-  assert.match(client, /height:40\.8px!important/u);
-  assert.match(client, /height:69\.6px!important/u);
-  assert.match(client, /height:60px!important/u);
-  assert.match(client, /height:55\.2px!important/u);
-  assert.match(client, /height:48px!important/u);
+  assert.match(client, /height:75\.6px!important/u);
+  assert.match(client, /height:61\.2px!important/u);
+  assert.match(client, /height:104\.4px!important/u);
+  assert.match(client, /height:90px!important/u);
+  assert.match(client, /height:82\.8px!important/u);
+  assert.match(client, /height:72px!important/u);
   assert.match(client, /filter:none!important/u);
   assert.match(client, /mix-blend-mode:normal!important/u);
 });
 
-test('legal pages use the same official logo asset at 1.2x size', () => {
+test('public headers share the expanded pricing-style desktop composition', () => {
+  assert.match(
+    client,
+    /grid-template-columns:auto minmax\(520px,1fr\) auto!important/u
+  );
+  assert.match(client, /gap:clamp\(24px,2\.4vw,48px\)!important/u);
+  assert.match(client, /site-nav a\{font-size:18px!important/u);
+  assert.match(client, /header-actions\{gap:18px!important/u);
+  assert.match(client, /min-height:52px!important/u);
+  assert.match(client, /font-size:17px!important/u);
+});
+
+test('selected public navigation relies on highlighted text without a second underline', () => {
+  assert.match(
+    client,
+    /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important\}/u
+  );
+});
+
+test('legacy app headers receive a larger reading floor and wider spacing', () => {
+  assert.match(client, /min-height:96px!important;gap:32px!important/u);
+  assert.match(
+    client,
+    /header \.right>a\{font-size:16px!important;font-weight:700\}/u
+  );
+  assert.match(client, /header \.logout\{min-height:46px/u);
+});
+
+test('legal pages use the same official logo asset at the enlarged size', () => {
   assert.match(legalCss, /novelight-header-logo\.webp/u);
-  assert.match(legalCss, /width:\s*226\.8px/u);
-  assert.match(legalCss, /height:\s*52\.8px/u);
-  assert.match(legalCss, /width:\s*175\.2px/u);
-  assert.match(legalCss, /height:\s*40\.8px/u);
+  assert.match(legalCss, /width:\s*340\.2px/u);
+  assert.match(legalCss, /height:\s*79\.2px/u);
+  assert.match(legalCss, /width:\s*262\.8px/u);
+  assert.match(legalCss, /height:\s*61\.2px/u);
+  assert.match(legalCss, /height:\s*104px/u);
 });
 
 test('legacy header wordmarks are covered by shared branding', () => {

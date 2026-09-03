@@ -16,8 +16,10 @@ test('homepage header uses the official NOVELIGHT logo asset', () => {
   assert.ok(statSync(logoPath).size > 1_000);
 });
 
-test('homepage logo has responsive header sizing', () => {
-  assert.match(home, /height:44px/u);
-  assert.match(home, /height:34px/u);
-  assert.match(home, /max-width:42vw/u);
+test('homepage logo uses the shared sitewide responsive sizing override', () => {
+  const client = readFileSync(join(root, 'novelight-client.js'), 'utf8');
+  assert.match(client, /height:104\.4px!important/u);
+  assert.match(client, /height:90px!important/u);
+  assert.match(client, /height:82\.8px!important/u);
+  assert.match(client, /height:72px!important/u);
 });
