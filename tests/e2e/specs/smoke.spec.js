@@ -98,6 +98,60 @@ test('home and search use trusted discovery and complete impression tracking', a
   expect(search).toContain('record_trusted_allocation_receipts');
 });
 
+test('pricing desktop layout stays compact, readable, and single-row', async ({
+  browser
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    javaScriptEnabled: false
+  });
+  const page = await context.newPage();
+  const response = await page.goto('/pricing.html', {
+    waitUntil: 'domcontentloaded'
+  });
+  expect(response?.ok()).toBeTruthy();
+
+  const header = await page.locator('.public-header-inner').boundingBox();
+  const logo = await page.locator('.logo').boundingBox();
+  const nav = await page.locator('.desktop-nav').boundingBox();
+  const actions = await page.locator('.header-actions').boundingBox();
+  expect(header).not.toBeNull();
+  expect(logo).not.toBeNull();
+  expect(nav).not.toBeNull();
+  expect(actions).not.toBeNull();
+  expect(header.height).toBeLessThanOrEqual(100);
+
+  const centers = [logo, nav, actions].map((box) => box.y + box.height / 2);
+  expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(12);
+
+  const hero = await page.locator('.pricing-hero').boundingBox();
+  expect(hero).not.toBeNull();
+  expect(hero.height).toBeLessThan(250);
+
+  const subFont = await page.locator('.pricing-sub').evaluate((element) =>
+    Number.parseFloat(globalThis.getComputedStyle(element).fontSize)
+  );
+  expect(subFont).toBeGreaterThanOrEqual(16);
+
+  const featureFont = await page.locator('.pricing-card .features li').first().evaluate(
+    (element) => Number.parseFloat(globalThis.getComputedStyle(element).fontSize)
+  );
+  expect(featureFont).toBeGreaterThanOrEqual(14);
+
+  const ribbon = await page.locator('.recommendation-ribbon').boundingBox();
+  const emblem = await page.locator('.standard .plan-emblem').boundingBox();
+  expect(ribbon).not.toBeNull();
+  expect(emblem).not.toBeNull();
+  expect(ribbon.y + ribbon.height).toBeLessThanOrEqual(emblem.y - 4);
+
+  const cardHeights = await page.locator('.pricing-card').evaluateAll((cards) =>
+    cards.map((card) => card.getBoundingClientRect().height)
+  );
+  expect(Math.max(...cardHeights)).toBeLessThan(660);
+
+  await context.close();
+});
+
 test('all audited major routes fit a 390px mobile viewport', async ({
   browser
 }) => {
