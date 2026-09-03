@@ -17,6 +17,30 @@ This document defines the normal development path after the initial environment 
 
 `docs/WORK-EXECUTION-PREFLIGHT.md` is mandatory for tool-backed NOVELIGHT work. In particular, estimate total and phase time before execution, estimate how many user-only manual operations are expected, and re-check automation whenever the same phase would require more than three user operations. Repeated UI failure must trigger a route reassessment instead of repeating the same instruction indefinitely. Secret entry, 2FA, OAuth approval, destructive actions, and production approvals remain deliberate user-controlled boundaries.
 
+## Single-primary-task turn scope
+
+For normal UI, copy, and visual-code fixes, one user message authorizes **one primary requested change theme by default**. After that theme is implemented, verified, merged when eligible, and its ordinary Production deployment/read-only completion check is finished when applicable, end the execution turn and report the result. Do not independently start another adjacent improvement, second PR, or broader audit/fix merely because another issue was discovered while working.
+
+The same turn may continue only for work that is necessary to finish the already-authorized primary change, including:
+
+- fixing CI, test, formatting, or Preview failures caused by or directly blocking the same requested change
+- correcting an accidental regression introduced by the current change
+- adjusting the same PR where necessary to satisfy the user's explicit acceptance criteria
+- performing read-only verification required to establish that the requested change is complete
+
+Do not automatically expand the turn into:
+
+- another independently shippable UI refinement
+- opportunistic cleanup or refactoring that is not required for the requested result
+- a second PR for a neighboring issue that is not necessary to complete the original acceptance criteria
+- a broader audit-and-remediation sweep that the current user message did not request
+
+When an adjacent issue is discovered, report or record it as a **next candidate** only. Start it after a new user message explicitly requests or continues that work. A second independent PR in the same user turn is allowed only when the current user message itself clearly authorizes multiple named deliverables or an explicit broader audit-and-fix scope; discovery alone is not authorization.
+
+This scope limit must not weaken security, data protection, rollback, CI, evidence-freshness, current-state reconciliation, or explicit approval gates. If a critical safety or data-loss risk is discovered outside the authorized primary scope, report it and fail closed rather than silently broadening the implementation.
+
+The purpose of this rule is to prevent unnecessary repeated `main` advances, MASTER re-reads, CI cycles, and deployment checks from turning a routine UI fix into multiple unrequested tasks.
+
 ## Conditional auto-merge
 
 The user has pre-authorized automatic squash merge for ordinary low-risk PRs once the task itself has been authorized and all required evidence is green. Do not ask for a separate `merge` confirmation for every eligible PR.
