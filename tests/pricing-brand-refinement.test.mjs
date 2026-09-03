@@ -91,6 +91,23 @@ test('desktop pricing cards align plan rows and use a two-by-two feature grid', 
   assert.match(badgeCss, /\.features li\s*\{[^}]*font-size:\s*16px;/s);
 });
 
+test('pricing feature copy wraps by phrases with a hanging checkmark indent', async () => {
+  const badgeCss = await read('novelight-plan-badges.css');
+
+  assert.match(
+    badgeCss,
+    /novelight-page-pricing\.novelight-public-dark \.features li\s*\{[^}]*position:\s*relative;[^}]*padding-left:\s*1\.45em;[^}]*word-break:\s*auto-phrase;/s
+  );
+  assert.match(
+    badgeCss,
+    /novelight-page-pricing\.novelight-public-dark \.features li::before\s*\{[^}]*position:\s*absolute;[^}]*left:\s*0;[^}]*margin-right:\s*0;/s
+  );
+  assert.match(
+    badgeCss,
+    /@media \(min-width: 901px\)[\s\S]*?\.features li\s*\{[^}]*padding:\s*8px 0 8px 1\.45em;/s
+  );
+});
+
 test('pricing typography raises legibility', async () => {
   const css = await read('novelight-brand-refinement.css');
 
@@ -100,10 +117,13 @@ test('pricing typography raises legibility', async () => {
   assert.match(css, /--brand-display-font/);
 });
 
-test('billing actions keep the existing endpoints', async () => {
+test('billing actions keep the existing endpoints and concise Premium CTA', async () => {
   const pricing = await read('pricing.html');
 
   assert.match(pricing, /\/api\/activate-beta-standard/);
   assert.match(pricing, /\/api\/create-checkout-session/);
   assert.match(pricing, /login\.html\?redirect=pricing\.html/);
+  assert.match(pricing, /<button id="premium" class="paid premium-button">Premiumを申し込む<\/button>/);
+  assert.match(pricing, /PREMIUM_LABEL='Premiumを申し込む'/);
+  assert.doesNotMatch(pricing, /Premiumを申し込む \/ 管理/);
 });
