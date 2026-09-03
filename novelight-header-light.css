@@ -1,41 +1,152 @@
-/* NOVELIGHT shared light header treatment for the public dark-gold surfaces.
-   Keep the dark content sections intact while giving the official logo a light canvas. */
-html body.novelight-public-dark .site-header {
+/* NOVELIGHT shared light header treatment.
+   Home/Pricing keep their dark content surfaces; reader/auth pages can opt into the
+   same header composition through .novelight-public-header-page. */
+html body.novelight-public-dark .site-header,
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-header {
+  position: sticky !important;
+  top: 0;
+  z-index: 50;
   border-bottom: 1px solid rgba(14, 29, 53, 0.14) !important;
   background: rgba(250, 249, 246, 0.98) !important;
   box-shadow: 0 8px 28px rgba(8, 20, 38, 0.08) !important;
   backdrop-filter: blur(16px);
 }
 
-html body.novelight-public-dark .site-nav a {
+html body.novelight-public-header-page:not(.novelight-public-dark) .public-header-inner {
+  display: grid !important;
+  width: min(1500px, calc(100% - 64px)) !important;
+  max-width: 1500px !important;
+  min-height: 120px !important;
+  margin: auto !important;
+  padding: 0 !important;
+  grid-template-columns: auto minmax(520px, 1fr) auto !important;
+  align-items: center !important;
+  gap: clamp(32px, 3.4vw, 64px) !important;
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .logo,
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-logo {
+  display: inline-flex;
+  min-width: 0 !important;
+  align-items: center;
+  justify-content: flex-start;
+  line-height: 0;
+  text-decoration: none;
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .logo img,
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-logo img,
+html body.novelight-public-header-page:not(.novelight-public-dark) .novelight-brand-logo-image {
+  display: block;
+  width: auto;
+  height: 104.4px !important;
+  max-width: 42vw;
+  object-fit: contain;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav {
+  display: flex !important;
+  align-items: stretch !important;
+  align-self: stretch !important;
+  justify-content: space-between !important;
+  gap: clamp(24px, 2.4vw, 48px) !important;
+  margin-left: 0 !important;
+}
+
+html body.novelight-public-dark .site-nav a,
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
   color: #28364a !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+  text-decoration: none;
 }
 
 html body.novelight-public-dark .site-nav a:hover,
-html body.novelight-public-dark .site-nav a[aria-current="page"] {
+html body.novelight-public-dark .site-nav a[aria-current="page"],
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a:hover,
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a[aria-current="page"] {
   color: #9a6a12 !important;
 }
 
-html body.novelight-public-dark .header-search {
-  color: #0e1d35 !important;
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a[aria-current="page"]::after {
+  display: none !important;
+  content: none !important;
 }
 
-html body.novelight-public-dark .header-search:hover {
+html body.novelight-public-header-page:not(.novelight-public-dark) .header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 18px !important;
+  margin-left: 0 !important;
+}
+
+html body.novelight-public-dark .header-search,
+html body.novelight-public-header-page:not(.novelight-public-dark) .header-search {
+  display: inline-flex;
+  width: 48px !important;
+  height: 48px !important;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: #0e1d35 !important;
+  font-size: 30px !important;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+}
+
+html body.novelight-public-dark .header-search:hover,
+html body.novelight-public-header-page:not(.novelight-public-dark) .header-search:hover {
   border-color: rgba(14, 29, 53, 0.18) !important;
   background: rgba(14, 29, 53, 0.05) !important;
 }
 
-html body.novelight-public-dark .btn-outline {
+html body.novelight-public-header-page:not(.novelight-public-dark) .btn {
+  display: inline-flex;
+  min-height: 52px !important;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px !important;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+html body.novelight-public-dark .btn-outline,
+html body.novelight-public-header-page:not(.novelight-public-dark) .btn-outline {
   border-color: rgba(14, 29, 53, 0.24) !important;
   background: #fffdf8 !important;
   color: #0e1d35 !important;
   box-shadow: 0 4px 12px rgba(8, 20, 38, 0.04);
 }
 
-html body.novelight-public-dark .btn-outline:hover {
+html body.novelight-public-dark .btn-outline:hover,
+html body.novelight-public-header-page:not(.novelight-public-dark) .btn-outline:hover {
   border-color: #c8942f !important;
   background: #fffaf0 !important;
   color: #80580f !important;
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .btn-primary {
+  border-color: #c8942f !important;
+  background: #d6a447 !important;
+  color: #081426 !important;
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .btn-primary:hover {
+  border-color: #b57f1e !important;
+  background: #e5b85d !important;
 }
 
 html body.novelight-public-dark header.site-header .btn {
@@ -43,39 +154,168 @@ html body.novelight-public-dark header.site-header .btn {
   font-weight: 700 !important;
 }
 
-html body.novelight-public-dark .mobile-menu summary {
-  border-color: rgba(14, 29, 53, 0.18) !important;
-  color: #0e1d35 !important;
+html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu {
+  position: relative;
+  display: none;
+  z-index: 60;
 }
 
-html body.novelight-public-dark .mobile-menu > nav {
-  border-color: rgba(14, 29, 53, 0.14) !important;
+html body.novelight-public-dark .mobile-menu summary,
+html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu summary {
+  display: inline-flex;
+  width: 46px !important;
+  height: 46px !important;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(14, 29, 53, 0.18) !important;
+  border-radius: 9px;
+  color: #0e1d35 !important;
+  cursor: pointer;
+  font-size: 22px;
+  list-style: none;
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+html body.novelight-public-dark .mobile-menu > nav,
+html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu > nav {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 230px;
+  padding: 8px;
+  border: 1px solid rgba(14, 29, 53, 0.14) !important;
+  border-radius: 12px;
   background: #faf9f6 !important;
   box-shadow: 0 18px 42px rgba(8, 20, 38, 0.16) !important;
 }
 
-html body.novelight-public-dark .mobile-menu > nav a {
+html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu:not([open]) > nav {
+  display: none;
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu[open] > nav {
+  display: grid;
+}
+
+html body.novelight-public-dark .mobile-menu > nav a,
+html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu > nav a {
+  display: block;
+  padding: 11px 12px;
+  border-radius: 8px;
   color: #28364a !important;
+  font-size: 16px !important;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 html body.novelight-public-dark .mobile-menu > nav a:hover,
-html body.novelight-public-dark .mobile-menu > nav a[aria-current="page"] {
+html body.novelight-public-dark .mobile-menu > nav a[aria-current="page"],
+html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu > nav a:hover,
+html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu > nav a[aria-current="page"] {
   background: rgba(214, 164, 71, 0.12) !important;
   color: #8b6012 !important;
 }
 
 @media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) .public-header-inner {
+    width: calc(100% - 32px) !important;
+    grid-template-columns: auto minmax(360px, 1fr) auto !important;
+    gap: 16px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .novelight-brand-logo-image {
+    height: 90px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav {
+    gap: 12px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
+    font-size: 16px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .header-actions {
+    gap: 10px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .header-search {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 28px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .btn,
   html body.novelight-public-dark header.site-header .btn {
+    min-height: 48px !important;
+    padding: 10px 14px !important;
     font-size: 17px !important;
   }
 }
 
 @media (max-width: 900px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) .public-header-inner {
+    display: flex !important;
+    width: calc(100% - 32px) !important;
+    min-height: 96px !important;
+    gap: 12px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .novelight-brand-logo-image {
+    height: 82.8px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .desktop-nav,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .signup-action {
+    display: none !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .header-actions {
+    margin-left: auto !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu {
+    display: block;
+  }
+
   html body.novelight-public-dark header.site-header .btn {
     font-size: 16px !important;
   }
+}
 
-  html body.novelight-public-dark .mobile-menu > nav a {
-    font-size: 16px !important;
+@media (max-width: 640px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) .public-header-inner {
+    width: calc(100% - 24px) !important;
+    min-height: 84px !important;
+    gap: 8px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .novelight-brand-logo-image {
+    height: 72px !important;
+    max-width: 56vw !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .header-search {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 26px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .login-action {
+    display: none !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu summary {
+    width: 42px !important;
+    height: 42px !important;
   }
 }
