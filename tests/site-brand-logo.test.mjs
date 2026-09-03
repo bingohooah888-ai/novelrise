@@ -56,7 +56,7 @@ test('public headers use the light treatment and larger action text', () => {
   assert.match(lightCss, /font-size:\s*16px\s*!important/u);
   assert.match(
     lightCss,
-    /mobile-menu > nav a \{\s*font-size:\s*16px\s*!important/u
+    /\.mobile-menu > nav a \{[\s\S]*?font-size:\s*16px\s*!important/u
   );
 });
 

@@ -9,6 +9,20 @@
   const STAGING_BROWSER_CONFIG_PATH = '/api/staging-browser-config';
   const BRAND_LOGO_PATH = 'assets/novelight-header-logo.webp';
   const THEME_STYLESHEET_PATH = 'novelight-theme.css';
+  const PUBLIC_HEADER_STYLESHEET_PATH = 'novelight-header-light.css';
+  const PUBLIC_HEADER_PAGES = new Set([
+    'index',
+    'pricing',
+    'search',
+    'ranking',
+    'novel',
+    'episode',
+    'author',
+    'login',
+    'signup',
+    'forgot-password',
+    'reset-password'
+  ]);
   let memoryVisitorToken = null;
 
   function isVercelPreviewHost() {
@@ -161,6 +175,72 @@
 
   installThemeStyles();
 
+  function publicHeaderCurrent(slug, target) {
+    if (target === 'discover' && ['search', 'novel', 'episode', 'author'].includes(slug)) {
+      return ' aria-current="page"';
+    }
+    if (target === 'pricing' && slug === 'pricing') return ' aria-current="page"';
+    if (target === 'ranking' && slug === 'ranking') return ' aria-current="page"';
+    if (target === 'login' && ['login', 'forgot-password', 'reset-password'].includes(slug)) {
+      return ' aria-current="page"';
+    }
+    if (target === 'signup' && slug === 'signup') return ' aria-current="page"';
+    return '';
+  }
+
+  function installPublicHeader() {
+    const slug = currentPageSlug();
+    if (!PUBLIC_HEADER_PAGES.has(slug)) return false;
+
+    document.body?.classList.add('novelight-public-header-page');
+
+    if (!document.querySelector('link[data-novelight-public-header]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = PUBLIC_HEADER_STYLESHEET_PATH;
+      link.dataset.novelightPublicHeader = 'shared';
+      document.head.appendChild(link);
+    }
+
+    const header = document.querySelector('header.site-header, header');
+    if (!header) return false;
+
+    const discoverCurrent = publicHeaderCurrent(slug, 'discover');
+    const pricingCurrent = publicHeaderCurrent(slug, 'pricing');
+    const rankingCurrent = publicHeaderCurrent(slug, 'ranking');
+    const loginCurrent = publicHeaderCurrent(slug, 'login');
+    const signupCurrent = publicHeaderCurrent(slug, 'signup');
+
+    header.className = 'site-header';
+    header.innerHTML =
+      '<div class="header-inner public-header-inner">' +
+      '<a class="logo" href="index.html" aria-label="NOVELIGHT ホーム"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>' +
+      '<nav class="site-nav desktop-nav" aria-label="メインナビ">' +
+      `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
+      '<a href="index.html#features">特徴</a>' +
+      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
+      `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
+      '</nav>' +
+      '<div class="header-actions">' +
+      '<a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>' +
+      `<a class="btn btn-outline login-action" href="login.html"${loginCurrent}>ログイン</a>` +
+      `<a class="btn btn-primary signup-action" href="signup.html"${signupCurrent}>会員登録</a>` +
+      '<details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ">' +
+      `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
+      '<a href="index.html#features">特徴</a>' +
+      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
+      `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
+      `<a href="login.html"${loginCurrent}>ログイン</a>` +
+      `<a href="signup.html"${signupCurrent}>会員登録</a>` +
+      '</nav></details>' +
+      '</div>' +
+      '</div>';
+
+    return true;
+  }
+
+  installPublicHeader();
+
   function installBrandLogo() {
     const logos = document.querySelectorAll('.logo, .site-logo');
     if (!logos.length) return 0;
@@ -171,16 +251,16 @@
       style.id = styleId;
       style.textContent =
         '.novelight-brand-logo-image,.logo img,.site-logo img{display:block;width:auto;height:75.6px!important;max-width:42vw;object-fit:contain;filter:none!important;mix-blend-mode:normal!important}' +
-        'body.novelight-theme:not(.novelight-public-dark) .header-inner,body.novelight-theme:not(.novelight-public-dark) .site-header-inner{width:min(1380px,calc(100% - 48px))!important;max-width:1380px!important;min-height:96px!important;gap:32px!important}' +
-        'body.novelight-theme:not(.novelight-public-dark) header .back,body.novelight-theme:not(.novelight-public-dark) header .site-back,body.novelight-theme:not(.novelight-public-dark) header .right>a{font-size:16px!important;font-weight:700}' +
-        'body.novelight-theme:not(.novelight-public-dark) header .logout{min-height:46px;padding:10px 16px;font-size:15px}' +
+        'body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) .header-inner,body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) .site-header-inner{width:min(1380px,calc(100% - 48px))!important;max-width:1380px!important;min-height:96px!important;gap:32px!important}' +
+        'body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) header .back,body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) header .site-back,body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) header .right>a{font-size:16px!important;font-weight:700}' +
+        'body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) header .logout{min-height:46px;padding:10px 16px;font-size:15px}' +
         'body.novelight-public-dark .logo img,body.novelight-public-dark .novelight-brand-logo-image{height:104.4px!important}' +
         'body.novelight-public-dark .site-nav a[aria-current="page"]::after{display:none!important;content:none!important}' +
         '@media(min-width:901px){body.novelight-public-dark .public-header-inner{display:grid!important;width:min(1500px,calc(100% - 64px))!important;min-height:120px!important;grid-template-columns:auto minmax(520px,1fr) auto!important;align-items:center!important;gap:clamp(32px,3.4vw,64px)!important}body.novelight-public-dark .logo{min-width:0!important}body.novelight-public-dark .site-nav{align-self:stretch!important;justify-content:space-between!important;gap:clamp(24px,2.4vw,48px)!important;margin-left:0!important}body.novelight-public-dark .site-nav a{font-size:18px!important}body.novelight-public-dark .header-actions{gap:18px!important;margin-left:0!important}body.novelight-public-dark .header-search{width:48px!important;height:48px!important;font-size:30px!important}body.novelight-public-dark .btn{min-height:52px!important;padding:12px 24px!important;font-size:17px!important}}' +
         '@media(min-width:901px) and (max-width:1180px){body.novelight-public-dark .public-header-inner{width:calc(100% - 32px)!important;grid-template-columns:auto minmax(360px,1fr) auto!important;gap:16px!important}body.novelight-public-dark .site-nav{gap:12px!important}body.novelight-public-dark .site-nav a{font-size:16px!important}body.novelight-public-dark .header-actions{gap:10px!important}body.novelight-public-dark .header-search{width:44px!important;height:44px!important;font-size:28px!important}body.novelight-public-dark .btn{min-height:48px!important;padding:10px 14px!important;font-size:15px!important}}' +
         '@media(max-width:1180px){body.novelight-public-dark .logo img,body.novelight-public-dark .novelight-brand-logo-image{height:90px!important}}' +
         '@media(max-width:900px){body.novelight-public-dark .logo img,body.novelight-public-dark .novelight-brand-logo-image{height:82.8px!important}body.novelight-public-dark .public-header-inner{min-height:96px!important}body.novelight-public-dark .header-search,body.novelight-public-dark .mobile-menu summary{width:46px!important;height:46px!important}}' +
-        '@media(max-width:640px){.novelight-brand-logo-image,.logo img,.site-logo img{height:61.2px!important;max-width:55vw}body.novelight-theme:not(.novelight-public-dark) .header-inner,body.novelight-theme:not(.novelight-public-dark) .site-header-inner{width:calc(100% - 24px)!important;min-height:82px!important;gap:14px!important}body.novelight-theme:not(.novelight-public-dark) header .back,body.novelight-theme:not(.novelight-public-dark) header .site-back,body.novelight-theme:not(.novelight-public-dark) header .right>a{font-size:14px!important}body.novelight-public-dark .logo img,body.novelight-public-dark .novelight-brand-logo-image{height:72px!important;max-width:56vw!important}body.novelight-public-dark .public-header-inner{min-height:84px!important}}';
+        '@media(max-width:640px){.novelight-brand-logo-image,.logo img,.site-logo img{height:61.2px!important;max-width:55vw}body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) .header-inner,body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) .site-header-inner{width:calc(100% - 24px)!important;min-height:82px!important;gap:14px!important}body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) header .back,body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) header .site-back,body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page) header .right>a{font-size:14px!important}body.novelight-public-dark .logo img,body.novelight-public-dark .novelight-brand-logo-image{height:72px!important;max-width:56vw!important}body.novelight-public-dark .public-header-inner{min-height:84px!important}}';
       document.head.appendChild(style);
     }
 
@@ -447,6 +527,7 @@
     recordJourney,
     storedSource,
     syncAuthHeader,
+    installPublicHeader,
     installBrandLogo,
     installThemeStyles,
     installAuthorDashboardShell
