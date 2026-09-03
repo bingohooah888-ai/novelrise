@@ -80,7 +80,7 @@ for (const [name, path, expectedLabels] of publicMenus) {
 
     const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
     expect(response?.ok(), `${path} should load`).toBeTruthy();
-    await page.waitForFunction(() => Boolean(window.NovelightClient));
+    await page.waitForFunction(() => Boolean(globalThis.NovelightClient));
 
     const menu = page.locator('details.mobile-menu');
     const summary = menu.locator('summary');
