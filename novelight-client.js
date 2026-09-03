@@ -205,6 +205,23 @@
 
   installBrandLogo();
 
+  function installMobileMenuDismiss() {
+    const menus = Array.from(document.querySelectorAll('details.mobile-menu'));
+    if (!menus.length) return 0;
+
+    document.addEventListener('click', (event) => {
+      menus.forEach((menu) => {
+        if (menu.open && !menu.contains(event.target)) {
+          menu.removeAttribute('open');
+        }
+      });
+    });
+
+    return menus.length;
+  }
+
+  installMobileMenuDismiss();
+
   function safeStorageGet(storage, key) {
     try {
       return storage?.getItem(key) ?? null;
