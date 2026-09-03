@@ -9,7 +9,7 @@ const read = (path) => readFile(new URL(path, root), 'utf8');
 const badgeAssets = [
   'assets/plan-badge-free.svg',
   'assets/plan-badge-standard.svg',
-  'assets/plan-badge-premium.svg',
+  'assets/plan-badge-premium.svg'
 ];
 
 test('public brand refinement is wired', async () => {
