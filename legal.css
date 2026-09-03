@@ -48,7 +48,7 @@ a {
 
 .site-back {
   color: #5d6671;
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 700;
   text-decoration: none;
 }
@@ -218,6 +218,12 @@ a {
   color: #eac46a;
 }
 
+@media (min-width: 641px) and (max-width: 1180px) {
+  .site-back {
+    font-size: 17px;
+  }
+}
+
 @media (max-width: 640px) {
   .site-header-inner {
     gap: 14px;
@@ -230,7 +236,7 @@ a {
   }
 
   .site-back {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .legal-main {
