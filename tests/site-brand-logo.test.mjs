@@ -53,6 +53,10 @@ test('public headers use the light treatment and larger action text', () => {
   );
   assert.match(lightCss, /font-size:\s*17px\s*!important/u);
   assert.match(lightCss, /font-size:\s*16px\s*!important/u);
+  assert.match(
+    lightCss,
+    /mobile-menu > nav a \{\s*font-size:\s*16px\s*!important/u
+  );
 });
 
 test('selected public navigation relies on highlighted text without a second underline', () => {
@@ -78,6 +82,15 @@ test('legal pages use the same official logo asset at the enlarged size', () => 
   assert.match(legalCss, /width:\s*262\.8px/u);
   assert.match(legalCss, /height:\s*61\.2px/u);
   assert.match(legalCss, /height:\s*104px/u);
+  assert.match(legalCss, /\.site-back \{[\s\S]*?font-size:\s*19px/u);
+  assert.match(
+    legalCss,
+    /@media \(min-width: 641px\) and \(max-width: 1180px\)[\s\S]*?\.site-back \{\s*font-size:\s*17px/u
+  );
+  assert.match(
+    legalCss,
+    /@media \(max-width: 640px\)[\s\S]*?\.site-back \{\s*font-size:\s*16px/u
+  );
 });
 
 test('legacy header wordmarks are covered by shared branding', () => {
