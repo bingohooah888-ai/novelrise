@@ -36,8 +36,8 @@ a {
 
 .site-logo {
   display: block;
-  width: 189px;
-  height: 44px;
+  width: 226.8px;
+  height: 52.8px;
   flex: 0 0 auto;
   background: url("assets/novelight-header-logo.webp") center / contain no-repeat;
   color: transparent;
@@ -223,8 +223,8 @@ a {
   }
 
   .site-logo {
-    width: 146px;
-    height: 34px;
+    width: 175.2px;
+    height: 40.8px;
   }
 
   .legal-main {
