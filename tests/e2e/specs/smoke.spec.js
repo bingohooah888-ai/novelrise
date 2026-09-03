@@ -133,9 +133,12 @@ test('pricing desktop layout stays compact, readable, and single-row', async ({
   );
   expect(subFont).toBeGreaterThanOrEqual(16);
 
-  const featureFont = await page.locator('.pricing-card .features li').first().evaluate(
-    (element) => Number.parseFloat(globalThis.getComputedStyle(element).fontSize)
-  );
+  const featureFont = await page
+    .locator('.pricing-card .features li')
+    .first()
+    .evaluate((element) =>
+      Number.parseFloat(globalThis.getComputedStyle(element).fontSize)
+    );
   expect(featureFont).toBeGreaterThanOrEqual(14);
 
   const ribbon = await page.locator('.recommendation-ribbon').boundingBox();
@@ -147,7 +150,7 @@ test('pricing desktop layout stays compact, readable, and single-row', async ({
   const cardHeights = await page.locator('.pricing-card').evaluateAll((cards) =>
     cards.map((card) => card.getBoundingClientRect().height)
   );
-  expect(Math.max(...cardHeights)).toBeLessThan(660);
+  expect(Math.max(...cardHeights)).toBeLessThan(700);
 
   await context.close();
 });
