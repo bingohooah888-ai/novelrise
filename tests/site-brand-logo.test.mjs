@@ -11,60 +11,48 @@ const logoPath = join(root, 'assets', 'novelight-header-logo.webp');
 const htmlFiles = readdirSync(root).filter((name) => name.endsWith('.html'));
 const legacyLogo = /<(a|div|span|strong)\b[^>]*>\s*NOVELIGHT\s*<\/\1>/u;
 
-test(
-  'shared app branding uses the official logo asset at the enlarged sitewide size',
-  () => {
-    assert.match(client, /BRAND_LOGO_PATH/u);
-    assert.match(client, /novelight-header-logo\.webp/u);
-    assert.match(client, /installBrandLogo/u);
-    assert.match(client, /novelight-brand-logo-image/u);
-    assert.match(client, /height:75\.6px!important/u);
-    assert.match(client, /height:61\.2px!important/u);
-    assert.match(client, /height:104\.4px!important/u);
-    assert.match(client, /height:90px!important/u);
-    assert.match(client, /height:82\.8px!important/u);
-    assert.match(client, /height:72px!important/u);
-    assert.match(client, /filter:none!important/u);
-    assert.match(client, /mix-blend-mode:normal!important/u);
-  }
-);
+test('shared app branding uses the official logo asset at the enlarged sitewide size', () => {
+  assert.match(client, /BRAND_LOGO_PATH/u);
+  assert.match(client, /novelight-header-logo\.webp/u);
+  assert.match(client, /installBrandLogo/u);
+  assert.match(client, /novelight-brand-logo-image/u);
+  assert.match(client, /height:75\.6px!important/u);
+  assert.match(client, /height:61\.2px!important/u);
+  assert.match(client, /height:104\.4px!important/u);
+  assert.match(client, /height:90px!important/u);
+  assert.match(client, /height:82\.8px!important/u);
+  assert.match(client, /height:72px!important/u);
+  assert.match(client, /filter:none!important/u);
+  assert.match(client, /mix-blend-mode:normal!important/u);
+});
 
-test(
-  'public headers share the expanded pricing-style desktop composition',
-  () => {
-    assert.match(
-      client,
-      /grid-template-columns:auto minmax\(520px,1fr\) auto!important/u
-    );
-    assert.match(client, /gap:clamp\(24px,2\.4vw,48px\)!important/u);
-    assert.match(client, /site-nav a\{font-size:18px!important/u);
-    assert.match(client, /header-actions\{gap:18px!important/u);
-    assert.match(client, /min-height:52px!important/u);
-    assert.match(client, /font-size:17px!important/u);
-  }
-);
+test('public headers share the expanded pricing-style desktop composition', () => {
+  assert.match(
+    client,
+    /grid-template-columns:auto minmax\(520px,1fr\) auto!important/u
+  );
+  assert.match(client, /gap:clamp\(24px,2\.4vw,48px\)!important/u);
+  assert.match(client, /site-nav a\{font-size:18px!important/u);
+  assert.match(client, /header-actions\{gap:18px!important/u);
+  assert.match(client, /min-height:52px!important/u);
+  assert.match(client, /font-size:17px!important/u);
+});
 
-test(
-  'selected public navigation relies on highlighted text without a second underline',
-  () => {
-    assert.match(
-      client,
-      /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important\}/u
-    );
-  }
-);
+test('selected public navigation relies on highlighted text without a second underline', () => {
+  assert.match(
+    client,
+    /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important\}/u
+  );
+});
 
-test(
-  'legacy app headers receive a larger reading floor and wider spacing',
-  () => {
-    assert.match(client, /min-height:96px!important;gap:32px!important/u);
-    assert.match(
-      client,
-      /header \.right>a\{font-size:16px!important;font-weight:700\}/u
-    );
-    assert.match(client, /header \.logout\{min-height:46px/u);
-  }
-);
+test('legacy app headers receive a larger reading floor and wider spacing', () => {
+  assert.match(client, /min-height:96px!important;gap:32px!important/u);
+  assert.match(
+    client,
+    /header \.right>a\{font-size:16px!important;font-weight:700\}/u
+  );
+  assert.match(client, /header \.logout\{min-height:46px/u);
+});
 
 test('legal pages use the same official logo asset at the enlarged size', () => {
   assert.match(legalCss, /novelight-header-logo\.webp/u);
