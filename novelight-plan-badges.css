@@ -53,7 +53,7 @@ body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::bef
   filter: drop-shadow(0 8px 15px rgba(214,164,71,.14));
 }
 
-/* Desktop pricing composition: compact cards with a stronger reading floor.
+/* Desktop pricing composition: aligned plan rows with a stronger reading floor.
    Keep these pricing-specific selectors stronger than later public-brand rules. */
 @media (min-width: 901px) {
   html body.novelight-page-pricing.novelight-public-dark .public-header-inner {
@@ -118,20 +118,25 @@ body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::bef
     padding-top: 34px;
   }
   html body.novelight-page-pricing.novelight-public-dark .pricing-card {
-    min-height: 570px;
-    padding: 28px 24px 18px;
+    display: grid;
+    min-height: 748px;
+    padding: 30px 24px 20px;
+    grid-template-rows: 189px 44px 52px 30px 26px 66px 40px 32px minmax(190px, 1fr) 52px;
+    align-items: stretch;
     text-align: center;
   }
   html body.novelight-page-pricing.novelight-public-dark .pricing-card.standard {
     transform: none;
   }
   html body.novelight-page-pricing.novelight-public-dark .plan-emblem {
-    width: 126px;
-    height: 126px;
-    margin: 0 auto 8px;
+    width: 189px;
+    height: 189px;
+    margin: 0 auto;
+    grid-row: 1;
+    align-self: center;
   }
   html body.novelight-page-pricing.novelight-public-dark .standard .plan-emblem {
-    margin-top: 12px;
+    margin-top: 0;
   }
   html body.novelight-page-pricing.novelight-public-dark .recommendation-ribbon {
     z-index: 4;
@@ -142,56 +147,78 @@ body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::bef
     letter-spacing: .075em;
   }
   html body.novelight-page-pricing.novelight-public-dark .name {
-    font-size: 29px;
+    grid-row: 2;
+    align-self: center;
+    font-size: 32px;
   }
   html body.novelight-page-pricing.novelight-public-dark .desc {
-    min-height: 34px;
-    margin: 3px 0 8px;
-    font-size: 15px;
-    line-height: 1.55;
+    min-height: 0;
+    margin: 0;
+    grid-row: 3;
+    align-self: start;
+    font-size: 17px;
+    line-height: 1.6;
   }
   html body.novelight-page-pricing.novelight-public-dark .beta-label {
+    margin: 0;
+    padding: 5px 11px;
+    grid-row: 4;
     align-self: center;
-    margin-top: 1px;
-    padding: 4px 10px;
-    font-size: 12px;
+    justify-self: center;
+    font-size: 14px;
   }
   html body.novelight-page-pricing.novelight-public-dark .original-price,
   html body.novelight-page-pricing.novelight-public-dark .old-price {
-    margin-top: 4px;
-    font-size: 13px;
+    margin: 0;
+    grid-row: 5;
+    align-self: center;
+    font-size: 15px;
   }
   html body.novelight-page-pricing.novelight-public-dark .price {
-    margin: 0 0 3px;
-    font-size: 44px;
+    margin: 0;
+    grid-row: 6;
+    align-self: center;
+    font-size: 50px;
   }
   html body.novelight-page-pricing.novelight-public-dark .price small {
-    font-size: 14px;
+    font-size: 16px;
   }
   html body.novelight-page-pricing.novelight-public-dark .renewal {
-    min-height: 18px;
-    margin: 3px 0;
-    font-size: 12px;
-    line-height: 1.5;
+    min-height: 0;
+    margin: 0;
+    grid-row: 7;
+    align-self: center;
+    font-size: 14px;
+    line-height: 1.55;
   }
   html body.novelight-page-pricing.novelight-public-dark .limit {
-    margin-bottom: 8px;
-    font-size: 14px;
+    margin: 0;
+    grid-row: 8;
+    align-self: center;
+    font-size: 16px;
   }
   html body.novelight-page-pricing.novelight-public-dark .features {
-    margin: 4px 0 14px;
-    padding-top: 10px;
+    display: grid;
+    margin: 0;
+    padding-top: 14px;
+    grid-row: 9;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 10px 18px;
     border-top: 1px solid rgba(214,164,71,.22);
     text-align: left;
   }
   html body.novelight-page-pricing.novelight-public-dark .features li {
-    padding: 4px 0;
-    font-size: 15px;
-    line-height: 1.45;
+    min-width: 0;
+    padding: 8px 0;
+    font-size: 16px;
+    line-height: 1.55;
   }
   html body.novelight-page-pricing.novelight-public-dark button {
-    min-height: 50px;
-    font-size: 15px;
+    min-height: 52px;
+    margin-top: 0;
+    grid-row: 10;
+    font-size: 16px;
   }
 }
 
