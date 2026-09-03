@@ -330,3 +330,29 @@ body.novelight-page-index.novelight-public-dark .plan-cta {
   body.novelight-public-dark .logo img,
   body.novelight-public-dark .novelight-brand-logo-image { max-width: 62vw; }
 }
+
+/* Keep the native mobile details menu in a predictable, clickable layer. */
+@media (max-width: 900px) {
+  body.novelight-public-dark .public-header-inner {
+    display: flex;
+    align-items: center;
+  }
+  body.novelight-public-dark .header-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+  body.novelight-public-dark .mobile-menu {
+    position: relative;
+    z-index: 60;
+  }
+  body.novelight-public-dark .mobile-menu:not([open]) > nav {
+    display: none;
+  }
+  body.novelight-public-dark .mobile-menu[open] > nav {
+    z-index: 70;
+    display: grid;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
