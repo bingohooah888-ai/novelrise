@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 
+import { verifyRegistryAtRef } from './document-freshness-lib.mjs';
 import {
   classifyHighRiskPaths,
   highRiskApprovalChallenge,
@@ -225,6 +226,13 @@ requireIncludes(
   'preflight:fast',
 );
 
+const documentFreshness = verifyRegistryAtRef('HEAD');
+console.log(
+  `- Document freshness registry verified: ${documentFreshness.currentDocumentCount} current, ` +
+    `${documentFreshness.archivedDocumentCount} archived, ` +
+    `${documentFreshness.supersededDocumentCount} superseded.`,
+);
+
 await enforceHighRiskApproval();
 
 console.log('Merge readiness contract passed.');
@@ -232,4 +240,5 @@ console.log('- NOVELIGHT CI runs on every PR targeting main.');
 console.log('- CodeQL runs on every PR targeting main.');
 console.log('- Static repository contract inputs trigger fast preflight.');
 console.log('- Merge readiness verifies the PR merge ref contains the current base branch.');
+console.log('- Document Source of Truth structure is verified on every pull request.');
 console.log('- Aggregate check depends on merge readiness.');
