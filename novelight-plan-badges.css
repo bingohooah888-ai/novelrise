@@ -35,7 +35,10 @@ body.novelight-page-pricing .premium-emblem {
   filter: drop-shadow(0 8px 15px rgba(214,164,71,.15));
 }
 body.novelight-page-index.novelight-public-dark .plans > .plan::before {
+  position: static;
+  inset: auto;
   display: block;
+  flex: 0 0 auto;
   width: 150px;
   height: 150px;
   margin: 0 auto 14px;
