@@ -43,6 +43,19 @@ test('home and pricing use the approved plan badge artwork', async () => {
     badgeCss,
     /\.plans > \.plan::before\s*\{[^}]*position:\s*static;[^}]*inset:\s*auto;[^}]*flex:\s*0 0 auto;/s
   );
+  assert.match(
+    badgeCss,
+    /novelight-page-pricing \.plan-emblem\s*\{[^}]*width:\s*264px;[^}]*height:\s*264px;/s
+  );
+  assert.match(
+    badgeCss,
+    /novelight-page-index\.novelight-public-dark \.plans > \.plan::before\s*\{[^}]*width:\s*225px;[^}]*height:\s*225px;/s
+  );
+  assert.match(badgeCss, /plan-emblem \{ width:\s*207px; height:\s*207px; \}/);
+  assert.match(
+    badgeCss,
+    /\.plans > \.plan::before \{ width:\s*189px; height:\s*189px; \}/
+  );
 
   for (const assetPath of embeddedBadgeAssets) {
     const asset = await read(assetPath);
