@@ -170,8 +170,11 @@
       const style = document.createElement('style');
       style.id = styleId;
       style.textContent =
-        '.novelight-brand-logo-image{display:block;width:auto;height:44px;max-width:42vw;object-fit:contain}' +
-        '@media(max-width:640px){.novelight-brand-logo-image{height:34px;max-width:55vw}}';
+        '.novelight-brand-logo-image,.logo img,.site-logo img{display:block;width:auto;height:50.4px!important;max-width:42vw;object-fit:contain;filter:none!important;mix-blend-mode:normal!important}' +
+        'body.novelight-public-dark .logo img,body.novelight-public-dark .novelight-brand-logo-image{height:69.6px!important}' +
+        '@media(max-width:1180px){body.novelight-public-dark .logo img,body.novelight-public-dark .novelight-brand-logo-image{height:60px!important}}' +
+        '@media(max-width:900px){body.novelight-public-dark .logo img,body.novelight-public-dark .novelight-brand-logo-image{height:55.2px!important}}' +
+        '@media(max-width:640px){.novelight-brand-logo-image,.logo img,.site-logo img{height:40.8px!important;max-width:55vw}body.novelight-public-dark .logo img,body.novelight-public-dark .novelight-brand-logo-image{height:48px!important;max-width:56vw!important}}';
       document.head.appendChild(style);
     }
 
