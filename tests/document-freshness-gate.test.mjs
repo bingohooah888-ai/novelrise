@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import {
   buildFastFreshnessManifest,
@@ -23,7 +24,7 @@ const registrySource = readFileSync(
 const registry = parseDocumentRegistry(registrySource);
 
 function clone(value) {
-  return structuredClone(value);
+  return JSON.parse(JSON.stringify(value));
 }
 
 function entry(path) {
