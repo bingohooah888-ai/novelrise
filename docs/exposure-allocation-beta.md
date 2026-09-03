@@ -1,5 +1,11 @@
 # β版 露出配分ルール
 
+**STATUS: SUPERSEDED**
+
+**SUPERSEDED BY: `docs/exposure-allocation-beta-v2.md`**
+
+> この文書は履歴調査用に保持している旧仕様です。Current State の露出配分仕様として使用しないでください。現行仕様は `docs/exposure-allocation-beta-v2.md` を参照してください。
+
 ## 目的
 
 NOVELIGHTの露出は、課金でランキング順位や評価を買う仕組みにしない。Freeを含むすべての公開作品を発見対象に残しつつ、Standard/Premiumには「読者の前へ運ばれる機会」を追加する。
