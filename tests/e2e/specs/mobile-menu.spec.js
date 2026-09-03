@@ -50,7 +50,7 @@ for (const [name, path, expectedLabels] of publicMenus) {
     const firstLink = links.first();
     const topmost = await firstLink.evaluate((link) => {
       const rect = link.getBoundingClientRect();
-      const point = document.elementFromPoint(
+      const point = link.ownerDocument.elementFromPoint(
         rect.left + rect.width / 2,
         rect.top + rect.height / 2
       );
