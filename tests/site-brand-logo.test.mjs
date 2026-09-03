@@ -7,8 +7,8 @@ import test from 'node:test';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const client = readFileSync(join(root, 'novelight-client.js'), 'utf8');
 const legalCss = readFileSync(join(root, 'legal.css'), 'utf8');
-const headerLightCss = readFileSync(join(root, 'novelight-header-light.css'), 'utf8');
-const planBadgeCss = readFileSync(join(root, 'novelight-plan-badges.css'), 'utf8');
+const lightCss = readFileSync(join(root, 'novelight-header-light.css'), 'utf8');
+const planCss = readFileSync(join(root, 'novelight-plan-badges.css'), 'utf8');
 const logoPath = join(root, 'assets', 'novelight-header-logo.webp');
 const htmlFiles = readdirSync(root).filter((name) => name.endsWith('.html'));
 const legacyLogo = /<(a|div|span|strong)\b[^>]*>\s*NOVELIGHT\s*<\/\1>/u;
@@ -40,19 +40,19 @@ test('public headers share the expanded pricing-style desktop composition', () =
   assert.match(client, /font-size:17px!important/u);
 });
 
-test('public dark headers use the shared light treatment with larger header buttons', () => {
-  assert.match(planBadgeCss, /@import url\("novelight-header-light\.css"\)/u);
+test('public headers use the light treatment and larger action text', () => {
+  assert.match(planCss, /novelight-header-light\.css/u);
   assert.match(
-    headerLightCss,
+    lightCss,
     /background:\s*rgba\(250,\s*249,\s*246,\s*0\.98\)\s*!important/u
   );
-  assert.match(headerLightCss, /color:\s*#28364a\s*!important/u);
+  assert.match(lightCss, /color:\s*#28364a\s*!important/u);
   assert.match(
-    headerLightCss,
+    lightCss,
     /header\.site-header \.btn \{\s*font-size:\s*19px\s*!important/u
   );
-  assert.match(headerLightCss, /font-size:\s*17px\s*!important/u);
-  assert.match(headerLightCss, /font-size:\s*16px\s*!important/u);
+  assert.match(lightCss, /font-size:\s*17px\s*!important/u);
+  assert.match(lightCss, /font-size:\s*16px\s*!important/u);
 });
 
 test('selected public navigation relies on highlighted text without a second underline', () => {
