@@ -106,9 +106,10 @@ test('pricing desktop refinement keeps the approved CSS contract', async ({
   expect(css).toContain('grid-template-columns: auto minmax(520px, 1fr) auto;');
   expect(css).toContain('font-size: 17px;');
   expect(css).toContain('font-size: 15px;');
-  expect(css).toContain('width: 126px;');
-  expect(css).toContain('min-height: 570px;');
-  expect(css).toContain('margin-top: 12px;');
+  expect(css).toContain('width: 189px;');
+  expect(css).toContain('min-height: 748px;');
+  expect(css).toContain('word-break: auto-phrase;');
+  expect(css).toContain('padding: 8px 0 8px 1.45em;');
 });
 
 test('all audited major routes fit a 390px mobile viewport', async ({
