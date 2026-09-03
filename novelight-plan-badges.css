@@ -117,20 +117,20 @@ body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::bef
     padding-top: 34px;
   }
   body.novelight-page-pricing.novelight-public-dark .pricing-card {
-    min-height: 560px;
-    padding: 34px 26px 22px;
+    min-height: 570px;
+    padding: 28px 24px 18px;
     text-align: center;
   }
   body.novelight-page-pricing .pricing-card.standard {
     transform: none;
   }
   body.novelight-page-pricing .plan-emblem {
-    width: 150px;
-    height: 150px;
-    margin: 0 auto 10px;
+    width: 126px;
+    height: 126px;
+    margin: 0 auto 8px;
   }
   body.novelight-page-pricing .standard .plan-emblem {
-    margin-top: 16px;
+    margin-top: 12px;
   }
   body.novelight-page-pricing .recommendation-ribbon {
     z-index: 4;
@@ -144,52 +144,52 @@ body.novelight-page-index.novelight-public-dark .plans > .plan.premium-plan::bef
     font-size: 29px;
   }
   body.novelight-page-pricing .desc {
-    min-height: 40px;
-    margin: 4px 0 12px;
+    min-height: 34px;
+    margin: 3px 0 8px;
     font-size: 15px;
-    line-height: 1.6;
+    line-height: 1.55;
   }
   body.novelight-page-pricing .beta-label {
     align-self: center;
-    margin-top: 2px;
-    padding: 5px 11px;
-    font-size: 13px;
+    margin-top: 1px;
+    padding: 4px 10px;
+    font-size: 12px;
   }
   body.novelight-page-pricing .original-price,
   body.novelight-page-pricing .old-price {
-    margin-top: 5px;
-    font-size: 14px;
+    margin-top: 4px;
+    font-size: 13px;
   }
   body.novelight-page-pricing .price {
-    margin: 0 0 4px;
-    font-size: 48px;
+    margin: 0 0 3px;
+    font-size: 44px;
   }
   body.novelight-page-pricing .price small {
     font-size: 14px;
   }
   body.novelight-page-pricing .renewal {
-    min-height: 22px;
-    margin: 4px 0 4px;
-    font-size: 13px;
-    line-height: 1.55;
+    min-height: 18px;
+    margin: 3px 0;
+    font-size: 12px;
+    line-height: 1.5;
   }
   body.novelight-page-pricing .limit {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-size: 14px;
   }
   body.novelight-page-pricing .features {
-    margin: 6px 0 18px;
-    padding-top: 12px;
+    margin: 4px 0 14px;
+    padding-top: 10px;
     border-top: 1px solid rgba(214,164,71,.22);
     text-align: left;
   }
   body.novelight-page-pricing .features li {
-    padding: 6px 0;
+    padding: 4px 0;
     font-size: 15px;
-    line-height: 1.5;
+    line-height: 1.45;
   }
   body.novelight-page-pricing button {
-    min-height: 52px;
+    min-height: 50px;
     font-size: 15px;
   }
 }
