@@ -26,9 +26,9 @@ function headerMarkup(source) {
 test('shared runtime public header removes the redundant Home item and keeps the requested order', () => {
   assert.match(client, /function installPublicHeader\(\)/u);
   assert.match(client, /novelight-public-header-page/u);
-  assert.match(client, /aria-label=\\"NOVELIGHT ホーム\\"/u);
+  assert.match(client, /aria-label="NOVELIGHT ホーム"/u);
 
-  const start = client.indexOf("header.innerHTML =");
+  const start = client.indexOf('header.innerHTML =');
   const end = client.indexOf('return true;', start);
   const markup = client.slice(start, end);
   const labels = ['作品を探す', '特徴', '料金プラン', 'ランキング'];
@@ -40,7 +40,7 @@ test('shared runtime public header removes the redundant Home item and keeps the
   }
 
   assert.doesNotMatch(markup, />ホーム</u);
-  assert.match(markup, /class=\\"header-search\\"[\s\S]*?href=\\"search\.html\\"/u);
+  assert.match(markup, /class="header-search"[\s\S]*?href="search\.html"/u);
   assert.match(markup, /login-action[\s\S]*?>ログイン</u);
   assert.match(markup, /signup-action[\s\S]*?>会員登録</u);
 });
@@ -62,11 +62,11 @@ test('reader and anonymous-account pages are routed through the shared public he
     assert.match(client, new RegExp(`'${slug}'`, 'u'));
   }
 
+  const publicSet = client.slice(
+    client.indexOf('const PUBLIC_HEADER_PAGES'),
+    client.indexOf('let memoryVisitorToken')
+  );
   for (const privateSlug of ['mypage', 'my-novels', 'analytics', 'admin']) {
-    const publicSet = client.slice(
-      client.indexOf('const PUBLIC_HEADER_PAGES'),
-      client.indexOf('let memoryVisitorToken')
-    );
     assert.doesNotMatch(publicSet, new RegExp(`'${privateSlug}'`, 'u'));
   }
 });
@@ -87,9 +87,9 @@ test('legal and support pages use the same full public navigation instead of a b
   for (const name of staticPublicPages) {
     const source = readFileSync(join(root, name), 'utf8');
     const header = headerMarkup(source);
-    assert.match(source, /href=\"novelight-header-light\.css\"/u, `${name} loads shared header CSS`);
-    assert.match(source, /class=\"novelight-public-header-page\"/u, `${name} opts into shared header`);
-    assert.match(header, /aria-label=\"NOVELIGHT ホーム\"/u, `${name} logo is the Home control`);
+    assert.match(source, /href="novelight-header-light\.css"/u, `${name} loads shared header CSS`);
+    assert.match(source, /class="novelight-public-header-page"/u, `${name} opts into shared header`);
+    assert.match(header, /aria-label="NOVELIGHT ホーム"/u, `${name} logo is the Home control`);
     assert.match(header, />作品を探す</u);
     assert.match(header, />特徴</u);
     assert.match(header, />料金プラン</u);
