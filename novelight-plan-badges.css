@@ -239,6 +239,63 @@ html body.novelight-page-pricing.novelight-public-dark .features li::before {
   }
 }
 
+/* Desktop Home pricing preview: keep every badge, price and CTA on the same row. */
+@media (min-width: 901px) {
+  html body.novelight-page-index.novelight-public-dark .plans > .plan {
+    display: grid;
+    min-height: 660px;
+    grid-template-rows: 225px 44px 30px 26px 64px minmax(150px, 1fr) minmax(66px, auto) 48px;
+    align-items: stretch;
+  }
+  html body.novelight-page-index.novelight-public-dark .plans > .plan.recommended,
+  html body.novelight-page-index.novelight-public-dark .plans > .plan.recommended:hover {
+    transform: none;
+  }
+  html body.novelight-page-index.novelight-public-dark .plans > .plan::before {
+    width: 225px;
+    height: 225px;
+    margin: 0 auto;
+    grid-row: 1;
+    align-self: center;
+  }
+  html body.novelight-page-index.novelight-public-dark .plan-name {
+    margin: 0;
+    grid-row: 2;
+    align-self: center;
+  }
+  html body.novelight-page-index.novelight-public-dark .beta-price {
+    margin: 0;
+    grid-row: 3;
+    align-self: center;
+    justify-self: start;
+  }
+  html body.novelight-page-index.novelight-public-dark .old-price {
+    margin: 0;
+    grid-row: 4;
+    align-self: center;
+  }
+  html body.novelight-page-index.novelight-public-dark .price {
+    margin: 0;
+    grid-row: 5;
+    align-self: center;
+  }
+  html body.novelight-page-index.novelight-public-dark .plan ul {
+    margin: 0;
+    grid-row: 6;
+    align-self: start;
+  }
+  html body.novelight-page-index.novelight-public-dark .plan-note {
+    margin: 0;
+    grid-row: 7;
+    align-self: start;
+  }
+  html body.novelight-page-index.novelight-public-dark .plan-cta {
+    margin-top: 0;
+    grid-row: 8;
+    align-self: end;
+  }
+}
+
 @media (max-width: 380px) {
   body.novelight-page-pricing .plan-emblem { width: 207px; height: 207px; }
   body.novelight-page-index.novelight-public-dark .plans > .plan::before { width: 189px; height: 189px; }
