@@ -20,6 +20,12 @@ const publicPages = [
   ['contact', '/contact.html']
 ];
 
+async function readFontSize(locator) {
+  return locator.evaluate((element) =>
+    Number.parseFloat(globalThis.getComputedStyle(element).fontSize)
+  );
+}
+
 for (const [name, path] of publicPages) {
   test(`${name} page renders`, async ({ request }) => {
     const response = await request.get(path);
@@ -121,24 +127,20 @@ test('pricing desktop layout stays compact, readable, and single-row', async ({
   expect(actions).not.toBeNull();
   expect(header.height).toBeLessThanOrEqual(100);
 
-  const centers = [logo, nav, actions].map((box) => box.y + box.height / 2);
+  const centers = [logo, nav, actions].map(
+    (box) => box.y + box.height / 2
+  );
   expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(12);
 
   const hero = await page.locator('.pricing-hero').boundingBox();
   expect(hero).not.toBeNull();
   expect(hero.height).toBeLessThan(250);
 
-  const subFont = await page.locator('.pricing-sub').evaluate((element) =>
-    Number.parseFloat(globalThis.getComputedStyle(element).fontSize)
-  );
+  const subFont = await readFontSize(page.locator('.pricing-sub'));
   expect(subFont).toBeGreaterThanOrEqual(16);
 
-  const featureFont = await page
-    .locator('.pricing-card .features li')
-    .first()
-    .evaluate((element) =>
-      Number.parseFloat(globalThis.getComputedStyle(element).fontSize)
-    );
+  const firstFeature = page.locator('.pricing-card .features li').first();
+  const featureFont = await readFontSize(firstFeature);
   expect(featureFont).toBeGreaterThanOrEqual(14);
 
   const ribbon = await page.locator('.recommendation-ribbon').boundingBox();
@@ -147,8 +149,9 @@ test('pricing desktop layout stays compact, readable, and single-row', async ({
   expect(emblem).not.toBeNull();
   expect(ribbon.y + ribbon.height).toBeLessThanOrEqual(emblem.y - 4);
 
-  const cardHeights = await page.locator('.pricing-card').evaluateAll((cards) =>
-    cards.map((card) => card.getBoundingClientRect().height)
+  const cards = page.locator('.pricing-card');
+  const cardHeights = await cards.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect().height)
   );
   expect(Math.max(...cardHeights)).toBeLessThan(700);
 
