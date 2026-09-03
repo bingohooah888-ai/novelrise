@@ -804,3 +804,46 @@ body.novelight-page-episode main {
     padding: 24px 20px;
   }
 }
+
+/* Legacy app headers: match the refreshed public/legal action reading floor. */
+html body.novelight-theme:not(.novelight-public-dark) header .back,
+html body.novelight-theme:not(.novelight-public-dark) header .site-back,
+html body.novelight-theme:not(.novelight-public-dark) header .right > a {
+  font-size: 19px !important;
+  font-weight: 700;
+}
+
+html body.novelight-theme:not(.novelight-public-dark) header .logout {
+  min-height: 52px;
+  padding: 12px 20px;
+  font-size: 19px !important;
+  font-weight: 700;
+}
+
+@media (min-width: 641px) and (max-width: 1180px) {
+  html body.novelight-theme:not(.novelight-public-dark) header .back,
+  html body.novelight-theme:not(.novelight-public-dark) header .site-back,
+  html body.novelight-theme:not(.novelight-public-dark) header .right > a {
+    font-size: 17px !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark) header .logout {
+    min-height: 48px;
+    padding: 10px 16px;
+    font-size: 17px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body.novelight-theme:not(.novelight-public-dark) header .back,
+  html body.novelight-theme:not(.novelight-public-dark) header .site-back,
+  html body.novelight-theme:not(.novelight-public-dark) header .right > a {
+    font-size: 16px !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark) header .logout {
+    min-height: 46px;
+    padding: 10px 14px;
+    font-size: 16px !important;
+  }
+}
