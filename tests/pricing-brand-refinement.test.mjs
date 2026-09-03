@@ -123,7 +123,10 @@ test('billing actions keep the existing endpoints and concise Premium CTA', asyn
   assert.match(pricing, /\/api\/activate-beta-standard/);
   assert.match(pricing, /\/api\/create-checkout-session/);
   assert.match(pricing, /login\.html\?redirect=pricing\.html/);
-  assert.match(pricing, /<button id="premium" class="paid premium-button">Premiumを申し込む<\/button>/);
+  assert.match(
+    pricing,
+    /<button id="premium" class="paid premium-button">Premiumを申し込む<\/button>/
+  );
   assert.match(pricing, /PREMIUM_LABEL='Premiumを申し込む'/);
   assert.doesNotMatch(pricing, /Premiumを申し込む \/ 管理/);
 });
