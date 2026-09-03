@@ -68,4 +68,32 @@ for (const [name, path, expectedLabels] of publicMenus) {
 
     await context.close();
   });
+
+  test(`${name} mobile menu closes when tapping outside`, async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      hasTouch: true
+    });
+    const page = await context.newPage();
+
+    const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+    expect(response?.ok(), `${path} should load`).toBeTruthy();
+    await page.waitForFunction(() => Boolean(window.NovelightClient));
+
+    const menu = page.locator('details.mobile-menu');
+    const summary = menu.locator('summary');
+    const nav = menu.locator(':scope > nav');
+
+    await expect(summary).toBeVisible();
+    await summary.tap();
+    await expect(menu).toHaveAttribute('open', '');
+    await expect(nav).toBeVisible();
+
+    await page.touchscreen.tap(16, 820);
+
+    await expect(menu).not.toHaveAttribute('open', '');
+    await expect(nav).toBeHidden();
+
+    await context.close();
+  });
 }
