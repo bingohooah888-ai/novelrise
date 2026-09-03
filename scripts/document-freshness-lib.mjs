@@ -5,7 +5,11 @@ import { join } from 'node:path';
 
 export const REGISTRY_PATH = 'docs/DOCUMENT-SOURCE-OF-TRUTH.md';
 export const FRESHNESS_POLICY_PATH = 'docs/DOCUMENT-FRESHNESS.md';
-export const ALLOWED_DOCUMENT_STATUSES = new Set(['CURRENT', 'ARCHIVED', 'SUPERSEDED']);
+export const ALLOWED_DOCUMENT_STATUSES = new Set([
+  'CURRENT',
+  'ARCHIVED',
+  'SUPERSEDED'
+]);
 
 const REGISTRY_BEGIN = '<!-- NOVELIGHT_DOCUMENT_REGISTRY_BEGIN -->';
 const REGISTRY_END = '<!-- NOVELIGHT_DOCUMENT_REGISTRY_END -->';
@@ -65,7 +69,9 @@ export function indexRegistry(registry) {
     if (!entry || typeof entry.path !== 'string' || !entry.path) {
       throw new Error('Every registry entry requires a non-empty path.');
     }
-    if (byPath.has(entry.path)) throw new Error(`Duplicate registry path: ${entry.path}`);
+    if (byPath.has(entry.path)) {
+      throw new Error(`Duplicate registry path: ${entry.path}`);
+    }
     if (!ALLOWED_DOCUMENT_STATUSES.has(entry.status)) {
       throw new Error(`Unsupported document status for ${entry.path}: ${entry.status}`);
     }
@@ -81,19 +87,20 @@ export function indexRegistry(registry) {
   }
 
   for (const entry of registry.documents) {
-    if (entry.status !== 'SUPERSEDED') continue;
-    if (!entry.supersededBy || typeof entry.supersededBy !== 'string') {
-      throw new Error(`SUPERSEDED document lacks supersededBy: ${entry.path}`);
-    }
-    const successor = byPath.get(entry.supersededBy);
-    if (!successor) {
-      throw new Error(`SUPERSEDED successor is not registered: ${entry.path} -> ${entry.supersededBy}`);
-    }
-    if (successor.status !== 'CURRENT') {
-      throw new Error(`SUPERSEDED successor must be CURRENT: ${entry.path} -> ${entry.supersededBy}`);
-    }
-    if (successor.role !== entry.role) {
-      throw new Error(`SUPERSEDED successor role mismatch: ${entry.path} -> ${entry.supersededBy}`);
+    if (entry.status === 'SUPERSEDED') {
+      if (!entry.supersededBy || typeof entry.supersededBy !== 'string') {
+        throw new Error(`SUPERSEDED document lacks supersededBy: ${entry.path}`);
+      }
+      const successor = byPath.get(entry.supersededBy);
+      if (!successor) {
+        throw new Error(`SUPERSEDED successor is not registered: ${entry.path} -> ${entry.supersededBy}`);
+      }
+      if (successor.status !== 'CURRENT') {
+        throw new Error(`SUPERSEDED successor must be CURRENT: ${entry.path} -> ${entry.supersededBy}`);
+      }
+      if (successor.role !== entry.role) {
+        throw new Error(`SUPERSEDED successor role mismatch: ${entry.path} -> ${entry.supersededBy}`);
+      }
     }
   }
 
@@ -136,7 +143,9 @@ export function validateSelectedCurrentDocuments(registry, selectedPaths = []) {
   const selected = [];
   for (const path of paths) {
     const entry = byPath.get(path);
-    if (!entry) throw new Error(`Selected formal document is not registered: ${path}`);
+    if (!entry) {
+      throw new Error(`Selected formal document is not registered: ${path}`);
+    }
     if (entry.status !== 'CURRENT') {
       throw new Error(`Selected formal document cannot be used as Current State: ${path} (${entry.status})`);
     }
@@ -152,7 +161,9 @@ export function extractDocumentReferences(source) {
 export function verifyCurrentReferences({ registry, readText, exists }) {
   const { byPath } = indexRegistry(registry);
   const errors = [];
-  for (const entry of registry.documents.filter((item) => item.status === 'CURRENT')) {
+  for (const entry of registry.documents.filter(
+    (item) => item.status === 'CURRENT' && item.path !== REGISTRY_PATH
+  )) {
     if (!exists(entry.path)) {
       errors.push(`CURRENT document is missing: ${entry.path}`);
       continue;
@@ -272,8 +283,8 @@ export function auditRegistryAtRef(ref = 'HEAD') {
   const registrySource = git(['show', `${ref}:${REGISTRY_PATH}`]);
   const registry = parseDocumentRegistry(registrySource);
   const structural = verifyRegistryAtRef(ref);
-  const candidates = registry.documents.filter(
-    (entry) => entry.status !== 'CURRENT' || /LATEST|\d{4}-\d{2}-\d{2}/u.test(entry.path)
+  const candidates = registry.documents.filter((entry) =>
+    entry.status !== 'CURRENT' || /LATEST|\d{4}-\d{2}-\d{2}/u.test(entry.path)
   );
   const history = candidates.map((entry) => ({
     path: entry.path,
