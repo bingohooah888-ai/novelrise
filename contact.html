@@ -5,15 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>お知らせ・お問い合わせ | NOVELIGHT</title>
   <link rel="stylesheet" href="legal.css">
+  <link rel="stylesheet" href="novelight-header-light.css">
   <style>
     .announcement-list{display:grid;gap:14px}.announcement-item{padding:18px;border:1px solid #e4e4ec;border-radius:12px;background:#fff}.announcement-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.announcement-title{margin:0;font-size:18px}.announcement-category{flex:0 0 auto;padding:4px 8px;border-radius:999px;background:#f0edff;color:#6d4aff;font-size:11px;font-weight:900}.announcement-date{margin-top:6px;color:#85858f;font-size:12px}.announcement-body{margin:13px 0 0;white-space:pre-wrap;line-height:1.8}.announcement-state{padding:20px;text-align:center;color:#777;border:1px dashed #d7d7e2;border-radius:10px}.contact-form{display:grid;gap:18px}.contact-field{display:grid;gap:7px}.contact-field label{font-size:14px;font-weight:800}.contact-field input,.contact-field select,.contact-field textarea{width:100%;border:1px solid #d7d7e2;border-radius:9px;padding:12px 13px;background:#fff;color:#222;font:inherit}.contact-field textarea{min-height:180px;resize:vertical}.contact-field input:focus,.contact-field select:focus,.contact-field textarea:focus{outline:3px solid rgba(109,74,255,.12);border-color:#6d4aff}.contact-submit{border:0;border-radius:9px;padding:13px 18px;background:#6d4aff;color:#fff;font:inherit;font-weight:900;cursor:pointer}.contact-submit:disabled{opacity:.55;cursor:wait}.contact-state{min-height:24px;font-size:13px;line-height:1.7}.contact-state.error{color:#b42318}.contact-state.success{color:#067647}.contact-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}@media(max-width:620px){.announcement-head{flex-direction:column;gap:8px}}
   </style>
 </head>
-<body>
+<body class="novelight-public-header-page">
 <header class="site-header">
-  <div class="site-header-inner">
-    <a class="site-logo" href="index.html">NOVELIGHT</a>
-    <a class="site-back" href="index.html">← トップページ</a>
+  <div class="header-inner public-header-inner">
+    <a class="logo" href="index.html" aria-label="NOVELIGHT ホーム"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
+    <nav class="site-nav desktop-nav" aria-label="メインナビ">
+      <a href="search.html">作品を探す</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="ranking.html">ランキング</a>
+    </nav>
+    <div class="header-actions">
+      <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
+      <a class="btn btn-outline login-action" href="login.html">ログイン</a>
+      <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
+      <details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ"><a href="search.html">作品を探す</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="ranking.html">ランキング</a><a href="login.html">ログイン</a><a href="signup.html">会員登録</a></nav></details>
+    </div>
   </div>
 </header>
 <main class="legal-main">
