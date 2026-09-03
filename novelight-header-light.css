@@ -1,0 +1,81 @@
+/* NOVELIGHT shared light header treatment for the public dark-gold surfaces.
+   Keep the dark content sections intact while giving the official logo a light canvas. */
+html body.novelight-public-dark .site-header {
+  border-bottom: 1px solid rgba(14, 29, 53, 0.14) !important;
+  background: rgba(250, 249, 246, 0.98) !important;
+  box-shadow: 0 8px 28px rgba(8, 20, 38, 0.08) !important;
+  backdrop-filter: blur(16px);
+}
+
+html body.novelight-public-dark .site-nav a {
+  color: #28364a !important;
+}
+
+html body.novelight-public-dark .site-nav a:hover,
+html body.novelight-public-dark .site-nav a[aria-current="page"] {
+  color: #9a6a12 !important;
+}
+
+html body.novelight-public-dark .header-search {
+  color: #0e1d35 !important;
+}
+
+html body.novelight-public-dark .header-search:hover {
+  border-color: rgba(14, 29, 53, 0.18) !important;
+  background: rgba(14, 29, 53, 0.05) !important;
+}
+
+html body.novelight-public-dark .btn-outline {
+  border-color: rgba(14, 29, 53, 0.24) !important;
+  background: #fffdf8 !important;
+  color: #0e1d35 !important;
+  box-shadow: 0 4px 12px rgba(8, 20, 38, 0.04);
+}
+
+html body.novelight-public-dark .btn-outline:hover {
+  border-color: #c8942f !important;
+  background: #fffaf0 !important;
+  color: #80580f !important;
+}
+
+html body.novelight-public-dark header.site-header .btn {
+  font-size: 19px !important;
+  font-weight: 700 !important;
+}
+
+html body.novelight-public-dark .mobile-menu summary {
+  border-color: rgba(14, 29, 53, 0.18) !important;
+  color: #0e1d35 !important;
+}
+
+html body.novelight-public-dark .mobile-menu > nav {
+  border-color: rgba(14, 29, 53, 0.14) !important;
+  background: #faf9f6 !important;
+  box-shadow: 0 18px 42px rgba(8, 20, 38, 0.16) !important;
+}
+
+html body.novelight-public-dark .mobile-menu > nav a {
+  color: #28364a !important;
+}
+
+html body.novelight-public-dark .mobile-menu > nav a:hover,
+html body.novelight-public-dark .mobile-menu > nav a[aria-current="page"] {
+  background: rgba(214, 164, 71, 0.12) !important;
+  color: #8b6012 !important;
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-public-dark header.site-header .btn {
+    font-size: 17px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html body.novelight-public-dark header.site-header .btn {
+    font-size: 16px !important;
+  }
+
+  html body.novelight-public-dark .mobile-menu > nav a {
+    font-size: 15px !important;
+  }
+}
