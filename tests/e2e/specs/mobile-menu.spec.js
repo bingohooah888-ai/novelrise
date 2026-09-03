@@ -1,16 +1,24 @@
 import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
+const homeLabels = [
+  'ホーム',
+  '作品を探す',
+  'ランキング',
+  '特徴',
+  '料金プラン',
+  'ログイン'
+];
+const pricingLabels = [
+  'ホーム',
+  '作品を探す',
+  'ランキング',
+  '特徴',
+  '料金プラン',
+  '作者ホーム'
+];
 const publicMenus = [
-  [
-    'home',
-    '/index.html',
-    ['ホーム', '作品を探す', 'ランキング', '特徴', '料金プラン', 'ログイン']
-  ],
-  [
-    'pricing',
-    '/pricing.html',
-    ['ホーム', '作品を探す', 'ランキング', '特徴', '料金プラン', '作者ホーム']
-  ]
+  ['home', '/index.html', homeLabels],
+  ['pricing', '/pricing.html', pricingLabels]
 ];
 
 for (const [name, path, expectedLabels] of publicMenus) {
@@ -48,7 +56,10 @@ for (const [name, path, expectedLabels] of publicMenus) {
       );
       return point === link || link.contains(point);
     });
-    expect(topmost, `${path} menu links must not be covered by page content`).toBe(true);
+    expect(
+      topmost,
+      `${path} menu links must not be covered by page content`
+    ).toBe(true);
 
     const navBox = await nav.boundingBox();
     expect(navBox, `${path} menu should have a layout box`).not.toBeNull();
