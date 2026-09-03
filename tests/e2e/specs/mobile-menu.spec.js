@@ -69,7 +69,9 @@ for (const [name, path, expectedLabels] of publicMenus) {
     await context.close();
   });
 
-  test(`${name} mobile menu closes when tapping outside`, async ({ browser }) => {
+  test(`${name} mobile menu closes when tapping outside`, async ({
+    browser
+  }) => {
     const context = await browser.newContext({
       viewport: { width: 390, height: 844 },
       hasTouch: true
