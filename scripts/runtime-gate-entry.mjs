@@ -3,6 +3,11 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  parseSelectedGuideArgs,
+  runFastFreshnessFromOriginMain
+} from './document-freshness-lib.mjs';
+
 const IMPLEMENTATION_PHASE = 'implementation';
 const FRESHNESS_WINDOW_MS = 30 * 60 * 1000;
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
@@ -164,7 +169,7 @@ function runCoreRuntimeGate(argv, env) {
   });
 }
 
-function augmentRuntimeState(codexRouting, env) {
+function augmentRuntimeState(codexRouting, documentFreshness, env) {
   const gitDir = execFileSync('git', ['rev-parse', '--git-dir'], {
     cwd: process.cwd(),
     env,
@@ -172,8 +177,9 @@ function augmentRuntimeState(codexRouting, env) {
   }).trim();
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = JSON.parse(readFileSync(statePath, 'utf8'));
-  state.version = Math.max(Number(state.version) || 0, 10);
+  state.version = Math.max(Number(state.version) || 0, 12);
   state.codexRouting = codexRouting;
+  state.documentFreshness = documentFreshness;
   writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
 }
 
@@ -185,7 +191,11 @@ export function runRuntimeGateEntry(
   const phase = optionValue(argv, 'phase') || env.NOVELIGHT_RUNTIME_PHASE || '';
   const codexRouting = parseCodexRoutingEvidence(phase, argv, env, nowMs);
   runCoreRuntimeGate(argv, env);
-  augmentRuntimeState(codexRouting, env);
+  const { manifest: documentFreshness } = runFastFreshnessFromOriginMain({
+    selectedPaths: parseSelectedGuideArgs(argv, env),
+    fetchMain: false
+  });
+  augmentRuntimeState(codexRouting, documentFreshness, env);
   return codexRouting;
 }
 
