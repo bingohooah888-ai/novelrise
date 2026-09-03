@@ -6,10 +6,10 @@ import { URL } from 'node:url';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 
-const badgeAssets = [
-  'assets/plan-badge-free.svg',
-  'assets/plan-badge-standard.svg',
-  'assets/plan-badge-premium.svg'
+const embeddedBadgeAssets = ['assets/plan-badge-standard.svg'];
+const directWebpBadgeAssets = [
+  'assets/plan-badge-free.webp',
+  'assets/plan-badge-premium.webp'
 ];
 
 test('public brand refinement is wired', async () => {
@@ -34,14 +34,22 @@ test('home and pricing use the approved plan badge artwork', async () => {
   assert.match(home, /class="plans"/);
   assert.match(brandCss, /@import url\("novelight-plan-badges\.css"\)/);
   assert.doesNotMatch(brandCss, /Ornate compass medallions built in CSS/);
-  assert.match(badgeCss, /assets\/plan-badge-free\.svg/);
+  assert.match(badgeCss, /assets\/plan-badge-free\.webp/);
   assert.match(badgeCss, /assets\/plan-badge-standard\.svg/);
-  assert.match(badgeCss, /assets\/plan-badge-premium\.svg/);
+  assert.match(badgeCss, /assets\/plan-badge-premium\.webp/);
+  assert.doesNotMatch(badgeCss, /assets\/plan-badge-(?:free|premium)\.svg/);
   assert.match(badgeCss, /novelight-page-index[^}]*\.plans > \.plan::before/s);
 
-  for (const assetPath of badgeAssets) {
+  for (const assetPath of embeddedBadgeAssets) {
     const asset = await read(assetPath);
     assert.match(asset, /data:image\/webp;base64,/);
+  }
+
+  for (const assetPath of directWebpBadgeAssets) {
+    const asset = await readFile(new URL(assetPath, root));
+    assert.equal(asset.subarray(0, 4).toString('ascii'), 'RIFF');
+    assert.equal(asset.subarray(8, 12).toString('ascii'), 'WEBP');
+    assert.equal(asset.readUInt32LE(4) + 8, asset.length);
   }
 });
 
