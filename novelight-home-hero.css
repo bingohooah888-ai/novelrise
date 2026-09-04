@@ -4,12 +4,13 @@
    Uses the user-supplied 2048x736 artwork without redrawing or generated replacements. */
 html body.novelight-page-index.novelight-public-dark .hero {
   position: relative;
-  min-height: clamp(540px, 35.9375vw, 736px);
+  min-height: clamp(420px, 25.15625vw, 515px);
   overflow: hidden;
   padding: 0;
+  background-color: #030a13;
   background:
     linear-gradient(90deg, rgba(2, 7, 14, .84) 0%, rgba(2, 7, 14, .68) 18%, rgba(2, 7, 14, .38) 36%, rgba(2, 7, 14, .08) 54%, rgba(2, 7, 14, 0) 70%),
-    url("assets/novelight-home-hero.webp") center center / cover no-repeat;
+    url("assets/novelight-home-hero.webp") center 62% / cover no-repeat;
 }
 
 html body.novelight-page-index.novelight-public-dark .hero::before {
@@ -24,10 +25,10 @@ html body.novelight-page-index.novelight-public-dark .hero::before {
 html body.novelight-page-index.novelight-public-dark .hero::after {
   position: absolute;
   inset: auto 0 0;
-  height: 25%;
+  height: 18%;
   pointer-events: none;
   content: "";
-  background: linear-gradient(0deg, #030a13 0%, rgba(3, 10, 19, .72) 16%, transparent 100%);
+  background: linear-gradient(0deg, #030a13 0%, rgba(3, 10, 19, .58) 16%, transparent 100%);
 }
 
 html body.novelight-page-index.novelight-public-dark .hero-inner {
@@ -35,7 +36,7 @@ html body.novelight-page-index.novelight-public-dark .hero-inner {
   z-index: 2;
   display: flex;
   width: min(1440px, calc(100% - 64px));
-  min-height: clamp(540px, 35.9375vw, 736px);
+  min-height: clamp(420px, 25.15625vw, 515px);
   margin: auto;
   align-items: center;
   gap: 0;
@@ -44,18 +45,18 @@ html body.novelight-page-index.novelight-public-dark .hero-inner {
 html body.novelight-page-index.novelight-public-dark .hero-copy {
   width: min(560px, 42vw);
   margin-right: auto;
-  padding: clamp(48px, 5vw, 84px) 0 clamp(44px, 4.4vw, 72px) clamp(4px, 1vw, 16px);
+  padding: clamp(28px, 2.8vw, 44px) 0 clamp(28px, 2.6vw, 42px) clamp(4px, 1vw, 16px);
   text-shadow: 0 2px 20px rgba(0, 0, 0, .46);
 }
 
 html body.novelight-page-index.novelight-public-dark .hero h1 {
-  max-width: 540px;
-  margin: 0 0 20px;
+  max-width: 560px;
+  margin: 0 0 18px;
   font-size: clamp(40px, 4vw, 62px);
   font-weight: 600;
   line-height: 1.16;
   letter-spacing: .025em;
-  text-wrap: pretty;
+  white-space: nowrap;
 }
 
 html body.novelight-page-index.novelight-public-dark .hero p {
@@ -105,6 +106,7 @@ html body.novelight-page-index.novelight-public-dark .hero-art-slot {
   html body.novelight-page-index.novelight-public-dark .hero h1 {
     max-width: 560px;
     font-size: clamp(38px, 7vw, 54px);
+    white-space: normal;
   }
 }
 
