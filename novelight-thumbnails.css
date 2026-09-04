@@ -1,0 +1,85 @@
+/* Official NOVELIGHT story thumbnails. The images are ADMIN-managed assets selected by authors. */
+.novelight-official-thumbnail {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(109, 74, 255, .15);
+  border-radius: 10px;
+  background: #0d1420;
+}
+
+.novelight-official-thumbnail img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body.novelight-page-index .shelf-card .novelight-official-thumbnail {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 0;
+  border-radius: 0;
+}
+
+body.novelight-page-search .novel-card.novelight-has-official-thumbnail {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+body.novelight-page-search .novel-card .novelight-official-thumbnail {
+  grid-row: 1 / span 4;
+  width: 150px;
+  aspect-ratio: 4 / 3;
+}
+
+body.novelight-page-ranking .card.novelight-has-official-thumbnail {
+  grid-template-columns: 58px 132px minmax(0, 1fr);
+}
+
+body.novelight-page-ranking .card .novelight-official-thumbnail {
+  width: 132px;
+  aspect-ratio: 4 / 3;
+}
+
+@media (max-width: 700px) {
+  body.novelight-page-search .novel-card.novelight-has-official-thumbnail {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 13px;
+  }
+
+  body.novelight-page-search .novel-card .novelight-official-thumbnail {
+    width: 112px;
+  }
+
+  body.novelight-page-ranking .card.novelight-has-official-thumbnail {
+    grid-template-columns: 46px 92px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  body.novelight-page-ranking .card .novelight-official-thumbnail {
+    width: 92px;
+  }
+}
+
+@media (max-width: 460px) {
+  body.novelight-page-search .novel-card.novelight-has-official-thumbnail {
+    display: block;
+  }
+
+  body.novelight-page-search .novel-card .novelight-official-thumbnail {
+    width: 100%;
+    margin-bottom: 14px;
+  }
+
+  body.novelight-page-ranking .card.novelight-has-official-thumbnail {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  body.novelight-page-ranking .card .novelight-official-thumbnail {
+    grid-column: 2;
+    width: min(150px, 100%);
+    margin-bottom: 4px;
+  }
+}
