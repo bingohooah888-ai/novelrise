@@ -1,0 +1,143 @@
+name: NOVELIGHT Staging Thumbnail Smoke
+
+on:
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  thumbnail-smoke:
+    name: Verify official thumbnail flow without billing
+    if: >-
+      (github.event_name == 'workflow_dispatch' &&
+       github.actor == 'bingohooah888-ai') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request == null &&
+       github.event.issue.number == 188 &&
+       github.event.comment.user.login == 'bingohooah888-ai' &&
+       github.event.comment.author_association == 'OWNER' &&
+       github.event.comment.body == 'NOVELIGHT_STAGING_THUMBNAIL_SMOKE')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: novelight-staging-thumbnail-smoke
+      cancel-in-progress: false
+    environment: staging
+    env:
+      GH_TOKEN: ${{ github.token }}
+      STAGING_TRIGGER: workflow_dispatch
+      CANONICAL_STAGING_URL: ${{ vars.STAGING_BASE_URL }}
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
+      SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+    steps:
+      - name: Resolve exact current main
+        id: revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              --jq '.object.sha'
+          )"
+          if [[ ! "$target" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'CONFIG_DRIFT: current main is not an exact 40-character commit SHA.'
+            exit 1
+          fi
+          echo "sha=$target" >> "$GITHUB_OUTPUT"
+          echo "EXPECTED_REVISION=$target" >> "$GITHUB_ENV"
+
+      - name: Require dedicated write-ready Staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$STAGING_E2E_READY" = 'true' || {
+            echo 'CONFIG_DRIFT: thumbnail smoke requires STAGING_E2E_READY=true.'
+            exit 1
+          }
+          test -n "${SUPABASE_URL:-}" || {
+            echo 'CONFIG_DRIFT: STAGING_SUPABASE_URL is not configured.'
+            exit 1
+          }
+          test -n "${SUPABASE_SECRET_KEY:-}" || {
+            echo 'CONFIG_DRIFT: STAGING_SUPABASE_SECRET_KEY is not configured.'
+            exit 1
+          }
+          test -n "${STAGING_EXPECTED_PUBLISHABLE_KEY:-}" || {
+            echo 'CONFIG_DRIFT: STAGING_SUPABASE_PUBLISHABLE_KEY is not configured.'
+            exit 1
+          }
+
+      - name: Checkout exact current main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.revision.outputs.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/e2e/package-lock.json
+
+      - name: Verify exact write-capable Staging deployment
+        env:
+          STAGING_REQUIRE_WRITE_CONFIG: 'true'
+        run: node scripts/verify-staging-deployment.mjs
+
+      - name: Verify Staging schema capabilities
+        run: node scripts/verify-staging-schema-capabilities.mjs
+
+      - name: Confirm current main did not move before writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              --jq '.object.sha'
+          )"
+          test "$current" = "$EXPECTED_REVISION" || {
+            echo "CONFIG_DRIFT: main moved from $EXPECTED_REVISION to $current before thumbnail writes."
+            exit 1
+          }
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install browser test dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install Playwright ffmpeg
+        working-directory: tests/e2e
+        run: npx playwright install ffmpeg
+
+      - name: Run isolated official-thumbnail Staging flow
+        working-directory: tests/e2e
+        run: >-
+          npx playwright test staging/thumbnail-flow.spec.js
+          --project=staging-desktop-chromium
+          --config=playwright.staging.config.mjs
+
+      - name: Upload thumbnail Staging diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-thumbnail-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tests/e2e/staging-playwright-report
+            tests/e2e/staging-test-results
+          if-no-files-found: warn
+          retention-days: 14
