@@ -1,5 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { URL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { expect, test } from '@playwright/test';
 
@@ -42,7 +44,7 @@ async function waitForProfile(userId) {
     const result = await admin.from('profiles').select('id').eq('id', userId);
     assertNoError(result, 'read thumbnail smoke profile');
     if ((result.data || []).length === 1) return;
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await sleep(250);
   }
   throw new Error('Thumbnail smoke profile was not created in time.');
 }
