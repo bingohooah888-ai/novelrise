@@ -12,7 +12,9 @@ test('homepage exposes recommendations, real new arrivals, and a data-backed con
 
   assert.match(home, /<h2>あなたへのおすすめ<\/h2>/u);
   assert.match(home, /id="newGrid"/u);
-  assert.match(home, /href="search\.html\?sort=new"/);
+  assert.match(home, /href="recommended\.html"/);
+  assert.match(home, /href="new-arrivals\.html"/);
+  assert.match(home, /href="light-seed\.html"/);
   assert.match(home, /id="seedShelfSection"[^>]*hidden/u);
   assert.match(home, /<h2>LIGHT SEEDで発掘中<\/h2>/u);
   assert.match(home, /novelight_neutral_search/u);
@@ -117,7 +119,31 @@ test('homepage selection protects author diversity before filling remaining slot
   assert.match(home, /primary\.concat\(deferred\)\.slice\(0,limit\)/);
 });
 
-test('new-arrivals homepage link selects neutral new ordering on search', async () => {
+test('dedicated discovery pages use 24-work batches without changing feed policy', async () => {
+  const [recommended, newArrivals, seed, script] = await Promise.all([
+    read('recommended.html'),
+    read('new-arrivals.html'),
+    read('light-seed.html'),
+    read('novelight-discovery-list.js')
+  ]);
+
+  assert.match(recommended, /data-discovery-mode="recommended"/);
+  assert.match(newArrivals, /data-discovery-mode="new"/);
+  assert.match(seed, /data-discovery-mode="seed"/);
+  assert.match(recommended, /id="discoveryMore"/);
+  assert.match(newArrivals, /id="discoveryMore"/);
+  assert.match(seed, /id="discoveryMore"/);
+  assert.match(script, /const pageSize = 24;/);
+  assert.match(script, /p_surface: 'search_recommended'/);
+  assert.match(script, /record_trusted_allocation_receipts/);
+  assert.match(script, /p_sort: 'new'/);
+  assert.match(script, /p_offset: neutralOffset/);
+  assert.match(script, /light_seed_status/);
+  assert.match(script, /result\.data\?\.eligible !== true/);
+  assert.match(script, /seedQueue\.splice\(0, pageSize\)/);
+});
+
+test('search still accepts supported sort query parameters independently of home discovery links', async () => {
   const search = await read('search.html');
 
   assert.match(
