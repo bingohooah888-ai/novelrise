@@ -10,6 +10,7 @@
   const BRAND_LOGO_PATH = 'assets/novelight-header-logo.webp';
   const THEME_STYLESHEET_PATH = 'novelight-theme.css';
   const PUBLIC_HEADER_STYLESHEET_PATH = 'novelight-header-light.css';
+  const THUMBNAIL_RUNTIME_PATH = 'novelight-thumbnail-runtime.js';
   const PUBLIC_HEADER_PAGES = new Set([
     'index',
     'pricing',
@@ -310,6 +311,32 @@
   }
 
   installMobileMenuDismiss();
+
+  function installOfficialThumbnailRuntime() {
+    if (!['index', 'search', 'ranking'].includes(currentPageSlug())) return false;
+    if (document.querySelector('script[data-novelight-thumbnail-runtime]')) return false;
+    const script = document.createElement('script');
+    script.src = THUMBNAIL_RUNTIME_PATH;
+    script.defer = true;
+    script.dataset.novelightThumbnailRuntime = 'official';
+    document.head.appendChild(script);
+    return true;
+  }
+
+  function installAdminThumbnailLink() {
+    if (currentPageSlug() !== 'admin') return false;
+    const actions = document.querySelector('.header-actions');
+    if (!actions || actions.querySelector('a[href="admin-thumbnails.html"]')) return false;
+    const link = document.createElement('a');
+    link.className = 'ghost';
+    link.href = 'admin-thumbnails.html';
+    link.textContent = '公式サムネイル';
+    actions.prepend(link);
+    return true;
+  }
+
+  installOfficialThumbnailRuntime();
+  installAdminThumbnailLink();
 
   function safeStorageGet(storage, key) {
     try {
