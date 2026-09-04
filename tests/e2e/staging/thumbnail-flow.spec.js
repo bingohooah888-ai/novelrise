@@ -18,7 +18,9 @@ if (
   !stagingTarget.hostname.endsWith('.supabase.co') ||
   stagingTarget.hostname === PRODUCTION_SUPABASE_HOST
 ) {
-  throw new Error('Thumbnail Staging smoke refuses a non-Staging Supabase target.');
+  throw new Error(
+    'Thumbnail Staging smoke refuses a non-Staging Supabase target.'
+  );
 }
 
 const stagingProjectRef = stagingTarget.hostname.split('.')[0];
@@ -70,10 +72,26 @@ async function cleanupFixture(fixture) {
 
   await attempt('cleanup novel-linked records', async () => {
     if (!novelId) return;
-    await deleteByIds('novel_allocation_receipts', 'novel_id_snapshot', [novelId]);
-    await deleteByIds('novel_exposure_conversions', 'novel_id_snapshot', [novelId]);
-    await deleteByIds('novel_exposure_events', 'novel_id_snapshot', [novelId]);
-    await deleteByIds('reader_journey_events', 'novel_id_snapshot', [novelId]);
+    await deleteByIds(
+      'novel_allocation_receipts',
+      'novel_id_snapshot',
+      [novelId]
+    );
+    await deleteByIds(
+      'novel_exposure_conversions',
+      'novel_id_snapshot',
+      [novelId]
+    );
+    await deleteByIds(
+      'novel_exposure_events',
+      'novel_id_snapshot',
+      [novelId]
+    );
+    await deleteByIds(
+      'reader_journey_events',
+      'novel_id_snapshot',
+      [novelId]
+    );
     await deleteByIds('light_seeds', 'novel_id_snapshot', [novelId]);
     await deleteByIds('favorites', 'novel_id', [novelId]);
     await deleteByIds('content_reports', 'novel_id_snapshot', [novelId]);
@@ -102,7 +120,11 @@ async function cleanupFixture(fixture) {
   await attempt('cleanup user-linked rows', async () => {
     if (!userId) return;
     await deleteByIds('founding_authors', 'author_id', [userId]);
-    await deleteByIds('founding_author_exclusion_audit', 'author_id', [userId]);
+    await deleteByIds(
+      'founding_author_exclusion_audit',
+      'author_id',
+      [userId]
+    );
     await deleteByIds('founding_author_exclusions', 'user_id', [userId]);
     await deleteByIds('user_acquisition', 'user_id', [userId]);
     await deleteByIds('user_lifecycle', 'user_id', [userId]);
@@ -199,8 +221,12 @@ async function createFixture() {
     }),
     'register official thumbnail through ADMIN RPC'
   );
-  fixture.assetId = Array.isArray(registered) ? registered[0]?.id : registered?.id;
-  if (!fixture.assetId) throw new Error('Thumbnail ADMIN registration returned no asset ID.');
+  fixture.assetId = Array.isArray(registered)
+    ? registered[0]?.id
+    : registered?.id;
+  if (!fixture.assetId) {
+    throw new Error('Thumbnail ADMIN registration returned no asset ID.');
+  }
 
   const audit = assertNoError(
     await admin
@@ -223,7 +249,11 @@ async function createFixture() {
 async function assertStagingSession(page) {
   const authKeys = await page.evaluate(() => {
     const keys = [];
-    for (let index = 0; index < globalThis.localStorage.length; index += 1) {
+    for (
+      let index = 0;
+      index < globalThis.localStorage.length;
+      index += 1
+    ) {
       const key = globalThis.localStorage.key(index);
       if (key?.startsWith('sb-') && key.endsWith('-auth-token')) keys.push(key);
     }
@@ -240,95 +270,123 @@ async function assertCardThumbnail(card, publicUrl) {
   await expect(image).toHaveAttribute('src', publicUrl);
 }
 
-test('official thumbnail survives Staging registration, author selection, publish, and discovery surfaces', async ({
-  page
-}) => {
-  test.setTimeout(150_000);
-  const fixture = await createFixture();
-  const unique = `${process.env.GITHUB_RUN_ID || Date.now()}-${randomBytes(3).toString('hex')}`;
-  const novelTitle = `サムネイルE2E作品 ${unique}`;
+test(
+  'official thumbnail survives Staging registration, author selection, publish, and discovery surfaces',
+  async ({ page }) => {
+    test.setTimeout(150_000);
+    const fixture = await createFixture();
+    const unique = `${process.env.GITHUB_RUN_ID || Date.now()}-${randomBytes(
+      3
+    ).toString('hex')}`;
+    const novelTitle = `サムネイルE2E作品 ${unique}`;
 
-  try {
-    await test.step('Author selects the registered official thumbnail', async () => {
-      await page.goto(`/login.html?redirect=${encodeURIComponent('post.html')}`);
-      await page.locator('#email').fill(fixture.user.email);
-      await page.locator('#password').fill(fixture.password);
-      await page.locator('#loginButton').click();
-      await page.waitForURL((url) => url.pathname.endsWith('/post.html'));
-      await assertStagingSession(page);
+    try {
+      await test.step(
+        'Author selects the registered official thumbnail',
+        async () => {
+          await page.goto(
+            `/login.html?redirect=${encodeURIComponent('post.html')}`
+          );
+          await page.locator('#email').fill(fixture.user.email);
+          await page.locator('#password').fill(fixture.password);
+          await page.locator('#loginButton').click();
+          await page.waitForURL((url) => url.pathname.endsWith('/post.html'));
+          await assertStagingSession(page);
 
-      const thumbnailInput = page.locator(
-        `input[name="thumbnailAsset"][value="${fixture.assetId}"]`
+          const thumbnailInput = page.locator(
+            `input[name="thumbnailAsset"][value="${fixture.assetId}"]`
+          );
+          await expect(
+            page.getByText(fixture.assetLabel, { exact: true })
+          ).toBeVisible();
+          await page.getByText(fixture.assetLabel, { exact: true }).click();
+          await expect(thumbnailInput).toBeChecked();
+
+          await page.locator('#title').fill(novelTitle);
+          await page
+            .locator('#genre')
+            .selectOption({ label: '現代ドラマ' });
+          await page
+            .locator('#description')
+            .fill('公式サムネイルのStaging実動作を検証する一時作品です。');
+          await page.locator('#aiUsage').selectOption('human');
+          await page.locator('#contentRating').selectOption('general');
+          await page.locator('#policyAck').check();
+          await expect(page.locator('#submitButton')).toBeEnabled();
+          await page.locator('#submitButton').click();
+          await page.waitForURL(/\/episode-post\.html\?novel_id=/u);
+
+          fixture.novelId = new URL(page.url()).searchParams.get('novel_id');
+          expect(fixture.novelId).toBeTruthy();
+        }
       );
-      await expect(page.getByText(fixture.assetLabel, { exact: true })).toBeVisible();
-      await page.getByText(fixture.assetLabel, { exact: true }).click();
-      await expect(thumbnailInput).toBeChecked();
 
-      await page.locator('#title').fill(novelTitle);
-      await page.locator('#genre').selectOption({ label: '現代ドラマ' });
-      await page
-        .locator('#description')
-        .fill('公式サムネイルのStaging実動作を検証する一時作品です。');
-      await page.locator('#aiUsage').selectOption('human');
-      await page.locator('#contentRating').selectOption('general');
-      await page.locator('#policyAck').check();
-      await expect(page.locator('#submitButton')).toBeEnabled();
-      await page.locator('#submitButton').click();
-      await page.waitForURL(/\/episode-post\.html\?novel_id=/u);
+      await test.step(
+        'Publish the first episode and verify persisted thumbnail linkage',
+        async () => {
+          await expect(page.locator('#publish')).toBeEnabled();
+          await page.locator('#episodeNumber').fill('1');
+          await page.locator('#title').fill('第1話 サムネイル表示確認');
+          await page
+            .locator('#content')
+            .fill(
+              'NOVELIGHT公式サムネイルの表示経路を確認するStaging専用本文です。'
+            );
+          await page.locator('#publish').click();
+          await page.waitForURL(/\/novel\.html\?id=/u);
 
-      fixture.novelId = new URL(page.url()).searchParams.get('novel_id');
-      expect(fixture.novelId).toBeTruthy();
-    });
-
-    await test.step('Publish the first episode and verify persisted thumbnail linkage', async () => {
-      await expect(page.locator('#publish')).toBeEnabled();
-      await page.locator('#episodeNumber').fill('1');
-      await page.locator('#title').fill('第1話 サムネイル表示確認');
-      await page
-        .locator('#content')
-        .fill('NOVELIGHT公式サムネイルの表示経路を確認するStaging専用本文です。');
-      await page.locator('#publish').click();
-      await page.waitForURL(/\/novel\.html\?id=/u);
-
-      const novel = assertNoError(
-        await admin
-          .from('novels')
-          .select('id,thumbnail_asset_id,thumbnail_url,status')
-          .eq('id', fixture.novelId)
-          .single(),
-        'read published thumbnail smoke novel'
+          const novel = assertNoError(
+            await admin
+              .from('novels')
+              .select('id,thumbnail_asset_id,thumbnail_url,status')
+              .eq('id', fixture.novelId)
+              .single(),
+            'read published thumbnail smoke novel'
+          );
+          expect(String(novel.thumbnail_asset_id)).toBe(
+            String(fixture.assetId)
+          );
+          expect(novel.thumbnail_url).toBe(fixture.publicUrl);
+          expect(novel.status).toBe('published');
+        }
       );
-      expect(String(novel.thumbnail_asset_id)).toBe(String(fixture.assetId));
-      expect(novel.thumbnail_url).toBe(fixture.publicUrl);
-      expect(novel.status).toBe('published');
-    });
 
-    await test.step('Home new arrivals shows the official thumbnail', async () => {
-      await page.goto('/index.html');
-      const card = page.locator(
-        `#newGrid a.novel-card[href="novel.html?id=${fixture.novelId}"]`
+      await test.step(
+        'Home new arrivals shows the official thumbnail',
+        async () => {
+          await page.goto('/index.html');
+          const card = page.locator(
+            `#newGrid a.novel-card[href="novel.html?id=${fixture.novelId}"]`
+          );
+          await assertCardThumbnail(card, fixture.publicUrl);
+        }
       );
-      await assertCardThumbnail(card, fixture.publicUrl);
-    });
 
-    await test.step('Search shows the same official thumbnail', async () => {
-      await page.goto('/search.html?sort=new');
-      await page.locator('#keywordInput').fill(novelTitle);
-      const card = page.locator(
-        `#novelList a.novel-card[href="novel.html?id=${fixture.novelId}"]`
+      await test.step(
+        'Search shows the same official thumbnail',
+        async () => {
+          await page.goto('/search.html?sort=new');
+          await page.locator('#keywordInput').fill(novelTitle);
+          const card = page.locator(
+            `#novelList a.novel-card[href="novel.html?id=${fixture.novelId}"]`
+          );
+          await assertCardThumbnail(card, fixture.publicUrl);
+        }
       );
-      await assertCardThumbnail(card, fixture.publicUrl);
-    });
 
-    await test.step('Ranking new tab shows the same official thumbnail', async () => {
-      await page.goto('/ranking.html');
-      await page.locator('.tab[data-type="new"]').click();
-      const card = page.locator(
-        `#list a.card[href="novel.html?id=${fixture.novelId}"]`
+      await test.step(
+        'Ranking new tab shows the same official thumbnail',
+        async () => {
+          await page.goto('/ranking.html');
+          await page.locator('.tab[data-type="new"]').click();
+          const card = page.locator(
+            `#list a.card[href="novel.html?id=${fixture.novelId}"]`
+          );
+          await assertCardThumbnail(card, fixture.publicUrl);
+        }
       );
-      await assertCardThumbnail(card, fixture.publicUrl);
-    });
-  } finally {
-    await cleanupFixture(fixture);
+    } finally {
+      await cleanupFixture(fixture);
+    }
   }
-});
+);
