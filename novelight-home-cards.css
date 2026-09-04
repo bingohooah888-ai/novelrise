@@ -1,0 +1,74 @@
+/* Home discovery cards: keep the reader-facing card to artwork, title, author, and genre. */
+html body.novelight-page-index.novelight-public-dark .shelf-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+html body.novelight-page-index.novelight-public-dark .shelf-card .novel-cover-placeholder {
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 4 / 5;
+  border-radius: 0;
+}
+
+html body.novelight-page-index.novelight-public-dark .shelf-card .cover-genre,
+html body.novelight-page-index.novelight-public-dark .shelf-card .meta,
+html body.novelight-page-index.novelight-public-dark .shelf-card .seed-count {
+  display: none;
+}
+
+html body.novelight-page-index.novelight-public-dark .shelf-card .card-copy {
+  display: flex;
+  min-height: 128px;
+  flex: 1;
+  flex-direction: column;
+  gap: 0;
+  padding: 14px 14px 16px;
+}
+
+html body.novelight-page-index.novelight-public-dark .shelf-card .novel-title {
+  order: 1;
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--public-text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+html body.novelight-page-index.novelight-public-dark .shelf-card .novel-author {
+  order: 2;
+  overflow: hidden;
+  margin-top: 8px;
+  color: var(--public-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html body.novelight-page-index.novelight-public-dark .shelf-card .genre {
+  order: 3;
+  align-self: flex-start;
+  margin-top: auto;
+  padding-top: 12px;
+  color: var(--public-gold-light);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 640px) {
+  html body.novelight-page-index.novelight-public-dark .shelf-card .card-copy {
+    min-height: 120px;
+    padding: 12px 12px 14px;
+  }
+
+  html body.novelight-page-index.novelight-public-dark .shelf-card .novel-title {
+    font-size: 14px;
+  }
+}
