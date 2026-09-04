@@ -34,15 +34,25 @@ async function prepareUpload({ supabase, body }) {
   const extension = CONTENT_TYPES.get(contentType);
   const fileSize = Number(body.fileSize);
 
-  if (!extension || !Number.isInteger(fileSize) || fileSize < 1 || fileSize > MAX_FILE_SIZE) {
+  if (
+    !extension ||
+    !Number.isInteger(fileSize) ||
+    fileSize < 1 ||
+    fileSize > MAX_FILE_SIZE
+  ) {
     return { status: 400, payload: { error: 'Invalid thumbnail file' } };
   }
 
   const path = `official/${randomUUID()}.${extension}`;
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUploadUrl(path);
   if (error || !data?.token) {
     console.error('Signed thumbnail upload creation failed', error);
-    return { status: 503, payload: { error: 'Upload could not be prepared' } };
+    return {
+      status: 503,
+      payload: { error: 'Upload could not be prepared' }
+    };
   }
 
   return {
@@ -64,7 +74,8 @@ async function verifyStoredObject(supabase, path) {
     limit: 20,
     search: fileName
   });
-  if (error) throw new Error(`Thumbnail storage verification failed: ${error.message}`);
+  if (error)
+    throw new Error(`Thumbnail storage verification failed: ${error.message}`);
   return (data ?? []).some((entry) => entry.name === fileName);
 }
 
@@ -76,7 +87,10 @@ async function finalizeUpload({ supabase, adminUser, body }) {
   }
 
   if (!(await verifyStoredObject(supabase, path))) {
-    return { status: 409, payload: { error: 'Uploaded thumbnail was not found' } };
+    return {
+      status: 409,
+      payload: { error: 'Uploaded thumbnail was not found' }
+    };
   }
 
   const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -85,21 +99,30 @@ async function finalizeUpload({ supabase, adminUser, body }) {
     throw new Error('Thumbnail public URL could not be resolved');
   }
 
-  const { data, error } = await supabase.rpc('novelight_admin_register_thumbnail_asset', {
-    p_admin_user_id: adminUser.id,
-    p_label: label,
-    p_storage_path: path,
-    p_image_url: imageUrl
-  });
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_register_thumbnail_asset',
+    {
+      p_admin_user_id: adminUser.id,
+      p_label: label,
+      p_storage_path: path,
+      p_image_url: imageUrl
+    }
+  );
 
   if (error) {
     if (error.code === '23505') {
-      return { status: 409, payload: { error: 'Thumbnail was already registered' } };
+      return {
+        status: 409,
+        payload: { error: 'Thumbnail was already registered' }
+      };
     }
     throw new Error(`Thumbnail registration failed: ${error.message}`);
   }
 
-  return { status: 201, payload: { asset: Array.isArray(data) ? data[0] : data } };
+  return {
+    status: 201,
+    payload: { asset: Array.isArray(data) ? data[0] : data }
+  };
 }
 
 export function createAdminThumbnailsHandler({ supabase, env = process.env }) {
@@ -122,7 +145,8 @@ export function createAdminThumbnailsHandler({ supabase, env = process.env }) {
       const body = bodyObject(req);
       const action = String(body.action ?? '');
       let result;
-      if (action === 'prepare-upload') result = await prepareUpload({ supabase, body });
+      if (action === 'prepare-upload')
+        result = await prepareUpload({ supabase, body });
       else if (action === 'finalize-upload') {
         result = await finalizeUpload({ supabase, adminUser, body });
       } else result = { status: 400, payload: { error: 'Invalid action' } };
