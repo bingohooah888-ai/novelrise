@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>公式サムネイル管理 | NOVELIGHT ADMIN</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#0f1020;color:#f4f4f8}a{color:inherit;text-decoration:none}button,input{font:inherit}header{border-bottom:1px solid #292b47;background:#0f1020}.header-inner{max-width:1120px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px}.brand{font-size:21px;font-weight:950}.back{padding:9px 12px;border:1px solid #393c61;border-radius:9px;background:#17182c;color:#ddd;font-weight:850}main{max-width:1120px;margin:auto;padding:36px 22px 80px}h1{margin:0 0 8px;font-size:31px}.lead{margin:0 0 24px;color:#a9abc2;line-height:1.7}.panel{padding:22px;border:1px solid #303253;border-radius:15px;background:#17182c}.upload-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.6fr) auto;gap:10px;align-items:end}.field label{display:block;margin-bottom:7px;color:#c8cada;font-size:12px;font-weight:850}.field input{width:100%;min-height:44px;padding:10px 12px;border:1px solid #393c61;border-radius:9px;background:#101121;color:#fff}.primary{min-height:44px;padding:10px 16px;border:0;border-radius:9px;background:#6d4aff;color:#fff;font-weight:900;cursor:pointer}.primary:disabled{opacity:.55;cursor:wait}.help{margin:12px 0 0;color:#8589a8;font-size:11px;line-height:1.7}.status{min-height:48px;margin:18px 0;padding:13px 15px;border:1px solid #303253;border-radius:11px;background:#151629;color:#b7bad0}.status.error{border-color:#7c3039;background:#2a161a;color:#ffb8c0}.status.ok{border-color:#285d4d;background:#11271f;color:#9fe4cd}.section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:30px 0 12px}.section-head h2{margin:0;font-size:20px}.section-head span{color:#8589a8;font-size:12px}.library{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.asset{overflow:hidden;border:1px solid #303253;border-radius:13px;background:#17182c}.asset img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#0b0c18}.asset-copy{padding:12px}.asset-title{font-weight:900}.asset-meta{margin-top:5px;color:#8589a8;font-size:10px}.empty{grid-column:1/-1;padding:32px;border:1px dashed #343755;border-radius:12px;color:#8589a8;text-align:center}@media(max-width:850px){.upload-form{grid-template-columns:1fr}.library{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:620px){main{padding:28px 15px 60px}.header-inner{padding:10px 15px}.library{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:390px){.library{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header><div class="header-inner"><div class="brand">NOVELIGHT <span style="color:#b8adff">ADMIN</span></div><a class="back" href="admin.html">← 管理画面へ戻る</a></div></header>
+<main>
+  <h1>公式サムネイル管理</h1>
+  <p class="lead">作者が作品投稿時に選ぶ公式ブック画像を登録します。ここで登録した画像だけが作者の選択肢として公開されます。</p>
+  <section class="panel">
+    <form id="uploadForm" class="upload-form">
+      <div class="field"><label for="thumbnailFile">画像ファイル（WebP / PNG / JPEG、最大5MB）</label><input id="thumbnailFile" type="file" accept="image/webp,image/png,image/jpeg" required></div>
+      <div class="field"><label for="thumbnailLabel">管理用の名前</label><input id="thumbnailLabel" maxlength="80" placeholder="例：幻想・蒼月 01" required></div>
+      <button id="uploadButton" class="primary" type="submit">アップロード</button>
+    </form>
+    <p class="help">画像はSupabase Storageへ直接アップロードされます。アップロード用URLはADMIN認証済みのサーバーから一度だけ発行し、一般ユーザーにはアップロード権限を与えません。</p>
+  </section>
+  <div id="status" class="status">管理者権限を確認しています...</div>
+  <div class="section-head"><h2>作者が選べる画像</h2><span id="assetCount">—</span></div>
+  <section id="library" class="library"><div class="empty">読み込み中...</div></section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="novelight-client.js"></script>
+<script>
+const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+const statusNode=document.getElementById('status'),library=document.getElementById('library'),countNode=document.getElementById('assetCount'),button=document.getElementById('uploadButton');let session=null,busy=false;
+function setStatus(message,type=''){statusNode.className='status'+(type?` ${type}`:'');statusNode.textContent=message}
+async function getSession(){const {data:{session:current},error}=await client.auth.getSession();if(error)throw error;if(!current){location.href='login.html?redirect=admin-thumbnails.html';return null}return current}
+async function adminRequest(method,body){const response=await fetch('/api/admin-thumbnails',{method,headers:{Authorization:`Bearer ${session.access_token}`,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store',credentials:'same-origin'});if(response.status===401){location.href='login.html?redirect=admin-thumbnails.html';return null}if(response.status===403){throw new Error('このアカウントにはADMIN権限がありません。')}if(response.status===503){throw new Error('サムネイル管理のDB準備がまだ完了していません。')}const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||`API ${response.status}`);return payload}
+function render(assets){library.replaceChildren();const active=(assets||[]).filter(asset=>asset.is_active);countNode.textContent=`${active.length}枚`;if(!active.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='まだ公式サムネイルがありません。最初の画像をアップロードしてください。';library.appendChild(empty);return}active.forEach(asset=>{const card=document.createElement('article');card.className='asset';const img=document.createElement('img');img.src=asset.image_url;img.alt=asset.label;img.loading='lazy';const copy=document.createElement('div');copy.className='asset-copy';const title=document.createElement('div');title.className='asset-title';title.textContent=asset.label;const meta=document.createElement('div');meta.className='asset-meta';meta.textContent=new Date(asset.created_at).toLocaleString('ja-JP');copy.append(title,meta);card.append(img,copy);library.appendChild(card)})}
+async function load(){try{session=await getSession();if(!session)return;const payload=await adminRequest('GET');render(payload.assets||[]);setStatus('公式サムネイル一覧を読み込みました。','ok')}catch(error){console.error(error);setStatus(error.message||'読み込めませんでした。','error');library.innerHTML='<div class="empty">一覧を取得できませんでした。</div>'}}
+document.getElementById('uploadForm').addEventListener('submit',async event=>{event.preventDefault();if(busy||!session)return;const file=document.getElementById('thumbnailFile').files[0],label=document.getElementById('thumbnailLabel').value.trim();if(!file||!label)return;if(file.size>5*1024*1024){setStatus('画像は5MB以下にしてください。','error');return}busy=true;button.disabled=true;setStatus('アップロードを準備しています...');try{const prepared=await adminRequest('POST',{action:'prepare-upload',contentType:file.type,fileSize:file.size});const upload=await client.storage.from('novel-thumbnails').uploadToSignedUrl(prepared.path,prepared.token,file,{contentType:file.type,upsert:false});if(upload.error)throw upload.error;setStatus('画像を登録しています...');await adminRequest('POST',{action:'finalize-upload',path:prepared.path,label});document.getElementById('uploadForm').reset();const payload=await adminRequest('GET');render(payload.assets||[]);setStatus('公式サムネイルを登録しました。作者の作品投稿画面へ反映されます。','ok')}catch(error){console.error(error);setStatus(error.message||'アップロードできませんでした。','error')}finally{busy=false;button.disabled=false}});
+void load();
+</script>
+</body>
+</html>
