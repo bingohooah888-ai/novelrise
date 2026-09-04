@@ -1,3 +1,5 @@
+@import url("novelight-home-cards.css");
+
 /* Home hero artwork layout.
    Uses the user-supplied 2048x736 artwork without redrawing or generated replacements. */
 html body.novelight-page-index.novelight-public-dark .hero {
