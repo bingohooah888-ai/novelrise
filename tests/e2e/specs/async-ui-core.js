@@ -311,9 +311,11 @@ test('novel posting validates synchronously and recovers from an async save fail
   const pageErrors = collectPageErrors(page);
 
   await page.goto('/post.html');
-  await page
-    .locator('input[name="thumbnailAsset"][value="thumb-e2e"]')
-    .check();
+  const thumbnailInput = page.locator(
+    'input[name="thumbnailAsset"][value="thumb-e2e"]'
+  );
+  await page.getByText('E2E Official Thumbnail', { exact: true }).click();
+  await expect(thumbnailInput).toBeChecked();
   await page.locator('#title').fill('E2E Novel');
   await page.locator('#genre').selectOption({ label: '現代ファンタジー' });
   await page.locator('#description').fill('非同期UI監査用のテスト作品です。');
