@@ -1,0 +1,33 @@
+name: Thumbnail Format Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - 'tests/e2e/staging/thumbnail-flow.spec.js'
+      - '.github/workflows/thumbnail-format-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Show exact Prettier diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx prettier --write tests/e2e/staging/thumbnail-flow.spec.js
+          git diff -- tests/e2e/staging/thumbnail-flow.spec.js
