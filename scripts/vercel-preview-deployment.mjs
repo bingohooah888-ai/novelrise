@@ -84,7 +84,6 @@ async function createExactPreview({ token, teamId, project, repoId, sha, ref }) 
     method: 'POST',
     body: JSON.stringify({
       name: project,
-      target: 'preview',
       gitSource: {
         type: 'github',
         repoId,
