@@ -347,9 +347,7 @@ test('novel posting validates synchronously and recovers from an async save fail
   await expect(page.locator('#submitButton')).toBeEnabled();
 
   const insertCalls = await page.evaluate(() =>
-    globalThis.__NOVELIGHT_E2E_CALLS__.filter(
-      (call) => call.type === 'insert'
-    )
+    globalThis.__NOVELIGHT_E2E_CALLS__.filter((call) => call.type === 'insert')
   );
   expect(insertCalls).toHaveLength(1);
   expect(insertCalls[0].payload.thumbnail_asset_id).toBe('thumb-e2e');
