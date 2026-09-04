@@ -7,7 +7,10 @@ import test from 'node:test';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const post = readFileSync(join(root, 'post.html'), 'utf8');
 const admin = readFileSync(join(root, 'admin-thumbnails.html'), 'utf8');
-const runtime = readFileSync(join(root, 'novelight-thumbnail-runtime.js'), 'utf8');
+const runtime = readFileSync(
+  join(root, 'novelight-thumbnail-runtime.js'),
+  'utf8'
+);
 const migration = readFileSync(
   join(root, 'supabase/migrations/20260904133000_official_novel_thumbnails.sql'),
   'utf8'
