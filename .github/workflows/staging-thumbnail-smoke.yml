@@ -21,7 +21,7 @@ jobs:
        github.event.comment.author_association == 'OWNER' &&
        github.event.comment.body == 'NOVELIGHT_STAGING_THUMBNAIL_SMOKE')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     concurrency:
       group: novelight-staging-thumbnail-smoke
       cancel-in-progress: false
@@ -29,13 +29,16 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       STAGING_TRIGGER: workflow_dispatch
-      CANONICAL_STAGING_URL: ${{ vars.STAGING_BASE_URL }}
+      STAGING_PREVIEW_REF: staging-thumbnail-smoke
       STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
       STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
       SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      VERCEL_PROJECT_NAME: novelrise
+      GITHUB_REPOSITORY_ID: '1335499017'
 
     steps:
       - name: Resolve exact current main
@@ -75,6 +78,10 @@ jobs:
             echo 'CONFIG_DRIFT: STAGING_SUPABASE_PUBLISHABLE_KEY is not configured.'
             exit 1
           }
+          test -n "${VERCEL_API_TOKEN:-}" || {
+            echo 'CONFIG_DRIFT: VERCEL_API_TOKEN is not configured.'
+            exit 1
+          }
 
       - name: Checkout exact current main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -90,6 +97,23 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             tests/e2e/package-lock.json
+
+      - name: Require dedicated Preview ref to equal exact current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          preview_sha="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/$STAGING_PREVIEW_REF" \
+              --jq '.object.sha'
+          )"
+          test "$preview_sha" = "$EXPECTED_REVISION" || {
+            echo "CONFIG_DRIFT: $STAGING_PREVIEW_REF points to $preview_sha, expected $EXPECTED_REVISION."
+            exit 1
+          }
+
+      - name: Create exact non-Production Vercel Preview
+        run: node scripts/vercel-preview-deployment.mjs
 
       - name: Verify exact write-capable Staging deployment
         env:
