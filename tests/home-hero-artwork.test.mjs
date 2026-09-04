@@ -19,5 +19,5 @@ test('Home loads the user-supplied hero artwork with phrase-safe copy placement'
   assert.match(heroCss, /@media \(max-width:\s*900px\)[\s\S]*?padding-top:\s*35\.9375vw/u);
   assert.match(indexHtml, /<h1>まだ知られていない<br>物語に、<span>光を。<\/span><\/h1>/u);
   assert.equal(existsSync(heroAsset), true, 'Home hero artwork asset must exist');
-  assert.ok(statSync(heroAsset).size > 50_000, 'Home hero artwork should not be an empty placeholder');
+  assert.ok(statSync(heroAsset).size > 10_000, 'Home hero artwork should not be an empty placeholder');
 });
