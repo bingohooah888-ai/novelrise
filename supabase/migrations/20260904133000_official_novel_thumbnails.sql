@@ -141,28 +141,33 @@ $$;
 revoke all on function public.novelight_admin_register_thumbnail_asset(uuid, text, text, text) from public;
 grant execute on function public.novelight_admin_register_thumbnail_asset(uuid, text, text, text) to service_role;
 
--- The bucket is public for reader-facing image delivery. Upload permission is not
--- granted to browser roles: ADMIN receives one-time signed upload tokens from a
--- server endpoint authenticated by the existing ADMIN allowlist.
-insert into storage.buckets (
-  id,
-  name,
-  public,
-  file_size_limit,
-  allowed_mime_types
-) values (
-  'novel-thumbnails',
-  'novel-thumbnails',
-  true,
-  5242880,
-  array['image/webp','image/png','image/jpeg']
-)
-on conflict (id) do nothing;
-
+-- Supabase supplies storage.buckets in real environments. The repository's
+-- isolated PostgreSQL migration-replay fixture intentionally does not install
+-- the Storage extension, so skip only the bucket bootstrap in that fixture.
 do $$
 declare
   v_public boolean;
 begin
+  if to_regclass('storage.buckets') is null then
+    raise notice 'storage.buckets is unavailable; skipping Storage bucket bootstrap in compatibility replay';
+    return;
+  end if;
+
+  insert into storage.buckets (
+    id,
+    name,
+    public,
+    file_size_limit,
+    allowed_mime_types
+  ) values (
+    'novel-thumbnails',
+    'novel-thumbnails',
+    true,
+    5242880,
+    array['image/webp','image/png','image/jpeg']
+  )
+  on conflict (id) do nothing;
+
   select public into v_public
     from storage.buckets
    where id = 'novel-thumbnails';
