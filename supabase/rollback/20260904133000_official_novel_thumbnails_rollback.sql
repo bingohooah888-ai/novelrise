@@ -32,21 +32,21 @@ begin
   end if;
 
   if to_regclass('public.admin_operation_audit') is not null then
-    execute $$select exists (
+    execute $sql$select exists (
       select 1
       from public.admin_operation_audit
       where resource_type = 'novel_thumbnail_asset'
       limit 1
-    )$$ into v_has_audit;
+    )$sql$ into v_has_audit;
   end if;
 
   if to_regclass('storage.objects') is not null then
-    execute $$select exists (
+    execute $sql$select exists (
       select 1
       from storage.objects
       where bucket_id = 'novel-thumbnails'
       limit 1
-    )$$ into v_has_objects;
+    )$sql$ into v_has_objects;
   end if;
 
   if v_has_assets or v_has_novel_refs or v_has_audit or v_has_objects then
