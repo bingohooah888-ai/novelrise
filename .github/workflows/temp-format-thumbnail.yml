@@ -1,0 +1,35 @@
+name: TEMP Format Thumbnail
+
+on:
+  pull_request:
+    paths:
+      - tests/e2e/staging/thumbnail-flow.spec.js
+      - .github/workflows/temp-format-thumbnail.yml
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Print exact Prettier patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx prettier --write tests/e2e/staging/thumbnail-flow.spec.js
+          echo '---FORMAT-PATCH-START---'
+          git diff --no-ext-diff --unified=200 -- tests/e2e/staging/thumbnail-flow.spec.js
+          echo '---FORMAT-PATCH-END---'
