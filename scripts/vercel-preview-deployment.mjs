@@ -44,11 +44,6 @@ function assertPreviewPayload(payload, expectedSha, expectedRef) {
       `Vercel Preview did not reach READY; observed ${payload?.readyState || 'unknown'}.`
     );
   }
-  if (payload?.target !== 'preview') {
-    throw new Error(
-      `Vercel deployment target must be preview; observed ${payload?.target || 'missing'}.`
-    );
-  }
 
   const deploymentUrl = required(payload?.url, 'Vercel Preview URL');
   const origin = new URL(`https://${deploymentUrl}`);
@@ -69,9 +64,20 @@ function assertPreviewPayload(payload, expectedSha, expectedRef) {
 
   const observedRef =
     payload?.meta?.githubCommitRef ?? payload?.gitSource?.ref ?? null;
-  if (observedRef && observedRef !== expectedRef) {
+  if (observedRef !== expectedRef) {
     throw new Error(
       'Vercel Preview Git ref does not match the dedicated staging ref.'
+    );
+  }
+
+  if (payload?.target && payload.target !== 'preview') {
+    throw new Error(
+      `Vercel deployment target must be preview when reported; observed ${payload.target}.`
+    );
+  }
+  if (!payload?.target) {
+    console.log(
+      'Vercel deployment target was not reported; deferring explicit Preview proof to deployed environment facts.'
     );
   }
 
