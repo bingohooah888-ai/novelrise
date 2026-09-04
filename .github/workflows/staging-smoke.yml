@@ -30,7 +30,8 @@ jobs:
        github.event.sender.login == 'bingohooah888-ai') ||
       (github.event.deployment_status.state == 'success' &&
        github.event.deployment.environment != 'Production' &&
-       github.event.deployment.environment != 'production')
+       github.event.deployment.environment != 'production' &&
+       github.event.deployment.ref != 'staging-thumbnail-smoke')
     runs-on: ubuntu-latest
     timeout-minutes: 40
     concurrency:
