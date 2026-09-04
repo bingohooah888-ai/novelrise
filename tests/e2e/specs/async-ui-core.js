@@ -296,12 +296,24 @@ test('novel posting validates synchronously and recovers from an async save fail
 }) => {
   await installSupabaseStub(page, {
     session: { user: { id: 'author-e2e' } },
+    tableData: {
+      novel_thumbnail_assets: [
+        {
+          id: 'thumb-e2e',
+          label: 'E2E Official Thumbnail',
+          image_url: 'https://example.test/e2e-thumbnail.webp'
+        }
+      ]
+    },
     insertDelayMs: 400,
     insertError: 'temporary database error'
   });
   const pageErrors = collectPageErrors(page);
 
   await page.goto('/post.html');
+  await page
+    .locator('input[name="thumbnailAsset"][value="thumb-e2e"]')
+    .check();
   await page.locator('#title').fill('E2E Novel');
   await page.locator('#genre').selectOption({ label: '現代ファンタジー' });
   await page.locator('#description').fill('非同期UI監査用のテスト作品です。');
@@ -332,12 +344,12 @@ test('novel posting validates synchronously and recovers from an async save fail
   );
   await expect(page.locator('#submitButton')).toBeEnabled();
 
-  const insertsAfterWarning = await page.evaluate(
-    () =>
-      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
-        (call) => call.type === 'insert'
-      ).length
+  const insertCalls = await page.evaluate(() =>
+    globalThis.__NOVELIGHT_E2E_CALLS__.filter(
+      (call) => call.type === 'insert'
+    )
   );
-  expect(insertsAfterWarning).toBe(1);
+  expect(insertCalls).toHaveLength(1);
+  expect(insertCalls[0].payload.thumbnail_asset_id).toBe('thumb-e2e');
   expect(pageErrors).toEqual([]);
 });
