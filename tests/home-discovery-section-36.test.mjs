@@ -28,8 +28,8 @@ test('homepage dark redesign keeps an approved-art replacement slot and avoids f
   const css = await read('novelight-public-dark.css');
 
   assert.match(home, /class="hero-art-slot"/u);
-  assert.match(home, /まだ知られていない/u);
-  assert.match(home, /物語に、<span>光を。<\/span>/u);
+  assert.match(home, /まだ見ぬ物語に、/u);
+  assert.match(home, /まだ見ぬ物語に、<br><span>光を<\/span>/u);
   assert.match(home, /class="recommend-ribbon">おすすめ<\/div>/u);
   assert.match(css, /--public-gold:/u);
   assert.match(css, /prefers-reduced-motion/u);
