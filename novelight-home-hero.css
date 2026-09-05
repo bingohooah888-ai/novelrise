@@ -10,6 +10,7 @@ html body.novelight-page-index.novelight-public-dark .hero {
   background-color: #030a13;
   background:
     linear-gradient(90deg, rgba(2, 7, 14, .84) 0%, rgba(2, 7, 14, .68) 18%, rgba(2, 7, 14, .38) 36%, rgba(2, 7, 14, .08) 54%, rgba(2, 7, 14, 0) 70%),
+    url("assets/novelight-home-hero.png") center 62% / cover no-repeat,
     url("assets/novelight-home-hero.webp") center 62% / cover no-repeat;
 }
 
@@ -49,6 +50,10 @@ html body.novelight-page-index.novelight-public-dark .hero-copy {
   text-shadow: 0 2px 20px rgba(0, 0, 0, .46);
 }
 
+html body.novelight-page-index.novelight-public-dark .hero .eyebrow {
+  font-size: 14px;
+}
+
 html body.novelight-page-index.novelight-public-dark .hero h1 {
   max-width: 560px;
   margin: 0 0 18px;
@@ -61,11 +66,27 @@ html body.novelight-page-index.novelight-public-dark .hero h1 {
 
 html body.novelight-page-index.novelight-public-dark .hero p {
   max-width: 510px;
+  font-size: 18px;
   line-height: 1.8;
+}
+
+html body.novelight-page-index.novelight-public-dark .hero-primary,
+html body.novelight-page-index.novelight-public-dark .hero-secondary {
+  min-height: 46px;
+  padding: 10px 19px;
+  font-size: 15px;
 }
 
 html body.novelight-page-index.novelight-public-dark .hero-art-slot {
   display: none;
+}
+
+@media (max-width: 1180px) {
+  html body.novelight-page-index.novelight-public-dark .hero-primary,
+  html body.novelight-page-index.novelight-public-dark .hero-secondary {
+    padding-inline: 14px;
+    font-size: 14px;
+  }
 }
 
 /* At tablet/mobile widths, show the complete artwork first and place copy below it.
@@ -75,10 +96,12 @@ html body.novelight-page-index.novelight-public-dark .hero-art-slot {
     min-height: 0;
     padding-top: 35.9375vw;
     background-color: #030a13;
-    background-image: url("assets/novelight-home-hero.webp");
-    background-position: top center;
-    background-repeat: no-repeat;
-    background-size: 100% auto;
+    background-image:
+      url("assets/novelight-home-hero.png"),
+      url("assets/novelight-home-hero.webp");
+    background-position: top center, top center;
+    background-repeat: no-repeat, no-repeat;
+    background-size: 100% auto, 100% auto;
   }
 
   html body.novelight-page-index.novelight-public-dark .hero::before {
