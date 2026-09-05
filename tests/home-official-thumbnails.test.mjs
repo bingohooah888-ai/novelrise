@@ -11,7 +11,7 @@ const css = fs.readFileSync(cssPath, 'utf8');
 test('Home hydrates official thumbnails', () => {
   assert.ok(home.includes("select('id,thumbnail_url')"));
   assert.ok(home.includes("eq('status','published')"));
-  assert.ok(home.includes('withOfficialThumbnails(selected)'));
+  assert.ok(home.includes('withOfficialThumbnails(visible)'));
   assert.ok(home.includes('withOfficialThumbnails(rows)'));
   assert.ok(home.includes('void record(visible)'));
 });
