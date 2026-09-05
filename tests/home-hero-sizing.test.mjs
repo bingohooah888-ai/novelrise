@@ -30,7 +30,12 @@ test('desktop home hero actions match the shared Home header action sizing', () 
   );
 });
 
-test('desktop home hero supporting copy uses the enlarged type scale and cleaner wrapping', () => {
+test('desktop home hero supporting copy uses the enlarged type scale and balanced two-line width', () => {
+  assert.ok(
+    heroCss.includes(
+      'html body.novelight-page-index.novelight-public-dark .hero-copy {\n  width: min(720px, 50vw);'
+    )
+  );
   assert.ok(
     heroCss.includes(
       'html body.novelight-page-index.novelight-public-dark .hero .eyebrow {\n  font-size: 16px;'
@@ -38,7 +43,17 @@ test('desktop home hero supporting copy uses the enlarged type scale and cleaner
   );
   assert.ok(
     heroCss.includes(
-      'html body.novelight-page-index.novelight-public-dark .hero p {\n  max-width: 560px;\n  font-size: 20px;\n  line-height: 1.8;\n  text-wrap: pretty;'
+      'html body.novelight-page-index.novelight-public-dark .hero p {\n  max-width: 720px;\n  font-size: 20px;\n  line-height: 1.8;\n  text-wrap: balance;'
+    )
+  );
+  assert.ok(
+    heroCss.includes(
+      '@media (max-width: 900px) {\n  html body.novelight-page-index.novelight-public-dark .hero {'
+    )
+  );
+  assert.ok(
+    heroCss.includes(
+      'html body.novelight-page-index.novelight-public-dark .hero p {\n    text-wrap: pretty;'
     )
   );
 });

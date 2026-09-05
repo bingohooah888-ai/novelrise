@@ -45,7 +45,7 @@ html body.novelight-page-index.novelight-public-dark .hero-inner {
 }
 
 html body.novelight-page-index.novelight-public-dark .hero-copy {
-  width: min(560px, 42vw);
+  width: min(720px, 50vw);
   margin-right: auto;
   padding: clamp(28px, 2.8vw, 44px) 0 clamp(28px, 2.6vw, 42px) clamp(4px, 1vw, 16px);
   text-shadow: 0 2px 20px rgba(0, 0, 0, .46);
@@ -66,10 +66,10 @@ html body.novelight-page-index.novelight-public-dark .hero h1 {
 }
 
 html body.novelight-page-index.novelight-public-dark .hero p {
-  max-width: 560px;
+  max-width: 720px;
   font-size: 20px;
   line-height: 1.8;
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 html body.novelight-page-index.novelight-public-dark .hero-primary,
@@ -134,6 +134,10 @@ html body.novelight-page-index.novelight-public-dark .hero-art-slot {
     max-width: 560px;
     font-size: clamp(38px, 7vw, 54px);
     white-space: normal;
+  }
+
+  html body.novelight-page-index.novelight-public-dark .hero p {
+    text-wrap: pretty;
   }
 
   html body.novelight-page-index.novelight-public-dark .hero-primary,
