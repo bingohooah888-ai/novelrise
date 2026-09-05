@@ -13,6 +13,6 @@ test('home hero uses the supplied 2048x736 PNG asset', () => {
   assert.equal(data.readUInt32BE(20), 736);
   assert.ok(
     data.byteLength > 1_000_000,
-    'hero PNG should remain the high-quality source asset',
+    'hero PNG should remain the high-quality source asset'
   );
 });
