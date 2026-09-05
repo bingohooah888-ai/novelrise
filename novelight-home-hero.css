@@ -69,7 +69,11 @@ html body.novelight-page-index.novelight-public-dark .hero p {
   max-width: 720px;
   font-size: 20px;
   line-height: 1.8;
-  text-wrap: balance;
+  text-wrap: pretty;
+}
+
+html body.novelight-page-index.novelight-public-dark .hero-copy-line {
+  display: block;
 }
 
 html body.novelight-page-index.novelight-public-dark .hero-primary,
@@ -136,8 +140,8 @@ html body.novelight-page-index.novelight-public-dark .hero-art-slot {
     white-space: normal;
   }
 
-  html body.novelight-page-index.novelight-public-dark .hero p {
-    text-wrap: pretty;
+  html body.novelight-page-index.novelight-public-dark .hero-copy-line {
+    display: inline;
   }
 
   html body.novelight-page-index.novelight-public-dark .hero-primary,
