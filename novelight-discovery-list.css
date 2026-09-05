@@ -1,12 +1,745 @@
-.discovery-list-main{min-height:70vh;padding:54px 0 84px;background:linear-gradient(180deg,#07111f 0%,#081524 42%,#06101d 100%)}
-.discovery-list-container{width:min(1180px,calc(100% - 40px));margin:0 auto}
-.discovery-list-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;padding:28px 0 30px;border-bottom:1px solid rgba(214,164,71,.18)}
-.discovery-list-copy{max-width:760px}.discovery-list-kicker{display:inline-block;margin-bottom:10px;color:#d6a447;font-size:12px;font-weight:900;letter-spacing:.16em}.discovery-list-copy h1{margin:0;color:#fff;font-size:clamp(30px,4vw,46px);line-height:1.18}.discovery-list-copy p{max-width:680px;margin:12px 0 0;color:#aeb7c4;font-size:15px}
-.discovery-list-tabs{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}.discovery-list-tabs a{padding:9px 13px;border:1px solid rgba(255,255,255,.12);border-radius:999px;color:#c8cfda;background:rgba(255,255,255,.035);font-size:13px;font-weight:800;transition:.18s ease}.discovery-list-tabs a:hover,.discovery-list-tabs a:focus-visible{border-color:rgba(214,164,71,.55);color:#fff;outline:none}.discovery-list-tabs a[aria-current="page"]{border-color:#d6a447;color:#08111e;background:#d6a447}
-.discovery-list-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:24px 0 16px}.discovery-list-count{color:#aeb7c4;font-size:14px}.discovery-list-note{color:#8f99a7;font-size:12px;text-align:right}
-.discovery-list-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}.discovery-list-grid .novel-card{min-width:0;height:100%}.discovery-list-grid .novel-cover-placeholder{aspect-ratio:3/4}.discovery-list-grid .state{grid-column:1/-1;padding:46px 24px;border:1px dashed rgba(214,164,71,.24);border-radius:16px;color:#aeb7c4;text-align:center;background:rgba(255,255,255,.025)}
-.discovery-list-more-wrap{display:flex;justify-content:center;padding-top:30px}.discovery-list-more{min-width:210px;padding:12px 22px;border:1px solid rgba(214,164,71,.65);border-radius:10px;background:rgba(214,164,71,.08);color:#f4d58d;font:inherit;font-weight:900;cursor:pointer;transition:.18s ease}.discovery-list-more:hover,.discovery-list-more:focus-visible{background:#d6a447;color:#07111f;outline:none}.discovery-list-more:disabled{cursor:default;opacity:.55}.discovery-list-more-wrap[hidden]{display:none}
-.discovery-list-grid .seed-count{position:absolute;z-index:2;top:10px;right:10px;padding:5px 8px;border:1px solid rgba(214,164,71,.45);border-radius:999px;background:rgba(5,13,24,.9);color:#f4d58d;font-size:11px;font-weight:900}.discovery-list-grid .seed-card{position:relative}
-@media(max-width:980px){.discovery-list-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.discovery-list-hero{align-items:flex-start;flex-direction:column}.discovery-list-tabs{justify-content:flex-start}}
-@media(max-width:700px){.discovery-list-main{padding:30px 0 62px}.discovery-list-container{width:min(100% - 28px,1180px)}.discovery-list-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.discovery-list-toolbar{align-items:flex-start;flex-direction:column;gap:4px}.discovery-list-note{text-align:left}.discovery-list-more{width:100%}.discovery-list-copy p{font-size:14px}}
-@media(max-width:380px){.discovery-list-container{width:min(100% - 22px,1180px)}.discovery-list-grid{gap:10px}}
+/* Shared reader-facing discovery language.
+   Keep data/order semantics in each page script untouched; this file is visual only. */
+
+:root {
+  --discovery-paper-1: #f1e5c9;
+  --discovery-paper-2: #e6d3ad;
+  --discovery-paper-3: #dcc294;
+  --discovery-ink: #2d1b0f;
+  --discovery-muted: #6e573e;
+  --discovery-line: rgba(111, 71, 34, 0.72);
+  --discovery-line-soft: rgba(111, 71, 34, 0.28);
+  --discovery-leather: #3f291d;
+  --discovery-leather-mid: #6f452b;
+  --discovery-gold: #d6a447;
+  --discovery-gold-light: #f0cf82;
+}
+
+/* Recommended / New / LIGHT SEED list pages */
+.discovery-list-main {
+  min-height: 70vh;
+  padding: 54px 0 84px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(214, 164, 71, 0.08), transparent 34%),
+    linear-gradient(180deg, #120c08 0%, #0b0908 46%, #080707 100%);
+}
+
+.discovery-list-container {
+  position: relative;
+  width: min(1240px, calc(100% - 44px));
+  margin: 0 auto;
+  padding: 34px 30px 36px;
+  border: 1px solid var(--discovery-line);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 10% 15%, rgba(114, 76, 36, 0.08) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 76% 28%, rgba(98, 63, 30, 0.07) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 42% 82%, rgba(105, 70, 33, 0.06) 0 1px, transparent 1.8px),
+    repeating-linear-gradient(0deg, rgba(96, 65, 33, 0.025) 0 1px, transparent 1px 7px),
+    linear-gradient(135deg, var(--discovery-paper-1) 0%, var(--discovery-paper-2) 52%, var(--discovery-paper-3) 100%);
+  box-shadow:
+    0 22px 50px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(255, 249, 230, 0.35),
+    inset 0 0 44px rgba(118, 75, 32, 0.08);
+}
+
+.discovery-list-container::before {
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(116, 73, 33, 0.17);
+  border-radius: 9px;
+  content: "";
+  pointer-events: none;
+}
+
+.discovery-list-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 16px 0 28px;
+  border-bottom: 1px solid rgba(111, 71, 34, 0.24);
+}
+
+.discovery-list-copy {
+  max-width: 760px;
+}
+
+.discovery-list-kicker {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #7c4e22;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.discovery-list-copy h1 {
+  margin: 0;
+  color: var(--discovery-ink);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: 0.025em;
+}
+
+.discovery-list-copy p {
+  max-width: 680px;
+  margin: 12px 0 0;
+  color: var(--discovery-muted);
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.discovery-list-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.discovery-list-tabs a {
+  padding: 10px 15px;
+  border: 1px solid rgba(90, 55, 27, 0.38);
+  border-radius: 999px;
+  background: rgba(75, 45, 25, 0.08);
+  color: #5f3d20;
+  font-size: 16px;
+  font-weight: 800;
+  transition: 0.18s ease;
+}
+
+.discovery-list-tabs a:hover,
+.discovery-list-tabs a:focus-visible {
+  border-color: rgba(125, 77, 32, 0.72);
+  background: rgba(111, 66, 30, 0.12);
+  color: #3d2716;
+  outline: none;
+}
+
+.discovery-list-tabs a[aria-current="page"] {
+  border-color: #6f452b;
+  background: linear-gradient(135deg, #4b3021, #745034);
+  color: #f4dfb8;
+  box-shadow: inset 0 0 0 1px rgba(240, 207, 130, 0.12);
+}
+
+.discovery-list-toolbar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px 0 18px;
+}
+
+.discovery-list-count {
+  color: #5f4933;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.discovery-list-note {
+  color: #725d45;
+  font-size: 15px;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.discovery-list-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.discovery-list-grid .novel-card {
+  min-width: 0;
+  height: 100%;
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #76502e;
+  border-radius: 7px 10px 10px 7px;
+  background: linear-gradient(90deg, var(--discovery-leather) 0 7px, var(--discovery-leather-mid) 7px 10px, #2d1e17 10px 100%);
+  box-shadow:
+    0 10px 20px rgba(55, 32, 15, 0.23),
+    inset 4px 0 rgba(229, 191, 119, 0.08),
+    inset 0 0 0 1px rgba(255, 240, 202, 0.06);
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  z-index: 4;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(230, 191, 114, 0.46), rgba(87, 50, 25, 0.36));
+  box-shadow: 1px 0 rgba(28, 17, 11, 0.42);
+  content: "";
+  pointer-events: none;
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card:hover {
+  border-color: #a8783e;
+  box-shadow:
+    0 15px 28px rgba(55, 32, 15, 0.34),
+    0 0 0 1px rgba(143, 91, 39, 0.16),
+    inset 4px 0 rgba(229, 191, 119, 0.1);
+  transform: translateY(-2px);
+}
+
+.discovery-list-grid .novel-cover-placeholder,
+.discovery-list-grid .novel-cover-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-bottom: 1px solid rgba(104, 64, 30, 0.66);
+  object-fit: cover;
+}
+
+.discovery-list-grid .novel-cover-placeholder {
+  background:
+    radial-gradient(circle at 68% 24%, rgba(224, 178, 83, 0.28), transparent 10%),
+    radial-gradient(circle at 66% 30%, rgba(77, 57, 36, 0.34), transparent 29%),
+    linear-gradient(150deg, #2b211a, #6f4a2b 58%, #20150e);
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-copy {
+  min-height: 136px;
+  padding: 14px 14px 15px 17px;
+  background:
+    repeating-linear-gradient(0deg, rgba(102, 69, 35, 0.025) 0 1px, transparent 1px 6px),
+    linear-gradient(145deg, #f0dfba, #dbc092);
+  box-shadow: inset 0 1px rgba(255, 248, 227, 0.55);
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .genre {
+  border-color: rgba(107, 65, 29, 0.3);
+  background: rgba(110, 70, 31, 0.08);
+  color: #73481f;
+  font-size: 15px;
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .novel-title {
+  color: #2d1d12;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: 0.012em;
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .meta {
+  margin-top: 9px;
+  color: #765f45;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.discovery-list-grid .state {
+  grid-column: 1 / -1;
+  padding: 46px 24px;
+  border: 1px dashed rgba(111, 71, 34, 0.38);
+  border-radius: 14px;
+  background: rgba(255, 249, 229, 0.34);
+  color: #6d563e;
+  font-size: 16px;
+  text-align: center;
+}
+
+.discovery-list-more-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  padding-top: 30px;
+}
+
+.discovery-list-more {
+  min-width: 220px;
+  padding: 13px 22px;
+  border: 1px solid #745034;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #4b3021, #745034);
+  color: #f4dfb8;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.discovery-list-more:hover,
+.discovery-list-more:focus-visible {
+  border-color: #9a6428;
+  background: linear-gradient(135deg, #5d3a22, #8a5c32);
+  color: #fff2d1;
+  outline: none;
+}
+
+.discovery-list-more:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.discovery-list-more-wrap[hidden] {
+  display: none;
+}
+
+.discovery-list-grid .seed-count {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  padding: 6px 9px;
+  border: 1px solid rgba(238, 201, 126, 0.56);
+  border-radius: 999px;
+  background: rgba(50, 31, 18, 0.9);
+  color: var(--discovery-gold-light);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.discovery-list-grid .seed-card {
+  position: relative;
+}
+
+/* Search + ranking pages load this stylesheet after their legacy inline CSS.
+   Scope these overrides with explicit page body classes so their data scripts remain untouched. */
+body.novelight-page-search,
+body.novelight-page-ranking {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(214, 164, 71, 0.08), transparent 34%),
+    linear-gradient(180deg, #120c08 0%, #0b0908 46%, #080707 100%);
+  color: var(--discovery-ink);
+}
+
+body.novelight-page-search > header,
+body.novelight-page-ranking > header {
+  border-bottom: 1px solid rgba(214, 164, 71, 0.18);
+  background: rgba(3, 10, 18, 0.94);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+body.novelight-page-search > header .header-inner,
+body.novelight-page-ranking > header .header-inner {
+  max-width: 1240px;
+  min-height: 76px;
+}
+
+body.novelight-page-search > header .logo,
+body.novelight-page-ranking > header .logo {
+  color: #f0cb72;
+  font-size: 27px;
+  letter-spacing: 0.03em;
+}
+
+body.novelight-page-search > header .back,
+body.novelight-page-ranking > header .back {
+  color: #e7d19b;
+  font-size: 15px;
+}
+
+body.novelight-page-search > main,
+body.novelight-page-ranking > main {
+  position: relative;
+  width: min(1180px, calc(100% - 44px));
+  max-width: none;
+  margin: 48px auto 84px;
+  padding: 36px 32px 40px;
+  border: 1px solid var(--discovery-line);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 10% 15%, rgba(114, 76, 36, 0.08) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 76% 28%, rgba(98, 63, 30, 0.07) 0 1px, transparent 1.8px),
+    repeating-linear-gradient(0deg, rgba(96, 65, 33, 0.025) 0 1px, transparent 1px 7px),
+    linear-gradient(135deg, var(--discovery-paper-1) 0%, var(--discovery-paper-2) 52%, var(--discovery-paper-3) 100%);
+  box-shadow:
+    0 22px 50px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(255, 249, 230, 0.35),
+    inset 0 0 44px rgba(118, 75, 32, 0.08);
+}
+
+body.novelight-page-search > main::before,
+body.novelight-page-ranking > main::before {
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(116, 73, 33, 0.17);
+  border-radius: 9px;
+  content: "";
+  pointer-events: none;
+}
+
+body.novelight-page-search h1,
+body.novelight-page-ranking h1 {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 8px;
+  color: var(--discovery-ink);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-size: clamp(30px, 4vw, 42px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.025em;
+}
+
+body.novelight-page-search .subtitle,
+body.novelight-page-ranking .lead {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 24px;
+  color: var(--discovery-muted);
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+body.novelight-page-search .search-area {
+  position: relative;
+  z-index: 1;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(111, 71, 34, 0.34);
+  border-radius: 12px;
+  background: rgba(255, 249, 229, 0.34);
+}
+
+body.novelight-page-search input,
+body.novelight-page-search select {
+  padding: 13px 14px;
+  border: 1px solid rgba(111, 71, 34, 0.34);
+  border-radius: 8px;
+  background: #fff8e7;
+  color: #3d2a19;
+  font-size: 17px;
+}
+
+body.novelight-page-search input:focus,
+body.novelight-page-search select:focus {
+  border-color: #9a6428;
+  outline: 2px solid rgba(154, 100, 40, 0.16);
+  outline-offset: 1px;
+}
+
+body.novelight-page-search .policy-note,
+body.novelight-page-ranking .note {
+  position: relative;
+  z-index: 1;
+  padding: 12px 14px;
+  border: 1px solid rgba(111, 71, 34, 0.24);
+  border-radius: 9px;
+  background: rgba(111, 66, 30, 0.08);
+  color: #704921;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.65;
+}
+
+body.novelight-page-search .result-count {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 14px;
+  color: #5f4933;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+body.novelight-page-search .novel-list,
+body.novelight-page-ranking .list {
+  position: relative;
+  z-index: 1;
+  gap: 16px;
+}
+
+body.novelight-page-search .novel-card {
+  position: relative;
+  overflow: hidden;
+  padding: 21px 22px 21px 28px;
+  border: 1px solid #76502e;
+  border-radius: 8px 11px 11px 8px;
+  background:
+    linear-gradient(90deg, var(--discovery-leather) 0 8px, var(--discovery-leather-mid) 8px 11px, transparent 11px),
+    repeating-linear-gradient(0deg, rgba(102, 69, 35, 0.025) 0 1px, transparent 1px 6px),
+    linear-gradient(145deg, #f0dfba, #dbc092);
+  box-shadow: 0 10px 20px rgba(55, 32, 15, 0.2);
+}
+
+body.novelight-page-search .novel-card:hover {
+  border-color: #a8783e;
+  box-shadow: 0 15px 28px rgba(55, 32, 15, 0.28);
+  transform: translateY(-2px);
+}
+
+body.novelight-page-search .badges {
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+body.novelight-page-search .genre,
+body.novelight-page-search .ai,
+body.novelight-page-search .mature {
+  padding: 5px 9px;
+  border: 1px solid rgba(107, 65, 29, 0.22);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+body.novelight-page-search .genre {
+  background: rgba(110, 70, 31, 0.08);
+  color: #73481f;
+}
+
+body.novelight-page-search .ai {
+  background: rgba(71, 96, 122, 0.08);
+  color: #425d72;
+}
+
+body.novelight-page-search .mature {
+  background: rgba(143, 91, 27, 0.1);
+  color: #78501d;
+}
+
+body.novelight-page-search .title,
+body.novelight-page-ranking .title {
+  color: #2d1d12;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+body.novelight-page-search .description,
+body.novelight-page-ranking .desc {
+  color: #6f573e;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+body.novelight-page-search .meta,
+body.novelight-page-ranking .meta {
+  color: #7a654c;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+body.novelight-page-search .empty,
+body.novelight-page-ranking .empty {
+  position: relative;
+  z-index: 1;
+  border: 1px dashed rgba(111, 71, 34, 0.38);
+  border-radius: 12px;
+  background: rgba(255, 249, 229, 0.34);
+  color: #6d563e;
+  font-size: 16px;
+}
+
+body.novelight-page-search .more-wrap {
+  position: relative;
+  z-index: 1;
+  margin-top: 22px;
+}
+
+body.novelight-page-search .more {
+  padding: 12px 20px;
+  border: 1px solid #745034;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #4b3021, #745034);
+  color: #f4dfb8;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+body.novelight-page-ranking .tabs {
+  position: relative;
+  z-index: 1;
+  gap: 9px;
+  margin-bottom: 22px;
+}
+
+body.novelight-page-ranking .tab {
+  padding: 10px 16px;
+  border: 1px solid rgba(90, 55, 27, 0.38);
+  border-radius: 999px;
+  background: rgba(75, 45, 25, 0.08);
+  color: #5f3d20;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+body.novelight-page-ranking .tab:hover,
+body.novelight-page-ranking .tab:focus-visible {
+  border-color: rgba(125, 77, 32, 0.72);
+  background: rgba(111, 66, 30, 0.12);
+  outline: none;
+}
+
+body.novelight-page-ranking .tab.active {
+  border-color: #6f452b;
+  background: linear-gradient(135deg, #4b3021, #745034);
+  color: #f4dfb8;
+}
+
+body.novelight-page-ranking .card {
+  position: relative;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 18px;
+  overflow: hidden;
+  padding: 21px 22px 21px 28px;
+  border: 1px solid #76502e;
+  border-radius: 8px 11px 11px 8px;
+  background:
+    linear-gradient(90deg, var(--discovery-leather) 0 8px, var(--discovery-leather-mid) 8px 11px, transparent 11px),
+    repeating-linear-gradient(0deg, rgba(102, 69, 35, 0.025) 0 1px, transparent 1px 6px),
+    linear-gradient(145deg, #f0dfba, #dbc092);
+  box-shadow: 0 10px 20px rgba(55, 32, 15, 0.2);
+}
+
+body.novelight-page-ranking .card:hover {
+  border-color: #a8783e;
+  box-shadow: 0 15px 28px rgba(55, 32, 15, 0.28);
+  transform: translateY(-2px);
+}
+
+body.novelight-page-ranking .rank {
+  color: #7b4b22;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+body.novelight-page-ranking .genre {
+  padding: 5px 9px;
+  border: 1px solid rgba(107, 65, 29, 0.22);
+  border-radius: 6px;
+  background: rgba(110, 70, 31, 0.08);
+  color: #73481f;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+body.novelight-page-search > footer,
+body.novelight-page-ranking > footer {
+  border-top: 1px solid rgba(214, 164, 71, 0.12);
+  background: #07111f;
+  color: #a9a39a;
+}
+
+@media (max-width: 980px) {
+  .discovery-list-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .discovery-list-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .discovery-list-tabs {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  body.novelight-page-search > main,
+  body.novelight-page-ranking > main {
+    width: min(100% - 24px, 1180px);
+    margin: 26px auto 60px;
+    padding: 26px 17px 30px;
+    border-radius: 10px;
+  }
+
+  body.novelight-page-search > main::before,
+  body.novelight-page-ranking > main::before {
+    inset: 7px;
+    border-radius: 7px;
+  }
+
+  body.novelight-page-search .search-area {
+    grid-template-columns: 1fr;
+  }
+
+  body.novelight-page-ranking .tabs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .discovery-list-main {
+    padding: 30px 0 62px;
+  }
+
+  .discovery-list-container {
+    width: min(100% - 24px, 1240px);
+    padding: 24px 16px 26px;
+    border-radius: 10px;
+  }
+
+  .discovery-list-container::before {
+    inset: 7px;
+    border-radius: 7px;
+  }
+
+  .discovery-list-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .discovery-list-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .discovery-list-note {
+    text-align: left;
+  }
+
+  .discovery-list-more {
+    width: 100%;
+  }
+
+  .discovery-list-copy p {
+    font-size: 16px;
+  }
+
+  html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-copy {
+    min-height: 130px;
+    padding: 13px 12px 14px 15px;
+  }
+
+  html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .novel-title {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 600px) {
+  body.novelight-page-ranking .card {
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 12px;
+    padding: 18px 16px 18px 23px;
+  }
+
+  body.novelight-page-search .novel-card {
+    padding: 18px 16px 18px 23px;
+  }
+}
+
+@media (max-width: 380px) {
+  .discovery-list-container {
+    width: min(100% - 20px, 1240px);
+  }
+
+  .discovery-list-grid {
+    gap: 10px;
+  }
+}
