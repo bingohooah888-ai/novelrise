@@ -36,11 +36,11 @@ test('login loads the parchment visual layer', () => {
 test('login typography uses the same brand font system as Home', () => {
   assert.equal(
     fontVariable(css, '--brand-display-font'),
-    fontVariable(brandCss, '--brand-display-font')
+    fontVariable(brandCss, '--brand-display-font'),
   );
   assert.equal(
     fontVariable(css, '--brand-reading-font'),
-    fontVariable(brandCss, '--brand-reading-font')
+    fontVariable(brandCss, '--brand-reading-font'),
   );
   assert.ok(css.includes('font-family: var(--brand-reading-font);'));
   assert.ok(css.includes('font-family: var(--brand-display-font);'));
