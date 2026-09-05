@@ -93,6 +93,13 @@ test('shared light header uses pricing-style composition', () => {
   );
 });
 
+test('shared public header owns the Home display font', () => {
+  assert.match(
+    headerCss,
+    /font-family:\s*var\([\s\S]*?--brand-display-font,[\s\S]*?"Yu Mincho"[\s\S]*?"Hiragino Mincho ProN"[\s\S]*?"Noto Serif JP"[\s\S]*?"Times New Roman"[\s\S]*?serif[\s\S]*?\);/u
+  );
+});
+
 test('legal pages use full public navigation', () => {
   for (const name of staticPublicPages) {
     const source = readFileSync(join(root, name), 'utf8');
