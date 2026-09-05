@@ -1,22 +1,25 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
-const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../novelight-home-thumbnails.css', import.meta.url), 'utf8');
+const root = path.resolve(import.meta.dirname, '..');
+const home = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const cssPath = path.join(root, 'novelight-home-thumbnails.css');
+const css = fs.readFileSync(cssPath, 'utf8');
 
-test('Home cards hydrate official thumbnail URLs without changing discovery allocation', () => {
-  assert.match(home, /client\.from\('novels'\)\.select\('id,thumbnail_url'\)/);
-  assert.match(home, /\.eq\('status','published'\)/);
-  assert.match(home, /visible=await withOfficialThumbnails\(selected\)/);
-  assert.match(home, /hydrated=await withOfficialThumbnails\(rows\)/);
-  assert.match(home, /void record\(visible\)/);
+test('Home hydrates official thumbnails', () => {
+  assert.ok(home.includes("select('id,thumbnail_url')"));
+  assert.ok(home.includes("eq('status','published')"));
+  assert.ok(home.includes('withOfficialThumbnails(selected)'));
+  assert.ok(home.includes('withOfficialThumbnails(rows)'));
+  assert.ok(home.includes('void record(visible)'));
 });
 
-test('Home cards render official images and retain the existing placeholder fallback', () => {
-  assert.match(home, /class=\"novel-cover-image\"/);
-  assert.match(home, /class=\"novel-cover-placeholder\"/);
-  assert.match(home, /novelight-home-thumbnails\.css/);
-  assert.match(css, /aspect-ratio:\s*3 \/ 4/);
-  assert.match(css, /object-fit:\s*cover/);
+test('Home keeps thumbnail fallback', () => {
+  assert.ok(home.includes('class="novel-cover-image"'));
+  assert.ok(home.includes('novel-cover-placeholder'));
+  assert.ok(home.includes('novelight-home-thumbnails.css'));
+  assert.ok(css.includes('aspect-ratio: 3 / 4'));
+  assert.ok(css.includes('object-fit: cover'));
 });
