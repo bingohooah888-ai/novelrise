@@ -82,7 +82,10 @@ test('shared light header uses pricing-style composition', () => {
     /grid-template-columns:\s*auto minmax\(520px, 1fr\) auto\s*!important/u
   );
   assert.match(headerCss, /height:\s*104\.4px\s*!important/u);
-  assert.match(headerCss, /font-size:\s*18px\s*!important/u);
+  assert.match(
+    headerCss,
+    /\.site-nav a\s*\{[\s\S]*?font-size:\s*22px\s*!important/u
+  );
   assert.match(headerCss, /font-size:\s*19px\s*!important/u);
   assert.match(
     headerCss,
