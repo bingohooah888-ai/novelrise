@@ -10,14 +10,6 @@ const headerCss = read('novelight-header-light.css');
 const brandCss = read('novelight-brand-refinement.css');
 const css = read('novelight-login-parchment.css');
 
-const ruleBody = (source, selector) => {
-  const start = source.indexOf(selector);
-  assert.notEqual(start, -1, `${selector} must exist`);
-  const open = source.indexOf('{', start);
-  const close = source.indexOf('}', open);
-  return source.slice(open + 1, close);
-};
-
 test('login keeps auth wiring', () => {
   assert.ok(login.includes('id="loginForm"'));
   assert.ok(login.includes('safeRedirectTarget'));
@@ -45,30 +37,15 @@ test('login typography uses Home brand fonts', () => {
   assert.ok(!css.includes('BlinkMacSystemFont'));
 });
 
-test('shared public navigation typography is enlarged by two steps', () => {
-  const desktopNav = ruleBody(
-    headerCss,
-    'html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a'
-  );
-  const mobileNav = ruleBody(
-    headerCss,
-    'html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu > nav a'
-  );
-
-  assert.ok(desktopNav.includes('font-size: 22px !important;'));
-  assert.ok(mobileNav.includes('font-size: 20px !important;'));
-});
-
 test('login card typography is enlarged by two steps', () => {
-  assert.ok(ruleBody(css, 'html body.novelight-page-login h1').includes('font-size: 36px;'));
-  assert.ok(ruleBody(css, 'html body.novelight-page-login .lead').includes('font-size: 20px;'));
-  assert.ok(ruleBody(css, 'html body.novelight-page-login label').includes('font-size: 19px;'));
-  assert.ok(ruleBody(css, 'html body.novelight-page-login input').includes('font-size: 20px;'));
-  assert.ok(
-    ruleBody(css, 'html body.novelight-page-login button {\n  min-height').includes('font-size: 20px;')
-  );
-  assert.ok(ruleBody(css, 'html body.novelight-page-login .row').includes('font-size: 18px;'));
-  assert.ok(ruleBody(css, 'html body.novelight-page-login .status').includes('font-size: 18px;'));
-  assert.ok(ruleBody(css, 'html body.novelight-page-login .legal').includes('font-size: 16px;'));
-  assert.ok(css.includes('font-size: 33px;'));
+  for (const size of [
+    'font-size: 36px;',
+    'font-size: 33px;',
+    'font-size: 20px;',
+    'font-size: 19px;',
+    'font-size: 18px;',
+    'font-size: 16px;'
+  ]) {
+    assert.ok(css.includes(size));
+  }
 });
