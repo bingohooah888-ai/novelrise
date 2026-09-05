@@ -64,7 +64,9 @@ test('login card typography is enlarged by two steps', () => {
   assert.ok(ruleBody(css, 'html body.novelight-page-login .lead').includes('font-size: 20px;'));
   assert.ok(ruleBody(css, 'html body.novelight-page-login label').includes('font-size: 19px;'));
   assert.ok(ruleBody(css, 'html body.novelight-page-login input').includes('font-size: 20px;'));
-  assert.ok(ruleBody(css, 'html body.novelight-page-login button').includes('font-size: 20px;'));
+  assert.ok(
+    ruleBody(css, 'html body.novelight-page-login button {\n  min-height').includes('font-size: 20px;')
+  );
   assert.ok(ruleBody(css, 'html body.novelight-page-login .row').includes('font-size: 18px;'));
   assert.ok(ruleBody(css, 'html body.novelight-page-login .status').includes('font-size: 18px;'));
   assert.ok(ruleBody(css, 'html body.novelight-page-login .legal').includes('font-size: 16px;'));
