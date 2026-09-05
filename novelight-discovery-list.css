@@ -71,14 +71,14 @@
   display: inline-block;
   margin-bottom: 10px;
   color: #7c4e22;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 900;
   letter-spacing: 0.16em;
 }
 
-.discovery-list-copy h1 {
+body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1 {
   margin: 0;
-  color: var(--discovery-ink);
+  color: #20150e;
   font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
   font-size: clamp(30px, 4vw, 46px);
   font-weight: 700;
@@ -90,7 +90,7 @@
   max-width: 680px;
   margin: 12px 0 0;
   color: var(--discovery-muted);
-  font-size: 17px;
+  font-size: 19px;
   line-height: 1.75;
 }
 
@@ -139,13 +139,13 @@
 
 .discovery-list-count {
   color: #5f4933;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
 }
 
 .discovery-list-note {
   color: #725d45;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.6;
   text-align: right;
 }
@@ -214,7 +214,7 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card:hover {
 }
 
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-copy {
-  min-height: 136px;
+  min-height: 146px;
   padding: 14px 14px 15px 17px;
   background:
     repeating-linear-gradient(0deg, rgba(102, 69, 35, 0.025) 0 1px, transparent 1px 6px),
@@ -226,13 +226,13 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .genre 
   border-color: rgba(107, 65, 29, 0.3);
   background: rgba(110, 70, 31, 0.08);
   color: #73481f;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .novel-title {
   color: #2d1d12;
   font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 700;
   line-height: 1.45;
   letter-spacing: 0.012em;
@@ -241,7 +241,7 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .novel-
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .meta {
   margin-top: 9px;
   color: #765f45;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
 }
 
@@ -252,7 +252,7 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .meta {
   border-radius: 14px;
   background: rgba(255, 249, 229, 0.34);
   color: #6d563e;
-  font-size: 16px;
+  font-size: 18px;
   text-align: center;
 }
 
@@ -305,7 +305,7 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .meta {
   border-radius: 999px;
   background: rgba(50, 31, 18, 0.9);
   color: var(--discovery-gold-light);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 900;
 }
 
@@ -385,7 +385,7 @@ body.novelight-page-ranking h1 {
   position: relative;
   z-index: 1;
   margin: 0 0 8px;
-  color: var(--discovery-ink);
+  color: #20150e;
   font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
   font-size: clamp(30px, 4vw, 42px);
   font-weight: 700;
@@ -399,7 +399,7 @@ body.novelight-page-ranking .lead {
   z-index: 1;
   margin: 0 0 24px;
   color: var(--discovery-muted);
-  font-size: 17px;
+  font-size: 19px;
   line-height: 1.75;
 }
 
@@ -420,7 +420,7 @@ body.novelight-page-search select {
   border-radius: 8px;
   background: #fff8e7;
   color: #3d2a19;
-  font-size: 17px;
+  font-size: 19px;
 }
 
 body.novelight-page-search input:focus,
@@ -439,7 +439,7 @@ body.novelight-page-ranking .note {
   border-radius: 9px;
   background: rgba(111, 66, 30, 0.08);
   color: #704921;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.65;
 }
@@ -449,7 +449,7 @@ body.novelight-page-search .result-count {
   z-index: 1;
   margin-bottom: 14px;
   color: #5f4933;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
 }
 
@@ -490,7 +490,7 @@ body.novelight-page-search .mature {
   padding: 5px 9px;
   border: 1px solid rgba(107, 65, 29, 0.22);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -513,7 +513,7 @@ body.novelight-page-search .title,
 body.novelight-page-ranking .title {
   color: #2d1d12;
   font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 700;
   line-height: 1.45;
 }
@@ -521,14 +521,14 @@ body.novelight-page-ranking .title {
 body.novelight-page-search .description,
 body.novelight-page-ranking .desc {
   color: #6f573e;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.7;
 }
 
 body.novelight-page-search .meta,
 body.novelight-page-ranking .meta {
   color: #7a654c;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
 }
 
@@ -540,7 +540,7 @@ body.novelight-page-ranking .empty {
   border-radius: 12px;
   background: rgba(255, 249, 229, 0.34);
   color: #6d563e;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 body.novelight-page-search .more-wrap {
@@ -612,7 +612,7 @@ body.novelight-page-ranking .card:hover {
 
 body.novelight-page-ranking .rank {
   color: #7b4b22;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 900;
 }
 
@@ -622,7 +622,7 @@ body.novelight-page-ranking .genre {
   border-radius: 6px;
   background: rgba(110, 70, 31, 0.08);
   color: #73481f;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -709,16 +709,16 @@ body.novelight-page-ranking > footer {
   }
 
   .discovery-list-copy p {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-copy {
-    min-height: 130px;
+    min-height: 140px;
     padding: 13px 12px 14px 15px;
   }
 
   html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .novel-title {
-    font-size: 18px;
+    font-size: 20px;
   }
 }
 
