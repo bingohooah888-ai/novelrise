@@ -6,6 +6,7 @@ import test from 'node:test';
 const root = path.resolve(import.meta.dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const login = read('login.html');
+const home = read('index.html');
 const headerCss = read('novelight-header-light.css');
 const css = read('novelight-login-parchment.css');
 
@@ -24,4 +25,22 @@ test('login loads the parchment visual layer', () => {
   assert.ok(css.includes('header.site-header'));
   assert.ok(css.includes('height: auto !important'));
   assert.ok(css.includes('linear-gradient(135deg, #4b3021, #745034)'));
+});
+
+test('login typography uses the same font family as Home', () => {
+  for (const family of [
+    '-apple-system',
+    'BlinkMacSystemFont',
+    '"Segoe UI"',
+    '"Hiragino Kaku Gothic ProN"',
+    '"Yu Gothic"',
+    'sans-serif'
+  ]) {
+    assert.ok(home.includes(family));
+    assert.ok(css.includes(family));
+  }
+  assert.ok(css.includes('font-family: inherit;'));
+  assert.ok(!css.includes('Yu Mincho'));
+  assert.ok(!css.includes('Hiragino Mincho ProN'));
+  assert.ok(!css.includes('Noto Serif JP'));
 });
