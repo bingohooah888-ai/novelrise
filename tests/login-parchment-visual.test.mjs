@@ -5,6 +5,10 @@ import test from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '..');
 const login = fs.readFileSync(path.join(root, 'login.html'), 'utf8');
+const publicHeaderCss = fs.readFileSync(
+  path.join(root, 'novelight-header-light.css'),
+  'utf8'
+);
 const css = fs.readFileSync(
   path.join(root, 'novelight-login-parchment.css'),
   'utf8'
@@ -13,7 +17,9 @@ const css = fs.readFileSync(
 test(
   'login loads the parchment visual layer without replacing auth wiring',
   () => {
-    assert.ok(login.includes('href="novelight-login-parchment.css"'));
+    assert.ok(
+      publicHeaderCss.includes('@import url("novelight-login-parchment.css");')
+    );
     assert.ok(login.includes('id="loginForm"'));
     assert.ok(login.includes('function safeRedirectTarget(raw)'));
     assert.ok(
