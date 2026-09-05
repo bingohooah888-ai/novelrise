@@ -19,16 +19,30 @@ test('post page degrades only when the thumbnail schema is unavailable', () => {
   );
 });
 
-test('thumbnail remains required during the normal schema-ready path', () => {
-  assert.match(postHtml, /thumbnailRequired=true/);
-  assert.match(postHtml, /if\(thumbnailRequired&&!thumbnailAsset\)/);
+test('empty active thumbnail catalog temporarily allows no-image posting', () => {
+  assert.match(postHtml, /function enableThumbnailEmptyCatalogMode\(\)/);
   assert.match(
     postHtml,
-    /現在選べる公式サムネイルがありません。運営の画像登録後に投稿できます。/
+    /if\(!assets\.length\)\{enableThumbnailEmptyCatalogMode\(\);return true\}/
+  );
+  assert.match(
+    postHtml,
+    /公式サムネイル準備中のため、現在は画像なしで投稿できます。画像の提供開始後は選択が必須になります。/
+  );
+  assert.match(
+    postHtml,
+    /現在選べる公式サムネイルは準備中です。画像なしで投稿を続けられます。/
   );
 });
 
-test('compatibility mode omits the new column from the insert payload', () => {
+test('thumbnail remains required when active thumbnails are available', () => {
+  assert.match(postHtml, /thumbnailRequired=true/);
+  assert.match(postHtml, /input\.required=true/);
+  assert.match(postHtml, /if\(thumbnailRequired&&!thumbnailAsset\)/);
+  assert.match(postHtml, /作品に合う画像を1枚選んでください。/);
+});
+
+test('compatibility modes omit the new column from the insert payload', () => {
   assert.match(
     postHtml,
     /thumbnailRequired=false;thumbnailReady=true;button\.disabled=false/
