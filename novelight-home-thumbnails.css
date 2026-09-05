@@ -156,21 +156,18 @@ html body.novelight-page-index.novelight-public-dark .discovery-section .shelf-c
 
 body.novelight-page-index.novelight-public-dark .discovery-section .meta {
   color: #81694e;
-  font-size: 13px;
 }
 
 body.novelight-page-index.novelight-public-dark .discovery-section .state {
   border-color: rgba(111, 70, 31, 0.32);
   background: rgba(255, 249, 229, 0.34);
   color: #715a40;
-  font-size: 13px;
 }
 
 body.novelight-page-index.novelight-public-dark .discovery-section .seed-count {
   border-color: rgba(238, 201, 126, 0.56);
   background: rgba(50, 31, 18, 0.88);
   color: #f0cf82;
-  font-size: 13px;
 }
 
 @media (max-width: 640px) {
