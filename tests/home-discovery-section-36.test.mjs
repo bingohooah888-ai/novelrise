@@ -140,7 +140,10 @@ test('dedicated discovery pages refresh trusted recommendation receipts per visi
 
   assert.match(script, /const pageSize = 24;/);
   assert.match(script, /const recommendedPoolSize = 96;/);
-  assert.doesNotMatch(script, /recommendedQueue|recommendedLoaded|fillRecommendedQueue/);
+  assert.doesNotMatch(
+    script,
+    /recommendedQueue|recommendedLoaded|fillRecommendedQueue/
+  );
   assert.match(script, /p_surface: 'search_recommended'/);
   assert.match(script, /p_limit: limit/);
   assert.match(
@@ -148,7 +151,10 @@ test('dedicated discovery pages refresh trusted recommendation receipts per visi
     /async function loadRecommended\(\) \{\n    const rows = await fetchRecommended\(\);/
   );
   assert.match(script, /const batchSeen = new Set\(\);/);
-  assert.match(script, /if \(seen\.has\(id\) \|\| batchSeen\.has\(id\)\) continue;/);
+  assert.match(
+    script,
+    /if \(seen\.has\(id\) \|\| batchSeen\.has\(id\)\) continue;/
+  );
   assert.match(script, /const page = candidates\.slice\(0, pageSize\);/);
   assert.match(script, /await recordTrusted\(page\)/);
   assert.match(
