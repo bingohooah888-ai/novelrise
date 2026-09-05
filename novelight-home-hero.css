@@ -51,7 +51,7 @@ html body.novelight-page-index.novelight-public-dark .hero-copy {
 }
 
 html body.novelight-page-index.novelight-public-dark .hero .eyebrow {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 html body.novelight-page-index.novelight-public-dark .hero h1 {
@@ -66,7 +66,7 @@ html body.novelight-page-index.novelight-public-dark .hero h1 {
 
 html body.novelight-page-index.novelight-public-dark .hero p {
   max-width: 510px;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1.8;
 }
 
@@ -74,18 +74,20 @@ html body.novelight-page-index.novelight-public-dark .hero-primary,
 html body.novelight-page-index.novelight-public-dark .hero-secondary {
   min-height: 46px;
   padding: 10px 19px;
-  font-size: 15px;
+  font-size: 19px;
+  font-weight: 700;
 }
 
 html body.novelight-page-index.novelight-public-dark .hero-art-slot {
   display: none;
 }
 
-@media (max-width: 1180px) {
+@media (min-width: 901px) and (max-width: 1180px) {
   html body.novelight-page-index.novelight-public-dark .hero-primary,
   html body.novelight-page-index.novelight-public-dark .hero-secondary {
-    padding-inline: 14px;
-    font-size: 14px;
+    min-height: 48px;
+    padding: 10px 14px;
+    font-size: 17px;
   }
 }
 
@@ -131,6 +133,13 @@ html body.novelight-page-index.novelight-public-dark .hero-art-slot {
     font-size: clamp(38px, 7vw, 54px);
     white-space: normal;
   }
+
+  html body.novelight-page-index.novelight-public-dark .hero-primary,
+  html body.novelight-page-index.novelight-public-dark .hero-secondary {
+    min-height: 46px;
+    padding: 10px 19px;
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -143,6 +152,10 @@ html body.novelight-page-index.novelight-public-dark .hero-art-slot {
     padding: 28px 0 42px;
   }
 
+  html body.novelight-page-index.novelight-public-dark .hero .eyebrow {
+    font-size: 14px;
+  }
+
   html body.novelight-page-index.novelight-public-dark .hero h1 {
     max-width: 100%;
     font-size: clamp(34px, 10.2vw, 46px);
@@ -151,7 +164,7 @@ html body.novelight-page-index.novelight-public-dark .hero-art-slot {
 
   html body.novelight-page-index.novelight-public-dark .hero p {
     max-width: 100%;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.75;
   }
 }
