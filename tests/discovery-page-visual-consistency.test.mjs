@@ -35,9 +35,34 @@ test('shared CSS keeps parchment colors and readable type', () => {
   assert.ok(css.includes('--discovery-paper-1: #f1e5c9'));
   assert.ok(css.includes('--discovery-paper-2: #e6d3ad'));
   assert.ok(css.includes('--discovery-paper-3: #dcc294'));
-  assert.ok(css.includes('body.novelight-page-search'));
-  assert.ok(css.includes('body.novelight-page-ranking'));
-  assert.ok(css.includes('.shelf-card .novel-title'));
+  assert.ok(
+    css.includes(
+      'body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1'
+    )
+  );
+  assert.ok(css.includes('color: #20150e'));
+  assert.ok(css.includes('font-size: clamp(30px, 4vw, 46px)'));
+  assert.ok(css.includes('font-size: clamp(30px, 4vw, 42px)'));
+  assert.ok(css.includes('font-size: 21px'));
   assert.ok(css.includes('font-size: 19px'));
-  assert.ok(css.includes('font-size: 17px'));
+  assert.ok(css.includes('font-size: 18px'));
+});
+
+test('button typography stays at the approved size', () => {
+  assert.match(
+    css,
+    /\.discovery-list-tabs a \{[\s\S]*?font-size: 16px;/
+  );
+  assert.match(
+    css,
+    /\.discovery-list-more \{[\s\S]*?font-size: 16px;/
+  );
+  assert.match(
+    css,
+    /body\.novelight-page-search \.more \{[\s\S]*?font-size: 16px;/
+  );
+  assert.match(
+    css,
+    /body\.novelight-page-ranking \.tab \{[\s\S]*?font-size: 16px;/
+  );
 });
