@@ -1,0 +1,9 @@
+/* Home-only rendering for the official NOVELIGHT novel thumbnails.
+   Keep the existing generated placeholder as the safe fallback when a work has no image. */
+body.novelight-page-index.novelight-public-dark .novel-cover-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  background: #07111f;
+}
