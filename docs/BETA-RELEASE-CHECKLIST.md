@@ -67,6 +67,9 @@ Current decisive exact-main repository evidence:
 - [x] Novel and episode report submissions reach `content_reports` under existing evidence.
 - [x] Raw report rows are not readable by ordinary anon/authenticated clients under existing evidence.
 - [x] Operator has a documented routine to inspect new reports/support inquiries during controlled beta.
+- [x] ADMIN v1 remains read-only and requires server-side bearer-token verification plus a server-side allowlist.
+- [x] Missing/malformed ADMIN allowlist configuration fails closed; non-admin authenticated callers are denied before data loaders run.
+- [x] ADMIN API is GET-only and uses private/no-store caching under the existing reviewed implementation.
 - [x] Production ADMIN allowlist request issue #271 received exact OWNER approval, was claimed by apply run `33402197728`, and recorded `CONSUMED result="success"` without exposing the allowlist value.
 - [x] `20260903010000_admin_operations_hub` is applied in Production with successful approval-ledger execution/postcheck evidence.
 - [x] Production Auth Smoke #369 is not used to claim the ADMIN authorization boundary was smoke-tested.
