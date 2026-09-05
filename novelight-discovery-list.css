@@ -78,7 +78,7 @@
 
 body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1 {
   margin: 0;
-  color: #20150e;
+  color: #3a2618;
   font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
   font-size: clamp(30px, 4vw, 46px);
   font-weight: 700;
@@ -385,7 +385,7 @@ body.novelight-page-ranking h1 {
   position: relative;
   z-index: 1;
   margin: 0 0 8px;
-  color: #20150e;
+  color: #3a2618;
   font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
   font-size: clamp(30px, 4vw, 42px);
   font-weight: 700;
