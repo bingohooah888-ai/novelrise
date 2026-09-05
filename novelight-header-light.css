@@ -63,7 +63,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
   display: inline-flex;
   align-items: center;
   color: #28364a !important;
-  font-size: 18px !important;
+  font-size: 22px !important;
   font-weight: 700 !important;
   white-space: nowrap;
   text-decoration: none;
@@ -195,7 +195,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu 
 }
 
 html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu:not([open]) > nav {
-  display: none;
+  display: none !important;
 }
 
 html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu[open] > nav {
@@ -208,7 +208,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu 
   padding: 11px 12px;
   border-radius: 8px;
   color: #28364a !important;
-  font-size: 16px !important;
+  font-size: 20px !important;
   font-weight: 700;
   text-decoration: none;
 }
@@ -239,7 +239,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu 
   }
 
   html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
-    font-size: 16px !important;
+    font-size: 20px !important;
   }
 
   html body.novelight-public-header-page:not(.novelight-public-dark) .header-actions {
