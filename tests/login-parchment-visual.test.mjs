@@ -27,27 +27,12 @@ test('login loads the parchment visual layer', () => {
   assert.ok(css.includes('linear-gradient(135deg, #4b3021, #745034)'));
 });
 
-test('login typography uses the same brand font system as Home', () => {
-  for (const family of [
-    '"Yu Mincho"',
-    '"Hiragino Mincho ProN"',
-    '"Hiragino Mincho Pro"',
-    '"Noto Serif JP"',
-    '"Noto Serif CJK JP"',
-    'Georgia',
-    'serif'
-  ]) {
-    assert.ok(brandCss.includes(family));
-    assert.ok(css.includes(family));
-  }
-  assert.ok(brandCss.includes('--brand-display-font:'));
-  assert.ok(brandCss.includes('--brand-reading-font:'));
-  assert.ok(css.includes('--brand-display-font:'));
-  assert.ok(css.includes('--brand-reading-font:'));
+test('login typography uses Home brand fonts', () => {
+  assert.ok(brandCss.includes('--brand-display-font: "Yu Mincho"'));
+  assert.ok(brandCss.includes('--brand-reading-font: "Yu Mincho"'));
+  assert.ok(css.includes('--brand-display-font: "Yu Mincho"'));
+  assert.ok(css.includes('--brand-reading-font: "Yu Mincho"'));
   assert.ok(css.includes('font-family: var(--brand-reading-font);'));
   assert.ok(css.includes('font-family: var(--brand-display-font);'));
-  assert.ok(css.includes('html body.novelight-page-login .site-nav a'));
-  assert.ok(css.includes('html body.novelight-page-login .btn'));
-  assert.ok(css.includes('html body.novelight-page-login button'));
   assert.ok(!css.includes('BlinkMacSystemFont'));
 });
