@@ -4,7 +4,14 @@
   const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
   const STYLE_PATH = 'novelight-thumbnails.css';
-  const SUPPORTED_PAGES = new Set(['index', 'search', 'ranking']);
+  const SUPPORTED_PAGES = new Set([
+    'index',
+    'search',
+    'ranking',
+    'recommended',
+    'new-arrivals',
+    'light-seed'
+  ]);
   let client = null;
   let scheduled = false;
 

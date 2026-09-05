@@ -119,28 +119,53 @@ test('homepage selection protects author diversity before filling remaining slot
   assert.match(home, /primary\.concat\(deferred\)\.slice\(0,limit\)/);
 });
 
-test('dedicated discovery pages use 24-work batches without changing feed policy', async () => {
-  const [recommended, newArrivals, seed, script] = await Promise.all([
-    read('recommended.html'),
-    read('new-arrivals.html'),
-    read('light-seed.html'),
-    read('novelight-discovery-list.js')
-  ]);
+test('dedicated discovery pages paginate real recommendation candidates and match the home LIGHT SEED meaning', async () => {
+  const [recommended, newArrivals, seed, script, thumbnailRuntime] =
+    await Promise.all([
+      read('recommended.html'),
+      read('new-arrivals.html'),
+      read('light-seed.html'),
+      read('novelight-discovery-list.js'),
+      read('novelight-thumbnail-runtime.js')
+    ]);
 
   assert.match(recommended, /data-discovery-mode="recommended"/);
   assert.match(newArrivals, /data-discovery-mode="new"/);
   assert.match(seed, /data-discovery-mode="seed"/);
+  assert.match(seed, /<h1>LIGHT SEEDで発掘中<\/h1>/u);
+  assert.match(seed, /実際にLIGHT SEEDが贈られている作品/u);
   assert.match(recommended, /id="discoveryMore"/);
   assert.match(newArrivals, /id="discoveryMore"/);
   assert.match(seed, /id="discoveryMore"/);
+
   assert.match(script, /const pageSize = 24;/);
+  assert.match(script, /const recommendedPoolSize = 96;/);
+  assert.match(script, /const recommendedQueue = \[\];/);
   assert.match(script, /p_surface: 'search_recommended'/);
-  assert.match(script, /record_trusted_allocation_receipts/);
+  assert.match(script, /p_limit: limit/);
+  assert.match(script, /recommendedQueue\.splice\(0, pageSize\)/);
+  assert.match(script, /await recordTrusted\(page\)/);
+  assert.match(script, /moreWrap\.hidden = recommendedQueue\.length === 0/);
+
   assert.match(script, /p_sort: 'new'/);
   assert.match(script, /p_offset: neutralOffset/);
   assert.match(script, /light_seed_status/);
-  assert.match(script, /result\.data\?\.eligible !== true/);
+  assert.match(
+    script,
+    /const seedCount = Number\(result\.data\?\.total_seed_count \|\| 0\)/
+  );
+  assert.match(script, /if \(seedCount <= 0\) return null/);
+  assert.match(script, /while \(seedQueue\.length < pageSize/);
   assert.match(script, /seedQueue\.splice\(0, pageSize\)/);
+  assert.doesNotMatch(script, /result\.data\?\.eligible !== true/);
+  assert.doesNotMatch(script, /scannedBatches < 4/);
+
+  for (const page of [recommended, newArrivals, seed]) {
+    assert.match(page, /novelight-thumbnail-runtime\.js/);
+  }
+  assert.match(thumbnailRuntime, /'recommended'/);
+  assert.match(thumbnailRuntime, /'new-arrivals'/);
+  assert.match(thumbnailRuntime, /'light-seed'/);
 });
 
 test('search still accepts supported sort query parameters independently of home discovery links', async () => {
