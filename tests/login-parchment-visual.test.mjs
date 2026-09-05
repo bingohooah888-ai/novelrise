@@ -17,9 +17,7 @@ test(
     assert.ok(login.includes('id="loginForm"'));
     assert.ok(login.includes('function safeRedirectTarget(raw)'));
     assert.ok(
-      login.includes(
-        'supabaseClient.auth.signInWithPassword({email,password})'
-      )
+      login.includes('supabaseClient.auth.signInWithPassword({email,password})')
     );
   }
 );
