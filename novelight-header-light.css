@@ -1,3 +1,5 @@
+@import url("novelight-login-parchment.css");
+
 /* NOVELIGHT shared light header treatment.
    Home/Pricing keep their dark content surfaces; reader/auth pages can opt into the
    same header composition through .novelight-public-header-page. */
@@ -10,6 +12,17 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .site-header 
   background: rgba(250, 249, 246, 0.98) !important;
   box-shadow: 0 8px 28px rgba(8, 20, 38, 0.08) !important;
   backdrop-filter: blur(16px);
+  font-family: var(
+    --brand-display-font,
+    "Yu Mincho",
+    "Hiragino Mincho ProN",
+    "Hiragino Mincho Pro",
+    "Noto Serif JP",
+    "Noto Serif CJK JP",
+    Georgia,
+    "Times New Roman",
+    serif
+  );
 }
 
 html body.novelight-public-header-page:not(.novelight-public-dark) .public-header-inner {
@@ -61,7 +74,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
   display: inline-flex;
   align-items: center;
   color: #28364a !important;
-  font-size: 18px !important;
+  font-size: 22px !important;
   font-weight: 700 !important;
   white-space: nowrap;
   text-decoration: none;
@@ -206,7 +219,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu 
   padding: 11px 12px;
   border-radius: 8px;
   color: #28364a !important;
-  font-size: 16px !important;
+  font-size: 20px !important;
   font-weight: 700;
   text-decoration: none;
 }
@@ -237,7 +250,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu 
   }
 
   html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
-    font-size: 16px !important;
+    font-size: 20px !important;
   }
 
   html body.novelight-public-header-page:not(.novelight-public-dark) .header-actions {

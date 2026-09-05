@@ -82,11 +82,21 @@ test('shared light header uses pricing-style composition', () => {
     /grid-template-columns:\s*auto minmax\(520px, 1fr\) auto\s*!important/u
   );
   assert.match(headerCss, /height:\s*104\.4px\s*!important/u);
-  assert.match(headerCss, /font-size:\s*18px\s*!important/u);
+  assert.match(
+    headerCss,
+    /\.site-nav a\s*\{[\s\S]*?font-size:\s*22px\s*!important/u
+  );
   assert.match(headerCss, /font-size:\s*19px\s*!important/u);
   assert.match(
     headerCss,
     /@media \(max-width: 900px\)[\s\S]*?\.mobile-menu \{[\s\S]*?display:\s*block/u
+  );
+});
+
+test('shared public header owns the Home display font', () => {
+  assert.match(
+    headerCss,
+    /font-family:\s*var\([\s\S]*?--brand-display-font,[\s\S]*?"Yu Mincho"[\s\S]*?"Hiragino Mincho ProN"[\s\S]*?"Noto Serif JP"[\s\S]*?"Times New Roman"[\s\S]*?serif[\s\S]*?\);/u
   );
 });
 
