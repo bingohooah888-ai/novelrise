@@ -33,6 +33,13 @@ html body.novelight-page-index.novelight-public-dark #features .feature-symbol::
   content: none;
 }
 
+/* Balance the three feature descriptions into visually even two-line blocks on desktop. */
+html body.novelight-page-index.novelight-public-dark #features .feature > p {
+  min-height: 3.5em;
+  line-height: 1.75;
+  text-wrap: balance;
+}
+
 @media (max-width: 640px) {
   html body.novelight-page-index.novelight-public-dark #features .feature-symbol {
     width: 64px;
@@ -41,5 +48,10 @@ html body.novelight-page-index.novelight-public-dark #features .feature-symbol::
 
   html body.novelight-page-index.novelight-public-dark #features .feature-symbol.discovery-symbol {
     width: 86px;
+  }
+
+  html body.novelight-page-index.novelight-public-dark #features .feature > p {
+    min-height: 0;
+    text-wrap: pretty;
   }
 }
