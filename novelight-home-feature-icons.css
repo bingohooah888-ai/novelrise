@@ -40,6 +40,15 @@ html body.novelight-page-index.novelight-public-dark #features .feature > p {
   text-wrap: balance;
 }
 
+/* The two longer Japanese descriptions should break at phrase boundaries,
+   not in the middle of words such as 出会う or その. */
+html body.novelight-page-index.novelight-public-dark #features .feature:nth-child(1) > p,
+html body.novelight-page-index.novelight-public-dark #features .feature:nth-child(2) > p {
+  line-break: strict;
+  text-wrap: pretty;
+  word-break: auto-phrase;
+}
+
 @media (max-width: 640px) {
   html body.novelight-page-index.novelight-public-dark #features .feature-symbol {
     width: 64px;
