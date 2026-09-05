@@ -168,3 +168,19 @@ html body.novelight-page-index.novelight-public-dark .hero-art-slot {
     line-height: 1.75;
   }
 }
+
+/* Home light sections use dark reading colors so the copy stays legible on ivory surfaces. */
+html body.novelight-page-index.novelight-public-dark #discover .section-kicker,
+html body.novelight-page-index.novelight-public-dark #features .section-kicker {
+  color: #9a6815;
+}
+
+html body.novelight-page-index.novelight-public-dark #discover .shelf-head h2,
+html body.novelight-page-index.novelight-public-dark #features .section-head h2 {
+  color: #1f2d40;
+}
+
+html body.novelight-page-index.novelight-public-dark #discover .shelf-head p,
+html body.novelight-page-index.novelight-public-dark #features .section-head p {
+  color: #596576;
+}
