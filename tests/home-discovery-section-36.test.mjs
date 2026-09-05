@@ -150,7 +150,10 @@ test('dedicated discovery pages paginate real recommendation candidates and matc
   assert.match(script, /p_sort: 'new'/);
   assert.match(script, /p_offset: neutralOffset/);
   assert.match(script, /light_seed_status/);
-  assert.match(script, /const seedCount = Number\(result\.data\?\.total_seed_count \|\| 0\)/);
+  assert.match(
+    script,
+    /const seedCount = Number\(result\.data\?\.total_seed_count \|\| 0\)/
+  );
   assert.match(script, /if \(seedCount <= 0\) return null/);
   assert.match(script, /while \(seedQueue\.length < pageSize/);
   assert.match(script, /seedQueue\.splice\(0, pageSize\)/);
