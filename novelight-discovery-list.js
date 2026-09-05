@@ -1,6 +1,7 @@
 (() => {
   const mode = document.body.dataset.discoveryMode;
   const pageSize = 24;
+  const recommendedPoolSize = 96;
   const candidateBatchSize = 24;
   const list = document.getElementById('discoveryList');
   const count = document.getElementById('discoveryCount');
@@ -11,10 +12,12 @@
     'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
   );
   const seen = new Set();
+  const recommendedQueue = [];
+  const seedQueue = [];
   let rendered = 0;
   let neutralOffset = 0;
   let neutralTotal = null;
-  const seedQueue = [];
+  let recommendedLoaded = false;
   let loading = false;
 
   function esc(value) {
@@ -79,7 +82,7 @@
       count.textContent = `${rendered.toLocaleString()} / ${neutralTotal.toLocaleString()}作品を表示`;
       return;
     }
-    const label = mode === 'recommended' ? 'おすすめ' : 'LIGHT SEED対象';
+    const label = mode === 'recommended' ? 'おすすめ' : 'LIGHT SEEDで発掘中';
     count.textContent = `${label} ${rendered.toLocaleString()}作品を表示`;
   }
 
@@ -105,10 +108,10 @@
     if (result.error) console.error('neutral impression record failed', result.error);
   }
 
-  async function fetchRecommended() {
+  async function fetchRecommended(limit = recommendedPoolSize) {
     const args = {
       p_surface: 'search_recommended',
-      p_limit: pageSize,
+      p_limit: limit,
       p_keyword: null,
       p_genre: null,
       p_visitor_token: visitor()
@@ -121,12 +124,24 @@
     return (result.data || []).filter((row) => !row.is_premium_slot);
   }
 
-  async function loadRecommended() {
+  async function fillRecommendedQueue() {
+    if (recommendedLoaded) return;
     const rows = await fetchRecommended();
-    const addedRows = rows.filter((row) => !seen.has(novelId(row)));
-    appendRows(addedRows);
-    await recordTrusted(addedRows);
-    moreWrap.hidden = addedRows.length === 0;
+    for (const row of rows) {
+      const id = novelId(row);
+      if (!seen.has(id) && !recommendedQueue.some((queued) => novelId(queued) === id)) {
+        recommendedQueue.push(row);
+      }
+    }
+    recommendedLoaded = true;
+  }
+
+  async function loadRecommended() {
+    await fillRecommendedQueue();
+    const page = recommendedQueue.splice(0, pageSize);
+    appendRows(page);
+    await recordTrusted(page);
+    moreWrap.hidden = recommendedQueue.length === 0;
     moreButton.textContent = 'おすすめをもっと見る';
   }
 
@@ -158,9 +173,11 @@
       const result = await client.rpc('light_seed_status', {
         p_novel_id: novelId(row)
       });
-      if (result.error || result.data?.eligible !== true) return null;
+      if (result.error) return null;
+      const seedCount = Number(result.data?.total_seed_count || 0);
+      if (seedCount <= 0) return null;
       return Object.assign({}, row, {
-        light_seed_count: Number(result.data?.total_seed_count || 0)
+        light_seed_count: seedCount
       });
     } catch (error) {
       console.error('LIGHT SEED status failed', error);
@@ -168,11 +185,9 @@
     }
   }
 
-  async function loadSeed() {
-    let scannedBatches = 0;
-    while (seedQueue.length < pageSize && scannedBatches < 4) {
+  async function fillSeedQueue() {
+    while (seedQueue.length < pageSize && neutralOffset < Number(neutralTotal ?? Infinity)) {
       const rows = await fetchNeutralNew(candidateBatchSize);
-      scannedBatches += 1;
       if (!rows.length) break;
       const checked = await Promise.all(rows.map(seedStatus));
       for (const row of checked.filter(Boolean)) {
@@ -183,12 +198,16 @@
       }
       if (rows.length < candidateBatchSize || neutralOffset >= Number(neutralTotal || 0)) break;
     }
+  }
+
+  async function loadSeed() {
+    await fillSeedQueue();
     const page = seedQueue.splice(0, pageSize);
     appendRows(page);
     await recordNeutral(page);
     const exhausted = neutralOffset >= Number(neutralTotal || 0) && seedQueue.length === 0;
     moreWrap.hidden = exhausted || page.length === 0;
-    moreButton.textContent = 'LIGHT SEED対象をもっと見る';
+    moreButton.textContent = '発掘中の作品をもっと見る';
   }
 
   async function loadMore() {
@@ -220,7 +239,10 @@
     try {
       await loadMore();
       if (rendered === 0) {
-        const empty = mode === 'seed' ? '現在表示できるLIGHT SEED対象作品はありません。' : '現在表示できる作品はありません。';
+        const empty =
+          mode === 'seed'
+            ? '現在表示できるLIGHT SEEDで発掘中の作品はありません。'
+            : '現在表示できる作品はありません。';
         list.innerHTML = `<div class="state">${empty}</div>`;
         count.textContent = '0作品';
       }
