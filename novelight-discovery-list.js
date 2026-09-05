@@ -12,12 +12,10 @@
     'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
   );
   const seen = new Set();
-  const recommendedQueue = [];
   const seedQueue = [];
   let rendered = 0;
   let neutralOffset = 0;
   let neutralTotal = null;
-  let recommendedLoaded = false;
   let loading = false;
 
   function esc(value) {
@@ -124,24 +122,20 @@
     return (result.data || []).filter((row) => !row.is_premium_slot);
   }
 
-  async function fillRecommendedQueue() {
-    if (recommendedLoaded) return;
+  async function loadRecommended() {
     const rows = await fetchRecommended();
+    const batchSeen = new Set();
+    const candidates = [];
     for (const row of rows) {
       const id = novelId(row);
-      if (!seen.has(id) && !recommendedQueue.some((queued) => novelId(queued) === id)) {
-        recommendedQueue.push(row);
-      }
+      if (seen.has(id) || batchSeen.has(id)) continue;
+      batchSeen.add(id);
+      candidates.push(row);
     }
-    recommendedLoaded = true;
-  }
-
-  async function loadRecommended() {
-    await fillRecommendedQueue();
-    const page = recommendedQueue.splice(0, pageSize);
+    const page = candidates.slice(0, pageSize);
     appendRows(page);
     await recordTrusted(page);
-    moreWrap.hidden = recommendedQueue.length === 0;
+    moreWrap.hidden = candidates.length <= pageSize || page.length === 0;
     moreButton.textContent = 'おすすめをもっと見る';
   }
 
