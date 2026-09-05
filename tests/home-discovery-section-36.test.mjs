@@ -119,7 +119,7 @@ test('homepage selection protects author diversity before filling remaining slot
   assert.match(home, /primary\.concat\(deferred\)\.slice\(0,limit\)/);
 });
 
-test('dedicated discovery pages paginate real recommendation candidates and match the home LIGHT SEED meaning', async () => {
+test('dedicated discovery pages refresh trusted recommendation receipts per visible page and match the home LIGHT SEED meaning', async () => {
   const [recommended, newArrivals, seed, script, thumbnailRuntime] =
     await Promise.all([
       read('recommended.html'),
@@ -140,12 +140,21 @@ test('dedicated discovery pages paginate real recommendation candidates and matc
 
   assert.match(script, /const pageSize = 24;/);
   assert.match(script, /const recommendedPoolSize = 96;/);
-  assert.match(script, /const recommendedQueue = \[\];/);
+  assert.doesNotMatch(script, /recommendedQueue|recommendedLoaded|fillRecommendedQueue/);
   assert.match(script, /p_surface: 'search_recommended'/);
   assert.match(script, /p_limit: limit/);
-  assert.match(script, /recommendedQueue\.splice\(0, pageSize\)/);
+  assert.match(
+    script,
+    /async function loadRecommended\(\) \{\n    const rows = await fetchRecommended\(\);/
+  );
+  assert.match(script, /const batchSeen = new Set\(\);/);
+  assert.match(script, /if \(seen\.has\(id\) \|\| batchSeen\.has\(id\)\) continue;/);
+  assert.match(script, /const page = candidates\.slice\(0, pageSize\);/);
   assert.match(script, /await recordTrusted\(page\)/);
-  assert.match(script, /moreWrap\.hidden = recommendedQueue\.length === 0/);
+  assert.match(
+    script,
+    /moreWrap\.hidden = candidates\.length <= pageSize \|\| page\.length === 0;/
+  );
 
   assert.match(script, /p_sort: 'new'/);
   assert.match(script, /p_offset: neutralOffset/);
