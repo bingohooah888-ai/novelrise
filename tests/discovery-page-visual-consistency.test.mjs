@@ -40,7 +40,7 @@ test('shared CSS keeps parchment colors and readable type', () => {
       'body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1'
     )
   );
-  assert.ok(css.includes('color: #20150e'));
+  assert.ok(css.includes('color: #3a2618'));
   assert.ok(css.includes('font-size: clamp(30px, 4vw, 46px)'));
   assert.ok(css.includes('font-size: clamp(30px, 4vw, 42px)'));
   assert.ok(css.includes('font-size: 21px'));
