@@ -21,3 +21,13 @@ test('Home feature descriptions use balanced desktop wrapping with mobile fallba
     )
   );
 });
+
+test('The first two Home feature descriptions prefer Japanese phrase boundaries', () => {
+  assert.ok(
+    featureCss.includes(
+      'html body.novelight-page-index.novelight-public-dark #features .feature:nth-child(1) > p,\nhtml body.novelight-page-index.novelight-public-dark #features .feature:nth-child(2) > p {'
+    )
+  );
+  assert.ok(featureCss.includes('word-break: auto-phrase;'));
+  assert.ok(featureCss.includes('line-break: strict;'));
+});
