@@ -66,9 +66,10 @@ html body.novelight-page-index.novelight-public-dark .hero h1 {
 }
 
 html body.novelight-page-index.novelight-public-dark .hero p {
-  max-width: 510px;
+  max-width: 560px;
   font-size: 20px;
   line-height: 1.8;
+  text-wrap: pretty;
 }
 
 html body.novelight-page-index.novelight-public-dark .hero-primary,
