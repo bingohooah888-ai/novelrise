@@ -195,7 +195,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu 
 }
 
 html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu:not([open]) > nav {
-  display: none !important;
+  display: none;
 }
 
 html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu[open] > nav {
