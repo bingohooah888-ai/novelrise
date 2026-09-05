@@ -1,0 +1,45 @@
+/* Home "Why NOVELIGHT" icon artwork.
+   Uses the user-supplied transparent PNG assets without redrawing or generated replacements. */
+html body.novelight-page-index.novelight-public-dark #features .feature-symbol {
+  display: block;
+  width: 72px;
+  height: 72px;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  box-shadow: none;
+  filter: drop-shadow(0 7px 14px rgba(214, 164, 71, .22));
+}
+
+html body.novelight-page-index.novelight-public-dark #features .feature-symbol.discovery-symbol {
+  width: 96px;
+  background-image: url("assets/novelight-feature-discovery.png");
+}
+
+html body.novelight-page-index.novelight-public-dark #features .feature-symbol.seed-symbol {
+  background-image: url("assets/novelight-feature-light-seed.png");
+}
+
+html body.novelight-page-index.novelight-public-dark #features .feature-symbol.analytics-symbol {
+  background-image: url("assets/novelight-feature-analytics.png");
+}
+
+html body.novelight-page-index.novelight-public-dark #features .feature-symbol::before,
+html body.novelight-page-index.novelight-public-dark #features .feature-symbol::after {
+  display: none;
+  content: none;
+}
+
+@media (max-width: 640px) {
+  html body.novelight-page-index.novelight-public-dark #features .feature-symbol {
+    width: 64px;
+    height: 64px;
+  }
+
+  html body.novelight-page-index.novelight-public-dark #features .feature-symbol.discovery-symbol {
+    width: 86px;
+  }
+}
