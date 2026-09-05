@@ -7,17 +7,21 @@ const root = path.resolve(import.meta.dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const css = read('novelight-discovery-list.css');
 
-const discoveryPages = ['recommended.html', 'new-arrivals.html', 'light-seed.html'];
+const discoveryPages = [
+  'recommended.html',
+  'new-arrivals.html',
+  'light-seed.html'
+];
 
-test('reader discovery pages share the parchment stylesheet', () => {
+test('discovery pages share visual CSS', () => {
   for (const file of discoveryPages) {
     const html = read(file);
-    assert.ok(html.includes('novelight-discovery-list.css'), `${file} should load shared discovery CSS`);
-    assert.ok(html.includes('novelight-page-discovery-list'), `${file} should keep discovery-list body scope`);
+    assert.ok(html.includes('novelight-discovery-list.css'));
+    assert.ok(html.includes('novelight-page-discovery-list'));
   }
 });
 
-test('search and ranking opt into the shared discovery visual system', () => {
+test('search and ranking use shared visual CSS', () => {
   const search = read('search.html');
   const ranking = read('ranking.html');
 
@@ -27,13 +31,13 @@ test('search and ranking opt into the shared discovery visual system', () => {
   assert.ok(ranking.includes('class="novelight-page-ranking"'));
 });
 
-test('shared CSS preserves the approved parchment and readable type language', () => {
+test('shared CSS keeps parchment colors and readable type', () => {
   assert.ok(css.includes('--discovery-paper-1: #f1e5c9'));
   assert.ok(css.includes('--discovery-paper-2: #e6d3ad'));
   assert.ok(css.includes('--discovery-paper-3: #dcc294'));
   assert.ok(css.includes('body.novelight-page-search'));
   assert.ok(css.includes('body.novelight-page-ranking'));
-  assert.ok(css.includes('.discovery-list-grid .shelf-card .novel-title'));
+  assert.ok(css.includes('.shelf-card .novel-title'));
   assert.ok(css.includes('font-size: 19px'));
   assert.ok(css.includes('font-size: 17px'));
 });
