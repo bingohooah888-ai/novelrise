@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
-    "stripe": "^20.4.0"
+    "stripe": "^22.6.1"
   },
   "devDependencies": {
     "eslint": "^10.8.1",
