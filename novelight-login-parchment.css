@@ -6,6 +6,13 @@ html body.novelight-page-login {
     radial-gradient(circle at 50% 0%, rgba(214, 164, 71, 0.09), transparent 34%),
     linear-gradient(180deg, #120c08 0%, #0b0908 46%, #080707 100%);
   color: #3a2618;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Hiragino Kaku Gothic ProN",
+    "Yu Gothic",
+    sans-serif;
 }
 
 /* The legacy login header fixed itself to 72px. The shared public header is taller,
@@ -63,7 +70,7 @@ html body.novelight-page-login .card > * {
 html body.novelight-page-login h1 {
   margin: 0 0 10px;
   color: #3a2618;
-  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-family: inherit;
   font-size: 32px;
   font-weight: 700;
   line-height: 1.25;
