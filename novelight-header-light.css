@@ -1,3 +1,5 @@
+@import url("novelight-login-parchment.css");
+
 /* NOVELIGHT shared light header treatment.
    Home/Pricing keep their dark content surfaces; reader/auth pages can opt into the
    same header composition through .novelight-public-header-page. */
