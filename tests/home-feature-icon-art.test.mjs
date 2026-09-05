@@ -29,6 +29,10 @@ test('Home feature icon artwork is loaded in the intended order', () => {
     assert.ok(iconCss.includes(`url("${asset}")`), asset);
   }
 
-  assert.ok(iconCss.indexOf(expectedAssets[0]) < iconCss.indexOf(expectedAssets[1]));
-  assert.ok(iconCss.indexOf(expectedAssets[1]) < iconCss.indexOf(expectedAssets[2]));
+  assert.ok(
+    iconCss.indexOf(expectedAssets[0]) < iconCss.indexOf(expectedAssets[1])
+  );
+  assert.ok(
+    iconCss.indexOf(expectedAssets[1]) < iconCss.indexOf(expectedAssets[2])
+  );
 });
