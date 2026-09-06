@@ -120,10 +120,14 @@ test('author home theme wins after the sitewide theme and hides the legacy rail'
     javaScriptEnabled: false
   });
   const page = await context.newPage();
-  const response = await page.goto('/mypage.html', { waitUntil: 'domcontentloaded' });
+  const response = await page.goto('/mypage.html', {
+    waitUntil: 'domcontentloaded'
+  });
   expect(response?.ok()).toBeTruthy();
 
-  await page.addStyleTag({ url: new URL('/novelight-theme.css', page.url()).href });
+  await page.addStyleTag({
+    url: new URL('/novelight-theme.css', page.url()).href
+  });
   await page.locator('body').evaluate((body) => {
     body.classList.add('novelight-theme', 'novelight-page-mypage');
     const main = body.querySelector('main');
@@ -135,12 +139,22 @@ test('author home theme wins after the sitewide theme and hides the legacy rail'
   });
 
   const styles = await page.evaluate(() => ({
-    legacyDisplay: getComputedStyle(document.querySelector('.novelight-author-sidebar')).display,
-    mainDisplay: getComputedStyle(document.querySelector('main.novelight-author-shell')).display,
+    legacyDisplay: getComputedStyle(
+      document.querySelector('.novelight-author-sidebar')
+    ).display,
+    mainDisplay: getComputedStyle(
+      document.querySelector('main.novelight-author-shell')
+    ).display,
     bodyFont: getComputedStyle(document.body).fontFamily,
-    logoFilter: getComputedStyle(document.querySelector('.studio-brand img')).filter,
-    heroTitleColor: getComputedStyle(document.querySelector('.author-hero h1')).color,
-    actionTitleColor: getComputedStyle(document.querySelector('.action-card h2')).color
+    logoFilter: getComputedStyle(
+      document.querySelector('.studio-brand img')
+    ).filter,
+    heroTitleColor: getComputedStyle(
+      document.querySelector('.author-hero h1')
+    ).color,
+    actionTitleColor: getComputedStyle(
+      document.querySelector('.action-card h2')
+    ).color
   }));
 
   expect(styles.legacyDisplay).toBe('none');
