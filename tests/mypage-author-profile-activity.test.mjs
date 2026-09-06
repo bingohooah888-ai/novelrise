@@ -2,15 +2,22 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const mypage = await readFile('mypage.html', 'utf8');
+const [mypage, roomCss] = await Promise.all([
+  readFile('mypage.html', 'utf8'),
+  readFile('novelight-author-room.css', 'utf8')
+]);
 const migration = await readFile(
   'supabase/migrations/20260906120000_author_profile_avatar_and_activity.sql',
   'utf8'
 );
 
-test('profile is left and recent activity is right', () => {
-  assert.match(mypage, /minmax\(300px,\.82fr\)/u);
-  assert.match(mypage, /minmax\(0,1\.55fr\)/u);
+test('recent activity is left and profile is right on desktop', () => {
+  assert.match(
+    roomCss,
+    /grid-template-columns:minmax\(0,1\.55fr\) minmax\(320px,\.82fr\)/u
+  );
+  assert.match(roomCss, /\.activity-panel\{grid-column:1!important/u);
+  assert.match(roomCss, /\.profile-panel\{grid-column:2!important/u);
   const profile = mypage.indexOf('profile-panel');
   const activity = mypage.indexOf('activity-panel');
   assert.ok(profile >= 0);
