@@ -1,0 +1,32 @@
+/* Final Search/Ranking visual finish aligned with the approved NOVELIGHT reference.
+   This file is loaded through the shared public-header stylesheet after the legacy
+   page CSS, so it only owns the final visual cascade for these two reader pages. */
+
+:root {
+  --novelight-reader-brand-font: "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", Georgia, "Times New Roman", serif;
+}
+
+html body.novelight-page-search,
+html body.novelight-page-ranking {
+  background-color: #080707;
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(214, 164, 71, 0.08), transparent 34%),
+    linear-gradient(180deg, #120c08 0%, #0b0908 46%, #080707 100%);
+}
+
+html body.novelight-page-search > main,
+html body.novelight-page-ranking > main {
+  background:
+    radial-gradient(circle at 10% 15%, rgba(114, 76, 36, 0.08) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 76% 28%, rgba(98, 63, 30, 0.07) 0 1px, transparent 1.8px),
+    repeating-linear-gradient(0deg, rgba(96, 65, 33, 0.025) 0 1px, transparent 1px 7px),
+    linear-gradient(135deg, #f1e5c9 0%, #e6d3ad 52%, #dcc294 100%);
+  font-family: var(--novelight-reader-brand-font);
+}
+
+html body.novelight-page-search > main input,
+html body.novelight-page-search > main select,
+html body.novelight-page-search > main button,
+html body.novelight-page-ranking > main button {
+  font-family: var(--novelight-reader-brand-font);
+}
