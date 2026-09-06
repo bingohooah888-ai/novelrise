@@ -1,0 +1,121 @@
+/* Author room refinements: preserve the readable author-home scale while keeping the
+   workspace in NOVELIGHT's night-study palette. Gallery-specific styles do not live here. */
+
+.studio-sidebar,
+body.novelight-theme.novelight-page-mypage .studio-sidebar{
+  background:linear-gradient(180deg,#132a3a 0%,#102333 52%,#091824 100%)!important;
+  border-right-color:rgba(190,155,80,.25)!important;
+  box-shadow:14px 0 36px rgba(0,0,0,.24)!important;
+}
+.studio-brand img,
+body.novelight-theme.novelight-page-mypage .studio-brand img{
+  width:190px!important;
+  max-width:100%!important;
+  height:auto!important;
+  opacity:1!important;
+  background:rgba(255,253,248,.94)!important;
+  padding:7px 9px!important;
+  border:1px solid rgba(190,155,80,.22)!important;
+  border-radius:9px!important;
+  filter:drop-shadow(0 3px 12px rgba(0,0,0,.16))!important;
+}
+.studio-brand small,
+body.novelight-theme.novelight-page-mypage .studio-brand small{
+  color:#8f9ba5!important;
+  font-size:12px!important;
+}
+.studio-label,
+body.novelight-theme.novelight-page-mypage .studio-label{
+  color:#d1af61!important;
+  font-size:12px!important;
+}
+.studio-nav a,
+body.novelight-theme.novelight-page-mypage .studio-nav a{
+  color:#d8d3c5!important;
+  font-size:16px!important;
+}
+.studio-nav a:hover,
+body.novelight-theme.novelight-page-mypage .studio-nav a:hover{
+  border-color:rgba(190,155,80,.25)!important;
+  background:rgba(190,155,80,.08)!important;
+  color:#f0eadb!important;
+}
+.studio-nav a[aria-current="page"],
+body.novelight-theme.novelight-page-mypage .studio-nav a[aria-current="page"]{
+  border-color:rgba(190,155,80,.42)!important;
+  background:rgba(190,155,80,.14)!important;
+  color:#d1af61!important;
+  box-shadow:inset 0 0 18px rgba(190,155,80,.05)!important;
+}
+.nav-icon,
+body.novelight-theme.novelight-page-mypage .nav-icon{color:#d1af61!important}
+.sidebar-quote,
+body.novelight-theme.novelight-page-mypage .sidebar-quote{
+  border-top-color:rgba(190,155,80,.25)!important;
+  color:#8f9ba5!important;
+  font-size:14px!important;
+}
+.sidebar-quote strong,
+body.novelight-theme.novelight-page-mypage .sidebar-quote strong{
+  color:#d1af61!important;
+  font-size:11px!important;
+}
+
+/* Recent activity remains the wider left column; profile settings stay on the right. */
+.lower-grid{
+  grid-template-columns:minmax(0,1.55fr) minmax(320px,.82fr)!important;
+}
+.activity-panel{grid-column:1!important;grid-row:1!important}
+.profile-panel{grid-column:2!important;grid-row:1!important}
+
+/* Keep the readability increase from the previous refinement. The hero title and logout
+   intentionally retain the sizes defined by novelight-author-home.css. */
+.workspace-top>a{font-size:14px!important}
+.account-text strong{font-size:14px!important}
+.account-text span{font-size:11px!important}
+.hero-kicker{font-size:12px!important}
+.author-hero p{font-size:17px!important}
+.founding{font-size:12px!important}
+.action-card h2{font-size:19px!important}
+.action-card p{font-size:14px!important}
+.card-cta,.action-card>button{font-size:13px!important}
+.status{font-size:12px!important}
+.section-title h2{font-size:23px!important}
+.section-link{font-size:12px!important}
+.value{font-size:28px!important}
+.label{font-size:14px!important}
+.sub{font-size:12px!important}
+.panel-header h2{font-size:19px!important}
+.activity-empty strong{font-size:16px!important}
+.activity-empty p{font-size:14px!important}
+.activity-copy strong{font-size:14px!important}
+.activity-copy time{font-size:11px!important}
+.profile-summary{grid-template-columns:88px minmax(0,1fr)!important}
+.profile-summary h3{font-size:21px!important}
+.profile-summary p{font-size:13px!important}
+.profile-meta dt{font-size:12px!important}
+.profile-meta dd{font-size:14px!important}
+details.profile-editor summary{font-size:14px!important}
+.form label{font-size:13px!important}
+.form input,.form textarea{font-size:14px!important}
+.save{font-size:13px!important}
+.avatar-stack{min-width:88px}
+.avatar-label{
+  padding:5px 8px!important;
+  font-size:11px!important;
+  line-height:1.2!important;
+  white-space:nowrap!important;
+}
+.avatar-note{font-size:11px!important}
+.footer-links{font-size:12px!important}
+
+@media(max-width:900px){
+  .lower-grid{grid-template-columns:1fr!important}
+  .profile-panel{grid-column:auto!important;grid-row:auto!important;order:1}
+  .activity-panel{grid-column:auto!important;grid-row:auto!important;order:2}
+}
+@media(max-width:460px){
+  .profile-summary{grid-template-columns:78px minmax(0,1fr)!important}
+  .avatar-stack{min-width:78px}
+  .avatar-label{padding:5px 7px!important;font-size:10px!important}
+}
