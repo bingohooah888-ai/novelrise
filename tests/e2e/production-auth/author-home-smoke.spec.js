@@ -85,6 +85,9 @@ test('author home profile, avatar, and activity work in Production', async ({
   const publicAvatarPrefix =
     `/storage/v1/object/public/author-avatars/${author.id}/`;
   await expect(avatarImage).toBeVisible();
-  await expect(avatarImage).toHaveAttribute('src', new RegExp(publicAvatarPrefix));
+  await expect(avatarImage).toHaveAttribute(
+    'src',
+    new RegExp(publicAvatarPrefix)
+  );
   await expect(page.locator('#accountAvatar img')).toBeVisible();
 });
