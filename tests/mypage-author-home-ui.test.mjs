@@ -50,3 +50,19 @@ test('author home includes a collapsible mobile author menu', () => {
   assert.match(css, /transform:translateX\(-104%\)/u);
   assert.match(mypage, /aria-expanded="false"/u);
 });
+
+test('author home suppresses the legacy duplicate dashboard and keeps the modern palette', () => {
+  assert.match(
+    css,
+    /body\.novelight-theme\.novelight-page-mypage \.novelight-author-sidebar\{display:none!important\}/u
+  );
+  assert.match(
+    css,
+    /body\.novelight-theme\.novelight-page-mypage main\.novelight-author-shell\{[\s\S]*?display:block;/u
+  );
+  assert.match(css, /filter:brightness\(0\) invert\(1\)/u);
+  assert.match(css, /--author-font:"Yu Mincho"/u);
+  assert.match(css, /body\.novelight-theme\.novelight-page-mypage \.action-card h2\{color:#fff8e8\}/u);
+  assert.match(css, /body\.novelight-theme\.novelight-page-mypage \.metric\{/u);
+  assert.match(css, /body\.novelight-theme\.novelight-page-mypage \.panel\{/u);
+});
