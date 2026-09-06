@@ -7,7 +7,7 @@ const [mypage, css] = await Promise.all([
   readFile('novelight-author-home.css', 'utf8')
 ]);
 
-test('author home uses the night-study workspace shell without changing reader discovery', () => {
+test('author studio uses the night-study workspace shell without changing reader discovery', () => {
   assert.match(mypage, /class="studio-sidebar"/u);
   assert.match(mypage, /AUTHOR STUDIO/u);
   assert.match(mypage, /class="author-hero"/u);
@@ -18,7 +18,7 @@ test('author home uses the night-study workspace shell without changing reader d
   assert.match(mypage, /まだ新しい出来事はありません。/u);
 });
 
-test('author home keeps all five primary author actions', () => {
+test('author studio keeps all five primary author actions', () => {
   for (const href of [
     'post.html',
     'my-novels.html',
@@ -35,7 +35,7 @@ test('author home keeps all five primary author actions', () => {
   assert.match(mypage, /契約プラン/u);
 });
 
-test('author home preserves live analytics and profile data hooks', () => {
+test('author studio preserves live analytics and profile data hooks', () => {
   assert.match(mypage, /novelight_author_exposure_funnel_v2/u);
   assert.match(mypage, /id="joinedAt"/u);
   assert.match(mypage, /session\.user\?\.created_at/u);
@@ -43,7 +43,16 @@ test('author home preserves live analytics and profile data hooks', () => {
   assert.match(mypage, /id="metaPlan"/u);
 });
 
-test('author home includes a collapsible mobile author menu', () => {
+test('profile settings link to the public author view without duplicating private plan context', () => {
+  assert.match(mypage, /id="publicProfileLink"/u);
+  assert.match(mypage, /author\.html\?id=/u);
+  assert.match(mypage, /読者向け表示を見る/u);
+  assert.match(mypage, /<div hidden><dt>アカウント種別<\/dt>/u);
+  assert.match(mypage, /<div hidden><dt>現在プラン<\/dt>/u);
+  assert.match(mypage, /<h2>契約プラン<\/h2>/u);
+});
+
+test('author studio includes a collapsible mobile author menu', () => {
   assert.match(mypage, /id="menuToggle"/u);
   assert.match(mypage, /id="studioSidebar"/u);
   assert.match(css, /@media\(max-width:900px\)/u);
