@@ -61,6 +61,13 @@ test('author room action and analytics copy keep readable wrapping and sizing', 
   assert.match(roomCss, /\.value\{font-size:28px!important\}/u);
 });
 
+test('author room keeps readable card density on midsize desktop widths', () => {
+  assert.match(
+    roomCss,
+    /@media\(min-width:901px\) and \(max-width:1400px\)\{[\s\S]*?\.action-grid,\.metrics\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important\}/u
+  );
+});
+
 test('author room keeps all five primary author actions', () => {
   for (const href of [
     'post.html',
