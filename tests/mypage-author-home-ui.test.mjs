@@ -107,6 +107,18 @@ test('author room stacks recent activity before profile settings on mobile', () 
   );
 });
 
+test('author room source order follows recent activity before profile settings', () => {
+  const activityIndex = mypage.indexOf('id="activityHeading"');
+  const profileIndex = mypage.indexOf('id="profileHeading"');
+  assert.notEqual(activityIndex, -1);
+  assert.notEqual(profileIndex, -1);
+  assert.ok(activityIndex < profileIndex);
+  assert.doesNotMatch(
+    mypage,
+    /\.profile-panel\{order:1\}\.activity-panel\{order:2\}/u
+  );
+});
+
 test('author room includes a collapsible mobile menu', () => {
   assert.match(mypage, /id="menuToggle"/u);
   assert.match(mypage, /id="studioSidebar"/u);
