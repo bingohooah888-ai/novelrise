@@ -6,7 +6,10 @@ const fixturePath = process.env.PRODUCTION_AUTH_SMOKE_FIXTURE;
 const profileRpcPath = '/rest/v1/rpc/novelight_update_my_public_profile';
 const avatarObjectPath = '/storage/v1/object/author-avatars/';
 const avatarFixturePath = fileURLToPath(
-  new globalThis.URL('../../../assets/novelight-header-logo.webp', import.meta.url)
+  new globalThis.URL(
+    '../../../assets/novelight-header-logo.webp',
+    import.meta.url
+  )
 );
 
 if (!fixturePath) {
