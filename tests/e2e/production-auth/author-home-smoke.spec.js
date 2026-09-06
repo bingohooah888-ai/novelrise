@@ -45,7 +45,7 @@ test('author home profile, avatar, and activity work in Production', async ({
   await expect(activityList).not.toContainText('読み込んでいます');
   await expect(activityList).not.toContainText('読み込めませんでした');
 
-  const editedName = `${author.displayName} プロフィール`;
+  const editedName = `E2E作者${fixture.runId}`;
   const editedBio = `Production smoke ${fixture.runId} author profile`;
   const profileStatus = page.locator('#profileStatus');
 
