@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>作者ホーム | NOVELIGHT</title>
   <link rel="stylesheet" href="novelight-author-home.css">
+  <link rel="stylesheet" href="novelight-author-gallery.css">
   <style>
     .lower-grid{grid-template-columns:minmax(300px,.82fr) minmax(0,1.55fr)}
     .profile-summary{align-items:start}
@@ -156,5 +157,6 @@ document.getElementById('billingPortal').onclick=async()=>{const b=document.getE
 document.getElementById('logout').onclick=async()=>{try{const r=await client.auth.signOut();if(r.error)throw r.error;location.href='index.html'}catch(e){console.error(e);alert('ログアウトできませんでした。時間をおいて再度お試しください。')}};
 init();
   </script>
+  <script src="novelight-author-gallery.js"></script>
 </body>
 </html>
