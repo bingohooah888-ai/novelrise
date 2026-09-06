@@ -16,14 +16,14 @@ concurrency:
 
 jobs:
   rerun-ci:
-    name: Validate owner approval and re-run failed CI gates
+    name: Validate owner approval, re-run CI, and merge safely
     if: >-
       github.event.issue.pull_request != null &&
       github.event.comment.user.login == 'bingohooah888-ai' &&
       github.event.comment.author_association == 'OWNER' &&
       startsWith(github.event.comment.body, 'NOVELIGHT_HIGH_RISK_APPROVE ')
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       GH_TOKEN: ${{ github.token }}
       APPROVAL_BODY: ${{ github.event.comment.body }}
@@ -154,7 +154,31 @@ jobs:
 
           echo "PR #$PR_NUMBER is ready for review at approved head $HEAD_SHA."
 
+      - name: Queue squash auto-merge while approval gates are pending
+        shell: bash
+        env:
+          HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          auto_merge_enabled="$(gh api "repos/$GITHUB_REPOSITORY" --jq '.allow_auto_merge')"
+          if [ "$auto_merge_enabled" != 'true' ]; then
+            echo 'Repository auto-merge is disabled; continuing with the guarded CI relay.'
+            exit 0
+          fi
+
+          if gh pr merge "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --auto \
+            --squash \
+            --match-head-commit "$HEAD_SHA"; then
+            echo "Queued squash auto-merge for PR #$PR_NUMBER at approved head $HEAD_SHA."
+          else
+            echo 'Auto-merge could not be queued in the current GitHub merge state; guarded CI validation will continue.'
+          fi
+
       - name: Re-run failed NOVELIGHT CI automatically
+        id: ci
         shell: bash
         env:
           HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
@@ -186,6 +210,8 @@ jobs:
             exit 1
           fi
 
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
           if [ "$conclusion" = 'success' ]; then
             echo "NOVELIGHT CI run $run_id already succeeded; no re-run needed."
             exit 0
@@ -200,3 +226,79 @@ jobs:
             >/dev/null
 
           echo "Re-ran failed jobs for NOVELIGHT CI run $run_id after exact owner approval."
+
+      - name: Wait for approved-head NOVELIGHT CI success
+        shell: bash
+        env:
+          HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
+          RUN_ID: ${{ steps.ci.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          test -n "$RUN_ID" || {
+            echo 'Safety stop: NOVELIGHT CI run ID is unavailable.'
+            exit 1
+          }
+
+          for _ in $(seq 1 60); do
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" \
+              > /tmp/approved-ci.json
+
+            jq -e --arg sha "$HEAD_SHA" '.head_sha == $sha' /tmp/approved-ci.json >/dev/null || {
+              echo 'Safety stop: NOVELIGHT CI run no longer matches the approved head.'
+              exit 1
+            }
+
+            status="$(jq -r '.status // empty' /tmp/approved-ci.json)"
+            conclusion="$(jq -r '.conclusion // empty' /tmp/approved-ci.json)"
+            if [ "$status" = 'completed' ]; then
+              test "$conclusion" = 'success' || {
+                echo "Safety stop: NOVELIGHT CI completed with conclusion $conclusion."
+                exit 1
+              }
+              echo "NOVELIGHT CI run $RUN_ID succeeded for approved head $HEAD_SHA."
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo 'Safety stop: NOVELIGHT CI did not complete successfully within five minutes.'
+          exit 1
+
+      - name: Finalize guarded squash merge if still open
+        shell: bash
+        env:
+          HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
+            > /tmp/pr-final.json
+
+          if [ "$(jq -r '.merged' /tmp/pr-final.json)" = 'true' ]; then
+            echo "PR #$PR_NUMBER was already merged by queued auto-merge."
+            exit 0
+          fi
+
+          jq -e \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg sha "$HEAD_SHA" \
+            '.state == "open" and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha and .draft == false' \
+            /tmp/pr-final.json >/dev/null || {
+              echo 'Safety stop: PR changed after CI success or is no longer mergeable under the approved identity.'
+              exit 1
+            }
+
+          gh pr merge "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --squash \
+            --match-head-commit "$HEAD_SHA"
+
+          echo "Merged PR #$PR_NUMBER with squash after exact owner approval and successful CI."
