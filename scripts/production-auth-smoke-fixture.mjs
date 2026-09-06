@@ -129,6 +129,26 @@ async function deleteByUserIds(table, userIds) {
   await deleteByIds(table, 'user_id', userIds, `${table} by user`);
 }
 
+async function cleanupAuthorAvatars(authorIds) {
+  const bucket = admin.storage.from('author-avatars');
+  for (const authorId of authorIds) {
+    const listed = await bucket.list(authorId, {
+      limit: 100,
+      offset: 0,
+      sortBy: { column: 'name', order: 'asc' }
+    });
+    const objects = assertNoError(listed, `list smoke avatars for ${authorId}`) || [];
+    const paths = objects
+      .filter((item) => item?.id !== null && item?.name)
+      .map((item) => `${authorId}/${item.name}`);
+    if (!paths.length) continue;
+    assertNoError(
+      await bucket.remove(paths),
+      `cleanup smoke avatars for ${authorId}`
+    );
+  }
+}
+
 async function cleanup() {
   const fixture = loadFixture();
   const authorIds = uniqueIds(projectAccounts(fixture, 'author'));
@@ -212,6 +232,7 @@ async function cleanup() {
   await deleteByIds('acquisition_touches', 'visitor_key_hash', acquisitionHashes);
   await deleteByIds('reader_journey_events', 'viewer_key_hash', visitorHashes);
 
+  await cleanupAuthorAvatars(authorIds);
   await deleteByIds('profiles', 'id', userIds);
 
   for (const userId of userIds) {
