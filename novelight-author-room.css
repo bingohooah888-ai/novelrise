@@ -74,21 +74,29 @@ body.novelight-theme.novelight-page-mypage .sidebar-quote strong{
 
 /* Keep the readability increase from the previous refinement. The hero title and logout
    intentionally retain the sizes defined by novelight-author-home.css. */
-.workspace-top>a{font-size:14px!important}
-.account-text strong{font-size:14px!important}
-.account-text span{font-size:11px!important}
+.workspace-top>a{font-size:16px!important}
+.account-text strong{font-size:16px!important}
+.account-text span{display:none!important}
 .hero-kicker{font-size:12px!important}
 .author-hero p{font-size:17px!important}
 .founding{font-size:12px!important}
-.action-card h2{font-size:19px!important}
-.action-card p{font-size:14px!important}
+.action-card h2{
+  font-size:19px!important;
+  white-space:nowrap!important;
+}
+.action-card p{
+  font-size:14px!important;
+  line-break:strict;
+  text-wrap:pretty;
+  word-break:auto-phrase;
+}
 .card-cta,.action-card>button{font-size:13px!important}
 .status{font-size:12px!important}
 .section-title h2{font-size:23px!important}
 .section-link{font-size:12px!important}
 .value{font-size:28px!important}
-.label{font-size:14px!important}
-.sub{font-size:12px!important}
+.label{font-size:16px!important}
+.sub{font-size:14px!important}
 .panel-header h2{font-size:19px!important}
 .activity-empty strong{font-size:16px!important}
 .activity-empty p{font-size:14px!important}
@@ -112,6 +120,20 @@ details.profile-editor summary{font-size:14px!important}
 }
 .avatar-note{font-size:11px!important}
 .footer-links{font-size:12px!important}
+
+/* Keep the plan name as plain inline text, including when the text happens to be selected. */
+.plan{
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#c7edff!important;
+  -webkit-text-fill-color:#c7edff!important;
+  text-shadow:none!important;
+}
+.plan::selection{background:transparent!important;color:#c7edff!important}
+.plan::-moz-selection{background:transparent!important;color:#c7edff!important}
 
 /* User-provided author-room art replaces only the ten dashboard glyphs. */
 .action-card .action-icon,

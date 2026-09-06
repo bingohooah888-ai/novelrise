@@ -37,6 +37,30 @@ test('author room sidebar keeps the logo area visually quiet', () => {
   assert.match(mypage, /<div class="studio-label">AUTHOR STUDIO<\/div>/u);
 });
 
+test('author room header emphasizes navigation and author name without the account subtitle', () => {
+  assert.match(roomCss, /\.workspace-top>a\{font-size:16px!important\}/u);
+  assert.match(roomCss, /\.account-text strong\{font-size:16px!important\}/u);
+  assert.match(roomCss, /\.account-text span\{display:none!important\}/u);
+});
+
+test('author room action and analytics copy keep readable wrapping and sizing', () => {
+  assert.match(
+    roomCss,
+    /\.action-card h2\{[\s\S]*?font-size:19px!important;[\s\S]*?white-space:nowrap!important;/u
+  );
+  assert.match(
+    roomCss,
+    /\.action-card p\{[\s\S]*?text-wrap:pretty;[\s\S]*?word-break:auto-phrase;/u
+  );
+  assert.match(
+    roomCss,
+    /\.plan\{[\s\S]*?background:transparent!important;[\s\S]*?-webkit-text-fill-color:#c7edff!important;/u
+  );
+  assert.match(roomCss, /\.label\{font-size:16px!important\}/u);
+  assert.match(roomCss, /\.sub\{font-size:14px!important\}/u);
+  assert.match(roomCss, /\.value\{font-size:28px!important\}/u);
+});
+
 test('author room keeps all five primary author actions', () => {
   for (const href of [
     'post.html',
