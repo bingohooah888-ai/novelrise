@@ -8,7 +8,7 @@ const [mypage, baseCss, roomCss] = await Promise.all([
   readFile('novelight-author-room.css', 'utf8')
 ]);
 
-test('author room uses the night-study workspace shell without changing reader discovery', () => {
+test('author room uses the light studio sidebar with the night-study workspace shell', () => {
   assert.match(mypage, /class="studio-sidebar"/u);
   assert.match(mypage, /AUTHOR STUDIO/u);
   assert.match(mypage, /さんの創作室/u);
@@ -16,14 +16,25 @@ test('author room uses the night-study workspace shell without changing reader d
   assert.match(mypage, /href="novelight-author-home\.css"/u);
   assert.match(mypage, /href="novelight-author-room\.css"/u);
   assert.match(baseCss, /--author-hero-art:none/u);
-  assert.match(roomCss, /#132a3a/u);
-  assert.match(roomCss, /#102333/u);
-  assert.match(roomCss, /#d8d3c5/u);
-  assert.match(roomCss, /#8f9ba5/u);
-  assert.match(roomCss, /#d1af61/u);
-  assert.match(roomCss, /rgba\(190,155,80,\.14\)/u);
+  assert.match(roomCss, /background:#fffdf8!important;/u);
+  assert.match(roomCss, /color:#10233d!important;/u);
+  assert.match(roomCss, /color:#b38822!important/u);
+  assert.match(roomCss, /background:transparent!important;/u);
+  assert.match(roomCss, /filter:none!important;/u);
   assert.match(mypage, /LIGHT ANALYTICS・直近30日/u);
   assert.match(mypage, /作品に最近起きたこと/u);
+});
+
+test('author room sidebar keeps the logo area visually quiet', () => {
+  assert.match(
+    roomCss,
+    /\.studio-brand,[\s\S]*?gap:0!important;[\s\S]*?padding:6px 8px 14px!important;/u
+  );
+  assert.match(
+    roomCss,
+    /\.studio-brand small,[\s\S]*?display:none!important;/u
+  );
+  assert.match(mypage, /<div class="studio-label">AUTHOR STUDIO<\/div>/u);
 });
 
 test('author room keeps all five primary author actions', () => {
