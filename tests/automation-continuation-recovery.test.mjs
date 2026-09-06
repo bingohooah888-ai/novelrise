@@ -30,7 +30,7 @@ test('assistant recovery stays automatic and fail-closed', async () => {
     /外部request \/ claim \/ mutation/,
     /final-head SHA \/ challenge/,
     /Production DB、Production Secret、Stripe live/,
-    /`CLAIMED` または `CONSUMED`/,
+    /`CLAIMED` または `CONSUMED`/
   ];
 
   for (const pattern of patterns) {
@@ -51,25 +51,25 @@ test(
     assert.match(master, /`MASTER_READ_COMPLETE`/);
     assert.match(
       master,
-      /repository search、profile確認、repository一覧取得等の不要な探索を挟まない/,
+      /repository search、profile確認、repository一覧取得等の不要な探索を挟まない/
     );
     assert.match(
       master,
-      /同じターン内でlatest main解決とMASTER全文読了をやり直して自動復旧/,
+      /同じターン内でlatest main解決とMASTER全文読了をやり直して自動復旧/
     );
     assert.match(master, /画像ツール既定拒否/);
     assert.match(
       master,
-      /ChatGPT側の画像生成・画像編集ツールを新しいユーザーメッセージごとに既定でロック/,
+      /ChatGPT側の画像生成・画像編集ツールを新しいユーザーメッセージごとに既定でロック/
     );
 
     assert.match(preflight, /画像生成・画像編集の明示実行ゲート/);
     assert.match(turnGate, /MASTER-first read gate/);
     assert.match(
       imageGate,
-      /LOCKED by default for every NOVELIGHT user message/,
+      /LOCKED by default for every NOVELIGHT user message/
     );
-  },
+  }
 );
 
 test('routine continuation does not become an approval gate', () => {
