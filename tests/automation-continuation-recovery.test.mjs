@@ -38,39 +38,36 @@ test('assistant recovery stays automatic and fail-closed', async () => {
   }
 });
 
-test(
-  'MASTER keeps MASTER-first, no-dummy-continuation, and image default-deny rules',
-  async () => {
-    const master = await read('docs/NOVELIGHT-MASTER.md');
-    const preflight = await read('docs/WORK-EXECUTION-PREFLIGHT.md');
-    const turnGate = await read('docs/EXECUTION-TURN-CARD-GATE.md');
-    const imageGate = await read('docs/IMAGE-EXECUTION-GATE.md');
+test('MASTER keeps MASTER-first, no-dummy-continuation, and image default-deny rules', async () => {
+  const master = await read('docs/NOVELIGHT-MASTER.md');
+  const preflight = await read('docs/WORK-EXECUTION-PREFLIGHT.md');
+  const turnGate = await read('docs/EXECUTION-TURN-CARD-GATE.md');
+  const imageGate = await read('docs/IMAGE-EXECUTION-GATE.md');
 
-    assert.ok(master.includes(NO_DUMMY_CONTINUATION_RULE));
-    assert.match(master, /MASTER-first Bootstrap/);
-    assert.match(master, /`MASTER_READ_COMPLETE`/);
-    assert.match(
-      master,
-      /repository search、profile確認、repository一覧取得等の不要な探索を挟まない/
-    );
-    assert.match(
-      master,
-      /同じターン内でlatest main解決とMASTER全文読了をやり直して自動復旧/
-    );
-    assert.match(master, /画像ツール既定拒否/);
-    assert.match(
-      master,
-      /ChatGPT側の画像生成・画像編集ツールを新しいユーザーメッセージごとに既定でロック/
-    );
+  assert.ok(master.includes(NO_DUMMY_CONTINUATION_RULE));
+  assert.match(master, /MASTER-first Bootstrap/);
+  assert.match(master, /`MASTER_READ_COMPLETE`/);
+  assert.match(
+    master,
+    /repository search、profile確認、repository一覧取得等の不要な探索を挟まない/
+  );
+  assert.match(
+    master,
+    /同じターン内でlatest main解決とMASTER全文読了をやり直して自動復旧/
+  );
+  assert.match(master, /画像ツール既定拒否/);
+  assert.match(
+    master,
+    /ChatGPT側の画像生成・画像編集ツールを新しいユーザーメッセージごとに既定でロック/
+  );
 
-    assert.match(preflight, /画像生成・画像編集の明示実行ゲート/);
-    assert.match(turnGate, /MASTER-first read gate/);
-    assert.match(
-      imageGate,
-      /LOCKED by default for every NOVELIGHT user message/
-    );
-  }
-);
+  assert.match(preflight, /画像生成・画像編集の明示実行ゲート/);
+  assert.match(turnGate, /MASTER-first read gate/);
+  assert.match(
+    imageGate,
+    /LOCKED by default for every NOVELIGHT user message/
+  );
+});
 
 test('routine continuation does not become an approval gate', () => {
   assert.equal(shouldRequireUserDecision(), false);
