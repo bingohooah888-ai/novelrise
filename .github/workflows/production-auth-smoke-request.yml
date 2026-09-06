@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'login.html'
+      - 'mypage.html'
       - 'post.html'
       - 'episode-post.html'
       - 'novel.html'
