@@ -7,6 +7,11 @@ body.novelight-theme.novelight-page-mypage .studio-sidebar{
   border-right-color:rgba(165,124,35,.34)!important;
   box-shadow:12px 0 34px rgba(4,20,36,.12)!important;
 }
+.studio-brand,
+body.novelight-theme.novelight-page-mypage .studio-brand{
+  gap:0!important;
+  padding:6px 8px 14px!important;
+}
 .studio-brand img,
 body.novelight-theme.novelight-page-mypage .studio-brand img{
   width:190px!important;
@@ -21,8 +26,7 @@ body.novelight-theme.novelight-page-mypage .studio-brand img{
 }
 .studio-brand small,
 body.novelight-theme.novelight-page-mypage .studio-brand small{
-  color:#8b6515!important;
-  font-size:12px!important;
+  display:none!important;
 }
 .studio-label,
 body.novelight-theme.novelight-page-mypage .studio-label{
