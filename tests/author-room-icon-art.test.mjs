@@ -25,10 +25,14 @@ test('author room uses all ten uploaded icon assets in order', async () => {
   });
 
   for (let index = 1; index <= 5; index += 1) {
-    assert.ok(roomCss.includes(`.action-card:nth-child(${index}) .action-icon`));
+    assert.ok(
+      roomCss.includes(`.action-card:nth-child(${index}) .action-icon`),
+    );
   }
 
   for (let index = 1; index <= 5; index += 1) {
-    assert.ok(roomCss.includes(`.metric:nth-child(${index}) .metric-icon`));
+    assert.ok(
+      roomCss.includes(`.metric:nth-child(${index}) .metric-icon`),
+    );
   }
 });
