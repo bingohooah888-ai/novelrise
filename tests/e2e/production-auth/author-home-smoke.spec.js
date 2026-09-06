@@ -39,9 +39,7 @@ test('author home profile, avatar, and activity work in Production', async ({
 
   await loginToAuthorHome(page, author);
 
-  const authorHomeHeading = page.getByRole('heading', {
-    name: /作者ホーム$/
-  });
+  const authorHomeHeading = page.getByRole('heading', { name: /作者ホーム$/ });
   await expect(authorHomeHeading).toBeVisible();
   await expect(page.locator('#save')).toBeEnabled();
   await expect(page.locator('#avatarInput')).toBeEnabled();
@@ -87,7 +85,8 @@ test('author home profile, avatar, and activity work in Production', async ({
   await expect(profileStatus).toHaveText('アイコンを更新しました。');
 
   const avatarImage = page.locator('#profileAvatar img');
-  const publicAvatarPrefix = `/storage/v1/object/public/author-avatars/${author.id}/`;
+  const publicAvatarPrefix =
+    `/storage/v1/object/public/author-avatars/${author.id}/`;
   await expect(avatarImage).toBeVisible();
   await expect(avatarImage).toHaveAttribute(
     'src',
