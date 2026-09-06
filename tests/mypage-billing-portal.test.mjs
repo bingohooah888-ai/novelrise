@@ -11,7 +11,7 @@ test('author home exposes billing management only for actually paid plans', () =
   );
   assert.match(
     mypage,
-    /betaFreeStandard=currentPlan==='standard'&&p\.data\?\.payment_status==='beta_free'/u
+    /betaFreeStandard=currentPlan==='standard'&&p\?\.payment_status==='beta_free'/u
   );
   assert.match(
     mypage,
