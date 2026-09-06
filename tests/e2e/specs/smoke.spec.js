@@ -112,6 +112,61 @@ test('pricing desktop refinement keeps the approved CSS contract', async ({
   expect(css).toContain('padding: 8px 0 8px 1.45em;');
 });
 
+test('author home theme wins after the sitewide theme and hides the legacy rail', async ({
+  browser
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+    javaScriptEnabled: false
+  });
+  const page = await context.newPage();
+  const response = await page.goto('/mypage.html', {
+    waitUntil: 'domcontentloaded'
+  });
+  expect(response?.ok()).toBeTruthy();
+
+  await page.addStyleTag({
+    url: new URL('/novelight-theme.css', page.url()).href
+  });
+  await page.locator('body').evaluate((body) => {
+    body.classList.add('novelight-theme', 'novelight-page-mypage');
+    const main = body.querySelector('main');
+    main?.classList.add('novelight-author-shell');
+    const legacy = document.createElement('aside');
+    legacy.className = 'novelight-author-sidebar';
+    legacy.textContent = 'legacy dashboard';
+    main?.prepend(legacy);
+  });
+
+  const styles = await page.evaluate(() => ({
+    legacyDisplay: getComputedStyle(
+      document.querySelector('.novelight-author-sidebar')
+    ).display,
+    mainDisplay: getComputedStyle(
+      document.querySelector('main.novelight-author-shell')
+    ).display,
+    bodyFont: getComputedStyle(document.body).fontFamily,
+    logoFilter: getComputedStyle(
+      document.querySelector('.studio-brand img')
+    ).filter,
+    heroTitleColor: getComputedStyle(
+      document.querySelector('.author-hero h1')
+    ).color,
+    actionTitleColor: getComputedStyle(
+      document.querySelector('.action-card h2')
+    ).color
+  }));
+
+  expect(styles.legacyDisplay).toBe('none');
+  expect(styles.mainDisplay).toBe('block');
+  expect(styles.bodyFont).toContain('Yu Mincho');
+  expect(styles.logoFilter).not.toBe('none');
+  expect(styles.heroTitleColor).toBe('rgb(255, 250, 240)');
+  expect(styles.actionTitleColor).toBe('rgb(255, 248, 232)');
+
+  await context.close();
+});
+
 test('all audited major routes fit a 390px mobile viewport', async ({
   browser
 }) => {
