@@ -14,7 +14,7 @@ const iconAssets = [
   'assets/author-room/ChatGPT Image 2026年9月7日 01_37_22 (7).png',
   'assets/author-room/ChatGPT Image 2026年9月7日 01_37_22 (8).png',
   'assets/author-room/ChatGPT Image 2026年9月7日 01_37_22 (9).png',
-  'assets/author-room/ChatGPT Image 2026年9月7日 01_37_23 (10).png'
+  'assets/author-room/ChatGPT Image 2026年9月7日 01_37_23 (10).png',
 ];
 
 test('author room uses all ten uploaded icon assets in order', async () => {
