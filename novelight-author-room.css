@@ -173,8 +173,8 @@ details.profile-editor summary{font-size:14px!important}
 
 @media(max-width:900px){
   .lower-grid{grid-template-columns:1fr!important}
-  .profile-panel{grid-column:auto!important;grid-row:auto!important;order:1}
-  .activity-panel{grid-column:auto!important;grid-row:auto!important;order:2}
+  .activity-panel{grid-column:auto!important;grid-row:auto!important;order:1!important}
+  .profile-panel{grid-column:auto!important;grid-row:auto!important;order:2!important}
 }
 @media(max-width:460px){
   .profile-summary{grid-template-columns:78px minmax(0,1fr)!important}
