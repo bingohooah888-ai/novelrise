@@ -23,7 +23,7 @@
     .activity-copy a{color:#ffe08a}
     .activity-copy time{display:block;margin-top:3px;color:#91a0b0;font-size:9px}
     .activity-empty{min-height:235px}
-    @media(max-width:900px){.lower-grid{grid-template-columns:1fr}.profile-panel{order:1}.activity-panel{order:2}}
+    @media(max-width:900px){.lower-grid{grid-template-columns:1fr}}
     @media(max-width:700px){.profile-panel .panel-header .section-link{display:inline-flex}}
     @media(max-width:460px){.profile-avatar{width:58px;height:58px}}
   </style>
@@ -91,6 +91,11 @@
       </section>
 
       <div class="lower-grid">
+        <section class="panel activity-panel" aria-labelledby="activityHeading">
+          <div class="panel-header"><h2 id="activityHeading">作品に最近起きたこと</h2><a class="section-link" href="analytics.html">分析を見る →</a></div>
+          <div id="activityList" class="activity-empty"><div><span class="empty-icon">✦</span><strong>最近の出来事を読み込んでいます。</strong><p>作品公開・エピソード追加・LIGHT SEED・お気に入り・読書到達を確認しています。</p></div></div>
+        </section>
+
         <section id="profile" class="panel profile-panel" aria-labelledby="profileHeading">
           <div class="panel-header"><h2 id="profileHeading">プロフィール設定</h2><a id="publicProfileLink" class="section-link" href="author.html" hidden>読者向け表示を見る →</a></div>
           <div class="profile-summary">
@@ -113,11 +118,6 @@
               <div id="profileStatus" class="status">プロフィールを読み込んでいます...</div>
             </form>
           </details>
-        </section>
-
-        <section class="panel activity-panel" aria-labelledby="activityHeading">
-          <div class="panel-header"><h2 id="activityHeading">作品に最近起きたこと</h2><a class="section-link" href="analytics.html">分析を見る →</a></div>
-          <div id="activityList" class="activity-empty"><div><span class="empty-icon">✦</span><strong>最近の出来事を読み込んでいます。</strong><p>作品公開・エピソード追加・LIGHT SEED・お気に入り・読書到達を確認しています。</p></div></div>
         </section>
       </div>
     </main>
