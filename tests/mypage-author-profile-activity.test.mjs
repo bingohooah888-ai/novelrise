@@ -43,7 +43,9 @@ test('profile edits are narrowed to public profile fields instead of billing col
     /set display_name = v_name,[\s\S]*bio = v_bio,[\s\S]*avatar_path = v_avatar/u
   );
   assert.doesNotMatch(
-    migration.match(/create or replace function public\.novelight_update_my_public_profile[\s\S]*?\$\$;/u)?.[0] ?? '',
+    migration.match(
+      /create or replace function public\.novelight_update_my_public_profile[\s\S]*?\$\$;/u
+    )?.[0] ?? '',
     /stripe_customer_id\s*=|payment_status\s*=|plan\s*=/u
   );
   assert.match(mypage, /client\.rpc\('novelight_update_my_public_profile'/u);
@@ -61,7 +63,9 @@ test('recent activity is a real authenticated author feed without reader identit
   }
   assert.match(migration, /author_id_snapshot = v_uid/u);
   assert.doesNotMatch(
-    migration.match(/create or replace function public\.novelight_author_recent_activity_v1[\s\S]*?\$\$;/u)?.[0] ?? '',
+    migration.match(
+      /create or replace function public\.novelight_author_recent_activity_v1[\s\S]*?\$\$;/u
+    )?.[0] ?? '',
     /reader_id\s+as|select\s+reader_id/u
   );
   assert.match(mypage, /light_seed_received/u);
