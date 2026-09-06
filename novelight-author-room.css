@@ -1,11 +1,11 @@
 /* Author room refinements: preserve the readable author-home scale while keeping the
-   workspace in NOVELIGHT's night-study palette. Gallery-specific styles do not live here. */
+   studio navigation light and the workspace in NOVELIGHT's night-study palette. Gallery-specific styles do not live here. */
 
 .studio-sidebar,
 body.novelight-theme.novelight-page-mypage .studio-sidebar{
-  background:linear-gradient(180deg,#132a3a 0%,#102333 52%,#091824 100%)!important;
-  border-right-color:rgba(190,155,80,.25)!important;
-  box-shadow:14px 0 36px rgba(0,0,0,.24)!important;
+  background:#fffdf8!important;
+  border-right-color:rgba(165,124,35,.34)!important;
+  box-shadow:12px 0 34px rgba(4,20,36,.12)!important;
 }
 .studio-brand img,
 body.novelight-theme.novelight-page-mypage .studio-brand img{
@@ -13,51 +13,51 @@ body.novelight-theme.novelight-page-mypage .studio-brand img{
   max-width:100%!important;
   height:auto!important;
   opacity:1!important;
-  background:rgba(255,253,248,.94)!important;
-  padding:7px 9px!important;
-  border:1px solid rgba(190,155,80,.22)!important;
-  border-radius:9px!important;
-  filter:drop-shadow(0 3px 12px rgba(0,0,0,.16))!important;
+  background:transparent!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  filter:none!important;
 }
 .studio-brand small,
 body.novelight-theme.novelight-page-mypage .studio-brand small{
-  color:#8f9ba5!important;
+  color:#8b6515!important;
   font-size:12px!important;
 }
 .studio-label,
 body.novelight-theme.novelight-page-mypage .studio-label{
-  color:#d1af61!important;
+  color:#8b6515!important;
   font-size:12px!important;
 }
 .studio-nav a,
 body.novelight-theme.novelight-page-mypage .studio-nav a{
-  color:#d8d3c5!important;
+  color:#10233d!important;
   font-size:16px!important;
 }
 .studio-nav a:hover,
 body.novelight-theme.novelight-page-mypage .studio-nav a:hover{
-  border-color:rgba(190,155,80,.25)!important;
-  background:rgba(190,155,80,.08)!important;
-  color:#f0eadb!important;
+  border-color:rgba(183,143,45,.38)!important;
+  background:rgba(218,183,92,.11)!important;
+  color:#071a33!important;
 }
 .studio-nav a[aria-current="page"],
 body.novelight-theme.novelight-page-mypage .studio-nav a[aria-current="page"]{
-  border-color:rgba(190,155,80,.42)!important;
-  background:rgba(190,155,80,.14)!important;
-  color:#d1af61!important;
-  box-shadow:inset 0 0 18px rgba(190,155,80,.05)!important;
+  border-color:rgba(183,143,45,.72)!important;
+  background:linear-gradient(90deg,rgba(225,195,116,.27),rgba(225,195,116,.10))!important;
+  color:#12233c!important;
+  box-shadow:inset 0 0 18px rgba(218,180,82,.08)!important;
 }
 .nav-icon,
-body.novelight-theme.novelight-page-mypage .nav-icon{color:#d1af61!important}
+body.novelight-theme.novelight-page-mypage .nav-icon{color:#b38822!important}
 .sidebar-quote,
 body.novelight-theme.novelight-page-mypage .sidebar-quote{
-  border-top-color:rgba(190,155,80,.25)!important;
-  color:#8f9ba5!important;
+  border-top-color:rgba(165,124,35,.24)!important;
+  color:#38485a!important;
   font-size:14px!important;
 }
 .sidebar-quote strong,
 body.novelight-theme.novelight-page-mypage .sidebar-quote strong{
-  color:#d1af61!important;
+  color:#9a741c!important;
   font-size:11px!important;
 }
 
