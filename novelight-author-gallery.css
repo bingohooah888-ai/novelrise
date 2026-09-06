@@ -144,3 +144,133 @@
   .gallery-status{padding-left:12px;padding-right:12px}
   .gallery-limit{padding-left:12px;padding-right:12px}
 }
+
+/* 2026-09-06 author-home readability and layout refinement. */
+.studio-sidebar,
+body.novelight-theme.novelight-page-mypage .studio-sidebar{
+  background:#fffdf8!important;
+  border-right-color:rgba(165,124,35,.34)!important;
+  box-shadow:12px 0 34px rgba(4,20,36,.12)!important;
+}
+.studio-brand img,
+body.novelight-theme.novelight-page-mypage .studio-brand img{
+  width:190px!important;
+  max-width:100%!important;
+  height:auto!important;
+  opacity:1!important;
+  background:transparent!important;
+  border-radius:0!important;
+  filter:none!important;
+}
+.studio-brand small,
+body.novelight-theme.novelight-page-mypage .studio-brand small{
+  color:#8b6515!important;
+  font-size:12px!important;
+}
+.studio-label,
+body.novelight-theme.novelight-page-mypage .studio-label{
+  color:#8b6515!important;
+  font-size:12px!important;
+}
+.studio-nav a,
+body.novelight-theme.novelight-page-mypage .studio-nav a{
+  color:#10233d!important;
+  font-size:16px!important;
+}
+.studio-nav a:hover,
+body.novelight-theme.novelight-page-mypage .studio-nav a:hover{
+  border-color:rgba(183,143,45,.38)!important;
+  background:rgba(218,183,92,.11)!important;
+  color:#071a33!important;
+}
+.studio-nav a[aria-current="page"],
+body.novelight-theme.novelight-page-mypage .studio-nav a[aria-current="page"]{
+  border-color:rgba(183,143,45,.72)!important;
+  background:linear-gradient(90deg,rgba(225,195,116,.27),rgba(225,195,116,.10))!important;
+  color:#12233c!important;
+  box-shadow:inset 0 0 18px rgba(218,180,82,.08)!important;
+}
+.nav-icon,
+body.novelight-theme.novelight-page-mypage .nav-icon{color:#b38822!important}
+.sidebar-quote,
+body.novelight-theme.novelight-page-mypage .sidebar-quote{
+  border-top-color:rgba(165,124,35,.24)!important;
+  color:#38485a!important;
+  font-size:14px!important;
+}
+.sidebar-quote strong,
+body.novelight-theme.novelight-page-mypage .sidebar-quote strong{
+  color:#9a741c!important;
+  font-size:11px!important;
+}
+
+/* Swap the desktop columns: recent activity left, profile/gallery right. */
+.lower-grid{
+  grid-template-columns:minmax(0,1.55fr) minmax(300px,.82fr)!important;
+}
+.activity-panel{
+  grid-column:1!important;
+  grid-row:1!important;
+}
+.author-side-stack{
+  grid-column:2!important;
+  grid-row:1!important;
+}
+
+/* Raise author-home typography roughly two visual steps while keeping the hero title and logout unchanged. */
+.workspace-top>a{font-size:14px!important}
+.account-text strong{font-size:14px!important}
+.account-text span{font-size:11px!important}
+.hero-kicker{font-size:12px!important}
+.author-hero p{font-size:17px!important}
+.founding{font-size:12px!important}
+.action-card h2{font-size:19px!important}
+.action-card p{font-size:14px!important}
+.card-cta,.action-card>button{font-size:13px!important}
+.status{font-size:12px!important}
+.section-title h2{font-size:23px!important}
+.section-link{font-size:12px!important}
+.value{font-size:28px!important}
+.label{font-size:14px!important}
+.sub{font-size:12px!important}
+.panel-header h2{font-size:19px!important}
+.activity-empty strong{font-size:16px!important}
+.activity-empty p{font-size:14px!important}
+.activity-copy strong{font-size:14px!important}
+.activity-copy time{font-size:11px!important}
+.profile-summary h3{font-size:21px!important}
+.profile-summary p{font-size:13px!important}
+.profile-meta dt{font-size:12px!important}
+.profile-meta dd{font-size:14px!important}
+details.profile-editor summary{font-size:14px!important}
+.form label{font-size:13px!important}
+.form input,.form textarea{font-size:14px!important}
+.save{font-size:13px!important}
+.avatar-label{font-size:13px!important}
+.avatar-note{font-size:11px!important}
+.gallery-heading-copy p{font-size:12px!important}
+.gallery-upload-label{font-size:13px!important}
+.gallery-status{font-size:12px!important}
+.gallery-card time{font-size:11px!important}
+.gallery-delete{font-size:11px!important}
+.gallery-empty strong{font-size:15px!important}
+.gallery-empty p{font-size:12px!important}
+.gallery-limit{font-size:11px!important}
+.footer-links{font-size:12px!important}
+
+/* Give the larger copy enough breathing room without changing the hero-title scale. */
+.action-card{min-height:205px!important}
+.metric{min-height:136px!important}
+.panel-header{min-height:56px!important}
+
+@media(max-width:900px){
+  .lower-grid{grid-template-columns:1fr!important}
+  .activity-panel{grid-column:1!important;grid-row:auto!important;order:1!important}
+  .author-side-stack{grid-column:1!important;grid-row:auto!important;order:2!important}
+}
+@media(max-width:700px){
+  .author-hero p{font-size:15px!important}
+  .action-card h2{font-size:18px!important}
+  .action-card p{font-size:13px!important}
+  .section-title h2{font-size:20px!important}
+}
