@@ -25,69 +25,72 @@ async function loginToAuthorHome(page, account) {
   await page.waitForURL((url) => url.pathname.endsWith('/mypage.html'));
 }
 
-test('author home profile, avatar, and activity work in Production', async ({
-  page
-}) => {
-  const fixture = loadFixture();
-  const author = fixture.projects?.desktop?.author;
-  if (!author) {
-    throw new Error('Missing desktop author smoke identity.');
+test(
+  'author home profile, avatar, and activity work in Production',
+  async ({ page }) => {
+    const fixture = loadFixture();
+    const author = fixture.projects?.desktop?.author;
+    if (!author) {
+      throw new Error('Missing desktop author smoke identity.');
+    }
+
+    await loginToAuthorHome(page, author);
+
+    const authorHomeHeading = page.getByRole('heading', {
+      name: /作者ホーム$/
+    });
+    await expect(authorHomeHeading).toBeVisible();
+    await expect(page.locator('#save')).toBeEnabled();
+    await expect(page.locator('#avatarInput')).toBeEnabled();
+
+    const activityList = page.locator('#activityList');
+    await expect(activityList).not.toContainText('読み込んでいます');
+    await expect(activityList).not.toContainText('読み込めませんでした');
+
+    const editedName = `E2E作者${fixture.runId}`;
+    const editedBio = `Production smoke ${fixture.runId} author profile`;
+    const profileStatus = page.locator('#profileStatus');
+
+    await page.locator('.profile-editor summary').click();
+    await page.locator('#name').fill(editedName);
+    await page.locator('#bio').fill(editedBio);
+
+    const profileUpdate = page.waitForResponse(
+      (response) =>
+        response.url().includes(profileRpcPath) &&
+        response.request().method() === 'POST'
+    );
+    await page.locator('#save').click();
+    expect((await profileUpdate).ok()).toBeTruthy();
+    await expect(profileStatus).toHaveText('保存しました。');
+    await expect(page.locator('#profileDisplayName')).toHaveText(editedName);
+    await expect(page.locator('#profileBioSummary')).toHaveText(editedBio);
+    await expect(page.locator('#accountName')).toHaveText(editedName);
+
+    const avatarUpload = page.waitForResponse(
+      (response) =>
+        response.url().includes(avatarObjectPath) &&
+        response.request().method() === 'POST'
+    );
+    const avatarProfileUpdate = page.waitForResponse(
+      (response) =>
+        response.url().includes(profileRpcPath) &&
+        response.request().method() === 'POST'
+    );
+    await page.locator('#avatarInput').setInputFiles(avatarFixturePath);
+
+    expect((await avatarUpload).ok()).toBeTruthy();
+    expect((await avatarProfileUpdate).ok()).toBeTruthy();
+    await expect(profileStatus).toHaveText('アイコンを更新しました。');
+
+    const avatarImage = page.locator('#profileAvatar img');
+    const publicAvatarPrefix =
+      `/storage/v1/object/public/author-avatars/${author.id}/`;
+    await expect(avatarImage).toBeVisible();
+    await expect(avatarImage).toHaveAttribute(
+      'src',
+      new RegExp(publicAvatarPrefix)
+    );
+    await expect(page.locator('#accountAvatar img')).toBeVisible();
   }
-
-  await loginToAuthorHome(page, author);
-
-  const authorHomeHeading = page.getByRole('heading', { name: /作者ホーム$/ });
-  await expect(authorHomeHeading).toBeVisible();
-  await expect(page.locator('#save')).toBeEnabled();
-  await expect(page.locator('#avatarInput')).toBeEnabled();
-
-  const activityList = page.locator('#activityList');
-  await expect(activityList).not.toContainText('読み込んでいます');
-  await expect(activityList).not.toContainText('読み込めませんでした');
-
-  const editedName = `E2E作者${fixture.runId}`;
-  const editedBio = `Production smoke ${fixture.runId} author profile`;
-  const profileStatus = page.locator('#profileStatus');
-
-  await page.locator('.profile-editor summary').click();
-  await page.locator('#name').fill(editedName);
-  await page.locator('#bio').fill(editedBio);
-
-  const profileUpdate = page.waitForResponse(
-    (response) =>
-      response.url().includes(profileRpcPath) &&
-      response.request().method() === 'POST'
-  );
-  await page.locator('#save').click();
-  expect((await profileUpdate).ok()).toBeTruthy();
-  await expect(profileStatus).toHaveText('保存しました。');
-  await expect(page.locator('#profileDisplayName')).toHaveText(editedName);
-  await expect(page.locator('#profileBioSummary')).toHaveText(editedBio);
-  await expect(page.locator('#accountName')).toHaveText(editedName);
-
-  const avatarUpload = page.waitForResponse(
-    (response) =>
-      response.url().includes(avatarObjectPath) &&
-      response.request().method() === 'POST'
-  );
-  const avatarProfileUpdate = page.waitForResponse(
-    (response) =>
-      response.url().includes(profileRpcPath) &&
-      response.request().method() === 'POST'
-  );
-  await page.locator('#avatarInput').setInputFiles(avatarFixturePath);
-
-  expect((await avatarUpload).ok()).toBeTruthy();
-  expect((await avatarProfileUpdate).ok()).toBeTruthy();
-  await expect(profileStatus).toHaveText('アイコンを更新しました。');
-
-  const avatarImage = page.locator('#profileAvatar img');
-  const publicAvatarPrefix =
-    `/storage/v1/object/public/author-avatars/${author.id}/`;
-  await expect(avatarImage).toBeVisible();
-  await expect(avatarImage).toHaveAttribute(
-    'src',
-    new RegExp(publicAvatarPrefix)
-  );
-  await expect(page.locator('#accountAvatar img')).toBeVisible();
-});
+);
