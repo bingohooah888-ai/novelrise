@@ -100,6 +100,13 @@ test('avatar change label stays on one line at the refined size', () => {
   );
 });
 
+test('author room stacks recent activity before profile settings on mobile', () => {
+  assert.match(
+    roomCss,
+    /@media\(max-width:900px\)\{[\s\S]*?\.activity-panel\{[\s\S]*?order:1!important\}[\s\S]*?\.profile-panel\{[\s\S]*?order:2!important\}/u
+  );
+});
+
 test('author room includes a collapsible mobile menu', () => {
   assert.match(mypage, /id="menuToggle"/u);
   assert.match(mypage, /id="studioSidebar"/u);
