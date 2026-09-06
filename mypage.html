@@ -5,6 +5,27 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>作者ホーム | NOVELIGHT</title>
   <link rel="stylesheet" href="novelight-author-home.css">
+  <style>
+    .lower-grid{grid-template-columns:minmax(300px,.82fr) minmax(0,1.55fr)}
+    .profile-summary{align-items:start}
+    .avatar-stack{display:grid;gap:8px;justify-items:center}
+    .profile-avatar,.account-avatar{overflow:hidden}
+    .profile-avatar img,.account-avatar img{width:100%;height:100%;display:block;object-fit:cover}
+    .avatar-label{display:inline-flex;align-items:center;justify-content:center;min-height:31px;padding:6px 10px;border:1px solid rgba(216,180,90,.46);border-radius:999px;color:#ead8a2;font-size:10px;font-weight:800;cursor:pointer;background:rgba(2,14,25,.35)}
+    .avatar-label:hover{border-color:#e5c568;color:#fff0bd}
+    .avatar-label input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+    .avatar-note{max-width:140px;color:#9eabba;font-size:9px;line-height:1.5;text-align:center}
+    .activity-list{display:grid;padding:5px 18px 16px}
+    .activity-item{display:grid;grid-template-columns:42px 1fr;gap:12px;padding:15px 2px;border-bottom:1px solid rgba(216,180,90,.14)}
+    .activity-item:last-child{border-bottom:0}
+    .activity-mark{display:grid;place-items:center;width:38px;height:38px;border:1px solid rgba(226,190,92,.44);border-radius:50%;background:radial-gradient(circle at 35% 25%,rgba(72,164,218,.28),transparent 45%),rgba(4,22,38,.78);color:#ffe189;font-size:17px;box-shadow:0 0 16px rgba(216,180,90,.08)}
+    .activity-copy strong{display:block;color:#f8f1df;font-size:12px;line-height:1.7;font-weight:700}
+    .activity-copy a{color:#ffe08a}
+    .activity-copy time{display:block;margin-top:3px;color:#91a0b0;font-size:9px}
+    .activity-empty{min-height:235px}
+    @media(max-width:900px){.lower-grid{grid-template-columns:1fr}.profile-panel{order:1}.activity-panel{order:2}}
+    @media(max-width:460px){.profile-summary{grid-template-columns:58px 1fr}.profile-avatar{width:58px;height:58px}.avatar-label{padding:5px 7px;font-size:9px}}
+  </style>
 </head>
 <body>
   <button id="menuToggle" class="mobile-menu" type="button" aria-label="作者メニューを開く" aria-expanded="false">☰</button>
@@ -35,10 +56,7 @@
       <a href="index.html">読者ホームへ</a>
       <div class="account-chip" aria-label="ログイン中の作者">
         <div id="accountAvatar" class="account-avatar">作</div>
-        <div class="account-text">
-          <strong id="accountName">作者アカウント</strong>
-          <span>AUTHOR ACCOUNT</span>
-        </div>
+        <div class="account-text"><strong id="accountName">作者アカウント</strong><span>AUTHOR ACCOUNT</span></div>
       </div>
       <button id="logout" class="logout">ログアウト</button>
     </header>
@@ -52,99 +70,34 @@
       </section>
 
       <section class="action-grid" aria-label="作者向け主要機能">
-        <article class="action-card gold">
-          <div class="action-icon">✒</div>
-          <h2>小説を投稿</h2>
-          <p>AI区分と内容警告を設定して、新しい作品を登録します。</p>
-          <a class="card-cta" href="post.html">投稿する →</a>
-        </article>
-        <article class="action-card blue">
-          <div class="action-icon">▤</div>
-          <h2>自分の作品</h2>
-          <p>作品・エピソードを編集し、公開中の物語を管理します。</p>
-          <a class="card-cta" href="my-novels.html">作品を見る →</a>
-        </article>
-        <article class="action-card violet">
-          <div class="action-icon">▥</div>
-          <h2>LIGHT ANALYTICS</h2>
-          <p>露出・CTR・第1話・第2話・お気に入りを確認します。</p>
-          <a class="card-cta" href="analytics.html">詳しく見る →</a>
-        </article>
-        <article class="action-card green">
-          <div class="action-icon">◇</div>
-          <h2>SCOUT RECORD</h2>
-          <p>LIGHT SEEDを贈った作品と、あなたの発掘履歴を確認します。</p>
-          <a class="card-cta" href="scout-record.html">履歴を見る →</a>
-        </article>
-        <article class="action-card cyan">
-          <div class="action-icon">◆</div>
-          <h2>契約プラン</h2>
-          <p>現在：<span id="plan" class="plan">確認中</span></p>
-          <a class="card-cta" href="pricing.html">プランを見る →</a>
-          <button id="billingPortal" type="button" hidden>Premium契約を管理・解約</button>
-          <div id="billingStatus" class="status"></div>
-        </article>
+        <article class="action-card gold"><div class="action-icon">✒</div><h2>小説を投稿</h2><p>AI区分と内容警告を設定して、新しい作品を登録します。</p><a class="card-cta" href="post.html">投稿する →</a></article>
+        <article class="action-card blue"><div class="action-icon">▤</div><h2>自分の作品</h2><p>作品・エピソードを編集し、公開中の物語を管理します。</p><a class="card-cta" href="my-novels.html">作品を見る →</a></article>
+        <article class="action-card violet"><div class="action-icon">▥</div><h2>LIGHT ANALYTICS</h2><p>露出・CTR・第1話・第2話・お気に入りを確認します。</p><a class="card-cta" href="analytics.html">詳しく見る →</a></article>
+        <article class="action-card green"><div class="action-icon">◇</div><h2>SCOUT RECORD</h2><p>LIGHT SEEDを贈った作品と、あなたの発掘履歴を確認します。</p><a class="card-cta" href="scout-record.html">履歴を見る →</a></article>
+        <article class="action-card cyan"><div class="action-icon">◆</div><h2>契約プラン</h2><p>現在：<span id="plan" class="plan">確認中</span></p><a class="card-cta" href="pricing.html">プランを見る →</a><button id="billingPortal" type="button" hidden>Premium契約を管理・解約</button><div id="billingStatus" class="status"></div></article>
       </section>
 
       <section class="section" aria-labelledby="analyticsHeading">
-        <div class="section-title">
-          <h2 id="analyticsHeading">LIGHT ANALYTICS・直近30日</h2>
-          <div class="rule" aria-hidden="true"></div>
-          <a class="section-link" href="analytics.html">詳細な分析を見る →</a>
-        </div>
+        <div class="section-title"><h2 id="analyticsHeading">LIGHT ANALYTICS・直近30日</h2><div class="rule" aria-hidden="true"></div><a class="section-link" href="analytics.html">詳細な分析を見る →</a></div>
         <div class="metrics">
-          <article class="metric">
-            <div class="metric-head"><span class="metric-icon">◉</span><div id="i" class="value">—</div></div>
-            <div class="label">インプレッション</div>
-          </article>
-          <article class="metric">
-            <div class="metric-head"><span class="metric-icon">▤</span><div id="d" class="value">—</div></div>
-            <div class="label">作品ページ</div>
-            <div id="ctr" class="sub">集計中...</div>
-          </article>
-          <article class="metric">
-            <div class="metric-head"><span class="metric-icon">✦</span><div id="f" class="value">—</div></div>
-            <div class="label">第1話10秒</div>
-            <div id="fr" class="sub">集計中...</div>
-          </article>
-          <article class="metric">
-            <div class="metric-head"><span class="metric-icon">▣</span><div id="s" class="value">—</div></div>
-            <div class="label">第2話まで継続</div>
-            <div id="sr" class="sub">集計中...</div>
-          </article>
-          <article class="metric">
-            <div class="metric-head"><span class="metric-icon">♥</span><div id="fav" class="value">—</div></div>
-            <div class="label">露出後お気に入り</div>
-          </article>
+          <article class="metric"><div class="metric-head"><span class="metric-icon">◉</span><div id="i" class="value">—</div></div><div class="label">インプレッション</div></article>
+          <article class="metric"><div class="metric-head"><span class="metric-icon">▤</span><div id="d" class="value">—</div></div><div class="label">作品ページ</div><div id="ctr" class="sub">集計中...</div></article>
+          <article class="metric"><div class="metric-head"><span class="metric-icon">✦</span><div id="f" class="value">—</div></div><div class="label">第1話10秒</div><div id="fr" class="sub">集計中...</div></article>
+          <article class="metric"><div class="metric-head"><span class="metric-icon">▣</span><div id="s" class="value">—</div></div><div class="label">第2話まで継続</div><div id="sr" class="sub">集計中...</div></article>
+          <article class="metric"><div class="metric-head"><span class="metric-icon">♥</span><div id="fav" class="value">—</div></div><div class="label">露出後お気に入り</div></article>
         </div>
         <div id="analyticsStatus" class="status"></div>
       </section>
 
       <div class="lower-grid">
-        <section class="panel" aria-labelledby="activityHeading">
-          <div class="panel-header">
-            <h2 id="activityHeading">作品に最近起きたこと</h2>
-            <a class="section-link" href="analytics.html">分析を見る →</a>
-          </div>
-          <div class="activity-empty">
-            <div>
-              <span class="empty-icon">✦</span>
-              <strong>まだ新しい出来事はありません。</strong>
-              <p>LIGHT SEEDや読書の動きは、現在のLIGHT ANALYTICSから確認できます。</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="profile" class="panel" aria-labelledby="profileHeading">
-          <div class="panel-header">
-            <h2 id="profileHeading">プロフィール</h2>
-          </div>
+        <section id="profile" class="panel profile-panel" aria-labelledby="profileHeading">
+          <div class="panel-header"><h2 id="profileHeading">プロフィール</h2></div>
           <div class="profile-summary">
-            <div id="profileAvatar" class="profile-avatar">作</div>
-            <div>
-              <h3 id="profileDisplayName">作者</h3>
-              <p id="profileBioSummary">あなたの物語を届ける作者プロフィールです。</p>
+            <div class="avatar-stack">
+              <div id="profileAvatar" class="profile-avatar">作</div>
+              <label id="avatarLabel" class="avatar-label" aria-disabled="true">アイコン変更<input id="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" disabled></label>
             </div>
+            <div><h3 id="profileDisplayName">作者</h3><p id="profileBioSummary">あなたの物語を届ける作者プロフィールです。</p><div class="avatar-note">JPEG / PNG / WebP・2MBまで</div></div>
           </div>
           <dl class="profile-meta">
             <div><dt>表示名</dt><dd id="metaName">読み込み中</dd></div>
@@ -155,41 +108,53 @@
           <details class="profile-editor">
             <summary>プロフィールを編集 →</summary>
             <form id="profileForm" class="form">
-              <div>
-                <label for="name">表示名</label>
-                <input id="name" maxlength="40">
-              </div>
-              <div>
-                <label for="bio">自己紹介</label>
-                <textarea id="bio" maxlength="500"></textarea>
-              </div>
+              <div><label for="name">表示名</label><input id="name" maxlength="40"></div>
+              <div><label for="bio">自己紹介</label><textarea id="bio" maxlength="500"></textarea></div>
               <button id="save" class="save" type="submit" disabled>保存</button>
               <div id="profileStatus" class="status">プロフィールを読み込んでいます...</div>
             </form>
           </details>
         </section>
+
+        <section class="panel activity-panel" aria-labelledby="activityHeading">
+          <div class="panel-header"><h2 id="activityHeading">作品に最近起きたこと</h2><a class="section-link" href="analytics.html">分析を見る →</a></div>
+          <div id="activityList" class="activity-empty"><div><span class="empty-icon">✦</span><strong>最近の出来事を読み込んでいます。</strong><p>作品公開・エピソード追加・LIGHT SEED・お気に入り・読書到達を確認しています。</p></div></div>
+        </section>
       </div>
     </main>
   </div>
 
-  <footer>
-    <div class="footer-links">
-      <a href="terms.html">利用規約</a>
-      <a href="privacy.html">プライバシー</a>
-      <a href="content-guidelines.html">投稿ガイドライン</a>
-      <a href="billing-policy.html">課金・解約</a>
-      <a href="contact.html">お問い合わせ</a>
-    </div>
-  </footer>
+  <footer><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="billing-policy.html">課金・解約</a><a href="contact.html">お問い合わせ</a></div></footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="novelight-client.js"></script>
   <script>
-const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');let session,profileReady=false;function num(v){return Number(v||0).toLocaleString('ja-JP')}function rate(a,b){return Number(b||0)>0?((Number(a||0)/Number(b))*100).toFixed(2)+'%':'0%'}function initials(v){const s=String(v||'作者').trim();return s?s.slice(0,1):'作'}function joined(v){if(!v)return'確認できません';const d=new Date(v);if(Number.isNaN(d.getTime()))return'確認できません';return d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'})}function presentProfile(name,bio,planText){const display=name||'作者';document.getElementById('accountName').textContent=display;document.getElementById('accountAvatar').textContent=initials(display);document.getElementById('profileAvatar').textContent=initials(display);document.getElementById('profileDisplayName').textContent=display;document.getElementById('profileBioSummary').textContent=bio||'あなたの物語を届ける作者プロフィールです。';document.getElementById('metaName').textContent=display;document.getElementById('metaPlan').textContent=planText||'確認中'}function analyticsUnavailable(){['i','d','f','s','fav'].forEach(id=>document.getElementById(id).textContent='—');['ctr','fr','sr'].forEach(id=>document.getElementById(id).textContent='取得できませんでした')}
-function toggleStudioNav(force){const menu=document.getElementById('studioSidebar'),scrim=document.getElementById('navScrim'),button=document.getElementById('menuToggle'),open=typeof force==='boolean'?force:!menu.classList.contains('open');menu.classList.toggle('open',open);scrim.classList.toggle('show',open);button.setAttribute('aria-expanded',String(open));button.textContent=open?'×':'☰'}document.getElementById('menuToggle').onclick=()=>toggleStudioNav();document.getElementById('navScrim').onclick=()=>toggleStudioNav(false);document.querySelectorAll('.studio-nav a').forEach(a=>a.addEventListener('click',()=>toggleStudioNav(false)));
+const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+let session,profileReady=false,avatarFeatureReady=false,currentAvatarPath=null;
+function num(v){return Number(v||0).toLocaleString('ja-JP')}
+function rate(a,b){return Number(b||0)>0?((Number(a||0)/Number(b))*100).toFixed(2)+'%':'0%'}
+function initials(v){const s=String(v||'作者').trim();return s?s.slice(0,1):'作'}
+function joined(v){if(!v)return'確認できません';const d=new Date(v);if(Number.isNaN(d.getTime()))return'確認できません';return d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'})}
+function avatarUrl(path){if(!path)return'';return client.storage.from('author-avatars').getPublicUrl(path).data.publicUrl||''}
+function setAvatar(el,path,name){el.replaceChildren();const url=avatarUrl(path);if(!url){el.textContent=initials(name);return}const img=document.createElement('img');img.src=url;img.alt=(name||'作者')+'のアイコン';img.onerror=()=>{el.replaceChildren();el.textContent=initials(name)};el.appendChild(img)}
+function presentProfile(name,bio,planText,avatarPath=currentAvatarPath){const display=name||'作者';document.getElementById('accountName').textContent=display;setAvatar(document.getElementById('accountAvatar'),avatarPath,display);setAvatar(document.getElementById('profileAvatar'),avatarPath,display);document.getElementById('profileDisplayName').textContent=display;document.getElementById('profileBioSummary').textContent=bio||'あなたの物語を届ける作者プロフィールです。';document.getElementById('metaName').textContent=display;document.getElementById('metaPlan').textContent=planText||'確認中'}
+function analyticsUnavailable(){['i','d','f','s','fav'].forEach(id=>document.getElementById(id).textContent='—');['ctr','fr','sr'].forEach(id=>document.getElementById(id).textContent='取得できませんでした')}
+function toggleStudioNav(force){const menu=document.getElementById('studioSidebar'),scrim=document.getElementById('navScrim'),button=document.getElementById('menuToggle'),open=typeof force==='boolean'?force:!menu.classList.contains('open');menu.classList.toggle('open',open);scrim.classList.toggle('show',open);button.setAttribute('aria-expanded',String(open));button.textContent=open?'×':'☰'}
+document.getElementById('menuToggle').onclick=()=>toggleStudioNav();document.getElementById('navScrim').onclick=()=>toggleStudioNav(false);document.querySelectorAll('.studio-nav a').forEach(a=>a.addEventListener('click',()=>toggleStudioNav(false)));
 async function loadAnalytics(){const st=document.getElementById('analyticsStatus');st.textContent='読み込み中...';try{const r=await client.rpc('novelight_author_exposure_funnel_v2',{p_days:30});if(r.error)throw r.error;const t=(r.data||[]).reduce((a,x)=>{a.i+=Number(x.impressions||0);a.d+=Number(x.detail_opens||0);a.f+=Number(x.first_episode_reads_10s||0);a.s+=Number(x.continued_to_episode_2||0);a.v+=Number(x.favorites||0);return a},{i:0,d:0,f:0,s:0,v:0});i.textContent=num(t.i);d.textContent=num(t.d);f.textContent=num(t.f);s.textContent=num(t.s);fav.textContent=num(t.v);ctr.textContent='表示→作品ページ '+rate(t.d,t.i);fr.textContent='作品ページ→第1話 '+rate(t.f,t.d);sr.textContent='第1話→第2話 '+rate(t.s,t.f);st.textContent=''}catch(e){console.error(e);analyticsUnavailable();st.textContent='LIGHT ANALYTICSを読み込めませんでした。時間をおいて再度お試しください。';st.classList.add('error')}}
-async function init(){await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);const save=document.getElementById('save'),profileStatus=document.getElementById('profileStatus'),billingPortal=document.getElementById('billingPortal');try{const auth=await client.auth.getSession();session=auth.data.session;if(!session){location.href='login.html?redirect=mypage.html';return}document.getElementById('joinedAt').textContent=joined(session.user?.created_at)}catch(e){console.error(e);document.getElementById('welcome').textContent='作者ホームを読み込めませんでした';document.getElementById('plan').textContent='確認できません';document.getElementById('metaPlan').textContent='確認できません';profileStatus.textContent='ログイン状態を確認できませんでした。時間をおいて再度お試しください。';profileStatus.classList.add('error');analyticsUnavailable();save.disabled=true;return}void NovelightClient.claimAcquisition(client);try{const [p,fd]=await Promise.all([client.from('profiles').select('display_name,bio,plan,payment_status').eq('id',session.user.id).single(),client.from('founding_authors').select('founding_number').eq('author_id',session.user.id).maybeSingle()]);if(p.error)throw p.error;document.getElementById('name').value=p.data?.display_name||'';document.getElementById('bio').value=p.data?.bio||'';const currentPlan=(p.data?.plan||'free').toLowerCase(),betaFreeStandard=currentPlan==='standard'&&p.data?.payment_status==='beta_free';const planText=betaFreeStandard?'STANDARD（β無料）':currentPlan.toUpperCase();document.getElementById('plan').textContent=planText;billingPortal.hidden=betaFreeStandard||!['standard','premium'].includes(currentPlan);billingPortal.disabled=false;const displayName=p.data?.display_name||'作者';document.getElementById('welcome').textContent=displayName+'さんの作者ホーム';presentProfile(displayName,p.data?.bio||'',planText);profileReady=true;save.disabled=false;profileStatus.textContent='';if(fd.error)console.error(fd.error);else if(fd.data)document.getElementById('founding').innerHTML='<span class="founding">Founding Author #'+String(fd.data.founding_number).padStart(3,'0')+'</span>'}catch(e){console.error(e);document.getElementById('plan').textContent='確認できません';document.getElementById('metaPlan').textContent='確認できません';billingPortal.hidden=true;profileStatus.textContent='プロフィールを読み込めませんでした。再読み込みしてお試しください。';profileStatus.classList.add('error');profileReady=false;save.disabled=true}await loadAnalytics()}
-document.getElementById('profileForm').addEventListener('submit',async e=>{e.preventDefault();const b=document.getElementById('save'),st=document.getElementById('profileStatus');if(!profileReady){st.textContent='プロフィールの読み込み完了後に保存できます。';st.classList.add('error');return}b.disabled=true;st.classList.remove('error');st.textContent='保存中...';try{const displayName=document.getElementById('name').value.trim(),bio=document.getElementById('bio').value.trim();const r=await client.from('profiles').update({display_name:displayName,bio}).eq('id',session.user.id);if(r.error)throw r.error;presentProfile(displayName,bio,document.getElementById('plan').textContent);document.getElementById('welcome').textContent=(displayName||'作者')+'さんの作者ホーム';st.textContent='保存しました。'}catch(err){console.error(err);st.textContent='保存できませんでした。時間をおいて再度お試しください。';st.classList.add('error')}finally{b.disabled=!profileReady}});document.getElementById('billingPortal').onclick=async()=>{const b=document.getElementById('billingPortal'),st=document.getElementById('billingStatus');if(!session?.access_token){st.textContent='ログイン状態を確認できませんでした。再読み込みしてお試しください。';st.classList.add('error');return}b.disabled=true;st.classList.remove('error');st.textContent='契約管理画面を開いています...';try{const r=await fetch('/api/create-billing-portal-session',{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});const data=await r.json().catch(()=>({}));if(!r.ok||!data.url)throw new Error(data.code||data.error||'Billing portal session failed');location.href=data.url}catch(e){console.error(e);st.textContent='契約管理画面を開けませんでした。時間をおいて再度お試しください。';st.classList.add('error');b.disabled=false}};document.getElementById('logout').onclick=async()=>{try{const r=await client.auth.signOut();if(r.error)throw r.error;location.href='index.html'}catch(e){console.error(e);alert('ログアウトできませんでした。時間をおいて再度お試しください。')}};init();
+function activityIcon(type){return{novel_published:'✦',episode_added:'▤',light_seed_received:'◇',favorite_added:'♥',first_episode_two_read:'☾'}[type]||'✦'}
+function activityText(row){const t=row.novel_title||'作品';if(row.activity_type==='novel_published')return`『${t}』を公開しました。`;if(row.activity_type==='episode_added')return`『${t}』に第${Number(row.episode_number||0).toLocaleString('ja-JP')}話を追加しました。`;if(row.activity_type==='light_seed_received')return`『${t}』にLIGHT SEEDが贈られました。`;if(row.activity_type==='favorite_added')return`『${t}』がお気に入りに追加されました。`;if(row.activity_type==='first_episode_two_read')return`『${t}』が初めて第2話まで読まれました。`;return`『${t}』に新しい動きがありました。`}
+function activityTime(value){const d=new Date(value);if(Number.isNaN(d.getTime()))return'';return d.toLocaleString('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+function renderActivities(rows){const host=document.getElementById('activityList');host.replaceChildren();if(!rows.length){host.className='activity-empty';const wrap=document.createElement('div'),icon=document.createElement('span'),strong=document.createElement('strong'),p=document.createElement('p');icon.className='empty-icon';icon.textContent='✦';strong.textContent='まだ新しい出来事はありません。';p.textContent='作品公開や読者の反応が届くと、ここに時系列で表示されます。';wrap.append(icon,strong,p);host.appendChild(wrap);return}host.className='activity-list';rows.forEach(row=>{const item=document.createElement('article'),mark=document.createElement('div'),copy=document.createElement('div'),strong=document.createElement('strong'),time=document.createElement('time');item.className='activity-item';mark.className='activity-mark';copy.className='activity-copy';mark.textContent=activityIcon(row.activity_type);strong.textContent=activityText(row);time.textContent=activityTime(row.occurred_at);if(row.occurred_at)time.dateTime=row.occurred_at;copy.append(strong,time);item.append(mark,copy);host.appendChild(item)})}
+async function loadRecentActivity(){try{const r=await client.rpc('novelight_author_recent_activity_v1',{p_days:30,p_limit:10});if(r.error)throw r.error;renderActivities(r.data||[])}catch(e){console.error(e);const host=document.getElementById('activityList');host.className='activity-empty';host.innerHTML='<div><span class="empty-icon">✦</span><strong>最近の出来事を読み込めませんでした。</strong><p>機能の準備中、または一時的に取得できない状態です。</p></div>'}}
+async function loadOwnProfile(){let r=await client.from('profiles').select('display_name,bio,plan,payment_status,avatar_path').eq('id',session.user.id).single();if(r.error){const fallback=await client.from('profiles').select('display_name,bio,plan,payment_status').eq('id',session.user.id).single();if(fallback.error)throw fallback.error;avatarFeatureReady=false;return fallback.data}avatarFeatureReady=true;return r.data}
+async function savePublicProfile(displayName,bio,avatarPath){if(avatarFeatureReady){const r=await client.rpc('novelight_update_my_public_profile',{p_display_name:displayName,p_bio:bio,p_avatar_path:avatarPath||null});if(r.error)throw r.error;return}const r=await client.from('profiles').update({display_name:displayName,bio}).eq('id',session.user.id);if(r.error)throw r.error}
+async function init(){await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);const save=document.getElementById('save'),profileStatus=document.getElementById('profileStatus'),billingPortal=document.getElementById('billingPortal'),avatarInput=document.getElementById('avatarInput'),avatarLabel=document.getElementById('avatarLabel');try{const auth=await client.auth.getSession();session=auth.data.session;if(!session){location.href='login.html?redirect=mypage.html';return}document.getElementById('joinedAt').textContent=joined(session.user?.created_at)}catch(e){console.error(e);document.getElementById('welcome').textContent='作者ホームを読み込めませんでした';document.getElementById('plan').textContent='確認できません';document.getElementById('metaPlan').textContent='確認できません';profileStatus.textContent='ログイン状態を確認できませんでした。時間をおいて再度お試しください。';profileStatus.classList.add('error');analyticsUnavailable();save.disabled=true;return}void NovelightClient.claimAcquisition(client);try{const [p,fd]=await Promise.all([loadOwnProfile(),client.from('founding_authors').select('founding_number').eq('author_id',session.user.id).maybeSingle()]);document.getElementById('name').value=p?.display_name||'';document.getElementById('bio').value=p?.bio||'';currentAvatarPath=p?.avatar_path||null;const currentPlan=(p?.plan||'free').toLowerCase(),betaFreeStandard=currentPlan==='standard'&&p?.payment_status==='beta_free';const planText=betaFreeStandard?'STANDARD（β無料）':currentPlan.toUpperCase();document.getElementById('plan').textContent=planText;billingPortal.hidden=betaFreeStandard||!['standard','premium'].includes(currentPlan);billingPortal.disabled=false;const displayName=p?.display_name||'作者';document.getElementById('welcome').textContent=displayName+'さんの作者ホーム';presentProfile(displayName,p?.bio||'',planText,currentAvatarPath);profileReady=true;save.disabled=false;profileStatus.textContent='';avatarInput.disabled=!avatarFeatureReady;avatarLabel.setAttribute('aria-disabled',String(!avatarFeatureReady));if(!avatarFeatureReady)profileStatus.textContent='アイコン変更はデータベース更新の反映後に利用できます。';if(fd.error)console.error(fd.error);else if(fd.data)document.getElementById('founding').innerHTML='<span class="founding">Founding Author #'+String(fd.data.founding_number).padStart(3,'0')+'</span>'}catch(e){console.error(e);document.getElementById('plan').textContent='確認できません';document.getElementById('metaPlan').textContent='確認できません';billingPortal.hidden=true;profileStatus.textContent='プロフィールを読み込めませんでした。再読み込みしてお試しください。';profileStatus.classList.add('error');profileReady=false;save.disabled=true;avatarInput.disabled=true}await Promise.all([loadAnalytics(),loadRecentActivity()])}
+document.getElementById('profileForm').addEventListener('submit',async e=>{e.preventDefault();const b=document.getElementById('save'),st=document.getElementById('profileStatus');if(!profileReady){st.textContent='プロフィールの読み込み完了後に保存できます。';st.classList.add('error');return}b.disabled=true;st.classList.remove('error');st.textContent='保存中...';try{const displayName=document.getElementById('name').value.trim(),bio=document.getElementById('bio').value.trim();await savePublicProfile(displayName,bio,currentAvatarPath);presentProfile(displayName,bio,document.getElementById('plan').textContent,currentAvatarPath);document.getElementById('welcome').textContent=(displayName||'作者')+'さんの作者ホーム';st.textContent='保存しました。'}catch(err){console.error(err);st.textContent='保存できませんでした。時間をおいて再度お試しください。';st.classList.add('error')}finally{b.disabled=!profileReady}});
+document.getElementById('avatarInput').addEventListener('change',async e=>{const file=e.target.files?.[0],st=document.getElementById('profileStatus'),input=e.currentTarget;if(!file)return;if(!avatarFeatureReady||!session?.user?.id){st.textContent='アイコン変更機能を利用できません。';st.classList.add('error');input.value='';return}const extByType={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'},ext=extByType[file.type];if(!ext){st.textContent='JPEG・PNG・WebPの画像を選んでください。';st.classList.add('error');input.value='';return}if(file.size>2097152){st.textContent='アイコン画像は2MB以下にしてください。';st.classList.add('error');input.value='';return}input.disabled=true;st.classList.remove('error');st.textContent='アイコンをアップロードしています...';const newPath=session.user.id+'/'+crypto.randomUUID()+'.'+ext,oldPath=currentAvatarPath;try{const up=await client.storage.from('author-avatars').upload(newPath,file,{cacheControl:'3600',upsert:false,contentType:file.type});if(up.error)throw up.error;try{const displayName=document.getElementById('name').value.trim(),bio=document.getElementById('bio').value.trim();await savePublicProfile(displayName,bio,newPath)}catch(err){await client.storage.from('author-avatars').remove([newPath]).catch(()=>{});throw err}currentAvatarPath=newPath;presentProfile(document.getElementById('name').value.trim(),document.getElementById('bio').value.trim(),document.getElementById('plan').textContent,currentAvatarPath);if(oldPath&&oldPath!==newPath)client.storage.from('author-avatars').remove([oldPath]).then(({error})=>{if(error)console.error(error)});st.textContent='アイコンを更新しました。'}catch(err){console.error(err);st.textContent='アイコンを更新できませんでした。時間をおいて再度お試しください。';st.classList.add('error')}finally{input.disabled=!avatarFeatureReady;input.value=''}});
+document.getElementById('billingPortal').onclick=async()=>{const b=document.getElementById('billingPortal'),st=document.getElementById('billingStatus');if(!session?.access_token){st.textContent='ログイン状態を確認できませんでした。再読み込みしてお試しください。';st.classList.add('error');return}b.disabled=true;st.classList.remove('error');st.textContent='契約管理画面を開いています...';try{const r=await fetch('/api/create-billing-portal-session',{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});const data=await r.json().catch(()=>({}));if(!r.ok||!data.url)throw new Error(data.code||data.error||'Billing portal session failed');location.href=data.url}catch(e){console.error(e);st.textContent='契約管理画面を開けませんでした。時間をおいて再度お試しください。';st.classList.add('error');b.disabled=false}};
+document.getElementById('logout').onclick=async()=>{try{const r=await client.auth.signOut();if(r.error)throw r.error;location.href='index.html'}catch(e){console.error(e);alert('ログアウトできませんでした。時間をおいて再度お試しください。')}};
+init();
   </script>
 </body>
 </html>
