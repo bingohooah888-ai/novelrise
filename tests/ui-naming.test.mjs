@@ -57,7 +57,8 @@ test('core pages expose the approved beta terminology', async () => {
   assert.match(analytics, /第1話→第2話/);
   assert.match(analytics, /露出後お気に入り/);
   assert.match(analytics, /プランによる追加露出/);
-  assert.match(mypage, /作者ホーム/);
+  assert.match(mypage, /創作スタジオ/);
+  assert.doesNotMatch(mypage, /作者ホーム/);
   assert.match(mypage, /SCOUT RECORD/);
   assert.match(pricing, /新作48時間ブースト/);
   assert.match(pricing, /プランによる追加露出/);
