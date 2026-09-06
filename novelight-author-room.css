@@ -1,16 +1,25 @@
-/* Author room refinements: preserve the readable author-home scale while keeping the
-   studio navigation light and the workspace in NOVELIGHT's night-study palette. Gallery-specific styles do not live here. */
+/* Author room refinements: preserve the readable author-home scale while using the
+   owner-supplied night-study artwork for the studio surfaces. Gallery-specific styles do not live here. */
 
+/* The supplied portrait artwork now forms the studio navigation background. Keep a
+   translucent light plate behind the existing logo so the brand mark stays readable. */
 .studio-sidebar,
 body.novelight-theme.novelight-page-mypage .studio-sidebar{
-  background:#fffdf8!important;
-  border-right-color:rgba(165,124,35,.34)!important;
-  box-shadow:12px 0 34px rgba(4,20,36,.12)!important;
+  background:
+    linear-gradient(180deg,rgba(1,11,25,.18),rgba(1,11,25,.46)),
+    url("assets/author-room/author-room-sidebar-background.webp") center bottom/cover no-repeat!important;
+  border-right-color:rgba(216,180,90,.42)!important;
+  box-shadow:6px 0 28px rgba(2,10,24,.24)!important;
 }
 .studio-brand,
 body.novelight-theme.novelight-page-mypage .studio-brand{
   gap:0!important;
-  padding:6px 8px 14px!important;
+  margin-bottom:8px!important;
+  padding:8px 6px!important;
+  border:1px solid rgba(216,180,90,.40)!important;
+  border-radius:14px!important;
+  background:rgba(255,253,248,.90)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.12)!important;
 }
 .studio-brand img,
 body.novelight-theme.novelight-page-mypage .studio-brand img{
@@ -30,40 +39,57 @@ body.novelight-theme.novelight-page-mypage .studio-brand small{
 }
 .studio-label,
 body.novelight-theme.novelight-page-mypage .studio-label{
-  color:#8b6515!important;
+  color:#e0bd63!important;
   font-size:12px!important;
+  text-shadow:0 1px 8px rgba(0,0,0,.68)!important;
 }
 .studio-nav a,
 body.novelight-theme.novelight-page-mypage .studio-nav a{
-  color:#10233d!important;
+  color:#f7f1e5!important;
   font-size:16px!important;
+  text-shadow:0 1px 8px rgba(0,0,0,.56)!important;
 }
 .studio-nav a:hover,
 body.novelight-theme.novelight-page-mypage .studio-nav a:hover{
-  border-color:rgba(183,143,45,.38)!important;
-  background:rgba(218,183,92,.11)!important;
-  color:#071a33!important;
+  border-color:rgba(216,180,90,.48)!important;
+  background:rgba(5,25,45,.76)!important;
+  color:#fff!important;
 }
 .studio-nav a[aria-current="page"],
 body.novelight-theme.novelight-page-mypage .studio-nav a[aria-current="page"]{
-  border-color:rgba(183,143,45,.72)!important;
-  background:linear-gradient(90deg,rgba(225,195,116,.27),rgba(225,195,116,.10))!important;
-  color:#12233c!important;
-  box-shadow:inset 0 0 18px rgba(218,180,82,.08)!important;
+  border-color:rgba(242,215,125,.78)!important;
+  background:linear-gradient(90deg,rgba(7,35,60,.88),rgba(6,26,47,.68))!important;
+  color:#ffe69a!important;
+  box-shadow:inset 0 0 18px rgba(218,180,82,.09),0 5px 16px rgba(0,0,0,.18)!important;
 }
 .nav-icon,
-body.novelight-theme.novelight-page-mypage .nav-icon{color:#b38822!important}
+body.novelight-theme.novelight-page-mypage .nav-icon{color:#e7c466!important}
 .sidebar-quote,
 body.novelight-theme.novelight-page-mypage .sidebar-quote{
-  border-top-color:rgba(165,124,35,.24)!important;
-  color:#38485a!important;
+  border-top-color:rgba(216,180,90,.30)!important;
+  color:#e3e8ee!important;
   font-size:14px!important;
+  text-shadow:0 1px 8px rgba(0,0,0,.72)!important;
 }
 .sidebar-quote strong,
 body.novelight-theme.novelight-page-mypage .sidebar-quote strong{
-  color:#9a741c!important;
+  color:#e5c568!important;
   font-size:11px!important;
 }
+
+/* Use the supplied landscape artwork as the hero itself rather than layering the old
+   synthetic star decoration over it. The left-to-right veil preserves text contrast. */
+.author-hero,
+body.novelight-theme.novelight-page-mypage .author-hero{
+  --author-hero-art:url("assets/author-room/author-room-hero-background.webp")!important;
+  background:
+    linear-gradient(90deg,rgba(2,13,25,.86) 0%,rgba(2,13,25,.62) 43%,rgba(2,13,25,.20) 72%,rgba(2,13,25,.06) 100%),
+    var(--author-hero-art) center right/cover no-repeat!important;
+}
+.author-hero::before,
+.author-hero::after,
+body.novelight-theme.novelight-page-mypage .author-hero::before,
+body.novelight-theme.novelight-page-mypage .author-hero::after{content:none!important}
 
 /* Recent activity remains the wider left column; profile settings stay on the right. */
 .lower-grid{
@@ -71,6 +97,21 @@ body.novelight-theme.novelight-page-mypage .sidebar-quote strong{
 }
 .activity-panel{grid-column:1!important;grid-row:1!important}
 .profile-panel{grid-column:2!important;grid-row:1!important}
+
+/* The supplied panel artwork is decorative background only. Existing activity/profile
+   content and the user's actual profile avatar remain untouched. */
+.activity-panel,
+body.novelight-theme.novelight-page-mypage .activity-panel{
+  background:
+    linear-gradient(90deg,rgba(2,14,27,.94) 0%,rgba(2,14,27,.76) 56%,rgba(2,14,27,.30) 100%),
+    url("assets/author-room/author-room-activity-background.webp") center right/cover no-repeat!important;
+}
+.profile-panel,
+body.novelight-theme.novelight-page-mypage .profile-panel{
+  background:
+    linear-gradient(90deg,rgba(2,14,27,.95) 0%,rgba(2,14,27,.82) 54%,rgba(2,14,27,.46) 100%),
+    url("assets/author-room/author-room-profile-background.webp") 72% center/cover no-repeat!important;
+}
 
 /* Keep the readability increase from the previous refinement. The hero title and logout
    intentionally retain the sizes defined by novelight-author-home.css. */
@@ -181,6 +222,14 @@ details.profile-editor summary{font-size:14px!important}
   .lower-grid{grid-template-columns:1fr!important}
   .activity-panel{grid-column:auto!important;grid-row:auto!important;order:1!important}
   .profile-panel{grid-column:auto!important;grid-row:auto!important;order:2!important}
+}
+@media(max-width:700px){
+  .author-hero,
+  body.novelight-theme.novelight-page-mypage .author-hero{
+    background:
+      linear-gradient(90deg,rgba(2,13,25,.90) 0%,rgba(2,13,25,.68) 52%,rgba(2,13,25,.24) 100%),
+      var(--author-hero-art) 68% center/cover no-repeat!important;
+  }
 }
 @media(max-width:460px){
   .profile-summary{grid-template-columns:78px minmax(0,1fr)!important}
