@@ -1,28 +1,28 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-09-05 JST**
+**Reconciled: 2026-09-06 JST**
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Newer same-scope workflow, approval-ledger, compare, or read-only live evidence supersedes older descriptive status when no later material change invalidates the proof.
 
 ## Release decision
 
-**Controlled public-beta GO: RECORDED 2026-08-28; CURRENT LAUNCH POSTURE RECONCILED 2026-09-05.**
+**Controlled public-beta GO: RECORDED 2026-08-28; CURRENT LAUNCH POSTURE RECONCILED 2026-09-06.**
 
 Decision record: `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
 Historical decision baseline main: `1a5ca5dc5a90e4336ab5de74a21e2f2843e22bb1` (`Reconcile beta release evidence closure (#198)`).
 
-Current material launch main at this reconciliation: `b117655344a6c22cd3b419859e0e132cdaba469a` (`Allow posting when official thumbnail catalog is empty (#368)`).
+Current material launch main at this reconciliation: `5a5b502c61d984bf7d0329ea59a8d99b55b05861` (`Cover author home in Production Auth Smoke (#391)`).
 
-The GO decision remains historical and is not rewritten. Material product/database/discovery/UI changes landed after the 2026-09-02 reconciliation, so older proof is reused only for unchanged scopes. Affected scopes are refreshed below with exact-current CI, CodeQL, Vercel, Production Readiness, Production migration ledger, and authenticated-smoke evidence.
+The GO decision remains historical and is not rewritten. Material author-home/profile/avatar/activity changes landed in PR #390, followed by PR #391 adding the affected author-home scope to the approval-gated Production Authenticated Smoke. Older proof is reused only for unchanged scopes; affected scopes are refreshed below with current CI/CodeQL/Vercel, the latest deploy-relevant Production Readiness proof, Production migration-ledger evidence, and exact-current Production Authenticated Smoke evidence.
 
 Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING** with owner residual risk recorded in `docs/legal-beta-review.md`. This GO is an operational release decision, not a finding of legal sufficiency.
 
 ## Git / CI — PASS / EXACT CURRENT MAIN
 
-Exact current-main evidence for `b117655344a6c22cd3b419859e0e132cdaba469a`:
+Exact current-main evidence for `5a5b502c61d984bf7d0329ea59a8d99b55b05861`:
 
-- `NOVELIGHT CI` #1551 / run `33949965101`: `success`.
+- `NOVELIGHT CI` #1677 / run `34025120957`: `success`.
 - Required aggregate `check`: `success`.
 - Node tests: `success`.
 - Static quality: `success`.
@@ -30,12 +30,20 @@ Exact current-main evidence for `b117655344a6c22cd3b419859e0e132cdaba469a`:
 - Mobile smoke: `success`.
 - Desktop async-UI browser regression: `success`.
 - Mobile async-UI browser regression: `success`.
-- `CodeQL` #1476 / run `33949965123`: `success`.
+- GitHub Actions semantic lint: `success`.
+- `CodeQL` #1600 / run `34025120981`: `success`.
 - Vercel commit status for the same head: `success`.
-- `NOVELIGHT Production Readiness Smoke` #85 / run `33949965108`: `success` on the same exact head.
-- Production Readiness decisive job `Verify deployed public surfaces and production observability`: `success`.
 
-The current-main CI classifier skipped Merge Readiness preflight on the push run, RLS integration/rollback, dependency vulnerability audit, and GitHub Actions semantic lint. This reconciliation does **not** represent those skipped jobs as having run on `b1176553...`; earlier evidence is reused only where later changes do not invalidate the proved boundary.
+The current-main CI classifier skipped Merge Readiness preflight, RLS integration/rollback, and dependency vulnerability audit because those gates were not relevant to PR #391's changed-file classification. This reconciliation does **not** represent those skipped jobs as having run on `5a5b502c...`.
+
+The newest deploy-relevant Production Readiness proof for the changed author-home runtime is:
+
+- PR #390 merge head: `94d17f7d6bd096bc21091549fbb771e6dbcb471c`.
+- `NOVELIGHT Production Readiness Smoke` #91 / run `34017874567`: `success`.
+- The PR #390 runtime diff changed `mypage.html` plus migration/test files.
+- PR #391 did not change deploy-relevant application runtime files; its changed files are the Production Auth Smoke request workflow, MASTER, smoke cleanup fixture, automation-continuation regression test, and author-home Production smoke test.
+
+Accordingly, Production Readiness #91 remains the latest relevant read-only deployment proof for the author-home runtime, while the exact-current approval-gated Auth Smoke below refreshes the affected authenticated/write boundary on `5a5b502c...`.
 
 ## Supabase Production — PASS / CURRENT VIA APPROVAL LEDGER
 
@@ -70,8 +78,15 @@ Earlier Production migration/auth evidence remains recorded in dated release evi
   - ledger: issue `#165`
   - bridge run: `33947319837`
   - `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_EXECUTED`: `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, `failure_phase="none"`
+- `20260906120000_author_profile_avatar_and_activity.sql`
+  - approved main: `94d17f7d6bd096bc21091549fbb771e6dbcb471c` (PR #390 merge head)
+  - ledger: issue `#165`
+  - bridge run: `34018912226`
+  - `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_EXECUTED`: `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, `failure_phase="none"`
 
-The later migrations establish the ADMIN operations hub, official novel-thumbnail schema, and hardened official-thumbnail function privileges. They were already applied and postchecked before this documentary reconciliation; no Production migration is repeated here.
+The 2026-09-06 migration establishes the author-home public-profile update RPC, avatar-path/storage boundary, and recent-activity RPC required by PR #390. Direct browser profile writes remain narrowed so billing/Stripe-related profile columns are not writable through the public profile update path.
+
+All listed migrations were already applied and postchecked before this documentary reconciliation. No Production migration is repeated here.
 
 ## Backup / restore — PASS / CURRENT
 
@@ -102,9 +117,9 @@ Still-valid behavioral evidence covers AI-use classification, mature-content war
 
 Production ADMIN allowlist state remains established through completed request issue `#271` / apply run `33402197728`, with exact OWNER approval and `CONSUMED result="success"` recorded without exposing the allowlist value.
 
-The `20260903010000_admin_operations_hub` Production migration is now part of current Production state and was OWNER-approved, executed, and postchecked successfully through issue `#165` / bridge run `33947319837`.
+The `20260903010000_admin_operations_hub` Production migration is part of current Production state and was OWNER-approved, executed, and postchecked successfully through issue `#165` / bridge run `33947319837`.
 
-Production Authenticated Smoke #369 is not claimed to prove the ADMIN authorization boundary; it proves the end-user beta-critical scope described below.
+Production Authenticated Smoke #393 is not claimed to prove the ADMIN authorization boundary; it proves the end-user beta-critical scope described below.
 
 ## Discovery / LIGHT ANALYTICS / novel posting — PASS / CURRENT
 
@@ -116,9 +131,10 @@ Current Production state additionally includes:
 - server-authoritative PV counting enforced by `20260901130000_harden_pv_counting.sql`;
 - official novel-thumbnail schema and hardened thumbnail-function privileges through the 2026-09-04 migrations;
 - dedicated discovery-list semantics/pagination fixes merged before current main;
-- PR #368 fallback allowing novel creation when the official-thumbnail schema exists but the active official-thumbnail catalog is temporarily empty, while keeping thumbnail selection required once active assets exist and ordinary load errors fail-closed.
+- PR #368 fallback allowing novel creation when the official-thumbnail schema exists but the active official-thumbnail catalog is temporarily empty, while keeping thumbnail selection required once active assets exist and ordinary load errors fail-closed;
+- PR #390 author-home profile/avatar/recent-activity runtime backed by `20260906120000_author_profile_avatar_and_activity.sql`.
 
-The fresh exact-current Production authenticated smoke exercised the beta-critical author/reader flow after these changes, including author creation/publication, reader discovery/engagement, trusted allocation, LIGHT SEED, SCOUT RECORD, LIGHT ANALYTICS, Standard beta activation, Premium Checkout-session creation without live charge, and cleanup.
+The fresh exact-current Production authenticated smoke exercised the beta-critical author/reader flow after these changes. It also directly exercised the new author-home profile controls, `novelight_update_my_public_profile`, real `author-avatars` Storage upload/public rendering under the author UUID folder, and recent-activity RPC.
 
 The MASTER principle remains unchanged: paid plans buy discovery opportunity rather than ranking/evaluation outcomes.
 
@@ -133,7 +149,7 @@ Current/still-valid evidence covers:
 - concurrency-safe Founding Author #001–#100 assignment;
 - Stripe webhook idempotent subscription event history.
 
-Current exact-main browser CI and the fresh Production authenticated smoke pass after the later login, discovery, posting, and thumbnail changes.
+Current exact-main browser CI and the fresh Production authenticated smoke pass after the later login, discovery, posting, thumbnail, and author-home changes.
 
 ## Production beta billing / Stripe / Vercel — PASS / CURRENT
 
@@ -155,45 +171,49 @@ Production application of that contract remains decisively proven by:
 
 That run provisioned/verified Stripe live beta objects, synchronized Production variables to Vercel, redeployed the beta-pricing configuration, verified billing API route health, transitioned existing live subscriptions, ran the no-charge Production billing control proof, and audited final Production billing consistency.
 
-No later merged change through `b1176553...` alters Stripe pricing, billing routes, entitlement pricing, or the live billing contract. Open dependency work is not treated as merged/current state. No Stripe live bootstrap, Vercel env sync, billing transition, or live charge is repeated by this reconciliation.
+No later merged change through `5a5b502c...` alters Stripe pricing, billing routes, entitlement pricing, or the live billing contract. No Stripe live bootstrap, Vercel env sync, billing transition, or live charge is repeated by this reconciliation.
 
 ## Production authenticated beta-critical path — PASS / EXACT CURRENT MAIN
 
 Newest decisive Production authenticated proof:
 
-- Request issue: `#369`, state `closed`, reason `completed`.
+- Request issue: `#393`, state `closed`, reason `completed`.
 - Workflow: `NOVELIGHT Production Auth Smoke Approval Handler`.
-- Run: `33951087810` (#447).
+- Run: `34025686074` (#520).
 - Event: `issue_comment`.
-- Exact approved/head SHA: `b117655344a6c22cd3b419859e0e132cdaba469a`.
+- Exact approved/head SHA: `5a5b502c61d984bf7d0329ea59a8d99b55b05861`.
 - Run conclusion: `success`.
 - Decisive job `Verify authenticated beta-critical production flows`: `success`.
 - OWNER approval: exact request/SHA/challenge verified.
-- Approval ledger: exact request/SHA -> `CLAIMED` with run `33951087810` -> `CONSUMED`, `result="success"`; issue closed completed.
-- Authenticated Production browser smoke: `success` for the workflow's Desktop/Mobile contract.
+- Approval ledger: exact request/SHA -> `CLAIMED` with run `34025686074` -> `CONSUMED`, `result="success"`; issue closed completed.
+- Authenticated Production browser smoke: `3 passed`, `1 skipped` (the staging-only billing smoke is intentionally skipped in Production).
+- Existing Desktop/Mobile beta-critical authenticated contracts: `success`.
+- Author-home Production test `author home profile, avatar, and activity work in Production`: `success`.
 - Ephemeral Production smoke-user/data creation: `success`.
-- Ephemeral Production smoke-data cleanup: `success`.
+- Ephemeral Production smoke-data cleanup, including author-avatar Storage objects: `success`.
 - Temporary credential/fixture cleanup: `success`.
 - Failed-request ledger path: correctly `skipped` because the claimed request succeeded.
+- No Stripe live charge is created by this Production Auth Smoke.
 
 The evidence set satisfies the exact evaluator contract in `scripts/evaluate-production-auth-smoke-evidence.mjs`: expected workflow/event, top-level success, exactly one successful decisive job, exact required head SHA, and exactly one matching GitHub Actions `NOVELIGHT_PRODUCTION_AUTH_SMOKE_CONSUMED` record with `result:"success"` and the same run ID/head SHA.
 
-This exact-current proof supersedes Issue #312 / run `33640915840` for current beta-critical author/reader launch reliance. Older successful smoke evidence remains historical and is not relabeled current.
+This exact-current proof supersedes Issue #369 / run `33951087810` for current beta-critical author/reader launch reliance. Issue #369 and earlier successful smoke evidence remain historical and are not relabeled current.
 
-Do **not** repeat Issue #369 / run `33951087810` merely for a newer timestamp or to refresh this document. A later material change must refresh only the affected scope under the Evidence Freshness Gate.
+Do **not** repeat Issue #393 / run `34025686074` merely for a newer timestamp or to refresh this document. A later material change must refresh only the affected scope under the Evidence Freshness Gate.
 
-## Production public/legal/read-only surfaces — PASS / EXACT CURRENT READ-ONLY EVIDENCE
+## Production public/legal/read-only surfaces — PASS / CURRENT VIA COMBINED EVIDENCE
 
-Public release surfaces still include Terms, Privacy, Content Guidelines, Billing Policy, Commerce Disclosure, Contact, pricing, login/signup, reader, author posting, and discovery pages.
+Public release surfaces still include Terms, Privacy, Content Guidelines, Billing Policy, Commerce Disclosure, Contact, pricing, login/signup, reader, author posting, author home, and discovery pages.
 
-Current exact-main evidence includes:
+Current/relevant evidence includes:
 
-- `NOVELIGHT CI` #1551 / run `33949965101`: success;
-- `CodeQL` #1476 / run `33949965123`: success;
-- Vercel commit status: success;
-- `NOVELIGHT Production Readiness Smoke` #85 / run `33949965108`: success on exact current main;
-- Production Readiness job `Verify deployed public surfaces and production observability`: success, including static routes, safe API contracts, read-only Production reader smoke, and beta observability;
-- fresh exact-current Production Auth Smoke Issue #369 / run `33951087810`: Production page convergence, authenticated beta-critical flow, and cleanup success.
+- exact-current `NOVELIGHT CI` #1677 / run `34025120957`: success;
+- exact-current `CodeQL` #1600 / run `34025120981`: success;
+- exact-current Vercel commit status: success;
+- latest deploy-relevant `NOVELIGHT Production Readiness Smoke` #91 / run `34017874567`: success on PR #390 runtime head `94d17f7d...`;
+- exact-current Production Auth Smoke Issue #393 / run `34025686074`: Production page convergence, authenticated beta-critical flow, author-home profile/avatar/activity path, and cleanup success.
+
+PR #391 did not modify deploy-relevant application runtime files, so the PR #390 Production Readiness result remains the relevant read-only public-surface proof while Issue #393 refreshes the exact-current authenticated/write boundary.
 
 This is an engineering/reachability/billing observation, not legal advice. Qualified counsel review remains deferred/pending.
 
@@ -216,17 +236,17 @@ No current-main CI `success` is used to imply that a selectively skipped job ran
 
 ## Current release state
 
-**Controlled public-beta: GO — CURRENT LAUNCH POSTURE RECONCILED 2026-09-05.**
+**Controlled public-beta: GO — CURRENT LAUNCH POSTURE RECONCILED 2026-09-06.**
 
-Current material launch main at reconciliation: `b117655344a6c22cd3b419859e0e132cdaba469a`.
+Current material launch main at reconciliation: `5a5b502c61d984bf7d0329ea59a8d99b55b05861`.
 
-Current exact-main repository evidence: CI #1551 / run `33949965101`, CodeQL #1476 / run `33949965123`, Production Readiness #85 / run `33949965108`, and Vercel success.
+Current exact-main repository evidence: CI #1677 / run `34025120957`, CodeQL #1600 / run `34025120981`, and Vercel success. The latest deploy-relevant Production Readiness proof is #91 / run `34017874567` on PR #390 runtime head `94d17f7d...`; PR #391 contains no deploy-relevant application runtime file change.
 
-Current decisive Production authenticated proof: Issue #369 / run `33951087810` on exact current main, with exact OWNER approval, `CLAIMED`, `CONSUMED result="success"`, beta-critical authenticated flow PASS, and cleanup success.
+Current decisive Production authenticated proof: Issue #393 / run `34025686074` on exact current main, with exact OWNER approval, `CLAIMED`, `CONSUMED result="success"`, beta-critical Desktop/Mobile flow PASS, author-home profile/avatar/activity PASS, and cleanup success.
 
 Current Production billing proof: Stripe Production Bootstrap #7 / run `33612120034` on the material beta-billing head; no later merged billing change invalidates it.
 
-Current Production database state includes the earlier post-GO migrations plus `20260903010000`, `20260904133000`, and `20260904174500`, all already OWNER-approved/applied/postchecked successfully.
+Current Production database state includes the earlier post-GO migrations plus `20260903010000`, `20260904133000`, `20260904174500`, and `20260906120000`, all already OWNER-approved/applied/postchecked successfully.
 
 Qualified counsel review remains an explicit deferred item and must not be silently converted to `completed`.
 
