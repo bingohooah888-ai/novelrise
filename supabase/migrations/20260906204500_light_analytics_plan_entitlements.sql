@@ -186,7 +186,7 @@ begin
     0::bigint,
     null::numeric
   from aggregate_rows a
-  where v_plan = 'free'
+  having v_plan = 'free'
 
   order by impressions desc nulls last, novel_id nulls last;
 end
