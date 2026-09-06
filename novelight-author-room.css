@@ -171,6 +171,12 @@ details.profile-editor summary{font-size:14px!important}
 .metric:nth-child(4) .metric-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_22 (9).png")!important}
 .metric:nth-child(5) .metric-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_23 (10).png")!important}
 
+/* The fixed desktop sidebar reduces usable workspace width before the base 1180px breakpoint.
+   Keep the larger PR #405 typography readable by using the existing three-column density
+   across common midsize desktop widths instead of squeezing five cards into one row. */
+@media(min-width:901px) and (max-width:1400px){
+  .action-grid,.metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
 @media(max-width:900px){
   .lower-grid{grid-template-columns:1fr!important}
   .activity-panel{grid-column:auto!important;grid-row:auto!important;order:1!important}
