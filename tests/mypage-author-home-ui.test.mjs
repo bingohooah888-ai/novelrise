@@ -5,7 +5,7 @@ import test from 'node:test';
 const [mypage, baseCss, roomCss] = await Promise.all([
   readFile('mypage.html', 'utf8'),
   readFile('novelight-author-home.css', 'utf8'),
-  readFile('novelight-author-room.css', 'utf8'),
+  readFile('novelight-author-room.css', 'utf8')
 ]);
 
 test('author room uses the night-study workspace shell without changing reader discovery', () => {
@@ -32,7 +32,7 @@ test('author room keeps all five primary author actions', () => {
     'my-novels.html',
     'analytics.html',
     'scout-record.html',
-    'pricing.html',
+    'pricing.html'
   ]) {
     assert.match(mypage, new RegExp(`href="${href.replace('.', '\\.')}"`));
   }
@@ -61,7 +61,7 @@ test('profile settings keep avatar and public profile while removing redundant p
 test('avatar change label stays on one line at the refined size', () => {
   assert.match(
     roomCss,
-    /\.avatar-label\{[\s\S]*?font-size:11px!important;[\s\S]*?white-space:nowrap!important;/u,
+    /\.avatar-label\{[\s\S]*?font-size:11px!important;[\s\S]*?white-space:nowrap!important;/u
   );
 });
 
