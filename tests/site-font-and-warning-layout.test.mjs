@@ -6,7 +6,10 @@ import test from 'node:test';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const themeEntry = readFileSync(join(root, 'novelight-theme.css'), 'utf8');
-const fontLayer = readFileSync(join(root, 'novelight-font-unification.css'), 'utf8');
+const fontLayer = readFileSync(
+  join(root, 'novelight-font-unification.css'),
+  'utf8'
+);
 const legal = readFileSync(join(root, 'legal.css'), 'utf8');
 
 const homepageFontTokens = [
@@ -18,16 +21,25 @@ const homepageFontTokens = [
 ];
 
 test('sitewide font layer loads after legacy surface overrides', () => {
-  const legacyIndex = themeEntry.indexOf('@import url("novelight-legacy-surfaces.css")');
-  const fontIndex = themeEntry.indexOf('@import url("novelight-font-unification.css")');
+  const legacyIndex = themeEntry.indexOf(
+    '@import url("novelight-legacy-surfaces.css")'
+  );
+  const fontIndex = themeEntry.indexOf(
+    '@import url("novelight-font-unification.css")'
+  );
   assert.ok(legacyIndex >= 0);
   assert.ok(fontIndex > legacyIndex);
 });
 
 test('sitewide typography uses the homepage Mincho brand stack for body and controls', () => {
-  for (const token of homepageFontTokens) assert.match(fontLayer, new RegExp(token, 'u'));
+  for (const token of homepageFontTokens) {
+    assert.match(fontLayer, new RegExp(token, 'u'));
+  }
   assert.match(fontLayer, /html body\.novelight-theme \{/u);
-  assert.match(fontLayer, /font-family: var\(--novelight-brand-reading-font\) !important;/u);
+  assert.match(
+    fontLayer,
+    /font-family: var\(--novelight-brand-reading-font\) !important;/u
+  );
   assert.match(fontLayer, /button,/u);
   assert.match(fontLayer, /input,/u);
   assert.match(fontLayer, /select,/u);
@@ -49,12 +61,18 @@ test('the specifically requested creator and profile pages receive the sitewide 
     'author.html'
   ]) {
     const html = readFileSync(join(root, page), 'utf8');
-    assert.match(html, /novelight-client\.js|href="novelight-theme\.css"/u, page);
+    assert.match(
+      html,
+      /novelight-client\.js|href="novelight-theme\.css"/u,
+      page
+    );
   }
 });
 
 test('static legal surfaces use the same homepage font instead of the old sans stack', () => {
-  for (const token of homepageFontTokens) assert.match(legal, new RegExp(token, 'u'));
+  for (const token of homepageFontTokens) {
+    assert.match(legal, new RegExp(token, 'u'));
+  }
   assert.match(legal, /font-family: var\(--brand-reading-font\);/u);
   assert.match(legal, /font-family: var\(--brand-display-font\);/u);
   assert.doesNotMatch(legal, /"Noto Sans JP"/u);
