@@ -29,6 +29,26 @@ test('author room uses the supplied background artwork with the night-study work
   assert.match(mypage, /作品に最近起きたこと/u);
 });
 
+test('author room keeps supplied artwork visible on desktop and protected on mobile', () => {
+  assert.match(
+    roomCss,
+    /linear-gradient\(90deg,rgba\(2,13,25,.82\) 0%,rgba\(2,13,25,.52\) 43%,rgba\(2,13,25,.13\) 72%,rgba\(2,13,25,.03\) 100%\)/u
+  );
+  assert.match(
+    roomCss,
+    /linear-gradient\(90deg,rgba\(2,14,27,.88\) 0%,rgba\(2,14,27,.64\) 54%,rgba\(2,14,27,.22\) 100%\)/u
+  );
+  assert.match(
+    roomCss,
+    /linear-gradient\(90deg,rgba\(2,14,27,.90\) 0%,rgba\(2,14,27,.72\) 54%,rgba\(2,14,27,.32\) 100%\)/u
+  );
+  assert.match(
+    roomCss,
+    /@media\(max-width:900px\)\{[\s\S]*?rgba\(2,14,27,.94\)[\s\S]*?rgba\(2,14,27,.95\)/u
+  );
+  assert.match(roomCss, /backdrop-filter:blur\(2px\)/u);
+});
+
 test('author room sidebar keeps the logo readable over its artwork', () => {
   assert.match(
     roomCss,
