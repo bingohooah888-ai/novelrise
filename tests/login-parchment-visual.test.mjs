@@ -14,6 +14,10 @@ test('login keeps auth wiring', () => {
   assert.ok(login.includes('id="loginForm"'));
   assert.ok(login.includes('safeRedirectTarget'));
   assert.ok(login.includes('signInWithPassword'));
+  assert.ok(login.includes("'/novel-edit.html'"));
+  assert.ok(login.includes("'/episode-post.html'"));
+  assert.ok(login.includes("'/episode-edit.html'"));
+  assert.ok(login.includes('url.pathname.replace'));
 });
 
 test('login loads the parchment visual layer', () => {
