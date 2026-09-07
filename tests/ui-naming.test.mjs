@@ -24,6 +24,7 @@ test('user-facing HTML uses NOVELIGHT and current beta feature names', async () 
     '目利き実績',
     '目利きレベル',
     '作者ダッシュボード',
+    '作者ホーム',
     '新作48時間初動ブースト',
     '新作の初動支援',
     'LIGHT REPORT'
@@ -65,6 +66,8 @@ test('core pages expose the approved beta terminology', async () => {
   assert.match(mypage, /SCOUT RECORD/);
   assert.match(pricing, /新作48時間ブースト/);
   assert.match(pricing, /プランによる追加露出/);
+  assert.match(pricing, /<a href="login\.html">ログイン<\/a>/u);
+  assert.doesNotMatch(pricing, /<a href="mypage\.html">作者ホーム<\/a>/u);
   assert.match(scoutRecord, /SCOUT RECORD/);
   assert.match(scoutRecord, /from\('light_seeds'\)/);
 });
