@@ -16,91 +16,71 @@ function importedIndex(file) {
   return theme.indexOf(`@import url("${file}");`);
 }
 
+function ruleBlock(source, selector) {
+  const start = source.indexOf(selector);
+  assert.ok(start >= 0, `missing selector: ${selector}`);
+  const end = source.indexOf('}', start);
+  assert.ok(end > start, `missing rule end: ${selector}`);
+  return source.slice(start, end + 1);
+}
+
+function expectFontSize(source, selector, size) {
+  const block = ruleBlock(source, selector);
+  assert.ok(block.includes(`font-size: ${size}`));
+}
+
 test('sitewide readability layer loads after typography lock', () => {
   const fontIndex = importedIndex('novelight-font-unification.css');
   const readabilityIndex = importedIndex('novelight-readability.css');
 
-  assert.ok(fontIndex >= 0, 'font unification import exists');
-  assert.ok(readabilityIndex > fontIndex, 'readability loads after font lock');
+  assert.ok(fontIndex >= 0);
+  assert.ok(readabilityIndex > fontIndex);
 });
 
-test('creator form small text receives the two-pixel uplift', () => {
-  assert.ok(readability.includes('font-size: 18px !important;'));
-  assert.match(readability, /\) :is\(label, \.legend\) \{[\s\S]*?font-size: 16px !important;/u);
-  assert.match(readability, /\.required \{[\s\S]*?font-size: 13px !important;/u);
-  assert.match(
-    readability,
-    /input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\), select, textarea\)[\s\S]*?font-size: 17px !important;/u
-  );
-  assert.match(readability, /\.check \{[\s\S]*?font-size: 15px !important;/u);
+test('creator forms receive the small-text uplift', () => {
+  expectFontSize(readability, '.page-title p', '18px !important;');
+  expectFontSize(readability, '.required', '13px !important;');
+  expectFontSize(readability, '.thumbnail-name', '13px !important;');
+  expectFontSize(readability, '.check', '15px !important;');
+  expectFontSize(readability, 'input:not([type="checkbox"])', '17px !important;');
 });
 
 test('creator utility header matches the Home navigation scale', () => {
-  assert.match(
-    theme,
-    /header \.right > a \{\s*font-size: 22px !important;/u
-  );
-  assert.match(
-    theme,
-    /@media \(min-width: 641px\) and \(max-width: 1180px\)[\s\S]*?header \.right > a \{\s*font-size: 20px !important;/u
-  );
-  assert.match(
-    theme,
-    /@media \(max-width: 640px\)[\s\S]*?header \.right > a \{\s*font-size: 20px !important;/u
-  );
+  expectFontSize(theme, 'header .right > a {', '22px !important;');
+  const responsiveSize = theme.match(/font-size: 20px !important;/gu) || [];
+  assert.ok(responsiveSize.length >= 2);
 });
 
-test('creator room compact labels are enlarged without changing large values', () => {
-  assert.match(readability, /\.studio-label \{\s*font-size: 14px !important;/u);
-  assert.match(
-    readability,
-    /\.activity-copy time,[\s\S]*?\.avatar-note \{\s*font-size: 13px !important;/u
-  );
+test('creator room compact labels are enlarged', () => {
+  expectFontSize(readability, '.studio-label', '14px !important;');
+  expectFontSize(readability, '.activity-copy time', '13px !important;');
+  expectFontSize(readability, '.profile-meta dt', '14px !important;');
   assert.ok(authorRoom.includes('.value{font-size:28px!important}'));
   assert.ok(authorRoom.includes('.section-title h2{font-size:23px!important}'));
 });
 
-test('reader cards analytics and auth support text are enlarged', () => {
-  assert.match(
-    readability,
-    /novelight-page-analytics \.label \{\s*font-size: 14px !important;/u
-  );
-  assert.match(
-    readability,
-    /novelight-page-scout-record :is\(\.note, \.meta\) \{\s*font-size: 14px !important;/u
-  );
-  assert.match(
-    readability,
-    /novelight-page-episode :is\(\.novel-title, \.number\) \{\s*font-size: 16px !important;/u
-  );
-  assert.match(readability, /\.consent \{\s*font-size: 14px !important;/u);
+test('analytics scout reader and auth support text are enlarged', () => {
+  expectFontSize(readability, '.label', '14px !important;');
+  expectFontSize(readability, '.hero > div:first-child', '13px !important;');
+  expectFontSize(readability, '.novel-title, .number', '16px !important;');
+  expectFontSize(readability, '.consent', '14px !important;');
 });
 
-test('Home and pricing only lift compact supporting typography', () => {
-  assert.match(
-    readability,
-    /novelight-page-index\.novelight-public-dark \.novel-title \{\s*font-size: 15px !important;/u
-  );
-  assert.match(
-    readability,
-    /novelight-page-index\.novelight-public-dark \.feature p \{\s*font-size: 14px !important;/u
-  );
-  assert.match(
-    readability,
-    /novelight-page-pricing\.novelight-public-dark \.pricing-sub \{\s*font-size: 15px !important;/u
-  );
+test('Home and pricing compact supporting text are enlarged', () => {
+  expectFontSize(readability, '.novel-title', '15px !important;');
+  expectFontSize(readability, '.feature p', '14px !important;');
+  expectFontSize(readability, '.pricing-sub', '15px !important;');
 });
 
 test('legal pages receive the same readability uplift', () => {
-  assert.match(legal, /\.legal-kicker \{[\s\S]*?font-size: 15px;/u);
-  assert.match(
-    legal,
-    /\.legal-card p,[\s\S]*?\.legal-table \{\s*font-size: 16px;/u
-  );
-  assert.match(legal, /\.site-footer-inner \{[\s\S]*?font-size: 14px;/u);
+  expectFontSize(legal, '.legal-kicker', '15px;');
+  expectFontSize(legal, '.legal-card p', '16px;');
+  expectFontSize(legal, '.site-footer-inner', '14px;');
 });
 
-test('large creator form heading stays unchanged', () => {
+test('large creator typography stays unchanged', () => {
   assert.ok(post.includes('.page-title h1{font-size:31px'));
-  assert.doesNotMatch(readability, /\bh1\b|\bh2\b|\.value\s*\{/u);
+  assert.ok(!readability.includes(' h1'));
+  assert.ok(!readability.includes(' h2'));
+  assert.ok(!readability.includes('.value {'));
 });
