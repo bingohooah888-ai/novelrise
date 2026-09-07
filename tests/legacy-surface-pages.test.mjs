@@ -7,7 +7,7 @@ import test from 'node:test';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const legacy = readFileSync(
   join(root, 'novelight-legacy-surfaces.css'),
-  'utf8'
+  'utf8',
 );
 const themeEntry = readFileSync(join(root, 'novelight-theme.css'), 'utf8');
 
@@ -36,7 +36,7 @@ test('all known legacy creator and reader pages are covered by the refinement la
   for (const page of legacyPages) {
     assert.match(
       legacy,
-      new RegExp(`\\.novelight-page-${page}(?:[\\s,.:)]|$)`, 'u')
+      new RegExp(`\\.novelight-page-${page}(?:[\\s,.:)]|$)`, 'u'),
     );
   }
 });
@@ -52,7 +52,7 @@ test('legacy primary actions use NOVELIGHT navy and gold instead of prototype vi
   ]) {
     assert.ok(
       legacy.includes(selector),
-      `missing legacy control selector: ${selector}`
+      `missing legacy control selector: ${selector}`,
     );
   }
 
