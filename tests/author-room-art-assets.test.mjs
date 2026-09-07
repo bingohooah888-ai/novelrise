@@ -13,7 +13,15 @@ test('author room background assets are valid WebP containers', async () => {
   for (const asset of assets) {
     const bytes = await readFile(asset);
     assert.ok(bytes.length > 1024, `${asset} should contain real artwork`);
-    assert.equal(bytes.subarray(0, 4).toString('ascii'), 'RIFF', `${asset} must start with RIFF`);
-    assert.equal(bytes.subarray(8, 12).toString('ascii'), 'WEBP', `${asset} must contain WEBP magic`);
+    assert.equal(
+      bytes.subarray(0, 4).toString('ascii'),
+      'RIFF',
+      `${asset} must start with RIFF`
+    );
+    assert.equal(
+      bytes.subarray(8, 12).toString('ascii'),
+      'WEBP',
+      `${asset} must contain WEBP magic`
+    );
   }
 });
