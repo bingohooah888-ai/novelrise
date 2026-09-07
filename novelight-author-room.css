@@ -82,7 +82,7 @@ body.novelight-theme.novelight-page-mypage .sidebar-quote strong{
    allowing the artwork to stay visibly present across the middle and right side. */
 .author-hero,
 body.novelight-theme.novelight-page-mypage .author-hero{
-  --author-hero-art:url("assets/author-room/author-room-hero-background.webp")!important;
+  --author-hero-art:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_20 (1).png")!important;
   background:
     linear-gradient(90deg,rgba(2,13,25,.82) 0%,rgba(2,13,25,.52) 43%,rgba(2,13,25,.13) 72%,rgba(2,13,25,.03) 100%),
     var(--author-hero-art) center right/cover no-repeat!important;
