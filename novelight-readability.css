@@ -1,0 +1,395 @@
+/*
+ * NOVELIGHT sitewide readability uplift.
+ *
+ * Raise only small UI/supporting text by roughly two pixels. Existing large
+ * headings, reading text, analytics values, and other already-prominent type
+ * remain owned by their page styles.
+ */
+
+/* Creator forms: post / edit / episode authoring. */
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) .page-title p,
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) .lead {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(label, .legend) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) .required {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  font-size: 17px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(.help, .thumbnail-state, .policy) {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-post, .novelight-page-novel-edit)
+  .thumbnail-name {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-post, .novelight-page-novel-edit)
+  .check {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) .status {
+  font-size: 15px !important;
+}
+
+/* Creator room: lift only the previously compact secondary/UI labels. */
+html body.novelight-theme.novelight-page-mypage .studio-label {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .sidebar-quote strong {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .founding,
+html body.novelight-theme.novelight-page-mypage .status,
+html body.novelight-theme.novelight-page-mypage .section-link {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .action-card p,
+html body.novelight-theme.novelight-page-mypage .sub,
+html body.novelight-theme.novelight-page-mypage .activity-empty p,
+html body.novelight-theme.novelight-page-mypage .activity-copy strong,
+html body.novelight-theme.novelight-page-mypage .profile-meta dd,
+html body.novelight-theme.novelight-page-mypage details.profile-editor summary,
+html body.novelight-theme.novelight-page-mypage .form :is(input, textarea) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage :is(
+    .card-cta,
+    .action-card > button,
+    .profile-summary p,
+    .form label,
+    .save
+  ) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .activity-copy time,
+html body.novelight-theme.novelight-page-mypage .avatar-label,
+html body.novelight-theme.novelight-page-mypage .avatar-note {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .profile-meta dt,
+html body.novelight-theme.novelight-page-mypage .footer-links {
+  font-size: 14px !important;
+}
+
+/* Author utility/list pages. */
+html body.novelight-theme:is(
+    .novelight-page-my-novels,
+    .novelight-page-favorites,
+    .novelight-page-author
+  ) :is(.desc, .profile .bio) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-my-novels,
+    .novelight-page-favorites,
+    .novelight-page-author
+  ) .meta {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-my-novels .new {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-my-novels :is(.badge, .state),
+html body.novelight-theme.novelight-page-favorites .genre,
+html body.novelight-theme.novelight-page-author :is(.badge, .founding) {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-my-novels,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-scout-record,
+    .novelight-page-analytics
+  ) .footer-links {
+  font-size: 14px !important;
+}
+
+/* LIGHT ANALYTICS. Values and section headings are intentionally untouched. */
+html body.novelight-theme.novelight-page-analytics .label {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-analytics .sub,
+html body.novelight-theme.novelight-page-analytics .step span {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-analytics .paid {
+  font-size: 14px !important;
+}
+
+/* SCOUT RECORD. */
+html body.novelight-theme.novelight-page-scout-record .hero > div:first-child {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record :is(.note, .meta) {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .status {
+  font-size: 12px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .link {
+  font-size: 14px !important;
+}
+
+/* Reader-facing author / novel / episode details. */
+html body.novelight-theme.novelight-page-novel .tag,
+html body.novelight-theme.novelight-page-author .badge {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-novel .author {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-novel .meta {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-novel :is(.seed-stats, .episode-number, .report-status) {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-novel :is(.action, .modal-card p) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-novel #seedMessage {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-episode :is(.novel-title, .number) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-episode .meta {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-episode .status {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-episode .modal-card p {
+  font-size: 15px !important;
+}
+
+/* Auth pages that still carry compact prototype copy. Login is already >=16px. */
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) .lead {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) :is(label:not(.consent), .login) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) :is(.author-box, .status) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) .consent {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) .legal-links {
+  font-size: 13px !important;
+}
+
+/* Home: only the compact support/card typography is lifted. */
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .eyebrow,
+    .section-kicker
+  ) {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .hero p {
+  font-size: 17px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .hero-primary,
+    .hero-secondary,
+    .gold-button
+  ) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .shelf-head p,
+    .section-head p
+  ) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .shelf-more {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .cover-genre,
+html body.novelight-theme.novelight-page-index.novelight-public-dark .novel-author {
+  font-size: 12px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .genre,
+html body.novelight-theme.novelight-page-index.novelight-public-dark .meta {
+  font-size: 11px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .novel-title {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .seed-count,
+html body.novelight-theme.novelight-page-index.novelight-public-dark .recommend-ribbon {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .feature p {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .beta-price,
+    .beta-label
+  ) {
+  font-size: 12px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .old-price,
+    .original-price,
+    .price small,
+    .plan-note
+  ) {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .plan ul {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .plan-cta {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .footer-inner {
+  font-size: 13px !important;
+}
+
+/* Pricing: typography only. Amounts and billing behavior remain unchanged. */
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .pricing-sub {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .desc {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .renewal {
+  font-size: 12px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .limit,
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .features li,
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark button,
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .status {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .billing {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .billing strong {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .footer-inner {
+  font-size: 13px !important;
+}
+
+@media (max-width: 640px) {
+  html body.novelight-theme.novelight-page-index.novelight-public-dark .hero p {
+    font-size: 16px !important;
+  }
+}
