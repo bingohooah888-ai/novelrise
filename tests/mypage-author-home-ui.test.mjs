@@ -24,7 +24,7 @@ test('author room uses the supplied background artwork with the night-study work
   assert.match(roomCss, /color:#f7f1e5!important;/u);
   assert.match(roomCss, /color:#e7c466!important/u);
   assert.match(roomCss, /background:transparent!important;/u);
-  assert.match(roomCss, /filter:none!important;/u);
+  assert.match(roomCss, /novelight-author-room-logo\.webp/u);
   assert.match(mypage, /LIGHT ANALYTICS・直近30日/u);
   assert.match(mypage, /作品に最近起きたこと/u);
 });
@@ -49,10 +49,18 @@ test('author room keeps supplied artwork visible on desktop and protected on mob
   assert.match(roomCss, /backdrop-filter:blur\(2px\)/u);
 });
 
-test('author room sidebar keeps the logo readable over its artwork', () => {
+test('author room sidebar keeps the final frame-free logo treatment on first paint', () => {
   assert.match(
     roomCss,
-    /\.studio-brand,[\s\S]*?gap:0!important;[\s\S]*?padding:8px 6px!important;/u
+    /\.studio-brand,[\s\S]*?gap:0!important;[\s\S]*?padding:0 0 8px!important;[\s\S]*?border:0!important;[\s\S]*?border-radius:0!important;[\s\S]*?background:transparent!important;[\s\S]*?box-shadow:none!important;/u
+  );
+  assert.match(
+    roomCss,
+    /\.studio-brand img,[\s\S]*?display:none!important;/u
+  );
+  assert.match(
+    roomCss,
+    /\.studio-brand::before,[\s\S]*?novelight-author-room-logo\.webp[\s\S]*?filter:drop-shadow\(0 0 12px rgba\(244,197,72,.20\)\);/u
   );
   assert.match(
     roomCss,
@@ -83,6 +91,17 @@ test('author room action and analytics copy keep readable wrapping and sizing', 
   assert.match(roomCss, /\.label\{font-size:16px!important\}/u);
   assert.match(roomCss, /\.sub\{font-size:14px!important\}/u);
   assert.match(roomCss, /\.value\{font-size:28px!important\}/u);
+});
+
+test('author room plan card does not reserve empty billing status space before theme hydration', () => {
+  assert.match(
+    roomCss,
+    /\.action-card\.cyan \.status\{[\s\S]*?min-height:0!important;[\s\S]*?margin-top:0!important;/u
+  );
+  assert.match(
+    roomCss,
+    /\.action-card\.cyan \.status:not\(:empty\)\{[\s\S]*?min-height:17px!important;[\s\S]*?margin-top:7px!important;/u
+  );
 });
 
 test('author room keeps readable card density on midsize desktop widths', () => {
