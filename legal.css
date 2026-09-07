@@ -3,14 +3,28 @@
 }
 
 html {
+  --brand-display-font: "Yu Mincho", "Hiragino Mincho ProN",
+    "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", Georgia,
+    "Times New Roman", serif;
+  --brand-reading-font: "Yu Mincho", "Hiragino Mincho ProN",
+    "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", Georgia,
+    serif;
   background: #f7f4ed;
   color: #1b2430;
-  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI",
-    "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: var(--brand-reading-font);
 }
 
 body {
   margin: 0;
+}
+
+button,
+input,
+select,
+textarea,
+optgroup,
+option {
+  font-family: var(--brand-reading-font);
 }
 
 a {
@@ -48,6 +62,7 @@ a {
 
 .site-back {
   color: #5d6671;
+  font-family: var(--brand-display-font);
   font-size: 19px;
   font-weight: 700;
   text-decoration: none;
@@ -78,8 +93,8 @@ a {
 .legal-hero h1,
 .legal-card h2,
 .legal-card h3 {
-  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
   color: #1b2430;
+  font-family: var(--brand-display-font);
 }
 
 .legal-hero h1 {
@@ -184,6 +199,7 @@ a {
   border-radius: 999px;
   background: #fffdf8;
   color: #0e1d35;
+  font-family: var(--brand-display-font);
   font-size: 13px;
   text-decoration: none;
 }
