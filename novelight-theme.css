@@ -51,3 +51,69 @@ html body.novelight-theme:not(.novelight-public-dark) header .logout {
     font-size: 16px !important;
   }
 }
+
+/* Creator room branding: use the owner-supplied gold NOVELIGHT mark on the dark studio shell. */
+html body.novelight-theme.novelight-page-mypage .studio-brand {
+  min-height: 82px !important;
+  padding: 9px 6px !important;
+  border-color: rgba(230, 194, 96, 0.48) !important;
+  background: rgba(2, 14, 27, 0.62) !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .studio-brand img {
+  display: none !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .studio-brand::before {
+  content: "";
+  display: block;
+  width: 190px;
+  max-width: 100%;
+  aspect-ratio: 3 / 1;
+  background: url("assets/author-room/novelight-author-room-logo.webp") center / contain no-repeat;
+  filter: drop-shadow(0 0 12px rgba(244, 197, 72, 0.2));
+}
+
+/* The English eyebrow above the creator-room welcome title follows the room naming. */
+html body.novelight-theme.novelight-page-mypage .hero-kicker {
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .hero-kicker::after {
+  content: "AUTHOR'S ROOM";
+  color: #eacb71;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.25em;
+}
+
+/* Give the shorter plan card copy enough visual weight to balance the other four actions. */
+html body.novelight-theme.novelight-page-mypage .action-card.cyan h2 {
+  font-size: 20px !important;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+}
+
+html body.novelight-theme.novelight-page-mypage .action-card.cyan p {
+  margin-top: 9px !important;
+  color: #eef5fb !important;
+  font-size: 15px !important;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+html body.novelight-theme.novelight-page-mypage .action-card.cyan .plan {
+  color: #dff4ff !important;
+  -webkit-text-fill-color: #dff4ff !important;
+  font-size: 15px !important;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+html body.novelight-theme.novelight-page-mypage .action-card.cyan .card-cta {
+  min-height: 38px !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  letter-spacing: 0.02em;
+}
