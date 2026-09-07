@@ -98,7 +98,7 @@ const requiredStaticLinks = new Map([
     'pricing.html',
     [
       'index.html',
-      'mypage.html',
+      'login.html',
       'billing-policy.html',
       'terms.html',
       'commerce-disclosure.html',
