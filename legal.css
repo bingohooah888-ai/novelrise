@@ -63,7 +63,7 @@ a {
 .site-back {
   color: #5d6671;
   font-family: var(--brand-display-font);
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 700;
   text-decoration: none;
 }
@@ -85,7 +85,7 @@ a {
 .legal-kicker {
   margin-bottom: 8px;
   color: #8a6518;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -110,7 +110,7 @@ a {
 }
 
 .legal-meta {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .legal-card {
@@ -135,7 +135,7 @@ a {
 .legal-card p,
 .legal-card li,
 .legal-table {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.85;
 }
 
@@ -154,7 +154,7 @@ a {
   border-radius: 12px;
   background: #fff8e6;
   color: #69531e;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.75;
 }
 
@@ -164,7 +164,7 @@ a {
   border-radius: 12px;
   background: #fff7ed;
   color: #9a3412;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.75;
 }
 
@@ -200,7 +200,7 @@ a {
   background: #fffdf8;
   color: #0e1d35;
   font-family: var(--brand-display-font);
-  font-size: 13px;
+  font-size: 15px;
   text-decoration: none;
 }
 
@@ -222,7 +222,7 @@ a {
   margin: auto;
   padding: 24px 22px;
   color: #aeb7c4;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .site-footer a {
@@ -236,7 +236,7 @@ a {
 
 @media (min-width: 641px) and (max-width: 1180px) {
   .site-back {
-    font-size: 17px;
+    font-size: 20px;
   }
 }
 
@@ -252,7 +252,7 @@ a {
   }
 
   .site-back {
-    font-size: 16px;
+    font-size: 20px;
   }
 
   .legal-main {
