@@ -37,7 +37,7 @@ function webpDimensions(bytes) {
     }
 
     if (chunkType === 'VP8L') {
-      assert.equal(bytes[dataOffset], 0x2f, 'VP8L stream must use the WebP lossless signature');
+      assert.equal(bytes[dataOffset], 0x2f, 'VP8L signature must be 0x2f');
       const dimensions = bytes.readUInt32LE(dataOffset + 1);
       return {
         width: (dimensions & 0x3fff) + 1,
@@ -68,7 +68,7 @@ test('author room background assets are valid WebP containers', async () => {
   }
 });
 
-test('author room hero keeps the intended 1200x400 landscape canvas', async () => {
-  const bytes = await readFile('assets/author-room/author-room-hero-background.webp');
+test('author room hero stays 1200x400', async () => {
+  const bytes = await readFile(assets[0]);
   assert.deepEqual(webpDimensions(bytes), { width: 1200, height: 400 });
 });
