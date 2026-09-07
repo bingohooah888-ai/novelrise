@@ -1,5 +1,6 @@
 @import url("novelight-theme-base.css");
 @import url("novelight-legacy-surfaces.css");
+@import url("novelight-font-unification.css");
 
 /* Keep stable regression anchors in the entry stylesheet while the base theme is imported. */
 body.novelight-page-index #discover {
