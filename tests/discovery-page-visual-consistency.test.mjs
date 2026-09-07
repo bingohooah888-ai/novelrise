@@ -35,10 +35,19 @@ test('discovery pages use the unified public header composition', () => {
     const html = read(file);
     const header = headerMarkup(html);
 
-    assert.ok(html.includes('novelight-header-light.css'), `${file} loads shared header CSS`);
-    assert.ok(html.includes('novelight-public-header-page'), `${file} opts into shared header`);
+    assert.ok(
+      html.includes('novelight-header-light.css'),
+      `${file} loads shared header CSS`
+    );
+    assert.ok(
+      html.includes('novelight-public-header-page'),
+      `${file} opts into shared header`
+    );
     assert.match(header, /aria-label="NOVELIGHT ホーム"/u);
-    assert.match(header, /href="search\.html" aria-current="page">作品を探す</u);
+    assert.match(
+      header,
+      /href="search\.html" aria-current="page">作品を探す</u
+    );
     assert.doesNotMatch(header, />ホーム</u);
 
     const labels = ['作品を探す', '特徴', '料金プラン', 'ランキング'];
