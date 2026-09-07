@@ -26,7 +26,8 @@ test('author room uses the supplied background artwork with the night-study work
   assert.match(roomCss, /background:transparent!important;/u);
   assert.match(roomCss, /novelight-author-room-logo\.webp/u);
   assert.match(mypage, /LIGHT ANALYTICS・直近30日/u);
-  assert.match(mypage, /作品に最近起きたこと/u);
+  assert.match(mypage, /id="activityHeading">最近起きたこと/u);
+  assert.doesNotMatch(mypage, /作品に最近起きたこと/u);
 });
 
 test('author room keeps supplied artwork visible on desktop and protected on mobile', () => {
@@ -63,6 +64,22 @@ test('author room sidebar keeps the logo readable over its artwork', () => {
     /\.studio-brand small,[\s\S]*?display:none!important;/u
   );
   assert.match(mypage, /<div class="studio-label">AUTHOR STUDIO<\/div>/u);
+});
+
+test('author room sidebar quote keeps the intended three lines stable', () => {
+  assert.match(mypage, /\.sidebar-quote-line\{display:block;white-space:nowrap\}/u);
+  assert.match(
+    mypage,
+    /<span class="sidebar-quote-line">物語を書く時間も、<\/span>/u
+  );
+  assert.match(
+    mypage,
+    /<span class="sidebar-quote-line">届いた光を確かめる時間も、<\/span>/u
+  );
+  assert.match(
+    mypage,
+    /<span class="sidebar-quote-line">作者の大切な創作です。<\/span>/u
+  );
 });
 
 test('author room header emphasizes navigation and author name without the account subtitle', () => {
@@ -122,7 +139,12 @@ test('author room keeps all five primary author actions', () => {
   assert.match(mypage, /契約プラン/u);
 });
 
-test('profile settings keep avatar and public profile while removing redundant plan and account rows', () => {
+test('recent activity header stays concise without the extra analytics action', () => {
+  assert.match(mypage, /id="activityHeading">最近起きたこと<\/h2>/u);
+  assert.doesNotMatch(mypage, /分析を見る →/u);
+});
+
+test('profile settings keep avatar and public profile while simplifying summary metadata', () => {
   assert.match(mypage, /id="avatarInput"/u);
   assert.match(mypage, /author-avatars/u);
   assert.match(mypage, /id="publicProfileLink"/u);
@@ -131,6 +153,17 @@ test('profile settings keep avatar and public profile while removing redundant p
   assert.match(mypage, /id="joinedAt"/u);
   assert.match(mypage, /session\.user\?\.created_at/u);
   assert.match(mypage, /id="profileDisplayName"/u);
+  assert.match(mypage, /\.profile-summary\{align-items:center\}/u);
+  assert.doesNotMatch(mypage, /id="metaName"/u);
+  assert.doesNotMatch(mypage, /id="profileBioSummary"/u);
+  assert.doesNotMatch(mypage, /avatar-note/u);
+  assert.doesNotMatch(mypage, /あなたの物語を届ける作者プロフィールです。/u);
+  assert.doesNotMatch(mypage, /JPEG \/ PNG \/ WebP・2MBまで/u);
+  assert.doesNotMatch(mypage, /<dt>表示名<\/dt>/u);
+  assert.match(
+    mypage,
+    /<dl class="profile-meta">\s*<div><dt>登録日<\/dt><dd id="joinedAt">確認中<\/dd><\/div>/u
+  );
   assert.doesNotMatch(mypage, /<dt>アカウント種別<\/dt>/u);
   assert.doesNotMatch(mypage, /id="metaPlan"/u);
   assert.doesNotMatch(mypage, /<dt>現在プラン<\/dt>/u);
