@@ -55,3 +55,33 @@ test('recent activity uses trusted author data only', () => {
   assert.match(migration, /author_id_snapshot = v_uid/u);
   assert.doesNotMatch(migration, /select reader_id/u);
 });
+
+test('recent activity maps each event to the approved artwork icon', () => {
+  assert.match(
+    mypage,
+    /novel_published:'assets\/author-room\/ChatGPT Image 2026年9月7日 01_37_22 \(9\)\.png'/u
+  );
+  assert.match(
+    mypage,
+    /episode_added:'assets\/author-room\/ChatGPT Image 2026年9月7日 01_37_22 \(7\)\.png'/u
+  );
+  assert.match(
+    mypage,
+    /light_seed_received:'assets\/novelight-feature-light-seed\.png'/u
+  );
+  assert.match(
+    mypage,
+    /favorite_added:'assets\/author-room\/ChatGPT Image 2026年9月7日 01_37_23 \(10\)\.png'/u
+  );
+  assert.match(
+    mypage,
+    /first_episode_two_read:'assets\/author-room\/ChatGPT Image 2026年9月7日 01_37_22 \(6\)\.png'/u
+  );
+  assert.match(mypage, /icon\.className='activity-icon'/u);
+  assert.match(mypage, /mark\.appendChild\(icon\)/u);
+  assert.match(
+    mypage,
+    /\.activity-icon\{display:block;width:46px;height:46px;object-fit:contain\}/u
+  );
+  assert.doesNotMatch(mypage, /mark\.textContent=activityIcon/u);
+});
