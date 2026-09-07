@@ -67,7 +67,10 @@ test('author room sidebar keeps the logo readable over its artwork', () => {
 });
 
 test('author room sidebar quote keeps the intended three lines stable', () => {
-  assert.match(mypage, /\.sidebar-quote-line\{display:block;white-space:nowrap\}/u);
+  assert.match(
+    mypage,
+    /\.sidebar-quote-line\{display:block;white-space:nowrap\}/u
+  );
   assert.match(
     mypage,
     /<span class="sidebar-quote-line">物語を書く時間も、<\/span>/u
@@ -140,8 +143,10 @@ test('author room keeps all five primary author actions', () => {
 });
 
 test('recent activity header stays concise without the extra analytics action', () => {
-  assert.match(mypage, /id="activityHeading">最近起きたこと<\/h2>/u);
-  assert.doesNotMatch(mypage, /分析を見る →/u);
+  assert.match(
+    mypage,
+    /<section class="panel activity-panel"[\s\S]*?<div class="panel-header"><h2 id="activityHeading">最近起きたこと<\/h2><\/div>[\s\S]*?<div id="activityList"/u
+  );
 });
 
 test('profile settings keep avatar and public profile while simplifying summary metadata', () => {
