@@ -15,11 +15,51 @@ const discoveryPages = [
   'light-seed.html'
 ];
 
+function headerMarkup(source) {
+  const start = source.indexOf('<header');
+  const end = source.indexOf('</header>', start);
+  assert.ok(start >= 0 && end > start, 'page must contain a header');
+  return source.slice(start, end + '</header>'.length);
+}
+
 test('discovery pages share visual CSS', () => {
   for (const file of discoveryPages) {
     const html = read(file);
     assert.ok(html.includes('novelight-discovery-list.css'));
     assert.ok(html.includes('novelight-page-discovery-list'));
+  }
+});
+
+test('discovery pages use the unified public header composition', () => {
+  for (const file of discoveryPages) {
+    const html = read(file);
+    const header = headerMarkup(html);
+
+    assert.ok(
+      html.includes('novelight-header-light.css'),
+      `${file} loads shared header CSS`
+    );
+    assert.ok(
+      html.includes('novelight-public-header-page'),
+      `${file} opts into shared header`
+    );
+    assert.match(header, /aria-label="NOVELIGHT ホーム"/u);
+    assert.match(
+      header,
+      /href="search\.html" aria-current="page">作品を探す</u
+    );
+    assert.doesNotMatch(header, />ホーム</u);
+
+    const labels = ['作品を探す', '特徴', '料金プラン', 'ランキング'];
+    let previous = -1;
+    for (const label of labels) {
+      const index = header.indexOf(label);
+      assert.ok(index > previous, `${file}: ${label} order`);
+      previous = index;
+    }
+
+    assert.match(header, /login-action[\s\S]*?>ログイン</u);
+    assert.match(header, /signup-action[\s\S]*?>会員登録</u);
   }
 });
 
