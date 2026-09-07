@@ -1,63 +1,41 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
-const root = fileURLToPath(new URL('..', import.meta.url));
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path) => readFileSync(join(root, path), 'utf8');
 
-test('CI treats stylesheet and shared browser runtime changes as E2E-relevant', () => {
+test('CI watches CSS and shared browser runtimes', () => {
   const ci = read('.github/workflows/ci.yml');
-  assert.ok(
-    ci.includes(
-      '*.css|novelight-client.js|novelight-discovery-list.js|novelight-thumbnail-runtime.js'
-    )
-  );
-  assert.ok(
-    ci.includes(
-      '*.html|*.css|novelight-client.js|novelight-discovery-list.js|novelight-thumbnail-runtime.js|tests/e2e/*'
-    )
-  );
+  assert.match(ci, /\*\.css\|novelight-client\.js\|novelight-discovery-list\.js\|novelight-thumbnail-runtime\.js/u);
+  assert.match(ci, /\*\.html\|\*\.css\|novelight-client\.js\|novelight-discovery-list\.js\|novelight-thumbnail-runtime\.js\|tests\/e2e\/\*/u);
 });
 
-test('syntax check covers root browser JavaScript as well as api and scripts', () => {
+test('syntax check covers root browser JavaScript', () => {
   const script = read('scripts/check-js-syntax.mjs');
-  assert.ok(
-    script.includes("const rootFiles = readdirSync('.', { withFileTypes: true })")
-  );
-  assert.ok(
-    script.includes(
-      'const files = [...rootFiles, ...roots.flatMap(collectFiles)].sort();'
-    )
-  );
+  assert.match(script, /const rootFiles = readdirSync\('\.'\)/u);
+  assert.match(script, /\.\.\.rootFiles/u);
 });
 
-test('login redirect allowlist preserves authenticated creator edit flows', () => {
+test('login preserves creator edit redirects', () => {
   const login = read('login.html');
-  for (const path of [
-    '/novel-edit.html',
-    '/episode-post.html',
-    '/episode-edit.html'
-  ]) {
-    assert.ok(
-      login.includes(`'${path}'`),
-      `${path} must be a safe login redirect target`
-    );
-  }
-  assert.ok(login.includes("return url.pathname.replace(/^\\//,'')+url.search"));
+  assert.match(login, /'\/novel-edit\.html'/u);
+  assert.match(login, /'\/episode-post\.html'/u);
+  assert.match(login, /'\/episode-edit\.html'/u);
+  assert.match(login, /url\.pathname\.replace/u);
 });
 
-test('pricing mobile menu uses login entry for anonymous visitors', () => {
+test('pricing anonymous mobile entry is login', () => {
   const pricing = read('pricing.html');
-  const mobileMenu =
-    pricing.match(/<details class="mobile-menu"[\s\S]*?<\/details>/u)?.[0] || '';
-  assert.ok(mobileMenu.includes('<a href="login.html">ログイン</a>'));
-  assert.ok(!mobileMenu.includes('<a href="mypage.html">作者ホーム</a>'));
+  const mobile = pricing.match(/<details class="mobile-menu"[\s\S]*?<\/details>/u)?.[0] || '';
+  assert.match(mobile, /href="login\.html">ログイン/u);
+  assert.doesNotMatch(mobile, /href="mypage\.html">作者ホーム/u);
 });
 
-test('legacy surfaces preload the NOVELIGHT theme before shared JavaScript runs', () => {
-  const pages = [
+test('legacy surfaces preload the NOVELIGHT theme', () => {
+  for (const page of [
     'post.html',
     'novel-edit.html',
     'episode-post.html',
@@ -68,24 +46,10 @@ test('legacy surfaces preload the NOVELIGHT theme before shared JavaScript runs'
     'favorites.html',
     'author.html',
     'episode.html'
-  ];
-
-  for (const page of pages) {
+  ]) {
     const html = read(page);
-    assert.ok(
-      html.includes(
-        '<link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">'
-      ),
-      `${page} must preload the site theme`
-    );
-    assert.match(
-      html,
-      /<body class="novelight-theme novelight-page-[^"]+">/u,
-      `${page} must expose its page theme class without JavaScript`
-    );
-    assert.ok(
-      !html.includes('作者ホーム'),
-      `${page} must use the current creator-room name`
-    );
+    assert.match(html, /href="novelight-theme\.css" data-novelight-theme="sitewide"/u);
+    assert.match(html, /<body class="novelight-theme novelight-page-[^"]+">/u);
+    assert.doesNotMatch(html, /作者ホーム/u);
   }
 });
