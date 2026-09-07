@@ -7,14 +7,13 @@
   <link rel="stylesheet" href="novelight-author-home.css">
   <link rel="stylesheet" href="novelight-author-room.css">
   <style>
-    .profile-summary{align-items:start}
-    .avatar-stack{display:grid;gap:8px;justify-items:center}
+    .profile-summary{align-items:center}
     .profile-avatar,.account-avatar{overflow:hidden}
     .profile-avatar img,.account-avatar img{width:100%;height:100%;display:block;object-fit:cover}
     .avatar-label{display:inline-flex;align-items:center;justify-content:center;min-height:31px;padding:6px 10px;border:1px solid rgba(216,180,90,.46);border-radius:999px;color:#ead8a2;font-size:10px;font-weight:800;cursor:pointer;background:rgba(2,14,25,.35)}
     .avatar-label:hover{border-color:#e5c568;color:#fff0bd}
     .avatar-label input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-    .avatar-note{max-width:140px;color:#9eabba;font-size:9px;line-height:1.5;text-align:center}
+    .sidebar-quote-line{display:block;white-space:nowrap}
     .activity-list{display:grid;padding:5px 18px 16px}
     .activity-item{display:grid;grid-template-columns:42px 1fr;gap:12px;padding:15px 2px;border-bottom:1px solid rgba(216,180,90,.14)}
     .activity-item:last-child{border-bottom:0}
@@ -47,7 +46,9 @@
       <a href="#profile"><span class="nav-icon">⚙</span><span>設定</span></a>
     </nav>
     <div class="sidebar-quote">
-      物語を書く時間も、<br>届いた光を確かめる時間も、<br>作者の大切な創作です。
+      <span class="sidebar-quote-line">物語を書く時間も、</span>
+      <span class="sidebar-quote-line">届いた光を確かめる時間も、</span>
+      <span class="sidebar-quote-line">作者の大切な創作です。</span>
       <strong>WRITE A BRIGHTER STORY.</strong>
     </div>
   </aside>
@@ -92,21 +93,18 @@
 
       <div class="lower-grid">
         <section class="panel activity-panel" aria-labelledby="activityHeading">
-          <div class="panel-header"><h2 id="activityHeading">作品に最近起きたこと</h2><a class="section-link" href="analytics.html">分析を見る →</a></div>
+          <div class="panel-header"><h2 id="activityHeading">最近起きたこと</h2></div>
           <div id="activityList" class="activity-empty"><div><span class="empty-icon">✦</span><strong>最近の出来事を読み込んでいます。</strong><p>作品公開・エピソード追加・LIGHT SEED・お気に入り・読書到達を確認しています。</p></div></div>
         </section>
 
         <section id="profile" class="panel profile-panel" aria-labelledby="profileHeading">
           <div class="panel-header"><h2 id="profileHeading">プロフィール設定</h2><a id="publicProfileLink" class="section-link" href="author.html" hidden>読者向け表示を見る →</a></div>
           <div class="profile-summary">
-            <div class="avatar-stack">
-              <div id="profileAvatar" class="profile-avatar">作</div>
-              <label id="avatarLabel" class="avatar-label" aria-disabled="true">アイコン変更<input id="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" disabled></label>
-            </div>
-            <div><h3 id="profileDisplayName">作者</h3><p id="profileBioSummary">あなたの物語を届ける作者プロフィールです。</p><div class="avatar-note">JPEG / PNG / WebP・2MBまで</div></div>
+            <div id="profileAvatar" class="profile-avatar">作</div>
+            <h3 id="profileDisplayName">作者</h3>
+            <label id="avatarLabel" class="avatar-label" aria-disabled="true">アイコン変更<input id="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" disabled></label>
           </div>
           <dl class="profile-meta">
-            <div><dt>表示名</dt><dd id="metaName">読み込み中</dd></div>
             <div><dt>登録日</dt><dd id="joinedAt">確認中</dd></div>
           </dl>
           <details class="profile-editor">
@@ -136,7 +134,7 @@ function initials(v){const s=String(v||'作者').trim();return s?s.slice(0,1):'�
 function joined(v){if(!v)return'確認できません';const d=new Date(v);if(Number.isNaN(d.getTime()))return'確認できません';return d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'})}
 function avatarUrl(path){if(!path)return'';return client.storage.from('author-avatars').getPublicUrl(path).data.publicUrl||''}
 function setAvatar(el,path,name){el.replaceChildren();const url=avatarUrl(path);if(!url){el.textContent=initials(name);return}const img=document.createElement('img');img.src=url;img.alt=(name||'作者')+'のアイコン';img.onerror=()=>{el.replaceChildren();el.textContent=initials(name)};el.appendChild(img)}
-function presentProfile(name,bio,avatarPath=currentAvatarPath){const display=name||'作者';document.getElementById('accountName').textContent=display;setAvatar(document.getElementById('accountAvatar'),avatarPath,display);setAvatar(document.getElementById('profileAvatar'),avatarPath,display);document.getElementById('profileDisplayName').textContent=display;document.getElementById('profileBioSummary').textContent=bio||'あなたの物語を届ける作者プロフィールです。';document.getElementById('metaName').textContent=display}
+function presentProfile(name,bio,avatarPath=currentAvatarPath){const display=name||'作者';document.getElementById('accountName').textContent=display;setAvatar(document.getElementById('accountAvatar'),avatarPath,display);setAvatar(document.getElementById('profileAvatar'),avatarPath,display);document.getElementById('profileDisplayName').textContent=display}
 function analyticsUnavailable(){['i','d','f','s','fav'].forEach(id=>document.getElementById(id).textContent='—');['ctr','fr','sr'].forEach(id=>document.getElementById(id).textContent='取得できませんでした')}
 function toggleStudioNav(force){const menu=document.getElementById('studioSidebar'),scrim=document.getElementById('navScrim'),button=document.getElementById('menuToggle'),open=typeof force==='boolean'?force:!menu.classList.contains('open');menu.classList.toggle('open',open);scrim.classList.toggle('show',open);button.setAttribute('aria-expanded',String(open));button.textContent=open?'×':'☰'}
 document.getElementById('menuToggle').onclick=()=>toggleStudioNav();document.getElementById('navScrim').onclick=()=>toggleStudioNav(false);document.querySelectorAll('.studio-nav a').forEach(a=>a.addEventListener('click',()=>toggleStudioNav(false)));
