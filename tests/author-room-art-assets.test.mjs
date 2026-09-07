@@ -2,12 +2,50 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+const HERO_ASSET = 'assets/author-room/author-room-hero-background.webp';
 const assets = [
-  'assets/author-room/author-room-hero-background.webp',
+  HERO_ASSET,
   'assets/author-room/author-room-sidebar-background.webp',
   'assets/author-room/author-room-activity-background.webp',
   'assets/author-room/author-room-profile-background.webp'
 ];
+
+function readUint24LE(bytes, offset) {
+  return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16);
+}
+
+function getWebPDimensions(bytes) {
+  let offset = 12;
+
+  while (offset + 8 <= bytes.length) {
+    const type = bytes.subarray(offset, offset + 4).toString('ascii');
+    const size = bytes.readUInt32LE(offset + 4);
+    const payload = offset + 8;
+
+    if (type === 'VP8X') {
+      return {
+        width: readUint24LE(bytes, payload + 4) + 1,
+        height: readUint24LE(bytes, payload + 7) + 1
+      };
+    }
+
+    if (type === 'VP8 ') {
+      assert.deepEqual([...bytes.subarray(payload + 3, payload + 6)], [
+        0x9d,
+        0x01,
+        0x2a
+      ]);
+      return {
+        width: bytes.readUInt16LE(payload + 6) & 0x3fff,
+        height: bytes.readUInt16LE(payload + 8) & 0x3fff
+      };
+    }
+
+    offset = payload + size + (size & 1);
+  }
+
+  throw new Error('WebP dimension chunk not found');
+}
 
 test('author room background assets are valid WebP containers', async () => {
   for (const asset of assets) {
@@ -24,4 +62,16 @@ test('author room background assets are valid WebP containers', async () => {
       `${asset} must contain WEBP magic`
     );
   }
+});
+
+test('author room hero keeps production-grade resolution', async () => {
+  const bytes = await readFile(HERO_ASSET);
+  const dimensions = getWebPDimensions(bytes);
+
+  assert.ok(
+    bytes.length >= 40_000,
+    'hero artwork should not be aggressively compressed'
+  );
+  assert.ok(dimensions.width >= 1400, 'hero artwork should stay at least 1400px wide');
+  assert.ok(dimensions.height >= 460, 'hero artwork should stay at least 460px tall');
 });
