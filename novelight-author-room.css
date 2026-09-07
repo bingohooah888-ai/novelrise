@@ -1,8 +1,9 @@
 /* Author room refinements: preserve the readable author-home scale while using the
    owner-supplied night-study artwork for the studio surfaces. Gallery-specific styles do not live here. */
 
-/* The supplied portrait artwork now forms the studio navigation background. Keep a
-   translucent light plate behind the existing logo so the brand mark stays readable. */
+/* The supplied portrait artwork now forms the studio navigation background. Keep the
+   final creator-room logo treatment in this stylesheet so the first paint already matches
+   the post-theme state instead of briefly showing the retired light plate. */
 .studio-sidebar,
 body.novelight-theme.novelight-page-mypage .studio-sidebar{
   background:
@@ -14,24 +15,27 @@ body.novelight-theme.novelight-page-mypage .studio-sidebar{
 .studio-brand,
 body.novelight-theme.novelight-page-mypage .studio-brand{
   gap:0!important;
+  min-height:0!important;
   margin-bottom:8px!important;
-  padding:8px 6px!important;
-  border:1px solid rgba(216,180,90,.40)!important;
-  border-radius:14px!important;
-  background:rgba(255,253,248,.90)!important;
-  box-shadow:0 8px 24px rgba(0,0,0,.12)!important;
+  padding:0 0 8px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
 }
 .studio-brand img,
 body.novelight-theme.novelight-page-mypage .studio-brand img{
-  width:190px!important;
-  max-width:100%!important;
-  height:auto!important;
-  opacity:1!important;
-  background:transparent!important;
-  padding:0!important;
-  border:0!important;
-  border-radius:0!important;
-  filter:none!important;
+  display:none!important;
+}
+.studio-brand::before,
+body.novelight-theme.novelight-page-mypage .studio-brand::before{
+  content:"";
+  display:block;
+  width:190px;
+  max-width:100%;
+  aspect-ratio:3/1;
+  background:url("assets/author-room/novelight-author-room-logo.webp") center/contain no-repeat;
+  filter:drop-shadow(0 0 12px rgba(244,197,72,.20));
 }
 .studio-brand small,
 body.novelight-theme.novelight-page-mypage .studio-brand small{
@@ -184,6 +188,17 @@ details.profile-editor summary{font-size:14px!important}
 }
 .plan::selection{background:transparent!important;color:#c7edff!important}
 .plan::-moz-selection{background:transparent!important;color:#c7edff!important}
+
+/* Match the final PR #422 billing-status geometry before the asynchronously installed
+   sitewide theme arrives, preventing the plan CTA from jumping after first paint. */
+.action-card.cyan .status{
+  min-height:0!important;
+  margin-top:0!important;
+}
+.action-card.cyan .status:not(:empty){
+  min-height:17px!important;
+  margin-top:7px!important;
+}
 
 /* User-provided author-room art replaces only the ten dashboard glyphs. */
 .action-card .action-icon,
