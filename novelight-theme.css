@@ -1,6 +1,7 @@
 @import url("novelight-theme-base.css");
 @import url("novelight-legacy-surfaces.css");
 @import url("novelight-font-unification.css");
+@import url("novelight-readability.css");
 
 /* Keep stable regression anchors in the entry stylesheet while the base theme is imported. */
 body.novelight-page-index #discover {
@@ -11,10 +12,11 @@ body.novelight-page-index #features {
   background: #f2eee5;
 }
 
+/* Match creator/utility header links to the 22px Home navigation scale. */
 html body.novelight-theme:not(.novelight-public-dark) header .back,
 html body.novelight-theme:not(.novelight-public-dark) header .site-back,
 html body.novelight-theme:not(.novelight-public-dark) header .right > a {
-  font-size: 19px !important;
+  font-size: 22px !important;
   font-weight: 700;
 }
 
@@ -29,7 +31,7 @@ html body.novelight-theme:not(.novelight-public-dark) header .logout {
   html body.novelight-theme:not(.novelight-public-dark) header .back,
   html body.novelight-theme:not(.novelight-public-dark) header .site-back,
   html body.novelight-theme:not(.novelight-public-dark) header .right > a {
-    font-size: 17px !important;
+    font-size: 20px !important;
   }
 
   html body.novelight-theme:not(.novelight-public-dark) header .logout {
@@ -43,7 +45,7 @@ html body.novelight-theme:not(.novelight-public-dark) header .logout {
   html body.novelight-theme:not(.novelight-public-dark) header .back,
   html body.novelight-theme:not(.novelight-public-dark) header .site-back,
   html body.novelight-theme:not(.novelight-public-dark) header .right > a {
-    font-size: 16px !important;
+    font-size: 20px !important;
   }
 
   html body.novelight-theme:not(.novelight-public-dark) header .logout {
@@ -86,7 +88,7 @@ html body.novelight-theme.novelight-page-mypage .hero-kicker {
 html body.novelight-theme.novelight-page-mypage .hero-kicker::after {
   content: "AUTHOR'S ROOM";
   color: #eacb71;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   letter-spacing: 0.25em;
 }
@@ -101,7 +103,7 @@ html body.novelight-theme.novelight-page-mypage .action-card.cyan h2 {
 html body.novelight-theme.novelight-page-mypage .action-card.cyan p {
   margin-top: 9px !important;
   color: #eef5fb !important;
-  font-size: 15px !important;
+  font-size: 16px !important;
   line-height: 1.6;
   font-weight: 700;
 }
@@ -109,7 +111,7 @@ html body.novelight-theme.novelight-page-mypage .action-card.cyan p {
 html body.novelight-theme.novelight-page-mypage .action-card.cyan .plan {
   color: #dff4ff !important;
   -webkit-text-fill-color: #dff4ff !important;
-  font-size: 15px !important;
+  font-size: 17px !important;
   font-weight: 900;
   letter-spacing: 0.06em;
 }
@@ -117,7 +119,7 @@ html body.novelight-theme.novelight-page-mypage .action-card.cyan .plan {
 html body.novelight-theme.novelight-page-mypage .action-card.cyan .card-cta {
   min-height: 38px !important;
   padding: 8px 12px !important;
-  font-size: 14px !important;
+  font-size: 15px !important;
   letter-spacing: 0.02em;
 }
 
