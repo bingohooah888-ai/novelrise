@@ -67,11 +67,11 @@ test('selected public navigation relies on highlighted text without a second und
   );
 });
 
-test('legacy app headers use the refreshed responsive action reading floor', () => {
+test('legacy app headers use the Home-matched responsive action reading floor', () => {
   assert.match(client, /min-height:96px!important;gap:32px!important/u);
   assert.match(
     themeCss,
-    /html body\.novelight-theme:not\(\.novelight-public-dark\) header \.right > a \{[\s\S]*?font-size:\s*19px\s*!important/u
+    /html body\.novelight-theme:not\(\.novelight-public-dark\) header \.right > a \{[\s\S]*?font-size:\s*22px\s*!important/u
   );
   assert.match(
     themeCss,
@@ -79,11 +79,11 @@ test('legacy app headers use the refreshed responsive action reading floor', () 
   );
   assert.match(
     themeCss,
-    /@media \(min-width: 641px\) and \(max-width: 1180px\)[\s\S]*?header \.right > a \{[\s\S]*?font-size:\s*17px\s*!important/u
+    /@media \(min-width: 641px\) and \(max-width: 1180px\)[\s\S]*?header \.right > a \{[\s\S]*?font-size:\s*20px\s*!important/u
   );
   assert.match(
     themeCss,
-    /@media \(max-width: 640px\)[\s\S]*?header \.right > a \{[\s\S]*?font-size:\s*16px\s*!important/u
+    /@media \(max-width: 640px\)[\s\S]*?header \.right > a \{[\s\S]*?font-size:\s*20px\s*!important/u
   );
   assert.match(
     themeCss,
@@ -98,14 +98,14 @@ test('legal pages use the same official logo asset at the enlarged size', () => 
   assert.match(legalCss, /width:\s*262\.8px/u);
   assert.match(legalCss, /height:\s*61\.2px/u);
   assert.match(legalCss, /height:\s*104px/u);
-  assert.match(legalCss, /\.site-back \{[\s\S]*?font-size:\s*19px/u);
+  assert.match(legalCss, /\.site-back \{[\s\S]*?font-size:\s*22px/u);
   assert.match(
     legalCss,
-    /@media \(min-width: 641px\) and \(max-width: 1180px\)[\s\S]*?\.site-back \{\s*font-size:\s*17px/u
+    /@media \(min-width: 641px\) and \(max-width: 1180px\)[\s\S]*?\.site-back \{\s*font-size:\s*20px/u
   );
   assert.match(
     legalCss,
-    /@media \(max-width: 640px\)[\s\S]*?\.site-back \{\s*font-size:\s*16px/u
+    /@media \(max-width: 640px\)[\s\S]*?\.site-back \{\s*font-size:\s*20px/u
   );
 });
 
