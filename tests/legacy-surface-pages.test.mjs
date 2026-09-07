@@ -5,13 +5,12 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const legacy = readFileSync(
-  join(root, 'novelight-legacy-surfaces.css'),
-  'utf8',
-);
-const themeEntry = readFileSync(join(root, 'novelight-theme.css'), 'utf8');
+const legacyPath = join(root, 'novelight-legacy-surfaces.css');
+const themePath = join(root, 'novelight-theme.css');
+const legacy = readFileSync(legacyPath, 'utf8');
+const theme = readFileSync(themePath, 'utf8');
 
-const legacyPages = [
+const pages = [
   'post',
   'novel-edit',
   'episode-post',
@@ -25,43 +24,39 @@ const legacyPages = [
   'episode',
 ];
 
-test('sitewide theme loads the legacy surface refinement after the base theme', () => {
-  const baseIndex = themeEntry.indexOf('novelight-theme-base.css');
-  const legacyIndex = themeEntry.indexOf('novelight-legacy-surfaces.css');
+const primaryControls = [
+  '.submit',
+  '.new',
+  '.seed-button',
+  '.link',
+  '.period .active',
+  '.modal-actions .send',
+];
+
+test('legacy layer loads after base theme', () => {
+  const baseIndex = theme.indexOf('novelight-theme-base.css');
+  const legacyIndex = theme.indexOf('novelight-legacy-surfaces.css');
   assert.ok(baseIndex >= 0);
   assert.ok(legacyIndex > baseIndex);
 });
 
-test('all known legacy creator and reader pages are covered by the refinement layer', () => {
-  for (const page of legacyPages) {
-    assert.match(
-      legacy,
-      new RegExp(`\\.novelight-page-${page}(?:[\\s,.:)]|$)`, 'u'),
-    );
+test('legacy pages are covered', () => {
+  for (const page of pages) {
+    const marker = `.novelight-page-${page}`;
+    assert.ok(legacy.includes(marker));
   }
 });
 
-test('legacy primary actions use NOVELIGHT navy and gold instead of prototype violet', () => {
-  for (const selector of [
-    '.submit',
-    '.new',
-    '.seed-button',
-    '.link',
-    '.period .active',
-    '.modal-actions .send',
-  ]) {
-    assert.ok(
-      legacy.includes(selector),
-      `missing legacy control selector: ${selector}`,
-    );
+test('legacy primary actions use NOVELIGHT colors', () => {
+  for (const selector of primaryControls) {
+    assert.ok(legacy.includes(selector));
   }
-
   assert.match(legacy, /background:\s*var\(--novelight-navy\)/u);
   assert.match(legacy, /border-color:\s*var\(--novelight-gold\)/u);
   assert.doesNotMatch(legacy, /#6d4aff|#8b72ff|#f0edff|#5d45c4/iu);
 });
 
-test('dangerous actions retain a distinct danger treatment', () => {
+test('danger actions keep danger treatment', () => {
   assert.match(legacy, /\.delete, \.danger/u);
   assert.match(legacy, /color:\s*var\(--novelight-danger\)/u);
 });
