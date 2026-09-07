@@ -1,0 +1,534 @@
+/*
+ * NOVELIGHT legacy surface refinement layer.
+ *
+ * This file intentionally targets the older creator/reader screens that still
+ * ship page-local prototype CSS. The polished public-dark discovery, pricing,
+ * login, and creator-room surfaces keep their dedicated stylesheets unchanged.
+ */
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author
+  ) {
+  background: var(--novelight-ivory);
+  color: var(--novelight-ink);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) header {
+  border-bottom-color: var(--novelight-border);
+  background: var(--novelight-paper);
+  box-shadow: 0 6px 20px rgba(8, 20, 38, 0.04);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) .logo {
+  color: var(--novelight-navy);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) .back {
+  color: var(--novelight-muted);
+  font-weight: 700;
+}
+
+/* Paper cards replace the remaining generic white prototype boxes. */
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(.card, .work, .state, .profile, .empty, .notice, .modal-card, .warning, .policy) {
+  border-color: var(--novelight-border);
+  background: var(--novelight-paper);
+  color: var(--novelight-ink);
+  box-shadow: 0 12px 30px rgba(8, 20, 38, 0.055);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author
+  ) :is(.card, .work, .state, .profile, .empty, .notice, .policy) {
+  border-radius: 16px;
+}
+
+/* Brand typography inside forms and content cards. */
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(h1, h2, h3, .title, .name, .novel-title) {
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  letter-spacing: 0.015em;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) label {
+  color: var(--novelight-navy);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(input, select, textarea) {
+  min-height: 46px;
+  border-color: #d5cdbd;
+  border-radius: 10px;
+  background: #fffefb;
+  color: var(--novelight-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", sans-serif;
+  font-size: 15px;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) textarea {
+  min-height: 140px;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(input, select, textarea):focus {
+  border-color: var(--novelight-gold);
+  box-shadow: 0 0 0 3px rgba(214, 164, 71, 0.16);
+}
+
+/* Neutral button baseline, then explicit NOVELIGHT primary actions below. */
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) button {
+  min-height: 44px;
+  border: 1px solid var(--novelight-border);
+  border-radius: 9px;
+  background: var(--novelight-paper);
+  color: var(--novelight-navy);
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease,
+    transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) button:hover:not(:disabled) {
+  border-color: var(--novelight-gold);
+  background: #fff9eb;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(button, a):focus-visible {
+  outline: 3px solid rgba(214, 164, 71, 0.45);
+  outline-offset: 3px;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(
+    .submit,
+    .new,
+    .continue,
+    .seed-button,
+    .link,
+    .period .active,
+    .modal-actions .send,
+    a.action:not(.delete):not(.report),
+    button.action:not(.delete):not(.report)
+  ) {
+  border-color: var(--novelight-navy);
+  background: var(--novelight-navy);
+  color: #fff;
+  box-shadow: 0 7px 16px rgba(8, 20, 38, 0.14);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(
+    .submit,
+    .new,
+    .continue,
+    .seed-button,
+    .link,
+    .period .active,
+    .modal-actions .send,
+    a.action:not(.delete):not(.report),
+    button.action:not(.delete):not(.report)
+  ):hover:not(:disabled) {
+  border-color: var(--novelight-gold);
+  background: var(--novelight-navy-hover);
+  color: var(--novelight-gold-light);
+  transform: translateY(-1px);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(.submit, .new, .link, .continue, .seed-button) {
+  border-radius: 9px;
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", sans-serif;
+  font-weight: 900;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(.cancel, .report, .modal-actions button:not(.send)) {
+  border-color: var(--novelight-border);
+  background: var(--novelight-paper);
+  color: var(--novelight-muted);
+  box-shadow: none;
+}
+
+body:is(.novelight-page-novel, .novelight-page-episode) :is(.delete, .danger) {
+  border-color: #d68a82;
+  background: #fff9f8;
+  color: var(--novelight-danger);
+  box-shadow: none;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}
+
+/* Purple prototype pills become quiet gold/ink metadata. */
+body:is(
+    .novelight-page-my-novels,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel
+  ) :is(.badge, .genre, .tag, .status):not(.error):not(.off):not(.ai):not(.mature) {
+  border: 1px solid rgba(214, 164, 71, 0.34);
+  background: #fff6dc;
+  color: #79580f;
+}
+
+body.novelight-page-author .founding {
+  border: 1px solid rgba(214, 164, 71, 0.36);
+  background: #fff4cf;
+  color: #705000;
+}
+
+body.novelight-page-author .badge.ai,
+body.novelight-page-novel .badge.ai {
+  border-color: #c8d9ee;
+  background: #eef6ff;
+  color: #245fa9;
+}
+
+body.novelight-page-author .badge.mature,
+body.novelight-page-novel .badge.mature {
+  border-color: #eed6a8;
+  background: #fff1db;
+  color: #8b5b00;
+}
+
+/* Creator form guidance and thumbnail selection use warm paper/gold states. */
+body.novelight-page-post .policy,
+body.novelight-page-novel-edit .policy {
+  border-color: #ead8a9;
+  background: #fff8e6;
+  color: #69531e;
+}
+
+body.novelight-page-post .policy strong,
+body.novelight-page-novel-edit .policy strong,
+body.novelight-page-post .policy a,
+body.novelight-page-novel-edit .policy a {
+  color: #7a590f !important;
+}
+
+body.novelight-page-post .thumbnail-option input:checked + .thumbnail-visual,
+body.novelight-page-novel-edit .thumbnail-option input:checked + .thumbnail-visual {
+  border-color: var(--novelight-gold);
+  box-shadow: 0 0 0 3px rgba(214, 164, 71, 0.18);
+}
+
+body.novelight-page-post .thumbnail-option input:focus-visible + .thumbnail-visual,
+body.novelight-page-novel-edit .thumbnail-option input:focus-visible + .thumbnail-visual {
+  outline: 3px solid rgba(214, 164, 71, 0.45);
+  outline-offset: 3px;
+}
+
+/* Analytics adopts the creator-room navy/gold hierarchy. */
+body.novelight-page-analytics .metric,
+body.novelight-page-analytics .work,
+body.novelight-page-analytics .notice {
+  border-color: var(--novelight-border);
+  background: var(--novelight-paper);
+}
+
+body.novelight-page-analytics .value {
+  color: var(--novelight-navy);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+}
+
+body.novelight-page-analytics .step {
+  border: 1px solid #ead8a9;
+  background: #fff9eb;
+}
+
+body.novelight-page-analytics .step strong {
+  color: #79580f;
+}
+
+/* SCOUT RECORD keeps its identity without the prototype violet gradient. */
+body.novelight-page-scout-record .hero {
+  border: 1px solid rgba(214, 164, 71, 0.26);
+  background:
+    radial-gradient(circle at 84% 18%, rgba(234, 196, 106, 0.24), transparent 24%),
+    linear-gradient(135deg, var(--novelight-night), #183554);
+  color: #fff;
+  box-shadow: 0 16px 36px rgba(8, 20, 38, 0.14);
+}
+
+body.novelight-page-scout-record .hero h1 {
+  color: #fff;
+}
+
+body.novelight-page-scout-record .hero p {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+/* Reader detail and episode surfaces stay restrained and literary. */
+body.novelight-page-novel .panel,
+body.novelight-page-episode .card {
+  border-color: #ddd5c6;
+  background: #fffefb;
+  box-shadow: 0 10px 28px rgba(8, 20, 38, 0.045);
+}
+
+body.novelight-page-episode .content {
+  color: #292820;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+}
+
+body.novelight-page-episode .novel-title,
+body.novelight-page-novel .author a {
+  color: #7a590f;
+}
+
+body.novelight-page-novel .light-seed {
+  border-color: #ead8a9;
+  background: #fff9eb;
+}
+
+body:is(.novelight-page-novel, .novelight-page-episode) .modal-card {
+  border: 1px solid var(--novelight-border);
+  background: var(--novelight-paper);
+  box-shadow: 0 24px 70px rgba(8, 20, 38, 0.24);
+}
+
+body:is(.novelight-page-novel, .novelight-page-episode) .modal-card :is(select, textarea) {
+  border-color: #d5cdbd;
+  background: #fffefb;
+}
+
+body:is(.novelight-page-novel, .novelight-page-episode) .modal-card :is(select, textarea):focus {
+  border-color: var(--novelight-gold);
+  box-shadow: 0 0 0 3px rgba(214, 164, 71, 0.16);
+}
+
+/* Secondary text no longer carries the cool-gray prototype cast. */
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(.lead, .help, .note, .desc, .meta, .number, .status) {
+  color: var(--novelight-muted);
+}
+
+body:is(.novelight-page-my-novels, .novelight-page-favorites, .novelight-page-author) .card:hover {
+  border-color: rgba(214, 164, 71, 0.6);
+  box-shadow: 0 15px 34px rgba(8, 20, 38, 0.09);
+  transform: translateY(-1px);
+}
+
+body:is(.novelight-page-my-novels, .novelight-page-favorites, .novelight-page-author) .card {
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+@media (max-width: 640px) {
+  body:is(
+      .novelight-page-post,
+      .novelight-page-novel-edit,
+      .novelight-page-episode-post,
+      .novelight-page-episode-edit
+    ) :is(.card, .policy) {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  body:is(
+      .novelight-page-post,
+      .novelight-page-novel-edit,
+      .novelight-page-episode-post,
+      .novelight-page-episode-edit
+    ) :is(.submit, .cancel) {
+    min-height: 48px;
+  }
+
+  body.novelight-page-my-novels .new,
+  body.novelight-page-scout-record .link {
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+  }
+}
