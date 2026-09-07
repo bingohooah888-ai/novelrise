@@ -428,8 +428,10 @@
     if (!client) return false;
 
     const headerActions = document.querySelector('.header-actions');
-    const loginLink = headerActions?.querySelector('a[href="login.html"]');
-    if (!loginLink) return false;
+    const loginLinks = Array.from(
+      headerActions?.querySelectorAll('a[href="login.html"]') || []
+    );
+    if (!loginLinks.length) return false;
 
     try {
       const { data, error } = await client.auth.getSession();
@@ -439,15 +441,19 @@
       }
 
       if (data?.session) {
-        loginLink.textContent = '作者ホーム';
-        loginLink.href = 'mypage.html';
-        loginLink.dataset.authState = 'authenticated';
+        loginLinks.forEach((loginLink) => {
+          loginLink.textContent = '創作室';
+          loginLink.href = 'mypage.html';
+          loginLink.dataset.authState = 'authenticated';
+        });
         return true;
       }
 
-      loginLink.textContent = 'ログイン';
-      loginLink.href = 'login.html';
-      loginLink.dataset.authState = 'anonymous';
+      loginLinks.forEach((loginLink) => {
+        loginLink.textContent = 'ログイン';
+        loginLink.href = 'login.html';
+        loginLink.dataset.authState = 'anonymous';
+      });
       return false;
     } catch (error) {
       console.error('auth header session lookup failed', error);
