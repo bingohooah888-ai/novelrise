@@ -57,10 +57,7 @@ test('author room sidebar keeps the logo readable over its artwork', () => {
   assert.match(roomCss, /border:0!important;/u);
   assert.match(roomCss, /border-radius:0!important;/u);
   assert.match(roomCss, /box-shadow:none!important;/u);
-  assert.match(
-    roomCss,
-    /\.studio-brand img,[\s\S]*?display:none!important;/u
-  );
+  assert.match(roomCss, /\.studio-brand img,[\s\S]*?display:none!important;/u);
   assert.match(
     roomCss,
     /\.studio-brand small,[\s\S]*?display:none!important;/u
