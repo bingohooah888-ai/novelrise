@@ -7,7 +7,7 @@ const assets = [
   HERO_ASSET,
   'assets/author-room/author-room-sidebar-background.webp',
   'assets/author-room/author-room-activity-background.webp',
-  'assets/author-room/author-room-profile-background.webp'
+  'assets/author-room/author-room-profile-background.webp',
 ];
 
 function readUint24LE(bytes, offset) {
@@ -25,7 +25,7 @@ function getWebPDimensions(bytes) {
     if (type === 'VP8X') {
       return {
         width: readUint24LE(bytes, payload + 4) + 1,
-        height: readUint24LE(bytes, payload + 7) + 1
+        height: readUint24LE(bytes, payload + 7) + 1,
       };
     }
 
@@ -33,11 +33,11 @@ function getWebPDimensions(bytes) {
       assert.deepEqual([...bytes.subarray(payload + 3, payload + 6)], [
         0x9d,
         0x01,
-        0x2a
+        0x2a,
       ]);
       return {
         width: bytes.readUInt16LE(payload + 6) & 0x3fff,
-        height: bytes.readUInt16LE(payload + 8) & 0x3fff
+        height: bytes.readUInt16LE(payload + 8) & 0x3fff,
       };
     }
 
@@ -54,25 +54,22 @@ test('author room background assets are valid WebP containers', async () => {
     assert.equal(
       bytes.subarray(0, 4).toString('ascii'),
       'RIFF',
-      `${asset} must start with RIFF`
+      `${asset} must start with RIFF`,
     );
     assert.equal(
       bytes.subarray(8, 12).toString('ascii'),
       'WEBP',
-      `${asset} must contain WEBP magic`
+      `${asset} must contain WEBP magic`,
     );
   }
 });
 
-test('author room hero keeps a real landscape source instead of a stretched image fragment', async () => {
+test('author room hero keeps landscape dimensions', async () => {
   const bytes = await readFile(HERO_ASSET);
   const { width, height } = getWebPDimensions(bytes);
 
-  assert.ok(bytes.length >= 8000, 'hero artwork should contain enough image data');
-  assert.ok(width >= 600, 'hero artwork should stay at least 600px wide');
-  assert.ok(height >= 200, 'hero artwork should stay at least 200px tall');
-  assert.ok(
-    width / height >= 2.8,
-    'hero artwork should keep the supplied landscape aspect ratio'
-  );
+  assert.ok(bytes.length >= 8000);
+  assert.ok(width >= 600);
+  assert.ok(height >= 200);
+  assert.ok(width / height >= 2.8);
 });
