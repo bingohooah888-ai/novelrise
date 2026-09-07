@@ -64,7 +64,7 @@ jobs:
             [ -n "$file" ] || continue
 
             case "$file" in
-              package.json|package-lock.json|*.html|novelight-client.js|api/*|scripts/*|tests/*.js|tests/*.mjs|docs/*.md|supabase/migrations/*.sql|eslint.config.mjs|.github/workflows/*.yml)
+              package.json|package-lock.json|*.html|*.css|novelight-client.js|novelight-discovery-list.js|novelight-thumbnail-runtime.js|api/*|scripts/*|tests/*.js|tests/*.mjs|docs/*.md|supabase/migrations/*.sql|eslint.config.mjs|.github/workflows/*.yml)
                 fast=true
                 ;;
             esac
@@ -80,7 +80,7 @@ jobs:
             esac
 
             case "$file" in
-              *.html|novelight-client.js|tests/e2e/*)
+              *.html|*.css|novelight-client.js|novelight-discovery-list.js|novelight-thumbnail-runtime.js|tests/e2e/*)
                 e2e=true
                 ;;
             esac

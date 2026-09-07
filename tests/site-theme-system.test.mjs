@@ -72,6 +72,26 @@ test('legacy creator and reader surfaces use NOVELIGHT controls instead of proto
   assert.doesNotMatch(legacySurfaces, /#6d4aff/iu);
 });
 
+test('legacy surfaces preload the approved theme before JavaScript', () => {
+  for (const slug of [
+    'post',
+    'novel-edit',
+    'episode-post',
+    'episode-edit',
+    'my-novels',
+    'analytics',
+    'scout-record',
+    'favorites',
+    'author',
+    'episode'
+  ]) {
+    const html = readFileSync(join(root, `${slug}.html`), 'utf8');
+    assert.match(html, /href="novelight-theme\.css"/u);
+    assert.match(html, new RegExp(`novelight-page-${slug}`, 'u'));
+    assert.doesNotMatch(html, /作者ホーム/u);
+  }
+});
+
 test('reading surfaces keep their low-decoration readability treatment', () => {
   assert.match(theme, /novelight-page-episode/u);
   assert.match(theme, /background:\s*#faf8f2/u);

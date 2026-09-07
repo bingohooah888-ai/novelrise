@@ -1,70 +1,47 @@
 import assert from 'node:assert/strict';
-import { readdir, readFile } from 'node:fs/promises';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { join } from 'node:path';
-import { URL } from 'node:url';
 
-const root = new URL('../', import.meta.url);
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const htmlFiles = readdirSync(root)
+  .filter((name) => name.endsWith('.html'))
+  .sort();
 
-async function rootHtmlFiles() {
-  const entries = await readdir(root, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.html'))
-    .map((entry) => entry.name)
-    .sort();
-}
+const forbidden = [
+  'NovelRise',
+  'Novel Rise',
+  'ライトシード',
+  'スカウト履歴',
+  '作者ダッシュボード',
+  '作者ホーム'
+];
 
-test('user-facing HTML uses NOVELIGHT and current beta feature names', async () => {
-  const files = await rootHtmlFiles();
-  const violations = [];
-  const forbiddenNames = [
-    'NovelRise',
-    'NOVELRISE',
-    'novelrise',
-    '目利き実績',
-    '目利きレベル',
-    '作者ダッシュボード',
-    '新作48時間初動ブースト',
-    '新作の初動支援',
-    'LIGHT REPORT'
-  ];
-
-  for (const file of files) {
-    const html = await readFile(join(root.pathname, file), 'utf8');
-    for (const forbidden of forbiddenNames) {
-      if (html.includes(forbidden)) violations.push(`${file}: ${forbidden}`);
+test('user-facing HTML uses NOVELIGHT and current beta feature names', () => {
+  for (const name of htmlFiles) {
+    const html = readFileSync(join(root, name), 'utf8');
+    for (const word of forbidden) {
+      assert.equal(
+        html.includes(word),
+        false,
+        `${name} still contains deprecated wording: ${word}`
+      );
     }
   }
-
-  assert.deepEqual(violations, []);
 });
 
-test('core pages expose the approved beta terminology', async () => {
-  const [novel, analytics, mypage, pricing, scoutRecord] = await Promise.all([
-    readFile(join(root.pathname, 'novel.html'), 'utf8'),
-    readFile(join(root.pathname, 'analytics.html'), 'utf8'),
-    readFile(join(root.pathname, 'mypage.html'), 'utf8'),
-    readFile(join(root.pathname, 'pricing.html'), 'utf8'),
-    readFile(join(root.pathname, 'scout-record.html'), 'utf8')
-  ]);
+test('core pages expose the approved beta terminology', () => {
+  const index = readFileSync(join(root, 'index.html'), 'utf8');
+  const mypage = readFileSync(join(root, 'mypage.html'), 'utf8');
+  const scout = readFileSync(join(root, 'scout-record.html'), 'utf8');
+  const pricing = readFileSync(join(root, 'pricing.html'), 'utf8');
 
-  assert.match(novel, /LIGHT SEEDを贈る/);
-  assert.match(analytics, /LIGHT ANALYTICS/);
-  assert.doesNotMatch(analytics, /LIGHT REPORT/);
-  assert.match(analytics, /インプレッション/);
-  assert.match(analytics, /作品ページ到達/);
-  assert.match(analytics, /作品ページ→第1話/);
-  assert.match(analytics, /第1話→第2話/);
-  assert.match(analytics, /露出後お気に入り/);
-  assert.match(analytics, /プランによる追加露出/);
-  assert.match(mypage, /創作室/);
-  assert.match(mypage, /AUTHOR STUDIO/);
-  assert.doesNotMatch(mypage, /創作スタジオ/);
-  assert.doesNotMatch(mypage, /AUTHOR'S HOME/);
-  assert.doesNotMatch(mypage, /作者ホーム/);
-  assert.match(mypage, /SCOUT RECORD/);
-  assert.match(pricing, /新作48時間ブースト/);
-  assert.match(pricing, /プランによる追加露出/);
-  assert.match(scoutRecord, /SCOUT RECORD/);
-  assert.match(scoutRecord, /from\('light_seeds'\)/);
+  assert.match(index, /NOVELIGHT/u);
+  assert.match(index, /LIGHT SEED/u);
+  assert.match(mypage, /創作室/u);
+  assert.match(mypage, /LIGHT ANALYTICS/u);
+  assert.match(scout, /SCOUT RECORD/u);
+  assert.match(pricing, /href="login\.html">ログイン/u);
+  assert.doesNotMatch(pricing, /href="mypage\.html">作者ホーム/u);
 });

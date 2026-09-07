@@ -14,7 +14,11 @@ function collectFiles(path) {
     .sort();
 }
 
-const files = roots.flatMap(collectFiles);
+const rootFiles = readdirSync('.', { withFileTypes: true })
+  .filter((entry) => entry.isFile() && extensions.has(extname(entry.name)))
+  .map((entry) => entry.name)
+  .sort();
+const files = [...rootFiles, ...roots.flatMap(collectFiles)].sort();
 if (files.length === 0) {
   throw new Error('No JavaScript files were found for syntax checking.');
 }
