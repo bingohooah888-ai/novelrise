@@ -1,0 +1,92 @@
+/*
+ * NOVELIGHT sitewide typography lock.
+ *
+ * The homepage is the canonical typography reference. Keep every NOVELIGHT
+ * surface on the same Mincho-family brand stack, including legacy controls
+ * whose page-local CSS still carries older system-sans declarations.
+ */
+:root {
+  --novelight-brand-display-font: "Yu Mincho", "Hiragino Mincho ProN",
+    "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", Georgia,
+    "Times New Roman", serif;
+  --novelight-brand-reading-font: "Yu Mincho", "Hiragino Mincho ProN",
+    "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", Georgia,
+    serif;
+  --brand-display-font: var(--novelight-brand-display-font);
+  --brand-reading-font: var(--novelight-brand-reading-font);
+}
+
+html body.novelight-theme {
+  font-family: var(--novelight-brand-reading-font) !important;
+}
+
+html body.novelight-theme :is(
+    button,
+    input,
+    select,
+    textarea,
+    optgroup,
+    option,
+    summary,
+    label,
+    legend,
+    table,
+    th,
+    td
+  ) {
+  font-family: var(--novelight-brand-reading-font) !important;
+}
+
+html body.novelight-theme :is(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    .site-nav a,
+    .back,
+    .site-back,
+    .btn,
+    .save,
+    .submit,
+    .cancel,
+    .new,
+    .link,
+    .continue,
+    .seed-button,
+    .card-cta,
+    .logout,
+    .period button,
+    .title,
+    .name,
+    .novel-title,
+    .work-title,
+    .plan-name,
+    .price
+  ) {
+  font-family: var(--novelight-brand-display-font) !important;
+}
+
+/*
+ * The legacy creator-form layer gives every input min-height: 46px. That is
+ * correct for text fields but makes native checkboxes 46px tall, so the glyph
+ * is painted well below its label. Reset only checkbox geometry and keep the
+ * two-column warning layout intact.
+ */
+html body:is(.novelight-page-post, .novelight-page-novel-edit) .check {
+  align-items: flex-start;
+}
+
+html body:is(.novelight-page-post, .novelight-page-novel-edit)
+  .check
+  input[type="checkbox"] {
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  min-height: 0 !important;
+  flex: 0 0 16px;
+  margin: 3px 0 0 !important;
+  padding: 0 !important;
+  accent-color: #d6a447;
+}
