@@ -37,6 +37,9 @@ insert into public.novels (
   status,
   pv,
   created_at,
+  ai_usage,
+  content_policy_ack,
+  content_policy_version,
   thumbnail_asset_id
 )
 values
@@ -49,6 +52,9 @@ values
     'published',
     10,
     '2025-01-01T00:00:00Z',
+    'human',
+    true,
+    'beta-v1',
     '93000000-0000-0000-0000-000000000001'
   ),
   (
@@ -60,6 +66,9 @@ values
     'published',
     20,
     '2026-01-01T00:00:00Z',
+    'human',
+    true,
+    'beta-v1',
     null
   ),
   (
@@ -71,6 +80,9 @@ values
     'published',
     30,
     '2026-04-01T00:00:00Z',
+    'human',
+    true,
+    'beta-v1',
     null
   ),
   (
@@ -82,6 +94,9 @@ values
     'draft',
     0,
     '2026-05-01T00:00:00Z',
+    'unspecified',
+    false,
+    null,
     null
   );
 
@@ -93,7 +108,10 @@ insert into public.novels (
   genre,
   status,
   pv,
-  created_at
+  created_at,
+  ai_usage,
+  content_policy_ack,
+  content_policy_version
 )
 select
   990100 + series.n,
@@ -103,7 +121,10 @@ select
   'ファンタジー',
   'published',
   0,
-  '2026-03-01T00:00:00Z'::timestamptz + (series.n || ' minutes')::interval
+  '2026-03-01T00:00:00Z'::timestamptz + (series.n || ' minutes')::interval,
+  'human',
+  true,
+  'beta-v1'
 from generate_series(1, 12) as series(n);
 
 insert into public.light_seeds (
