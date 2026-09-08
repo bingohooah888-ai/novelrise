@@ -1,11 +1,40 @@
 -- Roll back NOVELIGHT SCOUT / LIGHT SEED beta event foundations.
--- This restores the preceding staged LIGHT SEED v1 schema without touching
--- historical v1 rows or unrelated production data.
+-- This restores the preceding staged LIGHT SEED v1 schema only while no new
+-- beta evidence has been collected. Once replayable SCOUT/valid-read evidence
+-- exists, fail closed rather than silently destroy it.
 \set ON_ERROR_STOP on
 
 begin;
 
 select pg_advisory_xact_lock(hashtext('novelight:20260909071500'));
+
+do $$
+begin
+  if exists (
+    select 1 from public.light_seeds
+    where seed_type is not null
+       or rank_at_seed is not null
+       or valid_read_event_id is not null
+  ) then
+    raise exception 'Refusing SCOUT foundation rollback: post-migration LIGHT SEED evidence exists';
+  end if;
+
+  if exists (select 1 from public.valid_read_events) then
+    raise exception 'Refusing SCOUT foundation rollback: valid-read evidence exists';
+  end if;
+
+  if exists (select 1 from public.scout_xp_ledger) then
+    raise exception 'Refusing SCOUT foundation rollback: SCOUT XP evidence exists';
+  end if;
+
+  if exists (
+    select 1 from public.novel_rank_events
+    where event_type <> 'initial'
+  ) then
+    raise exception 'Refusing SCOUT foundation rollback: post-baseline work Rank history exists';
+  end if;
+end
+$$;
 
 drop function if exists public.plant_light_seed_v2(text, text);
 drop function if exists public.light_seed_status_v2(text);
