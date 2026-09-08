@@ -102,9 +102,11 @@ run_sql tests/rls/signup-display-name.sql
 run_sql tests/rls/scout-beta-foundations-fixture.sql
 run_sql supabase/checks/20260909071500_scout_beta_event_foundations_precheck.sql
 run_sql supabase/migrations/20260909071500_scout_beta_event_foundations.sql
+run_sql supabase/migrations/20260909071510_scout_beta_rules_rls.sql
 run_sql supabase/checks/20260909071500_scout_beta_event_foundations_postcheck.sql
 run_sql supabase/rollback/20260909071500_scout_beta_event_foundations_rollback.sql
 run_sql supabase/checks/20260909071500_scout_beta_event_foundations_precheck.sql
 run_sql supabase/migrations/20260909071500_scout_beta_event_foundations.sql
+run_sql supabase/migrations/20260909071510_scout_beta_rules_rls.sql
 run_sql supabase/checks/20260909071500_scout_beta_event_foundations_postcheck.sql
 run_sql tests/rls/scout-beta-foundations.sql
