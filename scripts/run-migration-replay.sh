@@ -152,4 +152,31 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260908120000_light_seed_public_feed_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify LIGHT ANALYTICS runtime repair'
+"${REPLAY[@]}" -f supabase/checks/20260908153000_fix_light_analytics_runtime_ordering_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/light-analytics-runtime.sql
+echo '::endgroup::'
+
+echo '::group::Verify LIGHT ANALYTICS runtime repair rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260908153000_fix_light_analytics_runtime_ordering_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+declare
+  v_definition text;
+begin
+  select lower(pg_get_functiondef('public.novelight_author_exposure_funnel_v2(integer)'::regprocedure))
+    into v_definition;
+
+  if position('order by impressions desc nulls last, novel_id nulls last' in v_definition) = 0 then
+    raise exception 'LIGHT ANALYTICS repair rollback did not restore the preceding implementation';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260908153000_fix_light_analytics_runtime_ordering_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260908153000_fix_light_analytics_runtime_ordering.sql
+"${REPLAY[@]}" -f supabase/checks/20260908153000_fix_light_analytics_runtime_ordering_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/light-analytics-runtime.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
