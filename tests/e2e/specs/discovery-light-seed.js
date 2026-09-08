@@ -92,12 +92,19 @@ test('Home renders the formal LIGHT SEED feed once and respects the viewport lim
   );
   await expect(page.locator('#seedGrid .seed-count').first()).toContainText('1');
 
-  const calls = await page.evaluate(() => globalThis.__NOVELIGHT_E2E_CALLS__);
-  expect(calls.filter((call) => call.name === 'novelight_light_seed_feed')).toHaveLength(1);
-  expect(calls.filter((call) => call.name === 'light_seed_status')).toHaveLength(0);
-  const seedCall = calls.find((call) => call.name === 'novelight_light_seed_feed');
-  expect(seedCall.args.p_limit).toBe(expected);
-  expect(seedCall.args.p_offset).toBe(0);
+  const calls = await page.evaluate(
+    () => globalThis.__NOVELIGHT_E2E_CALLS__
+  );
+  const seedCalls = calls.filter(
+    (call) => call.name === 'novelight_light_seed_feed'
+  );
+  const statusCalls = calls.filter(
+    (call) => call.name === 'light_seed_status'
+  );
+  expect(seedCalls).toHaveLength(1);
+  expect(statusCalls).toHaveLength(0);
+  expect(seedCalls[0].args.p_limit).toBe(expected);
+  expect(seedCalls[0].args.p_offset).toBe(0);
 });
 
 test('Home hides the LIGHT SEED shelf only when the formal feed is empty', async ({
@@ -114,7 +121,9 @@ test('Home hides the LIGHT SEED shelf only when the formal feed is empty', async
   await expect(page.locator('#seedShelfSection')).toBeHidden();
 });
 
-test('Home discovery shelves read as one compact discovery zone', async ({ page }) => {
+test('Home discovery shelves read as one compact discovery zone', async ({
+  page
+}) => {
   await installDiscoveryStub(page, {
     novelight_trusted_discovery_feed: [],
     novelight_trusted_plan_extra_feed: [],
@@ -125,8 +134,10 @@ test('Home discovery shelves read as one compact discovery zone', async ({ page 
   await page.goto('/index.html');
   const gaps = await page.evaluate(() => {
     const gap = (fromId, toId) => {
-      const from = document.querySelector(`#${fromId} .shelf-grid`).getBoundingClientRect();
-      const to = document.querySelector(`#${toId} .shelf-head`).getBoundingClientRect();
+      const fromGrid = document.querySelector(`#${fromId} .shelf-grid`);
+      const toHead = document.querySelector(`#${toId} .shelf-head`);
+      const from = fromGrid.getBoundingClientRect();
+      const to = toHead.getBoundingClientRect();
       return Math.round(to.top - from.bottom);
     };
     return {
@@ -153,9 +164,17 @@ test('dedicated LIGHT SEED page uses one paged feed without per-work status RPCs
   await expect(page.locator('#discoveryList .seed-card')).toHaveCount(24);
   await expect(page.locator('#discoveryMoreWrap')).toBeVisible();
 
-  const calls = await page.evaluate(() => globalThis.__NOVELIGHT_E2E_CALLS__);
-  expect(calls.filter((call) => call.name === 'novelight_light_seed_feed')).toHaveLength(1);
-  expect(calls.filter((call) => call.name === 'light_seed_status')).toHaveLength(0);
+  const calls = await page.evaluate(
+    () => globalThis.__NOVELIGHT_E2E_CALLS__
+  );
+  const seedCalls = calls.filter(
+    (call) => call.name === 'novelight_light_seed_feed'
+  );
+  const statusCalls = calls.filter(
+    (call) => call.name === 'light_seed_status'
+  );
+  expect(seedCalls).toHaveLength(1);
+  expect(statusCalls).toHaveLength(0);
 });
 
 test('all five exploration pages use the compact shared outer spacing', async ({
@@ -183,9 +202,13 @@ test('all five exploration pages use the compact shared outer spacing', async ({
       const main = document.querySelector('main');
       const style = getComputedStyle(main);
       const mobile = window.matchMedia('(max-width:700px)').matches;
+      const topValue =
+        layoutKind === 'list' ? style.paddingTop : style.marginTop;
+      const bottomValue =
+        layoutKind === 'list' ? style.paddingBottom : style.marginBottom;
       return {
-        top: parseFloat(layoutKind === 'list' ? style.paddingTop : style.marginTop),
-        bottom: parseFloat(layoutKind === 'list' ? style.paddingBottom : style.marginBottom),
+        top: parseFloat(topValue),
+        bottom: parseFloat(bottomValue),
         mobile,
         mainBottom: main.getBoundingClientRect().bottom,
         footerTop: document.querySelector('footer').getBoundingClientRect().top
