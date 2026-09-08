@@ -94,3 +94,17 @@ run_sql supabase/checks/20260823204500_exclude_internal_test_founding_authors_po
 run_sql tests/rls/founding-internal-exclusion.sql
 run_sql tests/rls/beta-p0-foundations.sql
 run_sql tests/rls/signup-display-name.sql
+
+# Chapter 38 beta foundations. Rollback is exercised before behavior writes so
+# the fail-closed rollback can guarantee that collected SCOUT evidence is never
+# silently destroyed. After reapply, behavior tests intentionally leave the
+# replayable ledgers populated.
+run_sql tests/rls/scout-beta-foundations-fixture.sql
+run_sql supabase/checks/20260909071500_scout_beta_event_foundations_precheck.sql
+run_sql supabase/migrations/20260909071500_scout_beta_event_foundations.sql
+run_sql supabase/checks/20260909071500_scout_beta_event_foundations_postcheck.sql
+run_sql supabase/rollback/20260909071500_scout_beta_event_foundations_rollback.sql
+run_sql supabase/checks/20260909071500_scout_beta_event_foundations_precheck.sql
+run_sql supabase/migrations/20260909071500_scout_beta_event_foundations.sql
+run_sql supabase/checks/20260909071500_scout_beta_event_foundations_postcheck.sql
+run_sql tests/rls/scout-beta-foundations.sql
