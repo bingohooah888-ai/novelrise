@@ -5,12 +5,12 @@ create or replace function public.novelight_light_seed_feed(
   p_offset integer default 0
 )
 returns table (
-  id bigint,
+  novel_id text,
   title text,
   genre text,
-  pv bigint,
+  description text,
   created_at timestamptz,
-  published_at timestamptz,
+  pv bigint,
   author_id uuid,
   author_name text,
   thumbnail_url text,
@@ -21,31 +21,31 @@ returns table (
 language sql
 stable
 security definer
-set search_path = pg_catalog, public, pg_temp
+set search_path = pg_catalog, public
 as $$
   with seed_totals as (
     select
-      ledger.novel_id,
-      sum(ledger.delta)::bigint as light_seed_count
-    from public.light_seed_ledger as ledger
-    group by ledger.novel_id
-    having sum(ledger.delta) > 0
+      seed.novel_id_snapshot,
+      count(*)::bigint as light_seed_count
+    from public.light_seeds as seed
+    group by seed.novel_id_snapshot
+    having count(*) > 0
   ),
   favorite_totals as (
     select
-      favorite.novel_id,
+      favorite.novel_id::text as novel_id,
       count(*)::bigint as favorite_count
     from public.favorites as favorite
-    group by favorite.novel_id
+    group by favorite.novel_id::text
   )
   select
-    novel.id,
+    novel.id::text as novel_id,
     novel.title,
     novel.genre,
-    coalesce(novel.pv, 0)::bigint as pv,
+    novel.description,
     novel.created_at,
-    coalesce(novel.first_published_at, novel.created_at) as published_at,
-    novel.author_id,
+    coalesce(novel.pv, 0)::bigint as pv,
+    novel.user_id as author_id,
     coalesce(profile.display_name, '')::text as author_name,
     novel.thumbnail_url,
     novel.status::text as status,
@@ -53,15 +53,15 @@ as $$
     seeds.light_seed_count
   from public.novels as novel
   join seed_totals as seeds
-    on seeds.novel_id = novel.id
+    on seeds.novel_id_snapshot = novel.id::text
   left join public.profiles as profile
-    on profile.id = novel.author_id
+    on profile.id = novel.user_id
   left join favorite_totals as favorites
-    on favorites.novel_id = novel.id
+    on favorites.novel_id = novel.id::text
   where novel.status = 'published'
   order by
-    coalesce(novel.first_published_at, novel.created_at) desc,
-    novel.id desc
+    novel.created_at desc,
+    novel.id::text asc
   limit least(greatest(coalesce(p_limit, 24), 1), 100)
   offset greatest(coalesce(p_offset, 0), 0);
 $$;
