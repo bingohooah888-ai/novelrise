@@ -82,7 +82,7 @@ test('Home renders the formal LIGHT SEED feed once and respects the viewport lim
   await page.goto('/index.html');
 
   const expected = await page.evaluate(() =>
-    window.matchMedia('(max-width:860px)').matches ? 4 : 6
+    globalThis.matchMedia('(max-width:860px)').matches ? 4 : 6
   );
   await expect(page.locator('#seedShelfSection')).toBeVisible();
   await expect(page.locator('#seedGrid .seed-card')).toHaveCount(expected);
@@ -132,8 +132,10 @@ test('Home discovery shelves read as one compact discovery zone', async ({
   await page.goto('/index.html');
   const gaps = await page.evaluate(() => {
     const gap = (fromId, toId) => {
-      const fromGrid = document.querySelector(`#${fromId} .shelf-grid`);
-      const toHead = document.querySelector(`#${toId} .shelf-head`);
+      const fromGrid = globalThis.document.querySelector(
+        `#${fromId} .shelf-grid`
+      );
+      const toHead = globalThis.document.querySelector(`#${toId} .shelf-head`);
       const from = fromGrid.getBoundingClientRect();
       const to = toHead.getBoundingClientRect();
       return Math.round(to.top - from.bottom);
@@ -141,7 +143,7 @@ test('Home discovery shelves read as one compact discovery zone', async ({
     return {
       recommendedToNew: gap('discover', 'new-arrivals'),
       newToSeed: gap('new-arrivals', 'seedShelfSection'),
-      mobile: window.matchMedia('(max-width:700px)').matches
+      mobile: globalThis.matchMedia('(max-width:700px)').matches
     };
   });
 
@@ -193,9 +195,9 @@ test('all five exploration pages use the compact shared outer spacing', async ({
   for (const [route, kind] of routes) {
     await page.goto(`/${route}`);
     const spacing = await page.evaluate((layoutKind) => {
-      const main = document.querySelector('main');
-      const style = getComputedStyle(main);
-      const mobile = window.matchMedia('(max-width:700px)').matches;
+      const main = globalThis.document.querySelector('main');
+      const style = globalThis.getComputedStyle(main);
+      const mobile = globalThis.matchMedia('(max-width:700px)').matches;
       const topValue =
         layoutKind === 'list' ? style.paddingTop : style.marginTop;
       const bottomValue =
@@ -205,7 +207,9 @@ test('all five exploration pages use the compact shared outer spacing', async ({
         bottom: parseFloat(bottomValue),
         mobile,
         mainBottom: main.getBoundingClientRect().bottom,
-        footerTop: document.querySelector('footer').getBoundingClientRect().top
+        footerTop: globalThis.document
+          .querySelector('footer')
+          .getBoundingClientRect().top
       };
     }, kind);
 
