@@ -131,4 +131,25 @@ echo '::group::Verify Checkout attempt reservation rollback and reapply'
 "${REPLAY[@]}" -f supabase/checks/20260830214000_checkout_attempt_reservations_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify LIGHT SEED public feed behavior'
+"${REPLAY[@]}" -f supabase/checks/20260908120000_light_seed_public_feed_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/light-seed-public-feed.sql
+echo '::endgroup::'
+
+echo '::group::Verify LIGHT SEED public feed rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260908120000_light_seed_public_feed_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regprocedure('public.novelight_light_seed_feed(integer,integer)') is not null then
+    raise exception 'LIGHT SEED public feed rollback left the RPC behind';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260908120000_light_seed_public_feed_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260908120000_light_seed_public_feed.sql
+"${REPLAY[@]}" -f supabase/checks/20260908120000_light_seed_public_feed_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
