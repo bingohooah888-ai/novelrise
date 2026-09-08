@@ -54,7 +54,7 @@ test('no browser page performs a global raw favorite count', () => {
 test('neutral search, ranking and author basic analytics aggregate in database RPCs', () => {
   const search = read('search.html');
   const ranking = read('ranking.html');
-  const analytics = read('analytics.html');
+  const analytics = read('novelight-analytics.js');
   const metricsMigration = read(
     'supabase/migrations/20260828224000_author_basic_metrics.sql'
   );

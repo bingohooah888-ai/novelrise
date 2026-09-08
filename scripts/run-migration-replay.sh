@@ -179,4 +179,26 @@ SQL
 "${REPLAY[@]}" -f tests/rls/light-analytics-runtime.sql
 echo '::endgroup::'
 
+echo '::group::Verify LIGHT ANALYTICS visual trend behavior'
+"${REPLAY[@]}" -f supabase/checks/20260908172000_light_analytics_visual_trends_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/light-analytics-visual-trends.sql
+echo '::endgroup::'
+
+echo '::group::Verify LIGHT ANALYTICS visual trend rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260908172000_light_analytics_visual_trends_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regprocedure('public.novelight_author_analytics_timeseries(integer)') is not null then
+    raise exception 'LIGHT ANALYTICS visual trend rollback left the RPC behind';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260908172000_light_analytics_visual_trends_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260908172000_light_analytics_visual_trends.sql
+"${REPLAY[@]}" -f supabase/checks/20260908172000_light_analytics_visual_trends_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/light-analytics-visual-trends.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'

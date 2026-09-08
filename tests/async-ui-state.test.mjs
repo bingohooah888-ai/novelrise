@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const search = await readFile('search.html', 'utf8');
-const analytics = await readFile('analytics.html', 'utf8');
+const analytics = await readFile('novelight-analytics.js', 'utf8');
 const episode = await readFile('episode.html', 'utf8');
 const mypage = await readFile('mypage.html', 'utf8');
 const novel = await readFile('novel.html', 'utf8');
@@ -25,9 +25,9 @@ test('search drops stale async results', () => {
 });
 
 test('analytics drops stale period results', () => {
-  assert.match(analytics, /funnelRequestId=0/);
-  assert.match(analytics, /if\(current!==funnelRequestId\)return/);
-  assert.match(analytics, /clearFunnel\('取得できませんでした'\)/);
+  assert.match(analytics, /let analyticsRequestId = 0;/);
+  assert.match(analytics, /if \(requestId !== analyticsRequestId\) return;/);
+  assert.match(analytics, /clearSummary\('取得できませんでした'\)/);
   assert.match(analytics, /基本分析を読み込めませんでした/);
 });
 

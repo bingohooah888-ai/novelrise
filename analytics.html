@@ -5,62 +5,132 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>LIGHT ANALYTICS | NOVELIGHT</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}button{font:inherit}
-    header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:1080px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}
-    main{max-width:1080px;margin:auto;padding:42px 22px 80px}.heading{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:25px}h1{font-size:32px}.lead{color:#6b7280;margin-top:7px}.period{display:flex;gap:5px;padding:5px;background:#fff;border:1px solid #e5e7eb;border-radius:11px}.period button{border:0;border-radius:7px;padding:8px 10px;background:transparent;color:#666;font-weight:800;cursor:pointer}.period .active{background:#6d4aff;color:#fff}
-    .summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:11px}.metric,.work,.notice{background:#fff;border:1px solid #e5e7eb;border-radius:14px}.metric{padding:17px}.value{font-size:25px;font-weight:900;color:#6d4aff}.label{font-size:12px;color:#4b5563;margin-top:5px}.sub{font-size:11px;color:#6b7280;margin-top:6px;line-height:1.5}
-    .works{display:grid;gap:15px;margin-top:12px}.work{padding:22px}.work-title{font-size:19px;font-weight:900;margin-bottom:15px}.funnel{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.step{padding:14px;border-radius:11px;background:#f8f7ff}.step strong{display:block;color:#6d4aff;font-size:21px}.step span{display:block;color:#555;font-size:11px;margin-top:4px}.paid{margin-top:14px;padding:13px;border-radius:11px;background:#eef6ff;color:#245fa9;font-size:12px;line-height:1.7}.premium{background:#fff8de;color:#755500}
-    .section-title{font-size:21px;margin:30px 0 12px}.basic{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}.notice{padding:18px;color:#666;line-height:1.7}.notice strong{color:#303642}.error{color:#b42318;background:#fff7f7}.hidden{display:none!important}
-    footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:1080px;margin:auto;display:flex;gap:15px;justify-content:center;flex-wrap:wrap;font-size:12px}
-    @media(max-width:900px){.summary,.funnel{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){main{padding:28px 16px 60px}.heading{align-items:flex-start;flex-direction:column}.summary,.funnel,.basic{grid-template-columns:1fr}.period{max-width:100%;overflow:auto}}
+    *{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#222}a{color:inherit;text-decoration:none}button{font:inherit}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:1080px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{font-size:25px;font-weight:900}.back{font-size:14px}footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:1080px;margin:auto;display:flex;gap:15px;justify-content:center;flex-wrap:wrap;font-size:12px}
   </style>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-analytics.css">
 </head>
 <body class="novelight-theme novelight-page-analytics">
-<header><div class="header-inner"><a href="index.html" class="logo">NOVELIGHT</a><a href="mypage.html" class="back">← 創作室</a></div></header>
+<header>
+  <div class="header-inner">
+    <a href="index.html" class="logo">NOVELIGHT</a>
+    <a href="mypage.html" class="back">← 創作室</a>
+  </div>
+</header>
 <main>
-  <div class="heading">
-    <div><h1>LIGHT ANALYTICS</h1><p class="lead">作品が表示されたあと、作品ページ・第1話・第2話・お気に入りまで読者がどう進んだかを確認します。</p></div>
-    <div id="period" class="period"><button data-days="7">7日</button><button class="active" data-days="30">30日</button><button data-days="90">90日</button></div>
-  </div>
-  <div id="summary" class="summary">
-    <div class="metric"><div id="impressions" class="value">—</div><div class="label">インプレッション</div></div>
-    <div class="metric"><div id="detail" class="value">—</div><div class="label">作品ページ到達</div><div id="ctr" class="sub">集計中...</div></div>
-    <div class="metric"><div id="first" class="value">—</div><div class="label">第1話10秒閲覧</div><div id="firstRate" class="sub">集計中...</div></div>
-    <div class="metric"><div id="second" class="value">—</div><div class="label">第2話まで継続</div><div id="secondRate" class="sub">集計中...</div></div>
-    <div class="metric"><div id="favorites" class="value">—</div><div class="label">露出後お気に入り</div><div id="favoriteRate" class="sub">集計中...</div></div>
-  </div>
-  <div id="status" style="margin-top:14px"></div>
+  <section class="analytics-hero" aria-labelledby="analyticsTitle">
+    <div class="analytics-title-wrap">
+      <div class="analytics-kicker">AUTHOR INSIGHT</div>
+      <h1 id="analyticsTitle">LIGHT ANALYTICS</h1>
+      <p class="lead">作品が表示されたあと、作品ページ・第1話・第2話・お気に入りまで読者がどう進んだかを、結果と推移の両方から確認します。</p>
+    </div>
+    <div id="period" class="period" aria-label="分析期間">
+      <button type="button" data-days="7">7日</button>
+      <button type="button" class="active" data-days="30">30日</button>
+      <button type="button" data-days="90">90日</button>
+    </div>
+  </section>
+
+  <section id="summary" class="summary" aria-label="読書ファネル概要">
+    <article class="metric">
+      <div id="impressions" class="value">—</div>
+      <div class="label">インプレッション</div>
+      <div class="sub">作品が読者の前に表示された回数</div>
+      <div id="change-impressions" class="metric-change neutral">直前30日比 —</div>
+      <div class="spark-wrap">
+        <svg class="sparkline" viewBox="0 0 154 48" role="img" aria-label="インプレッションの期間推移"><path id="spark-impressions"></path></svg>
+        <span id="spark-empty-impressions" class="spark-empty">データ蓄積中</span>
+      </div>
+    </article>
+    <article class="metric">
+      <div id="detail" class="value">—</div>
+      <div class="label">作品ページ到達</div>
+      <div id="ctr" class="sub">集計中...</div>
+      <div id="change-detail_opens" class="metric-change neutral">直前30日比 —</div>
+      <div class="spark-wrap">
+        <svg class="sparkline" viewBox="0 0 154 48" role="img" aria-label="作品ページ到達の期間推移"><path id="spark-detail_opens"></path></svg>
+        <span id="spark-empty-detail_opens" class="spark-empty">データ蓄積中</span>
+      </div>
+    </article>
+    <article class="metric">
+      <div id="first" class="value">—</div>
+      <div class="label">第1話10秒閲覧</div>
+      <div id="firstRate" class="sub">集計中...</div>
+      <div id="change-first_episode_reads_10s" class="metric-change neutral">直前30日比 —</div>
+      <div class="spark-wrap">
+        <svg class="sparkline" viewBox="0 0 154 48" role="img" aria-label="第1話10秒閲覧の期間推移"><path id="spark-first_episode_reads_10s"></path></svg>
+        <span id="spark-empty-first_episode_reads_10s" class="spark-empty">データ蓄積中</span>
+      </div>
+    </article>
+    <article class="metric">
+      <div id="second" class="value">—</div>
+      <div class="label">第2話まで継続</div>
+      <div id="secondRate" class="sub">集計中...</div>
+      <div id="change-continued_to_episode_2" class="metric-change neutral">直前30日比 —</div>
+      <div class="spark-wrap">
+        <svg class="sparkline" viewBox="0 0 154 48" role="img" aria-label="第2話継続の期間推移"><path id="spark-continued_to_episode_2"></path></svg>
+        <span id="spark-empty-continued_to_episode_2" class="spark-empty">データ蓄積中</span>
+      </div>
+    </article>
+    <article class="metric">
+      <div id="favorites" class="value">—</div>
+      <div class="label">露出後お気に入り</div>
+      <div id="favoriteRate" class="sub">集計中...</div>
+      <div id="change-favorites" class="metric-change neutral">直前30日比 —</div>
+      <div class="spark-wrap">
+        <svg class="sparkline" viewBox="0 0 154 48" role="img" aria-label="露出後お気に入りの期間推移"><path id="spark-favorites"></path></svg>
+        <span id="spark-empty-favorites" class="spark-empty">データ蓄積中</span>
+      </div>
+    </article>
+  </section>
+
+  <div id="planNotice" class="analytics-plan-note" aria-live="polite"></div>
+  <div id="status" style="margin-top:14px" aria-live="polite"></div>
+
+  <section class="trend-panel" aria-labelledby="trendTitle">
+    <div class="trend-toolbar">
+      <div>
+        <h2 id="trendTitle">インプレッション・30日間の推移</h2>
+        <p id="trendDescription">1日ごとのインプレッションを表示しています。</p>
+      </div>
+      <div class="trend-metrics" aria-label="推移グラフの指標">
+        <button type="button" class="active" data-trend-metric="impressions">表示</button>
+        <button type="button" data-trend-metric="detail_opens">作品ページ</button>
+        <button type="button" data-trend-metric="first_episode_reads_10s">第1話</button>
+        <button type="button" data-trend-metric="continued_to_episode_2">第2話</button>
+        <button type="button" data-trend-metric="favorites">お気に入り</button>
+      </div>
+    </div>
+    <div class="trend-chart-wrap">
+      <svg class="trend-chart" viewBox="0 0 920 250" preserveAspectRatio="none" role="img" aria-labelledby="trendTitle trendDescription">
+        <path id="trendLine"></path>
+        <g id="trendDots"></g>
+      </svg>
+      <div id="trendEmpty" class="trend-empty">データ蓄積中</div>
+    </div>
+    <div class="trend-axis" aria-hidden="true"><span id="trendAxisStart">—</span><span id="trendAxisEnd">—</span></div>
+  </section>
+
   <section id="workAnalyticsSection" aria-labelledby="workAnalyticsHeading">
     <h2 id="workAnalyticsHeading" class="section-title">作品別LIGHT ANALYTICS</h2>
     <div id="works" class="works"></div>
   </section>
-  <h2 class="section-title">基本分析</h2>
-  <div class="basic">
-    <div class="metric"><div id="novelCount" class="value">—</div><div class="label">投稿作品</div></div>
-    <div class="metric"><div id="pv" class="value">—</div><div class="label">総PV</div></div>
-    <div class="metric"><div id="favoriteTotal" class="value">—</div><div class="label">総お気に入り</div></div>
-  </div>
-  <div id="basicStatus" style="margin-top:14px"></div>
+
+  <section aria-labelledby="basicAnalyticsHeading">
+    <h2 id="basicAnalyticsHeading" class="section-title">基本分析</h2>
+    <div class="basic">
+      <article class="metric"><div id="novelCount" class="value">—</div><div class="label">投稿作品</div><div class="sub">現在の作品数</div></article>
+      <article class="metric"><div id="pv" class="value">—</div><div class="label">総PV</div><div class="sub">これまでの作品PV合計</div></article>
+      <article class="metric"><div id="favoriteTotal" class="value">—</div><div class="label">総お気に入り</div><div class="sub">これまでのお気に入り合計</div></article>
+    </div>
+    <div id="basicStatus" style="margin-top:14px" aria-live="polite"></div>
+  </section>
 </main>
-<footer><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="contact.html">お問い合わせ</a></div></footer>
+<footer>
+  <div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="contact.html">お問い合わせ</a></div>
+</footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="novelight-client.js"></script>
-<script>
-const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
-let days=30,plan='free',userId=null,funnelRequestId=0;
-function num(v){return Number(v||0).toLocaleString('ja-JP')}
-function rate(a,b){return Number(b||0)>0?((Number(a||0)/Number(b))*100).toFixed(2)+'%':'0%'}
-function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}
-function normalizePlan(value){const candidate=String(value||'').toLowerCase();return candidate==='premium'?'premium':candidate==='standard'?'standard':'free'}
-function clearFunnel(message='集計中...'){['impressions','detail','first','second','favorites'].forEach(id=>document.getElementById(id).textContent='—');['ctr','firstRate','secondRate','favoriteRate'].forEach(id=>document.getElementById(id).textContent=message);document.getElementById('works').innerHTML=''}
-function summary(rows){const t=rows.reduce((a,r)=>{a.i+=Number(r.impressions||0);a.d+=Number(r.detail_opens||0);a.f+=Number(r.first_episode_reads_10s||0);a.s+=Number(r.continued_to_episode_2||0);a.v+=Number(r.favorites||0);return a},{i:0,d:0,f:0,s:0,v:0});document.getElementById('impressions').textContent=num(t.i);document.getElementById('detail').textContent=num(t.d);document.getElementById('first').textContent=num(t.f);document.getElementById('second').textContent=num(t.s);document.getElementById('favorites').textContent=num(t.v);document.getElementById('ctr').textContent='表示→作品ページ '+rate(t.d,t.i);document.getElementById('firstRate').textContent='作品ページ→第1話 '+rate(t.f,t.d);document.getElementById('secondRate').textContent='第1話→第2話 '+rate(t.s,t.f);document.getElementById('favoriteRate').textContent='表示→お気に入り '+rate(t.v,t.i)}
-function renderFreeScope(){const section=document.getElementById('workAnalyticsSection'),el=document.getElementById('works');section.querySelector('h2').classList.add('hidden');el.innerHTML='<div class="notice"><strong>Freeでは全作品合計の基本LIGHT ANALYTICSを表示しています。</strong><br>作品ごとのファネルと追加露出の効果はStandard以上で確認できます。</div>'}
-function render(rows){const section=document.getElementById('workAnalyticsSection'),heading=section.querySelector('h2'),el=document.getElementById('works');heading.classList.remove('hidden');if(!rows.length){el.innerHTML='<div class="notice">この期間にはまだ露出データがありません。</div>';return}el.innerHTML=rows.map(r=>{const paid=Number(r.plan_extra_impressions||0),premium=Number(r.premium_slot_impressions||0);return `<article class="work"><div class="work-title">${esc(r.title||'タイトル未設定')}</div><div class="funnel"><div class="step"><strong>${num(r.impressions)}</strong><span>表示</span></div><div class="step"><strong>${num(r.detail_opens)}</strong><span>作品ページ / CTR ${rate(r.detail_opens,r.impressions)}</span></div><div class="step"><strong>${num(r.first_episode_reads_10s)}</strong><span>第1話 / 作品ページ→第1話 ${rate(r.first_episode_reads_10s,r.detail_opens)}</span></div><div class="step"><strong>${num(r.continued_to_episode_2)}</strong><span>第2話 / 継続率 ${rate(r.continued_to_episode_2,r.first_episode_reads_10s)}</span></div><div class="step"><strong>${num(r.favorites)}</strong><span>お気に入り / ${rate(r.favorites,r.impressions)}</span></div></div><div class="paid">プランによる追加露出：表示 ${num(paid)} / 作品ページ ${num(r.plan_extra_detail_opens)} / 本文10秒 ${num(r.plan_extra_body_reads_10s)} / 表示→本文 ${rate(r.plan_extra_body_reads_10s,paid)}</div>${plan==='premium'?`<div class="paid premium">Premium専用追加露出：表示 ${num(premium)} / 作品ページ ${num(r.premium_slot_detail_opens)} / 本文10秒 ${num(r.premium_slot_body_reads_10s)} / 表示→本文 ${rate(r.premium_slot_body_reads_10s,premium)}</div>`:''}</article>`}).join('')}
-async function loadFunnel(){const current=++funnelRequestId;clearFunnel();document.getElementById('status').innerHTML='<div class="notice">読み込み中...</div>';try{const r=await client.rpc('novelight_author_exposure_funnel_v2',{p_days:days});if(current!==funnelRequestId)return;if(r.error)throw r.error;document.getElementById('status').innerHTML='';const rows=r.data||[];summary(rows);if(plan==='free')renderFreeScope();else render(rows)}catch(e){if(current!==funnelRequestId)return;console.error(e);clearFunnel('取得できませんでした');document.getElementById('status').innerHTML='<div class="notice error">LIGHT ANALYTICSを読み込めませんでした。時間をおいて再度お試しください。</div>'}}
-async function basic(){const st=document.getElementById('basicStatus');st.innerHTML='<div class="notice">読み込み中...</div>';try{const r=await client.rpc('novelight_author_basic_metrics');if(r.error)throw r.error;const m=Array.isArray(r.data)?r.data[0]:r.data;document.getElementById('novelCount').textContent=num(m?.novel_count);document.getElementById('pv').textContent=num(m?.total_pv);document.getElementById('favoriteTotal').textContent=num(m?.total_favorites);st.innerHTML=''}catch(e){console.error(e);['novelCount','pv','favoriteTotal'].forEach(id=>document.getElementById(id).textContent='—');st.innerHTML='<div class="notice error">基本分析を読み込めませんでした。時間をおいて再度お試しください。</div>'}}
-document.querySelectorAll('#period button').forEach(b=>b.onclick=async()=>{const next=Number(b.dataset.days);if(next===days)return;days=next;document.querySelectorAll('#period button').forEach(x=>x.classList.toggle('active',x===b));await loadFunnel()});
-(async()=>{await NovelightClient.recordVisit(client);const auth=await client.auth.getSession();if(!auth.data.session){location.href='login.html?redirect=analytics.html';return}userId=auth.data.session.user.id;void NovelightClient.claimAcquisition(client);const p=await client.from('profiles').select('plan').eq('id',userId).single();if(p.error){console.error(p.error);plan='free'}else plan=normalizePlan(p.data?.plan);await Promise.all([loadFunnel(),basic()])})();
-</script>
+<script src="novelight-analytics.js"></script>
 </body>
 </html>

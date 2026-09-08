@@ -75,14 +75,17 @@ test('LIGHT ANALYTICS exposes the beta funnel and plan-only exposure', async ({
   request
 }) => {
   const html = await (await request.get('/analytics.html')).text();
+  const analytics = await (await request.get('/novelight-analytics.js')).text();
 
   expect(html).toContain('<title>LIGHT ANALYTICS | NOVELIGHT</title>');
-  expect(html).toContain('作品ページ→第1話');
-  expect(html).toContain('第1話→第2話');
   expect(html).toContain('露出後お気に入り');
-  expect(html).toContain('plan_extra_impressions');
-  expect(html).toContain('novelight_author_exposure_funnel_v2');
+  expect(html).toContain('src="novelight-analytics.js"');
+  expect(analytics).toContain('作品ページ→第1話');
+  expect(analytics).toContain('第1話→第2話');
+  expect(analytics).toContain('plan_extra_impressions');
+  expect(analytics).toContain('novelight_author_exposure_funnel_v2');
   expect(html).not.toContain('LIGHT REPORT');
+  expect(analytics).not.toContain('LIGHT REPORT');
 });
 
 test('home and search use trusted discovery and complete impression tracking', async ({
