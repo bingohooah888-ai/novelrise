@@ -14,7 +14,7 @@ const loginCss = read('novelight-login-parchment.css');
 const discoveryPages = [
   'recommended.html',
   'new-arrivals.html',
-  'light-seed.html'
+  'light-seed.html',
 ];
 
 function headerMarkup(source) {
@@ -39,16 +39,16 @@ test('discovery pages use the unified public header composition', () => {
 
     assert.ok(
       html.includes('novelight-header-light.css'),
-      `${file} loads shared header CSS`
+      `${file} loads shared header CSS`,
     );
     assert.ok(
       html.includes('novelight-public-header-page'),
-      `${file} opts into shared header`
+      `${file} opts into shared header`,
     );
     assert.match(header, /aria-label="NOVELIGHT ホーム"/u);
     assert.match(
       header,
-      /href="search\.html" aria-current="page">作品を探す</u
+      /href="search\.html" aria-current="page">作品を探す</u,
     );
     assert.doesNotMatch(header, />ホーム</u);
 
@@ -75,19 +75,33 @@ test('search and ranking use shared visual CSS', () => {
   assert.ok(ranking.includes('class="novelight-page-ranking"'));
 });
 
-test('Home discovery shelves and all five exploration pages share compact spacing rules', () => {
+test('discovery surfaces share compact spacing rules', () => {
   assert.match(themeCss, /novelight-discovery-spacing\.css/u);
   assert.match(spacingCss, /--home-discovery-shelf-gap:\s*24px/u);
   assert.match(spacingCss, /--home-discovery-shelf-gap:\s*18px/u);
-  assert.match(spacingCss, /section\.discovery-section[\s\S]*?background:\s*#050d18\s*!important/u);
+  assert.match(
+    spacingCss,
+    /section\.discovery-section\s*\{[\s\S]*?padding:\s*0\s*!important/u,
+  );
+  assert.match(
+    spacingCss,
+    /> \.container\s*\{[\s\S]*?padding-top:[\s\S]*?padding-bottom:/u,
+  );
+  assert.match(
+    spacingCss,
+    /section\.discovery-section[\s\S]*?background:\s*#050d18\s*!important/u,
+  );
   assert.match(spacingCss, /--discovery-page-space-top:\s*34px/u);
   assert.match(spacingCss, /--discovery-page-space-bottom:\s*46px/u);
   assert.match(spacingCss, /--discovery-page-space-top:\s*20px/u);
   assert.match(spacingCss, /--discovery-page-space-bottom:\s*34px/u);
-  assert.match(spacingCss, /main\.discovery-list-main[\s\S]*?min-height:\s*0\s*!important/u);
   assert.match(
     spacingCss,
-    /novelight-page-search,\s*\.novelight-page-ranking\) main[\s\S]*?margin-top:[\s\S]*?margin-bottom:/u
+    /main\.discovery-list-main[\s\S]*?min-height:\s*0\s*!important/u,
+  );
+  assert.match(
+    spacingCss,
+    /novelight-page-search,\s*\.novelight-page-ranking\) main[\s\S]*?margin-top:[\s\S]*?margin-bottom:/u,
   );
 });
 
@@ -97,8 +111,8 @@ test('shared CSS keeps parchment colors and readable type', () => {
   assert.ok(css.includes('--discovery-paper-3: #dcc294'));
   assert.ok(
     css.includes(
-      'body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1'
-    )
+      'body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1',
+    ),
   );
   assert.ok(css.includes('color: #3a2618'));
   assert.ok(css.includes('font-size: clamp(30px, 4vw, 46px)'));
@@ -118,22 +132,22 @@ test('button typography keeps the approved size', () => {
 
 test('search and ranking use the Home Mincho family and reference background', () => {
   assert.ok(
-    loginCss.startsWith('@import url("novelight-reader-parchment-finish.css");')
+    loginCss.startsWith('@import url("novelight-reader-parchment-finish.css");'),
   );
   assert.match(
     finishCss,
-    /--novelight-reader-brand-font:\s*"Yu Mincho",\s*"Hiragino Mincho ProN",\s*"Hiragino Mincho Pro",\s*"Noto Serif JP",\s*"Noto Serif CJK JP",\s*Georgia,\s*"Times New Roman",\s*serif;/u
+    /--novelight-reader-brand-font:\s*"Yu Mincho",\s*"Hiragino Mincho ProN",\s*"Hiragino Mincho Pro",\s*"Noto Serif JP",\s*"Noto Serif CJK JP",\s*Georgia,\s*"Times New Roman",\s*serif;/u,
   );
   assert.match(
     finishCss,
-    /html body\.novelight-page-search,[\s\S]*?html body\.novelight-page-ranking[\s\S]*?background-color:\s*#080707;[\s\S]*?linear-gradient\(180deg, #120c08 0%, #0b0908 46%, #080707 100%\)/u
+    /html body\.novelight-page-search,[\s\S]*?html body\.novelight-page-ranking[\s\S]*?background-color:\s*#080707;[\s\S]*?linear-gradient\(180deg, #120c08 0%, #0b0908 46%, #080707 100%\)/u,
   );
   assert.match(
     finishCss,
-    /linear-gradient\(135deg, #f1e5c9 0%, #e6d3ad 52%, #dcc294 100%\)/u
+    /linear-gradient\(135deg, #f1e5c9 0%, #e6d3ad 52%, #dcc294 100%\)/u,
   );
   assert.match(
     finishCss,
-    /font-family:\s*var\(--novelight-reader-brand-font\)/u
+    /font-family:\s*var\(--novelight-reader-brand-font\)/u,
   );
 });
