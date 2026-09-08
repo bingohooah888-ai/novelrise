@@ -3,6 +3,8 @@
 do $$
 declare
   v_proc oid;
+  v_owner oid;
+  v_acl aclitem[];
   v_security_definer boolean;
   v_config text[];
   v_definition text;
@@ -12,8 +14,8 @@ begin
     raise exception 'Postcheck failed: novelight_light_seed_feed(integer, integer) is missing';
   end if;
 
-  select prosecdef, proconfig, pg_get_functiondef(oid)
-  into v_security_definer, v_config, v_definition
+  select proowner, proacl, prosecdef, proconfig, lower(pg_get_functiondef(oid))
+  into v_owner, v_acl, v_security_definer, v_config, v_definition
   from pg_proc
   where oid = v_proc;
 
@@ -21,24 +23,34 @@ begin
     raise exception 'Postcheck failed: novelight_light_seed_feed must be SECURITY DEFINER';
   end if;
 
-  if not ('search_path=pg_catalog, public, pg_temp' = any(coalesce(v_config, array[]::text[]))) then
+  if not exists (
+    select 1
+    from unnest(coalesce(v_config, array[]::text[])) as setting
+    where setting like 'search_path=pg_catalog, public%'
+  ) then
     raise exception 'Postcheck failed: novelight_light_seed_feed search_path is not pinned';
   end if;
 
-  if position('light_seed_ledger' in v_definition) = 0
-     or position('having sum(ledger.delta) > 0' in lower(v_definition)) = 0 then
-    raise exception 'Postcheck failed: LIGHT SEED > 0 eligibility is missing';
+  if position('light_seeds' in v_definition) = 0
+     or position('novel_id_snapshot' in v_definition) = 0
+     or position('light_seed_count' in v_definition) = 0 then
+    raise exception 'Postcheck failed: LIGHT SEED aggregation is missing';
   end if;
 
-  if position('novel.status = ''published''' in lower(v_definition)) = 0 then
+  if position('novel.status = ''published''' in v_definition) = 0 then
     raise exception 'Postcheck failed: published-only eligibility is missing';
   end if;
 
-  if position('first_published_at' in v_definition) = 0 then
-    raise exception 'Postcheck failed: published-date ordering is missing';
+  if position('novel.created_at desc' in v_definition) = 0 then
+    raise exception 'Postcheck failed: newest-first ordering is missing';
   end if;
 
-  if has_function_privilege('public', 'public.novelight_light_seed_feed(integer,integer)', 'EXECUTE') then
+  if exists (
+    select 1
+    from aclexplode(coalesce(v_acl, acldefault('f', v_owner))) as privilege
+    where privilege.grantee = 0
+      and privilege.privilege_type = 'EXECUTE'
+  ) then
     raise exception 'Postcheck failed: PUBLIC must not execute novelight_light_seed_feed';
   end if;
 
@@ -52,7 +64,7 @@ begin
 end
 $$;
 
-select id, light_seed_count
+select novel_id, light_seed_count
 from public.novelight_light_seed_feed(1, 0)
 where light_seed_count > 0
 limit 1;
