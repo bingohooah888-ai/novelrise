@@ -217,7 +217,8 @@ test('visual analytics stays within the mobile viewport', async ({ page }) => {
   await page.goto('/analytics.html');
 
   const overflow = await page.evaluate(
-    () => globalThis.document.documentElement.scrollWidth - globalThis.innerWidth
+    () =>
+      globalThis.document.documentElement.scrollWidth - globalThis.innerWidth
   );
   expect(overflow).toBeLessThanOrEqual(1);
   await expect(page.locator('#summary .metric').first()).toBeVisible();
