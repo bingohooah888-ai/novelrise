@@ -1,0 +1,64 @@
+/* Shared spacing for Home discovery shelves and reader discovery/list pages. */
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark {
+  --home-discovery-shelf-gap: 24px;
+  --home-discovery-zone-edge: 36px;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section {
+  padding: calc(var(--home-discovery-shelf-gap) / 2) 0 !important;
+  background: #050d18 !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section#discover {
+  padding-top: var(--home-discovery-zone-edge) !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section#seedShelfSection {
+  padding-bottom: var(--home-discovery-zone-edge) !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section
+  + section.discovery-section {
+  border-top-color: rgba(214, 164, 71, 0.1) !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-discovery-list,
+    .novelight-page-search,
+    .novelight-page-ranking
+  ) {
+  --discovery-page-space-top: 34px;
+  --discovery-page-space-bottom: 46px;
+}
+
+html body.novelight-theme.novelight-page-discovery-list main.discovery-list-main {
+  min-height: 0 !important;
+  padding: var(--discovery-page-space-top) 0 var(--discovery-page-space-bottom) !important;
+}
+
+html body.novelight-theme:is(.novelight-page-search, .novelight-page-ranking) main {
+  min-height: 0 !important;
+  margin-top: var(--discovery-page-space-top) !important;
+  margin-bottom: var(--discovery-page-space-bottom) !important;
+}
+
+@media (max-width: 700px) {
+  html body.novelight-theme.novelight-page-index.novelight-public-dark {
+    --home-discovery-shelf-gap: 18px;
+    --home-discovery-zone-edge: 28px;
+  }
+
+  html body.novelight-theme:is(
+      .novelight-page-discovery-list,
+      .novelight-page-search,
+      .novelight-page-ranking
+    ) {
+    --discovery-page-space-top: 20px;
+    --discovery-page-space-bottom: 34px;
+  }
+}
