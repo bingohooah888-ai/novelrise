@@ -93,18 +93,40 @@ async function installAnalyticsStub(page, authorPlan = 'standard') {
               rpc: async (name, args) => {
                 state.calls.push({ name, args });
                 if (name === 'novelight_author_exposure_funnel_v2') {
-                  return { data: state.plan === 'free' ? [{
-                    ...state.funnel[0], novel_id: null, title: null,
-                    plan_extra_impressions: 0, plan_extra_detail_opens: 0,
-                    plan_extra_body_reads_10s: 0, premium_slot_impressions: 0,
-                    premium_slot_detail_opens: 0, premium_slot_body_reads_10s: 0
-                  }] : state.funnel, error: null };
+                  return {
+                    data:
+                      state.plan === 'free'
+                        ? [
+                            {
+                              ...state.funnel[0],
+                              novel_id: null,
+                              title: null,
+                              plan_extra_impressions: 0,
+                              plan_extra_detail_opens: 0,
+                              plan_extra_body_reads_10s: 0,
+                              premium_slot_impressions: 0,
+                              premium_slot_detail_opens: 0,
+                              premium_slot_body_reads_10s: 0
+                            }
+                          ]
+                        : state.funnel,
+                    error: null
+                  };
                 }
                 if (name === 'novelight_author_analytics_timeseries') {
                   return { data: state.trends, error: null };
                 }
                 if (name === 'novelight_author_basic_metrics') {
-                  return { data: [{ novel_count: 3, total_pv: 480, total_favorites: 36 }], error: null };
+                  return {
+                    data: [
+                      {
+                        novel_count: 3,
+                        total_pv: 480,
+                        total_favorites: 36
+                      }
+                    ],
+                    error: null
+                  };
                 }
                 return { data: true, error: null };
               },
@@ -129,14 +151,20 @@ test('Standard LIGHT ANALYTICS renders comparisons, sparklines, trend selector a
   await expect(page.locator('#change-impressions')).toContainText('↑ 20.0%');
   await expect(page.locator('#spark-impressions')).not.toHaveAttribute('d', '');
   await expect(page.locator('#trendLine')).not.toHaveAttribute('d', '');
-  await expect(page.locator('#trendTitle')).toContainText('インプレッション・30日間の推移');
+  await expect(page.locator('#trendTitle')).toContainText(
+    'インプレッション・30日間の推移'
+  );
   await expect(page.locator('#workAnalyticsHeading')).toBeVisible();
   await expect(page.locator('.funnel-node')).toHaveCount(5);
-  await expect(page.locator('.paid').first()).toContainText('プランによる追加露出');
+  await expect(page.locator('.paid').first()).toContainText(
+    'プランによる追加露出'
+  );
   await expect(page.locator('#novelCount')).toHaveText('3');
 
   await page.getByRole('button', { name: '作品ページ' }).click();
-  await expect(page.locator('#trendTitle')).toContainText('作品ページ到達・30日間の推移');
+  await expect(page.locator('#trendTitle')).toContainText(
+    '作品ページ到達・30日間の推移'
+  );
 });
 
 test('period switch reloads both aggregate funnel and trend RPC for the selected window', async ({
@@ -149,17 +177,21 @@ test('period switch reloads both aggregate funnel and trend RPC for the selected
   await expect(page.locator('#trendTitle')).toContainText('7日間の推移');
   await expect(page.locator('#change-impressions')).toContainText('直前7日比');
 
-  const calls = await page.evaluate(() => globalThis.__NOVELIGHT_ANALYTICS_E2E__.calls);
+  const calls = await page.evaluate(
+    () => globalThis.__NOVELIGHT_ANALYTICS_E2E__.calls
+  );
   expect(
     calls.some(
       (call) =>
-        call.name === 'novelight_author_exposure_funnel_v2' && call.args?.p_days === 7
+        call.name === 'novelight_author_exposure_funnel_v2' &&
+        call.args?.p_days === 7
     )
   ).toBe(true);
   expect(
     calls.some(
       (call) =>
-        call.name === 'novelight_author_analytics_timeseries' && call.args?.p_days === 7
+        call.name === 'novelight_author_analytics_timeseries' &&
+        call.args?.p_days === 7
     )
   ).toBe(true);
 });
@@ -174,7 +206,9 @@ test('Free keeps aggregate visual trends but does not expose per-work analytics'
   await expect(page.locator('#trendLine')).not.toHaveAttribute('d', '');
   await expect(page.locator('#workAnalyticsHeading')).toBeHidden();
   await expect(page.locator('#works')).toContainText('Freeでは全作品合計');
-  await expect(page.locator('#planNotice')).toContainText('期間推移と前期間比較は利用できます');
+  await expect(page.locator('#planNotice')).toContainText(
+    '期間推移と前期間比較は利用できます'
+  );
   await expect(page.locator('#works')).not.toContainText('星灯りの物語');
 });
 
