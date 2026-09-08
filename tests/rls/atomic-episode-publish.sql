@@ -11,6 +11,20 @@ insert into auth.users (id, raw_user_meta_data) values
     '{"display_name":"Atomic Other"}'::jsonb
   );
 
+insert into public.novel_thumbnail_assets (
+  id,
+  label,
+  storage_path,
+  image_url,
+  is_active
+) values (
+  '11111111-1111-1111-1111-111111111111',
+  'Atomic official thumbnail',
+  'official/11111111-1111-1111-1111-111111111111.webp',
+  'https://example.com/atomic-official-thumbnail.webp',
+  true
+);
+
 insert into public.novels (
   user_id,
   title,
@@ -20,7 +34,8 @@ insert into public.novels (
   created_at,
   ai_usage,
   content_policy_ack,
-  content_policy_version
+  content_policy_version,
+  thumbnail_asset_id
 ) values (
   '33333333-3333-3333-3333-333333333333',
   'Atomic publish success',
@@ -30,7 +45,8 @@ insert into public.novels (
   '2026-08-01T00:00:00Z',
   'human',
   true,
-  'beta-2026-08-23'
+  'beta-2026-08-23',
+  '11111111-1111-1111-1111-111111111111'
 );
 
 -- The happy path runs as the real authenticated role, proving that the
@@ -95,7 +111,8 @@ insert into public.novels (
   created_at,
   ai_usage,
   content_policy_ack,
-  content_policy_version
+  content_policy_version,
+  thumbnail_asset_id
 ) values (
   '33333333-3333-3333-3333-333333333333',
   'Atomic publish rollback',
@@ -105,7 +122,8 @@ insert into public.novels (
   '2026-08-02T00:00:00Z',
   'human',
   true,
-  'beta-2026-08-23'
+  'beta-2026-08-23',
+  '11111111-1111-1111-1111-111111111111'
 );
 
 insert into public.episodes (

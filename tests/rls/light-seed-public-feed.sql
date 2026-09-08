@@ -69,7 +69,7 @@ values
     'human',
     true,
     'beta-v1',
-    null
+    '93000000-0000-0000-0000-000000000001'
   ),
   (
     990003,
@@ -83,7 +83,7 @@ values
     'human',
     true,
     'beta-v1',
-    null
+    '93000000-0000-0000-0000-000000000001'
   ),
   (
     990004,
@@ -97,7 +97,7 @@ values
     'unspecified',
     false,
     null,
-    null
+    '93000000-0000-0000-0000-000000000001'
   );
 
 insert into public.novels (
@@ -111,7 +111,8 @@ insert into public.novels (
   created_at,
   ai_usage,
   content_policy_ack,
-  content_policy_version
+  content_policy_version,
+  thumbnail_asset_id
 )
 select
   990100 + series.n,
@@ -124,7 +125,8 @@ select
   '2026-03-01T00:00:00Z'::timestamptz + (series.n || ' minutes')::interval,
   'human',
   true,
-  'beta-v1'
+  'beta-v1',
+  '93000000-0000-0000-0000-000000000001'
 from generate_series(1, 12) as series(n);
 
 insert into public.light_seeds (
