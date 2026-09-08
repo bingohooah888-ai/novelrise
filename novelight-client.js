@@ -11,6 +11,14 @@
   const THEME_STYLESHEET_PATH = 'novelight-theme.css';
   const PUBLIC_HEADER_STYLESHEET_PATH = 'novelight-header-light.css';
   const THUMBNAIL_RUNTIME_PATH = 'novelight-thumbnail-runtime.js';
+  const AUTHOR_STUDIO_SHELL_STYLESHEET_PATH = 'novelight-author-studio-shell.css';
+  const AUTHOR_STUDIO_SHELL_RUNTIME_PATH = 'novelight-author-studio-shell.js';
+  const AUTHOR_STUDIO_SHELL_PAGES = new Set([
+    'post',
+    'my-novels',
+    'analytics',
+    'scout-record'
+  ]);
   const PUBLIC_HEADER_PAGES = new Set([
     'index',
     'pricing',
@@ -175,6 +183,33 @@
   }
 
   installThemeStyles();
+
+  function installAuthorStudioSharedShell() {
+    const slug = currentPageSlug();
+    if (!AUTHOR_STUDIO_SHELL_PAGES.has(slug)) return false;
+
+    document.body?.classList.add('novelight-author-studio-shell');
+
+    if (!document.querySelector('link[data-novelight-author-studio-shell]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = AUTHOR_STUDIO_SHELL_STYLESHEET_PATH;
+      link.dataset.novelightAuthorStudioShell = 'shared';
+      document.head.appendChild(link);
+    }
+
+    if (!document.querySelector('script[data-novelight-author-studio-shell]')) {
+      const script = document.createElement('script');
+      script.src = AUTHOR_STUDIO_SHELL_RUNTIME_PATH;
+      script.async = false;
+      script.dataset.novelightAuthorStudioShell = 'shared';
+      document.body.appendChild(script);
+    }
+
+    return true;
+  }
+
+  installAuthorStudioSharedShell();
 
   function publicHeaderCurrent(slug, target) {
     if (target === 'discover' && ['search', 'novel', 'episode', 'author'].includes(slug)) {
@@ -563,6 +598,7 @@
     installPublicHeader,
     installBrandLogo,
     installThemeStyles,
-    installAuthorDashboardShell
+    installAuthorDashboardShell,
+    installAuthorStudioSharedShell
   };
 })();
