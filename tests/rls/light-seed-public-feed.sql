@@ -13,6 +13,21 @@ insert into public.profiles (id, display_name)
 values ('91000000-0000-0000-0000-000000000001', 'Feed Author')
 on conflict (id) do update set display_name = excluded.display_name;
 
+insert into public.novel_thumbnail_assets (
+  id,
+  label,
+  storage_path,
+  image_url,
+  created_by
+)
+values (
+  '93000000-0000-0000-0000-000000000001',
+  'Feed thumbnail',
+  'official/93000000-0000-0000-0000-000000000001.webp',
+  'https://example.invalid/old-seeded.webp',
+  '91000000-0000-0000-0000-000000000001'
+);
+
 insert into public.novels (
   id,
   user_id,
@@ -22,7 +37,7 @@ insert into public.novels (
   status,
   pv,
   created_at,
-  thumbnail_url
+  thumbnail_asset_id
 )
 values
   (
@@ -34,7 +49,7 @@ values
     'published',
     10,
     '2025-01-01T00:00:00Z',
-    'https://example.invalid/old-seeded.webp'
+    '93000000-0000-0000-0000-000000000001'
   ),
   (
     990002,
