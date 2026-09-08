@@ -15,6 +15,7 @@ body.novelight-page-analytics header .header-inner {
 
 body.novelight-page-analytics main {
   max-width: 1180px;
+  margin: 0 auto;
   padding: 48px 24px 84px;
 }
 
