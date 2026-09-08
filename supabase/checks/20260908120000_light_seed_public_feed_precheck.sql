@@ -16,23 +16,23 @@ begin
     raise exception 'Precheck failed: public.favorites is missing';
   end if;
 
-  if to_regclass('public.light_seed_ledger') is null then
-    raise exception 'Precheck failed: public.light_seed_ledger is missing';
+  if to_regclass('public.light_seeds') is null then
+    raise exception 'Precheck failed: public.light_seeds is missing';
   end if;
 
   select array_agg(required.column_name order by required.column_name)
   into v_missing_columns
   from (
     values
-      ('author_id'),
       ('created_at'),
-      ('first_published_at'),
+      ('description'),
       ('genre'),
       ('id'),
       ('pv'),
       ('status'),
       ('thumbnail_url'),
-      ('title')
+      ('title'),
+      ('user_id')
   ) as required(column_name)
   where not exists (
     select 1
@@ -54,6 +54,16 @@ begin
       and column_name = 'display_name'
   ) then
     raise exception 'Precheck failed: public.profiles.display_name is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'light_seeds'
+      and column_name = 'novel_id_snapshot'
+  ) then
+    raise exception 'Precheck failed: public.light_seeds.novel_id_snapshot is missing';
   end if;
 
   if to_regprocedure('public.novelight_light_seed_feed(integer,integer)') is not null then
