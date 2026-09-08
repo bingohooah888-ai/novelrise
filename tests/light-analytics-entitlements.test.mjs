@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [analytics, pricing, author, migration] = await Promise.all([
+const [analytics, pricing, author, migration, runtimeRepair] = await Promise.all([
   readFile('analytics.html', 'utf8'),
   readFile('pricing.html', 'utf8'),
   readFile('author.html', 'utf8'),
   readFile(
     'supabase/migrations/20260906204500_light_analytics_plan_entitlements.sql',
+    'utf8'
+  ),
+  readFile(
+    'supabase/migrations/20260908153000_fix_light_analytics_runtime_ordering.sql',
     'utf8'
   )
 ]);
@@ -35,6 +39,21 @@ test('server analytics enforces plan detail boundaries', () => {
   assert.match(migration, /v_plan = 'premium'/u);
   assert.match(migration, /a\.premium_impressions else 0::bigint/u);
   assert.match(migration, /novelight_author_exposure_funnel_v2\(p_days\)/u);
+});
+
+test('runtime repair removes PL/pgSQL output-column ordering ambiguity', () => {
+  assert.match(runtimeRepair, /order by 3 desc nulls last, 1 nulls last/u);
+  assert.doesNotMatch(
+    runtimeRepair,
+    /order by impressions desc nulls last, novel_id nulls last/u
+  );
+  assert.match(runtimeRepair, /where v_plan in \('standard', 'premium'\)/u);
+  assert.match(runtimeRepair, /having v_plan = 'free'/u);
+  assert.match(runtimeRepair, /v_plan = 'premium'/u);
+  assert.match(
+    runtimeRepair,
+    /grant execute on function public\.novelight_author_exposure_funnel_v2\(integer\)[\s\S]*to authenticated/u
+  );
 });
 
 test('paid analytics keeps exposure effects separated', () => {
