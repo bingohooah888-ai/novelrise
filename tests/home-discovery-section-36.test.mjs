@@ -206,20 +206,20 @@ test('dedicated discovery pages refresh receipts and use the same formal LIGHT S
   assert.match(thumbnailRuntime, /'light-seed'/);
 });
 
-test('LIGHT SEED feed enforces published seeded eligibility and preserves published-date ordering', async () => {
+test('LIGHT SEED feed enforces published seeded eligibility and preserves newest-first ordering', async () => {
   const migration = await read(
     'supabase/migrations/20260908120000_light_seed_public_feed.sql'
   );
 
   assert.match(migration, /novelight_light_seed_feed/u);
-  assert.match(migration, /having sum\(ledger\.delta\) > 0/u);
+  assert.match(migration, /from public\.light_seeds as seed/u);
+  assert.match(migration, /having count\(\*\) > 0/u);
   assert.match(migration, /where novel\.status = 'published'/u);
-  assert.match(
-    migration,
-    /coalesce\(novel\.first_published_at, novel\.created_at\) desc/u
-  );
+  assert.match(migration, /novel\.created_at desc/u);
+  assert.match(migration, /novel\.id::text asc/u);
   assert.match(migration, /novel\.thumbnail_url/u);
   assert.match(migration, /profile\.display_name/u);
+  assert.match(migration, /novel\.user_id as author_id/u);
   assert.match(migration, /seeds\.light_seed_count/u);
   assert.match(migration, /security definer/u);
   assert.match(migration, /grant execute[\s\S]*to anon, authenticated/u);
