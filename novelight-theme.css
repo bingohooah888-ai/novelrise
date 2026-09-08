@@ -2,6 +2,7 @@
 @import url("novelight-legacy-surfaces.css");
 @import url("novelight-font-unification.css");
 @import url("novelight-readability.css");
+@import url("novelight-discovery-spacing.css");
 
 /* Keep stable regression anchors in the entry stylesheet while the base theme is imported. */
 body.novelight-page-index #discover {
