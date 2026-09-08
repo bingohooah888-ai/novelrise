@@ -160,12 +160,21 @@ function updateEvidenceFor(table, calls) {
   };
 }
 
+const officialThumbnail = {
+  id: '11111111-1111-1111-1111-111111111111',
+  label: 'E2E official thumbnail',
+  image_url: 'https://example.com/e2e-official-thumbnail.webp'
+};
+
 test('novel edit loads existing work, saves changes, and renders the update', async ({
   page
 }) => {
   await installEditSupabaseStub(page, {
     session: { user: { id: 'author-e2e' } },
     updateDelayMs: 300,
+    tableData: {
+      novel_thumbnail_assets: [officialThumbnail]
+    },
     singleData: {
       novels: {
         id: 'novel-edit-e2e',
@@ -173,6 +182,7 @@ test('novel edit loads existing work, saves changes, and renders the update', as
         title: '編集前の作品',
         genre: '現代ドラマ',
         description: '編集前のあらすじです。',
+        thumbnail_asset_id: officialThumbnail.id,
         ai_usage: 'human',
         content_rating: 'general',
         content_warnings: [],
@@ -232,6 +242,7 @@ test('novel edit loads existing work, saves changes, and renders the update', as
   expect(evidence.update?.payload).toMatchObject({
     title: '編集後の作品',
     description: '編集後のあらすじです。',
+    thumbnail_asset_id: officialThumbnail.id,
     ai_usage: 'ai_assisted',
     content_rating: 'mature',
     content_warnings: ['violence'],
@@ -243,6 +254,8 @@ test('novel edit loads existing work, saves changes, and renders the update', as
   ]);
 
   await page.waitForURL(/\/novel\.html\?id=novel-edit-e2e$/);
+  await expect(page.locator('#warningGate')).toBeVisible();
+  await page.locator('#continueButton').click();
   await expect(page.locator('.title')).toHaveText('編集後の作品');
   await expect(page.locator('.description')).toHaveText(
     '編集後のあらすじです。'
@@ -256,6 +269,9 @@ test('novel edit recovers after an async save failure', async ({ page }) => {
     session: { user: { id: 'author-e2e' } },
     updateDelayMs: 300,
     updateErrors: { novels: 'temporary database error' },
+    tableData: {
+      novel_thumbnail_assets: [officialThumbnail]
+    },
     singleData: {
       novels: {
         id: 'novel-edit-failure-e2e',
@@ -263,6 +279,7 @@ test('novel edit recovers after an async save failure', async ({ page }) => {
         title: '保存失敗前の作品',
         genre: '現代ドラマ',
         description: '保存失敗テストのあらすじです。',
+        thumbnail_asset_id: officialThumbnail.id,
         ai_usage: 'human',
         content_rating: 'general',
         content_warnings: [],
