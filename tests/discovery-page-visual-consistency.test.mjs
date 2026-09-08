@@ -6,6 +6,8 @@ import test from 'node:test';
 const root = path.resolve(import.meta.dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const css = read('novelight-discovery-list.css');
+const spacingCss = read('novelight-discovery-spacing.css');
+const themeCss = read('novelight-theme.css');
 const finishCss = read('novelight-reader-parchment-finish.css');
 const loginCss = read('novelight-login-parchment.css');
 
@@ -71,6 +73,22 @@ test('search and ranking use shared visual CSS', () => {
   assert.ok(search.includes('class="novelight-page-search"'));
   assert.ok(ranking.includes('novelight-discovery-list.css'));
   assert.ok(ranking.includes('class="novelight-page-ranking"'));
+});
+
+test('Home discovery shelves and all five exploration pages share compact spacing rules', () => {
+  assert.match(themeCss, /novelight-discovery-spacing\.css/u);
+  assert.match(spacingCss, /--home-discovery-shelf-gap:\s*24px/u);
+  assert.match(spacingCss, /--home-discovery-shelf-gap:\s*18px/u);
+  assert.match(spacingCss, /section\.discovery-section[\s\S]*?background:\s*#050d18\s*!important/u);
+  assert.match(spacingCss, /--discovery-page-space-top:\s*34px/u);
+  assert.match(spacingCss, /--discovery-page-space-bottom:\s*46px/u);
+  assert.match(spacingCss, /--discovery-page-space-top:\s*20px/u);
+  assert.match(spacingCss, /--discovery-page-space-bottom:\s*34px/u);
+  assert.match(spacingCss, /main\.discovery-list-main[\s\S]*?min-height:\s*0\s*!important/u);
+  assert.match(
+    spacingCss,
+    /novelight-page-search,\s*\.novelight-page-ranking\) main[\s\S]*?margin-top:[\s\S]*?margin-bottom:/u
+  );
 });
 
 test('shared CSS keeps parchment colors and readable type', () => {
