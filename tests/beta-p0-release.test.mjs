@@ -106,7 +106,7 @@ test('discovery v2 gives new works initial priority and measures plan-only expos
   const [migration, home, analytics] = await Promise.all([
     read('supabase/migrations/20260823171000_initial_and_paid_exposure.sql'),
     read('index.html'),
-    read('analytics.html')
+    read('novelight-analytics.js')
   ]);
   assert.match(migration, /initial_exposure_target/);
   assert.match(migration, /needs_initial_exposure desc/);
@@ -124,11 +124,20 @@ test('discovery v2 gives new works initial priority and measures plan-only expos
 });
 
 test('LIGHT ANALYTICS uses the required funnel denominators', async () => {
-  const analytics = await read('analytics.html');
-  assert.match(analytics, /rate\(t\.d,t\.i\)/);
-  assert.match(analytics, /rate\(t\.f,t\.d\)/);
-  assert.match(analytics, /rate\(t\.s,t\.f\)/);
-  assert.match(analytics, /rate\(r\.first_episode_reads_10s,r\.detail_opens\)/);
+  const analytics = await read('novelight-analytics.js');
+  assert.match(
+    analytics,
+    /rate\(\s*safe\.detail_opens,\s*safe\.impressions\s*\)/
+  );
+  assert.match(
+    analytics,
+    /rate\(\s*safe\.first_episode_reads_10s,\s*safe\.detail_opens\s*\)/
+  );
+  assert.match(
+    analytics,
+    /rate\(\s*safe\.continued_to_episode_2,\s*safe\.first_episode_reads_10s\s*\)/
+  );
+  assert.match(analytics, /rate\(\s*safe\.favorites,\s*safe\.impressions\s*\)/);
 });
 
 test('all search sorts preserve impression data', async () => {
