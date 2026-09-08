@@ -1,0 +1,142 @@
+/*
+ * Final readability step for LIGHT ANALYTICS main content.
+ * Intentionally scoped to <main> so the page title sizing, shared Author Studio
+ * header, and sidebar typography remain unchanged.
+ */
+body.novelight-page-analytics main .analytics-kicker,
+body.novelight-page-analytics main .work-eyebrow {
+  font-size: 15px;
+}
+
+body.novelight-page-analytics main .analytics-title-wrap .lead {
+  font-size: 18px;
+}
+
+body.novelight-page-analytics main .period button {
+  min-width: 66px;
+  min-height: 52px;
+  padding: 11px 16px;
+  font-size: 18px;
+}
+
+body.novelight-page-analytics main .metric {
+  padding: 22px 19px 18px;
+}
+
+body.novelight-page-analytics main .metric .value {
+  font-size: clamp(29px, 2.6vw, 36px);
+}
+
+body.novelight-page-analytics main .metric .label {
+  min-height: 47px;
+  font-size: 16px;
+}
+
+body.novelight-page-analytics main .metric .sub {
+  min-height: 43px;
+  font-size: 14px;
+}
+
+body.novelight-page-analytics main .metric-change {
+  min-height: 32px;
+  padding: 6px 11px;
+  font-size: 14px;
+}
+
+body.novelight-page-analytics main .spark-wrap {
+  min-height: 60px;
+}
+
+body.novelight-page-analytics main .spark-empty {
+  font-size: 13px;
+}
+
+body.novelight-page-analytics main .analytics-plan-note {
+  padding: 22px 24px;
+}
+
+body.novelight-page-analytics main .analytics-plan-note strong {
+  font-size: 17px;
+}
+
+body.novelight-page-analytics main .analytics-plan-note p {
+  font-size: 15px;
+}
+
+body.novelight-page-analytics main .analytics-plan-note a {
+  min-height: 52px;
+  padding: 13px 20px;
+  font-size: 16px;
+}
+
+body.novelight-page-analytics main .trend-panel {
+  padding: 27px;
+}
+
+body.novelight-page-analytics main .trend-toolbar h2 {
+  font-size: 25px;
+}
+
+body.novelight-page-analytics main .trend-toolbar p {
+  font-size: 15px;
+}
+
+body.novelight-page-analytics main .trend-metrics button {
+  min-height: 44px;
+  padding: 9px 13px;
+  font-size: 14px;
+}
+
+body.novelight-page-analytics main .trend-empty {
+  font-size: 16px;
+}
+
+body.novelight-page-analytics main .trend-axis {
+  font-size: 14px;
+}
+
+body.novelight-page-analytics main .section-title {
+  font-size: 27px;
+}
+
+body.novelight-page-analytics main .work-title {
+  font-size: 23px;
+}
+
+body.novelight-page-analytics main .work-window {
+  padding: 7px 11px;
+  font-size: 14px;
+}
+
+body.novelight-page-analytics main .funnel-node {
+  padding: 15px 14px;
+}
+
+body.novelight-page-analytics main .funnel-node-head span {
+  font-size: 14px;
+}
+
+body.novelight-page-analytics main .funnel-node-head strong {
+  font-size: 22px;
+}
+
+body.novelight-page-analytics main .funnel-node small {
+  font-size: 13px;
+}
+
+body.novelight-page-analytics main .paid {
+  padding: 15px 17px;
+  font-size: 15px;
+}
+
+body.novelight-page-analytics main .notice {
+  padding: 20px;
+  font-size: 17px;
+}
+
+@media (max-width: 720px) {
+  body.novelight-page-analytics main .trend-panel,
+  body.novelight-page-analytics main .work {
+    padding: 20px;
+  }
+}
