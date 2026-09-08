@@ -558,3 +558,142 @@ body.novelight-page-analytics .hidden {
     flex-direction: column;
   }
 }
+
+/* Increase LIGHT ANALYTICS content readability without changing the page title or Author Studio shell. */
+body.novelight-page-analytics .analytics-kicker,
+body.novelight-page-analytics .work-eyebrow {
+  font-size: 14px;
+}
+
+body.novelight-page-analytics .analytics-title-wrap .lead {
+  font-size: 17px;
+}
+
+body.novelight-page-analytics .period button {
+  min-width: 62px;
+  min-height: 48px;
+  padding: 10px 15px;
+  font-size: 17px;
+}
+
+body.novelight-page-analytics .metric {
+  padding: 20px 18px 16px;
+}
+
+body.novelight-page-analytics .metric .value {
+  font-size: clamp(27px, 2.4vw, 34px);
+}
+
+body.novelight-page-analytics .metric .label {
+  min-height: 44px;
+  font-size: 15px;
+}
+
+body.novelight-page-analytics .metric .sub {
+  min-height: 40px;
+  font-size: 13px;
+}
+
+body.novelight-page-analytics .metric-change {
+  min-height: 29px;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+body.novelight-page-analytics .spark-wrap {
+  min-height: 58px;
+}
+
+body.novelight-page-analytics .spark-empty {
+  font-size: 12px;
+}
+
+body.novelight-page-analytics .analytics-plan-note {
+  padding: 20px 22px;
+}
+
+body.novelight-page-analytics .analytics-plan-note strong {
+  font-size: 16px;
+}
+
+body.novelight-page-analytics .analytics-plan-note p {
+  font-size: 14px;
+}
+
+body.novelight-page-analytics .analytics-plan-note a {
+  min-height: 48px;
+  padding: 12px 18px;
+  font-size: 15px;
+}
+
+body.novelight-page-analytics .trend-panel {
+  padding: 25px;
+}
+
+body.novelight-page-analytics .trend-toolbar h2 {
+  font-size: 24px;
+}
+
+body.novelight-page-analytics .trend-toolbar p {
+  font-size: 14px;
+}
+
+body.novelight-page-analytics .trend-metrics button {
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+body.novelight-page-analytics .trend-empty {
+  font-size: 15px;
+}
+
+body.novelight-page-analytics .trend-axis {
+  font-size: 13px;
+}
+
+body.novelight-page-analytics .section-title {
+  font-size: 26px;
+}
+
+body.novelight-page-analytics .work-title {
+  font-size: 22px;
+}
+
+body.novelight-page-analytics .work-window {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+body.novelight-page-analytics .funnel-node {
+  padding: 14px 13px;
+}
+
+body.novelight-page-analytics .funnel-node-head span {
+  font-size: 13px;
+}
+
+body.novelight-page-analytics .funnel-node-head strong {
+  font-size: 20px;
+}
+
+body.novelight-page-analytics .funnel-node small {
+  font-size: 12px;
+}
+
+body.novelight-page-analytics .paid {
+  padding: 14px 16px;
+  font-size: 14px;
+}
+
+body.novelight-page-analytics .notice {
+  padding: 19px;
+  font-size: 16px;
+}
+
+@media (max-width: 720px) {
+  body.novelight-page-analytics .trend-panel,
+  body.novelight-page-analytics .work {
+    padding: 19px;
+  }
+}
