@@ -1,0 +1,315 @@
+/* Shared Author Studio navigation shell for creator-facing pages. */
+:root {
+  --novelight-author-shell-gold: #d7b04d;
+  --novelight-author-shell-gold-bright: #ffe082;
+  --novelight-author-shell-line: rgba(226, 190, 92, 0.42);
+  --novelight-author-shell-font: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", "YuMincho", Georgia, serif;
+}
+
+body.novelight-author-studio-shell .mobile-menu {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 70;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--novelight-author-shell-line);
+  border-radius: 12px;
+  background: rgba(3, 17, 31, 0.96);
+  color: var(--novelight-author-shell-gold-bright);
+  font-family: var(--novelight-author-shell-font);
+  font-size: 21px;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(216, 180, 90, 0.12);
+}
+
+body.novelight-author-studio-shell .nav-scrim {
+  display: none;
+}
+
+body.novelight-author-studio-shell .studio-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 60;
+  width: 244px;
+  padding: 24px 18px 22px;
+  overflow-y: auto;
+  border-right: 1px solid rgba(216, 180, 90, 0.42);
+  background:
+    linear-gradient(180deg, rgba(1, 11, 25, 0.18), rgba(1, 11, 25, 0.46)),
+    url("assets/author-room/author-room-sidebar-background.webp") center bottom / cover no-repeat;
+  box-shadow: 6px 0 28px rgba(2, 10, 24, 0.24);
+  color: #f7f1e5;
+  font-family: var(--novelight-author-shell-font);
+}
+
+body.novelight-author-studio-shell .studio-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  min-height: 0;
+  margin-bottom: 8px;
+  padding: 0 0 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: center;
+  text-decoration: none;
+}
+
+body.novelight-author-studio-shell .studio-brand img,
+body.novelight-author-studio-shell .studio-brand small {
+  display: none;
+}
+
+body.novelight-author-studio-shell .studio-brand::before {
+  content: "";
+  display: block;
+  width: 190px;
+  max-width: 100%;
+  aspect-ratio: 3 / 1;
+  background: url("assets/author-room/novelight-author-room-logo.webp") center / contain no-repeat;
+  filter: drop-shadow(0 0 12px rgba(244, 197, 72, 0.2));
+}
+
+body.novelight-author-studio-shell .studio-label {
+  margin: 4px 10px 10px;
+  color: #e0bd63;
+  font-family: var(--novelight-author-shell-font);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.68);
+}
+
+body.novelight-author-studio-shell .studio-nav {
+  display: grid;
+  gap: 7px;
+}
+
+body.novelight-author-studio-shell .studio-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 47px;
+  padding: 10px 13px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #f7f1e5;
+  font-family: var(--novelight-author-shell-font);
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.56);
+  transition: 0.18s ease;
+}
+
+body.novelight-author-studio-shell .studio-nav a:hover {
+  border-color: rgba(216, 180, 90, 0.48);
+  background: rgba(5, 25, 45, 0.76);
+  color: #fff;
+}
+
+body.novelight-author-studio-shell .studio-nav a[aria-current="page"] {
+  border-color: rgba(242, 215, 125, 0.78);
+  background: linear-gradient(90deg, rgba(7, 35, 60, 0.88), rgba(6, 26, 47, 0.68));
+  color: #ffe69a;
+  box-shadow: inset 0 0 18px rgba(218, 180, 82, 0.09), 0 5px 16px rgba(0, 0, 0, 0.18);
+}
+
+body.novelight-author-studio-shell .nav-icon {
+  width: 25px;
+  flex: 0 0 25px;
+  color: #e7c466;
+  text-align: center;
+  font-size: 18px;
+}
+
+body.novelight-author-studio-shell .sidebar-quote {
+  margin-top: 28px;
+  padding: 20px 14px;
+  border-top: 1px solid rgba(216, 180, 90, 0.3);
+  color: #e3e8ee;
+  font-family: var(--novelight-author-shell-font);
+  font-size: 14px;
+  line-height: 1.9;
+  text-align: center;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.72);
+}
+
+body.novelight-author-studio-shell .sidebar-quote-line {
+  display: block;
+  white-space: nowrap;
+}
+
+body.novelight-author-studio-shell .sidebar-quote strong {
+  display: block;
+  margin-top: 10px;
+  color: #e5c568;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+}
+
+body.novelight-author-studio-shell .author-shell {
+  min-height: 100vh;
+  margin-left: 244px;
+}
+
+body.novelight-author-studio-shell .workspace-top {
+  min-height: 70px;
+  padding: 12px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  border: 0;
+  border-bottom: 1px solid rgba(216, 180, 90, 0.3);
+  background: rgba(2, 13, 24, 0.92);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px);
+  color: #fff8e8;
+  font-family: var(--novelight-author-shell-font);
+}
+
+body.novelight-author-studio-shell .workspace-top > a {
+  color: #d9dfe7;
+  font-family: var(--novelight-author-shell-font);
+  font-size: 16px;
+  text-decoration: none;
+}
+
+body.novelight-author-studio-shell .account-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+}
+
+body.novelight-author-studio-shell .account-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border: 1px solid rgba(242, 215, 125, 0.78);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(91, 177, 235, 0.5), transparent 34%),
+    linear-gradient(145deg, #0c3152, #071426 70%);
+  color: #ffe59a;
+  font-size: 15px;
+  font-weight: 900;
+  box-shadow: 0 0 18px rgba(216, 180, 90, 0.15);
+}
+
+body.novelight-author-studio-shell .account-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body.novelight-author-studio-shell .account-text {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+body.novelight-author-studio-shell .account-text strong {
+  max-width: 160px;
+  overflow: hidden;
+  color: #fff8e6;
+  font-family: var(--novelight-author-shell-font);
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.novelight-author-studio-shell .account-text span {
+  display: none;
+}
+
+body.novelight-author-studio-shell .logout {
+  padding: 8px 12px;
+  border: 1px solid rgba(216, 180, 90, 0.58);
+  border-radius: 999px;
+  background: rgba(4, 22, 38, 0.48);
+  color: #f8e5a9;
+  font-family: var(--novelight-author-shell-font);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+body.novelight-author-studio-shell .logout:hover {
+  border-color: #f2d77d;
+  background: rgba(216, 180, 90, 0.1);
+  color: #fff1bf;
+}
+
+body.novelight-author-studio-shell > footer,
+body.novelight-author-studio-shell .author-shell + footer {
+  margin-left: 244px;
+}
+
+@media (max-width: 900px) {
+  body.novelight-author-studio-shell .mobile-menu {
+    display: grid;
+  }
+
+  body.novelight-author-studio-shell .studio-sidebar {
+    width: min(82vw, 280px);
+    transform: translateX(-104%);
+    transition: transform 0.22s ease;
+  }
+
+  body.novelight-author-studio-shell .studio-sidebar.open {
+    transform: translateX(0);
+  }
+
+  body.novelight-author-studio-shell .nav-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    border: 0;
+    background: rgba(0, 0, 0, 0.58);
+  }
+
+  body.novelight-author-studio-shell .nav-scrim.show {
+    display: block;
+  }
+
+  body.novelight-author-studio-shell .author-shell,
+  body.novelight-author-studio-shell > footer,
+  body.novelight-author-studio-shell .author-shell + footer {
+    margin-left: 0;
+  }
+
+  body.novelight-author-studio-shell .workspace-top {
+    padding-left: 70px;
+  }
+
+  body.novelight-author-studio-shell .account-text {
+    display: none;
+  }
+
+  body.novelight-author-studio-shell .account-chip {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  body.novelight-author-studio-shell .workspace-top {
+    min-height: 64px;
+    padding-right: 14px;
+    gap: 10px;
+  }
+
+  body.novelight-author-studio-shell .workspace-top > a {
+    display: none;
+  }
+}
