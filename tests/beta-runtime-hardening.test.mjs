@@ -12,7 +12,7 @@ const migration = await readFile(
   'utf8'
 );
 
-test('novel detail warning gate defers full data and telemetry', () => {
+test('novel warning gate defers unsafe work', () => {
   assert.ok(novelHtml.includes('title,genre,ai_usage,status'));
   assert.ok(novelHtml.includes('content_rating,content_warnings'));
   assert.ok(novelHtml.includes('showWarningGate();return'));
@@ -21,18 +21,15 @@ test('novel detail warning gate defers full data and telemetry', () => {
   assert.ok(novelHtml.includes('void recordOpen()'));
 });
 
-test('episode warning gate fetches content only after confirmation', () => {
+test('episode warning gate defers content', () => {
   assert.ok(episodeHtml.includes('status,episode_number,title,pv'));
   assert.ok(episodeHtml.includes('title,content,status,pv'));
   assert.ok(episodeHtml.includes('showGate();return'));
   assert.ok(episodeHtml.includes('await loadEpisodeContentAndRender()'));
-  assert.equal(
-    episodeHtml.includes("select('*').eq('id',episodeId)"),
-    false
-  );
+  assert.equal(episodeHtml.includes("select('*').eq('id',episodeId)"), false);
 });
 
-test('episode posting validates beta input limits before RPC', () => {
+test('episode posting validates beta limits', () => {
   assert.ok(episodePostHtml.includes('maxlength="100000"'));
   assert.ok(episodePostHtml.includes('episodeNumber<1'));
   assert.ok(episodePostHtml.includes('title.length>150'));
@@ -40,12 +37,10 @@ test('episode posting validates beta input limits before RPC', () => {
   assert.ok(episodePostHtml.includes('content.length>100000'));
 });
 
-test('author room self-heals profiles and uses explicit metric elements', () => {
+test('author room avoids fragile globals', () => {
   assert.ok(mypageHtml.includes('async function ensureOwnProfile()'));
   assert.ok(mypageHtml.includes('novelight_ensure_my_profile'));
-  assert.ok(
-    mypageHtml.includes("document.getElementById('analyticsStatus')")
-  );
+  assert.ok(mypageHtml.includes("document.getElementById('analyticsStatus')"));
   assert.ok(mypageHtml.includes('metrics.i.textContent=num(t.i)'));
   assert.ok(mypageHtml.includes('metrics.fav.textContent=num(t.v)'));
 });
@@ -57,7 +52,7 @@ test('novel editing requires an official thumbnail', () => {
   assert.ok(novelEditHtml.includes('thumbnail_asset_id:thumbnailAsset'));
 });
 
-test('database boundary enforces beta runtime rules', () => {
+test('database boundary enforces beta rules', () => {
   assert.ok(migration.includes('alter column thumbnail_asset_id set not null'));
   assert.ok(migration.includes('Official thumbnail is required'));
   assert.ok(migration.includes('novelight_ensure_my_profile'));
