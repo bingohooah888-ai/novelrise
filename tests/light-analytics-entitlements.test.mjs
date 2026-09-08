@@ -2,19 +2,21 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [analytics, pricing, author, migration, runtimeRepair] = await Promise.all([
-  readFile('analytics.html', 'utf8'),
-  readFile('pricing.html', 'utf8'),
-  readFile('author.html', 'utf8'),
-  readFile(
-    'supabase/migrations/20260906204500_light_analytics_plan_entitlements.sql',
-    'utf8'
-  ),
-  readFile(
-    'supabase/migrations/20260908153000_fix_light_analytics_runtime_ordering.sql',
-    'utf8'
-  )
-]);
+const [analytics, pricing, author, migration, runtimeRepair] = await Promise.all(
+  [
+    readFile('analytics.html', 'utf8'),
+    readFile('pricing.html', 'utf8'),
+    readFile('author.html', 'utf8'),
+    readFile(
+      'supabase/migrations/20260906204500_light_analytics_plan_entitlements.sql',
+      'utf8'
+    ),
+    readFile(
+      'supabase/migrations/20260908153000_fix_light_analytics_runtime_ordering.sql',
+      'utf8'
+    )
+  ]
+);
 
 test('Free analytics is aggregate-only and fails closed', () => {
   const fallback = "if(p.error){console.error(p.error);plan='free'}";
@@ -24,7 +26,10 @@ test('Free analytics is aggregate-only and fails closed', () => {
   assert.ok(analytics.includes(fallback));
   assert.ok(analytics.includes(freeRender));
   assert.match(analytics, /Freeでは全作品合計の基本LIGHT ANALYTICS/u);
-  assert.match(analytics, /作品ごとのファネルと追加露出の効果はStandard以上/u);
+  assert.match(
+    analytics,
+    /作品ごとのファネルと追加露出の効果はStandard以上/u
+  );
 });
 
 test('server analytics enforces plan detail boundaries', () => {
