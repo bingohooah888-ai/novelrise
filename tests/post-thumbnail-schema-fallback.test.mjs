@@ -6,32 +6,22 @@ const postHtml = await readFile('post.html', 'utf8');
 const optionalThumbnailPayload =
   'if(thumbnailAsset)payload.thumbnail_asset_id=thumbnailAsset';
 
-test('post page fails closed when official thumbnails are unavailable', () => {
+test('post thumbnails fail closed', () => {
   assert.ok(postHtml.includes('function disableThumbnailPosting(message)'));
   assert.ok(postHtml.includes('thumbnailReady=false'));
   assert.ok(postHtml.includes('button.disabled=true'));
-  assert.ok(
-    postHtml.includes('公式サムネイルを読み込めませんでした')
-  );
-  assert.equal(
-    postHtml.includes('enableThumbnailCompatibilityMode'),
-    false
-  );
-  assert.equal(
-    postHtml.includes('enableThumbnailEmptyCatalogMode'),
-    false
-  );
+  assert.ok(postHtml.includes('公式サムネイルを読み込めませんでした'));
+  assert.equal(postHtml.includes('enableThumbnailCompatibilityMode'), false);
+  assert.equal(postHtml.includes('enableThumbnailEmptyCatalogMode'), false);
   assert.equal(postHtml.includes('画像なしで投稿'), false);
 });
 
 test('empty active thumbnail catalog blocks posting', () => {
   assert.ok(postHtml.includes('if(!assets.length){disableThumbnailPosting'));
-  assert.ok(
-    postHtml.includes('公式サムネイルがまだ登録されていません')
-  );
+  assert.ok(postHtml.includes('公式サムネイルがまだ登録されていません'));
 });
 
-test('thumbnail remains required and is always inserted into payload', () => {
+test('thumbnail remains required in payload', () => {
   assert.ok(postHtml.includes('input.required=true'));
   assert.ok(postHtml.includes('if(!thumbnailAsset){'));
   assert.ok(postHtml.includes('作品に合う画像を1枚選んでください'));
