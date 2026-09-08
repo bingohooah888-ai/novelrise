@@ -2,7 +2,6 @@
   const mode = document.body.dataset.discoveryMode;
   const pageSize = 24;
   const recommendedPoolSize = 96;
-  const candidateBatchSize = 24;
   const list = document.getElementById('discoveryList');
   const count = document.getElementById('discoveryCount');
   const moreWrap = document.getElementById('discoveryMoreWrap');
@@ -12,10 +11,10 @@
     'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
   );
   const seen = new Set();
-  const seedQueue = [];
   let rendered = 0;
   let neutralOffset = 0;
   let neutralTotal = null;
+  let seedOffset = 0;
   let loading = false;
 
   function esc(value) {
@@ -45,6 +44,10 @@
   }
 
   function coverMarkup(novel) {
+    const url = String(novel.thumbnail_url || '').trim();
+    if (url) {
+      return `<img class="novel-cover-image" src="${esc(url)}" alt="" loading="lazy" decoding="async">`;
+    }
     return `<div class="novel-cover-placeholder" aria-hidden="true"><span class="cover-mark">✦</span><span class="cover-genre">${esc(novel.genre || 'NOVELIGHT')}</span></div>`;
   }
 
@@ -162,45 +165,25 @@
     moreButton.textContent = 'さらに24作品を見る';
   }
 
-  async function seedStatus(row) {
-    try {
-      const result = await client.rpc('light_seed_status', {
-        p_novel_id: novelId(row)
-      });
-      if (result.error) return null;
-      const seedCount = Number(result.data?.total_seed_count || 0);
-      if (seedCount <= 0) return null;
-      return Object.assign({}, row, {
-        light_seed_count: seedCount
-      });
-    } catch (error) {
-      console.error('LIGHT SEED status failed', error);
-      return null;
-    }
-  }
-
-  async function fillSeedQueue() {
-    while (seedQueue.length < pageSize && neutralOffset < Number(neutralTotal ?? Infinity)) {
-      const rows = await fetchNeutralNew(candidateBatchSize);
-      if (!rows.length) break;
-      const checked = await Promise.all(rows.map(seedStatus));
-      for (const row of checked.filter(Boolean)) {
-        const id = novelId(row);
-        if (!seen.has(id) && !seedQueue.some((queued) => novelId(queued) === id)) {
-          seedQueue.push(row);
-        }
-      }
-      if (rows.length < candidateBatchSize || neutralOffset >= Number(neutralTotal || 0)) break;
-    }
+  async function fetchSeedPage() {
+    const result = await client.rpc('novelight_light_seed_feed', {
+      p_limit: pageSize + 1,
+      p_offset: seedOffset
+    });
+    if (result.error) throw result.error;
+    const rows = (Array.isArray(result.data) ? result.data : []).filter(
+      (row) => row.status === 'published' && Number(row.light_seed_count || 0) > 0
+    );
+    return rows;
   }
 
   async function loadSeed() {
-    await fillSeedQueue();
-    const page = seedQueue.splice(0, pageSize);
+    const rows = await fetchSeedPage();
+    const page = rows.slice(0, pageSize);
     appendRows(page);
     await recordNeutral(page);
-    const exhausted = neutralOffset >= Number(neutralTotal || 0) && seedQueue.length === 0;
-    moreWrap.hidden = exhausted || page.length === 0;
+    seedOffset += page.length;
+    moreWrap.hidden = rows.length <= pageSize || page.length === 0;
     moreButton.textContent = '発掘中の作品をもっと見る';
   }
 
