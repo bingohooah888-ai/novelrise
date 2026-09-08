@@ -6,6 +6,7 @@ import { URL } from 'node:url';
 const root = new URL('../', import.meta.url);
 const novelHtml = fs.readFileSync(new URL('novel.html', root), 'utf8');
 const episodeHtml = fs.readFileSync(new URL('episode.html', root), 'utf8');
+const episodePostHtml = fs.readFileSync(new URL('episode-post.html', root), 'utf8');
 const mypageHtml = fs.readFileSync(new URL('mypage.html', root), 'utf8');
 const novelEditHtml = fs.readFileSync(new URL('novel-edit.html', root), 'utf8');
 const migration = fs.readFileSync(
@@ -36,6 +37,14 @@ test('episode warning gate fetches content only after confirmation', () => {
   assert.match(episodeHtml, /if\(!isAuthor&&novelNeedsGate\(\)&&!warningAccepted\(\)\)\{showGate\(\);return\}/);
   assert.match(episodeHtml, /rememberWarningAccepted\(\);await loadEpisodeContentAndRender\(\)/);
   assert.doesNotMatch(episodeHtml, /select\('\*'\)\.eq\('id',episodeId\)/);
+});
+
+test('episode posting validates beta input limits before RPC', () => {
+  assert.match(episodePostHtml, /maxlength="100000"/);
+  assert.match(episodePostHtml, /if\(!Number\.isFinite\(episodeNumber\)\|\|episodeNumber<1\)/);
+  assert.match(episodePostHtml, /if\(title\.length<1\|\|title\.length>150\)/);
+  assert.match(episodePostHtml, /if\(content\.trim\(\)\.length<1\)/);
+  assert.match(episodePostHtml, /if\(content\.length>100000\)/);
 });
 
 test('author room self-heals missing profiles and avoids DOM global metrics', () => {
