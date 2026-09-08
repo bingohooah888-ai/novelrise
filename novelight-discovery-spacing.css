@@ -7,8 +7,24 @@ html body.novelight-theme.novelight-page-index.novelight-public-dark {
 
 html body.novelight-theme.novelight-page-index.novelight-public-dark
   section.discovery-section {
-  padding: calc(var(--home-discovery-shelf-gap) / 2) 0 !important;
+  padding: 0 !important;
   background: #050d18 !important;
+}
+
+/* The parchment panels carry their own vertical padding. Keep that padding small
+   enough that the visible content-to-content shelf gap stays near the shared
+   shelf token instead of adding another large empty band between sections. */
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section
+  > .container {
+  padding-top: calc((var(--home-discovery-shelf-gap) - 4px) / 2) !important;
+  padding-bottom: calc((var(--home-discovery-shelf-gap) - 4px) / 2) !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section
+  > .container::before {
+  inset: 5px 10px !important;
 }
 
 html body.novelight-theme.novelight-page-index.novelight-public-dark
@@ -51,6 +67,12 @@ html body.novelight-theme:is(.novelight-page-search, .novelight-page-ranking) ma
   html body.novelight-theme.novelight-page-index.novelight-public-dark {
     --home-discovery-shelf-gap: 18px;
     --home-discovery-zone-edge: 28px;
+  }
+
+  html body.novelight-theme.novelight-page-index.novelight-public-dark
+    section.discovery-section
+    > .container::before {
+    inset: 3px 7px !important;
   }
 
   html body.novelight-theme:is(
