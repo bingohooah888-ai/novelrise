@@ -18,9 +18,10 @@ test('homepage exposes recommendations, real new arrivals, and a data-backed con
   assert.match(home, /id="seedShelfSection"[^>]*hidden/u);
   assert.match(home, /<h2>LIGHT SEEDで発掘中<\/h2>/u);
   assert.match(home, /novelight_neutral_search/u);
-  assert.match(home, /light_seed_status/u);
-  assert.match(home, /total_seed_count/u);
+  assert.match(home, /novelight_light_seed_feed/u);
+  assert.match(home, /light_seed_count/u);
   assert.match(home, /section\.hidden=!seeded\.length/u);
+  assert.doesNotMatch(home, /light_seed_status/u);
   assert.doesNotMatch(home, /id="planExtraWrap"|id="planExtraGrid"/);
   assert.doesNotMatch(home, /id="premiumWrap"|id="premiumGrid"/);
 });
@@ -55,6 +56,28 @@ test('homepage allocation and authoritative recording use the same viewport-size
   assert.doesNotMatch(
     home,
     /record\(general\)|record\(planRows\)|record\(premium\)/
+  );
+});
+
+test('homepage LIGHT SEED shelf uses the all-public seed feed with the same viewport limit', async () => {
+  const home = await read('index.html');
+
+  assert.match(
+    home,
+    /async function lightSeedFeed\(limit,offset=0\)\{return client\.rpc\('novelight_light_seed_feed',\{p_limit:limit,p_offset:offset\}\)\}/
+  );
+  assert.match(
+    home,
+    /loadSeedShelf\(\)[\s\S]*?limit=discoveryVisibleLimit\(\)[\s\S]*?lightSeedFeed\(limit,0\)/u
+  );
+  assert.match(home, /row\.status==='published'/u);
+  assert.match(home, /Number\(row\.light_seed_count\|\|0\)>0/u);
+  assert.match(home, /section\.hidden=!seeded\.length/u);
+  assert.doesNotMatch(home, /Promise\.all\(\(candidates\|\|\[\]\)/u);
+  assert.doesNotMatch(home, /light_seed_status/u);
+  assert.match(
+    home,
+    /Promise\.all\(\[loadDiscovery\(\),loadNewArrivals\(\),loadSeedShelf\(\)\]\)/u
   );
 });
 
@@ -119,7 +142,7 @@ test('homepage selection protects author diversity before filling remaining slot
   assert.match(home, /primary\.concat\(deferred\)\.slice\(0,limit\)/);
 });
 
-test('dedicated discovery pages refresh trusted recommendation receipts per visible page and match the home LIGHT SEED meaning', async () => {
+test('dedicated discovery pages refresh receipts and use the same formal LIGHT SEED feed as Home', async () => {
   const [recommended, newArrivals, seed, script, thumbnailRuntime] =
     await Promise.all([
       read('recommended.html'),
@@ -164,16 +187,16 @@ test('dedicated discovery pages refresh trusted recommendation receipts per visi
 
   assert.match(script, /p_sort: 'new'/);
   assert.match(script, /p_offset: neutralOffset/);
-  assert.match(script, /light_seed_status/);
-  assert.match(
-    script,
-    /const seedCount = Number\(result\.data\?\.total_seed_count \|\| 0\)/
-  );
-  assert.match(script, /if \(seedCount <= 0\) return null/);
-  assert.match(script, /while \(seedQueue\.length < pageSize/);
-  assert.match(script, /seedQueue\.splice\(0, pageSize\)/);
-  assert.doesNotMatch(script, /result\.data\?\.eligible !== true/);
-  assert.doesNotMatch(script, /scannedBatches < 4/);
+  assert.match(script, /novelight_light_seed_feed/);
+  assert.match(script, /p_limit: pageSize \+ 1/);
+  assert.match(script, /p_offset: seedOffset/);
+  assert.match(script, /row\.status === 'published'/);
+  assert.match(script, /Number\(row\.light_seed_count \|\| 0\) > 0/);
+  assert.match(script, /const page = rows\.slice\(0, pageSize\);/);
+  assert.match(script, /await recordNeutral\(page\)/);
+  assert.match(script, /seedOffset \+= page\.length/);
+  assert.doesNotMatch(script, /light_seed_status/);
+  assert.doesNotMatch(script, /seedQueue|fillSeedQueue|seedStatus/);
 
   for (const page of [recommended, newArrivals, seed]) {
     assert.match(page, /novelight-thumbnail-runtime\.js/);
@@ -181,6 +204,25 @@ test('dedicated discovery pages refresh trusted recommendation receipts per visi
   assert.match(thumbnailRuntime, /'recommended'/);
   assert.match(thumbnailRuntime, /'new-arrivals'/);
   assert.match(thumbnailRuntime, /'light-seed'/);
+});
+
+test('LIGHT SEED feed enforces published seeded eligibility and preserves published-date ordering', async () => {
+  const migration = await read(
+    'supabase/migrations/20260908120000_light_seed_public_feed.sql'
+  );
+
+  assert.match(migration, /novelight_light_seed_feed/u);
+  assert.match(migration, /having sum\(ledger\.delta\) > 0/u);
+  assert.match(migration, /where novel\.status = 'published'/u);
+  assert.match(
+    migration,
+    /coalesce\(novel\.first_published_at, novel\.created_at\) desc/u
+  );
+  assert.match(migration, /novel\.thumbnail_url/u);
+  assert.match(migration, /profile\.display_name/u);
+  assert.match(migration, /seeds\.light_seed_count/u);
+  assert.match(migration, /security definer/u);
+  assert.match(migration, /grant execute[\s\S]*to anon, authenticated/u);
 });
 
 test('search still accepts supported sort query parameters independently of home discovery links', async () => {
