@@ -85,10 +85,19 @@ test('visual trend RPC is aggregate-only, authenticated and bounded to 90 days',
 });
 
 test('migration replay exercises trend apply, behavior, rollback and reapply', () => {
-  assert.match(replay, /20260908172000_light_analytics_visual_trends_postcheck\.sql/u);
+  assert.match(
+    replay,
+    /20260908172000_light_analytics_visual_trends_postcheck\.sql/u
+  );
   assert.match(replay, /tests\/rls\/light-analytics-visual-trends\.sql/u);
-  assert.match(replay, /20260908172000_light_analytics_visual_trends_rollback\.sql/u);
-  assert.match(replay, /20260908172000_light_analytics_visual_trends_precheck\.sql/u);
+  assert.match(
+    replay,
+    /20260908172000_light_analytics_visual_trends_rollback\.sql/u
+  );
+  assert.match(
+    replay,
+    /20260908172000_light_analytics_visual_trends_precheck\.sql/u
+  );
 });
 
 test('analytics styling is NOVELIGHT navy and gold and remains responsive', () => {
