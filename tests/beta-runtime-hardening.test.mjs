@@ -17,17 +17,27 @@ const migration = fs.readFileSync(
   'utf8'
 );
 
+const novelSafeSelect =
+  "select('id,user_id,title,genre,ai_usage,status," +
+  "content_rating,content_warnings,created_at')";
+const novelGateReturn =
+  'if(needsWarningGate()&&!warningAccepted()){' +
+  'showWarningGate();return}';
+const episodeMetaSelect =
+  "select('id,novel_id,user_id,status," +
+  "episode_number,title,pv')";
+const episodeContentSelect =
+  "select('id,novel_id,user_id,episode_number," +
+  "title,content,status,pv')";
+const episodeGateReturn =
+  'if(!isAuthor&&novelNeedsGate()&&!warningAccepted()){' +
+  'showGate();return}';
+const thumbnailMissingStatus =
+  "if(!thumbnailAsset){status.textContent='作品に合う画像を1枚選んでください。';return}";
+
 test('novel detail warning gate defers full data and telemetry', () => {
-  assert.ok(
-    novelHtml.includes(
-      "select('id,user_id,title,genre,ai_usage,status,content_rating,content_warnings,created_at')"
-    )
-  );
-  assert.ok(
-    novelHtml.includes(
-      'if(needsWarningGate()&&!warningAccepted()){showWarningGate();return}'
-    )
-  );
+  assert.ok(novelHtml.includes(novelSafeSelect));
+  assert.ok(novelHtml.includes(novelGateReturn));
   assert.ok(novelHtml.includes('async function loadFullNovelAndRender()'));
   assert.ok(
     novelHtml.includes('rememberWarningAccepted();await loadFullNovelAndRender()')
@@ -36,21 +46,9 @@ test('novel detail warning gate defers full data and telemetry', () => {
 });
 
 test('episode warning gate fetches content only after confirmation', () => {
-  assert.ok(
-    episodeHtml.includes(
-      "select('id,novel_id,user_id,status,episode_number,title,pv')"
-    )
-  );
-  assert.ok(
-    episodeHtml.includes(
-      "select('id,novel_id,user_id,episode_number,title,content,status,pv')"
-    )
-  );
-  assert.ok(
-    episodeHtml.includes(
-      'if(!isAuthor&&novelNeedsGate()&&!warningAccepted()){showGate();return}'
-    )
-  );
+  assert.ok(episodeHtml.includes(episodeMetaSelect));
+  assert.ok(episodeHtml.includes(episodeContentSelect));
+  assert.ok(episodeHtml.includes(episodeGateReturn));
   assert.ok(
     episodeHtml.includes('rememberWarningAccepted();await loadEpisodeContentAndRender()')
   );
@@ -87,11 +85,7 @@ test('novel editing requires an official thumbnail', () => {
   assert.ok(
     novelEditHtml.includes('作品に合う画像<span class="required">必須</span>')
   );
-  assert.ok(
-    novelEditHtml.includes(
-      "if(!thumbnailAsset){status.textContent='作品に合う画像を1枚選んでください。';return}"
-    )
-  );
+  assert.ok(novelEditHtml.includes(thumbnailMissingStatus));
   assert.ok(novelEditHtml.includes('thumbnail_asset_id:thumbnailAsset'));
 });
 
