@@ -26,7 +26,10 @@ test('episode warning gate fetches content only after confirmation', () => {
   assert.ok(episodeHtml.includes('title,content,status,pv'));
   assert.ok(episodeHtml.includes('showGate();return'));
   assert.ok(episodeHtml.includes('await loadEpisodeContentAndRender()'));
-  assert.equal(episodeHtml.includes("select('*').eq('id',episodeId)"), false);
+  assert.equal(
+    episodeHtml.includes("select('*').eq('id',episodeId)"),
+    false
+  );
 });
 
 test('episode posting validates beta input limits before RPC', () => {
@@ -40,7 +43,9 @@ test('episode posting validates beta input limits before RPC', () => {
 test('author room self-heals profiles and uses explicit metric elements', () => {
   assert.ok(mypageHtml.includes('async function ensureOwnProfile()'));
   assert.ok(mypageHtml.includes('novelight_ensure_my_profile'));
-  assert.ok(mypageHtml.includes("document.getElementById('analyticsStatus')"));
+  assert.ok(
+    mypageHtml.includes("document.getElementById('analyticsStatus')")
+  );
   assert.ok(mypageHtml.includes('metrics.i.textContent=num(t.i)'));
   assert.ok(mypageHtml.includes('metrics.fav.textContent=num(t.v)'));
 });
