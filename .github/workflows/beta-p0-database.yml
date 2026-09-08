@@ -13,6 +13,7 @@ on:
       - 'tests/rls/beta-p0-foundations.sql'
       - 'tests/rls/signup-display-name.sql'
       - 'tests/rls/founding-internal-exclusion*.sql'
+      - 'tests/rls/scout-beta-foundations*.sql'
       - 'supabase/**/20260819190000_*.sql'
       - 'supabase/**/20260822_content_write_rls_*.sql'
       - 'supabase/**/20260822194000_*.sql'
@@ -26,6 +27,7 @@ on:
       - 'supabase/**/20260823192500_*.sql'
       - 'supabase/**/20260823204500_*.sql'
       - 'supabase/**/20260831210000_*.sql'
+      - 'supabase/**/20260909071500_*.sql'
       - '.github/workflows/beta-p0-database.yml'
   push:
     branches: [main]
