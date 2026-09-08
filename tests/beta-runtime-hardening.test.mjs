@@ -18,90 +18,94 @@ const migration = fs.readFileSync(
 );
 
 test('novel detail warning gate defers full data and telemetry', () => {
-  assert.match(
-    novelHtml,
-    /select\('id,user_id,title,genre,ai_usage,status,content_rating,content_warnings,created_at'\)/
+  assert.ok(
+    novelHtml.includes(
+      "select('id,user_id,title,genre,ai_usage,status,content_rating,content_warnings,created_at')"
+    )
   );
-  assert.match(
-    novelHtml,
-    /if\(needsWarningGate\(\)&&!warningAccepted\(\)\)\{showWarningGate\(\);return\}/
+  assert.ok(
+    novelHtml.includes(
+      'if(needsWarningGate()&&!warningAccepted()){showWarningGate();return}'
+    )
   );
-  assert.match(novelHtml, /async function loadFullNovelAndRender\(\)/);
-  assert.match(
-    novelHtml,
-    /rememberWarningAccepted\(\);await loadFullNovelAndRender\(\)/
+  assert.ok(novelHtml.includes('async function loadFullNovelAndRender()'));
+  assert.ok(
+    novelHtml.includes('rememberWarningAccepted();await loadFullNovelAndRender()')
   );
-  assert.match(novelHtml, /void recordOpen\(\)/);
+  assert.ok(novelHtml.includes('void recordOpen()'));
 });
 
 test('episode warning gate fetches content only after confirmation', () => {
-  assert.match(
-    episodeHtml,
-    /select\('id,novel_id,user_id,status,episode_number,title,pv'\)/
+  assert.ok(
+    episodeHtml.includes(
+      "select('id,novel_id,user_id,status,episode_number,title,pv')"
+    )
   );
-  assert.match(
-    episodeHtml,
-    /select\('id,novel_id,user_id,episode_number,title,content,status,pv'\)/
+  assert.ok(
+    episodeHtml.includes(
+      "select('id,novel_id,user_id,episode_number,title,content,status,pv')"
+    )
   );
-  assert.match(
-    episodeHtml,
-    /if\(!isAuthor&&novelNeedsGate\(\)&&!warningAccepted\(\)\)\{showGate\(\);return\}/
+  assert.ok(
+    episodeHtml.includes(
+      'if(!isAuthor&&novelNeedsGate()&&!warningAccepted()){showGate();return}'
+    )
   );
-  assert.match(
-    episodeHtml,
-    /rememberWarningAccepted\(\);await loadEpisodeContentAndRender\(\)/
+  assert.ok(
+    episodeHtml.includes('rememberWarningAccepted();await loadEpisodeContentAndRender()')
   );
-  assert.doesNotMatch(episodeHtml, /select\('\*'\)\.eq\('id',episodeId\)/);
+  assert.equal(episodeHtml.includes("select('*').eq('id',episodeId)"), false);
 });
 
 test('episode posting validates beta input limits before RPC', () => {
-  assert.match(episodePostHtml, /maxlength="100000"/);
-  assert.match(
-    episodePostHtml,
-    /if\(!Number\.isFinite\(episodeNumber\)\|\|episodeNumber<1\)/
+  assert.ok(episodePostHtml.includes('maxlength="100000"'));
+  assert.ok(
+    episodePostHtml.includes(
+      'if(!Number.isFinite(episodeNumber)||episodeNumber<1)'
+    )
   );
-  assert.match(
-    episodePostHtml,
-    /if\(title\.length<1\|\|title\.length>150\)/
+  assert.ok(
+    episodePostHtml.includes('if(title.length<1||title.length>150)')
   );
-  assert.match(episodePostHtml, /if\(content\.trim\(\)\.length<1\)/);
-  assert.match(episodePostHtml, /if\(content\.length>100000\)/);
+  assert.ok(episodePostHtml.includes('if(content.trim().length<1)'));
+  assert.ok(episodePostHtml.includes('if(content.length>100000)'));
 });
 
-test('author room self-heals profiles and avoids DOM globals', () => {
-  assert.match(mypageHtml, /async function ensureOwnProfile\(\)/);
-  assert.match(mypageHtml, /client\.rpc\('novelight_ensure_my_profile'\)/);
-  assert.match(
-    mypageHtml,
-    /const st=document\.getElementById\('analyticsStatus'\),metrics=\{/
+test('author room self-heals profiles and uses explicit metric elements', () => {
+  assert.ok(mypageHtml.includes('async function ensureOwnProfile()'));
+  assert.ok(mypageHtml.includes("client.rpc('novelight_ensure_my_profile')"));
+  assert.ok(
+    mypageHtml.includes(
+      "const st=document.getElementById('analyticsStatus'),metrics={"
+    )
   );
-  assert.doesNotMatch(mypageHtml, /\bi\.textContent=num\(t\.i\)/);
-  assert.doesNotMatch(mypageHtml, /\bfav\.textContent=num\(t\.v\)/);
+  assert.ok(mypageHtml.includes('metrics.i.textContent=num(t.i)'));
+  assert.ok(mypageHtml.includes('metrics.fav.textContent=num(t.v)'));
 });
 
 test('novel editing requires an official thumbnail', () => {
-  assert.match(
-    novelEditHtml,
-    /作品に合う画像<span class="required">必須<\/span>/
+  assert.ok(
+    novelEditHtml.includes('作品に合う画像<span class="required">必須</span>')
   );
-  assert.match(
-    novelEditHtml,
-    /if\(!thumbnailAsset\)\{status\.textContent='作品に合う画像を1枚選んでください。';return\}/
+  assert.ok(
+    novelEditHtml.includes(
+      "if(!thumbnailAsset){status.textContent='作品に合う画像を1枚選んでください。';return}"
+    )
   );
-  assert.match(novelEditHtml, /thumbnail_asset_id:thumbnailAsset/);
+  assert.ok(novelEditHtml.includes('thumbnail_asset_id:thumbnailAsset'));
 });
 
 test('database boundary enforces beta runtime rules', () => {
-  assert.match(migration, /alter column thumbnail_asset_id set not null/);
-  assert.match(migration, /raise exception 'Official thumbnail is required'/);
-  assert.match(
-    migration,
-    /create or replace function public\.novelight_ensure_my_profile\(\)/
+  assert.ok(migration.includes('alter column thumbnail_asset_id set not null'));
+  assert.ok(migration.includes("raise exception 'Official thumbnail is required'"));
+  assert.ok(
+    migration.includes('create or replace function public.novelight_ensure_my_profile()')
   );
-  assert.match(migration, /char_length\(v_content\) > 100000/);
-  assert.match(migration, /p_episode_number is null or p_episode_number < 1/);
-  assert.match(
-    migration,
-    /char_length\(v_title\) < 1 or char_length\(v_title\) > 150/
+  assert.ok(migration.includes('char_length(v_content) > 100000'));
+  assert.ok(
+    migration.includes('p_episode_number is null or p_episode_number < 1')
+  );
+  assert.ok(
+    migration.includes('char_length(v_title) < 1 or char_length(v_title) > 150')
   );
 });
