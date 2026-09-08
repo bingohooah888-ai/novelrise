@@ -90,17 +90,15 @@ test('Home renders the formal LIGHT SEED feed once and respects the viewport lim
     'href',
     'novel.html?id=7000'
   );
-  await expect(page.locator('#seedGrid .seed-count').first()).toContainText('1');
-
-  const calls = await page.evaluate(
-    () => globalThis.__NOVELIGHT_E2E_CALLS__
+  await expect(page.locator('#seedGrid .seed-count').first()).toContainText(
+    '1'
   );
+
+  const calls = await page.evaluate(() => globalThis.__NOVELIGHT_E2E_CALLS__);
   const seedCalls = calls.filter(
     (call) => call.name === 'novelight_light_seed_feed'
   );
-  const statusCalls = calls.filter(
-    (call) => call.name === 'light_seed_status'
-  );
+  const statusCalls = calls.filter((call) => call.name === 'light_seed_status');
   expect(seedCalls).toHaveLength(1);
   expect(statusCalls).toHaveLength(0);
   expect(seedCalls[0].args.p_limit).toBe(expected);
@@ -164,15 +162,11 @@ test('dedicated LIGHT SEED page uses one paged feed without per-work status RPCs
   await expect(page.locator('#discoveryList .seed-card')).toHaveCount(24);
   await expect(page.locator('#discoveryMoreWrap')).toBeVisible();
 
-  const calls = await page.evaluate(
-    () => globalThis.__NOVELIGHT_E2E_CALLS__
-  );
+  const calls = await page.evaluate(() => globalThis.__NOVELIGHT_E2E_CALLS__);
   const seedCalls = calls.filter(
     (call) => call.name === 'novelight_light_seed_feed'
   );
-  const statusCalls = calls.filter(
-    (call) => call.name === 'light_seed_status'
-  );
+  const statusCalls = calls.filter((call) => call.name === 'light_seed_status');
   expect(seedCalls).toHaveLength(1);
   expect(statusCalls).toHaveLength(0);
 });
