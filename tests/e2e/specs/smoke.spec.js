@@ -75,9 +75,7 @@ test('LIGHT ANALYTICS exposes the beta funnel and plan-only exposure', async ({
   request
 }) => {
   const html = await (await request.get('/analytics.html')).text();
-  const analytics = await (
-    await request.get('/novelight-analytics.js')
-  ).text();
+  const analytics = await (await request.get('/novelight-analytics.js')).text();
 
   expect(html).toContain('<title>LIGHT ANALYTICS | NOVELIGHT</title>');
   expect(html).toContain('露出後お気に入り');
