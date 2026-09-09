@@ -107,7 +107,7 @@ select public.test_assert(
   'Rank 3 requires PV >= 200 even when other metrics qualify'
 );
 select public.test_assert(
-  public.novelight_rank_required_stability(6) = interval '7 days',
+  public.novelight_rank_required_stability(6::smallint) = interval '7 days',
   'NOVA promotion requires seven stable days'
 );
 
