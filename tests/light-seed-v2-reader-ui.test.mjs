@@ -21,9 +21,12 @@ test('episode sends authenticated foreground reading progress to valid-read v2 R
 test('episode valid-read telemetry excludes authors and unauthenticated readers', () => {
   assert.match(
     episode,
-    /if\(validReadTrackingStarted\|\|isAuthor\|\|!session\|\|!unlocked\)return/
+    /if\(validReadTrackingStarted\|\|isAuthor\|\|!session\|\|!unlocked\)return/,
   );
-  assert.match(episode, /if\(stopped\|\|inFlight\|\|document\.visibilityState!==['"]visible['"]\)return/);
+  assert.match(
+    episode,
+    /if\(stopped\|\|inFlight\|\|document\.visibilityState!==['"]visible['"]\)return/,
+  );
 });
 
 test('novel detail uses only typed LIGHT SEED v2 RPCs', () => {
@@ -43,7 +46,10 @@ test('novel detail exposes GOLD SILVER BRONZE choices and lifetime-send warning'
 });
 
 test('LIGHT SEED v2 UI fails closed when the new RPC is unavailable', () => {
-  assert.match(novel, /LIGHT SEED新仕様の準備中です。現在は送信できません。/);
+  assert.match(
+    novel,
+    /LIGHT SEED新仕様の準備中です。現在は送信できません。/,
+  );
   assert.match(novel, /setSeedButtonsDisabled\(true\)/);
 });
 
