@@ -123,3 +123,16 @@ run_sql supabase/checks/20260909080000_disable_light_seed_v1_client_rpcs_prechec
 run_sql supabase/migrations/20260909080000_disable_light_seed_v1_client_rpcs.sql
 run_sql supabase/checks/20260909080000_disable_light_seed_v1_client_rpcs_postcheck.sql
 run_sql tests/rls/light-seed-v1-cutover.sql
+
+# Chapter 38 work Rank engine depends on the v1 cutover above. As with the SCOUT
+# foundations, rollback is verified before any star-rating or Rank evidence is
+# written; the final reapply is followed by behavioral contract tests.
+run_sql tests/rls/work-rank-engine-fixture.sql
+run_sql supabase/checks/20260909100000_chapter38_work_rank_engine_precheck.sql
+run_sql supabase/migrations/20260909100000_chapter38_work_rank_engine.sql
+run_sql supabase/checks/20260909100000_chapter38_work_rank_engine_postcheck.sql
+run_sql supabase/rollback/20260909100000_chapter38_work_rank_engine_rollback.sql
+run_sql supabase/checks/20260909100000_chapter38_work_rank_engine_precheck.sql
+run_sql supabase/migrations/20260909100000_chapter38_work_rank_engine.sql
+run_sql supabase/checks/20260909100000_chapter38_work_rank_engine_postcheck.sql
+run_sql tests/rls/work-rank-engine.sql
