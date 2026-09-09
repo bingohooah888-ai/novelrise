@@ -25,6 +25,17 @@ test('completion UI explains lifecycle and FINAL RANK behavior', () => {
   assert.match(edit, /FINAL RANK：Rank/);
 });
 
+test('past FINAL RANK visibility uses the lifecycle RPC', () => {
+  assert.match(edit, /過去のFINAL RANK/);
+  assert.match(edit, /final_rank_history/);
+  assert.match(edit, /superseded_at/);
+  assert.match(edit, /novelight_set_past_final_rank_public/);
+  assert.match(edit, /p_completion_cycle:cycle/);
+  assert.match(edit, /p_is_public:target/);
+  assert.match(edit, /読者に公開する/);
+  assert.match(edit, /非公開に戻す/);
+});
+
 test('completion changes fail closed for drafts or unavailable Rank state', () => {
   assert.match(edit, /novelStatus!==['"]published['"]/);
   assert.match(edit, /公開後に設定できます/);
