@@ -110,3 +110,16 @@ run_sql supabase/migrations/20260909071500_scout_beta_event_foundations.sql
 run_sql supabase/migrations/20260909071510_scout_beta_rules_rls.sql
 run_sql supabase/checks/20260909071500_scout_beta_event_foundations_postcheck.sql
 run_sql tests/rls/scout-beta-foundations.sql
+
+# Reader UI now uses beta-v2 exclusively. Exercise the ACL-only v1 cutover as
+# apply -> rollback -> reapply so both the forward lock and exact rollback stay
+# verified without touching replayable SCOUT evidence.
+run_sql supabase/checks/20260909080000_disable_light_seed_v1_client_rpcs_precheck.sql
+run_sql supabase/migrations/20260909080000_disable_light_seed_v1_client_rpcs.sql
+run_sql supabase/checks/20260909080000_disable_light_seed_v1_client_rpcs_postcheck.sql
+run_sql tests/rls/light-seed-v1-cutover.sql
+run_sql supabase/rollback/20260909080000_disable_light_seed_v1_client_rpcs_rollback.sql
+run_sql supabase/checks/20260909080000_disable_light_seed_v1_client_rpcs_precheck.sql
+run_sql supabase/migrations/20260909080000_disable_light_seed_v1_client_rpcs.sql
+run_sql supabase/checks/20260909080000_disable_light_seed_v1_client_rpcs_postcheck.sql
+run_sql tests/rls/light-seed-v1-cutover.sql
