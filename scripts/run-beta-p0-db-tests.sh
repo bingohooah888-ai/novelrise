@@ -136,3 +136,15 @@ run_sql supabase/checks/20260909100000_chapter38_work_rank_engine_precheck.sql
 run_sql supabase/migrations/20260909100000_chapter38_work_rank_engine.sql
 run_sql supabase/checks/20260909100000_chapter38_work_rank_engine_postcheck.sql
 run_sql tests/rls/work-rank-engine.sql
+
+# Chapter 38 work lifecycle is intentionally tested after the base Rank engine.
+# Verify migration rollback before any completion/inactivity evidence is written,
+# then reapply and exercise the authoritative completion + aging contracts.
+run_sql supabase/checks/20260909120000_chapter38_work_rank_lifecycle_precheck.sql
+run_sql supabase/migrations/20260909120000_chapter38_work_rank_lifecycle.sql
+run_sql supabase/checks/20260909120000_chapter38_work_rank_lifecycle_postcheck.sql
+run_sql supabase/rollback/20260909120000_chapter38_work_rank_lifecycle_rollback.sql
+run_sql supabase/checks/20260909120000_chapter38_work_rank_lifecycle_precheck.sql
+run_sql supabase/migrations/20260909120000_chapter38_work_rank_lifecycle.sql
+run_sql supabase/checks/20260909120000_chapter38_work_rank_lifecycle_postcheck.sql
+run_sql tests/rls/work-rank-lifecycle.sql
