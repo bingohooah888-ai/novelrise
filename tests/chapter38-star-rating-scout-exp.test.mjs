@@ -44,10 +44,16 @@ test('rating changes stay usable without extra EXP', async () => {
 test('checks enforce replay and privilege boundaries', async () => {
   const precheck = await readFile(precheckPath, 'utf8');
   const postcheck = await readFile(postcheckPath, 'utf8');
-  has(precheck, 'Existing star-rating SCOUT EXP requires manual reconciliation');
+  has(
+    precheck,
+    'Existing star-rating SCOUT EXP requires manual reconciliation'
+  );
   has(postcheck, 'authenticated must retain star-rating write access');
   has(postcheck, 'Star-rating XP daily cap exceeded');
-  has(postcheck, 'Star-rating XP ledger does not match replayable beta rules');
+  has(
+    postcheck,
+    'Star-rating XP ledger does not match replayable beta rules'
+  );
   has(postcheck, 'except select source_event_id from actual');
   has(postcheck, 'except select source_event_id from expected');
 });
