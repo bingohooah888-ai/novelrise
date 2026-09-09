@@ -169,7 +169,7 @@ set role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 select public.novelight_set_past_final_rank_public(
   '10000000-0000-0000-0000-000000000001',
-  1,
+  1::smallint,
   true
 );
 reset role;
