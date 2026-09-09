@@ -12,17 +12,100 @@ values
   ('78000000-0000-0000-0000-000000000002', 'Comment Reader')
 on conflict (id) do update set display_name = excluded.display_name;
 
-insert into public.novels (id, user_id, title, status)
+insert into public.novel_thumbnail_assets (
+  id,
+  label,
+  storage_path,
+  image_url,
+  created_by
+)
+values (
+  '78000000-0000-0000-0000-000000000003',
+  'Comment fixture thumbnail',
+  'official/78000000-0000-0000-0000-000000000003.webp',
+  'https://example.invalid/comment-fixture.webp',
+  '78000000-0000-0000-0000-000000000001'
+)
+on conflict (id) do nothing;
+
+insert into public.novels (
+  id,
+  user_id,
+  title,
+  description,
+  genre,
+  status,
+  pv,
+  ai_usage,
+  content_policy_ack,
+  content_policy_version,
+  thumbnail_asset_id
+)
 overriding system value
 values
-  (780001, '78000000-0000-0000-0000-000000000001', 'Comment Work 1', 'published'),
-  (780002, '78000000-0000-0000-0000-000000000001', 'Comment Work 2', 'published'),
-  (780003, '78000000-0000-0000-0000-000000000001', 'Comment Work 3', 'published'),
-  (780004, '78000000-0000-0000-0000-000000000001', 'Comment Work 4', 'published')
+  (
+    780001,
+    '78000000-0000-0000-0000-000000000001',
+    'Comment Work 1',
+    'Comment fixture work 1',
+    'ファンタジー',
+    'published',
+    0,
+    'human',
+    true,
+    'beta-v1',
+    '78000000-0000-0000-0000-000000000003'
+  ),
+  (
+    780002,
+    '78000000-0000-0000-0000-000000000001',
+    'Comment Work 2',
+    'Comment fixture work 2',
+    'ファンタジー',
+    'published',
+    0,
+    'human',
+    true,
+    'beta-v1',
+    '78000000-0000-0000-0000-000000000003'
+  ),
+  (
+    780003,
+    '78000000-0000-0000-0000-000000000001',
+    'Comment Work 3',
+    'Comment fixture work 3',
+    'ファンタジー',
+    'published',
+    0,
+    'human',
+    true,
+    'beta-v1',
+    '78000000-0000-0000-0000-000000000003'
+  ),
+  (
+    780004,
+    '78000000-0000-0000-0000-000000000001',
+    'Comment Work 4',
+    'Comment fixture work 4',
+    'ファンタジー',
+    'published',
+    0,
+    'human',
+    true,
+    'beta-v1',
+    '78000000-0000-0000-0000-000000000003'
+  )
 on conflict (id) do update
   set user_id = excluded.user_id,
       title = excluded.title,
-      status = excluded.status;
+      description = excluded.description,
+      genre = excluded.genre,
+      status = excluded.status,
+      pv = excluded.pv,
+      ai_usage = excluded.ai_usage,
+      content_policy_ack = excluded.content_policy_ack,
+      content_policy_version = excluded.content_policy_version,
+      thumbnail_asset_id = excluded.thumbnail_asset_id;
 
 set local role authenticated;
 select set_config(
