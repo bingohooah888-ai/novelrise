@@ -13,7 +13,7 @@ const ownerRole = /github\.event\.comment\.author_association == 'OWNER'/;
 test('owner-only chat trigger', () => {
   assert.match(workflow, /issue_comment:/);
   assert.doesNotMatch(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /github\.event\.issue\.number == 165/);
+  assert.match(workflow, /github\.event\.issue\.number == 460/);
   assert.match(workflow, /github\.event\.issue\.pull_request == null/);
   assert.match(workflow, ownerLogin);
   assert.match(workflow, ownerRole);
