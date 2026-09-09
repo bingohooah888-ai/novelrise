@@ -201,4 +201,40 @@ SQL
 "${REPLAY[@]}" -f tests/rls/light-analytics-visual-trends.sql
 echo '::endgroup::'
 
+echo '::group::Verify Chapter 38 comment SCOUT EXP behavior'
+"${REPLAY[@]}" -f supabase/checks/20260910070000_chapter38_comment_scout_exp_foundation_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/comment-scout-exp-foundation.sql
+echo '::endgroup::'
+
+echo '::group::Verify Chapter 38 comment SCOUT EXP rollback and replay'
+"${REPLAY[@]}" -f supabase/rollback/20260910070000_chapter38_comment_scout_exp_foundation_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.novel_comments') is null then
+    raise exception 'Comment rollback must preserve stored comment evidence';
+  end if;
+
+  if to_regprocedure('public.post_novel_comment(text,text)') is not null
+     or to_regprocedure('public.delete_novel_comment(uuid)') is not null
+     or to_regprocedure('public.novelight_comment_feed(text,integer)') is not null then
+    raise exception 'Comment rollback left client RPCs behind';
+  end if;
+
+  if exists (
+    select 1
+      from public.scout_xp_ledger x
+     where x.xp_kind = 'comment'
+       and x.rule_version = 'beta-v1'
+  ) then
+    raise exception 'Comment rollback left beta-v1 derived XP behind';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260910070000_chapter38_comment_scout_exp_foundation_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260910070000_chapter38_comment_scout_exp_foundation.sql
+"${REPLAY[@]}" -f supabase/checks/20260910070000_chapter38_comment_scout_exp_foundation_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
