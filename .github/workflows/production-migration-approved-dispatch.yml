@@ -324,11 +324,11 @@ jobs:
         run: bash scripts/verify-supabase-pending.sh
 
       - name: Dry-run approved pending migrations at Production boundary
-        run: supabase db push --linked --dry-run
+        run: supabase db push --linked --dry-run --include-all
 
       - name: Apply approved pending migrations
         id: migration_mutation
-        run: supabase db push --linked --yes
+        run: supabase db push --linked --yes --include-all
 
       - name: Verify production migration status after deploy
         id: migration_status_postcheck
