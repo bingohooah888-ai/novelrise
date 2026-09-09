@@ -259,10 +259,15 @@ update public.novel_rank_state
        last_inactivity_demotion_at = null
  where novel_id_snapshot = '20000000-0000-0000-0000-000000000001';
 
+-- The production trigger intentionally prevents callers from forging episode
+-- activity timestamps. Disable it only inside this isolated fixture to simulate
+-- historical rows, then restore it immediately.
+alter table public.episodes disable trigger episodes_touch_novelight_updated_at;
 update public.episodes
    set updated_at = now() - interval '181 days'
  where novel_id::text = '20000000-0000-0000-0000-000000000001'
    and status = 'published';
+alter table public.episodes enable trigger episodes_touch_novelight_updated_at;
 
 -- Evaluate a historical point 121 days after the last episode update.
 set role service_role;
@@ -311,11 +316,14 @@ select public.test_assert(
 );
 
 -- Publishing a fresh episode/update resumes active participation but never
--- restores the pre-dormancy Rank automatically.
+-- restores the pre-dormancy Rank automatically. As above, fixture-only trigger
+-- suspension lets us establish the desired historical/current timestamp exactly.
+alter table public.episodes disable trigger episodes_touch_novelight_updated_at;
 update public.episodes
    set updated_at = now()
  where novel_id::text = '20000000-0000-0000-0000-000000000001'
    and status = 'published';
+alter table public.episodes enable trigger episodes_touch_novelight_updated_at;
 
 set role service_role;
 select public.novelight_recalculate_work_ranks(now());
