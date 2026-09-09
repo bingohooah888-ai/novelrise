@@ -88,11 +88,11 @@ begin
     raise exception 'Chapter 38 relative Rank bands do not match MASTER';
   end if;
 
-  if public.novelight_rank_required_stability(2) <> interval '24 hours'
-     or public.novelight_rank_required_stability(3) <> interval '24 hours'
-     or public.novelight_rank_required_stability(4) <> interval '48 hours'
-     or public.novelight_rank_required_stability(5) <> interval '72 hours'
-     or public.novelight_rank_required_stability(6) <> interval '7 days' then
+  if public.novelight_rank_required_stability(2::smallint) <> interval '24 hours'
+     or public.novelight_rank_required_stability(3::smallint) <> interval '24 hours'
+     or public.novelight_rank_required_stability(4::smallint) <> interval '48 hours'
+     or public.novelight_rank_required_stability(5::smallint) <> interval '72 hours'
+     or public.novelight_rank_required_stability(6::smallint) <> interval '7 days' then
     raise exception 'Chapter 38 promotion stability windows do not match MASTER';
   end if;
 
