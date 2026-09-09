@@ -14,7 +14,10 @@ const rollbackPath =
 test('Chapter 38 star-rating EXP keeps the MASTER reward and daily cap', async () => {
   const sql = await readFile(migrationPath, 'utf8');
   assert.match(sql, /'star_rating',[\s\S]*?3,[\s\S]*?'beta-v1'/);
-  assert.match(sql, /pg_catalog\.timezone\('Asia\/Tokyo',[\s\S]*?occurred_at\)::date/);
+  assert.match(
+    sql,
+    /pg_catalog\.timezone\('Asia\/Tokyo',[\s\S]*?occurred_at\)::date/
+  );
   assert.match(sql, /daily_order <= 5/);
   assert.match(sql, /v_awarded_today < 5/);
 });
@@ -34,20 +37,32 @@ test('only the first lifetime rating set can award EXP', async () => {
 test('rating changes and clears remain usable without extra EXP', async () => {
   const sql = await readFile(migrationPath, 'utf8');
   assert.match(sql, /v_event_type := 'star_rating_changed'/);
-  assert.match(sql, /if v_event_type = 'star_rating_set' and not v_had_lifetime_set then/);
+  assert.match(
+    sql,
+    /if v_event_type = 'star_rating_set' and not v_had_lifetime_set then/
+  );
   assert.doesNotMatch(sql, /xp_kind[^;]*star_rating_changed/i);
 });
 
 test('precheck and postcheck fail closed around replay and privileges', async () => {
   const [precheck, postcheck] = await Promise.all([
     readFile(precheckPath, 'utf8'),
-    readFile(postcheckPath, 'utf8')
+    readFile(postcheckPath, 'utf8'),
   ]);
 
-  assert.match(precheck, /Existing star-rating SCOUT EXP requires manual reconciliation/);
-  assert.match(postcheck, /authenticated must retain star-rating write access/);
+  assert.match(
+    precheck,
+    /Existing star-rating SCOUT EXP requires manual reconciliation/
+  );
+  assert.match(
+    postcheck,
+    /authenticated must retain star-rating write access/
+  );
   assert.match(postcheck, /Star-rating XP daily cap exceeded/);
-  assert.match(postcheck, /Star-rating XP ledger does not match replayable beta rules/);
+  assert.match(
+    postcheck,
+    /Star-rating XP ledger does not match replayable beta rules/
+  );
   assert.match(postcheck, /except select source_event_id from actual/);
   assert.match(postcheck, /except select source_event_id from expected/);
 });
