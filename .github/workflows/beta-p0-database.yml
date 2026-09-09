@@ -16,6 +16,7 @@ on:
       - 'tests/rls/scout-beta-foundations*.sql'
       - 'tests/rls/light-seed-v1-cutover.sql'
       - 'tests/rls/work-rank-engine*.sql'
+      - 'tests/rls/work-rank-lifecycle.sql'
       - 'supabase/**/20260819190000_*.sql'
       - 'supabase/**/20260822_content_write_rls_*.sql'
       - 'supabase/**/20260822194000_*.sql'
@@ -32,6 +33,7 @@ on:
       - 'supabase/**/202609090715*.sql'
       - 'supabase/**/20260909080000_*.sql'
       - 'supabase/**/20260909100000_*.sql'
+      - 'supabase/**/20260909120000_*.sql'
       - '.github/workflows/beta-p0-database.yml'
   push:
     branches: [main]
