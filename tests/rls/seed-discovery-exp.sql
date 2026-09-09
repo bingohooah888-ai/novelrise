@@ -52,7 +52,7 @@ begin
       (novel_id_snapshot, author_id_snapshot, from_rank, to_rank, event_type, occurred_at)
     values (v_novel || v_total, gen_random_uuid(), 1, 3, 'promotion', v_sent + interval '1 day');
     if (select cumulative_discovery_xp from public.seed_discovery_state where seed_id = v_seed_2)
-       <> case v_total when 1 then 225 else 300 end then
+       <> (case v_total when 1 then 225 else 300 end) then
       raise exception 'SEED multiplier mismatch';
     end if;
   end loop;
