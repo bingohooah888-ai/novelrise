@@ -37,7 +37,10 @@ test('same work can receive comment EXP only once per JST day', async () => {
 test('comment runtime is RPC-only for clients', async () => {
   const sql = await readFile(migrationPath, 'utf8');
   has(sql, 'alter table public.novel_comments enable row level security');
-  has(sql, 'revoke all on table public.novel_comments from public, anon, authenticated');
+  has(
+    sql,
+    'revoke all on table public.novel_comments from public, anon, authenticated'
+  );
   has(sql, 'grant execute on function public.novelight_comment_feed');
   has(sql, 'grant execute on function public.post_novel_comment');
   has(sql, 'grant execute on function public.delete_novel_comment');
