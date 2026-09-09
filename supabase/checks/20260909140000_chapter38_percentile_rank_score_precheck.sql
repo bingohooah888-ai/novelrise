@@ -3,6 +3,7 @@
 do $$
 declare
   v_definition text;
+  v_backup_exists boolean := false;
 begin
   if to_regclass('public.novel_rank_state') is null
      or to_regclass('public.novel_star_ratings') is null
@@ -17,12 +18,17 @@ begin
     raise exception 'Chapter 38 Bayesian Rank helper already exists';
   end if;
 
-  if to_regclass('novelrise_migration_backup.chapter38_percentile_rank_score_state') is not null
-     and exists (
-       select 1
-         from novelrise_migration_backup.chapter38_percentile_rank_score_state
-        where migration_id = '20260909140000'
-     ) then
+  if to_regclass('novelrise_migration_backup.chapter38_percentile_rank_score_state') is not null then
+    execute $sql$
+      select exists (
+        select 1
+          from novelrise_migration_backup.chapter38_percentile_rank_score_state
+         where migration_id = '20260909140000'
+      )
+    $sql$ into v_backup_exists;
+  end if;
+
+  if v_backup_exists then
     raise exception 'Chapter 38 percentile Rank score backup already exists';
   end if;
 
