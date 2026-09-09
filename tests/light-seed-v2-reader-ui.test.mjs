@@ -5,20 +5,23 @@ import test from 'node:test';
 const episode = await readFile('episode.html', 'utf8');
 const novel = await readFile('novel.html', 'utf8');
 
-test('episode sends authenticated foreground reading progress to valid-read v2 RPC', () => {
+test('episode sends valid-read v2 telemetry', () => {
   assert.match(episode, /record_valid_read_progress/);
   assert.match(episode, /p_episode_id:String\(episode\.id\)/);
   assert.match(episode, /p_session_id:readSessionId/);
   assert.match(episode, /p_progress_ratio:maxProgress/);
   assert.match(episode, /p_interaction_count:interactionCount/);
   assert.match(episode, /p_client_seq:clientSeq/);
-  assert.match(episode, /document\.visibilityState!==['"]visible['"]/);
+  assert.match(
+    episode,
+    /document\.visibilityState!==['"]visible['"]/ 
+  );
   assert.match(episode, /visibilitychange/);
   assert.match(episode, /pagehide/);
   assert.match(episode, /setInterval\(\(\)=>void heartbeat\(\),12000\)/);
 });
 
-test('episode valid-read telemetry excludes authors and unauthenticated readers', () => {
+test('valid-read telemetry excludes authors and anonymous readers', () => {
   assert.match(
     episode,
     /if\(validReadTrackingStarted\|\|isAuthor\|\|!session\|\|!unlocked\)return/
@@ -36,7 +39,7 @@ test('novel detail uses only typed LIGHT SEED v2 RPCs', () => {
   assert.doesNotMatch(novel, /client\.rpc\('plant_light_seed',/);
 });
 
-test('novel detail exposes GOLD SILVER BRONZE choices and lifetime-send warning', () => {
+test('novel detail exposes all three LIGHT SEED choices', () => {
   assert.match(novel, /data-seed-type="GOLD"/);
   assert.match(novel, /data-seed-type="SILVER"/);
   assert.match(novel, /data-seed-type="BRONZE"/);
@@ -45,7 +48,7 @@ test('novel detail exposes GOLD SILVER BRONZE choices and lifetime-send warning'
   assert.match(novel, /この作品のLIGHT SEED/);
 });
 
-test('LIGHT SEED v2 UI fails closed when the new RPC is unavailable', () => {
+test('LIGHT SEED v2 UI fails closed without the new RPC', () => {
   assert.match(
     novel,
     /LIGHT SEED新仕様の準備中です。現在は送信できません。/
@@ -53,7 +56,7 @@ test('LIGHT SEED v2 UI fails closed when the new RPC is unavailable', () => {
   assert.match(novel, /setSeedButtonsDisabled\(true\)/);
 });
 
-test('beta reader UI does not expose hidden SCOUT progression', () => {
+test('beta reader UI hides SCOUT progression', () => {
   for (const page of [episode, novel]) {
     assert.doesNotMatch(page, /SCOUT EXP/);
     assert.doesNotMatch(page, /SCOUT XP/);
