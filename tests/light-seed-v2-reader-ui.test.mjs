@@ -18,6 +18,12 @@ test('episode sends valid-read v2 telemetry', () => {
   assert.match(episode, /12000/);
 });
 
+test('valid-read session identifiers use Web Crypto only', () => {
+  assert.match(episode, /crypto\?\.randomUUID/);
+  assert.match(episode, /crypto\?\.getRandomValues/);
+  assert.doesNotMatch(episode, /Math\.random/);
+});
+
 test('valid-read telemetry excludes invalid reader states', () => {
   assert.match(episode, /validReadTrackingStarted/);
   assert.match(episode, /isAuthor/);
