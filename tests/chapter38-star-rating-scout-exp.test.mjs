@@ -47,7 +47,7 @@ test('rating changes and clears remain usable without extra EXP', async () => {
 test('precheck and postcheck fail closed around replay and privileges', async () => {
   const [precheck, postcheck] = await Promise.all([
     readFile(precheckPath, 'utf8'),
-    readFile(postcheckPath, 'utf8'),
+    readFile(postcheckPath, 'utf8')
   ]);
 
   assert.match(
