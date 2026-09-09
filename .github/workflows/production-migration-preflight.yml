@@ -11,7 +11,7 @@ jobs:
   cleanup_stale:
     name: Release only stale bridge-dispatched waiting migration run
     if: >-
-      github.event.issue.number == 165 &&
+      github.event.issue.number == 460 &&
       github.event.issue.pull_request == null &&
       github.event.comment.user.login == 'bingohooah888-ai' &&
       github.event.comment.author_association == 'OWNER' &&
@@ -26,7 +26,7 @@ jobs:
       cancel-in-progress: false
     env:
       GH_TOKEN: ${{ github.token }}
-      ISSUE_NUMBER: '165'
+      ISSUE_NUMBER: '460'
       MANUAL_WORKFLOW: supabase-production.yml
     outputs:
       main_sha: ${{ steps.request.outputs.main_sha }}
