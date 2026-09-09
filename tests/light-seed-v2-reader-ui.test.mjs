@@ -14,7 +14,7 @@ test('episode sends valid-read v2 telemetry', () => {
   assert.match(episode, /p_client_seq:clientSeq/);
   assert.match(
     episode,
-    /document\.visibilityState!==['"]visible['"]/ 
+    /document\.visibilityState!==['"]visible['"]/
   );
   assert.match(episode, /visibilitychange/);
   assert.match(episode, /pagehide/);
