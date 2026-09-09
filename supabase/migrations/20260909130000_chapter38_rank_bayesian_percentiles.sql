@@ -193,9 +193,9 @@ begin
   end if;
 
   v_definition :=
-    pg_catalog.substring(v_definition from 1 for v_start - 1)
+    pg_catalog.substr(v_definition, 1, v_start - 1)
     || v_replacement
-    || pg_catalog.substring(v_definition from v_end);
+    || pg_catalog.substr(v_definition, v_end);
 
   if pg_catalog.strpos(
        v_definition,
