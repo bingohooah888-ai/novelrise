@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths: &beta_p0_paths
       - 'scripts/run-beta-p0-db-tests.sh'
+      - 'scripts/run-chapter38-bayesian-rank-score-db-tests.sh'
       - 'tests/rls/fixture.sql'
       - 'tests/rls/billing-fixture.sql'
       - 'tests/rls/light-seed-fixture.sql'
@@ -17,6 +18,7 @@ on:
       - 'tests/rls/light-seed-v1-cutover.sql'
       - 'tests/rls/work-rank-engine*.sql'
       - 'tests/rls/work-rank-lifecycle.sql'
+      - 'tests/rls/work-rank-bayesian-percentiles.sql'
       - 'supabase/**/20260819190000_*.sql'
       - 'supabase/**/20260822_content_write_rls_*.sql'
       - 'supabase/**/20260822194000_*.sql'
@@ -34,6 +36,7 @@ on:
       - 'supabase/**/20260909080000_*.sql'
       - 'supabase/**/20260909100000_*.sql'
       - 'supabase/**/20260909120000_*.sql'
+      - 'supabase/**/20260909130000_*.sql'
       - '.github/workflows/beta-p0-database.yml'
   push:
     branches: [main]
@@ -75,4 +78,6 @@ jobs:
       - name: Run beta P0 database gate
         env:
           PGPASSWORD: postgres
-        run: bash scripts/run-beta-p0-db-tests.sh
+        run: |
+          bash scripts/run-beta-p0-db-tests.sh
+          bash scripts/run-chapter38-bayesian-rank-score-db-tests.sh
