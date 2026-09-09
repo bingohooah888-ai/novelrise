@@ -78,9 +78,15 @@ select public.test_assert(
   'idempotent first completion must write exactly one replayable event'
 );
 
+-- Keep the test clock monotonic. Backdate only the fixture completion timestamp,
+-- then evaluate at 29 completed days and finally at the current wall clock.
+update public.novel_rank_state
+   set completed_at = now() - interval '31 days'
+ where novel_id_snapshot = '10000000-0000-0000-0000-000000000001';
+
 -- A completed work still receives the 30-day reader-response grace window.
 set role service_role;
-select public.novelight_recalculate_work_ranks(now() + interval '29 days');
+select public.novelight_recalculate_work_ranks(now() - interval '2 days');
 reset role;
 
 select public.test_assert(
@@ -93,7 +99,7 @@ select public.test_assert(
 );
 
 set role service_role;
-select public.novelight_recalculate_work_ranks(now() + interval '31 days');
+select public.novelight_recalculate_work_ranks(now());
 reset role;
 
 select public.test_assert(
@@ -215,8 +221,14 @@ end
 $$;
 reset role;
 
+-- Backdate the second completion as fixture data so its FINAL RANK can be
+-- evaluated without advancing the evaluator beyond the real wall clock.
+update public.novel_rank_state
+   set completed_at = now() - interval '31 days'
+ where novel_id_snapshot = '10000000-0000-0000-0000-000000000001';
+
 set role service_role;
-select public.novelight_recalculate_work_ranks(now() + interval '31 days');
+select public.novelight_recalculate_work_ranks(now());
 reset role;
 
 select public.test_assert(
@@ -234,7 +246,7 @@ update public.novel_rank_state
    set current_rank = 4,
        peak_rank = greatest(peak_rank, 4),
        candidate_rank = 4,
-       candidate_rank_since = now(),
+       candidate_rank_since = now() - interval '181 days',
        completion_ever_recorded = false,
        completion_cycle = 0,
        completion_state_changes_used = 0,
@@ -248,12 +260,13 @@ update public.novel_rank_state
  where novel_id_snapshot = '20000000-0000-0000-0000-000000000001';
 
 update public.episodes
-   set updated_at = now() - interval '121 days'
+   set updated_at = now() - interval '181 days'
  where novel_id::text = '20000000-0000-0000-0000-000000000001'
    and status = 'published';
 
+-- Evaluate a historical point 121 days after the last episode update.
 set role service_role;
-select public.novelight_recalculate_work_ranks(now());
+select public.novelight_recalculate_work_ranks(now() - interval '60 days');
 reset role;
 
 select public.test_assert(
@@ -270,7 +283,7 @@ select public.test_assert(
 
 -- Re-running within the same 60-day block is idempotent.
 set role service_role;
-select public.novelight_recalculate_work_ranks(now() + interval '1 day');
+select public.novelight_recalculate_work_ranks(now() - interval '59 days');
 reset role;
 
 select public.test_assert(
@@ -282,8 +295,10 @@ select public.test_assert(
   'repeated lifecycle evaluation must not double-apply inactivity degradation'
 );
 
+-- At the current wall clock 181 inactive days have elapsed, so only the third
+-- 60-day degradation remains to be applied.
 set role service_role;
-select public.novelight_recalculate_work_ranks(now() + interval '60 days');
+select public.novelight_recalculate_work_ranks(now());
 reset role;
 
 select public.test_assert(
@@ -298,12 +313,12 @@ select public.test_assert(
 -- Publishing a fresh episode/update resumes active participation but never
 -- restores the pre-dormancy Rank automatically.
 update public.episodes
-   set updated_at = now() + interval '61 days'
+   set updated_at = now()
  where novel_id::text = '20000000-0000-0000-0000-000000000001'
    and status = 'published';
 
 set role service_role;
-select public.novelight_recalculate_work_ranks(now() + interval '61 days');
+select public.novelight_recalculate_work_ranks(now());
 reset role;
 
 select public.test_assert(
