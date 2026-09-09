@@ -37,8 +37,6 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  -- Ignore PV-only changes. Any other episode mutation is meaningful author
-  -- activity for Chapter 38's "last episode update" rule.
   if (pg_catalog.to_jsonb(new) - 'pv' - 'updated_at')
      is distinct from
      (pg_catalog.to_jsonb(old) - 'pv' - 'updated_at') then
@@ -319,7 +317,6 @@ update public.novel_rank_state
 set candidate_rank = current_rank,
     candidate_rank_since = pg_catalog.now();
 
--- Absolute threshold ceiling from MASTER Chapter 38.
 create or replace function public.novelight_rank_absolute_ceiling(
   p_pv bigint,
   p_favorites bigint,
@@ -357,9 +354,6 @@ as $$
   end::smallint
 $$;
 
--- Bayesian shrinkage toward neutral 3.0. The prior weight is an internal beta
--- tuning constant, not a public scoring promise. It prevents a tiny number of
--- extreme ratings from outranking broad, stable positive reception.
 create or replace function public.novelight_rating_reliability_score(
   p_rating_count bigint,
   p_rating_average numeric
@@ -372,9 +366,9 @@ set search_path = ''
 as $$
   select case
     when coalesce(p_rating_count, 0) <= 0 or p_rating_average is null then 0::double precision
-    else pg_catalog.greatest(
+    else greatest(
       0::double precision,
-      pg_catalog.least(
+      least(
         1::double precision,
         (
           (
@@ -430,19 +424,6 @@ revoke all on function public.novelight_rank_relative_band(double precision)
 revoke all on function public.novelight_rank_required_stability(smallint)
   from public, anon, authenticated;
 
--- ---------------------------------------------------------------------------
--- Batch Rank evaluator.
---
--- Active pool = published works whose latest published episode update (falling
--- back to first publication) is within 30 days. Inactive works are excluded but
--- are not demoted here, matching Chapter 38's 30-day grace rule.
---
--- Internal beta score = PV 20% + favorites 35% + star-related 45%.
--- PV/favorites use their active-pool percentile; star score uses the reliability
--- corrected 1..5 average normalized to 0..1. Relative bands are then applied to
--- the composite score. Absolute threshold ceiling and relative band must both be
--- satisfied, so candidate Rank is the lower of the two.
--- ---------------------------------------------------------------------------
 create or replace function public.novelight_recalculate_work_ranks(
   p_now timestamptz default now()
 )
@@ -488,7 +469,7 @@ begin
     metric_base as (
       select n.id::text as novel_id_snapshot,
              n.user_id as author_id_snapshot,
-             pg_catalog.greatest(coalesce(n.pv, 0), 0)::bigint as pv,
+             greatest(coalesce(n.pv, 0), 0)::bigint as pv,
              coalesce(f.favorite_count, 0)::bigint as favorite_count,
              coalesce(r.rating_count, 0)::bigint as rating_count,
              r.rating_average,
@@ -553,7 +534,7 @@ begin
       raise exception 'Rank state missing for published novel %', v_row.novel_id_snapshot;
     end if;
 
-    v_candidate := pg_catalog.least(
+    v_candidate := least(
       v_row.absolute_ceiling,
       v_row.relative_rank
     )::smallint;
