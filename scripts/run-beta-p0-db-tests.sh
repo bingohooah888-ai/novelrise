@@ -148,3 +148,15 @@ run_sql supabase/checks/20260909120000_chapter38_work_rank_lifecycle_precheck.sq
 run_sql supabase/migrations/20260909120000_chapter38_work_rank_lifecycle.sql
 run_sql supabase/checks/20260909120000_chapter38_work_rank_lifecycle_postcheck.sql
 run_sql tests/rls/work-rank-lifecycle.sql
+
+# The MASTER percentile formula is applied only after the lifecycle-aware
+# evaluator exists. Exercise its exact-function rollback before score evaluation,
+# then reapply and verify the full weighted percentile behavior end-to-end.
+run_sql supabase/checks/20260909140000_chapter38_percentile_rank_score_precheck.sql
+run_sql supabase/migrations/20260909140000_chapter38_percentile_rank_score.sql
+run_sql supabase/checks/20260909140000_chapter38_percentile_rank_score_postcheck.sql
+run_sql supabase/rollback/20260909140000_chapter38_percentile_rank_score_rollback.sql
+run_sql supabase/checks/20260909140000_chapter38_percentile_rank_score_precheck.sql
+run_sql supabase/migrations/20260909140000_chapter38_percentile_rank_score.sql
+run_sql supabase/checks/20260909140000_chapter38_percentile_rank_score_postcheck.sql
+run_sql tests/rls/work-rank-percentile-score.sql
