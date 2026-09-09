@@ -19,6 +19,7 @@ on:
       - 'tests/rls/work-rank-engine*.sql'
       - 'tests/rls/work-rank-lifecycle.sql'
       - 'tests/rls/work-rank-bayesian-percentiles.sql'
+      - 'tests/rls/seed-discovery-exp.sql'
       - 'supabase/**/20260819190000_*.sql'
       - 'supabase/**/20260822_content_write_rls_*.sql'
       - 'supabase/**/20260822194000_*.sql'
@@ -37,6 +38,7 @@ on:
       - 'supabase/**/20260909100000_*.sql'
       - 'supabase/**/20260909120000_*.sql'
       - 'supabase/**/20260909130000_*.sql'
+      - 'supabase/**/20260909140000_*.sql'
       - '.github/workflows/beta-p0-database.yml'
   push:
     branches: [main]
