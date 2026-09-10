@@ -100,34 +100,31 @@ test('auth smoke stays SHA-bound and always cleans up', async () => {
   assert.ok(!workflow.includes('STRIPE_LIVE_SECRET_KEY'));
 });
 
-test(
-  'request workflow stays SHA-bound and requires exact-head readiness before approval issue',
-  async () => {
-    const request = await text(requestPath);
-    const requestGroup = 'novelight-production-auth-request-${{ github.sha }}';
-    const staleRequest = 'Skipping approval request: run SHA';
-    const currentMainLookup = '"repos/$GITHUB_REPOSITORY/git/ref/heads/main"';
-    const readinessLookup =
-      '"repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses?per_page=100"';
-    const readinessContext = 'production-readiness-smoke';
-    const readinessSkip =
-      'Skipping approval request: exact main $GITHUB_SHA has Production Readiness status $readiness_state, not success.';
-    const requestLookup = request.indexOf('existing="$(gh issue list');
-    const issueCreate = request.indexOf('gh issue create');
+test('request workflow gates approval issue on readiness', async () => {
+  const request = await text(requestPath);
+  const requestGroup = 'novelight-production-auth-request-${{ github.sha }}';
+  const staleRequest = 'Skipping approval request: run SHA';
+  const currentMainLookup = '"repos/$GITHUB_REPOSITORY/git/ref/heads/main"';
+  const readinessLookup =
+    '"repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses?per_page=100"';
+  const readinessContext = 'production-readiness-smoke';
+  const readinessSkip =
+    'Skipping approval request: exact main $GITHUB_SHA has Production Readiness status $readiness_state, not success.';
+  const mainLookupIndex = request.indexOf(currentMainLookup);
+  const readinessLookupIndex = request.indexOf(readinessLookup);
+  const requestLookup = request.indexOf('existing="$(gh issue list');
+  const issueCreate = request.indexOf('gh issue create');
 
-    assert.ok(request.includes(requestGroup));
-    assert.ok(request.includes(staleRequest));
-    assert.ok(request.includes('is not current main $current_main.'));
-    assert.ok(request.includes(currentMainLookup));
-    assert.ok(request.includes('statuses: read'));
-    assert.ok(request.includes(readinessLookup));
-    assert.ok(request.includes(readinessContext));
-    assert.ok(request.includes("if [ \"$readiness_state\" != 'success' ]; then"));
-    assert.ok(request.includes(readinessSkip));
-    assert.ok(
-      request.indexOf(currentMainLookup) < request.indexOf(readinessLookup),
-    );
-    assert.ok(request.indexOf(readinessLookup) < requestLookup);
-    assert.ok(requestLookup < issueCreate);
-  },
-);
+  assert.ok(request.includes(requestGroup));
+  assert.ok(request.includes(staleRequest));
+  assert.ok(request.includes('is not current main $current_main.'));
+  assert.ok(request.includes(currentMainLookup));
+  assert.ok(request.includes('statuses: read'));
+  assert.ok(request.includes(readinessLookup));
+  assert.ok(request.includes(readinessContext));
+  assert.ok(request.includes("if [ \"$readiness_state\" != 'success' ]; then"));
+  assert.ok(request.includes(readinessSkip));
+  assert.ok(mainLookupIndex < readinessLookupIndex);
+  assert.ok(readinessLookupIndex < requestLookup);
+  assert.ok(requestLookup < issueCreate);
+});
