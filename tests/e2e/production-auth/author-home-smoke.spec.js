@@ -39,7 +39,7 @@ test('author home profile, avatar, and activity work in Production', async ({
 
   await loginToAuthorHome(page, author);
 
-  const authorHomeHeading = page.getByRole('heading', { name: /作者ホーム$/ });
+  const authorHomeHeading = page.getByRole('heading', { name: /さんの創作室$/ });
   await expect(authorHomeHeading).toBeVisible();
   await expect(page.locator('#save')).toBeEnabled();
   await expect(page.locator('#avatarInput')).toBeEnabled();

@@ -12,6 +12,7 @@ const productionSupabasePublishableKey =
   'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
 const exposureConversionRpcPath =
   '/rest/v1/rpc/record_novel_exposure_conversion';
+const validReadRpcPath = '/rest/v1/rpc/record_valid_read_progress';
 const receiptPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -249,6 +250,38 @@ async function readEpisodeAndRecord(page, episodeHref, title, label) {
   expect(response.ok()).toBeTruthy();
 }
 
+async function qualifyValidRead(page) {
+  const qualifiedResponse = page.waitForResponse(
+    async (response) => {
+      if (
+        !response.url().includes(validReadRpcPath) ||
+        response.request().method() !== 'POST' ||
+        !response.ok()
+      ) {
+        return false;
+      }
+      try {
+        return (await response.json())?.qualified === true;
+      } catch {
+        return false;
+      }
+    },
+    { timeout: 15000 }
+  );
+
+  const content = pageContent(page);
+  await content.scrollIntoViewIfNeeded();
+  for (let index = 0; index < 3; index += 1) {
+    await content.click();
+    await page.waitForTimeout(700);
+  }
+  await page.evaluate(() => globalThis.scrollTo(0, document.body.scrollHeight));
+
+  const response = await qualifiedResponse;
+  expect(response.ok()).toBeTruthy();
+  expect(await response.json()).toMatchObject({ qualified: true });
+}
+
 async function assertBetaStandardActivation(page) {
   const accessToken = await getSupabaseAccessToken(page);
   const response = await page.request.post('/api/activate-beta-standard', {
@@ -351,7 +384,14 @@ test('authenticated beta-critical product flow works in target', async ({
         );
       await authorPage.locator('#aiUsage').selectOption('human');
       await authorPage.locator('#contentRating').selectOption('general');
+      const thumbnailOption = authorPage.locator('.thumbnail-option').first();
+      await expect(thumbnailOption).toBeVisible();
+      await thumbnailOption.click();
+      await expect(
+        thumbnailOption.locator('input[name="thumbnailAsset"]')
+      ).toBeChecked();
       await authorPage.locator('#policyAck').check();
+      await expect(authorPage.locator('#submitButton')).toBeEnabled();
       await authorPage.locator('#submitButton').click();
       await authorPage.waitForURL(/\/episode-post\.html\?novel_id=/);
 
@@ -439,35 +479,43 @@ test('authenticated beta-critical product flow works in target', async ({
       expect((await favoriteConversion).ok()).toBeTruthy();
     });
 
-    await test.step('Send LIGHT SEED', async () => {
-      const seedButton = readerPage.locator('#seedButton');
-      await expect(seedButton).toBeVisible();
-      await expect(seedButton).toBeEnabled();
-      readerPage.once('dialog', (dialog) => dialog.accept());
-      await seedButton.click();
-      await expect(seedButton).toBeDisabled();
-      await expect(readerPage.locator('#seedMessage')).toContainText(
-        'すでに贈っています'
-      );
-    });
-
-    await test.step('Verify SCOUT RECORD', async () => {
-      await readerPage.goto('/scout-record.html');
-      await expect(
-        readerPage.getByRole('heading', { name: 'SCOUT RECORD' })
-      ).toBeVisible();
-      await expect(
-        readerPage.getByText(novelTitle, { exact: true })
-      ).toBeVisible();
-    });
-
-    await test.step('Read first and second episode with engagement', async () => {
+    await test.step('Qualify first episode as valid reading', async () => {
       await readEpisodeAndRecord(
         readerPage,
         firstEpisodeHref,
         firstEpisodeTitle,
         smokeLabel
       );
+      await qualifyValidRead(readerPage);
+      await readerPage.goto(`/novel.html?id=${encodeURIComponent(novelId)}`);
+      await expect(readerPage.locator('.title')).toHaveText(novelTitle);
+    });
+
+    await test.step('Send BRONZE LIGHT SEED', async () => {
+      const seedButton = readerPage.locator(
+        '.seed-choice[data-seed-type="BRONZE"]'
+      );
+      await expect(seedButton).toBeVisible();
+      await expect(seedButton).toBeEnabled();
+      readerPage.once('dialog', (dialog) => dialog.accept());
+      await seedButton.click();
+      await expect(seedButton).toBeDisabled();
+      await expect(readerPage.locator('#seedMessage')).toContainText(
+        'すでにLIGHT SEEDを贈っています'
+      );
+    });
+
+    await test.step('Verify LIGHT SEED send history', async () => {
+      await readerPage.goto('/scout-record.html');
+      await expect(
+        readerPage.getByRole('heading', { name: 'LIGHT SEED送信履歴' })
+      ).toBeVisible();
+      await expect(
+        readerPage.getByText(novelTitle, { exact: true })
+      ).toBeVisible();
+    });
+
+    await test.step('Read second episode with engagement', async () => {
       await readEpisodeAndRecord(
         readerPage,
         secondEpisodeHref,
