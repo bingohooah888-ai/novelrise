@@ -54,6 +54,7 @@
 <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-card"><div class="modal-head"><h2 id="modalTitle">先行登録詳細</h2><button id="closeModal" class="close" type="button">閉じる</button></div><div id="detail" class="detail-grid"></div><div class="edit"><label for="editStatus">ステータス</label><select id="editStatus"><option value="preregistered">先行登録</option><option value="verified">確認済み</option><option value="invited">招待済み</option><option value="registered">本登録済み</option><option value="first_novel">初投稿済み</option><option value="cancelled">取消</option></select><label for="adminNote">運営メモ</label><textarea id="adminNote" maxlength="1000" placeholder="Xで会話済み、参加意欲高め、公開日に案内 など"></textarea><button id="saveDetail" class="primary" type="button">変更を保存</button></div></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="novelight-client.js"></script>
 <script>
   const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
   const statusEl=document.getElementById('status');
