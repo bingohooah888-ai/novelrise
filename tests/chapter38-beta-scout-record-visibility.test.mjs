@@ -12,7 +12,7 @@ const history = await readFile(
   'utf8'
 );
 
-test('beta user navigation exposes LIGHT SEED history instead of SCOUT RECORD', () => {
+test('beta LIGHT SEED history navigation stays separate from SCOUT RECORD', () => {
   assert.doesNotMatch(mypage, /<span>SCOUT RECORD<\/span>/);
   assert.doesNotMatch(mypage, /<h2>SCOUT RECORD<\/h2>/);
   assert.match(mypage, /<span>LIGHT SEED履歴<\/span>/);
