@@ -33,7 +33,8 @@ function pngChunk(type, data = Buffer.alloc(0)) {
 }
 
 function point(value, name, width, height) {
-  if (!value || typeof value !== 'object') throw new Error(`${name} is required`);
+  if (!value || typeof value !== 'object')
+    throw new Error(`${name} is required`);
   const x = Number(value.x);
   const y = Number(value.y);
   if (!Number.isInteger(x) || !Number.isInteger(y)) {
@@ -60,7 +61,12 @@ function polygonArea(points) {
 }
 
 export function normalizeCoverQuad(rawQuad, width = 1086, height = 1448) {
-  if (!Number.isInteger(width) || width < 1 || !Number.isInteger(height) || height < 1) {
+  if (
+    !Number.isInteger(width) ||
+    width < 1 ||
+    !Number.isInteger(height) ||
+    height < 1
+  ) {
     throw new Error('Invalid template canvas');
   }
   const quad = {
@@ -69,18 +75,34 @@ export function normalizeCoverQuad(rawQuad, width = 1086, height = 1448) {
     bottom_right: point(rawQuad?.bottom_right, 'bottom_right', width, height),
     bottom_left: point(rawQuad?.bottom_left, 'bottom_left', width, height)
   };
-  const points = [quad.top_left, quad.top_right, quad.bottom_right, quad.bottom_left];
-  if (quad.top_left.x >= quad.top_right.x || quad.bottom_left.x >= quad.bottom_right.x) {
+  const points = [
+    quad.top_left,
+    quad.top_right,
+    quad.bottom_right,
+    quad.bottom_left
+  ];
+  if (
+    quad.top_left.x >= quad.top_right.x ||
+    quad.bottom_left.x >= quad.bottom_right.x
+  ) {
     throw new Error('Cover quad left/right ordering is invalid');
   }
-  if (quad.top_left.y >= quad.bottom_left.y || quad.top_right.y >= quad.bottom_right.y) {
+  if (
+    quad.top_left.y >= quad.bottom_left.y ||
+    quad.top_right.y >= quad.bottom_right.y
+  ) {
     throw new Error('Cover quad top/bottom ordering is invalid');
   }
   const turns = points.map((current, index) =>
     cross(current, points[(index + 1) % 4], points[(index + 2) % 4])
   );
-  if (turns.some((value) => value === 0) || !turns.every((value) => Math.sign(value) === Math.sign(turns[0]))) {
-    throw new Error('Cover quad must be a non-self-intersecting convex quadrilateral');
+  if (
+    turns.some((value) => value === 0) ||
+    !turns.every((value) => Math.sign(value) === Math.sign(turns[0]))
+  ) {
+    throw new Error(
+      'Cover quad must be a non-self-intersecting convex quadrilateral'
+    );
   }
   if (Math.abs(polygonArea(points)) < 100) {
     throw new Error('Cover quad is too small');
@@ -90,7 +112,10 @@ export function normalizeCoverQuad(rawQuad, width = 1086, height = 1448) {
 
 function insideConvexQuad(x, y, points, orientation) {
   for (let index = 0; index < points.length; index += 1) {
-    const edge = cross(points[index], points[(index + 1) % points.length], { x, y });
+    const edge = cross(points[index], points[(index + 1) % points.length], {
+      x,
+      y
+    });
     if (orientation > 0 ? edge < 0 : edge > 0) return false;
   }
   return true;
@@ -98,14 +123,31 @@ function insideConvexQuad(x, y, points, orientation) {
 
 export function generateCoverMaskPng(rawQuad, width = 1086, height = 1448) {
   const quad = normalizeCoverQuad(rawQuad, width, height);
-  const points = [quad.top_left, quad.top_right, quad.bottom_right, quad.bottom_left];
+  const points = [
+    quad.top_left,
+    quad.top_right,
+    quad.bottom_right,
+    quad.bottom_left
+  ];
   const orientation = Math.sign(polygonArea(points));
   const stride = width * 4 + 1;
   const raw = Buffer.alloc(stride * height);
-  const minX = Math.max(0, Math.floor(Math.min(...points.map((item) => item.x))));
-  const maxX = Math.min(width - 1, Math.ceil(Math.max(...points.map((item) => item.x))));
-  const minY = Math.max(0, Math.floor(Math.min(...points.map((item) => item.y))));
-  const maxY = Math.min(height - 1, Math.ceil(Math.max(...points.map((item) => item.y))));
+  const minX = Math.max(
+    0,
+    Math.floor(Math.min(...points.map((item) => item.x)))
+  );
+  const maxX = Math.min(
+    width - 1,
+    Math.ceil(Math.max(...points.map((item) => item.x)))
+  );
+  const minY = Math.max(
+    0,
+    Math.floor(Math.min(...points.map((item) => item.y)))
+  );
+  const maxY = Math.min(
+    height - 1,
+    Math.ceil(Math.max(...points.map((item) => item.y)))
+  );
 
   for (let y = minY; y <= maxY; y += 1) {
     const rowOffset = y * stride;
