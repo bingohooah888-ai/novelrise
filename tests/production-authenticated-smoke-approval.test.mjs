@@ -108,6 +108,7 @@ test('request workflow gates approval issue on readiness', async () => {
   const readinessLookup =
     '"repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses?per_page=100"';
   const readinessContext = 'production-readiness-smoke';
+  const readinessGate = `if [ "$readiness_state" != 'success' ]; then`;
   const readinessSkip =
     'Skipping approval request: exact main $GITHUB_SHA has Production Readiness status $readiness_state, not success.';
   const mainLookupIndex = request.indexOf(currentMainLookup);
@@ -122,7 +123,7 @@ test('request workflow gates approval issue on readiness', async () => {
   assert.ok(request.includes('statuses: read'));
   assert.ok(request.includes(readinessLookup));
   assert.ok(request.includes(readinessContext));
-  assert.ok(request.includes("if [ \"$readiness_state\" != 'success' ]; then"));
+  assert.ok(request.includes(readinessGate));
   assert.ok(request.includes(readinessSkip));
   assert.ok(mainLookupIndex < readinessLookupIndex);
   assert.ok(readinessLookupIndex < requestLookup);
