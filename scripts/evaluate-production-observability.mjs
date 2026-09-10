@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 export const INTEGRITY_CHECKS = [
   'signup_name_migration_applied',
   'profile_names_present',
+  'active_official_thumbnails_present',
   'acquisition_rows_valid',
   'lifecycle_rows_valid',
   'activity_rows_valid',
@@ -56,6 +57,8 @@ function diagnosticFields(row) {
     monitoring_ok: row?.monitoring_ok,
     signup_name_migration_applied: row?.signup_name_migration_applied,
     profile_names_present: row?.profile_names_present,
+    active_official_thumbnails_present:
+      row?.active_official_thumbnails_present,
     acquisition_claims_present: row?.acquisition_claims_present,
     acquisition_rows_valid: row?.acquisition_rows_valid,
     lifecycle_rows_present: row?.lifecycle_rows_present,
@@ -70,7 +73,9 @@ function diagnosticFields(row) {
 async function main() {
   const resultFile = process.argv[2];
   if (!resultFile) {
-    throw new Error('Usage: node scripts/evaluate-production-observability.mjs <result-file>');
+    throw new Error(
+      'Usage: node scripts/evaluate-production-observability.mjs <result-file>'
+    );
   }
 
   const payload = JSON.parse(await readFile(resultFile, 'utf8'));
