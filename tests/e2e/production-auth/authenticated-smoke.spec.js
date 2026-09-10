@@ -275,7 +275,9 @@ async function qualifyValidRead(page) {
     await content.click();
     await page.waitForTimeout(700);
   }
-  await page.evaluate(() => globalThis.scrollTo(0, globalThis.document.body.scrollHeight));
+  await page.evaluate(() =>
+    globalThis.scrollTo(0, globalThis.document.body.scrollHeight)
+  );
 
   const response = await qualifiedResponse;
   expect(response.ok()).toBeTruthy();
