@@ -537,7 +537,7 @@ test('authenticated beta-critical product flow works in target', async ({
       const work = authorPage.locator('.work').filter({ hasText: novelTitle });
       await expect(work).toHaveCount(1);
       await expect(work.locator('.work-title')).toHaveText(novelTitle);
-      await expect(work.locator('.funnel .step strong')).toHaveText([
+      await expect(work.locator('.funnel-node-head strong')).toHaveText([
         '1',
         '1',
         '1',
