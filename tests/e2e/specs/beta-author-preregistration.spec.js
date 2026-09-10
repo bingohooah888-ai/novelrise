@@ -85,8 +85,7 @@ test('beta author preregistration keeps its standalone theme and submits through
   ).toBe(true);
 
   const horizontalOverflow = await page.evaluate(
-    () =>
-      globalThis.document.documentElement.scrollWidth - globalThis.innerWidth
+    () => globalThis.document.documentElement.scrollWidth - globalThis.innerWidth
   );
   expect(horizontalOverflow).toBeLessThanOrEqual(1);
 });
@@ -167,4 +166,69 @@ test('campaign lookup failure fails closed instead of exposing the form', async 
     'aria-disabled',
     'true'
   );
+});
+
+test('beta author landing locks the desktop and 390px mobile layout skeleton', async ({
+  page
+}) => {
+  await mockCampaignApi(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/beta-authors.html');
+
+  await expect(page.locator('.benefit-card')).toHaveCount(4);
+  await expect(page.locator('.founding-benefit')).toHaveCount(2);
+  await expect(page.locator('#heroCta')).toHaveText('今すぐ先行登録する');
+  await expect(page.locator('.beta-local-nav')).toBeVisible();
+
+  const desktopGeometry = await page.evaluate(() => {
+    const hero = document.querySelector('.hero').getBoundingClientRect();
+    const shell = document.querySelector('.section-shell').getBoundingClientRect();
+    const noctar = document
+      .querySelector('.noctar-layer')
+      .getBoundingClientRect();
+    return {
+      heroHeight: hero.height,
+      shellWidth: shell.width,
+      noctarWidth: noctar.width,
+      overflow: document.documentElement.scrollWidth - innerWidth
+    };
+  });
+
+  expect(desktopGeometry.heroHeight).toBe(660);
+  expect(desktopGeometry.shellWidth).toBe(1180);
+  expect(desktopGeometry.noctarWidth).toBe(290);
+  expect(desktopGeometry.overflow).toBeLessThanOrEqual(1);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.beta-local-nav')).toBeHidden();
+
+  const mobileGeometry = await page.evaluate(() => {
+    const hero = document.querySelector('.hero').getBoundingClientRect();
+    const noctar = document
+      .querySelector('.noctar-layer')
+      .getBoundingClientRect();
+    const form = document.querySelector('#registration').getBoundingClientRect();
+    const cards = [...document.querySelectorAll('.benefit-card')].map((card) => {
+      const rect = card.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, width: rect.width };
+    });
+    return {
+      heroHeight: hero.height,
+      noctarWidth: noctar.width,
+      formLeft: form.left,
+      formRight: form.right,
+      cardColumnsAreSingle:
+        cards.length >= 2 &&
+        Math.abs(cards[0].left - cards[1].left) < 1 &&
+        cards[1].top > cards[0].top,
+      overflow: document.documentElement.scrollWidth - innerWidth
+    };
+  });
+
+  expect(mobileGeometry.heroHeight).toBe(720);
+  expect(mobileGeometry.noctarWidth).toBe(200);
+  expect(mobileGeometry.formLeft).toBeGreaterThanOrEqual(0);
+  expect(mobileGeometry.formRight).toBeLessThanOrEqual(390);
+  expect(mobileGeometry.cardColumnsAreSingle).toBe(true);
+  expect(mobileGeometry.overflow).toBeLessThanOrEqual(1);
 });
