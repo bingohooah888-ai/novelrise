@@ -9,6 +9,17 @@ const CONTENT_TYPES = new Map([
   ['image/jpeg', 'jpg']
 ]);
 const PATH_PATTERN = /^official\/([0-9a-f-]{36})\.(webp|png|jpg|jpeg)$/i;
+const LAYER_TYPES = new Set([
+  'background',
+  'base_book',
+  'cover',
+  'pattern',
+  'symbol',
+  'frame',
+  'effect',
+  'cover_mask'
+]);
+const STATUSES = new Set(['active', 'retired', 'emergency_disabled']);
 
 function bodyObject(req) {
   return req.body && typeof req.body === 'object' ? req.body : {};
@@ -19,21 +30,58 @@ function normalizeLabel(value) {
   return label.length >= 1 && label.length <= 80 ? label : null;
 }
 
-async function listAssets(supabase) {
+function normalizeTemplateKey(value) {
+  const key = String(value ?? '').trim();
+  return /^[a-z0-9][a-z0-9-]{0,63}$/u.test(key) ? key : null;
+}
+
+function normalizeSortOrder(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 && number <= 100000
+    ? number
+    : null;
+}
+
+async function listLegacyAssets(supabase) {
   const { data, error } = await supabase
     .from('novel_thumbnail_assets')
     .select('id,label,storage_path,image_url,is_active,created_at')
     .order('created_at', { ascending: false });
-
   if (error) throw new Error(`Thumbnail list failed: ${error.message}`);
-  return data ?? [];
+  return { composerReady: false, templates: [], assets: data ?? [] };
+}
+
+async function listLibrary(supabase) {
+  const { data: templates, error: templateError } = await supabase
+    .from('novel_thumbnail_templates')
+    .select(
+      'id,template_key,label,canvas_width,canvas_height,cover_mask_url,availability_status,created_at,updated_at'
+    )
+    .order('created_at', { ascending: true });
+
+  if (templateError) {
+    if (templateError.code === '42P01' || templateError.code === '42703') {
+      return listLegacyAssets(supabase);
+    }
+    throw new Error(`Thumbnail template list failed: ${templateError.message}`);
+  }
+
+  const { data: assets, error: assetError } = await supabase
+    .from('novel_thumbnail_assets')
+    .select(
+      'id,label,storage_path,image_url,is_active,layer_type,template_key,sort_order,availability_status,created_at'
+    )
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false });
+  if (assetError) throw new Error(`Thumbnail list failed: ${assetError.message}`);
+
+  return { composerReady: true, templates: templates ?? [], assets: assets ?? [] };
 }
 
 async function prepareUpload({ supabase, body }) {
   const contentType = String(body.contentType ?? '').toLowerCase();
   const extension = CONTENT_TYPES.get(contentType);
   const fileSize = Number(body.fileSize);
-
   if (
     !extension ||
     !Number.isInteger(fileSize) ||
@@ -49,56 +97,29 @@ async function prepareUpload({ supabase, body }) {
     .createSignedUploadUrl(path);
   if (error || !data?.token) {
     console.error('Signed thumbnail upload creation failed', error);
-    return {
-      status: 503,
-      payload: { error: 'Upload could not be prepared' }
-    };
+    return { status: 503, payload: { error: 'Upload could not be prepared' } };
   }
 
   return {
     status: 200,
-    payload: {
-      path,
-      token: data.token,
-      maxFileSize: MAX_FILE_SIZE
-    }
+    payload: { path, token: data.token, maxFileSize: MAX_FILE_SIZE }
   };
 }
 
 async function verifyStoredObject(supabase, path) {
-  const match = path.match(PATH_PATTERN);
-  if (!match) return false;
-
+  if (!PATH_PATTERN.test(path)) return false;
   const fileName = path.slice(path.lastIndexOf('/') + 1);
   const { data, error } = await supabase.storage.from(BUCKET).list('official', {
     limit: 20,
     search: fileName
   });
-  if (error)
+  if (error) {
     throw new Error(`Thumbnail storage verification failed: ${error.message}`);
+  }
   return (data ?? []).some((entry) => entry.name === fileName);
 }
 
-async function finalizeUpload({ supabase, adminUser, body }) {
-  const label = normalizeLabel(body.label);
-  const path = String(body.path ?? '').trim();
-  if (!label || !PATH_PATTERN.test(path)) {
-    return { status: 400, payload: { error: 'Invalid thumbnail metadata' } };
-  }
-
-  if (!(await verifyStoredObject(supabase, path))) {
-    return {
-      status: 409,
-      payload: { error: 'Uploaded thumbnail was not found' }
-    };
-  }
-
-  const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  const imageUrl = publicData?.publicUrl;
-  if (!imageUrl || !imageUrl.startsWith('https://')) {
-    throw new Error('Thumbnail public URL could not be resolved');
-  }
-
+async function finalizeLegacyUpload({ supabase, adminUser, label, path, imageUrl }) {
   const { data, error } = await supabase.rpc(
     'novelight_admin_register_thumbnail_asset',
     {
@@ -108,19 +129,102 @@ async function finalizeUpload({ supabase, adminUser, body }) {
       p_image_url: imageUrl
     }
   );
-
   if (error) {
     if (error.code === '23505') {
-      return {
-        status: 409,
-        payload: { error: 'Thumbnail was already registered' }
-      };
+      return { status: 409, payload: { error: 'Thumbnail was already registered' } };
     }
     throw new Error(`Thumbnail registration failed: ${error.message}`);
   }
-
   return {
     status: 201,
+    payload: { asset: Array.isArray(data) ? data[0] : data }
+  };
+}
+
+async function finalizeUpload({ supabase, adminUser, body }) {
+  const label = normalizeLabel(body.label);
+  const path = String(body.path ?? '').trim();
+  if (!label || !PATH_PATTERN.test(path)) {
+    return { status: 400, payload: { error: 'Invalid thumbnail metadata' } };
+  }
+  if (!(await verifyStoredObject(supabase, path))) {
+    return { status: 409, payload: { error: 'Uploaded thumbnail was not found' } };
+  }
+
+  const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  const imageUrl = publicData?.publicUrl;
+  if (!imageUrl || !imageUrl.startsWith('https://')) {
+    throw new Error('Thumbnail public URL could not be resolved');
+  }
+
+  const layerType = String(body.layerType ?? '').trim();
+  if (!layerType) {
+    return finalizeLegacyUpload({ supabase, adminUser, label, path, imageUrl });
+  }
+
+  const templateKey = normalizeTemplateKey(body.templateKey);
+  const sortOrder = normalizeSortOrder(body.sortOrder ?? 1000);
+  const assetStatus = String(body.status ?? 'active').trim();
+  if (
+    !LAYER_TYPES.has(layerType) ||
+    !templateKey ||
+    sortOrder === null ||
+    !STATUSES.has(assetStatus)
+  ) {
+    return { status: 400, payload: { error: 'Invalid thumbnail layer metadata' } };
+  }
+
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_register_thumbnail_layer_asset',
+    {
+      p_admin_user_id: adminUser.id,
+      p_label: label,
+      p_storage_path: path,
+      p_image_url: imageUrl,
+      p_layer_type: layerType,
+      p_template_key: templateKey,
+      p_sort_order: sortOrder,
+      p_status: assetStatus
+    }
+  );
+  if (error) {
+    if (error.code === '42883' || error.code === '42P01' || error.code === '42703') {
+      return { status: 503, payload: { error: 'Thumbnail composer schema is not ready' } };
+    }
+    if (error.code === '23505') {
+      return { status: 409, payload: { error: 'Thumbnail was already registered' } };
+    }
+    throw new Error(`Thumbnail layer registration failed: ${error.message}`);
+  }
+  return {
+    status: 201,
+    payload: { asset: Array.isArray(data) ? data[0] : data }
+  };
+}
+
+async function setAssetStatus({ supabase, adminUser, body }) {
+  const assetId = String(body.assetId ?? '').trim();
+  const assetStatus = String(body.status ?? '').trim();
+  if (!/^[0-9a-f-]{36}$/iu.test(assetId) || !STATUSES.has(assetStatus)) {
+    return { status: 400, payload: { error: 'Invalid thumbnail status request' } };
+  }
+
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_set_thumbnail_asset_status',
+    {
+      p_admin_user_id: adminUser.id,
+      p_asset_id: assetId,
+      p_status: assetStatus
+    }
+  );
+  if (error) {
+    if (error.code === '42883' || error.code === '42P01' || error.code === '42703') {
+      return { status: 503, payload: { error: 'Thumbnail composer schema is not ready' } };
+    }
+    throw new Error(`Thumbnail status update failed: ${error.message}`);
+  }
+  return {
+    status: 200,
     payload: { asset: Array.isArray(data) ? data[0] : data }
   };
 }
@@ -132,10 +236,9 @@ export function createAdminThumbnailsHandler({ supabase, env = process.env }) {
 
     try {
       if (req.method === 'GET') {
-        res.status(200).json({ assets: await listAssets(supabase) });
+        res.status(200).json(await listLibrary(supabase));
         return;
       }
-
       if (req.method !== 'POST') {
         res.setHeader('Allow', 'GET, POST');
         res.status(405).json({ error: 'Method not allowed' });
@@ -145,12 +248,15 @@ export function createAdminThumbnailsHandler({ supabase, env = process.env }) {
       const body = bodyObject(req);
       const action = String(body.action ?? '');
       let result;
-      if (action === 'prepare-upload')
+      if (action === 'prepare-upload') {
         result = await prepareUpload({ supabase, body });
-      else if (action === 'finalize-upload') {
+      } else if (action === 'finalize-upload') {
         result = await finalizeUpload({ supabase, adminUser, body });
-      } else result = { status: 400, payload: { error: 'Invalid action' } };
-
+      } else if (action === 'set-status') {
+        result = await setAssetStatus({ supabase, adminUser, body });
+      } else {
+        result = { status: 400, payload: { error: 'Invalid action' } };
+      }
       res.status(result.status).json(result.payload);
     } catch (error) {
       console.error('Admin thumbnail operation failed', error);
