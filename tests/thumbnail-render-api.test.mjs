@@ -132,36 +132,39 @@ test(
   }
 );
 
-test('signed upload is denied when the novel is not owned by the caller', async () => {
-  const revision = '22222222-2222-4222-8222-222222222222';
-  const supabase = {
-    auth: {
-      async getUser() {
-        return { data: { user: { id: 'owner-a' } }, error: null };
+test(
+  'signed upload is denied when the novel is not owned by the caller',
+  async () => {
+    const revision = '22222222-2222-4222-8222-222222222222';
+    const supabase = {
+      auth: {
+        async getUser() {
+          return { data: { user: { id: 'owner-a' } }, error: null };
+        }
+      },
+      from(table) {
+        if (table === 'novels') {
+          return queryBuilder({ id: 42, user_id: 'owner-b' });
+        }
+        throw new Error(`unexpected table ${table}`);
       }
-    },
-    from(table) {
-      if (table === 'novels') {
-        return queryBuilder({ id: 42, user_id: 'owner-b' });
-      }
-      throw new Error(`unexpected table ${table}`);
-    }
-  };
-  const handler = createThumbnailRenderHandler({ supabase });
-  const res = responseRecorder();
-  await handler(
-    {
-      method: 'POST',
-      headers: { authorization: 'Bearer test-token' },
-      body: {
-        action: 'prepare-upload',
-        novelId: '42',
-        revision,
-        fileSize: 100000
-      }
-    },
-    res
-  );
-  assert.equal(res.statusCode, 409);
-  assert.equal(res.payload.error, 'Thumbnail composition changed');
-});
+    };
+    const handler = createThumbnailRenderHandler({ supabase });
+    const res = responseRecorder();
+    await handler(
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer test-token' },
+        body: {
+          action: 'prepare-upload',
+          novelId: '42',
+          revision,
+          fileSize: 100000
+        }
+      },
+      res
+    );
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.payload.error, 'Thumbnail composition changed');
+  }
+);
