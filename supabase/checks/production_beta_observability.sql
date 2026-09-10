@@ -12,6 +12,11 @@ with checks as (
     ) as profile_names_present,
     exists (
       select 1
+      from public.novel_thumbnail_assets t
+      where t.is_active = true
+    ) as active_official_thumbnails_present,
+    exists (
+      select 1
       from public.user_acquisition a
     ) as acquisition_claims_present,
     not exists (
@@ -61,6 +66,7 @@ with checks as (
     *,
     signup_name_migration_applied
       and profile_names_present
+      and active_official_thumbnails_present
       and acquisition_rows_valid
       and lifecycle_rows_valid
       and activity_rows_valid
@@ -77,6 +83,7 @@ select
   monitoring_ok,
   signup_name_migration_applied,
   profile_names_present,
+  active_official_thumbnails_present,
   acquisition_claims_present,
   acquisition_rows_valid,
   lifecycle_rows_present,
