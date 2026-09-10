@@ -25,6 +25,7 @@ on:
 permissions:
   contents: read
   issues: write
+  statuses: read
 
 jobs:
   request-approval:
@@ -48,6 +49,16 @@ jobs:
           )"
           if [ "$GITHUB_SHA" != "$current_main" ]; then
             echo "Skipping approval request: run SHA $GITHUB_SHA is not current main $current_main."
+            exit 0
+          fi
+
+          readiness_state="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses?per_page=100" \
+              --jq '[.[] | select(.context == "production-readiness-smoke")][0].state // "missing"'
+          )"
+          if [ "$readiness_state" != 'success' ]; then
+            echo "Skipping approval request: exact main $GITHUB_SHA has Production Readiness status $readiness_state, not success."
             exit 0
           fi
 
