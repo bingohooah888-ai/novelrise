@@ -30,7 +30,8 @@ async function mockCampaignApi(page, state = 'PRE_REGISTRATION') {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          result: body.email === 'duplicate@example.com' ? 'duplicate' : 'registered'
+          result:
+            body.email === 'duplicate@example.com' ? 'duplicate' : 'registered'
         })
       });
       return;
@@ -55,9 +56,9 @@ test('beta author preregistration keeps its standalone theme and submits through
   await expect(page.locator('#preRegistrationState')).toBeVisible();
   await expect(page.locator('#releaseCopy')).toContainText('2026年9月下旬');
 
-  const heroColor = await page.locator('.hero h1').evaluate((element) =>
-    getComputedStyle(element).color
-  );
+  const heroColor = await page
+    .locator('.hero h1')
+    .evaluate((element) => getComputedStyle(element).color);
   expect(heroColor).toBe('rgb(255, 255, 255)');
 
   await page.locator('#penName').fill('E2E作者');
@@ -86,7 +87,9 @@ test('beta author preregistration keeps its standalone theme and submits through
   expect(horizontalOverflow).toBeLessThanOrEqual(1);
 });
 
-test('beta author preregistration does not depend on localStorage', async ({ page }) => {
+test('beta author preregistration does not depend on localStorage', async ({
+  page
+}) => {
   await page.addInitScript(() => {
     Storage.prototype.getItem = () => {
       throw new Error('storage disabled');
@@ -154,5 +157,8 @@ test('campaign lookup failure fails closed instead of exposing the form', async 
   await page.goto('/beta-authors.html');
   await expect(page.locator('#unavailableState')).toBeVisible();
   await expect(page.locator('#preRegistrationState')).toBeHidden();
-  await expect(page.locator('#heroCta')).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.locator('#heroCta')).toHaveAttribute(
+    'aria-disabled',
+    'true'
+  );
 });
