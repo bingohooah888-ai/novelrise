@@ -17,7 +17,11 @@ const STATUSES = new Set([
   'first_novel',
   'cancelled'
 ]);
-const CAMPAIGN_STATES = new Set(['PRE_REGISTRATION', 'BETA_OPEN', 'CLOSED']);
+const CAMPAIGN_STATES = new Set([
+  'PRE_REGISTRATION',
+  'BETA_OPEN',
+  'CLOSED'
+]);
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 
@@ -61,7 +65,11 @@ function parsePositiveId(value) {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
-function parsePositiveInteger(value, fallback, maximum = Number.MAX_SAFE_INTEGER) {
+function parsePositiveInteger(
+  value,
+  fallback,
+  maximum = Number.MAX_SAFE_INTEGER
+) {
   const text = String(value ?? '').trim();
   if (!text) return fallback;
   if (!/^\d+$/.test(text)) return fallback;
@@ -254,7 +262,9 @@ async function updateCampaign(body) {
   const patch = {};
   if (body.state !== undefined) {
     const state = String(body.state).trim().toUpperCase();
-    if (!CAMPAIGN_STATES.has(state)) throw inputError('Invalid campaign state');
+    if (!CAMPAIGN_STATES.has(state)) {
+      throw inputError('Invalid campaign state');
+    }
     patch.state = state;
   }
   if (body.release_label !== undefined) {
@@ -326,7 +336,9 @@ export default async function handler(req, res) {
     const id = parsePositiveId(req.body?.id);
     if (!id) return res.status(400).json({ error: 'Invalid request' });
     const preregistration = await updateRow(id, req.body ?? {});
-    if (!preregistration) return res.status(404).json({ error: 'Not found' });
+    if (!preregistration) {
+      return res.status(404).json({ error: 'Not found' });
+    }
     return res.status(200).json({ preregistration });
   } catch (error) {
     console.error('NOVELIGHT beta author ADMIN operation failed', error);
