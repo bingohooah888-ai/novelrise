@@ -15,6 +15,9 @@
     frame: '枠・四隅装飾',
     effect: '光・エフェクト'
   });
+  const TEMPLATE_SELECT_BASE =
+    'template_key,label,canvas_width,canvas_height,cover_mask_url,availability_status';
+  const TEMPLATE_SELECT_QUAD = `${TEMPLATE_SELECT_BASE},cover_mask_source,cover_mask_revision,cover_top_left_x,cover_top_left_y,cover_top_right_x,cover_top_right_y,cover_bottom_right_x,cover_bottom_right_y,cover_bottom_left_x,cover_bottom_left_y`;
 
   function schemaUnavailable(error) {
     return ['42P01', '42703', '42883'].includes(error?.code);
@@ -33,28 +36,59 @@
     );
   }
 
+  function templateQuad(template) {
+    const keys = [
+      ['top_left', 'cover_top_left_x', 'cover_top_left_y'],
+      ['top_right', 'cover_top_right_x', 'cover_top_right_y'],
+      ['bottom_right', 'cover_bottom_right_x', 'cover_bottom_right_y'],
+      ['bottom_left', 'cover_bottom_left_x', 'cover_bottom_left_y']
+    ];
+    const quad = {};
+    for (const [name, xKey, yKey] of keys) {
+      const x = Number(template?.[xKey]);
+      const y = Number(template?.[yKey]);
+      if (!Number.isInteger(x) || !Number.isInteger(y)) return null;
+      if (x < 0 || x > CANVAS_WIDTH || y < 0 || y > CANVAS_HEIGHT) return null;
+      quad[name] = { x, y };
+    }
+    return quad;
+  }
+
   function usableTemplate(library, template) {
     if (
       template.availability_status !== 'active' ||
       Number(template.canvas_width) !== CANVAS_WIDTH ||
-      Number(template.canvas_height) !== CANVAS_HEIGHT
+      Number(template.canvas_height) !== CANVAS_HEIGHT ||
+      !template.cover_mask_url
     ) {
       return false;
+    }
+    if (template.template_key === 'book-v1' && template.cover_mask_source === 'cover_quad') {
+      if (!templateQuad(template)) return false;
     }
     return REQUIRED_TYPES.every(
       (layerType) => assetsFor(library, template.template_key, layerType).length > 0
     );
   }
 
-  async function loadLibrary(client) {
-    const templatesResult = await client
+  async function loadTemplateRows(client) {
+    let result = await client
       .from('novel_thumbnail_templates')
-      .select(
-        'template_key,label,canvas_width,canvas_height,cover_mask_url,availability_status'
-      )
+      .select(TEMPLATE_SELECT_QUAD)
       .eq('availability_status', 'active')
       .order('created_at', { ascending: true });
+    if (result.error?.code === '42703') {
+      result = await client
+        .from('novel_thumbnail_templates')
+        .select(TEMPLATE_SELECT_BASE)
+        .eq('availability_status', 'active')
+        .order('created_at', { ascending: true });
+    }
+    return result;
+  }
 
+  async function loadLibrary(client) {
+    const templatesResult = await loadTemplateRows(client);
     if (templatesResult.error) {
       if (schemaUnavailable(templatesResult.error)) {
         return { ready: false, reason: 'schema', templates: [], assets: [] };
@@ -122,6 +156,23 @@
     context.drawImage(image, 0, 0, width, height);
   }
 
+  function clipToCoverQuad(context, quad) {
+    context.beginPath();
+    context.moveTo(quad.top_left.x, quad.top_left.y);
+    context.lineTo(quad.top_right.x, quad.top_right.y);
+    context.lineTo(quad.bottom_right.x, quad.bottom_right.y);
+    context.lineTo(quad.bottom_left.x, quad.bottom_left.y);
+    context.closePath();
+    context.clip();
+  }
+
+  async function drawCoverSurfaceLayers(context, selected) {
+    await drawAsset(context, selected.cover, CANVAS_WIDTH, CANVAS_HEIGHT);
+    await drawAsset(context, selected.pattern, CANVAS_WIDTH, CANVAS_HEIGHT);
+    await drawAsset(context, selected.symbol, CANVAS_WIDTH, CANVAS_HEIGHT);
+    await drawAsset(context, selected.frame, CANVAS_WIDTH, CANVAS_HEIGHT);
+  }
+
   async function renderSelectionToCanvas({ canvas, library, selection }) {
     const template = library.templates.find(
       (item) => item.template_key === selection.template_key
@@ -130,7 +181,12 @@
 
     const byId = assetMap(library.assets);
     const selected = Object.fromEntries(
-      LAYER_TYPES.map((type) => [type, selection[`${type}_asset_id`] ? byId.get(String(selection[`${type}_asset_id`])) : null])
+      LAYER_TYPES.map((type) => [
+        type,
+        selection[`${type}_asset_id`]
+          ? byId.get(String(selection[`${type}_asset_id`]))
+          : null
+      ])
     );
 
     for (const type of REQUIRED_TYPES) {
@@ -152,16 +208,20 @@
     const surfaceContext = surface.getContext('2d', { alpha: true });
     if (!surfaceContext) throw new Error('Canvas is unavailable');
 
-    await drawAsset(surfaceContext, selected.cover, CANVAS_WIDTH, CANVAS_HEIGHT);
-    await drawAsset(surfaceContext, selected.pattern, CANVAS_WIDTH, CANVAS_HEIGHT);
-    await drawAsset(surfaceContext, selected.symbol, CANVAS_WIDTH, CANVAS_HEIGHT);
-    await drawAsset(surfaceContext, selected.frame, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    if (template.cover_mask_url) {
-      const mask = await loadImage(template.cover_mask_url);
-      surfaceContext.globalCompositeOperation = 'destination-in';
-      surfaceContext.drawImage(mask, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      surfaceContext.globalCompositeOperation = 'source-over';
+    const quad = templateQuad(template);
+    if (quad) {
+      surfaceContext.save();
+      clipToCoverQuad(surfaceContext, quad);
+      await drawCoverSurfaceLayers(surfaceContext, selected);
+      surfaceContext.restore();
+    } else {
+      await drawCoverSurfaceLayers(surfaceContext, selected);
+      if (template.cover_mask_url) {
+        const mask = await loadImage(template.cover_mask_url);
+        surfaceContext.globalCompositeOperation = 'destination-in';
+        surfaceContext.drawImage(mask, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        surfaceContext.globalCompositeOperation = 'source-over';
+      }
     }
 
     context.drawImage(surface, 0, 0);
