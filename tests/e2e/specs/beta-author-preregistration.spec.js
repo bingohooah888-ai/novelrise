@@ -182,18 +182,16 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
   await expect(page.locator('.beta-local-nav')).toBeVisible();
 
   const desktopGeometry = await page.evaluate(() => {
-    const hero = document.querySelector('.hero').getBoundingClientRect();
-    const shell = document
-      .querySelector('.section-shell')
-      .getBoundingClientRect();
-    const noctar = document
-      .querySelector('.noctar-layer')
-      .getBoundingClientRect();
+    const doc = globalThis.document;
+    const viewportWidth = globalThis.innerWidth;
+    const hero = doc.querySelector('.hero').getBoundingClientRect();
+    const shell = doc.querySelector('.section-shell').getBoundingClientRect();
+    const noctar = doc.querySelector('.noctar-layer').getBoundingClientRect();
     return {
       heroHeight: hero.height,
       shellWidth: shell.width,
       noctarWidth: noctar.width,
-      overflow: document.documentElement.scrollWidth - innerWidth
+      overflow: doc.documentElement.scrollWidth - viewportWidth
     };
   });
 
@@ -206,19 +204,15 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
   await expect(page.locator('.beta-local-nav')).toBeHidden();
 
   const mobileGeometry = await page.evaluate(() => {
-    const hero = document.querySelector('.hero').getBoundingClientRect();
-    const noctar = document
-      .querySelector('.noctar-layer')
-      .getBoundingClientRect();
-    const form = document
-      .querySelector('#registration')
-      .getBoundingClientRect();
-    const cards = [...document.querySelectorAll('.benefit-card')].map(
-      (card) => {
-        const rect = card.getBoundingClientRect();
-        return { left: rect.left, top: rect.top, width: rect.width };
-      }
-    );
+    const doc = globalThis.document;
+    const viewportWidth = globalThis.innerWidth;
+    const hero = doc.querySelector('.hero').getBoundingClientRect();
+    const noctar = doc.querySelector('.noctar-layer').getBoundingClientRect();
+    const form = doc.querySelector('#registration').getBoundingClientRect();
+    const cards = [...doc.querySelectorAll('.benefit-card')].map((card) => {
+      const rect = card.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, width: rect.width };
+    });
     return {
       heroHeight: hero.height,
       noctarWidth: noctar.width,
@@ -228,7 +222,7 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
         cards.length >= 2 &&
         Math.abs(cards[0].left - cards[1].left) < 1 &&
         cards[1].top > cards[0].top,
-      overflow: document.documentElement.scrollWidth - innerWidth
+      overflow: doc.documentElement.scrollWidth - viewportWidth
     };
   });
 
