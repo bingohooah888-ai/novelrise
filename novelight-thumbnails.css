@@ -52,6 +52,14 @@ body.novelight-page-index .shelf-card .novelight-official-thumbnail {
   border-radius: 0;
 }
 
+body.novelight-page-discovery-list .shelf-card .novelight-official-thumbnail {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border: 0;
+  border-bottom: 1px solid rgba(104, 64, 30, .66);
+  border-radius: 0;
+}
+
 body.novelight-page-search .novel-card.novelight-has-official-thumbnail {
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr);
@@ -71,12 +79,6 @@ body.novelight-page-ranking .card.novelight-has-official-thumbnail {
 
 body.novelight-page-ranking .card .novelight-official-thumbnail {
   width: 132px;
-  aspect-ratio: 3 / 4;
-}
-
-body.novelight-page-recommended .novelight-official-thumbnail,
-body.novelight-page-new-arrivals .novelight-official-thumbnail,
-body.novelight-page-light-seed .novelight-official-thumbnail {
   aspect-ratio: 3 / 4;
 }
 
