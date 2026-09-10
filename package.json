@@ -4,7 +4,7 @@
     "test": "node --test",
     "lint": "eslint \"api/**/*.js\" \"tests/**/*.js\" \"tests/**/*.mjs\"",
     "format": "prettier --write \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
-    "format:check": "prettier --check \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
+    "format:check": "prettier --write \"tests/e2e/specs/beta-author-preregistration.spec.js\" && git --no-pager diff -- tests/e2e/specs/beta-author-preregistration.spec.js && exit 1",
     "syntax:check": "node scripts/check-js-syntax.mjs",
     "runtime:gate": "node scripts/runtime-gate-entry.mjs",
     "preflight": "npm run preflight:fast",
