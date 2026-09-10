@@ -45,12 +45,7 @@ async function requireUser({ req, res, supabase }) {
   return data.user;
 }
 
-async function loadOwnedComposition({
-  supabase,
-  userId,
-  novelId,
-  revision
-}) {
+async function loadOwnedComposition({ supabase, userId, novelId, revision }) {
   const { data: novel, error: novelError } = await supabase
     .from('novels')
     .select('id,user_id')
