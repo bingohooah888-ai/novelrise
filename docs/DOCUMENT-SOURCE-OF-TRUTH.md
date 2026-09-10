@@ -30,6 +30,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"AGENTS.md","status":"CURRENT","role":"repository-agent-contract","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/AUTOMATION-CONTINUATION-GATE.md","status":"CURRENT","role":"automation-continuation-gate","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/BACKUP-RESTORE-RUNBOOK.md","status":"CURRENT","role":"production-backup-restore-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/BETA-AUTHOR-LP-IMAGE-SPEC.md","status":"CURRENT","role":"beta-author-lp-image-spec","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/BETA-DATA-FOUNDATIONS.md","status":"CURRENT","role":"beta-data-foundations","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/BETA-OPERATIONS-RUNBOOK.md","status":"CURRENT","role":"beta-operations-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/BETA-RELEASE-CHECKLIST.md","status":"CURRENT","role":"beta-release-checklist","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":["docs/BETA-RELEASE-DECISION-2026-08-28.md"]},
