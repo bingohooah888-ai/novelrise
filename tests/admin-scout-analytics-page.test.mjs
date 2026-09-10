@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const html = await readFile(new URL('../admin-scout.html', import.meta.url), 'utf8');
+const html = await readFile(
+  new URL('../admin-scout.html', import.meta.url),
+  'utf8'
+);
 
 test('SCOUT beta analytics page is admin-only, noindexed and uses the protected server endpoint', () => {
   assert.match(html, /noindex,nofollow,noarchive/);
@@ -10,7 +13,10 @@ test('SCOUT beta analytics page is admin-only, noindexed and uses the protected 
   assert.match(html, /\/api\/admin-scout-analytics/);
   assert.match(html, /Authorization:`Bearer \$\{session\.access_token\}`/);
   assert.match(html, /admin\.html/);
-  assert.match(html, /SCOUT Level \/ Rank \/ XPはβユーザー画面には表示しません/);
+  assert.match(
+    html,
+    /SCOUT Level \/ Rank \/ XPはβユーザー画面には表示しません/
+  );
 });
 
 test('SCOUT beta analytics page covers the MASTER-required beta analysis surfaces', () => {

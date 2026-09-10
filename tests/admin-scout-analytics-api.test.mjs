@@ -61,7 +61,10 @@ test('SCOUT percentile and histogram keep zero-XP users in the distribution', ()
   assert.equal(percentile([0, 0, 33, 155], 0.5), 16.5);
   assert.equal(percentile([0, 0, 33, 155], 0.9), 118.4);
   const histogram = buildHistogram([0, 0, 33, 155]);
-  assert.equal(histogram.reduce((sum, bucket) => sum + bucket.count, 0), 4);
+  assert.equal(
+    histogram.reduce((sum, bucket) => sum + bucket.count, 0),
+    4
+  );
   assert.equal(histogram[0].count >= 2, true);
 });
 
@@ -70,7 +73,11 @@ test('SCOUT beta summary covers XP, source mix, monthly seed use, discovery and 
   const profiles = [
     { id: ADMIN_ID, display_name: 'Alpha', created_at: '2026-08-01T00:00:00Z' },
     { id: USER_TWO, display_name: 'Beta', created_at: '2026-08-02T00:00:00Z' },
-    { id: USER_THREE, display_name: 'Gamma', created_at: '2026-08-03T00:00:00Z' },
+    {
+      id: USER_THREE,
+      display_name: 'Gamma',
+      created_at: '2026-08-03T00:00:00Z'
+    },
     { id: USER_FOUR, display_name: 'Delta', created_at: '2026-08-04T00:00:00Z' }
   ];
   const xpRows = [

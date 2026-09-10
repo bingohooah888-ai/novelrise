@@ -1,7 +1,4 @@
-import {
-  isSameOriginRequest,
-  parseAdminAllowlist
-} from './admin-dashboard.js';
+import { isSameOriginRequest, parseAdminAllowlist } from './admin-dashboard.js';
 
 const PAGE_SIZE = 1000;
 const MAX_PAGED_ROWS = 50000;
@@ -102,7 +99,9 @@ async function fetchPaged(
 
     const { data, error } = await query;
     if (error) {
-      throw new Error(`SCOUT admin query failed for ${table}: ${error.message}`);
+      throw new Error(
+        `SCOUT admin query failed for ${table}: ${error.message}`
+      );
     }
 
     const page = data ?? [];
@@ -114,9 +113,7 @@ async function fetchPaged(
 }
 
 export function percentile(values, fraction) {
-  const sorted = (values ?? [])
-    .map(numeric)
-    .sort((a, b) => a - b);
+  const sorted = (values ?? []).map(numeric).sort((a, b) => a - b);
   if (!sorted.length) return 0;
 
   const position = (sorted.length - 1) * fraction;
@@ -252,8 +249,14 @@ function summarizeSeedUsage({ profiles, seeds, month }) {
     totalAllocated,
     totalUsed,
     useRate: rate(totalUsed, totalAllocated),
-    zeroUseRate: rate(values.filter((value) => value === 0).length, values.length),
-    fullUseRate: rate(values.filter((value) => value === 11).length, values.length),
+    zeroUseRate: rate(
+      values.filter((value) => value === 0).length,
+      values.length
+    ),
+    fullUseRate: rate(
+      values.filter((value) => value === 11).length,
+      values.length
+    ),
     averageUsed: values.length ? round2(totalUsed / values.length) : 0,
     medianUsed: percentile(values, 0.5),
     typeUsed,
@@ -280,7 +283,9 @@ function discoveryRates(rows) {
   const byType = ['GOLD', 'SILVER', 'BRONZE'].map((seedType) => {
     const typed = rows.filter((row) => row.seed_type === seedType);
     const eligible = typed.filter((row) => numeric(row.rank_at_seed) <= 4);
-    const successes = eligible.filter((row) => discoveryStage(row).plus2).length;
+    const successes = eligible.filter(
+      (row) => discoveryStage(row).plus2
+    ).length;
     const novaPredictions = typed.filter(
       (row) => discoveryStage(row).novaPrediction
     ).length;
@@ -457,30 +462,28 @@ export async function loadScoutAnalytics({
   now = new Date(),
   query = ''
 }) {
-  const [profiles, xpRows, eventRows, seeds, discoveryRows] = await Promise.all([
-    fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
-    fetchPaged(
-      supabase,
-      'scout_xp_ledger',
-      'user_id,source_event_id,xp_kind,xp_value,occurred_at'
-    ),
-    fetchPaged(
-      supabase,
-      'scout_event_ledger',
-      'id,event_type,metadata',
-      (request) => request.eq('event_type', 'light_seed_discovery')
-    ),
-    fetchPaged(
-      supabase,
-      'light_seeds',
-      'reader_id,seed_type,seed_month'
-    ),
-    fetchPaged(
-      supabase,
-      'seed_discovery_state',
-      'reader_id,seed_type,rank_at_seed,highest_rank_seen,best_rank_delta,cumulative_discovery_xp,window_expires_at'
-    )
-  ]);
+  const [profiles, xpRows, eventRows, seeds, discoveryRows] = await Promise.all(
+    [
+      fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
+      fetchPaged(
+        supabase,
+        'scout_xp_ledger',
+        'user_id,source_event_id,xp_kind,xp_value,occurred_at'
+      ),
+      fetchPaged(
+        supabase,
+        'scout_event_ledger',
+        'id,event_type,metadata',
+        (request) => request.eq('event_type', 'light_seed_discovery')
+      ),
+      fetchPaged(supabase, 'light_seeds', 'reader_id,seed_type,seed_month'),
+      fetchPaged(
+        supabase,
+        'seed_discovery_state',
+        'reader_id,seed_type,rank_at_seed,highest_rank_seen,best_rank_delta,cumulative_discovery_xp,window_expires_at'
+      )
+    ]
+  );
 
   return summarizeScoutData({
     profiles,
