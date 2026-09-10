@@ -23,7 +23,7 @@ test('thumbnail remains required through composer or legacy official asset', () 
   assert.ok(postHtml.includes('NovelightThumbnailComposer.mount'));
   assert.ok(postHtml.includes('composerController.isValid()'));
   assert.ok(postHtml.includes('composerController.persist'));
-  assert.ok(postHtml.includes('if(!legacyAsset){'));
-  assert.ok(postHtml.includes('thumbnail_asset_id:legacyAsset'));
+  assert.ok(postHtml.includes('if(!composerMode&&!legacyAsset){'));
+  assert.ok(postHtml.includes('if(legacyAsset)payload.thumbnail_asset_id=legacyAsset'));
   assert.equal(postHtml.includes('payload.thumbnail_url='), false);
 });
