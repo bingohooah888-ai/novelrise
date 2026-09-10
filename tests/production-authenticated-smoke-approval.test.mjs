@@ -125,9 +125,9 @@ test(
     assert.ok(request.includes("if [ \"$readiness_state\" != 'success' ]; then"));
     assert.ok(request.includes(readinessSkip));
     assert.ok(
-      request.indexOf(currentMainLookup) < request.indexOf(readinessLookup)
+      request.indexOf(currentMainLookup) < request.indexOf(readinessLookup),
     );
     assert.ok(request.indexOf(readinessLookup) < requestLookup);
     assert.ok(requestLookup < issueCreate);
-  }
+  },
 );
