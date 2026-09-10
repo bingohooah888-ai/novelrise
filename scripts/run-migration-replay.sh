@@ -203,10 +203,21 @@ echo '::endgroup::'
 
 echo '::group::Verify Chapter 38 comment SCOUT EXP behavior'
 "${REPLAY[@]}" -f supabase/checks/20260910070000_chapter38_comment_scout_exp_foundation_postcheck.sql
+"${REPLAY[@]}" -f supabase/checks/20260910143000_chapter38_exclude_self_comment_scout_exp_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/comment-scout-exp-foundation.sql
+"${REPLAY[@]}" -f tests/rls/comment-scout-exp-self-exclusion.sql
+echo '::endgroup::'
+
+echo '::group::Verify Chapter 38 self-comment exclusion rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260910143000_chapter38_exclude_self_comment_scout_exp_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260910070000_chapter38_comment_scout_exp_foundation_postcheck.sql
+"${REPLAY[@]}" -f supabase/checks/20260910143000_chapter38_exclude_self_comment_scout_exp_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260910143000_chapter38_exclude_self_comment_scout_exp.sql
+"${REPLAY[@]}" -f supabase/checks/20260910143000_chapter38_exclude_self_comment_scout_exp_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify Chapter 38 comment SCOUT EXP rollback and replay'
+"${REPLAY[@]}" -f supabase/rollback/20260910143000_chapter38_exclude_self_comment_scout_exp_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260910070000_chapter38_comment_scout_exp_foundation_rollback.sql
 "${REPLAY[@]}" <<'SQL'
 do $$
@@ -235,6 +246,9 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260910070000_chapter38_comment_scout_exp_foundation_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260910070000_chapter38_comment_scout_exp_foundation.sql
 "${REPLAY[@]}" -f supabase/checks/20260910070000_chapter38_comment_scout_exp_foundation_postcheck.sql
+"${REPLAY[@]}" -f supabase/checks/20260910143000_chapter38_exclude_self_comment_scout_exp_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260910143000_chapter38_exclude_self_comment_scout_exp.sql
+"${REPLAY[@]}" -f supabase/checks/20260910143000_chapter38_exclude_self_comment_scout_exp_postcheck.sql
 echo '::endgroup::'
 
 echo 'Fresh NOVELIGHT migration replay passed.'
