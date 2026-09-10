@@ -94,7 +94,10 @@ test('generated mask PNG is 1086x1448 and contains only binary alpha', () => {
       alphaValues.add(decoded.raw[y * decoded.stride + 1 + x * 4 + 3]);
     }
   }
-  assert.deepEqual([...alphaValues].sort((a, b) => a - b), [0, 255]);
+  assert.deepEqual(
+    [...alphaValues].sort((a, b) => a - b),
+    [0, 255]
+  );
 });
 
 test('migration stores the four vertices as canonical template data', () => {
@@ -110,11 +113,17 @@ test('migration stores the four vertices as canonical template data', () => {
   ]) {
     assert.ok(migration.includes(column), `missing ${column}`);
   }
-  assert.match(migration, /cover_mask_source text not null default 'legacy_asset'/i);
+  assert.match(
+    migration,
+    /cover_mask_source text not null default 'legacy_asset'/i
+  );
   assert.match(migration, /cover_mask_source = 'cover_quad'/i);
   assert.ok(migration.includes("'generated-masks/'"));
   assert.ok(migration.includes("'-cover-mask.png'"));
-  assert.match(migration, /template_key <> 'book-v1'\s+or cover_mask_source = 'cover_quad'/i);
+  assert.match(
+    migration,
+    /template_key <> 'book-v1'\s+or cover_mask_source = 'cover_quad'/i
+  );
   assert.match(migration, /render_storage_path = null/i);
   assert.match(migration, /render_url = null/i);
 });
@@ -123,7 +132,9 @@ test('ADMIN generates derived PNG from quad and does not accept manual mask uplo
   assert.ok(adminApi.includes('generateCoverMaskPng'));
   assert.ok(adminApi.includes("action === 'set-cover-quad'"));
   assert.ok(adminApi.includes("contentType: 'image/png'"));
-  assert.ok(adminApi.includes('novelight_admin_set_thumbnail_template_cover_quad'));
+  assert.ok(
+    adminApi.includes('novelight_admin_set_thumbnail_template_cover_quad')
+  );
   assert.ok(admin.includes('4頂点を保存してmask生成'));
   assert.ok(admin.includes("quadCanvas.addEventListener('pointermove'"));
   assert.ok(admin.includes('book-v1-cover-mask.png'));
@@ -135,8 +146,14 @@ test('ADMIN generates derived PNG from quad and does not accept manual mask uplo
 
 test('composer clips cover texture, pattern, symbol and frame from quad while effect remains outside', () => {
   assert.ok(composer.includes('clipToCoverQuad(surfaceContext, quad)'));
-  assert.ok(composer.includes('await drawCoverSurfaceLayers(surfaceContext, selected)'));
-  assert.ok(composer.includes("surfaceContext.globalCompositeOperation = 'destination-in'"));
+  assert.ok(
+    composer.includes('await drawCoverSurfaceLayers(surfaceContext, selected)')
+  );
+  assert.ok(
+    composer.includes(
+      "surfaceContext.globalCompositeOperation = 'destination-in'"
+    )
+  );
   const drawSurface = composer.indexOf('context.drawImage(surface, 0, 0)');
   const drawEffect = composer.indexOf(
     'await drawAsset(context, selected.effect, CANVAS_WIDTH, CANVAS_HEIGHT)'
@@ -145,6 +162,9 @@ test('composer clips cover texture, pattern, symbol and frame from quad while ef
 });
 
 test('rollback refuses to discard canonical quad geometry after adoption', () => {
-  assert.match(rollback, /rollback refused: quad-backed thumbnail templates exist/i);
+  assert.match(
+    rollback,
+    /rollback refused: quad-backed thumbnail templates exist/i
+  );
   assert.match(rollback, /drop column if exists cover_top_left_x/i);
 });
