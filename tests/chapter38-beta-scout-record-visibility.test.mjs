@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-const mypage = await readFile(new URL('../mypage.html', import.meta.url), 'utf8');
+const mypage = await readFile(
+  new URL('../mypage.html', import.meta.url),
+  'utf8'
+);
 const history = await readFile(
   new URL('../scout-record.html', import.meta.url),
   'utf8'
