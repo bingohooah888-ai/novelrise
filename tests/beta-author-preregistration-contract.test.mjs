@@ -17,10 +17,10 @@ const foundationMigration = read(
   'supabase/migrations/20260910210000_beta_author_preregistrations.sql'
 );
 const hardeningMigration = read(
-  'supabase/migrations/20260910220000_beta_author_preregistration_hardening.sql'
+  'supabase/migrations/20260910222500_beta_author_preregistration_hardening.sql'
 );
 const hardeningRollback = read(
-  'supabase/rollback/20260910220000_beta_author_preregistration_hardening_rollback.sql'
+  'supabase/rollback/20260910222500_beta_author_preregistration_hardening_rollback.sql'
 );
 const vercel = JSON.parse(read('vercel.json'));
 
