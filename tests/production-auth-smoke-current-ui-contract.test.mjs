@@ -10,6 +10,7 @@ const authorHomeSmoke = await readFile(
   'tests/e2e/production-auth/author-home-smoke.spec.js',
   'utf8'
 );
+const analyticsUi = await readFile('novelight-analytics.js', 'utf8');
 
 test('Production Auth Smoke stays aligned with current beta UI contracts', () => {
   assert.match(authenticatedSmoke, /\.thumbnail-option/);
@@ -24,6 +25,10 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
   assert.doesNotMatch(authenticatedSmoke, /(?<!globalThis\.)document\.body/);
   assert.doesNotMatch(authenticatedSmoke, /locator\('#seedButton'\)/);
   assert.doesNotMatch(authenticatedSmoke, /name: 'SCOUT RECORD'/);
+
+  assert.match(analyticsUi, /class=\"funnel-node-head\"/);
+  assert.match(authenticatedSmoke, /\.funnel-node-head strong/);
+  assert.doesNotMatch(authenticatedSmoke, /\.funnel \.step strong/);
 
   assert.match(authorHomeSmoke, /さんの創作室\$/);
   assert.match(authorHomeSmoke, /page\.locator\('#bio'\)/);
