@@ -8,6 +8,16 @@
       "dependabot/**": false
     }
   },
+  "rewrites": [
+    {
+      "source": "/beta-authors",
+      "destination": "/beta-authors.html"
+    },
+    {
+      "source": "/admin/beta-authors",
+      "destination": "/admin-beta-authors.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
