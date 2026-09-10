@@ -11,7 +11,7 @@ const authorHomeSmoke = await readFile(
   'utf8'
 );
 
-test('Production Auth Smoke follows the current beta UI contracts', () => {
+test('Production Auth Smoke stays aligned with current beta UI contracts', () => {
   assert.match(authenticatedSmoke, /\.thumbnail-option/);
   assert.match(authenticatedSmoke, /input\[name=\"thumbnailAsset\"\]/);
   assert.match(authenticatedSmoke, /record_valid_read_progress/);
