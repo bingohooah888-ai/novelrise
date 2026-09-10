@@ -26,5 +26,7 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
   assert.doesNotMatch(authenticatedSmoke, /name: 'SCOUT RECORD'/);
 
   assert.match(authorHomeSmoke, /さんの創作室\$/);
+  assert.match(authorHomeSmoke, /page\.locator\('#bio'\)/);
+  assert.doesNotMatch(authorHomeSmoke, /profileBioSummary/);
   assert.doesNotMatch(authorHomeSmoke, /作者ホーム\$/);
 });
