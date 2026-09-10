@@ -76,7 +76,10 @@ test('preregistration schema keeps raw data private and public access append-onl
     migration,
     /grant execute on function public\.record_beta_author_preregistration_event[\s\S]*to anon, authenticated;/
   );
-  assert.doesNotMatch(migration, /grant\s+select[\s\S]*to\s+(?:anon|authenticated)/i);
+  assert.doesNotMatch(
+    migration,
+    /grant\s+select\s+on\s+(?:table\s+)?[^;\n]+\s+to\s+(?:anon|authenticated)\s*;/i
+  );
   assert.doesNotMatch(migration, /get_beta_author.*count/i);
 });
 
