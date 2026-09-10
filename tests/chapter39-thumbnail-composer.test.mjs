@@ -56,8 +56,14 @@ test('Chapter 39 stores seven official layer IDs at fixed 1086x1448 geometry', (
 });
 
 test('official material tables are RLS protected and browser writes stay closed', () => {
-  assert.match(migration, /alter table public\.novel_thumbnail_templates enable row level security/i);
-  assert.match(migration, /alter table public\.novel_thumbnail_compositions enable row level security/i);
+  assert.match(
+    migration,
+    /alter table public\.novel_thumbnail_templates enable row level security/i
+  );
+  assert.match(
+    migration,
+    /alter table public\.novel_thumbnail_compositions enable row level security/i
+  );
   assert.match(
     migration,
     /revoke all on table public\.novel_thumbnail_compositions from anon, authenticated/i
@@ -75,9 +81,15 @@ test('official material tables are RLS protected and browser writes stay closed'
 });
 
 test('legacy complete thumbnails remain compatible during rolling deployment', () => {
-  assert.match(migration, /layer_type = coalesce\(layer_type, 'legacy_complete'\)/i);
+  assert.match(
+    migration,
+    /layer_type = coalesce\(layer_type, 'legacy_complete'\)/i
+  );
   assert.match(compat, /alter column layer_type set default 'legacy_complete'/i);
-  assert.match(compat, /alter column template_key set default 'legacy-complete-v1'/i);
+  assert.match(
+    compat,
+    /alter column template_key set default 'legacy-complete-v1'/i
+  );
   assert.ok(post.includes('loadLegacyThumbnails'));
   assert.ok(edit.includes('loadLegacyThumbnails'));
   assert.ok(edit.includes('レイヤー合成サムネイルへ切り替える'));
@@ -87,20 +99,29 @@ test('cover mask is internal and enforced before a composition can be stored', (
   assert.match(migration, /cover_mask_url text/i);
   assert.match(emergency, /cover_mask_url is not null/i);
   assert.match(emergency, /Thumbnail template is not composition-ready/);
-  assert.ok(composer.includes("surfaceContext.globalCompositeOperation = 'destination-in'"));
+  assert.ok(
+    composer.includes(
+      "surfaceContext.globalCompositeOperation = 'destination-in'"
+    )
+  );
   assert.ok(!composer.includes("LABELS = Object.freeze({\n    cover_mask"));
 });
 
 test('cached render is derived WebP and source layer IDs remain canonical', () => {
   assert.match(migration, /novel-thumbnail-renders/i);
   assert.match(migration, /array\['image\/webp'\]/i);
-  assert.match(compat, /\^renders\/\[0-9\]\+\/\[0-9a-f-\]\{36\}\\\.webp\$/i);
-  assert.ok(composer.includes("canvas.toBlob("));
+  assert.match(
+    compat,
+    /\^renders\/\[0-9\]\+\/\[0-9a-f-\]\{36\}\\\.webp\$/i
+  );
+  assert.ok(composer.includes('canvas.toBlob('));
   assert.ok(composer.includes("'image/webp'"));
-  assert.ok(composer.includes("client.rpc('novelight_set_my_thumbnail_composition'"));
-  assert.ok(composer.includes(".uploadToSignedUrl("));
-  assert.ok(renderApi.includes("supabase.auth.getUser(token)"));
-  assert.ok(renderApi.includes("novelight_attach_thumbnail_render"));
+  assert.ok(
+    composer.includes("client.rpc('novelight_set_my_thumbnail_composition'")
+  );
+  assert.ok(composer.includes('.uploadToSignedUrl('));
+  assert.ok(renderApi.includes('supabase.auth.getUser(token)'));
+  assert.ok(renderApi.includes('novelight_attach_thumbnail_render'));
 });
 
 test('emergency disable invalidates stale cached renders', () => {
@@ -112,7 +133,14 @@ test('emergency disable invalidates stale cached renders', () => {
 });
 
 test('ADMIN controls layer, template, order and publication state', () => {
-  for (const text of ['レイヤー種別', '対応テンプレート', '表示順', '公開中', '選択終了', '緊急無効']) {
+  for (const text of [
+    'レイヤー種別',
+    '対応テンプレート',
+    '表示順',
+    '公開中',
+    '選択終了',
+    '緊急無効'
+  ]) {
     assert.ok(admin.includes(text), `missing admin label ${text}`);
   }
   assert.ok(adminApi.includes("action === 'set-status'"));
@@ -132,7 +160,7 @@ test('author pages use layered composer while retaining safe fallback', () => {
 
 test('reader cards prefer one cached image and can rebuild missing cache from official layers', () => {
   assert.ok(publicRuntime.includes(".select('id,thumbnail_url')"));
-  assert.ok(publicRuntime.includes("client.rpc('novelight_thumbnail_compositions'"));
+  assert.ok(publicRuntime.includes('novelight_thumbnail_compositions'));
   assert.ok(publicRuntime.includes('novelight-cover-layer-group'));
   assert.ok(publicRuntime.includes("!link.querySelector('.novel-cover-image')"));
   assert.match(publicCss, /aspect-ratio:\s*3\s*\/\s*4/i);
@@ -140,8 +168,14 @@ test('reader cards prefer one cached image and can rebuild missing cache from of
 });
 
 test('rollback refuses destructive reversal after layered compositions are in use', () => {
-  assert.match(rollback, /rollback refused: layered thumbnail compositions exist/i);
-  assert.match(rollback, /rollback refused: novels without legacy thumbnail_asset_id exist/i);
+  assert.match(
+    rollback,
+    /rollback refused: layered thumbnail compositions exist/i
+  );
+  assert.match(
+    rollback,
+    /rollback refused: novels without legacy thumbnail_asset_id exist/i
+  );
   assert.match(rollback, /alter column thumbnail_asset_id set not null/i);
   assert.match(rollback, /Storage bucket is deliberately left in place/i);
 });
