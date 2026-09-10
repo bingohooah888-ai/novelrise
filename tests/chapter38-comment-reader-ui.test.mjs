@@ -37,5 +37,9 @@ test('comment composer follows the foundation limits and author guard', () => {
   assert.match(commentClient, /if \(isAuthor\)/);
   assert.match(commentClient, /comment\.can_delete === true/);
   assert.match(commentClient, /textContent = text/);
-  assert.match(commentClient, /作品Rankを直接上げることはありません/);
+});
+
+test('beta comment UI does not expose hidden SCOUT EXP mechanics', () => {
+  assert.doesNotMatch(commentClient, /SCOUT EXP/);
+  assert.doesNotMatch(commentClient, /novelight-comments-exp-note/);
 });
