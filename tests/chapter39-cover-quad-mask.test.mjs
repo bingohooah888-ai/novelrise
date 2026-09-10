@@ -112,7 +112,8 @@ test('migration stores the four vertices as canonical template data', () => {
   }
   assert.match(migration, /cover_mask_source text not null default 'legacy_asset'/i);
   assert.match(migration, /cover_mask_source = 'cover_quad'/i);
-  assert.match(migration, /generated-masks\/.*-cover-mask\.png/i);
+  assert.ok(migration.includes("'generated-masks/'"));
+  assert.ok(migration.includes("'-cover-mask.png'"));
   assert.match(migration, /template_key <> 'book-v1'\s+or cover_mask_source = 'cover_quad'/i);
   assert.match(migration, /render_storage_path = null/i);
   assert.match(migration, /render_url = null/i);
