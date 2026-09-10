@@ -29,7 +29,14 @@ test('beta author LP keeps required copy, fields and isolated navigation', () =>
   assert.match(betaHtml, /先行作者登録/);
   assert.match(betaHtml, /「良い作品なのに、読まれない」を変えたい。/);
   assert.match(betaHtml, /β版に先行登録する/);
-  for (const id of ['penName', 'email', 'xAccount', 'workUrl', 'genre', 'comment']) {
+  for (const id of [
+    'penName',
+    'email',
+    'xAccount',
+    'workUrl',
+    'genre',
+    'comment'
+  ]) {
     assert.match(betaHtml, new RegExp(`id="${id}"`));
   }
   assert.match(
@@ -138,18 +145,27 @@ test('ADMIN API paginates and keeps milestone KPIs synchronized with statuses', 
   assert.match(adminApi, /totalPages/);
   assert.match(adminApi, /applyMilestones/);
   assert.match(adminApi, /patch\.email_verified = true/);
-  assert.match(adminApi, /patch\.invite_sent_at = current\.invite_sent_at \|\| now/);
-  assert.match(adminApi, /patch\.registered_at = current\.registered_at \|\| now/);
-  assert.match(adminApi, /patch\.first_novel_at = current\.first_novel_at \|\| now/);
+  assert.match(
+    adminApi,
+    /patch\.invite_sent_at = current\.invite_sent_at \|\| now/
+  );
+  assert.match(
+    adminApi,
+    /patch\.registered_at = current\.registered_at \|\| now/
+  );
+  assert.match(
+    adminApi,
+    /patch\.first_novel_at = current\.first_novel_at \|\| now/
+  );
   assert.match(adminApi, /beta_author_preregistration_config/);
   assert.doesNotMatch(adminApi, /'visitor_key'/);
   assert.doesNotMatch(adminApi, /'email_normalized'/);
 });
 
-test('ADMIN surface stays standalone and exposes campaign and pagination controls', () => {
+test('ADMIN surface uses the safe Preview bootstrap and exposes campaign controls', () => {
   assert.match(adminHtml, /noindex,nofollow,noarchive/);
   assert.match(adminHtml, /data-novelight-theme="standalone"/);
-  assert.doesNotMatch(adminHtml, /src="novelight-client\.js"/);
+  assert.match(adminHtml, /src="novelight-client\.js"/);
   assert.match(adminHtml, /id="campaignState"/);
   assert.match(adminHtml, /id="releaseLabel"/);
   assert.match(adminHtml, /id="saveCampaign"/);
@@ -175,7 +191,10 @@ test('Vercel exposes clean preregistration routes and global security headers', 
 });
 
 test('hardening rollback restores original public RPC access and removes config', () => {
-  assert.match(hardeningRollback, /drop table if exists public\.beta_author_preregistration_config/);
+  assert.match(
+    hardeningRollback,
+    /drop table if exists public\.beta_author_preregistration_config/
+  );
   assert.match(
     hardeningRollback,
     /grant execute on function public\.submit_beta_author_preregistration[\s\S]*to anon, authenticated;/
