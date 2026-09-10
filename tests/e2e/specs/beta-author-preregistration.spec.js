@@ -183,7 +183,9 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
 
   const desktopGeometry = await page.evaluate(() => {
     const hero = document.querySelector('.hero').getBoundingClientRect();
-    const shell = document.querySelector('.section-shell').getBoundingClientRect();
+    const shell = document
+      .querySelector('.section-shell')
+      .getBoundingClientRect();
     const noctar = document
       .querySelector('.noctar-layer')
       .getBoundingClientRect();
@@ -208,11 +210,15 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
     const noctar = document
       .querySelector('.noctar-layer')
       .getBoundingClientRect();
-    const form = document.querySelector('#registration').getBoundingClientRect();
-    const cards = [...document.querySelectorAll('.benefit-card')].map((card) => {
-      const rect = card.getBoundingClientRect();
-      return { left: rect.left, top: rect.top, width: rect.width };
-    });
+    const form = document
+      .querySelector('#registration')
+      .getBoundingClientRect();
+    const cards = [...document.querySelectorAll('.benefit-card')].map(
+      (card) => {
+        const rect = card.getBoundingClientRect();
+        return { left: rect.left, top: rect.top, width: rect.width };
+      }
+    );
     return {
       heroHeight: hero.height,
       noctarWidth: noctar.width,
