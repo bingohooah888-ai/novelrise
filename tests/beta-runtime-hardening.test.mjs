@@ -45,11 +45,13 @@ test('author room avoids fragile globals', () => {
   assert.ok(mypageHtml.includes('metrics.fav.textContent=num(t.v)'));
 });
 
-test('novel editing requires an official thumbnail', () => {
-  assert.ok(novelEditHtml.includes('作品に合う画像'));
-  assert.ok(novelEditHtml.includes('必須'));
-  assert.ok(novelEditHtml.includes('if(!thumbnailAsset){'));
-  assert.ok(novelEditHtml.includes('thumbnail_asset_id:thumbnailAsset'));
+test('novel editing requires an official thumbnail composition or legacy fallback', () => {
+  assert.ok(novelEditHtml.includes('作品サムネイル'));
+  assert.ok(novelEditHtml.includes('novelight-thumbnail-composer.js'));
+  assert.ok(novelEditHtml.includes('NovelightThumbnailComposer.mount'));
+  assert.ok(novelEditHtml.includes('composerController.persist'));
+  assert.ok(novelEditHtml.includes('loadLegacyThumbnails'));
+  assert.equal(/type="file"[^>]*thumbnail/iu.test(novelEditHtml), false);
 });
 
 test('database boundary enforces beta rules', () => {

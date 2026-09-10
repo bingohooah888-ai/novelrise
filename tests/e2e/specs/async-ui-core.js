@@ -340,9 +340,11 @@ test('novel posting validates synchronously and recovers from an async save fail
   await page.locator('#submitButton').click();
 
   await expect(page.locator('#submitButton')).toBeDisabled();
-  await expect(page.locator('#status')).toHaveText('保存しています...');
   await expect(page.locator('#status')).toHaveText(
-    '作品を保存できませんでした。時間をおいて再度お試しください。'
+    '作品情報を保存しています...'
+  );
+  await expect(page.locator('#status')).toHaveText(
+    '作品を保存できませんでした。入力内容を確認し、もう一度お試しください。'
   );
   await expect(page.locator('#submitButton')).toBeEnabled();
 
