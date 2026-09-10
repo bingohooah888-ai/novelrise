@@ -178,13 +178,6 @@
 
     form.append(label, textarea, footer);
     state.section.append(form);
-    state.section.append(
-      createElement(
-        'p',
-        'novelight-comments-exp-note',
-        '条件を満たすコメントはSCOUT EXPの対象になります。コメント自体が作品Rankを直接上げることはありません。',
-      ),
-    );
   }
 
   async function mount({ client, novel, session, isAuthor }) {
