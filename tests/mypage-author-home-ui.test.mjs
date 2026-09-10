@@ -138,7 +138,7 @@ test('author room keeps all five primary author actions', () => {
   assert.match(mypage, /小説を投稿/u);
   assert.match(mypage, /自分の作品/u);
   assert.match(mypage, /LIGHT ANALYTICS/u);
-  assert.match(mypage, /SCOUT RECORD/u);
+  assert.match(mypage, /LIGHT SEED送信履歴/u);
   assert.match(mypage, /契約プラン/u);
 });
 
