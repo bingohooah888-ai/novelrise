@@ -58,29 +58,102 @@
     );
   }
 
-  function mediaNode(url) {
-    const media = document.createElement('div');
-    media.className = 'novelight-official-thumbnail';
+  function imageNode(url, className = '') {
+    if (!url) return null;
     const image = document.createElement('img');
     image.src = url;
     image.alt = '';
     image.loading = 'lazy';
     image.decoding = 'async';
-    media.appendChild(image);
+    if (className) image.className = className;
+    return image;
+  }
+
+  function cachedMediaNode(url) {
+    const media = document.createElement('div');
+    media.className = 'novelight-official-thumbnail';
+    const image = imageNode(url);
+    if (image) media.appendChild(image);
     return media;
   }
 
-  function applyThumbnail(link, url) {
-    if (!url || link.querySelector('.novelight-official-thumbnail')) return;
-    const media = mediaNode(url);
+  function layeredMediaNode(composition) {
+    if (!composition?.background_url || !composition?.base_book_url || !composition?.cover_url) {
+      return null;
+    }
+    const media = document.createElement('div');
+    media.className = 'novelight-official-thumbnail novelight-layered-thumbnail';
+
+    for (const [url, className] of [
+      [composition.background_url, 'novelight-layer-background'],
+      [composition.base_book_url, 'novelight-layer-book']
+    ]) {
+      const image = imageNode(url, className);
+      if (image) media.appendChild(image);
+    }
+
+    const coverGroup = document.createElement('div');
+    coverGroup.className = 'novelight-cover-layer-group';
+    if (composition.cover_mask_url) {
+      const mask = `url("${String(composition.cover_mask_url).replaceAll('"', '%22')}")`;
+      coverGroup.style.maskImage = mask;
+      coverGroup.style.webkitMaskImage = mask;
+    }
+    for (const [url, className] of [
+      [composition.cover_url, 'novelight-layer-cover'],
+      [composition.pattern_url, 'novelight-layer-pattern'],
+      [composition.symbol_url, 'novelight-layer-symbol'],
+      [composition.frame_url, 'novelight-layer-frame']
+    ]) {
+      const image = imageNode(url, className);
+      if (image) coverGroup.appendChild(image);
+    }
+    media.appendChild(coverGroup);
+
+    const effect = imageNode(composition.effect_url, 'novelight-layer-effect');
+    if (effect) media.appendChild(effect);
+    return media;
+  }
+
+  function insertMedia(link, media) {
+    if (!media || link.querySelector('.novelight-official-thumbnail')) return;
     const placeholder = link.querySelector('.novel-cover-placeholder');
     if (placeholder) placeholder.replaceWith(media);
-    else if (link.classList.contains('card') && document.body.classList.contains('novelight-page-ranking')) {
+    else if (
+      link.classList.contains('card') &&
+      document.body.classList.contains('novelight-page-ranking')
+    ) {
       const rank = link.querySelector('.rank');
       if (rank) rank.insertAdjacentElement('afterend', media);
       else link.prepend(media);
     } else link.prepend(media);
     link.classList.add('novelight-has-official-thumbnail');
+  }
+
+  function applyCachedThumbnail(link, url) {
+    if (!url) return false;
+    insertMedia(link, cachedMediaNode(url));
+    return true;
+  }
+
+  function applyComposition(link, composition) {
+    if (composition?.render_url) return applyCachedThumbnail(link, composition.render_url);
+    const media = layeredMediaNode(composition);
+    if (!media) return false;
+    insertMedia(link, media);
+    return true;
+  }
+
+  async function loadCompositions(browserClient, ids) {
+    if (!ids.length) return [];
+    const result = await browserClient.rpc('novelight_thumbnail_compositions', {
+      p_novel_ids: ids
+    });
+    if (result.error) {
+      if (['42883', '42P01', '42703'].includes(result.error.code)) return [];
+      throw result.error;
+    }
+    return result.data ?? [];
   }
 
   async function decorate() {
@@ -109,9 +182,23 @@
         .select('id,thumbnail_url')
         .in('id', ids);
       if (error) throw error;
+
+      const unresolved = [];
       for (const row of data ?? []) {
-        const linksForNovel = byId.get(String(row.id)) ?? [];
-        linksForNovel.forEach((link) => applyThumbnail(link, row.thumbnail_url));
+        const id = String(row.id);
+        const linksForNovel = byId.get(id) ?? [];
+        if (row.thumbnail_url) {
+          linksForNovel.forEach((link) => applyCachedThumbnail(link, row.thumbnail_url));
+        } else {
+          unresolved.push(id);
+        }
+      }
+
+      if (!unresolved.length) return;
+      const compositions = await loadCompositions(browserClient, unresolved);
+      for (const composition of compositions) {
+        const linksForNovel = byId.get(String(composition.novel_id)) ?? [];
+        linksForNovel.forEach((link) => applyComposition(link, composition));
       }
     } catch (error) {
       console.error('official thumbnail lookup failed', error);
@@ -132,6 +219,7 @@
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
-  else start();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else start();
 })();
