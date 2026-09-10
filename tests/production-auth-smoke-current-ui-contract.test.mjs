@@ -20,6 +20,8 @@ test('Production Auth Smoke follows the current beta UI contracts', () => {
     /\.seed-choice\[data-seed-type=\"BRONZE\"\]/
   );
   assert.match(authenticatedSmoke, /LIGHT SEED送信履歴/);
+  assert.match(authenticatedSmoke, /globalThis\.document\.body\.scrollHeight/);
+  assert.doesNotMatch(authenticatedSmoke, /(?<!globalThis\.)document\.body/);
   assert.doesNotMatch(authenticatedSmoke, /locator\('#seedButton'\)/);
   assert.doesNotMatch(authenticatedSmoke, /name: 'SCOUT RECORD'/);
 
