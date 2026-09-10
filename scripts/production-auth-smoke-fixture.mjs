@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 
@@ -7,6 +7,7 @@ const fixturePath = process.env.PRODUCTION_AUTH_SMOKE_FIXTURE;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 const runId = String(process.env.GITHUB_RUN_ID || Date.now());
+const thumbnailBucket = 'novel-thumbnails';
 
 if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 if (!supabaseUrl) throw new Error('SUPABASE_URL is required.');
@@ -77,6 +78,53 @@ function projectAccounts(fixture, role) {
   ].filter(Boolean);
 }
 
+async function createThumbnailFixture(fixture) {
+  const storagePath = `official/${randomUUID()}.webp`;
+  const label = `NOVELIGHT Auth Smoke ${runId}`;
+  fixture.thumbnail = { storagePath, label, assetId: null, publicUrl: null };
+  saveFixture(fixture);
+
+  const fileBuffer = readFileSync(
+    new globalThis.URL('../assets/novelight-header-logo.webp', import.meta.url)
+  );
+  const uploadBody = fileBuffer.buffer.slice(
+    fileBuffer.byteOffset,
+    fileBuffer.byteOffset + fileBuffer.byteLength
+  );
+  assertNoError(
+    await admin.storage.from(thumbnailBucket).upload(storagePath, uploadBody, {
+      contentType: 'image/webp',
+      upsert: false
+    }),
+    'upload ephemeral auth-smoke thumbnail'
+  );
+
+  const publicUrl = admin.storage.from(thumbnailBucket).getPublicUrl(storagePath)
+    .data?.publicUrl;
+  if (!publicUrl?.startsWith('https://')) {
+    throw new Error('Ephemeral auth-smoke thumbnail public URL was unavailable.');
+  }
+  fixture.thumbnail.publicUrl = publicUrl;
+  saveFixture(fixture);
+
+  const creatorId = fixture.projects?.desktop?.author?.id;
+  const registered = assertNoError(
+    await admin.rpc('novelight_admin_register_thumbnail_asset', {
+      p_admin_user_id: creatorId,
+      p_label: label,
+      p_storage_path: storagePath,
+      p_image_url: publicUrl
+    }),
+    'register ephemeral auth-smoke thumbnail'
+  );
+  const assetId = Array.isArray(registered) ? registered[0]?.id : registered?.id;
+  if (!assetId) {
+    throw new Error('Ephemeral auth-smoke thumbnail registration returned no asset ID.');
+  }
+  fixture.thumbnail.assetId = String(assetId);
+  saveFixture(fixture);
+}
+
 async function setup() {
   const fixture = {
     runId,
@@ -113,7 +161,9 @@ async function setup() {
     'exclude smoke users from Founding Authors'
   );
 
-  console.log('Ephemeral production authenticated-smoke users created.');
+  await createThumbnailFixture(fixture);
+
+  console.log('Ephemeral production authenticated-smoke users and thumbnail created.');
 }
 
 async function deleteByIds(table, column, values, label = table) {
@@ -145,6 +195,33 @@ async function cleanupAuthorAvatars(authorIds) {
     assertNoError(
       await bucket.remove(paths),
       `cleanup smoke avatars for ${authorId}`
+    );
+  }
+}
+
+async function cleanupThumbnail(fixture) {
+  const assetId = fixture.thumbnail?.assetId;
+  const storagePath = fixture.thumbnail?.storagePath;
+
+  if (assetId) {
+    await deleteByIds(
+      'admin_operation_audit',
+      'resource_id',
+      [assetId],
+      'thumbnail audit'
+    );
+    await deleteByIds(
+      'novel_thumbnail_assets',
+      'id',
+      [assetId],
+      'ephemeral auth-smoke thumbnail'
+    );
+  }
+
+  if (storagePath) {
+    assertNoError(
+      await admin.storage.from(thumbnailBucket).remove([storagePath]),
+      'cleanup ephemeral auth-smoke thumbnail object'
     );
   }
 }
@@ -214,6 +291,7 @@ async function cleanup() {
   }
 
   await deleteByIds('novels', 'id', novelIds);
+  await cleanupThumbnail(fixture);
   await deleteByIds('founding_author_exclusion_audit', 'author_id', userIds);
   await deleteByIds('founding_author_exclusions', 'user_id', userIds);
 
