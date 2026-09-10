@@ -45,7 +45,12 @@ async function requireUser({ req, res, supabase }) {
   return data.user;
 }
 
-async function loadOwnedComposition({ supabase, userId, novelId, revision }) {
+async function loadOwnedComposition({
+  supabase,
+  userId,
+  novelId,
+  revision
+}) {
   const { data: novel, error: novelError } = await supabase
     .from('novels')
     .select('id,user_id')
@@ -53,7 +58,9 @@ async function loadOwnedComposition({ supabase, userId, novelId, revision }) {
     .limit(1)
     .maybeSingle();
 
-  if (novelError) throw new Error(`Novel lookup failed: ${novelError.message}`);
+  if (novelError) {
+    throw new Error(`Novel lookup failed: ${novelError.message}`);
+  }
   if (!novel || novel.user_id !== userId) return null;
 
   const { data: composition, error: compositionError } = await supabase
@@ -65,7 +72,9 @@ async function loadOwnedComposition({ supabase, userId, novelId, revision }) {
     .maybeSingle();
 
   if (compositionError) {
-    throw new Error(`Thumbnail composition lookup failed: ${compositionError.message}`);
+    throw new Error(
+      `Thumbnail composition lookup failed: ${compositionError.message}`
+    );
   }
   return composition ?? null;
 }
@@ -81,7 +90,10 @@ async function prepareUpload({ supabase, user, body }) {
     fileSize < 1 ||
     fileSize > MAX_RENDER_SIZE
   ) {
-    return { status: 400, payload: { error: 'Invalid thumbnail render request' } };
+    return {
+      status: 400,
+      payload: { error: 'Invalid thumbnail render request' }
+    };
   }
 
   const composition = await loadOwnedComposition({
@@ -91,7 +103,10 @@ async function prepareUpload({ supabase, user, body }) {
     revision
   });
   if (!composition) {
-    return { status: 409, payload: { error: 'Thumbnail composition changed' } };
+    return {
+      status: 409,
+      payload: { error: 'Thumbnail composition changed' }
+    };
   }
 
   const path = `renders/${novelId}/${randomUUID()}.webp`;
@@ -100,7 +115,10 @@ async function prepareUpload({ supabase, user, body }) {
     .createSignedUploadUrl(path);
   if (error || !data?.token) {
     console.error('Thumbnail render signed upload creation failed', error);
-    return { status: 503, payload: { error: 'Render upload could not be prepared' } };
+    return {
+      status: 503,
+      payload: { error: 'Render upload could not be prepared' }
+    };
   }
 
   return {
@@ -117,7 +135,9 @@ async function verifyStoredObject(supabase, path) {
   const { data, error } = await supabase.storage
     .from(RENDER_BUCKET)
     .list(`renders/${novelId}`, { limit: 20, search: fileName });
-  if (error) throw new Error(`Thumbnail render verification failed: ${error.message}`);
+  if (error) {
+    throw new Error(`Thumbnail render verification failed: ${error.message}`);
+  }
   return (data ?? []).some((entry) => entry.name === fileName);
 }
 
@@ -127,7 +147,10 @@ async function finalizeUpload({ supabase, user, body }) {
   const path = String(body.path ?? '').trim();
   const match = path.match(PATH_PATTERN);
   if (!novelId || !revision || !match || match[1] !== novelId) {
-    return { status: 400, payload: { error: 'Invalid thumbnail render metadata' } };
+    return {
+      status: 400,
+      payload: { error: 'Invalid thumbnail render metadata' }
+    };
   }
 
   const composition = await loadOwnedComposition({
@@ -137,11 +160,17 @@ async function finalizeUpload({ supabase, user, body }) {
     revision
   });
   if (!composition) {
-    return { status: 409, payload: { error: 'Thumbnail composition changed' } };
+    return {
+      status: 409,
+      payload: { error: 'Thumbnail composition changed' }
+    };
   }
 
   if (!(await verifyStoredObject(supabase, path))) {
-    return { status: 409, payload: { error: 'Uploaded render was not found' } };
+    return {
+      status: 409,
+      payload: { error: 'Uploaded render was not found' }
+    };
   }
 
   const { data: publicData } = supabase.storage
@@ -152,15 +181,23 @@ async function finalizeUpload({ supabase, user, body }) {
     throw new Error('Thumbnail render public URL could not be resolved');
   }
 
-  const { data, error } = await supabase.rpc('novelight_attach_thumbnail_render', {
-    p_novel_id: novelId,
-    p_revision: revision,
-    p_storage_path: path,
-    p_render_url: renderUrl
-  });
-  if (error) throw new Error(`Thumbnail render attach failed: ${error.message}`);
+  const { data, error } = await supabase.rpc(
+    'novelight_attach_thumbnail_render',
+    {
+      p_novel_id: novelId,
+      p_revision: revision,
+      p_storage_path: path,
+      p_render_url: renderUrl
+    }
+  );
+  if (error) {
+    throw new Error(`Thumbnail render attach failed: ${error.message}`);
+  }
   if (data !== true) {
-    return { status: 409, payload: { error: 'Thumbnail composition changed' } };
+    return {
+      status: 409,
+      payload: { error: 'Thumbnail composition changed' }
+    };
   }
 
   return { status: 200, payload: { renderUrl } };
