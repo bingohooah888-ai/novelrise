@@ -67,8 +67,14 @@ test('author home profile, avatar, and activity work in Production', async ({
   expect((await profileUpdate).ok()).toBeTruthy();
   await expect(profileStatus).toHaveText('保存しました。');
   await expect(page.locator('#profileDisplayName')).toHaveText(editedName);
-  await expect(page.locator('#profileBioSummary')).toHaveText(editedBio);
   await expect(page.locator('#accountName')).toHaveText(editedName);
+
+  await page.reload();
+  await expect(page.locator('#save')).toBeEnabled();
+  await expect(page.locator('#profileDisplayName')).toHaveText(editedName);
+  await expect(page.locator('#accountName')).toHaveText(editedName);
+  await page.locator('.profile-editor summary').click();
+  await expect(page.locator('#bio')).toHaveValue(editedBio);
 
   const avatarUpload = page.waitForResponse(
     (response) =>
