@@ -85,7 +85,8 @@ test('beta author preregistration keeps its standalone theme and submits through
   ).toBe(true);
 
   const horizontalOverflow = await page.evaluate(
-    () => globalThis.document.documentElement.scrollWidth - globalThis.innerWidth
+    () =>
+      globalThis.document.documentElement.scrollWidth - globalThis.innerWidth
   );
   expect(horizontalOverflow).toBeLessThanOrEqual(1);
 });
