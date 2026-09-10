@@ -13,7 +13,8 @@ const paths = [
 test('dump Chapter 39 cover quad Prettier canonical diffs', async () => {
   for (const [index, path] of paths.entries()) {
     const source = await readFile(path, 'utf8');
-    const formatted = await prettier.format(source, { filepath: path });
+    const config = (await prettier.resolveConfig(path)) ?? {};
+    const formatted = await prettier.format(source, { ...config, filepath: path });
     const before = `/tmp/ch39-cover-quad-before-${index}`;
     const after = `/tmp/ch39-cover-quad-after-${index}`;
     await writeFile(before, source);
