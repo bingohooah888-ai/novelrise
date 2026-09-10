@@ -17,6 +17,7 @@ Qualified Japanese counsel review remains deferred/pending. The owner residual-r
 - [x] Latest `main` and authoritative release/evidence rules were re-fetched before reconciliation.
 - [x] Exact-current `NOVELIGHT CI` #1994 / run `34449826475` completed `success` on `f9dc927ca8a913b7f57ed484462369df2db35eec`.
 - [x] Exact-current aggregate `check`, Node tests, static quality, desktop/mobile smoke, and desktop/mobile async-UI browser jobs passed.
+- [x] Desktop + mobile Playwright gates pass on the exact-current CI evidence above.
 - [x] Exact-current `CodeQL` #1907 / run `34449826661` completed `success`.
 - [x] Exact-current Vercel Production commit status is `success`.
 - [x] `NOVELIGHT Production Readiness Smoke` #109 / run `34449301741` passed on prior main `465489e5151d7a1c697557394cb792a4aa78cbd9`.
