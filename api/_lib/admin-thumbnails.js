@@ -65,7 +65,12 @@ async function listLegacyAssets(supabase) {
     .select('id,label,storage_path,image_url,is_active,created_at')
     .order('created_at', { ascending: false });
   if (error) throw new Error(`Thumbnail list failed: ${error.message}`);
-  return { composerReady: false, coverQuadReady: false, templates: [], assets: data ?? [] };
+  return {
+    composerReady: false,
+    coverQuadReady: false,
+    templates: [],
+    assets: data ?? []
+  };
 }
 
 async function listTemplates(supabase) {
@@ -78,7 +83,8 @@ async function listTemplates(supabase) {
       .from('novel_thumbnail_templates')
       .select(LEGACY_TEMPLATE_FIELDS)
       .order('created_at', { ascending: true });
-    if (!result.error) return { data: result.data ?? [], coverQuadReady: false };
+    if (!result.error)
+      return { data: result.data ?? [], coverQuadReady: false };
   }
   if (result.error) throw result.error;
   return { data: result.data ?? [], coverQuadReady: true };
@@ -100,7 +106,8 @@ async function listLibrary(supabase) {
     )
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
-  if (assetError) throw new Error(`Thumbnail list failed: ${assetError.message}`);
+  if (assetError)
+    throw new Error(`Thumbnail list failed: ${assetError.message}`);
 
   return {
     composerReady: true,
@@ -131,7 +138,10 @@ async function prepareUpload({ supabase, body }) {
     console.error('Signed thumbnail upload creation failed', error);
     return { status: 503, payload: { error: 'Upload could not be prepared' } };
   }
-  return { status: 200, payload: { path, token: data.token, maxFileSize: MAX_FILE_SIZE } };
+  return {
+    status: 200,
+    payload: { path, token: data.token, maxFileSize: MAX_FILE_SIZE }
+  };
 }
 
 async function verifyStoredObject(supabase, path) {
@@ -141,24 +151,40 @@ async function verifyStoredObject(supabase, path) {
     limit: 20,
     search: fileName
   });
-  if (error) throw new Error(`Thumbnail storage verification failed: ${error.message}`);
+  if (error)
+    throw new Error(`Thumbnail storage verification failed: ${error.message}`);
   return (data ?? []).some((entry) => entry.name === fileName);
 }
 
-async function finalizeLegacyUpload({ supabase, adminUser, label, path, imageUrl }) {
-  const { data, error } = await supabase.rpc('novelight_admin_register_thumbnail_asset', {
-    p_admin_user_id: adminUser.id,
-    p_label: label,
-    p_storage_path: path,
-    p_image_url: imageUrl
-  });
+async function finalizeLegacyUpload({
+  supabase,
+  adminUser,
+  label,
+  path,
+  imageUrl
+}) {
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_register_thumbnail_asset',
+    {
+      p_admin_user_id: adminUser.id,
+      p_label: label,
+      p_storage_path: path,
+      p_image_url: imageUrl
+    }
+  );
   if (error) {
     if (error.code === '23505') {
-      return { status: 409, payload: { error: 'Thumbnail was already registered' } };
+      return {
+        status: 409,
+        payload: { error: 'Thumbnail was already registered' }
+      };
     }
     throw new Error(`Thumbnail registration failed: ${error.message}`);
   }
-  return { status: 201, payload: { asset: Array.isArray(data) ? data[0] : data } };
+  return {
+    status: 201,
+    payload: { asset: Array.isArray(data) ? data[0] : data }
+  };
 }
 
 async function finalizeUpload({ supabase, adminUser, body }) {
@@ -168,7 +194,10 @@ async function finalizeUpload({ supabase, adminUser, body }) {
     return { status: 400, payload: { error: 'Invalid thumbnail metadata' } };
   }
   if (!(await verifyStoredObject(supabase, path))) {
-    return { status: 409, payload: { error: 'Uploaded thumbnail was not found' } };
+    return {
+      status: 409,
+      payload: { error: 'Uploaded thumbnail was not found' }
+    };
   }
 
   const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -191,54 +220,82 @@ async function finalizeUpload({ supabase, adminUser, body }) {
     sortOrder === null ||
     !STATUSES.has(assetStatus)
   ) {
-    return { status: 400, payload: { error: 'Invalid thumbnail layer metadata' } };
+    return {
+      status: 400,
+      payload: { error: 'Invalid thumbnail layer metadata' }
+    };
   }
 
-  const { data, error } = await supabase.rpc('novelight_admin_register_thumbnail_layer_asset', {
-    p_admin_user_id: adminUser.id,
-    p_label: label,
-    p_storage_path: path,
-    p_image_url: imageUrl,
-    p_layer_type: layerType,
-    p_template_key: templateKey,
-    p_sort_order: sortOrder,
-    p_status: assetStatus
-  });
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_register_thumbnail_layer_asset',
+    {
+      p_admin_user_id: adminUser.id,
+      p_label: label,
+      p_storage_path: path,
+      p_image_url: imageUrl,
+      p_layer_type: layerType,
+      p_template_key: templateKey,
+      p_sort_order: sortOrder,
+      p_status: assetStatus
+    }
+  );
   if (error) {
     if (schemaUnavailable(error)) {
-      return { status: 503, payload: { error: 'Thumbnail composer schema is not ready' } };
+      return {
+        status: 503,
+        payload: { error: 'Thumbnail composer schema is not ready' }
+      };
     }
     if (error.code === '23505') {
-      return { status: 409, payload: { error: 'Thumbnail was already registered' } };
+      return {
+        status: 409,
+        payload: { error: 'Thumbnail was already registered' }
+      };
     }
     throw new Error(`Thumbnail layer registration failed: ${error.message}`);
   }
-  return { status: 201, payload: { asset: Array.isArray(data) ? data[0] : data } };
+  return {
+    status: 201,
+    payload: { asset: Array.isArray(data) ? data[0] : data }
+  };
 }
 
 async function setAssetStatus({ supabase, adminUser, body }) {
   const assetId = String(body.assetId ?? '').trim();
   const assetStatus = String(body.status ?? '').trim();
   if (!/^[0-9a-f-]{36}$/iu.test(assetId) || !STATUSES.has(assetStatus)) {
-    return { status: 400, payload: { error: 'Invalid thumbnail status request' } };
+    return {
+      status: 400,
+      payload: { error: 'Invalid thumbnail status request' }
+    };
   }
-  const { data, error } = await supabase.rpc('novelight_admin_set_thumbnail_asset_status', {
-    p_admin_user_id: adminUser.id,
-    p_asset_id: assetId,
-    p_status: assetStatus
-  });
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_set_thumbnail_asset_status',
+    {
+      p_admin_user_id: adminUser.id,
+      p_asset_id: assetId,
+      p_status: assetStatus
+    }
+  );
   if (error) {
     if (schemaUnavailable(error)) {
-      return { status: 503, payload: { error: 'Thumbnail composer schema is not ready' } };
+      return {
+        status: 503,
+        payload: { error: 'Thumbnail composer schema is not ready' }
+      };
     }
     throw new Error(`Thumbnail status update failed: ${error.message}`);
   }
-  return { status: 200, payload: { asset: Array.isArray(data) ? data[0] : data } };
+  return {
+    status: 200,
+    payload: { asset: Array.isArray(data) ? data[0] : data }
+  };
 }
 
 async function setTemplateCoverQuad({ supabase, adminUser, body }) {
   const templateKey = normalizeTemplateKey(body.templateKey);
-  if (!templateKey) return { status: 400, payload: { error: 'Invalid template key' } };
+  if (!templateKey)
+    return { status: 400, payload: { error: 'Invalid template key' } };
 
   const { data: template, error: templateError } = await supabase
     .from('novel_thumbnail_templates')
@@ -247,15 +304,25 @@ async function setTemplateCoverQuad({ supabase, adminUser, body }) {
     .maybeSingle();
   if (templateError) {
     if (schemaUnavailable(templateError)) {
-      return { status: 503, payload: { error: 'Cover quad schema is not ready' } };
+      return {
+        status: 503,
+        payload: { error: 'Cover quad schema is not ready' }
+      };
     }
-    throw new Error(`Thumbnail template lookup failed: ${templateError.message}`);
+    throw new Error(
+      `Thumbnail template lookup failed: ${templateError.message}`
+    );
   }
-  if (!template) return { status: 404, payload: { error: 'Thumbnail template not found' } };
+  if (!template)
+    return { status: 404, payload: { error: 'Thumbnail template not found' } };
 
   let quad;
   try {
-    quad = normalizeCoverQuad(rawCoverQuad(body), template.canvas_width, template.canvas_height);
+    quad = normalizeCoverQuad(
+      rawCoverQuad(body),
+      template.canvas_width,
+      template.canvas_height
+    );
   } catch (error) {
     return { status: 400, payload: { error: error.message } };
   }
@@ -263,13 +330,20 @@ async function setTemplateCoverQuad({ supabase, adminUser, body }) {
   const revision = randomUUID();
   const fileName = `${templateKey}-cover-mask.png`;
   const path = `generated-masks/${templateKey}/${revision}/${fileName}`;
-  const png = generateCoverMaskPng(quad, template.canvas_width, template.canvas_height);
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, png, {
-    contentType: 'image/png',
-    cacheControl: '31536000',
-    upsert: false
-  });
-  if (uploadError) throw new Error(`Cover mask upload failed: ${uploadError.message}`);
+  const png = generateCoverMaskPng(
+    quad,
+    template.canvas_width,
+    template.canvas_height
+  );
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, png, {
+      contentType: 'image/png',
+      cacheControl: '31536000',
+      upsert: false
+    });
+  if (uploadError)
+    throw new Error(`Cover mask upload failed: ${uploadError.message}`);
 
   const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
   const maskUrl = publicData?.publicUrl;
@@ -278,25 +352,31 @@ async function setTemplateCoverQuad({ supabase, adminUser, body }) {
     throw new Error('Cover mask public URL could not be resolved');
   }
 
-  const { data, error } = await supabase.rpc('novelight_admin_set_thumbnail_template_cover_quad', {
-    p_admin_user_id: adminUser.id,
-    p_template_key: templateKey,
-    p_top_left_x: quad.top_left.x,
-    p_top_left_y: quad.top_left.y,
-    p_top_right_x: quad.top_right.x,
-    p_top_right_y: quad.top_right.y,
-    p_bottom_right_x: quad.bottom_right.x,
-    p_bottom_right_y: quad.bottom_right.y,
-    p_bottom_left_x: quad.bottom_left.x,
-    p_bottom_left_y: quad.bottom_left.y,
-    p_mask_revision: revision,
-    p_mask_storage_path: path,
-    p_mask_url: maskUrl
-  });
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_set_thumbnail_template_cover_quad',
+    {
+      p_admin_user_id: adminUser.id,
+      p_template_key: templateKey,
+      p_top_left_x: quad.top_left.x,
+      p_top_left_y: quad.top_left.y,
+      p_top_right_x: quad.top_right.x,
+      p_top_right_y: quad.top_right.y,
+      p_bottom_right_x: quad.bottom_right.x,
+      p_bottom_right_y: quad.bottom_right.y,
+      p_bottom_left_x: quad.bottom_left.x,
+      p_bottom_left_y: quad.bottom_left.y,
+      p_mask_revision: revision,
+      p_mask_storage_path: path,
+      p_mask_url: maskUrl
+    }
+  );
   if (error) {
     await supabase.storage.from(BUCKET).remove([path]);
     if (schemaUnavailable(error)) {
-      return { status: 503, payload: { error: 'Cover quad schema is not ready' } };
+      return {
+        status: 503,
+        payload: { error: 'Cover quad schema is not ready' }
+      };
     }
     throw new Error(`Cover quad update failed: ${error.message}`);
   }
@@ -305,7 +385,13 @@ async function setTemplateCoverQuad({ supabase, adminUser, body }) {
     status: 200,
     payload: {
       template: data,
-      mask: { fileName, path, url: maskUrl, width: template.canvas_width, height: template.canvas_height }
+      mask: {
+        fileName,
+        path,
+        url: maskUrl,
+        width: template.canvas_width,
+        height: template.canvas_height
+      }
     }
   };
 }
