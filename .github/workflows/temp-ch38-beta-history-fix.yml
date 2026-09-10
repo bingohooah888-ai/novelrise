@@ -1,0 +1,89 @@
+name: Temporary Chapter 38 beta history fix
+
+on:
+  push:
+    branches:
+      - fix/ch38-beta-light-seed-history
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/ch38-beta-light-seed-history
+          fetch-depth: 0
+      - name: Apply exact beta-history replacements
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, found {count}: {old!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'mypage.html',
+              '<a href="scout-record.html"><span class="nav-icon">◇</span><span>SCOUT RECORD</span></a>',
+              '<a href="scout-record.html"><span class="nav-icon">◇</span><span>LIGHT SEED履歴</span></a>',
+          )
+          replace_once(
+              'mypage.html',
+              '<article class="action-card green"><div class="action-icon">◇</div><h2>SCOUT RECORD</h2><p>LIGHT SEEDを贈った作品と、あなたの発掘履歴を確認します。</p><a class="card-cta" href="scout-record.html">履歴を見る →</a></article>',
+              '<article class="action-card green"><div class="action-icon">◇</div><h2>LIGHT SEED送信履歴</h2><p>LIGHT SEEDを贈った作品の履歴を確認します。</p><a class="card-cta" href="scout-record.html">履歴を見る →</a></article>',
+          )
+          replace_once('scout-record.html', '<title>SCOUT RECORD | NOVELIGHT</title>', '<title>LIGHT SEED送信履歴 | NOVELIGHT</title>')
+          replace_once(
+              'scout-record.html',
+              '<div style="font-size:11px;font-weight:900">SCOUT</div><h1>SCOUT RECORD</h1><p>あなたがLIGHT SEEDを贈って発掘した作品の履歴です。β版では履歴の保存・確認を優先し、SCOUTランクやポイントはまだ計算しません。</p>',
+              '<div style="font-size:11px;font-weight:900">LIGHT SEED</div><h1>LIGHT SEED送信履歴</h1><p>あなたがLIGHT SEEDを贈った作品の履歴です。β期間中は送信履歴のみ確認できます。SCOUT RECORDのLevelやバッジ等は将来提供予定です。</p>',
+          )
+          replace_once('scout-record.html', '<section class="section"><h2>LIGHT SEEDの履歴</h2>', '<section class="section"><h2>送信履歴</h2>')
+          replace_once('scout-record.html', 'SCOUT RECORDを読み込めませんでした。', 'LIGHT SEED送信履歴を読み込めませんでした。')
+
+          test = '''import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          import test from 'node:test';
+          import { URL } from 'node:url';
+
+          const mypage = await readFile(new URL('../mypage.html', import.meta.url), 'utf8');
+          const history = await readFile(
+            new URL('../scout-record.html', import.meta.url),
+            'utf8'
+          );
+
+          test('beta user navigation exposes LIGHT SEED history instead of SCOUT RECORD', () => {
+            assert.doesNotMatch(mypage, /<span>SCOUT RECORD<\\/span>/);
+            assert.doesNotMatch(mypage, /<h2>SCOUT RECORD<\\/h2>/);
+            assert.match(mypage, /<span>LIGHT SEED履歴<\\/span>/);
+            assert.match(mypage, /<h2>LIGHT SEED送信履歴<\\/h2>/);
+          });
+
+          test('beta history page stays separate from unreleased SCOUT RECORD feature', () => {
+            assert.match(history, /<title>LIGHT SEED送信履歴 \\| NOVELIGHT<\\/title>/);
+            assert.match(history, /<h1>LIGHT SEED送信履歴<\\/h1>/);
+            assert.match(history, /SCOUT RECORDのLevelやバッジ等は将来提供予定です/);
+            assert.doesNotMatch(history, /SCOUTランクやポイントはまだ計算しません/);
+            assert.doesNotMatch(history, /<h1>SCOUT RECORD<\\/h1>/);
+          });
+          '''
+          Path('tests/chapter38-beta-scout-record-visibility.test.mjs').write_text(test.replace('          ', ''))
+
+          workflow = Path('.github/workflows/temp-ch38-beta-history-fix.yml')
+          workflow.unlink()
+          PY
+      - name: Commit beta-history fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'Align beta LIGHT SEED history with Chapter 38'
+          git push origin HEAD:fix/ch38-beta-light-seed-history
