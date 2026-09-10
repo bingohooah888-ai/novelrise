@@ -2,36 +2,28 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const migration = await readFile(
-  'supabase/migrations/20260910143000_chapter38_exclude_self_comment_scout_exp.sql',
-  'utf8'
-);
-const postcheck = await readFile(
-  'supabase/checks/20260910143000_chapter38_exclude_self_comment_scout_exp_postcheck.sql',
-  'utf8'
-);
-const rollback = await readFile(
-  'supabase/rollback/20260910143000_chapter38_exclude_self_comment_scout_exp_rollback.sql',
-  'utf8'
-);
-const replay = await readFile('scripts/run-migration-replay.sh', 'utf8');
+const migrationPath =
+  'supabase/migrations/20260910143000_chapter38_exclude_self_comment_scout_exp.sql';
+const postcheckPath =
+  'supabase/checks/20260910143000_chapter38_exclude_self_comment_scout_exp_postcheck.sql';
+const rollbackPath =
+  'supabase/rollback/20260910143000_chapter38_exclude_self_comment_scout_exp_rollback.sql';
+const replayPath = 'scripts/run-migration-replay.sh';
 
 function has(text, token) {
-  assert.equal(
-    text.includes(token),
-    true,
-    `expected SQL to include ${token}`
-  );
+  assert.equal(text.includes(token), true);
 }
 
-test('runtime snapshots self-comment EXP eligibility and author identity', () => {
+test('runtime snapshots self-comment EXP eligibility and author identity', async () => {
+  const migration = await readFile(migrationPath, 'utf8');
   has(migration, 'v_is_self_comment := v_author_id = v_uid');
   has(migration, "'novel_author_id', v_author_id");
   has(migration, "'xp_eligible', not v_is_self_comment");
   has(migration, 'if not v_is_self_comment and not v_had_work_today then');
 });
 
-test('replay rebuild excludes self-comments before applying the daily cap', () => {
+test('replay rebuild excludes self-comments before applying the daily cap', async () => {
+  const migration = await readFile(migrationPath, 'utf8');
   has(migration, "when e.metadata ? 'xp_eligible'");
   has(
     migration,
@@ -42,7 +34,8 @@ test('replay rebuild excludes self-comments before applying the daily cap', () =
   has(migration, 'where d.daily_order <= 3');
 });
 
-test('postcheck rejects self-comment EXP and replay drift', () => {
+test('postcheck rejects self-comment EXP and replay drift', async () => {
+  const postcheck = await readFile(postcheckPath, 'utf8');
   has(postcheck, 'Self-comment SCOUT EXP is present after migration');
   has(
     postcheck,
@@ -50,20 +43,16 @@ test('postcheck rejects self-comment EXP and replay drift', () => {
   );
 });
 
-test('rollback restores the prior beta-v1 comment replay behavior', () => {
+test('rollback restores the prior beta-v1 comment replay behavior', async () => {
+  const rollback = await readFile(rollbackPath, 'utf8');
   assert.equal(rollback.includes('v_is_self_comment'), false);
   has(rollback, "where e.event_type = 'comment_posted'");
   has(rollback, 'where d.daily_order <= 3');
 });
 
-test('migration replay exercises hardening rollback and restores current rules', () => {
+test('migration replay exercises hardening rollback and restores current rules', async () => {
+  const replay = await readFile(replayPath, 'utf8');
   has(replay, 'Verify Chapter 38 self-comment exclusion rollback and reapply');
-  const applyCount =
-    replay.split(
-      'supabase/migrations/20260910143000_chapter38_exclude_self_comment_scout_exp.sql'
-    ).length - 1;
-  assert.ok(
-    applyCount >= 2,
-    'self-comment hardening must be reapplied after rollback'
-  );
+  const applyCount = replay.split(migrationPath).length - 1;
+  assert.ok(applyCount >= 2);
 });
