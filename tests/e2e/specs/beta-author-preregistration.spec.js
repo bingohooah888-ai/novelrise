@@ -58,9 +58,10 @@ test('beta author preregistration keeps its standalone theme and submits through
   await expect(page.locator('#preRegistrationState')).toBeVisible();
   await expect(page.locator('#releaseCopy')).toContainText('2026年9月下旬');
 
-  const heroColor = await page
-    .locator('.hero h1')
-    .evaluate((element) => getComputedStyle(element).color);
+  const heroColor = await page.locator('.hero h1').evaluate((element) => {
+    const view = element.ownerDocument.defaultView;
+    return view ? view.getComputedStyle(element).color : '';
+  });
   expect(heroColor).toBe('rgb(255, 255, 255)');
 
   await page.locator('#penName').fill('E2E作者');
@@ -84,7 +85,7 @@ test('beta author preregistration keeps its standalone theme and submits through
   ).toBe(true);
 
   const horizontalOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - window.innerWidth
+    () => globalThis.document.documentElement.scrollWidth - globalThis.innerWidth
   );
   expect(horizontalOverflow).toBeLessThanOrEqual(1);
 });
@@ -93,10 +94,10 @@ test('beta author preregistration does not depend on localStorage', async ({
   page
 }) => {
   await page.addInitScript(() => {
-    Storage.prototype.getItem = () => {
+    globalThis.Storage.prototype.getItem = () => {
       throw new Error('storage disabled');
     };
-    Storage.prototype.setItem = () => {
+    globalThis.Storage.prototype.setItem = () => {
       throw new Error('storage disabled');
     };
   });
