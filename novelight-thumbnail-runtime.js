@@ -54,7 +54,9 @@
       'body.novelight-page-ranking a.card[href*="novel.html?id="]'
     ].join(',');
     return Array.from(document.querySelectorAll(selector)).filter(
-      (link) => link.dataset.novelightThumbnailChecked !== '1'
+      (link) =>
+        link.dataset.novelightThumbnailChecked !== '1' &&
+        !link.querySelector('.novel-cover-image')
     );
   }
 
@@ -116,7 +118,7 @@
   }
 
   function insertMedia(link, media) {
-    if (!media || link.querySelector('.novelight-official-thumbnail')) return;
+    if (!media || link.querySelector('.novelight-official-thumbnail,.novel-cover-image')) return;
     const placeholder = link.querySelector('.novel-cover-placeholder');
     if (placeholder) placeholder.replaceWith(media);
     else if (
@@ -185,12 +187,12 @@
 
       const unresolved = [];
       for (const row of data ?? []) {
-        const id = String(row.id);
-        const linksForNovel = byId.get(id) ?? [];
+        const novelId = String(row.id);
+        const linksForNovel = byId.get(novelId) ?? [];
         if (row.thumbnail_url) {
           linksForNovel.forEach((link) => applyCachedThumbnail(link, row.thumbnail_url));
         } else {
-          unresolved.push(id);
+          unresolved.push(novelId);
         }
       }
 
