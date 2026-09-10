@@ -1,0 +1,35 @@
+name: Temporary format Production Auth Smoke
+
+on:
+  push:
+    branches:
+      - fix/production-auth-smoke-current-ui
+    paths:
+      - .github/workflows/temp-format-production-auth-smoke.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/production-auth-smoke-current-ui
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Format target and remove temporary workflow
+        run: |
+          npx prettier --write tests/e2e/production-auth/authenticated-smoke.spec.js
+          rm .github/workflows/temp-format-production-auth-smoke.yml
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/e2e/production-auth/authenticated-smoke.spec.js .github/workflows/temp-format-production-auth-smoke.yml
+          git commit -m "Format Production Auth Smoke"
+          git push
