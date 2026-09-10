@@ -45,6 +45,31 @@ test('traffic-dependent presence signals are monitoring-only', () => {
   assert.match(sql, /integrity_ok as ok/);
 });
 
+test('official thumbnail availability is release-blocking integrity', () => {
+  assert.ok(INTEGRITY_CHECKS.includes('active_official_thumbnails_present'));
+  assert.match(
+    sql,
+    /from public\.novel_thumbnail_assets t[\s\S]*?where t\.is_active = true/
+  );
+
+  const row = {
+    ...healthyIntegrity,
+    active_official_thumbnails_present: false,
+    acquisition_claims_present: true,
+    lifecycle_rows_present: true,
+    recent_activity_present: true,
+    integrity_ok: false,
+    monitoring_ok: true,
+    ok: false
+  };
+
+  const result = evaluateObservabilityRow(row);
+  assert.equal(result.integrityOk, false);
+  assert.deepEqual(result.failedIntegrityChecks, [
+    'active_official_thumbnails_present'
+  ]);
+});
+
 test('missing organic activity does not fail deterministic integrity', () => {
   const row = {
     ...healthyIntegrity,
