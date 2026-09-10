@@ -17,6 +17,9 @@ const STATUSES = new Set([
   'first_novel',
   'cancelled'
 ]);
+const CAMPAIGN_STATES = new Set(['PRE_REGISTRATION', 'BETA_OPEN', 'CLOSED']);
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
 
 const LIST_COLUMNS = [
   'id',
@@ -38,6 +41,12 @@ const LIST_COLUMNS = [
   'updated_at'
 ].join(',');
 
+function inputError(message) {
+  const error = new Error(message);
+  error.code = 'INVALID_INPUT';
+  return error;
+}
+
 function sanitizeSearch(value) {
   return String(value ?? '')
     .replace(/[,()%]/g, ' ')
@@ -50,6 +59,19 @@ function parsePositiveId(value) {
   if (!/^\d+$/.test(text)) return null;
   const id = Number(text);
   return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+function parsePositiveInteger(
+  value,
+  fallback,
+  maximum = Number.MAX_SAFE_INTEGER
+) {
+  const text = String(value ?? '').trim();
+  if (!text) return fallback;
+  if (!/^\d+$/.test(text)) return fallback;
+  const parsed = Number(text);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, maximum);
 }
 
 function jstDayStartIso() {
@@ -138,59 +160,126 @@ async function loadSourceMetrics() {
   return Object.fromEntries(values);
 }
 
-async function loadRows({ search, status }) {
+async function loadCampaign() {
+  const { data, error } = await supabase
+    .from('beta_author_preregistration_config')
+    .select('state,release_label,updated_at')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Preregistration campaign config is missing');
+  return data;
+}
+
+async function loadRows({ search, status, page, pageSize }) {
   let query = supabase
     .from('beta_author_preregistrations')
-    .select(LIST_COLUMNS)
-    .order('created_at', { ascending: false })
-    .limit(1000);
+    .select(LIST_COLUMNS, { count: 'exact' })
+    .order('created_at', { ascending: false });
 
   if (status && STATUSES.has(status)) query = query.eq('status', status);
   if (search) {
     query = query.or(`pen_name.ilike.%${search}%,email.ilike.%${search}%`);
   }
 
-  const { data, error } = await query;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await query.range(from, to);
   if (error) throw error;
-  return data ?? [];
+
+  const total = Number(count ?? 0);
+  return {
+    rows: data ?? [],
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize))
+    }
+  };
+}
+
+function applyMilestones(patch, status, current, now) {
+  if (['verified', 'invited', 'registered', 'first_novel'].includes(status)) {
+    patch.email_verified = true;
+  }
+  if (['invited', 'registered', 'first_novel'].includes(status)) {
+    patch.invite_sent_at = current.invite_sent_at || now;
+  }
+  if (['registered', 'first_novel'].includes(status)) {
+    patch.registered_at = current.registered_at || now;
+  }
+  if (status === 'first_novel') {
+    patch.first_novel_at = current.first_novel_at || now;
+  }
 }
 
 async function updateRow(id, body) {
+  const { data: current, error: currentError } = await supabase
+    .from('beta_author_preregistrations')
+    .select(LIST_COLUMNS)
+    .eq('id', id)
+    .maybeSingle();
+  if (currentError) throw currentError;
+  if (!current) return null;
+
   const patch = {};
   if (body.admin_note !== undefined) {
     const note = String(body.admin_note ?? '').trim();
     if (note.length > 1000) {
-      const error = new Error('運営メモは1000文字以内で入力してください。');
-      error.code = 'INVALID_INPUT';
-      throw error;
+      throw inputError('運営メモは1000文字以内で入力してください。');
     }
     patch.admin_note = note || null;
   }
 
   if (body.status !== undefined) {
     const status = String(body.status).trim().toLowerCase();
-    if (!STATUSES.has(status)) {
-      const error = new Error('Invalid status');
-      error.code = 'INVALID_INPUT';
-      throw error;
-    }
+    if (!STATUSES.has(status)) throw inputError('Invalid status');
     patch.status = status;
+    applyMilestones(patch, status, current, new Date().toISOString());
   }
 
   if (!Object.keys(patch).length) {
-    const error = new Error('No supported update fields');
-    error.code = 'INVALID_INPUT';
-    throw error;
+    throw inputError('No supported update fields');
   }
 
   patch.updated_at = new Date().toISOString();
-
   const { data, error } = await supabase
     .from('beta_author_preregistrations')
     .update(patch)
     .eq('id', id)
     .select(LIST_COLUMNS)
     .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function updateCampaign(body) {
+  const patch = {};
+  if (body.state !== undefined) {
+    const state = String(body.state).trim().toUpperCase();
+    if (!CAMPAIGN_STATES.has(state)) {
+      throw inputError('Invalid campaign state');
+    }
+    patch.state = state;
+  }
+  if (body.release_label !== undefined) {
+    const releaseLabel = String(body.release_label ?? '').trim();
+    if (releaseLabel.length < 1 || releaseLabel.length > 100) {
+      throw inputError('公開時期は1文字以上100文字以内で入力してください。');
+    }
+    patch.release_label = releaseLabel;
+  }
+  if (!Object.keys(patch).length) {
+    throw inputError('No supported campaign fields');
+  }
+  patch.updated_at = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('beta_author_preregistration_config')
+    .update(patch)
+    .eq('id', 1)
+    .select('state,release_label,updated_at')
+    .single();
   if (error) throw error;
   return data;
 }
@@ -212,20 +301,40 @@ export default async function handler(req, res) {
       if (status && !STATUSES.has(status)) {
         return res.status(400).json({ error: 'Invalid status' });
       }
+      const page = parsePositiveInteger(req.query?.page, 1);
+      const pageSize = parsePositiveInteger(
+        req.query?.pageSize,
+        DEFAULT_PAGE_SIZE,
+        MAX_PAGE_SIZE
+      );
 
-      const [rows, metrics, sources] = await Promise.all([
-        loadRows({ search, status }),
+      const [listing, metrics, sources, campaign] = await Promise.all([
+        loadRows({ search, status, page, pageSize }),
         loadMetrics(),
-        loadSourceMetrics()
+        loadSourceMetrics(),
+        loadCampaign()
       ]);
 
-      return res.status(200).json({ preregistrations: rows, metrics, sources });
+      return res.status(200).json({
+        preregistrations: listing.rows,
+        pagination: listing.pagination,
+        metrics,
+        sources,
+        campaign
+      });
+    }
+
+    if (req.body?.campaign === true) {
+      const campaign = await updateCampaign(req.body ?? {});
+      return res.status(200).json({ campaign });
     }
 
     const id = parsePositiveId(req.body?.id);
     if (!id) return res.status(400).json({ error: 'Invalid request' });
     const preregistration = await updateRow(id, req.body ?? {});
-    if (!preregistration) return res.status(404).json({ error: 'Not found' });
+    if (!preregistration) {
+      return res.status(404).json({ error: 'Not found' });
+    }
     return res.status(200).json({ preregistration });
   } catch (error) {
     console.error('NOVELIGHT beta author ADMIN operation failed', error);
