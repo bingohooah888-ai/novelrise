@@ -284,6 +284,12 @@ function waitForThumbnailRenderAction(page, action) {
   });
 }
 
+async function waitForThumbnailRenderResult(page, action) {
+  const response = await waitForThumbnailRenderAction(page, action);
+  const body = await response.json();
+  return { body, response };
+}
+
 async function assertChapter40ComposerReady(page) {
   const composer = page.locator(
     '#thumbnailComposer.novelight-thumbnail-composer'
@@ -500,23 +506,24 @@ test('authenticated beta-critical product flow works in target', async ({
       await authorPage.locator('#policyAck').check();
       await expect(authorPage.locator('#submitButton')).toBeEnabled();
 
-      const prepareUpload = waitForThumbnailRenderAction(
+      const prepareUpload = waitForThumbnailRenderResult(
         authorPage,
         'prepare-upload'
       );
-      const finalizeUpload = waitForThumbnailRenderAction(
+      const finalizeUpload = waitForThumbnailRenderResult(
         authorPage,
         'finalize-upload'
       );
       await authorPage.locator('#submitButton').click();
 
-      const prepareResponse = await prepareUpload;
+      const { body: prepared, response: prepareResponse } = await prepareUpload;
       expect(prepareResponse.ok()).toBeTruthy();
-      const prepared = await prepareResponse.json();
       expect(prepared.path).toMatch(renderStoragePathPattern);
-      const finalizeResponse = await finalizeUpload;
+      const {
+        body: finalized,
+        response: finalizeResponse
+      } = await finalizeUpload;
       expect(finalizeResponse.ok()).toBeTruthy();
-      const finalized = await finalizeResponse.json();
       expect(finalized.renderUrl).toContain(
         '/storage/v1/object/public/novel-thumbnail-renders/'
       );
