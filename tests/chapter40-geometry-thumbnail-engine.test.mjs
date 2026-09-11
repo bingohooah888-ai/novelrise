@@ -49,8 +49,10 @@ test('shared Geometry Engine validates quad and projects normalized cover corner
 
 test('Geometry Validation rejects duplicates, self intersections and unstable/small geometry', () => {
   const geometry = geometryRuntime();
-  const duplicate = structuredClone(validQuad);
-  duplicate.bottom_left = { ...duplicate.top_left };
+  const duplicate = {
+    ...validQuad,
+    bottom_left: { ...validQuad.top_left }
+  };
   assert.equal(geometry.validateQuad(duplicate).valid, false);
   const crossed = {
     top_left: { x: 100, y: 100 },
