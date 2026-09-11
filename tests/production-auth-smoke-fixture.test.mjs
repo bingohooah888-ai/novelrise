@@ -23,7 +23,7 @@ test('production auth smoke records and cleans Chapter 40 thumbnail renders', ()
     /waitForThumbnailRenderResult\([\s\S]*'finalize-upload'/
   );
   assert.match(smokeSource, /body = await candidate\.json\(\)/);
-  assert.doesNotMatch(smokeSource, /const body = await response\.json\(\)/);
+  assert.doesNotMatch(smokeSource, /waitForThumbnailRenderAction/);
   assert.match(fixtureSource, /novel-thumbnail-renders/);
   assert.match(fixtureSource, /thumbnailRenderPathPattern/);
   assert.match(fixtureSource, /\.from\('novel_thumbnail_compositions'\)/);
