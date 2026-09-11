@@ -33,7 +33,8 @@ function pngChunk(type, data = Buffer.alloc(0)) {
 }
 
 function point(value, name, width, height) {
-  if (!value || typeof value !== 'object') throw new Error(`${name} is required`);
+  if (!value || typeof value !== 'object')
+    throw new Error(`${name} is required`);
   const x = Number(value.x);
   const y = Number(value.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
@@ -135,10 +136,14 @@ export function normalizeCoverQuad(rawQuad, width = 1086, height = 1448) {
     cross(current, points[(index + 1) % 4], points[(index + 2) % 4])
   );
   if (
-    turns.some((value) => !Number.isFinite(value) || Math.abs(value) < EPSILON) ||
+    turns.some(
+      (value) => !Number.isFinite(value) || Math.abs(value) < EPSILON
+    ) ||
     !turns.every((value) => Math.sign(value) === Math.sign(turns[0]))
   ) {
-    throw new Error('Cover quad must be a non-self-intersecting convex quadrilateral');
+    throw new Error(
+      'Cover quad must be a non-self-intersecting convex quadrilateral'
+    );
   }
   if (Math.abs(polygonArea(points)) < 100)
     throw new Error('Cover quad is too small');
@@ -148,7 +153,10 @@ export function normalizeCoverQuad(rawQuad, width = 1086, height = 1448) {
 
 function insideConvexQuad(x, y, points, orientation) {
   for (let index = 0; index < points.length; index += 1) {
-    const edge = cross(points[index], points[(index + 1) % points.length], { x, y });
+    const edge = cross(points[index], points[(index + 1) % points.length], {
+      x,
+      y
+    });
     if (orientation > 0 ? edge < 0 : edge > 0) return false;
   }
   return true;
