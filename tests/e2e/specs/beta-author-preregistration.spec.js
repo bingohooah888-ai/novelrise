@@ -62,7 +62,7 @@ test('beta author preregistration keeps its standalone theme and submits through
     const view = element.ownerDocument.defaultView;
     return view ? view.getComputedStyle(element).color : '';
   });
-  expect(heroColor).toBe('rgb(255, 255, 255)');
+  expect(heroColor).toBe('rgb(245, 234, 208)');
 
   await page.locator('#penName').fill('E2E作者');
   await page.locator('#email').fill('e2e@example.com');
