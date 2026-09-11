@@ -3,11 +3,17 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const fixtureSource = readFileSync(
-  new URL('../scripts/production-auth-smoke-fixture.mjs', import.meta.url),
+  new globalThis.URL(
+    '../scripts/production-auth-smoke-fixture.mjs',
+    import.meta.url
+  ),
   'utf8'
 );
 const smokeSource = readFileSync(
-  new URL('./e2e/production-auth/authenticated-smoke.spec.js', import.meta.url),
+  new globalThis.URL(
+    './e2e/production-auth/authenticated-smoke.spec.js',
+    import.meta.url
+  ),
   'utf8'
 );
 
