@@ -27,7 +27,8 @@ const vercel = JSON.parse(read('vercel.json'));
 test('beta author LP keeps required copy, fields and isolated navigation', () => {
   assert.match(betaHtml, /NOVELIGHT β版/);
   assert.match(betaHtml, /先行作者登録/);
-  assert.match(betaHtml, /「良い作品なのに、読まれない」を変えたい。/);
+  assert.match(betaHtml, /「良い物語なのに、読まれない」を変えたい。/);
+  assert.match(betaHtml, /今すぐ先行登録する/);
   assert.match(betaHtml, /β版に先行登録する/);
   for (const id of [
     'penName',
