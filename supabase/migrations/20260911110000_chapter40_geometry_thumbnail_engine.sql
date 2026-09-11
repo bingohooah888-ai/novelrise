@@ -83,6 +83,9 @@ $$;
 revoke all on function public.novelight_geometry_quad_valid(
   integer, integer, integer, integer, integer, integer, integer, integer, integer, integer
 ) from public;
+grant execute on function public.novelight_geometry_quad_valid(
+  integer, integer, integer, integer, integer, integer, integer, integer, integer, integer
+) to anon, authenticated, service_role;
 
 -- base_book + cover_quad are the rendering source of truth. A generated PNG mask
 -- may exist for debugging, but the renderer must not depend on it.
@@ -104,17 +107,20 @@ alter table public.novel_thumbnail_templates
     or
     (
       cover_mask_source = 'cover_quad'
-      and public.novelight_geometry_quad_valid(
-        canvas_width,
-        canvas_height,
-        cover_top_left_x,
-        cover_top_left_y,
-        cover_top_right_x,
-        cover_top_right_y,
-        cover_bottom_right_x,
-        cover_bottom_right_y,
-        cover_bottom_left_x,
-        cover_bottom_left_y
+      and coalesce(
+        public.novelight_geometry_quad_valid(
+          canvas_width,
+          canvas_height,
+          cover_top_left_x,
+          cover_top_left_y,
+          cover_top_right_x,
+          cover_top_right_y,
+          cover_bottom_right_x,
+          cover_bottom_right_y,
+          cover_bottom_left_x,
+          cover_bottom_left_y
+        ),
+        false
       )
       and (
         (
@@ -147,17 +153,20 @@ create policy "Public can read active thumbnail templates"
     and canvas_width = 1086
     and canvas_height = 1448
     and cover_mask_source = 'cover_quad'
-    and public.novelight_geometry_quad_valid(
-      canvas_width,
-      canvas_height,
-      cover_top_left_x,
-      cover_top_left_y,
-      cover_top_right_x,
-      cover_top_right_y,
-      cover_bottom_right_x,
-      cover_bottom_right_y,
-      cover_bottom_left_x,
-      cover_bottom_left_y
+    and coalesce(
+      public.novelight_geometry_quad_valid(
+        canvas_width,
+        canvas_height,
+        cover_top_left_x,
+        cover_top_left_y,
+        cover_top_right_x,
+        cover_top_right_y,
+        cover_bottom_right_x,
+        cover_bottom_right_y,
+        cover_bottom_left_x,
+        cover_bottom_left_y
+      ),
+      false
     )
   );
 
@@ -176,17 +185,20 @@ begin
        and t.canvas_width = 1086
        and t.canvas_height = 1448
        and t.cover_mask_source = 'cover_quad'
-       and public.novelight_geometry_quad_valid(
-         t.canvas_width,
-         t.canvas_height,
-         t.cover_top_left_x,
-         t.cover_top_left_y,
-         t.cover_top_right_x,
-         t.cover_top_right_y,
-         t.cover_bottom_right_x,
-         t.cover_bottom_right_y,
-         t.cover_bottom_left_x,
-         t.cover_bottom_left_y
+       and coalesce(
+         public.novelight_geometry_quad_valid(
+           t.canvas_width,
+           t.canvas_height,
+           t.cover_top_left_x,
+           t.cover_top_left_y,
+           t.cover_top_right_x,
+           t.cover_top_right_y,
+           t.cover_bottom_right_x,
+           t.cover_bottom_right_y,
+           t.cover_bottom_left_x,
+           t.cover_bottom_left_y
+         ),
+         false
        )
   ) then
     raise exception using errcode = '23514', message = 'Thumbnail template geometry is not ready';
@@ -286,17 +298,20 @@ begin
     and t.canvas_width = 1086
     and t.canvas_height = 1448
     and t.cover_mask_source = 'cover_quad'
-    and public.novelight_geometry_quad_valid(
-      t.canvas_width,
-      t.canvas_height,
-      t.cover_top_left_x,
-      t.cover_top_left_y,
-      t.cover_top_right_x,
-      t.cover_top_right_y,
-      t.cover_bottom_right_x,
-      t.cover_bottom_right_y,
-      t.cover_bottom_left_x,
-      t.cover_bottom_left_y
+    and coalesce(
+      public.novelight_geometry_quad_valid(
+        t.canvas_width,
+        t.canvas_height,
+        t.cover_top_left_x,
+        t.cover_top_left_y,
+        t.cover_top_right_x,
+        t.cover_top_right_y,
+        t.cover_bottom_right_x,
+        t.cover_bottom_right_y,
+        t.cover_bottom_left_x,
+        t.cover_bottom_left_y
+      ),
+      false
     );
 end;
 $$;
@@ -304,6 +319,48 @@ $$;
 revoke all on function public.novelight_thumbnail_compositions_v2(bigint[]) from public;
 grant execute on function public.novelight_thumbnail_compositions_v2(bigint[])
   to anon, authenticated;
+
+-- Template-level effect overflow is canonical data and therefore changes the
+-- rendered output. Invalidate cached WebP automatically whenever it changes.
+create or replace function public.novelight_invalidate_thumbnail_effect_policy_cache()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if new.effect_allow_outside_cover is not distinct from old.effect_allow_outside_cover then
+    return new;
+  end if;
+
+  update public.novel_thumbnail_compositions c
+     set revision = gen_random_uuid(),
+         render_storage_path = null,
+         render_url = null,
+         updated_at = now()
+   where c.template_key = new.template_key;
+
+  update public.novels n
+     set thumbnail_url = null
+    from public.novel_thumbnail_compositions c
+   where n.id = c.novel_id
+     and c.template_key = new.template_key
+     and n.thumbnail_asset_id is null;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.novelight_invalidate_thumbnail_effect_policy_cache()
+  from public, anon, authenticated;
+
+drop trigger if exists novelight_invalidate_thumbnail_effect_policy_cache
+  on public.novel_thumbnail_templates;
+create trigger novelight_invalidate_thumbnail_effect_policy_cache
+after update of effect_allow_outside_cover
+on public.novel_thumbnail_templates
+for each row
+execute function public.novelight_invalidate_thumbnail_effect_policy_cache();
 
 -- Existing Chapter 39 admin RPC remains valid. It still writes an optional
 -- derived debug mask together with the canonical quad. Rendering never consumes
