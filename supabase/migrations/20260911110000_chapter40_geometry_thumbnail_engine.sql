@@ -12,6 +12,78 @@ alter table public.novel_thumbnail_templates
 comment on column public.novel_thumbnail_templates.effect_allow_outside_cover is
   'Chapter 40 template-level permission. Only effect may render outside cover_quad when true.';
 
+-- Deterministic server-side Geometry Validation for the canonical quad. The
+-- browser uses the shared JS engine for the same shape rules plus Perspective
+-- Transform stability checks before ADMIN save and before rendering.
+create or replace function public.novelight_geometry_quad_valid(
+  p_canvas_width integer,
+  p_canvas_height integer,
+  p_top_left_x integer,
+  p_top_left_y integer,
+  p_top_right_x integer,
+  p_top_right_y integer,
+  p_bottom_right_x integer,
+  p_bottom_right_y integer,
+  p_bottom_left_x integer,
+  p_bottom_left_y integer
+)
+returns boolean
+language sql
+immutable
+strict
+set search_path = pg_catalog, public
+as $$
+  with geometry as (
+    select
+      ((p_top_right_x - p_top_left_x)::bigint * (p_bottom_right_y - p_top_right_y)::bigint
+        - (p_top_right_y - p_top_left_y)::bigint * (p_bottom_right_x - p_top_right_x)::bigint) as turn_1,
+      ((p_bottom_right_x - p_top_right_x)::bigint * (p_bottom_left_y - p_bottom_right_y)::bigint
+        - (p_bottom_right_y - p_top_right_y)::bigint * (p_bottom_left_x - p_bottom_right_x)::bigint) as turn_2,
+      ((p_bottom_left_x - p_bottom_right_x)::bigint * (p_top_left_y - p_bottom_left_y)::bigint
+        - (p_bottom_left_y - p_bottom_right_y)::bigint * (p_top_left_x - p_bottom_left_x)::bigint) as turn_3,
+      ((p_top_left_x - p_bottom_left_x)::bigint * (p_top_right_y - p_top_left_y)::bigint
+        - (p_top_left_y - p_bottom_left_y)::bigint * (p_top_right_x - p_top_left_x)::bigint) as turn_4,
+      (
+        p_top_left_x::bigint * p_top_right_y::bigint
+        + p_top_right_x::bigint * p_bottom_right_y::bigint
+        + p_bottom_right_x::bigint * p_bottom_left_y::bigint
+        + p_bottom_left_x::bigint * p_top_left_y::bigint
+        - p_top_right_x::bigint * p_top_left_y::bigint
+        - p_bottom_right_x::bigint * p_top_right_y::bigint
+        - p_bottom_left_x::bigint * p_bottom_right_y::bigint
+        - p_top_left_x::bigint * p_bottom_left_y::bigint
+      ) as twice_area
+  )
+  select
+    p_canvas_width > 0
+    and p_canvas_height > 0
+    and p_top_left_x between 0 and p_canvas_width
+    and p_top_left_y between 0 and p_canvas_height
+    and p_top_right_x between 0 and p_canvas_width
+    and p_top_right_y between 0 and p_canvas_height
+    and p_bottom_right_x between 0 and p_canvas_width
+    and p_bottom_right_y between 0 and p_canvas_height
+    and p_bottom_left_x between 0 and p_canvas_width
+    and p_bottom_left_y between 0 and p_canvas_height
+    and (p_top_left_x, p_top_left_y) <> (p_top_right_x, p_top_right_y)
+    and (p_top_left_x, p_top_left_y) <> (p_bottom_right_x, p_bottom_right_y)
+    and (p_top_left_x, p_top_left_y) <> (p_bottom_left_x, p_bottom_left_y)
+    and (p_top_right_x, p_top_right_y) <> (p_bottom_right_x, p_bottom_right_y)
+    and (p_top_right_x, p_top_right_y) <> (p_bottom_left_x, p_bottom_left_y)
+    and (p_bottom_right_x, p_bottom_right_y) <> (p_bottom_left_x, p_bottom_left_y)
+    and abs(geometry.twice_area) >= 200
+    and (
+      (geometry.turn_1 > 0 and geometry.turn_2 > 0 and geometry.turn_3 > 0 and geometry.turn_4 > 0)
+      or
+      (geometry.turn_1 < 0 and geometry.turn_2 < 0 and geometry.turn_3 < 0 and geometry.turn_4 < 0)
+    )
+  from geometry;
+$$;
+
+revoke all on function public.novelight_geometry_quad_valid(
+  integer, integer, integer, integer, integer, integer, integer, integer, integer, integer
+) from public;
+
 -- base_book + cover_quad are the rendering source of truth. A generated PNG mask
 -- may exist for debugging, but the renderer must not depend on it.
 alter table public.novel_thumbnail_templates
@@ -32,14 +104,18 @@ alter table public.novel_thumbnail_templates
     or
     (
       cover_mask_source = 'cover_quad'
-      and cover_top_left_x between 0 and canvas_width
-      and cover_top_left_y between 0 and canvas_height
-      and cover_top_right_x between 0 and canvas_width
-      and cover_top_right_y between 0 and canvas_height
-      and cover_bottom_right_x between 0 and canvas_width
-      and cover_bottom_right_y between 0 and canvas_height
-      and cover_bottom_left_x between 0 and canvas_width
-      and cover_bottom_left_y between 0 and canvas_height
+      and public.novelight_geometry_quad_valid(
+        canvas_width,
+        canvas_height,
+        cover_top_left_x,
+        cover_top_left_y,
+        cover_top_right_x,
+        cover_top_right_y,
+        cover_bottom_right_x,
+        cover_bottom_right_y,
+        cover_bottom_left_x,
+        cover_bottom_left_y
+      )
       and (
         (
           cover_mask_revision is null
@@ -71,14 +147,18 @@ create policy "Public can read active thumbnail templates"
     and canvas_width = 1086
     and canvas_height = 1448
     and cover_mask_source = 'cover_quad'
-    and cover_top_left_x is not null
-    and cover_top_left_y is not null
-    and cover_top_right_x is not null
-    and cover_top_right_y is not null
-    and cover_bottom_right_x is not null
-    and cover_bottom_right_y is not null
-    and cover_bottom_left_x is not null
-    and cover_bottom_left_y is not null
+    and public.novelight_geometry_quad_valid(
+      canvas_width,
+      canvas_height,
+      cover_top_left_x,
+      cover_top_left_y,
+      cover_top_right_x,
+      cover_top_right_y,
+      cover_bottom_right_x,
+      cover_bottom_right_y,
+      cover_bottom_left_x,
+      cover_bottom_left_y
+    )
   );
 
 create or replace function public.novelight_validate_thumbnail_composition_template()
@@ -96,14 +176,18 @@ begin
        and t.canvas_width = 1086
        and t.canvas_height = 1448
        and t.cover_mask_source = 'cover_quad'
-       and t.cover_top_left_x is not null
-       and t.cover_top_left_y is not null
-       and t.cover_top_right_x is not null
-       and t.cover_top_right_y is not null
-       and t.cover_bottom_right_x is not null
-       and t.cover_bottom_right_y is not null
-       and t.cover_bottom_left_x is not null
-       and t.cover_bottom_left_y is not null
+       and public.novelight_geometry_quad_valid(
+         t.canvas_width,
+         t.canvas_height,
+         t.cover_top_left_x,
+         t.cover_top_left_y,
+         t.cover_top_right_x,
+         t.cover_top_right_y,
+         t.cover_bottom_right_x,
+         t.cover_bottom_right_y,
+         t.cover_bottom_left_x,
+         t.cover_bottom_left_y
+       )
   ) then
     raise exception using errcode = '23514', message = 'Thumbnail template geometry is not ready';
   end if;
@@ -114,8 +198,116 @@ $$;
 revoke all on function public.novelight_validate_thumbnail_composition_template()
   from public;
 
+-- Reader-side cache fallback consumes the same canonical geometry rather than
+-- rebuilding with the Chapter 39 PNG-mask/CSS path. A new RPC keeps rolling
+-- deployment compatible: old clients can continue using v1 while Chapter 40
+-- clients only opt into geometry-aware data after this migration exists.
+create or replace function public.novelight_thumbnail_compositions_v2(
+  p_novel_ids bigint[]
+)
+returns table (
+  novel_id bigint,
+  template_key text,
+  canvas_width integer,
+  canvas_height integer,
+  cover_top_left_x integer,
+  cover_top_left_y integer,
+  cover_top_right_x integer,
+  cover_top_right_y integer,
+  cover_bottom_right_x integer,
+  cover_bottom_right_y integer,
+  cover_bottom_left_x integer,
+  cover_bottom_left_y integer,
+  effect_allow_outside_cover boolean,
+  background_url text,
+  base_book_url text,
+  cover_url text,
+  pattern_url text,
+  symbol_url text,
+  frame_url text,
+  effect_url text,
+  revision uuid,
+  render_url text
+)
+language plpgsql
+stable
+security definer
+set search_path = pg_catalog, public, auth
+as $$
+begin
+  if p_novel_ids is null or cardinality(p_novel_ids) = 0 then
+    return;
+  end if;
+
+  if cardinality(p_novel_ids) > 100 then
+    raise exception using errcode = '22023', message = 'Too many novel ids';
+  end if;
+
+  return query
+  select
+    c.novel_id,
+    c.template_key,
+    t.canvas_width,
+    t.canvas_height,
+    t.cover_top_left_x,
+    t.cover_top_left_y,
+    t.cover_top_right_x,
+    t.cover_top_right_y,
+    t.cover_bottom_right_x,
+    t.cover_bottom_right_y,
+    t.cover_bottom_left_x,
+    t.cover_bottom_left_y,
+    t.effect_allow_outside_cover,
+    case when bg.availability_status <> 'emergency_disabled' then bg.image_url end,
+    case when book.availability_status <> 'emergency_disabled' then book.image_url end,
+    case when cover.availability_status <> 'emergency_disabled' then cover.image_url end,
+    case when pattern.availability_status <> 'emergency_disabled' then pattern.image_url end,
+    case when symbol.availability_status <> 'emergency_disabled' then symbol.image_url end,
+    case when frame.availability_status <> 'emergency_disabled' then frame.image_url end,
+    case when effect.availability_status <> 'emergency_disabled' then effect.image_url end,
+    c.revision,
+    c.render_url
+  from public.novel_thumbnail_compositions c
+  join public.novels n on n.id = c.novel_id
+  join public.novel_thumbnail_templates t on t.template_key = c.template_key
+  join public.novel_thumbnail_assets bg on bg.id = c.background_asset_id
+  join public.novel_thumbnail_assets book on book.id = c.base_book_asset_id
+  join public.novel_thumbnail_assets cover on cover.id = c.cover_asset_id
+  left join public.novel_thumbnail_assets pattern on pattern.id = c.pattern_asset_id
+  left join public.novel_thumbnail_assets symbol on symbol.id = c.symbol_asset_id
+  left join public.novel_thumbnail_assets frame on frame.id = c.frame_asset_id
+  left join public.novel_thumbnail_assets effect on effect.id = c.effect_asset_id
+  where c.novel_id = any(p_novel_ids)
+    and (
+      n.status = 'published'
+      or (select auth.uid()) = n.user_id
+    )
+    and t.availability_status <> 'emergency_disabled'
+    and t.canvas_width = 1086
+    and t.canvas_height = 1448
+    and t.cover_mask_source = 'cover_quad'
+    and public.novelight_geometry_quad_valid(
+      t.canvas_width,
+      t.canvas_height,
+      t.cover_top_left_x,
+      t.cover_top_left_y,
+      t.cover_top_right_x,
+      t.cover_top_right_y,
+      t.cover_bottom_right_x,
+      t.cover_bottom_right_y,
+      t.cover_bottom_left_x,
+      t.cover_bottom_left_y
+    );
+end;
+$$;
+
+revoke all on function public.novelight_thumbnail_compositions_v2(bigint[]) from public;
+grant execute on function public.novelight_thumbnail_compositions_v2(bigint[])
+  to anon, authenticated;
+
 -- Existing Chapter 39 admin RPC remains valid. It still writes an optional
 -- derived debug mask together with the canonical quad. Rendering never consumes
--- that PNG after Chapter 40.
+-- that PNG after Chapter 40. API-side validation rejects invalid or unstable
+-- Perspective Transform geometry before that RPC is called.
 
 commit;
