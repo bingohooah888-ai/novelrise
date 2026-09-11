@@ -93,7 +93,13 @@ function homographyFromQuad(points) {
   if (Object.values(matrix).some((value) => !Number.isFinite(value))) {
     throw new Error('Cover quad Perspective Transform is non-finite');
   }
-  for (const [u, v] of [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0.5]]) {
+  for (const [u, v] of [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [0.5, 0.5]
+  ]) {
     const denominator = matrix.g * u + matrix.h * v + 1;
     if (!Number.isFinite(denominator) || Math.abs(denominator) < EPSILON) {
       throw new Error('Cover quad Perspective Transform is unstable');
@@ -102,7 +108,12 @@ function homographyFromQuad(points) {
 }
 
 export function normalizeCoverQuad(rawQuad, width = 1086, height = 1448) {
-  if (!Number.isInteger(width) || width < 1 || !Number.isInteger(height) || height < 1) {
+  if (
+    !Number.isInteger(width) ||
+    width < 1 ||
+    !Number.isInteger(height) ||
+    height < 1
+  ) {
     throw new Error('Invalid template canvas');
   }
   const quad = {
@@ -111,7 +122,12 @@ export function normalizeCoverQuad(rawQuad, width = 1086, height = 1448) {
     bottom_right: point(rawQuad?.bottom_right, 'bottom_right', width, height),
     bottom_left: point(rawQuad?.bottom_left, 'bottom_left', width, height)
   };
-  const points = [quad.top_left, quad.top_right, quad.bottom_right, quad.bottom_left];
+  const points = [
+    quad.top_left,
+    quad.top_right,
+    quad.bottom_right,
+    quad.bottom_left
+  ];
   if (new Set(points.map((item) => `${item.x}:${item.y}`)).size !== 4) {
     throw new Error('Cover quad vertices must be unique');
   }
@@ -124,7 +140,8 @@ export function normalizeCoverQuad(rawQuad, width = 1086, height = 1448) {
   ) {
     throw new Error('Cover quad must be a non-self-intersecting convex quadrilateral');
   }
-  if (Math.abs(polygonArea(points)) < 100) throw new Error('Cover quad is too small');
+  if (Math.abs(polygonArea(points)) < 100)
+    throw new Error('Cover quad is too small');
   homographyFromQuad(points);
   return quad;
 }
@@ -139,14 +156,31 @@ function insideConvexQuad(x, y, points, orientation) {
 
 export function generateCoverMaskPng(rawQuad, width = 1086, height = 1448) {
   const quad = normalizeCoverQuad(rawQuad, width, height);
-  const points = [quad.top_left, quad.top_right, quad.bottom_right, quad.bottom_left];
+  const points = [
+    quad.top_left,
+    quad.top_right,
+    quad.bottom_right,
+    quad.bottom_left
+  ];
   const orientation = Math.sign(polygonArea(points));
   const stride = width * 4 + 1;
   const raw = Buffer.alloc(stride * height);
-  const minX = Math.max(0, Math.floor(Math.min(...points.map((item) => item.x))));
-  const maxX = Math.min(width - 1, Math.ceil(Math.max(...points.map((item) => item.x))));
-  const minY = Math.max(0, Math.floor(Math.min(...points.map((item) => item.y))));
-  const maxY = Math.min(height - 1, Math.ceil(Math.max(...points.map((item) => item.y))));
+  const minX = Math.max(
+    0,
+    Math.floor(Math.min(...points.map((item) => item.x)))
+  );
+  const maxX = Math.min(
+    width - 1,
+    Math.ceil(Math.max(...points.map((item) => item.x)))
+  );
+  const minY = Math.max(
+    0,
+    Math.floor(Math.min(...points.map((item) => item.y)))
+  );
+  const maxY = Math.min(
+    height - 1,
+    Math.ceil(Math.max(...points.map((item) => item.y)))
+  );
   for (let y = minY; y <= maxY; y += 1) {
     const rowOffset = y * stride;
     for (let x = minX; x <= maxX; x += 1) {
