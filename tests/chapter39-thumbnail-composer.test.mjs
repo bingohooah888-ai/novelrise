@@ -119,10 +119,7 @@ test('Chapter 40 supersedes the Chapter 39 mask render path while preserving int
 test('cached render is derived WebP and source layer IDs remain canonical', () => {
   assert.match(migration, /novel-thumbnail-renders/i);
   assert.match(migration, /array\['image\/webp'\]/i);
-  assert.match(
-    compat,
-    /\^renders\/\[0-9\]\+\/\[0-9a-f-\]\{36\}\\\.webp\$/i
-  );
+  assert.match(compat, /\^renders\/\[0-9\]\+\/\[0-9a-f-\]\{36\}\\\.webp\$/i);
   assert.ok(composer.includes('canvas.toBlob('));
   assert.ok(composer.includes("'image/webp'"));
   assert.ok(
