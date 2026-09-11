@@ -84,7 +84,9 @@ test('renderer perspective-transforms all four cover-surface roles and never ren
     composer,
     /globalCompositeOperation\s*=\s*['"]destination-in['"]/
   );
-  const renderStart = composer.indexOf('async function renderSelectionToCanvas');
+  const renderStart = composer.indexOf(
+    'async function renderSelectionToCanvas'
+  );
   const renderEnd = composer.indexOf('function canvasBlob', renderStart);
   const renderBody = composer.slice(renderStart, renderEnd);
   assert.doesNotMatch(renderBody, /cover_mask_url/);
@@ -117,7 +119,10 @@ test('all active official templates require validated cover_quad without PNG mas
 });
 
 test('ADMIN Geometry Editor uses the exact shared engine for validation and realtime transform preview', () => {
-  assert.match(admin, /<script src="novelight-thumbnail-composer\.js"><\/script>/);
+  assert.match(
+    admin,
+    /<script src="novelight-thumbnail-composer\.js"><\/script>/
+  );
   assert.match(admin, /geometry=NovelightThumbnailComposer\.geometry/);
   assert.match(admin, /geometry\.validateCoverQuad/);
   assert.match(admin, /geometry\.drawPerspectiveImage/);
