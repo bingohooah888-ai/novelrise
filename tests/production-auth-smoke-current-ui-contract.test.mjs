@@ -13,8 +13,20 @@ const authorHomeSmoke = await readFile(
 const analyticsUi = await readFile('novelight-analytics.js', 'utf8');
 
 test('Production Auth Smoke stays aligned with current beta UI contracts', () => {
-  assert.match(authenticatedSmoke, /\.thumbnail-option/);
-  assert.match(authenticatedSmoke, /input\[name=\"thumbnailAsset\"\]/);
+  assert.match(authenticatedSmoke, /assertChapter40ComposerReady/);
+  assert.match(
+    authenticatedSmoke,
+    /#thumbnailComposer\.novelight-thumbnail-composer/
+  );
+  assert.match(authenticatedSmoke, /\.nl-thumb-option\[data-layer-type=/);
+  assert.match(
+    authenticatedSmoke,
+    /canvas\[aria-label="作品サムネイルのプレビュー"\]/
+  );
+  assert.match(authenticatedSmoke, /waitForThumbnailRenderAction/);
+  assert.match(authenticatedSmoke, /'prepare-upload'/);
+  assert.match(authenticatedSmoke, /'finalize-upload'/);
+  assert.doesNotMatch(authenticatedSmoke, /input\[name=\"thumbnailAsset\"\]/);
   assert.match(authenticatedSmoke, /record_valid_read_progress/);
   assert.match(
     authenticatedSmoke,

@@ -13,8 +13,11 @@ const productionSupabasePublishableKey =
 const exposureConversionRpcPath =
   '/rest/v1/rpc/record_novel_exposure_conversion';
 const validReadRpcPath = '/rest/v1/rpc/record_valid_read_progress';
+const thumbnailRenderApiPath = '/api/thumbnail-render';
 const receiptPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const renderStoragePathPattern =
+  /^renders\/[0-9]+\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/i;
 
 if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 
@@ -54,6 +57,10 @@ function loadFixture() {
   return JSON.parse(readFileSync(fixturePath, 'utf8'));
 }
 
+function saveFixture(fixture) {
+  writeFileSync(fixturePath, JSON.stringify(fixture, null, 2), { mode: 0o600 });
+}
+
 function accountsForProject(fixture, deviceLabel) {
   const accounts = fixture.projects?.[deviceLabel];
   if (!accounts?.author || !accounts?.reader) {
@@ -65,7 +72,26 @@ function accountsForProject(fixture, deviceLabel) {
 function saveVisitorToken(role, token) {
   const fixture = loadFixture();
   fixture.visitorTokens = { ...(fixture.visitorTokens || {}), [role]: token };
-  writeFileSync(fixturePath, JSON.stringify(fixture, null, 2), { mode: 0o600 });
+  saveFixture(fixture);
+}
+
+function saveThumbnailRenderPath(deviceLabel, novelId, renderStoragePath) {
+  if (!renderStoragePathPattern.test(String(renderStoragePath))) {
+    throw new Error(`Unsafe thumbnail render path: ${renderStoragePath}`);
+  }
+
+  const fixture = loadFixture();
+  fixture.thumbnailRenderPaths = [
+    ...new Set([
+      ...(fixture.thumbnailRenderPaths || []),
+      String(renderStoragePath)
+    ])
+  ];
+  fixture.thumbnailRenderNovels = {
+    ...(fixture.thumbnailRenderNovels || {}),
+    [`${deviceLabel}-${novelId}`]: String(renderStoragePath)
+  };
+  saveFixture(fixture);
 }
 
 function contextOptionsForProject(baseURL, projectName) {
@@ -165,11 +191,15 @@ async function getSupabaseAccessToken(page) {
   return accessToken;
 }
 
-async function recordDiscoveryImpression(page, novelId, novelTitle) {
-  const target = stagingSupabaseOverride || {
+function targetSupabase() {
+  return stagingSupabaseOverride || {
     url: productionSupabaseUrl,
     key: productionSupabasePublishableKey
   };
+}
+
+async function recordDiscoveryImpression(page, novelId, novelTitle) {
+  const target = targetSupabase();
 
   await page.waitForFunction(
     () => typeof globalThis.supabase?.createClient === 'function'
@@ -239,6 +269,86 @@ function waitForExposureConversion(page, eventType) {
     const body = response.request().postData();
     return body?.includes(`"${eventType}"`) ?? false;
   });
+}
+
+function waitForThumbnailRenderAction(page, action) {
+  return page.waitForResponse((response) => {
+    if (
+      !response.url().includes(thumbnailRenderApiPath) ||
+      response.request().method() !== 'POST'
+    ) {
+      return false;
+    }
+    const body = response.request().postData();
+    return body?.includes(`"action":"${action}"`) ?? false;
+  });
+}
+
+async function assertChapter40ComposerReady(page) {
+  const composer = page.locator(
+    '#thumbnailComposer.novelight-thumbnail-composer'
+  );
+  await expect(composer).toBeVisible();
+  await expect(page.locator('#legacyThumbnailArea')).toBeHidden();
+
+  for (const layerType of ['background', 'base_book', 'cover']) {
+    const selected = composer.locator(
+      `.nl-thumb-option[data-layer-type="${layerType}"][aria-pressed="true"]`
+    );
+    await expect(selected).toHaveCount(1);
+    await expect(selected).toHaveAttribute('data-asset-id', /.+/);
+  }
+
+  await expect(
+    composer.locator('canvas[aria-label="作品サムネイルのプレビュー"]')
+  ).toBeVisible();
+  await expect(composer.locator('.nl-thumb-preview-status')).toHaveText(
+    'プレビュー',
+    { timeout: 20000 }
+  );
+}
+
+async function loadMyThumbnailComposition(page, novelId) {
+  const target = targetSupabase();
+  await page.waitForFunction(
+    () => typeof globalThis.supabase?.createClient === 'function'
+  );
+
+  return page.evaluate(
+    async ({ url, key, workId }) => {
+      const client = globalThis.supabase.createClient(url, key);
+      const result = await client.rpc('novelight_my_thumbnail_composition', {
+        p_novel_id: String(workId)
+      });
+      if (result.error) throw new Error(result.error.message);
+      const row = Array.isArray(result.data) ? result.data[0] : result.data;
+      if (!row) throw new Error('Thumbnail composition was not persisted.');
+      return row;
+    },
+    { url: target.url, key: target.key, workId: String(novelId) }
+  );
+}
+
+async function assertChapter40RenderPersisted(
+  page,
+  novelId,
+  expectedRenderStoragePath,
+  expectedRenderUrl,
+  deviceLabel
+) {
+  const composition = await loadMyThumbnailComposition(page, novelId);
+  expect(composition.template_key).toBeTruthy();
+  expect(composition.background_asset_id).toBeTruthy();
+  expect(composition.base_book_asset_id).toBeTruthy();
+  expect(composition.cover_asset_id).toBeTruthy();
+  expect(composition.revision).toMatch(receiptPattern);
+  expect(expectedRenderStoragePath).toMatch(renderStoragePathPattern);
+  expect(expectedRenderStoragePath).toContain(`renders/${novelId}/`);
+  expect(composition.render_url).toBe(expectedRenderUrl);
+  expect(composition.render_url).toContain(
+    '/storage/v1/object/public/novel-thumbnail-renders/'
+  );
+  saveThumbnailRenderPath(deviceLabel, novelId, expectedRenderStoragePath);
 }
 
 async function readEpisodeAndRecord(page, episodeHref, title, label) {
@@ -376,7 +486,7 @@ test('authenticated beta-critical product flow works in target', async ({
       saveVisitorToken(`author-${deviceLabel}`, authorVisitorToken);
     });
 
-    await test.step('Create novel', async () => {
+    await test.step('Create novel with Chapter 40 Geometry thumbnail render', async () => {
       await authorPage.locator('#title').fill(novelTitle);
       await authorPage.locator('#genre').selectOption({ label: '現代ドラマ' });
       await authorPage
@@ -386,21 +496,44 @@ test('authenticated beta-critical product flow works in target', async ({
         );
       await authorPage.locator('#aiUsage').selectOption('human');
       await authorPage.locator('#contentRating').selectOption('general');
-      const thumbnailOption = authorPage.locator('.thumbnail-option').first();
-      await expect(thumbnailOption).toBeVisible();
-      await thumbnailOption.click();
-      await expect(
-        thumbnailOption.locator('input[name="thumbnailAsset"]')
-      ).toBeChecked();
+      await assertChapter40ComposerReady(authorPage);
       await authorPage.locator('#policyAck').check();
       await expect(authorPage.locator('#submitButton')).toBeEnabled();
-      await authorPage.locator('#submitButton').click();
-      await authorPage.waitForURL(/\/episode-post\.html\?novel_id=/);
 
+      const prepareUpload = waitForThumbnailRenderAction(
+        authorPage,
+        'prepare-upload'
+      );
+      const finalizeUpload = waitForThumbnailRenderAction(
+        authorPage,
+        'finalize-upload'
+      );
+      await authorPage.locator('#submitButton').click();
+
+      const prepareResponse = await prepareUpload;
+      expect(prepareResponse.ok()).toBeTruthy();
+      const prepared = await prepareResponse.json();
+      expect(prepared.path).toMatch(renderStoragePathPattern);
+      const finalizeResponse = await finalizeUpload;
+      expect(finalizeResponse.ok()).toBeTruthy();
+      const finalized = await finalizeResponse.json();
+      expect(finalized.renderUrl).toContain(
+        '/storage/v1/object/public/novel-thumbnail-renders/'
+      );
+      expect(finalized.renderUrl).toContain('.webp');
+
+      await authorPage.waitForURL(/\/episode-post\.html\?novel_id=/);
       novelId = new globalThis.URL(authorPage.url()).searchParams.get(
         'novel_id'
       );
       expect(novelId).toBeTruthy();
+      await assertChapter40RenderPersisted(
+        authorPage,
+        novelId,
+        prepared.path,
+        finalized.renderUrl,
+        deviceLabel
+      );
     });
 
     await test.step('Publish first episode', async () => {
