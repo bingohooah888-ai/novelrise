@@ -59,16 +59,31 @@ test('Geometry Validation rejects duplicates, self intersections and unstable/sm
     bottom_left: { x: 900, y: 100 }
   };
   assert.equal(geometry.validateQuad(crossed).valid, false);
-  assert.throws(() => normalizeCoverQuad(crossed), /non-self-intersecting convex/);
-  assert.match(migration, /create or replace function public\.novelight_geometry_quad_valid/i);
+  assert.throws(
+    () => normalizeCoverQuad(crossed),
+    /non-self-intersecting convex/
+  );
+  assert.match(
+    migration,
+    /create or replace function public\.novelight_geometry_quad_valid/i
+  );
   assert.match(migration, /abs\(geometry\.twice_area\) >= 200/i);
 });
 
 test('renderer perspective-transforms all four cover-surface roles and never renders from PNG mask', () => {
-  assert.match(composer, /const SURFACE_TYPES = \['cover', 'pattern', 'symbol', 'frame'\]/);
-  assert.match(composer, /for \(const type of SURFACE_TYPES\) await drawPerspectiveAsset/);
+  assert.match(
+    composer,
+    /const SURFACE_TYPES = \['cover', 'pattern', 'symbol', 'frame'\]/
+  );
+  assert.match(
+    composer,
+    /for \(const type of SURFACE_TYPES\) await drawPerspectiveAsset/
+  );
   assert.match(composer, /drawPerspectiveImage\(context, image, quad\)/);
-  assert.doesNotMatch(composer, /globalCompositeOperation\s*=\s*['"]destination-in['"]/);
+  assert.doesNotMatch(
+    composer,
+    /globalCompositeOperation\s*=\s*['"]destination-in['"]/
+  );
   const renderStart = composer.indexOf('async function renderSelectionToCanvas');
   const renderEnd = composer.indexOf('function canvasBlob', renderStart);
   const renderBody = composer.slice(renderStart, renderEnd);
@@ -79,14 +94,22 @@ test('effect outside-cover rendering is controlled only by template data', () =>
   assert.match(composer, /effect_allow_outside_cover/);
   assert.match(composer, /template\.effect_allow_outside_cover === true/);
   assert.match(composer, /clipToCoverQuad\(context, quad\)/);
-  assert.match(migration, /effect_allow_outside_cover boolean not null default false/);
+  assert.match(
+    migration,
+    /effect_allow_outside_cover boolean not null default false/
+  );
 });
 
 test('all active official templates require validated cover_quad without PNG mask readiness', () => {
   assert.match(migration, /cover_mask_source = 'cover_quad'/);
   assert.doesNotMatch(migration, /template_key <> 'book-v1'/);
-  const policyStart = migration.indexOf('create policy "Public can read active thumbnail templates"');
-  const triggerStart = migration.indexOf('create or replace function', policyStart);
+  const policyStart = migration.indexOf(
+    'create policy "Public can read active thumbnail templates"'
+  );
+  const triggerStart = migration.indexOf(
+    'create or replace function',
+    policyStart
+  );
   const policy = migration.slice(policyStart, triggerStart);
   assert.doesNotMatch(policy, /cover_mask_url is not null/);
   assert.match(policy, /novelight_geometry_quad_valid/);
@@ -104,7 +127,10 @@ test('ADMIN Geometry Editor uses the exact shared engine for validation and real
 });
 
 test('reader cache fallback uses geometry-aware v2 data and the shared Perspective Engine', () => {
-  assert.match(migration, /create or replace function public\.novelight_thumbnail_compositions_v2/i);
+  assert.match(
+    migration,
+    /create or replace function public\.novelight_thumbnail_compositions_v2/i
+  );
   assert.match(runtime, /rpc\('novelight_thumbnail_compositions_v2'/);
   assert.match(runtime, /NovelightThumbnailComposer\?\.geometry/);
   assert.match(runtime, /geometry\.validateCoverQuad/);
@@ -121,8 +147,20 @@ test('generic quad engine is reusable for future spine/page/edge geometry withou
 });
 
 test('Chapter 40 rollback refuses lossy downgrade and removes v2-only database objects', () => {
-  assert.match(rollback, /rollback refused: Chapter 40 effect outside-cover policy is in use/i);
-  assert.match(rollback, /rollback refused: geometry-backed template has no Chapter 39 debug mask/i);
-  assert.match(rollback, /drop function if exists public\.novelight_thumbnail_compositions_v2/i);
-  assert.match(rollback, /drop function if exists public\.novelight_geometry_quad_valid/i);
+  assert.match(
+    rollback,
+    /rollback refused: Chapter 40 effect outside-cover policy is in use/i
+  );
+  assert.match(
+    rollback,
+    /rollback refused: geometry-backed template has no Chapter 39 debug mask/i
+  );
+  assert.match(
+    rollback,
+    /drop function if exists public\.novelight_thumbnail_compositions_v2/i
+  );
+  assert.match(
+    rollback,
+    /drop function if exists public\.novelight_geometry_quad_valid/i
+  );
 });
