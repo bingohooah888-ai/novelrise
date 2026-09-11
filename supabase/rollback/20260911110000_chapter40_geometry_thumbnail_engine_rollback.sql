@@ -114,7 +114,13 @@ $$;
 revoke all on function public.novelight_validate_thumbnail_composition_template()
   from public;
 
+drop function if exists public.novelight_thumbnail_compositions_v2(bigint[]);
+
 alter table public.novel_thumbnail_templates
   drop column if exists effect_allow_outside_cover;
+
+drop function if exists public.novelight_geometry_quad_valid(
+  integer, integer, integer, integer, integer, integer, integer, integer, integer, integer
+);
 
 commit;
