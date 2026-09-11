@@ -33,7 +33,7 @@ const signature =
 const fixedPattern = '^official/[0-9a-f-]{36}[.](webp|png|jpg|jpeg)$';
 const previousPattern = '^official/[0-9a-f-]{36}\\\\.(webp|png|jpg|jpeg)$';
 
-test('thumbnail asset registration hotfix keeps the RPC contract and fixes only the path matcher', () => {
+test('thumbnail registration RPC fixes official path matcher', () => {
   assert.ok(migration.includes(`create or replace function ${signature}`));
   assert.ok(migration.includes(`if v_path !~ '${fixedPattern}' then`));
   assert.ok(!migration.includes(`if v_path !~ '${previousPattern}' then`));
@@ -57,7 +57,7 @@ test('thumbnail asset registration hotfix keeps the RPC contract and fixes only 
   assert.ok(migration.includes(') to service_role;'));
 });
 
-test('canonical official asset paths are represented without backslash-sensitive escaping', () => {
+test('canonical official paths avoid backslash-sensitive escaping', () => {
   const canonicalPaths = [
     'official/6913be0a-e2c7-4ab6-8b93-653c165ac030.png',
     'official/00000000-0000-0000-0000-000000000000.webp',
@@ -86,7 +86,7 @@ test('canonical official asset paths are represented without backslash-sensitive
   );
 });
 
-test('rollback is explicit and preserves the same privilege boundary', () => {
+test('rollback preserves the same privilege boundary', () => {
   assert.ok(rollback.includes(`create or replace function ${signature}`));
   assert.ok(rollback.includes(`if v_path !~ '${previousPattern}' then`));
   assert.ok(rollback.includes('security definer'));
