@@ -4,6 +4,8 @@
   const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
   const STYLE_PATH = 'novelight-thumbnails.css';
+  const GEOMETRY_ENGINE_PATH = 'novelight-thumbnail-composer.js';
+  const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame'];
   const SUPPORTED_PAGES = new Set([
     'index',
     'search',
@@ -14,6 +16,7 @@
   ]);
   let client = null;
   let scheduled = false;
+  let geometryEnginePromise = null;
 
   function pageSlug() {
     const file = window.location.pathname.split('/').pop() || 'index.html';
@@ -60,14 +63,13 @@
     );
   }
 
-  function imageNode(url, className = '') {
+  function imageNode(url) {
     if (!url) return null;
     const image = document.createElement('img');
     image.src = url;
     image.alt = '';
     image.loading = 'lazy';
     image.decoding = 'async';
-    if (className) image.className = className;
     return image;
   }
 
@@ -76,44 +78,6 @@
     media.className = 'novelight-official-thumbnail';
     const image = imageNode(url);
     if (image) media.appendChild(image);
-    return media;
-  }
-
-  function layeredMediaNode(composition) {
-    if (!composition?.background_url || !composition?.base_book_url || !composition?.cover_url) {
-      return null;
-    }
-    const media = document.createElement('div');
-    media.className = 'novelight-official-thumbnail novelight-layered-thumbnail';
-
-    for (const [url, className] of [
-      [composition.background_url, 'novelight-layer-background'],
-      [composition.base_book_url, 'novelight-layer-book']
-    ]) {
-      const image = imageNode(url, className);
-      if (image) media.appendChild(image);
-    }
-
-    const coverGroup = document.createElement('div');
-    coverGroup.className = 'novelight-cover-layer-group';
-    if (composition.cover_mask_url) {
-      const mask = `url("${String(composition.cover_mask_url).replaceAll('"', '%22')}")`;
-      coverGroup.style.maskImage = mask;
-      coverGroup.style.webkitMaskImage = mask;
-    }
-    for (const [url, className] of [
-      [composition.cover_url, 'novelight-layer-cover'],
-      [composition.pattern_url, 'novelight-layer-pattern'],
-      [composition.symbol_url, 'novelight-layer-symbol'],
-      [composition.frame_url, 'novelight-layer-frame']
-    ]) {
-      const image = imageNode(url, className);
-      if (image) coverGroup.appendChild(image);
-    }
-    media.appendChild(coverGroup);
-
-    const effect = imageNode(composition.effect_url, 'novelight-layer-effect');
-    if (effect) media.appendChild(effect);
     return media;
   }
 
@@ -138,17 +102,140 @@
     return true;
   }
 
-  function applyComposition(link, composition) {
-    if (composition?.render_url) return applyCachedThumbnail(link, composition.render_url);
-    const media = layeredMediaNode(composition);
-    if (!media) return false;
-    insertMedia(link, media);
-    return true;
+  function loadGeometryEngine() {
+    if (window.NovelightThumbnailComposer?.geometry) {
+      return Promise.resolve(window.NovelightThumbnailComposer.geometry);
+    }
+    if (geometryEnginePromise) return geometryEnginePromise;
+    geometryEnginePromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-novelight-geometry-engine]');
+      const finish = () => {
+        const geometry = window.NovelightThumbnailComposer?.geometry;
+        if (geometry) resolve(geometry);
+        else reject(new Error('Geometry Thumbnail Engine is unavailable'));
+      };
+      if (existing) {
+        if (window.NovelightThumbnailComposer?.geometry) finish();
+        else {
+          existing.addEventListener('load', finish, { once: true });
+          existing.addEventListener(
+            'error',
+            () => reject(new Error('Geometry Thumbnail Engine could not be loaded')),
+            { once: true }
+          );
+        }
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = GEOMETRY_ENGINE_PATH;
+      script.async = true;
+      script.dataset.novelightGeometryEngine = '1';
+      script.addEventListener('load', finish, { once: true });
+      script.addEventListener(
+        'error',
+        () => reject(new Error('Geometry Thumbnail Engine could not be loaded')),
+        { once: true }
+      );
+      document.head.appendChild(script);
+    });
+    return geometryEnginePromise;
+  }
+
+  function loadImage(url) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.decoding = 'async';
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('Thumbnail material could not be loaded'));
+      image.src = url;
+    });
+  }
+
+  function compositionQuad(composition) {
+    return {
+      top_left: {
+        x: Number(composition.cover_top_left_x),
+        y: Number(composition.cover_top_left_y)
+      },
+      top_right: {
+        x: Number(composition.cover_top_right_x),
+        y: Number(composition.cover_top_right_y)
+      },
+      bottom_right: {
+        x: Number(composition.cover_bottom_right_x),
+        y: Number(composition.cover_bottom_right_y)
+      },
+      bottom_left: {
+        x: Number(composition.cover_bottom_left_x),
+        y: Number(composition.cover_bottom_left_y)
+      }
+    };
+  }
+
+  async function drawFull(context, url, width, height) {
+    if (!url) return;
+    const image = await loadImage(url);
+    context.drawImage(image, 0, 0, width, height);
+  }
+
+  async function renderGeometryFallback(composition) {
+    if (!composition?.background_url || !composition?.base_book_url || !composition?.cover_url) {
+      return null;
+    }
+    const width = Number(composition.canvas_width);
+    const height = Number(composition.canvas_height);
+    if (width !== 1086 || height !== 1448) return null;
+
+    const geometry = await loadGeometryEngine();
+    const quad = compositionQuad(composition);
+    const validation = geometry.validateCoverQuad(quad, width, height);
+    if (!validation.valid) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { alpha: true });
+    if (!context) return null;
+    context.clearRect(0, 0, width, height);
+
+    await drawFull(context, composition.background_url, width, height);
+    await drawFull(context, composition.base_book_url, width, height);
+    for (const type of SURFACE_TYPES) {
+      const url = composition[`${type}_url`];
+      if (!url) continue;
+      const image = await loadImage(url);
+      geometry.drawPerspectiveImage(context, image, validation.quad);
+    }
+
+    if (composition.effect_url) {
+      if (composition.effect_allow_outside_cover === true) {
+        await drawFull(context, composition.effect_url, width, height);
+      } else {
+        context.save();
+        geometry.clipToCoverQuad(context, validation.quad);
+        await drawFull(context, composition.effect_url, width, height);
+        context.restore();
+      }
+    }
+
+    return canvas.toDataURL('image/webp', 0.9);
+  }
+
+  async function applyComposition(links, composition) {
+    if (!links.length) return;
+    if (composition?.render_url) {
+      links.forEach((link) => applyCachedThumbnail(link, composition.render_url));
+      return;
+    }
+    const renderedUrl = await renderGeometryFallback(composition);
+    if (!renderedUrl) return;
+    links.forEach((link) => applyCachedThumbnail(link, renderedUrl));
   }
 
   async function loadCompositions(browserClient, ids) {
     if (!ids.length) return [];
-    const result = await browserClient.rpc('novelight_thumbnail_compositions', {
+    const result = await browserClient.rpc('novelight_thumbnail_compositions_v2', {
       p_novel_ids: ids
     });
     if (result.error) {
@@ -198,10 +285,16 @@
 
       if (!unresolved.length) return;
       const compositions = await loadCompositions(browserClient, unresolved);
-      for (const composition of compositions) {
-        const linksForNovel = byId.get(String(composition.novel_id)) ?? [];
-        linksForNovel.forEach((link) => applyComposition(link, composition));
-      }
+      await Promise.all(
+        compositions.map(async (composition) => {
+          const linksForNovel = byId.get(String(composition.novel_id)) ?? [];
+          try {
+            await applyComposition(linksForNovel, composition);
+          } catch (error) {
+            console.error('official thumbnail geometry fallback failed', error);
+          }
+        })
+      );
     } catch (error) {
       console.error('official thumbnail lookup failed', error);
     }

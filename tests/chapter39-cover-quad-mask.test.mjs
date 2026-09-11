@@ -75,7 +75,7 @@ test('cover quad validation keeps integer convex geometry inside 1086x1448', () 
   );
 });
 
-test('generated mask PNG is 1086x1448 and contains only binary alpha', () => {
+test('generated debug mask PNG is 1086x1448 and contains only binary alpha', () => {
   const png = generateCoverMaskPng({
     top_left: { x: 100, y: 200 },
     top_right: { x: 900, y: 200 },
@@ -87,7 +87,6 @@ test('generated mask PNG is 1086x1448 and contains only binary alpha', () => {
   assert.equal(decoded.height, 1448);
   assert.deepEqual(pixel(decoded, 500, 500), [255, 255, 255, 255]);
   assert.deepEqual(pixel(decoded, 20, 20), [0, 0, 0, 0]);
-
   const alphaValues = new Set();
   for (let y = 0; y < decoded.height; y += 1) {
     for (let x = 0; x < decoded.width; x += 1) {
@@ -100,7 +99,7 @@ test('generated mask PNG is 1086x1448 and contains only binary alpha', () => {
   );
 });
 
-test('migration stores the four vertices as canonical template data', () => {
+test('Chapter 39 migration stores the four vertices as canonical template data', () => {
   for (const column of [
     'cover_top_left_x',
     'cover_top_left_y',
@@ -110,9 +109,8 @@ test('migration stores the four vertices as canonical template data', () => {
     'cover_bottom_right_y',
     'cover_bottom_left_x',
     'cover_bottom_left_y'
-  ]) {
+  ])
     assert.ok(migration.includes(column), `missing ${column}`);
-  }
   assert.match(
     migration,
     /cover_mask_source text not null default 'legacy_asset'/i
@@ -128,37 +126,39 @@ test('migration stores the four vertices as canonical template data', () => {
   assert.match(migration, /render_url = null/i);
 });
 
-test('ADMIN generates derived PNG from quad and does not accept manual mask uploads', () => {
+test('ADMIN keeps derived PNG generation but does not accept manual mask uploads', () => {
   assert.ok(adminApi.includes('generateCoverMaskPng'));
   assert.ok(adminApi.includes("action === 'set-cover-quad'"));
   assert.ok(adminApi.includes("contentType: 'image/png'"));
   assert.ok(
     adminApi.includes('novelight_admin_set_thumbnail_template_cover_quad')
   );
-  assert.ok(admin.includes('4頂点を保存してmask生成'));
+  assert.ok(admin.includes('4頂点を保存してdebug mask生成'));
   assert.ok(admin.includes("quadCanvas.addEventListener('pointermove'"));
-  assert.ok(admin.includes('book-v1-cover-mask.png'));
+  assert.ok(admin.includes('debug mask PNGは描画には使用しません'));
   assert.doesNotMatch(
     admin,
     /<option value="cover_mask">内部表紙マスク<\/option>/
   );
 });
 
-test('composer clips cover texture, pattern, symbol and frame from quad while effect remains outside', () => {
-  assert.ok(composer.includes('clipToCoverQuad(surfaceContext, quad)'));
+test('Chapter 40 supersedes Chapter 39 mask rendering while preserving quad-derived debug masks', () => {
   assert.ok(
-    composer.includes('await drawCoverSurfaceLayers(surfaceContext, selected)')
+    composer.includes(
+      "const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']"
+    )
   );
   assert.ok(
     composer.includes(
-      "surfaceContext.globalCompositeOperation = 'destination-in'"
+      'await drawPerspectiveAsset(context, selected[type], quad)'
     )
   );
-  const drawSurface = composer.indexOf('context.drawImage(surface, 0, 0)');
-  const drawEffect = composer.indexOf(
-    'await drawAsset(context, selected.effect, CANVAS_WIDTH, CANVAS_HEIGHT)'
+  assert.doesNotMatch(
+    composer,
+    /globalCompositeOperation\s*=\s*['"]destination-in['"]/
   );
-  assert.ok(drawSurface >= 0 && drawEffect > drawSurface);
+  assert.ok(composer.includes("template.cover_mask_source !== 'cover_quad'"));
+  assert.ok(admin.includes('debug mask'));
 });
 
 test('rollback refuses to discard canonical quad geometry after adoption', () => {

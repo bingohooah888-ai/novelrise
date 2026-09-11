@@ -98,15 +98,21 @@ test('legacy complete thumbnails remain compatible during rolling deployment', (
   assert.ok(edit.includes('レイヤー合成サムネイルへ切り替える'));
 });
 
-test('cover mask is internal and enforced before a composition can be stored', () => {
+test('Chapter 40 supersedes the Chapter 39 mask render path while preserving internal debug masks', () => {
   assert.match(migration, /cover_mask_url text/i);
   assert.match(emergency, /cover_mask_url is not null/i);
   assert.match(emergency, /Thumbnail template is not composition-ready/);
   assert.ok(
     composer.includes(
-      "surfaceContext.globalCompositeOperation = 'destination-in'"
+      "const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']"
     )
   );
+  assert.ok(
+    composer.includes(
+      'for (const type of SURFACE_TYPES) await drawPerspectiveAsset(context, selected[type], quad)'
+    )
+  );
+  assert.ok(!composer.includes("globalCompositeOperation = 'destination-in'"));
   assert.ok(!composer.includes('LABELS = Object.freeze({\n    cover_mask'));
 });
 
@@ -158,13 +164,17 @@ test('author pages use layered composer while retaining safe fallback', () => {
   assert.ok(edit.includes('composerController?.isDirty()'));
 });
 
-test('reader cards prefer one cached image and can rebuild missing cache from official layers', () => {
+test('reader cards prefer cached WebP and rebuild missing cache through the shared Geometry Engine', () => {
   assert.ok(publicRuntime.includes(".select('id,thumbnail_url')"));
-  assert.ok(publicRuntime.includes('novelight_thumbnail_compositions'));
-  assert.ok(publicRuntime.includes('novelight-cover-layer-group'));
   assert.ok(
-    publicRuntime.includes("!link.querySelector('.novel-cover-image')")
+    publicRuntime.includes("rpc('novelight_thumbnail_compositions_v2'")
   );
+  assert.ok(publicRuntime.includes('NovelightThumbnailComposer?.geometry'));
+  assert.ok(publicRuntime.includes('geometry.drawPerspectiveImage'));
+  assert.ok(
+    publicRuntime.includes('composition.effect_allow_outside_cover === true')
+  );
+  assert.ok(!publicRuntime.includes('cover_mask_url'));
   assert.match(publicCss, /aspect-ratio:\s*3\s*\/\s*4/i);
   assert.match(composerCss, /aspect-ratio:3\/4/i);
 });
