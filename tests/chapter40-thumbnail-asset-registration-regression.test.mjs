@@ -8,11 +8,11 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const migrationPath = path.join(
   root,
-  'supabase/migrations/20260911123000_fix_thumbnail_asset_registration_path.sql'
+  'supabase/migrations/20260911123000_fix_thumbnail_asset_registration_path.sql',
 );
 const rollbackPath = path.join(
   root,
-  'supabase/rollback/20260911123000_fix_thumbnail_asset_registration_path_rollback.sql'
+  'supabase/rollback/20260911123000_fix_thumbnail_asset_registration_path_rollback.sql',
 );
 
 const migration = fs.readFileSync(migrationPath, 'utf8');
@@ -45,14 +45,14 @@ test('thumbnail registration RPC fixes official path matcher', () => {
 
   assert.ok(
     migration.includes(
-      'revoke all on function public.novelight_admin_register_thumbnail_layer_asset('
-    )
+      'revoke all on function public.novelight_admin_register_thumbnail_layer_asset(',
+    ),
   );
   assert.ok(migration.includes(') from public, anon, authenticated;'));
   assert.ok(
     migration.includes(
-      'grant execute on function public.novelight_admin_register_thumbnail_layer_asset('
-    )
+      'grant execute on function public.novelight_admin_register_thumbnail_layer_asset(',
+    ),
   );
   assert.ok(migration.includes(') to service_role;'));
 });
@@ -62,13 +62,13 @@ test('canonical official paths avoid backslash-sensitive escaping', () => {
     'official/6913be0a-e2c7-4ab6-8b93-653c165ac030.png',
     'official/00000000-0000-0000-0000-000000000000.webp',
     'official/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jpg',
-    'official/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jpeg'
+    'official/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jpeg',
   ];
   const invalidPaths = [
     'official/not-a-uuid.png',
     'generated-masks/book-v1/mask.png',
     'official/6913be0a-e2c7-4ab6-8b93-653c165ac030.png.exe',
-    '../official/6913be0a-e2c7-4ab6-8b93-653c165ac030.png'
+    '../official/6913be0a-e2c7-4ab6-8b93-653c165ac030.png',
   ];
 
   const equivalentMatcher = /^official\/[0-9a-f-]{36}[.](webp|png|jpg|jpeg)$/;
@@ -81,8 +81,8 @@ test('canonical official paths avoid backslash-sensitive escaping', () => {
 
   assert.ok(
     migration.includes(
-      "'official/00000000-0000-0000-0000-000000000000.png'"
-    )
+      "'official/00000000-0000-0000-0000-000000000000.png'",
+    ),
   );
 });
 
