@@ -12,6 +12,45 @@
       --beta-hero-bg-mobile: url('assets/NOVELIGHT_MOBILE_HERO_FINAL_900x1600.png');
       --beta-noctar-image: url('assets/NOVELIGHT_NOCTURNE_FINAL_800x1000.png');
     }
+
+    .hero h1,
+    .hero h1 span {
+      color: #f5ead0;
+    }
+
+    .hero-copy {
+      font-size: 20px;
+      line-height: 1.8;
+    }
+
+    .release {
+      font-size: 20px;
+    }
+
+    .noctar-layer {
+      background-size: 108% auto;
+    }
+
+    @media (max-width: 900px) {
+      .hero-copy {
+        font-size: 18px;
+      }
+
+      .release {
+        font-size: 18px;
+      }
+
+      .noctar-layer {
+        background-size: 110% auto;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .hero-copy,
+      .release {
+        font-size: 17px;
+      }
+    }
   </style>
 </head>
 <body data-novelight-theme="standalone">
