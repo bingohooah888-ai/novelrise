@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { requireAdmin } from './admin-auth.js';
+import { generateCoverMaskPng, normalizeCoverQuad } from './cover-mask-png.js';
 
 const BUCKET = 'novel-thumbnails';
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -9,17 +10,20 @@ const CONTENT_TYPES = new Map([
   ['image/jpeg', 'jpg']
 ]);
 const PATH_PATTERN = /^official\/([0-9a-f-]{36})\.(webp|png|jpg|jpeg)$/i;
-const LAYER_TYPES = new Set([
+const UPLOAD_LAYER_TYPES = new Set([
   'background',
   'base_book',
   'cover',
   'pattern',
   'symbol',
   'frame',
-  'effect',
-  'cover_mask'
+  'effect'
 ]);
 const STATUSES = new Set(['active', 'retired', 'emergency_disabled']);
+const TEMPLATE_FIELDS =
+  'id,template_key,label,canvas_width,canvas_height,cover_mask_storage_path,cover_mask_url,cover_mask_source,cover_mask_revision,cover_top_left_x,cover_top_left_y,cover_top_right_x,cover_top_right_y,cover_bottom_right_x,cover_bottom_right_y,cover_bottom_left_x,cover_bottom_left_y,availability_status,created_at,updated_at';
+const LEGACY_TEMPLATE_FIELDS =
+  'id,template_key,label,canvas_width,canvas_height,cover_mask_storage_path,cover_mask_url,availability_status,created_at,updated_at';
 
 function bodyObject(req) {
   return req.body && typeof req.body === 'object' ? req.body : {};
@@ -42,28 +46,57 @@ function normalizeSortOrder(value) {
     : null;
 }
 
+function schemaUnavailable(error) {
+  return ['42P01', '42703', '42883'].includes(error?.code);
+}
+
+function rawCoverQuad(body) {
+  return {
+    top_left: { x: body.topLeftX, y: body.topLeftY },
+    top_right: { x: body.topRightX, y: body.topRightY },
+    bottom_right: { x: body.bottomRightX, y: body.bottomRightY },
+    bottom_left: { x: body.bottomLeftX, y: body.bottomLeftY }
+  };
+}
+
 async function listLegacyAssets(supabase) {
   const { data, error } = await supabase
     .from('novel_thumbnail_assets')
     .select('id,label,storage_path,image_url,is_active,created_at')
     .order('created_at', { ascending: false });
   if (error) throw new Error(`Thumbnail list failed: ${error.message}`);
-  return { composerReady: false, templates: [], assets: data ?? [] };
+  return {
+    composerReady: false,
+    coverQuadReady: false,
+    templates: [],
+    assets: data ?? []
+  };
+}
+
+async function listTemplates(supabase) {
+  let result = await supabase
+    .from('novel_thumbnail_templates')
+    .select(TEMPLATE_FIELDS)
+    .order('created_at', { ascending: true });
+  if (result.error?.code === '42703') {
+    result = await supabase
+      .from('novel_thumbnail_templates')
+      .select(LEGACY_TEMPLATE_FIELDS)
+      .order('created_at', { ascending: true });
+    if (!result.error)
+      return { data: result.data ?? [], coverQuadReady: false };
+  }
+  if (result.error) throw result.error;
+  return { data: result.data ?? [], coverQuadReady: true };
 }
 
 async function listLibrary(supabase) {
-  const { data: templates, error: templateError } = await supabase
-    .from('novel_thumbnail_templates')
-    .select(
-      'id,template_key,label,canvas_width,canvas_height,cover_mask_url,availability_status,created_at,updated_at'
-    )
-    .order('created_at', { ascending: true });
-
-  if (templateError) {
-    if (templateError.code === '42P01' || templateError.code === '42703') {
-      return listLegacyAssets(supabase);
-    }
-    throw new Error(`Thumbnail template list failed: ${templateError.message}`);
+  let templateResult;
+  try {
+    templateResult = await listTemplates(supabase);
+  } catch (error) {
+    if (schemaUnavailable(error)) return listLegacyAssets(supabase);
+    throw new Error(`Thumbnail template list failed: ${error.message}`);
   }
 
   const { data: assets, error: assetError } = await supabase
@@ -73,13 +106,13 @@ async function listLibrary(supabase) {
     )
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
-  if (assetError) {
+  if (assetError)
     throw new Error(`Thumbnail list failed: ${assetError.message}`);
-  }
 
   return {
     composerReady: true,
-    templates: templates ?? [],
+    coverQuadReady: templateResult.coverQuadReady,
+    templates: templateResult.data,
     assets: assets ?? []
   };
 }
@@ -103,12 +136,8 @@ async function prepareUpload({ supabase, body }) {
     .createSignedUploadUrl(path);
   if (error || !data?.token) {
     console.error('Signed thumbnail upload creation failed', error);
-    return {
-      status: 503,
-      payload: { error: 'Upload could not be prepared' }
-    };
+    return { status: 503, payload: { error: 'Upload could not be prepared' } };
   }
-
   return {
     status: 200,
     payload: { path, token: data.token, maxFileSize: MAX_FILE_SIZE }
@@ -122,9 +151,8 @@ async function verifyStoredObject(supabase, path) {
     limit: 20,
     search: fileName
   });
-  if (error) {
+  if (error)
     throw new Error(`Thumbnail storage verification failed: ${error.message}`);
-  }
   return (data ?? []).some((entry) => entry.name === fileName);
 }
 
@@ -163,10 +191,7 @@ async function finalizeUpload({ supabase, adminUser, body }) {
   const label = normalizeLabel(body.label);
   const path = String(body.path ?? '').trim();
   if (!label || !PATH_PATTERN.test(path)) {
-    return {
-      status: 400,
-      payload: { error: 'Invalid thumbnail metadata' }
-    };
+    return { status: 400, payload: { error: 'Invalid thumbnail metadata' } };
   }
   if (!(await verifyStoredObject(supabase, path))) {
     return {
@@ -183,20 +208,14 @@ async function finalizeUpload({ supabase, adminUser, body }) {
 
   const layerType = String(body.layerType ?? '').trim();
   if (!layerType) {
-    return finalizeLegacyUpload({
-      supabase,
-      adminUser,
-      label,
-      path,
-      imageUrl
-    });
+    return finalizeLegacyUpload({ supabase, adminUser, label, path, imageUrl });
   }
 
   const templateKey = normalizeTemplateKey(body.templateKey);
   const sortOrder = normalizeSortOrder(body.sortOrder ?? 1000);
   const assetStatus = String(body.status ?? 'active').trim();
   if (
-    !LAYER_TYPES.has(layerType) ||
+    !UPLOAD_LAYER_TYPES.has(layerType) ||
     !templateKey ||
     sortOrder === null ||
     !STATUSES.has(assetStatus)
@@ -221,11 +240,7 @@ async function finalizeUpload({ supabase, adminUser, body }) {
     }
   );
   if (error) {
-    if (
-      error.code === '42883' ||
-      error.code === '42P01' ||
-      error.code === '42703'
-    ) {
+    if (schemaUnavailable(error)) {
       return {
         status: 503,
         payload: { error: 'Thumbnail composer schema is not ready' }
@@ -254,7 +269,6 @@ async function setAssetStatus({ supabase, adminUser, body }) {
       payload: { error: 'Invalid thumbnail status request' }
     };
   }
-
   const { data, error } = await supabase.rpc(
     'novelight_admin_set_thumbnail_asset_status',
     {
@@ -264,11 +278,7 @@ async function setAssetStatus({ supabase, adminUser, body }) {
     }
   );
   if (error) {
-    if (
-      error.code === '42883' ||
-      error.code === '42P01' ||
-      error.code === '42703'
-    ) {
+    if (schemaUnavailable(error)) {
       return {
         status: 503,
         payload: { error: 'Thumbnail composer schema is not ready' }
@@ -279,6 +289,110 @@ async function setAssetStatus({ supabase, adminUser, body }) {
   return {
     status: 200,
     payload: { asset: Array.isArray(data) ? data[0] : data }
+  };
+}
+
+async function setTemplateCoverQuad({ supabase, adminUser, body }) {
+  const templateKey = normalizeTemplateKey(body.templateKey);
+  if (!templateKey)
+    return { status: 400, payload: { error: 'Invalid template key' } };
+
+  const { data: template, error: templateError } = await supabase
+    .from('novel_thumbnail_templates')
+    .select('template_key,canvas_width,canvas_height')
+    .eq('template_key', templateKey)
+    .maybeSingle();
+  if (templateError) {
+    if (schemaUnavailable(templateError)) {
+      return {
+        status: 503,
+        payload: { error: 'Cover quad schema is not ready' }
+      };
+    }
+    throw new Error(
+      `Thumbnail template lookup failed: ${templateError.message}`
+    );
+  }
+  if (!template)
+    return { status: 404, payload: { error: 'Thumbnail template not found' } };
+
+  let quad;
+  try {
+    quad = normalizeCoverQuad(
+      rawCoverQuad(body),
+      template.canvas_width,
+      template.canvas_height
+    );
+  } catch (error) {
+    return { status: 400, payload: { error: error.message } };
+  }
+
+  const revision = randomUUID();
+  const fileName = `${templateKey}-cover-mask.png`;
+  const path = `generated-masks/${templateKey}/${revision}/${fileName}`;
+  const png = generateCoverMaskPng(
+    quad,
+    template.canvas_width,
+    template.canvas_height
+  );
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, png, {
+      contentType: 'image/png',
+      cacheControl: '31536000',
+      upsert: false
+    });
+  if (uploadError)
+    throw new Error(`Cover mask upload failed: ${uploadError.message}`);
+
+  const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  const maskUrl = publicData?.publicUrl;
+  if (!maskUrl || !maskUrl.startsWith('https://')) {
+    await supabase.storage.from(BUCKET).remove([path]);
+    throw new Error('Cover mask public URL could not be resolved');
+  }
+
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_set_thumbnail_template_cover_quad',
+    {
+      p_admin_user_id: adminUser.id,
+      p_template_key: templateKey,
+      p_top_left_x: quad.top_left.x,
+      p_top_left_y: quad.top_left.y,
+      p_top_right_x: quad.top_right.x,
+      p_top_right_y: quad.top_right.y,
+      p_bottom_right_x: quad.bottom_right.x,
+      p_bottom_right_y: quad.bottom_right.y,
+      p_bottom_left_x: quad.bottom_left.x,
+      p_bottom_left_y: quad.bottom_left.y,
+      p_mask_revision: revision,
+      p_mask_storage_path: path,
+      p_mask_url: maskUrl
+    }
+  );
+  if (error) {
+    await supabase.storage.from(BUCKET).remove([path]);
+    if (schemaUnavailable(error)) {
+      return {
+        status: 503,
+        payload: { error: 'Cover quad schema is not ready' }
+      };
+    }
+    throw new Error(`Cover quad update failed: ${error.message}`);
+  }
+
+  return {
+    status: 200,
+    payload: {
+      template: data,
+      mask: {
+        fileName,
+        path,
+        url: maskUrl,
+        width: template.canvas_width,
+        height: template.canvas_height
+      }
+    }
   };
 }
 
@@ -307,6 +421,8 @@ export function createAdminThumbnailsHandler({ supabase, env = process.env }) {
         result = await finalizeUpload({ supabase, adminUser, body });
       } else if (action === 'set-status') {
         result = await setAssetStatus({ supabase, adminUser, body });
+      } else if (action === 'set-cover-quad') {
+        result = await setTemplateCoverQuad({ supabase, adminUser, body });
       } else {
         result = { status: 400, payload: { error: 'Invalid action' } };
       }
