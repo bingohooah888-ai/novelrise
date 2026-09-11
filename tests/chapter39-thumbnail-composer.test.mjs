@@ -98,15 +98,19 @@ test('legacy complete thumbnails remain compatible during rolling deployment', (
   assert.ok(edit.includes('レイヤー合成サムネイルへ切り替える'));
 });
 
-test('cover mask is internal and enforced before a composition can be stored', () => {
+test('Chapter 40 supersedes the Chapter 39 mask render path while preserving internal debug masks', () => {
   assert.match(migration, /cover_mask_url text/i);
   assert.match(emergency, /cover_mask_url is not null/i);
   assert.match(emergency, /Thumbnail template is not composition-ready/);
   assert.ok(
+    composer.includes("const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']")
+  );
+  assert.ok(
     composer.includes(
-      "surfaceContext.globalCompositeOperation = 'destination-in'"
+      'for (const type of SURFACE_TYPES) await drawPerspectiveAsset(context, selected[type], quad)'
     )
   );
+  assert.ok(!composer.includes("globalCompositeOperation = 'destination-in'"));
   assert.ok(!composer.includes('LABELS = Object.freeze({\n    cover_mask'));
 });
 
