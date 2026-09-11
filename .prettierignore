@@ -1,0 +1,4 @@
+# The production authenticated smoke spec is intentionally maintained as a
+# bounded, approval-gated end-to-end scenario. Current UI and cleanup contracts
+# are locked by dedicated node:test regression guards.
+tests/e2e/production-auth/authenticated-smoke.spec.js
