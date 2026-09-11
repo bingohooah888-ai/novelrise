@@ -116,6 +116,10 @@ revoke all on function public.novelight_validate_thumbnail_composition_template(
 
 drop function if exists public.novelight_thumbnail_compositions_v2(bigint[]);
 
+drop trigger if exists novelight_invalidate_thumbnail_effect_policy_cache
+  on public.novel_thumbnail_templates;
+drop function if exists public.novelight_invalidate_thumbnail_effect_policy_cache();
+
 alter table public.novel_thumbnail_templates
   drop column if exists effect_allow_outside_cover;
 
