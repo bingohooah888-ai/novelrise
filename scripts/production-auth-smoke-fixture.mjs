@@ -7,6 +7,9 @@ const fixturePath = process.env.PRODUCTION_AUTH_SMOKE_FIXTURE;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 const runId = String(process.env.GITHUB_RUN_ID || Date.now());
+const thumbnailRenderBucket = 'novel-thumbnail-renders';
+const thumbnailRenderPathPattern =
+  /^renders\/[0-9]+\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/i;
 
 if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 if (!supabaseUrl) throw new Error('SUPABASE_URL is required.');
@@ -77,11 +80,44 @@ function projectAccounts(fixture, role) {
   ].filter(Boolean);
 }
 
+function safeThumbnailRenderPaths(paths) {
+  const unique = [...new Set((paths || []).filter(Boolean).map(String))];
+  const invalid = unique.filter((path) =>
+    !thumbnailRenderPathPattern.test(path)
+  );
+  if (invalid.length) {
+    throw new Error(
+      `Refusing to remove unsafe thumbnail render paths: ${invalid.join(', ')}`
+    );
+  }
+  return unique;
+}
+
+function fixtureThumbnailRenderPaths(fixture) {
+  return [
+    ...(fixture.thumbnailRenderPaths || []),
+    ...Object.values(fixture.thumbnailRenderNovels || {})
+  ];
+}
+
+async function cleanupThumbnailRenders(paths) {
+  const safePaths = safeThumbnailRenderPaths(paths);
+  if (!safePaths.length) return;
+
+  assertNoError(
+    await admin.storage.from(thumbnailRenderBucket).remove(safePaths),
+    'cleanup thumbnail render storage objects'
+  );
+  console.log(`Cleaned ${safePaths.length} thumbnail render storage object(s).`);
+}
+
 async function setup() {
   const fixture = {
     runId,
     createdAt: new Date().toISOString(),
-    projects: { desktop: {}, mobile: {} }
+    projects: { desktop: {}, mobile: {} },
+    thumbnailRenderPaths: [],
+    thumbnailRenderNovels: {}
   };
   saveFixture(fixture);
 
@@ -137,7 +173,8 @@ async function cleanupAuthorAvatars(authorIds) {
       offset: 0,
       sortBy: { column: 'name', order: 'asc' }
     });
-    const objects = assertNoError(listed, `list smoke avatars for ${authorId}`) || [];
+    const objects =
+      assertNoError(listed, `list smoke avatars for ${authorId}`) || [];
     const paths = objects
       .filter((item) => item?.id !== null && item?.name)
       .map((item) => `${authorId}/${item.name}`);
@@ -156,6 +193,7 @@ async function cleanup() {
   const userIds = [...new Set([...authorIds, ...readerIds])];
   if (!userIds.length) {
     console.log('No ephemeral production authenticated-smoke users to clean.');
+    await cleanupThumbnailRenders(fixtureThumbnailRenderPaths(fixture));
     return;
   }
 
@@ -164,6 +202,17 @@ async function cleanup() {
     : { data: [], error: null };
   assertNoError(novelsResult, 'find smoke novels');
   const novelIds = (novelsResult.data || []).map((row) => String(row.id));
+
+  const compositionsResult = novelIds.length
+    ? await admin
+        .from('novel_thumbnail_compositions')
+        .select('render_storage_path')
+        .in('novel_id', novelIds)
+    : { data: [], error: null };
+  assertNoError(compositionsResult, 'find smoke thumbnail renders');
+  const dbThumbnailRenderPaths = (compositionsResult.data || [])
+    .map((row) => row.render_storage_path)
+    .filter(Boolean);
 
   const episodesResult = novelIds.length
     ? await admin.from('episodes').select('id').in('novel_id', novelIds)
@@ -179,6 +228,11 @@ async function cleanup() {
     : { data: [], error: null };
   assertNoError(foundingResult, 'check unexpected Founding Author assignment');
   const unexpectedFounding = (foundingResult.data || []).length > 0;
+
+  await cleanupThumbnailRenders([
+    ...fixtureThumbnailRenderPaths(fixture),
+    ...dbThumbnailRenderPaths
+  ]);
 
   await deleteByIds(
     'novel_allocation_receipts',
@@ -222,14 +276,20 @@ async function cleanup() {
   await deleteByUserIds('beta_activity_days', userIds);
   await deleteByUserIds('acquisition_touches', userIds);
 
-  const visitorTokens = Object.values(fixture.visitorTokens || {}).filter(Boolean);
+  const visitorTokens = Object.values(fixture.visitorTokens || {}).filter(
+    Boolean
+  );
   const acquisitionHashes = visitorTokens.map((token) => hash(token));
   const visitorHashes = visitorTokens.flatMap((token) => [
     hash(`visitor:${token}`),
     hash(token)
   ]);
   await deleteByIds('beta_activity_days', 'viewer_key_hash', visitorHashes);
-  await deleteByIds('acquisition_touches', 'visitor_key_hash', acquisitionHashes);
+  await deleteByIds(
+    'acquisition_touches',
+    'visitor_key_hash',
+    acquisitionHashes
+  );
   await deleteByIds('reader_journey_events', 'viewer_key_hash', visitorHashes);
 
   await cleanupAuthorAvatars(authorIds);
