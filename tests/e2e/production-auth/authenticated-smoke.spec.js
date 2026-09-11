@@ -267,7 +267,7 @@ function waitForExposureConversion(page, eventType) {
       return false;
     }
     const body = response.request().postData();
-    return body?.includes(`\"${eventType}\"`) ?? false;
+    return body?.includes(`"${eventType}"`) ?? false;
   });
 }
 
@@ -280,18 +280,20 @@ function waitForThumbnailRenderAction(page, action) {
       return false;
     }
     const body = response.request().postData();
-    return body?.includes(`\"action\":\"${action}\"`) ?? false;
+    return body?.includes(`"action":"${action}"`) ?? false;
   });
 }
 
 async function assertChapter40ComposerReady(page) {
-  const composer = page.locator('#thumbnailComposer.novelight-thumbnail-composer');
+  const composer = page.locator(
+    '#thumbnailComposer.novelight-thumbnail-composer'
+  );
   await expect(composer).toBeVisible();
   await expect(page.locator('#legacyThumbnailArea')).toBeHidden();
 
   for (const layerType of ['background', 'base_book', 'cover']) {
     const selected = composer.locator(
-      `.nl-thumb-option[data-layer-type=\"${layerType}\"][aria-pressed=\"true\"]`
+      `.nl-thumb-option[data-layer-type="${layerType}"][aria-pressed="true"]`
     );
     await expect(selected).toHaveCount(1);
     await expect(selected).toHaveAttribute('data-asset-id', /.+/);
@@ -341,6 +343,7 @@ async function assertChapter40RenderPersisted(
   expect(composition.cover_asset_id).toBeTruthy();
   expect(composition.revision).toMatch(receiptPattern);
   expect(expectedRenderStoragePath).toMatch(renderStoragePathPattern);
+  expect(expectedRenderStoragePath).toContain(`renders/${novelId}/`);
   expect(composition.render_url).toBe(expectedRenderUrl);
   expect(composition.render_url).toContain(
     '/storage/v1/object/public/novel-thumbnail-renders/'
