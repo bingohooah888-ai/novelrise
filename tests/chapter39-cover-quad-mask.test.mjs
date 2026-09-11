@@ -93,7 +93,10 @@ test('generated debug mask PNG is 1086x1448 and contains only binary alpha', () 
       alphaValues.add(decoded.raw[y * decoded.stride + 1 + x * 4 + 3]);
     }
   }
-  assert.deepEqual([...alphaValues].sort((a, b) => a - b), [0, 255]);
+  assert.deepEqual(
+    [...alphaValues].sort((a, b) => a - b),
+    [0, 255]
+  );
 });
 
 test('Chapter 39 migration stores the four vertices as canonical template data', () => {
@@ -141,7 +144,9 @@ test('ADMIN keeps derived PNG generation but does not accept manual mask uploads
 
 test('Chapter 40 supersedes Chapter 39 mask rendering while preserving quad-derived debug masks', () => {
   assert.ok(
-    composer.includes("const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']")
+    composer.includes(
+      "const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']"
+    )
   );
   assert.ok(
     composer.includes(
