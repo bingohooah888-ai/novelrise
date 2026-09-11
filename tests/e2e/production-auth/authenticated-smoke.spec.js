@@ -267,26 +267,28 @@ function waitForExposureConversion(page, eventType) {
       return false;
     }
     const body = response.request().postData();
-    return body?.includes(`"${eventType}"`) ?? false;
-  });
-}
-
-function waitForThumbnailRenderAction(page, action) {
-  return page.waitForResponse((response) => {
-    if (
-      !response.url().includes(thumbnailRenderApiPath) ||
-      response.request().method() !== 'POST'
-    ) {
-      return false;
-    }
-    const body = response.request().postData();
-    return body?.includes(`"action":"${action}"`) ?? false;
+    return body?.includes(`\"${eventType}\"`) ?? false;
   });
 }
 
 async function waitForThumbnailRenderResult(page, action) {
-  const response = await waitForThumbnailRenderAction(page, action);
-  const body = await response.json();
+  let body;
+  const response = await page.waitForResponse(async (candidate) => {
+    if (
+      !candidate.url().includes(thumbnailRenderApiPath) ||
+      candidate.request().method() !== 'POST'
+    ) {
+      return false;
+    }
+
+    const requestBody = candidate.request().postData();
+    if (!(requestBody?.includes(`\"action\":\"${action}\"`) ?? false)) {
+      return false;
+    }
+
+    body = await candidate.json();
+    return true;
+  });
   return { body, response };
 }
 
@@ -299,14 +301,14 @@ async function assertChapter40ComposerReady(page) {
 
   for (const layerType of ['background', 'base_book', 'cover']) {
     const selected = composer.locator(
-      `.nl-thumb-option[data-layer-type="${layerType}"][aria-pressed="true"]`
+      `.nl-thumb-option[data-layer-type=\"${layerType}\"][aria-pressed=\"true\"]`
     );
     await expect(selected).toHaveCount(1);
     await expect(selected).toHaveAttribute('data-asset-id', /.+/);
   }
 
   await expect(
-    composer.locator('canvas[aria-label="作品サムネイルのプレビュー"]')
+    composer.locator('canvas[aria-label=\"作品サムネイルのプレビュー\"]')
   ).toBeVisible();
   await expect(composer.locator('.nl-thumb-preview-status')).toHaveText(
     'プレビュー',
@@ -597,7 +599,6 @@ test('authenticated beta-critical product flow works in target', async ({
       );
       saveVisitorToken(`reader-${deviceLabel}`, readerVisitorToken);
       await recordDiscoveryImpression(readerPage, novelId, novelTitle);
-
       const detailConversion = waitForExposureConversion(
         readerPage,
         'detail_open'
@@ -635,7 +636,7 @@ test('authenticated beta-critical product flow works in target', async ({
 
     await test.step('Send BRONZE LIGHT SEED', async () => {
       const seedButton = readerPage.locator(
-        '.seed-choice[data-seed-type="BRONZE"]'
+        '.seed-choice[data-seed-type=\"BRONZE\"]'
       );
       await expect(seedButton).toBeVisible();
       await expect(seedButton).toBeEnabled();
