@@ -103,7 +103,9 @@ test('Chapter 40 supersedes the Chapter 39 mask render path while preserving int
   assert.match(emergency, /cover_mask_url is not null/i);
   assert.match(emergency, /Thumbnail template is not composition-ready/);
   assert.ok(
-    composer.includes("const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']")
+    composer.includes(
+      "const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']"
+    )
   );
   assert.ok(
     composer.includes(
@@ -117,7 +119,10 @@ test('Chapter 40 supersedes the Chapter 39 mask render path while preserving int
 test('cached render is derived WebP and source layer IDs remain canonical', () => {
   assert.match(migration, /novel-thumbnail-renders/i);
   assert.match(migration, /array\['image\/webp'\]/i);
-  assert.match(compat, /\^renders\/\[0-9\]\+\/\[0-9a-f-\]\{36\}\\\.webp\$/i);
+  assert.match(
+    compat,
+    /\^renders\/\[0-9\]\+\/\[0-9a-f-\]\{36\}\\\.webp\$/i
+  );
   assert.ok(composer.includes('canvas.toBlob('));
   assert.ok(composer.includes("'image/webp'"));
   assert.ok(
@@ -164,10 +169,14 @@ test('author pages use layered composer while retaining safe fallback', () => {
 
 test('reader cards prefer cached WebP and rebuild missing cache through the shared Geometry Engine', () => {
   assert.ok(publicRuntime.includes(".select('id,thumbnail_url')"));
-  assert.ok(publicRuntime.includes("rpc('novelight_thumbnail_compositions_v2'"));
+  assert.ok(
+    publicRuntime.includes("rpc('novelight_thumbnail_compositions_v2'")
+  );
   assert.ok(publicRuntime.includes('NovelightThumbnailComposer?.geometry'));
   assert.ok(publicRuntime.includes('geometry.drawPerspectiveImage'));
-  assert.ok(publicRuntime.includes('composition.effect_allow_outside_cover === true'));
+  assert.ok(
+    publicRuntime.includes('composition.effect_allow_outside_cover === true')
+  );
   assert.ok(!publicRuntime.includes('cover_mask_url'));
   assert.match(publicCss, /aspect-ratio:\s*3\s*\/\s*4/i);
   assert.match(composerCss, /aspect-ratio:3\/4/i);
