@@ -106,12 +106,19 @@ test('Chapter 39 migration stores the four vertices as canonical template data',
     'cover_bottom_right_y',
     'cover_bottom_left_x',
     'cover_bottom_left_y'
-  ]) assert.ok(migration.includes(column), `missing ${column}`);
-  assert.match(migration, /cover_mask_source text not null default 'legacy_asset'/i);
+  ])
+    assert.ok(migration.includes(column), `missing ${column}`);
+  assert.match(
+    migration,
+    /cover_mask_source text not null default 'legacy_asset'/i
+  );
   assert.match(migration, /cover_mask_source = 'cover_quad'/i);
   assert.ok(migration.includes("'generated-masks/'"));
   assert.ok(migration.includes("'-cover-mask.png'"));
-  assert.match(migration, /template_key <> 'book-v1'\s+or cover_mask_source = 'cover_quad'/i);
+  assert.match(
+    migration,
+    /template_key <> 'book-v1'\s+or cover_mask_source = 'cover_quad'/i
+  );
   assert.match(migration, /render_storage_path = null/i);
   assert.match(migration, /render_url = null/i);
 });
@@ -120,22 +127,39 @@ test('ADMIN keeps derived PNG generation but does not accept manual mask uploads
   assert.ok(adminApi.includes('generateCoverMaskPng'));
   assert.ok(adminApi.includes("action === 'set-cover-quad'"));
   assert.ok(adminApi.includes("contentType: 'image/png'"));
-  assert.ok(adminApi.includes('novelight_admin_set_thumbnail_template_cover_quad'));
+  assert.ok(
+    adminApi.includes('novelight_admin_set_thumbnail_template_cover_quad')
+  );
   assert.ok(admin.includes('4頂点を保存してdebug mask生成'));
   assert.ok(admin.includes("quadCanvas.addEventListener('pointermove'"));
   assert.ok(admin.includes('debug mask PNGは描画には使用しません'));
-  assert.doesNotMatch(admin, /<option value="cover_mask">内部表紙マスク<\/option>/);
+  assert.doesNotMatch(
+    admin,
+    /<option value="cover_mask">内部表紙マスク<\/option>/
+  );
 });
 
 test('Chapter 40 supersedes Chapter 39 mask rendering while preserving quad-derived debug masks', () => {
-  assert.ok(composer.includes("const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']"));
-  assert.ok(composer.includes('await drawPerspectiveAsset(context, selected[type], quad)'));
-  assert.doesNotMatch(composer, /globalCompositeOperation\s*=\s*['"]destination-in['"]/);
+  assert.ok(
+    composer.includes("const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']")
+  );
+  assert.ok(
+    composer.includes(
+      'await drawPerspectiveAsset(context, selected[type], quad)'
+    )
+  );
+  assert.doesNotMatch(
+    composer,
+    /globalCompositeOperation\s*=\s*['"]destination-in['"]/
+  );
   assert.ok(composer.includes("template.cover_mask_source !== 'cover_quad'"));
   assert.ok(admin.includes('debug mask'));
 });
 
 test('rollback refuses to discard canonical quad geometry after adoption', () => {
-  assert.match(rollback, /rollback refused: quad-backed thumbnail templates exist/i);
+  assert.match(
+    rollback,
+    /rollback refused: quad-backed thumbnail templates exist/i
+  );
   assert.match(rollback, /drop column if exists cover_top_left_x/i);
 });
