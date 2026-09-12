@@ -74,11 +74,17 @@ test('author forms recover from async failures and prevent duplicate submits', (
   assert.match(episodeEdit, /type="submit" disabled/);
 });
 
-test('LIGHT SEED history separates metadata failures from unpublished works', () => {
-  assert.match(lightSeedHistory, /metadataUnavailable=false/);
-  assert.match(lightSeedHistory, /作品情報の取得エラー/);
-  assert.match(lightSeedHistory, /void NovelightClient\.claimAcquisition\(client\)/);
-});
+test(
+  'LIGHT SEED history separates metadata failures from unpublished works',
+  () => {
+    assert.match(lightSeedHistory, /metadataUnavailable=false/);
+    assert.match(lightSeedHistory, /作品情報の取得エラー/);
+    assert.match(
+      lightSeedHistory,
+      /void NovelightClient\.claimAcquisition\(client\)/
+    );
+  }
+);
 
 test('billing prevents parallel checkout starts and recovers after failure', () => {
   assert.match(pricing, /busy=false/);
