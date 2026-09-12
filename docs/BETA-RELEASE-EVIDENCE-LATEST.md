@@ -1,6 +1,6 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-09-12 JST**
+**Reconciled: 2026-09-13 JST**
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
 
@@ -8,13 +8,13 @@ This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNES
 
 **Historical controlled public-beta GO: RECORDED 2026-08-28.**
 
-**Current launch posture: GO — exact-current repository quality, Vercel Production, and Production Readiness are green on `6b15c6991f7d7ce07cc0140b162a6ea9b98b8fbd`; the successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid for the unchanged authenticated Chapter 38/40 beta-critical path.**
+**Current launch posture: GO — PR #530 exact approved-head repository CI and CodeQL are green, exact-current `24df7347580c73648f31d6f4eaa7759689b228eb` is deployed successfully to Vercel Production, and exact-current Production Readiness #129 is green. The successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid for the unchanged authenticated Chapter 38/40 beta-critical path.**
 
 Decision record: `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
 Historical decision baseline main: `1a5ca5dc5a90e4336ab5de74a21e2f2843e22bb1`.
 
-Current material launch main at this reconciliation: `6b15c6991f7d7ce07cc0140b162a6ea9b98b8fbd` (`Unify NOVELIGHT admin theme and reset registered active metrics (#517)`).
+Current material launch main at this reconciliation: `24df7347580c73648f31d6f4eaa7759689b228eb` (`Clarify beta author onboarding from signup (#530)`).
 
 Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING** with owner residual risk recorded in `docs/legal-beta-review.md`. This is an operational release posture, not a finding of legal sufficiency.
 
@@ -43,13 +43,20 @@ Later main commits now exist, so the #511 smoke is no longer described as exact-
 
 ## Later launch-hardening changes after the authenticated Production proof
 
-Three merged changes followed the #511 proof:
+The reviewed post-proof launch-hardening chain now includes:
 
-- **PR #513 — Gate public signup during beta preregistration.** This changes the public `signup.html` availability gate: `PRE_REGISTRATION` hides normal signup and routes users to `/beta-authors`; `BETA_OPEN` / `CLOSED` expose the existing signup form. The existing `auth.signUp()` metadata/profile flow is unchanged once enabled. The PR includes no Production DB, migration, Storage, Secret, Stripe, entitlement, or Supabase Auth configuration change. It is a public UI launch gate, not a service-level Supabase Auth shutdown.
-- **PR #518 — Normalize preregistration release date to September 30.** This normalizes the public preregistration release label to `2026年9月30日` while preserving database-driven campaign state and explicit ADMIN labels. It introduces no Production DB/migration/Secret/Stripe operation.
-- **PR #517 — Unify NOVELIGHT admin theme and reset registered active metrics.** This updates ADMIN visual/readability presentation and changes the activity overview to registered users using `user_lifecycle.last_seen_at`, with a non-destructive reset boundary. Historical anonymous activity data is preserved, no migration or DELETE/TRUNCATE occurs, and ADMIN authentication/allowlist behavior is unchanged.
+- **PR #513 — Gate public signup during beta preregistration.** `PRE_REGISTRATION` hides normal signup and directs users to `/beta-authors`; once the campaign allows signup, the existing `auth.signUp()` metadata/profile flow remains unchanged. No Production DB, migration, Storage, Secret, Stripe, entitlement, or Supabase Auth configuration change was introduced.
+- **PR #518 — Normalize preregistration release date to September 30.** Public release labeling is aligned to `2026年9月30日`; campaign state remains database-driven and no Production mutation is introduced.
+- **PR #517 — Unify NOVELIGHT admin theme and reset registered active metrics.** ADMIN presentation/readability and registered-user activity presentation changed without a migration, DELETE/TRUNCATE, or ADMIN authentication/allowlist change.
+- **PR #522 / #526 — Residual/final ADMIN readability passes.** These are presentation/readability changes and do not alter the authenticated Chapter 38/40 path, Production database state, billing, or Supabase Auth configuration.
+- **PR #523 — Guard beta campaign state changes before launch.** ADMIN now requires an explicit confirmation when campaign state changes and shows the September 30 label. It does not change the Production schema or authenticated product path.
+- **PR #525 — Document September 30 beta launch cutover.** Documentation-only launch-state cutover, verification, and rollback procedure; no Production state change.
+- **PR #528 — Clarify beta invite status as manual outreach record.** ADMIN `invited` is explicitly a record of externally completed outreach; the change does not add email/DM infrastructure or mutate Auth/billing automatically.
+- **PR #530 — Clarify beta author onboarding from signup.** Signup tells authors that beta Standard is free/cardless and self-service from pricing, and that confirmed authors can continue from 「創作室」. The existing `auth.signUp()` call, email redirect to `/index.html`, billing API, DB, Stripe, Secret, and entitlement logic remain unchanged.
 
-None of PRs #513, #518, or #517 modifies the authenticated novel-create / Chapter 40 Geometry Thumbnail Engine create-render-persistence / LIGHT ANALYTICS path exercised by Issue #511. Under `docs/EVIDENCE-FRESHNESS-GATE.md`, the #511 proof is therefore classified as **still-valid for that unchanged scope**, not as exact-current execution on `6b15c699...`.
+None of PRs #513/#518/#517/#522/#523/#525/#526/#528/#530 modifies the authenticated novel-create / Chapter 40 Geometry Thumbnail Engine create-render-persistence / LIGHT ANALYTICS path exercised by Issue #511. Under `docs/EVIDENCE-FRESHNESS-GATE.md`, the #511 proof is therefore classified as **still-valid for that unchanged scope**, not as exact-current execution on `24df7347...`.
+
+A post-merge `NOVELIGHT Production Auth Smoke Request` workflow can successfully create a request record for a newer SHA. Request creation alone is explicitly **not** authenticated Production PASS evidence. Without the required owner approval, successful decisive verification job, and matching consumed ledger record, it does not supersede Issue #511 and does not justify a duplicate Production Auth Smoke solely for SHA alignment.
 
 No duplicate Production Auth Smoke, migration, asset registration, Stripe operation, Secret operation, or other Production mutation is justified merely to align proof SHA with current main.
 
@@ -57,28 +64,29 @@ No duplicate Production Auth Smoke, migration, asset registration, Stripe operat
 
 | Scope | Newest decisive proof | Freshness on current launch main | Status |
 | --- | --- | --- | --- |
-| Repository CI / browser regression | `NOVELIGHT CI` #2215 / run `34697324774` on `6b15c699...` | exact-current | PASS |
-| CodeQL | `CodeQL` #2125 / run `34697324783` on `6b15c699...` | exact-current | PASS |
-| Vercel Production deployment | commit status on `6b15c699...` | exact-current | PASS |
-| Official thumbnail availability | exact-current Production Readiness | `active_official_thumbnails_present=true` remains required by the successful integrity verdict | PASS |
-| Production Readiness | `NOVELIGHT Production Readiness Smoke` #126 / run `34697324766` on `6b15c699...` | exact-current | PASS |
+| Repository CI / browser regression | `NOVELIGHT CI` #2243 / run `34702951293` on PR #530 approved head `010de41c...` | reviewed-head content proof for the squash-merged application diff | PASS |
+| CodeQL | `CodeQL` #2151 / run `34702951229` on PR #530 approved head `010de41c...` | reviewed-head content proof for the squash-merged application diff | PASS |
+| Vercel Production deployment | commit status on `24df7347...` | exact-current | PASS |
+| Official thumbnail availability | exact-current Production Readiness #129 | `active_official_thumbnails_present=true` remains required by the successful integrity verdict | PASS |
+| Production Readiness | `NOVELIGHT Production Readiness Smoke` #129 / run `34703260352` on `24df7347...` | exact-current | PASS |
 | Supabase Production migrations | reconciled Chapter 38 ledger plus already-applied `20260911123000_fix_thumbnail_asset_registration_path.sql` | current Production state; no rerun required | PASS |
-| Production authenticated Chapter 38/40 beta-critical flows | Issue #511 / run `34692176490` on `e4e8673d...` | still-valid; later PRs #513/#518/#517 do not alter the proved path | PASS |
+| Production authenticated Chapter 38/40 beta-critical flows | Issue #511 / run `34692176490` on `e4e8673d...` | still-valid; later launch-hardening changes through #530 do not alter the proved path | PASS |
 | Chapter 40 geometry thumbnail flow | Issue #511 / run `34692176490` | still-valid create/render/composition persistence proof | PASS |
-| LIGHT ANALYTICS authenticated flow | Issue #511 / run `34692176490` | still-valid; later changes do not alter the proved analytics path | PASS |
-| Public preregistration date contract | PR #518 plus exact-current repository CI | current | PASS |
-| ADMIN presentation / registered-active metric | PR #517 plus exact-current CI/CodeQL/Vercel/Readiness | current, with Production Auth Smoke explicitly not used to claim ADMIN authorization | PASS WITH SCOPE LIMIT |
+| LIGHT ANALYTICS authenticated flow | Issue #511 / run `34692176490` | still-valid; later launch-hardening changes do not alter the proved analytics path | PASS |
+| Public preregistration / launch cutover contract | PRs #518/#523/#525 plus exact-current Production Readiness and deployed public surface | current | PASS |
+| First-author onboarding guidance | PR #530 plus runbook reconciliation | current; copy/operations only, Auth and entitlement behavior unchanged | PASS WITH SCOPE LIMIT |
+| ADMIN presentation / campaign-operation safety | PRs #517/#522/#523/#526/#528 | current, with Production Auth Smoke explicitly not used to claim ADMIN authorization | PASS WITH SCOPE LIMIT |
 | Stripe/billing | Stripe Production Bootstrap #7 / run `33612120034` | still-valid; later reviewed changes do not alter live billing | PASS |
 | Backup/restore | Production Backup Freshness #8 / run `33354249864` plus recorded non-Production restore rehearsal | still-valid; no backup-control change | PASS |
 | Legal counsel | owner-deferred | unchanged | PENDING / ACCEPTED RESIDUAL RISK |
 
 ## Git / CI — PASS
 
-Current main is `6b15c6991f7d7ce07cc0140b162a6ea9b98b8fbd`.
+Current material launch main is `24df7347580c73648f31d6f4eaa7759689b228eb`.
 
-Fresh exact-current GitHub evidence shows:
+The exact approved PR #530 head `010de41c10c3f7fe0a2eadad981b0eb087ba0365` passed:
 
-- `NOVELIGHT CI` #2215 / run `34697324774`: `success`;
+- `NOVELIGHT CI` #2243 / run `34702951293`: `success`;
 - aggregate `check`: `success`;
 - Node tests: `success`;
 - static quality: `success`;
@@ -86,9 +94,14 @@ Fresh exact-current GitHub evidence shows:
 - mobile browser smoke: `success`;
 - desktop async-UI browser coverage: `success`;
 - mobile async-UI browser coverage: `success`;
-- `CodeQL` #2125 / run `34697324783`: `success`;
-- Vercel Production commit status: `success`;
-- `NOVELIGHT Production Readiness Smoke` #126 / run `34697324766`: `success`.
+- `CodeQL` #2151 / run `34702951229`: `success`.
+
+GitHub then squash-merged the reviewed PR content to `24df7347...`. The squash SHA does not have a separate main-push CI/CodeQL execution recorded here, so this document does **not** call the PR-head CI/CodeQL “exact-current main-push” evidence. Instead, exact-current post-merge evidence is:
+
+- Vercel Production commit status on `24df7347...`: `success`;
+- `production-readiness-smoke` commit status on `24df7347...`: `success`;
+- `NOVELIGHT Production Readiness Smoke` #129 / run `34703260352`: `success`, exact head SHA `24df7347...`;
+- `NOVELIGHT High-Risk Merge Production Readiness Bridge` #24 / run `34703254069`: `success`.
 
 Skipped deployment/mutation/audit jobs are not represented as executed.
 
@@ -98,9 +111,9 @@ The official-thumbnail schema and privilege hardening remain part of Production 
 
 The historical 2026-09-10 inspection found 0 official-thumbnail rows and correctly blocked the release. That state changed through the authorized Chapter 40 workstream.
 
-Current decisive availability evidence is the successful exact-current Production Readiness result on `6b15c699...`. `supabase/checks/production_beta_observability.sql` requires `active_official_thumbnails_present` as part of the final integrity verdict, based on an active row in `public.novel_thumbnail_assets`. The successful readiness result therefore establishes that the launch prerequisite is not empty.
+Current decisive availability evidence is the successful exact-current Production Readiness #129 on `24df7347...`. `supabase/checks/production_beta_observability.sql` requires `active_official_thumbnails_present` as part of the final integrity verdict, based on an active row in `public.novel_thumbnail_assets`. The successful readiness result therefore establishes that the launch prerequisite is not empty.
 
-The still-valid authenticated Production smoke on `e4e8673d...` exercised new-novel creation and Chapter 40 thumbnail behavior. Later PRs #513/#518/#517 do not change that posting/rendering path.
+The still-valid authenticated Production smoke on `e4e8673d...` exercised new-novel creation and Chapter 40 thumbnail behavior. Later launch-hardening PRs through #530 do not change that posting/rendering path.
 
 Do not repeat asset registration or introduce placeholder content merely to refresh documentation.
 
@@ -115,7 +128,7 @@ Chapter 40 / official-thumbnail registration adds the following current state:
 - PR #490 (`Fix official thumbnail asset registration path validation`) merged the hotfix migration `20260911123000_fix_thumbnail_asset_registration_path.sql`;
 - the migration fixes the canonical official-thumbnail Storage-path validation in `novelight_admin_register_thumbnail_layer_asset` while preserving the service-role/SECURITY DEFINER boundary;
 - `20260911123000_fix_thumbnail_asset_registration_path.sql` has already been applied in Production during the completed Chapter 40 workstream;
-- PRs #513, #518, and #517 add no new Production migration requirement;
+- later launch-hardening PRs through #530 add no new Production migration requirement;
 - this reconciliation performs no Production migration and the already-applied migration must not be rerun.
 
 The exact-current readiness result and still-valid authenticated create/render proof support the affected official-thumbnail path without requiring duplicate mutation.
@@ -135,7 +148,7 @@ Current code and Production state contain the beta foundations required by MASTE
 - ADMIN beta analysis support;
 - beta UI hiding SCOUT Level, Rank, badges, EXP, and unreleased SCOUT RECORD mechanics while keeping LIGHT SEED send history separate.
 
-The materially changed authenticated Chapter 38 boundary has a successful approval-gated Production Authenticated Smoke: Issue #511 / run `34692176490`, bound to `e4e8673d...`. Later PRs #513/#518/#517 do not modify this authenticated Chapter 38 behavior, so the proof remains still-valid for this scope.
+The materially changed authenticated Chapter 38 boundary has a successful approval-gated Production Authenticated Smoke: Issue #511 / run `34692176490`, bound to `e4e8673d...`. Later launch-hardening PRs through #530 do not modify this authenticated Chapter 38 behavior, so the proof remains still-valid for this scope.
 
 ## Chapter 40 Geometry Thumbnail Engine — PRODUCTION VERIFIED
 
@@ -158,7 +171,7 @@ Relevant implementation/proof chain includes:
 - PR #510: activates beta Standard before the Production analytics smoke and produced proof SHA `e4e8673d...`;
 - Issue #511 / run `34692176490`: verifies authenticated novel creation, Chapter 40 thumbnail render, composition persistence, and LIGHT ANALYTICS with successful cleanup.
 
-PRs #513/#518/#517 do not modify the Geometry Thumbnail Engine create/render/composition path. The #511 Production proof remains still-valid for that unchanged scope.
+Later launch-hardening PRs through #530 do not modify the Geometry Thumbnail Engine create/render/composition path. The #511 Production proof remains still-valid for that unchanged scope.
 
 ## Production authenticated beta-critical path — PASS / STILL VALID
 
@@ -181,9 +194,11 @@ Newest decisive authenticated request and execution for this scope:
 - issue #511: closed after consumption;
 - Stripe live charge: none.
 
-This evidence set matches the acceptance contract in `scripts/evaluate-production-auth-smoke-evidence.mjs` for its exact required SHA. It is not rewritten as an execution on current main `6b15c699...`.
+This evidence set matches the acceptance contract in `scripts/evaluate-production-auth-smoke-evidence.mjs` for its exact required SHA. It is not rewritten as an execution on current main `24df7347...`.
 
-Evidence-freshness review of PRs #513/#518/#517 found no change to the authenticated product path proved above. The proof is therefore still-valid for that scope, and repeating the Production Auth Smoke solely for SHA freshness is prohibited as unnecessary duplicate Production work.
+Evidence-freshness review of later launch-hardening PRs through #530 found no change to the authenticated product path proved above. The proof is therefore still-valid for that scope, and repeating the Production Auth Smoke solely for SHA freshness is prohibited as unnecessary duplicate Production work.
+
+A successful `NOVELIGHT Production Auth Smoke Request` workflow for a newer SHA proves only that the request was created. It is not a successful authenticated Production execution and is not listed above as PASS evidence.
 
 Historical attempts #472 and #474 remain failures with successful cleanup. They are retained for audit and are not relabeled. Their older failed status no longer overrides the later successful proof for the unchanged authenticated scope.
 
@@ -199,63 +214,73 @@ PR #513 prevents the ordinary NOVELIGHT web signup UI from advertising general r
 
 This is a **public UI launch gate only**. It is not a cryptographic/service-level shutdown of the public Supabase Auth endpoint, and this evidence does not claim otherwise.
 
-PR #518 then aligns the public preregistration release label with the MASTER date `2026年9月30日` while retaining database-driven campaign state and explicit ADMIN label support.
+PR #518 aligns the public preregistration release label with the MASTER date `2026年9月30日`. PR #523 guards campaign-state transitions with an explicit ADMIN confirmation. PR #525 documents the operator-safe September 30 cutover and rollback path. PR #528 makes the manual-outreach milestone truthful. PR #530 then improves author onboarding copy while leaving the existing Auth redirect and Standard entitlement activation mechanism unchanged.
 
-Exact-current repository CI, CodeQL, Vercel Production, and Production Readiness are green after these changes and PR #517.
+## First-author onboarding / milestone operations — RECONCILED
+
+Current operational contract after PR #530 and the runbook reconciliation is:
+
+- ADMIN `invited` / 「案内送付記録済み」 records outreach that was actually completed through an external channel; ADMIN itself does not send the email/DM;
+- signup uses the existing confirmation-email flow and the author is told to continue from 「創作室」 after confirmation;
+- beta Standard remains self-service from pricing through `Standardを無料で利用`, with no card required during beta;
+- ordinary beta Standard activation is not performed by manually changing Stripe or Production DB state;
+- `registered_at` / 「本登録済み」 and `first_novel_at` / 「初投稿済み」 are operator-confirmed milestones and are not inferred from preregistration or outreach alone;
+- the current contract does not represent preregistration email-to-Auth matching as automatic;
+- Founding Authors eligibility is determined by the qualifying real-author publication flow rather than manual reservation from preregistration order;
+- preregistration PII is not copied into GitHub/chat evidence to prove conversion.
+
+This reconciliation changes documentation only; it does not create new account-linking, mail-delivery, entitlement, or Founding Authors logic.
 
 ## LIGHT ANALYTICS / discovery / posting / author home — PASS
 
 Current evidence supports the beta-critical user path:
 
-- active official-thumbnail availability is present and exact-current Production Readiness passes;
+- active official-thumbnail availability is present and exact-current Production Readiness #129 passes;
 - new-novel submission completed in the still-valid authenticated smoke on `e4e8673d...`;
 - Chapter 40 rendering/persistence completed in that same proof;
 - LIGHT ANALYTICS passed after the PR #510 beta Standard entitlement activation;
-- PRs #513/#518/#517 do not modify that authenticated analytics path;
+- later launch-hardening changes through #530 do not modify that authenticated analytics path;
 - existing discovery, trusted allocation receipt, server-authoritative PV, author-profile/avatar/recent-activity boundaries remain covered by current or specifically still-valid evidence;
-- exact-current repository CI covers reader/author UI regression scope.
+- PR #530 approved-head CI covers reader/author UI regression scope before squash merge.
 
 ## Content / moderation / ADMIN — PASS WITH SCOPE LIMIT
 
 Previously established content classification/warning/report privacy and ADMIN allowlist controls remain in force. Chapter 38 ADMIN beta analytics has repository coverage.
 
-PR #517 adds current ADMIN presentation evidence:
+The later ADMIN hardening chain includes:
 
-- shared NOVELIGHT night/navy + gold operations theme across `admin*` pages;
-- larger / higher-contrast ADMIN text and controls;
-- 7-day / 30-day active cards now represent registered users;
-- registered-active counting derives from `user_lifecycle.last_seen_at` after the non-destructive reset boundary;
-- anonymous `beta_activity_days` history remains intact for other analytics;
-- no migration, DELETE, or TRUNCATE;
-- ADMIN authentication / allowlist behavior remains unchanged.
+- PR #517: shared NOVELIGHT ADMIN theme, larger/higher-contrast controls, registered-user active cards, non-destructive activity reset boundary;
+- PR #522/#526: residual/final readability hierarchy cleanup;
+- PR #523: campaign-state confirmation guard;
+- PR #528: truthful manual outreach status semantics.
 
-Exact-current CI #2215, CodeQL #2125, Vercel Production, and Production Readiness #126 are green after PR #517.
+None of those changes adds a migration, DELETE/TRUNCATE of historical analytics, email/DM delivery infrastructure, or an ADMIN authentication/allowlist change.
 
-Production Auth Smoke is deliberately **not** used to claim the ADMIN authorization boundary.
+Exact-current Vercel Production and Production Readiness #129 are green after PR #530. Production Auth Smoke is deliberately **not** used to claim the ADMIN authorization boundary.
 
 ## Production billing / Stripe / entitlement — PASS / STILL VALID
 
 The beta billing contract remains:
 
-- Standard: beta period `0円`, credit card not required;
+- Standard: beta period `0円`, credit card not required, self-service activation from pricing;
 - Premium: beta special price `月額480円`;
 - Premium regular/formal price: `月額1,980円`.
 
 Decisive live billing proof remains `NOVELIGHT Stripe Production Bootstrap` #7 / run `33612120034`, conclusion `success`.
 
-PRs #490, #497, #508, #510, #513, #518, and #517 do not create a reason to repeat a Stripe live operation for documentary freshness. The successful Production Auth Smoke created no real Stripe charge.
+Later launch-hardening PRs through #530 do not create a reason to repeat a Stripe live operation for documentary freshness. PR #530 only clarifies the existing Standard activation path; it does not add signup-time entitlement activation. The successful Production Auth Smoke created no real Stripe charge.
 
 ## Backup / restore — PASS / STILL VALID
 
 Newest accepted read-only backup evidence remains `NOVELIGHT Production Backup Freshness` #8 / run `33354249864`, conclusion `success`, together with the previously recorded non-Production restore rehearsal and `docs/BACKUP-RESTORE-RUNBOOK.md`.
 
-No reviewed Chapter 40, signup-gate, public release-label, or ADMIN presentation/activity change modifies the backup/restore control boundary. No Production restore or backup mutation is repeated.
+No reviewed Chapter 40, signup-gate, public release-label, ADMIN, campaign-state, or onboarding-copy change modifies the backup/restore control boundary. No Production restore or backup mutation is repeated.
 
 ## Legal / brand status
 
 Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING**. The recorded owner residual-risk decision remains historical and explicit. Nothing in this evidence file asserts legal sufficiency.
 
-The public preregistration release label now follows the MASTER date `2026年9月30日` through PR #518.
+The public preregistration release label follows the MASTER date `2026年9月30日`, and the launch runbook now records the corresponding campaign-state cutover and first-author operating path.
 
 ## Checklist reconciliation
 
@@ -265,18 +290,21 @@ An `[x]` means current or specifically justified still-valid evidence exists. An
 
 ## Current release state
 
-**CURRENT LAUNCH POSTURE: GO as of 2026-09-12 reconciliation.**
+**CURRENT LAUNCH POSTURE: GO as of 2026-09-13 reconciliation.**
 
-Current material main: `6b15c6991f7d7ce07cc0140b162a6ea9b98b8fbd`.
+Current material main: `24df7347580c73648f31d6f4eaa7759689b228eb`.
 
-Exact-current quality/deployment/readiness evidence is green:
+Current/reconciled quality, deployment, and readiness evidence is green:
 
-- `NOVELIGHT CI` #2215 / run `34697324774`: success;
-- `CodeQL` #2125 / run `34697324783`: success;
-- Vercel Production commit status: success;
-- `NOVELIGHT Production Readiness Smoke` #126 / run `34697324766`: success.
+- PR #530 `NOVELIGHT CI` #2243 / run `34702951293` on approved head `010de41c...`: success;
+- PR #530 `CodeQL` #2151 / run `34702951229`: success;
+- exact-current Vercel Production commit status on `24df7347...`: success;
+- exact-current `NOVELIGHT Production Readiness Smoke` #129 / run `34703260352`: success;
+- exact-current `production-readiness-smoke` commit status: success.
 
-The former release blockers remain resolved: official-thumbnail availability is present, exact-current Production Readiness passes, and the approval-gated Production Authenticated Smoke on `e4e8673d...` remains still-valid for the unchanged authenticated Chapter 38/40 scope after review of PRs #513/#518/#517.
+The PR-head CI/CodeQL are retained as reviewed-content proof and are not mislabeled as a separate main-push execution on the GitHub-generated squash SHA.
+
+The former release blockers remain resolved: official-thumbnail availability is present, exact-current Production Readiness passes, and the approval-gated Production Authenticated Smoke on `e4e8673d...` remains still-valid for the unchanged authenticated Chapter 38/40 scope after review of later launch-hardening PRs through #530.
 
 No duplicate Production operation is needed to support this release-state conclusion. In particular, do not rerun `20260911123000_fix_thumbnail_asset_registration_path.sql`, do not repopulate official assets merely for documentary freshness, and do not repeat Auth Smoke/Stripe/Secret operations unless a later material change actually invalidates the relevant proof under `docs/EVIDENCE-FRESHNESS-GATE.md`.
 

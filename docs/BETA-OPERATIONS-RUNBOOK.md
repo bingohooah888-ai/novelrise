@@ -1,6 +1,6 @@
 # NOVELIGHT controlled-beta operations runbook
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 ## Purpose
 
@@ -47,6 +47,23 @@ Perform read-only/public verification before announcing the launch:
 If a verification step fails **before the public launch announcement**, use the same authenticated ADMIN path to return the campaign to `PRE_REGISTRATION`, confirm the rollback dialog, then verify that the preregistration page and signup gate have returned to the pre-launch state. Record the failure and do not announce the launch until the cause is understood.
 
 After the public launch announcement, do not oscillate campaign states in response to ordinary defects. Treat the problem as a launch incident, preserve the observed evidence, and make an explicit owner decision before reopening preregistration or otherwise changing the public campaign state.
+
+## First-author onboarding and preregistration milestones
+
+The preregistration ADMIN is a lead/status record and operational dashboard. It is not an email or DM delivery system, and it does not automatically prove that a preregistered author has created an Auth account or published a work.
+
+Use this order for the initial beta cohort:
+
+1. While the campaign is `PRE_REGISTRATION`, keep the preregistration row as the lead record. If outreach is sent by X DM, email, or another external channel, complete that outreach outside NOVELIGHT first.
+2. Record the ADMIN `invited` / 「案内送付記録済み」milestone only **after the external outreach was actually completed**. Do not use the milestone as a request to send outreach and do not mark it speculatively.
+3. After the campaign becomes `BETA_OPEN`, the author creates the NOVELIGHT account through `signup.html` and completes the confirmation email flow. The signup surface tells authors that they can continue from 「創作室」 after confirmation.
+4. Beta Standard is self-service. If the author wants Standard during the beta, they use the pricing page action `Standardを無料で利用`. The beta Standard path requires no card registration. Do not manually change Stripe state, entitlement rows, or Production billing data for an ordinary beta Standard activation.
+5. Update `registered_at` / 「本登録済み」only after there is reliable evidence that the preregistered author has actually completed the NOVELIGHT account registration. Outreach completion or preregistration alone is not sufficient.
+6. Update `first_novel_at` / 「初投稿済み」only after there is reliable evidence that the author has actually completed the first qualifying work publication. Do not infer publication from signup, profile creation, or an invitation status.
+7. The current beta contract does not automatically match a preregistration email address to an Auth account for these ADMIN conversion milestones. Treat them as operator-confirmed milestones unless and until a later MASTER-approved automation changes that contract.
+8. Founding Authors eligibility is determined automatically from the qualifying real-author publication flow. Do not reserve, reorder, or manually assign Founding Authors slots based on preregistration order or outreach order.
+9. Never copy preregistration email addresses, comments, Auth identifiers, or other PII into GitHub issues, release evidence, or chat logs merely to prove conversion. Record counts/status and non-PII evidence only.
+10. Account-access, payment, safety, or legal problems discovered during onboarding follow the normal support/incident path below. Do not bypass that path with direct Production SQL or ad-hoc Stripe/Secret changes.
 
 ## Automated inbox watch
 
