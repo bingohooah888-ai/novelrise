@@ -271,22 +271,24 @@ function waitForExposureConversion(page, eventType) {
   });
 }
 
-function waitForThumbnailRenderAction(page, action) {
-  return page.waitForResponse((response) => {
+async function waitForThumbnailRenderResult(page, action) {
+  let body;
+  const response = await page.waitForResponse(async (candidate) => {
     if (
-      !response.url().includes(thumbnailRenderApiPath) ||
-      response.request().method() !== 'POST'
+      !candidate.url().includes(thumbnailRenderApiPath) ||
+      candidate.request().method() !== 'POST'
     ) {
       return false;
     }
-    const body = response.request().postData();
-    return body?.includes(`"action":"${action}"`) ?? false;
-  });
-}
 
-async function waitForThumbnailRenderResult(page, action) {
-  const response = await waitForThumbnailRenderAction(page, action);
-  const body = await response.json();
+    const requestBody = candidate.request().postData();
+    if (!(requestBody?.includes(`"action":"${action}"`) ?? false)) {
+      return false;
+    }
+
+    body = await candidate.json();
+    return true;
+  });
   return { body, response };
 }
 
