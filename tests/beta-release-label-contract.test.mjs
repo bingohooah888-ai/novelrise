@@ -24,6 +24,7 @@ test('public preregistration campaign normalizes the legacy release label to Sep
 
 test('explicit admin release labels remain supported while the LP consumes the public API label', () => {
   assert.match(publicApi, /return releaseLabel;/);
-  assert.match(betaHtml, /campaign\?\.releaseLabel/);
+  assert.match(betaHtml, /campaign\.releaseLabel/);
+  assert.match(betaHtml, /renderCampaign\(body\.campaign\)/);
   assert.doesNotMatch(betaHtml, /2026年9月下旬/);
 });
