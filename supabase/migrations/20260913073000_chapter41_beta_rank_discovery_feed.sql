@@ -30,7 +30,7 @@ returns table (
 language sql
 stable
 security definer
-set search_path = pg_catalog, public
+set search_path = pg_catalog
 as $$
   with favorite_totals as (
     select
