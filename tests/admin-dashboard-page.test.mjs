@@ -19,6 +19,10 @@ const themeCss = fs.readFileSync(
   new URL('../novelight-theme.css', import.meta.url),
   'utf8'
 );
+const readabilityCss = fs.readFileSync(
+  new URL('../novelight-readability.css', import.meta.url),
+  'utf8'
+);
 
 test('admin page is noindex and has no server secret embedded in browser code', () => {
   assert.match(adminHtml, /noindex,nofollow,noarchive/);
@@ -49,6 +53,19 @@ test('shared NOVELIGHT theme explicitly covers every admin page slug', () => {
   assert.match(themeCss, /novelight-page-admin/);
   assert.match(themeCss, /#f7f2e7/i);
   assert.match(themeCss, /#eac46a/i);
+});
+
+test('admin specialized readability overrides remain covered', () => {
+  assert.match(readabilityCss, /novelight-page-admin-thumbnails/);
+  assert.match(readabilityCss, /novelight-page-admin-scout/);
+  assert.match(readabilityCss, /\.quad-field strong/);
+  assert.match(readabilityCss, /\.quad-meta/);
+  assert.match(readabilityCss, /\.validation/);
+  assert.match(readabilityCss, /\.row strong/);
+  assert.match(readabilityCss, /\.brand > span/);
+  assert.match(readabilityCss, /font-size:\s*15px !important/);
+  assert.match(readabilityCss, /font-size:\s*14px !important/);
+  assert.match(readabilityCss, /#f3d98e/i);
 });
 
 test('login redirect allowlist explicitly permits the private admin page', () => {
