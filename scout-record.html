@@ -1,1 +1,88 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>LIGHT SEED送信履歴 | NOVELIGHT</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:980px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}main{max-width:980px;margin:auto;padding:42px 22px 78px}.hero{padding:27px;border-radius:18px;background:linear-gradient(135deg,#6d4aff,#8b72ff);color:#fff}.hero h1{font-size:33px;margin-top:6px}.hero p{margin-top:9px;color:rgba(255,255,255,.9);line-height:1.7}.section{margin-top:27px}.section h2{font-size:21px;margin-bottom:6px}.note{color:#6b7280;font-size:12px;line-height:1.7;margin-bottom:13px}.list{display:grid;gap:11px}.card,.state{background:#fff;border:1px solid #e5e7eb;border-radius:14px}.card{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:19px}.title{font-size:16px;font-weight:900}.meta{color:#6b7280;font-size:12px;margin-top:6px}.status{display:inline-block;margin-top:8px;padding:4px 8px;border-radius:999px;background:#f0edff;color:#5d45c4;font-size:10px;font-weight:900}.status.off{background:#f3f4f6;color:#666}.status.error{background:#fff2f0;color:#b42318}.link{display:inline-flex;padding:9px 11px;border-radius:8px;background:#6d4aff;color:#fff;font-size:12px;font-weight:900}.state{padding:30px;text-align:center;color:#6b7280}footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:980px;margin:auto;display:flex;justify-content:center;gap:15px;flex-wrap:wrap;font-size:12px}@media(max-width:640px){main{padding:28px 16px 60px}.hero{padding:22px 18px}.hero h1{font-size:28px}.card{grid-template-columns:1fr}.link{width:100%;justify-content:center}}</style><link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide"></head><body class="novelight-theme novelight-page-scout-record"><header><div class="header-inner"><a class="logo" href="index.html">NOVELIGHT</a><a class="back" href="mypage.html">← 創作室</a></div></header><main><section class="hero"><div style="font-size:11px;font-weight:900">LIGHT SEED</div><h1>LIGHT SEED送信履歴</h1><p>あなたがLIGHT SEEDを贈った作品の履歴です。β期間中は送信履歴のみ確認できます。SCOUT RECORDのLevelやバッジ等は将来提供予定です。</p></section><section class="section"><h2>送信履歴</h2><p class="note">履歴は作品が後から非公開・削除されても保持されます。表示できる作品情報は現在の公開状態に基づきます。</p><div id="list" class="list"><div class="state">読み込み中...</div></div></section></main><footer><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="contact.html">お問い合わせ</a></div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="novelight-client.js"></script><script>const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}function date(v){return v?new Date(v).toLocaleString('ja-JP'):'日時不明'}function render(seeds,map,metadataUnavailable=false){const list=document.getElementById('list');list.innerHTML=seeds.map(x=>{const id=String(x.novel_id_snapshot),work=map.get(id);if(metadataUnavailable)return `<article class="card"><div><div class="title">作品情報を取得できません</div><div class="meta">LIGHT SEEDを贈った日時：${esc(date(x.seeded_at))}</div><span class="status error">作品情報の取得エラー</span></div><span class="status error">再読み込みしてください</span></article>`;const ok=work?.status==='published';return `<article class="card"><div><div class="title">${esc(ok?work.title:'現在表示できない作品')}</div><div class="meta">LIGHT SEEDを贈った日時：${esc(date(x.seeded_at))}</div><span class="status ${ok?'':'off'}">${ok?'公開中':'現在非公開または削除済み'}</span></div>${ok?`<a class="link" href="novel.html?id=${encodeURIComponent(id)}">作品ページを確認</a>`:'<span class="status off">現在表示不可</span>'}</article>`}).join('')}(async()=>{void NovelightClient.recordVisit(client);const list=document.getElementById('list');let session;try{const a=await client.auth.getSession();session=a.data.session}catch(e){console.error(e);list.innerHTML='<div class="state">ログイン状態を確認できませんでした。時間をおいて再度お試しください。</div>';return}if(!session){location.href='login.html?redirect=scout-record.html';return}void NovelightClient.claimAcquisition(client);let seeds;try{const r=await client.from('light_seeds').select('novel_id_snapshot,seeded_at').order('seeded_at',{ascending:false});if(r.error)throw r.error;seeds=r.data||[]}catch(e){console.error(e);list.innerHTML='<div class="state">LIGHT SEED送信履歴を読み込めませんでした。時間をおいて再度お試しください。</div>';return}if(!seeds.length){list.innerHTML='<div class="state">まだLIGHT SEEDを贈った作品はありません。</div>';return}const ids=[...new Set(seeds.map(x=>String(x.novel_id_snapshot)))];try{const n=await client.from('novels').select('id,title,status').in('id',ids);if(n.error)throw n.error;render(seeds,new Map((n.data||[]).map(x=>[String(x.id),x])))}catch(e){console.error(e);render(seeds,new Map(),true)}})();</script></body></html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>SCOUT RECORD βプレビュー | NOVELIGHT</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{color-scheme:light;--ink:#141414;--muted:#686868;--line:#d7d7d7;--soft:#f1f1f1;--paper:#fafafa;--white:#fff}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--paper);color:var(--ink);letter-spacing:.01em}
+    a{color:inherit;text-decoration:none}
+    header{background:var(--white);border-bottom:1px solid var(--line)}
+    .header-inner{max-width:1040px;min-height:72px;margin:auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .logo{font-size:24px;font-weight:900;letter-spacing:.08em}
+    .back{font-size:13px;color:#555}
+    main{max-width:1040px;margin:auto;padding:54px 24px 84px}
+    .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:36px;align-items:center;padding:40px;border:1px solid #bcbcbc;border-radius:22px;background:var(--white);box-shadow:0 18px 50px rgba(0,0,0,.055)}
+    .eyebrow{font-size:11px;font-weight:900;letter-spacing:.2em;color:#6b6b6b}
+    h1{margin-top:10px;font-size:clamp(34px,6vw,62px);line-height:1;letter-spacing:.07em}
+    .hero p{max-width:660px;margin-top:18px;color:#555;line-height:1.9;font-size:14px}
+    .release{display:inline-flex;margin-top:20px;padding:8px 12px;border:1px solid #aaa;border-radius:999px;background:#f5f5f5;color:#3e3e3e;font-size:11px;font-weight:900;letter-spacing:.08em}
+    .lock{position:relative;width:118px;height:118px;border:1px solid #b8b8b8;border-radius:28px;background:linear-gradient(145deg,#f8f8f8,#dedede);box-shadow:inset 0 1px 0 #fff;flex:0 0 auto}
+    .lock::before{content:"";position:absolute;left:35px;top:21px;width:46px;height:43px;border:8px solid #555;border-bottom:0;border-radius:28px 28px 0 0}
+    .lock::after{content:"";position:absolute;left:29px;bottom:24px;width:60px;height:50px;border-radius:10px;background:#555}
+    .intro{margin-top:30px;padding:18px 20px;border-left:3px solid #4b4b4b;background:#ededed;color:#4f4f4f;font-size:13px;line-height:1.85}
+    .preview{margin-top:28px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .preview-card{position:relative;min-height:178px;padding:22px;border:1px solid var(--line);border-radius:17px;background:#f7f7f7;overflow:hidden}
+    .preview-card::after{content:"LOCKED";position:absolute;right:16px;top:17px;padding:4px 7px;border:1px solid #bdbdbd;border-radius:999px;color:#767676;font-size:9px;font-weight:900;letter-spacing:.13em}
+    .preview-label{font-size:10px;font-weight:900;letter-spacing:.15em;color:#666}
+    .preview-value{margin-top:24px;color:#303030;font-size:24px;font-weight:900}
+    .skeleton{margin-top:18px;display:grid;gap:8px}
+    .skeleton span{display:block;height:8px;border-radius:999px;background:#d7d7d7}
+    .skeleton span:nth-child(2){width:76%}.skeleton span:nth-child(3){width:52%}
+    .timeline{margin-top:16px;padding:24px;border:1px solid var(--line);border-radius:17px;background:var(--white)}
+    .timeline h2{font-size:18px}.timeline p{margin-top:7px;color:var(--muted);font-size:12px;line-height:1.8}
+    .timeline-rows{margin-top:20px;display:grid;gap:12px}
+    .timeline-row{display:grid;grid-template-columns:40px 1fr;gap:14px;align-items:center;padding:13px;border:1px solid #e0e0e0;border-radius:12px;background:#f6f6f6}
+    .dot{width:40px;height:40px;border-radius:50%;background:#d1d1d1}
+    .timeline-row .skeleton{margin:0}
+    .available{margin-top:28px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:24px;padding:26px;border:1px solid #1e1e1e;border-radius:17px;background:#181818;color:#f5f5f5}
+    .available small{display:block;color:#aaa;font-size:10px;font-weight:900;letter-spacing:.12em}.available h2{margin-top:6px;font-size:21px}.available p{margin-top:7px;color:#c8c8c8;font-size:12px;line-height:1.75}
+    .cta{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 17px;border:1px solid #fff;border-radius:10px;background:#fff;color:#111;font-size:12px;font-weight:900;white-space:nowrap}
+    .policy{margin-top:24px;color:#666;font-size:11px;line-height:1.9;text-align:center}
+    footer{padding:26px;background:#111;color:#999}.footer-links{max-width:1040px;margin:auto;display:flex;justify-content:center;gap:15px;flex-wrap:wrap;font-size:12px}
+    @media(max-width:760px){main{padding:32px 16px 64px}.hero{grid-template-columns:1fr;padding:28px 22px}.lock{width:90px;height:90px}.lock::before{left:27px;top:16px;width:34px;height:33px;border-width:7px}.lock::after{left:22px;bottom:18px;width:46px;height:39px}.preview{grid-template-columns:1fr}.available{grid-template-columns:1fr}.cta{width:100%}}
+  </style>
+</head>
+<body>
+  <header><div class="header-inner"><a class="logo" href="index.html">NOVELIGHT</a><a class="back" href="mypage.html">← 創作室</a></div></header>
+  <main>
+    <section class="hero" aria-labelledby="scoutTitle">
+      <div>
+        <div class="eyebrow">BETA / LOCKED PREVIEW</div>
+        <h1 id="scoutTitle">SCOUT RECORD</h1>
+        <p>新しい物語を見つけ、光を届けた読者の発掘活動を記録する正式版機能です。β版では仕組みの検証を優先し、SCOUT RECORDの成長表示はロックしています。</p>
+        <span class="release">正式リリース時解放</span>
+      </div>
+      <div class="lock" role="img" aria-label="ロック中"></div>
+    </section>
+
+    <p class="intro">β期間中も必要な活動記録は内部で保持しますが、SCOUT RECORDのLevel・EXP・バッジ等の実値はこの画面へ取得・送信しません。ここに表示しているのは正式版UIの構成だけを示すプレビューです。</p>
+
+    <section class="preview" aria-label="SCOUT RECORD ロックプレビュー">
+      <article class="preview-card"><div class="preview-label">SCOUT LEVEL</div><div class="preview-value">— —</div><div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div></article>
+      <article class="preview-card"><div class="preview-label">DISCOVERY RECORD</div><div class="preview-value">— —</div><div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div></article>
+      <article class="preview-card"><div class="preview-label">BADGES</div><div class="preview-value">— —</div><div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div></article>
+    </section>
+
+    <section class="timeline" aria-labelledby="recordPreviewTitle">
+      <h2 id="recordPreviewTitle">発掘レコード</h2>
+      <p>正式版では、あなたの発掘活動や成長の軌跡を確認できる領域です。β版では具体的な値を表示しません。</p>
+      <div class="timeline-rows" aria-hidden="true">
+        <div class="timeline-row"><span class="dot"></span><div class="skeleton"><span></span><span></span></div></div>
+        <div class="timeline-row"><span class="dot"></span><div class="skeleton"><span></span><span></span></div></div>
+        <div class="timeline-row"><span class="dot"></span><div class="skeleton"><span></span><span></span></div></div>
+      </div>
+    </section>
+
+    <section class="available" aria-labelledby="historyTitle">
+      <div><small>AVAILABLE IN BETA</small><h2 id="historyTitle">LIGHT SEED送信履歴</h2><p>LIGHT SEEDを贈った作品と送信日時は、β版でもこれまでどおり確認できます。SCOUT RECORDとは分離して提供します。</p></div>
+      <a class="cta" href="light-seed-history.html">送信履歴を見る →</a>
+    </section>
+
+    <p class="policy">作品Rankはβ版の一般ユーザー画面には表示しません。SCOUT RECORDの解放時期・成長ルールは、β版の実利用データを確認したうえで確定します。</p>
+  </main>
+  <footer><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="contact.html">お問い合わせ</a></div></footer>
+</body>
+</html>
