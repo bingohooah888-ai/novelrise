@@ -20,12 +20,13 @@
       <button id="loginButton" type="submit">ログイン</button>
       <div id="loginStatus" class="status" role="status" aria-live="polite"></div>
     </form>
-    <div class="row"><a href="forgot-password.html">パスワードを忘れた方</a><a href="signup.html">会員登録</a></div>
+    <div class="row"><a href="forgot-password.html">パスワードを忘れた方</a><a id="signupLink" href="signup.html">会員登録</a></div>
     <div class="legal"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="contact.html">お知らせ・お問い合わせ</a></div>
   </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="novelight-client.js"></script>
+<script src="auth-reader-context.js"></script>
 <script>
   const SUPABASE_URL='https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_KEY='sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
@@ -33,23 +34,10 @@
   const form=document.getElementById('loginForm');
   const button=document.getElementById('loginButton');
   const status=document.getElementById('loginStatus');
-
-  const ALLOWED_PATHS=new Set([
-    '/mypage.html','/pricing.html','/scout-record.html','/post.html','/favorites.html',
-    '/novel.html','/novel-edit.html','/episode.html','/episode-post.html','/episode-edit.html',
-    '/analytics.html','/my-novels.html','/admin.html','/admin-announcements.html',
-    '/admin-inquiries.html','/admin-reports.html','/admin-beta-authors.html'
-  ]);
-
-  function safeRedirectTarget(raw){
-    if(!raw)return 'mypage.html';
-    try{
-      const url=new URL(raw,window.location.origin);
-      if(url.origin!==window.location.origin)return 'mypage.html';
-      if(!ALLOWED_PATHS.has(url.pathname))return 'mypage.html';
-      return url.pathname.replace(/^\//,'')+url.search;
-    }catch{return 'mypage.html'}
-  }
+  const signupLink=document.getElementById('signupLink');
+  const redirect=NovelightAuthReturn.currentRedirect();
+  const redirectTarget=NovelightAuthReturn.safeRedirectTarget(redirect);
+  if(redirect)signupLink.href=NovelightAuthReturn.authHref('signup.html',redirect);
 
   async function runOptionalTelemetry(label,task){
     try{await task()}catch(error){console.error(label,error)}
@@ -71,8 +59,6 @@
       const {error}=await supabaseClient.auth.signInWithPassword({email,password});
       if(error){console.error(error);status.textContent='ログインできませんでした。メールアドレスとパスワードを確認してください。';return;}
       authenticated=true;
-      const redirect=new URLSearchParams(window.location.search).get('redirect');
-      const redirectTarget=safeRedirectTarget(redirect);
       void runOptionalTelemetry('post-login acquisition telemetry failed',()=>NovelightClient.claimAcquisition(supabaseClient));
       void runOptionalTelemetry('post-login visit telemetry failed',()=>NovelightClient.recordVisit(supabaseClient));
       window.location.href=redirectTarget;
