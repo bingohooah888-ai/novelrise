@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const index = await readFile(
+  new URL('../index.html', import.meta.url),
+  'utf8'
+);
 const migration = await readFile(
   new URL(
     '../supabase/migrations/20260913073000_chapter41_beta_rank_discovery_feed.sql',
@@ -20,7 +23,10 @@ test('Chapter 41 home exposes discovery themes without exposing work Rank labels
   assert.match(index, /novelight_beta_rank_discovery_feed/u);
   assert.match(index, /RANK_SHELF_MIN_CANDIDATES=4/u);
   assert.doesNotMatch(index, /Rank\s*[1-6]/u);
-  assert.doesNotMatch(index, /\b(?:EMBER|SPARK|GLOW|BEACON|STAR|NOVA)\b/u);
+  assert.doesNotMatch(
+    index,
+    /\b(?:EMBER|SPARK|GLOW|BEACON|STAR|NOVA)\b/u
+  );
 });
 
 test('public beta discovery RPC filters Rank internally and returns no Rank fields', () => {
