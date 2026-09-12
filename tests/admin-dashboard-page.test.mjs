@@ -59,6 +59,7 @@ test('admin specialized readability overrides remain covered', () => {
   assert.match(readabilityCss, /novelight-page-admin-thumbnails/);
   assert.match(readabilityCss, /novelight-page-admin-scout/);
   assert.match(readabilityCss, /\.quad-field strong/);
+  assert.match(readabilityCss, /\.quad-controls > label > span/);
   assert.match(readabilityCss, /\.quad-meta/);
   assert.match(readabilityCss, /\.validation/);
   assert.match(readabilityCss, /\.row strong/);
@@ -66,6 +67,21 @@ test('admin specialized readability overrides remain covered', () => {
   assert.match(readabilityCss, /font-size:\s*15px !important/);
   assert.match(readabilityCss, /font-size:\s*14px !important/);
   assert.match(readabilityCss, /#f3d98e/i);
+});
+
+test('admin compact operational rows stay readable without inheriting oversized KPI numerals', () => {
+  assert.match(
+    themeCss,
+    /\.work \.num\s*\{[\s\S]*?font-size:\s*15px !important;/
+  );
+  assert.match(
+    themeCss,
+    /\.row strong\s*\{[\s\S]*?font-size:\s*15px !important;/
+  );
+  assert.match(
+    themeCss,
+    /\.brand > span\s*\{[\s\S]*?padding:\s*4px 9px;[\s\S]*?font-size:\s*13px !important;/
+  );
 });
 
 test('login redirect allowlist explicitly permits the private admin page', () => {
