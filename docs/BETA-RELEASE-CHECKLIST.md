@@ -18,6 +18,7 @@ Qualified Japanese counsel review remains deferred/pending. The owner residual-r
 - [x] Exact current main is `24df7347580c73648f31d6f4eaa7759689b228eb`.
 - [x] PR #530 exact approved head `010de41c10c3f7fe0a2eadad981b0eb087ba0365` passed `NOVELIGHT CI` #2243 / run `34702951293`.
 - [x] PR #530 CI aggregate `check`, Node tests, static quality, desktop/mobile smoke, and desktop/mobile async-UI jobs are successful.
+- [x] Desktop + mobile Playwright gates pass for both smoke and async-UI coverage on PR #530 approved head.
 - [x] PR #530 exact approved head passed `CodeQL` #2151 / run `34702951229`.
 - [x] GitHub squash merge produced exact current main `24df7347...` from the reviewed PR #530 content; the merge itself adds no additional application change beyond the approved PR diff.
 - [x] Exact-current Vercel Production commit status on `24df7347...` is `success`.
