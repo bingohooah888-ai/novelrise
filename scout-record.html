@@ -4,14 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>SCOUT RECORD βプレビュー | NOVELIGHT</title>
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{color-scheme:light;--ink:#141414;--muted:#686868;--line:#d7d7d7;--soft:#f1f1f1;--paper:#fafafa;--white:#fff}
-    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--paper);color:var(--ink);letter-spacing:.01em}
+    body.novelight-page-scout-record{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--paper);color:var(--ink);letter-spacing:.01em}
     a{color:inherit;text-decoration:none}
     header{background:var(--white);border-bottom:1px solid var(--line)}
     .header-inner{max-width:1040px;min-height:72px;margin:auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
-    .logo{font-size:24px;font-weight:900;letter-spacing:.08em}
+    .scout-brand{display:inline-flex;align-items:center;min-height:44px}
+    .scout-brand img{display:block;width:170px;max-width:42vw;height:auto;filter:grayscale(1);opacity:.84}
     .back{font-size:13px;color:#555}
     main{max-width:1040px;margin:auto;padding:54px 24px 84px}
     .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:36px;align-items:center;padding:40px;border:1px solid #bcbcbc;border-radius:22px;background:var(--white);box-shadow:0 18px 50px rgba(0,0,0,.055)}
@@ -45,8 +47,8 @@
     @media(max-width:760px){main{padding:32px 16px 64px}.hero{grid-template-columns:1fr;padding:28px 22px}.lock{width:90px;height:90px}.lock::before{left:27px;top:16px;width:34px;height:33px;border-width:7px}.lock::after{left:22px;bottom:18px;width:46px;height:39px}.preview{grid-template-columns:1fr}.available{grid-template-columns:1fr}.cta{width:100%}}
   </style>
 </head>
-<body>
-  <header><div class="header-inner"><a class="logo" href="index.html">NOVELIGHT</a><a class="back" href="mypage.html">← 創作室</a></div></header>
+<body class="novelight-theme novelight-page-scout-record">
+  <header><div class="header-inner"><a class="scout-brand" href="index.html"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a><a class="back" href="mypage.html">← 創作室</a></div></header>
   <main>
     <section class="hero" aria-labelledby="scoutTitle">
       <div>
