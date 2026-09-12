@@ -13,6 +13,8 @@ const supabase = createClient(
 const STATES = new Set(['PRE_REGISTRATION', 'BETA_OPEN', 'CLOSED']);
 const SOURCES = new Set(['x', 'youtube', 'dm', 'direct', 'other']);
 const EVENT_TYPES = new Set(['page_view', 'cta_click']);
+const LEGACY_RELEASE_LABEL = '2026年9月下旬';
+const BETA_RELEASE_LABEL = '2026年9月30日';
 
 function setPrivateResponseHeaders(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -96,10 +98,18 @@ async function loadCampaign() {
   return data;
 }
 
+function publicReleaseLabel(value) {
+  const releaseLabel = String(value ?? '').trim();
+  if (!releaseLabel || releaseLabel === LEGACY_RELEASE_LABEL) {
+    return BETA_RELEASE_LABEL;
+  }
+  return releaseLabel;
+}
+
 function publicCampaign(campaign) {
   return {
     state: campaign.state,
-    releaseLabel: campaign.release_label
+    releaseLabel: publicReleaseLabel(campaign.release_label)
   };
 }
 
