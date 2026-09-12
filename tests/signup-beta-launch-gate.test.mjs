@@ -25,13 +25,19 @@ test('signup reuses the preregistration campaign state as the launch gate', () =
 });
 
 test('preregistration state routes users to the isolated beta author LP', () => {
-  assert.match(signup, /id="preregistrationLink" href="beta-authors" hidden/);
+  assert.match(
+    signup,
+    /id="preregistrationLink" href="beta-authors" hidden/
+  );
   assert.match(signup, /現在は先行作者登録期間です/);
   assert.match(signup, /β版の一般会員登録はまだ開始していません/);
 });
 
 test('campaign lookup failures keep normal signup closed', () => {
-  assert.match(signup, /if\(!response\.ok\)throw new Error\('campaign unavailable'\)/);
+  assert.match(
+    signup,
+    /if\(!response\.ok\)throw new Error\('campaign unavailable'\)/
+  );
   assert.match(signup, /throw new Error\('unexpected campaign state'\)/);
   assert.match(signup, /catch\(error\).*showUnavailableGate\(\)/s);
   assert.match(signup, /安全のため、現在は新規会員登録を停止しています/);
@@ -40,5 +46,8 @@ test('campaign lookup failures keep normal signup closed', () => {
 test('existing signup metadata and auth flow remain intact behind the gate', () => {
   assert.match(signup, /client\.auth\.signUp/);
   assert.match(signup, /data:\{display_name:name\}/);
-  assert.match(signup, /emailRedirectTo:window\.location\.origin\+'\/index\.html'/);
+  assert.match(
+    signup,
+    /emailRedirectTo:window\.location\.origin\+'\/index\.html'/
+  );
 });
