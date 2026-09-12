@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://novelrise.vercel.app/sitemap.xml
