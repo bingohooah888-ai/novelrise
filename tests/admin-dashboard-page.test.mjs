@@ -15,6 +15,10 @@ const adminApi = fs.readFileSync(
   new URL('../api/admin-dashboard.js', import.meta.url),
   'utf8'
 );
+const themeCss = fs.readFileSync(
+  new URL('../novelight-theme.css', import.meta.url),
+  'utf8'
+);
 
 test('admin page is noindex and has no server secret embedded in browser code', () => {
   assert.match(adminHtml, /noindex,nofollow,noarchive/);
@@ -28,6 +32,23 @@ test('admin API obtains the Supabase secret only from the server environment', (
   assert.match(adminApi, /process\.env\.SUPABASE_SECRET_KEY/);
   assert.doesNotMatch(adminApi, /sb_secret_/);
   assert.doesNotMatch(adminApi, /service_role/);
+});
+
+test('admin active cards show registered users and use a non-destructive reset epoch', () => {
+  assert.match(adminHtml, /7日アクティブ登録ユーザー/);
+  assert.match(adminHtml, /30日アクティブ登録ユーザー/);
+  assert.match(adminHtml, /activeRegisteredUsers7d/);
+  assert.match(adminHtml, /activeRegisteredUsers30d/);
+  assert.match(adminApi, /user_lifecycle/);
+  assert.match(adminApi, /NOVELIGHT_ADMIN_ACTIVITY_RESET_AT/);
+  assert.match(adminApi, /ACTIVE_REGISTERED_RESET_FALLBACK/);
+});
+
+test('shared NOVELIGHT theme explicitly covers every admin page slug', () => {
+  assert.match(themeCss, /data-novelight-page\^="admin-"/);
+  assert.match(themeCss, /novelight-page-admin/);
+  assert.match(themeCss, /#f7f2e7/i);
+  assert.match(themeCss, /#eac46a/i);
 });
 
 test('login redirect allowlist explicitly permits the private admin page', () => {
