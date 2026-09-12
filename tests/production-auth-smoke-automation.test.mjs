@@ -24,6 +24,10 @@ test('production readiness automatically opens the next Auth Smoke approval requ
   );
   assert.match(
     readinessWorkflow,
+    /if: success\(\) && github\.event_name != 'schedule'/
+  );
+  assert.match(
+    readinessWorkflow,
     /actions\/workflows\/production-auth-smoke-request\.yml\/dispatches/
   );
   assert.match(readinessWorkflow, /current_main.*GITHUB_SHA/s);
