@@ -1,0 +1,59 @@
+name: NOVELIGHT High-Risk Merge Production Readiness Bridge
+
+on:
+  workflow_run:
+    workflows: ['NOVELIGHT High-Risk PR Approval Relay']
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: novelight-high-risk-merge-readiness-bridge
+  cancel-in-progress: false
+
+jobs:
+  dispatch-readiness:
+    name: Dispatch Production Readiness after guarded high-risk merge
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch readiness unless current main is already covered
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_main="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              --jq '.object.sha'
+          )"
+
+          gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/production-readiness-smoke.yml/runs?head_sha=$current_main&per_page=20" \
+            > /tmp/readiness-runs.json
+
+          existing_count="$(
+            jq \
+              --arg sha "$current_main" \
+              '[.workflow_runs[] | select(.head_sha == $sha)] | length' \
+              /tmp/readiness-runs.json
+          )"
+
+          if [ "$existing_count" -gt 0 ]; then
+            echo "Production Readiness already exists for current main $current_main; skipping duplicate dispatch."
+            exit 0
+          fi
+
+          echo "Dispatching Production Readiness for current main $current_main after successful high-risk approval relay."
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/production-readiness-smoke.yml/dispatches" \
+            -d '{"ref":"main"}'
