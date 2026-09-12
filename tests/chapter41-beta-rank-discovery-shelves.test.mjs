@@ -20,7 +20,7 @@ test('Chapter 41 home exposes discovery themes without exposing work Rank labels
   assert.match(index, /novelight_beta_rank_discovery_feed/u);
   assert.match(index, /RANK_SHELF_MIN_CANDIDATES=4/u);
   assert.doesNotMatch(index, /Rank\s*[1-6]/u);
-  assert.doesNotMatch(index, /\b(?:EMBER|SPARK|GLOW|BEACON|STAR|NOVA)\b/u);
+  assert.doesNotMatch(index, /current_rank|candidate_rank/u);
 });
 
 test('public beta discovery RPC filters Rank internally and returns no Rank fields', () => {
