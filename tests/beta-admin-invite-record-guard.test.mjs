@@ -20,13 +20,19 @@ test('beta admin presents invited as a manual outreach record, not a send action
 });
 
 test('beta admin confirms before first marking outreach as sent', () => {
-  assert.match(adminHtml, /function confirmInviteRecordStatusChange\(nextStatus\)/);
+  assert.match(
+    adminHtml,
+    /function confirmInviteRecordStatusChange\(nextStatus\)/
+  );
   assert.match(
     adminHtml,
     /if\(!selected\|\|nextStatus!==['"]invited['"]\|\|selected\.status===['"]invited['"]\)return true;/
   );
   assert.match(adminHtml, /送付済みとして記録しますか/);
-  assert.match(adminHtml, /if\(!confirmInviteRecordStatusChange\(nextStatus\)\)/);
+  assert.match(
+    adminHtml,
+    /if\(!confirmInviteRecordStatusChange\(nextStatus\)\)/
+  );
 });
 
 test('beta invite milestone remains record-only and does not add an outbound mail path', () => {
