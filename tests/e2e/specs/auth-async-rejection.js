@@ -89,6 +89,20 @@ async function installAuthResilienceStubs(page, overrides = {}) {
     }
   );
 
+  await page.route('**/api/beta-author-preregistration', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        campaign: { state: 'BETA_OPEN', releaseLabel: '2026年9月30日' }
+      })
+    });
+  });
+
   await page.route('**/novelight-client.js', async (route) => {
     await route.fulfill({
       status: 200,
