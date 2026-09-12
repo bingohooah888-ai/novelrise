@@ -124,7 +124,7 @@ jobs:
           bash scripts/publish-commit-status.sh "$state" production-readiness-smoke "$description"
 
       - name: Dispatch scoped Production Auth Smoke approval request
-        if: success()
+        if: success() && github.event_name != 'schedule'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
