@@ -21,6 +21,7 @@ on:
       - '.github/workflows/production-readiness-smoke.yml'
       - '.github/workflows/production-auth-smoke-request.yml'
       - '.github/workflows/production-authenticated-smoke.yml'
+      - '.github/workflows/production-auth-smoke-stale-recovery.yml'
   schedule:
     - cron: '15 22 * * *'
   workflow_dispatch:
