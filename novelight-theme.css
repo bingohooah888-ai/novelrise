@@ -134,3 +134,418 @@ html body.novelight-theme.novelight-page-mypage .action-card.cyan .status:not(:e
   min-height: 17px !important;
   margin-top: 7px !important;
 }
+
+/* --------------------------------------------------------------------------
+   NOVELIGHT ADMIN
+   A single shared night-and-gold operations theme for every private admin page.
+   The admin must feel like NOVELIGHT without trading away scanability or contrast.
+   -------------------------------------------------------------------------- */
+html[data-novelight-page="admin"],
+html[data-novelight-page^="admin-"] {
+  background: #06111f;
+  color-scheme: dark;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% -8%, rgba(234, 196, 106, 0.14), transparent 31rem),
+    radial-gradient(circle at 88% 12%, rgba(54, 92, 139, 0.12), transparent 27rem),
+    linear-gradient(180deg, #071321 0%, #081426 52%, #06101d 100%) !important;
+  color: #f7f2e7 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI",
+    "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.68;
+  text-rendering: optimizeLegibility;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) header {
+  border-bottom: 1px solid rgba(214, 164, 71, 0.42) !important;
+  background: rgba(5, 14, 27, 0.96) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(16px);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .header-inner {
+  min-height: 82px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .brand,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .logo {
+  color: #f0c969 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.055em;
+  text-shadow: 0 0 22px rgba(234, 196, 106, 0.16);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .logo {
+  font-size: 26px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .badge,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .admin-badge {
+  border: 1px solid rgba(234, 196, 106, 0.58) !important;
+  background: rgba(214, 164, 71, 0.1) !important;
+  color: #f3d98e !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.06em;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) main {
+  color: #f7f2e7;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h1,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h2,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h3,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .hero h1,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .section-title,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .section-head h2 {
+  color: #fff8e9 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif !important;
+  letter-spacing: 0.025em;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h1,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .hero h1 {
+  font-size: clamp(31px, 3vw, 40px) !important;
+  line-height: 1.3;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .section-title,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h2,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .section-head h2 {
+  font-size: 23px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h3,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .panel h2 {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .hero p,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .lead {
+  color: #d9d3c7 !important;
+  font-size: 16px !important;
+  line-height: 1.8 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .ghost,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .back,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .open,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .close {
+  min-height: 44px;
+  border: 1px solid rgba(214, 164, 71, 0.36) !important;
+  border-radius: 10px !important;
+  background: #0d1d33 !important;
+  color: #f7f2e7 !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .ghost:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .back:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .open:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .close:hover {
+  border-color: #eac46a !important;
+  background: #142a48 !important;
+  color: #fff4d2 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .primary {
+  min-height: 44px;
+  border: 1px solid #e3b957 !important;
+  border-radius: 10px !important;
+  background: linear-gradient(180deg, #eac46a 0%, #cf9b35 100%) !important;
+  color: #071321 !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+  box-shadow: 0 6px 18px rgba(214, 164, 71, 0.16);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .danger {
+  min-height: 44px;
+  border-color: #9f4b52 !important;
+  background: #3a1c24 !important;
+  color: #ffd9dc !important;
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .period {
+  border-color: rgba(214, 164, 71, 0.35) !important;
+  background: #0b192c !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .period button {
+  color: #d8d1c3 !important;
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .period button.active {
+  background: #d6a447 !important;
+  color: #071321 !important;
+  box-shadow: 0 4px 12px rgba(214, 164, 71, 0.18);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(
+  .metric,
+  .panel,
+  .operation,
+  .funnel-step,
+  .user,
+  .item,
+  .asset,
+  .gate,
+  .controls,
+  .table-wrap,
+  .modal-card,
+  .quad-field,
+  .quad-meta,
+  .validation,
+  .kv
+) {
+  border-color: rgba(214, 164, 71, 0.24) !important;
+  background: rgba(13, 29, 51, 0.94) !important;
+  color: #f7f2e7 !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.13);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .operation:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .item:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .asset:hover {
+  border-color: rgba(234, 196, 106, 0.74) !important;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(234, 196, 106, 0.08);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .metric .value,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .operation .value,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .funnel-step strong,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .num,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .metric-value {
+  color: #f1c96b !important;
+  font-size: 30px !important;
+  font-weight: 900 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .operation:not(.announcements) .value {
+  color: #ff9ea6 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(
+  .metric .label,
+  .metric-label,
+  .operation .label,
+  .funnel-step span,
+  .row span,
+  .subject,
+  .title,
+  .item-title,
+  .asset-title,
+  .user-name
+) {
+  color: #f5efe3 !important;
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(
+  .metric .sub,
+  .operation .sub,
+  .meta,
+  .hint,
+  .privacy,
+  .privacy-note,
+  .help,
+  .note,
+  .asset-meta,
+  .quad-note,
+  .section-head span,
+  .page-info,
+  .gate p,
+  footer
+) {
+  color: #cfc8bb !important;
+  font-size: 13.5px !important;
+  line-height: 1.72 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .status {
+  border: 1px solid rgba(214, 164, 71, 0.28) !important;
+  background: #0d1d33 !important;
+  color: #e4ddd0 !important;
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .status.ok {
+  border-color: #397a61 !important;
+  background: #0e2a22 !important;
+  color: #b8f0d7 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .status.error {
+  border-color: #9d4a54 !important;
+  background: #391b22 !important;
+  color: #ffd5d9 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .status.warn,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .legacy-note {
+  border-color: #8f7131 !important;
+  background: #302713 !important;
+  color: #f3dea3 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(input, select, textarea) {
+  border-color: #5d533f !important;
+  background: #09182b !important;
+  color: #fff8e9 !important;
+  font-size: 15px !important;
+  line-height: 1.55;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(input, select, textarea)::placeholder {
+  color: #9f998e !important;
+  opacity: 1;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(input, select, textarea):focus {
+  border-color: #e2b85a !important;
+  box-shadow: 0 0 0 3px rgba(234, 196, 106, 0.16) !important;
+  outline: none;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(.field label, .control label, .quad-axis label, .edit label) {
+  color: #e8e0d2 !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) table {
+  border-color: rgba(214, 164, 71, 0.2) !important;
+  background: #0d1d33 !important;
+  color: #f6f0e5 !important;
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) th {
+  border-color: rgba(214, 164, 71, 0.2) !important;
+  background: #09182b !important;
+  color: #eee5d6 !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) td {
+  border-color: rgba(214, 164, 71, 0.14) !important;
+  color: #eee8dd !important;
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) tr:hover td {
+  background: rgba(214, 164, 71, 0.055) !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(.chip, .source-chip, .tag) {
+  border: 1px solid rgba(214, 164, 71, 0.28) !important;
+  background: rgba(214, 164, 71, 0.11) !important;
+  color: #f0d997 !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .tag.active {
+  border-color: #397a61 !important;
+  background: #123226 !important;
+  color: #b9efd7 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .tag.retired {
+  border-color: #887034 !important;
+  background: #302713 !important;
+  color: #f2dfa8 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .tag.emergency_disabled {
+  border-color: #93434b !important;
+  background: #3a1c24 !important;
+  color: #ffd3d7 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(.empty, .user-kv, .quad-preview) {
+  border-color: rgba(214, 164, 71, 0.2) !important;
+  background: #09182b !important;
+  color: #cfc8bb !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .user-kv span,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .kv span {
+  color: #c7c0b3 !important;
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .user-kv strong,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .kv strong,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .kv p {
+  color: #fff8e9 !important;
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .user-id {
+  color: #b7b0a5 !important;
+  font-size: 12px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .link {
+  color: #f1cf7d !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar-track {
+  background: #07111f !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar {
+  background: linear-gradient(90deg, #b98428, #eac46a) !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar-label,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar-count {
+  color: #d8d1c3 !important;
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) footer {
+  border-top: 1px solid rgba(214, 164, 71, 0.12);
+  background: transparent !important;
+  color: #a9a295 !important;
+}
+
+@media (max-width: 680px) {
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) {
+    font-size: 15px !important;
+  }
+
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .header-inner {
+    min-height: 72px !important;
+  }
+
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h1,
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .hero h1 {
+    font-size: 30px !important;
+  }
+
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .metric .value,
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .operation .value,
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .funnel-step strong,
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .metric-value {
+    font-size: 27px !important;
+  }
+}
