@@ -17,7 +17,7 @@ Qualified Japanese counsel review remains deferred/pending. The owner residual-r
 - [x] Latest `main` and authoritative release/evidence rules were re-fetched before reconciliation.
 - [x] Exact current main is `e4e8673d6b45b046c69672a8e5fe72011c1a0081`.
 - [x] Exact-current NOVELIGHT CI / aggregate `check` / Node / static-quality gates are successful.
-- [x] Exact-current desktop and mobile browser smoke gates are successful.
+- [x] Desktop + mobile Playwright gates pass on exact-current main evidence.
 - [x] Exact-current desktop and mobile async-UI browser gates are successful.
 - [x] Exact-current CodeQL is successful.
 - [x] Exact-current Vercel Production commit status is `success`.
