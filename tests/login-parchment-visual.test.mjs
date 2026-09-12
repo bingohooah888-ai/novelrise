@@ -6,18 +6,19 @@ import test from 'node:test';
 const root = path.resolve(import.meta.dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const login = read('login.html');
+const authReaderContext = read('auth-reader-context.js');
 const headerCss = read('novelight-header-light.css');
 const brandCss = read('novelight-brand-refinement.css');
 const css = read('novelight-login-parchment.css');
 
 test('login keeps auth wiring', () => {
   assert.ok(login.includes('id="loginForm"'));
-  assert.ok(login.includes('safeRedirectTarget'));
+  assert.ok(login.includes('NovelightAuthReturn.safeRedirectTarget'));
   assert.ok(login.includes('signInWithPassword'));
-  assert.ok(login.includes("'/novel-edit.html'"));
-  assert.ok(login.includes("'/episode-post.html'"));
-  assert.ok(login.includes("'/episode-edit.html'"));
-  assert.ok(login.includes('url.pathname.replace'));
+  assert.ok(authReaderContext.includes("'/novel-edit.html'"));
+  assert.ok(authReaderContext.includes("'/episode-post.html'"));
+  assert.ok(authReaderContext.includes("'/episode-edit.html'"));
+  assert.ok(authReaderContext.includes("url.pathname.replace(/^\\//, '')"));
 });
 
 test('login loads the parchment visual layer', () => {

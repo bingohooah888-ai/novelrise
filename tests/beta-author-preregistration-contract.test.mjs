@@ -10,7 +10,7 @@ function read(path) {
 const betaHtml = read('beta-authors.html');
 const adminHtml = read('admin-beta-authors.html');
 const adminHubHtml = read('admin.html');
-const loginHtml = read('login.html');
+const authReaderContext = read('auth-reader-context.js');
 const publicApi = read('api/beta-author-preregistration.js');
 const adminApi = read('api/admin-beta-authors.js');
 const foundationMigration = read(
@@ -179,7 +179,7 @@ test('ADMIN surface uses the safe Preview bootstrap and exposes campaign control
 
 test('ADMIN hub and login redirect include preregistration management', () => {
   assert.match(adminHubHtml, /href="admin-beta-authors\.html"/);
-  assert.match(loginHtml, /'\/admin-beta-authors\.html'/);
+  assert.match(authReaderContext, /'\/admin-beta-authors\.html'/);
 });
 
 test('Vercel exposes clean preregistration routes and global security headers', () => {

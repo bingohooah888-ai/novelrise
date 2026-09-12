@@ -8,16 +8,17 @@ const root = new URL('../', import.meta.url);
 const read = (path) => readFile(join(root.pathname, path), 'utf8');
 
 test('password recovery is real and login redirect is allowlisted', async () => {
-  const [login, forgot, reset] = await Promise.all([
+  const [login, authReaderContext, forgot, reset] = await Promise.all([
     read('login.html'),
+    read('auth-reader-context.js'),
     read('forgot-password.html'),
     read('reset-password.html')
   ]);
   assert.match(login, /href="forgot-password\.html"/);
   assert.doesNotMatch(login, /パスワードを忘れた方<\/a>[^]*href="#"/);
-  assert.match(login, /function safeRedirectTarget/);
-  assert.match(login, /url\.origin!==window\.location\.origin/);
-  assert.match(login, /ALLOWED_PATHS/);
+  assert.match(authReaderContext, /function safeRedirectTarget/);
+  assert.match(authReaderContext, /url\.origin !== global\.location\.origin/);
+  assert.match(authReaderContext, /ALLOWED_PATHS/);
   assert.doesNotMatch(login, /window\.location\.href\s*=\s*redirect\s*;/);
   assert.match(forgot, /resetPasswordForEmail/);
   assert.match(forgot, /reset-password\.html/);

@@ -12,7 +12,7 @@ const announcementsHtml = read('admin-announcements.html');
 const inquiriesHtml = read('admin-inquiries.html');
 const reportsHtml = read('admin-reports.html');
 const contactHtml = read('contact.html');
-const loginHtml = read('login.html');
+const authReaderContext = read('auth-reader-context.js');
 const indexHtml = read('index.html');
 
 const privatePages = [adminHtml, announcementsHtml, inquiriesHtml, reportsHtml];
@@ -54,10 +54,10 @@ test('home footer routes support traffic to the combined announcements and conta
 });
 
 test('login redirect allowlist covers every private ADMIN operations page', () => {
-  assert.match(loginHtml, /'\/admin\.html'/);
-  assert.match(loginHtml, /'\/admin-announcements\.html'/);
-  assert.match(loginHtml, /'\/admin-inquiries\.html'/);
-  assert.match(loginHtml, /'\/admin-reports\.html'/);
+  assert.match(authReaderContext, /'\/admin\.html'/);
+  assert.match(authReaderContext, /'\/admin-announcements\.html'/);
+  assert.match(authReaderContext, /'\/admin-inquiries\.html'/);
+  assert.match(authReaderContext, /'\/admin-reports\.html'/);
 });
 
 test('inquiry and report list pages state that sensitive raw fields are excluded', () => {
