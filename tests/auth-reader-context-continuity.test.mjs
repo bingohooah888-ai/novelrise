@@ -59,14 +59,26 @@ function loadHelper(href, storage = createStorage()) {
 test('auth reader context accepts only same-origin allowlisted targets', () => {
   const { api } = loadHelper('https://novelight.jp/login.html');
 
-  assert.equal(api.safeRedirectTarget('novel.html?id=novel-1'), 'novel.html?id=novel-1');
+  assert.equal(
+    api.safeRedirectTarget('novel.html?id=novel-1'),
+    'novel.html?id=novel-1'
+  );
   assert.equal(
     api.safeRedirectTarget('/episode.html?id=episode-2&novelId=novel-1'),
     'episode.html?id=episode-2&novelId=novel-1'
   );
-  assert.equal(api.safeRedirectTarget('https://evil.example/novel.html?id=x'), 'mypage.html');
-  assert.equal(api.safeRedirectTarget('//evil.example/episode.html?id=x'), 'mypage.html');
-  assert.equal(api.safeRedirectTarget('/login.html?redirect=novel.html'), 'mypage.html');
+  assert.equal(
+    api.safeRedirectTarget('https://evil.example/novel.html?id=x'),
+    'mypage.html'
+  );
+  assert.equal(
+    api.safeRedirectTarget('//evil.example/episode.html?id=x'),
+    'mypage.html'
+  );
+  assert.equal(
+    api.safeRedirectTarget('/login.html?redirect=novel.html'),
+    'mypage.html'
+  );
 });
 
 test('login and signup keep the sanitized redirect across the auth choice', () => {
@@ -82,21 +94,35 @@ test('login and signup keep the sanitized redirect across the auth choice', () =
 
   assert.match(login, /id="signupLink" href="signup\.html"/);
   assert.match(login, /src="auth-reader-context\.js"/);
-  assert.match(login, /NovelightAuthReturn\.authHref\('signup\.html',redirect\)/);
+  assert.match(
+    login,
+    /NovelightAuthReturn\.authHref\('signup\.html',redirect\)/
+  );
   assert.match(signup, /id="loginLink" href="login\.html"/);
   assert.match(signup, /src="auth-reader-context\.js"/);
-  assert.match(signup, /NovelightAuthReturn\.authHref\('login\.html',redirect\)/);
+  assert.match(
+    signup,
+    /NovelightAuthReturn\.authHref\('login\.html',redirect\)/
+  );
 });
 
 test('signup keeps the known-good confirmation URL and stores context only after success', () => {
-  assert.match(signup, /emailRedirectTo:window\.location\.origin\+'\/index\.html'/);
+  assert.match(
+    signup,
+    /emailRedirectTo:window\.location\.origin\+'\/index\.html'/
+  );
 
   const signupIndex = signup.indexOf('client.auth.signUp');
-  const rememberIndex = signup.indexOf('NovelightAuthReturn.rememberPendingTarget(redirect)');
+  const rememberIndex = signup.indexOf(
+    'NovelightAuthReturn.rememberPendingTarget(redirect)'
+  );
   assert.ok(signupIndex >= 0);
   assert.ok(rememberIndex > signupIndex);
   assert.match(index, /src="auth-reader-context\.js"/);
-  assert.match(index, /NovelightAuthReturn\.resumePendingSignupContext\(client\)/);
+  assert.match(
+    index,
+    /NovelightAuthReturn\.resumePendingSignupContext\(client\)/
+  );
 });
 
 test('confirmed signup resumes a pending safe reader target once a session exists', async () => {
@@ -120,7 +146,10 @@ test('confirmed signup resumes a pending safe reader target once a session exist
   });
 
   assert.equal(resumed, true);
-  assert.equal(confirmed.replacedTarget(), 'episode.html?id=ep-2&novelId=novel-1');
+  assert.equal(
+    confirmed.replacedTarget(),
+    'episode.html?id=ep-2&novelId=novel-1'
+  );
 
   const secondAttempt = loadHelper(
     'https://novelight.jp/index.html#access_token=test&type=signup',
@@ -128,7 +157,11 @@ test('confirmed signup resumes a pending safe reader target once a session exist
   );
   assert.equal(
     await secondAttempt.api.resumePendingSignupContext({
-      auth: { async getSession() { return { data: { session: {} }, error: null }; } }
+      auth: {
+        async getSession() {
+          return { data: { session: {} }, error: null };
+        }
+      }
     }),
     false
   );
@@ -148,7 +181,11 @@ test('confirmation does not consume reader context before a session exists', asy
   );
   assert.equal(
     await firstReturn.api.resumePendingSignupContext({
-      auth: { async getSession() { return { data: { session: null }, error: null }; } }
+      auth: {
+        async getSession() {
+          return { data: { session: null }, error: null };
+        }
+      }
     }),
     false
   );
@@ -160,7 +197,11 @@ test('confirmation does not consume reader context before a session exists', asy
   );
   assert.equal(
     await laterReturn.api.resumePendingSignupContext({
-      auth: { async getSession() { return { data: { session: {} }, error: null }; } }
+      auth: {
+        async getSession() {
+          return { data: { session: {} }, error: null };
+        }
+      }
     }),
     true
   );
