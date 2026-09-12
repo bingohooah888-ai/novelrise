@@ -1,10 +1,52 @@
 # NOVELIGHT controlled-beta operations runbook
 
-Last updated: 2026-08-24
+Last updated: 2026-09-12
 
 ## Purpose
 
 This runbook defines the minimum operator routine for the controlled public beta. The goal is to avoid relying on ad-hoc Supabase dashboard checks when moderation or support work is waiting.
+
+## Public beta launch-day cutover — 2026-09-30 JST
+
+The public beta launch is a campaign-state cutover, not a migration or billing operation. The intended launch transition is `PRE_REGISTRATION` -> `BETA_OPEN` through the authenticated ADMIN beta-author screen.
+
+### Preconditions
+
+1. Confirm the release date is still **2026-09-30** in `docs/NOVELIGHT-MASTER.md` and that the current release checklist/evidence does not contain a new technical blocker.
+2. Confirm the intended `main` commit is deployed to Vercel Production and its required repository/Production readiness checks are green or remain specifically still-valid under the evidence-freshness rules.
+3. Do **not** rerun an already-applied Production migration, Production Auth Smoke, Stripe operation, Secret change, or official-thumbnail registration merely to refresh documentary SHA alignment.
+4. Open `admin-beta-authors.html` through the normal ADMIN-authenticated path. Do not update the campaign by direct Production SQL.
+5. Confirm the current campaign state is `PRE_REGISTRATION`. If it is already `BETA_OPEN`, `CLOSED`, unknown, or cannot be loaded, stop the cutover and investigate before changing anything.
+6. Confirm the release-label field is exactly `2026年9月30日`. If the stored value is stale, correct it in the same ADMIN save used for the launch transition.
+
+### Cutover
+
+1. Change the campaign state from `PRE_REGISTRATION` to `BETA_OPEN`.
+2. Leave the release label as `2026年9月30日`.
+3. Click the campaign save button once.
+4. Read the state-change confirmation dialog carefully and approve it only if the target shown is `BETA_OPEN`.
+5. Do not select `CLOSED` for the public beta launch. `CLOSED` is not the launch state.
+6. Wait for the ADMIN success result before taking any second action. Do not double-submit the state change.
+
+The campaign save updates the campaign state and release label together through the authenticated ADMIN API. The preregistration database function independently enforces the campaign state and accepts a registration only while the state is `PRE_REGISTRATION`; its execution privilege is server-side only.
+
+### Immediate post-cutover verification
+
+Perform read-only/public verification before announcing the launch:
+
+1. Reload `admin-beta-authors.html` and confirm the stored state is `BETA_OPEN` and the release label is `2026年9月30日`.
+2. Open `beta-authors.html` in a clean public session and confirm it presents the beta-open state rather than the preregistration form.
+3. Follow the public beta-open CTA and confirm it routes to `signup.html`.
+4. Open `signup.html` in a clean public session and confirm the ordinary signup form is exposed for the beta-open state.
+5. Confirm login remains available.
+6. Do not create a dummy preregistration merely to prove the stop condition; the campaign-state gate is enforced server-side and should be verified through the state/UI contract unless a separate approved diagnostic is required.
+7. Record the exact deployed `main` SHA, JST cutover time, state before/after, and verification result in the release evidence trail. Do not include preregistration PII in GitHub or chat logs.
+
+### Rollback / incident handling
+
+If a verification step fails **before the public launch announcement**, use the same authenticated ADMIN path to return the campaign to `PRE_REGISTRATION`, confirm the rollback dialog, then verify that the preregistration page and signup gate have returned to the pre-launch state. Record the failure and do not announce the launch until the cause is understood.
+
+After the public launch announcement, do not oscillate campaign states in response to ordinary defects. Treat the problem as a launch incident, preserve the observed evidence, and make an explicit owner decision before reopening preregistration or otherwise changing the public campaign state.
 
 ## Automated inbox watch
 
