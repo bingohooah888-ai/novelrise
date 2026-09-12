@@ -80,10 +80,15 @@ jobs:
             exit 0
           fi
 
+          gh api \
+            "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > /tmp/stale-request-comments.json
           existing_failed="$(
-            gh api \
-              "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
-              --jq "[.[] | select(.body | startswith(\"NOVELIGHT_PRODUCTION_AUTH_SMOKE_FAILED \\")) | select(.body | contains(\"$request_id\"))] | length"
+            jq --arg requestId "$request_id" '[
+              .[]
+              | select(.body | startswith("NOVELIGHT_PRODUCTION_AUTH_SMOKE_FAILED "))
+              | select(.body | contains($requestId))
+            ] | length' /tmp/stale-request-comments.json
           )"
           if [ "$existing_failed" -eq 0 ]; then
             payload="$(
