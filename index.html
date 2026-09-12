@@ -76,6 +76,20 @@
   </div>
 </section>
 
+<section id="unseenShelfSection" class="discovery-section alternate-section" hidden>
+  <div class="container">
+    <div class="shelf-head"><div><span class="section-kicker">DISCOVERY</span><h2>まだ知られていない物語</h2><p>まだ多くの読者に出会っていない作品から、次の一冊を見つけてみませんか。</p></div></div>
+    <div id="unseenGrid" class="shelf-grid"></div>
+  </div>
+</section>
+
+<section id="gatheringShelfSection" class="discovery-section" hidden>
+  <div class="container">
+    <div class="shelf-head"><div><span class="section-kicker">DISCOVERY</span><h2>いま光が集まりはじめた物語</h2><p>少しずつ読者との出会いが生まれはじめた物語を届けます。</p></div></div>
+    <div id="gatheringGrid" class="shelf-grid"></div>
+  </div>
+</section>
+
 <section id="features" class="why-section">
   <div class="container">
     <div class="section-head centered"><span class="section-kicker">WHY NOVELIGHT</span><h2>なぜNOVELIGHTなのか</h2><p>すべての物語に、光を届けるための仕組み。</p></div>
@@ -105,7 +119,7 @@
 </main>
 <footer class="site-footer"><div class="footer-inner"><span>© 2026 NOVELIGHT</span><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="billing-policy.html">課金・解約</a><a href="commerce-disclosure.html">特商法表記</a><a href="contact.html">お知らせ・お問い合わせ</a></div></div></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="novelight-client.js"></script><script>
-const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}function visitor(){return NovelightClient.getVisitorToken()}
+const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}function visitor(){return NovelightClient.getVisitorToken()}const RANK_SHELF_MIN_CANDIDATES=4;
 function missingTrustedRpc(error,name){const text=[error?.message,error?.details,error?.hint].filter(Boolean).join(' ').toLowerCase();return error?.code==='PGRST202'||(text.includes(name.toLowerCase())&&(text.includes('schema cache')||text.includes('could not find')))}
 async function discoveryFeed(args){const trusted=await client.rpc('novelight_trusted_discovery_feed',args);if(!trusted.error)return trusted;if(!missingTrustedRpc(trusted.error,'novelight_trusted_discovery_feed'))return trusted;console.warn('trusted discovery unavailable; using read-only legacy feed');return client.rpc('novelight_discovery_feed_v2',args)}
 async function planExtraFeed(args){const trusted=await client.rpc('novelight_trusted_plan_extra_feed',args);if(!trusted.error)return trusted;if(!missingTrustedRpc(trusted.error,'novelight_trusted_plan_extra_feed'))return trusted;console.warn('trusted plan-extra feed unavailable; using read-only legacy feed');return client.rpc('novelight_plan_extra_feed',args)}
@@ -121,7 +135,11 @@ function selectVisibleDiscoveryRows(general,plan,premium,limit){const extras=rot
 async function loadDiscovery(){const grid=document.getElementById('discoveryGrid'),limit=discoveryVisibleLimit();let r;try{r=await discoveryFeed({p_surface:'home_discovery',p_limit:limit,p_keyword:null,p_genre:null,p_visitor_token:visitor()})}catch(e){console.error(e);grid.innerHTML='<div class="state">作品を読み込めませんでした。時間をおいて再度お試しください。</div>';return}if(r.error){console.error(r.error);grid.innerHTML='<div class="state">作品を読み込めませんでした。時間をおいて再度お試しください。</div>';return}const rows=r.data||[],general=rows.filter(x=>!x.is_premium_slot),premium=rows.filter(x=>x.is_premium_slot),excluded=[...general,...premium].map(x=>String(x.novel_id));let pe;try{pe=await planExtraFeed({p_limit:1,p_exclude_novel_ids:excluded,p_visitor_token:visitor()})}catch(e){console.error('plan extra feed failed',e);pe={error:e,data:[]}}const planRows=pe.error?[]:(pe.data||[]),visible=selectVisibleDiscoveryRows(general,planRows,premium,limit);await withOfficialThumbnails(visible);grid.innerHTML=visible.length?visible.map(card).join(''):'<div class="state">まだ公開作品がありません。</div>';if(visible.length)void record(visible)}
 async function neutralNew(limit){return client.rpc('novelight_neutral_search',{p_keyword:null,p_genre:null,p_sort:'new',p_limit:limit,p_offset:0})}
 async function lightSeedFeed(limit,offset=0){return client.rpc('novelight_light_seed_feed',{p_limit:limit,p_offset:offset})}
+function rankShelfRotationKey(group){return visitor()+':home-rank-discovery:'+group+':'+Math.floor(Date.now()/3600000)}
+async function rankDiscoveryFeed(group){return client.rpc('novelight_beta_rank_discovery_feed',{p_group:group,p_limit:12,p_rotation_key:rankShelfRotationKey(group)})}
+async function loadRankShelf(sectionId,gridId,group){const section=document.getElementById(sectionId),grid=document.getElementById(gridId),limit=discoveryVisibleLimit();section.hidden=true;grid.innerHTML='';try{const result=await rankDiscoveryFeed(group);if(result.error)throw result.error;const rows=(Array.isArray(result.data)?result.data:[]).filter(row=>row.status==='published');if(rows.length<RANK_SHELF_MIN_CANDIDATES)return;const visible=rows.slice(0,limit);grid.innerHTML=visible.map(card).join('');section.hidden=false}catch(e){console.error('rank discovery shelf unavailable',e);section.hidden=true;grid.innerHTML=''}}
+async function loadRankDiscoveryShelves(){await Promise.all([loadRankShelf('unseenShelfSection','unseenGrid','unseen'),loadRankShelf('gatheringShelfSection','gatheringGrid','gathering')])}
 async function loadSeedShelf(){const section=document.getElementById('seedShelfSection'),grid=document.getElementById('seedGrid'),limit=discoveryVisibleLimit();try{const result=await lightSeedFeed(limit,0);if(result.error)throw result.error;const seeded=(Array.isArray(result.data)?result.data:[]).filter(row=>row.status==='published'&&Number(row.light_seed_count||0)>0).slice(0,limit);section.hidden=!seeded.length;grid.innerHTML=seeded.length?seeded.map(seedCard).join(''):''}catch(e){console.error('LIGHT SEED feed failed',e);section.hidden=true;grid.innerHTML=''}}
 async function loadNewArrivals(){const grid=document.getElementById('newGrid'),limit=discoveryVisibleLimit();try{const r=await neutralNew(10);if(r.error)throw r.error;const rows=Array.isArray(r.data)?r.data:[],hydrated=await withOfficialThumbnails(rows);grid.innerHTML=hydrated.length?hydrated.slice(0,limit).map(card).join(''):'<div class="state">まだ新着作品がありません。</div>'}catch(e){console.error(e);grid.innerHTML='<div class="state">新着作品を読み込めませんでした。時間をおいて再度お試しください。</div>'}}
-(async()=>{await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);void NovelightClient.claimAcquisition(client);await Promise.all([loadDiscovery(),loadNewArrivals(),loadSeedShelf()])})();
+(async()=>{await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);void NovelightClient.claimAcquisition(client);await Promise.all([loadDiscovery(),loadNewArrivals(),loadSeedShelf()]);await loadRankDiscoveryShelves()})();
 </script></body></html>
