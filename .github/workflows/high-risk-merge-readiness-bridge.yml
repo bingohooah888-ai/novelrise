@@ -38,8 +38,9 @@ jobs:
             > /tmp/readiness-runs.json
 
           existing_count="$(
-            jq '[.workflow_runs[] | select(.head_sha == $sha)] | length' \
+            jq \
               --arg sha "$current_main" \
+              '[.workflow_runs[] | select(.head_sha == $sha)] | length' \
               /tmp/readiness-runs.json
           )"
 
