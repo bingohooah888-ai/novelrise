@@ -393,3 +393,21 @@ html body.novelight-theme.novelight-page-pricing.novelight-public-dark .footer-i
     font-size: 16px !important;
   }
 }
+
+/* ADMIN residual readability cleanup. Keep specialized tools legible inside the shared theme. */
+html body.novelight-theme.novelight-page-admin-thumbnails .quad-field strong {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-admin-thumbnails :is(.quad-meta, .validation) {
+  font-size: 14px !important;
+  line-height: 1.72 !important;
+}
+
+html body.novelight-theme.novelight-page-admin-scout .row strong {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-admin-thumbnails .brand > span {
+  color: #f3d98e !important;
+}
