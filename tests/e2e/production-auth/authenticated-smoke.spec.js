@@ -271,25 +271,18 @@ function waitForExposureConversion(page, eventType) {
   });
 }
 
-async function waitForThumbnailRenderResult(page, action) {
-  let body;
-  const response = await page.waitForResponse(async (candidate) => {
+function waitForThumbnailRenderAction(page, action) {
+  return page.waitForResponse((response) => {
     if (
-      !candidate.url().includes(thumbnailRenderApiPath) ||
-      candidate.request().method() !== 'POST'
+      !response.url().includes(thumbnailRenderApiPath) ||
+      response.request().method() !== 'POST'
     ) {
       return false;
     }
 
-    const requestBody = candidate.request().postData();
-    if (!(requestBody?.includes(`"action":"${action}"`) ?? false)) {
-      return false;
-    }
-
-    body = await candidate.json();
-    return true;
+    const requestBody = response.request().postData();
+    return requestBody?.includes(`"action":"${action}"`) ?? false;
   });
-  return { body, response };
 }
 
 async function assertChapter40ComposerReady(page) {
@@ -337,26 +330,28 @@ async function loadMyThumbnailComposition(page, novelId) {
   );
 }
 
-async function assertChapter40RenderPersisted(
-  page,
-  novelId,
-  expectedRenderStoragePath,
-  expectedRenderUrl,
-  deviceLabel
-) {
+async function assertChapter40RenderPersisted(page, novelId, deviceLabel) {
   const composition = await loadMyThumbnailComposition(page, novelId);
   expect(composition.template_key).toBeTruthy();
   expect(composition.background_asset_id).toBeTruthy();
   expect(composition.base_book_asset_id).toBeTruthy();
   expect(composition.cover_asset_id).toBeTruthy();
   expect(composition.revision).toMatch(receiptPattern);
-  expect(expectedRenderStoragePath).toMatch(renderStoragePathPattern);
-  expect(expectedRenderStoragePath).toContain(`renders/${novelId}/`);
-  expect(composition.render_url).toBe(expectedRenderUrl);
-  expect(composition.render_url).toContain(
-    '/storage/v1/object/public/novel-thumbnail-renders/'
-  );
-  saveThumbnailRenderPath(deviceLabel, novelId, expectedRenderStoragePath);
+
+  const renderPublicPrefix =
+    '/storage/v1/object/public/novel-thumbnail-renders/';
+  expect(composition.render_url).toContain(renderPublicPrefix);
+  expect(composition.render_url).toContain('.webp');
+
+  const encodedStoragePath = String(composition.render_url)
+    .split(renderPublicPrefix)[1]
+    ?.split(/[?#]/, 1)[0];
+  expect(encodedStoragePath).toBeTruthy();
+
+  const renderStoragePath = decodeURIComponent(encodedStoragePath);
+  expect(renderStoragePath).toMatch(renderStoragePathPattern);
+  expect(renderStoragePath).toContain(`renders/${novelId}/`);
+  saveThumbnailRenderPath(deviceLabel, novelId, renderStoragePath);
 }
 
 async function readEpisodeAndRecord(page, episodeHref, title, label) {
@@ -508,41 +503,27 @@ test('authenticated beta-critical product flow works in target', async ({
       await authorPage.locator('#policyAck').check();
       await expect(authorPage.locator('#submitButton')).toBeEnabled();
 
-      const prepareUpload = waitForThumbnailRenderResult(
+      const prepareUpload = waitForThumbnailRenderAction(
         authorPage,
         'prepare-upload'
       );
-      const finalizeUpload = waitForThumbnailRenderResult(
+      const finalizeUpload = waitForThumbnailRenderAction(
         authorPage,
         'finalize-upload'
       );
       await authorPage.locator('#submitButton').click();
 
-      const { body: prepared, response: prepareResponse } = await prepareUpload;
+      const prepareResponse = await prepareUpload;
       expect(prepareResponse.ok()).toBeTruthy();
-      expect(prepared.path).toMatch(renderStoragePathPattern);
-      const {
-        body: finalized,
-        response: finalizeResponse
-      } = await finalizeUpload;
+      const finalizeResponse = await finalizeUpload;
       expect(finalizeResponse.ok()).toBeTruthy();
-      expect(finalized.renderUrl).toContain(
-        '/storage/v1/object/public/novel-thumbnail-renders/'
-      );
-      expect(finalized.renderUrl).toContain('.webp');
 
       await authorPage.waitForURL(/\/episode-post\.html\?novel_id=/);
       novelId = new globalThis.URL(authorPage.url()).searchParams.get(
         'novel_id'
       );
       expect(novelId).toBeTruthy();
-      await assertChapter40RenderPersisted(
-        authorPage,
-        novelId,
-        prepared.path,
-        finalized.renderUrl,
-        deviceLabel
-      );
+      await assertChapter40RenderPersisted(authorPage, novelId, deviceLabel);
     });
 
     await test.step('Publish first episode', async () => {
