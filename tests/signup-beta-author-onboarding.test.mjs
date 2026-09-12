@@ -5,10 +5,7 @@ import test from 'node:test';
 const signup = await readFile('signup.html', 'utf8');
 
 test('signup explains the beta Standard path before account creation', () => {
-  assert.match(
-    signup,
-    /β期間中はStandardを無料・カード登録不要で利用できます/u
-  );
+  assert.match(signup, /β期間中はStandardを無料・カード登録不要で利用できます/u);
   assert.match(signup, /会員登録後、料金プランから有効化してください/u);
 });
 
