@@ -1,6 +1,6 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-09-10 JST**
+**Reconciled: 2026-09-12 JST**
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
 
@@ -8,172 +8,177 @@ This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNES
 
 **Historical controlled public-beta GO: RECORDED 2026-08-28.**
 
-**Current launch posture: BLOCKED — approved official novel thumbnail assets are not yet prepared/populated in Production, so new novel submission cannot complete. A fresh Production Authenticated Smoke is required only after that content dependency is satisfied.**
+**Current launch posture: GO — the official-thumbnail, Production Readiness, and fresh authenticated Production-smoke blockers recorded on 2026-09-10 are now cleared on exact current main.**
 
 Decision record: `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
 Historical decision baseline main: `1a5ca5dc5a90e4336ab5de74a21e2f2843e22bb1`.
 
-Current material launch main at this reconciliation: `a505814b1a16c8b30d5731ed5db602f2c032d026` (`Block release readiness when official thumbnails are absent (#475)`).
-
-The current blocker is a known launch-preparation dependency, not evidence that the official-thumbnail feature implementation or permissions are broken. Read-only Production inspection found `public.novel_thumbnail_assets` present with its access boundary intact but with 0 total / 0 active rows, and the `novel-thumbnails` Storage bucket with 0 objects. `post.html` intentionally keeps novel submission disabled until an active official thumbnail is available.
-
-Two fresh approval-gated Production Authenticated Smoke attempts were executed after Chapter 38. Both were safely claimed, created only ephemeral Production smoke state, failed in the browser verification phase, and completed cleanup. The first exposed stale smoke assumptions that were corrected by PR #473; the second confirmed that the empty official-thumbnail catalog remains a real prerequisite for the posting flow and also exposed a stale author-profile selector corrected by PR #475. Neither failed run is PASS evidence.
+Current material launch main at this reconciliation: `e4e8673d6b45b046c69672a8e5fe72011c1a0081` (`Activate beta Standard before Production analytics smoke (#510)`).
 
 Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING** with owner residual risk recorded in `docs/legal-beta-review.md`. This is an operational release posture, not a finding of legal sufficiency.
+
+## Why the 2026-09-10 BLOCKED snapshot is no longer current
+
+The prior rolling evidence correctly recorded three technical blockers:
+
+1. no active official thumbnail in Production;
+2. Production Readiness had not yet passed after official-thumbnail population;
+3. no fresh successful approval-gated Production Authenticated Smoke existed for the changed beta-critical flow.
+
+Those statements were historical snapshots. Under `docs/EVIDENCE-FRESHNESS-GATE.md`, newer specific successful execution evidence supersedes them when no later material change invalidates the proof.
+
+As of this reconciliation:
+
+- exact current main remains `e4e8673d6b45b046c69672a8e5fe72011c1a0081`;
+- exact-current Vercel Production deployment status is `success`;
+- exact-current `production-readiness-smoke` is `success` after official-thumbnail population;
+- the readiness SQL includes `active_official_thumbnails_present` in the deterministic integrity verdict, so the successful readiness result proves that the old empty-catalog blocker is no longer current;
+- dedicated Production Auth Smoke issue #511 received OWNER approval for exact current main;
+- approval-handler run `34692176490` is an `issue_comment` run of `NOVELIGHT Production Auth Smoke Approval Handler`, conclusion `success`;
+- its single decisive `Verify authenticated beta-critical production flows` job completed `success`;
+- #511 contains one matching GitHub-Actions-authored `NOVELIGHT_PRODUCTION_AUTH_SMOKE_CONSUMED` record binding the request ID, exact main SHA, run `34692176490`, and `result="success"`;
+- cleanup completed and #511 was closed;
+- no later main commit exists at reconciliation time to invalidate that exact-current proof.
+
+Therefore the prior BLOCKED posture must not be used to justify duplicate Production population, readiness, migration, or Auth Smoke work.
 
 ## Freshness decision table
 
 | Scope | Newest decisive proof | Freshness on current launch main | Status |
 | --- | --- | --- | --- |
-| Repository CI / browser regression | PR #475 head CI #2006 / run `34459125776` | current code-equivalent; all required gates passed before squash merge | PASS |
-| CodeQL | PR #475 head CodeQL #1918 / run `34459125775` | current code-equivalent | PASS |
-| Vercel Production deployment | commit status on merge main `a505814b...` | exact-current deployment status | PASS |
-| Official thumbnail availability | read-only Production inspection before PR #475 | current launch dependency; 0 catalog rows / 0 active rows / 0 Storage objects | BLOCKED |
-| Production Readiness logic | PR #475 | exact-current code; zero active official thumbnails now fail deterministic integrity | BLOCKING UNTIL ASSETS EXIST |
-| Supabase Production migrations | approval-ledger executions/postchecks through `20260910143000` | current Production state | PASS |
-| Production authenticated beta-critical flows | Issue #474 / run `34456994468` | fresh attempt, but browser verification failed; cleanup succeeded | FAIL / RERUN AFTER THUMBNAILS |
-| Stripe/billing | Stripe Production Bootstrap #7 / run `33612120034` | still-valid; no later pricing/billing contract change in this reconciliation | PASS |
+| Repository CI / browser regression | exact-current main checks for `e4e8673d...` | exact-current | PASS |
+| CodeQL | exact-current CodeQL on `e4e8673d...` | exact-current | PASS |
+| Vercel Production deployment | commit status on `e4e8673d...` | exact-current | PASS |
+| Official thumbnail availability | exact-current Production Readiness | `active_official_thumbnails_present=true` is required by the successful integrity verdict | PASS |
+| Production Readiness | `production-readiness-smoke` on `e4e8673d...` | exact-current | PASS |
+| Supabase Production migrations | reconciled Chapter 38 ledger plus already-applied `20260911123000_fix_thumbnail_asset_registration_path.sql` | current Production state; no rerun required | PASS |
+| Production authenticated beta-critical flows | Issue #511 / run `34692176490` | exact-current approval-handler execution plus matching consumed ledger | PASS |
+| Chapter 40 geometry thumbnail flow | same exact-current authenticated smoke | create/render/composition persistence exercised in Production-authenticated flow | PASS |
+| LIGHT ANALYTICS | same exact-current authenticated smoke | exact-current | PASS |
+| Stripe/billing | Stripe Production Bootstrap #7 / run `33612120034` | still-valid; no reviewed Chapter 40/smoke fix requires a live billing repeat | PASS |
 | Backup/restore | Production Backup Freshness #8 / run `33354249864` plus recorded non-Production restore rehearsal | still-valid; no backup-control change | PASS |
 | Legal counsel | owner-deferred | unchanged | PENDING / ACCEPTED RESIDUAL RISK |
 
 ## Git / CI — PASS
 
-Current main is `a505814b1a16c8b30d5731ed5db602f2c032d026`.
+Current main is `e4e8673d6b45b046c69672a8e5fe72011c1a0081`.
 
-PR #475 was merged only after its head `2b45ee4f89f8cc216f63979ef6941e279e8978db` passed:
+Fresh exact-current GitHub evidence shows the required repository quality gates passing, including:
 
-- `NOVELIGHT CI` #2006 / run `34459125776`: `success`;
-- Merge readiness preflight: `success` after exact OWNER high-risk approval;
-- required aggregate `check`: `success`;
-- Node tests and static quality: `success`;
-- desktop/mobile smoke browser jobs: `success`;
-- desktop/mobile async-UI browser jobs: `success`;
-- `CodeQL` #1918 / run `34459125775`: `success`.
+- aggregate NOVELIGHT CI / `check`;
+- Node tests;
+- static quality;
+- desktop browser smoke;
+- mobile browser smoke;
+- desktop async-UI browser coverage;
+- mobile async-UI browser coverage;
+- CodeQL;
+- Vercel Production deployment status;
+- Production Readiness.
 
-The squash merge produced current main `a505814b...`; Vercel Production commit status on that exact merge commit is `success`.
+Skipped deployment/mutation jobs are not represented as executed.
 
-## Official thumbnail launch dependency — BLOCKED / CONTENT NOT YET POPULATED
+## Official thumbnail launch dependency — PASS
 
-The official-thumbnail schema and privilege hardening remain part of Production state. The blocking condition is the absence of actual approved thumbnail assets.
+The official-thumbnail schema and privilege hardening remain part of Production state.
 
-Read-only Production inspection established:
+The historical 2026-09-10 inspection found 0 official-thumbnail rows and correctly blocked the release. That state has since changed through the authorized Chapter 40 workstream.
 
-- `public.novel_thumbnail_assets` exists;
-- RLS / client read access needed by the posting UI is intact;
-- total catalog rows: 0;
-- active catalog rows: 0;
-- `novel-thumbnails` Storage objects: 0.
+Current decisive evidence is the successful exact-current Production Readiness result. `supabase/checks/production_beta_observability.sql` requires `active_official_thumbnails_present` as part of the final integrity verdict, based on an active row in `public.novel_thumbnail_assets`. The successful readiness status therefore establishes that the launch prerequisite is no longer empty.
 
-The repository does not contain an approved production thumbnail catalog to seed automatically. The official-thumbnail migration intentionally does not invent or seed artwork; the intended operational path is to upload approved assets and create catalog entries through the existing ADMIN workflow.
+The subsequent exact-current authenticated Production smoke exercised new-novel creation and Chapter 40 thumbnail behavior, so the posting path is no longer supported only by catalog-existence evidence.
 
-PR #475 added `active_official_thumbnails_present` to the deterministic Production Readiness integrity checks. This means an empty official-thumbnail catalog is now a release blocker instead of silently allowing a readiness PASS.
+Do not repeat asset registration or introduce placeholder content merely to refresh documentation.
 
-Do not upload a placeholder logo or synthetic test image to Production merely to force the smoke to pass. The next Production write in this area should occur only after an approved official thumbnail set exists and receives its own explicit Production authorization.
+## Supabase Production — PASS / CURRENT
 
-## Supabase Production — PASS / CURRENT VIA APPROVAL LEDGER
+Previously reconciled Production migrations through `20260910143000_chapter38_exclude_self_comment_scout_exp.sql` remain current state and are not rerun for documentary freshness.
 
-Previously reconciled Production migrations through `20260906120000_author_profile_avatar_and_activity.sql` remain historical/current state and are not rerun for documentary freshness.
+Chapter 38 approval-ledger history remains recorded in earlier release evidence and the release checklist, including the foundation, lifecycle/rank, discovery, star-rating, comment, and self-comment-exclusion migrations.
 
-Chapter 38 added material Production state after the 2026-09-06 evidence snapshot. Confirmed approval-ledger executions include:
+Chapter 40 / official-thumbnail registration adds the following current state:
 
-- foundation batch containing `20260909071500_scout_beta_event_foundations.sql` and `20260909071510_scout_beta_rules_rls.sql`:
-  - ledger issue `#165`;
-  - approved main `7e7b657048c4c13ec9a9185182c83dd93839d4dc`;
-  - bridge run `34315738396`;
-  - `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, `failure_phase="none"`.
-- `20260909080000_disable_light_seed_v1_client_rpcs.sql` and `20260909100000_chapter38_work_rank_engine.sql` were applied during the Chapter 38 Production rollout before the later lifecycle/rank migrations; prior deployment precheck/postcheck evidence remains part of that rollout history and is not re-executed here.
-- `20260909120000_chapter38_work_rank_lifecycle.sql`:
-  - ledger issue `#165`;
-  - approved main `e6de1ec2ec0366f5ca22511f771f0e6a1bbe0371`;
-  - bridge run `34335400168`;
-  - mutation/postcheck `success`.
-- `20260909130000_chapter38_rank_bayesian_percentiles.sql`:
-  - ledger issue `#165`;
-  - approved main `cb9e753595254763c9176f5909343d2d27b1c451`;
-  - bridge run `34340585331`;
-  - mutation/postcheck `success`.
-- `20260909140000_chapter38_seed_discovery_exp.sql`:
-  - ledger issue `#165`;
-  - approved main `d34be989cd3c55b3679420a4ec605c35e377f9f9`;
-  - bridge run `34358566221`;
-  - mutation/postcheck `success`.
-- `20260909190000_chapter38_star_rating_scout_exp.sql`:
-  - active ledger issue `#460`;
-  - approved main `5f773101bf6c0f05cdf8b043363b184b34d896bf`;
-  - bridge run `34408554615`;
-  - `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, `failure_phase="none"`.
-- `20260910070000_chapter38_comment_scout_exp_foundation.sql`:
-  - issue `#460`;
-  - approved main `824fdfb5e2f466b0f26623de94cc834fcfb7a717`;
-  - bridge run `34413902759`;
-  - mutation/postcheck `success`.
-- `20260910143000_chapter38_exclude_self_comment_scout_exp.sql`:
-  - issue `#460`;
-  - approved main `da1b8bd765e3b79cce56ea17fa05d6dd8d81795b`;
-  - bridge run `34441780108`;
-  - `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, `failure_phase="none"`.
+- PR #490 (`Fix official thumbnail asset registration path validation`) merged the hotfix migration `20260911123000_fix_thumbnail_asset_registration_path.sql`;
+- the migration fixes the canonical official-thumbnail Storage-path validation in `novelight_admin_register_thumbnail_layer_asset` while preserving the service-role/SECURITY DEFINER boundary;
+- `20260911123000_fix_thumbnail_asset_registration_path.sql` has already been applied in Production during the completed Chapter 40 workstream;
+- this reconciliation performs no Production migration and the already-applied migration must not be rerun.
 
-No Production migration is executed by this documentary reconciliation.
+The successful exact-current readiness and authenticated smoke are later current-state evidence that the affected official-thumbnail path is operational.
 
-## Chapter 38 product boundary — IMPLEMENTED / FINAL AUTH PROOF PENDING
+## Chapter 38 product boundary — IMPLEMENTED / CURRENT AUTH PROOF PASS
 
-Current code and Production migration state contain the beta foundations required by MASTER Chapter 38, including:
+Current code and Production state contain the beta foundations required by MASTER Chapter 38, including:
 
 - replayable SCOUT event and EXP ledgers;
 - valid-read sessions/events and anti-duplication rules;
-- reader heartbeat/progress signaling from the episode reader;
+- reader heartbeat/progress signaling;
 - LIGHT SEED event attribution and send-time Rank capture;
-- Work Rank calculation/history lifecycle and Bayesian/percentile logic;
+- Work Rank calculation/history lifecycle and percentile logic;
 - 180-day LIGHT SEED discovery EXP;
 - star-rating SCOUT EXP;
 - comment SCOUT EXP with self-comment exclusion;
 - ADMIN beta analysis support;
 - beta UI hiding SCOUT Level, Rank, badges, EXP, and unreleased SCOUT RECORD mechanics while keeping LIGHT SEED send history separate.
 
-This implementation/deployment state does **not** substitute for a successful fresh approval-gated Production Authenticated Smoke. That smoke is intentionally deferred until the official-thumbnail prerequisite is populated so the posting path can be exercised meaningfully.
+Unlike the 2026-09-10 snapshot, this materially changed authenticated boundary now has a fresh exact-current successful Production Authenticated Smoke: Issue #511 / run `34692176490`.
 
-## Production authenticated beta-critical path — TWO FAILED ATTEMPTS / CLEANUP PASS
+## Chapter 40 Geometry Thumbnail Engine — PRODUCTION VERIFIED
 
-Historical successful proof remains Issue #393 / run `34025686074` on main `5a5b502c61d984bf7d0329ea59a8d99b55b05861`. It remains historical evidence only for unchanged boundaries and is not current proof for later Chapter 38 behavior.
+Chapter 40 remains governed by the MASTER specification:
 
-Fresh attempt 1:
+- `base_book + cover_quad` is the Source of Truth;
+- PNG masks are debug-only, not rendering authority;
+- `cover_texture` / `pattern` / `symbol` / `frame` use Perspective Transform;
+- only template-configured `effect` rendering may extend outside the cover;
+- Geometry Validation is mandatory;
+- ADMIN supports four-point drag editing, numeric input, and real-time preview;
+- future `spine_quad` / `page_quad` / `edge_quad` extension remains supported by the design;
+- the Geometry Engine is the common foundation for all official templates.
 
-- request issue `#472`;
-- approved main `8d618f243f97057c1f4202c20b6f873cd12e5244`;
-- run `34453321240`;
-- exact OWNER approval -> `CLAIMED`;
-- authenticated browser verification: `failure`;
-- ephemeral Production smoke-data cleanup: `success`;
-- temporary Production credential / fixture cleanup: `success`;
-- issue ledger result: `NOVELIGHT_PRODUCTION_AUTH_SMOKE_FAILED`.
+Relevant implementation/proof chain after the prior blocked snapshot includes:
 
-This run exposed smoke assumptions that no longer matched the current beta UI. PR #473 aligned the smoke with official-thumbnail selection, valid-read-before-SEED ordering, the current LIGHT SEED UI/history naming, and the current author-room heading.
+- PR #490: fixes official-thumbnail asset registration path validation;
+- PR #497: captures thumbnail render response bodies inside the response wait so the smoke can prove the render response reliably;
+- PR #508: fixes the Production Auth Smoke LIGHT ANALYTICS heading selector;
+- PR #510: activates beta Standard before the Production analytics smoke and produces current main `e4e8673d...`.
 
-Fresh attempt 2:
+The fresh authenticated Production flow verifies novel creation, Chapter 40 thumbnail render, composition persistence, and LIGHT ANALYTICS. Render-output storage cleanup and ephemeral smoke-data cleanup completed after verification.
 
-- request issue `#474`;
-- approved main `ce1442bc325e309be23c50767af5585c2f27ea16`;
-- run `34456994468`;
-- exact OWNER approval -> `CLAIMED`;
-- authenticated browser verification: `failure`;
-- ephemeral Production smoke-data cleanup: `success`;
-- temporary Production credential / fixture cleanup: `success`;
-- issue ledger result: `NOVELIGHT_PRODUCTION_AUTH_SMOKE_FAILED`.
+## Production authenticated beta-critical path — PASS
 
-The second run failed because the Production posting flow had no `.thumbnail-option` to select while the official thumbnail catalog was empty, and because the author-profile smoke still referenced the removed `#profileBioSummary` element. PR #475 corrected the author-profile selector and added the empty-thumbnail release-readiness blocker. It did **not** create thumbnail content.
+Current decisive request and execution:
 
-Required release-proof sequence from the current state:
+- dedicated request issue: #511;
+- request ID: `auth-smoke-e4e8673d6b45b046c69672a8e5fe72011c1a0081-34691803431`;
+- approved main: `e4e8673d6b45b046c69672a8e5fe72011c1a0081`;
+- approval author association: OWNER;
+- approval-handler run: `34692176490`;
+- workflow: `NOVELIGHT Production Auth Smoke Approval Handler`;
+- trigger event: `issue_comment`;
+- workflow conclusion: `success`;
+- decisive job `Verify authenticated beta-critical production flows`: exactly one, `success`;
+- desktop/mobile authenticated smoke: pass;
+- LIGHT ANALYTICS: pass;
+- cleanup: pass;
+- matching GitHub-Actions-authored consumed ledger record: exactly one, `result="success"`, same request ID, same run ID, same exact main SHA;
+- issue #511: closed after consumption;
+- Stripe live charge: none.
 
-1. prepare an approved official thumbnail set;
-2. under a separate explicit Production authorization, upload/catalog the approved assets through the existing ADMIN path;
-3. run Production Readiness and require `active_official_thumbnails_present=true` with the other deterministic checks passing;
-4. create a fresh non-expired Production Auth Smoke request for the then-current or demonstrated backend-equivalent main;
-5. obtain exact OWNER approval and require the decisive authenticated verification job to pass;
-6. require cleanup and matching `CONSUMED result="success"` evidence;
-7. reconcile this evidence and the release checklist before restoring CURRENT LAUNCH POSTURE to GO.
+This evidence set matches the acceptance contract in `scripts/evaluate-production-auth-smoke-evidence.mjs`: expected workflow/event, top-level success, one successful decisive job, exact required head SHA, and one matching successful consumed record.
 
-Do not count #472 or #474 as successful authenticated smoke proof, and do not rerun the smoke while the known thumbnail prerequisite remains unsatisfied.
+Historical attempts #472 and #474 remain failures with successful cleanup. They are retained for audit and are not relabeled. Their older failed status no longer overrides the newer exact-current successful proof.
+
+## LIGHT ANALYTICS / discovery / posting / author home — PASS
+
+Current evidence supports the beta-critical user path:
+
+- active official-thumbnail availability is present;
+- new-novel submission completes in the authenticated Production smoke;
+- Chapter 40 rendering/persistence completes;
+- LIGHT ANALYTICS passes after the PR #510 beta Standard entitlement activation;
+- existing discovery, trusted allocation receipt, server-authoritative PV, author-profile/avatar/recent-activity boundaries remain covered by current or specifically still-valid evidence;
+- current repository CI covers reader/author UI regression scope.
 
 ## Production billing / Stripe / entitlement — PASS / STILL VALID
 
@@ -183,15 +188,15 @@ The beta billing contract remains:
 - Premium: beta special price `月額480円`;
 - Premium regular/formal price: `月額1,980円`.
 
-Decisive live billing proof remains `NOVELIGHT Stripe Production Bootstrap` #7 / run `33612120034` on `3ad58fc878ac5ce7880ee2e55d946ffbe8a8fbfe`, conclusion `success`.
+Decisive live billing proof remains `NOVELIGHT Stripe Production Bootstrap` #7 / run `33612120034`, conclusion `success`.
 
-No Chapter 38, PR #473, or PR #475 change reviewed in this reconciliation alters Stripe pricing, checkout/billing route semantics, entitlement pricing, Stripe Secrets, or Vercel billing configuration. Live billing operations are therefore not repeated merely to refresh documentation.
+PRs #490, #497, #508, and #510 do not create a reason to repeat a Stripe live operation for documentary freshness. The successful Production Auth Smoke created no real Stripe charge.
 
 ## Backup / restore — PASS / STILL VALID
 
 Newest accepted read-only backup evidence remains `NOVELIGHT Production Backup Freshness` #8 / run `33354249864`, conclusion `success`, together with the previously recorded non-Production restore rehearsal and `docs/BACKUP-RESTORE-RUNBOOK.md`.
 
-No change reviewed here modifies the backup/restore control boundary. No Production restore or backup mutation is repeated.
+No reviewed Chapter 40 or smoke-fix change modifies the backup/restore control boundary. No Production restore or backup mutation is repeated.
 
 ## Content / moderation / ADMIN — PASS WITH SCOPE LIMIT
 
@@ -205,14 +210,16 @@ Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING**.
 
 `docs/BETA-RELEASE-CHECKLIST.md` is reconciled in parallel with this rolling index.
 
-An `[x]` means current or specifically justified still-valid evidence exists. An `[ ]` means proof is missing/stale, content preparation is incomplete, or a manual/external gate is still open. A stale or failed proof is not converted into PASS merely because repository CI is green.
+An `[x]` means current or specifically justified still-valid evidence exists. An `[ ]` means proof is missing/stale or a manual/external gate is still open. Historical failed proof remains failed; it is superseded for current-state classification only by newer evidence for the same scope.
 
 ## Current release state
 
-**Controlled public-beta historical GO remains recorded, but CURRENT LAUNCH POSTURE is BLOCKED as of 2026-09-10.**
+**CURRENT LAUNCH POSTURE: GO as of 2026-09-12 reconciliation.**
 
-Current material main: `a505814b1a16c8b30d5731ed5db602f2c032d026`.
+Current material main: `e4e8673d6b45b046c69672a8e5fe72011c1a0081`.
 
-Repository CI/CodeQL for the PR #475 code-equivalent head and Vercel Production for exact current main are successful. Chapter 38 Production migrations remain reconciled through successful approval-ledger execution/postchecks. Both fresh authenticated smoke attempts completed their safety cleanup but failed browser verification and therefore provide no new PASS evidence.
+The former release blockers are now resolved in the required order: official-thumbnail availability is present, exact-current Production Readiness passes, and a fresh exact-current approval-gated Production Authenticated Smoke passes with successful cleanup and matching consumed-approval evidence.
 
-**The immediate blocker is that approved official thumbnail assets are not yet populated in Production. After they are prepared and explicitly authorized for Production upload/cataloging, Production Readiness must pass and a new approval-gated Production Authenticated Smoke must succeed before CURRENT LAUNCH POSTURE can return to GO.**
+No duplicate Production operation is needed to support this release-state conclusion. In particular, do not rerun `20260911123000_fix_thumbnail_asset_registration_path.sql`, do not repopulate official assets merely for documentary freshness, and do not repeat Auth Smoke/Stripe/Secret operations unless a later material change makes the existing proof `refresh-required` under `docs/EVIDENCE-FRESHNESS-GATE.md`.
+
+The remaining qualified Japanese counsel review is still pending under the previously recorded owner residual-risk decision; this GO is technical/operational and does not assert legal sufficiency.
