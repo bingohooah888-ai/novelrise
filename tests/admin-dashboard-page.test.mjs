@@ -7,8 +7,8 @@ const adminHtml = fs.readFileSync(
   new URL('../admin.html', import.meta.url),
   'utf8'
 );
-const loginHtml = fs.readFileSync(
-  new URL('../login.html', import.meta.url),
+const authReaderContext = fs.readFileSync(
+  new URL('../auth-reader-context.js', import.meta.url),
   'utf8'
 );
 const adminApi = fs.readFileSync(
@@ -85,7 +85,7 @@ test('admin compact operational rows stay readable without inheriting oversized 
 });
 
 test('login redirect allowlist explicitly permits the private admin page', () => {
-  assert.match(loginHtml, /'\/admin\.html'/);
+  assert.match(authReaderContext, /'\/admin\.html'/);
 });
 
 test('admin page does not add itself to ordinary site navigation', () => {
