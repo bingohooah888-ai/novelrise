@@ -11,7 +11,7 @@ const post = await readFile('post.html', 'utf8');
 const novelEdit = await readFile('novel-edit.html', 'utf8');
 const episodePost = await readFile('episode-post.html', 'utf8');
 const episodeEdit = await readFile('episode-edit.html', 'utf8');
-const scoutRecord = await readFile('scout-record.html', 'utf8');
+const lightSeedHistory = await readFile('light-seed-history.html', 'utf8');
 const pricing = await readFile('pricing.html', 'utf8');
 const myNovels = await readFile('my-novels.html', 'utf8');
 const ranking = await readFile('ranking.html', 'utf8');
@@ -74,10 +74,10 @@ test('author forms recover from async failures and prevent duplicate submits', (
   assert.match(episodeEdit, /type="submit" disabled/);
 });
 
-test('scout record separates metadata failures from unpublished works', () => {
-  assert.match(scoutRecord, /metadataUnavailable=false/);
-  assert.match(scoutRecord, /作品情報の取得エラー/);
-  assert.match(scoutRecord, /void NovelightClient\.claimAcquisition\(client\)/);
+test('LIGHT SEED history separates metadata failures from unpublished works', () => {
+  assert.match(lightSeedHistory, /metadataUnavailable=false/);
+  assert.match(lightSeedHistory, /作品情報の取得エラー/);
+  assert.match(lightSeedHistory, /void NovelightClient\.claimAcquisition\(client\)/);
 });
 
 test('billing prevents parallel checkout starts and recovers after failure', () => {
