@@ -8,13 +8,15 @@ This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNES
 
 **Historical controlled public-beta GO: RECORDED 2026-08-28.**
 
-**Current launch posture: GO — PR #530 exact approved-head repository CI and CodeQL are green, exact-current `24df7347580c73648f31d6f4eaa7759689b228eb` is deployed successfully to Vercel Production, and exact-current Production Readiness #129 is green. The successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid for the unchanged authenticated Chapter 38/40 beta-critical path.**
+**Current launch posture: GO — PR #530 exact approved-head repository CI and CodeQL are green, material application SHA `24df7347580c73648f31d6f4eaa7759689b228eb` is deployed successfully to Vercel Production, and Production Readiness #129 on that application SHA is green. The successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid for the unchanged authenticated Chapter 38/40 beta-critical path.**
 
 Decision record: `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
 Historical decision baseline main: `1a5ca5dc5a90e4336ab5de74a21e2f2843e22bb1`.
 
 Current material launch main at this reconciliation: `24df7347580c73648f31d6f4eaa7759689b228eb` (`Clarify beta author onboarding from signup (#530)`).
+
+Repository `main` may advance through documentation-only reconciliation commits after that application SHA. In this file, references to exact/current deployment or readiness evidence for `24df7347...` describe the exact **material application state** they verified; a docs-only successor is audited separately and does not by itself invalidate those application proofs.
 
 Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING** with owner residual risk recorded in `docs/legal-beta-review.md`. This is an operational release posture, not a finding of legal sufficiency.
 
@@ -80,6 +82,8 @@ No duplicate Production Auth Smoke, migration, asset registration, Stripe operat
 | Backup/restore | Production Backup Freshness #8 / run `33354249864` plus recorded non-Production restore rehearsal | still-valid; no backup-control change | PASS |
 | Legal counsel | owner-deferred | unchanged | PENDING / ACCEPTED RESIDUAL RISK |
 
+In the table above, `exact-current` for deployment/readiness means exact to the material application SHA `24df7347...`; it is not a claim that every later docs-only repository commit has the same SHA.
+
 ## Git / CI — PASS
 
 Current material launch main is `24df7347580c73648f31d6f4eaa7759689b228eb`.
@@ -96,7 +100,7 @@ The exact approved PR #530 head `010de41c10c3f7fe0a2eadad981b0eb087ba0365` passe
 - mobile async-UI browser coverage: `success`;
 - `CodeQL` #2151 / run `34702951229`: `success`.
 
-GitHub then squash-merged the reviewed PR content to `24df7347...`. The squash SHA does not have a separate main-push CI/CodeQL execution recorded here, so this document does **not** call the PR-head CI/CodeQL “exact-current main-push” evidence. Instead, exact-current post-merge evidence is:
+GitHub then squash-merged the reviewed PR content to `24df7347...`. The squash SHA does not have a separate main-push CI/CodeQL execution recorded here, so this document does **not** call the PR-head CI/CodeQL “exact-current main-push” evidence. Instead, exact-current post-merge application evidence is:
 
 - Vercel Production commit status on `24df7347...`: `success`;
 - `production-readiness-smoke` commit status on `24df7347...`: `success`;
@@ -194,7 +198,7 @@ Newest decisive authenticated request and execution for this scope:
 - issue #511: closed after consumption;
 - Stripe live charge: none.
 
-This evidence set matches the acceptance contract in `scripts/evaluate-production-auth-smoke-evidence.mjs` for its exact required SHA. It is not rewritten as an execution on current main `24df7347...`.
+This evidence set matches the acceptance contract in `scripts/evaluate-production-auth-smoke-evidence.mjs` for its exact required SHA. It is not rewritten as an execution on material application SHA `24df7347...`.
 
 Evidence-freshness review of later launch-hardening PRs through #530 found no change to the authenticated product path proved above. The proof is therefore still-valid for that scope, and repeating the Production Auth Smoke solely for SHA freshness is prohibited as unnecessary duplicate Production work.
 
@@ -256,7 +260,7 @@ The later ADMIN hardening chain includes:
 
 None of those changes adds a migration, DELETE/TRUNCATE of historical analytics, email/DM delivery infrastructure, or an ADMIN authentication/allowlist change.
 
-Exact-current Vercel Production and Production Readiness #129 are green after PR #530. Production Auth Smoke is deliberately **not** used to claim the ADMIN authorization boundary.
+Vercel Production and Production Readiness #129 are green on material application SHA `24df7347...` after PR #530. Production Auth Smoke is deliberately **not** used to claim the ADMIN authorization boundary.
 
 ## Production billing / Stripe / entitlement — PASS / STILL VALID
 
@@ -292,19 +296,19 @@ An `[x]` means current or specifically justified still-valid evidence exists. An
 
 **CURRENT LAUNCH POSTURE: GO as of 2026-09-13 reconciliation.**
 
-Current material main: `24df7347580c73648f31d6f4eaa7759689b228eb`.
+Material application main: `24df7347580c73648f31d6f4eaa7759689b228eb`.
 
 Current/reconciled quality, deployment, and readiness evidence is green:
 
 - PR #530 `NOVELIGHT CI` #2243 / run `34702951293` on approved head `010de41c...`: success;
 - PR #530 `CodeQL` #2151 / run `34702951229`: success;
-- exact-current Vercel Production commit status on `24df7347...`: success;
-- exact-current `NOVELIGHT Production Readiness Smoke` #129 / run `34703260352`: success;
-- exact-current `production-readiness-smoke` commit status: success.
+- Vercel Production commit status on material application SHA `24df7347...`: success;
+- `NOVELIGHT Production Readiness Smoke` #129 / run `34703260352`: success on material application SHA `24df7347...`;
+- `production-readiness-smoke` commit status on material application SHA `24df7347...`: success.
 
 The PR-head CI/CodeQL are retained as reviewed-content proof and are not mislabeled as a separate main-push execution on the GitHub-generated squash SHA.
 
-The former release blockers remain resolved: official-thumbnail availability is present, exact-current Production Readiness passes, and the approval-gated Production Authenticated Smoke on `e4e8673d...` remains still-valid for the unchanged authenticated Chapter 38/40 scope after review of later launch-hardening PRs through #530.
+The former release blockers remain resolved: official-thumbnail availability is present, Production Readiness passes on the material application SHA, and the approval-gated Production Authenticated Smoke on `e4e8673d...` remains still-valid for the unchanged authenticated Chapter 38/40 scope after review of later launch-hardening PRs through #530.
 
 No duplicate Production operation is needed to support this release-state conclusion. In particular, do not rerun `20260911123000_fix_thumbnail_asset_registration_path.sql`, do not repopulate official assets merely for documentary freshness, and do not repeat Auth Smoke/Stripe/Secret operations unless a later material change actually invalidates the relevant proof under `docs/EVIDENCE-FRESHNESS-GATE.md`.
 
