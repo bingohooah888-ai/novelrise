@@ -649,6 +649,10 @@ test('authenticated beta-critical product flow works in target', async ({
       );
     });
 
+    await test.step('Activate beta Standard without charging', async () => {
+      await assertBetaStandardActivation(authorPage);
+    });
+
     await test.step('Verify complete LIGHT ANALYTICS funnel', async () => {
       await authorPage.goto('/analytics.html');
       await expect(
@@ -672,8 +676,7 @@ test('authenticated beta-critical product flow works in target', async ({
       ]);
     });
 
-    await test.step('Verify beta billing without charging', async () => {
-      await assertBetaStandardActivation(authorPage);
+    await test.step('Verify premium checkout handoff without charging', async () => {
       await assertCheckoutSession(readerPage, 'premium');
     });
 
