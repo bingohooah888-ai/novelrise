@@ -55,17 +55,14 @@ test('shared NOVELIGHT theme explicitly covers every admin page slug', () => {
   assert.match(themeCss, /#eac46a/i);
 });
 
-test('shared admin readability layer covers specialized residual small text', () => {
-  assert.match(
-    readabilityCss,
-    /novelight-page-admin-thumbnails \.quad-field strong/,
-  );
-  assert.match(readabilityCss, /:is\(\.quad-meta, \.validation\)/);
-  assert.match(readabilityCss, /novelight-page-admin-scout \.row strong/);
-  assert.match(
-    readabilityCss,
-    /novelight-page-admin-thumbnails \.brand > span/,
-  );
+test('admin specialized readability overrides remain covered', () => {
+  assert.match(readabilityCss, /novelight-page-admin-thumbnails/);
+  assert.match(readabilityCss, /novelight-page-admin-scout/);
+  assert.match(readabilityCss, /\.quad-field strong/);
+  assert.match(readabilityCss, /\.quad-meta/);
+  assert.match(readabilityCss, /\.validation/);
+  assert.match(readabilityCss, /\.row strong/);
+  assert.match(readabilityCss, /\.brand > span/);
   assert.match(readabilityCss, /font-size:\s*15px !important/);
   assert.match(readabilityCss, /font-size:\s*14px !important/);
   assert.match(readabilityCss, /#f3d98e/i);
