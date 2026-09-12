@@ -11,16 +11,23 @@ on:
       - 'scripts/verify-production-static.sh'
       - 'scripts/verify-production-observability.sh'
       - 'scripts/publish-commit-status.sh'
+      - 'scripts/production-auth-smoke-fixture.mjs'
       - 'tests/e2e/production/**'
+      - 'tests/e2e/production-auth/**'
       - 'tests/e2e/playwright.production.config.mjs'
+      - 'tests/e2e/playwright.production-auth.config.mjs'
       - 'tests/e2e/package.json'
       - 'tests/e2e/package-lock.json'
       - '.github/workflows/production-readiness-smoke.yml'
+      - '.github/workflows/production-auth-smoke-request.yml'
+      - '.github/workflows/production-authenticated-smoke.yml'
+      - '.github/workflows/production-auth-smoke-stale-recovery.yml'
   schedule:
     - cron: '15 22 * * *'
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: read
   statuses: write
 
@@ -115,3 +122,32 @@ jobs:
             description='Production readiness smoke passed'
           fi
           bash scripts/publish-commit-status.sh "$state" production-readiness-smoke "$description"
+
+      - name: Dispatch scoped Production Auth Smoke approval request
+        if: success() && github.event_name != 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          if [ "$current_main" != "$GITHUB_SHA" ]; then
+            echo "Skipping Auth Smoke request dispatch: readiness SHA $GITHUB_SHA is not current main $current_main."
+            exit 0
+          fi
+
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/production-auth-smoke-request.yml/dispatches" \
+            -d '{"ref":"main"}'

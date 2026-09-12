@@ -1,0 +1,126 @@
+name: NOVELIGHT Production Auth Smoke Stale Approval Recovery
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+  statuses: read
+
+jobs:
+  recover-stale-approval:
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.user.login == 'github-actions[bot]' &&
+      startsWith(github.event.issue.title, '[Production Auth Smoke Approval] auth-smoke-') &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE ')
+    name: Recover when approved main is no longer current
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate approval and recover only stale main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPROVAL_BODY: ${{ github.event.comment.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_AUTH_SMOKE_APPROVE }"
+          request_json="$(
+            printf '%s\n' "$ISSUE_BODY" \
+              | head -n 1 \
+              | sed 's/^NOVELIGHT_PRODUCTION_AUTH_SMOKE_REQUEST //' \
+              | jq -c '.'
+          )"
+
+          echo "$approval_json" | jq -e '
+            type == "object" and
+            .operation == "production-authenticated-smoke" and
+            (.requestId | type == "string" and test("^auth-smoke-[0-9a-f]{40}-[0-9]+$")) and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            ((keys | sort) == (["challenge", "mainSha", "operation", "requestId"] | sort))
+          ' >/dev/null
+          echo "$request_json" | jq -e '
+            type == "object" and
+            .operation == "production-authenticated-smoke" and
+            (.requestId | type == "string" and test("^auth-smoke-[0-9a-f]{40}-[0-9]+$")) and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.expiresAt | type == "string") and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$"))
+          ' >/dev/null
+
+          request_id="$(echo "$request_json" | jq -r '.requestId')"
+          request_sha="$(echo "$request_json" | jq -r '.mainSha')"
+          request_challenge="$(echo "$request_json" | jq -r '.challenge')"
+          approved_request_id="$(echo "$approval_json" | jq -r '.requestId')"
+          approved_sha="$(echo "$approval_json" | jq -r '.mainSha')"
+          approved_challenge="$(echo "$approval_json" | jq -r '.challenge')"
+
+          test "$ISSUE_TITLE" = "[Production Auth Smoke Approval] $request_id"
+          test "$approved_request_id" = "$request_id"
+          test "$approved_sha" = "$request_sha"
+          test "$approved_challenge" = "$request_challenge"
+
+          current_main="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              --jq '.object.sha'
+          )"
+          if [ "$current_main" = "$approved_sha" ]; then
+            echo 'Approval still targets current main; normal authenticated-smoke handler owns this request.'
+            exit 0
+          fi
+
+          gh api \
+            "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > /tmp/stale-request-comments.json
+          existing_failed="$(
+            jq --arg requestId "$request_id" '[
+              .[]
+              | select(.body | startswith("NOVELIGHT_PRODUCTION_AUTH_SMOKE_FAILED "))
+              | select(.body | contains($requestId))
+            ] | length' /tmp/stale-request-comments.json
+          )"
+          if [ "$existing_failed" -eq 0 ]; then
+            payload="$(
+              jq -cn \
+                --arg requestId "$request_id" \
+                --arg mainSha "$approved_sha" \
+                --arg currentMainSha "$current_main" \
+                '{requestId:$requestId,mainSha:$mainSha,currentMainSha:$currentMainSha,result:"stale-main"}'
+            )"
+            gh issue comment "$ISSUE_NUMBER" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "NOVELIGHT_PRODUCTION_AUTH_SMOKE_FAILED $payload"
+          fi
+          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" >/dev/null || true
+
+          readiness_state="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/commits/$current_main/statuses?per_page=100" \
+              --jq '[.[] | select(.context == "production-readiness-smoke")][0].state // "missing"'
+          )"
+
+          if [ "$readiness_state" = 'success' ]; then
+            next_workflow='production-auth-smoke-request.yml'
+          else
+            next_workflow='production-readiness-smoke.yml'
+          fi
+
+          echo "Approved main $approved_sha is stale; dispatching $next_workflow for current main $current_main (readiness=$readiness_state)."
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/$next_workflow/dispatches" \
+            -d '{"ref":"main"}'
