@@ -399,6 +399,12 @@ html body.novelight-theme.novelight-page-admin-thumbnails .quad-field strong {
   font-size: 15px !important;
 }
 
+html body.novelight-theme.novelight-page-admin-thumbnails .quad-controls > label > span {
+  color: #e8e0d2 !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
 html body.novelight-theme.novelight-page-admin-thumbnails :is(.quad-meta, .validation) {
   font-size: 14px !important;
   line-height: 1.72 !important;

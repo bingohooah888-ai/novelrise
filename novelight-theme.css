@@ -185,12 +185,20 @@ html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admi
 }
 
 html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .badge,
-html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .admin-badge {
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .admin-badge,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .brand > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-left: 8px;
+  padding: 4px 9px;
   border: 1px solid rgba(234, 196, 106, 0.58) !important;
+  border-radius: 999px !important;
   background: rgba(214, 164, 71, 0.1) !important;
   color: #f3d98e !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   font-weight: 850 !important;
+  line-height: 1.2;
   letter-spacing: 0.06em;
 }
 
@@ -335,6 +343,18 @@ html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admi
   font-weight: 900 !important;
 }
 
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .work .num {
+  color: #f1c96b !important;
+  font-size: 15px !important;
+  line-height: 1.35;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .row strong {
+  color: #fff8e9 !important;
+  font-size: 15px !important;
+  line-height: 1.4;
+}
+
 html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .operation:not(.announcements) .value {
   color: #ff9ea6 !important;
 }
@@ -373,7 +393,7 @@ html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admi
   footer
 ) {
   color: #cfc8bb !important;
-  font-size: 13.5px !important;
+  font-size: 14px !important;
   line-height: 1.72 !important;
 }
 
@@ -440,7 +460,7 @@ html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admi
   border-color: rgba(214, 164, 71, 0.2) !important;
   background: #09182b !important;
   color: #eee5d6 !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 850 !important;
 }
 
@@ -458,7 +478,7 @@ html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admi
   border: 1px solid rgba(214, 164, 71, 0.28) !important;
   background: rgba(214, 164, 71, 0.11) !important;
   color: #f0d997 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   font-weight: 850 !important;
 }
 
@@ -501,7 +521,7 @@ html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admi
 
 html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .user-id {
   color: #b7b0a5 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 
 html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .link {
@@ -519,7 +539,7 @@ html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admi
 html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar-label,
 html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar-count {
   color: #d8d1c3 !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
 }
 
 html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) footer {
