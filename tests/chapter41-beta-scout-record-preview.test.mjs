@@ -16,19 +16,16 @@ const history = await readFile(
   'utf8'
 );
 
-test(
-  'beta navigation separates SCOUT RECORD preview from LIGHT SEED history',
-  () => {
-    assert.match(
-      mypage,
-      /href="scout-record\.html"[^>]*><span class="nav-icon">◇<\/span><span>SCOUT RECORD<\/span>/u
-    );
-    assert.match(
-      mypage,
-      /<h2>LIGHT SEED送信履歴<\/h2>[\s\S]*?href="light-seed-history\.html">履歴を見る →<\/a>/u
-    );
-  }
-);
+test('beta navigation separates SCOUT RECORD preview from LIGHT SEED history', () => {
+  assert.match(
+    mypage,
+    /href="scout-record\.html"[^>]*><span class="nav-icon">◇<\/span><span>SCOUT RECORD<\/span>/u
+  );
+  assert.match(
+    mypage,
+    /<h2>LIGHT SEED送信履歴<\/h2>[\s\S]*?href="light-seed-history\.html">履歴を見る →<\/a>/u
+  );
+});
 
 test('beta SCOUT RECORD is a locked low-data preview', () => {
   assert.match(
@@ -48,23 +45,17 @@ test('beta SCOUT RECORD is a locked low-data preview', () => {
   assert.doesNotMatch(preview, /\.from\s*\(/u);
   assert.doesNotMatch(preview, /\.rpc\s*\(/u);
   assert.doesNotMatch(preview, /作品Rank/u);
-  assert.doesNotMatch(
-    preview,
-    /\b(?:EMBER|SPARK|GLOW|BEACON|STAR|NOVA)\b/u
-  );
+  assert.doesNotMatch(preview, /\b(?:EMBER|SPARK|GLOW|BEACON|STAR|NOVA)\b/u);
 });
 
-test(
-  'LIGHT SEED send history remains usable during beta and stays separate',
-  () => {
-    assert.match(history, /<title>LIGHT SEED送信履歴 \| NOVELIGHT<\/title>/u);
-    assert.match(history, /<h1>LIGHT SEED送信履歴<\/h1>/u);
-    assert.match(history, /client\.from\('light_seeds'\)/u);
-    assert.match(history, /login\.html\?redirect=light-seed-history\.html/u);
-    assert.match(
-      history,
-      /href="scout-record\.html">SCOUT RECORD βプレビューを見る →<\/a>/u
-    );
-    assert.doesNotMatch(history, /<h1[^>]*>SCOUT RECORD<\/h1>/u);
-  }
-);
+test('LIGHT SEED send history remains usable during beta and stays separate', () => {
+  assert.match(history, /<title>LIGHT SEED送信履歴 \| NOVELIGHT<\/title>/u);
+  assert.match(history, /<h1>LIGHT SEED送信履歴<\/h1>/u);
+  assert.match(history, /client\.from\('light_seeds'\)/u);
+  assert.match(history, /login\.html\?redirect=light-seed-history\.html/u);
+  assert.match(
+    history,
+    /href="scout-record\.html">SCOUT RECORD βプレビューを見る →<\/a>/u
+  );
+  assert.doesNotMatch(history, /<h1[^>]*>SCOUT RECORD<\/h1>/u);
+});
