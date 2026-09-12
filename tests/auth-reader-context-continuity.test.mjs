@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { URL, URLSearchParams } from 'node:url';
 import vm from 'node:vm';
 
 const helperSource = await readFile('auth-reader-context.js', 'utf8');
