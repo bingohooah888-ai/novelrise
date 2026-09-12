@@ -652,7 +652,10 @@ test('authenticated beta-critical product flow works in target', async ({
     await test.step('Verify complete LIGHT ANALYTICS funnel', async () => {
       await authorPage.goto('/analytics.html');
       await expect(
-        authorPage.getByRole('heading', { name: 'LIGHT ANALYTICS' })
+        authorPage.getByRole('heading', {
+          name: 'LIGHT ANALYTICS',
+          exact: true
+        })
       ).toBeVisible();
       await expect(authorPage.locator('#novelCount')).toHaveText('1');
       await expect(authorPage.locator('#favoriteTotal')).toHaveText('1');
