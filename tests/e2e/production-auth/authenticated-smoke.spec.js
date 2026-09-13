@@ -633,6 +633,16 @@ test('authenticated beta-critical product flow works in target', async ({
     await test.step('Verify LIGHT SEED send history', async () => {
       await readerPage.goto('/scout-record.html');
       await expect(
+        readerPage.getByRole('heading', { name: 'SCOUT RECORD', exact: true })
+      ).toBeVisible();
+      await expect(
+        readerPage.getByRole('heading', { name: 'LIGHT SEED送信履歴' })
+      ).toBeVisible();
+      await readerPage
+        .getByRole('link', { name: '送信履歴を見る' })
+        .click();
+      await readerPage.waitForURL(/\/light-seed-history\.html$/);
+      await expect(
         readerPage.getByRole('heading', { name: 'LIGHT SEED送信履歴' })
       ).toBeVisible();
       await expect(
