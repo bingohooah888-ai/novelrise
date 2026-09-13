@@ -4,7 +4,10 @@ import test from 'node:test';
 import { URL } from 'node:url';
 
 const root = new URL('../', import.meta.url);
-const script = await readFile(new URL('novelight-discovery-list.js', root), 'utf8');
+const script = await readFile(
+  new URL('novelight-discovery-list.js', root),
+  'utf8'
+);
 
 test('recommended discovery still uses trusted feed and consumes returned receipts', () => {
   assert.match(script, /p_surface: 'search_recommended'/);
