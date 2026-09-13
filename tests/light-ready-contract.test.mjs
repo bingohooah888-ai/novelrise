@@ -12,11 +12,11 @@ test('LIGHT READY is scoped to draft first publication', () => {
 });
 
 test('LIGHT READY uses deterministic beta checks only', () => {
-  assert.ok(episodePost.includes("novel?.title?.trim()"));
-  assert.ok(episodePost.includes("novel?.genre?.trim()"));
-  assert.ok(episodePost.includes("novel?.description?.trim()"));
-  assert.ok(episodePost.includes("novel?.content_rating"));
-  assert.ok(episodePost.includes("novel?.content_warnings"));
+  assert.ok(episodePost.includes('novel?.title?.trim()'));
+  assert.ok(episodePost.includes('novel?.genre?.trim()'));
+  assert.ok(episodePost.includes('novel?.description?.trim()'));
+  assert.ok(episodePost.includes('novel?.content_rating'));
+  assert.ok(episodePost.includes('novel?.content_warnings'));
   assert.ok(
     episodePost.includes('episodeTitle.length>=1&&episodeTitle.length<=150')
   );
