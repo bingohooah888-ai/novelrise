@@ -43,6 +43,11 @@
     );
   }
 
+  function shouldFallbackFeed(result, name) {
+    if (!result?.error) return !Array.isArray(result?.data);
+    return missingTrustedRpc(result.error, name);
+  }
+
   function coverMarkup(novel) {
     const url = String(novel.thumbnail_url || '').trim();
     if (url) {
@@ -97,8 +102,13 @@
       p_receipts: receipts,
       p_visitor_token: visitor()
     });
-    if (result.error && missingTrustedRpc(result.error, 'record_trusted_allocation_receipts_v2')) {
-      result = await client.rpc('record_trusted_allocation_receipts', { p_receipts: receipts });
+    if (
+      result.error &&
+      missingTrustedRpc(result.error, 'record_trusted_allocation_receipts_v2')
+    ) {
+      result = await client.rpc('record_trusted_allocation_receipts', {
+        p_receipts: receipts
+      });
     }
     if (result.error) console.error(`${label} impression record failed`, result.error);
   }
@@ -128,16 +138,21 @@
       p_offset: offset,
       p_rotation_key: null
     });
+    if (
+      shouldFallbackFeed(
+        issued,
+        'novelight_issue_visible_allocation_receipts_v2'
+      )
+    ) {
+      await recordNeutralFallback(rows);
+      return;
+    }
     if (issued.error) {
-      if (missingTrustedRpc(issued.error, 'novelight_issue_visible_allocation_receipts_v2')) {
-        await recordNeutralFallback(rows);
-        return;
-      }
       console.error(`${surface} receipt issue failed`, issued.error);
       return;
     }
     await consumeReceipts(
-      (issued.data || []).map((row) => row.allocation_receipt).filter(Boolean),
+      issued.data.map((row) => row.allocation_receipt).filter(Boolean),
       surface
     );
   }
@@ -151,14 +166,15 @@
       p_visitor_token: visitor()
     };
     let result = await client.rpc('novelight_trusted_discovery_feed_v2', args);
-    if (result.error && missingTrustedRpc(result.error, 'novelight_trusted_discovery_feed_v2')) {
+    if (shouldFallbackFeed(result, 'novelight_trusted_discovery_feed_v2')) {
       result = await client.rpc('novelight_trusted_discovery_feed', args);
     }
-    if (result.error && missingTrustedRpc(result.error, 'novelight_trusted_discovery_feed')) {
+    if (shouldFallbackFeed(result, 'novelight_trusted_discovery_feed')) {
       result = await client.rpc('novelight_discovery_feed_v2', args);
     }
     if (result.error) throw result.error;
-    return (result.data || []).filter((row) => !row.is_premium_slot);
+    if (!Array.isArray(result.data)) throw new Error('Invalid discovery feed response');
+    return result.data.filter((row) => !row.is_premium_slot);
   }
 
   async function loadRecommended() {
