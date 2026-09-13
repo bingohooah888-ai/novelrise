@@ -7,9 +7,7 @@ const episodePost = await readFile('episode-post.html', 'utf8');
 test('LIGHT READY is scoped to draft first publication', () => {
   assert.ok(episodePost.includes('LIGHT READY｜公開前チェック'));
   assert.ok(episodePost.includes("novel.status!=='draft'"));
-  assert.ok(
-    episodePost.includes("novel?.status==='draft'&&episodeNumber!==1")
-  );
+  assert.ok(episodePost.includes("novel?.status==='draft'&&episodeNumber!==1"));
   assert.ok(episodePost.includes('初回公開は第1話として登録してください。'));
 });
 
@@ -46,7 +44,5 @@ test('LIGHT READY stays advisory for metadata checks', () => {
   assert.ok(renderStart >= 0 && listenerStart > renderStart);
   const renderFunction = episodePost.slice(renderStart, listenerStart);
   assert.ok(!renderFunction.includes('publish.disabled'));
-  assert.ok(
-    episodePost.includes("lightReadyEdit.href='novel-edit.html?id='")
-  );
+  assert.ok(episodePost.includes("lightReadyEdit.href='novel-edit.html?id='"));
 });
