@@ -66,10 +66,7 @@ test('public shelf receipts validate the authoritative feed', () => {
 
 test('privileged helpers stay behind invoker-only wrappers', () => {
   assert.match(migration, /create schema if not exists private/u);
-  assert.match(
-    migration,
-    /private\.novelight_trusted_discovery_feed_v2_impl/u
-  );
+  assert.match(migration, /private\.novelight_trusted_discovery_feed_v2_impl/u);
   assert.match(migration, /security definer[\s\S]*set search_path = ''/u);
   assert.match(migration, /public\.novelight_trusted_discovery_feed_v2/u);
   assert.match(migration, /security invoker/u);
@@ -81,9 +78,11 @@ test('privileged helpers stay behind invoker-only wrappers', () => {
 
 test('dedicated discovery records only appended cards', () => {
   const newBlock =
-    discovery.match(/async function loadNew\(\) \{([\s\S]*?)\n  \}/u)?.[1] || '';
+    discovery.match(/async function loadNew\(\) \{([\s\S]*?)\n  \}/u)?.[1] ||
+    '';
   const seedBlock =
-    discovery.match(/async function loadSeed\(\) \{([\s\S]*?)\n  \}/u)?.[1] || '';
+    discovery.match(/async function loadSeed\(\) \{([\s\S]*?)\n  \}/u)?.[1] ||
+    '';
   assert.ok(
     newBlock.indexOf('appendRows(rows)') <
       newBlock.indexOf("recordVisible('search_new'")
