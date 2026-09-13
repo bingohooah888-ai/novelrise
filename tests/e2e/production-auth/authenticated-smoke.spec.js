@@ -267,7 +267,7 @@ function waitForExposureConversion(page, eventType) {
       return false;
     }
     const body = response.request().postData();
-    return body?.includes(`"${eventType}"`) ?? false;
+    return body?.includes(`\"${eventType}\"`) ?? false;
   });
 }
 
@@ -281,7 +281,7 @@ function waitForThumbnailRenderAction(page, action) {
     }
 
     const requestBody = response.request().postData();
-    return requestBody?.includes(`"action":"${action}"`) ?? false;
+    return requestBody?.includes(`\"action\":\"${action}\"`) ?? false;
   });
 }
 
@@ -294,7 +294,7 @@ async function assertChapter40ComposerReady(page) {
 
   for (const layerType of ['background', 'base_book', 'cover']) {
     const selected = composer.locator(
-      `.nl-thumb-option[data-layer-type="${layerType}"][aria-pressed="true"]`
+      `.nl-thumb-option[data-layer-type=\"${layerType}\"][aria-pressed=\"true\"]`
     );
     await expect(selected).toHaveCount(1);
     await expect(selected).toHaveAttribute('data-asset-id', /.+/);
@@ -632,6 +632,16 @@ test('authenticated beta-critical product flow works in target', async ({
 
     await test.step('Verify LIGHT SEED send history', async () => {
       await readerPage.goto('/scout-record.html');
+      await expect(
+        readerPage.getByRole('heading', { name: 'SCOUT RECORD', exact: true })
+      ).toBeVisible();
+      await expect(
+        readerPage.getByRole('heading', { name: 'LIGHT SEED送信履歴' })
+      ).toBeVisible();
+      await readerPage
+        .getByRole('link', { name: '送信履歴を見る' })
+        .click();
+      await readerPage.waitForURL(/\/light-seed-history\.html$/);
       await expect(
         readerPage.getByRole('heading', { name: 'LIGHT SEED送信履歴' })
       ).toBeVisible();
