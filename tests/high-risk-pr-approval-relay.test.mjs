@@ -6,6 +6,10 @@ const workflow = await readFile(
   '.github/workflows/high-risk-pr-approval.yml',
   'utf8'
 );
+const productionReadinessWorkflow = await readFile(
+  '.github/workflows/production-readiness-smoke.yml',
+  'utf8'
+);
 
 test('relay is owner-only and exact-head bound', () => {
   assert.match(workflow, /issue_comment:/);
@@ -88,4 +92,31 @@ test('CI rerun follows ready transition', () => {
   assert.notEqual(rerunIndex, -1);
   assert.ok(readyIndex < rerunIndex);
   assert.match(workflow, /rerun-failed-jobs/);
+});
+
+test('final merge tolerates only an exact approved queued auto-merge race', () => {
+  assert.match(workflow, /if gh pr merge "\$PR_NUMBER"/);
+  assert.match(workflow, /pr-after-merge-attempt\.json/);
+  assert.match(workflow, /\.merged == true and \.merged_at != null/);
+  assert.match(
+    workflow,
+    /\.head\.repo\.full_name == \$repo and \.head\.sha == \$sha/
+  );
+  assert.match(workflow, /\.merge_commit_sha/);
+  assert.match(workflow, /reported merge commit could not be verified/);
+  assert.match(
+    workflow,
+    /Queued auto-merge completed exact approved PR #\$PR_NUMBER at head \$HEAD_SHA/
+  );
+  assert.match(
+    workflow,
+    /merge command failed and the exact approved PR is not confirmed merged/
+  );
+});
+
+test('production readiness observes high-risk relay workflow changes', () => {
+  assert.match(
+    productionReadinessWorkflow,
+    /'\.github\/workflows\/high-risk-pr-approval\.yml'/
+  );
 });
