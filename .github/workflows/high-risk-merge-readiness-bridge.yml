@@ -8,6 +8,8 @@ on:
 permissions:
   actions: write
   contents: read
+  issues: read
+  pull-requests: read
 
 concurrency:
   group: novelight-high-risk-merge-readiness-bridge
@@ -16,13 +18,22 @@ concurrency:
 jobs:
   dispatch-readiness:
     name: Dispatch Production Readiness after guarded high-risk merge
-    if: github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event.workflow_run.conclusion == 'success' ||
+      github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout trusted current main recovery logic
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: main
+
       - name: Dispatch readiness unless current main is already covered
         env:
           GH_TOKEN: ${{ github.token }}
+          RELAY_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         shell: bash
         run: |
           set -euo pipefail
@@ -32,6 +43,75 @@ jobs:
               "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
               --jq '.object.sha'
           )"
+          recovery_reason='successful high-risk approval relay'
+
+          if [ "$RELAY_CONCLUSION" = 'failure' ]; then
+            gh api \
+              "repos/$GITHUB_REPOSITORY/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=50" \
+              > /tmp/recent-closed-prs.json
+
+            matching_pr_count="$(
+              jq \
+                --arg sha "$current_main" \
+                '[.[] | select(.merged_at != null and .base.ref == "main" and .merge_commit_sha == $sha)] | length' \
+                /tmp/recent-closed-prs.json
+            )"
+            if [ "$matching_pr_count" -ne 1 ]; then
+              echo "Relay failed and current main $current_main is not uniquely attributable to a recently merged PR; no readiness recovery needed."
+              exit 0
+            fi
+
+            pr_number="$(
+              jq -r \
+                --arg sha "$current_main" \
+                '.[] | select(.merged_at != null and .base.ref == "main" and .merge_commit_sha == $sha) | .number' \
+                /tmp/recent-closed-prs.json
+            )"
+            head_sha="$(
+              jq -r \
+                --arg sha "$current_main" \
+                '.[] | select(.merged_at != null and .base.ref == "main" and .merge_commit_sha == $sha) | .head.sha' \
+                /tmp/recent-closed-prs.json
+            )"
+
+            test "$head_sha" != 'null' && printf '%s' "$head_sha" | grep -Eq '^[0-9a-f]{40}$' || {
+              echo 'Relay failed and the merged PR head SHA could not be verified; skipping readiness recovery.'
+              exit 0
+            }
+
+            expected_challenge="$(node scripts/high-risk-approval-lib.mjs challenge "$pr_number" "$head_sha")"
+            approval_json="$(
+              jq -cn \
+                --argjson pr "$pr_number" \
+                --arg headSha "$head_sha" \
+                --arg challenge "$expected_challenge" \
+                '{operation:"merge-high-risk-pr",pr:$pr,headSha:$headSha,challenge:$challenge}'
+            )"
+            expected_approval="NOVELIGHT_HIGH_RISK_APPROVE $approval_json"
+
+            gh api \
+              "repos/$GITHUB_REPOSITORY/issues/$pr_number/comments?per_page=100" \
+              > /tmp/pr-comments.json
+            comment_count="$(jq 'length' /tmp/pr-comments.json)"
+            if [ "$comment_count" -ge 100 ]; then
+              echo 'Relay failed and approval evidence exceeds the bounded comment window; skipping readiness recovery.'
+              exit 0
+            fi
+
+            approval_count="$(
+              jq \
+                --arg body "$expected_approval" \
+                '[.[] | select(.body == $body and .user.login == "bingohooah888-ai" and .author_association == "OWNER")] | length' \
+                /tmp/pr-comments.json
+            )"
+            if [ "$approval_count" -lt 1 ]; then
+              echo "Relay failed and current main PR #$pr_number lacks exact owner approval for head $head_sha; skipping readiness recovery."
+              exit 0
+            fi
+
+            recovery_reason="verified merged high-risk PR #$pr_number after relay failure"
+            echo "Recovered safe readiness handoff for PR #$pr_number at merged main $current_main."
+          fi
 
           gh api \
             "repos/$GITHUB_REPOSITORY/actions/workflows/production-readiness-smoke.yml/runs?head_sha=$current_main&per_page=20" \
@@ -49,7 +129,7 @@ jobs:
             exit 0
           fi
 
-          echo "Dispatching Production Readiness for current main $current_main after successful high-risk approval relay."
+          echo "Dispatching Production Readiness for current main $current_main after $recovery_reason."
           curl --silent --show-error --fail \
             -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
