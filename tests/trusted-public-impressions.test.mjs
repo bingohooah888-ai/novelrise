@@ -17,7 +17,7 @@ const discovery = await readFile(
 );
 const home = await readFile(new URL('index.html', root), 'utf8');
 
-test('anonymous author-facing impressions still require short-lived server-issued receipts', () => {
+test('anonymous impressions require short-lived server receipts', () => {
   assert.match(migration, /viewer_key text/u);
   assert.match(
     migration,
@@ -43,7 +43,7 @@ test('anonymous author-facing impressions still require short-lived server-issue
   );
 });
 
-test('public shelf receipt issuer validates the claimed surface against its authoritative feed', () => {
+test('public shelf receipts validate the authoritative feed', () => {
   assert.match(
     migration,
     /novelight_issue_visible_allocation_receipts_v2_impl/u
@@ -64,7 +64,7 @@ test('public shelf receipt issuer validates the claimed surface against its auth
   assert.match(migration, /search_seed/u);
 });
 
-test('new privileged helpers stay in the private schema behind invoker-only public wrappers', () => {
+test('privileged helpers stay behind invoker-only wrappers', () => {
   assert.match(migration, /create schema if not exists private/u);
   assert.match(
     migration,
@@ -79,11 +79,15 @@ test('new privileged helpers stay in the private schema behind invoker-only publ
   );
 });
 
-test('dedicated discovery pages consume author-facing receipts only after cards are appended', () => {
+test('dedicated discovery records only appended cards', () => {
   const newBlock =
-    discovery.match(/async function loadNew\(\) \{([\s\S]*?)\n  \}/u)?.[1] || '';
+    discovery.match(
+      /async function loadNew\(\) \{([\s\S]*?)\n  \}/u
+    )?.[1] || '';
   const seedBlock =
-    discovery.match(/async function loadSeed\(\) \{([\s\S]*?)\n  \}/u)?.[1] || '';
+    discovery.match(
+      /async function loadSeed\(\) \{([\s\S]*?)\n  \}/u
+    )?.[1] || '';
   assert.ok(
     newBlock.indexOf('appendRows(rows)') <
       newBlock.indexOf("recordVisible('search_new'")
@@ -97,7 +101,7 @@ test('dedicated discovery pages consume author-facing receipts only after cards 
   assert.match(discovery, /recordNeutralFallback/u);
 });
 
-test('home records only viewport-visible rows after DOM rendering', () => {
+test('home records only viewport-visible rows after rendering', () => {
   assert.match(
     home,
     /grid\.innerHTML=visible\.length\?visible\.map\(card\)\.join\(''\)/u
