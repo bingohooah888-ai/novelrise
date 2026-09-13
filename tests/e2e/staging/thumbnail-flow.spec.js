@@ -7,6 +7,7 @@ import { expect, test } from '@playwright/test';
 
 const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
 const BUCKET = 'novel-thumbnails';
+const RENDER_BUCKET = 'novel-thumbnail-renders';
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
@@ -71,6 +72,16 @@ async function cleanupFixture(fixture) {
   const userId = fixture.user?.id;
   const novelId = fixture.novelId;
   const assetId = fixture.assetId;
+
+  await attempt('cleanup composed thumbnail render', async () => {
+    if (!fixture.renderStoragePath) return;
+    assertNoError(
+      await admin.storage
+        .from(RENDER_BUCKET)
+        .remove([fixture.renderStoragePath]),
+      'remove composed thumbnail render'
+    );
+  });
 
   await attempt('cleanup novel-linked records', async () => {
     if (!novelId) return;
@@ -147,7 +158,10 @@ async function createFixture() {
     assetId: null,
     storagePath,
     publicUrl: null,
-    novelId: null
+    novelId: null,
+    composerMode: false,
+    expectedThumbnailUrl: null,
+    renderStoragePath: null
   };
 
   const userData = assertNoError(
@@ -252,10 +266,10 @@ async function assertCardThumbnail(card, publicUrl) {
   await expect(image).toHaveAttribute('src', publicUrl);
 }
 
-test('official thumbnail survives Staging registration, author selection, publish, and discovery surfaces', async ({
+test('official thumbnail survives Staging registration, Chapter 40 composition, publish, and discovery surfaces', async ({
   page
 }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(180_000);
   const fixture = await createFixture();
   const unique = `${process.env.GITHUB_RUN_ID || Date.now()}-${randomBytes(
     3
@@ -263,7 +277,7 @@ test('official thumbnail survives Staging registration, author selection, publis
   const novelTitle = `サムネイルE2E作品 ${unique}`;
 
   try {
-    await test.step('Author selects the registered official thumbnail', async () => {
+    await test.step('Author uses Chapter 40 composer or legacy fallback', async () => {
       await page.goto(
         `/login.html?redirect=${encodeURIComponent('post.html')}`
       );
@@ -272,15 +286,43 @@ test('official thumbnail survives Staging registration, author selection, publis
       await page.locator('#loginButton').click();
       await page.waitForURL((url) => url.pathname.endsWith('/post.html'));
       await assertStagingSession(page);
+      await expect(page.locator('#submitButton')).toBeEnabled({
+        timeout: 20_000
+      });
 
-      const thumbnailInput = page.locator(
-        `input[name="thumbnailAsset"][value="${fixture.assetId}"]`
-      );
-      await expect(
-        page.getByText(fixture.assetLabel, { exact: true })
-      ).toBeVisible();
-      await page.getByText(fixture.assetLabel, { exact: true }).click();
-      await expect(thumbnailInput).toBeChecked();
+      fixture.composerMode = await page
+        .locator('#thumbnailComposer')
+        .evaluate((element) =>
+          element.classList.contains('novelight-thumbnail-composer')
+        );
+
+      if (fixture.composerMode) {
+        await expect(page.locator('#legacyThumbnailArea')).toBeHidden();
+        for (const type of ['background', 'base_book', 'cover']) {
+          const selected = page.locator(
+            `#thumbnailComposer .nl-thumb-option[data-layer-type="${type}"][aria-pressed="true"]`
+          );
+          await expect(selected).toBeVisible();
+          await expect(selected).not.toHaveAttribute('data-asset-id', '');
+        }
+        await expect(
+          page.locator(
+            '#thumbnailComposer canvas[aria-label="作品サムネイルのプレビュー"]'
+          )
+        ).toBeVisible();
+        await expect(
+          page.locator('#thumbnailComposer .nl-thumb-preview-status')
+        ).toHaveText('プレビュー', { timeout: 20_000 });
+      } else {
+        const thumbnailInput = page.locator(
+          `input[name="thumbnailAsset"][value="${fixture.assetId}"]`
+        );
+        await expect(
+          page.getByText(fixture.assetLabel, { exact: true })
+        ).toBeVisible();
+        await page.getByText(fixture.assetLabel, { exact: true }).click();
+        await expect(thumbnailInput).toBeChecked();
+      }
 
       await page.locator('#title').fill(novelTitle);
       await page.locator('#genre').selectOption({ label: '現代ドラマ' });
@@ -292,7 +334,9 @@ test('official thumbnail survives Staging registration, author selection, publis
       await page.locator('#policyAck').check();
       await expect(page.locator('#submitButton')).toBeEnabled();
       await page.locator('#submitButton').click();
-      await page.waitForURL(/\/episode-post\.html\?novel_id=/u);
+      await page.waitForURL(/\/episode-post\.html\?novel_id=/u, {
+        timeout: 30_000
+      });
 
       fixture.novelId = new URL(page.url()).searchParams.get('novel_id');
       expect(fixture.novelId).toBeTruthy();
@@ -318,9 +362,36 @@ test('official thumbnail survives Staging registration, author selection, publis
           .single(),
         'read published thumbnail smoke novel'
       );
-      expect(String(novel.thumbnail_asset_id)).toBe(String(fixture.assetId));
-      expect(novel.thumbnail_url).toBe(fixture.publicUrl);
       expect(novel.status).toBe('published');
+
+      if (fixture.composerMode) {
+        const composition = assertNoError(
+          await admin
+            .from('novel_thumbnail_compositions')
+            .select(
+              'template_key,background_asset_id,base_book_asset_id,cover_asset_id,render_storage_path,render_url'
+            )
+            .eq('novel_id', fixture.novelId)
+            .single(),
+          'read Chapter 40 thumbnail composition'
+        );
+        expect(composition.template_key).toBeTruthy();
+        expect(composition.background_asset_id).toBeTruthy();
+        expect(composition.base_book_asset_id).toBeTruthy();
+        expect(composition.cover_asset_id).toBeTruthy();
+        expect(composition.render_storage_path).toMatch(
+          /^renders\/\d+\/[0-9a-f-]{36}\.webp$/u
+        );
+        expect(composition.render_url).toMatch(/^https:\/\//u);
+        fixture.renderStoragePath = composition.render_storage_path;
+        fixture.expectedThumbnailUrl = composition.render_url;
+        expect(novel.thumbnail_asset_id).toBeNull();
+        expect(novel.thumbnail_url).toBe(fixture.expectedThumbnailUrl);
+      } else {
+        fixture.expectedThumbnailUrl = fixture.publicUrl;
+        expect(String(novel.thumbnail_asset_id)).toBe(String(fixture.assetId));
+        expect(novel.thumbnail_url).toBe(fixture.expectedThumbnailUrl);
+      }
     });
 
     await test.step('Home new arrivals shows the official thumbnail', async () => {
@@ -328,7 +399,7 @@ test('official thumbnail survives Staging registration, author selection, publis
       const card = page.locator(
         `#newGrid a.novel-card[href="novel.html?id=${fixture.novelId}"]`
       );
-      await assertCardThumbnail(card, fixture.publicUrl);
+      await assertCardThumbnail(card, fixture.expectedThumbnailUrl);
     });
 
     await test.step('Search shows the same official thumbnail', async () => {
@@ -337,7 +408,7 @@ test('official thumbnail survives Staging registration, author selection, publis
       const card = page.locator(
         `#novelList a.novel-card[href="novel.html?id=${fixture.novelId}"]`
       );
-      await assertCardThumbnail(card, fixture.publicUrl);
+      await assertCardThumbnail(card, fixture.expectedThumbnailUrl);
     });
 
     await test.step('Ranking new tab shows the same official thumbnail', async () => {
@@ -346,7 +417,7 @@ test('official thumbnail survives Staging registration, author selection, publis
       const card = page.locator(
         `#list a.card[href="novel.html?id=${fixture.novelId}"]`
       );
-      await assertCardThumbnail(card, fixture.publicUrl);
+      await assertCardThumbnail(card, fixture.expectedThumbnailUrl);
     });
   } finally {
     await cleanupFixture(fixture);
