@@ -6,6 +6,10 @@ const workflow = await readFile(
   '.github/workflows/high-risk-pr-approval.yml',
   'utf8'
 );
+const readinessBridgeWorkflow = await readFile(
+  '.github/workflows/high-risk-merge-readiness-bridge.yml',
+  'utf8'
+);
 const productionReadinessWorkflow = await readFile(
   '.github/workflows/production-readiness-smoke.yml',
   'utf8'
@@ -114,9 +118,50 @@ test('final merge tolerates only an exact approved queued auto-merge race', () =
   );
 });
 
-test('production readiness observes high-risk relay workflow changes', () => {
+test('readiness bridge recovers only a merged exact-owner-approved current main', () => {
+  assert.match(
+    readinessBridgeWorkflow,
+    /github\.event\.workflow_run\.conclusion == 'failure'/
+  );
+  assert.match(readinessBridgeWorkflow, /pull-requests: read/);
+  assert.match(readinessBridgeWorkflow, /issues: read/);
+  assert.match(readinessBridgeWorkflow, /merge_commit_sha == \$sha/);
+  assert.match(
+    readinessBridgeWorkflow,
+    /scripts\/high-risk-approval-lib\.mjs challenge/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /\.body == \$body and \.user\.login == "bingohooah888-ai" and \.author_association == "OWNER"/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /lacks exact owner approval for head \$head_sha; skipping readiness recovery/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /Recovered safe readiness handoff for PR #\$pr_number at merged main \$current_main/
+  );
+});
+
+test('readiness bridge remains duplicate-safe', () => {
+  assert.match(
+    readinessBridgeWorkflow,
+    /Production Readiness already exists for current main \$current_main; skipping duplicate dispatch/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /production-readiness-smoke\.yml\/dispatches/
+  );
+});
+
+test('production readiness observes high-risk control workflow changes', () => {
   assert.match(
     productionReadinessWorkflow,
     /'\.github\/workflows\/high-risk-pr-approval\.yml'/
+  );
+  assert.match(
+    productionReadinessWorkflow,
+    /'\.github\/workflows\/high-risk-merge-readiness-bridge\.yml'/
   );
 });
