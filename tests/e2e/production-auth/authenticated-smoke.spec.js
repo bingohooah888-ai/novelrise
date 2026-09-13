@@ -267,7 +267,7 @@ function waitForExposureConversion(page, eventType) {
       return false;
     }
     const body = response.request().postData();
-    return body?.includes(`\"${eventType}\"`) ?? false;
+    return body?.includes(`"${eventType}"`) ?? false;
   });
 }
 
@@ -281,7 +281,7 @@ function waitForThumbnailRenderAction(page, action) {
     }
 
     const requestBody = response.request().postData();
-    return requestBody?.includes(`\"action\":\"${action}\"`) ?? false;
+    return requestBody?.includes(`"action":"${action}"`) ?? false;
   });
 }
 
@@ -294,7 +294,7 @@ async function assertChapter40ComposerReady(page) {
 
   for (const layerType of ['background', 'base_book', 'cover']) {
     const selected = composer.locator(
-      `.nl-thumb-option[data-layer-type=\"${layerType}\"][aria-pressed=\"true\"]`
+      `.nl-thumb-option[data-layer-type="${layerType}"][aria-pressed="true"]`
     );
     await expect(selected).toHaveCount(1);
     await expect(selected).toHaveAttribute('data-asset-id', /.+/);
