@@ -247,7 +247,7 @@ async function assertStagingSession(page) {
 
 async function assertCardThumbnail(card, publicUrl) {
   await expect(card).toBeVisible({ timeout: 20_000 });
-  const image = card.locator('.novelight-official-thumbnail img');
+  const image = card.locator('img.novel-cover-image');
   await expect(image).toBeVisible({ timeout: 20_000 });
   await expect(image).toHaveAttribute('src', publicUrl);
 }
