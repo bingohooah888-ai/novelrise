@@ -195,7 +195,10 @@ test('dedicated discovery pages refresh receipts and use the same formal LIGHT S
   assert.match(script, /Number\(row\.light_seed_count \|\| 0\) > 0/);
   assert.match(script, /const page = rows\.slice\(0, pageSize\);/);
   assert.match(script, /const visible = appendRows\(page\);/);
-  assert.match(script, /await recordVisible\('search_seed', visible, pageOffset\);/);
+  assert.match(
+    script,
+    /await recordVisible\('search_seed', visible, pageOffset\);/
+  );
   assert.match(script, /seedOffset \+= page\.length/);
   assert.doesNotMatch(script, /light_seed_status/);
   assert.doesNotMatch(script, /seedQueue|fillSeedQueue|seedStatus/);
