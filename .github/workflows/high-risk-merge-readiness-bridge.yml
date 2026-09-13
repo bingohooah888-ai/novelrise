@@ -74,10 +74,10 @@ jobs:
                 /tmp/recent-closed-prs.json
             )"
 
-            test "$head_sha" != 'null' && printf '%s' "$head_sha" | grep -Eq '^[0-9a-f]{40}$' || {
+            if [ "$head_sha" = 'null' ] || ! printf '%s' "$head_sha" | grep -Eq '^[0-9a-f]{40}$'; then
               echo 'Relay failed and the merged PR head SHA could not be verified; skipping readiness recovery.'
               exit 0
-            }
+            fi
 
             expected_challenge="$(node scripts/high-risk-approval-lib.mjs challenge "$pr_number" "$head_sha")"
             approval_json="$(
