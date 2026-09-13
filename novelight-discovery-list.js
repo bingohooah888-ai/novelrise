@@ -43,6 +43,11 @@
     );
   }
 
+  function shouldFallbackFeed(result, name) {
+    if (!result?.error) return !Array.isArray(result?.data);
+    return missingTrustedRpc(result.error, name);
+  }
+
   function coverMarkup(novel) {
     const url = String(novel.thumbnail_url || '').trim();
     if (url) {
@@ -70,12 +75,12 @@
       seen.add(id);
       unique.push(row);
     }
-    if (!unique.length) return 0;
+    if (!unique.length) return [];
     if (rendered === 0) list.innerHTML = '';
     list.insertAdjacentHTML('beforeend', unique.map(card).join(''));
     rendered += unique.length;
     updateCount();
-    return unique.length;
+    return unique;
   }
 
   function updateCount() {
@@ -91,22 +96,65 @@
     if (rendered === 0) list.innerHTML = `<div class="state">${esc(message)}</div>`;
   }
 
-  async function recordTrusted(rows) {
-    const receipts = rows.map((row) => row.allocation_receipt).filter(Boolean);
+  async function consumeReceipts(receipts, label) {
     if (!receipts.length) return;
-    const result = await client.rpc('record_trusted_allocation_receipts', {
-      p_receipts: receipts
+    let result = await client.rpc('record_trusted_allocation_receipts_v2', {
+      p_receipts: receipts,
+      p_visitor_token: visitor()
     });
-    if (result.error) console.error('recommended impression record failed', result.error);
+    if (
+      result.error &&
+      missingTrustedRpc(result.error, 'record_trusted_allocation_receipts_v2')
+    ) {
+      result = await client.rpc('record_trusted_allocation_receipts', {
+        p_receipts: receipts
+      });
+    }
+    if (result.error) console.error(`${label} impression record failed`, result.error);
   }
 
-  async function recordNeutral(rows) {
+  async function recordTrusted(rows) {
+    await consumeReceipts(
+      rows.map((row) => row.allocation_receipt).filter(Boolean),
+      'recommended'
+    );
+  }
+
+  async function recordNeutralFallback(rows) {
     if (!rows.length) return;
     const result = await client.rpc('record_neutral_search_impressions', {
       p_novel_ids: rows.map(novelId),
       p_visitor_token: visitor()
     });
-    if (result.error) console.error('neutral impression record failed', result.error);
+    if (result.error) console.error('neutral telemetry fallback failed', result.error);
+  }
+
+  async function recordVisible(surface, rows, offset = 0) {
+    if (!rows.length) return;
+    const issued = await client.rpc('novelight_issue_visible_allocation_receipts_v2', {
+      p_surface: surface,
+      p_novel_ids: rows.map(novelId),
+      p_visitor_token: visitor(),
+      p_offset: offset,
+      p_rotation_key: null
+    });
+    if (
+      shouldFallbackFeed(
+        issued,
+        'novelight_issue_visible_allocation_receipts_v2'
+      )
+    ) {
+      await recordNeutralFallback(rows);
+      return;
+    }
+    if (issued.error) {
+      console.error(`${surface} receipt issue failed`, issued.error);
+      return;
+    }
+    await consumeReceipts(
+      issued.data.map((row) => row.allocation_receipt).filter(Boolean),
+      surface
+    );
   }
 
   async function fetchRecommended(limit = recommendedPoolSize) {
@@ -117,12 +165,16 @@
       p_genre: null,
       p_visitor_token: visitor()
     };
-    let result = await client.rpc('novelight_trusted_discovery_feed', args);
-    if (result.error && missingTrustedRpc(result.error, 'novelight_trusted_discovery_feed')) {
+    let result = await client.rpc('novelight_trusted_discovery_feed_v2', args);
+    if (shouldFallbackFeed(result, 'novelight_trusted_discovery_feed_v2')) {
+      result = await client.rpc('novelight_trusted_discovery_feed', args);
+    }
+    if (shouldFallbackFeed(result, 'novelight_trusted_discovery_feed')) {
       result = await client.rpc('novelight_discovery_feed_v2', args);
     }
     if (result.error) throw result.error;
-    return (result.data || []).filter((row) => !row.is_premium_slot);
+    if (!Array.isArray(result.data)) throw new Error('Invalid discovery feed response');
+    return result.data.filter((row) => !row.is_premium_slot);
   }
 
   async function loadRecommended() {
@@ -136,8 +188,8 @@
       candidates.push(row);
     }
     const page = candidates.slice(0, pageSize);
-    appendRows(page);
-    await recordTrusted(page);
+    const visible = appendRows(page);
+    await recordTrusted(visible);
     moreWrap.hidden = candidates.length <= pageSize || page.length === 0;
     moreButton.textContent = 'おすすめをもっと見る';
   }
@@ -158,9 +210,10 @@
   }
 
   async function loadNew() {
+    const pageOffset = neutralOffset;
     const rows = await fetchNeutralNew(pageSize);
-    appendRows(rows);
-    await recordNeutral(rows);
+    const visible = appendRows(rows);
+    await recordVisible('search_new', visible, pageOffset);
     moreWrap.hidden = rows.length < pageSize || neutralOffset >= Number(neutralTotal || 0);
     moreButton.textContent = 'さらに24作品を見る';
   }
@@ -178,10 +231,11 @@
   }
 
   async function loadSeed() {
+    const pageOffset = seedOffset;
     const rows = await fetchSeedPage();
     const page = rows.slice(0, pageSize);
-    appendRows(page);
-    await recordNeutral(page);
+    const visible = appendRows(page);
+    await recordVisible('search_seed', visible, pageOffset);
     seedOffset += page.length;
     moreWrap.hidden = rows.length <= pageSize || page.length === 0;
     moreButton.textContent = '発掘中の作品をもっと見る';

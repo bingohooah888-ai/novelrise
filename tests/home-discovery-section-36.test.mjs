@@ -179,7 +179,8 @@ test('dedicated discovery pages refresh receipts and use the same formal LIGHT S
     /if \(seen\.has\(id\) \|\| batchSeen\.has\(id\)\) continue;/
   );
   assert.match(script, /const page = candidates\.slice\(0, pageSize\);/);
-  assert.match(script, /await recordTrusted\(page\)/);
+  assert.match(script, /const visible = appendRows\(page\);/);
+  assert.match(script, /await recordTrusted\(visible\);/);
   assert.match(
     script,
     /moreWrap\.hidden = candidates\.length <= pageSize \|\| page\.length === 0;/
@@ -193,7 +194,11 @@ test('dedicated discovery pages refresh receipts and use the same formal LIGHT S
   assert.match(script, /row\.status === 'published'/);
   assert.match(script, /Number\(row\.light_seed_count \|\| 0\) > 0/);
   assert.match(script, /const page = rows\.slice\(0, pageSize\);/);
-  assert.match(script, /await recordNeutral\(page\)/);
+  assert.match(script, /const visible = appendRows\(page\);/);
+  assert.match(
+    script,
+    /await recordVisible\('search_seed', visible, pageOffset\);/
+  );
   assert.match(script, /seedOffset \+= page\.length/);
   assert.doesNotMatch(script, /light_seed_status/);
   assert.doesNotMatch(script, /seedQueue|fillSeedQueue|seedStatus/);
