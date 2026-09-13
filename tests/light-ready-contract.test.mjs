@@ -31,7 +31,9 @@ test('LIGHT READY uses deterministic beta checks only', () => {
 });
 
 test('LIGHT READY preserves atomic publication contract', () => {
-  assert.ok(episodePost.includes("client.rpc('novelight_publish_episode_atomic'"));
+  assert.ok(
+    episodePost.includes("client.rpc('novelight_publish_episode_atomic'")
+  );
   assert.ok(!episodePost.includes("client.from('episodes').insert"));
   assert.ok(!episodePost.includes("client.from('novels').update"));
 });
