@@ -22,6 +22,7 @@ on:
       - '.github/workflows/production-auth-smoke-request.yml'
       - '.github/workflows/production-authenticated-smoke.yml'
       - '.github/workflows/production-auth-smoke-stale-recovery.yml'
+      - '.github/workflows/high-risk-pr-approval.yml'
       - '.github/workflows/high-risk-merge-readiness-bridge.yml'
   schedule:
     - cron: '15 22 * * *'

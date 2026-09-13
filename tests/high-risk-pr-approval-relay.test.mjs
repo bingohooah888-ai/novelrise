@@ -6,6 +6,14 @@ const workflow = await readFile(
   '.github/workflows/high-risk-pr-approval.yml',
   'utf8'
 );
+const readinessBridgeWorkflow = await readFile(
+  '.github/workflows/high-risk-merge-readiness-bridge.yml',
+  'utf8'
+);
+const productionReadinessWorkflow = await readFile(
+  '.github/workflows/production-readiness-smoke.yml',
+  'utf8'
+);
 
 test('relay is owner-only and exact-head bound', () => {
   assert.match(workflow, /issue_comment:/);
@@ -88,4 +96,72 @@ test('CI rerun follows ready transition', () => {
   assert.notEqual(rerunIndex, -1);
   assert.ok(readyIndex < rerunIndex);
   assert.match(workflow, /rerun-failed-jobs/);
+});
+
+test('final merge tolerates only an exact approved queued auto-merge race', () => {
+  assert.match(workflow, /if gh pr merge "\$PR_NUMBER"/);
+  assert.match(workflow, /pr-after-merge-attempt\.json/);
+  assert.match(workflow, /\.merged == true and \.merged_at != null/);
+  assert.match(
+    workflow,
+    /\.head\.repo\.full_name == \$repo and \.head\.sha == \$sha/
+  );
+  assert.match(workflow, /\.merge_commit_sha/);
+  assert.match(workflow, /reported merge commit could not be verified/);
+  assert.match(
+    workflow,
+    /Queued auto-merge completed exact approved PR #\$PR_NUMBER at head \$HEAD_SHA/
+  );
+  assert.match(
+    workflow,
+    /merge command failed and the exact approved PR is not confirmed merged/
+  );
+});
+
+test('readiness bridge recovers only a merged exact-owner-approved current main', () => {
+  assert.match(
+    readinessBridgeWorkflow,
+    /github\.event\.workflow_run\.conclusion == 'failure'/
+  );
+  assert.match(readinessBridgeWorkflow, /pull-requests: read/);
+  assert.match(readinessBridgeWorkflow, /issues: read/);
+  assert.match(readinessBridgeWorkflow, /merge_commit_sha == \$sha/);
+  assert.match(
+    readinessBridgeWorkflow,
+    /scripts\/high-risk-approval-lib\.mjs challenge/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /\.body == \$body and \.user\.login == "bingohooah888-ai" and \.author_association == "OWNER"/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /lacks exact owner approval for head \$head_sha; skipping readiness recovery/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /Recovered safe readiness handoff for PR #\$pr_number at merged main \$current_main/
+  );
+});
+
+test('readiness bridge remains duplicate-safe', () => {
+  assert.match(
+    readinessBridgeWorkflow,
+    /Production Readiness already exists for current main \$current_main; skipping duplicate dispatch/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /production-readiness-smoke\.yml\/dispatches/
+  );
+});
+
+test('production readiness observes high-risk control workflow changes', () => {
+  assert.match(
+    productionReadinessWorkflow,
+    /'\.github\/workflows\/high-risk-pr-approval\.yml'/
+  );
+  assert.match(
+    productionReadinessWorkflow,
+    /'\.github\/workflows\/high-risk-merge-readiness-bridge\.yml'/
+  );
 });

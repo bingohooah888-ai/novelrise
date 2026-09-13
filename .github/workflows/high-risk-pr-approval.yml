@@ -296,9 +296,41 @@ jobs:
               exit 1
             }
 
-          gh pr merge "$PR_NUMBER" \
+          if gh pr merge "$PR_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
             --squash \
-            --match-head-commit "$HEAD_SHA"
+            --match-head-commit "$HEAD_SHA"; then
+            echo "Merged PR #$PR_NUMBER with squash after exact owner approval and successful CI."
+            exit 0
+          fi
 
-          echo "Merged PR #$PR_NUMBER with squash after exact owner approval and successful CI."
+          echo 'Direct merge command did not complete; checking for a queued auto-merge race.'
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
+            > /tmp/pr-after-merge-attempt.json
+
+          jq -e \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg sha "$HEAD_SHA" \
+            '.merged == true and .merged_at != null and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha and (.merge_commit_sha | type == "string" and test("^[0-9a-f]{40}$"))' \
+            /tmp/pr-after-merge-attempt.json >/dev/null || {
+              echo 'Safety stop: merge command failed and the exact approved PR is not confirmed merged.'
+              exit 1
+            }
+
+          merged_sha="$(jq -r '.merge_commit_sha' /tmp/pr-after-merge-attempt.json)"
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/$merged_sha" \
+            > /tmp/merged-commit.json
+          jq -e --arg sha "$merged_sha" '.sha == $sha' /tmp/merged-commit.json >/dev/null || {
+            echo 'Safety stop: reported merge commit could not be verified.'
+            exit 1
+          }
+
+          echo "Queued auto-merge completed exact approved PR #$PR_NUMBER at head $HEAD_SHA; treating the guarded merge as successful."
