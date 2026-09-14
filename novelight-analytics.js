@@ -387,7 +387,7 @@
           'お気に入り',
           row.favorites,
           impressions,
-          row.continued_to_episode_2
+          row.impressions
         )}</div><div class="paid">プランによる追加露出：表示 ${num(
           paid
         )} / 作品ページ ${num(row.plan_extra_detail_opens)} / 本文10秒 ${num(
