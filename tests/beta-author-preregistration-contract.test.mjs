@@ -22,6 +22,18 @@ const hardeningMigration = read(
 const hardeningRollback = read(
   'supabase/rollback/20260910222500_beta_author_preregistration_hardening_rollback.sql'
 );
+const funnelMigration = read(
+  'supabase/migrations/20260914120000_beta_author_conversion_funnel.sql'
+);
+const funnelPrecheck = read(
+  'supabase/checks/20260914120000_beta_author_conversion_funnel_precheck.sql'
+);
+const funnelPostcheck = read(
+  'supabase/checks/20260914120000_beta_author_conversion_funnel_postcheck.sql'
+);
+const funnelRollback = read(
+  'supabase/rollback/20260914120000_beta_author_conversion_funnel_rollback.sql'
+);
 const vercel = JSON.parse(read('vercel.json'));
 
 test('beta author LP keeps required copy, fields and isolated navigation', () => {
@@ -51,11 +63,12 @@ test('beta author LP keeps required copy, fields and isolated navigation', () =>
   assert.doesNotMatch(betaHtml, /href="post\.html"/);
 });
 
-test('beta author LP is standalone and does not depend on shared theme or browser storage', () => {
+test('beta author LP is standalone and only uses session storage for form-start dedupe', () => {
   assert.match(betaHtml, /data-novelight-theme="standalone"/);
   assert.doesNotMatch(betaHtml, /src="novelight-client\.js"/);
   assert.doesNotMatch(betaHtml, /localStorage/);
-  assert.doesNotMatch(betaHtml, /sessionStorage/);
+  assert.match(betaHtml, /sessionStorage\.getItem\(FORM_START_SESSION_KEY\)/);
+  assert.match(betaHtml, /sessionStorage\.setItem\(FORM_START_SESSION_KEY,'1'\)/);
   assert.doesNotMatch(betaHtml, /supabase\.createClient/);
   assert.match(betaHtml, /\/api\/beta-author-preregistration/);
 });
@@ -71,9 +84,14 @@ test('beta author LP gets campaign state from server and fails closed', () => {
   assert.doesNotMatch(betaHtml, /2026年9月下旬/);
 });
 
-test('beta author LP records both page view and CTA while keeping counts private', () => {
+test('beta author LP records the five-step preregistration funnel while keeping counts private', () => {
   assert.match(betaHtml, /recordEvent\('page_view'\)/);
-  assert.ok((betaHtml.match(/recordEvent\('cta_click'\)/g) ?? []).length >= 2);
+  assert.equal((betaHtml.match(/recordEvent\('cta_click'\)/g) ?? []).length, 1);
+  assert.match(betaHtml, /recordEvent\('form_start'\)/);
+  assert.match(betaHtml, /recordEvent\('register_click'\)/);
+  assert.match(betaHtml, /form\.addEventListener\('input',maybeRecordFormStart\)/);
+  assert.match(betaHtml, /form\.addEventListener\('change',maybeRecordFormStart\)/);
+  assert.match(betaHtml, /event\.target\.name==='website'/);
   assert.doesNotMatch(betaHtml, /現在\s*\d+\s*名/);
   assert.doesNotMatch(betaHtml, /残り\s*\d+\s*名/);
   assert.doesNotMatch(betaHtml, /あと\s*\d+\s*枠/);
@@ -118,6 +136,27 @@ test('hardening migration makes mutation RPCs server-only and campaign-state awa
   assert.match(hardeningMigration, /v_hourly_count >= 120/);
 });
 
+test('conversion funnel migration extends the hardened server-only telemetry contract', () => {
+  assert.match(funnelMigration, /form_start/);
+  assert.match(funnelMigration, /register_click/);
+  assert.match(funnelMigration, /pg_advisory_xact_lock/);
+  assert.match(funnelMigration, /interval '60 seconds'/);
+  assert.match(funnelMigration, /interval '5 seconds'/);
+  assert.match(funnelMigration, /v_hourly_count >= 120/);
+  assert.match(
+    funnelMigration,
+    /revoke all on function public\.record_beta_author_preregistration_event[\s\S]*from public, anon, authenticated;/
+  );
+  assert.match(
+    funnelMigration,
+    /grant execute on function public\.record_beta_author_preregistration_event[\s\S]*to service_role;/
+  );
+  assert.doesNotMatch(funnelMigration, /insert into public\.beta_author_preregistrations/);
+  assert.match(funnelPrecheck, /conversion funnel precheck/);
+  assert.match(funnelPostcheck, /conversion funnel postcheck/);
+  assert.match(funnelPostcheck, /RLS must remain enabled/);
+});
+
 test('raw preregistration and campaign data remain private', () => {
   assert.match(
     foundationMigration,
@@ -138,12 +177,18 @@ test('raw preregistration and campaign data remain private', () => {
   assert.doesNotMatch(hardeningMigration, /auth\.users/);
 });
 
-test('ADMIN API paginates and keeps milestone KPIs synchronized with statuses', () => {
+test('ADMIN API paginates, tracks funnel KPIs and keeps milestones synchronized', () => {
   assert.match(adminApi, /requireAdmin/);
   assert.match(adminApi, /DEFAULT_PAGE_SIZE = 50/);
   assert.match(adminApi, /MAX_PAGE_SIZE = 100/);
   assert.match(adminApi, /\.range\(from, to\)/);
   assert.match(adminApi, /totalPages/);
+  assert.match(adminApi, /event_type', 'page_view'/);
+  assert.match(adminApi, /event_type', 'cta_click'/);
+  assert.match(adminApi, /event_type', 'form_start'/);
+  assert.match(adminApi, /event_type', 'register_click'/);
+  assert.match(adminApi, /formStarts/);
+  assert.match(adminApi, /registerClicks/);
   assert.match(adminApi, /applyMilestones/);
   assert.match(adminApi, /patch\.email_verified = true/);
   assert.match(
@@ -163,13 +208,23 @@ test('ADMIN API paginates and keeps milestone KPIs synchronized with statuses', 
   assert.doesNotMatch(adminApi, /'email_normalized'/);
 });
 
-test('ADMIN surface uses the safe Preview bootstrap and exposes campaign controls', () => {
+test('ADMIN surface exposes the five-step funnel without weakening the safe bootstrap', () => {
   assert.match(adminHtml, /noindex,nofollow,noarchive/);
   assert.match(adminHtml, /data-novelight-theme="standalone"/);
   assert.match(adminHtml, /src="novelight-client\.js"/);
   assert.match(adminHtml, /id="campaignState"/);
   assert.match(adminHtml, /id="releaseLabel"/);
   assert.match(adminHtml, /id="saveCampaign"/);
+  assert.match(adminHtml, /id="metricPageViews"/);
+  assert.match(adminHtml, /id="metricCtaClicks"/);
+  assert.match(adminHtml, /id="metricFormStarts"/);
+  assert.match(adminHtml, /id="metricRegisterClicks"/);
+  assert.match(adminHtml, /id="metricPreregistered"/);
+  assert.match(adminHtml, /id="ratePageToCta"/);
+  assert.match(adminHtml, /id="rateCtaToForm"/);
+  assert.match(adminHtml, /id="rateFormToRegisterClick"/);
+  assert.match(adminHtml, /id="rateRegisterClickToPreregistered"/);
+  assert.match(adminHtml, /過去のCTAクリックには/);
   assert.match(adminHtml, /id="prevPage"/);
   assert.match(adminHtml, /id="nextPage"/);
   assert.match(adminHtml, /id="pageInfo"/);
@@ -204,4 +259,18 @@ test('hardening rollback restores original public RPC access and removes config'
     hardeningRollback,
     /grant execute on function public\.record_beta_author_preregistration_event[\s\S]*to anon, authenticated;/
   );
+});
+
+test('conversion funnel rollback removes only new telemetry and restores hardened two-event RPC', () => {
+  assert.match(
+    funnelRollback,
+    /delete from public\.beta_author_preregistration_events[\s\S]*form_start[\s\S]*register_click/
+  );
+  assert.match(funnelRollback, /event_type in \('page_view', 'cta_click'\)/);
+  assert.match(funnelRollback, /pg_advisory_xact_lock/);
+  assert.match(
+    funnelRollback,
+    /grant execute on function public\.record_beta_author_preregistration_event[\s\S]*to service_role;/
+  );
+  assert.doesNotMatch(funnelRollback, /delete from public\.beta_author_preregistrations/);
 });
