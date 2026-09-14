@@ -107,7 +107,9 @@ async function loadMetrics() {
     registered,
     firstNovel,
     pageViews,
-    ctaClicks
+    ctaClicks,
+    formStarts,
+    registerClicks
   ] = await Promise.all([
     exactCount('beta_author_preregistrations', (query) =>
       query.neq('status', 'cancelled')
@@ -132,6 +134,12 @@ async function loadMetrics() {
     ),
     exactCount('beta_author_preregistration_events', (query) =>
       query.eq('event_type', 'cta_click')
+    ),
+    exactCount('beta_author_preregistration_events', (query) =>
+      query.eq('event_type', 'form_start')
+    ),
+    exactCount('beta_author_preregistration_events', (query) =>
+      query.eq('event_type', 'register_click')
     )
   ]);
 
@@ -143,7 +151,9 @@ async function loadMetrics() {
     registered,
     firstNovel,
     pageViews,
-    ctaClicks
+    ctaClicks,
+    formStarts,
+    registerClicks
   };
 }
 
