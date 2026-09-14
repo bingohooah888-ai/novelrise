@@ -1,8 +1,24 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-09-13 JST**
+**Reconciled: 2026-09-14 JST**
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
+
+## 2026-09-14 current-main reconciliation
+
+This section supersedes older “current” wording below only where later material changes have advanced the release state. The older detailed sections are intentionally preserved as audit context rather than rewritten away.
+
+Current repository main at this reconciliation is `69ed457c8a057fdb9fe69d05c03b078d164b370c` (`Fix per-work favorite conversion rate (#557)`). Exact-current repository evidence is green: NOVELIGHT CI #2327 `SUCCESS`, aggregate `check` `SUCCESS`, CodeQL #2234 `SUCCESS`, and Vercel Production commit status `SUCCESS`.
+
+Post-#530 material beta-hardening now reconciled into the launch state includes PR #539 reader-context continuity across authentication, PR #542 Production Auth Smoke navigation alignment with the Chapter 41 LIGHT SEED-history split, PR #547 LIGHT READY beta pre-publication checks, PR #549 trusted public impression receipts, PR #551 migration-safety artifacts, PR #553 bounded public official-thumbnail lookup and Staging smoke dependency fixes, PR #555 warning-gated work-detail-open analytics, and PR #557 correction of per-work favorite conversion to the formal `favorites / impressions` definition with regression coverage.
+
+MASTER Chapter 41 remains authoritative for beta presentation: Work Rank continues to be calculated internally but is hidden from ordinary reader/author UI; unreleased SCOUT Level/Rank/badge/XP state remains locked; LIGHT SEED send history stays separately available during beta.
+
+Production evidence is not stretched across behavior it did not execute. Issue #511 / run `34692176490` remains still-valid only for its actually executed unchanged Chapter 38/40 authenticated create/render scope. It is not treated as direct Production proof of later Chapter 41 presentation, LIGHT READY, trusted-impression, public-thumbnail-lookup, or PR #555/#557 analytics behavior. Production Readiness #141 is retained as current-by-scope evidence rather than relabeled as exact execution of every later analytics-only change.
+
+Successful Production migration-ledger evidence for migration IDs `20260913112358` and `20260913141000` is recorded as already completed; neither migration is rerun by this reconciliation. Newest reconciled backup freshness evidence is Production Backup Freshness #65 / run `34829215089`.
+
+Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING**. No Production Supabase/DB mutation, migration rerun, Stripe/billing/entitlement mutation, Secret/environment mutation, freshness-only Production Auth Smoke, or image generation/editing is performed by this reconciliation.
 
 ## Release decision
 

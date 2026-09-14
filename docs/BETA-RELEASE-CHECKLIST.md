@@ -2,7 +2,7 @@
 
 This checklist is the final operational gate after code review/CI. A checked box must represent an observed result or a specifically justified still-valid result under `docs/EVIDENCE-FRESHNESS-GATE.md`, not an assumption.
 
-**Reconciled: 2026-09-13 JST.**
+**Reconciled: 2026-09-14 JST.**
 
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
@@ -13,6 +13,21 @@ Repository `main` may advance through later documentation-only reconciliation co
 **CURRENT LAUNCH POSTURE: GO — the PR #530 approved head passed full repository CI and CodeQL, material application SHA `24df7347...` is deployed to Vercel Production, and Production Readiness #129 on that application SHA is green. The successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid for the unchanged authenticated Chapter 38/40 beta-critical path.**
 
 Qualified Japanese counsel review remains deferred/pending. The owner residual-risk decision is recorded in `docs/legal-beta-review.md`; this checklist does not assert legal sufficiency.
+
+## 2026-09-14 current-main reconciliation
+
+The detailed checked evidence below is intentionally preserved for audit and regression-contract stability. Where an older line calls a 2026-09-13 proof “current”, the following newer reconciliation governs the present release decision.
+
+- Current repository main is `69ed457c8a057fdb9fe69d05c03b078d164b370c` (`Fix per-work favorite conversion rate (#557)`).
+- NOVELIGHT CI #2327, aggregate `check`, CodeQL #2234, and Vercel Production commit status are successful on/current to that merged state.
+- Later beta-hardening now includes PR #539 reader auth-context continuity, PR #542 Chapter 41 LIGHT SEED-history smoke navigation alignment, PR #547 LIGHT READY beta checks, PR #549 trusted public impression receipts, PR #551 migration-safety artifacts, PR #553 public official-thumbnail lookup/Staging smoke fixes, PR #555 warning-gated work-detail-open analytics, and PR #557 per-work favorite conversion corrected to `favorites / impressions` with regression coverage.
+- MASTER Chapter 41 remains authoritative: Work Rank is calculated internally but hidden from ordinary reader/author beta UI; unreleased SCOUT Level/Rank/badge/XP state remains locked; LIGHT SEED history stays separate and usable.
+- Issue #511 / run `34692176490` remains still-valid only for its actually executed unchanged Chapter 38/40 authenticated create/render scope. It is not direct Production proof of the later Chapter 41/LIGHT READY/impression/public-thumbnail/analytics changes.
+- Production Readiness #141 is retained as current-by-scope evidence and is not stretched into exact execution proof for every later analytics-only change.
+- Production migration ledger evidence records `20260913112358` and `20260913141000` as already successful; neither is rerun here.
+- Newest reconciled backup freshness evidence is Production Backup Freshness #65 / run `34829215089`.
+- Qualified Japanese counsel review remains pending/deferred by owner.
+- This reconciliation performs no Production DB/Supabase mutation, migration execution, Stripe/billing/entitlement mutation, Secret/environment mutation, freshness-only Production Auth Smoke, or image generation/editing.
 
 ## Git / CI
 
@@ -40,7 +55,7 @@ The successful Production Authenticated Smoke is SHA-bound to `e4e8673d6b45b046c
 - [x] PR #522 and PR #526 are residual/final ADMIN readability work and do not change the authenticated product path, Production database state, billing, or Supabase Auth configuration.
 - [x] PR #523 adds an operator confirmation guard for campaign-state changes and aligns the ADMIN release-label placeholder to September 30; it does not change the Production schema or authenticated Chapter 38/40 flow.
 - [x] PR #525 is documentation-only and records the September 30 campaign cutover, verification, and rollback procedure.
-- [x] PR #528 makes the preregistration ADMIN truthful that `invited` is a manual record of externally completed outreach; it does not add mail/DM infrastructure or change Auth, billing, or Production data automatically.
+- [x] PR #528 makes the preregistration ADMIN truthful that `invited` is a record of externally completed outreach; it does not add mail/DM infrastructure or change Auth, billing, or Production data automatically.
 - [x] PR #530 adds author-onboarding guidance to `signup.html`: beta Standard is free/cardless and self-service through pricing, and confirmed authors can continue from 「創作室」. The existing `auth.signUp()` call, `/index.html` email redirect, billing API, DB, Stripe, Secret, and entitlement logic are unchanged.
 - [x] None of PRs #513/#518/#517/#522/#523/#525/#526/#528/#530 changes the authenticated novel-create / Geometry Thumbnail Engine / LIGHT ANALYTICS path exercised by Issue #511 / run `34692176490`.
 - [x] The #511 Production Authenticated Smoke is therefore retained as **still-valid scope proof**, not relabeled as execution on material application SHA `24df7347...`.
