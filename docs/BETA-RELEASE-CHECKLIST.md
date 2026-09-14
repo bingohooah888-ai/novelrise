@@ -6,13 +6,34 @@ This checklist is the final operational gate after code review/CI. A checked box
 
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
-Current material launch main at reconciliation: `24df7347580c73648f31d6f4eaa7759689b228eb` (`Clarify beta author onboarding from signup (#530)`).
+Current material launch main at reconciliation: `21f9e581f4009303904067d18bc5bea05c641d43` (`Add beta author preregistration conversion funnel (#560)`).
 
 Repository `main` may advance through later documentation-only reconciliation commits. In this checklist, **material application SHA** means the latest commit that changed deployable application behavior; a docs-only successor does not by itself make that application proof stale.
 
-**CURRENT LAUNCH POSTURE: GO — the PR #530 approved head passed full repository CI and CodeQL, material application SHA `24df7347...` is deployed to Vercel Production, and Production Readiness #129 on that application SHA is green. The successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid for the unchanged authenticated Chapter 38/40 beta-critical path.**
+**CURRENT LAUNCH POSTURE: GO — PR #560 final reviewed head passed NOVELIGHT CI #2333 and CodeQL #2239, material application SHA `21f9e581...` is deployed successfully to Vercel Production, Production Readiness #142 and `production-beta-verification` are green, and Production migration `20260914120000_beta_author_conversion_funnel.sql` was applied through the exact-scope approval workflow with mutation/postcheck success. The successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid only for the unchanged authenticated Chapter 38/40 beta-critical path.**
 
 Qualified Japanese counsel review remains deferred/pending. The owner residual-risk decision is recorded in `docs/legal-beta-review.md`; this checklist does not assert legal sufficiency.
+
+## 2026-09-14 post-PR #560 / Production funnel reconciliation
+
+This section supersedes older “current”, “material application main”, and final release-posture wording below where the scope overlaps. The older detailed checked evidence is preserved for audit/regression history.
+
+- [x] Current repository `main` and material application SHA are `21f9e581f4009303904067d18bc5bea05c641d43` (`Add beta author preregistration conversion funnel (#560)`).
+- [x] PR #560 final reviewed head `dec5fcbabf7ce169386a16bd03d4a7907d83a149` passed `NOVELIGHT CI` #2333 / run `34844107206`, including Node tests, static quality, RLS integration/rollback, desktop/mobile browser smoke, desktop/mobile async-UI, and aggregate `check`.
+- [x] PR #560 passed CodeQL #2239 with no new code alerts in the changed code.
+- [x] On merged main `21f9e581...`, Vercel Production, `production-readiness-smoke`, and `production-beta-verification` commit statuses are all `success`; Production Readiness Smoke #142 is green.
+- [x] The preregistration funnel is now `LP表示 → CTAクリック → フォーム入力開始 → 登録ボタンクリック → 登録成功`; source/UTM attribution is retained through the new telemetry path.
+- [x] `form_start` is session-deduped from the first real form interaction, `register_click` is emitted on valid final submission, and the old submit-time `cta_click` inflation is removed. Historical CTA counts before this definition remain mixed and are not rewritten.
+- [x] Public telemetry event types are exactly `page_view`, `cta_click`, `form_start`, and `register_click`; registration success remains the preregistration-row outcome used as the fifth ADMIN funnel stage.
+- [x] `NOVELIGHT Production Migration Preflight` #678 / run `34845513447` was bound to exact main `21f9e581...`, observed exactly one pending migration (`20260914120000`), and passed the Production dry-run with `mutation: none`.
+- [x] Issue #460 contains the exact one-time owner approval for main `21f9e581...`, migration set `["20260914120000"]`, challenge `B7D4A19C`, and a matching GitHub-Actions claim bound to bridge run `34845800411`.
+- [x] `NOVELIGHT Approved Production Migration Deploy` #677 / run `34845800411` revalidated the exact pending set, reran the dry-run, applied only `20260914120000_beta_author_conversion_funnel.sql`, verified post-deploy migration status, passed Production beta observability, and recorded `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, `failure_phase="none"`.
+- [x] Fresh read-only Production DB verification confirms migration `20260914120000` is recorded, RLS remains enabled, the event constraint contains exactly the four funnel telemetry event types, and the hardened RPC retains advisory locking, dedupe, hourly cap, and service-role-only execution.
+- [x] `public`, `anon`, and `authenticated` cannot execute the preregistration-event RPC; `service_role` can execute it.
+- [x] PR #560 changes the public preregistration/ADMIN telemetry and supporting RPC/constraint but does not alter the authenticated novel-create / Geometry Thumbnail Engine / LIGHT ANALYTICS path exercised by Issue #511 / run `34692176490`.
+- [x] Issue #511 remains still-valid only for that unchanged Chapter 38/40 authenticated scope; it is not treated as direct Production proof of the new preregistration funnel.
+- [x] This documentation reconciliation performs no further Production DB/Supabase mutation, migration rerun, Stripe/billing/entitlement mutation, Secret/environment mutation, Production Auth Smoke, campaign-state cutover, or image generation/editing.
+- [x] Qualified Japanese counsel review remains pending/deferred by owner and is not converted into legal PASS by the technical reconciliation.
 
 ## 2026-09-14 current-main reconciliation
 
@@ -215,16 +236,17 @@ Historical failed attempts #472 and #474 remain recorded as failures with succes
 
 ## Final release gate
 
-- [x] Material application main is `24df7347580c73648f31d6f4eaa7759689b228eb` at this reconciliation; later docs-only commits do not change deployable application behavior.
-- [x] PR #530 approved head passed `NOVELIGHT CI` #2243 and `CodeQL` #2151; Vercel Production and `Production Readiness Smoke` #129 pass on the material application SHA.
+- [x] Material application main is `21f9e581f4009303904067d18bc5bea05c641d43` at this reconciliation; later docs-only commits do not change deployable application behavior.
+- [x] PR #560 final reviewed head `dec5fcbabf7ce169386a16bd03d4a7907d83a149` passed `NOVELIGHT CI` #2333 and CodeQL #2239; Vercel Production, Production Readiness #142, and `production-beta-verification` pass on the merged material application SHA.
+- [x] Production migration `20260914120000_beta_author_conversion_funnel.sql` is applied and recorded through Issue #460 / deploy run `34845800411` with mutation/postcheck success and fresh read-only Production DB verification.
 - [x] Production migration ledger/state, billing, backup, and unchanged operational boundaries have supportable current/still-valid evidence.
-- [x] The former empty-official-thumbnail blocker remains cleared by Production Readiness on the material application SHA.
-- [x] The successful approval-gated Production Authenticated Smoke on `e4e8673d...` remains still-valid for the unchanged authenticated Chapter 38/40 boundary after review of later launch-hardening PRs through #530.
+- [x] The former empty-official-thumbnail blocker remains cleared by Production Readiness on the current material application SHA.
+- [x] The successful approval-gated Production Authenticated Smoke on `e4e8673d...` remains still-valid only for the unchanged authenticated Chapter 38/40 boundary after review of PR #560 scope.
 - [x] Chapter 40 Production-authenticated create/render/composition persistence verification remains valid for that unchanged scope.
 - [x] Cleanup and matching consumed-approval evidence are complete.
 - [x] A request-only Auth Smoke workflow for a newer SHA is not treated as authenticated PASS and does not require approval solely for documentary SHA freshness.
 - [x] No duplicate Production mutation or Auth Smoke is required merely to refresh documentary SHA alignment.
 
-**Release posture after 2026-09-13 reconciliation: GO.**
+**Release posture after 2026-09-14 post-PR #560 reconciliation: GO.**
 
 This GO means the technical/operational release blockers tracked by this checklist are satisfied on current and specifically justified still-valid evidence. It does not convert the still-pending qualified Japanese counsel review into a legal PASS, and it does not authorize repeating already-completed Production migrations, smoke fixtures, Stripe operations, Secret changes, or other Production mutations.
