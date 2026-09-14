@@ -68,7 +68,10 @@ test('beta author LP is standalone and only uses session storage for form-start 
   assert.doesNotMatch(betaHtml, /src="novelight-client\.js"/);
   assert.doesNotMatch(betaHtml, /localStorage/);
   assert.match(betaHtml, /sessionStorage\.getItem\(FORM_START_SESSION_KEY\)/);
-  assert.match(betaHtml, /sessionStorage\.setItem\(FORM_START_SESSION_KEY,'1'\)/);
+  assert.match(
+    betaHtml,
+    /sessionStorage\.setItem\(FORM_START_SESSION_KEY,'1'\)/
+  );
   assert.doesNotMatch(betaHtml, /supabase\.createClient/);
   assert.match(betaHtml, /\/api\/beta-author-preregistration/);
 });
@@ -89,8 +92,14 @@ test('beta author LP records the five-step preregistration funnel while keeping 
   assert.equal((betaHtml.match(/recordEvent\('cta_click'\)/g) ?? []).length, 1);
   assert.match(betaHtml, /recordEvent\('form_start'\)/);
   assert.match(betaHtml, /recordEvent\('register_click'\)/);
-  assert.match(betaHtml, /form\.addEventListener\('input',maybeRecordFormStart\)/);
-  assert.match(betaHtml, /form\.addEventListener\('change',maybeRecordFormStart\)/);
+  assert.match(
+    betaHtml,
+    /form\.addEventListener\('input',maybeRecordFormStart\)/
+  );
+  assert.match(
+    betaHtml,
+    /form\.addEventListener\('change',maybeRecordFormStart\)/
+  );
   assert.match(betaHtml, /event\.target\.name==='website'/);
   assert.doesNotMatch(betaHtml, /現在\s*\d+\s*名/);
   assert.doesNotMatch(betaHtml, /残り\s*\d+\s*名/);
@@ -151,7 +160,10 @@ test('conversion funnel migration extends the hardened server-only telemetry con
     funnelMigration,
     /grant execute on function public\.record_beta_author_preregistration_event[\s\S]*to service_role;/
   );
-  assert.doesNotMatch(funnelMigration, /insert into public\.beta_author_preregistrations/);
+  assert.doesNotMatch(
+    funnelMigration,
+    /insert into public\.beta_author_preregistrations/
+  );
   assert.match(funnelPrecheck, /conversion funnel precheck/);
   assert.match(funnelPostcheck, /conversion funnel postcheck/);
   assert.match(funnelPostcheck, /RLS must remain enabled/);
@@ -272,5 +284,8 @@ test('conversion funnel rollback removes only new telemetry and restores hardene
     funnelRollback,
     /grant execute on function public\.record_beta_author_preregistration_event[\s\S]*to service_role;/
   );
-  assert.doesNotMatch(funnelRollback, /delete from public\.beta_author_preregistrations/);
+  assert.doesNotMatch(
+    funnelRollback,
+    /delete from public\.beta_author_preregistrations/
+  );
 });
