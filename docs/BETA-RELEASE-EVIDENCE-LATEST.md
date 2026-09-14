@@ -4,6 +4,30 @@
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
 
+## 2026-09-14 post-PR #560 / Production funnel reconciliation
+
+This section supersedes all older “current”, “material application main”, and release-posture wording below where the scope overlaps. Older detailed sections remain preserved as audit context.
+
+Current repository `main` and current material application SHA are both `21f9e581f4009303904067d18bc5bea05c641d43` (`Add beta author preregistration conversion funnel (#560)`). PR #559 immediately before it was documentation-only; PR #560 is the later deployable application change and therefore becomes the material application state.
+
+PR #560 final reviewed head `dec5fcbabf7ce169386a16bd03d4a7907d83a149` passed `NOVELIGHT CI` #2333 / run `34844107206`, including Node tests, static quality, RLS integration/rollback coverage, desktop/mobile browser smoke, desktop/mobile async-UI coverage, and the aggregate `check`. CodeQL #2239 also completed `SUCCESS`. On the merged main SHA `21f9e581...`, Vercel Production, `production-readiness-smoke`, and `production-beta-verification` commit statuses are all `success`; Production Readiness Smoke #142 is green.
+
+PR #560 extends the beta-author preregistration analytics path to the five-stage funnel `LP表示 → CTAクリック → フォーム入力開始 → 登録ボタンクリック → 登録成功`. Existing `page_view` and actual entry `cta_click` behavior is retained; `form_start` is recorded once per session from the first real form interaction, `register_click` is recorded on valid final submission, and the old submit-time `cta_click` inflation is removed. Existing source/UTM attribution continues through the new event calls. Historical CTA telemetry before this definition change remains mixed with final-submit clicks and is not silently rewritten.
+
+The server boundary now permits exactly the four telemetry event types `page_view`, `cta_click`, `form_start`, and `register_click`; registration success remains the preregistration-row outcome rather than a fifth public telemetry RPC event. ADMIN presents all five funnel stages and adjacent conversion rates while preserving the existing authenticated ADMIN boundary and source-registration summaries.
+
+Production migration freshness was re-established before mutation. `NOVELIGHT Production Migration Preflight` #678 / run `34845513447` was bound to exact main `21f9e581...`, observed exactly one pending Production migration (`20260914120000`), and passed `supabase db push --linked --dry-run --include-all` with `mutation: none`. No other Production migration was pending in that preflight.
+
+After explicit owner approval in chat, Issue #460 recorded the exact one-time approval for main `21f9e581...`, migration set `["20260914120000"]`, and challenge `B7D4A19C`. `NOVELIGHT Approved Production Migration Deploy` #677 / run `34845800411` revalidated the claim and exact pending set at the Production boundary, reran the dry-run, applied only `20260914120000_beta_author_conversion_funnel.sql`, verified migration status after deploy, passed Production beta observability, and recorded `result:"success"`, `mutation_result:"success"`, `postcheck_result:"success"`, `failure_phase:"none"` in the shared Production Approval Ledger.
+
+Fresh read-only Production database verification after the deploy confirms: migration `20260914120000` is recorded; RLS remains enabled on the preregistration-event table; the event-type constraint allows exactly `page_view`, `cta_click`, `form_start`, and `register_click`; the hardened RPC contains the new event allowlist, advisory locking, page-view dedupe, non-page-view dedupe, and hourly cap; `public`, `anon`, and `authenticated` cannot execute the RPC; `service_role` can execute it. This direct verification is read-only and does not repeat the migration.
+
+PR #560 changes the public preregistration/ADMIN telemetry surface and its supporting Production RPC/constraint. It does **not** modify the authenticated novel-create / Chapter 40 Geometry Thumbnail Engine / LIGHT ANALYTICS path exercised by Issue #511 / run `34692176490`; that proof remains still-valid only for its unchanged scope and is not stretched into direct proof of the new preregistration funnel.
+
+**Current launch posture remains GO on technical/operational evidence.** The new material application SHA is deployed, exact-current readiness/observability is green, and the required Production migration is applied and postchecked. Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING**; this remains an accepted residual risk and is not converted into legal PASS by the technical evidence.
+
+This documentation reconciliation performs no further Production DB/Supabase mutation, migration rerun, Stripe/billing/entitlement mutation, Secret/environment mutation, Production Auth Smoke execution, campaign-state cutover, or image generation/editing.
+
 ## 2026-09-14 current-main reconciliation
 
 This section supersedes older “current” wording below only where later material changes have advanced the release state. The older detailed sections are intentionally preserved as audit context rather than rewritten away.
