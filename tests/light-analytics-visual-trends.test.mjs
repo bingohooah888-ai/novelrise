@@ -59,7 +59,10 @@ test('per-work favorite conversion stays exposure-based', () => {
   const favoriteStep = client.match(
     /funnelStep\(\s*'お気に入り',\s*row\.favorites,\s*impressions,\s*row\.impressions\s*\)/u
   );
-  assert.ok(favoriteStep, 'favorite conversion must use impressions as its denominator');
+  assert.ok(
+    favoriteStep,
+    'favorite conversion must use impressions as its denominator'
+  );
   assert.doesNotMatch(
     client,
     /funnelStep\(\s*'お気に入り',\s*row\.favorites,\s*impressions,\s*row\.continued_to_episode_2\s*\)/u
