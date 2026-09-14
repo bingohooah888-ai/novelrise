@@ -12,7 +12,12 @@ const supabase = createClient(
 
 const STATES = new Set(['PRE_REGISTRATION', 'BETA_OPEN', 'CLOSED']);
 const SOURCES = new Set(['x', 'youtube', 'dm', 'direct', 'other']);
-const EVENT_TYPES = new Set(['page_view', 'cta_click']);
+const EVENT_TYPES = new Set([
+  'page_view',
+  'cta_click',
+  'form_start',
+  'register_click'
+]);
 const LEGACY_RELEASE_LABEL = '2026年9月下旬';
 const BETA_RELEASE_LABEL = '2026年9月30日';
 
