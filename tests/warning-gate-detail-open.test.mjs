@@ -23,7 +23,7 @@ test('detail open telemetry is page-deduplicated', () => {
   assert.ok(recorder, 'recordOpen must be present');
   assert.match(
     recorder[0],
-    /if\(detailOpenRecorded\|\|novel\.status!==\'published\'\)return;detailOpenRecorded=true;/u
+    /if\(detailOpenRecorded\|\|novel\.status!=='published'\)return;detailOpenRecorded=true;/u
   );
 });
 
