@@ -30,7 +30,10 @@ test('beta admin API treats lifecycle milestones as forward-only', () => {
     adminApi,
     /function isBackwardLifecycleTransition\(current, nextStatus\)/
   );
-  assert.match(adminApi, /const currentRank = lifecycleRankForRecord\(current\)/);
+  assert.match(
+    adminApi,
+    /const currentRank = lifecycleRankForRecord\(current\)/
+  );
   assert.match(adminApi, /nextRank < currentRank/);
   assert.match(
     adminApi,
