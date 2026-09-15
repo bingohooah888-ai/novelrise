@@ -167,11 +167,14 @@ begin
   if v_episode_status <> 'draft' then
     raise exception 'Only draft episodes can be published by this RPC' using errcode = '22023';
   end if;
-  if char_length(trim(coalesce(v_title, ''))) < 1 then
-    raise exception 'Episode title is required before publication' using errcode = '22023';
+  if v_episode_number is null or v_episode_number < 1 then
+    raise exception 'A valid episode number is required before publication' using errcode = '22023';
   end if;
-  if char_length(trim(coalesce(v_content, ''))) < 1 then
-    raise exception 'Episode content is required before publication' using errcode = '22023';
+  if char_length(trim(coalesce(v_title, ''))) < 1 or char_length(v_title) > 150 then
+    raise exception 'Episode title must contain 1 to 150 characters before publication' using errcode = '22023';
+  end if;
+  if char_length(trim(coalesce(v_content, ''))) < 1 or char_length(v_content) > 100000 then
+    raise exception 'Episode content must contain 1 to 100000 characters before publication' using errcode = '22023';
   end if;
   if v_novel_status <> 'published' and v_episode_number <> 1 then
     raise exception 'The first published episode must be episode 1' using errcode = '22023';
