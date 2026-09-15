@@ -87,7 +87,7 @@ test('preregistration trust and legal pages do not expose main application navig
 
   assert.match(
     legalCss,
-    /body\.novelight-public-header-page \.site-header \.header-inner,[\s\S]*display: none !important;/
+    /html body\.novelight-public-header-page:not\(\.novelight-public-dark\)[\s\S]*\.site-header[\s\S]*\.public-header-inner,[\s\S]*display: none !important;/
   );
 
   for (const href of [
