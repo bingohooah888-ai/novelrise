@@ -6,7 +6,9 @@ import { resolve } from 'node:path';
 const root = process.cwd();
 const read = (path) => readFileSync(resolve(root, path), 'utf8');
 
-const migration = read('supabase/migrations/20260916001000_beta_episode_drafts_and_import.sql');
+const migration = read(
+  'supabase/migrations/20260916001000_beta_episode_drafts_and_import.sql'
+);
 const importer = read('episode-import.html');
 const drafts = read('episode-drafts.html');
 const myNovels = read('my-novels.html');
@@ -19,13 +21,21 @@ test('draft and import RPCs stay authenticated-only and RLS remains required', (
     'novelight_import_episode_drafts'
   ]) {
     assert.match(migration, new RegExp(`revoke all on function public\\.${fn}`));
-    assert.match(migration, new RegExp(`grant execute on function public\\.${fn}[\\s\\S]*to authenticated`));
+    assert.match(
+      migration,
+      new RegExp(
+        `grant execute on function public\\.${fn}[\\s\\S]*to authenticated`
+      )
+    );
   }
   assert.match(migration, /security invoker/g);
 });
 
 test('bulk import creates private drafts and validates bounded author-owned input', () => {
-  assert.match(migration, /jsonb_array_length\(p_items\) < 1 or jsonb_array_length\(p_items\) > 200/);
+  assert.match(
+    migration,
+    /jsonb_array_length\(p_items\) < 1 or jsonb_array_length\(p_items\) > 200/
+  );
   assert.match(migration, /n\.user_id = v_user_id/);
   assert.match(migration, /'draft'/);
   assert.match(migration, /Import contains duplicate episode numbers/);
@@ -36,8 +46,14 @@ test('bulk import creates private drafts and validates bounded author-owned inpu
 test('publishing an imported draft is atomic with first-publication protection', () => {
   assert.match(migration, /for update of e, n/);
   assert.match(migration, /The first published episode must be episode 1/);
-  assert.match(migration, /update public\.novels[\s\S]*set status = 'published'/);
-  assert.match(migration, /update public\.episodes[\s\S]*set status = 'published'/);
+  assert.match(
+    migration,
+    /update public\.novels[\s\S]*set status = 'published'/
+  );
+  assert.match(
+    migration,
+    /update public\.episodes[\s\S]*set status = 'published'/
+  );
 });
 
 test('import page only accepts author-provided text and saves through the bounded RPC', () => {
