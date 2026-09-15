@@ -17,6 +17,13 @@ const STATUSES = new Set([
   'first_novel',
   'cancelled'
 ]);
+const LIFECYCLE_STATUS_RANK = new Map([
+  ['preregistered', 0],
+  ['verified', 1],
+  ['invited', 2],
+  ['registered', 3],
+  ['first_novel', 4]
+]);
 const CAMPAIGN_STATES = new Set(['PRE_REGISTRATION', 'BETA_OPEN', 'CLOSED']);
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
@@ -45,6 +52,22 @@ function inputError(message) {
   const error = new Error(message);
   error.code = 'INVALID_INPUT';
   return error;
+}
+
+function lifecycleConflict(message) {
+  const error = new Error(message);
+  error.code = 'LIFECYCLE_STATUS_CONFLICT';
+  return error;
+}
+
+function isBackwardLifecycleTransition(currentStatus, nextStatus) {
+  const currentRank = LIFECYCLE_STATUS_RANK.get(currentStatus);
+  const nextRank = LIFECYCLE_STATUS_RANK.get(nextStatus);
+  return (
+    Number.isInteger(currentRank) &&
+    Number.isInteger(nextRank) &&
+    nextRank < currentRank
+  );
 }
 
 function sanitizeSearch(value) {
@@ -245,6 +268,11 @@ async function updateRow(id, body) {
   if (body.status !== undefined) {
     const status = String(body.status).trim().toLowerCase();
     if (!STATUSES.has(status)) throw inputError('Invalid status');
+    if (isBackwardLifecycleTransition(current.status, status)) {
+      throw lifecycleConflict(
+        '到達済みの先行登録ステータスを前の段階へ戻すことはできません。'
+      );
+    }
     patch.status = status;
     applyMilestones(patch, status, current, new Date().toISOString());
   }
@@ -350,6 +378,9 @@ export default async function handler(req, res) {
     console.error('NOVELIGHT beta author ADMIN operation failed', error);
     if (error?.code === 'INVALID_INPUT') {
       return res.status(400).json({ error: error.message });
+    }
+    if (error?.code === 'LIFECYCLE_STATUS_CONFLICT') {
+      return res.status(409).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Admin operation failed' });
   }
