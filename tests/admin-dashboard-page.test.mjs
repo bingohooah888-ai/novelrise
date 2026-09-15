@@ -48,6 +48,14 @@ test('admin active cards show registered users and use a non-destructive reset e
   assert.match(adminApi, /ACTIVE_REGISTERED_RESET_FALLBACK/);
 });
 
+test('admin discovery watch exposes actionable delivery gaps without becoming a ranking input', () => {
+  assert.match(adminHtml, /発見機会ウォッチ/);
+  assert.match(adminHtml, /watchNoExposure/);
+  assert.match(adminHtml, /watchNoRead/);
+  assert.match(adminHtml, /ランキング・作品Rank・露出配分には反映しません/);
+  assert.match(adminHtml, /露出起点の本文10秒閲覧/);
+});
+
 test('shared NOVELIGHT theme explicitly covers every admin page slug', () => {
   assert.match(themeCss, /data-novelight-page\^="admin-"/);
   assert.match(themeCss, /novelight-page-admin/);
