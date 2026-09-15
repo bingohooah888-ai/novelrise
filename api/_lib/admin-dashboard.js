@@ -6,6 +6,7 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_WINDOWS = new Set([7, 30, 90]);
+const DISCOVERY_WATCH_LIMIT = 20;
 
 class AdminConfigurationError extends Error {
   constructor(message) {
@@ -181,6 +182,86 @@ function rate(numerator, denominator) {
   return Number(((numerator / denominator) * 100).toFixed(2));
 }
 
+function countByNovel(rows, predicate = () => true) {
+  const counts = new Map();
+  for (const row of rows ?? []) {
+    if (!predicate(row)) continue;
+    const id = String(row?.novel_id_snapshot ?? '');
+    if (!id) continue;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function buildDiscoveryWatch({
+  novels,
+  exposureRows,
+  conversionRows,
+  windowDays,
+  limit = DISCOVERY_WATCH_LIMIT
+}) {
+  const published = (novels ?? []).filter((row) => row?.status === 'published');
+  const impressionsByNovel = countByNovel(exposureRows);
+  const detailOpensByNovel = countByNovel(
+    conversionRows,
+    (row) => row?.event_type === 'detail_open'
+  );
+  const bodyReadsByNovel = countByNovel(
+    conversionRows,
+    (row) => row?.event_type === 'episode_read_10s'
+  );
+
+  const watched = [];
+  let noExposureCount = 0;
+  let exposedNoReadCount = 0;
+
+  for (const novel of published) {
+    const id = String(novel.id);
+    const impressions = impressionsByNovel.get(id) ?? 0;
+    const detailOpens = detailOpensByNovel.get(id) ?? 0;
+    const bodyReads10s = bodyReadsByNovel.get(id) ?? 0;
+
+    let state = null;
+    if (impressions === 0) {
+      state = 'no_exposure';
+      noExposureCount += 1;
+    } else if (bodyReads10s === 0) {
+      state = 'exposed_no_read';
+      exposedNoReadCount += 1;
+    }
+
+    if (!state) continue;
+
+    watched.push({
+      id,
+      title: novel.title ?? 'タイトル未設定',
+      createdAt: novel.created_at ?? null,
+      impressions,
+      detailOpens,
+      bodyReads10s,
+      state
+    });
+  }
+
+  watched.sort((a, b) => {
+    if (a.state !== b.state) return a.state === 'no_exposure' ? -1 : 1;
+    if (a.state === 'exposed_no_read' && a.impressions !== b.impressions) {
+      return b.impressions - a.impressions;
+    }
+    const aTime = new Date(a.createdAt ?? 0).getTime();
+    const bTime = new Date(b.createdAt ?? 0).getTime();
+    return aTime - bTime || a.id.localeCompare(b.id);
+  });
+
+  return {
+    windowDays,
+    publishedWorks: published.length,
+    noExposureCount,
+    exposedNoReadCount,
+    works: watched.slice(0, Math.max(1, Math.min(Number(limit) || 1, 100)))
+  };
+}
+
 export function calculateRetention({ userIds, lifecycleRows, days, now }) {
   const nowDate = now instanceof Date ? now : new Date(now);
   const cutoff = daysAgo(nowDate, days);
@@ -296,6 +377,8 @@ export async function loadAdminOverview({
     lifecycleRows,
     activityRows,
     acquisitionRows,
+    exposureRows,
+    conversionRows,
     topWorks
   ] = await Promise.all([
     Promise.all(
@@ -304,7 +387,11 @@ export async function loadAdminOverview({
         await promise
       ])
     ).then((entries) => Object.fromEntries(entries)),
-    fetchPaged(supabase, 'novels', 'id,user_id,status,pv,favorites,created_at'),
+    fetchPaged(
+      supabase,
+      'novels',
+      'id,user_id,title,status,pv,favorites,created_at'
+    ),
     fetchPaged(supabase, 'episodes', 'id,pv,created_at'),
     fetchPaged(
       supabase,
@@ -324,6 +411,18 @@ export async function loadAdminOverview({
       (query) => query.gte('activity_date', activityCutoff30)
     ),
     fetchPaged(supabase, 'user_acquisition', 'source'),
+    fetchPaged(
+      supabase,
+      'novel_exposure_events',
+      'novel_id_snapshot,exposed_at',
+      (query) => query.gte('exposed_at', cutoffWindow)
+    ),
+    fetchPaged(
+      supabase,
+      'novel_exposure_conversions',
+      'novel_id_snapshot,event_type,converted_at',
+      (query) => query.gte('converted_at', cutoffWindow)
+    ),
     fetchTopWorks(supabase)
   ]);
 
@@ -352,6 +451,12 @@ export async function loadAdminOverview({
     lifecycleRows,
     days: 30,
     now
+  });
+  const discoveryWatch = buildDiscoveryWatch({
+    novels,
+    exposureRows,
+    conversionRows,
+    windowDays: days
   });
 
   return {
@@ -389,6 +494,7 @@ export async function loadAdminOverview({
       detailToReadRate: rate(counts.bodyReads, counts.detailOpens),
       detailToFavoriteRate: rate(counts.favoritesAdded, counts.detailOpens)
     },
+    discoveryWatch,
     acquisition: sourceBreakdown(acquisitionRows),
     operations: {
       newReports: counts.newReports,
