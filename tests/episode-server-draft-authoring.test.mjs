@@ -15,7 +15,7 @@ test('new episode authoring can save an account-backed server draft', () => {
 });
 
 test('draft editing saves through the authenticated draft RPC and can publish atomically', () => {
-  assert.match(edit, /episode\.status\s*===\s*['"]draft['"]/u);
+  assert.match(edit, /episode\?\.status\s*===\s*['"]draft['"]/u);
   assert.match(edit, /novelight_save_episode_draft/u);
   assert.match(edit, /p_episode_id:\s*id/u);
   assert.match(edit, /id="publishDraft"/u);
