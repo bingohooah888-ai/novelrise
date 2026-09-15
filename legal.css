@@ -234,6 +234,45 @@ a {
   color: #eac46a;
 }
 
+/*
+ * Public trust/legal pages are intentionally kept separate from the main
+ * NOVELIGHT application navigation. This preserves the preregistration LP as
+ * an isolated trust surface: visitors can review operator/legal/support
+ * information without being routed into the unreleased main product.
+ */
+body.novelight-public-header-page .site-header {
+  min-height: 96px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+body.novelight-public-header-page .site-header::before {
+  width: min(320px, 72vw);
+  height: 74px;
+  display: block;
+  content: "";
+  background: url("assets/novelight-header-logo.webp") center / contain no-repeat;
+}
+
+body.novelight-public-header-page .site-header .header-inner,
+body.novelight-public-header-page .site-header .site-header-inner {
+  display: none !important;
+}
+
+body.novelight-public-header-page .legal-main a[href^="index.html"],
+body.novelight-public-header-page .legal-main a[href^="search.html"],
+body.novelight-public-header-page .legal-main a[href^="pricing.html"],
+body.novelight-public-header-page .legal-main a[href^="ranking.html"],
+body.novelight-public-header-page .legal-main a[href^="login.html"],
+body.novelight-public-header-page .legal-main a[href^="signup.html"],
+body.novelight-public-header-page .legal-main a[href^="author-home.html"],
+body.novelight-public-header-page .legal-main a[href^="reader-home.html"],
+body.novelight-public-header-page .legal-main a[href^="novel.html"],
+body.novelight-public-header-page .legal-main a[href^="novels.html"] {
+  display: none !important;
+}
+
 @media (min-width: 641px) and (max-width: 1180px) {
   .site-back {
     font-size: 20px;

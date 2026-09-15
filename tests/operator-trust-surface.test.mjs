@@ -10,6 +10,7 @@ const operator = read('operator.html');
 const beta = read('beta-authors.html');
 const commerce = read('commerce-disclosure.html');
 const privacy = read('privacy.html');
+const legalCss = read('legal.css');
 
 const publicPages = [
   'index.html',
@@ -21,6 +22,14 @@ const publicPages = [
   'commerce-disclosure.html',
   'contact.html',
   'beta-authors.html'
+];
+
+const preregTrustPages = [
+  'operator.html',
+  'terms.html',
+  'privacy.html',
+  'commerce-disclosure.html',
+  'contact.html'
 ];
 
 test('operator information is public, complete, and aligned with the NOVELIGHT source of truth', () => {
@@ -69,6 +78,37 @@ test('preregistration trust links are visible before the registration submit but
     beta,
     /href="commerce-disclosure\.html">特定商取引法に基づく表記<\/a>/
   );
+});
+
+test('preregistration trust and legal pages do not expose main application navigation', () => {
+  for (const path of preregTrustPages) {
+    assert.match(read(path), /href="legal\.css"/, `${path} must use legal.css`);
+  }
+
+  assert.match(
+    legalCss,
+    /body\.novelight-public-header-page \.site-header \.header-inner,[\s\S]*display: none !important;/
+  );
+
+  for (const href of [
+    'index.html',
+    'search.html',
+    'pricing.html',
+    'ranking.html',
+    'login.html',
+    'signup.html',
+    'author-home.html',
+    'reader-home.html',
+    'novel.html',
+    'novels.html'
+  ]) {
+    const escaped = href.replace('.', '\\.');
+    assert.match(
+      legalCss,
+      new RegExp(`\\.legal-main a\\[href\\^="${escaped}"\\]`),
+      `${href} must be suppressed on the preregistration trust surface`
+    );
+  }
 });
 
 test('existing disclosure-on-request legal policy remains intact', () => {
