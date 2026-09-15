@@ -5,12 +5,14 @@
   const MAX_AGE_MS = 24 * 60 * 60 * 1000;
   const DEFAULT_TARGET = 'mypage.html';
   const HOME_RESUME_SCRIPT_ID = 'novelight-home-resume-loader';
+  const HOME_UPDATES_SCRIPT_ID = 'novelight-home-updates-loader';
   const ALLOWED_PATHS = new Set([
     '/mypage.html',
     '/pricing.html',
     '/scout-record.html',
     '/post.html',
     '/favorites.html',
+    '/updates.html',
     '/novel.html',
     '/novel-edit.html',
     '/episode.html',
@@ -128,13 +130,18 @@
     const isHome = pathname === '/' || pathname.endsWith('/index.html');
     if (!document || !isHome) return false;
 
-    const load = () => {
-      if (document.getElementById(HOME_RESUME_SCRIPT_ID)) return;
+    const loadScript = (id, src) => {
+      if (document.getElementById(id)) return;
       const script = document.createElement('script');
-      script.id = HOME_RESUME_SCRIPT_ID;
-      script.src = 'novelight-home-resume.js';
+      script.id = id;
+      script.src = src;
       script.async = true;
       (document.body || document.head || document.documentElement)?.appendChild(script);
+    };
+
+    const load = () => {
+      loadScript(HOME_RESUME_SCRIPT_ID, 'novelight-home-resume.js');
+      loadScript(HOME_UPDATES_SCRIPT_ID, 'novelight-favorite-updates.js');
     };
 
     if (document.readyState === 'loading') {
