@@ -51,11 +51,17 @@ test('Production Auth hook control fails closed', () => {
     workflow,
     /Re-check approved main immediately before Auth mutation/
   );
-  assert.match(workflow, /main changed before the Production Auth hook mutation/);
+  assert.match(
+    workflow,
+    /main changed before the Production Auth hook mutation/
+  );
 });
 
 test('Production Auth hook activation verifies blocked signup', () => {
-  assert.match(workflow, /Verify hosted Auth hook configuration after mutation/);
+  assert.match(
+    workflow,
+    /Verify hosted Auth hook configuration after mutation/
+  );
   assert.match(workflow, /auth\/v1\/signup/);
   assert.match(workflow, /\[ "\$status" = '403' \]/);
   assert.match(workflow, /先行作者登録期間/);
