@@ -9,7 +9,7 @@ const migration = await readFile(
 const edit = await readFile('episode-edit.html', 'utf8');
 const drafts = await readFile('episode-drafts.html', 'utf8');
 
-test('scheduled publication keeps episodes private drafts until the due time', () => {
+test('scheduled rows stay draft until due', () => {
   assert.match(migration, /add column scheduled_at timestamptz/u);
   assert.match(
     migration,
@@ -22,7 +22,7 @@ test('scheduled publication keeps episodes private drafts until the due time', (
   assert.doesNotMatch(migration, /status\s*=\s*'scheduled'/u);
 });
 
-test('authors can schedule or cancel only through an authenticated owner-bound RPC', () => {
+test('schedule RPC is owner-bound and authenticated', () => {
   assert.match(migration, /novelight_schedule_episode_publication/u);
   assert.match(migration, /security invoker/u);
   assert.match(migration, /e\.user_id = v_user_id/u);
@@ -39,7 +39,7 @@ test('authors can schedule or cancel only through an authenticated owner-bound R
   );
 });
 
-test('due publication is database-driven, locked, and unavailable to clients', () => {
+test('due publisher is locked and client-inaccessible', () => {
   assert.match(migration, /create extension if not exists pg_cron/u);
   assert.match(migration, /for update of e, n skip locked/u);
   assert.match(migration, /e\.scheduled_at <= now\(\)/u);
@@ -58,7 +58,7 @@ test('due publication is database-driven, locked, and unavailable to clients', (
   }
 });
 
-test('manual draft publication clears a reservation atomically', () => {
+test('manual publication clears a reservation atomically', () => {
   assert.match(
     migration,
     /create or replace function public\.novelight_publish_episode_draft_atomic/u
@@ -70,7 +70,7 @@ test('manual draft publication clears a reservation atomically', () => {
   );
 });
 
-test('draft editor exposes one-off local-time scheduling with a stagger-safe feature check', () => {
+test('draft editor offers stagger-safe local-time scheduling', () => {
   assert.match(edit, /id="scheduledAt" type="datetime-local"/u);
   assert.match(edit, /id="schedulePublish"/u);
   assert.match(edit, /id="cancelSchedule"/u);
@@ -83,7 +83,7 @@ test('draft editor exposes one-off local-time scheduling with a stagger-safe fea
   assert.match(edit, /Date\.now\(\)\+60000/u);
 });
 
-test('draft manager shows reservation state without requiring the new column during code-first rollout', () => {
+test('draft manager shows reservation state safely', () => {
   assert.match(drafts, /\.from\('episodes'\)\.select\('\*'\)/u);
   assert.match(drafts, /scheduleLabel\(row\.scheduled_at\)/u);
   assert.match(drafts, /予約投稿/u);
