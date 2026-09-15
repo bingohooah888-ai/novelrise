@@ -10,7 +10,14 @@ grant execute on function public.assign_founding_author() to public, anon, authe
 grant execute on function public.handle_new_user() to public, anon, authenticated, service_role;
 grant execute on function public.lock_first_publication_time() to public, anon, authenticated, service_role;
 grant execute on function public.novelight_enforce_novel_plan_limit() to anon, authenticated, service_role;
-grant execute on function public.rls_auto_enable() to public, anon, authenticated, service_role;
+
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    execute 'grant execute on function public.rls_auto_enable() to public, anon, authenticated, service_role';
+  end if;
+end
+$$;
 
 commit;
 
