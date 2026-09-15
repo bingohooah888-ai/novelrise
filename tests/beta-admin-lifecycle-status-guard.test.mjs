@@ -21,17 +21,20 @@ test('beta admin API treats lifecycle milestones as forward-only', () => {
   ]) {
     assert.match(adminApi, new RegExp(`\\['${status}', ${rank}\\]`));
   }
+  assert.match(adminApi, /function lifecycleRankForRecord\(record\)/);
+  assert.match(adminApi, /record\?\.email_verified[\s\S]*Math\.max\(rank, 1\)/);
+  assert.match(adminApi, /record\?\.invite_sent_at[\s\S]*Math\.max\(rank, 2\)/);
+  assert.match(adminApi, /record\?\.registered_at[\s\S]*Math\.max\(rank, 3\)/);
+  assert.match(adminApi, /record\?\.first_novel_at[\s\S]*Math\.max\(rank, 4\)/);
   assert.match(
     adminApi,
-    /function isBackwardLifecycleTransition\(currentStatus, nextStatus\)/
+    /function isBackwardLifecycleTransition\(current, nextStatus\)/
   );
+  assert.match(adminApi, /const currentRank = lifecycleRankForRecord\(current\)/);
+  assert.match(adminApi, /nextRank < currentRank/);
   assert.match(
     adminApi,
-    /nextRank < currentRank/
-  );
-  assert.match(
-    adminApi,
-    /if \(isBackwardLifecycleTransition\(current\.status, status\)\)/
+    /if \(isBackwardLifecycleTransition\(current, status\)\)/
   );
   assert.match(adminApi, /error\.code = 'LIFECYCLE_STATUS_CONFLICT'/);
   assert.match(
@@ -52,17 +55,24 @@ test('beta admin keeps cancellation outside lifecycle rank and preserves milesto
   assert.doesNotMatch(adminApi, /patch\.email_verified\s*=\s*false/);
 });
 
-test('beta admin UI disables only earlier lifecycle choices', () => {
+test('beta admin UI disables only lifecycle choices below the achieved milestone floor', () => {
   assert.match(
     adminHtml,
     /const lifecycleStatusRank=\{preregistered:0,verified:1,invited:2,registered:3,first_novel:4\}/
   );
-  assert.match(adminHtml, /function configureStatusOptions\(currentStatus\)/);
+  assert.match(adminHtml, /function lifecycleRankForRecord\(row\)/);
+  assert.match(adminHtml, /row\?\.first_novel_at[\s\S]*Math\.max\(rank,4\)/);
+  assert.match(adminHtml, /function configureStatusOptions\(current\)/);
   assert.match(
     adminHtml,
-    /option\.disabled=Number\.isInteger\(currentRank\)&&Number\.isInteger\(optionRank\)&&optionRank<currentRank/
+    /option\.disabled=Number\.isInteger\(optionRank\)&&currentRank>=0&&optionRank<currentRank/
   );
-  assert.match(adminHtml, /configureStatusOptions\(selected\.status\)/);
+  assert.match(adminHtml, /configureStatusOptions\(selected\)/);
   assert.match(adminHtml, /すでに到達した段階より前のステータスには戻せません/);
   assert.match(adminHtml, /取消は従来どおり選択できます/);
+  assert.match(adminHtml, /取消後に戻す場合も到達済み段階より前には戻せません/);
+  assert.match(
+    adminHtml,
+    /statusEl\.textContent=error\?\.message\|\|'先行登録の変更を保存できませんでした。'/
+  );
 });
