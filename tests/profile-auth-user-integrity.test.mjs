@@ -20,7 +20,7 @@ const rollback = read(
   'supabase/rollback/20260915173000_enforce_profile_auth_user_integrity_rollback.sql'
 );
 
-test('migration fails closed for orphan profiles that still own data', () => {
+test('migration blocks dependent orphan profiles', () => {
   assert.match(migration, /Found % orphan profile\(s\) with dependent data/);
   assert.match(migration, /public\.novels/);
   assert.match(migration, /public\.episodes/);
@@ -31,7 +31,7 @@ test('migration fails closed for orphan profiles that still own data', () => {
   assert.match(migration, /public\.novel_comments/);
 });
 
-test('migration removes safe orphans before adding a validated cascade FK', () => {
+test('migration cleans safe orphans and adds cascade FK', () => {
   assert.match(
     migration,
     /delete from public\.profiles p[\s\S]*not exists \(select 1 from auth\.users u where u\.id = p\.id\)/
@@ -40,10 +40,7 @@ test('migration removes safe orphans before adding a validated cascade FK', () =
     migration,
     /foreign key \(id\)[\s\S]*references auth\.users\(id\)[\s\S]*on delete cascade[\s\S]*not valid/i
   );
-  assert.match(
-    migration,
-    /validate constraint profiles_id_auth_user_fkey/i
-  );
+  assert.match(migration, /validate constraint profiles_id_auth_user_fkey/i);
 });
 
 test('precheck refuses drift and unsafe cleanup', () => {
@@ -52,17 +49,14 @@ test('precheck refuses drift and unsafe cleanup', () => {
   assert.match(precheck, /safe_orphan_profiles_to_remove/);
 });
 
-test('postcheck requires exact validated cascade FK and zero orphans', () => {
+test('postcheck requires validated cascade FK and zero orphans', () => {
   assert.match(postcheck, /profiles_id_auth_user_fkey is missing/);
   assert.match(postcheck, /must use ON DELETE CASCADE/);
   assert.match(postcheck, /must be validated/);
   assert.match(postcheck, /Found % orphan profile\(s\) after migration/);
 });
 
-test('rollback removes only the new constraint and never recreates orphan rows', () => {
-  assert.match(
-    rollback,
-    /drop constraint if exists profiles_id_auth_user_fkey/
-  );
+test('rollback only removes the new constraint', () => {
+  assert.match(rollback, /drop constraint if exists profiles_id_auth_user_fkey/);
   assert.doesNotMatch(rollback, /insert into public\.profiles/i);
 });
