@@ -340,7 +340,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          smoke_email="novelight-prereg-hook-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.com"
+          smoke_email="novelight-prereg-hook-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@novelrise.vercel.app"
           smoke_password="Nl!HookSmoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-9aZ"
           payload="$(jq -cn --arg email "$smoke_email" --arg password "$smoke_password" '{email:$email,password:$password}')"
 
