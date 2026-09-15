@@ -60,14 +60,20 @@ function lifecycleConflict(message) {
   return error;
 }
 
-function isBackwardLifecycleTransition(currentStatus, nextStatus) {
-  const currentRank = LIFECYCLE_STATUS_RANK.get(currentStatus);
+function lifecycleRankForRecord(record) {
+  let rank = LIFECYCLE_STATUS_RANK.get(record?.status);
+  if (!Number.isInteger(rank)) rank = -1;
+  if (record?.email_verified) rank = Math.max(rank, 1);
+  if (record?.invite_sent_at) rank = Math.max(rank, 2);
+  if (record?.registered_at) rank = Math.max(rank, 3);
+  if (record?.first_novel_at) rank = Math.max(rank, 4);
+  return rank;
+}
+
+function isBackwardLifecycleTransition(current, nextStatus) {
+  const currentRank = lifecycleRankForRecord(current);
   const nextRank = LIFECYCLE_STATUS_RANK.get(nextStatus);
-  return (
-    Number.isInteger(currentRank) &&
-    Number.isInteger(nextRank) &&
-    nextRank < currentRank
-  );
+  return Number.isInteger(nextRank) && currentRank >= 0 && nextRank < currentRank;
 }
 
 function sanitizeSearch(value) {
@@ -268,7 +274,7 @@ async function updateRow(id, body) {
   if (body.status !== undefined) {
     const status = String(body.status).trim().toLowerCase();
     if (!STATUSES.has(status)) throw inputError('Invalid status');
-    if (isBackwardLifecycleTransition(current.status, status)) {
+    if (isBackwardLifecycleTransition(current, status)) {
       throw lifecycleConflict(
         '到達済みの先行登録ステータスを前の段階へ戻すことはできません。'
       );
