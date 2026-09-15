@@ -57,6 +57,9 @@ test('postcheck requires validated cascade FK and zero orphans', () => {
 });
 
 test('rollback only removes the new constraint', () => {
-  assert.match(rollback, /drop constraint if exists profiles_id_auth_user_fkey/);
+  assert.match(
+    rollback,
+    /drop constraint if exists profiles_id_auth_user_fkey/
+  );
   assert.doesNotMatch(rollback, /insert into public\.profiles/i);
 });
