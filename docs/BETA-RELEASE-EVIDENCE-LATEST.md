@@ -1,8 +1,40 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-09-14 JST**
+**Reconciled: 2026-09-16 JST**
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
+
+## 2026-09-16 current-main / post-PR #601 reconciliation
+
+This section supersedes all older “current”, “material application main”, and release-posture wording below where the scope overlaps. Older detailed sections remain preserved as audit context.
+
+Current repository `main` and current material application SHA are both `bac6e7ba4bd75bb91b244dc61ea30a3987fb4f54` (`Polish empty and error states for discovery lists (#601)`). The immediately preceding reader-continuity application change is PR #600, merged as `bdc9625b3082b6c8d384f788491df52c803fe5bc`.
+
+PR #601 final reviewed head `0d42b7693b000aa18b639f240f4a484bcb0e1bd5` passed `NOVELIGHT CI` #2414 / run `34998719910`, including Node tests, static quality, desktop/mobile browser smoke, desktop/mobile async-UI coverage, and aggregate `check`. CodeQL #2319 also completed `SUCCESS`. PR #600 final reviewed head `31dee9b8fd001d092aa2b9419354a71c7059d159` passed `NOVELIGHT CI` #2412 / run `34997621134`, aggregate `check`, and CodeQL #2317.
+
+On exact current main `bac6e7ba...`, Vercel Production commit status is `success` and `production-readiness-smoke` commit status is `success`. `NOVELIGHT Production Readiness Smoke` #162 / run `34998927013` completed `SUCCESS` on that exact SHA. The decisive job verified Production static convergence for the three PR #601 discovery pages, safe API route contracts, the read-only Production reader smoke, Production beta integrity checks, and monitoring-signal presence. The Production reader Playwright smoke completed `1 passed`. The readiness workflow also dispatched a scoped Production Auth Smoke request, but request dispatch alone is not authenticated Production PASS evidence and is not treated as such here.
+
+Production browser verification after PR #601 confirmed the mode-specific empty states on `new-arrivals.html`, `recommended.html`, and `light-seed.html`. PR #600's live continue-reading behavior could not be exercised end-to-end because Production currently had zero published works; no Production fixture or published work was created merely to force that proof. PR #600 remains supported by its reviewed-head CI/contract tests and deployed code, but this document does not mislabel the unavailable live resume scenario as Production E2E PASS.
+
+Post-PR #560 Production dependencies have been reconciled through the existing exact-scope approval ledger rather than rerun:
+
+- migration `20260915113000_preregistration_auth_signup_gate.sql` was applied from exact main `cd395bb9449c2f4209a24bee5772d563b7242603` through bridge run `34928307571`, with `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, `failure_phase="none"`;
+- the hosted preregistration Before User Created hook was enabled through the guarded Production control on main `56b3d28ecd63b545a9d4da79eb4ccf6dc06a41e0`; run `34941475822` recorded `result:"success"`, `configPostcheck:"success"`, `blockedSignupSmoke:"success"`, `verificationPath:"direct-signup"`;
+- migration `20260915173000_enforce_profile_auth_user_integrity.sql` was applied from exact main `9a76a97de7d310e12610d8b9daff8a512eb60927` through bridge run `34948923156`, mutation/postcheck `success`;
+- migration `20260915180000_restrict_internal_trigger_function_execute.sql` was applied from exact main `5b5d649095c48a82537c66f681a38f6f27d36733` through bridge run `34950821474`, mutation/postcheck `success`;
+- migrations `20260915190000_optimize_profile_rls_initplan.sql` and `20260915191000_drop_duplicate_favorites_index.sql` were applied together from exact main `7d0bd1daec64eda3b96e72e9b5b63c42cb81a832` through bridge run `34963347035`, mutation/postcheck `success`;
+- Production leaked-password protection was enabled through the guarded Auth control; run `34964896832` recorded `passwordHibpEnabled:true` and `mutationApplied:true`;
+- migration `20260916001000_beta_episode_drafts_and_import.sql`, required by PR #592's private draft import/staged-publication path, was applied from exact main `84e39bd6b7dd2b0a32956dd381393b018f0d5ef4` through bridge run `34993636592`, with `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, `failure_phase="none"`.
+
+The post-#560 application chain also includes forward-only preregistration lifecycle enforcement (#576), operator/trust and prereg legal isolation (#585/#587/#588), reader/author local continuity and draft safety (#589), private episode draft import/staged publication (#592), clearer LIGHT ANALYTICS opportunity presentation (#593), the observation-only ADMIN discovery delivery watch (#596), state-aware beta author onboarding (#598), home continue-reading (#600), and discovery empty/error-state polish (#601). These changes are not collapsed into one undifferentiated proof claim: migration/postcheck evidence proves the Production schema/control state it actually exercised; Production Readiness #162 proves its read-only exact-current scope; reviewed-head CI/CodeQL proves the corresponding code-content regression scope.
+
+Issue #511 / run `34692176490` remains still-valid only for its actually executed Chapter 38/40 authenticated novel-create / Geometry Thumbnail Engine / LIGHT ANALYTICS scope where later changes do not invalidate that exact behavior. It is **not** direct Production proof of the new PR #592 bulk-import UI/RPC workflow, PR #600 device-local resume UX, or PR #601 empty-state presentation. No request-only newer Auth Smoke is promoted to PASS merely for SHA freshness.
+
+The preregistration trust/legal chain was also re-audited on Production through Operator, Terms, Privacy, commerce disclosure, Contact, content guidelines, and billing policy. The rendered user-facing chain exposed no visible/clickable route into the unreleased main product; underlying shared-header anchors remain neutralized by the legal isolation CSS and the visible legal-surface NOVELIGHT brand mark is non-clickable. No legal copy or disclosure policy was changed by this reconciliation.
+
+**Current technical/operational launch posture remains GO.** Exact-current Vercel deployment and Production Readiness are green, all identified post-#560 Production migrations/config mutations required by current code have successful approval-ledger evidence, and no newly discovered technical release blocker remains open. Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING**; this remains an accepted residual risk and is not converted into legal PASS by the technical evidence.
+
+This documentation reconciliation performs no Production DB/Supabase mutation, migration rerun, Auth configuration mutation, Stripe/billing/entitlement mutation, Secret/environment mutation, Production Auth Smoke execution, campaign-state cutover, or image generation/editing.
 
 ## 2026-09-14 post-PR #560 / Production funnel reconciliation
 
