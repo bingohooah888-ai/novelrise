@@ -71,6 +71,24 @@ test('Production Auth hook activation verifies blocked signup', () => {
   assert.match(workflow, /blockedSignupSmoke:\"success\"/);
 });
 
+test('429 signup rate limits use a no-email admin hook fallback', () => {
+  assert.match(workflow, /\[ "\$status" != '429' \]/);
+  assert.match(workflow, /auth\/v1\/admin\/generate_link/);
+  assert.match(workflow, /\{type:\"signup\",email:\$email,password:\$password\}/);
+  assert.match(workflow, /select\(\.type == "secret"\)/);
+  assert.match(workflow, /select\(\.name == "service_role"\)/);
+  assert.match(workflow, /verification_path=admin-generate-link-fallback/);
+  assert.match(workflow, /verificationPath:\$verificationPath/);
+});
+
+test('Unexpected fallback user creation is deleted and fails closed', () => {
+  assert.match(workflow, /\[ "\$fallback_status" = '200' \]/);
+  assert.match(workflow, /\.id \/\/ \.user\.id \/\/ empty/);
+  assert.match(workflow, /auth\/v1\/admin\/users\/\$created_user_id/);
+  assert.match(workflow, /-X DELETE/);
+  assert.match(workflow, /fallback unexpectedly allowed user creation/);
+});
+
 test('Failed verification rolls the hook back', () => {
   assert.match(
     workflow,
@@ -88,4 +106,6 @@ test('Temporary Production Auth files are always removed', () => {
   assert.match(workflow, /\/tmp\/supabase-api-keys\.json/);
   assert.match(workflow, /\/tmp\/auth-hook-before\.json/);
   assert.match(workflow, /\/tmp\/auth-hook-signup-response\.json/);
+  assert.match(workflow, /\/tmp\/auth-hook-generate-link-response\.json/);
+  assert.match(workflow, /\/tmp\/auth-hook-fallback-cleanup-response\.json/);
 });
