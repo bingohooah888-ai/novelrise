@@ -4,6 +4,18 @@ set -euo pipefail
 : "${PGPASSWORD:=postgres}"
 export PGPASSWORD
 
+COMPAT_ADMIN=(psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}" -d postgres -v ON_ERROR_STOP=1)
+
+"${COMPAT_ADMIN[@]}" <<'SQL'
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'supabase_auth_admin') then
+    create role supabase_auth_admin nologin;
+  end if;
+end
+$$;
+SQL
+
 bash scripts/run-migration-replay.sh
 
 DB=(psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}" -d "${PGDATABASE:-novelight_test}" -v ON_ERROR_STOP=1)
