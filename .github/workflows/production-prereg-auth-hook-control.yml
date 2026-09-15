@@ -356,21 +356,84 @@ jobs:
               --data "$payload" \
               "$SUPABASE_URL/auth/v1/signup"
           )"
-          if [ "$status" = '403' ]; then
-            :
-          elif [ "$status" = '400' ]; then
-            :
-          else
-            echo "Safety stop: direct signup was not blocked by the preregistration gate; HTTP $status."
+
+          response_has_gate_message() {
+            jq -e '
+              ((.message // "") | contains("先行作者登録期間")) or
+              (((.error // {}).message // "") | contains("先行作者登録期間"))
+            ' "$1" >/dev/null
+          }
+
+          if { [ "$status" = '403' ] || [ "$status" = '400' ]; } && response_has_gate_message /tmp/auth-hook-signup-response.json; then
+            echo 'verification_path=direct-signup' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$status" != '429' ]; then
+            echo "Safety stop: direct signup did not return the preregistration gate response; HTTP $status."
             exit 1
           fi
-          jq -e '
-            ((.message // "") | contains("先行作者登録期間")) or
-            (((.error // {}).message // "") | contains("先行作者登録期間"))
-          ' /tmp/auth-hook-signup-response.json >/dev/null || {
-            echo 'Safety stop: blocked-signup response did not carry the expected preregistration message.'
+
+          echo 'Direct signup is rate-limited; verifying the same Before User Created hook through admin generate_link without sending email.'
+          admin_key="$(jq -er '
+            ([.[] | select(.type == "secret") | .api_key][0]) //
+            ([.[] | select(.name == "service_role") | .api_key][0]) //
+            empty
+          ' /tmp/supabase-api-keys.json)"
+          test -n "$admin_key" || {
+            echo 'Safety stop: no elevated Supabase API key is available for the rate-limit fallback.'
             exit 1
           }
+          printf '::add-mask::%s\n' "$admin_key"
+
+          fallback_payload="$(jq -cn \
+            --arg email "$smoke_email" \
+            --arg password "$smoke_password" \
+            '{type:"signup",email:$email,password:$password}')"
+          fallback_status="$(
+            curl --silent --show-error \
+              --output /tmp/auth-hook-generate-link-response.json \
+              --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              -X POST \
+              -H "apikey: $admin_key" \
+              -H "Authorization: Bearer $admin_key" \
+              -H 'Content-Type: application/json' \
+              --data "$fallback_payload" \
+              "$SUPABASE_URL/auth/v1/admin/generate_link"
+          )"
+
+          if { [ "$fallback_status" = '403' ] || [ "$fallback_status" = '400' ]; } && response_has_gate_message /tmp/auth-hook-generate-link-response.json; then
+            echo 'verification_path=admin-generate-link-fallback' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$fallback_status" = '200' ]; then
+            created_user_id="$(jq -r '.id // .user.id // empty' /tmp/auth-hook-generate-link-response.json)"
+            test -n "$created_user_id" || {
+              echo 'Safety stop: generate_link unexpectedly created a user but returned no user id for cleanup.'
+              exit 1
+            }
+            cleanup_status="$(
+              curl --silent --show-error \
+                --output /tmp/auth-hook-fallback-cleanup-response.json \
+                --write-out '%{http_code}' \
+                --connect-timeout 10 --max-time 30 \
+                -X DELETE \
+                -H "apikey: $admin_key" \
+                -H "Authorization: Bearer $admin_key" \
+                "$SUPABASE_URL/auth/v1/admin/users/$created_user_id"
+            )"
+            if [ "$cleanup_status" != '200' ] && [ "$cleanup_status" != '204' ]; then
+              echo "Safety stop: fallback unexpectedly created a user and cleanup failed with HTTP $cleanup_status."
+              exit 1
+            fi
+            echo 'Safety stop: fallback unexpectedly allowed user creation; the smoke user was deleted.'
+            exit 1
+          fi
+
+          echo "Safety stop: rate-limit fallback did not return the preregistration gate response; HTTP $fallback_status."
+          exit 1
 
       - name: Record successful Production Auth hook execution
         if: success()
@@ -379,6 +442,7 @@ jobs:
           APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
           APPROVAL_CHALLENGE: ${{ steps.approval.outputs.challenge }}
           CHANGED: ${{ steps.precheck.outputs.needs_patch }}
+          VERIFICATION_PATH: ${{ steps.signup_smoke.outputs.verification_path }}
         run: |
           set -euo pipefail
           payload="$(jq -cn \
@@ -387,7 +451,8 @@ jobs:
             --arg challenge "$APPROVAL_CHALLENGE" \
             --arg runId "$GITHUB_RUN_ID" \
             --arg changed "$CHANGED" \
-            '{operation:$operation,mainSha:$mainSha,challenge:$challenge,runId:$runId,result:"success",changed:($changed=="true"),configPostcheck:"success",blockedSignupSmoke:"success"}')"
+            --arg verificationPath "$VERIFICATION_PATH" \
+            '{operation:$operation,mainSha:$mainSha,challenge:$challenge,runId:$runId,result:"success",changed:($changed=="true"),configPostcheck:"success",blockedSignupSmoke:"success",verificationPath:$verificationPath}')"
           body="NOVELIGHT_PRODUCTION_AUTH_HOOK_EXECUTED $payload"
           curl --silent --show-error --fail \
             -X POST \
@@ -473,4 +538,6 @@ jobs:
             /tmp/auth-hook-after.json \
             /tmp/auth-hook-rollback.json \
             /tmp/supabase-api-keys.json \
-            /tmp/auth-hook-signup-response.json
+            /tmp/auth-hook-signup-response.json \
+            /tmp/auth-hook-generate-link-response.json \
+            /tmp/auth-hook-fallback-cleanup-response.json
