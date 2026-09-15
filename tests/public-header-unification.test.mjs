@@ -11,7 +11,6 @@ const headerCss = readFileSync(headerPath, 'utf8');
 const staticPublicPages = [
   'terms.html',
   'privacy.html',
-  'content-guidelines.html',
   'billing-policy.html',
   'commerce-disclosure.html',
   'contact.html'
@@ -100,7 +99,7 @@ test('shared public header owns the Home display font', () => {
   );
 });
 
-test('legal pages use full public navigation', () => {
+test('non-isolated legal pages keep the full public navigation', () => {
   for (const name of staticPublicPages) {
     const source = readFileSync(join(root, name), 'utf8');
     const header = headerMarkup(source);
