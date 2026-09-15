@@ -44,14 +44,8 @@ test('same-device progress supports partial resume without changing the valid-re
 
 test('novel detail exposes a continue-reading entry point from stored progress', () => {
   assert.match(runtime, /installNovelContinue/);
-  assert.match(
-    runtime,
-    /第\$\{rows\[index\]\.episodeNumber\}話の続きから読む/,
-  );
-  assert.match(
-    runtime,
-    /第\$\{rows\[targetIndex\]\.episodeNumber\}話から続きを読む/,
-  );
+  assert.match(runtime, /第\$\{rows\[index\]\.episodeNumber\}話の続きから読む/);
+  assert.match(runtime, /第\$\{rows\[targetIndex\]\.episodeNumber\}話から続きを読む/);
   assert.match(runtime, /nlContinueReading/);
 });
 
