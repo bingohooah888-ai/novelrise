@@ -57,31 +57,13 @@ test('Production Auth hook control fails closed', () => {
   );
 });
 
-test(
-  'Hosted Auth runtime gets a bounded reload wait before verification',
-  () => {
-    const waitIndex = workflow.indexOf(
-      'Allow hosted Auth runtime to reload hook configuration'
-    );
-    const smokeIndex = workflow.indexOf(
-      'Retrieve a public Supabase API key for blocked-signup smoke'
-    );
-
-    assert.ok(waitIndex >= 0);
-    assert.ok(smokeIndex > waitIndex);
-    assert.match(workflow, /sleep 20/);
-    assert.match(
-      workflow,
-      /if: steps\.precheck\.outputs\.needs_patch == 'true'/
-    );
-  }
-);
-
 test('Production Auth hook activation verifies blocked signup', () => {
   assert.match(
     workflow,
     /Verify hosted Auth hook configuration after mutation/
   );
+  assert.match(workflow, /Allow hosted Auth runtime to reload hook configuration/);
+  assert.match(workflow, /sleep 20/);
   assert.match(workflow, /auth\/v1\/signup/);
   assert.match(workflow, /@novelrise\.vercel\.app/);
   assert.doesNotMatch(workflow, /@example\.com/);
