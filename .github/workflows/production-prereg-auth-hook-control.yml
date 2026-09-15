@@ -367,6 +367,7 @@ jobs:
           response_has_gate_message() {
             jq -e '
               ((.message // "") | contains("先行作者登録期間")) or
+              ((.msg // "") | contains("先行作者登録期間")) or
               (((.error // {}).message // "") | contains("先行作者登録期間"))
             ' "$1" >/dev/null
           }
