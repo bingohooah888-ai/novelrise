@@ -1,1 +1,5 @@
 project_id = "novelrise"
+
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/hook_novelight_beta_signup_gate"
