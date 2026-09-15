@@ -3,7 +3,10 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-const mypage = fs.readFileSync(new URL('../mypage.html', import.meta.url), 'utf8');
+const mypage = fs.readFileSync(
+  new URL('../mypage.html', import.meta.url),
+  'utf8'
+);
 
 test('creator home exposes a state-aware beta start guide', () => {
   assert.match(mypage, /id="betaGuide"/);
