@@ -62,6 +62,11 @@ test('Production Auth hook activation verifies blocked signup', () => {
     workflow,
     /Verify hosted Auth hook configuration after mutation/
   );
+  assert.match(
+    workflow,
+    /Allow hosted Auth runtime to reload hook configuration/
+  );
+  assert.match(workflow, /sleep 20/);
   assert.match(workflow, /auth\/v1\/signup/);
   assert.match(workflow, /@novelrise\.vercel\.app/);
   assert.doesNotMatch(workflow, /@example\.com/);

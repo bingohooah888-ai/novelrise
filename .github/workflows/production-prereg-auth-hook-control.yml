@@ -308,6 +308,13 @@ jobs:
             exit 1
           }
 
+      - name: Allow hosted Auth runtime to reload hook configuration
+        if: steps.precheck.outputs.needs_patch == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 20
+
       - name: Retrieve a public Supabase API key for blocked-signup smoke
         shell: bash
         run: |
