@@ -74,7 +74,10 @@ test('Production Auth hook activation verifies blocked signup', () => {
 test('429 signup rate limits use a no-email admin hook fallback', () => {
   assert.match(workflow, /\[ "\$status" != '429' \]/);
   assert.match(workflow, /auth\/v1\/admin\/generate_link/);
-  assert.match(workflow, /\{type:\"signup\",email:\$email,password:\$password\}/);
+  assert.match(
+    workflow,
+    /\{type:\"signup\",email:\$email,password:\$password\}/
+  );
   assert.match(workflow, /select\(\.type == "secret"\)/);
   assert.match(workflow, /select\(\.name == "service_role"\)/);
   assert.match(workflow, /verification_path=admin-generate-link-fallback/);
