@@ -20,7 +20,10 @@ test('draft and import RPCs stay authenticated-only and RLS remains required', (
     'novelight_publish_episode_draft_atomic',
     'novelight_import_episode_drafts'
   ]) {
-    assert.match(migration, new RegExp(`revoke all on function public\\.${fn}`));
+    assert.match(
+      migration,
+      new RegExp(`revoke all on function public\\.${fn}`)
+    );
     assert.match(
       migration,
       new RegExp(
