@@ -55,6 +55,10 @@
     }
   }
 
+  function clearCurrentDraft() {
+    removeDraft(draftKey());
+  }
+
   function values() {
     return {
       episodeNumber: Number(document.getElementById('episodeNumber')?.value || 0),
@@ -267,6 +271,7 @@
     readDraft,
     writeDraft,
     removeDraft,
+    clearCurrentDraft,
     previewCurrent,
     install
   });
