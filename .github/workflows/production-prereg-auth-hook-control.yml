@@ -130,7 +130,7 @@ jobs:
             --connect-timeout 10 --max-time 20 \
             "$PRODUCTION_BASE_URL/api/beta-author-preregistration" \
             > /tmp/preregistration-state.json
-          jq -e '.state == "PRE_REGISTRATION"' /tmp/preregistration-state.json >/dev/null || {
+          jq -e '.campaign.state == "PRE_REGISTRATION"' /tmp/preregistration-state.json >/dev/null || {
             echo 'Safety stop: campaign is no longer PRE_REGISTRATION.'
             exit 1
           }
