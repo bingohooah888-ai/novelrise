@@ -156,6 +156,38 @@
       text-align: center;
     }
 
+    .registration-trust {
+      margin: 18px 0 16px;
+      padding: 14px 16px;
+      border: 1px solid rgba(123, 92, 39, 0.22);
+      border-radius: 10px;
+      background: rgba(255, 252, 241, 0.62);
+      color: #5f513d;
+      font-size: 14px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .registration-trust strong {
+      color: #443722;
+    }
+
+    .registration-trust-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 7px 14px;
+      margin-top: 7px;
+    }
+
+    .registration-trust a,
+    .privacy-note a {
+      color: #7b5c27;
+      font-weight: 800;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
     @media (max-width: 900px) {
       .hero-copy {
         font-size: 18px;
@@ -226,6 +258,11 @@
 
       .benefit-card p {
         font-size: 15px;
+      }
+
+      .registration-trust {
+        padding: 13px 12px;
+        font-size: 14px;
       }
     }
 
@@ -698,10 +735,18 @@
               <label for="website">ウェブサイト</label>
               <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
             </div>
+            <div class="registration-trust" aria-label="登録前に確認できる情報">
+              <strong>登録前に運営・規約・個人情報の取扱いを確認できます。</strong>
+              <div class="registration-trust-links">
+                <a href="operator.html">運営者情報</a>
+                <a href="privacy.html">プライバシーポリシー</a>
+                <a href="terms.html">利用規約</a>
+              </div>
+            </div>
             <button id="submitButton" class="submit" type="submit">β版に先行登録する</button>
             <div id="formState" class="form-state" role="status" aria-live="polite"></div>
           </form>
-          <p class="privacy-note">登録情報はβ版参加案内と運営管理のために利用します。登録人数や他の登録者情報を公開することはありません。詳しくはプライバシーポリシーをご確認ください。</p>
+          <p class="privacy-note">登録情報はβ版参加案内と運営管理のために利用します。登録人数や他の登録者情報を公開することはありません。詳しくは<a href="privacy.html">プライバシーポリシー</a>をご確認ください。</p>
         </div>
         <div id="successState" class="success-panel" hidden>
           <h3>先行登録ありがとうございます。</h3>
@@ -752,8 +797,10 @@
 
 <footer class="beta-footer">
   <span>© NOVELIGHT</span>
+  <a href="operator.html">運営者情報</a>
   <a href="terms.html">利用規約</a>
   <a href="privacy.html">プライバシーポリシー</a>
+  <a href="commerce-disclosure.html">特定商取引法に基づく表記</a>
   <a href="contact.html">お問い合わせ</a>
 </footer>
 
