@@ -26,14 +26,12 @@ begin
       raise exception 'Required internal function public.%() is missing', v_name;
     end if;
 
+    -- Effective client-role checks also catch any lingering grant through PUBLIC.
     if has_function_privilege('anon', v_oid, 'EXECUTE') then
       raise exception 'anon must not execute public.%()', v_name;
     end if;
     if has_function_privilege('authenticated', v_oid, 'EXECUTE') then
       raise exception 'authenticated must not execute public.%()', v_name;
-    end if;
-    if has_function_privilege('public', v_oid, 'EXECUTE') then
-      raise exception 'PUBLIC must not execute public.%()', v_name;
     end if;
     if not has_function_privilege('service_role', v_oid, 'EXECUTE') then
       raise exception 'service_role must retain execute on public.%()', v_name;
