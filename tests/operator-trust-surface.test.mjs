@@ -32,10 +32,7 @@ test(
     assert.match(operator, /β版公開予定日[\s\S]*2026年9月30日/);
     assert.match(operator, /作品が評価される前の段階にある機会格差を減らし/);
     assert.match(operator, /知名度だけで作品の発見機会が決まらないよう/);
-    assert.match(
-      operator,
-      /課金で買えるのは「評価」ではなく、評価される「機会」まで。/
-    );
+    assert.match(operator, /課金で買えるのは「評価」ではなく、評価される「機会」まで。/);
     assert.match(operator, /href="contact\.html"/);
     assert.match(operator, /href="terms\.html"/);
     assert.match(operator, /href="privacy\.html"/);
@@ -73,22 +70,13 @@ test(
     }
 
     assert.match(beta, /const API_PATH='\/api\/beta-author-preregistration'/);
-    assert.match(
-      beta,
-      /href="commerce-disclosure\.html">特定商取引法に基づく表記<\/a>/
-    );
+    assert.match(beta, /href="commerce-disclosure\.html">特定商取引法に基づく表記<\/a>/);
   }
 );
 
 test('existing disclosure-on-request legal policy remains intact', () => {
-  assert.match(
-    commerce,
-    /消費者から請求があった場合、法令に従い遅滞なく開示します。/
-  );
+  assert.match(commerce, /消費者から請求があった場合、法令に従い遅滞なく開示します。/);
   assert.match(commerce, /特定商取引法に基づく表示事項の開示請求/);
-  assert.match(
-    privacy,
-    /本人から求めがあった場合、法令に従い遅滞なく回答します。/
-  );
+  assert.match(privacy, /本人から求めがあった場合、法令に従い遅滞なく回答します。/);
   assert.match(privacy, /NOVELIGHTお問い合わせフォーム/);
 });
