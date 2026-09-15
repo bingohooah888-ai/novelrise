@@ -255,8 +255,15 @@ body.novelight-public-header-page .site-header::before {
   background: url("assets/novelight-header-logo.webp") center / contain no-repeat;
 }
 
-body.novelight-public-header-page .site-header .header-inner,
-body.novelight-public-header-page .site-header .site-header-inner {
+html body.novelight-public-header-page:not(.novelight-public-dark)
+  .site-header
+  .header-inner,
+html body.novelight-public-header-page:not(.novelight-public-dark)
+  .site-header
+  .public-header-inner,
+html body.novelight-public-header-page:not(.novelight-public-dark)
+  .site-header
+  .site-header-inner {
   display: none !important;
 }
 
