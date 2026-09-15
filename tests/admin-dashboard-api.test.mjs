@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildDiscoveryWatch,
   calculateRetention,
   createAdminDashboardHandler,
   isSameOriginRequest,
@@ -205,6 +206,100 @@ test('admin API rejects invalid reporting windows and broad search queries', asy
     req: request({ query: { q: 'a' } })
   });
   assert.equal(badSearch.statusCode, 400);
+});
+
+test('discovery watch identifies works NOVELIGHT did not expose and exposed works with no 10-second read', () => {
+  const watch = buildDiscoveryWatch({
+    windowDays: 7,
+    novels: [
+      {
+        id: 10,
+        title: '露出なし',
+        status: 'published',
+        created_at: '2026-08-01T00:00:00.000Z'
+      },
+      {
+        id: 20,
+        title: '露出はある',
+        status: 'published',
+        created_at: '2026-08-02T00:00:00.000Z'
+      },
+      {
+        id: 30,
+        title: '読まれた',
+        status: 'published',
+        created_at: '2026-08-03T00:00:00.000Z'
+      },
+      {
+        id: 40,
+        title: '下書き',
+        status: 'draft',
+        created_at: '2026-08-04T00:00:00.000Z'
+      }
+    ],
+    exposureRows: [
+      { novel_id_snapshot: '20' },
+      { novel_id_snapshot: '20' },
+      { novel_id_snapshot: '30' }
+    ],
+    conversionRows: [
+      { novel_id_snapshot: '20', event_type: 'detail_open' },
+      { novel_id_snapshot: '30', event_type: 'detail_open' },
+      { novel_id_snapshot: '30', event_type: 'episode_read_10s' }
+    ]
+  });
+
+  assert.equal(watch.windowDays, 7);
+  assert.equal(watch.publishedWorks, 3);
+  assert.equal(watch.noExposureCount, 1);
+  assert.equal(watch.exposedNoReadCount, 1);
+  assert.deepEqual(
+    watch.works.map((work) => ({
+      id: work.id,
+      state: work.state,
+      impressions: work.impressions,
+      detailOpens: work.detailOpens,
+      bodyReads10s: work.bodyReads10s
+    })),
+    [
+      {
+        id: '10',
+        state: 'no_exposure',
+        impressions: 0,
+        detailOpens: 0,
+        bodyReads10s: 0
+      },
+      {
+        id: '20',
+        state: 'exposed_no_read',
+        impressions: 2,
+        detailOpens: 1,
+        bodyReads10s: 0
+      }
+    ]
+  );
+});
+
+test('discovery watch is observation-only and limits the returned work list', () => {
+  const novels = Array.from({ length: 25 }, (_, index) => ({
+    id: index + 1,
+    title: `作品${index + 1}`,
+    status: 'published',
+    created_at: `2026-08-${String((index % 20) + 1).padStart(2, '0')}T00:00:00.000Z`
+  }));
+  const watch = buildDiscoveryWatch({
+    novels,
+    exposureRows: [],
+    conversionRows: [],
+    windowDays: 30,
+    limit: 5
+  });
+
+  assert.equal(watch.noExposureCount, 25);
+  assert.equal(watch.exposedNoReadCount, 0);
+  assert.equal(watch.works.length, 5);
+  assert.equal('rank' in watch.works[0], false);
+  assert.equal('score' in watch.works[0], false);
 });
 
 test('30-day retention requires a return on or after each users threshold', () => {
