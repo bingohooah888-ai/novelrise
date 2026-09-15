@@ -21,7 +21,7 @@ const rollback = read(
   'supabase/rollback/20260915113000_preregistration_auth_signup_gate_rollback.sql'
 );
 
-test('local Supabase config enables the Before User Created Postgres hook', () => {
+test('local Supabase config enables Before User Created hook', () => {
   assert.match(config, /\[auth\.hook\.before_user_created\]/);
   assert.match(config, /enabled\s*=\s*true/);
   assert.match(
@@ -30,7 +30,7 @@ test('local Supabase config enables the Before User Created Postgres hook', () =
   );
 });
 
-test('signup hook uses the private campaign singleton without SECURITY DEFINER', () => {
+test('signup hook reads private campaign state without SECURITY DEFINER', () => {
   assert.match(
     migration,
     /create or replace function public\.hook_novelight_beta_signup_gate\(event jsonb\)/
@@ -44,7 +44,7 @@ test('signup hook uses the private campaign singleton without SECURITY DEFINER',
   );
 });
 
-test('signup hook blocks only preregistration and fails closed on unavailable state', () => {
+test('signup hook blocks preregistration and fails closed', () => {
   assert.match(migration, /v_campaign_state = 'PRE_REGISTRATION'/);
   assert.match(migration, /'http_code', 403/);
   assert.match(migration, /v_campaign_state in \('BETA_OPEN', 'CLOSED'\)/);
@@ -52,7 +52,7 @@ test('signup hook blocks only preregistration and fails closed on unavailable st
   assert.equal((migration.match(/'http_code', 503/g) ?? []).length, 2);
 });
 
-test('Auth hook receives least-privilege access while client roles stay blocked', () => {
+test('Auth hook keeps least-privilege client boundaries', () => {
   assert.match(
     migration,
     /grant select on table public\.beta_author_preregistration_config to supabase_auth_admin;/
@@ -71,8 +71,11 @@ test('Auth hook receives least-privilege access while client roles stay blocked'
   );
 });
 
-test('precheck and postcheck protect RLS, privileges and campaign behavior', () => {
-  assert.match(precheck, /beta_author_preregistration_config RLS must be enabled/);
+test('pre/postchecks protect RLS privileges and state behavior', () => {
+  assert.match(
+    precheck,
+    /beta_author_preregistration_config RLS must be enabled/
+  );
   assert.match(precheck, /supabase_auth_admin role is required/);
   assert.match(postcheck, /RLS must remain enabled/);
   assert.match(postcheck, /must remain SECURITY INVOKER/);
@@ -81,7 +84,7 @@ test('precheck and postcheck protect RLS, privileges and campaign behavior', () 
   assert.match(postcheck, /has_function_privilege\('supabase_auth_admin'/);
 });
 
-test('rollback removes only the signup-gate objects and preserves shared schema usage', () => {
+test('rollback removes signup-gate objects only', () => {
   assert.match(
     rollback,
     /drop function if exists public\.hook_novelight_beta_signup_gate\(jsonb\);/
