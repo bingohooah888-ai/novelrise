@@ -1,0 +1,472 @@
+name: NOVELIGHT Production Preregistration Auth Hook Control
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-production-prereg-auth-hook-control
+  cancel-in-progress: false
+
+jobs:
+  enable-hook:
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 460 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_AUTH_HOOK_APPROVE ')
+    name: Enable and verify preregistration Before User Created hook
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: '460'
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PRODUCTION_BASE_URL: https://novelrise.vercel.app
+      HOOK_URI: pg-functions://postgres/public/hook_novelight_beta_signup_gate
+      OPERATION: enable-preregistration-before-user-created-hook
+
+    steps:
+      - name: Validate exact one-time owner approval
+        id: approval
+        shell: bash
+        env:
+          APPROVAL_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+
+          approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_AUTH_HOOK_APPROVE }"
+          echo "$approval_json" | jq -e --arg operation "$OPERATION" '
+            type == "object" and
+            .operation == $operation and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            ((keys | sort) == (["challenge", "mainSha", "operation"] | sort))
+          ' >/dev/null || {
+            echo 'Safety stop: invalid Production Auth hook approval record.'
+            exit 1
+          }
+
+          main_sha="$(echo "$approval_json" | jq -r '.mainSha')"
+          challenge="$(echo "$approval_json" | jq -r '.challenge')"
+
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$main_sha" || {
+            echo 'Safety stop: main changed after the Production Auth hook approval.'
+            exit 1
+          }
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > /tmp/ledger-comments.json
+
+          comment_count="$(jq 'length' /tmp/ledger-comments.json)"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: Production Approval Ledger exceeded the bounded comment contract.'
+            exit 1
+          }
+
+          used_count="$(
+            jq \
+              --arg operation "$OPERATION" \
+              --arg mainSha "$main_sha" \
+              --arg challenge "$challenge" \
+              '[
+                .[]
+                | .body as $body
+                | select(
+                    ($body | startswith("NOVELIGHT_PRODUCTION_AUTH_HOOK_CLAIMED ")) or
+                    ($body | startswith("NOVELIGHT_PRODUCTION_AUTH_HOOK_EXECUTED ")) or
+                    ($body | startswith("NOVELIGHT_PRODUCTION_AUTH_HOOK_FAILED "))
+                  )
+                | ($body | sub("^[^ ]+ "; "") | fromjson?)
+                | select(
+                    .operation == $operation and
+                    .mainSha == $mainSha and
+                    .challenge == $challenge
+                  )
+              ] | length' \
+              /tmp/ledger-comments.json
+          )"
+          [ "$used_count" -eq 0 ] || {
+            echo 'Safety stop: this Production Auth hook approval was already used.'
+            exit 1
+          }
+
+          {
+            echo "main_sha=$main_sha"
+            echo "challenge=$challenge"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify campaign is still PRE_REGISTRATION
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --fail \
+            --connect-timeout 10 --max-time 20 \
+            "$PRODUCTION_BASE_URL/api/beta-author-preregistration" \
+            > /tmp/preregistration-state.json
+          jq -e '.state == "PRE_REGISTRATION"' /tmp/preregistration-state.json >/dev/null || {
+            echo 'Safety stop: campaign is no longer PRE_REGISTRATION.'
+            exit 1
+          }
+
+      - name: Inspect current hosted Auth hook configuration
+        id: precheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured in the production environment.'
+            exit 1
+          }
+
+          status="$(
+            curl --silent --show-error \
+              --output /tmp/auth-hook-before.json \
+              --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H 'Accept: application/json' \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth"
+          )"
+          [ "$status" = '200' ] || {
+            echo "Safety stop: Auth config precheck returned HTTP $status."
+            exit 1
+          }
+
+          jq -e '
+            (.hook_before_user_created_enabled | type) == "boolean" and
+            ((.hook_before_user_created_uri == null) or (.hook_before_user_created_uri | type) == "string")
+          ' /tmp/auth-hook-before.json >/dev/null || {
+            echo 'Safety stop: hosted Auth hook fields have an unexpected shape.'
+            exit 1
+          }
+
+          current_enabled="$(jq -r '.hook_before_user_created_enabled' /tmp/auth-hook-before.json)"
+          current_uri="$(jq -r '.hook_before_user_created_uri // ""' /tmp/auth-hook-before.json)"
+
+          if [ "$current_enabled" = 'true' ] && [ "$current_uri" != "$HOOK_URI" ]; then
+            echo 'Safety stop: a different Before User Created hook is already enabled.'
+            exit 1
+          fi
+          if [ "$current_enabled" = 'false' ] && [ -n "$current_uri" ] && [ "$current_uri" != "$HOOK_URI" ]; then
+            echo 'Safety stop: a different disabled Before User Created hook URI is already configured.'
+            exit 1
+          fi
+
+          needs_patch=true
+          if [ "$current_enabled" = 'true' ] && [ "$current_uri" = "$HOOK_URI" ]; then
+            needs_patch=false
+          fi
+          echo "needs_patch=$needs_patch" >> "$GITHUB_OUTPUT"
+
+      - name: Re-check approved main immediately before claim
+        shell: bash
+        env:
+          APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$APPROVED_MAIN_SHA" || {
+            echo 'Safety stop: main changed before the Production Auth hook claim.'
+            exit 1
+          }
+
+      - name: Claim approval before Production Auth mutation
+        id: claim
+        shell: bash
+        env:
+          APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          APPROVAL_CHALLENGE: ${{ steps.approval.outputs.challenge }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn \
+            --arg operation "$OPERATION" \
+            --arg mainSha "$APPROVED_MAIN_SHA" \
+            --arg challenge "$APPROVAL_CHALLENGE" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{operation:$operation,mainSha:$mainSha,challenge:$challenge,runId:$runId}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_HOOK_CLAIMED $payload"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Re-check approved main immediately before Auth mutation
+        if: steps.precheck.outputs.needs_patch == 'true'
+        shell: bash
+        env:
+          APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$APPROVED_MAIN_SHA" || {
+            echo 'Safety stop: main changed before the Production Auth hook mutation.'
+            exit 1
+          }
+
+      - name: Enable only the Before User Created hook fields
+        id: mutate
+        if: steps.precheck.outputs.needs_patch == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg uri "$HOOK_URI" '{
+            hook_before_user_created_enabled: true,
+            hook_before_user_created_uri: $uri
+          }')"
+          test "$(jq 'keys | length' <<<"$payload")" -eq 2
+          jq -e --arg uri "$HOOK_URI" '
+            .hook_before_user_created_enabled == true and
+            .hook_before_user_created_uri == $uri and
+            ((keys | sort) == (["hook_before_user_created_enabled", "hook_before_user_created_uri"] | sort))
+          ' <<<"$payload" >/dev/null
+
+          status="$(
+            curl --silent --show-error \
+              --output /tmp/auth-hook-patch.json \
+              --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              -X PATCH \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H 'Content-Type: application/json' \
+              -H 'Accept: application/json' \
+              --data "$payload" \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth"
+          )"
+          [ "$status" = '200' ] || {
+            echo "Production Auth hook mutation failed safely with HTTP $status."
+            exit 1
+          }
+
+      - name: Verify hosted Auth hook configuration after mutation
+        id: verify_config
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(
+            curl --silent --show-error \
+              --output /tmp/auth-hook-after.json \
+              --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H 'Accept: application/json' \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth"
+          )"
+          [ "$status" = '200' ] || {
+            echo "Production Auth hook postcheck returned HTTP $status."
+            exit 1
+          }
+          jq -e --arg uri "$HOOK_URI" '
+            .hook_before_user_created_enabled == true and
+            .hook_before_user_created_uri == $uri
+          ' /tmp/auth-hook-after.json >/dev/null || {
+            echo 'Production Auth hook postcheck did not match the approved hook.'
+            exit 1
+          }
+
+      - name: Retrieve a public Supabase API key for blocked-signup smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(
+            curl --silent --show-error \
+              --output /tmp/supabase-api-keys.json \
+              --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H 'Accept: application/json' \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/api-keys?reveal=true"
+          )"
+          [ "$status" = '200' ] || {
+            echo "Production API-key lookup failed safely with HTTP $status."
+            exit 1
+          }
+
+          public_key="$(jq -er '
+            ([.[] | select(.type == "publishable") | .api_key][0]) //
+            ([.[] | select(.name == "anon") | .api_key][0]) //
+            empty
+          ' /tmp/supabase-api-keys.json)"
+          test -n "$public_key"
+          printf '::add-mask::%s\n' "$public_key"
+          printf 'SUPABASE_PUBLIC_KEY=%s\n' "$public_key" >> "$GITHUB_ENV"
+
+      - name: Verify direct Auth signup is blocked during PRE_REGISTRATION
+        id: signup_smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          smoke_email="novelight-prereg-hook-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.com"
+          smoke_password="Nl!HookSmoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-9aZ"
+          payload="$(jq -cn --arg email "$smoke_email" --arg password "$smoke_password" '{email:$email,password:$password}')"
+
+          status="$(
+            curl --silent --show-error \
+              --output /tmp/auth-hook-signup-response.json \
+              --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              -X POST \
+              -H "apikey: $SUPABASE_PUBLIC_KEY" \
+              -H "Authorization: Bearer $SUPABASE_PUBLIC_KEY" \
+              -H 'Content-Type: application/json' \
+              --data "$payload" \
+              "$SUPABASE_URL/auth/v1/signup"
+          )"
+          [ "$status" = '403' ] || {
+            echo "Safety stop: direct signup was not blocked; HTTP $status."
+            exit 1
+          }
+          jq -e '
+            ((.message // "") | contains("先行作者登録期間")) or
+            (((.error // {}).message // "") | contains("先行作者登録期間"))
+          ' /tmp/auth-hook-signup-response.json >/dev/null || {
+            echo 'Safety stop: blocked-signup response did not carry the expected preregistration message.'
+            exit 1
+          }
+
+      - name: Record successful Production Auth hook execution
+        if: success()
+        shell: bash
+        env:
+          APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          APPROVAL_CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          CHANGED: ${{ steps.precheck.outputs.needs_patch }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn \
+            --arg operation "$OPERATION" \
+            --arg mainSha "$APPROVED_MAIN_SHA" \
+            --arg challenge "$APPROVAL_CHALLENGE" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg changed "$CHANGED" \
+            '{operation:$operation,mainSha:$mainSha,challenge:$challenge,runId:$runId,result:"success",changed:($changed=="true"),configPostcheck:"success",blockedSignupSmoke:"success"}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_HOOK_EXECUTED $payload"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Roll back only this hook mutation after failed verification
+        id: rollback
+        if: failure() && steps.precheck.outputs.needs_patch == 'true' && steps.mutate.outcome == 'success'
+        shell: bash
+        run: |
+          set +e
+          previous_enabled="$(jq -c '.hook_before_user_created_enabled' /tmp/auth-hook-before.json 2>/dev/null)"
+          previous_uri_json="$(jq -c '.hook_before_user_created_uri' /tmp/auth-hook-before.json 2>/dev/null)"
+          rollback_result=failure
+
+          if [ -n "$previous_enabled" ] && [ -n "$previous_uri_json" ]; then
+            payload="$(jq -cn \
+              --argjson enabled "$previous_enabled" \
+              --argjson uri "$previous_uri_json" \
+              '{hook_before_user_created_enabled:$enabled,hook_before_user_created_uri:$uri}')"
+            status="$(
+              curl --silent --show-error \
+                --output /tmp/auth-hook-rollback.json \
+                --write-out '%{http_code}' \
+                --connect-timeout 10 --max-time 30 \
+                -X PATCH \
+                -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+                -H 'Content-Type: application/json' \
+                -H 'Accept: application/json' \
+                --data "$payload" \
+                "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth"
+            )"
+            if [ "$status" = '200' ]; then
+              rollback_result=success
+            fi
+          fi
+
+          echo "rollback_result=$rollback_result" >> "$GITHUB_OUTPUT"
+          [ "$rollback_result" = 'success' ] || echo 'WARNING: automatic Auth hook rollback did not verify as successful.'
+          exit 0
+
+      - name: Record failed claimed Production Auth hook execution
+        if: failure() && steps.claim.outcome == 'success'
+        shell: bash
+        env:
+          APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          APPROVAL_CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          ROLLBACK_RESULT: ${{ steps.rollback.outputs.rollback_result }}
+        run: |
+          set +e
+          rollback_result="${ROLLBACK_RESULT:-not-required-or-not-run}"
+          payload="$(jq -cn \
+            --arg operation "$OPERATION" \
+            --arg mainSha "$APPROVED_MAIN_SHA" \
+            --arg challenge "$APPROVAL_CHALLENGE" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg rollback "$rollback_result" \
+            '{operation:$operation,mainSha:$mainSha,challenge:$challenge,runId:$runId,result:"failure",rollback:$rollback}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_HOOK_FAILED $payload"
+          curl --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Remove temporary Production Auth files
+        if: always()
+        shell: bash
+        run: |
+          rm -f \
+            /tmp/ledger-comments.json \
+            /tmp/preregistration-state.json \
+            /tmp/auth-hook-before.json \
+            /tmp/auth-hook-patch.json \
+            /tmp/auth-hook-after.json \
+            /tmp/auth-hook-rollback.json \
+            /tmp/supabase-api-keys.json \
+            /tmp/auth-hook-signup-response.json
