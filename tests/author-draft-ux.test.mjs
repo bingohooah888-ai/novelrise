@@ -43,8 +43,14 @@ test('preview is escaped through textContent and does not publish or mutate Supa
 test('successful save or publish clears only the current local draft', () => {
   assert.match(runtime, /function clearCurrentDraft\(\)/);
   assert.match(runtime, /removeDraft\(draftKey\(\)\)/);
-  assert.match(post, /window\.NovelightAuthorDraft\?\.clearCurrentDraft\?\.\(\)/);
-  assert.match(edit, /window\.NovelightAuthorDraft\?\.clearCurrentDraft\?\.\(\)/);
+  assert.match(
+    post,
+    /window\.NovelightAuthorDraft\?\.clearCurrentDraft\?\.\(\)/
+  );
+  assert.match(
+    edit,
+    /window\.NovelightAuthorDraft\?\.clearCurrentDraft\?\.\(\)/
+  );
 });
 
 test('existing atomic episode publication remains the publication path', () => {
