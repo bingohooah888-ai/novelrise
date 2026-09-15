@@ -15,12 +15,12 @@ test('reader-facing pages load the reading continuity runtime', () => {
   for (const [path, html] of [
     ['episode.html', episode],
     ['novel.html', novel],
-    ['favorites.html', favorites]
+    ['favorites.html', favorites],
   ]) {
     assert.match(
       html,
       /<script src="novelight-reading-continuity\.js"><\/script>/,
-      `${path} must load the reading continuity runtime`
+      `${path} must load the reading continuity runtime`,
     );
   }
 });
@@ -44,8 +44,14 @@ test('same-device progress supports partial resume without changing the valid-re
 
 test('novel detail exposes a continue-reading entry point from stored progress', () => {
   assert.match(runtime, /installNovelContinue/);
-  assert.match(runtime, /第\$\{rows\[index\]\.episodeNumber\}話の続きから読む/);
-  assert.match(runtime, /第\$\{rows\[targetIndex\]\.episodeNumber\}話から続きを読む/);
+  assert.match(
+    runtime,
+    /第\$\{rows\[index\]\.episodeNumber\}話の続きから読む/,
+  );
+  assert.match(
+    runtime,
+    /第\$\{rows\[targetIndex\]\.episodeNumber\}話から続きを読む/,
+  );
   assert.match(runtime, /nlContinueReading/);
 });
 
