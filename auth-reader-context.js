@@ -4,6 +4,7 @@
   const STORAGE_KEY = 'novelight:pending-auth-reader-context:v1';
   const MAX_AGE_MS = 24 * 60 * 60 * 1000;
   const DEFAULT_TARGET = 'mypage.html';
+  const HOME_RESUME_SCRIPT_ID = 'novelight-home-resume-loader';
   const ALLOWED_PATHS = new Set([
     '/mypage.html',
     '/pricing.html',
@@ -121,6 +122,29 @@
     }
   }
 
+  function scheduleHomeResumeEnhancement() {
+    const document = global.document;
+    const pathname = String(global.location?.pathname || '');
+    const isHome = pathname === '/' || pathname.endsWith('/index.html');
+    if (!document || !isHome) return false;
+
+    const load = () => {
+      if (document.getElementById(HOME_RESUME_SCRIPT_ID)) return;
+      const script = document.createElement('script');
+      script.id = HOME_RESUME_SCRIPT_ID;
+      script.src = 'novelight-home-resume.js';
+      script.async = true;
+      (document.body || document.head || document.documentElement)?.appendChild(script);
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', load, { once: true });
+    } else {
+      load();
+    }
+    return true;
+  }
+
   global.NovelightAuthReturn = Object.freeze({
     safeRedirectTarget,
     currentRedirect,
@@ -129,4 +153,6 @@
     consumePendingTarget,
     resumePendingSignupContext
   });
+
+  scheduleHomeResumeEnhancement();
 })(window);
