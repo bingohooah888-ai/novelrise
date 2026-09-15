@@ -18,7 +18,8 @@ const MAIN_PRODUCT_TARGETS = [
 ];
 
 test('content guidelines header is static and cannot escape to the main product', () => {
-  const header = html.match(/<header class="site-header"[\s\S]*?<\/header>/)?.[0] || '';
+  const header =
+    html.match(/<header class="site-header"[\s\S]*?<\/header>/)?.[0] || '';
 
   assert.ok(header, 'site header must exist');
   assert.doesNotMatch(header, /<a\b/i);
@@ -43,6 +44,9 @@ test('content guidelines preserves legal and support navigation', () => {
     'commerce-disclosure.html',
     'contact.html'
   ]) {
-    assert.match(html, new RegExp(`href=["']${target.replace('.', '\\.')}`, 'i'));
+    assert.match(
+      html,
+      new RegExp(`href=["']${target.replace('.', '\\.')}`, 'i')
+    );
   }
 });
