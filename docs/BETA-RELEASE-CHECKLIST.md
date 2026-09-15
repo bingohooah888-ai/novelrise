@@ -2,17 +2,45 @@
 
 This checklist is the final operational gate after code review/CI. A checked box must represent an observed result or a specifically justified still-valid result under `docs/EVIDENCE-FRESHNESS-GATE.md`, not an assumption.
 
-**Reconciled: 2026-09-14 JST.**
+**Reconciled: 2026-09-16 JST.**
 
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
-Current material launch main at reconciliation: `21f9e581f4009303904067d18bc5bea05c641d43` (`Add beta author preregistration conversion funnel (#560)`).
+Current material launch main at reconciliation: `bac6e7ba4bd75bb91b244dc61ea30a3987fb4f54` (`Polish empty and error states for discovery lists (#601)`).
 
 Repository `main` may advance through later documentation-only reconciliation commits. In this checklist, **material application SHA** means the latest commit that changed deployable application behavior; a docs-only successor does not by itself make that application proof stale.
 
-**CURRENT LAUNCH POSTURE: GO — PR #560 final reviewed head passed NOVELIGHT CI #2333 and CodeQL #2239, material application SHA `21f9e581...` is deployed successfully to Vercel Production, Production Readiness #142 and `production-beta-verification` are green, and Production migration `20260914120000_beta_author_conversion_funnel.sql` was applied through the exact-scope approval workflow with mutation/postcheck success. The successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid only for the unchanged authenticated Chapter 38/40 beta-critical path.**
+**CURRENT LAUNCH POSTURE: GO — PR #601 reviewed-head CI/CodeQL are green; exact current material application SHA `bac6e7ba...` is deployed successfully to Vercel Production; Production Readiness #162 / run `34998927013` is green on that exact SHA; all identified post-#560 Production migrations and guarded Auth configuration changes required by current code have successful approval-ledger/postcheck evidence. The successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid only for its unchanged authenticated Chapter 38/40 scope and is not stretched into proof of newer draft-import/resume/empty-state behavior.**
 
 Qualified Japanese counsel review remains deferred/pending. The owner residual-risk decision is recorded in `docs/legal-beta-review.md`; this checklist does not assert legal sufficiency.
+
+## 2026-09-16 current-main / post-PR #601 reconciliation
+
+This section supersedes older “current”, “material application main”, and final release-posture wording below where the scope overlaps. Older checked evidence remains preserved for audit/regression history.
+
+- [x] Current repository `main` and material application SHA are `bac6e7ba4bd75bb91b244dc61ea30a3987fb4f54` (`Polish empty and error states for discovery lists (#601)`).
+- [x] PR #601 final reviewed head `0d42b7693b000aa18b639f240f4a484bcb0e1bd5` passed `NOVELIGHT CI` #2414 / run `34998719910`, including Node tests, static quality, desktop/mobile browser smoke, desktop/mobile async-UI, and aggregate `check`.
+- [x] PR #601 passed CodeQL #2319.
+- [x] PR #600 final reviewed head `31dee9b8fd001d092aa2b9419354a71c7059d159` passed `NOVELIGHT CI` #2412 / run `34997621134`, aggregate `check`, and CodeQL #2317.
+- [x] Exact current main `bac6e7ba...` has Vercel Production commit status `success` and `production-readiness-smoke` commit status `success`.
+- [x] `NOVELIGHT Production Readiness Smoke` #162 / run `34998927013` completed `success` on exact current main `bac6e7ba...`.
+- [x] Production Readiness #162 verified static convergence for `light-seed.html`, `new-arrivals.html`, and `recommended.html`, safe API route contracts, a read-only Production reader Playwright smoke (`1 passed`), Production beta integrity checks, and monitoring-signal presence.
+- [x] Production browser verification confirms PR #601's mode-specific empty states on new arrivals, recommendations, and LIGHT SEED pages.
+- [x] PR #600 live resume E2E was not falsely marked PASS: Production had zero published works, so no test fixture/public work was created merely to force a resume scenario. PR #600 remains supported by reviewed-head CI/contract coverage and deployed code.
+- [x] `20260915113000_preregistration_auth_signup_gate.sql` is applied through exact-scope bridge run `34928307571`, with mutation/postcheck success.
+- [x] Production hosted preregistration Before User Created hook control completed successfully on run `34941475822`, including `configPostcheck="success"` and `blockedSignupSmoke="success"` on the direct-signup verification path.
+- [x] `20260915173000_enforce_profile_auth_user_integrity.sql` is applied through bridge run `34948923156`, mutation/postcheck success.
+- [x] `20260915180000_restrict_internal_trigger_function_execute.sql` is applied through bridge run `34950821474`, mutation/postcheck success.
+- [x] `20260915190000_optimize_profile_rls_initplan.sql` and `20260915191000_drop_duplicate_favorites_index.sql` are applied through bridge run `34963347035`, mutation/postcheck success.
+- [x] Guarded Production leaked-password protection enablement completed on run `34964896832`, recording `passwordHibpEnabled=true` and `mutationApplied=true`.
+- [x] `20260916001000_beta_episode_drafts_and_import.sql` is applied through exact-scope bridge run `34993636592`, with mutation/postcheck success.
+- [x] PR #592's migration/application state is not overstated: applied migration evidence does not by itself become a Production authenticated E2E PASS for the bulk-import UI/RPC workflow.
+- [x] Post-#560 current application changes include forward-only prereg lifecycle enforcement (#576), operator/trust and prereg legal isolation (#585/#587/#588), local reader/author continuity and draft safety (#589), private episode draft import/staged publication (#592), LIGHT ANALYTICS opportunity clarification (#593), read-only ADMIN discovery watch (#596), state-aware onboarding (#598), home continue-reading (#600), and discovery empty/error polish (#601).
+- [x] Issue #511 / run `34692176490` remains still-valid only for its actually executed Chapter 38/40 authenticated create/render/LIGHT ANALYTICS scope; it is not direct Production proof of PR #592/#600/#601-specific behavior.
+- [x] A Production Auth Smoke request dispatched by Production Readiness #162 is request-only evidence and is not treated as authenticated Production PASS.
+- [x] Production preregistration trust/legal navigation was re-audited through operator, terms, privacy, commerce disclosure, contact, content guidelines, and billing policy; no visible/clickable route into the unreleased main product was found in the rendered legal chain.
+- [x] No duplicate migration, Auth Smoke, Stripe operation, Secret change, campaign-state cutover, or Production fixture creation is justified solely for documentary SHA freshness.
+- [x] Qualified Japanese counsel review remains pending/deferred by owner and is not converted into legal PASS by the technical reconciliation.
 
 ## 2026-09-14 post-PR #560 / Production funnel reconciliation
 
