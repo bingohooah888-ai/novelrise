@@ -73,7 +73,9 @@ function lifecycleRankForRecord(record) {
 function isBackwardLifecycleTransition(current, nextStatus) {
   const currentRank = lifecycleRankForRecord(current);
   const nextRank = LIFECYCLE_STATUS_RANK.get(nextStatus);
-  return Number.isInteger(nextRank) && currentRank >= 0 && nextRank < currentRank;
+  return (
+    Number.isInteger(nextRank) && currentRank >= 0 && nextRank < currentRank
+  );
 }
 
 function sanitizeSearch(value) {
