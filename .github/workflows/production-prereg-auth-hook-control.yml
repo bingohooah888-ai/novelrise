@@ -356,10 +356,14 @@ jobs:
               --data "$payload" \
               "$SUPABASE_URL/auth/v1/signup"
           )"
-          [ "$status" = '403' ] || {
-            echo "Safety stop: direct signup was not blocked; HTTP $status."
+          if [ "$status" = '403' ]; then
+            :
+          elif [ "$status" = '400' ]; then
+            :
+          else
+            echo "Safety stop: direct signup was not blocked by the preregistration gate; HTTP $status."
             exit 1
-          }
+          fi
           jq -e '
             ((.message // "") | contains("先行作者登録期間")) or
             (((.error // {}).message // "") | contains("先行作者登録期間"))
