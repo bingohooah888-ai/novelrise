@@ -29,7 +29,10 @@ test('updates page requires auth and supports per-work acknowledgement', () => {
   assert.match(updatesPage, /id="updatesList"/u);
   assert.match(updates, /login\.html\?redirect=updates\.html/u);
   assert.match(updates, /確認済みにする/u);
-  assert.match(updates, /writeSeen\(item\.novelId, latestEpisodeNumber\(item\.allEpisodes\)\)/u);
+  assert.match(
+    updates,
+    /writeSeen\(item\.novelId, latestEpisodeNumber\(item\.allEpisodes\)\)/u
+  );
 });
 
 test('home can load the update badge and auth return accepts the updates page', () => {
