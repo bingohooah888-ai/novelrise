@@ -72,6 +72,7 @@ test('Production Auth hook activation verifies blocked signup', () => {
   assert.doesNotMatch(workflow, /@example\.com/);
   assert.match(workflow, /\[ "\$status" = '403' \]/);
   assert.match(workflow, /\[ "\$status" = '400' \]/);
+  assert.match(workflow, /\.msg \/\/ ""/);
   assert.match(workflow, /先行作者登録期間/);
   assert.match(workflow, /blockedSignupSmoke:\"success\"/);
 });
