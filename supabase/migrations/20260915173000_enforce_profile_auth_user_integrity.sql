@@ -12,6 +12,7 @@ do $migration$
 declare
   v_unsafe_orphans bigint;
   v_existing_fk record;
+  v_has_expected_fk boolean := false;
 begin
   if to_regclass('public.profiles') is null or to_regclass('auth.users') is null then
     raise exception 'public.profiles and auth.users are required';
@@ -56,15 +57,18 @@ begin
      and c.confrelid = 'auth.users'::regclass
    limit 1;
 
-  if found and (v_existing_fk.confdeltype <> 'c' or v_existing_fk.conname <> 'profiles_id_auth_user_fkey') then
-    raise exception 'Unexpected profiles -> auth.users foreign key %; inspect drift before applying', v_existing_fk.conname;
+  if found then
+    if v_existing_fk.confdeltype <> 'c' or v_existing_fk.conname <> 'profiles_id_auth_user_fkey' then
+      raise exception 'Unexpected profiles -> auth.users foreign key %; inspect drift before applying', v_existing_fk.conname;
+    end if;
+    v_has_expected_fk := true;
   end if;
 
   -- Current known orphan rows are test/smoke residue with no dependent data.
   delete from public.profiles p
    where not exists (select 1 from auth.users u where u.id = p.id);
 
-  if not found then
+  if not v_has_expected_fk then
     alter table public.profiles
       add constraint profiles_id_auth_user_fkey
       foreign key (id)
