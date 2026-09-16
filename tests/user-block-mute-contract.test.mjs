@@ -25,12 +25,24 @@ test('block and mute relationships are private and authenticated-only', async ()
 
   assert.match(sql, /create table public\.user_blocks/i);
   assert.match(sql, /create table public\.user_mutes/i);
-  assert.match(sql, /user_blocks_no_self check \(blocker_user_id <> blocked_user_id\)/i);
-  assert.match(sql, /user_mutes_no_self check \(muter_user_id <> muted_user_id\)/i);
+  assert.match(
+    sql,
+    /user_blocks_no_self check \(blocker_user_id <> blocked_user_id\)/i
+  );
+  assert.match(
+    sql,
+    /user_mutes_no_self check \(muter_user_id <> muted_user_id\)/i
+  );
   assert.match(sql, /alter table public\.user_blocks enable row level security/i);
   assert.match(sql, /alter table public\.user_mutes enable row level security/i);
-  assert.match(sql, /revoke all on table public\.user_blocks from public, anon, authenticated/i);
-  assert.match(sql, /revoke all on table public\.user_mutes from public, anon, authenticated/i);
+  assert.match(
+    sql,
+    /revoke all on table public\.user_blocks from public, anon, authenticated/i
+  );
+  assert.match(
+    sql,
+    /revoke all on table public\.user_mutes from public, anon, authenticated/i
+  );
   assert.match(sql, /novelight_set_user_block\(uuid, boolean\) to authenticated/i);
   assert.match(sql, /novelight_set_user_mute\(uuid, boolean\) to authenticated/i);
   assert.match(sql, /novelight_hidden_novel_ids\(text\[\]\) to authenticated/i);
@@ -60,11 +72,23 @@ test('block rejects direct comments before any comment or SCOUT ledger write', a
 test('mute and outbound block filter personal comments and discovery only', async () => {
   const sql = await text(migrationUrl);
 
-  assert.match(sql, /where m\.muter_user_id = v_uid and m\.muted_user_id = c\.user_id/i);
-  assert.match(sql, /where b\.blocker_user_id = v_uid and b\.blocked_user_id = c\.user_id/i);
+  assert.match(
+    sql,
+    /where m\.muter_user_id = v_uid and m\.muted_user_id = c\.user_id/i
+  );
+  assert.match(
+    sql,
+    /where b\.blocker_user_id = v_uid and b\.blocked_user_id = c\.user_id/i
+  );
   assert.match(sql, /create or replace function public\.novelight_hidden_novel_ids/i);
-  assert.match(sql, /m\.muter_user_id = v_uid and m\.muted_user_id = n\.user_id/i);
-  assert.match(sql, /b\.blocker_user_id = v_uid and b\.blocked_user_id = n\.user_id/i);
+  assert.match(
+    sql,
+    /m\.muter_user_id = v_uid and m\.muted_user_id = n\.user_id/i
+  );
+  assert.match(
+    sql,
+    /b\.blocker_user_id = v_uid and b\.blocked_user_id = n\.user_id/i
+  );
 });
 
 test('comment UI keeps block reason private and links commenters to safety controls', async () => {
@@ -79,7 +103,10 @@ test('comment UI keeps block reason private and links commenters to safety contr
 });
 
 test('author profile exposes reversible authenticated block and mute controls', async () => {
-  const [authorHtml, safetyJs] = await Promise.all([text(authorUrl), text(safetyUrl)]);
+  const [authorHtml, safetyJs] = await Promise.all([
+    text(authorUrl),
+    text(safetyUrl)
+  ]);
 
   assert.match(authorHtml, /novelight-user-safety\.js/);
   assert.match(authorHtml, /NovelightUserSafety\.mountAuthorControls/);
@@ -94,23 +121,41 @@ test('author profile exposes reversible authenticated block and mute controls', 
 test('discovery removes hidden works before rendering and impression recording', async () => {
   const js = await text(discoveryUrl);
   const filterDefinition = js.indexOf('async function filterHiddenRows');
-  const hiddenRpc = js.indexOf("client.rpc('novelight_hidden_novel_ids'", filterDefinition);
-  const recommendedFilter = js.indexOf('const filtered = await filterHiddenRows(candidates);');
-  const recommendedAppend = js.indexOf('const visible = appendRows(page);', recommendedFilter);
-  const recommendedTelemetry = js.indexOf('await recordTrusted(visible);', recommendedAppend);
+  const hiddenRpc = js.indexOf(
+    "client.rpc('novelight_hidden_novel_ids'",
+    filterDefinition
+  );
+  const recommendedPage = js.indexOf('const page = candidates.slice(0, pageSize);');
+  const recommendedFilter = js.indexOf(
+    'const filteredPage = await filterHiddenRows(page);',
+    recommendedPage
+  );
+  const recommendedAppend = js.indexOf(
+    'const visible = appendRows(filteredPage);',
+    recommendedFilter
+  );
+  const recommendedTelemetry = js.indexOf(
+    'await recordTrusted(visible);',
+    recommendedAppend
+  );
 
   assert.ok(filterDefinition > -1 && hiddenRpc > filterDefinition);
-  assert.ok(recommendedFilter > -1);
+  assert.ok(recommendedPage > -1);
+  assert.ok(recommendedFilter > recommendedPage);
   assert.ok(recommendedAppend > recommendedFilter);
   assert.ok(recommendedTelemetry > recommendedAppend);
   assert.match(js, /const filtered = await filterHiddenRows\(rows\);/);
-  assert.match(js, /const page = await filterHiddenRows\(rawPage\);/);
+  assert.match(js, /const filteredPage = await filterHiddenRows\(page\);/);
 });
 
 test('rollback restores Chapter 38 comment behavior before dropping relationship data', async () => {
   const sql = await text(rollbackUrl);
-  const restoreFeed = sql.indexOf('create or replace function public.novelight_comment_feed');
-  const restorePost = sql.indexOf('create or replace function public.post_novel_comment');
+  const restoreFeed = sql.indexOf(
+    'create or replace function public.novelight_comment_feed'
+  );
+  const restorePost = sql.indexOf(
+    'create or replace function public.post_novel_comment'
+  );
   const dropBlocks = sql.indexOf('drop table if exists public.user_blocks');
 
   assert.ok(restoreFeed > -1 && restoreFeed < dropBlocks);
