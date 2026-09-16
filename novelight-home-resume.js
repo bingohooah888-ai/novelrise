@@ -4,9 +4,40 @@
   const STORAGE_PREFIX = 'novelight:reading:v1:';
   const CANDIDATE_LIMIT = 10;
   const STYLE_ID = 'novelight-home-resume-style';
+  const SYNC_SCRIPT_ID = 'novelight-reading-sync-loader';
+  let syncLoaderPromise = null;
 
   function clamp(value, min = 0, max = 1) {
     return Math.max(min, Math.min(max, Number(value) || 0));
+  }
+
+  function loadSyncRuntime() {
+    if (window.NovelightReadingSync) return Promise.resolve(window.NovelightReadingSync);
+    if (syncLoaderPromise) return syncLoaderPromise;
+    syncLoaderPromise = new Promise((resolve, reject) => {
+      const existing = document.getElementById(SYNC_SCRIPT_ID);
+      const script = existing || document.createElement('script');
+      const finish = () => {
+        if (window.NovelightReadingSync) resolve(window.NovelightReadingSync);
+        else reject(new Error('reading sync runtime did not initialize'));
+      };
+      script.addEventListener('load', finish, { once: true });
+      script.addEventListener('error', () => reject(new Error('reading sync runtime failed to load')), {
+        once: true
+      });
+      if (!existing) {
+        script.id = SYNC_SCRIPT_ID;
+        script.src = 'novelight-reading-sync.js';
+        script.async = true;
+        (document.body || document.head || document.documentElement).appendChild(script);
+      } else if (window.NovelightReadingSync) {
+        finish();
+      }
+    }).catch((error) => {
+      syncLoaderPromise = null;
+      throw error;
+    });
+    return syncLoaderPromise;
   }
 
   function readRecentProgress(storage = window.localStorage, limit = CANDIDATE_LIMIT) {
@@ -32,6 +63,7 @@
           episodeNumber: Number(value.episodeNumber) || 0,
           progressRatio: clamp(value.progressRatio),
           lastReadAt: new Date(timestamp).toISOString(),
+          serverRevision: Math.max(0, Number(value.serverRevision) || 0),
           timestamp
         });
       }
@@ -78,7 +110,7 @@
     return `第${number}話から続きを読む`;
   }
 
-  function renderResume(novel, target, stored) {
+  function renderResume(novel, target, stored, synced = false) {
     if (document.getElementById('homeResumeSection')) return false;
     const hero = document.querySelector('main > .hero');
     if (!hero) return false;
@@ -108,7 +140,9 @@
     if (target.title) episode.textContent += `「${target.title}」`;
     const note = document.createElement('p');
     note.className = 'nl-home-resume-note';
-    note.textContent = 'この端末の読書履歴から表示しています。';
+    note.textContent = synced
+      ? 'ログイン中の読書位置を端末間で同期しています。'
+      : 'この端末の読書履歴から表示しています。';
     copy.append(kicker, title, episode, note);
 
     const action = document.createElement('a');
@@ -142,13 +176,35 @@
     return target ? { novel: novelResult.data, target, stored } : null;
   }
 
+  async function syncedRecentProgress(clientInstance) {
+    const local = readRecentProgress();
+    try {
+      const sync = await loadSyncRuntime();
+      const result = await sync.recentProgress(clientInstance, CANDIDATE_LIMIT);
+      return {
+        rows: Array.isArray(result?.rows) && result.rows.length ? result.rows : local,
+        synced: result?.synced === true
+      };
+    } catch (error) {
+      console.warn('home reading position sync unavailable; using this device only', error);
+      return { rows: local, synced: false };
+    }
+  }
+
   async function installHomeResume(clientInstance) {
     if (!clientInstance || document.getElementById('homeResumeSection')) return false;
-    const recent = readRecentProgress();
-    for (const stored of recent) {
+    const progress = await syncedRecentProgress(clientInstance);
+    for (const stored of progress.rows) {
       try {
         const resolved = await resolveCandidate(clientInstance, stored);
-        if (resolved) return renderResume(resolved.novel, resolved.target, resolved.stored);
+        if (resolved) {
+          return renderResume(
+            resolved.novel,
+            resolved.target,
+            resolved.stored,
+            progress.synced
+          );
+        }
       } catch (error) {
         console.error('home resume candidate lookup failed', error);
       }
