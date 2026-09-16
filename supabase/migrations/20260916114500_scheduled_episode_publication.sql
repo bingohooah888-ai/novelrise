@@ -5,7 +5,7 @@ begin;
 
 select pg_advisory_xact_lock(hashtext('novelrise:20260916114500'));
 
-create extension if not exists pg_cron with schema pg_catalog;
+create extension if not exists pg_cron;
 
 alter table public.episodes
   add column scheduled_publish_at timestamptz,
@@ -18,6 +18,30 @@ create unique index episodes_one_scheduled_draft_per_novel_idx
 create index episodes_scheduled_publish_due_idx
   on public.episodes (scheduled_publish_at, id)
   where status = 'draft' and scheduled_publish_at is not null;
+
+create function public.novelight_clear_episode_schedule_on_publish()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+begin
+  if new.status = 'published' and old.status is distinct from 'published' then
+    new.scheduled_publish_at := null;
+    new.scheduled_publish_error := null;
+  end if;
+  return new;
+end
+$$;
+
+revoke all on function public.novelight_clear_episode_schedule_on_publish() from public;
+revoke all on function public.novelight_clear_episode_schedule_on_publish() from anon;
+revoke all on function public.novelight_clear_episode_schedule_on_publish() from authenticated;
+
+create trigger novelight_clear_episode_schedule_on_publish
+before update of status on public.episodes
+for each row
+execute function public.novelight_clear_episode_schedule_on_publish();
 
 create function public.novelight_schedule_episode_publication(
   p_episode_id bigint,
