@@ -22,7 +22,10 @@ test('scheduled publication stores one private scheduled draft per novel', () =>
     migration,
     /where status = 'draft' and scheduled_publish_at is not null/u
   );
-  assert.match(migration, /Only one episode per novel can be scheduled at a time/u);
+  assert.match(
+    migration,
+    /Only one episode per novel can be scheduled at a time/u
+  );
 });
 
 test('authors can schedule and cancel only through authenticated owner RPCs', () => {
@@ -50,6 +53,7 @@ test('due publication is server-only, concurrent-safe, and runs every minute', (
   );
   assert.match(migration, /'novelight-publish-due-episodes'/u);
   assert.match(migration, /'\* \* \* \* \*'/u);
+  assert.match(migration, /pg_cron is unavailable in compatibility replay/u);
 });
 
 test('manual draft publication clears stale schedule metadata', () => {
@@ -60,8 +64,14 @@ test('manual draft publication clears stale schedule metadata', () => {
 });
 
 test('scheduled publication validates content again before automatic release', () => {
-  assert.match(migration, /char_length\(trim\(coalesce\(v_episode\.title, ''\)\)\) < 1/u);
-  assert.match(migration, /char_length\(trim\(coalesce\(v_episode\.content, ''\)\)\) < 1/u);
+  assert.match(
+    migration,
+    /char_length\(trim\(coalesce\(v_episode\.title, ''\)\)\) < 1/u
+  );
+  assert.match(
+    migration,
+    /char_length\(trim\(coalesce\(v_episode\.content, ''\)\)\) < 1/u
+  );
   assert.match(migration, /scheduled_publish_error = v_error/u);
   assert.match(migration, /scheduled_publish_at = null/u);
 });
@@ -92,7 +102,10 @@ test('draft list shows schedule and automatic publication errors', () => {
 
 test('rollback removes the scheduler and schema additions without dropping pg_cron', () => {
   assert.match(rollback, /cron\.unschedule/u);
-  assert.match(rollback, /drop trigger if exists novelight_clear_episode_schedule_on_publish/u);
+  assert.match(
+    rollback,
+    /drop trigger if exists novelight_clear_episode_schedule_on_publish/u
+  );
   assert.match(rollback, /drop column if exists scheduled_publish_at/u);
   assert.doesNotMatch(rollback, /drop extension.*pg_cron/iu);
 });
