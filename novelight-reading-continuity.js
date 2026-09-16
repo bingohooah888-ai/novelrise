@@ -278,12 +278,12 @@
       episodeNumber: Number(row.episode_number) || 0,
       progressRatio: contentProgress(content),
       lastReadAt: new Date().toISOString(),
-      syncUserId: userId || previous?.syncUserId || null
+      syncUserId: userId || null
     };
-    const merged = mergeProgress(previous, candidate);
-    writeProgress(merged);
+    const stored = { ...mergeProgress(previous, candidate), syncUserId: userId || null };
+    writeProgress(stored);
     if (userId) scheduleRemoteProgress(clientInstance, userId, row.novel_id);
-    return merged;
+    return stored;
   }
 
   function renderEpisodeNavigation(row, rows) {
