@@ -96,6 +96,8 @@ begin
 end
 $$;
 
+revoke all on function public.novelight_clear_episode_schedule_on_change() from public, anon, authenticated;
+
 create trigger novelight_clear_episode_schedule_on_change
 before update on public.episodes
 for each row
