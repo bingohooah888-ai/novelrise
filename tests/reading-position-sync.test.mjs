@@ -4,7 +4,10 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const syncSource = await readFile('novelight-reading-sync.js', 'utf8');
-const continuitySource = await readFile('novelight-reading-continuity.js', 'utf8');
+const continuitySource = await readFile(
+  'novelight-reading-continuity.js',
+  'utf8'
+);
 const homeSource = await readFile('novelight-home-resume.js', 'utf8');
 const migration = await readFile(
   'supabase/migrations/20260917030000_reader_reading_position_sync.sql',
@@ -46,7 +49,7 @@ function loadSyncApi(storage = createStorage()) {
   return window.NovelightReadingSync;
 }
 
-test('reading sync chooses the newest position while retaining revision conflict state', () => {
+test('reading sync prefers server revision over stale device state', () => {
   const api = loadSyncApi();
   const older = {
     novelId: '10',
@@ -69,16 +72,22 @@ test('reading sync chooses the newest position while retaining revision conflict
   assert.equal(api.chooseNewest(older, newer).episodeId, '101');
   assert.equal(api.normalizeProgress(newer).serverRevision, 5);
   assert.equal(
-    api.localCanAdvance({ ...newer, serverRevision: 4 }, { ...older, serverRevision: 5 }),
+    api.localCanAdvance(
+      { ...newer, serverRevision: 4 },
+      { ...older, serverRevision: 5 }
+    ),
     false
   );
 });
 
-test('reading sync keeps anonymous/local fallback and isolates server state from scoring systems', () => {
+test('reading sync keeps local fallback separate from scoring', () => {
   assert.match(syncSource, /novelight:reading:v1:/);
   assert.match(syncSource, /reader_reading_positions/);
   assert.match(syncSource, /auth\.getSession\(\)/);
-  assert.match(syncSource, /\.upsert\(payload, \{ onConflict: 'user_id,novel_id' \}\)/);
+  assert.match(
+    syncSource,
+    /\.upsert\(payload, \{ onConflict: 'user_id,novel_id' \}\)/
+  );
   assert.match(syncSource, /serverRevision/);
   assert.doesNotMatch(syncSource, /record_valid_read_progress/);
   assert.doesNotMatch(syncSource, /valid_read_events/);
@@ -87,20 +96,26 @@ test('reading sync keeps anonymous/local fallback and isolates server state from
   assert.doesNotMatch(syncSource, /work_rank/i);
 });
 
-test('reader continuity and home resume hydrate synchronized positions without blocking local use', () => {
+test('reader pages hydrate sync state without blocking local use', () => {
   assert.match(continuitySource, /novelight-reading-sync\.js/);
   assert.match(continuitySource, /hydrateNovelProgress/);
   assert.match(continuitySource, /hydrateManyProgress/);
   assert.match(continuitySource, /keeping this device copy/);
   assert.match(homeSource, /novelight-reading-sync\.js/);
   assert.match(homeSource, /recentProgress/);
-  assert.match(homeSource, /ログイン中の読書位置を端末間で同期しています/);
+  assert.match(
+    homeSource,
+    /ログイン中の読書位置を端末間で同期しています/
+  );
   assert.match(homeSource, /この端末の読書履歴から表示しています/);
 });
 
-test('reading position table is private by RLS with explicit Data API grants', () => {
+test('reading positions use private RLS and explicit grants', () => {
   assert.match(migration, /create table public\.reader_reading_positions/);
-  assert.match(migration, /alter table public\.reader_reading_positions enable row level security/);
+  assert.match(
+    migration,
+    /alter table public\.reader_reading_positions enable row level security/
+  );
   assert.match(
     migration,
     /revoke all on table public\.reader_reading_positions from public, anon, authenticated/
@@ -121,11 +136,14 @@ test('reading position table is private by RLS with explicit Data API grants', (
   );
 });
 
-test('database guard rejects stale device overwrites using revision and chronology', () => {
+test('database guard rejects stale revisions and chronology', () => {
   assert.match(migration, /new\.revision is distinct from old\.revision/);
   assert.match(migration, /new\.last_read_at < old\.last_read_at/);
   assert.match(migration, /new\.revision := old\.revision \+ 1/);
-  assert.match(migration, /before insert or update on public\.reader_reading_positions/);
+  assert.match(
+    migration,
+    /before insert or update on public\.reader_reading_positions/
+  );
   assert.match(migration, /e\.status = 'published'/);
   assert.match(migration, /n\.status = 'published'/);
   assert.doesNotMatch(migration, /valid_read_events/);
