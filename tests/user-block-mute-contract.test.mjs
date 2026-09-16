@@ -174,7 +174,10 @@ test('discovery removes hidden works before rendering and impression recording',
     'const filteredPage = await filterHiddenRows(page);',
     seedOffset
   );
-  const seedAppend = js.indexOf('const visible = appendRows(page);', seedFilter);
+  const seedAppend = js.indexOf(
+    'const visible = appendRows(page);',
+    seedFilter
+  );
   const seedTelemetry = js.indexOf(
     "await recordVisible('search_seed', visible, pageOffset);",
     seedAppend
