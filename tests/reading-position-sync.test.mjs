@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFile, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const root = process.cwd();
-const read = (path) => readFileSync(resolve(root, path), 'utf8');
 const syncSource = await readFile('novelight-reading-sync.js', 'utf8');
 const continuitySource = await readFile('novelight-reading-continuity.js', 'utf8');
 const homeSource = await readFile('novelight-home-resume.js', 'utf8');
