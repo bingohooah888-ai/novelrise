@@ -220,9 +220,9 @@
       batchSeen.add(id);
       candidates.push(row);
     }
-    const page = candidates.slice(0, pageSize);
-    const filteredPage = await filterHiddenRows(page);
-    const visible = appendRows(filteredPage);
+    let page = candidates.slice(0, pageSize);
+    page = await filterHiddenRows(page);
+    const visible = appendRows(page);
     await recordTrusted(visible);
     moreWrap.hidden = candidates.length <= pageSize || page.length === 0;
     moreButton.textContent = 'おすすめをもっと見る';
@@ -268,12 +268,13 @@
   async function loadSeed() {
     const pageOffset = seedOffset;
     const rows = await fetchSeedPage();
-    const page = rows.slice(0, pageSize);
-    const filteredPage = await filterHiddenRows(page);
-    const visible = appendRows(filteredPage);
+    let page = rows.slice(0, pageSize);
+    const rawPageLength = page.length;
+    page = await filterHiddenRows(page);
+    const visible = appendRows(page);
     await recordVisible('search_seed', visible, pageOffset);
-    seedOffset += page.length;
-    moreWrap.hidden = rows.length <= pageSize || page.length === 0;
+    seedOffset += rawPageLength;
+    moreWrap.hidden = rows.length <= pageSize || rawPageLength === 0;
     moreButton.textContent = '発掘中の作品をもっと見る';
   }
 
