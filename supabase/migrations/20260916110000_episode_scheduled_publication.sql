@@ -22,24 +22,8 @@ begin
      or to_regprocedure('public.novelight_release_due_episode_schedules()') is not null then
     raise exception 'Scheduled publication objects already exist; stop and inspect before applying';
   end if;
-
-  if not exists (select 1 from pg_available_extensions where name = 'pg_cron') then
-    raise exception 'pg_cron is not available in this database';
-  end if;
 end
 $preflight$;
-
-create extension if not exists pg_cron;
-
-do $cron_preflight$
-begin
-  if exists (
-    select 1 from cron.job where jobname = 'novelight-release-scheduled-episodes'
-  ) then
-    raise exception 'Scheduled publication cron job already exists; stop and inspect before applying';
-  end if;
-end
-$cron_preflight$;
 
 create table public.episode_publish_schedules (
   episode_id bigint primary key references public.episodes(id) on delete cascade,
@@ -373,10 +357,49 @@ grant execute on function public.novelight_cancel_episode_publication_schedule(b
 grant execute on function public.novelight_release_due_episode_schedules() to service_role;
 grant execute on function public.novelight_clear_episode_publish_schedule_after_release() to service_role;
 
-select cron.schedule(
-  'novelight-release-scheduled-episodes',
-  '* * * * *',
-  'select public.novelight_release_due_episode_schedules();'
-);
+-- Supabase Production exposes pg_cron, while the repository migration replay uses
+-- a plain PostgreSQL image without it. Keep the migration replayable there, but
+-- fail closed on Production if pg_cron is available and its bootstrap is not clean.
+do $cron_bootstrap$
+declare
+  v_cron_available boolean;
+  v_job_exists boolean;
+  v_job_created boolean;
+begin
+  select exists (
+    select 1
+      from pg_available_extensions
+     where name = 'pg_cron'
+  ) into v_cron_available;
+
+  if not v_cron_available then
+    raise notice 'pg_cron is unavailable; skipping scheduled publication cron bootstrap in compatibility replay';
+    return;
+  end if;
+
+  execute 'create extension if not exists pg_cron';
+
+  execute
+    'select exists (select 1 from cron.job where jobname = $1)'
+    into v_job_exists
+    using 'novelight-release-scheduled-episodes';
+
+  if v_job_exists then
+    raise exception 'Scheduled publication cron job already exists; stop and inspect before applying';
+  end if;
+
+  execute
+    'select cron.schedule($1, $2, $3) is not null'
+    into v_job_created
+    using
+      'novelight-release-scheduled-episodes',
+      '* * * * *',
+      'select public.novelight_release_due_episode_schedules();';
+
+  if not coalesce(v_job_created, false) then
+    raise exception 'Scheduled publication cron job could not be created';
+  end if;
+end
+$cron_bootstrap$;
 
 commit;
