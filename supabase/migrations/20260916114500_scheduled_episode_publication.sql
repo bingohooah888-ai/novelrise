@@ -5,8 +5,6 @@ begin;
 
 select pg_advisory_xact_lock(hashtext('novelrise:20260916114500'));
 
-create extension if not exists pg_cron;
-
 alter table public.episodes
   add column scheduled_publish_at timestamptz,
   add column scheduled_publish_error text;
@@ -269,19 +267,42 @@ revoke all on function public.novelight_publish_due_episodes() from public;
 revoke all on function public.novelight_publish_due_episodes() from anon;
 revoke all on function public.novelight_publish_due_episodes() from authenticated;
 
--- A fixed name keeps the job observable and prevents duplicate schedulers.
-do $$
+-- Supabase Production provides pg_cron. The plain PostgreSQL compatibility
+-- replay used by CI does not, so only the scheduler bootstrap is skipped there.
+do $cron_bootstrap$
+declare
+  v_job_id bigint;
 begin
-  if exists (select 1 from cron.job where jobname = 'novelight-publish-due-episodes') then
-    raise exception 'Cron job novelight-publish-due-episodes already exists; stop and inspect before applying';
+  if exists (
+    select 1
+    from pg_available_extensions
+    where name = 'pg_cron'
+  ) then
+    execute 'create extension if not exists pg_cron';
+
+    execute $sql$
+      select jobid
+      from cron.job
+      where jobname = 'novelight-publish-due-episodes'
+      limit 1
+    $sql$
+    into v_job_id;
+
+    if v_job_id is not null then
+      raise exception 'Cron job novelight-publish-due-episodes already exists; stop and inspect before applying';
+    end if;
+
+    execute $sql$
+      select cron.schedule(
+        'novelight-publish-due-episodes',
+        '* * * * *',
+        'select public.novelight_publish_due_episodes();'
+      )
+    $sql$;
+  else
+    raise notice 'pg_cron is unavailable in compatibility replay; skipping scheduler bootstrap';
   end if;
 end
-$$;
-
-select cron.schedule(
-  'novelight-publish-due-episodes',
-  '* * * * *',
-  'select public.novelight_publish_due_episodes();'
-);
+$cron_bootstrap$;
 
 commit;
