@@ -5,10 +5,22 @@ import { URL } from 'node:url';
 
 const continuityUrl = new URL('../novelight-reading-continuity.js', import.meta.url);
 const homeResumeUrl = new URL('../novelight-home-resume.js', import.meta.url);
-const migrationUrl = new URL('../supabase/migrations/20260917030000_reader_reading_progress_sync.sql', import.meta.url);
-const precheckUrl = new URL('../supabase/checks/20260917030000_reader_reading_progress_sync_precheck.sql', import.meta.url);
-const postcheckUrl = new URL('../supabase/checks/20260917030000_reader_reading_progress_sync_postcheck.sql', import.meta.url);
-const rollbackUrl = new URL('../supabase/rollback/20260917030000_reader_reading_progress_sync_rollback.sql', import.meta.url);
+const migrationUrl = new URL(
+  '../supabase/migrations/20260917030000_reader_reading_progress_sync.sql',
+  import.meta.url
+);
+const precheckUrl = new URL(
+  '../supabase/checks/20260917030000_reader_reading_progress_sync_precheck.sql',
+  import.meta.url
+);
+const postcheckUrl = new URL(
+  '../supabase/checks/20260917030000_reader_reading_progress_sync_postcheck.sql',
+  import.meta.url
+);
+const rollbackUrl = new URL(
+  '../supabase/rollback/20260917030000_reader_reading_progress_sync_rollback.sql',
+  import.meta.url
+);
 
 async function text(url) {
   return readFile(url, 'utf8');
@@ -19,12 +31,24 @@ test('reader progress migration keeps synchronized history private and user-owne
 
   assert.match(migration, /create table public\.reader_reading_progress/);
   assert.match(migration, /primary key \(user_id, novel_id\)/);
-  assert.match(migration, /alter table public\.reader_reading_progress enable row level security/);
-  assert.match(migration, /grant select, insert, update on table public\.reader_reading_progress to authenticated/);
-  assert.doesNotMatch(migration, /grant[^;]*delete[^;]*reader_reading_progress[^;]*authenticated/i);
+  assert.match(
+    migration,
+    /alter table public\.reader_reading_progress enable row level security/
+  );
+  assert.match(
+    migration,
+    /grant select, insert, update on table public\.reader_reading_progress to authenticated/
+  );
+  assert.doesNotMatch(
+    migration,
+    /grant[^;]*delete[^;]*reader_reading_progress[^;]*authenticated/i
+  );
   assert.match(migration, /using \(\(select auth\.uid\(\)\) = user_id\)/);
   assert.match(migration, /with check \(\(select auth\.uid\(\)\) = user_id\)/);
-  assert.doesNotMatch(migration, /grant[^;]*reader_reading_progress[^;]*anon/i);
+  assert.doesNotMatch(
+    migration,
+    /grant[^;]*reader_reading_progress[^;]*anon/i
+  );
 });
 
 test('database guard derives published episode order and refuses progress rewind', async () => {
@@ -37,7 +61,10 @@ test('database guard derives published episode order and refuses progress rewind
   assert.match(migration, /if new\.episode_number < old\.episode_number then/);
   assert.match(migration, /new\.episode_id := old\.episode_id/);
   assert.match(migration, /new\.progress_ratio := old\.progress_ratio/);
-  assert.match(migration, /greatest\(old\.progress_ratio, new\.progress_ratio\)/);
+  assert.match(
+    migration,
+    /greatest\(old\.progress_ratio, new\.progress_ratio\)/
+  );
   assert.match(migration, /v_incoming_read_at > v_now \+ interval '5 minutes'/);
 });
 
@@ -46,14 +73,26 @@ test('episode, novel, and favorites continuity hydrates authenticated progress b
 
   assert.match(continuity, /const REMOTE_TABLE = 'reader_reading_progress'/);
   assert.match(continuity, /clientInstance\.auth\.getSession\(\)/);
-  assert.match(continuity, /hydrateRemoteProgress\(clientInstance, \[row\.novel_id\]\)/);
-  assert.match(continuity, /hydrateRemoteProgress\(clientInstance, \[novelId\]\)/);
+  assert.match(
+    continuity,
+    /hydrateRemoteProgress\(clientInstance, \[row\.novel_id\]\)/
+  );
+  assert.match(
+    continuity,
+    /hydrateRemoteProgress\(clientInstance, \[novelId\]\)/
+  );
   assert.match(continuity, /hydrateRemoteProgress\(clientInstance, novelIds\)/);
   assert.match(continuity, /\.upsert\(/);
   assert.match(continuity, /onConflict: 'user_id,novel_id'/);
   assert.match(continuity, /REMOTE_SAVE_DELAY_MS = 2500/);
-  assert.match(continuity, /reading progress hydration failed; using this device/);
-  assert.match(continuity, /reading progress sync failed; kept on this device/);
+  assert.match(
+    continuity,
+    /reading progress hydration failed; using this device/
+  );
+  assert.match(
+    continuity,
+    /reading progress sync failed; kept on this device/
+  );
 });
 
 test('client merge is monotonic by episode and same-episode progress', async () => {
@@ -61,7 +100,10 @@ test('client merge is monotonic by episode and same-episode progress', async () 
 
   assert.match(continuity, /if \(incomingNumber > currentNumber\) return/);
   assert.match(continuity, /if \(incomingNumber < currentNumber\) return/);
-  assert.match(continuity, /Math\.max\(clamp\(current\.progressRatio\), clamp\(incoming\.progressRatio\)\)/);
+  assert.match(
+    continuity,
+    /Math\.max\(clamp\(current\.progressRatio\), clamp\(incoming\.progressRatio\)\)/
+  );
   assert.match(continuity, /syncUserId/);
 });
 
@@ -86,7 +128,10 @@ test('migration includes guarded precheck, postcheck, and destructive rollback a
 
   assert.match(precheck, /Reader progress sync objects already exist/);
   assert.match(postcheck, /RLS must be enabled on reader_reading_progress/);
-  assert.match(postcheck, /Authenticated reader progress privileges are incorrect/);
+  assert.match(
+    postcheck,
+    /Authenticated reader progress privileges are incorrect/
+  );
   assert.match(postcheck, /Reader progress guard trigger is missing/);
   assert.match(rollback, /drop table if exists public\.reader_reading_progress/);
 });
