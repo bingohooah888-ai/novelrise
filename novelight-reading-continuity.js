@@ -3,6 +3,9 @@
 
   const STORAGE_PREFIX = 'novelight:reading:v1:';
   const STYLE_ID = 'novelight-reading-continuity-style';
+  const REMOTE_TABLE = 'reader_reading_progress';
+  const REMOTE_SAVE_DELAY_MS = 2500;
+  const remoteSaveTimers = new Map();
 
   function pageSlug() {
     const file = window.location.pathname.split('/').pop() || 'index.html';
@@ -37,6 +40,42 @@
     return Math.max(min, Math.min(max, Number(value) || 0));
   }
 
+  function timestamp(value) {
+    const parsed = new Date(value || 0).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function laterReadAt(left, right) {
+    const leftTime = timestamp(left);
+    const rightTime = timestamp(right);
+    return new Date(Math.max(leftTime, rightTime, Date.now())).toISOString();
+  }
+
+  function mergeProgress(current, incoming) {
+    if (!current) return incoming || null;
+    if (!incoming) return current;
+
+    const currentNumber = Number(current.episodeNumber) || 0;
+    const incomingNumber = Number(incoming.episodeNumber) || 0;
+    const lastReadAt = laterReadAt(current.lastReadAt, incoming.lastReadAt);
+
+    if (incomingNumber > currentNumber) return { ...incoming, lastReadAt };
+    if (incomingNumber < currentNumber) return { ...current, lastReadAt };
+
+    if (String(incoming.episodeId) !== String(current.episodeId)) {
+      const winner = timestamp(incoming.lastReadAt) >= timestamp(current.lastReadAt) ? incoming : current;
+      return { ...winner, lastReadAt };
+    }
+
+    return {
+      ...current,
+      ...incoming,
+      progressRatio: Math.max(clamp(current.progressRatio), clamp(incoming.progressRatio)),
+      lastReadAt,
+      syncUserId: incoming.syncUserId || current.syncUserId || null
+    };
+  }
+
   function contentProgress(content) {
     if (!content) return 0;
     const rect = content.getBoundingClientRect();
@@ -44,6 +83,96 @@
     const height = Math.max(content.scrollHeight, rect.height, 1);
     const viewportBottom = window.scrollY + window.innerHeight;
     return clamp((viewportBottom - absoluteTop) / height);
+  }
+
+  async function authenticatedUserId(clientInstance) {
+    if (!clientInstance?.auth?.getSession) return null;
+    try {
+      const result = await clientInstance.auth.getSession();
+      if (result.error) return null;
+      return result.data?.session?.user?.id || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function remoteProgress(row, userId) {
+    if (!row?.novel_id || !row?.episode_id) return null;
+    return {
+      novelId: String(row.novel_id),
+      episodeId: String(row.episode_id),
+      episodeNumber: Number(row.episode_number) || 0,
+      progressRatio: clamp(row.progress_ratio),
+      lastReadAt: row.last_read_at || new Date().toISOString(),
+      syncUserId: userId || row.user_id || null
+    };
+  }
+
+  async function hydrateRemoteProgress(clientInstance, novelIds) {
+    const userId = await authenticatedUserId(clientInstance);
+    const ids = Array.from(new Set((novelIds || []).map((value) => String(value || '')).filter(Boolean)));
+    if (!userId || !ids.length) return { authenticated: Boolean(userId), userId, synced: false };
+
+    try {
+      const result = await clientInstance
+        .from(REMOTE_TABLE)
+        .select('user_id,novel_id,episode_id,episode_number,progress_ratio,last_read_at')
+        .eq('user_id', userId)
+        .in('novel_id', ids);
+      if (result.error) throw result.error;
+
+      for (const row of result.data || []) {
+        const remote = remoteProgress(row, userId);
+        if (!remote) continue;
+        const local = readProgress(remote.novelId);
+        const merged = local?.syncUserId === userId ? mergeProgress(remote, local) : remote;
+        writeProgress({ ...merged, syncUserId: userId });
+      }
+      return { authenticated: true, userId, synced: true };
+    } catch (error) {
+      console.warn('reading progress hydration failed; using this device', error);
+      return { authenticated: true, userId, synced: false };
+    }
+  }
+
+  async function pushLocalProgress(clientInstance, userId, novelId) {
+    if (!clientInstance || !userId || !novelId) return false;
+    const stored = readProgress(novelId);
+    if (!stored || stored.syncUserId !== userId) return false;
+
+    try {
+      const result = await clientInstance
+        .from(REMOTE_TABLE)
+        .upsert({
+          user_id: userId,
+          novel_id: String(stored.novelId),
+          episode_id: String(stored.episodeId),
+          progress_ratio: clamp(stored.progressRatio),
+          last_read_at: stored.lastReadAt || new Date().toISOString()
+        }, { onConflict: 'user_id,novel_id' })
+        .select('user_id,novel_id,episode_id,episode_number,progress_ratio,last_read_at')
+        .single();
+      if (result.error) throw result.error;
+      const canonical = remoteProgress(result.data, userId);
+      if (canonical) {
+        const latestLocal = readProgress(novelId);
+        writeProgress({ ...mergeProgress(canonical, latestLocal?.syncUserId === userId ? latestLocal : null), syncUserId: userId });
+      }
+      return true;
+    } catch (error) {
+      console.warn('reading progress sync failed; kept on this device', error);
+      return false;
+    }
+  }
+
+  function scheduleRemoteProgress(clientInstance, userId, novelId) {
+    if (!clientInstance || !userId || !novelId || remoteSaveTimers.has(String(novelId))) return;
+    const key = String(novelId);
+    const timer = window.setTimeout(() => {
+      remoteSaveTimers.delete(key);
+      void pushLocalProgress(clientInstance, userId, key);
+    }, REMOTE_SAVE_DELAY_MS);
+    remoteSaveTimers.set(key, timer);
   }
 
   function installStyles() {
@@ -109,8 +238,8 @@
     }
   }
 
-  async function publishedEpisodes(client, novelId) {
-    const result = await client
+  async function publishedEpisodes(clientInstance, novelId) {
+    const result = await clientInstance
       .from('episodes')
       .select('id,novel_id,title,episode_number,status')
       .eq('novel_id', novelId)
@@ -139,19 +268,23 @@
     heading.insertAdjacentElement('afterend', button);
   }
 
-  function saveEpisodeProgress(row, content) {
-    const previous = readProgress(row.novel_id);
-    const ratio = Math.max(
-      String(previous?.episodeId) === String(row.id) ? clamp(previous?.progressRatio) : 0,
-      contentProgress(content)
-    );
-    writeProgress({
+  function saveEpisodeProgress(row, content, clientInstance = null, userId = null) {
+    let previous = readProgress(row.novel_id);
+    if (userId && previous?.syncUserId && previous.syncUserId !== userId) previous = null;
+    if (userId && previous && !previous.syncUserId && String(previous.episodeId) !== String(row.id)) previous = null;
+
+    const candidate = {
       novelId: String(row.novel_id),
       episodeId: String(row.id),
       episodeNumber: Number(row.episode_number) || 0,
-      progressRatio: ratio,
-      lastReadAt: new Date().toISOString()
-    });
+      progressRatio: contentProgress(content),
+      lastReadAt: new Date().toISOString(),
+      syncUserId: userId || previous?.syncUserId || null
+    };
+    const merged = mergeProgress(previous, candidate);
+    writeProgress(merged);
+    if (userId) scheduleRemoteProgress(clientInstance, userId, row.novel_id);
+    return merged;
   }
 
   function renderEpisodeNavigation(row, rows) {
@@ -190,33 +323,37 @@
     card.insertAdjacentElement('afterend', nav);
   }
 
-  async function installEpisodeContinuity(client) {
+  async function installEpisodeContinuity(clientInstance) {
     const episodeId = new URLSearchParams(window.location.search).get('id');
     if (!episodeId) return false;
     const content = await waitFor('#card .content').catch(() => null);
     if (!content) return false;
-    const rowResult = await client
+    const rowResult = await clientInstance
       .from('episodes')
       .select('id,novel_id,title,episode_number,status')
       .eq('id', episodeId)
       .single();
     if (rowResult.error || !rowResult.data || rowResult.data.status !== 'published') return false;
     const row = rowResult.data;
+    const syncState = await hydrateRemoteProgress(clientInstance, [row.novel_id]);
     const stored = readProgress(row.novel_id);
     installResumeChip(content, stored, row);
-    const rows = await publishedEpisodes(client, row.novel_id);
+    const rows = await publishedEpisodes(clientInstance, row.novel_id);
     renderEpisodeNavigation(row, rows);
-    saveEpisodeProgress(row, content);
+    saveEpisodeProgress(row, content, clientInstance, syncState.userId);
     let timer = null;
     const schedule = () => {
       if (timer) return;
       timer = window.setTimeout(() => {
         timer = null;
-        saveEpisodeProgress(row, content);
+        saveEpisodeProgress(row, content, clientInstance, syncState.userId);
       }, 500);
     };
     window.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('pagehide', () => saveEpisodeProgress(row, content), { once: true });
+    window.addEventListener('pagehide', () => {
+      saveEpisodeProgress(row, content, clientInstance, syncState.userId);
+      if (syncState.userId) void pushLocalProgress(clientInstance, syncState.userId, row.novel_id);
+    }, { once: true });
     return true;
   }
 
@@ -246,12 +383,13 @@
     };
   }
 
-  async function installNovelContinue() {
+  async function installNovelContinue(clientInstance) {
     const novelId = new URLSearchParams(window.location.search).get('id');
     if (!novelId) return false;
     await waitFor('#episodeList a[href*="episode.html?id="]').catch(() => null);
     const rows = episodeRowsFromNovelPage();
     if (!rows.length || document.getElementById('nlContinueReading')) return false;
+    await hydrateRemoteProgress(clientInstance, [novelId]);
     const target = continueTarget(rows, readProgress(novelId));
     if (!target) return false;
     const panel = document.createElement('div');
@@ -263,7 +401,7 @@
     return true;
   }
 
-  async function installFavoritesBookshelf(client) {
+  async function installFavoritesBookshelf(clientInstance) {
     const list = document.getElementById('list');
     if (!list) return false;
     await waitFor('#list a.card[href*="novel.html?id="]', { root: list }).catch(() => null);
@@ -277,7 +415,8 @@
     }
 
     const novelIds = cards.map((card) => parseNovelId(card.href)).filter(Boolean);
-    const result = await client
+    await hydrateRemoteProgress(clientInstance, novelIds);
+    const result = await clientInstance
       .from('episodes')
       .select('id,novel_id,title,episode_number,status')
       .in('novel_id', novelIds)
@@ -335,7 +474,7 @@
     const slug = pageSlug();
     try {
       if (slug === 'episode') await installEpisodeContinuity(client);
-      if (slug === 'novel') await installNovelContinue();
+      if (slug === 'novel') await installNovelContinue(client);
       if (slug === 'favorites') await installFavoritesBookshelf(client);
     } catch (error) {
       console.error('reading continuity enhancement failed', error);
@@ -345,6 +484,9 @@
   window.NovelightReadingContinuity = Object.freeze({
     readProgress,
     writeProgress,
+    mergeProgress,
+    hydrateRemoteProgress,
+    pushLocalProgress,
     continueTarget,
     installEpisodeContinuity,
     installNovelContinue,
