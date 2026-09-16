@@ -342,12 +342,12 @@ test('episode edit loads existing episode, saves changes, and renders the update
 
   await page.goto('/episode-edit.html?id=episode-edit-e2e');
   await expect(page.locator('#episodeNumber')).toHaveValue('2');
+  await expect(page.locator('#episodeNumber')).toHaveAttribute('readonly', '');
   await expect(page.locator('#title')).toHaveValue('編集前の第2話');
   await expect(page.locator('#content')).toHaveValue('編集前の本文です。');
   await expect(page.locator('#save')).toBeEnabled();
 
-  await page.locator('#episodeNumber').fill('3');
-  await page.locator('#title').fill('編集後の第3話');
+  await page.locator('#title').fill('編集後の第2話');
   await page.locator('#content').fill('編集後の本文です。');
   await page.locator('#save').click();
 
@@ -371,8 +371,7 @@ test('episode edit loads existing episode, saves changes, and renders the update
     };
   });
   expect(evidence.update?.payload).toEqual({
-    episode_number: 3,
-    title: '編集後の第3話',
+    title: '編集後の第2話',
     content: '編集後の本文です。'
   });
   expect(evidence.filters).toEqual([
@@ -381,8 +380,8 @@ test('episode edit loads existing episode, saves changes, and renders the update
   ]);
 
   await page.waitForURL(/\/episode\.html\?id=episode-edit-e2e$/);
-  await expect(page.locator('#card h1')).toHaveText('編集後の第3話');
-  await expect(page.locator('#card .number')).toHaveText('第3話');
+  await expect(page.locator('#card h1')).toHaveText('編集後の第2話');
+  await expect(page.locator('#card .number')).toHaveText('第2話');
   await expect(page.locator('#card .content')).toHaveText('編集後の本文です。');
   expect(pageErrors).toEqual([]);
 });
