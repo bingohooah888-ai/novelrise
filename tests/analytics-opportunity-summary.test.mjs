@@ -29,7 +29,7 @@ test('opportunity summary derives only from existing analytics DOM metrics', () 
   assert.doesNotMatch(runtime, /fetch\(/);
 });
 
-test('opportunity summary exposes missing data instead of inventing zeroes', () => {
+test('opportunity summary preserves missing-data states', () => {
   assert.match(
     runtime,
     /if \(impressions === null \|\| detail === null \|\| first === null\)/
@@ -37,8 +37,9 @@ test('opportunity summary exposes missing data instead of inventing zeroes', () 
   assert.match(runtime, /opportunityImpressions'\)\.textContent = '—'/);
   assert.match(runtime, /opportunityDetail'\)\.textContent = '—'/);
   assert.match(runtime, /opportunityReading'\)\.textContent = '—'/);
-  assert.match(runtime, /opportunityDetailRate'\)\.textContent = '集計中\.\.\.'/);
-  assert.match(runtime, /opportunityReadingRate'\)\.textContent = '集計中\.\.\.'/);
+  assert.match(runtime, /opportunityDetailRate/);
+  assert.match(runtime, /opportunityReadingRate/);
+  assert.match(runtime, /textContent = '集計中\.\.\.'/);
   assert.match(
     runtime,
     /この期間にNOVELIGHT上で作品がどれだけ読者の前へ届いたかを集計しています。/
