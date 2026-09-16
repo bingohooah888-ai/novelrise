@@ -2,23 +2,25 @@ begin;
 
 select pg_advisory_xact_lock(hashtext('novelrise:20260916114500:rollback'));
 
-do $$
+do $cron_rollback$
 declare
   v_job_id bigint;
 begin
   if to_regclass('cron.job') is not null then
-    select jobid
-      into v_job_id
-    from cron.job
-    where jobname = 'novelight-publish-due-episodes'
-    limit 1;
+    execute $sql$
+      select jobid
+      from cron.job
+      where jobname = 'novelight-publish-due-episodes'
+      limit 1
+    $sql$
+    into v_job_id;
 
     if v_job_id is not null then
-      perform cron.unschedule(v_job_id);
+      execute 'select cron.unschedule($1)' using v_job_id;
     end if;
   end if;
 end
-$$;
+$cron_rollback$;
 
 drop function if exists public.novelight_publish_due_episodes();
 drop function if exists public.novelight_cancel_episode_schedule(bigint);
