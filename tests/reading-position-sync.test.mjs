@@ -68,6 +68,10 @@ test('reading sync chooses the newest position while retaining revision conflict
   assert.equal(api.compareProgress(newer, older), 1);
   assert.equal(api.chooseNewest(older, newer).episodeId, '101');
   assert.equal(api.normalizeProgress(newer).serverRevision, 5);
+  assert.equal(
+    api.localCanAdvance({ ...newer, serverRevision: 4 }, { ...older, serverRevision: 5 }),
+    false
+  );
 });
 
 test('reading sync keeps anonymous/local fallback and isolates server state from scoring systems', () => {
