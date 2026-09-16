@@ -27,6 +27,9 @@
   function friendlyError(error, fallback) {
     const message = String(error?.message || '');
     if (message.includes('2000文字')) return 'コメントは2,000文字以内で入力してください。';
+    if (message.includes('DIRECT_INTERACTION_UNAVAILABLE')) {
+      return 'この作者へのコメントは現在送信できません。';
+    }
     if (error?.code === '42501' || message.includes('Authentication required')) {
       return 'コメントするにはログインが必要です。';
     }
@@ -38,14 +41,21 @@
     state.count.textContent = `${comments.length}件`;
 
     if (!comments.length) {
-      state.list.append(createElement('p', 'novelight-comments-empty', 'まだコメントはありません。最初の感想を届けてみませんか。'));
+      state.list.append(
+        createElement(
+          'p',
+          'novelight-comments-empty',
+          'まだコメントはありません。最初の感想を届けてみませんか。'
+        )
+      );
       return;
     }
 
     for (const comment of comments) {
       const item = createElement('article', 'novelight-comment');
       const header = createElement('div', 'novelight-comment-header');
-      const author = createElement('strong', 'novelight-comment-author', comment.display_name || '読者');
+      const author = createElement('a', 'novelight-comment-author', comment.display_name || '読者');
+      author.href = `author.html?id=${encodeURIComponent(String(comment.user_id || ''))}`;
       const time = createElement('time', 'novelight-comment-time', formatDate(comment.created_at));
       if (comment.created_at) time.dateTime = String(comment.created_at);
       header.append(author, time);
@@ -70,7 +80,10 @@
             await refresh(state);
           } catch (error) {
             console.error('comment delete failed', error);
-            state.status.textContent = friendlyError(error, 'コメントを削除できませんでした。時間をおいて再度お試しください。');
+            state.status.textContent = friendlyError(
+              error,
+              'コメントを削除できませんでした。時間をおいて再度お試しください。'
+            );
           } finally {
             button.disabled = false;
           }
@@ -96,7 +109,11 @@
       console.error('comment feed failed', error);
       state.count.textContent = '';
       state.list.replaceChildren(
-        createElement('p', 'novelight-comments-error', 'コメントを読み込めませんでした。時間をおいて再度お試しください。'),
+        createElement(
+          'p',
+          'novelight-comments-error',
+          'コメントを読み込めませんでした。時間をおいて再度お試しください。'
+        )
       );
     } finally {
       state.list.removeAttribute('aria-busy');
@@ -116,7 +133,11 @@
 
     if (isAuthor) {
       state.section.append(
-        createElement('p', 'novelight-comments-notice', '作者として閲覧中です。読者から届いたコメントを確認できます。'),
+        createElement(
+          'p',
+          'novelight-comments-notice',
+          '作者として閲覧中です。読者から届いたコメントを確認できます。'
+        )
       );
       return;
     }
@@ -132,7 +153,11 @@
     textarea.placeholder = '作品を読んで感じたことを作者へ届けましょう。';
 
     const footer = createElement('div', 'novelight-comments-form-footer');
-    const counter = createElement('span', 'novelight-comments-counter', `0 / ${MAX_COMMENT_LENGTH.toLocaleString('ja-JP')}`);
+    const counter = createElement(
+      'span',
+      'novelight-comments-counter',
+      `0 / ${MAX_COMMENT_LENGTH.toLocaleString('ja-JP')}`
+    );
     const submit = createElement('button', 'novelight-comments-submit', 'コメントする');
     submit.type = 'submit';
     footer.append(counter, submit);
@@ -169,7 +194,10 @@
         await refresh(state);
       } catch (error) {
         console.error('comment post failed', error);
-        state.status.textContent = friendlyError(error, 'コメントを投稿できませんでした。時間をおいて再度お試しください。');
+        state.status.textContent = friendlyError(
+          error,
+          'コメントを投稿できませんでした。時間をおいて再度お試しください。'
+        );
       } finally {
         submit.disabled = false;
         textarea.disabled = false;
