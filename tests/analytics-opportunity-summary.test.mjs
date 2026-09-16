@@ -29,6 +29,24 @@ test('opportunity summary derives only from existing analytics DOM metrics', () 
   assert.doesNotMatch(runtime, /fetch\(/);
 });
 
+test('opportunity summary preserves missing-data states', () => {
+  assert.match(
+    runtime,
+    /if \(impressions === null \|\| detail === null \|\| first === null\)/
+  );
+  assert.match(runtime, /opportunityImpressions'\)\.textContent = '—'/);
+  assert.match(runtime, /opportunityDetail'\)\.textContent = '—'/);
+  assert.match(runtime, /opportunityReading'\)\.textContent = '—'/);
+  assert.match(runtime, /opportunityDetailRate/);
+  assert.match(runtime, /opportunityReadingRate/);
+  assert.match(runtime, /textContent = '集計中\.\.\.'/);
+  assert.match(
+    runtime,
+    /この期間にNOVELIGHT上で作品がどれだけ読者の前へ届いたかを集計しています。/
+  );
+  assert.match(runtime, /まだ露出データはありません/);
+});
+
 test('opportunity wording distinguishes display, detail arrival, and reading', () => {
   assert.match(runtime, /NOVELIGHT上で読者の前に表示されました/);
   assert.match(runtime, /作品ページ到達/);
