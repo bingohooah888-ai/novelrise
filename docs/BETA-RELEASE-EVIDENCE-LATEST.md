@@ -4,6 +4,28 @@
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
 
+## 2026-09-16 post-PR #609 scheduled-publication reconciliation
+
+This section supersedes all older “current”, “material application main”, and release-posture wording below where the scope overlaps. Older detailed sections remain preserved as audit context.
+
+Current repository `main` and current material application SHA are both `a7bd226a7a4f457bf593df6084ba4d676af5b444` (`Add beta scheduled episode publication (#609)`). PR #609 final reviewed head is `1e7e2ecb82bf7c91fb83165db30570290ab48d62`.
+
+PR #609 reviewed-head validation completed successfully for the substantive implementation scope: static quality, Node tests, RLS integration/rollback, desktop/mobile browser smoke, and desktop/mobile async-UI jobs were green in `NOVELIGHT CI` #2458 / run `35059409607`; CodeQL #2362 / run `35059409539` completed `SUCCESS`. The high-risk merge approval was a separate exact-head owner gate and is not represented here as if the pre-approval aggregate check had already been green.
+
+On exact merged main `a7bd226a...`, Vercel Production, `production-readiness-smoke`, and `production-beta-verification` commit statuses are all `success`. `NOVELIGHT Production Readiness Smoke` #167 / run `35073115512` completed `SUCCESS` on that exact SHA. Its decisive job successfully verified Production static routes, safe API route contracts, a read-only Production reader smoke, Production beta observability, and readiness status publication. Its scoped Production Auth Smoke dispatch step is request creation only and is not promoted to authenticated Production PASS.
+
+Production migration freshness was resolved before mutation. The exact approved migration set was only `20260916100000`. Issue #460 records owner approval for operation `supabase-migration-deploy`, main `a7bd226a...`, challenge `11F8CA25`, and migration set `["20260916100000"]`; GitHub Actions then claimed that approval for bridge run `35074760475`.
+
+`NOVELIGHT Approved Production Migration Deploy` run `35074760475` revalidated the exact approval and current main at the Production boundary, confirmed the actual pending set was exactly `20260916100000`, reran the dry-run, applied only `20260916100000_episode_scheduled_publication.sql`, verified the post-deploy migration list, and passed Production beta observability. The approval ledger records `result:"success"`, `mutation_result:"success"`, `postcheck_result:"success"`, and `failure_phase:"none"`. Post-deploy migration status shows `20260916100000` present in both Local and Remote and no remaining pending migration; the run also recorded `Production beta integrity checks passed` and `Production beta monitoring signals are present`.
+
+The migration and reviewed code establish the scheduled-publication schema/control path, owner-bound schedule/cancel boundary, due-publication job, lifecycle validation, and read-only Production readiness/observability state. This evidence does **not** claim that an actual Production draft was scheduled and then allowed to cross its due timestamp in a live authenticated end-to-end fixture. No Production work/episode fixture is created merely to manufacture that documentary proof.
+
+Issue #511 / run `34692176490` remains still-valid only for its actually executed Chapter 38/40 authenticated novel-create / Geometry Thumbnail Engine / LIGHT ANALYTICS scope where later changes do not invalidate that exact behavior. It is not direct Production authenticated E2E proof of PR #609 scheduled publication. No duplicate Auth Smoke, migration, Stripe operation, Secret operation, campaign-state cutover, or Production fixture is justified solely for documentary SHA freshness.
+
+**Current technical/operational launch posture remains GO.** Exact-current Vercel deployment, Production Readiness, and Production beta verification are green; the new scheduled-publication Production migration is applied with exact-scope owner approval and successful postcheck; no new technical release blocker was discovered in this reconciliation. Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING** and is not converted into legal PASS by the technical evidence.
+
+This documentation reconciliation performs no Production DB/Supabase mutation, migration rerun, Auth configuration mutation, Stripe/billing/entitlement mutation, Secret/environment mutation, Production Auth Smoke execution, campaign-state cutover, or image generation/editing.
+
 ## 2026-09-16 current-main / post-PR #601 reconciliation
 
 This section supersedes all older “current”, “material application main”, and release-posture wording below where the scope overlaps. Older detailed sections remain preserved as audit context.
@@ -72,7 +94,7 @@ MASTER Chapter 41 remains authoritative for beta presentation: Work Rank continu
 
 Production evidence is not stretched across behavior it did not execute. Issue #511 / run `34692176490` remains still-valid only for its actually executed unchanged Chapter 38/40 authenticated create/render scope. It is not treated as direct Production proof of later Chapter 41 presentation, LIGHT READY, trusted-impression, public-thumbnail-lookup, or PR #555/#557 analytics behavior. Production Readiness #141 is retained as current-by-scope evidence rather than relabeled as exact execution of every later analytics-only change.
 
-Successful Production migration-ledger evidence for migration IDs `20260913112358` and `20260913141000` is recorded as already completed; neither migration is rerun by this reconciliation. Newest reconciled backup freshness evidence is Production Backup Freshness #65 / run `34829215089`.
+Successful Production migration-ledger evidence for migration IDs `20260913112358` and `20260913141000` is recorded as already completed; neither migration is rerun here. Newest reconciled backup freshness evidence is Production Backup Freshness #65 / run `34829215089`.
 
 Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING**. No Production Supabase/DB mutation, migration rerun, Stripe/billing/entitlement mutation, Secret/environment mutation, freshness-only Production Auth Smoke, or image generation/editing is performed by this reconciliation.
 
