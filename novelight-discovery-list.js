@@ -220,8 +220,9 @@
       batchSeen.add(id);
       candidates.push(row);
     }
-    let page = candidates.slice(0, pageSize);
-    page = await filterHiddenRows(page);
+    const filteredCandidates = await filterHiddenRows(candidates);
+    candidates.splice(0, candidates.length, ...filteredCandidates);
+    const page = candidates.slice(0, pageSize);
     const visible = appendRows(page);
     await recordTrusted(visible);
     moreWrap.hidden = candidates.length <= pageSize || page.length === 0;
@@ -268,12 +269,13 @@
   async function loadSeed() {
     const pageOffset = seedOffset;
     const rows = await fetchSeedPage();
-    let page = rows.slice(0, pageSize);
+    const page = rows.slice(0, pageSize);
     const rawPageLength = page.length;
-    page = await filterHiddenRows(page);
+    seedOffset += page.length;
+    const filteredPage = await filterHiddenRows(page);
+    page.splice(0, page.length, ...filteredPage);
     const visible = appendRows(page);
     await recordVisible('search_seed', visible, pageOffset);
-    seedOffset += rawPageLength;
     moreWrap.hidden = rows.length <= pageSize || rawPageLength === 0;
     moreButton.textContent = '発掘中の作品をもっと見る';
   }
