@@ -100,6 +100,22 @@ test('draft list shows schedule and automatic publication errors', () => {
   assert.match(drafts, /予約中/u);
 });
 
+test('author pages remain usable before the production schedule migration lands', () => {
+  assert.match(post, /id="scheduleBox" class="schedule-box" hidden/u);
+  assert.match(post, /select\('scheduled_publish_at'\)\.limit\(1\)/u);
+  assert.match(post, /scheduleDraft\.hidden=!scheduleAvailable/u);
+  assert.match(
+    edit,
+    /Object\.prototype\.hasOwnProperty\.call\(episode,'scheduled_publish_at'\)/u
+  );
+  assert.match(edit, /if\(!isDraft\(\)\|\|!scheduleAvailable\)/u);
+  assert.match(drafts, /function scheduleCapabilityUnavailable/u);
+  assert.match(
+    drafts,
+    /select\('id,episode_number,title,content,status'\)/u
+  );
+});
+
 test('rollback removes the scheduler and schema additions without dropping pg_cron', () => {
   assert.match(rollback, /cron\.unschedule/u);
   assert.match(
