@@ -342,10 +342,7 @@ test('episode edit loads existing episode, saves changes, and renders the update
 
   await page.goto('/episode-edit.html?id=episode-edit-e2e');
   await expect(page.locator('#episodeNumber')).toHaveValue('2');
-  await expect(page.locator('#episodeNumber')).toHaveAttribute(
-    'readonly',
-    ''
-  );
+  await expect(page.locator('#episodeNumber')).toHaveAttribute('readonly', '');
   await expect(page.locator('#title')).toHaveValue('編集前の第2話');
   await expect(page.locator('#content')).toHaveValue('編集前の本文です。');
   await expect(page.locator('#save')).toBeEnabled();
