@@ -24,13 +24,41 @@
     });
   }
 
+  function isMissingInteractionRpc(error) {
+    const message = String(error?.message || '');
+    return (
+      error?.code === '42883' ||
+      message.includes('does not exist') ||
+      message.includes('Could not find the function')
+    );
+  }
+
   function friendlyError(error, fallback) {
     const message = String(error?.message || '');
     if (message.includes('2000文字')) return 'コメントは2,000文字以内で入力してください。';
+    if (message.includes('COMMENTS_DISABLED')) {
+      return 'この作品では現在コメントを受け付けていません。';
+    }
     if (error?.code === '42501' || message.includes('Authentication required')) {
       return 'コメントするにはログインが必要です。';
     }
     return fallback;
+  }
+
+  async function loadInteractionState(client, novelId) {
+    try {
+      const result = await client.rpc('novelight_novel_interaction_state', {
+        p_novel_id: String(novelId),
+      });
+      if (result.error) throw result.error;
+      return { commentsEnabled: result.data?.comments_enabled !== false, fallback: false };
+    } catch (error) {
+      if (isMissingInteractionRpc(error)) {
+        return { commentsEnabled: true, fallback: true };
+      }
+      console.error('comment interaction state unavailable', error);
+      return { commentsEnabled: true, fallback: true };
+    }
   }
 
   function renderFeed(state, comments) {
@@ -103,7 +131,15 @@
     }
   }
 
-  function renderComposer(state, session, isAuthor) {
+  function renderComposer(state, session, isAuthor, commentsEnabled) {
+    if (!commentsEnabled) {
+      const message = isAuthor
+        ? 'この作品はコメント受付を停止中です。過去のコメントは引き続き確認できます。'
+        : 'この作品では現在コメントを受け付けていません。過去のコメントは閲覧できます。';
+      state.section.append(createElement('p', 'novelight-comments-notice', message));
+      return;
+    }
+
     if (!session) {
       const notice = createElement('p', 'novelight-comments-notice');
       notice.append('コメントするには ');
@@ -141,7 +177,7 @@
       counter.textContent = `${textarea.value.length.toLocaleString('ja-JP')} / ${MAX_COMMENT_LENGTH.toLocaleString('ja-JP')}`;
     });
 
-    form.addEventListener('submit', async (event) => {
+    form.addEventListener('submit', async event => {
       event.preventDefault();
       const body = textarea.value.trim();
       if (!body) {
@@ -203,7 +239,8 @@
     section.append(status, list);
 
     const state = { client, novelId: novel.id, section, count, status, list };
-    renderComposer(state, session, isAuthor);
+    const interaction = await loadInteractionState(client, novel.id);
+    renderComposer(state, session, isAuthor, interaction.commentsEnabled);
     card.append(section);
     await refresh(state);
   }
