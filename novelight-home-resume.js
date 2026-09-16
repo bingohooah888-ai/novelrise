@@ -64,9 +64,10 @@
 
   async function hydrateRecentRemoteProgress(clientInstance) {
     if (!clientInstance?.auth?.getSession) return { synced: false, userId: null };
+    let userId = null;
     try {
       const auth = await clientInstance.auth.getSession();
-      const userId = auth.data?.session?.user?.id || null;
+      userId = auth.data?.session?.user?.id || null;
       if (auth.error || !userId) return { synced: false, userId: null };
 
       const result = await clientInstance
@@ -92,11 +93,11 @@
       return { synced: true, userId };
     } catch (error) {
       console.warn('home reading progress hydration failed; using this device', error);
-      return { synced: false, userId: null };
+      return { synced: false, userId };
     }
   }
 
-  function readRecentProgress(storage = window.localStorage, limit = CANDIDATE_LIMIT) {
+  function readRecentProgress(storage = window.localStorage, limit = CANDIDATE_LIMIT, userId = null) {
     const rows = [];
     try {
       for (let index = 0; index < storage.length; index += 1) {
@@ -109,6 +110,7 @@
           continue;
         }
         if (!value?.novelId || !value?.episodeId) continue;
+        if (userId && value.syncUserId !== userId) continue;
         const expectedNovelId = key.slice(STORAGE_PREFIX.length);
         if (String(value.novelId) !== expectedNovelId) continue;
         const valueTimestamp = new Date(value.lastReadAt || 0).getTime();
@@ -233,7 +235,11 @@
   async function installHomeResume(clientInstance) {
     if (!clientInstance || document.getElementById('homeResumeSection')) return false;
     const syncState = await hydrateRecentRemoteProgress(clientInstance);
-    const recent = readRecentProgress();
+    const recent = readRecentProgress(
+      window.localStorage,
+      CANDIDATE_LIMIT,
+      syncState.synced ? syncState.userId : null
+    );
     for (const stored of recent) {
       try {
         const resolved = await resolveCandidate(clientInstance, stored);
