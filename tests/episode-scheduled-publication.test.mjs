@@ -15,7 +15,10 @@ const drafts = read('episode-drafts.html');
 test('scheduled publication keeps episodes private drafts until trusted release', () => {
   assert.match(migration, /create table public\.episode_publish_schedules/);
   assert.match(migration, /Only draft episodes can be scheduled/);
-  assert.match(migration, /e\.status = p_episode_id/u, 'guard against accidental regex drift');
+  assert.match(migration, /v_episode_status <> 'draft'/);
+  assert.match(migration, /where s\.state = 'pending'[\s\S]*s\.scheduled_at <= now\(\)/);
+  assert.match(migration, /set status = 'published'/);
+  assert.doesNotMatch(migration, /set status = 'scheduled'/);
 });
 
 test('scheduled publication uses a bounded trusted cron release path', () => {
