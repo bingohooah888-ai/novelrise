@@ -15,10 +15,13 @@ const seriesPage = await readFile('series.html', 'utf8');
 const novelPage = await readFile('novel.html', 'utf8');
 const myNovelsPage = await readFile('my-novels.html', 'utf8');
 
-test('series tables are owner-scoped and raw anonymous reads are denied', () => {
+test('series tables keep raw anonymous reads private', () => {
   assert.match(migration, /create table public\.novel_series \(/);
   assert.match(migration, /create table public\.novel_series_items \(/);
-  assert.match(migration, /alter table public\.novel_series enable row level security/);
+  assert.match(
+    migration,
+    /alter table public\.novel_series enable row level security/
+  );
   assert.match(
     migration,
     /alter table public\.novel_series_items enable row level security/
@@ -33,13 +36,10 @@ test('series tables are owner-scoped and raw anonymous reads are denied', () => 
   );
   assert.match(migration, /create policy novel_series_insert_owner/);
   assert.match(migration, /create policy novel_series_items_insert_owner/);
-  assert.match(
-    migration,
-    /n\.user_id = \(select auth\.uid\(\)\)/
-  );
+  assert.match(migration, /n\.user_id = \(select auth\.uid\(\)\)/);
 });
 
-test('series membership is bounded and one work belongs to one beta series', () => {
+test('series membership is bounded to one series per work', () => {
   assert.match(
     migration,
     /constraint novel_series_items_novel_once unique \(novel_id\)/
@@ -53,7 +53,7 @@ test('series membership is bounded and one work belongs to one beta series', () 
   assert.match(migration, /SERIES_ITEM_DUPLICATE/);
 });
 
-test('public series context exposes only published works unless caller owns them', () => {
+test('public context hides unpublished works from readers', () => {
   assert.match(
     migration,
     /create or replace function public\.novelight_public_series_context/
@@ -66,7 +66,10 @@ test('public series context exposes only published works unless caller owns them
     migration,
     /grant execute on function public\.novelight_public_series_context\(bigint\) to anon, authenticated/
   );
-  assert.doesNotMatch(migration, /grant select[^;]*novel_series[^;]*to anon/i);
+  assert.doesNotMatch(
+    migration,
+    /grant select[^;]*novel_series[^;]*to anon/i
+  );
 });
 
 test('series remain navigation metadata rather than a scoring unit', () => {
@@ -77,7 +80,7 @@ test('series remain navigation metadata rather than a scoring unit', () => {
   assert.match(migration, /Not an evaluation or exposure unit/);
 });
 
-test('reader work pages mount ordered series context with previous and next links', () => {
+test('work pages mount ordered series context and navigation', () => {
   assert.match(seriesRuntime, /novelight_public_series_context/);
   assert.match(seriesRuntime, /前の作品/);
   assert.match(seriesRuntime, /次の作品/);
