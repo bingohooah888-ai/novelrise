@@ -6,13 +6,36 @@ This checklist is the final operational gate after code review/CI. A checked box
 
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
-Current material launch main at reconciliation: `bac6e7ba4bd75bb91b244dc61ea30a3987fb4f54` (`Polish empty and error states for discovery lists (#601)`).
+Current material launch main at reconciliation: `a7bd226a7a4f457bf593df6084ba4d676af5b444` (`Add beta scheduled episode publication (#609)`).
 
 Repository `main` may advance through later documentation-only reconciliation commits. In this checklist, **material application SHA** means the latest commit that changed deployable application behavior; a docs-only successor does not by itself make that application proof stale.
 
-**CURRENT LAUNCH POSTURE: GO — PR #601 reviewed-head CI/CodeQL are green; exact current material application SHA `bac6e7ba...` is deployed successfully to Vercel Production; Production Readiness #162 / run `34998927013` is green on that exact SHA; all identified post-#560 Production migrations and guarded Auth configuration changes required by current code have successful approval-ledger/postcheck evidence. The successful approval-gated Production Authenticated Smoke on `e4e8673d6b45b046c69672a8e5fe72011c1a0081` remains still-valid only for its unchanged authenticated Chapter 38/40 scope and is not stretched into proof of newer draft-import/resume/empty-state behavior.**
+**CURRENT LAUNCH POSTURE: GO — PR #609 substantive reviewed-head CI and CodeQL evidence are green; exact current material application SHA `a7bd226a...` is deployed successfully to Vercel Production; Production Readiness #167 / run `35073115512` and `production-beta-verification` are green on that exact SHA; Production migration `20260916100000_episode_scheduled_publication.sql` was applied under exact-scope owner approval through bridge run `35074760475` with mutation/postcheck success and no pending migrations afterward. This evidence does not claim a live elapsed-time scheduled-publication Production fixture, and the older authenticated Chapter 38/40 smoke is not stretched into proof of PR #609.**
 
 Qualified Japanese counsel review remains deferred/pending. The owner residual-risk decision is recorded in `docs/legal-beta-review.md`; this checklist does not assert legal sufficiency.
+
+## 2026-09-16 post-PR #609 scheduled-publication reconciliation
+
+This section supersedes older “current”, “material application main”, and final release-posture wording below where the scope overlaps. Older checked evidence remains preserved for audit/regression history.
+
+- [x] Current repository `main` and material application SHA are `a7bd226a7a4f457bf593df6084ba4d676af5b444` (`Add beta scheduled episode publication (#609)`).
+- [x] PR #609 final reviewed head is `1e7e2ecb82bf7c91fb83165db30570290ab48d62`.
+- [x] PR #609 `NOVELIGHT CI` #2458 / run `35059409607` has successful static quality, Node tests, RLS integration/rollback, desktop/mobile browser smoke, and desktop/mobile async-UI jobs; merge remained separately gated on exact-head owner high-risk approval rather than treating the pre-approval aggregate gate as already satisfied.
+- [x] PR #609 CodeQL #2362 / run `35059409539` completed `SUCCESS`.
+- [x] Exact current main `a7bd226a...` has Vercel Production, `production-readiness-smoke`, and `production-beta-verification` commit statuses `success`.
+- [x] `NOVELIGHT Production Readiness Smoke` #167 / run `35073115512` completed `success` on exact current main `a7bd226a...`.
+- [x] Production Readiness #167 successfully verified Production static routes, safe API route contracts, a read-only Production reader smoke, Production beta observability, and readiness status publication.
+- [x] The Production Auth Smoke dispatch step inside Readiness #167 is request-only evidence and is not treated as authenticated Production PASS.
+- [x] Before scheduled-publication migration deployment, the actual Production pending set was confirmed to be exactly `20260916100000`; the dry-run would apply only `20260916100000_episode_scheduled_publication.sql`.
+- [x] Issue #460 contains the exact owner approval for operation `supabase-migration-deploy`, main `a7bd226a...`, challenge `11F8CA25`, and migration set `["20260916100000"]`, followed by the matching GitHub-Actions claim bound to bridge run `35074760475`.
+- [x] Approved Production migration bridge run `35074760475` revalidated the exact approval/current-main boundary, applied only `20260916100000_episode_scheduled_publication.sql`, and recorded `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, `failure_phase="none"`.
+- [x] Post-deploy migration status shows `20260916100000` in both Local and Remote with no remaining pending migration; Production beta integrity checks and monitoring-signal checks passed.
+- [x] The migration/application evidence proves the scheduled-publication schema/control path, owner-bound schedule/cancel boundary, due-publication job, lifecycle validation, and current Production readiness/observability state; it is not mislabeled as a live authenticated elapsed-time schedule-and-publish E2E fixture.
+- [x] No Production draft/work/episode fixture is created merely to force documentary scheduled-publication E2E proof.
+- [x] Issue #511 / run `34692176490` remains still-valid only for its actually executed Chapter 38/40 authenticated create/render/LIGHT ANALYTICS scope; it is not direct Production authenticated proof of PR #609 scheduled publication.
+- [x] No duplicate migration, Auth Smoke, Stripe operation, Secret change, campaign-state cutover, or Production fixture creation is justified solely for documentary SHA freshness.
+- [x] This documentation reconciliation performs no Production DB/Supabase mutation, migration rerun, Auth configuration mutation, Stripe/billing/entitlement mutation, Secret/environment mutation, Production Auth Smoke execution, campaign-state cutover, or image generation/editing.
+- [x] Qualified Japanese counsel review remains pending/deferred by owner and is not converted into legal PASS by the technical reconciliation.
 
 ## 2026-09-16 current-main / post-PR #601 reconciliation
 
@@ -138,7 +161,7 @@ Chapter 38 Production state remains reconciled:
 - [x] `20260909130000_chapter38_rank_bayesian_percentiles.sql` is covered by issue #165 / bridge run `34340585331`, mutation/postcheck `success`.
 - [x] `20260909140000_chapter38_seed_discovery_exp.sql` is covered by issue #165 / bridge run `34358566221`, mutation/postcheck `success`.
 - [x] `20260909190000_chapter38_star_rating_scout_exp.sql` is covered by issue #460 / bridge run `34408554615`, `result="success"`, mutation/postcheck `success`.
-- [x] `20260910070000_chapter38_comment_scout_exp_foundation.sql` is covered by issue #460 / bridge run `34413902759`, mutation/postcheck `success`.
+- [x] `20260910070000_chapter38_comment_scout_exp_foundation.sql` is covered by issue #460 / bridge run `34413902759`, `result="success"`, mutation/postcheck `success`.
 - [x] `20260910143000_chapter38_exclude_self_comment_scout_exp.sql` is covered by issue #460 / bridge run `34441780108`, `result="success"`, mutation/postcheck `success`.
 
 Chapter 40 / official-thumbnail registration state:
