@@ -16,7 +16,10 @@ test('scheduled publication keeps episodes private drafts until trusted release'
   assert.match(migration, /create table public\.episode_publish_schedules/);
   assert.match(migration, /Only draft episodes can be scheduled/);
   assert.match(migration, /v_episode_status <> 'draft'/);
-  assert.match(migration, /where s\.state = 'pending'[\s\S]*s\.scheduled_at <= now\(\)/);
+  assert.match(
+    migration,
+    /where s\.state = 'pending'[\s\S]*s\.scheduled_at <= now\(\)/
+  );
   assert.match(migration, /set status = 'published'/);
   assert.doesNotMatch(migration, /set status = 'scheduled'/);
 });
@@ -70,10 +73,7 @@ test('manual publication clears stale schedules automatically', () => {
     migration,
     /create trigger episodes_clear_publish_schedule_after_release/
   );
-  assert.match(
-    migration,
-    /old\.status = 'draft' and new\.status <> 'draft'/
-  );
+  assert.match(migration, /old\.status = 'draft' and new\.status <> 'draft'/);
   assert.match(
     migration,
     /delete from public\.episode_publish_schedules where episode_id = new\.id/
