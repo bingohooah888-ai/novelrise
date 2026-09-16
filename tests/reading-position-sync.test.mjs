@@ -103,10 +103,7 @@ test('reader pages hydrate sync state without blocking local use', () => {
   assert.match(continuitySource, /keeping this device copy/);
   assert.match(homeSource, /novelight-reading-sync\.js/);
   assert.match(homeSource, /recentProgress/);
-  assert.match(
-    homeSource,
-    /ログイン中の読書位置を端末間で同期しています/
-  );
+  assert.match(homeSource, /ログイン中の読書位置を端末間で同期しています/);
   assert.match(homeSource, /この端末の読書履歴から表示しています/);
 });
 
