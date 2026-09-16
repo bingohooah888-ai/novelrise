@@ -16,6 +16,7 @@
   let neutralTotal = null;
   let seedOffset = 0;
   let loading = false;
+  let sessionPromise = null;
 
   function esc(value) {
     const el = document.createElement('div');
@@ -46,6 +47,38 @@
   function shouldFallbackFeed(result, name) {
     if (!result?.error) return !Array.isArray(result?.data);
     return missingTrustedRpc(result.error, name);
+  }
+
+  async function currentSession() {
+    if (!sessionPromise) {
+      sessionPromise = client.auth
+        .getSession()
+        .then((result) => result.data?.session || null)
+        .catch((error) => {
+          console.error('discovery session lookup failed', error);
+          return null;
+        });
+    }
+    return sessionPromise;
+  }
+
+  async function filterHiddenRows(rows) {
+    if (!rows.length) return rows;
+    const session = await currentSession();
+    if (!session) return rows;
+
+    const result = await client.rpc('novelight_hidden_novel_ids', {
+      p_novel_ids: rows.map(novelId),
+    });
+    if (result.error) {
+      console.error('discovery mute filter failed', result.error);
+      return rows;
+    }
+
+    const hidden = new Set(
+      (Array.isArray(result.data) ? result.data : []).map(String)
+    );
+    return rows.filter((row) => !hidden.has(novelId(row)));
   }
 
   function coverMarkup(novel) {
@@ -100,14 +133,14 @@
     if (!receipts.length) return;
     let result = await client.rpc('record_trusted_allocation_receipts_v2', {
       p_receipts: receipts,
-      p_visitor_token: visitor()
+      p_visitor_token: visitor(),
     });
     if (
       result.error &&
       missingTrustedRpc(result.error, 'record_trusted_allocation_receipts_v2')
     ) {
       result = await client.rpc('record_trusted_allocation_receipts', {
-        p_receipts: receipts
+        p_receipts: receipts,
       });
     }
     if (result.error) console.error(`${label} impression record failed`, result.error);
@@ -124,7 +157,7 @@
     if (!rows.length) return;
     const result = await client.rpc('record_neutral_search_impressions', {
       p_novel_ids: rows.map(novelId),
-      p_visitor_token: visitor()
+      p_visitor_token: visitor(),
     });
     if (result.error) console.error('neutral telemetry fallback failed', result.error);
   }
@@ -136,7 +169,7 @@
       p_novel_ids: rows.map(novelId),
       p_visitor_token: visitor(),
       p_offset: offset,
-      p_rotation_key: null
+      p_rotation_key: null,
     });
     if (
       shouldFallbackFeed(
@@ -163,7 +196,7 @@
       p_limit: limit,
       p_keyword: null,
       p_genre: null,
-      p_visitor_token: visitor()
+      p_visitor_token: visitor(),
     };
     let result = await client.rpc('novelight_trusted_discovery_feed_v2', args);
     if (shouldFallbackFeed(result, 'novelight_trusted_discovery_feed_v2')) {
@@ -187,7 +220,8 @@
       batchSeen.add(id);
       candidates.push(row);
     }
-    const page = candidates.slice(0, pageSize);
+    const filtered = await filterHiddenRows(candidates);
+    const page = filtered.slice(0, pageSize);
     const visible = appendRows(page);
     await recordTrusted(visible);
     moreWrap.hidden = candidates.length <= pageSize || page.length === 0;
@@ -200,7 +234,7 @@
       p_genre: null,
       p_sort: 'new',
       p_limit: limit,
-      p_offset: neutralOffset
+      p_offset: neutralOffset,
     });
     if (result.error) throw result.error;
     const rows = Array.isArray(result.data) ? result.data : [];
@@ -212,7 +246,8 @@
   async function loadNew() {
     const pageOffset = neutralOffset;
     const rows = await fetchNeutralNew(pageSize);
-    const visible = appendRows(rows);
+    const filtered = await filterHiddenRows(rows);
+    const visible = appendRows(filtered);
     await recordVisible('search_new', visible, pageOffset);
     moreWrap.hidden = rows.length < pageSize || neutralOffset >= Number(neutralTotal || 0);
     moreButton.textContent = 'さらに24作品を見る';
@@ -221,7 +256,7 @@
   async function fetchSeedPage() {
     const result = await client.rpc('novelight_light_seed_feed', {
       p_limit: pageSize + 1,
-      p_offset: seedOffset
+      p_offset: seedOffset,
     });
     if (result.error) throw result.error;
     const rows = (Array.isArray(result.data) ? result.data : []).filter(
@@ -233,11 +268,12 @@
   async function loadSeed() {
     const pageOffset = seedOffset;
     const rows = await fetchSeedPage();
-    const page = rows.slice(0, pageSize);
+    const rawPage = rows.slice(0, pageSize);
+    const page = await filterHiddenRows(rawPage);
     const visible = appendRows(page);
     await recordVisible('search_seed', visible, pageOffset);
-    seedOffset += page.length;
-    moreWrap.hidden = rows.length <= pageSize || page.length === 0;
+    seedOffset += rawPage.length;
+    moreWrap.hidden = rows.length <= pageSize || rawPage.length === 0;
     moreButton.textContent = '発掘中の作品をもっと見る';
   }
 
