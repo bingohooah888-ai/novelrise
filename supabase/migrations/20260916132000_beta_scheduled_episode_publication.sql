@@ -8,7 +8,19 @@ begin;
 
 select pg_advisory_xact_lock(hashtext('novelight:20260916132000-beta-scheduled-publication'));
 
-create extension if not exists pg_cron;
+do $$
+begin
+  if exists (
+    select 1
+    from pg_available_extensions
+    where name = 'pg_cron'
+  ) then
+    execute 'create extension if not exists pg_cron';
+  else
+    raise notice 'pg_cron is unavailable; skipping cron extension bootstrap in compatibility replay';
+  end if;
+end
+$$;
 
 do $$
 begin
@@ -37,11 +49,13 @@ begin
     raise exception 'Scheduled publication RPC/worker already exists; stop and inspect before applying';
   end if;
 
-  if to_regclass('cron.job') is null then
-    raise exception 'pg_cron extension did not expose cron.job';
+  if exists (
+    select 1 from pg_available_extensions where name = 'pg_cron'
+  ) and to_regclass('cron.job') is null then
+    raise exception 'pg_cron is available but did not expose cron.job';
   end if;
 
-  if exists (
+  if to_regclass('cron.job') is not null and exists (
     select 1 from cron.job where jobname = 'novelight-publish-scheduled-episodes'
   ) then
     raise exception 'Scheduled publication cron job already exists; stop and inspect before applying';
@@ -270,10 +284,20 @@ grant execute on function public.novelight_schedule_episode_draft(bigint, timest
 grant execute on function public.novelight_cancel_episode_schedule(bigint) to authenticated;
 grant execute on function public.novelight_publish_due_scheduled_episodes() to service_role;
 
-select cron.schedule(
-  'novelight-publish-scheduled-episodes',
-  '* * * * *',
-  'select public.novelight_publish_due_scheduled_episodes();'
-);
+do $$
+begin
+  if to_regclass('cron.job') is not null then
+    execute $cron$
+      select cron.schedule(
+        'novelight-publish-scheduled-episodes',
+        '* * * * *',
+        'select public.novelight_publish_due_scheduled_episodes();'
+      )
+    $cron$;
+  else
+    raise notice 'cron.job is unavailable; skipping scheduled-publication job in compatibility replay';
+  end if;
+end
+$$;
 
 commit;
