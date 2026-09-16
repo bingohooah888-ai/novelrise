@@ -25,7 +25,12 @@ test('scheduled publication keeps episodes private drafts until trusted release'
 });
 
 test('scheduled publication uses a bounded trusted cron release path', () => {
-  assert.match(migration, /create extension if not exists pg_cron/);
+  assert.match(migration, /pg_available_extensions/);
+  assert.match(migration, /execute 'create extension if not exists pg_cron'/);
+  assert.match(
+    migration,
+    /pg_cron is unavailable; skipping scheduled publication cron bootstrap in compatibility replay/
+  );
   assert.match(
     migration,
     /novelight-release-scheduled-episodes'[\s\S]*'\* \* \* \* \*'/
