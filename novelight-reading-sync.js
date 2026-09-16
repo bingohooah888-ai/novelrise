@@ -106,6 +106,15 @@
     return compareProgress(local, remote) > 0 ? normalizeProgress(local) : normalizeProgress(remote);
   }
 
+  function localCanAdvance(local, remote) {
+    const left = normalizeProgress(local);
+    const right = normalizeProgress(remote);
+    if (!left) return false;
+    if (!right) return true;
+    if (left.serverRevision !== right.serverRevision) return false;
+    return compareProgress(left, right) > 0;
+  }
+
   function warnOnce(error) {
     if (warned) return;
     warned = true;
@@ -161,11 +170,6 @@
     const returned = remoteToProgress(result.data);
     if (!returned) return normalized;
 
-    if (compareProgress(normalized, returned) > 0) {
-      const carried = { ...normalized, serverRevision: returned.serverRevision };
-      writeLocal(carried);
-      return carried;
-    }
     writeLocal(returned);
     return returned;
   }
@@ -189,13 +193,12 @@
       writeLocal(remote);
       return remote;
     }
-    if (compareProgress(local, remote) <= 0) {
+    if (!localCanAdvance(local, remote)) {
       writeLocal(remote);
       return remote;
     }
-    const carried = { ...local, serverRevision: remote.serverRevision };
-    writeLocal(carried);
-    return carried;
+    writeLocal(local);
+    return normalizeProgress(local);
   }
 
   async function hydrateMany(clientInstance, novelIds) {
@@ -214,7 +217,7 @@
       for (const novelId of ids) {
         const local = readLocal(novelId);
         const remote = remoteByNovel.get(novelId) || null;
-        const localWins = compareProgress(local, remote) > 0;
+        const localWins = localCanAdvance(local, remote);
         const merged = mergeOneLocalRemote(local, remote);
         if (local && merged && localWins) {
           void pushWithUser(clientInstance, user, merged).catch(warnOnce);
@@ -248,10 +251,9 @@
       }
       for (const local of localBefore) {
         const remote = remoteByNovel.get(local.novelId) || null;
-        if (compareProgress(local, remote) > 0) {
-          const carried = remote ? { ...local, serverRevision: remote.serverRevision } : local;
-          writeLocal(carried);
-          void pushWithUser(clientInstance, user, carried).catch(warnOnce);
+        if (localCanAdvance(local, remote)) {
+          writeLocal(local);
+          void pushWithUser(clientInstance, user, local).catch(warnOnce);
         }
       }
       return { rows: readRecentLocal(global.localStorage, boundedLimit), synced: true };
@@ -270,6 +272,7 @@
     readRecentLocal,
     compareProgress,
     chooseNewest,
+    localCanAdvance,
     syncProgress,
     hydrateNovel,
     hydrateMany,
