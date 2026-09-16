@@ -46,9 +46,8 @@
   }
 
   function laterReadAt(left, right) {
-    const leftTime = timestamp(left);
-    const rightTime = timestamp(right);
-    return new Date(Math.max(leftTime, rightTime, Date.now())).toISOString();
+    const latest = Math.max(timestamp(left), timestamp(right));
+    return new Date(latest > 0 ? latest : Date.now()).toISOString();
   }
 
   function mergeProgress(current, incoming) {
