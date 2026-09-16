@@ -68,7 +68,7 @@
     if (!session) return rows;
 
     const result = await client.rpc('novelight_hidden_novel_ids', {
-      p_novel_ids: rows.map(novelId),
+      p_novel_ids: rows.map(novelId)
     });
     if (result.error) {
       console.error('discovery mute filter failed', result.error);
@@ -133,14 +133,14 @@
     if (!receipts.length) return;
     let result = await client.rpc('record_trusted_allocation_receipts_v2', {
       p_receipts: receipts,
-      p_visitor_token: visitor(),
+      p_visitor_token: visitor()
     });
     if (
       result.error &&
       missingTrustedRpc(result.error, 'record_trusted_allocation_receipts_v2')
     ) {
       result = await client.rpc('record_trusted_allocation_receipts', {
-        p_receipts: receipts,
+        p_receipts: receipts
       });
     }
     if (result.error) console.error(`${label} impression record failed`, result.error);
@@ -157,7 +157,7 @@
     if (!rows.length) return;
     const result = await client.rpc('record_neutral_search_impressions', {
       p_novel_ids: rows.map(novelId),
-      p_visitor_token: visitor(),
+      p_visitor_token: visitor()
     });
     if (result.error) console.error('neutral telemetry fallback failed', result.error);
   }
@@ -169,7 +169,7 @@
       p_novel_ids: rows.map(novelId),
       p_visitor_token: visitor(),
       p_offset: offset,
-      p_rotation_key: null,
+      p_rotation_key: null
     });
     if (
       shouldFallbackFeed(
@@ -196,7 +196,7 @@
       p_limit: limit,
       p_keyword: null,
       p_genre: null,
-      p_visitor_token: visitor(),
+      p_visitor_token: visitor()
     };
     let result = await client.rpc('novelight_trusted_discovery_feed_v2', args);
     if (shouldFallbackFeed(result, 'novelight_trusted_discovery_feed_v2')) {
@@ -220,9 +220,9 @@
       batchSeen.add(id);
       candidates.push(row);
     }
-    const filtered = await filterHiddenRows(candidates);
-    const page = filtered.slice(0, pageSize);
-    const visible = appendRows(page);
+    const page = candidates.slice(0, pageSize);
+    const filteredPage = await filterHiddenRows(page);
+    const visible = appendRows(filteredPage);
     await recordTrusted(visible);
     moreWrap.hidden = candidates.length <= pageSize || page.length === 0;
     moreButton.textContent = 'おすすめをもっと見る';
@@ -234,7 +234,7 @@
       p_genre: null,
       p_sort: 'new',
       p_limit: limit,
-      p_offset: neutralOffset,
+      p_offset: neutralOffset
     });
     if (result.error) throw result.error;
     const rows = Array.isArray(result.data) ? result.data : [];
@@ -256,7 +256,7 @@
   async function fetchSeedPage() {
     const result = await client.rpc('novelight_light_seed_feed', {
       p_limit: pageSize + 1,
-      p_offset: seedOffset,
+      p_offset: seedOffset
     });
     if (result.error) throw result.error;
     const rows = (Array.isArray(result.data) ? result.data : []).filter(
@@ -268,12 +268,12 @@
   async function loadSeed() {
     const pageOffset = seedOffset;
     const rows = await fetchSeedPage();
-    const rawPage = rows.slice(0, pageSize);
-    const page = await filterHiddenRows(rawPage);
-    const visible = appendRows(page);
+    const page = rows.slice(0, pageSize);
+    const filteredPage = await filterHiddenRows(page);
+    const visible = appendRows(filteredPage);
     await recordVisible('search_seed', visible, pageOffset);
-    seedOffset += rawPage.length;
-    moreWrap.hidden = rows.length <= pageSize || rawPage.length === 0;
+    seedOffset += page.length;
+    moreWrap.hidden = rows.length <= pageSize || page.length === 0;
     moreButton.textContent = '発掘中の作品をもっと見る';
   }
 
