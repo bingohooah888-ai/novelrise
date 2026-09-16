@@ -24,6 +24,9 @@ drop function if exists public.novelight_publish_due_episodes();
 drop function if exists public.novelight_cancel_episode_schedule(bigint);
 drop function if exists public.novelight_schedule_episode_publication(bigint,timestamptz);
 
+drop trigger if exists novelight_clear_episode_schedule_on_publish on public.episodes;
+drop function if exists public.novelight_clear_episode_schedule_on_publish();
+
 drop index if exists public.episodes_scheduled_publish_due_idx;
 drop index if exists public.episodes_one_scheduled_draft_per_novel_idx;
 
