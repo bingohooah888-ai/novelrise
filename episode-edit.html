@@ -40,5 +40,6 @@ document.getElementById('form').addEventListener('submit',async e=>{e.preventDef
 publishDraft.addEventListener('click',async()=>{if(!ready||busy||!isDraft())return;const value=values(),validation=validate(value,true);if(validation){status.textContent=validation;return}if(!confirm('このエピソードを公開しますか？公開後は読者が閲覧できるようになります。'))return;setBusy(true);status.textContent='最新の下書きを保存して公開しています...';try{await saveServerDraft();const result=await client.rpc('novelight_publish_episode_draft_atomic',{p_episode_id:id});if(result.error)throw result.error;clearLocalDraftBeforeNavigation();location.href='episode.html?id='+encodeURIComponent(id)}catch(e){console.error(e);status.textContent='公開できませんでした。タイトル・本文・第1話条件を確認してください。';setBusy(false)}});
 </script>
 <script src="novelight-author-draft.js"></script>
+<script src="novelight-episode-schedule.js"></script>
 </body>
 </html>

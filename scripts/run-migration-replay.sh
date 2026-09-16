@@ -251,4 +251,37 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260910143000_chapter38_exclude_self_comment_scout_exp_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify scheduled episode publication behavior'
+"${REPLAY[@]}" -f supabase/checks/20260916100000_episode_scheduled_publication_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/episode-scheduled-publication.sql
+echo '::endgroup::'
+
+echo '::group::Verify scheduled episode publication rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260916100000_episode_scheduled_publication_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'episodes'
+       and column_name = 'scheduled_publish_at'
+  ) then
+    raise exception 'Scheduled publication rollback left the schedule column behind';
+  end if;
+
+  if to_regprocedure('public.novelight_schedule_episode_draft(bigint,timestamp with time zone)') is not null
+     or to_regprocedure('public.novelight_cancel_episode_schedule(bigint)') is not null
+     or to_regprocedure('public.novelight_publish_due_episode_schedules()') is not null then
+    raise exception 'Scheduled publication rollback left one or more new RPCs behind';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260916100000_episode_scheduled_publication_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260916100000_episode_scheduled_publication.sql
+"${REPLAY[@]}" -f supabase/checks/20260916100000_episode_scheduled_publication_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
