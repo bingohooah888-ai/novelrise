@@ -90,10 +90,7 @@ test('comment reception is enforced at the database write boundary', () => {
 });
 
 test('reader presentation has phased-deploy fallback without bypassing DB enforcement', () => {
-  assert.match(
-    commentsClient,
-    /rpc\('novelight_novel_interaction_state'/
-  );
+  assert.match(commentsClient, /rpc\('novelight_novel_interaction_state'/);
   assert.match(commentsClient, /error\?\.code === '42883'/);
   assert.match(
     commentsClient,
@@ -106,7 +103,10 @@ test('reader presentation has phased-deploy fallback without bypassing DB enforc
 test('typo-report preference is stored but no reader report action is exposed yet', () => {
   assert.match(migration, /'typo_reports_live', false/);
   assert.match(settingsPage, /誤字報告機能は準備中です/);
-  assert.doesNotMatch(commentsClient, /post_typo|submit_typo|typo-report|誤字報告/);
+  assert.doesNotMatch(
+    commentsClient,
+    /post_typo|submit_typo|typo-report|誤字報告/
+  );
 });
 
 test('author studio exposes defaults and per-work inheritance controls', () => {
@@ -139,7 +139,16 @@ test('migration ships with read-only checks and a scoped rollback', () => {
   assert.match(postcheck, /POSTCHECK PASS/);
   assert.match(postcheck, /has_table_privilege/);
   assert.match(postcheck, /has_function_privilege/);
-  assert.match(rollback, /drop trigger if exists novelight_enforce_comment_reception/);
-  assert.match(rollback, /drop table if exists public\.novel_interaction_settings/);
-  assert.match(rollback, /drop table if exists public\.author_interaction_defaults/);
+  assert.match(
+    rollback,
+    /drop trigger if exists novelight_enforce_comment_reception/
+  );
+  assert.match(
+    rollback,
+    /drop table if exists public\.novel_interaction_settings/
+  );
+  assert.match(
+    rollback,
+    /drop table if exists public\.author_interaction_defaults/
+  );
 });
