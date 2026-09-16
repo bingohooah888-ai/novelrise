@@ -1,6 +1,8 @@
 (function attachNovelightUserSafety(global) {
   'use strict';
 
+  const sessionByClient = new WeakMap();
+
   function createElement(tag, className, text) {
     const element = document.createElement(tag);
     if (className) element.className = className;
@@ -12,22 +14,59 @@
     const row = Array.isArray(value) ? value[0] : value;
     return {
       blocked: row?.blocked === true,
-      muted: row?.muted === true,
+      muted: row?.muted === true
     };
+  }
+
+  async function currentSession(client) {
+    if (!client) return null;
+    if (!sessionByClient.has(client)) {
+      sessionByClient.set(
+        client,
+        client.auth
+          .getSession()
+          .then((result) => result.data?.session || null)
+          .catch((error) => {
+            console.error('user safety session lookup failed', error);
+            return null;
+          })
+      );
+    }
+    return sessionByClient.get(client);
+  }
+
+  function rowNovelId(row) {
+    return String(row?.novel_id ?? row?.id ?? '');
+  }
+
+  async function filterNovelRows(client, rows) {
+    const input = Array.isArray(rows) ? rows : [];
+    if (!client || !input.length) return input;
+
+    const session = await currentSession(client);
+    if (!session) return input;
+
+    const novelIds = input.map(rowNovelId).filter(Boolean).slice(0, 100);
+    if (!novelIds.length) return input;
+
+    const result = await client.rpc('novelight_hidden_novel_ids', {
+      p_novel_ids: novelIds
+    });
+    if (result.error) {
+      console.error('user safety novel filter failed', result.error);
+      return input;
+    }
+
+    const hidden = new Set(
+      (Array.isArray(result.data) ? result.data : []).map(String)
+    );
+    return input.filter((row) => !hidden.has(rowNovelId(row)));
   }
 
   async function mountAuthorControls({ client, targetUserId, container }) {
     if (!client || !targetUserId || !container) return;
 
-    let session;
-    try {
-      const result = await client.auth.getSession();
-      session = result.data?.session || null;
-    } catch (error) {
-      console.error('user safety session lookup failed', error);
-      return;
-    }
-
+    const session = await currentSession(client);
     const currentUserId = session?.user?.id;
     if (!currentUserId || currentUserId === targetUserId) return;
 
@@ -61,7 +100,7 @@
 
     async function loadRelationship() {
       const result = await client.rpc('novelight_user_relationship', {
-        p_target_user_id: targetUserId,
+        p_target_user_id: targetUserId
       });
       if (result.error) throw result.error;
       relationship = normalizeRelationship(result.data);
@@ -69,7 +108,8 @@
     }
 
     async function setRelationship(kind, nextValue) {
-      const rpcName = kind === 'block' ? 'novelight_set_user_block' : 'novelight_set_user_mute';
+      const rpcName =
+        kind === 'block' ? 'novelight_set_user_block' : 'novelight_set_user_mute';
       const args =
         kind === 'block'
           ? { p_target_user_id: targetUserId, p_blocked: nextValue }
@@ -82,16 +122,24 @@
 
     blockButton.addEventListener('click', async () => {
       const nextValue = !relationship.blocked;
-      if (nextValue && !global.confirm('この作者との直接的な交流をブロックしますか？')) return;
+      if (
+        nextValue &&
+        !global.confirm('この作者との直接的な交流をブロックしますか？')
+      ) {
+        return;
+      }
       blockButton.disabled = true;
       muteButton.disabled = true;
-      status.textContent = nextValue ? 'ブロックしています...' : 'ブロックを解除しています...';
+      status.textContent = nextValue
+        ? 'ブロックしています...'
+        : 'ブロックを解除しています...';
       try {
         await setRelationship('block', nextValue);
         status.textContent = nextValue ? 'ブロックしました。' : 'ブロックを解除しました。';
       } catch (error) {
         console.error('user block update failed', error);
-        status.textContent = 'ブロック設定を変更できませんでした。時間をおいて再度お試しください。';
+        status.textContent =
+          'ブロック設定を変更できませんでした。時間をおいて再度お試しください。';
       } finally {
         blockButton.disabled = false;
         muteButton.disabled = false;
@@ -102,13 +150,16 @@
       const nextValue = !relationship.muted;
       blockButton.disabled = true;
       muteButton.disabled = true;
-      status.textContent = nextValue ? 'ミュートしています...' : 'ミュートを解除しています...';
+      status.textContent = nextValue
+        ? 'ミュートしています...'
+        : 'ミュートを解除しています...';
       try {
         await setRelationship('mute', nextValue);
         status.textContent = nextValue ? 'ミュートしました。' : 'ミュートを解除しました。';
       } catch (error) {
         console.error('user mute update failed', error);
-        status.textContent = 'ミュート設定を変更できませんでした。時間をおいて再度お試しください。';
+        status.textContent =
+          'ミュート設定を変更できませんでした。時間をおいて再度お試しください。';
       } finally {
         blockButton.disabled = false;
         muteButton.disabled = false;
@@ -123,5 +174,8 @@
     }
   }
 
-  global.NovelightUserSafety = Object.freeze({ mountAuthorControls });
+  global.NovelightUserSafety = Object.freeze({
+    filterNovelRows,
+    mountAuthorControls
+  });
 })(window);
