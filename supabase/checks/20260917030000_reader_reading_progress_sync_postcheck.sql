@@ -52,8 +52,7 @@ begin
     raise exception 'Reader progress guard function is missing';
   end if;
 
-  if pg_catalog.has_function_privilege('public', 'public.novelight_guard_reader_reading_progress()', 'execute')
-     or pg_catalog.has_function_privilege('anon', 'public.novelight_guard_reader_reading_progress()', 'execute')
+  if pg_catalog.has_function_privilege('anon', 'public.novelight_guard_reader_reading_progress()', 'execute')
      or pg_catalog.has_function_privilege('authenticated', 'public.novelight_guard_reader_reading_progress()', 'execute') then
     raise exception 'Reader progress trigger function must not be directly executable by clients';
   end if;
