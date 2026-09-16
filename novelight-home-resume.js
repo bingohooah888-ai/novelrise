@@ -2,11 +2,98 @@
   'use strict';
 
   const STORAGE_PREFIX = 'novelight:reading:v1:';
+  const REMOTE_TABLE = 'reader_reading_progress';
   const CANDIDATE_LIMIT = 10;
   const STYLE_ID = 'novelight-home-resume-style';
 
   function clamp(value, min = 0, max = 1) {
     return Math.max(min, Math.min(max, Number(value) || 0));
+  }
+
+  function timestamp(value) {
+    const parsed = new Date(value || 0).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function progressKey(novelId) {
+    return STORAGE_PREFIX + String(novelId || '');
+  }
+
+  function readProgress(novelId, storage = window.localStorage) {
+    try {
+      const value = JSON.parse(storage.getItem(progressKey(novelId)) || 'null');
+      if (!value || String(value.novelId) !== String(novelId) || !value.episodeId) return null;
+      return value;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeProgress(value, storage = window.localStorage) {
+    if (!value?.novelId || !value?.episodeId) return false;
+    try {
+      storage.setItem(progressKey(value.novelId), JSON.stringify(value));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function mergeSameUserProgress(current, incoming, userId) {
+    if (!current || current.syncUserId !== userId) return { ...incoming, syncUserId: userId };
+    const currentNumber = Number(current.episodeNumber) || 0;
+    const incomingNumber = Number(incoming.episodeNumber) || 0;
+    const lastReadAt = new Date(Math.max(timestamp(current.lastReadAt), timestamp(incoming.lastReadAt), 1)).toISOString();
+
+    if (incomingNumber > currentNumber) return { ...incoming, lastReadAt, syncUserId: userId };
+    if (incomingNumber < currentNumber) return { ...current, lastReadAt, syncUserId: userId };
+
+    if (String(incoming.episodeId) !== String(current.episodeId)) {
+      const winner = timestamp(incoming.lastReadAt) >= timestamp(current.lastReadAt) ? incoming : current;
+      return { ...winner, lastReadAt, syncUserId: userId };
+    }
+
+    return {
+      ...current,
+      ...incoming,
+      progressRatio: Math.max(clamp(current.progressRatio), clamp(incoming.progressRatio)),
+      lastReadAt,
+      syncUserId: userId
+    };
+  }
+
+  async function hydrateRecentRemoteProgress(clientInstance) {
+    if (!clientInstance?.auth?.getSession) return { synced: false, userId: null };
+    try {
+      const auth = await clientInstance.auth.getSession();
+      const userId = auth.data?.session?.user?.id || null;
+      if (auth.error || !userId) return { synced: false, userId: null };
+
+      const result = await clientInstance
+        .from(REMOTE_TABLE)
+        .select('user_id,novel_id,episode_id,episode_number,progress_ratio,last_read_at')
+        .eq('user_id', userId)
+        .order('last_read_at', { ascending: false })
+        .limit(CANDIDATE_LIMIT);
+      if (result.error) throw result.error;
+
+      for (const row of result.data || []) {
+        if (!row?.novel_id || !row?.episode_id) continue;
+        const incoming = {
+          novelId: String(row.novel_id),
+          episodeId: String(row.episode_id),
+          episodeNumber: Number(row.episode_number) || 0,
+          progressRatio: clamp(row.progress_ratio),
+          lastReadAt: row.last_read_at || new Date().toISOString(),
+          syncUserId: userId
+        };
+        writeProgress(mergeSameUserProgress(readProgress(incoming.novelId), incoming, userId));
+      }
+      return { synced: true, userId };
+    } catch (error) {
+      console.warn('home reading progress hydration failed; using this device', error);
+      return { synced: false, userId: null };
+    }
   }
 
   function readRecentProgress(storage = window.localStorage, limit = CANDIDATE_LIMIT) {
@@ -24,15 +111,16 @@
         if (!value?.novelId || !value?.episodeId) continue;
         const expectedNovelId = key.slice(STORAGE_PREFIX.length);
         if (String(value.novelId) !== expectedNovelId) continue;
-        const timestamp = new Date(value.lastReadAt || 0).getTime();
-        if (!Number.isFinite(timestamp) || timestamp <= 0) continue;
+        const valueTimestamp = new Date(value.lastReadAt || 0).getTime();
+        if (!Number.isFinite(valueTimestamp) || valueTimestamp <= 0) continue;
         rows.push({
           novelId: String(value.novelId),
           episodeId: String(value.episodeId),
           episodeNumber: Number(value.episodeNumber) || 0,
           progressRatio: clamp(value.progressRatio),
-          lastReadAt: new Date(timestamp).toISOString(),
-          timestamp
+          lastReadAt: new Date(valueTimestamp).toISOString(),
+          syncUserId: value.syncUserId || null,
+          timestamp: valueTimestamp
         });
       }
     } catch {
@@ -78,7 +166,7 @@
     return `第${number}話から続きを読む`;
   }
 
-  function renderResume(novel, target, stored) {
+  function renderResume(novel, target, stored, synced = false) {
     if (document.getElementById('homeResumeSection')) return false;
     const hero = document.querySelector('main > .hero');
     if (!hero) return false;
@@ -108,7 +196,7 @@
     if (target.title) episode.textContent += `「${target.title}」`;
     const note = document.createElement('p');
     note.className = 'nl-home-resume-note';
-    note.textContent = 'この端末の読書履歴から表示しています。';
+    note.textContent = synced ? 'ログイン中は読書履歴を端末間で同期します。' : 'この端末の読書履歴から表示しています。';
     copy.append(kicker, title, episode, note);
 
     const action = document.createElement('a');
@@ -144,11 +232,12 @@
 
   async function installHomeResume(clientInstance) {
     if (!clientInstance || document.getElementById('homeResumeSection')) return false;
+    const syncState = await hydrateRecentRemoteProgress(clientInstance);
     const recent = readRecentProgress();
     for (const stored of recent) {
       try {
         const resolved = await resolveCandidate(clientInstance, stored);
-        if (resolved) return renderResume(resolved.novel, resolved.target, resolved.stored);
+        if (resolved) return renderResume(resolved.novel, resolved.target, resolved.stored, syncState.synced);
       } catch (error) {
         console.error('home resume candidate lookup failed', error);
       }
@@ -159,6 +248,7 @@
   window.NovelightHomeResume = Object.freeze({
     readRecentProgress,
     continueTarget,
+    hydrateRecentRemoteProgress,
     installHomeResume
   });
 
