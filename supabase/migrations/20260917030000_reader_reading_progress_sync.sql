@@ -95,7 +95,7 @@ begin
   end if;
 
   new.created_at := old.created_at;
-  new.last_read_at := greatest(old.last_read_at, new.last_read_at);
+  new.last_read_at := greatest(old.last_read_at, v_incoming_read_at);
 
   if new.episode_number < old.episode_number then
     new.episode_id := old.episode_id;
@@ -104,7 +104,7 @@ begin
   elsif new.episode_number = old.episode_number then
     if new.episode_id = old.episode_id then
       new.progress_ratio := greatest(old.progress_ratio, new.progress_ratio);
-    elsif new.last_read_at < old.last_read_at then
+    elsif v_incoming_read_at <= old.last_read_at then
       new.episode_id := old.episode_id;
       new.progress_ratio := old.progress_ratio;
     end if;
