@@ -85,18 +85,27 @@ select n.id, n.user_id, 2, 'Invalid first episode', 'Must not be scheduled first
 from public.novels n
 where n.title = 'Invalid first scheduled episode';
 
+-- Capture the owner's draft id before switching to the non-owner role. The
+-- authenticated non-owner cannot see that private row through RLS, and the
+-- ownership test must exercise the RPC rejection rather than fail in fixture lookup.
+select set_config(
+  'novelight.test.schedule_owner_episode_id',
+  (
+    select e.id::text
+    from public.episodes e
+    join public.novels n on n.id = e.novel_id
+    where n.title = 'Scheduled first publication'
+  ),
+  false
+);
+
 -- A non-owner cannot schedule another author's draft.
 set role authenticated;
 select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
 do $$
 declare
-  v_episode_id bigint;
+  v_episode_id bigint := current_setting('novelight.test.schedule_owner_episode_id')::bigint;
 begin
-  select e.id into strict v_episode_id
-    from public.episodes e
-    join public.novels n on n.id = e.novel_id
-   where n.title = 'Scheduled first publication';
-
   begin
     perform public.novelight_schedule_episode_draft(v_episode_id, now() + interval '10 minutes');
     raise exception 'Expected schedule ownership rejection did not occur';
