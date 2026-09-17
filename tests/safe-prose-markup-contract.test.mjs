@@ -4,7 +4,10 @@ import test from 'node:test';
 import { URL } from 'node:url';
 
 const proseUrl = new URL('../novelight-prose.js', import.meta.url);
-const readingSettingsUrl = new URL('../novelight-reading-settings.js', import.meta.url);
+const readingSettingsUrl = new URL(
+  '../novelight-reading-settings.js',
+  import.meta.url
+);
 const authorDraftUrl = new URL('../novelight-author-draft.js', import.meta.url);
 
 async function text(url) {
@@ -45,9 +48,15 @@ test('oversized or multiline prose markup fails closed to literal text', () => {
   const longRuby = `｜${'漢'.repeat(prose.LIMITS.rubyBase + 1)}《かん》`;
   const multilineRuby = '｜東京\n駅《とうきょうえき》';
 
-  assert.deepEqual(prose.tokenize(longEmphasis), [{ type: 'text', text: longEmphasis }]);
-  assert.deepEqual(prose.tokenize(longRuby), [{ type: 'text', text: longRuby }]);
-  assert.deepEqual(prose.tokenize(multilineRuby), [{ type: 'text', text: multilineRuby }]);
+  assert.deepEqual(prose.tokenize(longEmphasis), [
+    { type: 'text', text: longEmphasis }
+  ]);
+  assert.deepEqual(prose.tokenize(longRuby), [
+    { type: 'text', text: longRuby }
+  ]);
+  assert.deepEqual(prose.tokenize(multilineRuby), [
+    { type: 'text', text: multilineRuby }
+  ]);
 });
 
 test('renderer builds allowlisted DOM nodes and never parses manuscript as html', async () => {
@@ -58,7 +67,10 @@ test('renderer builds allowlisted DOM nodes and never parses manuscript as html'
   assert.match(source, /createElement\('span'\)/);
   assert.match(source, /createTextNode\(/);
   assert.match(source, /\.textContent\s*=/);
-  assert.doesNotMatch(source, /innerHTML|outerHTML|insertAdjacentHTML|DOMParser|eval\(|new Function/);
+  assert.doesNotMatch(
+    source,
+    /innerHTML|outerHTML|insertAdjacentHTML|DOMParser|eval\(|new Function/
+  );
   assert.doesNotMatch(source, /supabase|\.rpc\(|fetch\(|XMLHttpRequest/);
 });
 
