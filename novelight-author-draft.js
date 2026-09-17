@@ -72,6 +72,15 @@
     return Boolean(value && (String(value.title || '').trim() || String(value.content || '').trim()));
   }
 
+  function ensureProseRenderer() {
+    if (window.NovelightProse || document.querySelector('script[data-novelight-prose]')) return;
+    const script = document.createElement('script');
+    script.src = 'novelight-prose.js';
+    script.defer = true;
+    script.dataset.novelightProse = 'true';
+    document.head.appendChild(script);
+  }
+
   function installStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement('style');
@@ -82,6 +91,8 @@
       .nl-draft-actions{display:flex;gap:8px;flex-wrap:wrap}
       .nl-draft-button{min-height:38px;padding:8px 12px;border:1px solid #d6cab7;border-radius:8px;background:#fff;color:#4b3928;font:inherit;font-size:12px;font-weight:900;cursor:pointer}
       .nl-draft-button.preview{background:#3d2d20;color:#fff;border-color:#3d2d20}
+      .nl-draft-prose-help{flex:1 0 100%;padding-top:9px;border-top:1px solid #eadfce;color:#756753;font-size:12px;line-height:1.7}
+      .nl-draft-prose-help code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#4a3826;background:#f7f0e5;padding:1px 4px;border-radius:4px}
       .nl-draft-restore{margin:0 0 18px;padding:14px 15px;border:1px solid #d8bb7c;border-radius:10px;background:#fff8e8;color:#5c4727;font-size:13px;line-height:1.7}
       .nl-draft-restore-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
       .nl-preview-modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(18,14,10,.72)}
@@ -155,6 +166,7 @@
       document.removeEventListener('keydown', escape);
     });
     document.body.appendChild(modal);
+    window.NovelightProse?.enhance(modal);
   }
 
   function restoreDraft(value) {
@@ -229,13 +241,16 @@
     preview.type = 'button';
     preview.className = 'nl-draft-button preview';
     preview.textContent = 'プレビュー';
+    const proseHelp = document.createElement('div');
+    proseHelp.className = 'nl-draft-prose-help';
+    proseHelp.innerHTML = '本文記法：ルビ <code>｜漢字《かんじ》</code> ／ 傍点 <code>《《強調》》</code>。任意のHTMLは実行されず文字として表示されます。';
     save.addEventListener('click', () => {
       const value = values();
       if (writeDraft(key, value)) state.innerHTML = `<strong>保存済み</strong> ・ ${formatTime(value.savedAt)}`;
     });
     preview.addEventListener('click', previewCurrent);
     actions.append(save, preview);
-    tools.append(state, actions);
+    tools.append(state, actions, proseHelp);
     buttons.insertAdjacentElement('beforebegin', tools);
     return state;
   }
@@ -247,6 +262,7 @@
     const ready = await waitUntilReady();
     if (!ready) return false;
     installStyles();
+    ensureProseRenderer();
     const stored = readDraft(key);
     insertRestorePrompt(key, stored);
     const state = installTools(key);
