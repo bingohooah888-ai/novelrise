@@ -26,9 +26,9 @@ begin
     raise exception 'postcheck failed: revision trigger is missing';
   end if;
 
-  if to_regprocedure('public.novelight_list_episode_revisions(uuid)') is null
+  if to_regprocedure('public.novelight_list_episode_revisions(bigint)') is null
      or to_regprocedure('public.novelight_get_episode_revision(uuid)') is null
-     or to_regprocedure('public.novelight_restore_episode_revision(uuid,uuid)') is null then
+     or to_regprocedure('public.novelight_restore_episode_revision(bigint,uuid)') is null then
     raise exception 'postcheck failed: revision RPC is missing';
   end if;
 
@@ -37,15 +37,15 @@ begin
     raise exception 'postcheck failed: revision table is directly readable by clients';
   end if;
 
-  if has_function_privilege('anon', 'public.novelight_list_episode_revisions(uuid)', 'EXECUTE')
+  if has_function_privilege('anon', 'public.novelight_list_episode_revisions(bigint)', 'EXECUTE')
      or has_function_privilege('anon', 'public.novelight_get_episode_revision(uuid)', 'EXECUTE')
-     or has_function_privilege('anon', 'public.novelight_restore_episode_revision(uuid,uuid)', 'EXECUTE') then
+     or has_function_privilege('anon', 'public.novelight_restore_episode_revision(bigint,uuid)', 'EXECUTE') then
     raise exception 'postcheck failed: anonymous revision RPC access exists';
   end if;
 
-  if not has_function_privilege('authenticated', 'public.novelight_list_episode_revisions(uuid)', 'EXECUTE')
+  if not has_function_privilege('authenticated', 'public.novelight_list_episode_revisions(bigint)', 'EXECUTE')
      or not has_function_privilege('authenticated', 'public.novelight_get_episode_revision(uuid)', 'EXECUTE')
-     or not has_function_privilege('authenticated', 'public.novelight_restore_episode_revision(uuid,uuid)', 'EXECUTE') then
+     or not has_function_privilege('authenticated', 'public.novelight_restore_episode_revision(bigint,uuid)', 'EXECUTE') then
     raise exception 'postcheck failed: authenticated revision RPC access is missing';
   end if;
 end
