@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const migrationPath =
-  'supabase/migrations/20260918060000_novel_series.sql';
+const migrationPath = 'supabase/migrations/20260918060000_novel_series.sql';
 const migration = await readFile(migrationPath, 'utf8');
 const precheck = await readFile(
   'supabase/checks/20260918060000_novel_series_precheck.sql',
