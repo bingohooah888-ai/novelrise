@@ -1,4 +1,4 @@
--- Read-only precheck for 20260917143000_episode_revision_history.sql
+-- Read-only precheck for 20260917074632_episode_revision_history.sql
 
 do $$
 begin
