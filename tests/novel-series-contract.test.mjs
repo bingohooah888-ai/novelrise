@@ -50,34 +50,31 @@ test('fresh migration is fail-closed and series tables keep raw anonymous reads 
   assert.match(migration, /n\.user_id = \(select auth\.uid\(\)\)/);
 });
 
-test(
-  'series membership is bounded to one series per work and writes are RPC-only',
-  () => {
-    assert.match(
-      migration,
-      /constraint novel_series_items_novel_once unique \(novel_id\)/
-    );
-    assert.match(
-      migration,
-      /constraint novel_series_items_position_once unique \(series_id, position\)/
-    );
-    assert.match(migration, /if v_count > 100 then/);
-    assert.match(migration, /NOVEL_ALREADY_IN_SERIES/);
-    assert.match(migration, /SERIES_ITEM_DUPLICATE/);
-    assert.match(
-      migration,
-      /grant select on table public\.novel_series_items to authenticated/
-    );
-    assert.doesNotMatch(
-      migration,
-      /grant[^;]*(?:insert|update|delete)[^;]*public\.novel_series_items[^;]*to authenticated/i
-    );
-    assert.match(
-      migration,
-      /grant execute on function public\.novelight_set_series_items\(bigint, bigint\[\]\)[\s\S]*to authenticated/
-    );
-  }
-);
+test('series membership is bounded to one series per work and writes are RPC-only', () => {
+  assert.match(
+    migration,
+    /constraint novel_series_items_novel_once unique \(novel_id\)/
+  );
+  assert.match(
+    migration,
+    /constraint novel_series_items_position_once unique \(series_id, position\)/
+  );
+  assert.match(migration, /if v_count > 100 then/);
+  assert.match(migration, /NOVEL_ALREADY_IN_SERIES/);
+  assert.match(migration, /SERIES_ITEM_DUPLICATE/);
+  assert.match(
+    migration,
+    /grant select on table public\.novel_series_items to authenticated/
+  );
+  assert.doesNotMatch(
+    migration,
+    /grant[^;]*(?:insert|update|delete)[^;]*public\.novel_series_items[^;]*to authenticated/i
+  );
+  assert.match(
+    migration,
+    /grant execute on function public\.novelight_set_series_items\(bigint, bigint\[\]\)[\s\S]*to authenticated/
+  );
+});
 
 test('public context hides unpublished works from readers', () => {
   assert.match(
