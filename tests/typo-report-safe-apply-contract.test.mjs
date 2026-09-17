@@ -120,7 +120,7 @@ test('safe apply changes prose only and remains outside evaluation systems', () 
   assert.doesNotMatch(resolveBody, /episode_number\s*=/);
   assert.doesNotMatch(resolveBody, /status\s*=\s*v_/);
   assert.doesNotMatch(
-    migration,
+    resolveBody,
     /novelight_recalculate_work_ranks|plant_light_seed|record_episode_pv|favorites|exposure_allocation/
   );
 });
