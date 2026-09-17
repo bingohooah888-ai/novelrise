@@ -15,7 +15,7 @@ begin
     raise exception 'public.author_work_export_audit already exists; stop and inspect before applying';
   end if;
 
-  if to_regprocedure('public.novelight_authorize_work_export(uuid,bigint,text)') is not null then
+  if to_regprocedure('public.novelight_authorize_work_export(bigint,text)') is not null then
     raise exception 'novelight_authorize_work_export already exists; stop and inspect before applying';
   end if;
 end
@@ -37,12 +37,13 @@ create index author_work_export_audit_novel_requested_idx
 
 alter table public.author_work_export_audit enable row level security;
 
+-- Audit rows are intentionally private. Authors can request an export through
+-- the owner-checking RPC below, but no client role can inspect the audit log.
 revoke all on table public.author_work_export_audit from public;
 revoke all on table public.author_work_export_audit from anon;
 revoke all on table public.author_work_export_audit from authenticated;
 
 create function public.novelight_authorize_work_export(
-  p_user_id uuid,
   p_novel_id bigint,
   p_format text default 'txt'
 )
@@ -55,11 +56,16 @@ security definer
 set search_path = public, pg_catalog
 as $$
 declare
+  v_uid uuid := auth.uid();
   v_format text := lower(trim(coalesce(p_format, '')));
   v_now timestamptz := clock_timestamp();
   v_audit_id uuid;
 begin
-  if p_user_id is null or p_novel_id is null or p_novel_id <= 0 then
+  if v_uid is null then
+    raise exception 'authentication_required' using errcode = '42501';
+  end if;
+
+  if p_novel_id is null or p_novel_id <= 0 then
     raise exception 'invalid_export_request' using errcode = '22023';
   end if;
 
@@ -69,21 +75,23 @@ begin
 
   -- Serialize rate-limit decisions per author so concurrent requests cannot
   -- race through the audit-backed limits.
-  perform pg_advisory_xact_lock(hashtext('novelight:author-work-export:' || p_user_id::text));
+  perform pg_advisory_xact_lock(hashtext('novelight:author-work-export:' || v_uid::text));
 
   if not exists (
     select 1
       from public.novels n
      where n.id = p_novel_id
-       and n.user_id = p_user_id
+       and n.user_id = v_uid
   ) then
     raise exception 'export_not_found' using errcode = 'P0002';
   end if;
 
+  -- Beta safety limits. These protect accidental loops and scripted scraping
+  -- without preventing ordinary author backups.
   if (
     select count(*)
       from public.author_work_export_audit a
-     where a.user_id = p_user_id
+     where a.user_id = v_uid
        and a.requested_at >= v_now - interval '10 minutes'
   ) >= 10 then
     raise exception 'author_export_rate_limited' using errcode = 'P0001';
@@ -92,7 +100,7 @@ begin
   if (
     select count(*)
       from public.author_work_export_audit a
-     where a.user_id = p_user_id
+     where a.user_id = v_uid
        and a.requested_at >= v_now - interval '24 hours'
   ) >= 50 then
     raise exception 'author_export_rate_limited' using errcode = 'P0001';
@@ -104,7 +112,7 @@ begin
     format,
     requested_at
   ) values (
-    p_user_id,
+    v_uid,
     p_novel_id,
     v_format,
     v_now
@@ -116,14 +124,14 @@ begin
 end
 $$;
 
-revoke all on function public.novelight_authorize_work_export(uuid, bigint, text) from public;
-revoke all on function public.novelight_authorize_work_export(uuid, bigint, text) from anon;
-revoke all on function public.novelight_authorize_work_export(uuid, bigint, text) from authenticated;
-grant execute on function public.novelight_authorize_work_export(uuid, bigint, text) to service_role;
+revoke all on function public.novelight_authorize_work_export(bigint, text) from public;
+revoke all on function public.novelight_authorize_work_export(bigint, text) from anon;
+revoke all on function public.novelight_authorize_work_export(bigint, text) from authenticated;
+grant execute on function public.novelight_authorize_work_export(bigint, text) to authenticated;
 
 comment on table public.author_work_export_audit is
   'Private audit trail for author work export requests. Client roles have no direct access.';
-comment on function public.novelight_authorize_work_export(uuid, bigint, text) is
-  'Service-role-only author work export authorization with owner verification, concurrency-safe rate limiting, and audit logging.';
+comment on function public.novelight_authorize_work_export(bigint, text) is
+  'Authenticated author work export authorization with auth.uid owner verification, concurrency-safe rate limiting, and private audit logging.';
 
 commit;
