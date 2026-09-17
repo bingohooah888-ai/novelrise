@@ -3,8 +3,8 @@
 
 create table if not exists public.episode_revisions (
   id uuid primary key default gen_random_uuid(),
-  episode_id uuid not null references public.episodes(id) on delete cascade,
-  novel_id uuid not null references public.novels(id) on delete cascade,
+  episode_id bigint not null references public.episodes(id) on delete cascade,
+  novel_id bigint not null references public.novels(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   episode_number integer not null,
   title text not null,
@@ -91,7 +91,7 @@ before update of title, content on public.episodes
 for each row
 execute function public.novelight_capture_episode_revision();
 
-create or replace function public.novelight_list_episode_revisions(p_episode_id uuid)
+create or replace function public.novelight_list_episode_revisions(p_episode_id bigint)
 returns table (
   revision_id uuid,
   created_at timestamptz,
@@ -139,7 +139,7 @@ $$;
 create or replace function public.novelight_get_episode_revision(p_revision_id uuid)
 returns table (
   revision_id uuid,
-  episode_id uuid,
+  episode_id bigint,
   created_at timestamptz,
   change_kind text,
   episode_number integer,
@@ -177,11 +177,11 @@ end;
 $$;
 
 create or replace function public.novelight_restore_episode_revision(
-  p_episode_id uuid,
+  p_episode_id bigint,
   p_revision_id uuid
 )
 returns table (
-  episode_id uuid,
+  episode_id bigint,
   title text,
   content text
 )
@@ -250,12 +250,12 @@ begin
 end;
 $$;
 
-revoke all on function public.novelight_list_episode_revisions(uuid) from public;
+revoke all on function public.novelight_list_episode_revisions(bigint) from public;
 revoke all on function public.novelight_get_episode_revision(uuid) from public;
-revoke all on function public.novelight_restore_episode_revision(uuid, uuid) from public;
-revoke all on function public.novelight_list_episode_revisions(uuid) from anon;
+revoke all on function public.novelight_restore_episode_revision(bigint, uuid) from public;
+revoke all on function public.novelight_list_episode_revisions(bigint) from anon;
 revoke all on function public.novelight_get_episode_revision(uuid) from anon;
-revoke all on function public.novelight_restore_episode_revision(uuid, uuid) from anon;
-grant execute on function public.novelight_list_episode_revisions(uuid) to authenticated;
+revoke all on function public.novelight_restore_episode_revision(bigint, uuid) from anon;
+grant execute on function public.novelight_list_episode_revisions(bigint) to authenticated;
 grant execute on function public.novelight_get_episode_revision(uuid) to authenticated;
-grant execute on function public.novelight_restore_episode_revision(uuid, uuid) to authenticated;
+grant execute on function public.novelight_restore_episode_revision(bigint, uuid) to authenticated;
