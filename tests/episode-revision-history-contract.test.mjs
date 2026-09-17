@@ -29,10 +29,24 @@ async function text(url) {
 test('revision history is private and bounded for beta', async () => {
   const migration = await text(migrationUrl);
 
-  assert.match(migration, /create table if not exists public\.episode_revisions/i);
-  assert.match(migration, /alter table public\.episode_revisions enable row level security/i);
-  assert.match(migration, /revoke all on table public\.episode_revisions from anon/i);
-  assert.match(migration, /revoke all on table public\.episode_revisions from authenticated/i);
+  assert.match(
+    migration,
+    /create table if not exists public\.episode_revisions/i
+  );
+  assert.match(
+    migration,
+    /alter table public\.episode_revisions enable row level security/i
+  );
+  assert.match(
+    migration,
+    /revoke all on table public\.episode_revisions from anon/i
+  );
+  assert.match(
+    migration,
+    /revoke all on table public\.episode_revisions from authenticated/i
+  );
+  assert.match(migration, /episode_id bigint not null references public\.episodes\(id\)/i);
+  assert.match(migration, /novel_id bigint not null references public\.novels\(id\)/i);
   assert.match(migration, /interval '90 days'/i);
   assert.match(migration, /offset 20/i);
   assert.match(
@@ -57,27 +71,43 @@ test('restore mutates only title and content on the existing episode row', async
     setClause,
     /episode_number|status|is_public|scheduled_publish_at|last_published_at|novel_id|user_id/i
   );
-  assert.match(migration, /set_config\('novelight\.revision_reason', 'restore', true\)/i);
+  assert.match(
+    migration,
+    /set_config\('novelight\.revision_reason', 'restore', true\)/i
+  );
   assert.match(migration, /r\.episode_id = p_episode_id/i);
   assert.match(migration, /r\.user_id = v_uid/i);
 });
 
-test('history RPCs are authenticated-only and leave direct revision table reads disabled', async () => {
-  const [migration, postcheck] = await Promise.all([text(migrationUrl), text(postcheckUrl)]);
+test('history RPCs are authenticated-only and direct table reads stay disabled', async () => {
+  const [migration, postcheck] = await Promise.all([
+    text(migrationUrl),
+    text(postcheckUrl)
+  ]);
 
-  for (const signature of [
-    'novelight_list_episode_revisions\\(uuid\\)',
+  const signatures = [
+    'novelight_list_episode_revisions\\(bigint\\)',
     'novelight_get_episode_revision\\(uuid\\)',
-    'novelight_restore_episode_revision\\(uuid, uuid\\)'
-  ]) {
-    assert.match(migration, new RegExp(`grant execute on function public\\.${signature} to authenticated`, 'i'));
-    assert.match(migration, new RegExp(`revoke all on function public\\.${signature} from anon`, 'i'));
+    'novelight_restore_episode_revision\\(bigint, uuid\\)'
+  ];
+  for (const signature of signatures) {
+    assert.match(
+      migration,
+      new RegExp(
+        `grant execute on function public\\.${signature} to authenticated`,
+        'i'
+      )
+    );
+    assert.match(
+      migration,
+      new RegExp(`revoke all on function public\\.${signature} from anon`, 'i')
+    );
   }
   assert.match(postcheck, /directly readable by clients/i);
   assert.match(postcheck, /anonymous revision RPC access exists/i);
 });
 
-test('author history UI renders revision prose as text and requires explicit restore', async () => {
+test('author history UI renders prose as text and requires explicit restore', async () => {
   const [ui, edit] = await Promise.all([text(uiUrl), text(editUrl)]);
 
   assert.match(edit, /<script src="novelight-episode-history\.js"><\/script>/);
@@ -95,7 +125,7 @@ test('author history UI renders revision prose as text and requires explicit res
   assert.match(ui, /話数・公開状態・予約公開・PV・Rank・LIGHT SEED・SCOUT/);
 });
 
-test('migration safety artifacts exist and rollback removes only revision-history objects', async () => {
+test('migration safety artifacts exist and rollback removes only history objects', async () => {
   const [precheck, postcheck, rollback] = await Promise.all([
     text(precheckUrl),
     text(postcheckUrl),
@@ -105,7 +135,13 @@ test('migration safety artifacts exist and rollback removes only revision-histor
   assert.match(precheck, /public\.episodes/);
   assert.match(precheck, /public\.episode_revisions already exists/);
   assert.match(postcheck, /revision trigger is missing/);
-  assert.match(rollback, /drop trigger if exists episode_revision_history_before_update on public\.episodes/i);
+  assert.match(
+    rollback,
+    /drop trigger if exists episode_revision_history_before_update on public\.episodes/i
+  );
   assert.match(rollback, /drop table if exists public\.episode_revisions/i);
-  assert.doesNotMatch(rollback, /drop table if exists public\.(episodes|novels)\b/i);
+  assert.doesNotMatch(
+    rollback,
+    /drop table if exists public\.(episodes|novels)\b/i
+  );
 });
