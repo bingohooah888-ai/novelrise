@@ -64,6 +64,7 @@ test('beta author preregistration keeps its standalone theme and submits through
   });
   expect(heroColor).toBe('rgb(245, 234, 208)');
 
+  await page.locator('#heroCta').click();
   await page.locator('#penName').fill('E2E作者');
   await page.locator('#email').fill('e2e@example.com');
   await page.locator('#consent').check();
@@ -176,8 +177,12 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/beta-authors.html');
 
-  await expect(page.locator('.benefit-card')).toHaveCount(4);
-  await expect(page.locator('.founding-benefit')).toHaveCount(2);
+  await expect(page.locator('.benefit-card')).toHaveCount(2);
+  await expect(page.locator('.founding-benefit')).toHaveCount(1);
+  await expect(page.locator('.founding-badge-image')).toHaveAttribute(
+    'alt',
+    'Founding Authors限定バッジ'
+  );
   await expect(page.locator('#heroCta')).toHaveText('今すぐ先行登録する');
   await expect(page.locator('.beta-local-nav')).toBeVisible();
 
@@ -187,17 +192,22 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
     const hero = doc.querySelector('.hero').getBoundingClientRect();
     const shell = doc.querySelector('.section-shell').getBoundingClientRect();
     const noctar = doc.querySelector('.noctar-layer').getBoundingClientRect();
+    const badge = doc
+      .querySelector('.founding-badge-image')
+      .getBoundingClientRect();
     return {
       heroHeight: hero.height,
       shellWidth: shell.width,
       noctarWidth: noctar.width,
+      badgeWidth: badge.width,
       overflow: doc.documentElement.scrollWidth - viewportWidth
     };
   });
 
-  expect(desktopGeometry.heroHeight).toBe(660);
+  expect(desktopGeometry.heroHeight).toBe(600);
   expect(desktopGeometry.shellWidth).toBe(1180);
   expect(desktopGeometry.noctarWidth).toBe(290);
+  expect(desktopGeometry.badgeWidth).toBe(180);
   expect(desktopGeometry.overflow).toBeLessThanOrEqual(1);
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -209,6 +219,9 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
     const hero = doc.querySelector('.hero').getBoundingClientRect();
     const noctar = doc.querySelector('.noctar-layer').getBoundingClientRect();
     const form = doc.querySelector('#registration').getBoundingClientRect();
+    const badge = doc
+      .querySelector('.founding-badge-image')
+      .getBoundingClientRect();
     const cards = [...doc.querySelectorAll('.benefit-card')].map((card) => {
       const rect = card.getBoundingClientRect();
       return { left: rect.left, top: rect.top, width: rect.width };
@@ -216,6 +229,7 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
     return {
       heroHeight: hero.height,
       noctarWidth: noctar.width,
+      badgeWidth: badge.width,
       formLeft: form.left,
       formRight: form.right,
       cardColumnsAreSingle:
@@ -227,7 +241,9 @@ test('beta author landing locks the desktop and 390px mobile layout skeleton', a
   });
 
   expect(mobileGeometry.heroHeight).toBe(720);
-  expect(mobileGeometry.noctarWidth).toBe(200);
+  expect(mobileGeometry.noctarWidth).toBe(180);
+  expect(mobileGeometry.badgeWidth).toBeGreaterThanOrEqual(145);
+  expect(mobileGeometry.badgeWidth).toBeLessThanOrEqual(160);
   expect(mobileGeometry.formLeft).toBeGreaterThanOrEqual(0);
   expect(mobileGeometry.formRight).toBeLessThanOrEqual(390);
   expect(mobileGeometry.cardColumnsAreSingle).toBe(true);
