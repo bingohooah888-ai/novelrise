@@ -48,13 +48,14 @@ test('restore mutates only title and content on the existing episode row', async
   const updateBlock = migration.match(
     /update public\.episodes e\s+set[\s\S]*?where e\.id = p_episode_id\s+and e\.user_id = v_uid;/i
   )?.[0];
+  const setClause = updateBlock?.match(/set[\s\S]*?where/i)?.[0] || '';
 
   assert.ok(updateBlock, 'restore UPDATE block must exist');
-  assert.match(updateBlock, /set title = v_revision\.title/i);
-  assert.match(updateBlock, /content = v_revision\.content/i);
+  assert.match(setClause, /set title = v_revision\.title/i);
+  assert.match(setClause, /content = v_revision\.content/i);
   assert.doesNotMatch(
-    updateBlock,
-    /episode_number|status|is_public|scheduled_publish_at|last_published_at|novel_id|user_id\s*=/i
+    setClause,
+    /episode_number|status|is_public|scheduled_publish_at|last_published_at|novel_id|user_id/i
   );
   assert.match(migration, /set_config\('novelight\.revision_reason', 'restore', true\)/i);
   assert.match(migration, /r\.episode_id = p_episode_id/i);
