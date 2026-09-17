@@ -27,7 +27,7 @@ const files = {
   novelEdit: new URL('../novel-edit.html', import.meta.url)
 };
 
-const read = key => readFile(files[key], 'utf8');
+const read = (key) => readFile(files[key], 'utf8');
 
 test('typo reports are private, bounded, and author-reviewed', async () => {
   const migration = await read('migration');
@@ -45,7 +45,10 @@ test('typo reports are private, bounded, and author-reviewed', async () => {
   assert.match(migration, /TYPO_REPORT_DUPLICATE/);
   assert.match(migration, /user_blocks/i);
   assert.match(migration, /DIRECT_INTERACTION_UNAVAILABLE/);
-  assert.match(migration, /Authors cannot submit typo reports to their own episode/i);
+  assert.match(
+    migration,
+    /Authors cannot submit typo reports to their own episode/i
+  );
 });
 
 test('safe apply validates the exact source and records typo_apply revision reason', async () => {
@@ -81,7 +84,10 @@ test('typo report RPC surface is authenticated only and internal trigger is not 
     'novelight_apply_episode_typo_report',
     'novelight_reject_episode_typo_report'
   ]) {
-    assert.match(migration, new RegExp(`grant execute on function public\\.${fn}`, 'i'));
+    assert.match(
+      migration,
+      new RegExp(`grant execute on function public\\.${fn}`, 'i')
+    );
   }
 
   assert.match(
@@ -93,7 +99,10 @@ test('typo report RPC surface is authenticated only and internal trigger is not 
     /revoke all on function public\.novelight_stale_episode_typo_reports\(\) from public, anon, authenticated, service_role/i
   );
   assert.match(postcheck, /Anonymous typo-report RPC access exists/i);
-  assert.match(postcheck, /Internal stale trigger function must not be client\/server RPC surface/i);
+  assert.match(
+    postcheck,
+    /Internal stale trigger function must not be client\/server RPC surface/i
+  );
 });
 
 test('reader flow requires a selected body range and never auto-applies', async () => {
@@ -111,11 +120,17 @@ test('reader flow requires a selected body range and never auto-applies', async 
   assert.match(reader, /novelight_submit_episode_typo_report/);
   assert.match(reader, /本文には自動反映されません/);
   assert.doesNotMatch(reader, /novelight_apply_episode_typo_report/);
-  assert.doesNotMatch(reader, /innerHTML|outerHTML|insertAdjacentHTML|DOMParser|eval\(|new Function/);
+  assert.doesNotMatch(
+    reader,
+    /innerHTML|outerHTML|insertAdjacentHTML|DOMParser|eval\(|new Function/
+  );
 });
 
 test('author review UI exposes explicit apply and reject only', async () => {
-  const [shared, edit] = await Promise.all([read('shared'), read('episodeEdit')]);
+  const [shared, edit] = await Promise.all([
+    read('shared'),
+    read('episodeEdit')
+  ]);
 
   assert.match(edit, /id="typoReportsPanel"/);
   assert.match(edit, /novelight-typo-reports\.js/);
@@ -125,7 +140,10 @@ test('author review UI exposes explicit apply and reject only', async () => {
   assert.match(shared, /採用して本文に反映/);
   assert.match(shared, /改稿履歴へ保存されます/);
   assert.match(shared, /\.textContent\s*=/);
-  assert.doesNotMatch(shared, /innerHTML|outerHTML|insertAdjacentHTML|DOMParser|eval\(|new Function/);
+  assert.doesNotMatch(
+    shared,
+    /innerHTML|outerHTML|insertAdjacentHTML|DOMParser|eval\(|new Function/
+  );
 });
 
 test('per-work receive toggle is migration-compatible before schema rollout', async () => {
@@ -152,7 +170,10 @@ test('migration has precheck, postcheck, and guarded non-lossy rollback', async 
 
   assert.match(precheck, /episode_revisions/i);
   assert.match(precheck, /Revision history does not recognize typo_apply/i);
-  assert.match(postcheck, /Typo-report rows must not be directly accessible to clients/i);
+  assert.match(
+    postcheck,
+    /Typo-report rows must not be directly accessible to clients/i
+  );
   assert.match(rollback, /Refusing lossy rollback while typo reports exist/i);
   assert.match(
     rollback,
