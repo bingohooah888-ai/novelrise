@@ -26,11 +26,14 @@ begin
      or not has_table_privilege('authenticated', 'public.novel_series', 'INSERT')
      or not has_table_privilege('authenticated', 'public.novel_series', 'UPDATE')
      or not has_table_privilege('authenticated', 'public.novel_series', 'DELETE')
-     or not has_table_privilege('authenticated', 'public.novel_series_items', 'SELECT')
-     or not has_table_privilege('authenticated', 'public.novel_series_items', 'INSERT')
-     or not has_table_privilege('authenticated', 'public.novel_series_items', 'UPDATE')
-     or not has_table_privilege('authenticated', 'public.novel_series_items', 'DELETE') then
+     or not has_table_privilege('authenticated', 'public.novel_series_items', 'SELECT') then
     raise exception 'authenticated series table grants are incomplete';
+  end if;
+
+  if has_table_privilege('authenticated', 'public.novel_series_items', 'INSERT')
+     or has_table_privilege('authenticated', 'public.novel_series_items', 'UPDATE')
+     or has_table_privilege('authenticated', 'public.novel_series_items', 'DELETE') then
+    raise exception 'authenticated series membership writes must use the bounded RPC';
   end if;
 
   if not has_function_privilege('anon', 'public.novelight_public_series_context(bigint)', 'EXECUTE')
@@ -40,6 +43,10 @@ begin
 
   if has_function_privilege('anon', 'public.novelight_set_series_items(bigint,bigint[])', 'EXECUTE') then
     raise exception 'anon must not execute author series mutation RPC';
+  end if;
+
+  if not has_function_privilege('authenticated', 'public.novelight_set_series_items(bigint,bigint[])', 'EXECUTE') then
+    raise exception 'authenticated must execute author series mutation RPC';
   end if;
 
   if (
