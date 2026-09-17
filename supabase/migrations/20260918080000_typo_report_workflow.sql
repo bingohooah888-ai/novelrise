@@ -212,17 +212,6 @@ begin
     raise exception 'TYPO_REPORT_DUPLICATE' using errcode = '23505';
   end if;
 
-  delete from public.episode_typo_reports
-   where status <> 'pending'
-     and resolved_at is not null
-     and resolved_at < now() - interval '90 days';
-
-  update public.episode_typo_reports
-     set status = 'stale',
-         resolved_at = coalesce(resolved_at, now())
-   where status = 'pending'
-     and created_at < now() - interval '30 days';
-
   insert into public.episode_typo_reports (
     episode_id,
     novel_id,
