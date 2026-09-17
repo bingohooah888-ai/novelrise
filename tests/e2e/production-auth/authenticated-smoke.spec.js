@@ -529,7 +529,11 @@ test('authenticated beta-critical product flow works in target', async ({
     await test.step('Publish first episode', async () => {
       const publishButton = authorPage.locator('#publish');
       await expect(publishButton).toBeEnabled();
-      await authorPage.locator('#episodeNumber').fill('1');
+      await expect(authorPage.locator('#episodeNumber')).toHaveValue('1');
+      await expect(authorPage.locator('#episodeNumber')).toHaveAttribute(
+        'readonly',
+        ''
+      );
       await authorPage.locator('#title').fill(firstEpisodeTitle);
       await authorPage
         .locator('#content')
@@ -555,7 +559,11 @@ test('authenticated beta-critical product flow works in target', async ({
       );
       const publishButton = authorPage.locator('#publish');
       await expect(publishButton).toBeEnabled();
-      await authorPage.locator('#episodeNumber').fill('2');
+      await expect(authorPage.locator('#episodeNumber')).toHaveValue('2');
+      await expect(authorPage.locator('#episodeNumber')).toHaveAttribute(
+        'readonly',
+        ''
+      );
       await authorPage.locator('#title').fill(secondEpisodeTitle);
       await authorPage
         .locator('#content')
