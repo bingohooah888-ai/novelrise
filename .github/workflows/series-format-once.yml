@@ -1,0 +1,47 @@
+name: Temporary series format once
+
+on:
+  push:
+    branches:
+      - feature/novel-series-current
+    paths:
+      - tests/novel-series-contract.test.mjs
+      - .github/workflows/series-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feature/novel-series-current
+
+      - name: Setup Node.js
+        uses: actions/setup-node@1e60f620b9541d8b0d8fb072e2c58cda6428c2a1 # v6.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format the series contract test with repository-pinned Prettier
+        run: npx prettier --write tests/novel-series-contract.test.mjs
+
+      - name: Commit only the formatted test when needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- tests/novel-series-contract.test.mjs; then
+            echo 'No formatting change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/novel-series-contract.test.mjs
+          git commit -m 'Format series contract test with pinned Prettier'
+          git push origin HEAD:feature/novel-series-current
