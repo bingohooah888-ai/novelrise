@@ -66,7 +66,7 @@ revoke all on table public.novel_series_items from public, anon, authenticated;
 revoke all on sequence public.novel_series_id_seq from public, anon, authenticated;
 
 grant select, insert, update, delete on table public.novel_series to authenticated;
-grant select, insert, update, delete on table public.novel_series_items to authenticated;
+grant select on table public.novel_series_items to authenticated;
 grant usage, select on sequence public.novel_series_id_seq to authenticated;
 
 grant all on table public.novel_series to service_role;
