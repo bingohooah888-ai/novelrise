@@ -8,7 +8,7 @@ begin
     raise exception 'public.author_work_export_audit already exists; stop and inspect before applying';
   end if;
 
-  if to_regprocedure('public.novelight_authorize_work_export(uuid,bigint,text)') is not null then
+  if to_regprocedure('public.novelight_authorize_work_export(bigint,text)') is not null then
     raise exception 'novelight_authorize_work_export already exists; stop and inspect before applying';
   end if;
 end
