@@ -7,15 +7,16 @@ const contract = JSON.parse(
 );
 
 const activeIssue = contract.activeIssue;
-const legacyIssue = contract.legacyIssues[0];
+const legacyIssues = contract.legacyIssues;
+const baselineLegacyIssue = legacyIssues[0];
 
 async function read(path) {
   return readFile(path, 'utf8');
 }
 
-test('active shared Production approval routes are pinned to the v2 ledger', async () => {
-  assert.equal(activeIssue, 460);
-  assert.deepEqual(contract.legacyIssues, [165]);
+test('active shared Production approval routes are pinned to the v3 ledger', async () => {
+  assert.equal(activeIssue, 657);
+  assert.deepEqual(legacyIssues, [165, 460]);
   assert.equal(contract.maxComments, 100);
 
   for (const path of contract.activeSharedRoutes) {
@@ -25,16 +26,18 @@ test('active shared Production approval routes are pinned to the v2 ledger', asy
       new RegExp(`github\\.event\\.issue\\.number == ${activeIssue}`),
       `${path} must accept only the active shared ledger`
     );
-    assert.doesNotMatch(
-      source,
-      new RegExp(`github\\.event\\.issue\\.number == ${legacyIssue}`),
-      `${path} must reject the exhausted legacy ledger`
-    );
-    assert.doesNotMatch(
-      source,
-      new RegExp(`ISSUE_NUMBER: ['\"]${legacyIssue}['\"]`),
-      `${path} must not write claims or results to the legacy ledger`
-    );
+    for (const legacyIssue of legacyIssues) {
+      assert.doesNotMatch(
+        source,
+        new RegExp(`github\\.event\\.issue\\.number == ${legacyIssue}`),
+        `${path} must reject legacy ledger #${legacyIssue}`
+      );
+      assert.doesNotMatch(
+        source,
+        new RegExp(`ISSUE_NUMBER: ['\"]${legacyIssue}['\"]`),
+        `${path} must not write claims or results to legacy ledger #${legacyIssue}`
+      );
+    }
   }
 });
 
@@ -53,7 +56,7 @@ test('active mutation bridges keep the bounded ledger fail-closed contract', asy
   }
 });
 
-test('completed one-time baseline repair stays retired on the legacy ledger', async () => {
+test('completed one-time baseline repair stays retired on the original legacy ledger', async () => {
   assert.deepEqual(contract.retiredLegacyRoutes, [
     '.github/workflows/production-approved-dispatch.yml'
   ]);
@@ -61,7 +64,7 @@ test('completed one-time baseline repair stays retired on the legacy ledger', as
   const source = await read(contract.retiredLegacyRoutes[0]);
   assert.match(
     source,
-    new RegExp(`github\\.event\\.issue\\.number == ${legacyIssue}`)
+    new RegExp(`github\\.event\\.issue\\.number == ${baselineLegacyIssue}`)
   );
   assert.doesNotMatch(
     source,
@@ -72,14 +75,16 @@ test('completed one-time baseline repair stays retired on the legacy ledger', as
   assert.doesNotMatch(source, /supabase db push --linked --yes/);
 });
 
-test('dedicated billing approval issues remain separate from the shared ledger', async () => {
+test('dedicated billing approval issues remain separate from shared and legacy ledgers', async () => {
   const source = await read('.github/workflows/production-chat-approval.yml');
   assert.doesNotMatch(
     source,
     new RegExp(`github\\.event\\.issue\\.number == ${activeIssue}`)
   );
-  assert.doesNotMatch(
-    source,
-    new RegExp(`github\\.event\\.issue\\.number == ${legacyIssue}`)
-  );
+  for (const legacyIssue of legacyIssues) {
+    assert.doesNotMatch(
+      source,
+      new RegExp(`github\\.event\\.issue\\.number == ${legacyIssue}`)
+    );
+  }
 });
