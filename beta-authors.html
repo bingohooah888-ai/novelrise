@@ -116,14 +116,6 @@
       background-size: contain;
     }
 
-    .benefit-card:nth-child(1) .benefit-number::before {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M7 3v4M17 3v4M3 9h18M8 13h3M13 13h3M8 17h3'/%3E%3C/svg%3E");
-    }
-
-    .benefit-card:nth-child(2) .benefit-number::before {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='9' r='5'/%3E%3Cpath d='m9 14-2 7 5-3 5 3-2-7M10 9l1.3 1.3L14 7.7'/%3E%3C/svg%3E");
-    }
-
     .benefit-card h3 {
       width: 100%;
       margin: 0;
@@ -178,84 +170,6 @@
       font-weight: 800;
       text-decoration: underline;
       text-underline-offset: 3px;
-    }
-
-    @media (max-width: 900px) {
-      .hero-copy {
-        font-size: 18px;
-      }
-
-      .release {
-        font-size: 18px;
-      }
-
-      .noctar-layer {
-        background-size: 110% auto;
-      }
-
-      .benefits-section {
-        padding: 44px 0 50px;
-      }
-
-      .benefit-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1px;
-      }
-
-      .benefit-card {
-        min-height: 164px;
-        padding: 24px 18px;
-      }
-    }
-
-    @media (max-width: 520px) {
-      .hero-copy,
-      .release {
-        font-size: 17px;
-      }
-
-      .benefits-section {
-        padding: 38px 0 44px;
-      }
-
-      .benefits-section .section-title {
-        font-size: clamp(27px, 8vw, 32px);
-      }
-
-      .benefit-grid {
-        margin-top: 24px;
-        grid-template-columns: 1fr;
-        gap: 1px;
-      }
-
-      .benefit-card {
-        min-height: 148px;
-        padding: 22px 18px;
-      }
-
-      .benefit-number {
-        width: 54px;
-        height: 54px;
-        margin-bottom: 13px;
-      }
-
-      .benefit-number::before {
-        width: 28px;
-        height: 28px;
-      }
-
-      .benefit-card h3 {
-        font-size: 18px;
-      }
-
-      .benefit-card p {
-        font-size: 15px;
-      }
-
-      .registration-trust {
-        padding: 13px 12px;
-        font-size: 14px;
-      }
     }
 
     /* Larger brand mark and below-HERO readability pass. */
@@ -395,6 +309,87 @@
       margin: 0 auto 18px;
     }
 
+    /* Preregistration FAQ: answer repeated DM concerns without touching form logic. */
+    .faq-section {
+      padding: 72px 0 76px;
+      border-top: 1px solid rgba(217, 184, 107, 0.18);
+      border-bottom: 1px solid rgba(217, 184, 107, 0.2);
+    }
+
+    .faq-header {
+      max-width: 820px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .faq-lead {
+      margin: 12px auto 0;
+      color: rgba(247, 239, 221, 0.82);
+      font-size: 18px;
+      line-height: 1.8;
+    }
+
+    .faq-list {
+      max-width: 940px;
+      margin: 30px auto 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .faq-item {
+      overflow: hidden;
+      border: 1px solid rgba(217, 184, 107, 0.36);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(217, 184, 107, 0.09), transparent 44%),
+        linear-gradient(180deg, rgba(12, 31, 50, 0.98), rgba(7, 22, 37, 0.98));
+      box-shadow: 0 15px 34px rgba(0, 0, 0, 0.2);
+    }
+
+    .faq-item summary {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 18px 22px;
+      color: #fff8e8;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.65;
+      list-style: none;
+    }
+
+    .faq-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-item summary::after {
+      margin-left: auto;
+      color: #d9b86b;
+      content: "＋";
+      font-size: 20px;
+      line-height: 1.4;
+    }
+
+    .faq-item[open] summary::after {
+      content: "−";
+    }
+
+    .faq-item p {
+      margin: 0;
+      padding: 0 22px 20px;
+      color: rgba(247, 239, 221, 0.84);
+      font-size: 16px;
+      line-height: 1.85;
+    }
+
+    .faq-item a {
+      color: #f1d48d;
+      font-weight: 900;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
     .beta-footer {
       font-size: 17px;
     }
@@ -415,170 +410,6 @@
       #aboutHeading {
         white-space: nowrap;
       }
-    }
-
-    @media (max-width: 900px) {
-      html {
-        scroll-padding-top: 110px;
-      }
-
-      .beta-header {
-        height: 96px;
-      }
-
-      .beta-brand img {
-        height: 80px;
-        max-width: 350px;
-      }
-
-      .form-card {
-        scroll-margin-top: 110px;
-      }
-
-      main .section-title,
-      .benefits-section .section-title {
-        font-size: clamp(32px, 6vw, 44px);
-      }
-
-      #aboutHeading {
-        font-size: clamp(29px, 5.4vw, 40px);
-      }
-
-      #registrationHeading {
-        font-size: clamp(29px, 5vw, 36px);
-      }
-    }
-
-    @media (max-width: 520px) {
-      html {
-        scroll-padding-top: 98px;
-      }
-
-      .beta-header {
-        height: 86px;
-      }
-
-      .beta-brand img {
-        height: 70px;
-        max-width: 92vw;
-      }
-
-      main .section-kicker {
-        font-size: 14px;
-      }
-
-      main .section-title,
-      .benefits-section .section-title {
-        font-size: clamp(30px, 8.8vw, 38px);
-      }
-
-      .about-card .section-kicker {
-        font-size: 12px;
-      }
-
-      #aboutHeading {
-        font-size: clamp(26px, 7.8vw, 34px);
-      }
-
-      #registrationHeading {
-        font-size: clamp(27px, 7.8vw, 32px);
-      }
-
-      .benefit-release {
-        font-size: 17px;
-      }
-
-      .benefit-card h3 {
-        font-size: 21px;
-      }
-
-      .benefit-card p {
-        font-size: 18px;
-      }
-
-      .about-card p {
-        font-size: 16px;
-      }
-
-      .about-card .brand-message {
-        font-size: 15px;
-      }
-
-      .about-principles li,
-      .form-intro,
-      .field label,
-      .consent-label,
-      .consent,
-      input,
-      select,
-      textarea,
-      .form-state,
-      .loading-state,
-      .alternate-state p,
-      .success-panel p,
-      .founding-copy p,
-      .founding-benefit p {
-        font-size: 17px;
-      }
-
-      .about-principles li {
-        font-size: 15px;
-      }
-
-      .required,
-      .optional,
-      .help,
-      .privacy-note,
-      .founding-note {
-        font-size: 14px !important;
-      }
-
-      .submit {
-        font-size: 19px;
-      }
-
-      .founding-benefit strong {
-        font-size: 21px;
-      }
-
-      .founding-badge-image {
-        width: clamp(145px, 38vw, 160px);
-        margin-bottom: 16px;
-      }
-
-      .beta-footer {
-        font-size: 16px;
-      }
-    }
-
-    @media (min-width: 901px) {
-      .benefit-card-inner {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .benefit-card h3 {
-        width: 100%;
-        max-width: 250px;
-        min-height: 33px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        white-space: nowrap;
-      }
-
-      .benefit-card p {
-        width: 100%;
-        max-width: 236px;
-        min-height: 64.6px;
-      }
-
-      .benefit-card:nth-child(2) .benefit-number::before {
-        transform: translateY(-1px);
-      }
 
       main {
         background-image: url("../assets/NOVELIGHT_LP_BELOW_HERO_PC_2560x1800%20(1).png");
@@ -589,15 +420,21 @@
 
       .benefits-section,
       .story-registration-section,
+      .faq-section,
       .founding-section {
         background: none;
       }
-    }
 
-    @media (min-width: 901px) and (max-width: 1100px) {
-      .benefit-card h3 {
-        min-height: 66px;
-        white-space: normal;
+      :root {
+        --beta-hero-height: 600px;
+      }
+
+      .noctar-layer {
+        right: 0.5%;
+      }
+
+      .benefits-section {
+        padding: 38px 0 44px;
       }
     }
 
@@ -681,21 +518,53 @@
       font-size: 17px;
     }
 
-    @media (min-width: 901px) {
-      :root {
-        --beta-hero-height: 600px;
+    @media (max-width: 900px) {
+      html {
+        scroll-padding-top: 110px;
+      }
+
+      .beta-header {
+        height: 96px;
+      }
+
+      .beta-brand img {
+        height: 80px;
+        max-width: 350px;
+      }
+
+      .form-card {
+        scroll-margin-top: 110px;
+      }
+
+      .hero-copy {
+        font-size: 18px;
+      }
+
+      .release {
+        font-size: 18px;
       }
 
       .noctar-layer {
-        right: 0.5%;
+        background-size: 110% auto;
       }
 
       .benefits-section {
-        padding: 38px 0 44px;
+        padding: 44px 0 50px;
       }
-    }
 
-    @media (max-width: 900px) {
+      main .section-title,
+      .benefits-section .section-title {
+        font-size: clamp(32px, 6vw, 44px);
+      }
+
+      #aboutHeading {
+        font-size: clamp(29px, 5.4vw, 40px);
+      }
+
+      #registrationHeading {
+        font-size: clamp(29px, 5vw, 36px);
+      }
+
       .benefit-grid {
         max-width: 680px;
         grid-template-columns: 1fr;
@@ -715,20 +584,104 @@
         max-width: 560px;
         font-size: 17px;
       }
+
+      .faq-section {
+        padding: 58px 0 62px;
+      }
+
+      .faq-list {
+        max-width: 680px;
+      }
     }
 
     @media (max-width: 520px) {
+      html {
+        scroll-padding-top: 98px;
+      }
+
+      .beta-header {
+        height: 86px;
+      }
+
+      .beta-brand img {
+        height: 70px;
+        max-width: 92vw;
+      }
+
+      main .section-kicker {
+        font-size: 14px;
+      }
+
+      main .section-title,
+      .benefits-section .section-title {
+        font-size: clamp(30px, 8.8vw, 38px);
+      }
+
+      .about-card .section-kicker {
+        font-size: 12px;
+      }
+
+      #aboutHeading {
+        font-size: clamp(26px, 7.8vw, 34px);
+      }
+
+      #registrationHeading {
+        font-size: clamp(27px, 7.8vw, 32px);
+      }
+
+      .hero-copy,
+      .release,
+      .benefit-release,
+      .about-principles li,
+      .form-intro,
+      .field label,
+      .consent-label,
+      .consent,
+      input,
+      select,
+      textarea,
+      .form-state,
+      .loading-state,
+      .alternate-state p,
+      .success-panel p,
+      .founding-copy p,
+      .founding-benefit p {
+        font-size: 17px;
+      }
+
       .benefit-card {
         padding: 24px 19px;
       }
 
-      .benefit-card h3 {
+      .benefit-card h3,
+      .founding-benefit strong {
         font-size: 21px;
       }
 
-      .benefit-card p {
+      .benefit-card p,
+      .about-card p {
         font-size: 16px;
         line-height: 1.75;
+      }
+
+      .about-card .brand-message {
+        font-size: 15px;
+      }
+
+      .about-principles li {
+        font-size: 15px;
+      }
+
+      .required,
+      .optional,
+      .help,
+      .privacy-note,
+      .founding-note {
+        font-size: 14px !important;
+      }
+
+      .submit {
+        font-size: 19px;
       }
 
       .benefit-tag {
@@ -738,6 +691,40 @@
       .benefit-cta {
         width: min(100%, 330px);
         min-width: 0;
+      }
+
+      .founding-badge-image {
+        width: clamp(145px, 38vw, 160px);
+        margin-bottom: 16px;
+      }
+
+      .faq-section {
+        padding: 46px 0 52px;
+      }
+
+      .faq-lead {
+        font-size: 16px;
+      }
+
+      .faq-list {
+        margin-top: 24px;
+        gap: 10px;
+      }
+
+      .faq-item summary {
+        padding: 16px 16px;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      .faq-item p {
+        padding: 0 16px 18px;
+        font-size: 15px;
+        line-height: 1.8;
+      }
+
+      .beta-footer {
+        font-size: 16px;
       }
     }
   </style>
@@ -904,6 +891,78 @@
           <button id="retryState" class="submit" type="button">受付状況を再確認する</button>
         </div>
       </section>
+    </div>
+  </section>
+
+  <section id="faq" class="faq-section" aria-labelledby="faqHeading">
+    <div class="section-shell">
+      <div class="faq-header">
+        <p class="section-kicker">FAQ</p>
+        <h2 id="faqHeading" class="section-title">よくある質問</h2>
+        <p class="faq-lead">先行登録前に気になる点をまとめました。</p>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>NOVELIGHTはどんな運営ですか？</summary>
+          <p>NOVELIGHTは、個人・小規模運営から始まる新しい小説投稿プラットフォームです。大規模サービスではありませんが、その分、作者の声を反映しながら改善していくことを重視しています。<a href="operator.html">運営者情報</a>・<a href="terms.html">利用規約</a>・<a href="privacy.html">プライバシーポリシー</a>も公開しています。</p>
+        </details>
+        <details class="faq-item">
+          <summary>NOVELIGHTは、どうやって「読まれない格差」を減らすのですか？</summary>
+          <p>NOVELIGHTでは、作品がランキングだけで見つかる状態に偏らないように、新着、検索、おすすめ、ランキング、LIGHT SEEDなど複数の入口を用意します。人気作品だけでなく、まだ知られていない作品にも読者と出会う機会を作ることを目指しています。</p>
+        </details>
+        <details class="faq-item">
+          <summary>課金すれば評価やランキングを買えるのですか？</summary>
+          <p>いいえ。NOVELIGHTで買えるのは評価そのものではなく、作品が読者に届く機会までです。作品への評価は、読者の反応と作品そのものに委ねます。</p>
+        </details>
+        <details class="faq-item">
+          <summary>NOVELIGHTを使えば必ず読まれますか？</summary>
+          <p>必ず読まれることや評価されることを保証するものではありません。NOVELIGHTが目指すのは、作品が評価される前に埋もれてしまう状態を減らし、読者と出会う機会を増やすことです。</p>
+        </details>
+        <details class="faq-item">
+          <summary>先行登録すると何ができますか？</summary>
+          <p>先行登録者は、一般公開2日前の2026年9月28日からNOVELIGHTを利用開始できます。作品投稿、エピソード投稿、作品情報の設定、サムネイル設定、プロフィール設定などを先に進められます。</p>
+        </details>
+        <details class="faq-item">
+          <summary>β版の一般公開日はいつですか？</summary>
+          <p>NOVELIGHT β版の一般公開日は2026年9月30日です。先行登録者はその2日前、2026年9月28日から先行利用できます。</p>
+        </details>
+        <details class="faq-item">
+          <summary>先行登録者にはどんな特典がありますか？</summary>
+          <p>正式リリース後に、先行参加者限定バッジを付与予定です。NOVELIGHTが始まる前から参加してくれた作者の証として、後から取得できない限定バッジとして扱います。</p>
+        </details>
+        <details class="faq-item">
+          <summary>Founding Authorsとは何ですか？</summary>
+          <p>NOVELIGHT初期の作者100名を「Founding Authors」として記念する仕組みです。ただし、先行登録のみでFounding Authorsの付与が確定するものではありません。</p>
+        </details>
+        <details class="faq-item">
+          <summary>先行登録は審査ですか？</summary>
+          <p>審査や選考ではありません。β版開始時にスムーズに参加していただくための事前登録です。</p>
+        </details>
+        <details class="faq-item">
+          <summary>まだ投稿する作品が決まっていなくても登録できますか？</summary>
+          <p>登録できます。これから投稿する作品を準備中の方でも先行登録できます。</p>
+        </details>
+        <details class="faq-item">
+          <summary>他の小説投稿サイトに載せている作品でも投稿できますか？</summary>
+          <p>投稿できます。既存サービスとの併用や、他サイトで公開中の作品の投稿も可能です。</p>
+        </details>
+        <details class="faq-item">
+          <summary>先行登録したら必ず作品を投稿しないといけませんか？</summary>
+          <p>いいえ。先行登録後、実際に投稿するかどうかは作者さん自身の判断で決められます。</p>
+        </details>
+        <details class="faq-item">
+          <summary>登録した情報は公開されますか？</summary>
+          <p>登録人数や登録者のメールアドレス、個別の登録情報を公開することはありません。登録情報は先行利用・β版参加案内と運営管理のために使用します。</p>
+        </details>
+        <details class="faq-item">
+          <summary>無料で使えますか？</summary>
+          <p>NOVELIGHTには無料プランを用意しています。β版でも、まず作品投稿や基本機能を試せるようにする予定です。</p>
+        </details>
+        <details class="faq-item">
+          <summary>合わないと感じた場合、利用をやめられますか？</summary>
+          <p>はい。NOVELIGHTが合わないと感じた場合、無理に利用を続ける必要はありません。</p>
+        </details>
+      </div>
     </div>
   </section>
 
