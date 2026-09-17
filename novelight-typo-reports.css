@@ -1,0 +1,16 @@
+.typo-report-action{background:#fff;color:#7b5528;border:1px solid #c8a06d}
+.typo-report-modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.5)}
+.typo-report-modal.visible{display:flex}
+.typo-report-card{width:min(560px,100%);max-height:90vh;overflow:auto;padding:24px;border-radius:16px;background:#fff;box-shadow:0 22px 70px rgba(0,0,0,.24)}
+.typo-report-card h2{margin:0;font-size:22px}
+.typo-report-help{margin:8px 0 18px;color:#666;font-size:13px;line-height:1.75}
+.typo-report-field{display:grid;gap:7px;margin-top:13px}
+.typo-report-label{font-size:12px;font-weight:900;color:#55463a}
+.typo-report-original{min-height:48px;padding:12px;border:1px solid #ead7bd;border-radius:9px;background:#fff8ee;white-space:pre-wrap;word-break:break-word;color:#7b3e2d}
+.typo-report-field textarea{width:100%;min-height:100px;padding:11px;border:1px solid #d6d8df;border-radius:9px;resize:vertical;font:inherit;line-height:1.7}
+.typo-report-status{min-height:20px;margin-top:9px;color:#666;font-size:12px;line-height:1.6}
+.typo-report-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.typo-report-actions button{padding:9px 13px;border:1px solid #ddd;border-radius:8px;background:#fff;font:inherit;font-weight:800;cursor:pointer}
+.typo-report-actions .primary{border-color:#7b5528;background:#7b5528;color:#fff}
+.typo-report-actions button:disabled{opacity:.55;cursor:wait}
+@media(max-width:600px){.typo-report-card{padding:20px}.typo-report-actions{flex-direction:column}.typo-report-actions button{width:100%}}
