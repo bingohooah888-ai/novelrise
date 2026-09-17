@@ -1,4 +1,4 @@
--- Rollback for 20260917143000_episode_revision_history.sql
+-- Rollback for 20260917074632_episode_revision_history.sql
 
 drop trigger if exists episode_revision_history_before_update on public.episodes;
 drop function if exists public.novelight_restore_episode_revision(bigint, uuid);
