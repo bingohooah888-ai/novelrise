@@ -117,19 +117,11 @@
     }
 
     .benefit-card:nth-child(1) .benefit-number::before {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='1.8'/%3E%3Cpath d='m4 7 8 6 8-6'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M7 3v4M17 3v4M3 9h18M8 13h3M13 13h3M8 17h3'/%3E%3C/svg%3E");
     }
 
     .benefit-card:nth-child(2) .benefit-number::before {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 18h16l-1.5-9-4.5 4-2-7-2 7-4.5-4L4 18Z'/%3E%3Cpath d='M5 21h14'/%3E%3C/svg%3E");
-    }
-
-    .benefit-card:nth-child(3) .benefit-number::before {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3h9l3 3v15H6z'/%3E%3Cpath d='M14 3v4h4M9 11h6M9 15h6M9 18h4'/%3E%3C/svg%3E");
-    }
-
-    .benefit-card:nth-child(4) .benefit-number::before {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 9h18v12H3zM12 9v12M3 13h18'/%3E%3Cpath d='M12 9H7.5a2.5 2.5 0 1 1 2.2-3.7L12 9Zm0 0h4.5a2.5 2.5 0 1 0-2.2-3.7L12 9Z'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='9' r='5'/%3E%3Cpath d='m9 14-2 7 5-3 5 3-2-7M10 9l1.3 1.3L14 7.7'/%3E%3C/svg%3E");
     }
 
     .benefit-card h3 {
@@ -572,8 +564,7 @@
         min-height: 64.6px;
       }
 
-      .benefit-card:nth-child(2) .benefit-number::before,
-      .benefit-card:nth-child(4) .benefit-number::before {
+      .benefit-card:nth-child(2) .benefit-number::before {
         transform: translateY(-1px);
       }
 
@@ -595,6 +586,146 @@
       .benefit-card h3 {
         min-height: 66px;
         white-space: normal;
+      }
+    }
+
+    /* Preregistration benefits refresh: keep the existing world-building while making the two real benefits dominant. */
+    .benefit-grid {
+      max-width: 960px;
+      margin: 26px auto 0;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      overflow: visible;
+      border: 0;
+      border-radius: 0;
+      background: none;
+      box-shadow: none;
+    }
+
+    .benefit-card {
+      min-height: 232px;
+      padding: 28px 34px;
+      border: 1px solid rgba(217, 184, 107, 0.58);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(217, 184, 107, 0.11), transparent 48%),
+        linear-gradient(180deg, rgba(12, 31, 50, 0.98), rgba(7, 22, 37, 0.98));
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+    }
+
+    .benefit-card-inner {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .benefit-tag {
+      display: inline-flex;
+      margin: 0 0 12px;
+      padding: 4px 10px;
+      border: 1px solid rgba(240, 211, 137, 0.48);
+      border-radius: 999px;
+      background: rgba(217, 184, 107, 0.1);
+      color: #f0d389;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+    }
+
+    .benefit-card h3 {
+      width: 100%;
+      max-width: none;
+      min-height: 0;
+      display: block;
+      color: #fff8e8;
+      font-size: 24px;
+      white-space: normal;
+    }
+
+    .benefit-card p {
+      width: 100%;
+      max-width: 430px;
+      min-height: 0;
+      margin-top: 10px;
+      color: rgba(247, 239, 221, 0.84);
+      font-size: 17px;
+      line-height: 1.8;
+    }
+
+    .benefit-highlight {
+      color: #f2d47f;
+      font-weight: 900;
+    }
+
+    .benefit-cta-wrap {
+      margin-top: 24px;
+      text-align: center;
+    }
+
+    .benefit-cta {
+      min-width: 290px;
+      margin-top: 0;
+      font-size: 17px;
+    }
+
+    @media (min-width: 901px) {
+      :root {
+        --beta-hero-height: 600px;
+      }
+
+      .noctar-layer {
+        right: 0.5%;
+      }
+
+      .benefits-section {
+        padding: 38px 0 44px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .benefit-grid {
+        max-width: 680px;
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .benefit-card {
+        min-height: 0;
+        padding: 26px 24px;
+      }
+
+      .benefit-card h3 {
+        font-size: 23px;
+      }
+
+      .benefit-card p {
+        max-width: 560px;
+        font-size: 17px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .benefit-card {
+        padding: 24px 19px;
+      }
+
+      .benefit-card h3 {
+        font-size: 21px;
+      }
+
+      .benefit-card p {
+        font-size: 16px;
+        line-height: 1.75;
+      }
+
+      .benefit-tag {
+        font-size: 13px;
+      }
+
+      .benefit-cta {
+        width: min(100%, 330px);
+        min-width: 0;
       }
     }
   </style>
@@ -620,7 +751,7 @@
       <h1 id="heroHeading"><span>NOVELIGHT β版</span>先行作者登録</h1>
       <p class="subcopy">「良い物語なのに、読まれない」を変えたい。</p>
       <p class="hero-copy">作品が評価される前に埋もれてしまう。NOVELIGHTは、そんな機会格差を減らすことを目指した小説投稿プラットフォームです。</p>
-      <p id="releaseCopy" class="release">公開情報を確認しています</p><br>
+      <p id="releaseCopy" class="release">先行利用・一般公開日を確認しています</p><br>
       <a id="heroCta" class="cta hero-cta" href="#registration" aria-disabled="true">今すぐ先行登録する</a>
     </div>
     <div class="noctar-layer" aria-hidden="true"></div>
@@ -631,37 +762,28 @@
   <section id="guideSection" class="benefits-section" aria-labelledby="benefitsHeading">
     <div id="benefits" class="section-shell">
       <p class="section-kicker">EARLY ACCESS</p>
-      <h2 id="benefitsHeading" class="section-title">先行登録で受け取れること</h2>
-      <p id="releaseGuide" class="benefit-release">β版の公開情報を確認しています</p>
+      <h2 id="benefitsHeading" class="section-title">先行登録で受けられる2つの特典</h2>
+      <p id="releaseGuide" class="benefit-release">9月28日 先行利用開始｜9月30日 β版一般公開</p>
       <div class="benefit-grid">
         <article class="benefit-card">
           <div class="benefit-card-inner">
             <span class="benefit-number">01</span>
-            <h3>β版の最新情報</h3>
-            <p>β版の最新情報をいち早くお届け</p>
+            <span class="benefit-tag">一般公開2日前</span>
+            <h3>9月28日から先行利用</h3>
+            <p><strong class="benefit-highlight">2026年9月28日</strong>からNOVELIGHTを利用開始できます。作品・エピソード投稿、サムネイルやプロフィール設定を先に進め、<strong class="benefit-highlight">9月30日の一般公開</strong>に備えられます。</p>
           </div>
         </article>
         <article class="benefit-card">
           <div class="benefit-card-inner">
             <span class="benefit-number">02</span>
-            <h3>β募集開始のお知らせ</h3>
-            <p>募集開始時にご案内</p>
+            <span class="benefit-tag">後から取得不可</span>
+            <h3>先行参加者限定バッジ</h3>
+            <p>NOVELIGHTが始まる前から参加してくれた作者の証として、正式リリース後に<strong class="benefit-highlight">先行参加者バッジ</strong>を付与予定です。後から登録したユーザーは取得できません。</p>
           </div>
         </article>
-        <article class="benefit-card">
-          <div class="benefit-card-inner">
-            <span class="benefit-number">03</span>
-            <h3>開発・更新情報</h3>
-            <p>主要な機能追加や更新をお知らせ</p>
-          </div>
-        </article>
-        <article class="benefit-card">
-          <div class="benefit-card-inner">
-            <span class="benefit-number">04</span>
-            <h3>先行登録者向けのご案内</h3>
-            <p>登録者向けの重要なお知らせ</p>
-          </div>
-        </article>
+      </div>
+      <div class="benefit-cta-wrap">
+        <a class="cta benefit-cta" href="#registration">今すぐ先行登録する</a>
       </div>
     </div>
   </section>
@@ -686,7 +808,7 @@
         <div id="preRegistrationState" hidden>
           <p class="section-kicker">PREREGISTRATION</p>
           <h2 id="registrationHeading" class="section-title">β版に先行登録する</h2>
-          <p class="form-intro">審査や選考ではありません。β版公開時の参加案内を受け取るための先行登録です。</p>
+          <p class="form-intro">審査や選考ではありません。9月28日の先行利用開始時に参加案内を受け取るための先行登録です。</p>
           <form id="betaAuthorForm" novalidate>
             <div class="form-grid">
               <div class="field">
@@ -746,12 +868,12 @@
             <button id="submitButton" class="submit" type="submit">β版に先行登録する</button>
             <div id="formState" class="form-state" role="status" aria-live="polite"></div>
           </form>
-          <p class="privacy-note">登録情報はβ版参加案内と運営管理のために利用します。登録人数や他の登録者情報を公開することはありません。詳しくは<a href="privacy.html">プライバシーポリシー</a>をご確認ください。</p>
+          <p class="privacy-note">登録情報は先行利用・β版参加案内と運営管理のために利用します。登録人数や他の登録者情報を公開することはありません。詳しくは<a href="privacy.html">プライバシーポリシー</a>をご確認ください。</p>
         </div>
         <div id="successState" class="success-panel" hidden>
           <h3>先行登録ありがとうございます。</h3>
           <p>NOVELIGHT β版への先行登録を受け付けました。</p>
-          <p>β版公開時に、ご登録いただいたメールアドレスへ参加方法をご案内します。</p>
+          <p>先行利用開始前に、ご登録いただいたメールアドレスへ参加方法をご案内します。</p>
           <p id="successRelease"></p>
         </div>
         <div id="betaOpenState" class="alternate-state" hidden>
@@ -786,10 +908,6 @@
           <strong>永久限定バッジ</strong>
           <p>正式リリース後に実装予定。後から取得・購入できない、NOVELIGHT最初期の作者であることを示す記念バッジです。</p>
         </article>
-        <article class="founding-benefit">
-          <strong>重要情報の優先案内</strong>
-          <p>正式リリースなど、NOVELIGHTに関する重要なお知らせを優先的にご案内します。</p>
-        </article>
       </div>
     </div>
   </section>
@@ -821,7 +939,7 @@
   function source(){const params=new URLSearchParams(window.location.search);const raw=(params.get('utm_source')||'').trim().toLowerCase();if(!raw)return 'direct';return allowedSources.has(raw)?raw:'other'}
   async function apiRequest(options={}){const response=await fetch(API_PATH,{cache:'no-store',credentials:'same-origin',...options,headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});const body=await response.json().catch(()=>({}));if(!response.ok){const error=new Error(body.error||`HTTP_${response.status}`);error.code=body.error||'REQUEST_FAILED';throw error}return body}
   function hideStates(){['loadingState','preRegistrationState','successState','betaOpenState','closedState','unavailableState'].forEach(id=>{document.getElementById(id).hidden=true})}
-  function renderCampaign(campaign){hideStates();campaignState=campaign&&campaign.state||'UNAVAILABLE';releaseLabel=campaign&&typeof campaign.releaseLabel==='string'?campaign.releaseLabel.trim():'';heroCta.removeAttribute('aria-disabled');if(campaignState==='PRE_REGISTRATION'&&releaseLabel){document.getElementById('preRegistrationState').hidden=false;document.getElementById('releaseCopy').textContent=`${releaseLabel} β版公開予定`;document.getElementById('releaseGuide').textContent=`NOVELIGHT β版は${releaseLabel}公開予定`;heroCta.textContent='今すぐ先行登録する';heroCta.href='#registration';return true}if(campaignState==='BETA_OPEN'){document.getElementById('betaOpenState').hidden=false;document.getElementById('guideSection').hidden=true;document.getElementById('releaseCopy').textContent='NOVELIGHT β版を公開しました';heroCta.textContent='NOVELIGHTを始める';heroCta.href='signup.html';return false}if(campaignState==='CLOSED'){document.getElementById('closedState').hidden=false;document.getElementById('guideSection').hidden=true;document.getElementById('releaseCopy').textContent='先行登録受付終了';heroCta.textContent='NOVELIGHTを始める';heroCta.href='signup.html';return false}campaignState='UNAVAILABLE';document.getElementById('unavailableState').hidden=false;document.getElementById('guideSection').hidden=true;document.getElementById('releaseCopy').textContent='受付状況を確認できません';heroCta.setAttribute('aria-disabled','true');return false}
+  function renderCampaign(campaign){hideStates();campaignState=campaign&&campaign.state||'UNAVAILABLE';releaseLabel=campaign&&typeof campaign.releaseLabel==='string'?campaign.releaseLabel.trim():'';heroCta.removeAttribute('aria-disabled');if(campaignState==='PRE_REGISTRATION'&&releaseLabel){document.getElementById('preRegistrationState').hidden=false;document.getElementById('releaseCopy').textContent=`先行登録者は9月28日から利用開始｜${releaseLabel} β版一般公開`;document.getElementById('releaseGuide').textContent=`9月28日 先行利用開始｜${releaseLabel} β版一般公開`;heroCta.textContent='今すぐ先行登録する';heroCta.href='#registration';return true}if(campaignState==='BETA_OPEN'){document.getElementById('betaOpenState').hidden=false;document.getElementById('guideSection').hidden=true;document.getElementById('releaseCopy').textContent='NOVELIGHT β版を公開しました';heroCta.textContent='NOVELIGHTを始める';heroCta.href='signup.html';return false}if(campaignState==='CLOSED'){document.getElementById('closedState').hidden=false;document.getElementById('guideSection').hidden=true;document.getElementById('releaseCopy').textContent='先行登録受付終了';heroCta.textContent='NOVELIGHTを始める';heroCta.href='signup.html';return false}campaignState='UNAVAILABLE';document.getElementById('unavailableState').hidden=false;document.getElementById('guideSection').hidden=true;document.getElementById('releaseCopy').textContent='受付状況を確認できません';heroCta.setAttribute('aria-disabled','true');return false}
   async function loadCampaign(){hideStates();document.getElementById('loadingState').hidden=false;heroCta.setAttribute('aria-disabled','true');document.getElementById('guideSection').hidden=false;try{const body=await apiRequest();if(renderCampaign(body.campaign))void recordEvent('page_view')}catch(error){console.error('beta preregistration campaign lookup failed',error);renderCampaign(null)}}
   async function recordEvent(eventType){if(campaignState!=='PRE_REGISTRATION')return false;try{const body=await apiRequest({method:'POST',body:JSON.stringify({action:'event',event_type:eventType,source:source()})});return body.accepted===true}catch(error){console.error('beta preregistration telemetry failed',error);return false}}
   function hasRecordedFormStart(){if(formStartFallback)return true;try{return sessionStorage.getItem(FORM_START_SESSION_KEY)==='1'}catch{return false}}
@@ -833,7 +951,7 @@
   form.addEventListener('input',maybeRecordFormStart);
   form.addEventListener('change',maybeRecordFormStart);
   document.getElementById('retryState').addEventListener('click',()=>void loadCampaign());
-  form.addEventListener('submit',async event=>{event.preventDefault();if(busy||campaignState!=='PRE_REGISTRATION')return;formState.textContent='';formState.className='form-state';if(!form.reportValidity())return;busy=true;submitButton.disabled=true;submitButton.textContent='登録しています...';void recordFormStartOnce();void recordEvent('register_click');try{const body=await apiRequest({method:'POST',body:JSON.stringify({action:'register',pen_name:document.getElementById('penName').value.trim(),email:document.getElementById('email').value.trim(),x_account:document.getElementById('xAccount').value.trim(),work_url:document.getElementById('workUrl').value.trim(),genre:document.getElementById('genre').value,comment:document.getElementById('comment').value.trim(),consent:document.getElementById('consent').checked,source:source(),website:document.getElementById('website').value})});if(body.result==='duplicate'){formState.textContent='このメールアドレスはすでに先行登録されています。';formState.className='form-state error';return}if(body.result!=='registered')throw new Error('UNEXPECTED_RESULT');form.reset();hideStates();document.getElementById('successState').hidden=false;document.getElementById('successRelease').textContent=releaseLabel?`NOVELIGHT β版は${releaseLabel}公開予定です。`:'';document.getElementById('successState').scrollIntoView({behavior:'smooth',block:'center'})}catch(error){if(error.code==='REGISTRATION_CLOSED'){await loadCampaign();return}if(error.code==='RATE_LIMITED')formState.textContent='短時間に送信できる回数を超えました。時間をおいてお試しください。';else if(error.code==='INVALID_EMAIL')formState.textContent='メールアドレスを確認してください。';else if(error.code==='INVALID_INPUT')formState.textContent='入力内容を確認してください。';else formState.textContent='先行登録できませんでした。通信状態を確認し、もう一度お試しください。';formState.className='form-state error'}finally{busy=false;submitButton.disabled=false;submitButton.textContent='β版に先行登録する'}});
+  form.addEventListener('submit',async event=>{event.preventDefault();if(busy||campaignState!=='PRE_REGISTRATION')return;formState.textContent='';formState.className='form-state';if(!form.reportValidity())return;busy=true;submitButton.disabled=true;submitButton.textContent='登録しています...';void recordFormStartOnce();void recordEvent('register_click');try{const body=await apiRequest({method:'POST',body:JSON.stringify({action:'register',pen_name:document.getElementById('penName').value.trim(),email:document.getElementById('email').value.trim(),x_account:document.getElementById('xAccount').value.trim(),work_url:document.getElementById('workUrl').value.trim(),genre:document.getElementById('genre').value,comment:document.getElementById('comment').value.trim(),consent:document.getElementById('consent').checked,source:source(),website:document.getElementById('website').value})});if(body.result==='duplicate'){formState.textContent='このメールアドレスはすでに先行登録されています。';formState.className='form-state error';return}if(body.result!=='registered')throw new Error('UNEXPECTED_RESULT');form.reset();hideStates();document.getElementById('successState').hidden=false;document.getElementById('successRelease').textContent=releaseLabel?`先行利用は2026年9月28日から。NOVELIGHT β版は${releaseLabel}一般公開予定です。`:'';document.getElementById('successState').scrollIntoView({behavior:'smooth',block:'center'})}catch(error){if(error.code==='REGISTRATION_CLOSED'){await loadCampaign();return}if(error.code==='RATE_LIMITED')formState.textContent='短時間に送信できる回数を超えました。時間をおいてお試しください。';else if(error.code==='INVALID_EMAIL')formState.textContent='メールアドレスを確認してください。';else if(error.code==='INVALID_INPUT')formState.textContent='入力内容を確認してください。';else formState.textContent='先行登録できませんでした。通信状態を確認し、もう一度お試しください。';formState.className='form-state error'}finally{busy=false;submitButton.disabled=false;submitButton.textContent='β版に先行登録する'}});
 
   void loadCampaign();
 </script>
