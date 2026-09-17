@@ -69,8 +69,9 @@ test('episode reader and author preview load the same safe renderer', async () =
   ]);
 
   assert.match(readingSettings, /script\.src = 'novelight-prose\.js'/);
-  assert.match(readingSettings, /data-novelight-prose/);
+  assert.match(readingSettings, /dataset\.novelightProse/);
   assert.match(authorDraft, /script\.src = 'novelight-prose\.js'/);
+  assert.match(authorDraft, /dataset\.novelightProse/);
   assert.match(authorDraft, /NovelightProse\?\.enhance\(modal\)/);
   assert.match(authorDraft, /｜漢字《かんじ》/);
   assert.match(authorDraft, /《《強調》》/);
