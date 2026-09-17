@@ -45,7 +45,7 @@ const correctedPatternHashes = new Map([
   ]
 ]);
 
-test('official thumbnail v1 manifest locks exactly 30 corrected assets', () => {
+test('official thumbnail v1 manifest locks 30 corrected assets', () => {
   assert.equal(manifest.packKey, 'NOVELIGHT_thumbnail_assets_v1_30');
   assert.equal(manifest.templateKey, 'book-v1');
   assert.equal(manifest.items.length, 30);
@@ -69,8 +69,9 @@ test('official thumbnail v1 manifest locks exactly 30 corrected assets', () => {
     assert.equal(item.colorType, 6);
     assert.match(item.sha256, /^[0-9a-f]{64}$/);
     assert.equal(item.templateKey, 'book-v1');
-    if (item.sourceCategory === 'texture') assert.equal(item.layerType, 'cover');
-    else assert.equal(item.layerType, item.sourceCategory);
+    const expectedLayerType =
+      item.sourceCategory === 'texture' ? 'cover' : item.sourceCategory;
+    assert.equal(item.layerType, expectedLayerType);
   }
   for (const [key, sha] of correctedPatternHashes) {
     assert.equal(
@@ -80,7 +81,7 @@ test('official thumbnail v1 manifest locks exactly 30 corrected assets', () => {
   }
 });
 
-test('batch import page uses only the existing official admin upload path', async () => {
+test('batch importer reuses the official admin upload path', async () => {
   const html = await readFile(
     new URL('../admin-thumbnail-batch.html', import.meta.url),
     'utf8'
@@ -98,7 +99,7 @@ test('batch import page uses only the existing official admin upload path', asyn
   assert.doesNotMatch(module, /generated-masks/);
 });
 
-test('PNG header inspection requires the fixed RGBA geometry asset contract', () => {
+test('PNG inspection enforces the fixed RGBA geometry contract', () => {
   const bytes = new Uint8Array(33);
   bytes.set([137, 80, 78, 71, 13, 10, 26, 10], 0);
   new DataView(bytes.buffer).setUint32(8, 13, false);
