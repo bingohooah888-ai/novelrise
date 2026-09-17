@@ -74,10 +74,7 @@ test('official thumbnail v1 manifest locks 30 corrected assets', () => {
     assert.equal(item.layerType, expectedLayerType);
   }
   for (const [key, sha] of correctedPatternHashes) {
-    assert.equal(
-      manifest.items.find((item) => item.key === key)?.sha256,
-      sha
-    );
+    assert.equal(manifest.items.find((item) => item.key === key)?.sha256, sha);
   }
 });
 
