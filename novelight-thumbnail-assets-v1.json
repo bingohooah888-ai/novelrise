@@ -4,9 +4,7 @@
   "displayName": "NOVELIGHT Official Thumbnail Assets v1 (30)",
   "templateKey": "book-v1",
   "expectedPngCount": 30,
-  "allowNonPngFiles": [
-    "MANIFEST.txt"
-  ],
+  "allowNonPngFiles": ["MANIFEST.txt"],
   "items": [
     {
       "key": "texture_parchment_01",
