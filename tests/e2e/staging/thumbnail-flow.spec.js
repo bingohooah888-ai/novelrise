@@ -344,7 +344,8 @@ test('official thumbnail survives Staging registration, Chapter 40 composition, 
 
     await test.step('Publish the first episode and verify persisted thumbnail linkage', async () => {
       await expect(page.locator('#publish')).toBeEnabled();
-      await page.locator('#episodeNumber').fill('1');
+      await expect(page.locator('#episodeNumber')).toHaveValue('1');
+      await expect(page.locator('#episodeNumber')).toHaveAttribute('readonly', '');
       await page.locator('#title').fill('第1話 サムネイル表示確認');
       await page
         .locator('#content')
