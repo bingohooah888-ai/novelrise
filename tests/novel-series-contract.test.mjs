@@ -50,7 +50,7 @@ test('fresh migration is fail-closed and series tables keep raw anonymous reads 
   assert.match(migration, /n\.user_id = \(select auth\.uid\(\)\)/);
 });
 
-test('series membership is bounded to one series per work', () => {
+test('series membership is bounded to one series per work and writes are RPC-only', () => {
   assert.match(
     migration,
     /constraint novel_series_items_novel_once unique \(novel_id\)/
@@ -62,6 +62,18 @@ test('series membership is bounded to one series per work', () => {
   assert.match(migration, /if v_count > 100 then/);
   assert.match(migration, /NOVEL_ALREADY_IN_SERIES/);
   assert.match(migration, /SERIES_ITEM_DUPLICATE/);
+  assert.match(
+    migration,
+    /grant select on table public\.novel_series_items to authenticated/
+  );
+  assert.doesNotMatch(
+    migration,
+    /grant[^;]*(?:insert|update|delete)[^;]*public\.novel_series_items[^;]*to authenticated/i
+  );
+  assert.match(
+    migration,
+    /grant execute on function public\.novelight_set_series_items\(bigint, bigint\[\]\)[\s\S]*to authenticated/
+  );
 });
 
 test('public context hides unpublished works from readers', () => {
@@ -122,6 +134,11 @@ test('precheck and postcheck enforce expected Production security contract', () 
   assert.match(postcheck, /RLS is not enabled on novel series tables/);
   assert.match(postcheck, /anon must not have raw series table access/);
   assert.match(postcheck, /authenticated series table grants are incomplete/);
+  assert.match(
+    postcheck,
+    /authenticated series membership writes must use the bounded RPC/
+  );
+  assert.match(postcheck, /authenticated must execute author series mutation RPC/);
   assert.match(postcheck, /anon must not execute author series mutation RPC/);
 });
 
