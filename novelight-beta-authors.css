@@ -1026,3 +1026,63 @@ textarea:focus {
     gap: 8px 18px;
   }
 }
+
+/* Beta author LP hotfix: keep release dates readable and restore benefit icons. */
+.release {
+  max-width: 100%;
+  font-size: clamp(15px, 1.15vw, 17px) !important;
+  line-height: 1.65;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  line-break: strict;
+}
+
+body:has(#preRegistrationState:not([hidden])) #releaseCopy {
+  display: inline-block;
+  max-width: min(100%, 660px);
+  padding: 9px 18px;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+body:has(#preRegistrationState:not([hidden])) #releaseCopy::before {
+  display: block;
+  content: "先行登録者は9月28日から利用開始\A2026年9月30日 β版一般公開";
+  color: #f3d99b;
+  font-size: 18px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+.benefit-card:nth-child(1) .benefit-number::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M7 3v4M17 3v4M3 9h18M8 13h3M13 13h3M8 17h3'/%3E%3C/svg%3E");
+}
+
+.benefit-card:nth-child(2) .benefit-number::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9b86b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='9' r='5'/%3E%3Cpath d='m9 14-2 7 5-3 5 3-2-7M10 9l1.3 1.3L14 7.7'/%3E%3C/svg%3E");
+}
+
+@media (max-width: 900px) {
+  body:has(#preRegistrationState:not([hidden])) #releaseCopy {
+    text-align: center;
+  }
+
+  body:has(#preRegistrationState:not([hidden])) #releaseCopy::before {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  body:has(#preRegistrationState:not([hidden])) #releaseCopy {
+    padding: 8px 13px;
+    border-radius: 18px;
+  }
+
+  body:has(#preRegistrationState:not([hidden])) #releaseCopy::before {
+    font-size: 15px;
+    line-height: 1.7;
+  }
+}
