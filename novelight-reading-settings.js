@@ -31,6 +31,17 @@
     })
   });
 
+  function ensureProseRenderer() {
+    const documentRef = global.document;
+    if (!documentRef?.head || global.NovelightProse) return;
+    if (documentRef.querySelector('script[data-novelight-prose]')) return;
+    const script = documentRef.createElement('script');
+    script.src = 'novelight-prose.js';
+    script.defer = true;
+    script.dataset.novelightProse = 'true';
+    documentRef.head.appendChild(script);
+  }
+
   function normalizedChoice(group, value) {
     return Object.prototype.hasOwnProperty.call(PRESETS[group], value)
       ? value
@@ -98,6 +109,7 @@
   }
 
   function mount() {
+    ensureProseRenderer();
     const mountPoint = document.getElementById('readingSettingsMount');
     if (!mountPoint || mountPoint.dataset.mounted === 'true') return;
     mountPoint.dataset.mounted = 'true';
