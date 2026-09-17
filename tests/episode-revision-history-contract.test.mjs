@@ -4,19 +4,19 @@ import test from 'node:test';
 import { URL } from 'node:url';
 
 const migrationUrl = new URL(
-  '../supabase/migrations/20260917143000_episode_revision_history.sql',
+  '../supabase/migrations/20260917074632_episode_revision_history.sql',
   import.meta.url
 );
 const rollbackUrl = new URL(
-  '../supabase/rollback/20260917143000_episode_revision_history_rollback.sql',
+  '../supabase/rollback/20260917074632_episode_revision_history_rollback.sql',
   import.meta.url
 );
 const precheckUrl = new URL(
-  '../supabase/checks/20260917143000_episode_revision_history_precheck.sql',
+  '../supabase/checks/20260917074632_episode_revision_history_precheck.sql',
   import.meta.url
 );
 const postcheckUrl = new URL(
-  '../supabase/checks/20260917143000_episode_revision_history_postcheck.sql',
+  '../supabase/checks/20260917074632_episode_revision_history_postcheck.sql',
   import.meta.url
 );
 const uiUrl = new URL('../novelight-episode-history.js', import.meta.url);
