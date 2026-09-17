@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>誤字報告管理 | NOVELIGHT</title>
+  <link rel="stylesheet" href="novelight-author-studio-shell.css">
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#07131f;color:#e8edf2}a{color:inherit}.workspace{max-width:1040px;margin:0 auto;padding:42px 28px 80px}.page-head{margin-bottom:24px}.page-kicker{color:#d8b45a;font-size:11px;font-weight:900;letter-spacing:.18em}.page-head h1{margin:7px 0 8px;color:#fff4cf;font-size:31px}.page-head p{margin:0;color:#b9c4cf;line-height:1.8}.grid{display:grid;grid-template-columns:minmax(270px,.72fr) minmax(0,1.5fr);gap:18px;align-items:start}.panel{padding:22px;border:1px solid rgba(216,180,90,.28);border-radius:16px;background:linear-gradient(145deg,rgba(24,39,53,.96),rgba(11,25,38,.96));box-shadow:0 18px 42px rgba(0,0,0,.16)}.panel h2{margin:0;color:#fff1c7;font-size:19px}.copy{margin:8px 0 16px;color:#aebac5;font-size:12px;line-height:1.75}.setting{display:flex;gap:10px;align-items:flex-start;padding:13px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.025)}.setting input{margin-top:3px}.setting strong{display:block;color:#f5f0e5;font-size:13px}.setting span span{display:block;margin-top:4px;color:#97a5b3;font-size:11px;line-height:1.6}.field{display:grid;gap:7px;margin-top:14px}.field label{color:#e9dfc0;font-size:12px;font-weight:900}.field select{width:100%;padding:10px 11px;border:1px solid rgba(216,180,90,.28);border-radius:9px;background:#0b1a27;color:#edf2f6;font:inherit}.button{min-height:40px;padding:9px 14px;border:1px solid #d7b85d;border-radius:9px;background:#d7b85d;color:#11202d;font:inherit;font-size:12px;font-weight:900;cursor:pointer}.button.secondary{background:transparent;color:#f1dfaa}.button.reject{border-color:#6b7280;background:transparent;color:#d2d6dc}.button:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.status{min-height:21px;margin-top:10px;color:#b9c4cf;font-size:12px;line-height:1.6}.report-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;margin-bottom:14px}.report-head .field{margin:0;min-width:230px}.report-list{display:grid;gap:12px}.report{padding:16px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.025)}.report-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.report-title{color:#f5f0e5;font-size:14px;font-weight:900}.report-meta{margin-top:4px;color:#8fa0ae;font-size:11px;line-height:1.6}.chip{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(216,180,90,.13);color:#f0d88d;font-size:10px;font-weight:900}.chip.stale{background:rgba(187,92,58,.16);color:#ffb59a}.diff{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}.diff-box{min-width:0;padding:12px;border-radius:9px;background:#0a1824}.diff-box strong{display:block;margin-bottom:6px;color:#9ba9b6;font-size:10px}.diff-box pre{margin:0;white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;line-height:1.7}.before pre{color:#f4a99d}.after pre{color:#a9e6bd}.report-note{margin-top:10px;color:#aebac5;font-size:11px;line-height:1.7}.empty{padding:26px;text-align:center;border:1px dashed rgba(255,255,255,.12);border-radius:10px;color:#8fa0ae}.danger-note{margin-top:14px;padding:12px;border-radius:10px;background:rgba(216,180,90,.08);color:#c8d2db;font-size:11px;line-height:1.7}.danger-note strong{color:#ffe59a}@media(max-width:860px){.grid{grid-template-columns:1fr}.report-head{align-items:stretch;flex-direction:column}.report-head .field{min-width:0}}@media(max-width:620px){.workspace{padding:30px 16px 64px}.panel{padding:18px}.diff{grid-template-columns:1fr}.actions .button{width:100%}.report-top{flex-direction:column}}
+  </style>
+</head>
+<body>
+<header></header>
+<main class="workspace">
+  <section class="page-head">
+    <div class="page-kicker">TYPO REPORTS</div>
+    <h1>誤字報告管理</h1>
+    <p>読者から届いた修正案を確認し、採用する場合だけ本文へ安全に反映します。</p>
+  </section>
+  <div class="grid">
+    <aside class="panel">
+      <h2>受信設定</h2>
+      <p class="copy">初期状態はOFFです。作者全体の既定値と、作品ごとの上書きを設定できます。</p>
+      <label class="setting">
+        <input id="defaultEnabled" type="checkbox" disabled>
+        <span><strong>誤字報告を受け付ける</strong><span>個別設定のない作品へ適用する作者既定値です。</span></span>
+      </label>
+      <div class="actions"><button id="saveDefault" class="button" type="button" disabled>既定値を保存</button></div>
+      <div id="defaultStatus" class="status">設定を読み込んでいます…</div>
+      <div class="field"><label for="settingsNovel">作品</label><select id="settingsNovel" disabled><option>作品を読み込んでいます…</option></select></div>
+      <div class="field"><label for="workMode">作品ごとの設定</label><select id="workMode" disabled><option value="inherit">作者の既定値を使う</option><option value="true">この作品では受け付ける</option><option value="false">この作品では受け付けない</option></select></div>
+      <div class="actions"><button id="saveWork" class="button secondary" type="button" disabled>作品設定を保存</button></div>
+      <div id="workStatus" class="status"></div>
+      <div class="danger-note"><strong>自動修正はしません。</strong> 読者の報告は提案として保存され、作者が採用したときだけ現在本文を再検証して1か所だけ反映します。</div>
+    </aside>
+    <section class="panel">
+      <div class="report-head">
+        <div><h2>届いた報告</h2><p class="copy">修正前・修正案を比較して採用または見送りできます。</p></div>
+        <div class="field"><label for="reportFilter">表示する作品</label><select id="reportFilter" disabled><option value="">すべての作品</option></select></div>
+      </div>
+      <div id="reportsStatus" class="status">報告を読み込んでいます…</div>
+      <div id="reportList" class="report-list"><div class="empty">読み込み中…</div></div>
+    </section>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="novelight-client.js"></script>
+<script src="novelight-author-studio-shell.js"></script>
+<script>
+const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+const defaultEnabled=document.getElementById('defaultEnabled'),saveDefault=document.getElementById('saveDefault'),defaultStatus=document.getElementById('defaultStatus'),settingsNovel=document.getElementById('settingsNovel'),workMode=document.getElementById('workMode'),saveWork=document.getElementById('saveWork'),workStatus=document.getElementById('workStatus'),reportFilter=document.getElementById('reportFilter'),reportsStatus=document.getElementById('reportsStatus'),reportList=document.getElementById('reportList');
+let session=null,busy=false;
+function unavailable(error){const m=String(error?.message||'');return error?.code==='PGRST202'||error?.code==='42883'||m.includes('Could not find the function')||m.includes('novelight_author_typo_report_defaults')}
+function mode(value){return value===null||value===undefined?'inherit':value?'true':'false'}
+function modeValue(value){return value==='inherit'?null:value==='true'}
+function when(value){return value?new Date(value).toLocaleString('ja-JP'):'—'}
+function statusLabel(row){if(row.status==='accepted')return'採用済み';if(row.status==='rejected')return'見送り';if(row.status==='stale')return'古い報告';if(row.is_stale)return'本文更新済み';return'未確認'}
+function text(tag,className,value){const el=document.createElement(tag);if(className)el.className=className;el.textContent=value;return el}
+async function loadDefaults(){const r=await client.rpc('novelight_author_typo_report_defaults');if(r.error)throw r.error;defaultEnabled.checked=r.data?.typo_reports_enabled===true;defaultEnabled.disabled=false;saveDefault.disabled=false;defaultStatus.textContent='作者の既定値を読み込みました。'}
+async function loadWorkSettings(){if(!settingsNovel.value){workMode.disabled=true;saveWork.disabled=true;return}workMode.disabled=true;saveWork.disabled=true;workStatus.textContent='作品設定を読み込んでいます…';try{const r=await client.rpc('novelight_author_novel_typo_report_settings',{p_novel_id:Number(settingsNovel.value)});if(r.error)throw r.error;workMode.value=mode(r.data?.typo_reports_override);workStatus.textContent='現在の有効設定：'+(r.data?.typo_reports_effective?'受け付ける':'受け付けない');workMode.disabled=false;saveWork.disabled=false}catch(e){console.error(e);workStatus.textContent=unavailable(e)?'誤字報告機能のデータベース反映待ちです。':'作品設定を読み込めませんでした。'}}
+async function loadNovels(){const r=await client.from('novels').select('id,title,status').eq('user_id',session.user.id).order('created_at',{ascending:false});if(r.error)throw r.error;const rows=r.data||[];settingsNovel.replaceChildren();reportFilter.replaceChildren();const all=document.createElement('option');all.value='';all.textContent='すべての作品';reportFilter.append(all);if(!rows.length){const none=document.createElement('option');none.value='';none.textContent='作品がありません';settingsNovel.append(none);settingsNovel.disabled=true;reportFilter.disabled=true;return}for(const row of rows){const a=document.createElement('option');a.value=String(row.id);a.textContent=row.title||'無題';settingsNovel.append(a);const b=a.cloneNode(true);reportFilter.append(b)}settingsNovel.disabled=false;reportFilter.disabled=false;const requested=new URLSearchParams(location.search).get('novel_id');if(requested&&rows.some(row=>String(row.id)===requested)){settingsNovel.value=requested;reportFilter.value=requested}await loadWorkSettings()}
+function makeDiffBox(kind,label,value){const box=document.createElement('div');box.className='diff-box '+kind;box.append(text('strong','',label),text('pre','',value===''?'（削除）':value));return box}
+function renderReports(rows){reportList.replaceChildren();if(!rows.length){reportList.append(text('div','empty','該当する誤字報告はありません。'));return}for(const row of rows){const card=document.createElement('article');card.className='report';const top=document.createElement('div');top.className='report-top';const head=document.createElement('div');head.append(text('div','report-title',(row.novel_title||'無題')+' / 第'+row.episode_number+'話 '+(row.episode_title||'')),text('div','report-meta',when(row.created_at)));const chip=text('span','chip'+((row.status==='stale'||row.is_stale)?' stale':''),statusLabel(row));top.append(head,chip);const diff=document.createElement('div');diff.className='diff';diff.append(makeDiffBox('before','修正前',row.original_text),makeDiffBox('after','修正案',row.replacement_text));card.append(top,diff);if(row.status==='pending'){const note=text('div','report-note',row.is_stale?'本文が報告後に変更されています。安全のため自動適用できません。古い報告として閉じるか、編集画面で手動確認してください。':'採用時は現在本文をもう一度照合し、一致した場合だけこの箇所を置き換えます。');card.append(note);const actions=document.createElement('div');actions.className='actions';const accept=text('button','button',row.is_stale?'古い報告として閉じる':'採用して本文へ反映');accept.type='button';accept.dataset.reportId=row.report_id;accept.dataset.action='accept';const reject=text('button','button reject','見送る');reject.type='button';reject.dataset.reportId=row.report_id;reject.dataset.action='reject';actions.append(accept,reject);card.append(actions)}const edit=document.createElement('a');edit.href='episode-edit.html?id='+encodeURIComponent(row.episode_id);edit.className='report-note';edit.textContent='エピソード編集画面を開く →';card.append(edit);reportList.append(card)}}
+async function loadReports(){reportsStatus.textContent='報告を読み込んでいます…';try{const id=reportFilter.value?Number(reportFilter.value):null;const r=await client.rpc('novelight_list_author_typo_reports',{p_novel_id:id});if(r.error)throw r.error;const rows=r.data||[];renderReports(rows);const pending=rows.filter(x=>x.status==='pending').length;reportsStatus.textContent='表示 '+rows.length+'件 / 未確認 '+pending+'件'}catch(e){console.error(e);reportList.replaceChildren(text('div','empty',unavailable(e)?'誤字報告機能のデータベース反映待ちです。':'報告を読み込めませんでした。'));reportsStatus.textContent=''}}
+saveDefault.addEventListener('click',async()=>{if(busy)return;busy=true;saveDefault.disabled=true;defaultStatus.textContent='保存しています…';try{const r=await client.rpc('novelight_set_author_typo_report_defaults',{p_enabled:defaultEnabled.checked});if(r.error)throw r.error;defaultStatus.textContent='作者の既定値を保存しました。';await loadWorkSettings()}catch(e){console.error(e);defaultStatus.textContent='保存できませんでした。'}finally{busy=false;saveDefault.disabled=false}});
+settingsNovel.addEventListener('change',()=>void loadWorkSettings());
+saveWork.addEventListener('click',async()=>{if(busy||!settingsNovel.value)return;busy=true;saveWork.disabled=true;workStatus.textContent='保存しています…';try{const r=await client.rpc('novelight_set_novel_typo_report_settings',{p_novel_id:Number(settingsNovel.value),p_enabled:modeValue(workMode.value)});if(r.error)throw r.error;workMode.value=mode(r.data?.typo_reports_override);workStatus.textContent='作品設定を保存しました。現在：'+(r.data?.typo_reports_effective?'受け付ける':'受け付けない')}catch(e){console.error(e);workStatus.textContent='保存できませんでした。'}finally{busy=false;saveWork.disabled=false}});
+reportFilter.addEventListener('change',()=>void loadReports());
+reportList.addEventListener('click',async event=>{const button=event.target.closest('button[data-report-id]');if(!button||busy)return;const action=button.dataset.action;if(action==='accept'&&!confirm(button.textContent+'しますか？'))return;busy=true;button.disabled=true;reportsStatus.textContent=action==='accept'?'本文を再検証しています…':'処理しています…';try{const r=await client.rpc('novelight_resolve_typo_report',{p_report_id:button.dataset.reportId,p_action:action});if(r.error)throw r.error;if(r.data?.status==='stale'){reportsStatus.textContent='本文が変更されていたため、自動適用せず古い報告として閉じました。'}else if(r.data?.applied===true){reportsStatus.textContent='修正を本文へ反映しました。変更前本文は改稿履歴へ保存されています。'}else{reportsStatus.textContent='報告を見送りました。'}await loadReports()}catch(e){console.error(e);reportsStatus.textContent='処理できませんでした。時間をおいて再度お試しください。'}finally{busy=false;if(button.isConnected)button.disabled=false}});
+(async()=>{void NovelightClient.recordVisit(client);try{const auth=await client.auth.getSession();session=auth.data.session;if(!session){location.href='login.html?redirect='+encodeURIComponent('typo-reports.html'+location.search);return}void NovelightClient.claimAcquisition(client);await Promise.all([loadDefaults(),loadNovels()]);await loadReports()}catch(e){console.error(e);defaultStatus.textContent=unavailable(e)?'誤字報告機能のデータベース反映待ちです。':'読み込めませんでした。';reportList.replaceChildren(text('div','empty','誤字報告管理を読み込めませんでした。'))}})();
+</script>
+</body>
+</html>
