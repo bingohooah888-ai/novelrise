@@ -31,8 +31,8 @@ begin
     raise exception 'author export ownership check is missing';
   end if;
 
-  if position("interval '10 minutes'" in v_definition) = 0
-     or position("interval '24 hours'" in v_definition) = 0 then
+  if position('interval ''10 minutes''' in v_definition) = 0
+     or position('interval ''24 hours''' in v_definition) = 0 then
     raise exception 'author export rate limits are missing';
   end if;
 
