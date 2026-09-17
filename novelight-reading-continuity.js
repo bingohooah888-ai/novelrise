@@ -3,6 +3,9 @@
 
   const STORAGE_PREFIX = 'novelight:reading:v1:';
   const STYLE_ID = 'novelight-reading-continuity-style';
+  const SYNC_SCRIPT_ID = 'novelight-reading-sync-loader';
+  const syncTimers = new Map();
+  let syncLoaderPromise = null;
 
   function pageSlug() {
     const file = window.location.pathname.split('/').pop() || 'index.html';
@@ -31,6 +34,73 @@
     } catch {
       return false;
     }
+  }
+
+  function loadSyncRuntime() {
+    if (window.NovelightReadingSync) return Promise.resolve(window.NovelightReadingSync);
+    if (syncLoaderPromise) return syncLoaderPromise;
+    syncLoaderPromise = new Promise((resolve, reject) => {
+      const existing = document.getElementById(SYNC_SCRIPT_ID);
+      const script = existing || document.createElement('script');
+      const finish = () => {
+        if (window.NovelightReadingSync) resolve(window.NovelightReadingSync);
+        else reject(new Error('reading sync runtime did not initialize'));
+      };
+      script.addEventListener('load', finish, { once: true });
+      script.addEventListener('error', () => reject(new Error('reading sync runtime failed to load')), {
+        once: true
+      });
+      if (!existing) {
+        script.id = SYNC_SCRIPT_ID;
+        script.src = 'novelight-reading-sync.js';
+        script.async = true;
+        (document.body || document.head || document.documentElement).appendChild(script);
+      } else if (window.NovelightReadingSync) {
+        finish();
+      }
+    }).catch((error) => {
+      syncLoaderPromise = null;
+      throw error;
+    });
+    return syncLoaderPromise;
+  }
+
+  async function hydrateNovelProgress(clientInstance, novelId) {
+    try {
+      const sync = await loadSyncRuntime();
+      return await sync.hydrateNovel(clientInstance, novelId);
+    } catch (error) {
+      console.warn('reading position hydration unavailable; using this device only', error);
+      return readProgress(novelId);
+    }
+  }
+
+  async function hydrateManyProgress(clientInstance, novelIds) {
+    try {
+      const sync = await loadSyncRuntime();
+      return await sync.hydrateMany(clientInstance, novelIds);
+    } catch (error) {
+      console.warn('reading position hydration unavailable; using this device only', error);
+      return false;
+    }
+  }
+
+  function scheduleProgressSync(clientInstance, novelId) {
+    if (!clientInstance || !novelId) return;
+    const key = String(novelId);
+    const previous = syncTimers.get(key);
+    if (previous) window.clearTimeout(previous);
+    const timer = window.setTimeout(() => {
+      syncTimers.delete(key);
+      const value = readProgress(key);
+      if (!value) return;
+      void loadSyncRuntime()
+        .then((sync) => sync.syncProgress(clientInstance, value))
+        .catch((error) =>
+          console.warn('reading position sync unavailable; keeping this device copy', error)
+        );
+    }, 1200);
+    syncTimers.set(key, timer);
   }
 
   function clamp(value, min = 0, max = 1) {
@@ -85,7 +155,10 @@
         clearTimeout(timer);
         resolve(node);
       });
-      observer.observe(root === document ? document.documentElement : root, { childList: true, subtree: true });
+      observer.observe(root === document ? document.documentElement : root, {
+        childList: true,
+        subtree: true
+      });
       const timer = setTimeout(() => {
         observer.disconnect();
         reject(new Error(`Timed out waiting for ${selector}`));
@@ -109,8 +182,8 @@
     }
   }
 
-  async function publishedEpisodes(client, novelId) {
-    const result = await client
+  async function publishedEpisodes(clientInstance, novelId) {
+    const result = await clientInstance
       .from('episodes')
       .select('id,novel_id,title,episode_number,status')
       .eq('novel_id', novelId)
@@ -139,19 +212,23 @@
     heading.insertAdjacentElement('afterend', button);
   }
 
-  function saveEpisodeProgress(row, content) {
+  function saveEpisodeProgress(row, content, clientInstance) {
     const previous = readProgress(row.novel_id);
     const ratio = Math.max(
       String(previous?.episodeId) === String(row.id) ? clamp(previous?.progressRatio) : 0,
       contentProgress(content)
     );
-    writeProgress({
+    const value = {
       novelId: String(row.novel_id),
       episodeId: String(row.id),
       episodeNumber: Number(row.episode_number) || 0,
       progressRatio: ratio,
-      lastReadAt: new Date().toISOString()
-    });
+      lastReadAt: new Date().toISOString(),
+      serverRevision: Math.max(0, Number(previous?.serverRevision) || 0)
+    };
+    writeProgress(value);
+    scheduleProgressSync(clientInstance, row.novel_id);
+    return value;
   }
 
   function renderEpisodeNavigation(row, rows) {
@@ -184,71 +261,90 @@
     if (!next) {
       const finished = document.createElement('p');
       finished.className = 'nl-reading-finished';
-      finished.textContent = 'ここまで読んでいただきありがとうございます。お気に入りに追加すると作品を本棚から探しやすくなります。';
+      finished.textContent =
+        'ここまで読んでいただきありがとうございます。お気に入りに追加すると作品を本棚から探しやすくなります。';
       nav.appendChild(finished);
     }
     card.insertAdjacentElement('afterend', nav);
   }
 
-  async function installEpisodeContinuity(client) {
+  async function installEpisodeContinuity(clientInstance) {
     const episodeId = new URLSearchParams(window.location.search).get('id');
     if (!episodeId) return false;
     const content = await waitFor('#card .content').catch(() => null);
     if (!content) return false;
-    const rowResult = await client
+    const rowResult = await clientInstance
       .from('episodes')
       .select('id,novel_id,title,episode_number,status')
       .eq('id', episodeId)
       .single();
     if (rowResult.error || !rowResult.data || rowResult.data.status !== 'published') return false;
     const row = rowResult.data;
+    await hydrateNovelProgress(clientInstance, row.novel_id);
     const stored = readProgress(row.novel_id);
     installResumeChip(content, stored, row);
-    const rows = await publishedEpisodes(client, row.novel_id);
+    const rows = await publishedEpisodes(clientInstance, row.novel_id);
     renderEpisodeNavigation(row, rows);
-    saveEpisodeProgress(row, content);
+    saveEpisodeProgress(row, content, clientInstance);
     let timer = null;
     const schedule = () => {
       if (timer) return;
       timer = window.setTimeout(() => {
         timer = null;
-        saveEpisodeProgress(row, content);
+        saveEpisodeProgress(row, content, clientInstance);
       }, 500);
     };
     window.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('pagehide', () => saveEpisodeProgress(row, content), { once: true });
+    window.addEventListener(
+      'pagehide',
+      () => saveEpisodeProgress(row, content, clientInstance),
+      { once: true }
+    );
     return true;
   }
 
   function episodeRowsFromNovelPage() {
-    return Array.from(document.querySelectorAll('#episodeList .episode')).map((item) => {
-      const link = item.querySelector('a[href*="episode.html?id="]');
-      const numberText = item.querySelector('.episode-number')?.textContent || '';
-      const match = numberText.match(/第\s*(\d+)\s*話/u);
-      return link && match
-        ? { id: parseNovelId(link.href), href: link.href, episodeNumber: Number(match[1]), title: link.textContent.trim() }
-        : null;
-    }).filter(Boolean);
+    return Array.from(document.querySelectorAll('#episodeList .episode'))
+      .map((item) => {
+        const link = item.querySelector('a[href*="episode.html?id="]');
+        const numberText = item.querySelector('.episode-number')?.textContent || '';
+        const match = numberText.match(/第\s*(\d+)\s*話/u);
+        return link && match
+          ? {
+              id: parseNovelId(link.href),
+              href: link.href,
+              episodeNumber: Number(match[1]),
+              title: link.textContent.trim()
+            }
+          : null;
+      })
+      .filter(Boolean);
   }
 
   function continueTarget(rows, stored) {
     if (!rows.length) return null;
-    if (!stored) return { row: rows[0], label: `第${rows[0].episodeNumber}話から読む`, unread: rows.length };
+    if (!stored)
+      return { row: rows[0], label: `第${rows[0].episodeNumber}話から読む`, unread: rows.length };
     const index = rows.findIndex((row) => String(row.id) === String(stored.episodeId));
-    if (index < 0) return { row: rows[0], label: `第${rows[0].episodeNumber}話から読む`, unread: rows.length };
+    if (index < 0)
+      return { row: rows[0], label: `第${rows[0].episodeNumber}話から読む`, unread: rows.length };
     const completedCurrent = clamp(stored.progressRatio) >= 0.85;
     const targetIndex = completedCurrent && rows[index + 1] ? index + 1 : index;
     const unread = Math.max(0, rows.length - index - (completedCurrent ? 1 : 0));
     return {
       row: rows[targetIndex],
-      label: targetIndex === index ? `第${rows[index].episodeNumber}話の続きから読む` : `第${rows[targetIndex].episodeNumber}話から続きを読む`,
+      label:
+        targetIndex === index
+          ? `第${rows[index].episodeNumber}話の続きから読む`
+          : `第${rows[targetIndex].episodeNumber}話から続きを読む`,
       unread
     };
   }
 
-  async function installNovelContinue() {
+  async function installNovelContinue(clientInstance) {
     const novelId = new URLSearchParams(window.location.search).get('id');
     if (!novelId) return false;
+    await hydrateNovelProgress(clientInstance, novelId);
     await waitFor('#episodeList a[href*="episode.html?id="]').catch(() => null);
     const rows = episodeRowsFromNovelPage();
     if (!rows.length || document.getElementById('nlContinueReading')) return false;
@@ -263,7 +359,7 @@
     return true;
   }
 
-  async function installFavoritesBookshelf(client) {
+  async function installFavoritesBookshelf(clientInstance) {
     const list = document.getElementById('list');
     if (!list) return false;
     await waitFor('#list a.card[href*="novel.html?id="]', { root: list }).catch(() => null);
@@ -277,7 +373,8 @@
     }
 
     const novelIds = cards.map((card) => parseNovelId(card.href)).filter(Boolean);
-    const result = await client
+    await hydrateManyProgress(clientInstance, novelIds);
+    const result = await clientInstance
       .from('episodes')
       .select('id,novel_id,title,episode_number,status')
       .in('novel_id', novelIds)
@@ -335,7 +432,7 @@
     const slug = pageSlug();
     try {
       if (slug === 'episode') await installEpisodeContinuity(client);
-      if (slug === 'novel') await installNovelContinue();
+      if (slug === 'novel') await installNovelContinue(client);
       if (slug === 'favorites') await installFavoritesBookshelf(client);
     } catch (error) {
       console.error('reading continuity enhancement failed', error);
