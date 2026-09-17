@@ -21,7 +21,7 @@ jobs:
           ref: feature/novel-series-current
 
       - name: Setup Node.js
-        uses: actions/setup-node@1e60f620b9541d8b0d8fb072e2c58cda6428c2a1 # v6.1.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version-file: .nvmrc
           cache: npm
