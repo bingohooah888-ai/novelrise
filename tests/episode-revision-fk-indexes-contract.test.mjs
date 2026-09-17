@@ -4,19 +4,19 @@ import test from 'node:test';
 import { URL } from 'node:url';
 
 const migrationUrl = new URL(
-  '../supabase/migrations/20260917173000_episode_revision_fk_indexes.sql',
+  '../supabase/migrations/20260917084123_episode_revision_fk_indexes.sql',
   import.meta.url
 );
 const precheckUrl = new URL(
-  '../supabase/checks/20260917173000_episode_revision_fk_indexes_precheck.sql',
+  '../supabase/checks/20260917084123_episode_revision_fk_indexes_precheck.sql',
   import.meta.url
 );
 const postcheckUrl = new URL(
-  '../supabase/checks/20260917173000_episode_revision_fk_indexes_postcheck.sql',
+  '../supabase/checks/20260917084123_episode_revision_fk_indexes_postcheck.sql',
   import.meta.url
 );
 const rollbackUrl = new URL(
-  '../supabase/rollback/20260917173000_episode_revision_fk_indexes_rollback.sql',
+  '../supabase/rollback/20260917084123_episode_revision_fk_indexes_rollback.sql',
   import.meta.url
 );
 
