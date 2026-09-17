@@ -41,7 +41,13 @@ test('index safety artifacts stay bounded to episode revisions', async () => {
   assert.match(precheck, /public\.episode_revisions/);
   assert.match(postcheck, /episode_revisions_novel_id_idx/);
   assert.match(postcheck, /episode_revisions_user_id_idx/);
-  assert.match(rollback, /drop index if exists public\.episode_revisions_user_id_idx/i);
-  assert.match(rollback, /drop index if exists public\.episode_revisions_novel_id_idx/i);
+  assert.match(
+    rollback,
+    /drop index if exists public\.episode_revisions_user_id_idx/i
+  );
+  assert.match(
+    rollback,
+    /drop index if exists public\.episode_revisions_novel_id_idx/i
+  );
   assert.doesNotMatch(rollback, /drop table|drop function|drop trigger/i);
 });
