@@ -16,6 +16,7 @@
   let neutralTotal = null;
   let seedOffset = 0;
   let loading = false;
+  let sessionPromise = null;
 
   function esc(value) {
     const el = document.createElement('div');
@@ -46,6 +47,38 @@
   function shouldFallbackFeed(result, name) {
     if (!result?.error) return !Array.isArray(result?.data);
     return missingTrustedRpc(result.error, name);
+  }
+
+  async function currentSession() {
+    if (!sessionPromise) {
+      sessionPromise = client.auth
+        .getSession()
+        .then((result) => result.data?.session || null)
+        .catch((error) => {
+          console.error('discovery session lookup failed', error);
+          return null;
+        });
+    }
+    return sessionPromise;
+  }
+
+  async function filterHiddenRows(rows) {
+    if (!rows.length) return rows;
+    const session = await currentSession();
+    if (!session) return rows;
+
+    const result = await client.rpc('novelight_hidden_novel_ids', {
+      p_novel_ids: rows.map(novelId)
+    });
+    if (result.error) {
+      console.error('discovery mute filter failed', result.error);
+      return rows;
+    }
+
+    const hidden = new Set(
+      (Array.isArray(result.data) ? result.data : []).map(String)
+    );
+    return rows.filter((row) => !hidden.has(novelId(row)));
   }
 
   function coverMarkup(novel) {
@@ -187,6 +220,8 @@
       batchSeen.add(id);
       candidates.push(row);
     }
+    const filteredCandidates = await filterHiddenRows(candidates);
+    candidates.splice(0, candidates.length, ...filteredCandidates);
     const page = candidates.slice(0, pageSize);
     const visible = appendRows(page);
     await recordTrusted(visible);
@@ -212,7 +247,8 @@
   async function loadNew() {
     const pageOffset = neutralOffset;
     const rows = await fetchNeutralNew(pageSize);
-    const visible = appendRows(rows);
+    const filtered = await filterHiddenRows(rows);
+    const visible = appendRows(filtered);
     await recordVisible('search_new', visible, pageOffset);
     moreWrap.hidden = rows.length < pageSize || neutralOffset >= Number(neutralTotal || 0);
     moreButton.textContent = 'さらに24作品を見る';
@@ -234,10 +270,13 @@
     const pageOffset = seedOffset;
     const rows = await fetchSeedPage();
     const page = rows.slice(0, pageSize);
+    const rawPageLength = page.length;
+    seedOffset += page.length;
+    const filteredPage = await filterHiddenRows(page);
+    page.splice(0, page.length, ...filteredPage);
     const visible = appendRows(page);
     await recordVisible('search_seed', visible, pageOffset);
-    seedOffset += page.length;
-    moreWrap.hidden = rows.length <= pageSize || page.length === 0;
+    moreWrap.hidden = rows.length <= pageSize || rawPageLength === 0;
     moreButton.textContent = '発掘中の作品をもっと見る';
   }
 
