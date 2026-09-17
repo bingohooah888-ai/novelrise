@@ -68,7 +68,10 @@ test('history RPCs are authenticated-only', async () => {
 
   assert.match(migration, /novelight_list_episode_revisions\(bigint\)/i);
   assert.match(migration, /novelight_get_episode_revision\(uuid\)/i);
-  assert.match(migration, /novelight_restore_episode_revision\(bigint, uuid\)/i);
+  assert.match(
+    migration,
+    /novelight_restore_episode_revision\(bigint, uuid\)/i
+  );
   assert.match(migration, /to authenticated/i);
   assert.match(migration, /from anon/i);
   assert.match(postcheck, /directly readable by clients/i);
