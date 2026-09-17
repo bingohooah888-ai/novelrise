@@ -6,6 +6,7 @@ const homeLabels = [
   'ランキング',
   '特徴',
   '料金プラン',
+  'NOVELIGHT β版 先行作者登録',
   'ログイン'
 ];
 const pricingLabels = [
@@ -14,7 +15,7 @@ const pricingLabels = [
   'ランキング',
   '特徴',
   '料金プラン',
-  '作者ホーム'
+  'ログイン'
 ];
 const publicMenus = [
   ['home', '/index.html', homeLabels],
