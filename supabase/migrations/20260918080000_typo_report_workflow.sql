@@ -440,7 +440,7 @@ revoke all on function public.novelight_submit_episode_typo_report(bigint, integ
 revoke all on function public.novelight_list_episode_typo_reports(bigint) from public, anon, authenticated;
 revoke all on function public.novelight_apply_episode_typo_report(uuid) from public, anon, authenticated;
 revoke all on function public.novelight_reject_episode_typo_report(uuid) from public, anon, authenticated;
-revoke all on function public.novelight_stale_episode_typo_reports() from public, anon, authenticated;
+revoke all on function public.novelight_stale_episode_typo_reports() from public, anon, authenticated, service_role;
 
 grant execute on function public.novelight_submit_episode_typo_report(bigint, integer, text, text) to authenticated, service_role;
 grant execute on function public.novelight_list_episode_typo_reports(bigint) to authenticated, service_role;
