@@ -30,7 +30,7 @@ async function text(url) {
   return readFile(url, 'utf8');
 }
 
-test('work export authorization is bound to auth.uid and owner-only', async () => {
+test('work export is auth.uid owner-only', async () => {
   const migration = await text(migrationUrl);
 
   assert.match(
@@ -38,10 +38,7 @@ test('work export authorization is bound to auth.uid and owner-only', async () =
     /novelight_authorize_work_export\(\s*p_novel_id bigint,\s*p_format text/i
   );
   assert.match(migration, /v_uid uuid := auth\.uid\(\)/i);
-  assert.match(
-    migration,
-    /n\.id = p_novel_id[\s\S]*n\.user_id = v_uid/i
-  );
+  assert.match(migration, /n\.id = p_novel_id[\s\S]*n\.user_id = v_uid/i);
   assert.doesNotMatch(migration, /p_user_id/i);
   assert.match(
     migration,
@@ -53,7 +50,7 @@ test('work export authorization is bound to auth.uid and owner-only', async () =
   );
 });
 
-test('work export audit is private and rate limits are concurrency-safe', async () => {
+test('work export audit and rate limits stay private and bounded', async () => {
   const migration = await text(migrationUrl);
   const postcheck = await text(postcheckUrl);
 
@@ -76,7 +73,7 @@ test('work export audit is private and rate limits are concurrency-safe', async 
   );
 });
 
-test('author backup UI exports owned manuscript data as TXT without evaluation metrics', async () => {
+test('author backup exports manuscript TXT without evaluation metrics', async () => {
   const ui = await text(uiUrl);
   const client = await text(exportClientUrl);
 
@@ -100,11 +97,11 @@ test('author backup UI exports owned manuscript data as TXT without evaluation m
   assert.doesNotMatch(client, /p_user_id/i);
 });
 
-test('service-role export API was removed from the branch design', async () => {
+test('service-role export API stays absent', async () => {
   await assert.rejects(access(removedApiUrl));
 });
 
-test('migration safety artifacts match the authenticated RPC signature', async () => {
+test('migration artifacts share the authenticated RPC signature', async () => {
   const migration = await text(migrationUrl);
   const rollback = await text(rollbackUrl);
   const precheck = await text(precheckUrl);
