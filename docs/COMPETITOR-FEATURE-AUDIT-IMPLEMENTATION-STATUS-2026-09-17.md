@@ -76,11 +76,13 @@
 
 ## B候補 #13 予約公開の複数話・範囲管理
 
-状態：**実装済み（本変更セット） / Production migration未適用**
+状態：**実装済み / current main・Production反映済み**
 
 実装証拠：
 
 - PR #677 `Add multi-episode schedule management`
+- merge commit：`eb28397c6833c74144c98b3dc50369fffd1a2f57`
+- Production migration：`20260918180500_episode_schedule_batch_management` 適用済み
 - `episode-schedule.html`
 - `supabase/migrations/20260918180500_episode_schedule_batch_management.sql`
 - `supabase/checks/20260918180500_episode_schedule_batch_management_precheck.sql`
@@ -108,3 +110,41 @@
 - rollbackはB #13のbatch RPCだけを削除し、既存予約データ・既存cron・既存単発予約機能を壊さない。
 - Production migration適用はPR mergeとは別の明示承認境界とする。
 - 本変更セットがmainへmergeされた時点から、B候補 #13を未実装として重複開発しない。
+
+
+## B〜C候補 #14 コメントの作者モデレーション強化
+
+状態：**実装済み（本変更セット） / Production migration未適用**
+
+実装証拠：
+
+- `novelight-comments.js`
+- `novelight-comments.css`
+- `supabase/migrations/20260918192000_comment_author_moderation.sql`
+- `supabase/checks/20260918192000_comment_author_moderation_precheck.sql`
+- `supabase/checks/20260918192000_comment_author_moderation_postcheck.sql`
+- `supabase/rollback/20260918192000_comment_author_moderation_rollback.sql`
+- `tests/comment-author-moderation-contract.test.mjs`
+- `tests/rls/comment-author-moderation.sql`
+
+実装済み範囲：
+
+- 作者は自作品の公開コメントを1件だけ固定できる。
+- 別コメントを固定すると既存固定は解除され、固定状態は表示順だけへ影響する。
+- 作者はコメントをsoft非表示／再表示でき、非表示理由は限定された分類として非公開監査へ残す。
+- 非表示でも元コメント、コメント投稿イベント、既得SCOUT EXPは削除・取消しない。
+- 作者返信は1読者コメントにつき1件だけとし、編集・削除は可能だが多段スレッドへ拡張しない。
+- 作者返信は既存のblock境界を直接交流として尊重し、block中の新規返信を拒否する。
+- block関係にある閲覧者へ既存作者返信を表示しない。
+- 作者モデレーション操作は専用の非公開監査台帳へ記録する。
+- migration未反映中は旧comment feedに`can_moderate`が存在しないため、作者操作UIを出さないrolling-deploy fail-safeとする。
+
+安全・公平性境界：
+
+- 固定・非表示・作者返信は、作品Rank、LIGHT SEED、SCOUT、PV、favorites、発見・検索順位・露出へ直接加点しない。
+- 作者が批判的コメントを非表示にしたことを作品評価の改善として扱わない。
+- soft非表示は評価履歴を消す手段にせず、元データとSCOUT履歴を保持する。
+- raw moderation audit tableは一般クライアントへ直接公開しない。
+- 作者返信自体ではSCOUT EXPを発生させない。
+- 第二のコメントシステム、無制限スレッド、SNSタイムライン機能は追加しない。
+- Production migration適用はPR mergeとは別の明示承認境界とする。
