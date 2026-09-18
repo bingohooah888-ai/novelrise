@@ -17,7 +17,8 @@
     'post',
     'my-novels',
     'analytics',
-    'scout-record'
+    'scout-record',
+    'interaction-settings'
   ]);
   const PUBLIC_HEADER_PAGES = new Set([
     'index',

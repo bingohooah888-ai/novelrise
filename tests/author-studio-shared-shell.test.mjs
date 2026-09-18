@@ -9,7 +9,13 @@ const [client, shellRuntime, shellStyles] = await Promise.all([
 ]);
 
 test('creator pages load the shared Author Studio shell', () => {
-  for (const slug of ['post', 'my-novels', 'analytics', 'scout-record']) {
+  for (const slug of [
+    'post',
+    'my-novels',
+    'analytics',
+    'scout-record',
+    'interaction-settings'
+  ]) {
     assert.match(client, new RegExp(`'${slug}'`));
   }
   assert.match(client, /novelight-author-studio-shell\.css/);
@@ -23,7 +29,8 @@ test('shared shell matches the creator-room navigation contract', () => {
     ['post.html', '新規投稿'],
     ['my-novels.html', '自分の作品'],
     ['analytics.html', 'LIGHT ANALYTICS'],
-    ['scout-record.html', 'SCOUT RECORD']
+    ['scout-record.html', 'SCOUT RECORD'],
+    ['interaction-settings.html', '交流設定']
   ];
 
   for (const [href, label] of expectedItems) {
@@ -31,7 +38,7 @@ test('shared shell matches the creator-room navigation contract', () => {
     assert.ok(shellRuntime.includes(label));
   }
 
-  assert.doesNotMatch(shellRuntime, />設定</);
+  assert.match(shellRuntime, /交流設定/);
   assert.match(shellRuntime, /aria-current/);
   assert.match(shellRuntime, /読者ホームへ/);
   assert.match(shellRuntime, /ログアウト/);
