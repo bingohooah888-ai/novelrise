@@ -103,9 +103,7 @@ test('Chapter 40 supersedes the Chapter 39 mask render path while preserving int
   assert.match(emergency, /cover_mask_url is not null/i);
   assert.match(emergency, /Thumbnail template is not composition-ready/);
   assert.ok(
-    composer.includes(
-      "const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']"
-    )
+    composer.includes("const SURFACE_TYPES = ['pattern', 'symbol', 'frame']")
   );
   assert.ok(
     composer.includes(
@@ -114,6 +112,31 @@ test('Chapter 40 supersedes the Chapter 39 mask render path while preserving int
   );
   assert.ok(!composer.includes("globalCompositeOperation = 'destination-in'"));
   assert.ok(!composer.includes('LABELS = Object.freeze({\n    cover_mask'));
+});
+
+test('author composer exposes five accordion categories and hides retired cover/effect choices', () => {
+  assert.ok(
+    composer.includes(
+      'const AUTHOR_LAYER_TYPES = [...REQUIRED_TYPES, ...OPTIONAL_TYPES]'
+    )
+  );
+  assert.ok(
+    composer.includes("const REQUIRED_TYPES = ['background', 'base_book']")
+  );
+  assert.ok(
+    composer.includes("const OPTIONAL_TYPES = ['pattern', 'symbol', 'frame']")
+  );
+  assert.ok(composer.includes("document.createElement('details')"));
+  assert.ok(composer.includes("summary.className = 'nl-thumb-layer-summary'"));
+  assert.ok(
+    composer.includes("controls.querySelectorAll('details.nl-thumb-layer')")
+  );
+  assert.ok(composer.includes('effect_asset_id: null'));
+  assert.ok(!composer.includes("cover: '表紙カラー・質感'"));
+  assert.ok(!composer.includes("effect: '光・エフェクト'"));
+  assert.match(composerCss, /max-height:min\(56vh,520px\)/);
+  assert.match(composerCss, /overflow-y:auto/);
+  assert.match(composerCss, /nl-thumb-layer\[open\]/);
 });
 
 test('cached render is derived WebP and source layer IDs remain canonical', () => {
@@ -153,6 +176,26 @@ test('ADMIN controls layer, template, order and publication state', () => {
   assert.ok(adminApi.includes('p_layer_type: layerType'));
   assert.ok(adminApi.includes('p_template_key: templateKey'));
   assert.ok(adminApi.includes('p_sort_order: sortOrder'));
+  const uploadLayerTypes =
+    adminApi.match(
+      /const UPLOAD_LAYER_TYPES = new Set\(\[([\s\S]*?)\]\);/
+    )?.[1] || '';
+  assert.ok(uploadLayerTypes.includes("'background'"));
+  assert.ok(uploadLayerTypes.includes("'base_book'"));
+  assert.ok(uploadLayerTypes.includes("'pattern'"));
+  assert.ok(uploadLayerTypes.includes("'symbol'"));
+  assert.ok(uploadLayerTypes.includes("'frame'"));
+  assert.ok(!uploadLayerTypes.includes("'cover'"));
+  assert.ok(!uploadLayerTypes.includes("'effect'"));
+  const uploadLayerSelect =
+    admin.match(/<select id="layerType"[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
+  assert.ok(uploadLayerSelect.includes('value="background"'));
+  assert.ok(uploadLayerSelect.includes('value="base_book"'));
+  assert.ok(uploadLayerSelect.includes('value="pattern"'));
+  assert.ok(uploadLayerSelect.includes('value="symbol"'));
+  assert.ok(uploadLayerSelect.includes('value="frame"'));
+  assert.ok(!uploadLayerSelect.includes('value="cover"'));
+  assert.ok(!uploadLayerSelect.includes('value="effect"'));
 });
 
 test('author pages use layered composer while retaining safe fallback', () => {
@@ -172,8 +215,11 @@ test('reader cards prefer cached WebP and rebuild missing cache through the shar
   assert.ok(publicRuntime.includes('NovelightThumbnailComposer?.geometry'));
   assert.ok(publicRuntime.includes('geometry.drawPerspectiveImage'));
   assert.ok(
-    publicRuntime.includes('composition.effect_allow_outside_cover === true')
+    publicRuntime.includes(
+      "const SURFACE_TYPES = ['pattern', 'symbol', 'frame']"
+    )
   );
+  assert.ok(!publicRuntime.includes('composition.effect_url'));
   assert.ok(!publicRuntime.includes('cover_mask_url'));
   assert.match(publicCss, /aspect-ratio:\s*3\s*\/\s*4/i);
   assert.match(composerCss, /aspect-ratio:3\/4/i);

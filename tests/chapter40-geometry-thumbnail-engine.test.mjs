@@ -72,10 +72,10 @@ test('Geometry Validation rejects duplicates, self intersections and unstable/sm
   assert.match(migration, /abs\(geometry\.twice_area\) >= 200/i);
 });
 
-test('renderer perspective-transforms all four cover-surface roles and never renders from PNG mask', () => {
+test('renderer perspective-transforms only the three author-facing cover-surface roles and never renders from PNG mask', () => {
   assert.match(
     composer,
-    /const SURFACE_TYPES = \['cover', 'pattern', 'symbol', 'frame'\]/
+    /const SURFACE_TYPES = \['pattern', 'symbol', 'frame'\]/
   );
   assert.match(
     composer,
@@ -92,15 +92,24 @@ test('renderer perspective-transforms all four cover-surface roles and never ren
   const renderEnd = composer.indexOf('function canvasBlob', renderStart);
   const renderBody = composer.slice(renderStart, renderEnd);
   assert.doesNotMatch(renderBody, /cover_mask_url/);
+  assert.doesNotMatch(renderBody, /selected\.cover/);
+  assert.doesNotMatch(renderBody, /selected\.effect/);
 });
 
-test('effect outside-cover rendering is controlled only by template data', () => {
-  assert.match(composer, /effect_allow_outside_cover/);
-  assert.match(composer, /template\.effect_allow_outside_cover === true/);
-  assert.match(composer, /clipToCoverQuad\(context, quad\)/);
+test('legacy cover and effect schema remain compatible but are not author-facing render layers', () => {
   assert.match(
     migration,
     /effect_allow_outside_cover boolean not null default false/
+  );
+  assert.match(composer, /effect_asset_id: null/);
+  assert.doesNotMatch(runtime, /composition\.effect_url/);
+  assert.doesNotMatch(
+    composer,
+    /LABELS = Object\.freeze\([\s\S]*cover: '表紙カラー・質感'/
+  );
+  assert.doesNotMatch(
+    composer,
+    /LABELS = Object\.freeze\([\s\S]*effect: '光・エフェクト'/
   );
 });
 

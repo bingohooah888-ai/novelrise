@@ -13,11 +13,9 @@ const PATH_PATTERN = /^official\/([0-9a-f-]{36})\.(webp|png|jpg|jpeg)$/i;
 const UPLOAD_LAYER_TYPES = new Set([
   'background',
   'base_book',
-  'cover',
   'pattern',
   'symbol',
-  'frame',
-  'effect'
+  'frame'
 ]);
 const STATUSES = new Set(['active', 'retired', 'emergency_disabled']);
 const TEMPLATE_FIELDS =

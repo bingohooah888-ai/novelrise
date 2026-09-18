@@ -3,18 +3,18 @@
 
   const CANVAS_WIDTH = 1086;
   const CANVAS_HEIGHT = 1448;
-  const REQUIRED_TYPES = ['background', 'base_book', 'cover'];
-  const OPTIONAL_TYPES = ['pattern', 'symbol', 'frame', 'effect'];
-  const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame'];
-  const LAYER_TYPES = [...REQUIRED_TYPES, ...OPTIONAL_TYPES];
+  const REQUIRED_TYPES = ['background', 'base_book'];
+  const OPTIONAL_TYPES = ['pattern', 'symbol', 'frame'];
+  const AUTHOR_LAYER_TYPES = [...REQUIRED_TYPES, ...OPTIONAL_TYPES];
+  const PERSISTENCE_REQUIRED_TYPES = ['background', 'base_book', 'cover'];
+  const LAYER_TYPES = [...AUTHOR_LAYER_TYPES, 'cover'];
+  const SURFACE_TYPES = ['pattern', 'symbol', 'frame'];
   const LABELS = Object.freeze({
     background: '背景',
     base_book: '基準本',
-    cover: '表紙カラー・質感',
     pattern: '背景模様',
     symbol: '中央シンボル',
-    frame: '枠・四隅装飾',
-    effect: '光・エフェクト'
+    frame: '枠'
   });
   const QUAD_FIELDS =
     'cover_mask_source,cover_mask_revision,cover_mask_url,cover_top_left_x,cover_top_left_y,cover_top_right_x,cover_top_right_y,cover_bottom_right_x,cover_bottom_right_y,cover_bottom_left_x,cover_bottom_left_y';
@@ -291,7 +291,7 @@
     ) {
       return false;
     }
-    return REQUIRED_TYPES.every(
+    return PERSISTENCE_REQUIRED_TYPES.every(
       (layerType) => assetsFor(library, template.template_key, layerType).length > 0
     );
   }
@@ -411,16 +411,6 @@
     await drawAsset(context, selected.base_book, CANVAS_WIDTH, CANVAS_HEIGHT);
     for (const type of SURFACE_TYPES) await drawPerspectiveAsset(context, selected[type], quad);
 
-    if (selected.effect) {
-      if (template.effect_allow_outside_cover === true) {
-        await drawAsset(context, selected.effect, CANVAS_WIDTH, CANVAS_HEIGHT);
-      } else {
-        context.save();
-        clipToCoverQuad(context, quad);
-        await drawAsset(context, selected.effect, CANVAS_WIDTH, CANVAS_HEIGHT);
-        context.restore();
-      }
-    }
     return canvas;
   }
 
@@ -477,11 +467,18 @@
         current?.template_key && library.templates.some((item) => item.template_key === current.template_key)
           ? current.template_key
           : library.templates[0].template_key,
-      selected: {}, dirty: !current, renderSerial: 0
+      selected: {},
+      dirty: !current,
+      renderSerial: 0,
+      openLayerType: AUTHOR_LAYER_TYPES[0]
     };
     const currentKeys = Object.freeze({
-      background: 'background_asset_id', base_book: 'base_book_asset_id', cover: 'cover_asset_id',
-      pattern: 'pattern_asset_id', symbol: 'symbol_asset_id', frame: 'frame_asset_id', effect: 'effect_asset_id'
+      background: 'background_asset_id',
+      base_book: 'base_book_asset_id',
+      cover: 'cover_asset_id',
+      pattern: 'pattern_asset_id',
+      symbol: 'symbol_asset_id',
+      frame: 'frame_asset_id'
     });
 
     function seedSelection(templateKey) {
@@ -491,7 +488,7 @@
         const currentValid = available.some((asset) => String(asset.id) === String(currentId));
         state.selected[type] = currentValid
           ? String(currentId)
-          : REQUIRED_TYPES.includes(type)
+          : PERSISTENCE_REQUIRED_TYPES.includes(type)
             ? String(available[0]?.id ?? '')
             : '';
       }
@@ -526,11 +523,11 @@
         pattern_asset_id: state.selected.pattern || null,
         symbol_asset_id: state.selected.symbol || null,
         frame_asset_id: state.selected.frame || null,
-        effect_asset_id: state.selected.effect || null
+        effect_asset_id: null
       };
     }
     function valid() {
-      return REQUIRED_TYPES.every((type) => Boolean(state.selected[type]));
+      return PERSISTENCE_REQUIRED_TYPES.every((type) => Boolean(state.selected[type]));
     }
     async function updatePreview() {
       const serial = ++state.renderSerial;
@@ -595,23 +592,48 @@
         templateField.append(title, select);
         controls.appendChild(templateField);
       }
-      for (const type of LAYER_TYPES) {
-        const section = document.createElement('section');
+      for (const type of AUTHOR_LAYER_TYPES) {
+        const section = document.createElement('details');
         section.className = 'nl-thumb-layer';
-        const heading = document.createElement('div');
-        heading.className = 'nl-thumb-layer-heading';
+        section.dataset.layerSection = type;
+        section.open = type === state.openLayerType;
+
+        const summary = document.createElement('summary');
+        summary.className = 'nl-thumb-layer-summary';
         const title = document.createElement('strong');
         title.textContent = LABELS[type];
-        const requirement = document.createElement('span');
-        requirement.textContent = REQUIRED_TYPES.includes(type) ? '必須' : '任意';
-        heading.append(title, requirement);
+        const selectedLabel = document.createElement('span');
+        selectedLabel.className = 'nl-thumb-layer-selection';
+        const available = assetsFor(library, state.templateKey, type);
+        const selectedAsset = available.find(
+          (asset) => String(asset.id) === String(state.selected[type])
+        );
+        selectedLabel.textContent =
+          selectedAsset?.label || (REQUIRED_TYPES.includes(type) ? '未選択' : 'なし');
+        summary.append(title, selectedLabel);
+
         const options = document.createElement('div');
         options.className = 'nl-thumb-layer-options';
-        if (!REQUIRED_TYPES.includes(type)) options.appendChild(optionButton(type, null, !state.selected[type]));
-        for (const asset of assetsFor(library, state.templateKey, type)) {
-          options.appendChild(optionButton(type, asset, String(asset.id) === String(state.selected[type])));
+        if (!REQUIRED_TYPES.includes(type)) {
+          options.appendChild(optionButton(type, null, !state.selected[type]));
         }
-        section.append(heading, options);
+        for (const asset of available) {
+          options.appendChild(
+            optionButton(type, asset, String(asset.id) === String(state.selected[type]))
+          );
+        }
+
+        section.addEventListener('toggle', () => {
+          if (!section.open) {
+            if (state.openLayerType === type) state.openLayerType = '';
+            return;
+          }
+          state.openLayerType = type;
+          for (const peer of controls.querySelectorAll('details.nl-thumb-layer')) {
+            if (peer !== section) peer.open = false;
+          }
+        });
+        section.append(summary, options);
         controls.appendChild(section);
       }
     }
@@ -620,11 +642,23 @@
       const button = event.target.closest?.('button[data-layer-type]');
       if (!button) return;
       const type = button.dataset.layerType;
-      if (!LAYER_TYPES.includes(type)) return;
+      if (!AUTHOR_LAYER_TYPES.includes(type)) return;
       state.selected[type] = button.dataset.assetId || '';
       state.dirty = true;
       for (const peer of controls.querySelectorAll(`button[data-layer-type="${type}"]`)) {
-        peer.setAttribute('aria-pressed', peer.dataset.assetId === state.selected[type] ? 'true' : 'false');
+        peer.setAttribute(
+          'aria-pressed',
+          peer.dataset.assetId === state.selected[type] ? 'true' : 'false'
+        );
+      }
+      const section = button.closest('details.nl-thumb-layer');
+      const selectedLabel = section?.querySelector('.nl-thumb-layer-selection');
+      if (selectedLabel) {
+        const selectedAsset = assetsFor(library, state.templateKey, type).find(
+          (asset) => String(asset.id) === String(state.selected[type])
+        );
+        selectedLabel.textContent =
+          selectedAsset?.label || (REQUIRED_TYPES.includes(type) ? '未選択' : 'なし');
       }
       void updatePreview();
     });
