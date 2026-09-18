@@ -11,7 +11,7 @@ The active shared ledger generation is declared in `production-approval-ledger.j
 - active shared ledger: issue #657
 - legacy audit ledgers: issues #165 and #460
 - bounded comment contract: fewer than 100 comments before claim/execution may proceed
-- active shared routes: normal migration deploy, migration preflight, and Production Auth Smoke dispatch
+- active shared routes: normal migration deploy, migration preflight, Production Auth Smoke dispatch, and Vercel ADMIN allowlist request/freshness control
 - retired legacy route: the already-completed fixed baseline history repair remains pinned to issue #165 and is not moved to the active ledger
 
 Issues #165 and #460 remain immutable audit history. Neither may be reused as the active shared approval surface after the v3 rotation. The fixed baseline repair is intentionally left on issue #165 because `20260815000000` is already SATISFIED/APPLIED and must not be rerun.
@@ -44,6 +44,25 @@ This route remains baseline-only and retired in place on the legacy ledger. If t
 - database action: `supabase db push --linked --yes`, only after exact pending match and a fresh dry-run
 
 No workflow name, ref, mode, confirmation, Supabase project, credential, SQL, or shell command is accepted from either approval comment as a free-form execution parameter.
+
+### Vercel ADMIN allowlist synchronization
+
+- operation: `vercel-admin-allowlist-sync`
+- workflow: `.github/workflows/vercel-admin-allowlist.yml`
+- request trigger: the exact OWNER request comment on active Production Approval Ledger issue #657, or the existing OWNER-only manual workflow dispatch
+- approved ref: exact current `main` SHA
+- final mutation approval: exact one-time OWNER approval on the bot-created dedicated Vercel approval issue
+- Vercel project: fixed `novelrise` Production target
+- mutable value: only the sensitive Production `NOVELIGHT_ADMIN_USER_IDS` variable when freshness requires synchronization
+- deployment: one exact-SHA Production deployment only after the dedicated approval is claimed
+
+The Vercel route validates that `production-approval-ledger.json` still declares issue #657 as active, requires the ledger to be open and unlocked, and enforces the same fewer-than-100-comments bound before request processing or approved execution proceeds. Issues #165 and #460 are legacy audit history and are not read from or written to by this active route.
+
+Successful `NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED` proof is written to the active shared ledger before it is mirrored to the dedicated approval issue. If later issue finalization fails after success is durable, the failure handler must detect the matching successful proof and must not append a contradictory `FAILED` marker. If Production verification succeeded but the first audit write itself failed, the handler may reconstruct and persist only that same non-secret success proof from trusted step outputs; it must not repeat the Vercel environment mutation or Production deployment.
+
+For Evidence Freshness continuity across the ledger rotation, the read-only request phase may also recognize bot-authored successful `CONSUMED` proof already stored on a dedicated Vercel approval issue. This compatibility read does not reactivate a legacy ledger and does not authorize a new Production mutation.
+
+No project name, deployment ref, environment variable name/value, credential, target environment, or arbitrary command is accepted from approval comments as a free-form execution parameter.
 
 ## Approval records
 

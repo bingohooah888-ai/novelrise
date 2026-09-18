@@ -20,7 +20,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.actor == 'bingohooah888-ai') ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.pull_request == null &&
-       github.event.issue.number == 165 &&
+       github.event.issue.number == 657 &&
        github.event.comment.user.login == 'bingohooah888-ai' &&
        github.event.comment.author_association == 'OWNER' &&
        github.event.comment.body == 'NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_REQUEST')
@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 8
     env:
       GH_TOKEN: ${{ github.token }}
-      CONTROL_ISSUE: '165'
+      LEDGER_ISSUE: '657'
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
       VERCEL_PROJECT_NAME: novelrise
       NOVELIGHT_PRODUCTION_ADMIN_USER_IDS: ${{ secrets.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS }}
@@ -49,6 +49,34 @@ jobs:
         with:
           ref: ${{ steps.main.outputs.sha }}
           persist-credentials: false
+
+      - name: Validate active Production Approval Ledger generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          active_issue="$(jq -er '.activeIssue' production-approval-ledger.json)"
+          max_comments="$(jq -er '.maxComments' production-approval-ledger.json)"
+          test "$active_issue" = "$LEDGER_ISSUE" || {
+            echo 'Safety stop: Vercel ADMIN route does not match the active Production Approval Ledger generation.'
+            exit 1
+          }
+          test "$max_comments" = '100' || {
+            echo 'Safety stop: unexpected Production Approval Ledger comment bound.'
+            exit 1
+          }
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE" > /tmp/vercel-ledger-issue.json
+          jq -e '.state == "open" and .locked == false' /tmp/vercel-ledger-issue.json >/dev/null || {
+            echo 'Safety stop: active Production Approval Ledger is not open and writable.'
+            exit 1
+          }
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments?per_page=100" > /tmp/vercel-ledger-comments.json
+          comment_count="$(jq 'length' /tmp/vercel-ledger-comments.json)"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: Production Approval Ledger exceeded the bounded comment contract.'
+            exit 1
+          }
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -118,13 +146,34 @@ jobs:
           )" || live_sha=''
 
           gh api --paginate \
-            "repos/$GITHUB_REPOSITORY/issues/$CONTROL_ISSUE/comments?per_page=100" \
-            --jq '.[] | select(.body | startswith("NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED ")) | .body' \
+            "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments?per_page=100" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED "))) | .body' \
             > /tmp/admin-allowlist-ledger-lines.txt
 
-          if [ -s /tmp/admin-allowlist-ledger-lines.txt ]; then
+          # Preserve successful proof from pre-v3 dedicated approval issues without
+          # writing anything back to the retired legacy ledger.
+          : > /tmp/admin-allowlist-dedicated-lines.txt
+          gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/issues?state=all&per_page=100" \
+            --jq '.[] | select(.pull_request == null and .user.login == "github-actions[bot]" and (.title | startswith("[Production Vercel Admin Approval] admin-allowlist-"))) | .number' \
+            > /tmp/admin-allowlist-dedicated-issues.txt
+
+          while IFS= read -r approval_issue; do
+            [ -n "$approval_issue" ] || continue
+            gh api --paginate \
+              "repos/$GITHUB_REPOSITORY/issues/$approval_issue/comments?per_page=100" \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED "))) | .body' \
+              >> /tmp/admin-allowlist-dedicated-lines.txt
+          done < /tmp/admin-allowlist-dedicated-issues.txt
+
+          cat \
+            /tmp/admin-allowlist-ledger-lines.txt \
+            /tmp/admin-allowlist-dedicated-lines.txt \
+            > /tmp/admin-allowlist-proof-lines.txt
+
+          if [ -s /tmp/admin-allowlist-proof-lines.txt ]; then
             sed 's/^NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED //' \
-              /tmp/admin-allowlist-ledger-lines.txt \
+              /tmp/admin-allowlist-proof-lines.txt \
               | jq -s '.' > /tmp/admin-allowlist-ledger.json
           else
             echo '[]' > /tmp/admin-allowlist-ledger.json
@@ -259,7 +308,7 @@ jobs:
     environment: Production
     env:
       GH_TOKEN: ${{ github.token }}
-      CONTROL_ISSUE: '165'
+      LEDGER_ISSUE: '657'
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
       VERCEL_PROJECT_NAME: novelrise
       NOVELIGHT_PRODUCTION_ADMIN_USER_IDS: ${{ secrets.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS }}
@@ -369,6 +418,34 @@ jobs:
         with:
           ref: ${{ steps.approval.outputs.main_sha }}
           persist-credentials: false
+
+      - name: Validate active Production Approval Ledger generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          active_issue="$(jq -er '.activeIssue' production-approval-ledger.json)"
+          max_comments="$(jq -er '.maxComments' production-approval-ledger.json)"
+          test "$active_issue" = "$LEDGER_ISSUE" || {
+            echo 'Safety stop: Vercel ADMIN route does not match the active Production Approval Ledger generation.'
+            exit 1
+          }
+          test "$max_comments" = '100' || {
+            echo 'Safety stop: unexpected Production Approval Ledger comment bound.'
+            exit 1
+          }
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE" > /tmp/vercel-ledger-issue.json
+          jq -e '.state == "open" and .locked == false' /tmp/vercel-ledger-issue.json >/dev/null || {
+            echo 'Safety stop: active Production Approval Ledger is not open and writable.'
+            exit 1
+          }
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments?per_page=100" > /tmp/vercel-ledger-comments.json
+          comment_count="$(jq 'length' /tmp/vercel-ledger-comments.json)"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: Production Approval Ledger exceeded the bounded comment contract.'
+            exit 1
+          }
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -489,6 +566,7 @@ jobs:
         run: node scripts/vercel-admin-allowlist.mjs wait-deployment
 
       - name: Verify Production revision and ADMIN authentication boundary
+        id: productionproof
         env:
           APPROVED_MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
         shell: bash
@@ -507,18 +585,93 @@ jobs:
           set -euo pipefail
           payload="$(jq -cn --arg operation 'vercel-admin-allowlist-sync' --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg fingerprint "$FINGERPRINT" --arg envUpdatedAt "$ENV_UPDATED_AT" --arg deploymentId "$DEPLOYMENT_ID" --arg runId "$GITHUB_RUN_ID" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,fingerprint:$fingerprint,envUpdatedAt:$envUpdatedAt,deploymentId:$deploymentId,runId:$runId,result:"success"}')"
           body="NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED $payload"
-          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$body" >/dev/null
-          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$CONTROL_ISSUE/comments" -f body="$body" >/dev/null
-          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --reason completed >/dev/null
+          # Persist the durable shared-ledger proof first. If later issue
+          # finalization fails, freshness still blocks a duplicate Production deploy.
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" -f body="$body" >/dev/null
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$body" >/dev/null || {
+            echo 'Warning: durable shared-ledger proof succeeded but the dedicated issue mirror failed.'
+          }
+          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --reason completed >/dev/null || {
+            echo 'Warning: durable shared-ledger proof succeeded but the dedicated issue could not be closed.'
+          }
 
       - name: Record failed claimed request
         if: failure() && steps.approval.outputs.request_id != ''
         env:
           REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          FINGERPRINT: ${{ steps.approval.outputs.fingerprint }}
+          ENV_UPDATED_AT: ${{ steps.envproof.outputs.updated_at }}
+          DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
+          PRODUCTION_VERIFY_OUTCOME: ${{ steps.productionproof.outcome }}
           ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
         shell: bash
         run: |
           set +e
+
+          consumed_lines() {
+            gh api --paginate \
+              "repos/$GITHUB_REPOSITORY/issues/$1/comments?per_page=100" \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED "))) | .body'
+          }
+
+          ledger_consumed="$(
+            consumed_lines "$LEDGER_ISSUE" \
+              | grep -F "$REQUEST_ID" \
+              | grep -F "\"runId\":\"$GITHUB_RUN_ID\"" \
+              | head -n 1
+          )"
+          dedicated_consumed="$(
+            consumed_lines "$ISSUE_NUMBER" \
+              | grep -F "$REQUEST_ID" \
+              | grep -F "\"runId\":\"$GITHUB_RUN_ID\"" \
+              | head -n 1
+          )"
+
+          consumed_body="$ledger_consumed"
+          [ -n "$consumed_body" ] || consumed_body="$dedicated_consumed"
+          if [ -n "$consumed_body" ]; then
+            echo 'A successful CONSUMED proof already exists; skipping a contradictory FAILED marker.'
+            if [ -z "$dedicated_consumed" ]; then
+              gh api -X POST \
+                "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+                -f body="$consumed_body" >/dev/null || true
+            fi
+            gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --reason completed >/dev/null 2>&1 || true
+            exit 0
+          fi
+
+          if [ "$PRODUCTION_VERIFY_OUTCOME" = 'success' ] && \
+             [ -n "$MAIN_SHA" ] && \
+             [ -n "$FINGERPRINT" ] && \
+             [ -n "$ENV_UPDATED_AT" ] && \
+             [ -n "$DEPLOYMENT_ID" ]; then
+            echo 'Production verification succeeded before audit persistence failed; recovering success proof without repeating Production work.'
+            recovery_payload="$(jq -cn --arg operation 'vercel-admin-allowlist-sync' --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg fingerprint "$FINGERPRINT" --arg envUpdatedAt "$ENV_UPDATED_AT" --arg deploymentId "$DEPLOYMENT_ID" --arg runId "$GITHUB_RUN_ID" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,fingerprint:$fingerprint,envUpdatedAt:$envUpdatedAt,deploymentId:$deploymentId,runId:$runId,result:"success"}')"
+            recovery_body="NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED $recovery_payload"
+            success_persisted=false
+
+            if gh api -X POST \
+              "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" \
+              -f body="$recovery_body" >/dev/null; then
+              success_persisted=true
+            fi
+            if gh api -X POST \
+              "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+              -f body="$recovery_body" >/dev/null; then
+              success_persisted=true
+            fi
+
+            if [ "$success_persisted" = 'true' ]; then
+              gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --reason completed >/dev/null 2>&1 || true
+              echo 'Recovered durable successful audit proof; no FAILED marker will be written.'
+              exit 0
+            fi
+
+            echo 'Safety stop: Production verification succeeded but success proof could not be persisted; refusing to write a contradictory FAILED marker.'
+            exit 0
+          fi
+
           payload="$(jq -cn --arg requestId "$REQUEST_ID" --arg runId "$GITHUB_RUN_ID" '{requestId:$requestId,runId:$runId}')"
           gh api -X POST \
             "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \

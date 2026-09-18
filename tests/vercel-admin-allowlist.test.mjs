@@ -327,6 +327,20 @@ test('workflow keeps raw admin IDs and Vercel token in secrets and requires OWNE
   );
   assert.match(workflow, /NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CLAIMED/);
   assert.match(workflow, /NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED/);
+  assert.match(workflow, /github\.event\.issue\.number == 657/);
+  assert.match(workflow, /LEDGER_ISSUE: '657'/);
+  assert.doesNotMatch(workflow, /CONTROL_ISSUE/);
+  assert.doesNotMatch(workflow, /LEDGER_ISSUE: '165'/);
+  assert.match(workflow, /production-approval-ledger\.json/);
+  assert.match(workflow, /admin-allowlist-dedicated-issues\.txt/);
+  assert.match(
+    workflow,
+    /successful CONSUMED proof already exists; skipping a contradictory FAILED marker/
+  );
+  assert.match(
+    workflow,
+    /Production verification succeeded before audit persistence failed; recovering success proof without repeating Production work/
+  );
   assert.match(workflow, /environment: Production/);
   assert.doesNotMatch(workflow, /11111111-1111-4111-8111-111111111111/);
   assert.doesNotMatch(workflow, /sb_secret_|service_role/);
