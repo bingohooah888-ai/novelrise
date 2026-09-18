@@ -24,9 +24,22 @@
     });
   }
 
+  function isMissingReceptionRpc(error) {
+    const message = String(error?.message || '');
+    return (
+      error?.code === '42883' ||
+      error?.code === 'PGRST202' ||
+      message.includes('does not exist') ||
+      message.includes('Could not find the function')
+    );
+  }
+
   function friendlyError(error, fallback) {
     const message = String(error?.message || '');
     if (message.includes('2000文字')) return 'コメントは2,000文字以内で入力してください。';
+    if (message.includes('COMMENTS_DISABLED')) {
+      return 'この作品では現在コメントを受け付けていません。';
+    }
     if (message.includes('DIRECT_INTERACTION_UNAVAILABLE')) {
       return 'この作者へのコメントは現在送信できません。';
     }
@@ -34,6 +47,25 @@
       return 'コメントするにはログインが必要です。';
     }
     return fallback;
+  }
+
+  async function loadReceptionState(client, novelId) {
+    try {
+      const result = await client.rpc('novelight_novel_comment_reception_state', {
+        p_novel_id: Number(novelId),
+      });
+      if (result.error) throw result.error;
+      return {
+        commentsEnabled: result.data?.comments_enabled !== false,
+        unavailable: false,
+      };
+    } catch (error) {
+      if (isMissingReceptionRpc(error)) {
+        return { commentsEnabled: true, unavailable: false, fallback: true };
+      }
+      console.error('comment reception state unavailable', error);
+      return { commentsEnabled: false, unavailable: true, fallback: false };
+    }
   }
 
   function renderFeed(state, comments) {
@@ -120,7 +152,31 @@
     }
   }
 
-  function renderComposer(state, session, isAuthor) {
+  function renderComposer(state, session, isAuthor, reception) {
+    if (reception?.unavailable) {
+      state.section.append(
+        createElement(
+          'p',
+          'novelight-comments-notice',
+          'コメント受付状態を確認できないため、現在投稿できません。過去のコメントは閲覧できます。'
+        )
+      );
+      return;
+    }
+
+    if (reception?.commentsEnabled === false) {
+      state.section.append(
+        createElement(
+          'p',
+          'novelight-comments-notice',
+          isAuthor
+            ? 'この作品はコメント受付を停止中です。過去のコメントは引き続き確認できます。'
+            : 'この作品では現在コメントを受け付けていません。過去のコメントは閲覧できます。'
+        )
+      );
+      return;
+    }
+
     if (!session) {
       const notice = createElement('p', 'novelight-comments-notice');
       notice.append('コメントするには ');
@@ -231,7 +287,8 @@
     section.append(status, list);
 
     const state = { client, novelId: novel.id, section, count, status, list };
-    renderComposer(state, session, isAuthor);
+    const reception = await loadReceptionState(client, novel.id);
+    renderComposer(state, session, isAuthor, reception);
     card.append(section);
     await refresh(state);
   }

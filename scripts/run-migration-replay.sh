@@ -332,4 +332,37 @@ SQL
 "${REPLAY[@]}" -f tests/rls/reader-bookshelf-organization.sql
 echo '::endgroup::'
 
+echo '::group::Verify B #11 interaction reception behavior'
+"${REPLAY[@]}" -f supabase/checks/20260918164000_interaction_reception_settings_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/interaction-reception-settings.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #11 interaction reception rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260918164000_interaction_reception_settings_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.author_interaction_defaults') is not null
+     or to_regclass('public.novel_comment_reception_settings') is not null
+     or to_regprocedure('public.novelight_author_interaction_defaults()') is not null
+     or to_regprocedure('public.novelight_novel_comment_reception_state(bigint)') is not null
+     or to_regprocedure('public._novelight_enforce_comment_reception()') is not null
+     or exists (
+       select 1
+         from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'novel_typo_report_settings'
+          and column_name = 'inherits_author_default'
+     ) then
+    raise exception 'B #11 rollback left interaction reception objects behind';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260918164000_interaction_reception_settings_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918164000_interaction_reception_settings.sql
+"${REPLAY[@]}" -f supabase/checks/20260918164000_interaction_reception_settings_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/interaction-reception-settings.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'

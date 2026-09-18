@@ -8,6 +8,7 @@
     ['my-novels.html', '▤', '自分の作品'],
     ['analytics.html', '▥', 'LIGHT ANALYTICS'],
     ['scout-record.html', '◇', 'SCOUT RECORD'],
+    ['interaction-settings.html', '⚙', '交流設定'],
   ];
 
   const existingHeader = Array.from(document.body.children).find(node => node.tagName === 'HEADER');
