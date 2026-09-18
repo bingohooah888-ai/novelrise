@@ -251,6 +251,13 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260910143000_chapter38_exclude_self_comment_scout_exp_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Restore post-Chapter-38 user safety comment runtime'
+"${REPLAY[@]}" -f supabase/rollback/20260917020000_user_block_mute_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260917020000_user_block_mute_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260917020000_user_block_mute.sql
+"${REPLAY[@]}" -f supabase/checks/20260917020000_user_block_mute_postcheck.sql
+echo '::endgroup::'
+
 echo '::group::Verify scheduled episode publication behavior'
 "${REPLAY[@]}" -f supabase/checks/20260916100000_episode_scheduled_publication_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/episode-scheduled-publication.sql
@@ -399,6 +406,53 @@ SQL
 "${REPLAY[@]}" -f supabase/migrations/20260918180500_episode_schedule_batch_management.sql
 "${REPLAY[@]}" -f supabase/checks/20260918180500_episode_schedule_batch_management_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/episode-schedule-batch-management.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #14 author comment moderation'
+"${REPLAY[@]}" -f supabase/rollback/20260918192000_comment_author_moderation_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918192000_comment_author_moderation.sql
+"${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/comment-author-moderation.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #14 comment moderation rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260918192000_comment_author_moderation_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.novel_comment_moderation_events') is not null
+     or to_regprocedure('public.novelight_set_comment_pin(uuid,boolean)') is not null
+     or to_regprocedure('public.novelight_set_comment_hidden(uuid,boolean,text)') is not null
+     or to_regprocedure('public.novelight_set_comment_author_reply(uuid,text)') is not null
+     or exists (
+       select 1
+         from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'novel_comments'
+          and column_name in (
+            'author_hidden_at',
+            'author_hidden_reason',
+            'pinned_at',
+            'author_reply_body',
+            'author_reply_at',
+            'author_reply_updated_at'
+          )
+     ) then
+    raise exception 'B #14 rollback left moderation objects behind';
+  end if;
+
+  if to_regprocedure('public.novelight_comment_feed(text,integer)') is null
+     or to_regprocedure('public.post_novel_comment(text,text)') is null
+     or to_regprocedure('public.delete_novel_comment(uuid)') is null then
+    raise exception 'B #14 rollback disturbed the existing comment foundation';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918192000_comment_author_moderation.sql
+"${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_postcheck.sql
 echo '::endgroup::'
 
 echo 'Fresh NOVELIGHT migration replay passed.'

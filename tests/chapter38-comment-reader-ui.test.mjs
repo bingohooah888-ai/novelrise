@@ -21,10 +21,13 @@ test('episode reader loads and mounts the Chapter 38 comment client', () => {
   );
 });
 
-test('comment client uses only the Chapter 38 comment RPC surface', () => {
+test('comment client keeps the Chapter 38 base RPCs and bounded author moderation RPCs', () => {
   includes("rpc('novelight_comment_feed'");
   includes("rpc('post_novel_comment'");
   includes("rpc('delete_novel_comment'");
+  includes("'novelight_set_comment_pin'");
+  includes("'novelight_set_comment_hidden'");
+  includes("'novelight_set_comment_author_reply'");
   assert.doesNotMatch(commentClient, /\.from\(['\"]novel_comments['\"]\)/);
   assert.doesNotMatch(
     commentClient,
