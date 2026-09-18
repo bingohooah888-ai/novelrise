@@ -31,7 +31,7 @@
     });
   }
 
-  function isMissingReceptionRpc(error) {
+  function isMissingRpc(error) {
     const message = String(error?.message || '');
     return (
       error?.code === '42883' ||
@@ -47,6 +47,9 @@
       return 'コメントは2,000文字以内で入力してください。';
     if (message.includes('COMMENTS_DISABLED')) {
       return 'この作品では現在コメントを受け付けていません。';
+    }
+    if (message.includes('SPOILER_RPC_UNAVAILABLE')) {
+      return 'ネタバレ保護機能はデータベース反映待ちです。反映後にもう一度お試しください。';
     }
     if (message.includes('DIRECT_INTERACTION_UNAVAILABLE')) {
       return 'この作者へのコメントは現在送信できません。';
@@ -89,7 +92,7 @@
         unavailable: false
       };
     } catch (error) {
-      if (isMissingReceptionRpc(error)) {
+      if (isMissingRpc(error)) {
         return { commentsEnabled: true, unavailable: false, fallback: true };
       }
       console.error('comment reception state unavailable', error);
@@ -293,6 +296,11 @@
           createElement('span', 'novelight-comment-badge', '作者固定')
         );
       }
+      if (comment.is_spoiler === true) {
+        identity.append(
+          createElement('span', 'novelight-comment-badge is-spoiler', 'ネタバレ')
+        );
+      }
       if (comment.is_hidden === true) {
         identity.append(
           createElement('span', 'novelight-comment-badge is-hidden', '非表示')
@@ -312,24 +320,9 @@
         'novelight-comment-body',
         comment.body || ''
       );
-      item.append(header);
-      if (comment.is_hidden === true) {
-        const reason =
-          state.isAuthor && comment.hidden_reason
-            ? `（理由: ${MODERATION_REASON_LABELS[comment.hidden_reason] || 'その他'}）`
-            : '';
-        item.append(
-          createElement(
-            'p',
-            'novelight-comment-hidden-note',
-            `このコメントは作者により公開欄から非表示です。${reason}`
-          )
-        );
-      }
-      item.append(body);
-
+      let reply = null;
       if (comment.author_reply_body) {
-        const reply = createElement('div', 'novelight-comment-author-reply');
+        reply = createElement('div', 'novelight-comment-author-reply');
         const replyHead = createElement(
           'div',
           'novelight-comment-author-reply-head'
@@ -352,7 +345,55 @@
             comment.author_reply_body
           )
         );
-        item.append(reply);
+      }
+
+      item.append(header);
+      if (comment.is_hidden === true) {
+        const reason =
+          state.isAuthor && comment.hidden_reason
+            ? `（理由: ${MODERATION_REASON_LABELS[comment.hidden_reason] || 'その他'}）`
+            : '';
+        item.append(
+          createElement(
+            'p',
+            'novelight-comment-hidden-note',
+            `このコメントは作者により公開欄から非表示です。${reason}`
+          )
+        );
+      }
+
+      if (comment.is_spoiler === true) {
+        const spoiler = createElement('div', 'novelight-comment-spoiler');
+        const toggle = createElement(
+          'button',
+          'novelight-comment-spoiler-toggle',
+          'ネタバレを表示'
+        );
+        toggle.type = 'button';
+        toggle.setAttribute('aria-expanded', 'false');
+
+        const spoilerContent = createElement(
+          'div',
+          'novelight-comment-spoiler-content'
+        );
+        spoilerContent.hidden = true;
+        spoilerContent.append(body);
+        if (reply) spoilerContent.append(reply);
+
+        toggle.addEventListener('click', () => {
+          const willShow = spoilerContent.hidden;
+          spoilerContent.hidden = !willShow;
+          toggle.setAttribute('aria-expanded', String(willShow));
+          toggle.textContent = willShow
+            ? 'ネタバレを隠す'
+            : 'ネタバレを表示';
+        });
+
+        spoiler.append(toggle, spoilerContent);
+        item.append(spoiler);
+      } else {
+        item.append(body);
+        if (reply) item.append(reply);
       }
 
       if (comment.can_delete === true || comment.can_moderate === true) {
@@ -479,6 +520,20 @@
     textarea.rows = 5;
     textarea.placeholder = '作品を読んで感じたことを作者へ届けましょう。';
 
+    const spoilerLabel = createElement(
+      'label',
+      'novelight-comments-spoiler-option'
+    );
+    const spoilerInput = createElement('input');
+    spoilerInput.type = 'checkbox';
+    spoilerInput.name = 'spoiler';
+    const spoilerText = createElement(
+      'span',
+      'novelight-comments-spoiler-copy',
+      'ネタバレを含む（読者が開くまで本文を隠します）'
+    );
+    spoilerLabel.append(spoilerInput, spoilerText);
+
     const footer = createElement('div', 'novelight-comments-form-footer');
     const counter = createElement(
       'span',
@@ -511,16 +566,31 @@
         return;
       }
 
+      const isSpoiler = spoilerInput.checked;
       submit.disabled = true;
       textarea.disabled = true;
+      spoilerInput.disabled = true;
       state.status.textContent = 'コメントを送信しています...';
       try {
-        const result = await state.client.rpc('post_novel_comment', {
+        let result = await state.client.rpc('novelight_post_novel_comment', {
           p_novel_id: String(state.novelId),
-          p_body: body
+          p_body: body,
+          p_is_spoiler: isSpoiler
         });
+
+        if (result.error && isMissingRpc(result.error)) {
+          if (isSpoiler) {
+            throw new Error('SPOILER_RPC_UNAVAILABLE');
+          }
+          result = await state.client.rpc('post_novel_comment', {
+            p_novel_id: String(state.novelId),
+            p_body: body
+          });
+        }
+
         if (result.error) throw result.error;
         textarea.value = '';
+        spoilerInput.checked = false;
         counter.textContent = `0 / ${MAX_COMMENT_LENGTH.toLocaleString('ja-JP')}`;
         state.status.textContent = 'コメントを投稿しました。';
         await refresh(state);
@@ -533,10 +603,11 @@
       } finally {
         submit.disabled = false;
         textarea.disabled = false;
+        spoilerInput.disabled = false;
       }
     });
 
-    form.append(label, textarea, footer);
+    form.append(label, textarea, spoilerLabel, footer);
     state.section.append(form);
   }
 
