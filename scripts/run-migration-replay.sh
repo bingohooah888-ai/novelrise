@@ -523,4 +523,37 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260918221621_comment_spoiler_display_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify B #16 limited share links'
+"${REPLAY[@]}" -f supabase/rollback/20260918225815_limited_share_links_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260918225815_limited_share_links_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918225815_limited_share_links.sql
+"${REPLAY[@]}" -f supabase/checks/20260918225815_limited_share_links_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/limited-share-links.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #16 limited share rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260918225815_limited_share_links_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.novel_share_links') is not null
+     or to_regprocedure('public.novelight_shared_novel(text)') is not null
+     or to_regprocedure('public.novelight_shared_episode(text,bigint)') is not null
+     or to_regprocedure('public.novelight_rotate_share_link(bigint)') is not null then
+    raise exception 'B #16 rollback left limited-share objects behind';
+  end if;
+
+  if to_regclass('public.novels') is null
+     or to_regclass('public.episodes') is null
+     or to_regprocedure('public.novelight_publish_episode_draft_atomic(bigint)') is null then
+    raise exception 'B #16 rollback disturbed the existing content foundation';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260918225815_limited_share_links_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918225815_limited_share_links.sql
+"${REPLAY[@]}" -f supabase/checks/20260918225815_limited_share_links_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
