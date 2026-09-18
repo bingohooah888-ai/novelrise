@@ -44,7 +44,8 @@ test('active shared Production approval routes are pinned to the v3 ledger', asy
 test('active mutation bridges keep the bounded ledger fail-closed contract', async () => {
   for (const path of [
     '.github/workflows/production-migration-approved-dispatch.yml',
-    '.github/workflows/production-auth-smoke-approved-dispatch.yml'
+    '.github/workflows/production-auth-smoke-approved-dispatch.yml',
+    '.github/workflows/vercel-admin-allowlist.yml'
   ]) {
     const source = await read(path);
     assert.match(source, /comment_count=.*jq 'length'/);
@@ -54,6 +55,34 @@ test('active mutation bridges keep the bounded ledger fail-closed contract', asy
       /Production Approval Ledger exceeded the bounded comment contract/
     );
   }
+});
+
+test('Vercel ADMIN control uses only the active ledger and preserves dedicated success proof', async () => {
+  const source = await read('.github/workflows/vercel-admin-allowlist.yml');
+
+  assert.match(source, new RegExp(`LEDGER_ISSUE: ['"]${activeIssue}['"]`));
+  assert.doesNotMatch(source, /CONTROL_ISSUE/);
+  for (const legacyIssue of legacyIssues) {
+    assert.doesNotMatch(
+      source,
+      new RegExp(`LEDGER_ISSUE: ['"]${legacyIssue}['"]`)
+    );
+  }
+  assert.match(source, /production-approval-ledger\.json/);
+  assert.match(
+    source,
+    /active Production Approval Ledger is not open and writable/
+  );
+  assert.match(source, /admin-allowlist-dedicated-issues\.txt/);
+  assert.match(source, /github-actions\[bot\]/);
+  assert.match(
+    source,
+    /successful CONSUMED proof already exists; skipping a contradictory FAILED marker/
+  );
+  assert.match(
+    source,
+    /Production verification succeeded before audit persistence failed; recovering success proof without repeating Production work/
+  );
 });
 
 test('completed one-time baseline repair stays retired on the original legacy ledger', async () => {

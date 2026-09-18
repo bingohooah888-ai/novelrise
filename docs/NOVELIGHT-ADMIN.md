@@ -87,11 +87,11 @@ The GitHub secret is the control-plane source. The workflow writes its value to 
 
 ### Request and approval flow
 
-A request can be started by an OWNER comment on the Production control issue (`#165`):
+A request can be started by an OWNER comment on the active Production Approval Ledger declared in `production-approval-ledger.json` (currently issue `#657`):
 
 `NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_REQUEST`
 
-The request phase is read-only. It verifies that the two bootstrap secrets exist, resolves one exact Vercel team/project scope for `novelrise`, canonicalizes the UUID list, calculates a SHA-256 fingerprint, inspects the Vercel Production environment, checks the live deployment revision, and compares prior successful freshness proof. If the same managed sensitive value is already proven active on current `main`, the request is a no-op and no Production approval is created.
+The request phase is read-only. It verifies that the workflow is bound to the active, open, unlocked ledger generation and that the bounded comment contract still has capacity before reading Production state. It then verifies that the two bootstrap secrets exist, resolves one exact Vercel team/project scope for `novelrise`, canonicalizes the UUID list, calculates a SHA-256 fingerprint, inspects the Vercel Production environment, checks the live deployment revision, and compares prior successful freshness proof. Successful proof on the active shared ledger is authoritative; successful bot-authored proof on a dedicated Vercel approval issue from before the ledger rotation may also be read for freshness continuity. The retired ledgers `#165` and `#460` are never read or written by this route. If the same managed sensitive value is already proven active on current `main`, the request is a no-op and no Production approval is created.
 
 When a refresh is required, the workflow creates a dedicated approval issue containing only the exact `main` SHA, one-time request ID, expiry, challenge, fingerprint, and whether the Vercel environment value itself needs mutation. It never records the raw UUID list.
 
@@ -110,9 +110,11 @@ For an approved request the workflow:
 7. waits for the exact deployment to reach `READY`;
 8. verifies `/api/deployment-revision` converges to the approved SHA;
 9. verifies `/api/admin-dashboard` still returns `401` without authentication;
-10. records a non-secret consumed proof on the dedicated approval issue and control issue #165.
+10. records the non-secret consumed proof on the active shared Production Approval Ledger first and mirrors it to the dedicated approval issue before closing that issue.
 
-A failed deployment after an environment update does not silently count as complete. Because no successful consumed proof is written, a later request can approve only the still-open redeploy portion without rewriting an environment value already classified as current.
+The active-ledger write is deliberately first so that a later failure while mirroring or closing the dedicated issue cannot erase durable success evidence or trigger a duplicate Production deployment. The failure handler checks both the active ledger and the dedicated issue for a matching successful `CONSUMED` record before writing `FAILED`. If Production revision/authentication verification already succeeded but the first audit write failed, it reconstructs the same non-secret success proof from trusted step outputs and attempts to persist it without repeating any Vercel mutation or deployment. Once Production success is proven, the workflow must not create a contradictory failure marker.
+
+A failed deployment after an environment update does not silently count as complete. When no successful consumed proof exists, a later request can approve only the still-open redeploy portion without rewriting an environment value already classified as current.
 
 ### Fail-closed boundaries
 
