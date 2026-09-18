@@ -69,6 +69,10 @@ test('auth reader context accepts only same-origin allowlisted targets', () => {
     'episode.html?id=episode-2&novelId=novel-1'
   );
   assert.equal(
+    api.safeRedirectTarget('/episode-schedule.html?novel_id=42'),
+    'episode-schedule.html?novel_id=42'
+  );
+  assert.equal(
     api.safeRedirectTarget('https://evil.example/novel.html?id=x'),
     'mypage.html'
   );

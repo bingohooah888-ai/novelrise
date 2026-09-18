@@ -19,6 +19,7 @@
     '/episode.html',
     '/episode-post.html',
     '/episode-edit.html',
+    '/episode-schedule.html',
     '/analytics.html',
     '/my-novels.html',
     '/admin.html',
