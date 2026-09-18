@@ -73,7 +73,7 @@
     }
   }
 
-  async function mountEpisodeEditor({ client, episodeId }) {
+  async function mountEpisodeEditor({ client, episodeId, novelId }) {
     const form = document.getElementById('form');
     const buttons = form?.querySelector('.buttons');
     if (!form || !buttons || !episodeId) return;
@@ -105,7 +105,7 @@
           mount.innerHTML = `
             <div class="novelight-character-editor-head">
               <div><div class="novelight-character-kicker">CHARACTERS</div><h2>この話の登場人物</h2></div>
-              <a href="characters.html?novel_id=${encodeURIComponent(episode?.novel_id || '')}">登場人物を登録 →</a>
+              <a href="characters.html?novel_id=${encodeURIComponent(novelId || '')}">登場人物を登録 →</a>
             </div>
             <p class="novelight-character-status">まだ登場人物が登録されていません。</p>
           `;
@@ -115,7 +115,7 @@
         mount.innerHTML = `
           <div class="novelight-character-editor-head">
             <div><div class="novelight-character-kicker">CHARACTERS</div><h2>この話の登場人物</h2></div>
-            <a href="characters.html?novel_id=${encodeURIComponent(episode?.novel_id || '')}">人物管理 →</a>
+            <a href="characters.html?novel_id=${encodeURIComponent(novelId || '')}">人物管理 →</a>
           </div>
           <p class="novelight-character-help">本文から自動判定します。必要なときだけ手動指定が優先されます。</p>
           <div class="novelight-character-editor-list">
