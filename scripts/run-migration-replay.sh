@@ -309,4 +309,27 @@ SQL
 "${REPLAY[@]}" -f tests/rls/author-follow-notifications.sql
 echo '::endgroup::'
 
+echo '::group::Verify private reader bookshelf behavior'
+"${REPLAY[@]}" -f supabase/checks/20260918152523_reader_bookshelf_organization_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/reader-bookshelf-organization.sql
+echo '::endgroup::'
+
+echo '::group::Verify private reader bookshelf rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260918152523_reader_bookshelf_organization_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.reader_bookshelf_entries') is not null
+     or to_regprocedure('public.novelight_touch_reader_bookshelf_entry()') is not null then
+    raise exception 'Reader bookshelf rollback left B #10 objects behind';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260918152523_reader_bookshelf_organization_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918152523_reader_bookshelf_organization.sql
+"${REPLAY[@]}" -f supabase/checks/20260918152523_reader_bookshelf_organization_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/reader-bookshelf-organization.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'

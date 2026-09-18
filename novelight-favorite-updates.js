@@ -309,7 +309,7 @@
     actions.className = 'updates-empty-actions';
     const favorites = document.createElement('a');
     favorites.href = 'favorites.html';
-    favorites.textContent = 'お気に入り作品を見る';
+    favorites.textContent = '本棚を見る';
     const search = document.createElement('a');
     search.href = 'search.html';
     search.textContent = '作品を探す';
