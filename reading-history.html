@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>読書記録 | NOVELIGHT</title>
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-reading-history.css">
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:920px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}.logo img{display:block;width:auto;height:40px;max-width:44vw;object-fit:contain}.header-links{display:flex;gap:14px;align-items:center;color:#666;font-size:13px}.page-head{max-width:920px;margin:0 auto;padding:38px 22px 0}.page-head h1{margin:0;font-size:30px}.page-head p{margin:8px 0 0;color:#6b7280;line-height:1.75}.page-head strong{color:#4d445f}@media(max-width:640px){.header-inner{padding:12px 16px}.logo img{height:34px}.header-links{gap:9px;font-size:12px}.page-head{padding:28px 16px 0}.page-head h1{font-size:26px}}
+  </style>
+</head>
+<body class="novelight-theme novelight-page-reading-history">
+  <header>
+    <div class="header-inner">
+      <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ">
+        <img src="assets/novelight-header-logo.webp" alt="NOVELIGHT">
+      </a>
+      <nav class="header-links" aria-label="読者メニュー">
+        <a href="favorites.html">本棚</a>
+        <a href="index.html">ホーム</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="page-head">
+    <h1>読書記録</h1>
+    <p><strong>自分だけ</strong>の読書履歴と傾向を振り返れます。作品評価や作者への分析には使われません。</p>
+  </section>
+
+  <main class="reading-history-shell" data-reading-history>
+    <div class="reading-history-loading">読書記録を読み込んでいます...</div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="novelight-client.js"></script>
+  <script src="novelight-reading-history.js"></script>
+  <script>
+    (() => {
+      const client = supabase.createClient(
+        'https://fiepaguycecrredwrcwx.supabase.co',
+        'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
+      );
+      const mount = document.querySelector('[data-reading-history]');
+
+      (async () => {
+        try {
+          const auth = await client.auth.getSession();
+          if (!auth.data.session) {
+            location.href =
+              'login.html?redirect=' + encodeURIComponent('reading-history.html');
+            return;
+          }
+
+          await NovelightReadingHistory.mount({
+            client,
+            mount,
+            limit: 50
+          });
+        } catch (error) {
+          console.error('reading history page failed', error);
+          mount.textContent =
+            '読書記録を読み込めませんでした。時間をおいて再度お試しください。';
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>
