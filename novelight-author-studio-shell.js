@@ -6,6 +6,7 @@
     ['mypage.html', '⌂', '創作室'],
     ['post.html', '✦', '新規投稿'],
     ['my-novels.html', '▤', '自分の作品'],
+    ['author-notes.html', '✎', '近況ノート'],
     ['analytics.html', '▥', 'LIGHT ANALYTICS'],
     ['scout-record.html', '◇', 'SCOUT RECORD'],
     ['interaction-settings.html', '⚙', '交流設定'],
