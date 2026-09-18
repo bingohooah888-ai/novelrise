@@ -488,11 +488,13 @@ begin
     raise exception using errcode='42501', message='Character episode management unavailable';
   end if;
 
-  select coalesce(s.auto_detected, false)
-    into v_auto
-    from public.novel_character_episode_states s
-   where s.character_id = p_character_id
-     and s.episode_id = p_episode_id;
+  select coalesce((
+    select s.auto_detected
+      from public.novel_character_episode_states s
+     where s.character_id = p_character_id
+       and s.episode_id = p_episode_id
+  ), false)
+    into v_auto;
 
   if v_mode = 'auto' then
     update public.novel_character_episode_states
