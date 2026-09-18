@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>登場人物管理 | NOVELIGHT</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}
+    header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:980px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}
+    main{max-width:920px;margin:auto;padding:40px 22px 76px}.intro{margin-bottom:22px}.intro h1{font-size:30px}.intro p{margin-top:8px;color:#6b7280;line-height:1.8}.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:18px}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:15px;padding:22px}
+    .field{margin-bottom:16px}.field label,.toggle{font-size:13px;font-weight:900}.field input,.field textarea{width:100%;margin-top:7px;padding:11px;border:1px solid #d6d8df;border-radius:9px;font:inherit}.field textarea{min-height:92px;resize:vertical}.toggle{display:flex;align-items:flex-start;gap:9px;margin:11px 0}.toggle small{display:block;margin-top:3px;color:#777;font-weight:400;line-height:1.5}
+    .actions{display:flex;gap:8px;margin-top:17px}.btn{padding:10px 13px;border-radius:8px;border:1px solid #d8d8df;background:#fff;font-weight:900;cursor:pointer}.btn.primary{background:#6d4aff;border-color:#6d4aff;color:#fff}.btn:disabled{opacity:.55;cursor:not-allowed}.status{min-height:20px;margin-top:12px;color:#6b7280;font-size:12px;line-height:1.6}
+    .list{display:grid;gap:10px;margin-top:14px}.item{padding:14px;border:1px solid #e5e7eb;border-radius:11px}.item-top{display:flex;justify-content:space-between;gap:12px}.item h3{font-size:16px}.aliases,.latest,.flags{margin-top:6px;color:#777;font-size:11px;line-height:1.6}.flags{display:flex;gap:7px;flex-wrap:wrap}.flag{padding:3px 7px;border-radius:999px;background:#f1eff8;color:#5e4ca8;font-weight:900}.item-actions{display:flex;gap:7px;margin-top:10px}.danger{color:#b42318}
+    @media(max-width:720px){main{padding:28px 16px 60px}.grid{grid-template-columns:1fr}.actions,.item-actions{flex-direction:column}.btn{width:100%}}
+  </style>
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+</head>
+<body class="novelight-theme novelight-page-characters">
+<header><div class="header-inner"><a class="logo" href="index.html">NOVELIGHT</a><a id="back" class="back" href="my-novels.html">← 作品へ戻る</a></div></header>
+<main>
+  <div class="intro"><h1>登場人物管理</h1><p id="workTitle">作品情報を読み込み中...</p><p>一度登録すると本文保存時に名前・別名を自動検出します。各話では手動の「含める／除外」が自動判定より優先されます。</p></div>
+  <div class="grid">
+    <section class="panel">
+      <h2 id="formTitle">人物を登録</h2>
+      <form id="characterForm">
+        <div class="field"><label for="name">名前</label><input id="name" maxlength="80" required></div>
+        <div class="field"><label for="aliases">別名・呼び名</label><textarea id="aliases" placeholder="1行またはカンマ区切り。最大12個"></textarea></div>
+        <label class="toggle"><input id="autoDetect" type="checkbox" checked><span>本文から自動検出<small>OFFにすると、各話の手動指定だけを使います。</small></span></label>
+        <label class="toggle"><input id="readerVisible" type="checkbox" checked><span>読者の登場人物一覧に表示<small>OFFでも作者側の管理情報は保持します。</small></span></label>
+        <div class="actions"><button id="save" class="btn primary" type="submit" disabled>保存</button><button id="cancelEdit" class="btn" type="button" hidden>編集をやめる</button></div>
+        <div id="status" class="status" aria-live="polite"></div>
+      </form>
+    </section>
+    <section class="panel">
+      <h2>登録済み人物</h2>
+      <div id="list" class="list"><p class="status">読み込み中...</p></div>
+    </section>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="novelight-client.js"></script>
+<script src="novelight-characters.js"></script>
+<script>
+const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+const novelId=new URLSearchParams(location.search).get('novel_id');
+const form=document.getElementById('characterForm'),list=document.getElementById('list'),status=document.getElementById('status'),save=document.getElementById('save'),cancelEdit=document.getElementById('cancelEdit');
+let session=null,novel=null,rows=[],editingId=null,busy=false,runtimeReady=false;
+function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}
+function setBusy(v){busy=v;save.disabled=v||!runtimeReady;cancelEdit.disabled=v}
+function resetForm(){editingId=null;form.reset();document.getElementById('autoDetect').checked=true;document.getElementById('readerVisible').checked=true;document.getElementById('formTitle').textContent='人物を登録';cancelEdit.hidden=true}
+function parseAliases(){return [...new Set(document.getElementById('aliases').value.split(/[\n,、]/u).map(v=>v.trim()).filter(Boolean))]}
+function runtimeMissing(error){return window.NovelightCharacters?.isRuntimeMissing?.(error)}
+function render(){if(!rows.length){list.innerHTML='<p class="status">まだ登場人物が登録されていません。</p>';return}list.innerHTML=rows.map(row=>`<article class="item"><div class="item-top"><div><h3>${esc(row.name)}</h3><div class="aliases">${row.aliases?.length?'別名：'+row.aliases.map(esc).join(' / '):'別名なし'}</div><div class="latest">${row.latest_episode_number?'直近の登場：第'+Number(row.latest_episode_number)+'話「'+esc(row.latest_episode_title||'')+'」':'登場話はまだありません'}</div></div></div><div class="flags"><span class="flag">${row.auto_detect_enabled?'自動検出ON':'自動検出OFF'}</span><span class="flag">${row.reader_visible?'読者表示ON':'読者表示OFF'}</span></div><div class="item-actions"><button class="btn" type="button" data-edit="${row.id}">編集</button><button class="btn danger" type="button" data-delete="${row.id}">削除</button></div></article>`).join('');list.querySelectorAll('[data-edit]').forEach(button=>button.onclick=()=>startEdit(button.dataset.edit));list.querySelectorAll('[data-delete]').forEach(button=>button.onclick=()=>void removeCharacter(button.dataset.delete))}
+function startEdit(id){const row=rows.find(item=>String(item.id)===String(id));if(!row)return;editingId=row.id;document.getElementById('name').value=row.name||'';document.getElementById('aliases').value=(row.aliases||[]).join('\n');document.getElementById('autoDetect').checked=row.auto_detect_enabled===true;document.getElementById('readerVisible').checked=row.reader_visible===true;document.getElementById('formTitle').textContent='人物を編集';cancelEdit.hidden=false;status.textContent=''}
+async function loadCharacters(){const result=await client.rpc('novelight_author_character_list',{p_novel_id:String(novelId)});if(result.error){if(runtimeMissing(result.error)){runtimeReady=false;setBusy(false);status.textContent='登場人物機能はデータベース反映待ちです。';list.innerHTML='<p class="status">本番データベース反映後に利用できます。</p>';return}throw result.error}runtimeReady=true;rows=Array.isArray(result.data)?result.data:[];render();setBusy(false)}
+async function removeCharacter(id){if(busy||!confirm('この登場人物を削除しますか？各話の出現指定も削除されます。'))return;setBusy(true);status.textContent='削除しています...';try{const result=await client.rpc('novelight_delete_character',{p_character_id:String(id)});if(result.error)throw result.error;if(String(editingId)===String(id))resetForm();await loadCharacters();status.textContent='削除しました。'}catch(error){console.error(error);status.textContent='削除できませんでした。';setBusy(false)}}
+cancelEdit.onclick=()=>{resetForm();status.textContent=''};
+form.addEventListener('submit',async event=>{event.preventDefault();if(!runtimeReady||busy)return;const name=document.getElementById('name').value.trim(),aliases=parseAliases();if(!name){status.textContent='名前を入力してください。';return}if(aliases.length>12){status.textContent='別名は12個までです。';return}setBusy(true);status.textContent='保存しています...';try{const result=await client.rpc('novelight_upsert_character',{p_novel_id:String(novelId),p_character_id:editingId?String(editingId):null,p_name:name,p_aliases:aliases,p_auto_detect_enabled:document.getElementById('autoDetect').checked,p_reader_visible:document.getElementById('readerVisible').checked});if(result.error)throw result.error;resetForm();await loadCharacters();status.textContent='保存しました。既存エピソードも再判定済みです。'}catch(error){console.error(error);status.textContent=String(error?.message||'保存できませんでした。')}finally{setBusy(false)}});
+(async()=>{void NovelightClient.recordVisit(client);if(!novelId){status.textContent='作品IDがありません。';return}try{const auth=await client.auth.getSession();session=auth.data.session;if(!session){location.href='login.html?redirect='+encodeURIComponent('characters.html?novel_id='+novelId);return}const result=await client.from('novels').select('id,user_id,title').eq('id',novelId).single();novel=result.data;if(result.error||!novel||novel.user_id!==session.user.id)throw result.error||new Error('not authorized');document.getElementById('workTitle').textContent=novel.title;document.getElementById('back').href='novel.html?id='+encodeURIComponent(novel.id);await loadCharacters()}catch(error){console.error(error);status.textContent='登場人物管理を準備できませんでした。';list.innerHTML='<p class="status">作品情報を確認できませんでした。</p>'}})();
+</script>
+</body>
+</html>
