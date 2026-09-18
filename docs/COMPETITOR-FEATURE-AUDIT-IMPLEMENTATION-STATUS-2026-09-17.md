@@ -145,6 +145,40 @@
 - Production migration適用はPR mergeとは別の明示承認境界とする。
 
 
+## B〜C候補 #20 アンケート／投票
+
+状態：**実装済み（本変更セット） / Production migration未適用**
+
+実装証拠：
+
+- `novel-polls.html`
+- `novelight-novel-poll.js`
+- `novelight-novel-poll.css`
+- `supabase/migrations/20260919100000_author_reader_polls.sql`
+- `supabase/checks/20260919100000_author_reader_polls_precheck.sql`
+- `supabase/checks/20260919100000_author_reader_polls_postcheck.sql`
+- `supabase/rollback/20260919100000_author_reader_polls_rollback.sql`
+- `tests/author-reader-polls-contract.test.mjs`
+- `tests/rls/author-reader-polls.sql`
+
+実装済み範囲：
+
+- 公開作品ごとに同時1件までの単一選択アンケート。
+- 質問200文字、選択肢2〜6個、各80文字、β期間中は1作品50件まで保持。
+- ログイン読者1アカウント1票。投票後の変更・取消は行わない。
+- 作者本人の自己投票を禁止し、既存Block関係では直接交流として投票を拒否する。投票者IDは作者・一般クライアントへ返さない。
+- 公開中は未投票読者へ集計を隠し、投票後に現在集計、締め切り後に最終集計を表示する。
+- 作者は集計を確認して公開中アンケートを締め切れる。投票開始後の質問・選択肢編集や再開は行わない。
+- migration未反映中は作者管理を「データベース反映待ち」とし、読者側はアンケート欄を静かに省略する。
+
+安全・公平性境界：
+
+- 生テーブルはRLS有効かつclient rolesからrevokeし、専用RPCだけを明示grantする。
+- 作品Rank、LIGHT SEED、SCOUT EXP、PV、お気に入り、検索順位、発見棚、露出、LIGHT ANALYTICS、推薦へ接続しない。
+- 同時作成・同時投票は一意制約とRPC側の競合処理でfail-closedに扱う。
+- Production migration適用はPR mergeとは別の明示承認境界とする。
+
+
 ## B〜C候補 #14 コメントの作者モデレーション強化
 
 状態：**実装済み（本変更セット） / Production migration未適用**

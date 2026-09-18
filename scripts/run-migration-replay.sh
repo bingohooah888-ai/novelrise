@@ -601,4 +601,35 @@ echo '::group::Verify #19 author status notes rollback and reapply'
 "${REPLAY[@]}" -f supabase/checks/20260919090000_author_status_notes_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify B #20 author reader polls'
+"${REPLAY[@]}" -f supabase/rollback/20260919100000_author_reader_polls_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919100000_author_reader_polls_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919100000_author_reader_polls.sql
+"${REPLAY[@]}" -f supabase/checks/20260919100000_author_reader_polls_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/author-reader-polls.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #20 author reader polls rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260919100000_author_reader_polls_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.novel_polls') is not null
+     or to_regclass('public.novel_poll_options') is not null
+     or to_regclass('public.novel_poll_votes') is not null
+     or to_regprocedure('public.novelight_public_novel_poll(bigint)') is not null
+     or to_regprocedure('public.novelight_vote_novel_poll(bigint,bigint)') is not null then
+    raise exception 'B #20 rollback left poll runtime behind';
+  end if;
+  if to_regclass('public.novels') is null or to_regclass('public.profiles') is null then
+    raise exception 'B #20 rollback disturbed existing novel/profile foundations';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260919100000_author_reader_polls_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919100000_author_reader_polls.sql
+"${REPLAY[@]}" -f supabase/checks/20260919100000_author_reader_polls_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
