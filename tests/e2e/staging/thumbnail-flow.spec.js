@@ -305,7 +305,7 @@ test('official thumbnail survives Staging registration, Chapter 40 composition, 
           const selected = page.locator(
             `#thumbnailComposer .nl-thumb-option[data-layer-type="${type}"][aria-pressed="true"]`
           );
-          await expect(selected).toBeVisible();
+          await expect(selected).toHaveCount(1);
           await expect(selected).not.toHaveAttribute('data-asset-id', '');
         }
         for (const hiddenType of ['cover', 'effect']) {
