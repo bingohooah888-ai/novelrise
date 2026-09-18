@@ -117,6 +117,10 @@ test('beta-critical static navigation stays available', async () => {
   }
 });
 
+const dynamicSourceFiles = new Map([
+  ['favorites.html', ['favorites.html', 'novelight-bookshelf.js']]
+]);
+
 const requiredDynamicTargets = new Map([
   ['search.html', ['novel.html?id=']],
   ['ranking.html', ['novel.html?id=']],
@@ -138,7 +142,10 @@ const requiredDynamicTargets = new Map([
 
 test('beta-critical data-driven navigation targets stay wired', async () => {
   for (const [page, requiredTargets] of requiredDynamicTargets) {
-    const source = await read(page);
+    const sourceFiles = dynamicSourceFiles.get(page) || [page];
+    const source = (
+      await Promise.all(sourceFiles.map((file) => read(file)))
+    ).join('\n');
     for (const target of requiredTargets) {
       assert.ok(
         source.includes(target),

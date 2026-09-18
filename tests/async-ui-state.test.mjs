@@ -108,11 +108,11 @@ test('remaining list pages distinguish unavailable data from real empty states',
 test('favorites leaves loading state on auth and data failures', () => {
   assert.match(favorites, /novelight-bookshelf\.js/);
   assert.match(bookshelf, /clientInstance\.auth\.getSession\(\)/);
-  assert.match(bookshelf, /if \(favoritesResult\.error\) throw favoritesResult\.error/);
   assert.match(
     bookshelf,
-    /console\.error\('bookshelf page failed', error\)/
+    /if \(favoritesResult\.error\) throw favoritesResult\.error/
   );
+  assert.match(bookshelf, /console\.error\('bookshelf page failed', error\)/);
   assert.match(
     bookshelf,
     /本棚を表示できませんでした。通信状況を確認して、もう一度お試しください。/
