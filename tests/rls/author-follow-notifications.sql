@@ -81,6 +81,7 @@ begin
 end
 $$;
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 
 -- A work first published after the follow appears as one new-work event.
 insert into public.novels (
@@ -130,6 +131,7 @@ select public.novelight_mark_author_follow_updates_seen(
   null
 );
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 -- Episode 1 is part of the new-work publication and must not generate a
 -- duplicate update notification.
 insert into public.episodes (
@@ -163,6 +165,7 @@ begin
 end
 $$;
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 
 -- Later episodes create update events.
 insert into public.episodes (
@@ -204,6 +207,7 @@ select public.novelight_set_author_follow_notifications(
   false
 );
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 -- Updates published while that category is disabled stay hidden.
 insert into public.episodes (
   id, novel_id, user_id, episode_number, title, content, status, pv
@@ -252,6 +256,7 @@ begin
 end
 $$;
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 
 insert into public.episodes (
   id, novel_id, user_id, episode_number, title, content, status, pv
@@ -293,6 +298,7 @@ begin
 end
 $$;
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 
 -- Muting the author suppresses future followed-author feed items without
 -- changing work ranking or deleting notification evidence.
@@ -333,6 +339,7 @@ begin
 end
 $$;
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 
 -- A bilateral block prevents creation of a new follow.
 insert into public.user_blocks (blocker_user_id, blocked_user_id)
@@ -362,6 +369,7 @@ begin
 end
 $$;
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 do $$
 begin
   if has_table_privilege(
