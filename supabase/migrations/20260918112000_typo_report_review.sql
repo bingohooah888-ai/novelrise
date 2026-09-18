@@ -255,7 +255,7 @@ declare
   v_author_id uuid;
   v_content text;
   v_first integer;
-  v_second integer;
+  v_occurrences integer;
   v_report_id uuid;
   v_existing_id uuid;
 begin
@@ -352,16 +352,30 @@ begin
     raise exception using errcode = '54000', message = 'TYPO_REPORT_NOVEL_LIMIT';
   end if;
 
-  v_first := pg_catalog.strpos(v_content, v_source);
-  if v_first = 0 then
+  -- Count every matching start position, including overlapping matches
+  -- (for example source "aa" inside content "aaa"). A report is accepted only
+  -- when the submitted source identifies exactly one current location.
+  select min(pos)::integer,
+         count(*)::integer
+    into v_first, v_occurrences
+    from pg_catalog.generate_series(
+           1,
+           greatest(
+             pg_catalog.char_length(v_content) - pg_catalog.char_length(v_source) + 1,
+             0
+           )
+         ) as positions(pos)
+   where pg_catalog.substr(
+           v_content,
+           pos,
+           pg_catalog.char_length(v_source)
+         ) = v_source;
+
+  if v_occurrences = 0 then
     raise exception using errcode = '22023', message = 'TYPO_REPORT_SOURCE_NOT_FOUND';
   end if;
 
-  v_second := pg_catalog.strpos(
-    pg_catalog.substr(v_content, v_first + char_length(v_source)),
-    v_source
-  );
-  if v_second > 0 then
+  if v_occurrences > 1 then
     raise exception using errcode = '22023', message = 'TYPO_REPORT_SOURCE_NOT_UNIQUE';
   end if;
 
