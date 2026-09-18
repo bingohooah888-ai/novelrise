@@ -80,6 +80,7 @@
 
 実装証拠：
 
+- PR #677 `Add multi-episode schedule management`
 - `episode-schedule.html`
 - `supabase/migrations/20260918180500_episode_schedule_batch_management.sql`
 - `supabase/checks/20260918180500_episode_schedule_batch_management_precheck.sql`
