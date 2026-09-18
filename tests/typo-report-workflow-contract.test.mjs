@@ -109,10 +109,16 @@ test('accepted suggestions use exact-offset stale protection and revision histor
     applyFunction,
     /set_config\('novelight\.revision_reason', 'typo_apply', true\)/i
   );
-  assert.match(applyFunction, /update public\.episodes e\s+set content =/i);
+  const episodeUpdate =
+    applyFunction.match(
+      /update public\.episodes e\s+set[\s\S]*?where e\.id = v_report\.episode_id\s+and e\.user_id = v_uid;/i
+    )?.[0] ?? '';
+  const episodeSet = episodeUpdate.match(/set[\s\S]*?where/i)?.[0] ?? '';
+  assert.ok(episodeUpdate);
+  assert.match(episodeSet, /set content =/i);
   assert.doesNotMatch(
-    applyFunction,
-    /set[\s\S]*episode_number\s*=|set[\s\S]*status\s*=|set[\s\S]*pv\s*=|set[\s\S]*novel_id\s*=|set[\s\S]*user_id\s*=/i
+    episodeSet,
+    /episode_number\s*=|status\s*=|pv\s*=|novel_id\s*=|user_id\s*=/i
   );
   assert.match(revisionMigration, /'typo_apply'/i);
   assert.match(revisionMigration, /before update of title, content/i);
