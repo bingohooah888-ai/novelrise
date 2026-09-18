@@ -455,4 +455,34 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify character appearance behavior'
+"${REPLAY[@]}" -f supabase/checks/20260918211545_character_appearance_list_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/character-appearance-list.sql
+echo '::endgroup::'
+
+echo '::group::Verify character appearance rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260918211545_character_appearance_list_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $
+begin
+  if to_regclass('public.novel_characters') is not null
+     or to_regclass('public.novel_character_episode_states') is not null
+     or to_regprocedure('public.novelight_character_feed(bigint)') is not null
+     or to_regprocedure('public.novelight_upsert_character(bigint,bigint,text,text[],boolean,boolean)') is not null then
+    raise exception 'Character appearance rollback left feature objects behind';
+  end if;
+
+  if to_regclass('public.episodes') is null
+     or to_regclass('public.novels') is null then
+    raise exception 'Character appearance rollback disturbed existing content foundations';
+  end if;
+end
+$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260918211545_character_appearance_list_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918211545_character_appearance_list.sql
+"${REPLAY[@]}" -f supabase/checks/20260918211545_character_appearance_list_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/character-appearance-list.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
