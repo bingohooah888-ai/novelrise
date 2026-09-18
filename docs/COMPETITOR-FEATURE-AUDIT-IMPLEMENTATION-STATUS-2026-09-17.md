@@ -111,6 +111,39 @@
 - Production migration適用はPR mergeとは別の明示承認境界とする。
 - 本変更セットがmainへmergeされた時点から、B候補 #13を未実装として重複開発しない。
 
+## B〜C候補 #19 作者の近況・更新ノート
+
+状態：**実装済み（本変更セット） / Production migration未適用**
+
+実装証拠：
+
+- `author-notes.html`
+- `novelight-author-notes-public.js`
+- `novelight-author-notes-public.css`
+- `supabase/migrations/20260919090000_author_status_notes.sql`
+- `supabase/checks/20260919090000_author_status_notes_precheck.sql`
+- `supabase/checks/20260919090000_author_status_notes_postcheck.sql`
+- `supabase/rollback/20260919090000_author_status_notes_rollback.sql`
+- `tests/author-status-notes-contract.test.mjs`
+- `tests/rls/author-status-notes.sql`
+
+実装済み範囲：
+
+- 公開作者プロフィールに、公開中ノートを新しい順で最大5件表示する。
+- 作者専用管理画面で、短いタイトル、本文、任意の公開自作品リンクを作成・編集・アーカイブできる。
+- タイトル80文字、本文1,000文字、公開中ノート100件を上限とする。
+- 作品リンクは保存時に本人所有かつ公開中であることを検証し、公開取得時にも現在の公開状態を再確認する。
+- リンク作品が後から非公開になった場合、ノートは表示したまま作品名とリンクだけを公開出力から除く。
+- raw tableはRLS有効かつ全client roleからrevokeし、公開・管理・保存・アーカイブの専用RPCだけを明示grantする。
+- migration未反映中は管理画面を「データベース反映待ち」とし、公開プロフィールは近況欄を静かに省略する。
+
+安全・公平性境界：
+
+- いいね、コメント、リポスト／共有数、グローバルタイムライン、フォロワー数効果、自動フォロワー通知は追加しない。
+- 作品Rank、LIGHT SEED、SCOUT、PV、お気に入り、検索・発見・露出、LIGHT ANALYTICS、推薦へ接続しない。
+- 公開表示はDOM `textContent`で構築し、作者入力をHTMLとして解釈せず、本文改行だけを保持する。
+- Production migration適用はPR mergeとは別の明示承認境界とする。
+
 
 ## B〜C候補 #14 コメントの作者モデレーション強化
 

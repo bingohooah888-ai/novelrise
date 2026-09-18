@@ -586,4 +586,19 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260918235120_reader_history_stats_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify #19 author status notes'
+"${REPLAY[@]}" -f supabase/rollback/20260919090000_author_status_notes_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919090000_author_status_notes_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919090000_author_status_notes.sql
+"${REPLAY[@]}" -f supabase/checks/20260919090000_author_status_notes_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/author-status-notes.sql
+echo '::endgroup::'
+
+echo '::group::Verify #19 author status notes rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260919090000_author_status_notes_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919090000_author_status_notes_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919090000_author_status_notes.sql
+"${REPLAY[@]}" -f supabase/checks/20260919090000_author_status_notes_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
