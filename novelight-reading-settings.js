@@ -42,6 +42,25 @@
     documentRef.head.appendChild(script);
   }
 
+  function ensureReaderTts() {
+    const documentRef = global.document;
+    if (!documentRef?.head) return;
+    if (!documentRef.querySelector('link[data-novelight-reader-tts]')) {
+      const stylesheet = documentRef.createElement('link');
+      stylesheet.rel = 'stylesheet';
+      stylesheet.href = 'novelight-reader-tts.css';
+      stylesheet.dataset.novelightReaderTts = 'true';
+      documentRef.head.appendChild(stylesheet);
+    }
+    if (global.NovelightReaderTts) return;
+    if (documentRef.querySelector('script[data-novelight-reader-tts]')) return;
+    const script = documentRef.createElement('script');
+    script.src = 'novelight-reader-tts.js';
+    script.defer = true;
+    script.dataset.novelightReaderTts = 'true';
+    documentRef.head.appendChild(script);
+  }
+
   function normalizedChoice(group, value) {
     return Object.prototype.hasOwnProperty.call(PRESETS[group], value)
       ? value
@@ -110,6 +129,7 @@
 
   function mount() {
     ensureProseRenderer();
+    ensureReaderTts();
     const mountPoint = document.getElementById('readingSettingsMount');
     if (!mountPoint || mountPoint.dataset.mounted === 'true') return;
     mountPoint.dataset.mounted = 'true';
