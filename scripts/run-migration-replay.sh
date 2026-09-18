@@ -556,4 +556,34 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260918225815_limited_share_links_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify B #17 private reader history'
+"${REPLAY[@]}" -f supabase/rollback/20260918235120_reader_history_stats_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260918235120_reader_history_stats_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918235120_reader_history_stats.sql
+"${REPLAY[@]}" -f supabase/checks/20260918235120_reader_history_stats_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/reader-history-stats.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #17 reader history rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260918235120_reader_history_stats_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regprocedure('public.novelight_reader_history_stats(integer)') is not null then
+    raise exception 'B #17 rollback left history RPC behind';
+  end if;
+
+  if to_regclass('public.valid_read_events') is null
+     or to_regclass('public.reader_reading_progress') is null
+     or to_regclass('public.reader_bookshelf_entries') is null then
+    raise exception 'B #17 rollback disturbed existing reader data foundations';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260918235120_reader_history_stats_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918235120_reader_history_stats.sql
+"${REPLAY[@]}" -f supabase/checks/20260918235120_reader_history_stats_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
