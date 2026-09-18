@@ -26,6 +26,18 @@
     }
   }
 
+  function isMissingAuthorFollowRpc(error) {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '').toLowerCase();
+    return (
+      code === 'PGRST202' ||
+      code === '42883' ||
+      message.includes('schema cache') ||
+      message.includes('could not find the function') ||
+      message.includes('does not exist')
+    );
+  }
+
   function readProgress(novelId) {
     const value = readStored(readingKey(novelId));
     if (!value || String(value.novelId) !== String(novelId)) return null;
@@ -141,6 +153,76 @@
     return { session, updates };
   }
 
+  async function followedAuthorUpdates(clientInstance) {
+    const result = await clientInstance.rpc('novelight_followed_author_updates', {
+      p_limit: 100
+    });
+    if (result.error) {
+      if (isMissingAuthorFollowRpc(result.error)) return [];
+      throw result.error;
+    }
+    return Array.isArray(result.data) ? result.data : [];
+  }
+
+  function eventId(row) {
+    try {
+      return BigInt(String(row?.event_id || '0'));
+    } catch {
+      return 0n;
+    }
+  }
+
+  function groupAuthorUpdates(rows) {
+    const groups = new Map();
+    for (const row of rows || []) {
+      const authorId = String(row?.author_user_id || '');
+      if (!authorId) continue;
+      if (!groups.has(authorId)) {
+        groups.set(authorId, {
+          authorId,
+          authorDisplayName: row?.author_display_name || '名前未設定',
+          events: [],
+          maxNewWorkEventId: null,
+          maxUpdateEventId: null
+        });
+      }
+      const group = groups.get(authorId);
+      group.events.push(row);
+      if (row?.event_type === 'novel_published') {
+        if (
+          group.maxNewWorkEventId === null ||
+          eventId(row) > eventId({ event_id: group.maxNewWorkEventId })
+        ) {
+          group.maxNewWorkEventId = String(row.event_id);
+        }
+      }
+      if (row?.event_type === 'episode_published') {
+        if (
+          group.maxUpdateEventId === null ||
+          eventId(row) > eventId({ event_id: group.maxUpdateEventId })
+        ) {
+          group.maxUpdateEventId = String(row.event_id);
+        }
+      }
+    }
+
+    return [...groups.values()]
+      .map((group) => {
+        group.events.sort((a, b) => {
+          const aId = eventId(a);
+          const bId = eventId(b);
+          return aId === bId ? 0 : aId > bId ? -1 : 1;
+        });
+        group.latest = group.events[0] || null;
+        return group;
+      })
+      .sort((a, b) => {
+        const aId = eventId(a.latest);
+        const bId = eventId(b.latest);
+        return aId === bId ? 0 : aId > bId ? -1 : 1;
+      });
+  }
+
   function installStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement('style');
@@ -154,8 +236,9 @@
     document.head.appendChild(style);
   }
 
-  function installHomeBadge(updates) {
-    if (!updates.length || document.getElementById('nlFavoriteUpdatesLink')) return false;
+  function installHomeBadge(updateCount) {
+    const count = Math.max(0, Number(updateCount) || 0);
+    if (!count || document.getElementById('nlFavoriteUpdatesLink')) return false;
     const actions = document.querySelector('.header-actions');
     if (!actions) return false;
     installStyles();
@@ -164,12 +247,12 @@
     link.id = 'nlFavoriteUpdatesLink';
     link.className = 'nl-update-link';
     link.href = 'updates.html';
-    link.setAttribute('aria-label', `お気に入り作品の更新 ${updates.length}作品`);
+    link.setAttribute('aria-label', `新しい更新 ${count}件`);
     const label = document.createElement('span');
     label.textContent = '更新';
     const badge = document.createElement('span');
     badge.className = 'nl-update-badge';
-    badge.textContent = String(updates.length);
+    badge.textContent = String(count);
     link.append(label, badge);
     actions.insertBefore(link, actions.querySelector('.header-search'));
 
@@ -178,23 +261,39 @@
       const mobileLink = document.createElement('a');
       mobileLink.id = 'nlFavoriteUpdatesMobileLink';
       mobileLink.href = 'updates.html';
-      mobileLink.append(document.createTextNode('お気に入り更新'));
+      mobileLink.append(document.createTextNode('更新通知'));
       const mobileBadge = document.createElement('span');
       mobileBadge.className = 'nl-update-mobile-badge';
-      mobileBadge.textContent = String(updates.length);
+      mobileBadge.textContent = String(count);
       mobileLink.appendChild(mobileBadge);
       mobileNav.insertBefore(mobileLink, mobileNav.firstChild);
     }
     return true;
   }
 
-  function setSummary(updates) {
+  function setSummary(favoriteItems, authorGroups) {
     const summary = document.getElementById('updatesSummary');
     if (!summary) return;
-    const episodes = updates.reduce((sum, item) => sum + item.newEpisodes.length, 0);
-    summary.textContent = updates.length
-      ? `${updates.length}作品・${episodes}話の更新があります。`
-      : '確認していない更新はありません。';
+    const favoriteEpisodes = favoriteItems.reduce(
+      (sum, item) => sum + item.newEpisodes.length,
+      0
+    );
+    const authorEvents = authorGroups.reduce(
+      (sum, group) => sum + group.events.length,
+      0
+    );
+    if (!favoriteItems.length && !authorEvents) {
+      summary.textContent = '確認していない更新はありません。';
+      return;
+    }
+    const parts = [];
+    if (favoriteItems.length) {
+      parts.push(`お気に入り ${favoriteItems.length}作品・${favoriteEpisodes}話`);
+    }
+    if (authorEvents) {
+      parts.push(`フォロー作者 ${authorEvents}件`);
+    }
+    summary.textContent = `${parts.join(' / ')}の新着があります。`;
   }
 
   function renderEmpty(list) {
@@ -204,7 +303,8 @@
     const title = document.createElement('strong');
     title.textContent = '新しい更新はありません';
     const copy = document.createElement('p');
-    copy.textContent = 'お気に入り作品に新しい話が公開されると、ここに表示されます。';
+    copy.textContent =
+      'お気に入り作品の更新や、フォロー中の作者による新作・新しい話がここに表示されます。';
     const actions = document.createElement('div');
     actions.className = 'updates-empty-actions';
     const favorites = document.createElement('a');
@@ -258,6 +358,59 @@
     return article;
   }
 
+  function renderAuthorUpdateCard(group, onAcknowledge) {
+    const article = document.createElement('article');
+    article.className = 'update-card';
+    article.dataset.authorId = group.authorId;
+
+    const latest = group.latest;
+    const top = document.createElement('div');
+    top.className = 'update-card-top';
+    const copy = document.createElement('div');
+    const badge = document.createElement('span');
+    badge.className = 'update-card-badge';
+    badge.textContent = `フォロー作者 ${group.events.length}件`;
+    const title = document.createElement('a');
+    title.className = 'update-card-title';
+    title.href = `author.html?id=${encodeURIComponent(group.authorId)}`;
+    title.textContent = group.authorDisplayName;
+    const range = document.createElement('p');
+    range.className = 'update-card-range';
+    if (latest?.event_type === 'novel_published') {
+      range.textContent = `新作「${latest.novel_title || 'タイトル未設定'}」が公開されました。`;
+    } else {
+      const episodeLabel = latest?.episode_number
+        ? `第${latest.episode_number}話`
+        : '新しい話';
+      range.textContent = `「${latest?.novel_title || 'タイトル未設定'}」の${episodeLabel}「${latest?.episode_title || 'タイトル未設定'}」が公開されました。`;
+    }
+    if (group.events.length > 1) {
+      range.textContent += ` ほか${group.events.length - 1}件`;
+    }
+    copy.append(badge, title, range);
+    top.appendChild(copy);
+
+    const actions = document.createElement('div');
+    actions.className = 'update-card-actions';
+    const read = document.createElement('a');
+    read.className = 'update-card-read';
+    read.href =
+      latest?.event_type === 'episode_published' && latest?.episode_id
+        ? `episode.html?id=${encodeURIComponent(latest.episode_id)}`
+        : `novel.html?id=${encodeURIComponent(latest?.novel_id || '')}`;
+    read.textContent = '確認する →';
+    const acknowledge = document.createElement('button');
+    acknowledge.className = 'update-card-seen';
+    acknowledge.type = 'button';
+    acknowledge.textContent = '確認済みにする';
+    acknowledge.addEventListener('click', () =>
+      onAcknowledge(group, article, acknowledge)
+    );
+    actions.append(read, acknowledge);
+    article.append(top, actions);
+    return article;
+  }
+
   async function installUpdatesPage(clientInstance) {
     const list = document.getElementById('updatesList');
     if (!list) return false;
@@ -267,28 +420,63 @@
         window.location.href = 'login.html?redirect=updates.html';
         return false;
       }
+      const authorRows = await followedAuthorUpdates(clientInstance);
       void window.NovelightClient?.recordVisit?.(clientInstance);
       void window.NovelightClient?.claimAcquisition?.(clientInstance);
 
-      let active = [...result.updates];
-      const rerenderSummary = () => setSummary(active);
-      const acknowledge = (item, card) => {
+      let activeFavorites = [...result.updates];
+      let activeAuthors = groupAuthorUpdates(authorRows);
+      const rerenderSummary = () =>
+        setSummary(activeFavorites, activeAuthors);
+      const maybeRenderEmpty = () => {
+        if (!activeFavorites.length && !activeAuthors.length) renderEmpty(list);
+      };
+      const acknowledgeFavorite = (item, card) => {
         writeSeen(item.novelId, latestEpisodeNumber(item.allEpisodes));
-        active = active.filter((candidate) => candidate.novelId !== item.novelId);
+        activeFavorites = activeFavorites.filter(
+          (candidate) => candidate.novelId !== item.novelId
+        );
         card.remove();
         rerenderSummary();
-        if (!active.length) renderEmpty(list);
+        maybeRenderEmpty();
+      };
+      const acknowledgeAuthor = async (group, card, button) => {
+        button.disabled = true;
+        button.textContent = '保存中...';
+        const response = await clientInstance.rpc(
+          'novelight_mark_author_follow_updates_seen',
+          {
+            p_author_user_id: group.authorId,
+            p_new_work_event_id: group.maxNewWorkEventId,
+            p_update_event_id: group.maxUpdateEventId
+          }
+        );
+        if (response.error) {
+          console.error('author update acknowledgement failed', response.error);
+          button.disabled = false;
+          button.textContent = '再試行';
+          return;
+        }
+        activeAuthors = activeAuthors.filter(
+          (candidate) => candidate.authorId !== group.authorId
+        );
+        card.remove();
+        rerenderSummary();
+        maybeRenderEmpty();
       };
 
       list.replaceChildren();
-      if (!active.length) renderEmpty(list);
-      else {
-        for (const item of active) list.appendChild(renderUpdateCard(item, acknowledge));
+      for (const group of activeAuthors) {
+        list.appendChild(renderAuthorUpdateCard(group, acknowledgeAuthor));
       }
+      for (const item of activeFavorites) {
+        list.appendChild(renderUpdateCard(item, acknowledgeFavorite));
+      }
+      maybeRenderEmpty();
       rerenderSummary();
       return true;
     } catch (error) {
-      console.error('favorite update page failed', error);
+      console.error('update center failed', error);
       list.innerHTML = '<section class="updates-empty"><strong>更新情報を読み込めませんでした</strong><p>通信状況を確認して、もう一度お試しください。</p></section>';
       const summary = document.getElementById('updatesSummary');
       if (summary) summary.textContent = '更新情報を取得できませんでした。';
@@ -300,9 +488,10 @@
     try {
       const result = await favoriteUpdates(clientInstance, { initialize: true });
       if (!result.session) return false;
-      return installHomeBadge(result.updates);
+      const authorRows = await followedAuthorUpdates(clientInstance);
+      return installHomeBadge(result.updates.length + authorRows.length);
     } catch (error) {
-      console.error('favorite update badge failed', error);
+      console.error('update badge failed', error);
       return false;
     }
   }
@@ -313,6 +502,9 @@
     writeSeen,
     updateRows,
     favoriteUpdates,
+    isMissingAuthorFollowRpc,
+    followedAuthorUpdates,
+    groupAuthorUpdates,
     installHomeBadge,
     installHomeUpdates,
     installUpdatesPage

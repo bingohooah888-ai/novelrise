@@ -284,4 +284,29 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260916100000_episode_scheduled_publication_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify author follow notification behavior'
+"${REPLAY[@]}" -f supabase/checks/20260918140022_author_follow_notifications_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/author-follow-notifications.sql
+echo '::endgroup::'
+
+echo '::group::Verify author follow notification rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260918140022_author_follow_notifications_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.author_follows') is not null
+     or to_regclass('public.author_follow_events') is not null
+     or to_regprocedure('public.novelight_author_follow_state(uuid)') is not null
+     or to_regprocedure('public.novelight_followed_author_updates(integer)') is not null then
+    raise exception 'Author follow rollback left B #9 objects behind';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260918140022_author_follow_notifications_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918140022_author_follow_notifications.sql
+"${REPLAY[@]}" -f supabase/checks/20260918140022_author_follow_notifications_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/author-follow-notifications.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'

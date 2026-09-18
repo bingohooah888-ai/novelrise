@@ -6,11 +6,12 @@ const updates = await readFile('novelight-favorite-updates.js', 'utf8');
 const updatesPage = await readFile('updates.html', 'utf8');
 const authContext = await readFile('auth-reader-context.js', 'utf8');
 
-test('favorite updates use existing favorite and published episode reads only', () => {
+test('favorite updates keep existing favorite and published episode read path', () => {
   assert.match(updates, /from\('favorites'\)/u);
   assert.match(updates, /from\('episodes'\)/u);
   assert.match(updates, /\.eq\('status', 'published'\)/u);
-  assert.doesNotMatch(updates, /\.rpc\(/u);
+  assert.match(updates, /novelight_followed_author_updates/u);
+  assert.match(updates, /isMissingAuthorFollowRpc/u);
 });
 
 test('first observation establishes a baseline instead of treating the backlog as new', () => {
@@ -39,5 +40,6 @@ test('home can load the update badge and auth return accepts the updates page', 
   assert.match(authContext, /\/updates\.html/u);
   assert.match(authContext, /novelight-favorite-updates\.js/u);
   assert.match(updates, /id = 'nlFavoriteUpdatesLink'/u);
-  assert.match(updates, /お気に入り作品の更新/u);
+  assert.match(updates, /新しい更新/u);
+  assert.match(updatesPage, />更新通知</u);
 });

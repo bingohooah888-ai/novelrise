@@ -13,6 +13,7 @@
     '/post.html',
     '/favorites.html',
     '/updates.html',
+    '/author.html',
     '/novel.html',
     '/novel-edit.html',
     '/episode.html',
