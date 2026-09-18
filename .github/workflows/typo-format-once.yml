@@ -1,0 +1,47 @@
+name: NOVELIGHT One-Time Typo Contract Format
+
+on:
+  push:
+    branches:
+      - feature/typo-report-review-current
+    paths:
+      - '.github/workflows/typo-format-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feature/typo-report-review-current
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format typo contract
+        run: npx prettier --write tests/typo-report-workflow-contract.test.mjs
+
+      - name: Commit formatter output
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- tests/typo-report-workflow-contract.test.mjs; then
+            echo 'No formatter changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/typo-report-workflow-contract.test.mjs
+          git commit -m 'Format typo report contract test'
+          git push origin HEAD:feature/typo-report-review-current
