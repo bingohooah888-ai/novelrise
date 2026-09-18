@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>予約公開管理 | NOVELIGHT</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}button,input{font:inherit}
+    header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:1080px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}
+    main{max-width:1000px;margin:auto;padding:42px 22px 76px}.head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:20px}.head h1{margin:0;font-size:30px}.sub{margin:7px 0 0;color:#6b7280;line-height:1.7}
+    .notice,.tools,.card,.empty{background:#fff;border:1px solid #e5e7eb;border-radius:14px}.notice{padding:14px 16px;margin-bottom:15px;color:#655846;font-size:12px;line-height:1.8;background:#fffaf0;border-color:#dfd1b7}.tools{padding:16px;margin-bottom:16px}
+    .tool-row{display:flex;gap:9px;align-items:end;flex-wrap:wrap}.field{display:grid;gap:6px}.field label{font-size:11px;font-weight:900;color:#655846}.field input{min-height:40px;padding:8px 10px;border:1px solid #d6d8df;border-radius:8px}.field.interval input{width:110px}
+    .btn{min-height:40px;padding:8px 12px;border:1px solid #d6d8df;border-radius:8px;background:#fff;color:#4b3a2a;font-weight:900;cursor:pointer}.btn.primary{background:#3d2d20;color:#fff;border-color:#3d2d20}.btn:disabled{opacity:.55;cursor:not-allowed}.summary{margin-top:11px;color:#6b7280;font-size:12px}
+    .list{display:grid;gap:11px}.card{padding:16px;display:grid;grid-template-columns:auto minmax(0,1fr) minmax(220px,300px);gap:13px;align-items:center}.select{width:19px;height:19px}.number{font-size:11px;color:#8c765d;font-weight:900}.title{font-size:16px;font-weight:900;margin-top:3px}.state{font-size:11px;color:#777;margin-top:5px}.schedule-input{width:100%;padding:10px;border:1px solid #d6d8df;border-radius:8px}.dirty{border-color:#8a70e5;background:#faf8ff}.empty{padding:34px;text-align:center;color:#6b7280}.status{min-height:23px;margin-top:14px;color:#666;font-size:13px}
+    @media(max-width:700px){main{padding:28px 16px 60px}.head{align-items:flex-start;flex-direction:column}.tool-row{align-items:stretch;flex-direction:column}.field.interval input{width:100%}.btn{width:100%}.card{grid-template-columns:auto 1fr}.schedule-wrap{grid-column:1/-1}.schedule-input{width:100%}}
+  </style>
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+</head><body class="novelight-theme novelight-page-episode-schedule">
+<header><div class="header-inner"><a class="logo" href="index.html">NOVELIGHT</a><a id="back" class="back" href="my-novels.html">← 作品へ戻る</a></div></header>
+<main>
+  <div class="head"><div><h1>予約公開管理</h1><p id="novelTitle" class="sub">作品情報を読み込み中...</p></div><button id="save" class="btn primary" type="button" disabled>変更を保存</button></div>
+  <div id="ruleNotice" class="notice">複数の下書きへ公開日時をまとめて設定・変更・解除できます。予約中も下書きは読者に表示されません。</div>
+  <section class="tools">
+    <div class="tool-row">
+      <button id="selectAll" class="btn" type="button" disabled>下書きをすべて選択</button>
+      <button id="clearSelection" class="btn" type="button" disabled>選択解除</button>
+      <div class="field"><label for="bulkStart">開始日時</label><input id="bulkStart" type="datetime-local" step="60"></div>
+      <div class="field interval"><label for="bulkInterval">公開間隔（分）</label><input id="bulkInterval" type="number" min="5" max="525600" step="5" value="1440"></div>
+      <button id="fillSchedule" class="btn" type="button" disabled>選択話に時間割を入力</button>
+      <button id="clearSchedule" class="btn" type="button" disabled>選択話の予約を解除</button>
+    </div>
+    <div id="summary" class="summary">読み込み中...</div>
+  </section>
+  <div id="list" class="list"><div class="empty">読み込み中...</div></div>
+  <div id="status" class="status" aria-live="polite"></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="novelight-client.js"></script>
+<script>
+const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+const novelId=new URLSearchParams(location.search).get('novel_id'),list=document.getElementById('list'),statusEl=document.getElementById('status'),save=document.getElementById('save'),summary=document.getElementById('summary');
+let session=null,novel=null,rows=[],ready=false,busy=false;
+function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}
+function pad(v){return String(v).padStart(2,'0')}
+function localValue(value){if(!value)return'';const d=new Date(value);if(!Number.isFinite(d.getTime()))return'';return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`}
+function fmt(value){if(!value)return'予約なし';const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString('ja-JP'):'予約なし'}
+function unavailable(error){const m=String(error?.message||'');return['42883','42703','PGRST202','PGRST204'].includes(error?.code)||m.includes('novelight_batch_manage_episode_schedules')||m.includes('scheduled_publish_at')||m.includes('does not exist')}
+function scheduleMessage(error){const m=String(error?.message||'');if(m.includes('Episode 1 must be the first'))return'未公開作品では第1話を最初の予約公開にしてください。';if(m.includes('Later episodes must be scheduled after episode 1'))return'未公開作品では第2話以降を第1話より後の日時にしてください。';if(m.includes('1 to 50'))return'一度に保存できる変更は50話までです。';if(m.includes('2 minutes'))return'予約日時は現在より2分以上先にしてください。';if(m.includes('1 year'))return'予約日時は1年以内にしてください。';return String(error?.message||'予約公開の変更を保存できませんでした。')}
+function controlsEnabled(value){for(const id of ['selectAll','clearSelection','fillSchedule','clearSchedule'])document.getElementById(id).disabled=!value}
+function selectedCards(){return [...list.querySelectorAll('.card')].filter(card=>card.querySelector('.select')?.checked)}
+function refreshDirty(){
+  let dirty=0,scheduled=0;for(const card of list.querySelectorAll('.card')){const input=card.querySelector('.schedule-input');const changed=input.value!==card.dataset.originalLocal;card.classList.toggle('dirty',changed);if(changed)dirty++;if(input.value)scheduled++}
+  summary.textContent=`下書き ${rows.length}話 / 予約設定 ${scheduled}話 / 未保存の変更 ${dirty}話`;save.disabled=busy||!ready||dirty<1||dirty>50;return dirty
+}
+function render(){
+  if(!rows.length){list.innerHTML='<div class="empty">予約管理できる下書きはありません。</div>';summary.textContent='下書き 0話';controlsEnabled(false);save.disabled=true;return}
+  list.innerHTML=rows.map(row=>{const local=localValue(row.scheduled_publish_at);return `<article class="card" data-id="${encodeURIComponent(row.id)}" data-number="${Number(row.episode_number)}" data-original-local="${esc(local)}"><input class="select" type="checkbox" aria-label="第${Number(row.episode_number)}話を選択"><div><div class="number">第${Number(row.episode_number)}話</div><div class="title">${esc(row.title||'（タイトル未入力）')}</div><div class="state">現在：${esc(fmt(row.scheduled_publish_at))}</div></div><div class="schedule-wrap"><input class="schedule-input" type="datetime-local" step="60" value="${esc(local)}" aria-label="第${Number(row.episode_number)}話の予約日時"></div></article>`}).join('');
+  list.querySelectorAll('.schedule-input').forEach(input=>input.addEventListener('input',refreshDirty));controlsEnabled(true);refreshDirty()
+}
+async function loadRows(){
+  const r=await client.from('episodes').select('id,episode_number,title,status,scheduled_publish_at').eq('novel_id',novel.id).eq('status','draft').order('episode_number',{ascending:true});
+  if(r.error)throw r.error;rows=r.data||[];render()
+}
+document.getElementById('selectAll').onclick=()=>{list.querySelectorAll('.select').forEach(x=>x.checked=true)};
+document.getElementById('clearSelection').onclick=()=>{list.querySelectorAll('.select').forEach(x=>x.checked=false)};
+document.getElementById('fillSchedule').onclick=()=>{const cards=selectedCards(),startValue=document.getElementById('bulkStart').value,interval=Number(document.getElementById('bulkInterval').value);const start=new Date(startValue);if(!cards.length){statusEl.textContent='時間割を入力する話を選択してください。';return}if(!startValue||!Number.isFinite(start.getTime())){statusEl.textContent='開始日時を入力してください。';return}if(start.getTime()<Date.now()+2*60*1000){statusEl.textContent='開始日時は現在より2分以上先にしてください。';return}if(!Number.isFinite(interval)||interval<5||interval>525600){statusEl.textContent='公開間隔は5〜525,600分で入力してください。';return}cards.sort((a,b)=>Number(a.dataset.number)-Number(b.dataset.number)).forEach((card,index)=>{card.querySelector('.schedule-input').value=localValue(new Date(start.getTime()+index*interval*60000))});statusEl.textContent=`${cards.length}話へ時間割を入力しました。保存するまで確定しません。`;refreshDirty()};
+document.getElementById('clearSchedule').onclick=()=>{const cards=selectedCards();if(!cards.length){statusEl.textContent='予約を解除する話を選択してください。';return}cards.forEach(card=>card.querySelector('.schedule-input').value='');statusEl.textContent=`${cards.length}話の予約解除を入力しました。保存するまで確定しません。`;refreshDirty()};
+save.onclick=async()=>{if(!ready||busy)return;const changes=[...list.querySelectorAll('.card')].filter(card=>card.querySelector('.schedule-input').value!==card.dataset.originalLocal).map(card=>{const input=card.querySelector('.schedule-input'),date=input.value?new Date(input.value):null;return{episode_id:Number(card.dataset.id),publish_at:date?.toISOString()??null}});if(!changes.length)return;if(changes.length>50){statusEl.textContent='一度に保存できる変更は50話までです。';return}if(changes.some(x=>x.publish_at&&new Date(x.publish_at).getTime()<Date.now()+2*60*1000)){statusEl.textContent='予約日時は現在より2分以上先にしてください。';return}busy=true;save.disabled=true;controlsEnabled(false);statusEl.textContent='予約公開の変更を保存しています...';try{const result=await client.rpc('novelight_batch_manage_episode_schedules',{p_novel_id:Number(novel.id),p_changes:changes});if(result.error)throw result.error;statusEl.textContent='予約公開の変更を保存しました。';await loadRows()}catch(error){console.error(error);statusEl.textContent=unavailable(error)?'予約公開管理のデータベース反映待ちです。':scheduleMessage(error)}finally{busy=false;controlsEnabled(ready);refreshDirty()}};
+(async()=>{void NovelightClient.recordVisit(client);if(!novelId){list.innerHTML='<div class="empty">作品IDがありません。</div>';return}try{const auth=await client.auth.getSession();session=auth.data.session;if(!session){location.href='login.html?redirect='+encodeURIComponent('episode-schedule.html?novel_id='+novelId);return}void NovelightClient.claimAcquisition(client);const nr=await client.from('novels').select('id,user_id,title,status').eq('id',novelId).single();if(nr.error)throw nr.error;novel=nr.data;if(!novel||novel.user_id!==session.user.id)throw new Error('この作品を管理する権限がありません。');document.getElementById('novelTitle').textContent=`「${novel.title}」の予約公開時間割`;document.getElementById('back').href='novel.html?id='+encodeURIComponent(novel.id);if(novel.status!=='published')document.getElementById('ruleNotice').textContent='未公開作品では、第1話を最初の予約公開にし、第2話以降は第1話より後の日時へ設定してください。複数話を同時に保存すると、その順序をサーバー側でも原子的に検証します。';await loadRows();ready=true;controlsEnabled(true);refreshDirty()}catch(error){console.error(error);ready=false;controlsEnabled(false);save.disabled=true;list.innerHTML='<div class="empty">予約公開管理を読み込めませんでした。</div>';statusEl.textContent=unavailable(error)?'予約公開管理のデータベース反映待ちです。':String(error?.message||'時間をおいて再度お試しください。')}})();
+</script>
+</body>
+</html>

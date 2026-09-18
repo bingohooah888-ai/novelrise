@@ -365,4 +365,40 @@ SQL
 "${REPLAY[@]}" -f tests/rls/interaction-reception-settings.sql
 echo '::endgroup::'
 
+echo '::group::Verify B #13 episode schedule batch management'
+"${REPLAY[@]}" -f supabase/checks/20260918180500_episode_schedule_batch_management_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/episode-schedule-batch-management.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #13 schedule batch rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260918180500_episode_schedule_batch_management_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regprocedure('public.novelight_batch_manage_episode_schedules(bigint,jsonb)') is not null then
+    raise exception 'B #13 rollback left the batch schedule RPC behind';
+  end if;
+
+  if not exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'episodes'
+       and column_name = 'scheduled_publish_at'
+  ) then
+    raise exception 'B #13 rollback disturbed the existing schedule foundation';
+  end if;
+
+  if to_regprocedure('public.novelight_publish_due_episode_schedules()') is null then
+    raise exception 'B #13 rollback removed the existing due scheduler';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260918180500_episode_schedule_batch_management_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918180500_episode_schedule_batch_management.sql
+"${REPLAY[@]}" -f supabase/checks/20260918180500_episode_schedule_batch_management_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/episode-schedule-batch-management.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'

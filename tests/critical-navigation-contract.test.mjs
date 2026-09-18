@@ -126,7 +126,14 @@ const requiredDynamicTargets = new Map([
   ['ranking.html', ['novel.html?id=']],
   ['author.html', ['novel.html?id=']],
   ['favorites.html', ['novel.html?id=', 'login.html?redirect=favorites.html']],
-  ['my-novels.html', ['novel.html?id=', 'interaction-settings.html?novel_id=']],
+  [
+    'my-novels.html',
+    [
+      'novel.html?id=',
+      'episode-schedule.html?novel_id=',
+      'interaction-settings.html?novel_id='
+    ]
+  ],
   [
     'novel.html',
     [
@@ -134,9 +141,14 @@ const requiredDynamicTargets = new Map([
       'episode.html?id=',
       'novel-edit.html?id=',
       'episode-post.html?novel_id=',
+      'episode-schedule.html?novel_id=',
       'interaction-settings.html?novel_id=',
       'my-novels.html'
     ]
+  ],
+  [
+    'episode-drafts.html',
+    ['episode-schedule.html?novel_id=', 'episode-import.html?novel_id=']
   ],
   ['episode.html', ['novel.html?id=', 'episode-edit.html?id=']]
 ]);
