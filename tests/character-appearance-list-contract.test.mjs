@@ -27,10 +27,19 @@ const replay = await readFile('scripts/run-migration-replay.sh', 'utf8');
 
 test('character registry is canonical, private, and bounded', () => {
   assert.match(migration, /create table public\.novel_characters/iu);
-  assert.match(migration, /create table public\.novel_character_episode_states/iu);
+  assert.match(
+    migration,
+    /create table public\.novel_character_episode_states/iu
+  );
   assert.match(migration, /cardinality\(aliases\) <= 12/iu);
-  assert.match(migration, /At most 100 characters can be registered per work/iu);
-  assert.match(migration, /alter table public\.novel_characters enable row level security/iu);
+  assert.match(
+    migration,
+    /At most 100 characters can be registered per work/iu
+  );
+  assert.match(
+    migration,
+    /alter table public\.novel_characters enable row level security/iu
+  );
   assert.match(
     migration,
     /revoke all on table public\.novel_characters[\s\S]*from public, anon, authenticated, service_role/iu
@@ -49,7 +58,10 @@ test('episode writes use one trigger and manual state overrides automatic detect
     migration,
     /s\.override_mode = 'include'[\s\S]*s\.override_mode is null and s\.auto_detected/iu
   );
-  assert.doesNotMatch(migration, /create table public\.episode_character_events/iu);
+  assert.doesNotMatch(
+    migration,
+    /create table public\.episode_character_events/iu
+  );
 });
 
 test('reader feed is spoiler bounded and omits raw aliases', () => {
@@ -116,10 +128,7 @@ test('migration ships with precheck, postcheck, guarded rollback, and replay cov
   );
   assert.match(postcheck, /has_table_privilege/iu);
   assert.match(postcheck, /has_function_privilege/iu);
-  assert.match(
-    rollback,
-    /ROLLBACK REFUSED: registered character data exists/u
-  );
+  assert.match(rollback, /ROLLBACK REFUSED: registered character data exists/u);
   assert.match(
     replay,
     /Verify character appearance behavior[\s\S]*character-appearance-list\.sql/iu
