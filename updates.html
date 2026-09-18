@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>お気に入り更新 | NOVELIGHT</title>
+  <title>更新通知 | NOVELIGHT</title>
   <style>
     *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}button{font:inherit}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:920px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}main{max-width:820px;margin:auto;padding:42px 22px 76px}h1{margin:0;font-size:31px}.lead{margin:8px 0 6px;color:#6b7280;line-height:1.7}.device-note{margin:0 0 24px;color:#918676;font-size:12px}.summary{margin:0 0 18px;padding:13px 15px;border:1px solid #ddd4c4;border-radius:11px;background:#fffaf0;color:#654c2c;font-size:13px;font-weight:800}.updates-list{display:grid;gap:14px}.update-card,.updates-empty{background:#fff;border:1px solid #e5e7eb;border-radius:14px}.update-card{padding:20px}.update-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.update-card-badge{display:inline-flex;margin-bottom:8px;padding:4px 8px;border-radius:999px;background:#fff1d7;color:#8a5711;font-size:11px;font-weight:900}.update-card-title{display:block;font-size:20px;font-weight:900;line-height:1.5}.update-card-title:hover{text-decoration:underline}.update-card-range{margin:6px 0 0;color:#777;font-size:13px;line-height:1.7}.update-card-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px;flex-wrap:wrap}.update-card-read,.update-card-seen{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 13px;border-radius:9px;font-size:12px;font-weight:900;cursor:pointer}.update-card-read{border:1px solid #3d2d20;background:#3d2d20;color:#fff}.update-card-seen{border:1px solid #d8ccb9;background:#fff;color:#594532}.updates-empty{padding:34px;text-align:center;color:#6b7280}.updates-empty strong{display:block;color:#333;font-size:18px}.updates-empty p{margin:8px 0 0;line-height:1.7}.updates-empty-actions{display:flex;justify-content:center;gap:9px;margin-top:18px;flex-wrap:wrap}.updates-empty-actions a{padding:9px 13px;border:1px solid #d8ccb9;border-radius:9px;background:#fffaf0;color:#5f4930;font-size:12px;font-weight:900}footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:820px;margin:auto;display:flex;justify-content:center;gap:15px;flex-wrap:wrap;font-size:12px}@media(max-width:640px){main{padding:28px 16px 60px}.update-card{padding:18px}.update-card-actions{flex-direction:column}.update-card-read,.update-card-seen{width:100%}.header-inner{padding:12px 16px}}
   </style>
@@ -17,9 +17,9 @@
   </div>
 </header>
 <main>
-  <h1>お気に入り更新</h1>
-  <p class="lead">お気に入り作品に追加された、まだ確認していないエピソードをまとめます。</p>
-  <p class="device-note">β版では確認済み状態をこの端末に保存します。別端末との同期は今後拡張予定です。</p>
+  <h1>更新通知</h1>
+  <p class="lead">お気に入り作品の更新と、フォロー中の作者による新作・新しい話をまとめます。</p>
+  <p class="device-note">お気に入り作品の確認済み状態はこの端末に保存します。フォロー作者の通知設定・確認状態はアカウントに保存されます。</p>
   <div id="updatesSummary" class="summary" aria-live="polite">更新情報を確認しています...</div>
   <div id="updatesList" class="updates-list" aria-live="polite"><section class="updates-empty">読み込み中...</section></div>
 </main>
