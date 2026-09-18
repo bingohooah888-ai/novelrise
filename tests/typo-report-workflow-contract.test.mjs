@@ -103,7 +103,10 @@ test('accepted suggestions use exact-offset stale protection and revision histor
   assert.ok(applyFunction);
   assert.match(applyFunction, /for update/i);
   assert.match(applyFunction, /v_report\.source_start \+ 1/i);
-  assert.match(applyFunction, /v_current_source is distinct from v_report\.source_text/i);
+  assert.match(
+    applyFunction,
+    /v_current_source is distinct from v_report\.source_text/i
+  );
   assert.match(applyFunction, /status = 'stale'/i);
   assert.match(
     applyFunction,
