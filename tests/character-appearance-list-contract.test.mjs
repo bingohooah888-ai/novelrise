@@ -74,9 +74,13 @@ test('owner mutation RPCs are authenticated-only and internal helpers are not cl
     migration,
     /grant execute on function public\.novelight_upsert_character\([\s\S]*?\)\s+to authenticated/iu
   );
-  assert.doesNotMatch(
+  const upsertGrant = migration.match(
+    /grant execute on function public\.novelight_upsert_character\(bigint,bigint,text,text\[\],boolean,boolean\)\s+to authenticated;/iu
+  );
+  assert.ok(upsertGrant);
+  assert.match(
     migration,
-    /grant execute on function public\.novelight_upsert_character\([\s\S]*?\)\s+to anon/iu
+    /revoke all on function public\.novelight_upsert_character\(bigint,bigint,text,text\[\],boolean,boolean\)\s+from public, anon, authenticated, service_role;/iu
   );
   assert.match(
     migration,
