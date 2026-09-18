@@ -65,6 +65,9 @@ test('reader submission is authenticated, bounded, block-aware, and exact-source
   assert.match(migration, /TYPO_REPORT_NOVEL_LIMIT/i);
   assert.match(migration, /TYPO_REPORT_SOURCE_NOT_FOUND/i);
   assert.match(migration, /TYPO_REPORT_SOURCE_NOT_UNIQUE/i);
+  assert.match(migration, /pg_catalog\.generate_series/i);
+  assert.match(migration, /v_occurrences > 1/i);
+  assert.doesNotMatch(migration, /v_second integer/i);
   assert.match(migration, /TYPO_REPORT_DUPLICATE/i);
   assert.match(
     migration,
