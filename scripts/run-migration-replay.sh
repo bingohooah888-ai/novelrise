@@ -463,7 +463,7 @@ echo '::endgroup::'
 echo '::group::Verify character appearance rollback and reapply'
 "${REPLAY[@]}" -f supabase/rollback/20260918211545_character_appearance_list_rollback.sql
 "${REPLAY[@]}" <<'SQL'
-do $
+do $$
 begin
   if to_regclass('public.novel_characters') is not null
      or to_regclass('public.novel_character_episode_states') is not null
@@ -477,7 +477,7 @@ begin
     raise exception 'Character appearance rollback disturbed existing content foundations';
   end if;
 end
-$;
+$$;
 SQL
 "${REPLAY[@]}" -f supabase/checks/20260918211545_character_appearance_list_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260918211545_character_appearance_list.sql
