@@ -129,6 +129,14 @@ test('owner high-risk approval relay validates exact SHA, marks draft ready, the
   assert.match(readiness, /enforceHighRiskApproval/);
   assert.match(readiness, /author_association === 'OWNER'/);
   assert.match(readiness, /High-risk paths:/);
+
+  const ci = await read('.github/workflows/ci.yml');
+  assert.match(ci, /merge-readiness:[\s\S]*?issues: read/);
+  assert.match(ci, /merge-readiness:[\s\S]*?pull-requests: read/);
+  assert.match(
+    ci,
+    /Verify current base and merge-readiness contract[\s\S]*?GH_TOKEN: \$\{\{ github\.token \}\}/
+  );
 });
 
 test('Production static verification requires stable all-route convergence', async () => {

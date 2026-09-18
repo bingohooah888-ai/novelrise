@@ -195,6 +195,18 @@ const mergeReadinessJob = extractIndentedBlock(ci, 'merge-readiness');
 requireIncludes(mergeReadinessJob, 'name: Merge readiness preflight', 'merge-readiness job');
 requireIncludes(mergeReadinessJob, "if: github.event_name == 'pull_request'", 'merge-readiness job');
 requireIncludes(mergeReadinessJob, 'fetch-depth: 0', 'merge-readiness checkout');
+for (const permission of ['contents: read', 'issues: read', 'pull-requests: read']) {
+  requireIncludes(
+    mergeReadinessJob,
+    permission,
+    'merge-readiness least-privilege GitHub permissions',
+  );
+}
+requireIncludes(
+  mergeReadinessJob,
+  'GH_TOKEN: ${{ github.token }}',
+  'merge-readiness PR-comment token wiring',
+);
 requireIncludes(
   mergeReadinessJob,
   'git merge-base --is-ancestor "origin/${GITHUB_BASE_REF}" HEAD',

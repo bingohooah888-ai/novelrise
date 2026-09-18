@@ -119,6 +119,10 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
 
     steps:
       - name: Checkout repository history
@@ -133,6 +137,8 @@ jobs:
           node-version: 24
 
       - name: Verify current base and merge-readiness contract
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
