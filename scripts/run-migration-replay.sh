@@ -485,4 +485,42 @@ SQL
 "${REPLAY[@]}" -f tests/rls/character-appearance-list.sql
 echo '::endgroup::'
 
+echo '::group::Verify B #15 comment spoiler display'
+"${REPLAY[@]}" -f supabase/rollback/20260918221621_comment_spoiler_display_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260918221621_comment_spoiler_display_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918221621_comment_spoiler_display.sql
+"${REPLAY[@]}" -f supabase/checks/20260918221621_comment_spoiler_display_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/comment-spoiler-display.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #15 comment spoiler rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260918221621_comment_spoiler_display_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'novel_comments'
+       and column_name = 'is_spoiler'
+  ) or to_regprocedure(
+    'public.novelight_post_novel_comment(text,text,boolean)'
+  ) is not null then
+    raise exception 'B #15 rollback left spoiler objects behind';
+  end if;
+
+  if to_regprocedure('public.post_novel_comment(text,text)') is null
+     or to_regprocedure('public.novelight_comment_feed(text,integer)') is null
+     or to_regprocedure('public.novelight_set_comment_hidden(uuid,boolean,text)') is null then
+    raise exception 'B #15 rollback disturbed the B #14 comment foundation';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260918221621_comment_spoiler_display_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260918221621_comment_spoiler_display.sql
+"${REPLAY[@]}" -f supabase/checks/20260918221621_comment_spoiler_display_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
