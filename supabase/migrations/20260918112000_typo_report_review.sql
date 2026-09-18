@@ -66,6 +66,8 @@ create table public.episode_typo_reports (
   source_start integer not null,
   source_text text not null,
   replacement_text text not null,
+  context_before text not null,
+  context_after text not null,
   status text not null default 'pending',
   created_at timestamptz not null default now(),
   resolved_at timestamptz,
@@ -75,6 +77,12 @@ create table public.episode_typo_reports (
   ),
   constraint episode_typo_reports_replacement_length_check check (
     char_length(replacement_text) <= 300
+  ),
+  constraint episode_typo_reports_context_before_length_check check (
+    char_length(context_before) <= 64
+  ),
+  constraint episode_typo_reports_context_after_length_check check (
+    char_length(context_after) <= 64
   ),
   constraint episode_typo_reports_changed_check check (
     source_text is distinct from replacement_text
@@ -255,7 +263,9 @@ declare
   v_author_id uuid;
   v_content text;
   v_first integer;
-  v_occurrences integer;
+  v_before_start integer;
+  v_context_before text;
+  v_context_after text;
   v_report_id uuid;
   v_existing_id uuid;
 begin
@@ -337,6 +347,16 @@ begin
   if (
     select count(*)
       from public.episode_typo_reports r
+     where r.reporter_id = v_uid
+       and r.episode_id = p_episode_id
+       and r.status = 'pending'
+  ) >= 5 then
+    raise exception using errcode = '54000', message = 'TYPO_REPORT_REPORTER_EPISODE_LIMIT';
+  end if;
+
+  if (
+    select count(*)
+      from public.episode_typo_reports r
      where r.episode_id = p_episode_id
        and r.status = 'pending'
   ) >= 50 then
@@ -352,32 +372,36 @@ begin
     raise exception using errcode = '54000', message = 'TYPO_REPORT_NOVEL_LIMIT';
   end if;
 
-  -- Count every matching start position, including overlapping matches
-  -- (for example source "aa" inside content "aaa"). A report is accepted only
-  -- when the submitted source identifies exactly one current location.
-  select min(pos)::integer,
-         count(*)::integer
-    into v_first, v_occurrences
-    from pg_catalog.generate_series(
-           1,
-           greatest(
-             pg_catalog.char_length(v_content) - pg_catalog.char_length(v_source) + 1,
-             0
-           )
-         ) as positions(pos)
-   where pg_catalog.substr(
-           v_content,
-           pos,
-           pg_catalog.char_length(v_source)
-         ) = v_source;
+  -- Resolve the source server-side and require a unique current location.
+  -- The second search starts one character after the first hit, so overlapping
+  -- matches (for example source "aa" inside content "aaa") are also rejected.
+  v_first := pg_catalog.strpos(v_content, v_source);
 
-  if v_occurrences = 0 then
+  if v_first = 0 then
     raise exception using errcode = '22023', message = 'TYPO_REPORT_SOURCE_NOT_FOUND';
   end if;
 
-  if v_occurrences > 1 then
+  if pg_catalog.strpos(
+       pg_catalog.substr(v_content, v_first + 1),
+       v_source
+     ) > 0 then
     raise exception using errcode = '22023', message = 'TYPO_REPORT_SOURCE_NOT_UNIQUE';
   end if;
+
+  -- Store only a small local anchor around the target. Apply later requires the
+  -- exact offset, source text, and these bounded neighboring characters to
+  -- still match. Unrelated edits far away do not invalidate the suggestion.
+  v_before_start := greatest(1, v_first - 64);
+  v_context_before := pg_catalog.substr(
+    v_content,
+    v_before_start,
+    v_first - v_before_start
+  );
+  v_context_after := pg_catalog.substr(
+    v_content,
+    v_first + pg_catalog.char_length(v_source),
+    64
+  );
 
   select r.id
     into v_existing_id
@@ -393,6 +417,19 @@ begin
     raise exception using errcode = '23505', message = 'TYPO_REPORT_DUPLICATE';
   end if;
 
+  if exists (
+    select 1
+      from public.episode_typo_reports r
+     where r.episode_id = p_episode_id
+       and r.source_start = v_first - 1
+       and r.source_text = v_source
+       and r.replacement_text = v_replacement
+       and r.status = 'rejected'
+       and r.resolved_at >= pg_catalog.now() - interval '30 days'
+  ) then
+    raise exception using errcode = '23505', message = 'TYPO_REPORT_PREVIOUSLY_REJECTED';
+  end if;
+
   insert into public.episode_typo_reports (
     episode_id,
     novel_id,
@@ -400,7 +437,9 @@ begin
     reporter_id,
     source_start,
     source_text,
-    replacement_text
+    replacement_text,
+    context_before,
+    context_after
   ) values (
     p_episode_id,
     v_novel_id,
@@ -408,7 +447,9 @@ begin
     v_uid,
     v_first - 1,
     v_source,
-    v_replacement
+    v_replacement,
+    v_context_before,
+    v_context_after
   )
   returning id into v_report_id;
 
@@ -488,6 +529,10 @@ declare
   v_report public.episode_typo_reports%rowtype;
   v_episode public.episodes%rowtype;
   v_current_source text;
+  v_current_before text;
+  v_current_after text;
+  v_before_start integer;
+  v_new_content text;
 begin
   if v_uid is null then
     raise exception using errcode = '42501', message = 'Authentication required';
@@ -527,8 +572,21 @@ begin
     v_report.source_start + 1,
     char_length(v_report.source_text)
   );
+  v_before_start := greatest(1, v_report.source_start + 1 - 64);
+  v_current_before := pg_catalog.substr(
+    v_episode.content,
+    v_before_start,
+    (v_report.source_start + 1) - v_before_start
+  );
+  v_current_after := pg_catalog.substr(
+    v_episode.content,
+    v_report.source_start + 1 + char_length(v_report.source_text),
+    64
+  );
 
-  if v_current_source is distinct from v_report.source_text then
+  if v_current_source is distinct from v_report.source_text
+     or v_current_before is distinct from v_report.context_before
+     or v_current_after is distinct from v_report.context_after then
     update public.episode_typo_reports
        set status = 'stale',
            resolved_at = pg_catalog.now()
@@ -541,16 +599,26 @@ begin
     );
   end if;
 
+  v_new_content :=
+    pg_catalog.substr(v_episode.content, 1, v_report.source_start)
+    || v_report.replacement_text
+    || pg_catalog.substr(
+         v_episode.content,
+         v_report.source_start + char_length(v_report.source_text) + 1
+       );
+
+  if char_length(v_new_content) > 100000 then
+    raise exception using errcode = '22023', message = 'TYPO_REPORT_RESULT_TOO_LONG';
+  end if;
+  if v_episode.status = 'published'
+     and char_length(pg_catalog.btrim(v_new_content)) < 1 then
+    raise exception using errcode = '22023', message = 'TYPO_REPORT_RESULT_EMPTY';
+  end if;
+
   perform pg_catalog.set_config('novelight.revision_reason', 'typo_apply', true);
 
   update public.episodes e
-     set content =
-       pg_catalog.substr(e.content, 1, v_report.source_start)
-       || v_report.replacement_text
-       || pg_catalog.substr(
-            e.content,
-            v_report.source_start + char_length(v_report.source_text) + 1
-          )
+     set content = v_new_content
    where e.id = v_report.episode_id
      and e.user_id = v_uid;
 
@@ -590,6 +658,15 @@ begin
    where r.id = p_report_id
      and r.author_id = v_uid
      and r.status = 'pending'
+     and exists (
+       select 1
+         from public.episodes e
+         join public.novels n on n.id = e.novel_id
+        where e.id = r.episode_id
+          and e.novel_id = r.novel_id
+          and e.user_id = v_uid
+          and n.user_id = v_uid
+     )
   returning r.episode_id into v_episode_id;
 
   if not found then

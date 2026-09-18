@@ -61,14 +61,21 @@ test('reader submission is authenticated, bounded, block-aware, and exact-source
   assert.match(migration, />= 10/i);
   assert.match(migration, /interval '1 day'/i);
   assert.match(migration, />= 50/i);
+  assert.match(migration, /TYPO_REPORT_REPORTER_EPISODE_LIMIT/i);
   assert.match(migration, /TYPO_REPORT_EPISODE_LIMIT/i);
   assert.match(migration, /TYPO_REPORT_NOVEL_LIMIT/i);
   assert.match(migration, /TYPO_REPORT_SOURCE_NOT_FOUND/i);
   assert.match(migration, /TYPO_REPORT_SOURCE_NOT_UNIQUE/i);
-  assert.match(migration, /pg_catalog\.generate_series/i);
-  assert.match(migration, /v_occurrences > 1/i);
-  assert.doesNotMatch(migration, /v_second integer/i);
+  assert.match(migration, /pg_catalog\.strpos\(v_content, v_source\)/i);
+  assert.match(
+    migration,
+    /pg_catalog\.strpos\([\s\S]*pg_catalog\.substr\(v_content, v_first \+ 1\)[\s\S]*v_source/i
+  );
+  assert.match(migration, /context_before/i);
+  assert.match(migration, /context_after/i);
   assert.match(migration, /TYPO_REPORT_DUPLICATE/i);
+  assert.match(migration, /TYPO_REPORT_PREVIOUSLY_REJECTED/i);
+  assert.match(migration, /interval '30 days'/i);
   assert.match(
     migration,
     /episode_typo_reports_pending_duplicate_idx[\s\S]*where status = 'pending'/i
@@ -94,8 +101,19 @@ test('author review never exposes reporter identity and never auto-applies', () 
   assert.match(managerPage, /この修正を採用/);
   assert.match(managerPage, /却下/);
   assert.match(managerPage, /window\.confirm/);
+  assert.match(managerPage, /TYPO_REPORT_RESULT_EMPTY/);
+  assert.match(managerPage, /TYPO_REPORT_RESULT_TOO_LONG/);
   assert.doesNotMatch(managerPage, /innerHTML|outerHTML|insertAdjacentHTML/);
   assert.match(managerPage, /\.textContent\s*=/);
+
+  const rejectFunction =
+    migration.match(
+      /create function public\.novelight_reject_typo_report[\s\S]*?\n\$\$;/i
+    )?.[0] ?? '';
+  assert.ok(rejectFunction);
+  assert.match(rejectFunction, /join public\.novels n on n\.id = e\.novel_id/i);
+  assert.match(rejectFunction, /e\.user_id = v_uid/i);
+  assert.match(rejectFunction, /n\.user_id = v_uid/i);
 });
 
 test('accepted suggestions use exact-offset stale protection and revision history', () => {
@@ -110,7 +128,18 @@ test('accepted suggestions use exact-offset stale protection and revision histor
     applyFunction,
     /v_current_source is distinct from v_report\.source_text/i
   );
+  assert.match(
+    applyFunction,
+    /v_current_before is distinct from v_report\.context_before/i
+  );
+  assert.match(
+    applyFunction,
+    /v_current_after is distinct from v_report\.context_after/i
+  );
   assert.match(applyFunction, /status = 'stale'/i);
+  assert.match(applyFunction, /TYPO_REPORT_RESULT_TOO_LONG/i);
+  assert.match(applyFunction, /TYPO_REPORT_RESULT_EMPTY/i);
+  assert.match(applyFunction, /char_length\(v_new_content\) > 100000/i);
   assert.match(
     applyFunction,
     /set_config\('novelight\.revision_reason', 'typo_apply', true\)/i

@@ -14,9 +14,34 @@ begin
     raise exception 'POSTCHECK FAIL: typo report RLS is not enabled';
   end if;
 
+  if not exists (
+    select 1
+      from information_schema.columns
+     where table_schema='public'
+       and table_name='episode_typo_reports'
+       and column_name='context_before'
+  ) or not exists (
+    select 1
+      from information_schema.columns
+     where table_schema='public'
+       and table_name='episode_typo_reports'
+       and column_name='context_after'
+  ) then
+    raise exception 'POSTCHECK FAIL: local context anchors are missing';
+  end if;
+
   if has_table_privilege('anon','public.novel_typo_report_settings','SELECT')
+     or has_table_privilege('anon','public.novel_typo_report_settings','INSERT')
+     or has_table_privilege('anon','public.novel_typo_report_settings','UPDATE')
+     or has_table_privilege('anon','public.novel_typo_report_settings','DELETE')
      or has_table_privilege('authenticated','public.novel_typo_report_settings','SELECT')
+     or has_table_privilege('authenticated','public.novel_typo_report_settings','INSERT')
+     or has_table_privilege('authenticated','public.novel_typo_report_settings','UPDATE')
+     or has_table_privilege('authenticated','public.novel_typo_report_settings','DELETE')
      or has_table_privilege('anon','public.episode_typo_reports','SELECT')
+     or has_table_privilege('anon','public.episode_typo_reports','INSERT')
+     or has_table_privilege('anon','public.episode_typo_reports','UPDATE')
+     or has_table_privilege('anon','public.episode_typo_reports','DELETE')
      or has_table_privilege('authenticated','public.episode_typo_reports','SELECT')
      or has_table_privilege('authenticated','public.episode_typo_reports','INSERT')
      or has_table_privilege('authenticated','public.episode_typo_reports','UPDATE')
@@ -81,8 +106,16 @@ begin
   if pg_get_functiondef('public.novelight_apply_typo_report(uuid)'::regprocedure)
      not like '%novelight.revision_reason%'
      or pg_get_functiondef('public.novelight_apply_typo_report(uuid)'::regprocedure)
-     not like '%typo_apply%' then
-    raise exception 'POSTCHECK FAIL: typo apply is not bound to revision history';
+     not like '%typo_apply%'
+     or pg_get_functiondef('public.novelight_apply_typo_report(uuid)'::regprocedure)
+     not like '%context_before%'
+     or pg_get_functiondef('public.novelight_apply_typo_report(uuid)'::regprocedure)
+     not like '%context_after%'
+     or pg_get_functiondef('public.novelight_apply_typo_report(uuid)'::regprocedure)
+     not like '%TYPO_REPORT_RESULT_EMPTY%'
+     or pg_get_functiondef('public.novelight_apply_typo_report(uuid)'::regprocedure)
+     not like '%TYPO_REPORT_RESULT_TOO_LONG%' then
+    raise exception 'POSTCHECK FAIL: typo apply safety or revision binding is incomplete';
   end if;
 end
 $$;
