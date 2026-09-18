@@ -175,15 +175,17 @@ test('favorites renders a logged-in reader collection', async ({ page }) => {
       favorites: [
         {
           novel_id: 'favorite-e2e',
-          created_at: '2026-08-30T00:00:00Z',
-          novels: {
-            id: 'favorite-e2e',
-            title: 'Favorite E2E Novel',
-            genre: '現代ファンタジー',
-            description: 'お気に入り正常系の回帰テストです。',
-            pv: 12,
-            status: 'published'
-          }
+          created_at: '2026-08-30T00:00:00Z'
+        }
+      ],
+      novels: [
+        {
+          id: 'favorite-e2e',
+          title: 'Favorite E2E Novel',
+          genre: '現代ファンタジー',
+          description: 'お気に入り正常系の回帰テストです。',
+          pv: 12,
+          status: 'published'
         }
       ]
     }
@@ -219,7 +221,7 @@ test('favorites leaves loading state when getSession rejects', async ({
   await page.goto('/favorites.html');
 
   await expect(page.locator('#list')).toContainText(
-    'お気に入り作品を表示できませんでした。通信状況を確認して、もう一度お試しください。'
+    '本棚を表示できませんでした。通信状況を確認して、もう一度お試しください。'
   );
   await expect(page.locator('#list')).not.toContainText('読み込み中...');
   expect(pageErrors).toEqual([]);
@@ -237,7 +239,7 @@ test('favorites leaves loading state when favorites data loading fails', async (
   await page.goto('/favorites.html');
 
   await expect(page.locator('#list')).toContainText(
-    'お気に入り作品を表示できませんでした。通信状況を確認して、もう一度お試しください。'
+    '本棚を表示できませんでした。通信状況を確認して、もう一度お試しください。'
   );
   await expect(page.locator('#list')).not.toContainText('読み込み中...');
   expect(pageErrors).toEqual([]);

@@ -17,6 +17,7 @@ const myNovels = await readFile('my-novels.html', 'utf8');
 const ranking = await readFile('ranking.html', 'utf8');
 const author = await readFile('author.html', 'utf8');
 const favorites = await readFile('favorites.html', 'utf8');
+const bookshelf = await readFile('novelight-bookshelf.js', 'utf8');
 
 test('search drops stale async results', () => {
   assert.match(search, /rows=await enrich\(rows\)/);
@@ -105,15 +106,15 @@ test('remaining list pages distinguish unavailable data from real empty states',
 });
 
 test('favorites leaves loading state on auth and data failures', () => {
-  assert.match(favorites, /try\{const a=await client\.auth\.getSession\(\)/);
-  assert.match(favorites, /if\(a\.error\)throw a\.error/);
-  assert.match(favorites, /if\(r\.error\)throw r\.error/);
+  assert.match(favorites, /novelight-bookshelf\.js/);
+  assert.match(bookshelf, /clientInstance\.auth\.getSession\(\)/);
   assert.match(
-    favorites,
-    /catch\(error\)\{console\.error\('favorites load failed'/
+    bookshelf,
+    /if \(favoritesResult\.error\) throw favoritesResult\.error/
   );
+  assert.match(bookshelf, /console\.error\('bookshelf page failed', error\)/);
   assert.match(
-    favorites,
-    /お気に入り作品を表示できませんでした。通信状況を確認して、もう一度お試しください。/
+    bookshelf,
+    /本棚を表示できませんでした。通信状況を確認して、もう一度お試しください。/
   );
 });
