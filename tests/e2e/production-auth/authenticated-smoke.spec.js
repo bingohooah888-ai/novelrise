@@ -292,12 +292,20 @@ async function assertChapter40ComposerReady(page) {
   await expect(composer).toBeVisible();
   await expect(page.locator('#legacyThumbnailArea')).toBeHidden();
 
-  for (const layerType of ['background', 'base_book', 'cover']) {
+  await expect(composer.locator('details.nl-thumb-layer')).toHaveCount(5);
+  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(1);
+
+  for (const layerType of ['background', 'base_book']) {
     const selected = composer.locator(
       `.nl-thumb-option[data-layer-type="${layerType}"][aria-pressed="true"]`
     );
     await expect(selected).toHaveCount(1);
     await expect(selected).toHaveAttribute('data-asset-id', /.+/);
+  }
+  for (const hiddenType of ['cover', 'effect']) {
+    await expect(
+      composer.locator(`.nl-thumb-option[data-layer-type="${hiddenType}"]`)
+    ).toHaveCount(0);
   }
 
   await expect(

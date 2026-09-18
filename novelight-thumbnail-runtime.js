@@ -5,7 +5,7 @@
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
   const STYLE_PATH = 'novelight-thumbnails.css';
   const GEOMETRY_ENGINE_PATH = 'novelight-thumbnail-composer.js';
-  const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame'];
+  const SURFACE_TYPES = ['pattern', 'symbol', 'frame'];
   const SUPPORTED_PAGES = new Set([
     'index',
     'search',
@@ -180,7 +180,7 @@
   }
 
   async function renderGeometryFallback(composition) {
-    if (!composition?.background_url || !composition?.base_book_url || !composition?.cover_url) {
+    if (!composition?.background_url || !composition?.base_book_url) {
       return null;
     }
     const width = Number(composition.canvas_width);
@@ -208,16 +208,6 @@
       geometry.drawPerspectiveImage(context, image, validation.quad);
     }
 
-    if (composition.effect_url) {
-      if (composition.effect_allow_outside_cover === true) {
-        await drawFull(context, composition.effect_url, width, height);
-      } else {
-        context.save();
-        geometry.clipToCoverQuad(context, validation.quad);
-        await drawFull(context, composition.effect_url, width, height);
-        context.restore();
-      }
-    }
 
     return canvas.toDataURL('image/webp', 0.9);
   }

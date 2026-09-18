@@ -298,12 +298,22 @@ test('official thumbnail survives Staging registration, Chapter 40 composition, 
 
       if (fixture.composerMode) {
         await expect(page.locator('#legacyThumbnailArea')).toBeHidden();
-        for (const type of ['background', 'base_book', 'cover']) {
+        await expect(
+          page.locator('#thumbnailComposer details.nl-thumb-layer')
+        ).toHaveCount(5);
+        for (const type of ['background', 'base_book']) {
           const selected = page.locator(
             `#thumbnailComposer .nl-thumb-option[data-layer-type="${type}"][aria-pressed="true"]`
           );
           await expect(selected).toBeVisible();
           await expect(selected).not.toHaveAttribute('data-asset-id', '');
+        }
+        for (const hiddenType of ['cover', 'effect']) {
+          await expect(
+            page.locator(
+              `#thumbnailComposer .nl-thumb-option[data-layer-type="${hiddenType}"]`
+            )
+          ).toHaveCount(0);
         }
         await expect(
           page.locator(

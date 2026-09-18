@@ -144,9 +144,7 @@ test('ADMIN keeps derived PNG generation but does not accept manual mask uploads
 
 test('Chapter 40 supersedes Chapter 39 mask rendering while preserving quad-derived debug masks', () => {
   assert.ok(
-    composer.includes(
-      "const SURFACE_TYPES = ['cover', 'pattern', 'symbol', 'frame']"
-    )
+    composer.includes("const SURFACE_TYPES = ['pattern', 'symbol', 'frame']")
   );
   assert.ok(
     composer.includes(
