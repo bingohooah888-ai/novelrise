@@ -132,11 +132,11 @@ test('author structure manager supports chapter CRUD, assignment and whole-work 
   assert.ok(structurePage.includes('normalizeChapterBlocks'));
 });
 
-test('novel page renders chapter headings and keeps a safe pre-migration episode fallback', () => {
+test('novel page renders chapter headings and fails closed when the safe outline RPC is unavailable', () => {
   assert.ok(novelPage.includes("client.rpc('novelight_novel_outline'"));
-  assert.ok(novelPage.includes("r.error.code==='PGRST202'"));
+  assert.ok(novelPage.includes('if(r.error)throw r.error'));
   assert.ok(
-    novelPage.includes(
+    !novelPage.includes(
       "client.from('episodes').select('id,title,episode_number,status')"
     )
   );

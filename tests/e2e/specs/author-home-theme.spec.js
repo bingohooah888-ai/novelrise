@@ -6,6 +6,6 @@ test('author home keeps the night studio CSS contract', async ({ request }) => {
 
   const css = await response.text();
   expect(css).toContain('display:none!important');
-  expect(css).toContain('filter:brightness(0) invert(1)');
+  expect(css).toContain('--night:#020b16');
   expect(css).toContain('--author-font:"Yu Mincho"');
 });

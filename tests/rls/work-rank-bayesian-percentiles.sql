@@ -55,27 +55,27 @@ select public.test_assert(
 
 -- Pin every effective weight in the MASTER formula on the 0-100 percentile scale.
 select public.test_assert(
-  abs(public.novelight_rank_internal_score(100, 0, 0, 0) - 20.0) < 0.000000001,
-  'PV percentile effective weight must be 20 percent'
+  abs(public.novelight_rank_internal_score_v2(100, 0, 0, 0) - 20.0) < 0.000000001,
+  'valid-read percentile effective weight must be 20 percent'
 );
 
 select public.test_assert(
-  abs(public.novelight_rank_internal_score(0, 100, 0, 0) - 35.0) < 0.000000001,
+  abs(public.novelight_rank_internal_score_v2(0, 100, 0, 0) - 35.0) < 0.000000001,
   'favorite percentile effective weight must be 35 percent'
 );
 
 select public.test_assert(
-  abs(public.novelight_rank_internal_score(0, 0, 100, 0) - 33.75) < 0.000000001,
+  abs(public.novelight_rank_internal_score_v2(0, 0, 100, 0) - 33.75) < 0.000000001,
   'Bayesian-adjusted star-average percentile effective weight must be 33.75 percent'
 );
 
 select public.test_assert(
-  abs(public.novelight_rank_internal_score(0, 0, 0, 100) - 11.25) < 0.000000001,
+  abs(public.novelight_rank_internal_score_v2(0, 0, 0, 100) - 11.25) < 0.000000001,
   'star-rating-count percentile effective weight must be 11.25 percent'
 );
 
 select public.test_assert(
-  abs(public.novelight_rank_internal_score(100, 100, 100, 100) - 100.0) < 0.000000001,
+  abs(public.novelight_rank_internal_score_v2(100, 100, 100, 100) - 100.0) < 0.000000001,
   'all four maximum percentile inputs must produce a 100-point internal score'
 );
 
@@ -109,7 +109,7 @@ begin
 
   if pg_catalog.strpos(v_definition, 'bayesian_rating_percentile') = 0
      or pg_catalog.strpos(v_definition, 'rating_count_percentile') = 0
-     or pg_catalog.strpos(v_definition, 'public.novelight_rank_internal_score(') = 0 then
+     or pg_catalog.strpos(v_definition, 'public.novelight_rank_internal_score_v2(') = 0 then
     raise exception 'Rank evaluator is not wired to both MASTER star percentiles';
   end if;
 
@@ -139,7 +139,7 @@ begin
   end;
 
   begin
-    perform public.novelight_rank_internal_score(20, 30, 40, 50);
+    perform public.novelight_rank_internal_score_v2(20, 30, 40, 50);
     raise exception 'authenticated client unexpectedly invoked internal Rank score helper';
   exception
     when insufficient_privilege then null;

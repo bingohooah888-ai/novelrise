@@ -221,14 +221,19 @@
       .maybeSingle();
     if (novelResult.error || !novelResult.data) return null;
 
-    const episodeResult = await clientInstance
-      .from('episodes')
-      .select('id,novel_id,title,episode_number,status')
-      .eq('novel_id', stored.novelId)
-      .eq('status', 'published')
-      .order('episode_number', { ascending: true });
+    const episodeResult = await clientInstance.rpc(
+      'novelight_reader_episode_index',
+      { p_novel_ids: [String(stored.novelId)] }
+    );
     if (episodeResult.error || !episodeResult.data?.length) return null;
-    const target = continueTarget(episodeResult.data, stored);
+    const safeEpisodes = episodeResult.data.map((row) => ({
+      id: row.episode_id,
+      novel_id: row.novel_id,
+      title: row.episode_title || null,
+      episode_number: row.episode_number,
+      status: 'published'
+    }));
+    const target = continueTarget(safeEpisodes, stored);
     return target ? { novel: novelResult.data, target, stored } : null;
   }
 

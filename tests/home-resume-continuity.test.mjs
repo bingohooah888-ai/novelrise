@@ -94,10 +94,11 @@ test('home resume continues the current episode until 85 percent, then advances'
   );
 });
 
-test('home resume validates published novel and episode state without server-side writes', () => {
+test('home resume validates published work while using the spoiler-safe episode index', () => {
   assert.match(resumeSource, /from\('novels'\)/);
   assert.match(resumeSource, /\.eq\('status', 'published'\)/);
-  assert.match(resumeSource, /from\('episodes'\)/);
+  assert.match(resumeSource, /novelight_reader_episode_index/);
+  assert.doesNotMatch(resumeSource, /from\('episodes'\)/);
   assert.doesNotMatch(resumeSource, /\.(?:insert|update|upsert|delete)\s*\(/);
   assert.match(resumeSource, /この端末の読書履歴から表示しています/);
 });

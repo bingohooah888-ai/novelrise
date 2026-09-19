@@ -46,7 +46,7 @@ test('Search hydrates official thumbnails through the bounded RPC', () => {
 });
 
 test('Ranking uses aggregate feeds and the bounded thumbnail RPC', () => {
-  assert.match(ranking, /rpc\('novelight_ranking_feed'/u);
+  assert.match(ranking, /rpc\('novelight_ranking_feed_v2'/u);
   assert.match(ranking, /rpc\('novelight_public_thumbnail_urls'/u);
   assert.doesNotMatch(ranking, /from\('novels'\)\.select/u);
   assert.match(ranking, /class=\\?"novel-cover-image\\?"/u);

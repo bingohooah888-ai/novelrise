@@ -15,6 +15,23 @@ function rootHtmlFiles() {
     .sort();
 }
 
+test('browser Supabase runtime is pinned to the lockfile version', () => {
+  const lock = JSON.parse(read('package-lock.json'));
+  const version =
+    lock.packages?.['node_modules/@supabase/supabase-js']?.version;
+  assert.ok(version, 'Supabase JS lockfile version must be available');
+  const expected = `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@${version}`;
+  const offenders = rootHtmlFiles().filter((name) => {
+    const html = read(name);
+    return html.includes('@supabase/supabase-js@') && !html.includes(expected);
+  });
+  assert.deepEqual(
+    offenders,
+    [],
+    `Supabase browser runtime must match package-lock: ${offenders.join(', ')}`
+  );
+});
+
 test('novel deletion relies on the database cascade and never pre-deletes episodes', () => {
   const html = read('novel.html');
   const deleteFunction = html.match(
@@ -64,7 +81,7 @@ test('neutral search, ranking and author basic analytics aggregate in database R
   assert.doesNotMatch(search, /Promise\.all\(rows\.map\(async n=>/);
   assert.doesNotMatch(search, /from\('favorites'\).*count:'exact'/);
 
-  assert.match(ranking, /rpc\('novelight_ranking_feed'/);
+  assert.match(ranking, /rpc\('novelight_ranking_feed_v2'/);
   assert.doesNotMatch(ranking, /from\('favorites'\).*count:'exact'/);
   assert.doesNotMatch(ranking, /from\('novels'\)\.select/);
 
