@@ -461,6 +461,9 @@ echo '::group::Verify character appearance behavior'
 echo '::endgroup::'
 
 echo '::group::Verify character appearance rollback and reapply'
+# B #23 depends on the canonical character registry. Its table is still empty here,
+# so remove it before exercising the older character-feature rollback, then restore it.
+"${REPLAY[@]}" -f supabase/rollback/20260919122554_author_story_planning_notes_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260918211545_character_appearance_list_rollback.sql
 "${REPLAY[@]}" <<'SQL'
 do $$
@@ -483,6 +486,9 @@ SQL
 "${REPLAY[@]}" -f supabase/migrations/20260918211545_character_appearance_list.sql
 "${REPLAY[@]}" -f supabase/checks/20260918211545_character_appearance_list_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/character-appearance-list.sql
+"${REPLAY[@]}" -f supabase/checks/20260919122554_author_story_planning_notes_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919122554_author_story_planning_notes.sql
+"${REPLAY[@]}" -f supabase/checks/20260919122554_author_story_planning_notes_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify B #15 comment spoiler display'
@@ -691,6 +697,37 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260919112318_novel_collaborative_writing_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260919112318_novel_collaborative_writing.sql
 "${REPLAY[@]}" -f supabase/checks/20260919112318_novel_collaborative_writing_postcheck.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #23 private author story planning notes'
+"${REPLAY[@]}" -f supabase/rollback/20260919122554_author_story_planning_notes_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919122554_author_story_planning_notes_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919122554_author_story_planning_notes.sql
+"${REPLAY[@]}" -f supabase/checks/20260919122554_author_story_planning_notes_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/author-story-planning-notes.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #23 private author story planning rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260919122554_author_story_planning_notes_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.novel_private_story_notes') is not null
+     or to_regprocedure('public.novelight_private_story_notes(bigint)') is not null
+     or to_regprocedure('public.novelight_save_private_story_note(bigint,bigint,text,bigint,text,text)') is not null
+     or to_regprocedure('public.novelight_delete_private_story_note(bigint)') is not null then
+    raise exception 'B #23 rollback left private story-note runtime behind';
+  end if;
+  if to_regclass('public.novels') is null
+     or to_regclass('public.novel_characters') is null then
+    raise exception 'B #23 rollback disturbed existing novel/character foundations';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260919122554_author_story_planning_notes_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919122554_author_story_planning_notes.sql
+"${REPLAY[@]}" -f supabase/checks/20260919122554_author_story_planning_notes_postcheck.sql
 echo '::endgroup::'
 
 echo 'Fresh NOVELIGHT migration replay passed.'

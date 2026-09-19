@@ -255,6 +255,36 @@
 - Production migration適用はPR mergeとは別の明示承認境界とする。
 
 
+## B〜C候補 #23 作者用プロット・キャラクター・世界観ノート
+
+状態：**実装済み（本変更セット） / Production migration未適用**
+
+実装証拠：
+
+- story-notes.html
+- supabase/migrations/20260919122554_author_story_planning_notes.sql
+- supabase/checks/20260919122554_author_story_planning_notes_precheck.sql
+- supabase/checks/20260919122554_author_story_planning_notes_postcheck.sql
+- supabase/rollback/20260919122554_author_story_planning_notes_rollback.sql
+- tests/author-story-planning-notes-contract.test.mjs
+- tests/rls/author-story-planning-notes.sql
+
+実装済み範囲：
+
+- 作品ごとのowner-only非公開「創作ノート」。種類はプロット／世界観／キャラクター。
+- 1作品200件まで、タイトル120文字、本文20,000文字。
+- キャラクターノートは既存 novel_characters へ紐づけ、第二の人物台帳を作らない。
+- 人物削除時は紐付けだけを解除し、私的ノート本文は保持する。
+- 作者本人だけが一覧・作成・編集・削除でき、共同執筆者・読者には開放しない。
+- migration未反映中は画面を「データベース反映待ち」とし、raw tableへフォールバックしない。
+
+安全・公平性境界：
+
+- raw tableはRLS有効かつclient rolesからrevokeし、owner-bound authenticated RPCだけを明示grantする。
+- 公開プロフィール、共有リンク、検索、読者表示へ創作ノート内容を流さない。
+- 作品Rank、LIGHT SEED、SCOUT EXP、PV、お気に入り、検索順位、発見棚、露出、LIGHT ANALYTICS、推薦へ接続しない。
+- rollbackはノートが1件でも存在する場合に拒否し、作者の私的制作データを削除しない。
+- Production migration適用はPR mergeとは別の明示承認境界とする。
 ## B〜C候補 #14 コメントの作者モデレーション強化
 
 状態：**実装済み（本変更セット） / Production migration未適用**
