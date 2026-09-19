@@ -22,7 +22,10 @@ run_sql supabase/rollback/20260909130000_chapter38_rank_bayesian_percentiles_rol
 run_sql supabase/checks/20260909130000_chapter38_rank_bayesian_percentiles_precheck.sql
 run_sql supabase/migrations/20260909130000_chapter38_rank_bayesian_percentiles.sql
 run_sql supabase/checks/20260909130000_chapter38_rank_bayesian_percentiles_postcheck.sql
-run_sql tests/rls/work-rank-bayesian-percentiles.sql
+
+# Preserve historical migration order: seed-discovery experiments followed the
+# Bayesian score contract and remain independent of the later beta-audit Rank
+# fairness remediation.
 run_sql supabase/checks/20260909140000_chapter38_seed_discovery_exp_precheck.sql
 run_sql supabase/migrations/20260909140000_chapter38_seed_discovery_exp.sql
 run_sql supabase/checks/20260909140000_chapter38_seed_discovery_exp_postcheck.sql
@@ -31,3 +34,23 @@ run_sql supabase/checks/20260909140000_chapter38_seed_discovery_exp_precheck.sql
 run_sql supabase/migrations/20260909140000_chapter38_seed_discovery_exp.sql
 run_sql supabase/checks/20260909140000_chapter38_seed_discovery_exp_postcheck.sql
 run_sql tests/rls/seed-discovery-exp.sql
+
+# The 2026-08-28 hardening introduced the legacy public ranking feed that the
+# beta-audit fairness migration closes. The compact P0 fixture does not build
+# that migration earlier, so materialize the production prerequisite here.
+run_sql supabase/checks/20260828223000_harden_profile_favorite_reads_and_discovery_precheck.sql
+run_sql supabase/migrations/20260828223000_harden_profile_favorite_reads_and_discovery.sql
+run_sql supabase/checks/20260828223000_harden_profile_favorite_reads_and_discovery_postcheck.sql
+
+# Beta-audit fairness replaces spoofable raw PV with qualified valid-read
+# evidence in authoritative Rank/public ranking. Verify apply -> rollback ->
+# reapply before running the current v2 Rank contracts.
+run_sql supabase/checks/20260919165000_beta_audit_rank_fairness_precheck.sql
+run_sql supabase/migrations/20260919165000_beta_audit_rank_fairness.sql
+run_sql supabase/checks/20260919165000_beta_audit_rank_fairness_postcheck.sql
+run_sql supabase/rollback/20260919165000_beta_audit_rank_fairness_rollback.sql
+run_sql supabase/checks/20260919165000_beta_audit_rank_fairness_precheck.sql
+run_sql supabase/migrations/20260919165000_beta_audit_rank_fairness.sql
+run_sql supabase/checks/20260919165000_beta_audit_rank_fairness_postcheck.sql
+run_sql tests/rls/work-rank-bayesian-percentiles.sql
+run_sql tests/rls/beta-audit-rank-fairness.sql
