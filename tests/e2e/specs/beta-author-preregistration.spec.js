@@ -128,6 +128,20 @@ test('duplicate preregistration remains on the form with a clear error', async (
   );
 });
 
+test('AUTHOR_PREOPEN routes preregistered authors to signup and closes intake', async ({
+  page
+}) => {
+  await mockCampaignApi(page, 'AUTHOR_PREOPEN');
+  await page.goto('/beta-authors.html');
+  await expect(page.locator('#authorPreopenState')).toBeVisible();
+  await expect(page.locator('#preRegistrationState')).toBeHidden();
+  await expect(page.locator('#releaseCopy')).toContainText(
+    '先行作者プレオープン中'
+  );
+  await expect(page.locator('#heroCta')).toHaveAttribute('href', 'signup.html');
+  await expect(page.locator('#guideSection')).toBeHidden();
+});
+
 test('BETA_OPEN renders published copy without preregistration copy', async ({
   page
 }) => {

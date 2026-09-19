@@ -79,6 +79,7 @@ test('beta author LP is standalone and only uses session storage for form-start 
 test('beta author LP gets campaign state from server and fails closed', () => {
   assert.doesNotMatch(betaHtml, /const PAGE_STATE/);
   assert.match(betaHtml, /PRE_REGISTRATION/);
+  assert.match(betaHtml, /AUTHOR_PREOPEN/);
   assert.match(betaHtml, /BETA_OPEN/);
   assert.match(betaHtml, /CLOSED/);
   assert.match(betaHtml, /UNAVAILABLE/);
@@ -225,6 +226,7 @@ test('ADMIN surface exposes the five-step funnel without weakening the safe boot
   assert.match(adminHtml, /data-novelight-theme="standalone"/);
   assert.match(adminHtml, /src="novelight-client\.js"/);
   assert.match(adminHtml, /id="campaignState"/);
+  assert.match(adminHtml, /value="AUTHOR_PREOPEN"/);
   assert.match(adminHtml, /id="releaseLabel"/);
   assert.match(adminHtml, /id="saveCampaign"/);
   assert.match(adminHtml, /id="metricPageViews"/);

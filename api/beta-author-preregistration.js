@@ -10,7 +10,12 @@ const supabase = createClient(
   }
 );
 
-const STATES = new Set(['PRE_REGISTRATION', 'BETA_OPEN', 'CLOSED']);
+const STATES = new Set([
+  'PRE_REGISTRATION',
+  'AUTHOR_PREOPEN',
+  'BETA_OPEN',
+  'CLOSED'
+]);
 const SOURCES = new Set(['x', 'youtube', 'dm', 'direct', 'other']);
 const EVENT_TYPES = new Set([
   'page_view',

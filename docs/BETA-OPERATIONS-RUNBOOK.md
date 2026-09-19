@@ -6,9 +6,24 @@ Last updated: 2026-09-13
 
 This runbook defines the minimum operator routine for the controlled public beta. The goal is to avoid relying on ad-hoc Supabase dashboard checks when moderation or support work is waiting.
 
+## Founding-author preopen cutover — 2026-09-28 JST
+
+The preopen is a campaign-state cutover, not a migration or billing operation. Before changing state, confirm that the beta-author preopen migration is already applied in Production and that the current release evidence contains no new blocker.
+
+1. Open `admin-beta-authors.html` through the normal ADMIN-authenticated path.
+2. Confirm the current campaign state is exactly `PRE_REGISTRATION` and the release label is `2026年9月30日`.
+3. Change only the campaign state to `AUTHOR_PREOPEN`, read the confirmation dialog, and save once.
+4. Reload ADMIN and confirm the stored state is `AUTHOR_PREOPEN`.
+5. In a clean public session, confirm `beta-authors.html` shows the preopen state and routes to `signup.html`.
+6. Confirm `signup.html` shows the preopen notice and signup form.
+7. Use an approved non-PII diagnostic path to verify that a preregistered author email can enter the Auth flow while a non-preregistered email remains rejected. Do not copy raw preregistration addresses into GitHub or chat evidence.
+8. If verification fails before the preopen announcement, return the state to `PRE_REGISTRATION`, record the failure, and stop. Do not open general signup as a workaround.
+
+While `AUTHOR_PREOPEN` is active, the Supabase Before User Created hook allows Auth creation only when `event.user.email` matches a non-cancelled preregistration row. The public preregistration intake is closed. Existing accounts can still log in.
+
 ## Public beta launch-day cutover — 2026-09-30 JST
 
-The public beta launch is a campaign-state cutover, not a migration or billing operation. The intended launch transition is `PRE_REGISTRATION` -> `BETA_OPEN` through the authenticated ADMIN beta-author screen.
+The public beta launch is the second campaign-state cutover. The intended launch transition is `AUTHOR_PREOPEN` -> `BETA_OPEN` through the authenticated ADMIN beta-author screen.
 
 ### Preconditions
 
@@ -16,19 +31,19 @@ The public beta launch is a campaign-state cutover, not a migration or billing o
 2. Confirm the intended `main` commit is deployed to Vercel Production and its required repository/Production readiness checks are green or remain specifically still-valid under the evidence-freshness rules.
 3. Do **not** rerun an already-applied Production migration, Production Auth Smoke, Stripe operation, Secret change, or official-thumbnail registration merely to refresh documentary SHA alignment.
 4. Open `admin-beta-authors.html` through the normal ADMIN-authenticated path. Do not update the campaign by direct Production SQL.
-5. Confirm the current campaign state is `PRE_REGISTRATION`. If it is already `BETA_OPEN`, `CLOSED`, unknown, or cannot be loaded, stop the cutover and investigate before changing anything.
+5. Confirm the current campaign state is `AUTHOR_PREOPEN`. If it is `PRE_REGISTRATION`, already `BETA_OPEN`, `CLOSED`, unknown, or cannot be loaded, stop the cutover and investigate before changing anything.
 6. Confirm the release-label field is exactly `2026年9月30日`. If the stored value is stale, correct it in the same ADMIN save used for the launch transition.
 
 ### Cutover
 
-1. Change the campaign state from `PRE_REGISTRATION` to `BETA_OPEN`.
+1. Change the campaign state from `AUTHOR_PREOPEN` to `BETA_OPEN`.
 2. Leave the release label as `2026年9月30日`.
 3. Click the campaign save button once.
 4. Read the state-change confirmation dialog carefully and approve it only if the target shown is `BETA_OPEN`.
 5. Do not select `CLOSED` for the public beta launch. `CLOSED` is not the launch state.
 6. Wait for the ADMIN success result before taking any second action. Do not double-submit the state change.
 
-The campaign save updates the campaign state and release label together through the authenticated ADMIN API. The preregistration database function independently enforces the campaign state and accepts a registration only while the state is `PRE_REGISTRATION`; its execution privilege is server-side only.
+The campaign save updates the campaign state and release label together through the authenticated ADMIN API. The preregistration database function accepts new preregistrations only while the state is `PRE_REGISTRATION`. During `AUTHOR_PREOPEN`, the Auth hook admits only non-cancelled preregistered emails; ordinary Auth signup opens at `BETA_OPEN`. These write boundaries remain server-side.
 
 ### Immediate post-cutover verification
 
@@ -44,7 +59,7 @@ Perform read-only/public verification before announcing the launch:
 
 ### Rollback / incident handling
 
-If a verification step fails **before the public launch announcement**, use the same authenticated ADMIN path to return the campaign to `PRE_REGISTRATION`, confirm the rollback dialog, then verify that the preregistration page and signup gate have returned to the pre-launch state. Record the failure and do not announce the launch until the cause is understood.
+If a verification step fails **before the public launch announcement**, use the same authenticated ADMIN path to return the campaign to `AUTHOR_PREOPEN`, confirm the rollback dialog, then verify that general signup is closed while preregistered-author access remains available. Record the failure and do not announce the launch until the cause is understood. Return all the way to `PRE_REGISTRATION` only if the preopen itself must also be suspended.
 
 After the public launch announcement, do not oscillate campaign states in response to ordinary defects. Treat the problem as a launch incident, preserve the observed evidence, and make an explicit owner decision before reopening preregistration or otherwise changing the public campaign state.
 
@@ -56,11 +71,11 @@ Use this order for the initial beta cohort:
 
 1. While the campaign is `PRE_REGISTRATION`, keep the preregistration row as the lead record. If outreach is sent by X DM, email, or another external channel, complete that outreach outside NOVELIGHT first.
 2. Record the ADMIN `invited` / 「案内送付記録済み」milestone only **after the external outreach was actually completed**. Do not use the milestone as a request to send outreach and do not mark it speculatively.
-3. After the campaign becomes `BETA_OPEN`, the author creates the NOVELIGHT account through `signup.html` and completes the confirmation email flow. The signup surface tells authors that they can continue from 「創作室」 after confirmation.
+3. After the campaign becomes `AUTHOR_PREOPEN`, a preregistered author may create the NOVELIGHT account through `signup.html` using the same email address used for preregistration and complete the confirmation email flow. General signup remains blocked until `BETA_OPEN`.
 4. Beta Standard is self-service. If the author wants Standard during the beta, they use the pricing page action `Standardを無料で利用`. The beta Standard path requires no card registration. Do not manually change Stripe state, entitlement rows, or Production billing data for an ordinary beta Standard activation.
 5. Update `registered_at` / 「本登録済み」only after there is reliable evidence that the preregistered author has actually completed the NOVELIGHT account registration. Outreach completion or preregistration alone is not sufficient.
 6. Update `first_novel_at` / 「初投稿済み」only after there is reliable evidence that the author has actually completed the first qualifying work publication. Do not infer publication from signup, profile creation, or an invitation status.
-7. The current beta contract does not automatically match a preregistration email address to an Auth account for these ADMIN conversion milestones. Treat them as operator-confirmed milestones unless and until a later MASTER-approved automation changes that contract.
+7. The preopen Auth gate matches the submitted Auth email to preregistration eligibility only; it does **not** automatically advance ADMIN conversion milestones such as `registered_at` or `first_novel_at`. Continue treating those milestones as operator-confirmed unless a later MASTER-approved automation changes that contract.
 8. Founding Authors eligibility is determined automatically from the qualifying real-author publication flow. Do not reserve, reorder, or manually assign Founding Authors slots based on preregistration order or outreach order.
 9. Never copy preregistration email addresses, comments, Auth identifiers, or other PII into GitHub issues, release evidence, or chat logs merely to prove conversion. Record counts/status and non-PII evidence only.
 10. Account-access, payment, safety, or legal problems discovered during onboarding follow the normal support/incident path below. Do not bypass that path with direct Production SQL or ad-hoc Stripe/Secret changes.
