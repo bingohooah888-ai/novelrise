@@ -27,7 +27,7 @@
     </form>
   </section>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script><script src="novelight-client.js"></script><script src="novelight-thumbnail-composer.js"></script>
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script><script src="novelight-client.js"></script><script src="novelight-thumbnail-composer.js"></script>
 <script>
 const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
 const form=document.getElementById('novelForm'),button=document.getElementById('submitButton'),status=document.getElementById('status'),thumbnailGrid=document.getElementById('thumbnailGrid'),composerRoot=document.getElementById('thumbnailComposer'),legacyArea=document.getElementById('legacyThumbnailArea');let busy=false,thumbnailReady=false,composerController=null,composerMode=false,session=null;

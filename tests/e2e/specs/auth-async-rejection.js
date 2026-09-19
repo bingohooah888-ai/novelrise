@@ -6,13 +6,11 @@ async function installAuthResilienceStubs(page, overrides = {}) {
     globalThis.__NOVELIGHT_AUTH_E2E_CALLS__ = [];
   }, overrides);
 
-  await page.route(
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3',
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/javascript',
-        body: `
+  await page.route('**/assets/vendor/supabase-js-2.112.3.js', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: `
         (() => {
           const state = window.__NOVELIGHT_AUTH_E2E_STATE__ || {};
           const calls = window.__NOVELIGHT_AUTH_E2E_CALLS__ || [];
@@ -85,9 +83,8 @@ async function installAuthResilienceStubs(page, overrides = {}) {
           window.supabase = { createClient: () => client };
         })();
       `
-      });
-    }
-  );
+    });
+  });
 
   await page.route('**/api/beta-author-preregistration', async (route) => {
     if (route.request().method() !== 'GET') {

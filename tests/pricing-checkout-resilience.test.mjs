@@ -31,7 +31,7 @@ test('pricing wires Standard activation and Premium checkout without blocking on
     '<script async src="novelight-client.js"'
   );
   const supabaseIndex = html.search(
-    /<script async src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.\d+\.\d+"/u
+    /<script async src="\/assets\/vendor\/supabase-js-2\.\d+\.\d+\.js"/u
   );
   assert.notEqual(inlineIndex, -1);
   assert.notEqual(sharedClientIndex, -1);

@@ -107,3 +107,12 @@ test('admin page does not add itself to ordinary site navigation', () => {
     assert.doesNotMatch(content, /href=["']admin\.html["']/);
   }
 });
+
+test('admin dashboard surfaces beta KPI gaps from the MASTER without using stale favorite counters', () => {
+  assert.match(adminHtml, /作者7日継続率/);
+  assert.match(adminHtml, /読者7日継続率/);
+  assert.match(adminHtml, /登録→初作品作成率/);
+  assert.match(adminHtml, /1読者あたり閲覧作品数/);
+  assert.match(adminHtml, /期間内の露出（露出時プラン）/);
+  assert.match(adminHtml, /favorites正本 \/ 自己お気に入り除外/);
+});

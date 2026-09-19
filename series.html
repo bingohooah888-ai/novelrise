@@ -16,7 +16,7 @@
 <section id="createPanel" class="panel"><h2>新しいシリーズ</h2><div class="field"><label for="newTitle">シリーズ名</label><input id="newTitle" maxlength="120" placeholder="例：星渡り年代記"></div><div class="field"><label for="newDescription">シリーズ説明</label><textarea id="newDescription" maxlength="2000" placeholder="シリーズ全体の説明"></textarea></div><div class="actions"><button id="createSeries" class="btn primary" type="button">シリーズを作成</button></div><div id="createStatus" class="status"></div></section>
 <div id="seriesList" class="list">読み込み中...</div>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
 <script src="novelight-client.js"></script>
 <script>
 const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');

@@ -6,13 +6,11 @@ async function installDiscoveryStub(page, rpcData = {}) {
     globalThis.__NOVELIGHT_E2E_CALLS__ = [];
   }, rpcData);
 
-  await page.route(
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3',
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/javascript',
-        body: `
+  await page.route('**/assets/vendor/supabase-js-2.112.3.js', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: `
         (() => {
           const data = window.__NOVELIGHT_E2E_RPC_DATA__ || {};
           const calls = window.__NOVELIGHT_E2E_CALLS__ || [];
@@ -47,9 +45,8 @@ async function installDiscoveryStub(page, rpcData = {}) {
           window.supabase = { createClient: () => client };
         })();
       `
-      });
-    }
-  );
+    });
+  });
 }
 
 function seededRows(count) {

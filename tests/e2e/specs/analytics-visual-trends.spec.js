@@ -65,13 +65,11 @@ async function installAnalyticsStub(page, authorPlan = 'standard') {
     { plan: authorPlan, trends: trendRows(), funnel: funnelRows() }
   );
 
-  await page.route(
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3',
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/javascript',
-        body: `
+  await page.route('**/assets/vendor/supabase-js-2.112.3.js', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: `
           (() => {
             const state = window.__NOVELIGHT_ANALYTICS_E2E__;
             function profileBuilder() {
@@ -135,9 +133,8 @@ async function installAnalyticsStub(page, authorPlan = 'standard') {
             window.supabase = { createClient: () => client };
           })();
         `
-      });
-    }
-  );
+    });
+  });
 }
 
 test('Standard LIGHT ANALYTICS renders comparisons, sparklines, trend selector and work funnel', async ({
