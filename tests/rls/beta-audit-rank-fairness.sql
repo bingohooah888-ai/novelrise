@@ -16,64 +16,75 @@ begin
 end
 $$;
 
-insert into auth.users (id) values
-  ('fa100000-0000-4000-8000-000000000001');
+create temporary table beta_audit_rank_target as
+select
+  n.id::text as novel_id,
+  n.user_id as author_id
+from public.novels n
+where n.status = 'published'
+order by n.id::text
+limit 1;
 
-update public.profiles
-set display_name = 'Rank Audit Author', plan = 'free'
-where id = 'fa100000-0000-4000-8000-000000000001';
+select public.beta_audit_test_assert(
+  exists (select 1 from beta_audit_rank_target),
+  'rank fairness audit requires one published fixture work'
+);
 
-insert into public.novels (
-  id, user_id, title, description, genre, status, pv,
-  ai_usage, content_rating, content_warnings,
-  content_policy_ack, content_policy_version, first_published_at
-) values (
-  9981001,
-  'fa100000-0000-4000-8000-000000000001',
-  'Raw PV must not rank',
-  'audit fixture',
-  'ファンタジー',
-  'published',
-  1000000,
-  'human',
-  'general',
-  '{}'::text[],
-  true,
-  'beta-v1',
-  now()
+delete from public.valid_read_events vr
+where vr.novel_id_snapshot = (
+  select novel_id from beta_audit_rank_target
+);
+
+delete from public.favorites f
+where f.novel_id::text = (
+  select novel_id from beta_audit_rank_target
+);
+
+update public.novels n
+set pv = 1000000
+where n.id::text = (
+  select novel_id from beta_audit_rank_target
 );
 
 select public.beta_audit_test_assert(
   (
     select valid_read_count = 0 and score = 0
     from public.novelight_ranking_feed_v2('total', 100)
-    where novel_id = '9981001'
+    where novel_id = (select novel_id from beta_audit_rank_target)
   ),
   'one million raw PV must contribute zero authoritative ranking score'
 );
 
 insert into public.valid_read_events (
-  reader_id, novel_id_snapshot, episode_id_snapshot, author_id_snapshot,
-  session_id, body_char_count, progress_signal, foreground_signal,
-  interaction_signal, rule_version
-) values (
-  'fa100000-0000-4000-8000-000000000002',
-  '9981001',
-  '9981011',
-  'fa100000-0000-4000-8000-000000000001',
-  'fa100000-0000-4000-8000-000000000003',
+  reader_id,
+  novel_id_snapshot,
+  episode_id_snapshot,
+  author_id_snapshot,
+  session_id,
+  body_char_count,
+  progress_signal,
+  foreground_signal,
+  interaction_signal,
+  rule_version
+)
+select
+  pg_catalog.gen_random_uuid(),
+  t.novel_id,
+  'beta-audit-rank-event',
+  t.author_id,
+  pg_catalog.gen_random_uuid(),
   1000,
   true,
   true,
   false,
   'rank-audit'
-);
+from beta_audit_rank_target t;
 
 select public.beta_audit_test_assert(
   (
     select valid_read_count = 1 and score = 1
     from public.novelight_ranking_feed_v2('total', 100)
-    where novel_id = '9981001'
+    where novel_id = (select novel_id from beta_audit_rank_target)
   ),
   'qualified read evidence must drive the authoritative ranking score'
 );
@@ -90,20 +101,28 @@ select public.beta_audit_test_assert(
 
 select public.beta_audit_test_assert(
   not has_function_privilege(
-    'anon', 'public.novelight_ranking_feed(text,integer)', 'EXECUTE'
+    'anon',
+    'public.novelight_ranking_feed(text,integer)',
+    'EXECUTE'
   )
   and not has_function_privilege(
-    'authenticated', 'public.novelight_ranking_feed(text,integer)', 'EXECUTE'
+    'authenticated',
+    'public.novelight_ranking_feed(text,integer)',
+    'EXECUTE'
   ),
   'legacy raw-PV ranking feed must remain closed to clients'
 );
 
 select public.beta_audit_test_assert(
   has_function_privilege(
-    'anon', 'public.novelight_ranking_feed_v2(text,integer)', 'EXECUTE'
+    'anon',
+    'public.novelight_ranking_feed_v2(text,integer)',
+    'EXECUTE'
   )
   and has_function_privilege(
-    'authenticated', 'public.novelight_ranking_feed_v2(text,integer)', 'EXECUTE'
+    'authenticated',
+    'public.novelight_ranking_feed_v2(text,integer)',
+    'EXECUTE'
   ),
   'valid-read ranking feed must remain available to readers'
 );
