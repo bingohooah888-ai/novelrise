@@ -238,14 +238,17 @@
   }
 
   async function publishedEpisodes(clientInstance, novelId) {
-    const result = await clientInstance
-      .from('episodes')
-      .select('id,novel_id,title,episode_number,status')
-      .eq('novel_id', novelId)
-      .eq('status', 'published')
-      .order('episode_number', { ascending: true });
+    const result = await clientInstance.rpc('novelight_reader_episode_index', {
+      p_novel_ids: [String(novelId)]
+    });
     if (result.error) throw result.error;
-    return result.data || [];
+    return (result.data || []).map((row) => ({
+      id: row.episode_id,
+      novel_id: row.novel_id,
+      title: row.episode_title || null,
+      episode_number: row.episode_number,
+      status: 'published'
+    }));
   }
 
   function installResumeChip(content, stored, row) {
@@ -329,7 +332,7 @@
     if (!content) return false;
     const rowResult = await clientInstance
       .from('episodes')
-      .select('id,novel_id,title,episode_number,status')
+      .select('id,novel_id,episode_number,status')
       .eq('id', episodeId)
       .single();
     if (rowResult.error || !rowResult.data || rowResult.data.status !== 'published') return false;
@@ -415,22 +418,20 @@
 
     const novelIds = cards.map((card) => parseNovelId(card.href)).filter(Boolean);
     await hydrateRemoteProgress(clientInstance, novelIds);
-    const result = await clientInstance
-      .from('episodes')
-      .select('id,novel_id,title,episode_number,status')
-      .in('novel_id', novelIds)
-      .eq('status', 'published')
-      .order('episode_number', { ascending: true });
+    const result = await clientInstance.rpc(
+      'novelight_reader_episode_index',
+      { p_novel_ids: novelIds.map(String) }
+    );
     if (result.error) throw result.error;
     const groups = new Map();
     for (const row of result.data || []) {
       const key = String(row.novel_id);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push({
-        id: String(row.id),
-        href: episodeHref(row.id),
+        id: String(row.episode_id),
+        href: episodeHref(row.episode_id),
         episodeNumber: Number(row.episode_number) || 0,
-        title: row.title || ''
+        title: row.episode_title || ''
       });
     }
 

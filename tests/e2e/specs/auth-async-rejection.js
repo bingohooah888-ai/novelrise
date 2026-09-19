@@ -7,7 +7,7 @@ async function installAuthResilienceStubs(page, overrides = {}) {
   }, overrides);
 
   await page.route(
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3',
     async (route) => {
       await route.fulfill({
         status: 200,

@@ -121,15 +121,20 @@
     const novelIds = favorites.map((row) => row.novel_id).filter(Boolean);
     if (!novelIds.length) return { session, updates: [] };
 
-    const episodesResult = await clientInstance
-      .from('episodes')
-      .select('id,novel_id,title,episode_number,status')
-      .in('novel_id', novelIds)
-      .eq('status', 'published')
-      .order('episode_number', { ascending: true });
+    const episodesResult = await clientInstance.rpc(
+      'novelight_reader_episode_index',
+      { p_novel_ids: novelIds.map(String) }
+    );
     if (episodesResult.error) throw episodesResult.error;
+    const safeEpisodes = (episodesResult.data || []).map((row) => ({
+      id: row.episode_id,
+      novel_id: row.novel_id,
+      title: row.episode_title || null,
+      episode_number: row.episode_number,
+      status: 'published'
+    }));
 
-    const groups = groupEpisodes(episodesResult.data || []);
+    const groups = groupEpisodes(safeEpisodes);
     const updates = [];
     for (const favorite of favorites) {
       const novelId = String(favorite.novel_id);
@@ -337,7 +342,7 @@
     range.className = 'update-card-range';
     range.textContent =
       item.newEpisodes.length === 1
-        ? `第${episodeNumber(item.firstNew)}話「${item.firstNew.title || 'タイトル未設定'}」`
+        ? `第${episodeNumber(item.firstNew)}話が公開されました。`
         : `第${episodeNumber(item.firstNew)}話〜第${episodeNumber(item.latest)}話が未確認です。`;
     copy.append(badge, title, range);
     top.appendChild(copy);
@@ -382,7 +387,7 @@
       const episodeLabel = latest?.episode_number
         ? `第${latest.episode_number}話`
         : '新しい話';
-      range.textContent = `「${latest?.novel_title || 'タイトル未設定'}」の${episodeLabel}「${latest?.episode_title || 'タイトル未設定'}」が公開されました。`;
+      range.textContent = `「${latest?.novel_title || 'タイトル未設定'}」の${episodeLabel}が公開されました。`;
     }
     if (group.events.length > 1) {
       range.textContent += ` ほか${group.events.length - 1}件`;

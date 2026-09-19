@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { join } from 'node:path';
-import { URL } from 'node:url';
+import { fileURLToPath, URL } from 'node:url';
 
-const root = new URL('../', import.meta.url);
-const read = (path) => readFile(join(root.pathname, path), 'utf8');
+const root = fileURLToPath(new URL('../', import.meta.url));
+const read = (path) => readFile(join(root, path), 'utf8');
 const migrationPath =
   'supabase/migrations/20260831210000_trusted_allocation_receipts.sql';
 const legacyRecorder = "client.rpc('record_novel_impressions";

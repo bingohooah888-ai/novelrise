@@ -34,7 +34,7 @@
   <div id="list" class="list"><div class="empty">読み込み中...</div></div>
   <div id="status" class="status" aria-live="polite"></div>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="novelight-client.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script><script src="novelight-client.js"></script>
 <script>
 const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
 const novelId=new URLSearchParams(location.search).get('novel_id'),list=document.getElementById('list'),statusEl=document.getElementById('status'),save=document.getElementById('save'),summary=document.getElementById('summary');

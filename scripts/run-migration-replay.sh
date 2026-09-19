@@ -743,4 +743,35 @@ echo '::group::Verify beta-author preopen rollback and reapply'
 "${REPLAY[@]}" -f tests/rls/beta-author-preopen-access.sql
 echo '::endgroup::'
 
+echo '::group::Verify beta-audit Rank fairness and rollback/reapply'
+"${REPLAY[@]}" -f supabase/checks/20260919165000_beta_audit_rank_fairness_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/beta-audit-rank-fairness.sql
+"${REPLAY[@]}" -f supabase/rollback/20260919165000_beta_audit_rank_fairness_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919165000_beta_audit_rank_fairness_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919165000_beta_audit_rank_fairness.sql
+"${REPLAY[@]}" -f supabase/checks/20260919165000_beta_audit_rank_fairness_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/beta-audit-rank-fairness.sql
+echo '::endgroup::'
+
+echo '::group::Verify beta preopen launch clock and rollback/reapply'
+"${REPLAY[@]}" -f supabase/checks/20260919170000_beta_preopen_launch_clock_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/beta-preopen-launch-clock.sql
+"${REPLAY[@]}" -f supabase/rollback/20260919170000_beta_preopen_launch_clock_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919170000_beta_preopen_launch_clock_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919170000_beta_preopen_launch_clock.sql
+"${REPLAY[@]}" -f supabase/checks/20260919170000_beta_preopen_launch_clock_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/beta-preopen-launch-clock.sql
+echo '::endgroup::'
+
+echo '::group::Verify spoiler-safe episode metadata and rollback/reapply'
+"${REPLAY[@]}" -f supabase/migrations/20260919171500_spoiler_safe_episode_metadata.sql
+"${REPLAY[@]}" -f supabase/checks/20260919171500_spoiler_safe_episode_metadata_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/spoiler-safe-episode-metadata.sql
+"${REPLAY[@]}" -f supabase/rollback/20260919171500_spoiler_safe_episode_metadata_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919171500_spoiler_safe_episode_metadata_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919171500_spoiler_safe_episode_metadata.sql
+"${REPLAY[@]}" -f supabase/checks/20260919171500_spoiler_safe_episode_metadata_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/spoiler-safe-episode-metadata.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'

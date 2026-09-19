@@ -6,10 +6,10 @@ const updates = await readFile('novelight-favorite-updates.js', 'utf8');
 const updatesPage = await readFile('updates.html', 'utf8');
 const authContext = await readFile('auth-reader-context.js', 'utf8');
 
-test('favorite updates keep existing favorite and published episode read path', () => {
+test('favorite updates keep favorites while using the spoiler-safe episode index', () => {
   assert.match(updates, /from\('favorites'\)/u);
-  assert.match(updates, /from\('episodes'\)/u);
-  assert.match(updates, /\.eq\('status', 'published'\)/u);
+  assert.match(updates, /novelight_reader_episode_index/u);
+  assert.doesNotMatch(updates, /from\('episodes'\)/u);
   assert.match(updates, /novelight_followed_author_updates/u);
   assert.match(updates, /isMissingAuthorFollowRpc/u);
 });

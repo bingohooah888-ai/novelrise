@@ -99,21 +99,19 @@ select public.test_assert(
 -- MASTER Chapter 38 absolute thresholds are pinned independently of the batch
 -- evaluator so future score tuning cannot silently move the eligibility floor.
 select public.test_assert(
-  public.novelight_rank_absolute_ceiling(50, 2, 2, 3.0) = 2,
-  'Rank 2 threshold must match MASTER'
+  public.novelight_rank_absolute_ceiling_v2(50, 2, 2, 3.0) = 2,
+  'Rank 2 valid-read threshold must match MASTER'
 );
 select public.test_assert(
-  public.novelight_rank_absolute_ceiling(199, 8, 5, 3.3) = 2,
-  'Rank 3 requires PV >= 200 even when other metrics qualify'
+  public.novelight_rank_absolute_ceiling_v2(199, 8, 5, 3.3) = 2,
+  'Rank 3 requires 200 qualified reads even when other metrics qualify'
 );
 select public.test_assert(
   public.novelight_rank_required_stability(6::smallint) = interval '7 days',
   'NOVA promotion requires seven stable days'
 );
 
--- Build an unambiguous top-of-pool work whose absolute ceiling is still Rank 2:
--- very high PV, only two favorites, and only two raters. Relative position can
--- be high, but the absolute threshold must cap candidate Rank at 2.
+-- A spoofed raw PV spike must not change Rank eligibility.
 update public.novels
 set pv = 1000000
 where id::text = '10000000-0000-0000-0000-000000000001';
@@ -137,6 +135,45 @@ where n.id::text = '10000000-0000-0000-0000-000000000001'
     where f.user_id = '44444444-4444-4444-4444-444444444444'
       and f.novel_id::text = n.id::text
   );
+
+set role service_role;
+select public.novelight_recalculate_work_ranks(now());
+reset role;
+
+select public.test_assert(
+  (select current_rank = 1 and candidate_rank = 1
+     from public.novel_rank_state
+    where novel_id_snapshot = '10000000-0000-0000-0000-000000000001'),
+  'raw PV inflation alone must not raise the Rank candidate'
+);
+
+-- Fifty independently qualified reader/episode events satisfy the Rank 2
+-- readership floor. The events are inserted directly only as deterministic
+-- service-role fixtures; production clients cannot write this table.
+insert into public.valid_read_events (
+  reader_id,
+  novel_id_snapshot,
+  episode_id_snapshot,
+  author_id_snapshot,
+  session_id,
+  body_char_count,
+  progress_signal,
+  foreground_signal,
+  interaction_signal,
+  rule_version
+)
+select
+  gen_random_uuid(),
+  '10000000-0000-0000-0000-000000000001',
+  'rank-fixture-episode',
+  '11111111-1111-1111-1111-111111111111',
+  gen_random_uuid(),
+  1000,
+  true,
+  true,
+  false,
+  'rank-fairness-test'
+from generate_series(1, 50);
 
 -- Clients cannot run the global Rank evaluator.
 set role authenticated;
