@@ -774,4 +774,17 @@ echo '::group::Verify spoiler-safe episode metadata and rollback/reapply'
 "${REPLAY[@]}" -f tests/rls/spoiler-safe-episode-metadata.sql
 echo '::endgroup::'
 
+echo '::group::Verify final beta fairness hardening and rollback/reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260919195300_beta_final_fairness_hardening_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919195300_beta_final_fairness_hardening_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919195300_beta_final_fairness_hardening.sql
+"${REPLAY[@]}" -f supabase/checks/20260919195300_beta_final_fairness_hardening_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/beta-final-fairness-hardening.sql
+"${REPLAY[@]}" -f supabase/rollback/20260919195300_beta_final_fairness_hardening_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919195300_beta_final_fairness_hardening_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919195300_beta_final_fairness_hardening.sql
+"${REPLAY[@]}" -f supabase/checks/20260919195300_beta_final_fairness_hardening_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/beta-final-fairness-hardening.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
