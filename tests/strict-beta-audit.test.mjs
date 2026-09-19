@@ -185,3 +185,46 @@ test('Vercel applies baseline browser security headers', () => {
   assert.equal(map.get('Referrer-Policy'), 'strict-origin-when-cross-origin');
   assert.match(map.get('Permissions-Policy') || '', /camera=\(\)/);
 });
+
+test('beta search does not expose spoofable raw-PV ordering', () => {
+  const search = read('search.html');
+  assert.doesNotMatch(search, /<option value="pv">/);
+  assert.doesNotMatch(search, /allowedSorts=new Set\(\[[^\]]*['"]pv['"]/);
+  assert.doesNotMatch(search, /新着・PV・お気に入り順/);
+});
+
+test('author UI and database both block self-favorites', () => {
+  const novel = read('novel.html');
+  const migration = read(
+    'supabase/migrations/20260919195300_beta_final_fairness_hardening.sql'
+  );
+  assert.match(
+    novel,
+    /const owner=Boolean\(session&&novel\.user_id===session\.user\.id\)/
+  );
+  assert.match(novel, /if\(owner\)\{b\.hidden=true/);
+  assert.match(migration, /novelight_can_favorite_novel/);
+  assert.match(
+    migration,
+    /and public\.novelight_can_favorite_novel\(novel_id\)/
+  );
+});
+
+test('final fairness migration requires server-clock reading evidence', () => {
+  const migration = read(
+    'supabase/migrations/20260919195300_beta_final_fairness_hardening.sql'
+  );
+  assert.match(
+    migration,
+    /v_foreground_signal and \(v_progress_signal or v_interaction_signal\)/
+  );
+  assert.match(migration, /count\(distinct vr\.reader_id\)::bigint/);
+  assert.match(migration, /timestamptz '2026-09-30 00:00:00\+09'/);
+});
+
+test('beta terms are presented as an active beta document, not a draft', () => {
+  const terms = read('terms.html');
+  assert.doesNotMatch(terms, /β版ドラフト/);
+  assert.match(terms, /最終改定日：2026年9月19日 \/ β版/);
+  assert.match(terms, /作者本人は自作品をお気に入り登録できません/);
+});

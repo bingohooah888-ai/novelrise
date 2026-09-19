@@ -230,13 +230,14 @@ test('LIGHT SEED feed enforces published seeded eligibility and preserves newest
   assert.match(migration, /grant execute[\s\S]*to anon, authenticated/u);
 });
 
-test('search still accepts supported sort query parameters independently of home discovery links', async () => {
+test('search still accepts safe sort query parameters independently of home discovery links', async () => {
   const search = await read('search.html');
 
   assert.match(
     search,
-    /allowedSorts=new Set\(\['recommended','new','pv','favorites'\]\)/
+    /allowedSorts=new Set\(\['recommended','new','favorites'\]\)/
   );
+  assert.doesNotMatch(search, /<option value="pv">/);
   assert.match(
     search,
     /new URLSearchParams\(window\.location\.search\)\.get\('sort'\)/

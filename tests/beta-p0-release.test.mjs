@@ -141,13 +141,14 @@ test('LIGHT ANALYTICS uses the required funnel denominators', async () => {
   assert.match(analytics, /rate\(\s*safe\.favorites,\s*safe\.impressions\s*\)/);
 });
 
-test('all search sorts preserve impression data', async () => {
+test('all exposed beta search sorts preserve impression data', async () => {
   const [search, migration] = await Promise.all([
     read('search.html'),
     read('supabase/migrations/20260823171500_neutral_search_impressions.sql')
   ]);
-  for (const sort of ['recommended', 'new', 'pv', 'favorites'])
+  for (const sort of ['recommended', 'new', 'favorites'])
     assert.match(search, new RegExp(`<option value="${sort}">`));
+  assert.doesNotMatch(search, /<option value="pv">/);
   assert.match(
     search,
     /s==='recommended'\?await recommended\(k,g,current\):await neutral\(k,g,s,current(?:,false)?\)/
