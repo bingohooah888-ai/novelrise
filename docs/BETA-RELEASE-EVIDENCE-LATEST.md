@@ -4,6 +4,41 @@
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
 
+## 2026-09-19 post-PR #714 beta-audit remediation reconciliation
+
+This section supersedes all older 2026-09-19 “current”, “current main”, “material application SHA”, migration-freshness, and launch-posture wording below where the scope overlaps. Older sections remain preserved as audit history.
+
+The **current material application baseline at this reconciliation** is `613e804a943d06c0e2a46ab0cc2f12a6a2ad5cad` (`Harden beta launch fairness and spoiler boundaries (#714)`). PR #714 final reviewed head is `7aea8cad3cc197aabd75996fb53559fc2ee8b2c1`.
+
+Do not use a static sentence in this rolling document to define live repository `main`. The repository main immediately before this documentation-only reconciliation was `613e804a...`; merging a documentation-only reconciliation may itself advance `main` without changing the deployable application baseline. Live repository main must therefore be resolved from GitHub at execution time and any later commit classified under `docs/EVIDENCE-FRESHNESS-GATE.md`. A docs-only successor does not by itself invalidate the material application proof below.
+
+After exact-head owner approval, PR #714 `NOVELIGHT CI` run `35433932164` completed Merge readiness, RLS integration/rollback, Static quality, Node tests, desktop/mobile smoke, desktop/mobile async-UI, and aggregate `check` with `SUCCESS`. `Beta P0 Database Gate` run `35433932205` completed `SUCCESS`. CodeQL run `35433932168` completed `SUCCESS`.
+
+On merged material application SHA `613e804a...`, Vercel Production converged successfully; the live `/api/deployment-revision` endpoint returned exactly `613e804a943d06c0e2a46ab0cc2f12a6a2ad5cad`. `NOVELIGHT Production Readiness Smoke` run `35434084396` completed `SUCCESS`.
+
+Production migration freshness was re-established before mutation. `NOVELIGHT Production Migration Preflight` run `35434304517`, bound to exact main `613e804a...`, completed `SUCCESS`; repository-vs-Production comparison showed exactly three pending versions and no unexpected remote-only version:
+- `20260919165000_beta_audit_rank_fairness`;
+- `20260919170000_beta_preopen_launch_clock`;
+- `20260919171500_spoiler_safe_episode_metadata`.
+
+After explicit owner approval, Approval Ledger #657 recorded the exact operation `supabase-migration-deploy`, main `613e804a...`, challenge `613E804A`, and the exact three-version migration set above. `NOVELIGHT Approved Production Migration Deploy` run `35434518539` validated and claimed that approval, revalidated the exact pending set at the Production boundary, repeated the dry-run, applied the three approved migrations, verified post-deploy migration status, passed Production beta observability, and recorded `result:"success"`, `mutation_result:"success"`, `postcheck_result:"success"`, `failure_phase:"none"`.
+
+Fresh read-only Production verification after the deploy confirms all three versions are present in Production and the project is `ACTIVE_HEALTHY`. The substantive postconditions are also present:
+- legacy `novelight_ranking_feed(text,integer)` is no longer executable by `anon` or `authenticated`;
+- `novelight_ranking_feed_v2(text,integer)` is executable by reader roles;
+- `novelight_recalculate_work_ranks` uses `valid_read_count`;
+- the launch-clock helper exists and `novelight_discovery_feed_v2` uses the effective-publication boundary;
+- `novelight_reader_episode_index(text[])` exists;
+- `novelight_novel_outline` and `novelight_followed_author_updates` use qualified-read evidence to bound automatic future-title disclosure.
+
+The 2026-09-28 founding-author preopen remains a **future campaign-state cutover**. Production campaign state remains `PRE_REGISTRATION`; this remediation does not itself execute `AUTHOR_PREOPEN`. The cutover remains separately approval-gated under `docs/BETA-OPERATIONS-RUNBOOK.md`.
+
+The post-2026-09-16 migration reconciliation now covers 26 migration versions through `20260919171500`; the newest three are applied with exact-scope owner approval and successful postcheck. The beta-audit blocker around spoofable raw-PV ranking influence is remediated, the 2026-09-30 launch-relative exposure clock is implemented, and the automatic future-episode metadata boundary is enforced on the audited surfaces.
+
+**Current technical/operational launch posture is GO for the presently executable state.** This does not pre-authorize the future `AUTHOR_PREOPEN` cutover or the 2026-09-30 campaign transition, and it does not turn qualified Japanese counsel review into a legal PASS. Counsel review remains **DEFERRED BY OWNER / STILL PENDING** under the recorded residual-risk decision. The planned 2026-09-29 content-inventory / first-reader-path operational gate remains future work because Production is intentionally still in preregistration.
+
+This reconciliation is documentation-only. It performs no additional Production DB/Supabase mutation, migration rerun, Production Auth Smoke, Stripe/billing/entitlement mutation, Secret/environment mutation, campaign-state cutover, or image generation/editing.
+
 ## 2026-09-19 post-PR #711 founding-author preopen reconciliation
 
 This section supersedes the older 2026-09-19 current-state wording below where the scope overlaps. Older sections remain preserved as audit context.
