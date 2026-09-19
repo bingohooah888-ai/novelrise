@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readText as readFile } from './test-text-utils.mjs';
 import test from 'node:test';
 import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';

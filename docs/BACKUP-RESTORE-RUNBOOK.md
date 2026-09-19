@@ -1,6 +1,6 @@
 # NOVELIGHT production backup and restore runbook
 
-Last updated: 2026-09-19
+Last updated: 2026-09-20
 
 ## Purpose
 
@@ -20,6 +20,21 @@ Public beta is **NO-GO** until the operator has recorded all of the following in
 6. The result and date of that rehearsal have been recorded.
 
 Do not assume a capability exists because it existed on another Supabase plan. Verify the production project itself.
+
+## Supabase Restore-to-New-Project boundary
+
+For the hosted Supabase **Restore to a New Project** flow, distinguish database backup content from project-level hosted configuration. Supabase's current provider contract documents that the clone transfers the database schema, data/indexes, database roles/permissions/users, and Auth user data including user accounts, hashed passwords, and authentication records from the `auth` schema. It also documents that project-level **Auth settings and API keys are not copied**. Storage objects/settings, Edge Functions, Realtime settings, database extensions/settings, and read replicas likewise require separate reconfiguration where used.
+
+Provider reference: `https://supabase.com/docs/guides/platform/clone-project` (`Restore to a new project`).
+
+Therefore a rehearsal must not fail merely because a newly created restore target has different API keys or lacks the source project's hosted Auth URL/provider/template/hook configuration. Those values are outside the database backup by provider design. Instead, keep two recovery layers explicit:
+
+1. **Database-recovery validation** — prove that backup data actually restores: Auth identities/password-hash records, profiles/ownership, application data, RLS/private-data boundaries, current schema/migrations, and critical RPC/integrity rules.
+2. **Recovered-service reconfiguration and reopen validation** — before any restored project receives real application traffic, recreate the required project-level configuration, bind the recovered application to the restored project's own new API keys, then verify controlled existing-user sign-in and password recovery/end-to-end redirects.
+
+Never copy the source project's secret/service-role key into a restored project. The restored project has its own API keys. Recovery documentation may record required configuration names and non-secret values, but must not store secrets in GitHub, chat, or uncontrolled artifacts.
+
+A disposable database-recovery rehearsal can satisfy the public-beta backup/restore rehearsal gate when the database-recovery checks pass and the expected provider-level configuration gap is explicitly recorded. This does **not** authorize reopening a real recovered service without completing the second-layer reconfiguration and sign-in/password-recovery checks.
 
 ## Before any high-risk production change
 
@@ -48,7 +63,7 @@ psql "$RESTORED_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
 
 The validation fails closed when a current production-critical table/function is missing, when selected private tables have lost RLS, or when core ownership/integrity invariants such as orphan profiles, orphan episodes, or duplicate favorites are broken. It also verifies the active exposure and valid-read rule rows exist.
 
-A PASS from this SQL is **necessary but not sufficient**. Continue with the human/browser checks below, especially Auth, private-data isolation, reader/author writes, and Stripe reconciliation. Never point `RESTORED_DATABASE_URL` at public-beta Production for a rehearsal.
+A PASS from this SQL is **necessary but not sufficient**. Continue with the restored-data checks below, especially Auth identity/profile recovery, private-data isolation, reader/author writes, and Stripe-state reconciliation. Project-level hosted Auth settings/API keys are validated separately under the recovered-service reconfiguration gate because Supabase does not copy them into Restore-to-New-Project targets. Never point `RESTORED_DATABASE_URL` at public-beta Production for a rehearsal.
 
 The same SQL runs at the end of `scripts/run-migration-replay.sh`, so new migrations that accidentally make a fresh NOVELIGHT schema unrestorable should fail CI before merge.
 
@@ -96,10 +111,18 @@ Recovery:
 
 A restore is not complete when PostgreSQL merely starts. Verify:
 
-### Authentication and profiles
-- Existing test user can sign in.
-- Password recovery redirect/config is intact.
+### Authentication and profiles — restored database layer
+- Expected Auth user/account rows, hashed-password records, and authentication records are present on the restored target without exposing credential material in evidence.
+- Restored Auth-user/profile cardinality and ownership invariants are consistent; orphan profiles are absent.
 - `profiles` ownership and current plan fields are readable only as intended.
+- Do **not** classify project-level hosted Auth settings or API keys as missing backup data: Supabase Restore-to-New-Project does not copy them by design.
+
+### Authentication — recovered-service reconfiguration before reopen
+- Recreate the required hosted Auth configuration for the recovery target from the approved recovery baseline, including Site URL / allowed recovery redirect URLs, enabled providers, email/template/SMTP behavior where applicable, NOVELIGHT's Before User Created hook and password-security settings where applicable.
+- Use the restored project's own API keys and update only the recovered environment/application binding. Do not point the recovered app at Production keys or reuse source-project secret keys.
+- After reconfiguration, a controlled existing test user can sign in through the recovered application.
+- After reconfiguration, the password-recovery request and redirect to the recovered application's reset flow succeed before service reopen.
+- Failure of either end-to-end Auth check blocks **service reopen**, even when database-recovery validation itself passed.
 
 ### Author data
 - Expected sample novels and episodes exist.
@@ -149,9 +172,11 @@ A rehearsal should:
 1. Use a disposable/non-production restore target.
 2. Restore a real or safely representative backup according to the provider procedure.
 3. Run `supabase/checks/restore_validation.sql` against the restored target and retain only the PASS/FAIL evidence, not production row dumps.
-4. Run the browser/manual validation checklist above with controlled test accounts.
-5. Record start/end, recovery-point timestamp, automated validation result, browser/manual result, and corrective actions.
-6. Delete or secure the rehearsal environment when no longer needed.
+4. Run the restored-database checks above with controlled/non-PII evidence: Auth identity/profile recovery, author/reader RLS and privacy boundaries, critical RPCs, moderation, discovery/fairness state, and billing-state consistency.
+5. Record any provider-defined non-database gaps separately. For Supabase Restore-to-New-Project this includes new API keys and the need to recreate hosted Auth settings; do not misreport those expected gaps as database restore failure or as already-restored configuration.
+6. If the rehearsal's declared scope includes a **full recovered-service cutover**, recreate the target's project-level configuration and run the recovered-service sign-in/password-recovery checks before calling that stronger cutover rehearsal PASS. For the public-beta database-recovery gate, this stronger cutover rehearsal is not required as long as the service-reopen fail-closed steps are documented and retained.
+7. Record start/end, recovery-point timestamp, automated validation result, restored-data/manual result, any non-database reconfiguration not exercised, and corrective actions.
+8. Delete or secure the rehearsal environment when no longer needed; for a paid disposable project, verify deletion after cleanup so avoidable ongoing cost does not continue.
 
 Production personal data must not be copied to uncontrolled developer machines. Follow the same access controls and retention principles as production.
 

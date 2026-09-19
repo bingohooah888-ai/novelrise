@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
+import { readTextSync as readFileSync } from './test-text-utils.mjs';
 import test from 'node:test';
 import { URL } from 'node:url';
 

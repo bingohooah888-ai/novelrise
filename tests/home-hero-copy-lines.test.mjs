@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { readTextSync } from './test-text-utils.mjs';
 import path from 'node:path';
 import test from 'node:test';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
-const homeHtml = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
-const heroCss = fs.readFileSync(
+const homeHtml = readTextSync(path.join(repoRoot, 'index.html'), 'utf8');
+const heroCss = readTextSync(
   path.join(repoRoot, 'novelight-home-hero.css'),
   'utf8'
 );

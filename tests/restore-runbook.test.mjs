@@ -8,8 +8,21 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('restore runbook requires disposable-target automated validation', () => {
   const runbook = read('docs/BACKUP-RESTORE-RUNBOOK.md');
-  assert.match(runbook, /Last updated: 2026-09-19/);
+  assert.match(runbook, /Last updated: 2026-09-20/);
   assert.match(runbook, /supabase\/checks\/restore_validation\.sql/);
+  assert.match(
+    runbook,
+    /Auth user data including user accounts, hashed passwords/
+  );
+  assert.match(runbook, /Auth settings and API keys are not copied/);
+  assert.match(
+    runbook,
+    /Recovered-service reconfiguration and reopen validation/
+  );
+  assert.match(
+    runbook,
+    /Failure of either end-to-end Auth check blocks \*\*service reopen\*\*/
+  );
   assert.match(runbook, /non-production\/disposable target/i);
   assert.match(
     runbook,

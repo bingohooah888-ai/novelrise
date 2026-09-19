@@ -1,8 +1,47 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-09-19 JST**
+**Reconciled: 2026-09-20 JST**
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
+
+## 2026-09-20 post-PR #721 final-audit reconciliation
+
+This section supersedes all older “current”, “current main”, “material application SHA”, backup/restore freshness, and launch-posture wording below where the scope overlaps. Older sections remain preserved as audit history.
+
+The exact repository and deployed application baseline verified in this reconciliation is `c9eaefd9baa941d2f20699a29c8e9ac233b64196` (PR #721, `Harden restore validation and beta accessibility`). PR #721 final reviewed head is `950df03811373b747797545e857857e1d63f6897`. A documentation/test-only successor may advance repository `main` without changing this material application baseline; live `main` must still be resolved at execution time under `docs/EVIDENCE-FRESHNESS-GATE.md`.
+
+The three final-audit implementation PRs are reconciled as follows:
+- PR #717 final head `2c9b071fbe5ea142878edbdfdff0c1e5b17a4b17`, merged as `2a3dfe7f75cba1447ef5c0031acdc93c81936e0b`: `NOVELIGHT CI` run `35440178759` and CodeQL run `35440178750` completed successfully. Its Production migration `20260919195300_beta_final_fairness_hardening` was applied through approval-gated deploy run `35441674693`, including exact-scope validation, dry-run, mutation, migration-status verification, Production beta observability, and successful result recording.
+- PR #719 final head `02108c183f0689d3c6a0b81eedb2641c88099ba8`, merged as `ea3432837cd2ec3a65c06708b8092a5b31347af6`: `NOVELIGHT CI` run `35442916297` and CodeQL run `35442916268` completed successfully. This change vendors the pinned browser Supabase runtime and hardens ADMIN beta KPI handling without adding a Production migration.
+- PR #721 final head `950df03811373b747797545e857857e1d63f6897`, merged as `c9eaefd9baa941d2f20699a29c8e9ac233b64196`: `NOVELIGHT CI` run `35444779942` completed aggregate check, Node, Static quality, RLS integration/rollback, and desktop/mobile browser jobs successfully; CodeQL run `35444779938` completed successfully.
+
+Fresh Production/current-state evidence:
+- live `/api/deployment-revision` returned exactly `c9eaefd9baa941d2f20699a29c8e9ac233b64196`;
+- live public preregistration API returned campaign state `PRE_REGISTRATION` and release label `2026年9月30日`;
+- `NOVELIGHT Production Readiness Smoke` run `35445379573` completed successfully, including static routes, safe API contracts, read-only reader smoke, Production beta observability, and readiness publication;
+- Production Authenticated Smoke Issue #723 / run `35449741256` is bound to exact `c9eaefd...`; approval claim, deployed-page convergence, authenticated smoke, ephemeral-data cleanup, and matching consumed-approval result all completed successfully;
+- Production Billing Health run `35449744107` reported current guard version with `issueCodes=[]`, `warningCodes=[]`, and no approval-requiring remediation. The decisive Stripe live bootstrap/control proof remains run `33612120034`; no later decisive checkout/webhook/portal boundary change requires a duplicate live Stripe operation;
+- Production Backup Freshness run `35445231639` completed successfully and observed the latest completed Production backup at `2026-09-18T21:03:30.977Z`, 16.21 hours old against a 36-hour maximum.
+
+Fresh local verification on the exact baseline also passed `npm run preflight:fast` with 995 Node tests / 989 pass / 0 fail / 6 skip, plus the full Playwright suite at 170/170 pass across desktop/mobile. The local portability hardening normalizes text fixture line endings and does not change application runtime behavior.
+
+### Backup/restore freshness decision
+
+A fresh non-Production restore rehearsal was executed on 2026-09-20 JST against disposable project `novelight-restore-rehearsal-20260920` (`holsxualaoywzlttjugc`) using the completed Production backup at `2026-09-18T21:03:30Z`. Because the selected recovery point predates ten 2026-09-19 Production migrations, those ten repository migrations were applied only to the disposable restored target before current-schema validation. The repository `supabase/checks/restore_validation.sql` then passed. Additional restored-target checks passed for owner/cross-user novel RLS, reader progress/bookshelf privacy and writes, controlled moderation-report RPC execution, discovery/ranking/search RPC execution, restored Auth-user/profile/password-hash counts, and restored billing/profile/subscription-ledger consistency. No Production mutation was used for the rehearsal.
+
+The rehearsal target was deleted after validation, and a fresh Supabase project-list read shows only Production `novelrise` (`fiepaguycecrredwrcwx`) remaining `ACTIVE_HEALTHY`. The disposable-project cleanup/cost-stop objective is therefore complete.
+
+Official Supabase Restore-to-New-Project documentation was then reconciled with NOVELIGHT's runbook. The provider explicitly describes this flow as a database-only copy: Auth user accounts, hashed passwords, and authentication records in the `auth` schema are transferred, while project-level Auth settings and API keys are **not copied** and require manual reconfiguration. The prior runbook wording that expected password-recovery/Auth configuration to remain "intact" immediately after a clone therefore conflated database backup content with hosted project configuration. `docs/BACKUP-RESTORE-RUNBOOK.md` now separates those layers: the database-recovery rehearsal validates restored Auth identity/hash data, profiles, application data, RLS/privacy boundaries and critical RPCs; a real recovered service remains fail-closed until its own Auth settings/API keys are recreated and controlled existing-user sign-in plus password recovery succeed before reopen.
+
+Under that provider-aligned contract, the 2026-09-20 disposable rehearsal **PASSES the public-beta database-recovery rehearsal gate**. The fact that the deleted disposable target was not fully reconfigured for application traffic is recorded as an intentionally unexercised recovered-service cutover step, not as missing backup data. A second paid clone is not required solely to prove that Supabase copied project-level Auth configuration that Supabase explicitly does not copy.
+
+The current preregistration service itself remains healthy and intentionally closed to ordinary beta signup: Production remains `PRE_REGISTRATION`. The future 2026-09-28 `AUTHOR_PREOPEN`, 2026-09-29 content-inventory/first-reader-path gate, and 2026-09-30 `BETA_OPEN` transition remain separately approval-gated operational steps.
+
+Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING** under the recorded residual-risk decision and is not converted into legal PASS.
+
+**Current final-audit posture: the backup/restore recovery blocker is CLEARED. No current non-deferred technical recovery blocker remains on the presently executable `PRE_REGISTRATION` state. The future 2026-09-28 `AUTHOR_PREOPEN`, 2026-09-29 content-inventory/first-reader-path gate, and 2026-09-30 `BETA_OPEN` transition remain future, separately approval-gated operational steps and are not pre-authorized by this result. Qualified Japanese counsel review remains deferred/pending rather than legal PASS.**
+
+This reconciliation performed a disposable non-Production restore rehearsal and cleanup only. It performed no destructive Production restore, Production DB/Supabase mutation, Stripe/billing/entitlement mutation, Secret/environment mutation, campaign-state cutover, or image generation/editing.
 
 ## 2026-09-19 post-PR #714 beta-audit remediation reconciliation
 

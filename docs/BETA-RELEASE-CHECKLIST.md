@@ -2,15 +2,44 @@
 
 This checklist is the final operational gate after code review/CI. A checked box must represent an observed result or a specifically justified still-valid result under `docs/EVIDENCE-FRESHNESS-GATE.md`, not an assumption.
 
-**Reconciled: 2026-09-19 JST.**
+**Reconciled: 2026-09-20 JST.**
 
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
-The **current material application baseline at this reconciliation** is `613e804a943d06c0e2a46ab0cc2f12a6a2ad5cad` (`Harden beta launch fairness and spoiler boundaries (#714)`). The repository main immediately before this documentation-only reconciliation was the same SHA. Do not treat the SHA of this later documentation-only reconciliation as a new material application release; live repository main must be resolved at execution time under `docs/EVIDENCE-FRESHNESS-GATE.md`.
+The **current material application baseline at this reconciliation** is `c9eaefd9baa941d2f20699a29c8e9ac233b64196` (`Harden restore validation and beta accessibility (#721)`). The current live Production deployment revision was re-read and returned that exact SHA. A documentation/test-only successor may advance repository `main` without changing this material application baseline; live `main` must still be resolved at execution time under `docs/EVIDENCE-FRESHNESS-GATE.md`.
 
-**CURRENT LAUNCH POSTURE: GO — material application baseline `613e804a...` has green reviewed-head CI, Beta P0 DB Gate, CodeQL, Vercel Production, Production Readiness, and post-migration Production beta verification. The three beta-audit remediation migrations `20260919165000`, `20260919170000`, and `20260919171500` were applied together through approval-gated deploy run `35434518539` with successful mutation/postcheck/observability verification. The post-2026-09-16 reconciliation now covers 26 migration versions through `20260919171500`. Production campaign state remains `PRE_REGISTRATION`; the 2026-09-28 `AUTHOR_PREOPEN` cutover has not been executed and remains separately approval-gated. Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.**
+**CURRENT FINAL-AUDIT POSTURE: the backup/restore recovery blocker is CLEARED. The fresh disposable rehearsal proves provider restore, current-schema migration replay, `restore_validation.sql`, representative author/reader RLS/privacy writes, moderation and discovery/ranking/search RPC execution, Auth/profile/password-hash restoration, billing-state restoration, cleanup, and deletion/cost-stop. Supabase's official Restore-to-New-Project contract confirms that hosted Auth settings/API keys are not backup content and must be recreated before a real recovered service is reopened; the runbook now keeps that service-reopen gate fail-closed instead of treating non-copied configuration as restore failure. Current `PRE_REGISTRATION` operation is technically healthy. Future 2026-09-28/29/30 operational cutovers remain separately gated and are not pre-authorized. Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.**
 
 Qualified Japanese counsel review remains deferred/pending. The owner residual-risk decision is recorded in `docs/legal-beta-review.md`; this checklist does not assert legal sufficiency.
+
+## 2026-09-20 current-main / post-PR #721 final-audit reconciliation
+
+This section supersedes older “current”, backup/restore-hard-gate, and final launch-posture wording below where the scope overlaps.
+
+- [x] Exact current repository/application baseline verified as `c9eaefd9baa941d2f20699a29c8e9ac233b64196` (PR #721).
+- [x] PR #717 final head `2c9b071fbe5ea142878edbdfdff0c1e5b17a4b17` passed `NOVELIGHT CI` run `35440178759` and CodeQL run `35440178750`.
+- [x] PR #717 Production migration `20260919195300_beta_final_fairness_hardening` was approval-gated and successfully applied/postchecked by run `35441674693`.
+- [x] No migration was added after PR #717 through current baseline `c9eaefd...`.
+- [x] PR #719 final head `02108c183f0689d3c6a0b81eedb2641c88099ba8` passed `NOVELIGHT CI` run `35442916297` and CodeQL run `35442916268`.
+- [x] PR #721 final head `950df03811373b747797545e857857e1d63f6897` passed `NOVELIGHT CI` run `35444779942` and CodeQL run `35444779938`.
+- [x] Live `/api/deployment-revision` returned exact `c9eaefd9baa941d2f20699a29c8e9ac233b64196`.
+- [x] Live public campaign lookup returned `PRE_REGISTRATION` and release label `2026年9月30日`.
+- [x] Production Readiness run `35445379573` completed all decisive read-only verification steps successfully.
+- [x] Production Authenticated Smoke Issue #723 / run `35449741256` is exact-current, completed authenticated beta-critical flows successfully, cleaned ephemeral data, and recorded matching consumed approval.
+- [x] Production Billing Health run `35449744107` reported current guard version, `issueCodes=[]`, `warningCodes=[]`, and no approval-requiring remediation.
+- [x] Stripe live bootstrap/control run `33612120034` remains still-valid for the unchanged decisive checkout/webhook/portal boundary; no duplicate live Stripe operation is required.
+- [x] Production Backup Freshness run `35445231639` passed; latest completed Production backup was 16.21 hours old against a 36-hour maximum.
+- [x] The 2026-08-23 restore rehearsal remains valid historical proof for provider restore and Auth/profiles/novels/episodes recovery.
+- [x] A fresh non-Production/disposable restore rehearsal was completed on 2026-09-20 JST from the `2026-09-18T21:03:30Z` Production backup. Ten later repository migrations were replayed only on the disposable target, `supabase/checks/restore_validation.sql` passed, representative author/reader RLS/privacy checks and core RPC checks passed, Auth/profile/password-hash and billing-state restoration were confirmed, and the disposable project was deleted after verification.
+- [x] Provider recovery boundary is reconciled: Supabase Restore-to-New-Project transfers Auth identity/hash records but does not copy hosted Auth settings/API keys. The runbook now treats those project-level values as explicit recovered-service reconfiguration, with existing-user sign-in and password-recovery verification required **before service reopen**, not as database-backup content that must already be intact on an unconfigured disposable clone.
+- [x] Current-worktree `npm run preflight:fast` passes with 995 tests / 989 pass / 0 fail / 6 skip.
+- [x] Current-worktree full Playwright suite passes 170/170 across desktop/mobile.
+- [ ] 2026-09-28 `PRE_REGISTRATION -> AUTHOR_PREOPEN` cutover has been explicitly approved and executed. **Future operational gate; not yet due and not pre-authorized.**
+- [ ] 2026-09-29 content-inventory / first-reader-path gate is complete. **Future operational gate.**
+- [ ] 2026-09-30 `BETA_OPEN` transition has been explicitly approved and executed. **Future launch operation; not pre-authorized.**
+- [ ] Qualified Japanese counsel review is complete. **Deferred/pending by owner; accepted residual risk remains recorded and is not converted into legal PASS.**
+
+**Release posture after the 2026-09-20 restore rehearsal: the backup/restore hard gate is PASS and the recovery blocker is cleared. Current preregistration operation remains technically healthy. This does not execute or pre-authorize the future `AUTHOR_PREOPEN`, 2026-09-29 inventory/first-reader-path gate, or `BETA_OPEN` transition, and it does not convert deferred qualified-counsel review into legal PASS.**
 
 ## 2026-09-19 current material application / post-PR #714 beta-audit remediation reconciliation
 

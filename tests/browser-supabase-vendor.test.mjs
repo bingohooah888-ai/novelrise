@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
+import { normalizeEol } from './test-text-utils.mjs';
+
 const root = path.resolve(import.meta.dirname, '..');
 const packageJson = JSON.parse(
   fs.readFileSync(path.join(root, 'package.json'), 'utf8')
@@ -15,7 +17,15 @@ const installedPath = path.join(
 
 test('browser Supabase runtime is exact-pinned and vendored from the installed package', () => {
   assert.equal(packageJson.dependencies['@supabase/supabase-js'], '2.112.3');
-  assert.deepEqual(fs.readFileSync(vendorPath), fs.readFileSync(installedPath));
+  assert.equal(
+    normalizeEol(fs.readFileSync(vendorPath, 'utf8')),
+    normalizeEol(fs.readFileSync(installedPath, 'utf8'))
+  );
+  const attributes = normalizeEol(
+    fs.readFileSync(path.join(root, '.gitattributes'), 'utf8')
+  );
+  assert.match(attributes, /^\* text=auto eol=lf$/mu);
+  assert.match(attributes, /^assets\/vendor\/supabase-js-\*\.js -text$/mu);
   assert.match(
     fs.readFileSync(
       path.join(root, 'assets/vendor/supabase-js-LICENSE.txt'),

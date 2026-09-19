@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { readTextSync } from './test-text-utils.mjs';
 import path from 'node:path';
 import test from 'node:test';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
-const featureCss = fs.readFileSync(
+const featureCss = readTextSync(
   path.join(repoRoot, 'novelight-home-feature-icons.css'),
   'utf8'
 );
