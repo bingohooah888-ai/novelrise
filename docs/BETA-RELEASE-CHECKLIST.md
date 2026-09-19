@@ -6,13 +6,38 @@ This checklist is the final operational gate after code review/CI. A checked box
 
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
-Current repository `main` and current material application SHA at reconciliation: `db7ad9aa79aae8fe79b792762efb61cdb92130e5` (`Add founding author preopen access gate (#711)`).
+The **current material application baseline at this reconciliation** is `613e804a943d06c0e2a46ab0cc2f12a6a2ad5cad` (`Harden beta launch fairness and spoiler boundaries (#714)`). The repository main immediately before this documentation-only reconciliation was the same SHA. Do not treat the SHA of this later documentation-only reconciliation as a new material application release; live repository main must be resolved at execution time under `docs/EVIDENCE-FRESHNESS-GATE.md`.
 
-Repository `main` may advance through later documentation-only reconciliation commits. In this checklist, **material application SHA** means the latest commit that changed deployable application behavior; a docs-only successor does not by itself make that application proof stale.
-
-**CURRENT LAUNCH POSTURE: GO — exact current main/material application SHA `db7ad9aa...` has green reviewed-head CI/CodeQL, Vercel Production, `production-readiness-smoke`, and post-migration `production-beta-verification`. All 23 migration versions added after the prior 2026-09-16 reconciliation are reconciled to successful Production state or the specifically documented repository-history alignment evidence, with the newest approved deploy run `35426789881` applying only `20260919151044` and completing migration/postcheck/observability verification. Production campaign state remains `PRE_REGISTRATION`; the 2026-09-28 `AUTHOR_PREOPEN` cutover has not been executed and remains separately approval-gated. Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.**
+**CURRENT LAUNCH POSTURE: GO — material application baseline `613e804a...` has green reviewed-head CI, Beta P0 DB Gate, CodeQL, Vercel Production, Production Readiness, and post-migration Production beta verification. The three beta-audit remediation migrations `20260919165000`, `20260919170000`, and `20260919171500` were applied together through approval-gated deploy run `35434518539` with successful mutation/postcheck/observability verification. The post-2026-09-16 reconciliation now covers 26 migration versions through `20260919171500`. Production campaign state remains `PRE_REGISTRATION`; the 2026-09-28 `AUTHOR_PREOPEN` cutover has not been executed and remains separately approval-gated. Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.**
 
 Qualified Japanese counsel review remains deferred/pending. The owner residual-risk decision is recorded in `docs/legal-beta-review.md`; this checklist does not assert legal sufficiency.
+
+## 2026-09-19 current material application / post-PR #714 beta-audit remediation reconciliation
+
+This section supersedes older “current”, “material application main”, migration-freshness, and final release-posture wording below where the scope overlaps. Older checked evidence remains preserved for audit/regression history.
+
+- [x] Material application baseline is `613e804a943d06c0e2a46ab0cc2f12a6a2ad5cad` (`Harden beta launch fairness and spoiler boundaries (#714)`).
+- [x] PR #714 final reviewed head is `7aea8cad3cc197aabd75996fb53559fc2ee8b2c1`.
+- [x] After exact-head owner approval, `NOVELIGHT CI` run `35433932164` completed Merge readiness, RLS integration/rollback, Static quality, Node tests, desktop/mobile smoke, desktop/mobile async-UI, and aggregate `check` with `SUCCESS`.
+- [x] `Beta P0 Database Gate` run `35433932205` completed `SUCCESS`.
+- [x] CodeQL run `35433932168` completed `SUCCESS`.
+- [x] Vercel Production is converged on `613e804a...`; live `/api/deployment-revision` returned the exact full SHA `613e804a943d06c0e2a46ab0cc2f12a6a2ad5cad`.
+- [x] `NOVELIGHT Production Readiness Smoke` run `35434084396` completed `SUCCESS`.
+- [x] Read-only Production Migration Preflight run `35434304517` completed `SUCCESS` and the repository-vs-Production comparison showed exactly the approved three pending migrations with no unexpected remote-only version.
+- [x] Approval Ledger #657 contains exact owner approval for operation `supabase-migration-deploy`, main `613e804a...`, challenge `613E804A`, and migration set `["20260919165000","20260919170000","20260919171500"]`.
+- [x] Approved Production migration deploy run `35434518539` revalidated the claimed approval and pending set, passed the dry-run, applied only the approved three migrations, verified post-deploy migration status, and passed Production beta observability.
+- [x] Approval Ledger #657 records the matching `CLAIMED` and `EXECUTED` entries for run `35434518539` with `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, and `failure_phase="none"`.
+- [x] Production migration history now includes `20260919165000_beta_audit_rank_fairness`, `20260919170000_beta_preopen_launch_clock`, and `20260919171500_spoiler_safe_episode_metadata`; no later repository migration is pending at this reconciliation.
+- [x] Fresh read-only Production verification confirms the legacy raw-PV ranking RPC is closed to `anon`/ `authenticated`, the v2 ranking feed is available, Work Rank uses qualified valid-read evidence, the discovery launch-clock helper is active, and spoiler-safe episode metadata RPCs are present and wired to valid-read evidence.
+- [x] The beta-audit ranking manipulation blocker is remediated in Production.
+- [x] Founding-author preopen works use the 2026-09-30 launch-relative benefit clock without rewriting their real publication timestamps.
+- [x] Automatic outline/update/continuity surfaces no longer pre-expose unreached future episode titles on the audited paths.
+- [x] Production campaign state remains `PRE_REGISTRATION`; the future `PRE_REGISTRATION -> AUTHOR_PREOPEN` cutover is not treated as completed and remains separately approval-gated.
+- [x] The post-2026-09-16 migration reconciliation now covers 26 versions through `20260919171500`.
+- [x] No remaining non-deferred technical/operational launch blocker from the beta-audit remediation is open.
+- [ ] Qualified Japanese counsel review is complete. **Deferred/pending by owner; accepted residual risk remains recorded and is not converted into legal PASS.**
+
+**Release posture after PR #714 / beta-audit remediation: GO for the presently executable technical/operational state.** This does not authorize the future `AUTHOR_PREOPEN` or public-beta campaign-state transitions. The planned 2026-09-29 content-inventory / first-reader-path gate remains future operational work while Production intentionally remains in preregistration.
 
 ## 2026-09-19 current-main / post-PR #711 preopen reconciliation
 
