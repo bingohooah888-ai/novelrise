@@ -4,6 +4,28 @@
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
 
+## 2026-09-19 post-PR #711 founding-author preopen reconciliation
+
+This section supersedes the older 2026-09-19 current-state wording below where the scope overlaps. Older sections remain preserved as audit context.
+
+Current repository `main` and current material application SHA are both `db7ad9aa79aae8fe79b792762efb61cdb92130e5` (`Add founding author preopen access gate (#711)`). PR #711 final reviewed head is `7825ca0f2a53ebe3fea390281c979533d05eb9f0`.
+
+PR #711 is a material Auth/DB release-control change. After exact-head owner approval, `NOVELIGHT CI` #2670 / run `35426432255` completed with Merge readiness, RLS integration/rollback, Static quality, Node tests, desktop/mobile smoke, desktop/mobile async-UI, and aggregate `check` all `SUCCESS`. CodeQL #2569 / run `35426432301` completed `SUCCESS`. On merged main `db7ad9aa...`, Vercel Production status is `success`, and `NOVELIGHT Production Readiness Smoke` #208 / run `35426613014` completed `SUCCESS`; the resulting `production-readiness-smoke` commit status is `success`.
+
+Production migration freshness was re-established before mutation. `NOVELIGHT Production Migration Preflight` #888 / run `35426646796`, bound to exact main `db7ad9aa...`, observed exactly one pending Production migration, `20260919151044`, and `supabase db push --linked --dry-run --include-all` reported that it would push only `20260919151044_beta_author_preopen_access.sql`.
+
+After explicit owner approval, Approval Ledger #657 recorded the exact operation `supabase-migration-deploy`, main `db7ad9aa...`, challenge `DB7AD9AA`, and migration set `["20260919151044"]`. `NOVELIGHT Approved Production Migration Deploy` #887 / run `35426789881` validated and claimed that approval, rechecked current main, required the Production pending set to equal the approved singleton, repeated the dry-run, and applied only `20260919151044_beta_author_preopen_access.sql`. Post-deploy migration status shows `20260919151044` present in both Local and Remote with no remaining pending migration. Production beta integrity/observability checks passed, the `production-beta-verification` status is `success`, and the ledger records `result:"success"`, `mutation_result:"success"`, `postcheck_result:"success"`, `failure_phase:"none"`.
+
+A separate read-only Production SQL verification after deployment confirmed the intended least-privilege state: campaign state remains `PRE_REGISTRATION`; the campaign-state constraint includes `AUTHOR_PREOPEN`; the Auth lookup policy exists; `supabase_auth_admin` has SELECT only on `email_normalized` and `status` rather than broad table SELECT; `anon` and `authenticated` do not have raw preregistration SELECT; and the Before User Created hook contains `AUTHOR_PREOPEN` handling while remaining executable by `supabase_auth_admin` and not by `anon` or `authenticated`.
+
+The 2026-09-28 founding-author preopen remains a **future campaign-state cutover**, not an already executed release state. Production is intentionally still `PRE_REGISTRATION`. No evidence here claims a live Production `AUTHOR_PREOPEN` signup E2E, because that state has not been activated. The cutover to `AUTHOR_PREOPEN` remains separately approval-gated under `docs/BETA-OPERATIONS-RUNBOOK.md`.
+
+The 2026-09-16 competitor audit #1–#24 remains fully implemented; PR #711 does not reopen or invalidate that audit. With `20260919151044` added, the post-2026-09-16 migration reconciliation now covers 23 migration versions, all reconciled to successful Production state or the previously documented repository-history alignment evidence.
+
+**Current technical/operational launch posture remains GO.** Current main is deployed, exact-current Production Readiness and Production beta verification are green, the preopen Auth/DB migration is applied with exact-scope owner approval and successful postcheck, and no new non-deferred technical/operational blocker was found. Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING** under the recorded residual-risk decision; this is not a legal PASS.
+
+This reconciliation is documentation-only. It performs no new Production DB/Supabase mutation, migration rerun, Production Auth Smoke, Stripe/billing/entitlement mutation, Secret/environment mutation, campaign-state cutover, or image generation/editing.
+
 ## 2026-09-19 post-competitor-audit / current-main launch reconciliation
 
 This section supersedes all older “current”, “material application main”, “Current release state”, and release-posture wording below where the scope overlaps. Older detailed sections remain preserved as audit context.
