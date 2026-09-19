@@ -6,13 +6,39 @@ This checklist is the final operational gate after code review/CI. A checked box
 
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
-Current repository `main` at reconciliation: `1c1d9af5e9a4100ba054119a4d59b3a05d24af74` (docs-only PR #707). Current material application SHA: `33fe909c04ac108f763f83b2b82ebf158f3ef263` (`Add explainable natural language search (#705)`).
+Current repository `main` and current material application SHA at reconciliation: `db7ad9aa79aae8fe79b792762efb61cdb92130e5` (`Add founding author preopen access gate (#711)`).
 
 Repository `main` may advance through later documentation-only reconciliation commits. In this checklist, **material application SHA** means the latest commit that changed deployable application behavior; a docs-only successor does not by itself make that application proof stale.
 
-**CURRENT LAUNCH POSTURE: GO — current material application SHA `33fe909c...` has green reviewed-head CI/CodeQL, Vercel Production, and `production-readiness-smoke`; current repository `main` `1c1d9af5...` is the docs-only PR #707 successor and also has green Vercel Production. All 22 migration versions added after the prior 2026-09-16 reconciliation are reconciled to successful Production state, with the newest approved deploy run `35420162111` completing migration/postcheck/observability verification. Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.**
+**CURRENT LAUNCH POSTURE: GO — exact current main/material application SHA `db7ad9aa...` has green reviewed-head CI/CodeQL, Vercel Production, `production-readiness-smoke`, and post-migration `production-beta-verification`. All 23 migration versions added after the prior 2026-09-16 reconciliation are reconciled to successful Production state or the specifically documented repository-history alignment evidence, with the newest approved deploy run `35426789881` applying only `20260919151044` and completing migration/postcheck/observability verification. Production campaign state remains `PRE_REGISTRATION`; the 2026-09-28 `AUTHOR_PREOPEN` cutover has not been executed and remains separately approval-gated. Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.**
 
 Qualified Japanese counsel review remains deferred/pending. The owner residual-risk decision is recorded in `docs/legal-beta-review.md`; this checklist does not assert legal sufficiency.
+
+## 2026-09-19 current-main / post-PR #711 preopen reconciliation
+
+This section supersedes older “current”, “material application main”, and final release-posture wording below where the scope overlaps. Older checked evidence remains preserved for audit/regression history.
+
+- [x] Fresh repository `main` and current material application SHA are both `db7ad9aa79aae8fe79b792762efb61cdb92130e5` (`Add founding author preopen access gate (#711)`).
+- [x] PR #711 final reviewed head is `7825ca0f2a53ebe3fea390281c979533d05eb9f0`.
+- [x] After exact-head owner approval, `NOVELIGHT CI` #2670 / run `35426432255` completed with Merge readiness, RLS integration/rollback, Static quality, Node tests, desktop/mobile smoke, desktop/mobile async-UI, and aggregate `check` all `SUCCESS`.
+- [x] PR #711 CodeQL #2569 / run `35426432301` completed `SUCCESS`.
+- [x] Exact merged main `db7ad9aa...` has Vercel Production status `success`.
+- [x] `NOVELIGHT Production Readiness Smoke` #208 / run `35426613014` completed `SUCCESS` on exact current main; `production-readiness-smoke` commit status is `success`.
+- [x] Read-only Production migration preflight #888 / run `35426646796` was bound to exact main `db7ad9aa...`, observed exactly one pending migration (`20260919151044`), and the dry-run would push only `20260919151044_beta_author_preopen_access.sql`.
+- [x] Approval Ledger #657 records the exact owner approval for operation `supabase-migration-deploy`, main `db7ad9aa...`, challenge `DB7AD9AA`, and migration set `["20260919151044"]`, followed by the matching CLAIMED record for bridge run `35426789881`.
+- [x] Approved Production migration deploy #887 / run `35426789881` revalidated current main and the exact singleton pending set, repeated the dry-run, applied only `20260919151044_beta_author_preopen_access.sql`, and completed all deploy/postcheck jobs successfully.
+- [x] Post-deploy migration status shows `20260919151044` in both Local and Remote with no remaining pending migration.
+- [x] Production beta integrity/observability checks passed and the `production-beta-verification` commit status is `success`.
+- [x] Approval Ledger #657 records `EXECUTED` for challenge `DB7AD9AA` with `result="success"`, `mutation_result="success"`, `postcheck_result="success"`, and `failure_phase="none"`.
+- [x] Read-only Production SQL verification confirms campaign state is still `PRE_REGISTRATION`, the state constraint includes `AUTHOR_PREOPEN`, the Auth lookup policy is present, Auth admin read access is limited to `email_normalized` and `status`, client roles do not gain raw preregistration SELECT, and the signup hook contains `AUTHOR_PREOPEN` handling without client EXECUTE privileges.
+- [x] The 2026-09-28 `PRE_REGISTRATION -> AUTHOR_PREOPEN` transition is not treated as completed. It remains a future, separately approval-gated campaign cutover under `docs/BETA-OPERATIONS-RUNBOOK.md`.
+- [x] No live Production `AUTHOR_PREOPEN` signup E2E is claimed while Production remains `PRE_REGISTRATION`.
+- [x] The competitor audit #1–#24 remains fully implemented; PR #711 does not reopen it.
+- [x] The post-2026-09-16 migration reconciliation now covers 23 migration versions; the newest `20260919151044` is successfully applied and postchecked.
+- [x] No new non-deferred technical/operational launch blocker was found after PR #711 and its Production migration.
+- [ ] Qualified Japanese counsel review is complete. **Deferred/pending by owner; accepted residual risk remains recorded and is not converted into legal PASS.**
+
+**Release posture after PR #711 / Production preopen-migration reconciliation: GO.** This is a technical/operational classification based on current and specifically still-valid evidence. It does not authorize the future `AUTHOR_PREOPEN` campaign cutover and does not make a legal-sufficiency finding.
 
 ## 2026-09-19 current-main / post-competitor-audit reconciliation
 
