@@ -321,3 +321,35 @@
 - 作者返信自体ではSCOUT EXPを発生させない。
 - 第二のコメントシステム、無制限スレッド、SNSタイムライン機能は追加しない。
 - Production migration適用はPR mergeとは別の明示承認境界とする。
+
+
+## B〜C候補 #24 セマンティック／対話型作品検索
+
+状態：**実装済み（本変更セット） / Production DB migration不要**
+
+実装証拠：
+
+- `search.html`
+- `novelight-natural-search.js`
+- `novelight-natural-search.css`
+- `tests/natural-language-search.test.mjs`
+
+実装済み範囲：
+
+- 既存キーワード検索を維持したまま、「自然文で探す β」を追加する。
+- 自然文からジャンル、重要語、限定された近義概念を決定論的に抽出する。
+- 既存の `novelight_neutral_search` だけを候補取得に再利用し、第二の検索DB・vector table・外部検索サービスを追加しない。
+- 自然文の関連度はタイトル・あらすじ・ジャンルとの一致だけで算出し、検索結果へ一致理由を最大3件表示する。
+- 自然文モードでは人気順・PV順等を混ぜず、「自然文の関連度順」として表示する。
+- 実際に表示した候補だけを既存の中立検索インプレッション経路へ渡し、候補取得RPC呼び出し自体は露出として記録しない。
+- 既存のBlock／Mute・成熟テーマ等の `NovelightUserSafety.filterNovelRows` を表示前に通す。
+- 入力は160文字、抽出検索語は最大6件、1検索語あたり候補取得は最大60件に制限してDB負荷を有界化する。
+
+安全・公平性境界：
+
+- 外部LLM、Embedding API、新規Secret、新規従量課金サービスを使用しない。
+- エピソード本文、下書き、限定共有、創作ノート、個人読書履歴その他private dataを検索対象へ流用しない。
+- 作品Rank、LIGHT SEED、SCOUT EXP、PV、お気に入り、フォロワー数、契約プラン、追加露出を自然文関連度へ加点しない。
+- 自然文検索を作品品質のAI判定として扱わず、候補理由を表示して説明可能性を維持する。
+- 将来Embedding／生成AI型検索へ拡張する場合は、コスト、プライバシー、成人向けゾーニング、不正誘導、説明可能性を別途設計する。
+- 本変更はSupabase schema／RLS／permissionsを変更せず、Production DB mutationを必要としない。

@@ -1,0 +1,78 @@
+.natural-search-modes {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.natural-search-mode {
+  padding: 9px 14px;
+  border: 1px solid #d7d9df;
+  border-radius: 999px;
+  background: #fff;
+  color: #626773;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.natural-search-mode[aria-pressed='true'] {
+  border-color: #6d4aff;
+  background: #f0edff;
+  color: #5c45be;
+}
+.natural-search-beta {
+  margin-left: 4px;
+  font-size: 10px;
+}
+.natural-search-note {
+  margin: -6px 0 18px;
+  padding: 11px 13px;
+  border: 1px solid #e5e0ff;
+  border-radius: 9px;
+  background: #faf9ff;
+  color: #625a7d;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.natural-search-intent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -7px 0 16px;
+}
+.natural-search-chip {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eeeaff;
+  color: #5c45be;
+  font-size: 11px;
+  font-weight: 800;
+}
+.natural-match-reason {
+  margin: 0 0 9px;
+  padding: 7px 9px;
+  border-left: 3px solid #a99aff;
+  border-radius: 0 6px 6px 0;
+  background: #faf9ff;
+  color: #655b82;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.natural-search-loading {
+  color: #6b7280;
+}
+.search-area.is-natural #sortSelect {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+@media (max-width: 760px) {
+  .natural-search-modes {
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .natural-search-mode {
+    flex: 0 0 auto;
+  }
+  .natural-search-note {
+    margin-top: -4px;
+  }
+}
