@@ -2,17 +2,41 @@
 
 This checklist is the final operational gate after code review/CI. A checked box must represent an observed result or a specifically justified still-valid result under `docs/EVIDENCE-FRESHNESS-GATE.md`, not an assumption.
 
-**Reconciled: 2026-09-16 JST.**
+**Reconciled: 2026-09-19 JST.**
 
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
-Current material launch main at reconciliation: `a7bd226a7a4f457bf593df6084ba4d676af5b444` (`Add beta scheduled episode publication (#609)`).
+Current repository `main` at reconciliation: `1c1d9af5e9a4100ba054119a4d59b3a05d24af74` (docs-only PR #707). Current material application SHA: `33fe909c04ac108f763f83b2b82ebf158f3ef263` (`Add explainable natural language search (#705)`).
 
 Repository `main` may advance through later documentation-only reconciliation commits. In this checklist, **material application SHA** means the latest commit that changed deployable application behavior; a docs-only successor does not by itself make that application proof stale.
 
-**CURRENT LAUNCH POSTURE: GO — PR #609 substantive reviewed-head CI and CodeQL evidence are green; exact current material application SHA `a7bd226a...` is deployed successfully to Vercel Production; Production Readiness #167 / run `35073115512` and `production-beta-verification` are green on that exact SHA; Production migration `20260916100000_episode_scheduled_publication.sql` was applied under exact-scope owner approval through bridge run `35074760475` with mutation/postcheck success and no pending migrations afterward. This evidence does not claim a live elapsed-time scheduled-publication Production fixture, and the older authenticated Chapter 38/40 smoke is not stretched into proof of PR #609.**
+**CURRENT LAUNCH POSTURE: GO — current material application SHA `33fe909c...` has green reviewed-head CI/CodeQL, Vercel Production, and `production-readiness-smoke`; current repository `main` `1c1d9af5...` is the docs-only PR #707 successor and also has green Vercel Production. All 22 migration versions added after the prior 2026-09-16 reconciliation are reconciled to successful Production state, with the newest approved deploy run `35420162111` completing migration/postcheck/observability verification. Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.**
 
 Qualified Japanese counsel review remains deferred/pending. The owner residual-risk decision is recorded in `docs/legal-beta-review.md`; this checklist does not assert legal sufficiency.
+
+## 2026-09-19 current-main / post-competitor-audit reconciliation
+
+This section supersedes older “current”, “material application main”, and final release-posture wording below where the scope overlaps. Older checked evidence remains preserved for audit/regression history.
+
+- [x] Fresh repository `main` is `1c1d9af5e9a4100ba054119a4d59b3a05d24af74`; the exact diff from material application SHA `33fe909c04ac108f763f83b2b82ebf158f3ef263` is docs-only.
+- [x] PR #705 final head `9c7bcfe5df47e7da76e2d698f1e3dd3930b1ec3c` passed `NOVELIGHT CI` #2662 / run `35421729769`: Merge readiness, Static quality, Node tests, desktop/mobile smoke, desktop/mobile async-UI, and aggregate `check` are successful.
+- [x] PR #705 CodeQL #2563 / run `35421729766` completed `SUCCESS`.
+- [x] Merged material application SHA `33fe909c...` has Vercel Production and `production-readiness-smoke` statuses `success`.
+- [x] PR #707 is docs-only; final head `74d8387788cce4c610c0172f560f64edb6486cdc` passed `NOVELIGHT CI` #2664 / run `35423088099` and CodeQL #2565 / run `35423088105`, while current `main` has Vercel Production status `success`.
+- [x] The 2026-09-16 competitor audit #1–#24 is fully implemented on current `main`; no formal #25 exists and no speculative #25 is treated as a beta requirement.
+- [x] Exactly 22 migration files were added between the prior post-#609 evidence baseline `a7bd226a...` and current `main`.
+- [x] Approval Ledger #460 has successful mutation/postcheck execution evidence for `20260917020000` and `20260917123000`.
+- [x] Approval Ledger #657 has successful mutation/postcheck execution evidence for the 18 versions from `20260917150000` through `20260919122554` listed in the matching release-evidence reconciliation.
+- [x] PR #632 records `20260917074632_episode_revision_history` as the exact Production-applied version and aligns repository history without changing SQL behavior.
+- [x] PR #636 records `20260917084123_episode_revision_fk_indexes` as already applied successfully in Production with formal postcheck success and aligns repository history without changing SQL behavior.
+- [x] Latest approved Production migration deploy run `35420162111` completed validation, mutation, and result-recording jobs successfully; its execution required the exact pending set, dry-ran it, applied `20260919122554`, verified migration status, passed Production beta observability, and published successful Production beta verification.
+- [x] The post-deploy list in run `35420162111` shows `20260919122554` present in both Local and Remote; PR #705 and PR #707 add no later migration.
+- [x] Existing Production Authenticated Smoke Issue #511 / run `34692176490` remains scope-limited to the authenticated Chapter 38/40 create/render/LIGHT ANALYTICS flow; it is not relabeled as proof of later competitor-audit features.
+- [x] No duplicate Production migration, Auth Smoke, Stripe operation, Secret mutation, or campaign-state cutover is required merely to refresh documentary SHA alignment.
+- [x] No new non-deferred technical/operational launch blocker was found in the 2026-09-19 reconciliation.
+- [ ] Qualified Japanese counsel review is complete. **Deferred/pending by owner; accepted residual risk remains recorded and is not converted into legal PASS.**
+
+**Release posture after 2026-09-19 current-main reconciliation: GO.** This is a technical/operational classification based on current and specifically still-valid evidence. It does not authorize any Production mutation and does not make a legal-sufficiency finding.
 
 ## 2026-09-16 post-PR #609 scheduled-publication reconciliation
 
