@@ -215,6 +215,46 @@
 - Production migration適用はPR mergeとは別の明示承認境界とする。
 
 
+## B〜C候補 #22 共同執筆／共同管理
+
+状態：**実装済み（本変更セット） / Production migration未適用**
+
+実装証拠：
+
+- `collaboration.html`
+- `episode-edit.html`
+- `my-novels.html`
+- `novel.html`
+- `novelight-episode-schedule.js`
+- `novelight-episode-history.js`
+- `supabase/migrations/20260919112318_novel_collaborative_writing.sql`
+- `supabase/checks/20260919112318_novel_collaborative_writing_precheck.sql`
+- `supabase/checks/20260919112318_novel_collaborative_writing_postcheck.sql`
+- `supabase/rollback/20260919112318_novel_collaborative_writing_rollback.sql`
+- `tests/collaborative-writing-contract.test.mjs`
+- `tests/rls/collaborative-writing.sql`
+
+実装済み範囲：
+
+- `novels.user_id` を唯一の作品所有者として維持し、共同執筆で所有権移転を行わない。
+- β版の共同執筆者は `editor` 1種類。既存話のタイトル・本文編集と、末尾への新規非公開下書き作成だけを許可する。
+- 公開、削除、話数・章・並び順、予約公開、作品設定、課金・露出設定は所有者専用のまま維持する。
+- 1作品5人まで。招待URLは7日失効・1回使用で、生トークンは保存せずSHA-256ハッシュだけを保持する。
+- 所有者は招待更新・失効・共同執筆者削除が可能。共同執筆者本人は離脱できる。
+- 双方向Block関係では新規参加と共同編集を停止する。
+- 共同編集は既存episode revision履歴を通し、別途private audit eventへ参加・離脱・招待・編集等を記録する。
+- migration未反映中は共同執筆UIを「データベース反映待ち」で安全停止し、所有者の従来episode編集だけは既存owner経路を継続する。
+
+安全・公平性境界：
+
+- 共同執筆関連の生テーブルはRLS有効かつclient rolesからrevokeし、authenticated専用RPCだけを明示grantする。
+- 既存 `novels` / `episodes` owner RLSは緩めない。
+- 招待画面は `noindex` + `no-referrer`。
+- 共同執筆者へ公開・削除・予約公開・revision復元等の所有者操作を出さない。
+- 作品Rank、LIGHT SEED、SCOUT EXP、PV、お気に入り、検索順位、発見棚、露出、LIGHT ANALYTICS、推薦へ接続しない。
+- Production migration適用はPR mergeとは別の明示承認境界とする。
+
+
 ## B〜C候補 #14 コメントの作者モデレーション強化
 
 状態：**実装済み（本変更セット） / Production migration未適用**
