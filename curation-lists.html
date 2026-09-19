@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>読者キュレーション管理 | NOVELIGHT</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}
+a{color:inherit}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:960px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{color:#6d4aff;font-size:25px;font-weight:900;text-decoration:none}.back{color:#666;font-size:14px;text-decoration:none}
+footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:960px;margin:auto;display:flex;justify-content:center;gap:15px;flex-wrap:wrap;font-size:12px}.footer-links a{text-decoration:none}
+</style>
+<link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+<link rel="stylesheet" href="novelight-curation.css">
+</head>
+<body class="novelight-theme novelight-page-curation-lists">
+<header><div class="header-inner"><a class="logo" href="index.html">NOVELIGHT</a><a class="back" href="favorites.html">← 本棚へ</a></div></header>
+<main class="novelight-curation-shell">
+<section class="novelight-curation-hero">
+<h1>読者キュレーション</h1>
+<p>「この作品たちを一緒に読んでほしい」を、自分の選書リストとしてまとめられます。β版では公開ディレクトリを作らず、共有URLを知っている人だけが閲覧できます。</p>
+<div class="novelight-curation-policy">リストの人気・閲覧・作品追加は、作品Rank・露出・LIGHT SEED・SCOUT・おすすめに影響しません。</div>
+</section>
+<form id="createForm" class="novelight-curation-create"><strong>新しいリストを作成</strong>
+<input id="createTitle" maxlength="80" required placeholder="例：静かな夜に読みたい物語">
+<textarea id="createDescription" maxlength="500" placeholder="この選書のテーマや読みどころ（任意）"></textarea>
+<button id="createButton" type="submit">リストを作成</button>
+<div id="createStatus" class="novelight-curation-status"></div>
+</form>
+<div id="listStatus" class="novelight-curation-status">読み込み中...</div>
+<section id="lists" class="novelight-curation-list" aria-live="polite"></section>
+</main>
+<footer><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="contact.html">お問い合わせ</a></div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="novelight-client.js"></script>
+<script src="novelight-curation.js"></script>
+<script>
+const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+const api=NovelightCuration;
+const listsNode=document.getElementById('lists');
+const listStatus=document.getElementById('listStatus');
+const createForm=document.getElementById('createForm');
+const createButton=document.getElementById('createButton');
+const createStatus=document.getElementById('createStatus');
+
+function node(tag,className,text){
+  const element=document.createElement(tag);
+  if(className)element.className=className;
+  if(text!==undefined)element.textContent=text;
+  return element;
+}
+function itemNode(list,item){
+  const row=node('div','novelight-curation-item');
+  const main=node('div','novelight-curation-item-main');
+  main.append(
+    node('div','novelight-curation-item-title',item.available?String(item.title||'作品名未設定'):'現在公開されていない作品'),
+    node('div','novelight-curation-item-meta',item.available?String(item.genre||'ジャンル未設定'):'共有ページでは表示されません')
+  );
+  const remove=node('button','', '削除');
+  remove.addEventListener('click',async()=>{
+    remove.disabled=true;
+    try{
+      await api.removeItem(client,list.list_id,item.novel_id);
+      await load();
+    }catch(error){
+      console.error(error);
+      listStatus.textContent='作品をリストから外せませんでした。';
+      remove.disabled=false;
+    }
+  });
+  row.append(main,remove);
+  return row;
+}
+
+function listCard(list){
+  const card=node('article','novelight-curation-card');
+  card.append(node('h2','',String(list.title||'名称未設定')));
+
+  const fields=node('div','novelight-curation-fields');
+  const title=document.createElement('input');
+  title.maxLength=80;
+  title.value=String(list.title||'');
+  title.setAttribute('aria-label','リスト名');
+  const description=document.createElement('textarea');
+  description.maxLength=500;
+  description.value=String(list.description||'');
+  description.setAttribute('aria-label','リスト説明');
+  const visibility=document.createElement('select');
+  visibility.setAttribute('aria-label','公開状態');  for(const [value,label] of [['private','非公開'],['shared','共有URLで公開']]){
+    const option=document.createElement('option');
+    option.value=value;option.textContent=label;
+    option.selected=list.visibility===value;
+    visibility.append(option);
+  }
+  fields.append(title,description,visibility);
+  card.append(fields);
+
+  const share=node('div','novelight-curation-share');
+  const shareLabel=node('strong','',list.visibility==='shared'?'共有URL':'現在は非公開です');
+  const shareValue=node('span','',list.visibility==='shared'?api.shareUrl(list.share_token):'公開状態を「共有URLで公開」にするとリンクを使えます。');
+  share.append(shareLabel,shareValue);
+  card.append(share);
+
+  const actions=node('div','novelight-curation-actions');
+  const save=node('button','primary','保存');
+  const copy=node('button','','共有URLをコピー');
+  const rotate=node('button','','共有URLを更新');
+  const removeList=node('button','danger','リストを削除');
+  copy.disabled=list.visibility!=='shared';
+
+  const status=node('div','novelight-curation-status');
+  save.addEventListener('click',async()=>{
+    save.disabled=true;status.textContent='保存中...';
+    try{
+      await api.updateList(client,list.list_id,{title:title.value,description:description.value,visibility:visibility.value});
+      status.textContent='保存しました。';
+      await load();
+    }catch(error){
+      console.error(error);status.textContent=error?.message||'保存できませんでした。';save.disabled=false;
+    }
+  });  copy.addEventListener('click',async()=>{
+    const url=api.shareUrl(list.share_token);
+    try{
+      await navigator.clipboard.writeText(url);
+      status.textContent='共有URLをコピーしました。';
+    }catch(error){
+      console.error(error);
+      window.prompt('このURLをコピーしてください',url);
+    }
+  });
+  rotate.addEventListener('click',async()=>{
+    if(!window.confirm('現在の共有URLを無効にして、新しいURLへ変更しますか？'))return;
+    rotate.disabled=true;status.textContent='共有URLを更新中...';
+    try{
+      await api.rotateShareToken(client,list.list_id);
+      await load();
+    }catch(error){
+      console.error(error);status.textContent='共有URLを更新できませんでした。';rotate.disabled=false;
+    }
+  });
+  removeList.addEventListener('click',async()=>{
+    if(!window.confirm('このキュレーションリストを削除しますか？'))return;
+    removeList.disabled=true;
+    try{
+      await api.deleteList(client,list.list_id);
+      await load();
+    }catch(error){
+      console.error(error);status.textContent='リストを削除できませんでした。';removeList.disabled=false;
+    }
+  });
+  actions.append(save,copy,rotate,removeList);
+  card.append(actions,status);
+
+  const items=node('div','novelight-curation-items');
+  const rows=Array.isArray(list.items)?list.items:[];
+  if(!rows.length){
+    items.append(node('div','novelight-curation-empty','まだ作品がありません。作品ページの「＋ キュレーション」から追加できます。'));
+  }else{
+    for(const item of rows)items.append(itemNode(list,item));
+  }  card.append(items);
+  return card;
+}
+
+function render(lists){
+  listsNode.replaceChildren();
+  if(!lists.length){
+    listsNode.append(node('div','novelight-curation-empty','まだキュレーションリストはありません。'));
+    return;
+  }
+  for(const list of lists)listsNode.append(listCard(list));
+}
+
+async function load(){
+  listStatus.textContent='読み込み中...';
+  try{
+    const result=await api.loadMyLists(client);
+    if(!result.available){
+      createForm.hidden=true;
+      render([]);
+      listStatus.textContent='キュレーション機能はデータベース反映待ちです。';
+      return;
+    }
+    createForm.hidden=false;
+    render(result.lists);
+    listStatus.textContent='作品の追加は各作品ページから行えます。公開は共有URL方式のみです。';
+  }catch(error){
+    console.error(error);
+    render([]);
+    listStatus.textContent='キュレーションを読み込めませんでした。時間をおいて再度お試しください。';
+  }
+}
+
+createForm.addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  createButton.disabled=true;createStatus.textContent='作成中...';
+  try{
+    await api.createList(client,{title:document.getElementById('createTitle').value,description:document.getElementById('createDescription').value});
+    createForm.reset();createStatus.textContent='リストを作成しました。';
+    await load();
+  }catch(error){
+    console.error(error);createStatus.textContent=error?.message||'作成できませんでした。';
+  }finally{createButton.disabled=false}
+});(async()=>{
+  void NovelightClient.recordVisit(client);
+  let session=null;
+  try{
+    const auth=await client.auth.getSession();
+    session=auth.data.session;
+  }catch(error){
+    console.error(error);
+    listStatus.textContent='ログイン状態を確認できませんでした。';
+    return;
+  }
+  if(!session){
+    location.href='login.html?redirect=curation-lists.html';
+    return;
+  }
+  void NovelightClient.claimAcquisition(client);
+  await load();
+})();
+</script>
+</body>
+</html>

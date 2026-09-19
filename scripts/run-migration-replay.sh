@@ -632,4 +632,33 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260919100000_author_reader_polls_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify B #21 reader curation lists'
+"${REPLAY[@]}" -f supabase/rollback/20260919102000_reader_curation_lists_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919102000_reader_curation_lists_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919102000_reader_curation_lists.sql
+"${REPLAY[@]}" -f supabase/checks/20260919102000_reader_curation_lists_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/reader-curation-lists.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #21 reader curation rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260919102000_reader_curation_lists_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.reader_curation_lists') is not null
+     or to_regclass('public.reader_curation_list_items') is not null
+     or to_regprocedure('public.novelight_public_reader_curation(uuid)') is not null then
+    raise exception 'B #21 rollback left curation runtime behind';
+  end if;
+  if to_regclass('public.novels') is null or to_regclass('public.profiles') is null then
+    raise exception 'B #21 rollback disturbed existing novel/profile foundations';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260919102000_reader_curation_lists_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919102000_reader_curation_lists.sql
+"${REPLAY[@]}" -f supabase/checks/20260919102000_reader_curation_lists_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
