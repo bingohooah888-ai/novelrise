@@ -15,15 +15,19 @@ function rootHtmlFiles() {
     .sort();
 }
 
-test('browser Supabase runtime is pinned to the lockfile version', () => {
+test('browser Supabase runtime is pinned to the lockfile version and served locally', () => {
   const lock = JSON.parse(read('package-lock.json'));
   const version =
     lock.packages?.['node_modules/@supabase/supabase-js']?.version;
   assert.ok(version, 'Supabase JS lockfile version must be available');
-  const expected = `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@${version}`;
+  assert.equal(
+    lock.packages?.['']?.dependencies?.['@supabase/supabase-js'],
+    version
+  );
+  const expected = `/assets/vendor/supabase-js-${version}.js`;
   const offenders = rootHtmlFiles().filter((name) => {
     const html = read(name);
-    return html.includes('@supabase/supabase-js@') && !html.includes(expected);
+    return html.includes('supabase.createClient') && !html.includes(expected);
   });
   assert.deepEqual(
     offenders,
@@ -180,6 +184,10 @@ test('Vercel applies baseline browser security headers', () => {
     /frame-ancestors 'none'/
   );
   assert.match(map.get('Content-Security-Policy') || '', /object-src 'none'/);
+  assert.doesNotMatch(
+    map.get('Content-Security-Policy') || '',
+    /cdn\.jsdelivr\.net/
+  );
   assert.equal(map.get('X-Content-Type-Options'), 'nosniff');
   assert.equal(map.get('X-Frame-Options'), 'DENY');
   assert.equal(map.get('Referrer-Policy'), 'strict-origin-when-cross-origin');

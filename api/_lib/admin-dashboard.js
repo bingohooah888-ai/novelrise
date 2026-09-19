@@ -151,26 +151,45 @@ async function fetchPaged(
   throw new Error(`Admin query row cap reached for ${table}`);
 }
 
-async function fetchTopWorks(supabase) {
-  const { data, error } = await supabase
-    .from('novels')
-    .select('id,title,user_id,pv,favorites,created_at')
-    .eq('status', 'published')
-    .order('pv', { ascending: false })
-    .limit(10);
+export function buildFavoriteCounts({ novels, favorites }) {
+  const ownerByNovel = new Map(
+    (novels ?? []).map((row) => [String(row.id), row.user_id ?? null])
+  );
+  const byNovel = new Map();
+  let total = 0;
 
-  if (error) {
-    throw new Error(`Admin top works query failed: ${error.message}`);
+  for (const row of favorites ?? []) {
+    const novelId = String(row?.novel_id ?? '');
+    const ownerId = ownerByNovel.get(novelId);
+    if (!novelId || !ownerId || row?.user_id === ownerId) continue;
+    byNovel.set(novelId, (byNovel.get(novelId) ?? 0) + 1);
+    total += 1;
   }
 
-  return (data ?? []).map((row) => ({
-    id: String(row.id),
-    title: row.title ?? 'タイトル未設定',
-    authorId: row.user_id,
-    pv: Number(row.pv ?? 0),
-    favorites: Number(row.favorites ?? 0),
-    createdAt: row.created_at
-  }));
+  return { total, byNovel };
+}
+
+function buildTopWorks(novels, favoriteCounts) {
+  return [...(novels ?? [])]
+    .filter((row) => row?.status === 'published')
+    .sort((a, b) => {
+      const pvDiff = Number(b?.pv ?? 0) - Number(a?.pv ?? 0);
+      if (pvDiff) return pvDiff;
+      const aTime = new Date(a?.created_at ?? 0).getTime();
+      const bTime = new Date(b?.created_at ?? 0).getTime();
+      return (
+        bTime - aTime || String(a?.id ?? '').localeCompare(String(b?.id ?? ''))
+      );
+    })
+    .slice(0, 10)
+    .map((row) => ({
+      id: String(row.id),
+      title: row.title ?? 'タイトル未設定',
+      authorId: row.user_id,
+      pv: Number(row.pv ?? 0),
+      favorites: favoriteCounts.get(String(row.id)) ?? 0,
+      createdAt: row.created_at
+    }));
 }
 
 function unique(values) {
@@ -313,6 +332,40 @@ function sum(rows, key) {
   return (rows ?? []).reduce((total, row) => total + Number(row[key] ?? 0), 0);
 }
 
+export function calculateWorksPerReader({ rows, cutoff }) {
+  const cutoffTime = new Date(cutoff).getTime();
+  const readers = new Set();
+  const readerWorks = new Set();
+
+  for (const row of rows ?? []) {
+    if (row?.event_type !== 'detail_open') continue;
+    const occurredAt = new Date(row?.occurred_at).getTime();
+    if (!Number.isFinite(occurredAt) || occurredAt < cutoffTime) continue;
+    const viewerKey = String(row?.viewer_key_hash ?? '').trim();
+    const novelId = String(row?.novel_id_snapshot ?? '').trim();
+    if (!viewerKey || !novelId) continue;
+    readers.add(viewerKey);
+    readerWorks.add(`${viewerKey}:${novelId}`);
+  }
+
+  return {
+    readers: readers.size,
+    uniqueWorkViews: readerWorks.size,
+    averageWorksPerReader: readers.size
+      ? Number((readerWorks.size / readers.size).toFixed(2))
+      : null
+  };
+}
+
+export function countExposureByPlan(rows) {
+  const counts = { free: 0, standard: 0, premium: 0 };
+  for (const row of rows ?? []) {
+    const plan = String(row?.plan_snapshot ?? '').toLowerCase();
+    if (Object.hasOwn(counts, plan)) counts[plan] += 1;
+  }
+  return counts;
+}
+
 export async function loadAdminOverview({
   supabase,
   days = 30,
@@ -373,13 +426,13 @@ export async function loadAdminOverview({
     counts,
     novels,
     episodes,
+    favorites,
     readerRows,
     lifecycleRows,
     activityRows,
     acquisitionRows,
     exposureRows,
-    conversionRows,
-    topWorks
+    conversionRows
   ] = await Promise.all([
     Promise.all(
       Object.entries(countPromises).map(async ([key, promise]) => [
@@ -387,17 +440,13 @@ export async function loadAdminOverview({
         await promise
       ])
     ).then((entries) => Object.fromEntries(entries)),
-    fetchPaged(
-      supabase,
-      'novels',
-      'id,user_id,title,status,pv,favorites,created_at'
-    ),
+    fetchPaged(supabase, 'novels', 'id,user_id,title,status,pv,created_at'),
     fetchPaged(supabase, 'episodes', 'id,pv,created_at'),
+    fetchPaged(supabase, 'favorites', 'novel_id,user_id'),
     fetchPaged(
       supabase,
       'reader_journey_events',
-      'user_id,occurred_at',
-      (query) => query.not('user_id', 'is', null)
+      'viewer_key_hash,user_id,event_type,novel_id_snapshot,occurred_at'
     ),
     fetchPaged(
       supabase,
@@ -414,7 +463,7 @@ export async function loadAdminOverview({
     fetchPaged(
       supabase,
       'novel_exposure_events',
-      'novel_id_snapshot,exposed_at',
+      'novel_id_snapshot,plan_snapshot,exposed_at',
       (query) => query.gte('exposed_at', cutoffWindow)
     ),
     fetchPaged(
@@ -422,8 +471,7 @@ export async function loadAdminOverview({
       'novel_exposure_conversions',
       'novel_id_snapshot,event_type,converted_at',
       (query) => query.gte('converted_at', cutoffWindow)
-    ),
-    fetchTopWorks(supabase)
+    )
   ]);
 
   const authorIds = unique(novels.map((row) => row.user_id));
@@ -440,10 +488,24 @@ export async function loadAdminOverview({
       .map((row) => row.viewer_key_hash)
   );
 
+  const favoriteMetrics = buildFavoriteCounts({ novels, favorites });
+  const topWorks = buildTopWorks(novels, favoriteMetrics.byNovel);
+  const authorRetention7d = calculateRetention({
+    userIds: authorIds,
+    lifecycleRows,
+    days: 7,
+    now
+  });
   const authorRetention30d = calculateRetention({
     userIds: authorIds,
     lifecycleRows,
     days: 30,
+    now
+  });
+  const readerRetention7d = calculateRetention({
+    userIds: readerIds,
+    lifecycleRows,
+    days: 7,
     now
   });
   const readerRetention30d = calculateRetention({
@@ -452,6 +514,11 @@ export async function loadAdminOverview({
     days: 30,
     now
   });
+  const worksPerReader = calculateWorksPerReader({
+    rows: readerRows,
+    cutoff: cutoffWindow
+  });
+  const planExposure = countExposureByPlan(exposureRows);
   const discoveryWatch = buildDiscoveryWatch({
     novels,
     exposureRows,
@@ -475,17 +542,24 @@ export async function loadAdminOverview({
       zeroPvRate: rate(counts.zeroPvWorks, counts.publishedWorks),
       workPv: sum(novels, 'pv'),
       episodePv: sum(episodes, 'pv'),
-      favorites: sum(novels, 'favorites')
+      favorites: favoriteMetrics.total
     },
     retention: {
+      author7d: authorRetention7d,
       author30d: authorRetention30d,
+      reader7d: readerRetention7d,
       reader30d: readerRetention30d
+    },
+    kpis: {
+      registrationToFirstWorkRate: rate(authorIds.size, counts.totalUsers),
+      worksPerReader
     },
     plans: {
       free: counts.freeUsers,
       standard: counts.standardUsers,
       premium: counts.premiumUsers
     },
+    planExposure,
     funnel: {
       detailOpens: counts.detailOpens,
       bodyReads10s: counts.bodyReads,
@@ -524,6 +598,20 @@ async function fetchRowsByUserIds(supabase, table, columns, userColumn, ids) {
   return data ?? [];
 }
 
+async function fetchFavoriteRowsByNovelIds(supabase, novelIds) {
+  if (!novelIds.length) return [];
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('novel_id,user_id')
+    .in('novel_id', novelIds);
+
+  if (error) {
+    throw new Error(`Admin favorite detail query failed: ${error.message}`);
+  }
+
+  return data ?? [];
+}
+
 export async function searchAdminUsers({ supabase, query }) {
   const normalized = String(query ?? '').trim();
   if (!normalized) return [];
@@ -556,7 +644,7 @@ export async function searchAdminUsers({ supabase, query }) {
     fetchRowsByUserIds(
       supabase,
       'novels',
-      'user_id,status,pv,favorites',
+      'id,user_id,status,pv',
       'user_id',
       ids
     ),
@@ -583,6 +671,14 @@ export async function searchAdminUsers({ supabase, query }) {
     )
   ]);
 
+  const favoriteRows = await fetchFavoriteRowsByNovelIds(
+    supabase,
+    novels.map((row) => row.id)
+  );
+  const favoriteCounts = buildFavoriteCounts({
+    novels,
+    favorites: favoriteRows
+  }).byNovel;
   const lifecycleByUser = new Map(lifecycle.map((row) => [row.user_id, row]));
   const acquisitionByUser = new Map(
     acquisition.map((row) => [row.user_id, row])
@@ -609,7 +705,10 @@ export async function searchAdminUsers({ supabase, query }) {
       workCount: works.length,
       publishedWorkCount: publishedWorks.length,
       totalWorkPv: sum(works, 'pv'),
-      totalFavorites: sum(works, 'favorites'),
+      totalFavorites: works.reduce(
+        (total, work) => total + (favoriteCounts.get(String(work.id)) ?? 0),
+        0
+      ),
       acquisitionSource: firstTouch?.source ?? null,
       acquisitionCampaign: firstTouch?.campaign ?? null,
       firstTouchedAt: firstTouch?.first_touched_at ?? null,

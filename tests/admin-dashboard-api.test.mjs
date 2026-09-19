@@ -3,7 +3,10 @@ import test from 'node:test';
 
 import {
   buildDiscoveryWatch,
+  buildFavoriteCounts,
   calculateRetention,
+  calculateWorksPerReader,
+  countExposureByPlan,
   createAdminDashboardHandler,
   isSameOriginRequest,
   parseAdminAllowlist
@@ -331,4 +334,86 @@ test('30-day retention requires a return on or after each users threshold', () =
     retained: 1,
     rate: 50
   });
+});
+
+test('admin favorite metrics use favorite rows and exclude author self-favorites', () => {
+  const novels = [
+    { id: 10, user_id: ADMIN_ID },
+    { id: 20, user_id: OTHER_ID }
+  ];
+  const metrics = buildFavoriteCounts({
+    novels,
+    favorites: [
+      { novel_id: 10, user_id: ADMIN_ID },
+      { novel_id: 10, user_id: OTHER_ID },
+      { novel_id: 20, user_id: ADMIN_ID }
+    ]
+  });
+
+  assert.equal(metrics.total, 2);
+  assert.equal(metrics.byNovel.get('10'), 1);
+  assert.equal(metrics.byNovel.get('20'), 1);
+});
+
+test('works-per-reader KPI deduplicates repeated detail opens per reader and work', () => {
+  const metric = calculateWorksPerReader({
+    cutoff: '2026-09-01T00:00:00.000Z',
+    rows: [
+      {
+        viewer_key_hash: 'a',
+        novel_id_snapshot: '10',
+        event_type: 'detail_open',
+        occurred_at: '2026-09-02T00:00:00.000Z'
+      },
+      {
+        viewer_key_hash: 'a',
+        novel_id_snapshot: '10',
+        event_type: 'detail_open',
+        occurred_at: '2026-09-03T00:00:00.000Z'
+      },
+      {
+        viewer_key_hash: 'a',
+        novel_id_snapshot: '20',
+        event_type: 'detail_open',
+        occurred_at: '2026-09-03T00:00:00.000Z'
+      },
+      {
+        viewer_key_hash: 'b',
+        novel_id_snapshot: '10',
+        event_type: 'detail_open',
+        occurred_at: '2026-09-04T00:00:00.000Z'
+      },
+      {
+        viewer_key_hash: 'b',
+        novel_id_snapshot: '20',
+        event_type: 'favorite_added',
+        occurred_at: '2026-09-04T00:00:00.000Z'
+      },
+      {
+        viewer_key_hash: 'c',
+        novel_id_snapshot: '30',
+        event_type: 'detail_open',
+        occurred_at: '2026-08-20T00:00:00.000Z'
+      }
+    ]
+  });
+
+  assert.deepEqual(metric, {
+    readers: 2,
+    uniqueWorkViews: 3,
+    averageWorksPerReader: 1.5
+  });
+});
+
+test('plan exposure KPI preserves the exposure-time plan snapshot', () => {
+  assert.deepEqual(
+    countExposureByPlan([
+      { plan_snapshot: 'free' },
+      { plan_snapshot: 'standard' },
+      { plan_snapshot: 'standard' },
+      { plan_snapshot: 'premium' },
+      { plan_snapshot: 'unknown' }
+    ]),
+    { free: 1, standard: 2, premium: 1 }
+  );
 });
