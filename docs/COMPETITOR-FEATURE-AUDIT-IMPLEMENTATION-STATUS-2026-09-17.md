@@ -179,6 +179,42 @@
 - Production migration適用はPR mergeとは別の明示承認境界とする。
 
 
+## B〜C候補 #21 読者キュレーションリスト
+
+状態：**実装済み（本変更セット） / Production migration未適用**
+
+実装証拠：
+
+- `curation-lists.html`
+- `curation.html`
+- `novelight-curation.js`
+- `novelight-curation.css`
+- `supabase/migrations/20260919102000_reader_curation_lists.sql`
+- `supabase/checks/20260919102000_reader_curation_lists_precheck.sql`
+- `supabase/checks/20260919102000_reader_curation_lists_postcheck.sql`
+- `supabase/rollback/20260919102000_reader_curation_lists_rollback.sql`
+- `tests/reader-curation-lists-contract.test.mjs`
+- `tests/rls/reader-curation-lists.sql`
+
+実装済み範囲：
+
+- 1読者20リスト、1リスト50作品まで。リスト名80文字、説明500文字。
+- 新規リストは非公開。共有時も公開ディレクトリへ載せず、推測困難な共有URLを知る人だけが閲覧できる。
+- 現在公開中の作品だけ追加可能。後から非公開・下書きになった作品は共有表示から除外する。
+- 所有者は共有URLをローテーションでき、旧URLを即時無効化できる。
+- 本棚の本人専用 `list_name` とは分離し、既存非公開本棚を公開化しない。
+- 作品ページから既存キュレーションへ追加し、本棚から管理画面へ移動できる。
+- migration未反映中は管理・追加UIを「データベース反映待ち」として安全停止する。
+
+安全・公平性境界：
+
+- 生テーブルはRLS有効かつclient rolesからrevokeし、owner-bound管理RPCと共有トークン専用公開RPCだけを明示grantする。
+- β版ではリストへのいいね、フォロー、人気順、ランキング、公開ディレクトリ、掲載数による評価を実装しない。
+- 作品Rank、LIGHT SEED、SCOUT EXP、PV、お気に入り、検索順位、発見棚、露出、LIGHT ANALYTICS、推薦へ接続しない。
+- 共有ページは `noindex` + `no-referrer` とし、検索インデックス化と共有トークンのReferer漏えいを抑える。
+- Production migration適用はPR mergeとは別の明示承認境界とする。
+
+
 ## B〜C候補 #14 コメントの作者モデレーション強化
 
 状態：**実装済み（本変更セット） / Production migration未適用**
