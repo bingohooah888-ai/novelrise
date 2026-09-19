@@ -1,6 +1,6 @@
 # NOVELIGHT β legal review
 
-Reviewed: 2026-08-28
+Reviewed: 2026-09-20
 
 This document records the implementation basis and release status for the beta legal surfaces. It is an engineering/operations status document, not legal advice and not a substitute for review by qualified Japanese counsel.
 
@@ -10,6 +10,7 @@ This document records the implementation basis and release status for the beta l
 - Explicit owner residual-risk decision: **RECORDED 2026-08-28**.
 - Controlled public-beta GO: **RECORDED 2026-08-28** in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 - Decision baseline revision: `1a5ca5dc5a90e4336ab5de74a21e2f2843e22bb1`.
+- Current 2026-09-20 recovery posture: **the backup/restore recovery blocker is cleared**. The fresh disposable restore, current-schema replay, structural/RLS/RPC/data-restoration checks, cleanup, and cost-stop verification are complete. Supabase's provider-defined non-database Auth settings/API-key reconfiguration is now treated as a fail-closed service-reopen step rather than missing backup content. Future launch cutovers remain separately operationally gated. This is an engineering/recovery finding, not a legal-sufficiency finding.
 
 The current counsel handoff is `docs/LEGAL-COUNSEL-HANDOFF-2026-08-28.md` and remains available for later use.
 
@@ -25,25 +26,28 @@ The controlled-beta GO is an operational release decision under the explicitly a
 - `contact.html`: public support/legal request form; raw inquiries are stored privately and are not ordinary-client readable.
 - `signup.html`: explicit checkbox consent and live links to terms/privacy/content guidelines.
 - `pricing.html`: recurring-subscription notice, cancellation/refund/legal links before Stripe Checkout.
-- `api/_lib/checkout.js`: Stripe Checkout custom text with recurring-contract details by paid plan.
+- `api/_lib/checkout.js`: Premium Stripe Checkout custom text for the beta 480円/月 recurring contract; beta Standard uses the separate cardless 0円 activation path.
 - `index.html`: top-page links to the public legal/contact surfaces.
 
 Final-candidate read-only reachability was reconciled before GO using current Production surface evidence. This remains an engineering observation, not a legal conclusion.
 
 ## Legal-copy implementation status
 
-The current implementation includes the following aligned paid-plan disclosures:
+The current beta implementation includes the following aligned pricing and paid-plan disclosures:
 
-- Standard: 980円/月; Premium: 1,980円/月;
-- monthly recurring contract;
-- automatic renewal until cancellation with no renewal-count cap;
-- initial charge at application completion;
-- one-year payment estimates (Standard 11,760円 / Premium 23,760円) stated as estimates rather than one-year contract terms;
-- service availability after payment/contract-state confirmation;
-- cancellation through Stripe Customer Portal;
-- refund/no-proration baseline with legal/duplicate-charge/major NOVELIGHT billing-failure exceptions;
-- parental/legal-representative consent wording for paid subscription by minors;
-- explicit statement that paid exposure does not guarantee views, ratings, rankings, revenue, or publication.
+- Free: 0円/月;
+- Standard: regular/formal price 980円/月, but **beta price 0円/月 with no credit-card registration and no charge**;
+- Premium: regular/formal price 1,980円/月 and **beta special price 480円/月**;
+- Premium is a monthly recurring contract and automatically renews until cancellation;
+- Premium first charge occurs when the Stripe Checkout application completes;
+- beta-end price-transition timing/conditions are disclosed as advance-notice items rather than silently converting the current beta terms;
+- Premium availability follows payment/contract-state confirmation;
+- Premium cancellation is available through Stripe Customer Portal;
+- refund/no-proration baseline keeps legal/duplicate-charge/major NOVELIGHT billing-failure exceptions;
+- parental/legal-representative consent wording applies to Premium subscription by minors;
+- paid exposure does not guarantee views, ratings, rankings, revenue, or publication.
+
+The older one-year payment-estimate wording is no longer part of the current public beta surfaces and is not treated as a current disclosure requirement in this engineering status document.
 
 Regression coverage exists to keep Checkout/pricing/billing/commerce/privacy paid-plan wording aligned. Engineering alignment does not determine legal sufficiency.
 
@@ -115,7 +119,15 @@ This scope remains accepted as `current` unless later material changes invalidat
 
 ### Production Authenticated Smoke
 
-Existing successful Production Authenticated Smoke evidence remains accepted as `current` for its proved scope under `docs/EVIDENCE-FRESHNESS-GATE.md`. Later main changes do not by themselves require another Production execution.
+The current decisive authenticated Production proof is Issue #723 / run `35449741256`, bound to exact application SHA `c9eaefd9baa941d2f20699a29c8e9ac233b64196`. Approval claim, deployed-page convergence, authenticated beta-critical flow checks, ephemeral-data cleanup, and the matching consumed-approval success record all completed successfully.
+
+This is engineering evidence only. It does not establish legal sufficiency and does not justify repeating Production write-capable smoke solely for documentary freshness.
+
+### Current Production billing consistency
+
+Production Billing Health run `35449744107` queried the deployed current billing guard and returned the expected guard version with `issueCodes=[]`, `warningCodes=[]`, and no approval-requiring remediation. The decisive live Stripe bootstrap/control run remains `33612120034`, which completed live object provisioning, Vercel variable synchronization, subscription transition, no-charge beta billing control proof, and final billing consistency audit.
+
+No later decisive checkout/webhook/portal boundary change was identified that would require repeating the live Stripe operation merely for SHA freshness.
 
 ### Production external Stripe webhook delivery — PASS / CURRENT
 

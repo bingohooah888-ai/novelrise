@@ -1,18 +1,18 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { readTextSync } from './test-text-utils.mjs';
 import path from 'node:path';
 import test from 'node:test';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
-const heroCss = fs.readFileSync(
+const heroCss = readTextSync(
   path.join(repoRoot, 'novelight-home-hero.css'),
   'utf8'
 );
-const headerCss = fs.readFileSync(
+const headerCss = readTextSync(
   path.join(repoRoot, 'novelight-header-light.css'),
   'utf8'
 );
-const themeCss = fs.readFileSync(
+const themeCss = readTextSync(
   path.join(repoRoot, 'novelight-theme.css'),
   'utf8'
 );
