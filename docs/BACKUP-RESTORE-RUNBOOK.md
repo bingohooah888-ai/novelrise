@@ -1,12 +1,12 @@
 # NOVELIGHT production backup and restore runbook
 
-Last updated: 2026-08-23
+Last updated: 2026-09-19
 
 ## Purpose
 
 This runbook covers **real production data recovery**. Migration rollback is not a database backup and is not a substitute for restoring lost/corrupted rows.
 
-NOVELIGHT treats auth/account data, novels, episodes, favorites, LIGHT SEED history, exposure/funnel data, acquisition/retention ledgers, moderation reports, and billing state as production-critical data.
+NOVELIGHT treats auth/account data, novels, episodes, favorites, LIGHT SEED/valid-read/Rank history, exposure/funnel data, acquisition/retention ledgers, moderation reports, billing state, reader progress/bookshelf state, Block/Mute state, revision history, series/chapter structure, character data, author notes/polls, reader curation lists, collaboration state, and private author story-planning notes as production-critical data.
 
 ## Public-beta GO gate
 
@@ -36,6 +36,21 @@ Before execution:
 - Determine whether rollback is schema-only or data-destructive.
 - If a change can destroy data, prefer a fresh logical/export backup to an approved private storage destination in addition to provider recovery. Do **not** commit database dumps to GitHub and do **not** attach unencrypted production dumps to GitHub Actions artifacts.
 - Define the success checks and the abort threshold before deploying.
+
+## Automated restored-target validation
+
+After a provider restore or PITR completes on a **non-production/disposable target**, run the repository's read-only structural validation before any application traffic is pointed at that target:
+
+```bash
+psql "$RESTORED_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+  -f supabase/checks/restore_validation.sql
+```
+
+The validation fails closed when a current production-critical table/function is missing, when selected private tables have lost RLS, or when core ownership/integrity invariants such as orphan profiles, orphan episodes, or duplicate favorites are broken. It also verifies the active exposure and valid-read rule rows exist.
+
+A PASS from this SQL is **necessary but not sufficient**. Continue with the human/browser checks below, especially Auth, private-data isolation, reader/author writes, and Stripe reconciliation. Never point `RESTORED_DATABASE_URL` at public-beta Production for a rehearsal.
+
+The same SQL runs at the end of `scripts/run-migration-replay.sh`, so new migrations that accidentally make a fresh NOVELIGHT schema unrestorable should fail CI before merge.
 
 ## Incident classification
 
@@ -91,18 +106,30 @@ A restore is not complete when PostgreSQL merely starts. Verify:
 - Draft/published state is correct.
 - AI/content classification columns are present.
 - No orphan episodes exist.
+- Series/chapter ordering and scheduled-publication metadata still resolve.
+- Episode revision history is present for works that had revisions.
+- Character registry and appearance state remain owner-bound.
+- Author notes, polls, collaboration state, and private story-planning notes are present where expected.
+- Collaboration does not change the single canonical work owner.
+- Private story-planning notes remain invisible to collaborators and readers.
 - Owner INSERT/UPDATE/DELETE RLS still works and cross-user writes fail.
 
 ### Reader state
-- Favorites are intact and unique per user/work.
+- Favorites are intact and unique per user/work; author self-favorites do not contribute to public aggregates.
 - LIGHT SEED history exists and remains append-only from the client perspective.
+- Valid-read history/rules exist and the server-authoritative qualification RPC executes.
 - SCOUT RECORD can read only the signed-in reader's seed history.
+- Reading progress and bookshelf state remain private to the signed-in reader.
+- Block/Mute state survives restore and still suppresses the intended direct interactions/discovery.
+- Reader curation lists preserve private/shared boundaries and do not expose private list contents.
 
-### Discovery and analytics
-- `novel_exposure_rules` contains the expected active beta rule.
+### Discovery, Rank and analytics
+- `novel_exposure_rules` and `valid_read_rules` contain the expected active beta rows.
 - Exposure/funnel tables exist and are not directly client-readable.
-- v2 discovery and analytics RPCs execute.
+- v2 discovery, neutral search, ranking and analytics RPCs execute.
+- Public ranking/favorite aggregates still apply the current fairness hardening.
 - Acquisition, activity-day and reader-journey ledgers exist and remain private.
+- Pre-open/launch-clock behavior remains pinned to the public beta launch boundary where specified.
 
 ### Moderation
 - `content_reports` exists and raw reports are not client-readable.
@@ -121,9 +148,10 @@ A rehearsal should:
 
 1. Use a disposable/non-production restore target.
 2. Restore a real or safely representative backup according to the provider procedure.
-3. Run the validation checklist above.
-4. Record start/end, recovery-point timestamp, what succeeded/failed, and corrective actions.
-5. Delete or secure the rehearsal environment when no longer needed.
+3. Run `supabase/checks/restore_validation.sql` against the restored target and retain only the PASS/FAIL evidence, not production row dumps.
+4. Run the browser/manual validation checklist above with controlled test accounts.
+5. Record start/end, recovery-point timestamp, automated validation result, browser/manual result, and corrective actions.
+6. Delete or secure the rehearsal environment when no longer needed.
 
 Production personal data must not be copied to uncontrolled developer machines. Follow the same access controls and retention principles as production.
 

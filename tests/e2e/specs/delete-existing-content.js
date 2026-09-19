@@ -223,6 +223,7 @@ test('destructive deletion controls stay unavailable to non-owners', async ({
 test('novel deletion cancel leaves the work untouched', async ({ page }) => {
   await installDeletionSupabaseStub(page, novelState());
   await page.goto('/novel.html?id=novel-delete-e2e');
+  await page.locator('.owner-more > summary').click();
   await expect(page.locator('#deleteNovel')).toBeVisible();
 
   page.once('dialog', async (dialog) => {
@@ -242,6 +243,7 @@ test('novel deletion is owner-scoped and redirects after success', async ({
 }) => {
   await installDeletionSupabaseStub(page, novelState());
   await page.goto('/novel.html?id=novel-delete-e2e');
+  await page.locator('.owner-more > summary').click();
 
   page.once('dialog', async (dialog) => dialog.accept());
   await page.locator('#deleteNovel').click();
@@ -263,6 +265,7 @@ test('novel deletion recovers after an async failure', async ({ page }) => {
     novelState({ deleteErrors: { novels: 'temporary database error' } })
   );
   await page.goto('/novel.html?id=novel-delete-e2e');
+  await page.locator('.owner-more > summary').click();
 
   let resolveAlert;
   const alertMessage = new Promise((resolve) => {

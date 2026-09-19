@@ -192,10 +192,12 @@ async function getSupabaseAccessToken(page) {
 }
 
 function targetSupabase() {
-  return stagingSupabaseOverride || {
-    url: productionSupabaseUrl,
-    key: productionSupabasePublishableKey
-  };
+  return (
+    stagingSupabaseOverride || {
+      url: productionSupabaseUrl,
+      key: productionSupabasePublishableKey
+    }
+  );
 }
 
 async function recordDiscoveryImpression(page, novelId, novelTitle) {
@@ -654,9 +656,7 @@ test('authenticated beta-critical product flow works in target', async ({
       await expect(
         readerPage.getByRole('heading', { name: 'LIGHT SEED送信履歴' })
       ).toBeVisible();
-      await readerPage
-        .getByRole('link', { name: '送信履歴を見る' })
-        .click();
+      await readerPage.getByRole('link', { name: '送信履歴を見る' }).click();
       await readerPage.waitForURL(/\/light-seed-history\.html$/);
       await expect(
         readerPage.getByRole('heading', { name: 'LIGHT SEED送信履歴' })
@@ -719,6 +719,7 @@ test('authenticated beta-critical product flow works in target', async ({
       };
       authorPage.on('request', captureDelete);
       authorPage.once('dialog', (dialog) => dialog.accept());
+      await authorPage.locator('.owner-more > summary').click();
       await authorPage.locator('#deleteNovel').click();
       await authorPage.waitForURL(/\/my-novels\.html$/);
       authorPage.off('request', captureDelete);

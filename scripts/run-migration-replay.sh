@@ -787,4 +787,8 @@ echo '::group::Verify final beta fairness hardening and rollback/reapply'
 "${REPLAY[@]}" -f tests/rls/beta-final-fairness-hardening.sql
 echo '::endgroup::'
 
+echo '::group::Verify restored-database structural integrity'
+"${REPLAY[@]}" -f supabase/checks/restore_validation.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'

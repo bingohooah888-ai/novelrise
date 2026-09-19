@@ -38,8 +38,8 @@
     @media(max-width:560px){.beta-guide{padding:20px 18px}.guide-actions{flex-direction:column}.guide-button{width:100%}}
     @media(max-width:460px){.profile-avatar{width:58px;height:58px}}
   </style>
-</head>
-<body>
+<link rel="stylesheet" href="novelight-accessibility.css"></head>
+<body><a class="skip-link" href="#main-content">本文へスキップ</a>
   <button id="menuToggle" class="mobile-menu" type="button" aria-label="創作室メニューを開く" aria-expanded="false">☰</button>
   <button id="navScrim" class="nav-scrim" type="button" aria-label="創作室メニューを閉じる"></button>
 
@@ -75,7 +75,7 @@
       <button id="logout" class="logout">ログアウト</button>
     </header>
 
-    <main class="workspace">
+    <main id="main-content" tabindex="-1" class="workspace">
       <section class="author-hero">
         <div class="hero-kicker">AUTHOR STUDIO</div>
         <h1 id="welcome">創作室</h1>
