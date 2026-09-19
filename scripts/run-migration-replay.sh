@@ -661,4 +661,36 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260919102000_reader_curation_lists_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify B #22 collaborative writing'
+"${REPLAY[@]}" -f supabase/rollback/20260919112318_novel_collaborative_writing_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919112318_novel_collaborative_writing_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919112318_novel_collaborative_writing.sql
+"${REPLAY[@]}" -f supabase/checks/20260919112318_novel_collaborative_writing_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/collaborative-writing.sql
+echo '::endgroup::'
+
+echo '::group::Verify B #22 collaborative writing rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260919112318_novel_collaborative_writing_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+begin
+  if to_regclass('public.novel_collaborators') is not null
+     or to_regclass('public.novel_collaboration_invites') is not null
+     or to_regclass('public.novel_collaboration_events') is not null
+     or to_regprocedure('public.novelight_collaboration_access(bigint)') is not null then
+    raise exception 'B #22 rollback left collaboration runtime behind';
+  end if;
+  if to_regclass('public.novels') is null
+     or to_regclass('public.episodes') is null
+     or to_regclass('public.user_blocks') is null then
+    raise exception 'B #22 rollback disturbed existing foundations';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260919112318_novel_collaborative_writing_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919112318_novel_collaborative_writing.sql
+"${REPLAY[@]}" -f supabase/checks/20260919112318_novel_collaborative_writing_postcheck.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'

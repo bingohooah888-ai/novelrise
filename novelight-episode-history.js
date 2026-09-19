@@ -166,6 +166,7 @@
   }
 
   async function install() {
+    if (document.body.dataset.collaborationEditor === 'true') return false;
     if (!/episode-edit(?:\.html)?$/u.test(window.location.pathname)) return false;
     const episodeId = currentEpisodeId();
     if (!episodeId || !(await waitUntilEpisodeReady())) return false;

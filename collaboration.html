@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>共同執筆 | NOVELIGHT</title>
+  <link rel="stylesheet" href="novelight-author-studio-shell.css">
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#07121e;color:#eef3f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+    button,input{font:inherit}.workspace{max-width:1040px}.page-head{margin-bottom:20px}.kicker{color:#d7b65b;font-size:11px;font-weight:900;letter-spacing:.15em}
+    h1{margin:7px 0 8px;font-family:Georgia,"Yu Mincho",serif;font-size:31px}.lead{margin:0;color:#aab8c4;line-height:1.8}.notice,.panel{border:1px solid rgba(216,180,90,.25);border-radius:16px;background:rgba(13,29,43,.92)}
+    .notice{padding:13px 15px;margin-bottom:16px;color:#d9cda9;font-size:12px;line-height:1.75}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{padding:20px}.panel h2{margin:0 0 8px;font-size:19px}
+    .muted{color:#9fb0bd;font-size:12px;line-height:1.7}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.btn{min-height:40px;border:1px solid rgba(216,180,90,.38);border-radius:9px;background:transparent;color:#e9d697;padding:8px 12px;font-weight:900;cursor:pointer;text-decoration:none}
+    .btn.primary{background:#d5af4e;color:#15212b;border-color:#d5af4e}.btn.danger{color:#e9b4aa;border-color:rgba(224,129,110,.4)}.btn:disabled{opacity:.45;cursor:not-allowed}.status{min-height:22px;margin-top:12px;color:#aebbc5;font-size:12px;line-height:1.7}.status.error{color:#f0aa9e}
+    .list{display:grid;gap:10px;margin-top:12px}.item{padding:13px;border:1px solid rgba(213,224,232,.14);border-radius:11px;background:rgba(6,19,30,.64)}.item-title{font-weight:900}.meta{margin-top:5px;color:#8293a0;font-size:11px}.item-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+    .invite-box{margin-top:12px;padding:12px;border:1px solid rgba(213,224,232,.16);border-radius:10px;background:#091824;word-break:break-all;color:#d9e1e6;font-size:12px}.field{display:grid;gap:7px;margin-top:13px}.field label{color:#d9cda9;font-size:12px;font-weight:900}.field input{width:100%;border:1px solid rgba(213,224,232,.24);border-radius:10px;background:#091824;color:#f5f7f8;padding:11px 12px}
+    [hidden]{display:none!important}@media(max-width:760px){.grid{grid-template-columns:1fr}.page-head h1{font-size:27px}.panel{padding:17px}.actions,.item-actions{flex-direction:column}.btn{text-align:center}}
+  </style>
+</head>
+<body>
+  <main class="workspace">
+    <header class="page-head"><div class="kicker">COLLABORATION</div><h1>共同執筆</h1><p class="lead">作品の所有者は1人のまま。共同執筆者はタイトル・本文編集と新規下書き作成だけを行えます。</p></header>
+    <div id="pending" class="notice" hidden>共同執筆機能はデータベース反映待ちです。</div>
+    <div class="notice">共同執筆は作品Rank・LIGHT SEED・SCOUT・PV・お気に入り・検索順位・発見棚・露出・LIGHT ANALYTICS・おすすめに影響しません。公開、削除、話順・章管理、課金・露出設定は作品所有者だけが行えます。</div>
+    <section id="inviteView" class="panel" hidden>
+      <h2>共同執筆へ参加</h2>
+      <p class="muted">招待URLは1回だけ使用できます。参加後も作品所有権は移りません。</p>
+      <div class="actions"><button id="acceptInvite" class="btn primary" type="button">招待を受ける</button><a class="btn" href="collaboration.html">参加中の作品を見る</a></div>
+      <div id="inviteStatus" class="status" aria-live="polite"></div>
+    </section>
+    <section id="dashboardView">
+      <div class="grid">
+        <section class="panel">
+          <h2 id="contextTitle">参加中の共同執筆</h2>
+          <p id="contextLead" class="muted">あなたが共同執筆者として参加している作品を表示します。</p>
+          <div id="collaborationList" class="list"><div class="muted">読み込み中...</div></div>
+          <div id="contextStatus" class="status" aria-live="polite"></div>
+        </section>
+        <section id="ownerPanel" class="panel" hidden>
+          <h2>招待とメンバー管理</h2>
+          <p class="muted">招待URLは7日で失効し、参加時に使い切りになります。βでは1作品5人までです。</p>
+          <div class="actions"><button id="rotateInvite" class="btn primary" type="button">新しい招待URLを発行</button><button id="revokeInvite" class="btn danger" type="button">招待を無効化</button></div>
+          <div id="inviteUrl" class="invite-box" hidden></div>
+          <div id="memberList" class="list"></div>
+          <div id="ownerStatus" class="status" aria-live="polite"></div>
+        </section>
+        <section id="editorPanel" class="panel" hidden>
+          <h2>共同編集</h2>
+          <p class="muted">既存話のタイトル・本文編集、または末尾への新しい非公開下書き追加ができます。</p>
+          <form id="draftForm">
+            <div class="field"><label for="draftTitle">新しい下書きのタイトル</label><input id="draftTitle" maxlength="150"></div>
+            <div class="actions"><button id="createDraft" class="btn primary" type="submit">新しい下書きを作る</button><button id="leaveCollaboration" class="btn danger" type="button">共同執筆から抜ける</button></div>
+          </form>
+          <div id="episodeList" class="list"></div>
+          <div id="editorStatus" class="status" aria-live="polite"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="novelight-client.js"></script>
+  <script src="novelight-author-studio-shell.js"></script>
+  <script>
+  const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+  const params=new URLSearchParams(location.search),novelId=Number(params.get('novel_id')),invite=params.get('invite')||'';let session=null,access=null,busy=false;
+  const q=id=>document.getElementById(id);function unavailable(error){const code=String(error?.code||''),message=String(error?.message||'');return ['42883','PGRST202','PGRST204'].includes(code)||/function .* does not exist|Could not find the function/iu.test(message)}
+  function setStatus(id,message,error=false){const el=q(id);el.textContent=message;el.classList.toggle('error',error)}
+  function item(title,meta){const card=document.createElement('div');card.className='item';const h=document.createElement('div');h.className='item-title';h.textContent=title;const m=document.createElement('div');m.className='meta';m.textContent=meta;card.append(h,m);return card}
+  function button(label,className='btn'){const b=document.createElement('button');b.type='button';b.className=className;b.textContent=label;return b}
+  async function rpc(name,args={}){const r=await client.rpc(name,args);if(r.error)throw r.error;return r.data}
+  function loginRedirect(){location.href='login.html?redirect='+encodeURIComponent(location.pathname.split('/').pop()+location.search)}
+  function inviteUrl(token){const u=new URL('collaboration.html',location.href);u.search='';u.hash='';u.searchParams.set('invite',token);return u.href}
+  async function loadMyCollaborations(){const rows=await rpc('novelight_list_my_collaborations');const list=q('collaborationList');list.replaceChildren();if(!rows?.length){const e=document.createElement('div');e.className='muted';e.textContent='参加中の共同執筆作品はありません。';list.append(e);return}
+    rows.forEach(row=>{const card=item(row.title||'名称未設定','所有者: '+(row.owner_display_name||'名前未設定')+' / '+(row.can_edit?'編集可能':'現在編集停止中'));const a=document.createElement('a');a.className='btn';a.href='collaboration.html?novel_id='+encodeURIComponent(row.novel_id);a.textContent='共同編集を開く';const wrap=document.createElement('div');wrap.className='item-actions';wrap.append(a);card.append(wrap);list.append(card)})}
+  async function loadOwner(){q('ownerPanel').hidden=false;const data=await rpc('novelight_manage_novel_collaborators',{p_novel_id:novelId});q('revokeInvite').disabled=!data.invite_active;setStatus('ownerStatus',data.invite_active?'有効な招待があります（期限 '+new Date(data.invite_expires_at).toLocaleString('ja-JP')+'）。':'有効な招待はありません。');
+    const list=q('memberList');list.replaceChildren();if(!data.members?.length){const e=document.createElement('div');e.className='muted';e.textContent='共同執筆者はまだいません。';list.append(e);return}
+    data.members.forEach(member=>{const card=item(member.display_name||'名前未設定','権限: 本文編集 / 参加 '+new Date(member.joined_at).toLocaleString('ja-JP'));const remove=button('共同執筆から外す','btn danger');remove.onclick=()=>removeMember(member.user_id);const wrap=document.createElement('div');wrap.className='item-actions';wrap.append(remove);card.append(wrap);list.append(card)})}
+  async function loadEditor(){q('editorPanel').hidden=false;const rows=await rpc('novelight_list_collaboration_episodes',{p_novel_id:novelId});const list=q('episodeList');list.replaceChildren();if(!rows?.length){const e=document.createElement('div');e.className='muted';e.textContent='エピソードはまだありません。';list.append(e);return}
+    rows.forEach(row=>{const card=item('第'+row.episode_number+'話 '+(row.title||'無題'),row.status==='published'?'公開中':'非公開下書き');const a=document.createElement('a');a.className='btn';a.href='episode-edit.html?id='+encodeURIComponent(row.id);a.textContent='タイトル・本文を編集';const wrap=document.createElement('div');wrap.className='item-actions';wrap.append(a);card.append(wrap);list.append(card)})}
+  async function loadContext(){access=await rpc('novelight_collaboration_access',{p_novel_id:novelId});if(!access?.can_edit){q('contextTitle').textContent='共同執筆を開けません';q('collaborationList').textContent='この作品の共同編集権限がありません。';return}
+    q('contextTitle').textContent=access.title||'共同執筆';q('contextLead').textContent=access.is_owner?'作品所有者として共同執筆者を管理します。':'共同執筆者としてタイトル・本文を編集できます。';q('collaborationList').replaceChildren();if(access.is_owner)await loadOwner();else await loadEditor()}
+  async function removeMember(userId){if(busy||!confirm('この共同執筆者を作品から外しますか？'))return;busy=true;try{await rpc('novelight_remove_novel_collaborator',{p_novel_id:novelId,p_collaborator_user_id:userId});await loadOwner();setStatus('ownerStatus','共同執筆者を外しました。')}catch(e){console.error(e);setStatus('ownerStatus','共同執筆者を外せませんでした。',true)}finally{busy=false}}
+  q('rotateInvite').onclick=async()=>{if(busy)return;busy=true;try{const data=await rpc('novelight_rotate_collaboration_invite',{p_novel_id:novelId});const url=inviteUrl(data.token);q('inviteUrl').hidden=false;q('inviteUrl').textContent=url;await loadOwner();q('inviteUrl').hidden=false;q('inviteUrl').textContent=url;setStatus('ownerStatus','新しい招待URLを発行しました。以前のURLは無効です。')}catch(e){console.error(e);setStatus('ownerStatus','招待URLを発行できませんでした。',true)}finally{busy=false}};
+  q('revokeInvite').onclick=async()=>{if(busy||!confirm('現在の招待URLを無効にしますか？'))return;busy=true;try{await rpc('novelight_revoke_collaboration_invite',{p_novel_id:novelId});q('inviteUrl').hidden=true;await loadOwner();setStatus('ownerStatus','招待URLを無効にしました。')}catch(e){console.error(e);setStatus('ownerStatus','招待URLを無効にできませんでした。',true)}finally{busy=false}};
+  q('draftForm').addEventListener('submit',async event=>{event.preventDefault();if(busy)return;busy=true;setStatus('editorStatus','下書きを作成しています...');try{const id=await rpc('novelight_create_collaboration_draft',{p_novel_id:novelId,p_title:q('draftTitle').value.trim(),p_content:''});location.href='episode-edit.html?id='+encodeURIComponent(id)}catch(e){console.error(e);setStatus('editorStatus','下書きを作成できませんでした。',true);busy=false}});
+  q('leaveCollaboration').onclick=async()=>{if(busy||!confirm('この作品の共同執筆から抜けますか？'))return;busy=true;try{await rpc('novelight_leave_novel_collaboration',{p_novel_id:novelId});location.href='collaboration.html'}catch(e){console.error(e);setStatus('editorStatus','共同執筆から抜けられませんでした。',true);busy=false}};
+  q('acceptInvite').onclick=async()=>{if(busy)return;busy=true;setStatus('inviteStatus','招待を確認しています...');try{const data=await rpc('novelight_accept_collaboration_invite',{p_token:invite});location.href='collaboration.html?novel_id='+encodeURIComponent(data.novel_id)}catch(e){console.error(e);setStatus('inviteStatus',unavailable(e)?'共同執筆機能はデータベース反映待ちです。':'招待が無効・期限切れ、または参加できない状態です。',true);busy=false}};
+  (async()=>{void NovelightClient.recordVisit(client);try{const auth=await client.auth.getSession();session=auth.data.session;if(!session){loginRedirect();return}void NovelightClient.claimAcquisition(client);if(invite){q('inviteView').hidden=false;q('dashboardView').hidden=true;return}if(Number.isSafeInteger(novelId)&&novelId>0){await loadContext()}else{await loadMyCollaborations()}}catch(e){console.error(e);if(unavailable(e)){q('pending').hidden=false;setStatus('contextStatus','共同執筆機能はデータベース反映待ちです。',true)}else setStatus('contextStatus','共同執筆情報を読み込めませんでした。時間をおいて再度お試しください。',true)}})();
+  </script>
+</body>
+</html>

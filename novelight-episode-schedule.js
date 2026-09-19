@@ -50,6 +50,7 @@
   }
 
   function installPanel() {
+    if (document.body.dataset.collaborationEditor === 'true') return false;
     if (!hasScheduleColumn() || !isDraft() || document.getElementById(PANEL_ID)) return false;
     const draftState = document.getElementById('draftState');
     if (!draftState) return false;
