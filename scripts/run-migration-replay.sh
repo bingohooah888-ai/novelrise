@@ -730,4 +730,17 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260919122554_author_story_planning_notes_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify beta-author preopen Auth access'
+"${REPLAY[@]}" -f supabase/checks/20260919151044_beta_author_preopen_access_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/beta-author-preopen-access.sql
+echo '::endgroup::'
+
+echo '::group::Verify beta-author preopen rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260919151044_beta_author_preopen_access_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260919151044_beta_author_preopen_access_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260919151044_beta_author_preopen_access.sql
+"${REPLAY[@]}" -f supabase/checks/20260919151044_beta_author_preopen_access_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/beta-author-preopen-access.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'

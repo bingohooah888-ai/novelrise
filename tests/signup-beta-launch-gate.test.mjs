@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { join } from 'node:path';
-import { URL } from 'node:url';
+import { fileURLToPath, URL } from 'node:url';
 
-const root = new URL('../', import.meta.url);
-const signup = await readFile(join(root.pathname, 'signup.html'), 'utf8');
+const root = fileURLToPath(new URL('../', import.meta.url));
+const signup = await readFile(join(root, 'signup.html'), 'utf8');
 const expectSignup = (pattern) => assert.match(signup, pattern);
 
 test('signup is fail-closed until the beta campaign state is known', () => {
@@ -20,8 +20,10 @@ test('signup reuses the preregistration campaign state as the launch gate', () =
   expectSignup(/fetch\('\/api\/beta-author-preregistration'/);
   expectSignup(/cache:'no-store'/);
   expectSignup(/state==='PRE_REGISTRATION'/);
+  expectSignup(/state==='AUTHOR_PREOPEN'/);
   expectSignup(/state==='BETA_OPEN'\|\|state==='CLOSED'/);
   expectSignup(/showPreregistrationGate\(\)/);
+  expectSignup(/showAuthorPreopen\(\)/);
   expectSignup(/showSignupForm\(\)/);
 });
 
@@ -29,6 +31,12 @@ test('preregistration state routes users to the isolated beta author LP', () => 
   expectSignup(/id="preregistrationLink" href="beta-authors" hidden/);
   expectSignup(/現在は先行作者登録期間です/);
   expectSignup(/β版の一般会員登録はまだ開始していません/);
+});
+
+test('author preopen exposes signup only with preregistered-email guidance', () => {
+  expectSignup(/先行作者プレオープン中です/);
+  expectSignup(/先行登録済みの作者のみ会員登録できます/);
+  expectSignup(/signupCampaignState==='AUTHOR_PREOPEN'/);
 });
 
 test('campaign lookup failures keep normal signup closed', () => {

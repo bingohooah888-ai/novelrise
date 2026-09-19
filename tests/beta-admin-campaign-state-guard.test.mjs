@@ -23,8 +23,10 @@ test('beta admin confirms campaign state transitions before persisting them', ()
   );
   assert.match(adminHtml, /window\.confirm\(message\)/);
   assert.match(adminHtml, /if\(!confirmCampaignStateChange\(nextState\)\)/);
-  assert.match(adminHtml, /新規先行登録受付は停止します/);
-  assert.match(adminHtml, /先行登録受付を再開します/);
+  assert.match(adminHtml, /先行登録フォームを停止し/);
+  assert.match(adminHtml, /一般ユーザーの新規登録は引き続き拒否します/);
+  assert.match(adminHtml, /通常の会員登録を開放し/);
+  assert.match(adminHtml, /公開LPの先行登録受付を再開し/);
 });
 
 test('beta admin keeps same-state saves confirmation-free', () => {

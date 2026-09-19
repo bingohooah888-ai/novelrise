@@ -24,7 +24,12 @@ const LIFECYCLE_STATUS_RANK = new Map([
   ['registered', 3],
   ['first_novel', 4]
 ]);
-const CAMPAIGN_STATES = new Set(['PRE_REGISTRATION', 'BETA_OPEN', 'CLOSED']);
+const CAMPAIGN_STATES = new Set([
+  'PRE_REGISTRATION',
+  'AUTHOR_PREOPEN',
+  'BETA_OPEN',
+  'CLOSED'
+]);
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 
