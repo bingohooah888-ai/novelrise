@@ -1,8 +1,32 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-09-16 JST**
+**Reconciled: 2026-09-19 JST**
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
+
+## 2026-09-19 post-competitor-audit / current-main launch reconciliation
+
+This section supersedes all older “current”, “material application main”, “Current release state”, and release-posture wording below where the scope overlaps. Older detailed sections remain preserved as audit context.
+
+Fresh repository `main` is `1c1d9af5e9a4100ba054119a4d59b3a05d24af74` (docs-only PR #707). The current material application SHA is its immediate parent `33fe909c04ac108f763f83b2b82ebf158f3ef263` (PR #705, `Add explainable natural language search`).
+
+PR #705 final reviewed head `9c7bcfe5df47e7da76e2d698f1e3dd3930b1ec3c` passed `NOVELIGHT CI` #2662 / run `35421729769`: Merge readiness, Static quality, Node tests, desktop/mobile smoke, desktop/mobile async-UI, and aggregate `check` all completed `SUCCESS`. CodeQL #2563 / run `35421729766` completed `SUCCESS`. On merged material application SHA `33fe909c...`, Vercel Production and `production-readiness-smoke` commit statuses are `success`.
+
+PR #707 final head `74d8387788cce4c610c0172f560f64edb6486cdc` passed `NOVELIGHT CI` #2664 / run `35423088099`; CodeQL #2565 / run `35423088105` completed `SUCCESS`. The diff from `33fe909c...` to current `main` changes only the competitor-audit implementation-status document and the document Source-of-Truth registry. Current `main` also has Vercel Production status `success`, so PR #707 does not invalidate application-level Production Readiness on `33fe909c...`.
+
+Between the previous post-#609 baseline `a7bd226a7a4f457bf593df6084ba4d676af5b444` and current `main`, 22 Production migration files were added. Production state is reconciled by exact migration evidence rather than duplicate execution:
+- Approval Ledger #460 records successful `EXECUTED` mutation/postcheck evidence for `20260917020000` and `20260917123000`.
+- Approval Ledger #657 records the same success contract for `20260917150000`, `20260918060000`, `20260918070000`, `20260918112000`, `20260918140022`, `20260918152523`, `20260918164000`, `20260918180500`, `20260918192000`, `20260918211545`, `20260918221621`, `20260918225815`, `20260918235120`, `20260919090000`, `20260919100000`, `20260919102000`, `20260919112318`, and `20260919122554`.
+- PR #632 records `20260917074632_episode_revision_history` as the exact Production-applied version with unchanged migration SQL behavior. PR #636 records `20260917084123_episode_revision_fk_indexes` as already applied successfully in Production with formal postcheck success, again aligning repository history without changing SQL behavior.
+- Latest approved deploy run `35420162111` required the exact `20260919122554` pending set, dry-ran and applied it, verified post-deploy migration status, passed Production beta observability, and published successful Production beta verification. Its post-deploy list shows `20260919122554` present in both Local and Remote. PR #705 and PR #707 add no later migration.
+
+The 2026-09-16 competitor audit #1–#24 is fully implemented on current `main`; no formal #25 exists in that audit. This release reconciliation does not invent one or treat optional post-beta candidates as launch blockers.
+
+Issue #511 / run `34692176490` remains evidence only for the authenticated Chapter 38/40 create/render/LIGHT ANALYTICS scope it actually executed. It is not stretched into live authenticated E2E proof for every later competitor-audit feature.
+
+**Current technical/operational launch posture remains GO.** The current material application is deployed, reviewed-head CI/CodeQL and merged Production Readiness evidence are green, all 22 post-2026-09-16 migration versions are reconciled to successful Production state, and no new non-deferred technical blocker was found. Qualified Japanese counsel review remains **DEFERRED BY OWNER / STILL PENDING** under the recorded residual-risk decision; this is not a legal PASS.
+
+This reconciliation is documentation-only. It performs no Production DB/Supabase mutation, migration rerun, Production Auth Smoke, Stripe/billing/entitlement mutation, Secret/environment mutation, campaign-state cutover, or image generation/editing.
 
 ## 2026-09-16 post-PR #609 scheduled-publication reconciliation
 
