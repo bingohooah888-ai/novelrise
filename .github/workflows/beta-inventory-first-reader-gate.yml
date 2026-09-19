@@ -1,0 +1,116 @@
+name: NOVELIGHT Beta Inventory First Reader Gate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-beta-inventory-first-reader-gate
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Verify production inventory and anonymous first-reader path
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+      E2E_BASE_URL: https://novelrise.vercel.app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify production public inventory counts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          fi
+
+          query="select
+            (select count(*)::integer from public.novels where status = 'published') as published_novels,
+            (select count(distinct user_id)::integer from public.novels where status = 'published') as published_authors,
+            (select count(*)::integer from public.episodes where status = 'published') as published_episodes,
+            (
+              select count(*)::integer
+              from public.novels as novel
+              where novel.status = 'published'
+                and not exists (
+                  select 1
+                  from public.episodes as episode
+                  where episode.novel_id = novel.id
+                    and episode.status = 'published'
+                )
+            ) as published_novels_without_published_episode;"
+
+          jq -n --arg query "$query" '{query: $query}' > /tmp/inventory-query.json
+
+          curl --fail-with-body --silent --show-error             --request POST             --url "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/database/query/read-only"             --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}"             --header 'Content-Type: application/json'             --data-binary @/tmp/inventory-query.json             > /tmp/inventory-result.json
+
+          row="$(jq -c '
+            if type == "array" then .[0]
+            elif (.result? | type) == "array" then .result[0]
+            else . end
+          ' /tmp/inventory-result.json)"
+
+          published_novels="$(jq -r '.published_novels // -1' <<<"$row")"
+          published_authors="$(jq -r '.published_authors // -1' <<<"$row")"
+          published_episodes="$(jq -r '.published_episodes // -1' <<<"$row")"
+          missing_episode="$(jq -r '.published_novels_without_published_episode // -1' <<<"$row")"
+
+          for value in "$published_novels" "$published_authors" "$published_episodes" "$missing_episode"; do
+            if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+              echo 'Unexpected production inventory query response.'
+              exit 1
+            fi
+          done
+
+          {
+            echo '## 2026-09-29 beta inventory gate'
+            echo
+            echo "- Published works: ${published_novels}"
+            echo "- Published authors: ${published_authors}"
+            echo "- Published episodes: ${published_episodes}"
+            echo "- Published works without a published episode: ${missing_episode}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Published works: ${published_novels}"
+          echo "Published authors: ${published_authors}"
+          echo "Published episodes: ${published_episodes}"
+          echo "Published works without a published episode: ${missing_episode}"
+
+          if [ "$published_novels" -lt 1 ] || [ "$published_authors" -lt 1 ] || [ "$published_episodes" -lt 1 ]; then
+            echo 'Beta inventory gate failed: the public catalog is not yet non-empty.'
+            exit 1
+          fi
+
+          if [ "$missing_episode" -ne 0 ]; then
+            echo 'Beta inventory gate failed: at least one published work has no published episode.'
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install production browser smoke dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Verify anonymous first-reader path
+        working-directory: tests/e2e
+        env:
+          NOVELIGHT_REQUIRE_PUBLISHED_CATALOG: '1'
+        run: npx playwright test --config=playwright.production.config.mjs

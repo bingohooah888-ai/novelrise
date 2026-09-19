@@ -96,6 +96,11 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
 
   if (catalogState === 'empty') {
     await expect(emptyStates.first()).toHaveText(SEARCH_EMPTY_MESSAGE);
+    if (process.env.NOVELIGHT_REQUIRE_PUBLISHED_CATALOG === '1') {
+      throw new Error(
+        'The beta inventory gate requires at least one published work with a published episode.'
+      );
+    }
     return;
   }
 

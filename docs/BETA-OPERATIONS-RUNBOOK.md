@@ -1,6 +1,6 @@
 # NOVELIGHT controlled-beta operations runbook
 
-Last updated: 2026-09-13
+Last updated: 2026-09-20
 
 ## Purpose
 
@@ -20,6 +20,50 @@ The preopen is a campaign-state cutover, not a migration or billing operation. B
 8. If verification fails before the preopen announcement, return the state to `PRE_REGISTRATION`, record the failure, and stop. Do not open general signup as a workaround.
 
 While `AUTHOR_PREOPEN` is active, the Supabase Before User Created hook allows Auth creation only when `event.user.email` matches a non-cancelled preregistration row. The public preregistration intake is closed. Existing accounts can still log in.
+
+## Content inventory / first-reader-path gate — 2026-09-29 JST
+
+This is a **read-only launch gate** between founding-author preopen and public beta. It must not change the campaign state, Production rows, Stripe objects, Secrets, or billing state. Its purpose is to prove that the real public catalog is no longer empty and that a first anonymous reader can actually reach readable story text before `BETA_OPEN`.
+
+### Preconditions
+
+1. Resolve fresh `main`, re-read the current release evidence under `docs/EVIDENCE-FRESHNESS-GATE.md`, and confirm that no new non-deferred blocker has appeared.
+2. Confirm the Production campaign state is exactly `AUTHOR_PREOPEN` and the release label remains `2026年9月30日`. If the state is still `PRE_REGISTRATION`, already `BETA_OPEN`, `CLOSED`, or unknown, stop and investigate instead of forcing this gate.
+3. Do not rerun a Production migration, Production Auth Smoke, Stripe operation, Secret change, official-thumbnail registration, or campaign cutover merely to execute this gate.
+
+### Automated read-only gate
+
+Run the GitHub Actions workflow **`NOVELIGHT Beta Inventory First Reader Gate`** from the intended launch `main` SHA.
+
+The workflow performs only these checks:
+
+- queries Production through the Supabase Management API **read-only** database-query endpoint and emits aggregate counts only;
+- requires at least one published work, one published author, and one published episode;
+- requires zero published works that have no published episode;
+- runs the existing Production reader smoke with `NOVELIGHT_REQUIRE_PUBLISHED_CATALOG=1`;
+- suppresses the reader-smoke measurement-write RPCs, so the browser proof does not intentionally add PV, impression, acquisition, or reader-journey telemetry;
+- proves the anonymous path `search -> work detail -> published episode body` against the real Production site.
+
+The workflow must fail if the catalog is empty, if a published work has no published episode, or if the anonymous reader path cannot reach non-empty episode content.
+
+A workflow PASS is the technical minimum for this gate. It does **not** invent a business threshold for how many works or genres are “enough.” Record the aggregate inventory counts from the run. If no separate MASTER-approved minimum inventory target exists, the owner must explicitly decide whether the observed catalog breadth is acceptable for the public-beta launch rather than silently treating `>= 1` as a product-success threshold.
+
+### Gate result
+
+Record the following non-PII evidence in the rolling release trail:
+
+- exact `main` / workflow head SHA;
+- workflow run ID and conclusion;
+- published-work count;
+- published-author count;
+- published-episode count;
+- published-work-without-published-episode count;
+- first-reader-path result;
+- owner inventory-breadth decision when no formal minimum target exists.
+
+Do not record work titles, author identities, preregistration email addresses, Auth IDs, or other PII merely to prove inventory.
+
+If either the automated technical gate or the owner inventory-breadth decision is not PASS/accepted, leave the campaign in `AUTHOR_PREOPEN` and do **not** perform the 2026-09-30 `BETA_OPEN` cutover. Fix the underlying content/reader-path issue, gather fresh evidence, and rerun only this read-only gate.
 
 ## Public beta launch-day cutover — 2026-09-30 JST
 

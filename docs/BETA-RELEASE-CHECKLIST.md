@@ -35,7 +35,7 @@ This section supersedes older “current”, backup/restore-hard-gate, and final
 - [x] Current-worktree `npm run preflight:fast` passes with 995 tests / 989 pass / 0 fail / 6 skip.
 - [x] Current-worktree full Playwright suite passes 170/170 across desktop/mobile.
 - [ ] 2026-09-28 `PRE_REGISTRATION -> AUTHOR_PREOPEN` cutover has been explicitly approved and executed. **Future operational gate; not yet due and not pre-authorized.**
-- [ ] 2026-09-29 content-inventory / first-reader-path gate is complete. **Future operational gate.**
+- [ ] 2026-09-29 content-inventory / first-reader-path gate is complete. **Future operational gate. Execute the read-only `NOVELIGHT Beta Inventory First Reader Gate` workflow and record the aggregate counts, anonymous reader-path result, and owner inventory-breadth decision under `docs/BETA-OPERATIONS-RUNBOOK.md`.**
 - [ ] 2026-09-30 `BETA_OPEN` transition has been explicitly approved and executed. **Future launch operation; not pre-authorized.**
 - [ ] Qualified Japanese counsel review is complete. **Deferred/pending by owner; accepted residual risk remains recorded and is not converted into legal PASS.**
 
