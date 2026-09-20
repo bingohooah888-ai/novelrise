@@ -1,0 +1,22 @@
+.novelight-tags-root{display:grid;gap:12px}
+.novelight-tags-selected,.novelight-custom-tags-list{display:flex;flex-wrap:wrap;gap:7px;min-height:30px;align-items:center}
+.novelight-tags-empty-selection{color:#8a8f99;font-size:12px}
+.novelight-tag-chip{border:1px solid #a99be9;border-radius:999px;background:#f3f0ff;color:#573fb8;padding:6px 10px;font:inherit;font-size:12px;font-weight:850;cursor:pointer}
+.novelight-tag-chip-custom{border-style:dashed;border-color:#b6bac3;background:#fafafa;color:#555}
+.novelight-tags-tools{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:8px}
+.novelight-tags-tools input,.novelight-tags-tools select,.novelight-custom-tags-input-row input{width:100%;border:1px solid #d5d8df;border-radius:9px;padding:10px 11px;background:#fff;font:inherit}
+.novelight-tags-counter{color:#6b7280;font-size:12px;font-weight:800}
+.novelight-tags-list{display:flex;flex-wrap:wrap;gap:7px;max-height:220px;overflow:auto;padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa}
+.novelight-tag-option{border:1px solid #d9dce3;border-radius:999px;background:#fff;color:#4d515b;padding:7px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.novelight-tag-option.is-selected{border-color:#6d4aff;background:#6d4aff;color:#fff}
+.novelight-tags-no-match,.novelight-tags-unavailable{width:100%;padding:10px;color:#6b7280;font-size:12px;line-height:1.6}
+.novelight-tags-unavailable{border:1px dashed #d8dbe2;border-radius:9px;background:#fafafa}
+.novelight-custom-tags{display:grid;gap:7px;padding-top:4px}
+.novelight-custom-tags-title{font-size:13px;font-weight:900}
+.novelight-custom-tags-help{color:#6b7280;font-size:11px;line-height:1.6}
+.novelight-custom-tags-input-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.novelight-custom-tags-add{border:0;border-radius:8px;background:#4d5563;color:#fff;padding:0 15px;font:inherit;font-weight:850;cursor:pointer}
+.novelight-tags-message{min-height:18px;color:#6b5a22;font-size:11px;line-height:1.6}
+.novelight-work-tag{display:inline-block;padding:4px 8px;border-radius:999px;background:#f2efff;color:#5b43bf;font-size:11px;font-weight:850}
+.novelight-work-tag.custom{border:1px dashed #c8cad1;background:#fafafa;color:#666}
+@media(max-width:640px){.novelight-tags-tools{grid-template-columns:1fr}.novelight-tags-list{max-height:260px}.novelight-custom-tags-input-row{grid-template-columns:1fr}.novelight-custom-tags-add{min-height:42px}}

@@ -21,6 +21,38 @@ test('explicit genre selection wins over inferred genre', () => {
   assert.equal(plan.genre, 'SF');
   assert.equal(plan.genreSource, 'selected');
 });
+
+test('official tag aliases resolve to one stable tag and ASCII aliases use token boundaries', () => {
+  const catalog = [
+    {
+      id: 'yuri_gl',
+      displayName: '百合／GL',
+      aliases: ['百合', 'GL', 'ガールズラブ']
+    },
+    {
+      id: 'sf',
+      displayName: 'SF',
+      aliases: ['SF']
+    }
+  ];
+  const yuri = naturalSearch.buildPlan(
+    'ガールズラブの異世界作品が読みたい',
+    '',
+    catalog
+  );
+  assert.deepEqual(
+    yuri.officialTags.map((tag) => tag.id),
+    ['yuri_gl']
+  );
+
+  const noFalsePositive = naturalSearch.buildPlan(
+    'single route の話',
+    '',
+    catalog
+  );
+  assert.deepEqual(noFalsePositive.officialTags, []);
+});
+
 test('ranking is deterministic and exposes match reasons', () => {
   const plan = {
     genre: 'SF',
@@ -85,6 +117,71 @@ test('search only uses existing neutral public search RPC and bounded calls', as
   assert.ok(calls.some((call) => call.args.p_genre === '恋愛'));
   assert.ok(calls.some((call) => call.args.p_genre === null));
 });
+test('natural search uses canonical official tag ids when a tag alias is inferred', async () => {
+  const previousTags = globalThis.NovelightTags;
+  Object.defineProperty(globalThis, 'NovelightTags', {
+    configurable: true,
+    value: {
+      async loadCatalog() {
+        return [
+          {
+            id: 'yuri_gl',
+            displayName: '百合／GL',
+            aliases: ['百合', 'GL', 'ガールズラブ']
+          }
+        ];
+      },
+      isMissingRpc() {
+        return false;
+      }
+    }
+  });
+
+  const calls = [];
+  const client = {
+    async rpc(name, args) {
+      calls.push({ name, args });
+      return {
+        data: [
+          {
+            novel_id: 'tagged',
+            title: '静かな旅',
+            description: '二人の冒険',
+            genre: '異世界ファンタジー',
+            official_tag_ids: ['yuri_gl'],
+            created_at: '2026-09-19T00:00:00Z'
+          }
+        ],
+        error: null
+      };
+    }
+  };
+
+  try {
+    const result = await naturalSearch.search(
+      client,
+      '百合の異世界ファンタジーが読みたい',
+      { limit: 24 }
+    );
+    assert.ok(result.rows.length > 0);
+    assert.ok(
+      calls.some(
+        (call) =>
+          call.name === 'novelight_neutral_search_v2' &&
+          call.args.p_official_tag_ids.includes('yuri_gl')
+      )
+    );
+  } finally {
+    if (previousTags === undefined) delete globalThis.NovelightTags;
+    else {
+      Object.defineProperty(globalThis, 'NovelightTags', {
+        configurable: true,
+        value: previousTags
+      });
+    }
+  }
+});
+
 test('search page keeps existing discovery and safety contracts', async () => {
   const [html, script] = await Promise.all([
     readFile(new URL('search.html', root), 'utf8'),
@@ -92,6 +189,10 @@ test('search page keeps existing discovery and safety contracts', async () => {
   ]);
   assert.match(html, /自然文で探す/);
   assert.match(html, /novelight-natural-search\.js/);
+  assert.match(html, /novelight-tags\.js/);
+  assert.match(html, /公式タグで絞り込む/);
+  assert.match(html, /AND検索/);
+  assert.match(html, /novelight_neutral_search_v2/);
   assert.match(html, /NovelightNaturalSearch\.search/);
   assert.match(html, /NovelightUserSafety\.filterNovelRows/);
   assert.match(html, /novelight_trusted_discovery_feed/);
