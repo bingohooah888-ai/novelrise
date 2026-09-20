@@ -24,6 +24,14 @@ test('Production and Staging mutation-control workflows require explicit high-ri
     true
   );
   assert.equal(
+    isHighRiskPath('.github/workflows/staging-base-books-32-recovery.yml'),
+    true
+  );
+  assert.equal(
+    isHighRiskPath('scripts/staging-base-books-32-recover.mjs'),
+    true
+  );
+  assert.equal(
     isHighRiskPath('.github/workflows/vercel-admin-allowlist.yml'),
     true
   );
@@ -33,19 +41,23 @@ test('Production and Staging mutation-control workflows require explicit high-ri
   assert.deepEqual(
     classifyHighRiskPaths([
       '.github/workflows/staging-smoke.yml',
+      '.github/workflows/staging-base-books-32-recovery.yml',
       '.github/workflows/supabase-production.yml',
       '.github/workflows/supabase-production-auto-deploy.yml',
       '.github/workflows/supabase-staging-sync-request.yml',
       '.github/workflows/supabase-staging-sync.yml',
       '.github/workflows/vercel-admin-allowlist.yml',
+      'scripts/staging-base-books-32-recover.mjs',
       'scripts/vercel-admin-allowlist.mjs'
     ]),
     [
+      '.github/workflows/staging-base-books-32-recovery.yml',
       '.github/workflows/supabase-production-auto-deploy.yml',
       '.github/workflows/supabase-production.yml',
       '.github/workflows/supabase-staging-sync-request.yml',
       '.github/workflows/supabase-staging-sync.yml',
       '.github/workflows/vercel-admin-allowlist.yml',
+      'scripts/staging-base-books-32-recover.mjs',
       'scripts/vercel-admin-allowlist.mjs'
     ]
   );

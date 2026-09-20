@@ -110,6 +110,29 @@ apply step自体がsuccessを返さなかった場合も、部分適用の可能
 
 DDLが途中まで適用された可能性がある場合、自動rollbackを続けて実行すると障害状態をさらに変化させる可能性があるため、復旧判断とStaging同期は分離する。
 
+### 5.1 migration history適用済み・公式32冊実データ欠落の専用復旧
+
+`20260919203910` / `20260920204000` がStaging migration historyでは適用済みなのに、`NOVELIGHT_base_books_32_final` の32冊実データが欠落してGeometry postcheckだけが失敗する場合、migrationを再適用したりmigration historyを書き換えたりしない。
+
+この限定状態では `.github/workflows/staging-base-books-32-recovery.yml` を唯一の自動復旧経路とし、Issue #294へrepository ownerとしてexact current main SHAに固定した次のrequestを投稿する。
+
+```text
+NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE {"mainSha":"<exact-current-main-sha>","packKey":"NOVELIGHT_base_books_32_final","geometryMigration":"20260920204000","confirmation":"RECOVER STAGING BASE BOOKS 32"}
+```
+
+この復旧は次をFail-Closedで固定する。
+
+- Productionは公開済み `novel_thumbnail_assets` と公開Storageの32冊を**read-only source**としてだけ使用し、Production server credentialを一切受け取らない。
+- source rowは32件、active、表示順1〜32、`source_file_name` / `source_sha256` がchecked-in `novelight-base-books-32.json` と完全一致することを要求する。
+- 各PNGをdownload後にbyte size / SHA-256 / PNG geometryまで再検証してから専用Staging Storageへuploadする。
+- Staging既存行がある場合は正式manifestとStorage binaryが完全一致するものだけをidempotentに再利用し、不一致は上書きせず停止する。
+- `novelight_admin_stage_official_base_book` と `novelight_admin_activate_official_base_book_pack` の既存公式RPCだけを使用し、32冊stage後に原子的activateする。
+- source-space Geometry、32冊active、stale render cache 0、`novelight_thumbnail_compositions_v3`、repository/Staging migration parityをpostcheckする。
+- request commentはone-time `CLAIMED` / `CONSUMED` ledgerで管理し、current mainがclaim前またはwrite直前に変わった場合は停止する。
+- failure時にmigration再適用、migration history修正、Production write、自動rollbackを行わない。
+
+この復旧承認はProduction mutation承認を兼ねない。
+
 ## 6. 通常の昇格順序
 
 migrationを含む変更では次を維持する。

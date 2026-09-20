@@ -1,0 +1,325 @@
+﻿name: NOVELIGHT Staging Base Books 32 Recovery
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-staging-base-books-32-recovery
+  cancel-in-progress: false
+
+jobs:
+  request:
+    name: Validate one-time owner recovery request
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE ')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      main_sha: ${{ steps.request.outputs.main_sha }}
+      confirmation: ${{ steps.request.outputs.confirmation }}
+      request_comment_id: ${{ steps.request.outputs.request_comment_id }}
+
+    steps:
+      - name: Parse exact Staging base-book recovery request
+        id: request
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          REQUEST_COMMENT_ID: ${{ github.event.comment.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix='NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE '
+          request_json="${COMMENT_BODY#"$prefix"}"
+          test "$request_json" != "$COMMENT_BODY" || {
+            echo 'Recovery request blocked: command prefix mismatch.'
+            exit 1
+          }
+          printf '%s\n' "$request_json" | jq -e '
+            type == "object" and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.packKey == "NOVELIGHT_base_books_32_final") and
+            (.geometryMigration == "20260920204000") and
+            (.confirmation == "RECOVER STAGING BASE BOOKS 32") and
+            ((keys | sort) == (["confirmation","geometryMigration","mainSha","packKey"] | sort))
+          ' >/dev/null || {
+            echo 'Recovery request blocked: invalid request JSON.'
+            exit 1
+          }
+          main_sha="$(printf '%s\n' "$request_json" | jq -r '.mainSha')"
+          confirmation="$(printf '%s\n' "$request_json" | jq -r '.confirmation')"
+          {
+            echo "main_sha=$main_sha"
+            echo "confirmation=$confirmation"
+            echo "request_comment_id=$REQUEST_COMMENT_ID"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Bind request to current main before claiming
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_MAIN_SHA: ${{ steps.request.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main_sha="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main_sha" = "$REQUESTED_MAIN_SHA" || {
+            echo "Recovery request blocked: main moved from $REQUESTED_MAIN_SHA to $current_main_sha."
+            exit 1
+          }
+
+      - name: Reject already claimed or consumed request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_COMMENT_ID: ${{ steps.request.outputs.request_comment_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/staging-base-books-recovery-ledger.ndjson
+          page=1
+          while [ "$page" -le 20 ]; do
+            page_file="/tmp/staging-base-books-recovery-comments-$page.json"
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100&page=$page" \
+              > "$page_file"
+            count="$(jq 'length' "$page_file")"
+            jq -c '.[]' "$page_file" >> /tmp/staging-base-books-recovery-ledger.ndjson
+            if [ "$count" -lt 100 ]; then break; fi
+            page=$((page + 1))
+          done
+          test "$page" -le 20 || {
+            echo 'Recovery request blocked: control ledger exceeded bounded pagination.'
+            exit 1
+          }
+          needle="\"requestCommentId\":\"$REQUEST_COMMENT_ID\""
+          used_count="$(
+            jq -s --arg needle "$needle" '[
+              .[]
+              | select(.user.login == "github-actions[bot]")
+              | select(
+                  (.body | startswith("NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_CLAIMED ")) or
+                  (.body | startswith("NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_CONSUMED "))
+                )
+              | select(.body | contains($needle))
+            ] | length' /tmp/staging-base-books-recovery-ledger.ndjson
+          )"
+          test "$used_count" -eq 0 || {
+            echo 'Recovery request blocked: request comment was already claimed or consumed.'
+            exit 1
+          }
+
+      - name: Claim request before Staging mutation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_COMMENT_ID: ${{ steps.request.outputs.request_comment_id }}
+          MAIN_SHA: ${{ steps.request.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn \
+            --arg requestCommentId "$REQUEST_COMMENT_ID" \
+            --arg mainSha "$MAIN_SHA" \
+            --arg packKey 'NOVELIGHT_base_books_32_final' \
+            --arg geometryMigration '20260920204000' \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,packKey:$packKey,geometryMigration:$geometryMigration,runId:$runId}')"
+          body="NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_CLAIMED $payload"
+          curl --silent --show-error --fail -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null
+
+  recover:
+    name: Recover official base books on dedicated Staging
+    needs: request
+    if: needs.request.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      EXPECTED_MAIN_SHA: ${{ needs.request.outputs.main_sha }}
+      RECOVERY_CONFIRMATION: ${{ needs.request.outputs.confirmation }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-staging-recovery-database-url
+
+    steps:
+      - name: Checkout exact approved revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.request.outputs.main_sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI for parity proof
+        uses: supabase/setup-cli@db80d65afb07eb2750e68f5b07a9d6bc994c0c47 # v1.6.0
+        with:
+          version: 2.63.1
+
+      - name: Require canonical Staging recovery configuration
+        env:
+          STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co' || {
+            echo 'Recovery blocked: dedicated Staging project URL drifted.'
+            exit 1
+          }
+          test -n "$STAGING_SUPABASE_SECRET_KEY" || {
+            echo 'Recovery blocked: STAGING_SUPABASE_SECRET_KEY is missing.'
+            exit 1
+          }
+          test -n "$STAGING_DATABASE_URL_SOURCE" || {
+            echo 'Recovery blocked: STAGING_DATABASE_URL is missing.'
+            exit 1
+          }
+
+      - name: Bind exact current main before precheck
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main_sha="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main_sha" = "$EXPECTED_MAIN_SHA" || {
+            echo "Recovery blocked: main moved to $current_main_sha."
+            exit 1
+          }
+          test "$(git rev-parse HEAD)" = "$EXPECTED_MAIN_SHA" || {
+            echo 'Recovery blocked: checkout is not the approved revision.'
+            exit 1
+          }
+
+      - name: Run read-only official-pack recovery precheck
+        env:
+          STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+        run: node scripts/staging-base-books-32-recover.mjs --mode=precheck
+
+      - name: Re-bind exact current main immediately before writes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main_sha="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main_sha" = "$EXPECTED_MAIN_SHA" || {
+            echo "Recovery blocked: main moved before Staging writes to $current_main_sha."
+            exit 1
+          }
+
+      - name: Recover official 32-book pack on Staging
+        env:
+          STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+        run: node scripts/staging-base-books-32-recover.mjs --mode=recover
+
+      - name: Run read-only Geometry recovery postcheck
+        env:
+          STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+        run: node scripts/staging-base-books-32-recover.mjs --mode=verify
+
+      - name: Resolve IPv4-compatible Staging database route for parity
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+        run: node scripts/resolve-staging-session-pooler.mjs
+
+      - name: Verify exact repository and Staging migration parity
+        shell: bash
+        env:
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          bash scripts/verify-staging-migrations.sh parity /tmp/staging-recovery-migration-parity.txt
+
+      - name: Remove ephemeral Staging database route
+        if: always()
+        shell: bash
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+
+  record:
+    name: Record Staging recovery result
+    needs: [request, recover]
+    if: always() && needs.request.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Record consumed recovery request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_COMMENT_ID: ${{ needs.request.outputs.request_comment_id }}
+          MAIN_SHA: ${{ needs.request.outputs.main_sha }}
+          RECOVERY_RESULT: ${{ needs.recover.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RECOVERY_RESULT" in
+            success|failure|cancelled|skipped) ;;
+            *) echo "Unexpected recovery result: $RECOVERY_RESULT"; exit 1 ;;
+          esac
+          payload="$(jq -cn \
+            --arg requestCommentId "$REQUEST_COMMENT_ID" \
+            --arg mainSha "$MAIN_SHA" \
+            --arg packKey 'NOVELIGHT_base_books_32_final' \
+            --arg geometryMigration '20260920204000' \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg result "$RECOVERY_RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,packKey:$packKey,geometryMigration:$geometryMigration,runId:$runId,result:$result}')"
+          body="NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_CONSUMED $payload"
+          curl --silent --show-error --fail -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null

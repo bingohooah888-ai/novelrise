@@ -14,10 +14,12 @@ const EXACT_HIGH_RISK_PATHS = new Set([
   'scripts/check-merge-readiness.mjs',
   'scripts/high-risk-approval-lib.mjs',
   'scripts/vercel-admin-allowlist.mjs',
+  'scripts/staging-base-books-32-recover.mjs',
   '.github/workflows/ci.yml',
   '.github/workflows/high-risk-pr-approval.yml',
   '.github/workflows/supabase-staging-sync-request.yml',
   '.github/workflows/supabase-staging-sync.yml',
+  '.github/workflows/staging-base-books-32-recovery.yml',
   '.github/workflows/vercel-admin-allowlist.yml'
 ]);
 
@@ -75,7 +77,8 @@ export function parseHighRiskApprovalComment(body) {
     if (JSON.stringify(keys) !== JSON.stringify(expectedKeys)) return null;
     if (parsed.operation !== 'merge-high-risk-pr') return null;
     if (!Number.isInteger(parsed.pr) || parsed.pr <= 0) return null;
-    if (!/^[0-9a-f]{40}$/.test(String(parsed.headSha || '').toLowerCase())) return null;
+    if (!/^[0-9a-f]{40}$/.test(String(parsed.headSha || '').toLowerCase()))
+      return null;
     if (!/^[A-F0-9]{8}$/.test(String(parsed.challenge || ''))) return null;
     return {
       operation: parsed.operation,
@@ -111,7 +114,9 @@ async function runCli() {
     process.stdout.write(`${JSON.stringify(highRisk)}\n`);
     return;
   }
-  throw new Error('Usage: high-risk-approval-lib.mjs challenge <pr> <sha> | classify <paths...>');
+  throw new Error(
+    'Usage: high-risk-approval-lib.mjs challenge <pr> <sha> | classify <paths...>'
+  );
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
