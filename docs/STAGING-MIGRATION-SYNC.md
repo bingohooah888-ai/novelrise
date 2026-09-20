@@ -28,14 +28,15 @@ request bridgeはmutation SQLやDB credentialを扱わず、検証済みのexact
 GitHubの `staging` Environmentへ次のSecretを設定する。
 
 - `STAGING_DATABASE_URL`
-  - 専用Staging Supabase projectの**direct database URL**
+  - 専用Staging Supabase projectの**direct database URLをSecretの正本**として保持する
   - 形式は `postgresql://postgres:<password>@db.<staging-project-ref>.supabase.co:5432/postgres`
   - Production projectのURLやpasswordを流用しない
-  - pooler URLを使用しない
+  - GitHub-hosted runnerのようなIPv4-only実行環境では、direct endpointがIPv6-onlyで到達不能な場合に限り、Workflow内でこのSecretから同一projectのShared Pooler **Session mode (5432)** URLを一時導出してよい。Transaction mode (6543) はmigration用途に使用しない
+  - 一時導出するSession poolerは、review済みのStaging project ref / region / pooler shard候補に限定し、`postgres.<staging-project-ref>` username、`PGSSLMODE=require`、実接続成功をすべて確認する。導出URLをGitHub Secret、Issue、artifact、ログへ保存しない
 
-既存の `STAGING_SUPABASE_URL` はStaging project identityの正本として維持する。Workflowは `STAGING_DATABASE_URL` のhostが `STAGING_SUPABASE_URL` のproject refと完全一致する場合だけ先へ進む。
+既存の `STAGING_SUPABASE_URL` はStaging project identityの正本として維持する。WorkflowはSecret正本のdirect URLについて `db.<staging-project-ref>.supabase.co` が `STAGING_SUPABASE_URL` のproject refと完全一致することを要求する。一時導出したSession pooler URLについては `postgres.<staging-project-ref>` username、review済みpooler host、port `5432` が同じproject identityへ固定されていることを要求する。
 
-`STAGING_DATABASE_URL` はGitHub Actions Secretとしてのみ保持し、Vercel Preview、browser code、Issue、artifact、ログへ複製しない。Workflowのjob-level `env` には置かず、target検証またはDB接続を実行するfirst-party `run` stepへだけ注入する。`actions/checkout`、`supabase/setup-cli` 等のthird-party action stepへは渡さない。
+`STAGING_DATABASE_URL` はGitHub Actions Secretとしてのみ保持し、Vercel Preview、browser code、Issue、artifact、ログへ複製しない。Workflowのjob-level `env` には置かず、target検証またはDB接続を実行するfirst-party `run` stepへだけ注入する。IPv4-only runner用に一時導出したSession pooler URLも同じSecret扱いとし、権限を制限した一時ファイルだけでfirst-party `run` step間を引き渡し、job終了前の `always()` cleanupで必ず削除する。`actions/checkout`、`supabase/setup-cli` 等のthird-party action stepへSecret値または導出URLを渡さない。
 
 Staging DBへ接続するfirst-party stepは `PGSSLMODE=require` を必須とし、`psql`、`supabase migration list`、`supabase db push` のすべてで暗号化transportを要求する。target verifierとmigration verifierも `PGSSLMODE` がexactly `require` でない場合はFail-Closedする。
 
