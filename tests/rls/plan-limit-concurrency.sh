@@ -15,6 +15,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+"${psql_base[@]}" <<'SQL'
+set role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '66666666-6666-6666-6666-666666666666',
+  false
+);
+insert into public.novels (id, user_id, status) values (
+  '60000000-0000-0000-0000-000000000001',
+  '66666666-6666-6666-6666-666666666666',
+  'published'
+);
+SQL
+
 PGAPPNAME=novelight-plan-limit-a "${psql_base[@]}" >"$session_a_log" 2>&1 <<'SQL' &
 begin;
 set role authenticated;
@@ -24,7 +38,7 @@ select set_config(
   false
 );
 insert into public.novels (id, user_id, status) values (
-  '60000000-0000-0000-0000-000000000001',
+  '60000000-0000-0000-0000-000000000002',
   '66666666-6666-6666-6666-666666666666',
   'published'
 );
@@ -62,7 +76,7 @@ select set_config(
   false
 );
 insert into public.novels (id, user_id, status) values (
-  '60000000-0000-0000-0000-000000000002',
+  '60000000-0000-0000-0000-000000000003',
   '66666666-6666-6666-6666-666666666666',
   'published'
 );
@@ -75,17 +89,17 @@ wait "$session_a_pid"
 
 if [[ "$session_b_status" -eq 0 ]]; then
   cat "$session_b_log"
-  echo 'Concurrent second Free-plan insert unexpectedly succeeded.' >&2
+  echo 'Concurrent third Free-plan insert unexpectedly succeeded.' >&2
   exit 1
 fi
 
 count=$("${psql_base[@]}" -Atc \
   "select count(*) from public.novels where user_id = '66666666-6666-6666-6666-666666666666';")
 
-if [[ "$count" != '1' ]]; then
+if [[ "$count" != '2' ]]; then
   cat "$session_a_log"
   cat "$session_b_log"
-  echo "Expected one novel after concurrent Free-plan inserts, found $count." >&2
+  echo "Expected two novels after concurrent Free-plan inserts, found $count." >&2
   exit 1
 fi
 

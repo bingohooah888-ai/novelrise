@@ -76,22 +76,28 @@ begin
 end
 $$;
 
--- Free: first novel succeeds, second is rejected.
-insert into public.novels (id, user_id, status) values (
-  '30000000-0000-0000-0000-000000000001',
-  '33333333-3333-3333-3333-333333333333',
-  'published'
-);
+-- Free: first two novels succeed, third is rejected.
+insert into public.novels (id, user_id, status) values
+  (
+    '30000000-0000-0000-0000-000000000001',
+    '33333333-3333-3333-3333-333333333333',
+    'published'
+  ),
+  (
+    '30000000-0000-0000-0000-000000000002',
+    '33333333-3333-3333-3333-333333333333',
+    'published'
+  );
 
 do $$
 begin
   begin
     insert into public.novels (id, user_id, status) values (
-      '30000000-0000-0000-0000-000000000002',
+      '30000000-0000-0000-0000-000000000003',
       '33333333-3333-3333-3333-333333333333',
       'published'
     );
-    raise exception 'free user unexpectedly exceeded one novel';
+    raise exception 'free user unexpectedly exceeded two novels';
   exception
     when check_violation then null;
   end;
@@ -99,10 +105,10 @@ end
 $$;
 
 select public.test_assert(
-  (select count(*) = 1
+  (select count(*) = 2
    from public.novels
    where user_id = '33333333-3333-3333-3333-333333333333'),
-  'free user must remain capped at one novel'
+  'free user must remain capped at two novels'
 );
 
 -- Standard: ten novels succeed, eleventh is rejected.
