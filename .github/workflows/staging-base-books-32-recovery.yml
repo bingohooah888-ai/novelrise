@@ -183,9 +183,9 @@ jobs:
         run: npm ci
 
       - name: Setup Supabase CLI for parity proof
-        uses: supabase/setup-cli@db80d65afb07eb2750e68f5b07a9d6bc994c0c47 # v1.6.0
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
         with:
-          version: 2.63.1
+          version: 2.111.0
 
       - name: Require canonical Staging recovery configuration
         env:

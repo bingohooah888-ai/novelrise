@@ -155,6 +155,11 @@ test('recovery workflow is one-time, owner-only, main-bound, and Staging-only', 
   assert.match(workflow, /--mode=recover/);
   assert.match(workflow, /--mode=verify/);
   assert.match(workflow, /verify-staging-migrations\.sh parity/);
+  assert.match(
+    workflow,
+    /supabase\/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf/
+  );
+  assert.match(workflow, /version: 2\.111\.0/);
   assert.match(workflow, /RECOVERY_CLAIMED/);
   assert.match(workflow, /RECOVERY_CONSUMED/);
 });
