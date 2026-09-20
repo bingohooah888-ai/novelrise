@@ -273,7 +273,7 @@ begin
     );
   end if;
 
-  select pg_catalog.coalesce(
+  select coalesce(
     pg_catalog.jsonb_agg(
       pg_catalog.jsonb_build_object(
         'id', i.id,
@@ -353,7 +353,7 @@ declare
   v_episode record;
   v_id uuid;
   v_count integer;
-  v_alt text := pg_catalog.coalesce(p_alt_text, '');
+  v_alt text := coalesce(p_alt_text, '');
   v_path_pattern text;
 begin
   if p_actor_user_id is null then
@@ -433,7 +433,7 @@ set search_path = ''
 as $$
 declare
   v_row record;
-  v_alt text := pg_catalog.coalesce(p_alt_text, '');
+  v_alt text := coalesce(p_alt_text, '');
 begin
   if p_actor_user_id is null then
     raise exception using errcode='42501', message='Authenticated actor required';
@@ -486,7 +486,7 @@ begin
     return null;
   end if;
 
-  select pg_catalog.coalesce(
+  select coalesce(
     pg_catalog.jsonb_agg(
       pg_catalog.jsonb_build_object(
         'id', i.id,
@@ -537,7 +537,7 @@ begin
     raise exception using errcode='42501', message='Novel not found or not owned by actor';
   end if;
 
-  select pg_catalog.coalesce(
+  select coalesce(
     pg_catalog.jsonb_agg(
       pg_catalog.jsonb_build_object(
         'id', i.id,
