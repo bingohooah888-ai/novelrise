@@ -225,11 +225,15 @@ details.profile-editor summary{font-size:14px!important}
   border-radius:10px!important;
   box-shadow:0 4px 12px rgba(0,0,0,.16)!important;
 }
-.action-card:nth-child(1) .action-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_20 (1).png")!important}
-.action-card:nth-child(2) .action-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_20 (2).png")!important}
-.action-card:nth-child(3) .action-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_20 (3).png")!important}
-.action-card:nth-child(4) .action-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_21 (4).png")!important}
-.action-card:nth-child(5) .action-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_22 (5).png")!important}
+.action-card.action-post .action-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_20 (1).png")!important}
+.action-card.action-works .action-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_20 (2).png")!important}
+.action-card.action-notes .action-icon{
+  background-image:none!important;
+  color:#d9c8ff!important;
+  font-size:26px!important;
+}
+.action-card.action-seed .action-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_21 (4).png")!important}
+.action-card.action-plan .action-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_22 (5).png")!important}
 .metric:nth-child(1) .metric-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_22 (6).png")!important}
 .metric:nth-child(2) .metric-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_22 (7).png")!important}
 .metric:nth-child(3) .metric-icon{background-image:url("assets/author-room/ChatGPT Image 2026年9月7日 01_37_22 (8).png")!important}
