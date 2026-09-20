@@ -7,6 +7,8 @@ const migration = await readFile(
   'utf8'
 );
 const management = await readFile('author-notes.html', 'utf8');
+const authorStudio = await readFile('mypage.html', 'utf8');
+const authorRoomCss = await readFile('novelight-author-room.css', 'utf8');
 const authorPage = await readFile('author.html', 'utf8');
 const publicUi = await readFile('novelight-author-notes-public.js', 'utf8');
 const publicCss = await readFile('novelight-author-notes-public.css', 'utf8');
@@ -42,6 +44,28 @@ test('rolling deployment fails safely without raw-table fallback', () => {
   );
   assert.match(publicUi, /p_limit: 5/u);
   assert.doesNotMatch(publicUi, /\.from\(['"]author_notes['"]\)/u);
+});
+
+test('author notes use the Author Studio shell and dashboard shortcuts stay stable', () => {
+  assert.match(management, /<body class="novelight-author-studio-shell">/u);
+  assert.match(
+    management,
+    /\.workspace\{max-width:1100px;margin:0 auto;padding:34px 28px 72px\}/u
+  );
+
+  const actionCards =
+    authorStudio.match(/<article class="action-card /gu) || [];
+  assert.equal(actionCards.length, 5);
+  assert.doesNotMatch(authorStudio, /<h2>LIGHT ANALYTICS<\/h2>/u);
+  assert.match(authorStudio, /class="action-card violet action-notes"/u);
+  assert.match(authorStudio, /class="action-card green action-seed"/u);
+  assert.match(authorStudio, /class="action-card cyan action-plan"/u);
+  assert.match(authorStudio, /LIGHT ANALYTICS・直近30日/u);
+
+  assert.doesNotMatch(authorRoomCss, /\.action-card:nth-child\(/u);
+  assert.match(authorRoomCss, /\.action-card\.action-notes \.action-icon/u);
+  assert.match(authorRoomCss, /\.action-card\.action-seed \.action-icon/u);
+  assert.match(authorRoomCss, /\.action-card\.action-plan \.action-icon/u);
 });
 
 test('public author notes are mounted safely on the author profile', () => {
