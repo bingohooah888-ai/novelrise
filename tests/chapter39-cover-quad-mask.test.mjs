@@ -148,7 +148,7 @@ test('Chapter 40 supersedes Chapter 39 mask rendering while preserving quad-deri
   );
   assert.ok(
     composer.includes(
-      'await drawPerspectiveAsset(context, selected[type], quad)'
+      'await drawPerspectiveAsset(context, selected[type], resolved.coverQuad)'
     )
   );
   assert.doesNotMatch(

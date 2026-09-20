@@ -104,8 +104,8 @@ function stagedAssetIsExact(asset, item) {
 }
 
 function activationBody(manifest) {
-  const quad = manifest.canvasGeometry?.coverQuad;
-  assert(quad, 'canvas cover_quadがありません。');
+  const quad = manifest.sourceGeometry?.coverQuad;
+  assert(quad, 'base_book source cover_quadがありません。');
   return {
     action: 'activate-official-base-book-pack',
     packKey: PACK_KEY,
@@ -190,6 +190,7 @@ export function mountOfficialBaseBooks32Importer({ root, client, adminRequest })
     try {
       let library = await adminRequest('GET');
       assert(library?.composerReady === true && library?.coverQuadReady === true, 'Geometry Thumbnail Engineが利用できません。');
+      assert(library?.resolvedGeometryReady === true, '共通resolved geometry migrationが未適用です。');
       assert(library?.baseBookPackReady === true, '32冊metadata migrationが未適用です。');
       let imported = 0;
       let skipped = 0;
@@ -270,8 +271,11 @@ export function mountOfficialBaseBooks32Importer({ root, client, adminRequest })
       );
       assert(active.length === 32, '有効化後のactive base_bookが32冊ではありません。');
       const template = (library.templates || []).find((item) => item.template_key === 'book-v1');
-      const q = manifest.canvasGeometry.coverQuad;
+      const q = manifest.sourceGeometry.coverQuad;
       assert(
+        template?.cover_quad_space === 'base_book_source' &&
+        Number(template?.base_book_source_width) === manifest.sourceGeometry.width &&
+        Number(template?.base_book_source_height) === manifest.sourceGeometry.height &&
         Number(template?.cover_top_left_x) === q.topLeft.x &&
         Number(template?.cover_top_left_y) === q.topLeft.y &&
         Number(template?.cover_top_right_x) === q.topRight.x &&
@@ -280,7 +284,7 @@ export function mountOfficialBaseBooks32Importer({ root, client, adminRequest })
         Number(template?.cover_bottom_right_y) === q.bottomRight.y &&
         Number(template?.cover_bottom_left_x) === q.bottomLeft.x &&
         Number(template?.cover_bottom_left_y) === q.bottomLeft.y,
-        '有効化後のcover_quadが正式値と一致しません。'
+        '有効化後のsource-space cover_quadが正式値と一致しません。'
       );
       setMessage('正式有効化PASS：32冊active、旧基準本は削除せずretired、cover_quadも正式値です。', 'ok');
       detail.textContent = '作者UIでは表示順1〜32、色名＋材質名の2段表示で利用できます。';

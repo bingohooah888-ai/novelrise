@@ -15,43 +15,20 @@
     "alphaGeometryPixelCount": 626029,
     "coverQuad": {
       "topLeft": {
-        "x": 169,
+        "x": 164,
         "y": 360
       },
       "topRight": {
-        "x": 710,
-        "y": 254
+        "x": 714,
+        "y": 252
       },
       "bottomRight": {
-        "x": 976,
-        "y": 992
+        "x": 984,
+        "y": 1003
       },
       "bottomLeft": {
-        "x": 321,
-        "y": 1142
-      }
-    }
-  },
-  "canvasGeometry": {
-    "width": 1086,
-    "height": 1448,
-    "renderStrategy": "contain",
-    "coverQuad": {
-      "topLeft": {
-        "x": 220,
-        "y": 339
-      },
-      "topRight": {
-        "x": 730,
-        "y": 239
-      },
-      "bottomRight": {
-        "x": 980,
-        "y": 935
-      },
-      "bottomLeft": {
-        "x": 363,
-        "y": 1077
+        "x": 319,
+        "y": 1156
       }
     }
   },

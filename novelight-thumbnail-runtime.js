@@ -152,46 +152,10 @@
     });
   }
 
-  function compositionQuad(composition) {
-    return {
-      top_left: {
-        x: Number(composition.cover_top_left_x),
-        y: Number(composition.cover_top_left_y)
-      },
-      top_right: {
-        x: Number(composition.cover_top_right_x),
-        y: Number(composition.cover_top_right_y)
-      },
-      bottom_right: {
-        x: Number(composition.cover_bottom_right_x),
-        y: Number(composition.cover_bottom_right_y)
-      },
-      bottom_left: {
-        x: Number(composition.cover_bottom_left_x),
-        y: Number(composition.cover_bottom_left_y)
-      }
-    };
-  }
-
   async function drawFull(context, url, width, height) {
     if (!url) return;
     const image = await loadImage(url);
     context.drawImage(image, 0, 0, width, height);
-  }
-
-  async function drawContained(context, url, width, height) {
-    if (!url) return;
-    const image = await loadImage(url);
-    const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
-    const drawWidth = image.naturalWidth * scale;
-    const drawHeight = image.naturalHeight * scale;
-    context.drawImage(
-      image,
-      (width - drawWidth) / 2,
-      (height - drawHeight) / 2,
-      drawWidth,
-      drawHeight
-    );
   }
 
   async function renderGeometryFallback(composition) {
@@ -203,9 +167,17 @@
     if (width !== 1086 || height !== 1448) return null;
 
     const geometry = await loadGeometryEngine();
-    const quad = compositionQuad(composition);
-    const validation = geometry.validateCoverQuad(quad, width, height);
-    if (!validation.valid) return null;
+    const baseBookImage = await loadImage(composition.base_book_url);
+    let resolved;
+    try {
+      resolved = geometry.resolveBookGeometry(
+        composition,
+        baseBookImage.naturalWidth,
+        baseBookImage.naturalHeight
+      );
+    } catch {
+      return null;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -215,12 +187,12 @@
     context.clearRect(0, 0, width, height);
 
     await drawFull(context, composition.background_url, width, height);
-    await drawContained(context, composition.base_book_url, width, height);
+    geometry.drawResolvedBaseBook(context, baseBookImage, resolved);
     for (const type of SURFACE_TYPES) {
       const url = composition[`${type}_url`];
       if (!url) continue;
       const image = await loadImage(url);
-      geometry.drawPerspectiveImage(context, image, validation.quad);
+      geometry.drawPerspectiveImage(context, image, resolved.coverQuad);
     }
 
 
@@ -240,9 +212,22 @@
 
   async function loadCompositions(browserClient, ids) {
     if (!ids.length) return [];
-    const result = await browserClient.rpc('novelight_thumbnail_compositions_v2', {
+    let result = await browserClient.rpc('novelight_thumbnail_compositions_v3', {
       p_novel_ids: ids
     });
+    if (['42883', '42P01', '42703'].includes(result.error?.code)) {
+      result = await browserClient.rpc('novelight_thumbnail_compositions_v2', {
+        p_novel_ids: ids
+      });
+      if (!result.error) {
+        result.data = (result.data ?? []).map((composition) => ({
+          ...composition,
+          cover_quad_space: 'canvas',
+          base_book_source_width: null,
+          base_book_source_height: null
+        }));
+      }
+    }
     if (result.error) {
       if (['42883', '42P01', '42703'].includes(result.error.code)) return [];
       throw result.error;

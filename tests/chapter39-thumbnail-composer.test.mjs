@@ -108,7 +108,7 @@ test('Chapter 40 supersedes the Chapter 39 mask render path while preserving int
   );
   assert.ok(
     composer.includes(
-      'for (const type of SURFACE_TYPES) await drawPerspectiveAsset(context, selected[type], quad)'
+      'await drawPerspectiveAsset(context, selected[type], resolved.coverQuad)'
     )
   );
   assert.ok(!composer.includes("globalCompositeOperation = 'destination-in'"));

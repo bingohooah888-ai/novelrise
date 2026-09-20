@@ -151,6 +151,61 @@ export function normalizeCoverQuad(rawQuad, width = 1086, height = 1448) {
   return quad;
 }
 
+export function containSourceRect(
+  sourceWidth,
+  sourceHeight,
+  width = 1086,
+  height = 1448
+) {
+  if (
+    !Number.isInteger(sourceWidth) ||
+    sourceWidth < 1 ||
+    !Number.isInteger(sourceHeight) ||
+    sourceHeight < 1 ||
+    !Number.isInteger(width) ||
+    width < 1 ||
+    !Number.isInteger(height) ||
+    height < 1
+  ) {
+    throw new Error('Invalid base_book geometry dimensions');
+  }
+  const scale = Math.min(width / sourceWidth, height / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  return {
+    x: (width - drawWidth) / 2,
+    y: (height - drawHeight) / 2,
+    width: drawWidth,
+    height: drawHeight,
+    scale
+  };
+}
+
+export function resolveSourceCoverQuad(
+  rawQuad,
+  sourceWidth,
+  sourceHeight,
+  width = 1086,
+  height = 1448
+) {
+  const sourceQuad = normalizeCoverQuad(rawQuad, sourceWidth, sourceHeight);
+  const bookRect = containSourceRect(sourceWidth, sourceHeight, width, height);
+  const coverQuad = Object.fromEntries(
+    Object.entries(sourceQuad).map(([name, sourcePoint]) => [
+      name,
+      {
+        x: Math.round(bookRect.x + sourcePoint.x * bookRect.scale),
+        y: Math.round(bookRect.y + sourcePoint.y * bookRect.scale)
+      }
+    ])
+  );
+  return {
+    sourceQuad,
+    coverQuad: normalizeCoverQuad(coverQuad, width, height),
+    bookRect
+  };
+}
+
 function insideConvexQuad(x, y, points, orientation) {
   for (let index = 0; index < points.length; index += 1) {
     const edge = cross(points[index], points[(index + 1) % points.length], {

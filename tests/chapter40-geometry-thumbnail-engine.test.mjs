@@ -15,6 +15,10 @@ const rollback = await readFile(
   'supabase/rollback/20260911110000_chapter40_geometry_thumbnail_engine_rollback.sql',
   'utf8'
 );
+const sourceSpaceMigration = await readFile(
+  'supabase/migrations/20260920204000_thumbnail_geometry_source_space.sql',
+  'utf8'
+);
 
 function geometryRuntime() {
   const context = { window: {}, console };
@@ -79,7 +83,7 @@ test('renderer perspective-transforms only the three author-facing cover-surface
   );
   assert.match(
     composer,
-    /for \(const type of SURFACE_TYPES\) await drawPerspectiveAsset/
+    /await drawPerspectiveAsset\(context, selected\[type\], resolved\.coverQuad\)/
   );
   assert.match(composer, /drawPerspectiveImage\(context, image, quad\)/);
   assert.doesNotMatch(
@@ -142,17 +146,59 @@ test('ADMIN Geometry Editor uses the exact shared engine for validation and real
   assert.match(admin, /debug mask PNGは描画には使用しません/);
 });
 
-test('reader cache fallback uses geometry-aware v2 data and the shared Perspective Engine', () => {
+test('reader cache fallback prefers source-space v3 data and shared resolved geometry', () => {
   assert.match(
-    migration,
-    /create or replace function public\.novelight_thumbnail_compositions_v2/i
+    sourceSpaceMigration,
+    /create or replace function public\.novelight_thumbnail_compositions_v3/i
   );
+  assert.match(sourceSpaceMigration, /cover_quad_space text/);
+  assert.match(sourceSpaceMigration, /base_book_source_width integer/);
+  assert.match(runtime, /rpc\('novelight_thumbnail_compositions_v3'/);
   assert.match(runtime, /rpc\('novelight_thumbnail_compositions_v2'/);
   assert.match(runtime, /NovelightThumbnailComposer\?\.geometry/);
-  assert.match(runtime, /geometry\.validateCoverQuad/);
+  assert.match(runtime, /geometry\.resolveBookGeometry/);
+  assert.match(runtime, /geometry\.drawResolvedBaseBook/);
   assert.match(runtime, /geometry\.drawPerspectiveImage/);
   assert.doesNotMatch(runtime, /cover_mask_url/);
   assert.doesNotMatch(runtime, /maskImage/);
+});
+
+test('source-space quad resolves through the exact base_book contain transform', () => {
+  const geometry = geometryRuntime();
+  const template = {
+    canvas_width: 1086,
+    canvas_height: 1448,
+    cover_quad_space: 'base_book_source',
+    base_book_source_width: 1024,
+    base_book_source_height: 1536,
+    cover_top_left_x: 164,
+    cover_top_left_y: 360,
+    cover_top_right_x: 714,
+    cover_top_right_y: 252,
+    cover_bottom_right_x: 984,
+    cover_bottom_right_y: 1003,
+    cover_bottom_left_x: 319,
+    cover_bottom_left_y: 1156
+  };
+  const resolved = geometry.resolveBookGeometry(template, 1024, 1536);
+  assert.ok(Math.abs(resolved.bookRect.x - 60.3333333333) < 1e-6);
+  assert.equal(resolved.bookRect.y, 0);
+  assert.ok(Math.abs(resolved.coverQuad.top_left.x - 214.9375) < 1e-6);
+  assert.ok(Math.abs(resolved.coverQuad.top_left.y - 339.375) < 1e-6);
+  const canvasPoint = geometry.sourcePointToCanvas(
+    resolved.sourceQuad.bottom_right,
+    resolved.bookRect
+  );
+  const sourcePoint = geometry.canvasPointToSource(
+    canvasPoint,
+    resolved.bookRect
+  );
+  assert.ok(Math.abs(sourcePoint.x - 984) < 1e-6);
+  assert.ok(Math.abs(sourcePoint.y - 1003) < 1e-6);
+  assert.throws(
+    () => geometry.resolveBookGeometry(template, 1086, 1448),
+    /source dimensions do not match/
+  );
 });
 
 test('generic quad engine is reusable for future spine/page/edge geometry without template branches', () => {
