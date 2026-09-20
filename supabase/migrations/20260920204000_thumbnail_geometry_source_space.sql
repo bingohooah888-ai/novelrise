@@ -80,7 +80,8 @@ alter table public.novel_thumbnail_templates
 -- book-v1 source PNGs are all 1024x1536. The canonical quad below is measured
 -- on that source image, not on the 1086x1448 composition canvas.
 update public.novel_thumbnail_templates
-   set cover_quad_space = 'base_book_source',
+   set cover_mask_source = 'cover_quad',
+       cover_quad_space = 'base_book_source',
        base_book_source_width = 1024,
        base_book_source_height = 1536,
        cover_top_left_x = 164,

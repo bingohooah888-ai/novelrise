@@ -49,6 +49,7 @@ test('migration stores book-v1 cover_quad in base_book source coordinates', () =
     migration,
     /add column if not exists base_book_source_height integer/
   );
+  assert.match(migration, /cover_mask_source = 'cover_quad'/);
   assert.match(migration, /cover_quad_space = 'base_book_source'/);
   assert.match(migration, /base_book_source_width = 1024/);
   assert.match(migration, /base_book_source_height = 1536/);
