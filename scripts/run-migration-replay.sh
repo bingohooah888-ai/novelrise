@@ -820,6 +820,19 @@ echo '::group::Verify episode hearts rollback and reapply'
 "${REPLAY[@]}" -f tests/rls/episode-hearts.sql
 echo '::endgroup::'
 
+echo '::group::Verify episode inline illustrations behavior'
+"${REPLAY[@]}" -f supabase/checks/20260920093847_episode_inline_illustrations_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/episode-inline-illustrations.sql
+echo '::endgroup::'
+
+echo '::group::Verify episode inline illustrations rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260920093847_episode_inline_illustrations_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260920093847_episode_inline_illustrations_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260920093847_episode_inline_illustrations.sql
+"${REPLAY[@]}" -f supabase/checks/20260920093847_episode_inline_illustrations_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/episode-inline-illustrations.sql
+echo '::endgroup::'
+
 echo '::group::Verify restored-database structural integrity'
 "${REPLAY[@]}" -f supabase/checks/restore_validation.sql
 echo '::endgroup::'

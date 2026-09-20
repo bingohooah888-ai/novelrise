@@ -41,6 +41,8 @@ test('restored-target SQL covers current private and fairness-critical data mode
     'reader_bookshelf_entries',
     'user_blocks',
     'episode_hearts',
+    'episode_illustrations',
+    'episode_illustration_upload_audit',
     'episode_revisions',
     'novel_characters',
     'novel_polls',
@@ -62,6 +64,10 @@ test('restored-target SQL covers current private and fairness-critical data mode
   assert.match(sql, /novelight_can_favorite_novel/);
   assert.match(sql, /novelight_episode_heart_state/);
   assert.match(sql, /novelight_toggle_episode_heart/);
+  assert.match(sql, /novelight_authorize_episode_illustration_upload/);
+  assert.match(sql, /novelight_episode_illustration_editor_bundle/);
+  assert.match(sql, /novelight_public_episode_illustration_bundle/);
+  assert.match(sql, /novelight_owner_illustration_export_bundle/);
   assert.match(sql, /record_valid_read_progress/);
 });
 
