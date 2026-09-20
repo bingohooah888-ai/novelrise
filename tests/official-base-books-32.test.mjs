@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { resolveSourceCoverQuad } from '../api/_lib/cover-mask-png.js';
 
 const manifest = JSON.parse(
   await readFile('novelight-base-books-32.json', 'utf8')
@@ -48,44 +49,45 @@ test('official base_book pack locks 32 ordered Japanese color/material rows', ()
   }
 });
 
-test('contain transform maps source cover_quad to canonical 1086x1448 canvas quad', () => {
+test('source-space cover_quad is the only canonical geometry and resolves through contain', () => {
   const source = manifest.sourceGeometry;
-  const canvas = manifest.canvasGeometry;
-  const scale = Math.min(
-    canvas.width / source.width,
-    canvas.height / source.height
+  assert.equal(manifest.canvasGeometry, undefined);
+  const raw = {
+    top_left: source.coverQuad.topLeft,
+    top_right: source.coverQuad.topRight,
+    bottom_right: source.coverQuad.bottomRight,
+    bottom_left: source.coverQuad.bottomLeft
+  };
+  const resolved = resolveSourceCoverQuad(
+    raw,
+    source.width,
+    source.height,
+    1086,
+    1448
   );
-  const offsetX = (canvas.width - source.width * scale) / 2;
-  const offsetY = (canvas.height - source.height * scale) / 2;
-  const pointNames = ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'];
-  for (const name of pointNames) {
-    const point = source.coverQuad[name];
-    assert.deepEqual(
-      {
-        x: Math.round(offsetX + point.x * scale),
-        y: Math.round(offsetY + point.y * scale)
-      },
-      canvas.coverQuad[name]
-    );
-  }
+  assert.deepEqual(resolved.coverQuad, {
+    top_left: { x: 215, y: 339 },
+    top_right: { x: 733, y: 238 },
+    bottom_right: { x: 988, y: 946 },
+    bottom_left: { x: 361, y: 1090 }
+  });
+  assert.ok(Math.abs(resolved.bookRect.x - 60.3333333333) < 1e-6);
+  assert.equal(resolved.bookRect.y, 0);
 });
 
-test('author and reader renderers contain-fit base_book instead of stretching it', () => {
-  assert.match(composer, /async function drawContainedAsset/);
-  assert.match(
-    composer,
-    /await drawContainedAsset\(context, selected\.base_book, CANVAS_WIDTH, CANVAS_HEIGHT\)/
-  );
-  assert.match(runtime, /async function drawContained/);
-  assert.match(
-    runtime,
-    /await drawContained\(context, composition\.base_book_url, width, height\)/
-  );
-  assert.match(admin, /async function drawContained\(asset\)/);
-  assert.match(
-    admin,
-    /await drawContained\(firstAsset\(template\.template_key,'base_book'\)\)/
-  );
+test('author, reader and ADMIN use the same resolved base_book geometry path', () => {
+  assert.match(composer, /function resolveBookGeometry/);
+  assert.match(composer, /function drawResolvedBaseBook/);
+  assert.match(composer, /resolved\.coverQuad/);
+  assert.match(runtime, /geometry\.resolveBookGeometry/);
+  assert.match(runtime, /geometry\.drawResolvedBaseBook/);
+  assert.match(runtime, /resolved\.coverQuad/);
+  assert.match(admin, /geometry\.resolveBookGeometry/);
+  assert.match(admin, /geometry\.drawResolvedBaseBook/);
+  assert.match(admin, /geometry\.canvasPointToSource/);
+  assert.doesNotMatch(composer, /drawContainedAsset/);
+  assert.doesNotMatch(runtime, /async function drawContained/);
+  assert.doesNotMatch(admin, /async function drawContained/);
 });
 
 test('author base_book picker uses two-line Japanese display metadata with legacy fallback', () => {

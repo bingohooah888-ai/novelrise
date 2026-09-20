@@ -19,8 +19,10 @@
   const QUAD_FIELDS =
     'cover_mask_source,cover_mask_revision,cover_mask_url,cover_top_left_x,cover_top_left_y,cover_top_right_x,cover_top_right_y,cover_bottom_right_x,cover_bottom_right_y,cover_bottom_left_x,cover_bottom_left_y';
   const TEMPLATE_SELECT_GEOMETRY =
-    `template_key,label,canvas_width,canvas_height,availability_status,effect_allow_outside_cover,${QUAD_FIELDS}`;
+    `template_key,label,canvas_width,canvas_height,availability_status,effect_allow_outside_cover,cover_quad_space,base_book_source_width,base_book_source_height,${QUAD_FIELDS}`;
   const TEMPLATE_SELECT_GEOMETRY_COMPAT =
+    `template_key,label,canvas_width,canvas_height,availability_status,effect_allow_outside_cover,${QUAD_FIELDS}`;
+  const TEMPLATE_SELECT_GEOMETRY_LEGACY =
     `template_key,label,canvas_width,canvas_height,availability_status,${QUAD_FIELDS}`;
   const EPSILON = 1e-9;
   const PERSPECTIVE_COLUMNS = 12;
@@ -156,18 +158,74 @@
   }
 
   function templateQuad(template) {
-    const quad = {
+    return {
       top_left: { x: Number(template?.cover_top_left_x), y: Number(template?.cover_top_left_y) },
       top_right: { x: Number(template?.cover_top_right_x), y: Number(template?.cover_top_right_y) },
       bottom_right: { x: Number(template?.cover_bottom_right_x), y: Number(template?.cover_bottom_right_y) },
       bottom_left: { x: Number(template?.cover_bottom_left_x), y: Number(template?.cover_bottom_left_y) }
     };
-    const validation = validateQuad(
-      quad,
-      Number(template?.canvas_width) || CANVAS_WIDTH,
-      Number(template?.canvas_height) || CANVAS_HEIGHT
-    );
-    return validation.valid ? validation.quad : null;
+  }
+
+  function containRect(sourceWidth, sourceHeight, width = CANVAS_WIDTH, height = CANVAS_HEIGHT) {
+    if (!(sourceWidth > 0) || !(sourceHeight > 0) || !(width > 0) || !(height > 0)) {
+      throw new Error('Invalid base_book geometry dimensions');
+    }
+    const scale = Math.min(width / sourceWidth, height / sourceHeight);
+    const drawWidth = sourceWidth * scale;
+    const drawHeight = sourceHeight * scale;
+    return {
+      x: (width - drawWidth) / 2,
+      y: (height - drawHeight) / 2,
+      width: drawWidth,
+      height: drawHeight,
+      scale
+    };
+  }
+
+  function sourcePointToCanvas(point, rect) {
+    return { x: rect.x + point.x * rect.scale, y: rect.y + point.y * rect.scale };
+  }
+
+  function canvasPointToSource(point, rect) {
+    return { x: (point.x - rect.x) / rect.scale, y: (point.y - rect.y) / rect.scale };
+  }
+
+  function resolveBookGeometry(template, imageWidth, imageHeight) {
+    const canvasWidth = Number(template?.canvas_width) || CANVAS_WIDTH;
+    const canvasHeight = Number(template?.canvas_height) || CANVAS_HEIGHT;
+    const bookRect = containRect(imageWidth, imageHeight, canvasWidth, canvasHeight);
+    const rawQuad = templateQuad(template);
+    const sourceSpace = template?.cover_quad_space === 'base_book_source';
+    let sourceQuad = null;
+    let coverQuad = null;
+
+    if (sourceSpace) {
+      const sourceWidth = Number(template?.base_book_source_width);
+      const sourceHeight = Number(template?.base_book_source_height);
+      if (sourceWidth !== imageWidth || sourceHeight !== imageHeight) {
+        throw new Error('base_book source dimensions do not match template geometry');
+      }
+      const sourceValidation = validateQuad(rawQuad, sourceWidth, sourceHeight);
+      if (!sourceValidation.valid) throw new Error(sourceValidation.errors.join('; '));
+      sourceQuad = sourceValidation.quad;
+      coverQuad = Object.fromEntries(
+        Object.entries(sourceQuad).map(([name, point]) => [name, sourcePointToCanvas(point, bookRect)])
+      );
+    } else {
+      coverQuad = rawQuad;
+    }
+
+    const canvasValidation = validateQuad(coverQuad, canvasWidth, canvasHeight);
+    if (!canvasValidation.valid) throw new Error(canvasValidation.errors.join('; '));
+    return {
+      canvasWidth,
+      canvasHeight,
+      bookRect,
+      sourceQuad,
+      coverQuad: canvasValidation.quad,
+      homography: canvasValidation.homography,
+      coverQuadSpace: sourceSpace ? 'base_book_source' : 'canvas'
+    };
   }
 
   function clipToCoverQuad(context, quad) {
@@ -282,12 +340,20 @@
   }
 
   function usableTemplate(library, template) {
+    const sourceSpace = template.cover_quad_space === 'base_book_source';
+    const quadWidth = sourceSpace
+      ? Number(template.base_book_source_width)
+      : Number(template.canvas_width);
+    const quadHeight = sourceSpace
+      ? Number(template.base_book_source_height)
+      : Number(template.canvas_height);
+    const quadValidation = validateQuad(templateQuad(template), quadWidth, quadHeight);
     if (
       template.availability_status !== 'active' ||
       Number(template.canvas_width) !== CANVAS_WIDTH ||
       Number(template.canvas_height) !== CANVAS_HEIGHT ||
       template.cover_mask_source !== 'cover_quad' ||
-      !templateQuad(template)
+      !quadValidation.valid
     ) {
       return false;
     }
@@ -311,8 +377,25 @@
       if (!result.error) {
         result.data = (result.data ?? []).map((template) => ({
           ...template,
-          effect_allow_outside_cover: false
+          cover_quad_space: 'canvas',
+          base_book_source_width: null,
+          base_book_source_height: null
         }));
+      } else if (result.error?.code === '42703') {
+        result = await client
+          .from('novel_thumbnail_templates')
+          .select(TEMPLATE_SELECT_GEOMETRY_LEGACY)
+          .eq('availability_status', 'active')
+          .order('created_at', { ascending: true });
+        if (!result.error) {
+          result.data = (result.data ?? []).map((template) => ({
+            ...template,
+            effect_allow_outside_cover: false,
+            cover_quad_space: 'canvas',
+            base_book_source_width: null,
+            base_book_source_height: null
+          }));
+        }
       }
     }
     return result;
@@ -387,15 +470,9 @@
     context.drawImage(image, 0, 0, width, height);
   }
 
-  async function drawContainedAsset(context, asset, width, height) {
-    if (!asset?.image_url) return;
-    const image = await loadImage(asset.image_url);
-    const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
-    const drawWidth = image.naturalWidth * scale;
-    const drawHeight = image.naturalHeight * scale;
-    const x = (width - drawWidth) / 2;
-    const y = (height - drawHeight) / 2;
-    context.drawImage(image, x, y, drawWidth, drawHeight);
+  function drawResolvedBaseBook(context, image, resolved) {
+    const rect = resolved.bookRect;
+    context.drawImage(image, rect.x, rect.y, rect.width, rect.height);
   }
 
   async function drawPerspectiveAsset(context, asset, quad) {
@@ -407,8 +484,6 @@
   async function renderSelectionToCanvas({ canvas, library, selection }) {
     const template = library.templates.find((item) => item.template_key === selection.template_key);
     if (!template) throw new Error('Thumbnail template is unavailable');
-    const quad = templateQuad(template);
-    if (!quad) throw new Error('Thumbnail template geometry is invalid');
 
     const byId = assetMap(library.assets);
     const selected = Object.fromEntries(
@@ -427,9 +502,17 @@
     if (!context) throw new Error('Canvas is unavailable');
     context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
+    const baseBookImage = await loadImage(selected.base_book.image_url);
+    const resolved = resolveBookGeometry(
+      template,
+      baseBookImage.naturalWidth,
+      baseBookImage.naturalHeight
+    );
     await drawAsset(context, selected.background, CANVAS_WIDTH, CANVAS_HEIGHT);
-    await drawContainedAsset(context, selected.base_book, CANVAS_WIDTH, CANVAS_HEIGHT);
-    for (const type of SURFACE_TYPES) await drawPerspectiveAsset(context, selected[type], quad);
+    drawResolvedBaseBook(context, baseBookImage, resolved);
+    for (const type of SURFACE_TYPES) {
+      await drawPerspectiveAsset(context, selected[type], resolved.coverQuad);
+    }
 
     return canvas;
   }
@@ -797,7 +880,12 @@
     projectUnitPoint,
     clipToCoverQuad,
     drawPerspectiveImage,
-    templateQuad
+    templateQuad,
+    containRect,
+    sourcePointToCanvas,
+    canvasPointToSource,
+    resolveBookGeometry,
+    drawResolvedBaseBook
   });
 
   window.NovelightThumbnailComposer = Object.freeze({

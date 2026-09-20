@@ -1,6 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { requireAdmin } from './admin-auth.js';
-import { generateCoverMaskPng, normalizeCoverQuad } from './cover-mask-png.js';
+import {
+  generateCoverMaskPng,
+  normalizeCoverQuad,
+  resolveSourceCoverQuad
+} from './cover-mask-png.js';
 
 const BUCKET = 'novel-thumbnails';
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -19,6 +23,8 @@ const UPLOAD_LAYER_TYPES = new Set([
 ]);
 const STATUSES = new Set(['active', 'retired', 'emergency_disabled']);
 const TEMPLATE_FIELDS =
+  'id,template_key,label,canvas_width,canvas_height,cover_quad_space,base_book_source_width,base_book_source_height,cover_mask_storage_path,cover_mask_url,cover_mask_source,cover_mask_revision,cover_top_left_x,cover_top_left_y,cover_top_right_x,cover_top_right_y,cover_bottom_right_x,cover_bottom_right_y,cover_bottom_left_x,cover_bottom_left_y,availability_status,created_at,updated_at';
+const COVER_QUAD_TEMPLATE_FIELDS =
   'id,template_key,label,canvas_width,canvas_height,cover_mask_storage_path,cover_mask_url,cover_mask_source,cover_mask_revision,cover_top_left_x,cover_top_left_y,cover_top_right_x,cover_top_right_y,cover_bottom_right_x,cover_bottom_right_y,cover_bottom_left_x,cover_bottom_left_y,availability_status,created_at,updated_at';
 const LEGACY_TEMPLATE_FIELDS =
   'id,template_key,label,canvas_width,canvas_height,cover_mask_storage_path,cover_mask_url,availability_status,created_at,updated_at';
@@ -57,6 +63,61 @@ function rawCoverQuad(body) {
   };
 }
 
+function resolveTemplateGeometry(template, body) {
+  if (template?.cover_quad_space === 'base_book_source') {
+    const sourceWidth = Number(template.base_book_source_width);
+    const sourceHeight = Number(template.base_book_source_height);
+    if (
+      !Number.isInteger(sourceWidth) ||
+      sourceWidth < 1 ||
+      !Number.isInteger(sourceHeight) ||
+      sourceHeight < 1
+    ) {
+      throw new Error('base_book source geometry is invalid');
+    }
+    const resolved = resolveSourceCoverQuad(
+      rawCoverQuad(body),
+      sourceWidth,
+      sourceHeight,
+      Number(template.canvas_width),
+      Number(template.canvas_height)
+    );
+    return { storedQuad: resolved.sourceQuad, maskQuad: resolved.coverQuad };
+  }
+  const quad = normalizeCoverQuad(
+    rawCoverQuad(body),
+    Number(template.canvas_width),
+    Number(template.canvas_height)
+  );
+  return { storedQuad: quad, maskQuad: quad };
+}
+
+async function loadTemplateGeometry(supabase, templateKey) {
+  let result = await supabase
+    .from('novel_thumbnail_templates')
+    .select(
+      'template_key,canvas_width,canvas_height,cover_quad_space,base_book_source_width,base_book_source_height'
+    )
+    .eq('template_key', templateKey)
+    .maybeSingle();
+  if (result.error?.code === '42703') {
+    result = await supabase
+      .from('novel_thumbnail_templates')
+      .select('template_key,canvas_width,canvas_height')
+      .eq('template_key', templateKey)
+      .maybeSingle();
+    if (!result.error && result.data) {
+      result.data = {
+        ...result.data,
+        cover_quad_space: 'canvas',
+        base_book_source_width: null,
+        base_book_source_height: null
+      };
+    }
+  }
+  return result;
+}
+
 async function listLegacyAssets(supabase) {
   const { data, error } = await supabase
     .from('novel_thumbnail_assets')
@@ -66,6 +127,7 @@ async function listLegacyAssets(supabase) {
   return {
     composerReady: false,
     coverQuadReady: false,
+    resolvedGeometryReady: false,
     templates: [],
     assets: data ?? []
   };
@@ -76,16 +138,43 @@ async function listTemplates(supabase) {
     .from('novel_thumbnail_templates')
     .select(TEMPLATE_FIELDS)
     .order('created_at', { ascending: true });
-  if (result.error?.code === '42703') {
-    result = await supabase
-      .from('novel_thumbnail_templates')
-      .select(LEGACY_TEMPLATE_FIELDS)
-      .order('created_at', { ascending: true });
-    if (!result.error)
-      return { data: result.data ?? [], coverQuadReady: false };
+  if (!result.error) {
+    return {
+      data: result.data ?? [],
+      coverQuadReady: true,
+      resolvedGeometryReady: true
+    };
   }
+  if (result.error?.code !== '42703') throw result.error;
+
+  result = await supabase
+    .from('novel_thumbnail_templates')
+    .select(COVER_QUAD_TEMPLATE_FIELDS)
+    .order('created_at', { ascending: true });
+  if (!result.error) {
+    return {
+      data: (result.data ?? []).map((template) => ({
+        ...template,
+        cover_quad_space: 'canvas',
+        base_book_source_width: null,
+        base_book_source_height: null
+      })),
+      coverQuadReady: true,
+      resolvedGeometryReady: false
+    };
+  }
+  if (result.error?.code !== '42703') throw result.error;
+
+  result = await supabase
+    .from('novel_thumbnail_templates')
+    .select(LEGACY_TEMPLATE_FIELDS)
+    .order('created_at', { ascending: true });
   if (result.error) throw result.error;
-  return { data: result.data ?? [], coverQuadReady: true };
+  return {
+    data: result.data ?? [],
+    coverQuadReady: false,
+    resolvedGeometryReady: false
+  };
 }
 
 async function listLibrary(supabase) {
@@ -121,6 +210,7 @@ async function listLibrary(supabase) {
   return {
     composerReady: true,
     coverQuadReady: templateResult.coverQuadReady,
+    resolvedGeometryReady: templateResult.resolvedGeometryReady,
     baseBookPackReady,
     templates: templateResult.data,
     assets: assetResult.data ?? []
@@ -392,11 +482,10 @@ async function activateOfficialBaseBookPack({ supabase, adminUser, body }) {
     };
   }
   const templateKey = 'book-v1';
-  const { data: template, error: templateError } = await supabase
-    .from('novel_thumbnail_templates')
-    .select('template_key,canvas_width,canvas_height')
-    .eq('template_key', templateKey)
-    .maybeSingle();
+  const { data: template, error: templateError } = await loadTemplateGeometry(
+    supabase,
+    templateKey
+  );
   if (templateError || !template) {
     if (schemaUnavailable(templateError)) {
       return {
@@ -408,13 +497,15 @@ async function activateOfficialBaseBookPack({ supabase, adminUser, body }) {
       `Official base_book template lookup failed: ${templateError?.message || 'not found'}`
     );
   }
-  let quad;
+  if (template.cover_quad_space !== 'base_book_source') {
+    return {
+      status: 503,
+      payload: { error: 'Resolved base_book geometry schema is not ready' }
+    };
+  }
+  let resolved;
   try {
-    quad = normalizeCoverQuad(
-      rawCoverQuad(body),
-      template.canvas_width,
-      template.canvas_height
-    );
+    resolved = resolveTemplateGeometry(template, body);
   } catch (error) {
     return { status: 400, payload: { error: error.message } };
   }
@@ -422,7 +513,7 @@ async function activateOfficialBaseBookPack({ supabase, adminUser, body }) {
   const fileName = `${templateKey}-cover-mask.png`;
   const path = `generated-masks/${templateKey}/${revision}/${fileName}`;
   const png = generateCoverMaskPng(
-    quad,
+    resolved.maskQuad,
     template.canvas_width,
     template.canvas_height
   );
@@ -448,14 +539,14 @@ async function activateOfficialBaseBookPack({ supabase, adminUser, body }) {
     {
       p_admin_user_id: adminUser.id,
       p_source_pack_key: 'NOVELIGHT_base_books_32_final',
-      p_top_left_x: quad.top_left.x,
-      p_top_left_y: quad.top_left.y,
-      p_top_right_x: quad.top_right.x,
-      p_top_right_y: quad.top_right.y,
-      p_bottom_right_x: quad.bottom_right.x,
-      p_bottom_right_y: quad.bottom_right.y,
-      p_bottom_left_x: quad.bottom_left.x,
-      p_bottom_left_y: quad.bottom_left.y,
+      p_top_left_x: resolved.storedQuad.top_left.x,
+      p_top_left_y: resolved.storedQuad.top_left.y,
+      p_top_right_x: resolved.storedQuad.top_right.x,
+      p_top_right_y: resolved.storedQuad.top_right.y,
+      p_bottom_right_x: resolved.storedQuad.bottom_right.x,
+      p_bottom_right_y: resolved.storedQuad.bottom_right.y,
+      p_bottom_left_x: resolved.storedQuad.bottom_left.x,
+      p_bottom_left_y: resolved.storedQuad.bottom_left.y,
       p_mask_revision: revision,
       p_mask_storage_path: path,
       p_mask_url: maskUrl
@@ -514,11 +605,10 @@ async function setTemplateCoverQuad({ supabase, adminUser, body }) {
   if (!templateKey)
     return { status: 400, payload: { error: 'Invalid template key' } };
 
-  const { data: template, error: templateError } = await supabase
-    .from('novel_thumbnail_templates')
-    .select('template_key,canvas_width,canvas_height')
-    .eq('template_key', templateKey)
-    .maybeSingle();
+  const { data: template, error: templateError } = await loadTemplateGeometry(
+    supabase,
+    templateKey
+  );
   if (templateError) {
     if (schemaUnavailable(templateError)) {
       return {
@@ -533,13 +623,9 @@ async function setTemplateCoverQuad({ supabase, adminUser, body }) {
   if (!template)
     return { status: 404, payload: { error: 'Thumbnail template not found' } };
 
-  let quad;
+  let resolved;
   try {
-    quad = normalizeCoverQuad(
-      rawCoverQuad(body),
-      template.canvas_width,
-      template.canvas_height
-    );
+    resolved = resolveTemplateGeometry(template, body);
   } catch (error) {
     return { status: 400, payload: { error: error.message } };
   }
@@ -548,7 +634,7 @@ async function setTemplateCoverQuad({ supabase, adminUser, body }) {
   const fileName = `${templateKey}-cover-mask.png`;
   const path = `generated-masks/${templateKey}/${revision}/${fileName}`;
   const png = generateCoverMaskPng(
-    quad,
+    resolved.maskQuad,
     template.canvas_width,
     template.canvas_height
   );
@@ -574,14 +660,14 @@ async function setTemplateCoverQuad({ supabase, adminUser, body }) {
     {
       p_admin_user_id: adminUser.id,
       p_template_key: templateKey,
-      p_top_left_x: quad.top_left.x,
-      p_top_left_y: quad.top_left.y,
-      p_top_right_x: quad.top_right.x,
-      p_top_right_y: quad.top_right.y,
-      p_bottom_right_x: quad.bottom_right.x,
-      p_bottom_right_y: quad.bottom_right.y,
-      p_bottom_left_x: quad.bottom_left.x,
-      p_bottom_left_y: quad.bottom_left.y,
+      p_top_left_x: resolved.storedQuad.top_left.x,
+      p_top_left_y: resolved.storedQuad.top_left.y,
+      p_top_right_x: resolved.storedQuad.top_right.x,
+      p_top_right_y: resolved.storedQuad.top_right.y,
+      p_bottom_right_x: resolved.storedQuad.bottom_right.x,
+      p_bottom_right_y: resolved.storedQuad.bottom_right.y,
+      p_bottom_left_x: resolved.storedQuad.bottom_left.x,
+      p_bottom_left_y: resolved.storedQuad.bottom_left.y,
       p_mask_revision: revision,
       p_mask_storage_path: path,
       p_mask_url: maskUrl
