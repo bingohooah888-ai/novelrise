@@ -2,9 +2,16 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const target = await import('../scripts/verify-staging-migration-target.mjs');
 const { verifyStagingMigrationTarget } = target;
+const poolerResolver =
+  await import('../scripts/resolve-staging-session-pooler.mjs');
+const {
+  buildStagingSessionPoolerCandidates,
+  selectReachableStagingSessionPooler
+} = poolerResolver;
 const workflow = await readFile(
   '.github/workflows/supabase-staging-sync.yml',
   'utf8'
@@ -18,7 +25,8 @@ const STAGING_URL = `https://${STAGING_REF}.supabase.co`;
 const STAGING_DB =
   `postgresql://postgres:example-password@db.${STAGING_REF}.supabase.co` +
   ':5432/postgres';
-const SECRET_ENV = 'STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}';
+const SOURCE_SECRET_ENV =
+  'STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}';
 const bashAvailable =
   spawnSync('bash', ['--version'], { stdio: 'ignore' }).status === 0;
 
@@ -82,9 +90,10 @@ SH
   );
 }
 
-test('Staging target validates direct project match', () => {
+test('Staging target validates direct and Session pooler project identity', () => {
   assert.deepEqual(verifyStagingMigrationTarget(stagingEnv()), {
-    projectRef: STAGING_REF
+    projectRef: STAGING_REF,
+    connectionMode: 'direct'
   });
 
   const otherDb =
@@ -95,18 +104,26 @@ test('Staging target validates direct project match', () => {
       verifyStagingMigrationTarget(
         stagingEnv({ STAGING_DATABASE_URL: otherDb })
       ),
-    /database host does not match STAGING_SUPABASE_URL/
+    /database host does not match the dedicated Staging project/
   );
 
   const pooler =
-    'postgresql://postgres:example-password@aws-0.pooler.supabase.com' +
-    ':6543/postgres';
+    `postgresql://postgres.${STAGING_REF}:example-password@` +
+    'aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres';
+  assert.deepEqual(
+    verifyStagingMigrationTarget(stagingEnv({ STAGING_DATABASE_URL: pooler })),
+    { projectRef: STAGING_REF, connectionMode: 'session-pooler' }
+  );
+
+  const wrongPoolerUser =
+    'postgresql://postgres:example-password@' +
+    'aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres';
   assert.throws(
     () =>
       verifyStagingMigrationTarget(
-        stagingEnv({ STAGING_DATABASE_URL: pooler })
+        stagingEnv({ STAGING_DATABASE_URL: wrongPoolerUser })
       ),
-    /database host does not match STAGING_SUPABASE_URL/
+    /Session pooler username does not match STAGING_SUPABASE_URL/
   );
 });
 
@@ -135,7 +152,7 @@ test('Staging sync isolates the database secret from third-party actions', () =>
   assert.notEqual(stepsStart, -1);
   assert.doesNotMatch(
     workflow.slice(jobEnvStart, stepsStart),
-    /STAGING_DATABASE_URL/
+    /secrets\.STAGING_DATABASE_URL/
   );
 
   assert.doesNotMatch(
@@ -155,7 +172,11 @@ test('Staging sync isolates the database secret from third-party actions', () =>
   );
   assert.match(workflow, /environment: staging/);
   assert.match(workflow, /vars\.STAGING_SUPABASE_URL/);
-  assert.equal(workflow.includes(SECRET_ENV), true);
+  assert.equal(workflow.includes(SOURCE_SECRET_ENV), true);
+  assert.doesNotMatch(
+    workflow,
+    /STAGING_DATABASE_URL: \$\{\{ secrets\.STAGING_DATABASE_URL \}\}/
+  );
   assert.doesNotMatch(workflow, /PRODUCTION_DB_PASSWORD/);
   assert.doesNotMatch(workflow, /SUPABASE_ACCESS_TOKEN/);
   assert.doesNotMatch(workflow, /production-approval/);
@@ -176,11 +197,71 @@ test('Staging database operations require encrypted transport', () => {
 
   for (const name of databaseSteps) {
     const block = stepBlock(name);
-    assert.equal(block.includes(SECRET_ENV), true, name);
+    assert.doesNotMatch(block, /secrets\.STAGING_DATABASE_URL/, name);
     assert.match(block, /PGSSLMODE: require/, name);
+    assert.match(block, /STAGING_DATABASE_URL_FILE/, name);
   }
 
   assert.match(verifier, /PGSSLMODE must be exactly require/);
+});
+
+test('Staging sync resolves an IPv4 Session pooler before database access', () => {
+  const resolverIndex = workflow.indexOf(
+    '      - name: Resolve IPv4-compatible Staging database route'
+  );
+  const verifyIndex = workflow.indexOf(
+    '      - name: Verify dedicated Staging database target'
+  );
+  const pendingIndex = workflow.indexOf(
+    '      - name: Require exact Staging pending migrations'
+  );
+  assert.ok(resolverIndex >= 0 && resolverIndex < verifyIndex);
+  assert.ok(verifyIndex < pendingIndex);
+  const resolverBlock = stepBlock(
+    'Resolve IPv4-compatible Staging database route'
+  );
+  assert.equal(resolverBlock.includes(SOURCE_SECRET_ENV), true);
+  assert.match(resolverBlock, /resolve-staging-session-pooler\.mjs/);
+  assert.match(workflow, /Remove ephemeral Staging database route/);
+  assert.match(workflow, /rm -f "\$STAGING_DATABASE_URL_FILE"/);
+});
+
+test('Staging Session pooler resolver preserves project identity and selects a reachable shard', () => {
+  const projectRef = 'wmlzjgvxgoyrovdhbqbg';
+  const env = {
+    STAGING_SUPABASE_URL: `https://${projectRef}.supabase.co`,
+    STAGING_DATABASE_URL_SOURCE: `postgresql://postgres:example-password@db.${projectRef}.supabase.co:5432/postgres`,
+    PGSSLMODE: 'require'
+  };
+  const candidates = buildStagingSessionPoolerCandidates(env);
+  assert.equal(candidates.length, 2);
+  assert.deepEqual(
+    candidates.map((value) => new URL(value).hostname),
+    [
+      'aws-0-ap-northeast-1.pooler.supabase.com',
+      'aws-1-ap-northeast-1.pooler.supabase.com'
+    ]
+  );
+  for (const value of candidates) {
+    const parsed = new URL(value);
+    assert.equal(parsed.username, `postgres.${projectRef}`);
+    assert.equal(parsed.password, 'example-password');
+    assert.equal(parsed.port, '5432');
+    assert.equal(parsed.pathname, '/postgres');
+  }
+
+  let attempts = 0;
+  const selected = selectReachableStagingSessionPooler(candidates, {
+    env,
+    runner(command, args) {
+      assert.equal(command, 'psql');
+      assert.equal(args.at(-1), candidates[attempts]);
+      attempts += 1;
+      return { status: attempts === 2 ? 0 : 1 };
+    }
+  });
+  assert.equal(selected, candidates[1]);
+  assert.equal(attempts, 2);
 });
 
 test('Staging sync binds owner and current main', () => {
