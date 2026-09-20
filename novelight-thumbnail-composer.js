@@ -326,13 +326,22 @@
       }
       throw templatesResult.error;
     }
-    const assetsResult = await client
+    let assetsResult = await client
       .from('novel_thumbnail_assets')
-      .select('id,label,image_url,layer_type,template_key,sort_order,availability_status')
+      .select('id,label,image_url,layer_type,template_key,sort_order,availability_status,display_name_ja,material_ja,source_pack_key')
       .eq('availability_status', 'active')
       .neq('layer_type', 'legacy_complete')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
+    if (assetsResult.error?.code === '42703') {
+      assetsResult = await client
+        .from('novel_thumbnail_assets')
+        .select('id,label,image_url,layer_type,template_key,sort_order,availability_status')
+        .eq('availability_status', 'active')
+        .neq('layer_type', 'legacy_complete')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+    }
     if (assetsResult.error) {
       if (schemaUnavailable(assetsResult.error)) {
         return { ready: false, reason: 'schema', templates: [], assets: [] };
@@ -378,6 +387,17 @@
     context.drawImage(image, 0, 0, width, height);
   }
 
+  async function drawContainedAsset(context, asset, width, height) {
+    if (!asset?.image_url) return;
+    const image = await loadImage(asset.image_url);
+    const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+    const drawWidth = image.naturalWidth * scale;
+    const drawHeight = image.naturalHeight * scale;
+    const x = (width - drawWidth) / 2;
+    const y = (height - drawHeight) / 2;
+    context.drawImage(image, x, y, drawWidth, drawHeight);
+  }
+
   async function drawPerspectiveAsset(context, asset, quad) {
     if (!asset?.image_url) return;
     const image = await loadImage(asset.image_url);
@@ -408,7 +428,7 @@
     context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     await drawAsset(context, selected.background, CANVAS_WIDTH, CANVAS_HEIGHT);
-    await drawAsset(context, selected.base_book, CANVAS_WIDTH, CANVAS_HEIGHT);
+    await drawContainedAsset(context, selected.base_book, CANVAS_WIDTH, CANVAS_HEIGHT);
     for (const type of SURFACE_TYPES) await drawPerspectiveAsset(context, selected[type], quad);
 
     return canvas;
@@ -544,6 +564,26 @@
         if (serial === state.renderSerial) previewStatus.textContent = '一部素材を読み込めませんでした。';
       }
     }
+    function displayLabel(type, asset) {
+      if (!asset) return '';
+      if (type === 'base_book' && asset.display_name_ja) {
+        return asset.material_ja
+          ? `${asset.display_name_ja}\n${asset.material_ja}`
+          : asset.display_name_ja;
+      }
+      return asset.label || '';
+    }
+
+    function summaryLabel(type, asset) {
+      if (!asset) return '';
+      if (type === 'base_book' && asset.display_name_ja) {
+        return asset.material_ja
+          ? `${asset.display_name_ja} / ${asset.material_ja}`
+          : asset.display_name_ja;
+      }
+      return asset.label || '';
+    }
+
     function optionButton(type, asset, selected) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -562,7 +602,8 @@
         image.alt = '';
         image.loading = 'lazy';
         const label = document.createElement('span');
-        label.textContent = asset.label;
+        label.className = 'nl-thumb-option-label';
+        label.textContent = displayLabel(type, asset);
         button.append(image, label);
       }
       return button;
@@ -609,7 +650,7 @@
           (asset) => String(asset.id) === String(state.selected[type])
         );
         selectedLabel.textContent =
-          selectedAsset?.label || (REQUIRED_TYPES.includes(type) ? '未選択' : 'なし');
+          summaryLabel(type, selectedAsset) || (REQUIRED_TYPES.includes(type) ? '未選択' : 'なし');
         summary.append(title, selectedLabel);
 
         const options = document.createElement('div');
@@ -658,7 +699,7 @@
           (asset) => String(asset.id) === String(state.selected[type])
         );
         selectedLabel.textContent =
-          selectedAsset?.label || (REQUIRED_TYPES.includes(type) ? '未選択' : 'なし');
+          summaryLabel(type, selectedAsset) || (REQUIRED_TYPES.includes(type) ? '未選択' : 'なし');
       }
       void updatePreview();
     });

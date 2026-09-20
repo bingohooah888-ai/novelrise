@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>公式基準本32冊 ZIP一括登録 | NOVELIGHT ADMIN</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#0f1020;color:#f4f4f8}a{color:inherit;text-decoration:none}button,input{font:inherit}header{border-bottom:1px solid #292b47}.header-inner{max-width:980px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px}.brand{font-size:21px;font-weight:950}.back{padding:9px 12px;border:1px solid #393c61;border-radius:9px;background:#17182c;color:#ddd;font-weight:850}main{max-width:980px;margin:auto;padding:36px 22px 80px}h1{margin:0 0 8px;font-size:31px}.lead{margin:0 0 24px;color:#a9abc2;line-height:1.7}.panel{padding:22px;border:1px solid #303253;border-radius:15px;background:#17182c}.batch-grid{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:10px;align-items:end}.field label{display:block;margin-bottom:7px;color:#c8cada;font-size:12px;font-weight:850}.field input{width:100%;min-height:44px;padding:10px 12px;border:1px solid #393c61;border-radius:9px;background:#101121;color:#fff}.primary,.secondary,.activate{min-height:44px;padding:10px 16px;border-radius:9px;font-weight:900;cursor:pointer}.primary{border:0;background:#6d4aff;color:#fff}.secondary{border:1px solid #4c4f77;background:#20223a;color:#eee}.activate{border:1px solid #8a6b24;background:#6f5419;color:#fff3c4}.primary:disabled,.secondary:disabled,.activate:disabled{opacity:.5;cursor:not-allowed}.batch-status{min-height:48px;margin:18px 0 10px;padding:13px 15px;border:1px solid #303253;border-radius:11px;background:#151629;color:#b7bad0;line-height:1.6}.batch-status.error{border-color:#7c3039;background:#2a161a;color:#ffb8c0}.batch-status.ok{border-color:#285d4d;background:#11271f;color:#9fe4cd}.detail{color:#9da0bb;font-size:12px;line-height:1.7}.rules{margin:24px 0 0;padding:16px;border:1px solid #303253;border-radius:12px;background:#121326;color:#b9bbd0;font-size:12px;line-height:1.8}.rules strong{color:#fff}.progress{width:100%;height:14px;margin-top:8px}.checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px;margin-top:18px;color:#c8cada;font-size:12px}.checklist span::before{content:'✓';margin-right:7px;color:#9fe4cd;font-weight:900}@media(max-width:820px){main{padding:28px 15px 60px}.batch-grid{grid-template-columns:1fr}.primary,.secondary,.activate{width:100%}.checklist{grid-template-columns:1fr}}
+  </style>
+  <link rel="stylesheet" href="novelight-accessibility.css">
+</head>
+<body>
+<a class="skip-link" href="#main-content">本文へスキップ</a>
+<header><div class="header-inner"><div class="brand">NOVELIGHT <span style="color:#b8adff">ADMIN</span></div><a class="back" href="admin-thumbnails.html">← 素材管理へ戻る</a></div></header>
+<main id="main-content" tabindex="-1">
+  <h1>公式基準本32冊 ZIP一括登録</h1>
+  <p class="lead">正式ZIPをバイナリ無変更で検証・stagingし、32冊が完全一致した場合だけ新Geometryへ一括切替します。</p>
+  <section id="baseBooks32Importer" class="panel">
+    <div class="batch-grid">
+      <div class="field"><label for="baseBooksZip">NOVELIGHT_base_books_32_final.zip</label><input id="baseBooksZip" data-basebooks-file type="file" accept=".zip,application/zip" required></div>
+      <button class="secondary" data-basebooks-verify type="button">ZIPを検証</button>
+      <button class="primary" data-basebooks-stage type="button" disabled>32冊をstaging</button>
+      <button class="activate" data-basebooks-activate type="button" disabled>32冊を正式有効化</button>
+    </div>
+    <progress class="progress" data-basebooks-progress max="32" value="0"></progress>
+    <div class="batch-status" data-basebooks-status>ADMIN権限とGeometry状態を確認しています…</div>
+    <div class="detail" data-basebooks-detail></div>
+    <div class="checklist"><span>ZIP SHA-256固定</span><span>PNG 32/32</span><span>1024×1536 RGBA</span><span>各PNG SHA-256固定</span><span>表示順1〜32固定</span><span>色名＋材質名固定</span></div>
+    <div class="rules"><strong>Fail-closed:</strong> 検証中・staging途中では作者に公開しません。32冊・Storage・manifest・cover_quadの全条件が揃った場合だけ原子的にactive化し、旧基準本は削除せずretiredへ移します。</div>
+  </section>
+</main>
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+<script src="novelight-client.js"></script>
+<script>
+const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+let session=null;
+async function getSession(){const {data:{session:current},error}=await client.auth.getSession();if(error)throw error;if(!current){location.href='login.html?redirect=admin-base-books-32.html';return null}return current}
+async function adminRequest(method,body){const response=await fetch('/api/admin-thumbnails',{method,headers:{Authorization:`Bearer ${session.access_token}`,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store',credentials:'same-origin'});if(response.status===401){location.href='login.html?redirect=admin-base-books-32.html';return null}if(response.status===403)throw new Error('このアカウントにはADMIN権限がありません。');const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||`API ${response.status}`);return payload}
+(async()=>{const status=document.querySelector('[data-basebooks-status]');try{session=await getSession();if(!session)return;const library=await adminRequest('GET');if(!library?.composerReady||!library?.coverQuadReady)throw new Error('Geometry Thumbnail Engineが利用できません。');if(!library?.baseBookPackReady)throw new Error('32冊metadata migrationが未適用です。');const module=await import('./novelight-base-books-32-import.js');module.mountOfficialBaseBooks32Importer({root:document.getElementById('baseBooks32Importer'),client,adminRequest});status.className='batch-status ok';status.textContent='ADMIN権限・Geometry・32冊metadata確認PASS。正式ZIPを選択してください。'}catch(error){console.error(error);status.className='batch-status error';status.textContent=error.message||'32冊登録を開始できません。'}})();
+</script>
+</body>
+</html>
