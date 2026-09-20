@@ -87,7 +87,7 @@ The GitHub secret is the control-plane source. The workflow writes its value to 
 
 ### Request and approval flow
 
-A request can be started by an OWNER comment on the active Production Approval Ledger declared in `production-approval-ledger.json` (currently issue `#657`):
+A request can be started by an OWNER comment on the active Production Approval Ledger declared in `production-approval-ledger.json` (currently issue `#737`):
 
 `NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_REQUEST`
 
