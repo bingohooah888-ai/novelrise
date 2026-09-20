@@ -1,0 +1,9 @@
+.episode-heart-host{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.episode-heart-host[hidden]{display:none}
+.episode-heart-button{padding:8px 11px;border:1px solid #d8c8c8;border-radius:999px;background:#fff;color:#6f5555;font:inherit;font-size:12px;font-weight:900;cursor:pointer;transition:border-color .15s,background .15s,color .15s,transform .15s}
+.episode-heart-button:hover:not(:disabled){transform:translateY(-1px);border-color:#c88989;background:#fff8f8}
+.episode-heart-button.hearted{border-color:#c96676;background:#fff0f3;color:#a9364d}
+.episode-heart-button:focus-visible{outline:2px solid #6d4aff;outline-offset:2px}
+.episode-heart-button:disabled{opacity:.62;cursor:not-allowed}
+.episode-heart-status{max-width:240px;color:#756a6a;font-size:11px;line-height:1.45}
+@media(max-width:600px){.episode-heart-host{flex-basis:100%}.episode-heart-status{max-width:none}}
