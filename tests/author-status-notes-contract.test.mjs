@@ -53,6 +53,20 @@ test('author notes use the Author Studio shell and dashboard shortcuts stay stab
     /\.workspace\{max-width:1100px;margin:0 auto;padding:34px 28px 72px\}/u
   );
 
+  assert.match(
+    management,
+    /\.page-head\{margin-bottom:22px;padding:28px 32px 20px\}/u
+  );
+  assert.match(management, /\.kicker\{margin:0 0 10px;color:/u);
+  assert.match(
+    management,
+    /\.page-head h1\{margin:0 0 14px;line-height:1\.2;/u
+  );
+  assert.match(
+    management,
+    /@media\(max-width:520px\)\{\.workspace\{padding:24px 16px 56px\}\.page-head\{padding:22px 20px 18px\}/u
+  );
+
   const actionCards =
     authorStudio.match(/<article class="action-card /gu) || [];
   assert.equal(actionCards.length, 5);
