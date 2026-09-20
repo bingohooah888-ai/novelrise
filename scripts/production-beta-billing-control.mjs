@@ -94,9 +94,9 @@ async function createEphemeralUser() {
       email_confirm: true,
       user_metadata: {
         display_name: `NOVELIGHT Production Beta Billing ${runId}`,
-        internal_e2e: true,
         production_beta_billing_control: true
-      }
+      },
+      app_metadata: { internal_e2e: true }
     }),
     'create Production beta billing control user'
   );

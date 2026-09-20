@@ -169,7 +169,8 @@ async function createFixture() {
       email,
       password: userPassword,
       email_confirm: true,
-      user_metadata: { display_name: displayName, internal_e2e: true }
+      user_metadata: { display_name: displayName },
+      app_metadata: { internal_e2e: true }
     }),
     'create thumbnail smoke author'
   );

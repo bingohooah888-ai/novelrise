@@ -31,13 +31,18 @@ begin
   if not exists (select 1 from pg_roles where rolname = 'service_role') then
     create role service_role nologin;
   end if;
+  if not exists (select 1 from pg_roles where rolname = 'supabase_auth_admin') then
+    create role supabase_auth_admin nologin;
+  end if;
 end
 $$;
 
 create table auth.users (
   id uuid primary key,
+  email text,
   created_at timestamptz not null default now(),
-  raw_user_meta_data jsonb not null default '{}'::jsonb
+  raw_user_meta_data jsonb not null default '{}'::jsonb,
+  raw_app_meta_data jsonb not null default '{}'::jsonb
 );
 
 create or replace function auth.uid()
@@ -58,6 +63,15 @@ for migration in supabase/migrations/*.sql; do
   "${REPLAY[@]}" -f "$migration"
   echo '::endgroup::'
 done
+
+echo '::group::Verify Founding and beta participation rollback before behavior fixtures'
+"${REPLAY[@]}" -f supabase/checks/20260920122000_founding_beta_qualifications_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/founding-beta-qualifications.sql
+"${REPLAY[@]}" -f supabase/rollback/20260920122000_founding_beta_qualifications_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260920122000_founding_beta_qualifications_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260920122000_founding_beta_qualifications.sql
+"${REPLAY[@]}" -f supabase/checks/20260920122000_founding_beta_qualifications_postcheck.sql
+echo '::endgroup::'
 
 echo '::group::Verify replay reached the current schema contract'
 "${REPLAY[@]}" <<'SQL'
@@ -785,6 +799,11 @@ echo '::group::Verify final beta fairness hardening and rollback/reapply'
 "${REPLAY[@]}" -f supabase/migrations/20260919195300_beta_final_fairness_hardening.sql
 "${REPLAY[@]}" -f supabase/checks/20260919195300_beta_final_fairness_hardening_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/beta-final-fairness-hardening.sql
+echo '::endgroup::'
+
+echo '::group::Verify Founding and beta participation qualifications after regression fixtures'
+"${REPLAY[@]}" -f supabase/checks/20260920122000_founding_beta_qualifications_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/founding-beta-qualifications.sql
 echo '::endgroup::'
 
 echo '::group::Verify restored-database structural integrity'

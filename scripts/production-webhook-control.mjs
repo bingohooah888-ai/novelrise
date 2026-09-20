@@ -61,9 +61,9 @@ async function createEphemeralUser() {
       email_confirm: true,
       user_metadata: {
         display_name: `NOVELIGHT Production Webhook Control ${runId}`,
-        internal_e2e: true,
         production_webhook_control: true
-      }
+      },
+      app_metadata: { internal_e2e: true }
     }),
     'create Production webhook control user'
   );
