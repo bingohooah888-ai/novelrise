@@ -110,11 +110,13 @@ apply step自体がsuccessを返さなかった場合も、部分適用の可能
 
 DDLが途中まで適用された可能性がある場合、自動rollbackを続けて実行すると障害状態をさらに変化させる可能性があるため、復旧判断とStaging同期は分離する。
 
-### 5.1 migration history適用済み・公式32冊実データ欠落の専用復旧
+### 5.1 migration history適用済み・Geometry公式素材データ欠落の専用復旧
 
-`20260919203910` / `20260920204000` がStaging migration historyでは適用済みなのに、`NOVELIGHT_base_books_32_final` の32冊実データが欠落してGeometry postcheckだけが失敗する場合、migrationを再適用したりmigration historyを書き換えたりしない。
+`20260919203910` / `20260920204000` がStaging migration historyでは適用済みなのに、Geometry Thumbnail Engineの公式素材データが欠落している場合、migrationを再適用したりmigration historyを書き換えたりしない。復旧対象はcanonicalな背景1点、`NOVELIGHT_thumbnail_assets_v1_30` の30点、`NOVELIGHT_base_books_32_final` の32冊、合計63素材とする。旧legacy素材やmanifest外のStorage objectは自動削除しない。
 
-この限定状態では `.github/workflows/staging-base-books-32-recovery.yml` を唯一の自動復旧経路とし、Issue #294へrepository ownerとしてexact current main SHAに固定した次のrequestを投稿する。
+この限定状態では `.github/workflows/staging-base-books-32-recovery.yml` を唯一の自動復旧経路とする。mutation承認を作る前に、同workflowを `workflow_dispatch` でexact current main SHAへ固定してread-only auditを実行し、公式素材precheckとrepository/Staging migration parityを確認する。必要な公開面確認は `.github/workflows/staging-smoke.yml` を `read_only_only=true` で実行し、認証fixture・課金fixtureその他のStaging writeを発生させない。
+
+read-only auditがPASSした後だけ、Issue #294へrepository ownerとしてexact current main SHAに固定した次のrequestを投稿する。
 
 ```text
 NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE {"mainSha":"<exact-current-main-sha>","packKey":"NOVELIGHT_base_books_32_final","geometryMigration":"20260920204000","confirmation":"RECOVER STAGING BASE BOOKS 32"}
@@ -123,14 +125,14 @@ NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE {"mainSha":"<exact-current-main
 この復旧は次をFail-Closedで固定する。
 
 - Productionは公開済み `novel_thumbnail_assets` と公開Storageの32冊を**read-only source**としてだけ使用し、Production server credentialを一切受け取らない。
-- source rowは32件、active、表示順1〜32、`source_file_name` / `source_sha256` がchecked-in `novelight-base-books-32.json` と完全一致することを要求する。
-- 各PNGをdownload後にbyte size / SHA-256 / PNG geometryまで再検証してから専用Staging Storageへuploadする。
-- Staging既存行がある場合は正式manifestとStorage binaryが完全一致するものだけをidempotentに再利用し、不一致は上書きせず停止する。
-- `novelight_admin_stage_official_base_book` と `novelight_admin_activate_official_base_book_pack` の既存公式RPCだけを使用し、32冊stage後に原子的activateする。
-- RPCの `p_admin_user_id` / `created_by` 外部キーを満たすため、復旧job内でのみ一時Staging Auth actorを作成する。actorは `internal_staging_recovery` metadataで識別し、ログインには使用せず、復旧処理の成否にかかわらず同一job内で削除する。`novel_thumbnail_assets.created_by` は `auth.users(id) ON DELETE SET NULL` のためactor削除後に恒久ダミーアカウントを残さず、監査log側には実行時actor UUIDを証跡として残す。
-- source-space Geometry、32冊active、stale render cache 0、`novelight_thumbnail_compositions_v3`、repository/Staging migration parityをpostcheckする。
-- request commentはone-time `CLAIMED` / `CONSUMED` ledgerで管理し、current mainがclaim前またはwrite直前に変わった場合は停止する。
-- failure時にmigration再適用、migration history修正、Production write、自動rollbackを行わない。
+- base_book source rowは32件、active、表示順1〜32、`source_file_name` / `source_sha256` がchecked-in `novelight-base-books-32.json` と完全一致することを要求し、承認claim前のread-only precheckで32 PNGすべてのbyte size / SHA-256 / PNG geometryまで検証する。
+- Staging Storageに残る公式素材候補はchecked-in `novelight-thumbnail-assets-v1.json` とcanonical背景1点のsize / SHA-256 / PNG geometryで照合し、31点すべてが一意に一致した場合だけ復旧を許可する。manifest外のStorage objectは自動削除しない。
+- canonical背景1点＋v1素材30点は既存 `novelight_admin_register_thumbnail_layer_asset`、基準本32冊は `novelight_admin_stage_official_base_book`、最終切替は `novelight_admin_activate_official_base_book_pack` の既存公式RPCだけを使う。
+- Staging既存行がある場合は正式manifestとStorage binaryが完全一致するものだけをidempotentに再利用し、不一致は上書きせず停止する。RPC応答が失われた場合もDBの実コミット状態を再照合してからStorage cleanupを判断し、committed rowやtemplateが参照するobjectを削除しない。
+- RPCの `p_admin_user_id` / `created_by` 外部キーを満たすため、復旧job内でのみ一時Staging Auth actorを作成する。actorは `internal_staging_recovery=true` と `internal_e2e=true` で内部アカウント扱いに固定し、ログインには使用しない。復旧処理の成否にかかわらず同一job内で削除し、profile / Founding Author / beta participant / asset created_byの残存が0であることを確認する。`novel_thumbnail_assets.created_by` は `auth.users(id) ON DELETE SET NULL` のため恒久ダミーアカウントを残さず、監査log側には実行時actor UUIDを証跡として残す。
+- source-space Geometry、canonical 63素材、32冊active、cover-mask、stale render cache 0、`novelight_thumbnail_compositions_v3`、repository/Staging migration parityをpostcheckする。
+- request commentはone-time `CLAIMED` / `CONSUMED` ledgerで管理する。ただしowner requestのclaimは、workflow setup・current-main bind・公式63素材のread-only precheckが全PASSした後、最初のStaging write直前にだけ行う。precheck failureは承認を消費しない。
+- current mainがclaim前またはwrite直前に変わった場合は停止する。failure時にmigration再適用、migration history修正、Production write、自動rollbackを行わない。
 
 この復旧承認はProduction mutation承認を兼ねない。
 

@@ -14,6 +14,11 @@ on:
         description: 'Exact 40-character commit SHA deployed at the manual Staging URL'
         required: true
         type: string
+      read_only_only:
+        description: 'Run only deployment and public/runtime read-only smoke; skip all authenticated and billing fixtures'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -172,7 +177,10 @@ jobs:
           retention-days: 14
 
       - name: Verify authenticated Staging credentials
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         shell: bash
         run: |
           set -euo pipefail
@@ -186,28 +194,43 @@ jobs:
           }
 
       - name: Verify write-capable Staging deployment contract
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         env:
           STAGING_REQUIRE_WRITE_CONFIG: 'true'
         run: node scripts/verify-staging-deployment.mjs
 
       - name: Verify Staging checkout schema capabilities before writes
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         run: node scripts/verify-staging-schema-capabilities.mjs
 
       - name: Install application dependencies once
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         run: npm ci
 
       - name: Create ephemeral authenticated Staging desktop users
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         id: auth_fixture_desktop
         env:
           AUTH_SMOKE_LABEL: ステージング認証スモーク
         run: node scripts/production-auth-smoke-fixture.mjs setup
 
       - name: Run authenticated Staging desktop smoke
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         id: auth_desktop
         continue-on-error: true
         working-directory: tests/e2e
@@ -236,14 +259,20 @@ jobs:
         run: node scripts/production-auth-smoke-fixture.mjs cleanup
 
       - name: Create fresh ephemeral authenticated Staging mobile users
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         id: auth_fixture_mobile
         env:
           AUTH_SMOKE_LABEL: ステージング認証スモーク
         run: node scripts/production-auth-smoke-fixture.mjs setup
 
       - name: Run authenticated Staging mobile smoke
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         id: auth_mobile
         continue-on-error: true
         working-directory: tests/e2e
@@ -304,14 +333,20 @@ jobs:
           }
 
       - name: Create fresh ephemeral staging billing user
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         id: billing_fixture
         env:
           AUTH_SMOKE_LABEL: ステージング課金スモーク
         run: node scripts/production-auth-smoke-fixture.mjs setup
 
       - name: Run complete Stripe test billing smoke
-        if: success() && vars.STAGING_E2E_READY == 'true'
+        if: >-
+          success() &&
+          vars.STAGING_E2E_READY == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
         working-directory: tests/e2e
         env:
           AUTH_SMOKE_LABEL: ステージング課金スモーク

@@ -3,6 +3,12 @@
 on:
   issue_comment:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: 'Exact current main SHA to audit read-only before recovery approval'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,6 +18,95 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  audit:
+    name: Audit official base-book recovery readiness (read-only)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      EXPECTED_MAIN_SHA: ${{ inputs.revision }}
+      RECOVERY_CONFIRMATION: RECOVER STAGING BASE BOOKS 32
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-staging-recovery-database-url
+
+    steps:
+      - name: Checkout exact audit revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI for parity proof
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Require canonical read-only audit configuration
+        env:
+          STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_SUPABASE_SECRET_KEY"
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+
+      - name: Bind audit to exact current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main_sha="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main_sha" = "$EXPECTED_MAIN_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_MAIN_SHA"
+
+      - name: Run read-only official-pack recovery precheck
+        env:
+          STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+        run: node scripts/staging-base-books-32-recover.mjs --mode=precheck
+
+      - name: Resolve IPv4-compatible Staging database route for parity
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+        run: node scripts/resolve-staging-session-pooler.mjs
+
+      - name: Verify exact repository and Staging migration parity
+        shell: bash
+        env:
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          bash scripts/verify-staging-migrations.sh parity /tmp/staging-recovery-migration-parity.txt
+
+      - name: Remove ephemeral Staging database route
+        if: always()
+        shell: bash
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+
   request:
     name: Validate one-time owner recovery request
     if: >-
@@ -25,7 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: write
+      issues: read
     outputs:
       main_sha: ${{ steps.request.outputs.main_sha }}
       confirmation: ${{ steps.request.outputs.confirmation }}
@@ -128,29 +223,6 @@ jobs:
             exit 1
           }
 
-      - name: Claim request before Staging mutation
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REQUEST_COMMENT_ID: ${{ steps.request.outputs.request_comment_id }}
-          MAIN_SHA: ${{ steps.request.outputs.main_sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          payload="$(jq -cn \
-            --arg requestCommentId "$REQUEST_COMMENT_ID" \
-            --arg mainSha "$MAIN_SHA" \
-            --arg packKey 'NOVELIGHT_base_books_32_final' \
-            --arg geometryMigration '20260920204000' \
-            --arg runId "$GITHUB_RUN_ID" \
-            '{requestCommentId:$requestCommentId,mainSha:$mainSha,packKey:$packKey,geometryMigration:$geometryMigration,runId:$runId}')"
-          body="NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_CLAIMED $payload"
-          curl --silent --show-error --fail -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
-            -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null
-
   recover:
     name: Recover official base books on dedicated Staging
     needs: request
@@ -160,6 +232,9 @@ jobs:
     environment: staging
     permissions:
       contents: read
+      issues: write
+    outputs:
+      claimed: ${{ steps.claim.outputs.claimed }}
     env:
       EXPECTED_MAIN_SHA: ${{ needs.request.outputs.main_sha }}
       RECOVERY_CONFIRMATION: ${{ needs.request.outputs.confirmation }}
@@ -208,6 +283,22 @@ jobs:
             exit 1
           }
 
+      - name: Resolve IPv4-compatible Staging database route before precheck
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+        run: node scripts/resolve-staging-session-pooler.mjs
+
+      - name: Verify exact repository and Staging migration parity before writes
+        shell: bash
+        env:
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          bash scripts/verify-staging-migrations.sh parity /tmp/staging-recovery-prewrite-migration-parity.txt
+
       - name: Bind exact current main before precheck
         env:
           GH_TOKEN: ${{ github.token }}
@@ -255,7 +346,67 @@ jobs:
             exit 1
           }
 
-      - name: Recover official 32-book pack on Staging
+      - name: Claim approved request only after read-only precheck
+        id: claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_COMMENT_ID: ${{ needs.request.outputs.request_comment_id }}
+          MAIN_SHA: ${{ needs.request.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/staging-base-books-recovery-claim.ndjson
+          page=1
+          while [ "$page" -le 20 ]; do
+            page_file="/tmp/staging-base-books-recovery-claim-$page.json"
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100&page=$page" \
+              > "$page_file"
+            count="$(jq 'length' "$page_file")"
+            jq -c '.[]' "$page_file" >> /tmp/staging-base-books-recovery-claim.ndjson
+            if [ "$count" -lt 100 ]; then break; fi
+            page=$((page + 1))
+          done
+          test "$page" -le 20 || {
+            echo 'Recovery claim blocked: control ledger exceeded bounded pagination.'
+            exit 1
+          }
+          needle="\"requestCommentId\":\"$REQUEST_COMMENT_ID\""
+          used_count="$(
+            jq -s --arg needle "$needle" '[
+              .[]
+              | select(.user.login == "github-actions[bot]")
+              | select(
+                  (.body | startswith("NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_CLAIMED ")) or
+                  (.body | startswith("NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_CONSUMED "))
+                )
+              | select(.body | contains($needle))
+            ] | length' /tmp/staging-base-books-recovery-claim.ndjson
+          )"
+          test "$used_count" -eq 0 || {
+            echo 'Recovery claim blocked: request was already claimed or consumed.'
+            exit 1
+          }
+          payload="$(jq -cn \
+            --arg requestCommentId "$REQUEST_COMMENT_ID" \
+            --arg mainSha "$MAIN_SHA" \
+            --arg packKey 'NOVELIGHT_base_books_32_final' \
+            --arg geometryMigration '20260920204000' \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,packKey:$packKey,geometryMigration:$geometryMigration,runId:$runId}')"
+          body="NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_CLAIMED $payload"
+          curl --silent --show-error --fail -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" >/dev/null
+          echo 'claimed=true' >> "$GITHUB_OUTPUT"
+
+      - name: Recover canonical Geometry asset set on Staging
         env:
           STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
         run: node scripts/staging-base-books-32-recover.mjs --mode=recover
@@ -295,7 +446,10 @@ jobs:
   record:
     name: Record Staging recovery result
     needs: [request, recover]
-    if: always() && needs.request.result == 'success'
+    if: >-
+      always() &&
+      needs.request.result == 'success' &&
+      needs.recover.outputs.claimed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
