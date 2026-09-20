@@ -73,15 +73,16 @@ test('work export audit and rate limits stay private and bounded', async () => {
   );
 });
 
-test('author backup exports manuscript TXT without evaluation metrics', async () => {
+test('author backup keeps TXT fallback and adds complete illustration ZIP without evaluation metrics', async () => {
   const ui = await text(uiUrl);
   const client = await text(exportClientUrl);
 
   assert.match(ui, /novelight-author-work-export\.js/);
   assert.match(ui, /data-author-work-export/);
-  assert.match(ui, /TXTバックアップ/);
+  assert.match(ui, /作品バックアップ/);
+  assert.match(ui, /novelight-zip\.js/);
   assert.match(client, /novelight_authorize_work_export/);
-  assert.match(client, /\.eq\('user_id',userId\)/);
+  assert.match(client, /\.eq\('user_id',\s*userId\)/);
   assert.match(client, /\.from\('novels'\)/);
   assert.match(client, /\.from\('episodes'\)/);
   assert.match(client, /NOVELIGHT 作品バックアップ/);
@@ -90,6 +91,10 @@ test('author backup exports manuscript TXT without evaluation metrics', async ()
   assert.match(client, /scheduled_publish_at/);
   assert.match(client, /new Blob/);
   assert.match(client, /text\/plain;charset=utf-8/);
+  assert.match(client, /export-bundle/);
+  assert.match(client, /illustrations\/manifest\.json/);
+  assert.match(client, /novelight-work-\$\{novelId\}-backup\.zip/);
+  assert.match(client, /NovelightZip\.createZip/);
   assert.doesNotMatch(
     client,
     /\bpv\b|favorite_count|light_seed|scout_xp|work_rank|final_rank/i

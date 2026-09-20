@@ -121,7 +121,7 @@ test('authors can create edit order and remove series membership', () => {
 
 test('code-first rollout keeps existing author backup and fails closed before migration', () => {
   assert.match(myNovelsPage, /novelight-author-work-export\.js/);
-  assert.match(myNovelsPage, /TXTバックアップ/);
+  assert.match(myNovelsPage, /作品バックアップ|TXTバックアップ/);
   assert.match(myNovelsPage, /NovelightAuthorWorkExport\.mount/);
   assert.match(myNovelsPage, /id="seriesLink" hidden/);
   assert.match(myNovelsPage, /novelight_public_series_context/);

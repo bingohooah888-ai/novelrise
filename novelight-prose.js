@@ -2,7 +2,7 @@
   'use strict';
 
   const STYLE_ID = 'novelight-prose-style';
-  const SELECTOR = '.novelight-page-episode .content, .nl-preview-content';
+  const SELECTOR = '.novelight-page-episode .content:not([data-novelight-illustrations-rendered="true"]), .nl-preview-content, .nl-episode-prose-text';
   const LIMITS = Object.freeze({
     rubyBase: 50,
     rubyReading: 30,
@@ -77,8 +77,8 @@
     style.id = STYLE_ID;
     style.textContent = `
       .nl-prose-emphasis{-webkit-text-emphasis:filled dot;text-emphasis:filled dot;-webkit-text-emphasis-position:over right;text-emphasis-position:over right}
-      .novelight-page-episode .content ruby,.nl-preview-content ruby{ruby-align:center}
-      .novelight-page-episode .content rt,.nl-preview-content rt{font-size:.58em;line-height:1}
+      .novelight-page-episode .content ruby,.nl-preview-content ruby,.nl-episode-prose-text ruby{ruby-align:center}
+      .novelight-page-episode .content rt,.nl-preview-content rt,.nl-episode-prose-text rt{font-size:.58em;line-height:1}
     `;
     documentRef.head.appendChild(style);
   }

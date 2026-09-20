@@ -20,7 +20,7 @@
       <p class="server-draft-copy">「サーバーに下書き保存」するとアカウントに保存され、別の端末からも続きを編集できます。端末自動保存は予備のバックアップとして併用されます。</p>
       <div class="field"><label for="episodeNumber">話数</label><input id="episodeNumber" type="number" min="1" required readonly><p class="field-note">新しい話は末尾へ安全に追加されます。保存後の途中挿入・章分け・並び替えは作品の「章・並び順管理」から行えます。</p></div>
       <div class="field"><label for="title">エピソードタイトル</label><input id="title" maxlength="150" required></div>
-      <div class="field"><label for="content">本文</label><textarea id="content" maxlength="100000" required></textarea></div>
+      <div class="field"><label for="content">本文</label><textarea id="content" maxlength="100000" required></textarea><p class="field-note">挿絵は一度「サーバーに下書き保存」した後、エピソード編集画面から本文の任意位置へ追加できます。</p></div>
       <div class="buttons"><a id="cancel" class="btn" href="my-novels.html">キャンセル</a><button id="saveDraft" class="btn draft" type="button" disabled>サーバーに下書き保存</button><button id="publish" class="btn publish" type="submit" disabled>公開する</button></div>
       <div id="status" class="status" aria-live="polite"></div>
     </form>
