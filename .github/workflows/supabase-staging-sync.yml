@@ -164,7 +164,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
           node scripts/verify-staging-migration-target.mjs
 
       - name: Require exact Staging pending migrations
@@ -173,7 +174,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
           bash scripts/verify-staging-migrations.sh pending /tmp/staging-pending-before-precheck.txt
 
       - name: Run Staging migration prechecks
@@ -182,7 +184,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
           while IFS= read -r artifact_line; do
             version="${artifact_line%%|*}"
             precheck="$(printf '%s\n' "$artifact_line" | cut -d'|' -f3)"
@@ -196,7 +199,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
           supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
 
       - name: Re-bind target and pending set immediately before mutation
@@ -205,7 +209,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
 
           git fetch --no-tags --depth=1 origin main
           current_main_sha="$(git rev-parse FETCH_HEAD)"
@@ -228,7 +233,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
           supabase db push --db-url "$STAGING_DATABASE_URL" --yes
 
       - name: Run Staging migration postchecks
@@ -238,7 +244,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
           while IFS= read -r artifact_line; do
             version="${artifact_line%%|*}"
             postcheck="$(printf '%s\n' "$artifact_line" | cut -d'|' -f4)"
@@ -253,7 +260,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
           bash scripts/verify-staging-migrations.sh parity /tmp/staging-migration-list-after-apply.txt
 
       - name: Record explicit recovery boundary
