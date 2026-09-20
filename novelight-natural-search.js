@@ -149,7 +149,35 @@
       return;
     list.push(item);
   }
-  function buildPlan(query, selectedGenre = '') {
+  function inferOfficialTags(query, catalog = []) {
+    const lower = normalize(query).toLowerCase();
+    if (!lower) return [];
+    const asciiTokens = lower.split(/[^a-z0-9]+/u).filter(Boolean);
+    const contains = (value) => {
+      const normalized = normalize(value).toLowerCase();
+      if (normalized.length < 2) return false;
+      return /^[a-z0-9]+$/u.test(normalized)
+        ? asciiTokens.includes(normalized)
+        : lower.includes(normalized);
+    };
+    const matches = [];
+    for (const tag of catalog) {
+      const candidates = [tag.displayName, ...(tag.aliases || [])]
+        .map((value) => normalize(value).toLowerCase())
+        .filter((value) => contains(value))
+        .sort((a, b) => b.length - a.length);
+      if (candidates.length) matches.push({ tag, matched: candidates[0] });
+    }
+    matches.sort((a, b) => b.matched.length - a.matched.length);
+    const selected = [];
+    for (const match of matches) {
+      if (selected.some((item) => item.matched.includes(match.matched))) continue;
+      selected.push(match);
+      if (selected.length >= 3) break;
+    }
+    return selected.map(({ tag, matched }) => ({ id: tag.id, displayName: tag.displayName, matched }));
+  }
+  function buildPlan(query, selectedGenre = '', catalog = []) {
     const normalized = normalize(query);
     const explicitGenre = normalize(selectedGenre);
     const genre = explicitGenre || inferGenre(normalized);
@@ -188,7 +216,8 @@
       query: normalized,
       genre,
       genreSource: explicitGenre ? 'selected' : genre ? 'inferred' : '',
-      terms: terms.slice(0, MAX_TERMS)
+      terms: terms.slice(0, MAX_TERMS),
+      officialTags: inferOfficialTags(normalized, catalog)
     };
   }
   function scoreRow(row, plan) {
@@ -201,6 +230,13 @@
     if (plan.genre && genre === plan.genre) {
       score += 10;
       reasons.push(`ジャンル「${plan.genre}」`);
+    }
+
+    const rowOfficialIds = new Set(Array.isArray(row?.official_tag_ids) ? row.official_tag_ids.map(String) : []);
+    for (const tag of plan.officialTags || []) {
+      if (!rowOfficialIds.has(String(tag.id))) continue;
+      score += 12;
+      reasons.push(`公式タグ「${tag.displayName}」`);
     }
 
     for (const spec of plan.terms) {
@@ -251,43 +287,46 @@
   }
 
   async function search(client, query, options = {}) {
-    const plan = buildPlan(query, options.genre);
+    let catalog = [];
+    try {
+      if (global.NovelightTags?.loadCatalog) catalog = await global.NovelightTags.loadCatalog(client);
+    } catch (error) {
+      console.warn('official tag catalog unavailable for natural search', error);
+    }
+    const plan = buildPlan(query, options.genre, catalog);
     const limit = Math.max(1, Math.min(Number(options.limit) || 24, 50));
     if (!plan.query) return { plan, rows: [] };
 
+    const selectedTagIds = [...new Set((options.tagIds || []).map(String))].slice(0, 10);
+    const inferredTagIds = (plan.officialTags || []).map((tag) => String(tag.id));
+    const hardTagIds = [...new Set([...selectedTagIds, ...inferredTagIds])].slice(0, 10);
     const hardGenre = plan.genreSource === 'selected' ? plan.genre : null;
-    const requests = plan.terms.map((spec) =>
-      client.rpc('novelight_neutral_search', {
-        p_keyword: spec.term,
-        p_genre: hardGenre,
+    async function neutralRequest(keyword, genre) {
+      if (hardTagIds.length) {
+        const v2 = await client.rpc('novelight_neutral_search_v2', {
+          p_keyword: keyword || null,
+          p_genre: genre || null,
+          p_official_tag_ids: hardTagIds,
+          p_sort: 'new',
+          p_limit: CANDIDATE_LIMIT,
+          p_offset: 0
+        });
+        if (!v2.error) return v2;
+        if (!global.NovelightTags?.isMissingRpc?.(v2.error, 'novelight_neutral_search_v2')) return v2;
+      }
+      return client.rpc('novelight_neutral_search', {
+        p_keyword: keyword || null,
+        p_genre: genre || null,
         p_sort: 'new',
         p_limit: CANDIDATE_LIMIT,
         p_offset: 0
-      })
-    );
-    if (plan.genre) {
-      requests.push(
-        client.rpc('novelight_neutral_search', {
-          p_keyword: null,
-          p_genre: plan.genre,
-          p_sort: 'new',
-          p_limit: CANDIDATE_LIMIT,
-          p_offset: 0
-        })
-      );
+      });
     }
 
-    if (!requests.length) {
-      requests.push(
-        client.rpc('novelight_neutral_search', {
-          p_keyword: plan.query,
-          p_genre: null,
-          p_sort: 'new',
-          p_limit: CANDIDATE_LIMIT,
-          p_offset: 0
-        })
-      );
-    }
+    const requests = plan.terms.map((spec) => neutralRequest(spec.term, hardGenre));
+    if (hardTagIds.length) requests.push(neutralRequest(null, hardGenre));
+    if (plan.genre) requests.push(neutralRequest(null, plan.genre));
+    if (!requests.length) requests.push(neutralRequest(plan.query, null));
 
     const responses = await Promise.all(requests);
     const unique = new Map();
@@ -304,6 +343,7 @@
 
   global.NovelightNaturalSearch = Object.freeze({
     MAX_QUERY_LENGTH,
+    inferOfficialTags,
     buildPlan,
     scoreRow,
     rankRows,
