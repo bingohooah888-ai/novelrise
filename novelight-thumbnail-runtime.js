@@ -179,6 +179,21 @@
     context.drawImage(image, 0, 0, width, height);
   }
 
+  async function drawContained(context, url, width, height) {
+    if (!url) return;
+    const image = await loadImage(url);
+    const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+    const drawWidth = image.naturalWidth * scale;
+    const drawHeight = image.naturalHeight * scale;
+    context.drawImage(
+      image,
+      (width - drawWidth) / 2,
+      (height - drawHeight) / 2,
+      drawWidth,
+      drawHeight
+    );
+  }
+
   async function renderGeometryFallback(composition) {
     if (!composition?.background_url || !composition?.base_book_url) {
       return null;
@@ -200,7 +215,7 @@
     context.clearRect(0, 0, width, height);
 
     await drawFull(context, composition.background_url, width, height);
-    await drawFull(context, composition.base_book_url, width, height);
+    await drawContained(context, composition.base_book_url, width, height);
     for (const type of SURFACE_TYPES) {
       const url = composition[`${type}_url`];
       if (!url) continue;

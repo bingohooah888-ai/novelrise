@@ -18,6 +18,7 @@
 .nl-thumb-option:focus-visible,.nl-thumb-layer-summary:focus-visible{outline:2px solid #6d4aff;outline-offset:2px}
 .nl-thumb-option img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:#eee8dc}
 .nl-thumb-option span:not(.nl-thumb-option-none){display:block;padding:7px 8px;font-size:11px;font-weight:800;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nl-thumb-option .nl-thumb-option-label{min-height:46px;white-space:pre-line;overflow:visible;text-overflow:clip}
 .nl-thumb-option-none{display:grid;place-items:center;aspect-ratio:3/4;background:repeating-linear-gradient(135deg,#f7f4ed,#f7f4ed 10px,#eee9de 10px,#eee9de 20px);color:#6e665b;font-size:12px;font-weight:900}
 .nl-thumb-composer-preview{position:sticky;top:18px;display:grid;gap:8px}
 .nl-thumb-composer-preview canvas{display:block;width:min(100%,360px);height:auto;aspect-ratio:3/4;margin-inline:auto;border:1px solid #d8d0c2;border-radius:12px;background:#ece7dd;box-shadow:0 12px 30px rgba(39,31,20,.12)}

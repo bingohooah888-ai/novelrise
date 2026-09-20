@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { requireAdmin } from './admin-auth.js';
 import { generateCoverMaskPng, normalizeCoverQuad } from './cover-mask-png.js';
 
@@ -97,21 +97,33 @@ async function listLibrary(supabase) {
     throw new Error(`Thumbnail template list failed: ${error.message}`);
   }
 
-  const { data: assets, error: assetError } = await supabase
+  let assetResult = await supabase
     .from('novel_thumbnail_assets')
     .select(
-      'id,label,storage_path,image_url,is_active,layer_type,template_key,sort_order,availability_status,created_at'
+      'id,label,storage_path,image_url,is_active,layer_type,template_key,sort_order,availability_status,display_name_ja,material_ja,source_pack_key,source_file_name,source_sha256,created_at'
     )
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
-  if (assetError)
-    throw new Error(`Thumbnail list failed: ${assetError.message}`);
+  let baseBookPackReady = true;
+  if (assetResult.error?.code === '42703') {
+    baseBookPackReady = false;
+    assetResult = await supabase
+      .from('novel_thumbnail_assets')
+      .select(
+        'id,label,storage_path,image_url,is_active,layer_type,template_key,sort_order,availability_status,created_at'
+      )
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
+  }
+  if (assetResult.error)
+    throw new Error(`Thumbnail list failed: ${assetResult.error.message}`);
 
   return {
     composerReady: true,
     coverQuadReady: templateResult.coverQuadReady,
+    baseBookPackReady,
     templates: templateResult.data,
-    assets: assets ?? []
+    assets: assetResult.data ?? []
   };
 }
 
@@ -255,6 +267,213 @@ async function finalizeUpload({ supabase, adminUser, body }) {
   return {
     status: 201,
     payload: { asset: Array.isArray(data) ? data[0] : data }
+  };
+}
+
+function normalizeBaseBookText(value) {
+  const text = String(value ?? '').trim();
+  return text.length >= 1 && text.length <= 80 ? text : null;
+}
+
+function normalizeBaseBookFileName(value) {
+  const name = String(value ?? '').trim();
+  return /^base_book_[a-z0-9_]+_01[.]png$/u.test(name) ? name : null;
+}
+
+function normalizeSha256(value) {
+  const hash = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  return /^[0-9a-f]{64}$/u.test(hash) ? hash : null;
+}
+
+async function verifyPublicObjectSha256(url, expectedSize, expectedSha256) {
+  const response = await globalThis.fetch(url, { cache: 'no-store' });
+  if (!response.ok)
+    throw new Error(`Thumbnail binary verification failed: ${response.status}`);
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.byteLength !== expectedSize) return false;
+  return createHash('sha256').update(bytes).digest('hex') === expectedSha256;
+}
+
+async function finalizeOfficialBaseBook({ supabase, adminUser, body }) {
+  const displayName = normalizeBaseBookText(body.displayNameJa);
+  const material = normalizeBaseBookText(body.materialJa);
+  const path = String(body.path ?? '').trim();
+  const fileName = normalizeBaseBookFileName(body.fileName);
+  const sha256 = normalizeSha256(body.sha256);
+  const displayOrder = Number(body.displayOrder);
+  const fileSize = Number(body.fileSize);
+  const packKey = String(body.packKey ?? '').trim();
+  if (
+    !displayName ||
+    !material ||
+    !PATH_PATTERN.test(path) ||
+    !path.endsWith('.png') ||
+    !fileName ||
+    !sha256 ||
+    !Number.isInteger(displayOrder) ||
+    displayOrder < 1 ||
+    displayOrder > 32 ||
+    !Number.isInteger(fileSize) ||
+    fileSize < 1 ||
+    fileSize > MAX_FILE_SIZE ||
+    packKey !== 'NOVELIGHT_base_books_32_final'
+  ) {
+    return {
+      status: 400,
+      payload: { error: 'Invalid official base_book metadata' }
+    };
+  }
+  if (!(await verifyStoredObject(supabase, path))) {
+    return {
+      status: 409,
+      payload: { error: 'Uploaded base_book was not found' }
+    };
+  }
+  const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  const imageUrl = publicData?.publicUrl;
+  if (!imageUrl || !imageUrl.startsWith('https://')) {
+    throw new Error('Official base_book public URL could not be resolved');
+  }
+  if (!(await verifyPublicObjectSha256(imageUrl, fileSize, sha256))) {
+    await supabase.storage.from(BUCKET).remove([path]);
+    return {
+      status: 409,
+      payload: {
+        error: 'Uploaded base_book binary does not match the approved manifest'
+      }
+    };
+  }
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_stage_official_base_book',
+    {
+      p_admin_user_id: adminUser.id,
+      p_display_name_ja: displayName,
+      p_material_ja: material,
+      p_storage_path: path,
+      p_image_url: imageUrl,
+      p_template_key: 'book-v1',
+      p_display_order: displayOrder,
+      p_source_pack_key: packKey,
+      p_source_file_name: fileName,
+      p_source_sha256: sha256
+    }
+  );
+  if (error) {
+    await supabase.storage.from(BUCKET).remove([path]);
+    if (schemaUnavailable(error)) {
+      return {
+        status: 503,
+        payload: { error: 'Official base_book schema is not ready' }
+      };
+    }
+    if (error.code === '23505') {
+      return {
+        status: 409,
+        payload: {
+          error: 'Official base_book was already staged with different metadata'
+        }
+      };
+    }
+    throw new Error(`Official base_book staging failed: ${error.message}`);
+  }
+  return {
+    status: 201,
+    payload: { asset: Array.isArray(data) ? data[0] : data }
+  };
+}
+
+async function activateOfficialBaseBookPack({ supabase, adminUser, body }) {
+  if (String(body.packKey ?? '').trim() !== 'NOVELIGHT_base_books_32_final') {
+    return {
+      status: 400,
+      payload: { error: 'Invalid official base_book pack' }
+    };
+  }
+  const templateKey = 'book-v1';
+  const { data: template, error: templateError } = await supabase
+    .from('novel_thumbnail_templates')
+    .select('template_key,canvas_width,canvas_height')
+    .eq('template_key', templateKey)
+    .maybeSingle();
+  if (templateError || !template) {
+    if (schemaUnavailable(templateError)) {
+      return {
+        status: 503,
+        payload: { error: 'Official base_book schema is not ready' }
+      };
+    }
+    throw new Error(
+      `Official base_book template lookup failed: ${templateError?.message || 'not found'}`
+    );
+  }
+  let quad;
+  try {
+    quad = normalizeCoverQuad(
+      rawCoverQuad(body),
+      template.canvas_width,
+      template.canvas_height
+    );
+  } catch (error) {
+    return { status: 400, payload: { error: error.message } };
+  }
+  const revision = randomUUID();
+  const fileName = `${templateKey}-cover-mask.png`;
+  const path = `generated-masks/${templateKey}/${revision}/${fileName}`;
+  const png = generateCoverMaskPng(
+    quad,
+    template.canvas_width,
+    template.canvas_height
+  );
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, png, {
+      contentType: 'image/png',
+      cacheControl: '31536000',
+      upsert: false
+    });
+  if (uploadError)
+    throw new Error(
+      `Official base_book cover mask upload failed: ${uploadError.message}`
+    );
+  const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  const maskUrl = publicData?.publicUrl;
+  if (!maskUrl || !maskUrl.startsWith('https://')) {
+    await supabase.storage.from(BUCKET).remove([path]);
+    throw new Error('Official base_book cover mask URL could not be resolved');
+  }
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_activate_official_base_book_pack',
+    {
+      p_admin_user_id: adminUser.id,
+      p_source_pack_key: 'NOVELIGHT_base_books_32_final',
+      p_top_left_x: quad.top_left.x,
+      p_top_left_y: quad.top_left.y,
+      p_top_right_x: quad.top_right.x,
+      p_top_right_y: quad.top_right.y,
+      p_bottom_right_x: quad.bottom_right.x,
+      p_bottom_right_y: quad.bottom_right.y,
+      p_bottom_left_x: quad.bottom_left.x,
+      p_bottom_left_y: quad.bottom_left.y,
+      p_mask_revision: revision,
+      p_mask_storage_path: path,
+      p_mask_url: maskUrl
+    }
+  );
+  if (error) {
+    await supabase.storage.from(BUCKET).remove([path]);
+    if (schemaUnavailable(error)) {
+      return {
+        status: 503,
+        payload: { error: 'Official base_book activation schema is not ready' }
+      };
+    }
+    throw new Error(`Official base_book activation failed: ${error.message}`);
+  }
+  return {
+    status: 200,
+    payload: { activation: data, mask: { fileName, path, url: maskUrl } }
   };
 }
 
@@ -417,6 +636,14 @@ export function createAdminThumbnailsHandler({ supabase, env = process.env }) {
         result = await prepareUpload({ supabase, body });
       } else if (action === 'finalize-upload') {
         result = await finalizeUpload({ supabase, adminUser, body });
+      } else if (action === 'finalize-official-base-book') {
+        result = await finalizeOfficialBaseBook({ supabase, adminUser, body });
+      } else if (action === 'activate-official-base-book-pack') {
+        result = await activateOfficialBaseBookPack({
+          supabase,
+          adminUser,
+          body
+        });
       } else if (action === 'set-status') {
         result = await setAssetStatus({ supabase, adminUser, body });
       } else if (action === 'set-cover-quad') {
