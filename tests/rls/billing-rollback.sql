@@ -32,7 +32,7 @@ insert into public.novels (id, user_id, status) values (
 );
 
 select public.test_assert(
-  (select count(*) = 2
+  (select count(*) = 3
    from public.novels
    where user_id = '33333333-3333-3333-3333-333333333333'),
   'novel plan limit should be removed after rollback'
