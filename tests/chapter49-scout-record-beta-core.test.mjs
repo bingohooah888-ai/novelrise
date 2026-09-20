@@ -22,8 +22,14 @@ test('Chapter 49 beta core adds private level and point ledgers', async () => {
   has(sql, "status in ('confirmed', 'pending', 'frozen', 'cancelled')");
   has(sql, 'reversal_of uuid references public.scout_point_ledger');
   has(sql, 'alter table public.scout_point_ledger enable row level security');
-  has(sql, 'revoke all on table public.scout_point_ledger from public, anon, authenticated');
-  has(sql, 'revoke all on table public.scout_level_thresholds from public, anon, authenticated');
+  has(
+    sql,
+    'revoke all on table public.scout_point_ledger from public, anon, authenticated'
+  );
+  has(
+    sql,
+    'revoke all on table public.scout_level_thresholds from public, anon, authenticated'
+  );
 });
 
 test('beta Level progression caps XP at Lv.30 without rewriting old ledger rows', async () => {
@@ -41,7 +47,7 @@ test('new valid-read events award fixed XP with daily and lifetime work caps', a
   const sql = await readFile(migrationPath, 'utf8');
   has(sql, "new.event_type <> 'valid_read'");
   has(sql, "x.xp_kind = 'valid_read'");
-  has(sql, "e.novel_id_snapshot = new.novel_id_snapshot");
+  has(sql, 'e.novel_id_snapshot = new.novel_id_snapshot');
   has(sql, 'v_awarded_today < 5');
   has(sql, "'valid_read', 2, 'chapter49-beta-v1'");
   has(sql, 'novelight:valid-read-xp:');
@@ -74,7 +80,10 @@ test('owner SCOUT RECORD APIs expose only bounded authenticated views', async ()
     has(sql, `public.${fn}`);
   }
   has(sql, 'v_uid uuid := (select auth.uid())');
-  has(sql, "raise exception using errcode = '42501', message = 'Authentication required'");
+  has(
+    sql,
+    "raise exception using errcode = '42501', message = 'Authentication required'"
+  );
   has(sql, 'where p.user_id = (select auth.uid())');
   has(sql, 'where e.user_id = (select auth.uid())');
   has(sql, 'where d.reader_id = (select auth.uid())');
