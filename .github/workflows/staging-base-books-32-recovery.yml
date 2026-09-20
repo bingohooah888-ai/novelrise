@@ -165,6 +165,7 @@ jobs:
       RECOVERY_CONFIRMATION: ${{ needs.request.outputs.confirmation }}
       STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       STAGING_DATABASE_URL_FILE: /tmp/novelight-staging-recovery-database-url
+      STAGING_RECOVERY_ACTOR_FILE: /tmp/novelight-staging-recovery-actor.json
 
     steps:
       - name: Checkout exact approved revision
@@ -258,6 +259,12 @@ jobs:
         env:
           STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
         run: node scripts/staging-base-books-32-recover.mjs --mode=recover
+
+      - name: Ensure ephemeral Staging recovery actor is removed
+        if: always()
+        env:
+          STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+        run: node scripts/staging-base-books-32-recover.mjs --mode=cleanup-actor
 
       - name: Run read-only Geometry recovery postcheck
         env:
