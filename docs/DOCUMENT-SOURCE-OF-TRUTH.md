@@ -56,6 +56,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/NOCTER-VISUAL-GUIDE.md","status":"CURRENT","role":"nocter-visual-guide","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOVELIGHT-ADMIN.md","status":"CURRENT","role":"admin-guide","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOVELIGHT-MASTER.md","status":"CURRENT","role":"master","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/novelight-tag-taxonomy.md","status":"CURRENT","role":"novelight-tag-taxonomy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PREVIEW-STAGING-AUTOMATION.md","status":"CURRENT","role":"preview-staging-automation","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRODUCTION-BILLING-INCIDENT-RUNBOOK.md","status":"CURRENT","role":"production-billing-incident-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRODUCTION-CHAT-DISPATCH.md","status":"CURRENT","role":"production-chat-dispatch","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
