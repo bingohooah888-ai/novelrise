@@ -81,6 +81,7 @@ begin
      or to_regclass('public.novels') is null
      or to_regclass('public.episodes') is null
      or to_regclass('public.favorites') is null
+     or to_regclass('public.episode_hearts') is null
      or to_regclass('public.light_seeds') is null
      or to_regclass('public.novel_exposure_events') is null
      or to_regclass('public.founding_authors') is null
@@ -804,6 +805,19 @@ echo '::endgroup::'
 echo '::group::Verify Founding and beta participation qualifications after regression fixtures'
 "${REPLAY[@]}" -f supabase/checks/20260920122000_founding_beta_qualifications_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/founding-beta-qualifications.sql
+echo '::endgroup::'
+
+echo '::group::Verify episode hearts behavior'
+"${REPLAY[@]}" -f supabase/checks/20260920082032_episode_hearts_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/episode-hearts.sql
+echo '::endgroup::'
+
+echo '::group::Verify episode hearts rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260920082032_episode_hearts_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260920082032_episode_hearts_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260920082032_episode_hearts.sql
+"${REPLAY[@]}" -f supabase/checks/20260920082032_episode_hearts_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/episode-hearts.sql
 echo '::endgroup::'
 
 echo '::group::Verify restored-database structural integrity'

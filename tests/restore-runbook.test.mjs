@@ -40,6 +40,7 @@ test('restored-target SQL covers current private and fairness-critical data mode
     'reader_reading_progress',
     'reader_bookshelf_entries',
     'user_blocks',
+    'episode_hearts',
     'episode_revisions',
     'novel_characters',
     'novel_polls',
@@ -59,6 +60,8 @@ test('restored-target SQL covers current private and fairness-critical data mode
   assert.match(sql, /novel_exposure_rules where id = 1/);
   assert.match(sql, /valid_read_rules where id = 1/);
   assert.match(sql, /novelight_can_favorite_novel/);
+  assert.match(sql, /novelight_episode_heart_state/);
+  assert.match(sql, /novelight_toggle_episode_heart/);
   assert.match(sql, /record_valid_read_progress/);
 });
 

@@ -43,6 +43,7 @@ declare
     'content_reports','reader_journey_events',
     'valid_read_events','valid_read_sessions','episode_revisions',
     'reader_reading_progress','reader_bookshelf_entries','user_blocks','user_mutes',
+    'episode_hearts',
     'novel_collaborators','novel_collaboration_invites','novel_collaboration_events',
     'novel_private_story_notes'
   ];
@@ -74,7 +75,8 @@ declare
   v_exposed text[] := '{}'::text[];
   v_revoke_tables text[] := array[
     'novel_exposure_events',
-    'novel_exposure_conversions'
+    'novel_exposure_conversions',
+    'episode_hearts'
   ];
 begin
   foreach v_name in array v_revoke_tables loop
@@ -102,6 +104,8 @@ declare
     'novelight_neutral_search',
     'novelight_can_favorite_novel',
     'novelight_favorite_count',
+    'novelight_episode_heart_state',
+    'novelight_toggle_episode_heart',
     'light_seed_status_v2',
     'plant_light_seed_v2'
   ];
