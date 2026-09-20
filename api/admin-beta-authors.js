@@ -133,6 +133,22 @@ async function exactCount(table, configure = (query) => query) {
   return Number(count ?? 0);
 }
 
+async function loadParticipationMetrics() {
+  const { data, error } = await supabase.rpc(
+    'novelight_admin_beta_participation_metrics'
+  );
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    validPreregistrations: Number(row?.valid_preregistrations ?? 0),
+    latestFoundingNumber: Number(row?.latest_founding_number ?? 0),
+    linkedPreregistrations: Number(row?.linked_preregistrations ?? 0),
+    betaParticipants: Number(row?.beta_participants ?? 0),
+    foundingBadgeEligible: Number(row?.founding_badge_eligible ?? 0),
+    betaBadgeEligible: Number(row?.beta_badge_eligible ?? 0)
+  };
+}
+
 async function loadMetrics() {
   const today = jstDayStartIso();
   const [
@@ -145,7 +161,8 @@ async function loadMetrics() {
     pageViews,
     ctaClicks,
     formStarts,
-    registerClicks
+    registerClicks,
+    participation
   ] = await Promise.all([
     exactCount('beta_author_preregistrations', (query) =>
       query.neq('status', 'cancelled')
@@ -176,7 +193,8 @@ async function loadMetrics() {
     ),
     exactCount('beta_author_preregistration_events', (query) =>
       query.eq('event_type', 'register_click')
-    )
+    ),
+    loadParticipationMetrics()
   ]);
 
   return {
@@ -189,7 +207,8 @@ async function loadMetrics() {
     pageViews,
     ctaClicks,
     formStarts,
-    registerClicks
+    registerClicks,
+    ...participation
   };
 }
 
@@ -233,9 +252,33 @@ async function loadRows({ search, status, page, pageSize }) {
   const { data, count, error } = await query.range(from, to);
   if (error) throw error;
 
+  const rows = data ?? [];
+  const preregistrationIds = rows.map((row) => row.id);
+  const qualificationByPreregistration = new Map();
+  if (preregistrationIds.length) {
+    const { data: qualifications, error: qualificationError } = await supabase
+      .from('beta_author_founding_qualifications')
+      .select('preregistration_id,founding_number,qualified_at')
+      .in('preregistration_id', preregistrationIds);
+    if (qualificationError) throw qualificationError;
+    for (const qualification of qualifications ?? []) {
+      qualificationByPreregistration.set(
+        qualification.preregistration_id,
+        qualification
+      );
+    }
+  }
+
   const total = Number(count ?? 0);
   return {
-    rows: data ?? [],
+    rows: rows.map((row) => {
+      const qualification = qualificationByPreregistration.get(row.id);
+      return {
+        ...row,
+        founding_number: qualification?.founding_number ?? null,
+        founding_qualified_at: qualification?.qualified_at ?? null
+      };
+    }),
     pagination: {
       page,
       pageSize,

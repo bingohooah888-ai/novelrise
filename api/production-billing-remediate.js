@@ -259,9 +259,9 @@ async function proveExternalWebhookWithoutCharge({
         email_confirm: true,
         user_metadata: {
           display_name: `NOVELIGHT Billing Remediation Proof ${suffix}`,
-          internal_e2e: true,
           production_billing_remediation_proof: true
-        }
+        },
+        app_metadata: { internal_e2e: true }
       }),
       'create Production remediation proof user'
     );

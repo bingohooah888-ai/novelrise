@@ -80,9 +80,10 @@ test('moderation route is structured and private', async () => {
 });
 
 test('beta-start attribution, revisit, Founding Authors, and subscription ledgers exist', async () => {
-  const [client, migration, webhook] = await Promise.all([
+  const [client, migration, foundingMigration, webhook] = await Promise.all([
     read('novelight-client.js'),
     read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql'),
+    read('supabase/migrations/20260920122000_founding_beta_qualifications.sql'),
     read('api/stripe-webhook.js')
   ]);
   assert.match(client, /utm_source/);
@@ -95,6 +96,14 @@ test('beta-start attribution, revisit, Founding Authors, and subscription ledger
   assert.match(migration, /create table public\.reader_journey_events/);
   assert.match(migration, /create table public\.founding_authors/);
   assert.match(migration, /founding_number between 1 and 100/);
+  assert.match(
+    foundingMigration,
+    /drop constraint if exists founding_authors_founding_number_check/
+  );
+  assert.match(
+    foundingMigration,
+    /create table public\.beta_author_founding_qualifications/
+  );
   assert.match(migration, /create table public\.subscription_event_log/);
   assert.match(webhook, /subscription_event_log/);
   assert.match(webhook, /stripe_event_id/);
