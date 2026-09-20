@@ -919,7 +919,7 @@ mainへのmerge自体がVercelその他の仕組みによってProduction deploy
 
 Productionのread-only確認、ログ確認、CI / CodeQL / Vercel status確認、監視、postcheck等、状態変更を伴わない確認は「本番承認」を必要としない。ただし、read-only確認の結果から新たなProduction mutationが必要になった場合は、そのmutation開始前に本番承認を得る。
 
-GitHub branch protection、required checks、権限要求、外部サービスの確認画面等、システム上必須の安全手続きは維持する。ただし、それらを理由に不要なユーザー承認を追加で求めない。リポジトリ規則上どうしても別の明示承認がHard Boundaryとして必須である場合はその規則を優先するが、可能な限りユーザー確認は「本番承認」へ統合する。
+GitHub branch protection、required checks、権限要求、外部サービスの確認画面等、システム上必須の安全手続きは維持する。ただし、それらを理由に不要なユーザー承認を追加で求めない。リポジトリ規則上、high-risk PR等に機械可読の承認コメントや専用Approval Ledger記録がHard Boundaryとして必須である場合も、ユーザーへ「マージ承認」「高リスク承認」等の別文言を追加で要求しない。ユーザーの「本番承認」を唯一の人間承認として受けた後、ChatGPTまたは自動化が、その本番承認を必要なGitHub承認コメント、Approval Ledger記録、challenge-bound形式等へ変換して投入する。対象head SHAやchallengeが変化して再承認が技術的に必要になった場合も、承認対象の実質的なProduction内容が変わっていない限り、既存の本番承認を再利用して機械側の承認証跡だけを更新し、ユーザーへ同じ承認を再要求しない。
 
 GitHub Actions、CodeQL、Vercel、Staging E2E、その他外部サービスの処理待ちも、ユーザーが作業全体の現在地を把握するための所要時間に含める。外部待ちであることは区別して説明するが、待ち時間であることを理由に時間報告の対象外にはしない。
 
