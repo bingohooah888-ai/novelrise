@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+const master = await readFile('docs/NOVELIGHT-MASTER.md', 'utf8');
 const migration = await readFile(
   'supabase/migrations/20260910220000_chapter39_thumbnail_composer.sql',
   'utf8'
@@ -137,6 +138,32 @@ test('author composer exposes five accordion categories and hides retired cover/
   assert.match(composerCss, /max-height:min\(56vh,520px\)/);
   assert.match(composerCss, /overflow-y:auto/);
   assert.match(composerCss, /nl-thumb-layer\[open\]/);
+});
+
+test('author composer offers one-click random material selection without changing hidden compatibility layers', () => {
+  assert.ok(composer.includes('function randomizeAuthorSelection()'));
+  assert.ok(composer.includes('for (const type of AUTHOR_LAYER_TYPES)'));
+  assert.ok(
+    composer.includes(
+      'const choices = REQUIRED_TYPES.includes(type) ? available : [null, ...available]'
+    )
+  );
+  assert.ok(
+    composer.includes("randomizeButton.className = 'nl-thumb-randomize-button'")
+  );
+  assert.ok(
+    composer.includes("randomizeButton.textContent = 'おまかせで選ぶ'")
+  );
+  assert.ok(composer.includes('randomizeAuthorSelection();'));
+  assert.ok(master.includes('「おまかせで選ぶ」ボタン'));
+  assert.ok(master.includes('内部互換用の `cover`'));
+  assert.ok(
+    !composer.includes(
+      'for (const type of LAYER_TYPES) {\n        const choices ='
+    )
+  );
+  assert.match(composerCss, /\.nl-thumb-randomize-button\{/);
+  assert.match(composerCss, /\.nl-thumb-randomize-help\{/);
 });
 
 test('cached render is derived WebP and source layer IDs remain canonical', () => {

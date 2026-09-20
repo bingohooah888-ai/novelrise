@@ -515,6 +515,22 @@
     }
     seedSelection(state.templateKey);
 
+    function randomizeAuthorSelection() {
+      for (const type of AUTHOR_LAYER_TYPES) {
+        const available = assetsFor(library, state.templateKey, type);
+        const choices = REQUIRED_TYPES.includes(type) ? available : [null, ...available];
+        if (!choices.length) continue;
+        const currentId = String(state.selected[type] || '');
+        const alternatives = choices.filter(
+          (asset) => String(asset?.id || '') !== currentId
+        );
+        const pool = alternatives.length ? alternatives : choices;
+        const picked = pool[Math.floor(Math.random() * pool.length)];
+        state.selected[type] = picked?.id ? String(picked.id) : '';
+      }
+      state.dirty = true;
+    }
+
     root.classList.add('novelight-thumbnail-composer');
     root.replaceChildren();
     const layout = document.createElement('div');
@@ -610,6 +626,23 @@
     }
     function renderControls() {
       controls.replaceChildren();
+      const randomizeBar = document.createElement('div');
+      randomizeBar.className = 'nl-thumb-randomize';
+      const randomizeButton = document.createElement('button');
+      randomizeButton.type = 'button';
+      randomizeButton.className = 'nl-thumb-randomize-button';
+      randomizeButton.textContent = 'おまかせで選ぶ';
+      randomizeButton.setAttribute('aria-label', 'サムネイル素材をおまかせで選ぶ');
+      const randomizeHelp = document.createElement('span');
+      randomizeHelp.className = 'nl-thumb-randomize-help';
+      randomizeHelp.textContent = '背景・本・模様・シンボル・枠をランダムに組み合わせます';
+      randomizeButton.addEventListener('click', () => {
+        randomizeAuthorSelection();
+        renderControls();
+        void updatePreview();
+      });
+      randomizeBar.append(randomizeButton, randomizeHelp);
+      controls.appendChild(randomizeBar);
       if (library.templates.length > 1) {
         const templateField = document.createElement('label');
         templateField.className = 'nl-thumb-template-field';
