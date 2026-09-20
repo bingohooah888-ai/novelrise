@@ -907,6 +907,20 @@ PRのmerge、主要CI・E2Eの完了、MASTER更新完了、デプロイ完了�
 
 報告・再見積もり・工程切替・チャット継続判定は、ユーザー承認ゲートではない。明示的な承認要件または合理的停止理由がない限り、ユーザーの「続けて」「はい」等を要求せず、そのまま次工程へ着手する。
 
+承認ゲートの一本化（2026-09-21）
+
+NOVELIGHTの通常開発工程では、ユーザーへ「承認」「コミット承認」「push承認」「PR作成承認」「マージ承認」等の個別承認を求めない。実装、検証、commit、push、PR作成、CI確認、レビュー対応、merge、Staging反映、read-only監査は、開始時に合意されたworkstreamの範囲内で連続して進める。
+
+ユーザーへ明示的に求める承認は、原則として「本番承認」の1種類に統一する。本番承認が必要なのは、Production環境に状態変化を発生させる操作の直前とする。対象には、Production deployment、Production DB / Supabase migration、Production設定・Secret変更、Stripe / 課金設定、本番データの破壊的・不可逆的変更、その他live userへ直接影響するProduction mutationを含む。
+
+mainへのmerge自体がVercelその他の仕組みによってProduction deploymentを自動的に開始する構成である場合、そのmergeをProduction mutationの開始点として扱う。この場合も「マージ承認」を別途求めず、merge直前に「本番承認」だけを求める。
+
+本番承認前は、その本番変更に必要なコード、migration、PR、CI、Staging、rollback plan、検証証跡を準備してよいが、Production mutationそのものは開始しない。本番承認後は、承認対象の一連のProduction工程について、途中で新しい重大なリスク、承認範囲外の追加mutation、対象環境または内容の実質的変更が発生しない限り、同じ承認を細分化して再要求しない。
+
+Productionのread-only確認、ログ確認、CI / CodeQL / Vercel status確認、監視、postcheck等、状態変更を伴わない確認は「本番承認」を必要としない。ただし、read-only確認の結果から新たなProduction mutationが必要になった場合は、そのmutation開始前に本番承認を得る。
+
+GitHub branch protection、required checks、権限要求、外部サービスの確認画面等、システム上必須の安全手続きは維持する。ただし、それらを理由に不要なユーザー承認を追加で求めない。リポジトリ規則上どうしても別の明示承認がHard Boundaryとして必須である場合はその規則を優先するが、可能な限りユーザー確認は「本番承認」へ統合する。
+
 GitHub Actions、CodeQL、Vercel、Staging E2E、その他外部サービスの処理待ちも、ユーザーが作業全体の現在地を把握するための所要時間に含める。外部待ちであることは区別して説明するが、待ち時間であることを理由に時間報告の対象外にはしない。
 
 各主要工程の完了時には、完了した工程と次工程の予想所要時間を可能な範囲で示し、ユーザーが現在地と残り時間を把握できる状態を維持する。
