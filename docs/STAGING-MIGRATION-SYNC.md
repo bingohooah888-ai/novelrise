@@ -127,6 +127,7 @@ NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE {"mainSha":"<exact-current-main
 - 各PNGをdownload後にbyte size / SHA-256 / PNG geometryまで再検証してから専用Staging Storageへuploadする。
 - Staging既存行がある場合は正式manifestとStorage binaryが完全一致するものだけをidempotentに再利用し、不一致は上書きせず停止する。
 - `novelight_admin_stage_official_base_book` と `novelight_admin_activate_official_base_book_pack` の既存公式RPCだけを使用し、32冊stage後に原子的activateする。
+- RPCの `p_admin_user_id` / `created_by` 外部キーを満たすため、復旧job内でのみ一時Staging Auth actorを作成する。actorは `internal_staging_recovery` metadataで識別し、ログインには使用せず、復旧処理の成否にかかわらず同一job内で削除する。`novel_thumbnail_assets.created_by` は `auth.users(id) ON DELETE SET NULL` のためactor削除後に恒久ダミーアカウントを残さず、監査log側には実行時actor UUIDを証跡として残す。
 - source-space Geometry、32冊active、stale render cache 0、`novelight_thumbnail_compositions_v3`、repository/Staging migration parityをpostcheckする。
 - request commentはone-time `CLAIMED` / `CONSUMED` ledgerで管理し、current mainがclaim前またはwrite直前に変わった場合は停止する。
 - failure時にmigration再適用、migration history修正、Production write、自動rollbackを行わない。

@@ -1,10 +1,14 @@
 ﻿import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { URL } from 'node:url';
 import { generateCoverMaskPng } from '../api/_lib/cover-mask-png.js';
 import {
+  cleanupRecoveryActor,
+  createRecoveryActor,
   validateProductionRows,
   validateRecoveryEnvironment,
   verifyOfficialBookBytes
@@ -153,6 +157,10 @@ test('recovery workflow is one-time, owner-only, main-bound, and Staging-only', 
   );
   assert.match(workflow, /--mode=precheck/);
   assert.match(workflow, /--mode=recover/);
+  assert.match(workflow, /STAGING_RECOVERY_ACTOR_FILE/);
+  assert.match(workflow, /Ensure ephemeral Staging recovery actor is removed/);
+  assert.match(workflow, /if: always\(\)/);
+  assert.match(workflow, /--mode=cleanup-actor/);
   assert.match(workflow, /--mode=verify/);
   assert.match(workflow, /verify-staging-migrations\.sh parity/);
   assert.match(
@@ -164,6 +172,75 @@ test('recovery workflow is one-time, owner-only, main-bound, and Staging-only', 
   assert.match(workflow, /RECOVERY_CONSUMED/);
 });
 
+test('ephemeral Staging recovery actor is real, isolated, and removed', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'novelight-recovery-actor-'));
+  const actorFile = join(dir, 'actor.json');
+  const userId = '123e4567-e89b-42d3-a456-426614174000';
+  let createdInput = null;
+  const deleted = [];
+  const staging = {
+    auth: {
+      admin: {
+        async createUser(input) {
+          createdInput = input;
+          return { data: { user: { id: userId } }, error: null };
+        },
+        async deleteUser(id) {
+          deleted.push(id);
+          return { data: {}, error: null };
+        }
+      }
+    },
+    from(table) {
+      if (table === 'founding_authors') {
+        return {
+          select() {
+            return {
+              async eq() {
+                return { data: [], error: null };
+              }
+            };
+          }
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select() {
+            return {
+              async eq() {
+                return { count: 0, error: null };
+              }
+            };
+          }
+        };
+      }
+      throw new Error(`unexpected table ${table}`);
+    }
+  };
+
+  try {
+    const env = {
+      STAGING_RECOVERY_ACTOR_FILE: actorFile,
+      GITHUB_RUN_ID: '35537236520'
+    };
+    const actor = await createRecoveryActor(staging, env);
+    assert.equal(actor.id, userId);
+    assert.equal(createdInput.email_confirm, true);
+    assert.equal(createdInput.app_metadata.internal_staging_recovery, true);
+    assert.equal(createdInput.app_metadata.github_run_id, '35537236520');
+    assert.match(createdInput.email, /^novelight-staging-recovery-/);
+    assert.equal(JSON.parse(await readFile(actorFile, 'utf8')).userId, userId);
+
+    assert.deepEqual(await cleanupRecoveryActor(staging, env), {
+      deleted: true
+    });
+    assert.deepEqual(deleted, [userId]);
+    await assert.rejects(readFile(actorFile, 'utf8'), { code: 'ENOENT' });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('recovery implementation never has a Production server credential or Production write call', () => {
   assert.match(script, /const PROD_KEY = 'sb_publishable_/);
   assert.doesNotMatch(script, /PROD.*SECRET|service_role/iu);
@@ -172,4 +249,7 @@ test('recovery implementation never has a Production server credential or Produc
     script,
     /prod\.[\s\S]{0,120}\.(insert|update|upsert|delete|rpc|storage)/u
   );
+  assert.match(script, /auth\.admin\.createUser/);
+  assert.match(script, /auth\.admin\.deleteUser/);
+  assert.doesNotMatch(script, /const auditUserId = randomUUID\(\)/);
 });

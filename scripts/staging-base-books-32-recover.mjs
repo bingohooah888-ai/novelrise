@@ -1,5 +1,5 @@
 ﻿import { createHash, randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -280,10 +280,108 @@ async function precheck(staging, prod, manifest) {
   return { sources, rows };
 }
 
-async function stageBooks(staging, sources, manifest) {
+export async function createRecoveryActor(staging, env = process.env) {
+  const actorFile = requiredEnv(env, 'STAGING_RECOVERY_ACTOR_FILE');
+  const runId = String(env.GITHUB_RUN_ID || 'local').replace(
+    /[^0-9A-Za-z_-]/g,
+    '-'
+  );
+  const email = `novelight-staging-recovery-${runId}-${randomUUID()}@example.com`;
+  const password = `Nl!${randomUUID()}${randomUUID()}9a`;
+  const { data, error } = await staging.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { display_name: `NOVELIGHT Staging Recovery ${runId}` },
+    app_metadata: { internal_staging_recovery: true, github_run_id: runId }
+  });
+  const userId = data?.user?.id;
+  if (error || !userId) {
+    fail(
+      `failed to create ephemeral Staging recovery actor: ${error?.message || 'missing user id'}.`
+    );
+  }
+
+  try {
+    await writeFile(actorFile, JSON.stringify({ userId }), {
+      encoding: 'utf8',
+      mode: 0o600
+    });
+    const { data: foundingRows, error: foundingError } = await staging
+      .from('founding_authors')
+      .select('author_id')
+      .eq('author_id', userId);
+    if (foundingError) {
+      fail(
+        `failed to verify recovery actor isolation: ${foundingError.message}.`
+      );
+    }
+    if ((foundingRows || []).length !== 0) {
+      fail(
+        'ephemeral Staging recovery actor unexpectedly received Founding Author state.'
+      );
+    }
+    return { id: userId };
+  } catch (actorError) {
+    const cleanup = await staging.auth.admin.deleteUser(userId);
+    if (cleanup.error && !/not found/i.test(cleanup.error.message || '')) {
+      throw new Error(
+        `${actorError.message}; recovery actor cleanup also failed: ${cleanup.error.message}`
+      );
+    }
+    await unlink(actorFile).catch((unlinkError) => {
+      if (unlinkError?.code !== 'ENOENT') throw unlinkError;
+    });
+    throw actorError;
+  }
+}
+
+export async function cleanupRecoveryActor(staging, env = process.env) {
+  const actorFile = requiredEnv(env, 'STAGING_RECOVERY_ACTOR_FILE');
+  let actor;
+  try {
+    actor = JSON.parse(await readFile(actorFile, 'utf8'));
+  } catch (error) {
+    if (error?.code === 'ENOENT') return { deleted: false };
+    fail(`failed to read ephemeral recovery actor state: ${error.message}.`);
+  }
+  const userId = String(actor?.userId || '').trim();
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      userId
+    )
+  ) {
+    fail('ephemeral recovery actor state contains an invalid user id.');
+  }
+  const result = await staging.auth.admin.deleteUser(userId);
+  if (result.error && !/not found/i.test(result.error.message || '')) {
+    fail(
+      `failed to delete ephemeral Staging recovery actor: ${result.error.message}.`
+    );
+  }
+  const { count, error: profileError } = await staging
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('id', userId);
+  if (profileError) {
+    fail(
+      `failed to verify recovery actor profile cleanup: ${profileError.message}.`
+    );
+  }
+  if (count !== 0) {
+    fail(
+      'ephemeral Staging recovery actor profile still exists after auth deletion.'
+    );
+  }
+  await unlink(actorFile).catch((error) => {
+    if (error?.code !== 'ENOENT') throw error;
+  });
+  return { deleted: true };
+}
+
+async function stageBooks(staging, sources, manifest, auditUserId) {
   let rows = await stagingRows(staging);
   let byFile = await validateExistingStagingRows(staging, rows, manifest);
-  const auditUserId = randomUUID();
   for (const item of manifest.items) {
     if (byFile.has(item.fileName)) continue;
     const source = sources.get(item.displayOrder);
@@ -332,7 +430,6 @@ async function stageBooks(staging, sources, manifest) {
   }
   if (byFile.size !== 32)
     fail('Staging stage phase did not produce exactly 32 verified rows.');
-  return auditUserId;
 }
 
 async function activatePack(staging, manifest, auditUserId) {
@@ -426,6 +523,7 @@ export async function runRecovery({
   });
 
   if (mode === 'verify') return verifyReady(staging, manifest);
+  if (mode === 'cleanup-actor') return cleanupRecoveryActor(staging, env);
   const state = await precheck(staging, prod, manifest);
   if (mode === 'precheck') {
     return {
@@ -434,9 +532,32 @@ export async function runRecovery({
     };
   }
   if (mode !== 'recover') fail(`unsupported mode ${mode}.`);
-  const auditUserId = await stageBooks(staging, state.sources, manifest);
-  await activatePack(staging, manifest, auditUserId);
-  return verifyReady(staging, manifest);
+  const actor = await createRecoveryActor(staging, env);
+  let recoveryResult;
+  let recoveryError = null;
+  try {
+    await stageBooks(staging, state.sources, manifest, actor.id);
+    await activatePack(staging, manifest, actor.id);
+    recoveryResult = await verifyReady(staging, manifest);
+  } catch (error) {
+    recoveryError = error;
+  }
+
+  let cleanupError = null;
+  try {
+    await cleanupRecoveryActor(staging, env);
+  } catch (error) {
+    cleanupError = error;
+  }
+
+  if (recoveryError && cleanupError) {
+    throw new Error(
+      `${recoveryError.message}; ephemeral recovery actor cleanup also failed: ${cleanupError.message}`
+    );
+  }
+  if (recoveryError) throw recoveryError;
+  if (cleanupError) throw cleanupError;
+  return recoveryResult;
 }
 
 if (
