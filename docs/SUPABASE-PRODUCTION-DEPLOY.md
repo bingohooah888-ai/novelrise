@@ -7,7 +7,7 @@ NOVELIGHTの本番Supabase migrationは、次の3本のGitHub Actionsを役割�
   - pending完全一致確認と `supabase db push --linked --dry-run` までで終了し、本番DBは変更しない
 - `.github/workflows/production-migration-approved-dispatch.yml`
   - ChatGPTで明示承認された通常migration deploy用
-  - Production Approval Ledger issue #165のowner-authored one-time approvalを正式な人間承認として扱い、同じ承認に対する `production-approval` Environmentの二重レビューは要求しない
+  - Production Approval Ledger issue #737のowner-authored one-time approvalを正式な人間承認として扱い、同じ承認に対する `production-approval` Environmentの二重レビューは要求しない
 - `.github/workflows/supabase-production.yml`
   - 手動の `status` / `dry-run` / `repair-history` / `deploy` 用
   - 緊急時・再確認・限定的なhistory repair用の安全なフォールバックとして残し、mutationは `production-approval` Environment承認を必須にする
@@ -50,13 +50,13 @@ Project ref `fiepaguycecrredwrcwx` はworkflow内で固定しており、secret�
 
 このworkflowは `supabase db push --linked --yes` を持たず、`production-approval` Environmentでも待機しない。ここまでは本番DBを変更しない。
 
-既存migrationが別理由でpendingになっている場合は、Issue #165の `NOVELIGHT_PRODUCTION_MIGRATION_PREFLIGHT <mainSha>` 経路でfresh read-only preflightを取り直してもよい。いずれの場合もEvidence Freshness Gateを満たすcurrent evidenceが必要。
+既存migrationが別理由でpendingになっている場合は、Issue #737の `NOVELIGHT_PRODUCTION_MIGRATION_PREFLIGHT <mainSha>` 経路でfresh read-only preflightを取り直してもよい。いずれの場合もEvidence Freshness Gateを満たすcurrent evidenceが必要。
 
-PR #219由来の旧bot-dispatched manual runが `production-approval` でwaitingのままshared migration lockを塞いでいる場合、preflight workflowはSupabaseへ触る前に `scripts/cleanup-stale-production-migration-run.mjs` を実行する。このcleanup jobはshared migration lockの外側で動き、Supabase credentialsを持たず、Production DB操作を行わない。Issue #165の旧bridge dispatchと一意に照合できる古いwaiting runが1件だけ存在する場合に限ってcancelし、そのcancel完了後にread-only status/dry-run jobがshared migration lockへ入る。人間起動run、複数bot run、waiting以外のbot run、current main向けrun、Ledger不一致はすべてfail closedする。
+PR #219由来の旧bot-dispatched manual runが `production-approval` でwaitingのままshared migration lockを塞いでいる場合、preflight workflowはSupabaseへ触る前に `scripts/cleanup-stale-production-migration-run.mjs` を実行する。このcleanup jobはshared migration lockの外側で動き、Supabase credentialsを持たず、Production DB操作を行わない。Issue #737の旧bridge dispatchと一意に照合できる古いwaiting runが1件だけ存在する場合に限ってcancelし、そのcancel完了後にread-only status/dry-run jobがshared migration lockへ入る。人間起動run、複数bot run、waiting以外のbot run、current main向けrun、Ledger不一致はすべてfail closedする。
 
 ### 2. Chat approval
 
-read-only evidenceで対象が確定した後、ユーザーがChatGPT上でそのProduction migration deployを明示承認した場合だけ、assistantはProduction Approval Ledger issue #165へ次の形式のowner approval recordを1件記録できる。
+read-only evidenceで対象が確定した後、ユーザーがChatGPT上でそのProduction migration deployを明示承認した場合だけ、assistantはProduction Approval Ledger issue #737へ次の形式のowner approval recordを1件記録できる。
 
 ```text
 NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE {"operation":"supabase-migration-deploy","mainSha":"<40-hex-current-main>","challenge":"<8-uppercase-hex>","migrations":["<14-digit-version>", "..."]}
@@ -70,14 +70,14 @@ NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE {"operation":"supabase-migration-d
 - operation `supabase-migration-deploy`
 - baseline repair version `20260815000000` を含まないこと
 
-`.github/workflows/production-migration-approved-dispatch.yml` はissue #165のowner-authored commentだけを受け付ける。JSON、SHA、challenge、migration集合、baseline除外を検証し、同じapprovalが過去にclaim/execution済みならfail closedする。
+`.github/workflows/production-migration-approved-dispatch.yml` はissue #737のowner-authored commentだけを受け付ける。JSON、SHA、challenge、migration集合、baseline除外を検証し、同じapprovalが過去にclaim/execution済みならfail closedする。
 
 ### 3. Claim and Production boundary
 
 chat workflowはmutation前に次を行う。
 
 - current `main` が承認SHAと一致することを確認
-- PR #219以前のbridgeが残したbot-started `supabase-production.yml` waiting runがまだ1件だけ存在する場合、preflightと同じ共通cleanup scriptでIssue #165の対応する `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED` 記録と一意に照合できたときだけcancelする
+- PR #219以前のbridgeが残したbot-started `supabase-production.yml` waiting runがまだ1件だけ存在する場合、preflightと同じ共通cleanup scriptでIssue #737の対応する `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED` 記録と一意に照合できたときだけcancelする
 - human-started active manual run、複数のbot run、waiting以外のbot run、ledgerと一意に結び付かないrunがあれば停止する
 - approvalを `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED` としてone-time claimする
 - Production jobに入った後、current `main` と同じclaimをもう一度独立検証する
@@ -105,7 +105,7 @@ Production境界の再検証後も、mutation直前に以下を再確認する�
 
 を同じworkflowで実行する。
 
-成功時はIssue #165へ `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_EXECUTED`、失敗時は `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_FAILED` を記録し、`mutation_result` / `postcheck_result` / `failure_phase` を分離して残す。
+成功時はIssue #737へ `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_EXECUTED`、失敗時は `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_FAILED` を記録し、`mutation_result` / `postcheck_result` / `failure_phase` を分離して残す。
 
 `db push --yes` が成功した後のobservabilityだけが失敗した場合、migration mutation自体を再実行してはならない。fresh migration historyを確認してmutationをSATISFIEDとして扱い、observabilityをread-onlyで別調査する。
 

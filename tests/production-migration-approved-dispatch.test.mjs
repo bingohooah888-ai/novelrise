@@ -19,10 +19,10 @@ const cleanup = await readFile(
   'utf8'
 );
 
-test('migration deploy bridge accepts only the Issue 657 owner approval record', () => {
+test('migration deploy bridge accepts only the Issue 737 owner approval record', () => {
   assert.match(bridge, /issue_comment:/);
   assert.doesNotMatch(bridge, /workflow_dispatch:/);
-  assert.match(bridge, /github\.event\.issue\.number == 657/);
+  assert.match(bridge, /github\.event\.issue\.number == 737/);
   assert.match(bridge, /github\.event\.issue\.pull_request == null/);
   assert.match(
     bridge,
