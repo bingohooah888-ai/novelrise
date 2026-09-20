@@ -201,7 +201,7 @@ async function stagingRows(staging) {
   const { data, error } = await staging
     .from('novel_thumbnail_assets')
     .select(
-      'id,label,storage_path,image_url,is_active,layer_type,template_key,sort_order,availability_status,display_name_ja,material_ja,source_pack_key,source_file_name,source_sha256'
+      'id,label,storage_path,image_url,is_active,created_by,layer_type,template_key,sort_order,availability_status,display_name_ja,material_ja,source_pack_key,source_file_name,source_sha256'
     )
     .eq('source_pack_key', PACK_KEY)
     .order('sort_order', { ascending: true });
@@ -293,7 +293,11 @@ export async function createRecoveryActor(staging, env = process.env) {
     password,
     email_confirm: true,
     user_metadata: { display_name: `NOVELIGHT Staging Recovery ${runId}` },
-    app_metadata: { internal_staging_recovery: true, github_run_id: runId }
+    app_metadata: {
+      internal_staging_recovery: true,
+      internal_e2e: true,
+      github_run_id: runId
+    }
   });
   const userId = data?.user?.id;
   if (error || !userId) {
@@ -303,7 +307,7 @@ export async function createRecoveryActor(staging, env = process.env) {
   }
 
   try {
-    await writeFile(actorFile, JSON.stringify({ userId }), {
+    await writeFile(actorFile, JSON.stringify({ userId, email }), {
       encoding: 'utf8',
       mode: 0o600
     });
@@ -321,7 +325,21 @@ export async function createRecoveryActor(staging, env = process.env) {
         'ephemeral Staging recovery actor unexpectedly received Founding Author state.'
       );
     }
-    return { id: userId };
+    const { count: betaCount, error: betaError } = await staging
+      .from('beta_participants')
+      .select('id', { count: 'exact', head: true })
+      .eq('email_normalized', email);
+    if (betaError) {
+      fail(
+        `failed to verify recovery actor beta isolation: ${betaError.message}.`
+      );
+    }
+    if (betaCount !== 0) {
+      fail(
+        'ephemeral Staging recovery actor unexpectedly received beta participant state.'
+      );
+    }
+    return { id: userId, email };
   } catch (actorError) {
     const cleanup = await staging.auth.admin.deleteUser(userId);
     if (cleanup.error && !/not found/i.test(cleanup.error.message || '')) {
@@ -346,12 +364,18 @@ export async function cleanupRecoveryActor(staging, env = process.env) {
     fail(`failed to read ephemeral recovery actor state: ${error.message}.`);
   }
   const userId = String(actor?.userId || '').trim();
+  const email = String(actor?.email || '')
+    .trim()
+    .toLowerCase();
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       userId
     )
   ) {
     fail('ephemeral recovery actor state contains an invalid user id.');
+  }
+  if (!/^novelight-staging-recovery-[^@]+@example\.com$/i.test(email)) {
+    fail('ephemeral recovery actor state contains an invalid email.');
   }
   const result = await staging.auth.admin.deleteUser(userId);
   if (result.error && !/not found/i.test(result.error.message || '')) {
@@ -373,10 +397,40 @@ export async function cleanupRecoveryActor(staging, env = process.env) {
       'ephemeral Staging recovery actor profile still exists after auth deletion.'
     );
   }
+  const { count: betaCount, error: betaError } = await staging
+    .from('beta_participants')
+    .select('id', { count: 'exact', head: true })
+    .eq('email_normalized', email);
+  if (betaError) {
+    fail(`failed to verify recovery actor beta cleanup: ${betaError.message}.`);
+  }
+  if (betaCount !== 0) {
+    fail(
+      'ephemeral Staging recovery actor beta participant state still exists after auth deletion.'
+    );
+  }
   await unlink(actorFile).catch((error) => {
     if (error?.code !== 'ENOENT') throw error;
   });
   return { deleted: true };
+}
+
+async function removeUploadedObject(staging, storagePath, failureMessage) {
+  const { error } = await staging.storage.from(BUCKET).remove([storagePath]);
+  if (error) {
+    fail(`${failureMessage}; Storage cleanup also failed: ${error.message}`);
+  }
+  fail(failureMessage);
+}
+
+export function isFullyActiveOfficialPack(rows) {
+  return (
+    Array.isArray(rows) &&
+    rows.length === 32 &&
+    rows.every(
+      (row) => row.availability_status === 'active' && row.is_active === true
+    )
+  );
 }
 
 async function stageBooks(staging, sources, manifest, auditUserId) {
@@ -401,8 +455,11 @@ async function stageBooks(staging, sources, manifest, auditUserId) {
     const publicUrl = staging.storage.from(BUCKET).getPublicUrl(storagePath)
       .data?.publicUrl;
     if (!publicUrl?.startsWith('https://')) {
-      await staging.storage.from(BUCKET).remove([storagePath]);
-      fail(`Staging public URL was unavailable for ${item.fileName}.`);
+      await removeUploadedObject(
+        staging,
+        storagePath,
+        `Staging public URL was unavailable for ${item.fileName}.`
+      );
     }
     const { error: stageError } = await staging.rpc(
       'novelight_admin_stage_official_base_book',
@@ -420,8 +477,9 @@ async function stageBooks(staging, sources, manifest, auditUserId) {
       }
     );
     if (stageError) {
-      await staging.storage.from(BUCKET).remove([storagePath]);
-      fail(
+      await removeUploadedObject(
+        staging,
+        storagePath,
         `Staging stage RPC failed for ${item.fileName}: ${stageError.message}`
       );
     }
@@ -473,8 +531,11 @@ async function activatePack(staging, manifest, auditUserId) {
     }
   );
   if (error) {
-    await staging.storage.from(BUCKET).remove([maskPath]);
-    fail(`Staging activation RPC failed: ${error.message}`);
+    await removeUploadedObject(
+      staging,
+      maskPath,
+      `Staging activation RPC failed: ${error.message}`
+    );
   }
 }
 
@@ -488,6 +549,11 @@ async function verifyReady(staging, manifest) {
     if (row.availability_status !== 'active' || row.is_active !== true) {
       fail(
         `Staging official pack is not fully active: ${row.source_file_name}.`
+      );
+    }
+    if (row.created_by !== null) {
+      fail(
+        `Staging official pack still retains a recovery actor reference: ${row.source_file_name}.`
       );
     }
   }
@@ -532,13 +598,15 @@ export async function runRecovery({
     };
   }
   if (mode !== 'recover') fail(`unsupported mode ${mode}.`);
+  if (isFullyActiveOfficialPack(state.rows)) {
+    return verifyReady(staging, manifest);
+  }
+
   const actor = await createRecoveryActor(staging, env);
-  let recoveryResult;
   let recoveryError = null;
   try {
     await stageBooks(staging, state.sources, manifest, actor.id);
     await activatePack(staging, manifest, actor.id);
-    recoveryResult = await verifyReady(staging, manifest);
   } catch (error) {
     recoveryError = error;
   }
@@ -557,7 +625,7 @@ export async function runRecovery({
   }
   if (recoveryError) throw recoveryError;
   if (cleanupError) throw cleanupError;
-  return recoveryResult;
+  return verifyReady(staging, manifest);
 }
 
 if (

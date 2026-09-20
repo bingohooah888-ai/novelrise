@@ -9,6 +9,7 @@ import { generateCoverMaskPng } from '../api/_lib/cover-mask-png.js';
 import {
   cleanupRecoveryActor,
   createRecoveryActor,
+  isFullyActiveOfficialPack,
   validateProductionRows,
   validateRecoveryEnvironment,
   verifyOfficialBookBytes
@@ -203,7 +204,7 @@ test('ephemeral Staging recovery actor is real, isolated, and removed', async ()
           }
         };
       }
-      if (table === 'profiles') {
+      if (table === 'profiles' || table === 'beta_participants') {
         return {
           select() {
             return {
@@ -227,9 +228,12 @@ test('ephemeral Staging recovery actor is real, isolated, and removed', async ()
     assert.equal(actor.id, userId);
     assert.equal(createdInput.email_confirm, true);
     assert.equal(createdInput.app_metadata.internal_staging_recovery, true);
+    assert.equal(createdInput.app_metadata.internal_e2e, true);
     assert.equal(createdInput.app_metadata.github_run_id, '35537236520');
     assert.match(createdInput.email, /^novelight-staging-recovery-/);
-    assert.equal(JSON.parse(await readFile(actorFile, 'utf8')).userId, userId);
+    const persistedActor = JSON.parse(await readFile(actorFile, 'utf8'));
+    assert.equal(persistedActor.userId, userId);
+    assert.equal(persistedActor.email, createdInput.email);
 
     assert.deepEqual(await cleanupRecoveryActor(staging, env), {
       deleted: true
@@ -239,6 +243,22 @@ test('ephemeral Staging recovery actor is real, isolated, and removed', async ()
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('fully recovered Staging pack is detected without another activation', () => {
+  const activeRows = Array.from({ length: 32 }, () => ({
+    availability_status: 'active',
+    is_active: true
+  }));
+  assert.equal(isFullyActiveOfficialPack(activeRows), true);
+  assert.equal(
+    isFullyActiveOfficialPack([
+      ...activeRows.slice(0, 31),
+      { availability_status: 'retired', is_active: false }
+    ]),
+    false
+  );
+  assert.equal(isFullyActiveOfficialPack(activeRows.slice(0, 31)), false);
 });
 
 test('recovery implementation never has a Production server credential or Production write call', () => {
@@ -251,5 +271,9 @@ test('recovery implementation never has a Production server credential or Produc
   );
   assert.match(script, /auth\.admin\.createUser/);
   assert.match(script, /auth\.admin\.deleteUser/);
+  assert.match(script, /internal_e2e: true/);
+  assert.match(script, /Storage cleanup also failed/);
+  assert.match(script, /isFullyActiveOfficialPack\(state\.rows\)/);
+  assert.match(script, /row\.created_by !== null/);
   assert.doesNotMatch(script, /const auditUserId = randomUUID\(\)/);
 });

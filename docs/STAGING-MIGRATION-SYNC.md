@@ -127,7 +127,9 @@ NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE {"mainSha":"<exact-current-main
 - 各PNGをdownload後にbyte size / SHA-256 / PNG geometryまで再検証してから専用Staging Storageへuploadする。
 - Staging既存行がある場合は正式manifestとStorage binaryが完全一致するものだけをidempotentに再利用し、不一致は上書きせず停止する。
 - `novelight_admin_stage_official_base_book` と `novelight_admin_activate_official_base_book_pack` の既存公式RPCだけを使用し、32冊stage後に原子的activateする。
-- RPCの `p_admin_user_id` / `created_by` 外部キーを満たすため、復旧job内でのみ一時Staging Auth actorを作成する。actorは `internal_staging_recovery` metadataで識別し、ログインには使用せず、復旧処理の成否にかかわらず同一job内で削除する。`novel_thumbnail_assets.created_by` は `auth.users(id) ON DELETE SET NULL` のためactor削除後に恒久ダミーアカウントを残さず、監査log側には実行時actor UUIDを証跡として残す。
+- RPCの `p_admin_user_id` / `created_by` 外部キーを満たすため、復旧job内でのみ一時Staging Auth actorを作成する。actorは `internal_staging_recovery=true` と既存の参加資格除外契約で認識される `internal_e2e=true` を持たせ、Founding Authors / beta participantへ入っていないことを作成直後に確認する。ログインには使用せず、復旧処理の成否にかかわらず同一job内で削除し、profile / beta participantが残っていないことまで確認する。`novel_thumbnail_assets.created_by` は `auth.users(id) ON DELETE SET NULL` のためactor削除後に恒久ダミーアカウントを残さず、監査log側には実行時actor UUIDを証跡として残す。
+- 32冊がすでに完全activeでStorage binary / Geometry / cache状態もpostcheckを満たす場合は、再stage / 再activateせずread-only検証だけで成功扱いにする。これにより、後段parityや外部checkだけが失敗した後の再実行で不要な再mutationを起こさない。
+- recovery中に新規uploadしたStorage objectを後続RPC失敗等で使えなかった場合は、その場の削除結果まで検証し、cleanup失敗を握り潰さない。
 - source-space Geometry、32冊active、stale render cache 0、`novelight_thumbnail_compositions_v3`、repository/Staging migration parityをpostcheckする。
 - request commentはone-time `CLAIMED` / `CONSUMED` ledgerで管理し、current mainがclaim前またはwrite直前に変わった場合は停止する。
 - failure時にmigration再適用、migration history修正、Production write、自動rollbackを行わない。
