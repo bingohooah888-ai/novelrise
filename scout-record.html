@@ -3,88 +3,250 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>SCOUT RECORD βプレビュー | NOVELIGHT</title>
+  <title>SCOUT RECORD | NOVELIGHT</title>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-accessibility.css">
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    :root{color-scheme:light;--ink:#141414;--muted:#686868;--line:#d7d7d7;--soft:#f1f1f1;--paper:#fafafa;--white:#fff}
-    body.novelight-page-scout-record{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--paper);color:var(--ink);letter-spacing:.01em}
-    a{color:inherit;text-decoration:none}
-    header{background:var(--white);border-bottom:1px solid var(--line)}
-    .header-inner{max-width:1040px;min-height:72px;margin:auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
-    .scout-brand{display:inline-flex;align-items:center;min-height:44px}
-    .scout-brand img{display:block;width:170px;max-width:42vw;height:auto;filter:grayscale(1);opacity:.84}
-    .back{font-size:13px;color:#555}
-    main{max-width:1040px;margin:auto;padding:54px 24px 84px}
-    .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:36px;align-items:center;padding:40px;border:1px solid #bcbcbc;border-radius:22px;background:var(--white);box-shadow:0 18px 50px rgba(0,0,0,.055)}
-    .eyebrow{font-size:11px;font-weight:900;letter-spacing:.2em;color:#6b6b6b}
-    h1{margin-top:10px;font-size:clamp(34px,6vw,62px);line-height:1;letter-spacing:.07em}
-    .hero p{max-width:660px;margin-top:18px;color:#555;line-height:1.9;font-size:14px}
-    .release{display:inline-flex;margin-top:20px;padding:8px 12px;border:1px solid #aaa;border-radius:999px;background:#f5f5f5;color:#3e3e3e;font-size:11px;font-weight:900;letter-spacing:.08em}
-    .lock{position:relative;width:118px;height:118px;border:1px solid #b8b8b8;border-radius:28px;background:linear-gradient(145deg,#f8f8f8,#dedede);box-shadow:inset 0 1px 0 #fff;flex:0 0 auto}
-    .lock::before{content:"";position:absolute;left:35px;top:21px;width:46px;height:43px;border:8px solid #555;border-bottom:0;border-radius:28px 28px 0 0}
-    .lock::after{content:"";position:absolute;left:29px;bottom:24px;width:60px;height:50px;border-radius:10px;background:#555}
-    .intro{margin-top:30px;padding:18px 20px;border-left:3px solid #4b4b4b;background:#ededed;color:#4f4f4f;font-size:13px;line-height:1.85}
-    .preview{margin-top:28px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-    .preview-card{position:relative;min-height:178px;padding:22px;border:1px solid var(--line);border-radius:17px;background:#f7f7f7;overflow:hidden}
-    .preview-card::after{content:"LOCKED";position:absolute;right:16px;top:17px;padding:4px 7px;border:1px solid #bdbdbd;border-radius:999px;color:#767676;font-size:9px;font-weight:900;letter-spacing:.13em}
-    .preview-label{font-size:10px;font-weight:900;letter-spacing:.15em;color:#666}
-    .preview-value{margin-top:24px;color:#303030;font-size:24px;font-weight:900}
-    .skeleton{margin-top:18px;display:grid;gap:8px}
-    .skeleton span{display:block;height:8px;border-radius:999px;background:#d7d7d7}
-    .skeleton span:nth-child(2){width:76%}.skeleton span:nth-child(3){width:52%}
-    .timeline{margin-top:16px;padding:24px;border:1px solid var(--line);border-radius:17px;background:var(--white)}
-    .timeline h2{font-size:18px}.timeline p{margin-top:7px;color:var(--muted);font-size:12px;line-height:1.8}
-    .timeline-rows{margin-top:20px;display:grid;gap:12px}
-    .timeline-row{display:grid;grid-template-columns:40px 1fr;gap:14px;align-items:center;padding:13px;border:1px solid #e0e0e0;border-radius:12px;background:#f6f6f6}
-    .dot{width:40px;height:40px;border-radius:50%;background:#d1d1d1}
-    .timeline-row .skeleton{margin:0}
-    .available{margin-top:28px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:24px;padding:26px;border:1px solid #1e1e1e;border-radius:17px;background:#181818;color:#f5f5f5}
-    .available small{display:block;color:#aaa;font-size:10px;font-weight:900;letter-spacing:.12em}.available h2{margin-top:6px;font-size:21px}.available p{margin-top:7px;color:#c8c8c8;font-size:12px;line-height:1.75}
-    .cta{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 17px;border:1px solid #fff;border-radius:10px;background:#fff;color:#111;font-size:12px;font-weight:900;white-space:nowrap}
-    .policy{margin-top:24px;color:#666;font-size:11px;line-height:1.9;text-align:center}
-    footer{padding:26px;background:#111;color:#999}.footer-links{max-width:1040px;margin:auto;display:flex;justify-content:center;gap:15px;flex-wrap:wrap;font-size:12px}
-    @media(max-width:760px){main{padding:32px 16px 64px}.hero{grid-template-columns:1fr;padding:28px 22px}.lock{width:90px;height:90px}.lock::before{left:27px;top:16px;width:34px;height:33px;border-width:7px}.lock::after{left:22px;bottom:18px;width:46px;height:39px}.preview{grid-template-columns:1fr}.available{grid-template-columns:1fr}.cta{width:100%}}
+    *{box-sizing:border-box}
+    :root{
+      --scout-night:#07111f;
+      --scout-panel:#0c1a2b;
+      --scout-panel-2:#10243a;
+      --scout-line:rgba(219,178,92,.28);
+      --scout-gold:#dbb25c;
+      --scout-gold-soft:#f0d995;
+      --scout-text:#f7f2e7;
+      --scout-muted:#a9b5c2;
+      --scout-danger:#f2a89a;
+      --scout-green:#a8d7bd;
+    }
+    body.novelight-page-scout-record{background:#06101c;color:var(--scout-text)}
+    .scout-header{background:#07111f;border-bottom:1px solid var(--scout-line)}
+    .scout-header-inner{max-width:1180px;min-height:78px;margin:auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .scout-brand img{display:block;width:180px;max-width:45vw;height:auto}
+    .scout-back{color:var(--scout-gold-soft);font-size:13px;font-weight:800}
+    main.scout-main{width:min(1180px,calc(100% - 44px));margin:0 auto;padding:44px 0 82px}
+    .scout-hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.55fr);gap:28px;padding:36px;border:1px solid var(--scout-line);border-radius:26px;background:linear-gradient(135deg,#0b1d31 0%,#07111f 66%,#111925 100%);box-shadow:0 28px 70px rgba(0,0,0,.28)}
+    .scout-hero::after{content:"✦";position:absolute;right:28px;top:-44px;color:rgba(219,178,92,.08);font-size:210px;line-height:1;pointer-events:none}
+    .scout-eyebrow{color:var(--scout-gold);font-size:11px;font-weight:900;letter-spacing:.22em}
+    .scout-hero h1{margin:9px 0 0;font-size:clamp(35px,5.7vw,68px);line-height:1;letter-spacing:.055em;color:#fff}
+    .scout-hero-copy{max-width:720px;margin:18px 0 0;color:#c3ced8;font-size:14px;line-height:1.95}
+    .scout-rank-block{position:relative;z-index:1;display:flex;min-height:214px;flex-direction:column;align-items:center;justify-content:center;border:1px solid rgba(219,178,92,.36);border-radius:22px;background:radial-gradient(circle at 50% 34%,rgba(219,178,92,.16),rgba(9,20,34,.78) 58%);text-align:center}
+    .rank-emblem{display:grid;width:112px;height:112px;place-items:center;border:1px solid var(--scout-gold);border-radius:50%;box-shadow:inset 0 0 0 8px rgba(219,178,92,.06),0 0 28px rgba(219,178,92,.08);color:var(--scout-gold-soft);font-family:Georgia,"Times New Roman",serif;font-size:42px;font-weight:700}
+    .rank-caption{margin-top:13px;color:var(--scout-muted);font-size:10px;font-weight:900;letter-spacing:.18em}
+    .rank-name{margin-top:3px;color:#fff;font-size:17px;font-weight:900}
+    .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
+    .summary-card{min-height:132px;padding:20px;border:1px solid rgba(255,255,255,.09);border-radius:18px;background:var(--scout-panel)}
+    .summary-card strong{display:block;margin-top:11px;color:#fff;font-size:27px;letter-spacing:.01em}
+    .summary-label{color:var(--scout-muted);font-size:10px;font-weight:900;letter-spacing:.15em}
+    .summary-note{margin-top:7px;color:#8393a2;font-size:11px;line-height:1.55}
+    .progress-panel{margin-top:14px;padding:22px;border:1px solid var(--scout-line);border-radius:18px;background:var(--scout-panel)}
+    .progress-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+    .progress-title{font-size:17px;font-weight:900}.progress-meta{color:var(--scout-muted);font-size:12px}
+    .progress-track{height:11px;margin-top:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:#06101b}
+    .progress-bar{width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ad812f,#f0d995);transition:width .3s ease}
+    .level-max{margin-top:13px;padding:12px 14px;border:1px solid rgba(219,178,92,.38);border-radius:12px;background:rgba(219,178,92,.08);color:#edd59b;font-size:12px;line-height:1.75}
+    .section-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:18px;margin-top:18px}
+    .scout-section{padding:23px;border:1px solid rgba(255,255,255,.09);border-radius:19px;background:var(--scout-panel)}
+    .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}
+    .section-head h2{margin:0;color:#fff;font-size:20px}.section-head p{margin:7px 0 0;color:var(--scout-muted);font-size:12px;line-height:1.65}
+    .section-link{color:var(--scout-gold-soft);font-size:11px;font-weight:900;white-space:nowrap}
+    .point-balance{display:flex;align-items:baseline;gap:9px;margin-top:22px}.point-balance strong{font-size:42px;color:var(--scout-gold-soft)}.point-balance span{color:var(--scout-muted);font-size:13px;font-weight:800}
+    .point-sub{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;color:#aab8c5;font-size:11px}
+    .future-note{margin-top:17px;padding:13px;border-left:3px solid var(--scout-gold);background:rgba(219,178,92,.07);color:#cdd6df;font-size:11px;line-height:1.75}
+    .list{display:grid;gap:9px;margin-top:17px}
+    .list-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px 14px;border:1px solid rgba(255,255,255,.07);border-radius:13px;background:rgba(255,255,255,.025)}
+    .list-title{color:#eef2f6;font-size:13px;font-weight:800}.list-meta{margin-top:4px;color:#8191a0;font-size:10px;line-height:1.5}.list-value{color:var(--scout-gold-soft);font-size:13px;font-weight:900;text-align:right}
+    .empty,.loading,.error-state{margin-top:17px;padding:20px;border:1px dashed rgba(255,255,255,.14);border-radius:13px;color:var(--scout-muted);font-size:12px;line-height:1.7;text-align:center}
+    .error-state{border-color:rgba(242,168,154,.36);color:var(--scout-danger)}
+    .badge-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:17px}
+    .badge-chip{min-height:94px;padding:14px;border:1px solid rgba(219,178,92,.18);border-radius:14px;background:#0a1727}
+    .badge-chip b{display:block;color:var(--scout-gold-soft);font-size:11px}.badge-chip span{display:block;margin-top:8px;color:#8fa0af;font-size:10px;line-height:1.6}
+    .badge-status{margin-top:14px;color:#9aa9b6;font-size:11px;line-height:1.7}
+    .state-banner{margin-top:18px;padding:16px 18px;border:1px solid rgba(255,255,255,.1);border-radius:15px;background:#0b1929;color:#b8c5d0;font-size:12px;line-height:1.8}
+    .state-banner strong{color:#fff}
+    footer.scout-footer{padding:26px;background:#030912;color:#82909c}.scout-footer-links{max-width:1100px;margin:auto;display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:12px}
+    @media(max-width:900px){.scout-hero{grid-template-columns:1fr}.scout-rank-block{min-height:190px}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.section-grid{grid-template-columns:1fr}}
+    @media(max-width:560px){main.scout-main{width:min(100% - 28px,1180px);padding-top:24px}.scout-hero{padding:24px 20px;border-radius:20px}.summary-grid{grid-template-columns:1fr 1fr}.summary-card{padding:16px;min-height:118px}.summary-card strong{font-size:22px}.progress-head{align-items:flex-start;flex-direction:column}.badge-preview{grid-template-columns:1fr}.scout-section{padding:19px}.point-balance strong{font-size:35px}}
   </style>
-<link rel="stylesheet" href="novelight-accessibility.css"></head>
-<body class="novelight-theme novelight-page-scout-record"><a class="skip-link" href="#main-content">本文へスキップ</a>
-  <header><div class="header-inner"><a class="scout-brand" href="index.html"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a><a class="back" href="mypage.html">← 創作室</a></div></header>
-  <main id="main-content" tabindex="-1">
-    <section class="hero" aria-labelledby="scoutTitle">
+</head>
+<body class="novelight-theme novelight-page-scout-record">
+  <a class="skip-link" href="#main-content">本文へスキップ</a>
+  <header class="scout-header">
+    <div class="scout-header-inner">
+      <a class="scout-brand" href="index.html"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
+      <a class="scout-back" href="mypage.html">← 創作室</a>
+    </div>
+  </header>
+
+  <main id="main-content" class="scout-main" tabindex="-1">
+    <section class="scout-hero" aria-labelledby="scoutTitle">
       <div>
-        <div class="eyebrow">BETA / LOCKED PREVIEW</div>
+        <div class="scout-eyebrow">BETA / DISCOVERY RECORD</div>
         <h1 id="scoutTitle">SCOUT RECORD</h1>
-        <p>新しい物語を見つけ、光を届けた読者の発掘活動を記録する正式版機能です。β版では仕組みの検証を優先し、SCOUT RECORDの成長表示はロックしています。</p>
-        <span class="release">正式リリース時解放</span>
+        <p class="scout-hero-copy">読む、見つける、光を送る。あなたが新しい物語を発掘してきた記録を、Scout XP・Level・Point・発掘実績として積み上げます。</p>
       </div>
-      <div class="lock" role="img" aria-label="ロック中"></div>
-    </section>
-
-    <p class="intro">β期間中も必要な活動記録は内部で保持しますが、SCOUT RECORDのLevel・EXP・バッジ等の実値はこの画面へ取得・送信しません。ここに表示しているのは正式版UIの構成だけを示すプレビューです。</p>
-
-    <section class="preview" aria-label="SCOUT RECORD ロックプレビュー">
-      <article class="preview-card"><div class="preview-label">SCOUT LEVEL</div><div class="preview-value">— —</div><div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div></article>
-      <article class="preview-card"><div class="preview-label">DISCOVERY RECORD</div><div class="preview-value">— —</div><div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div></article>
-      <article class="preview-card"><div class="preview-label">BADGES</div><div class="preview-value">— —</div><div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div></article>
-    </section>
-
-    <section class="timeline" aria-labelledby="recordPreviewTitle">
-      <h2 id="recordPreviewTitle">発掘レコード</h2>
-      <p>正式版では、あなたの発掘活動や成長の軌跡を確認できる領域です。β版では具体的な値を表示しません。</p>
-      <div class="timeline-rows" aria-hidden="true">
-        <div class="timeline-row"><span class="dot"></span><div class="skeleton"><span></span><span></span></div></div>
-        <div class="timeline-row"><span class="dot"></span><div class="skeleton"><span></span><span></span></div></div>
-        <div class="timeline-row"><span class="dot"></span><div class="skeleton"><span></span><span></span></div></div>
+      <div class="scout-rank-block" aria-label="現在のSCOUTランク">
+        <div id="rankEmblem" class="rank-emblem">—</div>
+        <div class="rank-caption">CURRENT SCOUT RANK</div>
+        <div id="rankName" class="rank-name">読み込み中</div>
       </div>
     </section>
 
-    <section class="available" aria-labelledby="historyTitle">
-      <div><small>AVAILABLE IN BETA</small><h2 id="historyTitle">LIGHT SEED送信履歴</h2><p>LIGHT SEEDを贈った作品と送信日時は、β版でもこれまでどおり確認できます。SCOUT RECORDとは分離して提供します。</p></div>
-      <a class="cta" href="light-seed-history.html">送信履歴を見る →</a>
+    <div id="loadState" class="state-banner"><strong>SCOUT RECORDを読み込み中です。</strong> β版の現在値を確認しています。</div>
+
+    <section class="summary-grid" aria-label="SCOUT RECORD サマリー">
+      <article class="summary-card"><div class="summary-label">SCOUT LEVEL</div><strong id="levelValue">—</strong><div class="summary-note">β版上限 Lv.30</div></article>
+      <article class="summary-card"><div class="summary-label">SCOUT XP</div><strong id="xpValue">—</strong><div class="summary-note">Level成長用・消費しません</div></article>
+      <article class="summary-card"><div class="summary-label">SCOUT POINT</div><strong id="pointValue">—</strong><div class="summary-note">正式リリース後の利用特典を予定</div></article>
+      <article class="summary-card"><div class="summary-label">DISCOVERIES</div><strong id="discoveryValue">—</strong><div class="summary-note">発掘成功・NOVA予見</div></article>
     </section>
 
-    <p class="policy">SCOUT RECORDの解放時期・成長ルールは、β版の実利用データを確認したうえで確定します。</p>
+    <section class="progress-panel" aria-labelledby="levelProgressTitle">
+      <div class="progress-head">
+        <div><div id="levelProgressTitle" class="progress-title">次のScout Levelまで</div><div id="levelProgressText" class="progress-meta">—</div></div>
+        <div id="rankBandText" class="progress-meta">SCOUT RANK —</div>
+      </div>
+      <div class="progress-track" role="progressbar" aria-label="Scout Level進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+      <div id="levelMaxNotice" class="level-max" hidden>β版のレベル上限はLv.30です。Lv.30到達後に獲得条件を満たしたXPは蓄積されず消滅します。Scout Point・バッジ・発掘実績は引き続き獲得でき、正式リリース後にLv.30以降を解放予定です。</div>
+    </section>
+
+    <div class="section-grid">
+      <section class="scout-section" aria-labelledby="pointTitle">
+        <div class="section-head"><div><h2 id="pointTitle">Scout Point</h2><p>発掘・Level Up・実績で獲得する、XPとは別の報酬台帳です。</p></div></div>
+        <div class="point-balance"><strong id="pointBalance">—</strong><span>Point</span></div>
+        <div class="point-sub"><span>今月 <b id="monthPoint">—</b> Point</span><span>確認中 <b id="pendingPoint">—</b> Point</span></div>
+        <div class="future-note">β版ではPointを獲得・確認できますが、原則としてまだ使用できません。正式リリース後、AI利用特典への交換機能を予定しています。交換レートや金銭換算価値は未確定です。</div>
+        <div id="pointHistory" class="list"><div class="loading">Point履歴を読み込み中...</div></div>
+      </section>
+
+      <section class="scout-section" aria-labelledby="activityTitle">
+        <div class="section-head"><div><h2 id="activityTitle">最近のSCOUT活動</h2><p>有効読書、LIGHT SEED、☆評価、コメント、発掘の記録です。</p></div><a class="section-link" href="light-seed-history.html">SEED履歴 →</a></div>
+        <div id="activityList" class="list"><div class="loading">活動履歴を読み込み中...</div></div>
+      </section>
+    </div>
+
+    <div class="section-grid">
+      <section class="scout-section" aria-labelledby="discoveriesTitle">
+        <div class="section-head"><div><h2 id="discoveriesTitle">発掘作品の成長</h2><p>あなたがLIGHT SEEDを贈った後、発掘成功に到達した作品を表示します。</p></div></div>
+        <div id="discoveriesList" class="list"><div class="loading">発掘記録を読み込み中...</div></div>
+      </section>
+
+      <section class="scout-section" aria-labelledby="badgeTitle">
+        <div class="section-head"><div><h2 id="badgeTitle">Badge Collection</h2><p>Reader / Author / Limited の実績を1つのアカウントで集めます。</p></div></div>
+        <div class="badge-preview" aria-hidden="true">
+          <div class="badge-chip"><b>READER</b><span>読書・発掘・評価・継続の実績</span></div>
+          <div class="badge-chip"><b>AUTHOR</b><span>投稿・完結・読者獲得など創作の節目</span></div>
+          <div class="badge-chip"><b>LIMITED</b><span>Founding Author・β参加・限定実績</span></div>
+        </div>
+        <p class="badge-status">Badgeの個別条件・名称はβ暫定値として段階的に有効化します。条件達成のための無意味な巡回・コメント・評価を促す設計にはしません。</p>
+      </section>
+    </div>
   </main>
-  <footer><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="contact.html">お問い合わせ</a></div></footer>
+
+  <footer class="scout-footer"><div class="scout-footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="contact.html">お問い合わせ</a></div></footer>
+
+  <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+  <script src="novelight-client.js"></script>
+  <script>
+    const client = supabase.createClient(
+      'https://fiepaguycecrredwrcwx.supabase.co',
+      'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
+    );
+
+    const rankRoman = ['','I','II','III'];
+    const activityLabels = {
+      valid_read: '有効読書',
+      light_seed_sent: 'LIGHT SEED',
+      light_seed_discovery: '発掘成功',
+      star_rating_set: '☆評価',
+      comment_posted: 'コメント'
+    };
+
+    function number(value){return Number(value||0).toLocaleString('ja-JP')}
+    function dateTime(value){if(!value)return'';const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleString('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+    function setState(message,error=false){const el=document.getElementById('loadState');el.classList.toggle('error-state',error);el.innerHTML=error?message:`<strong>${message}</strong>`}
+    function setProgress(summary){
+      const isMax=Boolean(summary.beta_level_max);
+      const into=Number(summary.xp_into_level||0);
+      const needed=Number(summary.xp_for_next_level||0);
+      const percent=isMax?100:(needed>0?Math.max(0,Math.min(100,(into/needed)*100)):0);
+      const track=document.querySelector('.progress-track');
+      document.getElementById('progressBar').style.width=percent.toFixed(1)+'%';
+      track.setAttribute('aria-valuenow',String(Math.round(percent)));
+      document.getElementById('levelProgressTitle').textContent=isMax?'β LEVEL MAX':'次のScout Levelまで';
+      document.getElementById('levelProgressText').textContent=isMax?'Lv.30 / XP追加蓄積なし':`${number(into)} / ${number(needed)} XP`;
+      document.getElementById('levelMaxNotice').hidden=!isMax;
+    }
+    function renderSummary(summary){
+      const level=Number(summary.level||1),rank=Math.max(1,Math.min(3,Number(summary.rank_tier||1)));
+      document.getElementById('rankEmblem').textContent=rankRoman[rank]||String(rank);
+      document.getElementById('rankName').textContent='SCOUT RANK '+(rankRoman[rank]||rank);
+      document.getElementById('rankBandText').textContent='SCOUT RANK '+(rankRoman[rank]||rank);
+      document.getElementById('levelValue').textContent='Lv.'+number(level);
+      document.getElementById('xpValue').textContent=number(summary.total_xp);
+      document.getElementById('pointValue').textContent=number(summary.point_balance);
+      document.getElementById('discoveryValue').textContent=number(summary.discovery_success_count);
+      document.getElementById('pointBalance').textContent=number(summary.point_balance);
+      document.getElementById('monthPoint').textContent=number(summary.month_points);
+      document.getElementById('pendingPoint').textContent=number(summary.pending_points);
+      setProgress(summary);
+    }
+    function renderPoints(rows){
+      const host=document.getElementById('pointHistory');
+      if(!rows.length){host.innerHTML='<div class="empty">まだScout Pointの獲得履歴はありません。</div>';return}
+      host.innerHTML=rows.map(row=>`<div class="list-row"><div><div class="list-title">${escapeHtml(row.reason||'Scout Point')}</div><div class="list-meta">${escapeHtml(dateTime(row.occurred_at))} · ${escapeHtml(row.status||'')}</div></div><div class="list-value">${Number(row.point_value||0)>=0?'+':''}${number(row.point_value)} P</div></div>`).join('');
+    }
+    function renderActivity(rows){
+      const host=document.getElementById('activityList');
+      if(!rows.length){host.innerHTML='<div class="empty">まだ表示できるSCOUT活動はありません。</div>';return}
+      host.innerHTML=rows.map(row=>{const label=activityLabels[row.event_type]||'SCOUT活動';const title=row.novel_title||'作品情報は現在非公開';const extra=row.event_type==='light_seed_discovery'&&row.reached_rank?` · Rank ${number(row.reached_rank)}到達`:row.seed_type?` · ${row.seed_type}`:'';return `<div class="list-row"><div><div class="list-title">${escapeHtml(label)} · ${escapeHtml(title)}</div><div class="list-meta">${escapeHtml(dateTime(row.occurred_at))}${escapeHtml(extra)}</div></div></div>`}).join('');
+    }
+    function renderDiscoveries(rows){
+      const host=document.getElementById('discoveriesList');
+      if(!rows.length){host.innerHTML='<div class="empty">発掘成功に到達した作品はまだありません。新しい物語を探してLIGHT SEEDを贈ってみましょう。</div>';return}
+      host.innerHTML=rows.map(row=>{const nova=Number(row.rank_at_seed)===5&&Number(row.highest_rank_seen)===6;const growth=nova?'NOVA予見':`+${number(row.best_rank_delta)} Rank`;return `<div class="list-row"><div><div class="list-title">${escapeHtml(row.novel_title||'現在表示できない作品')}</div><div class="list-meta">${escapeHtml(row.seed_type||'SEED')} · 送信時 Rank ${number(row.rank_at_seed)} → 最高 Rank ${number(row.highest_rank_seen)}</div></div><div class="list-value">${escapeHtml(growth)}</div></div>`}).join('');
+    }
+    function escapeHtml(value){const d=document.createElement('div');d.textContent=value??'';return d.innerHTML}
+    function failSection(id,message){document.getElementById(id).innerHTML=`<div class="error-state">${escapeHtml(message)}</div>`}
+
+    (async()=>{
+      void NovelightClient.recordVisit(client);
+      let session;
+      try{
+        const auth=await client.auth.getSession();
+        session=auth.data.session;
+      }catch(error){
+        console.error(error);
+        setState('ログイン状態を確認できませんでした。時間をおいて再度お試しください。',true);
+        return;
+      }
+      if(!session){location.href='login.html?redirect=scout-record.html';return}
+      void NovelightClient.claimAcquisition(client);
+
+      const [summaryResult,pointsResult,activityResult,discoveriesResult]=await Promise.all([
+        client.rpc('novelight_scout_record_summary'),
+        client.rpc('novelight_scout_point_history',{p_limit:30}),
+        client.rpc('novelight_scout_recent_activity',{p_limit:20}),
+        client.rpc('novelight_scout_discoveries',{p_limit:20})
+      ]);
+
+      if(summaryResult.error){
+        console.error(summaryResult.error);
+        setState('SCOUT RECORDはデータベース更新の反映待ち、または一時的に利用できない状態です。記録済みの読書・LIGHT SEED等はこの画面の読み込み失敗によって失われません。',true);
+        ['pointHistory','activityList','discoveriesList'].forEach(id=>failSection(id,'現在データを読み込めません。'));
+        return;
+      }
+
+      renderSummary(summaryResult.data||{});
+      setState('SCOUT RECORD β版の現在値です。');
+
+      if(pointsResult.error){console.error(pointsResult.error);failSection('pointHistory','Point履歴を読み込めませんでした。')}else renderPoints(pointsResult.data||[]);
+      if(activityResult.error){console.error(activityResult.error);failSection('activityList','SCOUT活動を読み込めませんでした。')}else renderActivity(activityResult.data||[]);
+      if(discoveriesResult.error){console.error(discoveriesResult.error);failSection('discoveriesList','発掘記録を読み込めませんでした。')}else renderDiscoveries(discoveriesResult.data||[]);
+    })();
+  </script>
 </body>
 </html>
