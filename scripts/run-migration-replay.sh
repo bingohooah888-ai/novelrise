@@ -64,6 +64,14 @@ for migration in supabase/migrations/*.sql; do
   echo '::endgroup::'
 done
 
+echo '::group::Verify SCOUT RECORD beta core, rollback and reapply'
+"${REPLAY[@]}" -f supabase/checks/20260920223049_scout_record_beta_core_postcheck.sql
+"${REPLAY[@]}" -f supabase/rollback/20260920223049_scout_record_beta_core_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260920223049_scout_record_beta_core_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260920223049_scout_record_beta_core.sql
+"${REPLAY[@]}" -f supabase/checks/20260920223049_scout_record_beta_core_postcheck.sql
+echo '::endgroup::'
+
 echo '::group::Verify work classification tags, RLS, rollback and reapply'
 "${REPLAY[@]}" -f supabase/checks/20260920221000_novel_classification_tags_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/novel-classification-tags.sql
