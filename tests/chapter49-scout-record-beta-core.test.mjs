@@ -96,7 +96,7 @@ test('migration explicitly avoids unresolved retroactive reward decisions', asyn
 test('precheck and postcheck keep the SCOUT beta core fail closed', async () => {
   const precheck = await readFile(precheckPath, 'utf8');
   const postcheck = await readFile(postcheckPath, 'utf8');
-  has(precheck, 'Chapter 38 SCOUT foundations');
+  has(precheck, 'SCOUT event ledger is missing');
   has(precheck, 'Chapter 49 SCOUT beta core already exists');
   has(postcheck, 'v_threshold_count <> 30 or v_cap <> 9570');
   has(postcheck, 'Scout Point ledger must remain RPC-only and private');
@@ -105,12 +105,14 @@ test('precheck and postcheck keep the SCOUT beta core fail closed', async () => 
   has(postcheck, 'Scout Point discovery rule drifted');
 });
 
-test('rollback disables Chapter 49 mutations without deleting earned audit history', async () => {
+test('rollback disables mutations and never deletes earned audit history', async () => {
   const sql = await readFile(rollbackPath, 'utf8');
   has(sql, 'drop trigger if exists scout_event_discovery_points');
   has(sql, 'drop trigger if exists scout_xp_level_up_points');
   has(sql, 'drop trigger if exists scout_event_valid_read_xp');
   has(sql, 'drop trigger if exists scout_xp_beta_level_cap');
-  has(sql, 'Data already earned is kept as');
-  assert.doesNotMatch(sql, /delete\s+from|truncate\s+|drop\s+table/iu);
+  has(sql, 'if not v_has_point_data and not v_has_chapter49_xp then');
+  has(sql, "execute 'drop table public.scout_point_ledger'");
+  has(sql, 'Production-safe rollback: preserve all earned/audit data');
+  assert.doesNotMatch(sql, /delete\s+from|truncate\s+/iu);
 });
