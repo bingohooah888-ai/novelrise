@@ -60,6 +60,63 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
       last_seen_at: '2026-08-03T00:00:00Z'
     }
   ];
+  const validReadRows = [
+    {
+      reader_id: A,
+      novel_id_snapshot: 'novel-1',
+      author_id_snapshot: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      qualified_at: '2026-09-10T00:00:00Z'
+    },
+    {
+      reader_id: A,
+      novel_id_snapshot: 'novel-2',
+      author_id_snapshot: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      qualified_at: '2026-09-10T01:00:00Z'
+    },
+    {
+      reader_id: B,
+      novel_id_snapshot: 'novel-3',
+      author_id_snapshot: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      qualified_at: '2026-09-10T02:00:00Z'
+    }
+  ];
+  const rankEventRows = [
+    {
+      id: 'rank-1',
+      novel_id_snapshot: 'novel-1',
+      to_rank: 1,
+      occurred_at: '2026-09-01T00:00:00Z'
+    },
+    {
+      id: 'rank-2',
+      novel_id_snapshot: 'novel-2',
+      to_rank: 2,
+      occurred_at: '2026-09-01T00:00:00Z'
+    },
+    {
+      id: 'rank-3',
+      novel_id_snapshot: 'novel-3',
+      to_rank: 3,
+      occurred_at: '2026-09-01T00:00:00Z'
+    }
+  ];
+  const novels = [
+    {
+      id: 'novel-1',
+      user_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      first_published_at: '2026-09-01T00:00:00Z'
+    },
+    {
+      id: 'novel-2',
+      user_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      first_published_at: '2026-07-01T00:00:00Z'
+    },
+    {
+      id: 'novel-3',
+      user_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      first_published_at: '2026-07-01T00:00:00Z'
+    }
+  ];
 
   const data = buildScoutProgressionMetrics({
     profiles,
@@ -71,6 +128,13 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
     discoveryRows,
     usageRows,
     lifecycleRows,
+    validReadRows,
+    rankEventRows,
+    novels,
+    badgeSettings: {
+      new_author_days: 30,
+      low_rank_threshold: 2
+    },
     now: new Date('2026-09-21T00:00:00Z')
   });
 
@@ -85,7 +149,19 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
   assert.equal(data.points.confirmedIssued, 30);
   assert.equal(data.points.pendingRows, 1);
   assert.equal(data.points.cancelledRows, 1);
+  assert.equal(data.points.balanceDistribution.p50, 15);
+  assert.equal(data.points.balanceDistribution.p90, 19);
   assert.equal(data.badges.earned, 2);
+  assert.equal(data.badges.userAcquisitionRate, 100);
+  assert.equal(data.badges.averageEarnedPerRegisteredUser, 1);
+  assert.equal(data.readerFlow.newAuthorDays, 30);
+  assert.equal(data.readerFlow.lowRankThreshold, 2);
+  assert.equal(data.readerFlow.scoutUsers.averageWorksPerReader, 2);
+  assert.equal(data.readerFlow.nonScoutUsers.averageWorksPerReader, 1);
+  assert.equal(data.readerFlow.scoutUsers.averageNewAuthorsPerReader, 1);
+  assert.equal(data.readerFlow.nonScoutUsers.averageNewAuthorsPerReader, 0);
+  assert.equal(data.readerFlow.scoutUsers.averageLowRankWorksPerReader, 2);
+  assert.equal(data.readerFlow.nonScoutUsers.averageLowRankWorksPerReader, 0);
 });
 
 test('SCOUT user drill-down includes Point state and earned Badge metadata only', () => {
