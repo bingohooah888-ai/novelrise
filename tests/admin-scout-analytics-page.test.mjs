@@ -14,10 +14,7 @@ test('SCOUT beta analytics page is admin-only, noindexed and uses the protected 
   assert.match(html, /\/api\/admin-scout-analytics/);
   assert.match(html, /Authorization:`Bearer \$\{session\.access_token\}`/);
   assert.match(html, /admin\.html/);
-  assert.match(
-    html,
-    /SCOUT Level \/ Rank \/ XPはβユーザー画面には表示しません/
-  );
+  assert.match(html, /β版SCOUT RECORDの利用率・Level分布・Scout Point・Badge/);
 });
 
 test('SCOUT beta analytics page covers the MASTER-required beta analysis surfaces', () => {
@@ -28,4 +25,11 @@ test('SCOUT beta analytics page covers the MASTER-required beta analysis surface
   assert.match(html, /SEED種類別 発掘成功率/);
   assert.match(html, /送信時Rank別 到達率/);
   assert.match(html, /ユーザー別SCOUT活動/);
+  assert.match(html, /SCOUT RECORD KPI/);
+  assert.match(html, /SCOUT RECORD利用率/);
+  assert.match(html, /Lv\.30到達率/);
+  assert.match(html, /Scout Point発行量/);
+  assert.match(html, /Badge獲得数/);
+  assert.match(html, /Scout Level分布/);
+  assert.match(html, /Scout Point発行理由/);
 });
