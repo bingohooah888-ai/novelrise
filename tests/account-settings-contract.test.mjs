@@ -46,7 +46,10 @@ test('account settings verifies the logged-in user before rendering private emai
   assert.doesNotMatch(account, /client\.auth\.getSession\(\)/u);
   assert.doesNotMatch(account, /NovelightClient/u);
   assert.doesNotMatch(account, /localStorage|sessionStorage/u);
-  assert.doesNotMatch(account, /currentPassword[^\n]*(?:localStorage|sessionStorage)/u);
+  assert.doesNotMatch(
+    account,
+    /currentPassword[^\n]*(?:localStorage|sessionStorage)/u
+  );
   assert.doesNotMatch(account, /console\.(?:log|error|warn)/u);
 });
 
