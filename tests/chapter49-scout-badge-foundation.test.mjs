@@ -50,6 +50,8 @@ test('Limited badges reuse qualification ledgers instead of duplicating eligibil
   has(sql, "'limited_beta_participant'");
   has(sql, 'from public.founding_authors f');
   has(sql, 'from public.beta_participants b');
+  has(sql, 'coalesce(f.qualified_at, now())');
+  has(sql, 'coalesce(b.qualified_at, now())');
   has(sql, "Founding Author #' || lpad");
 });
 
