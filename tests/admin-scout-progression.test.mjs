@@ -142,7 +142,25 @@ test('SCOUT user drill-down includes Point state and earned Badge metadata only'
     pointRows,
     badgeRows,
     badgeDefinitions,
-    thresholds
+    thresholds,
+    controlRows: [
+      {
+        user_id: A,
+        earning_suspended_until: '2026-09-25T00:00:00Z',
+        reason: 'review',
+        updated_at: '2026-09-21T02:00:00Z'
+      }
+    ],
+    operatorRows: [
+      {
+        user_id: A,
+        action: 'freeze',
+        reason: 'review',
+        effective_until: null,
+        amount: null,
+        created_at: '2026-09-21T02:00:00Z'
+      }
+    ]
   });
 
   assert.equal(user.scoutLevel > 1, true);
@@ -151,4 +169,10 @@ test('SCOUT user drill-down includes Point state and earned Badge metadata only'
   assert.equal(user.scoutPoint.frozenRows, 1);
   assert.equal(user.badges.length, 1);
   assert.equal(user.badges[0].displayName, '初作品公開');
+  assert.equal(
+    user.scoutControl.pointEarningSuspendedUntil,
+    '2026-09-25T00:00:00Z'
+  );
+  assert.equal(user.scoutControl.operatorActions.length, 1);
+  assert.equal(user.scoutControl.operatorActions[0].action, 'freeze');
 });
