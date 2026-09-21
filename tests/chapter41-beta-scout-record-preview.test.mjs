@@ -62,6 +62,8 @@ test('SCOUT RECORD loads owner progression, badge progress and visibility throug
   assert.match(scoutJs, /novelight_scout_discoveries/u);
   assert.match(scoutJs, /novelight_scout_badges/u);
   assert.match(scoutJs, /novelight_set_scout_badge_visibility/u);
+  assert.match(scoutJs, /novelight_record_scout_record_visit/u);
+  assert.match(scoutJs, /SCOUT RECORD usage telemetry failed/u);
   assert.match(scoutJs, /progress_percent/u);
   assert.match(scoutJs, /progress_value/u);
   assert.match(scoutJs, /login\.html\?redirect=scout-record\.html/u);
