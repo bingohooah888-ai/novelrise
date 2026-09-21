@@ -1,18 +1,24 @@
 # Supabase production migration deployment
 
-NOVELIGHTの本番Supabase migrationは、次の3本のGitHub Actionsを役割分離して管理する。
+NOVELIGHTの本番Supabase migrationは、人間承認をチャットの「本番承認」1回へ統一し、その後のGitHub台帳記録・対象migration確定・本番適用を自動化する。
 
+通常経路は以下の3要素で構成する。
+
+- `.github/workflows/high-risk-pr-approval.yml`
+  - migrationを含む高リスクPRの「本番承認」を、PR番号・最終head SHA・one-time challengeへ固定する
+  - 承認済みheadだけをCI再検証後にmainへ統合する
 - `.github/workflows/supabase-production-auto-deploy.yml`
-  - `main` に新しいmigrationが入ったときの自動read-only safety plan用
-  - pending完全一致確認と `supabase db push --linked --dry-run` までで終了し、本番DBは変更しない
-- `.github/workflows/production-migration-approved-dispatch.yml`
-  - ChatGPTで明示承認された通常migration deploy用
-  - Production Approval Ledger issue #737のowner-authored one-time approvalを正式な人間承認として扱い、同じ承認に対する `production-approval` Environmentの二重レビューは要求しない
+  - mainへ統合された後、Productionのpending migrationをfreshに取得する
+  - pending migrationを元の承認済みPRへ逆引きし、元PRのmigration集合と完全一致することを確認する
+  - current main、Production Readiness、backup鮮度、Staging parity、dry-runを再確認し、同じ本番承認の範囲内でProduction migrationを適用する
+  - Approval LedgerのCLAIMED / EXECUTED / FAILEDはGitHub Actionsが自動記録する
 - `.github/workflows/supabase-production.yml`
-  - 手動の `status` / `dry-run` / `repair-history` / `deploy` 用
-  - 緊急時・再確認・限定的なhistory repair用の安全なフォールバックとして残し、mutationは `production-approval` Environment承認を必須にする
+  - 通常経路が利用できない場合のmanual fallback
+  - `status` / `dry-run` / `repair-history` / `deploy` を提供し、manual mutationだけは `production-approval` Environment承認を維持する
 
-本番DB変更は完全無人化しない。通常deployではChatGPT上の明示承認を、manual fallbackではGitHub Environment承認を人間の承認点として残し、それ以外の反復操作を自動化する。同一Production操作に対して両方の承認を重複要求しない。
+`.github/workflows/production-migration-approved-dispatch.yml` と Issue #737 の手動 `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE` 経路は互換・緊急時の旧経路として残してよいが、通常運用では使用しない。ユーザーへ長い承認JSONのコピー・貼り付けを求めない。
+
+本番DB変更は完全無人化しない。人間の承認点は、migrationを含む高リスクPRに対してユーザーがチャットで行う「本番承認」1回だけとする。その承認後に行うSHA確認、pending照合、Staging parity、backup確認、dry-run、claim、postcheckは安全のための機械検証であり、追加の人間承認ではない。
 
 ## GitHub Secrets
 
@@ -37,77 +43,93 @@ Project ref `fiepaguycecrredwrcwx` はworkflow内で固定しており、secret�
 
 ## 通常フロー
 
-### 1. Automatic safety plan
+### 1. PR段階の本番承認
 
-`main` へ `supabase/migrations/**` が入ると `.github/workflows/supabase-production-auto-deploy.yml` が起動し、自動で以下を行う。
+migrationを含むPRは高リスクPRとして扱う。
 
-- merge前のmainとmerge後mainを比較し、今回追加されたmigration versionを抽出する
-- `supabase migration list --linked` で本番remote historyを確認する
-- 本番でpendingになっているmigrationが、今回mainへ入ったmigrationと完全一致することを確認する
-- 想定外の古いpending migration、欠落、historyずれがあれば停止する
-- `supabase db push --linked --dry-run` を実行する
-- Actions summaryへ、対象main SHA・migration version・「mutationなし」を記録する
+ユーザーがチャットで「本番承認」を行った後、自動化はその承認をexact PR headへ固定した `NOVELIGHT_HIGH_RISK_APPROVE` 証跡へ変換する。証跡は少なくとも以下へ固定する。
 
-このworkflowは `supabase db push --linked --yes` を持たず、`production-approval` Environmentでも待機しない。ここまでは本番DBを変更しない。
-
-既存migrationが別理由でpendingになっている場合は、Issue #737の `NOVELIGHT_PRODUCTION_MIGRATION_PREFLIGHT <mainSha>` 経路でfresh read-only preflightを取り直してもよい。いずれの場合もEvidence Freshness Gateを満たすcurrent evidenceが必要。
-
-PR #219由来の旧bot-dispatched manual runが `production-approval` でwaitingのままshared migration lockを塞いでいる場合、preflight workflowはSupabaseへ触る前に `scripts/cleanup-stale-production-migration-run.mjs` を実行する。このcleanup jobはshared migration lockの外側で動き、Supabase credentialsを持たず、Production DB操作を行わない。Issue #737の旧bridge dispatchと一意に照合できる古いwaiting runが1件だけ存在する場合に限ってcancelし、そのcancel完了後にread-only status/dry-run jobがshared migration lockへ入る。人間起動run、複数bot run、waiting以外のbot run、current main向けrun、Ledger不一致はすべてfail closedする。
-
-### 2. Chat approval
-
-read-only evidenceで対象が確定した後、ユーザーがChatGPT上でそのProduction migration deployを明示承認した場合だけ、assistantはProduction Approval Ledger issue #737へ次の形式のowner approval recordを1件記録できる。
-
-```text
-NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE {"operation":"supabase-migration-deploy","mainSha":"<40-hex-current-main>","challenge":"<8-uppercase-hex>","migrations":["<14-digit-version>", "..."]}
-```
-
-承認は次に固定される。
-
-- exact current `main` SHA
-- canonical sort済み・重複なしのmigration version集合
+- PR番号
+- 最終head SHA
 - one-time challenge
-- operation `supabase-migration-deploy`
-- baseline repair version `20260815000000` を含まないこと
+- operation `merge-high-risk-pr`
 
-`.github/workflows/production-migration-approved-dispatch.yml` はissue #737のowner-authored commentだけを受け付ける。JSON、SHA、challenge、migration集合、baseline除外を検証し、同じapprovalが過去にclaim/execution済みならfail closedする。
+この時点の「本番承認」が、同じPRで追加されたProduction migrationまでを含む唯一の人間承認である。
 
-### 3. Claim and Production boundary
+承認済みPRはCI、RLS、E2E、CodeQLその他の必要gateを再確認してからmainへ統合する。
 
-chat workflowはmutation前に次を行う。
+### 2. Production pendingのfresh取得と承認済みPRへの逆引き
 
-- current `main` が承認SHAと一致することを確認
-- PR #219以前のbridgeが残したbot-started `supabase-production.yml` waiting runがまだ1件だけ存在する場合、preflightと同じ共通cleanup scriptでIssue #737の対応する `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_DISPATCHED` 記録と一意に照合できたときだけcancelする
-- human-started active manual run、複数のbot run、waiting以外のbot run、ledgerと一意に結び付かないrunがあれば停止する
-- approvalを `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED` としてone-time claimする
-- Production jobに入った後、current `main` と同じclaimをもう一度独立検証する
-- exactly approved SHAをcheckoutする
-- Production project refを固定値として使用する
-- `supabase-production-migration` concurrency lockを使う
+承認済み高リスクPRの統合後、`.github/workflows/supabase-production-auto-deploy.yml` が通常経路として起動する。
 
-claim後にmainが変わった場合、同じapprovalを再利用しない。fresh evidenceと新しい明示承認が必要。
+自動化はProductionへmutationする前に、
 
-### 4. Chat-approved deploy
+- exact current mainを取得
+- Production remote migration historyを取得
+- pending migration集合をcanonicalに確定
+- pending各migrationのlocal SQLを確認
+- そのmigrationをmainへ追加したmerge commitを特定
+- merge commitから元PRを一意に特定
+- pending migrationがすべて同一の元PRに属することを確認
+- 元PRに含まれるmigration集合とProduction pending集合が完全一致することを確認
+- 元PRの最終headにexact owner-authored `NOVELIGHT_HIGH_RISK_APPROVE` が存在することを確認
+- 元PRのmerge後に `supabase/migrations/**` が変更されていないことを確認
 
-Production境界の再検証後も、mutation直前に以下を再確認する。
+する。
 
-- `supabase migration list --linked`
-- Production pending migrationが承認されたversion集合と完全一致すること
-- `supabase db push --linked --dry-run`
+pendingが存在しない場合はmutation不要として成功終了する。
 
-すべてcurrent/passの場合だけ:
+pendingが複数PRにまたがる、元PRを一意に証明できない、元PRのmigration集合とpendingが一致しない、承認証跡がない、migrationが後から変更されている等の場合はfail closedする。承認範囲を推測で広げない。
 
-- `supabase db push --linked --yes`
-- post-deploy migration status
-- pending local migrationが残っていないこと
-- `production_beta_observability.sql` のread-only検証
-- `production-beta-verification` commit status
+### 3. Production mutation直前の安全再確認
 
-を同じworkflowで実行する。
+元PRの「本番承認」を再利用できることが証明された場合も、mutation直前に以下をfreshに確認する。
 
-成功時はIssue #737へ `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_EXECUTED`、失敗時は `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_FAILED` を記録し、`mutation_result` / `postcheck_result` / `failure_phase` を分離して残す。
+- current mainが変わっていない
+- `production-readiness-smoke` がcurrent mainでSUCCESS
+- Production backupが許容鮮度内
+- Production pending migrationが承認対象と完全一致
+- `supabase db push --linked --dry-run --include-all` がPASS
+- Staging migration historyがcurrent repositoryと完全一致
+- 同じ承認スコープが過去にmachine claim済みでない
 
-`db push --yes` が成功した後のobservabilityだけが失敗した場合、migration mutation自体を再実行してはならない。fresh migration historyを確認してmutationをSATISFIEDとして扱い、observabilityをread-onlyで別調査する。
+ここで作成する `NOVELIGHT_PRODUCTION_SINGLE_APPROVAL_MIGRATION_CLAIMED` はGitHub Actionsによる機械監査証跡であり、人間の追加承認ではない。
+
+claim後にもcurrent main、pending完全一致、dry-runを再確認する。
+
+### 4. Production migration適用とpostcheck
+
+すべての再確認がPASSした場合だけ、
+
+`supabase db push --linked --yes --include-all`
+
+を実行する。
+
+適用後は、
+
+- Production migration history
+- pending migrationが0件であること
+- production beta observability
+- `production-beta-verification` status
+
+を確認する。
+
+成功時はIssue #737へ `NOVELIGHT_PRODUCTION_SINGLE_APPROVAL_MIGRATION_EXECUTED`、失敗時は `NOVELIGHT_PRODUCTION_SINGLE_APPROVAL_MIGRATION_FAILED` をGitHub Actionsが記録する。
+
+記録には、少なくとも元PR、承認head、承認challenge、current main、migration集合、run ID、mutation結果、postcheck結果、failure phaseを含める。
+
+`db push --yes` が成功した後にpostcheckだけが失敗した場合、migration mutation自体を自動再実行してはならない。fresh migration historyを確認してmutationをSATISFIEDとして扱い、postcheckをread-onlyで調査する。
+
+### 5. 二重承認禁止
+
+通常経路では、PR merge後にユーザーへ次を要求しない。
+
+- `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE ...` の手動コピー・貼り付け
+- 二回目の「本番承認」
+- 同じ承認スコープに対する `production-approval` Environment review
+- 単なる続行確認
+
+元PRで承認されたProduction内容が実質的に変わった場合だけ、新しい「本番承認」を求める。
 
 ## 手動workflow
 
@@ -148,9 +170,9 @@ manual deployは `production-approval` Environmentで1回だけ人間承認を�
 ## Safety rules
 
 - 本番DB変更はPRのCI成功後、`main` に入ったmigrationだけを対象にする。
-- 本番DB mutationには明示的な人間承認を必須にする。通常deployではSHA/version/challenge固定のchat approval、manual fallbackでは `production-approval` Environmentを使う。
-- 同一chat-approved操作にEnvironmentの二重承認を要求しない。
-- 自動main-push workflowはread-only plan/dry-runまでで、mutationしない。
+- 本番DB mutationには明示的な人間承認を必須にする。通常deployでは元の高リスクPRに対するチャットの「本番承認」1回を唯一の人間承認とし、manual fallbackでは `production-approval` Environmentを使う。
+- 同一chat-approved操作に二回目の承認コメントやEnvironmentの二重承認を要求しない。
+- 通常自動workflowは、Production pendingを承認済み元PRへ一意に逆引きできた場合だけmutationへ進み、証明できない場合はread-only確認でfail closedする。
 - preflightのstale-run cleanupはGitHub Actions stateだけを対象にし、Supabase DBやmigration historyを変更しない。
 - stale-run cleanupはpreflightとchat-approved deployで共通scriptを使い、人間起動run・複数bot run・waiting以外・current main・Ledger不一致をcancelしない。
 - chat-approved deployはclaim前とProduction境界でcurrent mainを再確認する。
