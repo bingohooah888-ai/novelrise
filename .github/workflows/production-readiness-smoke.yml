@@ -24,6 +24,8 @@ on:
       - '.github/workflows/production-auth-smoke-stale-recovery.yml'
       - '.github/workflows/high-risk-pr-approval.yml'
       - '.github/workflows/high-risk-merge-readiness-bridge.yml'
+      - '.github/workflows/supabase-production-auto-deploy.yml'
+      - 'scripts/resolve-production-migration-approval.mjs'
   schedule:
     - cron: '15 22 * * *'
   workflow_dispatch:
