@@ -40,6 +40,8 @@ const HIGH_RISK_PREFIXES = [
   'docs/STRIPE-'
 ];
 
+const ALLOWED_PRODUCTION_SCOPES = new Set(['supabase-migration-deploy']);
+
 export function isHighRiskPath(file) {
   const normalized = String(file || '').replaceAll('\\', '/');
   if (!normalized) return false;
@@ -51,7 +53,28 @@ export function classifyHighRiskPaths(files) {
   return [...new Set(files.map(String).filter(isHighRiskPath))].sort();
 }
 
-export function highRiskApprovalChallenge(prNumber, headSha) {
+export function normalizeProductionScopes(scopes = []) {
+  const values = Array.isArray(scopes)
+    ? scopes.map(String)
+    : String(scopes || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+  for (const scope of values) {
+    if (!ALLOWED_PRODUCTION_SCOPES.has(scope)) {
+      throw new Error(`unsupported Production scope: ${scope}`);
+    }
+  }
+
+  return [...new Set(values)].sort();
+}
+
+export function highRiskApprovalChallenge(
+  prNumber,
+  headSha,
+  productionScopes = []
+) {
   const pr = Number(prNumber);
   const sha = String(headSha || '').toLowerCase();
   if (!Number.isInteger(pr) || pr <= 0) {
@@ -60,8 +83,13 @@ export function highRiskApprovalChallenge(prNumber, headSha) {
   if (!/^[0-9a-f]{40}$/.test(sha)) {
     throw new Error('head SHA must be a 40-character hexadecimal commit SHA');
   }
+
+  const scopes = normalizeProductionScopes(productionScopes);
+  const scopeSuffix =
+    scopes.length === 0 ? '' : `:scopes=${scopes.join(',')}`;
+
   return createHash('sha256')
-    .update(`novelight-high-risk:${pr}:${sha}`)
+    .update(`novelight-high-risk:${pr}:${sha}${scopeSuffix}`)
     .digest('hex')
     .slice(0, 8)
     .toUpperCase();
@@ -73,18 +101,41 @@ export function parseHighRiskApprovalComment(body) {
   try {
     const parsed = JSON.parse(String(body).slice(prefix.length));
     const keys = Object.keys(parsed).sort();
-    const expectedKeys = ['challenge', 'headSha', 'operation', 'pr'].sort();
-    if (JSON.stringify(keys) !== JSON.stringify(expectedKeys)) return null;
+    const legacyKeys = ['challenge', 'headSha', 'operation', 'pr'].sort();
+    const scopedKeys = [
+      'challenge',
+      'headSha',
+      'operation',
+      'pr',
+      'productionScopes'
+    ].sort();
+    const isLegacy =
+      JSON.stringify(keys) === JSON.stringify(legacyKeys);
+    const isScoped =
+      JSON.stringify(keys) === JSON.stringify(scopedKeys);
+    if (!isLegacy && !isScoped) return null;
     if (parsed.operation !== 'merge-high-risk-pr') return null;
     if (!Number.isInteger(parsed.pr) || parsed.pr <= 0) return null;
     if (!/^[0-9a-f]{40}$/.test(String(parsed.headSha || '').toLowerCase()))
       return null;
     if (!/^[A-F0-9]{8}$/.test(String(parsed.challenge || ''))) return null;
+
+    const rawScopes = isScoped ? parsed.productionScopes : [];
+    if (!Array.isArray(rawScopes) || !rawScopes.every((value) => typeof value === 'string')) {
+      return null;
+    }
+
+    const productionScopes = normalizeProductionScopes(rawScopes);
+    if (JSON.stringify(rawScopes) !== JSON.stringify(productionScopes)) {
+      return null;
+    }
+
     return {
       operation: parsed.operation,
       pr: parsed.pr,
       headSha: String(parsed.headSha).toLowerCase(),
-      challenge: String(parsed.challenge)
+      challenge: String(parsed.challenge),
+      productionScopes
     };
   } catch {
     return null;
@@ -94,19 +145,30 @@ export function parseHighRiskApprovalComment(body) {
 export function highRiskApprovalCommentMatches(body, expected) {
   const parsed = parseHighRiskApprovalComment(body);
   if (!parsed) return false;
+
+  let expectedScopes;
+  try {
+    expectedScopes = normalizeProductionScopes(expected.productionScopes ?? []);
+  } catch {
+    return false;
+  }
+
   return (
     parsed.operation === 'merge-high-risk-pr' &&
     parsed.pr === Number(expected.pr) &&
     parsed.headSha === String(expected.headSha || '').toLowerCase() &&
-    parsed.challenge === String(expected.challenge || '')
+    parsed.challenge === String(expected.challenge || '') &&
+    JSON.stringify(parsed.productionScopes) === JSON.stringify(expectedScopes)
   );
 }
 
 async function runCli() {
   const [command, ...args] = process.argv.slice(2);
   if (command === 'challenge') {
-    const [prNumber, headSha] = args;
-    process.stdout.write(`${highRiskApprovalChallenge(prNumber, headSha)}\n`);
+    const [prNumber, headSha, productionScopes = ''] = args;
+    process.stdout.write(
+      `${highRiskApprovalChallenge(prNumber, headSha, productionScopes)}\n`
+    );
     return;
   }
   if (command === 'classify') {
@@ -115,7 +177,7 @@ async function runCli() {
     return;
   }
   throw new Error(
-    'Usage: high-risk-approval-lib.mjs challenge <pr> <sha> | classify <paths...>'
+    'Usage: high-risk-approval-lib.mjs challenge <pr> <sha> [production-scopes-csv] | classify <paths...>'
   );
 }
 
