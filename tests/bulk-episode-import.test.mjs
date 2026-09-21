@@ -128,10 +128,7 @@ test(
   'migration locks the novel and assigns contiguous numbers after current max',
   () => {
     assert.match(migration, /for update/);
-    assert.match(
-      migration,
-      /coalesce\(max\(e\.episode_number\), 0\) \+ 1/
-    );
+    assert.match(migration, /coalesce\(max\(e\.episode_number\), 0\) \+ 1/);
     assert.match(migration, /v_start_number \+ item\.ordinality - 1/);
     assert.match(migration, /between 1 and 100 episodes/);
     assert.match(migration, /Unexpected import item field/);
