@@ -10,8 +10,8 @@ This document defines the normal development path after the initial environment 
 4. Run the smallest relevant local gate. `npm run preflight` is the normal read-only fast gate. Add `preflight:db` for core DB/RLS changes, `preflight:e2e` for browser-facing changes, and `preflight:full` only for high-risk or broad changes. Use `preflight:fix` only when intentional formatting changes are wanted.
 5. Open a pull request to `main` and record purpose, impact, verification, security/data-safety checks, Vercel Preview status when relevant, and rollback notes.
 6. Merge only after the required `check` status succeeds. The CI classifier runs only relevant preflight, DB/RLS, browser, and dependency gates, while preserving the final aggregate `check`. CodeQL must also be clean when it applies.
-7. Classify the PR before merge. Eligible low-risk PRs may be squash-merged automatically after all required evidence is green; high-risk or ambiguous PRs remain explicit user approval points. Use squash merge for the normal solo-development flow so `main` stays easy to audit and revert.
-8. Production Supabase migrations use the dedicated auto-deploy workflow with explicit production approval. The manual Supabase workflow is fallback/recovery only.
+7. Classify the PR before merge. Eligible low-risk PRs may be squash-merged automatically after all required evidence is green. High-risk or ambiguous PRs require the user's single `本番承認`; do not add a separate merge approval for the same scope. Use squash merge for the normal solo-development flow so `main` stays easy to audit and revert.
+8. Production Supabase migrations use the dedicated plan + inherited-approval deploy path. A migration-bearing high-risk PR binds `supabase-migration-deploy` into the single human `本番承認`; after merge, exact PR/head/main/migration-set and Staging/plan evidence are revalidated before automated Production handoff. A second human migration approval is not required when scope is unchanged. The manual Supabase workflow is fallback/recovery only.
 
 ## Execution preflight
 
@@ -59,7 +59,7 @@ A PR is eligible only when all of the following are true:
 
 Typical eligible work includes small UI/copy changes, non-sensitive scoped bug fixes, test improvements, non-governance documentation, and behavior-preserving limited refactors. A normal Vercel Production deployment caused by merging an eligible low-risk PR is covered by this standing auto-merge authorization. This does not authorize additional writes to external Production data, billing, secrets, or infrastructure outside the ordinary deploy resulting from the merge.
 
-Require explicit user approval before merging any PR that touches or materially changes:
+Require the user's single `本番承認` before merging any PR that touches or materially changes:
 
 - authentication, Supabase RLS, Stripe/billing, pricing or entitlements, permissions, personal data, or security boundaries
 - secrets, API keys, sensitive environment variables, or Production credentials
@@ -70,7 +70,7 @@ Require explicit user approval before merging any PR that touches or materially 
 - CI, CodeQL, or test changes that weaken a required gate or attempt to bypass a failing gate
 - any change whose risk classification, impact radius, or rollback path is unclear
 
-When uncertain, fail closed and request approval. A high-risk PR does not become auto-mergeable merely because CI and CodeQL are green.
+When uncertain, fail closed and request `本番承認`. A high-risk PR does not become auto-mergeable merely because CI and CodeQL are green, but do not request a second differently named approval for the same approved scope.
 
 ## Automation efficiency
 
@@ -137,7 +137,7 @@ Production authenticated/write smoke remains approval-gated while independent St
 
 ## Supabase production deployment
 
-Normal migration pushes use `.github/workflows/supabase-production-auto-deploy.yml` only. The workflow verifies expected pending migrations, runs a dry-run, waits for `production-approval`, then re-verifies pending state and dry-run before deployment. This second verification is intentional safety redundancy.
+Normal migration pushes use `.github/workflows/supabase-production-auto-deploy.yml` as the read-only Production migration plan. It verifies the exact pending migration set, runs a dry-run, and requires Staging migration parity. When the merged source PR carries an exact scope-bound `supabase-migration-deploy` approval from the single human `本番承認`, `.github/workflows/high-risk-pr-approval.yml` waits for that exact-main plan to succeed and dispatches `.github/workflows/production-migration-approved-dispatch.yml`. The deploy workflow revalidates the original OWNER approval comment, source PR/head, merge commit/current main, migration set, successful plan, one-time ledger, pending state, and dry-run before mutation. These rechecks are intentional safety redundancy, not additional human approval gates.
 
 `.github/workflows/supabase-production.yml` is manual fallback for `status`, `dry-run`, `repair-history`, and deliberate `deploy`; it does not auto-run on normal migration pushes. Read-only `status` and `dry-run` remain immediately available, while `repair-history` and `deploy` each require one `production-approval` Environment approval before the mutation job. All bounded rechecks, mutation, and post-mutation verification stay inside that single approved operation. Repeated observability and pending-migration logic lives in shared scripts rather than being copied between workflows.
 
@@ -171,13 +171,13 @@ The default NOVELIGHT AI development flow is:
 3. Automated gates provide objective evidence.
 4. Authentication, RLS, Stripe/billing, permissions, personal data, destructive migrations, and other high-risk changes receive an independent second-model review such as Claude Code when practical.
 5. AI approval never overrides a failing automated gate.
-6. Eligible low-risk `main` merges may proceed automatically after the required gates pass; high-risk merges, production database changes, external Production state changes, and other explicit categories above remain deliberate user approval points.
+6. Eligible low-risk `main` merges may proceed automatically after the required gates pass; high-risk merges, production database changes, external Production state changes, and other explicit categories above require the user's deliberate `本番承認`. One approved scope is reused across its guarded merge and subsequent Production mutation instead of creating multiple human approval points.
 
 Use the smallest set of agents/tools that materially improves speed, quality, or safety.
 
 ## Ready-to-merge definition
 
-A change is ready to merge when its scope is understood, the relevant selective gates have passed, secrets are absent, high-risk boundaries have been reviewed, dependency changes are safe, deploy-relevant UI has been previewed when appropriate, rollback/recovery is known where needed, and the branch is current with `main`. Being ready to merge does not remove an explicit approval requirement for a high-risk PR.
+A change is ready to merge when its scope is understood, the relevant selective gates have passed, secrets are absent, high-risk boundaries have been reviewed, dependency changes are safe, deploy-relevant UI has been previewed when appropriate, rollback/recovery is known where needed, and the branch is current with `main`. Being ready to merge does not remove the `本番承認` requirement for a high-risk PR, and the same approved scope must not be split into duplicate human approval requests.
 
 ## Environment work stopping rule
 
