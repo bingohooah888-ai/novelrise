@@ -901,6 +901,17 @@ echo '::group::Verify episode inline illustrations rollback and reapply'
 "${REPLAY[@]}" -f tests/rls/episode-inline-illustrations.sql
 echo '::endgroup::'
 
+echo '::group::Verify beta bulk episode import behavior'
+"${REPLAY[@]}" -f supabase/checks/20260921120552_bulk_episode_import_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/bulk-episode-import.sql
+echo '::endgroup::'
+
+echo '::group::Verify beta bulk episode import rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260921120552_bulk_episode_import_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260921120552_bulk_episode_import_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921120552_bulk_episode_import.sql
+"${REPLAY[@]}" -f supabase/checks/20260921120552_bulk_episode_import_postcheck.sql
+echo '::endgroup::'
 echo '::group::Verify restored-database structural integrity'
 "${REPLAY[@]}" -f supabase/checks/restore_validation.sql
 echo '::endgroup::'
