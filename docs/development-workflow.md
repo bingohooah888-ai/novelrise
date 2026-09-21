@@ -137,9 +137,11 @@ Production authenticated/write smoke remains approval-gated while independent St
 
 ## Supabase production deployment
 
-Normal migration pushes use `.github/workflows/supabase-production-auto-deploy.yml` only. The workflow verifies expected pending migrations, runs a dry-run, waits for `production-approval`, then re-verifies pending state and dry-run before deployment. This second verification is intentional safety redundancy.
+Normal migration deployment uses `.github/workflows/supabase-production-auto-deploy.yml`. For a migration-bearing high-risk PR, the owner's exact chat-derived `NOVELIGHT_HIGH_RISK_APPROVE` record is the single human Production approval. After the approved PR is merged, automation resolves the Production pending migration set back to that exact merged PR, requires the PR migration set to match pending exactly, and re-verifies current main, Production Readiness, backup freshness, Staging parity, and dry-run immediately before mutation. The automated claim/result ledger records are machine audit evidence, not another human approval.
 
-`.github/workflows/supabase-production.yml` is manual fallback for `status`, `dry-run`, `repair-history`, and deliberate `deploy`; it does not auto-run on normal migration pushes. Read-only `status` and `dry-run` remain immediately available, while `repair-history` and `deploy` each require one `production-approval` Environment approval before the mutation job. All bounded rechecks, mutation, and post-mutation verification stay inside that single approved operation. Repeated observability and pending-migration logic lives in shared scripts rather than being copied between workflows.
+The normal route must not ask the user to paste a second `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE` comment and must not add a second `production-approval` Environment review for the same approved scope. If main, migration files, pending state, Staging parity, backup state, or the approved source PR cannot be proven consistent, the route fails closed. A genuinely changed Production scope requires a new chat `本番承認`.
+
+`.github/workflows/supabase-production.yml` remains the manual fallback for `status`, `dry-run`, `repair-history`, and deliberate `deploy`. Read-only modes stay immediately available; manual mutation fallback keeps the protected `production-approval` Environment approval. All bounded rechecks, mutation, and post-mutation verification stay inside that one fallback approval.
 
 ## Vercel deployment policy
 
