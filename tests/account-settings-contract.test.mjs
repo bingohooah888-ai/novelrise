@@ -127,7 +127,7 @@ test('Founding and beta qualification remain anchored to auth_user_id after regi
   );
   assert.match(
     qualificationMigration,
-    /insert into private\.novelight_beta_participants[\s\S]*?p_user_id/u
+    /insert into public\.beta_participants[\s\S]*?p_user_id/u
   );
 });
 
