@@ -122,7 +122,12 @@ async function installSupabaseStub(page, overrides = {}) {
                 calls.push({ type: 'signInWithPassword', payload });
                 await wait(state.authDelayMs);
                 return {
-                  data: { session: state.signInError ? null : state.session || null },
+                  data: {
+                    session: state.signInError ? null : state.session || null,
+                    user: state.signInError
+                      ? null
+                      : state.user || state.session?.user || null
+                  },
                   error: errorFor(state.signInError)
                 };
               },
@@ -290,6 +295,7 @@ test('account settings shows only the signed-in user email and requests a confir
   await expect(page.locator('#currentEmail')).toHaveText('owner@example.test');
   await expect(page.locator('#changeEmail')).toBeEnabled();
 
+  await page.locator('#currentPassword').fill('correct-password');
   await page.locator('#newEmail').fill('new-owner@example.test');
   await page.locator('#confirmEmail').fill('new-owner@example.test');
   await page.locator('#changeEmail').click();
@@ -320,6 +326,7 @@ test('account settings rejects malformed, mismatched and unchanged emails before
   const pageErrors = collectPageErrors(page);
 
   await page.goto('/account-settings.html');
+  await page.locator('#currentPassword').fill('correct-password');
 
   await page.locator('#newEmail').fill('not-an-email');
   await page.locator('#confirmEmail').fill('not-an-email');
@@ -346,6 +353,35 @@ test('account settings rejects malformed, mismatched and unchanged emails before
   expect(pageErrors).toEqual([]);
 });
 
+test('account settings requires the current password before requesting an email change', async ({
+  page
+}) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
+    user: { id: 'author-e2e', email: 'owner@example.test' },
+    signInError: 'Invalid login credentials'
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/account-settings.html');
+  await page.locator('#currentPassword').fill('wrong-password');
+  await page.locator('#newEmail').fill('new-owner@example.test');
+  await page.locator('#confirmEmail').fill('new-owner@example.test');
+  await page.locator('#changeEmail').click();
+
+  await expect(page.locator('#status')).toHaveText(
+    '現在のパスワードを確認してください。'
+  );
+  const updateCalls = await page.evaluate(
+    () =>
+      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'updateUser'
+      ).length
+  );
+  expect(updateCalls).toBe(0);
+  expect(pageErrors).toEqual([]);
+});
+
 test('account settings handles an already-used email without disclosing another account', async ({
   page
 }) => {
@@ -357,6 +393,7 @@ test('account settings handles an already-used email without disclosing another 
   const pageErrors = collectPageErrors(page);
 
   await page.goto('/account-settings.html');
+  await page.locator('#currentPassword').fill('correct-password');
   await page.locator('#newEmail').fill('used@example.test');
   await page.locator('#confirmEmail').fill('used@example.test');
   await page.locator('#changeEmail').click();
