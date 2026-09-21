@@ -26,11 +26,11 @@ test('assistant recovery stays automatic and fail-closed', async () => {
     /同じ承認文を再送/,
     /カードより前にツールを呼んだ/,
     /one-time requestのCLAIM\/CONSUME/,
-    /### 未消費承認のcarry-forward/,
-    /外部request \/ claim \/ mutation/,
-    /final-head SHA \/ challenge/,
-    /Production DB、Production Secret、Stripe live/,
-    /`CLAIMED` または `CONSUMED`/
+    /### 本番承認のcarry-forwardと機械証跡の再発行/,
+    /人間の本番承認と、GitHub workflowが要求するexact SHA/,
+    /機械証跡だけを必要に応じて再生成/,
+    /人間の本番承認carry-forward禁止/,
+    /`CLAIMED` \/ `CONSUMED` \/ `EXECUTED` \/ `FAILED`/
   ];
 
   for (const pattern of patterns) {
