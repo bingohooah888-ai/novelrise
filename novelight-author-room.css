@@ -128,7 +128,7 @@ body.novelight-theme.novelight-page-mypage .profile-panel .panel-header{
 
 /* Keep the readability increase from the previous refinement. The hero title and logout
    intentionally retain the sizes defined by novelight-author-home.css. */
-.workspace-top>a{font-size:16px!important}
+.workspace-top>.reader-home-link{font-size:16px!important}
 .account-text strong{font-size:16px!important}
 .account-text span{display:none!important}
 .hero-kicker{font-size:12px!important}
