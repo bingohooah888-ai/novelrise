@@ -1,0 +1,5 @@
+.novelight-commander/
+node_modules/
+.env
+.cache/
+novel-cache/
