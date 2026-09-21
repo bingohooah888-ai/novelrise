@@ -219,6 +219,7 @@ export function enrichScoutUserSummaries(
           )
           .slice(0, 20)
           .map((row) => ({
+            id: row.id ?? null,
             amount: number(row.point_value),
             kind: row.point_kind,
             status: row.status,
