@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>公式素材v1 ZIP一括登録 | NOVELIGHT ADMIN</title>
+  <title>公式素材ZIP一括登録 | NOVELIGHT ADMIN</title>
   <style>
     *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#0f1020;color:#f4f4f8}a{color:inherit;text-decoration:none}button,input{font:inherit}header{border-bottom:1px solid #292b47}.header-inner{max-width:980px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px}.brand{font-size:21px;font-weight:950}.back{padding:9px 12px;border:1px solid #393c61;border-radius:9px;background:#17182c;color:#ddd;font-weight:850}main{max-width:980px;margin:auto;padding:36px 22px 80px}h1{margin:0 0 8px;font-size:31px}.lead{margin:0 0 24px;color:#a9abc2;line-height:1.7}.panel{padding:22px;border:1px solid #303253;border-radius:15px;background:#17182c}.batch-grid{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:end}.field label{display:block;margin-bottom:7px;color:#c8cada;font-size:12px;font-weight:850}.field input{width:100%;min-height:44px;padding:10px 12px;border:1px solid #393c61;border-radius:9px;background:#101121;color:#fff}.primary,.secondary{min-height:44px;padding:10px 16px;border-radius:9px;font-weight:900;cursor:pointer}.primary{border:0;background:#6d4aff;color:#fff}.secondary{border:1px solid #4c4f77;background:#20223a;color:#eee}.primary:disabled,.secondary:disabled{opacity:.5;cursor:not-allowed}.batch-status{min-height:48px;margin:18px 0 10px;padding:13px 15px;border:1px solid #303253;border-radius:11px;background:#151629;color:#b7bad0;line-height:1.6}.batch-status.error{border-color:#7c3039;background:#2a161a;color:#ffb8c0}.batch-status.ok{border-color:#285d4d;background:#11271f;color:#9fe4cd}.detail{color:#9da0bb;font-size:12px;line-height:1.7}.rules{margin:24px 0 0;padding:16px;border:1px solid #303253;border-radius:12px;background:#121326;color:#b9bbd0;font-size:12px;line-height:1.8}.rules strong{color:#fff}.progress{width:100%;height:14px;margin-top:8px}.checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px;margin-top:18px;color:#c8cada;font-size:12px}.checklist span::before{content:'✓';margin-right:7px;color:#9fe4cd;font-weight:900}@media(max-width:720px){main{padding:28px 15px 60px}.batch-grid{grid-template-columns:1fr}.primary,.secondary{width:100%}.checklist{grid-template-columns:1fr}}
   </style>
@@ -12,19 +12,19 @@
 <body><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header><div class="header-inner"><div class="brand">NOVELIGHT <span style="color:#b8adff">ADMIN</span></div><a class="back" href="admin-thumbnails.html">← 素材管理へ戻る</a></div></header>
 <main id="main-content" tabindex="-1">
-  <h1>公式素材v1 ZIP一括登録</h1>
-  <p class="lead">最終ZIPを1回選択し、30素材を既存の正式な署名付きStorage upload＋登録RPCへ一括で流します。source PNGの再生成・リサイズ・圧縮は行いません。</p>
+  <h1>公式素材ZIP一括登録</h1>
+  <p class="lead">正式ZIPを1回選択し、対応manifestで検証した公式素材を既存の署名付きStorage upload＋登録RPCへ一括で流します。source PNGの再生成・リサイズ・圧縮は行いません。</p>
   <section id="batchImporter" class="panel">
     <div class="batch-grid">
-      <div class="field"><label for="batchZip">NOVELIGHT_thumbnail_assets_v1_30.zip</label><input id="batchZip" data-batch-file type="file" accept=".zip,application/zip" required></div>
+      <div class="field"><label for="batchZip">公式素材ZIP（v1 30素材 / background 20素材）</label><input id="batchZip" data-batch-file type="file" accept=".zip,application/zip" required></div>
       <button class="secondary" data-batch-verify type="button">ZIPを検証</button>
-      <button class="primary" data-batch-import type="button" disabled>30素材を登録</button>
+      <button class="primary" data-batch-import type="button" disabled>素材を登録</button>
     </div>
-    <progress class="progress" data-batch-progress max="30" value="0"></progress>
+    <progress class="progress" data-batch-progress max="1" value="0"></progress>
     <div class="batch-status" data-batch-status>ADMIN権限とGeometry状態を確認しています…</div>
     <div class="detail" data-batch-detail></div>
-    <div class="checklist"><span>texture 6 → DB layer_type=cover</span><span>symbol 8 → symbol</span><span>frame 4 → frame</span><span>pattern 8 → 修正版SHA固定</span><span>effect 4 → effect</span><span>book-v1 + cover_quadは変更しない</span></div>
-    <div class="rules"><strong>Fail-closed:</strong> 30 PNGのファイル名、byte size、1024×1536、RGBA、SHA-256が正式manifestと1件でも違えば登録を開始しません。途中失敗時は完了済みの同名・同template・同layer素材を再実行でスキップし、既存素材を上書き・削除しません。</div>
+    <div class="checklist"><span>旧v1 30素材ZIP対応</span><span>background公式20素材ZIP対応</span><span>book-v1 + cover_quadは変更しない</span></div>
+    <div class="rules"><strong>Fail-closed:</strong> PNG数、ファイル名、byte size、1024×1536、pixel format、SHA-256が選択ZIPの正式manifestと1件でも違えば登録を開始しません。途中失敗時は完了済みの同名・同template・同layer素材を再実行でスキップし、既存素材を上書き・削除しません。</div>
   </section>
 </main>
 <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
