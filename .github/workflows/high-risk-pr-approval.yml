@@ -467,10 +467,10 @@ jobs:
             echo 'Safety stop: exact Production migration plan run was not found.'
             exit 1
           }
-          test "$status" = 'completed' && test "$conclusion" = 'success' || {
+          if [ "$status" != 'completed' ] || [ "$conclusion" != 'success' ]; then
             echo "Safety stop: Production migration plan run $run_id did not succeed."
             exit 1
-          }
+          fi
 
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
           test "$current_main" = "$MERGE_SHA" || {
