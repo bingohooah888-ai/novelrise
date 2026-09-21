@@ -1,4 +1,8 @@
 import { isSameOriginRequest, parseAdminAllowlist } from './admin-dashboard.js';
+import {
+  buildScoutProgressionMetrics,
+  enrichScoutUserSummaries
+} from './admin-scout-progression.js';
 
 const PAGE_SIZE = 1000;
 const MAX_PAGED_ROWS = 50000;
@@ -6,6 +10,7 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_WINDOWS = new Set([30, 90]);
 const SOURCE_ORDER = [
+  'valid_read',
   'light_seed_use',
   'star_rating',
   'comment',
@@ -16,6 +21,7 @@ const SOURCE_ORDER = [
   'nova_prediction'
 ];
 const SOURCE_LABELS = {
+  valid_read: '有効読書',
   light_seed_use: 'LIGHT SEED使用',
   star_rating: '☆評価',
   comment: 'コメント',
@@ -462,30 +468,78 @@ export async function loadScoutAnalytics({
   now = new Date(),
   query = ''
 }) {
-  const [profiles, xpRows, eventRows, seeds, discoveryRows] = await Promise.all(
-    [
-      fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
-      fetchPaged(
-        supabase,
-        'scout_xp_ledger',
-        'user_id,source_event_id,xp_kind,xp_value,occurred_at'
-      ),
-      fetchPaged(
-        supabase,
-        'scout_event_ledger',
-        'id,event_type,metadata',
-        (request) => request.eq('event_type', 'light_seed_discovery')
-      ),
-      fetchPaged(supabase, 'light_seeds', 'reader_id,seed_type,seed_month'),
-      fetchPaged(
-        supabase,
-        'seed_discovery_state',
-        'reader_id,seed_type,rank_at_seed,highest_rank_seen,best_rank_delta,cumulative_discovery_xp,window_expires_at'
-      )
-    ]
-  );
+  const [
+    profiles,
+    xpRows,
+    eventRows,
+    seeds,
+    discoveryRows,
+    pointRows,
+    badgeRows,
+    badgeDefinitions,
+    thresholds,
+    usageRows,
+    lifecycleRows,
+    controlRows,
+    operatorRows
+  ] = await Promise.all([
+    fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
+    fetchPaged(
+      supabase,
+      'scout_xp_ledger',
+      'user_id,source_event_id,xp_kind,xp_value,occurred_at'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_event_ledger',
+      'id,event_type,metadata',
+      (request) => request.eq('event_type', 'light_seed_discovery')
+    ),
+    fetchPaged(supabase, 'light_seeds', 'reader_id,seed_type,seed_month'),
+    fetchPaged(
+      supabase,
+      'seed_discovery_state',
+      'reader_id,seed_type,rank_at_seed,highest_rank_seen,best_rank_delta,cumulative_discovery_xp,window_expires_at'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_point_ledger',
+      'id,user_id,point_kind,point_value,status,occurred_at'
+    ),
+    fetchPaged(
+      supabase,
+      'user_scout_badges',
+      'user_id,badge_id,progress_percent,earned_at,status,is_public'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_badge_definitions',
+      'badge_id,badge_category,difficulty,display_name'
+    ),
+    fetchPaged(supabase, 'scout_level_thresholds', 'level,cumulative_xp'),
+    fetchPaged(
+      supabase,
+      'scout_record_usage_days',
+      'user_id,activity_date,visit_count'
+    ),
+    fetchPaged(
+      supabase,
+      'user_lifecycle',
+      'user_id,registered_at,last_seen_at'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_point_user_controls',
+      'user_id,earning_suspended_until,reason,updated_at'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_point_operator_actions',
+      'user_id,action,reason,effective_until,amount,created_at'
+    )
+  ]);
 
-  return summarizeScoutData({
+  const base = summarizeScoutData({
     profiles,
     xpRows,
     eventRows,
@@ -495,6 +549,31 @@ export async function loadScoutAnalytics({
     now,
     query
   });
+
+  return {
+    ...base,
+    progression: buildScoutProgressionMetrics({
+      profiles,
+      xpRows,
+      pointRows,
+      badgeRows,
+      thresholds,
+      seeds,
+      discoveryRows,
+      usageRows,
+      lifecycleRows,
+      now
+    }),
+    users: enrichScoutUserSummaries(base.users, {
+      xpRows,
+      pointRows,
+      badgeRows,
+      badgeDefinitions,
+      thresholds,
+      controlRows,
+      operatorRows
+    })
+  };
 }
 
 function applySecurityHeaders(res) {
