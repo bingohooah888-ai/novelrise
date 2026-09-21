@@ -79,15 +79,51 @@ jobs:
               exit 0
             fi
 
-            expected_challenge="$(node scripts/high-risk-approval-lib.mjs challenge "$pr_number" "$head_sha")"
-            approval_json="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/pulls/$pr_number/files?per_page=100" \
+              > /tmp/recovery-pr-files.json
+            file_count="$(jq 'length' /tmp/recovery-pr-files.json)"
+            if [ "$file_count" -ge 100 ]; then
+              echo 'Relay failed and source PR file list exceeds the bounded recovery contract; skipping readiness recovery.'
+              exit 0
+            fi
+
+            migration_count="$(
+              jq '[.[] | select(.filename | test("^supabase/migrations/.*\\.sql$"))] | length' /tmp/recovery-pr-files.json
+            )"
+            production_scopes=''
+            production_scopes_json='[]'
+            if [ "$migration_count" -gt 0 ]; then
+              invalid_migration_count="$(
+                jq '[.[] | select(.filename | test("^supabase/migrations/.*\\.sql$")) | select(.status != "added" or (.filename | test("^supabase/migrations/[0-9]{14}_.+\\.sql$") | not))] | length' /tmp/recovery-pr-files.json
+              )"
+              if [ "$invalid_migration_count" -ne 0 ]; then
+                echo 'Relay failed and migration changes are outside the inherited approval recovery contract; skipping readiness recovery.'
+                exit 0
+              fi
+              production_scopes='supabase-migration-deploy'
+              production_scopes_json='["supabase-migration-deploy"]'
+            fi
+
+            expected_challenge="$(node scripts/high-risk-approval-lib.mjs challenge "$pr_number" "$head_sha" "$production_scopes")"
+            scoped_approval_json="$(
+              jq -cn \
+                --argjson pr "$pr_number" \
+                --arg headSha "$head_sha" \
+                --arg challenge "$expected_challenge" \
+                --argjson productionScopes "$production_scopes_json" \
+                '{operation:"merge-high-risk-pr",pr:$pr,headSha:$headSha,challenge:$challenge,productionScopes:$productionScopes}'
+            )"
+            expected_scoped_approval="NOVELIGHT_HIGH_RISK_APPROVE $scoped_approval_json"
+
+            legacy_approval_json="$(
               jq -cn \
                 --argjson pr "$pr_number" \
                 --arg headSha "$head_sha" \
                 --arg challenge "$expected_challenge" \
                 '{operation:"merge-high-risk-pr",pr:$pr,headSha:$headSha,challenge:$challenge}'
             )"
-            expected_approval="NOVELIGHT_HIGH_RISK_APPROVE $approval_json"
+            expected_legacy_approval="NOVELIGHT_HIGH_RISK_APPROVE $legacy_approval_json"
 
             gh api \
               "repos/$GITHUB_REPOSITORY/issues/$pr_number/comments?per_page=100" \
@@ -100,12 +136,21 @@ jobs:
 
             approval_count="$(
               jq \
-                --arg body "$expected_approval" \
-                '[.[] | select(.body == $body and .user.login == "bingohooah888-ai" and .author_association == "OWNER")] | length' \
-                /tmp/pr-comments.json
+                --arg scoped "$expected_scoped_approval" \
+                --arg legacy "$expected_legacy_approval" \
+                --arg scopes "$production_scopes" '
+                [
+                  .[]
+                  | select(.user.login == "bingohooah888-ai" and .author_association == "OWNER")
+                  | select(
+                      .body == $scoped or
+                      ($scopes == "" and .body == $legacy)
+                    )
+                ] | length
+              ' /tmp/pr-comments.json
             )"
             if [ "$approval_count" -lt 1 ]; then
-              echo "Relay failed and current main PR #$pr_number lacks exact owner approval for head $head_sha; skipping readiness recovery."
+              echo "Relay failed and current main PR #$pr_number lacks exact owner approval for head $head_sha and Production scope; skipping readiness recovery."
               exit 0
             fi
 
