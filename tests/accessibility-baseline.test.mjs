@@ -15,7 +15,7 @@ test('all application pages with main content expose the shared accessibility ba
     .filter((name) => name.endsWith('.html'))
     .filter((name) => /<main\b/i.test(read(name)));
 
-  assert.equal(pages.length, 60);
+  assert.equal(pages.length, 61);
   for (const page of pages) {
     const html = read(page);
     assert.match(html, /novelight-accessibility\.css/, page);
