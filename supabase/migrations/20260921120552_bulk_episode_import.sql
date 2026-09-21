@@ -127,8 +127,8 @@ begin
     end if;
 
     for v_key in
-      select key
-      from jsonb_object_keys(v_item) as key
+      select k
+      from jsonb_object_keys(v_item) as keys(k)
     loop
       if v_key not in ('title', 'content') then
         raise exception 'Unexpected import item field: %', v_key using errcode = '22023';
