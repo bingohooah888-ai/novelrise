@@ -133,30 +133,34 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 
 ただし、**カードより前にツールを呼んだ、無許可の画像ツールを呼んだ、外部mutation・Secret・Production・破壊的操作・課金/決済・one-time requestのCLAIM/CONSUMEを開始した**場合は、この自動リセットで復旧可能扱いにしてはならない。既存のHard Fail-Closed、安全承認、fresh approval、cleanup/rollback契約を優先する。
 
-### 未消費承認のcarry-forward
+### 本番承認のcarry-forwardと機械証跡の再発行
 
-ユーザーが具体的な操作を明示承認した後、ChatGPT/実行エージェント側の手順ミス・read-only失敗・transport失敗等で**その承認を使った外部request / claim / mutationがまだ一度も開始されていない**場合、同じ承認文を再入力させることを既定にしない。
+ユーザーがMASTERで定める「本番承認」を明示した後、同じProduction変更範囲の中でfinal head SHA、main SHA、challengeその他の機械識別子だけが変化しても、そのことだけを理由に同じ人間承認を再入力させない。
 
-承認をcarry-forwardできるのは、freshなread-only再確認で次をすべて証明できる場合だけとする。
+人間の本番承認と、GitHub workflowが要求するexact SHA / challenge / one-time token / Approval Ledger commentは別物として扱う。前者はユーザーの意思決定、後者はその意思決定を現在の機械状態へ安全に結び付ける技術的証跡である。
 
-- operation種別、対象Environment、対象resource / migration等の承認スコープが同一
-- 承認後に外部request、CLAIMED ledger、mutation、課金、Secret変更等が発生していない
-- safety boundaryと対象artifactが承認時から実質的に変わっていない
-- 別の正式契約がexact SHA、challenge、one-time token等によるfresh approvalを要求していない
+同じ人間承認をcarry-forwardできるのは、freshなread-only再確認で次をすべて証明できる場合だけとする。
 
-`main` が進んだ場合は、承認対象artifactとcontrol pathが変わっていないことを証明できるときだけcarry-forwardする。証明できない、または承認対象に関連する変更がある場合はfresh approvalを得る。
+- operation種別と対象Environment / resourceが同一
+- ユーザーが承認した実質的なProduction変更内容が同一
+- 承認後に新しいmigration、追加の破壊的処理、課金・Secret変更等が追加されていない
+- current main、pending state、Approval Ledgerその他の現在状態を安全に確認できる
+- current main上の固定workflow contractを弱めずに新しい機械証跡を生成できる
 
-次はcarry-forward禁止とする。
+上記を満たす場合、final head SHA、main SHA、challenge等が変わっていても、ChatGPT/実行エージェントが新しい機械可読承認を自動生成し、OWNER本人として認証されたGitHub経路から投入する。ユーザーへ「高リスク承認」「migration承認」「GitHubコメント承認」等を追加で要求しない。
 
-- final-head SHA / challengeへ固定されたHigh-Risk PR承認
-- Production DB、Production Secret、Stripe live、その他Production high-impact operationで正式契約がfresh approvalを要求するもの
-- Secret、2FA、OAuth、Recovery code等の本人操作
-- destructive / irreversible operationで実行直前のfresh confirmationが契約上必要なもの
-- すでにone-time requestが `CLAIMED` または `CONSUMED` された操作
+一回限りの機械証跡がすでに `CLAIMED` / `CONSUMED` / `EXECUTED` / `FAILED` となっている場合、その同じ機械証跡は再利用しない。同じ人間承認を基礎に新しい機械証跡を発行できるのは、mutationが未開始または失敗地点が安全に特定され、実質的なProduction変更範囲が同一であることをfresh evidenceで証明できる場合に限る。mutationが実際に開始された可能性がある、現在状態がunknown、または追加mutationが必要になった場合は新しい本番承認を要求する。
 
-one-time request bridgeでrequestがclaim/consume済みになった場合は、元の承認を未消費とは扱わず、そのrunbookのfresh approval規則へ戻る。
+次は人間の本番承認carry-forward禁止とする。
 
-目的は安全承認を省略することではなく、**アシスタント側の非変更ミスだけを理由に、同一スコープの未消費承認をユーザーへ何度も入力させないこと**である。
+- 対象Environment / resourceが変わった
+- migration集合やProduction変更内容が実質的に拡大した
+- 新しい破壊的・不可逆的処理が追加された
+- 新しい課金、Secret、credential変更が追加された
+- 承認範囲が同一であることをfresh evidenceで証明できない
+- Secret、2FA、OAuth、Recovery code等、ユーザー本人の新しい操作そのものが必要
+
+目的は安全承認を省略することではない。**人間の意思決定は1回に保ち、exact SHAやchallenge等の機械安全証跡だけを必要に応じて再生成することで、同じ本番承認を何度も入力させないこと**である。
 
 ## スクリーンショット・画面確認ゲート
 
