@@ -338,6 +338,26 @@ test('account settings rejects malformed, mismatched and unchanged emails before
   expect(pageErrors).toEqual([]);
 });
 
+test('account settings handles an already-used email without disclosing another account', async ({ page }) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
+    user: { id: 'author-e2e', email: 'owner@example.test' },
+    updateUserError: 'User already registered'
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/account-settings.html');
+  await page.locator('#newEmail').fill('used@example.test');
+  await page.locator('#confirmEmail').fill('used@example.test');
+  await page.locator('#changeEmail').click();
+
+  await expect(page.locator('#status')).toHaveText(
+    'このメールアドレスには変更できません。入力内容を確認するか、別のメールアドレスをお試しください。'
+  );
+  await expect(page.locator('#status')).not.toContainText('User');
+  expect(pageErrors).toEqual([]);
+});
+
 test('account settings reports pending confirmation without revealing the pending target', async ({ page }) => {
   await installSupabaseStub(page, {
     session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
