@@ -215,6 +215,9 @@ begin
   ) or not exists (
     select 1 from pg_trigger
      where tgname='scout_comment_refresh_reader_badges' and not tgisinternal
+  ) or not exists (
+    select 1 from pg_trigger
+     where tgname='scout_metric_state_refresh_badges' and not tgisinternal
   ) then
     raise exception 'Badge event refresh triggers are incomplete';
   end if;
