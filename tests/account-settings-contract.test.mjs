@@ -50,10 +50,7 @@ test('account settings verifies the logged-in user before rendering private emai
 });
 
 test('account settings changes email only through the official logged-in Auth API', () => {
-  assert.match(
-    account,
-    /client\.auth\.updateUser\(\{email:newEmail\}\)/u
-  );
+  assert.match(account, /client\.auth\.updateUser\(\{email:newEmail\}\)/u);
   assert.doesNotMatch(account, /auth\.admin/u);
   assert.doesNotMatch(account, /auth\.users/u);
   assert.doesNotMatch(account, /SUPABASE_SECRET_KEY|service_role/u);
@@ -117,10 +114,7 @@ test('Founding and beta qualification remain anchored to auth_user_id after regi
     qualificationMigration,
     /p\.auth_user_id = p_user_id[\s\S]*?p\.email_normalized = v_email/u
   );
-  assert.match(
-    qualificationMigration,
-    /auth_user_id = p_user_id/u
-  );
+  assert.match(qualificationMigration, /auth_user_id = p_user_id/u);
   assert.match(
     qualificationMigration,
     /insert into public\.founding_authors[\s\S]*?p_user_id/u
@@ -135,8 +129,8 @@ test('AUTHOR_PREOPEN continues to gate initial signup on preregistration email o
   assert.match(preopenMigration, /AUTHOR_PREOPEN/u);
   assert.match(
     preopenMigration,
-    /p\.email_normalized = v_email/u
+    /preregistration\.email_normalized = v_email/u
   );
-  assert.match(preopenMigration, /p\.status <> 'cancelled'/u);
+  assert.match(preopenMigration, /preregistration\.status <> 'cancelled'/u);
   assert.doesNotMatch(account, /beta_author_preregistrations/u);
 });
