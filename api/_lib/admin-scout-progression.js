@@ -37,6 +37,40 @@ function badgeRowsForUser(badgeRows, userId) {
   );
 }
 
+function retentionForUsers({ userIds, lifecycleRows, days, now }) {
+  const ids = userIds instanceof Set ? userIds : new Set(userIds ?? []);
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const cutoff = new Date(nowDate.getTime() - days * 24 * 60 * 60 * 1000);
+  let eligible = 0;
+  let retained = 0;
+
+  for (const row of lifecycleRows ?? []) {
+    if (!ids.has(row.user_id)) continue;
+    const registeredAt = new Date(row.registered_at);
+    const lastSeenAt = new Date(row.last_seen_at);
+    if (!Number.isFinite(registeredAt.getTime()) || registeredAt > cutoff) {
+      continue;
+    }
+
+    eligible += 1;
+    const threshold = new Date(
+      registeredAt.getTime() + days * 24 * 60 * 60 * 1000
+    );
+    if (
+      Number.isFinite(lastSeenAt.getTime()) &&
+      lastSeenAt >= threshold
+    ) {
+      retained += 1;
+    }
+  }
+
+  return {
+    eligible,
+    retained,
+    rate: rate(retained, eligible)
+  };
+}
+
 export function buildScoutProgressionMetrics({
   profiles = [],
   xpRows = [],
@@ -44,7 +78,10 @@ export function buildScoutProgressionMetrics({
   badgeRows = [],
   thresholds = [],
   seeds = [],
-  discoveryRows = []
+  discoveryRows = [],
+  usageRows = [],
+  lifecycleRows = [],
+  now = new Date()
 }) {
   const xpTotals = xpByUser(xpRows);
   const levels = profiles.map((profile) =>
@@ -70,17 +107,41 @@ export function buildScoutProgressionMetrics({
     );
   }
   const earnedBadges = badgeRows.filter((row) => row.status === 'earned');
-  const active = new Set([
-    ...xpRows.map((row) => row.user_id),
-    ...pointRows.map((row) => row.user_id),
-    ...badgeRows.map((row) => row.user_id),
-    ...seeds.map((row) => row.reader_id),
-    ...discoveryRows.map((row) => row.reader_id)
-  ]);
+  const active = new Set(usageRows.map((row) => row.user_id).filter(Boolean));
+  const allProfileIds = new Set(profiles.map((profile) => profile.id));
+  const nonActive = new Set(
+    [...allProfileIds].filter((userId) => !active.has(userId))
+  );
 
   return {
     activeUsers: active.size,
     scoutRecordUseRate: rate(active.size, profiles.length),
+    retention: {
+      scout7d: retentionForUsers({
+        userIds: active,
+        lifecycleRows,
+        days: 7,
+        now
+      }),
+      scout30d: retentionForUsers({
+        userIds: active,
+        lifecycleRows,
+        days: 30,
+        now
+      }),
+      nonScout7d: retentionForUsers({
+        userIds: nonActive,
+        lifecycleRows,
+        days: 7,
+        now
+      }),
+      nonScout30d: retentionForUsers({
+        userIds: nonActive,
+        lifecycleRows,
+        days: 30,
+        now
+      })
+    },
     levelDistribution,
     lv30Users,
     lv30Rate: rate(lv30Users, profiles.length),
@@ -91,8 +152,9 @@ export function buildScoutProgressionMetrics({
         : 0,
       pendingRows: pointRows.filter((row) => row.status === 'pending').length,
       frozenRows: pointRows.filter((row) => row.status === 'frozen').length,
-      cancelledRows: pointRows.filter((row) => row.status === 'cancelled')
-        .length,
+      cancelledRows: pointRows.filter(
+        (row) => row.status === 'cancelled' || row.point_kind === 'reversal'
+      ).length,
       byReason: [...byReason.entries()].map(([kind, amount]) => ({
         kind,
         amount
