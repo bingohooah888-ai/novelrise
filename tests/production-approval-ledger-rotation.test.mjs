@@ -44,6 +44,7 @@ test('active shared Production approval routes are pinned to the v4 ledger', asy
 test('active mutation bridges keep the bounded ledger fail-closed contract', async () => {
   for (const path of [
     '.github/workflows/production-migration-approved-dispatch.yml',
+    '.github/workflows/supabase-production-auto-deploy.yml',
     '.github/workflows/production-auth-smoke-approved-dispatch.yml',
     '.github/workflows/vercel-admin-allowlist.yml'
   ]) {
