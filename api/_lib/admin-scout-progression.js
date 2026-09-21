@@ -68,6 +68,199 @@ function retentionForUsers({ userIds, lifecycleRows, days, now }) {
   };
 }
 
+function distributionPercentile(values, fraction) {
+  const sorted = (values ?? [])
+    .map(number)
+    .sort((a, b) => a - b);
+  if (!sorted.length) return 0;
+
+  const position = (sorted.length - 1) * fraction;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  if (lower === upper) return Number(sorted[lower].toFixed(2));
+
+  const weight = position - lower;
+  return Number(
+    (sorted[lower] + (sorted[upper] - sorted[lower]) * weight).toFixed(2)
+  );
+}
+
+function pointBalanceDistribution(profiles, pointRows) {
+  const balances = new Map(profiles.map((profile) => [profile.id, 0]));
+  for (const row of pointRows) {
+    if (!balances.has(row.user_id) || row.status !== 'confirmed') continue;
+    balances.set(
+      row.user_id,
+      (balances.get(row.user_id) ?? 0) + number(row.point_value)
+    );
+  }
+
+  const values = [...balances.values()];
+  return {
+    p50: distributionPercentile(values, 0.5),
+    p90: distributionPercentile(values, 0.9),
+    p95: distributionPercentile(values, 0.95),
+    max: values.length ? Math.max(...values) : 0,
+    zeroUsers: values.filter((value) => value === 0).length,
+    positiveUsers: values.filter((value) => value > 0).length
+  };
+}
+
+function rankAtRead(events, occurredAt) {
+  const target = new Date(occurredAt).getTime();
+  if (!Number.isFinite(target) || !events?.length) return null;
+
+  let low = 0;
+  let high = events.length - 1;
+  let match = null;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    const eventTime = new Date(events[middle].occurred_at).getTime();
+    if (!Number.isFinite(eventTime)) {
+      low = middle + 1;
+      continue;
+    }
+    if (eventTime <= target) {
+      match = number(events[middle].to_rank);
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+  return match;
+}
+
+function buildReaderFlowComparison({
+  profiles,
+  usageRows,
+  validReadRows,
+  rankEventRows,
+  novels,
+  badgeSettings
+}) {
+  const profileIds = new Set(profiles.map((profile) => profile.id));
+  const scoutUsers = new Set(
+    usageRows.map((row) => row.user_id).filter((id) => profileIds.has(id))
+  );
+  const nonScoutUsers = new Set(
+    [...profileIds].filter((userId) => !scoutUsers.has(userId))
+  );
+  const newAuthorDays = Math.max(1, number(badgeSettings?.new_author_days) || 30);
+  const lowRankThreshold = Math.max(
+    1,
+    Math.min(6, number(badgeSettings?.low_rank_threshold) || 2)
+  );
+
+  const authorFirstPublishedAt = new Map();
+  for (const novel of novels) {
+    if (!novel.user_id || !novel.first_published_at) continue;
+    const time = new Date(novel.first_published_at).getTime();
+    if (!Number.isFinite(time)) continue;
+    const previous = authorFirstPublishedAt.get(novel.user_id);
+    if (previous === undefined || time < previous) {
+      authorFirstPublishedAt.set(novel.user_id, time);
+    }
+  }
+
+  const rankEventsByNovel = new Map();
+  for (const row of rankEventRows) {
+    if (!row.novel_id_snapshot) continue;
+    const rows = rankEventsByNovel.get(row.novel_id_snapshot) ?? [];
+    rows.push(row);
+    rankEventsByNovel.set(row.novel_id_snapshot, rows);
+  }
+  for (const rows of rankEventsByNovel.values()) {
+    rows.sort(
+      (a, b) =>
+        new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime()
+    );
+  }
+
+  const perUser = new Map(
+    [...profileIds].map((userId) => [
+      userId,
+      {
+        works: new Set(),
+        newAuthors: new Set(),
+        lowRankWorks: new Set()
+      }
+    ])
+  );
+
+  for (const read of validReadRows) {
+    const summary = perUser.get(read.reader_id);
+    if (!summary || !read.novel_id_snapshot) continue;
+
+    summary.works.add(read.novel_id_snapshot);
+
+    const readTime = new Date(read.qualified_at).getTime();
+    const firstPublishedAt = authorFirstPublishedAt.get(read.author_id_snapshot);
+    if (
+      Number.isFinite(readTime) &&
+      Number.isFinite(firstPublishedAt) &&
+      readTime >= firstPublishedAt &&
+      readTime < firstPublishedAt + newAuthorDays * 24 * 60 * 60 * 1000
+    ) {
+      summary.newAuthors.add(read.author_id_snapshot);
+    }
+
+    const historicalRank = rankAtRead(
+      rankEventsByNovel.get(read.novel_id_snapshot),
+      read.qualified_at
+    );
+    if (historicalRank !== null && historicalRank <= lowRankThreshold) {
+      summary.lowRankWorks.add(read.novel_id_snapshot);
+    }
+  }
+
+  function summarize(userIds) {
+    const rows = [...userIds].map(
+      (userId) =>
+        perUser.get(userId) ?? {
+          works: new Set(),
+          newAuthors: new Set(),
+          lowRankWorks: new Set()
+        }
+    );
+    const users = rows.length;
+    const readersWithValidRead = rows.filter((row) => row.works.size > 0).length;
+    const workTotal = rows.reduce((sum, row) => sum + row.works.size, 0);
+    const newAuthorTotal = rows.reduce(
+      (sum, row) => sum + row.newAuthors.size,
+      0
+    );
+    const lowRankTotal = rows.reduce(
+      (sum, row) => sum + row.lowRankWorks.size,
+      0
+    );
+
+    return {
+      users,
+      readersWithValidRead,
+      validReadUserRate: rate(readersWithValidRead, users),
+      distinctWorkReads: workTotal,
+      averageWorksPerReader: users
+        ? Number((workTotal / users).toFixed(2))
+        : 0,
+      newAuthorReads: newAuthorTotal,
+      averageNewAuthorsPerReader: users
+        ? Number((newAuthorTotal / users).toFixed(2))
+        : 0,
+      lowRankWorkReads: lowRankTotal,
+      averageLowRankWorksPerReader: users
+        ? Number((lowRankTotal / users).toFixed(2))
+        : 0
+    };
+  }
+
+  return {
+    newAuthorDays,
+    lowRankThreshold,
+    scoutUsers: summarize(scoutUsers),
+    nonScoutUsers: summarize(nonScoutUsers)
+  };
+}
+
 export function buildScoutProgressionMetrics({
   profiles = [],
   xpRows = [],
@@ -76,6 +269,10 @@ export function buildScoutProgressionMetrics({
   thresholds = [],
   usageRows = [],
   lifecycleRows = [],
+  validReadRows = [],
+  rankEventRows = [],
+  novels = [],
+  badgeSettings = {},
   now = new Date()
 }) {
   const xpTotals = xpByUser(xpRows);
@@ -102,6 +299,9 @@ export function buildScoutProgressionMetrics({
     );
   }
   const earnedBadges = badgeRows.filter((row) => row.status === 'earned');
+  const usersWithEarnedBadge = new Set(
+    earnedBadges.map((row) => row.user_id)
+  ).size;
   const active = new Set(usageRows.map((row) => row.user_id).filter(Boolean));
   const allProfileIds = new Set(profiles.map((profile) => profile.id));
   const nonActive = new Set(
@@ -150,6 +350,7 @@ export function buildScoutProgressionMetrics({
       cancelledRows: pointRows.filter(
         (row) => row.status === 'cancelled' || row.point_kind === 'reversal'
       ).length,
+      balanceDistribution: pointBalanceDistribution(profiles, pointRows),
       byReason: [...byReason.entries()].map(([kind, amount]) => ({
         kind,
         amount
@@ -157,8 +358,20 @@ export function buildScoutProgressionMetrics({
     },
     badges: {
       earned: earnedBadges.length,
-      usersWithEarnedBadge: new Set(earnedBadges.map((row) => row.user_id)).size
-    }
+      usersWithEarnedBadge,
+      userAcquisitionRate: rate(usersWithEarnedBadge, profiles.length),
+      averageEarnedPerRegisteredUser: profiles.length
+        ? Number((earnedBadges.length / profiles.length).toFixed(2))
+        : 0
+    },
+    readerFlow: buildReaderFlowComparison({
+      profiles,
+      usageRows,
+      validReadRows,
+      rankEventRows,
+      novels,
+      badgeSettings
+    })
   };
 }
 
