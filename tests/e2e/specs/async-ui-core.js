@@ -110,7 +110,11 @@ async function installSupabaseStub(page, overrides = {}) {
                 calls.push({ type: 'updateUser', payload });
                 await wait(state.authDelayMs);
                 return {
-                  data: { user: state.updateUserError ? null : state.user || state.session?.user || null },
+                  data: {
+                    user: state.updateUserError
+                      ? null
+                      : state.user || state.session?.user || null
+                  },
                   error: errorFor(state.updateUserError)
                 };
               },
@@ -259,7 +263,9 @@ test('favorites leaves loading state when favorites data loading fails', async (
   expect(pageErrors).toEqual([]);
 });
 
-test('account settings redirects logged-out users without exposing account data', async ({ page }) => {
+test('account settings redirects logged-out users without exposing account data', async ({
+  page
+}) => {
   await installSupabaseStub(page);
   const pageErrors = collectPageErrors(page);
 
@@ -271,7 +277,9 @@ test('account settings redirects logged-out users without exposing account data'
   expect(pageErrors).toEqual([]);
 });
 
-test('account settings shows only the signed-in user email and requests a confirmed change', async ({ page }) => {
+test('account settings shows only the signed-in user email and requests a confirmed change', async ({
+  page
+}) => {
   await installSupabaseStub(page, {
     session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
     user: { id: 'author-e2e', email: 'owner@example.test' }
@@ -302,7 +310,9 @@ test('account settings shows only the signed-in user email and requests a confir
   expect(pageErrors).toEqual([]);
 });
 
-test('account settings rejects malformed, mismatched and unchanged emails before Auth mutation', async ({ page }) => {
+test('account settings rejects malformed, mismatched and unchanged emails before Auth mutation', async ({
+  page
+}) => {
   await installSupabaseStub(page, {
     session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
     user: { id: 'author-e2e', email: 'owner@example.test' }
@@ -338,7 +348,9 @@ test('account settings rejects malformed, mismatched and unchanged emails before
   expect(pageErrors).toEqual([]);
 });
 
-test('account settings handles an already-used email without disclosing another account', async ({ page }) => {
+test('account settings handles an already-used email without disclosing another account', async ({
+  page
+}) => {
   await installSupabaseStub(page, {
     session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
     user: { id: 'author-e2e', email: 'owner@example.test' },
@@ -358,7 +370,9 @@ test('account settings handles an already-used email without disclosing another 
   expect(pageErrors).toEqual([]);
 });
 
-test('account settings reports pending confirmation without revealing the pending target', async ({ page }) => {
+test('account settings reports pending confirmation without revealing the pending target', async ({
+  page
+}) => {
   await installSupabaseStub(page, {
     session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
     user: {
@@ -379,7 +393,9 @@ test('account settings reports pending confirmation without revealing the pendin
   expect(pageErrors).toEqual([]);
 });
 
-test('account settings redirects when the verified Auth session is missing', async ({ page }) => {
+test('account settings redirects when the verified Auth session is missing', async ({
+  page
+}) => {
   await installSupabaseStub(page, {
     session: { user: { id: 'author-e2e' } },
     getUserError: 'Auth session missing'
