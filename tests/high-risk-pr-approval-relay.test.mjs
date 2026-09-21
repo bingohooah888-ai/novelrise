@@ -165,3 +165,43 @@ test('production readiness observes high-risk control workflow changes', () => {
     /'\.github\/workflows\/high-risk-merge-readiness-bridge\.yml'/
   );
 });
+
+
+test('migration-bearing high-risk PR requires one explicit Production migration scope', () => {
+  assert.match(workflow, /productionScopes/);
+  assert.match(workflow, /supabase-migration-deploy/);
+  assert.match(
+    workflow,
+    /this migration-bearing PR requires explicit supabase-migration-deploy scope in the one human Production approval/
+  );
+  assert.match(
+    workflow,
+    /approval challenge does not match the exact PR head and Production scope/
+  );
+  assert.match(
+    workflow,
+    /inherited Production migration approval supports newly added migrations only/
+  );
+});
+
+test('one approved migration scope is inherited after merge without a second human approval', () => {
+  assert.match(workflow, /Resolve exact merged main identity/);
+  assert.match(workflow, /Wait for exact Production migration plan success/);
+  assert.match(
+    workflow,
+    /supabase-production-auto-deploy\.yml\/runs\?event=push&head_sha=\$MERGE_SHA/
+  );
+  assert.match(
+    workflow,
+    /Dispatch inherited single-approval Production migration deploy/
+  );
+  assert.match(
+    workflow,
+    /production-migration-approved-dispatch\.yml\/dispatches/
+  );
+  assert.match(workflow, /source_approval_comment_id/);
+  assert.match(
+    workflow,
+    /no second human approval was requested/
+  );
+});
