@@ -1,13 +1,17 @@
-name: NOVELIGHT Supabase Production Migration Plan
+name: NOVELIGHT Supabase Production Single-Approval Deploy
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'supabase/migrations/**'
+  workflow_run:
+    workflows: ['NOVELIGHT High-Risk PR Approval Relay']
+    types: [completed]
+  workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
+  issues: write
+  pull-requests: read
+  statuses: write
 
 concurrency:
   group: supabase-production-migration
@@ -17,53 +21,48 @@ env:
   SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
 
 jobs:
-  plan:
-    name: Plan production migrations safely
+  deploy:
+    name: Verify single 本番承認 and deploy exact pending migrations
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: production
     env:
+      GH_TOKEN: ${{ github.token }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      MAX_BACKUP_AGE_HOURS: '36'
 
     steps:
-      - name: Checkout repository
+      - name: Checkout current main with full history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Detect migration versions introduced by this push
-        id: changes
-        env:
-          PUSH_BEFORE: ${{ github.event.before }}
-          PUSH_AFTER: ${{ github.sha }}
+      - name: Bind workflow to exact current main
+        id: main
         shell: bash
         run: |
           set -euo pipefail
 
-          if [ -z "$PUSH_BEFORE" ] || [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then
-            echo 'Production migration plan blocked: previous main revision cannot be proven.'
+          current_main="$(
+            gh api               "repos/$GITHUB_REPOSITORY/git/ref/heads/main"               --jq '.object.sha'
+          )"
+          checked_out="$(git rev-parse HEAD)"
+          test "$checked_out" = "$current_main" || {
+            echo "Safety stop: checked out main $checked_out is not current main $current_main."
             exit 1
-          fi
+          }
 
-          git cat-file -e "${PUSH_BEFORE}^{commit}"
-          git cat-file -e "${PUSH_AFTER}^{commit}"
+          echo "sha=$current_main" >> "$GITHUB_OUTPUT"
+          echo "Bound Production migration workflow to current main $current_main."
 
-          git diff --name-only "$PUSH_BEFORE" "$PUSH_AFTER" -- 'supabase/migrations/*.sql' \
-            | sed -nE 's#^supabase/migrations/([0-9]{14})_.*\.sql$#\1#p' \
-            | sort -u \
-            > /tmp/changed-migration-versions.txt
-
-          if [ ! -s /tmp/changed-migration-versions.txt ]; then
-            echo 'Production migration plan blocked: no migration version was detected.'
-            exit 1
-          fi
-
-          changed_versions="$(paste -sd, /tmp/changed-migration-versions.txt)"
-          echo "changed_versions=$changed_versions" >> "$GITHUB_OUTPUT"
-          echo "Changed migration versions: $changed_versions"
-
-      - name: Verify required production secrets
+      - name: Verify required Production credentials
         shell: bash
         run: |
           set -euo pipefail
@@ -76,39 +75,278 @@ jobs:
             exit 1
           }
 
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
         with:
           version: 2.111.0
 
-      - name: Link production project
+      - name: Link Production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
-      - name: Require pending migrations to match this push exactly
-        env:
-          CHANGED_VERSIONS: ${{ steps.changes.outputs.changed_versions }}
-        run: bash scripts/verify-supabase-pending.sh
-
-      - name: Dry-run pending migrations
-        run: supabase db push --linked --dry-run
-
-      - name: Require Staging migration parity before approval handoff
-        env:
-          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
-        run: node scripts/verify-staging-migration-parity.mjs
-
-      - name: Record chat-approval handoff
-        env:
-          CHANGED_VERSIONS: ${{ steps.changes.outputs.changed_versions }}
+      - name: Capture current Production pending migrations
+        id: pending
         shell: bash
         run: |
-          {
-            echo '### Production migration plan passed'
-            echo
-            echo "Current main: \`$GITHUB_SHA\`"
-            echo "Pending migration versions: \`$CHANGED_VERSIONS\`"
-            echo "Staging migration parity: \`PASS\`"
-            echo
-            echo 'No Production database mutation was performed.'
-            echo 'Actual deploy requires a fresh explicit chat approval or the protected manual fallback.'
-          } >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+
+          supabase migration list --linked | tee /tmp/production-migration-list.txt
+          bash scripts/extract-supabase-pending.sh /tmp/production-migration-list.txt             | sed '/^$/d'             | sort -u             > /tmp/production-pending.txt
+
+          if [ ! -s /tmp/production-pending.txt ]; then
+            echo 'has_pending=false' >> "$GITHUB_OUTPUT"
+            echo 'Production has no pending migrations; no mutation is required.'
+            exit 0
+          fi
+
+          pending="$(paste -sd, /tmp/production-pending.txt)"
+          echo 'has_pending=true' >> "$GITHUB_OUTPUT"
+          echo "versions=$pending" >> "$GITHUB_OUTPUT"
+          echo "Current Production pending migrations: $pending"
+
+      - name: Resolve the original owner 本番承認 for the pending migration PR
+        if: steps.pending.outputs.has_pending == 'true'
+        id: approval
+        env:
+          CURRENT_MAIN_SHA: ${{ steps.main.outputs.sha }}
+          PENDING_MIGRATIONS: ${{ steps.pending.outputs.versions }}
+        run: node scripts/resolve-production-migration-approval.mjs
+
+      - name: Require Production Readiness success for current main
+        if: steps.pending.outputs.has_pending == 'true'
+        env:
+          CURRENT_MAIN_SHA: ${{ steps.main.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          last_state='missing'
+          for attempt in $(seq 1 72); do
+            current_main="$(
+              gh api                 "repos/$GITHUB_REPOSITORY/git/ref/heads/main"                 --jq '.object.sha'
+            )"
+            test "$current_main" = "$CURRENT_MAIN_SHA" || {
+              echo 'Safety stop: main changed while waiting for Production Readiness.'
+              exit 1
+            }
+
+            gh api               "repos/$GITHUB_REPOSITORY/commits/$CURRENT_MAIN_SHA/status"               > /tmp/current-main-status.json
+
+            last_state="$(
+              jq -r                 '[.statuses[] | select(.context == "production-readiness-smoke")][0].state // "missing"'                 /tmp/current-main-status.json
+            )"
+            if [ "$last_state" = 'success' ]; then
+              echo "Production Readiness passed for $CURRENT_MAIN_SHA."
+              break
+            fi
+
+            if [ "$attempt" -eq 72 ]; then
+              echo "Safety stop: Production Readiness did not reach success; last state=$last_state."
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Require fresh Production backup
+        if: steps.pending.outputs.has_pending == 'true'
+        run: node scripts/check-production-backup-freshness.mjs
+
+      - name: Require pending migrations to match the approved PR exactly
+        if: steps.pending.outputs.has_pending == 'true'
+        env:
+          CHANGED_VERSIONS: ${{ steps.approval.outputs.approved_migrations }}
+        run: bash scripts/verify-supabase-pending.sh
+
+      - name: Dry-run exact approved Production migrations
+        if: steps.pending.outputs.has_pending == 'true'
+        run: supabase db push --linked --dry-run --include-all
+
+      - name: Require Staging migration parity
+        if: steps.pending.outputs.has_pending == 'true'
+        run: node scripts/verify-staging-migration-parity.mjs
+
+      - name: Re-check current main before claim
+        if: steps.pending.outputs.has_pending == 'true'
+        env:
+          CURRENT_MAIN_SHA: ${{ steps.main.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(
+            gh api               "repos/$GITHUB_REPOSITORY/git/ref/heads/main"               --jq '.object.sha'
+          )"
+          test "$current_main" = "$CURRENT_MAIN_SHA" || {
+            echo 'Safety stop: main changed before the Production migration claim.'
+            exit 1
+          }
+
+      - name: Record machine claim from the existing single 本番承認
+        if: steps.pending.outputs.has_pending == 'true'
+        id: claim
+        env:
+          CURRENT_MAIN_SHA: ${{ steps.main.outputs.sha }}
+          SOURCE_PR: ${{ steps.approval.outputs.source_pr }}
+          SOURCE_HEAD_SHA: ${{ steps.approval.outputs.source_head_sha }}
+          APPROVAL_CHALLENGE: ${{ steps.approval.outputs.approval_challenge }}
+          APPROVED_MIGRATIONS: ${{ steps.approval.outputs.approved_migrations }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ledger_issue="$(jq -er '.activeIssue' production-approval-ledger.json)"
+          max_comments="$(jq -er '.maxComments' production-approval-ledger.json)"
+
+          gh api             "repos/$GITHUB_REPOSITORY/issues/$ledger_issue/comments?per_page=100"             > /tmp/production-ledger-comments.json
+          comment_count="$(jq 'length' /tmp/production-ledger-comments.json)"
+          [ "$comment_count" -lt "$max_comments" ] || {
+            echo 'Safety stop: Production Approval Ledger exceeded the bounded comment contract.'
+            exit 1
+          }
+
+          prior_claims="$(
+            jq               --argjson sourcePr "$SOURCE_PR"               --arg sourceHeadSha "$SOURCE_HEAD_SHA"               --arg migrations "$APPROVED_MIGRATIONS"               '[
+                .[]
+                | select(.body | startswith("NOVELIGHT_PRODUCTION_SINGLE_APPROVAL_MIGRATION_CLAIMED "))
+                | (.body | sub("^[^ ]+ "; "") | fromjson?)
+                | select(
+                    .sourcePr == $sourcePr and
+                    .sourceHeadSha == $sourceHeadSha and
+                    ((.migrations | join(",")) == $migrations)
+                  )
+              ] | length'               /tmp/production-ledger-comments.json
+          )"
+          [ "$prior_claims" -eq 0 ] || {
+            echo 'Safety stop: this single-approval migration scope was already claimed.'
+            exit 1
+          }
+
+          payload="$(
+            jq -cn               --arg operation 'supabase-migration-deploy'               --argjson sourcePr "$SOURCE_PR"               --arg sourceHeadSha "$SOURCE_HEAD_SHA"               --arg approvalChallenge "$APPROVAL_CHALLENGE"               --arg mainSha "$CURRENT_MAIN_SHA"               --arg migrations "$APPROVED_MIGRATIONS"               --arg runId "$GITHUB_RUN_ID"               '{operation:$operation,sourcePr:$sourcePr,sourceHeadSha:$sourceHeadSha,approvalChallenge:$approvalChallenge,mainSha:$mainSha,migrations:($migrations | split(",")),runId:$runId}'
+          )"
+
+          gh api             --method POST             "repos/$GITHUB_REPOSITORY/issues/$ledger_issue/comments"             -f body="NOVELIGHT_PRODUCTION_SINGLE_APPROVAL_MIGRATION_CLAIMED $payload"             >/dev/null
+
+          echo 'claimed=true' >> "$GITHUB_OUTPUT"
+          echo "Machine claim recorded from the existing 本番承認 for PR #$SOURCE_PR."
+
+      - name: Re-confirm main and pending set after claim
+        if: steps.claim.outputs.claimed == 'true'
+        env:
+          CURRENT_MAIN_SHA: ${{ steps.main.outputs.sha }}
+          CHANGED_VERSIONS: ${{ steps.approval.outputs.approved_migrations }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_main="$(
+            gh api               "repos/$GITHUB_REPOSITORY/git/ref/heads/main"               --jq '.object.sha'
+          )"
+          test "$current_main" = "$CURRENT_MAIN_SHA" || {
+            echo 'Safety stop: main changed after the Production migration claim.'
+            exit 1
+          }
+
+          bash scripts/verify-supabase-pending.sh
+          supabase db push --linked --dry-run --include-all
+
+      - name: Apply exact single-approved Production migrations
+        if: steps.claim.outputs.claimed == 'true'
+        id: migration_mutation
+        run: supabase db push --linked --yes --include-all
+
+      - name: Verify Production migration status after mutation
+        if: steps.migration_mutation.outcome == 'success'
+        id: migration_status_postcheck
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          supabase migration list --linked | tee /tmp/post-deploy-migration-list.txt
+          pending="$(
+            bash scripts/extract-supabase-pending.sh /tmp/post-deploy-migration-list.txt
+          )"
+          test -z "$pending" || {
+            echo 'Production still has pending migrations after the approved deploy.'
+            printf '%s\n' "$pending"
+            exit 1
+          }
+
+      - name: Verify Production beta observability
+        if: steps.migration_mutation.outcome == 'success'
+        id: production_beta_observability
+        continue-on-error: true
+        run: bash scripts/verify-production-observability.sh
+
+      - name: Publish Production beta verification status
+        if: always() && steps.claim.outputs.claimed == 'true'
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+          VERIFY_OUTCOME: ${{ steps.production_beta_observability.outcome }}
+        shell: bash
+        run: |
+          state=failure
+          description='Production beta verification failed'
+          if [ "$VERIFY_OUTCOME" = 'success' ]; then
+            state=success
+            description='Production beta verification passed'
+          fi
+          bash scripts/publish-commit-status.sh             "$state"             production-beta-verification             "$description"
+
+      - name: Record single-approval Production migration result
+        if: always() && steps.claim.outputs.claimed == 'true'
+        env:
+          CURRENT_MAIN_SHA: ${{ steps.main.outputs.sha }}
+          SOURCE_PR: ${{ steps.approval.outputs.source_pr }}
+          SOURCE_HEAD_SHA: ${{ steps.approval.outputs.source_head_sha }}
+          APPROVAL_CHALLENGE: ${{ steps.approval.outputs.approval_challenge }}
+          APPROVED_MIGRATIONS: ${{ steps.approval.outputs.approved_migrations }}
+          MUTATION_OUTCOME: ${{ steps.migration_mutation.outcome }}
+          MIGRATION_POSTCHECK_OUTCOME: ${{ steps.migration_status_postcheck.outcome }}
+          OBSERVABILITY_OUTCOME: ${{ steps.production_beta_observability.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mutation_result='not-run'
+          postcheck_result='not-run'
+          failure_phase='pre-mutation'
+          marker='NOVELIGHT_PRODUCTION_SINGLE_APPROVAL_MIGRATION_FAILED'
+
+          if [ "$MUTATION_OUTCOME" = 'failure' ]; then
+            mutation_result='failure'
+            failure_phase='mutation'
+          elif [ "$MUTATION_OUTCOME" = 'success' ]; then
+            mutation_result='success'
+            if [ "$MIGRATION_POSTCHECK_OUTCOME" != 'success' ]; then
+              postcheck_result='failure'
+              failure_phase='postcheck:migration-status'
+            elif [ "$OBSERVABILITY_OUTCOME" != 'success' ]; then
+              postcheck_result='failure'
+              failure_phase='postcheck:integrity'
+            else
+              postcheck_result='success'
+              failure_phase='none'
+              marker='NOVELIGHT_PRODUCTION_SINGLE_APPROVAL_MIGRATION_EXECUTED'
+            fi
+          fi
+
+          ledger_issue="$(jq -er '.activeIssue' production-approval-ledger.json)"
+          payload="$(
+            jq -cn               --arg operation 'supabase-migration-deploy'               --argjson sourcePr "$SOURCE_PR"               --arg sourceHeadSha "$SOURCE_HEAD_SHA"               --arg approvalChallenge "$APPROVAL_CHALLENGE"               --arg mainSha "$CURRENT_MAIN_SHA"               --arg migrations "$APPROVED_MIGRATIONS"               --arg runId "$GITHUB_RUN_ID"               --arg mutation_result "$mutation_result"               --arg postcheck_result "$postcheck_result"               --arg failure_phase "$failure_phase"               '{operation:$operation,sourcePr:$sourcePr,sourceHeadSha:$sourceHeadSha,approvalChallenge:$approvalChallenge,mainSha:$mainSha,migrations:($migrations | split(",")),runId:$runId,mutation_result:$mutation_result,postcheck_result:$postcheck_result,failure_phase:$failure_phase}'
+          )"
+
+          gh api             --method POST             "repos/$GITHUB_REPOSITORY/issues/$ledger_issue/comments"             -f body="$marker $payload"             >/dev/null
+
+          echo "$marker: mutation=$mutation_result postcheck=$postcheck_result phase=$failure_phase"
+
+      - name: Enforce Production observability result
+        if: >-
+          steps.migration_mutation.outcome == 'success' &&
+          steps.production_beta_observability.outcome != 'success'
+        run: |
+          echo 'Production beta observability verification failed.'
+          exit 1
