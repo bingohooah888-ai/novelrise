@@ -125,7 +125,23 @@ async function enforceHighRiskApproval() {
     return;
   }
 
-  const challenge = highRiskApprovalChallenge(prNumber, headSha);
+  const migrationSqlFiles = changedFiles.filter((file) =>
+    /^supabase\/migrations\/.*\.sql$/.test(file),
+  );
+  const canonicalMigrationFiles = migrationSqlFiles.filter((file) =>
+    /^supabase\/migrations\/[0-9]{14}_.+\.sql$/.test(file),
+  );
+  if (migrationSqlFiles.length !== canonicalMigrationFiles.length) {
+    fail('migration-bearing high-risk PR contains a non-canonical migration filename');
+  }
+
+  const productionScopes =
+    canonicalMigrationFiles.length > 0 ? ['supabase-migration-deploy'] : [];
+  const challenge = highRiskApprovalChallenge(
+    prNumber,
+    headSha,
+    productionScopes,
+  );
   const comments = await fetchPrComments(repository, prNumber);
   const approved = comments.some(
     (comment) =>
@@ -135,6 +151,7 @@ async function enforceHighRiskApproval() {
         pr: prNumber,
         headSha,
         challenge,
+        productionScopes,
       }),
   );
 
@@ -144,11 +161,12 @@ async function enforceHighRiskApproval() {
       pr: prNumber,
       headSha,
       challenge,
+      productionScopes,
     })}`;
     fail(
-      `high-risk PR requires an owner-authored, head-SHA-bound approval. ` +
-        `Challenge ${challenge}. High-risk paths: ${highRiskFiles.join(', ')}. ` +
-        `Exact approval comment: ${exactApproval}`,
+      `high-risk PR requires an owner-authored, head-SHA-and-Production-scope-bound approval. ` +
+        `Challenge ${challenge}. Production scopes: ${productionScopes.join(',') || 'merge-only'}. ` +
+        `High-risk paths: ${highRiskFiles.join(', ')}. Exact approval comment: ${exactApproval}`,
     );
   }
 
