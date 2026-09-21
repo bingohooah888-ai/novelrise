@@ -72,6 +72,14 @@ echo '::group::Verify SCOUT RECORD beta core, rollback and reapply'
 "${REPLAY[@]}" -f supabase/checks/20260920223049_scout_record_beta_core_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify SCOUT badge foundation, rollback and reapply'
+"${REPLAY[@]}" -f supabase/checks/20260921022608_scout_badge_foundation_postcheck.sql
+"${REPLAY[@]}" -f supabase/rollback/20260921022608_scout_badge_foundation_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260921022608_scout_badge_foundation_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921022608_scout_badge_foundation.sql
+"${REPLAY[@]}" -f supabase/checks/20260921022608_scout_badge_foundation_postcheck.sql
+echo '::endgroup::'
+
 echo '::group::Verify work classification tags, RLS, rollback and reapply'
 "${REPLAY[@]}" -f supabase/checks/20260920221000_novel_classification_tags_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/novel-classification-tags.sql
