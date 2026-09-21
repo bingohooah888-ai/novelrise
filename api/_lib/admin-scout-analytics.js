@@ -329,7 +329,39 @@ function discoveryRates(rows) {
     }
   );
 
-  return { byType, byRank };
+  const successful = rows.filter((row) => discoveryStage(row).plus2);
+  const successfulStages = successful.map(discoveryStage);
+  const successCount = successful.length;
+  const countSuccessStage = (key) =>
+    successfulStages.filter((stage) => stage[key]).length;
+  const averageBestRankDelta = successCount
+    ? round2(
+        successful.reduce(
+          (sum, row) =>
+            sum +
+            Math.max(
+              numeric(row.best_rank_delta),
+              numeric(row.highest_rank_seen) - numeric(row.rank_at_seed)
+            ),
+          0
+        ) / successCount
+      )
+    : 0;
+
+  return {
+    byType,
+    byRank,
+    growthAfterSuccess: {
+      successCount,
+      averageBestRankDelta,
+      plus3Count: countSuccessStage('plus3'),
+      plus3Rate: rate(countSuccessStage('plus3'), successCount),
+      plus4Count: countSuccessStage('plus4'),
+      plus4Rate: rate(countSuccessStage('plus4'), successCount),
+      plus5Count: countSuccessStage('plus5'),
+      plus5Rate: rate(countSuccessStage('plus5'), successCount)
+    }
+  };
 }
 
 function sourceTotalsForUser(xpRows, eventsById, userId) {
@@ -481,7 +513,11 @@ export async function loadScoutAnalytics({
     usageRows,
     lifecycleRows,
     controlRows,
-    operatorRows
+    operatorRows,
+    validReadRows,
+    rankEventRows,
+    novels,
+    badgeConfigRows
   ] = await Promise.all([
     fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
     fetchPaged(
@@ -514,7 +550,7 @@ export async function loadScoutAnalytics({
     fetchPaged(
       supabase,
       'scout_badge_definitions',
-      'badge_id,badge_category,difficulty,display_name'
+      'badge_id,badge_category,difficulty,display_name,enabled,sort_order'
     ),
     fetchPaged(supabase, 'scout_level_thresholds', 'level,cumulative_xp'),
     fetchPaged(
@@ -536,7 +572,19 @@ export async function loadScoutAnalytics({
       supabase,
       'scout_point_operator_actions',
       'user_id,action,reason,effective_until,amount,created_at'
-    )
+    ),
+    fetchPaged(
+      supabase,
+      'valid_read_events',
+      'reader_id,novel_id_snapshot,author_id_snapshot,qualified_at'
+    ),
+    fetchPaged(
+      supabase,
+      'novel_rank_events',
+      'id,novel_id_snapshot,to_rank,occurred_at'
+    ),
+    fetchPaged(supabase, 'novels', 'id,user_id,first_published_at'),
+    fetchPaged(supabase, 'scout_badge_runtime_config', 'badge_settings')
   ]);
 
   const base = summarizeScoutData({
@@ -557,11 +605,16 @@ export async function loadScoutAnalytics({
       xpRows,
       pointRows,
       badgeRows,
+      badgeDefinitions,
       thresholds,
       seeds,
       discoveryRows,
       usageRows,
       lifecycleRows,
+      validReadRows,
+      rankEventRows,
+      novels,
+      badgeSettings: badgeConfigRows[0]?.badge_settings ?? {},
       now
     }),
     users: enrichScoutUserSummaries(base.users, {
