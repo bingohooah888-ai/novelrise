@@ -292,7 +292,13 @@ jobs:
           }
 
           status="$(
-            curl --silent --show-error               --output /tmp/supabase-auth-config.json               --write-out '%{http_code}'               --connect-timeout 10 --max-time 30               -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"               -H 'Accept: application/json'               "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth"
+            curl --silent --show-error \
+              --output /tmp/supabase-auth-config.json \
+              --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H 'Accept: application/json' \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth"
           )"
           [ "$status" = '200' ] || {
             echo "Safety stop: Auth config read returned HTTP $status."
