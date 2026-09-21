@@ -37,6 +37,41 @@ function badgeRowsForUser(badgeRows, userId) {
   );
 }
 
+function badgeAcquisitionByDefinition(
+  profiles,
+  badgeRows,
+  badgeDefinitions
+) {
+  const denominator = profiles.length;
+  const earnedUsersByBadge = new Map();
+
+  for (const row of badgeRows) {
+    if (row.status !== 'earned' || !row.badge_id || !row.user_id) continue;
+    const users = earnedUsersByBadge.get(row.badge_id) ?? new Set();
+    users.add(row.user_id);
+    earnedUsersByBadge.set(row.badge_id, users);
+  }
+
+  return [...badgeDefinitions]
+    .filter((row) => row.enabled !== false)
+    .sort(
+      (a, b) =>
+        number(a.sort_order) - number(b.sort_order) ||
+        String(a.badge_id).localeCompare(String(b.badge_id))
+    )
+    .map((definition) => {
+      const earnedUsers = earnedUsersByBadge.get(definition.badge_id)?.size ?? 0;
+      return {
+        badgeId: definition.badge_id,
+        category: definition.badge_category,
+        difficulty: definition.difficulty,
+        displayName: definition.display_name ?? definition.badge_id,
+        earnedUsers,
+        acquisitionRate: rate(earnedUsers, denominator)
+      };
+    });
+}
+
 function retentionForUsers({ userIds, lifecycleRows, days, now }) {
   const ids = userIds instanceof Set ? userIds : new Set(userIds ?? []);
   const nowDate = now instanceof Date ? now : new Date(now);
@@ -266,6 +301,7 @@ export function buildScoutProgressionMetrics({
   xpRows = [],
   pointRows = [],
   badgeRows = [],
+  badgeDefinitions = [],
   thresholds = [],
   usageRows = [],
   lifecycleRows = [],
@@ -362,7 +398,12 @@ export function buildScoutProgressionMetrics({
       userAcquisitionRate: rate(usersWithEarnedBadge, profiles.length),
       averageEarnedPerRegisteredUser: profiles.length
         ? Number((earnedBadges.length / profiles.length).toFixed(2))
-        : 0
+        : 0,
+      byBadge: badgeAcquisitionByDefinition(
+        profiles,
+        badgeRows,
+        badgeDefinitions
+      )
     },
     readerFlow: buildReaderFlowComparison({
       profiles,
