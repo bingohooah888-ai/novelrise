@@ -60,6 +60,10 @@ test('account settings reauthenticates before using the official email update AP
     /client\.auth\.signInWithPassword\(\{email:currentEmail,password:currentPassword\}\)[\s\S]*?client\.auth\.updateUser\(\{email:newEmail\}\)/u
   );
   assert.match(account, /client\.auth\.updateUser\(\{email:newEmail\}\)/u);
+  assert.match(
+    account,
+    /finally\{[\s\S]*?currentPasswordEl\.value=''[\s\S]*?busy=false/u
+  );
   assert.doesNotMatch(account, /auth\.admin/u);
   assert.doesNotMatch(account, /auth\.users/u);
   assert.doesNotMatch(account, /SUPABASE_SECRET_KEY|service_role/u);
