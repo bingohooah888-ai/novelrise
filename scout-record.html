@@ -93,6 +93,12 @@
         <button class="badge-filter" type="button" data-badge-status="earned" aria-pressed="false">獲得済み</button>
         <button class="badge-filter" type="button" data-badge-status="unearned" aria-pressed="false">未獲得</button>
       </div>
+      <div class="badge-filters" aria-label="Badge難易度">
+        <button class="badge-filter" type="button" data-badge-difficulty="all" aria-pressed="true">すべて</button>
+        <button class="badge-filter" type="button" data-badge-difficulty="easy" aria-pressed="false">Easy</button>
+        <button class="badge-filter" type="button" data-badge-difficulty="normal" aria-pressed="false">Normal</button>
+        <button class="badge-filter" type="button" data-badge-difficulty="hard" aria-pressed="false">Hard</button>
+      </div>
 
       <div id="badgeGrid" class="badge-grid"><div class="scout-loading" style="grid-column:1/-1">Badgeを読み込んでいます。</div></div>
     </section>
@@ -136,6 +142,7 @@
         <div class="scout-modal-kv"><span>獲得日</span><b id="badgeDialogEarned">—</b></div>
       </div>
       <div class="badge-progress" style="height:10px;margin-top:16px"><span id="badgeDialogBar"></span></div>
+      <div id="badgeDialogComposite" class="badge-composite" hidden aria-label="複合Badge条件の進捗"></div>
       <div id="badgeVisibility" class="scout-visibility" hidden>
         <button id="badgeVisibilityButton" class="scout-mini-button" type="button">公開Badgeにする</button>
         <p class="scout-note">公開Badgeは他ユーザーのプロフィールに表示できます。</p>
