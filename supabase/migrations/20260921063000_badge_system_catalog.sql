@@ -49,8 +49,9 @@ alter table public.scout_badge_definitions
   add column if not exists condition_config jsonb not null default '{}'::jsonb;
 
 update public.scout_badge_runtime_config
-   set badge_settings = coalesce(badge_settings, '{}'::jsonb)
-       || '{"new_author_days":30,"new_work_days":7,"low_rank_threshold":2,"long_chars":100000,"long_valid_episodes":5,"short_chars":20000,"completed_read_ratio":0.80}'::jsonb,
+   set badge_settings =
+       '{"new_author_days":30,"new_work_days":7,"low_rank_threshold":2,"long_chars":100000,"long_valid_episodes":5,"short_chars":20000,"completed_read_ratio":0.80}'::jsonb
+       || coalesce(badge_settings, '{}'::jsonb),
        rule_version = 'badge-system-beta-2026-09-21',
        reader_badges_activated_at = coalesce(reader_badges_activated_at, now()),
        updated_at = now()
@@ -1308,6 +1309,28 @@ drop trigger if exists scout_comment_refresh_reader_badges on public.novel_comme
 create trigger scout_comment_refresh_reader_badges
 after insert or update of deleted_at, author_hidden_at on public.novel_comments
 for each row execute function public.novelight_refresh_reader_badges_from_comment_state();
+
+create or replace function public.novelight_refresh_badges_from_metric_state()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if new.user_id is not null then
+    perform public.novelight_refresh_scout_badges_for_user(new.user_id, true);
+  end if;
+  return new;
+end
+$;
+
+revoke all on function public.novelight_refresh_badges_from_metric_state()
+  from public, anon, authenticated;
+
+drop trigger if exists scout_metric_state_refresh_badges on public.scout_badge_metric_state;
+create trigger scout_metric_state_refresh_badges
+after insert or update of metric_value on public.scout_badge_metric_state
+for each row execute function public.novelight_refresh_badges_from_metric_state();
 
 -- Baseline current progress and earned badges from authoritative existing data,
 -- but deliberately do NOT issue historical Reader Badge Scout Point.
