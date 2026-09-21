@@ -39,11 +39,17 @@ test('automatic deployment-status smoke only accepts Vercel deployments', () => 
   );
 });
 
-test('authenticated smoke follows the current SCOUT RECORD seed-history navigation', () => {
+test('authenticated smoke follows the integrated SCOUT RECORD seed-history surface', () => {
   assert.match(scoutRecord, /<h2 id="activityTitle">最近のSCOUT活動<\/h2>/);
-  assert.match(scoutRecord, /href="light-seed-history\.html">SEED履歴 →<\/a>/);
+  assert.match(scoutRecord, /<h2 id="seedHistoryTitle">LIGHT SEED送信履歴<\/h2>/);
+  assert.match(scoutRecord, /id="seedHistoryList"/);
+  assert.doesNotMatch(scoutRecord, /href="light-seed-history\.html">SEED履歴 →<\/a>/);
+  assert.match(scoutRecord, /data-badge-group="easy" open/);
+  assert.match(scoutRecord, /data-badge-group="normal"/);
+  assert.match(scoutRecord, /data-badge-group="hard"/);
+  assert.doesNotMatch(scoutRecord, /data-badge-difficulty=/);
   assert.match(authenticatedSmoke, /name: '最近のSCOUT活動'/);
-  assert.match(authenticatedSmoke, /name: \/\^SEED履歴\//);
+  assert.match(authenticatedSmoke, /name: 'LIGHT SEED送信履歴'/);
 });
 
 test('consolidated Staging workflow runs the shared deployment contract before package installation', () => {
