@@ -81,13 +81,108 @@ function parseWithHeadings(text) {
   return items;
 }
 
-function parseWithDelimiter(text, delimiter) {
+const escapeRegExp = (value) =>
+  String(value).replace(/[.*+?^\${}()|[\]\\]/g, '\\function parseWithDelimiter(text, delimiter) {
   const marker = String(delimiter ?? '').trim();
   if (!marker) return [];
   const normalized = normalizeImportText(text);
   const chunks = normalized
     .split(new RegExp(`^\\s*${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\marker.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')')}\\s*$`, 'gmu'))
     .map((chunk) => chunk.replace(/^\n+|\n+$/g, ''))
+    .filter(Boolean);
+
+  return chunks.map((chunk, index) => {');
+
+function parseWithDelimiter(text, delimiter) {
+  const marker = String(delimiter ?? '').trim();
+  if (!marker) return [];
+  const normalized = normalizeImportText(text);
+  const chunks = normalized
+    .split(new RegExp(`^\\s*${escapeRegExp(marker)}\\s*const MAX_EPISODES = 100;
+const MAX_EPISODE_CHARS = 100000;
+
+const normalizeDigits = (value) =>
+  String(value ?? '').replace(/[０-９]/g, (char) =>
+    String.fromCharCode(char.charCodeAt(0) - 0xfee0)
+  );
+
+const japaneseNumber = (value) => {
+  const normalized = normalizeDigits(value).trim();
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+
+  const digits = { 零: 0, 〇: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+  const units = { 十: 10, 百: 100, 千: 1000 };
+  let total = 0;
+  let current = 0;
+  for (const char of normalized) {
+    if (Object.hasOwn(digits, char)) {
+      current = digits[char];
+      continue;
+    }
+    if (Object.hasOwn(units, char)) {
+      total += (current || 1) * units[char];
+      current = 0;
+      continue;
+    }
+    return null;
+  }
+  total += current;
+  return total > 0 ? total : null;
+};
+
+const headingPatterns = [
+  /^\s*第\s*([0-9０-９一二三四五六七八九十百千〇零]+)\s*(?:話|章)\s*(?:[：:\-—－\s　]+)?(.*?)\s*$/iu,
+  /^\s*([0-9０-９]+)\s*話\s*(?:[：:\-—－\s　]+)?(.*?)\s*$/iu,
+  /^\s*(?:episode|chapter)\s*([0-9]+)\s*(?:[：:\-—－.\s]+)?(.*?)\s*$/iu,
+  /^\s*ep\.?\s*([0-9]+)\s*(?:[：:\-—－.\s]+)?(.*?)\s*$/iu
+];
+
+export const normalizeImportText = (text) =>
+  String(text ?? '')
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n?/g, '\n');
+
+export function parseHeading(line) {
+  for (const pattern of headingPatterns) {
+    const match = String(line ?? '').match(pattern);
+    if (!match) continue;
+    const number = japaneseNumber(match[1]);
+    if (!number || !Number.isInteger(number) || number < 1) continue;
+    return { sourceNumber: number, title: String(match[2] ?? '').trim() };
+  }
+  return null;
+}
+
+const finishItem = (current, items) => {
+  if (!current) return;
+  const content = current.lines.join('\n').replace(/^\n+|\n+$/g, '');
+  items.push({
+    sourceNumber: current.sourceNumber,
+    title: current.title,
+    content,
+    included: true
+  });
+};
+
+function parseWithHeadings(text) {
+  const lines = normalizeImportText(text).split('\n');
+  const items = [];
+  let current = null;
+  for (const line of lines) {
+    const heading = parseHeading(line);
+    if (heading) {
+      finishItem(current, items);
+      current = { ...heading, lines: [] };
+      continue;
+    }
+    if (current) current.lines.push(line);
+  }
+  finishItem(current, items);
+  return items;
+}
+
+, 'gmu'))
+    .map((chunk) => chunk.replace(/^\\n+|\\n+$/g, ''))
     .filter(Boolean);
 
   return chunks.map((chunk, index) => {
