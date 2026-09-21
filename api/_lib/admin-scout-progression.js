@@ -174,7 +174,9 @@ export function enrichScoutUserSummaries(
     pointRows = [],
     badgeRows = [],
     badgeDefinitions = [],
-    thresholds = []
+    thresholds = [],
+    controlRows = [],
+    operatorRows = []
   }
 ) {
   const xpTotals = xpByUser(xpRows);
@@ -184,6 +186,21 @@ export function enrichScoutUserSummaries(
 
   return users.map((user) => {
     const userPoints = pointRowsForUser(pointRows, user.id);
+    const control = controlRows.find((row) => row.user_id === user.id) ?? null;
+    const operatorActions = operatorRows
+      .filter((row) => row.user_id === user.id)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      .slice(0, 20)
+      .map((row) => ({
+        action: row.action,
+        reason: row.reason,
+        effectiveUntil: row.effective_until,
+        amount: row.amount,
+        createdAt: row.created_at
+      }));
     const confirmed = userPoints
       .filter((row) => row.status === 'confirmed')
       .reduce((sum, row) => sum + number(row.point_value), 0);
@@ -226,7 +243,13 @@ export function enrichScoutUserSummaries(
             occurredAt: row.occurred_at
           }))
       },
-      badges
+      badges,
+      scoutControl: {
+        pointEarningSuspendedUntil: control?.earning_suspended_until ?? null,
+        reason: control?.reason ?? null,
+        updatedAt: control?.updated_at ?? null,
+        operatorActions
+      }
     };
   });
 }
