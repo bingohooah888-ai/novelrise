@@ -86,9 +86,26 @@ test('author room sidebar quote keeps the intended three lines stable', () => {
 });
 
 test('author room header emphasizes navigation and author name without the account subtitle', () => {
-  assert.match(roomCss, /\.workspace-top>a\{font-size:16px!important\}/u);
+  assert.match(
+    roomCss,
+    /\.workspace-top>\.reader-home-link\{font-size:16px!important\}/u
+  );
   assert.match(roomCss, /\.account-text strong\{font-size:16px!important\}/u);
   assert.match(roomCss, /\.account-text span\{display:none!important\}/u);
+});
+
+test('author room exposes both interaction and account settings consistently', () => {
+  assert.match(mypage, /href="interaction-settings\.html"[\s\S]*?>交流設定</u);
+  assert.match(
+    mypage,
+    /href="account-settings\.html"[\s\S]*?>アカウント設定</u
+  );
+  assert.match(
+    mypage,
+    /<a class="account-chip" href="account-settings\.html" aria-label="アカウント設定を開く">/u
+  );
+  assert.match(baseCss, /\.workspace-top>\.reader-home-link/u);
+  assert.match(baseCss, /\.account-chip:hover,\.account-chip:focus-visible/u);
 });
 
 test('author room action and analytics copy keep readable wrapping and sizing', () => {

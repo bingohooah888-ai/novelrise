@@ -169,8 +169,8 @@ button{color:inherit}
   box-shadow:0 8px 30px rgba(0,0,0,.12);
   backdrop-filter:blur(10px);
 }
-.workspace-top>a{color:#d9dfE7;font-size:12px}
-.account-chip{display:flex;align-items:center;gap:10px;min-width:160px}
+.workspace-top>.reader-home-link{color:#d9dfE7;font-size:12px}
+.account-chip{display:flex;align-items:center;gap:10px;min-width:160px;border-radius:10px;color:inherit;text-decoration:none}.account-chip:hover,.account-chip:focus-visible{background:rgba(216,180,90,.08);outline:none}
 .account-avatar,.profile-avatar{
   display:grid;
   place-items:center;
@@ -494,7 +494,7 @@ body.novelight-theme.novelight-page-mypage .workspace-top{
   background:rgba(2,13,24,.92);
   box-shadow:0 8px 30px rgba(0,0,0,.12);
 }
-body.novelight-theme.novelight-page-mypage .workspace-top>a{color:#d9dfe7}
+body.novelight-theme.novelight-page-mypage .workspace-top>.reader-home-link{color:#d9dfe7}
 body.novelight-theme.novelight-page-mypage .logout{border-color:rgba(216,180,90,.58);background:rgba(4,22,38,.48);color:#f8e5a9}
 body.novelight-theme.novelight-page-mypage .studio-nav a{color:#f4f0e7}
 body.novelight-theme.novelight-page-mypage .studio-nav a:hover{color:#fff9e8}
@@ -546,7 +546,7 @@ body.novelight-theme.novelight-page-mypage footer{border-color:rgba(216,180,90,.
 @media(max-width:700px){
   .workspace{padding:16px 14px 48px}
   .workspace-top{min-height:64px;padding-right:14px;gap:10px}
-  .workspace-top>a{display:none}
+  .workspace-top>.reader-home-link{display:none}
   .author-hero{min-height:155px;padding:22px 20px}
   .author-hero p{font-size:12px}
   .action-grid,.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}

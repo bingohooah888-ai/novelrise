@@ -97,11 +97,37 @@ async function installSupabaseStub(page, overrides = {}) {
                   error: errorFor(state.getSessionError)
                 };
               },
+              getUser: async () => {
+                await wait(state.getUserDelayMs);
+                calls.push({ type: 'getUser' });
+                const user = state.user || state.session?.user || null;
+                return {
+                  data: { user: state.getUserError ? null : user },
+                  error: errorFor(state.getUserError)
+                };
+              },
+              updateUser: async (payload) => {
+                calls.push({ type: 'updateUser', payload });
+                await wait(state.authDelayMs);
+                return {
+                  data: {
+                    user: state.updateUserError
+                      ? null
+                      : state.user || state.session?.user || null
+                  },
+                  error: errorFor(state.updateUserError)
+                };
+              },
               signInWithPassword: async (payload) => {
                 calls.push({ type: 'signInWithPassword', payload });
                 await wait(state.authDelayMs);
                 return {
-                  data: { session: state.signInError ? null : state.session || null },
+                  data: {
+                    session: state.signInError ? null : state.session || null,
+                    user: state.signInError
+                      ? null
+                      : state.user || state.session?.user || null
+                  },
                   error: errorFor(state.signInError)
                 };
               },
@@ -239,6 +265,183 @@ test('favorites leaves loading state when favorites data loading fails', async (
     '本棚を表示できませんでした。通信状況を確認して、もう一度お試しください。'
   );
   await expect(page.locator('#list')).not.toContainText('読み込み中...');
+  expect(pageErrors).toEqual([]);
+});
+
+test('account settings redirects logged-out users without exposing account data', async ({
+  page
+}) => {
+  await installSupabaseStub(page);
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/account-settings.html');
+
+  await expect(page).toHaveURL(
+    /\/login\.html\?redirect=account-settings\.html$/
+  );
+  expect(pageErrors).toEqual([]);
+});
+
+test('account settings shows only the signed-in user email and requests a confirmed change', async ({
+  page
+}) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
+    user: { id: 'author-e2e', email: 'owner@example.test' }
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/account-settings.html');
+  await expect(page.locator('#currentEmail')).toHaveText('owner@example.test');
+  await expect(page.locator('#changeEmail')).toBeEnabled();
+
+  await page.locator('#currentPassword').fill('correct-password');
+  await page.locator('#newEmail').fill('new-owner@example.test');
+  await page.locator('#confirmEmail').fill('new-owner@example.test');
+  await page.locator('#changeEmail').click();
+
+  await expect(page.locator('#status')).toContainText(
+    '確認メールを送信しました。'
+  );
+  await expect(page.locator('#pendingNotice')).toBeVisible();
+
+  const updateCalls = await page.evaluate(() =>
+    globalThis.__NOVELIGHT_E2E_CALLS__.filter(
+      (call) => call.type === 'updateUser'
+    )
+  );
+  expect(updateCalls).toEqual([
+    { type: 'updateUser', payload: { email: 'new-owner@example.test' } }
+  ]);
+  expect(pageErrors).toEqual([]);
+});
+
+test('account settings rejects malformed, mismatched and unchanged emails before Auth mutation', async ({
+  page
+}) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
+    user: { id: 'author-e2e', email: 'owner@example.test' }
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/account-settings.html');
+  await page.locator('#currentPassword').fill('correct-password');
+
+  await page.locator('#newEmail').fill('not-an-email');
+  await page.locator('#confirmEmail').fill('not-an-email');
+  await page.locator('#changeEmail').click();
+  await expect(page.locator('#status')).toContainText('有効なメールアドレス');
+
+  await page.locator('#newEmail').fill('first@example.test');
+  await page.locator('#confirmEmail').fill('second@example.test');
+  await page.locator('#changeEmail').click();
+  await expect(page.locator('#status')).toContainText('一致していません');
+
+  await page.locator('#newEmail').fill('OWNER@example.test');
+  await page.locator('#confirmEmail').fill('owner@example.test');
+  await page.locator('#changeEmail').click();
+  await expect(page.locator('#status')).toContainText('現在と同じ');
+
+  const updateCalls = await page.evaluate(
+    () =>
+      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'updateUser'
+      ).length
+  );
+  expect(updateCalls).toBe(0);
+  expect(pageErrors).toEqual([]);
+});
+
+test('account settings requires the current password before requesting an email change', async ({
+  page
+}) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
+    user: { id: 'author-e2e', email: 'owner@example.test' },
+    signInError: 'Invalid login credentials'
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/account-settings.html');
+  await page.locator('#currentPassword').fill('wrong-password');
+  await page.locator('#newEmail').fill('new-owner@example.test');
+  await page.locator('#confirmEmail').fill('new-owner@example.test');
+  await page.locator('#changeEmail').click();
+
+  await expect(page.locator('#status')).toHaveText(
+    '現在のパスワードを確認してください。'
+  );
+  const updateCalls = await page.evaluate(
+    () =>
+      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) => call.type === 'updateUser'
+      ).length
+  );
+  expect(updateCalls).toBe(0);
+  expect(pageErrors).toEqual([]);
+});
+
+test('account settings handles an already-used email without disclosing another account', async ({
+  page
+}) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
+    user: { id: 'author-e2e', email: 'owner@example.test' },
+    updateUserError: 'User already registered'
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/account-settings.html');
+  await page.locator('#currentPassword').fill('correct-password');
+  await page.locator('#newEmail').fill('used@example.test');
+  await page.locator('#confirmEmail').fill('used@example.test');
+  await page.locator('#changeEmail').click();
+
+  await expect(page.locator('#status')).toHaveText(
+    'このメールアドレスには変更できません。入力内容を確認するか、別のメールアドレスをお試しください。'
+  );
+  await expect(page.locator('#status')).not.toContainText('User');
+  expect(pageErrors).toEqual([]);
+});
+
+test('account settings reports pending confirmation without revealing the pending target', async ({
+  page
+}) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
+    user: {
+      id: 'author-e2e',
+      email: 'owner@example.test',
+      new_email: 'private-next@example.test',
+      email_change_sent_at: '2026-09-22T00:00:00Z'
+    }
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/account-settings.html');
+
+  await expect(page.locator('#pendingNotice')).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(
+    'private-next@example.test'
+  );
+  expect(pageErrors).toEqual([]);
+});
+
+test('account settings redirects when the verified Auth session is missing', async ({
+  page
+}) => {
+  await installSupabaseStub(page, {
+    session: { user: { id: 'author-e2e' } },
+    getUserError: 'Auth session missing'
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/account-settings.html');
+
+  await expect(page).toHaveURL(
+    /\/login\.html\?redirect=account-settings\.html$/
+  );
   expect(pageErrors).toEqual([]);
 });
 

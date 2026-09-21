@@ -10,6 +10,7 @@
     ['analytics.html', '▥', 'LIGHT ANALYTICS'],
     ['scout-record.html', '◇', 'SCOUT RECORD'],
     ['interaction-settings.html', '⚙', '交流設定'],
+    ['account-settings.html', '⌘', 'アカウント設定'],
   ];
 
   const existingHeader = Array.from(document.body.children).find(node => node.tagName === 'HEADER');
@@ -85,11 +86,13 @@
   workspaceTop.className = 'workspace-top';
   const readerHome = document.createElement('a');
   readerHome.href = 'index.html';
+  readerHome.className = 'reader-home-link';
   readerHome.textContent = '読者ホームへ';
 
-  const accountChip = document.createElement('div');
+  const accountChip = document.createElement('a');
   accountChip.className = 'account-chip';
-  accountChip.setAttribute('aria-label', 'ログイン中の作者');
+  accountChip.href = 'account-settings.html';
+  accountChip.setAttribute('aria-label', 'アカウント設定を開く');
   const accountAvatar = document.createElement('div');
   accountAvatar.id = 'accountAvatar';
   accountAvatar.className = 'account-avatar';
