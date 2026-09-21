@@ -81,11 +81,25 @@ test('Badge UI includes percent + meter and mobile two-column grid', () => {
   );
 });
 
-test('Reader Badge empty state does not fabricate unrecovered 100 conditions', () => {
-  assert.match(
+test('Badge difficulty filter and Reader catalog are live', () => {
+  assert.match(scout, /data-badge-difficulty="easy"/u);
+  assert.match(scout, /data-badge-difficulty="normal"/u);
+  assert.match(scout, /data-badge-difficulty="hard"/u);
+  assert.match(scoutJs, /badgeDifficulty/u);
+  assert.doesNotMatch(
     scoutJs,
     /Reader Badge 100件の個別条件は、採用済みの元リストを復元後に有効化します/u
   );
+});
+
+test('Master Scout renders composite progress', () => {
+  assert.match(scout, /id="badgeDialogComposite"/u);
+  assert.match(scoutJs, /composite_progress/u);
+  assert.match(scoutJs, /badge-composite-item/u);
+  assert.match(scoutJs, /current/u);
+  assert.match(scoutJs, /target/u);
+  assert.match(scoutCss, /\.badge-composite/u);
+  assert.match(scoutCss, /\.badge-composite-meter/u);
 });
 
 test('LIGHT SEED history remains separate but links back to live SCOUT RECORD', () => {

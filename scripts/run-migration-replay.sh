@@ -73,6 +73,10 @@ echo '::group::Verify SCOUT usage controls, rollback and reapply'
 echo '::endgroup::'
 
 echo '::group::Verify SCOUT RECORD beta core with dependent controls removed'
+# The canonical Badge System adds triggers on SCOUT core tables. Remove the
+# dependent catalog before exercising the historical core rollback, otherwise
+# PostgreSQL correctly drops those dependent triggers with the core objects.
+"${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260921025328_scout_record_usage_controls_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260921025328_scout_record_usage_controls_precheck.sql
 "${REPLAY[@]}" -f supabase/checks/20260920223049_scout_record_beta_core_postcheck.sql
@@ -82,14 +86,31 @@ echo '::group::Verify SCOUT RECORD beta core with dependent controls removed'
 "${REPLAY[@]}" -f supabase/checks/20260920223049_scout_record_beta_core_postcheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260921025328_scout_record_usage_controls.sql
 "${REPLAY[@]}" -f supabase/checks/20260921025328_scout_record_usage_controls_postcheck.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+echo '::endgroup::'
+
+echo '::group::Verify canonical Badge System catalog, rollback and reapply'
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/badge-system-catalog.sql
+"${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify SCOUT badge foundation, rollback and reapply'
+# The catalog depends on the foundation. Remove it first so the historical
+# foundation postcheck/rollback is exercised against its own exact schema.
+"${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260921022608_scout_badge_foundation_postcheck.sql
 "${REPLAY[@]}" -f supabase/rollback/20260921022608_scout_badge_foundation_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260921022608_scout_badge_foundation_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260921022608_scout_badge_foundation.sql
 "${REPLAY[@]}" -f supabase/checks/20260921022608_scout_badge_foundation_postcheck.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify work classification tags, RLS, rollback and reapply'
@@ -461,14 +482,21 @@ SQL
 echo '::endgroup::'
 
 echo '::group::Verify B #14 author comment moderation'
+# Badge comment-refresh trigger depends on B #14 author_hidden_at. Remove the
+# dependent Badge catalog before replaying the historical B #14 rollback.
+"${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260918192000_comment_author_moderation_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260918192000_comment_author_moderation.sql
 "${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/comment-author-moderation.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify B #14 comment moderation rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260918192000_comment_author_moderation_rollback.sql
 "${REPLAY[@]}" <<'SQL'
 do $$
@@ -505,6 +533,9 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260918192000_comment_author_moderation.sql
 "${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_postcheck.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify character appearance behavior'

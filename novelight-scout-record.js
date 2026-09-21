@@ -34,6 +34,7 @@
   let badgeRows = [];
   let badgeCategory = 'all';
   let badgeStatus = 'all';
+  let badgeDifficulty = 'all';
 
   function n(value) {
     return Number(value || 0).toLocaleString('ja-JP');
@@ -153,6 +154,9 @@
     const earned = row.status === 'earned';
     if (badgeStatus === 'earned' && !earned) return false;
     if (badgeStatus === 'unearned' && earned) return false;
+    if (badgeDifficulty !== 'all' && row.difficulty !== badgeDifficulty) {
+      return false;
+    }
     return true;
   }
 
@@ -174,10 +178,7 @@
       const empty = document.createElement('div');
       empty.className = 'badge-empty';
       empty.style.gridColumn = '1 / -1';
-      empty.textContent =
-        badgeCategory === 'reader'
-          ? 'Reader Badge 100件の個別条件は、採用済みの元リストを復元後に有効化します。条件を推測して作成することはしません。'
-          : 'この条件に該当するBadgeはまだありません。';
+      empty.textContent = 'この条件に該当するBadgeはありません。';
       host.appendChild(empty);
       return;
     }
@@ -237,6 +238,51 @@
     });
   }
 
+  function renderCompositeProgress(row) {
+    const host = document.getElementById('badgeDialogComposite');
+    if (!host) return;
+    host.replaceChildren();
+
+    const components = Array.isArray(row?.metadata?.composite_progress)
+      ? row.metadata.composite_progress
+      : [];
+    host.hidden = components.length === 0;
+    if (!components.length) return;
+
+    const heading = document.createElement('h3');
+    heading.textContent = '個別条件の進捗';
+    host.appendChild(heading);
+
+    components.forEach((component) => {
+      const current = Number(component?.current || 0);
+      const target = Math.max(1, Number(component?.target || 1));
+      const percent = Math.max(
+        0,
+        Math.min(100, Number(component?.percent || 0))
+      );
+
+      const item = document.createElement('div');
+      item.className = 'badge-composite-item';
+
+      const line = document.createElement('div');
+      line.className = 'badge-composite-line';
+      const label = document.createElement('b');
+      label.textContent = component?.label || component?.metric_key || '条件';
+      const value = document.createElement('span');
+      value.textContent = `${n(current)} / ${n(target)} · ${percent.toFixed(0)}%`;
+      line.append(label, value);
+
+      const meter = document.createElement('div');
+      meter.className = 'badge-progress badge-composite-meter';
+      const fill = document.createElement('span');
+      fill.style.width = `${percent.toFixed(1)}%`;
+      meter.appendChild(fill);
+
+      item.append(line, meter);
+      host.appendChild(item);
+    });
+  }
+
   function openBadge(row) {
     const dialog = document.getElementById('badgeDialog');
     if (!dialog) return;
@@ -258,6 +304,7 @@
     if (bar) {
       bar.style.width = `${Math.max(0, Math.min(100, Number(row.progress_percent || 0)))}%`;
     }
+    renderCompositeProgress(row);
 
     const visibility = document.getElementById('badgeVisibility');
     const visibilityButton = document.getElementById('badgeVisibilityButton');
@@ -371,6 +418,17 @@
         document.querySelectorAll('[data-badge-status]').forEach((item) => {
           item.setAttribute('aria-pressed', String(item === button));
         });
+        renderBadges();
+      });
+    });
+    document.querySelectorAll('[data-badge-difficulty]').forEach((button) => {
+      button.addEventListener('click', () => {
+        badgeDifficulty = button.dataset.badgeDifficulty || 'all';
+        document
+          .querySelectorAll('[data-badge-difficulty]')
+          .forEach((item) => {
+            item.setAttribute('aria-pressed', String(item === button));
+          });
         renderBadges();
       });
     });
