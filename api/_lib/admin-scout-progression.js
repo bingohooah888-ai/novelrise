@@ -91,7 +91,8 @@ export function buildScoutProgressionMetrics({
         : 0,
       pendingRows: pointRows.filter((row) => row.status === 'pending').length,
       frozenRows: pointRows.filter((row) => row.status === 'frozen').length,
-      cancelledRows: pointRows.filter((row) => row.status === 'cancelled').length,
+      cancelledRows: pointRows.filter((row) => row.status === 'cancelled')
+        .length,
       byReason: [...byReason.entries()].map(([kind, amount]) => ({
         kind,
         amount
@@ -99,9 +100,7 @@ export function buildScoutProgressionMetrics({
     },
     badges: {
       earned: earnedBadges.length,
-      usersWithEarnedBadge: new Set(
-        earnedBadges.map((row) => row.user_id)
-      ).size
+      usersWithEarnedBadge: new Set(earnedBadges.map((row) => row.user_id)).size
     }
   };
 }

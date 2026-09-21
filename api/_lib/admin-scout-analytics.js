@@ -512,11 +512,7 @@ export async function loadScoutAnalytics({
       'scout_badge_definitions',
       'badge_id,badge_category,difficulty,display_name'
     ),
-    fetchPaged(
-      supabase,
-      'scout_level_thresholds',
-      'level,cumulative_xp'
-    )
+    fetchPaged(supabase, 'scout_level_thresholds', 'level,cumulative_xp')
   ]);
 
   const base = summarizeScoutData({

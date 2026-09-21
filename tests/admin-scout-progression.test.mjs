@@ -11,8 +11,7 @@ const B = '22222222-2222-4222-8222-222222222222';
 
 const thresholds = Array.from({ length: 30 }, (_, index) => ({
   level: index + 1,
-  cumulative_xp:
-    index === 0 ? 0 : index * 50 + 10 * (index - 1) * index
+  cumulative_xp: index === 0 ? 0 : index * 50 + 10 * (index - 1) * index
 }));
 
 test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () => {
@@ -22,10 +21,25 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
     { user_id: B, xp_value: 9570 }
   ];
   const pointRows = [
-    { user_id: A, point_kind: 'level_up', point_value: 10, status: 'confirmed' },
-    { user_id: B, point_kind: 'discovery', point_value: 20, status: 'confirmed' },
+    {
+      user_id: A,
+      point_kind: 'level_up',
+      point_value: 10,
+      status: 'confirmed'
+    },
+    {
+      user_id: B,
+      point_kind: 'discovery',
+      point_value: 20,
+      status: 'confirmed'
+    },
     { user_id: B, point_kind: 'badge', point_value: 5, status: 'pending' },
-    { user_id: B, point_kind: 'reversal', point_value: -20, status: 'cancelled' }
+    {
+      user_id: B,
+      point_kind: 'reversal',
+      point_value: -20,
+      status: 'cancelled'
+    }
   ];
   const badgeRows = [
     { user_id: A, badge_id: 'author_badge_001', status: 'earned' },
