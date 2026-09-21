@@ -28,7 +28,7 @@ test('assistant recovery stays automatic and fail-closed', async () => {
     /one-time requestのCLAIM\/CONSUME/,
     /### 本番承認のcarry-forwardと機械証跡の再発行/,
     /人間の本番承認と、GitHub workflowが要求するexact SHA/,
-    /機械証跡だけを必要に応じて再生成/,
+    /機械安全証跡だけを必要に応じて再生成/,
     /人間の本番承認carry-forward禁止/,
     /`CLAIMED` \/ `CONSUMED` \/ `EXECUTED` \/ `FAILED`/
   ];
