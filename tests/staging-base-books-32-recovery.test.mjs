@@ -8,9 +8,11 @@ import { URL } from 'node:url';
 import { generateCoverMaskPng } from '../api/_lib/cover-mask-png.js';
 import {
   cleanupRecoveryActor,
+  cleanupStaleRecoveryActors,
   createRecoveryActor,
   validateProductionRows,
   validateRecoveryEnvironment,
+  verifyFoundationBytes,
   verifyOfficialBookBytes
 } from '../scripts/staging-base-books-32-recover.mjs';
 
@@ -129,6 +131,33 @@ test('downloaded official PNGs are byte-size, SHA, and PNG-geometry verified', (
   );
 });
 
+test('foundation binaries are SHA and PNG-geometry verified', () => {
+  const png = generateCoverMaskPng(
+    {
+      top_left: { x: 1, y: 1 },
+      top_right: { x: 19, y: 1 },
+      bottom_right: { x: 19, y: 29 },
+      bottom_left: { x: 1, y: 29 }
+    },
+    20,
+    30
+  );
+  const item = {
+    label: 'fixture foundation',
+    size: png.byteLength,
+    sha256: createHash('sha256').update(png).digest('hex'),
+    width: 20,
+    height: 30,
+    bitDepth: 8,
+    colorType: 6
+  };
+  assert.equal(verifyFoundationBytes(png, item), true);
+  assert.throws(
+    () => verifyFoundationBytes(Buffer.concat([png, Buffer.from([0])]), item),
+    /foundation byte size mismatch/
+  );
+});
+
 test('recovery workflow is one-time, owner-only, main-bound, and Staging-only', () => {
   assert.match(workflow, /github\.event\.issue\.number == 294/);
   assert.match(
@@ -155,6 +184,15 @@ test('recovery workflow is one-time, owner-only, main-bound, and Staging-only', 
     workflow,
     /Re-bind exact current main immediately before writes/
   );
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(
+    workflow,
+    /Audit official base-book recovery readiness \(read-only\)/
+  );
+  assert.match(
+    workflow,
+    /Verify exact repository and Staging migration parity before writes/
+  );
   assert.match(workflow, /--mode=precheck/);
   assert.match(workflow, /--mode=recover/);
   assert.match(workflow, /STAGING_RECOVERY_ACTOR_FILE/);
@@ -170,6 +208,18 @@ test('recovery workflow is one-time, owner-only, main-bound, and Staging-only', 
   assert.match(workflow, /version: 2\.111\.0/);
   assert.match(workflow, /RECOVERY_CLAIMED/);
   assert.match(workflow, /RECOVERY_CONSUMED/);
+  const precheckIndex = workflow.indexOf(
+    'Run read-only official-pack recovery precheck'
+  );
+  const claimIndex = workflow.indexOf(
+    'Claim approved request only after read-only precheck'
+  );
+  const recoveryIndex = workflow.indexOf(
+    'Recover canonical Geometry asset set on Staging'
+  );
+  assert.ok(precheckIndex >= 0 && claimIndex > precheckIndex);
+  assert.ok(recoveryIndex > claimIndex);
+  assert.match(workflow, /needs\.recover\.outputs\.claimed == 'true'/);
 });
 
 test('ephemeral Staging recovery actor is real, isolated, and removed', async () => {
@@ -203,12 +253,16 @@ test('ephemeral Staging recovery actor is real, isolated, and removed', async ()
           }
         };
       }
-      if (table === 'profiles') {
+      if (
+        table === 'profiles' ||
+        table === 'beta_participants' ||
+        table === 'novel_thumbnail_assets'
+      ) {
         return {
           select() {
             return {
               async eq() {
-                return { count: 0, error: null };
+                return { count: 0, data: [], error: null };
               }
             };
           }
@@ -226,6 +280,7 @@ test('ephemeral Staging recovery actor is real, isolated, and removed', async ()
     const actor = await createRecoveryActor(staging, env);
     assert.equal(actor.id, userId);
     assert.equal(createdInput.email_confirm, true);
+    assert.equal(createdInput.app_metadata.internal_e2e, true);
     assert.equal(createdInput.app_metadata.internal_staging_recovery, true);
     assert.equal(createdInput.app_metadata.github_run_id, '35537236520');
     assert.match(createdInput.email, /^novelight-staging-recovery-/);
@@ -241,6 +296,53 @@ test('ephemeral Staging recovery actor is real, isolated, and removed', async ()
   }
 });
 
+test('stale recovery actors converge only when exact internal identity markers match', async () => {
+  const userId = '123e4567-e89b-42d3-a456-426614174001';
+  const deleted = [];
+  let users = [
+    {
+      id: userId,
+      email: 'novelight-staging-recovery-123-fixture@example.com',
+      app_metadata: {
+        internal_e2e: true,
+        internal_staging_recovery: true
+      }
+    }
+  ];
+  const staging = {
+    auth: {
+      admin: {
+        async listUsers() {
+          return { data: { users: [...users] }, error: null };
+        },
+        async deleteUser(id) {
+          deleted.push(id);
+          users = users.filter((user) => user.id !== id);
+          return { data: {}, error: null };
+        }
+      }
+    }
+  };
+  assert.equal(await cleanupStaleRecoveryActors(staging), 1);
+  assert.deepEqual(deleted, [userId]);
+
+  users = [
+    {
+      id: userId,
+      email: 'novelight-staging-recovery-123-fixture@example.com',
+      app_metadata: {
+        internal_e2e: false,
+        internal_staging_recovery: true
+      }
+    }
+  ];
+  await assert.rejects(
+    cleanupStaleRecoveryActors(staging),
+    /refusing to delete a recovery-marked user/
+  );
+  assert.deepEqual(deleted, [userId]);
+});
+
 test('recovery implementation never has a Production server credential or Production write call', () => {
   assert.match(script, /const PROD_KEY = 'sb_publishable_/);
   assert.doesNotMatch(script, /PROD.*SECRET|service_role/iu);
@@ -251,5 +353,14 @@ test('recovery implementation never has a Production server credential or Produc
   );
   assert.match(script, /auth\.admin\.createUser/);
   assert.match(script, /auth\.admin\.deleteUser/);
+  assert.match(script, /internal_e2e:\s*true/);
+  assert.match(script, /novelight-thumbnail-assets-v1\.json/);
+  assert.match(script, /NOVELIGHT_thumbnail_assets_v1_30/);
+  assert.match(script, /novelight_admin_register_thumbnail_layer_asset/);
+  assert.match(
+    script,
+    /045d9a2c660186b9292360c4ca14268bdb604c3779fe9d110fe2bb17c15e9917/
+  );
+  assert.match(script, /canonicalAssetCount:\s*63/);
   assert.doesNotMatch(script, /const auditUserId = randomUUID\(\)/);
 });

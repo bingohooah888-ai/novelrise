@@ -40,6 +40,24 @@ test('consolidated Staging workflow runs the shared deployment contract before p
   assert.ok(verifierIndex < installIndex);
 });
 
+test('manual Staging smoke can stop after read-only deployment and public/runtime checks', () => {
+  assert.match(workflow, /read_only_only:/);
+  assert.match(workflow, /default: false/);
+  const readonlyRun = workflow.indexOf('Run read-only staging smoke');
+  const firstWrite = workflow.indexOf(
+    'Verify authenticated Staging credentials'
+  );
+  assert.notEqual(readonlyRun, -1);
+  assert.notEqual(firstWrite, -1);
+  assert.ok(readonlyRun < firstWrite);
+  const guards = [
+    ...workflow.matchAll(
+      /github\.event_name != 'workflow_dispatch' \|\| inputs\.read_only_only != true/g
+    )
+  ];
+  assert.ok(guards.length >= 10);
+});
+
 test('write Staging phases require deployed Supabase and Stripe isolation evidence', () => {
   assert.match(workflow, /STAGING_REQUIRE_WRITE_CONFIG: 'true'/);
   assert.match(workflow, /STAGING_EXPECTED_SUPABASE_URL/);
