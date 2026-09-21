@@ -36,4 +36,6 @@ test('SCOUT beta analytics page covers the MASTER-required beta analysis surface
   assert.match(html, /非利用者 7日継続率/);
   assert.match(html, /SCOUT利用者 30日継続率/);
   assert.match(html, /非利用者 30日継続率/);
+  assert.match(html, /Point獲得停止/);
+  assert.match(html, /直近Point Ledger \/ 運営操作/);
 });
