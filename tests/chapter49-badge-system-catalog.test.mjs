@@ -283,6 +283,7 @@ test('badge engine is idempotent and event-driven without 140 bespoke branches',
   has(migration, 'scout_xp_refresh_reader_badges');
   has(migration, 'scout_point_refresh_reader_badges');
   has(migration, 'scout_comment_refresh_reader_badges');
+  has(migration, 'scout_metric_state_refresh_badges');
   has(migration, 'on conflict (event_key) do nothing');
   assert.doesNotMatch(migration, /case\s+p_badge_id/iu);
 });
