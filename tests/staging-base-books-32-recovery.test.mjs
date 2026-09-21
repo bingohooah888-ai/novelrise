@@ -283,6 +283,7 @@ test('ephemeral Staging recovery actor is real, isolated, and removed', async ()
     assert.equal(createdInput.app_metadata.internal_e2e, true);
     assert.equal(createdInput.app_metadata.internal_staging_recovery, true);
     assert.equal(createdInput.app_metadata.github_run_id, '35537236520');
+    assert.ok(createdInput.password.length <= 72);
     assert.match(createdInput.email, /^novelight-staging-recovery-/);
     assert.equal(JSON.parse(await readFile(actorFile, 'utf8')).userId, userId);
 

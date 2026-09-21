@@ -753,7 +753,7 @@ export async function createRecoveryActor(staging, env = process.env) {
     '-'
   );
   const email = `novelight-staging-recovery-${runId}-${randomUUID()}@example.com`;
-  const password = `Nl!${randomUUID()}${randomUUID()}9a`;
+  const password = `Nl!${randomUUID()}9a`;
   const { data, error } = await staging.auth.admin.createUser({
     email,
     password,
