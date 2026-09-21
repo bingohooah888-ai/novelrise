@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>作品を一括移行 | NOVELIGHT</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:1050px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}main{max-width:1000px;margin:auto;padding:40px 22px 76px}.hero h1{margin:0 0 8px;font-size:31px}.hero p{margin:0;color:#6b7280;line-height:1.75}.steps{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}.step{padding:7px 10px;border-radius:999px;background:#eceff4;color:#6b7280;font-size:11px;font-weight:900}.step.active{background:#3d2d20;color:#fff}.card{margin-top:18px;padding:26px;border:1px solid #e3e6eb;border-radius:15px;background:#fff}.card h2{margin:0 0 8px;font-size:20px}.guide,.status,.hint{color:#6b7280;font-size:13px;line-height:1.7}.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.choice{display:flex;min-height:74px;align-items:center;justify-content:center;border:1px solid #d7dbe2;border-radius:11px;background:#fff;font-weight:900;cursor:pointer}.choice.primary{background:#3d2d20;color:#fff;border-color:#3d2d20}.field{margin-top:18px}.field label{display:block;margin-bottom:7px;font-size:13px;font-weight:900}select,input[type="text"],textarea{width:100%;padding:11px 12px;border:1px solid #d4d8df;border-radius:9px;background:#fff}.source{min-height:280px;resize:vertical;line-height:1.75}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:9px 14px;border:1px solid #d4d8df;border-radius:9px;background:#fff;font-weight:900;cursor:pointer}.btn.primary{background:#3d2d20;color:#fff;border-color:#3d2d20}.btn:disabled{opacity:.5;cursor:not-allowed}.notice{margin-top:18px;padding:13px 15px;border:1px solid #dfd1b7;border-radius:10px;background:#fffaf0;color:#6c5531;font-size:12px;line-height:1.7}.warning{margin-top:12px;padding:12px 14px;border:1px solid #efcaca;border-radius:9px;background:#fff7f7;color:#8f2d2d;font-size:12px;line-height:1.7}.review{display:grid;gap:12px;margin-top:14px}.episode{padding:16px;border:1px solid #e3e6eb;border-radius:12px;background:#fcfcfd}.episode.off{opacity:.58}.episode-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.episode-number{font-weight:900}.include{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:900}.episode textarea{min-height:150px;resize:vertical;line-height:1.7}.episode-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.small{min-height:34px;padding:6px 9px;font-size:11px}.rights{display:flex;gap:9px;align-items:flex-start;margin-top:18px;padding:13px;border:1px solid #ded7ef;border-radius:9px;background:#faf8ff;font-size:12px;line-height:1.65}.rights input{margin-top:3px}.summary{margin-top:12px;font-size:13px;font-weight:900}.actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}.done{padding:20px;border-radius:12px;background:#f2f8f2;color:#255e32;font-weight:800;line-height:1.7}@media(max-width:680px){main{padding:28px 15px 58px}.card{padding:20px 16px}.choice-grid{grid-template-columns:1fr}.row>.btn,.actions>.btn,.actions>a{width:100%}.episode-head{align-items:flex-start;flex-direction:column}.episode-actions{display:grid;grid-template-columns:1fr 1fr}.small{width:100%}}
+  </style>
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-accessibility.css">
+</head>
+<body class="novelight-theme novelight-page-bulk-import">
+<a class="skip-link" href="#main-content">本文へスキップ</a>
+<header><div class="header-inner"><a class="logo" href="index.html">NOVELIGHT</a><a class="back" href="my-novels.html">← 作品管理へ</a></div></header>
+<main id="main-content" tabindex="-1">
+  <section class="hero">
+    <h1>作品を一括移行</h1>
+    <p>すでに書いている作品を、最大100話までまとめて非公開下書きとして取り込めます。</p>
+  </section>
+  <div class="steps"><span class="step active">1 移行先</span><span class="step">2 本文入力</span><span class="step">3 内容確認</span><span class="step">4 完了</span></div>
+
+  <div class="notice">他の小説投稿サイトへ自動アクセスしたり、URLから本文を取得したりはしません。あなた自身が投稿する権利を持つ本文だけを貼り付けるか、UTF-8のTXTファイルから読み込んでください。</div>
+
+  <section id="targetCard" class="card">
+    <h2>1. 移行先を選ぶ</h2>
+    <p class="guide">新しい作品は通常の作品情報・サムネイルを先に登録します。登録後、そのまま一括移行へ戻ります。</p>
+    <div class="choice-grid">
+      <a class="choice primary" href="post.html?next=bulk-import">＋ 新しい作品として登録</a>
+      <button id="showExisting" class="choice" type="button">既存作品へ追加</button>
+    </div>
+    <div id="existingArea" class="field" hidden>
+      <label for="novelSelect">追加する作品</label>
+      <div class="row">
+        <select id="novelSelect"><option value="">作品を選択してください</option></select>
+        <button id="useNovel" class="btn" type="button">この作品へ追加</button>
+      </div>
+    </div>
+    <div id="targetStatus" class="status" aria-live="polite"></div>
+  </section>
+
+  <section id="inputCard" class="card" hidden>
+    <h2>2. 本文をまとめて入力</h2>
+    <p id="targetLabel" class="guide"></p>
+    <div class="field">
+      <label for="fileInput">TXTファイル</label>
+      <input id="fileInput" type="file" accept=".txt,text/plain">
+      <div class="hint">UTF-8 / 5MB以下。Word・PDF・EPUBはβ版では対象外です。</div>
+    </div>
+    <div class="field">
+      <label for="delimiter">任意の話区切り（必要な場合だけ）</label>
+      <input id="delimiter" type="text" maxlength="80" placeholder="例：--- または ***">
+      <div class="hint">通常は「第1話」「第一章」「1話」「Episode 1」「Chapter 1」「EP.1」等を自動認識します。</div>
+    </div>
+    <div class="field">
+      <label for="source">一括入力</label>
+      <textarea id="source" class="source" placeholder="第1話　はじまり&#10;本文...&#10;&#10;第2話　次の朝&#10;本文..."></textarea>
+    </div>
+    <div class="actions"><button id="parse" class="btn primary" type="button">内容を確認</button></div>
+    <div id="parseStatus" class="status" aria-live="polite"></div>
+  </section>
+
+  <section id="reviewCard" class="card" hidden>
+    <h2>3. エピソードを確認</h2>
+    <p class="guide">タイトル・本文・順番を確認してください。不要な話は除外できます。登録後はすべて下書きです。</p>
+    <div id="warnings"></div>
+    <div id="review" class="review"></div>
+    <div id="summary" class="summary"></div>
+    <label class="rights"><input id="rightsAck" type="checkbox"><span>この作品をNOVELIGHTへ投稿する権利を持っており、第三者の権利を侵害しないことを確認しました。</span></label>
+    <div class="actions">
+      <button id="backToInput" class="btn" type="button">入力へ戻る</button>
+      <button id="import" class="btn primary" type="button">下書きとして一括登録</button>
+    </div>
+    <div id="importStatus" class="status" aria-live="polite"></div>
+  </section>
+
+  <section id="completeCard" class="card" hidden>
+    <h2>移行が完了しました</h2>
+    <div id="completeText" class="done"></div>
+    <div class="actions">
+      <a id="draftsLink" class="btn primary" href="my-novels.html">エピソードを確認</a>
+      <a class="btn" href="my-novels.html">作品管理へ戻る</a>
+    </div>
+  </section>
+</main>
+
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+<script src="novelight-client.js"></script>
+<script type="module">
+import {
+  BULK_IMPORT_LIMITS,
+  duplicateWarnings,
+  parseBulkEpisodes,
+  validateBulkEpisodes
+} from './bulk-import-parser.js';
+
+const client = supabase.createClient(
+  'https://fiepaguycecrredwrcwx.supabase.co',
+  'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
+);
+const params = new URLSearchParams(location.search);
+let novelId = params.get('novel_id');
+let session = null;
+let novel = null;
+let existingEpisodes = [];
+let items = [];
+let nextNumber = 1;
+let startedPromise = null;
+let busy = false;
+
+const byId = (id) => document.getElementById(id);
+const source = byId('source');
+const delimiter = byId('delimiter');
+const parseStatus = byId('parseStatus');
+const importStatus = byId('importStatus');
+const reviewRoot = byId('review');
+const warningRoot = byId('warnings');
+
+async function recordEvent(name, count = 0) {
+  if (!session) return;
+  const result = await client.rpc('novelight_record_bulk_import_event', {
+    p_event: name,
+    p_novel_id: novel ? String(novel.id) : null,
+    p_episode_count: Math.max(0, Math.min(100, Number(count) || 0))
+  });
+  if (result.error) console.warn('bulk import analytics unavailable', result.error);
+}
+
+function markStarted() {
+  if (!startedPromise) startedPromise = recordEvent('bulk_import_started', 0);
+  return startedPromise;
+}
+
+function setStep(step) {
+  document.querySelectorAll('.step').forEach((node, index) => {
+    node.classList.toggle('active', index === step - 1);
+  });
+}
+
+function activeItems() {
+  return items.filter((item) => item.included !== false);
+}
+
+function updateSummary() {
+  const active = activeItems();
+  const chars = active.reduce((sum, item) => sum + String(item.content ?? '').length, 0);
+  byId('summary').textContent =
+    active.length +
+    '話 / ' +
+    chars.toLocaleString('ja-JP') +
+    '文字を、第' +
+    nextNumber +
+    '話から下書きとして登録予定です。';
+}
+
+function buildButton(label, action, disabled = false) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'btn small';
+  button.textContent = label;
+  button.disabled = disabled;
+  button.addEventListener('click', action);
+  return button;
+}
+
+function renderReview() {
+  reviewRoot.replaceChildren();
+  let displayNumber = nextNumber;
+
+  items.forEach((item, index) => {
+    const card = document.createElement('article');
+    card.className = 'episode' + (item.included === false ? ' off' : '');
+
+    const head = document.createElement('div');
+    head.className = 'episode-head';
+    const number = document.createElement('div');
+    number.className = 'episode-number';
+    number.textContent =
+      item.included === false ? '移行対象外' : '登録予定：第' + displayNumber++ + '話';
+
+    const includeLabel = document.createElement('label');
+    includeLabel.className = 'include';
+    const include = document.createElement('input');
+    include.type = 'checkbox';
+    include.checked = item.included !== false;
+    include.addEventListener('change', () => {
+      item.included = include.checked;
+      renderReview();
+    });
+    includeLabel.append(include, document.createTextNode(' 移行する'));
+    head.append(number, includeLabel);
+
+    const titleField = document.createElement('div');
+    titleField.className = 'field';
+    const titleLabel = document.createElement('label');
+    titleLabel.textContent = 'タイトル';
+    const title = document.createElement('input');
+    title.type = 'text';
+    title.maxLength = 150;
+    title.value = item.title ?? '';
+    title.addEventListener('input', () => {
+      item.title = title.value;
+    });
+    titleField.append(titleLabel, title);
+
+    const bodyField = document.createElement('div');
+    bodyField.className = 'field';
+    const bodyLabel = document.createElement('label');
+    bodyLabel.textContent = '本文';
+    const body = document.createElement('textarea');
+    body.value = item.content ?? '';
+    body.addEventListener('input', () => {
+      item.content = body.value;
+      updateSummary();
+    });
+    bodyField.append(bodyLabel, body);
+
+    const actions = document.createElement('div');
+    actions.className = 'episode-actions';
+    actions.append(
+      buildButton('↑ 上へ', () => {
+        if (index < 1) return;
+        [items[index - 1], items[index]] = [items[index], items[index - 1]];
+        renderReview();
+      }, index < 1),
+      buildButton('↓ 下へ', () => {
+        if (index >= items.length - 1) return;
+        [items[index], items[index + 1]] = [items[index + 1], items[index]];
+        renderReview();
+      }, index >= items.length - 1),
+      buildButton('除外 / 戻す', () => {
+        item.included = item.included === false;
+        renderReview();
+      }),
+      buildButton('削除', () => {
+        items.splice(index, 1);
+        renderReview();
+      })
+    );
+
+    card.append(head, titleField, bodyField, actions);
+    reviewRoot.append(card);
+  });
+
+  if (!items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'status';
+    empty.textContent = '確認するエピソードがありません。';
+    reviewRoot.append(empty);
+  }
+  updateSummary();
+}
+
+async function loadTarget(id) {
+  const result = await client
+    .from('novels')
+    .select('id,user_id,title,status')
+    .eq('id', id)
+    .single();
+  if (result.error) throw result.error;
+  if (!result.data || result.data.user_id !== session.user.id) {
+    throw new Error('この作品を編集する権限がありません。');
+  }
+  novel = result.data;
+  novelId = String(novel.id);
+
+  const episodes = await client
+    .from('episodes')
+    .select('episode_number,title,content')
+    .eq('novel_id', novel.id)
+    .order('episode_number', { ascending: true });
+  if (episodes.error) throw episodes.error;
+  existingEpisodes = episodes.data || [];
+  nextNumber =
+    existingEpisodes.reduce(
+      (max, row) => Math.max(max, Number(row.episode_number) || 0),
+      0
+    ) + 1;
+
+  history.replaceState(null, '', 'bulk-import.html?novel_id=' + encodeURIComponent(novel.id));
+  byId('targetLabel').textContent =
+    '「' + novel.title + '」へ、第' + nextNumber + '話から追加します。';
+  byId('inputCard').hidden = false;
+  byId('targetCard').hidden = true;
+  setStep(2);
+}
+
+async function loadNovelChoices() {
+  const result = await client
+    .from('novels')
+    .select('id,title,status')
+    .eq('user_id', session.user.id)
+    .order('created_at', { ascending: false });
+  if (result.error) throw result.error;
+
+  const select = byId('novelSelect');
+  for (const row of result.data || []) {
+    const option = document.createElement('option');
+    option.value = row.id;
+    option.textContent = row.title + (row.status === 'published' ? '' : '（下書き）');
+    select.append(option);
+  }
+}
+
+async function parseCurrent() {
+  parseStatus.textContent = '';
+  importStatus.textContent = '';
+  await markStarted();
+
+  const parsed = parseBulkEpisodes(source.value, { delimiter: delimiter.value });
+  const errors = validateBulkEpisodes(parsed);
+  if (errors.length) {
+    items = parsed;
+    parseStatus.textContent =
+      parsed.length === 0 && !delimiter.value.trim()
+        ? 'エピソードの区切りを自動判定できませんでした。任意の区切り文字を指定してください。'
+        : errors.slice(0, 6).join(' / ');
+    await recordEvent('bulk_import_parse_failed', Math.min(parsed.length, 100));
+    return;
+  }
+
+  items = parsed;
+  const warnings = duplicateWarnings(items, existingEpisodes);
+  warningRoot.replaceChildren();
+  if (warnings.length) {
+    const box = document.createElement('div');
+    box.className = 'warning';
+    box.textContent =
+      warnings.slice(0, 8).join(' / ') +
+      ' 自動削除はしません。内容を確認してください。';
+    warningRoot.append(box);
+  }
+
+  renderReview();
+  byId('reviewCard').hidden = false;
+  byId('inputCard').hidden = true;
+  setStep(3);
+  await recordEvent('bulk_import_parsed', items.length);
+}
+
+source.addEventListener('input', () => {
+  if (source.value.trim()) void markStarted();
+});
+
+byId('fileInput').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  await markStarted();
+
+  if (!file.name.toLowerCase().endsWith('.txt')) {
+    parseStatus.textContent = 'TXTファイルのみ選択できます。';
+    await recordEvent('bulk_import_parse_failed', 0);
+    return;
+  }
+  if (file.size > BULK_IMPORT_LIMITS.maxFileBytes) {
+    parseStatus.textContent = 'ファイルサイズが5MBを超えています。';
+    await recordEvent('bulk_import_parse_failed', 0);
+    return;
+  }
+
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    source.value = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    await parseCurrent();
+  } catch (error) {
+    console.error(error);
+    parseStatus.textContent = 'TXTファイルがUTF-8ではありません。';
+    await recordEvent('bulk_import_parse_failed', 0);
+  }
+});
+
+byId('parse').addEventListener('click', () => void parseCurrent());
+byId('backToInput').addEventListener('click', () => {
+  byId('reviewCard').hidden = true;
+  byId('inputCard').hidden = false;
+  setStep(2);
+});
+
+byId('showExisting').addEventListener('click', () => {
+  byId('existingArea').hidden = false;
+});
+byId('useNovel').addEventListener('click', async () => {
+  const value = byId('novelSelect').value;
+  if (!value) {
+    byId('targetStatus').textContent = '追加する作品を選択してください。';
+    return;
+  }
+  try {
+    await loadTarget(value);
+  } catch (error) {
+    console.error(error);
+    byId('targetStatus').textContent =
+      error?.message || '作品を読み込めませんでした。';
+  }
+});
+
+byId('import').addEventListener('click', async () => {
+  if (busy || !novel) return;
+  const selected = activeItems();
+  const errors = validateBulkEpisodes(selected);
+
+  if (!byId('rightsAck').checked) {
+    importStatus.textContent = '作品を投稿する権利の確認が必要です。';
+    return;
+  }
+  if (errors.length) {
+    importStatus.textContent = errors.slice(0, 6).join(' / ');
+    return;
+  }
+
+  busy = true;
+  byId('import').disabled = true;
+  importStatus.textContent = '下書きを一括登録しています...';
+
+  try {
+    await recordEvent('bulk_import_confirmed', selected.length);
+    const payload = selected.map((item) => ({
+      title: String(item.title ?? ''),
+      content: String(item.content ?? '')
+    }));
+    const result = await client.rpc('novelight_bulk_import_episode_drafts', {
+      p_novel_id: String(novel.id),
+      p_items: payload
+    });
+    if (result.error) throw result.error;
+
+    await recordEvent('bulk_import_completed', Number(result.data || selected.length));
+    byId('reviewCard').hidden = true;
+    byId('completeCard').hidden = false;
+    byId('completeText').textContent =
+      '「' +
+      novel.title +
+      '」へ' +
+      Number(result.data || selected.length) +
+      '話を非公開下書きとして登録しました。公開前に内容を確認してください。';
+    byId('draftsLink').href =
+      'episode-drafts.html?novel_id=' + encodeURIComponent(novel.id);
+    setStep(4);
+  } catch (error) {
+    console.error(error);
+    importStatus.textContent =
+      error?.message || '一括登録できませんでした。入力内容を確認してください。';
+  } finally {
+    busy = false;
+    byId('import').disabled = false;
+  }
+});
+
+(async () => {
+  void NovelightClient.recordVisit(client);
+  try {
+    const auth = await client.auth.getSession();
+    session = auth.data.session;
+    if (!session) {
+      location.href =
+        'login.html?redirect=' +
+        encodeURIComponent('bulk-import.html' + location.search);
+      return;
+    }
+
+    void NovelightClient.claimAcquisition(client);
+    await loadNovelChoices();
+    await recordEvent('bulk_import_opened', 0);
+
+    if (novelId) await loadTarget(novelId);
+  } catch (error) {
+    console.error(error);
+    byId('targetStatus').textContent =
+      error?.message || '一括移行の準備に失敗しました。';
+  }
+})();
+</script>
+</body>
+</html>

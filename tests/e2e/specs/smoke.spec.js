@@ -17,7 +17,8 @@ const publicPages = [
   ['content guidelines', '/content-guidelines.html'],
   ['billing policy', '/billing-policy.html'],
   ['commerce disclosure', '/commerce-disclosure.html'],
-  ['contact', '/contact.html']
+  ['contact', '/contact.html'],
+  ['bulk import', '/bulk-import.html']
 ];
 
 for (const [name, path] of publicPages) {
@@ -131,6 +132,7 @@ test('all audited major routes fit a 390px mobile viewport', async ({
     '/novel.html',
     '/episode.html',
     '/post.html',
+    '/bulk-import.html',
     '/episode-post.html',
     '/favorites.html',
     '/scout-record.html',
@@ -153,4 +155,19 @@ test('all audited major routes fit a 390px mobile viewport', async ({
   }
 
   await context.close();
+});
+
+test('bulk import exposes the beta author migration contract', async ({
+  request
+}) => {
+  const html = await (await request.get('/bulk-import.html')).text();
+  const parser = await (await request.get('/bulk-import-parser.js')).text();
+
+  expect(html).toContain('最大100話');
+  expect(html).toContain('novelight_bulk_import_episode_drafts');
+  expect(html).toContain('novelight_record_bulk_import_event');
+  expect(html).toContain('TextDecoder');
+  expect(html).toContain('post.html?next=bulk-import');
+  expect(parser).toContain('parseBulkEpisodes');
+  expect(parser).toContain('maxFileBytes: 5 * 1024 * 1024');
 });
