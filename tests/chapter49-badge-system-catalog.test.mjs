@@ -20,61 +20,61 @@ const rollback = await readFile(
 );
 
 const readerIds = [
-  "reader_read_001",
-  "reader_read_005",
-  "reader_read_010",
-  "reader_read_025",
+  'reader_read_001',
+  'reader_read_005',
+  'reader_read_010',
+  'reader_read_025',
   "reader_rating_001",
   "reader_rating_005",
   "reader_rating_010",
   "reader_comment_001",
   "reader_comment_005",
   "reader_comment_010",
-  "reader_seed_001",
-  "reader_seed_003",
-  "reader_seed_005",
-  "reader_seed_010",
+  'reader_seed_001',
+  'reader_seed_003',
+  'reader_seed_005',
+  'reader_seed_010',
   "reader_bronze_seed_001",
-  "reader_silver_seed_001",
-  "reader_gold_seed_001",
-  "reader_discovery_plus2_001",
-  "reader_discovery_plus2_002",
-  "reader_discovery_plus2_003",
+  'reader_silver_seed_001',
+  'reader_gold_seed_001',
+  'reader_discovery_plus2_001',
+  'reader_discovery_plus2_002',
+  'reader_discovery_plus2_003',
   "reader_new_author_005",
   "reader_new_author_010",
   "reader_genre_003",
   "reader_genre_005",
   "reader_new_work_005",
   "reader_low_rank_005",
-  "reader_level_005",
-  "reader_level_010",
-  "reader_level_020",
-  "reader_active_days_007",
-  "reader_read_050",
-  "reader_read_100",
-  "reader_read_200",
-  "reader_read_300",
+  'reader_level_005',
+  'reader_level_010',
+  'reader_level_020',
+  'reader_active_days_007',
+  'reader_read_050',
+  'reader_read_100',
+  'reader_read_200',
+  'reader_read_300',
   "reader_rating_025",
   "reader_rating_050",
   "reader_rating_100",
   "reader_comment_025",
   "reader_comment_050",
   "reader_comment_100",
-  "reader_seed_025",
-  "reader_seed_050",
-  "reader_seed_100",
-  "reader_gold_seed_005",
-  "reader_silver_seed_010",
+  'reader_seed_025',
+  'reader_seed_050',
+  'reader_seed_100',
+  'reader_gold_seed_005',
+  'reader_silver_seed_010',
   "reader_bronze_seed_015",
-  "reader_discovery_plus2_005",
-  "reader_discovery_plus2_010",
-  "reader_discovery_plus2_020",
-  "reader_discovery_plus3_001",
-  "reader_discovery_plus3_005",
-  "reader_discovery_plus3_010",
-  "reader_discovery_plus4_001",
-  "reader_discovery_plus4_002",
-  "reader_discovery_plus4_005",
+  'reader_discovery_plus2_005',
+  'reader_discovery_plus2_010',
+  'reader_discovery_plus2_020',
+  'reader_discovery_plus3_001',
+  'reader_discovery_plus3_005',
+  'reader_discovery_plus3_010',
+  'reader_discovery_plus4_001',
+  'reader_discovery_plus4_002',
+  'reader_discovery_plus4_005',
   "reader_nova_001",
   "reader_nova_003",
   "reader_nova_005",
@@ -91,55 +91,55 @@ const readerIds = [
   "reader_genre_010",
   "reader_long_read_005",
   "reader_long_read_010",
-  "reader_short_read_010",
-  "reader_short_read_025",
-  "reader_completed_read_005",
-  "reader_completed_read_010",
-  "reader_active_days_030",
-  "reader_active_days_090",
-  "reader_level_030",
+  'reader_short_read_010',
+  'reader_short_read_025',
+  'reader_completed_read_005',
+  'reader_completed_read_010',
+  'reader_active_days_030',
+  'reader_active_days_090',
+  'reader_level_030',
   "reader_point_100",
   "reader_point_500",
-  "reader_read_500",
-  "reader_read_1000",
+  'reader_read_500',
+  'reader_read_1000',
   "reader_new_author_250",
   "reader_low_rank_250",
   "reader_low_rank_500",
-  "reader_discovery_plus2_050",
-  "reader_discovery_plus2_100",
-  "reader_discovery_plus3_025",
-  "reader_discovery_plus3_050",
-  "reader_discovery_plus4_010",
-  "reader_discovery_plus4_020",
-  "reader_discovery_plus5_001",
-  "reader_discovery_plus5_003",
-  "reader_discovery_plus5_010",
+  'reader_discovery_plus2_050',
+  'reader_discovery_plus2_100',
+  'reader_discovery_plus3_025',
+  'reader_discovery_plus3_050',
+  'reader_discovery_plus4_010',
+  'reader_discovery_plus4_020',
+  'reader_discovery_plus5_001',
+  'reader_discovery_plus5_003',
+  'reader_discovery_plus5_010',
   "reader_nova_010",
   "reader_nova_025",
-  "reader_gold_plus5_001",
-  "reader_silver_plus5_001",
+  'reader_gold_plus5_001',
+  'reader_silver_plus5_001',
   "reader_bronze_plus5_001",
   "reader_master_scout"
 ];
 const authorIds = [
   "author_novel_001",
-  "author_episode_001",
-  "author_reader_001",
-  "author_favorite_001",
+  'author_episode_001',
+  'author_reader_001',
+  'author_favorite_001',
   "author_comment_001",
-  "author_episode_010",
-  "author_episode_025",
-  "author_episode_050",
-  "author_episode_100",
-  "author_episode_250",
-  "author_chars_010k",
-  "author_chars_050k",
-  "author_chars_100k",
-  "author_chars_250k",
-  "author_chars_500k",
-  "author_completed_001",
-  "author_completed_003",
-  "author_completed_005",
+  'author_episode_010',
+  'author_episode_025',
+  'author_episode_050',
+  'author_episode_100',
+  'author_episode_250',
+  'author_chars_010k',
+  'author_chars_050k',
+  'author_chars_100k',
+  'author_chars_250k',
+  'author_chars_500k',
+  'author_completed_001',
+  'author_completed_003',
+  'author_completed_005',
   "author_novel_002",
   "author_novel_005",
   "author_novel_010",
@@ -147,20 +147,20 @@ const authorIds = [
   "author_unique_reader_050",
   "author_unique_reader_100",
   "author_unique_reader_500",
-  "author_favorite_010",
-  "author_favorite_050",
-  "author_favorite_100",
+  'author_favorite_010',
+  'author_favorite_050',
+  'author_favorite_100',
   "author_comment_010",
   "author_comment_050",
-  "author_seed_received_001",
-  "author_seed_received_010",
-  "author_seed_received_050",
-  "author_discovered_plus2_001",
-  "author_discovered_plus3_001",
-  "author_chars_1m",
-  "author_completed_010",
+  'author_seed_received_001',
+  'author_seed_received_010',
+  'author_seed_received_050',
+  'author_discovered_plus2_001',
+  'author_discovered_plus3_001',
+  'author_chars_1m',
+  'author_completed_010',
   "author_unique_reader_1000",
-  "author_favorite_500",
+  'author_favorite_500',
   "author_discovered_plus2_005"
 ];
 
@@ -168,7 +168,9 @@ function has(text, value) {
   assert.equal(text.includes(value), true, `missing token: ${value}`);
 }
 
-test('Badge System registers exactly the canonical Reader 100 and Author 40 ids', () => {
+test(
+  'Badge System registers exactly the canonical Reader 100 and Author 40 ids',
+  () => {
   assert.equal(readerIds.length, 100);
   assert.equal(authorIds.length, 40);
 
@@ -184,8 +186,9 @@ test('Badge System registers exactly the canonical Reader 100 and Author 40 ids'
   has(postcheck, 'v_author <> 40');
   has(postcheck, 'v_author_easy <> 5');
   has(postcheck, 'v_author_normal <> 30');
-  has(postcheck, 'v_author_hard <> 5');
-});
+    has(postcheck, 'v_author_hard <> 5');
+  }
+);
 
 test('Reader reward tiers and Point-loop exceptions are encoded as data', () => {
   has(migration, "'reader_point_100','reader','normal'");
@@ -201,7 +204,9 @@ test('Reader reward tiers and Point-loop exceptions are encoded as data', () => 
   has(migration, "'badge:' || p_user_id::text || ':' || p_badge_id");
 });
 
-test('Master Scout is a generic composite-all definition with four visible component progresses', () => {
+test(
+  'Master Scout is a generic composite-all definition with four visible component progresses',
+  () => {
   has(migration, "'reader_master_scout'");
   has(migration, "'composite_all'");
   has(migration, '"metric_key":"discovery_plus5_count"');
@@ -247,34 +252,48 @@ test('Reader metrics use authoritative sources and configurable thresholds', () 
   has(migration, "r.valid_read_episodes::numeric / r.published_episodes::numeric >= v_completed_ratio");
 });
 
-test('Author metrics are rebuilt from current published authoritative state', () => {
+test(
+  'Author metrics are rebuilt from current published authoritative state',
+  () => {
   has(migration, 'create or replace function public.novelight_author_badge_metrics');
   has(migration, "n.status = 'published'");
   has(migration, "e.status = 'published'");
   has(migration, 'count(distinct v.reader_id)');
   has(migration, 'c.deleted_at is null');
   has(migration, 'c.author_hidden_at is null');
-  has(migration, 'count(distinct d.novel_id_snapshot)');
-});
+    has(migration, 'count(distinct d.novel_id_snapshot)');
+  }
+);
 
-test('provisional Author IDs migrate once to canonical IDs without double counting', () => {
+test(
+  'provisional Author IDs migrate once to canonical IDs without double counting',
+  () => {
   has(migration, "badge_id ~ '^author_badge_[0-9]{3}$'");
   has(migration, "'migrated_from_badge_id'");
   has(migration, 'delete from public.user_scout_badges b');
   has(postcheck, 'Legacy provisional Author Badge IDs must be disabled');
-  has(postcheck, 'Legacy per-user Author Badge aliases must be migrated to canonical IDs');
-});
+    has(
+      postcheck,
+      'Legacy per-user Author Badge aliases must be migrated to canonical IDs'
+    );
+  }
+);
 
-test('historical progress baseline is separated from retroactive Reader Point rewards', () => {
+test(
+  'historical progress baseline is separated from retroactive Reader Point rewards',
+  () => {
   has(migration, 'public.novelight_refresh_scout_badges_for_user(v_user.id, false)');
   has(migration, 'p_award_reader_points boolean');
   has(migration, "and coalesce(p_award_points, false)");
   has(migration, "retroactive_policy = 'none'");
   has(precheck, "retroactive_policy = 'none'");
-  has(postcheck, "retroactive_policy='none'");
-});
+    has(postcheck, "retroactive_policy='none'");
+  }
+);
 
-test('badge engine is idempotent and event-driven without 140 bespoke branches', () => {
+test(
+  'badge engine is idempotent and event-driven without 140 bespoke branches',
+  () => {
   has(migration, 'public.novelight_evaluate_scout_badge');
   has(migration, 'public.novelight_apply_scout_badge_evaluation');
   has(migration, 'public.novelight_refresh_scout_badges_for_user');
@@ -288,14 +307,18 @@ test('badge engine is idempotent and event-driven without 140 bespoke branches',
   assert.doesNotMatch(migration, /case\s+p_badge_id/iu);
 });
 
-test('Limited badges remain separate and raw badge tables remain private', () => {
+test(
+  'Limited badges remain separate and raw badge tables remain private',
+  () => {
   has(precheck, 'Expected Founding Author and beta Participant Limited badges');
   has(postcheck, 'v_limited <> 2');
   has(postcheck, 'Badge raw tables must remain RPC-only');
   assert.doesNotMatch(migration, /update\s+public\.scout_badge_definitions[\s\S]{0,220}badge_category\s*=\s*'limited'[\s\S]{0,120}badge_category\s*=\s*'author'/iu);
 });
 
-test('rollback restores the deployed Author ID contract and preserves earned Reader history', () => {
+test(
+  'rollback restores the deployed Author ID contract and preserves earned Reader history',
+  () => {
   has(rollback, 'Restore per-user Author progress');
   has(rollback, "'rolled_back_from_badge_id'");
   has(rollback, "badge_id like 'reader_%'");
