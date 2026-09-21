@@ -110,5 +110,5 @@ jobs:
             echo "Staging migration parity: \`PASS\`"
             echo
             echo 'No Production database mutation was performed.'
-            echo 'Actual deploy requires a fresh explicit chat approval or the protected manual fallback.'
+            echo 'Actual deploy requires an exact human Production approval. When the merged PR already carries the scope-bound approval, automation inherits it and no second human approval is required; otherwise use the protected manual fallback.'
           } >> "$GITHUB_STEP_SUMMARY"
