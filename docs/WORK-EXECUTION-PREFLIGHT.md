@@ -329,6 +329,55 @@ UIが最初に見えているという理由だけでUI経路を継続しない�
 - rollback/backup確認
 - 破壊的変更直前の確認
 
+## 5.5 本番承認・機械証跡自動変換ゲート
+
+NOVELIGHTの人間承認はMASTERの「承認ゲートの一本化」に従い、原則として「本番承認」1回に統一する。
+
+ユーザーが、対象Environment・変更内容・主要なProduction影響が示された状態で「本番承認」または同等の明示的な本番実行承認を行った場合、その同一workstream内で以下を別々の人間承認として要求しない。
+
+- merge承認
+- 高リスクPR承認
+- Production migration承認
+- GitHubコメント承認
+- challenge確認
+- 機械可読JSONの貼り付け承認
+
+固定workflowやRepository Rulesがこれらの機械証跡を必要とする場合、ChatGPT/実行エージェント側で次を行う。
+
+1. 最新mainを再取得する
+2. 対象Environment / resourceを再確認する
+3. Production migrationでは実際のpending migration集合を再確認する
+4. active Approval Ledgerの既存CLAIMED / EXECUTED / FAILEDを確認する
+5. 現在main上の固定workflow contractが要求するexact SHA、operation、migration集合、一回限りのchallenge等を生成する
+6. OWNER本人として認証された既接続GitHub経路から機械可読承認を投入する
+7. workflow側のclaim・再検証・postcheckをそのまま維持する
+
+ユーザーへ長い機械可読コメントやJSONをコピー＆ペーストさせない。
+
+### 本番承認の再利用条件
+
+本番承認後にmerge等でfinal head SHA、main SHA、challengeその他の機械識別子だけが変化した場合、freshなread-only evidenceで以下をすべて証明できれば、同じ人間の本番承認を再利用し、機械証跡だけを再生成する。
+
+- 承認対象のProduction変更内容が実質的に同じ
+- 対象Environment / resourceが同じ
+- 新しいmigrationや追加の破壊的処理が増えていない
+- 課金・Secret変更その他の承認範囲外mutationが追加されていない
+- 既存workflow contractを弱めずに実行できる
+
+以下のいずれかに該当する場合は新しい本番承認を必要とする。
+
+- 新しいProduction mutationが承認後に追加された
+- 対象Environment / resourceが変わった
+- migration集合が実質的に拡大した
+- 破壊性・不可逆性・課金・Secret影響が新たに加わった
+- 元の承認範囲と同一であることを証明できない
+
+### Fail-Closed
+
+OWNER本人として機械可読承認を投入できない場合、対象scopeを一意に確定できない場合、最新状態がunknownの場合、またはworkflow contractと一致しない場合は停止する。
+
+この停止を回避するために、OWNER要件をbotへ緩和する、challengeを省略する、Ledger確認を外す、pending一致検証を外す等の安全ゲート弱体化を行ってはならない。
+
 ## 6. 秘密値・認証ゲート
 
 - Secret、API key、2FAコード、Recovery code等をチャットへ貼らせない

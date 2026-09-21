@@ -33,3 +33,13 @@ test('preflight automation gates', () => {
   assert.match(preflight, /(?:全体の予想所要時間|トータル予想時間)/);
   assert.match(preflight, /主要工程ごとの予想所要時間/);
 });
+
+test('single production approval drives machine evidence without extra user prompts', () => {
+  assert.match(master, /チャット本番承認ブリッジ/);
+  assert.match(master, /唯一の人間承認/);
+  assert.match(master, /新しい本番承認を必要とする/);
+  assert.match(preflight, /本番承認・機械証跡自動変換ゲート/);
+  assert.match(preflight, /OWNER本人として機械可読承認を投入できない場合/);
+  assert.match(workflow, /Single human Production approval bridge/);
+  assert.match(workflow, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE/);
+});
