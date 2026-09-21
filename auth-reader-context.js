@@ -8,6 +8,8 @@
   const HOME_UPDATES_SCRIPT_ID = 'novelight-home-updates-loader';
   const ALLOWED_PATHS = new Set([
     '/mypage.html',
+    '/account-settings.html',
+    '/interaction-settings.html',
     '/pricing.html',
     '/scout-record.html',
     '/post.html',
