@@ -146,13 +146,17 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 
 `main` が進んだ場合は、承認対象artifactとcontrol pathが変わっていないことを証明できるときだけcarry-forwardする。証明できない、または承認対象に関連する変更がある場合はfresh approvalを得る。
 
-次はcarry-forward禁止とする。
+次は原則としてcarry-forward禁止とする。
 
-- final-head SHA / challengeへ固定されたHigh-Risk PR承認
-- Production DB、Production Secret、Stripe live、その他Production high-impact operationで正式契約がfresh approvalを要求するもの
+- final-head SHA / challengeへ固定されたHigh-Risk PR承認を、artifact差分やscope再検証なしで別headへ使い回すこと
+- Production Secret、Stripe live、その他Production high-impact operationで、MASTERの単一承認継承契約とは別に正式契約がfresh approvalを要求するもの
 - Secret、2FA、OAuth、Recovery code等の本人操作
 - destructive / irreversible operationで実行直前のfresh confirmationが契約上必要なもの
 - すでにone-time requestが `CLAIMED` または `CONSUMED` された操作
+
+ただし、MASTER「承認ゲートの一本化」に基づく同一workstream内のProduction承認継承は、この一般carry-forward禁止の例外として正式に認める。特にmigrationを含むhigh-risk PRで、ユーザーの1回の「本番承認」が最終承認headと `supabase-migration-deploy` scopeへ機械可読に結び付けられている場合、merge後のmain SHAが当該PRのmerge commitと一致し、対象migration集合が承認済みPRと完全一致し、Production migration plan・dry-run・Staging parity・pending再確認等が成功していることをfresh read-only evidenceで証明できれば、その同じ人間承認をProduction migrationへ自動継承してよい。別の「migration承認」「本番DB承認」をユーザーへ要求しない。
+
+この継承で許されるのは、承認済みの実質scopeをGitHub上の必要なhead / merge commit / challenge / Ledger形式へ機械的に変換することだけである。PR内容、Production mutation種別、対象migration集合、Environmentその他の実質scopeが変わった場合は継承を停止し、freshな「本番承認」を得る。
 
 one-time request bridgeでrequestがclaim/consume済みになった場合は、元の承認を未消費とは扱わず、そのrunbookのfresh approval規則へ戻る。
 
