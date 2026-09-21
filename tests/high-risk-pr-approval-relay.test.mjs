@@ -164,4 +164,12 @@ test('production readiness observes high-risk control workflow changes', () => {
     productionReadinessWorkflow,
     /'\.github\/workflows\/high-risk-merge-readiness-bridge\.yml'/
   );
+  assert.match(
+    productionReadinessWorkflow,
+    /'\.github\/workflows\/supabase-production-auto-deploy\.yml'/
+  );
+  assert.match(
+    productionReadinessWorkflow,
+    /'scripts\/resolve-production-migration-approval\.mjs'/
+  );
 });
