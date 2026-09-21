@@ -113,25 +113,31 @@ test('duplicate warnings cover current batch and existing episodes', () => {
   assert.ok(warnings.some((value) => value.includes('既存エピソード')));
 });
 
-test(\n  'browser contract limits TXT to UTF-8 5MB and keeps safe text editing',\n  () => {
-  assert.equal(BULK_IMPORT_LIMITS.maxFileBytes, 5 * 1024 * 1024);
-  assert.match(page, /TextDecoder\('utf-8', \{ fatal: true \}\)/);
-  assert.match(page, /TXTファイルのみ選択できます/);
-  assert.match(page, /textContent/);
-  assert.doesNotMatch(page, /\.innerHTML\s*=/);
-});
+test(
+  'browser contract limits TXT to UTF-8 5MB and keeps safe text editing',
+  () => {
+    assert.equal(BULK_IMPORT_LIMITS.maxFileBytes, 5 * 1024 * 1024);
+    assert.match(page, /TextDecoder\('utf-8', \{ fatal: true \}\)/);
+    assert.match(page, /TXTファイルのみ選択できます/);
+    assert.match(page, /textContent/);
+    assert.doesNotMatch(page, /\.innerHTML\s*=/);
+  }
+);
 
-test('migration locks the novel and assigns contiguous numbers after current max', () => {
-  assert.match(migration, /for update/);
-  assert.match(
-    migration,
-    /coalesce\(max\(e\.episode_number\), 0\) \+ 1/
-  );
-  assert.match(migration, /v_start_number \+ item\.ordinality - 1/);
-  assert.match(migration, /between 1 and 100 episodes/);
-  assert.match(migration, /Unexpected import item field/);
-  assert.match(migration, /'draft'/);
-});
+test(
+  'migration locks the novel and assigns contiguous numbers after current max',
+  () => {
+    assert.match(migration, /for update/);
+    assert.match(
+      migration,
+      /coalesce\(max\(e\.episode_number\), 0\) \+ 1/
+    );
+    assert.match(migration, /v_start_number \+ item\.ordinality - 1/);
+    assert.match(migration, /between 1 and 100 episodes/);
+    assert.match(migration, /Unexpected import item field/);
+    assert.match(migration, /'draft'/);
+  }
+);
 
 test('migration and analytics surfaces stay authenticated-only', () => {
   assert.match(
