@@ -34,7 +34,6 @@
   let badgeRows = [];
   let badgeCategory = 'all';
   let badgeStatus = 'all';
-  let badgeDifficulty = 'all';
 
   function n(value) {
     return Number(value || 0).toLocaleString('ja-JP');
@@ -147,94 +146,109 @@
     return '◇';
   }
 
+  const badgeGroupDefinitions = [
+    { key: 'easy', hostId: 'badgeGridEasy', countId: 'badgeGroupEasyCount' },
+    { key: 'normal', hostId: 'badgeGridNormal', countId: 'badgeGroupNormalCount' },
+    { key: 'hard', hostId: 'badgeGridHard', countId: 'badgeGroupHardCount' },
+    { key: 'special', hostId: 'badgeGridSpecial', countId: 'badgeGroupSpecialCount' }
+  ];
+
+  function badgeMatchesCategory(row) {
+    return badgeCategory === 'all' || row.badge_category === badgeCategory;
+  }
+
   function badgeVisible(row) {
-    if (badgeCategory !== 'all' && row.badge_category !== badgeCategory) {
-      return false;
-    }
+    if (!badgeMatchesCategory(row)) return false;
     const earned = row.status === 'earned';
     if (badgeStatus === 'earned' && !earned) return false;
     if (badgeStatus === 'unearned' && earned) return false;
-    if (badgeDifficulty !== 'all' && row.difficulty !== badgeDifficulty) {
-      return false;
-    }
     return true;
   }
 
-  function filteredBadges() {
-    return badgeRows.filter(badgeVisible);
+  function badgeGroupKey(row) {
+    return ['easy', 'normal', 'hard'].includes(row.difficulty)
+      ? row.difficulty
+      : 'special';
+  }
+
+  function createBadgeCard(row) {
+    const earned = row.status === 'earned';
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `badge-card ${row.difficulty || ''} ${earned ? 'earned' : 'unearned'}`;
+    if (row.badge_category === 'limited') card.classList.add('limited');
+    card.dataset.badgeId = row.badge_id;
+
+    const icon = document.createElement('div');
+    icon.className = 'badge-icon';
+    icon.textContent = badgeIcon(row);
+
+    const title = document.createElement('h3');
+    title.textContent = row.display_name;
+
+    const meta = document.createElement('div');
+    meta.className = 'badge-meta';
+    const category = document.createElement('span');
+    category.textContent = categoryLabels[row.badge_category] || row.badge_category;
+    const difficulty = document.createElement('span');
+    difficulty.textContent =
+      difficultyLabels[row.difficulty] || row.difficulty || '';
+    meta.append(category, difficulty);
+
+    const progress = document.createElement('div');
+    progress.className = 'badge-progress';
+    const progressBar = document.createElement('span');
+    progressBar.style.width = `${Math.max(0, Math.min(100, Number(row.progress_percent || 0)))}%`;
+    progress.appendChild(progressBar);
+
+    const progressText = document.createElement('div');
+    progressText.className = 'badge-progress-text';
+    const values = document.createElement('span');
+    values.textContent = `${n(row.progress_value)} / ${n(row.target_value)}`;
+    const percent = document.createElement('span');
+    percent.textContent = `${Number(row.progress_percent || 0).toFixed(0)}%`;
+    progressText.append(values, percent);
+
+    const point = document.createElement('div');
+    point.className = 'badge-point';
+    point.textContent =
+      Number(row.point_reward || 0) > 0
+        ? `報酬 +${n(row.point_reward)} pt`
+        : row.badge_category === 'author'
+          ? 'Author Badge / Point報酬なし'
+          : earned
+            ? '獲得済み'
+            : 'Point報酬なし';
+
+    card.append(icon, title, meta, progress, progressText, point);
+    card.addEventListener('click', () => openBadge(row));
+    return card;
   }
 
   function renderBadges() {
-    const host = document.getElementById('badgeGrid');
-    if (!host) return;
-    host.replaceChildren();
-
-    const rows = filteredBadges();
+    const visibleRows = badgeRows.filter(badgeVisible);
     const earnedCount = badgeRows.filter((row) => row.status === 'earned').length;
     setText('statBadges', n(earnedCount));
     setText('badgeCount', `${earnedCount} / ${badgeRows.length}`);
 
-    if (!rows.length) {
-      const empty = document.createElement('div');
-      empty.className = 'badge-empty';
-      empty.style.gridColumn = '1 / -1';
-      empty.textContent = 'この条件に該当するBadgeはありません。';
-      host.appendChild(empty);
-      return;
-    }
+    const empty = document.getElementById('badgeEmpty');
+    if (empty) empty.hidden = visibleRows.length > 0;
 
-    rows.forEach((row) => {
-      const earned = row.status === 'earned';
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = `badge-card ${row.difficulty || ''} ${earned ? 'earned' : 'unearned'}`;
-      if (row.badge_category === 'limited') card.classList.add('limited');
-      card.dataset.badgeId = row.badge_id;
+    badgeGroupDefinitions.forEach((group) => {
+      const details = document.querySelector(`[data-badge-group="${group.key}"]`);
+      const host = document.getElementById(group.hostId);
+      if (!details || !host) return;
 
-      const icon = document.createElement('div');
-      icon.className = 'badge-icon';
-      icon.textContent = badgeIcon(row);
+      const baseRows = badgeRows.filter(
+        (row) => badgeMatchesCategory(row) && badgeGroupKey(row) === group.key
+      );
+      const rows = visibleRows.filter((row) => badgeGroupKey(row) === group.key);
+      const groupEarned = baseRows.filter((row) => row.status === 'earned').length;
 
-      const title = document.createElement('h3');
-      title.textContent = row.display_name;
-
-      const meta = document.createElement('div');
-      meta.className = 'badge-meta';
-      const category = document.createElement('span');
-      category.textContent = categoryLabels[row.badge_category] || row.badge_category;
-      const difficulty = document.createElement('span');
-      difficulty.textContent =
-        difficultyLabels[row.difficulty] || row.difficulty || '';
-      meta.append(category, difficulty);
-
-      const progress = document.createElement('div');
-      progress.className = 'badge-progress';
-      const progressBar = document.createElement('span');
-      progressBar.style.width = `${Math.max(0, Math.min(100, Number(row.progress_percent || 0)))}%`;
-      progress.appendChild(progressBar);
-
-      const progressText = document.createElement('div');
-      progressText.className = 'badge-progress-text';
-      const values = document.createElement('span');
-      values.textContent = `${n(row.progress_value)} / ${n(row.target_value)}`;
-      const percent = document.createElement('span');
-      percent.textContent = `${Number(row.progress_percent || 0).toFixed(0)}%`;
-      progressText.append(values, percent);
-
-      const point = document.createElement('div');
-      point.className = 'badge-point';
-      point.textContent =
-        Number(row.point_reward || 0) > 0
-          ? `報酬 +${n(row.point_reward)} pt`
-          : row.badge_category === 'author'
-            ? 'Author Badge / Point報酬なし'
-            : earned
-              ? '獲得済み'
-              : 'Point報酬なし';
-
-      card.append(icon, title, meta, progress, progressText, point);
-      card.addEventListener('click', () => openBadge(row));
-      host.appendChild(card);
+      setText(group.countId, `${groupEarned} / ${baseRows.length} 獲得`);
+      details.hidden = rows.length === 0;
+      host.replaceChildren();
+      rows.forEach((row) => host.appendChild(createBadgeCard(row)));
     });
   }
 
@@ -375,6 +389,101 @@
     });
   }
 
+  function renderSeedHistory(rows, novelMap, metadataUnavailable = false) {
+    const host = document.getElementById('seedHistoryList');
+    if (!host) return;
+    host.replaceChildren();
+    setText('seedHistoryCount', `${n(rows.length)}件`);
+
+    if (!rows.length) {
+      host.innerHTML =
+        '<div class="scout-empty">まだLIGHT SEEDを贈った作品はありません。</div>';
+      return;
+    }
+
+    rows.forEach((row) => {
+      const id = String(row.novel_id_snapshot || '');
+      const novel = novelMap.get(id);
+      const published = !metadataUnavailable && novel?.status === 'published';
+
+      const item = document.createElement('div');
+      item.className = 'scout-row';
+      const copy = document.createElement('div');
+      const title = document.createElement('b');
+      title.textContent = metadataUnavailable
+        ? '作品情報を取得できません'
+        : published
+          ? novel.title
+          : '現在表示できない作品';
+      const meta = document.createElement('small');
+      meta.textContent = `LIGHT SEEDを贈った日時：${dateTime(row.seeded_at)} · ${
+        metadataUnavailable
+          ? '作品情報の取得エラー'
+          : published
+            ? '公開中'
+            : '現在非公開または削除済み'
+      }`;
+      copy.append(title, meta);
+      item.appendChild(copy);
+
+      if (published) {
+        const link = document.createElement('a');
+        link.className = 'scout-mini-button';
+        link.href = `novel.html?id=${encodeURIComponent(id)}`;
+        link.textContent = '作品を見る →';
+        item.appendChild(link);
+      } else {
+        const state = document.createElement('strong');
+        state.textContent = metadataUnavailable ? '再読み込み' : '表示不可';
+        item.appendChild(state);
+      }
+
+      host.appendChild(item);
+    });
+  }
+
+  async function loadSeedHistory() {
+    const host = document.getElementById('seedHistoryList');
+    if (!host) return;
+
+    let rows;
+    try {
+      const result = await client
+        .from('light_seeds')
+        .select('novel_id_snapshot,seeded_at')
+        .order('seeded_at', { ascending: false });
+      if (result.error) throw result.error;
+      rows = result.data || [];
+    } catch (error) {
+      console.error(error);
+      setText('seedHistoryCount', '—');
+      host.innerHTML =
+        '<div class="scout-error">LIGHT SEED送信履歴を読み込めませんでした。</div>';
+      return;
+    }
+
+    if (!rows.length) {
+      renderSeedHistory([], new Map());
+      return;
+    }
+
+    const ids = [...new Set(rows.map((row) => String(row.novel_id_snapshot)))];
+    try {
+      const result = await client
+        .from('novels')
+        .select('id,title,status')
+        .in('id', ids);
+      if (result.error) throw result.error;
+      renderSeedHistory(
+        rows,
+        new Map((result.data || []).map((row) => [String(row.id), row]))
+      );
+    } catch (error) {
+      console.error(error);
+      renderSeedHistory(rows, new Map(), true);
+    }
+  }
+
   function renderDiscoveries(rows) {
     const host = document.getElementById('discoveriesList');
     if (!host) return;
@@ -418,17 +527,6 @@
         document.querySelectorAll('[data-badge-status]').forEach((item) => {
           item.setAttribute('aria-pressed', String(item === button));
         });
-        renderBadges();
-      });
-    });
-    document.querySelectorAll('[data-badge-difficulty]').forEach((button) => {
-      button.addEventListener('click', () => {
-        badgeDifficulty = button.dataset.badgeDifficulty || 'all';
-        document
-          .querySelectorAll('[data-badge-difficulty]')
-          .forEach((item) => {
-            item.setAttribute('aria-pressed', String(item === button));
-          });
         renderBadges();
       });
     });
@@ -503,6 +601,8 @@
       .catch((error) =>
         console.error('SCOUT RECORD usage telemetry failed', error)
       );
+
+    void loadSeedHistory();
 
     const [summary, points, activity, discoveries, badges] = await Promise.all([
       client.rpc('novelight_scout_record_summary'),

@@ -93,21 +93,31 @@
         <button class="badge-filter" type="button" data-badge-status="earned" aria-pressed="false">獲得済み</button>
         <button class="badge-filter" type="button" data-badge-status="unearned" aria-pressed="false">未獲得</button>
       </div>
-      <div class="badge-filters" aria-label="Badge難易度">
-        <button class="badge-filter" type="button" data-badge-difficulty="all" aria-pressed="true">すべて</button>
-        <button class="badge-filter" type="button" data-badge-difficulty="easy" aria-pressed="false">Easy</button>
-        <button class="badge-filter" type="button" data-badge-difficulty="normal" aria-pressed="false">Normal</button>
-        <button class="badge-filter" type="button" data-badge-difficulty="hard" aria-pressed="false">Hard</button>
+      <div class="badge-groups" aria-label="Badge難易度別コレクション">
+        <details class="badge-group" data-badge-group="easy" open>
+          <summary><span><b>Easy</b><small>基本実績</small></span><strong id="badgeGroupEasyCount">—</strong></summary>
+          <div id="badgeGridEasy" class="badge-grid"><div class="scout-loading" style="grid-column:1/-1">Badgeを読み込んでいます。</div></div>
+        </details>
+        <details class="badge-group" data-badge-group="normal">
+          <summary><span><b>Normal</b><small>継続・発掘実績</small></span><strong id="badgeGroupNormalCount">—</strong></summary>
+          <div id="badgeGridNormal" class="badge-grid"></div>
+        </details>
+        <details class="badge-group" data-badge-group="hard">
+          <summary><span><b>Hard</b><small>高難度実績</small></span><strong id="badgeGroupHardCount">—</strong></summary>
+          <div id="badgeGridHard" class="badge-grid"></div>
+        </details>
+        <details class="badge-group" data-badge-group="special" hidden>
+          <summary><span><b>Limited / Special</b><small>期間・資格限定</small></span><strong id="badgeGroupSpecialCount">—</strong></summary>
+          <div id="badgeGridSpecial" class="badge-grid"></div>
+        </details>
       </div>
-
-      <div id="badgeGrid" class="badge-grid"><div class="scout-loading" style="grid-column:1/-1">Badgeを読み込んでいます。</div></div>
+      <div id="badgeEmpty" class="badge-empty" hidden>この条件に該当するBadgeはありません。</div>
     </section>
 
     <div class="scout-main-grid">
       <section class="scout-panel" aria-labelledby="activityTitle">
         <div class="scout-section-head">
           <div><h2 id="activityTitle">最近のSCOUT活動</h2><p>有効読書、評価、コメント、LIGHT SEED、発掘の記録。</p></div>
-          <a class="scout-mini-button" href="light-seed-history.html">SEED履歴 →</a>
         </div>
         <div id="activityList" class="scout-list"><div class="scout-loading">読み込み中...</div></div>
       </section>
@@ -117,6 +127,14 @@
         <div id="pointHistory" class="scout-list"><div class="scout-loading">読み込み中...</div></div>
       </section>
     </div>
+
+    <section class="scout-panel" aria-labelledby="seedHistoryTitle">
+      <div class="scout-section-head">
+        <div><h2 id="seedHistoryTitle">LIGHT SEED送信履歴</h2><p>あなたがLIGHT SEEDを贈った作品を、SCOUT RECORDの実績としてまとめて確認できます。</p></div>
+        <strong id="seedHistoryCount">—</strong>
+      </div>
+      <div id="seedHistoryList" class="scout-list"><div class="scout-loading">LIGHT SEED履歴を読み込んでいます。</div></div>
+    </section>
 
     <section class="scout-panel" aria-labelledby="discoveriesTitle">
       <div class="scout-section-head">

@@ -39,13 +39,19 @@ test('automatic deployment-status smoke only accepts Vercel deployments', () => 
   );
 });
 
-test('authenticated smoke follows the current SCOUT RECORD seed-history navigation', () => {
-  assert.match(scoutRecord, /<h2 id="activityTitle">最近のSCOUT活動<\/h2>/);
-  assert.match(scoutRecord, /href="light-seed-history\.html">SEED履歴 →<\/a>/);
-  assert.match(authenticatedSmoke, /name: '最近のSCOUT活動'/);
-  assert.match(authenticatedSmoke, /name: \/\^SEED履歴\//);
+test('authenticated smoke uses integrated SCOUT seed history', () => {
+  const legacySeedLink = 'href="light-seed-history.html">SEED履歴 →</a>';
+  assert.ok(scoutRecord.includes('id="activityTitle"'));
+  assert.ok(scoutRecord.includes('id="seedHistoryTitle"'));
+  assert.ok(scoutRecord.includes('id="seedHistoryList"'));
+  assert.ok(!scoutRecord.includes(legacySeedLink));
+  assert.ok(scoutRecord.includes('data-badge-group="easy" open'));
+  assert.ok(scoutRecord.includes('data-badge-group="normal"'));
+  assert.ok(scoutRecord.includes('data-badge-group="hard"'));
+  assert.ok(!scoutRecord.includes('data-badge-difficulty='));
+  assert.ok(authenticatedSmoke.includes("name: '最近のSCOUT活動'"));
+  assert.ok(authenticatedSmoke.includes("name: 'LIGHT SEED送信履歴'"));
 });
-
 test('consolidated Staging workflow runs the shared deployment contract before package installation', () => {
   const verifierIndex = workflow.indexOf(
     'node scripts/verify-staging-deployment.mjs'

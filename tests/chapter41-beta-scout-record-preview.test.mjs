@@ -31,8 +31,9 @@ test('beta navigation links to the live SCOUT RECORD surface', () => {
   );
   assert.match(
     mypage,
-    /<h2>LIGHT SEED送信履歴<\/h2>[\s\S]*?href="light-seed-history\.html">履歴を見る →<\/a>/u
+    /<h2>SCOUT RECORD<\/h2>[\s\S]*?href="scout-record\.html">スカウトレコードを見る →<\/a>/u
   );
+  assert.doesNotMatch(mypage, /<h2>LIGHT SEED送信履歴<\/h2>/u);
 });
 
 test('SCOUT RECORD uses Author Studio shell and full beta information architecture', () => {
@@ -81,11 +82,13 @@ test('Badge UI includes percent + meter and mobile two-column grid', () => {
   );
 });
 
-test('Badge difficulty filter and Reader catalog are live', () => {
-  assert.match(scout, /data-badge-difficulty="easy"/u);
-  assert.match(scout, /data-badge-difficulty="normal"/u);
-  assert.match(scout, /data-badge-difficulty="hard"/u);
-  assert.match(scoutJs, /badgeDifficulty/u);
+test('Badge difficulty accordions and Reader catalog are live', () => {
+  assert.match(scout, /data-badge-group="easy" open/u);
+  assert.match(scout, /data-badge-group="normal"/u);
+  assert.match(scout, /data-badge-group="hard"/u);
+  assert.doesNotMatch(scout, /data-badge-difficulty=/u);
+  assert.doesNotMatch(scoutJs, /badgeDifficulty/u);
+  assert.match(scoutJs, /badgeGroupDefinitions/u);
   assert.doesNotMatch(
     scoutJs,
     /Reader Badge 100件の個別条件は、採用済みの元リストを復元後に有効化します/u
@@ -102,11 +105,13 @@ test('Master Scout renders composite progress', () => {
   assert.match(scoutCss, /\.badge-composite-meter/u);
 });
 
-test('LIGHT SEED history remains separate but links back to live SCOUT RECORD', () => {
+test('LIGHT SEED history is integrated while the legacy route stays compatible', () => {
+  assert.match(scout, /<h2 id="seedHistoryTitle">LIGHT SEED送信履歴<\/h2>/u);
+  assert.match(scout, /id="seedHistoryList"/u);
+  assert.match(scoutJs, /\.from\('light_seeds'\)/u);
   assert.match(history, /<title>LIGHT SEED送信履歴 \| NOVELIGHT<\/title>/u);
   assert.match(history, /<h1>LIGHT SEED送信履歴<\/h1>/u);
   assert.match(history, /client\.from\('light_seeds'\)/u);
   assert.match(history, /login\.html\?redirect=light-seed-history\.html/u);
   assert.match(history, /href="scout-record\.html">SCOUT RECORDを見る →<\/a>/u);
-  assert.doesNotMatch(history, /SCOUT RECORD βプレビューを見る/u);
 });

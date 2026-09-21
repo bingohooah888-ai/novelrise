@@ -648,7 +648,7 @@ test('authenticated beta-critical product flow works in target', async ({
       );
     });
 
-    await test.step('Verify LIGHT SEED send history', async () => {
+    await test.step('Verify LIGHT SEED send history inside SCOUT RECORD', async () => {
       await readerPage.goto('/scout-record.html');
       await expect(
         readerPage.getByRole('heading', { name: 'SCOUT RECORD', exact: true })
@@ -659,10 +659,11 @@ test('authenticated beta-critical product flow works in target', async ({
           exact: true
         })
       ).toBeVisible();
-      await readerPage.getByRole('link', { name: /^SEED履歴/ }).click();
-      await readerPage.waitForURL(/\/light-seed-history\.html$/);
       await expect(
-        readerPage.getByRole('heading', { name: 'LIGHT SEED送信履歴' })
+        readerPage.getByRole('heading', {
+          name: 'LIGHT SEED送信履歴',
+          exact: true
+        })
       ).toBeVisible();
       await expect(
         readerPage.getByText(novelTitle, { exact: true })
