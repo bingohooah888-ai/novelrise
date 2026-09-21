@@ -4,12 +4,14 @@ begin;
 
 select pg_advisory_xact_lock(hashtext('novelight:20260921063000:rollback'));
 
+drop trigger if exists scout_metric_state_refresh_badges on public.scout_badge_metric_state;
 drop trigger if exists scout_comment_refresh_reader_badges on public.novel_comments;
 drop trigger if exists scout_point_refresh_reader_badges on public.scout_point_ledger;
 drop trigger if exists scout_xp_refresh_reader_badges on public.scout_xp_ledger;
 drop trigger if exists scout_discovery_refresh_reader_badges on public.seed_discovery_state;
 drop trigger if exists scout_event_refresh_reader_badges on public.scout_event_ledger;
 
+drop function if exists public.novelight_refresh_badges_from_metric_state();
 drop function if exists public.novelight_refresh_reader_badges_from_comment_state();
 drop function if exists public.novelight_refresh_reader_badges_from_point();
 drop function if exists public.novelight_refresh_reader_badges_from_xp();
