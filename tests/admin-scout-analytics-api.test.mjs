@@ -131,6 +131,13 @@ test('SCOUT beta summary covers XP, source mix, monthly seed use, discovery and 
       best_rank_delta: 2
     },
     {
+      reader_id: USER_THREE,
+      seed_type: 'BRONZE',
+      rank_at_seed: 1,
+      highest_rank_seen: 5,
+      best_rank_delta: 4
+    },
+    {
       reader_id: USER_TWO,
       seed_type: 'SILVER',
       rank_at_seed: 5,
@@ -163,6 +170,11 @@ test('SCOUT beta summary covers XP, source mix, monthly seed use, discovery and 
   assert.equal(data.lightSeedUsage.typeUsed.GOLD, 1);
   assert.equal(data.discovery.byType[0].successRate, 100);
   assert.equal(data.discovery.byType[1].novaPredictionCount, 1);
+  assert.equal(data.discovery.growthAfterSuccess.successCount, 2);
+  assert.equal(data.discovery.growthAfterSuccess.averageBestRankDelta, 3);
+  assert.equal(data.discovery.growthAfterSuccess.plus3Rate, 50);
+  assert.equal(data.discovery.growthAfterSuccess.plus4Rate, 50);
+  assert.equal(data.discovery.growthAfterSuccess.plus5Rate, 0);
   assert.equal(data.users.length, 1);
   assert.equal(data.users[0].scoutXp.lifetime, 33);
   assert.equal(data.users[0].lightSeed.usedThisMonth, 2);
