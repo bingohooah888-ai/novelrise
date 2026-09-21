@@ -921,6 +921,12 @@ Productionのread-only確認、ログ確認、CI / CodeQL / Vercel status確認�
 
 GitHub branch protection、required checks、権限要求、外部サービスの確認画面等、システム上必須の安全手続きは維持する。ただし、それらを理由に不要なユーザー承認を追加で求めない。リポジトリ規則上、high-risk PR等に機械可読の承認コメントや専用Approval Ledger記録がHard Boundaryとして必須である場合も、ユーザーへ「マージ承認」「高リスク承認」等の別文言を追加で要求しない。ユーザーの「本番承認」を唯一の人間承認として受けた後、ChatGPTまたは自動化が、その本番承認を必要なGitHub承認コメント、Approval Ledger記録、challenge-bound形式等へ変換して投入する。対象head SHAやchallengeが変化して再承認が技術的に必要になった場合も、承認対象の実質的なProduction内容が変わっていない限り、既存の本番承認を再利用して機械側の承認証跡だけを更新し、ユーザーへ同じ承認を再要求しない。
 
+Production DB / Supabase migrationについては、この一本化を特に厳格に適用する。migrationを含む高リスクPRについてユーザーがチャット上で「本番承認」を行い、その承認がPR番号・最終head SHA・one-time challengeへ固定された機械可読証跡として記録された場合、その同じ本番承認を、当該PRのmain統合と、そのPRで追加されたProduction migrationの適用までを含む一連の本番工程に対する唯一の人間承認とする。PR merge後に `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE` 等の別承認文をユーザーへコピー・貼り付けさせたり、同じ内容について二回目の「本番承認」を求めたりしてはならない。
+
+PR mergeとProduction migration適用は、安全確認上は別の境界として維持する。ただし、この「別境界」は二回目の人間承認を意味しない。自動化側はProduction mutation直前に、current main、元PRの本番承認証跡、元PRに含まれるmigration集合、Productionのpending migration集合、Staging migration parity、最新Production Readiness、Production backup鮮度、dry-run結果、one-time claimをそれぞれfreshに再検証し、すべてが承認対象と完全一致する場合だけmigrationを適用する。Approval Ledgerへ自動記録するclaim / executed / failed等は機械監査証跡であり、追加承認ではない。
+
+current main、元PR、承認head、対象migration、Production pending、Staging状態、backup、その他Production mutationの実質的スコープが一致しない場合はfail closedし、承認範囲を自動拡張しない。承認後にProductionへ適用する内容自体が実質的に変わった場合だけ、新しい「本番承認」を求める。通常の自動経路が利用不能な場合に限り、GitHub Environment等で保護されたmanual fallbackを非常用経路として残してよいが、通常運用で二重承認を要求する理由にはしない。
+
 GitHub Actions、CodeQL、Vercel、Staging E2E、その他外部サービスの処理待ちも、ユーザーが作業全体の現在地を把握するための所要時間に含める。外部待ちであることは区別して説明するが、待ち時間であることを理由に時間報告の対象外にはしない。
 
 各主要工程の完了時には、完了した工程と次工程の予想所要時間を可能な範囲で示し、ユーザーが現在地と残り時間を把握できる状態を維持する。
