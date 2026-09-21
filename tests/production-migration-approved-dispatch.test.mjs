@@ -19,9 +19,9 @@ const cleanup = await readFile(
   'utf8'
 );
 
-test('migration deploy bridge accepts only the Issue 737 owner approval record', () => {
+test('migration deploy bridge accepts direct owner approval or trusted inherited approval', () => {
   assert.match(bridge, /issue_comment:/);
-  assert.doesNotMatch(bridge, /workflow_dispatch:/);
+  assert.match(bridge, /workflow_dispatch:/);
   assert.match(bridge, /github\.event\.issue\.number == 737/);
   assert.match(bridge, /github\.event\.issue\.pull_request == null/);
   assert.match(
@@ -42,7 +42,7 @@ test('chat migration deploy approval is exact-scope, SHA-bound, and one-time', (
   assert.match(bridge, /index\(\$repairVersion\)\) == null/);
   assert.match(
     bridge,
-    /main changed after the user approved this Production migration deploy/
+    /main changed after the human Production approval scope was established/
   );
   assert.match(
     bridge,
@@ -136,7 +136,7 @@ test('manual mutation fallback keeps GitHub Environment approval', () => {
   assert.match(manual, /confirmation must be exactly DEPLOY/);
 });
 
-test('automatic main-push workflow is read-only and hands off mutation to chat approval', () => {
+test('automatic main-push workflow is read-only and supports inherited single approval', () => {
   assert.match(automatic, /name: NOVELIGHT Supabase Production Migration Plan/);
   assert.match(
     automatic,
@@ -157,6 +157,7 @@ test('automatic main-push workflow is read-only and hands off mutation to chat a
     ) < automatic.indexOf('Record chat-approval handoff')
   );
   assert.match(automatic, /No Production database mutation was performed/);
+  assert.match(automatic, /no second human approval is required/);
   assert.doesNotMatch(automatic, /environment: production-approval/);
   assert.doesNotMatch(automatic, /supabase db push --linked --yes/);
 });
@@ -191,4 +192,43 @@ test('ledger distinguishes mutation result from postcheck result', () => {
   assert.match(bridge, /failure_phase='postcheck:migration-status'/);
   assert.match(bridge, /failure_phase='postcheck:integrity'/);
   assert.match(bridge, /failure_phase='none'/);
+});
+
+
+test('inherited approval is bound to the original owner comment, merged PR, plan, and migration set', () => {
+  assert.match(bridge, /inherited-high-risk-production-approval/);
+  assert.match(bridge, /issues\/comments\/\$source_approval_comment_id/);
+  assert.match(
+    bridge,
+    /owner approval does not explicitly include the Production migration scope/
+  );
+  assert.match(
+    bridge,
+    /inherited Production challenge is not bound to the exact PR head and migration scope/
+  );
+  assert.match(
+    bridge,
+    /inherited migration set does not exactly match the approved source PR/
+  );
+  assert.match(
+    bridge,
+    /inherited Production approval has no successful exact-main migration plan/
+  );
+  assert.match(bridge, /sourceApprovalCommentId/);
+  assert.match(bridge, /productionPlanRunId/);
+});
+
+test('workflow dispatch cannot bypass one-time Production ledger or mutation rechecks', () => {
+  assert.match(
+    bridge,
+    /case "\$GITHUB_EVENT_NAME" in[\s\S]*issue_comment\|workflow_dispatch/
+  );
+  assert.match(bridge, /this Production migration deploy approval was already used/);
+  assert.match(bridge, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED/);
+  assert.match(
+    bridge,
+    /exact claimed chat migration approval was not found at the Production boundary/
+  );
+  assert.match(bridge, /Require approved pending migrations at Production boundary/);
+  assert.match(bridge, /Dry-run approved pending migrations at Production boundary/);
 });
