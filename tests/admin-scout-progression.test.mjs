@@ -45,6 +45,32 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
     { user_id: A, badge_id: 'author_badge_001', status: 'earned' },
     { user_id: B, badge_id: 'limited_founding_author', status: 'earned' }
   ];
+  const badgeDefinitions = [
+    {
+      badge_id: 'author_badge_001',
+      badge_category: 'author',
+      difficulty: 'easy',
+      display_name: '初作品公開',
+      enabled: true,
+      sort_order: 1
+    },
+    {
+      badge_id: 'limited_founding_author',
+      badge_category: 'limited',
+      difficulty: 'special',
+      display_name: 'Founding Author',
+      enabled: true,
+      sort_order: 2
+    },
+    {
+      badge_id: 'reader_unearned',
+      badge_category: 'reader',
+      difficulty: 'normal',
+      display_name: '未獲得Reader',
+      enabled: true,
+      sort_order: 3
+    }
+  ];
   const seeds = [{ reader_id: A }];
   const discoveryRows = [{ reader_id: B }];
   const usageRows = [{ user_id: A, activity_date: '2026-09-01' }];
@@ -123,6 +149,7 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
     xpRows,
     pointRows,
     badgeRows,
+    badgeDefinitions,
     thresholds,
     seeds,
     discoveryRows,
@@ -154,6 +181,11 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
   assert.equal(data.badges.earned, 2);
   assert.equal(data.badges.userAcquisitionRate, 100);
   assert.equal(data.badges.averageEarnedPerRegisteredUser, 1);
+  assert.equal(data.badges.byBadge.length, 3);
+  assert.equal(data.badges.byBadge[0].displayName, '初作品公開');
+  assert.equal(data.badges.byBadge[0].earnedUsers, 1);
+  assert.equal(data.badges.byBadge[0].acquisitionRate, 50);
+  assert.equal(data.badges.byBadge[2].acquisitionRate, 0);
   assert.equal(data.readerFlow.newAuthorDays, 30);
   assert.equal(data.readerFlow.lowRankThreshold, 2);
   assert.equal(data.readerFlow.scoutUsers.averageWorksPerReader, 2);
