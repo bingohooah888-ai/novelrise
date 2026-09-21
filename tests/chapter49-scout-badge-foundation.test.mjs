@@ -40,14 +40,8 @@ test('exact Author Badge 40 are present and never award Scout Point', async () =
   }
   has(sql, "'author','easy','初作品公開'");
   has(sql, "'author','hard','5作品がSEED後 +2 Rank'");
-  assert.equal(
-    (sql.match(/'author_badge_\d{3}'/gu) ?? []).length,
-    40
-  );
-  assert.doesNotMatch(
-    sql,
-    /'author_badge_\d{3}'[^\n]*,[1-9]\d*,false/gu
-  );
+  assert.equal((sql.match(/'author_badge_\d{3}'/gu) ?? []).length, 40);
+  assert.doesNotMatch(sql, /'author_badge_\d{3}'[^\n]*,[1-9]\d*,false/gu);
 });
 
 test('Limited badges reuse qualification ledgers instead of duplicating eligibility', async () => {
@@ -61,7 +55,10 @@ test('Limited badges reuse qualification ledgers instead of duplicating eligibil
 
 test('Reader Badge definitions are intentionally not fabricated', async () => {
   const sql = await readFile(migrationPath, 'utf8');
-  has(sql, 'Reader Badge 100 individual conditions are intentionally NOT invented here');
+  has(
+    sql,
+    'Reader Badge 100 individual conditions are intentionally NOT invented here'
+  );
   assert.doesNotMatch(sql, /'reader_badge_[^']*','reader'/u);
 });
 
@@ -69,8 +66,14 @@ test('Author badge metrics are future-only and deduplicated', async () => {
   const sql = await readFile(migrationPath, 'utf8');
   has(sql, 'dedupe_key text not null unique');
   has(sql, "'author_work_published:' || new.id::text");
-  has(sql, "'author_favorite:' || v_author::text || ':' || new.novel_id::text || ':' || new.user_id::text");
-  has(sql, "'author_unique_reader:' || new.author_id_snapshot::text || ':' || new.reader_id::text");
+  has(
+    sql,
+    "'author_favorite:' || v_author::text || ':' || new.novel_id::text || ':' || new.user_id::text"
+  );
+  has(
+    sql,
+    "'author_unique_reader:' || new.author_id_snapshot::text || ':' || new.reader_id::text"
+  );
   has(sql, "'author_seed_growth_plus2:' || v_author::text || ':' || v_novel");
   has(sql, 'Existing published episodes are baseline-only');
   assert.doesNotMatch(
@@ -84,10 +87,16 @@ test('owner badge API exposes progress and public visibility only through RPC', 
   has(sql, 'create or replace function public.novelight_scout_badges()');
   has(sql, 'progress_value bigint');
   has(sql, 'progress_percent numeric');
-  has(sql, 'create or replace function public.novelight_set_scout_badge_visibility');
+  has(
+    sql,
+    'create or replace function public.novelight_set_scout_badge_visibility'
+  );
   has(sql, 'grant execute on function public.novelight_scout_badges()');
   has(sql, 'to authenticated;');
-  assert.doesNotMatch(sql, /grant\s+select\s+on\s+table\s+public\.user_scout_badges/iu);
+  assert.doesNotMatch(
+    sql,
+    /grant\s+select\s+on\s+table\s+public\.user_scout_badges/iu
+  );
 });
 
 test('public SCOUT record excludes private XP and Point ledger details', async () => {
@@ -103,7 +112,10 @@ test('public SCOUT record excludes private XP and Point ledger details', async (
   has(body, "'badges'");
   has(body, "'representative_discoveries'");
   assert.doesNotMatch(body, /point_balance|pending_points|point_history/iu);
-  has(body, 'grant execute on function public.novelight_public_scout_record(uuid)');
+  has(
+    body,
+    'grant execute on function public.novelight_public_scout_record(uuid)'
+  );
   has(body, 'to anon, authenticated;');
 });
 

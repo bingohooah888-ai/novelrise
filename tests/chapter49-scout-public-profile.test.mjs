@@ -18,7 +18,10 @@ test('public SCOUT RECORD loads only the public-safe RPC', () => {
   assert.match(js, /発掘成功/u);
   assert.match(js, /公開Badge/u);
   assert.match(js, /代表的な発掘実績/u);
-  assert.doesNotMatch(js, /scout_point_ledger|point_balance|pending_points|total_xp|next_level_xp/iu);
+  assert.doesNotMatch(
+    js,
+    /scout_point_ledger|point_balance|pending_points|total_xp|next_level_xp/iu
+  );
 });
 
 test('public SCOUT surface remains mobile responsive', () => {
