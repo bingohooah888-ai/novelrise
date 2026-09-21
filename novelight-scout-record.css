@@ -147,3 +147,67 @@ body.novelight-page-scout-record .workspace{
 .badge-composite-meter{
   height:7px
 }
+
+
+/* SCOUT RECORD readability lift + difficulty accordions */
+.scout-page-head p{font-size:16px}
+.scout-help{font-size:14px}
+.scout-kicker{font-size:12px}
+.scout-rank-line strong{font-size:clamp(30px,3.2vw,44px)}
+.scout-rank-line span{font-size:22px}
+.scout-xp-meta{font-size:14px}
+.scout-max-note{font-size:13px}
+.scout-emblem-caption{font-size:12px}
+.scout-point-card .label{font-size:12px}
+.scout-point-card small{font-size:13px}
+.scout-point-month{font-size:14px}
+.scout-section-head h2{font-size:24px}
+.scout-section-head p{font-size:13px}
+.rank-node-copy b{font-size:14px}
+.rank-node-copy span{font-size:12px}
+.scout-stat span{font-size:12px}
+.scout-stat strong{font-size:28px}
+.badge-filter{font-size:13px}
+.badge-card h3{font-size:14px}
+.badge-meta{font-size:11px}
+.badge-progress-text{font-size:11px}
+.badge-point{font-size:12px}
+.badge-empty,.scout-empty,.scout-loading,.scout-error{font-size:13px}
+.scout-row b{font-size:14px}
+.scout-row small{font-size:12px}
+.scout-row strong{font-size:14px}
+.scout-note{font-size:12px}
+.scout-mini-button{font-size:12px}
+.scout-modal-kv span{font-size:11px}
+.scout-modal-kv b{font-size:14px}
+.scout-state{font-size:13px}
+.badge-composite h3{font-size:15px}
+.badge-composite-line{font-size:14px}
+.badge-groups{display:grid;gap:12px;margin-top:18px}
+.badge-group{
+  overflow:hidden;border:1px solid rgba(226,190,92,.2);border-radius:15px;
+  background:rgba(2,13,24,.3)
+}
+.badge-group[hidden]{display:none}
+.badge-group summary{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 17px;
+  cursor:pointer;list-style:none;background:rgba(8,26,44,.78);color:#fff5dc
+}
+.badge-group summary::-webkit-details-marker{display:none}
+.badge-group summary::after{content:"＋";margin-left:8px;color:var(--gold-bright);font-size:20px;font-weight:700}
+.badge-group[open] summary::after{content:"−"}
+.badge-group summary span{display:flex;align-items:baseline;gap:10px;min-width:0}
+.badge-group summary b{font-size:16px}
+.badge-group summary small{color:#93a2b0;font-size:12px;font-weight:700}
+.badge-group summary strong{margin-left:auto;color:var(--gold-bright);font-size:13px;white-space:nowrap}
+.badge-group[open] summary{border-bottom:1px solid rgba(226,190,92,.16);background:rgba(12,34,56,.9)}
+.badge-group .badge-grid{margin-top:0;padding:16px}
+#badgeEmpty{margin-top:16px}
+@media(max-width:520px){
+  .scout-page-head p{font-size:15px}
+  .scout-section-head h2{font-size:21px}
+  .scout-section-head p{font-size:12px}
+  .badge-group summary{padding:14px}
+  .badge-group summary span{display:grid;gap:2px}
+  .badge-group .badge-grid{padding:12px}
+}
