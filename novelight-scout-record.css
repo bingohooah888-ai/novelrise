@@ -114,3 +114,36 @@ body.novelight-page-scout-record .workspace{
 @media(max-width:900px){body.novelight-page-scout-record .workspace{width:min(100% - 34px,1240px)}.scout-main-grid{grid-template-columns:1fr}.scout-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.scout-page-head{align-items:flex-start;flex-direction:column}.scout-hero{grid-template-columns:1fr;padding:20px}.scout-emblem-wrap{min-height:180px}.scout-point-card{grid-column:auto;display:flex}.badge-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){body.novelight-page-scout-record .workspace{width:min(100% - 24px,1240px);padding-top:24px}.scout-page-head{padding-left:48px}.scout-page-head h1{font-size:30px}.scout-stats{grid-template-columns:1fr 1fr}.scout-panel,.scout-rank-path-wrap{padding:17px}.badge-card{padding:12px}.scout-modal-grid{grid-template-columns:1fr}}
+
+.badge-composite{
+  margin-top:18px;
+  padding-top:16px;
+  border-top:1px solid rgba(201,164,78,.22)
+}
+.badge-composite[hidden]{display:none}
+.badge-composite h3{
+  margin:0 0 12px;
+  font-size:13px;
+  color:#e8d49a;
+  letter-spacing:.05em
+}
+.badge-composite-item{
+  display:grid;
+  gap:7px;
+  margin-top:11px
+}
+.badge-composite-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  font-size:12px;
+  color:#aeb8ca
+}
+.badge-composite-line b{
+  color:#f3f0e7;
+  font-weight:800
+}
+.badge-composite-meter{
+  height:7px
+}
