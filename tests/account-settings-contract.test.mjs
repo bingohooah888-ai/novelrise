@@ -46,10 +46,16 @@ test('account settings verifies the logged-in user before rendering private emai
   assert.doesNotMatch(account, /client\.auth\.getSession\(\)/u);
   assert.doesNotMatch(account, /NovelightClient/u);
   assert.doesNotMatch(account, /localStorage|sessionStorage/u);
+  assert.doesNotMatch(account, /currentPassword[^\n]*(?:localStorage|sessionStorage)/u);
   assert.doesNotMatch(account, /console\.(?:log|error|warn)/u);
 });
 
-test('account settings changes email only through the official logged-in Auth API', () => {
+test('account settings reauthenticates before using the official email update API', () => {
+  assert.match(account, /autocomplete="current-password"/u);
+  assert.match(
+    account,
+    /client\.auth\.signInWithPassword\(\{email:currentEmail,password:currentPassword\}\)[\s\S]*?client\.auth\.updateUser\(\{email:newEmail\}\)/u
+  );
   assert.match(account, /client\.auth\.updateUser\(\{email:newEmail\}\)/u);
   assert.doesNotMatch(account, /auth\.admin/u);
   assert.doesNotMatch(account, /auth\.users/u);
