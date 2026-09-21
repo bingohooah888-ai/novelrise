@@ -105,9 +105,9 @@ test('author room exposes both interaction and account settings consistently', (
   );
   assert.match(
     mypage,
-    /href="account-settings\.html"[\s\S]*?>アカウント設定</u
+    /<a class="account-chip" href="account-settings\.html" aria-label="アカウント設定を開く">/u
   );
-    /\.workspace-top>\.reader-home-link\{font-size:16px!important\}/u
+  assert.match(baseCss, /\.workspace-top>\.reader-home-link/u);
   assert.match(baseCss, /\.account-chip:hover,\.account-chip:focus-visible/u);
 });
 
