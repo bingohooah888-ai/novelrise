@@ -127,17 +127,17 @@ test('migration locks the novel and assigns contiguous numbers after current max
     migration,
     /coalesce\(max\(e\.episode_number\), 0\) \+ 1/
   );
-  assert.match(
-    migration,
-    /v_start_number \+ item\.ordinality - 1/
-  );
+  assert.match(migration, /v_start_number \+ item\.ordinality - 1/);
   assert.match(migration, /between 1 and 100 episodes/);
   assert.match(migration, /Unexpected import item field/);
   assert.match(migration, /'draft'/);
 });
 
 test('migration and analytics surfaces stay authenticated-only', () => {
-  assert.match(migration, /alter table public\.bulk_import_events enable row level security/);
+  assert.match(
+    migration,
+    /alter table public\.bulk_import_events enable row level security/
+  );
   assert.match(
     migration,
     /revoke all on table public\.bulk_import_events from authenticated/
