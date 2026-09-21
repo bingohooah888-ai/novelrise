@@ -33,8 +33,18 @@ declare
   v_has_user_badges boolean;
   v_has_metric_events boolean;
 begin
-  select exists (select 1 from public.user_scout_badges)
-    into v_has_user_badges;
+  -- Founding Author / beta Participant rows are deterministic identity
+  -- materializations backed by their qualification ledgers. They may be
+  -- rematerialized after rollback; only non-derivable earned/progress rows
+  -- force preservation of the badge tables.
+  select exists (
+    select 1
+    from public.user_scout_badges
+    where badge_id not in (
+      'limited_founding_author',
+      'limited_beta_participant'
+    )
+  ) into v_has_user_badges;
   select exists (select 1 from public.scout_badge_metric_events)
     into v_has_metric_events;
 
