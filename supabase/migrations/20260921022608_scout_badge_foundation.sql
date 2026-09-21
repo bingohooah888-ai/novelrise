@@ -210,6 +210,57 @@ insert into public.scout_badge_definitions (
   ('limited_founding_author','limited','special','Founding Author','先行登録順に付与される永久限定資格','limited_founding_author',1,0,true,1,'{"source":"founding_authors"}'::jsonb),
   ('limited_beta_participant','limited','special','β Participant','β参加者へ付与される永久限定資格','limited_beta_participant',1,0,true,2,'{"source":"beta_participants"}'::jsonb);
 
+-- Existing Limited/Special qualifications are permanent identity facts, not
+-- activity rewards. Materialize them now so public profiles do not depend on
+-- the owner opening SCOUT RECORD first.
+insert into public.user_scout_badges (
+  user_id, badge_id, progress_value, progress_percent, earned_at,
+  status, is_public, metadata, created_at, updated_at
+)
+select
+  f.author_id,
+  'limited_founding_author',
+  1,
+  100,
+  coalesce(f.created_at, now()),
+  'earned',
+  true,
+  pg_catalog.jsonb_build_object('founding_number', f.founding_number),
+  now(),
+  now()
+from public.founding_authors f
+on conflict (user_id, badge_id) do update
+  set progress_value = 1,
+      progress_percent = 100,
+      earned_at = coalesce(public.user_scout_badges.earned_at, excluded.earned_at),
+      status = 'earned',
+      metadata = public.user_scout_badges.metadata || excluded.metadata,
+      updated_at = now();
+
+insert into public.user_scout_badges (
+  user_id, badge_id, progress_value, progress_percent, earned_at,
+  status, is_public, metadata, created_at, updated_at
+)
+select
+  b.auth_user_id,
+  'limited_beta_participant',
+  1,
+  100,
+  coalesce(b.created_at, now()),
+  'earned',
+  true,
+  pg_catalog.jsonb_build_object('qualification_source', 'beta_participants'),
+  now(),
+  now()
+from public.beta_participants b
+on conflict (user_id, badge_id) do update
+  set progress_value = 1,
+      progress_percent = 100,
+      earned_at = coalesce(public.user_scout_badges.earned_at, excluded.earned_at),
+      status = 'earned',
+      metadata = public.user_scout_badges.metadata || excluded.metadata,
+      updated_at = now();
+
 create or replace function public.novelight_record_scout_badge_metric(
   p_user_id uuid,
   p_metric_type text,
