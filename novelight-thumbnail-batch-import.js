@@ -132,23 +132,52 @@ export function inspectPng(bytes) {
   };
 }
 
+const OFFICIAL_PACK_MANIFESTS = new Map([
+  ['NOVELIGHT_thumbnail_assets_v1_30.zip', 'novelight-thumbnail-assets-v1.json'],
+  ['NOVELIGHT_background_official_v1.zip', 'novelight-thumbnail-background-v1.json']
+]);
+
 function validateManifest(manifest) {
   assert(manifest?.schemaVersion === 1, '素材manifestのschema versionが不正です。');
-  assert(manifest?.packKey === 'NOVELIGHT_thumbnail_assets_v1_30', '素材pack keyが不正です。');
-  assert(manifest?.templateKey === 'book-v1', 'v1素材はbook-v1専用です。');
-  assert(manifest?.expectedPngCount === 30, 'v1素材数が30ではありません。');
-  assert(Array.isArray(manifest.items) && manifest.items.length === 30, 'v1 manifest項目数が30ではありません。');
+  assert(typeof manifest?.packKey === 'string' && manifest.packKey.length > 0, '素材pack keyが不正です。');
+  assert(manifest?.templateKey === 'book-v1', '公式素材packはbook-v1専用です。');
+  assert(
+    Number.isInteger(manifest?.expectedPngCount) &&
+      manifest.expectedPngCount > 0 &&
+      manifest.expectedPngCount <= MAX_ENTRY_COUNT,
+    '公式素材数が不正です。'
+  );
+  assert(
+    Array.isArray(manifest.items) &&
+      manifest.items.length === manifest.expectedPngCount,
+    'manifest項目数が期待値と一致しません。'
+  );
   const keys = new Set();
   const paths = new Set();
+  const allowedLayers = new Set([
+    'background',
+    'base_book',
+    'cover',
+    'pattern',
+    'symbol',
+    'frame',
+    'effect'
+  ]);
   for (const item of manifest.items) {
     assert(typeof item.key === 'string' && !keys.has(item.key), `素材keyが重複しています: ${item.key}`);
     assert(typeof item.path === 'string' && !paths.has(item.path), `素材pathが重複しています: ${item.path}`);
-    assert(['cover', 'pattern', 'symbol', 'frame', 'effect'].includes(item.layerType), `layerTypeが不正です: ${item.path}`);
+    assert(allowedLayers.has(item.layerType), `layerTypeが不正です: ${item.path}`);
     assert(item.templateKey === 'book-v1', `templateKeyが不正です: ${item.path}`);
     assert(/^[0-9a-f]{64}$/.test(item.sha256), `SHA-256が不正です: ${item.path}`);
     keys.add(item.key);
     paths.add(item.path);
   }
+}
+
+function manifestUrlForFile(fileName) {
+  const url = OFFICIAL_PACK_MANIFESTS.get(fileName);
+  assert(url, `未対応の公式素材ZIPです: ${fileName}`);
+  return url;
 }
 
 export async function validateOfficialPack(arrayBuffer, manifest) {
@@ -161,7 +190,7 @@ export async function validateOfficialPack(arrayBuffer, manifest) {
     if (entry.name.endsWith('/')) continue;
     assert(expectedPaths.has(entry.name) || allowedExtra.has(entry.name), `v1に含まれないファイルがあります: ${entry.name}`);
   }
-  assert([...entryMap.keys()].filter(name => name.toLowerCase().endsWith('.png')).length === 30, 'PNG数が30ではありません。');
+  assert([...entryMap.keys()].filter(name => name.toLowerCase().endsWith('.png')).length === manifest.expectedPngCount, 'PNG数がmanifestと一致しません。');
   const verified = [];
   for (const item of manifest.items) {
     const entry = entryMap.get(item.path);
@@ -170,7 +199,7 @@ export async function validateOfficialPack(arrayBuffer, manifest) {
     const bytes = await extractZipEntry(arrayBuffer, entry);
     const png = inspectPng(bytes);
     assert(png.width === item.width && png.height === item.height, `画像サイズが1024×1536ではありません: ${item.path}`);
-    assert(png.bitDepth === item.bitDepth && png.colorType === item.colorType, `RGBA PNGではありません: ${item.path}`);
+    assert(png.bitDepth === item.bitDepth && png.colorType === item.colorType, `PNG pixel formatがmanifestと一致しません: ${item.path}`);
     assert(png.compression === 0 && png.filter === 0, `PNG方式が不正です: ${item.path}`);
     const hash = await sha256Hex(bytes);
     assert(hash === item.sha256, `正式版SHA-256と一致しません: ${item.path}`);
@@ -179,7 +208,7 @@ export async function validateOfficialPack(arrayBuffer, manifest) {
   return { manifest, entries, verified };
 }
 
-export async function loadOfficialManifest(url = 'novelight-thumbnail-assets-v1.json') {
+export async function loadOfficialManifest(url) {
   const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin' });
   if (!response.ok) throw new Error(`v1 manifestを読み込めませんでした (${response.status})`);
   const manifest = await response.json();
@@ -226,11 +255,12 @@ export function mountOfficialThumbnailBatchImporter({ root, client, adminRequest
     status.textContent = message;
   }
   function resetValidation() {
+    manifest = null;
     validated = null;
     currentFileName = '';
     importButton.disabled = true;
     progress.value = 0;
-    progress.max = 30;
+    progress.max = 1;
     detail.textContent = '';
   }
   fileInput.addEventListener('change', resetValidation);
@@ -245,15 +275,15 @@ export function mountOfficialThumbnailBatchImporter({ root, client, adminRequest
     setMessage('30素材のファイル名・サイズ・RGBA・SHA-256を検証しています…');
     detail.textContent = '';
     try {
-      manifest ||= await loadOfficialManifest();
+      manifest = await loadOfficialManifest(manifestUrlForFile(file.name));
       const buffer = await file.arrayBuffer();
       validated = await validateOfficialPack(buffer, manifest);
       currentFileName = file.name;
       progress.max = validated.verified.length;
       progress.value = validated.verified.length;
       importButton.disabled = false;
-      setMessage('検証PASS：正式v1 30素材と完全一致しました。登録を開始できます。', 'ok');
-      detail.textContent = 'texture 6 / symbol 8 / frame 4 / pattern 8（修正版SHA固定） / effect 4';
+      setMessage(`検証PASS：${validated.verified.length}素材が正式manifestと完全一致しました。登録を開始できます。`, 'ok');
+      detail.textContent = manifest.displayName || manifest.packKey;
     } catch (error) {
       console.error(error);
       resetValidation();
@@ -283,7 +313,7 @@ export function mountOfficialThumbnailBatchImporter({ root, client, adminRequest
       let skipped = 0;
       for (let index = 0; index < validated.verified.length; index += 1) {
         const { item, bytes } = validated.verified[index];
-        setMessage(`${index + 1}/30 ${item.label} を確認しています…`);
+        setMessage(`${index + 1}/${validated.verified.length} ${item.label} を確認しています…`);
         const matches = (library.assets || []).filter(asset => asset.label === item.label);
         const conflict = describeExistingConflict(matches, item);
         assert(!conflict, conflict);
@@ -336,7 +366,7 @@ export function mountOfficialThumbnailBatchImporter({ root, client, adminRequest
         );
         assert(exact.length === 1, `${item.label}: 登録後のactive素材を一意に確認できません。`);
       }
-      setMessage(`登録完了：新規 ${imported}件 / 既存スキップ ${skipped}件。30素材すべてactiveです。`, 'ok');
+      setMessage(`登録完了：新規 ${imported}件 / 既存スキップ ${skipped}件。${validated.verified.length}素材すべてactiveです。`, 'ok');
       detail.textContent = '既存background / base_book / cover_quadは変更していません。通常の素材管理画面でGeometry previewを確認してください。';
     } catch (error) {
       console.error(error);
