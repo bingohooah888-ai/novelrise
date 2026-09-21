@@ -477,7 +477,9 @@ export async function loadScoutAnalytics({
     pointRows,
     badgeRows,
     badgeDefinitions,
-    thresholds
+    thresholds,
+    usageRows,
+    lifecycleRows
   ] = await Promise.all([
     fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
     fetchPaged(
@@ -500,7 +502,7 @@ export async function loadScoutAnalytics({
     fetchPaged(
       supabase,
       'scout_point_ledger',
-      'user_id,point_kind,point_value,status,occurred_at'
+      'id,user_id,point_kind,point_value,status,occurred_at'
     ),
     fetchPaged(
       supabase,
@@ -512,7 +514,17 @@ export async function loadScoutAnalytics({
       'scout_badge_definitions',
       'badge_id,badge_category,difficulty,display_name'
     ),
-    fetchPaged(supabase, 'scout_level_thresholds', 'level,cumulative_xp')
+    fetchPaged(supabase, 'scout_level_thresholds', 'level,cumulative_xp'),
+    fetchPaged(
+      supabase,
+      'scout_record_usage_days',
+      'user_id,activity_date,visit_count'
+    ),
+    fetchPaged(
+      supabase,
+      'user_lifecycle',
+      'user_id,registered_at,last_seen_at'
+    )
   ]);
 
   const base = summarizeScoutData({
@@ -535,7 +547,10 @@ export async function loadScoutAnalytics({
       badgeRows,
       thresholds,
       seeds,
-      discoveryRows
+      discoveryRows,
+      usageRows,
+      lifecycleRows,
+      now
     }),
     users: enrichScoutUserSummaries(base.users, {
       xpRows,
