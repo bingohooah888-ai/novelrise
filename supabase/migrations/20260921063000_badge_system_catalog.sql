@@ -1315,14 +1315,14 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $badge_metric$
 begin
   if new.user_id is not null then
     perform public.novelight_refresh_scout_badges_for_user(new.user_id, true);
   end if;
   return new;
 end
-$;
+$badge_metric$;
 
 revoke all on function public.novelight_refresh_badges_from_metric_state()
   from public, anon, authenticated;
