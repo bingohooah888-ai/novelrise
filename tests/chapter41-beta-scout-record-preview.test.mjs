@@ -11,6 +11,14 @@ const scout = await readFile(
   new URL('../scout-record.html', import.meta.url),
   'utf8'
 );
+const scoutJs = await readFile(
+  new URL('../novelight-scout-record.js', import.meta.url),
+  'utf8'
+);
+const scoutCss = await readFile(
+  new URL('../novelight-scout-record.css', import.meta.url),
+  'utf8'
+);
 const history = await readFile(
   new URL('../light-seed-history.html', import.meta.url),
   'utf8'
@@ -27,24 +35,55 @@ test('beta navigation links to the live SCOUT RECORD surface', () => {
   );
 });
 
-test('beta SCOUT RECORD loads owner-only progression through RPCs', () => {
+test('SCOUT RECORD uses Author Studio shell and full beta information architecture', () => {
   assert.match(scout, /<title>SCOUT RECORD \| NOVELIGHT<\/title>/u);
-  assert.match(scout, /<h1 id="scoutTitle">SCOUT RECORD<\/h1>/u);
-  assert.match(scout, /BETA \/ DISCOVERY RECORD/u);
-  assert.match(scout, /novelight_scout_record_summary/u);
-  assert.match(scout, /novelight_scout_point_history/u);
-  assert.match(scout, /novelight_scout_recent_activity/u);
-  assert.match(scout, /novelight_scout_discoveries/u);
-  assert.match(scout, /login\.html\?redirect=scout-record\.html/u);
-  assert.match(scout, /β LEVEL MAX/u);
-  assert.match(scout, /Lv\.30到達後に獲得条件を満たしたXPは蓄積されず消滅/u);
-  assert.match(scout, /AI利用特典への交換機能を予定/u);
+  assert.match(scout, /<h1>SCOUT RECORD<\/h1>/u);
+  assert.match(scout, /あなたの発掘実績とスカウトとしての成長/u);
+  assert.match(scout, /novelight-author-home\.css/u);
+  assert.match(scout, /novelight-author-room\.css/u);
+  assert.match(scout, /novelight-author-studio-shell\.js/u);
+  assert.match(scout, /novelight-scout-record\.css/u);
+  assert.match(scout, /novelight-scout-record\.js/u);
+  assert.match(scout, /Rank Path/u);
+  assert.match(scout, /Badge Collection/u);
+  assert.match(scout, /data-badge-category="reader"/u);
+  assert.match(scout, /data-badge-category="author"/u);
+  assert.match(scout, /data-badge-category="limited"/u);
+  assert.match(scout, /data-badge-status="earned"/u);
+  assert.match(scout, /data-badge-status="unearned"/u);
+  assert.match(scout, /β版のScout Level上限はLv\.30/u);
+  assert.match(scout, /AI利用特典への交換を予定/u);
+});
 
-  assert.doesNotMatch(scout, /LOCKED PREVIEW/u);
-  assert.doesNotMatch(scout, /正式リリース時解放/u);
-  assert.doesNotMatch(scout, /\.from\(['"]scout_/u);
-  assert.doesNotMatch(scout, /\.from\(['"]seed_discovery_state/u);
-  assert.doesNotMatch(scout, /\.from\(['"]novel_rank_state/u);
+test('SCOUT RECORD loads owner progression, badge progress and visibility through RPCs', () => {
+  assert.match(scoutJs, /novelight_scout_record_summary/u);
+  assert.match(scoutJs, /novelight_scout_point_history/u);
+  assert.match(scoutJs, /novelight_scout_recent_activity/u);
+  assert.match(scoutJs, /novelight_scout_discoveries/u);
+  assert.match(scoutJs, /novelight_scout_badges/u);
+  assert.match(scoutJs, /novelight_set_scout_badge_visibility/u);
+  assert.match(scoutJs, /progress_percent/u);
+  assert.match(scoutJs, /progress_value/u);
+  assert.match(scoutJs, /login\.html\?redirect=scout-record\.html/u);
+  assert.doesNotMatch(scoutJs, /\.from\(['"]scout_/u);
+  assert.doesNotMatch(scoutJs, /\.from\(['"]seed_discovery_state/u);
+});
+
+test('Badge UI includes percent + meter and mobile two-column grid', () => {
+  assert.match(scoutCss, /\.badge-progress/u);
+  assert.match(scoutJs, /toFixed\(0\).*%/u);
+  assert.match(scoutJs, /progressBar\.style\.width/u);
+  assert.match(
+    scoutCss,
+    /@media\(max-width:700px\)[\s\S]*?\.badge-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/u
+  );
+});
+
+test('Reader Badge empty state does not fabricate unrecovered 100 conditions', () => {
+  assert.match(
+    scoutJs,
+    /Reader Badge 100件の個別条件は、採用済みの元リストを復元後に有効化します/u
+  );
 });
 
 test('LIGHT SEED history remains separate but links back to live SCOUT RECORD', () => {
