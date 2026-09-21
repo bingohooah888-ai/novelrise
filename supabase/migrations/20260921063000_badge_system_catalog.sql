@@ -231,6 +231,55 @@ on conflict (user_id, badge_id) do update
       metadata = public.user_scout_badges.metadata || excluded.metadata,
       updated_at = now();
 
+-- Canonical rows now contain the full progress/public/earned state. Remove the
+-- provisional per-user aliases so admin/public aggregations cannot double-count.
+with author_id_map(old_id, new_id, spec_no) as (
+values
+  ('author_badge_001','author_novel_001',1),
+  ('author_badge_002','author_episode_001',2),
+  ('author_badge_003','author_reader_001',3),
+  ('author_badge_004','author_favorite_001',4),
+  ('author_badge_005','author_comment_001',5),
+  ('author_badge_006','author_episode_010',6),
+  ('author_badge_007','author_episode_025',7),
+  ('author_badge_008','author_episode_050',8),
+  ('author_badge_009','author_episode_100',9),
+  ('author_badge_010','author_episode_250',10),
+  ('author_badge_011','author_chars_010k',11),
+  ('author_badge_012','author_chars_050k',12),
+  ('author_badge_013','author_chars_100k',13),
+  ('author_badge_014','author_chars_250k',14),
+  ('author_badge_015','author_chars_500k',15),
+  ('author_badge_016','author_completed_001',16),
+  ('author_badge_017','author_completed_003',17),
+  ('author_badge_018','author_completed_005',18),
+  ('author_badge_019','author_novel_002',19),
+  ('author_badge_020','author_novel_005',20),
+  ('author_badge_021','author_novel_010',21),
+  ('author_badge_022','author_unique_reader_010',22),
+  ('author_badge_023','author_unique_reader_050',23),
+  ('author_badge_024','author_unique_reader_100',24),
+  ('author_badge_025','author_unique_reader_500',25),
+  ('author_badge_026','author_favorite_010',26),
+  ('author_badge_027','author_favorite_050',27),
+  ('author_badge_028','author_favorite_100',28),
+  ('author_badge_029','author_comment_010',29),
+  ('author_badge_030','author_comment_050',30),
+  ('author_badge_031','author_seed_received_001',31),
+  ('author_badge_032','author_seed_received_010',32),
+  ('author_badge_033','author_seed_received_050',33),
+  ('author_badge_034','author_discovered_plus2_001',34),
+  ('author_badge_035','author_discovered_plus3_001',35),
+  ('author_badge_036','author_chars_1m',36),
+  ('author_badge_037','author_completed_010',37),
+  ('author_badge_038','author_unique_reader_1000',38),
+  ('author_badge_039','author_favorite_500',39),
+  ('author_badge_040','author_discovered_plus2_005',40)
+)
+delete from public.user_scout_badges b
+using author_id_map m
+where b.badge_id = m.old_id;
+
 insert into public.scout_badge_definitions (
   badge_id, badge_category, difficulty, display_name, description,
   metric_key, condition_type, target_value, condition_config, point_reward,
