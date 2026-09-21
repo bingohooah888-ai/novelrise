@@ -207,10 +207,7 @@ test('Reader Point reward tiers are data-driven', () => {
   has(postcheck, 'Author Badge must never award Scout Point');
   has(migration, "'reason_type', 'badge_reward'");
   has(migration, "'reason_id', p_badge_id");
-  has(
-    migration,
-    "'badge:' || p_user_id::text || ':' || p_badge_id"
-  );
+  has(migration, "'badge:' || p_user_id::text || ':' || p_badge_id");
 });
 
 test('Master Scout uses generic composite progress', () => {
@@ -222,10 +219,7 @@ test('Master Scout uses generic composite progress', () => {
   has(migration, '"metric_key":"genre_count"');
   has(migration, 'pg_catalog.jsonb_array_elements');
   has(migration, "'composite_progress'");
-  assert.doesNotMatch(
-    migration,
-    /if\s+p_badge_id\s*=\s*'reader_/iu
-  );
+  assert.doesNotMatch(migration, /if\s+p_badge_id\s*=\s*'reader_/iu);
 });
 
 test('Reader metrics use authoritative sources', () => {
@@ -283,14 +277,8 @@ test('provisional Author ids migrate without double count', () => {
   has(migration, "badge_id ~ '^author_badge_[0-9]{3}$'");
   has(migration, "'migrated_from_badge_id'");
   has(migration, 'delete from public.user_scout_badges b');
-  has(
-    postcheck,
-    'Legacy provisional Author Badge IDs must be disabled'
-  );
-  has(
-    postcheck,
-    'Legacy per-user Author Badge aliases must be migrated'
-  );
+  has(postcheck, 'Legacy provisional Author Badge IDs must be disabled');
+  has(postcheck, 'Legacy per-user Author Badge aliases must be migrated');
 });
 
 test('historical progress does not backfill Reader Point', () => {
@@ -319,10 +307,7 @@ test('Badge engine is idempotent and event-driven', () => {
 });
 
 test('Limited badges remain separate and private', () => {
-  has(
-    precheck,
-    'Expected Founding Author and beta Participant Limited badges'
-  );
+  has(precheck, 'Expected Founding Author and beta Participant Limited badges');
   has(postcheck, 'v_limited <> 2');
   has(postcheck, 'Badge raw tables must remain RPC-only');
 });
@@ -332,9 +317,6 @@ test('rollback preserves earned Reader history', () => {
   has(rollback, "'rolled_back_from_badge_id'");
   has(rollback, "badge_id like 'reader_%'");
   has(rollback, "status in ('earned','revoked')");
-  has(
-    rollback,
-    "rule_version='beta-2026-09-21-rollback-preserved'"
-  );
+  has(rollback, "rule_version='beta-2026-09-21-rollback-preserved'");
   assert.doesNotMatch(rollback, /truncate\s+/iu);
 });
