@@ -482,14 +482,21 @@ SQL
 echo '::endgroup::'
 
 echo '::group::Verify B #14 author comment moderation'
+# Badge comment-refresh trigger depends on B #14 author_hidden_at. Remove the
+# dependent Badge catalog before replaying the historical B #14 rollback.
+"${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260918192000_comment_author_moderation_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260918192000_comment_author_moderation.sql
 "${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/comment-author-moderation.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify B #14 comment moderation rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260918192000_comment_author_moderation_rollback.sql
 "${REPLAY[@]}" <<'SQL'
 do $$
@@ -526,6 +533,9 @@ SQL
 "${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260918192000_comment_author_moderation.sql
 "${REPLAY[@]}" -f supabase/checks/20260918192000_comment_author_moderation_postcheck.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify character appearance behavior'
