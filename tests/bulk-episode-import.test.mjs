@@ -113,7 +113,7 @@ test('duplicate warnings cover current batch and existing episodes', () => {
   assert.ok(warnings.some((value) => value.includes('既存エピソード')));
 });
 
-test('browser contract limits TXT to UTF-8 5MB and keeps safe text editing', () => {
+test(\n  'browser contract limits TXT to UTF-8 5MB and keeps safe text editing',\n  () => {
   assert.equal(BULK_IMPORT_LIMITS.maxFileBytes, 5 * 1024 * 1024);
   assert.match(page, /TextDecoder\('utf-8', \{ fatal: true \}\)/);
   assert.match(page, /TXTファイルのみ選択できます/);
