@@ -36,6 +36,10 @@
 
       <form id="emailForm" novalidate>
         <div class="field">
+          <label for="currentPassword">現在のパスワード</label>
+          <input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" maxlength="1024" required disabled>
+        </div>
+        <div class="field">
           <label for="newEmail">新しいメールアドレス</label>
           <input id="newEmail" name="newEmail" type="email" autocomplete="email" inputmode="email" spellcheck="false" maxlength="320" required disabled>
         </div>
@@ -50,7 +54,7 @@
       </form>
 
       <div class="security-note">
-        メールアドレスの変更はSupabase Authの確認メールを使って安全に処理します。確認が完了するまでは現在のメールアドレスが有効です。NOVELIGHTは公開プロフィール用データへメールアドレスを複製保存しません。
+        メールアドレスを変更する前に、現在のパスワードで本人確認を行います。その後はSupabase Authの確認メールで変更を確定します。確認が完了するまでは現在のメールアドレスが有効です。NOVELIGHTはパスワードを保存せず、公開プロフィール用データへメールアドレスを複製保存しません。
       </div>
     </section>
 
@@ -65,12 +69,12 @@
   <script src="novelight-author-studio-shell.js"></script>
   <script>
     const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
-    const currentEmailEl=document.getElementById('currentEmail'),form=document.getElementById('emailForm'),newEmailEl=document.getElementById('newEmail'),confirmEmailEl=document.getElementById('confirmEmail'),button=document.getElementById('changeEmail'),statusEl=document.getElementById('status'),pendingNotice=document.getElementById('pendingNotice');
+    const currentEmailEl=document.getElementById('currentEmail'),form=document.getElementById('emailForm'),currentPasswordEl=document.getElementById('currentPassword'),newEmailEl=document.getElementById('newEmail'),confirmEmailEl=document.getElementById('confirmEmail'),button=document.getElementById('changeEmail'),statusEl=document.getElementById('status'),pendingNotice=document.getElementById('pendingNotice');
     let currentEmail='',ready=false,busy=false;
 
     function normalizedEmail(value){return String(value||'').trim().toLowerCase()}
     function setStatus(message,error=false){statusEl.textContent=message;statusEl.classList.toggle('error',error)}
-    function setReady(value){ready=value;newEmailEl.disabled=!value;confirmEmailEl.disabled=!value;button.disabled=!value||busy}
+    function setReady(value){ready=value;currentPasswordEl.disabled=!value;newEmailEl.disabled=!value;confirmEmailEl.disabled=!value;button.disabled=!value||busy}
     function goToLogin(){location.replace('login.html?redirect=account-settings.html')}
     function sessionExpired(error){const status=Number(error?.status||0),code=String(error?.code||'').toLowerCase(),name=String(error?.name||'').toLowerCase(),message=String(error?.message||'').toLowerCase();return status===401||code.includes('session')||name.includes('session')||message.includes('session missing')||message.includes('jwt expired')}
     function updateErrorMessage(error){const status=Number(error?.status||0),message=String(error?.message||'').toLowerCase();if(status===429||message.includes('rate limit')||message.includes('too many'))return'確認メールの送信回数が上限に達しています。しばらく時間をおいてからもう一度お試しください。';if(message.includes('already')||message.includes('registered')||message.includes('exists')||message.includes('duplicate'))return'このメールアドレスには変更できません。入力内容を確認するか、別のメールアドレスをお試しください。';if(message.includes('invalid')||message.includes('email'))return'メールアドレスを確認してください。';return'確認メールを送信できませんでした。通信状況を確認し、時間をおいてもう一度お試しください。'}
@@ -101,7 +105,11 @@
     form.addEventListener('submit',async event=>{
       event.preventDefault();
       if(!ready||busy)return;
-      const newEmail=newEmailEl.value.trim(),confirmEmail=confirmEmailEl.value.trim();
+      const currentPassword=currentPasswordEl.value,newEmail=newEmailEl.value.trim(),confirmEmail=confirmEmailEl.value.trim();
+      if(!currentPassword){
+        setStatus('現在のパスワードを入力してください。',true);
+        return;
+      }
       if(!newEmail||!confirmEmail||!newEmailEl.validity.valid||!confirmEmailEl.validity.valid){
         setStatus('有効なメールアドレスを2か所に入力してください。',true);
         return;
@@ -117,7 +125,7 @@
 
       busy=true;
       setReady(true);
-      setStatus('本人確認用のメール送信を準備しています...');
+      setStatus('本人確認しています...');
       try{
         const user=await verifiedUser();
         const verifiedCurrent=String(user.email||'').trim();
@@ -128,6 +136,14 @@
           setStatus('現在と同じメールアドレスです。別のメールアドレスを入力してください。',true);
           return;
         }
+        const reauth=await client.auth.signInWithPassword({email:currentEmail,password:currentPassword});
+        const reauthUserId=reauth.data?.user?.id||reauth.data?.session?.user?.id||'';
+        if(reauth.error||reauthUserId!==user.id){
+          currentPasswordEl.value='';
+          setStatus('現在のパスワードを確認してください。',true);
+          return;
+        }
+        setStatus('確認メールを送信しています...');
         const result=await client.auth.updateUser({email:newEmail});
         if(result.error)throw result.error;
         form.reset();
