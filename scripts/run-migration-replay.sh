@@ -84,12 +84,26 @@ echo '::group::Verify SCOUT RECORD beta core with dependent controls removed'
 "${REPLAY[@]}" -f supabase/checks/20260921025328_scout_record_usage_controls_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify canonical Badge System catalog, rollback and reapply'
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
+"${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
+echo '::endgroup::'
+
 echo '::group::Verify SCOUT badge foundation, rollback and reapply'
+# The catalog depends on the foundation. Remove it first so the historical
+# foundation postcheck/rollback is exercised against its own exact schema.
+"${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260921022608_scout_badge_foundation_postcheck.sql
 "${REPLAY[@]}" -f supabase/rollback/20260921022608_scout_badge_foundation_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260921022608_scout_badge_foundation_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260921022608_scout_badge_foundation.sql
 "${REPLAY[@]}" -f supabase/checks/20260921022608_scout_badge_foundation_postcheck.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify work classification tags, RLS, rollback and reapply'
