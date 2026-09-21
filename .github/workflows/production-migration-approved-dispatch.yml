@@ -3,11 +3,38 @@ name: NOVELIGHT Approved Production Migration Deploy
 on:
   issue_comment:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      main_sha:
+        description: Exact merged main SHA covered by the inherited Production approval
+        required: true
+        type: string
+      migrations:
+        description: Canonical comma-separated migration versions
+        required: true
+        type: string
+      source_pr:
+        description: PR number carrying the original human Production approval
+        required: true
+        type: string
+      source_head_sha:
+        description: Exact approved PR head SHA
+        required: true
+        type: string
+      source_challenge:
+        description: Scope-bound high-risk approval challenge
+        required: true
+        type: string
+      source_approval_comment_id:
+        description: Exact owner approval comment ID
+        required: true
+        type: string
 
 permissions:
   actions: write
   contents: read
   issues: write
+  pull-requests: read
   statuses: write
 
 concurrency:
@@ -18,16 +45,27 @@ jobs:
   authorize:
     name: Validate one fixed chat-approved Production migration deploy
     if: >-
-      github.event.issue.pull_request == null &&
-      github.event.issue.number == 737 &&
-      github.event.comment.user.login == 'bingohooah888-ai' &&
-      github.event.comment.author_association == 'OWNER' &&
-      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE ')
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request == null &&
+        github.event.issue.number == 737 &&
+        github.event.comment.user.login == 'bingohooah888-ai' &&
+        github.event.comment.author_association == 'OWNER' &&
+        startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE ')
+      ) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      ISSUE_NUMBER: ${{ github.event.issue.number }}
-      APPROVAL_BODY: ${{ github.event.comment.body }}
+      ISSUE_NUMBER: '737'
+      APPROVAL_BODY: ${{ github.event.comment.body || '' }}
+      SOURCE_EVENT: ${{ github.event_name }}
+      INHERITED_MAIN_SHA: ${{ inputs.main_sha || '' }}
+      INHERITED_MIGRATIONS: ${{ inputs.migrations || '' }}
+      INHERITED_SOURCE_PR: ${{ inputs.source_pr || '' }}
+      INHERITED_SOURCE_HEAD_SHA: ${{ inputs.source_head_sha || '' }}
+      INHERITED_SOURCE_CHALLENGE: ${{ inputs.source_challenge || '' }}
+      INHERITED_SOURCE_APPROVAL_COMMENT_ID: ${{ inputs.source_approval_comment_id || '' }}
       MANUAL_WORKFLOW: supabase-production.yml
       REPAIR_VERSION: '20260815000000'
     outputs:
@@ -35,35 +73,219 @@ jobs:
       main_sha: ${{ steps.approval.outputs.main_sha }}
       challenge: ${{ steps.approval.outputs.challenge }}
       migrations: ${{ steps.approval.outputs.migrations }}
+      approval_source: ${{ steps.approval.outputs.approval_source }}
+      source_pr: ${{ steps.approval.outputs.source_pr }}
+      source_head_sha: ${{ steps.approval.outputs.source_head_sha }}
+      source_approval_comment_id: ${{ steps.approval.outputs.source_approval_comment_id }}
+      production_plan_run_id: ${{ steps.approval.outputs.production_plan_run_id }}
 
     steps:
-      - name: Validate exact one-time Production migration deploy approval
+      - name: Checkout trusted current main approval logic
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Validate direct or inherited one-time Production migration approval
         id: approval
         shell: bash
         run: |
           set -euo pipefail
 
-          approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE }"
-          echo "$approval_json" | jq -e --arg repairVersion "$REPAIR_VERSION" '
-            type == "object" and
-            .operation == "supabase-migration-deploy" and
-            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
-            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
-            (.migrations | type == "array" and length >= 1 and length <= 20) and
-            all(.migrations[]; type == "string" and test("^[0-9]{14}$")) and
-            (.migrations | length) == (.migrations | unique | length) and
-            .migrations == (.migrations | sort) and
-            (.migrations | index($repairVersion)) == null and
-            ((keys | sort) == (["challenge", "mainSha", "migrations", "operation"] | sort))
-          ' >/dev/null || {
-            echo 'Safety stop: invalid Production migration deploy approval record.'
-            exit 1
-          }
+          operation='supabase-migration-deploy'
+          approval_source=''
+          source_pr=''
+          source_head_sha=''
+          source_approval_comment_id=''
+          production_plan_run_id=''
 
-          operation="$(echo "$approval_json" | jq -r '.operation')"
-          main_sha="$(echo "$approval_json" | jq -r '.mainSha')"
-          challenge="$(echo "$approval_json" | jq -r '.challenge')"
-          migrations="$(echo "$approval_json" | jq -r '.migrations | join(",")')"
+          if [ "$SOURCE_EVENT" = 'issue_comment' ]; then
+            approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE }"
+            echo "$approval_json" | jq -e --arg repairVersion "$REPAIR_VERSION" '
+              type == "object" and
+              .operation == "supabase-migration-deploy" and
+              (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+              (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+              (.migrations | type == "array" and length >= 1 and length <= 20) and
+              all(.migrations[]; type == "string" and test("^[0-9]{14}$")) and
+              (.migrations | length) == (.migrations | unique | length) and
+              .migrations == (.migrations | sort) and
+              (.migrations | index($repairVersion)) == null and
+              ((keys | sort) == (["challenge", "mainSha", "migrations", "operation"] | sort))
+            ' >/dev/null || {
+              echo 'Safety stop: invalid Production migration deploy approval record.'
+              exit 1
+            }
+
+            main_sha="$(echo "$approval_json" | jq -r '.mainSha')"
+            challenge="$(echo "$approval_json" | jq -r '.challenge')"
+            migrations="$(echo "$approval_json" | jq -r '.migrations | join(",")')"
+            approval_source='direct-chat'
+          elif [ "$SOURCE_EVENT" = 'workflow_dispatch' ]; then
+            main_sha="$INHERITED_MAIN_SHA"
+            migrations="$INHERITED_MIGRATIONS"
+            source_pr="$INHERITED_SOURCE_PR"
+            source_head_sha="$INHERITED_SOURCE_HEAD_SHA"
+            challenge="$INHERITED_SOURCE_CHALLENGE"
+            source_approval_comment_id="$INHERITED_SOURCE_APPROVAL_COMMENT_ID"
+            approval_source='inherited-high-risk-production-approval'
+
+            [[ "$main_sha" =~ ^[0-9a-f]{40}$ ]] || {
+              echo 'Safety stop: inherited main SHA is invalid.'
+              exit 1
+            }
+            [[ "$migrations" =~ ^[0-9]{14}(,[0-9]{14})*$ ]] || {
+              echo 'Safety stop: inherited migration set is invalid.'
+              exit 1
+            }
+            [[ "$source_pr" =~ ^[1-9][0-9]*$ ]] || {
+              echo 'Safety stop: inherited source PR is invalid.'
+              exit 1
+            }
+            [[ "$source_head_sha" =~ ^[0-9a-f]{40}$ ]] || {
+              echo 'Safety stop: inherited source head SHA is invalid.'
+              exit 1
+            }
+            [[ "$challenge" =~ ^[A-F0-9]{8}$ ]] || {
+              echo 'Safety stop: inherited source challenge is invalid.'
+              exit 1
+            }
+            [[ "$source_approval_comment_id" =~ ^[1-9][0-9]*$ ]] || {
+              echo 'Safety stop: inherited owner approval comment ID is invalid.'
+              exit 1
+            }
+
+            printf '%s\n' "$migrations" | tr ',' '\n' | sort -u > /tmp/inherited-migrations-sorted.txt
+            test "$(paste -sd, /tmp/inherited-migrations-sorted.txt)" = "$migrations" || {
+              echo 'Safety stop: inherited migration set is not canonical.'
+              exit 1
+            }
+            if grep -Fxq "$REPAIR_VERSION" /tmp/inherited-migrations-sorted.txt; then
+              echo 'Safety stop: baseline history repair version cannot use inherited normal migration approval.'
+              exit 1
+            fi
+
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$source_pr" \
+              > /tmp/source-pr.json
+
+            jq -e \
+              --arg repo "$GITHUB_REPOSITORY" \
+              --arg head "$source_head_sha" \
+              --arg merge "$main_sha" \
+              '.merged == true and .merged_at != null and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $head and .merge_commit_sha == $merge' \
+              /tmp/source-pr.json >/dev/null || {
+                echo 'Safety stop: inherited Production approval is not bound to the exact merged PR identity.'
+                exit 1
+              }
+
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/comments/$source_approval_comment_id" \
+              > /tmp/source-approval-comment.json
+
+            jq -e \
+              --arg owner 'bingohooah888-ai' \
+              --arg suffix "/issues/$source_pr" \
+              '.user.login == $owner and .author_association == "OWNER" and (.issue_url | endswith($suffix)) and (.body | startswith("NOVELIGHT_HIGH_RISK_APPROVE "))' \
+              /tmp/source-approval-comment.json >/dev/null || {
+                echo 'Safety stop: inherited source is not the exact owner approval comment on the source PR.'
+                exit 1
+              }
+
+            source_approval_body="$(jq -r '.body' /tmp/source-approval-comment.json)"
+            source_approval_json="${source_approval_body#NOVELIGHT_HIGH_RISK_APPROVE }"
+            echo "$source_approval_json" | jq -e \
+              --argjson pr "$source_pr" \
+              --arg head "$source_head_sha" \
+              --arg challenge "$challenge" '
+                type == "object" and
+                .operation == "merge-high-risk-pr" and
+                .pr == $pr and
+                .headSha == $head and
+                .challenge == $challenge and
+                .productionScopes == ["supabase-migration-deploy"] and
+                ((keys | sort) == (["challenge", "headSha", "operation", "pr", "productionScopes"] | sort))
+              ' >/dev/null || {
+                echo 'Safety stop: owner approval does not explicitly include the Production migration scope.'
+                exit 1
+              }
+
+            expected_challenge="$(node scripts/high-risk-approval-lib.mjs challenge "$source_pr" "$source_head_sha" 'supabase-migration-deploy')"
+            test "$challenge" = "$expected_challenge" || {
+              echo 'Safety stop: inherited Production challenge is not bound to the exact PR head and migration scope.'
+              exit 1
+            }
+
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$source_pr/files?per_page=100" \
+              > /tmp/source-pr-files.json
+
+            file_count="$(jq 'length' /tmp/source-pr-files.json)"
+            [ "$file_count" -lt 100 ] || {
+              echo 'Safety stop: source PR file list exceeded the bounded inherited-approval contract.'
+              exit 1
+            }
+
+            jq -r '
+              .[]
+              | select(.filename | test("^supabase/migrations/.*\\.sql$"))
+              | [.status, .filename]
+              | @tsv
+            ' /tmp/source-pr-files.json > /tmp/source-migration-files.tsv
+
+            test -s /tmp/source-migration-files.tsv || {
+              echo 'Safety stop: inherited Production approval source PR contains no migration.'
+              exit 1
+            }
+            if awk -F '\t' '$1 != "added" { found=1 } END { exit found ? 0 : 1 }' /tmp/source-migration-files.tsv; then
+              echo 'Safety stop: inherited Production approval only supports newly added migrations.'
+              exit 1
+            fi
+            if awk -F '\t' '$2 !~ /^supabase\/migrations\/[0-9]{14}_.+\.sql$/ { found=1 } END { exit found ? 0 : 1 }' /tmp/source-migration-files.tsv; then
+              echo 'Safety stop: inherited source PR contains a non-canonical migration filename.'
+              exit 1
+            fi
+
+            source_migrations="$(
+              cut -f2 /tmp/source-migration-files.tsv \
+                | sed -nE 's#^supabase/migrations/([0-9]{14})_.*\.sql$#\1#p' \
+                | sort -u \
+                | paste -sd,
+            )"
+            test "$source_migrations" = "$migrations" || {
+              echo 'Safety stop: inherited migration set does not exactly match the approved source PR.'
+              exit 1
+            }
+
+            gh api \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/supabase-production-auto-deploy.yml/runs?event=push&head_sha=$main_sha&per_page=20" \
+              > /tmp/production-plan-runs.json
+            production_plan_run_id="$(
+              jq -r \
+                --arg sha "$main_sha" \
+                '[.workflow_runs[] | select(.head_sha == $sha and .event == "push" and .status == "completed" and .conclusion == "success")][0].id // empty' \
+                /tmp/production-plan-runs.json
+            )"
+            test -n "$production_plan_run_id" || {
+              echo 'Safety stop: inherited Production approval has no successful exact-main migration plan.'
+              exit 1
+            }
+
+            echo "Validated inherited single human Production approval from PR #$source_pr and plan run $production_plan_run_id."
+          else
+            echo 'Safety stop: unsupported Production migration approval event.'
+            exit 1
+          fi
 
           current_main="$(
             curl --silent --show-error --fail \
@@ -74,7 +296,7 @@ jobs:
               | jq -er '.object.sha'
           )"
           if [ "$current_main" != "$main_sha" ]; then
-            echo 'Safety stop: main changed after the user approved this Production migration deploy.'
+            echo 'Safety stop: main changed after the human Production approval scope was established.'
             exit 1
           fi
 
@@ -95,8 +317,8 @@ jobs:
             jq \
               --arg operation "$operation" \
               --arg mainSha "$main_sha" \
-              --arg challenge "$challenge" \
-              '[
+              --arg challenge "$challenge" '
+              [
                 .[]
                 | .body as $body
                 | select(
@@ -110,8 +332,8 @@ jobs:
                     .mainSha == $mainSha and
                     .challenge == $challenge
                   )
-              ] | length' \
-              /tmp/ledger-comments.json
+              ] | length
+            ' /tmp/ledger-comments.json
           )"
           if [ "$used_count" -ne 0 ]; then
             echo 'Safety stop: this Production migration deploy approval was already used.'
@@ -123,9 +345,13 @@ jobs:
             echo "main_sha=$main_sha"
             echo "challenge=$challenge"
             echo "migrations=$migrations"
+            echo "approval_source=$approval_source"
+            echo "source_pr=$source_pr"
+            echo "source_head_sha=$source_head_sha"
+            echo "source_approval_comment_id=$source_approval_comment_id"
+            echo "production_plan_run_id=$production_plan_run_id"
           } >> "$GITHUB_OUTPUT"
-          echo "Validated one-time Production migration approval for exact main $main_sha."
-
+          echo "Validated one-time Production migration approval for exact main $main_sha from $approval_source."
       - name: Checkout approved main for shared cleanup contract
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -168,6 +394,11 @@ jobs:
           MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
           CHALLENGE: ${{ steps.approval.outputs.challenge }}
           MIGRATIONS: ${{ steps.approval.outputs.migrations }}
+          APPROVAL_SOURCE: ${{ steps.approval.outputs.approval_source }}
+          SOURCE_PR: ${{ steps.approval.outputs.source_pr }}
+          SOURCE_HEAD_SHA: ${{ steps.approval.outputs.source_head_sha }}
+          SOURCE_APPROVAL_COMMENT_ID: ${{ steps.approval.outputs.source_approval_comment_id }}
+          PRODUCTION_PLAN_RUN_ID: ${{ steps.approval.outputs.production_plan_run_id }}
         shell: bash
         run: |
           set -euo pipefail
@@ -178,7 +409,12 @@ jobs:
               --arg challenge "$CHALLENGE" \
               --arg migrations "$MIGRATIONS" \
               --arg bridgeRunId "$GITHUB_RUN_ID" \
-              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:($migrations | split(",")),bridgeRunId:$bridgeRunId}'
+              --arg approvalSource "$APPROVAL_SOURCE" \
+              --arg sourcePr "$SOURCE_PR" \
+              --arg sourceHeadSha "$SOURCE_HEAD_SHA" \
+              --arg sourceApprovalCommentId "$SOURCE_APPROVAL_COMMENT_ID" \
+              --arg productionPlanRunId "$PRODUCTION_PLAN_RUN_ID" \
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:($migrations | split(",")),bridgeRunId:$bridgeRunId,approvalSource:$approvalSource,sourcePr:$sourcePr,sourceHeadSha:$sourceHeadSha,sourceApprovalCommentId:$sourceApprovalCommentId,productionPlanRunId:$productionPlanRunId}'
           )"
           body="NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED $payload"
           curl --silent --show-error --fail \
@@ -209,6 +445,11 @@ jobs:
       APPROVED_MAIN_SHA: ${{ needs.authorize.outputs.main_sha }}
       APPROVAL_CHALLENGE: ${{ needs.authorize.outputs.challenge }}
       APPROVED_MIGRATIONS: ${{ needs.authorize.outputs.migrations }}
+      APPROVAL_SOURCE: ${{ needs.authorize.outputs.approval_source }}
+      SOURCE_PR: ${{ needs.authorize.outputs.source_pr }}
+      SOURCE_HEAD_SHA: ${{ needs.authorize.outputs.source_head_sha }}
+      SOURCE_APPROVAL_COMMENT_ID: ${{ needs.authorize.outputs.source_approval_comment_id }}
+      PRODUCTION_PLAN_RUN_ID: ${{ needs.authorize.outputs.production_plan_run_id }}
       CHANGED_VERSIONS: ${{ needs.authorize.outputs.migrations }}
       REPAIR_VERSION: '20260815000000'
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -221,8 +462,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          test "$GITHUB_EVENT_NAME" = 'issue_comment'
+          case "$GITHUB_EVENT_NAME" in
+            issue_comment|workflow_dispatch) ;;
+            *)
+              echo 'Safety stop: unsupported event at the Production migration boundary.'
+              exit 1
+              ;;
+          esac
           test "$OPERATION" = 'supabase-migration-deploy'
+          case "$APPROVAL_SOURCE" in
+            direct-chat|inherited-high-risk-production-approval) ;;
+            *)
+              echo 'Safety stop: unknown Production approval source at the mutation boundary.'
+              exit 1
+              ;;
+          esac
           [[ "$APPROVED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$APPROVAL_CHALLENGE" =~ ^[A-F0-9]{8}$ ]]
           [[ "$APPROVED_MIGRATIONS" =~ ^[0-9]{14}(,[0-9]{14})*$ ]]
@@ -270,6 +524,11 @@ jobs:
               --arg challenge "$APPROVAL_CHALLENGE" \
               --arg migrations "$APPROVED_MIGRATIONS" \
               --arg bridgeRunId "$GITHUB_RUN_ID" \
+              --arg approvalSource "$APPROVAL_SOURCE" \
+              --arg sourcePr "$SOURCE_PR" \
+              --arg sourceHeadSha "$SOURCE_HEAD_SHA" \
+              --arg sourceApprovalCommentId "$SOURCE_APPROVAL_COMMENT_ID" \
+              --arg productionPlanRunId "$PRODUCTION_PLAN_RUN_ID" \
               '[
                 .[]
                 | .body as $body
@@ -280,7 +539,12 @@ jobs:
                     .mainSha == $mainSha and
                     .challenge == $challenge and
                     (.migrations | join(",")) == $migrations and
-                    .bridgeRunId == $bridgeRunId
+                    .bridgeRunId == $bridgeRunId and
+                    .approvalSource == $approvalSource and
+                    .sourcePr == $sourcePr and
+                    .sourceHeadSha == $sourceHeadSha and
+                    .sourceApprovalCommentId == $sourceApprovalCommentId and
+                    .productionPlanRunId == $productionPlanRunId
                   )
               ] | length' \
               /tmp/ledger-comments.json
@@ -421,6 +685,11 @@ jobs:
       MAIN_SHA: ${{ needs.authorize.outputs.main_sha }}
       CHALLENGE: ${{ needs.authorize.outputs.challenge }}
       MIGRATIONS: ${{ needs.authorize.outputs.migrations }}
+      APPROVAL_SOURCE: ${{ needs.authorize.outputs.approval_source }}
+      SOURCE_PR: ${{ needs.authorize.outputs.source_pr }}
+      SOURCE_HEAD_SHA: ${{ needs.authorize.outputs.source_head_sha }}
+      SOURCE_APPROVAL_COMMENT_ID: ${{ needs.authorize.outputs.source_approval_comment_id }}
+      PRODUCTION_PLAN_RUN_ID: ${{ needs.authorize.outputs.production_plan_run_id }}
       DEPLOY_RESULT: ${{ needs.deploy.result }}
       MUTATION_RESULT: ${{ needs.deploy.outputs.mutation_result }}
       POSTCHECK_RESULT: ${{ needs.deploy.outputs.postcheck_result }}
@@ -450,11 +719,16 @@ jobs:
               --arg challenge "$CHALLENGE" \
               --arg migrations "$MIGRATIONS" \
               --arg bridgeRunId "$GITHUB_RUN_ID" \
+              --arg approvalSource "$APPROVAL_SOURCE" \
+              --arg sourcePr "$SOURCE_PR" \
+              --arg sourceHeadSha "$SOURCE_HEAD_SHA" \
+              --arg sourceApprovalCommentId "$SOURCE_APPROVAL_COMMENT_ID" \
+              --arg productionPlanRunId "$PRODUCTION_PLAN_RUN_ID" \
               --arg result "$result" \
               --arg mutation_result "$mutation_result" \
               --arg postcheck_result "$postcheck_result" \
               --arg failure_phase "$failure_phase" \
-              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:($migrations | split(",")),bridgeRunId:$bridgeRunId,result:$result,mutation_result:$mutation_result,postcheck_result:$postcheck_result,failure_phase:$failure_phase}'
+              '{operation:$operation,mainSha:$mainSha,challenge:$challenge,migrations:($migrations | split(",")),bridgeRunId:$bridgeRunId,approvalSource:$approvalSource,sourcePr:$sourcePr,sourceHeadSha:$sourceHeadSha,sourceApprovalCommentId:$sourceApprovalCommentId,productionPlanRunId:$productionPlanRunId,result:$result,mutation_result:$mutation_result,postcheck_result:$postcheck_result,failure_phase:$failure_phase}'
           )"
           body="$marker $payload"
           curl --silent --show-error --fail \
