@@ -4,11 +4,7 @@
   "displayName": "NOVELIGHT Official Background Assets v1 (20)",
   "templateKey": "book-v1",
   "expectedPngCount": 20,
-  "allowNonPngFiles": [
-    "manifest.csv",
-    "manifest.json",
-    "VALIDATION.json"
-  ],
+  "allowNonPngFiles": ["manifest.csv", "manifest.json", "VALIDATION.json"],
   "items": [
     {
       "key": "background_study_desk_01",
