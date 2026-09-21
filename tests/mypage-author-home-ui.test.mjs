@@ -95,10 +95,7 @@ test('author room header emphasizes navigation and author name without the accou
 });
 
 test('author room exposes both interaction and account settings consistently', () => {
-  assert.match(
-    mypage,
-    /href="interaction-settings\.html"[\s\S]*?>交流設定</u
-  );
+  assert.match(mypage, /href="interaction-settings\.html"[\s\S]*?>交流設定</u);
   assert.match(
     mypage,
     /href="account-settings\.html"[\s\S]*?>アカウント設定</u
