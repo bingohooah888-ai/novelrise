@@ -6,6 +6,7 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_WINDOWS = new Set([30, 90]);
 const SOURCE_ORDER = [
+  'valid_read',
   'light_seed_use',
   'star_rating',
   'comment',
@@ -16,6 +17,7 @@ const SOURCE_ORDER = [
   'nova_prediction'
 ];
 const SOURCE_LABELS = {
+  valid_read: '有効読書',
   light_seed_use: 'LIGHT SEED使用',
   star_rating: '☆評価',
   comment: 'コメント',
