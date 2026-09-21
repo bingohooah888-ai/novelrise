@@ -86,6 +86,7 @@ echo '::endgroup::'
 
 echo '::group::Verify canonical Badge System catalog, rollback and reapply'
 "${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/badge-system-catalog.sql
 "${REPLAY[@]}" -f supabase/rollback/20260921063000_badge_system_catalog_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
