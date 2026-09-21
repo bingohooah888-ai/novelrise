@@ -136,29 +136,34 @@ test('manual mutation fallback keeps GitHub Environment approval', () => {
   assert.match(manual, /confirmation must be exactly DEPLOY/);
 });
 
-test('automatic main-push workflow is read-only and hands off mutation to chat approval', () => {
-  assert.match(automatic, /name: NOVELIGHT Supabase Production Migration Plan/);
+test('normal migration route consumes the existing high-risk 本番承認', () => {
   assert.match(
     automatic,
-    /Require pending migrations to match this push exactly/
+    /name: NOVELIGHT Supabase Production Single-Approval Deploy/
   );
-  assert.match(automatic, /supabase db push --linked --dry-run/);
+  assert.match(automatic, /workflow_run:/);
+  assert.match(automatic, /NOVELIGHT High-Risk PR Approval Relay/);
   assert.match(
     automatic,
-    /Require Staging migration parity before approval handoff/
+    /Resolve the original owner 本番承認 for the pending migration PR/
   );
+  assert.match(
+    automatic,
+    /node scripts\/resolve-production-migration-approval\.mjs/
+  );
+  assert.match(
+    automatic,
+    /Require pending migrations to match the approved PR exactly/
+  );
+  assert.match(automatic, /supabase db push --linked --dry-run --include-all/);
+  assert.match(automatic, /Require Staging migration parity/);
   assert.match(automatic, /node scripts\/verify-staging-migration-parity\.mjs/);
-  assert.match(automatic, /Staging migration parity:/);
-  assert.match(automatic, /PASS/);
-  assert.match(automatic, /Record chat-approval handoff/);
-  assert.ok(
-    automatic.indexOf(
-      'Require Staging migration parity before approval handoff'
-    ) < automatic.indexOf('Record chat-approval handoff')
-  );
-  assert.match(automatic, /No Production database mutation was performed/);
+  assert.match(automatic, /supabase db push --linked --yes --include-all/);
   assert.doesNotMatch(automatic, /environment: production-approval/);
-  assert.doesNotMatch(automatic, /supabase db push --linked --yes/);
+  assert.doesNotMatch(
+    automatic,
+    /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE/
+  );
 });
 
 test('deploy route cannot route the fixed baseline repair through normal deploy', () => {
