@@ -39,14 +39,17 @@ test('machine approval evidence is generated instead of pasted by the user', () 
   );
   assert.match(
     files.workflow,
-    /never ask the user to manually construct or paste the \`NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE\` JSON/
+    /never ask the user to manually construct or paste the `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE` JSON/
   );
 });
 
 test('single approval does not weaken owner or production safety checks', () => {
   assert.match(files.master, /OWNERとして認証された既接続GitHub経路/);
   assert.match(files.master, /fail closed/);
-  assert.match(files.preflight, /OWNER本人として機械可読承認を投入できない場合/);
+  assert.match(
+    files.preflight,
+    /OWNER本人として機械可読承認を投入できない場合/
+  );
   assert.match(files.preflight, /安全ゲート弱体化を行ってはならない/);
   assert.match(files.workflow, /OWNER-authenticated GitHub connection/);
   assert.match(files.workflow, /Never weaken OWNER checks/);
@@ -57,14 +60,26 @@ test('same human approval can refresh only machine identity when scope is unchan
     files.master,
     /実質的なProduction変更範囲が同一であることをfresh evidenceで証明できる場合/
   );
-  assert.match(files.automation, /本番承認のcarry-forwardと機械証跡の再発行/);
-  assert.match(files.automation, /人間の本番承認と、GitHub workflowが要求するexact SHA/);
-  assert.match(files.automation, /機械証跡だけを再生成/);
+  assert.match(
+    files.automation,
+    /本番承認のcarry-forwardと機械証跡の再発行/
+  );
+  assert.match(
+    files.automation,
+    /人間の本番承認と、GitHub workflowが要求するexact SHA/
+  );
+  assert.match(files.automation, /機械証跡だけを必要に応じて再生成/);
 });
 
 test('material production scope expansion still requires a new approval', () => {
   assert.match(files.master, /新しい本番承認を必要とする/);
-  assert.match(files.preflight, /以下のいずれかに該当する場合は新しい本番承認を必要とする/);
+  assert.match(
+    files.preflight,
+    /以下のいずれかに該当する場合は新しい本番承認を必要とする/
+  );
   assert.match(files.automation, /人間の本番承認carry-forward禁止/);
-  assert.match(files.workflow, /If the substantive scope expands or changes, obtain a new \`本番承認\`/);
+  assert.match(
+    files.workflow,
+    /If the substantive scope expands or changes, obtain a new `本番承認`/
+  );
 });
