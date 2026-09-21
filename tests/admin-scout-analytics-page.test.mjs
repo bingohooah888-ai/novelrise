@@ -32,4 +32,8 @@ test('SCOUT beta analytics page covers the MASTER-required beta analysis surface
   assert.match(html, /Badge獲得数/);
   assert.match(html, /Scout Level分布/);
   assert.match(html, /Scout Point発行理由/);
+  assert.match(html, /SCOUT利用者 7日継続率/);
+  assert.match(html, /非利用者 7日継続率/);
+  assert.match(html, /SCOUT利用者 30日継続率/);
+  assert.match(html, /非利用者 30日継続率/);
 });
