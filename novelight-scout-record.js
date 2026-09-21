@@ -438,6 +438,13 @@
     }
 
     void window.NovelightClient?.claimAcquisition?.(client);
+    void Promise.resolve(client.rpc('novelight_record_scout_record_visit'))
+      .then(({ error }) => {
+        if (error) console.error('SCOUT RECORD usage telemetry failed', error);
+      })
+      .catch((error) =>
+        console.error('SCOUT RECORD usage telemetry failed', error)
+      );
 
     const [summary, points, activity, discoveries, badges] = await Promise.all([
       client.rpc('novelight_scout_record_summary'),
