@@ -56,10 +56,7 @@ function retentionForUsers({ userIds, lifecycleRows, days, now }) {
     const threshold = new Date(
       registeredAt.getTime() + days * 24 * 60 * 60 * 1000
     );
-    if (
-      Number.isFinite(lastSeenAt.getTime()) &&
-      lastSeenAt >= threshold
-    ) {
+    if (Number.isFinite(lastSeenAt.getTime()) && lastSeenAt >= threshold) {
       retained += 1;
     }
   }
@@ -77,8 +74,6 @@ export function buildScoutProgressionMetrics({
   pointRows = [],
   badgeRows = [],
   thresholds = [],
-  seeds = [],
-  discoveryRows = [],
   usageRows = [],
   lifecycleRows = [],
   now = new Date()

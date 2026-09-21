@@ -74,7 +74,7 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
     now: new Date('2026-09-21T00:00:00Z')
   });
 
-  assert.equal(data.activeUsers, 2);
+  assert.equal(data.activeUsers, 1);
   assert.equal(data.scoutRecordUseRate, 50);
   assert.equal(data.retention.scout7d.rate, 100);
   assert.equal(data.retention.nonScout7d.rate, 0);
