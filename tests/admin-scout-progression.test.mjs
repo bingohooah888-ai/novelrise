@@ -47,6 +47,19 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
   ];
   const seeds = [{ reader_id: A }];
   const discoveryRows = [{ reader_id: B }];
+  const usageRows = [{ user_id: A, activity_date: '2026-09-01' }];
+  const lifecycleRows = [
+    {
+      user_id: A,
+      registered_at: '2026-08-01T00:00:00Z',
+      last_seen_at: '2026-09-20T00:00:00Z'
+    },
+    {
+      user_id: B,
+      registered_at: '2026-08-01T00:00:00Z',
+      last_seen_at: '2026-08-03T00:00:00Z'
+    }
+  ];
 
   const data = buildScoutProgressionMetrics({
     profiles,
@@ -55,11 +68,18 @@ test('SCOUT progression metrics cover Level, Point, Badge and usage rate', () =>
     badgeRows,
     thresholds,
     seeds,
-    discoveryRows
+    discoveryRows,
+    usageRows,
+    lifecycleRows,
+    now: new Date('2026-09-21T00:00:00Z')
   });
 
   assert.equal(data.activeUsers, 2);
-  assert.equal(data.scoutRecordUseRate, 100);
+  assert.equal(data.scoutRecordUseRate, 50);
+  assert.equal(data.retention.scout7d.rate, 100);
+  assert.equal(data.retention.nonScout7d.rate, 0);
+  assert.equal(data.retention.scout30d.rate, 100);
+  assert.equal(data.retention.nonScout30d.rate, 0);
   assert.equal(data.lv30Users, 1);
   assert.equal(data.lv30Rate, 50);
   assert.equal(data.points.confirmedIssued, 30);
