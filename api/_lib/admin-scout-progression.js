@@ -12,7 +12,7 @@ function levelForXp(xp, thresholds) {
   const value = Math.max(0, number(xp));
   let level = 1;
   for (const row of [...thresholds].sort(
-    (a, b) => number(a.level) - number(b.level),
+    (a, b) => number(a.level) - number(b.level)
   )) {
     if (value >= number(row.cumulative_xp)) level = number(row.level);
   }
@@ -33,7 +33,7 @@ function pointRowsForUser(pointRows, userId) {
 
 function badgeRowsForUser(badgeRows, userId) {
   return badgeRows.filter(
-    (row) => row.user_id === userId && row.status === "earned",
+    (row) => row.user_id === userId && row.status === 'earned'
   );
 }
 
@@ -42,7 +42,7 @@ function badgeAcquisitionByDefinition(profiles, badgeRows, badgeDefinitions) {
   const earnedUsersByBadge = new Map();
 
   for (const row of badgeRows) {
-    if (row.status !== "earned" || !row.badge_id || !row.user_id) continue;
+    if (row.status !== 'earned' || !row.badge_id || !row.user_id) continue;
     const users = earnedUsersByBadge.get(row.badge_id) ?? new Set();
     users.add(row.user_id);
     earnedUsersByBadge.set(row.badge_id, users);
@@ -53,7 +53,7 @@ function badgeAcquisitionByDefinition(profiles, badgeRows, badgeDefinitions) {
     .sort(
       (a, b) =>
         number(a.sort_order) - number(b.sort_order) ||
-        String(a.badge_id).localeCompare(String(b.badge_id)),
+        String(a.badge_id).localeCompare(String(b.badge_id))
     )
     .map((definition) => {
       const earnedUsers =
@@ -64,7 +64,7 @@ function badgeAcquisitionByDefinition(profiles, badgeRows, badgeDefinitions) {
         difficulty: definition.difficulty,
         displayName: definition.display_name ?? definition.badge_id,
         earnedUsers,
-        acquisitionRate: rate(earnedUsers, denominator),
+        acquisitionRate: rate(earnedUsers, denominator)
       };
     });
 }
@@ -86,7 +86,7 @@ function retentionForUsers({ userIds, lifecycleRows, days, now }) {
 
     eligible += 1;
     const threshold = new Date(
-      registeredAt.getTime() + days * 24 * 60 * 60 * 1000,
+      registeredAt.getTime() + days * 24 * 60 * 60 * 1000
     );
     if (Number.isFinite(lastSeenAt.getTime()) && lastSeenAt >= threshold) {
       retained += 1;
@@ -96,7 +96,7 @@ function retentionForUsers({ userIds, lifecycleRows, days, now }) {
   return {
     eligible,
     retained,
-    rate: rate(retained, eligible),
+    rate: rate(retained, eligible)
   };
 }
 
@@ -111,17 +111,17 @@ function distributionPercentile(values, fraction) {
 
   const weight = position - lower;
   return Number(
-    (sorted[lower] + (sorted[upper] - sorted[lower]) * weight).toFixed(2),
+    (sorted[lower] + (sorted[upper] - sorted[lower]) * weight).toFixed(2)
   );
 }
 
 function pointBalanceDistribution(profiles, pointRows) {
   const balances = new Map(profiles.map((profile) => [profile.id, 0]));
   for (const row of pointRows) {
-    if (!balances.has(row.user_id) || row.status !== "confirmed") continue;
+    if (!balances.has(row.user_id) || row.status !== 'confirmed') continue;
     balances.set(
       row.user_id,
-      (balances.get(row.user_id) ?? 0) + number(row.point_value),
+      (balances.get(row.user_id) ?? 0) + number(row.point_value)
     );
   }
 
@@ -132,7 +132,7 @@ function pointBalanceDistribution(profiles, pointRows) {
     p95: distributionPercentile(values, 0.95),
     max: values.length ? Math.max(...values) : 0,
     zeroUsers: values.filter((value) => value === 0).length,
-    positiveUsers: values.filter((value) => value > 0).length,
+    positiveUsers: values.filter((value) => value > 0).length
   };
 }
 
@@ -166,22 +166,22 @@ function buildReaderFlowComparison({
   validReadRows,
   rankEventRows,
   novels,
-  badgeSettings,
+  badgeSettings
 }) {
   const profileIds = new Set(profiles.map((profile) => profile.id));
   const scoutUsers = new Set(
-    usageRows.map((row) => row.user_id).filter((id) => profileIds.has(id)),
+    usageRows.map((row) => row.user_id).filter((id) => profileIds.has(id))
   );
   const nonScoutUsers = new Set(
-    [...profileIds].filter((userId) => !scoutUsers.has(userId)),
+    [...profileIds].filter((userId) => !scoutUsers.has(userId))
   );
   const newAuthorDays = Math.max(
     1,
-    number(badgeSettings?.new_author_days) || 30,
+    number(badgeSettings?.new_author_days) || 30
   );
   const lowRankThreshold = Math.max(
     1,
-    Math.min(6, number(badgeSettings?.low_rank_threshold) || 2),
+    Math.min(6, number(badgeSettings?.low_rank_threshold) || 2)
   );
 
   const authorFirstPublishedAt = new Map();
@@ -205,7 +205,7 @@ function buildReaderFlowComparison({
   for (const rows of rankEventsByNovel.values()) {
     rows.sort(
       (a, b) =>
-        new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime(),
+        new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime()
     );
   }
 
@@ -215,9 +215,9 @@ function buildReaderFlowComparison({
       {
         works: new Set(),
         newAuthors: new Set(),
-        lowRankWorks: new Set(),
-      },
-    ]),
+        lowRankWorks: new Set()
+      }
+    ])
   );
 
   for (const read of validReadRows) {
@@ -228,7 +228,7 @@ function buildReaderFlowComparison({
 
     const readTime = new Date(read.qualified_at).getTime();
     const firstPublishedAt = authorFirstPublishedAt.get(
-      read.author_id_snapshot,
+      read.author_id_snapshot
     );
     if (
       Number.isFinite(readTime) &&
@@ -241,7 +241,7 @@ function buildReaderFlowComparison({
 
     const historicalRank = rankAtRead(
       rankEventsByNovel.get(read.novel_id_snapshot),
-      read.qualified_at,
+      read.qualified_at
     );
     if (historicalRank !== null && historicalRank <= lowRankThreshold) {
       summary.lowRankWorks.add(read.novel_id_snapshot);
@@ -254,21 +254,21 @@ function buildReaderFlowComparison({
         perUser.get(userId) ?? {
           works: new Set(),
           newAuthors: new Set(),
-          lowRankWorks: new Set(),
-        },
+          lowRankWorks: new Set()
+        }
     );
     const users = rows.length;
     const readersWithValidRead = rows.filter(
-      (row) => row.works.size > 0,
+      (row) => row.works.size > 0
     ).length;
     const workTotal = rows.reduce((sum, row) => sum + row.works.size, 0);
     const newAuthorTotal = rows.reduce(
       (sum, row) => sum + row.newAuthors.size,
-      0,
+      0
     );
     const lowRankTotal = rows.reduce(
       (sum, row) => sum + row.lowRankWorks.size,
-      0,
+      0
     );
 
     return {
@@ -284,7 +284,7 @@ function buildReaderFlowComparison({
       lowRankWorkReads: lowRankTotal,
       averageLowRankWorksPerReader: users
         ? Number((lowRankTotal / users).toFixed(2))
-        : 0,
+        : 0
     };
   }
 
@@ -292,7 +292,7 @@ function buildReaderFlowComparison({
     newAuthorDays,
     lowRankThreshold,
     scoutUsers: summarize(scoutUsers),
-    nonScoutUsers: summarize(nonScoutUsers),
+    nonScoutUsers: summarize(nonScoutUsers)
   };
 }
 
@@ -309,38 +309,38 @@ export function buildScoutProgressionMetrics({
   rankEventRows = [],
   novels = [],
   badgeSettings = {},
-  now = new Date(),
+  now = new Date()
 }) {
   const xpTotals = xpByUser(xpRows);
   const levels = profiles.map((profile) =>
-    levelForXp(xpTotals.get(profile.id) ?? 0, thresholds),
+    levelForXp(xpTotals.get(profile.id) ?? 0, thresholds)
   );
   const levelDistribution = Array.from({ length: 30 }, (_, index) => ({
     level: index + 1,
-    users: levels.filter((level) => level === index + 1).length,
+    users: levels.filter((level) => level === index + 1).length
   }));
   const lv30Users = levels.filter((level) => level === 30).length;
   const confirmedPointRows = pointRows.filter(
-    (row) => row.status === "confirmed",
+    (row) => row.status === 'confirmed'
   );
   const confirmedIssued = confirmedPointRows.reduce(
     (sum, row) => sum + number(row.point_value),
-    0,
+    0
   );
   const byReason = new Map();
   for (const row of confirmedPointRows) {
     byReason.set(
       row.point_kind,
-      (byReason.get(row.point_kind) ?? 0) + number(row.point_value),
+      (byReason.get(row.point_kind) ?? 0) + number(row.point_value)
     );
   }
-  const earnedBadges = badgeRows.filter((row) => row.status === "earned");
+  const earnedBadges = badgeRows.filter((row) => row.status === 'earned');
   const usersWithEarnedBadge = new Set(earnedBadges.map((row) => row.user_id))
     .size;
   const active = new Set(usageRows.map((row) => row.user_id).filter(Boolean));
   const allProfileIds = new Set(profiles.map((profile) => profile.id));
   const nonActive = new Set(
-    [...allProfileIds].filter((userId) => !active.has(userId)),
+    [...allProfileIds].filter((userId) => !active.has(userId))
   );
 
   return {
@@ -351,26 +351,26 @@ export function buildScoutProgressionMetrics({
         userIds: active,
         lifecycleRows,
         days: 7,
-        now,
+        now
       }),
       scout30d: retentionForUsers({
         userIds: active,
         lifecycleRows,
         days: 30,
-        now,
+        now
       }),
       nonScout7d: retentionForUsers({
         userIds: nonActive,
         lifecycleRows,
         days: 7,
-        now,
+        now
       }),
       nonScout30d: retentionForUsers({
         userIds: nonActive,
         lifecycleRows,
         days: 30,
-        now,
-      }),
+        now
+      })
     },
     levelDistribution,
     lv30Users,
@@ -380,16 +380,16 @@ export function buildScoutProgressionMetrics({
       averageConfirmedPerRegisteredUser: profiles.length
         ? Number((confirmedIssued / profiles.length).toFixed(2))
         : 0,
-      pendingRows: pointRows.filter((row) => row.status === "pending").length,
-      frozenRows: pointRows.filter((row) => row.status === "frozen").length,
+      pendingRows: pointRows.filter((row) => row.status === 'pending').length,
+      frozenRows: pointRows.filter((row) => row.status === 'frozen').length,
       cancelledRows: pointRows.filter(
-        (row) => row.status === "cancelled" || row.point_kind === "reversal",
+        (row) => row.status === 'cancelled' || row.point_kind === 'reversal'
       ).length,
       balanceDistribution: pointBalanceDistribution(profiles, pointRows),
       byReason: [...byReason.entries()].map(([kind, amount]) => ({
         kind,
-        amount,
-      })),
+        amount
+      }))
     },
     badges: {
       earned: earnedBadges.length,
@@ -401,8 +401,8 @@ export function buildScoutProgressionMetrics({
       byBadge: badgeAcquisitionByDefinition(
         profiles,
         badgeRows,
-        badgeDefinitions,
-      ),
+        badgeDefinitions
+      )
     },
     readerFlow: buildReaderFlowComparison({
       profiles,
@@ -410,8 +410,8 @@ export function buildScoutProgressionMetrics({
       validReadRows,
       rankEventRows,
       novels,
-      badgeSettings,
-    }),
+      badgeSettings
+    })
   };
 }
 
@@ -424,12 +424,12 @@ export function enrichScoutUserSummaries(
     badgeDefinitions = [],
     thresholds = [],
     controlRows = [],
-    operatorRows = [],
-  },
+    operatorRows = []
+  }
 ) {
   const xpTotals = xpByUser(xpRows);
   const definitions = new Map(
-    badgeDefinitions.map((row) => [row.badge_id, row]),
+    badgeDefinitions.map((row) => [row.badge_id, row])
   );
 
   return users.map((user) => {
@@ -439,7 +439,7 @@ export function enrichScoutUserSummaries(
       .filter((row) => row.user_id === user.id)
       .sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
       .slice(0, 20)
       .map((row) => ({
@@ -447,13 +447,13 @@ export function enrichScoutUserSummaries(
         reason: row.reason,
         effectiveUntil: row.effective_until,
         amount: row.amount,
-        createdAt: row.created_at,
+        createdAt: row.created_at
       }));
     const confirmed = userPoints
-      .filter((row) => row.status === "confirmed")
+      .filter((row) => row.status === 'confirmed')
       .reduce((sum, row) => sum + number(row.point_value), 0);
     const pending = userPoints
-      .filter((row) => row.status === "pending" || row.status === "frozen")
+      .filter((row) => row.status === 'pending' || row.status === 'frozen')
       .reduce((sum, row) => sum + number(row.point_value), 0);
     const badges = badgeRowsForUser(badgeRows, user.id).map((row) => {
       const definition = definitions.get(row.badge_id) ?? {};
@@ -463,7 +463,7 @@ export function enrichScoutUserSummaries(
         difficulty: definition.difficulty ?? null,
         displayName: definition.display_name ?? row.badge_id,
         earnedAt: row.earned_at,
-        isPublic: Boolean(row.is_public),
+        isPublic: Boolean(row.is_public)
       };
     });
 
@@ -473,14 +473,14 @@ export function enrichScoutUserSummaries(
       scoutPoint: {
         confirmed,
         pending,
-        frozenRows: userPoints.filter((row) => row.status === "frozen").length,
-        cancelledRows: userPoints.filter((row) => row.status === "cancelled")
+        frozenRows: userPoints.filter((row) => row.status === 'frozen').length,
+        cancelledRows: userPoints.filter((row) => row.status === 'cancelled')
           .length,
         recent: [...userPoints]
           .sort(
             (a, b) =>
               new Date(b.occurred_at).getTime() -
-              new Date(a.occurred_at).getTime(),
+              new Date(a.occurred_at).getTime()
           )
           .slice(0, 20)
           .map((row) => ({
@@ -488,16 +488,16 @@ export function enrichScoutUserSummaries(
             amount: number(row.point_value),
             kind: row.point_kind,
             status: row.status,
-            occurredAt: row.occurred_at,
-          })),
+            occurredAt: row.occurred_at
+          }))
       },
       badges,
       scoutControl: {
         pointEarningSuspendedUntil: control?.earning_suspended_until ?? null,
         reason: control?.reason ?? null,
         updatedAt: control?.updated_at ?? null,
-        operatorActions,
-      },
+        operatorActions
+      }
     };
   });
 }
