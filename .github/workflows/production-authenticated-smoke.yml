@@ -237,6 +237,7 @@ jobs:
             episode.html
             scout-record.html
             analytics.html
+            account-settings.html
             novelight-client.js
           )
 
@@ -280,6 +281,47 @@ jobs:
 
       - name: Install application dependencies
         run: npm ci
+
+      - name: Verify secure email-change Auth configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured in the Production environment.'
+            exit 1
+          }
+
+          status="$(
+            curl --silent --show-error \
+              --output /tmp/supabase-auth-config.json \
+              --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H 'Accept: application/json' \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth"
+          )"
+          [ "$status" = '200' ] || {
+            echo "Safety stop: Auth config read returned HTTP $status."
+            exit 1
+          }
+
+          jq -e '
+            .external_email_enabled == true and
+            .mailer_autoconfirm == false and
+            .mailer_secure_email_change_enabled == true and
+            (
+              .hook_send_email_enabled == true or
+              (
+                (.smtp_host | type == "string" and length > 0) and
+                (.smtp_admin_email | type == "string" and length > 0)
+              )
+            )
+          ' /tmp/supabase-auth-config.json >/dev/null || {
+            echo 'Safety stop: Production Auth email-change confirmation is not securely configured.'
+            exit 1
+          }
+
+          echo 'Production Auth secure email-change configuration is ready.'
 
       - name: Retrieve the production Supabase secret key for this approved run
         shell: bash
@@ -326,7 +368,7 @@ jobs:
       - name: Remove temporary production credentials and fixture files
         if: always()
         shell: bash
-        run: rm -f /tmp/supabase-api-keys.json "$PRODUCTION_AUTH_SMOKE_FIXTURE" /tmp/request-comments.json
+        run: rm -f /tmp/supabase-api-keys.json /tmp/supabase-auth-config.json "$PRODUCTION_AUTH_SMOKE_FIXTURE" /tmp/request-comments.json
 
       - name: Record consumed approval and close dedicated issue
         if: success() && steps.approval.outputs.request_id != ''

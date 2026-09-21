@@ -407,6 +407,65 @@ async function qualifyValidRead(page) {
   expect(await response.json()).toMatchObject({ qualified: true });
 }
 
+async function assertAccountSettingsEmailBoundary(
+  page,
+  account,
+  deviceLabel,
+  runId
+) {
+  await page.goto('/account-settings.html');
+  await expect(page.getByRole('heading', { name: 'アカウント設定' })).toBeVisible();
+  await expect(page.locator('#currentEmail')).toHaveText(account.email);
+  await expect(page.locator('#currentPassword')).toBeEnabled();
+  await expect(page.locator('#newEmail')).toBeEnabled();
+  await expect(page.locator('#confirmEmail')).toBeEnabled();
+
+  const targetEmail =
+    `novelight-e2e-email-boundary-${runId}-${deviceLabel}@example.com`;
+  let updateRequest = null;
+
+  await page.route('**/auth/v1/user', async (route) => {
+    const request = route.request();
+    if (request.method() === 'GET') {
+      await route.continue();
+      return;
+    }
+
+    updateRequest = {
+      method: request.method(),
+      body: request.postDataJSON()
+    };
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: 'NOVELIGHT smoke boundary intercept'
+      })
+    });
+  });
+
+  try {
+    await page.locator('#currentPassword').fill(account.password);
+    await page.locator('#newEmail').fill(targetEmail);
+    await page.locator('#confirmEmail').fill(targetEmail);
+    await page.locator('#changeEmail').click();
+
+    await expect
+      .poll(() => updateRequest)
+      .toMatchObject({
+        body: { email: targetEmail }
+      });
+    expect(updateRequest.method).not.toBe('GET');
+    await expect(page.locator('#status')).toContainText(
+      '確認メールを送信できませんでした'
+    );
+    await expect(page.locator('#currentPassword')).toHaveValue('');
+    await expect(page.locator('#currentEmail')).toHaveText(account.email);
+  } finally {
+    await page.unroute('**/auth/v1/user');
+  }
+}
+
 async function assertBetaStandardActivation(page) {
   const accessToken = await getSupabaseAccessToken(page);
   const response = await page.request.post('/api/activate-beta-standard', {
@@ -497,6 +556,16 @@ test('authenticated beta-critical product flow works in target', async ({
         'post.html'
       );
       saveVisitorToken(`author-${deviceLabel}`, authorVisitorToken);
+    });
+
+    await test.step('Account settings reauth reaches the email-update boundary without mutating Auth', async () => {
+      await assertAccountSettingsEmailBoundary(
+        authorPage,
+        accounts.author,
+        deviceLabel,
+        fixture.runId
+      );
+      await authorPage.goto('/post.html');
     });
 
     await test.step('Create novel with Chapter 40 Geometry thumbnail render', async () => {

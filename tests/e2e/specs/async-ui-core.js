@@ -332,16 +332,21 @@ test('account settings rejects malformed, mismatched and unchanged emails before
   await page.locator('#confirmEmail').fill('not-an-email');
   await page.locator('#changeEmail').click();
   await expect(page.locator('#status')).toContainText('有効なメールアドレス');
+  await expect(page.locator('#currentPassword')).toHaveValue('');
 
+  await page.locator('#currentPassword').fill('correct-password');
   await page.locator('#newEmail').fill('first@example.test');
   await page.locator('#confirmEmail').fill('second@example.test');
   await page.locator('#changeEmail').click();
   await expect(page.locator('#status')).toContainText('一致していません');
+  await expect(page.locator('#currentPassword')).toHaveValue('');
 
+  await page.locator('#currentPassword').fill('correct-password');
   await page.locator('#newEmail').fill('OWNER@example.test');
   await page.locator('#confirmEmail').fill('owner@example.test');
   await page.locator('#changeEmail').click();
   await expect(page.locator('#status')).toContainText('現在と同じ');
+  await expect(page.locator('#currentPassword')).toHaveValue('');
 
   const updateCalls = await page.evaluate(
     () =>
@@ -372,6 +377,7 @@ test('account settings requires the current password before requesting an email 
   await expect(page.locator('#status')).toHaveText(
     '現在のパスワードを確認してください。'
   );
+  await expect(page.locator('#currentPassword')).toHaveValue('');
   const updateCalls = await page.evaluate(
     () =>
       globalThis.__NOVELIGHT_E2E_CALLS__.filter(
@@ -402,6 +408,7 @@ test('account settings handles an already-used email without disclosing another 
     'このメールアドレスには変更できません。入力内容を確認するか、別のメールアドレスをお試しください。'
   );
   await expect(page.locator('#status')).not.toContainText('User');
+  await expect(page.locator('#currentPassword')).toHaveValue('');
   expect(pageErrors).toEqual([]);
 });
 

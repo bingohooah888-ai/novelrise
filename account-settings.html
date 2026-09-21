@@ -111,14 +111,17 @@
         return;
       }
       if(!newEmail||!confirmEmail||!newEmailEl.validity.valid||!confirmEmailEl.validity.valid){
+        currentPasswordEl.value='';
         setStatus('有効なメールアドレスを2か所に入力してください。',true);
         return;
       }
       if(normalizedEmail(newEmail)!==normalizedEmail(confirmEmail)){
+        currentPasswordEl.value='';
         setStatus('新しいメールアドレスが一致していません。',true);
         return;
       }
       if(normalizedEmail(newEmail)===normalizedEmail(currentEmail)){
+        currentPasswordEl.value='';
         setStatus('現在と同じメールアドレスです。別のメールアドレスを入力してください。',true);
         return;
       }
@@ -133,6 +136,7 @@
         currentEmail=verifiedCurrent;
         currentEmailEl.textContent=currentEmail;
         if(normalizedEmail(newEmail)===normalizedEmail(currentEmail)){
+          currentPasswordEl.value='';
           setStatus('現在と同じメールアドレスです。別のメールアドレスを入力してください。',true);
           return;
         }
@@ -153,6 +157,7 @@
         if(sessionExpired(error)){goToLogin();return}
         setStatus(updateErrorMessage(error),true);
       }finally{
+        currentPasswordEl.value='';
         busy=false;
         if(document.location.pathname.endsWith('account-settings.html'))setReady(ready);
       }
