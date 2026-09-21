@@ -37,7 +37,7 @@ test('relay is owner-only and exact-head bound', () => {
 test('relay grants required ready-transition permissions', () => {
   assert.match(workflow, /actions: write/);
   assert.match(workflow, /contents: write/);
-  assert.match(workflow, /issues: read/);
+  assert.match(workflow, /issues: write/);
   assert.match(workflow, /pull-requests: write/);
   assert.match(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.doesNotMatch(workflow, /secrets\.[A-Z0-9_]*TOKEN/);
@@ -136,7 +136,7 @@ test('readiness bridge recovers only a merged exact-owner-approved current main'
   );
   assert.match(
     readinessBridgeWorkflow,
-    /lacks exact owner approval for head \$head_sha; skipping readiness recovery/
+    /lacks exact owner approval for head \$head_sha and Production scope; skipping readiness recovery/
   );
   assert.match(
     readinessBridgeWorkflow,
@@ -203,5 +203,19 @@ test('one approved migration scope is inherited after merge without a second hum
   assert.match(
     workflow,
     /no second human approval was requested/
+  );
+});
+
+
+test('readiness recovery understands scoped approval after a merged relay race', () => {
+  assert.match(readinessBridgeWorkflow, /production_scopes='supabase-migration-deploy'/);
+  assert.match(readinessBridgeWorkflow, /productionScopes:\$productionScopes/);
+  assert.match(
+    readinessBridgeWorkflow,
+    /scripts\/high-risk-approval-lib\.mjs challenge "\$pr_number" "\$head_sha" "\$production_scopes"/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /migration changes are outside the inherited approval recovery contract/
   );
 });
