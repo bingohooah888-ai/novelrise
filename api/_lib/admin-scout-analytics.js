@@ -481,7 +481,11 @@ export async function loadScoutAnalytics({
     usageRows,
     lifecycleRows,
     controlRows,
-    operatorRows
+    operatorRows,
+    validReadRows,
+    rankEventRows,
+    novels,
+    badgeConfigRows
   ] = await Promise.all([
     fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
     fetchPaged(
@@ -536,6 +540,26 @@ export async function loadScoutAnalytics({
       supabase,
       'scout_point_operator_actions',
       'user_id,action,reason,effective_until,amount,created_at'
+    ),
+    fetchPaged(
+      supabase,
+      'valid_read_events',
+      'reader_id,novel_id_snapshot,author_id_snapshot,qualified_at'
+    ),
+    fetchPaged(
+      supabase,
+      'novel_rank_events',
+      'id,novel_id_snapshot,to_rank,occurred_at'
+    ),
+    fetchPaged(
+      supabase,
+      'novels',
+      'id,user_id,first_published_at'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_badge_runtime_config',
+      'badge_settings'
     )
   ]);
 
@@ -562,6 +586,10 @@ export async function loadScoutAnalytics({
       discoveryRows,
       usageRows,
       lifecycleRows,
+      validReadRows,
+      rankEventRows,
+      novels,
+      badgeSettings: badgeConfigRows[0]?.badge_settings ?? {},
       now
     }),
     users: enrichScoutUserSummaries(base.users, {
