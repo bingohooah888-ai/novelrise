@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>アカウント設定 | NOVELIGHT</title>
+  <link rel="stylesheet" href="novelight-author-studio-shell.css">
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#07121e;color:#eef3f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}button,input{font:inherit}.workspace{max-width:860px;margin:0 auto;padding:38px 28px 78px}.page-head{margin-bottom:22px}.kicker{margin:0 0 9px;color:#d7b65b;font-size:11px;font-weight:900;letter-spacing:.17em}.page-head h1{margin:0 0 10px;color:#fff2c6;font-family:Georgia,"Yu Mincho",serif;font-size:32px}.page-head p{margin:0;color:#aebbc5;line-height:1.8}.panel{padding:26px;border:1px solid rgba(216,180,90,.28);border-radius:18px;background:linear-gradient(145deg,rgba(20,36,50,.97),rgba(9,23,36,.97));box-shadow:0 18px 48px rgba(0,0,0,.2)}.section-title{margin:0 0 6px;color:#fff0c0;font-size:20px}.privacy-note{margin:0 0 22px;color:#aebbc5;font-size:12px;line-height:1.75}.current{margin-bottom:22px;padding:16px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.025)}.current-label{display:block;margin-bottom:6px;color:#9faeb9;font-size:11px;font-weight:800}.current-email{min-height:24px;color:#f7f1e5;font-size:16px;font-weight:800;overflow-wrap:anywhere}.field{display:grid;gap:7px;margin-top:15px}.field label{color:#e9dfc0;font-size:12px;font-weight:900}.field input{width:100%;padding:12px 13px;border:1px solid rgba(216,180,90,.28);border-radius:10px;background:#091824;color:#f6f8f9;outline:none}.field input:focus{border-color:#e2c76f;box-shadow:0 0 0 3px rgba(216,180,90,.1)}.actions{margin-top:20px}.primary{min-height:44px;padding:10px 17px;border:1px solid #d7b85d;border-radius:10px;background:#d7b85d;color:#11202d;font:inherit;font-size:13px;font-weight:900;cursor:pointer}.primary:disabled{opacity:.55;cursor:not-allowed}.status{min-height:24px;margin-top:14px;color:#b7c3cc;font-size:12px;line-height:1.75}.status.error{color:#f0aa9e}.pending{margin:0 0 20px;padding:14px 16px;border:1px solid rgba(93,164,206,.3);border-radius:12px;background:rgba(31,81,111,.14);color:#c0d7e5;font-size:12px;line-height:1.75}.pending strong{color:#e0f1fb}.security-note{margin-top:22px;padding-top:18px;border-top:1px solid rgba(216,180,90,.16);color:#98a8b4;font-size:11px;line-height:1.8}.future{margin-top:18px;padding:18px 20px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(255,255,255,.02)}.future h2{margin:0 0 6px;color:#d9e0e6;font-size:15px}.future p{margin:0;color:#8798a5;font-size:11px;line-height:1.7}@media(max-width:640px){.workspace{padding:30px 16px 62px}.page-head h1{font-size:28px}.panel{padding:21px 18px}.primary{width:100%}}
+  </style>
+  <link rel="stylesheet" href="novelight-accessibility.css">
+</head>
+<body class="novelight-author-studio-shell">
+  <a class="skip-link" href="#main-content">本文へスキップ</a>
+  <main id="main-content" tabindex="-1" class="workspace">
+    <header class="page-head">
+      <div class="kicker">ACCOUNT SETTINGS</div>
+      <h1>アカウント設定</h1>
+      <p>ログインに使うメールアドレスなど、本人だけが確認できるアカウント情報を管理します。</p>
+    </header>
+
+    <section class="panel" aria-labelledby="emailSettingsTitle">
+      <h2 id="emailSettingsTitle" class="section-title">メールアドレス</h2>
+      <p class="privacy-note">メールアドレスは公開プロフィール・作者ページ・検索・ランキングなどの公開画面には表示されません。</p>
+
+      <div id="pendingNotice" class="pending" hidden>
+        <strong>メールアドレス変更の確認待ちです。</strong><br>
+        届いた確認メールのリンクから手続きを完了してください。リンクが期限切れの場合は、下のフォームからもう一度変更手続きを行ってください。
+      </div>
+
+      <div class="current">
+        <span class="current-label">現在のメールアドレス</span>
+        <div id="currentEmail" class="current-email" aria-live="polite">確認しています...</div>
+      </div>
+
+      <form id="emailForm" novalidate>
+        <div class="field">
+          <label for="newEmail">新しいメールアドレス</label>
+          <input id="newEmail" name="newEmail" type="email" autocomplete="email" inputmode="email" spellcheck="false" maxlength="320" required disabled>
+        </div>
+        <div class="field">
+          <label for="confirmEmail">新しいメールアドレス確認</label>
+          <input id="confirmEmail" name="confirmEmail" type="email" autocomplete="off" inputmode="email" spellcheck="false" maxlength="320" required disabled>
+        </div>
+        <div class="actions">
+          <button id="changeEmail" class="primary" type="submit" disabled>確認メールを送信</button>
+        </div>
+        <div id="status" class="status" aria-live="polite">ログイン状態を確認しています...</div>
+      </form>
+
+      <div class="security-note">
+        メールアドレスの変更はSupabase Authの確認メールを使って安全に処理します。確認が完了するまでは現在のメールアドレスが有効です。NOVELIGHTは公開プロフィール用データへメールアドレスを複製保存しません。
+      </div>
+    </section>
+
+    <section class="future" aria-labelledby="futureSettingsTitle">
+      <h2 id="futureSettingsTitle">今後のアカウント機能</h2>
+      <p>パスワード変更など、認証に関わる設定は安全性を確認したうえでこのページへ追加します。</p>
+    </section>
+  </main>
+
+  <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+  <script src="novelight-author-studio-shell.js"></script>
+  <script>
+    const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+    const currentEmailEl=document.getElementById('currentEmail'),form=document.getElementById('emailForm'),newEmailEl=document.getElementById('newEmail'),confirmEmailEl=document.getElementById('confirmEmail'),button=document.getElementById('changeEmail'),statusEl=document.getElementById('status'),pendingNotice=document.getElementById('pendingNotice');
+    let currentEmail='',ready=false,busy=false;
+
+    function normalizedEmail(value){return String(value||'').trim().toLowerCase()}
+    function setStatus(message,error=false){statusEl.textContent=message;statusEl.classList.toggle('error',error)}
+    function setReady(value){ready=value;newEmailEl.disabled=!value;confirmEmailEl.disabled=!value;button.disabled=!value||busy}
+    function goToLogin(){location.replace('login.html?redirect=account-settings.html')}
+    function sessionExpired(error){const status=Number(error?.status||0),code=String(error?.code||'').toLowerCase(),name=String(error?.name||'').toLowerCase(),message=String(error?.message||'').toLowerCase();return status===401||code.includes('session')||name.includes('session')||message.includes('session missing')||message.includes('jwt expired')}
+    function updateErrorMessage(error){const status=Number(error?.status||0),message=String(error?.message||'').toLowerCase();if(status===429||message.includes('rate limit')||message.includes('too many'))return'確認メールの送信回数が上限に達しています。しばらく時間をおいてからもう一度お試しください。';if(message.includes('already')||message.includes('registered')||message.includes('exists')||message.includes('duplicate'))return'このメールアドレスには変更できません。入力内容を確認するか、別のメールアドレスをお試しください。';if(message.includes('invalid')||message.includes('email'))return'メールアドレスを確認してください。';return'確認メールを送信できませんでした。通信状況を確認し、時間をおいてもう一度お試しください。'}
+
+    async function verifiedUser(){
+      const result=await client.auth.getUser();
+      if(result.error||!result.data?.user)throw result.error||Object.assign(new Error('Auth session missing'),{status:401});
+      return result.data.user;
+    }
+
+    async function init(){
+      try{
+        const user=await verifiedUser();
+        currentEmail=String(user.email||'').trim();
+        if(!currentEmail){goToLogin();return}
+        currentEmailEl.textContent=currentEmail;
+        pendingNotice.hidden=!(user.new_email||user.email_change_sent_at);
+        setReady(true);
+        setStatus('');
+      }catch(error){
+        currentEmailEl.textContent='確認できません';
+        setReady(false);
+        if(sessionExpired(error)){goToLogin();return}
+        setStatus('アカウント情報を確認できませんでした。通信状況を確認して再読み込みしてください。',true);
+      }
+    }
+
+    form.addEventListener('submit',async event=>{
+      event.preventDefault();
+      if(!ready||busy)return;
+      const newEmail=newEmailEl.value.trim(),confirmEmail=confirmEmailEl.value.trim();
+      if(!newEmail||!confirmEmail||!newEmailEl.validity.valid||!confirmEmailEl.validity.valid){
+        setStatus('有効なメールアドレスを2か所に入力してください。',true);
+        return;
+      }
+      if(normalizedEmail(newEmail)!==normalizedEmail(confirmEmail)){
+        setStatus('新しいメールアドレスが一致していません。',true);
+        return;
+      }
+      if(normalizedEmail(newEmail)===normalizedEmail(currentEmail)){
+        setStatus('現在と同じメールアドレスです。別のメールアドレスを入力してください。',true);
+        return;
+      }
+
+      busy=true;
+      setReady(true);
+      setStatus('本人確認用のメール送信を準備しています...');
+      try{
+        const user=await verifiedUser();
+        const verifiedCurrent=String(user.email||'').trim();
+        if(!verifiedCurrent){goToLogin();return}
+        currentEmail=verifiedCurrent;
+        currentEmailEl.textContent=currentEmail;
+        if(normalizedEmail(newEmail)===normalizedEmail(currentEmail)){
+          setStatus('現在と同じメールアドレスです。別のメールアドレスを入力してください。',true);
+          return;
+        }
+        const result=await client.auth.updateUser({email:newEmail});
+        if(result.error)throw result.error;
+        form.reset();
+        pendingNotice.hidden=false;
+        setStatus('確認メールを送信しました。メール内のリンクから変更を完了してください。確認が完了するまでは現在のメールアドレスが有効です。');
+      }catch(error){
+        if(sessionExpired(error)){goToLogin();return}
+        setStatus(updateErrorMessage(error),true);
+      }finally{
+        busy=false;
+        if(document.location.pathname.endsWith('account-settings.html'))setReady(ready);
+      }
+    });
+
+    void init();
+  </script>
+</body>
+</html>
