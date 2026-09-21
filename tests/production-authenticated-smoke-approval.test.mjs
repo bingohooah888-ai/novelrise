@@ -91,6 +91,17 @@ test('auth smoke stays SHA-bound and always cleans up', async () => {
 
   assert.ok(workflow.includes(approvedRef));
   assert.ok(workflow.includes('environment: Production'));
+  assert.ok(workflow.includes('account-settings.html'));
+  assert.ok(
+    workflow.includes('Verify secure email-change Auth configuration')
+  );
+  assert.ok(workflow.includes('mailer_secure_email_change_enabled == true'));
+  assert.ok(workflow.includes('mailer_autoconfirm == false'));
+  assert.ok(workflow.includes('hook_send_email_enabled == true'));
+  assert.ok(workflow.includes('.smtp_host'));
+  assert.ok(workflow.includes('.smtp_admin_email'));
+  assert.ok(workflow.includes('/config/auth'));
+  assert.ok(!workflow.includes('-X PATCH'));
   assert.ok(workflow.includes('Create ephemeral production smoke users'));
   assert.ok(workflow.includes('Run authenticated production smoke'));
   assert.ok(workflow.includes('Clean ephemeral production smoke data'));
