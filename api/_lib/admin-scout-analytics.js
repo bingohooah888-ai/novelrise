@@ -1,8 +1,8 @@
-import { isSameOriginRequest, parseAdminAllowlist } from './admin-dashboard.js';
+import { isSameOriginRequest, parseAdminAllowlist } from "./admin-dashboard.js";
 import {
   buildScoutProgressionMetrics,
-  enrichScoutUserSummaries
-} from './admin-scout-progression.js';
+  enrichScoutUserSummaries,
+} from "./admin-scout-progression.js";
 
 const PAGE_SIZE = 1000;
 const MAX_PAGED_ROWS = 50000;
@@ -10,31 +10,31 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_WINDOWS = new Set([30, 90]);
 const SOURCE_ORDER = [
-  'valid_read',
-  'light_seed_use',
-  'star_rating',
-  'comment',
-  'discovery_success',
-  'discovery_major',
-  'discovery_great',
-  'discovery_nova',
-  'nova_prediction'
+  "valid_read",
+  "light_seed_use",
+  "star_rating",
+  "comment",
+  "discovery_success",
+  "discovery_major",
+  "discovery_great",
+  "discovery_nova",
+  "nova_prediction",
 ];
 const SOURCE_LABELS = {
-  valid_read: '有効読書',
-  light_seed_use: 'LIGHT SEED使用',
-  star_rating: '☆評価',
-  comment: 'コメント',
-  discovery_success: '発掘成功',
-  discovery_major: '大発掘',
-  discovery_great: '特大発掘',
-  discovery_nova: 'NOVA発掘',
-  nova_prediction: 'NOVA予見'
+  valid_read: "有効読書",
+  light_seed_use: "LIGHT SEED使用",
+  star_rating: "☆評価",
+  comment: "コメント",
+  discovery_success: "発掘成功",
+  discovery_major: "大発掘",
+  discovery_great: "特大発掘",
+  discovery_nova: "NOVA発掘",
+  nova_prediction: "NOVA予見",
 };
 
 function getBearerToken(authorization) {
   const match =
-    typeof authorization === 'string'
+    typeof authorization === "string"
       ? authorization.match(/^Bearer\s+(\S+)$/i)
       : null;
 
@@ -42,21 +42,21 @@ function getBearerToken(authorization) {
 }
 
 function isAllowedAdmin(user, allowlist) {
-  const id = typeof user?.id === 'string' ? user.id.toLowerCase() : '';
+  const id = typeof user?.id === "string" ? user.id.toLowerCase() : "";
   const email =
-    typeof user?.email === 'string' ? user.email.trim().toLowerCase() : '';
+    typeof user?.email === "string" ? user.email.trim().toLowerCase() : "";
 
   return allowlist.userIds.has(id) || (email && allowlist.emails.has(email));
 }
 
 function normalizeWindow(value) {
-  if (value === undefined || value === null || value === '') return 30;
+  if (value === undefined || value === null || value === "") return 30;
   const parsed = Number(value);
   return ALLOWED_WINDOWS.has(parsed) ? parsed : null;
 }
 
 function normalizeSearchQuery(value) {
-  if (value === undefined || value === null || value === '') return '';
+  if (value === undefined || value === null || value === "") return "";
   const query = String(value).trim();
   if (query.length < 2 || query.length > 80) return null;
   return query;
@@ -81,13 +81,13 @@ function round2(value) {
 }
 
 function jstMonthStart(now) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit'
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
   }).formatToParts(now);
-  const year = parts.find((part) => part.type === 'year')?.value;
-  const month = parts.find((part) => part.type === 'month')?.value;
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
   return `${year}-${month}-01`;
 }
 
@@ -95,7 +95,7 @@ async function fetchPaged(
   supabase,
   table,
   columns,
-  configure = (query) => query
+  configure = (query) => query,
 ) {
   const rows = [];
 
@@ -106,7 +106,7 @@ async function fetchPaged(
     const { data, error } = await query;
     if (error) {
       throw new Error(
-        `SCOUT admin query failed for ${table}: ${error.message}`
+        `SCOUT admin query failed for ${table}: ${error.message}`,
       );
     }
 
@@ -172,7 +172,7 @@ function summarizeValues(values) {
     p90: percentile(normalized, 0.9),
     p95: percentile(normalized, 0.95),
     p99: percentile(normalized, 0.99),
-    histogram: buildHistogram(normalized)
+    histogram: buildHistogram(normalized),
   };
 }
 
@@ -194,19 +194,19 @@ function xpByUser(profileIds, xpRows, cutoff = null) {
 
 function discoverySourceKey(metadata) {
   const baseXp = numeric(metadata?.base_xp);
-  if (baseXp === 80) return 'nova_prediction';
-  if (baseXp === 1000) return 'discovery_nova';
-  if (baseXp === 600) return 'discovery_great';
-  if (baseXp === 300) return 'discovery_major';
-  return 'discovery_success';
+  if (baseXp === 80) return "nova_prediction";
+  if (baseXp === 1000) return "discovery_nova";
+  if (baseXp === 600) return "discovery_great";
+  if (baseXp === 300) return "discovery_major";
+  return "discovery_success";
 }
 
 function sourceComposition(xpRows, eventsById, cutoff) {
   const result = new Map(
     SOURCE_ORDER.map((key) => [
       key,
-      { key, label: SOURCE_LABELS[key], events: 0, xp: 0 }
-    ])
+      { key, label: SOURCE_LABELS[key], events: 0, xp: 0 },
+    ]),
   );
   const cutoffTime = cutoff.getTime();
 
@@ -215,7 +215,7 @@ function sourceComposition(xpRows, eventsById, cutoff) {
     if (!Number.isFinite(occurredAt) || occurredAt < cutoffTime) continue;
 
     let key = row.xp_kind;
-    if (row.xp_kind === 'light_seed_discovery') {
+    if (row.xp_kind === "light_seed_discovery") {
       key = discoverySourceKey(eventsById.get(row.source_event_id)?.metadata);
     }
     if (!result.has(key)) continue;
@@ -235,9 +235,9 @@ function summarizeSeedUsage({ profiles, seeds, month }) {
   for (const seed of seeds) {
     if (seed.seed_month !== month || !usedByUser.has(seed.reader_id)) continue;
     usedByUser.set(seed.reader_id, usedByUser.get(seed.reader_id) + 1);
-    const key = ['GOLD', 'SILVER', 'BRONZE'].includes(seed.seed_type)
+    const key = ["GOLD", "SILVER", "BRONZE"].includes(seed.seed_type)
       ? seed.seed_type
-      : 'LEGACY';
+      : "LEGACY";
     typeUsed[key] += 1;
   }
 
@@ -246,7 +246,7 @@ function summarizeSeedUsage({ profiles, seeds, month }) {
   const totalAllocated = values.length * 11;
   const distribution = Array.from({ length: 12 }, (_, used) => ({
     used,
-    users: values.filter((value) => value === used).length
+    users: values.filter((value) => value === used).length,
   }));
 
   return {
@@ -257,17 +257,17 @@ function summarizeSeedUsage({ profiles, seeds, month }) {
     useRate: rate(totalUsed, totalAllocated),
     zeroUseRate: rate(
       values.filter((value) => value === 0).length,
-      values.length
+      values.length,
     ),
     fullUseRate: rate(
       values.filter((value) => value === 11).length,
-      values.length
+      values.length,
     ),
     averageUsed: values.length ? round2(totalUsed / values.length) : 0,
     medianUsed: percentile(values, 0.5),
     typeUsed,
     distribution,
-    usedByUser
+    usedByUser,
   };
 }
 
@@ -281,19 +281,19 @@ function discoveryStage(row) {
     plus3: delta >= 3,
     plus4: delta >= 4,
     plus5: delta >= 5,
-    novaPrediction: start === 5 && highest >= 6
+    novaPrediction: start === 5 && highest >= 6,
   };
 }
 
 function discoveryRates(rows) {
-  const byType = ['GOLD', 'SILVER', 'BRONZE'].map((seedType) => {
+  const byType = ["GOLD", "SILVER", "BRONZE"].map((seedType) => {
     const typed = rows.filter((row) => row.seed_type === seedType);
     const eligible = typed.filter((row) => numeric(row.rank_at_seed) <= 4);
     const successes = eligible.filter(
-      (row) => discoveryStage(row).plus2
+      (row) => discoveryStage(row).plus2,
     ).length;
     const novaPredictions = typed.filter(
-      (row) => discoveryStage(row).novaPrediction
+      (row) => discoveryStage(row).novaPrediction,
     ).length;
 
     return {
@@ -302,7 +302,7 @@ function discoveryRates(rows) {
       discoveryEligibleSeeds: eligible.length,
       successCount: successes,
       successRate: rate(successes, eligible.length),
-      novaPredictionCount: novaPredictions
+      novaPredictionCount: novaPredictions,
     };
   });
 
@@ -315,18 +315,18 @@ function discoveryRates(rows) {
       return {
         rank,
         seeds: ranked.length,
-        plus2Count: count('plus2'),
-        plus2Rate: rate(count('plus2'), ranked.length),
-        plus3Count: count('plus3'),
-        plus3Rate: rate(count('plus3'), ranked.length),
-        plus4Count: count('plus4'),
-        plus4Rate: rate(count('plus4'), ranked.length),
-        plus5Count: count('plus5'),
-        plus5Rate: rate(count('plus5'), ranked.length),
-        novaPredictionCount: count('novaPrediction'),
-        novaPredictionRate: rate(count('novaPrediction'), ranked.length)
+        plus2Count: count("plus2"),
+        plus2Rate: rate(count("plus2"), ranked.length),
+        plus3Count: count("plus3"),
+        plus3Rate: rate(count("plus3"), ranked.length),
+        plus4Count: count("plus4"),
+        plus4Rate: rate(count("plus4"), ranked.length),
+        plus5Count: count("plus5"),
+        plus5Rate: rate(count("plus5"), ranked.length),
+        novaPredictionCount: count("novaPrediction"),
+        novaPredictionRate: rate(count("novaPrediction"), ranked.length),
       };
-    }
+    },
   );
 
   const successful = rows.filter((row) => discoveryStage(row).plus2);
@@ -337,9 +337,14 @@ function discoveryRates(rows) {
   const averageBestRankDelta = successCount
     ? round2(
         successful.reduce(
-          (sum, row) => sum + Math.max(numeric(row.best_rank_delta), numeric(row.highest_rank_seen) - numeric(row.rank_at_seed)),
-          0
-        ) / successCount
+          (sum, row) =>
+            sum +
+            Math.max(
+              numeric(row.best_rank_delta),
+              numeric(row.highest_rank_seen) - numeric(row.rank_at_seed),
+            ),
+          0,
+        ) / successCount,
       )
     : 0;
 
@@ -349,13 +354,13 @@ function discoveryRates(rows) {
     growthAfterSuccess: {
       successCount,
       averageBestRankDelta,
-      plus3Count: countSuccessStage('plus3'),
-      plus3Rate: rate(countSuccessStage('plus3'), successCount),
-      plus4Count: countSuccessStage('plus4'),
-      plus4Rate: rate(countSuccessStage('plus4'), successCount),
-      plus5Count: countSuccessStage('plus5'),
-      plus5Rate: rate(countSuccessStage('plus5'), successCount)
-    }
+      plus3Count: countSuccessStage("plus3"),
+      plus3Rate: rate(countSuccessStage("plus3"), successCount),
+      plus4Count: countSuccessStage("plus4"),
+      plus4Rate: rate(countSuccessStage("plus4"), successCount),
+      plus5Count: countSuccessStage("plus5"),
+      plus5Rate: rate(countSuccessStage("plus5"), successCount),
+    },
   };
 }
 
@@ -364,7 +369,7 @@ function sourceTotalsForUser(xpRows, eventsById, userId) {
   for (const row of xpRows) {
     if (row.user_id !== userId) continue;
     let key = row.xp_kind;
-    if (row.xp_kind === 'light_seed_discovery') {
+    if (row.xp_kind === "light_seed_discovery") {
       key = discoverySourceKey(eventsById.get(row.source_event_id)?.metadata);
     }
     if (Object.hasOwn(result, key)) result[key] += numeric(row.xp_value);
@@ -381,14 +386,14 @@ function searchUserSummaries({
   discoveryRows,
   lifetimeByUser,
   xp30ByUser,
-  xp90ByUser
+  xp90ByUser,
 }) {
   if (!query) return [];
   const normalized = query.toLowerCase();
   const matches = profiles
     .filter((profile) => {
       if (UUID_PATTERN.test(query)) return profile.id === query;
-      return String(profile.display_name ?? '')
+      return String(profile.display_name ?? "")
         .toLowerCase()
         .includes(normalized);
     })
@@ -396,34 +401,34 @@ function searchUserSummaries({
 
   return matches.map((profile) => {
     const discoveries = discoveryRows.filter(
-      (row) => row.reader_id === profile.id
+      (row) => row.reader_id === profile.id,
     );
     const successCount = discoveries.filter(
-      (row) => discoveryStage(row).plus2
+      (row) => discoveryStage(row).plus2,
     ).length;
     const novaPredictionCount = discoveries.filter(
-      (row) => discoveryStage(row).novaPrediction
+      (row) => discoveryStage(row).novaPrediction,
     ).length;
 
     return {
       id: profile.id,
-      displayName: profile.display_name ?? '名前未設定',
+      displayName: profile.display_name ?? "名前未設定",
       registeredAt: profile.created_at,
       scoutXp: {
         lifetime: lifetimeByUser.get(profile.id) ?? 0,
         last30Days: xp30ByUser.get(profile.id) ?? 0,
         last90Days: xp90ByUser.get(profile.id) ?? 0,
-        bySource: sourceTotalsForUser(xpRows, eventsById, profile.id)
+        bySource: sourceTotalsForUser(xpRows, eventsById, profile.id),
       },
       lightSeed: {
         usedThisMonth: seedUsage.usedByUser.get(profile.id) ?? 0,
-        monthlyAllocation: 11
+        monthlyAllocation: 11,
       },
       discovery: {
         trackedSeeds: discoveries.length,
         successCount,
-        novaPredictionCount
-      }
+        novaPredictionCount,
+      },
     };
   });
 }
@@ -436,7 +441,7 @@ export function summarizeScoutData({
   discoveryRows = [],
   days = 30,
   now = new Date(),
-  query = ''
+  query = "",
 }) {
   const profileIds = profiles.map((profile) => profile.id);
   const cutoff30 = daysAgo(now, 30);
@@ -449,7 +454,7 @@ export function summarizeScoutData({
   const seedUsage = summarizeSeedUsage({
     profiles,
     seeds,
-    month: jstMonthStart(now)
+    month: jstMonthStart(now),
   });
 
   return {
@@ -458,7 +463,7 @@ export function summarizeScoutData({
     xpDistribution: {
       lifetime: summarizeValues([...lifetimeByUser.values()]),
       last30Days: summarizeValues([...xp30ByUser.values()]),
-      last90Days: summarizeValues([...xp90ByUser.values()])
+      last90Days: summarizeValues([...xp90ByUser.values()]),
     },
     sourceComposition: sourceComposition(xpRows, eventsById, cutoffWindow),
     lightSeedUsage: {
@@ -472,7 +477,7 @@ export function summarizeScoutData({
       averageUsed: seedUsage.averageUsed,
       medianUsed: seedUsage.medianUsed,
       typeUsed: seedUsage.typeUsed,
-      distribution: seedUsage.distribution
+      distribution: seedUsage.distribution,
     },
     discovery: discoveryRates(discoveryRows),
     users: searchUserSummaries({
@@ -484,8 +489,8 @@ export function summarizeScoutData({
       discoveryRows,
       lifetimeByUser,
       xp30ByUser,
-      xp90ByUser
-    })
+      xp90ByUser,
+    }),
   };
 }
 
@@ -493,7 +498,7 @@ export async function loadScoutAnalytics({
   supabase,
   days = 30,
   now = new Date(),
-  query = ''
+  query = "",
 }) {
   const [
     profiles,
@@ -512,82 +517,74 @@ export async function loadScoutAnalytics({
     validReadRows,
     rankEventRows,
     novels,
-    badgeConfigRows
+    badgeConfigRows,
   ] = await Promise.all([
-    fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
+    fetchPaged(supabase, "profiles", "id,display_name,created_at"),
     fetchPaged(
       supabase,
-      'scout_xp_ledger',
-      'user_id,source_event_id,xp_kind,xp_value,occurred_at'
+      "scout_xp_ledger",
+      "user_id,source_event_id,xp_kind,xp_value,occurred_at",
     ),
     fetchPaged(
       supabase,
-      'scout_event_ledger',
-      'id,event_type,metadata',
-      (request) => request.eq('event_type', 'light_seed_discovery')
+      "scout_event_ledger",
+      "id,event_type,metadata",
+      (request) => request.eq("event_type", "light_seed_discovery"),
     ),
-    fetchPaged(supabase, 'light_seeds', 'reader_id,seed_type,seed_month'),
+    fetchPaged(supabase, "light_seeds", "reader_id,seed_type,seed_month"),
     fetchPaged(
       supabase,
-      'seed_discovery_state',
-      'reader_id,seed_type,rank_at_seed,highest_rank_seen,best_rank_delta,cumulative_discovery_xp,window_expires_at'
-    ),
-    fetchPaged(
-      supabase,
-      'scout_point_ledger',
-      'id,user_id,point_kind,point_value,status,occurred_at'
+      "seed_discovery_state",
+      "reader_id,seed_type,rank_at_seed,highest_rank_seen,best_rank_delta,cumulative_discovery_xp,window_expires_at",
     ),
     fetchPaged(
       supabase,
-      'user_scout_badges',
-      'user_id,badge_id,progress_percent,earned_at,status,is_public'
+      "scout_point_ledger",
+      "id,user_id,point_kind,point_value,status,occurred_at",
     ),
     fetchPaged(
       supabase,
-      'scout_badge_definitions',
-      'badge_id,badge_category,difficulty,display_name,enabled,sort_order'
-    ),
-    fetchPaged(supabase, 'scout_level_thresholds', 'level,cumulative_xp'),
-    fetchPaged(
-      supabase,
-      'scout_record_usage_days',
-      'user_id,activity_date,visit_count'
+      "user_scout_badges",
+      "user_id,badge_id,progress_percent,earned_at,status,is_public",
     ),
     fetchPaged(
       supabase,
-      'user_lifecycle',
-      'user_id,registered_at,last_seen_at'
+      "scout_badge_definitions",
+      "badge_id,badge_category,difficulty,display_name,enabled,sort_order",
+    ),
+    fetchPaged(supabase, "scout_level_thresholds", "level,cumulative_xp"),
+    fetchPaged(
+      supabase,
+      "scout_record_usage_days",
+      "user_id,activity_date,visit_count",
     ),
     fetchPaged(
       supabase,
-      'scout_point_user_controls',
-      'user_id,earning_suspended_until,reason,updated_at'
+      "user_lifecycle",
+      "user_id,registered_at,last_seen_at",
     ),
     fetchPaged(
       supabase,
-      'scout_point_operator_actions',
-      'user_id,action,reason,effective_until,amount,created_at'
+      "scout_point_user_controls",
+      "user_id,earning_suspended_until,reason,updated_at",
     ),
     fetchPaged(
       supabase,
-      'valid_read_events',
-      'reader_id,novel_id_snapshot,author_id_snapshot,qualified_at'
+      "scout_point_operator_actions",
+      "user_id,action,reason,effective_until,amount,created_at",
     ),
     fetchPaged(
       supabase,
-      'novel_rank_events',
-      'id,novel_id_snapshot,to_rank,occurred_at'
+      "valid_read_events",
+      "reader_id,novel_id_snapshot,author_id_snapshot,qualified_at",
     ),
     fetchPaged(
       supabase,
-      'novels',
-      'id,user_id,first_published_at'
+      "novel_rank_events",
+      "id,novel_id_snapshot,to_rank,occurred_at",
     ),
-    fetchPaged(
-      supabase,
-      'scout_badge_runtime_config',
-      'badge_settings'
-    )
+    fetchPaged(supabase, "novels", "id,user_id,first_published_at"),
+    fetchPaged(supabase, "scout_badge_runtime_config", "badge_settings"),
   ]);
 
   const base = summarizeScoutData({
@@ -598,7 +595,7 @@ export async function loadScoutAnalytics({
     discoveryRows,
     days,
     now,
-    query
+    query,
   });
 
   return {
@@ -618,7 +615,7 @@ export async function loadScoutAnalytics({
       rankEventRows,
       novels,
       badgeSettings: badgeConfigRows[0]?.badge_settings ?? {},
-      now
+      now,
     }),
     users: enrichScoutUserSummaries(base.users, {
       xpRows,
@@ -627,80 +624,80 @@ export async function loadScoutAnalytics({
       badgeDefinitions,
       thresholds,
       controlRows,
-      operatorRows
-    })
+      operatorRows,
+    }),
   };
 }
 
 function applySecurityHeaders(res) {
-  res.setHeader('Cache-Control', 'private, no-store, max-age=0');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Vary', 'Authorization');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Vary", "Authorization");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
 }
 
 export function createAdminScoutAnalyticsHandler({
   supabase,
   env = process.env,
   loadAnalytics = loadScoutAnalytics,
-  clock = () => new Date()
+  clock = () => new Date(),
 }) {
   return async function handler(req, res) {
     applySecurityHeaders(res);
 
-    if (req.method !== 'GET') {
-      return res.status(405).json({ error: 'Method not allowed' });
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method not allowed" });
     }
 
     if (!isSameOriginRequest(req)) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const token = getBearerToken(req.headers?.authorization);
     if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     let allowlist;
     try {
       allowlist = parseAdminAllowlist(env);
     } catch {
-      console.error('NOVELIGHT admin allowlist configuration is invalid');
-      return res.status(503).json({ error: 'Admin access is not configured' });
+      console.error("NOVELIGHT admin allowlist configuration is invalid");
+      return res.status(503).json({ error: "Admin access is not configured" });
     }
 
     try {
       const { data, error: authError } = await supabase.auth.getUser(token);
       const user = data?.user;
       if (authError || !user) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return res.status(401).json({ error: "Unauthorized" });
       }
       if (!isAllowedAdmin(user, allowlist)) {
-        return res.status(403).json({ error: 'Forbidden' });
+        return res.status(403).json({ error: "Forbidden" });
       }
 
       const days = normalizeWindow(req.query?.days);
       if (!days) {
-        return res.status(400).json({ error: 'Invalid reporting window' });
+        return res.status(400).json({ error: "Invalid reporting window" });
       }
       const query = normalizeSearchQuery(req.query?.q);
       if (query === null) {
-        return res.status(400).json({ error: 'Invalid search query' });
+        return res.status(400).json({ error: "Invalid search query" });
       }
 
       const analytics = await loadAnalytics({
         supabase,
         days,
         now: clock(),
-        query
+        query,
       });
       return res.status(200).json(analytics);
     } catch (error) {
-      console.error('NOVELIGHT SCOUT admin analytics request failed', {
-        message: error?.message ?? 'unknown error'
+      console.error("NOVELIGHT SCOUT admin analytics request failed", {
+        message: error?.message ?? "unknown error",
       });
-      return res.status(500).json({ error: 'SCOUT analytics unavailable' });
+      return res.status(500).json({ error: "SCOUT analytics unavailable" });
     }
   };
 }
