@@ -10,7 +10,7 @@ This document defines the normal development path after the initial environment 
 4. Run the smallest relevant local gate. `npm run preflight` is the normal read-only fast gate. Add `preflight:db` for core DB/RLS changes, `preflight:e2e` for browser-facing changes, and `preflight:full` only for high-risk or broad changes. Use `preflight:fix` only when intentional formatting changes are wanted.
 5. Open a pull request to `main` and record purpose, impact, verification, security/data-safety checks, Vercel Preview status when relevant, and rollback notes.
 6. Merge only after the required `check` status succeeds. The CI classifier runs only relevant preflight, DB/RLS, browser, and dependency gates, while preserving the final aggregate `check`. CodeQL must also be clean when it applies.
-7. Classify the PR before merge. Eligible low-risk PRs may be squash-merged automatically after all required evidence is green; high-risk or ambiguous PRs remain explicit user approval points. Use squash merge for the normal solo-development flow so `main` stays easy to audit and revert.
+7. Classify the PR before merge. Eligible low-risk PRs may be squash-merged automatically after all required evidence is green. High-risk or ambiguous PRs remain fail-closed, but the only human approval requested is the MASTER-defined `本番承認`; do not create a separate merge/high-risk approval prompt. Use squash merge for the normal solo-development flow so `main` stays easy to audit and revert.
 8. Production Supabase migrations use the dedicated auto-deploy workflow with explicit production approval. The manual Supabase workflow is fallback/recovery only.
 
 ## Execution preflight
@@ -70,7 +70,7 @@ Require explicit user approval before merging any PR that touches or materially 
 - CI, CodeQL, or test changes that weaken a required gate or attempt to bypass a failing gate
 - any change whose risk classification, impact radius, or rollback path is unclear
 
-When uncertain, fail closed and request approval. A high-risk PR does not become auto-mergeable merely because CI and CodeQL are green.
+When uncertain, fail closed. A high-risk PR does not become auto-mergeable merely because CI and CodeQL are green. If human approval is required, request only the MASTER-defined `本番承認`; any exact-SHA/challenge/ledger approval records are machine evidence generated from that single approval.
 
 ## Automation efficiency
 
@@ -123,6 +123,18 @@ The current automatic Preview/Staging gate is read-only because production Supab
 
 Authenticated/write Staging E2E is gated by `STAGING_E2E_READY`. Enable it only after a dedicated Staging Supabase project and Stripe test-mode configuration exist. Once enabled, write-heavy authenticated E2E should run in Staging; production keeps a deliberate approval-gated fallback rather than being the routine test environment.
 
+## Single human Production approval bridge
+
+Human approval and machine-bound approval evidence are deliberately separated.
+
+The user supplies one human decision: `本番承認`, after the Production scope and impact are presented. ChatGPT/automation then performs fresh read-only checks and converts that approval into whatever exact-SHA, challenge, migration-set, or Approval Ledger record the current reviewed workflow contract requires.
+
+For Supabase Production migrations, never ask the user to manually construct or paste the `NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE` JSON. Resolve current `main`, verify the real pending migration set and active ledger, generate a fresh one-time challenge, and post the exact machine-readable record through an OWNER-authenticated GitHub connection.
+
+If merge changes only the machine identity (for example final head/main SHA) while the substantive Production scope remains exactly the same, refresh the machine evidence from the same human `本番承認`. If the substantive scope expands or changes, obtain a new `本番承認`.
+
+If OWNER-authenticated posting is unavailable, current state is unknown, or the reviewed workflow contract cannot be satisfied exactly, fail closed. Never weaken OWNER checks, challenge binding, pending-set verification, claim/consume rules, or postchecks to make the bridge easier.
+
 ## Production readiness
 
 Production readiness should verify the deployed result without redoing unrelated work:
@@ -137,7 +149,7 @@ Production authenticated/write smoke remains approval-gated while independent St
 
 ## Supabase production deployment
 
-Normal migration pushes use `.github/workflows/supabase-production-auto-deploy.yml` only. The workflow verifies expected pending migrations, runs a dry-run, waits for `production-approval`, then re-verifies pending state and dry-run before deployment. This second verification is intentional safety redundancy.
+Normal migration pushes use `.github/workflows/supabase-production-auto-deploy.yml` for planning and the current chat-approved Production migration bridge for mutation. The workflow verifies expected pending migrations and runs a dry-run before the human boundary. After the user gives the single MASTER-defined `本番承認`, ChatGPT/automation derives the exact current main SHA, canonical pending migration set, one-time challenge, and machine-readable Approval Ledger record, submits it through an OWNER-authenticated GitHub path, and lets the fixed workflow re-verify pending state and dry-run before deployment. This second verification is intentional safety redundancy; the user is not asked to copy or paste the machine record.
 
 `.github/workflows/supabase-production.yml` is manual fallback for `status`, `dry-run`, `repair-history`, and deliberate `deploy`; it does not auto-run on normal migration pushes. Read-only `status` and `dry-run` remain immediately available, while `repair-history` and `deploy` each require one `production-approval` Environment approval before the mutation job. All bounded rechecks, mutation, and post-mutation verification stay inside that single approved operation. Repeated observability and pending-migration logic lives in shared scripts rather than being copied between workflows.
 
@@ -171,13 +183,13 @@ The default NOVELIGHT AI development flow is:
 3. Automated gates provide objective evidence.
 4. Authentication, RLS, Stripe/billing, permissions, personal data, destructive migrations, and other high-risk changes receive an independent second-model review such as Claude Code when practical.
 5. AI approval never overrides a failing automated gate.
-6. Eligible low-risk `main` merges may proceed automatically after the required gates pass; high-risk merges, production database changes, external Production state changes, and other explicit categories above remain deliberate user approval points.
+6. Eligible low-risk `main` merges may proceed automatically after the required gates pass. High-risk merges, Production database changes, external Production state changes, and other explicit categories above remain deliberate boundaries, but they share one human approval: the MASTER-defined `本番承認`. Do not split that decision into separate merge, migration, or GitHub-comment approvals.
 
 Use the smallest set of agents/tools that materially improves speed, quality, or safety.
 
 ## Ready-to-merge definition
 
-A change is ready to merge when its scope is understood, the relevant selective gates have passed, secrets are absent, high-risk boundaries have been reviewed, dependency changes are safe, deploy-relevant UI has been previewed when appropriate, rollback/recovery is known where needed, and the branch is current with `main`. Being ready to merge does not remove an explicit approval requirement for a high-risk PR.
+A change is ready to merge when its scope is understood, the relevant selective gates have passed, secrets are absent, high-risk boundaries have been reviewed, dependency changes are safe, deploy-relevant UI has been previewed when appropriate, rollback/recovery is known where needed, and the branch is current with `main`. Being ready to merge does not remove the `本番承認` requirement for a high-risk PR, but no additional human approval wording is introduced after that single approval.
 
 ## Environment work stopping rule
 
