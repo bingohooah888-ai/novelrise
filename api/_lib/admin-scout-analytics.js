@@ -479,7 +479,9 @@ export async function loadScoutAnalytics({
     badgeDefinitions,
     thresholds,
     usageRows,
-    lifecycleRows
+    lifecycleRows,
+    controlRows,
+    operatorRows
   ] = await Promise.all([
     fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
     fetchPaged(
@@ -524,6 +526,16 @@ export async function loadScoutAnalytics({
       supabase,
       'user_lifecycle',
       'user_id,registered_at,last_seen_at'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_point_user_controls',
+      'user_id,earning_suspended_until,reason,updated_at'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_point_operator_actions',
+      'user_id,action,reason,effective_until,amount,created_at'
     )
   ]);
 
@@ -557,7 +569,9 @@ export async function loadScoutAnalytics({
       pointRows,
       badgeRows,
       badgeDefinitions,
-      thresholds
+      thresholds,
+      controlRows,
+      operatorRows
     })
   };
 }
