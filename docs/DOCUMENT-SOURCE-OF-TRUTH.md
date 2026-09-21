@@ -55,6 +55,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/NOCTER-PREFLIGHT.md","status":"CURRENT","role":"nocter-preflight","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOCTER-VISUAL-GUIDE.md","status":"CURRENT","role":"nocter-visual-guide","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOVELIGHT-ADMIN.md","status":"CURRENT","role":"admin-guide","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/NOVELIGHT-COMMANDER-GITHUB-BRIDGE.md","status":"CURRENT","role":"novelight-commander-github-bridge","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOVELIGHT-MASTER.md","status":"CURRENT","role":"master","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/novelight-tag-taxonomy.md","status":"CURRENT","role":"novelight-tag-taxonomy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PREVIEW-STAGING-AUTOMATION.md","status":"CURRENT","role":"preview-staging-automation","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
