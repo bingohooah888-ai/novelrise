@@ -161,9 +161,9 @@ Vercelは `main` をproduction branchとして扱い、通常のfeature/fix/secu
 
 Stagingの現行自動検証は `docs/STAGING-RUNBOOK.md` を基準とし、独立Staging SupabaseとStripe test modeが未接続の間はread-onlyを維持する。独立環境が完成した場合のみ、認証・作品投稿・お気に入り・LIGHT SEED・分析・Stripe test Checkoutを含むwrite E2Eを `STAGING_E2E_READY` で有効化する。本番ホスト・本番Supabase・Stripe live modeをStagingへ混入させない。
 
-本番Supabase migrationの通常運用は `.github/workflows/supabase-production-auto-deploy.yml` を使う。`main` に `supabase/migrations/**` が入ると、今回のpushで追加されたmigrationと本番pendingが完全一致することを確認し、dry-run後に `production-approval` GitHub Environmentで人間の承認を要求する。承認後にpending一致を再確認し、dry-runを再実行してから自動deployし、migration historyとproduction observabilityを検証する。承認前後の再確認は安全上必要な重複なので削除しない。
+本番Supabase migrationの通常運用は `.github/workflows/supabase-production-auto-deploy.yml` を使う。migrationを含む高リスクPRでユーザーがチャット上の「本番承認」を行い、exact PR headとchallengeへ固定された承認証跡が成立した場合、その1回の本番承認をmain統合後のProduction migrationまでの唯一の人間承認として再利用する。自動化側はProduction pending、元PRのmigration集合、current main、Production Readiness、backup鮮度、Staging parity、dry-runをfreshに再検証し、完全一致した場合だけ適用する。PR merge後に別のmigration承認コメントをユーザーへ手動入力させたり、`production-approval` GitHub Environmentで同じ通常deployを二重承認させたりしない。承認前後の再確認は安全上必要な機械検証なので削除しない。
 
-`.github/workflows/supabase-production.yml` は手動 `status` / `dry-run` / `repair-history` / `deploy` 専用のfallbackであり、通常のmigration pushでは起動しない。`repair-history` は本番適用済みをDB実状態で確認した既知versionに限り、正確な確認文字列 `REPAIR` で実行する。詳細は `docs/SUPABASE-PRODUCTION-DEPLOY.md` を参照する。
+`.github/workflows/supabase-production.yml` は手動 `status` / `dry-run` / `repair-history` / `deploy` 専用のfallbackであり、通常のmigration pushでは起動しない。manual mutation fallbackでは `production-approval` Environment承認を維持する。`repair-history` は本番適用済みをDB実状態で確認した既知versionに限り、正確な確認文字列 `REPAIR` で実行する。詳細は `docs/SUPABASE-PRODUCTION-DEPLOY.md` を参照する。
 
 ## Coding Style & Naming Conventions
 
