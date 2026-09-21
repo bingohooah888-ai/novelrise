@@ -40,7 +40,7 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
   assert.match(authenticatedSmoke, /LIGHT SEED送信履歴/);
   assert.match(authenticatedSmoke, /\/scout-record\.html/);
   assert.match(authenticatedSmoke, /name: 'SCOUT RECORD'/);
-  assert.match(authenticatedSmoke, /name: '送信履歴を見る'/);
+  assert.match(authenticatedSmoke, /name: 'SEED履歴'/);
   assert.match(authenticatedSmoke, /\/light-seed-history\\\.html/);
   assert.match(authenticatedSmoke, /globalThis\.document\.body\.scrollHeight/);
   assert.doesNotMatch(authenticatedSmoke, /(?<!globalThis\.)document\.body/);
