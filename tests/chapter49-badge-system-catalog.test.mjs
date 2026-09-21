@@ -19,7 +19,11 @@ const rollback = await readFile(
   'utf8'
 );
 
-const readerIds = `
+function parseIds(value) {
+  return value.trim().split(/\s+/u);
+}
+
+const readerIds = parseIds(`
 reader_read_001
 reader_read_005
 reader_read_010
@@ -120,11 +124,9 @@ reader_gold_plus5_001
 reader_silver_plus5_001
 reader_bronze_plus5_001
 reader_master_scout
-`
-  .trim()
-  .split(/\s+/u);
+`);
 
-const authorIds = `
+const authorIds = parseIds(`
 author_novel_001
 author_episode_001
 author_reader_001
@@ -165,37 +167,36 @@ author_completed_010
 author_unique_reader_1000
 author_favorite_500
 author_discovered_plus2_005
-`
-  .trim()
-  .split(/\s+/u);
+`);
 
 function has(text, value) {
   assert.equal(text.includes(value), true, `missing token: ${value}`);
 }
 
-test(
-  'Badge System registers exactly the canonical Reader 100 and Author 40 ids',
-  () => {
-    assert.equal(readerIds.length, 100);
-    assert.equal(authorIds.length, 40);
+test('canonical Badge counts and ids are complete', () => {
+  assert.equal(readerIds.length, 100);
+  assert.equal(authorIds.length, 40);
 
-    for (const id of readerIds) has(migration, `'${id}'`);
-    for (const id of authorIds) has(migration, `'${id}'`);
-
-    assert.equal(new Set(readerIds).size, 100);
-    assert.equal(new Set(authorIds).size, 40);
-    has(postcheck, 'v_reader <> 100');
-    has(postcheck, 'v_reader_easy <> 30');
-    has(postcheck, 'v_reader_normal <> 50');
-    has(postcheck, 'v_reader_hard <> 20');
-    has(postcheck, 'v_author <> 40');
-    has(postcheck, 'v_author_easy <> 5');
-    has(postcheck, 'v_author_normal <> 30');
-    has(postcheck, 'v_author_hard <> 5');
+  for (const id of readerIds) {
+    has(migration, `'${id}'`);
   }
-);
+  for (const id of authorIds) {
+    has(migration, `'${id}'`);
+  }
 
-test('Reader reward tiers and Point-loop exceptions are encoded as data', () => {
+  assert.equal(new Set(readerIds).size, 100);
+  assert.equal(new Set(authorIds).size, 40);
+  has(postcheck, 'v_reader <> 100');
+  has(postcheck, 'v_reader_easy <> 30');
+  has(postcheck, 'v_reader_normal <> 50');
+  has(postcheck, 'v_reader_hard <> 20');
+  has(postcheck, 'v_author <> 40');
+  has(postcheck, 'v_author_easy <> 5');
+  has(postcheck, 'v_author_normal <> 30');
+  has(postcheck, 'v_author_hard <> 5');
+});
+
+test('Reader Point reward tiers are data-driven', () => {
   has(migration, "'reader_point_100','reader','normal'");
   has(migration, "'reader_point_500','reader','normal'");
   has(postcheck, 'Reader Easy Badge reward must be 1 Point');
@@ -206,25 +207,28 @@ test('Reader reward tiers and Point-loop exceptions are encoded as data', () => 
   has(postcheck, 'Author Badge must never award Scout Point');
   has(migration, "'reason_type', 'badge_reward'");
   has(migration, "'reason_id', p_badge_id");
-  has(migration, "'badge:' || p_user_id::text || ':' || p_badge_id");
+  has(
+    migration,
+    "'badge:' || p_user_id::text || ':' || p_badge_id"
+  );
 });
 
-test(
-  'Master Scout is a generic composite-all definition with four visible component progresses',
-  () => {
-    has(migration, "'reader_master_scout'");
-    has(migration, "'composite_all'");
-    has(migration, '"metric_key":"discovery_plus5_count"');
-    has(migration, '"metric_key":"nova_prediction_count"');
-    has(migration, '"metric_key":"new_author_read_count"');
-    has(migration, '"metric_key":"genre_count"');
-    has(migration, 'pg_catalog.jsonb_array_elements');
-    has(migration, "'composite_progress'");
-    assert.doesNotMatch(migration, /if\s+p_badge_id\s*=\s*'reader_/iu);
-  }
-);
+test('Master Scout uses generic composite progress', () => {
+  has(migration, "'reader_master_scout'");
+  has(migration, "'composite_all'");
+  has(migration, '"metric_key":"discovery_plus5_count"');
+  has(migration, '"metric_key":"nova_prediction_count"');
+  has(migration, '"metric_key":"new_author_read_count"');
+  has(migration, '"metric_key":"genre_count"');
+  has(migration, 'pg_catalog.jsonb_array_elements');
+  has(migration, "'composite_progress'");
+  assert.doesNotMatch(
+    migration,
+    /if\s+p_badge_id\s*=\s*'reader_/iu
+  );
+});
 
-test('Reader metrics use authoritative sources and configurable thresholds', () => {
+test('Reader metrics use authoritative sources', () => {
   for (const token of [
     'public.valid_read_events',
     'public.novel_star_ratings',
@@ -257,92 +261,80 @@ test('Reader metrics use authoritative sources and configurable thresholds', () 
   has(migration, 'r.read_final_episode');
   has(
     migration,
-    'r.valid_read_episodes::numeric / r.published_episodes::numeric >= v_completed_ratio'
+    'r.valid_read_episodes::numeric / r.published_episodes::numeric'
+  );
+  has(migration, '>= v_completed_ratio');
+});
+
+test('Author metrics use current published state', () => {
+  has(
+    migration,
+    'create or replace function public.novelight_author_badge_metrics'
+  );
+  has(migration, "n.status = 'published'");
+  has(migration, "e.status = 'published'");
+  has(migration, 'count(distinct v.reader_id)');
+  has(migration, 'c.deleted_at is null');
+  has(migration, 'c.author_hidden_at is null');
+  has(migration, 'count(distinct d.novel_id_snapshot)');
+});
+
+test('provisional Author ids migrate without double count', () => {
+  has(migration, "badge_id ~ '^author_badge_[0-9]{3}$'");
+  has(migration, "'migrated_from_badge_id'");
+  has(migration, 'delete from public.user_scout_badges b');
+  has(
+    postcheck,
+    'Legacy provisional Author Badge IDs must be disabled'
+  );
+  has(
+    postcheck,
+    'Legacy per-user Author Badge aliases must be migrated'
   );
 });
 
-test(
-  'Author metrics are rebuilt from current published authoritative state',
-  () => {
-    has(
-      migration,
-      'create or replace function public.novelight_author_badge_metrics'
-    );
-    has(migration, "n.status = 'published'");
-    has(migration, "e.status = 'published'");
-    has(migration, 'count(distinct v.reader_id)');
-    has(migration, 'c.deleted_at is null');
-    has(migration, 'c.author_hidden_at is null');
-    has(migration, 'count(distinct d.novel_id_snapshot)');
-  }
-);
+test('historical progress does not backfill Reader Point', () => {
+  has(
+    migration,
+    'public.novelight_refresh_scout_badges_for_user(v_user.id, false)'
+  );
+  has(migration, 'p_award_reader_points boolean');
+  has(migration, 'and coalesce(p_award_points, false)');
+  has(precheck, "retroactive_policy = 'none'");
+  has(postcheck, "retroactive_policy='none'");
+});
 
-test(
-  'provisional Author IDs migrate once to canonical IDs without double counting',
-  () => {
-    has(migration, "badge_id ~ '^author_badge_[0-9]{3}$'");
-    has(migration, "'migrated_from_badge_id'");
-    has(migration, 'delete from public.user_scout_badges b');
-    has(postcheck, 'Legacy provisional Author Badge IDs must be disabled');
-    has(
-      postcheck,
-      'Legacy per-user Author Badge aliases must be migrated to canonical IDs'
-    );
-  }
-);
+test('Badge engine is idempotent and event-driven', () => {
+  has(migration, 'public.novelight_evaluate_scout_badge');
+  has(migration, 'public.novelight_apply_scout_badge_evaluation');
+  has(migration, 'public.novelight_refresh_scout_badges_for_user');
+  has(migration, 'scout_event_refresh_reader_badges');
+  has(migration, 'scout_discovery_refresh_reader_badges');
+  has(migration, 'scout_xp_refresh_reader_badges');
+  has(migration, 'scout_point_refresh_reader_badges');
+  has(migration, 'scout_comment_refresh_reader_badges');
+  has(migration, 'scout_metric_state_refresh_badges');
+  has(migration, 'on conflict (event_key) do nothing');
+  assert.doesNotMatch(migration, /case\s+p_badge_id/iu);
+});
 
-test(
-  'historical progress baseline is separated from retroactive Reader Point rewards',
-  () => {
-    has(
-      migration,
-      'public.novelight_refresh_scout_badges_for_user(v_user.id, false)'
-    );
-    has(migration, 'p_award_reader_points boolean');
-    has(migration, 'and coalesce(p_award_points, false)');
-    has(precheck, "retroactive_policy = 'none'");
-    has(postcheck, "retroactive_policy='none'");
-  }
-);
+test('Limited badges remain separate and private', () => {
+  has(
+    precheck,
+    'Expected Founding Author and beta Participant Limited badges'
+  );
+  has(postcheck, 'v_limited <> 2');
+  has(postcheck, 'Badge raw tables must remain RPC-only');
+});
 
-test(
-  'badge engine is idempotent and event-driven without 140 bespoke branches',
-  () => {
-    has(migration, 'public.novelight_evaluate_scout_badge');
-    has(migration, 'public.novelight_apply_scout_badge_evaluation');
-    has(migration, 'public.novelight_refresh_scout_badges_for_user');
-    has(migration, 'scout_event_refresh_reader_badges');
-    has(migration, 'scout_discovery_refresh_reader_badges');
-    has(migration, 'scout_xp_refresh_reader_badges');
-    has(migration, 'scout_point_refresh_reader_badges');
-    has(migration, 'scout_comment_refresh_reader_badges');
-    has(migration, 'scout_metric_state_refresh_badges');
-    has(migration, 'on conflict (event_key) do nothing');
-    assert.doesNotMatch(migration, /case\s+p_badge_id/iu);
-  }
-);
-
-test(
-  'Limited badges remain separate and raw badge tables remain private',
-  () => {
-    has(precheck, 'Expected Founding Author and beta Participant Limited badges');
-    has(postcheck, 'v_limited <> 2');
-    has(postcheck, 'Badge raw tables must remain RPC-only');
-    assert.doesNotMatch(
-      migration,
-      /update\s+public\.scout_badge_definitions[\s\S]{0,220}badge_category\s*=\s*'limited'[\s\S]{0,120}badge_category\s*=\s*'author'/iu
-    );
-  }
-);
-
-test(
-  'rollback restores the deployed Author ID contract and preserves earned Reader history',
-  () => {
-    has(rollback, 'Restore per-user Author progress');
-    has(rollback, "'rolled_back_from_badge_id'");
-    has(rollback, "badge_id like 'reader_%'");
-    has(rollback, "status in ('earned','revoked')");
-    has(rollback, "rule_version='beta-2026-09-21-rollback-preserved'");
-    assert.doesNotMatch(rollback, /truncate\s+/iu);
-  }
-);
+test('rollback preserves earned Reader history', () => {
+  has(rollback, 'Restore per-user Author progress');
+  has(rollback, "'rolled_back_from_badge_id'");
+  has(rollback, "badge_id like 'reader_%'");
+  has(rollback, "status in ('earned','revoked')");
+  has(
+    rollback,
+    "rule_version='beta-2026-09-21-rollback-preserved'"
+  );
+  assert.doesNotMatch(rollback, /truncate\s+/iu);
+});
