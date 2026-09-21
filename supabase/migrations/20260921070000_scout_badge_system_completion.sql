@@ -871,8 +871,11 @@ declare v_uid uuid;
 begin
   v_uid := case when tg_op = 'DELETE' then old.user_id else new.user_id end;
   perform public.novelight_refresh_scout_badges_for_user(v_uid, true);
-  return case when tg_op = 'DELETE' then old else new end;
-end $$;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end $;
 
 create or replace function public.novelight_refresh_badges_from_episode()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -880,8 +883,11 @@ declare v_uid uuid;
 begin
   v_uid := case when tg_op = 'DELETE' then old.user_id else new.user_id end;
   perform public.novelight_refresh_scout_badges_for_user(v_uid, true);
-  return case when tg_op = 'DELETE' then old else new end;
-end $$;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end $;
 
 create or replace function public.novelight_refresh_badges_from_favorite()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -892,8 +898,11 @@ begin
   if v_author is not null then
     perform public.novelight_refresh_scout_badges_for_user(v_author, true);
   end if;
-  return case when tg_op = 'DELETE' then old else new end;
-end $$;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end $;
 
 create or replace function public.novelight_refresh_badges_from_comment()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -909,8 +918,11 @@ begin
   if v_author is not null and v_author <> v_reader then
     perform public.novelight_refresh_scout_badges_for_user(v_author, true);
   end if;
-  return case when tg_op = 'DELETE' then old else new end;
-end $$;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end $;
 
 create or replace function public.novelight_refresh_badges_from_valid_read()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -943,8 +955,11 @@ begin
   if v_author is not null and v_author <> v_reader then
     perform public.novelight_refresh_scout_badges_for_user(v_author, true);
   end if;
-  return case when tg_op = 'DELETE' then old else new end;
-end $$;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end $;
 
 create or replace function public.novelight_refresh_badges_from_rating()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -952,8 +967,11 @@ declare v_uid uuid;
 begin
   v_uid := case when tg_op = 'DELETE' then old.user_id else new.user_id end;
   perform public.novelight_refresh_scout_badges_for_user(v_uid, true);
-  return case when tg_op = 'DELETE' then old else new end;
-end $$;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end $;
 
 create or replace function public.novelight_refresh_badges_from_xp()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -968,8 +986,11 @@ declare v_uid uuid;
 begin
   v_uid := case when tg_op = 'DELETE' then old.user_id else new.user_id end;
   perform public.novelight_refresh_scout_badges_for_user(v_uid, true);
-  return case when tg_op = 'DELETE' then old else new end;
-end $$;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end $;
 
 create or replace function public.novelight_refresh_badges_from_rank_state()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -977,8 +998,11 @@ declare v_uid uuid;
 begin
   v_uid := case when tg_op = 'DELETE' then old.author_id_snapshot else new.author_id_snapshot end;
   perform public.novelight_refresh_scout_badges_for_user(v_uid, true);
-  return case when tg_op = 'DELETE' then old else new end;
-end $$;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end $;
 
 revoke all on function public.novelight_refresh_badges_from_novel() from public, anon, authenticated;
 revoke all on function public.novelight_refresh_badges_from_episode() from public, anon, authenticated;
