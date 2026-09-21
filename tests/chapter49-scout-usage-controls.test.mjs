@@ -20,15 +20,24 @@ test('SCOUT RECORD usage days are private and owner-recorded through RPC', async
   const sql = await readFile(migrationPath, 'utf8');
   has(sql, 'create table public.scout_record_usage_days');
   has(sql, 'primary key (user_id, activity_date)');
-  has(sql, 'alter table public.scout_record_usage_days enable row level security');
+  has(
+    sql,
+    'alter table public.scout_record_usage_days enable row level security'
+  );
   has(
     sql,
     'revoke all on table public.scout_record_usage_days from public, anon, authenticated'
   );
-  has(sql, 'create or replace function public.novelight_record_scout_record_visit()');
+  has(
+    sql,
+    'create or replace function public.novelight_record_scout_record_visit()'
+  );
   has(sql, 'v_uid uuid := (select auth.uid())');
   has(sql, 'on conflict (user_id, activity_date) do update');
-  has(sql, 'grant execute on function public.novelight_record_scout_record_visit()');
+  has(
+    sql,
+    'grant execute on function public.novelight_record_scout_record_visit()'
+  );
   has(sql, 'to authenticated;');
 });
 
@@ -39,14 +48,17 @@ test('positive automatic Scout Point awards are centrally suspendable', async ()
   has(sql, 'create trigger scout_point_earning_control');
   has(sql, 'before insert on public.scout_point_ledger');
   has(sql, "new.point_kind in ('reversal', 'manual_adjustment')");
-  has(sql, 'if not public.novelight_scout_point_earning_allowed(new.user_id) then');
+  has(
+    sql,
+    'if not public.novelight_scout_point_earning_allowed(new.user_id) then'
+  );
   has(sql, 'return null;');
 });
 
 test('operator Point control is service-role only and keeps an audit trail', async () => {
   const sql = await readFile(migrationPath, 'utf8');
   has(sql, 'create table public.scout_point_operator_actions');
-  has(sql, "action in (");
+  has(sql, 'action in (');
   for (const action of [
     "'freeze'",
     "'confirm'",
@@ -57,7 +69,10 @@ test('operator Point control is service-role only and keeps an audit trail', asy
   ]) {
     has(sql, action);
   }
-  has(sql, 'create or replace function public.novelight_admin_scout_point_action');
+  has(
+    sql,
+    'create or replace function public.novelight_admin_scout_point_action'
+  );
   has(
     sql,
     'grant execute on function public.novelight_admin_scout_point_action'
@@ -83,7 +98,7 @@ test('confirmed Point cancellation uses a negative reversal and never deletes th
 test('manual Point adjustment is bounded and reason-attributed', async () => {
   const sql = await readFile(migrationPath, 'utf8');
   has(sql, "v_action = 'adjust'");
-  has(sql, "p_amount is null or p_amount = 0 or abs(p_amount) > 100000");
+  has(sql, 'p_amount is null or p_amount = 0 or abs(p_amount) > 100000');
   has(sql, "'manual_adjustment'");
   has(sql, "'reason', v_reason");
   has(sql, "'actor_user_id', p_actor_user_id");
@@ -96,7 +111,10 @@ test('usage/control checks are fail-closed and rollback preserves real audit dat
     readFile(rollbackPath, 'utf8'),
     readFile(replayPath, 'utf8')
   ]);
-  has(precheck, 'SCOUT core, badge foundation, and beta lifecycle are required');
+  has(
+    precheck,
+    'SCOUT core, badge foundation, and beta lifecycle are required'
+  );
   has(postcheck, 'SCOUT operator RPC must be service-role only');
   has(postcheck, 'Central Scout Point earning control trigger is missing');
   has(rollback, 'v_has_usage');
