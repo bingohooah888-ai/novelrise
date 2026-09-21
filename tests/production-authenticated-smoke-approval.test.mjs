@@ -101,7 +101,9 @@ test('auth smoke stays SHA-bound and always cleans up', async () => {
   assert.ok(workflow.includes('account-settings.html'));
   assert.ok(authConfigStart >= 0);
   assert.ok(authConfigEnd > authConfigStart);
-  assert.ok(authConfigAudit.includes('mailer_secure_email_change_enabled == true'));
+  assert.ok(
+    authConfigAudit.includes('mailer_secure_email_change_enabled == true')
+  );
   assert.ok(authConfigAudit.includes('mailer_autoconfirm == false'));
   assert.ok(authConfigAudit.includes('hook_send_email_enabled == true'));
   assert.ok(authConfigAudit.includes('.smtp_host'));
