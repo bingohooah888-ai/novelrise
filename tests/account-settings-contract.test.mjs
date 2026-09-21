@@ -88,12 +88,7 @@ test('Author Studio and mypage expose matching interaction and account settings 
 });
 
 test('public reader and author surfaces do not gain a public account-email source', () => {
-  for (const source of [
-    authorPublic,
-    searchPublic,
-    rankingPublic,
-    scoutRecord
-  ]) {
+  for (const source of [authorPublic, searchPublic, rankingPublic, scoutRecord]) {
     assert.doesNotMatch(source, /profiles\.email/u);
     assert.doesNotMatch(source, /auth\.users\.email/u);
     assert.doesNotMatch(source, /auth\.admin\.listUsers/u);
@@ -131,6 +126,9 @@ test('AUTHOR_PREOPEN continues to gate initial signup on preregistration email o
     preopenMigration,
     /preregistration\.email_normalized = v_email/u
   );
-  assert.match(preopenMigration, /preregistration\.status <> 'cancelled'/u);
+  assert.match(
+    preopenMigration,
+    /preregistration\.status <> 'cancelled'/u
+  );
   assert.doesNotMatch(account, /beta_author_preregistrations/u);
 });
