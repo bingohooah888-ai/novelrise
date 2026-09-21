@@ -654,9 +654,12 @@ test('authenticated beta-critical product flow works in target', async ({
         readerPage.getByRole('heading', { name: 'SCOUT RECORD', exact: true })
       ).toBeVisible();
       await expect(
-        readerPage.getByRole('heading', { name: '最近のSCOUT活動' })
+        readerPage.getByRole('heading', {
+          name: '最近のSCOUT活動',
+          exact: true
+        })
       ).toBeVisible();
-      await readerPage.getByRole('link', { name: 'SEED履歴' }).click();
+      await readerPage.getByRole('link', { name: /^SEED履歴/ }).click();
       await readerPage.waitForURL(/\/light-seed-history\.html$/);
       await expect(
         readerPage.getByRole('heading', { name: 'LIGHT SEED送信履歴' })
