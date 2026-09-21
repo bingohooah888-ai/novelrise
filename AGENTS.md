@@ -66,7 +66,7 @@ Degraded-Continueでは `--card-mode=degraded` を追加し、`--card-total` を
 6. 文書冒頭の「最終更新」を作業当日の日付へ変更する。
 7. `git diff -- docs/NOVELIGHT-MASTER.md` を実行し、変更差分を確認する。
 8. 変更した章と内容をユーザーへ簡潔に報告する。
-9. commitとpushは、ユーザーから明示的に指示されるまで行わない。
+9. commitとpushは、MASTERの承認ゲート一本化に従い、開始済みworkstreamの範囲内では個別承認を求めず進める。ユーザーが現在の指示でcommit / push禁止を明示した場合は、その禁止を優先する。
 10. MASTERへ入れるべきか判断が難しい内容は追加せず、判断が必要な点を示してユーザーへ確認する。
 
 新しい重要方針が決定した場合はMASTER更新候補として扱う。通常のMASTER更新でも上記と同じく、既存内容を不用意に消さず、適切な章への必要最小限の変更、最終更新日の更新、差分確認、変更報告を必須とする。
@@ -81,7 +81,7 @@ NOVELIGHTの標準AI開発フローは `docs/development-workflow.md` を基準�
 
 AIの「問題ない」という判断だけをmerge根拠にしない。CI、RLS統合テスト、Playwright、依存脆弱性監査、CodeQL等の機械検証が失敗している場合は、原因が解決するまで未完了として扱う。AIを増やすこと自体を目的にせず、速度・品質・安全性を実際に改善する最小構成を使う。
 
-commitとpushは既存ルールどおりユーザーの明示指示を必要とする。`main`へのmergeは下記の条件付き自動merge方針に従う。本番DB、Stripe live、Secret、外部Production state、その他明示承認対象の本番操作は、PR mergeとは別の承認ポイントとして扱う。
+commitとpushに独立したユーザー承認は要求しない。`main`へのmergeは下記の条件付き自動merge方針に従う。高リスクPRまたはProduction mutationを含むworkstreamでは、MASTERどおり人間承認を「本番承認」1回へ一本化する。同じ明示scope内でPR merge後にProduction DB migration等が続く場合は、head、merge後main、mutation種別、対象migration集合その他の境界を機械的に再検証し、実質scopeが変わっていなければ同じ本番承認を自動継承してよい。Secret、2FA、OAuth等の本人操作は承認継承の対象外とする。
 
 ## 条件付き自動merge方針
 
@@ -99,7 +99,7 @@ commitとpushは既存ルールどおりユーザーの明示指示を必要と�
 
 通常の低リスクPRの例は、軽微なUI/文言修正、非機密の小規模バグ修正、テスト改善、非安全系ドキュメント修正、挙動を変えない限定的refactor等とする。低リスクPRのmergeに伴ってVercelが通常のProduction deployを行うことは、この条件付き自動merge方針の範囲に含める。ただし外部本番データ・課金・Secret等を変更する追加操作まで自動承認したことにはしない。
 
-次は必ずユーザーの個別明示承認を得てからmergeする。
+次は必ずユーザーの「本番承認」を得てからmergeする。ここでいう本番承認は当該workstreamの唯一の人間承認であり、同じscopeについて別途「マージ承認」「高リスク承認」「本番DB承認」を重ねて要求しない。
 
 - 認証、Supabase RLS、Stripe/課金、料金・entitlement、権限、個人情報、セキュリティ境界
 - Secret、API key、環境変数の秘密値、Production credentialsを扱う変更
@@ -110,7 +110,7 @@ commitとpushは既存ルールどおりユーザーの明示指示を必要と�
 - CI/CodeQL/テストgateを弱める変更、または失敗gateを例外扱いしてmergeしようとする変更
 - リスク分類が曖昧、影響範囲が不明、rollback不能、またはユーザー判断が必要な変更
 
-判定に迷う場合は自動mergeしない。高リスクPRではCIが全成功していてもユーザー承認を省略しない。
+判定に迷う場合は自動mergeしない。高リスクPRではCIが全成功していてもユーザーの「本番承認」を省略しない。一方、本番承認済みの同一scopeに対し、名称だけを変えた二重承認を要求しない。
 
 ## 自動化・効率化原則
 
@@ -179,4 +179,4 @@ novels/episodesのSELECT RLSは、公開作品・下書き・親作品の公開�
 
 ## Commit & Pull Request Guidelines
 
-commitとpushは、ユーザーから明示的な指示があるまで行わない。指示されたcommitは `Fix checkout API authentication` のような短い命令形にし、変更単位を絞る。PRには目的、ユーザー影響、検証内容、関連issue、環境変数・migration・rollback要件を記載し、UI変更にはスクリーンショットを付ける。deploy-relevant変更ではVercel Previewも確認し、依存関係変更では脆弱性監査、高リスク変更ではCodeQLと必要に応じた独立AIレビューを確認する。秘密情報はcommitせず、Stripeキー、Supabase access token、Supabase database password、サーバー専用secret、価格IDはデプロイ環境またはGitHub Secretsで管理する。
+commitとpushは、開始済みworkstreamの範囲内では個別承認を要求せず連続して進める。ユーザーがcommit / push禁止を明示した場合だけ停止する。commitは `Fix checkout API authentication` のような短い命令形にし、変更単位を絞る。PRには目的、ユーザー影響、検証内容、関連issue、環境変数・migration・rollback要件を記載し、UI変更にはスクリーンショットを付ける。deploy-relevant変更ではVercel Previewも確認し、依存関係変更では脆弱性監査、高リスク変更ではCodeQLと必要に応じた独立AIレビューを確認する。秘密情報はcommitせず、Stripeキー、Supabase access token、Supabase database password、サーバー専用secret、価格IDはデプロイ環境またはGitHub Secretsで管理する。
