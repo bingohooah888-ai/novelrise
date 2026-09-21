@@ -15,6 +15,7 @@ const authenticatedSmoke = await readFile(
   'tests/e2e/production-auth/authenticated-smoke.spec.js',
   'utf8'
 );
+const scoutRecord = await readFile('scout-record.html', 'utf8');
 const billingSmoke = await readFile(
   'tests/e2e/production-auth/billing-smoke.spec.js',
   'utf8'
@@ -28,6 +29,21 @@ test('Staging workflow is not coupled to the historical temporary branch', () =>
   assert.match(workflow, /deployment_status:/);
   assert.match(workflow, /revision:/);
   assert.match(workflow, /required: true/);
+});
+
+test('automatic deployment-status smoke only accepts Vercel deployments', () => {
+  assert.match(workflow, /github\.event\.sender\.login == 'vercel\[bot\]'/);
+  assert.match(
+    workflow,
+    /github\.event\.deployment_status\.state == 'success'/
+  );
+});
+
+test('authenticated smoke follows the current SCOUT RECORD seed-history navigation', () => {
+  assert.match(scoutRecord, /<h2 id="activityTitle">最近のSCOUT活動<\/h2>/);
+  assert.match(scoutRecord, /href="light-seed-history\.html">SEED履歴 →<\/a>/);
+  assert.match(authenticatedSmoke, /name: '最近のSCOUT活動'/);
+  assert.match(authenticatedSmoke, /name: \/\^SEED履歴\//);
 });
 
 test('consolidated Staging workflow runs the shared deployment contract before package installation', () => {
