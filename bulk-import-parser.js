@@ -86,7 +86,7 @@ function parseWithDelimiter(text, delimiter) {
   if (!marker) return [];
   const normalized = normalizeImportText(text);
   const chunks = normalized
-    .split(new RegExp(`^\\s*${marker.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}\\s*$`, 'gmu'))
+    .split(new RegExp(`^\\s*${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\marker.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')')}\\s*$`, 'gmu'))
     .map((chunk) => chunk.replace(/^\n+|\n+$/g, ''))
     .filter(Boolean);
 
