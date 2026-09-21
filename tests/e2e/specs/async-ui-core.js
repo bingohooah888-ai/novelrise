@@ -324,9 +324,7 @@ test('account settings rejects malformed, mismatched and unchanged emails before
   await page.locator('#newEmail').fill('not-an-email');
   await page.locator('#confirmEmail').fill('not-an-email');
   await page.locator('#changeEmail').click();
-  await expect(page.locator('#status')).toContainText(
-    '有効なメールアドレス'
-  );
+  await expect(page.locator('#status')).toContainText('有効なメールアドレス');
 
   await page.locator('#newEmail').fill('first@example.test');
   await page.locator('#confirmEmail').fill('second@example.test');
