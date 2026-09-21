@@ -1,4 +1,8 @@
 import { isSameOriginRequest, parseAdminAllowlist } from './admin-dashboard.js';
+import {
+  buildScoutProgressionMetrics,
+  enrichScoutUserSummaries
+} from './admin-scout-progression.js';
 
 const PAGE_SIZE = 1000;
 const MAX_PAGED_ROWS = 50000;
@@ -464,30 +468,58 @@ export async function loadScoutAnalytics({
   now = new Date(),
   query = ''
 }) {
-  const [profiles, xpRows, eventRows, seeds, discoveryRows] = await Promise.all(
-    [
-      fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
-      fetchPaged(
-        supabase,
-        'scout_xp_ledger',
-        'user_id,source_event_id,xp_kind,xp_value,occurred_at'
-      ),
-      fetchPaged(
-        supabase,
-        'scout_event_ledger',
-        'id,event_type,metadata',
-        (request) => request.eq('event_type', 'light_seed_discovery')
-      ),
-      fetchPaged(supabase, 'light_seeds', 'reader_id,seed_type,seed_month'),
-      fetchPaged(
-        supabase,
-        'seed_discovery_state',
-        'reader_id,seed_type,rank_at_seed,highest_rank_seen,best_rank_delta,cumulative_discovery_xp,window_expires_at'
-      )
-    ]
-  );
+  const [
+    profiles,
+    xpRows,
+    eventRows,
+    seeds,
+    discoveryRows,
+    pointRows,
+    badgeRows,
+    badgeDefinitions,
+    thresholds
+  ] = await Promise.all([
+    fetchPaged(supabase, 'profiles', 'id,display_name,created_at'),
+    fetchPaged(
+      supabase,
+      'scout_xp_ledger',
+      'user_id,source_event_id,xp_kind,xp_value,occurred_at'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_event_ledger',
+      'id,event_type,metadata',
+      (request) => request.eq('event_type', 'light_seed_discovery')
+    ),
+    fetchPaged(supabase, 'light_seeds', 'reader_id,seed_type,seed_month'),
+    fetchPaged(
+      supabase,
+      'seed_discovery_state',
+      'reader_id,seed_type,rank_at_seed,highest_rank_seen,best_rank_delta,cumulative_discovery_xp,window_expires_at'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_point_ledger',
+      'user_id,point_kind,point_value,status,occurred_at'
+    ),
+    fetchPaged(
+      supabase,
+      'user_scout_badges',
+      'user_id,badge_id,progress_percent,earned_at,status,is_public'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_badge_definitions',
+      'badge_id,badge_category,difficulty,display_name'
+    ),
+    fetchPaged(
+      supabase,
+      'scout_level_thresholds',
+      'level,cumulative_xp'
+    )
+  ]);
 
-  return summarizeScoutData({
+  const base = summarizeScoutData({
     profiles,
     xpRows,
     eventRows,
@@ -497,6 +529,26 @@ export async function loadScoutAnalytics({
     now,
     query
   });
+
+  return {
+    ...base,
+    progression: buildScoutProgressionMetrics({
+      profiles,
+      xpRows,
+      pointRows,
+      badgeRows,
+      thresholds,
+      seeds,
+      discoveryRows
+    }),
+    users: enrichScoutUserSummaries(base.users, {
+      xpRows,
+      pointRows,
+      badgeRows,
+      badgeDefinitions,
+      thresholds
+    })
+  };
 }
 
 function applySecurityHeaders(res) {
