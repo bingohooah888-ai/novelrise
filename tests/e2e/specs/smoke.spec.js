@@ -157,8 +157,9 @@ test('all audited major routes fit a 390px mobile viewport', async ({
   await context.close();
 });
 
-
-test('bulk import exposes the beta author migration contract', async ({ request }) => {
+test('bulk import exposes the beta author migration contract', async ({
+  request
+}) => {
   const html = await (await request.get('/bulk-import.html')).text();
   const parser = await (await request.get('/bulk-import-parser.js')).text();
 
