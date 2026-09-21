@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "novelight-commander": {
+      "command": "node",
+      "args": [
+        "C:\\\\PATH\\\\TO\\\\novelrise\\\\tools\\\\novelight-commander\\\\src\\\\index.js"
+      ],
+      "env": {
+        "NOVELIGHT_COMMANDER_ROOT": "C:\\\\PATH\\\\TO\\\\novelrise",
+        "NOVELIGHT_COMMANDER_ALLOW_SHELL": "false",
+        "NOVELIGHT_COMMANDER_ALLOW_DESTRUCTIVE": "false",
+        "NOVELIGHT_COMMANDER_ALLOW_PRODUCTION": "false"
+      }
+    }
+  }
+}
