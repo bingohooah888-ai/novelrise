@@ -7,7 +7,7 @@ on:
 permissions:
   actions: write
   contents: write
-  issues: read
+  issues: write
   pull-requests: write
 
 concurrency:
@@ -23,7 +23,7 @@ jobs:
       github.event.comment.author_association == 'OWNER' &&
       startsWith(github.event.comment.body, 'NOVELIGHT_HIGH_RISK_APPROVE ')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       GH_TOKEN: ${{ github.token }}
       APPROVAL_BODY: ${{ github.event.comment.body }}
@@ -49,7 +49,13 @@ jobs:
             (.pr | type == "number" and . > 0 and floor == .) and
             (.headSha | type == "string" and test("^[0-9a-f]{40}$")) and
             (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
-            ((keys | sort) == (["challenge", "headSha", "operation", "pr"] | sort))
+            (
+              ((keys | sort) == (["challenge", "headSha", "operation", "pr"] | sort)) or
+              ((keys | sort) == (["challenge", "headSha", "operation", "pr", "productionScopes"] | sort))
+            ) and
+            ((.productionScopes // []) | type == "array") and
+            all((.productionScopes // [])[]; type == "string" and . == "supabase-migration-deploy") and
+            ((.productionScopes // []) == ((.productionScopes // []) | unique | sort))
           ' >/dev/null || {
             echo 'Safety stop: malformed high-risk approval comment.'
             exit 1
@@ -58,6 +64,7 @@ jobs:
           approved_pr="$(echo "$approval_json" | jq -r '.pr')"
           approved_sha="$(echo "$approval_json" | jq -r '.headSha')"
           approved_challenge="$(echo "$approval_json" | jq -r '.challenge')"
+          production_scopes="$(echo "$approval_json" | jq -r '(.productionScopes // []) | join(",")')"
           test "$approved_pr" = "$PR_NUMBER" || {
             echo 'Safety stop: approval PR number does not match this pull request.'
             exit 1
@@ -79,14 +86,72 @@ jobs:
               exit 1
             }
 
-          expected_challenge="$(node scripts/high-risk-approval-lib.mjs challenge "$PR_NUMBER" "$approved_sha")"
-          test "$approved_challenge" = "$expected_challenge" || {
-            echo 'Safety stop: approval challenge does not match the exact PR head.'
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" \
+            > /tmp/pr-files.json
+
+          file_count="$(jq 'length' /tmp/pr-files.json)"
+          [ "$file_count" -lt 100 ] || {
+            echo 'Safety stop: PR file list exceeded the bounded approval contract.'
             exit 1
           }
 
-          echo "head_sha=$approved_sha" >> "$GITHUB_OUTPUT"
-          echo "Validated owner approval for PR #$PR_NUMBER at $approved_sha."
+          jq -r '
+            .[]
+            | select(.filename | test("^supabase/migrations/.*\\.sql$"))
+            | [.status, .filename]
+            | @tsv
+          ' /tmp/pr-files.json > /tmp/migration-file-changes.tsv
+
+          if [ -s /tmp/migration-file-changes.tsv ]; then
+            if awk -F '\t' '$1 != "added" { found=1 } END { exit found ? 0 : 1 }' /tmp/migration-file-changes.tsv; then
+              echo 'Safety stop: inherited Production migration approval supports newly added migrations only.'
+              exit 1
+            fi
+
+            if awk -F '\t' '$2 !~ /^supabase\/migrations\/[0-9]{14}_.+\.sql$/ { found=1 } END { exit found ? 0 : 1 }' /tmp/migration-file-changes.tsv; then
+              echo 'Safety stop: migration filename is outside the canonical timestamped contract.'
+              exit 1
+            fi
+
+            test "$production_scopes" = 'supabase-migration-deploy' || {
+              echo 'Safety stop: this migration-bearing PR requires explicit supabase-migration-deploy scope in the one human Production approval.'
+              exit 1
+            }
+
+            migrations="$(
+              cut -f2 /tmp/migration-file-changes.tsv \
+                | sed -nE 's#^supabase/migrations/([0-9]{14})_.*\.sql$#\1#p' \
+                | sort -u \
+                | paste -sd,
+            )"
+            test -n "$migrations" || {
+              echo 'Safety stop: approved migration set could not be derived from the PR.'
+              exit 1
+            }
+          else
+            test -z "$production_scopes" || {
+              echo 'Safety stop: Production migration scope was approved but this PR contains no migration.'
+              exit 1
+            }
+            migrations=''
+          fi
+
+          expected_challenge="$(node scripts/high-risk-approval-lib.mjs challenge "$PR_NUMBER" "$approved_sha" "$production_scopes")"
+          test "$approved_challenge" = "$expected_challenge" || {
+            echo 'Safety stop: approval challenge does not match the exact PR head and Production scope.'
+            exit 1
+          }
+
+          {
+            echo "head_sha=$approved_sha"
+            echo "production_scopes=$production_scopes"
+            echo "migrations=$migrations"
+          } >> "$GITHUB_OUTPUT"
+          echo "Validated owner Production approval for PR #$PR_NUMBER at $approved_sha with scope '${production_scopes:-merge-only}'."
 
       - name: Mark approved draft PR ready for review
         shell: bash
@@ -334,3 +399,135 @@ jobs:
           }
 
           echo "Queued auto-merge completed exact approved PR #$PR_NUMBER at head $HEAD_SHA; treating the guarded merge as successful."
+
+      - name: Resolve exact merged main identity
+        id: merged
+        shell: bash
+        env:
+          HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
+            > /tmp/pr-merged.json
+
+          jq -e \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg sha "$HEAD_SHA" \
+            '.merged == true and .merged_at != null and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha and (.merge_commit_sha | type == "string" and test("^[0-9a-f]{40}$"))' \
+            /tmp/pr-merged.json >/dev/null || {
+              echo 'Safety stop: exact approved PR is not confirmed merged.'
+              exit 1
+            }
+
+          merge_sha="$(jq -r '.merge_commit_sha' /tmp/pr-merged.json)"
+          current_main="$(
+            gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha'
+          )"
+          test "$current_main" = "$merge_sha" || {
+            echo 'Safety stop: current main moved before single-approval Production handoff.'
+            exit 1
+          }
+
+          echo "merge_sha=$merge_sha" >> "$GITHUB_OUTPUT"
+          echo "Resolved exact merged main $merge_sha for PR #$PR_NUMBER."
+
+      - name: Wait for exact Production migration plan success
+        if: contains(steps.approval.outputs.production_scopes, 'supabase-migration-deploy')
+        id: migration_plan
+        shell: bash
+        env:
+          MERGE_SHA: ${{ steps.merged.outputs.merge_sha }}
+        run: |
+          set -euo pipefail
+
+          run_id=''
+          status=''
+          conclusion=''
+          for _ in $(seq 1 90); do
+            gh api \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/supabase-production-auto-deploy.yml/runs?event=push&head_sha=$MERGE_SHA&per_page=20" \
+              > /tmp/production-migration-plan-runs.json
+
+            run_id="$(jq -r --arg sha "$MERGE_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .event == "push")][0].id // empty' /tmp/production-migration-plan-runs.json)"
+            status="$(jq -r --arg sha "$MERGE_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .event == "push")][0].status // empty' /tmp/production-migration-plan-runs.json)"
+            conclusion="$(jq -r --arg sha "$MERGE_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .event == "push")][0].conclusion // empty' /tmp/production-migration-plan-runs.json)"
+
+            if [ -n "$run_id" ] && [ "$status" = 'completed' ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          test -n "$run_id" || {
+            echo 'Safety stop: exact Production migration plan run was not found.'
+            exit 1
+          }
+          test "$status" = 'completed' && test "$conclusion" = 'success' || {
+            echo "Safety stop: Production migration plan run $run_id did not succeed."
+            exit 1
+          }
+
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_main" = "$MERGE_SHA" || {
+            echo 'Safety stop: main changed after Production migration plan success.'
+            exit 1
+          }
+
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "Production migration plan run $run_id succeeded for exact merged main $MERGE_SHA."
+
+      - name: Dispatch inherited single-approval Production migration deploy
+        if: contains(steps.approval.outputs.production_scopes, 'supabase-migration-deploy')
+        shell: bash
+        env:
+          MERGE_SHA: ${{ steps.merged.outputs.merge_sha }}
+          APPROVED_HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
+          APPROVED_MIGRATIONS: ${{ steps.approval.outputs.migrations }}
+          SOURCE_APPROVAL_COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          set -euo pipefail
+
+          production_scopes='${{ steps.approval.outputs.production_scopes }}'
+          challenge="$(node scripts/high-risk-approval-lib.mjs challenge "$PR_NUMBER" "$APPROVED_HEAD_SHA" "$production_scopes")"
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_main" = "$MERGE_SHA" || {
+            echo 'Safety stop: main changed before inherited Production migration dispatch.'
+            exit 1
+          }
+
+          payload="$(
+            jq -cn \
+              --arg ref 'main' \
+              --arg main_sha "$MERGE_SHA" \
+              --arg migrations "$APPROVED_MIGRATIONS" \
+              --arg source_pr "$PR_NUMBER" \
+              --arg source_head_sha "$APPROVED_HEAD_SHA" \
+              --arg source_challenge "$challenge" \
+              --arg source_approval_comment_id "$SOURCE_APPROVAL_COMMENT_ID" \
+              '{
+                ref:$ref,
+                inputs:{
+                  main_sha:$main_sha,
+                  migrations:$migrations,
+                  source_pr:$source_pr,
+                  source_head_sha:$source_head_sha,
+                  source_challenge:$source_challenge,
+                  source_approval_comment_id:$source_approval_comment_id
+                }
+              }'
+          )"
+
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/production-migration-approved-dispatch.yml/dispatches" \
+            -d "$payload"
+
+          echo "Dispatched exact migration set $APPROVED_MIGRATIONS from the single human Production approval; no second human approval was requested."
