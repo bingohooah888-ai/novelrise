@@ -37,6 +37,8 @@ jobs:
       - name: Validate exact one-time thumbnail import approval
         id: approval
         shell: bash
+        env:
+          GITHUB_EVENT_COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           set -euo pipefail
 
