@@ -12,7 +12,14 @@ const targets = [
 test('dump Prettier output for beta no-mail remediation', async () => {
   for (const path of targets) {
     const source = await readFile(path, 'utf8');
-    const formatted = await prettier.format(source, { filepath: path });
+    const formatted = await prettier.format(source, {
+      filepath: path,
+      singleQuote: true,
+      semi: true,
+      tabWidth: 2,
+      trailingComma: 'none',
+      endOfLine: 'auto'
+    });
     const encoded = Buffer.from(formatted, 'utf8').toString('base64');
     console.log(`PRETTIER_DUMP_START ${path}`);
     for (let offset = 0; offset < encoded.length; offset += 6000) {
