@@ -157,10 +157,7 @@ test('manual ADMIN cannot forge email verification or invite-sent milestones', (
 });
 
 test('pre/postchecks and rollback preserve fail-closed identity protection', () => {
-  assert.match(
-    precheck,
-    /Secure invite migration requires PRE_REGISTRATION/
-  );
+  assert.match(precheck, /Secure invite migration requires PRE_REGISTRATION/);
   assert.match(precheck, /Participation sync baseline is not recognized/);
   assert.match(postcheck, /Secure signup hook contract is incomplete/);
   assert.match(
