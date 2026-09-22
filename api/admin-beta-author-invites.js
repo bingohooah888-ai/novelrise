@@ -156,7 +156,7 @@ async function pendingInviteIds() {
 
   const completed = new Set(
     (invites ?? [])
-      .filter((row) => row.sent_at || row.consumed_at)
+      .filter((row) => row.sent_at && !row.consumed_at)
       .map((row) => row.preregistration_id)
   );
   return ids.filter((id) => !completed.has(id));
