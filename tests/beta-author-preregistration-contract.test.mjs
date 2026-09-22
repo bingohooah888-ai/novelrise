@@ -56,9 +56,10 @@ test('beta author LP keeps required copy, fields and isolated navigation', () =>
     betaHtml,
     /NOVELIGHT β版の公開・参加に関する連絡を受け取ることに同意します/
   );
-  assert.match(betaHtml, /本ページとNOVELIGHT公式Xでご案内します/);
-  assert.match(betaHtml, /先行登録時と同じメールアドレスを使用してください/);
-  assert.doesNotMatch(betaHtml, /メールアドレスへ参加方法をご案内します/);
+  assert.match(betaHtml, /ご登録いただいたメールアドレスへ/);
+  assert.match(betaHtml, /ご本人専用の先行利用URL/);
+  assert.match(betaHtml, /先行登録時と同じメールアドレスで会員登録/);
+  assert.doesNotMatch(betaHtml, /本ページとNOVELIGHT公式Xでご案内します/);
   assert.doesNotMatch(betaHtml, /href="search\.html"/);
   assert.doesNotMatch(betaHtml, /href="ranking\.html"/);
   assert.doesNotMatch(betaHtml, /href="login\.html"/);
@@ -206,11 +207,12 @@ test('ADMIN API paginates, tracks funnel KPIs and keeps milestones synchronized'
   assert.match(adminApi, /formStarts/);
   assert.match(adminApi, /registerClicks/);
   assert.match(adminApi, /applyMilestones/);
-  assert.match(adminApi, /patch\.email_verified = true/);
   assert.match(
     adminApi,
-    /patch\.invite_sent_at = current\.invite_sent_at \|\| now/
+    /SYSTEM_OWNED_STATUSES = new Set\(\['verified', 'invited'\]\)/
   );
+  assert.doesNotMatch(adminApi, /patch\.email_verified = true/);
+  assert.doesNotMatch(adminApi, /patch\.invite_sent_at =/);
   assert.match(
     adminApi,
     /patch\.registered_at = current\.registered_at \|\| now/

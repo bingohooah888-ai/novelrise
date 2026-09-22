@@ -59,6 +59,10 @@ SQL
 echo '::endgroup::'
 
 for migration in supabase/migrations/*.sql; do
+  if [[ "$migration" == "supabase/migrations/20260923064500_secure_beta_author_invites.sql" ]]; then
+    echo "::notice::Defer $migration until historical Founding/Auth replay checks finish"
+    continue
+  fi
   echo "::group::Replay $migration"
   "${REPLAY[@]}" -f "$migration"
   echo '::endgroup::'
@@ -131,7 +135,7 @@ echo '::group::Verify Founding and beta participation rollback before behavior f
 "${REPLAY[@]}" -f supabase/checks/20260920122000_founding_beta_qualifications_postcheck.sql
 echo '::endgroup::'
 
-echo '::group::Verify replay reached the current schema contract'
+echo '::group::Verify replay reached the pre-invite schema contract'
 "${REPLAY[@]}" <<'SQL'
 do $$
 begin
@@ -912,6 +916,49 @@ echo '::group::Verify beta bulk episode import rollback and reapply'
 "${REPLAY[@]}" -f supabase/migrations/20260921120552_bulk_episode_import.sql
 "${REPLAY[@]}" -f supabase/checks/20260921120552_bulk_episode_import_postcheck.sql
 echo '::endgroup::'
+echo '::group::Verify secure beta-author invite identity linkage'
+"${REPLAY[@]}" -f supabase/checks/20260923064500_secure_beta_author_invites_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260923064500_secure_beta_author_invites.sql
+"${REPLAY[@]}" -f supabase/checks/20260923064500_secure_beta_author_invites_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/secure-beta-author-invites.sql
+echo '::endgroup::'
+
+echo '::group::Verify secure beta-author invite rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260923064500_secure_beta_author_invites_rollback.sql
+"${REPLAY[@]}" <<'SQL'
+do $$
+declare
+  v_hook text;
+begin
+  if to_regclass('public.beta_author_invites') is not null then
+    raise exception 'Secure invite rollback left beta_author_invites behind';
+  end if;
+
+  select pg_get_functiondef(
+    'public.hook_novelight_beta_signup_gate(jsonb)'::regprocedure
+  ) into v_hook;
+
+  if strpos(v_hook, '先行利用の本人確認機能を一時停止しています。') = 0 then
+    raise exception 'Secure invite rollback did not remain fail-closed';
+  end if;
+
+  if strpos(
+    pg_get_functiondef(
+      'public.novelight_sync_user_participation_qualifications(uuid)'::regprocedure
+    ),
+    'p.email_normalized = v_email'
+  ) > 0 then
+    raise exception 'Secure invite rollback restored email-only Founding linkage';
+  end if;
+end
+$$;
+SQL
+"${REPLAY[@]}" -f supabase/checks/20260923064500_secure_beta_author_invites_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260923064500_secure_beta_author_invites.sql
+"${REPLAY[@]}" -f supabase/checks/20260923064500_secure_beta_author_invites_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/secure-beta-author-invites.sql
+echo '::endgroup::'
+
 echo '::group::Verify restored-database structural integrity'
 "${REPLAY[@]}" -f supabase/checks/restore_validation.sql
 echo '::endgroup::'

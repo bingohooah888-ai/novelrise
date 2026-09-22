@@ -16,7 +16,8 @@ test('signup display name is preserved in the profile row', async () => {
     )
   ]);
 
-  assert.match(signup, /data:\{display_name:name\}/);
+  assert.match(signup, /const signupMetadata=\{display_name:name\}/);
+  assert.match(signup, /data:signupMetadata/);
   assert.match(
     mypage,
     /profiles'\)\.select\('display_name,bio,plan,payment_status'\)/

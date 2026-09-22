@@ -23,7 +23,7 @@ test('signup reuses the preregistration campaign state as the launch gate', () =
   expectSignup(/state==='AUTHOR_PREOPEN'/);
   expectSignup(/state==='BETA_OPEN'\|\|state==='CLOSED'/);
   expectSignup(/showPreregistrationGate\(\)/);
-  expectSignup(/showAuthorPreopen\(\)/);
+  expectSignup(/showAuthorPreopen\(inviteValidated\)/);
   expectSignup(/showSignupForm\(\)/);
 });
 
@@ -33,10 +33,14 @@ test('preregistration state routes users to the isolated beta author LP', () => 
   expectSignup(/β版の一般会員登録はまだ開始していません/);
 });
 
-test('author preopen exposes signup only with preregistered-email guidance', () => {
-  expectSignup(/先行作者プレオープン中です/);
-  expectSignup(/先行登録済みの作者のみ会員登録できます/);
-  expectSignup(/signupCampaignState==='AUTHOR_PREOPEN'/);
+test('author preopen exposes signup only after a dedicated invite is validated', () => {
+  expectSignup(/location\.hash/);
+  expectSignup(/inviteParams\.get\('invite'\)/);
+  expectSignup(/history\.replaceState/);
+  expectSignup(/async function validateInvite\(\)/);
+  expectSignup(/fetch\('\/api\/beta-author-invite'/);
+  expectSignup(/showAuthorPreopen\(inviteValidated\)/);
+  expectSignup(/先行登録時のメールアドレスへお送りした専用の招待URL/);
 });
 
 test('campaign lookup failures keep normal signup closed', () => {
@@ -48,7 +52,9 @@ test('campaign lookup failures keep normal signup closed', () => {
 
 test('beta no-mail signup keeps profile metadata and requires an immediate session', () => {
   expectSignup(/client\.auth\.signUp/);
-  expectSignup(/data:\{display_name:name\}/);
+  expectSignup(/const signupMetadata=\{display_name:name\}/);
+  expectSignup(/signupMetadata\.novelight_invite_token=inviteToken/);
+  expectSignup(/data:signupMetadata/);
   expectSignup(/if\(!data\?\.session\)/);
   expectSignup(/window\.location\.href='mypage\.html'/);
   assert.doesNotMatch(signup, /emailRedirectTo/u);
