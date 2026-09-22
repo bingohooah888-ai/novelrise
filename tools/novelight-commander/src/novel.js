@@ -318,8 +318,12 @@ function extractCaitaPage(html, finalUrl) {
     '[class*="episodeBody"]',
     '[class*="viewer"][class*="body"]',
     '[data-testid*="episode"]',
+    '[role="main"]',
+    "#__next",
+    "#root",
     "article",
-    "main"
+    "main",
+    "body"
   ]) {
     const texts = $(selector)
       .toArray()
@@ -328,8 +332,19 @@ function extractCaitaPage(html, finalUrl) {
       .sort((a, b) => b.length - a.length);
     if (texts[0] && texts[0].length > body.length) body = texts[0];
   }
-  if (!body || body.length < 80) {
-    throw new Error("Caita body not found after render: " + finalUrl);
+  const blockedPage = /(?:just a moment|checking your browser|access denied|cloudflare|enable javascript and cookies|unusual traffic)/i.test(
+    [title, body].join("\n")
+  );
+  if (!body || body.length < 80 || blockedPage) {
+    throw new Error(
+      "Caita body not found after render: " +
+        finalUrl +
+        " (renderedTextChars=" +
+        body.length +
+        ", blockedPage=" +
+        blockedPage +
+        ")"
+    );
   }
   return {
     site: "caita",
