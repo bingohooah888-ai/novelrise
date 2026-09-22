@@ -709,6 +709,13 @@ async function actionNovelFetch(request, config) {
     'complete: ' + result.complete,
     'truncated: ' + result.truncated,
     'failures: ' + result.failures.length,
+    ...(result.failures[0]
+      ? [
+          'firstFailureEpisode: ' + result.failures[0].number,
+          'firstFailureUrl: ' + result.failures[0].url,
+          'firstFailureError: ' + result.failures[0].error
+        ]
+      : []),
     'saved_local: ' + destination.relative
   ].join('\n');
 }
