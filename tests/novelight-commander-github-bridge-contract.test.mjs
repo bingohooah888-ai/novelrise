@@ -60,6 +60,14 @@ test('Commander bridge tolerates Windows PowerShell UTF-8 BOM', async () => {
   );
 });
 
+test('Commander bridge uses npm.cmd on Windows', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(source, /process\.platform === 'win32' \? 'npm\.cmd' : 'npm'/);
+  assert.match(source, /run\(NPM_EXECUTABLE, \['run', 'check'\]/);
+  assert.match(source, /run\(NPM_EXECUTABLE, \['test'\]/);
+});
+
 test('Commander package checks the bridge daemon', async () => {
   const source = await readFile(packagePath, 'utf8');
   assert.match(source, /github-bridge-daemon\.js/);

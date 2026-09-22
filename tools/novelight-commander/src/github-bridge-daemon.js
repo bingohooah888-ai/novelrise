@@ -13,6 +13,7 @@ const RESULT_PREFIX = 'NOVELIGHT_COMMANDER_RESULT_V1';
 const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$/;
 const MAX_OUTPUT = 24000;
 const MAX_EPISODES = 500;
+const NPM_EXECUTABLE = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 function bounded(text, limit = MAX_OUTPUT) {
   const value = String(text || '').replace(
@@ -276,7 +277,7 @@ async function actionDoctor(request, config) {
   const rows = [];
   for (const [command, args] of [
     ['node', ['--version']],
-    ['npm', ['--version']],
+    [NPM_EXECUTABLE, ['--version']],
     ['git', ['--version']]
   ]) {
     try {
@@ -313,7 +314,7 @@ async function actionRepoSnapshot(request, config) {
 
 async function actionPreflightFast(request, config) {
   ensureNoArgs(request.args);
-  const result = await run('npm', ['run', 'preflight:fast'], {
+  const result = await run(NPM_EXECUTABLE, ['run', 'preflight:fast'], {
     cwd: config.repoRoot,
     timeoutMs: 600000
   });
@@ -333,14 +334,14 @@ async function actionPreflightFast(request, config) {
 async function actionCommanderCheck(request, config) {
   ensureNoArgs(request.args);
   const cwd = path.join(config.repoRoot, 'tools', 'novelight-commander');
-  const check = await run('npm', ['run', 'check'], {
+  const check = await run(NPM_EXECUTABLE, ['run', 'check'], {
     cwd,
     timeoutMs: 120000
   });
   if (check.code !== 0) {
     throw new Error('Commander syntax check failed.\n' + check.stderr);
   }
-  const tests = await run('npm', ['test'], { cwd, timeoutMs: 120000 });
+  const tests = await run(NPM_EXECUTABLE, ['test'], { cwd, timeoutMs: 120000 });
   if (tests.code !== 0) {
     throw new Error(
       'Commander tests failed.\n' + tests.stderr + '\n' + tests.stdout
