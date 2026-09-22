@@ -32,6 +32,7 @@ const CAMPAIGN_STATES = new Set([
 ]);
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
+const SYSTEM_OWNED_STATUSES = new Set(['verified', 'invited']);
 
 const LIST_COLUMNS = [
   'id',
@@ -320,6 +321,11 @@ async function updateRow(id, body) {
   if (body.status !== undefined) {
     const status = String(body.status).trim().toLowerCase();
     if (!STATUSES.has(status)) throw inputError('Invalid status');
+    if (SYSTEM_OWNED_STATUSES.has(status) && status !== current.status) {
+      throw inputError(
+        'メール確認済み・招待メール送信済みはシステムが自動更新します。'
+      );
+    }
     if (isBackwardLifecycleTransition(current, status)) {
       throw lifecycleConflict(
         '到達済みの先行登録ステータスを前の段階へ戻すことはできません。'
