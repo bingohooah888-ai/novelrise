@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const scriptPath =
-  'tools/novelight-commander/diagnose-github-bridge.ps1';
+const scriptPath = 'tools/novelight-commander/diagnose-github-bridge.ps1';
 
 test('Commander bridge diagnostic is bounded to the control issue', async () => {
   const source = await readFile(scriptPath, 'utf8');
