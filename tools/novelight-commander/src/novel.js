@@ -398,6 +398,135 @@ async function readDomThroughCdp(webSocketUrl) {
   });
 }
 
+async function evaluateThroughCdp(webSocketUrl, expression) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(webSocketUrl);
+    let settled = false;
+    const requestId = 2;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        socket.close();
+        reject(new Error("Caita visible browser command timed out."));
+      }
+    }, 20000);
+
+    socket.addEventListener("open", () => {
+      socket.send(
+        JSON.stringify({
+          id: requestId,
+          method: "Runtime.evaluate",
+          params: { expression, returnByValue: true }
+        })
+      );
+    });
+    socket.addEventListener("message", event => {
+      let message;
+      try {
+        message = JSON.parse(String(event.data));
+      } catch {
+        return;
+      }
+      if (message.id !== requestId) return;
+      clearTimeout(timer);
+      settled = true;
+      socket.close();
+      if (message.error) {
+        reject(new Error("Caita visible browser command failed."));
+        return;
+      }
+      resolve(message?.result?.result?.value);
+    });
+    socket.addEventListener("error", () => {
+      clearTimeout(timer);
+      if (!settled) {
+        settled = true;
+        reject(new Error("Caita visible browser DevTools connection failed."));
+      }
+    });
+  });
+}
+
+async function openVisibleBrowserSession(url) {
+  const executable = await findBrowserExecutable();
+  const profileDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "novelight-caita-session-")
+  );
+  const port = await reserveLoopbackPort();
+  const child = spawn(
+    executable,
+    [
+      "--disable-extensions",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--start-minimized",
+      "--user-data-dir=" + profileDir,
+      "--remote-debugging-address=127.0.0.1",
+      "--remote-debugging-port=" + port,
+      "--app=" + url
+    ],
+    { shell: false, windowsHide: false }
+  );
+
+  try {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 1200);
+      child.once("error", error => {
+        clearTimeout(timer);
+        reject(error);
+      });
+    });
+    const webSocketUrl = await waitForCdpPage(port, url);
+    return { child, profileDir, webSocketUrl, currentUrl: url };
+  } catch (error) {
+    child.kill();
+    await fs.rm(profileDir, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+async function closeVisibleBrowserSession(session) {
+  session?.child?.kill();
+  await sleep(500).catch(() => {});
+  if (session?.profileDir) {
+    await fs
+      .rm(session.profileDir, { recursive: true, force: true })
+      .catch(() => {});
+  }
+}
+
+async function navigateVisibleBrowserSession(session, url) {
+  if (session.currentUrl !== url) {
+    await evaluateThroughCdp(
+      session.webSocketUrl,
+      "location.href = " + JSON.stringify(url)
+    );
+    session.currentUrl = url;
+    await sleep(900);
+  }
+
+  const deadline = Date.now() + 15000;
+  let lastHtml = "";
+  while (Date.now() < deadline) {
+    await sleep(lastHtml ? 700 : 1400);
+    lastHtml = await readDomThroughCdp(session.webSocketUrl);
+    try {
+      const parsed = extractCaitaPage(lastHtml, url);
+      const navigationReady =
+        Boolean(parsed.nextEpisodeUrl) ||
+        parsed.episodes.length > 1 ||
+        (Number.isInteger(parsed.currentEpisodeHint) &&
+          Number.isInteger(parsed.totalEpisodesHint) &&
+          parsed.currentEpisodeHint >= parsed.totalEpisodesHint);
+      if (navigationReady) return parsed;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/Caita body not found after render/i.test(message)) throw error;
+    }
+  }
+  return extractCaitaPage(lastHtml, url);
+}
+
 async function dumpDomWithVisibleBrowser(url) {
   const executable = await findBrowserExecutable();
   const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), "novelight-caita-visible-"));
@@ -677,11 +806,18 @@ async function readCaitaNovel(rawUrl, options = {}) {
   let firstPage = null;
   let totalEpisodesHint = null;
   let firstEpisodeHint = null;
+  let session = null;
 
-  while (currentUrl && episodes.length < maxEpisodes && !seen.has(currentUrl)) {
-    seen.add(currentUrl);
-    try {
-      const page = await caitaPage(currentUrl);
+  try {
+    session = await openVisibleBrowserSession(startUrl);
+    while (
+      currentUrl &&
+      episodes.length < maxEpisodes &&
+      !seen.has(currentUrl)
+    ) {
+      seen.add(currentUrl);
+      try {
+        const page = await navigateVisibleBrowserSession(session, currentUrl);
       if (!firstPage) {
         firstPage = page;
         firstEpisodeHint = page.currentEpisodeHint;
@@ -725,18 +861,21 @@ async function readCaitaNovel(rawUrl, options = {}) {
           currentUrl = page.episodes[currentIndex + 1].url;
         }
       }
-    } catch (error) {
-      failures.push({
-        number: episodes.length + 1,
-        url: currentUrl,
-        error: error instanceof Error ? error.message : String(error)
-      });
-      break;
-    }
+      } catch (error) {
+        failures.push({
+          number: episodes.length + 1,
+          url: currentUrl,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        break;
+      }
 
-    if (currentUrl && episodes.length < maxEpisodes) {
-      await sleep(delayMs);
+      if (currentUrl && episodes.length < maxEpisodes) {
+        await sleep(delayMs);
+      }
     }
+  } finally {
+    await closeVisibleBrowserSession(session);
   }
 
   const discoveredEpisodes = totalEpisodesHint || episodes.length;
