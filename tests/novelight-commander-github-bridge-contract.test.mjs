@@ -32,6 +32,7 @@ test('Commander GitHub bridge has fixed actions', async () => {
     'preflight_fast',
     'commander_check',
     'novel_fetch',
+    'thumbnail_pack_validate',
     'thumbnail_validate',
     'bridge_update'
   ];
@@ -102,6 +103,15 @@ test('Commander runner watchdog restarts daemon exits', async () => {
   assert.match(source, /node \$DaemonPath/);
   assert.match(source, /restarting in 2 seconds/);
   assert.match(source, /Start-Sleep -Seconds 2/);
+});
+
+
+test('Commander validates thumbnail packs only inside the data root', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(source, /\['thumbnail_pack_validate', actionThumbnailPackValidate\]/);
+  assert.match(source, /resolveDataPath\(config, String\(request\.args\.zip\)\)/);
+  assert.match(source, /validateThumbnailPack/);
 });
 
 test('Commander package checks the bridge daemon', async () => {
