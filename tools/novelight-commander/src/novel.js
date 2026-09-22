@@ -1,3 +1,7 @@
+import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import * as cheerio from "cheerio";
 
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36";
@@ -212,27 +216,152 @@ function caitaEpisodeUrl(rawUrl) {
   return match ? u.origin + "/viewer/episode/" + match[1].toUpperCase() : null;
 }
 
+function browserCandidates() {
+  if (process.platform !== "win32") return [];
+  const roots = [
+    process.env.PROGRAMFILES,
+    process.env["PROGRAMFILES(X86)"],
+    process.env.LOCALAPPDATA
+  ].filter(Boolean);
+  const candidates = [];
+  for (const root of roots) {
+    candidates.push(path.join(root, "Microsoft", "Edge", "Application", "msedge.exe"));
+    candidates.push(path.join(root, "Google", "Chrome", "Application", "chrome.exe"));
+  }
+  return [...new Set(candidates)];
+}
+
+async function findBrowserExecutable() {
+  for (const candidate of browserCandidates()) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {}
+  }
+  throw new Error("Caita requires Microsoft Edge or Google Chrome on this Windows PC.");
+}
+
+async function dumpDomWithBrowser(url) {
+  const executable = await findBrowserExecutable();
+  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), "novelight-caita-"));
+  try {
+    return await new Promise((resolve, reject) => {
+      const child = spawn(
+        executable,
+        [
+          "--headless=new",
+          "--disable-gpu",
+          "--disable-extensions",
+          "--no-first-run",
+          "--no-default-browser-check",
+          "--user-agent=" + USER_AGENT,
+          "--user-data-dir=" + profileDir,
+          "--virtual-time-budget=12000",
+          "--dump-dom",
+          url
+        ],
+        { shell: false, windowsHide: true }
+      );
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+      const timer = setTimeout(() => {
+        child.kill();
+        if (!settled) {
+          settled = true;
+          reject(new Error("Caita browser render timed out."));
+        }
+      }, 45000);
+      child.stdout?.on("data", chunk => {
+        if (stdout.length < 16 * 1024 * 1024) stdout += chunk.toString();
+      });
+      child.stderr?.on("data", chunk => {
+        if (stderr.length < 1024 * 1024) stderr += chunk.toString();
+      });
+      child.on("error", error => {
+        clearTimeout(timer);
+        if (!settled) {
+          settled = true;
+          reject(error);
+        }
+      });
+      child.on("close", code => {
+        clearTimeout(timer);
+        if (settled) return;
+        settled = true;
+        if (code !== 0 || !stdout.trim()) {
+          reject(new Error("Caita browser render failed: " + clean(stderr).slice(0, 800)));
+          return;
+        }
+        resolve(stdout);
+      });
+    });
+  } finally {
+    await fs.rm(profileDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+function extractCaitaPage(html, finalUrl) {
+  const $ = cheerio.load(html);
+  $("script,style,noscript,nav,header,footer,aside").remove();
+  const title =
+    clean($('meta[property="og:title"]').attr("content")) ||
+    clean($("h1").first().text()) ||
+    clean($("title").first().text());
+  const author =
+    clean($('[class*="author"]').first().text()) ||
+    clean($('meta[name="author"]').attr("content"));
+  let body = "";
+  for (const selector of [
+    '[itemprop="articleBody"]',
+    '[class*="episode-body"]',
+    '[class*="episodeBody"]',
+    '[class*="viewer"][class*="body"]',
+    '[data-testid*="episode"]',
+    "article",
+    "main"
+  ]) {
+    const texts = $(selector)
+      .toArray()
+      .map(node => clean($(node).text()))
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length);
+    if (texts[0] && texts[0].length > body.length) body = texts[0];
+  }
+  if (!body || body.length < 80) {
+    throw new Error("Caita body not found after render: " + finalUrl);
+  }
+  return {
+    site: "caita",
+    workUrl: finalUrl,
+    title,
+    author,
+    synopsis: "",
+    episodes: [{ url: finalUrl, label: title || "本文" }],
+    inlineEpisode: { url: finalUrl, title, body }
+  };
+}
+
 async function caitaPage(rawUrl) {
   const episodeUrl = caitaEpisodeUrl(rawUrl);
   if (!episodeUrl) throw new Error("Unsupported Caita URL. Use a public /viewer/episode/<id> URL.");
-  const { html, url: finalUrl } = await fetchHtml(episodeUrl, {
-    referer: "https://caita.ai/",
-    "sec-fetch-dest": "document",
-    "sec-fetch-mode": "navigate",
-    "sec-fetch-site": "same-origin",
-    "sec-fetch-user": "?1"
-  });
-  const $ = cheerio.load(html);
-  $("script,style,noscript,nav,header,footer,aside").remove();
-  const title = clean($('meta[property="og:title"]').attr("content")) || clean($("h1").first().text()) || clean($("title").first().text());
-  const author = clean($('[class*="author"]').first().text()) || clean($('meta[name="author"]').attr("content"));
-  let body = "";
-  for (const selector of ['[itemprop="articleBody"]','[class*="episode-body"]','[class*="episodeBody"]','article','main']) {
-    const texts = $(selector).toArray().map(node => clean($(node).text())).filter(Boolean).sort((a, b) => b.length - a.length);
-    if (texts[0] && texts[0].length > body.length) body = texts[0];
+
+  try {
+    const fetched = await fetchHtml(episodeUrl, {
+      referer: "https://caita.ai/",
+      "sec-fetch-dest": "document",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-site": "same-origin",
+      "sec-fetch-user": "?1"
+    });
+    return extractCaitaPage(fetched.html, fetched.url);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/HTTP 403|Caita body not found/i.test(message)) throw error;
   }
-  if (!body) throw new Error("Caita body not found: " + finalUrl);
-  return { site: "caita", workUrl: finalUrl, title, author, synopsis: "", episodes: [{ url: finalUrl, label: title || "本文" }], inlineEpisode: { url: finalUrl, title, body } };
+
+  const renderedHtml = await dumpDomWithBrowser(episodeUrl);
+  return extractCaitaPage(renderedHtml, episodeUrl);
 }
 
 async function genericPage(url) {
