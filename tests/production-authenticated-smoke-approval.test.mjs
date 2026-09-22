@@ -108,9 +108,7 @@ test('auth smoke stays SHA-bound and always cleans up', async () => {
   assert.ok(authConfigAudit.includes('hook_send_email_enabled == true'));
   assert.ok(authConfigAudit.includes('.smtp_host'));
   assert.ok(authConfigAudit.includes('.smtp_admin_email'));
-  assert.ok(
-    authConfigAudit.includes('Production Auth email config audit:')
-  );
+  assert.ok(authConfigAudit.includes('Production Auth email config audit:'));
   assert.ok(authConfigAudit.includes('secure_email_change_enabled'));
   assert.ok(authConfigAudit.includes('send_email_hook_enabled'));
   assert.ok(authConfigAudit.includes('custom_smtp_configured'));
