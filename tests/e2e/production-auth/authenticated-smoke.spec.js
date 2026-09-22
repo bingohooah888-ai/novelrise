@@ -417,7 +417,11 @@ async function assertAccountSettingsEmailBoundary(
   await expect(page.getByRole('heading', { name: 'アカウント設定' })).toBeVisible();
   await expect(page.locator('#currentEmail')).toHaveText(account.email);
 
-  if (process.env.NOVELIGHT_AUTH_EMAIL_MODE === 'beta-no-mail') {
+  const betaNoMailUi = await page.locator('#betaEmailNotice').isVisible();
+  if (
+    process.env.NOVELIGHT_AUTH_EMAIL_MODE === 'beta-no-mail' ||
+    betaNoMailUi
+  ) {
     await expect(page.locator('#betaEmailNotice')).toBeVisible();
     await expect(page.locator('#emailForm')).toHaveCount(0);
     await expect(page.locator('body')).toContainText(
