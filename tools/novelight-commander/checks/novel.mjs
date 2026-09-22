@@ -30,3 +30,13 @@ test("detects novel sites", () => {
     "generic"
   );
 });
+
+
+test("Caita episode URLs are not treated as whole-series reads", async () => {
+  const source = await import("node:fs/promises").then(({ readFile }) =>
+    readFile(new URL("../src/novel.js", import.meta.url), "utf8")
+  );
+  assert.match(source, /partial:\s*true/);
+  assert.match(source, /totalEpisodesHint/);
+  assert.match(source, /!index\.partial/);
+});
