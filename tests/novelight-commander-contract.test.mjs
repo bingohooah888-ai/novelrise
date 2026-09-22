@@ -126,4 +126,6 @@ test('NLO novel reader recognizes public Caita episode URLs', async () => {
   assert.match(source, /openVisibleBrowserSession/);
   assert.match(source, /navigateVisibleBrowserSession/);
   assert.match(source, /closeVisibleBrowserSession/);
+  assert.match(source, /pageTextWithNavigation/);
+  assert.match(source, /progressMatch = pageTextWithNavigation\.match/);
 });
