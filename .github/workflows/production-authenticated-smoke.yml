@@ -305,6 +305,23 @@ jobs:
             exit 1
           }
 
+          external_email_enabled="$(jq -r '.external_email_enabled == true' /tmp/supabase-auth-config.json)"
+          mailer_autoconfirm_disabled="$(jq -r '.mailer_autoconfirm == false' /tmp/supabase-auth-config.json)"
+          secure_email_change_enabled="$(jq -r '.mailer_secure_email_change_enabled == true' /tmp/supabase-auth-config.json)"
+          send_email_hook_enabled="$(jq -r '.hook_send_email_enabled == true' /tmp/supabase-auth-config.json)"
+          custom_smtp_configured="$(
+            jq -r '
+              ((.smtp_host | type == "string" and length > 0) and
+               (.smtp_admin_email | type == "string" and length > 0))
+            ' /tmp/supabase-auth-config.json
+          )"
+          printf 'Production Auth email config audit: external_email_enabled=%s mailer_autoconfirm_disabled=%s secure_email_change_enabled=%s send_email_hook_enabled=%s custom_smtp_configured=%s\n' \
+            "$external_email_enabled" \
+            "$mailer_autoconfirm_disabled" \
+            "$secure_email_change_enabled" \
+            "$send_email_hook_enabled" \
+            "$custom_smtp_configured"
+
           jq -e '
             .external_email_enabled == true and
             .mailer_autoconfirm == false and
