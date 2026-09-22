@@ -87,13 +87,36 @@ begin
     raise exception 'Duplicate preregistration consumed a Founding number';
   end if;
 
+  insert into public.beta_author_invites (
+    preregistration_id,
+    token_version,
+    token_hash,
+    issued_at,
+    expires_at,
+    sent_at,
+    delivery_status
+  ) values (
+    v_prereg_one,
+    1,
+    encode(sha256(convert_to(repeat('f', 43), 'UTF8')), 'hex'),
+    timestamptz '2026-09-27 20:00:00+09',
+    timestamptz '2026-10-27 20:00:00+09',
+    timestamptz '2026-09-27 20:00:00+09',
+    'accepted'
+  );
+
   insert into auth.users (
     id, email, created_at, raw_user_meta_data
   ) values (
     'fb000000-0000-4000-8000-000000000001',
     'founding-one@example.com',
     timestamptz '2026-09-28 01:00:00+09',
-    '{"display_name":"Founding One"}'::jsonb
+    jsonb_build_object(
+      'display_name',
+      'Founding One',
+      'novelight_invite_token',
+      repeat('f', 43)
+    )
   );
 
   if not exists (
@@ -103,7 +126,37 @@ begin
       and f.founding_number = v_number_one
       and f.qualifying_novel_id is null
   ) then
-    raise exception 'Preregistered Auth signup did not receive its original Founding number';
+    raise exception 'Invited preregistered Auth signup did not receive its original Founding number';
+  end if;
+
+  if not exists (
+    select 1
+    from public.beta_author_preregistrations p
+    where p.id = v_prereg_one
+      and p.auth_user_id = 'fb000000-0000-4000-8000-000000000001'
+      and p.email_verified
+      and p.status = 'registered'
+  ) then
+    raise exception 'Secure invite did not explicitly bind and verify the preregistration';
+  end if;
+
+  if not exists (
+    select 1
+    from public.beta_author_invites i
+    where i.preregistration_id = v_prereg_one
+      and i.consumed_at is not null
+      and i.redeemed_auth_user_id = 'fb000000-0000-4000-8000-000000000001'
+  ) then
+    raise exception 'Secure invite was not consumed by the Auth signup';
+  end if;
+
+  if exists (
+    select 1
+    from auth.users u
+    where u.id = 'fb000000-0000-4000-8000-000000000001'
+      and u.raw_user_meta_data ? 'novelight_invite_token'
+  ) then
+    raise exception 'Raw invite bearer leaked into persisted Auth user metadata';
   end if;
 
   if not exists (
@@ -244,13 +297,36 @@ begin
     raise exception 'Account deletion lost permanent beta participation history';
   end if;
 
+  update public.beta_author_invites
+  set
+    token_version = token_version + 1,
+    token_hash = encode(
+      sha256(convert_to(repeat('r', 43), 'UTF8')),
+      'hex'
+    ),
+    issued_at = timestamptz '2026-10-01 00:30:00+09',
+    expires_at = timestamptz '2026-10-31 00:30:00+09',
+    sent_at = timestamptz '2026-10-01 00:30:00+09',
+    consumed_at = null,
+    redeemed_auth_user_id = null,
+    revoked_at = null,
+    resend_email_id = null,
+    delivery_status = 'accepted',
+    updated_at = timestamptz '2026-10-01 00:30:00+09'
+  where preregistration_id = v_prereg_one;
+
   insert into auth.users (
     id, email, created_at, raw_user_meta_data
   ) values (
     'fb000000-0000-4000-8000-000000000005',
     'founding-one@example.com',
     timestamptz '2026-10-01 01:00:00+09',
-    '{"display_name":"Founding One Return"}'::jsonb
+    jsonb_build_object(
+      'display_name',
+      'Founding One Return',
+      'novelight_invite_token',
+      repeat('r', 43)
+    )
   );
 
   if not exists (
