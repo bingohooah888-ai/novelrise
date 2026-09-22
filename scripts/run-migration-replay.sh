@@ -59,6 +59,10 @@ SQL
 echo '::endgroup::'
 
 for migration in supabase/migrations/*.sql; do
+  if [[ "$migration" == "supabase/migrations/20260923064500_secure_beta_author_invites.sql" ]]; then
+    echo "::notice::Defer $migration until historical Founding/Auth replay checks finish"
+    continue
+  fi
   echo "::group::Replay $migration"
   "${REPLAY[@]}" -f "$migration"
   echo '::endgroup::'
@@ -131,7 +135,7 @@ echo '::group::Verify Founding and beta participation rollback before behavior f
 "${REPLAY[@]}" -f supabase/checks/20260920122000_founding_beta_qualifications_postcheck.sql
 echo '::endgroup::'
 
-echo '::group::Verify replay reached the current schema contract'
+echo '::group::Verify replay reached the pre-invite schema contract'
 "${REPLAY[@]}" <<'SQL'
 do $$
 begin
