@@ -32,6 +32,8 @@ test('Commander GitHub bridge has fixed actions', async () => {
     'preflight_fast',
     'commander_check',
     'novel_fetch',
+    'thumbnail_production_readiness',
+    'thumbnail_register_production',
     'thumbnail_validate',
     'bridge_update'
   ];
@@ -102,6 +104,29 @@ test('Commander runner watchdog restarts daemon exits', async () => {
   assert.match(source, /node \$DaemonPath/);
   assert.match(source, /restarting in 2 seconds/);
   assert.match(source, /Start-Sleep -Seconds 2/);
+});
+
+test('Commander Production thumbnail import is explicit and bounded', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(
+    source,
+    /THUMBNAIL_PRODUCTION_CONFIRMATION = 'REGISTER_OFFICIAL_THUMBNAIL_PACK'/
+  );
+  assert.match(source, /Production ZIP must be directly inside Downloads/);
+  assert.match(source, /NOVELIGHT_\[A-Za-z0-9_-\]\+\[\.\]zip/);
+  assert.match(source, /NOVELIGHT_COMMANDER_ALLOW_PRODUCTION: 'true'/);
+  assert.match(source, /thumbnail_production_readiness/);
+  assert.match(source, /thumbnail_register_production/);
+  assert.doesNotMatch(source, /request\.args\.(?:path|command|shell)/);
+});
+
+test('Commander never returns Supabase Production credentials', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(source, /credential_source:/);
+  assert.doesNotMatch(source, /return \{\s*key:\s*credential\.key/);
+  assert.doesNotMatch(source, /console\.(?:log|error)\([^\n]*credential\.key/);
 });
 
 test('Commander package checks the bridge daemon', async () => {

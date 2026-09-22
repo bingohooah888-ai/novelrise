@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import dotenv from 'dotenv';
 
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = 'novelrise';
@@ -14,6 +15,9 @@ const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$/;
 const MAX_OUTPUT = 24000;
 const MAX_EPISODES = 500;
 const NPM_COMMAND = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const SUPABASE_PROJECT_REF = 'fiepaguycecrredwrcwx';
+const SUPABASE_PROJECT_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+const THUMBNAIL_PRODUCTION_CONFIRMATION = 'REGISTER_OFFICIAL_THUMBNAIL_PACK';
 
 function bounded(text, limit = MAX_OUTPUT) {
   const value = String(text || '').replace(
@@ -264,6 +268,184 @@ function runNpm(args, options = {}) {
   return run(NPM_COMMAND, args, options);
 }
 
+
+async function loadCommanderDotEnv(config) {
+  const envPath = path.join(
+    config.repoRoot,
+    'tools',
+    'novelight-commander',
+    '.env'
+  );
+  dotenv.config({ path: envPath, override: false });
+}
+
+function resolveDownloadsZip(fileName) {
+  const value = String(fileName || '').trim();
+  if (
+    !/^NOVELIGHT_[A-Za-z0-9_-]+[.]zip$/.test(value) ||
+    path.basename(value) !== value
+  ) {
+    throw new Error(
+      'Production thumbnail import requires an official NOVELIGHT_*.zip basename.'
+    );
+  }
+  const downloadsRoot = path.resolve(os.homedir(), 'Downloads');
+  const candidate = path.resolve(downloadsRoot, value);
+  if (path.dirname(candidate) !== downloadsRoot) {
+    throw new Error('Production ZIP must be directly inside Downloads.');
+  }
+  return candidate;
+}
+
+async function resolveHostedSupabaseSecret(config) {
+  const envKey = String(
+    process.env.NOVELIGHT_COMMANDER_SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.NOVELIGHT_COMMANDER_SUPABASE_SECRET_KEY ||
+      process.env.SUPABASE_SECRET_KEY ||
+      ''
+  ).trim();
+  if (envKey) return { key: envKey, source: 'env' };
+
+  const result = await run(
+    'supabase',
+    [
+      'projects',
+      'api-keys',
+      '--project-ref',
+      SUPABASE_PROJECT_REF,
+      '--output',
+      'json'
+    ],
+    { cwd: config.repoRoot, timeoutMs: 120000 }
+  );
+  if (result.code !== 0) {
+    throw new Error(
+      'Supabase CLI API-key lookup failed. The local Supabase CLI must be signed in.'
+    );
+  }
+
+  let rows;
+  try {
+    rows = JSON.parse(result.stdout);
+  } catch {
+    throw new Error('Supabase CLI API-key output was not valid JSON.');
+  }
+  if (!Array.isArray(rows)) {
+    throw new Error('Supabase CLI API-key output had an unexpected shape.');
+  }
+
+  const candidate =
+    rows.find(
+      row =>
+        row?.id === 'service_role' &&
+        typeof row?.api_key === 'string' &&
+        row.api_key.length > 20 &&
+        !row.api_key.includes('*')
+    ) ||
+    rows.find(
+      row =>
+        row?.type === 'secret' &&
+        typeof row?.api_key === 'string' &&
+        row.api_key.startsWith('sb_secret_') &&
+        !row.api_key.includes('*')
+    );
+  if (!candidate?.api_key) {
+    throw new Error(
+      'No usable hosted Supabase service-role/secret key was available locally.'
+    );
+  }
+  return { key: candidate.api_key, source: 'supabase-cli' };
+}
+
+async function productionSupabaseClient(secretKey) {
+  const { createClient } = await import('@supabase/supabase-js');
+  return createClient(SUPABASE_PROJECT_URL, secretKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
+
+async function resolveThumbnailAdminUserId(secretKey) {
+  const configured = String(
+    process.env.NOVELIGHT_COMMANDER_ADMIN_USER_ID || ''
+  ).trim();
+  if (/^[0-9a-f-]{36}$/i.test(configured)) return configured;
+
+  const supabase = await productionSupabaseClient(secretKey);
+  const { data, error } = await supabase
+    .from('novel_thumbnail_assets')
+    .select('created_by')
+    .not('created_by', 'is', null)
+    .order('created_at', { ascending: true })
+    .limit(1);
+  if (error) {
+    throw new Error(
+      'Could not resolve the existing thumbnail admin identity: ' +
+        error.message
+    );
+  }
+  const discovered = String(data?.[0]?.created_by || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(discovered)) {
+    throw new Error(
+      'No existing thumbnail admin identity is available for registration.'
+    );
+  }
+  return discovered;
+}
+
+async function stageDownloadsPack(request, config) {
+  const source = resolveDownloadsZip(request.args.fileName);
+  const stat = await fs.stat(source).catch(error => {
+    if (error?.code === 'ENOENT') {
+      throw new Error('Official thumbnail ZIP was not found in Downloads.');
+    }
+    throw error;
+  });
+  if (!stat.isFile()) throw new Error('Official thumbnail ZIP is not a file.');
+
+  const relative = path.join(
+    'production-thumbnail-staging',
+    request.requestId,
+    path.basename(source)
+  );
+  const target = resolveDataPath(config, relative);
+  await fs.mkdir(path.dirname(target.candidate), { recursive: true });
+  await fs.copyFile(source, target.candidate);
+  return target;
+}
+
+async function inspectPackManifest(absoluteZipPath) {
+  const JSZip = (await import('jszip')).default;
+  const zip = await JSZip.loadAsync(await fs.readFile(absoluteZipPath));
+  const entry = zip.file('manifest.json');
+  if (!entry) throw new Error('manifest.json was not found in the ZIP.');
+  const manifest = JSON.parse(await entry.async('string'));
+  const items = Array.isArray(manifest.items) ? manifest.items : [];
+  if (!items.length) throw new Error('Thumbnail pack manifest has no items.');
+  const allowed = new Set([
+    'background',
+    'base_book',
+    'pattern',
+    'symbol',
+    'frame'
+  ]);
+  const layers = [...new Set(
+    items.map(item => String(item.layerType || item.sourceCategory || '').trim())
+  )];
+  for (const layer of layers) {
+    if (!allowed.has(layer)) {
+      throw new Error(
+        'Production Commander import does not allow layer type: ' + layer
+      );
+    }
+  }
+  return {
+    packKey: String(manifest.packKey || ''),
+    itemCount: items.length,
+    layers
+  };
+}
+
 function ensureNoArgs(args) {
   if (!exactKeys(args, [])) {
     throw new Error('This action does not accept args.');
@@ -407,6 +589,170 @@ async function actionNovelFetch(request, config) {
   ].join('\n');
 }
 
+
+async function actionThumbnailProductionReadiness(request, config) {
+  if (!exactKeys(request.args, ['fileName'])) {
+    throw new Error(
+      'thumbnail_production_readiness requires exactly fileName.'
+    );
+  }
+
+  const staged = await stageDownloadsPack(request, config);
+  const archivePath = path.join(
+    config.repoRoot,
+    'tools',
+    'novelight-commander',
+    'src',
+    'archive.js'
+  );
+  const securityPath = path.join(
+    config.repoRoot,
+    'tools',
+    'novelight-commander',
+    'src',
+    'security.js'
+  );
+  const [{ validateThumbnailPack }, { createSecurityConfig }] =
+    await Promise.all([
+      import(pathToFileURL(archivePath).href),
+      import(pathToFileURL(securityPath).href)
+    ]);
+  const security = createSecurityConfig({
+    ...process.env,
+    NOVELIGHT_COMMANDER_ROOT: config.dataRoot,
+    NOVELIGHT_COMMANDER_ALLOW_PRODUCTION: 'false'
+  });
+  const validation = await validateThumbnailPack(
+    staged.relative,
+    undefined,
+    security
+  );
+  if (!validation.ok) {
+    throw new Error(
+      'Thumbnail pack validation failed; Production registration is blocked.'
+    );
+  }
+
+  const manifest = await inspectPackManifest(staged.candidate);
+  const credential = await resolveHostedSupabaseSecret(config);
+  const adminUserId = await resolveThumbnailAdminUserId(credential.key);
+
+  return [
+    'file: ' + path.basename(staged.candidate),
+    'pack_key: ' + manifest.packKey,
+    'items: ' + manifest.itemCount,
+    'layers: ' + manifest.layers.join(','),
+    'validation: PASS',
+    'credential_source: ' + credential.source,
+    'admin_identity_ready: ' + Boolean(adminUserId),
+    'production_registration_ready: true'
+  ].join('\n');
+}
+
+async function actionThumbnailRegisterProduction(request, config) {
+  if (!exactKeys(request.args, ['fileName', 'confirmation'])) {
+    throw new Error(
+      'thumbnail_register_production requires exactly fileName and confirmation.'
+    );
+  }
+  if (
+    String(request.args.confirmation) !== THUMBNAIL_PRODUCTION_CONFIRMATION
+  ) {
+    throw new Error('Explicit Production thumbnail confirmation is required.');
+  }
+
+  const staged = await stageDownloadsPack(request, config);
+  const manifest = await inspectPackManifest(staged.candidate);
+  const credential = await resolveHostedSupabaseSecret(config);
+  const adminUserId = await resolveThumbnailAdminUserId(credential.key);
+
+  const registerPath = path.join(
+    config.repoRoot,
+    'tools',
+    'novelight-commander',
+    'src',
+    'thumbnail-register.js'
+  );
+  const securityPath = path.join(
+    config.repoRoot,
+    'tools',
+    'novelight-commander',
+    'src',
+    'security.js'
+  );
+  const [{ registerOfficialThumbnailPack }, { createSecurityConfig }] =
+    await Promise.all([
+      import(pathToFileURL(registerPath).href),
+      import(pathToFileURL(securityPath).href)
+    ]);
+  const security = createSecurityConfig({
+    ...process.env,
+    NOVELIGHT_COMMANDER_ROOT: config.dataRoot,
+    NOVELIGHT_COMMANDER_ALLOW_PRODUCTION: 'true'
+  });
+
+  const previous = {
+    url: process.env.NOVELIGHT_COMMANDER_SUPABASE_URL,
+    key: process.env.NOVELIGHT_COMMANDER_SUPABASE_SERVICE_ROLE_KEY,
+    admin: process.env.NOVELIGHT_COMMANDER_ADMIN_USER_ID
+  };
+  process.env.NOVELIGHT_COMMANDER_SUPABASE_URL = SUPABASE_PROJECT_URL;
+  process.env.NOVELIGHT_COMMANDER_SUPABASE_SERVICE_ROLE_KEY = credential.key;
+  process.env.NOVELIGHT_COMMANDER_ADMIN_USER_ID = adminUserId;
+
+  let registration;
+  try {
+    registration = await registerOfficialThumbnailPack(
+      staged.relative,
+      undefined,
+      THUMBNAIL_PRODUCTION_CONFIRMATION,
+      security
+    );
+  } finally {
+    for (const [name, value] of [
+      ['NOVELIGHT_COMMANDER_SUPABASE_URL', previous.url],
+      ['NOVELIGHT_COMMANDER_SUPABASE_SERVICE_ROLE_KEY', previous.key],
+      ['NOVELIGHT_COMMANDER_ADMIN_USER_ID', previous.admin]
+    ]) {
+      if (value == null) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+
+  const supabase = await productionSupabaseClient(credential.key);
+  const activeCounts = {};
+  for (const layer of manifest.layers) {
+    const { count, error } = await supabase
+      .from('novel_thumbnail_assets')
+      .select('id', { head: true, count: 'exact' })
+      .eq('layer_type', layer)
+      .eq('availability_status', 'active');
+    if (error) {
+      throw new Error(
+        'Post-registration active count failed for ' +
+          layer +
+          ': ' +
+          error.message
+      );
+    }
+    activeCounts[layer] = count;
+  }
+
+  return JSON.stringify(
+    {
+      packKey: manifest.packKey,
+      itemCount: manifest.itemCount,
+      layers: manifest.layers,
+      registered: registration.registered,
+      skipped: registration.skipped,
+      activeCounts,
+      result: 'SUCCESS'
+    },
+    null,
+    2
+  );
+}
+
 async function actionThumbnailValidate(request, config) {
   if (!exactKeys(request.args, ['file', 'category'])) {
     throw new Error('thumbnail_validate requires exactly file and category.');
@@ -530,6 +876,8 @@ const ACTIONS = new Map([
   ['preflight_fast', actionPreflightFast],
   ['commander_check', actionCommanderCheck],
   ['novel_fetch', actionNovelFetch],
+  ['thumbnail_production_readiness', actionThumbnailProductionReadiness],
+  ['thumbnail_register_production', actionThumbnailRegisterProduction],
   ['thumbnail_validate', actionThumbnailValidate],
   ['bridge_update', actionBridgeUpdate]
 ]);
@@ -644,6 +992,7 @@ async function pollOnce(config, token, state) {
 
 async function main() {
   const config = await loadConfig();
+  await loadCommanderDotEnv(config);
   const token = getToken();
   await fs.mkdir(config.dataRoot, { recursive: true });
   const state = await readJson(config.statePath, {
