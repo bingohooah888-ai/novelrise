@@ -426,8 +426,20 @@ async function dumpDomWithVisibleBrowser(url) {
       });
     });
     const webSocketUrl = await waitForCdpPage(port, url);
-    await sleep(12000);
-    return await readDomThroughCdp(webSocketUrl);
+    const deadline = Date.now() + 12000;
+    let lastHtml = "";
+    while (Date.now() < deadline) {
+      await sleep(lastHtml ? 1000 : 1800);
+      lastHtml = await readDomThroughCdp(webSocketUrl);
+      try {
+        extractCaitaPage(lastHtml, url);
+        return lastHtml;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/Caita body not found after render/i.test(message)) throw error;
+      }
+    }
+    return lastHtml;
   } finally {
     child?.kill();
     await sleep(500).catch(() => {});
@@ -435,8 +447,54 @@ async function dumpDomWithVisibleBrowser(url) {
   }
 }
 
+function caitaEpisodeNumber(label) {
+  const text = clean(label);
+  const match =
+    text.match(/第\s*(\d{1,4})\s*話/) ||
+    text.match(/(?:^|\s)(\d{1,4})\s*[./]/);
+  return match ? Number(match[1]) : null;
+}
+
 function extractCaitaPage(html, finalUrl) {
   const $ = cheerio.load(html);
+  const currentUrl = caitaEpisodeUrl(finalUrl) || finalUrl;
+  const linkedEpisodes = [];
+  const seenEpisodeUrls = new Set();
+  const navigationCandidates = [];
+  $("a[href]").each((_, element) => {
+    const href = $(element).attr("href");
+    if (!href) return;
+    let absolute;
+    try {
+      absolute = new URL(href, finalUrl).toString();
+    } catch {
+      return;
+    }
+    const episodeUrl = caitaEpisodeUrl(absolute);
+    if (!episodeUrl) return;
+    const label = clean(
+      [
+        $(element).text(),
+        $(element).attr("aria-label"),
+        $(element).attr("title"),
+        $(element).attr("rel")
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
+    const number = caitaEpisodeNumber(label);
+    if (!seenEpisodeUrls.has(episodeUrl)) {
+      seenEpisodeUrls.add(episodeUrl);
+      linkedEpisodes.push({ url: episodeUrl, label, number });
+    }
+    navigationCandidates.push({
+      url: episodeUrl,
+      label,
+      number,
+      rel: clean($(element).attr("rel"))
+    });
+  });
+
   $("script,style,noscript,nav,header,footer,aside").remove();
   const title =
     clean($('meta[property="og:title"]').attr("content")) ||
@@ -490,17 +548,74 @@ function extractCaitaPage(html, finalUrl) {
     totalEpisodesHint >= currentEpisodeHint &&
     totalEpisodesHint <= 1000;
 
+  const normalizedCurrent = caitaEpisodeUrl(currentUrl) || currentUrl;
+  if (!seenEpisodeUrls.has(normalizedCurrent)) {
+    linkedEpisodes.unshift({
+      url: normalizedCurrent,
+      label: title || "本文",
+      number: validProgress ? currentEpisodeHint : caitaEpisodeNumber(title)
+    });
+  }
+
+  const numbered = linkedEpisodes.filter(item => Number.isInteger(item.number));
+  if (numbered.length >= Math.max(2, Math.ceil(linkedEpisodes.length / 2))) {
+    linkedEpisodes.sort((a, b) => {
+      if (Number.isInteger(a.number) && Number.isInteger(b.number)) {
+        return a.number - b.number;
+      }
+      if (Number.isInteger(a.number)) return -1;
+      if (Number.isInteger(b.number)) return 1;
+      return 0;
+    });
+  }
+
+  let nextEpisodeUrl = null;
+  if (validProgress) {
+    nextEpisodeUrl =
+      linkedEpisodes.find(item => item.number === currentEpisodeHint + 1)?.url ||
+      null;
+  }
+  if (!nextEpisodeUrl) {
+    nextEpisodeUrl =
+      navigationCandidates.find(
+        item =>
+          item.url !== normalizedCurrent &&
+          (/\bnext\b/i.test(item.rel) ||
+            /(?:次の?話|次へ|つぎ|next|[›→])/i.test(item.label))
+      )?.url || null;
+  }
+  if (!nextEpisodeUrl) {
+    const currentIndex = linkedEpisodes.findIndex(
+      item => item.url === normalizedCurrent
+    );
+    if (currentIndex >= 0 && currentIndex + 1 < linkedEpisodes.length) {
+      nextEpisodeUrl = linkedEpisodes[currentIndex + 1].url;
+    }
+  }
+
+  const discoveredFromLinks = linkedEpisodes.length;
+  const expectedTotal = validProgress ? totalEpisodesHint : null;
+  const hasCompleteIndex =
+    Number.isInteger(expectedTotal) &&
+    discoveredFromLinks >= expectedTotal &&
+    linkedEpisodes.some(item => item.number === 1) &&
+    linkedEpisodes.some(item => item.number === expectedTotal);
+
   return {
     site: "caita",
     workUrl: finalUrl,
     title,
     author,
     synopsis: "",
-    episodes: [{ url: finalUrl, label: title || "本文" }],
+    episodes: linkedEpisodes.map(item => ({
+      url: item.url,
+      label: item.label || (item.number ? "第" + item.number + "話" : "本文")
+    })),
     inlineEpisode: { url: finalUrl, title, body },
-    partial: true,
+    partial: !hasCompleteIndex,
     currentEpisodeHint: validProgress ? currentEpisodeHint : null,
-    totalEpisodesHint: validProgress ? totalEpisodesHint : null
+    totalEpisodesHint: validProgress ? totalEpisodesHint : null,
+    nextEpisodeUrl
   };
 }
 
@@ -536,6 +651,111 @@ async function caitaPage(rawUrl) {
   return extractCaitaPage(visibleHtml, episodeUrl);
 }
 
+async function readCaitaNovel(rawUrl, options = {}) {
+  const delayMs = Math.max(300, Number(options.delayMs || 700));
+  const maxEpisodes = Math.max(
+    1,
+    Math.min(1000, Number(options.maxEpisodes || 500))
+  );
+  const startUrl = caitaEpisodeUrl(rawUrl);
+  if (!startUrl) {
+    throw new Error(
+      "Unsupported Caita URL. Use a public /viewer/episode/<id> URL."
+    );
+  }
+
+  const episodes = [];
+  const failures = [];
+  const seen = new Set();
+  let currentUrl = startUrl;
+  let firstPage = null;
+  let totalEpisodesHint = null;
+  let firstEpisodeHint = null;
+
+  while (currentUrl && episodes.length < maxEpisodes && !seen.has(currentUrl)) {
+    seen.add(currentUrl);
+    try {
+      const page = await caitaPage(currentUrl);
+      if (!firstPage) {
+        firstPage = page;
+        firstEpisodeHint = page.currentEpisodeHint;
+      }
+      if (Number.isInteger(page.totalEpisodesHint)) {
+        totalEpisodesHint = Math.max(
+          totalEpisodesHint || 0,
+          page.totalEpisodesHint
+        );
+      }
+
+      const inline = page.inlineEpisode;
+      const episodeNumber =
+        page.currentEpisodeHint || episodes.length + 1;
+      episodes.push({
+        number: episodeNumber,
+        url: inline.url,
+        title: inline.title || "Episode " + episodeNumber,
+        body: inline.body,
+        cached: false
+      });
+
+      if (
+        Number.isInteger(totalEpisodesHint) &&
+        firstEpisodeHint === 1 &&
+        episodes.length >= totalEpisodesHint
+      ) {
+        currentUrl = null;
+        break;
+      }
+
+      currentUrl = page.nextEpisodeUrl;
+      if (!currentUrl && page.episodes.length > 1) {
+        const currentIndex = page.episodes.findIndex(
+          item => item.url === inline.url
+        );
+        if (
+          currentIndex >= 0 &&
+          currentIndex + 1 < page.episodes.length
+        ) {
+          currentUrl = page.episodes[currentIndex + 1].url;
+        }
+      }
+    } catch (error) {
+      failures.push({
+        number: episodes.length + 1,
+        url: currentUrl,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      break;
+    }
+
+    if (currentUrl && episodes.length < maxEpisodes) {
+      await sleep(delayMs);
+    }
+  }
+
+  const discoveredEpisodes = totalEpisodesHint || episodes.length;
+  const complete =
+    failures.length === 0 &&
+    firstEpisodeHint === 1 &&
+    Number.isInteger(totalEpisodesHint) &&
+    episodes.length === totalEpisodesHint;
+
+  return {
+    site: "caita",
+    workUrl: startUrl,
+    title: firstPage?.title || "",
+    author: firstPage?.author || "",
+    synopsis: "",
+    discoveredEpisodes,
+    requestedEpisodes: Math.min(maxEpisodes, discoveredEpisodes),
+    fetchedEpisodes: episodes.length,
+    complete,
+    truncated: !complete,
+    failures,
+    episodes
+  };
+}
+
 async function genericPage(url) {
   const { html, url: finalUrl } = await fetchHtml(url);
   const $ = cheerio.load(html);
@@ -549,9 +769,10 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 export async function readNovel(rawUrl, options = {}) {
   const site = detectNovelSite(rawUrl);
+  if (site === "caita") return readCaitaNovel(rawUrl, options);
   const delayMs = Math.max(300, Number(options.delayMs || 700));
   const maxEpisodes = Math.max(1, Math.min(1000, Number(options.maxEpisodes || 500)));
-  const index = site === "narou" ? await narouIndex(rawUrl) : site === "kakuyomu" ? await kakuyomuIndex(rawUrl) : site === "alphapolis" ? await alphapolisIndex(rawUrl) : site === "caita" ? await caitaPage(rawUrl) : await genericPage(rawUrl);
+  const index = site === "narou" ? await narouIndex(rawUrl) : site === "kakuyomu" ? await kakuyomuIndex(rawUrl) : site === "alphapolis" ? await alphapolisIndex(rawUrl) : await genericPage(rawUrl);
   const selected = index.episodes.slice(0, maxEpisodes);
   const episodes = [];
   const failures = [];
