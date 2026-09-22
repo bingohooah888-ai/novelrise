@@ -1,4 +1,5 @@
 import { createHash, createHmac } from 'node:crypto';
+import { URL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from './_lib/admin-auth.js';
 import { getAppBaseUrl } from './_lib/app-base-url.js';
@@ -269,7 +270,7 @@ async function sendInvite(preregistration) {
   }
 
   const url = inviteUrl(token);
-  const response = await fetch(RESEND_ENDPOINT, {
+  const response = await globalThis.fetch(RESEND_ENDPOINT, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
