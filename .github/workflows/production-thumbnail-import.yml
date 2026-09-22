@@ -70,9 +70,9 @@ jobs:
           file_name="$(echo "$payload" | jq -r '.fileName')"
 
           comments="$(gh api --paginate             "repos/$GITHUB_REPOSITORY/issues/657/comments?per_page=100")"
-          reused="$(echo "$comments" | jq --arg challenge "$challenge" '
+          reused="$(echo "$comments" | jq -s --arg challenge "$challenge" '
             [
-              .[] |
+              .[][] |
               select(
                 (.body | startswith("NOVELIGHT_THUMBNAIL_IMPORT_CLAIMED ")) or
                 (.body | startswith("NOVELIGHT_THUMBNAIL_IMPORT_EXECUTED "))
