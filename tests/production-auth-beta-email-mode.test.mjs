@@ -9,10 +9,7 @@ const workflow = await readFile(
 const ledger = JSON.parse(
   await readFile('production-approval-ledger.json', 'utf8')
 );
-const runbookSource = await readFile(
-  'docs/BETA-OPERATIONS-RUNBOOK.md',
-  'utf8'
-);
+const runbookSource = await readFile('docs/BETA-OPERATIONS-RUNBOOK.md', 'utf8');
 const checklistSource = await readFile(
   'docs/BETA-RELEASE-CHECKLIST.md',
   'utf8'
@@ -30,14 +27,8 @@ test('beta no-mail Auth control stays bound to the active Production ledger', ()
 
 test('beta no-mail Auth request is PRE_REGISTRATION-only and one-time approved', () => {
   assert.match(workflow, /\.campaign\.state == "PRE_REGISTRATION"/u);
-  assert.match(
-    workflow,
-    /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_APPROVE/u
-  );
-  assert.match(
-    workflow,
-    /auth-beta-email-\[0-9a-f\]\{40\}-\[0-9\]\+/u
-  );
+  assert.match(workflow, /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_APPROVE/u);
+  assert.match(workflow, /auth-beta-email-\[0-9a-f\]\{40\}-\[0-9\]\+/u);
   assert.match(workflow, /expires_at/u);
   assert.match(workflow, /already used/u);
   assert.match(workflow, /main changed after beta Auth email-mode approval/u);
@@ -45,7 +36,10 @@ test('beta no-mail Auth request is PRE_REGISTRATION-only and one-time approved',
 
 test('beta no-mail Auth mutation changes only mailer_autoconfirm', () => {
   assert.match(workflow, /payload='\{"mailer_autoconfirm":true\}'/u);
-  assert.match(workflow, /test "\$\(jq 'keys \| length' <<<"\$payload"\)" -eq 1/u);
+  assert.match(
+    workflow,
+    /test "\$\(jq 'keys \| length' <<<"\$payload"\)" -eq 1/u
+  );
   assert.doesNotMatch(
     workflow,
     /payload='\{[^\n]*(?:smtp_|hook_send_email|hook_before_user_created)[^\n]*\}'/u
@@ -71,31 +65,30 @@ test('beta no-mail Auth control claims, records and rolls back safely', () => {
   const mutationIndex = workflow.indexOf('Enable only beta signup autoconfirm');
   assert.ok(claimIndex >= 0);
   assert.ok(mutationIndex > claimIndex);
-  assert.match(
-    workflow,
-    /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_CLAIMED/u
-  );
-  assert.match(
-    workflow,
-    /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_CONSUMED/u
-  );
-  assert.match(
-    workflow,
-    /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_FAILED/u
-  );
-  assert.match(
-    workflow,
-    /\{mailer_autoconfirm:\$value\}/u
-  );
+  assert.match(workflow, /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_CLAIMED/u);
+  assert.match(workflow, /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_CONSUMED/u);
+  assert.match(workflow, /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_FAILED/u);
+  assert.match(workflow, /\{mailer_autoconfirm:\$value\}/u);
   assert.match(workflow, /auth-rollback\.json/u);
 });
 
-
 test('beta no-mail Auth operations are documented as temporary and preopen-gated', () => {
   assert.match(runbookSource, /Temporary beta no-mail Auth mode/u);
-  assert.match(runbookSource, /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST/u);
+  assert.match(
+    runbookSource,
+    /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST/u
+  );
   assert.match(runbookSource, /mailer_autoconfirm=true/u);
-  assert.match(runbookSource, /This proves preregistration eligibility, not ownership of the inbox/u);
-  assert.match(checklistSource, /Temporary beta no-mail Auth mode is deployed and Production-postchecked/u);
-  assert.match(checklistSource, /Required before the 2026-09-28 author preopen/u);
+  assert.match(
+    runbookSource,
+    /This proves preregistration eligibility, not ownership of the inbox/u
+  );
+  assert.match(
+    checklistSource,
+    /Temporary beta no-mail Auth mode is deployed and Production-postchecked/u
+  );
+  assert.match(
+    checklistSource,
+    /Required before the 2026-09-28 author preopen/u
+  );
 });
