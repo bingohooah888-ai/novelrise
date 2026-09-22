@@ -95,7 +95,6 @@ test('Commander startup retries GitHub when network is not ready', async () => {
   assert.match(mainSource, /'poll-error'/);
 });
 
-
 test('Commander runner watchdog restarts daemon exits', async () => {
   const source = await readFile(runnerPath, 'utf8');
 
