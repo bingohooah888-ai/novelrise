@@ -71,13 +71,16 @@ jobs:
 
           reused="$(
             gh api --paginate \
-              "repos/$GITHUB_REPOSITORY/issues/657/comments?per_page=100" \
-              --jq '.[] | .body // ""' |
-              grep -E '^NOVELIGHT_THUMBNAIL_IMPORT_(CLAIMED|EXECUTED) ' |
-              grep -F "\"challenge\":\"$challenge\"" -c ||
-              true
+              "repos/$GITHUB_REPOSITORY/issues/657/comments?per_page=100" |
+              jq -r '.[] | .body // ""' |
+              awk -v challenge="$challenge" '
+                /^NOVELIGHT_THUMBNAIL_IMPORT_(CLAIMED|EXECUTED) / &&
+                index($0, "\"challenge\":\"" challenge "\"") { reused += 1 }
+                END { print reused + 0 }
+              '
           )"
           reused="${reused:-0}"
+          echo "Consumed approval count for challenge: $reused"
           test "$reused" -eq 0 || {
             echo 'Safety stop: thumbnail import approval was already consumed.'
             exit 1
