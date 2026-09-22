@@ -684,7 +684,6 @@ async function main() {
     lastSeenAt: null,
     processedRequestIds: []
   });
-  await validateControlIssue(config, token);
   await appendAudit(config, 'daemon-start', {
     issueNumber: config.issueNumber,
     pollSeconds: config.pollSeconds

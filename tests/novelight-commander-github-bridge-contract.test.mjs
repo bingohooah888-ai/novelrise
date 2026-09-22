@@ -81,6 +81,19 @@ test('Commander bridge update is fast-forward only and restarts safely', async (
   assert.match(source, /writeJson\(config\.statePath, state\)/);
 });
 
+test('Commander startup retries GitHub when network is not ready', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+  const mainIndex = source.indexOf('async function main()');
+  const mainSource = source.slice(mainIndex);
+
+  assert.doesNotMatch(
+    mainSource.split('while (!stopping)')[0],
+    /validateControlIssue\(config, token\)/
+  );
+  assert.match(mainSource, /await pollOnce\(config, token, state\)/);
+  assert.match(mainSource, /'poll-error'/);
+});
+
 test('Commander package checks the bridge daemon', async () => {
   const source = await readFile(packagePath, 'utf8');
   assert.match(source, /github-bridge-daemon\.js/);

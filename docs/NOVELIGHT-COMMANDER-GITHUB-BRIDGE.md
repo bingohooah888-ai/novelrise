@@ -103,3 +103,8 @@ Bridge自身のconfig / state / DPAPI token / audit / logは次へ保存しま�
 ## Production
 
 本番DB、Secret、Stripe、Vercel Production、main merge等は既存NOVELIGHT Production approval flowを使います。このBridgeは通常ローカル開発・検証だけを担当します。
+
+
+## Windows再起動時のネットワーク待機
+
+Windowsログイン直後にネットワークが未確立でもBridgeプロセスは終了しません。GitHub pollingの失敗は `poll-error` としてローカル監査ログへ記録し、設定されたpoll間隔で自動再試行します。これによりStartup起動がネットワーク初期化より先でも自動復旧します。
