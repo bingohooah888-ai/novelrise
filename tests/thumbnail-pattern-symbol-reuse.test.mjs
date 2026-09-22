@@ -4,21 +4,23 @@ import test from 'node:test';
 
 const composer = await readFile('novelight-thumbnail-composer.js', 'utf8');
 const migration = await readFile(
-  'supabase/migrations/20260923004500_reuse_patterns_as_symbols.sql',
+  'supabase/migrations/20260923061500_move_legacy_patterns_to_symbols.sql',
   'utf8'
 );
 
-test('central symbol picker also exposes active background patterns', () => {
-  assert.match(
+test('thumbnail pickers expose only assets owned by their requested layer', () => {
+  assert.match(composer, /asset\.layer_type === layerType/);
+  assert.doesNotMatch(
     composer,
     /layerType === 'symbol' && asset\.layer_type === 'pattern'/
   );
 });
 
-test('composition persistence accepts a pattern asset only for the symbol slot', () => {
-  assert.match(migration, /v_layer\.layer_type = 'symbol'/);
-  assert.match(migration, /a\.layer_type = 'pattern'/);
-  assert.match(migration, /a\.layer_type = v_layer\.layer_type/);
-  assert.match(migration, /a\.availability_status = 'active'/);
-  assert.match(migration, /a\.template_key = v_template/);
+test('legacy background-pattern rows are moved to the symbol layer', () => {
+  assert.match(migration, /set layer_type = 'symbol'/);
+  assert.match(migration, /and layer_type = 'pattern'/);
+  assert.match(migration, /and template_key = 'book-v1'/);
+  assert.match(migration, /and availability_status = 'active'/);
+  const ids = migration.match(/[0-9a-f]{8}-[0-9a-f-]{27,}/g) || [];
+  assert.equal(ids.length, 8);
 });
