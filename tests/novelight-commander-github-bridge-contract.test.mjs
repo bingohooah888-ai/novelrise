@@ -129,17 +129,13 @@ test('Commander never returns Supabase Production credentials', async () => {
   assert.doesNotMatch(source, /console\.(?:log|error)\([^\n]*credential\.key/);
 });
 
-
 test('Commander uses canonical repo manifest for legacy background pack', async () => {
   const source = await readFile(daemonPath, 'utf8');
 
   assert.match(source, /NOVELIGHT_background_official_v1\.zip/);
   assert.match(source, /novelight-thumbnail-background-v1\.json/);
   assert.match(source, /source: 'repo-canonical'/);
-  assert.match(
-    source,
-    /preparedManifest\.manifestRelative/
-  );
+  assert.match(source, /preparedManifest\.manifestRelative/);
 });
 
 test('Commander package checks the bridge daemon', async () => {
