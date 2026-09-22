@@ -585,12 +585,29 @@ async function processComment(comment, config, token, state) {
     const details = await executeRequest(request, config);
     await postResult(config, token, request, 'success', details);
     if (request.action === 'bridge_update') {
+      if (!state.processedRequestIds.includes(request.requestId)) {
+        state.processedRequestIds.push(request.requestId);
+        state.processedRequestIds = state.processedRequestIds.slice(-500);
+      }
+      state.lastCommentId = Math.max(
+        Number(state.lastCommentId || 0),
+        Number(comment.id || 0)
+      );
+      state.lastSeenAt = comment.created_at || state.lastSeenAt;
+      await writeJson(config.statePath, state);
+
       const runnerScript = path.join(
         config.repoRoot,
         'tools',
         'novelight-commander',
         'run-github-bridge.ps1'
       );
+      const quotePs = value => "'" + String(value).replaceAll("'", "''") + "'";
+      const restartCommand =
+        'Start-Sleep -Seconds 2; & ' +
+        quotePs(runnerScript) +
+        ' -ConfigPath ' +
+        quotePs(config.configPath);
       const restart = spawn(
         'powershell.exe',
         [
@@ -600,10 +617,7 @@ async function processComment(comment, config, token, state) {
           '-WindowStyle',
           'Hidden',
           '-Command',
-          'Start-Sleep -Seconds 2; & ' +
-            JSON.stringify(runnerScript) +
-            ' -ConfigPath ' +
-            JSON.stringify(config.configPath)
+          restartCommand
         ],
         {
           cwd: config.repoRoot,
