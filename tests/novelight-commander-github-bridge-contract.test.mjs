@@ -81,7 +81,6 @@ test('Commander bridge update is fast-forward only and restarts safely', async (
   assert.match(source, /writeJson\(config\.statePath, state\)/);
 });
 
-
 test('Commander startup retries GitHub when network is not ready', async () => {
   const source = await readFile(daemonPath, 'utf8');
   const mainIndex = source.indexOf('async function main()');
