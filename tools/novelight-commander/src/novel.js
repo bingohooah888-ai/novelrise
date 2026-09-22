@@ -432,8 +432,14 @@ async function dumpDomWithVisibleBrowser(url) {
       await sleep(lastHtml ? 1000 : 1800);
       lastHtml = await readDomThroughCdp(webSocketUrl);
       try {
-        extractCaitaPage(lastHtml, url);
-        return lastHtml;
+        const parsed = extractCaitaPage(lastHtml, url);
+        const navigationReady =
+          Boolean(parsed.nextEpisodeUrl) ||
+          parsed.episodes.length > 1 ||
+          (Number.isInteger(parsed.currentEpisodeHint) &&
+            Number.isInteger(parsed.totalEpisodesHint) &&
+            parsed.currentEpisodeHint >= parsed.totalEpisodesHint);
+        if (navigationReady) return lastHtml;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (!/Caita body not found after render/i.test(message)) throw error;
