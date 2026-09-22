@@ -103,3 +103,12 @@ test('Commander exposes the NOVELIGHT operations surface', async () => {
     assert.ok(source.includes(marker), name);
   }
 });
+
+
+test('NLO novel reader recognizes public Caita episode URLs', async () => {
+  const novelFile = path.join(commander, 'src/novel.js');
+  const novelUrl = pathToFileURL(novelFile).href + '?caita=' + Date.now();
+  const novel = await import(novelUrl);
+  assert.equal(novel.detectNovelSite('https://caita.ai/viewer/episode/01K1YV5ES9H3AEH3C3F2WAD7WV'), 'caita');
+  assert.equal(novel.detectNovelSite('https://www.caita.ai/viewer/episode/01K1YV5ES9H3AEH3C3F2WAD7WV'), 'caita');
+});
