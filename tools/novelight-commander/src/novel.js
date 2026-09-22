@@ -592,6 +592,7 @@ function caitaEpisodeNumber(label) {
 
 function extractCaitaPage(html, finalUrl) {
   const $ = cheerio.load(html);
+  const pageTextWithNavigation = clean($.root().text());
   const currentUrl = caitaEpisodeUrl(finalUrl) || finalUrl;
   const linkedEpisodes = [];
   const seenEpisodeUrls = new Set();
@@ -673,7 +674,9 @@ function extractCaitaPage(html, finalUrl) {
         ")"
     );
   }
-  const progressMatch = body.match(/(?:^|\s)(\d{1,4})\s*\/\s*(\d{1,4})(?:\s|$)/);
+  const progressMatch = pageTextWithNavigation.match(
+    /(?:^|[^\d])(\d{1,4})\s*\/\s*(\d{1,4})(?!\d)/
+  );
   const currentEpisodeHint = progressMatch ? Number(progressMatch[1]) : null;
   const totalEpisodesHint = progressMatch ? Number(progressMatch[2]) : null;
   const validProgress =
