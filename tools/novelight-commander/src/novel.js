@@ -809,6 +809,8 @@ async function readCaitaNovel(rawUrl, options = {}) {
   let firstPage = null;
   let totalEpisodesHint = null;
   let firstEpisodeHint = null;
+  let lastEpisodeHint = null;
+  let endedNaturally = false;
   let session = null;
 
   try {
@@ -835,7 +837,10 @@ async function readCaitaNovel(rawUrl, options = {}) {
 
       const inline = page.inlineEpisode;
       const episodeNumber =
-        page.currentEpisodeHint || episodes.length + 1;
+        page.currentEpisodeHint ||
+        caitaEpisodeNumber(page.title) ||
+        episodes.length + 1;
+      lastEpisodeHint = episodeNumber;
       episodes.push({
         number: episodeNumber,
         url: inline.url,
@@ -865,6 +870,7 @@ async function readCaitaNovel(rawUrl, options = {}) {
           currentUrl = page.episodes[currentIndex + 1].url;
         }
       }
+      if (!currentUrl) endedNaturally = true;
       } catch (error) {
         failures.push({
           number: episodes.length + 1,
@@ -883,11 +889,18 @@ async function readCaitaNovel(rawUrl, options = {}) {
   }
 
   const discoveredEpisodes = totalEpisodesHint || episodes.length;
-  const complete =
-    failures.length === 0 &&
+  const contiguousFromFirst =
     firstEpisodeHint === 1 &&
+    lastEpisodeHint === episodes.length &&
+    episodes.every((episode, index) => episode.number === index + 1);
+  const reachedKnownTotal =
     Number.isInteger(totalEpisodesHint) &&
     episodes.length === totalEpisodesHint;
+  const reachedNaturalSeriesEnd =
+    endedNaturally && contiguousFromFirst && episodes.length > 0;
+  const complete =
+    failures.length === 0 &&
+    (reachedKnownTotal || reachedNaturalSeriesEnd);
 
   return {
     site: "caita",
