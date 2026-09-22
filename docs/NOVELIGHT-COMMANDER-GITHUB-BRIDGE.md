@@ -108,3 +108,8 @@ Bridge自身のconfig / state / DPAPI token / audit / logは次へ保存しま�
 ## Windows再起動時のネットワーク待機
 
 Windowsログイン直後にネットワークが未確立でもBridgeプロセスは終了しません。GitHub pollingの失敗は `poll-error` としてローカル監査ログへ記録し、設定されたpoll間隔で自動再試行します。これによりStartup起動がネットワーク初期化より先でも自動復旧します。
+
+
+## Bridge watchdog
+
+`run-github-bridge.ps1` はBridge daemonの外側でwatchdogとして常駐します。daemonが自己更新や一時的なクラッシュで終了した場合、watchdogは2秒待って再起動します。これにより `bridge_update` は新しいPowerShellプロセスを自分で生成せず、状態保存後に正常終了するだけで最新版へ切り替えられます。
