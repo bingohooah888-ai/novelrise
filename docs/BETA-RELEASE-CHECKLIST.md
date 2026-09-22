@@ -4,6 +4,33 @@ This checklist is the final operational gate after code review/CI. A checked box
 
 **Reconciled: 2026-09-22 JST.**
 
+
+## 2026-09-22 post-PR #806 full-audit reconciliation
+
+This section records the repository-wide read-only audit performed after PR #806 reached Production. It supersedes older "current main" wording where the scope overlaps; older evidence remains historical.
+
+- [x] Audited material application baseline is `ae89fec6b6d344cdceff48f3bfbb6b61cf1c774b` (PR #806, `Strengthen author post-publish management path`).
+- [x] PR #806 final reviewed head `67c87ad06a05c32c0dcd20d06ee9f3742634468b` and merged main `ae89fec...` have the identical Git tree `2a297791021f0902543b98f68ebb14c26c3a1f5e`; reviewed-head CI therefore covers the exact merged file content.
+- [x] PR #806 `NOVELIGHT CI` run `35698654726` succeeded: 1,146/1,146 Node tests, static quality, desktop/mobile smoke (26/26 each), desktop/mobile async-UI (38/38 each), and aggregate `check`.
+- [x] PR #806 CodeQL run `35698654794` succeeded.
+- [x] Final authenticated Staging smoke run `35698714196` succeeded for desktop, mobile, cleanup, and Stripe test checkout/entitlement/portal/cancellation; Staging Live Proof run `35698714172` succeeded.
+- [x] Merged main `ae89fec...` reports `Vercel: success` and `production-readiness-smoke: success`; Production Readiness run `35701176054` succeeded.
+- [x] Latest observed Production Backup Freshness run `35670990177` succeeded; newest completed backup was 3.16 hours old against a 36-hour limit.
+- [x] Latest observed scheduled Production Billing Guard run `35660233460` succeeded with `issueCodes=[]`, `warningCodes=[]`, and no approval-requiring remediation.
+- [x] Latest observed Beta Ops Inbox Watch run `35688886965` succeeded with 0 new content reports and 0 new contact inquiries.
+- [x] Fresh open-issue searches found no open `bug` or explicit `beta blocker`; Issue #200 remains the launch-control issue.
+- [x] 31 obsolete/request-only Production Auth Smoke approval issues were closed as not planned. No successful consumed Auth Smoke evidence or active Approval Ledger was removed.
+- [x] Clearly superseded stale feature/audit PRs #247, #297, #358, #413, #415, #476, #487, #618, #622, #623, and #624 were closed. Dependency-update PRs remain separate and are not treated as beta-launch work.
+- [x] No Production Auth Smoke, migration, DB/RLS mutation, Stripe live mutation, Secret/env change, or campaign-state mutation was executed for this audit.
+- [ ] PR #808 contains the preregistration copy fix that removes the obsolete promise to email participation instructions. It is not Production evidence until separately approved and merged.
+- [ ] 2026-09-28 `PRE_REGISTRATION -> AUTHOR_PREOPEN` remains a future gate and is not executed or pre-authorized here.
+- [ ] 2026-09-29 content-inventory / first-reader-path remains a future read-only gate and must not be run early.
+- [ ] 2026-09-30 `AUTHOR_PREOPEN -> BETA_OPEN` remains a future launch mutation and is not executed or pre-authorized here.
+- [ ] Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.
+
+**Full-audit verdict:** no new non-deferred technical beta blocker was identified on the audited material application baseline. The temporary no-mail Auth ownership-verification limitation remains an explicitly accepted beta operational risk; it is not converted into a stronger identity-verification claim.
+
+
 ## 2026-09-22 post-9/20 material feature-chain reconciliation
 
 This section records the broad current-state evidence for material beta work merged after the last final-audit baseline. It complements, and does not rerun, the separate beta no-mail Auth reconciliation below.

@@ -2,6 +2,40 @@
 
 **Reconciled: 2026-09-22 JST**
 
+
+## 2026-09-22 post-PR #806 full-audit reconciliation
+
+The audited material application baseline is `ae89fec6b6d344cdceff48f3bfbb6b61cf1c774b` (PR #806). This documentation reconciliation may advance repository `main` without changing that audited application tree.
+
+PR #806 final reviewed head `67c87ad06a05c32c0dcd20d06ee9f3742634468b` and squash-merged main `ae89fec...` both resolve to Git tree `2a297791021f0902543b98f68ebb14c26c3a1f5e`. The successful reviewed-head test evidence therefore covers the exact merged file content:
+
+- `NOVELIGHT CI` run `35698654726`: success; Node tests 1,146/1,146, static quality, desktop/mobile smoke 26/26 each, desktop/mobile async-UI 38/38 each, aggregate `check`;
+- CodeQL run `35698654794`: success;
+- authenticated Staging smoke `35698714196`: success for desktop, mobile, cleanup, and Stripe test lifecycle;
+- Staging Live Proof `35698714172`: success.
+
+Exact merged-main post-deploy evidence:
+
+- Vercel commit status: `success`;
+- `production-readiness-smoke` commit status: `success`;
+- `NOVELIGHT Production Readiness Smoke` run `35701176054`: success;
+- High-Risk Merge Production Readiness Bridge run `35701156063`: success.
+
+Operational read-only evidence observed during the audit remains healthy:
+
+- Production Backup Freshness run `35670990177`: success; latest completed backup 3.16 hours old against a 36-hour maximum;
+- scheduled Production Billing Guard run `35660233460`: success, `issueCodes=[]`, `warningCodes=[]`, no approval-requiring remediation;
+- Beta Ops Inbox Watch run `35688886965`: success, 0 new content reports and 0 new contact inquiries.
+
+Fresh repository searches found no open `bug` issue and no explicit `beta blocker`. Issue #200 remains the future launch-control issue. Repository hygiene was tightened without touching Production: 31 obsolete/request-only Production Auth Smoke approval issues were closed, and clearly superseded stale feature/audit PRs #247, #297, #358, #413, #415, #476, #487, #618, #622, #623, and #624 were closed. Active Approval Ledger issues and successful consumed Production evidence were preserved. High-risk dependency updates, including Stripe major-version PR #709, remain unmerged and are not launch prerequisites.
+
+The audit also found one public-copy inconsistency: the preregistration success state promised participation instructions by email even though the current beta no-mail operating model does not provide that delivery path. PR #808 fixes the public copy and pins the no-mail wording with a regression test. Until PR #808 is separately approved and merged, it is pending remediation rather than Production evidence.
+
+No Production Auth Smoke was repeated. Request-only Issue #807 was closed rather than approved because request creation is not PASS evidence and the prior consumed Auth proof remains still-valid under the current evidence-freshness rules. No migration, DB/RLS mutation, Stripe live mutation, Secret/env mutation, campaign-state cutover, or future launch gate was executed by this audit.
+
+**Current audit posture:** no new non-deferred technical beta blocker was identified on `ae89fec...`. The known temporary no-mail Auth model verifies preregistration eligibility by submitted email value but does not prove inbox ownership; that limitation remains an explicit beta operational risk and is not represented as verified email ownership. The 2026-09-28 `AUTHOR_PREOPEN`, 2026-09-29 inventory/first-reader-path, and 2026-09-30 `BETA_OPEN` gates remain future, separately controlled operations. Qualified Japanese counsel review remains deferred/pending and is not a legal PASS.
+
+
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
 
 ## 2026-09-22 post-9/20 material feature-chain reconciliation
