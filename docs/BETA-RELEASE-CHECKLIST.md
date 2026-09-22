@@ -4,6 +4,21 @@ This checklist is the final operational gate after code review/CI. A checked box
 
 **Reconciled: 2026-09-22 JST.**
 
+## 2026-09-22 post-9/20 material feature-chain reconciliation
+
+This section records the broad current-state evidence for material beta work merged after the last final-audit baseline. It complements, and does not rerun, the separate beta no-mail Auth reconciliation below.
+
+- [x] Live repository `main` at reconciliation is `08142bd2c89f3bdec3cc83cb9fd971932ce66b00` (PR #803, docs-only); material application baseline remains PR #800 at `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3`.
+- [x] Material-main commit statuses remain `Vercel: success` and `production-readiness-smoke: success`.
+- [x] PRs #733, #735, #740, #742, #744, #748, #750, #766, #770, #776, #778, #780, #782, #784, #791, #793, #794, #796, and #800 each have successful PR-head `NOVELIGHT CI` and `CodeQL` evidence.
+- [x] Production migrations `20260920122000`, `20260920152733`, `20260920082032`, `20260920093847`, `20260920204000`, `20260920221000`, `20260920223049`, `20260921022608`, `20260921025328`, `20260921063000`, and `20260921120552` all have matching Approval Ledger `EXECUTED` records with successful mutation and postcheck results.
+- [x] The feature-chain scope includes Founding/Beta qualification, Free two-work limit, episode hearts, inline illustrations, thumbnail geometry/material handling, official tags, SCOUT RECORD core/badges/KPI/navigation, beta bulk episode import, official background batch import, and private account-settings work now present on current main.
+- [x] Fresh open-issue searches for beta blocker/P0/P1/preopen/launch identify Issue #200 as the active launch-control item; no current open `bug` issue was returned. Generated approval-request/ledger issues are audit/control records, not new product blockers.
+- [x] Evidence-freshness verdict for the already-executed feature-chain migrations and PR #800 Auth work is `current`; do not rerun them for timestamp or SHA alignment.
+- [ ] 2026-09-28 `PRE_REGISTRATION -> AUTHOR_PREOPEN` remains a future gate and is not executed or pre-authorized by this reconciliation.
+- [ ] 2026-09-29 content-inventory / first-reader-path remains a future read-only gate and must not be run early.
+- [ ] 2026-09-30 `AUTHOR_PREOPEN -> BETA_OPEN` remains a future launch mutation and is not executed or pre-authorized by this reconciliation.
+
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
 The **current material application baseline at this reconciliation** is `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3` (PR #800, `Add temporary beta no-mail Auth mode`). Exact-main Vercel and `production-readiness-smoke` statuses are `success`, and the approval-gated Production Authenticated Smoke converged on the same SHA. Live `main` must still be resolved again at each future cutover under `docs/EVIDENCE-FRESHNESS-GATE.md`.
