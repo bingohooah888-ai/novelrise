@@ -22,7 +22,7 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
   assert.match(authenticatedSmoke, /さんの創作室/);
   assert.match(authenticatedSmoke, /\.action-post \.card-cta/);
   assert.match(authenticatedSmoke, /#backToMyNovels/);
-  assert.match(authenticatedSmoke, /\/my-novels\.html/);
+  assert.match(authenticatedSmoke, /toHaveAttribute\('href', 'my-novels\.html'\)/);
   assert.match(authenticatedSmoke, /managedWork/);
   assert.match(authenticatedSmoke, /#currentPassword/);
   assert.match(authenticatedSmoke, /NOVELIGHT smoke boundary intercept/);
