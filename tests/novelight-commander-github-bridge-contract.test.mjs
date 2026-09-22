@@ -138,7 +138,6 @@ test('Commander uses canonical repo manifest for legacy background pack', async 
   assert.match(source, /preparedManifest\.manifestRelative/);
 });
 
-
 test('Commander can source Production Supabase credential from Vercel', async () => {
   const source = await readFile(daemonPath, 'utf8');
 
