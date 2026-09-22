@@ -312,24 +312,63 @@ function extractCaitaPage(html, finalUrl) {
     clean($('[class*="author"]').first().text()) ||
     clean($('meta[name="author"]').attr("content"));
   let body = "";
-  for (const selector of [
-    '[itemprop="articleBody"]',
-    '[class*="episode-body"]',
-    '[class*="episodeBody"]',
-    '[class*="viewer"][class*="body"]',
-    '[data-testid*="episode"]',
-    "article",
-    "main"
-  ]) {
-    const texts = $(selector)
-      .toArray()
-      .map(node => clean($(node).text()))
-      .filter(Boolean)
-      .sort((a, b) => b.length - a.length);
-    if (texts[0] && texts[0].length > body.length) body = texts[0];
+  const candidates = [];
+  const selectors = [
+    ['[itemprop="articleBody"]', 5000],
+    ['[class*="episode-body"]', 4500],
+    ['[class*="episodeBody"]', 4500],
+    ['[class*="viewer"][class*="body"]', 4000],
+    ['[data-testid*="episode"]', 3500],
+    ['[role="main"]', 2500],
+    ["article", 2000],
+    ["main", 1500],
+    ['[class*="novel"]', 800],
+    ['[class*="content"]', 500],
+    ['[class*="text"]', 400],
+    ["section", 200],
+    ["div", 0]
+  ];
+  for (const [selector, bonus] of selectors) {
+    $(selector).each((_, node) => {
+      const text = clean($(node).text());
+      if (text.length < 80) return;
+      const linkText = clean($(node).find("a").text());
+      const controlsText = clean($(node).find("button,input,select,textarea").text());
+      const paragraphs = $(node).find("p,br,blockquote").length;
+      const score =
+        text.length +
+        Math.min(paragraphs, 120) * 75 +
+        bonus -
+        linkText.length * 2 -
+        controlsText.length * 4;
+      candidates.push({ text, score });
+    });
   }
+  candidates.sort((a, b) => b.score - a.score);
+  body = candidates[0]?.text || "";
   if (!body || body.length < 80) {
-    throw new Error("Caita body not found after render: " + finalUrl);
+    const documentText = clean($("body").text());
+    const structural = [];
+    $("body *").each((_, node) => {
+      const text = clean($(node).text());
+      if (text.length < 40) return;
+      structural.push({
+        tag: String(node.tagName || node.name || "").toLowerCase(),
+        id: String($(node).attr("id") || "").slice(0, 80),
+        className: String($(node).attr("class") || "").slice(0, 160),
+        chars: text.length,
+        paragraphs: $(node).find("p,br,blockquote").length
+      });
+    });
+    structural.sort((a, b) => b.chars - a.chars);
+    throw new Error(
+      "Caita body not found after render: " +
+        finalUrl +
+        " documentChars=" +
+        documentText.length +
+        " structure=" +
+        JSON.stringify(structural.slice(0, 12))
+    );
   }
   return {
     site: "caita",
