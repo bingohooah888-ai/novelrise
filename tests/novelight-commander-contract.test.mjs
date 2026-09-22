@@ -132,8 +132,5 @@ test('NLO novel reader recognizes public Caita episode URLs', async () => {
   assert.match(source, /reachedNaturalSeriesEnd/);
   assert.match(source, /contiguousFromFirst/);
   assert.match(source, /currentNumber \+ 1/);
-  assert.doesNotMatch(
-    source,
-    /currentIndex \+ 1 < linkedEpisodes\.length/
-  );
+  assert.doesNotMatch(source, /currentIndex \+ 1 < linkedEpisodes\.length/);
 });
