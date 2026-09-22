@@ -275,7 +275,7 @@ async function sendInvite(preregistration) {
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'Idempotency-Key': `novelight-beta-author-invite-${preregistration.id}-v${invite.token_version}`
+      'Idempotency-Key':\n        `novelight-beta-author-invite-${preregistration.id}-v${invite.token_version}`
     },
     body: JSON.stringify(
       emailPayload({
