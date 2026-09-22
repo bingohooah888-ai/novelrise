@@ -110,18 +110,23 @@ jobs:
           approval_json="$(jq -cn             --arg operation 'enable-beta-auth-autoconfirm'             --arg requestId "$request_id"             --arg mainSha "$MAIN_SHA"             --arg challenge "$challenge"             '{operation:$operation,requestId:$requestId,mainSha:$mainSha,challenge:$challenge,targetAutoconfirm:true}')"
 
           title="[Production Auth Beta Email Mode Approval] $request_id"
-          body="$(printf '%s
+          body="$(cat <<EOF
+NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST $request_json
 
-%s
+A Production Auth change is ready for explicit OWNER approval.
 
-%s
+Scope:
+- exact main SHA: $MAIN_SHA
+- set only mailer_autoconfirm=true
+- preserve Secure Email Change and Before User Created hook configuration
+- require campaign state PRE_REGISTRATION
+- no SMTP, Send Email Hook, Secret, DB, Stripe, or migration change
 
-%s
+Exact approval comment:
 
-%s
-
-%s
-'             "NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST $request_json"             'A Production Auth change is ready for explicit OWNER approval.'             'Scope: set only mailer_autoconfirm=true; preserve Secure Email Change and Before User Created hook; require PRE_REGISTRATION.'             'No SMTP, Send Email Hook, Secret, DB, Stripe, or migration change.'             'Exact approval comment:'             "NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_APPROVE $approval_json")"
+NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_APPROVE $approval_json
+EOF
+)"
           gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
 
       - name: Cleanup request files
@@ -163,8 +168,7 @@ jobs:
             (.challenge | type == "string" and test("^[A-F0-9]{8}$"))
           ' >/dev/null
 
-          request_json="$(printf '%s
-' "$ISSUE_BODY" | head -n 1 | sed 's/^NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST //' | jq -c '.')"
+          request_json="$(printf '%s\n' "$ISSUE_BODY" | head -n 1 | sed 's/^NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST //' | jq -c '.')"
           echo "$request_json" | jq -e '
             .operation == "enable-beta-auth-autoconfirm" and
             .targetAutoconfirm == true and
