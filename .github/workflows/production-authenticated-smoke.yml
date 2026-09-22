@@ -231,6 +231,8 @@ jobs:
           set -euo pipefail
           routes=(
             login.html
+            signup.html
+            forgot-password.html
             post.html
             episode-post.html
             novel.html
@@ -282,7 +284,7 @@ jobs:
       - name: Install application dependencies
         run: npm ci
 
-      - name: Verify secure email-change Auth configuration
+      - name: Verify Production Auth email mode configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -306,6 +308,7 @@ jobs:
           }
 
           external_email_enabled="$(jq -r '.external_email_enabled == true' /tmp/supabase-auth-config.json)"
+          mailer_autoconfirm_enabled="$(jq -r '.mailer_autoconfirm == true' /tmp/supabase-auth-config.json)"
           mailer_autoconfirm_disabled="$(jq -r '.mailer_autoconfirm == false' /tmp/supabase-auth-config.json)"
           secure_email_change_enabled="$(jq -r '.mailer_secure_email_change_enabled == true' /tmp/supabase-auth-config.json)"
           send_email_hook_enabled="$(jq -r '.hook_send_email_enabled == true' /tmp/supabase-auth-config.json)"
@@ -315,30 +318,32 @@ jobs:
                (.smtp_admin_email | type == "string" and length > 0))
             ' /tmp/supabase-auth-config.json
           )"
-          printf 'Production Auth email config audit: external_email_enabled=%s mailer_autoconfirm_disabled=%s secure_email_change_enabled=%s send_email_hook_enabled=%s custom_smtp_configured=%s\n' \
+
+          auth_email_mode=''
+          if [ "$external_email_enabled" = 'true' ] &&
+             [ "$mailer_autoconfirm_enabled" = 'true' ] &&
+             [ "$secure_email_change_enabled" = 'true' ]; then
+            auth_email_mode='beta-no-mail'
+          elif [ "$external_email_enabled" = 'true' ] &&
+               [ "$mailer_autoconfirm_disabled" = 'true' ] &&
+               [ "$secure_email_change_enabled" = 'true' ] &&
+               { [ "$send_email_hook_enabled" = 'true' ] || [ "$custom_smtp_configured" = 'true' ]; }; then
+            auth_email_mode='verified-mail'
+          else
+            echo 'Safety stop: Production Auth email mode is neither approved beta-no-mail nor verified-mail.'
+            exit 1
+          fi
+
+          printf 'Production Auth email config audit: mode=%s external_email_enabled=%s mailer_autoconfirm_enabled=%s secure_email_change_enabled=%s send_email_hook_enabled=%s custom_smtp_configured=%s\n' \
+            "$auth_email_mode" \
             "$external_email_enabled" \
-            "$mailer_autoconfirm_disabled" \
+            "$mailer_autoconfirm_enabled" \
             "$secure_email_change_enabled" \
             "$send_email_hook_enabled" \
             "$custom_smtp_configured"
 
-          jq -e '
-            .external_email_enabled == true and
-            .mailer_autoconfirm == false and
-            .mailer_secure_email_change_enabled == true and
-            (
-              .hook_send_email_enabled == true or
-              (
-                (.smtp_host | type == "string" and length > 0) and
-                (.smtp_admin_email | type == "string" and length > 0)
-              )
-            )
-          ' /tmp/supabase-auth-config.json >/dev/null || {
-            echo 'Safety stop: Production Auth email-change confirmation is not securely configured.'
-            exit 1
-          }
-
-          echo 'Production Auth secure email-change configuration is ready.'
+          echo "NOVELIGHT_AUTH_EMAIL_MODE=$auth_email_mode" >> "$GITHUB_ENV"
+          echo "Production Auth email mode is ready: $auth_email_mode."
 
       - name: Retrieve the production Supabase secret key for this approved run
         shell: bash
