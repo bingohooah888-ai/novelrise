@@ -1,12 +1,19 @@
 {
   "activeIssue": 737,
-  "legacyIssues": [165, 460, 657],
+  "legacyIssues": [
+    165,
+    460,
+    657
+  ],
   "maxComments": 100,
   "activeSharedRoutes": [
     ".github/workflows/production-migration-approved-dispatch.yml",
     ".github/workflows/production-migration-preflight.yml",
     ".github/workflows/production-auth-smoke-approved-dispatch.yml",
-    ".github/workflows/vercel-admin-allowlist.yml"
+    ".github/workflows/vercel-admin-allowlist.yml",
+    ".github/workflows/production-auth-beta-email-mode.yml"
   ],
-  "retiredLegacyRoutes": [".github/workflows/production-approved-dispatch.yml"]
+  "retiredLegacyRoutes": [
+    ".github/workflows/production-approved-dispatch.yml"
+  ]
 }
