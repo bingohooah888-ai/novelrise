@@ -119,12 +119,16 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin "refs/heads/$TRANSFER_BRANCH:refs/remotes/origin/$TRANSFER_BRANCH"
           test "$(git rev-parse "refs/remotes/origin/$TRANSFER_BRANCH")" = "$TRANSFER_SHA"
-          git show "$TRANSFER_SHA:.novelight-transfer/$FILE_NAME" > "$RUNNER_TEMP/$FILE_NAME"
 
-          size="$(wc -c < "$RUNNER_TEMP/$FILE_NAME")"
+          import_dir="$GITHUB_WORKSPACE/.novelight-import"
+          mkdir -p "$import_dir"
+          pack_path="$import_dir/$FILE_NAME"
+          git show "$TRANSFER_SHA:.novelight-transfer/$FILE_NAME" > "$pack_path"
+
+          size="$(wc -c < "$pack_path")"
           test "$size" -gt 0
           test "$size" -le 67108864
-          echo "PACK_PATH=$RUNNER_TEMP/$FILE_NAME" >> "$GITHUB_ENV"
+          echo "PACK_PATH=$pack_path" >> "$GITHUB_ENV"
 
       - name: Verify required Production secret
         shell: bash
@@ -179,6 +183,11 @@ jobs:
           echo "::add-mask::$service_key"
           echo "NOVELIGHT_COMMANDER_SUPABASE_SERVICE_ROLE_KEY=$service_key" >> "$GITHUB_ENV"
           echo "NOVELIGHT_COMMANDER_SUPABASE_URL=$SUPABASE_URL" >> "$GITHUB_ENV"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
 
       - name: Install importer dependencies
         shell: bash
