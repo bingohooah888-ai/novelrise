@@ -480,6 +480,16 @@ function extractCaitaPage(html, finalUrl) {
         ")"
     );
   }
+  const progressMatch = body.match(/(?:^|\s)(\d{1,4})\s*\/\s*(\d{1,4})(?:\s|$)/);
+  const currentEpisodeHint = progressMatch ? Number(progressMatch[1]) : null;
+  const totalEpisodesHint = progressMatch ? Number(progressMatch[2]) : null;
+  const validProgress =
+    Number.isInteger(currentEpisodeHint) &&
+    Number.isInteger(totalEpisodesHint) &&
+    currentEpisodeHint >= 1 &&
+    totalEpisodesHint >= currentEpisodeHint &&
+    totalEpisodesHint <= 1000;
+
   return {
     site: "caita",
     workUrl: finalUrl,
@@ -487,7 +497,10 @@ function extractCaitaPage(html, finalUrl) {
     author,
     synopsis: "",
     episodes: [{ url: finalUrl, label: title || "本文" }],
-    inlineEpisode: { url: finalUrl, title, body }
+    inlineEpisode: { url: finalUrl, title, body },
+    partial: true,
+    currentEpisodeHint: validProgress ? currentEpisodeHint : null,
+    totalEpisodesHint: validProgress ? totalEpisodesHint : null
   };
 }
 
@@ -564,8 +577,18 @@ export async function readNovel(rawUrl, options = {}) {
   }
   return {
     site, workUrl: index.workUrl, title: index.title, author: index.author, synopsis: index.synopsis,
-    discoveredEpisodes: index.episodes.length, requestedEpisodes: selected.length, fetchedEpisodes: episodes.length,
-    complete: failures.length === 0 && selected.length === index.episodes.length,
-    truncated: selected.length < index.episodes.length, failures, episodes
+    discoveredEpisodes: index.totalEpisodesHint || index.episodes.length,
+    requestedEpisodes: selected.length,
+    fetchedEpisodes: episodes.length,
+    complete:
+      !index.partial &&
+      failures.length === 0 &&
+      selected.length === index.episodes.length,
+    truncated:
+      Boolean(index.partial) ||
+      selected.length < index.episodes.length ||
+      (index.totalEpisodesHint || 0) > selected.length,
+    failures,
+    episodes
   };
 }
