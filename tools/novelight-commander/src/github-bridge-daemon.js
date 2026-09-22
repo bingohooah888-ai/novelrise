@@ -407,6 +407,41 @@ async function actionNovelFetch(request, config) {
   ].join('\n');
 }
 
+async function actionThumbnailPackValidate(request, config) {
+  if (!exactKeys(request.args, ['zip'])) {
+    throw new Error('thumbnail_pack_validate requires exactly zip.');
+  }
+  const target = resolveDataPath(config, String(request.args.zip));
+  const archivePath = path.join(
+    config.repoRoot,
+    'tools',
+    'novelight-commander',
+    'src',
+    'archive.js'
+  );
+  const securityPath = path.join(
+    config.repoRoot,
+    'tools',
+    'novelight-commander',
+    'src',
+    'security.js'
+  );
+  const [{ validateThumbnailPack }, { createSecurityConfig }] =
+    await Promise.all([
+      import(pathToFileURL(archivePath).href),
+      import(pathToFileURL(securityPath).href)
+    ]);
+  const security = createSecurityConfig({
+    NOVELIGHT_COMMANDER_ROOT: config.dataRoot
+  });
+  const result = await validateThumbnailPack(
+    target.relative,
+    undefined,
+    security
+  );
+  return JSON.stringify(result, null, 2);
+}
+
 async function actionThumbnailValidate(request, config) {
   if (!exactKeys(request.args, ['file', 'category'])) {
     throw new Error('thumbnail_validate requires exactly file and category.');
@@ -530,6 +565,7 @@ const ACTIONS = new Map([
   ['preflight_fast', actionPreflightFast],
   ['commander_check', actionCommanderCheck],
   ['novel_fetch', actionNovelFetch],
+  ['thumbnail_pack_validate', actionThumbnailPackValidate],
   ['thumbnail_validate', actionThumbnailValidate],
   ['bridge_update', actionBridgeUpdate]
 ]);
