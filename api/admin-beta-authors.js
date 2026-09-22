@@ -289,12 +289,8 @@ async function loadRows({ search, status, page, pageSize }) {
 }
 
 function applyMilestones(patch, status, current, now) {
-  if (['verified', 'invited', 'registered', 'first_novel'].includes(status)) {
-    patch.email_verified = true;
-  }
-  if (['invited', 'registered', 'first_novel'].includes(status)) {
-    patch.invite_sent_at = current.invite_sent_at || now;
-  }
+  // Email ownership and invite delivery are security milestones. They are set
+  // only by the secure invite flow, never by a manual ADMIN status change.
   if (['registered', 'first_novel'].includes(status)) {
     patch.registered_at = current.registered_at || now;
   }
