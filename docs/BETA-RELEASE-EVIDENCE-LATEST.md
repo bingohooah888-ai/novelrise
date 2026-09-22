@@ -1,8 +1,33 @@
 # NOVELIGHT β Release Evidence — Latest Reconciled State
 
-**Reconciled: 2026-09-20 JST**
+**Reconciled: 2026-09-22 JST**
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
+
+## 2026-09-22 post-PR #800 temporary beta no-mail Auth reconciliation
+
+This section supersedes older current-state wording for the temporary beta Auth email-delivery boundary. It does not supersede still-valid backup/restore, billing, migration, fairness, or other unrelated Production evidence below.
+
+Exact current repository/material application main at this reconciliation is `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3` (PR #800, `Add temporary beta no-mail Auth mode`). The merged SHA reports `Vercel: success` and `production-readiness-smoke: success`.
+
+Fresh approval-gated Production Auth evidence:
+
+- Production Approval Ledger #737 records `NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_CLAIMED` and matching `..._CONSUMED` for run `35686483637`, exact main `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3`, with `result:"success"`, `changed:true`, `postcheck:"success"`, and `targetAutoconfirm:true`.
+- The decisive run `35686483637` job `Apply exact approved beta no-mail Auth mode` completed `success`. Its one-time approval validation, ledger/current-state reconciliation, approval claim, scoped autoconfirm mutation, beta no-mail Auth verification, and consumed-result recording all succeeded; rollback/failure-recording steps were skipped.
+- Production Authenticated Smoke Issue #801 / run `35686551395` is bound to exact main `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3`. The decisive job `Verify authenticated beta-critical production flows` completed `success`, including deployed-page convergence, Auth email-mode verification, ephemeral smoke-user creation, authenticated browser smoke, cleanup, and consumed approval recording. Issue #801 contains the matching GitHub Actions `NOVELIGHT_PRODUCTION_AUTH_SMOKE_CONSUMED` record with `result:"success"`.
+- Later duplicate-attempt run `35688394269` failed at `Validate one-time scoped approval` before checkout, ledger reconciliation, claim, mutation, or postcheck. All Production Auth mutation steps were skipped. It is therefore not a second Production mutation and must not be retried merely for freshness.
+
+Current beta Auth posture:
+
+- temporary beta signup autoconfirm is the approved active mode before the 2026-09-28 author preopen;
+- PR #800 pauses mail-dependent email-address change and password-recovery UI while no verified transactional mail path exists;
+- the existing Before User Created eligibility gate and Secure Email Change boundary remain part of the verified beta no-mail Auth contract;
+- restoring confirmation-based Auth, email-address changes, or password recovery remains a future separate operation after a real mail-delivery path is configured and verified;
+- the 2026-09-28 `AUTHOR_PREOPEN`, 2026-09-29 inventory/first-reader-path gate, and 2026-09-30 `BETA_OPEN` transition remain future operational gates and are not executed or pre-authorized by this reconciliation.
+
+**Current technical/operational posture: the temporary beta no-mail Auth prerequisite for 2026-09-28 is CLEARED on exact current main. No duplicate Auth-mode mutation or Auth Smoke is required. The next launch-state mutation remains the future 2026-09-28 `PRE_REGISTRATION -> AUTHOR_PREOPEN` cutover. Qualified Japanese counsel review remains deferred/pending and is not converted into legal PASS.**
+
+This reconciliation is documentation-only. It performs no Production Auth mutation, campaign-state cutover, Supabase/DB mutation, Stripe/billing mutation, Secret/environment change, or image operation.
 
 ## 2026-09-20 post-PR #721 final-audit reconciliation
 
