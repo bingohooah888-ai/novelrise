@@ -4,6 +4,54 @@
 
 This file is the rolling current-state index required by `docs/EVIDENCE-FRESHNESS-GATE.md`. Dated `BETA-RELEASE-EVIDENCE-*.md` files remain historical snapshots and are not rewritten. Older proof is reused only when the current scope is demonstrated to be unchanged or materially equivalent.
 
+## 2026-09-22 post-9/20 material feature-chain reconciliation
+
+This section closes the rolling-evidence gap for material beta changes merged after the 2026-09-20 final-audit baseline and before the already-reconciled PR #800 Auth boundary. It is evidence reconciliation only; it does not execute any Production mutation or future release gate.
+
+Current repository `main` at this reconciliation is `08142bd2c89f3bdec3cc83cb9fd971932ce66b00` (PR #803, docs-only). The current material application baseline remains `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3` (PR #800). Exact material-main commit statuses remain `Vercel: success` and `production-readiness-smoke: success`.
+
+The following material PR heads were freshly reconciled from GitHub Actions and each has both `NOVELIGHT CI` and `CodeQL` completed successfully:
+
+- PR #733: CI `35488654871`, CodeQL `35488654851`;
+- PR #735: CI `35494906164`, CodeQL `35494906147`;
+- PR #740: CI `35498850230`, CodeQL `35498850244`;
+- PR #742: CI `35500129920`, CodeQL `35500129877`;
+- PR #744: CI `35505208697`, CodeQL `35505208666`;
+- PR #748: CI `35512515710`, CodeQL `35512515738`;
+- PR #750: CI `35513821697`, CodeQL `35513821854`;
+- PR #766: CI `35542677123`, CodeQL `35542677106`;
+- PR #770: CI `35562493167`, CodeQL `35562493131`;
+- PR #776: CI `35572040369`, CodeQL `35572040508`;
+- PR #778: CI `35580603929`, CodeQL `35580604059`;
+- PR #780: CI `35590970168`, CodeQL `35590970218`;
+- PR #782: CI `35609049654`, CodeQL `35609049698`;
+- PR #784: CI `35611446593`, CodeQL `35611446973`;
+- PR #791: CI `35642783993`, CodeQL `35642784018`;
+- PR #793: CI `35661370842`, CodeQL `35661370812`;
+- PR #794: CI `35662737354`, CodeQL `35662737276`;
+- PR #796: CI `35672349906`, CodeQL `35672349878`;
+- PR #800: CI `35685640444`, CodeQL `35685640454`.
+
+Fresh Approval Ledger reconciliation confirms that all Production migrations introduced by the material feature chain and requiring deployment were already applied exactly once with successful postchecks:
+
+- `20260920122000_founding_beta_qualifications`: run `35490804115`;
+- `20260920152733_free_two_novel_limit`: run `35495930051`;
+- `20260920082032_episode_hearts`: run `35501470564`;
+- `20260920093847_episode_inline_illustrations`: run `35505679245`;
+- `20260920204000_thumbnail_geometry_source_space` and `20260920221000_novel_classification_tags`: run `35514599029`;
+- `20260920223049_scout_record_beta_core`: run `35552815841`;
+- `20260921022608_scout_badge_foundation` and `20260921025328_scout_record_usage_controls`: run `35564510589`;
+- `20260921063000_badge_system_catalog`: run `35575503672`;
+- `20260921120552_bulk_episode_import`: run `35617818098`.
+
+Each matching ledger execution record reports `result:"success"`, `mutation_result:"success"`, `postcheck_result:"success"`, and `failure_phase:"none"`. The older v3 ledger contains the successful #733/#735 records; the active v4 ledger contains the later feature-chain records. These successful records are current evidence and block duplicate migration execution.
+
+The reconciled feature chain therefore includes the Founding/Beta qualification rules, Free two-work limit, random official-thumbnail material selection, episode hearts, inline illustrations, unified thumbnail geometry, work classification/tags, SCOUT RECORD beta core, SCOUT badge/public-profile foundation and usage controls, canonical Reader/Author badge catalog, SCOUT beta KPI coverage, SCOUT navigation/readability improvements, beta bulk episode import, official background-pack batch import, private account settings, and later Auth-smoke/control hardening now incorporated by PR #800.
+
+Current open-issue searches for `beta blocker`, `P0`, `P1`, `preopen`, and `launch` identify Issue #200 as the active launch-control item; an open `bug` search returned no current issue. Generated Production approval-request and ledger issues remain audit/control surfaces and are not reclassified as product blockers.
+
+**Freshness verdict:** the already-executed migrations and PR #800 Auth work are `current`; duplicate mutation is prohibited. No new non-deferred P0/P1 product blocker was identified by this reconciliation. The remaining 2026-09-28 `AUTHOR_PREOPEN`, 2026-09-29 content-inventory/first-reader-path gate, and 2026-09-30 `BETA_OPEN` transition remain future gates and are not executed or pre-authorized here.
+
 ## 2026-09-22 post-PR #800 temporary beta no-mail Auth reconciliation
 
 This section supersedes older current-state wording for the temporary beta Auth email-delivery boundary. It does not supersede still-valid backup/restore, billing, migration, fairness, or other unrelated Production evidence below.
