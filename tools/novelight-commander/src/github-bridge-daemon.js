@@ -13,7 +13,7 @@ const RESULT_PREFIX = 'NOVELIGHT_COMMANDER_RESULT_V1';
 const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$/;
 const MAX_OUTPUT = 24000;
 const MAX_EPISODES = 500;
-const NPM_EXECUTABLE = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const NPM_COMMAND = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 function bounded(text, limit = MAX_OUTPUT) {
   const value = String(text || '').replace(
@@ -257,6 +257,13 @@ function run(executable, args, options = {}) {
   });
 }
 
+function runNpm(args, options = {}) {
+  if (process.platform === 'win32') {
+    return run(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', NPM_COMMAND, ...args], options);
+  }
+  return run(NPM_COMMAND, args, options);
+}
+
 function ensureNoArgs(args) {
   if (!exactKeys(args, [])) {
     throw new Error('This action does not accept args.');
@@ -277,14 +284,18 @@ async function actionDoctor(request, config) {
   const rows = [];
   for (const [command, args] of [
     ['node', ['--version']],
-    [NPM_EXECUTABLE, ['--version']],
+    [null, ['--version']],
     ['git', ['--version']]
   ]) {
     try {
-      const result = await run(command, args, { timeoutMs: 15000 });
-      rows.push(command + ': ' + (result.stdout || result.stderr).trim());
+      const result = command === null
+        ? await runNpm(args, { timeoutMs: 15000 })
+        : await run(command, args, { timeoutMs: 15000 });
+      const label = command === null ? 'npm' : command;
+      rows.push(label + ': ' + (result.stdout || result.stderr).trim());
     } catch (error) {
-      rows.push(command + ': unavailable (' + error.message + ')');
+      const label = command === null ? 'npm' : command;
+      rows.push(label + ': unavailable (' + error.message + ')');
     }
   }
   rows.push('platform: ' + os.platform() + ' ' + os.arch());
@@ -314,7 +325,7 @@ async function actionRepoSnapshot(request, config) {
 
 async function actionPreflightFast(request, config) {
   ensureNoArgs(request.args);
-  const result = await run(NPM_EXECUTABLE, ['run', 'preflight:fast'], {
+  const result = await runNpm(['run', 'preflight:fast'], {
     cwd: config.repoRoot,
     timeoutMs: 600000
   });
@@ -334,14 +345,14 @@ async function actionPreflightFast(request, config) {
 async function actionCommanderCheck(request, config) {
   ensureNoArgs(request.args);
   const cwd = path.join(config.repoRoot, 'tools', 'novelight-commander');
-  const check = await run(NPM_EXECUTABLE, ['run', 'check'], {
+  const check = await runNpm(['run', 'check'], {
     cwd,
     timeoutMs: 120000
   });
   if (check.code !== 0) {
     throw new Error('Commander syntax check failed.\n' + check.stderr);
   }
-  const tests = await run(NPM_EXECUTABLE, ['test'], { cwd, timeoutMs: 120000 });
+  const tests = await runNpm(['test'], { cwd, timeoutMs: 120000 });
   if (tests.code !== 0) {
     throw new Error(
       'Commander tests failed.\n' + tests.stderr + '\n' + tests.stdout
@@ -453,13 +464,74 @@ async function actionThumbnailValidate(request, config) {
   );
 }
 
+async function actionBridgeUpdate(request, config) {
+  ensureNoArgs(request.args);
+
+  const branch = await run('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+    cwd: config.repoRoot,
+    timeoutMs: 15000
+  });
+  if (branch.code !== 0 || branch.stdout.trim() !== 'main') {
+    throw new Error('Bridge update requires the local repository to be on main.');
+  }
+
+  const status = await run('git', ['status', '--porcelain'], {
+    cwd: config.repoRoot,
+    timeoutMs: 15000
+  });
+  if (status.code !== 0 || status.stdout.trim() !== '') {
+    throw new Error('Bridge update requires a clean local working tree.');
+  }
+
+  const fetch = await run('git', ['fetch', 'origin', 'main', '--prune'], {
+    cwd: config.repoRoot,
+    timeoutMs: 120000
+  });
+  if (fetch.code !== 0) {
+    throw new Error('git fetch origin main failed.\n' + fetch.stderr);
+  }
+
+  const ancestor = await run(
+    'git',
+    ['merge-base', '--is-ancestor', 'HEAD', 'origin/main'],
+    { cwd: config.repoRoot, timeoutMs: 15000 }
+  );
+  if (ancestor.code !== 0) {
+    throw new Error('Local main is not a fast-forward ancestor of origin/main.');
+  }
+
+  const before = await run('git', ['rev-parse', 'HEAD'], {
+    cwd: config.repoRoot,
+    timeoutMs: 15000
+  });
+  const pull = await run('git', ['pull', '--ff-only', 'origin', 'main'], {
+    cwd: config.repoRoot,
+    timeoutMs: 120000
+  });
+  if (pull.code !== 0) {
+    throw new Error('git pull --ff-only origin main failed.\n' + pull.stderr);
+  }
+  const after = await run('git', ['rev-parse', 'HEAD'], {
+    cwd: config.repoRoot,
+    timeoutMs: 15000
+  });
+
+  return [
+    'before: ' + before.stdout.trim(),
+    'after: ' + after.stdout.trim(),
+    'updated: ' + (before.stdout.trim() !== after.stdout.trim()),
+    'restart_required: true'
+  ].join('\n');
+}
+
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['repo_snapshot', actionRepoSnapshot],
   ['preflight_fast', actionPreflightFast],
   ['commander_check', actionCommanderCheck],
   ['novel_fetch', actionNovelFetch],
-  ['thumbnail_validate', actionThumbnailValidate]
+  ['thumbnail_validate', actionThumbnailValidate],
+  ['bridge_update', actionBridgeUpdate]
 ]);
 
 async function executeRequest(request, config) {
@@ -512,6 +584,56 @@ async function processComment(comment, config, token, state) {
     });
     const details = await executeRequest(request, config);
     await postResult(config, token, request, 'success', details);
+    if (request.action === 'bridge_update') {
+      if (!state.processedRequestIds.includes(request.requestId)) {
+        state.processedRequestIds.push(request.requestId);
+        state.processedRequestIds = state.processedRequestIds.slice(-500);
+      }
+      state.lastCommentId = Math.max(
+        Number(state.lastCommentId || 0),
+        Number(comment.id || 0)
+      );
+      state.lastSeenAt = comment.created_at || state.lastSeenAt;
+      await writeJson(config.statePath, state);
+
+      const runnerScript = path.join(
+        config.repoRoot,
+        'tools',
+        'novelight-commander',
+        'run-github-bridge.ps1'
+      );
+      const quotePs = value => "'" + String(value).replaceAll("'", "''") + "'";
+      const restartCommand =
+        'Start-Sleep -Seconds 2; & ' +
+        quotePs(runnerScript) +
+        ' -ConfigPath ' +
+        quotePs(config.configPath);
+      const restart = spawn(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-WindowStyle',
+          'Hidden',
+          '-Command',
+          restartCommand
+        ],
+        {
+          cwd: config.repoRoot,
+          detached: true,
+          windowsHide: true,
+          stdio: 'ignore',
+          shell: false,
+          env: process.env
+        }
+      );
+      restart.unref();
+      await appendAudit(config, 'bridge-update-restart-scheduled', {
+        requestId: request.requestId
+      });
+      process.exit(0);
+    }
     await appendAudit(config, 'request-success', {
       requestId: request.requestId,
       action: request.action
