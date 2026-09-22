@@ -238,7 +238,7 @@ export function extractCaitaEpisodeDocument(html, pageUrl) {
       if (title && text.startsWith(title)) {
         text = clean(text.slice(title.length));
       }
-      if (text.length < 80) return;
+      if (text.length < 30) return;
       const blockCount = $(element).find("p,br,blockquote").length;
       const linkChars = clean($(element).find("a").text()).length;
       const score = text.length + Math.min(blockCount, 80) * 60 - linkChars * 2 + bonus;
@@ -260,7 +260,7 @@ export function extractCaitaEpisodeDocument(html, pageUrl) {
   return { url: pageUrl, title, body, seriesUrl, seriesTitle };
 }
 
-async function caitaRenderedOrDirect(url, parser) {
+async function caitaRenderedOrDirect(url, parser, validator = null) {
   let directError = "";
   try {
     const direct = await fetchHtml(url, {
@@ -268,7 +268,11 @@ async function caitaRenderedOrDirect(url, parser) {
       "accept-language": "ja-JP,ja;q=0.9,en;q=0.7"
     });
     try {
-      return { parsed: parser(direct.html, direct.url), rendered: false };
+      const parsed = parser(direct.html, direct.url);
+      if (!validator || validator(parsed)) {
+        return { parsed, rendered: false };
+      }
+      directError = "Direct page did not contain the required public novel structure.";
     } catch (error) {
       directError = error instanceof Error ? error.message : String(error);
     }
@@ -288,7 +292,11 @@ async function caitaRenderedOrDirect(url, parser) {
     );
   }
   try {
-    return { parsed: parser(renderedHtml, url), rendered: true };
+    const parsed = parser(renderedHtml, url);
+    if (validator && !validator(parsed)) {
+      throw new Error("Rendered page did not contain the required public novel structure.");
+    }
+    return { parsed, rendered: true };
   } catch (error) {
     throw new Error(
       "Caita public page rendered, but novel content was not found. " +
@@ -302,7 +310,8 @@ async function caitaIndex(rawUrl) {
   if (seriesRoot) {
     const { parsed } = await caitaRenderedOrDirect(
       seriesRoot,
-      extractCaitaSeriesDocument
+      extractCaitaSeriesDocument,
+      parsed => parsed.episodes.length > 0
     );
     if (!parsed.episodes.length) {
       throw new Error(
@@ -331,7 +340,8 @@ async function caitaIndex(rawUrl) {
     try {
       const { parsed: series } = await caitaRenderedOrDirect(
         episode.seriesUrl,
-        extractCaitaSeriesDocument
+        extractCaitaSeriesDocument,
+        parsed => parsed.episodes.length > 0
       );
       if (series.episodes.length) {
         return {
