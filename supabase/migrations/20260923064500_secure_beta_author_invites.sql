@@ -210,10 +210,10 @@ set search_path = ''
 as $$
 declare
   v_email text := pg_catalog.lower(
-    pg_catalog.btrim(pg_catalog.coalesce(new.email, ''))
+    pg_catalog.btrim(coalesce(new.email, ''))
   );
   v_token text := pg_catalog.btrim(
-    pg_catalog.coalesce(
+    coalesce(
       new.raw_user_meta_data ->> 'novelight_invite_token',
       ''
     )
@@ -254,7 +254,7 @@ begin
       update public.beta_author_preregistrations p
          set auth_user_id = new.id,
              email_verified = true,
-             registered_at = pg_catalog.coalesce(p.registered_at, new.created_at),
+             registered_at = coalesce(p.registered_at, new.created_at),
              status = case
                when p.status in ('preregistered', 'verified', 'invited')
                  then 'registered'
@@ -269,7 +269,7 @@ begin
   if new.raw_user_meta_data ? 'novelight_invite_token' then
     update auth.users u
        set raw_user_meta_data =
-         pg_catalog.coalesce(u.raw_user_meta_data, '{}'::jsonb)
+         coalesce(u.raw_user_meta_data, '{}'::jsonb)
          - 'novelight_invite_token'
      where u.id = new.id;
   end if;
