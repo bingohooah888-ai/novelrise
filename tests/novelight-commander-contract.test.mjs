@@ -111,6 +111,9 @@ test('NLO bridge can verify a saved novel without refetching it', async () => {
   assert.match(source, /novel_verify_saved/);
   assert.match(source, /actionNovelVerifySaved/);
   assert.match(source, /missingBodyEpisodes/);
+  assert.match(source, /uniqueEpisodeUrls/);
+  assert.match(source, /sequenceComplete/);
+  assert.match(source, /storedNumberingContiguous/);
   assert.match(source, /verified: /);
 });
 
