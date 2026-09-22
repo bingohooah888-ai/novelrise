@@ -414,12 +414,63 @@ async function stageDownloadsPack(request, config) {
   return target;
 }
 
-async function inspectPackManifest(absoluteZipPath) {
+const CANONICAL_PACK_MANIFESTS = new Map([
+  [
+    'NOVELIGHT_background_official_v1.zip',
+    'novelight-thumbnail-background-v1.json'
+  ],
+  [
+    'NOVELIGHT_thumbnail_assets_v1_30.zip',
+    'novelight-thumbnail-assets-v1.json'
+  ]
+]);
+
+async function preparePackManifest(staged, config) {
   const JSZip = (await import('jszip')).default;
-  const zip = await JSZip.loadAsync(await fs.readFile(absoluteZipPath));
+  const zip = await JSZip.loadAsync(await fs.readFile(staged.candidate));
   const entry = zip.file('manifest.json');
-  if (!entry) throw new Error('manifest.json was not found in the ZIP.');
-  const manifest = JSON.parse(await entry.async('string'));
+  let manifest = null;
+  if (entry) {
+    manifest = JSON.parse(await entry.async('string'));
+    if (Array.isArray(manifest.items) && manifest.items.length > 0) {
+      return { manifest, manifestRelative: undefined, source: 'zip' };
+    }
+  }
+
+  const canonicalName = CANONICAL_PACK_MANIFESTS.get(
+    path.basename(staged.candidate)
+  );
+  if (!canonicalName) {
+    throw new Error(
+      'ZIP manifest uses the legacy schema and no canonical repo manifest is mapped.'
+    );
+  }
+  const canonicalPath = path.join(config.repoRoot, canonicalName);
+  manifest = JSON.parse(await fs.readFile(canonicalPath, 'utf8'));
+  if (!Array.isArray(manifest.items) || manifest.items.length === 0) {
+    throw new Error('Canonical thumbnail manifest has no items.');
+  }
+
+  const stagedManifest = resolveDataPath(
+    config,
+    path.join(
+      path.dirname(staged.relative),
+      'canonical-manifest.json'
+    )
+  );
+  await fs.writeFile(
+    stagedManifest.candidate,
+    JSON.stringify(manifest, null, 2) + '\n',
+    'utf8'
+  );
+  return {
+    manifest,
+    manifestRelative: stagedManifest.relative,
+    source: 'repo-canonical'
+  };
+}
+
+function inspectPackManifest(manifest) {
   const items = Array.isArray(manifest.items) ? manifest.items : [];
   if (!items.length) throw new Error('Thumbnail pack manifest has no items.');
   const allowed = new Set([
@@ -429,9 +480,13 @@ async function inspectPackManifest(absoluteZipPath) {
     'symbol',
     'frame'
   ]);
-  const layers = [...new Set(
-    items.map(item => String(item.layerType || item.sourceCategory || '').trim())
-  )];
+  const layers = [
+    ...new Set(
+      items.map(item =>
+        String(item.layerType || item.sourceCategory || '').trim()
+      )
+    )
+  ];
   for (const layer of layers) {
     if (!allowed.has(layer)) {
       throw new Error(
@@ -622,9 +677,10 @@ async function actionThumbnailProductionReadiness(request, config) {
     NOVELIGHT_COMMANDER_ROOT: config.dataRoot,
     NOVELIGHT_COMMANDER_ALLOW_PRODUCTION: 'false'
   });
+  const preparedManifest = await preparePackManifest(staged, config);
   const validation = await validateThumbnailPack(
     staged.relative,
-    undefined,
+    preparedManifest.manifestRelative,
     security
   );
   if (!validation.ok) {
@@ -633,13 +689,14 @@ async function actionThumbnailProductionReadiness(request, config) {
     );
   }
 
-  const manifest = await inspectPackManifest(staged.candidate);
+  const manifest = inspectPackManifest(preparedManifest.manifest);
   const credential = await resolveHostedSupabaseSecret(config);
   const adminUserId = await resolveThumbnailAdminUserId(credential.key);
 
   return [
     'file: ' + path.basename(staged.candidate),
     'pack_key: ' + manifest.packKey,
+    'manifest_source: ' + preparedManifest.source,
     'items: ' + manifest.itemCount,
     'layers: ' + manifest.layers.join(','),
     'validation: PASS',
@@ -662,7 +719,8 @@ async function actionThumbnailRegisterProduction(request, config) {
   }
 
   const staged = await stageDownloadsPack(request, config);
-  const manifest = await inspectPackManifest(staged.candidate);
+  const preparedManifest = await preparePackManifest(staged, config);
+  const manifest = inspectPackManifest(preparedManifest.manifest);
   const credential = await resolveHostedSupabaseSecret(config);
   const adminUserId = await resolveThumbnailAdminUserId(credential.key);
 
@@ -704,7 +762,7 @@ async function actionThumbnailRegisterProduction(request, config) {
   try {
     registration = await registerOfficialThumbnailPack(
       staged.relative,
-      undefined,
+      preparedManifest.manifestRelative,
       THUMBNAIL_PRODUCTION_CONFIRMATION,
       security
     );
