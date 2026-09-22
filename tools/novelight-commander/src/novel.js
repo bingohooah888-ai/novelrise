@@ -820,7 +820,8 @@ async function readCaitaNovel(rawUrl, options = {}) {
         const page = await navigateVisibleBrowserSession(session, currentUrl);
       if (!firstPage) {
         firstPage = page;
-        firstEpisodeHint = page.currentEpisodeHint;
+        firstEpisodeHint =
+          page.currentEpisodeHint || caitaEpisodeNumber(page.title);
       }
       if (Number.isInteger(page.totalEpisodesHint)) {
         totalEpisodesHint = Math.max(
