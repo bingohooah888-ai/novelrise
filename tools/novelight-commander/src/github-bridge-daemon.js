@@ -747,40 +747,49 @@ async function actionNovelVerifySaved(request, config) {
   const raw = await fs.readFile(source.candidate, 'utf8');
   const result = JSON.parse(raw);
   const episodes = Array.isArray(result.episodes) ? result.episodes : [];
-  const numbered = episodes
-    .map((episode, index) => ({
-      number: Number(episode?.number || index + 1),
-      title: String(episode?.title || ''),
-      body: String(episode?.body || '')
-    }))
-    .sort((a, b) => a.number - b.number);
+  const normalized = episodes.map((episode, index) => ({
+    position: index + 1,
+    storedNumber: Number(episode?.number || index + 1),
+    url: String(episode?.url || ''),
+    title: String(episode?.title || ''),
+    body: String(episode?.body || '')
+  }));
 
-  const bodyEpisodes = numbered.filter(
+  const bodyEpisodes = normalized.filter(
     episode => episode.body.trim().length > 0
   ).length;
-  const bodyChars = numbered.reduce(
+  const bodyChars = normalized.reduce(
     (sum, episode) => sum + episode.body.length,
     0
   );
-  const contiguous =
-    numbered.length === expectedEpisodes &&
-    numbered.every((episode, index) => episode.number === index + 1);
-  const missingBodyEpisodes = numbered
+  const uniqueEpisodeUrls = new Set(
+    normalized.map(episode => episode.url).filter(Boolean)
+  ).size;
+  const storedNumberingContiguous =
+    normalized.length === expectedEpisodes &&
+    normalized.every(
+      (episode, index) => episode.storedNumber === index + 1
+    );
+  const sequenceComplete =
+    normalized.length === expectedEpisodes &&
+    uniqueEpisodeUrls === expectedEpisodes;
+  const missingBodyEpisodes = normalized
     .filter(episode => episode.body.trim().length === 0)
-    .map(episode => episode.number);
+    .map(episode => episode.position);
   const verified =
-    numbered.length === expectedEpisodes &&
+    sequenceComplete &&
     bodyEpisodes === expectedEpisodes &&
-    contiguous &&
     missingBodyEpisodes.length === 0;
 
   return [
     'source_request_id: ' + sourceRequestId,
     'expectedEpisodes: ' + expectedEpisodes,
-    'savedEpisodes: ' + numbered.length,
+    'savedEpisodes: ' + normalized.length,
+    'uniqueEpisodeUrls: ' + uniqueEpisodeUrls,
     'bodyEpisodes: ' + bodyEpisodes,
     'bodyChars: ' + bodyChars,
-    'contiguous: ' + contiguous,
+    'sequenceComplete: ' + sequenceComplete,
+    'storedNumberingContiguous: ' + storedNumberingContiguous,
     'missingBodyEpisodes: ' +
       (missingBodyEpisodes.length ? missingBodyEpisodes.join(',') : 'none'),
     'verified: ' + verified
