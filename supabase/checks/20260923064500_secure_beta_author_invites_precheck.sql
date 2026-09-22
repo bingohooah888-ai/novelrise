@@ -51,8 +51,9 @@ begin
     'public.novelight_sync_user_participation_qualifications(uuid)'::regprocedure
   ) into v_sync_definition;
 
-  if strpos(v_sync_definition, 'p.email_normalized = v_email') = 0 then
-    raise exception 'Expected legacy email fallback is absent; review migration baseline';
+  if strpos(v_sync_definition, 'p.email_normalized = v_email') = 0
+     and strpos(v_sync_definition, 'where p.auth_user_id = p_user_id') = 0 then
+    raise exception 'Participation sync baseline is not recognized';
   end if;
 
   if not exists (
