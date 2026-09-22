@@ -414,9 +414,7 @@ test('signup fails safely instead of claiming an email was sent when no session 
   await expect(page.locator('#signupStatus')).toContainText(
     '会員登録を完了できませんでした。'
   );
-  await expect(page.locator('#signupStatus')).not.toContainText(
-    '確認メール'
-  );
+  await expect(page.locator('#signupStatus')).not.toContainText('確認メール');
   await expect(page.locator('#signupButton')).toBeEnabled();
   expect(pageErrors).toEqual([]);
 });
