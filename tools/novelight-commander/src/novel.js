@@ -723,11 +723,12 @@ function extractCaitaPage(html, finalUrl) {
       )?.url || null;
   }
   if (!nextEpisodeUrl) {
-    const currentIndex = linkedEpisodes.findIndex(
-      item => item.url === normalizedCurrent
-    );
-    if (currentIndex >= 0 && currentIndex + 1 < linkedEpisodes.length) {
-      nextEpisodeUrl = linkedEpisodes[currentIndex + 1].url;
+    const currentNumber =
+      validProgress ? currentEpisodeHint : caitaEpisodeNumber(title);
+    if (Number.isInteger(currentNumber)) {
+      nextEpisodeUrl =
+        linkedEpisodes.find(item => item.number === currentNumber + 1)?.url ||
+        null;
     }
   }
 
