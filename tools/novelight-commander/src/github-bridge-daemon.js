@@ -307,55 +307,100 @@ async function resolveHostedSupabaseSecret(config) {
   ).trim();
   if (envKey) return { key: envKey, source: 'env' };
 
-  const result = await run(
-    'supabase',
-    [
-      'projects',
-      'api-keys',
-      '--project-ref',
-      SUPABASE_PROJECT_REF,
-      '--output',
-      'json'
-    ],
-    { cwd: config.repoRoot, timeoutMs: 120000 }
-  );
-  if (result.code !== 0) {
-    throw new Error(
-      'Supabase CLI API-key lookup failed. The local Supabase CLI must be signed in.'
-    );
-  }
-
-  let rows;
+  let cliRows = null;
   try {
-    rows = JSON.parse(result.stdout);
+    const result = await runFixedCli(
+      'supabase',
+      [
+        'projects',
+        'api-keys',
+        '--project-ref',
+        SUPABASE_PROJECT_REF,
+        '--output',
+        'json'
+      ],
+      { cwd: config.repoRoot, timeoutMs: 120000 }
+    );
+    if (result.code === 0) {
+      try {
+        cliRows = JSON.parse(result.stdout);
+      } catch {
+        cliRows = null;
+      }
+    }
   } catch {
-    throw new Error('Supabase CLI API-key output was not valid JSON.');
-  }
-  if (!Array.isArray(rows)) {
-    throw new Error('Supabase CLI API-key output had an unexpected shape.');
+    cliRows = null;
   }
 
-  const candidate =
-    rows.find(
-      row =>
-        row?.id === 'service_role' &&
-        typeof row?.api_key === 'string' &&
-        row.api_key.length > 20 &&
-        !row.api_key.includes('*')
-    ) ||
-    rows.find(
-      row =>
-        row?.type === 'secret' &&
-        typeof row?.api_key === 'string' &&
-        row.api_key.startsWith('sb_secret_') &&
-        !row.api_key.includes('*')
-    );
-  if (!candidate?.api_key) {
-    throw new Error(
-      'No usable hosted Supabase service-role/secret key was available locally.'
-    );
+  if (Array.isArray(cliRows)) {
+    const candidate =
+      cliRows.find(
+        row =>
+          row?.id === 'service_role' &&
+          typeof row?.api_key === 'string' &&
+          row.api_key.length > 20 &&
+          !row.api_key.includes('*')
+      ) ||
+      cliRows.find(
+        row =>
+          row?.type === 'secret' &&
+          typeof row?.api_key === 'string' &&
+          row.api_key.startsWith('sb_secret_') &&
+          !row.api_key.includes('*')
+      );
+    if (candidate?.api_key) {
+      return { key: candidate.api_key, source: 'supabase-cli' };
+    }
   }
-  return { key: candidate.api_key, source: 'supabase-cli' };
+
+  const envTarget = resolveDataPath(
+    config,
+    path.join(
+      'production-thumbnail-staging',
+      '.vercel-production-env-' + process.pid + '.tmp'
+    )
+  );
+  await fs.mkdir(path.dirname(envTarget.candidate), { recursive: true });
+  await fs.rm(envTarget.candidate, { force: true });
+
+  try {
+    const result = await runFixedCli(
+      'vercel',
+      [
+        'env',
+        'pull',
+        envTarget.candidate,
+        '--environment=production',
+        '--yes'
+      ],
+      { cwd: config.repoRoot, timeoutMs: 120000 }
+    );
+    if (result.code !== 0) {
+      throw new Error('Vercel CLI Production environment pull failed.');
+    }
+
+    const parsed = dotenv.parse(
+      await fs.readFile(envTarget.candidate, 'utf8')
+    );
+    const vercelKey = String(
+      parsed.SUPABASE_SECRET_KEY ||
+        parsed.SUPABASE_SERVICE_ROLE_KEY ||
+        ''
+    ).trim();
+    if (!vercelKey) {
+      throw new Error(
+        'Production Supabase secret key was not available from Vercel.'
+      );
+    }
+    return { key: vercelKey, source: 'vercel-production-env' };
+  } catch {
+    throw new Error(
+      'No local Production Supabase credential source is available. ' +
+        'Supabase CLI or linked Vercel CLI authentication is required.'
+    );
+  } finally {
+    await fs.rm(envTarget.candidate, { force: true }).catch(() => {});
+  }
 }
 
 async function productionSupabaseClient(secretKey) {
@@ -499,6 +544,20 @@ function inspectPackManifest(manifest) {
     itemCount: items.length,
     layers
   };
+}
+
+function runFixedCli(command, args, options = {}) {
+  if (!['supabase', 'vercel'].includes(command)) {
+    throw new Error('Unsupported fixed CLI command.');
+  }
+  if (process.platform === 'win32') {
+    return run(
+      process.env.ComSpec || 'cmd.exe',
+      ['/d', '/s', '/c', command, ...args],
+      options
+    );
+  }
+  return run(command, args, options);
 }
 
 function ensureNoArgs(args) {
