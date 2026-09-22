@@ -131,6 +131,6 @@ Production登録は `thumbnail_register_production` を使います。実行条�
 - 固定確認文字列 `REGISTER_OFFICIAL_THUMBNAIL_PACK` が一致すること
 - hosted Supabaseのsecret/service-role credentialをローカルで取得できること
 
-credentialはGitHub Issue・repository・bridge logへ出力しません。環境変数に設定されていない場合は、ログイン済みSupabase CLIの `projects api-keys --output json` からローカルプロセス内だけで取得します。
+credentialはGitHub Issue・repository・bridge logへ出力しません。環境変数に設定されていない場合は、まずログイン済みSupabase CLIの `projects api-keys --output json` を使い、利用できなければリンク済みVercel CLIのProduction環境から `SUPABASE_SECRET_KEY` を一時ファイルへ取得します。一時ファイルは読み込み直後に削除し、credential値自体は結果へ返しません。
 
 登録処理は既存 `registerOfficialThumbnailPack` を再利用します。既存SHAはスキップし、同じlabelで異なるsourceなら停止し、Storage upload後にDB登録が失敗した場合はアップロード済みobjectを削除します。処理後は対象layerのactive件数を再取得して結果へ返します。
