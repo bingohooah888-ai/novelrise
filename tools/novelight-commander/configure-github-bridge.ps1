@@ -25,7 +25,8 @@ Write-Host ''
 
 $SecureToken = Read-Host 'GitHub fine-grained token' -AsSecureString
 $EncryptedToken = $SecureToken | ConvertFrom-SecureString
-$EncryptedToken | Set-Content -Path $TokenPath -Encoding utf8
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($TokenPath, $EncryptedToken, $Utf8NoBom)
 
 $Config = [ordered]@{
   owner = 'bingohooah888-ai'
@@ -37,7 +38,8 @@ $Config = [ordered]@{
   statePath = (Join-Path $BridgeRoot 'state.json')
   auditPath = (Join-Path $BridgeRoot 'audit.jsonl')
 }
-$Config | ConvertTo-Json | Set-Content -Path $ConfigPath -Encoding utf8
+$ConfigJson = $Config | ConvertTo-Json
+[System.IO.File]::WriteAllText($ConfigPath, $ConfigJson, $Utf8NoBom)
 
 Write-Host 'Validating token and control issue...'
 $Bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureToken)
@@ -96,4 +98,11 @@ Write-Host "Data root: $DataRoot"
 Write-Host "Local log: $LogPath"
 Write-Host "Startup launcher: $StartupFile"
 Write-Host ''
+Start-Sleep -Seconds 2
+if (Test-Path $LogPath) {
+  $BridgeTail = Get-Content -Path $LogPath -Tail 20 -ErrorAction SilentlyContinue
+  if ($BridgeTail -match 'NOVELIGHT Commander bridge failed') {
+    throw "Commander bridge failed to start. See $LogPath"
+  }
+}
 Write-Host 'The GitHub token is stored only as a Windows DPAPI-encrypted user secret.'
