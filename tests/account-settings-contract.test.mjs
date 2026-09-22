@@ -43,43 +43,27 @@ test('account settings verifies the logged-in user before rendering private emai
     /location\.replace\('login\.html\?redirect=account-settings\.html'\)/u
   );
   assert.match(account, /currentEmailEl\.textContent=currentEmail/u);
+  assert.match(account, /id="betaEmailNotice"/u);
+  assert.match(account, /β期間中はメールアドレス変更を一時停止しています/u);
   assert.doesNotMatch(account, /client\.auth\.getSession\(\)/u);
+  assert.doesNotMatch(account, /client\.auth\.signInWithPassword/u);
+  assert.doesNotMatch(account, /client\.auth\.updateUser/u);
+  assert.doesNotMatch(account, /id="emailForm"/u);
+  assert.doesNotMatch(account, /user\.new_email|email_change_sent_at/u);
   assert.doesNotMatch(account, /NovelightClient/u);
   assert.doesNotMatch(account, /localStorage|sessionStorage/u);
-  assert.doesNotMatch(
-    account,
-    /currentPassword[^\n]*(?:localStorage|sessionStorage)/u
-  );
-  assert.doesNotMatch(account, /console\.(?:log|error|warn)/u);
-});
-
-test('account settings reauthenticates before using the official email update API', () => {
-  assert.match(account, /autocomplete="current-password"/u);
-  assert.match(
-    account,
-    /client\.auth\.signInWithPassword\(\{email:currentEmail,password:currentPassword\}\)[\s\S]*?client\.auth\.updateUser\(\{email:newEmail\}\)/u
-  );
-  assert.match(account, /client\.auth\.updateUser\(\{email:newEmail\}\)/u);
-  assert.match(
-    account,
-    /finally\{[\s\S]*?currentPasswordEl\.value=''[\s\S]*?busy=false/u
-  );
-  assert.doesNotMatch(account, /auth\.admin/u);
-  assert.doesNotMatch(account, /auth\.users/u);
+  assert.doesNotMatch(account, /auth\.admin|auth\.users/u);
   assert.doesNotMatch(account, /SUPABASE_SECRET_KEY|service_role/u);
   assert.doesNotMatch(account, /\.from\(|\.rpc\(/u);
   assert.doesNotMatch(account, /profiles\.email|email_normalized/u);
 });
 
-test('account settings separates validation, request and confirmation-pending states', () => {
-  assert.match(account, /type="email"/u);
-  assert.match(account, /現在と同じメールアドレス/u);
-  assert.match(account, /新しいメールアドレスが一致していません/u);
-  assert.match(account, /確認メールを送信しました/u);
-  assert.match(account, /変更の確認待ち/u);
-  assert.match(account, /リンクが期限切れの場合/u);
-  assert.match(account, /確認が完了するまでは現在のメールアドレスが有効/u);
-  assert.match(account, /user\.new_email\|\|user\.email_change_sent_at/u);
+test('beta account settings keeps email private while mail-dependent changes are paused', () => {
+  assert.match(account, /現在のメールアドレス/u);
+  assert.match(account, /正式なメール配信基盤を導入/u);
+  assert.match(account, /本人と必要な権限を持つ運営だけが確認/u);
+  assert.match(account, /メール変更要求を送信しない/u);
+  assert.doesNotMatch(account, /確認メールを送信/u);
 });
 
 test('Author Studio and mypage expose matching interaction and account settings navigation', () => {
