@@ -193,14 +193,21 @@ async function prepareInvite(preregistrationId) {
     !current.consumed_at &&
     Date.parse(current.expires_at) > now.getTime();
 
-  const version = reusable ? current.token_version : (current?.token_version ?? 0) + 1;
-  const token = inviteToken(preregistrationId, version);
-  const tokenHash = hashToken(token);
+  const currentVersion = current?.token_version ?? 0;
+  const currentToken = reusable
+    ? inviteToken(preregistrationId, currentVersion)
+    : null;
+  const currentTokenHash = currentToken ? hashToken(currentToken) : null;
 
-  if (reusable && current.token_hash === tokenHash) {
-    return { invite: current, token };
+  if (reusable && current.token_hash === currentTokenHash) {
+    return { invite: current, token: currentToken };
   }
 
+  // A changed server secret must also advance the invite version so the
+  // provider idempotency key never refers to two different payloads.
+  const version = currentVersion + 1;
+  const token = inviteToken(preregistrationId, version);
+  const tokenHash = hashToken(token);
   const issuedAt = now.toISOString();
   const expiresAt = new Date(now.getTime() + INVITE_TTL_MS).toISOString();
   const payload = {
