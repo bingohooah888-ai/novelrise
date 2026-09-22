@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 
-const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 NOVELIGHT-Commander/0.5";
+const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36";
 
 export function detectNovelSite(rawUrl) {
   const url = new URL(rawUrl);
@@ -8,6 +8,7 @@ export function detectNovelSite(rawUrl) {
   if (host === "ncode.syosetu.com" || host.endsWith(".syosetu.com")) return "narou";
   if (host === "kakuyomu.jp" || host.endsWith(".kakuyomu.jp")) return "kakuyomu";
   if (host === "alphapolis.co.jp" || host.endsWith(".alphapolis.co.jp")) return "alphapolis";
+  if (host === "caita.ai" || host.endsWith(".caita.ai")) return "caita";
   return "generic";
 }
 
@@ -18,7 +19,7 @@ function clean(text) {
 async function fetchHtml(url, extraHeaders = {}) {
   const response = await fetch(url, {
     redirect: "follow",
-    headers: { "user-agent": USER_AGENT, accept: "text/html,application/xhtml+xml", ...extraHeaders }
+    headers: { "user-agent": USER_AGENT, accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "accept-language": "ja,en-US;q=0.9,en;q=0.8", "cache-control": "no-cache", "upgrade-insecure-requests": "1", ...extraHeaders }
   });
   if (!response.ok) throw new Error("HTTP " + response.status + " while fetching " + url);
   return { url: response.url, html: await response.text() };
@@ -205,6 +206,35 @@ async function alphapolisEpisode(url, workUrl) {
   return { url: finalUrl, title, body };
 }
 
+function caitaEpisodeUrl(rawUrl) {
+  const u = new URL(rawUrl);
+  const match = u.pathname.match(/^\/viewer\/episode\/([0-9A-HJKMNP-TV-Z]{26})\/?$/i);
+  return match ? u.origin + "/viewer/episode/" + match[1].toUpperCase() : null;
+}
+
+async function caitaPage(rawUrl) {
+  const episodeUrl = caitaEpisodeUrl(rawUrl);
+  if (!episodeUrl) throw new Error("Unsupported Caita URL. Use a public /viewer/episode/<id> URL.");
+  const { html, url: finalUrl } = await fetchHtml(episodeUrl, {
+    referer: "https://caita.ai/",
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "same-origin",
+    "sec-fetch-user": "?1"
+  });
+  const $ = cheerio.load(html);
+  $("script,style,noscript,nav,header,footer,aside").remove();
+  const title = clean($('meta[property="og:title"]').attr("content")) || clean($("h1").first().text()) || clean($("title").first().text());
+  const author = clean($('[class*="author"]').first().text()) || clean($('meta[name="author"]').attr("content"));
+  let body = "";
+  for (const selector of ['[itemprop="articleBody"]','[class*="episode-body"]','[class*="episodeBody"]','article','main']) {
+    const texts = $(selector).toArray().map(node => clean($(node).text())).filter(Boolean).sort((a, b) => b.length - a.length);
+    if (texts[0] && texts[0].length > body.length) body = texts[0];
+  }
+  if (!body) throw new Error("Caita body not found: " + finalUrl);
+  return { site: "caita", workUrl: finalUrl, title, author, synopsis: "", episodes: [{ url: finalUrl, label: title || "本文" }], inlineEpisode: { url: finalUrl, title, body } };
+}
+
 async function genericPage(url) {
   const { html, url: finalUrl } = await fetchHtml(url);
   const $ = cheerio.load(html);
@@ -220,7 +250,7 @@ export async function readNovel(rawUrl, options = {}) {
   const site = detectNovelSite(rawUrl);
   const delayMs = Math.max(300, Number(options.delayMs || 700));
   const maxEpisodes = Math.max(1, Math.min(1000, Number(options.maxEpisodes || 500)));
-  const index = site === "narou" ? await narouIndex(rawUrl) : site === "kakuyomu" ? await kakuyomuIndex(rawUrl) : site === "alphapolis" ? await alphapolisIndex(rawUrl) : await genericPage(rawUrl);
+  const index = site === "narou" ? await narouIndex(rawUrl) : site === "kakuyomu" ? await kakuyomuIndex(rawUrl) : site === "alphapolis" ? await alphapolisIndex(rawUrl) : site === "caita" ? await caitaPage(rawUrl) : await genericPage(rawUrl);
   const selected = index.episodes.slice(0, maxEpisodes);
   const episodes = [];
   const failures = [];
