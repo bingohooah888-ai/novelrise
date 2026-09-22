@@ -112,18 +112,18 @@ jobs:
           title="[Production Auth Beta Email Mode Approval] $request_id"
           body="$(cat <<EOF
           NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST $request_json
-          
+
           A Production Auth change is ready for explicit OWNER approval.
-          
+
           Scope:
           - exact main SHA: $MAIN_SHA
           - set only mailer_autoconfirm=true
           - preserve Secure Email Change and Before User Created hook configuration
           - require campaign state PRE_REGISTRATION
           - no SMTP, Send Email Hook, Secret, DB, Stripe, or migration change
-          
+
           Exact approval comment:
-          
+
           NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_APPROVE $approval_json
           EOF
           )"
