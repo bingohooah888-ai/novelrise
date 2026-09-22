@@ -138,6 +138,17 @@ test('Commander uses canonical repo manifest for legacy background pack', async 
   assert.match(source, /preparedManifest\.manifestRelative/);
 });
 
+
+test('Commander can source Production Supabase credential from Vercel', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(source, /runFixedCli\(\s*'vercel'/);
+  assert.match(source, /'--environment=production'/);
+  assert.match(source, /SUPABASE_SECRET_KEY/);
+  assert.match(source, /source: 'vercel-production-env'/);
+  assert.match(source, /fs\.rm\(envTarget\.candidate/);
+});
+
 test('Commander package checks the bridge daemon', async () => {
   const source = await readFile(packagePath, 'utf8');
   assert.match(source, /github-bridge-daemon\.js/);
