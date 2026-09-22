@@ -23,6 +23,11 @@ test('creator pages load the shared Author Studio shell', () => {
   assert.match(client, /novelight-author-studio-shell/);
 });
 
+test('author dashboard shell keeps the profile anchor unique', () => {
+  assert.match(client, /main\.querySelector\('\.profile-panel'\)/);
+  assert.doesNotMatch(client, /main\.querySelector\('\.panel'\)/);
+});
+
 test('shared shell matches the creator-room navigation contract', () => {
   const expectedItems = [
     ['mypage.html', '創作室'],

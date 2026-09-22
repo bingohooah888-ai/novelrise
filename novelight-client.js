@@ -138,7 +138,7 @@
     const main = document.querySelector('main');
     if (!main || main.classList.contains('novelight-author-shell')) return false;
 
-    const profilePanel = main.querySelector('.panel');
+    const profilePanel = main.querySelector('.profile-panel');
     if (profilePanel && !profilePanel.id) profilePanel.id = 'profile';
 
     const sidebar = document.createElement('aside');
