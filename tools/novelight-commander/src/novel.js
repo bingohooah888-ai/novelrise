@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import net from "node:net";
 import * as cheerio from "cheerio";
 
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36";
@@ -301,6 +302,139 @@ async function dumpDomWithBrowser(url) {
   }
 }
 
+function reserveLoopbackPort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      server.close(error => {
+        if (error) reject(error);
+        else if (!port) reject(new Error("Could not reserve a browser debug port."));
+        else resolve(port);
+      });
+    });
+  });
+}
+
+async function waitForCdpPage(port, expectedUrl) {
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch("http://127.0.0.1:" + port + "/json/list");
+      if (response.ok) {
+        const targets = await response.json();
+        const page =
+          targets.find(
+            target =>
+              target?.type === "page" &&
+              String(target?.url || "").startsWith(expectedUrl)
+          ) ||
+          targets.find(
+            target =>
+              target?.type === "page" &&
+              String(target?.url || "").includes("caita.ai/")
+          );
+        if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
+      }
+    } catch {}
+    await sleep(250);
+  }
+  throw new Error("Caita visible browser did not expose a page target.");
+}
+
+async function readDomThroughCdp(webSocketUrl) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(webSocketUrl);
+    let settled = false;
+    const requestId = 1;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        socket.close();
+        reject(new Error("Caita visible browser DOM read timed out."));
+      }
+    }, 20000);
+
+    socket.addEventListener("open", () => {
+      socket.send(
+        JSON.stringify({
+          id: requestId,
+          method: "Runtime.evaluate",
+          params: {
+            expression: "document.documentElement.outerHTML",
+            returnByValue: true
+          }
+        })
+      );
+    });
+    socket.addEventListener("message", event => {
+      let message;
+      try {
+        message = JSON.parse(String(event.data));
+      } catch {
+        return;
+      }
+      if (message.id !== requestId) return;
+      clearTimeout(timer);
+      settled = true;
+      socket.close();
+      const html = message?.result?.result?.value;
+      if (typeof html !== "string" || !html.trim()) {
+        reject(new Error("Caita visible browser returned an empty DOM."));
+        return;
+      }
+      resolve(html);
+    });
+    socket.addEventListener("error", () => {
+      clearTimeout(timer);
+      if (!settled) {
+        settled = true;
+        reject(new Error("Caita visible browser DevTools connection failed."));
+      }
+    });
+  });
+}
+
+async function dumpDomWithVisibleBrowser(url) {
+  const executable = await findBrowserExecutable();
+  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), "novelight-caita-visible-"));
+  const port = await reserveLoopbackPort();
+  let child;
+  try {
+    child = spawn(
+      executable,
+      [
+        "--disable-extensions",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--start-minimized",
+        "--user-data-dir=" + profileDir,
+        "--remote-debugging-address=127.0.0.1",
+        "--remote-debugging-port=" + port,
+        "--app=" + url
+      ],
+      { shell: false, windowsHide: false }
+    );
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 1200);
+      child.once("error", error => {
+        clearTimeout(timer);
+        reject(error);
+      });
+    });
+    const webSocketUrl = await waitForCdpPage(port, url);
+    await sleep(12000);
+    return await readDomThroughCdp(webSocketUrl);
+  } finally {
+    child?.kill();
+    await sleep(500).catch(() => {});
+    await fs.rm(profileDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 function extractCaitaPage(html, finalUrl) {
   const $ = cheerio.load(html);
   $("script,style,noscript,nav,header,footer,aside").remove();
@@ -375,8 +509,18 @@ async function caitaPage(rawUrl) {
     if (!/HTTP 403|Caita body not found/i.test(message)) throw error;
   }
 
-  const renderedHtml = await dumpDomWithBrowser(episodeUrl);
-  return extractCaitaPage(renderedHtml, episodeUrl);
+  try {
+    const renderedHtml = await dumpDomWithBrowser(episodeUrl);
+    return extractCaitaPage(renderedHtml, episodeUrl);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/Caita body not found after render|Caita browser render/i.test(message)) {
+      throw error;
+    }
+  }
+
+  const visibleHtml = await dumpDomWithVisibleBrowser(episodeUrl);
+  return extractCaitaPage(visibleHtml, episodeUrl);
 }
 
 async function genericPage(url) {

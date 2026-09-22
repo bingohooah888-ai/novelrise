@@ -115,4 +115,7 @@ test('NLO novel reader recognizes public Caita episode URLs', async () => {
   assert.match(source, /--headless=new/);
   assert.match(source, /--dump-dom/);
   assert.match(source, /dumpDomWithBrowser/);
+  assert.match(source, /--remote-debugging-address=127\.0\.0\.1/);
+  assert.match(source, /--remote-debugging-port=/);
+  assert.match(source, /dumpDomWithVisibleBrowser/);
 });
