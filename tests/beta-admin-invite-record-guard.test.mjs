@@ -9,41 +9,46 @@ function read(path) {
 
 const adminHtml = read('admin-beta-authors.html');
 const adminApi = read('api/admin-beta-authors.js');
+const inviteApi = read('api/admin-beta-author-invites.js');
 
-test('beta admin presents invited as a manual outreach record, not a send action', () => {
-  assert.match(adminHtml, /案内送付記録済み/);
-  assert.match(adminHtml, /案内送付記録済み（手動）/);
-  assert.match(adminHtml, /この画面からメールやDMは送信されません/);
-  assert.match(adminHtml, /案内送付記録/);
-  assert.doesNotMatch(adminHtml, /招待送信済み/);
-  assert.doesNotMatch(adminHtml, />招待済み</);
-});
-
-test('beta admin confirms before first marking outreach as sent', () => {
+test('beta admin makes invite verification and delivery system-owned', () => {
+  assert.match(adminHtml, /招待メール送信済み/);
+  assert.match(adminHtml, /メール確認済み（自動）/);
+  assert.match(adminHtml, /招待メール送信済み（自動）/);
   assert.match(
     adminHtml,
-    /function confirmInviteRecordStatusChange\(nextStatus\)/
+    /systemOwned=option\.value==='verified'\|\|option\.value==='invited'/
   );
-  assert.match(
-    adminHtml,
-    /if\(!selected\|\|nextStatus!==['"]invited['"]\|\|selected\.status===['"]invited['"]\)return true;/
-  );
-  assert.match(adminHtml, /送付済みとして記録しますか/);
-  assert.match(
-    adminHtml,
-    /if\(!confirmInviteRecordStatusChange\(nextStatus\)\)/
-  );
-});
+  assert.doesNotMatch(adminHtml, /案内送付記録済み（手動）/);
+  assert.doesNotMatch(adminHtml, /confirmInviteRecordStatusChange/);
 
-test('beta invite milestone remains record-only and does not add an outbound mail path', () => {
   assert.match(
     adminApi,
-    /patch\.invite_sent_at = current\.invite_sent_at \|\| now/
+    /SYSTEM_OWNED_STATUSES = new Set\(\['verified', 'invited'\]\)/
   );
-  assert.doesNotMatch(adminApi, /inviteUserByEmail/);
-  assert.doesNotMatch(adminApi, /auth\.admin/);
-  assert.doesNotMatch(adminApi, /sendEmail/);
-  assert.doesNotMatch(adminApi, /nodemailer/i);
-  assert.doesNotMatch(adminApi, /sendgrid/i);
-  assert.doesNotMatch(adminApi, /resend/i);
+  assert.match(adminApi, /SYSTEM_OWNED_STATUSES\.has\(status\)/);
+  assert.doesNotMatch(adminApi, /patch\.email_verified\s*=\s*true/);
+  assert.doesNotMatch(adminApi, /patch\.invite_sent_at\s*=/);
+});
+
+test('beta admin exposes an explicit real-mail action only for AUTHOR_PREOPEN', () => {
+  assert.match(adminHtml, /id="sendInvites"/);
+  assert.match(adminHtml, /実メール送信です。実行しますか/);
+  assert.match(adminHtml, /\/api\/admin-beta-author-invites/);
+  assert.match(inviteApi, /requireAdmin/);
+  assert.match(inviteApi, /state !== 'AUTHOR_PREOPEN'/);
+  assert.match(inviteApi, /RESEND_API_KEY/);
+  assert.match(inviteApi, /https:\/\/api\.resend\.com\/emails/);
+  assert.match(inviteApi, /NOVELIGHT <noreply@novelight\.jp>/);
+});
+
+test('outbound invites are idempotent and do not persist raw bearer tokens', () => {
+  assert.match(inviteApi, /createHmac\('sha256'/);
+  assert.match(inviteApi, /createHash\('sha256'/);
+  assert.match(inviteApi, /Idempotency-Key/);
+  assert.match(inviteApi, /novelight-beta-author-invite-/);
+  assert.match(inviteApi, /token_hash: tokenHash/);
+  assert.doesNotMatch(inviteApi, /raw_token/);
+  assert.match(inviteApi, /url\.hash = `invite=/);
+  assert.match(inviteApi, /if \(invite\.sent_at\)/);
 });
