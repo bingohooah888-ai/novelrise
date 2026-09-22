@@ -596,40 +596,7 @@ async function processComment(comment, config, token, state) {
       state.lastSeenAt = comment.created_at || state.lastSeenAt;
       await writeJson(config.statePath, state);
 
-      const runnerScript = path.join(
-        config.repoRoot,
-        'tools',
-        'novelight-commander',
-        'run-github-bridge.ps1'
-      );
-      const quotePs = value => "'" + String(value).replaceAll("'", "''") + "'";
-      const restartCommand =
-        'Start-Sleep -Seconds 2; & ' +
-        quotePs(runnerScript) +
-        ' -ConfigPath ' +
-        quotePs(config.configPath);
-      const restart = spawn(
-        'powershell.exe',
-        [
-          '-NoProfile',
-          '-ExecutionPolicy',
-          'Bypass',
-          '-WindowStyle',
-          'Hidden',
-          '-Command',
-          restartCommand
-        ],
-        {
-          cwd: config.repoRoot,
-          detached: true,
-          windowsHide: true,
-          stdio: 'ignore',
-          shell: false,
-          env: process.env
-        }
-      );
-      restart.unref();
-      await appendAudit(config, 'bridge-update-restart-scheduled', {
+      await appendAudit(config, 'bridge-update-restart-requested', {
         requestId: request.requestId
       });
       process.exit(0);
