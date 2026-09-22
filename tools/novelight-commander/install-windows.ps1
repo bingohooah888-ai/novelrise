@@ -6,7 +6,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw "Node.js 20+ 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw "Git is required." }
 
 Write-Host "Installing NOVELIGHT Commander dependencies..."
-npm install
+npm install --package-lock=false
 
 if (-not (Test-Path ".env")) {
   Copy-Item ".env.example" ".env"
