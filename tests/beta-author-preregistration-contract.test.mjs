@@ -56,6 +56,9 @@ test('beta author LP keeps required copy, fields and isolated navigation', () =>
     betaHtml,
     /NOVELIGHT β版の公開・参加に関する連絡を受け取ることに同意します/
   );
+  assert.match(betaHtml, /本ページとNOVELIGHT公式Xでご案内します/);
+  assert.match(betaHtml, /先行登録時と同じメールアドレスを使用してください/);
+  assert.doesNotMatch(betaHtml, /メールアドレスへ参加方法をご案内します/);
   assert.doesNotMatch(betaHtml, /href="search\.html"/);
   assert.doesNotMatch(betaHtml, /href="ranking\.html"/);
   assert.doesNotMatch(betaHtml, /href="login\.html"/);
