@@ -1,6 +1,6 @@
-# NOVELIGHT Commander v0.5
+# NOVELIGHT Operator (NLO) v0.6
 
-NOVELIGHT開発専用のローカルMCPオペレーション層です。Desktop Commanderで便利だったローカル操作をNOVELIGHT向けにまとめ、日常開発を1つの接続から進めます。
+NOVELIGHT開発専用のローカルMCPオペレーション層です。旧称 NOVELIGHT Commander。Desktop Commander（DC）と区別するため、以後は NOVELIGHT Operator（NLO）を正式な呼称とします。
 
 ## 主な機能
 
@@ -20,7 +20,7 @@ NOVELIGHT開発専用のローカルMCPオペレーション層です。Desktop 
 - GitHub PR checks / Actions runs
 - Supabase migration list / Vercel deployment list
 - JSONL監査ログ
-- 小説家になろう・カクヨム・アルファポリスのURL一発全話読取
+- 小説家になろう・カクヨム・アルファポリス・Caitaの公開小説URL読取
 - 小説キャッシュと新規話だけの差分取得
 
 ## Safety modes
@@ -74,7 +74,7 @@ read_novel / read_novel_cached / get_novel_cache / list_novel_cache / read_audit
 
 NOVELIGHT本体から独立した内部開発ツールです。本番アプリのランタイム依存にはしません。
 
-公開小説取得では認証突破、CAPTCHA回避、アクセス制限回避を行いません。
+公開小説取得では認証突破、CAPTCHA回避、アクセス制限回避を行いません。Caitaは通常HTTP取得が403等で拒否された場合に限り、ローカルのChrome/Edgeを匿名の一時プロファイルで起動して公開ページをレンダリングします。ログイン済みブラウザプロファイルは使用しません。
 
 ## 公式素材pack登録
 
@@ -106,3 +106,8 @@ API keyをチャットやGitへ貼らないでください。
 ## NOVELIGHT引継ぎ・ゲート読込
 
 `novelight_context_bundle` でMASTERと主要ゲート文書を一括読込できます。`novelight_handoff_report` ではbranch / HEAD / origin/main / working tree / recent commits / 任意PR状態を1回で取得し、新しいチャットへの引継ぎ材料を作れます。
+
+
+## Caita公開小説読取
+
+Caita（`caita.ai`）は `/viewer/episode/<ID>` と `/series/<ID>` に対応します。通常HTTP取得で本文が得られない場合は、WindowsのChrome/Edgeを自動検出して公開ページをヘッドレス描画し、本文を抽出します。ブラウザの自動検出ができない環境では `NOVELIGHT_COMMANDER_BROWSER_PATH` にChrome/Edge実行ファイルの絶対パスを設定できます。シリーズ一覧を公開ページから確認できない場合、エピソードURLの本文自体は返しますが `complete=false` / `truncated=true` として全話取得済みとは扱いません。
