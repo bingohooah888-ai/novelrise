@@ -697,7 +697,17 @@ async function actionNovelFetch(request, config) {
     'author: ' + (result.author || '(unknown)'),
     'discoveredEpisodes: ' + result.discoveredEpisodes,
     'fetchedEpisodes: ' + result.fetchedEpisodes,
+    'bodyEpisodes: ' +
+      result.episodes.filter(
+        episode => String(episode.body || '').trim().length > 0
+      ).length,
+    'bodyChars: ' +
+      result.episodes.reduce(
+        (sum, episode) => sum + String(episode.body || '').length,
+        0
+      ),
     'complete: ' + result.complete,
+    'truncated: ' + result.truncated,
     'failures: ' + result.failures.length,
     'saved_local: ' + destination.relative
   ].join('\n');
