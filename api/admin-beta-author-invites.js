@@ -135,14 +135,13 @@ async function campaignState() {
 }
 
 async function pendingInviteIds() {
-  const { data: preregistrations, error: preregistrationError } =
-    await supabase
-      .from('beta_author_preregistrations')
-      .select('id')
-      .neq('status', 'cancelled')
-      .is('auth_user_id', null)
-      .order('created_at', { ascending: true })
-      .limit(MAX_PENDING_IDS);
+  const { data: preregistrations, error: preregistrationError } = await supabase
+    .from('beta_author_preregistrations')
+    .select('id')
+    .neq('status', 'cancelled')
+    .is('auth_user_id', null)
+    .order('created_at', { ascending: true })
+    .limit(MAX_PENDING_IDS);
   if (preregistrationError) throw preregistrationError;
 
   const ids = (preregistrations ?? []).map((row) => row.id);
@@ -275,8 +274,7 @@ async function sendInvite(preregistration) {
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'Idempotency-Key':
-        `novelight-beta-author-invite-${preregistration.id}-v${invite.token_version}`
+      'Idempotency-Key': `novelight-beta-author-invite-${preregistration.id}-v${invite.token_version}`
     },
     body: JSON.stringify(
       emailPayload({
