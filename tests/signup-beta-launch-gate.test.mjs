@@ -46,8 +46,10 @@ test('campaign lookup failures keep normal signup closed', () => {
   expectSignup(/安全のため、現在は新規会員登録を停止しています/);
 });
 
-test('existing signup metadata and auth flow remain intact behind the gate', () => {
+test('beta no-mail signup keeps profile metadata and requires an immediate session', () => {
   expectSignup(/client\.auth\.signUp/);
   expectSignup(/data:\{display_name:name\}/);
-  expectSignup(/emailRedirectTo:window\.location\.origin\+'\/index\.html'/);
+  expectSignup(/if\(!data\?\.session\)/);
+  expectSignup(/window\.location\.href='mypage\.html'/);
+  assert.doesNotMatch(signup, /emailRedirectTo/u);
 });
