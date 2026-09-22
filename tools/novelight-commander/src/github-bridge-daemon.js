@@ -796,6 +796,68 @@ async function actionNovelVerifySaved(request, config) {
   ].join('\n');
 }
 
+async function actionNovelSampleSaved(request, config) {
+  if (!exactKeys(request.args, ['requestId', 'episodes'])) {
+    throw new Error(
+      'novel_sample_saved requires exactly requestId and episodes.'
+    );
+  }
+  const sourceRequestId = String(request.args.requestId || '').trim();
+  if (!/^cmdr-[A-Za-z0-9T_-]{8,80}$/.test(sourceRequestId)) {
+    throw new Error('Invalid saved novel requestId.');
+  }
+  const requested = Array.isArray(request.args.episodes)
+    ? request.args.episodes.map(Number)
+    : [];
+  if (
+    requested.length < 1 ||
+    requested.length > 8 ||
+    requested.some(
+      number =>
+        !Number.isInteger(number) ||
+        number < 1 ||
+        number > MAX_EPISODES
+    )
+  ) {
+    throw new Error('episodes must contain 1 to 8 episode numbers.');
+  }
+
+  const source = resolveDataPath(
+    config,
+    path.join('novels', sourceRequestId + '.json')
+  );
+  const raw = await fs.readFile(source.candidate, 'utf8');
+  const result = JSON.parse(raw);
+  const episodes = Array.isArray(result.episodes) ? result.episodes : [];
+
+  const clip = text => {
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    if (value.length <= 180) return value;
+    return value.slice(0, 180);
+  };
+
+  const rows = [];
+  for (const number of [...new Set(requested)].sort((a, b) => a - b)) {
+    const episode = episodes[number - 1];
+    if (!episode) {
+      rows.push('EP' + number + ': missing');
+      continue;
+    }
+    const body = String(episode.body || '').replace(/\s+/g, ' ').trim();
+    const midpoint = Math.max(0, Math.floor(body.length / 2) - 90);
+    const tailStart = Math.max(0, body.length - 180);
+    rows.push(
+      [
+        'EP' + number + ' title: ' + String(episode.title || ''),
+        'EP' + number + ' head: ' + clip(body),
+        'EP' + number + ' middle: ' + clip(body.slice(midpoint)),
+        'EP' + number + ' tail: ' + clip(body.slice(tailStart))
+      ].join('\n')
+    );
+  }
+  return rows.join('\n\n');
+}
+
 async function actionThumbnailStageTransfer(request, config) {
   if (!exactKeys(request.args, ['fileName'])) {
     throw new Error('thumbnail_stage_transfer requires exactly fileName.');
@@ -1222,6 +1284,7 @@ const ACTIONS = new Map([
   ['commander_check', actionCommanderCheck],
   ['novel_fetch', actionNovelFetch],
   ['novel_verify_saved', actionNovelVerifySaved],
+  ['novel_sample_saved', actionNovelSampleSaved],
   ['thumbnail_stage_transfer', actionThumbnailStageTransfer],
   ['thumbnail_production_readiness', actionThumbnailProductionReadiness],
   ['thumbnail_register_production', actionThumbnailRegisterProduction],
