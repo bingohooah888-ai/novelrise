@@ -24,37 +24,20 @@
       <h2 id="emailSettingsTitle" class="section-title">メールアドレス</h2>
       <p class="privacy-note">メールアドレスは公開プロフィール・作者ページ・検索・ランキングなどの公開画面には表示されません。</p>
 
-      <div id="pendingNotice" class="pending" hidden>
-        <strong>メールアドレス変更の確認待ちです。</strong><br>
-        届いた確認メールのリンクから手続きを完了してください。リンクが期限切れの場合は、下のフォームからもう一度変更手続きを行ってください。
-      </div>
-
       <div class="current">
         <span class="current-label">現在のメールアドレス</span>
         <div id="currentEmail" class="current-email" aria-live="polite">確認しています...</div>
       </div>
 
-      <form id="emailForm" novalidate>
-        <div class="field">
-          <label for="currentPassword">現在のパスワード</label>
-          <input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" maxlength="1024" required disabled>
-        </div>
-        <div class="field">
-          <label for="newEmail">新しいメールアドレス</label>
-          <input id="newEmail" name="newEmail" type="email" autocomplete="email" inputmode="email" spellcheck="false" maxlength="320" required disabled>
-        </div>
-        <div class="field">
-          <label for="confirmEmail">新しいメールアドレス確認</label>
-          <input id="confirmEmail" name="confirmEmail" type="email" autocomplete="off" inputmode="email" spellcheck="false" maxlength="320" required disabled>
-        </div>
-        <div class="actions">
-          <button id="changeEmail" class="primary" type="submit" disabled>確認メールを送信</button>
-        </div>
-        <div id="status" class="status" aria-live="polite">ログイン状態を確認しています...</div>
-      </form>
+      <div id="betaEmailNotice" class="pending">
+        <strong>β期間中はメールアドレス変更を一時停止しています。</strong><br>
+        正式なメール配信基盤を導入し、変更確認メールを安全に送れる状態になってから再開します。現在のメールアドレスは本人と必要な権限を持つ運営だけが確認できます。
+      </div>
+
+      <div id="status" class="status" aria-live="polite">ログイン状態を確認しています...</div>
 
       <div class="security-note">
-        メールアドレスを変更する前に、現在のパスワードで本人確認を行います。その後はSupabase Authの確認メールで変更を確定します。確認が完了するまでは現在のメールアドレスが有効です。NOVELIGHTはパスワードを保存せず、公開プロフィール用データへメールアドレスを複製保存しません。
+        NOVELIGHTは公開プロフィール用データへメールアドレスを複製保存しません。β期間中はメール変更要求を送信しないため、確認メールが届かない状態で変更手続きだけが残ることもありません。
       </div>
     </section>
 
@@ -69,99 +52,26 @@
   <script src="novelight-author-studio-shell.js"></script>
   <script>
     const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
-    const currentEmailEl=document.getElementById('currentEmail'),form=document.getElementById('emailForm'),currentPasswordEl=document.getElementById('currentPassword'),newEmailEl=document.getElementById('newEmail'),confirmEmailEl=document.getElementById('confirmEmail'),button=document.getElementById('changeEmail'),statusEl=document.getElementById('status'),pendingNotice=document.getElementById('pendingNotice');
-    let currentEmail='',ready=false,busy=false;
+    const currentEmailEl=document.getElementById('currentEmail'),statusEl=document.getElementById('status');
 
-    function normalizedEmail(value){return String(value||'').trim().toLowerCase()}
-    function setStatus(message,error=false){statusEl.textContent=message;statusEl.classList.toggle('error',error)}
-    function setReady(value){ready=value;currentPasswordEl.disabled=!value;newEmailEl.disabled=!value;confirmEmailEl.disabled=!value;button.disabled=!value||busy}
     function goToLogin(){location.replace('login.html?redirect=account-settings.html')}
     function sessionExpired(error){const status=Number(error?.status||0),code=String(error?.code||'').toLowerCase(),name=String(error?.name||'').toLowerCase(),message=String(error?.message||'').toLowerCase();return status===401||code.includes('session')||name.includes('session')||message.includes('session missing')||message.includes('jwt expired')}
-    function updateErrorMessage(error){const status=Number(error?.status||0),message=String(error?.message||'').toLowerCase();if(status===429||message.includes('rate limit')||message.includes('too many'))return'確認メールの送信回数が上限に達しています。しばらく時間をおいてからもう一度お試しください。';if(message.includes('already')||message.includes('registered')||message.includes('exists')||message.includes('duplicate'))return'このメールアドレスには変更できません。入力内容を確認するか、別のメールアドレスをお試しください。';if(message.includes('invalid')||message.includes('email'))return'メールアドレスを確認してください。';return'確認メールを送信できませんでした。通信状況を確認し、時間をおいてもう一度お試しください。'}
-
-    async function verifiedUser(){
-      const result=await client.auth.getUser();
-      if(result.error||!result.data?.user)throw result.error||Object.assign(new Error('Auth session missing'),{status:401});
-      return result.data.user;
-    }
 
     async function init(){
       try{
-        const user=await verifiedUser();
-        currentEmail=String(user.email||'').trim();
+        const result=await client.auth.getUser();
+        if(result.error||!result.data?.user)throw result.error||Object.assign(new Error('Auth session missing'),{status:401});
+        const currentEmail=String(result.data.user.email||'').trim();
         if(!currentEmail){goToLogin();return}
         currentEmailEl.textContent=currentEmail;
-        pendingNotice.hidden=!(user.new_email||user.email_change_sent_at);
-        setReady(true);
-        setStatus('');
+        statusEl.textContent='';
       }catch(error){
         currentEmailEl.textContent='確認できません';
-        setReady(false);
         if(sessionExpired(error)){goToLogin();return}
-        setStatus('アカウント情報を確認できませんでした。通信状況を確認して再読み込みしてください。',true);
+        statusEl.textContent='アカウント情報を確認できませんでした。通信状況を確認して再読み込みしてください。';
+        statusEl.classList.add('error');
       }
     }
-
-    form.addEventListener('submit',async event=>{
-      event.preventDefault();
-      if(!ready||busy)return;
-      const currentPassword=currentPasswordEl.value,newEmail=newEmailEl.value.trim(),confirmEmail=confirmEmailEl.value.trim();
-      if(!currentPassword){
-        setStatus('現在のパスワードを入力してください。',true);
-        return;
-      }
-      if(!newEmail||!confirmEmail||!newEmailEl.validity.valid||!confirmEmailEl.validity.valid){
-        currentPasswordEl.value='';
-        setStatus('有効なメールアドレスを2か所に入力してください。',true);
-        return;
-      }
-      if(normalizedEmail(newEmail)!==normalizedEmail(confirmEmail)){
-        currentPasswordEl.value='';
-        setStatus('新しいメールアドレスが一致していません。',true);
-        return;
-      }
-      if(normalizedEmail(newEmail)===normalizedEmail(currentEmail)){
-        currentPasswordEl.value='';
-        setStatus('現在と同じメールアドレスです。別のメールアドレスを入力してください。',true);
-        return;
-      }
-
-      busy=true;
-      setReady(true);
-      setStatus('本人確認しています...');
-      try{
-        const user=await verifiedUser();
-        const verifiedCurrent=String(user.email||'').trim();
-        if(!verifiedCurrent){goToLogin();return}
-        currentEmail=verifiedCurrent;
-        currentEmailEl.textContent=currentEmail;
-        if(normalizedEmail(newEmail)===normalizedEmail(currentEmail)){
-          currentPasswordEl.value='';
-          setStatus('現在と同じメールアドレスです。別のメールアドレスを入力してください。',true);
-          return;
-        }
-        const reauth=await client.auth.signInWithPassword({email:currentEmail,password:currentPassword});
-        const reauthUserId=reauth.data?.user?.id||reauth.data?.session?.user?.id||'';
-        if(reauth.error||reauthUserId!==user.id){
-          currentPasswordEl.value='';
-          setStatus('現在のパスワードを確認してください。',true);
-          return;
-        }
-        setStatus('確認メールを送信しています...');
-        const result=await client.auth.updateUser({email:newEmail});
-        if(result.error)throw result.error;
-        form.reset();
-        pendingNotice.hidden=false;
-        setStatus('確認メールを送信しました。メール内のリンクから変更を完了してください。確認が完了するまでは現在のメールアドレスが有効です。');
-      }catch(error){
-        if(sessionExpired(error)){goToLogin();return}
-        setStatus(updateErrorMessage(error),true);
-      }finally{
-        currentPasswordEl.value='';
-        busy=false;
-        if(document.location.pathname.endsWith('account-settings.html'))setReady(ready);
-      }
-    });
 
     void init();
   </script>

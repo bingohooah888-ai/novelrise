@@ -1,10 +1,34 @@
 # NOVELIGHT controlled-beta operations runbook
 
-Last updated: 2026-09-20
+Last updated: 2026-09-22
 
 ## Purpose
 
 This runbook defines the minimum operator routine for the controlled public beta. The goal is to avoid relying on ad-hoc Supabase dashboard checks when moderation or support work is waiting.
+
+## Temporary beta no-mail Auth mode — before 2026-09-28
+
+Until NOVELIGHT has a verified transactional email delivery path, beta signup uses a temporary **no-mail Auth mode**. This is an operational exception, not a claim that the submitted email address has been inbox-verified.
+
+The approved temporary mode has these boundaries:
+
+- hosted Supabase Auth keeps the email provider enabled and keeps Secure Email Change enabled;
+- only `mailer_autoconfirm` is changed to `true`;
+- the existing Before User Created hook remains enabled and its URI must remain unchanged;
+- `signup.html` requires an immediate session and never tells the user that a confirmation email was sent;
+- email-address changes are paused in `account-settings.html`;
+- password-recovery email is paused in `forgot-password.html`;
+- no SMTP, Send Email Hook, Secret, DB migration, Stripe or billing change is part of this temporary mode.
+
+Enable the mode only while the campaign is still exactly `PRE_REGISTRATION`, using the approval-gated workflow `NOVELIGHT Production Auth Beta Email Mode`. Start the request from the active Production Approval Ledger with the exact comment:
+
+`NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST`
+
+The workflow must create a dedicated expiring approval issue. Only after exact OWNER approval may it PATCH `mailer_autoconfirm=true`. It must record CLAIMED/CONSUMED evidence and verify that the Before User Created hook, Secure Email Change, email provider and campaign state remain intact. A failed postcheck after the mutation must restore the previous `mailer_autoconfirm` value.
+
+While `AUTHOR_PREOPEN` is active, the Before User Created hook still restricts account creation to a non-cancelled preregistration email even though signup itself is autoconfirmed. This proves preregistration eligibility, not ownership of the inbox.
+
+Before restoring email-address changes or password recovery, first configure and verify a real mail-delivery path, then separately approve the return to confirmation-based Auth (`mailer_autoconfirm=false`). Do not silently reactivate mail-dependent UI while delivery remains unavailable.
 
 ## Founding-author preopen cutover — 2026-09-28 JST
 
@@ -115,7 +139,7 @@ Use this order for the initial beta cohort:
 
 1. While the campaign is `PRE_REGISTRATION`, keep the preregistration row as the lead record. If outreach is sent by X DM, email, or another external channel, complete that outreach outside NOVELIGHT first.
 2. Record the ADMIN `invited` / 「案内送付記録済み」milestone only **after the external outreach was actually completed**. Do not use the milestone as a request to send outreach and do not mark it speculatively.
-3. After the campaign becomes `AUTHOR_PREOPEN`, a preregistered author may create the NOVELIGHT account through `signup.html` using the same email address used for preregistration and complete the confirmation email flow. General signup remains blocked until `BETA_OPEN`.
+3. After the campaign becomes `AUTHOR_PREOPEN`, a preregistered author may create the NOVELIGHT account through `signup.html` using the same email address used for preregistration. In the temporary beta no-mail Auth mode, successful signup returns an immediate authenticated session and no confirmation email is sent. General signup remains blocked until `BETA_OPEN`.
 4. Beta Standard is self-service. If the author wants Standard during the beta, they use the pricing page action `Standardを無料で利用`. The beta Standard path requires no card registration. Do not manually change Stripe state, entitlement rows, or Production billing data for an ordinary beta Standard activation.
 5. Update `registered_at` / 「本登録済み」only after there is reliable evidence that the preregistered author has actually completed the NOVELIGHT account registration. Outreach completion or preregistration alone is not sufficient.
 6. Update `first_novel_at` / 「初投稿済み」only after there is reliable evidence that the author has actually completed the first qualifying work publication. Do not infer publication from signup, profile creation, or an invitation status.

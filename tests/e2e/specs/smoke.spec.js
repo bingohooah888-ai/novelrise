@@ -31,7 +31,7 @@ for (const [name, path] of publicPages) {
   });
 }
 
-test('auth pages expose password recovery and no dummy forgot-password link', async ({
+test('auth pages expose the temporary beta no-mail recovery boundary', async ({
   request
 }) => {
   const login = await (await request.get('/login.html')).text();
@@ -40,7 +40,8 @@ test('auth pages expose password recovery and no dummy forgot-password link', as
 
   expect(login).toContain('href="forgot-password.html"');
   expect(login).toContain('safeRedirectTarget');
-  expect(forgot).toContain('resetPasswordForEmail');
+  expect(forgot).toContain('β期間中はメール配信基盤の正式導入前');
+  expect(forgot).not.toContain('resetPasswordForEmail');
   expect(reset).toContain('updateUser({password})');
 });
 

@@ -288,35 +288,48 @@ test('successful session signup survives rejected optional telemetry', async ({
     claimReject: 'claim unavailable',
     visitReject: 'visit unavailable'
   });
+  await page.route('**/mypage.html', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: '<!doctype html><title>signup redirect complete</title>'
+    });
+  });
   const pageErrors = collectPageErrors(page);
 
   await page.goto('/signup.html');
   await fillSignup(page);
   await page.locator('#signupButton').click();
 
-  await expect(page.locator('#signupStatus')).toContainText(
-    '登録確認メールを送信しました。'
-  );
-  await expect(page.locator('#signupButton')).toBeEnabled();
+  await expect(page).toHaveURL(/\/mypage\.html$/);
   expect(pageErrors).toEqual([]);
 });
 
-test('forgot-password rejection restores retry while keeping enumeration-safe copy', async ({
+test('forgot-password stays paused and sends no recovery request in beta no-mail mode', async ({
   page
 }) => {
   await installAuthResilienceStubs(page, {
-    resetPasswordReject: 'temporary recovery network failure'
+    resetPasswordReject: 'must not be called'
   });
   const pageErrors = collectPageErrors(page);
 
   await page.goto('/forgot-password.html');
-  await page.locator('#email').fill('unknown@example.com');
-  await page.locator('#button').click();
 
-  await expect(page.locator('#status')).toHaveText(
-    '入力されたメールアドレスが登録済みの場合、パスワード再設定メールが届きます。届かない場合は時間をおいて再度お試しください。'
+  await expect(page.locator('body')).toContainText(
+    'β期間中はメール配信基盤の正式導入前のため'
   );
-  await expect(page.locator('#button')).toBeEnabled();
+  await expect(page.locator('body')).toContainText(
+    '現在、メールによるパスワード再設定は利用できません。'
+  );
+  await expect(page.locator('#email')).toHaveCount(0);
+
+  const recoveryCalls = await page.evaluate(
+    () =>
+      globalThis.__NOVELIGHT_AUTH_E2E_CALLS__.filter(
+        (call) => call.type === 'resetPasswordForEmail'
+      ).length
+  );
+  expect(recoveryCalls).toBe(0);
   expect(pageErrors).toEqual([]);
 });
 

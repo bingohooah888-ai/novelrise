@@ -47,28 +47,24 @@ test('signup catches auth rejections and restores retry', () => {
     signup,
     /catch\(error\)\{console\.error\('signup request failed'/
   );
-  assert.match(signup, /finally\{button\.disabled=false\}/);
+  assert.match(signup, /finally\{if\(!completed\)button\.disabled=false\}/);
   assert.match(signup, /async function runOptionalTelemetry/);
   assert.match(signup, /post-signup acquisition telemetry failed/);
   assert.match(signup, /会員登録に失敗しました。入力内容を確認してください。/);
 });
 
-test('forgot-password keeps enumeration-safe recovery copy', () => {
-  assert.match(forgotPassword, /if\(button\.disabled\)return/);
+test('forgot-password pauses mail recovery safely during beta no-mail mode', () => {
   assert.match(
     forgotPassword,
-    /try\{const \{error\}=await client\.auth\.resetPasswordForEmail/
+    /β期間中はメール配信基盤の正式導入前のため、パスワード再設定メールの送信を一時停止しています。/
   );
   assert.match(
     forgotPassword,
-    /catch\(error\)\{console\.error\('password reset request failed'/
+    /現在、メールによるパスワード再設定は利用できません。/
   );
-  assert.match(forgotPassword, /finally\{/);
-  assert.match(
-    forgotPassword,
-    /入力されたメールアドレスが登録済みの場合、パスワード再設定メールが届きます。届かない場合は時間をおいて再度お試しください。/
-  );
-  assert.match(forgotPassword, /button\.disabled=false/);
+  assert.match(forgotPassword, /href="contact\.html"/);
+  assert.doesNotMatch(forgotPassword, /resetPasswordForEmail/);
+  assert.doesNotMatch(forgotPassword, /supabase\.createClient/);
 });
 
 test('reset-password catches async failures and isolates sign-out', () => {

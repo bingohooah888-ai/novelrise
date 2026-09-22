@@ -7,7 +7,7 @@ import { fileURLToPath, URL } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (path) => readFile(join(root, path), 'utf8');
 
-test('password recovery is real and login redirect is allowlisted', async () => {
+test('password recovery is visibly paused while login redirect stays allowlisted', async () => {
   const [login, authReaderContext, forgot, reset] = await Promise.all([
     read('login.html'),
     read('auth-reader-context.js'),
@@ -20,8 +20,9 @@ test('password recovery is real and login redirect is allowlisted', async () => 
   assert.match(authReaderContext, /url\.origin !== global\.location\.origin/);
   assert.match(authReaderContext, /ALLOWED_PATHS/);
   assert.doesNotMatch(login, /window\.location\.href\s*=\s*redirect\s*;/);
-  assert.match(forgot, /resetPasswordForEmail/);
-  assert.match(forgot, /reset-password\.html/);
+  assert.match(forgot, /パスワード再設定メールの送信を一時停止しています/);
+  assert.match(forgot, /href="contact\.html"/);
+  assert.doesNotMatch(forgot, /resetPasswordForEmail/);
   assert.match(reset, /updateUser\(\{password\}\)/);
   assert.match(reset, /signOut\(\{scope:'local'\}\)/);
 });

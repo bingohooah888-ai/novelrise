@@ -1,0 +1,334 @@
+name: NOVELIGHT Production Auth Beta Email Mode
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-production-auth-beta-email-mode
+  cancel-in-progress: false
+
+env:
+  LEDGER_ISSUE: '737'
+  SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+  PRODUCTION_BASE_URL: https://novelrise.vercel.app
+
+jobs:
+  request-approval:
+    name: Prepare beta no-mail Auth approval request
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 737 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == 'NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST'
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Resolve exact current main
+        id: main
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          [[ "$main_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$main_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact current main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.main.outputs.sha }}
+          persist-credentials: false
+
+      - name: Validate active ledger and current beta Auth state
+        id: inspect
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(jq -er '.activeIssue' production-approval-ledger.json)" = "$LEDGER_ISSUE"
+          test "$(jq -er '.maxComments' production-approval-ledger.json)" = '100'
+          gh api "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE" > /tmp/ledger-issue.json
+          jq -e '.state == "open" and .locked == false' /tmp/ledger-issue.json >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments?per_page=100" > /tmp/ledger-comments.json
+          [ "$(jq 'length' /tmp/ledger-comments.json)" -lt 100 ]
+
+          curl --silent --show-error --fail --connect-timeout 10 --max-time 20             "$PRODUCTION_BASE_URL/api/beta-author-preregistration" > /tmp/campaign.json
+          jq -e '.campaign.state == "PRE_REGISTRATION"' /tmp/campaign.json >/dev/null || {
+            echo 'Safety stop: beta no-mail Auth mode may only be enabled before AUTHOR_PREOPEN.'
+            exit 1
+          }
+
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          status="$(
+            curl --silent --show-error               --output /tmp/auth-before.json               --write-out '%{http_code}'               --connect-timeout 10 --max-time 30               -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"               -H 'Accept: application/json'               "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth"
+          )"
+          [ "$status" = '200' ]
+          jq -e '
+            .external_email_enabled == true and
+            .mailer_secure_email_change_enabled == true and
+            .hook_before_user_created_enabled == true and
+            (.hook_before_user_created_uri | type == "string" and length > 0) and
+            (.mailer_autoconfirm | type) == "boolean"
+          ' /tmp/auth-before.json >/dev/null || {
+            echo 'Safety stop: Production Auth prerequisites do not match beta no-mail mode.'
+            exit 1
+          }
+
+          if [ "$(jq -r '.mailer_autoconfirm' /tmp/auth-before.json)" = 'true' ]; then
+            echo 'Beta no-mail Auth mode is already satisfied; no approval request is required.'
+            echo "verdict=current" >> "$GITHUB_OUTPUT"
+          else
+            echo "verdict=refresh-required" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create scoped approval request
+        if: steps.inspect.outputs.verdict == 'refresh-required'
+        shell: bash
+        env:
+          MAIN_SHA: ${{ steps.main.outputs.sha }}
+        run: |
+          set -euo pipefail
+          existing="$(
+            gh issue list --repo "$GITHUB_REPOSITORY" --state open               --search "in:title [Production Auth Beta Email Mode Approval] auth-beta-email-$MAIN_SHA-"               --json number --jq '.[0].number // empty'
+          )"
+          if [ -n "$existing" ]; then
+            echo "An approval request already exists as issue #$existing."
+            exit 0
+          fi
+
+          request_id="auth-beta-email-$MAIN_SHA-$GITHUB_RUN_ID"
+          challenge="$(openssl rand -hex 4 | tr '[:lower:]' '[:upper:]')"
+          expires_at="$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:%SZ')"
+          request_json="$(jq -cn             --arg operation 'enable-beta-auth-autoconfirm'             --arg requestId "$request_id"             --arg mainSha "$MAIN_SHA"             --arg expiresAt "$expires_at"             --arg challenge "$challenge"             '{operation:$operation,requestId:$requestId,mainSha:$mainSha,expiresAt:$expiresAt,challenge:$challenge,targetAutoconfirm:true}')"
+          approval_json="$(jq -cn             --arg operation 'enable-beta-auth-autoconfirm'             --arg requestId "$request_id"             --arg mainSha "$MAIN_SHA"             --arg challenge "$challenge"             '{operation:$operation,requestId:$requestId,mainSha:$mainSha,challenge:$challenge,targetAutoconfirm:true}')"
+
+          title="[Production Auth Beta Email Mode Approval] $request_id"
+          body="$(cat <<EOF
+          NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST $request_json
+
+          A Production Auth change is ready for explicit OWNER approval.
+
+          Scope:
+          - exact main SHA: $MAIN_SHA
+          - set only mailer_autoconfirm=true
+          - preserve Secure Email Change and Before User Created hook configuration
+          - require campaign state PRE_REGISTRATION
+          - no SMTP, Send Email Hook, Secret, DB, Stripe, or migration change
+
+          Exact approval comment:
+
+          NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_APPROVE $approval_json
+          EOF
+          )"
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+
+      - name: Cleanup request files
+        if: always()
+        run: rm -f /tmp/ledger-issue.json /tmp/ledger-comments.json /tmp/campaign.json /tmp/auth-before.json
+
+  apply-approved-change:
+    name: Apply exact approved beta no-mail Auth mode
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.user.login == 'github-actions[bot]' &&
+      startsWith(github.event.issue.title, '[Production Auth Beta Email Mode Approval] auth-beta-email-') &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_APPROVE ')
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Validate one-time scoped approval
+        id: approval
+        shell: bash
+        env:
+          APPROVAL_BODY: ${{ github.event.comment.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_APPROVE }"
+          echo "$approval_json" | jq -e '
+            type == "object" and
+            .operation == "enable-beta-auth-autoconfirm" and
+            .targetAutoconfirm == true and
+            (.requestId | type == "string" and test("^auth-beta-email-[0-9a-f]{40}-[0-9]+$")) and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$"))
+          ' >/dev/null
+
+          request_json="$(printf '%s\n' "$ISSUE_BODY" | head -n 1 | sed 's/^NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST //' | jq -c '.')"
+          echo "$request_json" | jq -e '
+            .operation == "enable-beta-auth-autoconfirm" and
+            .targetAutoconfirm == true and
+            (.expiresAt | type == "string")
+          ' >/dev/null
+
+          request_id="$(jq -r '.requestId' <<<"$request_json")"
+          main_sha="$(jq -r '.mainSha' <<<"$request_json")"
+          challenge="$(jq -r '.challenge' <<<"$request_json")"
+          expires_at="$(jq -r '.expiresAt' <<<"$request_json")"
+          test "$ISSUE_TITLE" = "[Production Auth Beta Email Mode Approval] $request_id"
+          test "$(jq -r '.requestId' <<<"$approval_json")" = "$request_id"
+          test "$(jq -r '.mainSha' <<<"$approval_json")" = "$main_sha"
+          test "$(jq -r '.challenge' <<<"$approval_json")" = "$challenge"
+          [ "$(date -u +%s)" -lt "$(date -u -d "$expires_at" +%s)" ]
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" > /tmp/request-comments.json
+          used_count="$(jq --arg requestId "$request_id" '[
+            .[] | select(
+              (.body | startswith("NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_CLAIMED ")) or
+              (.body | startswith("NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_CONSUMED ")) or
+              (.body | startswith("NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_FAILED "))
+            ) | select(.body | contains($requestId))
+          ] | length' /tmp/request-comments.json)"
+          [ "$used_count" -eq 0 ] || {
+            echo 'Safety stop: beta Auth email-mode request was already used.'
+            exit 1
+          }
+
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_main" = "$main_sha" || {
+            echo 'Safety stop: main changed after beta Auth email-mode approval.'
+            exit 1
+          }
+          {
+            echo "request_id=$request_id"
+            echo "main_sha=$main_sha"
+            echo "challenge=$challenge"
+            echo "issue_number=$ISSUE_NUMBER"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+
+      - name: Validate ledger and reconcile current Production Auth state
+        id: precheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(jq -er '.activeIssue' production-approval-ledger.json)" = "$LEDGER_ISSUE"
+          test "$(jq -er '.maxComments' production-approval-ledger.json)" = '100'
+          gh api "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE" > /tmp/ledger-issue.json
+          jq -e '.state == "open" and .locked == false' /tmp/ledger-issue.json >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments?per_page=100" > /tmp/ledger-comments.json
+          [ "$(jq 'length' /tmp/ledger-comments.json)" -lt 100 ]
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "${{ steps.approval.outputs.main_sha }}"
+
+          curl --silent --show-error --fail --connect-timeout 10 --max-time 20             "$PRODUCTION_BASE_URL/api/beta-author-preregistration" > /tmp/campaign.json
+          jq -e '.campaign.state == "PRE_REGISTRATION"' /tmp/campaign.json >/dev/null
+
+          status="$(curl --silent --show-error --output /tmp/auth-before.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Accept: application/json' "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")"
+          [ "$status" = '200' ]
+          jq -e '.external_email_enabled == true and .mailer_secure_email_change_enabled == true and .hook_before_user_created_enabled == true and (.hook_before_user_created_uri | type == "string" and length > 0) and (.mailer_autoconfirm | type) == "boolean"' /tmp/auth-before.json >/dev/null
+          if [ "$(jq -r '.mailer_autoconfirm' /tmp/auth-before.json)" = 'true' ]; then
+            echo "needs_patch=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_patch=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Claim approval before Production Auth mutation
+        id: claim
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg operation 'enable-beta-auth-autoconfirm' --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg challenge "$CHALLENGE" --arg runId "$GITHUB_RUN_ID" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,challenge:$challenge,runId:$runId,targetAutoconfirm:true}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_CLAIMED $payload"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" -f body="$body" >/dev/null
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$body" >/dev/null
+
+      - name: Enable only beta signup autoconfirm
+        id: mutate
+        if: steps.precheck.outputs.needs_patch == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "${{ steps.approval.outputs.main_sha }}"
+          payload='{"mailer_autoconfirm":true}'
+          test "$(jq 'keys | length' <<<"$payload")" -eq 1
+          status="$(curl --silent --show-error --output /tmp/auth-patch.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -X PATCH -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$payload" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")"
+          [ "$status" = '200' ]
+
+      - name: Verify beta no-mail Auth mode
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --show-error --output /tmp/auth-after.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Accept: application/json' "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")"
+          [ "$status" = '200' ]
+          jq -e --slurpfile before /tmp/auth-before.json '.mailer_autoconfirm == true and .external_email_enabled == true and .mailer_secure_email_change_enabled == true and .hook_before_user_created_enabled == true and .hook_before_user_created_uri == $before[0].hook_before_user_created_uri' /tmp/auth-after.json >/dev/null
+          curl --silent --show-error --fail --connect-timeout 10 --max-time 20 "$PRODUCTION_BASE_URL/api/beta-author-preregistration" > /tmp/campaign-after.json
+          jq -e '.campaign.state == "PRE_REGISTRATION"' /tmp/campaign-after.json >/dev/null
+
+      - name: Record consumed approval
+        if: success()
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+          CHANGED: ${{ steps.precheck.outputs.needs_patch }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg operation 'enable-beta-auth-autoconfirm' --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg challenge "$CHALLENGE" --arg runId "$GITHUB_RUN_ID" --arg changed "$CHANGED" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,challenge:$challenge,runId:$runId,result:"success",changed:($changed=="true"),postcheck:"success",targetAutoconfirm:true}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_CONSUMED $payload"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" -f body="$body" >/dev/null
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$body" >/dev/null || true
+          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --reason completed >/dev/null || true
+
+      - name: Roll back only this Auth mutation after failed postcheck
+        id: rollback
+        if: failure() && steps.precheck.outputs.needs_patch == 'true' && steps.mutate.outcome == 'success' && steps.verify.outcome != 'success'
+        shell: bash
+        run: |
+          set +e
+          previous="$(jq -r '.mailer_autoconfirm' /tmp/auth-before.json 2>/dev/null)"
+          rollback_result=failure
+          if [ "$previous" = 'false' ] || [ "$previous" = 'true' ]; then
+            payload="$(jq -cn --argjson value "$previous" '{mailer_autoconfirm:$value}')"
+            status="$(curl --silent --show-error --output /tmp/auth-rollback.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -X PATCH -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$payload" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")"
+            [ "$status" = '200' ] && rollback_result=success
+          fi
+          echo "result=$rollback_result" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Record failed claimed request
+        if: failure() && steps.claim.outcome == 'success'
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+          ROLLBACK_RESULT: ${{ steps.rollback.outputs.result }}
+        run: |
+          set +e
+          rollback="${ROLLBACK_RESULT:-not-required-or-not-run}"
+          payload="$(jq -cn --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg runId "$GITHUB_RUN_ID" --arg rollback "$rollback" '{requestId:$requestId,mainSha:$mainSha,runId:$runId,result:"failure",rollback:$rollback}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_FAILED $payload"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" -f body="$body" >/dev/null || true
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$body" >/dev/null || true
+          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true
+
+      - name: Cleanup temporary files
+        if: always()
+        run: rm -f /tmp/ledger-issue.json /tmp/ledger-comments.json /tmp/request-comments.json /tmp/campaign.json /tmp/campaign-after.json /tmp/auth-before.json /tmp/auth-patch.json /tmp/auth-after.json /tmp/auth-rollback.json

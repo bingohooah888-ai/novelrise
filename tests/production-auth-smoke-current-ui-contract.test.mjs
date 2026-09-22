@@ -14,6 +14,9 @@ const analyticsUi = await readFile('novelight-analytics.js', 'utf8');
 
 test('Production Auth Smoke stays aligned with current beta UI contracts', () => {
   assert.match(authenticatedSmoke, /assertAccountSettingsEmailBoundary/);
+  assert.match(authenticatedSmoke, /NOVELIGHT_AUTH_EMAIL_MODE/);
+  assert.match(authenticatedSmoke, /beta-no-mail/);
+  assert.match(authenticatedSmoke, /#betaEmailNotice/);
   assert.match(authenticatedSmoke, /\/account-settings\.html/);
   assert.match(authenticatedSmoke, /#currentPassword/);
   assert.match(authenticatedSmoke, /NOVELIGHT smoke boundary intercept/);
