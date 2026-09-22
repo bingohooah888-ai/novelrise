@@ -721,6 +721,72 @@ async function actionNovelFetch(request, config) {
 }
 
 
+async function actionNovelVerifySaved(request, config) {
+  if (!exactKeys(request.args, ['requestId', 'expectedEpisodes'])) {
+    throw new Error(
+      'novel_verify_saved requires exactly requestId and expectedEpisodes.'
+    );
+  }
+  const sourceRequestId = String(request.args.requestId || '').trim();
+  if (!/^cmdr-[A-Za-z0-9T_-]{8,80}$/.test(sourceRequestId)) {
+    throw new Error('Invalid saved novel requestId.');
+  }
+  const expectedEpisodes = Number(request.args.expectedEpisodes);
+  if (
+    !Number.isInteger(expectedEpisodes) ||
+    expectedEpisodes < 1 ||
+    expectedEpisodes > MAX_EPISODES
+  ) {
+    throw new Error('expectedEpisodes must be an integer from 1 to 500.');
+  }
+
+  const source = resolveDataPath(
+    config,
+    path.join('novels', sourceRequestId + '.json')
+  );
+  const raw = await fs.readFile(source.candidate, 'utf8');
+  const result = JSON.parse(raw);
+  const episodes = Array.isArray(result.episodes) ? result.episodes : [];
+  const numbered = episodes
+    .map((episode, index) => ({
+      number: Number(episode?.number || index + 1),
+      title: String(episode?.title || ''),
+      body: String(episode?.body || '')
+    }))
+    .sort((a, b) => a.number - b.number);
+
+  const bodyEpisodes = numbered.filter(
+    episode => episode.body.trim().length > 0
+  ).length;
+  const bodyChars = numbered.reduce(
+    (sum, episode) => sum + episode.body.length,
+    0
+  );
+  const contiguous =
+    numbered.length === expectedEpisodes &&
+    numbered.every((episode, index) => episode.number === index + 1);
+  const missingBodyEpisodes = numbered
+    .filter(episode => episode.body.trim().length === 0)
+    .map(episode => episode.number);
+  const verified =
+    numbered.length === expectedEpisodes &&
+    bodyEpisodes === expectedEpisodes &&
+    contiguous &&
+    missingBodyEpisodes.length === 0;
+
+  return [
+    'source_request_id: ' + sourceRequestId,
+    'expectedEpisodes: ' + expectedEpisodes,
+    'savedEpisodes: ' + numbered.length,
+    'bodyEpisodes: ' + bodyEpisodes,
+    'bodyChars: ' + bodyChars,
+    'contiguous: ' + contiguous,
+    'missingBodyEpisodes: ' +
+      (missingBodyEpisodes.length ? missingBodyEpisodes.join(',') : 'none'),
+    'verified: ' + verified
+  ].join('\n');
+}
+
 async function actionThumbnailStageTransfer(request, config) {
   if (!exactKeys(request.args, ['fileName'])) {
     throw new Error('thumbnail_stage_transfer requires exactly fileName.');
@@ -1146,6 +1212,7 @@ const ACTIONS = new Map([
   ['preflight_fast', actionPreflightFast],
   ['commander_check', actionCommanderCheck],
   ['novel_fetch', actionNovelFetch],
+  ['novel_verify_saved', actionNovelVerifySaved],
   ['thumbnail_stage_transfer', actionThumbnailStageTransfer],
   ['thumbnail_production_readiness', actionThumbnailProductionReadiness],
   ['thumbnail_register_production', actionThumbnailRegisterProduction],
