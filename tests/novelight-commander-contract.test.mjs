@@ -112,4 +112,7 @@ test('NLO novel reader recognizes public Caita episode URLs', async () => {
   assert.match(source, /host\.endsWith\("\.caita\.ai"\)/);
   assert.match(source, /return "caita"/);
   assert.match(source, /\/viewer\/episode\//);
+  assert.match(source, /--headless=new/);
+  assert.match(source, /--dump-dom/);
+  assert.match(source, /dumpDomWithBrowser/);
 });
