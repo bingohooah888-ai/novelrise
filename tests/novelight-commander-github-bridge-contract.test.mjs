@@ -70,7 +70,6 @@ test('Commander bridge uses npm.cmd on Windows', async () => {
   assert.match(source, /runNpm\(\['test'\]/);
 });
 
-
 test('Commander bridge update is fast-forward only and restarts safely', async () => {
   const source = await readFile(daemonPath, 'utf8');
 
