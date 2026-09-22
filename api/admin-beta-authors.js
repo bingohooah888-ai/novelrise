@@ -344,6 +344,30 @@ async function updateRow(id, body) {
   return data;
 }
 
+async function assertInviteInfrastructureReady(nextState) {
+  if (!['AUTHOR_PREOPEN', 'BETA_OPEN'].includes(nextState)) return;
+
+  const { error } = await supabase
+    .from('beta_author_invites')
+    .select('id', { head: true, count: 'exact' })
+    .limit(1);
+  if (error) {
+    const gateError = new Error(
+      '先行利用メール基盤が未準備のため、この公開状態へ変更できません。'
+    );
+    gateError.code = 'INVITE_GATE_NOT_READY';
+    throw gateError;
+  }
+
+  if (!String(process.env.RESEND_API_KEY ?? '').trim()) {
+    const gateError = new Error(
+      'Resend送信用Secretが未設定のため、この公開状態へ変更できません。'
+    );
+    gateError.code = 'INVITE_GATE_NOT_READY';
+    throw gateError;
+  }
+}
+
 async function updateCampaign(body) {
   const patch = {};
   if (body.state !== undefined) {
@@ -351,6 +375,7 @@ async function updateCampaign(body) {
     if (!CAMPAIGN_STATES.has(state)) {
       throw inputError('Invalid campaign state');
     }
+    await assertInviteInfrastructureReady(state);
     patch.state = state;
   }
   if (body.release_label !== undefined) {
@@ -432,6 +457,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: error.message });
     }
     if (error?.code === 'LIFECYCLE_STATUS_CONFLICT') {
+      return res.status(409).json({ error: error.message });
+    }
+    if (error?.code === 'INVITE_GATE_NOT_READY') {
       return res.status(409).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Admin operation failed' });
