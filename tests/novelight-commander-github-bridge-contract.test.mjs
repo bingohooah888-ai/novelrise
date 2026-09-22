@@ -31,7 +31,8 @@ test('Commander GitHub bridge has fixed actions', async () => {
     'preflight_fast',
     'commander_check',
     'novel_fetch',
-    'thumbnail_validate'
+    'thumbnail_validate',
+    'bridge_update'
   ];
 
   for (const action of actions) {
@@ -64,8 +65,21 @@ test('Commander bridge uses npm.cmd on Windows', async () => {
   const source = await readFile(daemonPath, 'utf8');
 
   assert.match(source, /process\.platform === 'win32' \? 'npm\.cmd' : 'npm'/);
-  assert.match(source, /run\(NPM_EXECUTABLE, \['run', 'check'\]/);
-  assert.match(source, /run\(NPM_EXECUTABLE, \['test'\]/);
+  assert.match(source, /process\.env\.ComSpec \|\| 'cmd\.exe'/);
+  assert.match(source, /runNpm\(\['run', 'check'\]/);
+  assert.match(source, /runNpm\(\['test'\]/);
+});
+
+
+test('Commander bridge update is fast-forward only and restarts safely', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(source, /\['bridge_update', actionBridgeUpdate\]/);
+  assert.match(source, /git pull --ff-only origin main/);
+  assert.match(source, /merge-base', '--is-ancestor'/);
+  assert.match(source, /Bridge update requires a clean local working tree/);
+  assert.match(source, /bridge-update-restart-scheduled/);
+  assert.match(source, /writeJson\(config\.statePath, state\)/);
 });
 
 test('Commander package checks the bridge daemon', async () => {
