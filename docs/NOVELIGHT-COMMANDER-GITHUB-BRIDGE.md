@@ -39,8 +39,9 @@ requestIdは再利用できません。daemonは処理済みrequestIdをロー�
 - `commander_check`
 - `novel_fetch`
 - `thumbnail_validate`
+- `bridge_update`
 
-任意shell、任意PowerShell、任意Nodeコード、main push、PR merge、Production mutationは受け付けません。
+任意shell、任意PowerShell、任意Nodeコード、main push、PR merge、Production mutationは受け付けません。`bridge_update` だけは、ローカルrepoが `main`・clean・`origin/main` のfast-forward祖先である場合に限り、`git pull --ff-only origin main` を実行してBridgeを安全に再起動します。
 
 ## GitHub認証
 
