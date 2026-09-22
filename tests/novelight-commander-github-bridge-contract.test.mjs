@@ -50,12 +50,14 @@ test('Commander token uses Windows DPAPI', async () => {
   assert.doesNotMatch(setup, /Set-Content[^\n]+PlainToken/);
 });
 
-
 test('Commander bridge tolerates Windows PowerShell UTF-8 BOM', async () => {
   const source = await readFile(daemonPath, 'utf8');
 
   assert.match(source, /replace\(\/\^\\uFEFF\/u, ''\)/);
-  assert.match(source, /parseJsonText\(await fs\.readFile\(configPath, 'utf8'\)\)/);
+  assert.match(
+    source,
+    /parseJsonText\(await fs\.readFile\(configPath, 'utf8'\)\)/
+  );
 });
 
 test('Commander package checks the bridge daemon', async () => {
