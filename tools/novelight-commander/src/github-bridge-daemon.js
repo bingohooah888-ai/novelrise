@@ -704,6 +704,142 @@ async function actionNovelFetch(request, config) {
 }
 
 
+async function actionThumbnailStageTransfer(request, config) {
+  if (!exactKeys(request.args, ['fileName'])) {
+    throw new Error('thumbnail_stage_transfer requires exactly fileName.');
+  }
+
+  const fileName = String(request.args.fileName || '').trim();
+  if (!CANONICAL_PACK_MANIFESTS.has(fileName)) {
+    throw new Error('Only canonical official thumbnail packs can be staged.');
+  }
+
+  const source = resolveDownloadsZip(fileName);
+  const stat = await fs.stat(source).catch(error => {
+    if (error?.code === 'ENOENT') {
+      throw new Error('Official thumbnail ZIP was not found in Downloads.');
+    }
+    throw error;
+  });
+  if (!stat.isFile()) throw new Error('Official thumbnail ZIP is not a file.');
+
+  const status = await run('git', ['status', '--porcelain'], {
+    cwd: config.repoRoot,
+    timeoutMs: 15000
+  });
+  if (status.code !== 0 || status.stdout.trim() !== '') {
+    throw new Error('Transfer staging requires a clean local working tree.');
+  }
+
+  const currentBranch = await run(
+    'git',
+    ['rev-parse', '--abbrev-ref', 'HEAD'],
+    { cwd: config.repoRoot, timeoutMs: 15000 }
+  );
+  if (currentBranch.code !== 0 || currentBranch.stdout.trim() !== 'main') {
+    throw new Error('Transfer staging requires local main.');
+  }
+
+  const fetch = await run('git', ['fetch', 'origin', 'main', '--prune'], {
+    cwd: config.repoRoot,
+    timeoutMs: 120000
+  });
+  if (fetch.code !== 0) {
+    throw new Error('git fetch origin main failed.\n' + fetch.stderr);
+  }
+
+  const head = await run('git', ['rev-parse', 'HEAD'], {
+    cwd: config.repoRoot,
+    timeoutMs: 15000
+  });
+  const originMain = await run('git', ['rev-parse', 'origin/main'], {
+    cwd: config.repoRoot,
+    timeoutMs: 15000
+  });
+  if (
+    head.code !== 0 ||
+    originMain.code !== 0 ||
+    head.stdout.trim() !== originMain.stdout.trim()
+  ) {
+    throw new Error(
+      'Transfer staging requires local main to exactly match origin/main.'
+    );
+  }
+
+  const transferBranch =
+    'novelight-transfer/thumbnail-' + request.requestId;
+  const worktree = path.join(
+    os.tmpdir(),
+    'novelight-thumbnail-transfer-' + request.requestId
+  );
+  await fs.rm(worktree, { recursive: true, force: true });
+
+  const add = await run(
+    'git',
+    ['worktree', 'add', '-b', transferBranch, worktree, 'origin/main'],
+    { cwd: config.repoRoot, timeoutMs: 120000 }
+  );
+  if (add.code !== 0) {
+    throw new Error('Temporary transfer worktree creation failed.\n' + add.stderr);
+  }
+
+  try {
+    const transferDir = path.join(worktree, '.novelight-transfer');
+    await fs.mkdir(transferDir, { recursive: true });
+    const target = path.join(transferDir, fileName);
+    await fs.copyFile(source, target);
+
+    const addFile = await run('git', ['add', '--', '.novelight-transfer/' + fileName], {
+      cwd: worktree,
+      timeoutMs: 120000
+    });
+    if (addFile.code !== 0) {
+      throw new Error('git add for transfer pack failed.\n' + addFile.stderr);
+    }
+
+    const commit = await run(
+      'git',
+      ['commit', '-m', 'Stage official thumbnail pack for approved Production import'],
+      { cwd: worktree, timeoutMs: 120000 }
+    );
+    if (commit.code !== 0) {
+      throw new Error('Temporary transfer commit failed.\n' + commit.stderr);
+    }
+
+    const push = await run(
+      'git',
+      ['push', 'origin', 'HEAD:refs/heads/' + transferBranch],
+      { cwd: worktree, timeoutMs: 600000 }
+    );
+    if (push.code !== 0) {
+      throw new Error('Temporary transfer branch push failed.\n' + push.stderr);
+    }
+
+    const transferSha = await run('git', ['rev-parse', 'HEAD'], {
+      cwd: worktree,
+      timeoutMs: 15000
+    });
+
+    return [
+      'file: ' + fileName,
+      'size: ' + stat.size,
+      'transfer_branch: ' + transferBranch,
+      'transfer_sha: ' + transferSha.stdout.trim(),
+      'approved_main_sha: ' + originMain.stdout.trim(),
+      'staged: true'
+    ].join('\n');
+  } finally {
+    await run('git', ['worktree', 'remove', '--force', worktree], {
+      cwd: config.repoRoot,
+      timeoutMs: 120000
+    }).catch(() => {});
+    await run('git', ['branch', '-D', transferBranch], {
+      cwd: config.repoRoot,
+      timeoutMs: 15000
+    }).catch(() => {});
+  }
+}
+
 async function actionThumbnailProductionReadiness(request, config) {
   if (!exactKeys(request.args, ['fileName'])) {
     throw new Error(
@@ -993,6 +1129,7 @@ const ACTIONS = new Map([
   ['preflight_fast', actionPreflightFast],
   ['commander_check', actionCommanderCheck],
   ['novel_fetch', actionNovelFetch],
+  ['thumbnail_stage_transfer', actionThumbnailStageTransfer],
   ['thumbnail_production_readiness', actionThumbnailProductionReadiness],
   ['thumbnail_register_production', actionThumbnailRegisterProduction],
   ['thumbnail_validate', actionThumbnailValidate],

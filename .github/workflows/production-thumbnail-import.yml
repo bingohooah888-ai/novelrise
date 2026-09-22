@@ -1,0 +1,222 @@
+name: NOVELIGHT Thumbnail Production Import
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: novelight-production-thumbnail-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: >-
+      github.event.issue.number == 657 &&
+      github.event.comment.user.login == github.repository_owner &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_THUMBNAIL_IMPORT_APPROVE ')
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout approved main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate exact one-time thumbnail import approval
+        id: approval
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          prefix='NOVELIGHT_THUMBNAIL_IMPORT_APPROVE '
+          payload="${GITHUB_EVENT_COMMENT_BODY#"$prefix"}"
+
+          echo "$payload" | jq -e '
+            .operation == "thumbnail-pack-import" and
+            (.mainSha | test("^[0-9a-f]{40}$")) and
+            (.challenge | test("^[A-F0-9]{8}$")) and
+            (.transferBranch | test("^novelight-transfer/thumbnail-cmdr-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")) and
+            (.transferSha | test("^[0-9a-f]{40}$")) and
+            (
+              .fileName == "NOVELIGHT_background_official_v1.zip" or
+              .fileName == "NOVELIGHT_thumbnail_assets_v1_30.zip"
+            )
+          ' >/dev/null
+
+          main_sha="$(git rev-parse HEAD)"
+          approved_main_sha="$(echo "$payload" | jq -r '.mainSha')"
+          test "$main_sha" = "$approved_main_sha" || {
+            echo 'Safety stop: main changed after thumbnail import approval.'
+            exit 1
+          }
+
+          challenge="$(echo "$payload" | jq -r '.challenge')"
+          transfer_branch="$(echo "$payload" | jq -r '.transferBranch')"
+          transfer_sha="$(echo "$payload" | jq -r '.transferSha')"
+          file_name="$(echo "$payload" | jq -r '.fileName')"
+
+          comments="$(gh api --paginate             "repos/$GITHUB_REPOSITORY/issues/657/comments?per_page=100")"
+          reused="$(echo "$comments" | jq --arg challenge "$challenge" '
+            [
+              .[] |
+              select(
+                (.body | startswith("NOVELIGHT_THUMBNAIL_IMPORT_CLAIMED ")) or
+                (.body | startswith("NOVELIGHT_THUMBNAIL_IMPORT_EXECUTED "))
+              ) |
+              select(.body | contains($challenge))
+            ] | length
+          ')"
+          test "$reused" -eq 0 || {
+            echo 'Safety stop: thumbnail import approval was already consumed.'
+            exit 1
+          }
+
+          remote_sha="$(git ls-remote origin "refs/heads/$transfer_branch" | awk '{print $1}')"
+          test "$remote_sha" = "$transfer_sha" || {
+            echo 'Safety stop: transfer branch SHA does not match approval.'
+            exit 1
+          }
+
+          {
+            echo "payload=$payload"
+            echo "main_sha=$main_sha"
+            echo "challenge=$challenge"
+            echo "transfer_branch=$transfer_branch"
+            echo "transfer_sha=$transfer_sha"
+            echo "file_name=$file_name"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Claim approval before Production mutation
+        shell: bash
+        env:
+          PAYLOAD: ${{ steps.approval.outputs.payload }}
+        run: |
+          set -euo pipefail
+          body="NOVELIGHT_THUMBNAIL_IMPORT_CLAIMED $PAYLOAD"
+          gh api             --method POST             "repos/$GITHUB_REPOSITORY/issues/657/comments"             -f body="$body" >/dev/null
+
+      - name: Fetch exact staged thumbnail pack
+        shell: bash
+        env:
+          TRANSFER_BRANCH: ${{ steps.approval.outputs.transfer_branch }}
+          TRANSFER_SHA: ${{ steps.approval.outputs.transfer_sha }}
+          FILE_NAME: ${{ steps.approval.outputs.file_name }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "refs/heads/$TRANSFER_BRANCH:refs/remotes/origin/$TRANSFER_BRANCH"
+          test "$(git rev-parse "refs/remotes/origin/$TRANSFER_BRANCH")" = "$TRANSFER_SHA"
+          git show "$TRANSFER_SHA:.novelight-transfer/$FILE_NAME" > "$RUNNER_TEMP/$FILE_NAME"
+
+          size="$(wc -c < "$RUNNER_TEMP/$FILE_NAME")"
+          test "$size" -gt 0
+          test "$size" -le 67108864
+          echo "PACK_PATH=$RUNNER_TEMP/$FILE_NAME" >> "$GITHUB_ENV"
+
+      - name: Verify required Production secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          }
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Resolve masked Production service key
+        shell: bash
+        run: |
+          set -euo pipefail
+          keys_json="$(supabase projects api-keys             --project-ref "$SUPABASE_PROJECT_ID"             --output json)"
+
+          service_key="$(echo "$keys_json" | jq -r '
+            (
+              [
+                .[] |
+                select(
+                  .id == "service_role" and
+                  (.api_key | type == "string") and
+                  (.api_key | length > 20) and
+                  (.api_key | contains("*") | not)
+                ) |
+                .api_key
+              ][0]
+            ) //
+            (
+              [
+                .[] |
+                select(
+                  .type == "secret" and
+                  (.api_key | type == "string") and
+                  (.api_key | startswith("sb_secret_")) and
+                  (.api_key | contains("*") | not)
+                ) |
+                .api_key
+              ][0]
+            ) //
+            empty
+          ')"
+
+          test -n "$service_key" || {
+            echo 'Production Supabase service key could not be resolved.'
+            exit 1
+          }
+          echo "::add-mask::$service_key"
+          echo "NOVELIGHT_COMMANDER_SUPABASE_SERVICE_ROLE_KEY=$service_key" >> "$GITHUB_ENV"
+          echo "NOVELIGHT_COMMANDER_SUPABASE_URL=$SUPABASE_URL" >> "$GITHUB_ENV"
+
+      - name: Install importer dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm install --prefix tools/novelight-commander --package-lock=false
+
+      - name: Register and verify official thumbnail pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/import-official-thumbnail-pack.mjs "$PACK_PATH" | tee "$RUNNER_TEMP/thumbnail-import-result.json"
+          jq -e '.result == "SUCCESS"' "$RUNNER_TEMP/thumbnail-import-result.json" >/dev/null
+
+      - name: Record successful Production execution
+        if: success()
+        shell: bash
+        env:
+          PAYLOAD: ${{ steps.approval.outputs.payload }}
+        run: |
+          set -euo pipefail
+          body="NOVELIGHT_THUMBNAIL_IMPORT_EXECUTED $PAYLOAD"
+          gh api             --method POST             "repos/$GITHUB_REPOSITORY/issues/657/comments"             -f body="$body" >/dev/null
+
+      - name: Delete consumed transfer branch
+        if: success()
+        shell: bash
+        env:
+          TRANSFER_BRANCH: ${{ steps.approval.outputs.transfer_branch }}
+        run: |
+          set -euo pipefail
+          git push origin --delete "$TRANSFER_BRANCH"
+
+      - name: Record failed Production execution
+        if: failure() && steps.approval.outputs.payload != ''
+        shell: bash
+        env:
+          PAYLOAD: ${{ steps.approval.outputs.payload }}
+        run: |
+          set -euo pipefail
+          body="NOVELIGHT_THUMBNAIL_IMPORT_FAILED $PAYLOAD"
+          gh api             --method POST             "repos/$GITHUB_REPOSITORY/issues/657/comments"             -f body="$body" >/dev/null
