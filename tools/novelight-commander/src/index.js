@@ -16,7 +16,7 @@ import { registerOfficialThumbnailPack } from "./thumbnail-register.js";
 import { listManagedProcesses, readManagedProcess, runOnce, startManagedProcess, stopManagedProcess } from "./processes.js";
 
 const security = createSecurityConfig();
-const server = new McpServer({ name: "novelight-commander", version: "0.5.0" });
+const server = new McpServer({ name: "novelight-operator", version: "0.6.0" });
 
 function textResult(value) {
   return { content: [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }] };
@@ -42,7 +42,7 @@ function register(name, description, schema, handler) {
 }
 
 register("commander_info", "Show NOVELIGHT Commander roots, safety modes and executable allowlist.", {}, async () => ({
-  version: "0.5.0",
+  version: "0.6.0",
   primaryRoot: security.primary,
   allowedRoots: security.roots,
   allowedCommands: [...security.commands],
