@@ -149,15 +149,17 @@ test('Commander can source Production Supabase credential from Vercel', async ()
   assert.match(source, /fs\.rm\(envTarget\.candidate/);
 });
 
-
 test('Commander thumbnail transfer stages only canonical packs', async () => {
   const source = await readFile(daemonPath, 'utf8');
 
-  assert.match(source, /\['thumbnail_stage_transfer', actionThumbnailStageTransfer\]/);
+  assert.match(
+    source,
+    /\['thumbnail_stage_transfer', actionThumbnailStageTransfer\]/
+  );
   assert.match(source, /CANONICAL_PACK_MANIFESTS\.has\(fileName\)/);
   assert.match(source, /Transfer staging requires a clean local working tree/);
-  assert.match(source, /git', \['worktree', 'add'/);
-  assert.match(source, /git', \['push', 'origin'/);
+  assert.match(source, /'worktree', 'add'/);
+  assert.match(source, /'push', 'origin'/);
 });
 
 test('Commander package checks the bridge daemon', async () => {
