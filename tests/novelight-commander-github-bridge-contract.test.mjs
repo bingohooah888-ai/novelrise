@@ -6,6 +6,7 @@ const root = 'tools/novelight-commander';
 const daemonPath = root + '/src/github-bridge-daemon.js';
 const setupPath = root + '/configure-github-bridge.ps1';
 const packagePath = root + '/package.json';
+const runnerPath = root + '/run-github-bridge.ps1';
 
 test('Commander GitHub bridge is owner scoped', async () => {
   const source = await readFile(daemonPath, 'utf8');
@@ -77,7 +78,7 @@ test('Commander bridge update is fast-forward only and restarts safely', async (
   assert.match(source, /git pull --ff-only origin main/);
   assert.match(source, /merge-base', '--is-ancestor'/);
   assert.match(source, /Bridge update requires a clean local working tree/);
-  assert.match(source, /bridge-update-restart-scheduled/);
+  assert.match(source, /bridge-update-restart-requested/);
   assert.match(source, /writeJson\(config\.statePath, state\)/);
 });
 
@@ -92,6 +93,15 @@ test('Commander startup retries GitHub when network is not ready', async () => {
   );
   assert.match(mainSource, /await pollOnce\(config, token, state\)/);
   assert.match(mainSource, /'poll-error'/);
+});
+
+test('Commander runner watchdog restarts daemon exits', async () => {
+  const source = await readFile(runnerPath, 'utf8');
+
+  assert.match(source, /while \(\$true\)/);
+  assert.match(source, /node \$DaemonPath/);
+  assert.match(source, /restarting in 2 seconds/);
+  assert.match(source, /Start-Sleep -Seconds 2/);
 });
 
 test('Commander package checks the bridge daemon', async () => {
