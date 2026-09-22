@@ -30,7 +30,7 @@ test('campaign contract includes a dedicated author preopen state', () => {
   }
   assert.match(adminHtml, /先行作者プレオープン/);
   assert.match(betaHtml, /先行利用を始める/);
-  assert.match(signupHtml, /先行登録時と同じメールアドレス/);
+  assert.match(signupHtml, /先行登録時のメールアドレス/);
 });
 
 test('preopen migration extends state without opening raw preregistration data', () => {
