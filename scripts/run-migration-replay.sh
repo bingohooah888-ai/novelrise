@@ -926,7 +926,7 @@ echo '::endgroup::'
 echo '::group::Verify secure beta-author invite rollback and reapply'
 "${REPLAY[@]}" -f supabase/rollback/20260923064500_secure_beta_author_invites_rollback.sql
 "${REPLAY[@]}" <<'SQL'
-do $
+do $$
 declare
   v_hook text;
 begin
@@ -951,7 +951,7 @@ begin
     raise exception 'Secure invite rollback restored email-only Founding linkage';
   end if;
 end
-$;
+$$;
 SQL
 "${REPLAY[@]}" -f supabase/checks/20260923064500_secure_beta_author_invites_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260923064500_secure_beta_author_invites.sql
