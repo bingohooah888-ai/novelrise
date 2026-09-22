@@ -2,15 +2,32 @@
 
 This checklist is the final operational gate after code review/CI. A checked box must represent an observed result or a specifically justified still-valid result under `docs/EVIDENCE-FRESHNESS-GATE.md`, not an assumption.
 
-**Reconciled: 2026-09-20 JST.**
+**Reconciled: 2026-09-22 JST.**
 
 Historical controlled public-beta GO remains recorded in `docs/BETA-RELEASE-DECISION-2026-08-28.md`.
 
-The **current material application baseline at this reconciliation** is `c9eaefd9baa941d2f20699a29c8e9ac233b64196` (`Harden restore validation and beta accessibility (#721)`). The current live Production deployment revision was re-read and returned that exact SHA. A documentation/test-only successor may advance repository `main` without changing this material application baseline; live `main` must still be resolved at execution time under `docs/EVIDENCE-FRESHNESS-GATE.md`.
+The **current material application baseline at this reconciliation** is `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3` (PR #800, `Add temporary beta no-mail Auth mode`). Exact-main Vercel and `production-readiness-smoke` statuses are `success`, and the approval-gated Production Authenticated Smoke converged on the same SHA. Live `main` must still be resolved again at each future cutover under `docs/EVIDENCE-FRESHNESS-GATE.md`.
 
-**CURRENT FINAL-AUDIT POSTURE: the backup/restore recovery blocker is CLEARED. The fresh disposable rehearsal proves provider restore, current-schema migration replay, `restore_validation.sql`, representative author/reader RLS/privacy writes, moderation and discovery/ranking/search RPC execution, Auth/profile/password-hash restoration, billing-state restoration, cleanup, and deletion/cost-stop. Supabase's official Restore-to-New-Project contract confirms that hosted Auth settings/API keys are not backup content and must be recreated before a real recovered service is reopened; the runbook now keeps that service-reopen gate fail-closed instead of treating non-copied configuration as restore failure. Current `PRE_REGISTRATION` operation is technically healthy. Future 2026-09-28/29/30 operational cutovers remain separately gated and are not pre-authorized. Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.**
+**CURRENT FINAL-AUDIT POSTURE: the backup/restore recovery blocker and the temporary beta no-mail Auth prerequisite are CLEARED. Exact current main `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3` has successful Vercel/readiness status; approval-gated Auth-mode run `35686483637` and Production Authenticated Smoke run `35686551395` both completed successfully with matching consumed evidence. Current `PRE_REGISTRATION` operation is technically healthy. Future 2026-09-28/29/30 operational cutovers remain separately gated and are not pre-authorized. Qualified Japanese counsel review remains deferred/pending under the recorded owner residual-risk decision.**
 
 Qualified Japanese counsel review remains deferred/pending. The owner residual-risk decision is recorded in `docs/legal-beta-review.md`; this checklist does not assert legal sufficiency.
+
+## 2026-09-22 current-main / post-PR #800 beta no-mail Auth reconciliation
+
+This section supersedes older current-state Auth/email-delivery wording where the scope overlaps.
+
+- [x] Exact current repository/material application main is `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3` (PR #800, `Add temporary beta no-mail Auth mode`).
+- [x] Exact-main commit statuses report `Vercel: success` and `production-readiness-smoke: success`.
+- [x] Approval Ledger #737 records the exact run `35686483637` as consumed successfully with `changed:true`, `postcheck:"success"`, and `targetAutoconfirm:true`.
+- [x] Run `35686483637` completed the scoped Production Auth mutation and verification successfully; its rollback/failure paths were skipped.
+- [x] Production Authenticated Smoke Issue #801 / run `35686551395` completed the decisive `Verify authenticated beta-critical production flows` job successfully, cleaned ephemeral smoke data, and recorded matching `NOVELIGHT_PRODUCTION_AUTH_SMOKE_CONSUMED ... result:"success"` evidence.
+- [x] Duplicate-attempt run `35688394269` failed at the one-time approval-validation step before any Production Auth mutation; checkout, claim, mutation, verification, and consumed-record steps were all skipped.
+- [x] Mail-dependent email-address change and password-recovery UI remain paused under PR #800 until a verified transactional mail-delivery path exists.
+- [x] The temporary beta no-mail Auth prerequisite for 2026-09-28 is satisfied. Do not repeat the Auth-mode mutation or Auth Smoke merely for timestamp/SHA freshness.
+- [ ] 2026-09-28 `PRE_REGISTRATION -> AUTHOR_PREOPEN` cutover is complete. **Future operational gate; not yet due and not pre-authorized.**
+- [ ] 2026-09-29 content-inventory / first-reader-path gate is complete. **Future operational gate; do not run early.**
+- [ ] 2026-09-30 `AUTHOR_PREOPEN -> BETA_OPEN` transition is complete. **Future launch operation; not pre-authorized.**
+- [ ] Qualified Japanese counsel review is complete. **Deferred/pending by owner; accepted residual risk remains recorded and is not converted into legal PASS.**
 
 ## 2026-09-20 current-main / post-PR #721 final-audit reconciliation
 
@@ -34,7 +51,7 @@ This section supersedes older “current”, backup/restore-hard-gate, and final
 - [x] Provider recovery boundary is reconciled: Supabase Restore-to-New-Project transfers Auth identity/hash records but does not copy hosted Auth settings/API keys. The runbook now treats those project-level values as explicit recovered-service reconfiguration, with existing-user sign-in and password-recovery verification required **before service reopen**, not as database-backup content that must already be intact on an unconfigured disposable clone.
 - [x] Current-worktree `npm run preflight:fast` passes with 995 tests / 989 pass / 0 fail / 6 skip.
 - [x] Current-worktree full Playwright suite passes 170/170 across desktop/mobile.
-- [ ] Temporary beta no-mail Auth mode is deployed and Production-postchecked: signup returns an immediate session, `mailer_autoconfirm=true`, the Before User Created hook and Secure Email Change remain intact, and mail-dependent email-change/password-recovery UI is paused. **Required before the 2026-09-28 author preopen while no verified mail-delivery path exists.**
+- [x] Temporary beta no-mail Auth mode is deployed and Production-postchecked as of 2026-09-22 on exact main `484f13880af1f7a9aa95374eb9b93e5f3a9e9ef3`: Auth-mode run `35686483637` and Production Authenticated Smoke run `35686551395` succeeded with matching consumed evidence; mail-dependent email-change/password-recovery UI remains paused until a verified delivery path exists. **Required before the 2026-09-28 author preopen while no verified mail-delivery path exists; this prerequisite is now satisfied.**
 - [ ] 2026-09-28 `PRE_REGISTRATION -> AUTHOR_PREOPEN` cutover has been explicitly approved and executed. **Future operational gate; not yet due and not pre-authorized.**
 - [ ] 2026-09-29 content-inventory / first-reader-path gate is complete. **Future operational gate. Execute the read-only `NOVELIGHT Beta Inventory First Reader Gate` workflow and record the aggregate counts, anonymous reader-path result, and owner inventory-breadth decision under `docs/BETA-OPERATIONS-RUNBOOK.md`.**
 - [ ] 2026-09-30 `BETA_OPEN` transition has been explicitly approved and executed. **Future launch operation; not pre-authorized.**
