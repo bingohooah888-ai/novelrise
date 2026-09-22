@@ -398,26 +398,76 @@ async function readDomThroughCdp(webSocketUrl) {
   });
 }
 
-async function dumpDomWithVisibleBrowser(url) {
+async function sendCdpCommand(webSocketUrl, method, params = {}) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(webSocketUrl);
+    const requestId = 7;
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        socket.close();
+        reject(new Error("Caita visible browser command timed out."));
+      }
+    }, 20000);
+
+    socket.addEventListener("open", () => {
+      socket.send(JSON.stringify({ id: requestId, method, params }));
+    });
+    socket.addEventListener("message", event => {
+      let message;
+      try {
+        message = JSON.parse(String(event.data));
+      } catch {
+        return;
+      }
+      if (message.id !== requestId) return;
+      clearTimeout(timer);
+      settled = true;
+      socket.close();
+      if (message.error) {
+        reject(
+          new Error(
+            "Caita visible browser command failed: " +
+              clean(message.error.message || JSON.stringify(message.error))
+          )
+        );
+        return;
+      }
+      resolve(message.result || {});
+    });
+    socket.addEventListener("error", () => {
+      clearTimeout(timer);
+      if (!settled) {
+        settled = true;
+        reject(new Error("Caita visible browser DevTools connection failed."));
+      }
+    });
+  });
+}
+
+async function openVisibleBrowserSession(url) {
   const executable = await findBrowserExecutable();
-  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), "novelight-caita-visible-"));
+  const profileDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "novelight-caita-session-")
+  );
   const port = await reserveLoopbackPort();
-  let child;
+  const child = spawn(
+    executable,
+    [
+      "--disable-extensions",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--start-minimized",
+      "--user-data-dir=" + profileDir,
+      "--remote-debugging-address=127.0.0.1",
+      "--remote-debugging-port=" + port,
+      "--app=" + url
+    ],
+    { shell: false, windowsHide: false }
+  );
+
   try {
-    child = spawn(
-      executable,
-      [
-        "--disable-extensions",
-        "--no-first-run",
-        "--no-default-browser-check",
-        "--start-minimized",
-        "--user-data-dir=" + profileDir,
-        "--remote-debugging-address=127.0.0.1",
-        "--remote-debugging-port=" + port,
-        "--app=" + url
-      ],
-      { shell: false, windowsHide: false }
-    );
     await new Promise((resolve, reject) => {
       const timer = setTimeout(resolve, 1200);
       child.once("error", error => {
@@ -426,30 +476,58 @@ async function dumpDomWithVisibleBrowser(url) {
       });
     });
     const webSocketUrl = await waitForCdpPage(port, url);
-    const deadline = Date.now() + 12000;
-    let lastHtml = "";
-    while (Date.now() < deadline) {
-      await sleep(lastHtml ? 1000 : 1800);
-      lastHtml = await readDomThroughCdp(webSocketUrl);
-      try {
-        const parsed = extractCaitaPage(lastHtml, url);
-        const navigationReady =
-          Boolean(parsed.nextEpisodeUrl) ||
-          parsed.episodes.length > 1 ||
-          (Number.isInteger(parsed.currentEpisodeHint) &&
-            Number.isInteger(parsed.totalEpisodesHint) &&
-            parsed.currentEpisodeHint >= parsed.totalEpisodesHint);
-        if (navigationReady) return lastHtml;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (!/Caita body not found after render/i.test(message)) throw error;
-      }
-    }
-    return lastHtml;
-  } finally {
-    child?.kill();
-    await sleep(500).catch(() => {});
+    return { child, profileDir, webSocketUrl, currentUrl: url };
+  } catch (error) {
+    child.kill();
     await fs.rm(profileDir, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+async function closeVisibleBrowserSession(session) {
+  session?.child?.kill();
+  await sleep(500).catch(() => {});
+  if (session?.profileDir) {
+    await fs
+      .rm(session.profileDir, { recursive: true, force: true })
+      .catch(() => {});
+  }
+}
+
+async function renderWithVisibleBrowserSession(session, url, navigate = true) {
+  if (navigate && session.currentUrl !== url) {
+    await sendCdpCommand(session.webSocketUrl, "Page.navigate", { url });
+    session.currentUrl = url;
+  }
+
+  const deadline = Date.now() + 15000;
+  let lastHtml = "";
+  while (Date.now() < deadline) {
+    await sleep(lastHtml ? 900 : 1600);
+    lastHtml = await readDomThroughCdp(session.webSocketUrl);
+    try {
+      const parsed = extractCaitaPage(lastHtml, url);
+      const navigationReady =
+        Boolean(parsed.nextEpisodeUrl) ||
+        parsed.episodes.length > 1 ||
+        (Number.isInteger(parsed.currentEpisodeHint) &&
+          Number.isInteger(parsed.totalEpisodesHint) &&
+          parsed.currentEpisodeHint >= parsed.totalEpisodesHint);
+      if (navigationReady) return lastHtml;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/Caita body not found after render/i.test(message)) throw error;
+    }
+  }
+  return lastHtml;
+}
+
+async function dumpDomWithVisibleBrowser(url) {
+  const session = await openVisibleBrowserSession(url);
+  try {
+    return await renderWithVisibleBrowserSession(session, url, false);
+  } finally {
+    await closeVisibleBrowserSession(session);
   }
 }
 
@@ -677,11 +755,22 @@ async function readCaitaNovel(rawUrl, options = {}) {
   let firstPage = null;
   let totalEpisodesHint = null;
   let firstEpisodeHint = null;
+  const session = await openVisibleBrowserSession(startUrl);
 
-  while (currentUrl && episodes.length < maxEpisodes && !seen.has(currentUrl)) {
-    seen.add(currentUrl);
-    try {
-      const page = await caitaPage(currentUrl);
+  try {
+    while (
+      currentUrl &&
+      episodes.length < maxEpisodes &&
+      !seen.has(currentUrl)
+    ) {
+      seen.add(currentUrl);
+      try {
+        const renderedHtml = await renderWithVisibleBrowserSession(
+          session,
+          currentUrl,
+          episodes.length > 0
+        );
+        const page = extractCaitaPage(renderedHtml, currentUrl);
       if (!firstPage) {
         firstPage = page;
         firstEpisodeHint = page.currentEpisodeHint;
@@ -725,18 +814,21 @@ async function readCaitaNovel(rawUrl, options = {}) {
           currentUrl = page.episodes[currentIndex + 1].url;
         }
       }
-    } catch (error) {
-      failures.push({
-        number: episodes.length + 1,
-        url: currentUrl,
-        error: error instanceof Error ? error.message : String(error)
-      });
-      break;
-    }
+      } catch (error) {
+        failures.push({
+          number: episodes.length + 1,
+          url: currentUrl,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        break;
+      }
 
-    if (currentUrl && episodes.length < maxEpisodes) {
-      await sleep(delayMs);
+      if (currentUrl && episodes.length < maxEpisodes) {
+        await sleep(delayMs);
+      }
     }
+  } finally {
+    await closeVisibleBrowserSession(session);
   }
 
   const discoveredEpisodes = totalEpisodesHint || episodes.length;
