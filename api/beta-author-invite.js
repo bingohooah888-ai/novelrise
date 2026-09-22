@@ -82,9 +82,7 @@ export default async function handler(req, res) {
     const hash = tokenHash(token);
     const { data: invite, error: inviteError } = await supabase
       .from('beta_author_invites')
-      .select(
-        'preregistration_id,expires_at,sent_at,consumed_at,revoked_at'
-      )
+      .select('preregistration_id,expires_at,sent_at,consumed_at,revoked_at')
       .eq('token_hash', hash)
       .maybeSingle();
 
