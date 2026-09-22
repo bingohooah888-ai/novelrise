@@ -28,9 +28,13 @@ function exactKeys(value, allowed) {
   return JSON.stringify(keys) === JSON.stringify(expected);
 }
 
+function parseJsonText(text) {
+  return JSON.parse(String(text).replace(/^\uFEFF/u, ''));
+}
+
 async function readJson(file, fallback) {
   try {
-    return JSON.parse(await fs.readFile(file, 'utf8'));
+    return parseJsonText(await fs.readFile(file, 'utf8'));
   } catch (error) {
     if (error?.code === 'ENOENT') return fallback;
     throw error;
@@ -66,7 +70,7 @@ function loadConfigPath() {
 
 async function loadConfig() {
   const configPath = loadConfigPath();
-  const raw = JSON.parse(await fs.readFile(configPath, 'utf8'));
+  const raw = parseJsonText(await fs.readFile(configPath, 'utf8'));
   if (raw.owner !== OWNER || raw.repository !== REPOSITORY) {
     throw new Error('Bridge repository identity mismatch.');
   }
