@@ -77,16 +77,24 @@ jobs:
               grep -F "\"challenge\":\"$challenge\"" -c ||
               true
           )"
+          reused="${reused:-0}"
           test "$reused" -eq 0 || {
             echo 'Safety stop: thumbnail import approval was already consumed.'
             exit 1
           }
+          echo 'Approval challenge reuse check passed.'
 
-          remote_sha="$(git ls-remote origin "refs/heads/$transfer_branch" | awk '{print $1}')"
+          remote_ref="refs/remotes/origin/$transfer_branch"
+          remote_sha="$(git rev-parse "$remote_ref" 2>/dev/null || true)"
+          test -n "$remote_sha" || {
+            echo 'Safety stop: transfer branch is not present in checkout refs.'
+            exit 1
+          }
           test "$remote_sha" = "$transfer_sha" || {
             echo 'Safety stop: transfer branch SHA does not match approval.'
             exit 1
           }
+          echo 'Transfer branch SHA check passed.'
 
           {
             echo "payload=$payload"
