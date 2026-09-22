@@ -27,7 +27,7 @@ jobs:
       github.event.comment.author_association == 'OWNER' &&
       github.event.comment.body == 'NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST'
     runs-on: ubuntu-latest
-    environment: production
+    environment: Production
     env:
       GH_TOKEN: ${{ github.token }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -138,7 +138,7 @@ jobs:
       github.event.comment.author_association == 'OWNER' &&
       startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_APPROVE ')
     runs-on: ubuntu-latest
-    environment: production
+    environment: Production
     env:
       GH_TOKEN: ${{ github.token }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -189,10 +189,16 @@ jobs:
               (.body | startswith("NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_FAILED "))
             ) | select(.body | contains($requestId))
           ] | length' /tmp/request-comments.json)"
-          [ "$used_count" -eq 0 ]
+          [ "$used_count" -eq 0 ] || {
+            echo 'Safety stop: beta Auth email-mode request was already used.'
+            exit 1
+          }
 
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
-          test "$current_main" = "$main_sha"
+          test "$current_main" = "$main_sha" || {
+            echo 'Safety stop: main changed after beta Auth email-mode approval.'
+            exit 1
+          }
           {
             echo "request_id=$request_id"
             echo "main_sha=$main_sha"
