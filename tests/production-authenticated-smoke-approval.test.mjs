@@ -89,7 +89,7 @@ test('auth smoke stays SHA-bound and always cleans up', async () => {
   const workflow = await text(handlerPath);
   const approvedRef = 'ref: ${{ steps.approval.outputs.main_sha }}';
   const authConfigStart = workflow.indexOf(
-    '- name: Verify secure email-change Auth configuration'
+    '- name: Verify Production Auth email mode configuration'
   );
   const authConfigEnd = workflow.indexOf(
     '- name: Retrieve the production Supabase secret key for this approved run'
@@ -99,12 +99,17 @@ test('auth smoke stays SHA-bound and always cleans up', async () => {
   assert.ok(workflow.includes(approvedRef));
   assert.ok(workflow.includes('environment: Production'));
   assert.ok(workflow.includes('account-settings.html'));
+  assert.ok(workflow.includes('signup.html'));
+  assert.ok(workflow.includes('forgot-password.html'));
   assert.ok(authConfigStart >= 0);
   assert.ok(authConfigEnd > authConfigStart);
   assert.ok(
     authConfigAudit.includes('mailer_secure_email_change_enabled == true')
   );
+  assert.ok(authConfigAudit.includes('mailer_autoconfirm == true'));
+  assert.ok(authConfigAudit.includes("auth_email_mode='beta-no-mail'"));
   assert.ok(authConfigAudit.includes('mailer_autoconfirm == false'));
+  assert.ok(authConfigAudit.includes("auth_email_mode='verified-mail'"));
   assert.ok(authConfigAudit.includes('hook_send_email_enabled == true'));
   assert.ok(authConfigAudit.includes('.smtp_host'));
   assert.ok(authConfigAudit.includes('.smtp_admin_email'));
@@ -112,6 +117,7 @@ test('auth smoke stays SHA-bound and always cleans up', async () => {
   assert.ok(authConfigAudit.includes('secure_email_change_enabled'));
   assert.ok(authConfigAudit.includes('send_email_hook_enabled'));
   assert.ok(authConfigAudit.includes('custom_smtp_configured'));
+  assert.ok(authConfigAudit.includes('NOVELIGHT_AUTH_EMAIL_MODE'));
   assert.ok(authConfigAudit.includes('/config/auth'));
   assert.ok(!authConfigAudit.includes('-X PATCH'));
   assert.ok(workflow.includes('Create ephemeral production smoke users'));
