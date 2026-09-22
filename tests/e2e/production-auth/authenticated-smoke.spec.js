@@ -559,23 +559,21 @@ test('authenticated beta-critical product flow works in target', async ({
   let secondEpisodeHref;
 
   try {
-    await test.step('Author login', async () => {
+    await test.step('Author login enters the Author Studio and starts the first-post flow', async () => {
       const authorVisitorToken = await login(
         authorPage,
         accounts.author,
-        'post.html'
+        'mypage.html'
       );
       saveVisitorToken(`author-${deviceLabel}`, authorVisitorToken);
-    });
 
-    await test.step('Account settings reauth reaches the email-update boundary without mutating Auth', async () => {
-      await assertAccountSettingsEmailBoundary(
-        authorPage,
-        accounts.author,
-        deviceLabel,
-        fixture.runId
-      );
-      await authorPage.goto('/post.html');
+      await expect(
+        authorPage.getByRole('heading', { name: /さんの創作室$/ })
+      ).toBeVisible();
+      await expect(authorPage.locator('#profile')).toBeVisible();
+      await expect(authorPage.locator('#save')).toBeEnabled();
+      await authorPage.locator('.action-post .card-cta').click();
+      await authorPage.waitForURL(/\/post\.html$/);
     });
 
     await test.step('Create novel with Chapter 40 Geometry thumbnail render', async () => {
@@ -642,6 +640,29 @@ test('authenticated beta-critical product flow works in target', async ({
       expect(firstEpisodeHref).toMatch(/^episode\.html\?id=/);
     });
 
+    await test.step('Return to work management after the first publish', async () => {
+      const managementLink = authorPage.locator('#backToMyNovels');
+      await expect(managementLink).toBeVisible();
+      await expect(managementLink).toHaveAttribute('href', 'my-novels.html');
+      await managementLink.click();
+      await authorPage.waitForURL(/\/my-novels\.html$/);
+
+      const managedWork = authorPage.locator('.card').filter({
+        hasText: novelTitle
+      });
+      await expect(managedWork).toHaveCount(1);
+      await expect(managedWork.locator('.title')).toHaveText(novelTitle);
+    });
+
+    await test.step('Account settings reauth reaches the email-update boundary without mutating Auth', async () => {
+      await assertAccountSettingsEmailBoundary(
+        authorPage,
+        accounts.author,
+        deviceLabel,
+        fixture.runId
+      );
+    });
+
     await test.step('Publish second episode', async () => {
       await authorPage.goto(
         `/episode-post.html?novel_id=${encodeURIComponent(novelId)}`
@@ -684,6 +705,7 @@ test('authenticated beta-critical product flow works in target', async ({
       );
       await readerPage.goto(`/novel.html?id=${encodeURIComponent(novelId)}`);
       await expect(readerPage.locator('.title')).toHaveText(novelTitle);
+      await expect(readerPage.locator('#backToMyNovels')).toBeHidden();
       expect((await detailConversion).ok()).toBeTruthy();
     });
 
