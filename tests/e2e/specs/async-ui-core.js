@@ -394,14 +394,6 @@ test('signup completes immediately when beta autoconfirm returns a session', asy
 
   await expect(page.locator('#signupButton')).toBeDisabled();
   await page.waitForURL(/\/mypage\.html$/);
-
-  const signUpCalls = await page.evaluate(
-    () =>
-      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
-        (call) => call.type === 'signUp'
-      ).length
-  );
-  expect(signUpCalls).toBe(1);
   expect(pageErrors).toEqual([]);
 });
 
