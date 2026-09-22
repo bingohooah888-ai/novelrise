@@ -22,7 +22,13 @@ try {
   $env:NOVELIGHT_BRIDGE_GITHUB_TOKEN = $PlainToken
   $env:NOVELIGHT_BRIDGE_CONFIG = $ConfigPath
 
-  node $DaemonPath *>> $LogPath
+  while ($true) {
+    node $DaemonPath *>> $LogPath
+    $ExitCode = $LASTEXITCODE
+    $Stamp = Get-Date -Format o
+    Add-Content -Path $LogPath -Value "$Stamp NOVELIGHT Commander bridge exited with code $ExitCode; restarting in 2 seconds."
+    Start-Sleep -Seconds 2
+  }
 } catch {
   $Stamp = Get-Date -Format o
   Add-Content -Path $LogPath -Value "$Stamp NOVELIGHT Commander bridge failed: $($_.Exception.Message)"
