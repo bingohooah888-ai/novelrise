@@ -334,7 +334,8 @@
     return library.assets.filter(
       (asset) =>
         asset.template_key === templateKey &&
-        asset.layer_type === layerType &&
+        (asset.layer_type === layerType ||
+          (layerType === 'symbol' && asset.layer_type === 'pattern')) &&
         asset.availability_status === 'active'
     );
   }
