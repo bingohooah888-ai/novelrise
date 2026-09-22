@@ -416,6 +416,16 @@ async function assertAccountSettingsEmailBoundary(
   await page.goto('/account-settings.html');
   await expect(page.getByRole('heading', { name: 'アカウント設定' })).toBeVisible();
   await expect(page.locator('#currentEmail')).toHaveText(account.email);
+
+  if (process.env.NOVELIGHT_AUTH_EMAIL_MODE === 'beta-no-mail') {
+    await expect(page.locator('#betaEmailNotice')).toBeVisible();
+    await expect(page.locator('#emailForm')).toHaveCount(0);
+    await expect(page.locator('body')).toContainText(
+      'β期間中はメールアドレス変更を一時停止しています。'
+    );
+    return;
+  }
+
   await expect(page.locator('#currentPassword')).toBeEnabled();
   await expect(page.locator('#newEmail')).toBeEnabled();
   await expect(page.locator('#confirmEmail')).toBeEnabled();
