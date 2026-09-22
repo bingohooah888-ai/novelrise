@@ -13,11 +13,16 @@ const thumbnailRenderPathPattern =
 
 if (!fixturePath) throw new Error('PRODUCTION_AUTH_SMOKE_FIXTURE is required.');
 if (!supabaseUrl) throw new Error('SUPABASE_URL is required.');
-if (!supabaseSecretKey) throw new Error('SUPABASE_SECRET_KEY is required.');
 
-const admin = createClient(supabaseUrl, supabaseSecretKey, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+const admin = supabaseSecretKey
+  ? createClient(supabaseUrl, supabaseSecretKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    })
+  : null;
+
+function requireAdmin() {
+  if (!admin) throw new Error('SUPABASE_SECRET_KEY is required.');
+}
 
 function password() {
   return `Nl!${randomBytes(24).toString('base64url')}9a`;
@@ -113,6 +118,7 @@ async function cleanupThumbnailRenders(paths) {
 }
 
 async function setup() {
+  requireAdmin();
   const fixture = {
     runId,
     createdAt: new Date().toISOString(),
@@ -189,12 +195,18 @@ async function cleanupAuthorAvatars(authorIds) {
 
 async function cleanup() {
   const fixture = loadFixture();
+  const thumbnailRenderPaths = fixtureThumbnailRenderPaths(fixture);
   const authorIds = uniqueIds(projectAccounts(fixture, 'author'));
   const readerIds = uniqueIds(projectAccounts(fixture, 'reader'));
   const userIds = [...new Set([...authorIds, ...readerIds])];
+  if (!userIds.length && !thumbnailRenderPaths.length) {
+    console.log('No ephemeral production authenticated-smoke users or renders to clean.');
+    return;
+  }
+
+  requireAdmin();
   if (!userIds.length) {
-    console.log('No ephemeral production authenticated-smoke users to clean.');
-    await cleanupThumbnailRenders(fixtureThumbnailRenderPaths(fixture));
+    await cleanupThumbnailRenders(thumbnailRenderPaths);
     return;
   }
 
@@ -231,7 +243,7 @@ async function cleanup() {
   const unexpectedFounding = (foundingResult.data || []).length > 0;
 
   await cleanupThumbnailRenders([
-    ...fixtureThumbnailRenderPaths(fixture),
+    ...thumbnailRenderPaths,
     ...dbThumbnailRenderPaths
   ]);
 

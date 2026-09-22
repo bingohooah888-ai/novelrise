@@ -31,3 +31,20 @@ test('production auth smoke records and cleans Chapter 40 thumbnail renders', ()
   assert.match(fixtureSource, /\.from\('novel_thumbnail_compositions'\)/);
   assert.match(fixtureSource, /\.remove\(safePaths\)/);
 });
+
+test('production auth smoke cleanup tolerates a pre-fixture safety stop', () => {
+  assert.match(fixtureSource, /const admin = supabaseSecretKey/);
+  assert.match(fixtureSource, /function requireAdmin\(\)/);
+  assert.match(
+    fixtureSource,
+    /if \(!userIds\.length && !thumbnailRenderPaths\.length\)/
+  );
+  assert.match(
+    fixtureSource,
+    /No ephemeral production authenticated-smoke users or renders to clean\./
+  );
+  assert.doesNotMatch(
+    fixtureSource,
+    /if \(!supabaseSecretKey\) throw new Error\('SUPABASE_SECRET_KEY is required\.'\);/
+  );
+});
