@@ -121,4 +121,6 @@ test('NLO novel reader recognizes public Caita episode URLs', async () => {
   assert.match(source, /readCaitaNovel/);
   assert.match(source, /nextEpisodeUrl/);
   assert.match(source, /currentEpisodeHint \+ 1/);
+  assert.match(source, /navigationReady/);
+  assert.match(source, /parsed\.nextEpisodeUrl/);
 });
