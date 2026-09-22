@@ -107,7 +107,7 @@ test('public preregistration intake remains closed outside PRE_REGISTRATION', ()
   );
   assert.match(
     signupHtml,
-    /state==='AUTHOR_PREOPEN'[\s\S]*showAuthorPreopen\(\)/
+    /state==='AUTHOR_PREOPEN'[\s\S]*validateInvite\(\)[\s\S]*showAuthorPreopen\(inviteValidated\)/
   );
   assert.match(
     betaHtml,
