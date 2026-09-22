@@ -9,6 +9,14 @@ const workflow = await readFile(
 const ledger = JSON.parse(
   await readFile('production-approval-ledger.json', 'utf8')
 );
+const runbookSource = await readFile(
+  'docs/BETA-OPERATIONS-RUNBOOK.md',
+  'utf8'
+);
+const checklistSource = await readFile(
+  'docs/BETA-RELEASE-CHECKLIST.md',
+  'utf8'
+);
 
 test('beta no-mail Auth control stays bound to the active Production ledger', () => {
   assert.equal(ledger.activeIssue, 737);
@@ -80,4 +88,14 @@ test('beta no-mail Auth control claims, records and rolls back safely', () => {
     /\{mailer_autoconfirm:\$value\}/u
   );
   assert.match(workflow, /auth-rollback\.json/u);
+});
+
+
+test('beta no-mail Auth operations are documented as temporary and preopen-gated', () => {
+  assert.match(runbookSource, /Temporary beta no-mail Auth mode/u);
+  assert.match(runbookSource, /NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST/u);
+  assert.match(runbookSource, /mailer_autoconfirm=true/u);
+  assert.match(runbookSource, /This proves preregistration eligibility, not ownership of the inbox/u);
+  assert.match(checklistSource, /Temporary beta no-mail Auth mode is deployed and Production-postchecked/u);
+  assert.match(checklistSource, /Required before the 2026-09-28 author preopen/u);
 });
