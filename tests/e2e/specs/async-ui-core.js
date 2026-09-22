@@ -282,137 +282,7 @@ test('account settings redirects logged-out users without exposing account data'
   expect(pageErrors).toEqual([]);
 });
 
-test('account settings shows only the signed-in user email and requests a confirmed change', async ({
-  page
-}) => {
-  await installSupabaseStub(page, {
-    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
-    user: { id: 'author-e2e', email: 'owner@example.test' }
-  });
-  const pageErrors = collectPageErrors(page);
-
-  await page.goto('/account-settings.html');
-  await expect(page.locator('#currentEmail')).toHaveText('owner@example.test');
-  await expect(page.locator('#changeEmail')).toBeEnabled();
-
-  await page.locator('#currentPassword').fill('correct-password');
-  await page.locator('#newEmail').fill('new-owner@example.test');
-  await page.locator('#confirmEmail').fill('new-owner@example.test');
-  await page.locator('#changeEmail').click();
-
-  await expect(page.locator('#status')).toContainText(
-    '確認メールを送信しました。'
-  );
-  await expect(page.locator('#pendingNotice')).toBeVisible();
-
-  const updateCalls = await page.evaluate(() =>
-    globalThis.__NOVELIGHT_E2E_CALLS__.filter(
-      (call) => call.type === 'updateUser'
-    )
-  );
-  expect(updateCalls).toEqual([
-    { type: 'updateUser', payload: { email: 'new-owner@example.test' } }
-  ]);
-  expect(pageErrors).toEqual([]);
-});
-
-test('account settings rejects malformed, mismatched and unchanged emails before Auth mutation', async ({
-  page
-}) => {
-  await installSupabaseStub(page, {
-    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
-    user: { id: 'author-e2e', email: 'owner@example.test' }
-  });
-  const pageErrors = collectPageErrors(page);
-
-  await page.goto('/account-settings.html');
-  await page.locator('#currentPassword').fill('correct-password');
-
-  await page.locator('#newEmail').fill('not-an-email');
-  await page.locator('#confirmEmail').fill('not-an-email');
-  await page.locator('#changeEmail').click();
-  await expect(page.locator('#status')).toContainText('有効なメールアドレス');
-  await expect(page.locator('#currentPassword')).toHaveValue('');
-
-  await page.locator('#currentPassword').fill('correct-password');
-  await page.locator('#newEmail').fill('first@example.test');
-  await page.locator('#confirmEmail').fill('second@example.test');
-  await page.locator('#changeEmail').click();
-  await expect(page.locator('#status')).toContainText('一致していません');
-  await expect(page.locator('#currentPassword')).toHaveValue('');
-
-  await page.locator('#currentPassword').fill('correct-password');
-  await page.locator('#newEmail').fill('OWNER@example.test');
-  await page.locator('#confirmEmail').fill('owner@example.test');
-  await page.locator('#changeEmail').click();
-  await expect(page.locator('#status')).toContainText('現在と同じ');
-  await expect(page.locator('#currentPassword')).toHaveValue('');
-
-  const updateCalls = await page.evaluate(
-    () =>
-      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
-        (call) => call.type === 'updateUser'
-      ).length
-  );
-  expect(updateCalls).toBe(0);
-  expect(pageErrors).toEqual([]);
-});
-
-test('account settings requires the current password before requesting an email change', async ({
-  page
-}) => {
-  await installSupabaseStub(page, {
-    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
-    user: { id: 'author-e2e', email: 'owner@example.test' },
-    signInError: 'Invalid login credentials'
-  });
-  const pageErrors = collectPageErrors(page);
-
-  await page.goto('/account-settings.html');
-  await page.locator('#currentPassword').fill('wrong-password');
-  await page.locator('#newEmail').fill('new-owner@example.test');
-  await page.locator('#confirmEmail').fill('new-owner@example.test');
-  await page.locator('#changeEmail').click();
-
-  await expect(page.locator('#status')).toHaveText(
-    '現在のパスワードを確認してください。'
-  );
-  await expect(page.locator('#currentPassword')).toHaveValue('');
-  const updateCalls = await page.evaluate(
-    () =>
-      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
-        (call) => call.type === 'updateUser'
-      ).length
-  );
-  expect(updateCalls).toBe(0);
-  expect(pageErrors).toEqual([]);
-});
-
-test('account settings handles an already-used email without disclosing another account', async ({
-  page
-}) => {
-  await installSupabaseStub(page, {
-    session: { user: { id: 'author-e2e', email: 'owner@example.test' } },
-    user: { id: 'author-e2e', email: 'owner@example.test' },
-    updateUserError: 'User already registered'
-  });
-  const pageErrors = collectPageErrors(page);
-
-  await page.goto('/account-settings.html');
-  await page.locator('#currentPassword').fill('correct-password');
-  await page.locator('#newEmail').fill('used@example.test');
-  await page.locator('#confirmEmail').fill('used@example.test');
-  await page.locator('#changeEmail').click();
-
-  await expect(page.locator('#status')).toHaveText(
-    'このメールアドレスには変更できません。入力内容を確認するか、別のメールアドレスをお試しください。'
-  );
-  await expect(page.locator('#status')).not.toContainText('User');
-  await expect(page.locator('#currentPassword')).toHaveValue('');
-  expect(pageErrors).toEqual([]);
-});
-
-test('account settings reports pending confirmation without revealing the pending target', async ({
+test('account settings shows only the signed-in user email while beta mail changes are paused', async ({
   page
 }) => {
   await installSupabaseStub(page, {
@@ -428,10 +298,24 @@ test('account settings reports pending confirmation without revealing the pendin
 
   await page.goto('/account-settings.html');
 
-  await expect(page.locator('#pendingNotice')).toBeVisible();
+  await expect(page.locator('#currentEmail')).toHaveText('owner@example.test');
+  await expect(page.locator('#betaEmailNotice')).toBeVisible();
+  await expect(page.locator('body')).toContainText(
+    'β期間中はメールアドレス変更を一時停止しています。'
+  );
+  await expect(page.locator('#emailForm')).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText(
     'private-next@example.test'
   );
+
+  const authMutationCalls = await page.evaluate(
+    () =>
+      globalThis.__NOVELIGHT_E2E_CALLS__.filter(
+        (call) =>
+          call.type === 'updateUser' || call.type === 'signInWithPassword'
+      ).length
+  );
+  expect(authMutationCalls).toBe(0);
   expect(pageErrors).toEqual([]);
 });
 
@@ -483,10 +367,21 @@ test('login prevents duplicate submission while pending and recovers after an er
   expect(pageErrors).toEqual([]);
 });
 
-test('signup exposes loading state and restores the form after async completion', async ({
+test('signup completes immediately when beta autoconfirm returns a session', async ({
   page
 }) => {
-  await installSupabaseStub(page, { authDelayMs: 400 });
+  await installSupabaseStub(page, {
+    authDelayMs: 400,
+    signupSession: {
+      access_token: 'signup-token',
+      user: { id: 'author-e2e', email: 'author@example.com' }
+    },
+    session: {
+      access_token: 'signup-token',
+      user: { id: 'author-e2e', email: 'author@example.com' }
+    },
+    user: { id: 'author-e2e', email: 'author@example.com' }
+  });
   const pageErrors = collectPageErrors(page);
 
   await page.goto('/signup.html');
@@ -498,11 +393,7 @@ test('signup exposes loading state and restores the form after async completion'
   await page.locator('#signupButton').click();
 
   await expect(page.locator('#signupButton')).toBeDisabled();
-  await expect(page.locator('#signupStatus')).toHaveText('登録処理中...');
-  await expect(page.locator('#signupStatus')).toContainText(
-    '登録確認メールを送信しました。'
-  );
-  await expect(page.locator('#signupButton')).toBeEnabled();
+  await page.waitForURL(/\/mypage\.html$/);
 
   const signUpCalls = await page.evaluate(
     () =>
@@ -511,6 +402,30 @@ test('signup exposes loading state and restores the form after async completion'
       ).length
   );
   expect(signUpCalls).toBe(1);
+  expect(pageErrors).toEqual([]);
+});
+
+test('signup fails safely instead of claiming an email was sent when no session is returned', async ({
+  page
+}) => {
+  await installSupabaseStub(page, { authDelayMs: 100 });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/signup.html');
+  await page.locator('#name').fill('E2E Author');
+  await page.locator('#email').fill('author@example.com');
+  await page.locator('#password').fill('password123');
+  await page.locator('#passwordConfirm').fill('password123');
+  await page.locator('#termsConsent').check();
+  await page.locator('#signupButton').click();
+
+  await expect(page.locator('#signupStatus')).toContainText(
+    '会員登録を完了できませんでした。'
+  );
+  await expect(page.locator('#signupStatus')).not.toContainText(
+    '確認メール'
+  );
+  await expect(page.locator('#signupButton')).toBeEnabled();
   expect(pageErrors).toEqual([]);
 });
 
