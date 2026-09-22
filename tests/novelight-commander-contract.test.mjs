@@ -104,7 +104,6 @@ test('Commander exposes the NOVELIGHT operations surface', async () => {
   }
 });
 
-
 test('NLO novel reader recognizes public Caita episode URLs', async () => {
   const novelFile = path.join(commander, 'src/novel.js');
   const source = await readFile(novelFile, 'utf8');
