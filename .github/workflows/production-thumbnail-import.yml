@@ -69,17 +69,14 @@ jobs:
           transfer_sha="$(echo "$payload" | jq -r '.transferSha')"
           file_name="$(echo "$payload" | jq -r '.fileName')"
 
-          comments="$(gh api --paginate             "repos/$GITHUB_REPOSITORY/issues/657/comments?per_page=100")"
-          reused="$(echo "$comments" | jq -s --arg challenge "$challenge" '
-            [
-              .[][] |
-              select(
-                (.body | startswith("NOVELIGHT_THUMBNAIL_IMPORT_CLAIMED ")) or
-                (.body | startswith("NOVELIGHT_THUMBNAIL_IMPORT_EXECUTED "))
-              ) |
-              select(.body | contains($challenge))
-            ] | length
-          ')"
+          reused="$(
+            gh api --paginate \
+              "repos/$GITHUB_REPOSITORY/issues/657/comments?per_page=100" \
+              --jq '.[] | .body // ""' |
+              grep -E '^NOVELIGHT_THUMBNAIL_IMPORT_(CLAIMED|EXECUTED) ' |
+              grep -F "\"challenge\":\"$challenge\"" -c ||
+              true
+          )"
           test "$reused" -eq 0 || {
             echo 'Safety stop: thumbnail import approval was already consumed.'
             exit 1
