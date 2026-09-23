@@ -1441,7 +1441,7 @@ async function processComment(comment, config, token, state) {
       await appendAudit(config, 'bridge-update-restart-requested', {
         requestId: request.requestId
       });
-      process.exit(0);
+      process.exit(75);
     }
     await appendAudit(config, 'request-success', {
       requestId: request.requestId,
