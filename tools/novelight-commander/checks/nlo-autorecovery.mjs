@@ -16,6 +16,10 @@ test("NLO watchdog is anchored in Task Scheduler and runs every minute", async (
   assert.match(source, /-MultipleInstances IgnoreNew/);
   assert.match(source, /-RunLevel Limited/);
   assert.match(source, /repair-nlo-services[.]ps1/);
+  assert.match(source, /wscript[.]exe/);
+  assert.match(source, /NOVELIGHT-Commander-Bridge[.]vbs/);
+  assert.match(source, /nlo-watchdog[.]vbs/);
+  assert.match(source, /Remove-Item -Path \$LegacyStartupFile/);
 });
 
 test("NLO repair script restores both bridge and tunnel supervisors", async () => {
@@ -39,4 +43,26 @@ test("GitHub Bridge exposes a fixed NLO autorecovery installer action", async ()
   const source = await read("src/github-bridge-daemon.js");
   assert.match(source, /autorecovery_install/);
   assert.match(source, /install-nlo-autorecovery[.]ps1/);
+});
+
+
+test("NLO bridge supervisor distinguishes planned, normal, and failed exits", async () => {
+  const runner = await read("run-github-bridge.ps1");
+  const daemon = await read("src/github-bridge-daemon.js");
+
+  assert.match(runner, /\$ExitCode -eq 75/);
+  assert.match(runner, /\$ExitCode -eq 0/);
+  assert.match(runner, /supervisor stopping/);
+  assert.match(runner, /\$MaxRestartDelaySeconds = 60/);
+  assert.match(runner, /\$RestartDelaySeconds \* 2/);
+  assert.match(daemon, /process[.]exit\(75\)/);
+});
+
+test("GitHub Bridge configuration no longer installs a visible cmd startup launcher", async () => {
+  const source = await read("configure-github-bridge.ps1");
+
+  assert.match(source, /NOVELIGHT-Commander-Bridge[.]vbs/);
+  assert.match(source, /WScript[.]Shell/);
+  assert.match(source, /\$LegacyStartupFile = Join-Path \$StartupDir 'NOVELIGHT-Commander-Bridge[.]cmd'/);
+  assert.match(source, /Remove-Item -Path \$LegacyStartupFile/);
 });

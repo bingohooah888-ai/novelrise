@@ -63,5 +63,8 @@ test("Windows autostart uses a current-user scheduled task with restart policy",
   assert.match(source, /-RestartCount 999/);
   assert.match(source, /-RestartInterval \(New-TimeSpan -Minutes 1\)/);
   assert.match(source, /Start-ScheduledTask/);
-  assert.match(source, /-WindowStyle Hidden/);
+  assert.match(source, /wscript[.]exe/);
+  assert.match(source, /nlo-tunnel[.]vbs/);
+  assert.match(source, /WScript[.]Shell/);
+  assert.match(source, /Stop-ScheduledTask/);
 });
