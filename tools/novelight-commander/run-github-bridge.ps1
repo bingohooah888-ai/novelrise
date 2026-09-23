@@ -22,12 +22,35 @@ try {
   $env:NOVELIGHT_BRIDGE_GITHUB_TOKEN = $PlainToken
   $env:NOVELIGHT_BRIDGE_CONFIG = $ConfigPath
 
+  $RestartDelaySeconds = 2
+  $MaxRestartDelaySeconds = 60
+
   while ($true) {
+    $StartedAt = Get-Date
     node $DaemonPath *>> $LogPath
     $ExitCode = $LASTEXITCODE
     $Stamp = Get-Date -Format o
-    Add-Content -Path $LogPath -Value "$Stamp NOVELIGHT Commander bridge exited with code $ExitCode; restarting in 2 seconds."
-    Start-Sleep -Seconds 2
+
+    if ($ExitCode -eq 75) {
+      Add-Content -Path $LogPath -Value "$Stamp NOVELIGHT Commander bridge requested a planned restart; restarting in 2 seconds."
+      $RestartDelaySeconds = 2
+      Start-Sleep -Seconds 2
+      continue
+    }
+
+    if ($ExitCode -eq 0) {
+      Add-Content -Path $LogPath -Value "$Stamp NOVELIGHT Commander bridge exited normally; supervisor stopping."
+      break
+    }
+
+    $RuntimeSeconds = ((Get-Date) - $StartedAt).TotalSeconds
+    if ($RuntimeSeconds -ge 60) {
+      $RestartDelaySeconds = 2
+    }
+
+    Add-Content -Path $LogPath -Value "$Stamp NOVELIGHT Commander bridge exited with code $ExitCode; restarting in $RestartDelaySeconds seconds."
+    Start-Sleep -Seconds $RestartDelaySeconds
+    $RestartDelaySeconds = [Math]::Min($MaxRestartDelaySeconds, [Math]::Max(2, $RestartDelaySeconds * 2))
   }
 } catch {
   $Stamp = Get-Date -Format o
