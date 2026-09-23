@@ -13,8 +13,8 @@ test("OpenAI tunnel runner automatically reconnects with bounded backoff", async
 
   assert.match(source, /while \(\$true\)/);
   assert.match(source, /doctor --profile novelight-commander/);
-  assert.match(source, /codex plugin install/);
-  assert.match(source, /Retrying NOVELIGHT Commander tunnel doctor after plugin repair/);
+  assert.match(source, /optional Codex plugin\/UI checks must not keep NLO offline/);
+  assert.doesNotMatch(source, /codex plugin install/);
   assert.match(source, /run --profile novelight-commander/);
   assert.match(source, /Restarting in \$DelaySeconds seconds/);
   assert.match(source, /\$MaxRestartDelaySeconds = 60/);
