@@ -24,6 +24,8 @@ test("NLO repair script restores both bridge and tunnel supervisors", async () =
   assert.match(source, /run-github-bridge[.]ps1/);
   assert.match(source, /run-openai-tunnel[.]ps1/);
   assert.match(source, /Start-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"/);
+  assert.match(source, /Stop-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"/);
+  assert.match(source, /task reports Running but supervisor process is missing/);
   assert.match(source, /control-plane-key[.]dpapi/);
   assert.match(source, /github-token[.]dpapi/);
 });
