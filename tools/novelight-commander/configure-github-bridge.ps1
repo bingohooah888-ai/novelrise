@@ -71,12 +71,14 @@ try {
 }
 
 $StartupDir = [Environment]::GetFolderPath('Startup')
-$StartupFile = Join-Path $StartupDir 'NOVELIGHT-Commander-Bridge.cmd'
+$LegacyStartupFile = Join-Path $StartupDir 'NOVELIGHT-Commander-Bridge.cmd'
+$StartupFile = Join-Path $StartupDir 'NOVELIGHT-Commander-Bridge.vbs'
 $RunnerScript = Join-Path $Here 'run-github-bridge.ps1'
-@"
-@echo off
-powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$RunnerScript" -ConfigPath "$ConfigPath"
-"@ | Set-Content -Path $StartupFile -Encoding ascii
+$BridgeCommand = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + $RunnerScript + '" -ConfigPath "' + $ConfigPath + '"'
+$EscapedBridgeCommand = $BridgeCommand.Replace('"', '""')
+$StartupBody = 'CreateObject("WScript.Shell").Run "' + $EscapedBridgeCommand + '", 0, False'
+Set-Content -Path $StartupFile -Value $StartupBody -Encoding ascii
+Remove-Item -Path $LegacyStartupFile -Force -ErrorAction SilentlyContinue
 
 $Existing = Get-CimInstance Win32_Process |
   Where-Object {
