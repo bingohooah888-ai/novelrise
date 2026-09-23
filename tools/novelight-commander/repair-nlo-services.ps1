@@ -39,9 +39,16 @@ if ($BridgeDaemonCount -eq 0 -and $BridgeRunnerCount -eq 0) {
 }
 
 $TunnelRunnerCount = Get-ProcessCount "run-openai-tunnel[.]ps1"
+$NloTunnelClientCount = @(
+  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+      [string]$_.Name -match "^tunnel-client[.]exe$" -and
+      [string]$_.CommandLine -match "novelight-commander"
+    }
+).Count
 $TunnelTask = Get-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
 
-if ($TunnelRunnerCount -eq 0) {
+if ($TunnelRunnerCount -eq 0 -and $NloTunnelClientCount -eq 0) {
   if (-not $TunnelTask -and (Test-Path $TunnelKeyPath) -and (Test-Path $TunnelInstaller)) {
     Write-WatchdogLog "Tunnel task missing; installing tunnel autostart."
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $TunnelInstaller *>> $WatchdogLog
@@ -83,6 +90,13 @@ $TunnelClientCount = @(
   Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
     Where-Object { [string]$_.Name -match "^tunnel-client[.]exe$" }
 ).Count
+$NloTunnelClientCount = @(
+  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+      [string]$_.Name -match "^tunnel-client[.]exe$" -and
+      [string]$_.CommandLine -match "novelight-commander"
+    }
+).Count
 $TunnelTask = Get-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
 $TunnelInfo = Get-ScheduledTaskInfo -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
 $TunnelLog = Join-Path $RuntimeRoot "openai-tunnel.log"
@@ -91,6 +105,7 @@ Write-Output ("bridge_daemon_processes: " + $BridgeDaemonCount)
 Write-Output ("bridge_supervisor_processes: " + $BridgeRunnerCount)
 Write-Output ("tunnel_supervisor_processes: " + $TunnelRunnerCount)
 Write-Output ("tunnel_client_processes: " + $TunnelClientCount)
+Write-Output ("nlo_tunnel_client_processes: " + $NloTunnelClientCount)
 Write-Output ("tunnel_task: " + $(if ($TunnelTask) { $TunnelTask.State } else { "missing" }))
 Write-Output ("tunnel_last_result: " + $(if ($TunnelInfo) { $TunnelInfo.LastTaskResult } else { "missing" }))
 Write-Output ("tunnel_last_run: " + $(if ($TunnelInfo) { $TunnelInfo.LastRunTime.ToString("o") } else { "missing" }))
