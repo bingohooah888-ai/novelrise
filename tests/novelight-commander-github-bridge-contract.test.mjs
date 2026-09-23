@@ -157,6 +157,9 @@ test('Commander thumbnail transfer stages only canonical packs', async () => {
     /\['thumbnail_stage_transfer', actionThumbnailStageTransfer\]/
   );
   assert.match(source, /CANONICAL_PACK_MANIFESTS\.has\(fileName\)/);
+  assert.match(source, /resolveDownloadsZipForPack/);
+  assert.match(source, /expectedPackKey/);
+  assert.match(source, /manifest\.packKey/);
   assert.match(source, /Transfer staging requires a clean local working tree/);
   assert.match(source, /'worktree', 'add'/);
   assert.match(source, /'push', 'origin'/);
