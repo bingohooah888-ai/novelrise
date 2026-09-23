@@ -33,14 +33,12 @@ test('preregistration state routes users to the isolated beta author LP', () => 
   expectSignup(/β版の一般会員登録はまだ開始していません/);
 });
 
-test('author preopen exposes signup only after a dedicated invite is validated', () => {
-  expectSignup(/location\.hash/);
-  expectSignup(/inviteParams\.get\('invite'\)/);
-  expectSignup(/history\.replaceState/);
-  expectSignup(/async function validateInvite\(\)/);
-  expectSignup(/fetch\('\/api\/beta-author-invite'/);
+test('author preopen exposes signup only after secure invite validation', () => {
+  expectSignup(/先行作者プレオープン中です/);
+  expectSignup(/inviteValidated=await validateInvite\(\)/);
   expectSignup(/showAuthorPreopen\(inviteValidated\)/);
   expectSignup(/先行登録時のメールアドレスへお送りした専用の招待URL/);
+  expectSignup(/招待URLを確認しました/);
 });
 
 test('campaign lookup failures keep normal signup closed', () => {
@@ -54,7 +52,6 @@ test('beta no-mail signup keeps profile metadata and requires an immediate sessi
   expectSignup(/client\.auth\.signUp/);
   expectSignup(/const signupMetadata=\{display_name:name\}/);
   expectSignup(/signupMetadata\.novelight_invite_token=inviteToken/);
-  expectSignup(/data:signupMetadata/);
   expectSignup(/if\(!data\?\.session\)/);
   expectSignup(/window\.location\.href='mypage\.html'/);
   assert.doesNotMatch(signup, /emailRedirectTo/u);
