@@ -6,7 +6,7 @@
   "description": "Local MCP operations layer for NOVELIGHT development",
   "scripts": {
     "start": "node src/index.js",
-    "test": "node --test checks/security.mjs checks/novel.mjs checks/tunnel-autostart.mjs",
+    "test": "node --test checks/security.mjs checks/novel.mjs checks/tunnel-autostart.mjs checks/nlo-autorecovery.mjs",
     "check": "node --check src/index.js && node --check src/security.js && node --check src/novel.js && node --check src/novel-cache.js && node --check src/files.js && node --check src/processes.js && node --check src/archive.js && node --check src/audit.js && node --check src/binary-transfer.js && node --check src/thumbnail-register.js && node --check src/assets.js && node --check src/github-bridge-daemon.js"
   },
   "dependencies": {
