@@ -607,6 +607,42 @@ function ensureNoArgs(args) {
   }
 }
 
+async function actionAutorecoveryInstall(request, config) {
+  ensureNoArgs(request.args);
+  if (os.platform() !== 'win32') {
+    throw new Error('NLO autorecovery installer is Windows-only.');
+  }
+
+  const installer = path.join(
+    config.repoRoot,
+    'tools',
+    'novelight-commander',
+    'install-nlo-autorecovery.ps1'
+  );
+  const result = await run(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      installer,
+      '-ConfigPath',
+      config.configPath
+    ],
+    { cwd: path.dirname(installer), timeoutMs: 120000 }
+  );
+  if (result.code !== 0) {
+    throw new Error(
+      'NLO autorecovery installer failed with code ' +
+        result.code +
+        '\n' +
+        (result.stderr || result.stdout)
+    );
+  }
+  return [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
+}
+
 function resolveDataPath(config, relativePath) {
   const candidate = path.resolve(config.dataRoot, String(relativePath || ''));
   const relative = path.relative(config.dataRoot, candidate);
@@ -1326,6 +1362,7 @@ async function actionBridgeUpdate(request, config) {
 
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
+  ['autorecovery_install', actionAutorecoveryInstall],
   ['repo_snapshot', actionRepoSnapshot],
   ['preflight_fast', actionPreflightFast],
   ['commander_check', actionCommanderCheck],
