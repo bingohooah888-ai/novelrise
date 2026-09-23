@@ -105,6 +105,8 @@ API keyをチャットやGitへ貼らないでください。
 
 `run-openai-tunnel.ps1` はTunnel切断時に自動再接続し、短時間の連続失敗時は最大60秒まで待機時間を段階的に増やします。1分以上安定稼働した後の切断では待機時間を初期値へ戻します。
 
+さらに `install-nlo-autorecovery.ps1` は、1分ごとの独立Watchdog Scheduled Task `NOVELIGHT Commander Watchdog` を登録します。WatchdogはOpenAI Tunnel supervisorとGitHub Bridge supervisorを監視し、どちらかの親プロセスごと停止しても自動再起動します。BridgeのStartupランチャーも維持し、ログオン起動と定期自己修復を二重化します。
+
 `configure-openai-tunnel.ps1` は、Tunnel設定確認後に `CONTROL_PLANE_API_KEY` をWindows DPAPIで暗号化し、`%LOCALAPPDATA%\NOVELIGHT\Commander\control-plane-key.dpapi` へ保存します。平文API keyをGitやチャット、Scheduled Taskの引数へ保存しません。
 
 自動起動Taskは現在のWindowsユーザー権限で動作し、管理者権限へ昇格しません。PC再起動・ログオン後、Terminalを開かなくてもTunnelを起動します。
