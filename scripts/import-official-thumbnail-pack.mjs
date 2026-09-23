@@ -1,5 +1,7 @@
 import path from 'node:path';
 import process from 'node:process';
+import fs from 'node:fs/promises';
+import { readEmbeddedThumbnailManifest } from '../tools/novelight-commander/src/archive.js';
 import { createClient } from '@supabase/supabase-js';
 import { createSecurityConfig } from '../tools/novelight-commander/src/security.js';
 import { registerOfficialThumbnailPack } from '../tools/novelight-commander/src/thumbnail-register.js';
@@ -15,8 +17,18 @@ if (!input) throw new Error('Pack path is required.');
 
 const absolute = path.resolve(input);
 const fileName = path.basename(absolute);
-const manifestPath = manifestByFile.get(fileName);
-if (!manifestPath) throw new Error('Unsupported official thumbnail pack: ' + fileName);
+const fallbackManifestPath = manifestByFile.get(fileName);
+if (!fallbackManifestPath) throw new Error('Unsupported official thumbnail pack: ' + fileName);
+
+const bootstrapSecurity = createSecurityConfig({
+  ...process.env,
+  NOVELIGHT_COMMANDER_ROOT: process.cwd()
+});
+const embeddedManifest = await readEmbeddedThumbnailManifest(
+  path.relative(process.cwd(), absolute),
+  bootstrapSecurity
+);
+const manifestPath = embeddedManifest ? null : fallbackManifestPath;
 
 const url = String(process.env.NOVELIGHT_COMMANDER_SUPABASE_URL || '').trim();
 const key = String(process.env.NOVELIGHT_COMMANDER_SUPABASE_SERVICE_ROLE_KEY || '').trim();
@@ -56,8 +68,8 @@ const result = await registerOfficialThumbnailPack(
   security
 );
 
-const manifest = JSON.parse(
-  await (await import('node:fs/promises')).readFile(manifestPath, 'utf8')
+const manifest = embeddedManifest || JSON.parse(
+  await fs.readFile(fallbackManifestPath, 'utf8')
 );
 const failures = [];
 for (const item of manifest.items || []) {
