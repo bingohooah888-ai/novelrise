@@ -35,7 +35,7 @@ test("Tunnel configuration stores the control-plane key with Windows DPAPI", asy
 test("Windows tunnel configuration uses a parser-safe MCP command and checks init before doctor", async () => {
   const source = await read("configure-openai-tunnel.ps1");
 
-  assert.match(source, /\.Replace\("\\\\", "\/"\)/);
+  assert.ok(source.includes('.Replace("\\\\", "/")'));
   assert.match(source, /\$McpCommand = 'node "\{0\}"' -f \$IndexPath/);
   assert.match(source, /init --sample sample_mcp_stdio_local/);
   assert.match(source, /Tunnel profile creation failed with exit code/);

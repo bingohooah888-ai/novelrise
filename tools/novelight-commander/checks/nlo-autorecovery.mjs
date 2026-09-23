@@ -24,9 +24,9 @@ test("NLO watchdog is anchored in Task Scheduler and runs every minute", async (
 
 test("NLO repair script restores both bridge and tunnel supervisors", async () => {
   const source = await read("repair-nlo-services.ps1");
-  assert.match(source, /github-bridge-daemon[.]js/);
-  assert.match(source, /run-github-bridge[.]ps1/);
-  assert.match(source, /run-openai-tunnel[.]ps1/);
+  assert.ok(source.includes("github-bridge-daemon[.]js"));
+  assert.ok(source.includes("run-github-bridge[.]ps1"));
+  assert.ok(source.includes("run-openai-tunnel[.]ps1"));
   assert.match(source, /NloTunnelClientCount/);
   assert.match(source, /novelight-commander/);
   assert.match(source, /TunnelRunnerCount -eq 0 -and \$NloTunnelClientCount -eq 0/);

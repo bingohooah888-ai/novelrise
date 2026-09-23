@@ -32,11 +32,13 @@ test("detects novel sites", () => {
 });
 
 
-test("Caita episode URLs are not treated as whole-series reads", async () => {
+test("Caita episode URLs traverse the series and only report complete at a verified end", async () => {
   const source = await import("node:fs/promises").then(({ readFile }) =>
     readFile(new URL("../src/novel.js", import.meta.url), "utf8")
   );
-  assert.match(source, /partial:\s*true/);
+  assert.match(source, /readCaitaNovel/);
   assert.match(source, /totalEpisodesHint/);
-  assert.match(source, /!index\.partial/);
+  assert.match(source, /reachedKnownTotal/);
+  assert.match(source, /reachedNaturalSeriesEnd/);
+  assert.match(source, /truncated: !complete/);
 });
