@@ -78,8 +78,20 @@ try {
     try {
       Write-TunnelLog "Checking NOVELIGHT Commander tunnel profile."
       & $TunnelClient doctor --profile novelight-commander --explain *>> $LogPath
-      if ($LASTEXITCODE -ne 0) {
-        throw "tunnel-client doctor exited with code $LASTEXITCODE"
+      $DoctorExitCode = $LASTEXITCODE
+      if ($DoctorExitCode -ne 0) {
+        Write-TunnelLog "Tunnel doctor failed with code $DoctorExitCode; repairing Codex tunnel plugin."
+        & $TunnelClient codex plugin install *>> $LogPath
+        $PluginInstallExitCode = $LASTEXITCODE
+        if ($PluginInstallExitCode -ne 0) {
+          throw "tunnel-client codex plugin install exited with code $PluginInstallExitCode"
+        }
+
+        Write-TunnelLog "Retrying NOVELIGHT Commander tunnel doctor after plugin repair."
+        & $TunnelClient doctor --profile novelight-commander --explain *>> $LogPath
+        if ($LASTEXITCODE -ne 0) {
+          throw "tunnel-client doctor still fails after plugin repair with code $LASTEXITCODE"
+        }
       }
 
       Write-TunnelLog "Starting NOVELIGHT Commander tunnel."
