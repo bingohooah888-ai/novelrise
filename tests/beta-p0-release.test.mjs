@@ -7,7 +7,7 @@ import { fileURLToPath, URL } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (path) => readFile(join(root, path), 'utf8');
 
-test('password recovery is visibly paused while login redirect stays allowlisted', async () => {
+test('password recovery is restored while login redirect stays allowlisted', async () => {
   const [login, authReaderContext, forgot, reset] = await Promise.all([
     read('login.html'),
     read('auth-reader-context.js'),
@@ -20,10 +20,12 @@ test('password recovery is visibly paused while login redirect stays allowlisted
   assert.match(authReaderContext, /url\.origin !== global\.location\.origin/);
   assert.match(authReaderContext, /ALLOWED_PATHS/);
   assert.doesNotMatch(login, /window\.location\.href\s*=\s*redirect\s*;/);
-  assert.match(forgot, /パスワード再設定メールの送信を一時停止しています/);
-  assert.match(forgot, /href="contact\.html"/);
-  assert.doesNotMatch(forgot, /resetPasswordForEmail/);
+  assert.match(forgot, /resetPasswordForEmail/);
+  assert.match(forgot, /登録済みのメールアドレスであれば/u);
+  assert.match(forgot, /new URL\('reset-password\.html',location\.href\)/u);
   assert.match(reset, /updateUser\(\{password\}\)/);
+  assert.match(reset, /event==='PASSWORD_RECOVERY'/);
+  assert.match(reset, /signOut\(\{scope:'global'\}\)/);
   assert.match(reset, /signOut\(\{scope:'local'\}\)/);
 });
 

@@ -50,12 +50,12 @@ test('campaign lookup failures keep normal signup closed', () => {
   expectSignup(/安全のため、現在は新規会員登録を停止しています/);
 });
 
-test('beta no-mail signup keeps profile metadata and requires an immediate session', () => {
+test('verified-mail signup keeps profile metadata and waits safely for confirmation', () => {
   expectSignup(/client\.auth\.signUp/);
   expectSignup(/const signupMetadata=\{display_name:name\}/);
   expectSignup(/signupMetadata\.novelight_invite_token=inviteToken/);
   expectSignup(/data:signupMetadata/);
+  expectSignup(/emailRedirectTo/);
   expectSignup(/if\(!data\?\.session\)/);
-  expectSignup(/window\.location\.href='mypage\.html'/);
-  assert.doesNotMatch(signup, /emailRedirectTo/u);
+  expectSignup(/確認メールを送信しました/);
 });

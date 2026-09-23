@@ -75,6 +75,11 @@ async function installAuthResilienceStubs(page, overrides = {}) {
               },
               onAuthStateChange: (callback) => {
                 window.__NOVELIGHT_RECOVERY_CALLBACK__ = callback;
+                if (state.recoverySession) {
+                  queueMicrotask(() =>
+                    callback('PASSWORD_RECOVERY', state.recoverySession)
+                  );
+                }
                 return { data: { subscription: { unsubscribe() {} } } };
               }
             }
@@ -266,7 +271,7 @@ test('signup recovers after the auth promise rejects and permits a retry', async
 
   await page.locator('#signupButton').click();
   await expect(page.locator('#signupStatus')).toContainText(
-    '会員登録に失敗しました。入力内容を確認してください。'
+    '会員登録を受け付けられませんでした。入力内容を確認し、時間をおいて再度お試しください。'
   );
   await expect(page.locator('#signupButton')).toBeEnabled();
 
@@ -305,7 +310,7 @@ test('successful session signup survives rejected optional telemetry', async ({
   expect(pageErrors).toEqual([]);
 });
 
-test('forgot-password stays paused and sends no recovery request in beta no-mail mode', async ({
+test('forgot-password returns a neutral response when recovery transport rejects', async ({
   page
 }) => {
   await installAuthResilienceStubs(page, {
@@ -314,14 +319,12 @@ test('forgot-password stays paused and sends no recovery request in beta no-mail
   const pageErrors = collectPageErrors(page);
 
   await page.goto('/forgot-password.html');
-
-  await expect(page.locator('body')).toContainText(
-    'β期間中はメール配信基盤の正式導入前のため'
+  await page.locator('#email').fill('reader@example.test');
+  await page.locator('#button').click();
+  await expect(page.locator('#status')).toContainText(
+    '登録済みのメールアドレスであれば'
   );
-  await expect(page.locator('body')).toContainText(
-    '現在、メールによるパスワード再設定は利用できません。'
-  );
-  await expect(page.locator('#email')).toHaveCount(0);
+  await expect(page.locator('#button')).toBeDisabled();
 
   const recoveryCalls = await page.evaluate(
     () =>
@@ -329,22 +332,22 @@ test('forgot-password stays paused and sends no recovery request in beta no-mail
         (call) => call.type === 'resetPasswordForEmail'
       ).length
   );
-  expect(recoveryCalls).toBe(0);
+  expect(recoveryCalls).toBe(1);
   expect(pageErrors).toEqual([]);
 });
 
-test('reset-password leaves the pending state when getSession rejects', async ({
+test('reset-password does not trust an ordinary existing session', async ({
   page
 }) => {
   await installAuthResilienceStubs(page, {
-    getSessionReject: 'temporary session lookup failure'
+    session: { user: { id: 'reader-e2e' } }
   });
   const pageErrors = collectPageErrors(page);
 
   await page.goto('/reset-password.html');
 
   await expect(page.locator('#status')).toContainText(
-    '再設定リンクを確認できませんでした。'
+    '再設定リンクが無効または期限切れです。'
   );
   await expect(page.locator('#status')).not.toContainText(
     '再設定リンクを確認しています...'
@@ -357,7 +360,7 @@ test('reset-password update rejection restores the submit button for retry', asy
   page
 }) => {
   await installAuthResilienceStubs(page, {
-    session: { user: { id: 'reader-e2e' } },
+    recoverySession: { user: { id: 'reader-e2e' } },
     authDelayMs: 80,
     updateUserRejectTimes: 1,
     updateUserError: 'expired recovery'
@@ -389,11 +392,11 @@ test('reset-password update rejection restores the submit button for retry', asy
   expect(pageErrors).toEqual([]);
 });
 
-test('reset-password success and login redirect survive local signOut rejection', async ({
+test('reset-password success survives global and local signOut rejection', async ({
   page
 }) => {
   await installAuthResilienceStubs(page, {
-    session: { user: { id: 'reader-e2e' } },
+    recoverySession: { user: { id: 'reader-e2e' } },
     signOutReject: 'local storage unavailable'
   });
   await page.route('**/login.html', async (route) => {
@@ -412,7 +415,7 @@ test('reset-password success and login redirect survive local signOut rejection'
   await page.locator('#button').click();
 
   await expect(page.locator('#status')).toHaveText(
-    'パスワードを変更しました。新しいパスワードでログインしてください。'
+    'パスワードを変更しました。すべてのセッションを終了しました。新しいパスワードでログインしてください。'
   );
   await expect(page).toHaveURL(/\/login\.html$/);
   expect(pageErrors).toEqual([]);

@@ -31,18 +31,17 @@ for (const [name, path] of publicPages) {
   });
 }
 
-test('auth pages expose the temporary beta no-mail recovery boundary', async ({
-  request
-}) => {
+test('auth pages expose verified-mail recovery flows', async ({ request }) => {
   const login = await (await request.get('/login.html')).text();
   const forgot = await (await request.get('/forgot-password.html')).text();
   const reset = await (await request.get('/reset-password.html')).text();
 
   expect(login).toContain('href="forgot-password.html"');
   expect(login).toContain('safeRedirectTarget');
-  expect(forgot).toContain('β期間中はメール配信基盤の正式導入前');
-  expect(forgot).not.toContain('resetPasswordForEmail');
+  expect(forgot).toContain('resetPasswordForEmail');
+  expect(forgot).toContain('登録済みのメールアドレスであれば');
   expect(reset).toContain('updateUser({password})');
+  expect(reset).toContain("signOut({scope:'global'})");
 });
 
 test('posting shell requires classification and policy acknowledgement', async ({

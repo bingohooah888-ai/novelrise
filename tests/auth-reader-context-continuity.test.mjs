@@ -111,18 +111,19 @@ test('login and signup keep the sanitized redirect across the auth choice', () =
   );
 });
 
-test('beta autoconfirm signup stores reader context only after an immediate session exists', () => {
-  assert.doesNotMatch(signup, /emailRedirectTo/);
+test('verified signup stores reader context after Auth accepts the request', () => {
+  assert.match(signup, /emailRedirectTo/);
   assert.match(signup, /if\(!data\?\.session\)/);
 
   const signupIndex = signup.indexOf('client.auth.signUp');
-  const sessionGuardIndex = signup.indexOf('if(!data?.session)');
   const rememberIndex = signup.indexOf(
     'NovelightAuthReturn.rememberPendingTarget(redirect)'
   );
+  const sessionGuardIndex = signup.indexOf('if(!data?.session)');
   assert.ok(signupIndex >= 0);
+  assert.ok(rememberIndex > signupIndex);
   assert.ok(sessionGuardIndex > signupIndex);
-  assert.ok(rememberIndex > sessionGuardIndex);
+  assert.ok(rememberIndex < sessionGuardIndex);
   assert.match(index, /src="auth-reader-context\.js"/);
   assert.match(
     index,
