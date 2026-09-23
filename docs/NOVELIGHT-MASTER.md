@@ -924,6 +924,21 @@ NLOは一般のRemote Desktop Commanderとは別物であり、両者を混同�
 5. NLOが使用不能であることが明確な場合、同一作業中に無意味な再接続・再試行を繰り返さない。
 6. NLOが再び利用可能になった後の新しいNOVELIGHT作業では、再度NLOを第一候補とする。
 
+#### NLO可用性・自動復旧
+
+NLOのOpenAI Secure MCP Tunnelは、通常運用でユーザーが毎回手動起動する前提にしない。
+
+Windows環境では、以下を標準運用とする。
+
+- Windowsログオン時にNLO Tunnelを自動起動する。
+- Tunnelプロセスが回線瞬断、スリープ復帰、外部サービス一時障害等で終了した場合、自動再接続する。
+- 短時間に連続失敗する場合はbounded backoffを入れ、無限高速再試行を避ける。
+- CONTROL_PLANE_API_KEYは平文でTask引数・Git・チャットへ保存せず、Windows DPAPI等のOS保護ストレージを利用する。
+- NLOがofflineになった場合は、単に再起動を繰り返すのではなく、Tunnelログ・Scheduled Task状態・最終接続時刻を確認して原因を切り分ける。
+- 自動復旧機構が失敗している場合のみ、Remote Desktop Commanderその他の代替手段へ切り替える。
+
+NLOの常時利用性は、NLO First Policyを実運用で成立させるための基盤とみなす。
+
 #### 重要原則
 
 「別ツールの方が使い慣れている」
