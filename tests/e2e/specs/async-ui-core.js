@@ -282,7 +282,7 @@ test('account settings redirects logged-out users without exposing account data'
   expect(pageErrors).toEqual([]);
 });
 
-test('account settings shows only the signed-in user email while beta mail changes are paused', async ({
+test('account settings exposes secure email change only to the signed-in user', async ({
   page
 }) => {
   await installSupabaseStub(page, {
@@ -299,14 +299,15 @@ test('account settings shows only the signed-in user email while beta mail chang
   await page.goto('/account-settings.html');
 
   await expect(page.locator('#currentEmail')).toHaveText('owner@example.test');
-  await expect(page.locator('#betaEmailNotice')).toBeVisible();
-  await expect(page.locator('body')).toContainText(
-    'β期間中はメールアドレス変更を一時停止しています。'
-  );
-  await expect(page.locator('#emailForm')).toHaveCount(0);
+  await expect(page.locator('#emailForm')).toBeVisible();
+  await expect(page.locator('#newEmail')).toBeEnabled();
   await expect(page.locator('body')).not.toContainText(
     'private-next@example.test'
   );
+
+  await page.locator('#newEmail').fill('next-owner@example.test');
+  await page.locator('#emailButton').click();
+  await expect(page.locator('#pendingEmailNotice')).toBeVisible();
 
   const authMutationCalls = await page.evaluate(
     () =>
@@ -315,7 +316,7 @@ test('account settings shows only the signed-in user email while beta mail chang
           call.type === 'updateUser' || call.type === 'signInWithPassword'
       ).length
   );
-  expect(authMutationCalls).toBe(0);
+  expect(authMutationCalls).toBe(1);
   expect(pageErrors).toEqual([]);
 });
 
@@ -397,7 +398,7 @@ test('signup completes immediately when beta autoconfirm returns a session', asy
   expect(pageErrors).toEqual([]);
 });
 
-test('signup fails safely instead of claiming an email was sent when no session is returned', async ({
+test('signup waits for inbox confirmation when no session is returned', async ({
   page
 }) => {
   await installSupabaseStub(page, { authDelayMs: 100 });
@@ -412,10 +413,9 @@ test('signup fails safely instead of claiming an email was sent when no session 
   await page.locator('#signupButton').click();
 
   await expect(page.locator('#signupStatus')).toContainText(
-    '会員登録を完了できませんでした。'
+    '確認メールを送信しました。'
   );
-  await expect(page.locator('#signupStatus')).not.toContainText('確認メール');
-  await expect(page.locator('#signupButton')).toBeEnabled();
+  await expect(page.locator('#signupButton')).toBeDisabled();
   expect(pageErrors).toEqual([]);
 });
 

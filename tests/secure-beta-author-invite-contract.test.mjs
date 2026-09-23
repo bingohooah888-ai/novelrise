@@ -121,6 +121,7 @@ test('signup keeps invite token in the URL fragment and only submits it after se
 test('ADMIN outbound send is authenticated, idempotent and gated away from preregistration', () => {
   assert.match(inviteApi, /requireAdmin/);
   assert.match(inviteApi, /RESEND_API_KEY/);
+  assert.match(inviteApi, /NOVELIGHT <auth@novelight\.jp>/);
   assert.match(inviteApi, /Idempotency-Key/);
   assert.match(inviteApi, /novelight-beta-author-invite-/);
   assert.match(inviteApi, /state !== 'AUTHOR_PREOPEN'/);

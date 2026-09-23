@@ -29,21 +29,29 @@
         <div id="currentEmail" class="current-email" aria-live="polite">確認しています...</div>
       </div>
 
-      <div id="betaEmailNotice" class="pending">
-        <strong>β期間中はメールアドレス変更を一時停止しています。</strong><br>
-        正式なメール配信基盤を導入し、変更確認メールを安全に送れる状態になってから再開します。現在のメールアドレスは本人と必要な権限を持つ運営だけが確認できます。
+      <div id="pendingEmailNotice" class="pending" hidden>
+        <strong>確認メールを送信しました。</strong><br>
+        Secure Email Changeにより、現在のメールアドレスと新しいメールアドレスの両方で確認が完了するまで変更は確定しません。
       </div>
+
+      <form id="emailForm">
+        <div class="field">
+          <label for="newEmail">新しいメールアドレス</label>
+          <input id="newEmail" type="email" autocomplete="email" disabled required>
+        </div>
+        <div class="actions"><button id="emailButton" class="primary" type="submit" disabled>確認メールを送る</button></div>
+      </form>
 
       <div id="status" class="status" aria-live="polite">ログイン状態を確認しています...</div>
 
       <div class="security-note">
-        NOVELIGHTは公開プロフィール用データへメールアドレスを複製保存しません。β期間中はメール変更要求を送信しないため、確認メールが届かない状態で変更手続きだけが残ることもありません。
+        変更を開始できるのはログイン中の本人だけです。作品・契約・Founding Author資格はAuth user IDへ紐付くため、確認済みメールアドレスを変更しても所有権は変わりません。
       </div>
     </section>
 
     <section class="future" aria-labelledby="futureSettingsTitle">
-      <h2 id="futureSettingsTitle">今後のアカウント機能</h2>
-      <p>パスワード変更など、認証に関わる設定は安全性を確認したうえでこのページへ追加します。</p>
+      <h2 id="futureSettingsTitle">パスワードを忘れた場合</h2>
+      <p><a href="forgot-password.html">パスワード再設定</a>から登録メールアドレスへ期限付きリンクを送信できます。</p>
     </section>
   </main>
 
@@ -52,7 +60,8 @@
   <script src="novelight-author-studio-shell.js"></script>
   <script>
     const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
-    const currentEmailEl=document.getElementById('currentEmail'),statusEl=document.getElementById('status');
+    const currentEmailEl=document.getElementById('currentEmail'),statusEl=document.getElementById('status'),emailForm=document.getElementById('emailForm'),newEmailEl=document.getElementById('newEmail'),emailButton=document.getElementById('emailButton'),pendingEmailNotice=document.getElementById('pendingEmailNotice');
+    let currentEmail='';
 
     function goToLogin(){location.replace('login.html?redirect=account-settings.html')}
     function sessionExpired(error){const status=Number(error?.status||0),code=String(error?.code||'').toLowerCase(),name=String(error?.name||'').toLowerCase(),message=String(error?.message||'').toLowerCase();return status===401||code.includes('session')||name.includes('session')||message.includes('session missing')||message.includes('jwt expired')}
@@ -61,9 +70,11 @@
       try{
         const result=await client.auth.getUser();
         if(result.error||!result.data?.user)throw result.error||Object.assign(new Error('Auth session missing'),{status:401});
-        const currentEmail=String(result.data.user.email||'').trim();
+        currentEmail=String(result.data.user.email||'').trim();
         if(!currentEmail){goToLogin();return}
         currentEmailEl.textContent=currentEmail;
+        newEmailEl.disabled=false;
+        emailButton.disabled=false;
         statusEl.textContent='';
       }catch(error){
         currentEmailEl.textContent='確認できません';
@@ -72,6 +83,35 @@
         statusEl.classList.add('error');
       }
     }
+
+    emailForm.addEventListener('submit',async(event)=>{
+      event.preventDefault();
+      if(emailButton.disabled)return;
+      const newEmail=newEmailEl.value.trim().toLowerCase();
+      if(!newEmail)return;
+      if(newEmail===currentEmail.toLowerCase()){
+        statusEl.textContent='現在とは異なるメールアドレスを入力してください。';
+        statusEl.classList.add('error');
+        return;
+      }
+      emailButton.disabled=true;
+      newEmailEl.disabled=true;
+      statusEl.classList.remove('error');
+      statusEl.textContent='確認メールを送信しています...';
+      try{
+        const emailRedirectTo=new URL('index.html',location.href).href;
+        const {error}=await client.auth.updateUser({email:newEmail},{emailRedirectTo});
+        if(error)throw error;
+        pendingEmailNotice.hidden=false;
+        statusEl.textContent='両方のメールアドレスへ届く確認リンクを順に開いてください。確認完了までは現在のメールアドレスでログインできます。';
+      }catch(error){
+        console.error('email change request failed',{status:error?.status||null,code:error?.code||null});
+        statusEl.textContent='メールアドレス変更を開始できませんでした。入力内容を確認し、時間をおいて再度お試しください。';
+        statusEl.classList.add('error');
+        emailButton.disabled=false;
+        newEmailEl.disabled=false;
+      }
+    });
 
     void init();
   </script>

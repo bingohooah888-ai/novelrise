@@ -43,12 +43,14 @@ test('account settings verifies the logged-in user before rendering private emai
     /location\.replace\('login\.html\?redirect=account-settings\.html'\)/u
   );
   assert.match(account, /currentEmailEl\.textContent=currentEmail/u);
-  assert.match(account, /id="betaEmailNotice"/u);
-  assert.match(account, /β期間中はメールアドレス変更を一時停止しています/u);
+  assert.match(account, /id="emailForm"/u);
+  assert.match(
+    account,
+    /client\.auth\.updateUser\(\{email:newEmail\},\{emailRedirectTo\}\)/u
+  );
+  assert.match(account, /現在のメールアドレスと新しいメールアドレスの両方/u);
   assert.doesNotMatch(account, /client\.auth\.getSession\(\)/u);
   assert.doesNotMatch(account, /client\.auth\.signInWithPassword/u);
-  assert.doesNotMatch(account, /client\.auth\.updateUser/u);
-  assert.doesNotMatch(account, /id="emailForm"/u);
   assert.doesNotMatch(account, /user\.new_email|email_change_sent_at/u);
   assert.doesNotMatch(account, /NovelightClient/u);
   assert.doesNotMatch(account, /localStorage|sessionStorage/u);
@@ -58,12 +60,12 @@ test('account settings verifies the logged-in user before rendering private emai
   assert.doesNotMatch(account, /profiles\.email|email_normalized/u);
 });
 
-test('beta account settings keeps email private while mail-dependent changes are paused', () => {
+test('account settings keeps email private while secure change is available', () => {
   assert.match(account, /現在のメールアドレス/u);
-  assert.match(account, /正式なメール配信基盤を導入/u);
-  assert.match(account, /本人と必要な権限を持つ運営だけが確認/u);
-  assert.match(account, /メール変更要求を送信しない/u);
-  assert.doesNotMatch(account, /確認メールを送信/u);
+  assert.match(account, /本人だけが確認できるアカウント情報/u);
+  assert.match(account, /確認メールを送信しました/u);
+  assert.match(account, /Auth user IDへ紐付く/u);
+  assert.doesNotMatch(account, /localStorage|sessionStorage/u);
 });
 
 test('Author Studio and mypage expose matching interaction and account settings navigation', () => {

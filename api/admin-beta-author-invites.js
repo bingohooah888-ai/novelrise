@@ -13,7 +13,7 @@ const supabase = createClient(
 const TOKEN_VERSION_NAMESPACE = 'novelight-beta-author-invite:v1';
 const INVITE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
-const FROM = 'NOVELIGHT <noreply@novelight.jp>';
+const FROM = 'NOVELIGHT <auth@novelight.jp>';
 const MAX_PENDING_IDS = 500;
 
 function privateHeaders(res) {

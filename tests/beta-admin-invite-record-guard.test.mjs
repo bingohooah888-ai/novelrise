@@ -39,7 +39,7 @@ test('beta admin exposes an explicit real-mail action only for AUTHOR_PREOPEN', 
   assert.match(inviteApi, /state !== 'AUTHOR_PREOPEN'/);
   assert.match(inviteApi, /RESEND_API_KEY/);
   assert.match(inviteApi, /https:\/\/api\.resend\.com\/emails/);
-  assert.match(inviteApi, /NOVELIGHT <noreply@novelight\.jp>/);
+  assert.match(inviteApi, /NOVELIGHT <auth@novelight\.jp>/);
 });
 
 test('outbound invites are idempotent and do not persist raw bearer tokens', () => {

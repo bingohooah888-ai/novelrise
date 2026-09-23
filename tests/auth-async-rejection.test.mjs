@@ -50,33 +50,30 @@ test('signup catches auth rejections and restores retry', () => {
   assert.match(signup, /finally\{if\(!completed\)button\.disabled=false\}/);
   assert.match(signup, /async function runOptionalTelemetry/);
   assert.match(signup, /post-signup acquisition telemetry failed/);
-  assert.match(signup, /会員登録に失敗しました。入力内容を確認してください。/);
+  assert.match(
+    signup,
+    /会員登録を受け付けられませんでした。通信状態を確認し、時間をおいて再度お試しください。/
+  );
 });
 
-test('forgot-password pauses mail recovery safely during beta no-mail mode', () => {
+test('forgot-password catches mail failures without account enumeration', () => {
   assert.match(
     forgotPassword,
-    /β期間中はメール配信基盤の正式導入前のため、パスワード再設定メールの送信を一時停止しています。/
+    /auth\.resetPasswordForEmail\(email,\{redirectTo\}\)/
   );
+  assert.match(forgotPassword, /登録済みのメールアドレスであれば/);
+  assert.match(forgotPassword, /if\(button\.disabled\)return/);
   assert.match(
     forgotPassword,
-    /現在、メールによるパスワード再設定は利用できません。/
+    /catch\(error\)\{console\.error\('password recovery request failed'/
   );
-  assert.match(forgotPassword, /href="contact\.html"/);
-  assert.doesNotMatch(forgotPassword, /resetPasswordForEmail/);
-  assert.doesNotMatch(forgotPassword, /supabase\.createClient/);
+  assert.doesNotMatch(forgotPassword, /メールアドレスは登録されていません/);
 });
 
 test('reset-password catches async failures and isolates sign-out', () => {
-  assert.match(
-    resetPassword,
-    /async function checkRecovery\(\)\{try\{const \{data,error\}=await client\.auth\.getSession/
-  );
-  assert.match(resetPassword, /password recovery session check failed/);
-  assert.match(
-    resetPassword,
-    /再設定リンクを確認できませんでした。通信状態を確認し、ページを再読み込みしてお試しください。/
-  );
+  assert.match(resetPassword, /event==='PASSWORD_RECOVERY'&&session/);
+  assert.doesNotMatch(resetPassword, /auth\.getSession\(\)/);
+  assert.match(resetPassword, /rejectMissingRecoveryEvent/);
   assert.match(resetPassword, /if\(!recoveryReady\|\|button\.disabled\)return/);
   assert.match(resetPassword, /const \{error\}=await client\.auth\.updateUser/);
   assert.match(
@@ -91,32 +88,22 @@ test('reset-password catches async failures and isolates sign-out', () => {
     resetPassword,
     /const \{error:signOutError\}=await client\.auth\.signOut/
   );
-  assert.match(
-    resetPassword,
-    /if\(signOutError\)console\.error\('local sign out failed'/
-  );
-  assert.match(
-    resetPassword,
-    /catch\(error\)\{console\.error\('local sign out failed'/
-  );
+  assert.match(resetPassword, /auth\.signOut\(\{scope:'global'\}\)/);
+  assert.match(resetPassword, /auth\.signOut\(\{scope:'local'\}\)/);
   assert.match(
     resetPassword,
     /変更できませんでした。リンクの期限を確認し、再度お試しください。/
   );
 
   const successIndex = resetPassword.indexOf(
-    "status.textContent='パスワードを変更しました。新しいパスワードでログインしてください。'"
+    "status.textContent='パスワードを変更しました。すべてのセッションを終了しました。新しいパスワードでログインしてください。'"
   );
   const signOutIndex = resetPassword.indexOf(
-    "await client.auth.signOut({scope:'local'})"
+    "await client.auth.signOut({scope:'global'})"
   );
   const redirectIndex = resetPassword.indexOf(
-    "setTimeout(()=>{window.location.href='login.html'},600)"
+    "setTimeout(()=>{window.location.href='login.html'},800)"
   );
-  assert.ok(successIndex >= 0 && signOutIndex > successIndex);
+  assert.ok(signOutIndex >= 0 && successIndex > signOutIndex);
   assert.ok(redirectIndex > successIndex);
-  assert.match(
-    resetPassword,
-    /void \(async\(\)=>\{try\{const \{error:signOutError\}=await client\.auth\.signOut/
-  );
 });
