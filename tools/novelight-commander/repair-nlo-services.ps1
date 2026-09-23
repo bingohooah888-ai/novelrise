@@ -52,6 +52,22 @@ if ($TunnelRunnerCount -eq 0) {
       Stop-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
       Start-Sleep -Seconds 1
     }
+
+    $OrphanedTunnelClients = @(
+      Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+          [string]$_.Name -match "^tunnel-client[.]exe$" -and
+          [string]$_.CommandLine -match "novelight-commander"
+        }
+    )
+    foreach ($Client in $OrphanedTunnelClients) {
+      Write-WatchdogLog ("Stopping orphaned NOVELIGHT tunnel-client process " + $Client.ProcessId + ".")
+      Stop-Process -Id $Client.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    if ($OrphanedTunnelClients.Count -gt 0) {
+      Start-Sleep -Seconds 1
+    }
+
     Write-WatchdogLog "Tunnel supervisor missing; starting scheduled tunnel task."
     Start-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"
   } else {
