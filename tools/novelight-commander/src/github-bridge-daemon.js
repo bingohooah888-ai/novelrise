@@ -296,6 +296,50 @@ function resolveDownloadsZip(fileName) {
   }
   return candidate;
 }
+async function resolveDownloadsZipForPack(fileName, expectedPackKey) {
+  const canonical = resolveDownloadsZip(fileName);
+  const packKey = String(expectedPackKey || '').trim();
+  if (!/^[A-Za-z0-9_-]{1,160}$/.test(packKey)) {
+    throw new Error('expectedPackKey is invalid.');
+  }
+
+  const downloadsRoot = path.dirname(canonical);
+  const ext = path.extname(fileName);
+  const stem = path.basename(fileName, ext);
+  const escapedStem = stem.replace(/[.*+?^$\\{}()|[\\]\\\\]/g, '\\$&');
+  const candidateRe = new RegExp(
+    '^' + escapedStem + '(?: \\([0-9]+\\))?\\.zip$',
+    'i'
+  );
+
+  const entries = await fs.readdir(downloadsRoot, { withFileTypes: true });
+  const matching = [];
+  const JSZip = (await import('jszip')).default;
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !candidateRe.test(entry.name)) continue;
+    const candidate = path.join(downloadsRoot, entry.name);
+    try {
+      const bytes = await fs.readFile(candidate);
+      const zip = await JSZip.loadAsync(bytes);
+      const manifestEntry = zip.file('manifest.json');
+      if (!manifestEntry) continue;
+      const manifest = JSON.parse(await manifestEntry.async('string'));
+      if (String(manifest.packKey || '').trim() !== packKey) continue;
+      const stat = await fs.stat(candidate);
+      matching.push({ candidate, mtimeMs: stat.mtimeMs });
+    } catch {
+      // Ignore unrelated/invalid duplicate downloads.
+    }
+  }
+
+  if (!matching.length) {
+    throw new Error('No Downloads ZIP matched expected pack key: ' + packKey);
+  }
+
+  matching.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return matching[0].candidate;
+}
 
 async function resolveHostedSupabaseSecret(config) {
   const envKey = String(
@@ -859,8 +903,12 @@ async function actionNovelSampleSaved(request, config) {
 }
 
 async function actionThumbnailStageTransfer(request, config) {
-  if (!exactKeys(request.args, ['fileName'])) {
-    throw new Error('thumbnail_stage_transfer requires exactly fileName.');
+  const basicArgs = exactKeys(request.args, ['fileName']);
+  const packPinnedArgs = exactKeys(request.args, ['fileName', 'expectedPackKey']);
+  if (!basicArgs && !packPinnedArgs) {
+    throw new Error(
+      'thumbnail_stage_transfer requires fileName and optional expectedPackKey.'
+    );
   }
 
   const fileName = String(request.args.fileName || '').trim();
@@ -868,7 +916,9 @@ async function actionThumbnailStageTransfer(request, config) {
     throw new Error('Only canonical official thumbnail packs can be staged.');
   }
 
-  const source = resolveDownloadsZip(fileName);
+  const source = packPinnedArgs
+    ? await resolveDownloadsZipForPack(fileName, request.args.expectedPackKey)
+    : resolveDownloadsZip(fileName);
   const stat = await fs.stat(source).catch(error => {
     if (error?.code === 'ENOENT') {
       throw new Error('Official thumbnail ZIP was not found in Downloads.');
