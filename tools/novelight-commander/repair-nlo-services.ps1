@@ -63,10 +63,27 @@ if ($TunnelRunnerCount -eq 0) {
 $BridgeDaemonCount = Get-ProcessCount "github-bridge-daemon[.]js"
 $BridgeRunnerCount = Get-ProcessCount "run-github-bridge[.]ps1"
 $TunnelRunnerCount = Get-ProcessCount "run-openai-tunnel[.]ps1"
+$TunnelClientCount = @(
+  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object { [string]$_.Name -match "^tunnel-client[.]exe$" }
+).Count
 $TunnelTask = Get-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
+$TunnelInfo = Get-ScheduledTaskInfo -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
+$TunnelLog = Join-Path $RuntimeRoot "openai-tunnel.log"
 
 Write-Output ("bridge_daemon_processes: " + $BridgeDaemonCount)
 Write-Output ("bridge_supervisor_processes: " + $BridgeRunnerCount)
 Write-Output ("tunnel_supervisor_processes: " + $TunnelRunnerCount)
+Write-Output ("tunnel_client_processes: " + $TunnelClientCount)
 Write-Output ("tunnel_task: " + $(if ($TunnelTask) { $TunnelTask.State } else { "missing" }))
+Write-Output ("tunnel_last_result: " + $(if ($TunnelInfo) { $TunnelInfo.LastTaskResult } else { "missing" }))
+Write-Output ("tunnel_last_run: " + $(if ($TunnelInfo) { $TunnelInfo.LastRunTime.ToString("o") } else { "missing" }))
 Write-Output ("watchdog_log: " + $WatchdogLog)
+if (Test-Path $TunnelLog) {
+  Write-Output "tunnel_log_tail:"
+  Get-Content -Path $TunnelLog -Tail 12 -ErrorAction SilentlyContinue |
+    ForEach-Object {
+      [regex]::Replace([string]$_, "(?i)((?:token|secret|password|api[_-]?key)\s*[=:]\s*)\S+", '$1[REDACTED]')
+    } |
+    Write-Output
+}
