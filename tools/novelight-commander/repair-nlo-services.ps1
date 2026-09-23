@@ -47,6 +47,11 @@ if ($TunnelRunnerCount -eq 0) {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $TunnelInstaller *>> $WatchdogLog
     $TunnelTask = Get-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
   } elseif ($TunnelTask) {
+    if ($TunnelTask.State -eq "Running") {
+      Write-WatchdogLog "Tunnel task is stale: task reports Running but supervisor process is missing. Resetting task."
+      Stop-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
+      Start-Sleep -Seconds 1
+    }
     Write-WatchdogLog "Tunnel supervisor missing; starting scheduled tunnel task."
     Start-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"
   } else {
