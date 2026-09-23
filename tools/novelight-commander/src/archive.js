@@ -93,3 +93,10 @@ export async function validateThumbnailPack(zipPath, manifestPath, config) {
   const failed = results.filter(item => !item.ok);
   return { packKey: manifest.packKey || null, expected: items.length, checked: results.length, passed: results.length - failed.length, failed: failed.length, ok: failed.length === 0, results };
 }
+
+export async function readEmbeddedThumbnailManifest(zipPath, config) {
+  const absolute = resolveAllowedPath(zipPath, config);
+  const zip = await JSZip.loadAsync(await fs.readFile(absolute));
+  const entry = zip.file("manifest.json");
+  return entry ? JSON.parse(await entry.async("string")) : null;
+}
