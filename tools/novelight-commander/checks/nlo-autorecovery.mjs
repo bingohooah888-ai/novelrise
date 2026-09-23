@@ -63,6 +63,6 @@ test("GitHub Bridge configuration no longer installs a visible cmd startup launc
 
   assert.match(source, /NOVELIGHT-Commander-Bridge[.]vbs/);
   assert.match(source, /WScript[.]Shell/);
+  assert.match(source, /\$LegacyStartupFile = Join-Path \$StartupDir 'NOVELIGHT-Commander-Bridge[.]cmd'/);
   assert.match(source, /Remove-Item -Path \$LegacyStartupFile/);
-  assert.doesNotMatch(source, /Join-Path \$StartupDir 'NOVELIGHT-Commander-Bridge[.]cmd'/);
 });
