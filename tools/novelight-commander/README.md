@@ -95,9 +95,21 @@ API keyをチャットやGitへ貼らないでください。
 
     .\configure-openai-tunnel.ps1
 
-以後:
+設定後、Windowsログオン時の自動起動と異常終了時の自動復旧を有効にする:
+
+    .\install-openai-tunnel-autostart.ps1
+
+手動起動する場合:
 
     .\run-openai-tunnel.ps1
+
+`run-openai-tunnel.ps1` はTunnel切断時に自動再接続し、短時間の連続失敗時は最大60秒まで待機時間を段階的に増やします。1分以上安定稼働した後の切断では待機時間を初期値へ戻します。
+
+`configure-openai-tunnel.ps1` は、Tunnel設定確認後に `CONTROL_PLANE_API_KEY` をWindows DPAPIで暗号化し、`%LOCALAPPDATA%\NOVELIGHT\Commander\control-plane-key.dpapi` へ保存します。平文API keyをGitやチャット、Scheduled Taskの引数へ保存しません。
+
+自動起動Taskは現在のWindowsユーザー権限で動作し、管理者権限へ昇格しません。PC再起動・ログオン後、Terminalを開かなくてもTunnelを起動します。
+
+Tunnelログは `%LOCALAPPDATA%\NOVELIGHT\Commander\openai-tunnel.log` へ記録します。NLOがofflineになった場合は、まずこのログとScheduled Task `NOVELIGHT Commander Tunnel` の状態を確認します。
 
 `tunnel-client` の取得方法やTunnel作成手順は、固定バイナリURLではなくOpenAI公式の最新Secure MCP Tunnelドキュメントを参照してください。
 
