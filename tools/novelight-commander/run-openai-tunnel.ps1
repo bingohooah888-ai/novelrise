@@ -7,6 +7,9 @@ $ErrorActionPreference = "Stop"
 $RuntimeRoot = Join-Path $env:LOCALAPPDATA "NOVELIGHT\Commander"
 $KeyPath = Join-Path $RuntimeRoot "control-plane-key.dpapi"
 $LogPath = Join-Path $RuntimeRoot "openai-tunnel.log"
+$Here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ClientInstallRoot = Join-Path $env:LOCALAPPDATA "NOVELIGHT\TunnelClient"
+$ClientInstaller = Join-Path $Here "install-openai-tunnel-client.ps1"
 
 New-Item -ItemType Directory -Force -Path $RuntimeRoot | Out-Null
 
@@ -35,10 +38,37 @@ function Load-ControlPlaneKey {
   }
 }
 
-if (-not (Get-Command tunnel-client -ErrorAction SilentlyContinue)) {
-  throw "tunnel-client is required."
+function Resolve-TunnelClient {
+  $Command = Get-Command tunnel-client -ErrorAction SilentlyContinue
+  if ($Command) { return $Command.Source }
+
+  $Installed = Get-ChildItem $ClientInstallRoot -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq "tunnel-client.exe" } |
+    Select-Object -First 1
+  if ($Installed) { return $Installed.FullName }
+
+  if (-not (Test-Path $ClientInstaller)) {
+    throw "tunnel-client is required and the NOVELIGHT bootstrap installer is missing."
+  }
+
+  Write-TunnelLog "tunnel-client is missing; running verified bootstrap installer."
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ClientInstaller *>> $LogPath
+  if ($LASTEXITCODE -ne 0) {
+    throw "OpenAI tunnel-client bootstrap failed with exit code $LASTEXITCODE"
+  }
+
+  $Installed = Get-ChildItem $ClientInstallRoot -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq "tunnel-client.exe" } |
+    Select-Object -First 1
+  if (-not $Installed) {
+    throw "tunnel-client bootstrap completed but tunnel-client.exe was not found."
+  }
+  return $Installed.FullName
 }
 
+$TunnelClient = Resolve-TunnelClient
+$ClientDir = Split-Path -Parent $TunnelClient
+$env:Path = "$ClientDir;$env:Path"
 $env:CONTROL_PLANE_API_KEY = Load-ControlPlaneKey
 $DelaySeconds = [Math]::Max(1, $BaseRestartDelaySeconds)
 
@@ -47,13 +77,13 @@ try {
     $StartedAt = Get-Date
     try {
       Write-TunnelLog "Checking NOVELIGHT Commander tunnel profile."
-      & tunnel-client doctor --profile novelight-commander --explain *>> $LogPath
+      & $TunnelClient doctor --profile novelight-commander --explain *>> $LogPath
       if ($LASTEXITCODE -ne 0) {
         throw "tunnel-client doctor exited with code $LASTEXITCODE"
       }
 
       Write-TunnelLog "Starting NOVELIGHT Commander tunnel."
-      & tunnel-client run --profile novelight-commander *>> $LogPath
+      & $TunnelClient run --profile novelight-commander *>> $LogPath
       $ExitCode = $LASTEXITCODE
       throw "tunnel-client run exited with code $ExitCode"
     } catch {
