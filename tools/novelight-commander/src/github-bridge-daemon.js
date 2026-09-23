@@ -304,20 +304,17 @@ async function resolveDownloadsZipForPack(fileName, expectedPackKey) {
   }
 
   const downloadsRoot = path.dirname(canonical);
-  const ext = path.extname(fileName);
-  const stem = path.basename(fileName, ext);
-  const escapedStem = stem.replace(/[.*+?^$\\{}()|[\\]\\\\]/g, '\\$&');
-  const candidateRe = new RegExp(
-    '^' + escapedStem + '(?: \\([0-9]+\\))?\\.zip$',
-    'i'
-  );
 
   const entries = await fs.readdir(downloadsRoot, { withFileTypes: true });
   const matching = [];
   const JSZip = (await import('jszip')).default;
 
   for (const entry of entries) {
-    if (!entry.isFile() || !candidateRe.test(entry.name)) continue;
+    if (
+      !entry.isFile() ||
+      !entry.name.startsWith('NOVELIGHT_') ||
+      !entry.name.toLowerCase().endsWith('.zip')
+    ) continue;
     const candidate = path.join(downloadsRoot, entry.name);
     try {
       const bytes = await fs.readFile(candidate);
