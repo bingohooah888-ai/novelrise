@@ -196,7 +196,7 @@ test('search page keeps existing discovery and safety contracts', async () => {
   assert.match(html, /NovelightNaturalSearch\.search/);
   assert.match(html, /NovelightUserSafety\.filterNovelRows/);
   assert.match(html, /novelight_trusted_discovery_feed/);
-  assert.match(html, /record_neutral_search_impressions/);
+  assert.match(html, /recordNeutralSearchImpressions/);
   assert.match(html, /作品Rankや課金プランは関連度に加点しません/);
   assert.match(html, /sort\.disabled=naturalMode/);
 
