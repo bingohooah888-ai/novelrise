@@ -83,7 +83,8 @@ test('Badge UI includes percent + meter and mobile two-column grid', () => {
 });
 
 test('Badge difficulty accordions and Reader catalog are live', () => {
-  assert.match(scout, /data-badge-group="easy" open/u);
+  assert.match(scout, /<details class="badge-group" data-badge-group="easy">/u);
+  assert.doesNotMatch(scout, /data-badge-group="easy" open/u);
   assert.match(scout, /data-badge-group="normal"/u);
   assert.match(scout, /data-badge-group="hard"/u);
   assert.doesNotMatch(scout, /data-badge-difficulty=/u);
@@ -93,6 +94,9 @@ test('Badge difficulty accordions and Reader catalog are live', () => {
     scoutJs,
     /Reader Badge 100件の個別条件は、採用済みの元リストを復元後に有効化します/u
   );
+  assert.match(scoutCss, /\.scout-page-head p\{font-size:18px\}/u);
+  assert.match(scoutCss, /\.badge-card h3\{font-size:16px\}/u);
+  assert.match(scoutCss, /color:#fff/u);
 });
 
 test('Master Scout renders composite progress', () => {
