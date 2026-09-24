@@ -18,6 +18,7 @@ const rollback = read(
   'supabase/rollback/20260924091509_harden_bulk_import_and_analytics_abuse_rollback.sql'
 );
 const replay = read('scripts/run-migration-replay.sh');
+const rlsRegression = read('tests/rls/audit-004-005-abuse-controls.sql');
 const analyticsApi = read('api/analytics-event.js');
 const client = read('novelight-client.js');
 const episodePage = read('episode.html');
@@ -50,6 +51,29 @@ test('AUDIT-004 quotas are per-user, race-safe, replay-resistant, and auditable'
   assert.match(migration, /pg_advisory_xact_lock/u);
   assert.match(migration, /for update/u);
   assert.match(migration, /n\.user_id = p_user_id|v_owner_id <> p_user_id/u);
+});
+
+test('AUDIT-004 daily quota regression is deterministic across the JST boundary', () => {
+  assert.match(
+    rlsRegression,
+    /create function pg_temp\.novelight_jst_day_start/u
+  );
+  assert.match(rlsRegression, /JST 23:59:59 resolved to the wrong quota day/u);
+  assert.match(rlsRegression, /JST 00:00:00 did not start a new quota day/u);
+  assert.match(rlsRegression, /JST 00:00:01 resolved to the wrong quota day/u);
+  assert.match(
+    rlsRegression,
+    /Normal JST daytime resolved to the wrong quota day/u
+  );
+  assert.match(
+    rlsRegression,
+    /novelight_jst_day_start\(pg_catalog\.now\(\)\) \+ interval '1 minute'/u
+  );
+  assert.doesNotMatch(rlsRegression, /now\(\) - interval '20 minutes'/u);
+  assert.match(
+    rlsRegression,
+    /validate constraint bulk_import_requests_episode_count_check/u
+  );
 });
 
 test('AUDIT-005 dedupes and caps all weak analytics endpoints', () => {

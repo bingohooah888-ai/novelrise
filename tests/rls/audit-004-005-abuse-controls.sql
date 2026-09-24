@@ -1,6 +1,58 @@
 \set ON_ERROR_STOP on
 begin;
 
+create function pg_temp.novelight_jst_day_start(p_instant timestamptz)
+returns timestamptz
+language sql
+immutable
+strict
+set search_path = ''
+as $$
+  select pg_catalog.timezone(
+    'Asia/Tokyo',
+    pg_catalog.timezone('Asia/Tokyo', p_instant)::date
+  )
+$$;
+
+do $$
+declare
+  v_before_midnight timestamptz := '2026-09-24 14:59:59+00';
+  v_at_midnight timestamptz := '2026-09-24 15:00:00+00';
+  v_after_midnight timestamptz := '2026-09-24 15:00:01+00';
+  v_normal_time timestamptz := '2026-09-25 03:00:00+00';
+begin
+  if pg_temp.novelight_jst_day_start(v_before_midnight)
+     <> '2026-09-23 15:00:00+00'::timestamptz then
+    raise exception 'JST 23:59:59 resolved to the wrong quota day';
+  end if;
+
+  if pg_temp.novelight_jst_day_start(v_at_midnight)
+     <> '2026-09-24 15:00:00+00'::timestamptz then
+    raise exception 'JST 00:00:00 did not start a new quota day';
+  end if;
+
+  if pg_temp.novelight_jst_day_start(v_after_midnight)
+     <> '2026-09-24 15:00:00+00'::timestamptz then
+    raise exception 'JST 00:00:01 resolved to the wrong quota day';
+  end if;
+
+  if pg_temp.novelight_jst_day_start(v_normal_time)
+     <> '2026-09-24 15:00:00+00'::timestamptz then
+    raise exception 'Normal JST daytime resolved to the wrong quota day';
+  end if;
+
+  if v_before_midnight
+     >= pg_temp.novelight_jst_day_start(v_at_midnight) then
+    raise exception 'Previous-day history leaked into the new JST quota day';
+  end if;
+
+  if v_after_midnight
+     < pg_temp.novelight_jst_day_start(v_at_midnight) then
+    raise exception 'New-day history was excluded from the JST quota day';
+  end if;
+end
+$$;
+
 insert into auth.users (id, email, raw_user_meta_data)
 select
   ('94000000-0000-0000-0000-' || pg_catalog.lpad(g::text, 12, '0'))::uuid,
@@ -250,19 +302,48 @@ $$;
 
 reset role;
 
+-- Isolate the daily episode quota from the five-request rolling limit. A
+-- single aggregate-only ledger fixture represents 950 already accepted
+-- episodes, is placed explicitly inside the current JST day, and is removed
+-- before the per-request constraint is revalidated below. This schema change
+-- exists only inside this test transaction and never changes the migration.
+alter table public.bulk_import_requests
+  drop constraint bulk_import_requests_episode_count_check;
+
 insert into public.bulk_import_requests (
   user_id, novel_id, import_mode, request_hash,
   episode_count, body_char_count, created_at
 )
-select
+values (
   '94000000-0000-0000-0000-000000000006',
   940006,
   'sequential',
-  pg_catalog.lpad(g::text, 64, 'a'),
-  190,
-  200,
-  pg_catalog.now() - interval '20 minutes'
-from pg_catalog.generate_series(1, 5) g;
+  pg_catalog.repeat('a', 64),
+  950,
+  1000,
+  pg_temp.novelight_jst_day_start(pg_catalog.now()) + interval '1 minute'
+);
+
+alter table public.bulk_import_requests
+  add constraint bulk_import_requests_episode_count_check
+  check (episode_count between 1 and 200) not valid;
+
+do $$
+declare
+  v_day_start timestamptz := pg_temp.novelight_jst_day_start(pg_catalog.now());
+  v_daily_episodes bigint;
+begin
+  select coalesce(pg_catalog.sum(r.episode_count), 0)
+    into v_daily_episodes
+    from public.bulk_import_requests r
+   where r.user_id = '94000000-0000-0000-0000-000000000006'
+     and r.created_at >= v_day_start;
+
+  if v_daily_episodes <> 950 then
+    raise exception 'Deterministic JST daily quota fixture was not counted';
+  end if;
+end
+$$;
 
 set local role authenticated;
 select pg_catalog.set_config(
@@ -294,6 +375,12 @@ end
 $$;
 
 reset role;
+
+delete from public.bulk_import_requests
+where user_id = '94000000-0000-0000-0000-000000000006';
+
+alter table public.bulk_import_requests
+  validate constraint bulk_import_requests_episode_count_check;
 
 set local role authenticated;
 select pg_catalog.set_config(
