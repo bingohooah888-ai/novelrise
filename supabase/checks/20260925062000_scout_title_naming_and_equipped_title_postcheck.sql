@@ -66,5 +66,24 @@ begin
   if coalesce(v_default,'') not ilike '%false%' then
     raise exception 'New title rows must default to unequipped';
   end if;
+
+  if to_regclass('public.user_scout_single_equipped_title_idx') is null then
+    raise exception 'Single equipped title unique index is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger
+    where tgrelid='public.user_scout_badges'::regclass
+      and tgname='scout_title_default_unequipped'
+      and not tgisinternal
+  ) then
+    raise exception 'New-title unequipped trigger is missing';
+  end if;
+
+  if pg_get_functiondef('public.novelight_scout_point_history(integer)'::regprocedure)
+       not like '%when ''badge'' then ''読者称号''%' then
+    raise exception 'Scout Point visible reason still uses Badge terminology';
+  end if;
 end
 $$;
