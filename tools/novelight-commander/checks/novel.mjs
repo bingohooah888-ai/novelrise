@@ -42,3 +42,16 @@ test("Caita episode URLs traverse the series and only report complete at a verif
   assert.match(source, /reachedNaturalSeriesEnd/);
   assert.match(source, /truncated: !complete/);
 });
+
+
+test("Alphapolis reader falls back to browser-rendered index and body DOM", async () => {
+  const source = await import("node:fs/promises").then(({ readFile }) =>
+    readFile(new URL("../src/novel.js", import.meta.url), "utf8")
+  );
+  assert.match(source, /parseAlphapolisIndexHtml/);
+  assert.match(source, /parseAlphapolisEpisodeHtml/);
+  assert.match(source, /renderAlphapolisHtml/);
+  assert.match(source, /dumpDomWithBrowser/);
+  assert.match(source, /openVisibleBrowserSession/);
+  assert.match(source, /after static and browser-rendered reads/);
+});
