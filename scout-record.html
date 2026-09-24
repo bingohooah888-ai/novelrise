@@ -59,6 +59,43 @@
       </div>
     </section>
 
+    <section class="scout-panel scout-seed-inventory" aria-labelledby="seedInventoryTitle">
+      <div class="scout-section-head">
+        <div>
+          <h2 id="seedInventoryTitle">LIGHT SEED 所持数</h2>
+          <p>今月あなたが作品へ贈れるLIGHT SEEDの残数です。毎月の配布枠から使用分を差し引いて表示します。</p>
+        </div>
+        <strong id="seedInventoryTotal">— / 11</strong>
+      </div>
+      <div class="seed-inventory-grid">
+        <article class="seed-inventory-card gold">
+          <div class="seed-inventory-icon-slot" data-light-seed-icon-slot="GOLD" aria-hidden="true"><span>◇</span></div>
+          <div class="seed-inventory-copy">
+            <span class="seed-inventory-name">GOLD</span>
+            <strong><b id="seedGoldRemaining">—</b> / <span id="seedGoldAllocated">6</span></strong>
+            <small>残り</small>
+          </div>
+        </article>
+        <article class="seed-inventory-card silver">
+          <div class="seed-inventory-icon-slot" data-light-seed-icon-slot="SILVER" aria-hidden="true"><span>◇</span></div>
+          <div class="seed-inventory-copy">
+            <span class="seed-inventory-name">SILVER</span>
+            <strong><b id="seedSilverRemaining">—</b> / <span id="seedSilverAllocated">3</span></strong>
+            <small>残り</small>
+          </div>
+        </article>
+        <article class="seed-inventory-card bronze">
+          <div class="seed-inventory-icon-slot" data-light-seed-icon-slot="BRONZE" aria-hidden="true"><span>◇</span></div>
+          <div class="seed-inventory-copy">
+            <span class="seed-inventory-name">BRONZE</span>
+            <strong><b id="seedBronzeRemaining">—</b> / <span id="seedBronzeAllocated">2</span></strong>
+            <small>残り</small>
+          </div>
+        </article>
+      </div>
+      <p id="seedInventoryLegacyNote" class="scout-note" hidden></p>
+    </section>
+
     <section class="scout-rank-path-wrap" aria-labelledby="rankPathTitle">
       <div class="scout-section-head">
         <div><h2 id="rankPathTitle">Rank Path</h2><p>β版ではLv.30まで。正式Rank名・エンブレム素材は後から差し替え可能です。</p></div>

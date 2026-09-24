@@ -15,6 +15,7 @@ on:
       - 'tests/rls/signup-display-name.sql'
       - 'tests/rls/founding-internal-exclusion*.sql'
       - 'tests/rls/scout-beta-foundations*.sql'
+      - 'tests/rls/light-seed-inventory-received-summary.sql'
       - 'tests/rls/light-seed-v1-cutover.sql'
       - 'tests/rls/work-rank-engine*.sql'
       - 'tests/rls/work-rank-lifecycle.sql'
@@ -39,6 +40,7 @@ on:
       - 'supabase/**/20260909120000_*.sql'
       - 'supabase/**/20260909130000_*.sql'
       - 'supabase/**/20260909140000_*.sql'
+      - 'supabase/**/20260924214000_*.sql'
       - '.github/workflows/beta-p0-database.yml'
   push:
     branches: [main]

@@ -143,6 +143,45 @@
     renderRankPath(tier);
   }
 
+  function renderSeedInventory(inventory) {
+    const goldAllocated = Math.max(0, Number(inventory.gold_allocated ?? 6));
+    const silverAllocated = Math.max(0, Number(inventory.silver_allocated ?? 3));
+    const bronzeAllocated = Math.max(0, Number(inventory.bronze_allocated ?? 2));
+    const monthlyLimit = Math.max(
+      0,
+      Number(inventory.monthly_limit ?? goldAllocated + silverAllocated + bronzeAllocated)
+    );
+    const remaining = Math.max(0, Number(inventory.remaining_this_month ?? 0));
+
+    setText('seedInventoryTotal', `${n(remaining)} / ${n(monthlyLimit)}`);
+    setText('seedGoldRemaining', n(inventory.gold_remaining));
+    setText('seedGoldAllocated', n(goldAllocated));
+    setText('seedSilverRemaining', n(inventory.silver_remaining));
+    setText('seedSilverAllocated', n(silverAllocated));
+    setText('seedBronzeRemaining', n(inventory.bronze_remaining));
+    setText('seedBronzeAllocated', n(bronzeAllocated));
+
+    const legacy = Math.max(0, Number(inventory.legacy_used || 0));
+    const note = document.getElementById('seedInventoryLegacyNote');
+    if (note) {
+      note.hidden = legacy === 0;
+      note.textContent = legacy
+        ? `旧仕様LIGHT SEEDの使用 ${n(legacy)}件を今月合計に含みます。`
+        : '';
+    }
+  }
+
+  function renderSeedInventoryError() {
+    setText('seedInventoryTotal', '取得エラー');
+    for (const id of [
+      'seedGoldRemaining',
+      'seedSilverRemaining',
+      'seedBronzeRemaining'
+    ]) {
+      setText(id, '—');
+    }
+  }
+
   function badgeIcon(row) {
     if (row.badge_category === 'limited') return '✦';
     if (row.badge_category === 'author') return '✒';
@@ -652,13 +691,15 @@
 
     void loadSeedHistory();
 
-    const [summary, points, activity, discoveries, badges] = await Promise.all([
-      client.rpc('novelight_scout_record_summary'),
-      client.rpc('novelight_scout_point_history', { p_limit: 30 }),
-      client.rpc('novelight_scout_recent_activity', { p_limit: 20 }),
-      client.rpc('novelight_scout_discoveries', { p_limit: 20 }),
-      client.rpc('novelight_scout_badges')
-    ]);
+    const [summary, inventory, points, activity, discoveries, badges] =
+      await Promise.all([
+        client.rpc('novelight_scout_record_summary'),
+        client.rpc('novelight_light_seed_inventory'),
+        client.rpc('novelight_scout_point_history', { p_limit: 30 }),
+        client.rpc('novelight_scout_recent_activity', { p_limit: 20 }),
+        client.rpc('novelight_scout_discoveries', { p_limit: 20 }),
+        client.rpc('novelight_scout_badges')
+      ]);
 
     if (summary.error) {
       console.error(summary.error);
@@ -668,6 +709,13 @@
 
     renderSummary(summary.data || {});
     setState('SCOUT RECORD β版の現在値です。');
+
+    if (inventory.error) {
+      console.error(inventory.error);
+      renderSeedInventoryError();
+    } else {
+      renderSeedInventory(inventory.data || {});
+    }
 
     if (points.error) console.error(points.error);
     renderPoints(points.error ? [] : points.data || []);
