@@ -6,22 +6,40 @@
     'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
   );
 
-  const rankRoman = ['', 'I', 'II', 'III'];
-  const rankBands = [
-    { tier: 1, level: 'Lv.1–10', name: 'RANK I' },
-    { tier: 2, level: 'Lv.11–20', name: 'RANK II' },
-    { tier: 3, level: 'Lv.21–30', name: 'RANK III' }
+  const rankNames = [
+    '',
+    'NOCTIS',
+    'VESPER',
+    'UMBRA',
+    'ASTRA',
+    'LUCENT',
+    'AURELIS',
+    'CELESTIA',
+    'EMPYREAN',
+    'SERAPH',
+    'LUMINARIS'
   ];
+  const rankBands = rankNames.slice(1).map((name, index) => ({
+    tier: index + 1,
+    level:
+      index < 3
+        ? `Lv.${index * 10 + 1}–${(index + 1) * 10}`
+        : '正式リリース後',
+    name
+  }));
+  const workRankNames = ['', 'EMBER', 'SPARK', 'GLOW', 'BEACON', 'STAR', 'NOVA'];
+  const workRankName = (value) =>
+    workRankNames[Math.max(1, Math.min(6, Number(value || 1)))] || 'EMBER';
   const categoryLabels = {
-    reader: '読者',
-    author: '作者',
-    limited: '限定'
+    reader: '読者称号',
+    author: '作者称号',
+    limited: '限定称号'
   };
   const difficultyLabels = {
     easy: 'Easy',
     normal: 'Normal',
     hard: 'Hard',
-    special: 'Special'
+    special: '限定'
   };
   const activityLabels = {
     valid_read: '有効読書',
@@ -136,7 +154,7 @@
 
       const orb = document.createElement('div');
       orb.className = 'rank-orb';
-      orb.textContent = rankRoman[band.tier];
+      orb.textContent = band.name.slice(0, 1);
 
       const copy = document.createElement('div');
       copy.className = 'rank-node-copy';
@@ -158,10 +176,10 @@
 
   function renderSummary(summary) {
     const level = Math.max(1, Number(summary.level || 1));
-    const tier = Math.max(1, Math.min(3, Number(summary.rank_tier || 1)));
-    setText('rankName', `SCOUT RANK ${rankRoman[tier]}`);
+    const tier = Math.max(1, Math.min(10, Number(summary.rank_tier || 1)));
+    setText('rankName', `SCOUT RANK — ${rankNames[tier]}`);
     setText('rankLevel', `Lv.${n(level)}`);
-    setText('rankEmblem', rankRoman[tier]);
+    setText('rankEmblem', rankNames[tier].slice(0, 1));
     setText('xpNow', n(summary.total_xp));
     setText(
       'xpNext',
@@ -291,7 +309,7 @@
     if (applyBadgeSprite(host, row)) {
       host.hidden = false;
       host.classList.add('badge-dialog-sprite');
-      host.setAttribute('aria-label', `${badgeDisplayName(row)} バッジ`);
+      host.setAttribute('aria-label', `${badgeDisplayName(row)} 称号紋章`);
       return;
     }
 
@@ -300,7 +318,7 @@
     if (!artworkPath) return;
 
     image.src = artworkPath;
-    image.alt = `${badgeDisplayName(row)} バッジ`;
+    image.alt = `${badgeDisplayName(row)} 称号紋章`;
   }
 
   const badgeGroupDefinitions = [
@@ -366,11 +384,12 @@
 
     const point = document.createElement('div');
     point.className = 'badge-point';
-    point.textContent =
-      Number(row.point_reward || 0) > 0
+    point.textContent = row.is_public
+      ? '装備中'
+      : Number(row.point_reward || 0) > 0
         ? `報酬 +${n(row.point_reward)} pt`
         : row.badge_category === 'author'
-          ? 'Author Badge / Point報酬なし'
+          ? '作者称号 / Point報酬なし'
           : earned
             ? '獲得済み'
             : 'Point報酬なし';
@@ -459,7 +478,7 @@
     renderBadgeDialogArtwork(row);
     setText('badgeDialogCategory', categoryLabels[row.badge_category] || row.badge_category);
     setText('badgeDialogDifficulty', difficultyLabels[row.difficulty] || row.difficulty);
-    setText('badgeDialogCondition', row.description);
+    setText('badgeDialogCondition', row.description === 'Secret Badge' ? 'シークレット称号' : row.description);
     setText('badgeDialogProgress', `${n(row.progress_value)} / ${n(row.target_value)}`);
     setText('badgeDialogPercent', `${Number(row.progress_percent || 0).toFixed(0)}%`);
     setText(
@@ -483,8 +502,8 @@
       visibilityButton.dataset.badgeId = row.badge_id;
       visibilityButton.dataset.public = String(Boolean(row.is_public));
       visibilityButton.textContent = row.is_public
-        ? '公開Badgeから外す'
-        : '公開Badgeにする';
+        ? '装備を外す'
+        : '装備称号にする';
     }
 
     if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -504,7 +523,7 @@
       item.className = 'scout-row';
       const copy = document.createElement('div');
       const title = document.createElement('b');
-      title.textContent = row.reason || 'Scout Point';
+      title.textContent = row.reason === 'Reader Badge' ? '読者称号' : row.reason || 'Scout Point';
       const meta = document.createElement('small');
       const state =
         row.status === 'pending' || row.status === 'frozen'
@@ -655,7 +674,7 @@
       const title = document.createElement('b');
       title.textContent = row.novel_title || '現在表示できない作品';
       const meta = document.createElement('small');
-      meta.textContent = `${row.seed_type || 'SEED'} · 送信時 Rank ${n(row.rank_at_seed)} → 最高 Rank ${n(row.highest_rank_seen)}`;
+      meta.textContent = `${row.seed_type || 'SEED'} · 送信時 ${workRankName(row.rank_at_seed)} → 最高 ${workRankName(row.highest_rank_seen)}`;
       copy.append(title, meta);
       const value = document.createElement('strong');
       value.textContent =
@@ -716,14 +735,21 @@
           { p_badge_id: badgeId, p_is_public: next }
         );
         if (error) throw error;
-        if (!data) throw new Error('Badge visibility was not updated');
-        const row = badgeRows.find((badge) => badge.badge_id === badgeId);
-        if (row) row.is_public = next;
+        if (!data) throw new Error('Title equipment was not updated');
+        if (next) {
+          badgeRows.forEach((badge) => {
+            badge.is_public = badge.badge_id === badgeId;
+          });
+        } else {
+          const row = badgeRows.find((badge) => badge.badge_id === badgeId);
+          if (row) row.is_public = false;
+        }
         visibility.dataset.public = String(next);
-        visibility.textContent = next ? '公開Badgeから外す' : '公開Badgeにする';
+        visibility.textContent = next ? '装備を外す' : '装備称号にする';
+        renderBadges();
       } catch (error) {
         console.error(error);
-        visibility.textContent = '公開設定を変更できませんでした';
+        visibility.textContent = '称号の装備を変更できませんでした';
       } finally {
         visibility.disabled = false;
       }
@@ -800,7 +826,7 @@
       const host = document.getElementById('badgeGrid');
       if (host) {
         host.innerHTML =
-          '<div class="scout-error" style="grid-column:1/-1">Badgeを読み込めませんでした。</div>';
+          '<div class="scout-error" style="grid-column:1/-1">称号を読み込めませんでした。</div>';
       }
     } else {
       badgeRows = badges.data || [];

@@ -16,7 +16,7 @@ test('public SCOUT RECORD loads only the public-safe RPC', () => {
   assert.match(js, /novelight_public_scout_record/u);
   assert.match(js, /Scout Level/u);
   assert.match(js, /発掘成功/u);
-  assert.match(js, /公開Badge/u);
+  assert.match(js, /装備称号/u);
   assert.match(js, /代表的な発掘実績/u);
   assert.doesNotMatch(
     js,
