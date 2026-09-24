@@ -135,6 +135,62 @@ test('Badge difficulty accordions and Reader catalog are live', () => {
   );
 });
 
+test('Reader Easy badge artwork uses individual PNG assets instead of the WebP sprite', async () => {
+  const badgeIds = [
+    'reader_read_001',
+    'reader_read_005',
+    'reader_read_010',
+    'reader_read_025',
+    'reader_rating_001',
+    'reader_rating_005',
+    'reader_rating_010',
+    'reader_comment_001',
+    'reader_comment_005',
+    'reader_comment_010',
+    'reader_seed_001',
+    'reader_seed_003',
+    'reader_seed_005',
+    'reader_seed_010',
+    'reader_bronze_seed_001',
+    'reader_silver_seed_001',
+    'reader_gold_seed_001',
+    'reader_discovery_plus2_001',
+    'reader_discovery_plus2_002',
+    'reader_discovery_plus2_003',
+    'reader_new_author_005',
+    'reader_new_author_010',
+    'reader_genre_003',
+    'reader_genre_005',
+    'reader_new_work_005',
+    'reader_low_rank_005',
+    'reader_level_005',
+    'reader_level_010',
+    'reader_level_020',
+    'reader_active_days_007'
+  ];
+
+  assert.match(
+    scoutJs,
+    /assets\/scout-reader-easy\/\$\{badgeId\}\.png/u
+  );
+  assert.doesNotMatch(
+    scoutJs,
+    /easyReaderBadgeSpriteIndexes|badgeSpritePosition|applyBadgeSprite|badge-icon-sprite|badge-dialog-sprite/u
+  );
+  assert.doesNotMatch(
+    scoutCss,
+    /scout-reader-easy-badges\.webp|badge-icon-sprite|badge-dialog-sprite/u
+  );
+
+  const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+  for (const badgeId of badgeIds) {
+    const png = await readFile(
+      new URL(`../assets/scout-reader-easy/${badgeId}.png`, import.meta.url)
+    );
+    assert.deepEqual([...png.subarray(0, 8)], signature);
+  }
+});
+
 test('Master Scout renders composite progress', () => {
   assert.match(scout, /id="badgeDialogComposite"/u);
   assert.match(scoutJs, /composite_progress/u);

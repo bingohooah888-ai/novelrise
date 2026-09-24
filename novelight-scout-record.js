@@ -66,8 +66,11 @@
     'reader_level_020',
     'reader_active_days_007',
   ];
-  const easyReaderBadgeSpriteIndexes = new Map(
-    easyReaderBadgeArtworkIds.map((badgeId, index) => [badgeId, index])
+  const easyReaderBadgeArtworkPaths = new Map(
+    easyReaderBadgeArtworkIds.map((badgeId) => [
+      badgeId,
+      `assets/scout-reader-easy/${badgeId}.png`
+    ])
   );
 
   let badgeRows = [];
@@ -233,34 +236,19 @@
     return `Founding Author #${String(foundingNumber).padStart(3, '0')}`;
   }
 
-  function badgeSpritePosition(row) {
-    const index = easyReaderBadgeSpriteIndexes.get(row.badge_id);
-    if (!Number.isInteger(index)) return null;
-    return {
-      x: (index % 6) * 20,
-      y: Math.floor(index / 6) * 25
-    };
-  }
-
-  function applyBadgeSprite(target, row) {
-    const position = badgeSpritePosition(row);
-    if (!position) return false;
-    target.style.setProperty('--badge-sprite-x', `${position.x}%`);
-    target.style.setProperty('--badge-sprite-y', `${position.y}%`);
-    return true;
+  function badgeArtworkPath(row) {
+    return (
+      easyReaderBadgeArtworkPaths.get(row.badge_id) ||
+      badgeArtworkPaths[row.badge_id] ||
+      null
+    );
   }
 
   function createBadgeIcon(row) {
     const icon = document.createElement('div');
     icon.className = 'badge-icon';
 
-    if (applyBadgeSprite(icon, row)) {
-      icon.classList.add('badge-icon-artwork', 'badge-icon-sprite');
-      icon.setAttribute('aria-hidden', 'true');
-      return icon;
-    }
-
-    const artworkPath = badgeArtworkPaths[row.badge_id];
+    const artworkPath = badgeArtworkPath(row);
     if (!artworkPath) {
       icon.textContent = badgeIcon(row);
       return icon;
@@ -281,21 +269,11 @@
     const image = document.getElementById('badgeDialogArtworkImage');
     if (!host || !image) return;
 
-    host.classList.remove('badge-dialog-sprite');
-    host.style.removeProperty('--badge-sprite-x');
-    host.style.removeProperty('--badge-sprite-y');
     host.removeAttribute('aria-label');
     image.removeAttribute('src');
     image.alt = '';
 
-    if (applyBadgeSprite(host, row)) {
-      host.hidden = false;
-      host.classList.add('badge-dialog-sprite');
-      host.setAttribute('aria-label', `${badgeDisplayName(row)} バッジ`);
-      return;
-    }
-
-    const artworkPath = badgeArtworkPaths[row.badge_id];
+    const artworkPath = badgeArtworkPath(row);
     host.hidden = !artworkPath;
     if (!artworkPath) return;
 
