@@ -9,13 +9,16 @@ const start = styles.indexOf(`${scope}.badge-icon-artwork{`);
 const end = styles.indexOf('\n}', start);
 const rule = styles.slice(start, end);
 
-test('Reader Easy artwork uses individual PNG images without wiping artwork styles', () => {
+test('Reader Easy artwork uses individual PNG images', () => {
   assert.ok(start >= 0);
   assert.ok(end > start);
   assert.equal(rule.includes('\n  background:'), false);
   assert.ok(rule.includes('background-color:transparent!important'));
   assert.equal(styles.includes('scout-reader-easy-badges.webp'), false);
   assert.equal(styles.includes('.badge-icon-sprite'), false);
-  assert.equal(styles.includes('.badge-dialog-artwork.badge-dialog-sprite'), false);
+  assert.equal(
+    styles.includes('.badge-dialog-artwork.badge-dialog-sprite'),
+    false
+  );
   assert.ok(script.includes('assets/scout-reader-easy/${badgeId}.png'));
 });
