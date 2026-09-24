@@ -81,6 +81,7 @@ test('Commander token uses Windows DPAPI', async () => {
   assert.match(setup, /ConvertFrom-SecureString/);
   assert.match(setup, /github-token\.dpapi/);
   assert.match(setup, /Issues: Read and write/);
+  assert.match(setup, /Pull requests: Read and write/);
   assert.match(setup, /Metadata: Read/);
   assert.doesNotMatch(setup, /Set-Content[^\n]+PlainToken/);
 });
