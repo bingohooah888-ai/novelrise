@@ -75,18 +75,21 @@ $NloTunnelClientCount = @(
     }
 ).Count
 $TunnelTask = Get-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
+$TunnelHealthy = (
+  $TunnelTask -and
+  $TunnelTask.State -eq "Running" -and
+  $NloTunnelClientCount -gt 0
+)
 
-if ($TunnelRunnerCount -eq 0) {
+if (-not $TunnelHealthy) {
   if (-not $TunnelTask -and (Test-Path $TunnelKeyPath) -and (Test-Path $TunnelInstaller)) {
     Write-WatchdogLog "Tunnel task missing; installing tunnel autostart."
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $TunnelInstaller *>> $WatchdogLog
     $TunnelTask = Get-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
   } elseif ($TunnelTask) {
-    if ($TunnelTask.State -eq "Running") {
-      Write-WatchdogLog "Tunnel task is stale: task reports Running but supervisor process is missing. Resetting task."
-      Stop-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
-      Start-Sleep -Seconds 1
-    }
+    Write-WatchdogLog ("Tunnel health failed: task=" + $TunnelTask.State + ", nlo_clients=" + $NloTunnelClientCount + ". Resetting task and clients.")
+    Stop-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
 
     $OrphanedTunnelClients = @(
       Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
@@ -136,6 +139,7 @@ Write-Output ("bridge_heartbeat_stale: " + $BridgeHeartbeatStale)
 Write-Output ("tunnel_supervisor_processes: " + $TunnelRunnerCount)
 Write-Output ("tunnel_client_processes: " + $TunnelClientCount)
 Write-Output ("nlo_tunnel_client_processes: " + $NloTunnelClientCount)
+Write-Output ("tunnel_healthy: " + $TunnelHealthy)
 Write-Output ("tunnel_task: " + $(if ($TunnelTask) { $TunnelTask.State } else { "missing" }))
 Write-Output ("tunnel_last_result: " + $(if ($TunnelInfo) { $TunnelInfo.LastTaskResult } else { "missing" }))
 Write-Output ("tunnel_last_run: " + $(if ($TunnelInfo) { $TunnelInfo.LastRunTime.ToString("o") } else { "missing" }))
