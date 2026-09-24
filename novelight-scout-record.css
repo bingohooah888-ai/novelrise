@@ -258,3 +258,70 @@ body.novelight-page-scout-record .workspace{
   .badge-group summary span{display:grid;gap:2px}
   .badge-group .badge-grid{padding:12px}
 }
+
+
+/* SCOUT RECORD contrast hardening
+   Keep this surface independent from shared button/heading theme overrides. */
+body.novelight-page-scout-record .scout-section-head h2,
+body.novelight-page-scout-record .scout-section-head > strong{
+  color:#fff8e8!important;
+  -webkit-text-fill-color:#fff8e8!important;
+  text-shadow:0 1px 8px rgba(0,0,0,.42)
+}
+body.novelight-page-scout-record #badgeCount{
+  color:#fff8e8!important;
+  -webkit-text-fill-color:#fff8e8!important;
+  font-weight:900
+}
+body.novelight-page-scout-record .badge-filter{
+  background:#07182a!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  border-color:rgba(226,190,92,.34)!important;
+  opacity:1!important
+}
+body.novelight-page-scout-record .badge-filter[aria-pressed="true"]{
+  background:#322910!important;
+  color:#ffe9a9!important;
+  -webkit-text-fill-color:#ffe9a9!important;
+  border-color:var(--gold)!important
+}
+body.novelight-page-scout-record .badge-card,
+body.novelight-page-scout-record .badge-card.unearned,
+body.novelight-page-scout-record .badge-card.earned{
+  background:#0b2034!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  opacity:1!important
+}
+body.novelight-page-scout-record .badge-card.unearned{
+  background:#10283e!important;
+  border-color:rgba(226,190,92,.32)!important
+}
+body.novelight-page-scout-record .badge-card.earned{
+  background:linear-gradient(145deg,#12314e,#0a1d30)!important;
+  border-color:rgba(255,224,130,.72)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,224,130,.08)
+}
+body.novelight-page-scout-record .badge-card h3,
+body.novelight-page-scout-record .badge-meta,
+body.novelight-page-scout-record .badge-progress-text{
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  opacity:1!important
+}
+body.novelight-page-scout-record .badge-point,
+body.novelight-page-scout-record .badge-icon{
+  color:#ffe082!important;
+  -webkit-text-fill-color:#ffe082!important;
+  opacity:1!important
+}
+body.novelight-page-scout-record .badge-progress{
+  background:#020c18!important;
+  border-color:rgba(255,224,130,.36)!important
+}
+body.novelight-page-scout-record .badge-card:hover,
+body.novelight-page-scout-record .badge-card:focus-visible{
+  background:#143653!important;
+  border-color:#ffe082!important
+}
