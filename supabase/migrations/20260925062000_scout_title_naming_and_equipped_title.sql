@@ -1,5 +1,5 @@
 -- Reconcile SCOUT RECORD user-facing terminology with the 2026-09-24 MASTER naming decisions.
--- Internal badge identifiers and RPC names remain unchanged for compatibility.
+-- Internal badge identifiers/RPC names remain unchanged for compatibility.
 begin;
 
 select pg_advisory_xact_lock(hashtext('novelight:20260925062000'));
@@ -9,14 +9,6 @@ begin
   if to_regclass('public.scout_badge_definitions') is null
      or to_regclass('public.user_scout_badges') is null then
     raise exception 'SCOUT title reconciliation requires deployed badge tables';
-  end if;
-
-  if not exists (
-    select 1
-    from pg_proc
-    where proname = 'novelight_set_scout_badge_visibility'
-  ) then
-    raise exception 'SCOUT title reconciliation requires visibility RPC';
   end if;
 end
 $$;
@@ -180,17 +172,40 @@ update public.scout_badge_definitions
        updated_at = now()
  where badge_id = 'limited_beta_participant';
 
-alter table public.user_scout_badges
-  alter column is_public set default false;
-
--- The previous public-badge model allowed multiple simultaneous public badges.
--- MASTER now defines exactly one equipped title, so existing rows start unequipped
--- and each user explicitly chooses the title they want to display.
+-- Public badge visibility is replaced by exactly one user-selected equipped title.
 update public.user_scout_badges
    set is_public = false,
        updated_at = now()
  where is_public;
 
+alter table public.user_scout_badges
+  alter column is_public set default false;
+
+create unique index if not exists user_scout_single_equipped_title_idx
+  on public.user_scout_badges (user_id)
+  where is_public and status = 'earned';
+
+create or replace function public.novelight_force_new_scout_title_unequipped()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  new.is_public := false;
+  return new;
+end
+$$;
+
+revoke all on function public.novelight_force_new_scout_title_unequipped()
+  from public, anon, authenticated;
+
+drop trigger if exists scout_title_default_unequipped on public.user_scout_badges;
+create trigger scout_title_default_unequipped
+before insert on public.user_scout_badges
+for each row execute function public.novelight_force_new_scout_title_unequipped();
+
+-- Owner collection RPC keeps internal badge fields but exposes title terminology.
 create or replace function public.novelight_scout_badges()
 returns table (
   badge_id text,
@@ -214,7 +229,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_uid uuid := (select auth.uid());
 begin
@@ -232,73 +247,7 @@ begin
     case
       when d.is_hidden and b.earned_at is null then '???'
       when d.badge_id = 'limited_founding_author'
-           and (b.metadata->>'founding_number') ~ '^[0-9]+
-  p_badge_id text,
-  p_is_public boolean
-)
-returns boolean
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  v_uid uuid := (select auth.uid());
-  v_found boolean := false;
-begin
-  if v_uid is null then
-    raise exception using errcode = '42501', message = 'Authentication required';
-  end if;
-
-  if coalesce(p_is_public, false) then
-    if not exists (
-      select 1
-      from public.user_scout_badges b
-      where b.user_id = v_uid
-        and b.badge_id = p_badge_id
-        and b.status = 'earned'
-    ) then
-      return false;
-    end if;
-
-    update public.user_scout_badges b
-       set is_public = false,
-           updated_at = now()
-     where b.user_id = v_uid
-       and b.is_public;
-
-    update public.user_scout_badges b
-       set is_public = true,
-           updated_at = now()
-     where b.user_id = v_uid
-       and b.badge_id = p_badge_id
-       and b.status = 'earned';
-
-    v_found := found;
-  else
-    update public.user_scout_badges b
-       set is_public = false,
-           updated_at = now()
-     where b.user_id = v_uid
-       and b.badge_id = p_badge_id
-       and b.status = 'earned';
-
-    v_found := found;
-  end if;
-
-  return v_found;
-end
-$$;
-
-revoke all on function public.novelight_set_scout_badge_visibility(text, boolean)
-  from public, anon;
-grant execute on function public.novelight_set_scout_badge_visibility(text, boolean)
-  to authenticated;
-
-comment on function public.novelight_set_scout_badge_visibility(text, boolean) is
-  'Compatibility RPC: is_public now means the single equipped SCOUT title. Equipping one earned title unequips every other title for that user.';
-
-commit;
-
+           and (b.metadata->>'founding_number') ~ '^[0-9]+$'
         then 'Founding Author #' || lpad((b.metadata->>'founding_number'), 3, '0')
       else d.display_name
     end,
@@ -327,13 +276,74 @@ commit;
     case d.badge_category when 'reader' then 1 when 'author' then 2 else 3 end,
     d.sort_order;
 end
-$;
+$$;
 
 revoke all on function public.novelight_scout_badges()
   from public, anon;
 grant execute on function public.novelight_scout_badges()
   to authenticated;
 
+-- Compatibility RPC: is_public now means equipped title.
+create or replace function public.novelight_set_scout_badge_visibility(
+  p_badge_id text,
+  p_is_public boolean
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null then
+    raise exception using errcode = '42501', message = 'Authentication required';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('novelight:title-equip:' || v_uid::text, 0)
+  );
+
+  if coalesce(p_is_public, false) then
+    if not exists (
+      select 1
+      from public.user_scout_badges b
+      where b.user_id = v_uid
+        and b.badge_id = p_badge_id
+        and b.status = 'earned'
+    ) then
+      return false;
+    end if;
+
+    update public.user_scout_badges b
+       set is_public = false, updated_at = now()
+     where b.user_id = v_uid and b.is_public;
+
+    update public.user_scout_badges b
+       set is_public = true, updated_at = now()
+     where b.user_id = v_uid
+       and b.badge_id = p_badge_id
+       and b.status = 'earned';
+
+    return found;
+  end if;
+
+  update public.user_scout_badges b
+     set is_public = false, updated_at = now()
+   where b.user_id = v_uid
+     and b.badge_id = p_badge_id
+     and b.status = 'earned';
+
+  return found;
+end
+$$;
+
+revoke all on function public.novelight_set_scout_badge_visibility(text, boolean)
+  from public, anon;
+grant execute on function public.novelight_set_scout_badge_visibility(text, boolean)
+  to authenticated;
+
+-- Keep the existing Point ledger kind for compatibility; only the visible reason changes.
 create or replace function public.novelight_scout_point_history(p_limit integer default 30)
 returns table (
   point_value integer,
@@ -346,7 +356,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select
     p.point_value,
     p.status,
@@ -364,76 +374,14 @@ as $
   where p.user_id = (select auth.uid())
   order by p.occurred_at desc, p.id desc
   limit least(greatest(coalesce(p_limit, 30), 1), 100)
-$;
+$$;
 
 revoke all on function public.novelight_scout_point_history(integer)
   from public, anon;
 grant execute on function public.novelight_scout_point_history(integer)
   to authenticated;
 
-create or replace function public.novelight_set_scout_badge_visibility(
-  p_badge_id text,
-  p_is_public boolean
-)
-returns boolean
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  v_uid uuid := (select auth.uid());
-  v_found boolean := false;
-begin
-  if v_uid is null then
-    raise exception using errcode = '42501', message = 'Authentication required';
-  end if;
-
-  if coalesce(p_is_public, false) then
-    if not exists (
-      select 1
-      from public.user_scout_badges b
-      where b.user_id = v_uid
-        and b.badge_id = p_badge_id
-        and b.status = 'earned'
-    ) then
-      return false;
-    end if;
-
-    update public.user_scout_badges b
-       set is_public = false,
-           updated_at = now()
-     where b.user_id = v_uid
-       and b.is_public;
-
-    update public.user_scout_badges b
-       set is_public = true,
-           updated_at = now()
-     where b.user_id = v_uid
-       and b.badge_id = p_badge_id
-       and b.status = 'earned';
-
-    v_found := found;
-  else
-    update public.user_scout_badges b
-       set is_public = false,
-           updated_at = now()
-     where b.user_id = v_uid
-       and b.badge_id = p_badge_id
-       and b.status = 'earned';
-
-    v_found := found;
-  end if;
-
-  return v_found;
-end
-$$;
-
-revoke all on function public.novelight_set_scout_badge_visibility(text, boolean)
-  from public, anon;
-grant execute on function public.novelight_set_scout_badge_visibility(text, boolean)
-  to authenticated;
-
 comment on function public.novelight_set_scout_badge_visibility(text, boolean) is
-  'Compatibility RPC: is_public now means the single equipped SCOUT title. Equipping one earned title unequips every other title for that user.';
+  'Compatibility RPC: is_public means the single equipped SCOUT title.';
 
 commit;
