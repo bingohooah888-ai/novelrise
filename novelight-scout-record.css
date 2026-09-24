@@ -88,6 +88,7 @@ body.novelight-page-scout-record .workspace{
   background:#07182a;color:#f4f1e8;text-align:left;cursor:pointer
 }
 .badge-card:hover{border-color:rgba(255,224,130,.55)}
+.badge-card.equipped{border-color:var(--gold-bright);box-shadow:inset 0 0 0 1px rgba(255,224,130,.3),0 0 22px rgba(216,180,90,.13)}
 .badge-card.unearned{opacity:.64}
 .badge-card.hard{box-shadow:inset 0 0 18px rgba(216,180,90,.06)}
 .badge-card.limited{border-style:double;border-color:rgba(157,124,255,.55)}
