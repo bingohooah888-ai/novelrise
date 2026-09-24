@@ -1313,104 +1313,149 @@ async function actionThumbnailValidate(request, config) {
   );
 }
 
+const VERCEL_CLI_CLIENT_ID = 'cl_HYyOPBNtFMfHhaUn9L4QPfTZz6TP47bp';
+
+function vercelOAuthStatePath(config) {
+  return resolveDataPath(config, path.join('secrets', 'vercel-oauth.json'));
+}
+
+async function vercelOAuthMetadata() {
+  const response = await globalThis.fetch(
+    'https://vercel.com/.well-known/openid-configuration',
+    { signal: AbortSignal.timeout(15000) }
+  );
+  if (!response.ok) {
+    throw new Error('Vercel OAuth discovery failed: HTTP ' + response.status);
+  }
+  const metadata = await response.json();
+  if (
+    !metadata ||
+    typeof metadata.device_authorization_endpoint !== 'string' ||
+    typeof metadata.token_endpoint !== 'string'
+  ) {
+    throw new Error('Vercel OAuth discovery response is incomplete.');
+  }
+  return metadata;
+}
+
 async function actionVercelLoginStart(request, config) {
   ensureNoArgs(request.args);
-  if (os.platform() !== 'win32') {
-    throw new Error('Vercel device login launcher is Windows-only.');
+  const metadata = await vercelOAuthMetadata();
+  const response = await globalThis.fetch(metadata.device_authorization_endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: VERCEL_CLI_CLIENT_ID,
+      scope: 'openid offline_access'
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+  const payload = await response.json().catch(() => null);
+  if (
+    !response.ok ||
+    !payload ||
+    typeof payload.device_code !== 'string' ||
+    typeof payload.user_code !== 'string' ||
+    typeof payload.verification_uri_complete !== 'string' ||
+    typeof payload.expires_in !== 'number'
+  ) {
+    throw new Error('Vercel device authorization request failed.');
   }
 
-  const stdoutTarget = resolveDataPath(
-    config,
-    path.join('diagnostics', 'vercel-login.stdout.log')
-  );
-  const stderrTarget = resolveDataPath(
-    config,
-    path.join('diagnostics', 'vercel-login.stderr.log')
-  );
-  await fs.mkdir(path.dirname(stdoutTarget.candidate), { recursive: true });
-  await Promise.all([
-    fs.rm(stdoutTarget.candidate, { force: true }),
-    fs.rm(stderrTarget.candidate, { force: true })
-  ]);
+  const target = vercelOAuthStatePath(config);
+  await fs.mkdir(path.dirname(target.candidate), { recursive: true });
+  await writeJson(target.candidate, {
+    deviceCode: payload.device_code,
+    userCode: payload.user_code,
+    verificationUri: payload.verification_uri,
+    verificationUriComplete: payload.verification_uri_complete,
+    tokenEndpoint: metadata.token_endpoint,
+    interval: Number(payload.interval || 5),
+    expiresAt: Date.now() + payload.expires_in * 1000,
+    authenticated: false
+  });
 
-  const stdoutHandle = await fs.open(stdoutTarget.candidate, 'a');
-  const stderrHandle = await fs.open(stderrTarget.candidate, 'a');
-  try {
-    const child = spawn(
+  if (os.platform() === 'win32') {
+    await run(
       process.env.ComSpec || 'cmd.exe',
-      [
-        '/d',
-        '/s',
-        '/c',
-        NPM_COMMAND,
-        'exec',
-        '--yes',
-        'vercel@latest',
-        '--',
-        'login'
-      ],
-      {
-        cwd: config.repoRoot,
-        shell: false,
-        windowsHide: true,
-        detached: true,
-        env: { ...process.env, NO_COLOR: '1' },
-        stdio: ['ignore', stdoutHandle.fd, stderrHandle.fd]
-      }
-    );
-    child.unref();
-  } finally {
-    await stdoutHandle.close();
-    await stderrHandle.close();
+      ['/d', '/s', '/c', 'start', '', payload.verification_uri_complete],
+      { cwd: config.repoRoot, timeoutMs: 15000 }
+    ).catch(() => {});
   }
 
-  await new Promise(resolve => setTimeout(resolve, 5000));
-  const stdout = await fs
-    .readFile(stdoutTarget.candidate, 'utf8')
-    .catch(() => '');
-  const stderr = await fs
-    .readFile(stderrTarget.candidate, 'utf8')
-    .catch(() => '');
-  const output = bounded((stdout + '\n' + stderr).trim(), 4000);
-  if (!output) {
-    throw new Error('Vercel device login started but produced no login URL yet.');
-  }
-
-  return ['vercel_login_started: true', output].join('\n');
+  return [
+    'vercel_login_started: true',
+    'verification_url: ' + payload.verification_uri_complete,
+    'user_code: ' + payload.user_code,
+    'secret_token_exposed: false'
+  ].join('\n');
 }
 
 async function actionVercelLoginInfo(request, config) {
   ensureNoArgs(request.args);
-  const stdoutTarget = resolveDataPath(
-    config,
-    path.join('diagnostics', 'vercel-login.stdout.log')
-  );
-  const stderrTarget = resolveDataPath(
-    config,
-    path.join('diagnostics', 'vercel-login.stderr.log')
-  );
-  const stdout = await fs
-    .readFile(stdoutTarget.candidate, 'utf8')
-    .catch(() => '');
-  const stderr = await fs
-    .readFile(stderrTarget.candidate, 'utf8')
-    .catch(() => '');
-  const output = bounded((stdout + '\n' + stderr).trim(), 4000);
-  return output || 'vercel_login_output_pending: true';
+  const target = vercelOAuthStatePath(config);
+  const state = await readJson(target.candidate, null);
+  if (!state) return 'vercel_login_state: missing';
+  return [
+    'vercel_login_state: pending',
+    'verification_url: ' + String(state.verificationUriComplete || ''),
+    'user_code: ' + String(state.userCode || ''),
+    'authenticated: ' + Boolean(state.authenticated),
+    'secret_token_exposed: false'
+  ].join('\n');
 }
 
 async function actionVercelLoginStatus(request, config) {
   ensureNoArgs(request.args);
-  const result = await runNpm(
-    ['exec', '--yes', 'vercel@latest', '--', 'whoami'],
-    { cwd: config.repoRoot, timeoutMs: 60000 }
-  );
-  if (result.code !== 0) {
-    return 'vercel_authenticated: false';
+  const target = vercelOAuthStatePath(config);
+  const state = await readJson(target.candidate, null);
+  if (!state) return 'vercel_authenticated: false\nreason: login_not_started';
+  if (state.authenticated && state.accessToken) {
+    return 'vercel_authenticated: true\nsecret_token_exposed: false';
   }
+  if (Date.now() >= Number(state.expiresAt || 0)) {
+    return 'vercel_authenticated: false\nreason: device_code_expired';
+  }
+
+  const response = await globalThis.fetch(String(state.tokenEndpoint), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: VERCEL_CLI_CLIENT_ID,
+      grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+      device_code: String(state.deviceCode)
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const code = String(payload?.error || 'unknown');
+    if (code === 'authorization_pending' || code === 'slow_down') {
+      return [
+        'vercel_authenticated: false',
+        'pending: true',
+        'secret_token_exposed: false'
+      ].join('\n');
+    }
+    throw new Error('Vercel device token request failed: ' + code);
+  }
+  if (!payload || typeof payload.access_token !== 'string') {
+    throw new Error('Vercel device token response is incomplete.');
+  }
+
+  await writeJson(target.candidate, {
+    ...state,
+    authenticated: true,
+    accessToken: payload.access_token,
+    refreshToken:
+      typeof payload.refresh_token === 'string' ? payload.refresh_token : null,
+    expiresAt:
+      Date.now() + Number(payload.expires_in || 3600) * 1000
+  });
+
   return [
     'vercel_authenticated: true',
-    'account: ' + bounded(result.stdout.trim(), 200)
+    'secret_token_exposed: false'
   ].join('\n');
 }
 
