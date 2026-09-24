@@ -169,10 +169,7 @@ test('Reader Easy badge artwork uses individual PNG assets instead of the WebP s
     'reader_active_days_007'
   ];
 
-  assert.match(
-    scoutJs,
-    /assets\/scout-reader-easy\/\$\{badgeId\}\.png/u
-  );
+  assert.match(scoutJs, /assets\/scout-reader-easy\/\$\{badgeId\}\.png/u);
   assert.doesNotMatch(
     scoutJs,
     /easyReaderBadgeSpriteIndexes|badgeSpritePosition|applyBadgeSprite|badge-icon-sprite|badge-dialog-sprite/u
