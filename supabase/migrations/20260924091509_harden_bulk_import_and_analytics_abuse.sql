@@ -171,7 +171,7 @@ begin
 
   v_day_start := pg_catalog.timezone(
     'Asia/Tokyo',
-    pg_catalog.timezone('Asia/Tokyo', v_now)::date
+    (pg_catalog.timezone('Asia/Tokyo', v_now)::date)::timestamp without time zone
   );
 
   if (
@@ -279,7 +279,7 @@ begin
 
   v_day_start := pg_catalog.timezone(
     'Asia/Tokyo',
-    pg_catalog.timezone('Asia/Tokyo', v_now)::date
+    (pg_catalog.timezone('Asia/Tokyo', v_now)::date)::timestamp without time zone
   );
 
   if (
@@ -389,7 +389,7 @@ begin
 
   v_day_start := pg_catalog.timezone(
     'Asia/Tokyo',
-    pg_catalog.timezone('Asia/Tokyo', v_now)::date
+    (pg_catalog.timezone('Asia/Tokyo', v_now)::date)::timestamp without time zone
   );
 
   if (
@@ -544,7 +544,7 @@ begin
 
   v_day_start := pg_catalog.timezone(
     'Asia/Tokyo',
-    pg_catalog.timezone('Asia/Tokyo', v_now)::date
+    (pg_catalog.timezone('Asia/Tokyo', v_now)::date)::timestamp without time zone
   );
 
   select
@@ -946,7 +946,7 @@ begin
 
   v_day_start := pg_catalog.timezone(
     'Asia/Tokyo',
-    pg_catalog.timezone('Asia/Tokyo', v_now)::date
+    (pg_catalog.timezone('Asia/Tokyo', v_now)::date)::timestamp without time zone
   );
 
   if (
@@ -1209,7 +1209,7 @@ begin
 
   v_day_start := pg_catalog.timezone(
     'Asia/Tokyo',
-    pg_catalog.timezone('Asia/Tokyo', v_now)::date
+    (pg_catalog.timezone('Asia/Tokyo', v_now)::date)::timestamp without time zone
   );
 
   if (

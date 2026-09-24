@@ -10,7 +10,7 @@ set search_path = ''
 as $$
   select pg_catalog.timezone(
     'Asia/Tokyo',
-    pg_catalog.timezone('Asia/Tokyo', p_instant)::date
+    (pg_catalog.timezone('Asia/Tokyo', p_instant)::date)::timestamp without time zone
   )
 $$;
 

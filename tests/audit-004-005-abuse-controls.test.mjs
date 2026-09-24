@@ -54,9 +54,22 @@ test('AUDIT-004 quotas are per-user, race-safe, replay-resistant, and auditable'
 });
 
 test('AUDIT-004 daily quota regression is deterministic across the JST boundary', () => {
+  const explicitJstDayStarts = migration.match(
+    /pg_catalog\.timezone\(\s*'Asia\/Tokyo',\s*\(pg_catalog\.timezone\('Asia\/Tokyo', v_now\)::date\)::timestamp without time zone\s*\)/gu
+  );
+
+  assert.equal(explicitJstDayStarts?.length, 6);
+  assert.doesNotMatch(
+    migration,
+    /pg_catalog\.timezone\(\s*'Asia\/Tokyo',\s*pg_catalog\.timezone\('Asia\/Tokyo', v_now\)::date\s*\)/u
+  );
   assert.match(
     rlsRegression,
     /create function pg_temp\.novelight_jst_day_start/u
+  );
+  assert.match(
+    rlsRegression,
+    /\(pg_catalog\.timezone\('Asia\/Tokyo', p_instant\)::date\)::timestamp without time zone/u
   );
   assert.match(rlsRegression, /JST 23:59:59 resolved to the wrong quota day/u);
   assert.match(rlsRegression, /JST 00:00:00 did not start a new quota day/u);
