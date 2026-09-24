@@ -115,7 +115,11 @@ test('Badge difficulty accordions and Reader catalog are live', () => {
   );
   assert.match(
     scoutCss,
-    /body\.novelight-page-scout-record \.badge-icon-artwork\{[\s\S]*?width:112px!important;[\s\S]*?margin:0 auto 14px!important/u
+    /body\.novelight-page-scout-record \.badge-icon-artwork\{[\s\S]*?width:144px!important;[\s\S]*?margin:0 auto 16px!important/u
+  );
+  assert.match(
+    scoutCss,
+    /@media\(max-width:520px\)[\s\S]*?body\.novelight-page-scout-record \.badge-icon-artwork\{[\s\S]*?width:112px!important;[\s\S]*?height:112px!important/u
   );
   assert.match(
     scoutCss,
