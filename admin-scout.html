@@ -91,6 +91,8 @@
   const n=(value)=>Number(value||0).toLocaleString('ja-JP');
   const pct=(value)=>value===null||value===undefined?'データ蓄積中':`${Number(value).toFixed(2)}%`;
   const dt=(value)=>{if(!value)return '—';const date=new Date(value);return Number.isFinite(date.getTime())?date.toLocaleString('ja-JP'):'—'};
+  const workRankNames=['','EMBER','SPARK','GLOW','BEACON','STAR','NOVA'];
+  const workRankName=(value)=>workRankNames[Math.max(1,Math.min(6,Number(value||1)))]||'EMBER';
   const text=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value};
   function showGate(title,message){document.getElementById('dashboard').classList.add('hidden');const gate=document.getElementById('gate');gate.classList.remove('hidden');text('gateTitle',title);text('gateMessage',message)}
   function showDashboard(){document.getElementById('gate').classList.add('hidden');document.getElementById('dashboard').classList.remove('hidden')}
