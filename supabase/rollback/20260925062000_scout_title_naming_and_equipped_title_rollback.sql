@@ -3,6 +3,10 @@
 -- made after this migration. Internal identifiers remain unchanged.
 begin;
 
+drop trigger if exists scout_title_default_unequipped on public.user_scout_badges;
+drop function if exists public.novelight_force_new_scout_title_unequipped();
+drop index if exists public.user_scout_single_equipped_title_idx;
+
 alter table public.user_scout_badges
   alter column is_public set default true;
 
