@@ -30,7 +30,7 @@ test('trusted exposure pre-migration compatibility', async () => {
   assert.match(home, /record_trusted_allocation_receipts/);
   assert.match(search, /trustedExposureAvailable=false/);
   assert.match(search, /trustedExposureAvailable===true&&batch\.length/);
-  assert.match(search, /record_neutral_search_impressions/);
+  assert.match(search, /recordNeutralSearchImpressions/);
   assert.match(search, /record_trusted_allocation_receipts/);
   assert.equal(migration.includes(legacyRevoke), true);
   assert.match(migration, /neutral_search_impression_telemetry/);

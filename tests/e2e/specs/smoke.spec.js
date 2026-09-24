@@ -98,7 +98,7 @@ test('home and search use trusted discovery and complete impression tracking', a
   expect(home).toContain('novelight_trusted_discovery_feed');
   expect(home).toContain('novelight_trusted_plan_extra_feed');
   expect(home).toContain('record_trusted_allocation_receipts');
-  expect(search).toContain('record_neutral_search_impressions');
+  expect(search).toContain('recordNeutralSearchImpressions');
   expect(search).toContain('record_trusted_allocation_receipts');
 });
 

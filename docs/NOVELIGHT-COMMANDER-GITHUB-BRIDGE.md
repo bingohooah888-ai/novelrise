@@ -50,9 +50,14 @@ ChatGPT側で直接NLO MCPが見えない、または直接Tunnel経路が応答
 - `thumbnail_production_readiness`
 - `thumbnail_register_production`
 - `thumbnail_validate`
+- `high_risk_pr_approve`
 - `bridge_update`
 
-任意shell、任意PowerShell、任意Nodeコード、main push、PR mergeは受け付けません。Production mutationは公式サムネイル登録専用の `thumbnail_register_production` だけを許可します。対象はDownloads直下の `NOVELIGHT_*.zip` に限定し、ZIP内manifestの全件検証と固定確認文字列 `REGISTER_OFFICIAL_THUMBNAIL_PACK` を必須とします。既存SHAはスキップし、同名別内容はfail-closedで停止します。`bridge_update` は、ローカルrepoが `main`・clean・`origin/main` のfast-forward祖先である場合に限り、`git pull --ff-only origin main` を実行してBridgeを安全に再起動します。
+任意shell、任意PowerShell、任意Nodeコード、main push、PR mergeは受け付けません。`high_risk_pr_approve` はPR番号・exact head SHA・8桁challenge・固定確認文字列 `CHAT_PRODUCTION_APPROVED` をすべて検証し、既存の high-risk merge gate が要求するOWNER承認証跡だけを生成します。Bridge自身はmergeやProduction mutationを実行しません。Production mutationは公式サムネイル登録専用の `thumbnail_register_production` だけを許可します。対象はDownloads直下の `NOVELIGHT_*.zip` に限定し、ZIP内manifestの全件検証と固定確認文字列 `REGISTER_OFFICIAL_THUMBNAIL_PACK` を必須とします。既存SHAはスキップし、同名別内容はfail-closedで停止します。`bridge_update` は、ローカルrepoが `main`・clean・`origin/main` のfast-forward祖先である場合に限り、`git pull --ff-only origin main` を実行してBridgeを安全に再起動します。
+
+### チャット本番承認からHigh-Risk証跡への自動変換
+
+ユーザーがNOVELIGHTのチャットで `本番承認` を行った後、ChatGPTはControl Issueへ `high_risk_pr_approve` を投入できます。NLOは対象PRがopen・base=`main`・同一repository・exact head SHAであることとchallengeを再計算して一致確認し、固定形式のOWNER承認コメントだけをPRへ投稿します。任意コメント本文はargsから受け付けません。Bridge用PATが旧権限でPRコメントを拒否された場合のみ、ローカルGitHub CLIがrepository owner `bingohooah888-ai` として認証済みであることを固定確認して同じ証跡を投稿し、それ以外はfail-closedします。これによりユーザーへGitHub上の機械可読コメントを手動コピーさせません。
 
 ## GitHub認証
 
@@ -68,6 +73,7 @@ bingohooah888-ai/novelrise のみ
 
 - Metadata: Read
 - Issues: Read and write
+- Pull requests: Read and write
 
 TokenはPowerShellのSecureStringとして受け取り、Windows DPAPIで現在のWindowsユーザーに紐づけて暗号化保存します。平文tokenをrepository、Issue、ChatGPTへ送らないでください。
 

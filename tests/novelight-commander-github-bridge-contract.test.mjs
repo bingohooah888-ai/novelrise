@@ -51,6 +51,7 @@ test('Commander GitHub bridge has fixed actions', async () => {
     'vercel_login_status',
     'production_mail_runtime_check',
     'production_mail_env_check',
+    'high_risk_pr_approve',
     'bridge_update'
   ];
 
@@ -80,6 +81,7 @@ test('Commander token uses Windows DPAPI', async () => {
   assert.match(setup, /ConvertFrom-SecureString/);
   assert.match(setup, /github-token\.dpapi/);
   assert.match(setup, /Issues: Read and write/);
+  assert.match(setup, /Pull requests: Read and write/);
   assert.match(setup, /Metadata: Read/);
   assert.doesNotMatch(setup, /Set-Content[^\n]+PlainToken/);
 });

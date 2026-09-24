@@ -133,7 +133,7 @@ test('episode PV counting is server-authoritative and legacy raw RPCs are blocke
     'supabase/migrations/20260901130000_harden_pv_counting.sql'
   );
 
-  assert.match(episode, /rpc\('record_episode_pv'/);
+  assert.match(episode, /NovelightClient\.recordEpisodePv/);
   assert.doesNotMatch(episode, /rpc\('increment_novel_pv'/);
   assert.doesNotMatch(episode, /rpc\('increment_episode_pv'/);
   assert.doesNotMatch(episode, /novelight_pv_episode_/);

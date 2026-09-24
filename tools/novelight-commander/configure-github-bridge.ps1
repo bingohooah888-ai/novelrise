@@ -20,6 +20,7 @@ Write-Host ''
 Write-Host 'Create a fine-grained GitHub token for ONLY bingohooah888-ai/novelrise with:'
 Write-Host '  Metadata: Read'
 Write-Host '  Issues: Read and write'
+Write-Host '  Pull requests: Read and write'
 Write-Host 'Paste it into the secure prompt below. Do NOT paste it into ChatGPT.'
 Write-Host ''
 

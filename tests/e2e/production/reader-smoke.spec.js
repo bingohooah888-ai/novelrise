@@ -18,6 +18,14 @@ const blockedWriteRpcs = new Set([
 ]);
 
 async function suppressMeasurementWrites(page) {
+  await page.route('**/api/analytics-event', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '{"accepted":false,"recorded_count":0}'
+    });
+  });
+
   await page.route('**/rest/v1/rpc/**', async (route) => {
     const url = new URL(route.request().url());
     const rpcName = url.pathname.split('/').pop();
