@@ -689,6 +689,29 @@ async function actionDoctor(request, config) {
   return rows.join('\n');
 }
 
+async function actionNloHealth(request, config) {
+  ensureNoArgs(request.args);
+
+  const [branch, head, originMain, status] = await Promise.all([
+    run('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: config.repoRoot }),
+    run('git', ['rev-parse', 'HEAD'], { cwd: config.repoRoot }),
+    run('git', ['rev-parse', 'origin/main'], { cwd: config.repoRoot }),
+    run('git', ['status', '--short'], { cwd: config.repoRoot })
+  ]);
+
+  return [
+    'nlo_available: true',
+    'channel: github_bridge',
+    'github_bridge_healthy: true',
+    'remote_desktop_commander_dependency: false',
+    'remote_desktop_commander_status_is_not_nlo_status: true',
+    'repo_branch: ' + branch.stdout.trim(),
+    'repo_head: ' + head.stdout.trim(),
+    'origin_main: ' + originMain.stdout.trim(),
+    'repo_clean: ' + (status.stdout.trim() === '')
+  ].join('\n');
+}
+
 async function actionRepoSnapshot(request, config) {
   ensureNoArgs(request.args);
   await run('git', ['fetch', 'origin', 'main', '--prune'], {
@@ -1601,6 +1624,7 @@ async function actionBridgeUpdate(request, config) {
 
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
+  ['nlo_health', actionNloHealth],
   ['autorecovery_install', actionAutorecoveryInstall],
   ['repo_snapshot', actionRepoSnapshot],
   ['preflight_fast', actionPreflightFast],
