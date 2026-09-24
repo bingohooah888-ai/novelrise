@@ -31,9 +31,18 @@ NOVELIGHT_COMMANDER_REQUEST {"version":1,"requestId":"cmdr-20260922T070500Z-a1b2
 
 requestIdは再利用できません。daemonは処理済みrequestIdをローカルstateへ保持します。
 
+## NLO可用性判定
+
+ChatGPT側で直接NLO MCPが見えない、または直接Tunnel経路が応答しない場合でも、Remote Desktop Commanderの状態からNLOの可用性を推定しません。Control Issue #797へ `nlo_health` を送信し、`status: success` と `nlo_available: true` が返れば、GitHub Bridge経路のNLOは利用可能です。
+
+`nlo_health` は `channel: github_bridge`、`github_bridge_healthy: true`、repository状態を返します。また `remote_desktop_commander_dependency: false` を明示し、Remote Desktop Commanderのdevice状態をNLO判定へ混入させない契約とします。
+
+旧版Bridgeで `nlo_health` が未実装の場合は、`repo_snapshot`、`doctor` 等の安全な固定actionが正常応答することをBridge可用性の証拠として扱います。直接NLO MCPとGitHub Bridgeの両方で必要な機能が利用できない場合にのみ、対象作業についてNLOを使用不能と判定します。
+
 ## 許可action
 
 - `doctor`
+- `nlo_health`
 - `repo_snapshot`
 - `preflight_fast`
 - `commander_check`
