@@ -89,6 +89,7 @@ test('equipping a title enforces one public title per user', () => {
     /set is_public = true[\s\S]*?badge_id = p_badge_id[\s\S]*?status = 'earned'/u
   );
   assert.match(scoutJs, /badgeRows\.forEach/u);
+  assert.match(scoutJs, /装備中/u);
   assert.match(scoutJs, /装備を外す/u);
   assert.match(publicJs, /装備称号/u);
 });
