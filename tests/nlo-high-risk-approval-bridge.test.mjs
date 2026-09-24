@@ -11,6 +11,8 @@ test('NLO high-risk approval is fixed and owner scoped', () => {
   assert.match(daemon, /NOVELIGHT_HIGH_RISK_APPROVE/);
   assert.match(daemon, /pull\?\.base\?\.ref !== 'main'/);
   assert.match(daemon, /author_association === 'OWNER'/);
+  assert.match(daemon, /identity\.stdout\.trim\(\) !== OWNER/);
+  assert.match(daemon, /'gh', \['api', 'user'/);
   assert.match(daemon, /highRiskApprovalChallenge\(pr, headSha\)/);
   assert.doesNotMatch(daemon, /request\.args\.body/);
   assert.doesNotMatch(daemon, /request\.args\.comment/);
