@@ -52,7 +52,7 @@ NOVELIGHTでは、読者が同じ人気作品だけを読み続けるのでは�
 
 読者は無名・新規作品を発掘し、その作品が後に評価された場合、自分自身の「SCOUT RECORD（スカウトレコード）」を積み上げることができる。
 
-SCOUT RECORD、Scout Level、Scout Rank、Reader Badge、Scout Point等によって、
+SCOUT RECORD、Scout Level、Scout Rank、読者称号、Scout Point等によって、
 
 「面白い作品を探すこと自体が楽しい」
 
@@ -380,7 +380,7 @@ NOVELIGHTの先行登録に参加した作者を「Founding Authors」とする�
 
 先行登録者が退会等によって本アカウントとの紐付けを失った後に再参加する場合も、メールアドレス一致だけで旧資格を復元せず、新しい本人専用URLを再発行して再確認する。Founding Authorの参加順番号そのものは再発行・振り直しせず、元の番号を維持する。
 
-Founding Authorsには、後から購入・通常取得できない永久限定バッジを付与する。表示は Founding Author #001 のように先行登録順番号を含む形式を基本とする。
+Founding Authorsには、後から購入・通常取得できない永久限定称号を付与する。正式表示は Founding Author #001 のように先行登録順番号を含む形式とする。SCOUT RECORDの称号コレクションへ保持し、公開プロフィールでは装備称号として選択した場合に表示する。
 
 Founding Author資格と番号は、作品を最初に公開した順番では決めない。作品公開の早さによって先行登録者同士の番号が入れ替わる設計にはしない。
 
@@ -390,7 +390,7 @@ Founding Author資格と番号は、作品を最初に公開した順番では�
 
 β参加者資格には参加順番号を付けない。番号付きの参加順表示は先行登録者だけの特典とする。
 
-β参加者には、正式リリース後にβ参加を記念する限定バッジを付与できるようにする。β参加記念バッジの正式名称・デザイン・表示位置は別途決定してよいが、後から対象者を再現できるよう、β期間中に資格取得時点を永続的に記録する。
+β参加者には、永久限定称号 DAWNBOUND を付与する。後から対象者を再現できるよう、β期間中に資格取得時点を永続的に記録する。DAWNBOUNDは称号コレクションへ保持し、公開プロフィールでは装備称号として選択した場合に表示する。
 
 先行登録者がβ期間中に会員登録して参加した場合は、番号付きFounding Author資格とβ参加者資格の両方を持つことができる。
 
@@ -404,12 +404,12 @@ Founding Author資格と番号は、作品を最初に公開した順番では�
 - 先行登録順番号の最新到達番号
 - 先行登録者のうち本アカウントへ紐付け済みの人数
 - β参加者資格を取得した人数
-- Founding Authorバッジ対象者数
-- β参加記念バッジ対象者数
+- Founding Author限定称号対象者数
+- DAWNBOUND対象者数
 
 先行登録期間やβ期間が終了した後も、記念資格・参加順番号・資格取得時点を失わない。
 
-Founding Authorおよびβ参加記念バッジは、通常のAuthor Badge 40種類には含めず、Limited / Special Badgeとして扱う。これらの資格に記念Scout Pointを付与するかは現時点では確定せず、通常バッジ報酬から自動的に派生させない。
+Founding AuthorおよびDAWNBOUNDは、通常の作者称号40種類には含めず、限定称号として扱う。これらの資格に記念Scout Pointを付与するかは現時点では確定せず、通常称号報酬から自動的に派生させない。
 
 ## 8. 初期集客戦略
 
@@ -600,7 +600,7 @@ LIGHT SEED売買
 SCOUTユーザー買収
 発掘ポイント不正
 ポイント稼ぎ
-バッジ・トロフィー不正
+称号・トロフィー不正
 アカウント売買
 コメント荒らし
 レビュー交換
@@ -682,7 +682,7 @@ NOVELIGHTではゲーミフィケーションを積極的に利用する。
 - SCOUT RECORD
 - Scout XP
 - Scout Level / Scout Rank
-- Reader Badge
+- 読者称号
 - Scout Point
 - 発掘実績
 
@@ -692,7 +692,7 @@ NOVELIGHTではゲーミフィケーションを積極的に利用する。
 
 Scout XPは読者としての成長・Level・Rankを示す非消費型の成長値とする。Scout Pointは将来利用できる補助報酬であり、両者を同一通貨にしない。XPを消費してAIを利用する設計にはしない。
 
-Scout Pointは、単純なクリック回数・閲覧回数・回答回数を稼ぐための報酬にはしない。通常の有効読書、☆評価、有効コメント、LIGHT SEED送信そのものはScout XP側で評価し、Scout PointはLevel Up、発掘成功、NOVA予見、Reader Badge等の「成長・発掘・実績」を中心に付与する。
+Scout Pointは、単純なクリック回数・閲覧回数・回答回数を稼ぐための報酬にはしない。通常の有効読書、☆評価、有効コメント、LIGHT SEED送信そのものはScout XP側で評価し、Scout PointはLevel Up、発掘成功、NOVA予見、読者称号等の「成長・発掘・実績」を中心に付与する。
 
 LIGHT CHECKを利用する場合も、回答回数だけでScout Pointを直接稼げる設計をβ版の既定としない。将来LIGHT CHECKへ独自報酬を追加する場合は、流し読み、無差別評価、機械回答を最適解にしない別途の正式仕様を必要とする。
 
@@ -704,7 +704,7 @@ LIGHT CHECKを利用する場合も、回答回数だけでScout Pointを直接�
 → LIGHT SEED
 → 作品が成長
 → 発掘成功
-→ Scout XP / Scout Point / Reader Badge / SCOUT RECORD
+→ Scout XP / Scout Point / 読者称号 / SCOUT RECORD
 
 とする。
 
@@ -714,13 +714,13 @@ SCOUT RECORDは正当な生涯実績を残す。一方、Scout Rankを作品評�
 
 作者側は読者より穏やかに導入する。
 
-Author Badgeは、初投稿、話数・文字数、完結、読者獲得、お気に入り、コメント、LIGHT SEED獲得、作品成長等、自然な創作活動の節目を中心にする。
+作者称号は、初投稿、話数・文字数、完結、読者獲得、お気に入り、コメント、LIGHT SEED獲得、作品成長等、自然な創作活動の節目を中心にする。
 
-連続投稿・短時間大量投稿等をバッジ獲得の最適解にせず、作者を過度に急かして作品品質を落とす設計にはしない。
+連続投稿・短時間大量投稿等を称号獲得の最適解にせず、作者を過度に急かして作品品質を落とす設計にはしない。
 
-Author Badgeには原則としてScout Pointを付与しない。Scout Pointは読者としての発掘活動を中心とする報酬として扱う。
+作者称号には原則としてScout Pointを付与しない。Scout Pointは読者としての発掘活動を中心とする報酬として扱う。
 
-具体条件・β暫定配点・Limited / Special Badgeとの分離は第49章を正式基準とする。
+具体条件・β暫定配点・限定称号との分離は第49章を正式基準とする。
 
 ポイントは目的ではなく補助的報酬とする。
 
@@ -1280,8 +1280,8 @@ NOVELIGHTの仮説が正しいかを検証するために計測する。
 - SCOUT RECORD利用率
 - Scout Level分布
 - Lv.30到達人数・到達率
-- Reader Badge獲得率
-- Badge別獲得率
+- 読者称号獲得率
+- 称号別獲得率
 - LIGHT SEED利用率
 - LIGHT SEED使用数
 - SEED作品数
@@ -1643,9 +1643,9 @@ SCOUT RECORD（スカウトレコード）
 
 読者の発掘・評価・成長をまとめる読者向け主要機能。β版から本実装する。
 
-本人にはScout Level、Scout Rank、Scout XP進捗、Scout Point、LIGHT SEED履歴、発掘成功、Reader Badge、Author Badge、Limited Badge、各バッジ進捗、各種累計実績等を必要な範囲で表示する。
+本人にはScout Level、Scout Rank、Scout XP進捗、Scout Point、LIGHT SEED履歴、発掘成功、読者称号、作者称号、限定称号、各称号進捗、各種累計実績等を必要な範囲で表示する。
 
-他ユーザーにはScout Level、Scout Rank、公開対象バッジ、発掘成功数、代表的な発掘実績を基本表示対象とし、Scout Point残高・履歴、詳細XP、次LevelまでのXP、詳細行動ログ、不正確認状態等は本人・運営側へ限定する。
+他ユーザーにはScout Level、Scout Rank、装備称号、発掘成功数、代表的な発掘実績を基本表示対象とし、Scout Point残高・履歴、詳細XP、次LevelまでのXP、詳細行動ログ、不正確認状態等は本人・運営側へ限定する。
 
 Scout XP
 
@@ -1837,7 +1837,7 @@ ADMINは、単なる数値ダッシュボードではなく、少人数＋AI・�
 
 ## 38. SCOUT RECORD・作品成長Rank・LIGHT SEED正式仕様
 
-本章は、作品成長Rank、LIGHT SEED、発掘判定、Scout XP、Scout Level、有効読書および発掘報酬の基礎仕様を定める。2026年9月21日にSCOUT RECORD本実装方針を更新し、Scout Point、Reader Badge、Author Badge、β版Lv.30上限、表示範囲、Ledger、不正対応、KPI、UIおよび未確定事項は第49章を最新の正式仕様とする。旧記述の「SCOUT EXP」はScout XPと同じ成長値を指す。
+本章は、作品成長Rank、LIGHT SEED、発掘判定、Scout XP、Scout Level、有効読書および発掘報酬の基礎仕様を定める。2026年9月21日にSCOUT RECORD本実装方針を更新し、Scout Point、読者称号、作者称号、β版Lv.30上限、表示範囲、Ledger、不正対応、KPI、UIおよび未確定事項は第49章を最新の正式仕様とする。旧記述の「SCOUT EXP」はScout XPと同じ成長値を指す。
 
 本章の具体仕様は、第3章、第15章、第34章および本章更新前のSCOUT・LIGHT SEED・作品成長Rankに関する暫定記述を更新する。内容が矛盾する場合は、本章の具体仕様を優先する。
 
@@ -2209,7 +2209,7 @@ Scout XPとScout Pointは完全に分離し、Scout XPを消費してAI等を利
 
 読者称号、作者称号、限定称号、Scout Point配点、Lv.30表示、公開範囲、Point Ledgerその他の詳細は第49章を正式基準とする。
 
-SCOUT RECORD本実装以前の既存行動・既存実績へ、Scout XP、Badge、Scout Pointをどこまで遡及付与するかは未確定であり、実装時に推測で決めない。
+SCOUT RECORD本実装以前の既存行動・既存実績へ、Scout XP、称号、Scout Pointをどこまで遡及付与するかは未確定であり、実装時に推測で決めない。
 
 ### ADMINのβ分析
 
@@ -2225,11 +2225,11 @@ XP獲得源別の構成比として、有効読書、LIGHT SEED使用、☆、�
 
 GOLD/SILVER/BRONZE別の180日発掘成功率、およびLIGHT SEED送信時Rank別の+2、+3、+4、+5、NOVA予見の発生率を確認する。
 
-Scout Point、Badge、Lv.30到達、SCOUT RECORD利用率、継続率、不正検知・Point凍結・取消等は第22章・第49章のβKPIを確認可能にする。
+Scout Point、称号、Lv.30到達、SCOUT RECORD利用率、継続率、不正検知・Point凍結・取消等は第22章・第49章のβKPIを確認可能にする。
 
 各ユーザーのLIGHT SEED使用状況、SCOUT活動分布、Point Ledgerの監査情報を権限のある運営だけが個別確認できる構造とする。
 
-これらのデータをScout XP必要量、Badge条件、Scout Point配点、発掘報酬、不正対策その他の運用値の再調整に利用する。
+これらのデータをScout XP必要量、称号条件、Scout Point配点、発掘報酬、不正対策その他の運用値の再調整に利用する。
 
 ### SCOUT RECORD UI方向
 
@@ -2239,7 +2239,7 @@ SCOUT RECORD画面はβ版から、NOVELIGHTの読者側ゲーミフィケーシ
 
 発光表現は過剰にせず、ゲーム的な楽しさを持たせながら読書サービスとしての可読性を維持する。
 
-共有済み参考画像は方向性の参考として扱うが、完全コピーは行わずNOVELIGHT正式UIとして再構成する。画像内の仮Level、仮Rank名称、仮XP値、仮バッジ名等を仕様値として採用しない。
+共有済み参考画像は方向性の参考として扱うが、完全コピーは行わずNOVELIGHT正式UIとして再構成する。画像内の仮Level、仮Rank名称、仮XP値、仮称号名等を仕様値として採用しない。
 
 主要構成は、第49章に定める現在Rank / Level / XP、Rankエンブレム、Scout Point、β LEVEL MAX、主要実績、称号コレクション、最近のSCOUT履歴、発掘作品の成長状態を優先する。成長グラフ等は主要体験より低い優先度でよい。
 
@@ -2247,7 +2247,7 @@ SCOUT RECORD画面はβ版から、NOVELIGHTの読者側ゲーミフィケーシ
 
 以下は現時点で確定しない。
 
-- SCOUT RECORD本実装以前の行動・実績へScout XP / Badge / Scout Pointをどこまで遡及付与するか
+- SCOUT RECORD本実装以前の行動・実績へScout XP / 称号 / Scout Pointをどこまで遡及付与するか
 - AI Creditとの正式交換レート
 - Scout Pointの金銭換算価値
 - Scout Pointの正式交換単位
@@ -2273,7 +2273,7 @@ Scout XPは、作品を読み、発掘し、評価し、作者へ反応を返す
 
 Scout Pointは、発掘・成長・実績に対する補助報酬であり、数字を稼ぐこと自体を目的にしない。
 
-Scout Level / Scout Rankはその成長を分かりやすく示し、Reader Badgeは多様な読書・発掘実績を可視化する。
+Scout Level / Scout Rankはその成長を分かりやすく示し、読者称号は多様な読書・発掘実績を可視化する。
 
 SCOUT RECORDの目的は、数字を上げるためだけに小説を読むゲームを作ることではない。
 
@@ -2516,15 +2516,15 @@ LIGHT SEEDで発掘中は、LIGHT SEEDを受け取った公開作品が存在す
 
 ### β期間中のSCOUT RECORD表示
 
-作品成長Rankそのものは本章どおりβ期間中の一般ユーザーへ非公開とする。一方、読者本人のSCOUT RECORDはβ版から本機能として解放する。
+作品成長Rankは、作品カード・検索・ランキング等の一般的な作品評価表示としてはβ期間中非公開とする。一方、読者本人のSCOUT RECORDにおける自分の発掘履歴と、権限のあるADMIN分析では、発掘の成長経路を理解できるよう正式Rank名称を表示してよい。
 
-β版では、Scout Level、Scout Rank、Scout XP進捗、Scout Point、Reader Badge、Author Badge、Limited Badge、LIGHT SEED履歴、発掘成功・発掘段階等を第49章の公開範囲に従って表示する。
+β版では、Scout Level、Scout Rank、Scout XP進捗、Scout Point、読者称号、作者称号、限定称号、LIGHT SEED履歴、発掘成功・発掘段階等を第49章の公開範囲に従って表示する。
 
-作品の内部Rank 1〜6、EMBER、SPARK、GLOW、BEACON、STAR、NOVAを作品カード等へ直接表示しない方針と、ユーザーのScout Rank表示は別概念であり、混同しない。
+作品Rankの正式名称は EMBER / SPARK / GLOW / BEACON / STAR / NOVA とする。作品カード・検索・ランキング等へ常時表示しない方針は維持するが、SCOUT RECORDの本人向け発掘履歴では「送信時 EMBER → 最高 GLOW」のように表示してよい。作品RankとScout Rankは別概念であり、混同しない。
 
 本人にはSCOUT RECORDの詳細を表示できるが、他ユーザーへScout Point残高・Point履歴、詳細XP、次LevelまでのXP、詳細行動ログ、不正確認状態等を公開しない。
 
-Lv.30到達時は通常XPバーから「β LEVEL MAX」表示へ切り替え、Lv.30到達後のXPは蓄積されず消滅すること、Scout Point・バッジ・発掘実績は継続取得できること、正式リリース後にLv.30以降を解放することを明確に告知する。
+Lv.30到達時は通常XPバーから「β LEVEL MAX」表示へ切り替え、Lv.30到達後のXPは蓄積されず消滅すること、Scout Point・称号・発掘実績は継続取得できること、正式リリース後にLv.30以降を解放することを明確に告知する。
 
 β版からPoint残高・履歴を表示するが、正式リリース前の交換レート・金銭換算価値を断定表示しない。
 
@@ -4034,7 +4034,7 @@ SCOUT RECORDはNOVELIGHTの読者向け主要機能として本実装する。
 
 読書、発掘、評価、成長という本来の行動をゲーミフィケーションによって補強する。
 
-人気SCOUTの評価、バッジ、Level、Rank等を理由に、その人物が作品評価・作品Rank・ランキングを支配する構造にはしない。SCOUTの公開実績は発掘文化・自己表現・発見導線の補助として扱い、人間読者全体の評価を置き換えない。
+人気SCOUTの評価、称号、Level、Rank等を理由に、その人物が作品評価・作品Rank・ランキングを支配する構造にはしない。SCOUTの公開実績は発掘文化・自己表現・発見導線の補助として扱い、人間読者全体の評価を置き換えない。
 
 ### 49.2 Scout XP と Scout Point の完全分離
 
@@ -4474,7 +4474,7 @@ Scout Pointはβ版からユーザー本人へ表示する。
 
 - Scout Level
 - Scout Rank
-- 公開対象バッジ
+- 装備称号
 - 発掘成功数
 - 代表的な発掘実績
 
@@ -4501,7 +4501,7 @@ Scout Pointは単一の残高数値だけで管理しない。
 
 +20 発掘成功
 +5 Level Up
-+10 Reader Badge
++10 読者称号
 -20 不正報酬取消
 
 残高を管理者が直接書き換える設計を基本としない。
@@ -4548,7 +4548,7 @@ Scout Pointについては、例えば以下を基本とする。
 重大・反復：
 アカウントレベルの措置も可能。
 
-複数アカウントを持つこと自体を即不正とせず、それを利用してPoint、Badge、発掘、評価、露出等を不当に操作する行為を対象とする。
+複数アカウントを持つこと自体を即不正とせず、それを利用してPoint、称号、発掘、評価、露出等を不当に操作する行為を対象とする。
 
 自動検知だけを根拠に重大措置を機械的に確定せず、必要に応じて凍結・記録・確認を行う。
 
@@ -4556,7 +4556,7 @@ Scout Pointについては、例えば以下を基本とする。
 
 第22章の「LIGHT SEED / SCOUT RECORD」KPIを正式なβ計測項目とする。
 
-SCOUT RECORDが成功しているかは、単なるLevel上昇数、Badge獲得数、Point発行量ではなく、
+SCOUT RECORDが成功しているかは、単なるLevel上昇数、称号獲得数、Point発行量ではなく、
 
 「読者がより多くの作品を読み、新しい作品を発見し、NOVELIGHTへ継続して戻ってくるか」
 
@@ -4602,13 +4602,13 @@ SCOUT RECORDの見た目は、共有済み参考画像の方向性へ近づけ�
 
 以下は今回まだ確定しない。
 
-- SCOUT RECORD本実装以前の既存行動・既存実績へ、Scout XP / Badge / Scout Pointをどこまで遡及付与するか
+- SCOUT RECORD本実装以前の既存行動・既存実績へ、Scout XP / 称号 / Scout Pointをどこまで遡及付与するか
 - 特にScout Pointの遡及付与
 - AI Creditとの正式交換レート
 - Scout Pointの金銭換算価値
 - Scout Pointの正式交換単位
 - 正式リリース後のScout Level上限
-- Badge条件・Scout Point配点の最終微調整
+- 称号条件・Scout Point配点の最終微調整
 
 遡及付与は「要最終決定」「正式実装前に決定」として扱い、勝手に確定仕様へしない。
 
