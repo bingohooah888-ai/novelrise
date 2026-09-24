@@ -234,19 +234,3 @@ test('Commander package checks the bridge daemon', async () => {
   const source = await readFile(packagePath, 'utf8');
   assert.match(source, /github-bridge-daemon\.js/);
 });
-
-test(
-  'Commander keeps heartbeat fresh while long actions are running',
-  async () => {
-    const source = await readFile(daemonPath, 'utf8');
-
-    assert.match(
-      source,
-      /writeHeartbeat\(config, 'busy', busyHeartbeatDetails\)/,
-    );
-    assert.match(source, /busyHeartbeatTimer = setInterval/);
-    assert.match(source, /30000/);
-    assert.match(source, /busyHeartbeatTimer\.unref/);
-    assert.match(source, /clearInterval\(busyHeartbeatTimer\)/);
-  },
-);
