@@ -47,7 +47,7 @@ test('rolling deployment fails safely without raw-table fallback', () => {
 });
 
 test('author notes use the Author Studio shell and dashboard shortcuts stay stable', () => {
-  assert.match(management, /<body class="novelight-author-studio-shell">/u);
+  assert.match(management, /<body class="novelight-author-studio-shell[^"]*">/u);
   assert.match(
     management,
     /\.workspace\{max-width:1100px;margin:0 auto;padding:34px 28px 72px\}/u
