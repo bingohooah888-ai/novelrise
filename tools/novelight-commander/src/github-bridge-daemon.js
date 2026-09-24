@@ -67,6 +67,15 @@ async function appendAudit(config, event, details = {}) {
   );
 }
 
+async function writeHeartbeat(config, status, details = {}) {
+  await writeJson(config.heartbeatPath, {
+    observedAt: new Date().toISOString(),
+    status,
+    pid: process.pid,
+    ...details
+  });
+}
+
 function loadConfigPath() {
   const value = String(process.env.NOVELIGHT_BRIDGE_CONFIG || '').trim();
   if (!value) throw new Error('NOVELIGHT_BRIDGE_CONFIG is not configured.');
@@ -101,6 +110,9 @@ async function loadConfig() {
     ),
     auditPath: path.resolve(
       String(raw.auditPath || path.join(bridgeRoot, 'audit.jsonl'))
+    ),
+    heartbeatPath: path.resolve(
+      String(raw.heartbeatPath || path.join(bridgeRoot, 'heartbeat.json'))
     )
   };
 }
@@ -120,6 +132,7 @@ async function githubApi(token, method, apiPath, body) {
       'X-GitHub-Api-Version': '2022-11-28',
       'User-Agent': 'NOVELIGHT-Commander-Bridge'
     },
+    signal: AbortSignal.timeout(15000),
     body: body == null ? undefined : JSON.stringify(body)
   });
   const text = await response.text();
@@ -1498,8 +1511,10 @@ async function main() {
     issueNumber: config.issueNumber,
     pollSeconds: config.pollSeconds
   });
+  await writeHeartbeat(config, 'starting', { consecutivePollFailures: 0 });
 
   let stopping = false;
+  let consecutivePollFailures = 0;
   const stop = () => {
     stopping = true;
   };
@@ -1509,15 +1524,40 @@ async function main() {
   while (!stopping) {
     try {
       await pollOnce(config, token, state);
+      consecutivePollFailures = 0;
+      await writeHeartbeat(config, 'healthy', { consecutivePollFailures });
     } catch (error) {
+      consecutivePollFailures += 1;
+      const message = bounded(
+        error instanceof Error ? error.message : String(error),
+        2000
+      );
       await appendAudit(config, 'poll-error', {
-        error: bounded(error instanceof Error ? error.message : String(error), 2000)
+        error: message,
+        consecutivePollFailures
       });
+      await writeHeartbeat(config, 'degraded', {
+        consecutivePollFailures,
+        error: message
+      });
+      if (consecutivePollFailures >= 6) {
+        await appendAudit(config, 'poll-stalled-restart', {
+          consecutivePollFailures,
+          error: message
+        });
+        throw new Error(
+          'GitHub Bridge health restart after ' +
+            consecutivePollFailures +
+            ' consecutive poll failures: ' +
+            message
+        );
+      }
     }
     if (!stopping) {
       await new Promise(resolve => setTimeout(resolve, config.pollSeconds * 1000));
     }
   }
+  await writeHeartbeat(config, 'stopping', { consecutivePollFailures });
   await appendAudit(config, 'daemon-stop');
 }
 

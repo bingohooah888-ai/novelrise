@@ -29,7 +29,10 @@ test("NLO repair script restores both bridge and tunnel supervisors", async () =
   assert.ok(source.includes("run-openai-tunnel[.]ps1"));
   assert.match(source, /NloTunnelClientCount/);
   assert.match(source, /novelight-commander/);
-  assert.match(source, /TunnelRunnerCount -eq 0 -and \$NloTunnelClientCount -eq 0/);
+  assert.match(source, /BridgeHeartbeatMaxAgeSeconds = 120/);
+  assert.match(source, /heartbeat stale/);
+  assert.match(source, /Stop-Process -Id \$Process[.]ProcessId -Force/);
+  assert.match(source, /if \(\$TunnelRunnerCount -eq 0\)/);
   assert.match(source, /Start-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"/);
   assert.match(source, /Stop-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"/);
   assert.match(source, /task reports Running but supervisor process is missing/);
@@ -37,6 +40,15 @@ test("NLO repair script restores both bridge and tunnel supervisors", async () =
   assert.match(source, /Stop-Process -Id \$Client[.]ProcessId -Force/);
   assert.match(source, /control-plane-key[.]dpapi/);
   assert.match(source, /github-token[.]dpapi/);
+});
+
+test("NLO bridge publishes heartbeat and self-restarts after repeated poll failures", async () => {
+  const source = await read("src/github-bridge-daemon.js");
+  assert.match(source, /heartbeat[.]json/);
+  assert.match(source, /writeHeartbeat/);
+  assert.match(source, /AbortSignal[.]timeout\(15000\)/);
+  assert.match(source, /consecutivePollFailures >= 6/);
+  assert.match(source, /poll-stalled-restart/);
 });
 
 test("GitHub Bridge exposes a fixed NLO autorecovery installer action", async () => {
