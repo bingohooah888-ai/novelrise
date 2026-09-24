@@ -138,6 +138,8 @@ test('author composer exposes five accordion categories and hides retired cover/
   assert.match(composerCss, /max-height:min\(56vh,520px\)/);
   assert.match(composerCss, /overflow-y:auto/);
   assert.match(composerCss, /nl-thumb-layer\[open\]/);
+  assert.ok(composer.includes("openLayerType: ''"));
+  assert.ok(!composer.includes('openLayerType: AUTHOR_LAYER_TYPES[0]'));
 });
 
 test('author composer offers one-click random material selection without changing hidden compatibility layers', () => {
