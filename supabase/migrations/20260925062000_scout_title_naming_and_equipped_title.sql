@@ -191,6 +191,186 @@ update public.user_scout_badges
        updated_at = now()
  where is_public;
 
+create or replace function public.novelight_scout_badges()
+returns table (
+  badge_id text,
+  badge_category text,
+  difficulty text,
+  display_name text,
+  description text,
+  condition_type text,
+  target_value bigint,
+  point_reward integer,
+  is_limited boolean,
+  is_hidden boolean,
+  sort_order integer,
+  progress_value bigint,
+  progress_percent numeric,
+  earned_at timestamptz,
+  status text,
+  is_public boolean,
+  metadata jsonb
+)
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null then
+    raise exception using errcode = '42501', message = 'Authentication required';
+  end if;
+
+  perform public.novelight_refresh_my_scout_badges();
+
+  return query
+  select
+    d.badge_id,
+    d.badge_category,
+    d.difficulty,
+    case
+      when d.is_hidden and b.earned_at is null then '???'
+      when d.badge_id = 'limited_founding_author'
+           and (b.metadata->>'founding_number') ~ '^[0-9]+
+  p_badge_id text,
+  p_is_public boolean
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_found boolean := false;
+begin
+  if v_uid is null then
+    raise exception using errcode = '42501', message = 'Authentication required';
+  end if;
+
+  if coalesce(p_is_public, false) then
+    if not exists (
+      select 1
+      from public.user_scout_badges b
+      where b.user_id = v_uid
+        and b.badge_id = p_badge_id
+        and b.status = 'earned'
+    ) then
+      return false;
+    end if;
+
+    update public.user_scout_badges b
+       set is_public = false,
+           updated_at = now()
+     where b.user_id = v_uid
+       and b.is_public;
+
+    update public.user_scout_badges b
+       set is_public = true,
+           updated_at = now()
+     where b.user_id = v_uid
+       and b.badge_id = p_badge_id
+       and b.status = 'earned';
+
+    v_found := found;
+  else
+    update public.user_scout_badges b
+       set is_public = false,
+           updated_at = now()
+     where b.user_id = v_uid
+       and b.badge_id = p_badge_id
+       and b.status = 'earned';
+
+    v_found := found;
+  end if;
+
+  return v_found;
+end
+$$;
+
+revoke all on function public.novelight_set_scout_badge_visibility(text, boolean)
+  from public, anon;
+grant execute on function public.novelight_set_scout_badge_visibility(text, boolean)
+  to authenticated;
+
+comment on function public.novelight_set_scout_badge_visibility(text, boolean) is
+  'Compatibility RPC: is_public now means the single equipped SCOUT title. Equipping one earned title unequips every other title for that user.';
+
+commit;
+
+        then 'Founding Author #' || lpad((b.metadata->>'founding_number'), 3, '0')
+      else d.display_name
+    end,
+    case
+      when d.is_hidden and b.earned_at is null then '未公開称号'
+      else d.description
+    end,
+    d.condition_type,
+    d.target_value,
+    d.point_reward,
+    d.is_limited,
+    d.is_hidden,
+    d.sort_order,
+    coalesce(b.progress_value, 0),
+    coalesce(b.progress_percent, 0),
+    b.earned_at,
+    coalesce(b.status, 'in_progress'),
+    coalesce(b.is_public, false),
+    coalesce(b.metadata, '{}'::jsonb)
+  from public.scout_badge_definitions d
+  left join public.user_scout_badges b
+    on b.user_id = v_uid
+   and b.badge_id = d.badge_id
+  where d.enabled
+  order by
+    case d.badge_category when 'reader' then 1 when 'author' then 2 else 3 end,
+    d.sort_order;
+end
+$;
+
+revoke all on function public.novelight_scout_badges()
+  from public, anon;
+grant execute on function public.novelight_scout_badges()
+  to authenticated;
+
+create or replace function public.novelight_scout_point_history(p_limit integer default 30)
+returns table (
+  point_value integer,
+  status text,
+  point_kind text,
+  reason text,
+  occurred_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select
+    p.point_value,
+    p.status,
+    p.point_kind,
+    case p.point_kind
+      when 'level_up' then 'Scout Level Up'
+      when 'discovery' then '発掘成功'
+      when 'nova_prediction' then 'NOVA予見'
+      when 'badge' then '読者称号'
+      when 'reversal' then '報酬取消・調整'
+      else 'Scout Point'
+    end as reason,
+    p.occurred_at
+  from public.scout_point_ledger p
+  where p.user_id = (select auth.uid())
+  order by p.occurred_at desc, p.id desc
+  limit least(greatest(coalesce(p_limit, 30), 1), 100)
+$;
+
+revoke all on function public.novelight_scout_point_history(integer)
+  from public, anon;
+grant execute on function public.novelight_scout_point_history(integer)
+  to authenticated;
+
 create or replace function public.novelight_set_scout_badge_visibility(
   p_badge_id text,
   p_is_public boolean
