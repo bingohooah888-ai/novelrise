@@ -34,6 +34,42 @@
     limited_founding_author: 'assets/founding-authors-badge-2026.png'
   };
 
+  const easyReaderBadgeArtworkIds = [
+    'reader_read_001',
+    'reader_read_005',
+    'reader_read_010',
+    'reader_read_025',
+    'reader_rating_001',
+    'reader_rating_005',
+    'reader_rating_010',
+    'reader_comment_001',
+    'reader_comment_005',
+    'reader_comment_010',
+    'reader_seed_001',
+    'reader_seed_003',
+    'reader_seed_005',
+    'reader_seed_010',
+    'reader_bronze_seed_001',
+    'reader_silver_seed_001',
+    'reader_gold_seed_001',
+    'reader_discovery_plus2_001',
+    'reader_discovery_plus2_002',
+    'reader_discovery_plus2_003',
+    'reader_new_author_005',
+    'reader_new_author_010',
+    'reader_genre_003',
+    'reader_genre_005',
+    'reader_new_work_005',
+    'reader_low_rank_005',
+    'reader_level_005',
+    'reader_level_010',
+    'reader_level_020',
+    'reader_active_days_007',
+  ];
+  const easyReaderBadgeSpriteIndexes = new Map(
+    easyReaderBadgeArtworkIds.map((badgeId, index) => [badgeId, index])
+  );
+
   let badgeRows = [];
   let badgeCategory = 'all';
   let badgeStatus = 'all';
@@ -197,9 +233,32 @@
     return `Founding Author #${String(foundingNumber).padStart(3, '0')}`;
   }
 
+  function badgeSpritePosition(row) {
+    const index = easyReaderBadgeSpriteIndexes.get(row.badge_id);
+    if (!Number.isInteger(index)) return null;
+    return {
+      x: (index % 6) * 20,
+      y: Math.floor(index / 6) * 25
+    };
+  }
+
+  function applyBadgeSprite(target, row) {
+    const position = badgeSpritePosition(row);
+    if (!position) return false;
+    target.style.setProperty('--badge-sprite-x', `${position.x}%`);
+    target.style.setProperty('--badge-sprite-y', `${position.y}%`);
+    return true;
+  }
+
   function createBadgeIcon(row) {
     const icon = document.createElement('div');
     icon.className = 'badge-icon';
+
+    if (applyBadgeSprite(icon, row)) {
+      icon.classList.add('badge-icon-artwork', 'badge-icon-sprite');
+      icon.setAttribute('aria-hidden', 'true');
+      return icon;
+    }
 
     const artworkPath = badgeArtworkPaths[row.badge_id];
     if (!artworkPath) {
@@ -222,13 +281,23 @@
     const image = document.getElementById('badgeDialogArtworkImage');
     if (!host || !image) return;
 
-    const artworkPath = badgeArtworkPaths[row.badge_id];
-    host.hidden = !artworkPath;
-    if (!artworkPath) {
-      image.removeAttribute('src');
-      image.alt = '';
+    host.classList.remove('badge-dialog-sprite');
+    host.style.removeProperty('--badge-sprite-x');
+    host.style.removeProperty('--badge-sprite-y');
+    host.removeAttribute('aria-label');
+    image.removeAttribute('src');
+    image.alt = '';
+
+    if (applyBadgeSprite(host, row)) {
+      host.hidden = false;
+      host.classList.add('badge-dialog-sprite');
+      host.setAttribute('aria-label', `${badgeDisplayName(row)} バッジ`);
       return;
     }
+
+    const artworkPath = badgeArtworkPaths[row.badge_id];
+    host.hidden = !artworkPath;
+    if (!artworkPath) return;
 
     image.src = artworkPath;
     image.alt = `${badgeDisplayName(row)} バッジ`;
