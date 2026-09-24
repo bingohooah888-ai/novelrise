@@ -1313,6 +1313,87 @@ async function actionThumbnailValidate(request, config) {
   );
 }
 
+async function actionVercelLoginStart(request, config) {
+  ensureNoArgs(request.args);
+  if (os.platform() !== 'win32') {
+    throw new Error('Vercel device login launcher is Windows-only.');
+  }
+
+  const stdoutTarget = resolveDataPath(
+    config,
+    path.join('diagnostics', 'vercel-login.stdout.log')
+  );
+  const stderrTarget = resolveDataPath(
+    config,
+    path.join('diagnostics', 'vercel-login.stderr.log')
+  );
+  await fs.mkdir(path.dirname(stdoutTarget.candidate), { recursive: true });
+  await Promise.all([
+    fs.rm(stdoutTarget.candidate, { force: true }),
+    fs.rm(stderrTarget.candidate, { force: true })
+  ]);
+
+  const stdoutHandle = await fs.open(stdoutTarget.candidate, 'a');
+  const stderrHandle = await fs.open(stderrTarget.candidate, 'a');
+  try {
+    const child = spawn(
+      process.env.ComSpec || 'cmd.exe',
+      [
+        '/d',
+        '/s',
+        '/c',
+        NPM_COMMAND,
+        'exec',
+        '--yes',
+        'vercel@latest',
+        '--',
+        'login'
+      ],
+      {
+        cwd: config.repoRoot,
+        shell: false,
+        windowsHide: true,
+        detached: true,
+        env: { ...process.env, NO_COLOR: '1' },
+        stdio: ['ignore', stdoutHandle.fd, stderrHandle.fd]
+      }
+    );
+    child.unref();
+  } finally {
+    await stdoutHandle.close();
+    await stderrHandle.close();
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  const stdout = await fs
+    .readFile(stdoutTarget.candidate, 'utf8')
+    .catch(() => '');
+  const stderr = await fs
+    .readFile(stderrTarget.candidate, 'utf8')
+    .catch(() => '');
+  const output = bounded((stdout + '\n' + stderr).trim(), 4000);
+  if (!output) {
+    throw new Error('Vercel device login started but produced no login URL yet.');
+  }
+
+  return ['vercel_login_started: true', output].join('\n');
+}
+
+async function actionVercelLoginStatus(request, config) {
+  ensureNoArgs(request.args);
+  const result = await runNpm(
+    ['exec', '--yes', 'vercel@latest', '--', 'whoami'],
+    { cwd: config.repoRoot, timeoutMs: 60000 }
+  );
+  if (result.code !== 0) {
+    return 'vercel_authenticated: false';
+  }
+  return [
+    'vercel_authenticated: true',
+    'account: ' + bounded(result.stdout.trim(), 200)
+  ].join('\n');
+}
+
 async function actionProductionMailRuntimeCheck(request) {
   ensureNoArgs(request.args);
   const response = await globalThis.fetch(
@@ -1466,6 +1547,8 @@ const ACTIONS = new Map([
   ['thumbnail_production_readiness', actionThumbnailProductionReadiness],
   ['thumbnail_register_production', actionThumbnailRegisterProduction],
   ['thumbnail_validate', actionThumbnailValidate],
+  ['vercel_login_start', actionVercelLoginStart],
+  ['vercel_login_status', actionVercelLoginStatus],
   ['production_mail_runtime_check', actionProductionMailRuntimeCheck],
   ['production_mail_env_check', actionProductionMailEnvCheck],
   ['bridge_update', actionBridgeUpdate]
