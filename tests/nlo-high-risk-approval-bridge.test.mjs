@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const daemonPath =
-  'tools/novelight-commander/src/github-bridge-daemon.js';
+const daemonPath = 'tools/novelight-commander/src/github-bridge-daemon.js';
 const daemon = await readFile(daemonPath, 'utf8');
 
 test('NLO high-risk approval is fixed and owner scoped', () => {
