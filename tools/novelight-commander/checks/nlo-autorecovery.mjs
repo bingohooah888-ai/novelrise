@@ -32,7 +32,10 @@ test("NLO repair script restores both bridge and tunnel supervisors", async () =
   assert.match(source, /BridgeHeartbeatMaxAgeSeconds = 120/);
   assert.match(source, /heartbeat stale/);
   assert.match(source, /Stop-Process -Id \$Process[.]ProcessId -Force/);
-  assert.match(source, /if \(\$TunnelRunnerCount -eq 0\)/);
+  assert.match(source, /\$TunnelHealthy = \(/);
+  assert.match(source, /\$TunnelTask[.]State -eq "Running"/);
+  assert.match(source, /\$NloTunnelClientCount -gt 0/);
+  assert.match(source, /if \(-not \$TunnelHealthy\)/);
   assert.match(source, /Start-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"/);
   assert.match(source, /Stop-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"/);
   assert.match(source, /task reports Running but supervisor process is missing/);
