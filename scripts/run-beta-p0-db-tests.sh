@@ -111,6 +111,18 @@ run_sql supabase/migrations/20260909071510_scout_beta_rules_rls.sql
 run_sql supabase/checks/20260909071500_scout_beta_event_foundations_postcheck.sql
 run_sql tests/rls/scout-beta-foundations.sql
 
+# Read-only LIGHT SEED inventory and owner-received summaries. Exercise
+# apply -> behavior -> rollback -> reapply without mutating existing seed evidence.
+run_sql supabase/checks/20260924214000_light_seed_inventory_received_summary_precheck.sql
+run_sql supabase/migrations/20260924214000_light_seed_inventory_received_summary.sql
+run_sql supabase/checks/20260924214000_light_seed_inventory_received_summary_postcheck.sql
+run_sql tests/rls/light-seed-inventory-received-summary.sql
+run_sql supabase/rollback/20260924214000_light_seed_inventory_received_summary_rollback.sql
+run_sql supabase/checks/20260924214000_light_seed_inventory_received_summary_precheck.sql
+run_sql supabase/migrations/20260924214000_light_seed_inventory_received_summary.sql
+run_sql supabase/checks/20260924214000_light_seed_inventory_received_summary_postcheck.sql
+run_sql tests/rls/light-seed-inventory-received-summary.sql
+
 # Reader UI now uses beta-v2 exclusively. Exercise the ACL-only v1 cutover as
 # apply -> rollback -> reapply so both the forward lock and exact rollback stay
 # verified without touching replayable SCOUT evidence.
