@@ -40,7 +40,7 @@
         </div>
         <div id="levelProgressText" class="scout-note">—</div>
         <div id="levelMaxNotice" class="scout-max-note" hidden>
-          β版のScout Level上限はLv.30です。Lv.30到達後に獲得条件を満たしたXPは蓄積されず消滅します。Scout Point・バッジ・発掘実績は引き続き獲得できます。正式リリース後、Lv.30以降のレベルを解放予定です。
+          β版のScout Level上限はLv.30です。Lv.30到達後に獲得条件を満たしたXPは蓄積されず消滅します。Scout Point・称号・発掘実績は引き続き獲得できます。正式リリース後、Lv.30以降のレベルを解放予定です。
         </div>
       </div>
 
@@ -98,7 +98,7 @@
 
     <section class="scout-rank-path-wrap" aria-labelledby="rankPathTitle">
       <div class="scout-section-head">
-        <div><h2 id="rankPathTitle">Rank Path</h2><p>β版ではLv.30まで。正式Rank名・エンブレム素材は後から差し替え可能です。</p></div>
+        <div><h2 id="rankPathTitle">Rank Path</h2><p>β版ではLv.30まで。正式リリース後のLevel解放に合わせて、LUMINARISまで10段階のScout Rankが続きます。</p></div>
       </div>
       <div class="scout-rank-scroll"><div id="rankPath" class="scout-rank-path"></div></div>
     </section>
@@ -106,34 +106,34 @@
     <section class="scout-stats" aria-label="SCOUT RECORD実績サマリー">
       <article class="scout-stat"><span>LIGHT SEED</span><strong id="statSeeds">—</strong></article>
       <article class="scout-stat"><span>発掘成功</span><strong id="statDiscoveries">—</strong></article>
-      <article class="scout-stat"><span>獲得Badge</span><strong id="statBadges">—</strong></article>
+      <article class="scout-stat"><span>獲得称号</span><strong id="statBadges">—</strong></article>
       <article class="scout-stat"><span>Scout Point</span><strong id="statPoint">—</strong></article>
     </section>
 
     <section class="scout-panel" aria-labelledby="badgeTitle">
       <div class="scout-section-head">
         <div>
-          <h2 id="badgeTitle">Badge Collection</h2>
-          <p>Reader / Author / Limitedを同じアカウントで収集します。未獲得Badgeも進捗を表示します。</p>
+          <h2 id="badgeTitle">称号コレクション</h2>
+          <p>読者称号・作者称号・限定称号を同じアカウントで収集します。未獲得の称号も進捗を表示します。</p>
         </div>
         <strong id="badgeCount">—</strong>
       </div>
 
-      <div class="badge-filters" aria-label="Badgeカテゴリ">
+      <div class="badge-filters" aria-label="称号カテゴリ">
         <button class="badge-filter" type="button" data-badge-category="all" aria-pressed="true">すべて</button>
         <button class="badge-filter" type="button" data-badge-category="reader" aria-pressed="false">読者</button>
         <button class="badge-filter" type="button" data-badge-category="author" aria-pressed="false">作者</button>
         <button class="badge-filter" type="button" data-badge-category="limited" aria-pressed="false">限定</button>
       </div>
-      <div class="badge-filters" aria-label="Badge獲得状態">
+      <div class="badge-filters" aria-label="称号獲得状態">
         <button class="badge-filter" type="button" data-badge-status="all" aria-pressed="true">すべて</button>
         <button class="badge-filter" type="button" data-badge-status="earned" aria-pressed="false">獲得済み</button>
         <button class="badge-filter" type="button" data-badge-status="unearned" aria-pressed="false">未獲得</button>
       </div>
-      <div class="badge-groups" aria-label="Badge難易度別コレクション">
+      <div class="badge-groups" aria-label="称号難易度別コレクション">
         <details class="badge-group" data-badge-group="easy">
           <summary><span><b>Easy</b><small>基本実績</small></span><strong id="badgeGroupEasyCount">—</strong></summary>
-          <div id="badgeGridEasy" class="badge-grid"><div class="scout-loading" style="grid-column:1/-1">Badgeを読み込んでいます。</div></div>
+          <div id="badgeGridEasy" class="badge-grid"><div class="scout-loading" style="grid-column:1/-1">称号を読み込んでいます。</div></div>
         </details>
         <details class="badge-group" data-badge-group="normal">
           <summary><span><b>Normal</b><small>継続・発掘実績</small></span><strong id="badgeGroupNormalCount">—</strong></summary>
@@ -144,11 +144,11 @@
           <div id="badgeGridHard" class="badge-grid"></div>
         </details>
         <details class="badge-group" data-badge-group="special" hidden>
-          <summary><span><b>Limited / Special</b><small>期間・資格限定</small></span><strong id="badgeGroupSpecialCount">—</strong></summary>
+          <summary><span><b>限定称号</b><small>期間・資格限定</small></span><strong id="badgeGroupSpecialCount">—</strong></summary>
           <div id="badgeGridSpecial" class="badge-grid"></div>
         </details>
       </div>
-      <div id="badgeEmpty" class="badge-empty" hidden>この条件に該当するBadgeはありません。</div>
+      <div id="badgeEmpty" class="badge-empty" hidden>この条件に該当する称号はありません。</div>
     </section>
 
     <div class="scout-main-grid">
@@ -184,15 +184,15 @@
   <dialog id="badgeDialog" class="scout-modal">
     <div class="scout-modal-card">
       <div class="scout-modal-head">
-        <h2 id="badgeDialogName">Badge</h2>
+        <h2 id="badgeDialogName">称号</h2>
         <button class="scout-modal-close" type="button" data-dialog-close aria-label="閉じる">×</button>
       </div>
       <div id="badgeDialogArtwork" class="badge-dialog-artwork" hidden>
         <img id="badgeDialogArtworkImage" alt="">
       </div>
       <div class="scout-modal-grid">
-        <div class="scout-modal-kv"><span>Category</span><b id="badgeDialogCategory">—</b></div>
-        <div class="scout-modal-kv"><span>Difficulty</span><b id="badgeDialogDifficulty">—</b></div>
+        <div class="scout-modal-kv"><span>カテゴリ</span><b id="badgeDialogCategory">—</b></div>
+        <div class="scout-modal-kv"><span>難易度</span><b id="badgeDialogDifficulty">—</b></div>
         <div class="scout-modal-kv"><span>条件</span><b id="badgeDialogCondition">—</b></div>
         <div class="scout-modal-kv"><span>進捗</span><b id="badgeDialogProgress">—</b></div>
         <div class="scout-modal-kv"><span>達成率</span><b id="badgeDialogPercent">—</b></div>
@@ -200,10 +200,10 @@
         <div class="scout-modal-kv"><span>獲得日</span><b id="badgeDialogEarned">—</b></div>
       </div>
       <div class="badge-progress" style="height:10px;margin-top:16px"><span id="badgeDialogBar"></span></div>
-      <div id="badgeDialogComposite" class="badge-composite" hidden aria-label="複合Badge条件の進捗"></div>
+      <div id="badgeDialogComposite" class="badge-composite" hidden aria-label="複合称号条件の進捗"></div>
       <div id="badgeVisibility" class="scout-visibility" hidden>
-        <button id="badgeVisibilityButton" class="scout-mini-button" type="button">公開Badgeにする</button>
-        <p class="scout-note">公開Badgeは他ユーザーのプロフィールに表示できます。</p>
+        <button id="badgeVisibilityButton" class="scout-mini-button" type="button">装備称号にする</button>
+        <p class="scout-note">装備した称号は他ユーザーのプロフィールに1つだけ表示されます。</p>
       </div>
     </div>
   </dialog>
@@ -215,7 +215,7 @@
         <button class="scout-modal-close" type="button" data-dialog-close aria-label="閉じる">×</button>
       </div>
       <p class="scout-note">読む・発見する・評価する・LIGHT SEEDで発掘するという本来の読書行動を、成長記録として可視化する機能です。Scout XPはLevel用の非消費経験値、Scout Pointは将来の利用特典へつながる別の報酬です。</p>
-      <p class="scout-note">BadgeやPointのための高速巡回、無意味なコメント、無差別評価、SEED乱用は対象外または取消対象になる場合があります。</p>
+      <p class="scout-note">称号やPointのための高速巡回、無意味なコメント、無差別評価、SEED乱用は対象外または取消対象になる場合があります。</p>
     </div>
   </dialog>
 
@@ -224,6 +224,7 @@
   <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
   <script src="novelight-client.js"></script>
   <script src="novelight-author-studio-shell.js"></script>
+  <script src="novelight-scout-taxonomy.js"></script>
   <script src="novelight-scout-record.js"></script>
 </body>
 </html>
