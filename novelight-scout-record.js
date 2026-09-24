@@ -732,13 +732,19 @@
         );
         if (error) throw error;
         if (!data) throw new Error('Title equipment was not updated');
-        const row = badgeRows.find((badge) => badge.badge_id === badgeId);
-        if (row) row.is_public = next;
+        if (next) {
+          badgeRows.forEach((badge) => {
+            badge.is_public = badge.badge_id === badgeId;
+          });
+        } else {
+          const row = badgeRows.find((badge) => badge.badge_id === badgeId);
+          if (row) row.is_public = false;
+        }
         visibility.dataset.public = String(next);
         visibility.textContent = next ? '装備を外す' : '装備称号にする';
       } catch (error) {
         console.error(error);
-        visibility.textContent = '公開設定を変更できませんでした';
+        visibility.textContent = '称号の装備を変更できませんでした';
       } finally {
         visibility.disabled = false;
       }
