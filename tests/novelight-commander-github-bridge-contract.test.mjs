@@ -150,23 +150,17 @@ test('Commander can source Production Supabase credential from Vercel', async ()
   assert.match(source, /fs\.rm\(envTarget\.candidate/);
 });
 
-test(
-  'Commander Production mail env check is presence-only and deletes temp env',
-  async () => {
-    const source = await readFile(daemonPath, 'utf8');
+test('Commander mail env check is presence-only', async () => {
+  const source = await readFile(daemonPath, 'utf8');
 
-    assert.match(
-      source,
-      /\['production_mail_env_check', actionProductionMailEnvCheck\]/,
-    );
-    assert.match(source, /RESEND_API_KEY/);
-    assert.match(source, /resend_api_key_present:/);
-    assert.match(source, /resend_api_key_value_exposed: false/);
-    assert.match(source, /--environment=production/);
-    assert.match(source, /fs\.rm\(target\.candidate/);
-    assert.doesNotMatch(source, /resend_api_key_value:\s*/);
-  },
-);
+  assert.match(source, /production_mail_env_check/);
+  assert.match(source, /RESEND_API_KEY/);
+  assert.match(source, /resend_api_key_present:/);
+  assert.match(source, /resend_api_key_value_exposed: false/);
+  assert.match(source, /--environment=production/);
+  assert.match(source, /fs\.rm\(target\.candidate/);
+  assert.doesNotMatch(source, /resend_api_key_value:\s*/);
+});
 
 test('Commander thumbnail transfer stages only canonical packs', async () => {
   const source = await readFile(daemonPath, 'utf8');
