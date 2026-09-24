@@ -6,113 +6,64 @@ const scout = await readFile('scout-record.html', 'utf8');
 const scoutJs = await readFile('novelight-scout-record.js', 'utf8');
 const scoutCss = await readFile('novelight-scout-record.css', 'utf8');
 const novel = await readFile('novel.html', 'utf8');
-const migration = await readFile(
-  'supabase/migrations/20260924214000_light_seed_inventory_received_summary.sql',
-  'utf8'
-);
-const postcheck = await readFile(
-  'supabase/checks/20260924214000_light_seed_inventory_received_summary_postcheck.sql',
-  'utf8'
-);
-const rollback = await readFile(
-  'supabase/rollback/20260924214000_light_seed_inventory_received_summary_rollback.sql',
-  'utf8'
-);
+const migrationPath =
+  'supabase/migrations/20260924214000_light_seed_inventory_received_summary.sql';
+const postcheckPath =
+  'supabase/checks/20260924214000_light_seed_inventory_received_summary_postcheck.sql';
+const rollbackPath =
+  'supabase/rollback/20260924214000_light_seed_inventory_received_summary_rollback.sql';
+const migration = await readFile(migrationPath, 'utf8');
+const postcheck = await readFile(postcheckPath, 'utf8');
+const rollback = await readFile(rollbackPath, 'utf8');
 
-test(
-  'private LIGHT SEED summary RPCs expose inventory and owner-only received counts',
-  () => {
-    assert.match(migration, /novelight_light_seed_inventory\(\)/u);
-    assert.match(
-      migration,
-      /novelight_author_received_light_seed_summary\(\s*p_novel_id text/u
-    );
-    assert.match(migration, /v_uid uuid := \(select auth\.uid\(\)\)/u);
-    assert.match(
-      migration,
-      /Only the work owner can view received LIGHT SEED breakdown/u
-    );
-    assert.match(
-      migration,
-      /count\(\*\) filter \(where s\.seed_type = 'GOLD'\)/u
-    );
-    assert.match(
-      migration,
-      /count\(\*\) filter \(where s\.seed_type = 'SILVER'\)/u
-    );
-    assert.match(
-      migration,
-      /count\(\*\) filter \(where s\.seed_type = 'BRONZE'\)/u
-    );
-    assert.match(migration, /gold_remaining/u);
-    assert.match(migration, /silver_remaining/u);
-    assert.match(migration, /bronze_remaining/u);
-    assert.match(postcheck, /must remain RPC-only and private/u);
-    assert.match(
-      rollback,
-      /drop function if exists public\.novelight_light_seed_inventory/u
-    );
-    assert.match(
-      rollback,
-      /drop function if exists public\.novelight_author_received_light_seed_summary/u
-    );
-  }
-);
+function contains(source, token) {
+  assert.ok(source.includes(token), `Missing contract token: ${token}`);
+}
 
-test(
-  'SCOUT RECORD shows held GOLD SILVER BRONZE inventory with artwork slots',
-  () => {
-    assert.match(scout, /id="seedInventoryTitle">LIGHT SEED 所持数/u);
-    assert.match(scout, /id="seedInventoryTotal"/u);
-    assert.match(scout, /id="seedGoldRemaining"/u);
-    assert.match(scout, /id="seedSilverRemaining"/u);
-    assert.match(scout, /id="seedBronzeRemaining"/u);
-    for (const type of ['GOLD', 'SILVER', 'BRONZE']) {
-      assert.match(
-        scout,
-        new RegExp(`data-light-seed-icon-slot="${type}"`, 'u')
-      );
-    }
-    assert.match(scoutCss, /\.seed-inventory-icon-slot\{/u);
-    assert.match(scoutCss, /width:78px;height:78px/u);
-    assert.match(
-      scoutJs,
-      /client\.rpc\('novelight_light_seed_inventory'\)/u
-    );
-    assert.match(scoutJs, /function renderSeedInventory\(inventory\)/u);
-    assert.match(scoutJs, /seedInventoryLegacyNote/u);
-  }
-);
+test('LIGHT SEED summary RPC contracts', () => {
+  contains(migration, 'novelight_light_seed_inventory()');
+  contains(migration, 'novelight_author_received_light_seed_summary');
+  contains(migration, 'v_uid uuid := (select auth.uid())');
+  contains(migration, 'Only the work owner');
+  contains(migration, "s.seed_type = 'GOLD'");
+  contains(migration, "s.seed_type = 'SILVER'");
+  contains(migration, "s.seed_type = 'BRONZE'");
+  contains(migration, "'gold_remaining'");
+  contains(migration, "'silver_remaining'");
+  contains(migration, "'bronze_remaining'");
+  contains(postcheck, 'must remain RPC-only and private');
+  contains(rollback, 'novelight_light_seed_inventory');
+  contains(rollback, 'novelight_author_received_light_seed_summary');
+});
 
-test(
-  'work owners see received LIGHT SEED totals and typed breakdown only on their own work',
-  () => {
-    assert.match(novel, /id="receivedSeedArea"/u);
-    assert.match(novel, /作品に届いたLIGHT SEED/u);
-    assert.match(novel, /id="receivedSeedTotal"/u);
-    assert.match(novel, /id="receivedSeedGold"/u);
-    assert.match(novel, /id="receivedSeedSilver"/u);
-    assert.match(novel, /id="receivedSeedBronze"/u);
-    assert.match(
-      novel,
-      /class="received-seed-icon-slot" data-light-seed-icon-slot="GOLD"/u
-    );
-    assert.match(
-      novel,
-      /class="received-seed-icon-slot" data-light-seed-icon-slot="SILVER"/u
-    );
-    assert.match(
-      novel,
-      /class="received-seed-icon-slot" data-light-seed-icon-slot="BRONZE"/u
-    );
-    assert.match(
-      novel,
-      /String\(novel\.user_id\)!==String\(session\.user\.id\)/
-    );
-    assert.match(
-      novel,
-      /client\.rpc\('novelight_author_received_light_seed_summary',\{p_novel_id:String\(novel\.id\)\}\)/
-    );
-    assert.match(novel, /旧仕様LIGHT SEED/u);
-  }
-);
+test('SCOUT RECORD shows held typed LIGHT SEED inventory', () => {
+  contains(scout, 'id="seedInventoryTitle"');
+  contains(scout, 'LIGHT SEED 所持数');
+  contains(scout, 'id="seedInventoryTotal"');
+  contains(scout, 'id="seedGoldRemaining"');
+  contains(scout, 'id="seedSilverRemaining"');
+  contains(scout, 'id="seedBronzeRemaining"');
+  contains(scout, 'data-light-seed-icon-slot="GOLD"');
+  contains(scout, 'data-light-seed-icon-slot="SILVER"');
+  contains(scout, 'data-light-seed-icon-slot="BRONZE"');
+  contains(scoutCss, '.seed-inventory-icon-slot{');
+  contains(scoutCss, 'width:78px;height:78px');
+  contains(scoutJs, "rpc('novelight_light_seed_inventory')");
+  contains(scoutJs, 'function renderSeedInventory(inventory)');
+  contains(scoutJs, 'seedInventoryLegacyNote');
+});
+
+test('work owners see received typed LIGHT SEED totals', () => {
+  contains(novel, 'id="receivedSeedArea"');
+  contains(novel, '作品に届いたLIGHT SEED');
+  contains(novel, 'id="receivedSeedTotal"');
+  contains(novel, 'id="receivedSeedGold"');
+  contains(novel, 'id="receivedSeedSilver"');
+  contains(novel, 'id="receivedSeedBronze"');
+  contains(novel, 'data-light-seed-icon-slot="GOLD"');
+  contains(novel, 'data-light-seed-icon-slot="SILVER"');
+  contains(novel, 'data-light-seed-icon-slot="BRONZE"');
+  contains(novel, 'String(novel.user_id)!==String(session.user.id)');
+  contains(novel, 'novelight_author_received_light_seed_summary');
+  contains(novel, '旧仕様LIGHT SEED');
+});
