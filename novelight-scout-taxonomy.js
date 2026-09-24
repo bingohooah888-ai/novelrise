@@ -12,6 +12,8 @@
     Object.freeze({ tier: 10, name: 'LUMINARIS', minLevel: 91, maxLevel: 100 }),
   ]);
 
+  const workRanks = Object.freeze(['EMBER', 'SPARK', 'GLOW', 'BEACON', 'STAR', 'NOVA']);
+
   const titleNames = Object.freeze({
     'reader_read_001': 'FIRST PAGE',
     'reader_read_005': 'PAGEWALKER',
@@ -163,13 +165,22 @@
   }
 
   function titleName(badgeId, fallback = '') {
-    return titleNames[String(badgeId || '')] || fallback || ''; 
+    return titleNames[String(badgeId || '')] || fallback || '';
+  }
+
+  function workRankName(value, fallback = '') {
+    const rank = Number(value);
+    return Number.isInteger(rank) && rank >= 1 && rank <= workRanks.length
+      ? workRanks[rank - 1]
+      : fallback || '';
   }
 
   window.NovelightScoutTaxonomy = Object.freeze({
     ranks: scoutRanks,
+    workRanks,
     titleNames,
     rankForTier,
+    workRankName,
     titleName
   });
 })();
