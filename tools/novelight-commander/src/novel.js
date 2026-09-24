@@ -164,7 +164,7 @@ function parseAlphapolisIndexHtml(html, root) {
     episodes.push({ url: normalized, label: clean(label) });
   };
 
-  $(".episode a[href], a[href*=\\"/episode/\\"]").each((_, element) => {
+  $(".episode a[href], a[href*=\"/episode/\"]").each((_, element) => {
     addEpisode($(element).attr("href"), $(element).text());
   });
 
