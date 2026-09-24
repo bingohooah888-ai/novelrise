@@ -325,3 +325,87 @@ body.novelight-page-scout-record .badge-card:focus-visible{
   background:#143653!important;
   border-color:#ffe082!important
 }
+
+
+/* Badge Collection emphasis
+   Make the badge artwork the visual focus and increase collection text scale. */
+body.novelight-page-scout-record .badge-card{
+  padding:18px!important
+}
+body.novelight-page-scout-record .badge-icon{
+  display:grid!important;
+  width:84px!important;
+  height:84px!important;
+  margin:0 auto 12px!important;
+  place-items:center!important;
+  font-size:32px!important
+}
+body.novelight-page-scout-record .badge-icon-artwork{
+  width:112px!important;
+  height:112px!important;
+  margin:0 auto 14px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important
+}
+body.novelight-page-scout-record .badge-icon-artwork img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important
+}
+body.novelight-page-scout-record .badge-card h3{
+  margin-top:2px!important;
+  font-size:18px!important;
+  line-height:1.5!important
+}
+body.novelight-page-scout-record .badge-meta{
+  margin-top:7px!important;
+  font-size:15px!important;
+  line-height:1.45!important
+}
+body.novelight-page-scout-record .badge-progress{
+  height:9px!important;
+  margin-top:12px!important
+}
+body.novelight-page-scout-record .badge-progress-text{
+  margin-top:7px!important;
+  font-size:15px!important;
+  line-height:1.4!important
+}
+body.novelight-page-scout-record .badge-point{
+  margin-top:10px!important;
+  font-size:16px!important;
+  line-height:1.45!important
+}
+body.novelight-page-scout-record .badge-filter{
+  font-size:16px!important
+}
+body.novelight-page-scout-record .badge-group summary b{
+  font-size:20px!important
+}
+body.novelight-page-scout-record .badge-group summary small,
+body.novelight-page-scout-record .badge-group summary strong{
+  font-size:16px!important
+}
+body.novelight-page-scout-record #badgeCount{
+  font-size:16px!important
+}
+@media(max-width:520px){
+  body.novelight-page-scout-record .badge-card{padding:14px!important}
+  body.novelight-page-scout-record .badge-icon{
+    width:70px!important;
+    height:70px!important;
+    margin-bottom:10px!important;
+    font-size:28px!important
+  }
+  body.novelight-page-scout-record .badge-icon-artwork{
+    width:88px!important;
+    height:88px!important;
+    margin-bottom:11px!important
+  }
+  body.novelight-page-scout-record .badge-card h3{font-size:16px!important}
+  body.novelight-page-scout-record .badge-meta,
+  body.novelight-page-scout-record .badge-progress-text{font-size:14px!important}
+  body.novelight-page-scout-record .badge-point{font-size:15px!important}
+}
