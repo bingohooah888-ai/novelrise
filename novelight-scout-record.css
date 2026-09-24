@@ -334,16 +334,16 @@ body.novelight-page-scout-record .badge-card{
 }
 body.novelight-page-scout-record .badge-icon{
   display:grid!important;
-  width:84px!important;
-  height:84px!important;
-  margin:0 auto 12px!important;
+  width:104px!important;
+  height:104px!important;
+  margin:0 auto 14px!important;
   place-items:center!important;
-  font-size:32px!important
+  font-size:40px!important
 }
 body.novelight-page-scout-record .badge-icon-artwork{
-  width:112px!important;
-  height:112px!important;
-  margin:0 auto 14px!important;
+  width:144px!important;
+  height:144px!important;
+  margin:0 auto 16px!important;
   border:0!important;
   border-radius:0!important;
   background:transparent!important
@@ -394,15 +394,15 @@ body.novelight-page-scout-record #badgeCount{
 @media(max-width:520px){
   body.novelight-page-scout-record .badge-card{padding:14px!important}
   body.novelight-page-scout-record .badge-icon{
-    width:70px!important;
-    height:70px!important;
-    margin-bottom:10px!important;
-    font-size:28px!important
+    width:84px!important;
+    height:84px!important;
+    margin-bottom:11px!important;
+    font-size:34px!important
   }
   body.novelight-page-scout-record .badge-icon-artwork{
-    width:88px!important;
-    height:88px!important;
-    margin-bottom:11px!important
+    width:112px!important;
+    height:112px!important;
+    margin-bottom:12px!important
   }
   body.novelight-page-scout-record .badge-card h3{font-size:16px!important}
   body.novelight-page-scout-record .badge-meta,
