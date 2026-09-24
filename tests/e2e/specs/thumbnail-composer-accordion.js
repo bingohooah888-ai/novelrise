@@ -98,8 +98,8 @@ test('thumbnail composer keeps five material groups in a one-open accordion', as
     '中央シンボル',
     '枠'
   ]);
-  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(1);
-  await expect(layers.first()).toHaveAttribute('open', '');
+  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(0);
+  await expect(layers.first()).not.toHaveAttribute('open', '');
 
   await layers.nth(1).locator('summary').click();
   await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(1);
