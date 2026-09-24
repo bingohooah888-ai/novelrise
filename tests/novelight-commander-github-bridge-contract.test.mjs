@@ -236,10 +236,7 @@ test(
   async () => {
     const source = await readFile(daemonPath, 'utf8');
 
-    assert.match(
-      source,
-      /\['high_risk_pr_approve', actionHighRiskPrApprove\]/
-    );
+    assert.match(source, /\['high_risk_pr_approve', actionHighRiskPrApprove\]/);
     assert.match(
       source,
       /HIGH_RISK_APPROVAL_CONFIRMATION = 'CHAT_PRODUCTION_APPROVED'/
