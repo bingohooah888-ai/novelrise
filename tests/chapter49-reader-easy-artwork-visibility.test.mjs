@@ -4,7 +4,7 @@ import test from "node:test";
 
 const styles = await readFile("novelight-scout-record.css", "utf8");
 
-test("Reader Easy artwork emphasis does not clear the sprite background image", () => {
+test("Reader Easy artwork keeps its sprite background image", () => {
   const rule = styles.match(
     /body\.novelight-page-scout-record \.badge-icon-artwork\{([\s\S]*?)\n\}/u,
   );
