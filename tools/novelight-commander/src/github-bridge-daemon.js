@@ -11,7 +11,7 @@ const CONTROL_TITLE = '[NOVELIGHT Commander] Local Bridge';
 const CONTROL_MARKER = 'NOVELIGHT_COMMANDER_CONTROL_V1';
 const REQUEST_PREFIX = 'NOVELIGHT_COMMANDER_REQUEST ';
 const RESULT_PREFIX = 'NOVELIGHT_COMMANDER_RESULT_V1';
-const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$/;
+const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9][A-Za-z0-9_-]{2,63}$/;
 const MAX_OUTPUT = 24000;
 const MAX_EPISODES = 500;
 const NPM_COMMAND = process.platform === 'win32' ? 'npm.cmd' : 'npm';
