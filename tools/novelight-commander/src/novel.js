@@ -122,10 +122,7 @@ function alphapolisRoot(rawUrl) {
   return match ? u.origin + "/novel/" + match[1] + "/" + match[2] : null;
 }
 
-async function alphapolisIndex(rawUrl) {
-  const root = alphapolisRoot(rawUrl);
-  if (!root) throw new Error("Unsupported Alphapolis URL.");
-  const { html } = await fetchHtml(root, { referer: "https://www.alphapolis.co.jp/" });
+function parseAlphapolisIndexHtml(html, root) {
   const $ = cheerio.load(html);
   const title =
     clean($("h1.title").first().text()) ||
@@ -139,13 +136,13 @@ async function alphapolisIndex(rawUrl) {
     clean($('[class*="abstract"]').first().text()) ||
     clean($('meta[property="og:description"]').attr("content")) ||
     clean($('meta[name="description"]').attr("content"));
+
   const rootUrl = new URL(root);
   const prefix = rootUrl.pathname.replace(/\/$/, "") + "/episode/";
-  const episodeAnchors = $(".episode a[href]");
   const seen = new Set();
   const episodes = [];
-  episodeAnchors.each((_, element) => {
-    const href = $(element).attr("href");
+
+  const addEpisode = (href, label = "") => {
     if (!href) return;
     let absolute;
     try {
@@ -157,58 +154,181 @@ async function alphapolisIndex(rawUrl) {
     if (
       u.hostname !== rootUrl.hostname ||
       !u.pathname.startsWith(prefix) ||
-      !/\/episode\/\d+\/?$/.test(u.pathname) ||
-      seen.has(absolute)
+      !/\/episode\/\d+\/?$/.test(u.pathname)
     ) {
       return;
     }
-    seen.add(absolute);
-    episodes.push({ url: absolute, label: clean($(element).text()) });
-  });
-  if (!episodes.length) {
-    const fallback = uniqueLinks($, root, href => {
-      const u = new URL(href);
-      return (
-        u.hostname === rootUrl.hostname &&
-        u.pathname.startsWith(prefix) &&
-        /\/episode\/\d+\/?$/.test(u.pathname)
-      );
-    });
-    episodes.push(...fallback);
-  }
-  if (!episodes.length) {
-    throw new Error(
-      "Alphapolis episode list was not found. The work may be unavailable, paid/rental-only, age-gated, or the site layout may have changed."
-    );
-  }
-  return {
-    site: "alphapolis",
-    workUrl: root,
-    title,
-    author,
-    synopsis,
-    episodes
+    const normalized = u.origin + u.pathname.replace(/\/$/, "");
+    if (seen.has(normalized)) return;
+    seen.add(normalized);
+    episodes.push({ url: normalized, label: clean(label) });
   };
+
+  $(".episode a[href], a[href*=\\"/episode/\\"]").each((_, element) => {
+    addEpisode($(element).attr("href"), $(element).text());
+  });
+
+  if (!episodes.length) {
+    const escapedPath = rootUrl.pathname
+      .replace(/\/$/, "")
+      .replace(/[.*+?^$(){}|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(
+      escapedPath + "/episode/(\\d+)",
+      "g"
+    );
+    for (const match of String(html || "").matchAll(pattern)) {
+      addEpisode(rootUrl.origin + match[0]);
+    }
+  }
+
+  return { title, author, synopsis, episodes };
 }
 
-async function alphapolisEpisode(url, workUrl) {
-  const { html, url: finalUrl } = await fetchHtml(url, {
-    referer: workUrl || alphapolisRoot(url) || "https://www.alphapolis.co.jp/"
-  });
+function parseAlphapolisEpisodeHtml(html, finalUrl) {
   const $ = cheerio.load(html);
   const title =
     clean($(".episode-title").first().text()) ||
     clean($('[class*="episode"][class*="title"]').first().text()) ||
     clean($("h1").first().text()) ||
     clean($("h2").first().text());
-  const body = clean($("#novelBody").first().text());
-  if (!body) {
-    throw new Error(
-      "Alphapolis body not found. The episode may be unavailable, paid/rental-only, age-gated, or the site layout may have changed: " +
-        finalUrl
-    );
+
+  let body = "";
+  for (const selector of [
+    "#novelBody",
+    "#novel_body",
+    '[itemprop="articleBody"]',
+    '[class*="novel-body"]',
+    '[class*="novelBody"]',
+    '[class*="episode-body"]',
+    '[class*="episodeBody"]',
+    '[data-testid*="novel"]',
+    '[data-testid*="episode"]'
+  ]) {
+    const candidates = $(selector)
+      .toArray()
+      .map(node => clean($(node).text()))
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length);
+    if (candidates[0] && candidates[0].length > body.length) {
+      body = candidates[0];
+    }
   }
+
   return { url: finalUrl, title, body };
+}
+
+async function renderAlphapolisHtml(url, ready) {
+  let headlessError = null;
+  try {
+    const rendered = await dumpDomWithBrowser(url);
+    if (!ready || ready(rendered)) return rendered;
+  } catch (error) {
+    headlessError = error;
+  }
+
+  let session = null;
+  try {
+    session = await openVisibleBrowserSession(url);
+    const deadline = Date.now() + 18000;
+    let lastHtml = "";
+    while (Date.now() < deadline) {
+      await sleep(lastHtml ? 700 : 1400);
+      lastHtml = await readDomThroughCdp(session.webSocketUrl);
+      if (!ready || ready(lastHtml)) return lastHtml;
+    }
+    if (lastHtml) return lastHtml;
+  } finally {
+    await closeVisibleBrowserSession(session);
+  }
+
+  if (headlessError) throw headlessError;
+  throw new Error("Alphapolis browser render returned an empty DOM.");
+}
+
+async function alphapolisIndex(rawUrl) {
+  const root = alphapolisRoot(rawUrl);
+  if (!root) throw new Error("Unsupported Alphapolis URL.");
+
+  let staticError = null;
+  try {
+    const { html } = await fetchHtml(root, {
+      referer: "https://www.alphapolis.co.jp/"
+    });
+    const parsed = parseAlphapolisIndexHtml(html, root);
+    if (parsed.episodes.length) {
+      return {
+        site: "alphapolis",
+        workUrl: root,
+        ...parsed
+      };
+    }
+  } catch (error) {
+    staticError = error;
+  }
+
+  let renderedError = null;
+  try {
+    const renderedHtml = await renderAlphapolisHtml(
+      root,
+      html => parseAlphapolisIndexHtml(html, root).episodes.length > 0
+    );
+    const parsed = parseAlphapolisIndexHtml(renderedHtml, root);
+    if (parsed.episodes.length) {
+      return {
+        site: "alphapolis",
+        workUrl: root,
+        ...parsed
+      };
+    }
+  } catch (error) {
+    renderedError = error;
+  }
+
+  const reasons = [staticError, renderedError]
+    .filter(Boolean)
+    .map(error => (error instanceof Error ? error.message : String(error)))
+    .join(" | ");
+
+  throw new Error(
+    "Alphapolis episode list was not found after static and browser-rendered reads." +
+      (reasons ? " " + reasons : "")
+  );
+}
+
+async function alphapolisEpisode(url, workUrl) {
+  let staticError = null;
+  try {
+    const { html, url: finalUrl } = await fetchHtml(url, {
+      referer: workUrl || alphapolisRoot(url) || "https://www.alphapolis.co.jp/"
+    });
+    const parsed = parseAlphapolisEpisodeHtml(html, finalUrl);
+    if (parsed.body.length >= 80) return parsed;
+  } catch (error) {
+    staticError = error;
+  }
+
+  let renderedError = null;
+  try {
+    const renderedHtml = await renderAlphapolisHtml(
+      url,
+      html => parseAlphapolisEpisodeHtml(html, url).body.length >= 80
+    );
+    const parsed = parseAlphapolisEpisodeHtml(renderedHtml, url);
+    if (parsed.body.length >= 80) return parsed;
+  } catch (error) {
+    renderedError = error;
+  }
+
+  const reasons = [staticError, renderedError]
+    .filter(Boolean)
+    .map(error => (error instanceof Error ? error.message : String(error)))
+    .join(" | ");
+
+  throw new Error(
+    "Alphapolis body not found after static and browser-rendered reads: " +
+      url +
+      (reasons ? " | " + reasons : "")
+  );
 }
 
 function caitaEpisodeUrl(rawUrl) {
