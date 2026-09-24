@@ -160,8 +160,10 @@ test('Commander Vercel login uses OAuth device flow without tokens', async () =>
   assert.match(source, /vercel_login_start/);
   assert.match(source, /vercel_login_info/);
   assert.match(source, /vercel_login_status/);
-  assert.match(source, /'login'/);
+  assert.match(source, /-- login/);
   assert.match(source, /'whoami'/);
+  assert.match(source, /windowsHide: false/);
+  assert.match(source, /browser_approval_required: true/);
   assert.match(source, /detached: true/);
   assert.doesNotMatch(source, /VERCEL_TOKEN/);
 });
