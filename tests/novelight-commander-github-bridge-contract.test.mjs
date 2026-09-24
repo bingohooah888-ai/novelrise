@@ -157,7 +157,7 @@ test(
 
     assert.match(
       source,
-      /\['production_mail_env_check', actionProductionMailEnvCheck\]/
+      /\['production_mail_env_check', actionProductionMailEnvCheck\]/,
     );
     assert.match(source, /RESEND_API_KEY/);
     assert.match(source, /resend_api_key_present:/);
@@ -165,7 +165,7 @@ test(
     assert.match(source, /--environment=production/);
     assert.match(source, /fs\.rm\(target\.candidate/);
     assert.doesNotMatch(source, /resend_api_key_value:\s*/);
-  }
+  },
 );
 
 test('Commander thumbnail transfer stages only canonical packs', async () => {
