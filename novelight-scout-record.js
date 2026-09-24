@@ -384,8 +384,9 @@
 
     const point = document.createElement('div');
     point.className = 'badge-point';
-    point.textContent =
-      Number(row.point_reward || 0) > 0
+    point.textContent = row.is_public
+      ? '装備中'
+      : Number(row.point_reward || 0) > 0
         ? `報酬 +${n(row.point_reward)} pt`
         : row.badge_category === 'author'
           ? '作者称号 / Point報酬なし'
@@ -745,6 +746,7 @@
         }
         visibility.dataset.public = String(next);
         visibility.textContent = next ? '装備を外す' : '装備称号にする';
+        renderBadges();
       } catch (error) {
         console.error(error);
         visibility.textContent = '称号の装備を変更できませんでした';
