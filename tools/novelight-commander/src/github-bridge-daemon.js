@@ -1379,6 +1379,26 @@ async function actionVercelLoginStart(request, config) {
   return ['vercel_login_started: true', output].join('\n');
 }
 
+async function actionVercelLoginInfo(request, config) {
+  ensureNoArgs(request.args);
+  const stdoutTarget = resolveDataPath(
+    config,
+    path.join('diagnostics', 'vercel-login.stdout.log')
+  );
+  const stderrTarget = resolveDataPath(
+    config,
+    path.join('diagnostics', 'vercel-login.stderr.log')
+  );
+  const stdout = await fs
+    .readFile(stdoutTarget.candidate, 'utf8')
+    .catch(() => '');
+  const stderr = await fs
+    .readFile(stderrTarget.candidate, 'utf8')
+    .catch(() => '');
+  const output = bounded((stdout + '\n' + stderr).trim(), 4000);
+  return output || 'vercel_login_output_pending: true';
+}
+
 async function actionVercelLoginStatus(request, config) {
   ensureNoArgs(request.args);
   const result = await runNpm(
@@ -1548,6 +1568,7 @@ const ACTIONS = new Map([
   ['thumbnail_register_production', actionThumbnailRegisterProduction],
   ['thumbnail_validate', actionThumbnailValidate],
   ['vercel_login_start', actionVercelLoginStart],
+  ['vercel_login_info', actionVercelLoginInfo],
   ['vercel_login_status', actionVercelLoginStatus],
   ['production_mail_runtime_check', actionProductionMailRuntimeCheck],
   ['production_mail_env_check', actionProductionMailEnvCheck],
