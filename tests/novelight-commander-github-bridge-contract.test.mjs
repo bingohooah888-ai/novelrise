@@ -36,6 +36,7 @@ test('Commander GitHub bridge has fixed actions', async () => {
     'thumbnail_production_readiness',
     'thumbnail_register_production',
     'thumbnail_validate',
+    'production_mail_runtime_check',
     'production_mail_env_check',
     'bridge_update'
   ];
@@ -148,6 +149,15 @@ test('Commander can source Production Supabase credential from Vercel', async ()
   assert.match(source, /SUPABASE_SECRET_KEY/);
   assert.match(source, /source: 'vercel-production-env'/);
   assert.match(source, /fs\.rm\(envTarget\.candidate/);
+});
+
+test('Commander mail runtime check is presence-only', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(source, /production_mail_runtime_check/);
+  assert.match(source, /release-mail-readiness/);
+  assert.match(source, /resend_api_key_present:/);
+  assert.match(source, /resend_api_key_value_exposed: false/);
 });
 
 test('Commander mail env check is presence-only', async () => {
