@@ -573,7 +573,7 @@
       selected: {},
       dirty: !current,
       renderSerial: 0,
-      openLayerType: AUTHOR_LAYER_TYPES[0]
+      openLayerType: ''
     };
     const currentKeys = Object.freeze({
       background: 'background_asset_id',
