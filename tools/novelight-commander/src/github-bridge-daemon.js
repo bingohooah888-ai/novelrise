@@ -1313,6 +1313,31 @@ async function actionThumbnailValidate(request, config) {
   );
 }
 
+async function actionProductionMailRuntimeCheck(request) {
+  ensureNoArgs(request.args);
+  const response = await globalThis.fetch(
+    'https://novelrise.vercel.app/api/release-mail-readiness',
+    { signal: AbortSignal.timeout(15000) }
+  );
+  const payload = await response.json().catch(() => null);
+  if (
+    !payload ||
+    payload.service !== 'beta-author-invite-mail' ||
+    typeof payload.configured !== 'boolean'
+  ) {
+    throw new Error(
+      'Production mail readiness endpoint returned an invalid response.'
+    );
+  }
+
+  return [
+    'production_runtime_reachable: true',
+    'http_status: ' + response.status,
+    'resend_api_key_present: ' + payload.configured,
+    'resend_api_key_value_exposed: false'
+  ].join('\n');
+}
+
 async function actionProductionMailEnvCheck(request, config) {
   ensureNoArgs(request.args);
   const target = resolveDataPath(
@@ -1441,6 +1466,7 @@ const ACTIONS = new Map([
   ['thumbnail_production_readiness', actionThumbnailProductionReadiness],
   ['thumbnail_register_production', actionThumbnailRegisterProduction],
   ['thumbnail_validate', actionThumbnailValidate],
+  ['production_mail_runtime_check', actionProductionMailRuntimeCheck],
   ['production_mail_env_check', actionProductionMailEnvCheck],
   ['bridge_update', actionBridgeUpdate]
 ]);
