@@ -113,6 +113,22 @@ test('Badge difficulty accordions and Reader catalog are live', () => {
     scoutCss,
     /body\.novelight-page-scout-record \.badge-point,[\s\S]*?color:#ffe082!important/u
   );
+  assert.match(
+    scoutCss,
+    /body\.novelight-page-scout-record \.badge-icon-artwork\{[\s\S]*?width:112px!important;[\s\S]*?margin:0 auto 14px!important/u
+  );
+  assert.match(
+    scoutCss,
+    /body\.novelight-page-scout-record \.badge-card h3\{[\s\S]*?font-size:18px!important/u
+  );
+  assert.match(
+    scoutCss,
+    /body\.novelight-page-scout-record \.badge-meta\{[\s\S]*?font-size:15px!important/u
+  );
+  assert.match(
+    scoutCss,
+    /body\.novelight-page-scout-record \.badge-point\{[\s\S]*?font-size:16px!important/u
+  );
 });
 
 test('Master Scout renders composite progress', () => {
