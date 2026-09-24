@@ -15,6 +15,14 @@ const blockedWriteRpcs = new Set([
 ]);
 
 async function suppressKnownWrites(page) {
+  await page.route('**/api/analytics-event', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '{"accepted":false,"recorded_count":0}'
+    });
+  });
+
   await page.route('**/rest/v1/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());

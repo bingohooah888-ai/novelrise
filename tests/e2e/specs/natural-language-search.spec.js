@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 async function installSearchStub(page) {
+  const analyticsCalls = [];
   await page.addInitScript(() => {
     globalThis.__NOVELIGHT_B24_CALLS__ = [];
   });
@@ -80,12 +81,23 @@ async function installSearchStub(page) {
         `
     });
   });
+
+  await page.route('**/api/analytics-event', async (route) => {
+    analyticsCalls.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '{"accepted":true,"recorded_count":2}'
+    });
+  });
+
+  return analyticsCalls;
 }
 
 test('natural-language search explains matches and keeps relevance separate', async ({
   page
 }) => {
-  await installSearchStub(page);
+  const analyticsCalls = await installSearchStub(page);
   await page.goto('/search.html');
 
   await expect(page.locator('#naturalModeButton')).toBeVisible();
@@ -113,7 +125,7 @@ test('natural-language search explains matches and keeps relevance separate', as
   );
   expect(neutralCalls.length).toBeGreaterThan(0);
   expect(
-    calls.some((call) => call.name === 'record_neutral_search_impressions')
+    analyticsCalls.some((call) => call.action === 'neutral-search-impressions')
   ).toBeTruthy();
   expect(
     calls.some((call) => call.name === 'novelight_trusted_discovery_feed')

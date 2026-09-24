@@ -11,7 +11,8 @@
   const THEME_STYLESHEET_PATH = 'novelight-theme.css';
   const PUBLIC_HEADER_STYLESHEET_PATH = 'novelight-header-light.css';
   const THUMBNAIL_RUNTIME_PATH = 'novelight-thumbnail-runtime.js';
-  const AUTHOR_STUDIO_SHELL_STYLESHEET_PATH = 'novelight-author-studio-shell.css';
+  const AUTHOR_STUDIO_SHELL_STYLESHEET_PATH =
+    'novelight-author-studio-shell.css';
   const AUTHOR_STUDIO_SHELL_RUNTIME_PATH = 'novelight-author-studio-shell.js';
   const AUTHOR_STUDIO_SHELL_PAGES = new Set([
     'post',
@@ -100,7 +101,9 @@
     try {
       config = JSON.parse(request.responseText);
     } catch {
-      throw new Error('CONFIG_DRIFT: Staging browser config is not valid JSON.');
+      throw new Error(
+        'CONFIG_DRIFT: Staging browser config is not valid JSON.'
+      );
     }
 
     return validateStagingBrowserConfig(config);
@@ -108,11 +111,16 @@
 
   function installPreviewSupabaseBootstrap() {
     if (!isVercelPreviewHost()) return;
-    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    if (
+      !window.supabase ||
+      typeof window.supabase.createClient !== 'function'
+    ) {
       throw new Error('CONFIG_DRIFT: Supabase browser library is unavailable.');
     }
 
-    const originalCreateClient = window.supabase.createClient.bind(window.supabase);
+    const originalCreateClient = window.supabase.createClient.bind(
+      window.supabase
+    );
     let cachedConfig = null;
 
     window.supabase.createClient = function (...args) {
@@ -129,14 +137,18 @@
 
   function currentPageSlug() {
     const file = window.location.pathname.split('/').pop() || 'index.html';
-    return file.replace(/\.html$/u, '').replace(/[^a-z0-9-]/giu, '-').toLowerCase();
+    return file
+      .replace(/\.html$/u, '')
+      .replace(/[^a-z0-9-]/giu, '-')
+      .toLowerCase();
   }
 
   function installAuthorDashboardShell() {
     if (currentPageSlug() !== 'mypage') return false;
 
     const main = document.querySelector('main');
-    if (!main || main.classList.contains('novelight-author-shell')) return false;
+    if (!main || main.classList.contains('novelight-author-shell'))
+      return false;
 
     const profilePanel = main.querySelector('.profile-panel');
     if (profilePanel && !profilePanel.id) profilePanel.id = 'profile';
@@ -213,12 +225,20 @@
   installAuthorStudioSharedShell();
 
   function publicHeaderCurrent(slug, target) {
-    if (target === 'discover' && ['search', 'novel', 'episode', 'author'].includes(slug)) {
+    if (
+      target === 'discover' &&
+      ['search', 'novel', 'episode', 'author'].includes(slug)
+    ) {
       return ' aria-current="page"';
     }
-    if (target === 'pricing' && slug === 'pricing') return ' aria-current="page"';
-    if (target === 'ranking' && slug === 'ranking') return ' aria-current="page"';
-    if (target === 'login' && ['login', 'forgot-password', 'reset-password'].includes(slug)) {
+    if (target === 'pricing' && slug === 'pricing')
+      return ' aria-current="page"';
+    if (target === 'ranking' && slug === 'ranking')
+      return ' aria-current="page"';
+    if (
+      target === 'login' &&
+      ['login', 'forgot-password', 'reset-password'].includes(slug)
+    ) {
       return ' aria-current="page"';
     }
     if (target === 'signup' && slug === 'signup') return ' aria-current="page"';
@@ -349,8 +369,10 @@
   installMobileMenuDismiss();
 
   function installOfficialThumbnailRuntime() {
-    if (!['index', 'search', 'ranking'].includes(currentPageSlug())) return false;
-    if (document.querySelector('script[data-novelight-thumbnail-runtime]')) return false;
+    if (!['index', 'search', 'ranking'].includes(currentPageSlug()))
+      return false;
+    if (document.querySelector('script[data-novelight-thumbnail-runtime]'))
+      return false;
     const script = document.createElement('script');
     script.src = THUMBNAIL_RUNTIME_PATH;
     script.defer = true;
@@ -362,7 +384,8 @@
   function installAdminThumbnailLink() {
     if (currentPageSlug() !== 'admin') return false;
     const actions = document.querySelector('.header-actions');
-    if (!actions || actions.querySelector('a[href="admin-thumbnails.html"]')) return false;
+    if (!actions || actions.querySelector('a[href="admin-thumbnails.html"]'))
+      return false;
     const link = document.createElement('a');
     link.className = 'ghost';
     link.href = 'admin-thumbnails.html';
@@ -452,7 +475,9 @@
 
   function getStoredTouch() {
     try {
-      const parsed = JSON.parse(safeStorageGet(window.localStorage, TRAFFIC_KEY) || 'null');
+      const parsed = JSON.parse(
+        safeStorageGet(window.localStorage, TRAFFIC_KEY) || 'null'
+      );
       if (parsed && typeof parsed.source === 'string') return parsed;
     } catch {
       // Ignore malformed local storage and replace it with a safe first touch.
@@ -509,22 +534,20 @@
       safeStorageSet(window.localStorage, TRAFFIC_KEY, JSON.stringify(stored));
     }
 
-    if (safeStorageGet(window.sessionStorage, TOUCH_SESSION_KEY) === '1') return;
+    if (safeStorageGet(window.sessionStorage, TOUCH_SESSION_KEY) === '1')
+      return;
 
-    void Promise.resolve(
-      client.rpc('record_acquisition_touch', {
-        p_visitor_token: getVisitorToken(),
-        p_source: touch.source,
-        p_medium: touch.medium,
-        p_campaign: touch.campaign,
-        p_content: touch.content,
-        p_landing_path: touch.landingPath,
-        p_referrer_host: touch.referrerHost
-      })
-    )
-      .then(({ error }) => {
-        if (!error) safeStorageSet(window.sessionStorage, TOUCH_SESSION_KEY, '1');
-        else console.error('acquisition touch failed', error);
+    void analyticsEvent(client, {
+      action: 'acquisition',
+      source: touch.source,
+      medium: touch.medium,
+      campaign: touch.campaign,
+      content: touch.content,
+      landing_path: touch.landingPath,
+      referrer_host: touch.referrerHost
+    })
+      .then(() => {
+        safeStorageSet(window.sessionStorage, TOUCH_SESSION_KEY, '1');
       })
       .catch((error) => console.error('acquisition touch failed', error));
   }
@@ -533,19 +556,35 @@
     return getStoredTouch()?.source || detectSource();
   }
 
+  async function analyticsEvent(client, payload) {
+    const headers = { 'Content-Type': 'application/json' };
+    try {
+      const { data } = await client.auth.getSession();
+      if (data?.session?.access_token) {
+        headers.Authorization = `Bearer ${data.session.access_token}`;
+      }
+    } catch (error) {
+      console.error('analytics session lookup failed', error);
+    }
+
+    const response = await fetch('/api/analytics-event', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok)
+      throw new Error(`Analytics request failed: ${response.status}`);
+    return response.json();
+  }
+
   async function recordVisit(client) {
     if (!client) return;
-    void Promise.resolve(
-      client.rpc('record_beta_visit', {
-        p_visitor_token: getVisitorToken(),
-        p_path: window.location.pathname.slice(0, 500) || '/',
-        p_source: storedSource()
-      })
-    )
-      .then(({ error }) => {
-        if (error) console.error('beta visit record failed', error);
-      })
-      .catch((error) => console.error('beta visit record failed', error));
+    void analyticsEvent(client, {
+      action: 'visit',
+      path: window.location.pathname.slice(0, 500) || '/',
+      source: storedSource()
+    }).catch((error) => console.error('beta visit record failed', error));
   }
 
   async function claimAcquisition(client) {
@@ -553,14 +592,8 @@
     try {
       const { data: authData } = await client.auth.getSession();
       if (!authData?.session) return false;
-      const { error } = await client.rpc('claim_user_acquisition', {
-        p_visitor_token: getVisitorToken()
-      });
-      if (error) {
-        console.error('acquisition claim failed', error);
-        return false;
-      }
-      return true;
+      const result = await analyticsEvent(client, { action: 'claim' });
+      return result?.accepted === true;
     } catch (error) {
       console.error('acquisition claim failed', error);
       return false;
@@ -570,21 +603,45 @@
   async function recordJourney(client, eventType, novelId, episodeId = null) {
     if (!client || !novelId) return false;
     try {
-      const { data, error } = await client.rpc('record_reader_journey_event', {
-        p_event_type: eventType,
-        p_novel_id: String(novelId),
-        p_episode_id: episodeId == null ? null : String(episodeId),
-        p_visitor_token: getVisitorToken(),
-        p_source: storedSource()
+      const result = await analyticsEvent(client, {
+        action: 'journey',
+        event_type: eventType,
+        novel_id: String(novelId),
+        episode_id: episodeId == null ? null : String(episodeId),
+        source: storedSource()
       });
-      if (error) {
-        console.error('reader journey record failed', error);
-        return false;
-      }
-      return data === true;
+      return result?.accepted === true;
     } catch (error) {
       console.error('reader journey record failed', error);
       return false;
+    }
+  }
+
+  async function recordEpisodePv(client, episodeId) {
+    if (!client || !episodeId) return false;
+    try {
+      const result = await analyticsEvent(client, {
+        action: 'episode-pv',
+        episode_id: String(episodeId)
+      });
+      return result?.accepted === true;
+    } catch (error) {
+      console.error('pv increment failed', error);
+      return false;
+    }
+  }
+
+  async function recordNeutralSearchImpressions(client, novelIds) {
+    if (!client || !Array.isArray(novelIds) || novelIds.length === 0) return 0;
+    try {
+      const result = await analyticsEvent(client, {
+        action: 'neutral-search-impressions',
+        novel_ids: novelIds.map(String)
+      });
+      return Number(result?.recorded_count) || 0;
+    } catch (error) {
+      console.error('neutral search telemetry failed', error);
+      return 0;
     }
   }
 
@@ -594,6 +651,8 @@
     recordVisit,
     claimAcquisition,
     recordJourney,
+    recordEpisodePv,
+    recordNeutralSearchImpressions,
     storedSource,
     syncAuthHeader,
     installPublicHeader,

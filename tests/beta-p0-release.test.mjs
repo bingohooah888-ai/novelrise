@@ -83,17 +83,27 @@ test('moderation route is structured and private', async () => {
 });
 
 test('beta-start attribution, revisit, Founding Authors, and subscription ledgers exist', async () => {
-  const [client, migration, foundingMigration, webhook] = await Promise.all([
-    read('novelight-client.js'),
-    read('supabase/migrations/20260823170000_beta_launch_data_foundations.sql'),
-    read('supabase/migrations/20260920122000_founding_beta_qualifications.sql'),
-    read('api/stripe-webhook.js')
-  ]);
+  const [client, analyticsApi, migration, foundingMigration, webhook] =
+    await Promise.all([
+      read('novelight-client.js'),
+      read('api/analytics-event.js'),
+      read(
+        'supabase/migrations/20260823170000_beta_launch_data_foundations.sql'
+      ),
+      read(
+        'supabase/migrations/20260920122000_founding_beta_qualifications.sql'
+      ),
+      read('api/stripe-webhook.js')
+    ]);
   assert.match(client, /utm_source/);
-  assert.match(client, /record_acquisition_touch/);
-  assert.match(client, /claim_user_acquisition/);
-  assert.match(client, /record_beta_visit/);
-  assert.match(client, /record_reader_journey_event/);
+  assert.match(client, /\/api\/analytics-event/);
+  assert.match(client, /action: 'acquisition'/);
+  assert.match(client, /action: 'visit'/);
+  assert.match(client, /action: 'journey'/);
+  assert.match(analyticsApi, /record_acquisition_touch/);
+  assert.match(analyticsApi, /claim_user_acquisition/);
+  assert.match(analyticsApi, /record_beta_visit/);
+  assert.match(analyticsApi, /record_reader_journey_event/);
   assert.match(migration, /create table public\.acquisition_touches/);
   assert.match(migration, /create table public\.beta_activity_days/);
   assert.match(migration, /create table public\.reader_journey_events/);
@@ -166,7 +176,7 @@ test('all exposed beta search sorts preserve impression data', async () => {
     /s==='recommended'\?await recommended\(k,g,current\):await neutral\(k,g,s,current(?:,false)?\)/
   );
   assert.match(search, /record_trusted_allocation_receipts/);
-  assert.match(search, /record_neutral_search_impressions/);
+  assert.match(search, /recordNeutralSearchImpressions/);
   assert.match(migration, /search_results/);
 });
 

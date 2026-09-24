@@ -19,6 +19,8 @@ echo '::endgroup::'
 echo '::group::Install minimal Supabase auth compatibility fixture'
 "${REPLAY[@]}" <<'SQL'
 create schema if not exists auth;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 do $$
 begin
@@ -911,10 +913,23 @@ echo '::group::Verify beta bulk episode import behavior'
 echo '::endgroup::'
 
 echo '::group::Verify beta bulk episode import rollback and reapply'
+"${REPLAY[@]}" -f supabase/rollback/20260924091509_harden_bulk_import_and_analytics_abuse_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260921120552_bulk_episode_import_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260921120552_bulk_episode_import_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260921120552_bulk_episode_import.sql
 "${REPLAY[@]}" -f supabase/checks/20260921120552_bulk_episode_import_postcheck.sql
+echo '::endgroup::'
+
+echo '::group::Verify AUDIT-004/005 abuse controls, rollback and reapply'
+"${REPLAY[@]}" -f supabase/checks/20260924091509_harden_bulk_import_and_analytics_abuse_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260924091509_harden_bulk_import_and_analytics_abuse.sql
+"${REPLAY[@]}" -f supabase/checks/20260924091509_harden_bulk_import_and_analytics_abuse_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/audit-004-005-abuse-controls.sql
+PGDATABASE="$replay_db" bash tests/rls/bulk-import-abuse-concurrency.sh
+"${REPLAY[@]}" -f supabase/rollback/20260924091509_harden_bulk_import_and_analytics_abuse_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260924091509_harden_bulk_import_and_analytics_abuse_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260924091509_harden_bulk_import_and_analytics_abuse.sql
+"${REPLAY[@]}" -f supabase/checks/20260924091509_harden_bulk_import_and_analytics_abuse_postcheck.sql
 echo '::endgroup::'
 echo '::group::Verify secure beta-author invite identity linkage'
 "${REPLAY[@]}" -f supabase/checks/20260923064500_secure_beta_author_invites_precheck.sql
