@@ -32,7 +32,7 @@ test('target creator pages share one Author Studio presentation layer', () => {
 });
 
 test('shared typography follows the SCOUT RECORD readability scale', () => {
-  assert.match(styles, /font-size:\s*clamp\(34px,\s*4vw,\s*48px\)/u);
+  assert.match(styles, /font-size:\s*clamp\(32px,\s*4vw,\s*52px\)/u);
   assert.match(styles, /font-size:\s*18px/u);
   assert.match(styles, /font-size:\s*28px/u);
   assert.match(styles, /font-size:\s*16px/u);
