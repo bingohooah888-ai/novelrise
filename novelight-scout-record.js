@@ -24,6 +24,9 @@
     { tier: 2, level: 'Lv.11–20', name: 'VESPER' },
     { tier: 3, level: 'Lv.21–30', name: 'UMBRA' }
   ];
+  const workRankNames = ['', 'EMBER', 'SPARK', 'GLOW', 'BEACON', 'STAR', 'NOVA'];
+  const workRankName = (value) =>
+    workRankNames[Math.max(1, Math.min(6, Number(value || 1)))] || 'EMBER';
   const categoryLabels = {
     reader: '読者',
     author: '作者',
@@ -667,7 +670,7 @@
       const title = document.createElement('b');
       title.textContent = row.novel_title || '現在表示できない作品';
       const meta = document.createElement('small');
-      meta.textContent = `${row.seed_type || 'SEED'} · 送信時 Rank ${n(row.rank_at_seed)} → 最高 Rank ${n(row.highest_rank_seen)}`;
+      meta.textContent = `${row.seed_type || 'SEED'} · 送信時 ${workRankName(row.rank_at_seed)} → 最高 ${workRankName(row.highest_rank_seen)}`;
       copy.append(title, meta);
       const value = document.createElement('strong');
       value.textContent =
