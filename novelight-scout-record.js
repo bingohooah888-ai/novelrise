@@ -31,44 +31,38 @@
     comment_posted: 'コメント'
   };
   const badgeArtworkPaths = {
-    limited_founding_author: 'assets/founding-authors-badge-2026.png'
+    limited_founding_author: 'assets/founding-authors-badge-2026.png',
+    reader_read_001: 'assets/scout-reader-easy/reader_read_001.png',
+    reader_read_005: 'assets/scout-reader-easy/reader_read_005.png',
+    reader_read_010: 'assets/scout-reader-easy/reader_read_010.png',
+    reader_read_025: 'assets/scout-reader-easy/reader_read_025.png',
+    reader_rating_001: 'assets/scout-reader-easy/reader_rating_001.png',
+    reader_rating_005: 'assets/scout-reader-easy/reader_rating_005.png',
+    reader_rating_010: 'assets/scout-reader-easy/reader_rating_010.png',
+    reader_comment_001: 'assets/scout-reader-easy/reader_comment_001.png',
+    reader_comment_005: 'assets/scout-reader-easy/reader_comment_005.png',
+    reader_comment_010: 'assets/scout-reader-easy/reader_comment_010.png',
+    reader_seed_001: 'assets/scout-reader-easy/reader_seed_001.png',
+    reader_seed_003: 'assets/scout-reader-easy/reader_seed_003.png',
+    reader_seed_005: 'assets/scout-reader-easy/reader_seed_005.png',
+    reader_seed_010: 'assets/scout-reader-easy/reader_seed_010.png',
+    reader_bronze_seed_001: 'assets/scout-reader-easy/reader_bronze_seed_001.png',
+    reader_silver_seed_001: 'assets/scout-reader-easy/reader_silver_seed_001.png',
+    reader_gold_seed_001: 'assets/scout-reader-easy/reader_gold_seed_001.png',
+    reader_discovery_plus2_001: 'assets/scout-reader-easy/reader_discovery_plus2_001.png',
+    reader_discovery_plus2_002: 'assets/scout-reader-easy/reader_discovery_plus2_002.png',
+    reader_discovery_plus2_003: 'assets/scout-reader-easy/reader_discovery_plus2_003.png',
+    reader_new_author_005: 'assets/scout-reader-easy/reader_new_author_005.png',
+    reader_new_author_010: 'assets/scout-reader-easy/reader_new_author_010.png',
+    reader_genre_003: 'assets/scout-reader-easy/reader_genre_003.png',
+    reader_genre_005: 'assets/scout-reader-easy/reader_genre_005.png',
+    reader_new_work_005: 'assets/scout-reader-easy/reader_new_work_005.png',
+    reader_low_rank_005: 'assets/scout-reader-easy/reader_low_rank_005.png',
+    reader_level_005: 'assets/scout-reader-easy/reader_level_005.png',
+    reader_level_010: 'assets/scout-reader-easy/reader_level_010.png',
+    reader_level_020: 'assets/scout-reader-easy/reader_level_020.png',
+    reader_active_days_007: 'assets/scout-reader-easy/reader_active_days_007.png'
   };
-
-  const easyReaderBadgeArtworkIds = [
-    'reader_read_001',
-    'reader_read_005',
-    'reader_read_010',
-    'reader_read_025',
-    'reader_rating_001',
-    'reader_rating_005',
-    'reader_rating_010',
-    'reader_comment_001',
-    'reader_comment_005',
-    'reader_comment_010',
-    'reader_seed_001',
-    'reader_seed_003',
-    'reader_seed_005',
-    'reader_seed_010',
-    'reader_bronze_seed_001',
-    'reader_silver_seed_001',
-    'reader_gold_seed_001',
-    'reader_discovery_plus2_001',
-    'reader_discovery_plus2_002',
-    'reader_discovery_plus2_003',
-    'reader_new_author_005',
-    'reader_new_author_010',
-    'reader_genre_003',
-    'reader_genre_005',
-    'reader_new_work_005',
-    'reader_low_rank_005',
-    'reader_level_005',
-    'reader_level_010',
-    'reader_level_020',
-    'reader_active_days_007',
-  ];
-  const easyReaderBadgeSpriteIndexes = new Map(
-    easyReaderBadgeArtworkIds.map((badgeId, index) => [badgeId, index])
-  );
 
   let badgeRows = [];
   let badgeCategory = 'all';
@@ -233,32 +227,9 @@
     return `Founding Author #${String(foundingNumber).padStart(3, '0')}`;
   }
 
-  function badgeSpritePosition(row) {
-    const index = easyReaderBadgeSpriteIndexes.get(row.badge_id);
-    if (!Number.isInteger(index)) return null;
-    return {
-      x: (index % 6) * 20,
-      y: Math.floor(index / 6) * 25
-    };
-  }
-
-  function applyBadgeSprite(target, row) {
-    const position = badgeSpritePosition(row);
-    if (!position) return false;
-    target.style.setProperty('--badge-sprite-x', `${position.x}%`);
-    target.style.setProperty('--badge-sprite-y', `${position.y}%`);
-    return true;
-  }
-
   function createBadgeIcon(row) {
     const icon = document.createElement('div');
     icon.className = 'badge-icon';
-
-    if (applyBadgeSprite(icon, row)) {
-      icon.classList.add('badge-icon-artwork', 'badge-icon-sprite');
-      icon.setAttribute('aria-hidden', 'true');
-      return icon;
-    }
 
     const artworkPath = badgeArtworkPaths[row.badge_id];
     if (!artworkPath) {
@@ -281,26 +252,15 @@
     const image = document.getElementById('badgeDialogArtworkImage');
     if (!host || !image) return;
 
-    host.classList.remove('badge-dialog-sprite');
-    host.style.removeProperty('--badge-sprite-x');
-    host.style.removeProperty('--badge-sprite-y');
-    host.removeAttribute('aria-label');
     image.removeAttribute('src');
     image.alt = '';
-
-    if (applyBadgeSprite(host, row)) {
-      host.hidden = false;
-      host.classList.add('badge-dialog-sprite');
-      host.setAttribute('aria-label', `${badgeDisplayName(row)} バッジ`);
-      return;
-    }
 
     const artworkPath = badgeArtworkPaths[row.badge_id];
     host.hidden = !artworkPath;
     if (!artworkPath) return;
 
     image.src = artworkPath;
-    image.alt = `${badgeDisplayName(row)} バッジ`;
+    image.alt = `${badgeDisplayName(row)} 称号`;
   }
 
   const badgeGroupDefinitions = [
