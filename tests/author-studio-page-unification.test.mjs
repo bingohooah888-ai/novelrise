@@ -11,7 +11,7 @@ const pagePaths = [
   'account-settings.html'
 ];
 
-const pages = await Promise.all(pagePaths.map(path => readFile(path, 'utf8')));
+const pages = await Promise.all(\n  pagePaths.map((path) => readFile(path, 'utf8'))\n);
 const styles = await readFile('novelight-author-studio-pages.css', 'utf8');
 
 test('target creator pages share the Author Studio presentation layer', () => {
