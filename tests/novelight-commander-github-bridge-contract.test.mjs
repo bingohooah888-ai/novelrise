@@ -37,6 +37,7 @@ test('Commander GitHub bridge has fixed actions', async () => {
     'thumbnail_register_production',
     'thumbnail_validate',
     'vercel_login_start',
+    'vercel_login_info',
     'vercel_login_status',
     'production_mail_runtime_check',
     'production_mail_env_check',
@@ -157,6 +158,7 @@ test('Commander Vercel login uses OAuth device flow without tokens', async () =>
   const source = await readFile(daemonPath, 'utf8');
 
   assert.match(source, /vercel_login_start/);
+  assert.match(source, /vercel_login_info/);
   assert.match(source, /vercel_login_status/);
   assert.match(source, /'login'/);
   assert.match(source, /'whoami'/);
