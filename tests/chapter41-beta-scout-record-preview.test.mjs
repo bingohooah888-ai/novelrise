@@ -46,7 +46,7 @@ test('SCOUT RECORD uses Author Studio shell and full beta information architectu
   assert.match(scout, /novelight-scout-record\.css/u);
   assert.match(scout, /novelight-scout-record\.js/u);
   assert.match(scout, /Rank Path/u);
-  assert.match(scout, /Badge Collection/u);
+  assert.match(scout, /称号コレクション/u);
   assert.match(scout, /data-badge-category="reader"/u);
   assert.match(scout, /data-badge-category="author"/u);
   assert.match(scout, /data-badge-category="limited"/u);
@@ -72,7 +72,7 @@ test('SCOUT RECORD loads owner progression, badge progress and visibility throug
   assert.doesNotMatch(scoutJs, /\.from\(['"]seed_discovery_state/u);
 });
 
-test('Badge UI includes percent + meter and mobile two-column grid', () => {
+test('Title UI includes percent + meter and mobile two-column grid', () => {
   assert.match(scoutCss, /\.badge-progress/u);
   assert.match(scoutJs, /toFixed\(0\).*%/u);
   assert.match(scoutJs, /progressBar\.style\.width/u);
@@ -82,7 +82,7 @@ test('Badge UI includes percent + meter and mobile two-column grid', () => {
   );
 });
 
-test('Badge difficulty accordions and Reader catalog are live', () => {
+test('Title difficulty accordions and Reader catalog are live', () => {
   assert.match(scout, /<details class="badge-group" data-badge-group="easy">/u);
   assert.doesNotMatch(scout, /data-badge-group="easy" open/u);
   assert.match(scout, /data-badge-group="normal"/u);
