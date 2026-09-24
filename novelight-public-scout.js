@@ -52,7 +52,7 @@
           </div>
           <div class="public-scout-rank">
             <div class="public-scout-emblem">${esc(rankNames[tier].slice(0, 1))}</div>
-            <strong>${esc(rankNames[tier])}</strong>
+            <strong>SCOUT RANK — ${esc(rankNames[tier])}</strong>
           </div>
         </div>
         <div class="public-scout-summary">
