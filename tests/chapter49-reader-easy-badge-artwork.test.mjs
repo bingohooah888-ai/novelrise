@@ -36,7 +36,7 @@ const expectedEasyIds = [
   'reader_level_005',
   'reader_level_010',
   'reader_level_020',
-  'reader_active_days_007',
+  'reader_active_days_007'
 ];
 
 function readUint24Le(buffer, offset) {
