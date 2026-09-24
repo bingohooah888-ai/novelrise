@@ -51,6 +51,7 @@ test('Commander GitHub bridge has fixed actions', async () => {
     'vercel_login_status',
     'production_mail_runtime_check',
     'production_mail_env_check',
+    'high_risk_pr_approve',
     'bridge_update'
   ];
 
@@ -228,6 +229,22 @@ test('Commander thumbnail transfer stages only canonical packs', async () => {
   assert.match(source, /Transfer staging requires a clean local working tree/);
   assert.match(source, /'worktree', 'add'/);
   assert.match(source, /'push', 'origin'/);
+});
+
+
+test('Commander high-risk approval bridge is exact-head and fixed-body only', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(source, /\['high_risk_pr_approve', actionHighRiskPrApprove\]/);
+  assert.match(source, /HIGH_RISK_APPROVAL_CONFIRMATION = 'CHAT_PRODUCTION_APPROVED'/);
+  assert.match(source, /pull\?\.base\?\.ref !== 'main'/);
+  assert.match(source, /pull\?\.head\?\.repo\?\.full_name !== expectedRepo/);
+  assert.match(source, /String\(pull\?\.head\?\.sha \|\| ''\)\.toLowerCase\(\) !== headSha/);
+  assert.match(source, /highRiskApprovalChallenge\(pr, headSha\)/);
+  assert.match(source, /'NOVELIGHT_HIGH_RISK_APPROVE ' \+/);
+  assert.match(source, /comment\?\.author_association === 'OWNER'/);
+  assert.doesNotMatch(source, /request\.args\.body/);
+  assert.doesNotMatch(source, /request\.args\.comment/);
 });
 
 test('Commander package checks the bridge daemon', async () => {
