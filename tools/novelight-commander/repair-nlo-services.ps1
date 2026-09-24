@@ -12,6 +12,8 @@ $TunnelKeyPath = Join-Path $RuntimeRoot "control-plane-key.dpapi"
 $BridgeRunner = Join-Path $Here "run-github-bridge.ps1"
 $TunnelInstaller = Join-Path $Here "install-openai-tunnel-autostart.ps1"
 $WatchdogLog = Join-Path $RuntimeRoot "watchdog.log"
+$BridgeHeartbeatPath = Join-Path $BridgeRoot "heartbeat.json"
+$BridgeHeartbeatMaxAgeSeconds = 120
 
 New-Item -ItemType Directory -Force -Path $RuntimeRoot | Out-Null
 
@@ -24,8 +26,34 @@ function Get-ProcessCount([string]$Pattern) {
   return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { [string]$_.CommandLine -match $Pattern }).Count
 }
 
+function Get-FileAgeSeconds([string]$Path) {
+  if (-not (Test-Path $Path)) { return [double]::PositiveInfinity }
+  return ((Get-Date) - (Get-Item $Path).LastWriteTime).TotalSeconds
+}
+
 $BridgeDaemonCount = Get-ProcessCount "github-bridge-daemon[.]js"
 $BridgeRunnerCount = Get-ProcessCount "run-github-bridge[.]ps1"
+$BridgeHeartbeatAgeSeconds = Get-FileAgeSeconds $BridgeHeartbeatPath
+$BridgeHeartbeatStale = (
+  ($BridgeDaemonCount -gt 0 -or $BridgeRunnerCount -gt 0) -and
+  $BridgeHeartbeatAgeSeconds -gt $BridgeHeartbeatMaxAgeSeconds
+)
+
+if ($BridgeHeartbeatStale) {
+  Write-WatchdogLog ("GitHub Bridge heartbeat stale (" + [Math]::Round($BridgeHeartbeatAgeSeconds, 1) + "s); recycling bridge processes.")
+  $BridgeProcesses = @(
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+      Where-Object {
+        [string]$_.CommandLine -match "github-bridge-daemon[.]js|run-github-bridge[.]ps1"
+      }
+  )
+  foreach ($Process in $BridgeProcesses) {
+    Stop-Process -Id $Process.ProcessId -Force -ErrorAction SilentlyContinue
+  }
+  Start-Sleep -Seconds 1
+  $BridgeDaemonCount = Get-ProcessCount "github-bridge-daemon[.]js"
+  $BridgeRunnerCount = Get-ProcessCount "run-github-bridge[.]ps1"
+}
 
 if ($BridgeDaemonCount -eq 0 -and $BridgeRunnerCount -eq 0) {
   if ((Test-Path $ConfigPath) -and (Test-Path $BridgeTokenPath) -and (Test-Path $BridgeRunner)) {
@@ -48,7 +76,7 @@ $NloTunnelClientCount = @(
 ).Count
 $TunnelTask = Get-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
 
-if ($TunnelRunnerCount -eq 0 -and $NloTunnelClientCount -eq 0) {
+if ($TunnelRunnerCount -eq 0) {
   if (-not $TunnelTask -and (Test-Path $TunnelKeyPath) -and (Test-Path $TunnelInstaller)) {
     Write-WatchdogLog "Tunnel task missing; installing tunnel autostart."
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $TunnelInstaller *>> $WatchdogLog
@@ -103,6 +131,8 @@ $TunnelLog = Join-Path $RuntimeRoot "openai-tunnel.log"
 
 Write-Output ("bridge_daemon_processes: " + $BridgeDaemonCount)
 Write-Output ("bridge_supervisor_processes: " + $BridgeRunnerCount)
+Write-Output ("bridge_heartbeat_age_seconds: " + $(if ([double]::IsPositiveInfinity($BridgeHeartbeatAgeSeconds)) { "missing" } else { [Math]::Round($BridgeHeartbeatAgeSeconds, 1) }))
+Write-Output ("bridge_heartbeat_stale: " + $BridgeHeartbeatStale)
 Write-Output ("tunnel_supervisor_processes: " + $TunnelRunnerCount)
 Write-Output ("tunnel_client_processes: " + $TunnelClientCount)
 Write-Output ("nlo_tunnel_client_processes: " + $NloTunnelClientCount)
