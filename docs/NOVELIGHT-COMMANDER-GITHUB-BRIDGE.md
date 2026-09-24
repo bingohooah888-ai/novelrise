@@ -29,7 +29,7 @@ OWNERコメントは1行の固定prefix + JSONです。
 NOVELIGHT_COMMANDER_REQUEST {"version":1,"requestId":"cmdr-20260922T070500Z-a1b2c3d4","action":"doctor","args":{}}
 ```
 
-requestIdは再利用できません。daemonは処理済みrequestIdをローカルstateへ保持します。
+requestIdは再利用できません。形式は `cmdr-YYYYMMDDTHHMMSSZ-<suffix>` とし、suffixは3〜64文字の英数字・`_`・`-`を許可します。短い16進suffixだけでなく、`seed989-prod-health` のような用途が分かる識別子も受理します。daemonは処理済みrequestIdをローカルstateへ保持します。
 
 ## NLO可用性判定
 

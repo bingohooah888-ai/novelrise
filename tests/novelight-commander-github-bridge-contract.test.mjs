@@ -24,6 +24,15 @@ test('Commander GitHub bridge is owner scoped', async () => {
   assert.doesNotMatch(source, /request\.args\.command/);
 });
 
+test('Commander request ids allow descriptive suffixes without weakening the fixed prefix', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(
+    source,
+    /REQUEST_ID_RE = \/\^cmdr-\[0-9\]\{8\}T\[0-9\]\{6\}Z-\[A-Za-z0-9\]\[A-Za-z0-9_-\]\{2,63\}\$\//
+  );
+});
+
 test('Commander GitHub bridge has fixed actions', async () => {
   const source = await readFile(daemonPath, 'utf8');
   const actions = [
