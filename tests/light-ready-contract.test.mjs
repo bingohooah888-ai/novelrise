@@ -4,14 +4,14 @@ import test from 'node:test';
 
 const episodePost = await readFile('episode-post.html', 'utf8');
 
-test('LIGHT READY is scoped to draft first publication', () => {
-  assert.ok(episodePost.includes('LIGHT READY｜公開前チェック'));
+test('公開チェック is scoped to draft first publication', () => {
+  assert.ok(episodePost.includes('>公開チェック<'));
   assert.ok(episodePost.includes("novel.status!=='draft'"));
   assert.ok(episodePost.includes("novel?.status==='draft'&&episodeNumber!==1"));
   assert.ok(episodePost.includes('初回公開は第1話として登録してください。'));
 });
 
-test('LIGHT READY uses deterministic beta checks only', () => {
+test('公開チェック uses deterministic beta checks only', () => {
   assert.ok(episodePost.includes('novel?.title?.trim()'));
   assert.ok(episodePost.includes('novel?.genre?.trim()'));
   assert.ok(episodePost.includes('novel?.description?.trim()'));
@@ -28,7 +28,7 @@ test('LIGHT READY uses deterministic beta checks only', () => {
   assert.ok(episodePost.includes('作品の良し悪しは判定しません。'));
 });
 
-test('LIGHT READY preserves atomic publication contract', () => {
+test('公開チェック preserves atomic publication contract', () => {
   assert.ok(
     episodePost.includes("client.rpc('novelight_publish_episode_atomic'")
   );
@@ -36,7 +36,7 @@ test('LIGHT READY preserves atomic publication contract', () => {
   assert.ok(!episodePost.includes("client.from('novels').update"));
 });
 
-test('LIGHT READY stays advisory for metadata checks', () => {
+test('公開チェック stays advisory for metadata checks', () => {
   const renderStart = episodePost.indexOf('function renderLightReady()');
   const listenerStart = episodePost.indexOf(
     "['episodeNumber','title','content']"

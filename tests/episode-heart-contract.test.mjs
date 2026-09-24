@@ -98,9 +98,9 @@ test('episode hearts stay independent from evaluation and exposure systems', () 
   );
   assert.match(
     master,
-    /エピソードハート数を、作品Rank、LIGHT SEED、SCOUT RECORD、SCOUT EXP/
+    /エピソードハート数を、作品Rank、LIGHT SEED、SCOUT RECORD、Scout XP/
   );
-  assert.match(master, /ハートを押すだけでSCOUT EXPを付与しない/);
+  assert.match(master, /ハートを押すだけでScout XPを付与しない/);
 });
 
 test('reader UI exposes aggregate hearts, login gating, toggle, and safe rolling deployment fallback', () => {

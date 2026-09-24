@@ -205,7 +205,7 @@
       createElement(
         'p',
         '',
-        '読書記録・ジャンル傾向は公開プロフィールや作品Rank、LIGHT SEED、SCOUT EXP、作者向け分析には使用しません。'
+        '読書記録・ジャンル傾向は公開プロフィールや作品Rank、LIGHT SEED、Scout XP、作者向け分析には使用しません。'
       )
     );
     mount.append(privacy);

@@ -135,7 +135,7 @@ test('interaction preferences remain outside evaluation and exposure systems', (
   );
   assert.match(
     settingsPage,
-    /Rank、LIGHT SEED、SCOUT EXP、PV、お気に入り、露出配分には影響しません/u
+    /Rank、LIGHT SEED、Scout XP、PV、お気に入り、露出配分には影響しません/u
   );
 });
 
