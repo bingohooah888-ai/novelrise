@@ -1323,7 +1323,7 @@ async function actionProductionMailEnvCheck(request, config) {
   await fs.rm(target.candidate, { force: true });
 
   try {
-    const result = await runFixedCli(
+    let result = await runFixedCli(
       'vercel',
       [
         'env',
@@ -1334,6 +1334,22 @@ async function actionProductionMailEnvCheck(request, config) {
       ],
       { cwd: config.repoRoot, timeoutMs: 120000 }
     );
+    if (result.code !== 0) {
+      result = await runNpm(
+        [
+          'exec',
+          '--yes',
+          'vercel@latest',
+          '--',
+          'env',
+          'pull',
+          target.candidate,
+          '--environment=production',
+          '--yes'
+        ],
+        { cwd: config.repoRoot, timeoutMs: 180000 }
+      );
+    }
     if (result.code !== 0) {
       throw new Error(
         'Vercel CLI Production environment pull failed: ' +
