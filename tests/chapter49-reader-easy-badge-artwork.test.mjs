@@ -7,40 +7,44 @@ const styles = await readFile('novelight-scout-record.css', 'utf8');
 const sprite = await readFile('assets/scout-reader-easy-badges.webp');
 
 const expectedEasyIds = [
-  "reader_read_001",
-  "reader_read_005",
-  "reader_read_010",
-  "reader_read_025",
-  "reader_rating_001",
-  "reader_rating_005",
-  "reader_rating_010",
-  "reader_comment_001",
-  "reader_comment_005",
-  "reader_comment_010",
-  "reader_seed_001",
-  "reader_seed_003",
-  "reader_seed_005",
-  "reader_seed_010",
-  "reader_bronze_seed_001",
-  "reader_silver_seed_001",
-  "reader_gold_seed_001",
-  "reader_discovery_plus2_001",
-  "reader_discovery_plus2_002",
-  "reader_discovery_plus2_003",
-  "reader_new_author_005",
-  "reader_new_author_010",
-  "reader_genre_003",
-  "reader_genre_005",
-  "reader_new_work_005",
-  "reader_low_rank_005",
-  "reader_level_005",
-  "reader_level_010",
-  "reader_level_020",
-  "reader_active_days_007"
+  'reader_read_001',
+  'reader_read_005',
+  'reader_read_010',
+  'reader_read_025',
+  'reader_rating_001',
+  'reader_rating_005',
+  'reader_rating_010',
+  'reader_comment_001',
+  'reader_comment_005',
+  'reader_comment_010',
+  'reader_seed_001',
+  'reader_seed_003',
+  'reader_seed_005',
+  'reader_seed_010',
+  'reader_bronze_seed_001',
+  'reader_silver_seed_001',
+  'reader_gold_seed_001',
+  'reader_discovery_plus2_001',
+  'reader_discovery_plus2_002',
+  'reader_discovery_plus2_003',
+  'reader_new_author_005',
+  'reader_new_author_010',
+  'reader_genre_003',
+  'reader_genre_005',
+  'reader_new_work_005',
+  'reader_low_rank_005',
+  'reader_level_005',
+  'reader_level_010',
+  'reader_level_020',
+  'reader_active_days_007',
 ];
 
 function readUint24Le(buffer, offset) {
-  return buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16);
+  return (
+    buffer[offset] |
+    (buffer[offset + 1] << 8) |
+    (buffer[offset + 2] << 16)
+  );
 }
 
 test('Reader Easy Badge artwork maps all 30 canonical ids in order', () => {
@@ -48,7 +52,9 @@ test('Reader Easy Badge artwork maps all 30 canonical ids in order', () => {
     /const easyReaderBadgeArtworkIds = \[([\s\S]*?)\n  \];/u
   );
   assert.ok(match, 'Easy Reader Badge artwork id list is missing');
-  const actualIds = [...match[1].matchAll(/'([^']+)'/gu)].map((entry) => entry[1]);
+  const actualIds = [...match[1].matchAll(/'([^']+)'/gu)].map(
+    (entry) => entry[1]
+  );
   assert.deepEqual(actualIds, expectedEasyIds);
   assert.equal(new Set(actualIds).size, 30);
 });
