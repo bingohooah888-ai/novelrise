@@ -1313,6 +1313,45 @@ async function actionThumbnailValidate(request, config) {
   );
 }
 
+async function actionProductionMailEnvCheck(request, config) {
+  ensureNoArgs(request.args);
+  const target = resolveDataPath(
+    config,
+    path.join('diagnostics', '.vercel-production-mail-env-' + process.pid + '.tmp')
+  );
+  await fs.mkdir(path.dirname(target.candidate), { recursive: true });
+  await fs.rm(target.candidate, { force: true });
+
+  try {
+    const result = await runFixedCli(
+      'vercel',
+      [
+        'env',
+        'pull',
+        target.candidate,
+        '--environment=production',
+        '--yes'
+      ],
+      { cwd: config.repoRoot, timeoutMs: 120000 }
+    );
+    if (result.code !== 0) {
+      throw new Error(
+        'Vercel CLI Production environment pull failed: ' +
+          bounded(result.stderr || result.stdout, 1200)
+      );
+    }
+
+    const parsed = dotenv.parse(await fs.readFile(target.candidate, 'utf8'));
+    return [
+      'vercel_production_env_readable: true',
+      'resend_api_key_present: ' + Boolean(String(parsed.RESEND_API_KEY || '').trim()),
+      'resend_api_key_value_exposed: false'
+    ].join('\n');
+  } finally {
+    await fs.rm(target.candidate, { force: true }).catch(() => {});
+  }
+}
+
 async function actionBridgeUpdate(request, config) {
   ensureNoArgs(request.args);
 
@@ -1386,6 +1425,7 @@ const ACTIONS = new Map([
   ['thumbnail_production_readiness', actionThumbnailProductionReadiness],
   ['thumbnail_register_production', actionThumbnailRegisterProduction],
   ['thumbnail_validate', actionThumbnailValidate],
+  ['production_mail_env_check', actionProductionMailEnvCheck],
   ['bridge_update', actionBridgeUpdate]
 ]);
 
