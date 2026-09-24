@@ -1633,7 +1633,7 @@ function highRiskApprovalChallenge(prNumber, headSha) {
     .toUpperCase();
 }
 
-async function actionHighRiskPrApprove(request) {
+async function actionHighRiskPrApprove(request, config) {
   if (
     !exactKeys(request.args, [
       'pr',
@@ -1732,12 +1732,53 @@ async function actionHighRiskPrApprove(request) {
     ].join('\n');
   }
 
-  const created = await githubApi(
-    token,
-    'POST',
-    '/repos/' + OWNER + '/' + REPOSITORY + '/issues/' + pr + '/comments',
-    { body: approvalBody }
-  );
+  let created;
+  try {
+    created = await githubApi(
+      token,
+      'POST',
+      '/repos/' + OWNER + '/' + REPOSITORY + '/issues/' + pr + '/comments',
+      { body: approvalBody }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('GitHub API 403 POST')) throw error;
+
+    const identity = await run('gh', ['api', 'user', '--jq', '.login'], {
+      cwd: config.repoRoot,
+      timeoutMs: 15000
+    });
+    if (identity.code !== 0 || identity.stdout.trim() !== OWNER) {
+      throw new Error(
+        'High-risk approval fallback requires local gh auth as repository owner.'
+      );
+    }
+
+    const fallback = await run(
+      'gh',
+      [
+        'api',
+        '--method',
+        'POST',
+        'repos/' + OWNER + '/' + REPOSITORY + '/issues/' + pr + '/comments',
+        '-f',
+        'body=' + approvalBody
+      ],
+      { cwd: config.repoRoot, timeoutMs: 30000 }
+    );
+    if (fallback.code !== 0) {
+      throw new Error(
+        'High-risk approval gh fallback failed.\n' +
+          fallback.stderr
+      );
+    }
+    try {
+      created = JSON.parse(fallback.stdout);
+    } catch {
+      throw new Error('High-risk approval gh fallback returned invalid JSON.');
+    }
+  }
+
   if (
     created?.user?.login !== OWNER ||
     created?.author_association !== 'OWNER' ||
