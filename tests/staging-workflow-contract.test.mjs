@@ -45,7 +45,8 @@ test('authenticated smoke uses integrated SCOUT seed history', () => {
   assert.ok(scoutRecord.includes('id="seedHistoryTitle"'));
   assert.ok(scoutRecord.includes('id="seedHistoryList"'));
   assert.ok(!scoutRecord.includes(legacySeedLink));
-  assert.ok(scoutRecord.includes('data-badge-group="easy" open'));
+  assert.ok(scoutRecord.includes('<details class="badge-group" data-badge-group="easy">'));
+  assert.ok(!scoutRecord.includes('data-badge-group="easy" open'));
   assert.ok(scoutRecord.includes('data-badge-group="normal"'));
   assert.ok(scoutRecord.includes('data-badge-group="hard"'));
   assert.ok(!scoutRecord.includes('data-badge-difficulty='));
