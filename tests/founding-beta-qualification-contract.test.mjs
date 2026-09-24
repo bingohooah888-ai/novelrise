@@ -99,7 +99,7 @@ test('participation ledgers are private and ADMIN exposes the required aggregate
   assert.match(adminApi, /beta_author_founding_qualifications/);
   assert.match(adminHtml, /有効な先行登録者/);
   assert.match(adminHtml, /先行登録 最新番号/);
-  assert.match(adminHtml, /Founding称号対象/);
+  assert.match(adminHtml, /Founding Author称号対象/);
   assert.match(adminHtml, /DAWNBOUND対象/);
   assert.match(adminHtml, /Founding #/);
 });
