@@ -19,18 +19,21 @@
     'SERAPH',
     'LUMINARIS'
   ];
-  const rankBands = [
-    { tier: 1, level: 'Lv.1–10', name: 'NOCTIS' },
-    { tier: 2, level: 'Lv.11–20', name: 'VESPER' },
-    { tier: 3, level: 'Lv.21–30', name: 'UMBRA' }
-  ];
+  const rankBands = rankNames.slice(1).map((name, index) => ({
+    tier: index + 1,
+    level:
+      index < 3
+        ? `Lv.${index * 10 + 1}–${(index + 1) * 10}`
+        : '正式リリース後',
+    name
+  }));
   const workRankNames = ['', 'EMBER', 'SPARK', 'GLOW', 'BEACON', 'STAR', 'NOVA'];
   const workRankName = (value) =>
     workRankNames[Math.max(1, Math.min(6, Number(value || 1)))] || 'EMBER';
   const categoryLabels = {
-    reader: '読者',
-    author: '作者',
-    limited: '限定'
+    reader: '読者称号',
+    author: '作者称号',
+    limited: '限定称号'
   };
   const difficultyLabels = {
     easy: 'Easy',
