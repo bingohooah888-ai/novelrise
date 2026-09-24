@@ -158,6 +158,8 @@ test('Commander mail env check is presence-only', async () => {
   assert.match(source, /resend_api_key_present:/);
   assert.match(source, /resend_api_key_value_exposed: false/);
   assert.match(source, /--environment=production/);
+  assert.match(source, /vercel@latest/);
+  assert.match(source, /runNpm/);
   assert.match(source, /fs\.rm\(target\.candidate/);
   assert.doesNotMatch(source, /resend_api_key_value:\s*/);
 });
