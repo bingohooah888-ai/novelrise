@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import dotenv from 'dotenv';
 
@@ -18,6 +19,7 @@ const NPM_COMMAND = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const SUPABASE_PROJECT_REF = 'fiepaguycecrredwrcwx';
 const SUPABASE_PROJECT_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
 const THUMBNAIL_PRODUCTION_CONFIRMATION = 'REGISTER_OFFICIAL_THUMBNAIL_PACK';
+const HIGH_RISK_APPROVAL_CONFIRMATION = 'CHAT_PRODUCTION_APPROVED';
 
 function bounded(text, limit = MAX_OUTPUT) {
   const value = String(text || '').replace(
@@ -1622,6 +1624,137 @@ async function actionBridgeUpdate(request, config) {
   ].join('\n');
 }
 
+
+function highRiskApprovalChallenge(prNumber, headSha) {
+  return createHash('sha256')
+    .update('novelight-high-risk:' + prNumber + ':' + headSha)
+    .digest('hex')
+    .slice(0, 8)
+    .toUpperCase();
+}
+
+async function actionHighRiskPrApprove(request) {
+  if (
+    !exactKeys(request.args, [
+      'pr',
+      'headSha',
+      'challenge',
+      'confirmation'
+    ])
+  ) {
+    throw new Error('High-risk approval args do not match the fixed contract.');
+  }
+
+  const pr = Number(request.args.pr);
+  const headSha = String(request.args.headSha || '').toLowerCase();
+  const challenge = String(request.args.challenge || '').toUpperCase();
+  const confirmation = String(request.args.confirmation || '');
+
+  if (!Number.isInteger(pr) || pr < 1) {
+    throw new Error('High-risk approval PR number is invalid.');
+  }
+  if (!/^[0-9a-f]{40}$/.test(headSha)) {
+    throw new Error('High-risk approval head SHA is invalid.');
+  }
+  if (!/^[A-F0-9]{8}$/.test(challenge)) {
+    throw new Error('High-risk approval challenge is invalid.');
+  }
+  if (confirmation !== HIGH_RISK_APPROVAL_CONFIRMATION) {
+    throw new Error('High-risk approval confirmation mismatch.');
+  }
+
+  const expectedChallenge = highRiskApprovalChallenge(pr, headSha);
+  if (challenge !== expectedChallenge) {
+    throw new Error('High-risk approval challenge does not match the exact PR head.');
+  }
+
+  const token = getToken();
+  const pull = await githubApi(
+    token,
+    'GET',
+    '/repos/' + OWNER + '/' + REPOSITORY + '/pulls/' + pr
+  );
+  const expectedRepo = OWNER + '/' + REPOSITORY;
+  if (
+    pull?.state !== 'open' ||
+    pull?.base?.ref !== 'main' ||
+    pull?.head?.repo?.full_name !== expectedRepo ||
+    String(pull?.head?.sha || '').toLowerCase() !== headSha
+  ) {
+    throw new Error('High-risk approval target PR identity changed.');
+  }
+
+  const approvalBody =
+    'NOVELIGHT_HIGH_RISK_APPROVE ' +
+    JSON.stringify({
+      operation: 'merge-high-risk-pr',
+      pr,
+      headSha,
+      challenge
+    });
+
+  let existing = false;
+  let boundedComplete = false;
+  for (let page = 1; page <= 10; page += 1) {
+    const comments = await githubApi(
+      token,
+      'GET',
+      '/repos/' +
+        OWNER +
+        '/' +
+        REPOSITORY +
+        '/issues/' +
+        pr +
+        '/comments?per_page=100&page=' +
+        page
+    );
+    existing ||= comments.some(
+      comment =>
+        comment?.user?.login === OWNER &&
+        comment?.author_association === 'OWNER' &&
+        comment?.body === approvalBody
+    );
+    if (comments.length < 100) {
+      boundedComplete = true;
+      break;
+    }
+  }
+  if (!boundedComplete) {
+    throw new Error('High-risk approval comment scan exceeded the bounded 1000-comment window.');
+  }
+  if (existing) {
+    return [
+      'pr: ' + pr,
+      'head_sha: ' + headSha,
+      'challenge: ' + challenge,
+      'approval_comment_posted: false',
+      'approval_already_present: true'
+    ].join('\n');
+  }
+
+  const created = await githubApi(
+    token,
+    'POST',
+    '/repos/' + OWNER + '/' + REPOSITORY + '/issues/' + pr + '/comments',
+    { body: approvalBody }
+  );
+  if (
+    created?.user?.login !== OWNER ||
+    created?.author_association !== 'OWNER' ||
+    created?.body !== approvalBody
+  ) {
+    throw new Error('GitHub did not return the expected OWNER approval evidence.');
+  }
+
+  return [
+    'pr: ' + pr,
+    'head_sha: ' + headSha,
+    'challenge: ' + challenge,
+    'approval_comment_posted: true',
+    'approval_already_present: false'
+  ].join('\n');
+}
+
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['nlo_health', actionNloHealth],
@@ -1641,6 +1774,7 @@ const ACTIONS = new Map([
   ['vercel_login_status', actionVercelLoginStatus],
   ['production_mail_runtime_check', actionProductionMailRuntimeCheck],
   ['production_mail_env_check', actionProductionMailEnvCheck],
+  ['high_risk_pr_approve', actionHighRiskPrApprove],
   ['bridge_update', actionBridgeUpdate]
 ]);
 

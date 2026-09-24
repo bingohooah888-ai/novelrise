@@ -51,6 +51,7 @@ test('Commander GitHub bridge has fixed actions', async () => {
     'vercel_login_status',
     'production_mail_runtime_check',
     'production_mail_env_check',
+    'high_risk_pr_approve',
     'bridge_update'
   ];
 
