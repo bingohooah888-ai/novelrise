@@ -87,6 +87,14 @@ test('AUDIT-004 daily quota regression is deterministic across the JST boundary'
     rlsRegression,
     /validate constraint bulk_import_requests_episode_count_check/u
   );
+  assert.match(
+    rlsRegression,
+    /current_setting\(\s*'novelight\.test\.audit_episode_id'/u
+  );
+  assert.doesNotMatch(
+    rlsRegression,
+    /set local role service_role;[\s\S]*?select e\.id::text into v_episode_id/u
+  );
 });
 
 test('AUDIT-005 dedupes and caps all weak analytics endpoints', () => {

@@ -554,6 +554,16 @@ insert into public.episodes (
   0
 );
 
+select pg_catalog.set_config(
+  'novelight.test.audit_episode_id',
+  (
+    select e.id::text
+      from public.episodes e
+     where e.novel_id = 940010
+  ),
+  true
+);
+
 set local role anon;
 
 do $$
@@ -615,7 +625,9 @@ declare
   v_pv_b boolean;
   v_search_a integer;
   v_search_b integer;
-  v_episode_id text;
+  v_episode_id text := pg_catalog.current_setting(
+    'novelight.test.audit_episode_id'
+  );
 begin
   select public.record_beta_visit('audit-beta-token', '/audit', 'direct') into v_first;
   select public.record_beta_visit('audit-beta-token', '/audit', 'direct') into v_second;
@@ -633,10 +645,6 @@ begin
   if v_touch_a <> v_touch_b then
     raise exception 'Acquisition dedupe did not return the original event id';
   end if;
-
-  select e.id::text into v_episode_id
-    from public.episodes e
-   where e.novel_id = 940010;
 
   select public.record_reader_journey_event(
     'detail_open', '940010', null, 'audit-journey-token', 'direct'
@@ -724,12 +732,10 @@ from pg_catalog.generate_series(1, 200) g;
 set local role service_role;
 do $$
 declare
-  v_episode_id text;
+  v_episode_id text := pg_catalog.current_setting(
+    'novelight.test.audit_episode_id'
+  );
 begin
-  select e.id::text into v_episode_id
-    from public.episodes e
-   where e.novel_id = 940010;
-
   begin
     perform public.record_reader_journey_event(
       'episode_read_10s', '940010', v_episode_id, 'audit-journey-rate-token', 'direct'
