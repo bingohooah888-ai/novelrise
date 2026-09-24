@@ -46,6 +46,8 @@ main/master push、PR merge、Supabase本番mutation、Vercel production deploy�
 
 commander_info / novelight_doctor / novelight_repo_snapshot / novelight_preflight / novelight_context_bundle / novelight_handoff_report
 
+GitHub Bridge経由では `nlo_health` をNLO可用性の標準確認actionとする。成功応答が返る場合、Bridge経路のNLOは利用可能である。Remote Desktop Commanderのdevice状態はこの判定に使用しない。
+
 list_files / search_files / read_text / read_text_range / tail_text / write_text / file_info / hash_file / inspect_png / copy_file / move_file / create_directory / delete_path
 
 begin_binary_write / append_binary_chunk / finish_binary_write / cancel_binary_write / list_binary_writes / read_binary_chunk
@@ -112,6 +114,8 @@ API keyをチャットやGitへ貼らないでください。
 自動起動Taskは現在のWindowsユーザー権限で動作し、管理者権限へ昇格しません。PC再起動・ログオン後、Terminalを開かなくてもTunnelを起動します。
 
 Tunnelログは `%LOCALAPPDATA%\NOVELIGHT\Commander\openai-tunnel.log` へ記録します。NLOがofflineになった場合は、まずこのログとScheduled Task `NOVELIGHT Commander Tunnel` の状態を確認します。
+
+NLOはOpenAI Secure MCP TunnelとGitHub Bridgeの複数経路を持ちます。直接MCPがクライアント上で見えない場合でも、GitHub Bridgeが `nlo_health` または固定actionへ成功応答するならNLO全体をofflineとは扱いません。Remote Desktop Commanderは別製品・別接続であり、そのonline/offline表示をNLO状態へ読み替えないでください。
 
 `tunnel-client` の取得方法やTunnel作成手順は、固定バイナリURLではなくOpenAI公式の最新Secure MCP Tunnelドキュメントを参照してください。
 

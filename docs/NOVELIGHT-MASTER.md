@@ -909,9 +909,11 @@ NLOは一般のRemote Desktop Commanderとは別物であり、両者を混同�
 #### 基本手順
 
 1. NOVELIGHT関連作業を開始するときは、まずNLOで実行可能か確認する。
-2. NLOで実行可能なら、原則としてNLOを使用する。
-3. NLOが未接続、利用上限、権限不足、対象サイト非対応、技術的エラーその他の理由によって使用できないことが確認できた場合のみ、他の利用可能なツール・アプリへ切り替える。
-4. 代替手段は、その作業に最も適したものを選択する。
+2. NLOの可用性は経路ごとに判定する。第一に直接NLO MCPが利用可能か確認し、直接NLO MCPがツール一覧へ露出していない、または応答しない場合は、GitHub Control Issue #797 のNLO GitHub Bridgeを確認する。Bridgeでは原則として `nlo_health` を使用し、旧版Bridgeで未対応の場合は `repo_snapshot` 等の安全な固定actionの成功応答を可用性証拠として扱う。
+3. Remote Desktop CommanderはNLOとは別物である。Remote Desktop Commanderのdeviceが `offline` であっても、それだけを理由にNLOを `offline`、未接続、使用不能と判定してはならない。逆にRemote Desktop CommanderがonlineでもNLOの稼働証拠にはしない。
+4. 直接NLO MCPまたはNLO GitHub Bridgeのいずれかが正常応答する場合、その利用可能な経路で実行できるNOVELIGHT作業についてNLOは利用可能と扱い、原則としてNLOを使用する。
+5. 直接NLO MCPとNLO GitHub Bridgeの双方について、その作業に必要な機能が使えないことを確認した場合に限り、NLOがその作業では使用不能と判定して他の利用可能なツール・アプリへ切り替える。
+6. 代替手段は、その作業に最も適したものを選択する。
 
 例：
 
@@ -921,8 +923,8 @@ NLOは一般のRemote Desktop Commanderとは別物であり、両者を混同�
 - PC・ローカル環境操作 → Remote Desktop Commander等
 - その他 → 利用可能な最適な専用ツール
 
-5. NLOが使用不能であることが明確な場合、同一作業中に無意味な再接続・再試行を繰り返さない。
-6. NLOが再び利用可能になった後の新しいNOVELIGHT作業では、再度NLOを第一候補とする。
+7. NLOが使用不能であることが明確な場合、同一作業中に無意味な再接続・再試行を繰り返さない。
+8. NLOが再び利用可能になった後の新しいNOVELIGHT作業では、再度NLOを第一候補とする。
 
 #### NLO可用性・自動復旧
 
