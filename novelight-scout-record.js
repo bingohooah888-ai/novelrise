@@ -477,7 +477,7 @@
     renderBadgeDialogArtwork(row);
     setText('badgeDialogCategory', categoryLabels[row.badge_category] || row.badge_category);
     setText('badgeDialogDifficulty', difficultyLabels[row.difficulty] || row.difficulty);
-    setText('badgeDialogCondition', row.description);
+    setText('badgeDialogCondition', row.description === 'Secret Badge' ? 'シークレット称号' : row.description);
     setText('badgeDialogProgress', `${n(row.progress_value)} / ${n(row.target_value)}`);
     setText('badgeDialogPercent', `${Number(row.progress_percent || 0).toFixed(0)}%`);
     setText(
@@ -522,7 +522,7 @@
       item.className = 'scout-row';
       const copy = document.createElement('div');
       const title = document.createElement('b');
-      title.textContent = row.reason || 'Scout Point';
+      title.textContent = row.reason === 'Reader Badge' ? '読者称号' : row.reason || 'Scout Point';
       const meta = document.createElement('small');
       const state =
         row.status === 'pending' || row.status === 'frozen'
