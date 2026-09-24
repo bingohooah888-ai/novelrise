@@ -245,6 +245,175 @@ async function renderAlphapolisHtml(url, ready) {
   throw new Error("Alphapolis browser render returned an empty DOM.");
 }
 
+async function navigateVisibleHtmlSession(
+  session,
+  url,
+  ready,
+  timeoutMs = 15000
+) {
+  if (session.currentUrl !== url) {
+    await evaluateThroughCdp(
+      session.webSocketUrl,
+      "location.href = " + JSON.stringify(url)
+    );
+    session.currentUrl = url;
+  }
+
+  const deadline = Date.now() + timeoutMs;
+  let lastHtml = "";
+  while (Date.now() < deadline) {
+    await sleep(lastHtml ? 350 : 900);
+    lastHtml = await readDomThroughCdp(session.webSocketUrl);
+    if (!ready || ready(lastHtml)) return lastHtml;
+  }
+  return lastHtml;
+}
+
+async function readAlphapolisNovel(rawUrl, options = {}) {
+  const root = alphapolisRoot(rawUrl);
+  if (!root) throw new Error("Unsupported Alphapolis URL.");
+
+  const delayMs = Math.max(150, Number(options.delayMs || 300));
+  const maxEpisodes = Math.max(
+    1,
+    Math.min(1000, Number(options.maxEpisodes || 500))
+  );
+
+  let index = null;
+  try {
+    const { html } = await fetchHtml(root, {
+      referer: "https://www.alphapolis.co.jp/"
+    });
+    const parsed = parseAlphapolisIndexHtml(html, root);
+    if (parsed.episodes.length) {
+      index = {
+        site: "alphapolis",
+        workUrl: root,
+        ...parsed
+      };
+    }
+  } catch {}
+
+  let session = null;
+  let renderedIndex = false;
+  if (!index) {
+    session = await openVisibleBrowserSession(root);
+    try {
+      const html = await navigateVisibleHtmlSession(
+        session,
+        root,
+        value => parseAlphapolisIndexHtml(value, root).episodes.length > 0,
+        18000
+      );
+      const parsed = parseAlphapolisIndexHtml(html, root);
+      if (!parsed.episodes.length) {
+        throw new Error(
+          "Alphapolis episode list was not found after browser rendering."
+        );
+      }
+      index = {
+        site: "alphapolis",
+        workUrl: root,
+        ...parsed
+      };
+      renderedIndex = true;
+    } catch (error) {
+      await closeVisibleBrowserSession(session);
+      session = null;
+      throw error;
+    }
+  }
+
+  const selected = index.episodes.slice(0, maxEpisodes);
+  const episodes = [];
+  const failures = [];
+
+  try {
+    for (let i = 0; i < selected.length; i += 1) {
+      const item = selected[i];
+      try {
+        const cached = options.cachedEpisodes?.[item.url];
+        if (cached && !options.refreshExisting) {
+          episodes.push({ ...cached, number: i + 1, cached: true });
+        } else {
+          let episode = null;
+
+          if (!renderedIndex) {
+            try {
+              const fetched = await fetchHtml(item.url, {
+                referer: index.workUrl
+              });
+              const parsed = parseAlphapolisEpisodeHtml(
+                fetched.html,
+                fetched.url
+              );
+              if (parsed.body.length >= 80) episode = parsed;
+            } catch {}
+          }
+
+          if (!episode) {
+            if (!session) session = await openVisibleBrowserSession(item.url);
+            const html = await navigateVisibleHtmlSession(
+              session,
+              item.url,
+              value =>
+                parseAlphapolisEpisodeHtml(value, item.url).body.length >= 80,
+              12000
+            );
+            const parsed = parseAlphapolisEpisodeHtml(html, item.url);
+            if (parsed.body.length < 80) {
+              throw new Error(
+                "Alphapolis body not found after browser rendering: " +
+                  item.url
+              );
+            }
+            episode = parsed;
+          }
+
+          episodes.push({
+            number: i + 1,
+            url: episode.url,
+            title:
+              episode.title ||
+              item.label ||
+              "Episode " + (i + 1),
+            body: episode.body,
+            cached: false
+          });
+        }
+      } catch (error) {
+        failures.push({
+          number: i + 1,
+          url: item.url,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+
+      if (i < selected.length - 1) await sleep(delayMs);
+    }
+  } finally {
+    await closeVisibleBrowserSession(session);
+  }
+
+  const complete =
+    failures.length === 0 && selected.length === index.episodes.length;
+
+  return {
+    site: "alphapolis",
+    workUrl: index.workUrl,
+    title: index.title,
+    author: index.author,
+    synopsis: index.synopsis,
+    discoveredEpisodes: index.episodes.length,
+    requestedEpisodes: selected.length,
+    fetchedEpisodes: episodes.length,
+    complete,
+    truncated: selected.length < index.episodes.length || !complete,
+    failures,
+    episodes
+  };
+}
+
 async function alphapolisIndex(rawUrl) {
   const root = alphapolisRoot(rawUrl);
   if (!root) throw new Error("Unsupported Alphapolis URL.");
@@ -1053,6 +1222,7 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 export async function readNovel(rawUrl, options = {}) {
   const site = detectNovelSite(rawUrl);
   if (site === "caita") return readCaitaNovel(rawUrl, options);
+  if (site === "alphapolis") return readAlphapolisNovel(rawUrl, options);
   const delayMs = Math.max(300, Number(options.delayMs || 700));
   const maxEpisodes = Math.max(1, Math.min(1000, Number(options.maxEpisodes || 500)));
   const index = site === "narou" ? await narouIndex(rawUrl) : site === "kakuyomu" ? await kakuyomuIndex(rawUrl) : site === "alphapolis" ? await alphapolisIndex(rawUrl) : await genericPage(rawUrl);
