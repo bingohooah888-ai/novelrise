@@ -1683,6 +1683,7 @@ async function postResult(config, token, request, status, details) {
 
 async function processComment(comment, config, token, state) {
   let request;
+  let busyHeartbeatTimer = null;
   try {
     request = parseRequest(comment);
     if (!request) return;
@@ -1692,6 +1693,16 @@ async function processComment(comment, config, token, state) {
       action: request.action,
       commentId: comment.id
     });
+    const busyHeartbeatDetails = {
+      requestId: request.requestId,
+      action: request.action
+    };
+    await writeHeartbeat(config, 'busy', busyHeartbeatDetails);
+    busyHeartbeatTimer = setInterval(() => {
+      void writeHeartbeat(config, 'busy', busyHeartbeatDetails).catch(() => {});
+    }, 30000);
+    busyHeartbeatTimer.unref?.();
+
     const details = await executeRequest(request, config);
     await postResult(config, token, request, 'success', details);
     if (request.action === 'bridge_update') {
@@ -1731,6 +1742,10 @@ async function processComment(comment, config, token, state) {
       });
     }
   } finally {
+    if (busyHeartbeatTimer) {
+      clearInterval(busyHeartbeatTimer);
+      busyHeartbeatTimer = null;
+    }
     if (request?.requestId && !state.processedRequestIds.includes(request.requestId)) {
       state.processedRequestIds.push(request.requestId);
       state.processedRequestIds = state.processedRequestIds.slice(-500);
