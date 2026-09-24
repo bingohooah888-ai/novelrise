@@ -154,15 +154,16 @@ test('Commander can source Production Supabase credential from Vercel', async ()
   assert.match(source, /fs\.rm\(envTarget\.candidate/);
 });
 
-test('Commander Vercel login uses OAuth device flow without tokens', async () => {
+test('Commander Vercel login uses direct OAuth device flow without exposing tokens', async () => {
   const source = await readFile(daemonPath, 'utf8');
 
   assert.match(source, /vercel_login_start/);
   assert.match(source, /vercel_login_info/);
   assert.match(source, /vercel_login_status/);
-  assert.match(source, /'login'/);
-  assert.match(source, /'whoami'/);
-  assert.match(source, /detached: true/);
+  assert.match(source, /[.]well-known\/openid-configuration/);
+  assert.match(source, /device_authorization_endpoint/);
+  assert.match(source, /urn:ietf:params:oauth:grant-type:device_code/);
+  assert.match(source, /secret_token_exposed: false/);
   assert.doesNotMatch(source, /VERCEL_TOKEN/);
 });
 
