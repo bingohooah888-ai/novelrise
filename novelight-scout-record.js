@@ -30,6 +30,9 @@
     star_rating_set: '☆評価',
     comment_posted: 'コメント'
   };
+  const badgeArtworkPaths = {
+    limited_founding_author: 'assets/founding-authors-badge-2026.png'
+  };
 
   let badgeRows = [];
   let badgeCategory = 'all';
@@ -146,6 +149,52 @@
     return '◇';
   }
 
+  function badgeDisplayName(row) {
+    if (row.badge_id !== 'limited_founding_author') return row.display_name;
+    const foundingNumber = Number(row?.metadata?.founding_number);
+    if (!Number.isInteger(foundingNumber) || foundingNumber < 1) {
+      return row.display_name;
+    }
+    return `Founding Author #${String(foundingNumber).padStart(3, '0')}`;
+  }
+
+  function createBadgeIcon(row) {
+    const icon = document.createElement('div');
+    icon.className = 'badge-icon';
+
+    const artworkPath = badgeArtworkPaths[row.badge_id];
+    if (!artworkPath) {
+      icon.textContent = badgeIcon(row);
+      return icon;
+    }
+
+    icon.classList.add('badge-icon-artwork');
+    const image = document.createElement('img');
+    image.src = artworkPath;
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    icon.appendChild(image);
+    return icon;
+  }
+
+  function renderBadgeDialogArtwork(row) {
+    const host = document.getElementById('badgeDialogArtwork');
+    const image = document.getElementById('badgeDialogArtworkImage');
+    if (!host || !image) return;
+
+    const artworkPath = badgeArtworkPaths[row.badge_id];
+    host.hidden = !artworkPath;
+    if (!artworkPath) {
+      image.removeAttribute('src');
+      image.alt = '';
+      return;
+    }
+
+    image.src = artworkPath;
+    image.alt = `${badgeDisplayName(row)} バッジ`;
+  }
+
   const badgeGroupDefinitions = [
     { key: 'easy', hostId: 'badgeGridEasy', countId: 'badgeGroupEasyCount' },
     { key: 'normal', hostId: 'badgeGridNormal', countId: 'badgeGroupNormalCount' },
@@ -179,12 +228,10 @@
     if (row.badge_category === 'limited') card.classList.add('limited');
     card.dataset.badgeId = row.badge_id;
 
-    const icon = document.createElement('div');
-    icon.className = 'badge-icon';
-    icon.textContent = badgeIcon(row);
+    const icon = createBadgeIcon(row);
 
     const title = document.createElement('h3');
-    title.textContent = row.display_name;
+    title.textContent = badgeDisplayName(row);
 
     const meta = document.createElement('div');
     meta.className = 'badge-meta';
@@ -300,7 +347,8 @@
   function openBadge(row) {
     const dialog = document.getElementById('badgeDialog');
     if (!dialog) return;
-    setText('badgeDialogName', row.display_name);
+    setText('badgeDialogName', badgeDisplayName(row));
+    renderBadgeDialogArtwork(row);
     setText('badgeDialogCategory', categoryLabels[row.badge_category] || row.badge_category);
     setText('badgeDialogDifficulty', difficultyLabels[row.difficulty] || row.difficulty);
     setText('badgeDialogCondition', row.description);
