@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Founding Author Badge Preview | NOVELIGHT</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,"Noto Sans JP",system-ui,sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;background:#03101e;color:#f6f1e7}
+    main{width:min(980px,calc(100% - 32px));margin:0 auto;padding:42px 0 64px}
+    h1{margin:0 0 8px;font-size:34px;letter-spacing:.04em}
+    p{margin:0;color:#a9b5c1;line-height:1.75}
+    .note{margin-top:10px;font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:28px}
+    .panel{padding:22px;border:1px solid rgba(226,190,92,.26);border-radius:18px;background:#07182a}
+    .panel h2{margin:0 0 16px;color:#fff5dc;font-size:18px}
+    .card{width:min(280px,100%);padding:16px;border:3px double rgba(157,124,255,.55);border-radius:14px;background:#07182a}
+    .icon{width:76px;height:76px}
+    .icon img,.hero img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.28))}
+    h3{margin:10px 0 0;font-size:15px;line-height:1.5}
+    .meta{display:flex;justify-content:space-between;margin-top:6px;color:#8897a6;font-size:11px;text-transform:uppercase}
+    .progress{height:7px;margin-top:12px;border:1px solid rgba(226,190,92,.2);border-radius:999px;background:#020c18;overflow:hidden}
+    .progress span{display:block;width:100%;height:100%;background:linear-gradient(90deg,#b78832,#ffe082)}
+    .status{display:flex;justify-content:space-between;margin-top:5px;color:#9ca9b6;font-size:11px}
+    .reward{margin-top:9px;color:#ffe082;font-size:12px;font-weight:800}
+    .modal{padding:24px;border:1px solid rgba(226,190,92,.35);border-radius:18px;background:#06172a}
+    .modal h2{color:#fff1bd}
+    .hero{width:220px;height:220px;margin:0 auto 18px}
+    .kv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .cell{padding:11px;border:1px solid rgba(255,255,255,.06);border-radius:10px;background:#071a2d}
+    .cell span{display:block;color:#8292a0;font-size:11px}
+    .cell b{display:block;margin-top:4px;font-size:14px}
+    @media(max-width:720px){.grid{grid-template-columns:1fr}.panel{padding:18px}.kv{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Founding Author Badge — UI Preview</h1>
+    <p>SCOUT RECORDでの実表示サイズを確認するための、ログイン不要・データ更新なしの静的Previewです。</p>
+    <p class="note">左：Badge Collectionカード / 右：バッジ詳細モーダル想定</p>
+    <div class="grid">
+      <section class="panel">
+        <h2>Badge Collection</h2>
+        <div class="card">
+          <div class="icon"><img src="https://raw.githubusercontent.com/bingohooah888-ai/novelrise/feat/founding-author-badge-artwork-preview/assets/founding-authors-badge-2026.png" alt=""></div>
+          <h3>Founding Author #001</h3>
+          <div class="meta"><span>限定</span><span>Special</span></div>
+          <div class="progress"><span></span></div>
+          <div class="status"><span>1 / 1</span><span>100%</span></div>
+          <div class="reward">獲得済み</div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="modal">
+          <h2>Founding Author #001</h2>
+          <div class="hero"><img src="https://raw.githubusercontent.com/bingohooah888-ai/novelrise/feat/founding-author-badge-artwork-preview/assets/founding-authors-badge-2026.png" alt="Founding Author #001 バッジ"></div>
+          <div class="kv">
+            <div class="cell"><span>Category</span><b>限定</b></div>
+            <div class="cell"><span>Difficulty</span><b>Special</b></div>
+            <div class="cell"><span>条件</span><b>先行登録資格</b></div>
+            <div class="cell"><span>進捗</span><b>1 / 1</b></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

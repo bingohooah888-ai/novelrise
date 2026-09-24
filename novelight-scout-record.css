@@ -92,6 +92,14 @@ body.novelight-page-scout-record .workspace{
 .badge-card.hard{box-shadow:inset 0 0 18px rgba(216,180,90,.06)}
 .badge-card.limited{border-style:double;border-color:rgba(157,124,255,.55)}
 .badge-icon{display:grid;width:40px;height:40px;place-items:center;border:1px solid rgba(226,190,92,.35);border-radius:50%;color:var(--gold-bright);font-weight:900}
+.badge-icon-artwork{
+  width:76px;height:76px;border:0;border-radius:0;background:transparent
+}
+.badge-icon-artwork img{
+  display:block;width:100%;height:100%;object-fit:contain;
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.28))
+}
+.badge-card.limited h3{white-space:normal}
 .badge-card h3{margin:10px 0 0;overflow:hidden;color:#fff5dd;font-size:12px;line-height:1.45;text-overflow:ellipsis;white-space:nowrap}
 .badge-meta{display:flex;justify-content:space-between;gap:8px;margin-top:6px;color:#8897a6;font-size:9px;text-transform:uppercase}
 .badge-progress{height:7px;margin-top:10px}.badge-progress-text{display:flex;justify-content:space-between;margin-top:5px;color:#9ca9b6;font-size:9px}
@@ -107,6 +115,12 @@ body.novelight-page-scout-record .workspace{
 .scout-modal{width:min(520px,calc(100% - 28px));border:1px solid var(--line);border-radius:18px;background:#06172a;color:#f8f2e6;padding:0;box-shadow:0 24px 80px rgba(0,0,0,.55)}
 .scout-modal::backdrop{background:rgba(0,5,12,.74)}
 .scout-modal-card{padding:23px}.scout-modal-head{display:flex;justify-content:space-between;gap:12px}.scout-modal h2{margin:0;color:#fff1bd;font-size:21px}.scout-modal-close{width:36px;height:36px;border:1px solid rgba(226,190,92,.24);border-radius:50%;background:#0c2238;color:#fff;cursor:pointer}
+.badge-dialog-artwork{display:grid;place-items:center;margin:16px auto 2px}
+.badge-dialog-artwork[hidden]{display:none}
+.badge-dialog-artwork img{
+  display:block;width:min(220px,60vw);height:auto;aspect-ratio:1;object-fit:contain;
+  filter:drop-shadow(0 16px 28px rgba(0,0,0,.36))
+}
 .scout-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:17px}.scout-modal-kv{padding:10px;border:1px solid rgba(255,255,255,.06);border-radius:10px;background:#071a2d}.scout-modal-kv span{display:block;color:#8292a0;font-size:9px}.scout-modal-kv b{display:block;margin-top:4px;color:#edf1f5;font-size:12px}
 .scout-visibility{margin-top:16px;padding-top:14px;border-top:1px solid rgba(226,190,92,.16)}
 .scout-state{margin:15px 0;padding:13px 15px;border:1px solid rgba(226,190,92,.18);border-radius:12px;background:#07182a;color:#aebac5;font-size:11px;line-height:1.7}
