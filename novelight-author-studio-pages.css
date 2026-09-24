@@ -1,0 +1,478 @@
+/* Unified creator-page typography and layout.
+   Typography follows the readable SCOUT RECORD scale.
+   Surface, spacing, and form treatment follow the Author Notes pattern. */
+
+:root {
+  --novelight-studio-bg: #07121e;
+  --novelight-studio-panel: rgba(13, 29, 43, 0.94);
+  --novelight-studio-panel-strong: rgba(9, 24, 36, 0.98);
+  --novelight-studio-line: rgba(216, 180, 90, 0.26);
+  --novelight-studio-line-soft: rgba(213, 224, 232, 0.16);
+  --novelight-studio-gold: #d7b65b;
+  --novelight-studio-gold-bright: #ffe59a;
+  --novelight-studio-text: #eef3f7;
+  --novelight-studio-muted: #c4d0da;
+  --novelight-studio-subtle: #9daebb;
+  --novelight-studio-input: #091824;
+  --novelight-studio-serif: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
+}
+
+body.novelight-author-ui {
+  margin: 0;
+  background: var(--novelight-studio-bg) !important;
+  color: var(--novelight-studio-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN",
+    "Yu Gothic", sans-serif;
+}
+
+body.novelight-author-ui a {
+  color: inherit;
+}
+
+body.novelight-author-ui main#main-content {
+  width: min(100%, 1100px);
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 34px 28px 72px;
+}
+
+body.novelight-author-ui .page-head,
+body.novelight-author-ui .page-title,
+body.novelight-author-ui .head,
+body.novelight-author-ui .analytics-hero {
+  margin: 0 0 22px;
+  padding: 28px 32px 22px;
+}
+
+body.novelight-author-ui .head,
+body.novelight-author-ui .analytics-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+body.novelight-author-ui .kicker,
+body.novelight-author-ui .page-kicker,
+body.novelight-author-ui .analytics-kicker {
+  margin: 0 0 10px;
+  color: var(--novelight-studio-gold);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+body.novelight-author-ui .page-head h1,
+body.novelight-author-ui .page-title h1,
+body.novelight-author-ui .head h1,
+body.novelight-author-ui .analytics-hero h1 {
+  margin: 0 0 12px;
+  color: #fff8e8;
+  font-family: var(--novelight-studio-serif);
+  font-size: clamp(34px, 4vw, 48px);
+  line-height: 1.18;
+  letter-spacing: 0.01em;
+}
+
+body.novelight-author-ui .page-head p,
+body.novelight-author-ui .page-title p,
+body.novelight-author-ui .head p,
+body.novelight-author-ui .analytics-hero .lead {
+  margin: 0;
+  color: var(--novelight-studio-muted);
+  font-size: 18px;
+  line-height: 1.8;
+}
+
+body.novelight-author-ui .panel,
+body.novelight-page-post .card,
+body.novelight-page-my-novels .card,
+body.novelight-page-my-novels .empty,
+body.novelight-page-account-settings .panel,
+body.novelight-page-account-settings .future {
+  border: 1px solid var(--novelight-studio-line);
+  border-radius: 18px;
+  background: var(--novelight-studio-panel);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.17);
+}
+
+body.novelight-author-ui .section-title,
+body.novelight-author-ui .panel h2,
+body.novelight-author-ui .editor h2,
+body.novelight-author-ui .list-head h2,
+body.novelight-author-ui .trend-panel h2,
+body.novelight-author-ui .opportunity-summary h2 {
+  color: #fff5dc;
+  font-size: 28px;
+  line-height: 1.35;
+}
+
+body.novelight-author-ui label,
+body.novelight-author-ui .legend,
+body.novelight-author-ui .field label {
+  color: #e9dfc0;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.55;
+}
+
+body.novelight-author-ui input,
+body.novelight-author-ui select,
+body.novelight-author-ui textarea {
+  border-color: rgba(213, 224, 232, 0.26);
+  background: var(--novelight-studio-input);
+  color: #f5f7f8;
+  font-size: 16px;
+}
+
+body.novelight-author-ui input:focus,
+body.novelight-author-ui select:focus,
+body.novelight-author-ui textarea:focus {
+  border-color: #e2c76f;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(216, 180, 90, 0.1);
+}
+
+body.novelight-author-ui .help,
+body.novelight-author-ui .panel-copy,
+body.novelight-author-ui .privacy-note,
+body.novelight-author-ui .security-note,
+body.novelight-author-ui .future p,
+body.novelight-author-ui .status,
+body.novelight-author-ui .notice {
+  color: var(--novelight-studio-muted);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+body.novelight-author-ui .btn,
+body.novelight-author-ui .button,
+body.novelight-author-ui .primary,
+body.novelight-author-ui .new,
+body.novelight-author-ui .work-action,
+body.novelight-author-ui .cancel,
+body.novelight-author-ui .submit {
+  min-height: 42px;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+body.novelight-author-ui .empty {
+  color: var(--novelight-studio-muted);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+/* New post */
+body.novelight-page-post .card {
+  padding: 26px;
+}
+
+body.novelight-page-post .field {
+  margin-bottom: 24px;
+}
+
+body.novelight-page-post .required {
+  color: #f0aa9e;
+  font-size: 13px;
+}
+
+body.novelight-page-post .thumbnail-visual,
+body.novelight-page-post .warning-grid,
+body.novelight-page-post .policy {
+  border-color: var(--novelight-studio-line-soft);
+  background: rgba(6, 19, 30, 0.7);
+}
+
+body.novelight-page-post .thumbnail-name,
+body.novelight-page-post .check,
+body.novelight-page-post .policy {
+  color: #dce4ea;
+  font-size: 14px;
+}
+
+body.novelight-page-post .thumbnail-state {
+  border-color: var(--novelight-studio-line);
+  color: var(--novelight-studio-muted);
+  font-size: 15px;
+}
+
+body.novelight-page-post .composer-intro {
+  color: var(--novelight-studio-muted);
+  font-size: 15px;
+}
+
+body.novelight-page-post .cancel {
+  border-color: rgba(216, 180, 90, 0.38);
+  background: transparent;
+  color: #e9d697;
+}
+
+body.novelight-page-post .submit {
+  background: #d5af4e;
+  color: #15212b;
+}
+
+/* My works */
+body.novelight-page-my-novels .head h1 {
+  margin-bottom: 10px;
+}
+
+body.novelight-page-my-novels .card {
+  padding: 22px;
+}
+
+body.novelight-page-my-novels .title {
+  color: #fff5dc;
+  font-size: 20px;
+}
+
+body.novelight-page-my-novels .desc {
+  color: #c9d2d9;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+body.novelight-page-my-novels .meta {
+  color: #9facb7;
+  font-size: 14px;
+}
+
+body.novelight-page-my-novels .badge,
+body.novelight-page-my-novels .state {
+  font-size: 13px;
+}
+
+body.novelight-page-my-novels .badge {
+  background: rgba(216, 180, 90, 0.12);
+  color: #ead28b;
+}
+
+body.novelight-page-my-novels .badge.ai {
+  background: rgba(93, 164, 206, 0.14);
+  color: #bfe6ff;
+}
+
+body.novelight-page-my-novels .badge.mature {
+  background: rgba(224, 129, 110, 0.14);
+  color: #f0c0b7;
+}
+
+body.novelight-page-my-novels .state {
+  background: rgba(93, 180, 128, 0.13);
+  color: #bce8cc;
+}
+
+body.novelight-page-my-novels .state.draft {
+  background: rgba(255, 255, 255, 0.06);
+  color: #c4d0da;
+}
+
+body.novelight-page-my-novels .new,
+body.novelight-page-my-novels .work-action {
+  border: 1px solid rgba(216, 180, 90, 0.36);
+  background: transparent;
+  color: #ead999;
+}
+
+body.novelight-page-my-novels .new:not(.series-link),
+body.novelight-page-my-novels .work-action.import {
+  border-color: #d5af4e;
+  background: #d5af4e;
+  color: #15212b;
+}
+
+/* Author notes */
+body.novelight-page-author-notes .editor,
+body.novelight-page-author-notes .list-panel {
+  padding: 24px;
+}
+
+body.novelight-page-author-notes .field label {
+  font-size: 16px;
+}
+
+body.novelight-page-author-notes .count,
+body.novelight-page-author-notes .note-meta,
+body.novelight-page-author-notes .note-link {
+  color: #9eacb7;
+  font-size: 14px;
+}
+
+body.novelight-page-author-notes .note h3 {
+  color: #fff5dc;
+  font-size: 18px;
+}
+
+body.novelight-page-author-notes .note-body {
+  color: #d3dbe1;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+body.novelight-page-author-notes .tag {
+  font-size: 13px;
+}
+
+/* LIGHT ANALYTICS */
+body.novelight-page-analytics .analytics-hero {
+  width: 100%;
+  max-width: none;
+}
+
+body.novelight-page-analytics .period button,
+body.novelight-page-analytics .trend-metrics button {
+  font-size: 15px;
+}
+
+body.novelight-page-analytics .opportunity-summary-message,
+body.novelight-page-analytics .opportunity-card-sub,
+body.novelight-page-analytics .metric .sub,
+body.novelight-page-analytics .trend-toolbar p {
+  color: var(--novelight-studio-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+body.novelight-page-analytics .opportunity-card-label,
+body.novelight-page-analytics .metric .label {
+  font-size: 16px;
+}
+
+body.novelight-page-analytics .section-title {
+  margin-bottom: 14px;
+}
+
+body.novelight-page-analytics #status,
+body.novelight-page-analytics #basicStatus,
+body.novelight-page-analytics .analytics-plan-note {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* Interaction settings */
+body.novelight-page-interaction-settings .workspace {
+  max-width: 1100px;
+}
+
+body.novelight-page-interaction-settings .panel {
+  padding: 24px;
+}
+
+body.novelight-page-interaction-settings .panel-copy {
+  margin: 9px 0 20px;
+}
+
+body.novelight-page-interaction-settings .setting strong {
+  color: #f5f0e5;
+  font-size: 16px;
+}
+
+body.novelight-page-interaction-settings .setting span {
+  color: var(--novelight-studio-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+body.novelight-page-interaction-settings .summary,
+body.novelight-page-interaction-settings .note {
+  color: #d1dbe2;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+/* Account settings */
+body.novelight-page-account-settings .workspace {
+  max-width: 1100px;
+}
+
+body.novelight-page-account-settings .panel {
+  padding: 24px;
+}
+
+body.novelight-page-account-settings .current-label {
+  color: #aebbc5;
+  font-size: 14px;
+}
+
+body.novelight-page-account-settings .current-email {
+  font-size: 17px;
+}
+
+body.novelight-page-account-settings .future h2 {
+  color: #fff5dc;
+  font-size: 22px;
+}
+
+body.novelight-page-account-settings .pending {
+  color: #d1e3ed;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+@media (max-width: 900px) {
+  body.novelight-author-ui main#main-content {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  body.novelight-author-ui .head,
+  body.novelight-author-ui .analytics-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  body.novelight-author-ui .head-actions {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  body.novelight-author-ui main#main-content {
+    padding: 24px 16px 56px;
+  }
+
+  body.novelight-author-ui .page-head,
+  body.novelight-author-ui .page-title,
+  body.novelight-author-ui .head,
+  body.novelight-author-ui .analytics-hero {
+    padding: 22px 20px 18px;
+  }
+
+  body.novelight-author-ui .page-head h1,
+  body.novelight-author-ui .page-title h1,
+  body.novelight-author-ui .head h1,
+  body.novelight-author-ui .analytics-hero h1 {
+    font-size: 30px;
+  }
+
+  body.novelight-author-ui .page-head p,
+  body.novelight-author-ui .page-title p,
+  body.novelight-author-ui .head p,
+  body.novelight-author-ui .analytics-hero .lead {
+    font-size: 17px;
+  }
+
+  body.novelight-author-ui .section-title,
+  body.novelight-author-ui .panel h2,
+  body.novelight-author-ui .editor h2,
+  body.novelight-author-ui .list-head h2,
+  body.novelight-author-ui .trend-panel h2,
+  body.novelight-author-ui .opportunity-summary h2 {
+    font-size: 24px;
+  }
+
+  body.novelight-page-post .card,
+  body.novelight-page-author-notes .editor,
+  body.novelight-page-author-notes .list-panel,
+  body.novelight-page-interaction-settings .panel,
+  body.novelight-page-account-settings .panel {
+    padding: 18px;
+  }
+
+  body.novelight-page-my-novels .head-actions .new {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+}
