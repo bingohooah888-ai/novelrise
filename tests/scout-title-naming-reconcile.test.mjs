@@ -46,6 +46,14 @@ test('Scout Rank display uses all finalized names', () => {
   assert.doesNotMatch(publicJs, /RANK \$\{esc\(romans/u);
 });
 
+test('work Rank display uses the finalized EMBER to NOVA names', () => {
+  for (const rank of ['EMBER', 'SPARK', 'GLOW', 'BEACON', 'STAR', 'NOVA']) {
+    assert.match(scoutJs, new RegExp(rank, 'u'));
+    assert.match(adminScout, new RegExp(rank, 'u'));
+  }
+  assert.doesNotMatch(scoutJs, /送信時 Rank \$\{n\(row\.rank_at_seed\)\}/u);
+});
+
 test('LIGHT READY is replaced by 公開チェック in the author UI', () => {
   assert.match(episodePost, />公開チェック</u);
   assert.doesNotMatch(episodePost, /LIGHT READY｜公開前チェック/u);
@@ -65,6 +73,8 @@ test('catalog display names are reconciled without renaming internal badge ids',
   assert.match(migration, /author_discovered_plus2_005/u);
   assert.match(migration, /limited_beta_participant/u);
   assert.match(migration, /alter column is_public set default false/u);
+  assert.match(migration, /when 'badge' then '読者称号'/u);
+  assert.match(migration, /coalesce\(b\.is_public, false\)/u);
 });
 
 test('equipping a title enforces one public title per user', () => {
