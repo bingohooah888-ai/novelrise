@@ -57,7 +57,7 @@ ChatGPT側で直接NLO MCPが見えない、または直接Tunnel経路が応答
 
 ### チャット本番承認からHigh-Risk証跡への自動変換
 
-ユーザーがNOVELIGHTのチャットで `本番承認` を行った後、ChatGPTはControl Issueへ `high_risk_pr_approve` を投入できます。NLOは対象PRがopen・base=`main`・同一repository・exact head SHAであることとchallengeを再計算して一致確認し、固定形式のOWNER承認コメントだけをPRへ投稿します。任意コメント本文はargsから受け付けません。これによりユーザーへGitHub上の機械可読コメントを手動コピーさせません。
+ユーザーがNOVELIGHTのチャットで `本番承認` を行った後、ChatGPTはControl Issueへ `high_risk_pr_approve` を投入できます。NLOは対象PRがopen・base=`main`・同一repository・exact head SHAであることとchallengeを再計算して一致確認し、固定形式のOWNER承認コメントだけをPRへ投稿します。任意コメント本文はargsから受け付けません。Bridge用PATが旧権限でPRコメントを拒否された場合のみ、ローカルGitHub CLIがrepository owner `bingohooah888-ai` として認証済みであることを固定確認して同じ証跡を投稿し、それ以外はfail-closedします。これによりユーザーへGitHub上の機械可読コメントを手動コピーさせません。
 
 ## GitHub認証
 
@@ -73,6 +73,7 @@ bingohooah888-ai/novelrise のみ
 
 - Metadata: Read
 - Issues: Read and write
+- Pull requests: Read and write
 
 TokenはPowerShellのSecureStringとして受け取り、Windows DPAPIで現在のWindowsユーザーに紐づけて暗号化保存します。平文tokenをrepository、Issue、ChatGPTへ送らないでください。
 
