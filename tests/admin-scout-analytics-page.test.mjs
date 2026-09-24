@@ -18,7 +18,7 @@ test('SCOUT beta analytics page is admin-only, noindexed and uses the protected 
 });
 
 test('SCOUT beta analytics page covers the MASTER-required beta analysis surfaces', () => {
-  assert.match(html, /生涯EXPヒストグラム/);
+  assert.match(html, /生涯Scout XPヒストグラム/);
   assert.match(html, /獲得源別構成/);
   assert.match(html, /0個使用率/);
   assert.match(html, /11個完全消化率/);
