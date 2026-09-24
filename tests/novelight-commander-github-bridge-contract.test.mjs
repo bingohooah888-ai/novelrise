@@ -242,11 +242,11 @@ test(
 
     assert.match(
       source,
-      /writeHeartbeat\(config, 'busy', busyHeartbeatDetails\)/
+      /writeHeartbeat\(config, 'busy', busyHeartbeatDetails\)/,
     );
     assert.match(source, /busyHeartbeatTimer = setInterval/);
     assert.match(source, /30000/);
     assert.match(source, /busyHeartbeatTimer\.unref/);
     assert.match(source, /clearInterval\(busyHeartbeatTimer\)/);
-  }
+  },
 );
