@@ -75,6 +75,8 @@ test('catalog display names are reconciled without renaming internal badge ids',
   assert.match(migration, /alter column is_public set default false/u);
   assert.match(migration, /when 'badge' then '読者称号'/u);
   assert.match(migration, /coalesce\(b\.is_public, false\)/u);
+  assert.match(migration, /user_scout_single_equipped_title_idx/u);
+  assert.match(migration, /scout_title_default_unequipped/u);
 });
 
 test('equipping a title enforces one public title per user', () => {
