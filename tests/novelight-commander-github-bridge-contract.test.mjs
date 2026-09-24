@@ -28,6 +28,7 @@ test('Commander GitHub bridge has fixed actions', async () => {
   const source = await readFile(daemonPath, 'utf8');
   const actions = [
     'doctor',
+    'nlo_health',
     'repo_snapshot',
     'preflight_fast',
     'commander_check',
@@ -47,6 +48,20 @@ test('Commander GitHub bridge has fixed actions', async () => {
   for (const action of actions) {
     assert.ok(source.includes("['" + action + "',"), action);
   }
+});
+
+test('NLO health is independent from Remote Desktop Commander state', async () => {
+  const source = await readFile(daemonPath, 'utf8');
+
+  assert.match(source, /\['nlo_health', actionNloHealth\]/);
+  assert.match(source, /nlo_available: true/);
+  assert.match(source, /channel: github_bridge/);
+  assert.match(source, /github_bridge_healthy: true/);
+  assert.match(source, /remote_desktop_commander_dependency: false/);
+  assert.match(
+    source,
+    /remote_desktop_commander_status_is_not_nlo_status: true/
+  );
 });
 
 test('Commander token uses Windows DPAPI', async () => {
