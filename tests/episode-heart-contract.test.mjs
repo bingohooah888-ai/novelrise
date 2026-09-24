@@ -98,7 +98,7 @@ test('episode hearts stay independent from evaluation and exposure systems', () 
   );
   assert.match(
     master,
-    /エピソードハート数を、作品Rank、LIGHT SEED、SCOUT RECORD、SCOUT EXP/
+    /エピソードハート数を、作品Rank、LIGHT SEED、SCOUT RECORD、Scout XP/
   );
   assert.match(master, /ハートを押すだけでSCOUT EXPを付与しない/);
 });
