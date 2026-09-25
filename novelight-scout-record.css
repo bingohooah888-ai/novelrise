@@ -630,7 +630,7 @@ body.novelight-page-scout-record #badgeDialog .scout-modal-kv b{
   white-space:normal!important;
   overflow-wrap:anywhere!important;
 }
-body.novelight-page-scout-record #badgeDialog .scout-modal-kv:has(#badgeDialogCondition){
+body.novelight-page-scout-record #badgeDialog .scout-modal-condition{
   grid-column:1 / -1;
   min-height:auto!important;
 }
