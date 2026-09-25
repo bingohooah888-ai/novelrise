@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const MAX_AWARDS = 20;
+const MAX_AWARDS = 160;
 
 function bearerToken(value) {
   const match =
