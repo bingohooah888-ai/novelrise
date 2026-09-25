@@ -4,7 +4,7 @@ const MAX_AWARDS = 160;
 
 function bearerToken(value) {
   const match =
-    typeof value === 'string' ? value.match(/^Bearer\\s+(\\S+)$/i) : null;
+    typeof value === 'string' ? value.match(/^Bearer\s+(\S+)$/i) : null;
   return match?.[1] ?? null;
 }
 
