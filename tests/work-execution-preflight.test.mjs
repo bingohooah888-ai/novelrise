@@ -5,9 +5,15 @@ import test from 'node:test';
 import {
   classifyHardStop,
   parseExecutionCardEvidence,
+  parseMasterReadEvidence,
   parsePhase,
   shouldRequireUserDecision
 } from '../scripts/runtime-execution-gate.mjs';
+
+import {
+  validateMasterContentReuse,
+  validateMasterReadProof
+} from '../scripts/master-read-proof.mjs';
 
 const AGENTS_PATH = 'AGENTS.md';
 const PREFLIGHT_PATH = 'docs/WORK-EXECUTION-PREFLIGHT.md';
@@ -192,6 +198,132 @@ test('runtime gate fails closed without current-turn card evidence', () => {
       reason: ''
     }
   );
+});
+
+test('MASTER proof reuse requires matching safety digests', () => {
+  const sourceMainSha = 'a'.repeat(40);
+  const currentMainSha = 'b'.repeat(40);
+  const masterSha256 = 'c'.repeat(64);
+  const preflightSha256 = 'd'.repeat(64);
+  const continuationGateSha256 = 'e'.repeat(64);
+  const proof = {
+    complete: true,
+    unresolvedTruncation: false,
+    mainSha: sourceMainSha,
+    contentSha256: masterSha256,
+    preflightSha256,
+    continuationGateSha256,
+    coveredFrom: 1,
+    coveredThrough: 100,
+    eofLine: 100
+  };
+  const authoritative = {
+    mainSha: currentMainSha,
+    sha256: masterSha256,
+    preflightSha256,
+    continuationGateSha256,
+    lines: 100
+  };
+
+  assert.throws(
+    () => validateMasterReadProof(proof, authoritative),
+    /stale or bound to a different main SHA/u
+  );
+
+  const reused = validateMasterContentReuse(proof, authoritative);
+  assert.equal(reused.status, 'MASTER_CONTENT_REUSE');
+  assert.equal(reused.sourceMainSha, sourceMainSha);
+  assert.equal(reused.mainSha, currentMainSha);
+  assert.equal(reused.coveredFrom, 1);
+  assert.equal(reused.eofLine, 100);
+
+  assert.throws(
+    () =>
+      validateMasterContentReuse(proof, {
+        ...authoritative,
+        sha256: 'f'.repeat(64)
+      }),
+    /authoritative latest-main MASTER/u
+  );
+  assert.throws(
+    () =>
+      validateMasterContentReuse(proof, {
+        ...authoritative,
+        preflightSha256: 'f'.repeat(64)
+      }),
+    /Preflight digest/u
+  );
+  assert.throws(
+    () =>
+      validateMasterContentReuse(proof, {
+        ...authoritative,
+        continuationGateSha256: 'f'.repeat(64)
+      }),
+    /Continuation Gate digest/u
+  );
+  assert.throws(
+    () =>
+      validateMasterContentReuse(
+        { ...proof, unresolvedTruncation: true },
+        authoritative
+      ),
+    /visibly truncated or unresolved/u
+  );
+  assert.throws(
+    () =>
+      validateMasterContentReuse({ ...proof, coveredFrom: 2 }, authoritative),
+    /coverage must start at line 1/u
+  );
+  assert.throws(
+    () =>
+      validateMasterContentReuse(
+        { ...proof, coveredThrough: 99 },
+        authoritative
+      ),
+    /coverage must be contiguous/u
+  );
+  assert.throws(
+    () =>
+      validateMasterContentReuse(
+        { ...proof, coveredThrough: 99, eofLine: 99 },
+        authoritative
+      ),
+    /EOF proof does not match/u
+  );
+});
+
+test('runtime gate rebinds explicit MASTER content-reuse evidence', () => {
+  const sourceMainSha = '1'.repeat(40);
+  const currentMainSha = '2'.repeat(40);
+  const masterSha256 = '3'.repeat(64);
+  const preflightSha256 = '4'.repeat(64);
+  const continuationGateSha256 = '5'.repeat(64);
+  const parsed = parseMasterReadEvidence(
+    'implementation',
+    [
+      '--master-read-complete',
+      '--master-content-reuse',
+      `--master-main-sha=${sourceMainSha}`,
+      `--master-content-sha256=${masterSha256}`,
+      `--master-preflight-sha256=${preflightSha256}`,
+      `--master-continuation-gate-sha256=${continuationGateSha256}`,
+      '--master-covered-from=1',
+      '--master-covered-through=200',
+      '--master-eof-line=200'
+    ],
+    {},
+    {
+      mainSha: currentMainSha,
+      master: { sha256: masterSha256, lines: 200 },
+      preflight: { sha256: preflightSha256 },
+      continuationGate: { sha256: continuationGateSha256 }
+    }
+  );
+
+  assert.equal(parsed.reuse, true);
+  assert.equal(parsed.status, 'MASTER_CONTENT_REUSE');
+  assert.equal(parsed.sourceMainSha, sourceMainSha);
+  assert.equal(parsed.mainSha, currentMainSha);
 });
 
 test('runtime gate hard stops are limited to real decision boundaries', () => {
