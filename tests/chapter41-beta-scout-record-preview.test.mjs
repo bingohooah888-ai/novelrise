@@ -24,6 +24,39 @@ const history = await readFile(
   'utf8'
 );
 
+const easyBadgeArtworkIds = `
+reader_read_001
+reader_read_005
+reader_read_010
+reader_read_025
+reader_rating_001
+reader_rating_005
+reader_rating_010
+reader_comment_001
+reader_comment_005
+reader_comment_010
+reader_seed_001
+reader_seed_003
+reader_seed_005
+reader_seed_010
+reader_bronze_seed_001
+reader_silver_seed_001
+reader_gold_seed_001
+reader_discovery_plus2_001
+reader_discovery_plus2_002
+reader_discovery_plus2_003
+reader_new_author_005
+reader_new_author_010
+reader_genre_003
+reader_genre_005
+reader_new_work_005
+reader_low_rank_005
+reader_level_005
+reader_level_010
+reader_level_020
+reader_active_days_007
+`.trim().split(/\s+/u);
+
 test('beta navigation links to the live SCOUT RECORD surface', () => {
   assert.match(
     mypage,
@@ -133,6 +166,29 @@ test('Title difficulty accordions and Reader catalog are live', () => {
     scoutCss,
     /body\.novelight-page-scout-record \.badge-point\{[\s\S]*?font-size:16px!important/u
   );
+});
+
+test('Easy Reader badges use individual PNG artwork assets', async () => {
+  assert.equal(easyBadgeArtworkIds.length, 30);
+  assert.doesNotMatch(scoutJs, /easyReaderBadgeSpriteIndexes|applyBadgeSprite|badgeSpritePosition/u);
+  assert.doesNotMatch(scoutCss, /scout-reader-easy-badges\.webp|badge-icon-sprite|badge-dialog-sprite/u);
+
+  for (const badgeId of easyBadgeArtworkIds) {
+    assert.match(
+      scoutJs,
+      new RegExp(`${badgeId}: 'assets/scout-badges/${badgeId}\\.png'`, 'u')
+    );
+    const bytes = await readFile(
+      new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url)
+    );
+    assert.deepEqual(
+      [...bytes.subarray(0, 8)],
+      [137, 80, 78, 71, 13, 10, 26, 10],
+      `${badgeId} must be a PNG`
+    );
+    assert.equal(bytes.readUInt32BE(16), 256, `${badgeId} width`);
+    assert.equal(bytes.readUInt32BE(20), 256, `${badgeId} height`);
+  }
 });
 
 test('Master Scout renders composite progress', () => {
