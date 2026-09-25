@@ -1,0 +1,53 @@
+name: Format mobile image tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/mobile-image-format-fix.yml"
+      - "tests/mobile-image-performance-contract.test.mjs"
+      - "tests/chapter39-thumbnail-composer.test.mjs"
+      - "tests/chapter40-geometry-thumbnail-engine.test.mjs"
+      - "tests/home-feature-icon-art.test.mjs"
+      - "tests/official-base-books-32.test.mjs"
+      - "tests/thumbnail-geometry-source-space.test.mjs"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - name: Format changed tests
+        run: |
+          npx prettier --write \
+            tests/mobile-image-performance-contract.test.mjs \
+            tests/chapter39-thumbnail-composer.test.mjs \
+            tests/chapter40-geometry-thumbnail-engine.test.mjs \
+            tests/home-feature-icon-art.test.mjs \
+            tests/official-base-books-32.test.mjs \
+            tests/thumbnail-geometry-source-space.test.mjs
+      - name: Commit formatting
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/
+          if git diff --cached --quiet; then
+            echo "No formatting changes."
+            exit 0
+          fi
+          git commit -m "Format mobile image tests"
+          git push origin "HEAD:${HEAD_REF}"

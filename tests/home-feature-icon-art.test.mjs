@@ -14,9 +14,9 @@ const heroCss = fs.readFileSync(
 );
 
 const expectedAssets = [
-  'assets/novelight-feature-discovery.png',
-  'assets/novelight-feature-light-seed.png',
-  'assets/novelight-feature-analytics.png'
+  'assets/novelight-feature-discovery.webp',
+  'assets/novelight-feature-light-seed.webp',
+  'assets/novelight-feature-analytics.webp'
 ];
 
 test('Home feature icon artwork is loaded in the intended order', () => {

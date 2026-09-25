@@ -4,8 +4,6 @@
   const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
   const STYLE_PATH = 'novelight-thumbnails.css';
-  const GEOMETRY_ENGINE_PATH = 'novelight-thumbnail-composer.js';
-  const SURFACE_TYPES = ['pattern', 'symbol', 'frame'];
   const SUPPORTED_PAGES = new Set([
     'index',
     'search',
@@ -16,7 +14,6 @@
   ]);
   let client = null;
   let scheduled = false;
-  let geometryEnginePromise = null;
 
   function pageSlug() {
     const file = window.location.pathname.split('/').pop() || 'index.html';

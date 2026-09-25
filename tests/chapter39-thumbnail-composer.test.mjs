@@ -236,18 +236,14 @@ test('author pages use layered composer while retaining safe fallback', () => {
   assert.ok(edit.includes('composerController?.isDirty()'));
 });
 
-test('reader cards prefer cached WebP and rebuild missing cache through the shared Geometry Engine', () => {
+test('reader cards use cached renders and never rebuild geometry in the reader', () => {
   assert.ok(publicRuntime.includes(".select('id,thumbnail_url')"));
-  assert.ok(
-    publicRuntime.includes("rpc('novelight_thumbnail_compositions_v2'")
-  );
-  assert.ok(publicRuntime.includes('NovelightThumbnailComposer?.geometry'));
-  assert.ok(publicRuntime.includes('geometry.drawPerspectiveImage'));
-  assert.ok(
-    publicRuntime.includes(
-      "const SURFACE_TYPES = ['pattern', 'symbol', 'frame']"
-    )
-  );
+  assert.ok(publicRuntime.includes("rpc('novelight_thumbnail_compositions_v3'"));
+  assert.ok(publicRuntime.includes("rpc('novelight_thumbnail_compositions_v2'"));
+  assert.ok(publicRuntime.includes('composition?.render_url'));
+  assert.ok(!publicRuntime.includes('NovelightThumbnailComposer?.geometry'));
+  assert.ok(!publicRuntime.includes('geometry.drawPerspectiveImage'));
+  assert.ok(!publicRuntime.includes('SURFACE_TYPES'));
   assert.ok(!publicRuntime.includes('composition.effect_url'));
   assert.ok(!publicRuntime.includes('cover_mask_url'));
   assert.match(publicCss, /aspect-ratio:\s*3\s*\/\s*4/i);
