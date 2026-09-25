@@ -298,7 +298,7 @@ async function assertChapter40ComposerReady(page) {
   await expect(page.locator('#legacyThumbnailArea')).toBeHidden();
 
   await expect(composer.locator('details.nl-thumb-layer')).toHaveCount(5);
-  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(1);
+  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(0);
 
   for (const layerType of ['background', 'base_book']) {
     const selected = composer.locator(
