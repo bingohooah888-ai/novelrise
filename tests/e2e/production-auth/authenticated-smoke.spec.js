@@ -69,12 +69,6 @@ function accountsForProject(fixture, deviceLabel) {
   return accounts;
 }
 
-function saveVisitorToken(role, token) {
-  const fixture = loadFixture();
-  fixture.visitorTokens = { ...(fixture.visitorTokens || {}), [role]: token };
-  saveFixture(fixture);
-}
-
 function saveThumbnailRenderPath(deviceLabel, novelId, renderStoragePath) {
   if (!renderStoragePathPattern.test(String(renderStoragePath))) {
     throw new Error(`Unsafe thumbnail render path: ${renderStoragePath}`);
@@ -131,38 +125,96 @@ async function installStagingSupabaseOverride(context) {
   );
 }
 
-async function assertExpectedSupabaseSession(page) {
-  if (!stagingSupabaseOverride) return;
-
-  const authKeys = await page.evaluate(() => {
-    const keys = [];
+async function assertExpectedSupabaseSession(page, expectedUserId) {
+  const sessions = await page.evaluate(() => {
+    const storedSessions = [];
     for (let index = 0; index < globalThis.localStorage.length; index += 1) {
       const key = globalThis.localStorage.key(index);
-      if (key?.startsWith('sb-') && key.endsWith('-auth-token')) keys.push(key);
+      if (!key?.startsWith('sb-') || !key.endsWith('-auth-token')) continue;
+
+      const raw = globalThis.localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const stored = JSON.parse(raw);
+        storedSessions.push({
+          key,
+          userId:
+            stored?.user?.id ?? stored?.currentSession?.user?.id ?? null,
+          hasAccessToken: Boolean(
+            stored?.access_token ?? stored?.currentSession?.access_token
+          )
+        });
+      } catch {
+        storedSessions.push({ key, userId: null, hasAccessToken: false });
+      }
     }
-    return keys;
+    return storedSessions;
   });
 
-  expect(authKeys).toContain(
-    `sb-${stagingSupabaseOverride.projectRef}-auth-token`
-  );
-  expect(authKeys).not.toContain('sb-fiepaguycecrredwrcwx-auth-token');
+  expect(sessions).toHaveLength(1);
+  expect(sessions[0]).toMatchObject({
+    userId: expectedUserId,
+    hasAccessToken: true
+  });
+
+  if (stagingSupabaseOverride) {
+    expect(sessions[0].key).toBe(
+      `sb-${stagingSupabaseOverride.projectRef}-auth-token`
+    );
+    expect(sessions[0].key).not.toBe(
+      'sb-fiepaguycecrredwrcwx-auth-token'
+    );
+  } else {
+    expect(sessions[0].key).toBe(
+      'sb-fiepaguycecrredwrcwx-auth-token'
+    );
+  }
 }
 
 async function login(page, account, redirect) {
-  await page.goto(`/login.html?redirect=${encodeURIComponent(redirect)}`);
-  await page.locator('#email').fill(account.email);
-  await page.locator('#password').fill(account.password);
-  await page.locator('#loginButton').click();
-  await page.waitForURL((url) =>
-    url.pathname.endsWith(`/${redirect.split('?')[0]}`)
-  );
-  await assertExpectedSupabaseSession(page);
-  const visitorToken = await page.evaluate(() =>
-    globalThis.localStorage.getItem('novelight_visitor_token')
-  );
-  expect(visitorToken).toBeTruthy();
-  return visitorToken;
+  const analyticsPayloads = [];
+  const captureAnalyticsRequest = (request) => {
+    if (
+      request.method() !== 'POST' ||
+      !request.url().includes('/api/analytics-event')
+    ) {
+      return;
+    }
+    try {
+      analyticsPayloads.push(request.postDataJSON());
+    } catch {
+      analyticsPayloads.push(request.postData());
+    }
+  };
+  page.on('request', captureAnalyticsRequest);
+
+  try {
+    await page.goto(`/login.html?redirect=${encodeURIComponent(redirect)}`);
+    await page.locator('#email').fill(account.email);
+    await page.locator('#password').fill(account.password);
+    await page.locator('#loginButton').click();
+    await page.waitForURL((url) =>
+      url.pathname.endsWith(`/${redirect.split('?')[0]}`)
+    );
+    await assertExpectedSupabaseSession(page, account.id);
+    await expect
+      .poll(() => analyticsPayloads.length, { timeout: 10000 })
+      .toBeGreaterThan(0);
+
+    const visitorToken = await page.evaluate(() =>
+      globalThis.localStorage.getItem('novelight_visitor_token')
+    );
+    expect(visitorToken).toBeNull();
+
+    for (const payload of analyticsPayloads) {
+      const serialized = JSON.stringify(payload);
+      expect(serialized).not.toMatch(
+        /novelight_visitor_token|visitor_token|visitorToken/u
+      );
+    }
+  } finally {
+    page.off('request', captureAnalyticsRequest);
+  }
 }
 
 async function getSupabaseAccessToken(page) {
@@ -430,9 +482,8 @@ async function assertAccountSettingsEmailBoundary(
     return;
   }
 
-  await expect(page.locator('#currentPassword')).toBeEnabled();
   await expect(page.locator('#newEmail')).toBeEnabled();
-  await expect(page.locator('#confirmEmail')).toBeEnabled();
+  await expect(page.locator('#emailButton')).toBeEnabled();
 
   const targetEmail =
     `novelight-e2e-email-boundary-${runId}-${deviceLabel}@example.com`;
@@ -459,10 +510,8 @@ async function assertAccountSettingsEmailBoundary(
   });
 
   try {
-    await page.locator('#currentPassword').fill(account.password);
     await page.locator('#newEmail').fill(targetEmail);
-    await page.locator('#confirmEmail').fill(targetEmail);
-    await page.locator('#changeEmail').click();
+    await page.locator('#emailButton').click();
 
     await expect
       .poll(() => updateRequest)
@@ -471,10 +520,11 @@ async function assertAccountSettingsEmailBoundary(
       });
     expect(updateRequest.method).not.toBe('GET');
     await expect(page.locator('#status')).toContainText(
-      '確認メールを送信できませんでした'
+      'メールアドレス変更を開始できませんでした'
     );
-    await expect(page.locator('#currentPassword')).toHaveValue('');
     await expect(page.locator('#currentEmail')).toHaveText(account.email);
+    await expect(page.locator('#newEmail')).toBeEnabled();
+    await expect(page.locator('#emailButton')).toBeEnabled();
   } finally {
     await page.unroute('**/auth/v1/user');
   }
@@ -564,12 +614,7 @@ test('authenticated beta-critical product flow works in target', async ({
 
   try {
     await test.step('Author login enters the Author Studio and starts the first-post flow', async () => {
-      const authorVisitorToken = await login(
-        authorPage,
-        accounts.author,
-        'mypage.html'
-      );
-      saveVisitorToken(`author-${deviceLabel}`, authorVisitorToken);
+      await login(authorPage, accounts.author, 'mypage.html');
 
       await expect(
         authorPage.getByRole('heading', { name: /さんの創作室$/ })
@@ -658,7 +703,7 @@ test('authenticated beta-critical product flow works in target', async ({
       await expect(managedWork.locator('.title')).toHaveText(novelTitle);
     });
 
-    await test.step('Account settings reauth reaches the email-update boundary without mutating Auth', async () => {
+    await test.step('Authenticated account settings reaches the Secure Email Change boundary without mutating Auth', async () => {
       await assertAccountSettingsEmailBoundary(
         authorPage,
         accounts.author,
@@ -695,12 +740,7 @@ test('authenticated beta-critical product flow works in target', async ({
     });
 
     await test.step('Reader login and record discovery impression', async () => {
-      const readerVisitorToken = await login(
-        readerPage,
-        accounts.reader,
-        'mypage.html'
-      );
-      saveVisitorToken(`reader-${deviceLabel}`, readerVisitorToken);
+      await login(readerPage, accounts.reader, 'mypage.html');
       await recordDiscoveryImpression(readerPage, novelId, novelTitle);
 
       const detailConversion = waitForExposureConversion(

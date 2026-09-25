@@ -20,6 +20,18 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
   assert.match(authenticatedSmoke, /#betaEmailNotice/);
   assert.match(authenticatedSmoke, /\/account-settings\.html/);
   assert.match(authenticatedSmoke, /'mypage\.html'/);
+  assert.match(authenticatedSmoke, /assertExpectedSupabaseSession/);
+  assert.match(authenticatedSmoke, /expectedUserId/);
+  assert.match(authenticatedSmoke, /hasAccessToken: true/);
+  assert.match(authenticatedSmoke, /\/api\/analytics-event/);
+  assert.match(authenticatedSmoke, /analyticsPayloads/);
+  assert.match(authenticatedSmoke, /expect\(visitorToken\)\.toBeNull\(\)/);
+  assert.match(
+    authenticatedSmoke,
+    /novelight_visitor_token\|visitor_token\|visitorToken/
+  );
+  assert.doesNotMatch(authenticatedSmoke, /saveVisitorToken/);
+  assert.doesNotMatch(authenticatedSmoke, /expect\(visitorToken\)\.toBeTruthy/);
   assert.match(authenticatedSmoke, /さんの創作室/);
   assert.match(authenticatedSmoke, /\.action-post \.card-cta/);
   assert.match(authenticatedSmoke, /#backToMyNovels/);
@@ -28,7 +40,8 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
     /toHaveAttribute\('href', 'my-novels\.html'\)/
   );
   assert.match(authenticatedSmoke, /managedWork/);
-  assert.match(authenticatedSmoke, /#currentPassword/);
+  assert.match(authenticatedSmoke, /#emailButton/);
+  assert.doesNotMatch(authenticatedSmoke, /#currentPassword/);
   assert.match(authenticatedSmoke, /NOVELIGHT smoke boundary intercept/);
   assert.match(authenticatedSmoke, /assertChapter40ComposerReady/);
   assert.match(
