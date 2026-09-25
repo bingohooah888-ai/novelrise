@@ -238,8 +238,12 @@ test('author pages use layered composer while retaining safe fallback', () => {
 
 test('reader cards use cached renders and never rebuild geometry in the reader', () => {
   assert.ok(publicRuntime.includes(".select('id,thumbnail_url')"));
-  assert.ok(publicRuntime.includes("rpc('novelight_thumbnail_compositions_v3'"));
-  assert.ok(publicRuntime.includes("rpc('novelight_thumbnail_compositions_v2'"));
+  assert.ok(
+    publicRuntime.includes("rpc('novelight_thumbnail_compositions_v3'")
+  );
+  assert.ok(
+    publicRuntime.includes("rpc('novelight_thumbnail_compositions_v2'")
+  );
   assert.ok(publicRuntime.includes('composition?.render_url'));
   assert.ok(!publicRuntime.includes('NovelightThumbnailComposer?.geometry'));
   assert.ok(!publicRuntime.includes('geometry.drawPerspectiveImage'));

@@ -82,10 +82,7 @@ test('beta author landing page uses optimized WebP sources', () => {
   assert.match(betaAuthors, /NOVELIGHT_PC_HERO_FINAL_2560x1280\.webp/u);
   assert.match(betaAuthors, /NOVELIGHT_MOBILE_HERO_FINAL_900x1600\.webp/u);
   assert.match(betaAuthors, /NOVELIGHT_NOCTURNE_FINAL_800x1000\.webp/u);
-  assert.match(
-    betaAuthors,
-    /NOVELIGHT_LP_BELOW_HERO_PC_2560x1800\.webp/u
-  );
+  assert.match(betaAuthors, /NOVELIGHT_LP_BELOW_HERO_PC_2560x1800\.webp/u);
   assert.match(betaAuthors, /novelight-beta-brand\.webp/u);
   assert.match(betaAuthors, /founding-authors-badge-2026\.webp/u);
   assert.match(
