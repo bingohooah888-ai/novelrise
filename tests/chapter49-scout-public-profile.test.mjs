@@ -24,6 +24,24 @@ test('public SCOUT RECORD loads only the public-safe RPC', () => {
   );
 });
 
+test('one equipped title is mounted inside the public profile card', () => {
+  assert.match(js, /const equippedTitle = titles\[0\] \|\| null/u);
+  assert.match(js, /mountEquippedTitle\(equippedTitle\)/u);
+  assert.match(js, /profileHost\.querySelector\('\.name'\)/u);
+  assert.match(js, /public-profile-equipped-title/u);
+  assert.match(js, /name\.insertAdjacentElement\('afterend', badge\)/u);
+  assert.match(js, /limited_founding_author/u);
+  assert.match(js, /assets\/founding-authors-badge-2026\.png/u);
+  assert.match(js, /assets\/scout-badges/u);
+});
+
+test('equipped title artwork has a safe fallback and responsive styling', () => {
+  assert.match(js, /image\.addEventListener\('error'/u);
+  assert.match(css, /\.public-profile-equipped-title\{/u);
+  assert.match(css, /\.public-profile-equipped-artwork\{/u);
+  assert.match(css, /\.public-profile-equipped-fallback/u);
+});
+
 test('public SCOUT surface remains mobile responsive', () => {
   assert.match(css, /@media\(max-width:640px\)/u);
   assert.match(css, /\.public-scout-summary\{grid-template-columns:1fr 1fr\}/u);
