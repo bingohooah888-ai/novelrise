@@ -158,8 +158,11 @@ async function login(page, account, redirect) {
     url.pathname.endsWith(`/${redirect.split('?')[0]}`)
   );
   await assertExpectedSupabaseSession(page);
-  const visitorToken = await page.evaluate(() =>
-    globalThis.localStorage.getItem('novelight_visitor_token')
+  const visitorToken = await page.evaluate(
+    () =>
+      globalThis.localStorage.getItem('novelight_visitor_token') ||
+      globalThis.NovelightClient?.getVisitorToken?.() ||
+      null
   );
   expect(visitorToken).toBeTruthy();
   return visitorToken;
