@@ -346,8 +346,16 @@ async function assertChapter40ComposerReady(page) {
   await expect(composer).toBeVisible();
   await expect(page.locator('#legacyThumbnailArea')).toBeHidden();
 
-  await expect(composer.locator('details.nl-thumb-layer')).toHaveCount(5);
+  const layers = composer.locator('details.nl-thumb-layer');
+  await expect(layers).toHaveCount(5);
+  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(0);
+  await layers.first().locator('summary').click();
   await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(1);
+  await expect(layers.first()).toHaveAttribute('open', '');
+  await layers.nth(1).locator('summary').click();
+  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(1);
+  await expect(layers.first()).not.toHaveAttribute('open', '');
+  await expect(layers.nth(1)).toHaveAttribute('open', '');
 
   for (const layerType of ['background', 'base_book']) {
     const selected = composer.locator(

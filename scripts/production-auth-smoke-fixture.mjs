@@ -46,8 +46,10 @@ function assertNoError(result, label) {
   return result?.data;
 }
 
-async function createUser(role, project) {
-  const email = `novelight-e2e-${project}-${role}-${runId}-${randomBytes(4).toString('hex')}@example.com`;
+async function createUser(role, project, explicitEmail = null) {
+  const email =
+    explicitEmail ||
+    `novelight-e2e-${project}-${role}-${runId}-${randomBytes(4).toString('hex')}@example.com`;
   const userPassword = password();
   const displayName = `NOVELIGHT E2E ${project} ${role === 'author' ? '作者' : '読者'} ${runId}`;
   const data = assertNoError(
@@ -142,9 +144,17 @@ async function setup() {
     saveFixture(fixture);
   }
 
-  fixture.mail.recovery = await createUser('recovery', 'mail');
+  fixture.mail.recovery = await createUser(
+    'recovery',
+    'mail',
+    'delivered@resend.dev'
+  );
   saveFixture(fixture);
-  fixture.mail.emailChange = await createUser('email-change', 'mail');
+  fixture.mail.emailChange = await createUser(
+    'email-change',
+    'mail',
+    'bounced@resend.dev'
+  );
   saveFixture(fixture);
 
   fixture.author = fixture.projects.desktop.author;

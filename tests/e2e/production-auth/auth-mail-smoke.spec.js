@@ -164,7 +164,17 @@ test('Production signup gate, recovery, global sign-out, and Secure Email Change
     await newPasswordClient.auth.signOut({ scope: 'local' });
   });
 
-  const changedEmail = `novelight-e2e-changed-${fixture.runId}-${randomBytes(4).toString('hex')}@example.com`;
+  await test.step('Recovery fixture is removed before reusing the delivered test mailbox', async () => {
+    requireSuccess(
+      await admin.auth.admin.deleteUser(recovery.id),
+      'delete completed recovery user'
+    );
+    const deleted = await admin.auth.admin.getUserById(recovery.id);
+    expect(deleted.data.user).toBeNull();
+    expect(deleted.error).toBeTruthy();
+  });
+
+  const changedEmail = 'delivered@resend.dev';
   await test.step('Logged-in user starts Secure Email Change', async () => {
     await login(page, emailChange);
     await page.goto('/account-settings.html');

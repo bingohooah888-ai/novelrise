@@ -35,12 +35,17 @@ test('Production Auth/Mail live smoke proves Secure Email Change ownership conti
 
 test('Production Auth/Mail live identities are isolated and included in cleanup', () => {
   assert.match(fixture, /mail: \{\}/u);
-  assert.match(fixture, /fixture\.mail\.recovery = await createUser/u);
-  assert.match(fixture, /fixture\.mail\.emailChange = await createUser/u);
+  assert.match(fixture, /'delivered@resend\.dev'/u);
+  assert.match(fixture, /'bounced@resend\.dev'/u);
   assert.match(
     fixture,
     /const mailIds = uniqueIds\(mailAccounts\(fixture\)\)/u
   );
   assert.match(fixture, /\.\.\.mailIds/u);
   assert.match(fixture, /admin\.auth\.admin\.deleteUser\(userId\)/u);
+});
+
+test('Production Auth/Mail smoke uses Resend test mailboxes without address conflicts', () => {
+  assert.match(smoke, /deleteUser\(recovery\.id\)/u);
+  assert.match(smoke, /const changedEmail = 'delivered@resend\.dev'/u);
 });
