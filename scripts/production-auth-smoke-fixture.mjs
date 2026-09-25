@@ -46,8 +46,10 @@ function assertNoError(result, label) {
   return result?.data;
 }
 
-async function createUser(role, project) {
-  const email = `novelight-e2e-${project}-${role}-${runId}-${randomBytes(4).toString('hex')}@example.com`;
+async function createUser(role, project, explicitEmail = null) {
+  const email =
+    explicitEmail ||
+    `novelight-e2e-${project}-${role}-${runId}-${randomBytes(4).toString('hex')}@example.com`;
   const userPassword = password();
   const displayName = `NOVELIGHT E2E ${project} ${role === 'author' ? '作者' : '読者'} ${runId}`;
   const data = assertNoError(
@@ -86,10 +88,14 @@ function projectAccounts(fixture, role) {
   ].filter(Boolean);
 }
 
+function mailAccounts(fixture) {
+  return Object.values(fixture.mail || {}).filter(Boolean);
+}
+
 function safeThumbnailRenderPaths(paths) {
   const unique = [...new Set((paths || []).filter(Boolean).map(String))];
-  const invalid = unique.filter((path) =>
-    !thumbnailRenderPathPattern.test(path)
+  const invalid = unique.filter(
+    (path) => !thumbnailRenderPathPattern.test(path)
   );
   if (invalid.length) {
     throw new Error(
@@ -114,7 +120,9 @@ async function cleanupThumbnailRenders(paths) {
     await admin.storage.from(thumbnailRenderBucket).remove(safePaths),
     'cleanup thumbnail render storage objects'
   );
-  console.log(`Cleaned ${safePaths.length} thumbnail render storage object(s).`);
+  console.log(
+    `Cleaned ${safePaths.length} thumbnail render storage object(s).`
+  );
 }
 
 async function setup() {
@@ -123,6 +131,7 @@ async function setup() {
     runId,
     createdAt: new Date().toISOString(),
     projects: { desktop: {}, mobile: {} },
+    mail: {},
     thumbnailRenderPaths: [],
     thumbnailRenderNovels: {}
   };
@@ -135,13 +144,27 @@ async function setup() {
     saveFixture(fixture);
   }
 
+  fixture.mail.recovery = await createUser(
+    'recovery',
+    'mail',
+    'delivered@resend.dev'
+  );
+  saveFixture(fixture);
+  fixture.mail.emailChange = await createUser(
+    'email-change',
+    'mail',
+    'bounced@resend.dev'
+  );
+  saveFixture(fixture);
+
   fixture.author = fixture.projects.desktop.author;
   fixture.reader = fixture.projects.desktop.reader;
   saveFixture(fixture);
 
   const userIds = uniqueIds([
     ...projectAccounts(fixture, 'author'),
-    ...projectAccounts(fixture, 'reader')
+    ...projectAccounts(fixture, 'reader'),
+    ...mailAccounts(fixture)
   ]);
   await waitForProfiles(userIds);
 
@@ -198,9 +221,12 @@ async function cleanup() {
   const thumbnailRenderPaths = fixtureThumbnailRenderPaths(fixture);
   const authorIds = uniqueIds(projectAccounts(fixture, 'author'));
   const readerIds = uniqueIds(projectAccounts(fixture, 'reader'));
-  const userIds = [...new Set([...authorIds, ...readerIds])];
+  const mailIds = uniqueIds(mailAccounts(fixture));
+  const userIds = [...new Set([...authorIds, ...readerIds, ...mailIds])];
   if (!userIds.length && !thumbnailRenderPaths.length) {
-    console.log('No ephemeral production authenticated-smoke users or renders to clean.');
+    console.log(
+      'No ephemeral production authenticated-smoke users or renders to clean.'
+    );
     return;
   }
 

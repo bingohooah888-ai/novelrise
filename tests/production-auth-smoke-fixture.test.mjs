@@ -32,6 +32,17 @@ test('production auth smoke records and cleans Chapter 40 thumbnail renders', ()
   assert.match(fixtureSource, /\.remove\(safePaths\)/);
 });
 
+test('production auth smoke uses server analytics identity without legacy visitor tokens', () => {
+  assert.match(smokeSource, /\/api\/analytics-event/);
+  assert.match(smokeSource, /expect\(visitorToken\)\.toBeNull\(\)/);
+  assert.match(
+    smokeSource,
+    /novelight_visitor_token\|visitor_token\|visitorToken/
+  );
+  assert.doesNotMatch(smokeSource, /saveVisitorToken/);
+  assert.doesNotMatch(smokeSource, /expect\(visitorToken\)\.toBeTruthy/);
+});
+
 test('production auth smoke cleanup tolerates a pre-fixture safety stop', () => {
   assert.match(fixtureSource, /const admin = supabaseSecretKey/);
   assert.match(fixtureSource, /function requireAdmin\(\)/);

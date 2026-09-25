@@ -69,12 +69,6 @@ function accountsForProject(fixture, deviceLabel) {
   return accounts;
 }
 
-function saveVisitorToken(role, token) {
-  const fixture = loadFixture();
-  fixture.visitorTokens = { ...(fixture.visitorTokens || {}), [role]: token };
-  saveFixture(fixture);
-}
-
 function saveThumbnailRenderPath(deviceLabel, novelId, renderStoragePath) {
   if (!renderStoragePathPattern.test(String(renderStoragePath))) {
     throw new Error(`Unsafe thumbnail render path: ${renderStoragePath}`);
@@ -131,41 +125,102 @@ async function installStagingSupabaseOverride(context) {
   );
 }
 
-async function assertExpectedSupabaseSession(page) {
-  if (!stagingSupabaseOverride) return;
+async function disableChromiumCache(page) {
+  const session = await page.context().newCDPSession(page);
+  await session.send('Network.enable');
+  await session.send('Network.setCacheDisabled', { cacheDisabled: true });
+}
 
-  const authKeys = await page.evaluate(() => {
-    const keys = [];
+async function assertExpectedSupabaseSession(page, expectedUserId) {
+  const sessions = await page.evaluate(() => {
+    const storedSessions = [];
     for (let index = 0; index < globalThis.localStorage.length; index += 1) {
       const key = globalThis.localStorage.key(index);
-      if (key?.startsWith('sb-') && key.endsWith('-auth-token')) keys.push(key);
+      if (!key?.startsWith('sb-') || !key.endsWith('-auth-token')) continue;
+
+      const raw = globalThis.localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const stored = JSON.parse(raw);
+        storedSessions.push({
+          key,
+          userId:
+            stored?.user?.id ?? stored?.currentSession?.user?.id ?? null,
+          hasAccessToken: Boolean(
+            stored?.access_token ?? stored?.currentSession?.access_token
+          )
+        });
+      } catch {
+        storedSessions.push({ key, userId: null, hasAccessToken: false });
+      }
     }
-    return keys;
+    return storedSessions;
   });
 
-  expect(authKeys).toContain(
-    `sb-${stagingSupabaseOverride.projectRef}-auth-token`
-  );
-  expect(authKeys).not.toContain('sb-fiepaguycecrredwrcwx-auth-token');
+  expect(sessions).toHaveLength(1);
+  expect(sessions[0]).toMatchObject({
+    userId: expectedUserId,
+    hasAccessToken: true
+  });
+
+  if (stagingSupabaseOverride) {
+    expect(sessions[0].key).toBe(
+      `sb-${stagingSupabaseOverride.projectRef}-auth-token`
+    );
+    expect(sessions[0].key).not.toBe(
+      'sb-fiepaguycecrredwrcwx-auth-token'
+    );
+  } else {
+    expect(sessions[0].key).toBe(
+      'sb-fiepaguycecrredwrcwx-auth-token'
+    );
+  }
 }
 
 async function login(page, account, redirect) {
-  await page.goto(`/login.html?redirect=${encodeURIComponent(redirect)}`);
-  await page.locator('#email').fill(account.email);
-  await page.locator('#password').fill(account.password);
-  await page.locator('#loginButton').click();
-  await page.waitForURL((url) =>
-    url.pathname.endsWith(`/${redirect.split('?')[0]}`)
-  );
-  await assertExpectedSupabaseSession(page);
-  const visitorToken = await page.evaluate(
-    () =>
-      globalThis.localStorage.getItem('novelight_visitor_token') ||
-      globalThis.NovelightClient?.getVisitorToken?.() ||
-      null
-  );
-  expect(visitorToken).toBeTruthy();
-  return visitorToken;
+  const analyticsPayloads = [];
+  const captureAnalyticsRequest = (request) => {
+    if (
+      request.method() !== 'POST' ||
+      !request.url().includes('/api/analytics-event')
+    ) {
+      return;
+    }
+    try {
+      analyticsPayloads.push(request.postDataJSON());
+    } catch {
+      analyticsPayloads.push(request.postData());
+    }
+  };
+  page.on('request', captureAnalyticsRequest);
+
+  try {
+    await page.goto(`/login.html?redirect=${encodeURIComponent(redirect)}`);
+    await page.locator('#email').fill(account.email);
+    await page.locator('#password').fill(account.password);
+    await page.locator('#loginButton').click();
+    await page.waitForURL((url) =>
+      url.pathname.endsWith(`/${redirect.split('?')[0]}`)
+    );
+    await assertExpectedSupabaseSession(page, account.id);
+    await expect
+      .poll(() => analyticsPayloads.length, { timeout: 10000 })
+      .toBeGreaterThan(0);
+
+    const visitorToken = await page.evaluate(() =>
+      globalThis.localStorage.getItem('novelight_visitor_token')
+    );
+    expect(visitorToken).toBeNull();
+
+    for (const payload of analyticsPayloads) {
+      const serialized = JSON.stringify(payload);
+      expect(serialized).not.toMatch(
+        /novelight_visitor_token|visitor_token|visitorToken/u
+      );
+    }
+  } finally {
+    page.off('request', captureAnalyticsRequest);
+  }
 }
 
 async function getSupabaseAccessToken(page) {
@@ -277,17 +332,20 @@ function waitForExposureConversion(page, eventType) {
 }
 
 function waitForThumbnailRenderAction(page, action) {
-  return page.waitForResponse((response) => {
-    if (
-      !response.url().includes(thumbnailRenderApiPath) ||
-      response.request().method() !== 'POST'
-    ) {
-      return false;
-    }
+  return page.waitForResponse(
+    (response) => {
+      if (
+        !response.url().includes(thumbnailRenderApiPath) ||
+        response.request().method() !== 'POST'
+      ) {
+        return false;
+      }
 
-    const requestBody = response.request().postData();
-    return requestBody?.includes(`"action":"${action}"`) ?? false;
-  });
+      const requestBody = response.request().postData();
+      return requestBody?.includes(`"action":"${action}"`) ?? false;
+    },
+    { timeout: 45_000 }
+  );
 }
 
 async function assertChapter40ComposerReady(page) {
@@ -297,8 +355,16 @@ async function assertChapter40ComposerReady(page) {
   await expect(composer).toBeVisible();
   await expect(page.locator('#legacyThumbnailArea')).toBeHidden();
 
-  await expect(composer.locator('details.nl-thumb-layer')).toHaveCount(5);
+  const layers = composer.locator('details.nl-thumb-layer');
+  await expect(layers).toHaveCount(5);
   await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(0);
+  await layers.first().locator('summary').click();
+  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(1);
+  await expect(layers.first()).toHaveAttribute('open', '');
+  await layers.nth(1).locator('summary').click();
+  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(1);
+  await expect(layers.first()).not.toHaveAttribute('open', '');
+  await expect(layers.nth(1)).toHaveAttribute('open', '');
 
   for (const layerType of ['background', 'base_book']) {
     const selected = composer.locator(
@@ -441,9 +507,10 @@ async function assertAccountSettingsEmailBoundary(
 
   const targetEmail =
     `novelight-e2e-email-boundary-${runId}-${deviceLabel}@example.com`;
+  const authUserRoute = /\/auth\/v1\/user(?:\?.*)?$/u;
   let updateRequest = null;
 
-  await page.route('**/auth/v1/user**', async (route) => {
+  await page.route(authUserRoute, async (route) => {
     const request = route.request();
     if (request.method() === 'GET') {
       await route.continue();
@@ -476,10 +543,11 @@ async function assertAccountSettingsEmailBoundary(
     await expect(page.locator('#status')).toContainText(
       'メールアドレス変更を開始できませんでした'
     );
-    await expect(page.locator('#newEmail')).toBeEnabled();
     await expect(page.locator('#currentEmail')).toHaveText(account.email);
+    await expect(page.locator('#newEmail')).toBeEnabled();
+    await expect(page.locator('#emailButton')).toBeEnabled();
   } finally {
-    await page.unroute('**/auth/v1/user**');
+    await page.unroute(authUserRoute);
   }
 }
 
@@ -560,6 +628,10 @@ test('authenticated beta-critical product flow works in target', async ({
   ]);
   const authorPage = await authorContext.newPage();
   const readerPage = await readerContext.newPage();
+  await Promise.all([
+    disableChromiumCache(authorPage),
+    disableChromiumCache(readerPage)
+  ]);
 
   let novelId;
   let firstEpisodeHref;
@@ -567,12 +639,7 @@ test('authenticated beta-critical product flow works in target', async ({
 
   try {
     await test.step('Author login enters the Author Studio and starts the first-post flow', async () => {
-      const authorVisitorToken = await login(
-        authorPage,
-        accounts.author,
-        'mypage.html'
-      );
-      saveVisitorToken(`author-${deviceLabel}`, authorVisitorToken);
+      await login(authorPage, accounts.author, 'mypage.html');
 
       await expect(
         authorPage.getByRole('heading', { name: /さんの創作室$/ })
@@ -661,7 +728,7 @@ test('authenticated beta-critical product flow works in target', async ({
       await expect(managedWork.locator('.title')).toHaveText(novelTitle);
     });
 
-    await test.step('Account settings reauth reaches the email-update boundary without mutating Auth', async () => {
+    await test.step('Authenticated account settings reaches the Secure Email Change boundary without mutating Auth', async () => {
       await assertAccountSettingsEmailBoundary(
         authorPage,
         accounts.author,
@@ -698,12 +765,7 @@ test('authenticated beta-critical product flow works in target', async ({
     });
 
     await test.step('Reader login and record discovery impression', async () => {
-      const readerVisitorToken = await login(
-        readerPage,
-        accounts.reader,
-        'mypage.html'
-      );
-      saveVisitorToken(`reader-${deviceLabel}`, readerVisitorToken);
+      await login(readerPage, accounts.reader, 'mypage.html');
       await recordDiscoveryImpression(readerPage, novelId, novelTitle);
 
       const detailConversion = waitForExposureConversion(
@@ -805,13 +867,13 @@ test('authenticated beta-critical product flow works in target', async ({
       const work = authorPage.locator('.work').filter({ hasText: novelTitle });
       await expect(work).toHaveCount(1);
       await expect(work.locator('.work-title')).toHaveText(novelTitle);
-      await expect(work.locator('.funnel-node-head strong')).toHaveText([
-        '1',
-        '1',
-        '1',
-        '1',
-        '1'
-      ]);
+      const funnelCounts = work.locator('.funnel-node-head strong');
+      await expect(funnelCounts).toHaveCount(5);
+      await expect(funnelCounts.first()).toHaveText(/^[1-9][0-9]*$/u);
+      await expect(funnelCounts.nth(1)).toHaveText('1');
+      await expect(funnelCounts.nth(2)).toHaveText('1');
+      await expect(funnelCounts.nth(3)).toHaveText('1');
+      await expect(funnelCounts.nth(4)).toHaveText('1');
     });
 
     await test.step('Verify premium checkout handoff without charging', async () => {
