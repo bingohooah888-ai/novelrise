@@ -22,6 +22,9 @@ test('AUDIT-004 Production smoke covers real RPC abuse boundaries', () => {
   assert.match(live, /bulk_import_requests/u);
   assert.match(live, /raw ledger RLS/u);
   assert.match(live, /fixture cleanup/u);
+  assert.match(live, /verifyCleanup/u);
+  assert.match(live, /fixture auth user remains/u);
+  assert.match(live, /temporary data cleanup verification/u);
 });
 
 test('AUDIT-005 Production smoke covers server identity, dedupe, rate, and bypass denial', () => {

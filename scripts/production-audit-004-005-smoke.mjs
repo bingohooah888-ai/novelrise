@@ -189,6 +189,18 @@ async function deleteWhere(table, column, values) {
   );
 }
 
+async function expectNoRows(table, column, values) {
+  const unique = [...new Set(values.filter(Boolean).map(String))];
+  if (!unique.length) return;
+  const result = await admin
+    .from(table)
+    .select(column)
+    .in(column, unique)
+    .limit(1);
+  requireData(result, `verify cleanup ${table}`);
+  assert.equal(result.data.length, 0, `${table} fixture rows remain`);
+}
+
 async function cleanup() {
   const userIds = fixture.users.map((user) => user.id);
   const novelIds = fixture.novelIds;
@@ -233,6 +245,53 @@ async function cleanup() {
     }
   }
   console.log('PASS fixture cleanup');
+}
+
+async function verifyCleanup() {
+  const userIds = fixture.users.map((user) => user.id);
+  const novelIds = fixture.novelIds;
+  const episodeIds = fixture.episodeIds;
+
+  await expectNoRows('user_acquisition', 'user_id', userIds);
+  await expectNoRows('acquisition_touches', 'id', fixture.acquisitionIds);
+  await expectNoRows(
+    'acquisition_touches',
+    'campaign',
+    fixture.acquisitionCampaigns
+  );
+  await expectNoRows('acquisition_touches', 'user_id', userIds);
+  await expectNoRows('beta_activity_days', 'user_id', userIds);
+  await expectNoRows('beta_activity_days', 'latest_path', fixture.betaPaths);
+  await expectNoRows(
+    'beta_activity_days',
+    'viewer_key_hash',
+    fixture.betaViewerHashes
+  );
+  await expectNoRows('reader_journey_events', 'user_id', userIds);
+  await expectNoRows('reader_journey_events', 'novel_id_snapshot', novelIds);
+  await expectNoRows('episode_pv_events', 'episode_id_snapshot', episodeIds);
+  await expectNoRows(
+    'neutral_search_impression_telemetry',
+    'novel_id_snapshot',
+    novelIds
+  );
+  await expectNoRows('scout_record_usage_days', 'user_id', userIds);
+  await expectNoRows('bulk_import_events', 'user_id', userIds);
+  await expectNoRows('bulk_import_requests', 'user_id', userIds);
+  await expectNoRows('episodes', 'novel_id', novelIds);
+  await expectNoRows('novels', 'id', novelIds);
+  await expectNoRows('founding_author_exclusion_audit', 'author_id', userIds);
+  await expectNoRows('founding_author_exclusions', 'user_id', userIds);
+  await expectNoRows('profiles', 'id', userIds);
+
+  for (const userId of userIds) {
+    const result = await admin.auth.admin.getUserById(userId);
+    assert.equal(result.data.user, null, 'fixture auth user remains');
+    assert.ok(result.error, 'deleted fixture auth user unexpectedly resolves');
+  }
+  console.log(
+    'PASS Auth user, profile, and temporary data cleanup verification'
+  );
 }
 
 async function verifyRevision() {
@@ -704,4 +763,5 @@ try {
   await verifyRevision();
 } finally {
   await cleanup();
+  await verifyCleanup();
 }
