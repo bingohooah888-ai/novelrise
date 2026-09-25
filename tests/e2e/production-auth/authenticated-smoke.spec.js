@@ -495,9 +495,10 @@ async function assertAccountSettingsEmailBoundary(
 
   const targetEmail =
     `novelight-e2e-email-boundary-${runId}-${deviceLabel}@example.com`;
+  const authUserRoute = /\/auth\/v1\/user(?:\?.*)?$/u;
   let updateRequest = null;
 
-  await page.route('**/auth/v1/user', async (route) => {
+  await page.route(authUserRoute, async (route) => {
     const request = route.request();
     if (request.method() === 'GET') {
       await route.continue();
@@ -534,7 +535,7 @@ async function assertAccountSettingsEmailBoundary(
     await expect(page.locator('#newEmail')).toBeEnabled();
     await expect(page.locator('#emailButton')).toBeEnabled();
   } finally {
-    await page.unroute('**/auth/v1/user');
+    await page.unroute(authUserRoute);
   }
 }
 

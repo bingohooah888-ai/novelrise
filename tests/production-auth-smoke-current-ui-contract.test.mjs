@@ -43,6 +43,13 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
   assert.match(authenticatedSmoke, /#emailButton/);
   assert.doesNotMatch(authenticatedSmoke, /#currentPassword/);
   assert.match(authenticatedSmoke, /NOVELIGHT smoke boundary intercept/);
+  assert.match(
+    authenticatedSmoke,
+    /const authUserRoute = \/\\\/auth\\\/v1\\\/user/
+  );
+  assert.match(authenticatedSmoke, /page\.route\(authUserRoute/);
+  assert.match(authenticatedSmoke, /page\.unroute\(authUserRoute/);
+  assert.doesNotMatch(authenticatedSmoke, /'\*\*\/auth\/v1\/user'/);
   assert.match(authenticatedSmoke, /assertChapter40ComposerReady/);
   assert.match(
     authenticatedSmoke,
