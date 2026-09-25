@@ -99,12 +99,8 @@ body.novelight-page-scout-record .workspace{
   display:block;width:100%;height:100%;object-fit:contain;
   filter:drop-shadow(0 8px 14px rgba(0,0,0,.28))
 }
-.badge-icon-sprite{
-  width:64px;height:64px;
-  background-image:url('assets/scout-reader-easy-badges.webp');
-  background-repeat:no-repeat;background-size:600% 500%;
-  background-position:var(--badge-sprite-x) var(--badge-sprite-y);
-  filter:drop-shadow(0 7px 12px rgba(0,0,0,.28))
+.badge-icon-artwork.badge-icon-reader-easy-artwork{
+  width:64px;height:64px
 }
 .badge-card.limited h3{white-space:normal}
 .badge-card h3{margin:10px 0 0;overflow:hidden;color:#fff5dd;font-size:12px;line-height:1.45;text-overflow:ellipsis;white-space:nowrap}
@@ -128,14 +124,9 @@ body.novelight-page-scout-record .workspace{
   display:block;width:min(220px,60vw);height:auto;aspect-ratio:1;object-fit:contain;
   filter:drop-shadow(0 16px 28px rgba(0,0,0,.36))
 }
-.badge-dialog-artwork.badge-dialog-sprite{
-  width:min(160px,48vw);aspect-ratio:1;
-  background-image:url('assets/scout-reader-easy-badges.webp');
-  background-repeat:no-repeat;background-size:600% 500%;
-  background-position:var(--badge-sprite-x) var(--badge-sprite-y);
-  filter:drop-shadow(0 14px 24px rgba(0,0,0,.34))
+.badge-dialog-artwork.badge-dialog-reader-easy-artwork img{
+  width:min(160px,48vw)
 }
-.badge-dialog-artwork.badge-dialog-sprite img{display:none}
 .scout-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:17px}.scout-modal-kv{padding:10px;border:1px solid rgba(255,255,255,.06);border-radius:10px;background:#071a2d}.scout-modal-kv span{display:block;color:#8292a0;font-size:9px}.scout-modal-kv b{display:block;margin-top:4px;color:#edf1f5;font-size:12px}
 .scout-visibility{margin-top:16px;padding-top:14px;border-top:1px solid rgba(226,190,92,.16)}
 .scout-state{margin:15px 0;padding:13px 15px;border:1px solid rgba(226,190,92,.18);border-radius:12px;background:#07182a;color:#aebac5;font-size:11px;line-height:1.7}
