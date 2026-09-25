@@ -112,7 +112,7 @@ test('Scout title award endpoint returns the authenticated user award payload', 
         userId: 'user-1',
         since: '2026-09-25T00:00:00.000Z',
         through: '2026-09-25T00:00:03.000Z',
-        limit: 20
+        limit: 160
       }
     }
   ]);
