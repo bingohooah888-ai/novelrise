@@ -645,6 +645,44 @@
     }
   }
 
+
+  function installScoutTitleToastRuntime() {
+    if (window.__novelightScoutTitleToastRuntimeInstalled) return false;
+    window.__novelightScoutTitleToastRuntimeInstalled = true;
+
+    if (!Array.isArray(window.__novelightScoutTitleToastPendingClients)) {
+      window.__novelightScoutTitleToastPendingClients = [];
+    }
+
+    if (
+      window.supabase &&
+      typeof window.supabase.createClient === 'function' &&
+      !window.__novelightScoutTitleToastCaptureInstalled
+    ) {
+      const createClient = window.supabase.createClient.bind(window.supabase);
+      window.supabase.createClient = function (...args) {
+        const client = createClient(...args);
+        window.__novelightScoutTitleToastPendingClients.push(client);
+        if (
+          typeof window.__novelightAttachScoutTitleToastWatcher === 'function'
+        ) {
+          window.__novelightAttachScoutTitleToastWatcher(client);
+        }
+        return client;
+      };
+      window.__novelightScoutTitleToastCaptureInstalled = true;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'novelight-scout-title-toast.js';
+    script.async = false;
+    script.dataset.novelightScoutTitleToast = 'sitewide';
+    document.head.appendChild(script);
+    return true;
+  }
+
+  installScoutTitleToastRuntime();
+
   window.NovelightClient = {
     getVisitorToken,
     captureAcquisition,
