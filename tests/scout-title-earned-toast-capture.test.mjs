@@ -9,6 +9,12 @@ test('Scout title toast captures clients before its runtime finishes loading', (
   assert.match(client, /__novelightScoutTitleToastPendingClients/u);
   assert.match(client, /__novelightScoutTitleToastCaptureInstalled/u);
   assert.match(client, /__novelightAttachScoutTitleToastWatcher/u);
-  assert.match(runtime, /pendingClients\.forEach\(\(client\) => watch\(client\)\)/u);
-  assert.match(runtime, /window\.__novelightAttachScoutTitleToastWatcher = watch/u);
+  assert.match(
+    runtime,
+    /pendingClients\.forEach\(\(client\) => watch\(client\)\)/u
+  );
+  assert.match(
+    runtime,
+    /window\.__novelightAttachScoutTitleToastWatcher = watch/u
+  );
 });
