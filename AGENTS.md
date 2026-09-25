@@ -12,6 +12,14 @@ MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈�
 
 NOVELIGHTの実作業では、MASTER / Preflightを「一度読んだので以後は記憶で運用する」方式に戻さない。コード変更、GitHub、CI/E2E、deploy、Vercel、Supabase、Stripe、外部サービス設定、ファイル更新等の主要工程へ入る直前に `docs/WORK-EXECUTION-PREFLIGHT.md` と `docs/AUTOMATION-CONTINUATION-GATE.md` のRuntime Execution Gateを適用する。
 
+### Content-addressed MASTER reuse
+
+MASTER / Preflightを会話上の記憶だけで流用してはならない。ただし、過去にline 1からconfirmed EOFまで完全読了したMASTERとcurrent main上のMASTER blob / digestが一致し、Preflight / Continuation Gateも変化していないことをfreshに確認できる場合は、MASTERの正式な `MASTER_CONTENT_REUSE` を使用して全文再読を省略できる。main SHAが進んだだけでは同一内容の完全読了証跡を捨てない。
+
+新しいユーザーメッセージでは可視実行カードだけは必ず再発火する。MASTER / 安全ゲート自体の変更、Auth / RLS / Secret / Stripe / Production DB / 破壊的操作への新規拡大、または内容hash不一致ではreuseせず全文再読へ戻る。
+
+SCOUT称号画像の反復追加はMASTERの「SCOUT称号アートワーク反復実装 Fast Path」を優先し、batch取得・batch検証・1回の統合commit/PR/CIを基本とする。
+
 ### Execution Turn Card Gate
 
 NOVELIGHTでツールを1回でも使用するアシスタントターンは、**そのターンの最初のユーザー可視メッセージを可視実行カードにする。カード送信前のツール呼び出しは禁止する。** GitHub/Connectorの読み取り、最新main取得、状態確認、ツールdiscoveryも例外にしない。
