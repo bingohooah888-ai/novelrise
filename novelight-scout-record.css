@@ -569,3 +569,19 @@ html body.novelight-theme.novelight-page-scout-record .seed-inventory-copy stron
     font-size: 38px !important;
   }
 }
+
+
+/* SCOUT RECORD treasure-room background */
+body.novelight-page-scout-record{
+  background-color:#061322!important;
+  background-image:
+    linear-gradient(180deg,rgba(3,10,20,.18) 0%,rgba(3,10,20,.28) 42%,rgba(3,10,20,.38) 100%),
+    url("assets/scout-record/scout-record-treasure-room.webp")!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  background-size:cover!important;
+  background-attachment:fixed!important;
+}
+body.novelight-page-scout-record .workspace{
+  background:transparent!important;
+}
