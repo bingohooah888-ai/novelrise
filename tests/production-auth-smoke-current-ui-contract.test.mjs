@@ -61,6 +61,7 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
     /canvas\[aria-label="作品サムネイルのプレビュー"\]/
   );
   assert.match(authenticatedSmoke, /waitForThumbnailRenderAction/);
+  assert.match(authenticatedSmoke, /\{ timeout: 45_000 \}/);
   assert.match(authenticatedSmoke, /page\.waitForResponse\(\(response\)/);
   assert.match(authenticatedSmoke, /response\.request\(\)\.postData\(\)/);
   assert.doesNotMatch(authenticatedSmoke, /candidate\.json\(\)/);

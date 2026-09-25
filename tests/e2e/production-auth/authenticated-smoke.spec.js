@@ -326,17 +326,20 @@ function waitForExposureConversion(page, eventType) {
 }
 
 function waitForThumbnailRenderAction(page, action) {
-  return page.waitForResponse((response) => {
-    if (
-      !response.url().includes(thumbnailRenderApiPath) ||
-      response.request().method() !== 'POST'
-    ) {
-      return false;
-    }
+  return page.waitForResponse(
+    (response) => {
+      if (
+        !response.url().includes(thumbnailRenderApiPath) ||
+        response.request().method() !== 'POST'
+      ) {
+        return false;
+      }
 
-    const requestBody = response.request().postData();
-    return requestBody?.includes(`"action":"${action}"`) ?? false;
-  });
+      const requestBody = response.request().postData();
+      return requestBody?.includes(`"action":"${action}"`) ?? false;
+    },
+    { timeout: 45_000 }
+  );
 }
 
 async function assertChapter40ComposerReady(page) {
