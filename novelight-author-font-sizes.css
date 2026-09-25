@@ -1,263 +1,308 @@
-/* Creator-page font sizes retained from the #1030 readability pass.
-   Scope is intentionally font-size only: native colors, surfaces, spacing,
-   forms, layout and the frameless page-heading treatment remain unchanged. */
+/* Readability scale for the six requested creator pages.
+   This file changes font-size only. The top page-title size is preserved. */
 
-body.novelight-page-post .page-title h1,
-body.novelight-page-my-novels .head h1,
-body.novelight-page-analytics .analytics-hero h1,
-body.novelight-page-interaction-settings .page-head h1,
-body.novelight-author-studio-shell .page-head h1 {
-  font-size: clamp(32px, 4vw, 52px);
+/* Page titles: preserve the approved current size. */
+html body.novelight-theme.novelight-page-post .page-title h1,
+html body.novelight-theme.novelight-page-my-novels .head h1,
+html body.novelight-theme.novelight-page-analytics .analytics-hero h1,
+html body.novelight-theme.novelight-page-interaction-settings .page-head h1,
+html body.novelight-author-studio-shell .page-head h1 {
+  font-size: clamp(32px, 4vw, 52px) !important;
 }
 
-body.novelight-page-post .page-title p,
-body.novelight-page-my-novels .head p,
-body.novelight-page-analytics .analytics-hero .lead,
-body.novelight-page-interaction-settings .page-head p,
-body.novelight-author-studio-shell .page-head p {
-  font-size: 18px;
+/* Lead copy below the page title. */
+html body.novelight-theme.novelight-page-post .page-title p,
+html body.novelight-theme.novelight-page-my-novels .head p,
+html body.novelight-theme.novelight-page-analytics .analytics-hero .lead,
+html body.novelight-theme.novelight-page-interaction-settings .page-head p,
+html body.novelight-author-studio-shell .page-head p {
+  font-size: 20px !important;
 }
 
-body.novelight-page-post .page-kicker,
-body.novelight-page-analytics .analytics-kicker,
-body.novelight-page-interaction-settings .page-kicker,
-body.novelight-author-studio-shell .kicker {
-  font-size: 14px;
+/* Eyebrows / kickers. */
+html body.novelight-theme.novelight-page-post .page-kicker,
+html body.novelight-theme.novelight-page-analytics .analytics-kicker,
+html body.novelight-theme.novelight-page-analytics .opportunity-summary-kicker,
+html body.novelight-theme.novelight-page-interaction-settings .page-kicker,
+html body.novelight-author-studio-shell .kicker {
+  font-size: 16px !important;
 }
 
-body.novelight-page-post .section-title,
-body.novelight-page-post .panel h2,
-body.novelight-page-my-novels .section-title,
-body.novelight-page-my-novels .panel h2,
-body.novelight-page-analytics .section-title,
-body.novelight-page-analytics .panel h2,
-body.novelight-page-analytics .trend-panel h2,
-body.novelight-page-analytics .opportunity-summary h2,
-body.novelight-page-interaction-settings .section-title,
-body.novelight-page-interaction-settings .panel h2,
-body.novelight-author-studio-shell .section-title,
-body.novelight-author-studio-shell .panel h2,
-body.novelight-author-studio-shell .editor h2,
-body.novelight-author-studio-shell .list-head h2 {
-  font-size: 28px;
+/* Primary section headings. */
+html body.novelight-theme.novelight-page-post .section-title,
+html body.novelight-theme.novelight-page-post .panel h2,
+html body.novelight-theme.novelight-page-my-novels .section-title,
+html body.novelight-theme.novelight-page-my-novels .panel h2,
+html body.novelight-theme.novelight-page-analytics .section-title,
+html body.novelight-theme.novelight-page-analytics .panel h2,
+html body.novelight-theme.novelight-page-analytics .trend-panel h2,
+html body.novelight-theme.novelight-page-analytics .opportunity-summary h2,
+html body.novelight-theme.novelight-page-interaction-settings .section-title,
+html body.novelight-theme.novelight-page-interaction-settings .panel h2,
+html body.novelight-author-studio-shell .section-title,
+html body.novelight-author-studio-shell .panel h2,
+html body.novelight-author-studio-shell .editor h2,
+html body.novelight-author-studio-shell .list-head h2 {
+  font-size: 30px !important;
 }
 
-body.novelight-page-post label,
-body.novelight-page-post .legend,
-body.novelight-page-post .field label,
-body.novelight-page-my-novels label,
-body.novelight-page-my-novels .legend,
-body.novelight-page-my-novels .field label,
-body.novelight-page-analytics label,
-body.novelight-page-analytics .legend,
-body.novelight-page-analytics .field label,
-body.novelight-page-interaction-settings label,
-body.novelight-page-interaction-settings .legend,
-body.novelight-page-interaction-settings .field label,
-body.novelight-author-studio-shell label,
-body.novelight-author-studio-shell .legend,
-body.novelight-author-studio-shell .field label {
-  font-size: 16px;
+/* Secondary / card titles. */
+html body.novelight-theme.novelight-page-my-novels .title,
+html body.novelight-author-studio-shell .note h3 {
+  font-size: 22px !important;
 }
 
-body.novelight-page-post input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
-body.novelight-page-post select,
-body.novelight-page-post textarea,
-body.novelight-page-my-novels input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
-body.novelight-page-my-novels select,
-body.novelight-page-my-novels textarea,
-body.novelight-page-analytics input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
-body.novelight-page-analytics select,
-body.novelight-page-analytics textarea,
-body.novelight-page-interaction-settings input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
-body.novelight-page-interaction-settings select,
-body.novelight-page-interaction-settings textarea,
-body.novelight-author-studio-shell input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
-body.novelight-author-studio-shell select,
-body.novelight-author-studio-shell textarea {
-  font-size: 16px;
+html body.novelight-theme.novelight-page-analytics .work-title {
+  font-size: 25px !important;
 }
 
-body.novelight-page-post .help,
-body.novelight-page-post .status,
-body.novelight-page-post .notice,
-body.novelight-page-my-novels .help,
-body.novelight-page-my-novels .status,
-body.novelight-page-my-novels .empty,
-body.novelight-page-analytics .help,
-body.novelight-page-analytics .status,
-body.novelight-page-analytics .notice,
-body.novelight-page-interaction-settings .help,
-body.novelight-page-interaction-settings .status,
-body.novelight-page-interaction-settings .notice,
-body.novelight-page-interaction-settings .panel-copy,
-body.novelight-author-studio-shell .help,
-body.novelight-author-studio-shell .status,
-body.novelight-author-studio-shell .notice,
-body.novelight-author-studio-shell .panel-copy,
-body.novelight-author-studio-shell .privacy-note,
-body.novelight-author-studio-shell .security-note,
-body.novelight-author-studio-shell .future p {
-  font-size: 15px;
+html body.novelight-author-studio-shell .future h2 {
+  font-size: 24px !important;
 }
 
-body.novelight-page-post .btn,
-body.novelight-page-post .button,
-body.novelight-page-post .primary,
-body.novelight-page-post .new,
-body.novelight-page-post .work-action,
-body.novelight-page-post .cancel,
-body.novelight-page-post .submit,
-body.novelight-page-my-novels .btn,
-body.novelight-page-my-novels .button,
-body.novelight-page-my-novels .primary,
-body.novelight-page-my-novels .new,
-body.novelight-page-my-novels .work-action,
-body.novelight-page-analytics .btn,
-body.novelight-page-analytics .button,
-body.novelight-page-analytics .primary,
-body.novelight-page-interaction-settings .btn,
-body.novelight-page-interaction-settings .button,
-body.novelight-page-interaction-settings .primary,
-body.novelight-author-studio-shell .btn,
-body.novelight-author-studio-shell .button,
-body.novelight-author-studio-shell .primary {
-  font-size: 15px;
+/* Form labels and controls. */
+html body.novelight-theme.novelight-page-post label,
+html body.novelight-theme.novelight-page-post .legend,
+html body.novelight-theme.novelight-page-post .field label,
+html body.novelight-theme.novelight-page-analytics label,
+html body.novelight-theme.novelight-page-analytics .legend,
+html body.novelight-theme.novelight-page-analytics .field label,
+html body.novelight-theme.novelight-page-interaction-settings label,
+html body.novelight-theme.novelight-page-interaction-settings .legend,
+html body.novelight-theme.novelight-page-interaction-settings .field label,
+html body.novelight-theme.novelight-page-interaction-settings .setting strong,
+html body.novelight-author-studio-shell label,
+html body.novelight-author-studio-shell .legend,
+html body.novelight-author-studio-shell .field label {
+  font-size: 18px !important;
 }
 
-body.novelight-page-post .required {
-  font-size: 13px;
+html body.novelight-theme.novelight-page-post input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+html body.novelight-theme.novelight-page-post select,
+html body.novelight-theme.novelight-page-post textarea,
+html body.novelight-theme.novelight-page-analytics input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+html body.novelight-theme.novelight-page-analytics select,
+html body.novelight-theme.novelight-page-analytics textarea,
+html body.novelight-theme.novelight-page-interaction-settings input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+html body.novelight-theme.novelight-page-interaction-settings select,
+html body.novelight-theme.novelight-page-interaction-settings textarea,
+html body.novelight-author-studio-shell input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+html body.novelight-author-studio-shell select,
+html body.novelight-author-studio-shell textarea {
+  font-size: 18px !important;
 }
 
-body.novelight-page-post .thumbnail-name,
-body.novelight-page-post .check,
-body.novelight-page-post .policy {
-  font-size: 14px;
+/* Buttons and tabs. */
+html body.novelight-theme.novelight-page-post .btn,
+html body.novelight-theme.novelight-page-post .button,
+html body.novelight-theme.novelight-page-post .primary,
+html body.novelight-theme.novelight-page-post .new,
+html body.novelight-theme.novelight-page-post .work-action,
+html body.novelight-theme.novelight-page-post .cancel,
+html body.novelight-theme.novelight-page-post .submit,
+html body.novelight-theme.novelight-page-post .nl-thumb-randomize-button,
+html body.novelight-theme.novelight-page-my-novels .btn,
+html body.novelight-theme.novelight-page-my-novels .button,
+html body.novelight-theme.novelight-page-my-novels .primary,
+html body.novelight-theme.novelight-page-my-novels .new,
+html body.novelight-theme.novelight-page-my-novels .work-action,
+html body.novelight-theme.novelight-page-analytics .btn,
+html body.novelight-theme.novelight-page-analytics .button,
+html body.novelight-theme.novelight-page-analytics .primary,
+html body.novelight-theme.novelight-page-interaction-settings .btn,
+html body.novelight-theme.novelight-page-interaction-settings .button,
+html body.novelight-theme.novelight-page-interaction-settings .primary,
+html body.novelight-author-studio-shell .btn,
+html body.novelight-author-studio-shell .button,
+html body.novelight-author-studio-shell .primary {
+  font-size: 18px !important;
 }
 
-body.novelight-page-post .thumbnail-state,
-body.novelight-page-post .composer-intro {
-  font-size: 15px;
+html body.novelight-theme.novelight-page-analytics .period button {
+  font-size: 20px !important;
 }
 
-body.novelight-page-my-novels .title {
-  font-size: 20px;
+html body.novelight-theme.novelight-page-analytics .trend-metrics button {
+  font-size: 18px !important;
 }
 
-body.novelight-page-my-novels .desc {
-  font-size: 15px;
+/* Normal body copy. */
+html body.novelight-theme.novelight-page-my-novels .desc,
+html body.novelight-author-studio-shell .note-body,
+html body.novelight-theme.novelight-page-interaction-settings .setting span,
+html body.novelight-theme.novelight-page-interaction-settings .summary,
+html body.novelight-theme.novelight-page-interaction-settings .note {
+  font-size: 18px !important;
 }
 
-body.novelight-page-my-novels .meta {
-  font-size: 14px;
+/* Supporting explanations. */
+html body.novelight-theme.novelight-page-post .help,
+html body.novelight-theme.novelight-page-post .composer-intro,
+html body.novelight-theme.novelight-page-post .policy,
+html body.novelight-theme.novelight-page-post .nl-thumb-randomize-help,
+html body.novelight-theme.novelight-page-post .nl-thumb-composer-note,
+html body.novelight-theme.novelight-page-post .nl-thumb-composer-error,
+html body.novelight-theme.novelight-page-post .novelight-custom-tags-help,
+html body.novelight-theme.novelight-page-analytics .opportunity-summary-message,
+html body.novelight-theme.novelight-page-analytics .opportunity-card-sub,
+html body.novelight-theme.novelight-page-analytics .trend-toolbar p,
+html body.novelight-theme.novelight-page-analytics .analytics-plan-note p,
+html body.novelight-theme.novelight-page-interaction-settings .panel-copy,
+html body.novelight-author-studio-shell .panel-copy,
+html body.novelight-author-studio-shell .privacy-note,
+html body.novelight-author-studio-shell .future p,
+html body.novelight-author-studio-shell .notice,
+html body.novelight-author-studio-shell .pending {
+  font-size: 17px !important;
 }
 
-body.novelight-page-my-novels .badge,
-body.novelight-page-my-novels .state {
-  font-size: 13px;
+html body.novelight-theme.novelight-page-post .check {
+  font-size: 18px !important;
 }
 
-body.novelight-author-studio-shell .count,
-body.novelight-author-studio-shell .note-meta,
-body.novelight-author-studio-shell .note-link {
-  font-size: 14px;
+/* Status / meta / secondary information. */
+html body.novelight-theme.novelight-page-post .thumbnail-state,
+html body.novelight-theme.novelight-page-post .status,
+html body.novelight-theme.novelight-page-my-novels .meta,
+html body.novelight-author-studio-shell .count,
+html body.novelight-author-studio-shell .note-meta,
+html body.novelight-author-studio-shell .note-link,
+html body.novelight-author-studio-shell .status,
+html body.novelight-author-studio-shell .security-note,
+html body.novelight-theme.novelight-page-interaction-settings .status,
+html body.novelight-theme.novelight-page-analytics .metric .sub,
+html body.novelight-theme.novelight-page-analytics .spark-empty,
+html body.novelight-theme.novelight-page-analytics .metric-change,
+html body.novelight-theme.novelight-page-analytics .trend-axis,
+html body.novelight-theme.novelight-page-analytics .work-window,
+html body.novelight-theme.novelight-page-analytics .funnel-node-head span,
+html body.novelight-theme.novelight-page-analytics .funnel-node small,
+html body.novelight-theme.novelight-page-analytics .paid,
+html body.novelight-theme.novelight-page-analytics .opportunity-summary-period,
+html body.novelight-theme.novelight-page-analytics #status,
+html body.novelight-theme.novelight-page-analytics #basicStatus,
+html body.novelight-theme.novelight-page-analytics .analytics-plan-note {
+  font-size: 17px !important;
 }
 
-body.novelight-author-studio-shell .note h3 {
-  font-size: 18px;
+/* Compact annotations / badges. */
+html body.novelight-theme.novelight-page-post .required,
+html body.novelight-theme.novelight-page-post .thumbnail-name,
+html body.novelight-theme.novelight-page-post .nl-thumb-layer-selection,
+html body.novelight-theme.novelight-page-post .nl-thumb-option span:not(.nl-thumb-option-none),
+html body.novelight-theme.novelight-page-post .nl-thumb-option-none,
+html body.novelight-theme.novelight-page-post .novelight-tags-empty-selection,
+html body.novelight-theme.novelight-page-post .novelight-tags-counter,
+html body.novelight-theme.novelight-page-post .novelight-tags-no-match,
+html body.novelight-theme.novelight-page-post .novelight-tags-unavailable,
+html body.novelight-theme.novelight-page-post .novelight-tags-message,
+html body.novelight-theme.novelight-page-post .novelight-work-tag,
+html body.novelight-theme.novelight-page-my-novels .badge,
+html body.novelight-theme.novelight-page-my-novels .state,
+html body.novelight-author-studio-shell .tag {
+  font-size: 16px !important;
 }
 
-body.novelight-author-studio-shell .note-body {
-  font-size: 15px;
+html body.novelight-theme.novelight-page-post .nl-thumb-preview-status,
+html body.novelight-theme.novelight-page-post .novelight-tag-chip,
+html body.novelight-theme.novelight-page-post .novelight-tag-option {
+  font-size: 17px !important;
 }
 
-body.novelight-author-studio-shell .tag {
-  font-size: 13px;
+html body.novelight-theme.novelight-page-post .nl-thumb-template-field > span,
+html body.novelight-theme.novelight-page-post .nl-thumb-layer-summary strong,
+html body.novelight-theme.novelight-page-post .novelight-custom-tags-title {
+  font-size: 18px !important;
 }
 
-body.novelight-page-analytics .period button,
-body.novelight-page-analytics .trend-metrics button {
-  font-size: 15px;
+/* Empty / loading states. */
+html body.novelight-theme.novelight-page-my-novels .list,
+html body.novelight-theme.novelight-page-my-novels .empty,
+html body.novelight-author-studio-shell .empty,
+html body.novelight-theme.novelight-page-analytics .trend-empty {
+  font-size: 17px !important;
 }
 
-body.novelight-page-analytics .opportunity-summary-message,
-body.novelight-page-analytics .opportunity-card-sub,
-body.novelight-page-analytics .metric .sub,
-body.novelight-page-analytics .trend-toolbar p {
-  font-size: 14px;
+/* Important values. */
+html body.novelight-theme.novelight-page-analytics .opportunity-card-value,
+html body.novelight-theme.novelight-page-analytics .metric .value {
+  font-size: 40px !important;
 }
 
-body.novelight-page-analytics .opportunity-card-label,
-body.novelight-page-analytics .metric .label {
-  font-size: 16px;
+html body.novelight-theme.novelight-page-analytics .opportunity-card-label,
+html body.novelight-theme.novelight-page-analytics .metric .label {
+  font-size: 18px !important;
 }
 
-body.novelight-page-analytics #status,
-body.novelight-page-analytics #basicStatus,
-body.novelight-page-analytics .analytics-plan-note {
-  font-size: 15px;
+html body.novelight-theme.novelight-page-analytics .funnel-node-head strong {
+  font-size: 24px !important;
 }
 
-body.novelight-page-interaction-settings .setting strong {
-  font-size: 16px;
+html body.novelight-theme.novelight-page-analytics .analytics-plan-note strong {
+  font-size: 20px !important;
 }
 
-body.novelight-page-interaction-settings .setting span {
-  font-size: 14px;
+html body.novelight-theme.novelight-page-analytics .analytics-plan-note a {
+  font-size: 18px !important;
 }
 
-body.novelight-page-interaction-settings .summary,
-body.novelight-page-interaction-settings .note {
-  font-size: 15px;
+html body.novelight-author-studio-shell .current-label {
+  font-size: 16px !important;
 }
 
-body.novelight-author-studio-shell .current-label {
-  font-size: 14px;
-}
-
-body.novelight-author-studio-shell .current-email {
-  font-size: 17px;
-}
-
-body.novelight-author-studio-shell .future h2 {
-  font-size: 22px;
-}
-
-body.novelight-author-studio-shell .pending {
-  font-size: 15px;
+html body.novelight-author-studio-shell .current-email {
+  font-size: 20px !important;
 }
 
 @media (max-width: 640px) {
-  body.novelight-page-post .page-title h1,
-  body.novelight-page-my-novels .head h1,
-  body.novelight-page-analytics .analytics-hero h1,
-  body.novelight-page-interaction-settings .page-head h1,
-  body.novelight-author-studio-shell .page-head h1 {
-    font-size: 30px;
+  /* Page titles remain exactly at the current approved mobile size. */
+  html body.novelight-theme.novelight-page-post .page-title h1,
+  html body.novelight-theme.novelight-page-my-novels .head h1,
+  html body.novelight-theme.novelight-page-analytics .analytics-hero h1,
+  html body.novelight-theme.novelight-page-interaction-settings .page-head h1,
+  html body.novelight-author-studio-shell .page-head h1 {
+    font-size: 30px !important;
   }
 
-  body.novelight-page-post .page-title p,
-  body.novelight-page-my-novels .head p,
-  body.novelight-page-analytics .analytics-hero .lead,
-  body.novelight-page-interaction-settings .page-head p,
-  body.novelight-author-studio-shell .page-head p {
-    font-size: 17px;
+  html body.novelight-theme.novelight-page-post .page-title p,
+  html body.novelight-theme.novelight-page-my-novels .head p,
+  html body.novelight-theme.novelight-page-analytics .analytics-hero .lead,
+  html body.novelight-theme.novelight-page-interaction-settings .page-head p,
+  html body.novelight-author-studio-shell .page-head p {
+    font-size: 19px !important;
   }
 
-  body.novelight-page-post .section-title,
-  body.novelight-page-post .panel h2,
-  body.novelight-page-my-novels .section-title,
-  body.novelight-page-my-novels .panel h2,
-  body.novelight-page-analytics .section-title,
-  body.novelight-page-analytics .panel h2,
-  body.novelight-page-analytics .trend-panel h2,
-  body.novelight-page-analytics .opportunity-summary h2,
-  body.novelight-page-interaction-settings .section-title,
-  body.novelight-page-interaction-settings .panel h2,
-  body.novelight-author-studio-shell .section-title,
-  body.novelight-author-studio-shell .panel h2,
-  body.novelight-author-studio-shell .editor h2,
-  body.novelight-author-studio-shell .list-head h2 {
-    font-size: 24px;
+  html body.novelight-theme.novelight-page-post .page-kicker,
+  html body.novelight-theme.novelight-page-analytics .analytics-kicker,
+  html body.novelight-theme.novelight-page-analytics .opportunity-summary-kicker,
+  html body.novelight-theme.novelight-page-interaction-settings .page-kicker,
+  html body.novelight-author-studio-shell .kicker {
+    font-size: 15px !important;
+  }
+
+  html body.novelight-theme.novelight-page-post .section-title,
+  html body.novelight-theme.novelight-page-post .panel h2,
+  html body.novelight-theme.novelight-page-my-novels .section-title,
+  html body.novelight-theme.novelight-page-my-novels .panel h2,
+  html body.novelight-theme.novelight-page-analytics .section-title,
+  html body.novelight-theme.novelight-page-analytics .panel h2,
+  html body.novelight-theme.novelight-page-analytics .trend-panel h2,
+  html body.novelight-theme.novelight-page-analytics .opportunity-summary h2,
+  html body.novelight-theme.novelight-page-interaction-settings .section-title,
+  html body.novelight-theme.novelight-page-interaction-settings .panel h2,
+  html body.novelight-author-studio-shell .section-title,
+  html body.novelight-author-studio-shell .panel h2,
+  html body.novelight-author-studio-shell .editor h2,
+  html body.novelight-author-studio-shell .list-head h2 {
+    font-size: 26px !important;
+  }
+
+  html body.novelight-theme.novelight-page-analytics .period button {
+    font-size: 19px !important;
+  }
+
+  html body.novelight-theme.novelight-page-analytics .opportunity-card-value,
+  html body.novelight-theme.novelight-page-analytics .metric .value {
+    font-size: 34px !important;
   }
 }
