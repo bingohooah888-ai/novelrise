@@ -6,10 +6,16 @@ import test from 'node:test';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const homeHero = readFileSync(join(root, 'novelight-home-hero.css'), 'utf8');
-const featureCss = readFileSync(join(root, 'novelight-home-feature-icons.css'), 'utf8');
+const featureCss = readFileSync(
+  join(root, 'novelight-home-feature-icons.css'),
+  'utf8'
+);
 const authorCss = readFileSync(join(root, 'novelight-author-room.css'), 'utf8');
 const betaAuthors = readFileSync(join(root, 'beta-authors.html'), 'utf8');
-const thumbnailRuntime = readFileSync(join(root, 'novelight-thumbnail-runtime.js'), 'utf8');
+const thumbnailRuntime = readFileSync(
+  join(root, 'novelight-thumbnail-runtime.js'),
+  'utf8'
+);
 
 const budgets = new Map([
   ['assets/novelight-feature-discovery.webp', 50_000],
@@ -32,7 +38,7 @@ const budgets = new Map([
   ['assets/NOVELIGHT_LP_BELOW_HERO_PC_2560x1800.webp', 650_000]
 ]);
 
-test('optimized mobile-facing assets exist within transfer budgets', () => {
+test('optimized image assets stay within transfer budgets', () => {
   for (const [relativePath, maxBytes] of budgets) {
     const absolutePath = join(root, relativePath);
     assert.equal(existsSync(absolutePath), true, `${relativePath} is missing`);
@@ -43,16 +49,19 @@ test('optimized mobile-facing assets exist within transfer budgets', () => {
   }
 });
 
-test('home visual surfaces use optimized WebP assets without the legacy hero PNG layer', () => {
+test('home assets use optimized WebP sources', () => {
   assert.doesNotMatch(homeHero, /novelight-home-hero\.png/u);
   assert.match(homeHero, /novelight-home-hero\.webp/u);
-  assert.doesNotMatch(featureCss, /novelight-feature-(?:discovery|light-seed|analytics)\.png/u);
+  assert.doesNotMatch(
+    featureCss,
+    /novelight-feature-(?:discovery|light-seed|analytics)\.png/u
+  );
   assert.match(featureCss, /novelight-feature-discovery\.webp/u);
   assert.match(featureCss, /novelight-feature-light-seed\.webp/u);
   assert.match(featureCss, /novelight-feature-analytics\.webp/u);
 });
 
-test('author studio uses compact WebP action and metric artwork', () => {
+test('author studio uses compact WebP artwork', () => {
   assert.doesNotMatch(authorCss, /ChatGPT Image 2026年9月7日 01_37_/u);
   for (const name of [
     'action-post.webp',
@@ -69,17 +78,23 @@ test('author studio uses compact WebP action and metric artwork', () => {
   }
 });
 
-test('beta author landing page uses optimized hero, mascot, brand, badge and desktop background assets', () => {
+test('beta author landing page uses optimized WebP sources', () => {
   assert.match(betaAuthors, /NOVELIGHT_PC_HERO_FINAL_2560x1280\.webp/u);
   assert.match(betaAuthors, /NOVELIGHT_MOBILE_HERO_FINAL_900x1600\.webp/u);
   assert.match(betaAuthors, /NOVELIGHT_NOCTURNE_FINAL_800x1000\.webp/u);
-  assert.match(betaAuthors, /NOVELIGHT_LP_BELOW_HERO_PC_2560x1800\.webp/u);
+  assert.match(
+    betaAuthors,
+    /NOVELIGHT_LP_BELOW_HERO_PC_2560x1800\.webp/u
+  );
   assert.match(betaAuthors, /novelight-beta-brand\.webp/u);
   assert.match(betaAuthors, /founding-authors-badge-2026\.webp/u);
-  assert.match(betaAuthors, /founding-badge-image[^>]+loading="lazy"[^>]+decoding="async"/u);
+  assert.match(
+    betaAuthors,
+    /founding-badge-image[^>]+loading="lazy"[^>]+decoding="async"/u
+  );
 });
 
-test('reader thumbnail runtime never composites 1086x1448 geometry in the browser', () => {
+test('reader thumbnail runtime uses only cached renders', () => {
   assert.doesNotMatch(thumbnailRuntime, /createElement\(['"]canvas['"]\)/u);
   assert.doesNotMatch(thumbnailRuntime, /new Image\(\)/u);
   assert.doesNotMatch(thumbnailRuntime, /toDataURL/u);

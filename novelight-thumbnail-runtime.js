@@ -179,7 +179,7 @@
           try {
             await applyComposition(linksForNovel, composition);
           } catch (error) {
-            console.error('official thumbnail geometry fallback failed', error);
+            console.error('official cached thumbnail apply failed', error);
           }
         })
       );
