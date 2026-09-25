@@ -112,25 +112,7 @@ body.novelight-page-scout-record .workspace{
 .scout-note{margin-top:12px;color:#8d9ca9;font-size:10px;line-height:1.7}
 .scout-actions{display:flex;gap:8px;flex-wrap:wrap}
 .scout-mini-button{min-height:34px;padding:7px 10px;border:1px solid rgba(226,190,92,.22);border-radius:9px;background:#081a2c;color:#e9d893;font-size:10px;font-weight:900;cursor:pointer}
-.scout-modal{
-  position:fixed;
-  inset:auto;
-  top:50%;
-  left:50%;
-  width:min(620px,calc(100vw - 32px));
-  max-height:calc(100dvh - 32px);
-  margin:0;
-  padding:0;
-  overflow:auto;
-  border:1px solid var(--line);
-  border-radius:18px;
-  background:#06172a;
-  color:#f8f2e6;
-  box-shadow:0 24px 80px rgba(0,0,0,.55);
-  transform:translate(-50%,-50%)
-}
-#badgeDialog.scout-modal{width:min(760px,calc(100vw - 40px))}
-#badgeDialog .scout-modal-card{padding:30px}
+.scout-modal{width:min(520px,calc(100% - 28px));border:1px solid var(--line);border-radius:18px;background:#06172a;color:#f8f2e6;padding:0;box-shadow:0 24px 80px rgba(0,0,0,.55)}
 .scout-modal::backdrop{background:rgba(0,5,12,.74)}
 .scout-modal-card{padding:23px}.scout-modal-head{display:flex;justify-content:space-between;gap:12px}.scout-modal h2{margin:0;color:#fff1bd;font-size:21px}.scout-modal-close{width:36px;height:36px;border:1px solid rgba(226,190,92,.24);border-radius:50%;background:#0c2238;color:#fff;cursor:pointer}
 .badge-dialog-artwork{display:grid;place-items:center;margin:16px auto 2px}
@@ -166,18 +148,7 @@ body.novelight-page-scout-record .workspace{
 @media(max-width:1120px){.scout-hero{grid-template-columns:minmax(0,1fr) 190px}.scout-point-card{grid-column:1/-1;display:grid;grid-template-columns:1fr auto;align-items:center}.badge-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:900px){body.novelight-page-scout-record .workspace{width:min(100% - 34px,1240px)}.scout-main-grid{grid-template-columns:1fr}.scout-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.scout-page-head{align-items:flex-start;flex-direction:column}.scout-hero{grid-template-columns:1fr;padding:20px}.scout-emblem-wrap{min-height:180px}.scout-point-card{grid-column:auto;display:flex}.seed-inventory-grid{grid-template-columns:1fr}.badge-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:520px){
-  body.novelight-page-scout-record .workspace{width:min(100% - 24px,1240px);padding-top:24px}
-  .scout-page-head{padding-left:48px}
-  .scout-page-head h1{font-size:30px}
-  .scout-stats{grid-template-columns:1fr 1fr}
-  .scout-panel,.scout-rank-path-wrap{padding:17px}
-  .badge-card{padding:12px}
-  .scout-modal{width:calc(100vw - 20px);max-height:calc(100dvh - 20px)}
-  #badgeDialog.scout-modal{width:calc(100vw - 20px)}
-  #badgeDialog .scout-modal-card{padding:20px}
-  .scout-modal-grid{grid-template-columns:1fr}
-}
+@media(max-width:520px){body.novelight-page-scout-record .workspace{width:min(100% - 24px,1240px);padding-top:24px}.scout-page-head{padding-left:48px}.scout-page-head h1{font-size:30px}.scout-stats{grid-template-columns:1fr 1fr}.scout-panel,.scout-rank-path-wrap{padding:17px}.badge-card{padding:12px}.scout-modal-grid{grid-template-columns:1fr}}
 
 .badge-composite{
   margin-top:18px;
@@ -458,4 +429,114 @@ body.novelight-page-scout-record #badgeCount{
   body.novelight-page-scout-record .badge-meta,
   body.novelight-page-scout-record .badge-progress-text{font-size:14px!important}
   body.novelight-page-scout-record .badge-point{font-size:15px!important}
+}
+
+/* Seven-page shared typography scale: SCOUT RECORD role mapping. */
+/* The page-title h1 is intentionally not selected here. */
+
+html body.novelight-theme.novelight-page-scout-record .scout-page-head p {
+  font-size: 20px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-kicker,
+html body.novelight-theme.novelight-page-scout-record .scout-emblem-caption {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-section-head h2 {
+  font-size: 30px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-help,
+html body.novelight-theme.novelight-page-scout-record .badge-filter,
+html body.novelight-theme.novelight-page-scout-record .scout-mini-button {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-section-head p,
+html body.novelight-theme.novelight-page-scout-record .scout-point-card small,
+html body.novelight-theme.novelight-page-scout-record .scout-empty,
+html body.novelight-theme.novelight-page-scout-record .scout-loading,
+html body.novelight-theme.novelight-page-scout-record .scout-error,
+html body.novelight-theme.novelight-page-scout-record .scout-state {
+  font-size: 17px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-xp-meta,
+html body.novelight-theme.novelight-page-scout-record .scout-note,
+html body.novelight-theme.novelight-page-scout-record .scout-max-note,
+html body.novelight-theme.novelight-page-scout-record .scout-point-month,
+html body.novelight-theme.novelight-page-scout-record .badge-meta,
+html body.novelight-theme.novelight-page-scout-record .badge-progress-text,
+html body.novelight-theme.novelight-page-scout-record .scout-row small,
+html body.novelight-theme.novelight-page-scout-record .scout-modal-kv span,
+html body.novelight-theme.novelight-page-scout-record .badge-group summary small,
+html body.novelight-theme.novelight-page-scout-record .seed-inventory-copy small {
+  font-size: 17px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-point-card .label,
+html body.novelight-theme.novelight-page-scout-record .scout-stat span,
+html body.novelight-theme.novelight-page-scout-record .seed-inventory-name,
+html body.novelight-theme.novelight-page-scout-record .rank-node-copy b,
+html body.novelight-theme.novelight-page-scout-record .scout-row b,
+html body.novelight-theme.novelight-page-scout-record .scout-row strong,
+html body.novelight-theme.novelight-page-scout-record .scout-modal-kv b {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .badge-card h3,
+html body.novelight-theme.novelight-page-scout-record .badge-group summary b {
+  font-size: 22px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .badge-point {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-modal h2 {
+  font-size: 24px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-rank-line strong {
+  font-size: 50px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-rank-line > span {
+  font-size: 26px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-point-card strong {
+  font-size: 40px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-stat strong {
+  font-size: 36px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .seed-inventory-copy strong {
+  font-size: 34px !important;
+}
+
+@media (max-width: 640px) {
+  html body.novelight-theme.novelight-page-scout-record .scout-page-head p {
+    font-size: 19px !important;
+  }
+
+  html body.novelight-theme.novelight-page-scout-record .scout-kicker,
+  html body.novelight-theme.novelight-page-scout-record .scout-emblem-caption {
+    font-size: 15px !important;
+  }
+
+  html body.novelight-theme.novelight-page-scout-record .scout-section-head h2 {
+    font-size: 26px !important;
+  }
+
+  html body.novelight-theme.novelight-page-scout-record .scout-rank-line strong {
+    font-size: 36px !important;
+  }
+
+  html body.novelight-theme.novelight-page-scout-record .scout-point-card strong {
+    font-size: 38px !important;
+  }
 }
