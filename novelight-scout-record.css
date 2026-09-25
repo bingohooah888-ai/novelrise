@@ -430,3 +430,67 @@ body.novelight-page-scout-record #badgeCount{
   body.novelight-page-scout-record .badge-progress-text{font-size:14px!important}
   body.novelight-page-scout-record .badge-point{font-size:15px!important}
 }
+
+
+/* Center SCOUT detail/help dialogs explicitly.
+   author-home.css resets every element margin to 0, so native <dialog>
+   centering cannot be left to the browser default. */
+.scout-modal{
+  position:fixed!important;
+  inset:0!important;
+  margin:auto!important;
+  width:min(760px,calc(100vw - 40px))!important;
+  max-width:none!important;
+  max-height:min(86vh,820px);
+  overflow:auto;
+  overscroll-behavior:contain
+}
+#badgeDialog.scout-modal{
+  width:min(820px,calc(100vw - 40px))!important
+}
+#scoutHelpDialog.scout-modal{
+  width:min(720px,calc(100vw - 40px))!important
+}
+.scout-modal-card{
+  padding:32px
+}
+.scout-modal-head{
+  align-items:flex-start
+}
+.scout-modal h2{
+  font-size:28px;
+  line-height:1.35
+}
+.badge-dialog-artwork{
+  margin:20px auto 6px
+}
+.badge-dialog-artwork img{
+  width:min(280px,48vw)
+}
+.scout-modal-grid{
+  gap:14px;
+  margin-top:22px
+}
+.scout-modal-kv{
+  padding:14px
+}
+.scout-modal-kv span{
+  font-size:14px
+}
+.scout-modal-kv b{
+  margin-top:6px;
+  font-size:17px;
+  line-height:1.55
+}
+@media(max-width:600px){
+  .scout-modal,
+  #badgeDialog.scout-modal,
+  #scoutHelpDialog.scout-modal{
+    width:calc(100vw - 24px)!important;
+    max-height:88vh
+  }
+  .scout-modal-card{padding:22px}
+  .scout-modal h2{font-size:23px}
+  .badge-dialog-artwork img{width:min(220px,62vw)}
+  .scout-modal-grid{grid-template-columns:1fr}
+}
