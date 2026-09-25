@@ -54,17 +54,69 @@ function narouRoot(rawUrl) {
 async function narouIndex(rawUrl) {
   const root = narouRoot(rawUrl);
   if (!root) throw new Error("Unsupported Narou URL.");
-  const { html } = await fetchHtml(root);
-  const $ = cheerio.load(html);
-  const title = clean($(".p-novel__title").first().text()) || clean($(".novel_title").first().text()) || clean($("h1").first().text());
-  const author = clean($(".p-novel__author").first().text()) || clean($(".novel_writername").first().text());
-  const synopsis = clean($(".p-novel__summary").first().text()) || clean($("#novel_ex").first().text());
+
   const code = new URL(root).pathname.split("/").filter(Boolean)[0];
-  let episodes = uniqueLinks($, root, href => {
-    const u = new URL(href);
-    return u.hostname === "ncode.syosetu.com" && new RegExp("^/" + code + "/\\d+/?$", "i").test(u.pathname);
-  });
-  if (!episodes.length) episodes = [{ url: root, label: title || "本文" }];
+  const episodes = [];
+  const seen = new Set();
+  let title = "";
+  let author = "";
+  let synopsis = "";
+
+  for (let page = 1; page <= 100; page += 1) {
+    const pageUrl = page === 1 ? root : root + "?p=" + page;
+    const { html } = await fetchHtml(pageUrl);
+    const $ = cheerio.load(html);
+
+    if (page === 1) {
+      title =
+        clean($(".p-novel__title").first().text()) ||
+        clean($(".novel_title").first().text()) ||
+        clean($("h1").first().text());
+      author =
+        clean($(".p-novel__author").first().text()) ||
+        clean($(".novel_writername").first().text());
+      synopsis =
+        clean($(".p-novel__summary").first().text()) ||
+        clean($("#novel_ex").first().text());
+    }
+
+    const pageEpisodes = uniqueLinks($, root, href => {
+      const u = new URL(href);
+      return (
+        u.hostname === "ncode.syosetu.com" &&
+        new RegExp("^/" + code + "/\\d+/?$", "i").test(u.pathname)
+      );
+    });
+
+    let added = 0;
+    for (const episode of pageEpisodes) {
+      if (seen.has(episode.url)) continue;
+      seen.add(episode.url);
+      episodes.push(episode);
+      added += 1;
+    }
+
+    const hasNextPage = $("a[href]")
+      .toArray()
+      .some(element => {
+        const href = $(element).attr("href");
+        if (!href) return false;
+        try {
+          const u = new URL(href, pageUrl);
+          return (
+            u.origin === new URL(root).origin &&
+            u.pathname === new URL(root).pathname &&
+            Number(u.searchParams.get("p")) === page + 1
+          );
+        } catch {
+          return false;
+        }
+      });
+
+    if (!hasNextPage || added === 0) break;
+  }
+
+  if (!episodes.length) episodes.push({ url: root, label: title || "本文" });
   return { site: "narou", workUrl: root, title, author, synopsis, episodes };
 }
 
