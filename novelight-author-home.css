@@ -564,3 +564,40 @@ body.novelight-theme.novelight-page-mypage footer{border-color:rgba(216,180,90,.
   .author-hero h1{font-size:26px}
   .logout{padding:7px 10px}
 }
+
+
+/* Author Studio shell navigation typography alignment */
+body.novelight-author-studio-shell .studio-label,
+body.novelight-theme.novelight-page-mypage .studio-label{
+  font-size:14px!important;
+}
+body.novelight-author-studio-shell .studio-nav a,
+body.novelight-theme.novelight-page-mypage .studio-nav a{
+  min-height:50px;
+  font-size:18px!important;
+}
+body.novelight-author-studio-shell .nav-icon,
+body.novelight-theme.novelight-page-mypage .nav-icon{
+  font-size:20px!important;
+}
+body.novelight-author-studio-shell .sidebar-quote,
+body.novelight-theme.novelight-page-mypage .sidebar-quote{
+  font-size:16px!important;
+}
+body.novelight-author-studio-shell .sidebar-quote strong,
+body.novelight-theme.novelight-page-mypage .sidebar-quote strong{
+  font-size:12px!important;
+}
+body.novelight-author-studio-shell .workspace-top > .reader-home-link,
+body.novelight-theme.novelight-page-mypage .workspace-top > .reader-home-link{
+  font-size:18px!important;
+}
+body.novelight-author-studio-shell .account-text strong,
+body.novelight-theme.novelight-page-mypage .account-text strong{
+  font-size:18px!important;
+}
+body.novelight-author-studio-shell .logout,
+body.novelight-theme.novelight-page-mypage .logout{
+  font-size:17px!important;
+  padding:9px 14px;
+}
