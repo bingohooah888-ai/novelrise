@@ -158,8 +158,11 @@ async function login(page, account, redirect) {
     url.pathname.endsWith(`/${redirect.split('?')[0]}`)
   );
   await assertExpectedSupabaseSession(page);
-  const visitorToken = await page.evaluate(() =>
-    globalThis.localStorage.getItem('novelight_visitor_token')
+  const visitorToken = await page.evaluate(
+    () =>
+      globalThis.localStorage.getItem('novelight_visitor_token') ||
+      globalThis.NovelightClient?.getVisitorToken?.() ||
+      null
   );
   expect(visitorToken).toBeTruthy();
   return visitorToken;
@@ -295,7 +298,7 @@ async function assertChapter40ComposerReady(page) {
   await expect(page.locator('#legacyThumbnailArea')).toBeHidden();
 
   await expect(composer.locator('details.nl-thumb-layer')).toHaveCount(5);
-  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(1);
+  await expect(composer.locator('details.nl-thumb-layer[open]')).toHaveCount(0);
 
   for (const layerType of ['background', 'base_book']) {
     const selected = composer.locator(
@@ -430,15 +433,17 @@ async function assertAccountSettingsEmailBoundary(
     return;
   }
 
-  await expect(page.locator('#currentPassword')).toBeEnabled();
   await expect(page.locator('#newEmail')).toBeEnabled();
-  await expect(page.locator('#confirmEmail')).toBeEnabled();
+  await expect(page.locator('#emailButton')).toBeEnabled();
+  await expect(page.locator('#currentPassword')).toHaveCount(0);
+  await expect(page.locator('#confirmEmail')).toHaveCount(0);
+  await expect(page.locator('#changeEmail')).toHaveCount(0);
 
   const targetEmail =
     `novelight-e2e-email-boundary-${runId}-${deviceLabel}@example.com`;
   let updateRequest = null;
 
-  await page.route('**/auth/v1/user', async (route) => {
+  await page.route('**/auth/v1/user**', async (route) => {
     const request = route.request();
     if (request.method() === 'GET') {
       await route.continue();
@@ -459,10 +464,8 @@ async function assertAccountSettingsEmailBoundary(
   });
 
   try {
-    await page.locator('#currentPassword').fill(account.password);
     await page.locator('#newEmail').fill(targetEmail);
-    await page.locator('#confirmEmail').fill(targetEmail);
-    await page.locator('#changeEmail').click();
+    await page.locator('#emailButton').click();
 
     await expect
       .poll(() => updateRequest)
@@ -471,12 +474,12 @@ async function assertAccountSettingsEmailBoundary(
       });
     expect(updateRequest.method).not.toBe('GET');
     await expect(page.locator('#status')).toContainText(
-      '確認メールを送信できませんでした'
+      'メールアドレス変更を開始できませんでした'
     );
-    await expect(page.locator('#currentPassword')).toHaveValue('');
+    await expect(page.locator('#newEmail')).toBeEnabled();
     await expect(page.locator('#currentEmail')).toHaveText(account.email);
   } finally {
-    await page.unroute('**/auth/v1/user');
+    await page.unroute('**/auth/v1/user**');
   }
 }
 

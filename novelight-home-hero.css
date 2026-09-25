@@ -11,7 +11,6 @@ html body.novelight-page-index.novelight-public-dark .hero {
   background-color: #030a13;
   background:
     linear-gradient(90deg, rgba(2, 7, 14, .84) 0%, rgba(2, 7, 14, .68) 18%, rgba(2, 7, 14, .38) 36%, rgba(2, 7, 14, .08) 54%, rgba(2, 7, 14, 0) 70%),
-    url("assets/novelight-home-hero.png") center 62% / cover no-repeat,
     url("assets/novelight-home-hero.webp") center 62% / cover no-repeat;
 }
 
@@ -104,12 +103,10 @@ html body.novelight-page-index.novelight-public-dark .hero-art-slot {
     min-height: 0;
     padding-top: 35.9375vw;
     background-color: #030a13;
-    background-image:
-      url("assets/novelight-home-hero.png"),
-      url("assets/novelight-home-hero.webp");
-    background-position: top center, top center;
-    background-repeat: no-repeat, no-repeat;
-    background-size: 100% auto, 100% auto;
+    background-image: url("assets/novelight-home-hero.webp");
+    background-position: top center;
+    background-repeat: no-repeat;
+    background-size: 100% auto;
   }
 
   html body.novelight-page-index.novelight-public-dark .hero::before {

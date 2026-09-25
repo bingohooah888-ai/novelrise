@@ -4,8 +4,6 @@
   const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
   const STYLE_PATH = 'novelight-thumbnails.css';
-  const GEOMETRY_ENGINE_PATH = 'novelight-thumbnail-composer.js';
-  const SURFACE_TYPES = ['pattern', 'symbol', 'frame'];
   const SUPPORTED_PAGES = new Set([
     'index',
     'search',
@@ -16,7 +14,6 @@
   ]);
   let client = null;
   let scheduled = false;
-  let geometryEnginePromise = null;
 
   function pageSlug() {
     const file = window.location.pathname.split('/').pop() || 'index.html';
@@ -102,112 +99,10 @@
     return true;
   }
 
-  function loadGeometryEngine() {
-    if (window.NovelightThumbnailComposer?.geometry) {
-      return Promise.resolve(window.NovelightThumbnailComposer.geometry);
-    }
-    if (geometryEnginePromise) return geometryEnginePromise;
-    geometryEnginePromise = new Promise((resolve, reject) => {
-      const existing = document.querySelector('script[data-novelight-geometry-engine]');
-      const finish = () => {
-        const geometry = window.NovelightThumbnailComposer?.geometry;
-        if (geometry) resolve(geometry);
-        else reject(new Error('Geometry Thumbnail Engine is unavailable'));
-      };
-      if (existing) {
-        if (window.NovelightThumbnailComposer?.geometry) finish();
-        else {
-          existing.addEventListener('load', finish, { once: true });
-          existing.addEventListener(
-            'error',
-            () => reject(new Error('Geometry Thumbnail Engine could not be loaded')),
-            { once: true }
-          );
-        }
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = GEOMETRY_ENGINE_PATH;
-      script.async = true;
-      script.dataset.novelightGeometryEngine = '1';
-      script.addEventListener('load', finish, { once: true });
-      script.addEventListener(
-        'error',
-        () => reject(new Error('Geometry Thumbnail Engine could not be loaded')),
-        { once: true }
-      );
-      document.head.appendChild(script);
-    });
-    return geometryEnginePromise;
-  }
-
-  function loadImage(url) {
-    return new Promise((resolve, reject) => {
-      const image = new Image();
-      image.crossOrigin = 'anonymous';
-      image.decoding = 'async';
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error('Thumbnail material could not be loaded'));
-      image.src = url;
-    });
-  }
-
-  async function drawFull(context, url, width, height) {
-    if (!url) return;
-    const image = await loadImage(url);
-    context.drawImage(image, 0, 0, width, height);
-  }
-
-  async function renderGeometryFallback(composition) {
-    if (!composition?.background_url || !composition?.base_book_url) {
-      return null;
-    }
-    const width = Number(composition.canvas_width);
-    const height = Number(composition.canvas_height);
-    if (width !== 1086 || height !== 1448) return null;
-
-    const geometry = await loadGeometryEngine();
-    const baseBookImage = await loadImage(composition.base_book_url);
-    let resolved;
-    try {
-      resolved = geometry.resolveBookGeometry(
-        composition,
-        baseBookImage.naturalWidth,
-        baseBookImage.naturalHeight
-      );
-    } catch {
-      return null;
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d', { alpha: true });
-    if (!context) return null;
-    context.clearRect(0, 0, width, height);
-
-    await drawFull(context, composition.background_url, width, height);
-    geometry.drawResolvedBaseBook(context, baseBookImage, resolved);
-    for (const type of SURFACE_TYPES) {
-      const url = composition[`${type}_url`];
-      if (!url) continue;
-      const image = await loadImage(url);
-      geometry.drawPerspectiveImage(context, image, resolved.coverQuad);
-    }
-
-
-    return canvas.toDataURL('image/webp', 0.9);
-  }
-
   async function applyComposition(links, composition) {
-    if (!links.length) return;
-    if (composition?.render_url) {
-      links.forEach((link) => applyCachedThumbnail(link, composition.render_url));
-      return;
-    }
-    const renderedUrl = await renderGeometryFallback(composition);
-    if (!renderedUrl) return;
-    links.forEach((link) => applyCachedThumbnail(link, renderedUrl));
+    if (!links.length || !composition?.render_url) return false;
+    links.forEach((link) => applyCachedThumbnail(link, composition.render_url));
+    return true;
   }
 
   async function loadCompositions(browserClient, ids) {
@@ -281,7 +176,7 @@
           try {
             await applyComposition(linksForNovel, composition);
           } catch (error) {
-            console.error('official thumbnail geometry fallback failed', error);
+            console.error('official cached thumbnail apply failed', error);
           }
         })
       );
