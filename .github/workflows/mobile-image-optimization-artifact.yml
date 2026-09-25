@@ -33,7 +33,7 @@ jobs:
         with:
           name: mobile-image-optimized-assets
           path: |
-            .optimized-assets/**
+            optimized-assets/**
             mobile-image-report.json
           if-no-files-found: error
           retention-days: 1
