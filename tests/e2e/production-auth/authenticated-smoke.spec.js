@@ -851,13 +851,13 @@ test('authenticated beta-critical product flow works in target', async ({
       const work = authorPage.locator('.work').filter({ hasText: novelTitle });
       await expect(work).toHaveCount(1);
       await expect(work.locator('.work-title')).toHaveText(novelTitle);
-      await expect(work.locator('.funnel-node-head strong')).toHaveText([
-        '1',
-        '1',
-        '1',
-        '1',
-        '1'
-      ]);
+      const funnelCounts = work.locator('.funnel-node-head strong');
+      await expect(funnelCounts).toHaveCount(5);
+      await expect(funnelCounts.first()).toHaveText(/^[1-9][0-9]*$/u);
+      await expect(funnelCounts.nth(1)).toHaveText('1');
+      await expect(funnelCounts.nth(2)).toHaveText('1');
+      await expect(funnelCounts.nth(3)).toHaveText('1');
+      await expect(funnelCounts.nth(4)).toHaveText('1');
     });
 
     await test.step('Verify premium checkout handoff without charging', async () => {

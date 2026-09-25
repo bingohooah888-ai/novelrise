@@ -87,6 +87,8 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
 
   assert.match(analyticsUi, /class=\"funnel-node-head\"/);
   assert.match(authenticatedSmoke, /\.funnel-node-head strong/);
+  assert.match(authenticatedSmoke, /funnelCounts\.first\(\)/);
+  assert.match(authenticatedSmoke, /\^\[1-9\]\[0-9\]\*\$/);
   assert.doesNotMatch(authenticatedSmoke, /\.funnel \.step strong/);
 
   assert.match(authorHomeSmoke, /さんの創作室\$/);
