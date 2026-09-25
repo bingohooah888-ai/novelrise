@@ -64,7 +64,15 @@ async function narouIndex(rawUrl) {
 
   for (let page = 1; page <= 100; page += 1) {
     const pageUrl = page === 1 ? root : root + "?p=" + page;
-    const { html } = await fetchHtml(pageUrl);
+    let html;
+    try {
+      ({ html } = await fetchHtml(pageUrl));
+    } catch (error) {
+      if (page > 1 && String(error?.message || error).includes("HTTP 404")) {
+        break;
+      }
+      throw error;
+    }
     const $ = cheerio.load(html);
 
     if (page === 1) {
