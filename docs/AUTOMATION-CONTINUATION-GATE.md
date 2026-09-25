@@ -43,17 +43,20 @@ NOVELIGHTでツールを1回でも使うアシスタントターンは、**そ�
 
 この例外は、`api_tool.list_resources` 等で「latest mainを取得するためのread actionそのものを露出する」用途に限定する。discovery結果をNOVELIGHTの現在状態として解釈してはならず、別Connector探索、project resource列挙、repository search、Issue/PR/file/workflow readへ拡張してはならない。
 
-capability bootstrapが完了したら、寄り道せず直ちにlatest `main` を解決し、そのSHA上のMASTER全文を読む。**カード後のcapability-only discoveryを、MASTER-first違反として扱ってユーザーへ新しい「はい」「続けて」を要求してはならない。**
+capability bootstrapが完了したら、寄り道せず直ちにlatest `main` を解決し、MASTER / Preflight / Continuation Gateのcurrent blob / digestを確認する。全文再読が必要な場合はMASTERを先頭からEOFまで読み、再利用条件を満たす場合は `MASTER_CONTENT_REUSE` へ進む。**カード後のcapability-only discoveryを理由にユーザーへ新しい「はい」「続けて」を要求してはならない。**
 
-### MASTER_READ_COMPLETE bootstrap
+### MASTER_READ_COMPLETE / MASTER_CONTENT_REUSE bootstrap
 
-latest `main` を解決した後は、通常のproject-state / project-documentを読む前に、そのexact SHA上の `docs/NOVELIGHT-MASTER.md` を先頭からconfirmed EOFまで全文読む。
+latest `main` を解決した後、current main上のMASTER / Preflight / Continuation Gateの内容識別子をfreshに確認する。
 
-MASTER読了は「読んだつもり」ではなく `MASTER_READ_COMPLETE` という明示的な状態として扱う。少なくとも、現在ターン、exact latest-main SHA、MASTER内容digest、1行目からconfirmed EOFまでの連続coverageへ結び付いていなければ読了扱いにしない。
+完全読了証跡がない、正式文書が変更された、MASTER / 安全ゲート自体を変更する、またはAuth / RLS / Secret / Stripe / Production DB / 破壊的操作へ新たに入る場合は、そのexact latest-main上の `docs/NOVELIGHT-MASTER.md` を先頭からconfirmed EOFまで全文読み、`MASTER_READ_COMPLETE` を成立させる。
 
-Connector/file responseに `truncated`、`output was truncated`、途中切れその他の明示的な欠落兆候がある場合、そのrangeは未完了である。自動的にrangeを細分化して再取得し、欠落が解消した連続rangeだけをcoverageへ加える。未解消のtruncationが1件でも残る間は `MASTER_READ_COMPLETE` を成立させない。
+過去にline 1からconfirmed EOFまで欠落なく読了したMASTERとcurrent main上のMASTER内容digestが完全一致し、Preflight / Continuation Gateも変化しておらず、今回が既知の低リスク範囲内である場合は `MASTER_CONTENT_REUSE` を使用できる。main SHAの前進や新しいユーザーメッセージだけを理由に、同一内容のMASTER全文を機械的に再読しない。
 
-`MASTER_READ_COMPLETE` が成立するまでは、latest-main解決、上記capability-only transport bootstrap、MASTER continuation/range read以外の通常project read、実装、GitHub変更、CI、deploy、外部操作へ進まない。
+ただし、新しいユーザーメッセージでは可視実行カードは必ず失効する。MASTER内容証跡の再利用と実行カードの再利用を混同しない。
+
+Connector/file responseにtruncation・途中切れ・未解決rangeがあった証跡は再利用できない。current main上の内容同一性を証明できない場合はFail-Closedして全文再読へ戻る。
+
 
 ## 主要工程 Runtime Execution Gate
 
@@ -69,7 +72,7 @@ npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --ca
 
 Degraded-Continueでは `--card-mode=degraded` を追加し、`--card-total` を省略できる。`--card-reason=<reason>` は任意の内部メタデータであり、ユーザー可視カードには要求しない。
 
-`--master-unresolved-truncation` が存在する場合、またはMASTER proofのSHA / digest / coverage / EOFが最新mainの実体と一致しない場合はFail-Closedする。`MASTER_READ_COMPLETE` proofは新しいユーザーメッセージで失効し、前ターンから流用しない。
+`--master-unresolved-truncation` が存在する場合、またはMASTER proofのdigest / coverage / EOFがcurrent mainの実体と一致しない場合はFail-Closedする。再利用時はcurrent mainをfreshに解決したうえで、完全読了済みと同一であることを確認したdigest / coverageをcurrent mainへ再bindする。新しいユーザーメッセージで失効するのは可視実行カードであり、内容同一性を機械確認できたMASTER完全読了証跡は `MASTER_CONTENT_REUSE` として利用できる。
 
 `phase` は `start`、`implementation`、`github`、`ci`、`deploy`、`vercel`、`supabase`、`stripe`、`files`、`image` のいずれかとする。コマンドは、カード証跡を確認した後に `origin/main` を再取得し、最新mainのMASTER / Preflightを直接読めることを確認して、通過状態を `.git/novelight-runtime-gate.json` に記録する。最新版を取得できない場合はFail-Closedする。
 
@@ -104,7 +107,7 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 
 実行カードは承認要求ではない。表示後、安全な既承認スコープ内であればユーザーの追加の「はい」を待たず実行へ進む。
 
-**このRuntime Execution Gateは、作業開始時だけでなく、主要工程の切替ごとに必須とする。** 同じアシスタントターン内の工程切替では、同一turn/latest-mainへ結び付いた有効な `MASTER_READ_COMPLETE` proofを再利用できるが、mainが進んだ場合またはユーザーへ一度ターンを返した場合はproofを失効させ、次工程前にbootstrapをやり直す。
+**このRuntime Execution Gateは、作業開始時だけでなく、主要工程の切替ごとに必須とする。** 可視実行カードは新しいユーザーメッセージごとに再発火する。MASTER完全読了証跡は、current main上のMASTER / Preflight / Continuation Gateの内容同一性がfreshに確認できる場合は `MASTER_CONTENT_REUSE` できる。main SHAが進んだことやユーザーへ一度ターンを返したことだけでは、同一内容のMASTER全文再読を要求しない。
 
 ### アシスタント側の回復可能エラー自動再開
 
@@ -127,7 +130,7 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 
 現在ターンの可視実行カードが正しく先に送信済みであり、まだ外部mutation、Secret操作、Production操作、破壊的操作、課金・決済、one-time requestのCLAIM/CONSUME、無許可画像ツール実行その他の高影響境界へ入っていない場合、`MASTER_READ_COMPLETE` 前のread-only project-state / project-document readは**回復可能なread-only bootstrap-order違反**として扱う。
 
-この場合は、その誤ったbootstrapで得たproject観測をすべて破棄し、latest `main` を再取得してMASTER reading stateをゼロへ戻す。MASTERを1行目から読み直し、visibly truncatedなrangeを自動細分化・再取得し、exact latest-main SHAとdigestへ固定した連続coverageがconfirmed EOFへ到達して `MASTER_READ_COMPLETE` が成立した後だけ、残りのproject readと実作業を同じターンで再開する。
+この場合は、その誤ったbootstrapで得たproject観測をすべて破棄し、latest `main` を再取得する。再利用可能な完全読了証跡とcurrent main上のMASTER / Preflight / Continuation Gateの内容同一性を証明できる場合は `MASTER_CONTENT_REUSE` で復旧してよい。証明できない場合はMASTER reading stateをゼロへ戻し、MASTERを1行目から読み直し、visibly truncatedなrangeを自動細分化・再取得して `MASTER_READ_COMPLETE` を成立させてから再開する。
 
 このread-only bootstrap-order違反だけを理由にユーザーへ新しい「はい」「続けて」を要求してはならない。ユーザー入力を同一ターン復旧のためのダミーcontinueボタンとして使用しない。
 

@@ -43,3 +43,13 @@ test('single production approval drives machine evidence without extra user prom
   assert.match(workflow, /Single human Production approval bridge/);
   assert.match(workflow, /NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE/);
 });
+
+test('content-addressed MASTER reuse and badge artwork fast path stay documented', () => {
+  for (const source of [master, preflight]) {
+    assert.match(source, /MASTER_CONTENT_REUSE/u);
+  }
+  assert.match(master, /SCOUT称号アートワーク反復実装 Fast Path/u);
+  assert.match(master, /assets\/scout-badges\/<badge_id>\.png/u);
+  assert.match(master, /実作業の目標を5〜10分程度/u);
+  assert.match(preflight, /SCOUT称号アートワーク Fast Path/u);
+});

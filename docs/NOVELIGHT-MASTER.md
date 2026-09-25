@@ -2,7 +2,7 @@
 
 **プロジェクト基本方針・運営原則・長期ビジョン**
 
-**最終更新：2026年9月22日**
+**最終更新：2026年9月25日**
 
 ## 1. NOVELIGHTとは
 
@@ -1016,15 +1016,81 @@ GitHub Actions、CodeQL、Vercel、Staging E2E、その他外部サービスの�
 
 MASTER-first Bootstrap
 
-NOVELIGHTでツールを1回でも使う実行ターンでは、現在ターンの可視実行カードを最初に送信した後、最小限の読み取り専用Bootstrapとして最新 `main` を解決し、そのexact SHA上の `docs/NOVELIGHT-MASTER.md` をline 1からconfirmed EOFまで完全読了する。MASTER全文読了より前に、PR、Issue、Workflow、Deployment、実装ファイル、他のプロジェクト文書その他の通常project stateを読んではならない。
+NOVELIGHTでツールを1回でも使う実行ターンでは、現在ターンの可視実行カードを最初に送信した後、最小限の読み取り専用Bootstrapとして最新 `main` を解決する。実行カードは新しいユーザーメッセージごとに必ず再発火する。
 
-MASTER読了は `MASTER_READ_COMPLETE` という明示的な状態として扱い、現在ターン、exact latest-main SHA、MASTER内容、line 1からconfirmed EOFまでの連続coverageへ結び付ける。ツール応答がtruncated・途中切れ・未解決rangeを含む場合、そのrangeは未読として細分化・再取得し、欠落が解消するまで通常作業へ進まない。
+MASTERの正式基準は引き続き最新 `main` 上の `docs/NOVELIGHT-MASTER.md` とする。ただし、MASTER全文を毎ターン無条件にline 1から読み直すこと自体を安全性の目的にしない。安全上必要なのは、current main上の正式内容が、過去に完全読了した内容と同一かを機械的に確認することである。
 
-リポジトリが既知である場合、MASTER-first Bootstrapの前にrepository search、profile確認、repository一覧取得等の不要な探索を挟まない。latest mainを取得するためのread actionを露出するために必要なcapability-only tool schema discoveryだけは、プロジェクト状態を読まないtransport bootstrapとして許可する。
+#### Content-addressed MASTER reuse
 
-現在ターンの可視実行カードが正しく送信済みで、外部state mutation、Secret、Production、課金、破壊的操作、画像生成・画像編集等のHard Boundaryをまだ開始していない段階で、MASTERより先にread-only project stateを誤って読んだ場合は、その観測結果を破棄し、同じターン内でlatest main解決とMASTER全文読了をやり直して自動復旧する。この回復可能な読み順ミスを理由にユーザーへターンを返し、「はい」「続けて」等を要求してはならない。
+初回、または再利用条件を満たさない場合は、latest main上のMASTERをline 1からconfirmed EOFまで完全読了し、`MASTER_READ_COMPLETE` を成立させる。ツール応答にtruncated、途中切れ、未解決rangeがある場合は、そのrangeを細分化して再取得し、欠落が解消するまで通常作業へ進まない。
 
-新しいユーザーメッセージを受けた時点で、前ターンの実行カードと `MASTER_READ_COMPLETE` は失効する。前ターンでMASTERを読んだこと、内容を覚えていること、過去チャット・添付ファイル・File Library・ローカルコピーが存在することを、現在ターンの読了証跡の代わりにしてはならない。
+以後の実行ターンでは、実行カード送信後に必ずlatest mainをfreshに解決し、少なくともMASTER、`docs/WORK-EXECUTION-PREFLIGHT.md`、`docs/AUTOMATION-CONTINUATION-GATE.md` のcurrent blob SHAまたは内容digestを確認する。
+
+次をすべて満たす場合、以前の完全読了証跡を `MASTER_CONTENT_REUSE` として再利用し、MASTER全文再読を省略してよい。
+
+- 再利用元がline 1からconfirmed EOFまで欠落なく読了済みである
+- current main上のMASTER blob / 内容digestが、その完全読了時と完全一致する
+- PreflightとContinuation Gateのblob / 内容digestも、最後に確認した正式基準から変化していない
+- 今回の作業スコープが、既に確認済みの安全境界内にある
+- MASTER、Preflight、Continuation Gateそのものの変更作業ではない
+- Auth、RLS、Secret、Stripe / 課金、Production DB、破壊的操作その他の高リスク境界へ新たに拡大していない
+
+latest mainが別作業によって進んだことだけでは、MASTER内容が同一なら全文読了証跡を失効させない。current mainのMASTER blob / digestが再利用元と一致することをfreshに確認し、関連ファイルの競合・差分だけを確認して継続する。
+
+新しいユーザーメッセージを受けた時点で**前ターンの可視実行カードは必ず失効する**。一方、完全読了済みMASTERとcurrent mainの内容同一性が機械的に証明できる場合、MASTER内容証跡まで捨てて全文再読する必要はない。会話上の記憶だけを根拠に再利用してはならず、必ずcurrent main上のblob / digest一致を確認する。
+
+次の場合は `MASTER_CONTENT_REUSE` を使わず、latest main上のMASTERをline 1からconfirmed EOFまで再読する。
+
+- MASTER blob / 内容digestが変化した
+- PreflightまたはContinuation Gateが変更された
+- MASTERまたは安全ゲート・承認境界を変更するworkstream
+- Auth、RLS、Secret、Stripe / 課金、Production DB、破壊的migration等の高リスクworkstreamへ新たに入る
+- 完全読了証跡が見つからない、coverageが不明、またはtruncationが未解決
+- ユーザーが明示的にMASTER全文再読を要求した
+
+Runtime Gateへ証跡を渡す場合は、current mainをfreshに解決したうえで、再利用元と同一であることを確認したMASTER digest / EOF coverageをcurrent mainへ再bindしてよい。これを「記憶で運用する」こととは扱わない。
+
+#### SCOUT称号アートワーク反復実装 Fast Path
+
+SCOUT RECORDの称号画像を追加する反復作業は、以下の条件を満たす場合、通常の機能開発より短い専用Fast Pathで処理する。
+
+対象条件：
+
+- badge catalog、badge_id、称号名、獲得条件が既存仕様・DBに存在する
+- 画像デザインは完成・承認済みで、新規生成・再デザインを行わない
+- 作業対象は称号画像asset、表示mapping、一覧・詳細モーダル、fallback、関連テストに限定される
+- Supabase migration、Auth、RLS、Secret、Stripe、Production DB mutationを伴わない
+- Founding Author等の限定称号と、画像未登録称号のglyph fallbackを維持する
+
+Fast Pathの標準手順は次とする。
+
+1. **Bootstrapを短縮する。** 可視実行カード → fresh latest main → MASTER / Preflight / Continuation Gateのblob確認を行い、`MASTER_CONTENT_REUSE` 条件を満たせば全文再読を行わない。SCOUT仕様は第49章と対象差分だけを確認する。
+2. **NLO確認はbatch単位で1回を基本とする。** 直接NLOまたはIssue #797の `nlo_health` が成功したら、同一badge batch中に無意味なhealth再確認を繰り返さない。NLO action失敗、接続状態変化、長時間中断等があった場合だけ再確認する。
+3. **画像を1枚ずつ処理しない。** 完成済み個別画像がある場合はbatchでまとめて取得・materializeする。元画像が取得不能でcanonical spriteからの機械的切り出しが許可された場合だけ、絵柄を変えずbatch切り出しする。ChatGPT画像生成・画像編集は、現在のユーザー指示で明示解除されていない限り使用しない。
+4. **canonical pathを固定する。** SCOUT称号画像は原則 `assets/scout-badges/<badge_id>.png` とし、同一badge_idを別名・別場所へ重複登録しない。
+5. **batch validationを先に1回で行う。** 件数、canonical順、badge_id重複、ファイル名、PNG signature、期待寸法、欠損、余剰、0-byte、mapping対象を一括検証する。現行標準は256×256 PNGとし、将来別仕様を採用する場合はbatch開始時に期待寸法を固定する。
+6. **登録も一括化する。** binary assetはbounded parallelでblob化し、可能な限り1つのGit tree / commitへまとめる。画像ごとにbranch、commit、PR、CIを分けない。
+7. **表示mappingは1か所を正本にする。** 同じ `badge_id → asset path` を一覧と詳細モーダルが共有し、表示箇所ごとの二重mappingを作らない。画像未登録時は既存glyph fallbackへ戻す。
+8. **旧方式テストをPR前に処理する。** sprite、旧path、旧class等の過去前提を検索し、今回の正式方式と衝突するテストは同じbranch内で先に更新する。Prettier / format check、専用Node test、静的asset検証をPR作成前に通し、CIで初めて旧前提やformat errorを発見する運用を避ける。
+9. **CIは完成batchに対して1回を基本とする。** branch上のbatchが揃ってからPRを作成し、CI / CodeQL / desktop / mobile / Vercel Previewをまとめて確認する。失敗時は原因箇所だけを修正し、不要な全工程や画像処理をやり直さない。
+10. **main追従で全作業を再起動しない。** 作業中にmainが進んだ場合、MASTER / Preflight / Gateのhashと対象ファイル競合を確認する。無関係な変更なら作業を維持し、最終CI前またはmerge前に1回だけlatest mainへ同期する。対象ファイルや正式基準が競合した場合だけ再評価する。
+11. **Preview目視を必要最小限にする。** 全badge_idのpath・asset existence・寸法・mappingは機械検証し、desktop / mobileのレイアウトは自動E2Eで確認する。同じレイアウトへ画像だけ追加する反復batchでは、人間が30枚・50枚を毎回1枚ずつ目視確認することを必須にしない。代表サンプルと異常検知結果を目視し、mapping不一致・表示崩れが疑われる場合に範囲を広げる。
+12. **Production境界だけは維持する。** main mergeがProduction deployを開始する構成では、必要な本番承認をmerge直前にのみ扱う。安全な準備工程で「はい」「続けて」を要求しない。
+
+Fast Pathの品質条件：
+
+- batch内の全badge_idが期待assetへ一意に対応する
+- 一覧カードと詳細モーダルで同じ画像を使う
+- 獲得済み / 未獲得、Reader / Author / Limited、difficulty filterを壊さない
+- Founding Author番号・画像表示を回帰させない
+- 画像未登録称号は404を大量発生させずglyph fallbackを維持する
+- Console errorなし
+- desktop / mobile自動検証PASS
+- 旧sprite / 廃止pathへの意図しない参照なし
+
+完成済み個別画像が揃っており、表示ロジックの新設が不要な通常batchでは、**実作業の目標を5〜10分程度＋外部CI / Preview待機**とする。元画像探索、spriteからの復元、layout変更、既存不具合修正が必要な場合はFast Path外の追加作業として分離し、早い段階で再見積もりする。
+
+このFast Pathの目的は検証を減らすことではなく、同じ安全確認・同じファイル処理・同じCIを何度も繰り返す無駄をなくすことである。
 
 画像ツール既定拒否
 

@@ -37,6 +37,10 @@ NOVELIGHTでツールを1回でも使う実行ターンでは、**そのター�
 
 カード送信後、最初のツール群は正式基準を取得するための読み取り専用Bootstrapとして扱う。そこで最新main、main上のMASTER / Preflight、禁止・安全境界を確認するまでは、変更・更新・デプロイ・外部state mutation等の実作業へ進まない。
 
+MASTER確認では、毎ターン全文を無条件に読み直すのではなく、まずcurrent main上のMASTER / Preflight / Continuation Gateのblob / digestをfreshに確認する。過去の完全読了証跡とMASTER内容が完全一致し、Preflight / Continuation Gateも変化しておらず、今回が既知の低リスク範囲内なら、MASTERの `MASTER_CONTENT_REUSE` を使用して全文再読を省略できる。新しいユーザーメッセージで失効するのは可視実行カードであり、機械的に内容同一性を確認できた完全読了証跡まで無条件に破棄しない。
+
+MASTER / Preflight / Continuation Gate自体を変更する場合、またはAuth / RLS / Secret / Stripe / Production DB / 破壊的操作へ新たに入る場合、内容hashが変化した場合、完全読了証跡が不明な場合はreuseせず、latest main上のMASTERをline 1からconfirmed EOFまで全文再読する。
+
 この順序を固定する。
 
 1. **可視実行カードを送信**する
@@ -57,7 +61,7 @@ NOVELIGHTでツールを1回でも使う実行ターンでは、**そのター�
 変更を伴う最初の実作業より前に、以下を満たす。
 
 - [ ] 最新mainを再取得した
-- [ ] main上の `docs/NOVELIGHT-MASTER.md` を正式基準として再読込した
+- [ ] main上の `docs/NOVELIGHT-MASTER.md` を正式基準として確認し、全文読了または `MASTER_CONTENT_REUSE` の成立条件を満たした
 - [ ] main上の `docs/WORK-EXECUTION-PREFLIGHT.md` を再読込した
 - [ ] 禁止・安全境界を確認した
 
@@ -137,6 +141,22 @@ npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --ca
 実装前に使用する `npm run preflight:agent` は、このRuntime Gateを先頭で実行するため、実行カード証跡を環境変数または引数相当で与えていない場合は開始させない。
 
 Connectorやクラウド実行環境でローカルnpmコマンドを実行できない場合は、**現在のアシスタントターンで可視実行カードを先に送信していることを同等のFail-Closed条件**とし、その後にConnector/APIで最新mainのSHA、MASTER、Preflightを直接再取得する。コマンドを使えないこと自体を、カード送信や正式基準の確認省略理由にはしない。
+
+## 2.4 SCOUT称号アートワーク Fast Path
+
+MASTERの「SCOUT称号アートワーク反復実装 Fast Path」に該当する場合は、以下を実行前チェックとする。
+
+- badge catalog / badge_id / 称号条件は既存で、今回DB変更がない
+- 画像は完成済みで、画像生成・再デザインをしない
+- canonical pathは原則 `assets/scout-badges/<badge_id>.png`
+- 全画像をbatchで取得し、件数・ID・signature・寸法・欠損・mappingを一括検証する
+- sprite / 旧path / 旧class依存と古いテスト前提をPR前に検索・解消する
+- format checkと専用Node testをPR前に通す
+- 画像ごとにcommit / PR / CIを分割しない
+- NLO healthは同一batchで成功済みなら無意味に再確認しない
+- mainが進んでも正式文書hashと対象ファイルが非競合ならworkstreamを再起動せず、最終確認前に1回同期する
+- Production境界以外で継続承認を要求しない
+
 
 ## 2.5 禁止・ロック・ツール選定ゲート
 
