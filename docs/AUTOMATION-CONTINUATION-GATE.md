@@ -45,7 +45,9 @@ NOVELIGHTでツールを1回でも使うアシスタントターンは、**そ�
 
 capability bootstrapが完了したら、寄り道せず直ちにlatest `main` を解決し、MASTER / Preflight / Continuation Gateのcurrent blob / digestを確認する。全文再読が必要な場合はMASTERを先頭からEOFまで読み、再利用条件を満たす場合は `MASTER_CONTENT_REUSE` へ進む。**カード後のcapability-only discoveryを理由にユーザーへ新しい「はい」「続けて」を要求してはならない。**
 
-### MASTER_READ_COMPLETE / MASTER_CONTENT_REUSE bootstrap
+### MASTER_READ_COMPLETE bootstrap
+
+#### MASTER_CONTENT_REUSE
 
 latest `main` を解決した後、current main上のMASTER / Preflight / Continuation Gateの内容識別子をfreshに確認する。
 
