@@ -55,7 +55,9 @@ reader_level_005
 reader_level_010
 reader_level_020
 reader_active_days_007
-`.trim().split(/\s+/u);
+`
+  .trim()
+  .split(/\s+/u);
 
 test('beta navigation links to the live SCOUT RECORD surface', () => {
   assert.match(
@@ -170,8 +172,14 @@ test('Title difficulty accordions and Reader catalog are live', () => {
 
 test('Easy Reader badges use individual PNG artwork assets', async () => {
   assert.equal(easyBadgeArtworkIds.length, 30);
-  assert.doesNotMatch(scoutJs, /easyReaderBadgeSpriteIndexes|applyBadgeSprite|badgeSpritePosition/u);
-  assert.doesNotMatch(scoutCss, /scout-reader-easy-badges\.webp|badge-icon-sprite|badge-dialog-sprite/u);
+  assert.doesNotMatch(
+    scoutJs,
+    /easyReaderBadgeSpriteIndexes|applyBadgeSprite|badgeSpritePosition/u
+  );
+  assert.doesNotMatch(
+    scoutCss,
+    /scout-reader-easy-badges\.webp|badge-icon-sprite|badge-dialog-sprite/u
+  );
 
   for (const badgeId of easyBadgeArtworkIds) {
     assert.match(
