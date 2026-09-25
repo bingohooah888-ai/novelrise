@@ -3,7 +3,7 @@ from PIL import Image
 import json
 
 ROOT = Path(".")
-OUT = Path("optimized-assets")
+OUT = Path(".")
 
 JOBS = [
     ("assets/novelight-feature-discovery.png", "assets/novelight-feature-discovery.webp", 256, 90),

@@ -10,13 +10,16 @@ on:
       - "assets/**"
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: read
 
 jobs:
   optimize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - uses: actions/setup-python@v5
         with:
@@ -28,12 +31,24 @@ jobs:
       - name: Generate optimized WebP assets
         run: python scripts/optimize-mobile-images.py | tee mobile-image-report.json
 
-      - name: Upload optimized assets
+      - name: Commit optimized assets to PR branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add             assets/novelight-feature-discovery.webp             assets/novelight-feature-light-seed.webp             assets/novelight-feature-analytics.webp             assets/author-room/action-post.webp             assets/author-room/action-works.webp             assets/author-room/action-seed.webp             assets/author-room/action-plan.webp             assets/author-room/metric-works.webp             assets/author-room/metric-episodes.webp             assets/author-room/metric-readers.webp             assets/author-room/metric-favorites.webp             assets/author-room/metric-comments.webp             assets/NOVELIGHT_PC_HERO_FINAL_2560x1280.webp             assets/NOVELIGHT_MOBILE_HERO_FINAL_900x1600.webp             assets/NOVELIGHT_NOCTURNE_FINAL_800x1000.webp             assets/novelight-beta-brand.webp             assets/founding-authors-badge-2026.webp             assets/NOVELIGHT_LP_BELOW_HERO_PC_2560x1800.webp
+          if git diff --cached --quiet; then
+            echo "No optimized asset changes."
+            exit 0
+          fi
+          git commit -m "Add optimized WebP assets"
+          git push origin "HEAD:${HEAD_REF}"
+
+      - name: Upload compression report
         uses: actions/upload-artifact@v4
         with:
-          name: mobile-image-optimized-assets
-          path: |
-            optimized-assets/**
-            mobile-image-report.json
+          name: mobile-image-compression-report
+          path: mobile-image-report.json
           if-no-files-found: error
           retention-days: 1
