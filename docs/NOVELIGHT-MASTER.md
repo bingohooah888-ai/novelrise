@@ -1022,7 +1022,7 @@ MASTERの正式基準は引き続き最新 `main` 上の `docs/NOVELIGHT-MASTER.
 
 #### Content-addressed MASTER reuse
 
-初回、または再利用条件を満たさない場合は、latest main上のMASTERをline 1からconfirmed EOFまで完全読了し、`MASTER_READ_COMPLETE` を成立させる。ツール応答にtruncated、途中切れ、未解決rangeがある場合は、そのrangeを細分化して再取得し、欠落が解消するまで通常作業へ進まない。
+初回、または再利用条件を満たさない場合は、latest main上のMASTERをline 1からconfirmed EOFまで完全読了し、`MASTER_READ_COMPLETE` を成立させる。 この初回成立では、同じターン内でlatest main解決とMASTER全文読了を完了し、途中の別project-state観測を読了証跡へ混入させない。ツール応答にtruncated、途中切れ、未解決rangeがある場合は、そのrangeを細分化して再取得し、欠落が解消するまで通常作業へ進まない。
 
 以後の実行ターンでは、実行カード送信後に必ずlatest mainをfreshに解決し、少なくともMASTER、`docs/WORK-EXECUTION-PREFLIGHT.md`、`docs/AUTOMATION-CONTINUATION-GATE.md` のcurrent blob SHAまたは内容digestを確認する。
 
