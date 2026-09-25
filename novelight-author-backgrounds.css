@@ -1,0 +1,68 @@
+/* Decorative background art for the six Author Studio utility pages.
+   Each image keeps the central content area intentionally quiet for readability. */
+
+html body.novelight-page-post {
+  --novelight-author-page-background: url("assets/author-backgrounds/author-bg-01.webp");
+}
+
+html body.novelight-page-my-novels {
+  --novelight-author-page-background: url("assets/author-backgrounds/author-bg-04.webp");
+}
+
+html.novelight-page-author-notes body.novelight-author-studio-shell {
+  --novelight-author-page-background: url("assets/author-backgrounds/author-bg-02.webp");
+}
+
+html body.novelight-page-analytics {
+  --novelight-author-page-background: url("assets/author-backgrounds/author-bg-03.webp");
+}
+
+html body.novelight-page-interaction-settings {
+  --novelight-author-page-background: url("assets/author-backgrounds/author-bg-06.webp");
+}
+
+html.novelight-page-account-settings body.novelight-author-studio-shell {
+  --novelight-author-page-background: url("assets/author-backgrounds/author-bg-05.webp");
+}
+
+html body:is(
+  .novelight-page-post,
+  .novelight-page-my-novels,
+  .novelight-page-analytics,
+  .novelight-page-interaction-settings
+),
+html.novelight-page-author-notes body.novelight-author-studio-shell,
+html.novelight-page-account-settings body.novelight-author-studio-shell {
+  background-color: #f7f4ed !important;
+  background-image: var(--novelight-author-page-background) !important;
+  background-position: center top !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-attachment: fixed !important;
+}
+
+/* Keep the artwork visible around content without lowering card/form contrast. */
+html body:is(
+  .novelight-page-post,
+  .novelight-page-my-novels,
+  .novelight-page-analytics,
+  .novelight-page-interaction-settings
+) > main,
+html.novelight-page-author-notes body.novelight-author-studio-shell .author-shell > main,
+html.novelight-page-account-settings body.novelight-author-studio-shell .author-shell > main {
+  background: transparent !important;
+}
+
+@media (max-width: 900px) {
+  html body:is(
+    .novelight-page-post,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-interaction-settings
+  ),
+  html.novelight-page-author-notes body.novelight-author-studio-shell,
+  html.novelight-page-account-settings body.novelight-author-studio-shell {
+    background-attachment: scroll !important;
+    background-position: center top !important;
+  }
+}
