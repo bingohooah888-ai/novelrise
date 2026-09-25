@@ -51,6 +51,8 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
   assert.match(authenticatedSmoke, /page\.unroute\(authUserRoute/);
   assert.doesNotMatch(authenticatedSmoke, /'\*\*\/auth\/v1\/user'/);
   assert.match(authenticatedSmoke, /assertChapter40ComposerReady/);
+  assert.match(authenticatedSmoke, /Network\.setCacheDisabled/);
+  assert.match(authenticatedSmoke, /cacheDisabled: true/);
   assert.match(
     authenticatedSmoke,
     /#thumbnailComposer\.novelight-thumbnail-composer/

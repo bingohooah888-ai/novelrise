@@ -125,6 +125,12 @@ async function installStagingSupabaseOverride(context) {
   );
 }
 
+async function disableChromiumCache(page) {
+  const session = await page.context().newCDPSession(page);
+  await session.send('Network.enable');
+  await session.send('Network.setCacheDisabled', { cacheDisabled: true });
+}
+
 async function assertExpectedSupabaseSession(page, expectedUserId) {
   const sessions = await page.evaluate(() => {
     const storedSessions = [];
@@ -619,6 +625,10 @@ test('authenticated beta-critical product flow works in target', async ({
   ]);
   const authorPage = await authorContext.newPage();
   const readerPage = await readerContext.newPage();
+  await Promise.all([
+    disableChromiumCache(authorPage),
+    disableChromiumCache(readerPage)
+  ]);
 
   let novelId;
   let firstEpisodeHref;
