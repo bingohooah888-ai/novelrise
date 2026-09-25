@@ -459,3 +459,113 @@ body.novelight-page-scout-record #badgeCount{
   body.novelight-page-scout-record .badge-progress-text{font-size:14px!important}
   body.novelight-page-scout-record .badge-point{font-size:15px!important}
 }
+
+/* Seven-page shared typography scale: SCOUT RECORD role mapping. */
+/* The page-title h1 is intentionally not selected here. */
+
+html body.novelight-theme.novelight-page-scout-record .scout-page-head p {
+  font-size: 20px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-kicker,
+html body.novelight-theme.novelight-page-scout-record .scout-emblem-caption {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-section-head h2 {
+  font-size: 30px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-help,
+html body.novelight-theme.novelight-page-scout-record .badge-filter,
+html body.novelight-theme.novelight-page-scout-record .scout-mini-button {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-section-head p,
+html body.novelight-theme.novelight-page-scout-record .scout-point-card small,
+html body.novelight-theme.novelight-page-scout-record .scout-empty,
+html body.novelight-theme.novelight-page-scout-record .scout-loading,
+html body.novelight-theme.novelight-page-scout-record .scout-error,
+html body.novelight-theme.novelight-page-scout-record .scout-state {
+  font-size: 17px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-xp-meta,
+html body.novelight-theme.novelight-page-scout-record .scout-note,
+html body.novelight-theme.novelight-page-scout-record .scout-max-note,
+html body.novelight-theme.novelight-page-scout-record .scout-point-month,
+html body.novelight-theme.novelight-page-scout-record .badge-meta,
+html body.novelight-theme.novelight-page-scout-record .badge-progress-text,
+html body.novelight-theme.novelight-page-scout-record .scout-row small,
+html body.novelight-theme.novelight-page-scout-record .scout-modal-kv span,
+html body.novelight-theme.novelight-page-scout-record .badge-group summary small,
+html body.novelight-theme.novelight-page-scout-record .seed-inventory-copy small {
+  font-size: 17px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-point-card .label,
+html body.novelight-theme.novelight-page-scout-record .scout-stat span,
+html body.novelight-theme.novelight-page-scout-record .seed-inventory-name,
+html body.novelight-theme.novelight-page-scout-record .rank-node-copy b,
+html body.novelight-theme.novelight-page-scout-record .scout-row b,
+html body.novelight-theme.novelight-page-scout-record .scout-row strong,
+html body.novelight-theme.novelight-page-scout-record .scout-modal-kv b {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .badge-card h3,
+html body.novelight-theme.novelight-page-scout-record .badge-group summary b {
+  font-size: 22px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .badge-point {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-modal h2 {
+  font-size: 24px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-rank-line strong {
+  font-size: 50px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-rank-line > span {
+  font-size: 26px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-point-card strong {
+  font-size: 40px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .scout-stat strong {
+  font-size: 36px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .seed-inventory-copy strong {
+  font-size: 34px !important;
+}
+
+@media (max-width: 640px) {
+  html body.novelight-theme.novelight-page-scout-record .scout-page-head p {
+    font-size: 19px !important;
+  }
+
+  html body.novelight-theme.novelight-page-scout-record .scout-kicker,
+  html body.novelight-theme.novelight-page-scout-record .scout-emblem-caption {
+    font-size: 15px !important;
+  }
+
+  html body.novelight-theme.novelight-page-scout-record .scout-section-head h2 {
+    font-size: 26px !important;
+  }
+
+  html body.novelight-theme.novelight-page-scout-record .scout-rank-line strong {
+    font-size: 36px !important;
+  }
+
+  html body.novelight-theme.novelight-page-scout-record .scout-point-card strong {
+    font-size: 38px !important;
+  }
+}
