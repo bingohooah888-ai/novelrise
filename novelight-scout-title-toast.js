@@ -149,6 +149,7 @@
   function installClientHook() {
     if (
       window.__novelightScoutTitleToastClientHookInstalled ||
+      window.__novelightScoutTitleToastCaptureInstalled ||
       !window.supabase ||
       typeof window.supabase.createClient !== 'function'
     ) {
@@ -164,5 +165,12 @@
     window.__novelightScoutTitleToastClientHookInstalled = true;
   }
 
+  window.__novelightAttachScoutTitleToastWatcher = watch;
+  const pendingClients = Array.isArray(
+    window.__novelightScoutTitleToastPendingClients
+  )
+    ? window.__novelightScoutTitleToastPendingClients
+    : [];
+  pendingClients.forEach((client) => watch(client));
   installClientHook();
 })();
