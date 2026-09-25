@@ -28,51 +28,9 @@ html.novelight-page-account-settings body.novelight-author-studio-shell {
 html body:is(
   .novelight-page-post,
   .novelight-page-my-novels,
-  .novelight-page-author-notes,
   .novelight-page-analytics,
-  .novelight-page-interaction-settings,
-  .novelight-page-account-settings
-) {
-  background-color: #f7f4ed !important;
-  background-image: var(--novelight-author-page-background) !important;
-  background-position: center top !important;
-  background-repeat: no-repeat !important;
-  background-size: cover !important;
-  background-attachment: fixed !important;
-}
-
-/* Keep the artwork visible around content without lowering text contrast. */
-html body:is(
-  .novelight-page-post,
-  .novelight-page-my-novels,
-  .novelight-page-author-notes,
-  .novelight-page-analytics,
-  .novelight-page-interaction-settings,
-  .novelight-page-account-settings
-) > main,
-html body.novelight-author-studio-shell:is(
-  .novelight-page-author-notes,
-  .novelight-page-account-settings
-) .author-shell > main {
-  background: transparent !important;
-}
-
-@media (max-width: 900px) {
-  html body:is(
-    .novelight-page-post,
-    .novelight-page-my-novels,
-    .novelight-page-author-notes,
-    .novelight-page-analytics,
-    .novelight-page-interaction-settings,
-    .novelight-page-account-settings
-  ) {
-    background-attachment: scroll !important;
-    background-position: center top !important;
-  }
-}
-
-
-/* Shell-only pages preserve their historical body class contract; page identity lives on <html>. */
+  .novelight-page-interaction-settings
+),
 html.novelight-page-author-notes body.novelight-author-studio-shell,
 html.novelight-page-account-settings body.novelight-author-studio-shell {
   background-color: #f7f4ed !important;
@@ -83,12 +41,25 @@ html.novelight-page-account-settings body.novelight-author-studio-shell {
   background-attachment: fixed !important;
 }
 
+/* Keep the artwork visible around content without lowering card/form contrast. */
+html body:is(
+  .novelight-page-post,
+  .novelight-page-my-novels,
+  .novelight-page-analytics,
+  .novelight-page-interaction-settings
+) > main,
 html.novelight-page-author-notes body.novelight-author-studio-shell .author-shell > main,
 html.novelight-page-account-settings body.novelight-author-studio-shell .author-shell > main {
   background: transparent !important;
 }
 
 @media (max-width: 900px) {
+  html body:is(
+    .novelight-page-post,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-interaction-settings
+  ),
   html.novelight-page-author-notes body.novelight-author-studio-shell,
   html.novelight-page-account-settings body.novelight-author-studio-shell {
     background-attachment: scroll !important;
