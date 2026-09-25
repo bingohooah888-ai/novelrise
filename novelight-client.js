@@ -645,6 +645,20 @@
     }
   }
 
+
+  function installScoutTitleToastRuntime() {
+    if (window.__novelightScoutTitleToastRuntimeInstalled) return false;
+    window.__novelightScoutTitleToastRuntimeInstalled = true;
+    const script = document.createElement('script');
+    script.src = 'novelight-scout-title-toast.js';
+    script.defer = true;
+    script.dataset.novelightScoutTitleToast = 'sitewide';
+    document.head.appendChild(script);
+    return true;
+  }
+
+  installScoutTitleToastRuntime();
+
   window.NovelightClient = {
     getVisitorToken,
     captureAcquisition,
