@@ -75,13 +75,13 @@ test('source-space cover_quad is the only canonical geometry and resolves throug
   assert.equal(resolved.bookRect.y, 0);
 });
 
-test('author, reader and ADMIN use the same resolved base_book geometry path', () => {
+test('author and ADMIN share geometry while reader uses cached render output', () => {
   assert.match(composer, /function resolveBookGeometry/);
   assert.match(composer, /function drawResolvedBaseBook/);
   assert.match(composer, /resolved\.coverQuad/);
-  assert.match(runtime, /geometry\.resolveBookGeometry/);
-  assert.match(runtime, /geometry\.drawResolvedBaseBook/);
-  assert.match(runtime, /resolved\.coverQuad/);
+  assert.doesNotMatch(runtime, /geometry\.resolveBookGeometry/);
+  assert.doesNotMatch(runtime, /geometry\.drawResolvedBaseBook/);
+  assert.match(runtime, /composition\?\.render_url/);
   assert.match(admin, /geometry\.resolveBookGeometry/);
   assert.match(admin, /geometry\.drawResolvedBaseBook/);
   assert.match(admin, /geometry\.canvasPointToSource/);

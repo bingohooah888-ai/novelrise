@@ -1,0 +1,11 @@
+/* Page-heading frame consistency only.
+   Keep each page's native typography, colors, cards, forms and spacing rules intact.
+   Remove only the outer title-area frame so creator pages follow the same
+   frameless heading treatment as SCOUT RECORD. */
+.novelight-page-heading {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}

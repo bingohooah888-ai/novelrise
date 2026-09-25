@@ -65,14 +65,14 @@ test('migration stores book-v1 cover_quad in base_book source coordinates', () =
   ])
     assert.ok(migration.includes(value), value);
 });
-test('all browser render surfaces consume the shared resolved geometry', () => {
+test('render surfaces keep geometry work out of reader runtime', () => {
   assert.match(composer, /function resolveBookGeometry/);
   assert.match(composer, /const bookRect = containRect/);
   assert.match(composer, /drawResolvedBaseBook/);
   assert.match(composer, /resolved\.coverQuad/);
-  assert.match(runtime, /geometry\.resolveBookGeometry/);
-  assert.match(runtime, /geometry\.drawResolvedBaseBook/);
-  assert.match(runtime, /resolved\.coverQuad/);
+  assert.doesNotMatch(runtime, /geometry\.resolveBookGeometry/);
+  assert.doesNotMatch(runtime, /geometry\.drawResolvedBaseBook/);
+  assert.match(runtime, /composition\?\.render_url/);
   assert.match(admin, /geometry\.resolveBookGeometry/);
   assert.match(admin, /geometry\.drawResolvedBaseBook/);
   assert.match(admin, /geometry\.canvasPointToSource/);

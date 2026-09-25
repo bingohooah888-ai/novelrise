@@ -146,7 +146,7 @@ test('ADMIN Geometry Editor uses the exact shared engine for validation and real
   assert.match(admin, /debug mask PNGは描画には使用しません/);
 });
 
-test('reader cache fallback prefers source-space v3 data and shared resolved geometry', () => {
+test('reader cache fallback uses stored renders without local geometry work', () => {
   assert.match(
     sourceSpaceMigration,
     /create or replace function public\.novelight_thumbnail_compositions_v3/i
@@ -155,10 +155,11 @@ test('reader cache fallback prefers source-space v3 data and shared resolved geo
   assert.match(sourceSpaceMigration, /base_book_source_width integer/);
   assert.match(runtime, /rpc\('novelight_thumbnail_compositions_v3'/);
   assert.match(runtime, /rpc\('novelight_thumbnail_compositions_v2'/);
-  assert.match(runtime, /NovelightThumbnailComposer\?\.geometry/);
-  assert.match(runtime, /geometry\.resolveBookGeometry/);
-  assert.match(runtime, /geometry\.drawResolvedBaseBook/);
-  assert.match(runtime, /geometry\.drawPerspectiveImage/);
+  assert.match(runtime, /composition\?\.render_url/);
+  assert.doesNotMatch(runtime, /NovelightThumbnailComposer\?\.geometry/);
+  assert.doesNotMatch(runtime, /geometry\.resolveBookGeometry/);
+  assert.doesNotMatch(runtime, /geometry\.drawPerspectiveImage/);
+  assert.doesNotMatch(runtime, /createElement\(['"]canvas['"]\)/);
   assert.doesNotMatch(runtime, /cover_mask_url/);
   assert.doesNotMatch(runtime, /maskImage/);
 });

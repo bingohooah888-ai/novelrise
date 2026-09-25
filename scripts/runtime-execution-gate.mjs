@@ -6,15 +6,19 @@ import { fileURLToPath } from 'node:url';
 
 import {
   classifyBootstrapRecovery,
+  validateMasterContentReuse,
   validateMasterReadProof
 } from './master-read-proof.mjs';
 
 export { classifyBootstrapRecovery } from './master-read-proof.mjs';
 
 const MASTER_PATH = 'docs/NOVELIGHT-MASTER.md';
+const PREFLIGHT_PATH = 'docs/WORK-EXECUTION-PREFLIGHT.md';
+const CONTINUATION_GATE_PATH = 'docs/AUTOMATION-CONTINUATION-GATE.md';
 const REQUIRED_MAIN_FILES = [
   MASTER_PATH,
-  'docs/WORK-EXECUTION-PREFLIGHT.md',
+  PREFLIGHT_PATH,
+  CONTINUATION_GATE_PATH,
   'docs/EXECUTION-TURN-CARD-GATE.md',
   'docs/EVIDENCE-FRESHNESS-GATE.md',
   'docs/IMAGE-EXECUTION-GATE.md'
@@ -175,6 +179,9 @@ export function parseMasterReadEvidence(
   authoritative = {}
 ) {
   const required = MASTER_PROOF_REQUIRED_PHASES.has(phase);
+  const reuse =
+    argv.includes('--master-content-reuse') ||
+    env.NOVELIGHT_MASTER_CONTENT_REUSE === '1';
   const proof = {
     complete:
       argv.includes('--master-read-complete') ||
@@ -187,6 +194,14 @@ export function parseMasterReadEvidence(
     contentSha256:
       optionValue(argv, 'master-content-sha256') ||
       env.NOVELIGHT_MASTER_CONTENT_SHA256 ||
+      '',
+    preflightSha256:
+      optionValue(argv, 'master-preflight-sha256') ||
+      env.NOVELIGHT_MASTER_PREFLIGHT_SHA256 ||
+      '',
+    continuationGateSha256:
+      optionValue(argv, 'master-continuation-gate-sha256') ||
+      env.NOVELIGHT_MASTER_CONTINUATION_GATE_SHA256 ||
       '',
     coveredFrom:
       optionValue(argv, 'master-covered-from') ||
@@ -201,16 +216,33 @@ export function parseMasterReadEvidence(
   };
 
   if (!required) {
-    return { required, ...proof };
+    return { required, reuse, ...proof };
+  }
+
+  if (reuse) {
+    return {
+      required,
+      reuse,
+      ...validateMasterContentReuse(proof, {
+        mainSha: authoritative.mainSha,
+        sha256: authoritative.master?.sha256,
+        lines: authoritative.master?.lines,
+        preflightSha256: authoritative.preflight?.sha256,
+        continuationGateSha256: authoritative.continuationGate?.sha256
+      })
+    };
   }
 
   return {
     required,
+    reuse,
     ...validateMasterReadProof(proof, {
       mainSha: authoritative.mainSha,
       sha256: authoritative.master?.sha256,
       lines: authoritative.master?.lines
-    })
+    }),
+    preflightSha256: authoritative.preflight?.sha256,
+    continuationGateSha256: authoritative.continuationGate?.sha256
   };
 }
 
@@ -500,7 +532,7 @@ function writeGateState({
   const gitDir = git(['rev-parse', '--git-dir']);
   const statePath = join(gitDir, 'novelight-runtime-gate.json');
   const state = {
-    version: 11,
+    version: 12,
     passedAt: new Date().toISOString(),
     phase,
     mainSha,
@@ -525,7 +557,9 @@ export function runRuntimeGate(
   const { mainSha, files } = ensureLatestMainAvailable();
   const masterRead = parseMasterReadEvidence(phase, argv, env, {
     mainSha,
-    master: files[MASTER_PATH]
+    master: files[MASTER_PATH],
+    preflight: files[PREFLIGHT_PATH],
+    continuationGate: files[CONTINUATION_GATE_PATH]
   });
   const statePath = writeGateState({
     phase,
@@ -541,9 +575,15 @@ export function runRuntimeGate(
   console.log(`authoritative main: ${mainSha}`);
   console.log(`execution card mode: ${executionCard.mode}`);
   if (masterRead.required) {
-    console.log(
-      `MASTER_READ_COMPLETE: ${masterRead.coveredFrom}-${masterRead.eofLine} @ ${masterRead.mainSha}`
-    );
+    if (masterRead.status === 'MASTER_CONTENT_REUSE') {
+      console.log(
+        `MASTER_CONTENT_REUSE: ${masterRead.sourceMainSha} -> ${masterRead.mainSha}; coverage ${masterRead.coveredFrom}-${masterRead.eofLine}`
+      );
+    } else {
+      console.log(
+        `MASTER_READ_COMPLETE: ${masterRead.coveredFrom}-${masterRead.eofLine} @ ${masterRead.mainSha}`
+      );
+    }
   }
   if (imageExecution.required) {
     console.log(
@@ -555,7 +595,7 @@ export function runRuntimeGate(
   }
   console.log(`state: ${statePath}`);
   console.log(
-    'Next: treat MASTER_READ_COMPLETE as current-turn/latest-main proof only; unresolved truncation or incomplete/noncontiguous coverage blocks normal project work. For a read-only bootstrap-order mistake after a valid card and before any mutation/Secret/Production/destructive/billing/claim boundary, discard the invalid observations, restart latest-main plus MASTER bootstrap in the same assistant turn, and do not ask for a continuation-only yes. Keep all existing image, evidence-freshness, Production, and approval boundaries fail-closed.'
+    'Next: use MASTER_READ_COMPLETE for an exact-main proof, or explicit MASTER_CONTENT_REUSE only when the prior complete MASTER coverage plus MASTER / Preflight / Continuation Gate digests all match current main. Unresolved truncation or incomplete/noncontiguous coverage remains fail-closed. For a read-only bootstrap-order mistake after a valid card and before any mutation/Secret/Production/destructive/billing/claim boundary, discard the invalid observations, restart latest-main plus MASTER bootstrap in the same assistant turn, and do not ask for a continuation-only yes. Keep all existing image, evidence-freshness, Production, and approval boundaries fail-closed.'
   );
 }
 

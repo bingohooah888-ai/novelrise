@@ -16,15 +16,15 @@ html body.novelight-page-index.novelight-public-dark #features .feature-symbol {
 
 html body.novelight-page-index.novelight-public-dark #features .feature-symbol.discovery-symbol {
   width: 96px;
-  background-image: url("assets/novelight-feature-discovery.png");
+  background-image: url("assets/novelight-feature-discovery.webp");
 }
 
 html body.novelight-page-index.novelight-public-dark #features .feature-symbol.seed-symbol {
-  background-image: url("assets/novelight-feature-light-seed.png");
+  background-image: url("assets/novelight-feature-light-seed.webp");
 }
 
 html body.novelight-page-index.novelight-public-dark #features .feature-symbol.analytics-symbol {
-  background-image: url("assets/novelight-feature-analytics.png");
+  background-image: url("assets/novelight-feature-analytics.webp");
 }
 
 html body.novelight-page-index.novelight-public-dark #features .feature-symbol::before,

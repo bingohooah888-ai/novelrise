@@ -501,6 +501,9 @@ async function assertAccountSettingsEmailBoundary(
 
   await expect(page.locator('#newEmail')).toBeEnabled();
   await expect(page.locator('#emailButton')).toBeEnabled();
+  await expect(page.locator('#currentPassword')).toHaveCount(0);
+  await expect(page.locator('#confirmEmail')).toHaveCount(0);
+  await expect(page.locator('#changeEmail')).toHaveCount(0);
 
   const targetEmail =
     `novelight-e2e-email-boundary-${runId}-${deviceLabel}@example.com`;

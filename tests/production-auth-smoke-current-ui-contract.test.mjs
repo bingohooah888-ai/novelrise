@@ -41,7 +41,18 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
   );
   assert.match(authenticatedSmoke, /managedWork/);
   assert.match(authenticatedSmoke, /#emailButton/);
-  assert.doesNotMatch(authenticatedSmoke, /#currentPassword/);
+  assert.match(
+    authenticatedSmoke,
+    /locator\('#currentPassword'\)\)\.toHaveCount\(0\)/
+  );
+  assert.match(
+    authenticatedSmoke,
+    /locator\('#confirmEmail'\)\)\.toHaveCount\(0\)/
+  );
+  assert.match(
+    authenticatedSmoke,
+    /locator\('#changeEmail'\)\)\.toHaveCount\(0\)/
+  );
   assert.match(authenticatedSmoke, /NOVELIGHT smoke boundary intercept/);
   assert.match(
     authenticatedSmoke,
