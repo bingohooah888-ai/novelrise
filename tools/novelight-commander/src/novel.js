@@ -113,7 +113,7 @@ async function narouIndex(rawUrl) {
         }
       });
 
-    if (!hasNextPage || added === 0) break;
+    if (added === 0) break;
   }
 
   if (!episodes.length) episodes.push({ url: root, label: title || "本文" });
