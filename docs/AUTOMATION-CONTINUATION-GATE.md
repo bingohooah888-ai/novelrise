@@ -57,7 +57,7 @@ latest `main` を解決した後、current main上のMASTER / Preflight / Contin
 
 ただし、新しいユーザーメッセージでは可視実行カードは必ず失効する。MASTER内容証跡の再利用と実行カードの再利用を混同しない。
 
-Connector/file responseにtruncation・途中切れ・未解決rangeがあった証跡は再利用できない。current main上の内容同一性を証明できない場合はFail-Closedして全文再読へ戻る。
+Connector/file responseにtruncation・途中切れ・未解決rangeがあった証跡は再利用できない。完全読了証跡はline 1からconfirmed EOFまでの連続coverageを持つことを必須とする。current main上の内容同一性を証明できない場合はFail-Closedして全文再読へ戻る。
 
 
 ## 主要工程 Runtime Execution Gate
