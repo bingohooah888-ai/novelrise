@@ -62,10 +62,7 @@ const sourceByteExceptions = new Map([
     45,
     'approved design; exterior black canvas mechanically converted to alpha transparency'
   ],
-  [
-    68,
-    'byte-for-byte copy of approved source; corner alpha normalized 1→0'
-  ]
+  [68, 'byte-for-byte copy of approved source; corner alpha normalized 1→0']
 ]);
 
 const scoutJs = await readFile(
