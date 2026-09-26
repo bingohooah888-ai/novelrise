@@ -43,6 +43,8 @@ ChatGPT側で直接NLO MCPが見えない、または直接Tunnel経路が応答
 
 - `doctor`
 - `nlo_health`
+- `codex_auth_diagnose`
+- `codex_auth_repair_user_override`
 - `repo_snapshot`
 - `preflight_fast`
 - `commander_check`
@@ -54,6 +56,12 @@ ChatGPT側で直接NLO MCPが見えない、または直接Tunnel経路が応答
 - `bridge_update`
 
 任意shell、任意PowerShell、任意Nodeコード、main push、PR mergeは受け付けません。`high_risk_pr_approve` はPR番号・exact head SHA・8桁challenge・固定確認文字列 `CHAT_PRODUCTION_APPROVED` をすべて検証し、既存の high-risk merge gate が要求するOWNER承認証跡だけを生成します。Bridge自身はmergeやProduction mutationを実行しません。Production mutationは公式サムネイル登録専用の `thumbnail_register_production` だけを許可します。対象はDownloads直下の `NOVELIGHT_*.zip` に限定し、ZIP内manifestの全件検証と固定確認文字列 `REGISTER_OFFICIAL_THUMBNAIL_PACK` を必須とします。既存SHAはスキップし、同名別内容はfail-closedで停止します。`bridge_update` は、ローカルrepoが `main`・clean・`origin/main` のfast-forward祖先である場合に限り、`git pull --ff-only origin main` を実行してBridgeを安全に再起動します。
+
+### Codex 401 / 認証診断
+
+`codex_auth_diagnose` はWindows上で固定コマンド `codex login status` と `codex doctor` を実行し、`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_FEDERATION_RULE_ID`、`OPENAI_IDENTITY_TOKEN_FILE` がProcess / User / Machineのどのscopeに存在するかを「存在有無だけ」で返します。Secret値そのものは返しません。Codex出力中にAPI keyやBearer tokenらしい文字列が含まれてもredactしてからControl Issueへ返します。
+
+`codex_auth_repair_user_override` はUser-scopeの `OPENAI_API_KEY` だけを削除する限定修復です。固定確認文字列 `CLEAR_USER_OPENAI_API_KEY_OVERRIDE` が必須で、Machine-scopeに `OPENAI_API_KEY` が存在する場合は自動修復せずfail-closedします。修復後はNLO daemonのProcess-scope値も破棄しますが、Codex Desktop / CLI側へ確実に反映するにはCodexの再起動が必要です。Machine-scope、`OPENAI_BASE_URL`、workload identity設定、Codex保存ログイン情報はこのrepair actionでは変更しません。
 
 ### チャット本番承認からHigh-Risk証跡への自動変換
 
@@ -114,6 +122,7 @@ Bridge自身のconfig / state / DPAPI token / audit / logは次へ保存しま�
 - child processは `shell:false`
 - local fileはdata root外へのpath traversalを拒否
 - 出力はSecretらしい値をredactして上限文字数を設定
+- Codex認証診断は環境変数の値を返さずpresence-only、修復はUser-scope `OPENAI_API_KEY` のみに限定
 - Production credentialはGitHub Issueへ返さず、ローカル環境またはログイン済みSupabase CLIからプロセス内だけで取得する
 - Production actionは公式サムネイル登録専用に限定し、固定確認文字列・Downloads直下・manifest全件検証を必須にする
 
@@ -121,16 +130,13 @@ Bridge自身のconfig / state / DPAPI token / audit / logは次へ保存しま�
 
 本番DB、Secret、Stripe、Vercel Production、main merge等は既存NOVELIGHT Production approval flowを使います。このBridgeは通常ローカル開発・検証だけを担当します。
 
-
 ## Windows再起動時のネットワーク待機
 
 Windowsログイン直後にネットワークが未確立でもBridgeプロセスは終了しません。GitHub pollingの失敗は `poll-error` としてローカル監査ログへ記録し、設定されたpoll間隔で自動再試行します。これによりStartup起動がネットワーク初期化より先でも自動復旧します。
 
-
 ## Bridge watchdog
 
 `run-github-bridge.ps1` はBridge daemonの外側でwatchdogとして常駐します。daemonが自己更新や一時的なクラッシュで終了した場合、watchdogは2秒待って再起動します。これにより `bridge_update` は新しいPowerShellプロセスを自分で生成せず、状態保存後に正常終了するだけで最新版へ切り替えられます。
-
 
 ## 公式サムネイルProduction自動登録
 
