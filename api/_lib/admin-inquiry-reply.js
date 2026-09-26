@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { requireAdmin } from './admin-auth.js';
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
-const FROM = 'NOVELIGHT <auth@novelight.jp>';
+const FROM = 'NOVELIGHT <support@novelight.jp>';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function parsePositiveId(value) {
