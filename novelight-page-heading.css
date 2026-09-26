@@ -1,11 +1,106 @@
-/* Page-heading frame consistency only.
-   Keep each page's native typography, colors, cards, forms and spacing rules intact.
-   Remove only the outer title-area frame so creator pages follow the same
-   frameless heading treatment as SCOUT RECORD. */
+/* Shared title framing for the six background-art Author Studio utility pages.
+   The heading text gets an opaque white reading surface while page actions stay outside
+   the title card where the page already separates them. */
+
 .novelight-page-heading {
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+}
+
+html body.novelight-theme.novelight-page-post .page-title.novelight-page-heading,
+html body.novelight-theme.novelight-page-interaction-settings .page-head.novelight-page-heading,
+html.novelight-page-author-notes body.novelight-author-studio-shell .page-head.novelight-page-heading,
+html.novelight-page-account-settings body.novelight-author-studio-shell .page-head.novelight-page-heading,
+html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading > div:first-child,
+html body.novelight-theme.novelight-page-analytics .analytics-hero.novelight-page-heading .analytics-title-wrap {
+  position: relative;
+  width: min(100%, 900px);
+  max-width: 100%;
+  padding: 24px 28px 22px !important;
+  overflow: hidden;
+  border: 1px solid rgba(181, 137, 43, 0.82) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 249, 233, 0.98),
+    inset 0 0 0 4px rgba(196, 153, 56, 0.32),
+    0 14px 34px rgba(21, 31, 42, 0.16) !important;
+  backdrop-filter: blur(7px);
+}
+
+html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading > div:first-child {
+  flex: 1 1 620px;
+  width: auto;
+  max-width: 760px;
+}
+
+html body.novelight-theme.novelight-page-analytics .analytics-hero.novelight-page-heading .analytics-title-wrap {
+  flex: 1 1 700px;
+  width: auto;
+  max-width: 850px;
+}
+
+html body.novelight-theme.novelight-page-post .page-title.novelight-page-heading::after,
+html body.novelight-theme.novelight-page-interaction-settings .page-head.novelight-page-heading::after,
+html.novelight-page-author-notes body.novelight-author-studio-shell .page-head.novelight-page-heading::after,
+html.novelight-page-account-settings body.novelight-author-studio-shell .page-head.novelight-page-heading::after,
+html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading > div:first-child::after,
+html body.novelight-theme.novelight-page-analytics .analytics-hero.novelight-page-heading .analytics-title-wrap::after {
+  content: "✦";
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  color: rgba(177, 132, 37, 0.72);
+  font-size: 17px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+html body.novelight-theme.novelight-page-post .page-title h1,
+html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading > div:first-child h1,
+html body.novelight-theme.novelight-page-analytics .analytics-hero.novelight-page-heading .analytics-title-wrap h1,
+html body.novelight-theme.novelight-page-interaction-settings .page-head.novelight-page-heading h1,
+html.novelight-page-author-notes body.novelight-author-studio-shell .page-head.novelight-page-heading h1,
+html.novelight-page-account-settings body.novelight-author-studio-shell .page-head.novelight-page-heading h1 {
+  color: #182b3c !important;
+  -webkit-text-fill-color: #182b3c !important;
+  text-shadow: none !important;
+}
+
+html body.novelight-theme.novelight-page-post .page-title p,
+html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading > div:first-child p,
+html body.novelight-theme.novelight-page-analytics .analytics-hero.novelight-page-heading .analytics-title-wrap .lead,
+html body.novelight-theme.novelight-page-interaction-settings .page-head.novelight-page-heading p,
+html.novelight-page-author-notes body.novelight-author-studio-shell .page-head.novelight-page-heading p,
+html.novelight-page-account-settings body.novelight-author-studio-shell .page-head.novelight-page-heading p {
+  color: #425260 !important;
+  -webkit-text-fill-color: #425260 !important;
+  text-shadow: none !important;
+}
+
+html body.novelight-theme.novelight-page-post .page-kicker,
+html body.novelight-theme.novelight-page-analytics .analytics-hero.novelight-page-heading .analytics-kicker,
+html body.novelight-theme.novelight-page-interaction-settings .page-head.novelight-page-heading .page-kicker,
+html.novelight-page-author-notes body.novelight-author-studio-shell .page-head.novelight-page-heading .kicker,
+html.novelight-page-account-settings body.novelight-author-studio-shell .page-head.novelight-page-heading .kicker {
+  color: #98721f !important;
+  -webkit-text-fill-color: #98721f !important;
+  text-shadow: none !important;
+}
+
+@media (max-width: 700px) {
+  html body.novelight-theme.novelight-page-post .page-title.novelight-page-heading,
+  html body.novelight-theme.novelight-page-interaction-settings .page-head.novelight-page-heading,
+  html.novelight-page-author-notes body.novelight-author-studio-shell .page-head.novelight-page-heading,
+  html.novelight-page-account-settings body.novelight-author-studio-shell .page-head.novelight-page-heading,
+  html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading > div:first-child,
+  html body.novelight-theme.novelight-page-analytics .analytics-hero.novelight-page-heading .analytics-title-wrap {
+    width: 100%;
+    max-width: none;
+    padding: 20px 20px 18px !important;
+    border-radius: 17px !important;
+  }
 }
