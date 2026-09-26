@@ -38,7 +38,10 @@ test('Codex auth actions are fixed allowlist actions with confirmation-gated rep
     readFile(authPath, 'utf8')
   ]);
 
-  assert.match(bridgeCore, /\['codex_auth_diagnose', actionCodexAuthDiagnose\]/);
+  assert.match(
+    bridgeCore,
+    /\['codex_auth_diagnose', actionCodexAuthDiagnose\]/
+  );
   assert.match(
     bridgeCore,
     /\['codex_auth_repair_user_override', actionCodexAuthRepairUserOverride\]/
