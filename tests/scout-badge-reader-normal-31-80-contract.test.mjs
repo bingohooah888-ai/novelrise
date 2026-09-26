@@ -58,10 +58,7 @@ const badgeIds = [
 ];
 
 const sourceByteExceptions = new Map([
-  [
-    45,
-    'approved design; exterior black canvas mechanically converted to alpha transparency'
-  ],
+  [45, 'approved design; exterior black canvas mechanically converted to alpha transparency'],
   [68, 'byte-for-byte copy of approved source; corner alpha normalized 1→0']
 ]);
 
@@ -70,10 +67,7 @@ const scoutJs = await readFile(
   'utf8'
 );
 const manifestText = await readFile(
-  new URL(
-    '../docs/SCOUT-BADGE-READER-NORMAL-31-80-MANIFEST.csv',
-    import.meta.url
-  ),
+  new URL('../docs/SCOUT-BADGE-READER-NORMAL-31-80-MANIFEST.csv', import.meta.url),
   'utf8'
 );
 
@@ -81,9 +75,7 @@ const [headerLine, ...dataLines] = manifestText.trim().split(/\r?\n/u);
 const headers = headerLine.split(',');
 const rows = dataLines.map((line) => {
   const values = line.split(',');
-  return Object.fromEntries(
-    headers.map((header, index) => [header, values[index] ?? ''])
-  );
+  return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']));
 });
 
 async function verifyReaderNormalArtwork() {
@@ -96,22 +88,14 @@ async function verifyReaderNormalArtwork() {
     const row = rows[index];
     const serial = String(badgeNo).padStart(3, '0');
 
-    assert.equal(
-      Number(row.badge_no),
-      badgeNo,
-      `manifest order for #${serial}`
-    );
+    assert.equal(Number(row.badge_no), badgeNo, `manifest order for #${serial}`);
     assert.equal(row.packaged_filename, `Reader_Normal_${serial}.png`);
     assert.equal(Number(row.width), 1254, `${badgeId} manifest width`);
     assert.equal(Number(row.height), 1254, `${badgeId} manifest height`);
     assert.equal(row.mode, 'RGBA', `${badgeId} manifest mode`);
     assert.equal(row.alpha_min, '0', `${badgeId} alpha_min`);
     assert.equal(row.alpha_max, '255', `${badgeId} alpha_max`);
-    assert.equal(
-      row.corner_alpha,
-      '0/0/0/0',
-      `${badgeId} transparent corners`
-    );
+    assert.equal(row.corner_alpha, '0/0/0/0', `${badgeId} transparent corners`);
     assert.match(row.source_sha256, /^[0-9a-f]{64}$/u);
     assert.match(row.packaged_sha256, /^[0-9a-f]{64}$/u);
 
@@ -128,14 +112,9 @@ async function verifyReaderNormalArtwork() {
       assert.equal(row.note, 'byte-for-byte copy of approved source');
     }
 
-    assert.match(
-      scoutJs,
-      new RegExp(`${badgeId}: 'assets/scout-badges/${badgeId}\\.png'`, 'u')
-    );
+    assert.match(scoutJs, new RegExp(`${badgeId}: 'assets/scout-badges/${badgeId}\\.png'`, 'u'));
 
-    const bytes = await readFile(
-      new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url)
-    );
+    const bytes = await readFile(new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url));
     assert.deepEqual(
       [...bytes.subarray(0, 8)],
       [137, 80, 78, 71, 13, 10, 26, 10],
