@@ -11,6 +11,7 @@ const supabase = createClient(
 );
 
 const TOKEN_VERSION_NAMESPACE = 'novelight-beta-author-invite:v1';
+const TEST_TOKEN_NAMESPACE = 'novelight-beta-author-invite-test:v1';
 const INVITE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 const FROM = 'NOVELIGHT <auth@novelight.jp>';
@@ -77,14 +78,23 @@ function formatJst(iso) {
   }).format(new Date(iso));
 }
 
-function emailPayload({ to, url, expiresAt }) {
+function emailPayload({ to, url, expiresAt, testMode = false }) {
   const escapedUrl = htmlEscape(url);
   const expires = htmlEscape(formatJst(expiresAt));
+  const testText = testMode
+    ? `【本番送信前のテストメールです】
+この招待URLは表示・遷移確認専用で、会員登録には使用できません。
+
+`
+    : '';
+  const testHtml = testMode
+    ? `<div style="margin:0 0 24px;padding:14px 16px;border:1px solid #b7791f;border-radius:10px;background:#fffaf0;color:#744210;font-size:13px;line-height:1.7"><strong>本番送信前のテストメールです。</strong><br>この招待URLは表示・遷移確認専用で、会員登録には使用できません。</div>`
+    : '';
   return {
     from: FROM,
     to: [to],
-    subject: '【NOVELIGHT】先行利用のご案内（9月28日開始）',
-    text: `NOVELIGHTへ先行登録いただきありがとうございます。
+    subject: `${testMode ? '【テスト送信】' : ''}【NOVELIGHT】先行利用のご案内（9月28日開始）`,
+    text: `${testText}NOVELIGHTへ先行登録いただきありがとうございます。
 
 2026年9月28日から、先行作者プレオープンをご利用いただけます。
 
@@ -105,6 +115,7 @@ NOVELIGHT
   <body style="margin:0;padding:0;background:#f5f4ef;color:#1d2433;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Yu Gothic',sans-serif">
     <div style="max-width:620px;margin:0 auto;padding:32px 20px">
       <div style="background:#fff;border:1px solid #e5dfcf;border-radius:16px;padding:32px">
+        ${testHtml}
         <p style="margin:0 0 10px;color:#8a6f2d;font-size:13px;font-weight:700;letter-spacing:.08em">NOVELIGHT FOUNDING AUTHORS</p>
         <h1 style="margin:0 0 20px;font-size:24px;line-height:1.4">先行利用のご案内</h1>
         <p style="line-height:1.8">NOVELIGHTへ先行登録いただきありがとうございます。</p>
@@ -123,6 +134,70 @@ NOVELIGHT
   </body>
 </html>`
   };
+}
+
+function testInviteToken(admin) {
+  const secret = String(process.env.SUPABASE_SECRET_KEY ?? '');
+  if (!secret) throw new Error('SUPABASE_SECRET_KEY is unavailable');
+  const deployment = String(process.env.VERCEL_GIT_COMMIT_SHA ?? 'local');
+  return createHmac('sha256', secret)
+    .update(`${TEST_TOKEN_NAMESPACE}:${admin.id}:${deployment}`, 'utf8')
+    .digest('base64url');
+}
+
+function testIdempotencyKey(admin) {
+  const deployment = String(process.env.VERCEL_GIT_COMMIT_SHA ?? 'local');
+  const recipientHash = createHash('sha256')
+    .update(String(admin.id ?? ''), 'utf8')
+    .digest('hex')
+    .slice(0, 24);
+  return `novelight-beta-author-invite-test-${recipientHash}-${deployment}`;
+}
+
+async function sendTestInvite(admin) {
+  const apiKey = String(process.env.RESEND_API_KEY ?? '').trim();
+  if (!apiKey) {
+    const error = new Error('RESEND_API_KEY is unavailable');
+    error.code = 'RESEND_NOT_CONFIGURED';
+    throw error;
+  }
+
+  const to = String(admin?.email ?? '')
+    .trim()
+    .toLowerCase();
+  if (!to) {
+    const error = new Error('Admin email is unavailable');
+    error.code = 'TEST_RECIPIENT_UNAVAILABLE';
+    throw error;
+  }
+
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
+  const response = await globalThis.fetch(RESEND_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': testIdempotencyKey(admin)
+    },
+    body: JSON.stringify(
+      emailPayload({
+        to,
+        url: inviteUrl(testInviteToken(admin)),
+        expiresAt,
+        testMode: true
+      })
+    )
+  });
+
+  const responseBody = await response.json().catch(() => ({}));
+  if (!response.ok || !responseBody?.id) {
+    const error = new Error('Resend rejected invite test');
+    error.code = 'RESEND_REJECTED';
+    error.httpStatus = response.status;
+    throw error;
+  }
+
+  return { result: 'test_sent' };
 }
 
 async function campaignState() {
@@ -348,12 +423,24 @@ export default async function handler(req, res) {
         state,
         storageReady,
         resendReady: Boolean(String(process.env.RESEND_API_KEY ?? '').trim()),
+        canSendTest:
+          state === 'PRE_REGISTRATION' &&
+          Boolean(String(admin.email ?? '').trim()) &&
+          Boolean(String(process.env.RESEND_API_KEY ?? '').trim()),
         canSend:
           state === 'AUTHOR_PREOPEN' &&
           storageReady &&
           Boolean(String(process.env.RESEND_API_KEY ?? '').trim()),
         pendingIds
       });
+    }
+
+    if (req.body?.action === 'test_send') {
+      if (state !== 'PRE_REGISTRATION') {
+        return res.status(409).json({ error: 'TEST_SEND_NOT_OPEN' });
+      }
+      const outcome = await sendTestInvite(admin);
+      return res.status(200).json(outcome);
     }
 
     if (state !== 'AUTHOR_PREOPEN') {
@@ -380,6 +467,9 @@ export default async function handler(req, res) {
     }
     if (error?.code === 'RESEND_NOT_CONFIGURED') {
       return res.status(503).json({ error: 'RESEND_NOT_CONFIGURED' });
+    }
+    if (error?.code === 'TEST_RECIPIENT_UNAVAILABLE') {
+      return res.status(409).json({ error: 'TEST_RECIPIENT_UNAVAILABLE' });
     }
     if (error?.code === 'RESEND_REJECTED') {
       console.error('NOVELIGHT invite send rejected by provider', {
