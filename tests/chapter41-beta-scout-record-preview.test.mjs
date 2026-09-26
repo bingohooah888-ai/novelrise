@@ -194,8 +194,8 @@ test('Easy Reader badges use individual PNG artwork assets', async () => {
       [137, 80, 78, 71, 13, 10, 26, 10],
       `${badgeId} must be a PNG`
     );
-    assert.equal(bytes.readUInt32BE(16), 256, `${badgeId} width`);
-    assert.equal(bytes.readUInt32BE(20), 256, `${badgeId} height`);
+    assert.equal(bytes.readUInt32BE(16), 384, `${badgeId} width`);
+    assert.equal(bytes.readUInt32BE(20), 384, `${badgeId} height`);
   }
 });
 
