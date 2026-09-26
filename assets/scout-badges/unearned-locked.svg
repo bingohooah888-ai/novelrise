@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="0 0 384 384" role="img" aria-labelledby="title desc">
+  <title id="title">未獲得称号</title>
+  <desc id="desc">称号を獲得するまで正式な紋章を隠す共通ロック画像</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="72%">
+      <stop offset="0" stop-color="#17314a"/>
+      <stop offset="0.62" stop-color="#0a1a2a"/>
+      <stop offset="1" stop-color="#050d17"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7df92"/>
+      <stop offset="0.5" stop-color="#cba94f"/>
+      <stop offset="1" stop-color="#7d6123"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="384" height="384" rx="52" fill="url(#bg)"/>
+  <circle cx="192" cy="192" r="144" fill="none" stroke="#d6b75c" stroke-width="4" opacity="0.8"/>
+  <circle cx="192" cy="192" r="126" fill="none" stroke="#d6b75c" stroke-width="1.5" opacity="0.28"/>
+  <path d="M192 79l8 18 19 2-14 13 4 19-17-10-17 10 4-19-14-13 19-2 8-18z" fill="url(#gold)" opacity="0.82"/>
+  <path d="M89 184l6 12 14 2-10 9 3 14-13-7-12 7 2-14-10-9 14-2 6-12zM295 184l6 12 14 2-10 9 3 14-13-7-12 7 2-14-10-9 14-2 6-12z" fill="#d6b75c" opacity="0.45"/>
+  <g filter="url(#glow)">
+    <path d="M134 173v-26c0-35 24-62 58-62s58 27 58 62v26h-22v-26c0-22-14-39-36-39s-36 17-36 39v26z" fill="none" stroke="url(#gold)" stroke-width="13" stroke-linecap="round"/>
+    <rect x="113" y="166" width="158" height="128" rx="24" fill="#091521" stroke="url(#gold)" stroke-width="7"/>
+    <circle cx="192" cy="221" r="17" fill="url(#gold)"/>
+    <path d="M184 233h16l8 31h-32z" fill="url(#gold)"/>
+  </g>
+  <path d="M137 322c17 8 35 12 55 12s38-4 55-12" fill="none" stroke="#d6b75c" stroke-width="3" stroke-linecap="round" opacity="0.48"/>
+</svg>
