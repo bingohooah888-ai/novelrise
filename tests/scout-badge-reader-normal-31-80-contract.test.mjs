@@ -114,7 +114,9 @@ async function verifyReaderNormalArtwork() {
 
     assert.match(scoutJs, new RegExp(`${badgeId}: 'assets/scout-badges/${badgeId}\\.png'`, 'u'));
 
-    const bytes = await readFile(new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url));
+    const bytes = await readFile(
+      new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url)
+    );
     assert.deepEqual(
       [...bytes.subarray(0, 8)],
       [137, 80, 78, 71, 13, 10, 26, 10],
