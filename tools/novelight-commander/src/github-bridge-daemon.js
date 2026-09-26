@@ -6,6 +6,10 @@ import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import dotenv from 'dotenv';
 import {
+  actionXserverDnsApply,
+  actionXserverDnsPreview
+} from './xserver-dns.js';
+import {
   diagnoseCodexAuth,
   clearUserOpenAiApiKeyOverride
 } from './codex-auth.js';
@@ -1837,6 +1841,8 @@ const ACTIONS = new Map([
   ['vercel_login_status', actionVercelLoginStatus],
   ['production_mail_runtime_check', actionProductionMailRuntimeCheck],
   ['production_mail_env_check', actionProductionMailEnvCheck],
+  ['xserver_dns_preview', actionXserverDnsPreview],
+  ['xserver_dns_apply', actionXserverDnsApply],
   ['high_risk_pr_approve', actionHighRiskPrApprove],
   ['bridge_update', actionBridgeUpdate]
 ]);
