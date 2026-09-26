@@ -32,7 +32,7 @@ jobs:
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
       VERCEL_PROJECT_NAME: novelrise
       NOVELIGHT_PRODUCTION_ADMIN_USER_IDS: ${{ secrets.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS }}
-      NOVELIGHT_PRODUCTION_ORIGIN: https://novelrise.vercel.app
+      NOVELIGHT_PRODUCTION_ORIGIN: https://novelight.jp
 
     steps:
       - name: Resolve exact current main
@@ -312,7 +312,7 @@ jobs:
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
       VERCEL_PROJECT_NAME: novelrise
       NOVELIGHT_PRODUCTION_ADMIN_USER_IDS: ${{ secrets.NOVELIGHT_PRODUCTION_ADMIN_USER_IDS }}
-      NOVELIGHT_PRODUCTION_ORIGIN: https://novelrise.vercel.app
+      NOVELIGHT_PRODUCTION_ORIGIN: https://novelight.jp
       GITHUB_REPOSITORY_ID: '1335499017'
 
     steps:

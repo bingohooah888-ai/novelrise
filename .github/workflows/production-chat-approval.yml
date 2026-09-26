@@ -29,7 +29,7 @@ jobs:
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_TITLE: ${{ github.event.issue.title }}
       ISSUE_BODY: ${{ github.event.issue.body }}
-      REMEDIATION_URL: https://novelrise.vercel.app/api/production-billing-remediate
+      REMEDIATION_URL: https://novelight.jp/api/production-billing-remediate
       EXPECTED_REMEDIATION_VERSION: chat-approval-oidc-v1
       OIDC_AUDIENCE: novelight-production-chat-approval
 

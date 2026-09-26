@@ -17,7 +17,7 @@ import {
 } from '../scripts/stripe-production-webhook-endpoint.mjs';
 
 const CANONICAL_SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
-const CANONICAL_APP_URL = 'https://novelrise.vercel.app';
+const CANONICAL_APP_URL = 'https://novelight.jp';
 const EXPECTED_REPOSITORY = 'bingohooah888-ai/novelrise';
 const EXPECTED_REF = 'refs/heads/main';
 const EXPECTED_WORKFLOW_REF =

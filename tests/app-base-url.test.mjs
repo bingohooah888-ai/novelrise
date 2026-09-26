@@ -8,7 +8,7 @@ test('Preview return URLs follow the exact Vercel deployment', () => {
     getAppBaseUrl({
       VERCEL_ENV: 'preview',
       VERCEL_URL: 'novelrise-preview-123.vercel.app',
-      NOVELIGHT_APP_URL: 'https://novelrise.vercel.app'
+      NOVELIGHT_APP_URL: 'https://novelight.jp'
     }),
     'https://novelrise-preview-123.vercel.app'
   );
@@ -35,5 +35,16 @@ test('non-Preview environments preserve the configured canonical app URL', () =>
     getAppBaseUrl({ NOVELIGHT_APP_URL: 'https://novelight.example/' }),
     'https://novelight.example'
   );
-  assert.equal(getAppBaseUrl({}), 'https://novelrise.vercel.app');
+  assert.equal(getAppBaseUrl({}), 'https://novelight.jp');
+});
+
+test('Production rejects a non-canonical app URL', () => {
+  assert.throws(
+    () =>
+      getAppBaseUrl({
+        VERCEL_ENV: 'production',
+        NOVELIGHT_APP_URL: 'https://novelrise.vercel.app'
+      }),
+    /Production app base URL is not canonical/
+  );
 });

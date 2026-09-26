@@ -10,7 +10,7 @@ import {
   requiredWebhookEvents
 } from '../scripts/stripe-production-webhook-endpoint.mjs';
 
-const webhookUrl = 'https://novelrise.vercel.app/api/stripe-webhook';
+const webhookUrl = 'https://novelight.jp/api/stripe-webhook';
 
 function liveEndpoint(id, extra = {}) {
   return {

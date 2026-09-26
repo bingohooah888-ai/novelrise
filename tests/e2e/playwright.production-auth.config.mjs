@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.E2E_BASE_URL || 'https://novelrise.vercel.app';
+const baseURL = process.env.E2E_BASE_URL || 'https://novelight.jp';
 const bypassStorageState =
   process.env.VERCEL_BYPASS_STORAGE_STATE ||
   '/tmp/novelight-vercel-bypass-storage-state.json';

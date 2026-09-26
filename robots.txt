@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://novelrise.vercel.app/sitemap.xml
+Sitemap: https://novelight.jp/sitemap.xml

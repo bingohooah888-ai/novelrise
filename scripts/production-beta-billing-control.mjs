@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 
 const EXPECTED_SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
-const EXPECTED_APP_URL = 'https://novelrise.vercel.app';
+const EXPECTED_APP_URL = 'https://novelight.jp';
 const PREMIUM_BETA_LOOKUP_KEY = 'novelight_premium_beta_2026_monthly_jpy';
 const runId = String(process.env.GITHUB_RUN_ID || Date.now());
 const supabaseUrl = process.env.SUPABASE_URL;

@@ -19,7 +19,7 @@ jobs:
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
-      NOVELIGHT_APP_URL: https://novelrise.vercel.app
+      NOVELIGHT_APP_URL: https://novelight.jp
       NOVELIGHT_BETA_STANDARD_FREE: 'true'
       EXPECTED_BRANCH: main
 
@@ -44,7 +44,7 @@ jobs:
             echo 'SUPABASE_URL is not the canonical Production Supabase project.'
             exit 1
           }
-          test "$NOVELIGHT_APP_URL" = 'https://novelrise.vercel.app' || {
+          test "$NOVELIGHT_APP_URL" = 'https://novelight.jp' || {
             echo 'NOVELIGHT_APP_URL is not the canonical Production application URL.'
             exit 1
           }

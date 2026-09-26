@@ -7,7 +7,7 @@ import {
   isLegacyNovelightWebhookEndpoint
 } from '../scripts/production-billing-audit-lib.mjs';
 
-const canonicalWebhookUrl = 'https://novelrise.vercel.app/api/stripe-webhook';
+const canonicalWebhookUrl = 'https://novelight.jp/api/stripe-webhook';
 
 function createSupabase(profiles) {
   return {
