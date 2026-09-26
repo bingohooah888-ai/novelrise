@@ -10,14 +10,8 @@ const migration = readFileSync(migrationPath, 'utf8');
 const fixture = readFileSync(fixturePath, 'utf8');
 
 test('Production Auth Smoke cleanup is gated to internal_e2e identities', () => {
-  assert.match(
-    migration,
-    /raw_app_meta_data\s*->>\s*'internal_e2e'/u
-  );
-  assert.match(
-    migration,
-    /before delete on public\.profiles/u
-  );
+  assert.match(migration, /raw_app_meta_data\s*->>\s*'internal_e2e'/u);
+  assert.match(migration, /before delete on public\.profiles/u);
   assert.match(
     migration,
     /novelight_cleanup_internal_e2e_scout_residue\(old\.id\)/u
