@@ -9,14 +9,13 @@
   <style>
     .announcement-list{display:grid;gap:14px}.announcement-item{padding:18px;border:1px solid #e4e4ec;border-radius:12px;background:#fff}.announcement-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.announcement-title{margin:0;font-size:18px}.announcement-category{flex:0 0 auto;padding:4px 8px;border-radius:999px;background:#f0edff;color:#6d4aff;font-size:11px;font-weight:900}.announcement-date{margin-top:6px;color:#85858f;font-size:12px}.announcement-body{margin:13px 0 0;white-space:pre-wrap;line-height:1.8}.announcement-state{padding:20px;text-align:center;color:#777;border:1px dashed #d7d7e2;border-radius:10px}.contact-form{display:grid;gap:18px}.contact-field{display:grid;gap:7px}.contact-field label{font-size:14px;font-weight:800}.contact-field input,.contact-field select,.contact-field textarea{width:100%;border:1px solid #d7d7e2;border-radius:9px;padding:12px 13px;background:#fff;color:#222;font:inherit}.contact-field textarea{min-height:180px;resize:vertical}.contact-field input:focus,.contact-field select:focus,.contact-field textarea:focus{outline:3px solid rgba(109,74,255,.12);border-color:#6d4aff}.contact-submit{border:0;border-radius:9px;padding:13px 18px;background:#6d4aff;color:#fff;font:inherit;font-weight:900;cursor:pointer}.contact-submit:disabled{opacity:.55;cursor:wait}.contact-state{min-height:24px;font-size:13px;line-height:1.7}.contact-state.error{color:#b42318}.contact-state.success{color:#067647}.contact-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}@media(max-width:620px){.announcement-head{flex-direction:column;gap:8px}}
   </style>
-<link rel="stylesheet" href="novelight-accessibility.css"></head>
+  <link rel="stylesheet" href="novelight-accessibility.css">
+</head>
 <body class="novelight-public-header-page"><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header class="site-header">
   <div class="header-inner public-header-inner">
     <a class="logo" href="index.html" aria-label="NOVELIGHT ホーム"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
-    <nav class="site-nav desktop-nav" aria-label="メインナビ">
-      <a href="search.html">作品を探す</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="ranking.html">ランキング</a>
-    </nav>
+    <nav class="site-nav desktop-nav" aria-label="メインナビ"><a href="search.html">作品を探す</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="ranking.html">ランキング</a></nav>
     <div class="header-actions">
       <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
       <a class="btn btn-outline login-action" href="login.html">ログイン</a>
@@ -34,16 +33,14 @@
 
   <section class="legal-card" aria-labelledby="announcementHeading">
     <h2 id="announcementHeading">お知らせ</h2>
-    <div id="announcementList" class="announcement-list" aria-live="polite">
-      <div class="announcement-state">お知らせを読み込んでいます...</div>
-    </div>
+    <div id="announcementList" class="announcement-list" aria-live="polite"><div class="announcement-state">お知らせを読み込んでいます...</div></div>
   </section>
 
   <section class="legal-card" aria-labelledby="contactHeading">
     <h2 id="contactHeading">お問い合わせ</h2>
-    <p>課金・解約、投稿、プライバシー、特定商取引法に基づく表示事項の開示請求などを受け付けます。</p>
+    <p>課金・解約、投稿、個人情報に関する各種請求、退会・アカウント削除、特定商取引法に基づく表示事項の開示請求などを受け付けます。</p>
     <div class="legal-note" style="margin-bottom:20px">
-      パスワード、クレジットカード番号、本人確認書類などの機密情報は入力しないでください。返信に必要なメールアドレスと、お問い合わせ内容のみ送信してください。
+      パスワード、クレジットカード番号、本人確認書類などの機密情報は入力・添付しないでください。個人情報に関する請求で追加の本人確認が必要な場合は、受付後にNOVELIGHTから必要な範囲と方法を別途ご案内します。
     </div>
 
     <form id="contactForm" class="contact-form">
@@ -57,9 +54,13 @@
         <select id="contactSubject" name="subject" required>
           <option value="">選択してください</option>
           <option value="特定商取引法に基づく表示事項の開示請求">特定商取引法に基づく表示事項の開示請求</option>
+          <option value="個人情報の開示・利用目的通知">個人情報の開示・利用目的通知</option>
+          <option value="個人情報の訂正・追加・削除">個人情報の訂正・追加・削除</option>
+          <option value="利用停止・消去・第三者提供停止">利用停止・消去・第三者提供停止</option>
+          <option value="退会・アカウント削除">退会・アカウント削除</option>
+          <option value="その他のプライバシー相談">その他のプライバシー相談</option>
           <option value="課金・解約">課金・解約</option>
           <option value="投稿・作品">投稿・作品</option>
-          <option value="プライバシー">プライバシー</option>
           <option value="不具合・技術的な問題">不具合・技術的な問題</option>
           <option value="その他">その他</option>
         </select>
@@ -67,7 +68,7 @@
 
       <div class="contact-field">
         <label for="contactMessage">お問い合わせ内容</label>
-        <textarea id="contactMessage" name="message" minlength="10" maxlength="4000" required placeholder="10文字以上4000文字以内で入力してください。"></textarea>
+        <textarea id="contactMessage" name="message" minlength="10" maxlength="4000" required placeholder="10文字以上4000文字以内で入力してください。個人情報の請求では、対象のアカウントや希望する対応を分かる範囲で記載してください。"></textarea>
       </div>
 
       <div class="contact-honeypot" aria-hidden="true">
@@ -81,29 +82,18 @@
   </section>
 
   <section class="legal-card">
+    <h2>個人情報に関する請求について</h2>
+    <p>該当するお問い合わせ種別を選び、返信先メールアドレスと請求内容を送信してください。請求内容に応じて本人確認を行い、法令に定める範囲で対応します。法令上の保存義務、不正・セキュリティ対策、紛争対応等のため、直ちに削除できない情報がある場合があります。</p>
+  </section>
+
+  <section class="legal-card">
     <h2>特定商取引法に基づく開示請求について</h2>
     <p>「特定商取引法に基づく表示事項の開示請求」を選び、返信先メールアドレスを入力して送信してください。法令に従い、申込みの意思決定に先立って十分な時間的余裕をもって確認できるよう、遅滞なく必要事項を提供します。</p>
   </section>
 
-  <div class="legal-links">
-    <a href="operator.html">運営者情報</a>
-    <a href="terms.html">利用規約</a>
-    <a href="privacy.html">プライバシーポリシー</a>
-    <a href="content-guidelines.html">投稿ガイドライン</a>
-    <a href="billing-policy.html">課金・解約ポリシー</a>
-    <a href="commerce-disclosure.html">特商法表記</a>
-  </div>
+  <div class="legal-links"><a href="operator.html">運営者情報</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="billing-policy.html">課金・解約ポリシー</a><a href="commerce-disclosure.html">特商法表記</a></div>
 </main>
-<footer class="site-footer">
-  <div class="site-footer-inner">
-    <span>© NOVELIGHT</span>
-    <a href="operator.html">運営者情報</a>
-    <a href="contact.html">お知らせ・お問い合わせ</a>
-    <a href="terms.html">利用規約</a>
-    <a href="privacy.html">プライバシー</a>
-    <a href="commerce-disclosure.html">特商法表記</a>
-  </div>
-</footer>
+<footer class="site-footer"><div class="site-footer-inner"><span>© NOVELIGHT</span><a href="operator.html">運営者情報</a><a href="contact.html">お知らせ・お問い合わせ</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="commerce-disclosure.html">特商法表記</a></div></footer>
 
 <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
 <script src="novelight-client.js"></script>
@@ -116,7 +106,6 @@
     const key = 'novelight_visitor_token';
     let token = localStorage.getItem(key);
     if (token && token.length >= 8) return token;
-
     token = window.crypto && typeof window.crypto.randomUUID === 'function'
       ? window.crypto.randomUUID()
       : 'visitor-' + Date.now() + '-' + Math.random().toString(36).slice(2);
@@ -134,7 +123,6 @@
       container.appendChild(empty);
       return;
     }
-
     rows.forEach((row) => {
       const article = document.createElement('article');
       article.className = 'announcement-item';
@@ -149,9 +137,7 @@
       head.append(title, category);
       const date = document.createElement('div');
       date.className = 'announcement-date';
-      date.textContent = row.published_at
-        ? `公開 ${new Date(row.published_at).toLocaleString('ja-JP')}`
-        : '';
+      date.textContent = row.published_at ? `公開 ${new Date(row.published_at).toLocaleString('ja-JP')}` : '';
       const body = document.createElement('p');
       body.className = 'announcement-body';
       body.textContent = row.body;
@@ -162,12 +148,7 @@
 
   async function loadAnnouncements() {
     try {
-      const response = await fetch('/api/announcements', {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-        credentials: 'same-origin'
-      });
+      const response = await fetch('/api/announcements', { method: 'GET', headers: { Accept: 'application/json' }, cache: 'no-store', credentials: 'same-origin' });
       if (!response.ok) throw new Error(`announcements ${response.status}`);
       const data = await response.json();
       renderAnnouncements(data.announcements || []);
@@ -191,13 +172,11 @@
     state.textContent = '';
     state.className = 'contact-state';
     submitButton.disabled = true;
-
     try {
       const email = document.getElementById('contactEmail').value.trim();
       const subject = document.getElementById('contactSubject').value;
       const message = document.getElementById('contactMessage').value.trim();
       const website = document.getElementById('contactWebsite').value;
-
       const { error } = await supabaseClient.rpc('submit_contact_inquiry', {
         p_email: email,
         p_subject: subject,
@@ -205,17 +184,13 @@
         p_visitor_token: getVisitorToken(),
         p_website: website
       });
-
       if (error) throw error;
-
       form.reset();
       state.textContent = 'お問い合わせを受け付けました。内容を確認後、必要に応じて返信します。';
       state.className = 'contact-state success';
     } catch (error) {
       console.error('contact submission failed', error);
-      const message = error && typeof error.message === 'string'
-        ? error.message
-        : '';
+      const message = error && typeof error.message === 'string' ? error.message : '';
       state.textContent = message.includes('短時間に送信できる回数')
         ? '短時間に送信できる回数を超えました。時間をおいてお試しください。'
         : '送信できませんでした。入力内容を確認し、時間をおいてもう一度お試しください。';
