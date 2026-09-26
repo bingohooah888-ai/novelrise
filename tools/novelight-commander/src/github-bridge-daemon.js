@@ -5,6 +5,10 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import dotenv from 'dotenv';
+import {
+  diagnoseCodexAuth,
+  clearUserOpenAiApiKeyOverride
+} from './codex-auth.js';
 
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = 'novelrise';
@@ -283,7 +287,6 @@ function runNpm(args, options = {}) {
   return run(NPM_COMMAND, args, options);
 }
 
-
 async function loadCommanderDotEnv(config) {
   const envPath = path.join(
     config.repoRoot,
@@ -311,6 +314,7 @@ function resolveDownloadsZip(fileName) {
   }
   return candidate;
 }
+
 async function resolveDownloadsZipForPack(fileName, expectedPackKey) {
   const canonical = resolveDownloadsZip(fileName);
   const packKey = String(expectedPackKey || '').trim();
@@ -319,7 +323,6 @@ async function resolveDownloadsZipForPack(fileName, expectedPackKey) {
   }
 
   const downloadsRoot = path.dirname(canonical);
-
   const entries = await fs.readdir(downloadsRoot, { withFileTypes: true });
   const matching = [];
   const JSZip = (await import('jszip')).default;
@@ -691,6 +694,25 @@ async function actionDoctor(request, config) {
   return rows.join('\n');
 }
 
+async function actionCodexAuthDiagnose(request, config) {
+  ensureNoArgs(request.args);
+  const result = await diagnoseCodexAuth({ cwd: config.repoRoot });
+  return JSON.stringify(result, null, 2);
+}
+
+async function actionCodexAuthRepairUserOverride(request, config) {
+  if (!exactKeys(request.args, ['confirmation'])) {
+    throw new Error(
+      'codex_auth_repair_user_override requires exactly confirmation.'
+    );
+  }
+  const result = await clearUserOpenAiApiKeyOverride({
+    confirmation: String(request.args.confirmation || ''),
+    cwd: config.repoRoot
+  });
+  return JSON.stringify(result, null, 2);
+}
+
 async function actionNloHealth(request, config) {
   ensureNoArgs(request.args);
 
@@ -834,7 +856,6 @@ async function actionNovelFetch(request, config) {
     'saved_local: ' + destination.relative
   ].join('\n');
 }
-
 
 async function actionNovelVerifySaved(request, config) {
   if (!exactKeys(request.args, ['requestId', 'expectedEpisodes'])) {
@@ -1624,7 +1645,6 @@ async function actionBridgeUpdate(request, config) {
   ].join('\n');
 }
 
-
 function highRiskApprovalChallenge(prNumber, headSha) {
   return createHash('sha256')
     .update('novelight-high-risk:' + prNumber + ':' + headSha)
@@ -1799,6 +1819,8 @@ async function actionHighRiskPrApprove(request, config) {
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['nlo_health', actionNloHealth],
+  ['codex_auth_diagnose', actionCodexAuthDiagnose],
+  ['codex_auth_repair_user_override', actionCodexAuthRepairUserOverride],
   ['autorecovery_install', actionAutorecoveryInstall],
   ['repo_snapshot', actionRepoSnapshot],
   ['preflight_fast', actionPreflightFast],
