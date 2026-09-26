@@ -65,6 +65,7 @@ test('xserver dns preview never mutates DNS', async () => {
   const result = await actions.preview({ args: TARGET_ARGS });
   assert.match(result, /would_add: true/);
   assert.match(result, /mutation_performed: false/);
+  assert.match(result, /credential_source: environment/);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].init.method, 'GET');
   assert.equal(
@@ -72,6 +73,30 @@ test('xserver dns preview never mutates DNS', async () => {
     'https://api.xserver.ne.jp/v1/domain/novelight.jp/dns'
   );
   assert.equal(calls[0].init.headers.Authorization, 'Bearer xs_test_key');
+});
+
+test('xserver dns preview falls back to the official CLI profile without exposing credentials', async () => {
+  const calls = [];
+  const actions = createXserverDnsActions({
+    env: {},
+    cliRunner: async (args) => {
+      calls.push(args);
+      return {
+        code: 0,
+        stdout: JSON.stringify({ records: [] }),
+        stderr: ''
+      };
+    }
+  });
+
+  const result = await actions.preview({ args: TARGET_ARGS });
+  assert.match(result, /xserver_authenticated: true/);
+  assert.match(result, /credential_source: cli_profile/);
+  assert.match(result, /would_add: true/);
+  assert.match(result, /secret_value_exposed: false/);
+  assert.deepEqual(calls, [
+    ['--format', 'json', 'domain', 'dns', 'list', 'novelight.jp']
+  ]);
 });
 
 test('xserver dns apply requires explicit Production approval', async () => {
@@ -166,6 +191,80 @@ test('xserver dns apply adds only the approved MX and verifies it', async () => 
     ttl: 3600,
     priority: 10
   });
+});
+
+test('xserver dns apply can use the official CLI profile and verifies after write', async () => {
+  const calls = [];
+  let listed = 0;
+  const actions = createXserverDnsActions({
+    env: {},
+    cliRunner: async (args) => {
+      calls.push(args);
+      if (args.includes('list')) {
+        listed += 1;
+        if (listed === 1) {
+          return {
+            code: 0,
+            stdout: JSON.stringify({ records: [] }),
+            stderr: ''
+          };
+        }
+        return {
+          code: 0,
+          stdout: JSON.stringify({
+            records: [
+              {
+                dns_id: 51,
+                type: 'MX',
+                host: '@',
+                content: 'inbound-smtp.ap-northeast-1.amazonaws.com',
+                ttl: 3600,
+                priority: 10
+              }
+            ]
+          }),
+          stderr: ''
+        };
+      }
+      return { code: 0, stdout: JSON.stringify({ id: 51 }), stderr: '' };
+    }
+  });
+
+  const result = await actions.apply({
+    args: { ...TARGET_ARGS, approval: 'production_approved' }
+  });
+
+  assert.match(result, /credential_source: cli_profile/);
+  assert.match(result, /record_added: true/);
+  assert.match(result, /verified_after_write: true/);
+  assert.equal(calls.length, 3);
+  assert.deepEqual(calls[0], [
+    '--format',
+    'json',
+    'domain',
+    'dns',
+    'list',
+    'novelight.jp'
+  ]);
+  assert.deepEqual(calls[1], [
+    '--format',
+    'json',
+    '--yes',
+    'domain',
+    'dns',
+    'add',
+    'novelight.jp',
+    '--host',
+    '@',
+    '--type',
+    'MX',
+    '--content',
+    'inbound-smtp.ap-northeast-1.amazonaws.com',
+    '--ttl',
+    '3600',
+    '--priority',
+    '10'
+  ]);
 });
 
 test('xserver dns apply is idempotent when the target record already exists', async () => {
