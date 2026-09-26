@@ -213,7 +213,7 @@ test('novel edit loads existing work, saves changes, and renders the update', as
   await page.locator('#title').fill('編集後の作品');
   await page.locator('#description').fill('編集後のあらすじです。');
   await page.locator('#aiUsage').selectOption('ai_assisted');
-  await page.locator('#contentRating').selectOption('mature');
+  await page.locator('#contentRating').selectOption('sensitive_15');
   await page.locator('#warningGrid input[value="violence"]').check();
   await page.locator('#save').click();
 
@@ -241,7 +241,7 @@ test('novel edit loads existing work, saves changes, and renders the update', as
     description: '編集後のあらすじです。',
     thumbnail_asset_id: officialThumbnail.id,
     ai_usage: 'ai_assisted',
-    content_rating: 'mature',
+    content_rating: 'sensitive_15',
     content_warnings: ['violence'],
     content_policy_ack: true
   });
