@@ -2,18 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const privacy = readFileSync(
-  new URL('../privacy.html', import.meta.url),
-  'utf8'
-);
-const contact = readFileSync(
-  new URL('../contact.html', import.meta.url),
-  'utf8'
-);
-const betaAuthors = readFileSync(
-  new URL('../beta-authors.html', import.meta.url),
-  'utf8'
-);
+const privacy = readFileSync('privacy.html', 'utf8');
+const contact = readFileSync('contact.html', 'utf8');
+const betaAuthors = readFileSync('beta-authors.html', 'utf8');
 
 const requiredPrivacyFragments = [
   '最終改定日：2026年9月27日',
