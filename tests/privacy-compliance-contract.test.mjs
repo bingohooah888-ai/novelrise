@@ -33,13 +33,13 @@ const requiredContactFragments = [
 
 test('privacy policy documents current data handling and processors', () => {
   for (const fragment of requiredPrivacyFragments) {
-    assert.match(privacy, new RegExp(fragment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.ok(privacy.includes(fragment));
   }
 });
 
 test('contact form exposes explicit privacy-rights request categories', () => {
   for (const fragment of requiredContactFragments) {
-    assert.match(contact, new RegExp(fragment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.ok(contact.includes(fragment));
   }
 });
 
