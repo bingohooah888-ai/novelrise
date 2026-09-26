@@ -1,6 +1,6 @@
 # SCOUT BADGE ARTWORK QUALITY POLICY
 
-最終更新: 2026-09-26
+最終更新: 2026-09-27
 
 この文書は、`docs/NOVELIGHT-MASTER.md` の「SCOUT称号アートワーク反復実装 Fast Path」を補完する、SCOUT RECORD称号画像の品質運用基準である。
 
@@ -51,3 +51,13 @@ Reader Easy 30は、PR #1031で確定した2304×1920の最終スプライトか
 5. それでも必要な場合のみresampling / sharpening等の表示補助を追加する
 
 原版喪失・低解像度化を表示処理だけで隠す実装は採用しない。
+
+## 6. 未獲得称号のアートワーク秘匿
+
+SCOUT RECORDの未獲得称号は、称号名、カテゴリ、難易度、獲得条件、進捗、達成率、Point報酬等の既存情報を表示したまま、正式な称号アートワークだけを獲得まで秘匿する。
+
+未獲得時のカード表示および称号詳細表示では、canonical assetの代わりに共通の未獲得ロック画像を使用する。ユーザーが当該称号を獲得した後にのみ、その称号の承認済みcanonical artworkへ表示を切り替える。
+
+ロック画像はUI専用の独立assetとし、各称号のcanonical assetを上書き、縮小、再圧縮、加工して作らない。Reader Easy / Normal / Hard、Author、Limited等の区分を問わず同じ原則を適用する。
+
+称号アートワークを追加・差し替えする作業では、未獲得表示用ロック画像とcanonical artworkを別資産として扱い、獲得判定やScout Point付与等のauthoritative ruleと表示切替ロジックを混同しない。
