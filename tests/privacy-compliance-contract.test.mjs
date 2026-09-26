@@ -2,8 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const privacy = readFileSync(new URL('../privacy.html', import.meta.url), 'utf8');
-const contact = readFileSync(new URL('../contact.html', import.meta.url), 'utf8');
+const privacy = readFileSync(
+  new URL('../privacy.html', import.meta.url),
+  'utf8'
+);
+const contact = readFileSync(
+  new URL('../contact.html', import.meta.url),
+  'utf8'
+);
 const betaAuthors = readFileSync(
   new URL('../beta-authors.html', import.meta.url),
   'utf8'
@@ -43,11 +49,14 @@ test('contact form exposes explicit privacy-rights request categories', () => {
   }
 });
 
-test('beta preregistration consent stays scoped to beta participation communications', () => {
-  assert.match(
-    betaAuthors,
-    /NOVELIGHT β版の公開・参加に関する連絡を受け取ることに同意します/
-  );
-  assert.doesNotMatch(betaAuthors, /広告・宣伝メール.*同意/);
-  assert.doesNotMatch(betaAuthors, /ニュースレター.*同意/);
-});
+test(
+  'beta preregistration consent stays scoped to beta participation communications',
+  () => {
+    assert.match(
+      betaAuthors,
+      /NOVELIGHT β版の公開・参加に関する連絡を受け取ることに同意します/
+    );
+    assert.doesNotMatch(betaAuthors, /広告・宣伝メール.*同意/);
+    assert.doesNotMatch(betaAuthors, /ニュースレター.*同意/);
+  }
+);
