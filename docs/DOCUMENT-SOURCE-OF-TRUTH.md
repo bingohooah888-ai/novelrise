@@ -22,6 +22,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     "docs/CODEX-FIRST-EXECUTION-GATE.md",
     "docs/development-workflow.md",
     "docs/DOCUMENT-FRESHNESS.md",
+    "docs/SCOUT-BADGE-ARTWORK-QUALITY-POLICY.md",
     "docs/DOCUMENT-SOURCE-OF-TRUTH.md"
   ],
   "deleteCandidates": [],
@@ -61,6 +62,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/PREVIEW-STAGING-AUTOMATION.md","status":"CURRENT","role":"preview-staging-automation","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRODUCTION-BILLING-INCIDENT-RUNBOOK.md","status":"CURRENT","role":"production-billing-incident-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRODUCTION-CHAT-DISPATCH.md","status":"CURRENT","role":"production-chat-dispatch","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/SCOUT-BADGE-ARTWORK-QUALITY-POLICY.md","status":"CURRENT","role":"scout-badge-artwork-quality-policy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/STAGING-MIGRATION-SYNC.md","status":"CURRENT","role":"staging-migration-sync","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/STAGING-RUNBOOK.md","status":"CURRENT","role":"staging-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/STRIPE-PRODUCTION-BOOTSTRAP.md","status":"CURRENT","role":"stripe-production-bootstrap","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
