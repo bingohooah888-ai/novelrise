@@ -86,70 +86,72 @@ const rows = dataLines.map((line) => {
   );
 });
 
+async function verifyReaderNormalArtwork() {
+  assert.equal(badgeIds.length, 50);
+  assert.equal(rows.length, 50);
+
+  for (let index = 0; index < 50; index += 1) {
+    const badgeNo = index + 31;
+    const badgeId = badgeIds[index];
+    const row = rows[index];
+    const serial = String(badgeNo).padStart(3, '0');
+
+    assert.equal(
+      Number(row.badge_no),
+      badgeNo,
+      `manifest order for #${serial}`
+    );
+    assert.equal(row.packaged_filename, `Reader_Normal_${serial}.png`);
+    assert.equal(Number(row.width), 1254, `${badgeId} manifest width`);
+    assert.equal(Number(row.height), 1254, `${badgeId} manifest height`);
+    assert.equal(row.mode, 'RGBA', `${badgeId} manifest mode`);
+    assert.equal(row.alpha_min, '0', `${badgeId} alpha_min`);
+    assert.equal(row.alpha_max, '255', `${badgeId} alpha_max`);
+    assert.equal(
+      row.corner_alpha,
+      '0/0/0/0',
+      `${badgeId} transparent corners`
+    );
+    assert.match(row.source_sha256, /^[0-9a-f]{64}$/u);
+    assert.match(row.packaged_sha256, /^[0-9a-f]{64}$/u);
+
+    const sourceByteException = sourceByteExceptions.get(badgeNo);
+    if (sourceByteException) {
+      assert.notEqual(row.source_sha256, row.packaged_sha256);
+      assert.equal(row.note, sourceByteException);
+    } else {
+      assert.equal(
+        row.source_sha256,
+        row.packaged_sha256,
+        `${badgeId} must remain a byte-for-byte copy of its approved source`
+      );
+      assert.equal(row.note, 'byte-for-byte copy of approved source');
+    }
+
+    assert.match(
+      scoutJs,
+      new RegExp(`${badgeId}: 'assets/scout-badges/${badgeId}\\.png'`, 'u')
+    );
+
+    const bytes = await readFile(
+      new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url)
+    );
+    assert.deepEqual(
+      [...bytes.subarray(0, 8)],
+      [137, 80, 78, 71, 13, 10, 26, 10],
+      `${badgeId} must be a PNG`
+    );
+    assert.equal(bytes.readUInt32BE(16), 1254, `${badgeId} canonical width`);
+    assert.equal(bytes.readUInt32BE(20), 1254, `${badgeId} canonical height`);
+    assert.equal(
+      createHash('sha256').update(bytes).digest('hex'),
+      row.packaged_sha256,
+      `${badgeId} canonical bytes must match the approved transfer manifest`
+    );
+  }
+}
+
 test(
   'Reader Normal #31-#80 preserve approved provenance and canonical PNG bytes',
-  async () => {
-    assert.equal(badgeIds.length, 50);
-    assert.equal(rows.length, 50);
-
-    for (let index = 0; index < 50; index += 1) {
-      const badgeNo = index + 31;
-      const badgeId = badgeIds[index];
-      const row = rows[index];
-      const serial = String(badgeNo).padStart(3, '0');
-
-      assert.equal(
-        Number(row.badge_no),
-        badgeNo,
-        `manifest order for #${serial}`
-      );
-      assert.equal(row.packaged_filename, `Reader_Normal_${serial}.png`);
-      assert.equal(Number(row.width), 1254, `${badgeId} manifest width`);
-      assert.equal(Number(row.height), 1254, `${badgeId} manifest height`);
-      assert.equal(row.mode, 'RGBA', `${badgeId} manifest mode`);
-      assert.equal(row.alpha_min, '0', `${badgeId} alpha_min`);
-      assert.equal(row.alpha_max, '255', `${badgeId} alpha_max`);
-      assert.equal(
-        row.corner_alpha,
-        '0/0/0/0',
-        `${badgeId} transparent corners`
-      );
-      assert.match(row.source_sha256, /^[0-9a-f]{64}$/u);
-      assert.match(row.packaged_sha256, /^[0-9a-f]{64}$/u);
-
-      const sourceByteException = sourceByteExceptions.get(badgeNo);
-      if (sourceByteException) {
-        assert.notEqual(row.source_sha256, row.packaged_sha256);
-        assert.equal(row.note, sourceByteException);
-      } else {
-        assert.equal(
-          row.source_sha256,
-          row.packaged_sha256,
-          `${badgeId} must remain a byte-for-byte copy of its approved source`
-        );
-        assert.equal(row.note, 'byte-for-byte copy of approved source');
-      }
-
-      assert.match(
-        scoutJs,
-        new RegExp(`${badgeId}: 'assets/scout-badges/${badgeId}\\.png'`, 'u')
-      );
-
-      const bytes = await readFile(
-        new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url)
-      );
-      assert.deepEqual(
-        [...bytes.subarray(0, 8)],
-        [137, 80, 78, 71, 13, 10, 26, 10],
-        `${badgeId} must be a PNG`
-      );
-      assert.equal(bytes.readUInt32BE(16), 1254, `${badgeId} canonical width`);
-      assert.equal(bytes.readUInt32BE(20), 1254, `${badgeId} canonical height`);
-      assert.equal(
-        createHash('sha256').update(bytes).digest('hex'),
-        row.packaged_sha256,
-        `${badgeId} canonical bytes must match the approved transfer manifest`
-      );
-    }
-  }
+  verifyReaderNormalArtwork
 );
