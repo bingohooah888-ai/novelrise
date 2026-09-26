@@ -75,29 +75,32 @@ test('xserver dns preview never mutates DNS', async () => {
   assert.equal(calls[0].init.headers.Authorization, 'Bearer xs_test_key');
 });
 
-test('xserver dns preview falls back to the official CLI profile without exposing credentials', async () => {
-  const calls = [];
-  const actions = createXserverDnsActions({
-    env: {},
-    cliRunner: async (args) => {
-      calls.push(args);
-      return {
-        code: 0,
-        stdout: JSON.stringify({ records: [] }),
-        stderr: ''
-      };
-    }
-  });
+test(
+  'xserver dns preview falls back to the official CLI profile without exposing credentials',
+  async () => {
+    const calls = [];
+    const actions = createXserverDnsActions({
+      env: {},
+      cliRunner: async (args) => {
+        calls.push(args);
+        return {
+          code: 0,
+          stdout: JSON.stringify({ records: [] }),
+          stderr: ''
+        };
+      }
+    });
 
-  const result = await actions.preview({ args: TARGET_ARGS });
-  assert.match(result, /xserver_authenticated: true/);
-  assert.match(result, /credential_source: cli_profile/);
-  assert.match(result, /would_add: true/);
-  assert.match(result, /secret_value_exposed: false/);
-  assert.deepEqual(calls, [
-    ['--format', 'json', 'domain', 'dns', 'list', 'novelight.jp']
-  ]);
-});
+    const result = await actions.preview({ args: TARGET_ARGS });
+    assert.match(result, /xserver_authenticated: true/);
+    assert.match(result, /credential_source: cli_profile/);
+    assert.match(result, /would_add: true/);
+    assert.match(result, /secret_value_exposed: false/);
+    assert.deepEqual(calls, [
+      ['--format', 'json', 'domain', 'dns', 'list', 'novelight.jp']
+    ]);
+  }
+);
 
 test('xserver dns apply requires explicit Production approval', async () => {
   const actions = createXserverDnsActions({
