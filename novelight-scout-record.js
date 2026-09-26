@@ -48,6 +48,7 @@
     star_rating_set: '☆評価',
     comment_posted: 'コメント'
   };
+  const unearnedBadgeArtworkPath = 'assets/scout-badges/unearned-locked.svg';
   const badgeArtworkPaths = {
     limited_founding_author: 'assets/founding-authors-badge-2026.png',
     reader_read_001: 'assets/scout-badges/reader_read_001.png',
@@ -245,17 +246,23 @@
     return `Founding Author #${String(foundingNumber).padStart(3, '0')}`;
   }
 
+  function badgeArtworkPath(row) {
+    if (row.status !== 'earned') return unearnedBadgeArtworkPath;
+    return badgeArtworkPaths[row.badge_id] || '';
+  }
+
   function createBadgeIcon(row) {
     const icon = document.createElement('div');
     icon.className = 'badge-icon';
 
-    const artworkPath = badgeArtworkPaths[row.badge_id];
+    const artworkPath = badgeArtworkPath(row);
     if (!artworkPath) {
       icon.textContent = badgeIcon(row);
       return icon;
     }
 
     icon.classList.add('badge-icon-artwork');
+    if (row.status !== 'earned') icon.classList.add('badge-icon-locked');
     const image = document.createElement('img');
     image.src = artworkPath;
     image.alt = '';
@@ -272,13 +279,18 @@
 
     image.removeAttribute('src');
     image.alt = '';
+    host.removeAttribute('data-badge-locked');
 
-    const artworkPath = badgeArtworkPaths[row.badge_id];
+    const earned = row.status === 'earned';
+    const artworkPath = badgeArtworkPath(row);
     host.hidden = !artworkPath;
     if (!artworkPath) return;
 
+    host.dataset.badgeLocked = String(!earned);
     image.src = artworkPath;
-    image.alt = `${badgeDisplayName(row)} 称号紋章`;
+    image.alt = earned
+      ? `${badgeDisplayName(row)} 称号紋章`
+      : '未獲得称号。正式な称号紋章は獲得後に開示されます';
   }
 
   const badgeGroupDefinitions = [
