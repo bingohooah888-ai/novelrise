@@ -38,3 +38,51 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* SCOUT RECORD title readability over the illustrated background.
+   This page deliberately uses the same navy/gold language as its content panels. */
+body.novelight-page-scout-record .scout-page-head > div:first-child {
+  position: relative;
+  flex: 1 1 720px;
+  width: min(100%, 850px);
+  max-width: 850px;
+  padding: 22px 26px 20px;
+  overflow: hidden;
+  border: 1px solid rgba(226, 190, 92, 0.84);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(7, 29, 51, 0.98), rgba(2, 17, 32, 0.96));
+  box-shadow:
+    inset 0 0 0 3px rgba(5, 24, 42, 0.96),
+    inset 0 0 0 4px rgba(226, 190, 92, 0.38),
+    0 18px 40px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(7px);
+}
+body.novelight-page-scout-record .scout-page-head > div:first-child::after {
+  content: "✦";
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  color: rgba(255, 224, 130, 0.82);
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: none;
+}
+body.novelight-page-scout-record .scout-page-head h1 {
+  color: #fff8e8 !important;
+  -webkit-text-fill-color: #fff8e8 !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.36) !important;
+}
+body.novelight-page-scout-record .scout-page-head p {
+  color: #f3efe6 !important;
+  -webkit-text-fill-color: #f3efe6 !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.32) !important;
+}
+@media (max-width: 700px) {
+  body.novelight-page-scout-record .scout-page-head > div:first-child {
+    flex-basis: auto;
+    width: 100%;
+    max-width: none;
+    padding: 20px 20px 18px;
+    border-radius: 17px;
+  }
+}
