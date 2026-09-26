@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const root = 'tools/novelight-commander';
-const daemonPath = root + '/src/github-bridge-daemon.js';
+const daemonPath = root + '/src/github-bridge-core.js';
 const setupPath = root + '/configure-github-bridge.ps1';
 const packagePath = root + '/package.json';
 const runnerPath = root + '/run-github-bridge.ps1';
