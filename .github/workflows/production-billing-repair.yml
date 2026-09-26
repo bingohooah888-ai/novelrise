@@ -25,7 +25,7 @@ jobs:
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
-      NOVELIGHT_APP_URL: https://novelrise.vercel.app
+      NOVELIGHT_APP_URL: https://novelight.jp
       EXPECTED_BRANCH: main
 
     steps:

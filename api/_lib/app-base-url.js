@@ -1,5 +1,7 @@
-const PRODUCTION_APP_URL = 'https://novelrise.vercel.app';
-const PRODUCTION_HOST = 'novelrise.vercel.app';
+const PRODUCTION_APP_URL = 'https://novelight.jp';
+// Keep the stable Vercel alias reserved as deployment infrastructure. It is
+// never a user-facing canonical URL and must not be accepted as a Preview URL.
+const VERCEL_PRODUCTION_HOST = 'novelrise.vercel.app';
 
 function normalizePreviewUrl(value) {
   if (!value) {
@@ -23,7 +25,7 @@ function normalizePreviewUrl(value) {
     parsed.search ||
     parsed.hash ||
     !parsed.hostname.endsWith('.vercel.app') ||
-    parsed.hostname === PRODUCTION_HOST
+    parsed.hostname === VERCEL_PRODUCTION_HOST
   ) {
     throw new Error(
       'Preview app base URL is not an isolated Vercel deployment'
@@ -38,5 +40,13 @@ export function getAppBaseUrl(env = process.env) {
     return normalizePreviewUrl(env.VERCEL_URL);
   }
 
-  return (env.NOVELIGHT_APP_URL || PRODUCTION_APP_URL).replace(/\/+$/, '');
+  const appUrl = (env.NOVELIGHT_APP_URL || PRODUCTION_APP_URL).replace(
+    /\/+$/,
+    ''
+  );
+  if (env.VERCEL_ENV === 'production' && appUrl !== PRODUCTION_APP_URL) {
+    throw new Error('Production app base URL is not canonical');
+  }
+
+  return appUrl;
 }

@@ -119,13 +119,16 @@ test('browser config route is unavailable outside Preview', async () => {
 test('shared client bootstrap redirects Preview createClient calls and preserves Production host', async () => {
   const source = await readFile('novelight-client.js', 'utf8');
 
-  assert.match(source, /PRODUCTION_VERCEL_HOST = 'novelrise\.vercel\.app'/);
+  assert.match(
+    source,
+    /VERCEL_INTERNAL_PRODUCTION_HOST = 'novelrise\.vercel\.app'/
+  );
   assert.match(
     source,
     /STAGING_BROWSER_CONFIG_PATH = '\/api\/staging-browser-config'/
   );
   assert.match(source, /host\.endsWith\('\.vercel\.app'\)/);
-  assert.match(source, /host !== PRODUCTION_VERCEL_HOST/);
+  assert.match(source, /host !== VERCEL_INTERNAL_PRODUCTION_HOST/);
   assert.match(source, /window\.supabase\.createClient = function/);
   assert.match(source, /CONFIG_DRIFT: Refusing unsafe Staging Supabase target/);
 });

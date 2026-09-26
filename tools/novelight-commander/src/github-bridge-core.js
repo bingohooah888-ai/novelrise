@@ -1512,7 +1512,7 @@ async function actionVercelLoginStatus(request, config) {
 async function actionProductionMailRuntimeCheck(request) {
   ensureNoArgs(request.args);
   const response = await globalThis.fetch(
-    'https://novelrise.vercel.app/api/release-mail-readiness',
+    'https://novelight.jp/api/release-mail-readiness',
     { signal: AbortSignal.timeout(15000) }
   );
   const payload = await response.json().catch(() => null);

@@ -54,7 +54,7 @@ jobs:
         id: guard
         shell: bash
         env:
-          BASE_URL: https://novelrise.vercel.app
+          BASE_URL: https://novelight.jp
           OIDC_AUDIENCE: novelight-production-billing-guard
           EXPECTED_GUARD_VERSION: chat-approval-v1
         run: |

@@ -29,7 +29,7 @@ Standaloneの `NOVELIGHT Production Webhook Control` を手動実行する場合
 3. β版Premium月額480円のライブPriceを専用lookup keyで冪等に確認・作成する。Standard月額980円の既存Priceは、新規申込みには使用せず、β無料化時の既存Standard契約停止対象を識別するためにのみ参照する。
 4. 旧Premium月額1,980円のlive Priceが存在する場合は、金額・通貨・課金周期を検証し、既存Premium契約の移行元として識別する。
 5. NOVELIGHT専用Customer Portal configurationを作成または更新する。β期間中はStandardが非Stripe entitlementのため、Portal内のStandard/Premium price切替は無効にする。
-6. `https://novelrise.vercel.app/api/stripe-webhook` のライブWebhook endpointを確認または作成する。
+6. `https://novelight.jp/api/stripe-webhook` のライブWebhook endpointを確認または作成する。
 7. 古いNOVELIGHT Vercel alias等へ向いたactiveなlive webhook endpointがあれば検出し、安全なcleanup候補として記録する。
 8. Vercel Productionへ本番変数を同期する。Secret類はログへ出さずsensitive variableとして扱う。
    - `STRIPE_SECRET_KEY`

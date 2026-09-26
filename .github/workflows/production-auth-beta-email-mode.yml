@@ -15,7 +15,7 @@ concurrency:
 env:
   LEDGER_ISSUE: '737'
   SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
-  PRODUCTION_BASE_URL: https://novelrise.vercel.app
+  PRODUCTION_BASE_URL: https://novelight.jp
 
 jobs:
   request-approval:

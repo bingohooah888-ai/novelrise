@@ -326,7 +326,7 @@ export async function waitForDeploymentReady({
 
 export async function waitForProductionRevision({
   fetchImpl = fetch,
-  productionOrigin = 'https://novelrise.vercel.app',
+  productionOrigin = 'https://novelight.jp',
   expectedSha,
   maxAttempts = 36,
   delayMs = 5000
@@ -355,7 +355,7 @@ export async function waitForProductionRevision({
 
 export async function verifyAdminEndpointRequiresAuthentication({
   fetchImpl = fetch,
-  productionOrigin = 'https://novelrise.vercel.app'
+  productionOrigin = 'https://novelight.jp'
 }) {
   const response = await fetchImpl(new URL('/api/admin-dashboard', productionOrigin), {
     headers: { 'Cache-Control': 'no-cache' }

@@ -3,7 +3,8 @@ import { resolveVercelProjectScope } from './vercel-admin-allowlist.mjs';
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 const REF_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
-const PRODUCTION_HOST = 'novelrise.vercel.app';
+// Infrastructure alias used only to reject the stable Production deployment.
+const VERCEL_INTERNAL_PRODUCTION_HOST = 'novelrise.vercel.app';
 
 function required(value, name) {
   const normalized = String(value ?? '').trim();
@@ -49,7 +50,7 @@ function assertPreviewPayload(payload, expectedSha, expectedRef) {
   const origin = new URL(`https://${deploymentUrl}`);
   if (
     !origin.hostname.endsWith('.vercel.app') ||
-    origin.hostname === PRODUCTION_HOST
+    origin.hostname === VERCEL_INTERNAL_PRODUCTION_HOST
   ) {
     throw new Error(
       'Vercel Preview URL is not an allowed non-Production vercel.app host.'
