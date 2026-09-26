@@ -37,7 +37,16 @@ test('ADMIN operation pages remain private surfaces backed by server endpoints',
 
   assert.match(announcementsHtml, /\/api\/admin-announcements/);
   assert.match(inquiriesHtml, /\/api\/admin-inquiries/);
+  assert.match(inquiriesHtml, /\/api\/admin-inquiry-reply/);
   assert.match(reportsHtml, /\/api\/admin-reports/);
+});
+
+test('inquiry detail includes a direct reply editor and explicit real-email confirmation', () => {
+  assert.match(inquiriesHtml, /id='replySubject'|id="replySubject"/);
+  assert.match(inquiriesHtml, /id='replyBody'|id="replyBody"/);
+  assert.match(inquiriesHtml, /id='sendReply'|id="sendReply"/);
+  assert.match(inquiriesHtml, /返信して対応済みにする/);
+  assert.match(inquiriesHtml, /実メールを1通送信/);
 });
 
 test('contact page combines published announcements with the existing safe inquiry RPC', () => {
