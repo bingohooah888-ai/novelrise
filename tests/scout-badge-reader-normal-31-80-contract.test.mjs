@@ -62,10 +62,7 @@ const sourceByteExceptions = new Map([
   [68, 'byte-for-byte copy of approved source; corner alpha normalized 1→0']
 ]);
 
-const scoutJs = await readFile(
-  new URL('../novelight-scout-record.js', import.meta.url),
-  'utf8'
-);
+const scoutJs = await readFile(new URL('../novelight-scout-record.js', import.meta.url), 'utf8');
 const manifestText = await readFile(
   new URL('../docs/SCOUT-BADGE-READER-NORMAL-31-80-MANIFEST.csv', import.meta.url),
   'utf8'
@@ -114,9 +111,7 @@ async function verifyReaderNormalArtwork() {
 
     assert.match(scoutJs, new RegExp(`${badgeId}: 'assets/scout-badges/${badgeId}\\.png'`, 'u'));
 
-    const bytes = await readFile(
-      new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url)
-    );
+    const bytes = await readFile(new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url));
     assert.deepEqual(
       [...bytes.subarray(0, 8)],
       [137, 80, 78, 71, 13, 10, 26, 10],
