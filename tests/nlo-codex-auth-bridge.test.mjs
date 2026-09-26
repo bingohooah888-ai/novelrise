@@ -7,7 +7,7 @@ import {
   redactCodexDiagnosticText
 } from '../tools/novelight-commander/src/codex-auth.js';
 
-const daemonPath = 'tools/novelight-commander/src/github-bridge-daemon.js';
+const bridgeCorePath = 'tools/novelight-commander/src/github-bridge-core.js';
 const authPath = 'tools/novelight-commander/src/codex-auth.js';
 
 test('Codex auth diagnostic redacts API keys and bearer tokens', () => {
@@ -33,14 +33,14 @@ test('Codex login classifier distinguishes ChatGPT, API key and workload identit
 });
 
 test('Codex auth actions are fixed allowlist actions with confirmation-gated repair', async () => {
-  const [daemon, auth] = await Promise.all([
-    readFile(daemonPath, 'utf8'),
+  const [bridgeCore, auth] = await Promise.all([
+    readFile(bridgeCorePath, 'utf8'),
     readFile(authPath, 'utf8')
   ]);
 
-  assert.match(daemon, /\['codex_auth_diagnose', actionCodexAuthDiagnose\]/);
+  assert.match(bridgeCore, /\['codex_auth_diagnose', actionCodexAuthDiagnose\]/);
   assert.match(
-    daemon,
+    bridgeCore,
     /\['codex_auth_repair_user_override', actionCodexAuthRepairUserOverride\]/
   );
   assert.match(auth, /runCodex\(\['login', 'status'\]/);
