@@ -132,6 +132,23 @@ test('ADMIN outbound send is authenticated, idempotent and gated away from prere
   assert.match(adminHtml, /実メール送信です。実行しますか/);
 });
 
+test('ADMIN test send is single-recipient, idempotent and leaves invite records untouched', () => {
+  assert.match(inviteApi, /req\.body\?\.action === 'test_send'/);
+  assert.match(inviteApi, /state !== 'PRE_REGISTRATION'/);
+  assert.match(inviteApi, /const to = String\(admin\?\.email/);
+  assert.match(inviteApi, /novelight-beta-author-invite-test-/);
+  assert.match(inviteApi, /testMode: true/);
+  assert.match(inviteApi, /result: 'test_sent'/);
+  assert.doesNotMatch(
+    inviteApi.match(
+      /async function sendTestInvite\(admin\)[\s\S]*?\n\}/
+    )?.[0] ?? '',
+    /\.from\(|prepareInvite|markPreregistrationInvited|sent_at/
+  );
+  assert.match(adminHtml, /管理者宛てに1通テスト送信/);
+  assert.match(adminHtml, /既存の先行登録者・招待状態・sent_atは変更しません/);
+});
+
 test('campaign transition fails closed until invite storage and Resend secret are ready', () => {
   assert.match(adminApi, /assertInviteInfrastructureReady/);
   assert.match(
