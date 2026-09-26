@@ -128,6 +128,67 @@ function defaultCliRunner(args) {
   });
 }
 
+function defaultInteractiveAuthLauncher() {
+  if (process.platform !== 'win32') {
+    throw new Error('Interactive XServer CLI login is only supported on Windows NLO hosts.');
+  }
+
+  return new Promise((resolve, reject) => {
+    const executable = process.env.ComSpec || 'cmd.exe';
+    const child = spawn(
+      executable,
+      ['/d', '/c', 'npx', '--yes', 'xserver-cli', 'auth', 'login'],
+      {
+        shell: false,
+        windowsHide: false,
+        detached: true,
+        stdio: 'ignore',
+        env: process.env
+      }
+    );
+    child.once('error', reject);
+    child.once('spawn', () => {
+      child.unref();
+      resolve();
+    });
+  });
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isMissingCliProfileError(error) {
+  const message = String(error instanceof Error ? error.message : error || '');
+  return (
+    message.includes('認証設定が見つかりません') ||
+    message.includes('xserver auth login')
+  );
+}
+
+async function waitForCliProfile(cliRunner, timeoutMs = 300000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError = '';
+
+  while (Date.now() < deadline) {
+    const result = await cliRunner(['--format', 'json', 'auth', 'status']).catch(
+      error => ({
+        code: 1,
+        stdout: '',
+        stderr: error instanceof Error ? error.message : String(error)
+      })
+    );
+    if (result.code === 0) return;
+    lastError = redactCliText(result.stderr || result.stdout || 'not authenticated');
+    await delay(2500);
+  }
+
+  throw new Error(
+    'XServer CLI login did not complete within 5 minutes. Last status: ' +
+      lastError
+  );
+}
+
 async function xserverRequest({ fetchImpl, apiKey, method, path, body }) {
   const response = await fetchImpl(XSERVER_API_BASE + path, {
     method,
@@ -222,7 +283,13 @@ async function runCliJson(cliRunner, args) {
   return parseCliJson(result.stdout);
 }
 
-async function listDns({ env, fetchImpl, cliRunner }) {
+async function listDns({
+  env,
+  fetchImpl,
+  cliRunner,
+  interactiveAuthLauncher,
+  platform
+}) {
   const apiKey = resolveApiKey(env);
   if (apiKey) {
     const payload = await xserverRequest({
@@ -234,14 +301,25 @@ async function listDns({ env, fetchImpl, cliRunner }) {
     return { rows: normalizeDnsRows(payload), credentialSource: 'environment' };
   }
 
-  const payload = await runCliJson(cliRunner, [
+  const args = [
     '--format',
     'json',
     'domain',
     'dns',
     'list',
     NOVELIGHT_DOMAIN
-  ]);
+  ];
+
+  let payload;
+  try {
+    payload = await runCliJson(cliRunner, args);
+  } catch (error) {
+    if (platform !== 'win32' || !isMissingCliProfileError(error)) throw error;
+    await interactiveAuthLauncher();
+    await waitForCliProfile(cliRunner);
+    payload = await runCliJson(cliRunner, args);
+  }
+
   return { rows: normalizeDnsRows(payload), credentialSource: 'cli_profile' };
 }
 
@@ -280,9 +358,9 @@ async function addTargetDns({ env, fetchImpl, cliRunner }) {
   return 'cli_profile';
 }
 
-async function preview(request, { env, fetchImpl, cliRunner }) {
+async function preview(request, dependencies) {
   assertTargetArgs(request.args, { apply: false });
-  const listed = await listDns({ env, fetchImpl, cliRunner });
+  const listed = await listDns(dependencies);
   const mx = apexMxRows(listed.rows);
   const targetPresent = mx.some(isTargetRecord);
   const conflicting = mx.filter(row => !isTargetRecord(row));
@@ -301,9 +379,9 @@ async function preview(request, { env, fetchImpl, cliRunner }) {
   ].join('\n');
 }
 
-async function apply(request, { env, fetchImpl, cliRunner }) {
+async function apply(request, dependencies) {
   assertTargetArgs(request.args, { apply: true });
-  const before = await listDns({ env, fetchImpl, cliRunner });
+  const before = await listDns(dependencies);
   const beforeMx = apexMxRows(before.rows);
 
   if (beforeMx.some(isTargetRecord)) {
@@ -327,8 +405,8 @@ async function apply(request, { env, fetchImpl, cliRunner }) {
     );
   }
 
-  const credentialSource = await addTargetDns({ env, fetchImpl, cliRunner });
-  const after = await listDns({ env, fetchImpl, cliRunner });
+  const credentialSource = await addTargetDns(dependencies);
+  const after = await listDns(dependencies);
   const afterMx = apexMxRows(after.rows);
   const verified = afterMx.some(isTargetRecord);
   if (!verified) {
@@ -352,11 +430,20 @@ async function apply(request, { env, fetchImpl, cliRunner }) {
 export function createXserverDnsActions({
   env = process.env,
   fetchImpl = globalThis.fetch,
-  cliRunner = defaultCliRunner
+  cliRunner = defaultCliRunner,
+  interactiveAuthLauncher = defaultInteractiveAuthLauncher,
+  platform = process.platform
 } = {}) {
+  const dependencies = {
+    env,
+    fetchImpl,
+    cliRunner,
+    interactiveAuthLauncher,
+    platform
+  };
   return {
-    preview: request => preview(request, { env, fetchImpl, cliRunner }),
-    apply: request => apply(request, { env, fetchImpl, cliRunner })
+    preview: request => preview(request, dependencies),
+    apply: request => apply(request, dependencies)
   };
 }
 
