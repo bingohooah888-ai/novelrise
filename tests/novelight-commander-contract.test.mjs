@@ -105,7 +105,7 @@ test('Commander exposes the NOVELIGHT operations surface', async () => {
 });
 
 test('NLO bridge can sample a saved novel for grounded review', async () => {
-  const bridgeFile = path.join(commander, 'src/github-bridge-daemon.js');
+  const bridgeFile = path.join(commander, 'src/github-bridge-core.js');
   const source = await readFile(bridgeFile, 'utf8');
 
   assert.match(source, /novel_sample_saved/);
@@ -116,7 +116,7 @@ test('NLO bridge can sample a saved novel for grounded review', async () => {
 });
 
 test('NLO bridge can verify a saved novel without refetching it', async () => {
-  const bridgeFile = path.join(commander, 'src/github-bridge-daemon.js');
+  const bridgeFile = path.join(commander, 'src/github-bridge-core.js');
   const source = await readFile(bridgeFile, 'utf8');
 
   assert.match(source, /novel_verify_saved/);
