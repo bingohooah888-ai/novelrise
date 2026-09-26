@@ -49,11 +49,11 @@ test('contact form exposes explicit privacy-rights request categories', () => {
   }
 });
 
-test(
-  'beta preregistration consent stays scoped to beta participation communications',
-  () => {
-    assert.match(betaAuthors, /NOVELIGHT β版の公開・参加に関する連絡を受け取ることに同意します/);
-    assert.doesNotMatch(betaAuthors, /広告・宣伝メール.*同意/);
-    assert.doesNotMatch(betaAuthors, /ニュースレター.*同意/);
-  }
-);
+test('beta preregistration consent stays scoped to beta participation communications', () => {
+  assert.match(
+    betaAuthors,
+    /NOVELIGHT β版の公開・参加に関する連絡を受け取ることに同意します/
+  );
+  assert.doesNotMatch(betaAuthors, /広告・宣伝メール.*同意/);
+  assert.doesNotMatch(betaAuthors, /ニュースレター.*同意/);
+});
