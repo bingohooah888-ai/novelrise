@@ -448,12 +448,12 @@ test('novel posting validates synchronously and recovers from an async save fail
   await page.locator('#genre').selectOption({ label: '現代ファンタジー' });
   await page.locator('#description').fill('非同期UI監査用のテスト作品です。');
   await page.locator('#aiUsage').selectOption('human');
-  await page.locator('#contentRating').selectOption('mature');
+  await page.locator('#contentRating').selectOption('sensitive_15');
   await page.locator('#policyAck').check();
 
   await page.locator('#submitButton').click();
   await expect(page.locator('#status')).toHaveText(
-    '成熟したテーマには内容警告を1つ以上設定してください。'
+    'センシティブ15+ / 18+作品には内容警告を1つ以上設定してください。'
   );
 
   const insertsBeforeWarning = await page.evaluate(
