@@ -1,3 +1,5 @@
+import { spawn } from 'node:child_process';
+
 const XSERVER_API_BASE = 'https://api.xserver.ne.jp';
 const NOVELIGHT_DOMAIN = 'novelight.jp';
 const RESEND_INBOUND_MX = Object.freeze({
@@ -78,15 +80,52 @@ function assertTargetArgs(args, { apply }) {
 }
 
 function resolveApiKey(env) {
-  const key = String(
+  return String(
     env.NOVELIGHT_XSERVER_API_KEY || env.XSERVER_API_KEY || ''
   ).trim();
-  if (!key) {
-    throw new Error(
-      'XServer API key is not configured. Set NOVELIGHT_XSERVER_API_KEY with DNS read/write permission for novelight.jp.'
-    );
-  }
-  return key;
+}
+
+function redactCliText(text) {
+  return String(text || '')
+    .replace(/\bxs_[A-Za-z0-9_-]{8,}\b/g, '[REDACTED]')
+    .slice(0, 1200);
+}
+
+function defaultCliRunner(args) {
+  const isWindows = process.platform === 'win32';
+  const executable = isWindows ? process.env.ComSpec || 'cmd.exe' : 'npx';
+  const cliArgs = isWindows
+    ? ['/d', '/s', '/c', 'npx', '--yes', 'xserver-cli', ...args]
+    : ['--yes', 'xserver-cli', ...args];
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, cliArgs, {
+      shell: false,
+      windowsHide: true,
+      env: process.env
+    });
+    let stdout = '';
+    let stderr = '';
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error('XServer CLI timed out.'));
+    }, 120000);
+
+    child.stdout?.on('data', chunk => {
+      stdout += chunk.toString();
+    });
+    child.stderr?.on('data', chunk => {
+      stderr += chunk.toString();
+    });
+    child.on('error', error => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on('close', code => {
+      clearTimeout(timer);
+      resolve({ code: Number(code ?? 1), stdout, stderr });
+    });
+  });
 }
 
 async function xserverRequest({ fetchImpl, apiKey, method, path, body }) {
@@ -116,12 +155,20 @@ async function xserverRequest({ fetchImpl, apiKey, method, path, body }) {
 }
 
 function normalizeDnsRows(payload) {
-  const rows = Array.isArray(payload?.records) ? payload.records : [];
+  const rows = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.records)
+      ? payload.records
+      : Array.isArray(payload?.dns_records)
+        ? payload.dns_records
+        : Array.isArray(payload?.data?.records)
+          ? payload.data.records
+          : [];
   return rows.map(row => ({
-    id: Number(row?.id),
+    id: Number(row?.id ?? row?.dns_id),
     type: String(row?.type || '').trim().toUpperCase(),
     host: String(row?.host || '').trim(),
-    content: String(row?.content || '').trim(),
+    content: String(row?.content || row?.value || '').trim(),
     ttl: Number(row?.ttl),
     priority: Number(row?.priority ?? 0)
   }));
@@ -154,26 +201,95 @@ function formatMxRows(rows) {
     .join(' | ');
 }
 
-async function listDns({ fetchImpl, apiKey }) {
-  const payload = await xserverRequest({
-    fetchImpl,
-    apiKey,
-    method: 'GET',
-    path: '/v1/domain/' + encodeURIComponent(NOVELIGHT_DOMAIN) + '/dns'
-  });
-  return normalizeDnsRows(payload);
+function parseCliJson(stdout) {
+  const text = String(stdout || '').trim().replace(/^\uFEFF/u, '');
+  if (!text) throw new Error('XServer CLI returned no JSON output.');
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('XServer CLI returned invalid JSON output.');
+  }
 }
 
-async function preview(request, { env, fetchImpl }) {
-  assertTargetArgs(request.args, { apply: false });
+async function runCliJson(cliRunner, args) {
+  const result = await cliRunner(args);
+  if (result.code !== 0) {
+    throw new Error(
+      'XServer CLI authentication is unavailable: ' +
+        redactCliText(result.stderr || result.stdout || 'command failed')
+    );
+  }
+  return parseCliJson(result.stdout);
+}
+
+async function listDns({ env, fetchImpl, cliRunner }) {
   const apiKey = resolveApiKey(env);
-  const rows = await listDns({ fetchImpl, apiKey });
-  const mx = apexMxRows(rows);
+  if (apiKey) {
+    const payload = await xserverRequest({
+      fetchImpl,
+      apiKey,
+      method: 'GET',
+      path: '/v1/domain/' + encodeURIComponent(NOVELIGHT_DOMAIN) + '/dns'
+    });
+    return { rows: normalizeDnsRows(payload), credentialSource: 'environment' };
+  }
+
+  const payload = await runCliJson(cliRunner, [
+    '--format',
+    'json',
+    'domain',
+    'dns',
+    'list',
+    NOVELIGHT_DOMAIN
+  ]);
+  return { rows: normalizeDnsRows(payload), credentialSource: 'cli_profile' };
+}
+
+async function addTargetDns({ env, fetchImpl, cliRunner }) {
+  const apiKey = resolveApiKey(env);
+  if (apiKey) {
+    await xserverRequest({
+      fetchImpl,
+      apiKey,
+      method: 'POST',
+      path: '/v1/domain/' + encodeURIComponent(NOVELIGHT_DOMAIN) + '/dns',
+      body: { ...RESEND_INBOUND_MX }
+    });
+    return 'environment';
+  }
+
+  await runCliJson(cliRunner, [
+    '--format',
+    'json',
+    '--yes',
+    'domain',
+    'dns',
+    'add',
+    NOVELIGHT_DOMAIN,
+    '--host',
+    RESEND_INBOUND_MX.host,
+    '--type',
+    RESEND_INBOUND_MX.type,
+    '--content',
+    RESEND_INBOUND_MX.content,
+    '--ttl',
+    String(RESEND_INBOUND_MX.ttl),
+    '--priority',
+    String(RESEND_INBOUND_MX.priority)
+  ]);
+  return 'cli_profile';
+}
+
+async function preview(request, { env, fetchImpl, cliRunner }) {
+  assertTargetArgs(request.args, { apply: false });
+  const listed = await listDns({ env, fetchImpl, cliRunner });
+  const mx = apexMxRows(listed.rows);
   const targetPresent = mx.some(isTargetRecord);
   const conflicting = mx.filter(row => !isTargetRecord(row));
 
   return [
     'xserver_authenticated: true',
+    'credential_source: ' + listed.credentialSource,
     'domain: ' + NOVELIGHT_DOMAIN,
     'target_record_present: ' + targetPresent,
     'existing_apex_mx_count: ' + mx.length,
@@ -185,15 +301,15 @@ async function preview(request, { env, fetchImpl }) {
   ].join('\n');
 }
 
-async function apply(request, { env, fetchImpl }) {
+async function apply(request, { env, fetchImpl, cliRunner }) {
   assertTargetArgs(request.args, { apply: true });
-  const apiKey = resolveApiKey(env);
-  const before = await listDns({ fetchImpl, apiKey });
-  const beforeMx = apexMxRows(before);
+  const before = await listDns({ env, fetchImpl, cliRunner });
+  const beforeMx = apexMxRows(before.rows);
 
   if (beforeMx.some(isTargetRecord)) {
     return [
       'domain: ' + NOVELIGHT_DOMAIN,
+      'credential_source: ' + before.credentialSource,
       'target_record_present: true',
       'already_present: true',
       'record_added: false',
@@ -211,16 +327,9 @@ async function apply(request, { env, fetchImpl }) {
     );
   }
 
-  await xserverRequest({
-    fetchImpl,
-    apiKey,
-    method: 'POST',
-    path: '/v1/domain/' + encodeURIComponent(NOVELIGHT_DOMAIN) + '/dns',
-    body: { ...RESEND_INBOUND_MX }
-  });
-
-  const after = await listDns({ fetchImpl, apiKey });
-  const afterMx = apexMxRows(after);
+  const credentialSource = await addTargetDns({ env, fetchImpl, cliRunner });
+  const after = await listDns({ env, fetchImpl, cliRunner });
+  const afterMx = apexMxRows(after.rows);
   const verified = afterMx.some(isTargetRecord);
   if (!verified) {
     throw new Error(
@@ -230,6 +339,7 @@ async function apply(request, { env, fetchImpl }) {
 
   return [
     'domain: ' + NOVELIGHT_DOMAIN,
+    'credential_source: ' + credentialSource,
     'target_record_present: true',
     'already_present: false',
     'record_added: true',
@@ -241,11 +351,12 @@ async function apply(request, { env, fetchImpl }) {
 
 export function createXserverDnsActions({
   env = process.env,
-  fetchImpl = globalThis.fetch
+  fetchImpl = globalThis.fetch,
+  cliRunner = defaultCliRunner
 } = {}) {
   return {
-    preview: request => preview(request, { env, fetchImpl }),
-    apply: request => apply(request, { env, fetchImpl })
+    preview: request => preview(request, { env, fetchImpl, cliRunner }),
+    apply: request => apply(request, { env, fetchImpl, cliRunner })
   };
 }
 
