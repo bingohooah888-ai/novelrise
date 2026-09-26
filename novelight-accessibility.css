@@ -114,3 +114,18 @@ body.novelight-page-scout-record .scout-page-head p {
 .beta-guide .guide-button {
   font-size: 14px !important;
 }
+
+/* Post form content warnings are relevant only to the two elevated content ratings.
+   Keep the section out of the way for the default all-ages choice, then reveal it as
+   soon as Sensitive 15+ or 18+ (non-sexual strong expression) is selected. */
+body.novelight-page-post fieldset:has(#warningGrid) {
+  display: none;
+}
+body.novelight-page-post
+  form:has(#contentRating option[value="sensitive_15"]:checked)
+  fieldset:has(#warningGrid),
+body.novelight-page-post
+  form:has(#contentRating option[value="adult_18_nonsexual"]:checked)
+  fieldset:has(#warningGrid) {
+  display: block;
+}
