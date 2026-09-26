@@ -1,0 +1,116 @@
+name: One-shot MASTER patch
+
+on:
+  push:
+    branches:
+      - codex/beta-content-rating-v2
+
+permissions:
+  contents: write
+
+jobs:
+  patch-master:
+    if: github.event.head_commit.message == 'Temporarily patch MASTER safely'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/beta-content-rating-v2
+          fetch-depth: 0
+      - name: Patch canonical MASTER with exact bounded replacement
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('docs/NOVELIGHT-MASTER.md')
+          text = path.read_text(encoding='utf-8')
+
+          old_date = '**最終更新：2026年9月25日**'
+          new_date = '**最終更新：2026年9月26日**'
+          if text.count(old_date) != 1:
+              raise SystemExit(f'expected exactly one old date, found {text.count(old_date)}')
+          text = text.replace(old_date, new_date, 1)
+
+          new_section = '''## 30. 成人向け・センシティブ表現（β暫定基準）
+
+          成人向け・過激表現を一律禁止にはしない。
+
+          ただしβ期間中は、法令、決済サービス、ホスティングサービスその他必要な外部規約への適合と安全な運用を優先し、以下の区分・禁止基準を適用する。
+
+          基本原則：
+
+          NOVELIGHTは、恋愛対象・性的指向・ジャンルそのものを理由に作品を制限しない。
+
+          男女恋愛、BL、GL等は同一基準で扱い、区分は実際の描写内容によって判断する。
+
+          β期間の作品区分：
+
+          1. 全年齢
+
+          通常の恋愛、キス・抱擁、軽度の性的ニュアンス、軽度の戦闘・流血等。
+
+          2. センシティブ15+
+
+          性行為そのものを直接的・詳細に描写しない性的示唆、暗転・事後表現、強めの暴力・流血・虐待・拷問、自傷・自殺・依存症、強い恐怖表現等。
+
+          該当する作品は、必要な内容注意を付与し、読者が閲覧前に判断できる状態にする。
+
+          3. 18+（非性的な強表現）
+
+          極めて強い残虐・流血・拷問等の非性的な強表現。
+
+          成人確認等の適切なゾーニング対象とし、一般向け作品と同一の見せ方にはしない。
+
+          β期間中の投稿禁止：
+
+          性的興奮を主目的とする露骨・詳細な性行為描写。
+
+          未成年者、未成年に見える人物、または年齢が明確でない若年人物を対象とする露骨な性的描写。
+
+          実在人物を対象とする非同意の性的コンテンツ。
+
+          法令、決済サービス、ホスティングサービスその他必要な外部規約に抵触する内容。
+
+          その他、投稿ガイドラインで禁止する違法・有害コンテンツ。
+
+          運用：
+
+          作品区分と内容注意は作者の自己申告を基本とする。
+
+          誤設定、通報その他の問題が確認された場合は、運営が内容を確認し、区分変更、警告、非公開その他必要な対応を行う。
+
+          β期間の利用実態および外部サービス規約を検証し、正式版までに必要に応じて基準を見直す。
+
+          長期的には、法令・決済・ホスティング等の条件を満たす安全な運用基盤を整備できた場合、成人向け表現の対応範囲を再評価する。'''
+          new_section = '\n'.join(line[10:] if line.startswith('          ') else line for line in new_section.splitlines())
+
+          pattern = r'## 30\. 成人向け・過激表現\n.*?(?=\n## 31\. 作者と読者のコミュニティ)'
+          text, count = re.subn(pattern, new_section, text, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit(f'expected exactly one section 30, replaced {count}')
+          if text.count('## 31. 作者と読者のコミュニティ') != 1:
+              raise SystemExit('section 31 boundary changed unexpectedly')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git diff --check
+          git diff -- docs/NOVELIGHT-MASTER.md
+      - name: Commit MASTER and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/patch-master-once.yml
+          changed="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' '.github/workflows/patch-master-once.yml' 'docs/NOVELIGHT-MASTER.md' | sort)"
+          if [ "$changed" != "$expected" ]; then
+            echo "Unexpected changed files:"
+            printf '%s\n' "$changed"
+            exit 1
+          fi
+          git add docs/NOVELIGHT-MASTER.md
+          git commit -m 'Sync beta content zoning policy in MASTER'
+          git push origin HEAD:codex/beta-content-rating-v2
