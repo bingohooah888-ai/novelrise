@@ -10,7 +10,6 @@
     return;
   }
 
-  let enhancedObjectUrl = '';
   let renderVersion = 0;
 
   sourceHost.setAttribute('role', 'button');
@@ -18,12 +17,6 @@
   sourceHost.setAttribute('aria-haspopup', 'dialog');
   sourceHost.setAttribute('aria-label', '称号紋章をさらに大きく表示');
   sourceHost.title = 'クリックで称号紋章をさらに拡大';
-
-  function clearEnhancedObjectUrl() {
-    if (!enhancedObjectUrl) return;
-    URL.revokeObjectURL(enhancedObjectUrl);
-    enhancedObjectUrl = '';
-  }
 
   function sharpenImageData(imageData, width, height, amount = 0.14) {
     const data = imageData.data;
@@ -108,9 +101,10 @@
       sharpenImageData(pixels, width, height);
       context.putImageData(pixels, 0, 0);
 
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-      if (!blob) return '';
-      return URL.createObjectURL(blob);
+      // Production CSP allows data: images but intentionally does not allow blob:.
+      // Keep the enhanced render compatible with that policy instead of weakening CSP.
+      const dataUrl = canvas.toDataURL('image/png');
+      return dataUrl === 'data:,' ? '' : dataUrl;
     } catch (error) {
       console.warn('SCOUT badge zoom enhancement skipped:', error);
       return '';
@@ -131,7 +125,6 @@
 
     renderVersion += 1;
     const currentVersion = renderVersion;
-    clearEnhancedObjectUrl();
 
     zoomImage.src = sourceImage.currentSrc || source;
     zoomImage.alt = sourceImage.alt || '称号紋章';
@@ -149,14 +142,8 @@
     // sharpening pass so browser enlargement does not look soft or smeared.
     createEnhancedZoomSource().then((enhancedSource) => {
       if (!enhancedSource) return;
-      if (currentVersion !== renderVersion || !zoomDialog.open) {
-        URL.revokeObjectURL(enhancedSource);
-        return;
-      }
-
-      clearEnhancedObjectUrl();
-      enhancedObjectUrl = enhancedSource;
-      zoomImage.src = enhancedObjectUrl;
+      if (currentVersion !== renderVersion || !zoomDialog.open) return;
+      zoomImage.src = enhancedSource;
     });
   }
 
@@ -177,7 +164,6 @@
 
   zoomDialog.addEventListener('close', () => {
     renderVersion += 1;
-    clearEnhancedObjectUrl();
     zoomImage.removeAttribute('src');
     zoomImage.alt = '';
   });
