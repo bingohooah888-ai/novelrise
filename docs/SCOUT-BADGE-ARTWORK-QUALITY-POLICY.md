@@ -22,6 +22,8 @@ Reader Easy / Normal / Hard、Author、Limited等の区分を問わず、実装�
 
 補助処理は原版を置き換えない。補間によって元画像に存在しないディテールが復元されたものとして扱わない。
 
+ブラウザ側で一時的な拡大画像sourceを生成する場合は、ProductionのContent Security Policyと整合するschemeだけを使用する。現在の`img-src`は`'self' data: https:`を許可し`blob:`は許可していないため、`blob:` object URLを表示sourceへ使用してはならない。CSPを緩めて表示不具合を隠すのではなく、許可済みschemeまたはDOM/canvas表示で実装する。
+
 ## 3. Easy 30の確定基準
 
 Reader Easy 30は、PR #1031で確定した2304×1920の最終スプライトから6×5でpixel-exactに切り出した384×384 PNGを正規原版とする。
@@ -45,6 +47,7 @@ Reader Easy 30は、PR #1031で確定した2304×1920の最終スプライトか
 1. canonical assetが承認原版そのものか
 2. 原版より低解像度の派生物へ置換されていないか
 3. 表示サイズがnative pixel sizeを超えていないか
-4. それでも必要な場合のみresampling / sharpening等の表示補助を追加する
+4. 表示補助で生成するURL / resource schemeがProduction CSPで許可されているか
+5. それでも必要な場合のみresampling / sharpening等の表示補助を追加する
 
 原版喪失・低解像度化を表示処理だけで隠す実装は採用しない。
