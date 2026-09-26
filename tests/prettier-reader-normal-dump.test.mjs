@@ -9,6 +9,7 @@ test('dump Reader Normal contract formatting', async () => {
     'utf8'
   );
   const formatted = await prettier.format(source, {
+    parser: 'babel',
     printWidth: 100,
     singleQuote: true,
     trailingComma: 'none'
