@@ -7,8 +7,7 @@ import {
   redactCodexDiagnosticText
 } from '../tools/novelight-commander/src/codex-auth.js';
 
-const bridgeCorePath =
-  'tools/novelight-commander/src/github-bridge-core.js';
+const bridgeCorePath = 'tools/novelight-commander/src/github-bridge-core.js';
 const authPath = 'tools/novelight-commander/src/codex-auth.js';
 
 test('Codex auth diagnostic redacts API keys and bearer tokens', () => {
