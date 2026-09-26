@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
   <link rel="stylesheet" href="novelight-accessibility.css">
   <link rel="stylesheet" href="novelight-scout-record.css">
+  <link rel="stylesheet" href="novelight-scout-badge-zoom.css">
 </head>
 <body class="novelight-theme novelight-page-scout-record">
   <a class="skip-link" href="#main-content">本文へスキップ</a>
@@ -208,6 +209,13 @@
     </div>
   </dialog>
 
+  <dialog id="badgeArtworkZoomDialog" class="badge-artwork-zoom-dialog" aria-label="称号紋章の拡大表示">
+    <div id="badgeArtworkZoomStage" class="badge-artwork-zoom-stage">
+      <button class="badge-artwork-zoom-close" type="button" data-badge-artwork-zoom-close aria-label="拡大表示を閉じる">×</button>
+      <img id="badgeArtworkZoomImage" class="badge-artwork-zoom-image" alt="">
+    </div>
+  </dialog>
+
   <dialog id="scoutHelpDialog" class="scout-modal">
     <div class="scout-modal-card">
       <div class="scout-modal-head">
@@ -225,5 +233,6 @@
   <script src="novelight-client.js"></script>
   <script src="novelight-author-studio-shell.js"></script>
   <script src="novelight-scout-record.js"></script>
+  <script src="novelight-scout-badge-zoom.js"></script>
 </body>
 </html>
