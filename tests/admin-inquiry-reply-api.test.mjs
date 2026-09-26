@@ -105,6 +105,46 @@ test('admin inquiry reply sends only to the server-side inquiry address and reso
   assert.equal(res.body.delivery.id, 'resend-message-id');
 });
 
+test('admin inquiry reply uses the support sender address', async () => {
+  let resendRequest;
+  const handler = createAdminInquiryReplyHandler({
+    supabase: createSupabase(),
+    env: {
+      NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID,
+      RESEND_API_KEY: 'test-resend-key'
+    },
+    fetchImpl: async (url, init) => {
+      resendRequest = { url, init };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'resend-support-id' })
+      };
+    },
+    getInquiry: async () => ({
+      id: 28,
+      email: 'author@example.com',
+      status: 'reviewing'
+    }),
+    setResolved: async () => ({ id: 28, status: 'resolved' })
+  });
+
+  const res = await run(
+    handler,
+    request({
+      id: 28,
+      subject: '【NOVELIGHT】お問い合わせへの回答',
+      message: '回答本文です。'
+    })
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(resendRequest.url, 'https://api.resend.com/emails');
+  const payload = JSON.parse(resendRequest.init.body);
+  assert.equal(payload.from, 'NOVELIGHT <support@novelight.jp>');
+  assert.deepEqual(payload.to, ['author@example.com']);
+});
+
 test('admin inquiry reply rejects malformed payload before delivery', async () => {
   let sent = false;
   const handler = createAdminInquiryReplyHandler({
