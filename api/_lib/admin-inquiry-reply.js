@@ -164,7 +164,9 @@ export function createAdminInquiryReplyHandler({
       });
     } catch (error) {
       if (error?.code === 'RESEND_NOT_CONFIGURED') {
-        return res.status(503).json({ error: 'Email delivery is not configured' });
+        return res
+          .status(503)
+          .json({ error: 'Email delivery is not configured' });
       }
       if (error?.code === 'RESEND_REJECTED') {
         console.error('NOVELIGHT inquiry reply delivery rejected', {
