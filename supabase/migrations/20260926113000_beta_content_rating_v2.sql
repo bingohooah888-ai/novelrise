@@ -25,6 +25,12 @@ language plpgsql
 set search_path = pg_catalog, public
 as $$
 begin
+  -- Zero-downtime compatibility for an already-open pre-deploy browser tab.
+  -- The legacy value is accepted at the trigger boundary but never persisted.
+  if new.content_rating = 'mature' then
+    new.content_rating := 'sensitive_15';
+  end if;
+
   if new.status = 'published' then
     if new.ai_usage = 'unspecified' then
       raise exception using
