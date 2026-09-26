@@ -104,7 +104,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/patch-master-once.yml
-          changed="$(git diff --name-only | sort)"
+          changed="$(git diff --name-only HEAD | sort)"
           expected="$(printf '%s\n' '.github/workflows/patch-master-once.yml' 'docs/NOVELIGHT-MASTER.md' | sort)"
           if [ "$changed" != "$expected" ]; then
             echo "Unexpected changed files:"
