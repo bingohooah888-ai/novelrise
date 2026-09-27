@@ -433,132 +433,276 @@
       return stored;
     }
     if (memoryVisitorToken) return memoryVisitorToken;
-    const token = makeVisitorToken();
-    memoryVisitorToken = token;
-    safeStorageSet(window.localStorage, VISITOR_KEY, token);
-    return token;
+
+    memoryVisitorToken = makeVisitorToken();
+    safeStorageSet(window.localStorage, VISITOR_KEY, memoryVisitorToken);
+    return memoryVisitorToken;
   }
 
-  function getFirstTouch() {
-    const raw = safeStorageGet(window.localStorage, TRAFFIC_KEY);
-    if (!raw) return null;
+  function referrerHost() {
+    if (!document.referrer) return null;
     try {
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : null;
+      return new URL(document.referrer).hostname.toLowerCase();
     } catch {
       return null;
     }
   }
 
-  function normalizeSource(value) {
-    const source = String(value || '')
-      .trim()
-      .toLowerCase();
-    if (!source) return 'direct';
-    if (source.includes('x.com') || source.includes('twitter')) return 'x';
-    if (source.includes('google')) return 'google';
-    if (source.includes('yahoo')) return 'yahoo';
-    if (source.includes('bing')) return 'bing';
-    if (source.includes('novelight')) return 'novelight';
-    return source.slice(0, 80);
+  function detectSource() {
+    const params = new URLSearchParams(window.location.search);
+    const utmSource = (params.get('utm_source') || '').trim().toLowerCase();
+    const host = referrerHost();
+
+    if (utmSource) return utmSource.slice(0, 40);
+    if (
+      host &&
+      (host === 'x.com' ||
+        host.endsWith('.x.com') ||
+        host === 't.co' ||
+        host === 'twitter.com' ||
+        host.endsWith('.twitter.com'))
+    ) {
+      return 'x';
+    }
+    return host ? 'referral' : 'direct';
   }
 
-  function acquisitionFromLocation() {
+  function currentTouch() {
     const params = new URLSearchParams(window.location.search);
-    const referrer = document.referrer || '';
-    let referrerHost = '';
-    try {
-      referrerHost = referrer ? new URL(referrer).hostname : '';
-    } catch {
-      referrerHost = '';
-    }
-
-    const source =
-      params.get('utm_source') ||
-      params.get('source') ||
-      params.get('ref') ||
-      referrerHost ||
-      'direct';
-    const campaign = params.get('utm_campaign') || null;
-    const medium = params.get('utm_medium') || null;
     return {
-      source: normalizeSource(source),
-      campaign: campaign ? campaign.slice(0, 120) : null,
-      medium: medium ? medium.slice(0, 80) : null,
-      referrer: referrer ? referrer.slice(0, 500) : null,
-      landingPath: `${window.location.pathname}${window.location.search}`.slice(
-        0,
-        500
-      ),
-      capturedAt: new Date().toISOString()
+      source: detectSource(),
+      medium: (params.get('utm_medium') || '').trim().slice(0, 80) || null,
+      campaign: (params.get('utm_campaign') || '').trim().slice(0, 120) || null,
+      content: (params.get('utm_content') || '').trim().slice(0, 120) || null,
+      landingPath: window.location.pathname.slice(0, 500) || '/',
+      referrerHost: referrerHost()
     };
   }
 
-  async function captureAcquisition(client) {
-    let touch = getFirstTouch();
-    if (!touch) {
-      touch = acquisitionFromLocation();
-      safeStorageSet(window.localStorage, TRAFFIC_KEY, JSON.stringify(touch));
+  function getStoredTouch() {
+    try {
+      const parsed = JSON.parse(
+        safeStorageGet(window.localStorage, TRAFFIC_KEY) || 'null'
+      );
+      if (parsed && typeof parsed.source === 'string') return parsed;
+    } catch {
+      // Ignore malformed local storage and replace it with a safe first touch.
     }
-    if (!client?.from) return touch;
+    return null;
+  }
 
-    const alreadyRecorded = safeStorageGet(
-      window.sessionStorage,
-      TOUCH_SESSION_KEY
+  async function syncAuthHeader(client) {
+    if (!client) return false;
+
+    const headerActions = document.querySelector('.header-actions');
+    const loginLinks = Array.from(
+      headerActions?.querySelectorAll('a[href="login.html"]') || []
     );
-    if (alreadyRecorded) return touch;
+    if (!loginLinks.length) return false;
 
     try {
-      const result = await client.rpc('novelight_record_acquisition_touch', {
-        p_visitor_token: getVisitorToken(),
-        p_source: touch.source,
-        p_medium: touch.medium,
-        p_campaign: touch.campaign,
-        p_referrer: touch.referrer,
-        p_landing_path: touch.landingPath
+      const { data, error } = await client.auth.getSession();
+      if (error) {
+        console.error('auth header session lookup failed', error);
+        return false;
+      }
+
+      if (data?.session) {
+        loginLinks.forEach((loginLink) => {
+          loginLink.textContent = '創作室';
+          loginLink.href = 'mypage.html';
+          loginLink.dataset.authState = 'authenticated';
+        });
+        return true;
+      }
+
+      loginLinks.forEach((loginLink) => {
+        loginLink.textContent = 'ログイン';
+        loginLink.href = 'login.html';
+        loginLink.dataset.authState = 'anonymous';
       });
-      if (!result.error) safeStorageSet(window.sessionStorage, TOUCH_SESSION_KEY, '1');
+      return false;
     } catch (error) {
-      console.warn('acquisition tracking failed', error);
+      console.error('auth header session lookup failed', error);
+      return false;
     }
-    return touch;
+  }
+
+  async function captureAcquisition(client) {
+    if (!client) return;
+
+    void syncAuthHeader(client);
+
+    const touch = currentTouch();
+    let stored = getStoredTouch();
+    if (!stored) {
+      stored = { ...touch, capturedAt: new Date().toISOString() };
+      safeStorageSet(window.localStorage, TRAFFIC_KEY, JSON.stringify(stored));
+    }
+
+    if (safeStorageGet(window.sessionStorage, TOUCH_SESSION_KEY) === '1')
+      return;
+
+    void analyticsEvent(client, {
+      action: 'acquisition',
+      source: touch.source,
+      medium: touch.medium,
+      campaign: touch.campaign,
+      content: touch.content,
+      landing_path: touch.landingPath,
+      referrer_host: touch.referrerHost
+    })
+      .then(() => {
+        safeStorageSet(window.sessionStorage, TOUCH_SESSION_KEY, '1');
+      })
+      .catch((error) => console.error('acquisition touch failed', error));
+  }
+
+  function storedSource() {
+    return getStoredTouch()?.source || detectSource();
+  }
+
+  async function analyticsEvent(client, payload) {
+    const headers = { 'Content-Type': 'application/json' };
+    try {
+      const { data } = await client.auth.getSession();
+      if (data?.session?.access_token) {
+        headers.Authorization = `Bearer ${data.session.access_token}`;
+      }
+    } catch (error) {
+      console.error('analytics session lookup failed', error);
+    }
+
+    const response = await fetch('/api/analytics-event', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok)
+      throw new Error(`Analytics request failed: ${response.status}`);
+    return response.json();
   }
 
   async function recordVisit(client) {
-    if (!client?.from) return false;
-    try {
-      const result = await client.rpc('novelight_record_visit', {
-        p_visitor_token: getVisitorToken(),
-        p_path: `${window.location.pathname}${window.location.search}`.slice(0, 500)
-      });
-      return !result.error;
-    } catch (error) {
-      console.warn('visit tracking failed', error);
-      return false;
-    }
+    if (!client) return;
+    void analyticsEvent(client, {
+      action: 'visit',
+      path: window.location.pathname.slice(0, 500) || '/',
+      source: storedSource()
+    }).catch((error) => console.error('beta visit record failed', error));
   }
 
   async function claimAcquisition(client) {
-    if (!client?.auth?.getSession) return false;
+    if (!client) return false;
     try {
-      const auth = await client.auth.getSession();
-      const userId = auth.data?.session?.user?.id || null;
-      if (auth.error || !userId) return false;
-      const result = await client.rpc('novelight_claim_acquisition_touch', {
-        p_visitor_token: getVisitorToken()
-      });
-      return !result.error;
+      const { data: authData } = await client.auth.getSession();
+      if (!authData?.session) return false;
+      const result = await analyticsEvent(client, { action: 'claim' });
+      return result?.accepted === true;
     } catch (error) {
-      console.warn('acquisition claim failed', error);
+      console.error('acquisition claim failed', error);
       return false;
     }
   }
 
-  window.NovelightClient = Object.freeze({
+  async function recordJourney(client, eventType, novelId, episodeId = null) {
+    if (!client || !novelId) return false;
+    try {
+      const result = await analyticsEvent(client, {
+        action: 'journey',
+        event_type: eventType,
+        novel_id: String(novelId),
+        episode_id: episodeId == null ? null : String(episodeId),
+        source: storedSource()
+      });
+      return result?.accepted === true;
+    } catch (error) {
+      console.error('reader journey record failed', error);
+      return false;
+    }
+  }
+
+  async function recordEpisodePv(client, episodeId) {
+    if (!client || !episodeId) return false;
+    try {
+      const result = await analyticsEvent(client, {
+        action: 'episode-pv',
+        episode_id: String(episodeId)
+      });
+      return result?.accepted === true;
+    } catch (error) {
+      console.error('pv increment failed', error);
+      return false;
+    }
+  }
+
+  async function recordNeutralSearchImpressions(client, novelIds) {
+    if (!client || !Array.isArray(novelIds) || novelIds.length === 0) return 0;
+    try {
+      const result = await analyticsEvent(client, {
+        action: 'neutral-search-impressions',
+        novel_ids: novelIds.map(String)
+      });
+      return Number(result?.recorded_count) || 0;
+    } catch (error) {
+      console.error('neutral search telemetry failed', error);
+      return 0;
+    }
+  }
+
+
+  function installScoutTitleToastRuntime() {
+    if (window.__novelightScoutTitleToastRuntimeInstalled) return false;
+    window.__novelightScoutTitleToastRuntimeInstalled = true;
+
+    if (!Array.isArray(window.__novelightScoutTitleToastPendingClients)) {
+      window.__novelightScoutTitleToastPendingClients = [];
+    }
+
+    if (
+      window.supabase &&
+      typeof window.supabase.createClient === 'function' &&
+      !window.__novelightScoutTitleToastCaptureInstalled
+    ) {
+      const createClient = window.supabase.createClient.bind(window.supabase);
+      window.supabase.createClient = function (...args) {
+        const client = createClient(...args);
+        window.__novelightScoutTitleToastPendingClients.push(client);
+        if (
+          typeof window.__novelightAttachScoutTitleToastWatcher === 'function'
+        ) {
+          window.__novelightAttachScoutTitleToastWatcher(client);
+        }
+        return client;
+      };
+      window.__novelightScoutTitleToastCaptureInstalled = true;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'novelight-scout-title-toast.js';
+    script.async = false;
+    script.dataset.novelightScoutTitleToast = 'sitewide';
+    document.head.appendChild(script);
+    return true;
+  }
+
+  installScoutTitleToastRuntime();
+
+  window.NovelightClient = {
     getVisitorToken,
-    getFirstTouch,
     captureAcquisition,
     recordVisit,
-    claimAcquisition
-  });
+    claimAcquisition,
+    recordJourney,
+    recordEpisodePv,
+    recordNeutralSearchImpressions,
+    storedSource,
+    syncAuthHeader,
+    installPublicHeader,
+    installBrandLogo,
+    installThemeStyles,
+    installAuthorDashboardShell,
+    installAuthorStudioSharedShell
+  };
 })();
