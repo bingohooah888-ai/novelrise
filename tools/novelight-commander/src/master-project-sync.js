@@ -148,15 +148,100 @@ async function loginRequiredByUi(page) {
   return hasLogin && hasSignup;
 }
 
+function looksLikeProjectUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return url.hostname === 'chatgpt.com' && /\/g\/g-p-[^/]+/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function pageVisiblyNamesProject(page, name) {
+  const body = await page.locator('body').innerText().catch(() => '');
+  return body
+    .split(/\r?\n/)
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .some(line => line === name);
+}
+
+async function findExistingProjectPage(context, name) {
+  const candidates = [];
+  for (const candidate of context.pages()) {
+    if (!looksLikeProjectUrl(candidate.url())) continue;
+    if (loginRequiredByUrl(candidate)) continue;
+    if (await pageVisiblyNamesProject(candidate, name)) candidates.push(candidate);
+  }
+  if (!candidates.length) return null;
+  return (
+    candidates.find(candidate => /\/project(?:[/?#]|$)/i.test(candidate.url())) ||
+    candidates.at(-1)
+  );
+}
+
+async function collectNamedProjectLinks(page, name) {
+  return page.evaluate(projectName => {
+    const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
+    const links = new Set();
+    for (const node of document.querySelectorAll('a[href]')) {
+      const href = String(node.getAttribute('href') || '');
+      if (!/\/g\/g-p-[^/]+/i.test(href)) continue;
+      const labels = [
+        node.textContent,
+        node.getAttribute('aria-label'),
+        node.getAttribute('title')
+      ].map(normalize);
+      if (!labels.includes(projectName)) continue;
+      try {
+        links.add(new URL(href, location.href).toString());
+      } catch {}
+    }
+    return [...links];
+  }, name);
+}
+
+async function exposeProjectLinks(page) {
+  const patterns = [
+    /^(Projects|プロジェクト)$/i,
+    /^(See more|Show more|More|もっと見る|さらに表示)$/i
+  ];
+  for (const pattern of patterns) {
+    const controls = [
+      page.getByRole('button', { name: pattern }),
+      page.getByRole('link', { name: pattern })
+    ];
+    for (const locator of controls) {
+      const count = Math.min(await locator.count(), 4);
+      for (let index = 0; index < count; index += 1) {
+        const control = locator.nth(index);
+        if (!(await control.isVisible().catch(() => false))) continue;
+        await control.click().catch(() => {});
+        await page.waitForTimeout(700);
+        return;
+      }
+    }
+  }
+}
+
 async function discoverProjectPage(context, projectUrl, projectName) {
   const name = String(projectName || DEFAULT_PROJECT_NAME).trim() || DEFAULT_PROJECT_NAME;
-  const page = await context.newPage();
 
+  if (!projectUrl) {
+    const existing = await findExistingProjectPage(context, name);
+    if (existing) {
+      await existing.bringToFront().catch(() => {});
+      await existing.waitForTimeout(400);
+      return { page: existing, loginRequired: false };
+    }
+  }
+
+  const page = await context.newPage();
   if (projectUrl) {
     await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } else {
     await page.goto('https://chatgpt.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
   }
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
   await page.waitForTimeout(1200);
 
   if (loginRequiredByUrl(page) || await loginRequiredByUi(page)) {
@@ -164,26 +249,46 @@ async function discoverProjectPage(context, projectUrl, projectName) {
   }
 
   if (!projectUrl) {
-    const projectLink = page.getByText(name, { exact: true });
-    const count = await projectLink.count();
-    if (count !== 1) {
-      if (await loginRequiredByUi(page)) return { page, loginRequired: true };
-      throw new Error(
-        `Unable to uniquely find ChatGPT Project ${JSON.stringify(name)}. Found ${count} exact matches.`
-      );
+    let links = await collectNamedProjectLinks(page, name);
+    if (links.length !== 1) {
+      await exposeProjectLinks(page);
+      links = await collectNamedProjectLinks(page, name);
     }
-    await projectLink.click();
-    await page.waitForLoadState('domcontentloaded').catch(() => {});
-    await page.waitForTimeout(1200);
+
+    if (links.length === 1) {
+      await page.goto(links[0], { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.waitForTimeout(1200);
+    } else {
+      const exactVisible = page
+        .getByText(new RegExp(`^\\s*${name.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}\\s*$`, 'i'));
+      const visibleMatches = [];
+      const count = Math.min(await exactVisible.count(), 12);
+      for (let index = 0; index < count; index += 1) {
+        const item = exactVisible.nth(index);
+        if (await item.isVisible().catch(() => false)) visibleMatches.push(item);
+      }
+      if (visibleMatches.length === 1) {
+        await visibleMatches[0].click();
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        await page.waitForTimeout(1200);
+      } else {
+        if (await loginRequiredByUi(page)) return { page, loginRequired: true };
+        throw new Error(
+          `Unable to uniquely find ChatGPT Project ${JSON.stringify(name)}. ` +
+          `project_links=${links.length}, visible_exact_matches=${visibleMatches.length}, ` +
+          `url=${page.url()}`
+        );
+      }
+    }
   }
 
   if (loginRequiredByUrl(page) || await loginRequiredByUi(page)) {
     return { page, loginRequired: true };
   }
-  const bodyText = await page.locator('body').innerText().catch(() => '');
-  if (!bodyText.includes(name)) {
+  if (!(await pageVisiblyNamesProject(page, name))) {
     throw new Error(
-      `Opened ChatGPT page does not visibly identify Project ${JSON.stringify(name)}.`
+      `Opened ChatGPT page does not visibly identify Project ${JSON.stringify(name)}. ` +
+      `url=${page.url()}`
     );
   }
   return { page, loginRequired: false };
