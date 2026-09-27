@@ -9,6 +9,25 @@ function normalize(value) {
   return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
+function exactVisibleName(body, projectName) {
+  const target = normalize(projectName);
+  return String(body || '')
+    .split(/\r?\n/)
+    .some(line => normalize(line) === target);
+}
+
+function safeChatgptUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com') return null;
+    if (/^\/?$/.test(url.pathname)) return null;
+    if (/\/auth\//i.test(url.pathname)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function projectRootFromChatgptUrl(value) {
   const raw = String(value || '').trim();
   if (!raw) return null;
@@ -83,22 +102,24 @@ async function collectProjectLinkCandidates(page, projectName) {
   const target = normalize(projectName);
   const exact = new Set();
   const contains = new Set();
-  const links = page.locator('a[href*="/g/g-p-"]');
-  const count = Math.min(await links.count(), 300);
+  const links = page.locator('a[href]');
+  const count = Math.min(await links.count(), 500);
   for (let index = 0; index < count; index += 1) {
     const link = links.nth(index);
     const href = await link.getAttribute('href').catch(() => null);
     if (!href) continue;
-    const root = projectRootFromChatgptUrl(new URL(href, page.url()).toString());
-    if (!root) continue;
+    const absolute = new URL(href, page.url()).toString();
+    const root = projectRootFromChatgptUrl(absolute);
     const label = normalize([
       await link.innerText().catch(() => ''),
       await link.getAttribute('aria-label').catch(() => ''),
       await link.getAttribute('title').catch(() => '')
     ].filter(Boolean).join(' '));
     if (!label) continue;
-    if (label === target) exact.add(root);
-    else if (label.includes(target)) contains.add(root);
+    const candidate = root || safeChatgptUrl(absolute);
+    if (!candidate) continue;
+    if (label === target) exact.add(candidate);
+    else if (label.includes(target)) contains.add(candidate);
   }
   if (exact.size === 1) return [...exact][0];
   if (!exact.size && contains.size === 1) return [...contains][0];
@@ -118,12 +139,12 @@ async function probeProjectRoots(context, roots, projectName) {
       await probe.goto(root, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
       await probe.waitForTimeout(600);
       const title = normalize(await probe.title().catch(() => ''));
-      const body = normalize(
-        await probe.locator('body').innerText({ timeout: 1200 }).catch(() => '')
-      );
+      const rawBody = await probe.locator('body').innerText({ timeout: 1200 }).catch(() => '');
+      const body = normalize(rawBody);
       let score = 0;
       if (title.includes(target)) score += 4;
       if (body.includes(target)) score += 2;
+      if (exactVisibleName(rawBody, projectName)) score += 4;
       if (body.includes('novelight-master')) score += 8;
       if (score > 0) scored.push([root, score]);
     }
@@ -135,6 +156,28 @@ async function probeProjectRoots(context, roots, projectName) {
   if (scored.length === 1) return scored[0][0];
   if (scored.length > 1 && scored[0][1] > scored[1][1]) return scored[0][0];
   return null;
+}
+
+async function discoverVisibleProjectByName(page, projectName) {
+  const target = new RegExp(
+    `^\\s*${String(projectName).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}\\s*$`,
+    'i'
+  );
+  const matches = page.getByText(target);
+  const visible = [];
+  const count = Math.min(await matches.count(), 30);
+  for (let index = 0; index < count; index += 1) {
+    const item = matches.nth(index);
+    if (await item.isVisible().catch(() => false)) visible.push(item);
+  }
+  if (visible.length !== 1) return null;
+
+  await visible[0].click().catch(() => {});
+  await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(900);
+  const body = await page.locator('body').innerText({ timeout: 1500 }).catch(() => '');
+  if (!exactVisibleName(body, projectName)) return null;
+  return projectRootFromChatgptUrl(page.url()) || safeChatgptUrl(page.url());
 }
 
 async function discoverProjectFromHome(context, projectName) {
@@ -168,7 +211,9 @@ async function discoverProjectFromHome(context, projectName) {
       /^(Projects|プロジェクト)$/i,
       /Show more/i,
       /See more/i,
+      /More/i,
       /もっと見る/i,
+      /さらに表示/i,
       /すべて表示/i
     ];
     for (const pattern of expanders) {
@@ -184,8 +229,13 @@ async function discoverProjectFromHome(context, projectName) {
         await page.waitForTimeout(700);
         found = await collectProjectLinkCandidates(page, projectName);
         if (found) return found;
+        const visible = await discoverVisibleProjectByName(page, projectName);
+        if (visible) return visible;
       }
     }
+
+    const visible = await discoverVisibleProjectByName(page, projectName);
+    if (visible) return visible;
 
     const roots = await collectProjectRoots(page);
     if (roots.length === 1) return roots[0];
@@ -203,21 +253,33 @@ async function discoverOpenProjectUrl({ repoRoot, cdpUrl, projectName }) {
 
   const browser = await chromium.connectOverCDP(endpoint);
   try {
+    const strongNamedPages = [];
     const roots = new Map();
     for (const context of browser.contexts()) {
       for (const page of context.pages()) {
-        const root = projectRootFromChatgptUrl(page.url());
-        if (!root) continue;
+        const currentUrl = safeChatgptUrl(page.url());
+        if (!currentUrl) continue;
         const title = normalize(await page.title().catch(() => ''));
-        const body = normalize(
-          await page.locator('body').innerText({ timeout: 800 }).catch(() => '')
-        );
+        const rawBody = await page.locator('body').innerText({ timeout: 1000 }).catch(() => '');
+        const body = normalize(rawBody);
         const name = normalize(projectName);
-        const score = Number(title.includes(name)) * 2 + Number(body.includes(name));
+        if (exactVisibleName(rawBody, projectName) && body.includes('novelight-master')) {
+          strongNamedPages.push(projectRootFromChatgptUrl(currentUrl) || currentUrl);
+        }
+        const root = projectRootFromChatgptUrl(currentUrl);
+        if (!root) continue;
+        const score =
+          Number(title.includes(name)) * 2 +
+          Number(body.includes(name)) +
+          Number(exactVisibleName(rawBody, projectName)) * 3 +
+          Number(body.includes('novelight-master')) * 8;
         const previous = roots.get(root) || -1;
         if (score > previous) roots.set(root, score);
       }
     }
+
+    const uniqueStrong = [...new Set(strongNamedPages)];
+    if (uniqueStrong.length === 1) return uniqueStrong[0];
 
     if (roots.size) {
       const ranked = [...roots.entries()].sort((a, b) => b[1] - a[1]);
