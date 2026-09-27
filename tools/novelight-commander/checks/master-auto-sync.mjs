@@ -30,6 +30,20 @@ test('read-only auto sync status bridge is loaded by NLO bridge daemon', async (
   assert.equal(statusBridge.includes('rm('), false);
 });
 
+test('scoped profile repair only targets the dedicated NLO ChatGPT profile', async () => {
+  const daemon = await readFile('src/github-bridge-daemon.js');
+  const repair = await readFile('src/master-profile-repair-bridge.js');
+  assert.equal(daemon.includes("import './master-profile-repair-bridge.js';"), true);
+  assert.equal(repair.includes("REQUEST_PREFIX = 'NOVELIGHT_MASTER_REPAIR_REQUEST '"), true);
+  assert.equal(repair.includes("CONFIRMATION = 'RELEASE_STALE_NLO_MASTER_PROFILE'"), true);
+  assert.equal(repair.includes("path.join(config.dataRoot, 'chatgpt-browser-profile')"), true);
+  assert.equal(repair.includes("Name = 'chrome.exe'"), true);
+  assert.equal(repair.includes("'--user-data-dir=' + $Profile"), true);
+  assert.equal(repair.includes('Stop-Process -Id $processId -Force'), true);
+  assert.equal(repair.includes('syncMasterToChatgptProjectInBackground'), true);
+  assert.equal(repair.includes('withMasterProjectSyncLock'), true);
+});
+
 test('auto sync follows MASTER content changes', async () => {
   const text = await readFile('src/master-auto-sync-daemon.js');
   assert.equal(text.includes('lastSyncedContentSha256 === prepared.contentSha256'), true);
