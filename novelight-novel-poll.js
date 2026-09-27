@@ -147,3 +147,153 @@
 
   window.NovelightNovelPoll = { mount };
 })();
+
+// Beta novel-detail cutover for LIGHT SEED.
+// This lives beside the novel-detail runtime so the existing inline page can be
+// cut over without exposing the private Rank contract to the browser.
+window.setTimeout(() => {
+  const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
+  if (page !== 'novel.html' && page !== 'novel') return;
+
+  const area = document.getElementById('lightSeedArea');
+  const types = document.getElementById('seedTypes');
+  const message = document.getElementById('seedMessage');
+  const remaining = document.getElementById('seedRemaining');
+  const total = document.getElementById('seedTotal');
+  if (!area || !types || !message || !remaining || !total || !window.supabase) return;
+
+  const novelId = new URLSearchParams(window.location.search).get('id');
+  if (!novelId) return;
+
+  const style = document.createElement('style');
+  style.id = 'novelight-beta-auto-seed-style';
+  style.textContent =
+    '.seed-types[data-auto-tier="true"]{grid-template-columns:minmax(0,360px)}' +
+    '.seed-choice.auto-tier{min-height:58px;text-align:center;align-items:center;background:#fff;border-color:#9b89e8}' +
+    '.seed-classification-notice{margin-top:12px;padding:10px 12px;border:1px solid #ddd7ff;border-radius:9px;background:#fff;color:#5f5770;font-size:12px;line-height:1.7;font-weight:700}';
+  document.head.appendChild(style);
+
+  types.dataset.autoTier = 'true';
+  types.setAttribute('aria-label', 'LIGHT SEEDを贈る');
+  types.innerHTML =
+    '<button id="sendLightSeedButton" class="seed-choice auto-tier" type="button" disabled>' +
+      '<span class="seed-choice-name">LIGHT SEEDを贈る</span>' +
+      '<span class="seed-choice-count">種類は作品の内部区分に応じて自動決定</span>' +
+    '</button>' +
+    '<span id="goldRemaining" hidden></span><span id="silverRemaining" hidden></span><span id="bronzeRemaining" hidden></span>';
+
+  const button = document.getElementById('sendLightSeedButton');
+  const oldNotice = area.querySelector('.seed-notice');
+  if (oldNotice) oldNotice.textContent = '送信後の取消はできません。対象作品を実際に読んだ記録がある場合のみ送信できます。';
+
+  if (!area.querySelector('.seed-classification-notice')) {
+    const notice = document.createElement('p');
+    notice.className = 'seed-classification-notice';
+    notice.textContent = '作品は内部的に区分されており、その区分に応じて使用されるLIGHT SEEDが自動で切り替わります。これは不具合ではなく仕様です。';
+    types.insertAdjacentElement('afterend', notice);
+  }
+
+  const api = window.supabase.createClient(
+    'https://fiepaguycecrredwrcwx.supabase.co',
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
+  );
+  let status = null;
+  let sendResultMessage = '';
+
+  function setDisabled(disabled) {
+    button.disabled = Boolean(disabled);
+  }
+
+  function renderStatus(value) {
+    status = value || null;
+    area.classList.add('visible');
+    const messages = {
+      eligible: 'この作品にLIGHT SEEDを贈れます。使用される種類は作品の内部区分に応じて自動で決まります。',
+      login_required: 'LIGHT SEEDを贈るにはログインが必要です。',
+      own_novel: '自分の作品には贈れません。',
+      already_seeded: 'この作品にはすでにLIGHT SEEDを贈っています。',
+      valid_read_required: 'LIGHT SEEDを贈るには、この作品のエピソードを実際に読む必要があります。',
+      monthly_limit_reached: '今月のLIGHT SEEDを使い切りました。',
+      required_seed_unavailable: 'この作品に使用されるLIGHT SEEDは今月分を使い切っています。'
+    };
+    message.textContent = sendResultMessage || messages[value?.reason] || '現在LIGHT SEEDを利用できません。';
+    sendResultMessage = '';
+    remaining.textContent = value?.monthly_limit
+      ? `今月あと ${Number(value.remaining_this_month || 0)}/${Number(value.monthly_limit)}`
+      : '';
+    total.textContent = `この作品のLIGHT SEED ${Number(value?.total_seed_count || 0)}`;
+    setDisabled(!['eligible', 'login_required'].includes(value?.reason));
+  }
+
+  async function refreshAutoSeed() {
+    const result = await api.rpc('light_seed_status_auto_v1', {
+      p_novel_id: String(novelId)
+    });
+    if (result.error) throw result.error;
+    renderStatus(result.data);
+    return result.data;
+  }
+
+  async function sendAutoSeed() {
+    if (!status) return;
+    if (status.reason === 'login_required') {
+      window.location.href = 'login.html?redirect=' + encodeURIComponent(`novel.html?id=${novelId}`);
+      return;
+    }
+    if (status.reason !== 'eligible') return;
+
+    const ok = window.confirm(
+      'LIGHT SEEDをこの作品に贈りますか？\n' +
+      '作品の内部区分に応じた種類が自動で使用されます。\n' +
+      '送信後の取消はできません。'
+    );
+    if (!ok) return;
+
+    setDisabled(true);
+    try {
+      const result = await api.rpc('plant_light_seed_auto_v1', {
+        p_novel_id: String(novelId)
+      });
+      if (result.error) throw result.error;
+      sendResultMessage = `${String(result.data?.seed_type || 'LIGHT SEED')}を贈りました。`;
+      void window.NovelightClient?.recordJourney?.(api, 'light_seed', novelId);
+      await refreshAutoSeed();
+    } catch (error) {
+      console.error('Automatic LIGHT SEED send failed', error);
+      window.alert('LIGHT SEEDを贈れませんでした。作品を読んだ後、状態を確認してもう一度お試しください。');
+      try {
+        await refreshAutoSeed();
+      } catch (refreshError) {
+        console.error('Automatic LIGHT SEED refresh failed', refreshError);
+        setDisabled(true);
+      }
+    }
+  }
+
+  async function setupAutoSeed() {
+    area.classList.add('visible');
+    button.onclick = () => void sendAutoSeed();
+    try {
+      await refreshAutoSeed();
+    } catch (error) {
+      console.error('Automatic LIGHT SEED status unavailable', error);
+      status = null;
+      message.textContent = 'LIGHT SEED新仕様の準備中です。現在は送信できません。';
+      remaining.textContent = '';
+      total.textContent = '';
+      setDisabled(true);
+    }
+  }
+
+  // Override the legacy page globals before its async load normally reaches
+  // LIGHT SEED setup. Hidden compatibility spans above keep an already-started
+  // legacy refresh harmless during the short beta cutover window.
+  window.seedButtons = () => [button];
+  window.setSeedButtonsDisabled = setDisabled;
+  window.renderSeed = renderStatus;
+  window.refreshSeed = refreshAutoSeed;
+  window.sendSeed = sendAutoSeed;
+  window.setupSeed = setupAutoSeed;
+
+  void setupAutoSeed();
+}, 0);

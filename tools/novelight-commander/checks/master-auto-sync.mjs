@@ -16,12 +16,67 @@ test('auto sync is loaded by NLO bridge daemon', async () => {
   assert.equal(text.includes("import './master-auto-sync-daemon.js';"), true);
 });
 
+test('read-only auto sync status bridge is loaded by NLO bridge daemon', async () => {
+  const daemon = await readFile('src/github-bridge-daemon.js');
+  const statusBridge = await readFile('src/master-auto-sync-status-bridge.js');
+  assert.equal(
+    daemon.includes("import './master-auto-sync-status-bridge.js';"),
+    true
+  );
+  assert.equal(statusBridge.includes("REQUEST_PREFIX = 'NOVELIGHT_MASTER_STATUS_REQUEST '"), true);
+  assert.equal(statusBridge.includes("request.action !== 'master_auto_sync_status'"), true);
+  assert.equal(statusBridge.includes("path.join(config.dataRoot, 'master-sync', 'AUTO-SYNC.json')"), true);
+  assert.equal(statusBridge.includes('writeFile('), false);
+  assert.equal(statusBridge.includes('rm('), false);
+});
+
+test('scoped profile repair v2 passes the target through a fixed environment variable', async () => {
+  const daemon = await readFile('src/github-bridge-daemon.js');
+  const repair = await readFile('src/master-profile-repair-bridge-v2.js');
+  assert.equal(daemon.includes("import './master-profile-repair-bridge-v2.js';"), true);
+  assert.equal(daemon.includes("import './master-profile-repair-bridge.js';"), false);
+  assert.equal(repair.includes("REQUEST_PREFIX = 'NOVELIGHT_MASTER_REPAIR_REQUEST '"), true);
+  assert.equal(repair.includes("CONFIRMATION = 'RELEASE_STALE_NLO_MASTER_PROFILE'"), true);
+  assert.equal(repair.includes("path.join(config.dataRoot, 'chatgpt-browser-profile')"), true);
+  assert.equal(repair.includes('NLO_MASTER_PROFILE_REPAIR_TARGET: profile'), true);
+  assert.equal(repair.includes('$env:NLO_MASTER_PROFILE_REPAIR_TARGET'), true);
+  assert.equal(repair.includes("Name = 'chrome.exe'"), true);
+  assert.equal(repair.includes("'--user-data-dir=' + $Profile"), true);
+  assert.equal(repair.includes('Stop-Process -Id $processId -Force'), true);
+  assert.equal(repair.includes('syncMasterToChatgptProjectInBackground'), true);
+  assert.equal(repair.includes('withMasterProjectSyncLock'), true);
+});
+
 test('auto sync follows MASTER content changes', async () => {
   const text = await readFile('src/master-auto-sync-daemon.js');
   assert.equal(text.includes('lastSyncedContentSha256 === prepared.contentSha256'), true);
   assert.equal(text.includes('confirmation: MASTER_SYNC_CONFIRMATION'), true);
   assert.equal(text.includes("DEFAULT_PROJECT_NAME = 'NOVELIGHT'"), true);
   assert.equal(text.includes('DEFAULT_POLL_MS = 2 * 60 * 1000'), true);
+});
+
+test('auto sync verifies the Project once per NLO process even when state says synced', async () => {
+  const text = await readFile('src/master-auto-sync-daemon.js');
+  assert.equal(text.includes('let verifiedThisProcess = false'), true);
+  assert.equal(text.includes('verifiedThisProcess &&'), true);
+  assert.equal(text.includes('verifiedThisProcess = true'), true);
+  assert.equal(text.includes('runtimeVerified: true'), true);
+  assert.equal(text.includes('runtimeVerifiedAt:'), true);
+});
+
+test('auto sync never launches a visible ChatGPT browser', async () => {
+  const watcher = await readFile('src/master-auto-sync-daemon.js');
+  const background = await readFile('src/master-project-sync-background.js');
+  assert.equal(
+    watcher.includes("from './master-project-sync-background.js'"),
+    true
+  );
+  assert.equal(watcher.includes('syncMasterToChatgptProjectInBackground'), true);
+  assert.equal(watcher.includes('uiLaunchAllowed: false'), true);
+  assert.equal(background.includes('headless: true'), true);
+  assert.equal(background.includes('headless: false'), false);
+  assert.equal(background.includes("'--no-first-run'"), true);
+  assert.equal(background.includes('DEFERRED_PROFILE_BUSY'), true);
 });
 
 test('auto sync serializes Project mutations', async () => {

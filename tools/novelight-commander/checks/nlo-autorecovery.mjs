@@ -38,7 +38,8 @@ test("NLO repair script restores both bridge and tunnel supervisors", async () =
   assert.match(source, /if \(-not \$TunnelHealthy\)/);
   assert.match(source, /Start-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"/);
   assert.match(source, /Stop-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel"/);
-  assert.match(source, /task reports Running but supervisor process is missing/);
+  assert.match(source, /Tunnel health failed: task=/);
+  assert.match(source, /nlo_clients=/);
   assert.match(source, /Stopping orphaned NOVELIGHT tunnel-client process/);
   assert.match(source, /Stop-Process -Id \$Client[.]ProcessId -Force/);
   assert.match(source, /control-plane-key[.]dpapi/);
@@ -46,7 +47,7 @@ test("NLO repair script restores both bridge and tunnel supervisors", async () =
 });
 
 test("NLO bridge publishes heartbeat and self-restarts after repeated poll failures", async () => {
-  const source = await read("src/github-bridge-daemon.js");
+  const source = await read("src/github-bridge-core.js");
   assert.match(source, /heartbeat[.]json/);
   assert.match(source, /writeHeartbeat/);
   assert.match(source, /AbortSignal[.]timeout\(15000\)/);
@@ -55,21 +56,21 @@ test("NLO bridge publishes heartbeat and self-restarts after repeated poll failu
 });
 
 test("GitHub Bridge exposes a fixed NLO autorecovery installer action", async () => {
-  const source = await read("src/github-bridge-daemon.js");
+  const source = await read("src/github-bridge-core.js");
   assert.match(source, /autorecovery_install/);
   assert.match(source, /install-nlo-autorecovery[.]ps1/);
 });
 
 test("NLO bridge supervisor distinguishes planned, normal, and failed exits", async () => {
   const runner = await read("run-github-bridge.ps1");
-  const daemon = await read("src/github-bridge-daemon.js");
+  const core = await read("src/github-bridge-core.js");
 
   assert.match(runner, /\$ExitCode -eq 75/);
   assert.match(runner, /\$ExitCode -eq 0/);
   assert.match(runner, /supervisor stopping/);
   assert.match(runner, /\$MaxRestartDelaySeconds = 60/);
   assert.match(runner, /\$RestartDelaySeconds \* 2/);
-  assert.match(daemon, /process[.]exit\(75\)/);
+  assert.match(core, /process[.]exit\(75\)/);
 });
 
 test("NLO bridge supervisor does not treat native stderr warnings as fatal", async () => {
