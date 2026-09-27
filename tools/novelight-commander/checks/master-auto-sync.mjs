@@ -16,6 +16,20 @@ test('auto sync is loaded by NLO bridge daemon', async () => {
   assert.equal(text.includes("import './master-auto-sync-daemon.js';"), true);
 });
 
+test('read-only auto sync status bridge is loaded by NLO bridge daemon', async () => {
+  const daemon = await readFile('src/github-bridge-daemon.js');
+  const statusBridge = await readFile('src/master-auto-sync-status-bridge.js');
+  assert.equal(
+    daemon.includes("import './master-auto-sync-status-bridge.js';"),
+    true
+  );
+  assert.equal(statusBridge.includes("REQUEST_PREFIX = 'NOVELIGHT_MASTER_STATUS_REQUEST '"), true);
+  assert.equal(statusBridge.includes("request.action !== 'master_auto_sync_status'"), true);
+  assert.equal(statusBridge.includes("path.join(config.dataRoot, 'master-sync', 'AUTO-SYNC.json')"), true);
+  assert.equal(statusBridge.includes('writeFile('), false);
+  assert.equal(statusBridge.includes('rm('), false);
+});
+
 test('auto sync follows MASTER content changes', async () => {
   const text = await readFile('src/master-auto-sync-daemon.js');
   assert.equal(text.includes('lastSyncedContentSha256 === prepared.contentSha256'), true);
