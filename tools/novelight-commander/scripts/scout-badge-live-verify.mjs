@@ -16,26 +16,61 @@ const EASY_IDS = [
   'reader_level_005', 'reader_level_010', 'reader_level_020', 'reader_active_days_007'
 ];
 
-const NORMAL_IDS = [
-  'reader_read_050', 'reader_read_100', 'reader_read_250', 'reader_read_500',
-  'reader_rating_025', 'reader_rating_050', 'reader_rating_100',
-  'reader_comment_025', 'reader_comment_050', 'reader_comment_100',
-  'reader_seed_025', 'reader_seed_050', 'reader_seed_100', 'reader_seed_250',
-  'reader_seed_500', 'reader_seed_1000',
-  'reader_bronze_seed_003', 'reader_bronze_seed_005', 'reader_bronze_seed_010',
-  'reader_silver_seed_003', 'reader_silver_seed_005', 'reader_silver_seed_010',
-  'reader_gold_seed_003', 'reader_gold_seed_005', 'reader_gold_seed_010',
-  'reader_discovery_plus2_005', 'reader_discovery_plus2_010',
-  'reader_discovery_plus2_025', 'reader_discovery_plus2_050', 'reader_discovery_plus2_100',
-  'reader_new_author_025', 'reader_new_author_050', 'reader_new_author_100',
-  'reader_genre_010', 'reader_genre_020', 'reader_genre_030',
-  'reader_new_work_010', 'reader_new_work_025',
-  'reader_low_rank_010', 'reader_low_rank_025',
-  'reader_series_complete_001', 'reader_series_complete_003', 'reader_series_complete_005',
-  'reader_completed_read_005', 'reader_completed_read_010',
-  'reader_active_days_030', 'reader_active_days_090', 'reader_level_030',
-  'reader_point_100', 'reader_point_500'
+const NORMAL_ARTWORK = [
+  ['reader_read_050', 'reader_read_050'],
+  ['reader_read_100', 'reader_read_100'],
+  ['reader_read_200', 'reader_read_250'],
+  ['reader_read_300', 'reader_read_500'],
+  ['reader_rating_025', 'reader_rating_025'],
+  ['reader_rating_050', 'reader_rating_050'],
+  ['reader_rating_100', 'reader_rating_100'],
+  ['reader_comment_025', 'reader_comment_025'],
+  ['reader_comment_050', 'reader_comment_050'],
+  ['reader_comment_100', 'reader_comment_100'],
+  ['reader_seed_025', 'reader_seed_025'],
+  ['reader_seed_050', 'reader_seed_050'],
+  ['reader_seed_100', 'reader_seed_100'],
+  ['reader_gold_seed_005', 'reader_seed_250'],
+  ['reader_silver_seed_010', 'reader_seed_500'],
+  ['reader_bronze_seed_015', 'reader_seed_1000'],
+  ['reader_discovery_plus2_005', 'reader_bronze_seed_003'],
+  ['reader_discovery_plus2_010', 'reader_bronze_seed_005'],
+  ['reader_discovery_plus2_020', 'reader_bronze_seed_010'],
+  ['reader_discovery_plus3_001', 'reader_silver_seed_003'],
+  ['reader_discovery_plus3_005', 'reader_silver_seed_005'],
+  ['reader_discovery_plus3_010', 'reader_silver_seed_010'],
+  ['reader_discovery_plus4_001', 'reader_gold_seed_003'],
+  ['reader_discovery_plus4_002', 'reader_gold_seed_005'],
+  ['reader_discovery_plus4_005', 'reader_gold_seed_010'],
+  ['reader_nova_001', 'reader_discovery_plus2_005'],
+  ['reader_nova_003', 'reader_discovery_plus2_010'],
+  ['reader_nova_005', 'reader_discovery_plus2_025'],
+  ['reader_new_author_025', 'reader_discovery_plus2_050'],
+  ['reader_new_author_050', 'reader_discovery_plus2_100'],
+  ['reader_new_author_100', 'reader_new_author_025'],
+  ['reader_low_rank_025', 'reader_new_author_050'],
+  ['reader_low_rank_050', 'reader_new_author_100'],
+  ['reader_low_rank_100', 'reader_genre_010'],
+  ['reader_new_work_025', 'reader_genre_020'],
+  ['reader_new_work_050', 'reader_genre_030'],
+  ['reader_new_work_100', 'reader_new_work_010'],
+  ['reader_genre_008', 'reader_new_work_025'],
+  ['reader_genre_010', 'reader_low_rank_010'],
+  ['reader_long_read_005', 'reader_low_rank_025'],
+  ['reader_long_read_010', 'reader_series_complete_001'],
+  ['reader_short_read_010', 'reader_series_complete_003'],
+  ['reader_short_read_025', 'reader_series_complete_005'],
+  ['reader_completed_read_005', 'reader_completed_read_005'],
+  ['reader_completed_read_010', 'reader_completed_read_010'],
+  ['reader_active_days_030', 'reader_active_days_030'],
+  ['reader_active_days_090', 'reader_active_days_090'],
+  ['reader_level_030', 'reader_level_030'],
+  ['reader_point_100', 'reader_point_100'],
+  ['reader_point_500', 'reader_point_500']
 ];
+
+const NORMAL_IDS = NORMAL_ARTWORK.map(([id]) => id);
+const NORMAL_ASSET_BY_ID = new Map(NORMAL_ARTWORK);
 
 const EXPECTED_SIZE = {
   easy: 384,
@@ -78,6 +113,9 @@ function pngGeometry(bytes) {
 }
 
 async function main() {
+  assert(NORMAL_IDS.length === 50, 'Expected 50 authoritative Reader Normal badge IDs.');
+  assert(new Set(NORMAL_IDS).size === 50, 'Reader Normal badge IDs must be unique.');
+
   const badgeRows = [
     ...EASY_IDS.map((id) => badgeRow(id, 'easy')),
     ...NORMAL_IDS.map((id) => badgeRow(id, 'normal'))
@@ -194,6 +232,8 @@ async function main() {
       const gridId = difficulty === 'easy' ? 'badgeGridEasy' : 'badgeGridNormal';
       const expectedSize = EXPECTED_SIZE[difficulty];
       for (const id of ids) {
+        const assetId = difficulty === 'normal' ? NORMAL_ASSET_BY_ID.get(id) : id;
+        assert(assetId, `Missing expected asset mapping for ${id}.`);
         const card = page.locator(`#${gridId} .badge-card[data-badge-id="${id}"]`);
         assert((await card.count()) === 1, `Expected one ${difficulty} badge card for ${id}.`);
         const image = card.locator('.badge-icon-artwork img');
@@ -233,16 +273,16 @@ async function main() {
           visual.display === 'none' ||
           visual.visibility === 'hidden' ||
           visual.opacity <= 0 ||
-          !new URL(visual.src).pathname.endsWith(`/assets/scout-badges/${id}.png`)
+          !new URL(visual.src).pathname.endsWith(`/assets/scout-badges/${assetId}.png`)
         ) {
-          visualFailures.push({ id, difficulty, expectedSize, ...visual });
+          visualFailures.push({ id, assetId, difficulty, expectedSize, ...visual });
         }
 
         const response = await context.request.get(visual.src, {
           headers: { 'cache-control': 'no-cache' }
         });
         const liveBytes = await response.body();
-        const localBytes = readFileSync(path.join(repoRoot, 'assets', 'scout-badges', `${id}.png`));
+        const localBytes = readFileSync(path.join(repoRoot, 'assets', 'scout-badges', `${assetId}.png`));
         const geometry = pngGeometry(liveBytes);
         const liveSha = sha256(liveBytes);
         const localSha = sha256(localBytes);
@@ -258,6 +298,7 @@ async function main() {
         ) {
           assetFailures.push({
             id,
+            assetId,
             difficulty,
             expectedSize,
             status: response.status(),
@@ -280,6 +321,8 @@ async function main() {
       easyCount: EASY_IDS.length,
       normalCount: NORMAL_IDS.length,
       totalCount: EASY_IDS.length + NORMAL_IDS.length,
+      normalAuthoritativeIdsMatch: true,
+      normalArtworkAssignmentsMatch: true,
       visualFailures: visualFailures.length,
       assetFailures: assetFailures.length,
       productionBytesMatchLocal: true,
