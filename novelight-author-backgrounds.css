@@ -1,3 +1,5 @@
+@import url("novelight-work-heading-unity.css");
+
 /* Decorative background art for Author Studio utility pages.
    Child pages inherit the artwork and visual language of the author entry page that leads to them. */
 
@@ -15,8 +17,8 @@ html body:is(.novelight-page-post,.novelight-page-my-novels,.novelight-page-seri
 html body:is(.novelight-page-series,.novelight-page-bulk-import,.novelight-page-episode-drafts,.novelight-page-episode-schedule,.novelight-page-share-link,.novelight-page-characters),html body.novelight-author-studio-shell:has(#collaborationList),html body.novelight-author-studio-shell:has(#workTitle){--nl-work-ink:#222;--nl-work-muted:#666;--nl-work-border:#d6d8df;--nl-work-primary:#3d2d20;--nl-work-accent:#6d4aff;color:var(--nl-work-ink)!important}
 html body:is(.novelight-page-series,.novelight-page-bulk-import,.novelight-page-episode-drafts,.novelight-page-episode-schedule,.novelight-page-share-link,.novelight-page-characters) main,html body.novelight-author-studio-shell:has(#collaborationList) main,html body.novelight-author-studio-shell:has(#workTitle) main{max-width:1000px!important;margin-inline:auto!important;padding:42px 22px 76px!important}
 
-/* Title area must look exactly like the unboxed heading on 自分の作品.
-   This explicitly removes legacy white rectangles/borders from page-head/hero wrappers. */
+/* Title area reset remains for the outer row/wrapper; the imported explicit heading
+   contract above applies the actual framed reading surface to the title block itself. */
 html body:is(.novelight-page-series,.novelight-page-bulk-import,.novelight-page-episode-drafts,.novelight-page-episode-schedule,.novelight-page-share-link,.novelight-page-characters) :is(.page-head,.head,.hero),html body.novelight-author-studio-shell:has(#collaborationList) :is(.page-head,.head,.hero),html body.novelight-author-studio-shell:has(#workTitle) :is(.page-head,.head,.hero){background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important;outline:0!important;max-width:none!important}
 html body:is(.novelight-page-series,.novelight-page-bulk-import,.novelight-page-episode-drafts,.novelight-page-episode-schedule,.novelight-page-share-link,.novelight-page-characters) :is(.page-head,.head,.hero) h1,html body.novelight-author-studio-shell:has(#collaborationList) :is(.page-head,.head,.hero) h1,html body.novelight-author-studio-shell:has(#workTitle) :is(.page-head,.head,.hero) h1{font-size:clamp(32px,4vw,52px)!important;line-height:1.15!important;color:#222!important;-webkit-text-fill-color:#222!important;background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
 html body:is(.novelight-page-series,.novelight-page-bulk-import,.novelight-page-episode-drafts,.novelight-page-episode-schedule,.novelight-page-share-link,.novelight-page-characters) :is(.page-head,.head,.hero) p,html body.novelight-author-studio-shell:has(#collaborationList) :is(.page-head,.head,.hero) p,html body.novelight-author-studio-shell:has(#workTitle) :is(.page-head,.head,.hero) p{font-size:20px!important;line-height:1.65!important;color:#6b7280!important;-webkit-text-fill-color:#6b7280!important;background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
