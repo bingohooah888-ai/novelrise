@@ -54,7 +54,7 @@ test('normal discovery and LIGHT SEED are server-side gated', () => {
 
   assert.match(migration, /novelight_is_general_discovery_work/);
   assert.match(migration, /SPECIAL_LIGHT_ZONE_LIGHT_SEED_DISABLED/);
-  assert.match(migration, /'reason', 'special_light_zone'/);
+  assert.match(migration, /''reason'', ''special_light_zone''/);
 });
 
 test('dedicated zones expose search, recommendation and ranking without LIGHT SEED', () => {
