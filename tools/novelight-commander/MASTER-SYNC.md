@@ -22,10 +22,13 @@ Project同期前に、取得したMASTERが少なくとも以下を満たすこ�
 
 - `NOVELIGHT MASTER` の正本タイトルがある
 - `最終更新` がある
-- `34. NLO / DC 絶対分離ルール` がある
-- `NLO = NOVELIGHT Commander` がある
-- `DC = Remote Desktop Commander / Desktop Commander` がある
+- NLO First Policy または明示的な NLO / DC 絶対分離ルールがある
+- NLOがNOVELIGHT Commanderであることを確認できる
+- NLOとRemote Desktop Commander / DCが別物であることを確認できる
+- DCのonline/offline状態だけでNLOの状態を判定しない境界がある
 - 想定外に短いファイルではない
+
+章番号や見出し番号そのものは検証条件にしません。正式な正本である `docs/NOVELIGHT-MASTER.md` の意味上の安全境界を検証し、過去のLibraryコピー固有の章番号へvalidatorを固定しません。
 
 検証に失敗した場合はProjectを変更しません。
 
