@@ -8,12 +8,9 @@ const expectedZipSha =
   'bd82a269fa8f793a1d7489dbf04f11eed9e7669bc203bf9592d3f72245b1a520';
 
 function readManifest() {
-  const lines = fs
-    .readFileSync(manifestPath, 'utf8')
-    .trim()
-    .split(/\r?\n/);
+  const lines = fs.readFileSync(manifestPath, 'utf8').trim().split(/\r?\n/);
   const headers = lines.shift().split(',');
-  return lines.map(line => {
+  return lines.map((line) => {
     const values = line.split(',');
     return Object.fromEntries(
       headers.map((key, index) => [key, values[index]])
@@ -27,8 +24,8 @@ test(
     const rows = readManifest();
     const script = fs.readFileSync('novelight-scout-record.js', 'utf8');
     assert.equal(rows.length, 25);
-    assert.equal(rows.filter(row => row.category === 'reader').length, 20);
-    assert.equal(rows.filter(row => row.category === 'author').length, 5);
+    assert.equal(rows.filter((row) => row.category === 'reader').length, 20);
+    assert.equal(rows.filter((row) => row.category === 'author').length, 5);
 
     for (const row of rows) {
       const bytes = fs.readFileSync(row.asset_path);
