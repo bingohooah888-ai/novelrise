@@ -203,6 +203,9 @@ async function capturePublicHeader(page) {
         boxShadow: style.boxShadow
       };
     };
+    const betaLinks = document.querySelectorAll(
+      'header.site-header a[href="beta-authors.html"]'
+    );
 
     return {
       viewport: {
@@ -220,14 +223,14 @@ async function capturePublicHeader(page) {
       signup: read('header.site-header .signup-action'),
       mobileMenu: read('header.site-header .mobile-menu'),
       mobileSummary: read('header.site-header .mobile-menu summary'),
-      betaLinkDisplays: Array.from(
-        document.querySelectorAll('header.site-header a[href="beta-authors.html"]')
-      ).map((element) => getComputedStyle(element).display)
+      betaLinkDisplays: Array.from(betaLinks).map(
+        (element) => getComputedStyle(element).display
+      )
     };
   });
 }
 
-test('SPECIAL LIGHT keeps the Home header geometry on desktop and mobile', async ({
+test('SPECIAL LIGHT header matches Home on desktop and mobile', async ({
   browser
 }) => {
   const viewports = [
@@ -241,18 +244,23 @@ test('SPECIAL LIGHT keeps the Home header geometry on desktop and mobile', async
     });
     const page = await context.newPage();
 
-    const homeResponse = await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    const homeResponse = await page.goto('/index.html', {
+      waitUntil: 'domcontentloaded'
+    });
     expect(homeResponse?.ok(), `${viewport.name}: Home should load`).toBeTruthy();
     const baseline = await capturePublicHeader(page);
     expect(
       baseline.betaLinkDisplays,
-      `${viewport.name}: legacy beta-author header links must be hidden on Home`
-    ).toEqual(baseline.betaLinkDisplays.map(() => 'none'));
+      `${viewport.name}: legacy beta-author header links must not remain on Home`
+    ).toEqual([]);
 
     const specialResponse = await page.goto('/special-light.html', {
       waitUntil: 'domcontentloaded'
     });
-    expect(specialResponse?.ok(), `${viewport.name}: SPECIAL LIGHT should load`).toBeTruthy();
+    expect(
+      specialResponse?.ok(),
+      `${viewport.name}: SPECIAL LIGHT should load`
+    ).toBeTruthy();
     expect(
       await capturePublicHeader(page),
       `${viewport.name}: special-light.html header must match Home exactly`
@@ -262,7 +270,10 @@ test('SPECIAL LIGHT keeps the Home header geometry on desktop and mobile', async
       const zoneResponse = await page.goto(`/special-zone.html?zone=${zone}`, {
         waitUntil: 'domcontentloaded'
       });
-      expect(zoneResponse?.ok(), `${viewport.name}: ${zone} zone should load`).toBeTruthy();
+      expect(
+        zoneResponse?.ok(),
+        `${viewport.name}: ${zone} zone should load`
+      ).toBeTruthy();
       expect(
         await capturePublicHeader(page),
         `${viewport.name}: ${zone} SPECIAL zone header must match Home exactly`
