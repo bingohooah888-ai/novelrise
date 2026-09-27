@@ -247,7 +247,10 @@ test('SPECIAL LIGHT header matches Home on desktop and mobile', async ({
     const homeResponse = await page.goto('/index.html', {
       waitUntil: 'domcontentloaded'
     });
-    expect(homeResponse?.ok(), `${viewport.name}: Home should load`).toBeTruthy();
+    expect(
+      homeResponse?.ok(),
+      `${viewport.name}: Home should load`
+    ).toBeTruthy();
     const baseline = await capturePublicHeader(page);
     expect(
       baseline.betaLinkDisplays,
