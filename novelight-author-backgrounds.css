@@ -15,7 +15,9 @@ html body:is(
   .novelight-page-episode-schedule,
   .novelight-page-share-link,
   .novelight-page-characters
-) {
+),
+html body.novelight-author-studio-shell:has(#collaborationList),
+html body.novelight-author-studio-shell:has(#workTitle) {
   --novelight-author-page-background: url("assets/author-backgrounds/author-bg-04.webp");
 }
 
@@ -47,6 +49,8 @@ html body:is(
   .novelight-page-analytics,
   .novelight-page-interaction-settings
 ),
+html body.novelight-author-studio-shell:has(#collaborationList),
+html body.novelight-author-studio-shell:has(#workTitle),
 html.novelight-page-author-notes body.novelight-author-studio-shell,
 html.novelight-page-account-settings body.novelight-author-studio-shell {
   background-color: #f7f4ed !important;
@@ -70,6 +74,8 @@ html body:is(
   .novelight-page-analytics,
   .novelight-page-interaction-settings
 ) > main,
+html body.novelight-author-studio-shell:has(#collaborationList) > main,
+html body.novelight-author-studio-shell:has(#workTitle) > main,
 html.novelight-page-author-notes body.novelight-author-studio-shell .author-shell > main,
 html.novelight-page-account-settings body.novelight-author-studio-shell .author-shell > main {
   background: transparent !important;
@@ -88,6 +94,8 @@ html.novelight-page-account-settings body.novelight-author-studio-shell .author-
     .novelight-page-analytics,
     .novelight-page-interaction-settings
   ),
+  html body.novelight-author-studio-shell:has(#collaborationList),
+  html body.novelight-author-studio-shell:has(#workTitle),
   html.novelight-page-author-notes body.novelight-author-studio-shell,
   html.novelight-page-account-settings body.novelight-author-studio-shell {
     background-attachment: scroll !important;
