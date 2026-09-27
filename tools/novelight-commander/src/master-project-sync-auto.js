@@ -66,6 +66,88 @@ function loadChromium(repoRoot) {
   return requireFromTests('@playwright/test').chromium;
 }
 
+async function collectProjectLinkCandidates(page, projectName) {
+  const target = normalize(projectName);
+  const exact = new Set();
+  const contains = new Set();
+  const links = page.locator('a[href*="/g/g-p-"]');
+  const count = Math.min(await links.count(), 300);
+  for (let index = 0; index < count; index += 1) {
+    const link = links.nth(index);
+    const href = await link.getAttribute('href').catch(() => null);
+    if (!href) continue;
+    const root = projectRootFromChatgptUrl(new URL(href, page.url()).toString());
+    if (!root) continue;
+    const label = normalize([
+      await link.innerText().catch(() => ''),
+      await link.getAttribute('aria-label').catch(() => ''),
+      await link.getAttribute('title').catch(() => '')
+    ].filter(Boolean).join(' '));
+    if (!label) continue;
+    if (label === target) exact.add(root);
+    else if (label.includes(target)) contains.add(root);
+  }
+  if (exact.size === 1) return [...exact][0];
+  if (!exact.size && contains.size === 1) return [...contains][0];
+  return null;
+}
+
+async function discoverProjectFromHome(context, projectName) {
+  const page = await context.newPage();
+  try {
+    await page.goto('https://chatgpt.com/', {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
+    await page.waitForTimeout(1200);
+
+    const sidebarOpeners = [
+      /Open sidebar/i,
+      /Show sidebar/i,
+      /サイドバーを開く/i,
+      /サイドバーを表示/i
+    ];
+    for (const pattern of sidebarOpeners) {
+      const button = page.getByRole('button', { name: pattern }).first();
+      if (await button.count() && await button.isVisible().catch(() => false)) {
+        await button.click().catch(() => {});
+        await page.waitForTimeout(500);
+        break;
+      }
+    }
+
+    let found = await collectProjectLinkCandidates(page, projectName);
+    if (found) return found;
+
+    const expanders = [
+      /^(Projects|プロジェクト)$/i,
+      /Show more/i,
+      /See more/i,
+      /もっと見る/i,
+      /すべて表示/i
+    ];
+    for (const pattern of expanders) {
+      const targets = [
+        page.getByRole('button', { name: pattern }).first(),
+        page.getByRole('link', { name: pattern }).first(),
+        page.getByText(pattern).first()
+      ];
+      for (const target of targets) {
+        if (!(await target.count())) continue;
+        if (!(await target.isVisible().catch(() => false))) continue;
+        await target.click().catch(() => {});
+        await page.waitForTimeout(700);
+        found = await collectProjectLinkCandidates(page, projectName);
+        if (found) return found;
+      }
+    }
+
+    return collectProjectLinkCandidates(page, projectName);
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
 async function discoverOpenProjectUrl({ repoRoot, cdpUrl, projectName }) {
   const endpoint = validateLocalCdpUrl(cdpUrl);
   if (!(await cdpAvailable(endpoint))) return null;
@@ -90,10 +172,16 @@ async function discoverOpenProjectUrl({ repoRoot, cdpUrl, projectName }) {
       }
     }
 
-    if (!roots.size) return null;
-    const ranked = [...roots.entries()].sort((a, b) => b[1] - a[1]);
-    if (ranked.length === 1) return ranked[0][0];
-    if (ranked[0][1] > ranked[1][1] && ranked[0][1] > 0) return ranked[0][0];
+    if (roots.size) {
+      const ranked = [...roots.entries()].sort((a, b) => b[1] - a[1]);
+      if (ranked.length === 1) return ranked[0][0];
+      if (ranked[0][1] > ranked[1][1] && ranked[0][1] > 0) return ranked[0][0];
+    }
+
+    for (const context of browser.contexts()) {
+      const fromHome = await discoverProjectFromHome(context, projectName);
+      if (fromHome) return fromHome;
+    }
     return null;
   } finally {
     await browser.close().catch(() => {});
