@@ -66,6 +66,19 @@ function loadChromium(repoRoot) {
   return requireFromTests('@playwright/test').chromium;
 }
 
+async function collectProjectRoots(page) {
+  const roots = new Set();
+  const links = page.locator('a[href*="/g/g-p-"]');
+  const count = Math.min(await links.count(), 300);
+  for (let index = 0; index < count; index += 1) {
+    const href = await links.nth(index).getAttribute('href').catch(() => null);
+    if (!href) continue;
+    const root = projectRootFromChatgptUrl(new URL(href, page.url()).toString());
+    if (root) roots.add(root);
+  }
+  return [...roots];
+}
+
 async function collectProjectLinkCandidates(page, projectName) {
   const target = normalize(projectName);
   const exact = new Set();
@@ -89,6 +102,38 @@ async function collectProjectLinkCandidates(page, projectName) {
   }
   if (exact.size === 1) return [...exact][0];
   if (!exact.size && contains.size === 1) return [...contains][0];
+  return null;
+}
+
+async function probeProjectRoots(context, roots, projectName) {
+  const candidates = [...new Set(roots)].slice(0, 40);
+  if (candidates.length === 1) return candidates[0];
+  if (!candidates.length) return null;
+
+  const target = normalize(projectName);
+  const scored = [];
+  const probe = await context.newPage();
+  try {
+    for (const root of candidates) {
+      await probe.goto(root, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+      await probe.waitForTimeout(600);
+      const title = normalize(await probe.title().catch(() => ''));
+      const body = normalize(
+        await probe.locator('body').innerText({ timeout: 1200 }).catch(() => '')
+      );
+      let score = 0;
+      if (title.includes(target)) score += 4;
+      if (body.includes(target)) score += 2;
+      if (body.includes('novelight-master')) score += 8;
+      if (score > 0) scored.push([root, score]);
+    }
+  } finally {
+    await probe.close().catch(() => {});
+  }
+
+  scored.sort((a, b) => b[1] - a[1]);
+  if (scored.length === 1) return scored[0][0];
+  if (scored.length > 1 && scored[0][1] > scored[1][1]) return scored[0][0];
   return null;
 }
 
@@ -142,7 +187,9 @@ async function discoverProjectFromHome(context, projectName) {
       }
     }
 
-    return collectProjectLinkCandidates(page, projectName);
+    const roots = await collectProjectRoots(page);
+    if (roots.length === 1) return roots[0];
+    return probeProjectRoots(context, roots, projectName);
   } finally {
     await page.close().catch(() => {});
   }
