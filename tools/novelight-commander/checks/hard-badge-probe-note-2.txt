@@ -1,0 +1,1 @@
+NLO operational bridge extension for local Hard badge provenance discovery.
