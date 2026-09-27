@@ -20,9 +20,7 @@ test('special-light zoning preserves R18 > R15 > AI > general precedence', async
   const r18 = sql.indexOf(
     "when p_content_rating = 'adult_18_nonsexual' then 'r18'"
   );
-  const r15 = sql.indexOf(
-    "when p_content_rating = 'sensitive_15' then 'r15'"
-  );
+  const r15 = sql.indexOf("when p_content_rating = 'sensitive_15' then 'r15'");
   const ai = sql.indexOf("when p_ai_usage = 'ai_generated' then 'ai'");
   const general = sql.indexOf("else 'general'");
 
@@ -42,7 +40,7 @@ test('ordinary discovery and LIGHT SEED are hardened server-side', async () => {
     'novelight_beta_rank_discovery_feed',
     'novelight_ranking_feed_v2',
     'light_seed_status_auto_v1',
-    'plant_light_seed_auto_v1',
+    'plant_light_seed_auto_v1'
   ]) {
     assert.ok(sql.includes(signature), `${signature} must be hardened`);
   }
@@ -65,7 +63,7 @@ test('public special-light navigation exposes AI, R15 and R18 zones', async () =
     readFile(landingPath, 'utf8'),
     readFile(zonePath, 'utf8'),
     readFile(homeLoaderPath, 'utf8'),
-    readFile(authContextPath, 'utf8'),
+    readFile(authContextPath, 'utf8')
   ]);
 
   assert.match(landing, /もうひとつの光を探す/);
