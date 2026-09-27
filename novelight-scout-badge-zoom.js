@@ -1,4 +1,99 @@
 (() => {
+  function installDeferredBadgeArtworkLoading() {
+    if (!('IntersectionObserver' in window)) return;
+
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      'src'
+    );
+    if (!descriptor?.get || !descriptor?.set || !descriptor.configurable) return;
+
+    const nativeSetSrc = descriptor.set;
+    const deferredAttribute = 'data-novelight-deferred-src';
+    const excludedIds = new Set([
+      'badgeDialogArtworkImage',
+      'badgeArtworkZoomImage'
+    ]);
+
+    const isBadgeArtworkSource = (value) => {
+      const source = String(value || '');
+      return (
+        /(?:^|\/)assets\/scout-badges\//.test(source) ||
+        /(?:^|\/)assets\/founding-authors-badge-2026\.png(?:$|[?#])/.test(source)
+      );
+    };
+
+    let observer;
+    const hydrate = (image) => {
+      const source = image.getAttribute(deferredAttribute);
+      if (!source) return;
+      image.removeAttribute(deferredAttribute);
+      observer?.unobserve(image);
+      nativeSetSrc.call(image, source);
+    };
+
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      ...descriptor,
+      set(value) {
+        if (
+          !excludedIds.has(this.id) &&
+          isBadgeArtworkSource(value)
+        ) {
+          this.setAttribute(deferredAttribute, String(value));
+          this.loading = 'lazy';
+          this.decoding = 'async';
+          if ('fetchPriority' in this) this.fetchPriority = 'low';
+          return;
+        }
+        nativeSetSrc.call(this, value);
+      }
+    });
+
+    const mobile = window.matchMedia('(max-width: 768px)').matches;
+    observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) hydrate(entry.target);
+        });
+      },
+      {
+        root: null,
+        rootMargin: mobile ? '240px 0px' : '640px 0px',
+        threshold: 0.01
+      }
+    );
+
+    const observeTree = (node) => {
+      if (!(node instanceof Element)) return;
+      if (node.matches(`img[${deferredAttribute}]`)) observer.observe(node);
+      node
+        .querySelectorAll(`img[${deferredAttribute}]`)
+        .forEach((image) => observer.observe(image));
+    };
+
+    const unobserveTree = (node) => {
+      if (!(node instanceof Element)) return;
+      if (node.matches(`img[${deferredAttribute}]`)) observer.unobserve(node);
+      node
+        .querySelectorAll(`img[${deferredAttribute}]`)
+        .forEach((image) => observer.unobserve(image));
+    };
+
+    const mutations = new MutationObserver((records) => {
+      records.forEach((record) => {
+        record.addedNodes.forEach(observeTree);
+        record.removedNodes.forEach(unobserveTree);
+      });
+    });
+    mutations.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+    observeTree(document.documentElement);
+  }
+
+  installDeferredBadgeArtworkLoading();
+
   const sourceHost = document.getElementById('badgeDialogArtwork');
   const sourceImage = document.getElementById('badgeDialogArtworkImage');
   const zoomDialog = document.getElementById('badgeArtworkZoomDialog');
