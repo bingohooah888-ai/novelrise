@@ -133,10 +133,14 @@ begin
       and s.novel_id_snapshot = p_novel_id
   ) into v_already_seeded;
 
+  -- Preserve the 2026-09-19 final fairness contract: historical rows that do
+  -- not contain server-clock foreground evidence must not unlock LIGHT SEED.
   select exists (
     select 1 from public.valid_read_events r
     where r.reader_id = v_uid
       and r.novel_id_snapshot = p_novel_id
+      and r.foreground_signal
+      and (r.progress_signal or r.interaction_signal)
   ) into v_has_valid_read;
 
   v_is_owner := v_author_id = v_uid;
@@ -231,10 +235,14 @@ begin
     raise exception using errcode = '23505', message = 'This reader has already LIGHT SEEDED this work';
   end if;
 
+  -- Re-check the hardened valid-read evidence at send time; status responses
+  -- are advisory only and must never be the authority for this mutation.
   select r.id into v_valid_read_id
   from public.valid_read_events r
   where r.reader_id = v_uid
     and r.novel_id_snapshot = p_novel_id
+    and r.foreground_signal
+    and (r.progress_signal or r.interaction_signal)
   order by r.qualified_at asc, r.id asc
   limit 1;
 
@@ -283,9 +291,12 @@ begin
     raise exception using errcode = '23514', message = 'LIGHT SEED required by this work is exhausted';
   end if;
 
+  -- Match the existing fairness-hardened v2 snapshot: self-favorites are not
+  -- counted even if a historical bypass row remains in the table.
   select count(*)::integer into v_favorites
   from public.favorites f
-  where f.novel_id::text = p_novel_id;
+  where f.novel_id::text = p_novel_id
+    and f.user_id <> v_author_id;
 
   update public.light_seed_monthly_inventory
   set gold_used = gold_used + case when v_seed_type = 'GOLD' then 1 else 0 end,
