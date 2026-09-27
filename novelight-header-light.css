@@ -332,3 +332,134 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu 
     height: 42px !important;
   }
 }
+
+/* Canonical public-dark header. Home and SPECIAL LIGHT must resolve to the
+   same visual header even if a page contains older local header overrides. */
+html body.novelight-public-dark header.site-header .public-header-inner {
+  display: flex !important;
+  width: min(1380px, calc(100% - 48px)) !important;
+  max-width: none !important;
+  min-height: 90px !important;
+  margin: auto !important;
+  padding: 0 !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 34px !important;
+}
+html body.novelight-public-dark header.site-header .logo {
+  display: inline-flex !important;
+  min-width: 250px !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex: 0 0 auto !important;
+  overflow: hidden !important;
+  line-height: 0 !important;
+}
+html body.novelight-public-dark header.site-header .logo img,
+html body.novelight-public-dark header.site-header .novelight-brand-logo-image {
+  display: block !important;
+  width: auto !important;
+  height: 58px !important;
+  max-width: 270px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  filter: invert(1) sepia(.78) saturate(3.2) hue-rotate(348deg) brightness(1.24) contrast(1.04) !important;
+  mix-blend-mode: screen !important;
+}
+html body.novelight-public-dark header.site-header .desktop-nav {
+  display: flex !important;
+  align-items: stretch !important;
+  align-self: stretch !important;
+  min-width: 0 !important;
+  gap: 30px !important;
+  margin-left: auto !important;
+}
+html body.novelight-public-dark header.site-header .desktop-nav a {
+  display: inline-flex !important;
+  align-items: center !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+}
+html body.novelight-public-dark header.site-header .header-actions {
+  display: flex !important;
+  align-items: center !important;
+  flex: 0 0 auto !important;
+  flex-wrap: nowrap !important;
+  gap: 11px !important;
+}
+html body.novelight-public-dark header.site-header a[href="beta-authors.html"] {
+  display: none !important;
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-public-dark header.site-header .public-header-inner {
+    width: calc(100% - 32px) !important;
+    min-height: 90px !important;
+    gap: 20px !important;
+  }
+  html body.novelight-public-dark header.site-header .logo {
+    min-width: 218px !important;
+  }
+  html body.novelight-public-dark header.site-header .logo img,
+  html body.novelight-public-dark header.site-header .novelight-brand-logo-image {
+    height: 50px !important;
+    max-width: 230px !important;
+  }
+  html body.novelight-public-dark header.site-header .desktop-nav {
+    display: flex !important;
+    gap: 18px !important;
+  }
+  html body.novelight-public-dark header.site-header .desktop-nav a {
+    font-size: 14px !important;
+  }
+  html body.novelight-public-dark header.site-header .signup-action {
+    display: inline-flex !important;
+  }
+  html body.novelight-public-dark header.site-header .mobile-menu {
+    display: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html body.novelight-public-dark header.site-header .public-header-inner {
+    display: flex !important;
+    width: calc(100% - 32px) !important;
+    min-height: 76px !important;
+    gap: 12px !important;
+  }
+  html body.novelight-public-dark header.site-header .logo {
+    min-width: 0 !important;
+  }
+  html body.novelight-public-dark header.site-header .logo img,
+  html body.novelight-public-dark header.site-header .novelight-brand-logo-image {
+    height: 46px !important;
+    max-width: 250px !important;
+  }
+  html body.novelight-public-dark header.site-header .desktop-nav,
+  html body.novelight-public-dark header.site-header .signup-action {
+    display: none !important;
+  }
+  html body.novelight-public-dark header.site-header .header-actions {
+    margin-left: auto !important;
+  }
+  html body.novelight-public-dark header.site-header .mobile-menu {
+    display: block !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body.novelight-public-dark header.site-header .public-header-inner {
+    width: calc(100% - 24px) !important;
+    min-height: 68px !important;
+    gap: 8px !important;
+  }
+  html body.novelight-public-dark header.site-header .logo img,
+  html body.novelight-public-dark header.site-header .novelight-brand-logo-image {
+    height: 40px !important;
+    max-width: 56vw !important;
+  }
+  html body.novelight-public-dark header.site-header .login-action {
+    display: none !important;
+  }
+}
