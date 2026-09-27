@@ -8,4 +8,4 @@ import './master-project-sync-bridge.js';
 import './master-auto-sync-daemon.js';
 import './author-badge-pack-probe-bridge.js';
 import './author-badge-production-reconcile-bridge.js';
-import './author-badge-register22-bridge.js';
+import './author-badge-register22-v2-bridge.js';
