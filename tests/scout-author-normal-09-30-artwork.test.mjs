@@ -118,6 +118,7 @@ const expected = [
   ]
 ];
 
+// prettier-ignore
 test(
   'Author Normal #9-#30 artwork keeps approved original bytes and UI mappings',
   () => {
