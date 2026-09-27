@@ -7,3 +7,4 @@ import './scout-badge-live-bridge.js';
 import './master-project-sync-bridge.js';
 import './author-badge-pack-probe-bridge.js';
 import './author-badge-production-reconcile-bridge.js';
+import './author-badge-register22-bridge.js';
