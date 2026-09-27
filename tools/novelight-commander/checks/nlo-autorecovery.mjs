@@ -60,7 +60,6 @@ test("GitHub Bridge exposes a fixed NLO autorecovery installer action", async ()
   assert.match(source, /install-nlo-autorecovery[.]ps1/);
 });
 
-
 test("NLO bridge supervisor distinguishes planned, normal, and failed exits", async () => {
   const runner = await read("run-github-bridge.ps1");
   const daemon = await read("src/github-bridge-daemon.js");
@@ -71,6 +70,17 @@ test("NLO bridge supervisor distinguishes planned, normal, and failed exits", as
   assert.match(runner, /\$MaxRestartDelaySeconds = 60/);
   assert.match(runner, /\$RestartDelaySeconds \* 2/);
   assert.match(daemon, /process[.]exit\(75\)/);
+});
+
+test("NLO bridge supervisor does not treat native stderr warnings as fatal", async () => {
+  const runner = await read("run-github-bridge.ps1");
+
+  assert.match(runner, /\$NodePath = \(Get-Command node -ErrorAction Stop\)[.]Source/);
+  assert.match(runner, /\$PreviousErrorActionPreference = \$ErrorActionPreference/);
+  assert.match(runner, /\$ErrorActionPreference = 'Continue'/);
+  assert.match(runner, /& \$NodePath \$DaemonPath \*>> \$LogPath/);
+  assert.match(runner, /\$ExitCode = \$LASTEXITCODE/);
+  assert.match(runner, /\$ErrorActionPreference = \$PreviousErrorActionPreference/);
 });
 
 test("GitHub Bridge configuration no longer installs a visible cmd startup launcher", async () => {
