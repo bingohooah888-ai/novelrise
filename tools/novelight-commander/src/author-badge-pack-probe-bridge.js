@@ -64,13 +64,21 @@ function parseRequest(comment) {
 
 function pngGeometry(bytes) {
   if (bytes.length < 24 || bytes.toString('hex', 0, 8) !== '89504e470d0a1a0a') return null;
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}
+
+async function inspectPng(filePath, stat) {
+  const bytes = await fs.readFile(filePath);
   return {
-    width: bytes.readUInt32BE(16),
-    height: bytes.readUInt32BE(20)
+    file: path.basename(filePath),
+    size: bytes.length,
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+    geometry: pngGeometry(bytes),
+    modifiedAt: stat.mtime.toISOString()
   };
 }
 
-async function inspectZip(filePath) {
+async function inspectZip(filePath, stat) {
   const bytes = await fs.readFile(filePath);
   const zip = await JSZip.loadAsync(bytes);
   const entries = Object.keys(zip.files).filter(name => !zip.files[name].dir).sort();
@@ -95,6 +103,7 @@ async function inspectZip(filePath) {
     file: path.basename(filePath),
     zipSize: bytes.length,
     zipSha256: createHash('sha256').update(bytes).digest('hex'),
+    modifiedAt: stat.mtime.toISOString(),
     entryCount: entries.length,
     pngCount: pngs.length,
     entries,
@@ -106,29 +115,53 @@ async function inspectZip(filePath) {
 async function runProbe() {
   const downloads = path.join(os.homedir(), 'Downloads');
   const rows = await fs.readdir(downloads, { withFileTypes: true });
-  const candidates = [];
+  const zipCandidates = [];
+  const pngCandidates = [];
+
   for (const row of rows) {
     if (!row.isFile()) continue;
-    if (!/^NOVELIGHT_Author_(Easy|Normal).*\.zip$/i.test(row.name)) continue;
     const full = path.join(downloads, row.name);
-    const stat = await fs.stat(full);
-    candidates.push({ full, name: row.name, mtimeMs: stat.mtimeMs });
-  }
-  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
-  const inspected = [];
-  for (const candidate of candidates.slice(0, 12)) {
-    try {
-      inspected.push(await inspectZip(candidate.full));
-    } catch (error) {
-      inspected.push({ file: candidate.name, error: error instanceof Error ? error.message : String(error) });
+    const lower = row.name.toLowerCase();
+    if (lower.endsWith('.zip') && /novelight|badge|hard|author|reader/i.test(row.name)) {
+      const stat = await fs.stat(full);
+      zipCandidates.push({ full, name: row.name, stat, mtimeMs: stat.mtimeMs });
+      continue;
+    }
+    if (lower.endsWith('.png')) {
+      const stat = await fs.stat(full);
+      pngCandidates.push({ full, name: row.name, stat, mtimeMs: stat.mtimeMs });
     }
   }
+
+  zipCandidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  pngCandidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+  const packs = [];
+  for (const candidate of zipCandidates.slice(0, 20)) {
+    try {
+      packs.push(await inspectZip(candidate.full, candidate.stat));
+    } catch (error) {
+      packs.push({ file: candidate.name, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  const recentPngs = [];
+  for (const candidate of pngCandidates.slice(0, 100)) {
+    try {
+      recentPngs.push(await inspectPng(candidate.full, candidate.stat));
+    } catch (error) {
+      recentPngs.push({ file: candidate.name, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
   return {
     nloRoute: 'github_bridge',
     remoteDesktopCommanderDependency: false,
-    downloads: downloads,
-    matchingZipCount: candidates.length,
-    packs: inspected
+    downloads,
+    matchingZipCount: zipCandidates.length,
+    packs,
+    recentPngCount: pngCandidates.length,
+    recentPngs
   };
 }
 
