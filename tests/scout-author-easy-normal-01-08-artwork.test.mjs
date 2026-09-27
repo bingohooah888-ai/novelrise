@@ -20,16 +20,32 @@ const expected = [
   ['author_chars_100k', '0f709511be4af5c568d84e6aad7b446682d1a7ebddbd09f1166fba48ee19b8c5', 1254, 1254]
 ];
 
-test('Author Easy + Normal #1-#8 artwork keeps approved bytes and UI mappings', () => {
-  const script = fs.readFileSync('novelight-scout-record.js', 'utf8');
-  assert.equal(expected.length, 13);
-  for (const [badgeId, expectedSha, width, height] of expected) {
-    const file = 'assets/scout-badges/' + badgeId + '.png';
-    const bytes = fs.readFileSync(file);
-    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', badgeId);
-    assert.equal(bytes.readUInt32BE(16), width, badgeId);
-    assert.equal(bytes.readUInt32BE(20), height, badgeId);
-    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), expectedSha, badgeId);
-    assert.ok(script.includes(badgeId + ": 'assets/scout-badges/" + badgeId + ".png'"), badgeId);
+test(
+  'Author Easy + Normal #1-#8 artwork keeps approved bytes and UI mappings',
+  () => {
+    const script = fs.readFileSync('novelight-scout-record.js', 'utf8');
+    assert.equal(expected.length, 13);
+    for (const [badgeId, expectedSha, width, height] of expected) {
+      const file = 'assets/scout-badges/' + badgeId + '.png';
+      const bytes = fs.readFileSync(file);
+      assert.equal(
+        bytes.subarray(0, 8).toString('hex'),
+        '89504e470d0a1a0a',
+        badgeId
+      );
+      assert.equal(bytes.readUInt32BE(16), width, badgeId);
+      assert.equal(bytes.readUInt32BE(20), height, badgeId);
+      assert.equal(
+        crypto.createHash('sha256').update(bytes).digest('hex'),
+        expectedSha,
+        badgeId
+      );
+      assert.ok(
+        script.includes(
+          badgeId + ": 'assets/scout-badges/" + badgeId + ".png'"
+        ),
+        badgeId
+      );
+    }
   }
-});
+);
