@@ -130,11 +130,11 @@ body.novelight-page-post
   display: block;
 }
 
-/* SPECIAL LIGHT must use the exact public-home header treatment.
-   Older page-local prototype rules are more specific and can force the header back
-   to the ivory legacy surface, so these selectors intentionally outrank them. */
-html body.novelight-public-dark:has(.special-light-main) .site-header,
-html body.novelight-public-dark:has(.zone-main) .site-header {
+/* Public header single-source visual contract.
+   Home and SPECIAL LIGHT use the same markup classes and must resolve to exactly the
+   same computed header treatment. These high-specificity rules intentionally outrank
+   the older page-local SPECIAL LIGHT prototype rules. */
+html body.novelight-public-dark .site-header {
   position: sticky !important;
   top: 0 !important;
   z-index: 50 !important;
@@ -143,8 +143,7 @@ html body.novelight-public-dark:has(.zone-main) .site-header {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
   backdrop-filter: blur(16px) !important;
 }
-html body.novelight-public-dark:has(.special-light-main) .public-header-inner,
-html body.novelight-public-dark:has(.zone-main) .public-header-inner {
+html body.novelight-public-dark .public-header-inner {
   display: flex !important;
   width: min(1380px, calc(100% - 48px)) !important;
   min-height: 90px !important;
@@ -154,8 +153,7 @@ html body.novelight-public-dark:has(.zone-main) .public-header-inner {
   gap: 34px !important;
   flex-wrap: nowrap !important;
 }
-html body.novelight-public-dark:has(.special-light-main) .logo,
-html body.novelight-public-dark:has(.zone-main) .logo {
+html body.novelight-public-dark .logo {
   display: inline-flex !important;
   min-width: 250px !important;
   flex: 0 0 auto !important;
@@ -164,8 +162,8 @@ html body.novelight-public-dark:has(.zone-main) .logo {
   overflow: hidden !important;
   line-height: 0 !important;
 }
-html body.novelight-public-dark:has(.special-light-main) .logo img,
-html body.novelight-public-dark:has(.zone-main) .logo img {
+html body.novelight-public-dark .logo img,
+html body.novelight-public-dark .novelight-brand-logo-image {
   display: block !important;
   width: auto !important;
   height: 58px !important;
@@ -175,16 +173,15 @@ html body.novelight-public-dark:has(.zone-main) .logo img {
   filter: invert(1) sepia(.78) saturate(3.2) hue-rotate(348deg) brightness(1.24) contrast(1.04) !important;
   mix-blend-mode: screen !important;
 }
-html body.novelight-public-dark:has(.special-light-main) .desktop-nav,
-html body.novelight-public-dark:has(.zone-main) .desktop-nav {
+html body.novelight-public-dark .desktop-nav {
   display: flex !important;
   align-items: stretch !important;
   align-self: stretch !important;
   gap: 30px !important;
   margin-left: auto !important;
 }
-html body.novelight-public-dark:has(.special-light-main) .desktop-nav a,
-html body.novelight-public-dark:has(.zone-main) .desktop-nav a {
+html body.novelight-public-dark .desktop-nav a {
+  position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
   color: #d8dce3 !important;
@@ -193,80 +190,90 @@ html body.novelight-public-dark:has(.zone-main) .desktop-nav a {
   letter-spacing: .035em !important;
   white-space: nowrap !important;
 }
-html body.novelight-public-dark:has(.special-light-main) .header-actions,
-html body.novelight-public-dark:has(.zone-main) .header-actions {
+html body.novelight-public-dark .header-actions {
   display: flex !important;
   flex: 0 0 auto !important;
   align-items: center !important;
   gap: 11px !important;
   flex-wrap: nowrap !important;
 }
-html body.novelight-public-dark:has(.special-light-main) .header-search,
-html body.novelight-public-dark:has(.zone-main) .header-search {
+html body.novelight-public-dark .header-search {
+  display: grid !important;
   width: 44px !important;
   height: 44px !important;
+  place-items: center !important;
   color: #f0cb72 !important;
   font-size: 28px !important;
+  line-height: 1 !important;
 }
-html body.novelight-public-dark:has(.special-light-main) .btn,
-html body.novelight-public-dark:has(.zone-main) .btn {
+html body.novelight-public-dark .btn {
   min-height: 46px !important;
   padding: 10px 19px !important;
   font-size: 15px !important;
   font-weight: 700 !important;
   letter-spacing: .025em !important;
 }
-html body.novelight-public-dark:has(.special-light-main) .btn-outline,
-html body.novelight-public-dark:has(.zone-main) .btn-outline {
-  border: 1px solid rgba(255,255,255,.15) !important;
-  background: transparent !important;
-  color: #f3efe7 !important;
-}
-html body.novelight-public-dark:has(.special-light-main) .btn-primary,
-html body.novelight-public-dark:has(.zone-main) .btn-primary {
-  border: 1px solid #e0ae4c !important;
-  background: linear-gradient(135deg, #b87a17, #e2ad43) !important;
-  color: #0b1018 !important;
-}
-html body.novelight-public-dark:has(.special-light-main) a[href="beta-authors.html"],
-html body.novelight-public-dark:has(.zone-main) a[href="beta-authors.html"] {
+html body.novelight-public-dark .site-header a[href="beta-authors.html"] {
   display: none !important;
 }
 
+@media (max-width: 1180px) {
+  html body.novelight-public-dark .public-header-inner { gap: 20px !important; }
+  html body.novelight-public-dark .logo { min-width: 218px !important; }
+  html body.novelight-public-dark .logo img,
+  html body.novelight-public-dark .novelight-brand-logo-image {
+    height: 50px !important;
+    max-width: 230px !important;
+  }
+  html body.novelight-public-dark .desktop-nav { gap: 18px !important; }
+  html body.novelight-public-dark .desktop-nav a { font-size: 14px !important; }
+  html body.novelight-public-dark .btn {
+    padding-inline: 14px !important;
+    font-size: 14px !important;
+  }
+}
+
 @media (max-width: 900px) {
-  html body.novelight-public-dark:has(.special-light-main) .desktop-nav,
-  html body.novelight-public-dark:has(.zone-main) .desktop-nav,
-  html body.novelight-public-dark:has(.special-light-main) .signup-action,
-  html body.novelight-public-dark:has(.zone-main) .signup-action {
+  html body.novelight-public-dark .public-header-inner { min-height: 76px !important; }
+  html body.novelight-public-dark .logo { min-width: 0 !important; }
+  html body.novelight-public-dark .logo img,
+  html body.novelight-public-dark .novelight-brand-logo-image {
+    height: 46px !important;
+    max-width: 250px !important;
+  }
+  html body.novelight-public-dark .desktop-nav,
+  html body.novelight-public-dark .signup-action {
     display: none !important;
   }
-  html body.novelight-public-dark:has(.special-light-main) .mobile-menu,
-  html body.novelight-public-dark:has(.zone-main) .mobile-menu {
+  html body.novelight-public-dark .mobile-menu {
+    position: relative !important;
+    z-index: 60 !important;
     display: block !important;
   }
-  html body.novelight-public-dark:has(.special-light-main) .header-actions,
-  html body.novelight-public-dark:has(.zone-main) .header-actions {
+  html body.novelight-public-dark .header-actions {
     margin-left: auto !important;
   }
 }
+
 @media (max-width: 640px) {
-  html body.novelight-public-dark:has(.special-light-main) .public-header-inner,
-  html body.novelight-public-dark:has(.zone-main) .public-header-inner {
+  html body.novelight-public-dark .public-header-inner {
     width: calc(100% - 24px) !important;
-    min-height: 62px !important;
+    min-height: 68px !important;
     gap: 8px !important;
   }
-  html body.novelight-public-dark:has(.special-light-main) .logo,
-  html body.novelight-public-dark:has(.zone-main) .logo {
-    min-width: 0 !important;
+  html body.novelight-public-dark .logo img,
+  html body.novelight-public-dark .novelight-brand-logo-image {
+    height: 40px !important;
+    max-width: 56vw !important;
   }
-  html body.novelight-public-dark:has(.special-light-main) .logo img,
-  html body.novelight-public-dark:has(.zone-main) .logo img {
-    height: 34px !important;
-    max-width: 45vw !important;
-  }
-  html body.novelight-public-dark:has(.special-light-main) .login-action,
-  html body.novelight-public-dark:has(.zone-main) .login-action {
+  html body.novelight-public-dark .login-action {
     display: none !important;
+  }
+}
+
+@media (max-width: 380px) {
+  html body.novelight-public-dark .logo img,
+  html body.novelight-public-dark .novelight-brand-logo-image {
+    max-width: 62vw !important;
   }
 }
