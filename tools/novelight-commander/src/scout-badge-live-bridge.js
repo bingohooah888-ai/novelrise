@@ -232,12 +232,16 @@ async function processPendingRequest() {
       result?.result !== 'PASS' ||
       result?.easyCount !== 30 ||
       result?.normalCount !== 50 ||
-      result?.totalCount !== 80 ||
+      result?.hardCount !== 25 ||
+      result?.readerHardCount !== 20 ||
+      result?.authorHardCount !== 5 ||
+      result?.totalCount !== 105 ||
       result?.visualFailures !== 0 ||
       result?.assetFailures !== 0 ||
       result?.productionBytesMatchLocal !== true ||
       result?.pngGeometry?.easy !== '384x384' ||
-      result?.pngGeometry?.normal !== '1254x1254'
+      result?.pngGeometry?.normal !== '1254x1254' ||
+      result?.pngGeometry?.hard !== '24x1254x1254 + 1x1536x1536'
     ) {
       throw new Error(
         'SCOUT live verification returned an incomplete PASS payload: ' +
@@ -253,9 +257,13 @@ async function processPendingRequest() {
         'page: ' + result.page,
         'reader_easy_live_render: 30/30 PASS',
         'reader_normal_live_render: 50/50 PASS',
-        'production_asset_sha_match_local: 80/80 PASS',
+        'hard_live_render: 25/25 PASS',
+        'reader_hard_live_render: 20/20 PASS',
+        'author_hard_live_render: 5/5 PASS',
+        'production_asset_sha_match_local: 105/105 PASS',
         'production_png_geometry_easy: 384x384',
         'production_png_geometry_normal: 1254x1254',
+        'production_png_geometry_hard: 24x1254x1254 + 1x1536x1536',
         'visual_failures: 0',
         'asset_failures: 0',
         'result: PASS'
