@@ -37,6 +37,7 @@ test('ordinary discovery and LIGHT SEED are hardened server-side', async () => {
     'novelight_discovery_feed_v2',
     'novelight_plan_extra_feed',
     'novelight_neutral_search',
+    'novelight_neutral_search_v2',
     'novelight_light_seed_feed',
     'novelight_beta_rank_discovery_feed',
     'novelight_ranking_feed_v2',
