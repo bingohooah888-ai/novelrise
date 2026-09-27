@@ -6,3 +6,4 @@ import './x-bridge-daemon.js';
 import './scout-badge-live-bridge.js';
 import './master-project-sync-bridge.js';
 import './author-badge-pack-probe-bridge.js';
+import './author-badge-production-reconcile-bridge.js';
