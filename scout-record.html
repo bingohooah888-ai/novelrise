@@ -10,6 +10,21 @@
   <link rel="stylesheet" href="novelight-accessibility.css">
   <link rel="stylesheet" href="novelight-scout-record.css">
   <link rel="stylesheet" href="novelight-scout-badge-zoom.css">
+  <style>
+    .scout-hero-copy .scout-rank-title {
+      text-align: center;
+    }
+
+    .scout-hero-copy .scout-rank-line {
+      justify-content: center;
+      text-align: center;
+    }
+
+    .scout-hero-copy .scout-rank-line strong {
+      width: 100%;
+      text-align: center;
+    }
+  </style>
 </head>
 <body class="novelight-theme novelight-page-scout-record">
   <a class="skip-link" href="#main-content">本文へスキップ</a>
@@ -27,10 +42,9 @@
 
     <section class="scout-hero" aria-label="現在のScout Rankと成長状況">
       <div class="scout-hero-copy">
-        <div class="scout-kicker">CURRENT SCOUT RANK</div>
+        <div class="scout-kicker scout-rank-title">SCOUT RANK</div>
         <div class="scout-rank-line">
-          <strong id="rankName">SCOUT RANK —</strong>
-          <span id="rankLevel">Lv.—</span>
+          <strong id="rankName">—</strong>
         </div>
         <div class="scout-xp-meta">
           <span>Scout XP <b id="xpNow">—</b></span>
@@ -47,14 +61,12 @@
 
       <div class="scout-emblem-wrap">
         <div id="rankEmblem" class="scout-emblem" aria-hidden="true">—</div>
-        <div class="scout-emblem-caption">DISCOVERY COMPASS</div>
       </div>
 
       <div class="scout-point-card">
         <div>
           <div class="label">SCOUT POINT</div>
           <strong><span id="pointBalance">—</span> pt</strong>
-          <div class="scout-point-month">今月 <b id="monthPoint">—</b> / 確認中 <b id="pendingPoint">—</b> pt</div>
         </div>
         <small>正式リリース後、AI利用特典への交換を予定。交換条件・円換算価値は正式リリース時に案内します。</small>
       </div>
@@ -233,6 +245,24 @@
   <script src="novelight-client.js"></script>
   <script src="novelight-author-studio-shell.js"></script>
   <script src="novelight-scout-record.js"></script>
+  <script>
+    (() => {
+      const rankName = document.getElementById('rankName');
+      if (!rankName) return;
+
+      const normalizeRankName = () => {
+        const normalized = rankName.textContent.replace(/^SCOUT RANK\s*—\s*/u, '');
+        if (normalized !== rankName.textContent) rankName.textContent = normalized;
+      };
+
+      normalizeRankName();
+      new MutationObserver(normalizeRankName).observe(rankName, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    })();
+  </script>
   <script src="novelight-scout-badge-zoom.js"></script>
 </body>
 </html>
