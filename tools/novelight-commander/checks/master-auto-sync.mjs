@@ -30,13 +30,16 @@ test('read-only auto sync status bridge is loaded by NLO bridge daemon', async (
   assert.equal(statusBridge.includes('rm('), false);
 });
 
-test('scoped profile repair only targets the dedicated NLO ChatGPT profile', async () => {
+test('scoped profile repair v2 passes the target through a fixed environment variable', async () => {
   const daemon = await readFile('src/github-bridge-daemon.js');
-  const repair = await readFile('src/master-profile-repair-bridge.js');
-  assert.equal(daemon.includes("import './master-profile-repair-bridge.js';"), true);
+  const repair = await readFile('src/master-profile-repair-bridge-v2.js');
+  assert.equal(daemon.includes("import './master-profile-repair-bridge-v2.js';"), true);
+  assert.equal(daemon.includes("import './master-profile-repair-bridge.js';"), false);
   assert.equal(repair.includes("REQUEST_PREFIX = 'NOVELIGHT_MASTER_REPAIR_REQUEST '"), true);
   assert.equal(repair.includes("CONFIRMATION = 'RELEASE_STALE_NLO_MASTER_PROFILE'"), true);
   assert.equal(repair.includes("path.join(config.dataRoot, 'chatgpt-browser-profile')"), true);
+  assert.equal(repair.includes('NLO_MASTER_PROFILE_REPAIR_TARGET: profile'), true);
+  assert.equal(repair.includes('$env:NLO_MASTER_PROFILE_REPAIR_TARGET'), true);
   assert.equal(repair.includes("Name = 'chrome.exe'"), true);
   assert.equal(repair.includes("'--user-data-dir=' + $Profile"), true);
   assert.equal(repair.includes('Stop-Process -Id $processId -Force'), true);
