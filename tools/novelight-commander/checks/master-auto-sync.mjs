@@ -24,6 +24,21 @@ test('auto sync follows MASTER content changes', async () => {
   assert.equal(text.includes('DEFAULT_POLL_MS = 2 * 60 * 1000'), true);
 });
 
+test('auto sync never launches a visible ChatGPT browser', async () => {
+  const watcher = await readFile('src/master-auto-sync-daemon.js');
+  const background = await readFile('src/master-project-sync-background.js');
+  assert.equal(
+    watcher.includes("from './master-project-sync-background.js'"),
+    true
+  );
+  assert.equal(watcher.includes('syncMasterToChatgptProjectInBackground'), true);
+  assert.equal(watcher.includes('uiLaunchAllowed: false'), true);
+  assert.equal(background.includes('headless: true'), true);
+  assert.equal(background.includes('headless: false'), false);
+  assert.equal(background.includes("'--no-first-run'"), true);
+  assert.equal(background.includes('DEFERRED_PROFILE_BUSY'), true);
+});
+
 test('auto sync serializes Project mutations', async () => {
   const watcher = await readFile('src/master-auto-sync-daemon.js');
   const lock = await readFile('src/master-project-sync-lock.js');
