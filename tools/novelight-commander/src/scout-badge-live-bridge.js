@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,15 +9,32 @@ const ISSUE_NUMBER = 797;
 const REQUEST_PREFIX = 'NOVELIGHT_SCOUT_LIVE_VERIFY_REQUEST ';
 const RESULT_PREFIX = 'NOVELIGHT_SCOUT_LIVE_VERIFY_RESULT_V1';
 const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9][A-Za-z0-9_-]{2,63}$/;
-const MAX_OUTPUT = 16000;
+const MAX_OUTPUT = 32000;
 const repoRoot = path.resolve(fileURLToPath(new URL('../../..', import.meta.url)));
+const verifierPath = path.join(
+  repoRoot,
+  'tools',
+  'novelight-commander',
+  'scripts',
+  'scout-badge-live-verify.mjs'
+);
+const playwrightPackagePath = path.join(
+  repoRoot,
+  'tests',
+  'e2e',
+  'node_modules',
+  '@playwright',
+  'test',
+  'package.json'
+);
 
 function bounded(value, limit = MAX_OUTPUT) {
   const text = String(value || '').replace(
     /((?:TOKEN|API_KEY|SECRET|PASSWORD)\s*[=:]\s*)[^\s\"'\r\n]+/gi,
     '$1[REDACTED]'
   );
-  return text.length > limit ? text.slice(0, limit) + '\n[truncated]' : text;
+  if (text.length <= limit) return text;
+  return '[truncated]\n' + text.slice(-limit);
 }
 
 function token() {
@@ -40,13 +58,17 @@ async function githubApi(method, apiPath, body) {
   const text = await response.text();
   const payload = text ? JSON.parse(text) : null;
   if (!response.ok) {
-    throw new Error(`GitHub API ${response.status} ${method} ${apiPath}: ${payload?.message || response.statusText}`);
+    throw new Error(
+      `GitHub API ${response.status} ${method} ${apiPath}: ${payload?.message || response.statusText}`
+    );
   }
   return payload;
 }
 
 function parseRequest(comment) {
-  if (comment?.user?.login !== OWNER || comment?.author_association !== 'OWNER') return null;
+  if (comment?.user?.login !== OWNER || comment?.author_association !== 'OWNER') {
+    return null;
+  }
   const body = String(comment.body || '');
   if (!body.startsWith(REQUEST_PREFIX)) return null;
   const request = JSON.parse(body.slice(REQUEST_PREFIX.length));
@@ -59,33 +81,18 @@ function parseRequest(comment) {
     Array.isArray(request.args) ||
     Object.keys(request.args).length !== 0
   ) {
-    throw new Error('SCOUT live verification request does not match the fixed read-only contract.');
+    throw new Error(
+      'SCOUT live verification request does not match the fixed read-only contract.'
+    );
   }
   return request;
 }
 
-function runPlaywright() {
-  const playwrightArgs = [
-    '--prefix',
-    'tests/e2e',
-    'exec',
-    '--',
-    'playwright',
-    'test',
-    'production/scout-badge-artwork-live.spec.js',
-    '--config=playwright.production.config.mjs',
-    '--project=production-chromium',
-    '--reporter=line'
-  ];
-  const executable = process.platform === 'win32' ? process.env.ComSpec || 'cmd.exe' : 'npm';
-  const args = process.platform === 'win32'
-    ? ['/d', '/s', '/c', 'npm.cmd', ...playwrightArgs]
-    : playwrightArgs;
-
+function runCommand(executable, args, timeoutMs, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
       cwd: repoRoot,
-      shell: false,
+      shell: Boolean(options.shell),
       windowsHide: true,
       env: process.env
     });
@@ -96,9 +103,9 @@ function runPlaywright() {
       child.kill();
       if (!settled) {
         settled = true;
-        reject(new Error('SCOUT live verification timed out after 600000ms.'));
+        reject(new Error(`Command timed out after ${timeoutMs}ms.`));
       }
-    }, 600000);
+    }, timeoutMs);
     child.stdout?.on('data', (chunk) => {
       stdout = bounded(stdout + chunk.toString());
     });
@@ -120,6 +127,49 @@ function runPlaywright() {
       }
     });
   });
+}
+
+async function ensurePlaywrightDependencies() {
+  if (existsSync(playwrightPackagePath)) return;
+  const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const result = await runCommand(
+    npmExecutable,
+    ['--prefix', 'tests/e2e', 'ci'],
+    300000,
+    { shell: process.platform === 'win32' }
+  );
+  if (result.code !== 0 || !existsSync(playwrightPackagePath)) {
+    throw new Error(
+      'Unable to install locked Playwright dependencies.\n' +
+        bounded(result.stderr || result.stdout, 8000)
+    );
+  }
+}
+
+async function runVerifier() {
+  await ensurePlaywrightDependencies();
+  const run = await runCommand(process.execPath, [verifierPath], 600000);
+  if (run.code !== 0) {
+    throw new Error(
+      `SCOUT live verifier exited ${run.code}.\nstdout:\n${bounded(run.stdout, 10000)}\nstderr:\n${bounded(run.stderr, 8000)}`
+    );
+  }
+  const marker = run.stdout
+    .split(/\r?\n/)
+    .find((line) => line.includes('SCOUT_BADGE_LIVE_RESULT '));
+  if (!marker) {
+    throw new Error(
+      'SCOUT live verifier completed without a result marker.\n' +
+        bounded(run.stdout, 12000)
+    );
+  }
+  const jsonText = marker
+    .slice(
+      marker.indexOf('SCOUT_BADGE_LIVE_RESULT ') +
+        'SCOUT_BADGE_LIVE_RESULT '.length
+    )
+    .trim();
+  return JSON.parse(jsonText);
 }
 
 async function postResult(request, status, details) {
@@ -153,9 +203,14 @@ async function processPendingRequest() {
   for (const comment of comments || []) {
     try {
       const request = parseRequest(comment);
-      if (request) requests.push({ request, commentId: Number(comment.id) });
+      if (request) {
+        requests.push({ request, commentId: Number(comment.id) });
+      }
     } catch (error) {
-      console.error('[NLO scout-live] invalid request:', error instanceof Error ? error.message : String(error));
+      console.error(
+        '[NLO scout-live] invalid request:',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
   if (!requests.length) return;
@@ -164,22 +219,15 @@ async function processPendingRequest() {
 
   const alreadyCompleted = (comments || []).some((comment) => {
     const body = String(comment.body || '');
-    return body.startsWith(RESULT_PREFIX) && body.includes(`- request_id: \`${target.requestId}\``);
+    return (
+      body.startsWith(RESULT_PREFIX) &&
+      body.includes(`- request_id: \`${target.requestId}\``)
+    );
   });
   if (alreadyCompleted) return;
 
   try {
-    const run = await runPlaywright();
-    const marker = run.stdout
-      .split(/\r?\n/)
-      .find((line) => line.includes('SCOUT_BADGE_LIVE_RESULT '));
-    if (run.code !== 0 || !marker) {
-      throw new Error(
-        `Playwright exited ${run.code}.\nstdout:\n${bounded(run.stdout, 8000)}\nstderr:\n${bounded(run.stderr, 4000)}`
-      );
-    }
-    const jsonText = marker.slice(marker.indexOf('SCOUT_BADGE_LIVE_RESULT ') + 'SCOUT_BADGE_LIVE_RESULT '.length).trim();
-    const result = JSON.parse(jsonText);
+    const result = await runVerifier();
     if (
       result?.result !== 'PASS' ||
       result?.easyCount !== 30 ||
@@ -189,7 +237,10 @@ async function processPendingRequest() {
       result?.assetFailures !== 0 ||
       result?.productionBytesMatchLocal !== true
     ) {
-      throw new Error('SCOUT live verification returned an incomplete PASS payload: ' + jsonText);
+      throw new Error(
+        'SCOUT live verification returned an incomplete PASS payload: ' +
+          JSON.stringify(result)
+      );
     }
     await postResult(
       target,
