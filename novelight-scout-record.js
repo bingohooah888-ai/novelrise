@@ -151,7 +151,20 @@
     author_seed_received_010: 'assets/scout-badges/author_seed_received_010.png',
     author_seed_received_050: 'assets/scout-badges/author_seed_received_050.png',
     author_discovered_plus2_001: 'assets/scout-badges/author_discovered_plus2_001.png',
-    author_discovered_plus3_001: 'assets/scout-badges/author_discovered_plus3_001.png'
+    author_discovered_plus3_001: 'assets/scout-badges/author_discovered_plus3_001.png',
+    author_novel_001: 'assets/scout-badges/author_novel_001.png',
+    author_episode_001: 'assets/scout-badges/author_episode_001.png',
+    author_reader_001: 'assets/scout-badges/author_reader_001.png',
+    author_favorite_001: 'assets/scout-badges/author_favorite_001.png',
+    author_comment_001: 'assets/scout-badges/author_comment_001.png',
+    author_episode_010: 'assets/scout-badges/author_episode_010.png',
+    author_episode_025: 'assets/scout-badges/author_episode_025.png',
+    author_episode_050: 'assets/scout-badges/author_episode_050.png',
+    author_episode_100: 'assets/scout-badges/author_episode_100.png',
+    author_episode_250: 'assets/scout-badges/author_episode_250.png',
+    author_chars_010k: 'assets/scout-badges/author_chars_010k.png',
+    author_chars_050k: 'assets/scout-badges/author_chars_050k.png',
+    author_chars_100k: 'assets/scout-badges/author_chars_100k.png'
   };
 
   let badgeRows = [];
