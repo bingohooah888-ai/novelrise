@@ -9,3 +9,4 @@ import './master-auto-sync-daemon.js';
 import './author-badge-pack-probe-bridge.js';
 import './author-badge-production-reconcile-bridge.js';
 import './author-badge-register22-v2-bridge.js';
+import './author-badge-register22-format-bridge.js';
