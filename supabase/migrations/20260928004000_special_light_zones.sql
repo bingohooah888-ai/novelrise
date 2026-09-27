@@ -66,6 +66,7 @@ begin
     'public.novelight_discovery_feed_v2(text,integer,text,text,text)',
     'public.novelight_plan_extra_feed(integer,text[],text)',
     'public.novelight_neutral_search(text,text,text,integer,integer)',
+    'public.novelight_neutral_search_v2(text,text,text[],text,integer,integer)',
     'public.novelight_light_seed_feed(integer,integer)',
     'public.novelight_beta_rank_discovery_feed(text,integer,text)',
     'public.novelight_ranking_feed_v2(text,integer)',
