@@ -234,6 +234,6 @@ test('final fairness migration requires server-clock reading evidence', () => {
 test('beta terms are presented as an active beta document, not a draft', () => {
   const terms = read('terms.html');
   assert.doesNotMatch(terms, /β版ドラフト/);
-  assert.match(terms, /最終改定日：2026年9月19日 \/ β版/);
+  assert.match(terms, /最終改定日：2026年9月27日 \/ β版/);
   assert.match(terms, /作者本人は自作品をお気に入り登録できません/);
 });
