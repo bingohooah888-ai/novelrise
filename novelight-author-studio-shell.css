@@ -35,7 +35,11 @@ body.novelight-author-studio-shell .studio-sidebar {
   z-index: 60;
   width: 244px;
   padding: 24px 18px 22px;
+  overflow-x: hidden;
   overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  overscroll-behavior-y: contain;
   border-right: 1px solid rgba(216, 180, 90, 0.42);
   background:
     linear-gradient(180deg, rgba(1, 11, 25, 0.18), rgba(1, 11, 25, 0.46)),
@@ -43,6 +47,12 @@ body.novelight-author-studio-shell .studio-sidebar {
   box-shadow: 6px 0 28px rgba(2, 10, 24, 0.24);
   color: #f7f1e5;
   font-family: var(--novelight-author-shell-font);
+}
+
+body.novelight-author-studio-shell .studio-sidebar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 body.novelight-author-studio-shell .studio-brand {
