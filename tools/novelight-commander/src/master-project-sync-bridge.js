@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { MASTER_SYNC_CONFIRMATION, prepareLatestMaster } from './master-sync.js';
-import { syncMasterToChatgptProjectSafely } from './master-project-sync.js';
+import { syncMasterToChatgptProjectSafely } from './master-project-sync-auto.js';
 
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = 'novelrise';
