@@ -123,7 +123,6 @@ async function loadTargets() {
   if (zipSha256 !== EXPECTED_ZIP_SHA256) {
     throw new Error(`Official Author Normal ZIP SHA256 mismatch: ${zipSha256}`);
   }
-
   const zip = await JSZip.loadAsync(zipBytes);
   const rows = [];
   for (const target of TARGETS) {
@@ -140,7 +139,6 @@ async function loadTargets() {
     }
     rows.push({ ...target, bytes, size: bytes.length, ...geometry });
   }
-
   if (rows.length !== EXPECTED_COUNT) {
     throw new Error(`Validated target count mismatch: ${rows.length}`);
   }
@@ -154,7 +152,6 @@ function insertMappings(scriptText, rows) {
   if (close < 0) throw new Error('badgeArtworkPaths closing marker not found');
   const objectText = scriptText.slice(start, close);
   const additions = [];
-
   for (const row of rows) {
     const expected = `assets/scout-badges/${row.badgeId}.png`;
     const existingPattern = new RegExp(`\\n\\s*${row.badgeId}:\\s*['\"]([^'\"]+)['\"]`);
@@ -167,7 +164,6 @@ function insertMappings(scriptText, rows) {
     }
     additions.push(`    ${row.badgeId}: '${expected}'`);
   }
-
   if (!additions.length) return scriptText;
   const beforeClose = scriptText.slice(0, close).replace(/([^,\s])\s*$/, '$1,');
   return beforeClose + '\n' + additions.join(',\n') + scriptText.slice(close);
@@ -202,7 +198,37 @@ function buildTest(rows) {
   const expected = rows
     .map(row => `  ['${row.badgeId}', '${row.fileName}', '${row.sha256}']`)
     .join(',\n');
-  return `import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport fs from 'node:fs';\nimport crypto from 'node:crypto';\n\nconst EXPECTED_ZIP_SHA256 = '${EXPECTED_ZIP_SHA256}';\nconst expected = [\n${expected}\n];\n\ntest('Author Normal #9-#30 artwork keeps approved original bytes and UI mappings', () => {\n  const script = fs.readFileSync('novelight-scout-record.js', 'utf8');\n  const manifest = fs.readFileSync('docs/SCOUT-BADGE-AUTHOR-NORMAL-09-30-MANIFEST.csv', 'utf8');\n  assert.equal(expected.length, ${EXPECTED_COUNT});\n  assert.ok(manifest.includes(EXPECTED_ZIP_SHA256));\n  assert.ok(manifest.startsWith('expected_count,order,source_file,badge_id,asset_path,sha256,size_bytes,width,height,source_zip,source_zip_sha256\\n'));\n  for (const [badgeId, sourceFile, expectedSha] of expected) {\n    const file = \\`assets/scout-badges/\\${badgeId}.png\\`;\n    const bytes = fs.readFileSync(file);\n    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', badgeId);\n    assert.equal(bytes.readUInt32BE(16), ${EXPECTED_WIDTH}, badgeId);\n    assert.equal(bytes.readUInt32BE(20), ${EXPECTED_HEIGHT}, badgeId);\n    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), expectedSha, badgeId);\n    assert.ok(script.includes(\\`${badgeId}: 'assets/scout-badges/\\${badgeId}.png'\\`), badgeId);\n    assert.ok(manifest.includes(sourceFile), sourceFile);\n    assert.ok(manifest.includes(expectedSha), expectedSha);\n  }\n});\n`;
+  return [
+    "import test from 'node:test';",
+    "import assert from 'node:assert/strict';",
+    "import fs from 'node:fs';",
+    "import crypto from 'node:crypto';",
+    '',
+    "const EXPECTED_ZIP_SHA256 = '" + EXPECTED_ZIP_SHA256 + "';",
+    'const expected = [',
+    expected,
+    '];',
+    '',
+    "test('Author Normal #9-#30 artwork keeps approved original bytes and UI mappings', () => {",
+    "  const script = fs.readFileSync('novelight-scout-record.js', 'utf8');",
+    "  const manifest = fs.readFileSync('docs/SCOUT-BADGE-AUTHOR-NORMAL-09-30-MANIFEST.csv', 'utf8');",
+    '  assert.equal(expected.length, ' + EXPECTED_COUNT + ');',
+    '  assert.ok(manifest.includes(EXPECTED_ZIP_SHA256));',
+    "  assert.ok(manifest.startsWith('expected_count,order,source_file,badge_id,asset_path,sha256,size_bytes,width,height,source_zip,source_zip_sha256\\n'));",
+    '  for (const [badgeId, sourceFile, expectedSha] of expected) {',
+    "    const file = 'assets/scout-badges/' + badgeId + '.png';",
+    '    const bytes = fs.readFileSync(file);',
+    "    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', badgeId);",
+    '    assert.equal(bytes.readUInt32BE(16), ' + EXPECTED_WIDTH + ', badgeId);',
+    '    assert.equal(bytes.readUInt32BE(20), ' + EXPECTED_HEIGHT + ', badgeId);',
+    "    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), expectedSha, badgeId);",
+    "    assert.ok(script.includes(badgeId + \": 'assets/scout-badges/\" + badgeId + \".png'\"), badgeId);",
+    '    assert.ok(manifest.includes(sourceFile), sourceFile);',
+    '    assert.ok(manifest.includes(expectedSha), expectedSha);',
+    '  }',
+    '});',
+    ''
+  ].join('\n');
 }
 
 async function verifyWorktreeFiles(worktree, rows) {
@@ -264,7 +290,6 @@ async function stage(request) {
   const worktree = path.join(os.tmpdir(), `novelight-author-badge-${request.requestId}`);
   await fs.rm(worktree, { recursive: true, force: true });
   await git(['worktree', 'add', '-b', branch, worktree, 'origin/main']);
-
   try {
     const assetDir = path.join(worktree, 'assets', 'scout-badges');
     await fs.mkdir(assetDir, { recursive: true });
@@ -287,7 +312,6 @@ async function stage(request) {
     const scriptPath = path.join(worktree, 'novelight-scout-record.js');
     const script = await fs.readFile(scriptPath, 'utf8');
     await fs.writeFile(scriptPath, insertMappings(script, rows), 'utf8');
-
     const manifestPath = path.join(worktree, 'docs', 'SCOUT-BADGE-AUTHOR-NORMAL-09-30-MANIFEST.csv');
     const testPath = path.join(worktree, 'tests', 'scout-author-normal-09-30-artwork.test.mjs');
     await fs.writeFile(manifestPath, buildManifest(rows, zipSha256), 'utf8');
@@ -304,7 +328,6 @@ async function stage(request) {
       'tests/scout-author-normal-09-30-artwork.test.mjs'
     ];
     await git(['add', '--', ...pathsToAdd], worktree);
-
     const staged = await git(['diff', '--cached', '--name-only'], worktree);
     const stagedFiles = staged.stdout.split(/\r?\n/).filter(Boolean);
     const allowedFiles = new Set(pathsToAdd);
@@ -322,7 +345,6 @@ async function stage(request) {
     await git(['commit', '-m', 'Register Author Normal artwork #9-#30'], worktree);
     const commitSha = (await git(['rev-parse', 'HEAD'], worktree)).stdout;
     await git(['push', '-u', 'origin', branch], worktree);
-
     return {
       ...registrationDetails(rows, zipSha256, branch, commitSha, false),
       contractTest
@@ -383,7 +405,6 @@ async function processPendingRequest() {
     requests.sort((a, b) => a.commentId - b.commentId);
     const target = requests.at(-1).request;
     if (completedInProcess.has(target.requestId)) return;
-
     const alreadyHasResult = comments.some(comment =>
       String(comment.body || '').startsWith(RESULT_PREFIX) &&
       String(comment.body || '').includes(`- request_id: \`${target.requestId}\``)
@@ -392,7 +413,6 @@ async function processPendingRequest() {
       completedInProcess.add(target.requestId);
       return;
     }
-
     try {
       await postResult(target, 'success', await stage(target));
     } catch (error) {
