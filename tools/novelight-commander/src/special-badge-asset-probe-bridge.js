@@ -187,10 +187,23 @@ async function postResult(request, status, details) {
   await githubApi('POST', `/repos/${OWNER}/${REPOSITORY}/issues/${ISSUE_NUMBER}/comments`, { body });
 }
 
+async function listRecentComments() {
+  const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const comments = [];
+  for (let page = 1; page <= 10; page += 1) {
+    const batch = await githubApi(
+      'GET',
+      `/repos/${OWNER}/${REPOSITORY}/issues/${ISSUE_NUMBER}/comments?per_page=100&page=${page}&since=${encodeURIComponent(since)}`
+    );
+    comments.push(...(batch || []));
+    if (!batch || batch.length < 100) break;
+  }
+  return comments;
+}
+
 async function processPendingRequest() {
   if (!token()) return;
-  const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-  const comments = await githubApi('GET', `/repos/${OWNER}/${REPOSITORY}/issues/${ISSUE_NUMBER}/comments?per_page=100&since=${encodeURIComponent(since)}`);
+  const comments = await listRecentComments();
   const requests = [];
   for (const comment of comments || []) {
     try {
