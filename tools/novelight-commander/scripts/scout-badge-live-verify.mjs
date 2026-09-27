@@ -45,7 +45,7 @@ const EXPECTED_SIZE = {
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const requireFromE2E = createRequire(path.join(repoRoot, 'tests', 'e2e', 'package.json'));
 const { chromium } = requireFromE2E('@playwright/test');
-const baseURL = 'https://novelrise.vercel.app';
+const baseURL = 'https://novelight.jp';
 
 function assert(value, message) {
   if (!value) throw new Error(message);
