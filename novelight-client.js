@@ -18,6 +18,8 @@
   const AUTHOR_STUDIO_SHELL_PAGES = new Set([
     'post',
     'my-novels',
+    'series',
+    'bulk-import',
     'analytics',
     'scout-record',
     'interaction-settings'
