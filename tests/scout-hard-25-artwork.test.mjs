@@ -38,7 +38,7 @@ test(
     const script = fs.readFileSync('novelight-scout-record.js', 'utf8');
     assert.equal(expected.length, 25);
     for (const [badgeId, expectedSha, width, height] of expected) {
-      const file = 'assets/scout-badges/hard_' + badgeId + '.png';
+      const file = `assets/scout-badges/hard_${badgeId}.png`;
       const bytes = fs.readFileSync(file);
       assert.equal(
         bytes.subarray(0, 8).toString('hex'),
@@ -52,12 +52,8 @@ test(
         expectedSha,
         badgeId
       );
-      assert.ok(
-        script.includes(
-          `${badgeId}: 'assets/scout-badges/hard_${badgeId}.png'`
-        ),
-        badgeId
-      );
+      const mapping = `${badgeId}: 'assets/scout-badges/hard_${badgeId}.png'`;
+      assert.ok(script.includes(mapping), badgeId);
     }
   }
 );
