@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>もうひとつの光 | NOVELIGHT</title>
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-accessibility.css">
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#07111f;color:#f7f4ed;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}a{color:inherit;text-decoration:none}.shell{width:min(1120px,calc(100% - 36px));margin:0 auto;padding:32px 0 76px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:34px}.back{color:#c3ccd8;font-weight:800}.zone-switch{color:#d6a447;font-size:13px;font-weight:900}.hero{padding:30px;border:1px solid rgba(214,164,71,.25);border-radius:20px;background:radial-gradient(circle at 16% 0%,rgba(113,88,170,.22),transparent 42%),#0b1728}.kicker{color:#d6a447;font-size:12px;font-weight:900;letter-spacing:.16em}.hero h1{margin:7px 0 8px;font-size:clamp(30px,5vw,46px)}.hero p{margin:0;color:#aeb7c4;line-height:1.8}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:26px 0 16px}.mode-tabs{display:flex;gap:8px}.mode-button{padding:10px 16px;border:1px solid #435068;border-radius:999px;background:#0b1728;color:#c7cfda;font-weight:900;cursor:pointer}.mode-button[aria-pressed="true"]{border-color:#d6a447;background:#d6a447;color:#07111f}.filters{display:grid;grid-template-columns:1fr 230px;gap:10px;margin-bottom:14px}.filters input,.filters select{width:100%;padding:12px 13px;border:1px solid #334058;border-radius:10px;background:#0b1728;color:#f7f4ed;font:inherit}.notice{margin-bottom:20px;padding:12px 14px;border-radius:10px;background:rgba(214,164,71,.08);color:#c7cfda;font-size:12px;line-height:1.7}.count{margin-bottom:12px;color:#aeb7c4;font-size:13px}.list{display:grid;gap:13px}.card{position:relative;display:grid;grid-template-columns:94px minmax(0,1fr);gap:17px;padding:18px;border:1px solid #29364b;border-radius:15px;background:#0b1728}.card:hover{border-color:#6d614a}.cover,.cover-placeholder{width:94px;aspect-ratio:3/4;border-radius:8px;object-fit:cover;background:#182235}.cover-placeholder{display:grid;place-items:center;color:#d6a447;font-weight:900}.rank-no{position:absolute;top:12px;right:14px;color:#d6a447;font-size:13px;font-weight:900}.badge-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px}.badge{padding:3px 8px;border-radius:999px;background:#17243a;color:#c9d1dd;font-size:10px;font-weight:900}.badge.zone{background:rgba(214,164,71,.12);color:#f0c96f}.title{font-size:19px;font-weight:900;line-height:1.45}.description{display:-webkit-box;margin-top:6px;overflow:hidden;color:#aeb7c4;font-size:13px;line-height:1.7;-webkit-box-orient:vertical;-webkit-line-clamp:2}.meta{margin-top:9px;color:#7f8a99;font-size:11px}.state{padding:42px 20px;border:1px dashed #334058;border-radius:14px;color:#9ca7b6;text-align:center}.more-wrap{text-align:center;margin-top:20px}.more{padding:11px 22px;border:1px solid #d6a447;border-radius:999px;background:transparent;color:#e6c16b;font-weight:900;cursor:pointer}.more:disabled{opacity:.5}.zone-menu{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.zone-menu a{padding:7px 10px;border:1px solid #324058;border-radius:999px;color:#aeb7c4;font-size:11px;font-weight:800}.zone-menu a.current{border-color:#d6a447;color:#f0c96f}@media(max-width:680px){.shell{width:min(100% - 28px,1120px)}.topline,.toolbar{align-items:flex-start;flex-direction:column}.filters{grid-template-columns:1fr}.mode-tabs{width:100%}.mode-button{flex:1}.card{grid-template-columns:72px minmax(0,1fr);gap:12px;padding:14px}.cover,.cover-placeholder{width:72px}.rank-no{position:static;margin-bottom:5px}.hero{padding:24px 20px}}
+  </style>
+</head>
+<body>
+  <main id="main-content" class="shell" tabindex="-1">
+    <div class="topline"><a class="back" href="special-light.html">← もうひとつの光</a><a class="zone-switch" href="index.html">NOVELIGHT ホーム</a></div>
+    <section class="hero">
+      <span id="zoneKicker" class="kicker">ANOTHER LIGHT</span>
+      <h1 id="zoneTitle">作品を探す</h1>
+      <p id="zoneLead"></p>
+      <nav class="zone-menu" aria-label="発見ゾーン切替">
+        <a data-zone-link="ai" href="special-light-zone.html?zone=ai">AI作品</a>
+        <a data-zone-link="r15" href="special-light-zone.html?zone=r15">R15</a>
+        <a data-zone-link="r18" href="special-light-zone.html?zone=r18">R18</a>
+      </nav>
+    </section>
+    <div class="toolbar">
+      <div class="mode-tabs" role="group" aria-label="表示方法">
+        <button id="recommendedButton" class="mode-button" type="button" aria-pressed="true">おすすめ</button>
+        <button id="rankingButton" class="mode-button" type="button" aria-pressed="false">ランキング</button>
+      </div>
+    </div>
+    <div class="filters">
+      <input id="keywordInput" type="search" maxlength="160" placeholder="タイトル・あらすじを検索">
+      <select id="genreSelect"><option value="">すべてのジャンル</option></select>
+    </div>
+    <p class="notice">このゾーンの作品は通常ホームのおすすめ・新着・LIGHT SEED・Rank発見・Premium追加露出には表示されません。LIGHT SEEDは送れませんが、★評価・♡・お気に入り・コメントは利用できます。</p>
+    <div id="resultCount" class="count">読み込み中...</div>
+    <div id="workList" class="list"><div class="state">作品を探しています...</div></div>
+    <div id="moreWrap" class="more-wrap" hidden><button id="moreButton" class="more" type="button">もっと見る</button></div>
+  </main>
+  <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+  <script src="novelight-client.js"></script>
+  <script src="novelight-user-safety.js"></script>
+  <script>
+    (()=>{'use strict';
+      const zoneConfig={ai:{title:'AI作品',kicker:'AI CREATION',lead:'AI生成主体として申告された全年齢作品だけを、この場所で探せます。'},r15:{title:'R15',kicker:'SENSITIVE 15+',lead:'センシティブ15+に分類された作品だけを、内容区分を保ったまま探せます。'},r18:{title:'R18',kicker:'18+ NON-SEXUAL',lead:'β版で扱う18+の非性的な強表現作品だけを、この場所で探せます。'}};
+      const params=new URLSearchParams(location.search),zone=params.get('zone');if(!zoneConfig[zone]){location.replace('special-light.html');return}
+      const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+      const pageSize=24;let mode='recommended',offset=0,total=0,loading=false,requestId=0;
+      const list=document.getElementById('workList'),count=document.getElementById('resultCount'),moreWrap=document.getElementById('moreWrap'),moreButton=document.getElementById('moreButton'),keywordInput=document.getElementById('keywordInput'),genreSelect=document.getElementById('genreSelect');
+      document.title=zoneConfig[zone].title+' | もうひとつの光 | NOVELIGHT';document.getElementById('zoneTitle').textContent=zoneConfig[zone].title;document.getElementById('zoneKicker').textContent=zoneConfig[zone].kicker;document.getElementById('zoneLead').textContent=zoneConfig[zone].lead;document.querySelector(`[data-zone-link="${zone}"]`)?.classList.add('current');
+      function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}function visitor(){return NovelightClient.getVisitorToken()}function idOf(row){return String(row.novel_id??row.id)}
+      function cover(row){const url=String(row.thumbnail_url||'').trim();return url?`<img class="cover" src="${esc(url)}" alt="" loading="lazy" decoding="async">`:`<div class="cover-placeholder" aria-hidden="true">✦</div>`}
+      function card(row,index){const date=row.created_at?new Date(row.created_at).toLocaleDateString('ja-JP'):'';const rating=row.rating_count?`★ ${Number(row.rating_average||0).toFixed(1)} (${Number(row.rating_count).toLocaleString()})`:'★ 未評価';const rank=mode==='ranking'?`<div class="rank-no">#${offset-pageSize+index+1}</div>`:'';return `<a class="card" href="novel.html?id=${encodeURIComponent(idOf(row))}">${rank}${cover(row)}<div><div class="badge-row"><span class="badge zone">${esc(zoneConfig[zone].title)}</span><span class="badge">${esc(row.genre||'未設定')}</span></div><div class="title">${esc(row.title)}</div><div class="description">${esc(row.description||'')}</div><div class="meta">${date} ・ ${rating} ・ お気に入り ${Number(row.favorite_count||0).toLocaleString()}</div></div></a>`}
+      async function loadGenres(){const result=await client.rpc('novelight_special_light_genres',{p_zone:zone});if(result.error){console.error(result.error);return}for(const row of result.data||[]){if(!row.genre)continue;const option=document.createElement('option');option.value=row.genre;option.textContent=`${row.genre} (${Number(row.work_count||0).toLocaleString()})`;genreSelect.appendChild(option)}}
+      async function load(reset=false){if(loading)return;loading=true;moreButton.disabled=true;const current=++requestId;if(reset){offset=0;list.innerHTML='<div class="state">作品を探しています...</div>'}try{const result=await client.rpc('novelight_special_light_feed',{p_zone:zone,p_mode:mode,p_keyword:keywordInput.value.trim()||null,p_genre:genreSelect.value||null,p_limit:pageSize,p_offset:offset,p_rotation_key:visitor()});if(current!==requestId)return;if(result.error)throw result.error;let rows=Array.isArray(result.data)?result.data:[];rows=await NovelightUserSafety.filterNovelRows(client,rows);if(current!==requestId)return;total=Number(result.data?.[0]?.total_count||0);if(reset)list.innerHTML='';const startOffset=offset;offset+=rows.length;if(rows.length)list.insertAdjacentHTML('beforeend',rows.map((row,i)=>card(row,i+startOffset-(offset-pageSize))).join(''));if(!list.children.length)list.innerHTML='<div class="state">条件に合う作品はまだありません。</div>';count.textContent=`${total.toLocaleString()}作品`;moreWrap.hidden=offset>=total||rows.length<pageSize;moreButton.textContent=mode==='ranking'?'ランキングをもっと見る':'おすすめをもっと見る'}catch(error){console.error(error);if(reset)list.innerHTML='<div class="state">作品を読み込めませんでした。時間をおいて再度お試しください。</div>';count.textContent='読み込みエラー';moreWrap.hidden=true}finally{loading=false;moreButton.disabled=false}}
+      function setMode(next){if(mode===next)return;mode=next;document.getElementById('recommendedButton').setAttribute('aria-pressed',String(mode==='recommended'));document.getElementById('rankingButton').setAttribute('aria-pressed',String(mode==='ranking'));load(true)}
+      document.getElementById('recommendedButton').addEventListener('click',()=>setMode('recommended'));document.getElementById('rankingButton').addEventListener('click',()=>setMode('ranking'));moreButton.addEventListener('click',()=>load(false));genreSelect.addEventListener('change',()=>load(true));let timer;keywordInput.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>load(true),280)});
+      Promise.allSettled([NovelightClient.captureAcquisition(client),NovelightClient.recordVisit(client),loadGenres()]).finally(()=>load(true));
+    })();
+  </script>
+</body>
+</html>
