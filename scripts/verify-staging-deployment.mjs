@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { appendFile } from 'node:fs/promises';
 
-const PRODUCTION_VERCEL_HOST = 'novelrise.vercel.app';
+// Infrastructure alias used only to keep Staging off Vercel Production.
+const VERCEL_INTERNAL_PRODUCTION_HOST = 'novelrise.vercel.app';
 const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 
@@ -60,7 +61,7 @@ function resolveTarget(env) {
   }
 
   const parsed = parseOrigin('Staging deployment URL', candidate, '.vercel.app');
-  if (parsed.hostname === PRODUCTION_VERCEL_HOST) {
+  if (parsed.hostname === VERCEL_INTERNAL_PRODUCTION_HOST) {
     fail('CONFIG_DRIFT', 'refusing the Production Vercel host.');
   }
 

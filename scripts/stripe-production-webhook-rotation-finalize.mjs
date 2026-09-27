@@ -17,7 +17,7 @@ if (!outputPath) {
   throw new Error('STRIPE_BOOTSTRAP_OUTPUT is required');
 }
 
-if (appUrl !== 'https://novelrise.vercel.app') {
+if (appUrl !== 'https://novelight.jp') {
   throw new Error('Refusing non-canonical Production app URL');
 }
 

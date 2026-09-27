@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: [['github'], ['list']],
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'https://novelrise.vercel.app',
+    baseURL: process.env.E2E_BASE_URL || 'https://novelight.jp',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
   },

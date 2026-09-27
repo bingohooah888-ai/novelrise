@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
-const baseUrl = process.env.E2E_BASE_URL || 'https://novelrise.vercel.app';
+const baseUrl = process.env.E2E_BASE_URL || 'https://novelight.jp';
 const expectedRevision = process.env.EXPECTED_PRODUCTION_REVISION;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;

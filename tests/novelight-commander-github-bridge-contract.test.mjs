@@ -133,7 +133,7 @@ test('Commander runner watchdog restarts daemon exits', async () => {
   const source = await readFile(runnerPath, 'utf8');
 
   assert.match(source, /while \(\$true\)/);
-  assert.match(source, /node \$DaemonPath/);
+  assert.match(source, /& \$NodePath \$DaemonPath/);
   assert.match(source, /restarting in 2 seconds/);
   assert.match(source, /Start-Sleep -Seconds 2/);
 });

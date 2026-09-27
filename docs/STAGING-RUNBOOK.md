@@ -18,7 +18,7 @@ NOVELIGHTでは「壊れない」だけでなく「壊れても戻せる」こ�
 - 読者導線の表示確認
 - 計測系RPCの書き込み抑止
 - RESTテーブルへの非GETリクエスト遮断
-- 本番ホスト `novelrise.vercel.app` の拒否
+- Vercel内部Production alias `novelrise.vercel.app` の拒否
 - write smokeでは本番Supabase project / Stripe live mode /異なるpublishable keyの拒否
 - write smokeでは既存Staging server credentialを使い、対象変更が必要とするCheckout RPCが実際のStaging schemaへ公開されていることを呼び出しなしで確認
 

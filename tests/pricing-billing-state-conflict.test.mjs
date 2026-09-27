@@ -46,7 +46,7 @@ test('beta Standard billing conflict produces a visible recovery message and ree
       JSON.stringify({ access_token: 'stored-access-token' })
     ]
   ]);
-  const location = { href: 'pricing.html', hostname: 'novelrise.vercel.app' };
+  const location = { href: 'pricing.html', hostname: 'novelight.jp' };
   const context = vm.createContext({
     console: { error() {} },
     document: {

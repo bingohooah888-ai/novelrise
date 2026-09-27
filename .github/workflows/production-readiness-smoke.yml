@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      BASE_URL: https://novelrise.vercel.app
+      BASE_URL: https://novelight.jp
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
       STATIC_CHECK_MODE: ${{ github.event_name == 'push' && 'changed' || 'all' }}
@@ -103,7 +103,7 @@ jobs:
       - name: Run read-only production reader smoke
         working-directory: tests/e2e
         env:
-          E2E_BASE_URL: https://novelrise.vercel.app
+          E2E_BASE_URL: https://novelight.jp
         run: npx playwright test --config=playwright.production.config.mjs
 
       - name: Verify production beta observability

@@ -8,7 +8,7 @@ import {
 
 const stripeKey = process.env.STRIPE_LIVE_SECRET_KEY;
 const outputPath = process.env.STRIPE_BOOTSTRAP_OUTPUT;
-const appUrl = (process.env.NOVELIGHT_APP_URL || 'https://novelrise.vercel.app').replace(/\/+$/, '');
+const appUrl = (process.env.NOVELIGHT_APP_URL || 'https://novelight.jp').replace(/\/+$/, '');
 const hasExistingWebhookSecret = process.env.VERCEL_HAS_WEBHOOK_SECRET === 'true';
 const rotateWebhookSecret = process.env.STRIPE_ROTATE_WEBHOOK_SECRET === 'true';
 

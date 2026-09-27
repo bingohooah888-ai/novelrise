@@ -5,7 +5,7 @@ import { auditProductionBilling } from './production-billing-audit-lib.mjs';
 
 const CANONICAL_PRODUCTION_SUPABASE_URL =
   'https://fiepaguycecrredwrcwx.supabase.co';
-const CANONICAL_PRODUCTION_APP_URL = 'https://novelrise.vercel.app';
+const CANONICAL_PRODUCTION_APP_URL = 'https://novelight.jp';
 
 function requireEnvironment(env) {
   const supabaseUrl = env.SUPABASE_URL;

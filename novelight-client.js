@@ -4,7 +4,8 @@
   const VISITOR_KEY = 'novelight_visitor_token';
   const TRAFFIC_KEY = 'novelight_first_touch';
   const TOUCH_SESSION_KEY = 'novelight_touch_recorded';
-  const PRODUCTION_VERCEL_HOST = 'novelrise.vercel.app';
+  // Infrastructure alias used only to distinguish Vercel Production from Preview.
+  const VERCEL_INTERNAL_PRODUCTION_HOST = 'novelrise.vercel.app';
   const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
   const STAGING_BROWSER_CONFIG_PATH = '/api/staging-browser-config';
   const BRAND_LOGO_PATH = 'assets/novelight-header-logo.webp';
@@ -38,7 +39,10 @@
 
   function isVercelPreviewHost() {
     const host = window.location.hostname.toLowerCase();
-    return host.endsWith('.vercel.app') && host !== PRODUCTION_VERCEL_HOST;
+    return (
+      host.endsWith('.vercel.app') &&
+      host !== VERCEL_INTERNAL_PRODUCTION_HOST
+    );
   }
 
   function validateStagingBrowserConfig(config) {

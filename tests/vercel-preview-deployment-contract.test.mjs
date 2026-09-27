@@ -11,7 +11,7 @@ const source = await readFile(
 test('Vercel Preview creation stays fail-closed when target is omitted', () => {
   assert.match(
     source,
-    /origin\.hostname === PRODUCTION_HOST/,
+    /origin\.hostname === VERCEL_INTERNAL_PRODUCTION_HOST/,
     'canonical Production host must remain explicitly forbidden'
   );
   assert.match(

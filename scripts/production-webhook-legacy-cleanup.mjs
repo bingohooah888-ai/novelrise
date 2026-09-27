@@ -7,7 +7,7 @@ import {
 } from './stripe-production-webhook-endpoint.mjs';
 import { legacyWebhookFingerprint } from './production-approval-fingerprint.mjs';
 
-const CANONICAL_APP_URL = 'https://novelrise.vercel.app';
+const CANONICAL_APP_URL = 'https://novelight.jp';
 const stripeKey = process.env.STRIPE_LIVE_SECRET_KEY;
 const appUrl = (process.env.NOVELIGHT_APP_URL || '').replace(/\/+$/, '');
 const expectedCleanupFingerprint =

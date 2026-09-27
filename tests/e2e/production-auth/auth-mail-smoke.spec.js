@@ -57,7 +57,7 @@ function assertSafeActionLink(actionLink, expectedType) {
   expect(url.pathname).toBe('/auth/v1/verify');
   expect(url.searchParams.get('type')).toBe(expectedType);
   expect(url.searchParams.get('redirect_to')).toBe(
-    'https://novelrise.vercel.app/reset-password.html'
+    'https://novelight.jp/reset-password.html'
   );
   return actionLink;
 }
@@ -119,7 +119,7 @@ test('Production signup gate, recovery, global sign-out, and Secure Email Change
       type: 'recovery',
       email: recovery.email,
       options: {
-        redirectTo: 'https://novelrise.vercel.app/reset-password.html'
+        redirectTo: 'https://novelight.jp/reset-password.html'
       }
     }),
     'generate recovery verification link'
@@ -206,7 +206,7 @@ test('Production signup gate, recovery, global sign-out, and Secure Email Change
       type: 'email_change_current',
       email: emailChange.email,
       newEmail: changedEmail,
-      options: { redirectTo: 'https://novelrise.vercel.app/index.html' }
+      options: { redirectTo: 'https://novelight.jp/index.html' }
     }),
     'generate current-email confirmation link'
   ).properties.action_link;
@@ -215,7 +215,7 @@ test('Production signup gate, recovery, global sign-out, and Secure Email Change
       type: 'email_change_new',
       email: emailChange.email,
       newEmail: changedEmail,
-      options: { redirectTo: 'https://novelrise.vercel.app/index.html' }
+      options: { redirectTo: 'https://novelight.jp/index.html' }
     }),
     'generate new-email confirmation link'
   ).properties.action_link;

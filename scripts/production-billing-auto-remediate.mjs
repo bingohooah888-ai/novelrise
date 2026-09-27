@@ -7,7 +7,7 @@ import { repairMissingProductionCustomer } from './production-billing-repair-lib
 
 const CANONICAL_PRODUCTION_SUPABASE_URL =
   'https://fiepaguycecrredwrcwx.supabase.co';
-const CANONICAL_APP_URL = 'https://novelrise.vercel.app';
+const CANONICAL_APP_URL = 'https://novelight.jp';
 const STALE_PAID_CUSTOMER_ISSUE = 'paid_profile_customer_missing_in_stripe';
 const LEGACY_WEBHOOK_ISSUE = 'legacy_novelight_webhook_endpoint';
 const ALLOWED_REMEDIATION_ISSUES = new Set([

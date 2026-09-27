@@ -46,7 +46,7 @@ jobs:
       cancel-in-progress: false
     environment: Production
     env:
-      E2E_BASE_URL: https://novelrise.vercel.app
+      E2E_BASE_URL: https://novelight.jp
       SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
       SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
