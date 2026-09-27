@@ -21,7 +21,10 @@ const rollback = read(
 );
 const inviteApi = read('api/admin-beta-author-invites.js');
 const validationApi = read('api/beta-author-invite.js');
+const previewApi = read('api/beta-author-invite-preview.js');
+const previewToken = read('api/_lib/beta-author-invite-preview-token.js');
 const signup = read('signup.html');
+const invitePreview = read('invite-preview.html');
 const adminApi = read('api/admin-beta-authors.js');
 const adminHtml = read('admin-beta-authors.html');
 
@@ -126,6 +129,10 @@ test('ADMIN outbound send is authenticated, idempotent and gated away from prere
   assert.match(inviteApi, /novelight-beta-author-invite-/);
   assert.match(inviteApi, /state !== 'AUTHOR_PREOPEN'/);
   assert.match(inviteApi, /token_hash: tokenHash/);
+  assert.match(
+    inviteApi,
+    /url\.searchParams\.set\('redirect', 'mypage\.html'\)/
+  );
   assert.match(inviteApi, /url\.hash = `invite=/);
   assert.match(inviteApi, /if \(invite\.sent_at\)/);
   assert.match(inviteApi, /row\.sent_at && !row\.consumed_at/);
@@ -137,6 +144,8 @@ test('ADMIN test send is single-recipient, idempotent and leaves invite records 
   assert.match(inviteApi, /state !== 'PRE_REGISTRATION'/);
   assert.match(inviteApi, /const to = String\(admin\?\.email/);
   assert.match(inviteApi, /novelight-beta-author-invite-test-/);
+  assert.match(inviteApi, /new URL\('\/invite-preview\.html'/);
+  assert.match(inviteApi, /招待画面を確認する/);
   assert.match(inviteApi, /testMode: true/);
   assert.match(inviteApi, /result: 'test_sent'/);
   assert.doesNotMatch(
@@ -147,6 +156,34 @@ test('ADMIN test send is single-recipient, idempotent and leaves invite records 
   );
   assert.match(adminHtml, /管理者宛てに1通テスト送信/);
   assert.match(adminHtml, /既存の先行登録者・招待状態・sent_atは変更しません/);
+});
+
+test('invite preview is deployment-bound, read-only and cannot create Auth or data', () => {
+  assert.match(previewToken, /novelight-beta-author-invite-preview:v1/);
+  assert.match(previewToken, /VERCEL_GIT_COMMIT_SHA/);
+  assert.match(previewToken, /timingSafeEqual/);
+  assert.match(previewApi, /authCreationEnabled: false/);
+  assert.match(previewApi, /dataMutationEnabled: false/);
+  assert.doesNotMatch(
+    previewApi,
+    /@supabase|\.from\(|signUp|insert|update|delete/
+  );
+  assert.match(invitePreview, /先行作者プレオープン中です/);
+  assert.match(invitePreview, /プレビューのため、入力・送信は無効です/);
+  assert.match(invitePreview, /fetch\('\/api\/beta-author-invite-preview'/);
+  assert.doesNotMatch(
+    invitePreview,
+    /<form\b|supabase|\.auth\.|signUp\(|novelight_invite_token/
+  );
+});
+
+test('signup redirects an existing verified session to the fixed author room', () => {
+  assert.match(signup, /client\.auth\.getUser\(\)/);
+  assert.match(
+    signup,
+    /location\.replace\(new URL\('mypage\.html',location\.href\)\.href\)/
+  );
+  assert.match(signup, /if\(await redirectExistingSession\(\)\)return/);
 });
 
 test('campaign transition fails closed until invite storage and Resend secret are ready', () => {

@@ -20,6 +20,15 @@ async function installAuthResilienceStubs(page, overrides = {}) {
 
           const client = {
             auth: {
+              getUser: async () => {
+                calls.push({ type: 'getUser' });
+                await wait(state.getUserDelayMs);
+                if (state.getUserReject) throw new Error(state.getUserReject);
+                return {
+                  data: { user: state.initialUser || null },
+                  error: errorFor(state.getUserError)
+                };
+              },
               getSession: async () => {
                 calls.push({ type: 'getSession' });
                 await wait(state.authDelayMs);
