@@ -24,6 +24,15 @@ test('auto sync follows MASTER content changes', async () => {
   assert.equal(text.includes('DEFAULT_POLL_MS = 2 * 60 * 1000'), true);
 });
 
+test('auto sync verifies the Project once per NLO process even when state says synced', async () => {
+  const text = await readFile('src/master-auto-sync-daemon.js');
+  assert.equal(text.includes('let verifiedThisProcess = false'), true);
+  assert.equal(text.includes('verifiedThisProcess &&'), true);
+  assert.equal(text.includes('verifiedThisProcess = true'), true);
+  assert.equal(text.includes('runtimeVerified: true'), true);
+  assert.equal(text.includes('runtimeVerifiedAt:'), true);
+});
+
 test('auto sync never launches a visible ChatGPT browser', async () => {
   const watcher = await readFile('src/master-auto-sync-daemon.js');
   const background = await readFile('src/master-project-sync-background.js');
