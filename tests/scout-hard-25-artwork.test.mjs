@@ -15,7 +15,9 @@ function readManifest() {
   const headers = lines.shift().split(',');
   return lines.map(line => {
     const values = line.split(',');
-    return Object.fromEntries(headers.map((key, index) => [key, values[index]]));
+    return Object.fromEntries(
+      headers.map((key, index) => [key, values[index]])
+    );
   });
 }
 
