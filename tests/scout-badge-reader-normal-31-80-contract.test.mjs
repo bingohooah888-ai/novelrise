@@ -130,10 +130,7 @@ async function verifyReaderNormalArtwork() {
 
     assert.match(
       scoutJs,
-      new RegExp(
-        `${badgeId}: 'assets/scout-badges/${assetId}\\.png'`,
-        'u'
-      ),
+      new RegExp(`${badgeId}: 'assets/scout-badges/${assetId}\\.png'`, 'u'),
       `${badgeId} must point to approved Reader Normal #${serial} artwork`
     );
 
