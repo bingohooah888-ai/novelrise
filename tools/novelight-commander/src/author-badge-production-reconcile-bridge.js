@@ -105,9 +105,11 @@ async function readPack(fileName, mapping) {
   }
   return rows;
 }
-function extractArtworkPath(scriptText, badgeId) {
+export function extractArtworkPath(scriptText, badgeId) {
   const escaped = badgeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = scriptText.match(new RegExp(`(?:^|\\n)\\s*${escaped}:\\s*['\"]([^'\"]+)['\"]`));
+  const match = String(scriptText || '').match(
+    new RegExp(`(?:^|[^A-Za-z0-9_$])${escaped}\\s*:\\s*['\"]([^'\"]+)['\"]`)
+  );
   return match?.[1] || null;
 }
 async function fetchBytes(url) {
