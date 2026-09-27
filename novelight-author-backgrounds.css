@@ -1,11 +1,23 @@
-/* Decorative background art for the six Author Studio utility pages.
-   Each image keeps the central content area intentionally quiet for readability. */
+/* Decorative background art for Author Studio utility pages.
+   Child pages inherit the artwork of the author entry page that leads to them,
+   keeping the creator workflow visually continuous without introducing new art. */
 
 html body.novelight-page-post {
   --novelight-author-page-background: url("assets/author-backgrounds/author-bg-01.webp");
 }
 
-html body.novelight-page-my-novels {
+/* Work-management pages reached from "自分の作品" reuse that page's approved art. */
+html body:is(
+  .novelight-page-my-novels,
+  .novelight-page-series,
+  .novelight-page-bulk-import,
+  .novelight-page-episode-drafts,
+  .novelight-page-episode-schedule,
+  .novelight-page-share-link,
+  .novelight-page-characters
+),
+html body.novelight-author-studio-shell:has(#collaborationList),
+html body.novelight-author-studio-shell:has(#workTitle) {
   --novelight-author-page-background: url("assets/author-backgrounds/author-bg-04.webp");
 }
 
@@ -28,9 +40,17 @@ html.novelight-page-account-settings body.novelight-author-studio-shell {
 html body:is(
   .novelight-page-post,
   .novelight-page-my-novels,
+  .novelight-page-series,
+  .novelight-page-bulk-import,
+  .novelight-page-episode-drafts,
+  .novelight-page-episode-schedule,
+  .novelight-page-share-link,
+  .novelight-page-characters,
   .novelight-page-analytics,
   .novelight-page-interaction-settings
 ),
+html body.novelight-author-studio-shell:has(#collaborationList),
+html body.novelight-author-studio-shell:has(#workTitle),
 html.novelight-page-author-notes body.novelight-author-studio-shell,
 html.novelight-page-account-settings body.novelight-author-studio-shell {
   background-color: #f7f4ed !important;
@@ -45,9 +65,17 @@ html.novelight-page-account-settings body.novelight-author-studio-shell {
 html body:is(
   .novelight-page-post,
   .novelight-page-my-novels,
+  .novelight-page-series,
+  .novelight-page-bulk-import,
+  .novelight-page-episode-drafts,
+  .novelight-page-episode-schedule,
+  .novelight-page-share-link,
+  .novelight-page-characters,
   .novelight-page-analytics,
   .novelight-page-interaction-settings
 ) > main,
+html body.novelight-author-studio-shell:has(#collaborationList) > main,
+html body.novelight-author-studio-shell:has(#workTitle) > main,
 html.novelight-page-author-notes body.novelight-author-studio-shell .author-shell > main,
 html.novelight-page-account-settings body.novelight-author-studio-shell .author-shell > main {
   background: transparent !important;
@@ -57,9 +85,17 @@ html.novelight-page-account-settings body.novelight-author-studio-shell .author-
   html body:is(
     .novelight-page-post,
     .novelight-page-my-novels,
+    .novelight-page-series,
+    .novelight-page-bulk-import,
+    .novelight-page-episode-drafts,
+    .novelight-page-episode-schedule,
+    .novelight-page-share-link,
+    .novelight-page-characters,
     .novelight-page-analytics,
     .novelight-page-interaction-settings
   ),
+  html body.novelight-author-studio-shell:has(#collaborationList),
+  html body.novelight-author-studio-shell:has(#workTitle),
   html.novelight-page-author-notes body.novelight-author-studio-shell,
   html.novelight-page-account-settings body.novelight-author-studio-shell {
     background-attachment: scroll !important;
