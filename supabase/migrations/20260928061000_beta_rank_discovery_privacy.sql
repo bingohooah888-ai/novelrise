@@ -5,6 +5,7 @@
 -- - Work-Rank discovery remains internal state only.
 -- - Rank-discovery badges, XP, Scout Point and user-facing Rank discovery history are suppressed.
 -- - Existing ledgers are preserved for audit/future release; public beta totals filter Rank-derived rows.
+-- - Replaced functions are preserved under explicit *_rank_internal_20260928 names for guarded rollback.
 
 begin;
 
@@ -21,8 +22,20 @@ begin
   end if;
 
   if to_regprocedure('public.novelight_reader_badge_metrics(uuid)') is null
-     or to_regprocedure('public.novelight_author_badge_metrics(uuid)') is null then
-    raise exception 'Canonical badge metric functions are required';
+     or to_regprocedure('public.novelight_author_badge_metrics(uuid)') is null
+     or to_regprocedure('public.novelight_process_seed_discovery(uuid)') is null
+     or to_regprocedure('public.novelight_award_discovery_points()') is null
+     or to_regprocedure('public.novelight_cap_scout_xp_beta()') is null
+     or to_regprocedure('public.novelight_award_level_up_points()') is null
+     or to_regprocedure('public.novelight_scout_record_summary()') is null
+     or to_regprocedure('public.novelight_scout_point_history(integer)') is null
+     or to_regprocedure('public.novelight_scout_recent_activity(integer)') is null
+     or to_regprocedure('public.novelight_scout_discoveries(integer)') is null then
+    raise exception 'Canonical SCOUT functions are required';
+  end if;
+
+  if to_regprocedure('public.novelight_process_seed_discovery_rank_internal_20260928(uuid)') is not null then
+    raise exception 'Beta Rank privacy migration already applied or requires reconciliation';
   end if;
 end
 $$;
@@ -82,7 +95,7 @@ update public.scout_badge_definitions d
           )
        )
      )
-   and coalesce((d.metadata->>'beta_rank_discovery_hidden')::boolean, false) = false;
+   and coalesce(d.metadata->>'beta_rank_discovery_hidden', 'false') <> 'true';
 
 -- If a Rank-dependent title happened to be equipped before this beta policy,
 -- remove it from the public profile without deleting the earned/progress evidence.
@@ -137,6 +150,36 @@ $$;
 
 revoke all on function public.novelight_beta_rank_point_is_hidden(text, uuid, jsonb)
   from public, anon, authenticated;
+
+-- Preserve the pre-beta implementations. Direct-trigger functions also require
+-- trigger rebinding because PostgreSQL triggers retain the original function OID.
+alter function public.novelight_process_seed_discovery(uuid)
+  rename to novelight_process_seed_discovery_rank_internal_20260928;
+
+alter function public.novelight_award_discovery_points()
+  rename to novelight_award_discovery_points_rank_internal_20260928;
+drop trigger if exists scout_event_discovery_points on public.scout_event_ledger;
+
+alter function public.novelight_cap_scout_xp_beta()
+  rename to novelight_cap_scout_xp_beta_rank_internal_20260928;
+drop trigger if exists scout_xp_beta_level_cap on public.scout_xp_ledger;
+
+alter function public.novelight_award_level_up_points()
+  rename to novelight_award_level_up_points_rank_internal_20260928;
+drop trigger if exists scout_xp_level_up_points on public.scout_xp_ledger;
+
+alter function public.novelight_reader_badge_metrics(uuid)
+  rename to novelight_reader_badge_metrics_rank_internal_20260928;
+alter function public.novelight_author_badge_metrics(uuid)
+  rename to novelight_author_badge_metrics_rank_internal_20260928;
+alter function public.novelight_scout_record_summary()
+  rename to novelight_scout_record_summary_rank_internal_20260928;
+alter function public.novelight_scout_point_history(integer)
+  rename to novelight_scout_point_history_rank_internal_20260928;
+alter function public.novelight_scout_recent_activity(integer)
+  rename to novelight_scout_recent_activity_rank_internal_20260928;
+alter function public.novelight_scout_discoveries(integer)
+  rename to novelight_scout_discoveries_rank_internal_20260928;
 
 -- Discovery state is still updated internally so the formal release can make an
 -- explicit decision about historical Rank growth. Beta creates no discovery event or XP.
@@ -196,6 +239,10 @@ $$;
 revoke all on function public.novelight_award_discovery_points()
   from public, anon, authenticated;
 
+create trigger scout_event_discovery_points
+after insert on public.scout_event_ledger
+for each row execute function public.novelight_award_discovery_points();
+
 -- Discovery XP must neither be inserted through an alternate path nor consume the
 -- Lv.30 beta cap. Normal reading/rating/comment/SEED XP keeps working as before.
 create or replace function public.novelight_cap_scout_xp_beta()
@@ -238,6 +285,10 @@ $$;
 
 revoke all on function public.novelight_cap_scout_xp_beta()
   from public, anon, authenticated;
+
+create trigger scout_xp_beta_level_cap
+before insert on public.scout_xp_ledger
+for each row execute function public.novelight_cap_scout_xp_beta();
 
 create or replace function public.novelight_award_level_up_points()
 returns trigger
@@ -296,12 +347,12 @@ $$;
 revoke all on function public.novelight_award_level_up_points()
   from public, anon, authenticated;
 
--- Keep the authoritative badge metric implementations internally, but mask every
--- work-Rank-derived metric before badge evaluation. This also prevents hidden XP/
--- Point from indirectly advancing Scout Level/Point threshold titles.
-alter function public.novelight_reader_badge_metrics(uuid)
-  rename to novelight_reader_badge_metrics_rank_internal_20260928;
+create trigger scout_xp_level_up_points
+after insert on public.scout_xp_ledger
+for each row execute function public.novelight_award_level_up_points();
 
+-- Mask every work-Rank-derived metric before badge evaluation. This also prevents
+-- historical discovery XP/Point from indirectly advancing Level/Point threshold titles.
 create or replace function public.novelight_reader_badge_metrics(p_user_id uuid)
 returns jsonb
 language plpgsql
@@ -354,9 +405,6 @@ $$;
 
 revoke all on function public.novelight_reader_badge_metrics(uuid)
   from public, anon, authenticated;
-
-alter function public.novelight_author_badge_metrics(uuid)
-  rename to novelight_author_badge_metrics_rank_internal_20260928;
 
 create or replace function public.novelight_author_badge_metrics(p_user_id uuid)
 returns jsonb
