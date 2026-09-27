@@ -29,7 +29,12 @@ test('campaign contract includes a dedicated author preopen state', () => {
     assert.match(source, /AUTHOR_PREOPEN/);
   }
   assert.match(adminHtml, /先行作者プレオープン/);
-  assert.match(betaHtml, /先行利用を始める/);
+  assert.match(betaHtml, /先行登録の受付は終了しました/);
+  assert.match(betaHtml, /2026年9月30日に一般公開します/);
+  assert.match(
+    betaHtml,
+    /campaignState==='AUTHOR_PREOPEN'[\s\S]*heroCta\.hidden=true/
+  );
   assert.match(signupHtml, /先行登録時のメールアドレス/);
 });
 
