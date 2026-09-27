@@ -20,8 +20,10 @@ test('beta keeps LIGHT SEED sending badges while disabling work-Rank badges', ()
   assert.match(migration, /reader_low_rank_%/);
   assert.match(migration, /author_discovered_%/);
   assert.match(migration, /enabled = false/);
-  assert.match(migration, /reader_seed_001/);
-  assert.match(migration, /author_seed_received_001/);
+  assert.doesNotMatch(migration, /d\.badge_id like 'reader_seed_%'/);
+  assert.doesNotMatch(migration, /d\.badge_id like 'reader_gold_seed_%'/);
+  assert.doesNotMatch(migration, /d\.badge_id like 'reader_silver_seed_%'/);
+  assert.doesNotMatch(migration, /d\.badge_id like 'reader_bronze_seed_%'/);
 });
 
 test('beta discovery processing retains internal state but awards no discovery event or XP', () => {
@@ -46,7 +48,10 @@ test('beta public RPCs hide rank discovery and rank-derived points', () => {
     )?.[1] || '',
     /'light_seed_discovery'/
   );
-  assert.match(guard, /revoke all on function public\.novelight_scout_discoveries_rank_internal_20260928/);
+  assert.match(
+    guard,
+    /revoke all on function public\.novelight_scout_discoveries_rank_internal_20260928/
+  );
   assert.match(guard, /and d\.enabled/);
 });
 
