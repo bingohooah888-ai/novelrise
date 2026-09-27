@@ -100,7 +100,9 @@ async function installSupabaseStub(page, overrides = {}) {
               getUser: async () => {
                 await wait(state.getUserDelayMs);
                 calls.push({ type: 'getUser' });
-                const user = state.user || state.session?.user || null;
+                const user = Object.prototype.hasOwnProperty.call(state, 'initialUser')
+                  ? state.initialUser
+                  : state.user || state.session?.user || null;
                 return {
                   data: { user: state.getUserError ? null : user },
                   error: errorFor(state.getUserError)
@@ -373,6 +375,7 @@ test('signup completes immediately when beta autoconfirm returns a session', asy
 }) => {
   await installSupabaseStub(page, {
     authDelayMs: 400,
+    initialUser: null,
     signupSession: {
       access_token: 'signup-token',
       user: { id: 'author-e2e', email: 'author@example.com' }
@@ -395,6 +398,71 @@ test('signup completes immediately when beta autoconfirm returns a session', asy
 
   await expect(page.locator('#signupButton')).toBeDisabled();
   await page.waitForURL(/\/mypage\.html$/);
+  expect(pageErrors).toEqual([]);
+});
+
+test('signup redirects an existing session without rendering or submitting signup', async ({
+  page
+}) => {
+  await installSupabaseStub(page, {
+    initialUser: { id: 'existing-author', email: 'author@example.com' }
+  });
+  await page.route('**/mypage.html', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: '<!doctype html><title>existing session redirect complete</title>'
+    });
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto('/signup.html?redirect=novel.html%3Fid%3Dignored');
+  await expect(page).toHaveURL(/\/mypage\.html$/);
+  await expect(page).toHaveTitle('existing session redirect complete');
+  expect(pageErrors).toEqual([]);
+});
+
+test('invite preview renders the preopen experience with every write control disabled', async ({
+  page
+}) => {
+  const observedRequests = [];
+  page.on('request', (request) => observedRequests.push(request.url()));
+  await page.route('**/api/beta-author-invite-preview', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        valid: true,
+        mode: 'invite_preview',
+        authCreationEnabled: false,
+        dataMutationEnabled: false
+      })
+    });
+  });
+  const pageErrors = collectPageErrors(page);
+
+  await page.goto(`/invite-preview.html#invite=${'a'.repeat(43)}`);
+
+  await expect(page).toHaveURL(/\/invite-preview\.html$/);
+  await expect(page.locator('#previewTitle')).toHaveText(
+    '先行作者プレオープン中です'
+  );
+  await expect(page.locator('#previewForm')).toBeVisible();
+  await expect(page.locator('#previewForm input')).toHaveCount(5);
+  for (const input of await page.locator('#previewForm input').all()) {
+    await expect(input).toBeDisabled();
+  }
+  await expect(page.locator('#previewForm button')).toBeDisabled();
+  expect(
+    observedRequests.filter((url) =>
+      url.includes('/api/beta-author-invite-preview')
+    )
+  ).toHaveLength(1);
+  expect(
+    observedRequests.some((url) =>
+      /supabase\.co|\/api\/beta-author-invite(?:\?|$)/u.test(url)
+    )
+  ).toBe(false);
   expect(pageErrors).toEqual([]);
 });
 

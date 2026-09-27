@@ -12,7 +12,8 @@ test('signup is fail-closed until the beta campaign state is known', () => {
   expectSignup(/<form id="signupForm" hidden>/);
   expectSignup(/id="signupButton" type="submit" disabled/);
   expectSignup(/let signupEnabled=false;/);
-  expectSignup(/void loadSignupGate\(\);/);
+  expectSignup(/void initializeSignup\(\);/);
+  expectSignup(/if\(await redirectExistingSession\(\)\)return/);
   expectSignup(/if\(!signupEnabled\)/);
 });
 

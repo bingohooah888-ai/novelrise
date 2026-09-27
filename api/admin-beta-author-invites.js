@@ -3,6 +3,7 @@ import { URL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from './_lib/admin-auth.js';
 import { getAppBaseUrl } from './_lib/app-base-url.js';
+import { createInvitePreviewToken } from './_lib/beta-author-invite-preview-token.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,7 +12,6 @@ const supabase = createClient(
 );
 
 const TOKEN_VERSION_NAMESPACE = 'novelight-beta-author-invite:v1';
-const TEST_TOKEN_NAMESPACE = 'novelight-beta-author-invite-test:v1';
 const INVITE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 const FROM = 'NOVELIGHT <auth@novelight.jp>';
@@ -54,6 +54,13 @@ function hashToken(token) {
 
 function inviteUrl(token) {
   const url = new URL('/signup.html', getAppBaseUrl(process.env));
+  url.searchParams.set('redirect', 'mypage.html');
+  url.hash = `invite=${encodeURIComponent(token)}`;
+  return url.toString();
+}
+
+function invitePreviewUrl(token) {
+  const url = new URL('/invite-preview.html', getAppBaseUrl(process.env));
   url.hash = `invite=${encodeURIComponent(token)}`;
   return url.toString();
 }
@@ -81,15 +88,29 @@ function formatJst(iso) {
 function emailPayload({ to, url, expiresAt, testMode = false }) {
   const escapedUrl = htmlEscape(url);
   const expires = htmlEscape(formatJst(expiresAt));
+  const ctaText = testMode ? '招待画面を確認する' : '先行利用を始める';
   const testText = testMode
     ? `【本番送信前のテストメールです】
-この招待URLは表示・遷移確認専用で、会員登録には使用できません。
+このプレビューURLは表示・遷移確認専用で、会員登録には使用できません。
 
 `
     : '';
   const testHtml = testMode
-    ? `<div style="margin:0 0 24px;padding:14px 16px;border:1px solid #b7791f;border-radius:10px;background:#fffaf0;color:#744210;font-size:13px;line-height:1.7"><strong>本番送信前のテストメールです。</strong><br>この招待URLは表示・遷移確認専用で、会員登録には使用できません。</div>`
+    ? `<div style="margin:0 0 24px;padding:14px 16px;border:1px solid #b7791f;border-radius:10px;background:#fffaf0;color:#744210;font-size:13px;line-height:1.7"><strong>本番送信前のテストメールです。</strong><br>このプレビューURLは表示・遷移確認専用で、会員登録には使用できません。</div>`
     : '';
+  const actionText = testMode
+    ? `以下のURLで、先行作者プレオープン時の招待画面を確認してください。
+${url}
+
+このプレビューから会員登録、招待消費、データ更新はできません。`
+    : `以下の専用URLから会員登録してください。
+${url}
+
+このURLは先行登録者ご本人専用です。他の方へ共有しないでください。
+有効期限：${formatJst(expiresAt)}`;
+  const detailHtml = testMode
+    ? `<strong>安全な表示確認専用です。</strong><br>会員登録、招待消費、データ更新はできません。`
+    : `<strong>このURLはご本人専用です。</strong><br>他の方へ共有しないでください。<br>有効期限：${expires}<br>一般β公開：2026年9月30日`;
   return {
     from: FROM,
     to: [to],
@@ -98,11 +119,7 @@ function emailPayload({ to, url, expiresAt, testMode = false }) {
 
 2026年9月28日から、先行作者プレオープンをご利用いただけます。
 
-以下の専用URLから会員登録してください。
-${url}
-
-このURLは先行登録者ご本人専用です。他の方へ共有しないでください。
-有効期限：${formatJst(expiresAt)}
+${actionText}
 一般β公開：2026年9月30日
 
 URLが利用できない場合は、NOVELIGHTのお問い合わせ窓口からご連絡ください。
@@ -110,23 +127,20 @@ URLが利用できない場合は、NOVELIGHTのお問い合わせ窓口から�
 NOVELIGHT
 すべての物語に、光を。`,
     html: `<!doctype html>
-<html lang="ja">
+<html lang="ja" dir="ltr">
   <head><meta charset="utf-8"><title>NOVELIGHT 先行利用のご案内</title></head>
   <body style="margin:0;padding:0;background:#f5f4ef;color:#1d2433;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Yu Gothic',sans-serif">
-    <div style="max-width:620px;margin:0 auto;padding:32px 20px">
+    <div lang="ja" dir="ltr" style="max-width:620px;margin:0 auto;padding:32px 20px">
       <div style="background:#fff;border:1px solid #e5dfcf;border-radius:16px;padding:32px">
         ${testHtml}
         <p style="margin:0 0 10px;color:#8a6f2d;font-size:13px;font-weight:700;letter-spacing:.08em">NOVELIGHT FOUNDING AUTHORS</p>
         <h1 style="margin:0 0 20px;font-size:24px;line-height:1.4">先行利用のご案内</h1>
         <p style="line-height:1.8">NOVELIGHTへ先行登録いただきありがとうございます。</p>
         <p style="line-height:1.8"><strong>2026年9月28日</strong>から、一般公開に先駆けて作品投稿などの準備を始められます。</p>
-        <p style="margin:28px 0;text-align:center"><a href="${escapedUrl}" style="display:inline-block;padding:14px 24px;border-radius:9px;background:#17233f;color:#fff;text-decoration:none;font-weight:700">先行利用を始める</a></p>
+        <p style="margin:28px 0;text-align:center"><a href="${escapedUrl}" style="display:inline-block;padding:14px 24px;border-radius:9px;background:#17233f;color:#fff;text-decoration:none;font-weight:700">${ctaText}</a></p>
         <p style="line-height:1.7;font-size:13px;color:#596273">ボタンが開けない場合は、次のURLをブラウザへ貼り付けてください。<br><a href="${escapedUrl}" style="word-break:break-all">${escapedUrl}</a></p>
         <div style="margin-top:24px;padding:16px;border-radius:10px;background:#f7f5ee;font-size:13px;line-height:1.7">
-          <strong>このURLはご本人専用です。</strong><br>
-          他の方へ共有しないでください。<br>
-          有効期限：${expires}<br>
-          一般β公開：2026年9月30日
+          ${detailHtml}
         </div>
         <p style="margin:24px 0 0;font-size:12px;line-height:1.7;color:#717784">このメールは、NOVELIGHT β版の公開・参加に関する連絡へ同意して先行登録した方へお送りしています。</p>
       </div>
@@ -134,15 +148,6 @@ NOVELIGHT
   </body>
 </html>`
   };
-}
-
-function testInviteToken(admin) {
-  const secret = String(process.env.SUPABASE_SECRET_KEY ?? '');
-  if (!secret) throw new Error('SUPABASE_SECRET_KEY is unavailable');
-  const deployment = String(process.env.VERCEL_GIT_COMMIT_SHA ?? 'local');
-  return createHmac('sha256', secret)
-    .update(`${TEST_TOKEN_NAMESPACE}:${admin.id}:${deployment}`, 'utf8')
-    .digest('base64url');
 }
 
 function testIdempotencyKey(admin) {
@@ -182,7 +187,7 @@ async function sendTestInvite(admin) {
     body: JSON.stringify(
       emailPayload({
         to,
-        url: inviteUrl(testInviteToken(admin)),
+        url: invitePreviewUrl(createInvitePreviewToken(process.env)),
         expiresAt,
         testMode: true
       })
