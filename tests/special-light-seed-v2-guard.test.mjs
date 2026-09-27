@@ -5,7 +5,7 @@ import { URL } from 'node:url';
 
 const migrationPath = new URL(
   '../supabase/migrations/20260928004100_special_light_seed_v2_guard.sql',
-  import.meta.url,
+  import.meta.url
 );
 
 test('live LIGHT SEED v2 RPCs reject special-zone works server-side', async () => {
@@ -15,11 +15,11 @@ test('live LIGHT SEED v2 RPCs reject special-zone works server-side', async () =
   assert.match(sql, /public\.plant_light_seed_v2\(text,text\)/);
   assert.match(
     sql,
-    /novelight_is_general_discovery_eligible\(n\.ai_usage, n\.content_rating\)/,
+    /novelight_is_general_discovery_eligible\(n\.ai_usage, n\.content_rating\)/
   );
   assert.match(sql, /This work is not eligible for LIGHT SEED/);
   assert.match(
     sql,
-    /Special-zone LIGHT SEED v2 exclusion anchor not found/,
+    /Special-zone LIGHT SEED v2 exclusion anchor not found/
   );
 });
