@@ -74,7 +74,7 @@ test('beta navigation links to the live SCOUT RECORD surface', () => {
 test('SCOUT RECORD uses Author Studio shell and full beta information architecture', () => {
   assert.match(scout, /<title>SCOUT RECORD \| NOVELIGHT<\/title>/u);
   assert.match(scout, /<h1>SCOUT RECORD<\/h1>/u);
-  assert.match(scout, /あなたの発掘実績とスカウトとしての成長/u);
+  assert.match(scout, /あなたのLIGHT SEED活動とスカウトとしての成長/u);
   assert.match(scout, /novelight-author-home\.css/u);
   assert.match(scout, /novelight-author-room\.css/u);
   assert.match(scout, /novelight-author-studio-shell\.js/u);
