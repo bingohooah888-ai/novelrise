@@ -28,6 +28,14 @@ test('beta LIGHT SEED uses a server-authoritative automatic tier contract', () =
   );
 });
 
+test('automatic tier keeps the final beta valid-read and favorite fairness contract', () => {
+  const foregroundMatches = migration.match(/and r\.foreground_signal/gu) || [];
+  const corroboratingMatches = migration.match(/and \(r\.progress_signal or r\.interaction_signal\)/gu) || [];
+  assert.ok(foregroundMatches.length >= 2, 'status and send must both require foreground evidence');
+  assert.ok(corroboratingMatches.length >= 2, 'status and send must both require progress or interaction');
+  assert.match(migration, /and f\.user_id <> v_author_id;/u);
+});
+
 test('public beta sender is one generic action and explains automatic switching', () => {
   assert.match(novelRuntime, /id="sendLightSeedButton"/u);
   assert.match(
