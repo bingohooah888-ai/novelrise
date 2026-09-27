@@ -7,6 +7,9 @@ const manifestPath = 'docs/SCOUT-BADGE-HARD-25-MANIFEST.csv';
 const expectedZipSha =
   'bd82a269fa8f793a1d7489dbf04f11eed9e7669bc203bf9592d3f72245b1a520';
 
+// The manifest parser is intentionally compact and deterministic; formatting is
+// pinned here so the provenance contract stays byte-for-byte reviewable.
+// prettier-ignore
 function readManifest() {
   const lines = fs.readFileSync(manifestPath, 'utf8').trim().split(/\r?\n/);
   const headers = lines.shift().split(',');
@@ -18,6 +21,7 @@ function readManifest() {
   });
 }
 
+// prettier-ignore
 test(
   'Hard 25 artwork keeps approved source bytes and explicit mappings',
   () => {
