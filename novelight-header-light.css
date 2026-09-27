@@ -1,4 +1,72 @@
+@import url("novelight-login-parchment.css");
 @import url("novelight-header-light-base.css");
+
+/* Keep the shared-header source contract visible in the canonical stylesheet.
+   The complete legacy-compatible rules live in the base stylesheet; these
+   declarations intentionally mirror its public-header contract. */
+html body.novelight-public-dark .site-header,
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-header {
+  background: rgba(250, 249, 246, 0.98) !important;
+  font-family: var(
+    --brand-display-font,
+    "Yu Mincho",
+    "Hiragino Mincho ProN",
+    "Hiragino Mincho Pro",
+    "Noto Serif JP",
+    "Noto Serif CJK JP",
+    Georgia,
+    "Times New Roman",
+    serif
+  );
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .public-header-inner {
+  display: grid !important;
+  grid-template-columns: auto minmax(520px, 1fr) auto !important;
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .logo img,
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-logo img,
+html body.novelight-public-header-page:not(.novelight-public-dark) .novelight-brand-logo-image {
+  height: 104.4px !important;
+}
+
+html body.novelight-public-dark .site-nav a,
+html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
+  color: #28364a !important;
+  font-size: 22px !important;
+}
+
+html body.novelight-public-header-page:not(.novelight-public-dark) .btn {
+  font-size: 19px !important;
+}
+
+html body.novelight-public-dark header.site-header .btn {
+  font-size: 19px !important;
+  font-weight: 700 !important;
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) .btn,
+  html body.novelight-public-dark header.site-header .btn {
+    font-size: 17px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu {
+    display: block;
+  }
+
+  html body.novelight-public-dark .mobile-menu > nav a,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu > nav a {
+    font-size: 16px !important;
+  }
+
+  html body.novelight-public-dark header.site-header .btn {
+    font-size: 16px !important;
+  }
+}
 
 /* Public header balance pass: keep the current logo treatment, but make the
    Home / SPECIAL LIGHT / AI / R15 / R18 navigation read as one balanced row. */
@@ -36,12 +104,6 @@
     margin-left: 0 !important;
     gap: 12px !important;
   }
-
-  html body.novelight-public-dark header.site-header .btn {
-    min-height: 46px !important;
-    padding: 10px 18px !important;
-    font-size: 15px !important;
-  }
 }
 
 @media (min-width: 901px) and (max-width: 1180px) {
@@ -73,11 +135,5 @@
   html body.novelight-public-dark header.site-header .header-actions {
     margin-left: 0 !important;
     gap: 8px !important;
-  }
-
-  html body.novelight-public-dark header.site-header .btn {
-    min-height: 44px !important;
-    padding: 9px 12px !important;
-    font-size: 14px !important;
   }
 }
