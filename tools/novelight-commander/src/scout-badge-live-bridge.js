@@ -10,6 +10,9 @@ const REQUEST_PREFIX = 'NOVELIGHT_SCOUT_LIVE_VERIFY_REQUEST ';
 const RESULT_PREFIX = 'NOVELIGHT_SCOUT_LIVE_VERIFY_RESULT_V1';
 const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9][A-Za-z0-9_-]{2,63}$/;
 const MAX_OUTPUT = 32000;
+const POLL_INTERVAL_MS = 10_000;
+const RECOVERY_LOOKBACK_MS = 2 * 60 * 60 * 1000;
+const MAX_COMMENT_PAGES = 10;
 const repoRoot = path.resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 const verifierPath = path.join(
   repoRoot,
@@ -27,6 +30,9 @@ const playwrightPackagePath = path.join(
   'test',
   'package.json'
 );
+
+let processing = false;
+let stopped = false;
 
 function bounded(value, limit = MAX_OUTPUT) {
   const text = String(value || '').replace(
@@ -86,6 +92,13 @@ function parseRequest(comment) {
     );
   }
   return request;
+}
+
+function resultRequestId(comment) {
+  const body = String(comment?.body || '');
+  if (!body.startsWith(RESULT_PREFIX)) return null;
+  const match = body.match(/^- request_id: `([^`]+)`$/m);
+  return match && REQUEST_ID_RE.test(match[1]) ? match[1] : null;
 }
 
 function runCommand(executable, args, timeoutMs, options = {}) {
@@ -192,19 +205,33 @@ async function postResult(request, status, details) {
   );
 }
 
-async function processPendingRequest() {
-  if (!token()) return;
-  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const comments = await githubApi(
-    'GET',
-    `/repos/${OWNER}/${REPOSITORY}/issues/${ISSUE_NUMBER}/comments?per_page=100&since=${encodeURIComponent(since)}`
+async function listRecoveryComments() {
+  const since = new Date(Date.now() - RECOVERY_LOOKBACK_MS).toISOString();
+  const comments = [];
+  for (let page = 1; page <= MAX_COMMENT_PAGES; page += 1) {
+    const batch = await githubApi(
+      'GET',
+      `/repos/${OWNER}/${REPOSITORY}/issues/${ISSUE_NUMBER}/comments?per_page=100&page=${page}&since=${encodeURIComponent(since)}`
+    );
+    comments.push(...(batch || []));
+    if (!batch || batch.length < 100) break;
+  }
+  return comments.sort((a, b) => Number(a.id) - Number(b.id));
+}
+
+function pendingRequests(comments) {
+  const completedRequestIds = new Set(
+    comments.map(resultRequestId).filter(Boolean)
   );
-  const requests = [];
-  for (const comment of comments || []) {
+  const byRequestId = new Map();
+  for (const comment of comments) {
     try {
       const request = parseRequest(comment);
-      if (request) {
-        requests.push({ request, commentId: Number(comment.id) });
+      if (request && !byRequestId.has(request.requestId)) {
+        byRequestId.set(request.requestId, {
+          request,
+          commentId: Number(comment.id)
+        });
       }
     } catch (error) {
       console.error(
@@ -213,19 +240,12 @@ async function processPendingRequest() {
       );
     }
   }
-  if (!requests.length) return;
-  requests.sort((a, b) => a.commentId - b.commentId);
-  const target = requests.at(-1).request;
+  return [...byRequestId.values()]
+    .filter(({ request }) => !completedRequestIds.has(request.requestId))
+    .sort((a, b) => a.commentId - b.commentId);
+}
 
-  const alreadyCompleted = (comments || []).some((comment) => {
-    const body = String(comment.body || '');
-    return (
-      body.startsWith(RESULT_PREFIX) &&
-      body.includes(`- request_id: \`${target.requestId}\``)
-    );
-  });
-  if (alreadyCompleted) return;
-
+async function verifyAndPost(target) {
   try {
     const result = await runVerifier();
     if (
@@ -278,6 +298,42 @@ async function processPendingRequest() {
   }
 }
 
-void processPendingRequest().catch((error) => {
-  console.error('[NLO scout-live] startup verification failed:', error);
+async function processPendingRequests() {
+  if (!token() || processing) return;
+  processing = true;
+  try {
+    const comments = await listRecoveryComments();
+    const pending = pendingRequests(comments);
+    for (const { request } of pending) {
+      await verifyAndPost(request);
+    }
+  } finally {
+    processing = false;
+  }
+}
+
+async function runPollLoop() {
+  if (stopped) return;
+  try {
+    await processPendingRequests();
+  } catch (error) {
+    console.error(
+      '[NLO scout-live] recovery poll failed:',
+      error instanceof Error ? error.stack || error.message : String(error)
+    );
+  } finally {
+    if (!stopped) {
+      const timer = setTimeout(runPollLoop, POLL_INTERVAL_MS);
+      timer.unref?.();
+    }
+  }
+}
+
+process.once('SIGTERM', () => {
+  stopped = true;
 });
+process.once('SIGINT', () => {
+  stopped = true;
+});
+
+void runPollLoop();
