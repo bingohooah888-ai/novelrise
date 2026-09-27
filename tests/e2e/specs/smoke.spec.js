@@ -171,3 +171,118 @@ test('bulk import exposes the beta author migration contract', async ({
   expect(parser).toContain('parseBulkEpisodes');
   expect(parser).toContain('maxFileBytes: 5 * 1024 * 1024');
 });
+
+async function capturePublicHeader(page) {
+  return page.evaluate(() => {
+    const round = (value) => Math.round(value * 1000) / 1000;
+    const read = (selector) => {
+      const element = globalThis.document.querySelector(selector);
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      const style = globalThis.getComputedStyle(element);
+      return {
+        rect: {
+          x: round(rect.x),
+          y: round(rect.y),
+          width: round(rect.width),
+          height: round(rect.height)
+        },
+        display: style.display,
+        visibility: style.visibility,
+        position: style.position,
+        fontSize: style.fontSize,
+        gap: style.gap,
+        paddingTop: style.paddingTop,
+        paddingRight: style.paddingRight,
+        paddingBottom: style.paddingBottom,
+        paddingLeft: style.paddingLeft,
+        backgroundColor: style.backgroundColor,
+        borderBottomWidth: style.borderBottomWidth,
+        borderBottomStyle: style.borderBottomStyle,
+        borderBottomColor: style.borderBottomColor,
+        boxShadow: style.boxShadow
+      };
+    };
+    const betaLinks = globalThis.document.querySelectorAll(
+      'header.site-header a[href="beta-authors.html"]'
+    );
+
+    return {
+      viewport: {
+        innerWidth: globalThis.innerWidth,
+        clientWidth: globalThis.document.documentElement.clientWidth
+      },
+      siteHeader: read('header.site-header'),
+      inner: read('header.site-header .public-header-inner'),
+      logo: read('header.site-header .logo img'),
+      desktopNav: read('header.site-header .desktop-nav'),
+      firstNavLink: read('header.site-header .desktop-nav a'),
+      actions: read('header.site-header .header-actions'),
+      search: read('header.site-header .header-search'),
+      login: read('header.site-header .login-action'),
+      signup: read('header.site-header .signup-action'),
+      mobileMenu: read('header.site-header .mobile-menu'),
+      mobileSummary: read('header.site-header .mobile-menu summary'),
+      betaLinkDisplays: Array.from(betaLinks).map(
+        (element) => globalThis.getComputedStyle(element).display
+      )
+    };
+  });
+}
+
+test('SPECIAL LIGHT header matches Home on desktop and mobile', async ({
+  browser
+}) => {
+  const viewports = [
+    { name: 'desktop', width: 1440, height: 900 },
+    { name: 'mobile', width: 390, height: 844 }
+  ];
+
+  for (const viewport of viewports) {
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height }
+    });
+    const page = await context.newPage();
+
+    const homeResponse = await page.goto('/index.html', {
+      waitUntil: 'domcontentloaded'
+    });
+    expect(
+      homeResponse?.ok(),
+      `${viewport.name}: Home should load`
+    ).toBeTruthy();
+    const baseline = await capturePublicHeader(page);
+    expect(
+      baseline.betaLinkDisplays,
+      `${viewport.name}: legacy beta-author header links must not remain on Home`
+    ).toEqual([]);
+
+    const specialResponse = await page.goto('/special-light.html', {
+      waitUntil: 'domcontentloaded'
+    });
+    expect(
+      specialResponse?.ok(),
+      `${viewport.name}: SPECIAL LIGHT should load`
+    ).toBeTruthy();
+    expect(
+      await capturePublicHeader(page),
+      `${viewport.name}: special-light.html header must match Home exactly`
+    ).toEqual(baseline);
+
+    for (const zone of ['ai', 'r15', 'r18']) {
+      const zoneResponse = await page.goto(`/special-zone.html?zone=${zone}`, {
+        waitUntil: 'domcontentloaded'
+      });
+      expect(
+        zoneResponse?.ok(),
+        `${viewport.name}: ${zone} zone should load`
+      ).toBeTruthy();
+      expect(
+        await capturePublicHeader(page),
+        `${viewport.name}: ${zone} SPECIAL zone header must match Home exactly`
+      ).toEqual(baseline);
+    }
+
+    await context.close();
+  }
+});

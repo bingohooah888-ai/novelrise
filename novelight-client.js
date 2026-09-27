@@ -33,7 +33,9 @@
     'login',
     'signup',
     'forgot-password',
-    'reset-password'
+    'reset-password',
+    'special-light',
+    'special-zone'
   ]);
   let memoryVisitorToken = null;
 
