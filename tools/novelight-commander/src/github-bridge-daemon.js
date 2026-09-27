@@ -13,6 +13,7 @@ import './author-badge-production-reconcile-bridge.js';
 import './author-badge-register22-v2-bridge.js';
 import './author-badge-register13-bridge.js';
 import './hard-badge-register25-bridge.js';
+import './special-badge-asset-probe-bridge.js';
 import { mainProductionMigrationApproveBridge } from './production-migration-approve-bridge.js';
 
 void mainProductionMigrationApproveBridge().catch(error => {
