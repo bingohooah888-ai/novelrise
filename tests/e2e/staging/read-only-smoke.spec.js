@@ -112,6 +112,11 @@ test('browser security headers are active on deployed pages', async ({
     "frame-ancestors 'none'"
   );
   expect(headers['content-security-policy']).toContain("object-src 'none'");
+  expect(headers['content-security-policy']).toContain("script-src 'self'");
+  expect(headers['content-security-policy']).not.toMatch(
+    /script-src[^;]*'unsafe-inline'/
+  );
+  expect(headers['content-security-policy']).not.toContain("'unsafe-eval'");
 });
 
 test('safe API contracts respond without state-changing requests', async ({

@@ -1,4 +1,4 @@
-import { createReadStream } from 'node:fs';
+import { createReadStream, readFileSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, resolve, sep } from 'node:path';
@@ -9,6 +9,15 @@ const repositoryRoot = resolve(
 );
 const host = '127.0.0.1';
 const port = Number(process.env.E2E_PORT || 4173);
+const vercelConfig = JSON.parse(
+  readFileSync(resolve(repositoryRoot, 'vercel.json'), 'utf8')
+);
+const securityHeaders = Object.fromEntries(
+  (vercelConfig.headers?.[0]?.headers || []).map(({ key, value }) => [
+    key,
+    value
+  ])
+);
 
 const contentTypes = new Map([
   ['.css', 'text/css; charset=utf-8'],
@@ -54,6 +63,7 @@ const server = createServer(async (request, response) => {
     }
 
     response.writeHead(200, {
+      ...securityHeaders,
       'Content-Type':
         contentTypes.get(extname(filePath)) || 'application/octet-stream'
     });
@@ -75,6 +85,10 @@ server.listen(port, host, () => {
   );
 });
 
-process.on('SIGTERM', () => {
-  server.close();
-});
+function shutdown() {
+  server.close(() => process.exit(0));
+  server.closeAllConnections?.();
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
