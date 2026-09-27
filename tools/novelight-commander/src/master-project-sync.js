@@ -43,6 +43,7 @@ async function ensurePlaywright(repoRoot) {
     'test',
     'package.json'
   );
+
   if (!existsSync(playwrightPackage)) {
     const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const { spawn } = await import('node:child_process');
@@ -54,24 +55,34 @@ async function ensurePlaywright(repoRoot) {
         stdio: ['ignore', 'pipe', 'pipe']
       });
       let stderr = '';
+      let settled = false;
       const timer = setTimeout(() => {
         child.kill();
-        reject(new Error('Playwright dependency install timed out.'));
+        if (!settled) {
+          settled = true;
+          reject(new Error('Playwright dependency install timed out.'));
+        }
       }, 300000);
       child.stderr?.on('data', chunk => {
         stderr = (stderr + chunk.toString()).slice(-8000);
       });
       child.on('error', error => {
         clearTimeout(timer);
-        reject(error);
+        if (!settled) {
+          settled = true;
+          reject(error);
+        }
       });
       child.on('close', code => {
         clearTimeout(timer);
+        if (settled) return;
+        settled = true;
         if (code === 0 && existsSync(playwrightPackage)) resolve();
         else reject(new Error('Unable to install locked Playwright dependencies.\n' + stderr));
       });
     });
   }
+
   const requireFromTests = createRequire(packageJson);
   return requireFromTests('@playwright/test').chromium;
 }
@@ -126,39 +137,54 @@ async function openBrowser(chromium, dataRoot, cdpUrl) {
   };
 }
 
-function loginRequired(page) {
-  const url = page.url();
-  return /auth\.openai\.com|\/auth\//i.test(url);
+function loginRequiredByUrl(page) {
+  return /auth\.openai\.com|\/auth\//i.test(page.url());
+}
+
+async function loginRequiredByUi(page) {
+  const body = await page.locator('body').innerText().catch(() => '');
+  const hasLogin = /(^|\n)\s*(Log in|Login|ログイン)\s*(\n|$)/i.test(body);
+  const hasSignup = /(^|\n)\s*(Sign up|新規登録|アカウントを作成)\s*(\n|$)/i.test(body);
+  return hasLogin && hasSignup;
 }
 
 async function discoverProjectPage(context, projectUrl, projectName) {
   const name = String(projectName || DEFAULT_PROJECT_NAME).trim() || DEFAULT_PROJECT_NAME;
-  let page = context.pages().find(candidate => candidate.url().startsWith('https://chatgpt.com/'));
-  if (!page) page = await context.newPage();
+  const page = await context.newPage();
 
   if (projectUrl) {
     await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } else {
     await page.goto('https://chatgpt.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
   }
-  if (loginRequired(page)) return { page, loginRequired: true };
   await page.waitForTimeout(1200);
+
+  if (loginRequiredByUrl(page) || await loginRequiredByUi(page)) {
+    return { page, loginRequired: true };
+  }
 
   if (!projectUrl) {
     const projectLink = page.getByText(name, { exact: true });
     const count = await projectLink.count();
     if (count !== 1) {
-      throw new Error(`Unable to uniquely find ChatGPT Project ${JSON.stringify(name)}. Found ${count} exact matches.`);
+      if (await loginRequiredByUi(page)) return { page, loginRequired: true };
+      throw new Error(
+        `Unable to uniquely find ChatGPT Project ${JSON.stringify(name)}. Found ${count} exact matches.`
+      );
     }
     await projectLink.click();
     await page.waitForLoadState('domcontentloaded').catch(() => {});
     await page.waitForTimeout(1200);
   }
 
-  if (loginRequired(page)) return { page, loginRequired: true };
+  if (loginRequiredByUrl(page) || await loginRequiredByUi(page)) {
+    return { page, loginRequired: true };
+  }
   const bodyText = await page.locator('body').innerText().catch(() => '');
   if (!bodyText.includes(name)) {
-    throw new Error(`Opened ChatGPT page does not visibly identify Project ${JSON.stringify(name)}.`);
+    throw new Error(
+      `Opened ChatGPT page does not visibly identify Project ${JSON.stringify(name)}.`
+    );
   }
   return { page, loginRequired: false };
 }
@@ -170,8 +196,10 @@ async function openProjectEditor(page) {
   const directPatterns = [
     /Edit project/i,
     /Project settings/i,
+    /Manage project/i,
     /プロジェクトを編集/i,
-    /プロジェクト設定/i
+    /プロジェクト設定/i,
+    /プロジェクトを管理/i
   ];
   for (const pattern of directPatterns) {
     const button = page.getByRole('button', { name: pattern }).first();
@@ -211,7 +239,10 @@ async function collectMasterLabels(page) {
       if (!text || text.length > 180 || !/NOVELIGHT-MASTER/i.test(text)) continue;
       for (const line of text.split(/\n+/)) {
         const value = line.trim();
-        if (/^NOVELIGHT-MASTER(?:[-_.\s]|$)/i.test(value) && /\.(?:md|txt)$/i.test(value)) {
+        if (
+          /^NOVELIGHT-MASTER(?:[-_.\s]|$)/i.test(value) &&
+          /\.(?:md|txt)$/i.test(value)
+        ) {
           names.add(value);
         }
       }
@@ -231,14 +262,18 @@ async function uploadMaster(page, file) {
     /Add files/i,
     /Upload files/i,
     /Add source/i,
+    /Add files or text/i,
     /ファイルを追加/i,
     /ファイルをアップロード/i,
+    /ソースを追加/i,
     /アップロード/i
   ];
   for (const pattern of patterns) {
     const button = page.getByRole('button', { name: pattern }).first();
     if (!(await button.count())) continue;
-    const chooserPromise = page.waitForEvent('filechooser', { timeout: 3000 }).catch(() => null);
+    const chooserPromise = page
+      .waitForEvent('filechooser', { timeout: 3000 })
+      .catch(() => null);
     await button.click();
     const chooser = await chooserPromise;
     if (chooser) {
@@ -262,7 +297,9 @@ async function deleteFileByLabel(page, fileName) {
   for (let index = 0; index < count; index += 1) {
     const label = matches.nth(index);
     if (!(await label.isVisible().catch(() => false))) continue;
-    const row = label.locator('xpath=ancestor::*[(self::div or self::li) and .//button][1]');
+    const row = label.locator(
+      'xpath=ancestor::*[(self::div or self::li) and .//button][1]'
+    );
     if (!(await row.count())) continue;
 
     const menu = row.locator(
@@ -272,18 +309,25 @@ async function deleteFileByLabel(page, fileName) {
 
     await menu.last().click();
     await page.waitForTimeout(250);
-    const roleTarget = page.getByRole('menuitem', { name: /Delete|Remove|削除|取り除く/i }).first();
-    const textTarget = page.getByText(/^(Delete|Remove|削除|取り除く)$/i).first();
+    const roleTarget = page
+      .getByRole('menuitem', { name: /Delete|Remove|削除|取り除く/i })
+      .first();
+    const textTarget = page
+      .getByText(/^(Delete|Remove|削除|取り除く)$/i)
+      .first();
     const target = (await roleTarget.count()) ? roleTarget : textTarget;
     if (!(await target.count())) {
       await page.keyboard.press('Escape').catch(() => {});
       continue;
     }
+
     await target.click();
     await page.waitForTimeout(250);
-    const confirm = page.getByRole('button', { name: /^(Delete|Remove|削除|取り除く)$/i }).last();
+    const confirm = page
+      .getByRole('button', { name: /^(Delete|Remove|削除|取り除く)$/i })
+      .last();
     if (await confirm.count()) await confirm.click().catch(() => {});
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(700);
     return true;
   }
   return false;
@@ -302,18 +346,32 @@ export async function syncMasterToChatgptProjectSafely({
   }
   const repoValue = String(repoRoot || '').trim();
   const dataValue = String(dataRoot || '').trim();
-  if (!repoValue || !dataValue) throw new Error('repoRoot and dataRoot are required.');
+  if (!repoValue || !dataValue) {
+    throw new Error('repoRoot and dataRoot are required.');
+  }
 
   const safeProjectUrl = validateProjectUrl(projectUrl);
   const safeCdpUrl = validateLocalCdpUrl(cdpUrl);
-  const prepared = await prepareLatestMaster({ repoRoot: repoValue, dataRoot: dataValue });
+  const prepared = await prepareLatestMaster({
+    repoRoot: repoValue,
+    dataRoot: dataValue
+  });
   const chromium = await ensurePlaywright(path.resolve(repoValue));
-  const browser = await openBrowser(chromium, path.resolve(dataValue), safeCdpUrl);
+  const browser = await openBrowser(
+    chromium,
+    path.resolve(dataValue),
+    safeCdpUrl
+  );
   let keepOwnedBrowserOpen = false;
+  let ownedPage = null;
 
   try {
-    const discovered = await discoverProjectPage(browser.context, safeProjectUrl, projectName);
-    const page = discovered.page;
+    const discovered = await discoverProjectPage(
+      browser.context,
+      safeProjectUrl,
+      projectName
+    );
+    ownedPage = discovered.page;
     if (discovered.loginRequired) {
       keepOwnedBrowserOpen = !browser.external;
       return {
@@ -326,20 +384,27 @@ export async function syncMasterToChatgptProjectSafely({
       };
     }
 
+    const page = discovered.page;
     await openProjectEditor(page);
     const before = await collectMasterLabels(page);
 
-    const uploaded = await uploadMaster(page, prepared.file);
-    if (!uploaded) {
-      throw new Error('Could not locate a ChatGPT Project file upload control. No existing MASTER was deleted.');
-    }
-    await page.waitForTimeout(1500);
-    const freshVisible = await page.getByText(prepared.fileName, { exact: true }).count();
-    if (freshVisible < 1) {
-      throw new Error('Fresh MASTER upload was not visible after upload. No existing MASTER was deleted.');
+    if (!before.includes(prepared.fileName)) {
+      const uploaded = await uploadMaster(page, prepared.file);
+      if (!uploaded) {
+        throw new Error(
+          'Could not locate a ChatGPT Project file upload control. No existing MASTER was deleted.'
+        );
+      }
+      await page.waitForTimeout(1500);
     }
 
     const afterUpload = await collectMasterLabels(page);
+    if (!afterUpload.includes(prepared.fileName)) {
+      throw new Error(
+        'Fresh MASTER upload was not visible after upload. No existing MASTER was deleted.'
+      );
+    }
+
     const legacy = afterUpload.filter(
       name => name !== prepared.fileName && isMasterCandidateFileName(name)
     );
@@ -373,7 +438,9 @@ export async function syncMasterToChatgptProjectSafely({
       prepared
     };
   } finally {
-    if (!browser.external && !keepOwnedBrowserOpen) {
+    if (browser.external) {
+      if (ownedPage) await ownedPage.close().catch(() => {});
+    } else if (!keepOwnedBrowserOpen) {
       await browser.closeOwned().catch(() => {});
     }
   }
