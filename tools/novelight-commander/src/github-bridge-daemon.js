@@ -4,3 +4,4 @@
 import './github-bridge-core.js';
 import './x-bridge-daemon.js';
 import './scout-badge-live-bridge.js';
+import './master-project-sync-bridge.js';
