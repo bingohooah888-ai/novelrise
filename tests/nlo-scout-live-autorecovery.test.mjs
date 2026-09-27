@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const sourcePath =
-  'tools/novelight-commander/src/scout-badge-live-bridge.js';
+// prettier-ignore
+const sourcePath = 'tools/novelight-commander/src/scout-badge-live-bridge.js';
 
 // prettier-ignore
 test('NLO SCOUT live bridge polls pending work', async () => {
