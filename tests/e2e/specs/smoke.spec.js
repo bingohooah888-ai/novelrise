@@ -176,10 +176,10 @@ async function capturePublicHeader(page) {
   return page.evaluate(() => {
     const round = (value) => Math.round(value * 1000) / 1000;
     const read = (selector) => {
-      const element = document.querySelector(selector);
+      const element = globalThis.document.querySelector(selector);
       if (!element) return null;
       const rect = element.getBoundingClientRect();
-      const style = getComputedStyle(element);
+      const style = globalThis.getComputedStyle(element);
       return {
         rect: {
           x: round(rect.x),
@@ -203,14 +203,14 @@ async function capturePublicHeader(page) {
         boxShadow: style.boxShadow
       };
     };
-    const betaLinks = document.querySelectorAll(
+    const betaLinks = globalThis.document.querySelectorAll(
       'header.site-header a[href="beta-authors.html"]'
     );
 
     return {
       viewport: {
-        innerWidth: window.innerWidth,
-        clientWidth: document.documentElement.clientWidth
+        innerWidth: globalThis.innerWidth,
+        clientWidth: globalThis.document.documentElement.clientWidth
       },
       siteHeader: read('header.site-header'),
       inner: read('header.site-header .public-header-inner'),
@@ -224,7 +224,7 @@ async function capturePublicHeader(page) {
       mobileMenu: read('header.site-header .mobile-menu'),
       mobileSummary: read('header.site-header .mobile-menu summary'),
       betaLinkDisplays: Array.from(betaLinks).map(
-        (element) => getComputedStyle(element).display
+        (element) => globalThis.getComputedStyle(element).display
       )
     };
   });
