@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const migrationPath = new URL(
   '../supabase/migrations/20260928004000_special_light_zones.sql',
