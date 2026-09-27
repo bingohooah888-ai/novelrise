@@ -37,6 +37,11 @@ const NORMAL_IDS = [
   'reader_point_100', 'reader_point_500'
 ];
 
+const EXPECTED_SIZE = {
+  easy: 384,
+  normal: 1254
+};
+
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const requireFromE2E = createRequire(path.join(repoRoot, 'tests', 'e2e', 'package.json'));
 const { chromium } = requireFromE2E('@playwright/test');
@@ -187,6 +192,7 @@ async function main() {
 
     for (const [difficulty, ids] of [['easy', EASY_IDS], ['normal', NORMAL_IDS]]) {
       const gridId = difficulty === 'easy' ? 'badgeGridEasy' : 'badgeGridNormal';
+      const expectedSize = EXPECTED_SIZE[difficulty];
       for (const id of ids) {
         const card = page.locator(`#${gridId} .badge-card[data-badge-id="${id}"]`);
         assert((await card.count()) === 1, `Expected one ${difficulty} badge card for ${id}.`);
@@ -220,8 +226,8 @@ async function main() {
 
         if (
           !visual.complete ||
-          visual.naturalWidth !== 1254 ||
-          visual.naturalHeight !== 1254 ||
+          visual.naturalWidth !== expectedSize ||
+          visual.naturalHeight !== expectedSize ||
           visual.renderedWidth <= 0 ||
           visual.renderedHeight <= 0 ||
           visual.display === 'none' ||
@@ -229,7 +235,7 @@ async function main() {
           visual.opacity <= 0 ||
           !new URL(visual.src).pathname.endsWith(`/assets/scout-badges/${id}.png`)
         ) {
-          visualFailures.push({ id, ...visual });
+          visualFailures.push({ id, difficulty, expectedSize, ...visual });
         }
 
         const response = await context.request.get(visual.src, {
@@ -246,12 +252,14 @@ async function main() {
         if (
           !response.ok() ||
           !contentType.toLowerCase().includes('image/png') ||
-          geometry.width !== 1254 ||
-          geometry.height !== 1254 ||
+          geometry.width !== expectedSize ||
+          geometry.height !== expectedSize ||
           liveSha !== localSha
         ) {
           assetFailures.push({
             id,
+            difficulty,
+            expectedSize,
             status: response.status(),
             contentType,
             width: geometry.width,
@@ -275,7 +283,10 @@ async function main() {
       visualFailures: visualFailures.length,
       assetFailures: assetFailures.length,
       productionBytesMatchLocal: true,
-      pngGeometry: '1254x1254',
+      pngGeometry: {
+        easy: '384x384',
+        normal: '1254x1254'
+      },
       result: 'PASS'
     }));
   } finally {
