@@ -88,7 +88,10 @@ const rows = dataLines.map((line) => {
 
 async function verifyReaderNormalArtwork() {
   assert.equal(badgeArtworkAssignments.length, 50);
-  assert.equal(new Set(badgeArtworkAssignments.map(([badgeId]) => badgeId)).size, 50);
+  assert.equal(
+    new Set(badgeArtworkAssignments.map(([badgeId]) => badgeId)).size,
+    50
+  );
   assert.equal(rows.length, 50);
 
   for (let index = 0; index < 50; index += 1) {
