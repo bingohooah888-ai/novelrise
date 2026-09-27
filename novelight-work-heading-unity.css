@@ -1,0 +1,115 @@
+/*
+  Work-management title frame contract.
+  These pages are opened from 「自分の作品」, so their title reading surface must use
+  the same framed white card instead of page-specific unboxed or plain white variants.
+
+  #main-content is intentionally included in selectors so this contract outranks
+  older page-local/background reset rules even when this stylesheet is imported first.
+*/
+
+html body.novelight-page-series #main-content > .head > div:first-child,
+html body.novelight-page-bulk-import #main-content > .hero,
+html body.novelight-page-episode-drafts #main-content > .head > div:first-child,
+html body.novelight-page-episode-schedule #main-content > .head > div:first-child,
+html body.novelight-page-share-link > .page-head,
+html body.novelight-page-characters #main-content > .intro,
+html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head,
+html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head {
+  position: relative !important;
+  width: min(100%, 900px) !important;
+  max-width: 100% !important;
+  padding: 24px 28px 22px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(181, 137, 43, 0.82) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 249, 233, 0.98),
+    inset 0 0 0 4px rgba(196, 153, 56, 0.32),
+    0 14px 34px rgba(21, 31, 42, 0.16) !important;
+  backdrop-filter: blur(7px) !important;
+}
+
+/* Head rows with actions keep the action buttons outside the title card. */
+html body.novelight-page-series #main-content > .head > div:first-child,
+html body.novelight-page-episode-drafts #main-content > .head > div:first-child,
+html body.novelight-page-episode-schedule #main-content > .head > div:first-child {
+  flex: 1 1 620px !important;
+  width: auto !important;
+  max-width: 760px !important;
+}
+
+html body.novelight-page-series #main-content > .head > div:first-child::after,
+html body.novelight-page-bulk-import #main-content > .hero::after,
+html body.novelight-page-episode-drafts #main-content > .head > div:first-child::after,
+html body.novelight-page-episode-schedule #main-content > .head > div:first-child::after,
+html body.novelight-page-share-link > .page-head::after,
+html body.novelight-page-characters #main-content > .intro::after,
+html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head::after,
+html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head::after {
+  content: "✦" !important;
+  display: block !important;
+  position: absolute !important;
+  right: 18px !important;
+  bottom: 12px !important;
+  color: rgba(177, 132, 37, 0.72) !important;
+  font-size: 17px !important;
+  line-height: 1 !important;
+  pointer-events: none !important;
+}
+
+html body.novelight-page-series #main-content > .head > div:first-child h1,
+html body.novelight-page-bulk-import #main-content > .hero h1,
+html body.novelight-page-episode-drafts #main-content > .head > div:first-child h1,
+html body.novelight-page-episode-schedule #main-content > .head > div:first-child h1,
+html body.novelight-page-share-link > .page-head h1,
+html body.novelight-page-characters #main-content > .intro h1,
+html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head h1,
+html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head h1 {
+  margin-top: 0 !important;
+  color: #182b3c !important;
+  -webkit-text-fill-color: #182b3c !important;
+  text-shadow: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html body.novelight-page-series #main-content > .head > div:first-child p,
+html body.novelight-page-bulk-import #main-content > .hero p,
+html body.novelight-page-episode-drafts #main-content > .head > div:first-child p,
+html body.novelight-page-episode-schedule #main-content > .head > div:first-child p,
+html body.novelight-page-share-link > .page-head p,
+html body.novelight-page-characters #main-content > .intro p,
+html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head p,
+html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head p {
+  color: #425260 !important;
+  -webkit-text-fill-color: #425260 !important;
+  text-shadow: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head .kicker,
+html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head .kicker {
+  color: #98721f !important;
+  -webkit-text-fill-color: #98721f !important;
+  text-shadow: none !important;
+}
+
+@media (max-width: 700px) {
+  html body.novelight-page-series #main-content > .head > div:first-child,
+  html body.novelight-page-bulk-import #main-content > .hero,
+  html body.novelight-page-episode-drafts #main-content > .head > div:first-child,
+  html body.novelight-page-episode-schedule #main-content > .head > div:first-child,
+  html body.novelight-page-share-link > .page-head,
+  html body.novelight-page-characters #main-content > .intro,
+  html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head,
+  html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 20px 20px 18px !important;
+    border-radius: 17px !important;
+  }
+}
