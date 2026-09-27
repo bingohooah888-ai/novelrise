@@ -11,6 +11,7 @@ const DEFAULT_PROJECT_NAME = 'NOVELIGHT';
 const DEFAULT_POLL_MS = 2 * 60 * 1000;
 const MIN_POLL_MS = 60 * 1000;
 let running = false;
+let verifiedThisProcess = false;
 
 function bounded(value, limit = 8000) {
   const text = String(value || '').replace(
@@ -69,6 +70,7 @@ async function writeDeferredState(stateFile, state, prepared, result) {
     enabled: true,
     status: String(result.result || 'deferred').toLowerCase(),
     uiLaunchAllowed: false,
+    runtimeVerified: false,
     lastCheckedAt: new Date().toISOString(),
     lastCheckedMainSha: prepared.mainSha,
     lastCheckedContentSha256: prepared.contentSha256,
@@ -86,6 +88,7 @@ async function tick() {
     const prepared = await prepareLatestMaster(config);
 
     if (
+      verifiedThisProcess &&
       state.lastSyncedContentSha256 === prepared.contentSha256 &&
       state.projectUrl &&
       state.status === 'synced'
@@ -93,6 +96,7 @@ async function tick() {
       await writeJsonAtomic(stateFile, {
         ...state,
         uiLaunchAllowed: false,
+        runtimeVerified: true,
         lastCheckedAt: new Date().toISOString(),
         lastCheckedMainSha: prepared.mainSha,
         lastCheckedContentSha256: prepared.contentSha256
@@ -114,6 +118,7 @@ async function tick() {
         ...state,
         status: 'busy',
         uiLaunchAllowed: false,
+        runtimeVerified: false,
         lastCheckedAt: new Date().toISOString(),
         lastCheckedMainSha: prepared.mainSha,
         lastCheckedContentSha256: prepared.contentSha256,
@@ -134,6 +139,7 @@ async function tick() {
         enabled: true,
         status: 'login_required',
         uiLaunchAllowed: false,
+        runtimeVerified: false,
         projectName: String(state.projectName || DEFAULT_PROJECT_NAME),
         lastCheckedAt: new Date().toISOString(),
         lastCheckedMainSha: prepared.mainSha,
@@ -150,10 +156,13 @@ async function tick() {
       throw new Error('MASTER automatic Project sync did not return PASS.');
     }
 
+    verifiedThisProcess = true;
     await writeJsonAtomic(stateFile, {
       enabled: true,
       status: 'synced',
       uiLaunchAllowed: false,
+      runtimeVerified: true,
+      runtimeVerifiedAt: new Date().toISOString(),
       projectName: result.projectName || state.projectName || DEFAULT_PROJECT_NAME,
       projectUrl: result.projectUrl || state.projectUrl || '',
       lastSyncedAt: new Date().toISOString(),
@@ -167,7 +176,7 @@ async function tick() {
       lastError: null
     });
     console.log(
-      `[NLO master-auto-sync] synced ${prepared.contentSha256.slice(0, 12)} from ${prepared.mainSha.slice(0, 12)} without visible UI.`
+      `[NLO master-auto-sync] runtime-verified ${prepared.contentSha256.slice(0, 12)} from ${prepared.mainSha.slice(0, 12)} without visible UI.`
     );
   } catch (error) {
     try {
@@ -179,6 +188,7 @@ async function tick() {
         enabled: true,
         status: 'error',
         uiLaunchAllowed: false,
+        runtimeVerified: false,
         lastCheckedAt: new Date().toISOString(),
         lastError: bounded(error instanceof Error ? error.stack || error.message : String(error))
       });
