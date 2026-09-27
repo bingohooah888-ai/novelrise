@@ -220,6 +220,34 @@
     reader_point_500: 'assets/scout-badges/reader_point_500.png'
   };
   Object.assign(badgeArtworkPaths, readerNormalArtworkPaths);
+  const hardArtworkPaths = {
+    reader_read_500: 'assets/scout-badges/hard_reader_read_500.png',
+    reader_read_1000: 'assets/scout-badges/hard_reader_read_1000.png',
+    reader_new_author_250: 'assets/scout-badges/hard_reader_new_author_250.png',
+    reader_low_rank_250: 'assets/scout-badges/hard_reader_low_rank_250.png',
+    reader_low_rank_500: 'assets/scout-badges/hard_reader_low_rank_500.png',
+    reader_discovery_plus2_050: 'assets/scout-badges/hard_reader_discovery_plus2_050.png',
+    reader_discovery_plus2_100: 'assets/scout-badges/hard_reader_discovery_plus2_100.png',
+    reader_discovery_plus3_025: 'assets/scout-badges/hard_reader_discovery_plus3_025.png',
+    reader_discovery_plus3_050: 'assets/scout-badges/hard_reader_discovery_plus3_050.png',
+    reader_discovery_plus4_010: 'assets/scout-badges/hard_reader_discovery_plus4_010.png',
+    reader_discovery_plus4_020: 'assets/scout-badges/hard_reader_discovery_plus4_020.png',
+    reader_discovery_plus5_001: 'assets/scout-badges/hard_reader_discovery_plus5_001.png',
+    reader_discovery_plus5_003: 'assets/scout-badges/hard_reader_discovery_plus5_003.png',
+    reader_discovery_plus5_010: 'assets/scout-badges/hard_reader_discovery_plus5_010.png',
+    reader_nova_010: 'assets/scout-badges/hard_reader_nova_010.png',
+    reader_nova_025: 'assets/scout-badges/hard_reader_nova_025.png',
+    reader_gold_plus5_001: 'assets/scout-badges/hard_reader_gold_plus5_001.png',
+    reader_silver_plus5_001: 'assets/scout-badges/hard_reader_silver_plus5_001.png',
+    reader_bronze_plus5_001: 'assets/scout-badges/hard_reader_bronze_plus5_001.png',
+    reader_master_scout: 'assets/scout-badges/hard_reader_master_scout.png',
+    author_chars_1m: 'assets/scout-badges/hard_author_chars_1m.png',
+    author_completed_010: 'assets/scout-badges/hard_author_completed_010.png',
+    author_unique_reader_1000: 'assets/scout-badges/hard_author_unique_reader_1000.png',
+    author_favorite_500: 'assets/scout-badges/hard_author_favorite_500.png',
+    author_discovered_plus2_005: 'assets/scout-badges/hard_author_discovered_plus2_005.png'
+  };
+  Object.assign(badgeArtworkPaths, hardArtworkPaths);
 
   let badgeRows = [];
   let badgeCategory = 'all';

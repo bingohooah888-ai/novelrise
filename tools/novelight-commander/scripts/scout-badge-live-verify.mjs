@@ -69,13 +69,40 @@ const NORMAL_ARTWORK = [
   ['reader_point_500', 'reader_point_500']
 ];
 
+const HARD_ARTWORK = [
+  ['reader_read_500', 'hard_reader_read_500', 'reader', 1254],
+  ['reader_read_1000', 'hard_reader_read_1000', 'reader', 1254],
+  ['reader_new_author_250', 'hard_reader_new_author_250', 'reader', 1254],
+  ['reader_low_rank_250', 'hard_reader_low_rank_250', 'reader', 1254],
+  ['reader_low_rank_500', 'hard_reader_low_rank_500', 'reader', 1254],
+  ['reader_discovery_plus2_050', 'hard_reader_discovery_plus2_050', 'reader', 1254],
+  ['reader_discovery_plus2_100', 'hard_reader_discovery_plus2_100', 'reader', 1254],
+  ['reader_discovery_plus3_025', 'hard_reader_discovery_plus3_025', 'reader', 1254],
+  ['reader_discovery_plus3_050', 'hard_reader_discovery_plus3_050', 'reader', 1254],
+  ['reader_discovery_plus4_010', 'hard_reader_discovery_plus4_010', 'reader', 1536],
+  ['reader_discovery_plus4_020', 'hard_reader_discovery_plus4_020', 'reader', 1254],
+  ['reader_discovery_plus5_001', 'hard_reader_discovery_plus5_001', 'reader', 1254],
+  ['reader_discovery_plus5_003', 'hard_reader_discovery_plus5_003', 'reader', 1254],
+  ['reader_discovery_plus5_010', 'hard_reader_discovery_plus5_010', 'reader', 1254],
+  ['reader_nova_010', 'hard_reader_nova_010', 'reader', 1254],
+  ['reader_nova_025', 'hard_reader_nova_025', 'reader', 1254],
+  ['reader_gold_plus5_001', 'hard_reader_gold_plus5_001', 'reader', 1254],
+  ['reader_silver_plus5_001', 'hard_reader_silver_plus5_001', 'reader', 1254],
+  ['reader_bronze_plus5_001', 'hard_reader_bronze_plus5_001', 'reader', 1254],
+  ['reader_master_scout', 'hard_reader_master_scout', 'reader', 1254],
+  ['author_chars_1m', 'hard_author_chars_1m', 'author', 1254],
+  ['author_completed_010', 'hard_author_completed_010', 'author', 1254],
+  ['author_unique_reader_1000', 'hard_author_unique_reader_1000', 'author', 1254],
+  ['author_favorite_500', 'hard_author_favorite_500', 'author', 1254],
+  ['author_discovered_plus2_005', 'hard_author_discovered_plus2_005', 'author', 1254]
+];
+
 const NORMAL_IDS = NORMAL_ARTWORK.map(([id]) => id);
 const NORMAL_ASSET_BY_ID = new Map(NORMAL_ARTWORK);
-
-const EXPECTED_SIZE = {
-  easy: 384,
-  normal: 1254
-};
+const HARD_IDS = HARD_ARTWORK.map(([id]) => id);
+const HARD_ASSET_BY_ID = new Map(HARD_ARTWORK.map(([id, assetId]) => [id, assetId]));
+const HARD_SIZE_BY_ID = new Map(HARD_ARTWORK.map(([id, , , size]) => [id, size]));
+const HARD_CATEGORY_BY_ID = new Map(HARD_ARTWORK.map(([id, , category]) => [id, category]));
 
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const requireFromE2E = createRequire(path.join(repoRoot, 'tests', 'e2e', 'package.json'));
@@ -86,10 +113,10 @@ function assert(value, message) {
   if (!value) throw new Error(message);
 }
 
-function badgeRow(id, difficulty) {
+function badgeRow(id, difficulty, category = 'reader') {
   return {
     badge_id: id,
-    badge_category: 'reader',
+    badge_category: category,
     difficulty,
     display_name: id,
     status: 'unearned',
@@ -115,10 +142,15 @@ function pngGeometry(bytes) {
 async function main() {
   assert(NORMAL_IDS.length === 50, 'Expected 50 authoritative Reader Normal badge IDs.');
   assert(new Set(NORMAL_IDS).size === 50, 'Reader Normal badge IDs must be unique.');
+  assert(HARD_IDS.length === 25, 'Expected 25 authoritative Hard badge IDs.');
+  assert(new Set(HARD_IDS).size === 25, 'Hard badge IDs must be unique.');
+  assert(HARD_ARTWORK.filter(([, , category]) => category === 'reader').length === 20, 'Expected 20 Reader Hard badges.');
+  assert(HARD_ARTWORK.filter(([, , category]) => category === 'author').length === 5, 'Expected 5 Author Hard badges.');
 
   const badgeRows = [
     ...EASY_IDS.map((id) => badgeRow(id, 'easy')),
-    ...NORMAL_IDS.map((id) => badgeRow(id, 'normal'))
+    ...NORMAL_IDS.map((id) => badgeRow(id, 'normal')),
+    ...HARD_IDS.map((id) => badgeRow(id, 'hard', HARD_CATEGORY_BY_ID.get(id)))
   ];
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const context = await browser.newContext();
@@ -217,8 +249,9 @@ async function main() {
     await page.goto(baseURL + '/scout-record.html', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.querySelectorAll('#badgeGridEasy .badge-card').length === 30, null, { timeout: 20000 });
     await page.waitForFunction(() => document.querySelectorAll('#badgeGridNormal .badge-card').length === 50, null, { timeout: 20000 });
+    await page.waitForFunction(() => document.querySelectorAll('#badgeGridHard .badge-card').length === 25, null, { timeout: 20000 });
 
-    for (const difficulty of ['easy', 'normal']) {
+    for (const difficulty of ['easy', 'normal', 'hard']) {
       await page.locator(`details[data-badge-group="${difficulty}"]`).evaluate((node) => {
         node.open = true;
       });
@@ -228,12 +261,31 @@ async function main() {
     const assetFailures = [];
     const liveHashes = {};
 
-    for (const [difficulty, ids] of [['easy', EASY_IDS], ['normal', NORMAL_IDS]]) {
-      const gridId = difficulty === 'easy' ? 'badgeGridEasy' : 'badgeGridNormal';
-      const expectedSize = EXPECTED_SIZE[difficulty];
+    const groups = [
+      ['easy', EASY_IDS],
+      ['normal', NORMAL_IDS],
+      ['hard', HARD_IDS]
+    ];
+
+    for (const [difficulty, ids] of groups) {
+      const gridId = difficulty === 'easy'
+        ? 'badgeGridEasy'
+        : difficulty === 'normal'
+          ? 'badgeGridNormal'
+          : 'badgeGridHard';
       for (const id of ids) {
-        const assetId = difficulty === 'normal' ? NORMAL_ASSET_BY_ID.get(id) : id;
+        const assetId = difficulty === 'normal'
+          ? NORMAL_ASSET_BY_ID.get(id)
+          : difficulty === 'hard'
+            ? HARD_ASSET_BY_ID.get(id)
+            : id;
+        const expectedSize = difficulty === 'easy'
+          ? 384
+          : difficulty === 'normal'
+            ? 1254
+            : HARD_SIZE_BY_ID.get(id);
         assert(assetId, `Missing expected asset mapping for ${id}.`);
+        assert(expectedSize, `Missing expected geometry for ${id}.`);
         const card = page.locator(`#${gridId} .badge-card[data-badge-id="${id}"]`);
         assert((await card.count()) === 1, `Expected one ${difficulty} badge card for ${id}.`);
         const image = card.locator('.badge-icon-artwork img');
@@ -286,7 +338,7 @@ async function main() {
         const geometry = pngGeometry(liveBytes);
         const liveSha = sha256(liveBytes);
         const localSha = sha256(localBytes);
-        liveHashes[id] = liveSha;
+        liveHashes[`${difficulty}:${id}`] = liveSha;
         const contentType = response.headers()['content-type'] || '';
 
         if (
@@ -314,21 +366,27 @@ async function main() {
 
     assert(visualFailures.length === 0, 'Live UI visual failures: ' + JSON.stringify(visualFailures));
     assert(assetFailures.length === 0, 'Production asset failures: ' + JSON.stringify(assetFailures));
-    assert(Object.keys(liveHashes).length === 80, 'Expected hashes for 80 badge assets.');
+    assert(Object.keys(liveHashes).length === 105, 'Expected hashes for 105 badge assets.');
 
     console.log('SCOUT_BADGE_LIVE_RESULT ' + JSON.stringify({
       page: page.url(),
       easyCount: EASY_IDS.length,
       normalCount: NORMAL_IDS.length,
-      totalCount: EASY_IDS.length + NORMAL_IDS.length,
+      hardCount: HARD_IDS.length,
+      readerHardCount: HARD_ARTWORK.filter(([, , category]) => category === 'reader').length,
+      authorHardCount: HARD_ARTWORK.filter(([, , category]) => category === 'author').length,
+      totalCount: EASY_IDS.length + NORMAL_IDS.length + HARD_IDS.length,
       normalAuthoritativeIdsMatch: true,
       normalArtworkAssignmentsMatch: true,
+      hardAuthoritativeIdsMatch: true,
+      hardArtworkAssignmentsMatch: true,
       visualFailures: visualFailures.length,
       assetFailures: assetFailures.length,
       productionBytesMatchLocal: true,
       pngGeometry: {
         easy: '384x384',
-        normal: '1254x1254'
+        normal: '1254x1254',
+        hard: '24x1254x1254 + 1x1536x1536'
       },
       result: 'PASS'
     }));
