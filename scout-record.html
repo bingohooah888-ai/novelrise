@@ -33,7 +33,7 @@
     <section class="scout-page-head">
       <div>
         <h1>SCOUT RECORD</h1>
-        <p>あなたの発掘実績とスカウトとしての成長</p>
+        <p>あなたのLIGHT SEED活動とスカウトとしての成長</p>
       </div>
       <button id="scoutHelp" class="scout-help" type="button">？ スカウトについて</button>
     </section>
@@ -55,7 +55,7 @@
         </div>
         <div id="levelProgressText" class="scout-note">—</div>
         <div id="levelMaxNotice" class="scout-max-note" hidden>
-          β版のScout Level上限はLv.30です。Lv.30到達後に獲得条件を満たしたXPは蓄積されず消滅します。Scout Point・称号・発掘実績は引き続き獲得できます。正式リリース後、Lv.30以降のレベルを解放予定です。
+          β版のScout Level上限はLv.30です。Lv.30到達後に獲得条件を満たしたXPは蓄積されず消滅します。Scout Point・称号・LIGHT SEED実績は引き続き獲得できます。正式リリース後、Lv.30以降のレベルを解放予定です。
         </div>
       </div>
 
@@ -118,7 +118,6 @@
 
     <section class="scout-stats" aria-label="SCOUT RECORD実績サマリー">
       <article class="scout-stat"><span>LIGHT SEED</span><strong id="statSeeds">—</strong></article>
-      <article class="scout-stat"><span>発掘成功</span><strong id="statDiscoveries">—</strong></article>
       <article class="scout-stat"><span>獲得称号</span><strong id="statBadges">—</strong></article>
       <article class="scout-stat"><span>Scout Point</span><strong id="statPoint">—</strong></article>
     </section>
@@ -149,7 +148,7 @@
           <div id="badgeGridEasy" class="badge-grid"><div class="scout-loading" style="grid-column:1/-1">称号を読み込んでいます。</div></div>
         </details>
         <details class="badge-group" data-badge-group="normal">
-          <summary><span><b>Normal</b><small>継続・発掘実績</small></span><strong id="badgeGroupNormalCount">—</strong></summary>
+          <summary><span><b>Normal</b><small>継続・活動実績</small></span><strong id="badgeGroupNormalCount">—</strong></summary>
           <div id="badgeGridNormal" class="badge-grid"></div>
         </details>
         <details class="badge-group" data-badge-group="hard">
@@ -167,7 +166,7 @@
     <div class="scout-main-grid">
       <section class="scout-panel" aria-labelledby="activityTitle">
         <div class="scout-section-head">
-          <div><h2 id="activityTitle">最近のSCOUT活動</h2><p>有効読書、評価、コメント、LIGHT SEED、発掘の記録。</p></div>
+          <div><h2 id="activityTitle">最近のSCOUT活動</h2><p>有効読書、評価、コメント、LIGHT SEEDの記録。</p></div>
         </div>
         <div id="activityList" class="scout-list"><div class="scout-loading">読み込み中...</div></div>
       </section>
@@ -180,17 +179,10 @@
 
     <section class="scout-panel" aria-labelledby="seedHistoryTitle">
       <div class="scout-section-head">
-        <div><h2 id="seedHistoryTitle">LIGHT SEED送信履歴</h2><p>あなたがLIGHT SEEDを贈った作品を、SCOUT RECORDの実績としてまとめて確認できます。</p></div>
+        <div><h2 id="seedHistoryTitle">LIGHT SEED送信履歴</h2><p>あなたがLIGHT SEEDを贈った作品と送信日時を確認できます。作品Rankに関する発掘結果はβ版では表示しません。</p></div>
         <strong id="seedHistoryCount">—</strong>
       </div>
       <div id="seedHistoryList" class="scout-list"><div class="scout-loading">LIGHT SEED履歴を読み込んでいます。</div></div>
-    </section>
-
-    <section class="scout-panel" aria-labelledby="discoveriesTitle">
-      <div class="scout-section-head">
-        <div><h2 id="discoveriesTitle">発掘作品</h2><p>LIGHT SEED送信後に+2以上へ成長した作品とNOVA予見を表示します。</p></div>
-      </div>
-      <div id="discoveriesList" class="scout-list"><div class="scout-loading">読み込み中...</div></div>
     </section>
   </main>
 
@@ -234,7 +226,7 @@
         <h2>SCOUT RECORDとは</h2>
         <button class="scout-modal-close" type="button" data-dialog-close aria-label="閉じる">×</button>
       </div>
-      <p class="scout-note">読む・発見する・評価する・LIGHT SEEDで発掘するという本来の読書行動を、成長記録として可視化する機能です。Scout XPはLevel用の非消費経験値、Scout Pointは将来の利用特典へつながる別の報酬です。</p>
+      <p class="scout-note">読む・発見する・評価する・LIGHT SEEDを贈るという本来の読書行動を、成長記録として可視化する機能です。Scout XPはLevel用の非消費経験値、Scout Pointは将来の利用特典へつながる別の報酬です。作品Rankを利用する発掘判定はβ版では公開・報酬反映しません。</p>
       <p class="scout-note">称号やPointのための高速巡回、無意味なコメント、無差別評価、SEED乱用は対象外または取消対象になる場合があります。</p>
     </div>
   </dialog>
