@@ -5,25 +5,25 @@ import test from 'node:test';
 const migration = readFileSync(
   new URL(
     '../supabase/migrations/20260927153000_special_light_zones.sql',
-    import.meta.url,
+    import.meta.url
   ),
-  'utf8',
+  'utf8'
 );
 const selectorPage = readFileSync(
   new URL('../special-light.html', import.meta.url),
-  'utf8',
+  'utf8'
 );
 const zonePage = readFileSync(
   new URL('../special-light-zone.html', import.meta.url),
-  'utf8',
+  'utf8'
 );
 const homeLoader = readFileSync(
   new URL('../auth-reader-context.js', import.meta.url),
-  'utf8',
+  'utf8'
 );
 const homeGateway = readFileSync(
   new URL('../novelight-special-light-home.js', import.meta.url),
-  'utf8',
+  'utf8'
 );
 
 test('special-light zone precedence is R18 > R15 > AI > general', () => {
@@ -31,7 +31,7 @@ test('special-light zone precedence is R18 > R15 > AI > general', () => {
   const r15 = migration.indexOf("= 'sensitive_15' then 'r15'");
   const ai = migration.indexOf("= 'ai_generated' then 'ai'");
   const general = migration.indexOf(
-    "in ('human', 'ai_assisted') then 'general'",
+    "in ('human', 'ai_assisted') then 'general'"
   );
 
   assert.ok(r18 >= 0);
@@ -47,7 +47,7 @@ test('normal discovery and LIGHT SEED are server-side gated', () => {
     'novelight_discovery_feed_v2',
     'novelight_plan_extra_feed',
     'novelight_light_seed_feed',
-    'novelight_beta_rank_discovery_feed',
+    'novelight_beta_rank_discovery_feed'
   ]) {
     assert.match(migration, new RegExp(signature));
   }
@@ -64,10 +64,10 @@ test('dedicated zones expose search, recommendation and ranking without LIGHT SE
   assert.doesNotMatch(
     migration.slice(
       migration.indexOf(
-        'create or replace function public.novelight_special_light_feed',
-      ),
+        'create or replace function public.novelight_special_light_feed'
+      )
     ),
-    /light_seed_count/,
+    /light_seed_count/
   );
 
   assert.match(selectorPage, /AI作品/);
