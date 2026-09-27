@@ -1,1 +1,0 @@
-Read-only Hard badge source probe: no Production mutation.
