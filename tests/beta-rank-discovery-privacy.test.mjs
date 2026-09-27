@@ -8,11 +8,9 @@ const guardPath =
   'supabase/migrations/20260928061100_beta_rank_discovery_rpc_guard.sql';
 const pagePath = 'scout-record.html';
 
-const [migration, guard, page] = await Promise.all([
-  readFile(migrationPath, 'utf8'),
-  readFile(guardPath, 'utf8'),
-  readFile(pagePath, 'utf8')
-]);
+const migration = await readFile(migrationPath, 'utf8');
+const guard = await readFile(guardPath, 'utf8');
+const page = await readFile(pagePath, 'utf8');
 
 test('beta keeps LIGHT SEED sending badges while disabling work-Rank badges', () => {
   assert.match(migration, /reader_discovery_%/);
@@ -34,7 +32,10 @@ test('beta discovery processing retains internal state but awards no discovery e
   assert.match(betaProcessor, /update public\.seed_discovery_state/);
   assert.doesNotMatch(betaProcessor, /insert into public\.scout_event_ledger/);
   assert.doesNotMatch(betaProcessor, /insert into public\.scout_xp_ledger/);
-  assert.match(migration, /if new\.xp_kind = 'light_seed_discovery' then\s+return null;/);
+  assert.match(
+    migration,
+    /if new\.xp_kind = 'light_seed_discovery' then\s+return null;/
+  );
 });
 
 test('beta public RPCs hide rank discovery and rank-derived points', () => {
