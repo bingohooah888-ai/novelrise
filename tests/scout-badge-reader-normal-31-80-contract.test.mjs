@@ -4,57 +4,57 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-const badgeIds = [
-  'reader_read_050',
-  'reader_read_100',
-  'reader_read_250',
-  'reader_read_500',
-  'reader_rating_025',
-  'reader_rating_050',
-  'reader_rating_100',
-  'reader_comment_025',
-  'reader_comment_050',
-  'reader_comment_100',
-  'reader_seed_025',
-  'reader_seed_050',
-  'reader_seed_100',
-  'reader_seed_250',
-  'reader_seed_500',
-  'reader_seed_1000',
-  'reader_bronze_seed_003',
-  'reader_bronze_seed_005',
-  'reader_bronze_seed_010',
-  'reader_silver_seed_003',
-  'reader_silver_seed_005',
-  'reader_silver_seed_010',
-  'reader_gold_seed_003',
-  'reader_gold_seed_005',
-  'reader_gold_seed_010',
-  'reader_discovery_plus2_005',
-  'reader_discovery_plus2_010',
-  'reader_discovery_plus2_025',
-  'reader_discovery_plus2_050',
-  'reader_discovery_plus2_100',
-  'reader_new_author_025',
-  'reader_new_author_050',
-  'reader_new_author_100',
-  'reader_genre_010',
-  'reader_genre_020',
-  'reader_genre_030',
-  'reader_new_work_010',
-  'reader_new_work_025',
-  'reader_low_rank_010',
-  'reader_low_rank_025',
-  'reader_series_complete_001',
-  'reader_series_complete_003',
-  'reader_series_complete_005',
-  'reader_completed_read_005',
-  'reader_completed_read_010',
-  'reader_active_days_030',
-  'reader_active_days_090',
-  'reader_level_030',
-  'reader_point_100',
-  'reader_point_500'
+const badgeArtworkAssignments = [
+  ['reader_read_050', 'reader_read_050'],
+  ['reader_read_100', 'reader_read_100'],
+  ['reader_read_200', 'reader_read_250'],
+  ['reader_read_300', 'reader_read_500'],
+  ['reader_rating_025', 'reader_rating_025'],
+  ['reader_rating_050', 'reader_rating_050'],
+  ['reader_rating_100', 'reader_rating_100'],
+  ['reader_comment_025', 'reader_comment_025'],
+  ['reader_comment_050', 'reader_comment_050'],
+  ['reader_comment_100', 'reader_comment_100'],
+  ['reader_seed_025', 'reader_seed_025'],
+  ['reader_seed_050', 'reader_seed_050'],
+  ['reader_seed_100', 'reader_seed_100'],
+  ['reader_gold_seed_005', 'reader_seed_250'],
+  ['reader_silver_seed_010', 'reader_seed_500'],
+  ['reader_bronze_seed_015', 'reader_seed_1000'],
+  ['reader_discovery_plus2_005', 'reader_bronze_seed_003'],
+  ['reader_discovery_plus2_010', 'reader_bronze_seed_005'],
+  ['reader_discovery_plus2_020', 'reader_bronze_seed_010'],
+  ['reader_discovery_plus3_001', 'reader_silver_seed_003'],
+  ['reader_discovery_plus3_005', 'reader_silver_seed_005'],
+  ['reader_discovery_plus3_010', 'reader_silver_seed_010'],
+  ['reader_discovery_plus4_001', 'reader_gold_seed_003'],
+  ['reader_discovery_plus4_002', 'reader_gold_seed_005'],
+  ['reader_discovery_plus4_005', 'reader_gold_seed_010'],
+  ['reader_nova_001', 'reader_discovery_plus2_005'],
+  ['reader_nova_003', 'reader_discovery_plus2_010'],
+  ['reader_nova_005', 'reader_discovery_plus2_025'],
+  ['reader_new_author_025', 'reader_discovery_plus2_050'],
+  ['reader_new_author_050', 'reader_discovery_plus2_100'],
+  ['reader_new_author_100', 'reader_new_author_025'],
+  ['reader_low_rank_025', 'reader_new_author_050'],
+  ['reader_low_rank_050', 'reader_new_author_100'],
+  ['reader_low_rank_100', 'reader_genre_010'],
+  ['reader_new_work_025', 'reader_genre_020'],
+  ['reader_new_work_050', 'reader_genre_030'],
+  ['reader_new_work_100', 'reader_new_work_010'],
+  ['reader_genre_008', 'reader_new_work_025'],
+  ['reader_genre_010', 'reader_low_rank_010'],
+  ['reader_long_read_005', 'reader_low_rank_025'],
+  ['reader_long_read_010', 'reader_series_complete_001'],
+  ['reader_short_read_010', 'reader_series_complete_003'],
+  ['reader_short_read_025', 'reader_series_complete_005'],
+  ['reader_completed_read_005', 'reader_completed_read_005'],
+  ['reader_completed_read_010', 'reader_completed_read_010'],
+  ['reader_active_days_030', 'reader_active_days_030'],
+  ['reader_active_days_090', 'reader_active_days_090'],
+  ['reader_level_030', 'reader_level_030'],
+  ['reader_point_100', 'reader_point_100'],
+  ['reader_point_500', 'reader_point_500']
 ];
 
 const sourceByteExceptions = new Map([
@@ -87,12 +87,16 @@ const rows = dataLines.map((line) => {
 });
 
 async function verifyReaderNormalArtwork() {
-  assert.equal(badgeIds.length, 50);
+  assert.equal(badgeArtworkAssignments.length, 50);
+  assert.equal(
+    new Set(badgeArtworkAssignments.map(([badgeId]) => badgeId)).size,
+    50
+  );
   assert.equal(rows.length, 50);
 
   for (let index = 0; index < 50; index += 1) {
     const badgeNo = index + 31;
-    const badgeId = badgeIds[index];
+    const [badgeId, assetId] = badgeArtworkAssignments[index];
     const row = rows[index];
     const serial = String(badgeNo).padStart(3, '0');
 
@@ -126,28 +130,29 @@ async function verifyReaderNormalArtwork() {
 
     assert.match(
       scoutJs,
-      new RegExp(`${badgeId}: 'assets/scout-badges/${badgeId}\\.png'`, 'u')
+      new RegExp(`${badgeId}: 'assets/scout-badges/${assetId}\\.png'`, 'u'),
+      `${badgeId} must point to approved Reader Normal #${serial} artwork`
     );
 
     const bytes = await readFile(
-      new URL(`../assets/scout-badges/${badgeId}.png`, import.meta.url)
+      new URL(`../assets/scout-badges/${assetId}.png`, import.meta.url)
     );
     assert.deepEqual(
       [...bytes.subarray(0, 8)],
       [137, 80, 78, 71, 13, 10, 26, 10],
-      `${badgeId} must be a PNG`
+      `${badgeId} must resolve to a PNG`
     );
     assert.equal(bytes.readUInt32BE(16), 1254, `${badgeId} canonical width`);
     assert.equal(bytes.readUInt32BE(20), 1254, `${badgeId} canonical height`);
     assert.equal(
       createHash('sha256').update(bytes).digest('hex'),
       row.packaged_sha256,
-      `${badgeId} canonical bytes must match the approved transfer manifest`
+      `${badgeId} must resolve to approved Reader Normal #${serial} bytes`
     );
   }
 }
 
 test(
-  'Reader Normal #31-#80 preserve approved provenance and canonical PNG bytes',
+  'Reader Normal #31-#80 use the authoritative badge IDs and approved artwork provenance',
   verifyReaderNormalArtwork
 );
