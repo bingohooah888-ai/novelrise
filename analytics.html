@@ -15,6 +15,24 @@
   <link rel="stylesheet" href="novelight-page-heading.css">
   <link rel="stylesheet" href="novelight-author-backgrounds.css">
   <link rel="stylesheet" href="novelight-author-font-sizes.css">
+  <style>
+    html body.novelight-theme.novelight-page-analytics main section[aria-labelledby="basicAnalyticsHeading"] {
+      margin-top: 26px !important;
+      padding: 27px !important;
+      border: 1px solid #ddd3bf !important;
+      border-radius: 18px !important;
+      background: var(--novelight-paper, #fffdf7) !important;
+      box-shadow: 0 14px 34px rgba(16, 31, 51, 0.055) !important;
+    }
+    html body.novelight-theme.novelight-page-analytics main section[aria-labelledby="basicAnalyticsHeading"] > .section-title {
+      margin: 0 0 18px !important;
+    }
+    @media (max-width: 720px) {
+      html body.novelight-theme.novelight-page-analytics main section[aria-labelledby="basicAnalyticsHeading"] {
+        padding: 20px !important;
+      }
+    }
+  </style>
 </head>
 <body class="novelight-theme novelight-page-analytics"><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header>
