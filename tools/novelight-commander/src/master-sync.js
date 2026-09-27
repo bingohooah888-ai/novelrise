@@ -79,12 +79,23 @@ export function currentMasterFileName(mainSha, contentSha) {
 
 export function validateMasterText(text) {
   const value = String(text || '').replace(/^\uFEFF/u, '');
+  const hasExplicitSeparationSection = /NLO\s*\/\s*DC\s*絶対分離ルール/.test(value);
+  const hasCanonicalNloFirstPolicy = /NLO First Policy/i.test(value);
+  const hasExplicitNloIdentity = /NLO\s*=\s*NOVELIGHT Commander/.test(value);
+  const hasCanonicalNloIdentity = /NLO[^\n]{0,120}NOVELIGHT Commander[^\n]{0,160}正式名称/.test(value);
+  const hasExplicitDcIdentity = /DC\s*=\s*Remote Desktop Commander\s*\/\s*Desktop Commander/.test(value);
+  const hasCanonicalDcBoundary = /NLO[^\n]{0,160}Remote Desktop Commander[^\n]{0,160}別物/.test(value);
+  const hasDcOfflineBoundary =
+    /Remote Desktop Commander[\s\S]{0,500}offline[\s\S]{0,500}NLO[\s\S]{0,220}offline/i.test(value) ||
+    /DC[^\n]{0,160}オンライン\s*\/\s*オフライン/.test(value);
+
   const checks = {
     hasTitle: /(^|\n)#?\s*NOVELIGHT MASTER\s*(\n|$)/i.test(value),
     hasUpdatedAt: /最終更新：20\d{2}年\d{1,2}月\d{1,2}日/.test(value),
-    hasNloDcSection: /34\.\s*NLO\s*\/\s*DC\s*絶対分離ルール/.test(value),
-    hasNloIdentity: /NLO\s*=\s*NOVELIGHT Commander/.test(value),
-    hasDcIdentity: /DC\s*=\s*Remote Desktop Commander\s*\/\s*Desktop Commander/.test(value),
+    hasNloDcSection: hasExplicitSeparationSection || hasCanonicalNloFirstPolicy,
+    hasNloIdentity: hasExplicitNloIdentity || hasCanonicalNloIdentity,
+    hasDcIdentity: hasExplicitDcIdentity || hasCanonicalDcBoundary,
+    hasDcOfflineBoundary,
     longEnough: value.length >= 10000
   };
   const failed = Object.entries(checks)
