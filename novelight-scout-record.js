@@ -129,7 +129,29 @@
     reader_active_days_090: 'assets/scout-badges/reader_active_days_090.png',
     reader_level_030: 'assets/scout-badges/reader_level_030.png',
     reader_point_100: 'assets/scout-badges/reader_point_100.png',
-    reader_point_500: 'assets/scout-badges/reader_point_500.png'
+    reader_point_500: 'assets/scout-badges/reader_point_500.png',
+    author_chars_250k: 'assets/scout-badges/author_chars_250k.png',
+    author_chars_500k: 'assets/scout-badges/author_chars_500k.png',
+    author_completed_001: 'assets/scout-badges/author_completed_001.png',
+    author_completed_003: 'assets/scout-badges/author_completed_003.png',
+    author_completed_005: 'assets/scout-badges/author_completed_005.png',
+    author_novel_002: 'assets/scout-badges/author_novel_002.png',
+    author_novel_005: 'assets/scout-badges/author_novel_005.png',
+    author_novel_010: 'assets/scout-badges/author_novel_010.png',
+    author_unique_reader_010: 'assets/scout-badges/author_unique_reader_010.png',
+    author_unique_reader_050: 'assets/scout-badges/author_unique_reader_050.png',
+    author_unique_reader_100: 'assets/scout-badges/author_unique_reader_100.png',
+    author_unique_reader_500: 'assets/scout-badges/author_unique_reader_500.png',
+    author_favorite_010: 'assets/scout-badges/author_favorite_010.png',
+    author_favorite_050: 'assets/scout-badges/author_favorite_050.png',
+    author_favorite_100: 'assets/scout-badges/author_favorite_100.png',
+    author_comment_010: 'assets/scout-badges/author_comment_010.png',
+    author_comment_050: 'assets/scout-badges/author_comment_050.png',
+    author_seed_received_001: 'assets/scout-badges/author_seed_received_001.png',
+    author_seed_received_010: 'assets/scout-badges/author_seed_received_010.png',
+    author_seed_received_050: 'assets/scout-badges/author_seed_received_050.png',
+    author_discovered_plus2_001: 'assets/scout-badges/author_discovered_plus2_001.png',
+    author_discovered_plus3_001: 'assets/scout-badges/author_discovered_plus3_001.png'
   };
 
   let badgeRows = [];
