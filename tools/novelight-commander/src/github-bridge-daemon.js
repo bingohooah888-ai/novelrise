@@ -3,3 +3,5 @@
 // restarts both loops together without depending on a parent-process restart.
 import './github-bridge-core.js';
 import './x-bridge-daemon.js';
+import './scout-badge-live-bridge.js';
+import './master-project-sync-bridge.js';

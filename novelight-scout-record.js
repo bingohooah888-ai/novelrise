@@ -79,7 +79,57 @@
     reader_level_005: 'assets/scout-badges/reader_level_005.png',
     reader_level_010: 'assets/scout-badges/reader_level_010.png',
     reader_level_020: 'assets/scout-badges/reader_level_020.png',
-    reader_active_days_007: 'assets/scout-badges/reader_active_days_007.png'
+    reader_active_days_007: 'assets/scout-badges/reader_active_days_007.png',
+    reader_read_050: 'assets/scout-badges/reader_read_050.png',
+    reader_read_100: 'assets/scout-badges/reader_read_100.png',
+    reader_read_250: 'assets/scout-badges/reader_read_250.png',
+    reader_read_500: 'assets/scout-badges/reader_read_500.png',
+    reader_rating_025: 'assets/scout-badges/reader_rating_025.png',
+    reader_rating_050: 'assets/scout-badges/reader_rating_050.png',
+    reader_rating_100: 'assets/scout-badges/reader_rating_100.png',
+    reader_comment_025: 'assets/scout-badges/reader_comment_025.png',
+    reader_comment_050: 'assets/scout-badges/reader_comment_050.png',
+    reader_comment_100: 'assets/scout-badges/reader_comment_100.png',
+    reader_seed_025: 'assets/scout-badges/reader_seed_025.png',
+    reader_seed_050: 'assets/scout-badges/reader_seed_050.png',
+    reader_seed_100: 'assets/scout-badges/reader_seed_100.png',
+    reader_seed_250: 'assets/scout-badges/reader_seed_250.png',
+    reader_seed_500: 'assets/scout-badges/reader_seed_500.png',
+    reader_seed_1000: 'assets/scout-badges/reader_seed_1000.png',
+    reader_bronze_seed_003: 'assets/scout-badges/reader_bronze_seed_003.png',
+    reader_bronze_seed_005: 'assets/scout-badges/reader_bronze_seed_005.png',
+    reader_bronze_seed_010: 'assets/scout-badges/reader_bronze_seed_010.png',
+    reader_silver_seed_003: 'assets/scout-badges/reader_silver_seed_003.png',
+    reader_silver_seed_005: 'assets/scout-badges/reader_silver_seed_005.png',
+    reader_silver_seed_010: 'assets/scout-badges/reader_silver_seed_010.png',
+    reader_gold_seed_003: 'assets/scout-badges/reader_gold_seed_003.png',
+    reader_gold_seed_005: 'assets/scout-badges/reader_gold_seed_005.png',
+    reader_gold_seed_010: 'assets/scout-badges/reader_gold_seed_010.png',
+    reader_discovery_plus2_005: 'assets/scout-badges/reader_discovery_plus2_005.png',
+    reader_discovery_plus2_010: 'assets/scout-badges/reader_discovery_plus2_010.png',
+    reader_discovery_plus2_025: 'assets/scout-badges/reader_discovery_plus2_025.png',
+    reader_discovery_plus2_050: 'assets/scout-badges/reader_discovery_plus2_050.png',
+    reader_discovery_plus2_100: 'assets/scout-badges/reader_discovery_plus2_100.png',
+    reader_new_author_025: 'assets/scout-badges/reader_new_author_025.png',
+    reader_new_author_050: 'assets/scout-badges/reader_new_author_050.png',
+    reader_new_author_100: 'assets/scout-badges/reader_new_author_100.png',
+    reader_genre_010: 'assets/scout-badges/reader_genre_010.png',
+    reader_genre_020: 'assets/scout-badges/reader_genre_020.png',
+    reader_genre_030: 'assets/scout-badges/reader_genre_030.png',
+    reader_new_work_010: 'assets/scout-badges/reader_new_work_010.png',
+    reader_new_work_025: 'assets/scout-badges/reader_new_work_025.png',
+    reader_low_rank_010: 'assets/scout-badges/reader_low_rank_010.png',
+    reader_low_rank_025: 'assets/scout-badges/reader_low_rank_025.png',
+    reader_series_complete_001: 'assets/scout-badges/reader_series_complete_001.png',
+    reader_series_complete_003: 'assets/scout-badges/reader_series_complete_003.png',
+    reader_series_complete_005: 'assets/scout-badges/reader_series_complete_005.png',
+    reader_completed_read_005: 'assets/scout-badges/reader_completed_read_005.png',
+    reader_completed_read_010: 'assets/scout-badges/reader_completed_read_010.png',
+    reader_active_days_030: 'assets/scout-badges/reader_active_days_030.png',
+    reader_active_days_090: 'assets/scout-badges/reader_active_days_090.png',
+    reader_level_030: 'assets/scout-badges/reader_level_030.png',
+    reader_point_100: 'assets/scout-badges/reader_point_100.png',
+    reader_point_500: 'assets/scout-badges/reader_point_500.png'
   };
 
   let badgeRows = [];
@@ -520,7 +570,6 @@
       meta.textContent = dateTime(row.occurred_at);
       copy.append(title, meta);
       item.appendChild(copy);
-      host.appendChild(item);
     });
   }
 

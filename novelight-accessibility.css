@@ -86,3 +86,46 @@ body.novelight-page-scout-record .scout-page-head p {
     border-radius: 17px;
   }
 }
+
+/* Author start guide readability: keep the guide at the same visual scale as the
+   surrounding author-room cards and prevent theme text-fill effects from hiding its title. */
+.beta-guide .guide-kicker {
+  font-size: 12px !important;
+}
+.beta-guide h2 {
+  color: #ffe08a !important;
+  -webkit-text-fill-color: #ffe08a !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4) !important;
+}
+.beta-guide p {
+  color: #e3e8ee !important;
+  -webkit-text-fill-color: #e3e8ee !important;
+  font-size: 15px !important;
+}
+.beta-guide .guide-chip {
+  min-height: 34px !important;
+  padding: 6px 12px !important;
+  color: #f0f3f7 !important;
+  -webkit-text-fill-color: #f0f3f7 !important;
+  font-size: 14px !important;
+}
+.beta-guide .guide-button {
+  font-size: 14px !important;
+}
+
+/* Post form content warnings are relevant only to the two elevated content ratings.
+   Keep the section out of the way for the default all-ages choice, then reveal it as
+   soon as Sensitive 15+ or 18+ (non-sexual strong expression) is selected. */
+body.novelight-page-post fieldset:has(#warningGrid) {
+  display: none;
+}
+body.novelight-page-post
+  form:has(#contentRating option[value="sensitive_15"]:checked)
+  fieldset:has(#warningGrid),
+body.novelight-page-post
+  form:has(#contentRating option[value="adult_18_nonsexual"]:checked)
+  fieldset:has(#warningGrid) {
+  display: block;
+}

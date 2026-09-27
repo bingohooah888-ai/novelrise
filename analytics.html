@@ -15,6 +15,24 @@
   <link rel="stylesheet" href="novelight-page-heading.css">
   <link rel="stylesheet" href="novelight-author-backgrounds.css">
   <link rel="stylesheet" href="novelight-author-font-sizes.css">
+  <style>
+    html body.novelight-theme.novelight-page-analytics main section[aria-labelledby="basicAnalyticsHeading"] {
+      margin-top: 26px !important;
+      padding: 27px !important;
+      border: 1px solid #ddd3bf !important;
+      border-radius: 18px !important;
+      background: var(--novelight-paper, #fffdf7) !important;
+      box-shadow: 0 14px 34px rgba(16, 31, 51, 0.055) !important;
+    }
+    html body.novelight-theme.novelight-page-analytics main section[aria-labelledby="basicAnalyticsHeading"] > .section-title {
+      margin: 0 0 18px !important;
+    }
+    @media (max-width: 720px) {
+      html body.novelight-theme.novelight-page-analytics main section[aria-labelledby="basicAnalyticsHeading"] {
+        padding: 20px !important;
+      }
+    }
+  </style>
 </head>
 <body class="novelight-theme novelight-page-analytics"><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header>
@@ -150,8 +168,8 @@
     <div id="works" class="works"></div>
   </section>
 
-  <section aria-labelledby="basicAnalyticsHeading">
-    <h2 id="basicAnalyticsHeading" class="section-title">基本分析</h2>
+  <section class="trend-panel" aria-labelledby="basicAnalyticsHeading">
+    <h2 id="basicAnalyticsHeading" class="section-title" style="margin-top:0">基本分析</h2>
     <div class="basic">
       <article class="metric"><div id="novelCount" class="value">—</div><div class="label">投稿作品</div><div class="sub">現在の作品数</div></article>
       <article class="metric"><div id="pv" class="value">—</div><div class="label">総PV</div><div class="sub">これまでの作品PV合計</div></article>

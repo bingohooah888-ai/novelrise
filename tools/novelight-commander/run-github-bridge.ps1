@@ -9,6 +9,7 @@ $BridgeRoot = Split-Path -Parent $ConfigPath
 $TokenPath = Join-Path $BridgeRoot 'github-token.dpapi'
 $LogPath = Join-Path $BridgeRoot 'bridge.log'
 $DaemonPath = Join-Path $Here 'src\github-bridge-daemon.js'
+$NodePath = (Get-Command node -ErrorAction Stop).Source
 
 if (-not (Test-Path $ConfigPath)) { throw 'Bridge config file is missing.' }
 if (-not (Test-Path $TokenPath)) { throw 'Encrypted GitHub token is missing.' }
@@ -27,8 +28,17 @@ try {
 
   while ($true) {
     $StartedAt = Get-Date
-    node $DaemonPath *>> $LogPath
-    $ExitCode = $LASTEXITCODE
+    $PreviousErrorActionPreference = $ErrorActionPreference
+    try {
+      # Windows PowerShell 5 surfaces native stderr as NativeCommandError records.
+      # Node deprecation warnings must not terminate the NLO supervisor; the native
+      # process exit code remains the authority for restart decisions below.
+      $ErrorActionPreference = 'Continue'
+      & $NodePath $DaemonPath *>> $LogPath
+      $ExitCode = $LASTEXITCODE
+    } finally {
+      $ErrorActionPreference = $PreviousErrorActionPreference
+    }
     $Stamp = Get-Date -Format o
 
     if ($ExitCode -eq 75) {
