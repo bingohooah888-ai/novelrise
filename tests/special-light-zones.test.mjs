@@ -7,6 +7,10 @@ const migrationPath = new URL(
   '../supabase/migrations/20260928004000_special_light_zones.sql',
   import.meta.url
 );
+const lightSeedV2GuardPath = new URL(
+  '../supabase/migrations/20260928004100_special_light_seed_v2_guard.sql',
+  import.meta.url
+);
 const landingPath = new URL('../special-light.html', import.meta.url);
 const zonePath = new URL('../special-zone.html', import.meta.url);
 const homeLoaderPath = new URL(
@@ -46,6 +50,15 @@ test('ordinary discovery and LIGHT SEED are hardened server-side', async () => {
     assert.ok(sql.includes(signature), `${signature} must be hardened`);
   }
 
+  assert.match(sql, /This work is not eligible for LIGHT SEED/);
+});
+
+test('live LIGHT SEED v2 RPCs reject special-zone works server-side', async () => {
+  const sql = await readFile(lightSeedV2GuardPath, 'utf8');
+
+  assert.match(sql, /public\.light_seed_status_v2\(text\)/);
+  assert.match(sql, /public\.plant_light_seed_v2\(text,text\)/);
+  assert.match(sql, /novelight_is_general_discovery_eligible/);
   assert.match(sql, /This work is not eligible for LIGHT SEED/);
 });
 
