@@ -219,5 +219,7 @@ test('visual analytics stays within the mobile viewport', async ({ page }) => {
   );
   expect(overflow).toBeLessThanOrEqual(1);
   await expect(page.locator('#summary .metric').first()).toBeVisible();
-  await expect(page.locator('.trend-panel')).toBeVisible();
+  await expect(
+    page.locator('section[aria-labelledby="trendTitle"]')
+  ).toBeVisible();
 });
