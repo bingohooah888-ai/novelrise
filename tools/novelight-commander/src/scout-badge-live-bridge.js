@@ -235,7 +235,9 @@ async function processPendingRequest() {
       result?.totalCount !== 80 ||
       result?.visualFailures !== 0 ||
       result?.assetFailures !== 0 ||
-      result?.productionBytesMatchLocal !== true
+      result?.productionBytesMatchLocal !== true ||
+      result?.pngGeometry?.easy !== '384x384' ||
+      result?.pngGeometry?.normal !== '1254x1254'
     ) {
       throw new Error(
         'SCOUT live verification returned an incomplete PASS payload: ' +
@@ -252,7 +254,8 @@ async function processPendingRequest() {
         'reader_easy_live_render: 30/30 PASS',
         'reader_normal_live_render: 50/50 PASS',
         'production_asset_sha_match_local: 80/80 PASS',
-        'production_png_geometry: 1254x1254',
+        'production_png_geometry_easy: 384x384',
+        'production_png_geometry_normal: 1254x1254',
         'visual_failures: 0',
         'asset_failures: 0',
         'result: PASS'
