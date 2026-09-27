@@ -118,41 +118,44 @@ const expected = [
   ]
 ];
 
-test('Author Normal #9-#30 artwork keeps approved original bytes and UI mappings', () => {
-  const script = fs.readFileSync('novelight-scout-record.js', 'utf8');
-  const manifest = fs.readFileSync(
-    'docs/SCOUT-BADGE-AUTHOR-NORMAL-09-30-MANIFEST.csv',
-    'utf8'
-  );
-  assert.equal(expected.length, 22);
-  assert.ok(manifest.includes(EXPECTED_ZIP_SHA256));
-  assert.ok(
-    manifest.startsWith(
-      'expected_count,order,source_file,badge_id,asset_path,sha256,size_bytes,width,height,source_zip,source_zip_sha256\n'
-    )
-  );
-  for (const [badgeId, sourceFile, expectedSha] of expected) {
-    const file = 'assets/scout-badges/' + badgeId + '.png';
-    const bytes = fs.readFileSync(file);
-    assert.equal(
-      bytes.subarray(0, 8).toString('hex'),
-      '89504e470d0a1a0a',
-      badgeId
+test(
+  'Author Normal #9-#30 artwork keeps approved original bytes and UI mappings',
+  () => {
+    const script = fs.readFileSync('novelight-scout-record.js', 'utf8');
+    const manifest = fs.readFileSync(
+      'docs/SCOUT-BADGE-AUTHOR-NORMAL-09-30-MANIFEST.csv',
+      'utf8'
     );
-    assert.equal(bytes.readUInt32BE(16), 1254, badgeId);
-    assert.equal(bytes.readUInt32BE(20), 1254, badgeId);
-    assert.equal(
-      crypto.createHash('sha256').update(bytes).digest('hex'),
-      expectedSha,
-      badgeId
-    );
+    assert.equal(expected.length, 22);
+    assert.ok(manifest.includes(EXPECTED_ZIP_SHA256));
     assert.ok(
-      script.includes(
-        badgeId + ": 'assets/scout-badges/" + badgeId + ".png'"
-      ),
-      badgeId
+      manifest.startsWith(
+        'expected_count,order,source_file,badge_id,asset_path,sha256,size_bytes,width,height,source_zip,source_zip_sha256\n'
+      )
     );
-    assert.ok(manifest.includes(sourceFile), sourceFile);
-    assert.ok(manifest.includes(expectedSha), expectedSha);
+    for (const [badgeId, sourceFile, expectedSha] of expected) {
+      const file = 'assets/scout-badges/' + badgeId + '.png';
+      const bytes = fs.readFileSync(file);
+      assert.equal(
+        bytes.subarray(0, 8).toString('hex'),
+        '89504e470d0a1a0a',
+        badgeId
+      );
+      assert.equal(bytes.readUInt32BE(16), 1254, badgeId);
+      assert.equal(bytes.readUInt32BE(20), 1254, badgeId);
+      assert.equal(
+        crypto.createHash('sha256').update(bytes).digest('hex'),
+        expectedSha,
+        badgeId
+      );
+      assert.ok(
+        script.includes(
+          badgeId + ": 'assets/scout-badges/" + badgeId + ".png'"
+        ),
+        badgeId
+      );
+      assert.ok(manifest.includes(sourceFile), sourceFile);
+      assert.ok(manifest.includes(expectedSha), expectedSha);
+    }
   }
-});
+);
