@@ -47,24 +47,108 @@ html body.novelight-public-dark header.site-header .btn {
 }
 
 @media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) .public-header-inner {
+    width: calc(100% - 32px) !important;
+    grid-template-columns: auto minmax(360px, 1fr) auto !important;
+    gap: 16px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .novelight-brand-logo-image {
+    height: 90px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav {
+    gap: 12px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
+    font-size: 20px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .header-actions {
+    gap: 10px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .header-search {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 28px !important;
+  }
+
   html body.novelight-public-header-page:not(.novelight-public-dark) .btn,
   html body.novelight-public-dark header.site-header .btn {
+    min-height: 48px !important;
+    padding: 10px 14px !important;
     font-size: 17px !important;
   }
 }
 
 @media (max-width: 900px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) .public-header-inner {
+    display: flex !important;
+    width: calc(100% - 32px) !important;
+    min-height: 96px !important;
+    gap: 12px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .novelight-brand-logo-image {
+    height: 82.8px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .desktop-nav,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .signup-action {
+    display: none !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .header-actions {
+    margin-left: auto !important;
+  }
+
   html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu {
     display: block;
   }
 
   html body.novelight-public-dark .mobile-menu > nav a,
   html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu > nav a {
-    font-size: 16px !important;
+    font-size: 20px !important;
   }
 
   html body.novelight-public-dark header.site-header .btn {
     font-size: 16px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) .public-header-inner {
+    width: calc(100% - 24px) !important;
+    min-height: 84px !important;
+    gap: 8px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .site-logo img,
+  html body.novelight-public-header-page:not(.novelight-public-dark) .novelight-brand-logo-image {
+    height: 72px !important;
+    max-width: 56vw !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .header-search {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 26px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .login-action {
+    display: none !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) .mobile-menu summary {
+    width: 42px !important;
+    height: 42px !important;
   }
 }
 
