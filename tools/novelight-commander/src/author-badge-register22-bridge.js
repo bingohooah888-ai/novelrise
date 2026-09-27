@@ -140,7 +140,31 @@ function buildManifest(rows, zipSha256) {
 }
 function buildTest(rows) {
   const expected = rows.map(row => `  ['${row.badgeId}', '${row.sha256}']`).join(',\n');
-  return `import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport fs from 'node:fs';\nimport crypto from 'node:crypto';\n\nconst expected = [\n${expected}\n];\n\ntest('Author Normal #9-#30 artwork keeps approved bytes and UI mappings', () => {\n  const script = fs.readFileSync('novelight-scout-record.js', 'utf8');\n  assert.equal(expected.length, 22);\n  for (const [badgeId, expectedSha] of expected) {\n    const file = \\`assets/scout-badges/\\${badgeId}.png\\`;\n    const bytes = fs.readFileSync(file);\n    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', badgeId);\n    assert.equal(bytes.readUInt32BE(16), 1254, badgeId);\n    assert.equal(bytes.readUInt32BE(20), 1254, badgeId);\n    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), expectedSha, badgeId);\n    assert.ok(script.includes(\\`${badgeId}: 'assets/scout-badges/\\${badgeId}.png'\\`), badgeId);\n  }\n});\n`;
+  return [
+    "import test from 'node:test';",
+    "import assert from 'node:assert/strict';",
+    "import fs from 'node:fs';",
+    "import crypto from 'node:crypto';",
+    '',
+    'const expected = [',
+    expected,
+    '];',
+    '',
+    "test('Author Normal #9-#30 artwork keeps approved bytes and UI mappings', () => {",
+    "  const script = fs.readFileSync('novelight-scout-record.js', 'utf8');",
+    '  assert.equal(expected.length, 22);',
+    '  for (const [badgeId, expectedSha] of expected) {',
+    "    const file = 'assets/scout-badges/' + badgeId + '.png';",
+    '    const bytes = fs.readFileSync(file);',
+    "    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', badgeId);",
+    '    assert.equal(bytes.readUInt32BE(16), 1254, badgeId);',
+    '    assert.equal(bytes.readUInt32BE(20), 1254, badgeId);',
+    "    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), expectedSha, badgeId);",
+    "    assert.ok(script.includes(badgeId + \": 'assets/scout-badges/\" + badgeId + \".png'\"), badgeId);",
+    '  }',
+    '});',
+    ''
+  ].join('\n');
 }
 async function stage(request) {
   const { rows, zipSha256 } = await loadTargets();
