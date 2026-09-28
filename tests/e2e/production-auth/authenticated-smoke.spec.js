@@ -94,7 +94,7 @@ function contextOptionsForProject(baseURL, projectName) {
     : devices['Desktop Chrome'];
   const deviceOptions = { ...descriptor };
   delete deviceOptions.defaultBrowserType;
-  return { ...deviceOptions, baseURL };
+  return { ...deviceOptions, baseURL, serviceWorkers: 'block' };
 }
 
 async function installStagingSupabaseOverride(context) {
