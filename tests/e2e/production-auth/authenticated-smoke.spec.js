@@ -821,29 +821,17 @@ test('authenticated beta-critical product flow works in target', async ({
       await qualifyValidRead(readerPage);
       await readerPage.goto(`/novel.html?id=${encodeURIComponent(novelId)}`);
       await expect(readerPage.locator('.title')).toHaveText(novelTitle);
-
-      const bronzeSeedShell = readerPage.locator(
-        '.seed-choice[data-seed-type="BRONZE"]'
-      );
-      if ((await bronzeSeedShell.count()) === 0) {
-        await readerPage.reload({ waitUntil: 'networkidle' });
-        await expect(readerPage.locator('.title')).toHaveText(novelTitle);
-      }
-      await expect(bronzeSeedShell).toHaveCount(1);
+      await expect(readerPage.locator('#sendLightSeedButton')).toHaveCount(1);
     });
 
-    await test.step('Send BRONZE LIGHT SEED', async () => {
-      const seedButton = readerPage.locator(
-        '.seed-choice[data-seed-type="BRONZE"]'
-      );
+    await test.step('Send LIGHT SEED through automatic classification', async () => {
+      const seedButton = readerPage.locator('#sendLightSeedButton');
       await expect(seedButton).toBeVisible();
       await expect(seedButton).toBeEnabled();
       readerPage.once('dialog', (dialog) => dialog.accept());
       await seedButton.click();
       await expect(seedButton).toBeDisabled();
-      await expect(readerPage.locator('#seedMessage')).toContainText(
-        'すでにLIGHT SEEDを贈っています'
-      );
+      await expect(readerPage.locator('#seedMessage')).toContainText('を贈りました');
     });
 
     await test.step('Verify LIGHT SEED send history inside SCOUT RECORD', async () => {
