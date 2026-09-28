@@ -1,5 +1,6 @@
 -- Ranking tabs should not assign ordinal places to works with no signal for the selected metric.
 -- New-arrivals remains a chronological feed and therefore keeps zero-signal published works.
+-- security-definer-review: public.novelight_ranking_feed_v2
 
 begin;
 
