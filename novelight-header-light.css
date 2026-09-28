@@ -238,3 +238,40 @@ html body.novelight-public-header-page header.site-header .logo img {
   filter: none !important;
   mix-blend-mode: normal !important;
 }
+
+/* Home and SPECIAL LIGHT only: enlarge the approved header logo to 1.5x. */
+@media (min-width: 1181px) {
+  html body.novelight-page-index.novelight-public-dark header.site-header .public-header-inner,
+  html body.novelight-page-special-light.novelight-public-dark header.site-header .public-header-inner {
+    grid-template-columns: 391.5px minmax(560px, 1fr) auto !important;
+  }
+
+  html body.novelight-page-index.novelight-public-dark header.site-header .logo,
+  html body.novelight-page-special-light.novelight-public-dark header.site-header .logo {
+    min-width: 391.5px !important;
+  }
+
+  html body.novelight-page-index.novelight-public-dark header.site-header .logo img,
+  html body.novelight-page-special-light.novelight-public-dark header.site-header .logo img {
+    height: 156.6px !important;
+    max-width: 391.5px !important;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-page-index.novelight-public-dark header.site-header .public-header-inner,
+  html body.novelight-page-special-light.novelight-public-dark header.site-header .public-header-inner {
+    grid-template-columns: 337.5px minmax(400px, 1fr) auto !important;
+  }
+
+  html body.novelight-page-index.novelight-public-dark header.site-header .logo,
+  html body.novelight-page-special-light.novelight-public-dark header.site-header .logo {
+    min-width: 337.5px !important;
+  }
+
+  html body.novelight-page-index.novelight-public-dark header.site-header .logo img,
+  html body.novelight-page-special-light.novelight-public-dark header.site-header .logo img {
+    height: 135px !important;
+    max-width: 337.5px !important;
+  }
+}
