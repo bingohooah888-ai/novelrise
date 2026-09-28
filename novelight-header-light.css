@@ -179,7 +179,7 @@ html body.novelight-public-dark header.site-header .btn {
     align-items: center !important;
     justify-content: center !important;
     padding: 0 12px !important;
-    font-size: 16px !important;
+    font-size: 22px !important;
     letter-spacing: 0.025em !important;
     text-align: center !important;
   }
@@ -211,7 +211,7 @@ html body.novelight-public-dark header.site-header .btn {
   html body.novelight-public-dark header.site-header .desktop-nav a {
     justify-content: center !important;
     padding: 0 7px !important;
-    font-size: 14px !important;
+    font-size: 20px !important;
     letter-spacing: 0.015em !important;
     text-align: center !important;
   }
@@ -220,6 +220,12 @@ html body.novelight-public-dark header.site-header .btn {
     margin-left: 0 !important;
     gap: 8px !important;
   }
+}
+
+/* Logged-in public headers keep the Creation Room action and hide signup. */
+html body.novelight-public-header-page .header-actions:has(a[data-auth-state="authenticated"]) .signup-action,
+html body.novelight-public-header-page .header-actions:has(a[data-auth-state="authenticated"]) .mobile-menu a[href="signup.html"] {
+  display: none !important;
 }
 
 /* Render the approved NOVELIGHT logo artwork from a uniquely named asset so
