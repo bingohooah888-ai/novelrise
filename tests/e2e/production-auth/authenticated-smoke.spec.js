@@ -804,12 +804,11 @@ test('authenticated beta-critical product flow works in target', async ({
       await expect(readerPage.locator('.title')).toHaveText(novelTitle);
     });
 
-    await test.step('Send BRONZE LIGHT SEED', async () => {
-      const seedButton = readerPage.locator(
-        '.seed-choice[data-seed-type="BRONZE"]'
-      );
+    await test.step('Send automatic LIGHT SEED', async () => {
+      const seedButton = readerPage.locator('#sendLightSeedButton');
       await expect(seedButton).toBeVisible();
       await expect(seedButton).toBeEnabled();
+      await expect(seedButton).toContainText('LIGHT SEEDを贈る');
       readerPage.once('dialog', (dialog) => dialog.accept());
       await seedButton.click();
       await expect(seedButton).toBeDisabled();
