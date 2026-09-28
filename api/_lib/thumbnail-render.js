@@ -3,6 +3,13 @@ import { randomUUID } from 'node:crypto';
 const RENDER_BUCKET = 'novel-thumbnail-renders';
 const MAX_RENDER_SIZE = 2 * 1024 * 1024;
 const PATH_PATTERN = /^renders\/([0-9]+)\/([0-9a-f-]{36})\.webp$/i;
+const FAILURE_STAGES = new Set([
+  'render',
+  'prepare-upload',
+  'upload',
+  'finalize-upload',
+  'unknown'
+]);
 
 function getBearerToken(authorization) {
   const match =
@@ -28,6 +35,12 @@ function normalizeRevision(value) {
   )
     ? text
     : null;
+}
+
+function boundedText(value, maxLength) {
+  return String(value ?? '')
+    .trim()
+    .slice(0, maxLength);
 }
 
 async function requireUser({ req, res, supabase }) {
@@ -58,11 +71,12 @@ async function loadOwnedComposition({ supabase, userId, novelId, revision }) {
   }
   if (!novel || novel.user_id !== userId) return null;
 
-  const { data: composition, error: compositionError } = await supabase
+  const query = supabase
     .from('novel_thumbnail_compositions')
     .select('novel_id,revision')
-    .eq('novel_id', novelId)
-    .eq('revision', revision)
+    .eq('novel_id', novelId);
+  if (revision) query.eq('revision', revision);
+  const { data: composition, error: compositionError } = await query
     .limit(1)
     .maybeSingle();
 
@@ -198,6 +212,67 @@ async function finalizeUpload({ supabase, user, body }) {
   return { status: 200, payload: { renderUrl } };
 }
 
+async function reportFailure({ supabase, user, req, body }) {
+  const novelId = normalizeNovelId(body.novelId);
+  const revision = normalizeRevision(body.revision);
+  const requestedStage = boundedText(body.stage, 32);
+  const stage = FAILURE_STAGES.has(requestedStage) ? requestedStage : 'unknown';
+  const attempts = Math.max(
+    1,
+    Math.min(10, Number.parseInt(body.attempts, 10) || 1)
+  );
+  const errorCode = boundedText(body.errorCode, 120) || null;
+  const errorMessage =
+    boundedText(body.errorMessage, 800) || 'Unknown thumbnail render failure';
+  const userAgent = boundedText(req.headers['user-agent'], 500) || null;
+
+  if (!novelId || !revision) {
+    return {
+      status: 400,
+      payload: { error: 'Invalid thumbnail failure report' }
+    };
+  }
+
+  const composition = await loadOwnedComposition({
+    supabase,
+    userId: user.id,
+    novelId,
+    revision
+  });
+  if (!composition) {
+    return {
+      status: 409,
+      payload: { error: 'Thumbnail composition changed' }
+    };
+  }
+
+  const { error } = await supabase.from('thumbnail_render_failures').insert({
+    novel_id: Number(novelId),
+    user_id: user.id,
+    revision,
+    stage,
+    error_code: errorCode,
+    error_message: errorMessage,
+    attempts,
+    user_agent: userAgent
+  });
+
+  if (error) {
+    // Keep the user-facing failure path reliable even during rolling deploys
+    // where application code can briefly precede the database migration.
+    console.error('Thumbnail failure report could not be persisted', {
+      novelId,
+      revision,
+      stage,
+      attempts,
+      error: error.message
+    });
+    return { status: 202, payload: { recorded: false } };
+  }
+
+  return { status: 201, payload: { recorded: true } };
+}
+
 export function createThumbnailRenderHandler({ supabase }) {
   return async function thumbnailRenderHandler(req, res) {
     if (req.method !== 'POST') {
@@ -217,6 +292,8 @@ export function createThumbnailRenderHandler({ supabase }) {
         result = await prepareUpload({ supabase, user, body });
       } else if (action === 'finalize-upload') {
         result = await finalizeUpload({ supabase, user, body });
+      } else if (action === 'report-failure') {
+        result = await reportFailure({ supabase, user, req, body });
       } else {
         result = { status: 400, payload: { error: 'Invalid action' } };
       }
