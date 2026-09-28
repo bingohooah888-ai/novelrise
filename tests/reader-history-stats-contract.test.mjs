@@ -118,7 +118,7 @@ test('reader UI explains private first-valid-read semantics without public shari
 
 test('reader page uses the shared browser bootstrap and fails closed before DB rollout', () => {
   assert.match(page, /novelight-client\.js/u);
-  assert.match(page, /assets\/novelight-header-logo\.webp/u);
+  assert.match(page, /\/assets\/novelight-header-logo-approved-20260928\.webp/u);
   assert.match(runtime, /PGRST202/u);
   assert.match(runtime, /データベース反映待ち/u);
   assert.doesNotMatch(runtime, /\.from\(['"]valid_read_events['"]\)/u);

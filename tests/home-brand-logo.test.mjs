@@ -6,10 +6,10 @@ import test from 'node:test';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const home = readFileSync(join(root, 'index.html'), 'utf8');
-const logoPath = join(root, 'assets', 'novelight-header-logo.webp');
+const logoPath = join(root, 'assets', 'novelight-header-logo-approved-20260928.webp');
 
 test('homepage header uses the official NOVELIGHT logo asset', () => {
-  assert.match(home, /assets\/novelight-header-logo\.webp/u);
+  assert.match(home, /\/assets\/novelight-header-logo-approved-20260928\.webp/u);
   assert.match(home, /alt="NOVELIGHT"/u);
   assert.match(home, /aria-label="NOVELIGHT トップへ"/u);
   assert.ok(existsSync(logoPath));
