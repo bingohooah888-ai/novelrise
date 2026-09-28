@@ -18,6 +18,7 @@ import './special-badge-exact-probe-bridge.js';
 import './special-badge-register-bridge.js';
 import './public-header-logo-bridge.js';
 import './public-header-logo-special-bridge.js';
+import './public-header-logo-asset-bridge.js';
 import { mainProductionMigrationApproveBridge } from './production-migration-approve-bridge.js';
 import { mainProductionAuthSmokeDispatchBridge } from './production-auth-smoke-dispatch-bridge.js';
 
