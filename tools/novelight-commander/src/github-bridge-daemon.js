@@ -22,6 +22,7 @@ import './public-header-logo-asset-bridge.js';
 import './scout-lock-artwork-bridge.js';
 import './scout-lock-artwork-final-bridge.js';
 import './scout-lock-local-cache-bridge.js';
+import './scout-lock-direct-register-bridge.js';
 import { mainProductionMigrationApproveBridge } from './production-migration-approve-bridge.js';
 import { mainProductionAuthSmokeDispatchBridge } from './production-auth-smoke-dispatch-bridge.js';
 
