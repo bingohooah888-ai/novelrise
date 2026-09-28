@@ -41,7 +41,8 @@ export default defineConfig({
       use: {
         ...devices['Pixel 7'],
         browserName: 'chromium',
-        channel: 'chrome'
+        channel: 'chrome',
+        actionTimeout: 30_000
       }
     }
   ]
