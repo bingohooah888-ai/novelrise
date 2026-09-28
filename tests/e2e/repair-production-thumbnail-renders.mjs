@@ -134,8 +134,12 @@ async function renderWebp(composition) {
     const assets = [];
     const selection = { template_key: input.template_key };
     for (const type of layerTypes) {
-      const id = input[`${type}_asset_id`];
       const url = input[`${type}_url`];
+      // Public composition RPCs intentionally expose renderable URLs, not the
+      // private asset IDs. The shared renderer only needs a stable ID to join
+      // the in-memory selection to its in-memory asset, so synthesize one for
+      // repair runs when the RPC does not return the original ID.
+      const id = input[`${type}_asset_id`] || (url ? `repair:${type}` : null);
       selection[`${type}_asset_id`] = id || null;
       if (!id || !url) continue;
       assets.push({
