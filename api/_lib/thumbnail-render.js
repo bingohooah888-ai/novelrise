@@ -215,13 +215,20 @@ async function reportFailure({ supabase, user, req, body }) {
   const revision = normalizeRevision(body.revision);
   const requestedStage = boundedText(body.stage, 32);
   const stage = FAILURE_STAGES.has(requestedStage) ? requestedStage : 'unknown';
-  const attempts = Math.max(1, Math.min(10, Number.parseInt(body.attempts, 10) || 1));
+  const attempts = Math.max(
+    1,
+    Math.min(10, Number.parseInt(body.attempts, 10) || 1)
+  );
   const errorCode = boundedText(body.errorCode, 120) || null;
-  const errorMessage = boundedText(body.errorMessage, 800) || 'Unknown thumbnail render failure';
+  const errorMessage =
+    boundedText(body.errorMessage, 800) || 'Unknown thumbnail render failure';
   const userAgent = boundedText(req.headers['user-agent'], 500) || null;
 
   if (!novelId || !revision) {
-    return { status: 400, payload: { error: 'Invalid thumbnail failure report' } };
+    return {
+      status: 400,
+      payload: { error: 'Invalid thumbnail failure report' }
+    };
   }
 
   const composition = await loadOwnedComposition({
@@ -231,7 +238,10 @@ async function reportFailure({ supabase, user, req, body }) {
     revision
   });
   if (!composition) {
-    return { status: 409, payload: { error: 'Thumbnail composition changed' } };
+    return {
+      status: 409,
+      payload: { error: 'Thumbnail composition changed' }
+    };
   }
 
   const { error } = await supabase.from('thumbnail_render_failures').insert({
