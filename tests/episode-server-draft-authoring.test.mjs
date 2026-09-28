@@ -5,6 +5,7 @@ import test from 'node:test';
 const post = await readFile('episode-post.html', 'utf8');
 const edit = await readFile('episode-edit.html', 'utf8');
 const drafts = await readFile('episode-drafts.html', 'utf8');
+const structure = await readFile('episode-structure.html', 'utf8');
 
 test('new episode authoring can save an account-backed server draft', () => {
   assert.match(post, /id="saveDraft"/u);
@@ -19,6 +20,20 @@ test('new episode authoring can schedule and continue directly to the next episo
   assert.match(post, /id="scheduleNext"/u);
   assert.match(post, /novelight_schedule_episode_draft/u);
   assert.match(post, /episode-post\.html\?novel_id=/u);
+});
+
+test('new episode authoring can choose a chapter for draft, scheduled, and immediate publication', () => {
+  assert.match(post, /id="chapterId"/u);
+  assert.match(post, /from\(['"]novel_chapters['"]\)/u);
+  assert.match(post, /update\(\{chapter_id:values\.chapterId\}\)/u);
+  assert.match(post, /novelight_publish_episode_draft_atomic/u);
+});
+
+test('chapter assignment does not silently reorder episodes and provides a fast explicit move', () => {
+  assert.doesNotMatch(structure, /normalizeChapterBlocks/u);
+  assert.match(structure, /章を変更しました。話の位置は変わりません/u);
+  assert.match(structure, /この章の末尾へ/u);
+  assert.match(structure, /moveEpisodeToChapterEnd/u);
 });
 
 test('draft editing saves through the authenticated draft RPC and can publish atomically', () => {
