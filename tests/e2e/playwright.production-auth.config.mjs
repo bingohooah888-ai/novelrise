@@ -23,10 +23,6 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 20_000,
     serviceWorkers: 'block',
-    extraHTTPHeaders: {
-      'Cache-Control': 'no-cache',
-      Pragma: 'no-cache'
-    },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
   },
