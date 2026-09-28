@@ -38,7 +38,9 @@ function normalizeRevision(value) {
 }
 
 function boundedText(value, maxLength) {
-  return String(value ?? '').trim().slice(0, maxLength);
+  return String(value ?? '')
+    .trim()
+    .slice(0, maxLength);
 }
 
 async function requireUser({ req, res, supabase }) {
