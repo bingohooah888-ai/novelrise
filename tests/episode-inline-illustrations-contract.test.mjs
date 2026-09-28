@@ -148,7 +148,8 @@ test('author editor supports owner and collaborator placement without widening c
   assert.match(browser, /カーソル位置へ挿入/u);
   assert.match(browser, /本文から外す場合は挿絵IDの行を削除/u);
   assert.match(browser, /過去の改稿履歴を壊さない/u);
-  assert.match(post, /一度「サーバーに下書き保存」した後/u);
+  assert.match(post, /id="openIllustrationEditor"[\s\S]{0,120}挿絵を追加/u);
+  assert.match(post, /初回だけ自動で下書き保存/u);
 });
 
 test('AI illustration declaration and detailed upload rules match Chapter 46', () => {
