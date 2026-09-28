@@ -146,8 +146,8 @@ async function renderWebp(composition) {
         availability_status: 'active'
       });
     }
-    const canvas = document.createElement('canvas');
-    await window.NovelightThumbnailComposer.renderSelectionToCanvas({
+    const canvas = globalThis.document.createElement('canvas');
+    await globalThis.window.NovelightThumbnailComposer.renderSelectionToCanvas({
       canvas,
       library: { templates: [template], assets },
       selection
