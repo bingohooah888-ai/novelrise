@@ -6,6 +6,7 @@ on:
     paths:
       - '*.html'
       - 'novelight-client.js'
+      - 'vercel.json'
       - 'api/**'
       - 'supabase/checks/production_beta_observability.sql'
       - 'scripts/verify-production-static.sh'
