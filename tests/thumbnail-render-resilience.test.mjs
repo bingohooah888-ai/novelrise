@@ -105,4 +105,8 @@ test('operator repair is explicit, Production-bound, and uses the shared rendere
   assert.match(repairScript, /novelight_attach_thumbnail_render/u);
   assert.match(repairScript, /remove\(\[storagePath\]\)/u);
   assert.match(repairScript, /mode: 'dry-run'/u);
+  assert.match(
+    repairScript,
+    /input\[`\$\{type\}_asset_id`\] \|\| \(url \? `repair:\$\{type\}` : null\)/u
+  );
 });
