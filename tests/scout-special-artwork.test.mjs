@@ -2,17 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import prettier from 'prettier';
-
-const ownSource = fs.readFileSync(import.meta.filename, 'utf8');
-const prettierOptions = await prettier.resolveConfig(import.meta.filename);
-const exactFormattedSource = await prettier.format(ownSource, {
-  ...prettierOptions,
-  filepath: import.meta.filename
-});
-console.log(
-  'SCOUT_PRETTIER_BASE64=' + Buffer.from(exactFormattedSource).toString('base64')
-);
 
 const expectedText = `
 assets/scout-record/ranks/scout_rank_01_noctis.png|c742722fd37a7c74171a383a394339f24e9dbb920b43c31f3e32fb30ee6e523f|1254|1254
@@ -31,7 +20,10 @@ assets/scout-record/light-seed/light_seed_gold.png|61a2f6b1a1fa2990267f2435f2a3e
 assets/scout-badges/limited_beta_participant.png|f503aeaf0f5d22f8ec0a4dbe3ccab257c4744e02be02061160755e3050ff4a3c|1536|1536
 `;
 
-const expected = expectedText.trim().split('\n').map((line) => line.split('|'));
+const expected = expectedText
+  .trim()
+  .split('\n')
+  .map((line) => line.split('|'));
 
 test('SCOUT special artwork contract', () => {
   const script = fs.readFileSync('novelight-scout-record.js', 'utf8');
