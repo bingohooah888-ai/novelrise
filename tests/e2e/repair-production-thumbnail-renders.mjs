@@ -66,7 +66,9 @@ const { data: compositions, error: compositionError } = await supabase.rpc(
   { p_novel_ids: ids }
 );
 if (compositionError) {
-  throw new Error(`Public composition lookup failed: ${compositionError.message}`);
+  throw new Error(
+    `Public composition lookup failed: ${compositionError.message}`
+  );
 }
 
 const candidates = (compositions ?? []).filter(
