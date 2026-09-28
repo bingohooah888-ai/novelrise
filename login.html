@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ログイン | NOVELIGHT</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:#6d4aff}header{height:72px;background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:1100px;height:100%;margin:auto;padding:0 22px;display:flex;align-items:center;justify-content:space-between}.logo{text-decoration:none;color:#6d4aff;font-size:25px;font-weight:900}.back{text-decoration:none;color:#666;font-size:14px}main{min-height:calc(100vh - 72px);display:grid;place-items:center;padding:42px 18px 70px}.card{width:100%;max-width:460px;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:34px;box-shadow:0 12px 40px rgba(0,0,0,.06)}h1{margin:0 0 8px;text-align:center;font-size:29px}.lead{margin:0 0 26px;text-align:center;color:#777;font-size:14px}.form-group{margin-bottom:18px}label{display:block;margin-bottom:7px;font-size:14px;font-weight:800}input{width:100%;padding:12px 13px;border:1px solid #d9d9df;border-radius:9px;font:inherit;outline:none}input:focus{border-color:#6d4aff;box-shadow:0 0 0 3px rgba(109,74,255,.1)}button{width:100%;padding:14px;border:0;border-radius:9px;background:#6d4aff;color:#fff;font:inherit;font-weight:900;cursor:pointer}button:disabled{opacity:.6;cursor:not-allowed}.row{display:flex;justify-content:space-between;gap:16px;margin-top:16px;font-size:13px}.signup{text-align:center;margin-top:23px;color:#666;font-size:14px}.status{min-height:20px;margin-top:12px;color:#666;font-size:13px;line-height:1.6}.legal{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 14px;margin-top:22px;font-size:11px}@media(max-width:560px){.card{padding:26px 20px}.row{flex-direction:column;gap:8px}}
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:#6d4aff}header{height:72px;background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:1100px;height:100%;margin:auto;padding:0 22px;display:flex;align-items:center;justify-content:space-between}.logo{text-decoration:none;color:#6d4aff;font-size:25px;font-weight:900}.back{text-decoration:none;color:#666;font-size:14px}main{min-height:calc(100vh - 72px);display:grid;place-items:center;padding:42px 18px 70px}.card{width:100%;max-width:460px;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:34px;box-shadow:0 12px 40px rgba(0,0,0,.06)}h1{margin:0 0 8px;text-align:center;font-size:29px}.lead{margin:0 0 26px;text-align:center;color:#777;font-size:14px}.form-group{margin-bottom:18px}label{display:block;margin-bottom:7px;font-size:14px;font-weight:800}input{width:100%;padding:12px 13px;border:1px solid #d9d9df;border-radius:9px;font:inherit;outline:none}input:focus{border-color:#6d4aff;box-shadow:0 0 0 3px rgba(109,74,255,.1)}button{width:100%;padding:14px;border:0;border-radius:9px;background:#6d4aff;color:#fff;font:inherit;font-weight:900;cursor:pointer}button:disabled{opacity:.6;cursor:not-allowed}.row{display:flex;justify-content:space-between;gap:16px;margin-top:16px;font-size:13px}.signup{text-align:center;margin-top:23px;color:#666;font-size:14px}.status{min-height:20px;margin-top:12px;color:#666;font-size:13px;line-height:1.6}.confirmation-help{margin-top:22px;padding:16px;border:1px solid #ddd6fe;border-radius:12px;background:#faf9ff}.confirmation-help strong{display:block;margin-bottom:7px;font-size:14px}.confirmation-help p{margin:0 0 12px;color:#666;font-size:12px;line-height:1.7}.confirmation-help button{padding:11px;background:#fff;border:1px solid #6d4aff;color:#6d4aff}.confirmation-help.attention{border-color:#6d4aff;box-shadow:0 0 0 3px rgba(109,74,255,.08)}.legal{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 14px;margin-top:22px;font-size:11px}@media(max-width:560px){.card{padding:26px 20px}.row{flex-direction:column;gap:8px}}
   </style>
 <link rel="stylesheet" href="novelight-accessibility.css"></head>
 <body><a class="skip-link" href="#main-content">本文へスキップ</a>
@@ -20,6 +20,12 @@
       <button id="loginButton" type="submit">ログイン</button>
       <div id="loginStatus" class="status" role="status" aria-live="polite"></div>
     </form>
+    <div id="confirmationHelp" class="confirmation-help">
+      <strong>確認メールが届かない方</strong>
+      <p>会員登録に使ったメールアドレスを上の欄に入力して、確認メールを再送できます。迷惑メール・プロモーション・すべてのメールもご確認ください。</p>
+      <button id="resendConfirmationButton" type="button">確認メールを再送</button>
+      <div id="resendConfirmationStatus" class="status" role="status" aria-live="polite"></div>
+    </div>
     <div class="row"><a href="forgot-password.html">パスワードを忘れた方</a><a id="signupLink" href="signup.html">会員登録</a></div>
     <div class="legal"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="contact.html">お知らせ・お問い合わせ</a></div>
   </section>
@@ -34,36 +40,120 @@
   const form=document.getElementById('loginForm');
   const button=document.getElementById('loginButton');
   const status=document.getElementById('loginStatus');
+  const emailInput=document.getElementById('email');
   const signupLink=document.getElementById('signupLink');
+  const confirmationHelp=document.getElementById('confirmationHelp');
+  const resendButton=document.getElementById('resendConfirmationButton');
+  const resendStatus=document.getElementById('resendConfirmationStatus');
+  const RESEND_COOLDOWN_MS=60000;
+  const RESEND_COOLDOWN_KEY='novelight_confirmation_resend_available_at';
   const redirect=NovelightAuthReturn.currentRedirect();
   const redirectTarget=NovelightAuthReturn.safeRedirectTarget(redirect);
+  const query=new URLSearchParams(location.search);
   if(redirect)signupLink.href=NovelightAuthReturn.authHref('signup.html',redirect);
 
   async function runOptionalTelemetry(label,task){
     try{await task()}catch(error){console.error(label,error)}
   }
 
+  function isEmailNotConfirmed(error){
+    const code=String(error?.code||'').toLowerCase();
+    const message=String(error?.message||'').toLowerCase();
+    return code==='email_not_confirmed'||message.includes('email not confirmed');
+  }
+
+  function isRateLimitError(error){
+    const code=String(error?.code||'').toLowerCase();
+    const message=String(error?.message||'').toLowerCase();
+    return Number(error?.status||0)===429||code==='over_email_send_rate_limit'||message.includes('email rate limit exceeded');
+  }
+
+  function focusConfirmationHelp(){
+    confirmationHelp.classList.add('attention');
+    confirmationHelp.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  function getResendAvailableAt(){
+    const stored=Number(sessionStorage.getItem(RESEND_COOLDOWN_KEY)||0);
+    return Number.isFinite(stored)?stored:0;
+  }
+
+  function updateResendCooldown(){
+    const remaining=Math.max(0,getResendAvailableAt()-Date.now());
+    if(remaining<=0){resendButton.disabled=false;resendButton.textContent='確認メールを再送';return;}
+    resendButton.disabled=true;
+    resendButton.textContent=`再送まで ${Math.ceil(remaining/1000)}秒`;
+    window.setTimeout(updateResendCooldown,1000);
+  }
+
+  if(query.get('confirmed')==='1'){
+    status.textContent='メールアドレスの確認が完了しました。登録したメールアドレスとパスワードでログインしてください。';
+  }else if(query.get('registered')==='1'){
+    status.textContent='会員登録を受け付けました。確認メール内の「メールアドレスを確認する」から本人確認を完了してください。届かない場合は下から再送できます。';
+    focusConfirmationHelp();
+  }
+  updateResendCooldown();
+
   void (async()=>{
     await runOptionalTelemetry('login acquisition telemetry failed',()=>NovelightClient.captureAcquisition(supabaseClient));
     await runOptionalTelemetry('login visit telemetry failed',()=>NovelightClient.recordVisit(supabaseClient));
   })();
 
+  resendButton.addEventListener('click',async()=>{
+    if(resendButton.disabled)return;
+    const email=emailInput.value.trim();
+    if(!email||!emailInput.checkValidity()){
+      resendStatus.textContent='会員登録に使ったメールアドレスを上の欄に入力してください。';
+      emailInput.focus();
+      return;
+    }
+    resendButton.disabled=true;
+    resendStatus.textContent='確認メールを再送しています...';
+    try{
+      const emailRedirectTo=new URL('login.html?confirmed=1',location.href).href;
+      const {error}=await supabaseClient.auth.resend({type:'signup',email,options:{emailRedirectTo}});
+      if(error){
+        console.error('confirmation resend was not accepted',{status:error.status||null,code:error.code||null});
+        if(isRateLimitError(error))resendStatus.textContent='短時間に複数回の送信が行われました。少し時間をおいてから再度お試しください。';
+        else resendStatus.textContent='確認メールを再送できませんでした。時間をおいて再度お試しいただくか、お問い合わせください。';
+        resendButton.disabled=false;
+        return;
+      }
+      sessionStorage.setItem(RESEND_COOLDOWN_KEY,String(Date.now()+RESEND_COOLDOWN_MS));
+      resendStatus.textContent='確認メールの再送を受け付けました。迷惑メール・プロモーション・すべてのメールもご確認ください。';
+      updateResendCooldown();
+    }catch(error){
+      console.error('confirmation resend request failed',{name:error?.name||'Error'});
+      resendStatus.textContent='確認メールを再送できませんでした。通信状態を確認し、時間をおいて再度お試しください。';
+      resendButton.disabled=false;
+    }
+  });
+
   form.addEventListener('submit',async(event)=>{
     event.preventDefault();
     if(button.disabled)return;
     button.disabled=true;status.textContent='ログイン中...';
-    const email=document.getElementById('email').value.trim();
+    const email=emailInput.value.trim();
     const password=document.getElementById('password').value;
     let authenticated=false;
     try{
       const {error}=await supabaseClient.auth.signInWithPassword({email,password});
-      if(error){console.error(error);status.textContent='ログインできませんでした。メールアドレスとパスワードを確認してください。';return;}
+      if(error){
+        console.error('login was not accepted',{status:error.status||null,code:error.code||null});
+        if(isEmailNotConfirmed(error)){
+          status.textContent='メールアドレスの確認が完了していません。確認メール内のリンクを押すか、下の「確認メールを再送」をご利用ください。';
+          focusConfirmationHelp();
+        }else{
+          status.textContent='ログインできませんでした。メールアドレスとパスワードを確認してください。';
+        }
+        return;
+      }
       authenticated=true;
       void runOptionalTelemetry('post-login acquisition telemetry failed',()=>NovelightClient.claimAcquisition(supabaseClient));
       void runOptionalTelemetry('post-login visit telemetry failed',()=>NovelightClient.recordVisit(supabaseClient));
       window.location.href=redirectTarget;
     }catch(error){
-      console.error('login request failed',error);
+      console.error('login request failed',{name:error?.name||'Error'});
       status.textContent='ログインできませんでした。通信状態を確認し、時間をおいて再度お試しください。';
     }finally{
       if(!authenticated)button.disabled=false;
