@@ -51,7 +51,13 @@ if (missingError) {
 
 const ids = (missingRows ?? []).map((row) => Number(row.novel_id));
 if (!ids.length) {
-  console.log(JSON.stringify({ mode: APPLY ? 'apply' : 'dry-run', missing: 0, repaired: 0 }));
+  console.log(
+    JSON.stringify({
+      mode: APPLY ? 'apply' : 'dry-run',
+      missing: 0,
+      repaired: 0
+    })
+  );
   process.exit(0);
 }
 
@@ -64,7 +70,8 @@ if (compositionError) {
 }
 
 const candidates = (compositions ?? []).filter(
-  (composition) => !composition.render_url && ids.includes(Number(composition.novel_id))
+  (composition) =>
+    !composition.render_url && ids.includes(Number(composition.novel_id))
 );
 
 if (!APPLY) {
@@ -83,7 +90,10 @@ if (!APPLY) {
 }
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
-const composerPath = path.resolve(dirname, '../../novelight-thumbnail-composer.js');
+const composerPath = path.resolve(
+  dirname,
+  '../../novelight-thumbnail-composer.js'
+);
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage();
 await page.setContent('<!doctype html><html><body></body></html>');
@@ -162,22 +172,32 @@ try {
       .eq('novel_id', novelId)
       .maybeSingle();
     if (currentError) throw currentError;
-    if (!current || current.render_url || current.revision !== composition.revision) {
+    if (
+      !current ||
+      current.render_url ||
+      current.revision !== composition.revision
+    ) {
       skipped.push(novelId);
       continue;
     }
 
     const bytes = await renderWebp(composition);
     const storagePath = `renders/${novelId}/${randomUUID()}.webp`;
-    const upload = await supabase.storage.from(RENDER_BUCKET).upload(storagePath, bytes, {
-      contentType: 'image/webp',
-      upsert: false
-    });
+    const upload = await supabase.storage
+      .from(RENDER_BUCKET)
+      .upload(storagePath, bytes, {
+        contentType: 'image/webp',
+        upsert: false
+      });
     if (upload.error) {
-      throw new Error(`Render upload failed for novel ${novelId}: ${upload.error.message}`);
+      throw new Error(
+        `Render upload failed for novel ${novelId}: ${upload.error.message}`
+      );
     }
 
-    const publicUrl = supabase.storage.from(RENDER_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+    const publicUrl = supabase.storage
+      .from(RENDER_BUCKET)
+      .getPublicUrl(storagePath).data.publicUrl;
     const attached = await supabase.rpc('novelight_attach_thumbnail_render', {
       p_novel_id: novelId,
       p_revision: composition.revision,
@@ -205,7 +225,9 @@ const unresolved = (verification ?? [])
   .filter((row) => !row.render_url)
   .map((row) => Number(row.novel_id));
 if (unresolved.length) {
-  throw new Error(`Post-repair verification failed for: ${unresolved.join(', ')}`);
+  throw new Error(
+    `Post-repair verification failed for: ${unresolved.join(', ')}`
+  );
 }
 
 console.log(
