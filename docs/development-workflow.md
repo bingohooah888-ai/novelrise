@@ -194,3 +194,31 @@ A change is ready to merge when its scope is understood, the relevant selective 
 ## Environment work stopping rule
 
 Do not keep adding tooling because more automation is possible. Add or refactor tooling when it removes repeated work, materially reduces elapsed time, closes a concrete reliability/security gap, lowers operational risk, or is required by a platform change. Otherwise prioritize NOVELIGHT product development.
+
+## Bug-fix fast path and investigation budget
+
+Routine bug fixes must be classified before the implementation scope expands. The default classes are:
+
+- **Minor UI / copy / layout bug**: styling, spacing, colors, icons, labels, logo placement, local rendering defects, and similarly narrow presentation issues with no auth/data/security impact.
+- **Normal scoped bug**: behavior is incorrect but the impact is bounded to a known feature or flow and does not touch a high-risk boundary.
+- **High-risk bug**: authentication, RLS/permissions, billing, personal data, destructive migration, secrets, Production infrastructure, security boundaries, or an issue whose blast radius is unknown.
+
+For a minor UI/copy/layout bug, use the fast path by default:
+
+1. identify the smallest responsible component/file and reproduce the defect;
+2. make the smallest patch that satisfies the reported acceptance criteria;
+3. run only the directly relevant lint/unit/browser/static checks required by the changed paths;
+4. inspect the actual affected screen or equivalent rendered evidence;
+5. open one focused PR, let the existing selective CI classifier run, and complete the normal read-only post-merge check when eligible.
+
+Do **not** turn a minor bug into a repository-wide audit. Do not run `preflight:full`, broad security review, unrelated regression suites, exhaustive MASTER rereads, or neighboring cleanup unless the changed paths, current evidence, or a discovered safety issue specifically requires them. Content-addressed MASTER reuse should be used whenever its contract is satisfied instead of rereading an unchanged MASTER in full.
+
+For a normal scoped bug, expand verification only to the affected feature boundary and the most plausible regression surface. Keep the same focused-PR rule and avoid unrelated cleanup.
+
+High-risk bugs keep the full safety model. The fast path never removes authentication/RLS/billing/data/security review, rollback requirements, required CI, approval boundaries, or fail-closed behavior.
+
+Investigation must also be bounded. If a minor or normal bug has no credible root cause after roughly 30–45 minutes of focused investigation, stop repeating the same search/test loop and explicitly reassess the route: inspect runtime logs or browser evidence, compare the actual diff/current deployment, isolate the smallest reproducer, or reclassify the issue if the blast radius is broader than first assumed. Repeating the same unsuccessful diagnostic path is not progress.
+
+If a supposedly minor bug begins accumulating broad refactors, multiple unrelated files, repeated full-suite runs, a second PR, or more than one independent issue, treat that as a scope-expansion signal and reclassify before continuing. Do not silently pay the cost of a large investigation under a “small bug” label.
+
+The purpose of this fast path is to minimize total elapsed time while preserving the existing safety boundaries. Small bugs should stay small; only evidence of wider risk justifies wider work.
