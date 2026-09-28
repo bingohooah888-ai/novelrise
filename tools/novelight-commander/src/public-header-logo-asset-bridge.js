@@ -12,6 +12,7 @@ const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9][A-Za-z0-9_-]{2,63}$/
 const POLL_MS = 10000;
 const LOOKBACK_MS = 60 * 60 * 1000;
 const MAX_PAGES = 5;
+const MAX_BLOB_PARTS = 32;
 const TARGET_FILE = 'assets/novelight-header-logo-approved-20260928.webp';
 let busy = false;
 
@@ -60,7 +61,9 @@ async function githubApi(method, apiPath, body) {
     try { payload = JSON.parse(text); } catch { payload = text; }
   }
   if (!response.ok) {
-    const detail = payload && typeof payload === 'object' ? payload.message || JSON.stringify(payload) : String(payload || response.statusText);
+    const detail = payload && typeof payload === 'object'
+      ? payload.message || JSON.stringify(payload)
+      : String(payload || response.statusText);
     throw new Error(`GitHub API ${response.status} ${method} ${apiPath}: ${detail}`);
   }
   return payload;
@@ -104,7 +107,10 @@ function run(executable, args, options = {}) {
 }
 
 async function git(config, args, options = {}) {
-  const result = await run('git', args, { cwd: options.cwd || config.repoRoot, timeoutMs: options.timeoutMs || 120000 });
+  const result = await run('git', args, {
+    cwd: options.cwd || config.repoRoot,
+    timeoutMs: options.timeoutMs || 120000
+  });
   if (result.code !== 0) throw new Error(`git ${args.join(' ')} failed.\n${result.stderr || result.stdout}`);
   return result.stdout.trim();
 }
@@ -117,12 +123,27 @@ function validateWebp(data) {
 }
 
 async function loadBlob(blobSha) {
-  if (!/^[0-9a-f]{40}$/i.test(blobSha)) throw new Error('blobSha must be a 40-character Git object SHA.');
+  if (!/^[0-9a-f]{40}$/i.test(blobSha)) throw new Error('Each blob SHA must be a 40-character Git object SHA.');
   const blob = await githubApi('GET', `/repos/${OWNER}/${REPOSITORY}/git/blobs/${blobSha}`);
   if (blob?.encoding !== 'base64' || typeof blob?.content !== 'string') {
     throw new Error('GitHub blob response is not base64 encoded.');
   }
   return Buffer.from(blob.content.replace(/\s+/g, ''), 'base64');
+}
+
+async function loadPayload(args) {
+  if (exactKeys(args, ['blobSha', 'expectedBytes', 'expectedSha256'])) {
+    return loadBlob(String(args.blobSha || '').toLowerCase());
+  }
+  if (!exactKeys(args, ['blobShas', 'expectedBytes', 'expectedSha256'])) {
+    throw new Error('public_header_logo_asset_replace requires blobSha or blobShas plus expectedBytes and expectedSha256.');
+  }
+  if (!Array.isArray(args.blobShas) || args.blobShas.length < 1 || args.blobShas.length > MAX_BLOB_PARTS) {
+    throw new Error(`blobShas must contain 1 to ${MAX_BLOB_PARTS} Git blob SHAs.`);
+  }
+  const parts = [];
+  for (const sha of args.blobShas) parts.push(await loadBlob(String(sha || '').toLowerCase()));
+  return Buffer.concat(parts);
 }
 
 async function assertSafeLocalMain(config) {
@@ -134,9 +155,6 @@ async function assertSafeLocalMain(config) {
 }
 
 async function actionReplaceAsset(request, config) {
-  if (!exactKeys(request.args, ['blobSha', 'expectedBytes', 'expectedSha256'])) {
-    throw new Error('public_header_logo_asset_replace requires exactly blobSha, expectedBytes and expectedSha256.');
-  }
   const expectedBytes = Number(request.args.expectedBytes);
   const expectedSha256 = String(request.args.expectedSha256 || '').toLowerCase();
   if (!Number.isInteger(expectedBytes) || expectedBytes < 1 || expectedBytes > 10 * 1024 * 1024) {
@@ -145,7 +163,7 @@ async function actionReplaceAsset(request, config) {
   if (!/^[0-9a-f]{64}$/.test(expectedSha256)) throw new Error('expectedSha256 is invalid.');
 
   await assertSafeLocalMain(config);
-  const data = await loadBlob(String(request.args.blobSha || '').toLowerCase());
+  const data = await loadPayload(request.args);
   validateWebp(data);
   const actualSha256 = crypto.createHash('sha256').update(data).digest('hex');
   if (data.length !== expectedBytes) throw new Error(`Size mismatch: got ${data.length}, expected ${expectedBytes}.`);
@@ -159,10 +177,9 @@ async function actionReplaceAsset(request, config) {
   try {
     const target = path.join(worktree, TARGET_FILE);
     await fs.writeFile(target, data);
-
     const changed = (await git(config, ['status', '--porcelain'], { cwd: worktree }))
       .split(/\r?\n/).filter(Boolean);
-    if (changed.length !== 1 || (!changed[0].endsWith(TARGET_FILE.replace(/\//g, path.sep)) && !changed[0].endsWith(TARGET_FILE))) {
+    if (changed.length !== 1 || !changed[0].replace(/\\/g, '/').endsWith(TARGET_FILE)) {
       throw new Error(`Asset replacement changed unexpected files: ${changed.join(', ') || 'none'}`);
     }
 
