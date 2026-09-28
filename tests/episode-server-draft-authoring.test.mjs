@@ -26,7 +26,7 @@ test('new episode authoring can choose a chapter for draft, scheduled, and immed
   assert.match(post, /id="chapterId"/u);
   assert.match(post, /from\(['"]novel_chapters['"]\)/u);
   assert.match(post, /update\(\{chapter_id:values\.chapterId\}\)/u);
-  assert.match(post, /novelight_publish_episode_draft_atomic/u);
+  assert.match(post, /novelight_publish_episode_atomic/u);
 });
 
 test('chapter assignment does not silently reorder episodes and provides a fast explicit move', () => {
