@@ -188,7 +188,9 @@ async function actionRegister(request, config) {
     if (targeted.code !== 0) throw new Error(`Targeted lock test failed.\n${targeted.stderr || targeted.stdout}`);
     await git(config, ['diff', '--check'], { cwd: worktree });
 
-    const changed = (await git(config, ['status', '--porcelain'], { cwd: worktree })).split(/\r?\n/).filter(Boolean);
+    const status = await run('git', ['status', '--porcelain'], { cwd: worktree, timeoutMs: 15000 });
+    if (status.code !== 0) throw new Error(`git status --porcelain failed.\n${status.stderr || status.stdout}`);
+    const changed = status.stdout.split(/\r?\n/).filter(Boolean);
     const paths = changed.map(line => line.slice(3).replace(/\\/g, '/')).sort();
     const expectedPaths = [TARGET_FILE, TARGET_HTML, TARGET_JS, TARGET_TEST].sort();
     if (JSON.stringify(paths) !== JSON.stringify(expectedPaths)) throw new Error(`Unexpected changed files: ${paths.join(', ')}`);
