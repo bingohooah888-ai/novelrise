@@ -129,7 +129,8 @@ test('author structure manager supports chapter CRUD, assignment and whole-work 
   );
   assert.ok(structurePage.includes('episodeItems=episodes.map'));
   assert.ok(structurePage.includes('chapterOrder=chapters.map'));
-  assert.ok(structurePage.includes('normalizeChapterBlocks'));
+  assert.ok(!structurePage.includes('normalizeChapterBlocks'));
+  assert.ok(structurePage.includes('moveEpisodeToChapterEnd'));
 });
 
 test('novel page renders chapter headings and fails closed when the safe outline RPC is unavailable', () => {
