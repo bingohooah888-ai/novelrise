@@ -222,11 +222,11 @@ html body.novelight-public-dark header.site-header .btn {
   }
 }
 
-/* Render the approved NOVELIGHT logo artwork from a uniquely named asset so
-   the exact current artwork is used without browser/CDN stale-cache ambiguity. */
+/* Render the verified NOVELIGHT logo artwork from a uniquely named asset so
+   the current artwork cannot be confused with an older browser/CDN copy. */
 html body.novelight-public-dark header.site-header .logo img,
 html body.novelight-public-header-page header.site-header .logo img {
-  content: url("assets/novelight-header-logo-approved-20260928.webp") !important;
+  content: url("assets/novelight-header-logo-fixed-20260928.webp") !important;
   opacity: 1 !important;
   visibility: visible !important;
 }
