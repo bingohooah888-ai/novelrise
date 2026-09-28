@@ -16,6 +16,7 @@ import './hard-badge-register25-bridge.js';
 import './special-badge-asset-probe-bridge.js';
 import './special-badge-exact-probe-bridge.js';
 import './special-badge-register-bridge.js';
+import './public-header-logo-bridge.js';
 import { mainProductionMigrationApproveBridge } from './production-migration-approve-bridge.js';
 
 void mainProductionMigrationApproveBridge().catch(error => {
