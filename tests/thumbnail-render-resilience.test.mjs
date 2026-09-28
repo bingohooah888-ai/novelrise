@@ -2,17 +2,19 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [composer, runtime, renderApi, post, edit, migration] = await Promise.all([
-  readFile('novelight-thumbnail-composer.js', 'utf8'),
-  readFile('novelight-thumbnail-runtime.js', 'utf8'),
-  readFile('api/_lib/thumbnail-render.js', 'utf8'),
-  readFile('post.html', 'utf8'),
-  readFile('novel-edit.html', 'utf8'),
-  readFile(
-    'supabase/migrations/20260928023000_thumbnail_render_resilience.sql',
-    'utf8'
-  )
-]);
+const [composer, runtime, renderApi, post, edit, migration, repairScript] =
+  await Promise.all([
+    readFile('novelight-thumbnail-composer.js', 'utf8'),
+    readFile('novelight-thumbnail-runtime.js', 'utf8'),
+    readFile('api/_lib/thumbnail-render.js', 'utf8'),
+    readFile('post.html', 'utf8'),
+    readFile('novel-edit.html', 'utf8'),
+    readFile(
+      'supabase/migrations/20260928023000_thumbnail_render_resilience.sql',
+      'utf8'
+    ),
+    readFile('tests/e2e/repair-production-thumbnail-renders.mjs', 'utf8')
+  ]);
 
 test('thumbnail composer fails closed after bounded automatic retries', () => {
   assert.match(composer, /const RENDER_RETRY_DELAYS_MS = \[0, 500, 1500\]/u);
@@ -91,4 +93,13 @@ test('migration preserves the last good render and creates private failure telem
     migration,
     /on conflict \(novel_id\) do update[\s\S]{0,1000}render_url = null/u
   );
+});
+
+test('operator repair is explicit, Production-bound, and uses the shared renderer', () => {
+  assert.match(repairScript, /REPAIR_PRODUCTION_THUMBNAIL_RENDERS/u);
+  assert.match(repairScript, /PRODUCTION_PROJECT = 'fiepaguycecrredwrcwx'/u);
+  assert.match(repairScript, /NovelightThumbnailComposer\.renderSelectionToCanvas/u);
+  assert.match(repairScript, /novelight_attach_thumbnail_render/u);
+  assert.match(repairScript, /remove\(\[storagePath\]\)/u);
+  assert.match(repairScript, /mode: 'dry-run'/u);
 });
