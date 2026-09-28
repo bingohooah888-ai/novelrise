@@ -9,9 +9,16 @@ const drafts = await readFile('episode-drafts.html', 'utf8');
 test('new episode authoring can save an account-backed server draft', () => {
   assert.match(post, /id="saveDraft"/u);
   assert.match(post, /novelight_save_episode_draft/u);
-  assert.match(post, /p_episode_id:\s*null/u);
+  assert.match(post, /pendingDraftId=null/u);
+  assert.match(post, /p_episode_id:\s*pendingDraftId/u);
   assert.match(post, /episode-edit\.html\?id=/u);
   assert.match(post, /clearCurrentDraft/u);
+});
+
+test('new episode authoring can schedule and continue directly to the next episode', () => {
+  assert.match(post, /id="scheduleNext"/u);
+  assert.match(post, /novelight_schedule_episode_draft/u);
+  assert.match(post, /episode-post\.html\?novel_id=/u);
 });
 
 test('draft editing saves through the authenticated draft RPC and can publish atomically', () => {
