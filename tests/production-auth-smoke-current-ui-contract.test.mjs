@@ -84,7 +84,9 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
   assert.match(authenticatedSmoke, /'finalize-upload'/);
   assert.doesNotMatch(authenticatedSmoke, /input\[name=\"thumbnailAsset\"\]/);
   assert.match(authenticatedSmoke, /record_valid_read_progress/);
-  assert.match(
+  assert.match(authenticatedSmoke, /#sendLightSeedButton/);
+  assert.match(authenticatedSmoke, /automatic classification/);
+  assert.doesNotMatch(
     authenticatedSmoke,
     /\.seed-choice\[data-seed-type=\"BRONZE\"\]/
   );
