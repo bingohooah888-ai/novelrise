@@ -8,7 +8,10 @@ const [composer, runtime, renderApi, post, edit, migration] = await Promise.all(
   readFile('api/_lib/thumbnail-render.js', 'utf8'),
   readFile('post.html', 'utf8'),
   readFile('novel-edit.html', 'utf8'),
-  readFile('supabase/migrations/20260928023000_thumbnail_render_resilience.sql', 'utf8')
+  readFile(
+    'supabase/migrations/20260928023000_thumbnail_render_resilience.sql',
+    'utf8'
+  )
 ]);
 
 test('thumbnail composer fails closed after bounded automatic retries', () => {
@@ -21,7 +24,10 @@ test('thumbnail composer fails closed after bounded automatic retries', () => {
     composer,
     /return \{ composition: saved, render, renderError \}/u
   );
-  assert.doesNotMatch(composer, /state\.dirty = false;\s*return \{ composition: saved, render, renderError/u);
+  assert.doesNotMatch(
+    composer,
+    /state\.dirty = false;\s*return \{ composition: saved, render, renderError/u
+  );
 
   assert.doesNotThrow(() => new Function(composer));
 });
@@ -41,12 +47,12 @@ test('edit flow awaits thumbnail persistence before redirecting', () => {
   assert.match(edit, /catch\(error\)/u);
 });
 
-test('missing cached thumbnails have a deterministic shared-renderer fallback', () => {
-  assert.match(runtime, /ensureComposer/u);
-  assert.match(runtime, /fallbackLibrary/u);
-  assert.match(runtime, /renderSelectionToCanvas/u);
-  assert.match(runtime, /applyFallbackComposition/u);
-  assert.match(runtime, /runLimited\(missingCache, 2/u);
+test('reader runtime keeps missing cached thumbnails fail-closed', () => {
+  assert.match(runtime, /novelight_thumbnail_compositions_v3/u);
+  assert.match(runtime, /composition\?\.render_url/u);
+  assert.match(runtime, /applyComposition/u);
+  assert.doesNotMatch(runtime, /renderSelectionToCanvas/u);
+  assert.doesNotMatch(runtime, /createElement\(['"]canvas['"]\)/u);
   assert.doesNotThrow(() => new Function(runtime));
 });
 
@@ -59,9 +65,18 @@ test('thumbnail render API accepts authenticated bounded failure reports', () =>
 });
 
 test('migration preserves the last good render and creates private failure telemetry', () => {
-  assert.match(migration, /create table if not exists public\.thumbnail_render_failures/u);
-  assert.match(migration, /alter table public\.thumbnail_render_failures enable row level security/u);
-  assert.match(migration, /revoke all on table public\.thumbnail_render_failures from anon, authenticated/u);
+  assert.match(
+    migration,
+    /create table if not exists public\.thumbnail_render_failures/u
+  );
+  assert.match(
+    migration,
+    /alter table public\.thumbnail_render_failures enable row level security/u
+  );
+  assert.match(
+    migration,
+    /revoke all on table public\.thumbnail_render_failures from anon, authenticated/u
+  );
   assert.match(
     migration,
     /render_storage_path = public\.novel_thumbnail_compositions\.render_storage_path/u
