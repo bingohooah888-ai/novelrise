@@ -1,6 +1,8 @@
 -- Ranking tabs should not assign ordinal places to works with no signal for the selected metric.
 -- New-arrivals remains a chronological feed and therefore keeps zero-signal published works.
--- security-definer-review: public.novelight_ranking_feed_v2
+-- SECURITY DEFINER AUTHORIZATION REVIEWED
+-- This read-only ranking RPC exposes only published, discovery-eligible aggregates;
+-- execute remains limited to anon and authenticated after the explicit revoke/grant below.
 
 begin;
 
