@@ -71,6 +71,14 @@ test('Production route is ledgered and limits the Supabase Auth patch to confirm
   assert.match(workflow, /mailer_templates_confirmation_content/u);
   assert.match(
     workflow,
+    /jq -e 'keys \| sort == \["mailer_subjects_confirmation","mailer_templates_confirmation_content"\]'/u
+  );
+  assert.doesNotMatch(
+    workflow,
+    /keys \| sort == \[\\"mailer_subjects_confirmation/u
+  );
+  assert.match(
+    workflow,
     /del\(\.mailer_subjects_confirmation,\.mailer_templates_confirmation_content\)/u
   );
   assert.match(

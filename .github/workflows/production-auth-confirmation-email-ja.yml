@@ -195,7 +195,7 @@ jobs:
           set -euo pipefail
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "${{ steps.approval.outputs.main_sha }}"
           payload="$(jq -c '{mailer_subjects_confirmation:.subject,mailer_templates_confirmation_content:.html}' config/auth-confirmation-email-ja.json)"
-          test "$(jq 'keys | sort == [\"mailer_subjects_confirmation\",\"mailer_templates_confirmation_content\"]' <<<"$payload")" = 'true'
+          jq -e 'keys | sort == ["mailer_subjects_confirmation","mailer_templates_confirmation_content"]' <<<"$payload" >/dev/null
           status="$(curl --silent --show-error --output /tmp/auth-patch.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -X PATCH -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$payload" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")"
           [ "$status" = '200' ]
 
