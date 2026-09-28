@@ -125,6 +125,23 @@ async function installStagingSupabaseOverride(context) {
   );
 }
 
+async function disableNovelDocumentCache(context) {
+  await context.route('**/novel.html*', async (route) => {
+    const request = route.request();
+    if (request.resourceType() !== 'document') {
+      await route.continue();
+      return;
+    }
+    await route.continue({
+      headers: {
+        ...request.headers(),
+        'cache-control': 'no-cache',
+        pragma: 'no-cache'
+      }
+    });
+  });
+}
+
 async function disableChromiumCache(page) {
   const session = await page.context().newCDPSession(page);
   await session.send('Network.enable');
@@ -624,7 +641,9 @@ test('authenticated beta-critical product flow works in target', async ({
   const readerContext = await browser.newContext(contextOptions);
   await Promise.all([
     installStagingSupabaseOverride(authorContext),
-    installStagingSupabaseOverride(readerContext)
+    installStagingSupabaseOverride(readerContext),
+    disableNovelDocumentCache(authorContext),
+    disableNovelDocumentCache(readerContext)
   ]);
   const authorPage = await authorContext.newPage();
   const readerPage = await readerContext.newPage();
