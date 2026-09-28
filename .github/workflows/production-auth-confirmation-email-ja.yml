@@ -1,0 +1,246 @@
+name: NOVELIGHT Production Auth Confirmation Email JA
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-production-auth-confirmation-email-ja
+  cancel-in-progress: false
+
+env:
+  LEDGER_ISSUE: '737'
+  SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+
+jobs:
+  request-approval:
+    name: Prepare confirmation-email Japanese approval request
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 737 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == 'NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_REQUEST'
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Resolve exact current main
+        id: main
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          [[ "$main_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$main_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact current main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.main.outputs.sha }}
+          persist-credentials: false
+
+      - name: Validate ledger and inspect current Auth template
+        id: inspect
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(jq -er '.activeIssue' production-approval-ledger.json)" = "$LEDGER_ISSUE"
+          test "$(jq -er '.maxComments' production-approval-ledger.json)" = '100'
+          jq -e '.subject | type == "string" and length > 0' config/auth-confirmation-email-ja.json >/dev/null
+          jq -e '.html | type == "string" and contains("{{ .ConfirmationURL }}")' config/auth-confirmation-email-ja.json >/dev/null
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          status="$(curl --silent --show-error --output /tmp/auth-before.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Accept: application/json' "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")"
+          [ "$status" = '200' ]
+          wanted_subject="$(jq -r '.subject' config/auth-confirmation-email-ja.json)"
+          wanted_html="$(jq -r '.html' config/auth-confirmation-email-ja.json)"
+          current_subject="$(jq -r '.mailer_subjects_confirmation // ""' /tmp/auth-before.json)"
+          current_html="$(jq -r '.mailer_templates_confirmation_content // ""' /tmp/auth-before.json)"
+          if [ "$current_subject" = "$wanted_subject" ] && [ "$current_html" = "$wanted_html" ]; then
+            echo "verdict=current" >> "$GITHUB_OUTPUT"
+          else
+            echo "verdict=change-required" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report already-current state
+        if: steps.inspect.outputs.verdict == 'current'
+        shell: bash
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" -f body='NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_CURRENT' >/dev/null
+
+      - name: Create scoped approval request
+        if: steps.inspect.outputs.verdict == 'change-required'
+        shell: bash
+        env:
+          MAIN_SHA: ${{ steps.main.outputs.sha }}
+        run: |
+          set -euo pipefail
+          request_id="auth-confirmation-email-ja-$MAIN_SHA-$GITHUB_RUN_ID"
+          challenge="$(openssl rand -hex 4 | tr '[:lower:]' '[:upper:]')"
+          expires_at="$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:%SZ')"
+          request_json="$(jq -cn --arg operation 'set-confirmation-email-ja' --arg requestId "$request_id" --arg mainSha "$MAIN_SHA" --arg expiresAt "$expires_at" --arg challenge "$challenge" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,expiresAt:$expiresAt,challenge:$challenge}')"
+          approval_json="$(jq -cn --arg operation 'set-confirmation-email-ja' --arg requestId "$request_id" --arg mainSha "$MAIN_SHA" --arg challenge "$challenge" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,challenge:$challenge}')"
+          title="[Production Auth Confirmation Email JA Approval] $request_id"
+          body="$(cat <<EOF
+          NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_REQUEST $request_json
+
+          Scope:
+          - exact main SHA: $MAIN_SHA
+          - change only mailer_subjects_confirmation
+          - change only mailer_templates_confirmation_content
+          - keep all other Production Auth configuration byte-for-byte equivalent after JSON normalization
+          - template source: config/auth-confirmation-email-ja.json
+
+          Exact approval comment:
+
+          NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_APPROVE $approval_json
+          EOF
+          )"
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+
+      - name: Cleanup
+        if: always()
+        run: rm -f /tmp/auth-before.json
+
+  apply-approved-change:
+    name: Apply approved Japanese confirmation email template
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.user.login == 'github-actions[bot]' &&
+      startsWith(github.event.issue.title, '[Production Auth Confirmation Email JA Approval] auth-confirmation-email-ja-') &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_APPROVE ')
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Validate exact one-time approval
+        id: approval
+        shell: bash
+        env:
+          APPROVAL_BODY: ${{ github.event.comment.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          approval_json="${APPROVAL_BODY#NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_APPROVE }"
+          echo "$approval_json" | jq -e 'type == "object" and .operation == "set-confirmation-email-ja" and (.requestId | type == "string" and test("^auth-confirmation-email-ja-[0-9a-f]{40}-[0-9]+$")) and (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and ((keys | sort) == (["challenge","mainSha","operation","requestId"] | sort))' >/dev/null
+          request_json="$(printf '%s\n' "$ISSUE_BODY" | head -n 1 | sed 's/^NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_REQUEST //' | jq -c '.')"
+          request_id="$(jq -r '.requestId' <<<"$request_json")"
+          main_sha="$(jq -r '.mainSha' <<<"$request_json")"
+          challenge="$(jq -r '.challenge' <<<"$request_json")"
+          expires_at="$(jq -r '.expiresAt' <<<"$request_json")"
+          test "$ISSUE_TITLE" = "[Production Auth Confirmation Email JA Approval] $request_id"
+          test "$(jq -r '.requestId' <<<"$approval_json")" = "$request_id"
+          test "$(jq -r '.mainSha' <<<"$approval_json")" = "$main_sha"
+          test "$(jq -r '.challenge' <<<"$approval_json")" = "$challenge"
+          [ "$(date -u +%s)" -lt "$(date -u -d "$expires_at" +%s)" ]
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_main" = "$main_sha"
+          gh api "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments?per_page=100" > /tmp/ledger-comments.json
+          [ "$(jq 'length' /tmp/ledger-comments.json)" -lt 100 ]
+          used_count="$(jq --arg requestId "$request_id" '[.[] | select((.body | startswith("NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_CLAIMED ")) or (.body | startswith("NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_CONSUMED ")) or (.body | startswith("NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_FAILED "))) | select(.body | contains($requestId))] | length' /tmp/ledger-comments.json)"
+          [ "$used_count" -eq 0 ]
+          {
+            echo "request_id=$request_id"
+            echo "main_sha=$main_sha"
+            echo "challenge=$challenge"
+            echo "issue_number=$ISSUE_NUMBER"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+
+      - name: Precheck exact mutation scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(jq -er '.activeIssue' production-approval-ledger.json)" = "$LEDGER_ISSUE"
+          jq -e '.subject | type == "string" and length > 0' config/auth-confirmation-email-ja.json >/dev/null
+          jq -e '.html | type == "string" and contains("{{ .ConfirmationURL }}")' config/auth-confirmation-email-ja.json >/dev/null
+          status="$(curl --silent --show-error --output /tmp/auth-before.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Accept: application/json' "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")"
+          [ "$status" = '200' ]
+          jq 'del(.mailer_subjects_confirmation,.mailer_templates_confirmation_content)' /tmp/auth-before.json > /tmp/auth-before-preserved.json
+
+      - name: Claim approval before Production Auth mutation
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          CHALLENGE: ${{ steps.approval.outputs.challenge }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg operation 'set-confirmation-email-ja' --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg challenge "$CHALLENGE" --arg runId "$GITHUB_RUN_ID" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,challenge:$challenge,runId:$runId}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_CLAIMED $payload"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" -f body="$body" >/dev/null
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$body" >/dev/null
+
+      - name: Patch only confirmation subject and template
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "${{ steps.approval.outputs.main_sha }}"
+          payload="$(jq -c '{mailer_subjects_confirmation:.subject,mailer_templates_confirmation_content:.html}' config/auth-confirmation-email-ja.json)"
+          test "$(jq 'keys | sort == [\"mailer_subjects_confirmation\",\"mailer_templates_confirmation_content\"]' <<<"$payload")" = 'true'
+          status="$(curl --silent --show-error --output /tmp/auth-patch.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -X PATCH -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$payload" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")"
+          [ "$status" = '200' ]
+
+      - name: Verify Japanese template and preserved Auth configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --show-error --output /tmp/auth-after.json --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Accept: application/json' "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")"
+          [ "$status" = '200' ]
+          wanted_subject="$(jq -r '.subject' config/auth-confirmation-email-ja.json)"
+          wanted_html="$(jq -r '.html' config/auth-confirmation-email-ja.json)"
+          test "$(jq -r '.mailer_subjects_confirmation' /tmp/auth-after.json)" = "$wanted_subject"
+          test "$(jq -r '.mailer_templates_confirmation_content' /tmp/auth-after.json)" = "$wanted_html"
+          jq 'del(.mailer_subjects_confirmation,.mailer_templates_confirmation_content)' /tmp/auth-after.json > /tmp/auth-after-preserved.json
+          diff -u /tmp/auth-before-preserved.json /tmp/auth-after-preserved.json
+
+      - name: Mark approval consumed
+        if: success()
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg operation 'set-confirmation-email-ja' --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg runId "$GITHUB_RUN_ID" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,runId:$runId,result:"success"}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_CONSUMED $payload"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" -f body="$body" >/dev/null
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$body" >/dev/null
+          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --reason completed
+
+      - name: Mark approval failed
+        if: failure()
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.approval.outputs.request_id }}
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg operation 'set-confirmation-email-ja' --arg requestId "$REQUEST_ID" --arg mainSha "$MAIN_SHA" --arg runId "$GITHUB_RUN_ID" '{operation:$operation,requestId:$requestId,mainSha:$mainSha,runId:$runId,result:"failed"}')"
+          body="NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_FAILED $payload"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$LEDGER_ISSUE/comments" -f body="$body" >/dev/null || true
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$body" >/dev/null || true
+
+      - name: Cleanup
+        if: always()
+        run: rm -f /tmp/auth-before.json /tmp/auth-before-preserved.json /tmp/auth-patch.json /tmp/auth-after.json /tmp/auth-after-preserved.json /tmp/ledger-comments.json
