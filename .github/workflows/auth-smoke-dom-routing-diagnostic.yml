@@ -1,0 +1,110 @@
+name: NOVELIGHT Production DOM Routing Diagnostic
+
+on:
+  push:
+    branches:
+      - test/prod-dom-route-diag-20260928
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install Playwright package
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Compare Production Chrome routing with checked-out novel shell
+        working-directory: tests/e2e
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { chromium } from '@playwright/test';
+
+          const origin = 'https://novelight.jp';
+          const expected = readFileSync('../../novel.html');
+          const expectedHash = createHash('sha256').update(expected).digest('hex');
+          const expectedHasBronze = expected.includes(Buffer.from('data-seed-type="BRONZE"'));
+          console.log(`expected_sha256=${expectedHash}`);
+          console.log(`expected_has_bronze=${expectedHasBronze}`);
+
+          const browser = await chromium.launch({ channel: 'chrome', headless: true });
+
+          async function probe(label, visitLoginFirst) {
+            const context = await browser.newContext({ serviceWorkers: 'block' });
+            const page = await context.newPage();
+            const session = await context.newCDPSession(page);
+            await session.send('Network.enable');
+            await session.send('Network.setCacheDisabled', { cacheDisabled: true });
+
+            if (visitLoginFirst) {
+              const loginResponse = await page.goto(`${origin}/login.html?diag=${Date.now()}`, {
+                waitUntil: 'domcontentloaded'
+              });
+              console.log(`${label}_login_status=${loginResponse?.status()}`);
+            }
+
+            const response = await page.goto(
+              `${origin}/novel.html?diag=${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              { waitUntil: 'domcontentloaded' }
+            );
+            if (!response) throw new Error(`${label}: no navigation response`);
+
+            const raw = await response.body();
+            const rawHash = createHash('sha256').update(raw).digest('hex');
+            const headers = response.headers();
+            const rawHasBronze = raw.includes(Buffer.from('data-seed-type="BRONZE"'));
+            const immediateBronzeCount = await page.locator('.seed-choice[data-seed-type="BRONZE"]').count();
+            const immediateSeedAreaCount = await page.locator('#lightSeedArea').count();
+            await page.waitForTimeout(1500);
+            const settledBronzeCount = await page.locator('.seed-choice[data-seed-type="BRONZE"]').count();
+            const settledSeedAreaCount = await page.locator('#lightSeedArea').count();
+            const cookies = (await context.cookies(origin)).map(({ name, domain, path, httpOnly, secure, sameSite }) => ({
+              name,
+              domain,
+              path,
+              httpOnly,
+              secure,
+              sameSite
+            }));
+
+            console.log(`${label}_status=${response.status()}`);
+            console.log(`${label}_final_url=${page.url()}`);
+            console.log(`${label}_raw_sha256=${rawHash}`);
+            console.log(`${label}_raw_matches_checkout=${rawHash === expectedHash}`);
+            console.log(`${label}_raw_has_bronze=${rawHasBronze}`);
+            console.log(`${label}_dom_bronze_immediate=${immediateBronzeCount}`);
+            console.log(`${label}_dom_seed_area_immediate=${immediateSeedAreaCount}`);
+            console.log(`${label}_dom_bronze_settled=${settledBronzeCount}`);
+            console.log(`${label}_dom_seed_area_settled=${settledSeedAreaCount}`);
+            for (const key of ['x-vercel-id', 'x-vercel-cache', 'cache-control', 'age', 'server', 'x-vercel-deployment-url']) {
+              if (headers[key] != null) console.log(`${label}_header_${key}=${headers[key]}`);
+            }
+            console.log(`${label}_cookies=${JSON.stringify(cookies)}`);
+            await context.close();
+          }
+
+          try {
+            await probe('direct', false);
+            await probe('after_login', true);
+          } finally {
+            await browser.close();
+          }
+          NODE
