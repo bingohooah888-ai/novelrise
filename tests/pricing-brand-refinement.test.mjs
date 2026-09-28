@@ -18,8 +18,8 @@ test('public brand refinement is wired', async () => {
 
   assert.match(pricing, /novelight-brand-refinement\.css/);
   assert.match(home, /novelight-brand-refinement\.css/);
-  assert.match(pricing, /assets\/novelight-header-logo\.webp/);
-  assert.match(home, /assets\/novelight-header-logo\.webp/);
+  assert.match(pricing, /\/assets\/novelight-header-logo-approved-20260928\.webp/);
+  assert.match(home, /\/assets\/novelight-header-logo-approved-20260928\.webp/);
 });
 
 test('home and pricing use the approved plan badge artwork', async () => {
