@@ -1,0 +1,136 @@
+{
+  "set": "NOVELIGHT SCOUT Rank / LIGHT SEED / β Participant artwork",
+  "provenance": {
+    "rankSource": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL.zip",
+    "rankSourceSha256": "347a33e4f35aa4efc1cec3203ef8aef918326acbd22b7d7e5fe0449e96faee00",
+    "specialSource": "NOVELIGHT_SCOUT_SPECIAL_ARTWORK_FINAL.zip",
+    "specialSourceSha256": "b432feefcdfe805f09f24fe1ed6470358d43706c24c4d3d4abea27624294b3a8",
+    "policy": "approved originals copied byte-for-byte; no resize or recompression"
+  },
+  "ranks": [
+    {
+      "tier": 1,
+      "name": "NOCTIS",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_01_noctis.png",
+      "asset": "assets/scout-record/ranks/scout_rank_01_noctis.png",
+      "sha256": "c742722fd37a7c74171a383a394339f24e9dbb920b43c31f3e32fb30ee6e523f",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "tier": 2,
+      "name": "VESPER",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_02_vesper.png",
+      "asset": "assets/scout-record/ranks/scout_rank_02_vesper.png",
+      "sha256": "126657b5d423e1b623dc53cdabef7d9f211cbf40a4fd3559135b53e7e3e61d05",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "tier": 3,
+      "name": "UMBRA",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_03_umbra.png",
+      "asset": "assets/scout-record/ranks/scout_rank_03_umbra.png",
+      "sha256": "7d4c810c921953018bf6b8b99f3d80972a62fa80cbc4e976d251b0784972d5df",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "tier": 4,
+      "name": "ASTRA",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_04_astra.png",
+      "asset": "assets/scout-record/ranks/scout_rank_04_astra.png",
+      "sha256": "cd599bfe384fdb7ee2568baae0d3fbc663bf6b2575509b6ca29d365d05e03a4a",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "tier": 5,
+      "name": "LUCENT",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_05_lucent.png",
+      "asset": "assets/scout-record/ranks/scout_rank_05_lucent.png",
+      "sha256": "a613bfd554e590de6d6f1741ebe6f5fc9ee5695927d82556a121a535ad6537bb",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "tier": 6,
+      "name": "AURELIS",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_06_aurelis.png",
+      "asset": "assets/scout-record/ranks/scout_rank_06_aurelis.png",
+      "sha256": "be965057b755755ff320583f270c1c51b62176daeb77f0079f669355b39a8c33",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "tier": 7,
+      "name": "CELESTIA",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_07_celestia.png",
+      "asset": "assets/scout-record/ranks/scout_rank_07_celestia.png",
+      "sha256": "c7d8cbb902788897330cc69a8b3750bb0656ca83eb1656adc930ad7688616532",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "tier": 8,
+      "name": "EMPYREAN",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_08_empyrean.png",
+      "asset": "assets/scout-record/ranks/scout_rank_08_empyrean.png",
+      "sha256": "465978b21c2080987a7db68e888784154283a211d98c54903e379a019af9af77",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "tier": 9,
+      "name": "SERAPH",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_09_seraph.png",
+      "asset": "assets/scout-record/ranks/scout_rank_09_seraph.png",
+      "sha256": "b26d3b39b49f11568e70cc0edf94ed2de7adbf8d4f04307b22401643be3798a8",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "tier": 10,
+      "name": "LUMINARIS",
+      "source": "NOVELIGHT_SCOUT_RANK_BADGES_10_FINAL/scout_rank_10_luminaris.png",
+      "asset": "assets/scout-record/ranks/scout_rank_10_luminaris.png",
+      "sha256": "d5614c010a576576e2743578c0aeb20b7f09007ecef752d9380c2aaccdc26cae",
+      "width": 1254,
+      "height": 1254
+    }
+  ],
+  "special": [
+    {
+      "role": "BRONZE",
+      "source": "BRONZE_LIGHT_SEED_MASTER_1536.png",
+      "asset": "assets/scout-record/light-seed/light_seed_bronze.png",
+      "sha256": "93f84010d47a0848be102f738383a89e4815238fde703f9f8c1666bfcf7e3a90",
+      "width": 1536,
+      "height": 1536
+    },
+    {
+      "role": "SILVER",
+      "source": "SILVER_LIGHT_SEED_MASTER_1536_FINAL.png",
+      "asset": "assets/scout-record/light-seed/light_seed_silver.png",
+      "sha256": "6aaf6a7a264545ed8592719228ee80d00e372d6851e3954395c31d1ea6aa981e",
+      "width": 1536,
+      "height": 1536
+    },
+    {
+      "role": "GOLD",
+      "source": "NOVELIGHT_LIGHT_SEED_GOLD_1536.png",
+      "asset": "assets/scout-record/light-seed/light_seed_gold.png",
+      "sha256": "61a2f6b1a1fa2990267f2435f2a3e1e4328c90472c9a1f7e4c029986ad168e68",
+      "width": 1536,
+      "height": 1536
+    },
+    {
+      "role": "BETA",
+      "source": "NOVELIGHT_BETA_BADGE_MASTER_1536.png",
+      "asset": "assets/scout-badges/limited_beta_participant.png",
+      "sha256": "f503aeaf0f5d22f8ec0a4dbe3ccab257c4744e02be02061160755e3050ff4a3c",
+      "width": 1536,
+      "height": 1536
+    }
+  ]
+}
