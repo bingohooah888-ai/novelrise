@@ -1,0 +1,262 @@
+name: NOVELIGHT Production Thumbnail Render Repair
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-production-thumbnail-render-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair exact approved missing thumbnail renders
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 737 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_THUMBNAIL_RENDER_REPAIR_APPROVE ')
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: '737'
+      APPROVAL_BODY: ${{ github.event.comment.body }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+      SUPABASE_URL: https://fiepaguycecrredwrcwx.supabase.co
+      EXPECTED_MIGRATION: '20260928023000'
+
+    steps:
+      - name: Validate exact one-time Production repair approval
+        id: approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="${APPROVAL_BODY#NOVELIGHT_THUMBNAIL_RENDER_REPAIR_APPROVE }"
+          echo "$payload" | jq -e --arg migration "$EXPECTED_MIGRATION" '
+            type == "object" and
+            .operation == "thumbnail-render-repair" and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.challenge | type == "string" and test("^[A-F0-9]{8}$")) and
+            .migration == $migration and
+            (.novelIds | type == "array" and length >= 1 and length <= 100) and
+            all(.novelIds[]; type == "number" and . >= 1 and floor == .) and
+            (.novelIds | length) == (.novelIds | unique | length) and
+            .novelIds == (.novelIds | sort) and
+            ((keys | sort) == (["challenge", "mainSha", "migration", "novelIds", "operation"] | sort))
+          ' >/dev/null || {
+            echo 'Safety stop: invalid Production thumbnail repair approval.'
+            exit 1
+          }
+
+          main_sha="$(echo "$payload" | jq -r '.mainSha')"
+          challenge="$(echo "$payload" | jq -r '.challenge')"
+          novel_ids="$(echo "$payload" | jq -c '.novelIds')"
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$main_sha" || {
+            echo 'Safety stop: main changed after thumbnail repair approval.'
+            exit 1
+          }
+
+          curl --silent --show-error --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            > "$RUNNER_TEMP/ledger-comments.json"
+          test "$(jq 'length' "$RUNNER_TEMP/ledger-comments.json")" -lt 100 || {
+            echo 'Safety stop: Production Approval Ledger reached its bounded comment limit.'
+            exit 1
+          }
+          reused="$(
+            jq \
+              --arg challenge "$challenge" \
+              '[.[] | .body as $body | select(
+                ($body | startswith("NOVELIGHT_THUMBNAIL_RENDER_REPAIR_CLAIMED ")) or
+                ($body | startswith("NOVELIGHT_THUMBNAIL_RENDER_REPAIR_EXECUTED ")) or
+                ($body | startswith("NOVELIGHT_THUMBNAIL_RENDER_REPAIR_FAILED "))
+              ) | ($body | sub("^[^ ]+ "; "") | fromjson?) | select(.challenge == $challenge)] | length' \
+              "$RUNNER_TEMP/ledger-comments.json"
+          )"
+          test "$reused" -eq 0 || {
+            echo 'Safety stop: this thumbnail repair approval was already consumed.'
+            exit 1
+          }
+
+          {
+            echo "payload=$payload"
+            echo "main_sha=$main_sha"
+            echo "challenge=$challenge"
+            echo "novel_ids=$novel_ids"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+
+      - name: Verify approved checkout and migration file
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.approval.outputs.main_sha }}"
+          test -f "supabase/migrations/${EXPECTED_MIGRATION}_thumbnail_render_resilience.sql"
+
+      - name: Claim approval before Production mutation
+        shell: bash
+        env:
+          PAYLOAD: ${{ steps.approval.outputs.payload }}
+        run: |
+          set -euo pipefail
+          body="NOVELIGHT_THUMBNAIL_RENDER_REPAIR_CLAIMED $PAYLOAD"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Verify required Production access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || {
+            echo 'SUPABASE_ACCESS_TOKEN is not configured.'
+            exit 1
+          }
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Resolve masked Production service key
+        shell: bash
+        run: |
+          set -euo pipefail
+          keys_json="$(supabase projects api-keys --project-ref "$SUPABASE_PROJECT_ID" --output json)"
+          service_key="$(echo "$keys_json" | jq -r '
+            ([.[] | select(.id == "service_role" and (.api_key | type == "string") and (.api_key | length > 20) and (.api_key | contains("*") | not)) | .api_key][0]) //
+            ([.[] | select(.type == "secret" and (.api_key | type == "string") and (.api_key | startswith("sb_secret_")) and (.api_key | contains("*") | not)) | .api_key][0]) // empty
+          ')"
+          test -n "$service_key" || {
+            echo 'Production Supabase service key could not be resolved.'
+            exit 1
+          }
+          echo "::add-mask::$service_key"
+          echo "NOVELIGHT_COMMANDER_SUPABASE_SERVICE_ROLE_KEY=$service_key" >> "$GITHUB_ENV"
+          echo "NOVELIGHT_COMMANDER_SUPABASE_URL=$SUPABASE_URL" >> "$GITHUB_ENV"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install locked repair dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Verify exact live repair scope
+        shell: bash
+        env:
+          EXPECTED_IDS: ${{ steps.approval.outputs.novel_ids }}
+        run: |
+          set -euo pipefail
+          node tests/e2e/repair-production-thumbnail-renders.mjs > "$RUNNER_TEMP/thumbnail-repair-dry-run.json"
+          cat "$RUNNER_TEMP/thumbnail-repair-dry-run.json"
+          actual="$(jq -c '.publicRepairCandidates | sort' "$RUNNER_TEMP/thumbnail-repair-dry-run.json")"
+          expected="$(echo "$EXPECTED_IDS" | jq -c 'sort')"
+          test "$actual" = "$expected" || {
+            echo "Safety stop: live repair candidates changed. expected=$expected actual=$actual"
+            exit 1
+          }
+
+      - name: Re-check approved main immediately before repair
+        shell: bash
+        env:
+          APPROVED_MAIN: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          current_main="$(
+            curl --silent --show-error --fail \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+          test "$current_main" = "$APPROVED_MAIN" || {
+            echo 'Safety stop: main changed immediately before thumbnail repair.'
+            exit 1
+          }
+
+      - name: Repair approved missing thumbnail renders
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/e2e/repair-production-thumbnail-renders.mjs \
+            --apply \
+            --confirm=REPAIR_PRODUCTION_THUMBNAIL_RENDERS \
+            | tee "$RUNNER_TEMP/thumbnail-repair-result.json"
+          jq -e '.result == "SUCCESS"' "$RUNNER_TEMP/thumbnail-repair-result.json" >/dev/null
+
+      - name: Verify no public repair candidates remain
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/e2e/repair-production-thumbnail-renders.mjs > "$RUNNER_TEMP/thumbnail-repair-postcheck.json"
+          cat "$RUNNER_TEMP/thumbnail-repair-postcheck.json"
+          jq -e '(.publicRepairCandidates // []) | length == 0' "$RUNNER_TEMP/thumbnail-repair-postcheck.json" >/dev/null
+
+      - name: Record successful Production repair
+        if: success()
+        shell: bash
+        env:
+          PAYLOAD: ${{ steps.approval.outputs.payload }}
+        run: |
+          set -euo pipefail
+          body="NOVELIGHT_THUMBNAIL_RENDER_REPAIR_EXECUTED $PAYLOAD"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null
+
+      - name: Record failed Production repair
+        if: failure() && steps.approval.outputs.payload != ''
+        shell: bash
+        env:
+          PAYLOAD: ${{ steps.approval.outputs.payload }}
+        run: |
+          set -euo pipefail
+          body="NOVELIGHT_THUMBNAIL_RENDER_REPAIR_FAILED $PAYLOAD"
+          curl --silent --show-error --fail \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -d "$(jq -cn --arg body "$body" '{body:$body}')" \
+            >/dev/null

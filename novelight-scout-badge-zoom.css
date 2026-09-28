@@ -107,3 +107,13 @@ body.novelight-page-scout-record .badge-dialog-artwork img {
     transition: none;
   }
 }
+
+/* Enlarge only the current SCOUT Rank artwork in the hero card. */
+body.novelight-page-scout-record .scout-emblem.scout-emblem-artwork {
+  overflow: visible;
+}
+
+body.novelight-page-scout-record .scout-emblem.scout-emblem-artwork img {
+  transform: scale(1.5);
+  transform-origin: center;
+}

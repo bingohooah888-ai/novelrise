@@ -84,7 +84,7 @@ test('Production signup gate, recovery, global sign-out, and Secure Email Change
     expect(signup.data.session).toBeNull();
     expect(signup.error).toBeTruthy();
     expect(String(signup.error?.message || '')).toMatch(
-      /先行作者登録期間|一般会員登録/u
+      /先行作者プレオープン中|先行作者登録期間|一般会員登録/u
     );
   });
 

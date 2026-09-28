@@ -27,6 +27,7 @@
   const EPSILON = 1e-9;
   const PERSPECTIVE_COLUMNS = 12;
   const PERSPECTIVE_ROWS = 16;
+  const RENDER_RETRY_DELAYS_MS = [0, 500, 1500];
 
   function schemaUnavailable(error) {
     return ['42P01', '42703', '42883'].includes(error?.code);
@@ -548,20 +549,107 @@
     return payload;
   }
 
+  function withStage(error, stage) {
+    const normalized = error instanceof Error ? error : new Error(String(error || 'Thumbnail render failed'));
+    if (!normalized.stage) normalized.stage = stage;
+    return normalized;
+  }
+
+  function errorStatus(error) {
+    const value = Number(error?.status ?? error?.statusCode ?? error?.status_code);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function retryableRenderError(error) {
+    const status = errorStatus(error);
+    if (status !== null) {
+      return status === 408 || status === 425 || status === 429 || status >= 500;
+    }
+    const message = String(error?.message || '');
+    if (/composition changed|invalid thumbnail|unauthorized|forbidden/i.test(message)) return false;
+    if (/perspective|geometry|required thumbnail layer|template is unavailable|invalid dimensions/i.test(message)) return false;
+    return true;
+  }
+
+  function wait(ms) {
+    return ms > 0 ? new Promise((resolve) => window.setTimeout(resolve, ms)) : Promise.resolve();
+  }
+
   async function cacheRender({ client, accessToken, novelId, revision, canvas }) {
-    const blob = await canvasBlob(canvas);
-    const prepared = await renderRequest(accessToken, {
-      action: 'prepare-upload', novelId: String(novelId), revision, fileSize: blob.size
-    });
-    const upload = await client.storage
-      .from('novel-thumbnail-renders')
-      .uploadToSignedUrl(prepared.path, prepared.token, blob, {
-        contentType: 'image/webp', upsert: false
+    let blob;
+    try {
+      blob = await canvasBlob(canvas);
+    } catch (error) {
+      throw withStage(error, 'render');
+    }
+
+    let prepared;
+    try {
+      prepared = await renderRequest(accessToken, {
+        action: 'prepare-upload', novelId: String(novelId), revision, fileSize: blob.size
       });
-    if (upload.error) throw upload.error;
-    return renderRequest(accessToken, {
-      action: 'finalize-upload', novelId: String(novelId), revision, path: prepared.path
-    });
+    } catch (error) {
+      throw withStage(error, 'prepare-upload');
+    }
+
+    let upload;
+    try {
+      upload = await client.storage
+        .from('novel-thumbnail-renders')
+        .uploadToSignedUrl(prepared.path, prepared.token, blob, {
+          contentType: 'image/webp', upsert: false
+        });
+    } catch (error) {
+      throw withStage(error, 'upload');
+    }
+    if (upload.error) throw withStage(upload.error, 'upload');
+
+    try {
+      return await renderRequest(accessToken, {
+        action: 'finalize-upload', novelId: String(novelId), revision, path: prepared.path
+      });
+    } catch (error) {
+      throw withStage(error, 'finalize-upload');
+    }
+  }
+
+  async function renderAndCacheWithRetry({ client, accessToken, novelId, revision, canvas, library, selection }) {
+    let lastError = null;
+    for (let index = 0; index < RENDER_RETRY_DELAYS_MS.length; index += 1) {
+      await wait(RENDER_RETRY_DELAYS_MS[index]);
+      try {
+        try {
+          await renderSelectionToCanvas({ canvas, library, selection });
+        } catch (error) {
+          throw withStage(error, 'render');
+        }
+        const render = await cacheRender({ client, accessToken, novelId, revision, canvas });
+        return { render, attempts: index + 1 };
+      } catch (error) {
+        lastError = withStage(error, error?.stage || 'unknown');
+        lastError.attempts = index + 1;
+        if (!retryableRenderError(lastError) || index === RENDER_RETRY_DELAYS_MS.length - 1) {
+          throw lastError;
+        }
+      }
+    }
+    throw lastError || new Error('Thumbnail render failed');
+  }
+
+  async function reportRenderFailure({ accessToken, novelId, revision, error }) {
+    try {
+      await renderRequest(accessToken, {
+        action: 'report-failure',
+        novelId: String(novelId),
+        revision,
+        stage: error?.stage || 'unknown',
+        errorCode: error?.code || String(errorStatus(error) || ''),
+        errorMessage: String(error?.message || 'Thumbnail render failed'),
+        attempts: Number(error?.attempts) || 1
+      });
+    } catch (reportError) {
+      console.error('thumbnail render failure report failed', reportError);
+    }
   }
 
   function createController({ client, root, library, current = null }) {
@@ -845,17 +933,30 @@
         const saved = result.data;
         const revision = saved?.revision;
         if (!revision) throw new Error('Thumbnail revision was not returned');
-        await renderSelectionToCanvas({ canvas, library, selection: selected });
-        let render = null;
-        let renderError = null;
+
         try {
-          render = await cacheRender({ client, accessToken, novelId, revision, canvas });
+          const completed = await renderAndCacheWithRetry({
+            client,
+            accessToken,
+            novelId,
+            revision,
+            canvas,
+            library,
+            selection: selected
+          });
+          state.dirty = false;
+          return {
+            composition: saved,
+            render: completed.render,
+            attempts: completed.attempts
+          };
         } catch (error) {
-          renderError = error;
-          console.error('thumbnail render cache failed', error);
+          const finalError = withStage(error, error?.stage || 'unknown');
+          await reportRenderFailure({ accessToken, novelId, revision, error: finalError });
+          state.dirty = true;
+          console.error('thumbnail render cache failed after retries', finalError);
+          throw finalError;
         }
-        state.dirty = false;
-        return { composition: saved, render, renderError };
       }
     };
   }

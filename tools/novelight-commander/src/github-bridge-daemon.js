@@ -16,9 +16,17 @@ import './hard-badge-register25-bridge.js';
 import './special-badge-asset-probe-bridge.js';
 import './special-badge-exact-probe-bridge.js';
 import './special-badge-register-bridge.js';
+import './public-header-logo-bridge.js';
+import './public-header-logo-special-bridge.js';
 import { mainProductionMigrationApproveBridge } from './production-migration-approve-bridge.js';
+import { mainProductionAuthSmokeDispatchBridge } from './production-auth-smoke-dispatch-bridge.js';
 
 void mainProductionMigrationApproveBridge().catch(error => {
   console.error('[NLO production migration approval bridge] fatal:', error);
+  process.exitCode = 1;
+});
+
+void mainProductionAuthSmokeDispatchBridge().catch(error => {
+  console.error('[NLO Production Auth Smoke dispatch bridge] fatal:', error);
   process.exitCode = 1;
 });
