@@ -441,7 +441,9 @@
   }
 
   function badgeArtworkPath(row) {
-    if (row.status !== 'earned') return unearnedBadgeArtworkPath;
+    if (row.status !== 'earned' && row.badge_category !== 'limited') {
+      return unearnedBadgeArtworkPath;
+    }
     return badgeArtworkPaths[row.badge_id] || '';
   }
 
@@ -456,7 +458,9 @@
     }
 
     icon.classList.add('badge-icon-artwork');
-    if (row.status !== 'earned') icon.classList.add('badge-icon-locked');
+    if (row.status !== 'earned' && row.badge_category !== 'limited') {
+      icon.classList.add('badge-icon-locked');
+    }
     const image = document.createElement('img');
     image.src = artworkPath;
     image.alt = '';
@@ -475,16 +479,16 @@
     image.alt = '';
     host.removeAttribute('data-badge-locked');
 
-    const earned = row.status === 'earned';
+    const locked = row.status !== 'earned' && row.badge_category !== 'limited';
     const artworkPath = badgeArtworkPath(row);
     host.hidden = !artworkPath;
     if (!artworkPath) return;
 
-    host.dataset.badgeLocked = String(!earned);
+    host.dataset.badgeLocked = String(locked);
     image.src = artworkPath;
-    image.alt = earned
-      ? `${badgeDisplayName(row)} 称号紋章`
-      : '未獲得称号。正式な称号紋章は獲得後に開示されます';
+    image.alt = locked
+      ? '未獲得称号。正式な称号紋章は獲得後に開示されます'
+      : `${badgeDisplayName(row)} 称号紋章`;
   }
 
   const badgeGroupDefinitions = [
