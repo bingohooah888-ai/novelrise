@@ -19,6 +19,19 @@
     'SERAPH',
     'LUMINARIS'
   ];
+  const rankArtworkPaths = [
+    '',
+    'assets/scout-record/ranks/scout_rank_01_noctis.png',
+    'assets/scout-record/ranks/scout_rank_02_vesper.png',
+    'assets/scout-record/ranks/scout_rank_03_umbra.png',
+    'assets/scout-record/ranks/scout_rank_04_astra.png',
+    'assets/scout-record/ranks/scout_rank_05_lucent.png',
+    'assets/scout-record/ranks/scout_rank_06_aurelis.png',
+    'assets/scout-record/ranks/scout_rank_07_celestia.png',
+    'assets/scout-record/ranks/scout_rank_08_empyrean.png',
+    'assets/scout-record/ranks/scout_rank_09_seraph.png',
+    'assets/scout-record/ranks/scout_rank_10_luminaris.png'
+  ];
   const rankBands = rankNames.slice(1).map((name, index) => ({
     tier: index + 1,
     level:
@@ -50,6 +63,7 @@
   };
   const badgeArtworkPaths = {
     limited_founding_author: 'assets/founding-authors-badge-2026.png',
+    limited_beta_participant: 'assets/scout-badges/limited_beta_participant.png',
     reader_read_001: 'assets/scout-badges/reader_read_001.png',
     reader_read_005: 'assets/scout-badges/reader_read_005.png',
     reader_read_010: 'assets/scout-badges/reader_read_010.png',
@@ -314,8 +328,13 @@
       if (band.tier === tier) node.classList.add('current');
 
       const orb = document.createElement('div');
-      orb.className = 'rank-orb';
-      orb.textContent = band.name.slice(0, 1);
+      orb.className = 'rank-orb rank-orb-artwork';
+      const rankImage = document.createElement('img');
+      rankImage.src = rankArtworkPaths[band.tier];
+      rankImage.alt = '';
+      rankImage.loading = 'lazy';
+      rankImage.decoding = 'async';
+      orb.append(rankImage);
 
       const copy = document.createElement('div');
       copy.className = 'rank-node-copy';
@@ -340,7 +359,15 @@
     const tier = Math.max(1, Math.min(10, Number(summary.rank_tier || 1)));
     setText('rankName', `SCOUT RANK — ${rankNames[tier]}`);
     setText('rankLevel', `Lv.${n(level)}`);
-    setText('rankEmblem', rankNames[tier].slice(0, 1));
+    const rankEmblem = document.getElementById('rankEmblem');
+    if (rankEmblem) {
+      rankEmblem.classList.add('scout-emblem-artwork');
+      const rankImage = document.createElement('img');
+      rankImage.src = rankArtworkPaths[tier];
+      rankImage.alt = '';
+      rankImage.decoding = 'async';
+      rankEmblem.replaceChildren(rankImage);
+    }
     setText('xpNow', n(summary.total_xp));
     setText(
       'xpNext',
