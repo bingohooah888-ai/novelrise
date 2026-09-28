@@ -279,3 +279,31 @@ html body.novelight-public-dark .site-header a[href="beta-authors.html"] {
     max-width: 62vw !important;
   }
 }
+
+/* Ranking cards are three-part rows: rank, cover, and copy. Keep the cover in its
+   dedicated column so parchment theme overrides cannot expand it across the copy. */
+body.novelight-page-ranking .card {
+  grid-template-columns: 70px 92px minmax(0, 1fr) !important;
+  align-items: start !important;
+}
+body.novelight-page-ranking .novel-cover-image,
+body.novelight-page-ranking .novel-cover-placeholder {
+  width: 92px !important;
+  max-width: 92px !important;
+  aspect-ratio: 3 / 4 !important;
+  object-fit: cover !important;
+}
+body.novelight-page-ranking .ranking-card-copy {
+  min-width: 0 !important;
+}
+
+@media (max-width: 600px) {
+  body.novelight-page-ranking .card {
+    grid-template-columns: 54px 70px minmax(0, 1fr) !important;
+  }
+  body.novelight-page-ranking .novel-cover-image,
+  body.novelight-page-ranking .novel-cover-placeholder {
+    width: 70px !important;
+    max-width: 70px !important;
+  }
+}
