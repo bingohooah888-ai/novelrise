@@ -1,7 +1,7 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import fs from "node:fs";
-import crypto from "node:crypto";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
 
 const expectedText = `
 assets/scout-record/ranks/scout_rank_01_noctis.png|c742722fd37a7c74171a383a394339f24e9dbb920b43c31f3e32fb30ee6e523f|1254|1254
@@ -20,21 +20,21 @@ assets/scout-record/light-seed/light_seed_gold.png|61a2f6b1a1fa2990267f2435f2a3e
 assets/scout-badges/limited_beta_participant.png|f503aeaf0f5d22f8ec0a4dbe3ccab257c4744e02be02061160755e3050ff4a3c|1536|1536
 `;
 
-const expected = expectedText.trim().split("\n").map((line) => line.split("|"));
+const expected = expectedText.trim().split('\n').map((line) => line.split('|'));
 
-test("SCOUT special artwork contract", () => {
-  const script = fs.readFileSync("novelight-scout-record.js", "utf8");
-  const html = fs.readFileSync("scout-record.html", "utf8");
+test('SCOUT special artwork contract', () => {
+  const script = fs.readFileSync('novelight-scout-record.js', 'utf8');
+  const html = fs.readFileSync('scout-record.html', 'utf8');
 
   assert.equal(expected.length, 14);
 
   for (const [file, expectedSha, widthText, heightText] of expected) {
     const bytes = fs.readFileSync(file);
-    const actualSha = crypto.createHash("sha256").update(bytes).digest("hex");
+    const actualSha = crypto.createHash('sha256').update(bytes).digest('hex');
     const width = Number(widthText);
     const height = Number(heightText);
 
-    assert.equal(bytes.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
     assert.equal(bytes.readUInt32BE(16), width, file);
     assert.equal(bytes.readUInt32BE(20), height, file);
     assert.equal(actualSha, expectedSha, file);
@@ -45,7 +45,7 @@ test("SCOUT special artwork contract", () => {
   assert.match(script, /rankImage\.src = rankArtworkPaths\[band\.tier\]/);
   assert.match(script, /rankImage\.src = rankArtworkPaths\[tier\]/);
 
-  for (const tier of ["gold", "silver", "bronze"]) {
+  for (const tier of ['gold', 'silver', 'bronze']) {
     const asset = `assets/scout-record/light-seed/light_seed_${tier}.png`;
     assert.ok(html.includes(asset), asset);
   }
