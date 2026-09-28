@@ -20,6 +20,11 @@ export default defineConfig({
   use: {
     baseURL,
     storageState: bypassStorageState,
+    serviceWorkers: 'block',
+    extraHTTPHeaders: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache'
+    },
     actionTimeout: 15_000,
     navigationTimeout: 20_000,
     trace: 'retain-on-failure',
