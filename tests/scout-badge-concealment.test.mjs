@@ -12,22 +12,33 @@ const artwork = readFileSync(
   new URL('../assets/scout-badges/unearned-locked.png', import.meta.url)
 );
 
-test('unearned SCOUT badges hide canonical artwork until earned', () => {
+test('unearned Reader/Author SCOUT badges hide canonical artwork until earned', () => {
   assert.match(
     source,
     /const unearnedBadgeArtworkPath = 'assets\/scout-badges\/unearned-locked\.png';/
   );
   assert.match(
     source,
-    /function badgeArtworkPath\(row\) \{[\s\S]*?row\.status !== 'earned'[\s\S]*?return unearnedBadgeArtworkPath;[\s\S]*?badgeArtworkPaths\[row\.badge_id\]/
+    /function badgeArtworkPath\(row\) \{[\s\S]*?row\.status !== 'earned' && row\.badge_category !== 'limited'[\s\S]*?return unearnedBadgeArtworkPath;[\s\S]*?badgeArtworkPaths\[row\.badge_id\]/
   );
   assert.match(
     source,
-    /function createBadgeIcon\(row\) \{[\s\S]*?badgeArtworkPath\(row\)/
+    /function createBadgeIcon\(row\) \{[\s\S]*?row\.status !== 'earned' && row\.badge_category !== 'limited'[\s\S]*?badge-icon-locked/
   );
   assert.match(
     source,
-    /function renderBadgeDialogArtwork\(row\) \{[\s\S]*?badgeArtworkPath\(row\)/
+    /function renderBadgeDialogArtwork\(row\) \{[\s\S]*?const locked = row\.status !== 'earned' && row\.badge_category !== 'limited'[\s\S]*?badgeArtworkPath\(row\)/
+  );
+});
+
+test('limited SCOUT badges always use their canonical artwork even before earning', () => {
+  assert.match(
+    source,
+    /limited_founding_author: 'assets\/founding-authors-badge-2026\.png'/
+  );
+  assert.match(
+    source,
+    /limited_beta_participant: 'assets\/scout-badges\/limited_beta_participant\.png'/
   );
 });
 
