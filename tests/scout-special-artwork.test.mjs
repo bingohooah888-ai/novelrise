@@ -20,10 +20,7 @@ assets/scout-record/light-seed/light_seed_gold.png|61a2f6b1a1fa2990267f2435f2a3e
 assets/scout-badges/limited_beta_participant.png|f503aeaf0f5d22f8ec0a4dbe3ccab257c4744e02be02061160755e3050ff4a3c|1536|1536
 `;
 
-const expected = expectedText
-  .trim()
-  .split("\n")
-  .map((line) => line.split("|"));
+const expected = expectedText.trim().split("\n").map((line) => line.split("|"));
 
 test("SCOUT special artwork contract", () => {
   const script = fs.readFileSync("novelight-scout-record.js", "utf8");
