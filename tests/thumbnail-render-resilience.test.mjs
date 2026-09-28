@@ -98,7 +98,10 @@ test('migration preserves the last good render and creates private failure telem
 test('operator repair is explicit, Production-bound, and uses the shared renderer', () => {
   assert.match(repairScript, /REPAIR_PRODUCTION_THUMBNAIL_RENDERS/u);
   assert.match(repairScript, /PRODUCTION_PROJECT = 'fiepaguycecrredwrcwx'/u);
-  assert.match(repairScript, /NovelightThumbnailComposer\.renderSelectionToCanvas/u);
+  assert.match(
+    repairScript,
+    /NovelightThumbnailComposer\.renderSelectionToCanvas/u
+  );
   assert.match(repairScript, /novelight_attach_thumbnail_render/u);
   assert.match(repairScript, /remove\(\[storagePath\]\)/u);
   assert.match(repairScript, /mode: 'dry-run'/u);
