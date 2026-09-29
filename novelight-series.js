@@ -7,6 +7,26 @@
     return div.innerHTML;
   }
 
+  function mountAuthorNotesLink() {
+    const author = document.querySelector('#novelHeader .author');
+    const profileLink = author?.querySelector('a[href^="author.html?id="]');
+    if (!author || !profileLink || author.querySelector('[data-author-notes-link]')) return;
+    const notesLink = document.createElement('a');
+    notesLink.href = `${profileLink.getAttribute('href')}#author-notes`;
+    notesLink.textContent = '近況ノート';
+    notesLink.dataset.authorNotesLink = 'true';
+    author.append(document.createTextNode(' ・ '), notesLink);
+  }
+
+  const novelHeader = document.getElementById('novelHeader');
+  if (novelHeader) {
+    new MutationObserver(mountAuthorNotesLink).observe(novelHeader, {
+      childList: true,
+      subtree: true
+    });
+    mountAuthorNotesLink();
+  }
+
   function ensureStyles() {
     if (document.getElementById('novelight-series-styles')) return;
     const style = document.createElement('style');
