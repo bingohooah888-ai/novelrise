@@ -1,7 +1,41 @@
 (() => {
-  function installDeferredBadgeArtworkLoading() {
-    if (!('IntersectionObserver' in window)) return;
+  const OPTIMIZER_PREFIX = '/_vercel/image?';
+  const CARD_WIDTH = 384;
+  const CARD_QUALITY = 80;
+  const DETAIL_WIDTH = 640;
+  const DETAIL_QUALITY = 85;
+  const SEED_WIDTH = 256;
+  const originalSourceAttribute = 'data-novelight-original-src';
 
+  function isScoutArtworkSource(value) {
+    const source = String(value || '');
+    return (
+      /(?:^|\/)assets\/scout-badges\//.test(source) ||
+      /(?:^|\/)assets\/founding-authors-badge-2026\.png(?:$|[?#])/.test(source) ||
+      /(?:^|\/)assets\/scout-record\/ranks\//.test(source) ||
+      /(?:^|\/)assets\/scout-record\/light-seed\//.test(source)
+    );
+  }
+
+  function isLightSeedSource(value) {
+    return /(?:^|\/)assets\/scout-record\/light-seed\//.test(String(value || ''));
+  }
+
+  function optimizedScoutArtworkSource(value, width = CARD_WIDTH, quality = CARD_QUALITY) {
+    const source = String(value || '').trim();
+    if (!source || source.startsWith(OPTIMIZER_PREFIX)) return source;
+
+    try {
+      const parsed = new URL(source, window.location.origin);
+      if (parsed.origin !== window.location.origin) return source;
+      const optimizerSource = `${parsed.pathname}${parsed.search}`;
+      return `${OPTIMIZER_PREFIX}url=${encodeURIComponent(optimizerSource)}&w=${width}&q=${quality}`;
+    } catch {
+      return source;
+    }
+  }
+
+  function installDeferredBadgeArtworkLoading() {
     const descriptor = Object.getOwnPropertyDescriptor(
       HTMLImageElement.prototype,
       'src'
@@ -10,18 +44,6 @@
 
     const nativeSetSrc = descriptor.set;
     const deferredAttribute = 'data-novelight-deferred-src';
-    const excludedIds = new Set([
-      'badgeDialogArtworkImage',
-      'badgeArtworkZoomImage'
-    ]);
-
-    const isBadgeArtworkSource = (value) => {
-      const source = String(value || '');
-      return (
-        /(?:^|\/)assets\/scout-badges\//.test(source) ||
-        /(?:^|\/)assets\/founding-authors-badge-2026\.png(?:$|[?#])/.test(source)
-      );
-    };
 
     let observer;
     const hydrate = (image) => {
@@ -35,19 +57,64 @@
     Object.defineProperty(HTMLImageElement.prototype, 'src', {
       ...descriptor,
       set(value) {
-        if (
-          !excludedIds.has(this.id) &&
-          isBadgeArtworkSource(value)
-        ) {
-          this.setAttribute(deferredAttribute, String(value));
+        const source = String(value || '');
+        if (!isScoutArtworkSource(source)) {
+          nativeSetSrc.call(this, value);
+          return;
+        }
+
+        if (source.startsWith(OPTIMIZER_PREFIX)) {
+          nativeSetSrc.call(this, source);
+          return;
+        }
+
+        this.setAttribute(originalSourceAttribute, source);
+
+        if (this.id === 'badgeArtworkZoomImage') {
+          nativeSetSrc.call(this, source);
+          return;
+        }
+
+        if (this.id === 'badgeDialogArtworkImage') {
+          nativeSetSrc.call(
+            this,
+            optimizedScoutArtworkSource(source, DETAIL_WIDTH, DETAIL_QUALITY)
+          );
+          return;
+        }
+
+        if (isLightSeedSource(source)) {
+          nativeSetSrc.call(
+            this,
+            optimizedScoutArtworkSource(source, SEED_WIDTH, CARD_QUALITY)
+          );
+          this.decoding = 'async';
+          return;
+        }
+
+        const optimizedSource = optimizedScoutArtworkSource(
+          source,
+          CARD_WIDTH,
+          CARD_QUALITY
+        );
+
+        if (!('IntersectionObserver' in window)) {
+          nativeSetSrc.call(this, optimizedSource);
           this.loading = 'lazy';
           this.decoding = 'async';
           if ('fetchPriority' in this) this.fetchPriority = 'low';
           return;
         }
-        nativeSetSrc.call(this, value);
+
+        this.removeAttribute('src');
+        this.setAttribute(deferredAttribute, optimizedSource);
+        this.loading = 'lazy';
+        this.decoding = 'async';
+        if ('fetchPriority' in this) this.fetchPriority = 'low';
       }
     });
+
+    if (!('IntersectionObserver' in window)) return;
 
     const mobile = window.matchMedia('(max-width: 768px)').matches;
     observer = new IntersectionObserver(
@@ -94,6 +161,16 @@
 
   installDeferredBadgeArtworkLoading();
 
+  // LIGHT SEED artwork exists in the static HTML before this script executes.
+  // Re-assign it once through the optimized setter so subsequent delivery uses
+  // the small cached rendition while the approved PNG master remains untouched.
+  document
+    .querySelectorAll('img[src*="assets/scout-record/light-seed/"]')
+    .forEach((image) => {
+      const source = image.getAttribute('src');
+      if (source && !source.startsWith(OPTIMIZER_PREFIX)) image.src = source;
+    });
+
   const sourceHost = document.getElementById('badgeDialogArtwork');
   const sourceImage = document.getElementById('badgeDialogArtworkImage');
   const zoomDialog = document.getElementById('badgeArtworkZoomDialog');
@@ -126,8 +203,6 @@
         const up = index - rowStride;
         const down = index + rowStride;
 
-        // Preserve the transparent anti-aliased edge instead of sharpening against
-        // transparent black pixels, which would create a visible halo.
         if (
           source[index + 3] < 64 ||
           source[left + 3] < 64 ||
@@ -153,6 +228,11 @@
   }
 
   async function createEnhancedZoomSource() {
+    // Optimized card/detail images keep their approved PNG path in data. The
+    // zoom stage loads that original directly, so no client-side enlargement is
+    // needed and master quality is preserved.
+    if (sourceImage.getAttribute(originalSourceAttribute)) return '';
+
     try {
       if (!sourceImage.complete || !sourceImage.naturalWidth || !sourceImage.naturalHeight) {
         await sourceImage.decode();
@@ -174,7 +254,6 @@
         Math.max(Math.max(naturalWidth, naturalHeight), Math.round(displayLimit * density)),
       );
 
-      // If the source already has enough pixels, the browser can render it directly.
       if (Math.max(naturalWidth, naturalHeight) >= targetLongEdge * 0.95) return '';
 
       const scale = targetLongEdge / Math.max(naturalWidth, naturalHeight);
@@ -196,8 +275,6 @@
       sharpenImageData(pixels, width, height);
       context.putImageData(pixels, 0, 0);
 
-      // Production CSP allows data: images but intentionally does not allow blob:.
-      // Keep the enhanced render compatible with that policy instead of weakening CSP.
       const dataUrl = canvas.toDataURL('image/png');
       return dataUrl === 'data:,' ? '' : dataUrl;
     } catch (error) {
@@ -215,13 +292,15 @@
   }
 
   function openZoom() {
-    const source = sourceImage.getAttribute('src');
-    if (sourceHost.hidden || !source) return;
+    const displayedSource = sourceImage.getAttribute('src');
+    const originalSource =
+      sourceImage.getAttribute(originalSourceAttribute) || displayedSource;
+    if (sourceHost.hidden || !originalSource) return;
 
     renderVersion += 1;
     const currentVersion = renderVersion;
 
-    zoomImage.src = sourceImage.currentSrc || source;
+    zoomImage.src = originalSource;
     zoomImage.alt = sourceImage.alt || '称号紋章';
 
     if (!zoomDialog.open) {
@@ -232,9 +311,6 @@
       }
     }
 
-    // The card/detail artwork is intentionally lightweight. For the second-stage
-    // zoom, redraw it once at the actual display size and apply a restrained
-    // sharpening pass so browser enlargement does not look soft or smeared.
     createEnhancedZoomSource().then((enhancedSource) => {
       if (!enhancedSource) return;
       if (currentVersion !== renderVersion || !zoomDialog.open) return;
@@ -260,6 +336,7 @@
   zoomDialog.addEventListener('close', () => {
     renderVersion += 1;
     zoomImage.removeAttribute('src');
+    zoomImage.removeAttribute(originalSourceAttribute);
     zoomImage.alt = '';
   });
 })();
