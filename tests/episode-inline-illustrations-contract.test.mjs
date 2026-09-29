@@ -128,14 +128,23 @@ test('reader only uses exact NOVELIGHT markers and no arbitrary HTML or external
   assert.match(css, /\.episode-inline-illustration img/u);
 });
 
-test('warning gate runs before reader illustration signing and report copy covers illustrations', () => {
+test('warning gate runs before illustration loading and author preview stays private', () => {
   assert.match(
     episode,
     /if\(!isAuthor&&novelNeedsGate\(\)&&!warningAccepted\(\)\)\{showGate\(\);return\}await loadEpisodeContentAndRender\(\)/u
   );
   assert.match(
     episode,
-    /NovelightEpisodeIllustrations\.mountReader\(\{root:document\.querySelector\('\.content'\),episodeId:episode\.id,content:episode\.content\}\)/u
+    /isAuthor&&session\?NovelightEpisodeIllustrations\.mountPreview/u
+  );
+  assert.match(episode, /:NovelightEpisodeIllustrations\.mountReader/u);
+  assert.match(
+    browser,
+    /async function mountPreview[\s\S]*action: 'editor-list'/u
+  );
+  assert.match(
+    browser,
+    /async function mountReader[\s\S]*action: 'reader-list'/u
   );
   assert.match(episode, /本文・挿絵の著作権侵害/u);
 });
