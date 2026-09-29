@@ -4,8 +4,12 @@ const BUCKET = 'episode-illustrations';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_DELIVERY_EDGE = 2000;
 const SIGNED_URL_SECONDS = 10 * 60;
+const DELIVERY_MIME_EXTENSIONS = Object.freeze({
+  'image/webp': 'webp',
+  'image/png': 'png'
+});
 const PATH_PATTERN =
-  /^([0-9a-f-]{36})\/([0-9]+)\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.webp$/iu;
+  /^([0-9a-f-]{36})\/([0-9]+)\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.(webp|png)$/iu;
 const MARKER_PATTERN =
   /^[\t ]*\[\[NOVELIGHT_ILLUSTRATION:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\]\][\t ]*$/gimu;
 
@@ -38,6 +42,24 @@ function uuid(value) {
 function altText(value) {
   const text = String(value ?? '').replace(/\r\n?/gu, '\n');
   return text.length <= 500 ? text : null;
+}
+
+function deliveryMimeType(value) {
+  const mimeType = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  return Object.hasOwn(DELIVERY_MIME_EXTENSIONS, mimeType) ? mimeType : null;
+}
+
+function deliveryMimeFromExtension(value) {
+  const extension = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  return (
+    Object.entries(DELIVERY_MIME_EXTENSIONS).find(
+      ([, ext]) => ext === extension
+    )?.[0] ?? null
+  );
 }
 
 async function currentUser(req, supabase) {
@@ -105,6 +127,30 @@ function webpDimensions(bytes) {
   throw new Error('INVALID_WEBP');
 }
 
+function pngDimensions(bytes) {
+  const signature = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
+  ]);
+  if (
+    bytes.length < 24 ||
+    !bytes.subarray(0, 8).equals(signature) ||
+    bytes.readUInt32BE(8) !== 13 ||
+    bytes.subarray(12, 16).toString('ascii') !== 'IHDR'
+  ) {
+    throw new Error('INVALID_PNG');
+  }
+  return {
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20)
+  };
+}
+
+function deliveryDimensions(bytes, mimeType) {
+  if (mimeType === 'image/webp') return webpDimensions(bytes);
+  if (mimeType === 'image/png') return pngDimensions(bytes);
+  throw new Error('INVALID_IMAGE_MIME');
+}
+
 async function signedAsset(supabase, asset) {
   const { data, error } = await supabase.storage
     .from(BUCKET)
@@ -124,8 +170,10 @@ async function signedAsset(supabase, asset) {
 async function prepareUpload({ supabase, user, body }) {
   const episodeId = positiveId(body.episodeId);
   const fileSize = Number(body.fileSize);
+  const mimeType = deliveryMimeType(body.mimeType);
   if (
     !episodeId ||
+    !mimeType ||
     !Number.isInteger(fileSize) ||
     fileSize < 1 ||
     fileSize > MAX_FILE_SIZE
@@ -180,7 +228,8 @@ async function prepareUpload({ supabase, user, body }) {
     throw authorizeError;
   }
 
-  const path = `${bundle.owner_user_id}/${episodeId}/${randomUUID()}.webp`;
+  const extension = DELIVERY_MIME_EXTENSIONS[mimeType];
+  const path = `${bundle.owner_user_id}/${episodeId}/${randomUUID()}.${extension}`;
   const { data, error } = await supabase.storage
     .from(BUCKET)
     .createSignedUploadUrl(path);
@@ -219,6 +268,11 @@ async function finalizeUpload({ supabase, user, body }) {
     return { status: 400, payload: { error: 'Invalid illustration metadata' } };
   }
 
+  const mimeType = deliveryMimeFromExtension(match[4]);
+  if (!mimeType) {
+    return { status: 400, payload: { error: 'Invalid illustration metadata' } };
+  }
+
   const bundle = await editorBundle(supabase, episodeId, user.id);
   if (
     !bundle?.can_edit ||
@@ -237,7 +291,7 @@ async function finalizeUpload({ supabase, user, body }) {
     if (bytes.length < 1 || bytes.length > MAX_FILE_SIZE) {
       throw new Error('ILLUSTRATION_FILE_SIZE_INVALID');
     }
-    const dimensions = webpDimensions(bytes);
+    const dimensions = deliveryDimensions(bytes, mimeType);
     if (
       dimensions.width < 1 ||
       dimensions.height < 1 ||
@@ -253,7 +307,7 @@ async function finalizeUpload({ supabase, user, body }) {
         p_episode_id: episodeId,
         p_actor_user_id: user.id,
         p_storage_path: path,
-        p_mime_type: 'image/webp',
+        p_mime_type: mimeType,
         p_file_size: bytes.length,
         p_width: dimensions.width,
         p_height: dimensions.height,
@@ -506,8 +560,13 @@ export const episodeIllustrationInternals = Object.freeze({
   MAX_FILE_SIZE,
   MAX_DELIVERY_EDGE,
   SIGNED_URL_SECONDS,
+  DELIVERY_MIME_EXTENSIONS,
   PATH_PATTERN,
   MARKER_PATTERN,
+  deliveryMimeType,
+  deliveryMimeFromExtension,
   webpDimensions,
+  pngDimensions,
+  deliveryDimensions,
   referencedIds
 });
