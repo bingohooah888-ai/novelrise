@@ -7,6 +7,7 @@
   const INPUT_MAX_EDGE = 4096;
   const DELIVERY_MAX_EDGE = 2000;
   const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+  const DELIVERY_TYPES = new Set(['image/webp', 'image/png']);
   const MARKER_LINE =
     /^[\t ]*\[\[NOVELIGHT_ILLUSTRATION:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\]\][\t ]*$/iu;
 
@@ -215,6 +216,15 @@
       );
     }
     const blob = await canvasBlob(canvas, 'image/webp', 0.88);
+    const mimeType = String(blob.type || '').toLowerCase();
+    if (!DELIVERY_TYPES.has(mimeType)) {
+      throw illustrationError(
+        'convert',
+        '画像を配信用形式へ変換できませんでした。別の画像で再度お試しください。',
+        null,
+        'ILLUSTRATION_IMAGE_OUTPUT_FORMAT_INVALID'
+      );
+    }
     if (blob.size < 1 || blob.size > INPUT_MAX_BYTES) {
       throw illustrationError(
         'convert',
@@ -223,7 +233,7 @@
         'ILLUSTRATION_IMAGE_OUTPUT_SIZE_INVALID'
       );
     }
-    return { blob, width: outputWidth, height: outputHeight };
+    return { blob, mimeType, width: outputWidth, height: outputHeight };
   }
 
   function insertMarker(textarea, marker) {
@@ -502,7 +512,8 @@
             prepared = await apiRequest(session, {
               action: 'prepare-upload',
               episodeId: Number(episode.id),
-              fileSize: optimized.blob.size
+              fileSize: optimized.blob.size,
+              mimeType: optimized.mimeType
             });
           } catch (error) {
             throw withStage(error, 'prepare', 'Illustration upload could not be prepared');
@@ -513,7 +524,7 @@
             upload = await client.storage
               .from(BUCKET)
               .uploadToSignedUrl(prepared.path, prepared.token, optimized.blob, {
-                contentType: 'image/webp',
+                contentType: optimized.mimeType,
                 upsert: false
               });
           } catch (error) {
