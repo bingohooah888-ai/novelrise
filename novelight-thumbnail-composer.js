@@ -577,8 +577,13 @@
 
   async function cacheRender({ client, accessToken, novelId, revision, canvas }) {
     let blob;
+    let contentType;
     try {
       blob = await canvasBlob(canvas);
+      contentType = String(blob.type || '').trim().toLowerCase();
+      if (contentType !== 'image/webp' && contentType !== 'image/png') {
+        throw new Error('Thumbnail render returned an unsupported image type');
+      }
     } catch (error) {
       throw withStage(error, 'render');
     }
@@ -586,7 +591,11 @@
     let prepared;
     try {
       prepared = await renderRequest(accessToken, {
-        action: 'prepare-upload', novelId: String(novelId), revision, fileSize: blob.size
+        action: 'prepare-upload',
+        novelId: String(novelId),
+        revision,
+        fileSize: blob.size,
+        contentType
       });
     } catch (error) {
       throw withStage(error, 'prepare-upload');
@@ -597,7 +606,8 @@
       upload = await client.storage
         .from('novel-thumbnail-renders')
         .uploadToSignedUrl(prepared.path, prepared.token, blob, {
-          contentType: 'image/webp', upsert: false
+          contentType,
+          upsert: false
         });
     } catch (error) {
       throw withStage(error, 'upload');
