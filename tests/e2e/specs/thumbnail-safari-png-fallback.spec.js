@@ -8,7 +8,7 @@ test('WebKit preserves Safari PNG canvas fallback through thumbnail persistence'
 
   await page.goto('/tests/e2e/fixtures/thumbnail-safari-png-fallback.html');
   const result = await page.evaluate(() =>
-    window.runSafariPngFallbackRegression()
+    globalThis.runSafariPngFallbackRegression()
   );
 
   expect(result.requestedCanvasType).toBe('image/webp');
