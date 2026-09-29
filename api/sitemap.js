@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const SITE_ORIGIN = 'https://novelight.jp';
 const PAGE_SIZE = 1000;
+const SITEMAP_CACHE = 'public, s-maxage=900, stale-while-revalidate=86400';
 
 function xmlEscape(value) {
   return String(value)
@@ -12,11 +13,16 @@ function xmlEscape(value) {
     .replaceAll("'", '&apos;');
 }
 
+function queryPath(page, id) {
+  const encodedId = encodeURIComponent(id);
+  return `/${page}.html?id=${encodedId}`;
+}
+
 function urlEntry(path) {
   return `  <url><loc>${xmlEscape(`${SITE_ORIGIN}${path}`)}</loc></url>`;
 }
 
-async function fetchPublishedRows(supabase, table, columns) {
+async function fetchRows(supabase, table, columns) {
   const rows = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
@@ -41,19 +47,17 @@ export function createSitemapHandler({ supabase }) {
     }
 
     try {
-      const [novels, episodes] = await Promise.all([
-        fetchPublishedRows(supabase, 'novels', 'id,user_id'),
-        fetchPublishedRows(supabase, 'episodes', 'id,novel_id')
-      ]);
+      const novels = await fetchRows(supabase, 'novels', 'id,user_id');
+      const episodes = await fetchRows(supabase, 'episodes', 'id,novel_id');
 
-      const publishedNovelIds = new Set(
-        novels.map((novel) => String(novel.id))
-      );
-      const authorIds = [
-        ...new Set(
-          novels.map((novel) => novel.user_id).filter(Boolean).map(String)
-        )
-      ];
+      const publishedNovelIds = new Set();
+      const authorIds = new Set();
+      for (const novel of novels) {
+        publishedNovelIds.add(String(novel.id));
+        if (novel.user_id) {
+          authorIds.add(String(novel.user_id));
+        }
+      }
 
       const paths = [
         '/',
@@ -61,19 +65,24 @@ export function createSitemapHandler({ supabase }) {
         '/ranking.html',
         '/pricing.html',
         '/beta-authors',
-        '/operator.html',
-        ...novels.map(
-          (novel) => `/novel.html?id=${encodeURIComponent(novel.id)}`
-        ),
-        ...episodes
-          .filter((episode) => publishedNovelIds.has(String(episode.novel_id)))
-          .map(
-            (episode) => `/episode.html?id=${encodeURIComponent(episode.id)}`
-          ),
-        ...authorIds.map(
-          (authorId) => `/author.html?id=${encodeURIComponent(authorId)}`
-        )
+        '/operator.html'
       ];
+
+      for (const novel of novels) {
+        paths.push(queryPath('novel', novel.id));
+      }
+
+      for (const episode of episodes) {
+        const novelId = String(episode.novel_id);
+        if (!publishedNovelIds.has(novelId)) {
+          continue;
+        }
+        paths.push(queryPath('episode', episode.id));
+      }
+
+      for (const authorId of authorIds) {
+        paths.push(queryPath('author', authorId));
+      }
 
       const xml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -84,10 +93,7 @@ export function createSitemapHandler({ supabase }) {
       ].join('\n');
 
       res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-      res.setHeader(
-        'Cache-Control',
-        'public, s-maxage=900, stale-while-revalidate=86400'
-      );
+      res.setHeader('Cache-Control', SITEMAP_CACHE);
       return res.status(200).send(req.method === 'HEAD' ? '' : xml);
     } catch (error) {
       console.error('Sitemap generation failed', {
