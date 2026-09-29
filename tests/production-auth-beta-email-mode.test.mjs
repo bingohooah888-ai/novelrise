@@ -16,11 +16,11 @@ const checklistSource = await readFile(
 );
 
 test('beta no-mail Auth control stays bound to the active Production ledger', () => {
-  assert.equal(ledger.activeIssue, 737);
-  assert.match(workflow, /LEDGER_ISSUE: '737'/u);
+  assert.equal(ledger.activeIssue, 1433);
+  assert.match(workflow, /LEDGER_ISSUE: '1433'/u);
   assert.match(
     workflow,
-    /github\.event\.issue\.number == 737[\s\S]*?NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST/u
+    /github\.event\.issue\.number == 1433[\s\S]*?NOVELIGHT_PRODUCTION_AUTH_BETA_EMAIL_MODE_REQUEST/u
   );
   assert.match(workflow, /production-approval-ledger\.json/u);
 });
