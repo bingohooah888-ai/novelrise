@@ -4,6 +4,7 @@
   const READING_PREFIX = 'novelight:reading:v1:';
   const SEEN_PREFIX = 'novelight:favorite-update-seen:v1:';
   const STYLE_ID = 'novelight-favorite-updates-style';
+  const FAVORITE_UPDATE_PAGE_SIZE = 20;
 
   function pageSlug() {
     const file = window.location.pathname.split('/').pop() || 'index.html';
@@ -103,23 +104,42 @@
     return groups;
   }
 
-  async function favoriteUpdates(clientInstance, { initialize = true } = {}) {
+  async function favoriteUpdates(
+    clientInstance,
+    { initialize = true, offset = 0, limit = null } = {}
+  ) {
     const auth = await clientInstance.auth.getSession();
     if (auth.error) throw auth.error;
     const session = auth.data?.session || null;
-    if (!session) return { session: null, updates: [] };
+    if (!session)
+      return { session: null, updates: [], hasMore: false, nextOffset: null };
 
-    const favoritesResult = await clientInstance
+    const start = Math.max(0, Number(offset) || 0);
+    const bounded = Number.isInteger(limit) && limit > 0;
+    let favoritesQuery = clientInstance
       .from('favorites')
       .select('novel_id,novels(id,title,status)')
-      .eq('user_id', session.user.id);
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+    if (bounded) favoritesQuery = favoritesQuery.range(start, start + limit);
+    const favoritesResult = await favoritesQuery;
     if (favoritesResult.error) throw favoritesResult.error;
 
-    const favorites = (favoritesResult.data || []).filter(
+    const rawFavorites = favoritesResult.data || [];
+    const hasMore = bounded && rawFavorites.length > limit;
+    const pageFavorites = bounded ? rawFavorites.slice(0, limit) : rawFavorites;
+    const favorites = pageFavorites.filter(
       (row) => row.novels?.status === 'published'
     );
     const novelIds = favorites.map((row) => row.novel_id).filter(Boolean);
-    if (!novelIds.length) return { session, updates: [] };
+    if (!novelIds.length) {
+      return {
+        session,
+        updates: [],
+        hasMore,
+        nextOffset: hasMore ? start + limit : null
+      };
+    }
 
     const episodesResult = await clientInstance.rpc(
       'novelight_reader_episode_index',
@@ -155,7 +175,12 @@
     updates.sort(
       (a, b) => episodeNumber(b.latest) - episodeNumber(a.latest)
     );
-    return { session, updates };
+    return {
+      session,
+      updates,
+      hasMore,
+      nextOffset: hasMore ? start + limit : null
+    };
   }
 
   async function followedAuthorUpdates(clientInstance) {
@@ -416,16 +441,47 @@
     return article;
   }
 
+  function renderPager(list, offset, hasMore, nextOffset) {
+    if (!offset && !hasMore) return;
+    const nav = document.createElement('nav');
+    nav.className = 'update-card update-card-actions';
+    nav.setAttribute('aria-label', 'お気に入り更新ページ');
+    if (offset > 0) {
+      const previous = document.createElement('a');
+      previous.className = 'update-card-read';
+      const previousOffset = Math.max(0, offset - FAVORITE_UPDATE_PAGE_SIZE);
+      previous.href = previousOffset
+        ? `updates.html?offset=${previousOffset}`
+        : 'updates.html';
+      previous.textContent = '← 前の更新';
+      nav.appendChild(previous);
+    }
+    if (hasMore && nextOffset !== null) {
+      const next = document.createElement('a');
+      next.className = 'update-card-read';
+      next.href = `updates.html?offset=${nextOffset}`;
+      next.textContent = '次の更新 →';
+      nav.appendChild(next);
+    }
+    list.appendChild(nav);
+  }
+
   async function installUpdatesPage(clientInstance) {
     const list = document.getElementById('updatesList');
     if (!list) return false;
     try {
-      const result = await favoriteUpdates(clientInstance, { initialize: true });
+      const params = new URLSearchParams(window.location.search);
+      const offset = Math.max(0, Number(params.get('offset')) || 0);
+      const result = await favoriteUpdates(clientInstance, {
+        initialize: true,
+        offset,
+        limit: FAVORITE_UPDATE_PAGE_SIZE
+      });
       if (!result.session) {
         window.location.href = 'login.html?redirect=updates.html';
         return false;
       }
-      const authorRows = await followedAuthorUpdates(clientInstance);
+      const authorRows = offset === 0 ? await followedAuthorUpdates(clientInstance) : [];
       void window.NovelightClient?.recordVisit?.(clientInstance);
       void window.NovelightClient?.claimAcquisition?.(clientInstance);
 
@@ -479,6 +535,7 @@
       }
       maybeRenderEmpty();
       rerenderSummary();
+      renderPager(list, offset, result.hasMore, result.nextOffset);
       return true;
     } catch (error) {
       console.error('update center failed', error);

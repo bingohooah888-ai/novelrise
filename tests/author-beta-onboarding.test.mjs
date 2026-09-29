@@ -30,7 +30,7 @@ test('authors can choose a first episode or safe bulk migration', () => {
 });
 
 test('server drafts are routed through review before publication', () => {
-  assert.match(mypage, /draftEpisodes\.length/);
+  assert.match(mypage, /drafts&&latestDraft/);
   assert.match(mypage, /episode-drafts\.html\?novel_id=/);
   assert.match(mypage, /下書きはまだ読者には見えません/);
 });
