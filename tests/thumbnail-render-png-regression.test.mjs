@@ -170,7 +170,12 @@ test('PNG prepare creates .png path and finalize attaches that exact path', asyn
 });
 
 test('thumbnail API path contract is not WebP-only', () => {
-  assert.match(api, /\(webp\|png\)/u);
-  assert.doesNotMatch(api, /PATH_PATTERN\s*=\s*\/\^renders[^\n]*\\\.webp\$\//u);
+  const pathPatternLine = api
+    .split('\n')
+    .find((line) => line.includes('const PATH_PATTERN'));
+
+  assert.ok(pathPatternLine);
+  assert.match(pathPatternLine, /\(webp\|png\)/u);
+  assert.doesNotMatch(pathPatternLine, /\\\.webp\$/u);
   assert.match(api, /extension === 'png' \? isPngSignature\(bytes\) : isWebpSignature\(bytes\)/u);
 });
