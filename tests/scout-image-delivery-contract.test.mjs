@@ -16,7 +16,10 @@ test('SCOUT artwork keeps official logical source paths while normal display use
   assert.match(zoomSource, /assets\\\/scout-record\\\/ranks\\\//);
   assert.match(zoomSource, /OPTIMIZER_PREFIX\s*=\s*'\/_vercel\/image\?'/);
   assert.match(zoomSource, /CARD_WIDTH\s*=\s*256/);
-  assert.match(zoomSource, /optimizedScoutArtworkSource\(\s*source,\s*CARD_WIDTH,\s*CARD_QUALITY/);
+  assert.match(
+    zoomSource,
+    /optimizedScoutArtworkSource\(\s*source,\s*CARD_WIDTH,\s*CARD_QUALITY/
+  );
 });
 
 test('SCOUT detail and zoom use display-appropriate optimized resolutions', () => {
@@ -42,7 +45,16 @@ test('SCOUT card artwork remains progressively loaded', () => {
 });
 
 test('official LIGHT SEED originals remain referenced and are not rewritten', () => {
-  assert.match(recordSource, /assets\/scout-record\/light-seed\/light_seed_gold\.png/);
-  assert.match(recordSource, /assets\/scout-record\/light-seed\/light_seed_silver\.png/);
-  assert.match(recordSource, /assets\/scout-record\/light-seed\/light_seed_bronze\.png/);
+  assert.match(
+    recordSource,
+    /assets\/scout-record\/light-seed\/light_seed_gold\.png/
+  );
+  assert.match(
+    recordSource,
+    /assets\/scout-record\/light-seed\/light_seed_silver\.png/
+  );
+  assert.match(
+    recordSource,
+    /assets\/scout-record\/light-seed\/light_seed_bronze\.png/
+  );
 });

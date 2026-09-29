@@ -28,8 +28,14 @@ test('SCOUT title watcher prevents duplicate timers and concurrent checks', () =
   assert.match(source, /__novelightScoutTitleToastWatcherInstalled/);
   assert.match(source, /monitorState\.timer/);
   assert.match(source, /monitorState\.inFlight/);
-  assert.match(source, /if \(monitorState\.inFlight \|\| document\.visibilityState !== 'visible'\) return/);
-  assert.match(source, /document\.visibilityState !== 'visible' \|\|\s*monitorState\.timer/);
+  assert.match(
+    source,
+    /if \(monitorState\.inFlight \|\| document\.visibilityState !== 'visible'\) return/
+  );
+  assert.match(
+    source,
+    /document\.visibilityState !== 'visible' \|\|\s*monitorState\.timer/
+  );
 });
 
 test('SCOUT award lookup and toast presentation remain intact', () => {

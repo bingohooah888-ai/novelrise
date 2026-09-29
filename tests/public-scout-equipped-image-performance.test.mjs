@@ -16,7 +16,10 @@ test('equipped SCOUT artwork uses a small optimized derivative', () => {
 });
 
 test('equipped SCOUT artwork preserves provenance and avoids eager original loading', () => {
-  assert.match(source, /image\.dataset\.novelightOriginalSrc\s*=\s*artworkPath/);
+  assert.match(
+    source,
+    /image\.dataset\.novelightOriginalSrc\s*=\s*artworkPath/
+  );
   assert.match(source, /image\.loading\s*=\s*'lazy'/);
   assert.match(source, /image\.decoding\s*=\s*'async'/);
   assert.match(source, /image\.fetchPriority\s*=\s*'low'/);

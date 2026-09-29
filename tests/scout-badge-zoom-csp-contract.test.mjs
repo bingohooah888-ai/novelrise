@@ -34,9 +34,18 @@ test('SCOUT badge zoom reuses a supported optimized detail artwork before enhanc
     zoomSource,
     /const displayedSource = sourceImage\.currentSrc \|\| sourceImage\.src;/u
   );
-  assert.match(zoomSource, /sourceImage\.getAttribute\('data-novelight-original-src'\)/u);
-  assert.match(zoomSource, /optimizedScoutArtworkSource\(originalSource, ZOOM_WIDTH, ZOOM_QUALITY\)/u);
-  assert.match(zoomSource, /if \(!enhancedSource \|\| originalSource\) return;/u);
+  assert.match(
+    zoomSource,
+    /sourceImage\.getAttribute\('data-novelight-original-src'\)/u
+  );
+  assert.match(
+    zoomSource,
+    /optimizedScoutArtworkSource\(originalSource, ZOOM_WIDTH, ZOOM_QUALITY\)/u
+  );
+  assert.match(
+    zoomSource,
+    /if \(!enhancedSource \|\| originalSource\) return;/u
+  );
 });
 
 test('SCOUT badge cards use a smaller optimized asset and prioritize the first visible batch', () => {
