@@ -108,6 +108,11 @@ body.novelight-page-episode[data-reading-theme='dark'] .modal-card {
   color: #e8eaf0;
 }
 
+body.novelight-page-episode[data-reading-theme='dark'] h1,
+body.novelight-page-episode[data-reading-theme='dark'] .content {
+  color: #e8eaf0;
+}
+
 body.novelight-page-episode[data-reading-theme='dark'] .reading-settings-panel {
   border-color: #272e39;
 }
