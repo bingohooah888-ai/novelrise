@@ -8,6 +8,26 @@
       "dependabot/**": false
     }
   },
+  "images": {
+    "sizes": [128, 256, 384, 640, 1080, 1600],
+    "localPatterns": [
+      {
+        "pathname": "^/assets/.*$",
+        "search": ""
+      }
+    ],
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "^fiepaguycecrredwrcwx\\.supabase\\.co$",
+        "port": "",
+        "pathname": "^/storage/v1/object/.*$"
+      }
+    ],
+    "minimumCacheTTL": 2678400,
+    "qualities": [70, 75, 80, 85],
+    "formats": ["image/avif", "image/webp"]
+  },
   "rewrites": [
     {
       "source": "/beta-authors",
