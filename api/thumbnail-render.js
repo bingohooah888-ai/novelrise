@@ -14,7 +14,6 @@ const supabase = createClient(
 
 const handler = createThumbnailRenderHandler({ supabase });
 
-// CI retrigger only; removed in the next commit.
 export default async function thumbnailRender(req, res) {
   return handler(req, res);
 }
