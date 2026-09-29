@@ -955,14 +955,28 @@
 
     void loadSeedHistory();
 
-    const [summary, inventory, points, activity, discoveries, badges] =
+    void Promise.resolve(client.rpc('novelight_scout_badges'))
+      .then((badges) => {
+        if (badges.error) throw badges.error;
+        badgeRows = badges.data || [];
+        renderBadges();
+      })
+      .catch((error) => {
+        console.error(error);
+        const host = document.getElementById('badgeGridEasy');
+        if (host) {
+          host.innerHTML =
+            '<div class="scout-error" style="grid-column:1/-1">称号を読み込めませんでした。</div>';
+        }
+      });
+
+    const [summary, inventory, points, activity, discoveries] =
       await Promise.all([
         client.rpc('novelight_scout_record_summary'),
         client.rpc('novelight_light_seed_inventory'),
         client.rpc('novelight_scout_point_history', { p_limit: 30 }),
         client.rpc('novelight_scout_recent_activity', { p_limit: 20 }),
-        client.rpc('novelight_scout_discoveries', { p_limit: 20 }),
-        client.rpc('novelight_scout_badges')
+        client.rpc('novelight_scout_discoveries', { p_limit: 20 })
       ]);
 
     if (summary.error) {
@@ -989,18 +1003,6 @@
 
     if (discoveries.error) console.error(discoveries.error);
     renderDiscoveries(discoveries.error ? [] : discoveries.data || []);
-
-    if (badges.error) {
-      console.error(badges.error);
-      const host = document.getElementById('badgeGrid');
-      if (host) {
-        host.innerHTML =
-          '<div class="scout-error" style="grid-column:1/-1">称号を読み込めませんでした。</div>';
-      }
-    } else {
-      badgeRows = badges.data || [];
-      renderBadges();
-    }
   }
 
   bindFilters();
