@@ -17,12 +17,20 @@ async function text(url) {
 await import(proseUrl);
 const prose = globalThis.NovelightProse;
 
-test('safe prose tokenizer recognizes only bounded ruby and emphasis syntax', () => {
+test('safe prose tokenizer recognizes bounded ruby and emphasis syntax', () => {
   assert.ok(prose);
   assert.deepEqual(prose.tokenize('前｜東京《とうきょう》中'), [
     { type: 'text', text: '前' },
     { type: 'ruby', base: '東京', reading: 'とうきょう' },
     { type: 'text', text: '中' }
+  ]);
+  assert.deepEqual(prose.tokenize('玲《アキラ》の部屋'), [
+    { type: 'ruby', base: '玲', reading: 'アキラ' },
+    { type: 'text', text: 'の部屋' }
+  ]);
+  assert.deepEqual(prose.tokenize('凱旋門《がいせんもん》前'), [
+    { type: 'ruby', base: '凱旋門', reading: 'がいせんもん' },
+    { type: 'text', text: '前' }
   ]);
   assert.deepEqual(prose.tokenize('前《《大事》》後'), [
     { type: 'text', text: '前' },
@@ -34,6 +42,9 @@ test('safe prose tokenizer recognizes only bounded ruby and emphasis syntax', ()
 test('malformed markup and html-looking manuscript remain plain text tokens', () => {
   assert.deepEqual(prose.tokenize('｜東京《とうきょう'), [
     { type: 'text', text: '｜東京《とうきょう' }
+  ]);
+  assert.deepEqual(prose.tokenize('玲《アキラ'), [
+    { type: 'text', text: '玲《アキラ' }
   ]);
   assert.deepEqual(prose.tokenize('<img src=x onerror=alert(1)>'), [
     { type: 'text', text: '<img src=x onerror=alert(1)>' }
