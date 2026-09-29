@@ -22,8 +22,8 @@ test('novel warning gate defers unsafe work', () => {
 });
 
 test('episode warning gate defers content', () => {
-  assert.ok(episodeHtml.includes('status,episode_number,title,pv'));
-  assert.ok(episodeHtml.includes('title,content,status,pv'));
+  assert.ok(episodeHtml.includes('status,episode_number,title'));
+  assert.ok(episodeHtml.includes('novel_id,content,pv'));
   assert.ok(episodeHtml.includes('showGate();return'));
   assert.ok(episodeHtml.includes('await loadEpisodeContentAndRender()'));
   assert.equal(episodeHtml.includes("select('*').eq('id',episodeId)"), false);
