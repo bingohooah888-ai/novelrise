@@ -22,6 +22,8 @@
     'SERAPH',
     'LUMINARIS'
   ];
+  const EQUIPPED_BADGE_WIDTH = 96;
+  const EQUIPPED_BADGE_QUALITY = 80;
 
   function esc(value) {
     const div = document.createElement('div');
@@ -39,6 +41,12 @@
       return `assets/scout-badges/${badgeId}.png`;
     }
     return null;
+  }
+
+  function optimizedArtworkPath(path) {
+    const source = String(path || '').trim();
+    if (!source) return source;
+    return `/_vercel/image?url=${encodeURIComponent('/' + source.replace(/^\/+/, ''))}&w=${EQUIPPED_BADGE_WIDTH}&q=${EQUIPPED_BADGE_QUALITY}`;
   }
 
   function mountEquippedTitle(title) {
@@ -66,10 +74,14 @@
       const artworkPath = titleArtworkPath(title);
       if (artworkPath) {
         const image = document.createElement('img');
-        image.src = artworkPath;
+        image.dataset.novelightOriginalSrc = artworkPath;
+        image.src = optimizedArtworkPath(artworkPath);
         image.alt = '';
-        image.loading = 'eager';
+        image.loading = 'lazy';
         image.decoding = 'async';
+        if ('fetchPriority' in image) image.fetchPriority = 'low';
+        image.width = 46;
+        image.height = 46;
         image.addEventListener('load', () => {
           artworkWrap.classList.add('has-artwork');
         });
