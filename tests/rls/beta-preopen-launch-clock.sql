@@ -90,6 +90,26 @@ select public.beta_audit_test_assert(
   'preopen works must retain real relative order inside the shared launch timestamp'
 );
 
+-- The real beta launch is now in the past. Keep the pre-launch receipt assertion
+-- deterministic by moving only this transaction's effective launch clock into
+-- the future. The surrounding transaction rolls the production function back.
+create or replace function public.novelight_effective_publication_at(
+  p_created_at timestamptz,
+  p_first_published_at timestamptz
+)
+returns timestamptz
+language sql
+immutable
+parallel safe
+security invoker
+set search_path = ''
+as $$
+  select greatest(
+    coalesce(p_first_published_at, p_created_at),
+    timestamptz '2099-09-30 00:00:00+09'
+  )
+$$;
+
 select public.novelight_trusted_discovery_feed_v2(
   'home_discovery',
   1,
@@ -105,7 +125,7 @@ select public.beta_audit_test_assert(
     where r.novel_id_snapshot = '9982002'
       and r.allocation_reason = 'balanced'
   ),
-  'before September 30 a preopen impression receipt must not consume initial exposure'
+  'a pre-launch impression receipt must not consume initial exposure'
 );
 
 select public.beta_audit_test_assert(
@@ -115,7 +135,7 @@ select public.beta_audit_test_assert(
     where r.novel_id_snapshot = '9982002'
       and r.allocation_reason = 'initial_exposure'
   ),
-  'preopen receipt must never be attributed as initial exposure before launch'
+  'pre-launch receipt must never be attributed as initial exposure'
 );
 
 rollback;
