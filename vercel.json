@@ -12,16 +12,16 @@
     "sizes": [128, 256, 384, 640, 1080, 1600],
     "localPatterns": [
       {
-        "pathname": "^/assets/.*$",
+        "pathname": "/assets/**",
         "search": ""
       }
     ],
     "remotePatterns": [
       {
         "protocol": "https",
-        "hostname": "^fiepaguycecrredwrcwx\\.supabase\\.co$",
+        "hostname": "fiepaguycecrredwrcwx.supabase.co",
         "port": "",
-        "pathname": "^/storage/v1/object/.*$"
+        "pathname": "/storage/v1/object/**"
       }
     ],
     "minimumCacheTTL": 2678400,
