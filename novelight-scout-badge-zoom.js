@@ -2,9 +2,8 @@
   const OPTIMIZER_PREFIX = '/_vercel/image?';
   const CARD_WIDTH = 384;
   const CARD_QUALITY = 80;
-  const DETAIL_WIDTH = 640;
-  const DETAIL_QUALITY = 85;
-  const originalSourceAttribute = 'data-novelight-original-src';
+  const DETAIL_WIDTH = 1024;
+  const DETAIL_QUALITY = 88;
 
   function isScoutArtworkSource(value) {
     const source = String(value || '');
@@ -61,8 +60,6 @@
           nativeSetSrc.call(this, source);
           return;
         }
-
-        this.setAttribute(originalSourceAttribute, source);
 
         if (this.id === 'badgeArtworkZoomImage') {
           nativeSetSrc.call(this, source);
@@ -203,8 +200,6 @@
   }
 
   async function createEnhancedZoomSource() {
-    if (sourceImage.getAttribute(originalSourceAttribute)) return '';
-
     try {
       if (!sourceImage.complete || !sourceImage.naturalWidth || !sourceImage.naturalHeight) {
         await sourceImage.decode();
@@ -264,15 +259,13 @@
   }
 
   function openZoom() {
-    const displayedSource = sourceImage.getAttribute('src');
-    const originalSource =
-      sourceImage.getAttribute(originalSourceAttribute) || displayedSource;
-    if (sourceHost.hidden || !originalSource) return;
+    const displayedSource = sourceImage.currentSrc || sourceImage.src;
+    if (sourceHost.hidden || !displayedSource) return;
 
     renderVersion += 1;
     const currentVersion = renderVersion;
 
-    zoomImage.src = originalSource;
+    zoomImage.src = displayedSource;
     zoomImage.alt = sourceImage.alt || '称号紋章';
 
     if (!zoomDialog.open) {
@@ -308,7 +301,6 @@
   zoomDialog.addEventListener('close', () => {
     renderVersion += 1;
     zoomImage.removeAttribute('src');
-    zoomImage.removeAttribute(originalSourceAttribute);
     zoomImage.alt = '';
   });
 })();
