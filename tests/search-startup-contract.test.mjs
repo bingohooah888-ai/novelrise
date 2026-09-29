@@ -9,10 +9,15 @@ const searchSource = await readFile(
 );
 
 test('initial search results do not wait for the official tag catalog', () => {
-  const startupMarker = '(async()=>{await NovelightClient.captureAcquisition(client);';
+  const startupMarker =
+    '(async()=>{await NovelightClient.captureAcquisition(client);';
   const startupIndex = searchSource.indexOf(startupMarker);
 
-  assert.notEqual(startupIndex, -1, 'search startup bootstrap must remain present');
+  assert.notEqual(
+    startupIndex,
+    -1,
+    'search startup bootstrap must remain present'
+  );
 
   const startupSource = searchSource.slice(startupIndex);
 
