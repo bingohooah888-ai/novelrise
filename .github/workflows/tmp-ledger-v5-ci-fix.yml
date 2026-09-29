@@ -1,4 +1,4 @@
-name: Temporary Ledger v5 CI Dump
+name: Temporary Ledger v5 CI Materialize
 
 on:
   push:
@@ -6,15 +6,17 @@ on:
       - ops/rotate-production-approval-ledger-v5-final
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  dump:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ops/rotate-production-approval-ledger-v5-final
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -48,25 +50,24 @@ jobs:
           tests/production-migration-approved-dispatch.test.mjs
           tests/production-migration-preflight.test.mjs
           tests/vercel-admin-allowlist.test.mjs
-      - name: Dump exact formatted files
+      - name: Materialize canonical workflow text outside workflow directory
         shell: bash
         run: |
           set -euo pipefail
-          files=(
-            .github/workflows/production-auth-beta-email-mode.yml
-            .github/workflows/production-auth-confirmation-email-ja.yml
-            .github/workflows/production-auth-smoke-approved-dispatch.yml
-            .github/workflows/production-migration-approved-dispatch.yml
-            .github/workflows/production-migration-preflight.yml
-            tests/production-auth-beta-email-mode.test.mjs
-            tests/production-auth-smoke-approved-dispatch.test.mjs
-            tests/production-migration-approved-dispatch.test.mjs
-            tests/production-migration-preflight.test.mjs
-            tests/vercel-admin-allowlist.test.mjs
-          )
-          for file in "${files[@]}"; do
-            echo "NOVELIGHT_FILE_BEGIN:$file"
-            base64 -w0 "$file"
-            echo
-            echo "NOVELIGHT_FILE_END:$file"
-          done
+          mkdir -p .ledger-v5-formatted
+          cp .github/workflows/production-auth-beta-email-mode.yml .ledger-v5-formatted/production-auth-beta-email-mode.yml.txt
+          cp .github/workflows/production-auth-confirmation-email-ja.yml .ledger-v5-formatted/production-auth-confirmation-email-ja.yml.txt
+          cp .github/workflows/production-auth-smoke-approved-dispatch.yml .ledger-v5-formatted/production-auth-smoke-approved-dispatch.yml.txt
+          cp .github/workflows/production-migration-approved-dispatch.yml .ledger-v5-formatted/production-migration-approved-dispatch.yml.txt
+          cp .github/workflows/production-migration-preflight.yml .ledger-v5-formatted/production-migration-preflight.yml.txt
+          git restore --source=HEAD -- .github/workflows/production-auth-beta-email-mode.yml .github/workflows/production-auth-confirmation-email-ja.yml .github/workflows/production-auth-smoke-approved-dispatch.yml .github/workflows/production-migration-approved-dispatch.yml .github/workflows/production-migration-preflight.yml
+      - name: Commit only tests and materialized text
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .ledger-v5-formatted tests/production-auth-beta-email-mode.test.mjs tests/production-auth-smoke-approved-dispatch.test.mjs tests/production-migration-approved-dispatch.test.mjs tests/production-migration-preflight.test.mjs tests/vercel-admin-allowlist.test.mjs
+          git diff --cached --check
+          git commit -m 'Materialize ledger v5 CI fixes'
+          git push origin HEAD:ops/rotate-production-approval-ledger-v5-final
