@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  LEDGER_ISSUE: '737'
+  LEDGER_ISSUE: '1433'
   SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
     name: Prepare confirmation-email Japanese approval request
     if: >-
       github.event.issue.pull_request == null &&
-      github.event.issue.number == 737 &&
+      github.event.issue.number == 1433 &&
       github.event.comment.user.login == 'bingohooah888-ai' &&
       github.event.comment.author_association == 'OWNER' &&
       github.event.comment.body == 'NOVELIGHT_PRODUCTION_AUTH_CONFIRMATION_EMAIL_JA_REQUEST'
