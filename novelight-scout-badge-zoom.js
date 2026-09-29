@@ -7,6 +7,7 @@
   const DETAIL_QUALITY = 85;
   const ZOOM_WIDTH = 1600;
   const ZOOM_QUALITY = 90;
+  const originalArtworkSources = new WeakMap();
 
   function isScoutArtworkSource(value) {
     const source = String(value || '');
@@ -67,6 +68,7 @@
         }
 
         this.setAttribute(originalAttribute, source);
+        originalArtworkSources.set(this, source);
 
         if (this.id === 'badgeArtworkZoomImage') {
           nativeSetSrc.call(
@@ -282,7 +284,7 @@
 
     renderVersion += 1;
     const currentVersion = renderVersion;
-    const originalSource = sourceImage.getAttribute('data-novelight-original-src');
+    const originalSource = originalArtworkSources.get(sourceImage) || '';
 
     zoomImage.src = originalSource
       ? optimizedScoutArtworkSource(originalSource, ZOOM_WIDTH, ZOOM_QUALITY)
