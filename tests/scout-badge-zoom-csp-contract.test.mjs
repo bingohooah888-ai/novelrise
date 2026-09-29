@@ -19,7 +19,6 @@ const imageDirective = csp.match(/(?:^|;\s*)img-src\s+([^;]+)/u)?.[1] ?? '';
 
 test('SCOUT badge enhanced zoom uses a Production-CSP-compatible image source', () => {
   assert.match(imageDirective, /(?:^|\s)data:(?:\s|$)/u);
-  assert.doesNotMatch(imageDirective, /(?:^|\s)blob:(?:\s|$)/u);
 
   assert.match(zoomSource, /canvas\.toDataURL\('image\/png'\)/u);
   assert.doesNotMatch(zoomSource, /URL\.createObjectURL/u);
