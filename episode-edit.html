@@ -5,46 +5,172 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>エピソード編集 | NOVELIGHT</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:950px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}main{max-width:850px;margin:auto;padding:42px 22px}.card{background:white;border:1px solid #e5e7eb;border-radius:16px;padding:30px}.draft-state{margin:0 0 20px;padding:12px 14px;border:1px solid #d8c6a8;border-radius:10px;background:#fff8e9;color:#674f2f;font-size:13px;line-height:1.7}.field{margin-bottom:22px}label{display:block;font-size:14px;font-weight:900;margin-bottom:8px}input,textarea{width:100%;padding:12px;border:1px solid #d6d8df;border-radius:9px;font:inherit}input[readonly]{background:#f7f4ee;color:#665c50}textarea{min-height:500px;line-height:1.9;resize:vertical}.field-note{margin:7px 0 0;color:#756b5f;font-size:12px;line-height:1.7}.field-note a{font-weight:900;text-decoration:underline}.buttons{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.btn{padding:12px 20px;border-radius:9px;font:inherit;font-weight:900}.save{border:0;background:#6d4aff;color:#fff;cursor:pointer}.publish{border:1px solid #3d2d20;background:#3d2d20;color:#fff;cursor:pointer}.save:disabled,.publish:disabled{opacity:.6;cursor:not-allowed}.status{margin-top:14px;color:#666;font-size:13px;min-height:22px}@media(max-width:640px){main{padding:28px 16px}.card{padding:22px 18px}textarea{min-height:360px}.buttons{flex-direction:column}.btn{width:100%;text-align:center}}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}
+    a{color:inherit;text-decoration:none}
+    button,input,textarea,select{font:inherit}
+    header{background:#fff;border-bottom:1px solid #e5e7eb}
+    .header-inner{max-width:1240px;min-height:68px;margin:auto;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+    .logo{color:#6d4aff;font-size:25px;font-weight:900}
+    .back{color:#666;font-size:14px}
+    main{max-width:1180px;margin:auto;padding:26px 28px 72px}
+    .editor-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;min-width:0}
+    .novel-title{margin:0;color:#6b7280;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .episode-state{flex:0 0 auto;padding:4px 8px;border-radius:999px;background:#f3eee5;color:#6b573e;font-size:10px;font-weight:900}
+    .editor-toolbar{position:sticky;top:10px;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;padding:10px 12px;border:1px solid rgba(214,216,223,.92);border-radius:12px;background:rgba(255,255,255,.94);box-shadow:0 8px 24px rgba(38,32,24,.08);backdrop-filter:blur(10px)}
+    .save-cluster{min-width:120px;display:flex;align-items:center;gap:10px;color:#777;font-size:12px}
+    .save-state.error{color:#b42318}
+    .editor-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .tool-button,.primary-action{min-height:40px;padding:9px 14px;border-radius:9px;font-weight:900;cursor:pointer}
+    .tool-button{border:1px solid #d8d5df;background:#fff;color:#4b4654}
+    .tool-button:hover:not(:disabled){background:#f7f5fc;border-color:#c9c0ef}
+    .primary-action{border:0;background:#6d4aff;color:#fff}
+    .tool-button:disabled,.primary-action:disabled{opacity:.55;cursor:not-allowed}
+    .writing-surface{background:#fff;border:1px solid #e4e5e9;border-radius:15px;padding:34px 42px 38px;box-shadow:0 9px 28px rgba(31,26,18,.05)}
+    .episode-label{margin-bottom:8px;color:#756b5f;font-size:15px;font-weight:900;letter-spacing:.03em}
+    #episodeNumber{display:none}
+    .title-field{margin:0 0 18px}
+    html body.novelight-theme.novelight-page-episode-edit .writing-surface #title{width:100%;padding:10px 2px 14px!important;border:0!important;border-bottom:1px solid #e6e2db!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;outline:none;font-size:28px!important;line-height:1.45;font-weight:800;color:#25211d}
+    html body.novelight-theme.novelight-page-episode-edit .writing-surface #title:focus{border-bottom-color:#a995e8!important}
+    .body-field{margin:0}
+    .body-label{display:block;margin:0 0 8px;color:#766f65;font-size:12px;font-weight:800;letter-spacing:.08em}
+    html body.novelight-theme.novelight-page-episode-edit .writing-surface #content{width:100%;height:68vh!important;min-height:560px!important;padding:22px 4px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;outline:none;resize:vertical;line-height:2!important;font-size:17px!important;color:#26231f}
+    html body.novelight-theme.novelight-page-episode-edit .writing-surface #content::placeholder{color:#aaa49b}
+    .status{min-height:20px;margin:10px 2px 0;color:#666;font-size:12px}
+    .drawer-backdrop{position:fixed;inset:0;z-index:60;background:rgba(17,24,39,.18)}
+    .settings-drawer{position:fixed;top:0;right:0;z-index:70;width:min(410px,92vw);height:100vh;padding:0;background:#fff;box-shadow:-18px 0 42px rgba(25,25,35,.18);transform:translateX(105%);transition:transform .18s ease;overflow:hidden;display:flex;flex-direction:column}
+    .settings-drawer.open{transform:translateX(0)}
+    .drawer-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 20px;border-bottom:1px solid #ececf0}
+    .drawer-head h2{margin:0;font-size:18px}
+    .drawer-close{width:38px;height:38px;border:1px solid #dddde3;border-radius:9px;background:#fff;color:#555;font-size:20px;cursor:pointer}
+    .drawer-body{flex:1;overflow:auto;padding:22px 20px 32px}
+    .drawer-pane label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
+    .drawer-pane select,.drawer-pane input{width:100%;padding:12px;border:1px solid #d6d8df;border-radius:9px;background:#fff}
+    .drawer-note{margin:9px 0 16px;color:#736c63;font-size:12px;line-height:1.7}
+    .drawer-current{margin:0 0 12px;padding:10px 12px;border-radius:8px;background:#f7f1e7;color:#65533d;font-size:12px;font-weight:800;line-height:1.6}
+    .drawer-actions{display:grid;gap:8px}
+    .drawer-action{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:42px;padding:10px 14px;border:1px solid #cfc6e9;border-radius:9px;background:#faf8ff;color:#5840b4;font-weight:900;cursor:pointer}
+    .drawer-action.primary{border-color:#6d4aff;background:#6d4aff;color:#fff}
+    .drawer-action:disabled{opacity:.55;cursor:not-allowed}
+    #episodeIllustrationsMount{margin-top:4px}
+    .history-host{margin-top:18px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+    .history-host:empty{display:none}
+    @media(max-width:720px){
+      .header-inner{padding:10px 16px}.logo{font-size:22px}.back{font-size:13px}
+      main{padding:18px 12px 52px}
+      .editor-toolbar{top:6px;padding:8px;gap:8px}
+      .save-cluster{min-width:0}.save-state{font-size:11px}
+      .editor-tools{gap:5px}.tool-button,.primary-action{min-height:38px;padding:8px 10px;font-size:13px}
+      .writing-surface{padding:24px 18px 30px;border-radius:12px}
+      html body.novelight-theme.novelight-page-episode-edit .writing-surface #title{font-size:23px!important}
+      html body.novelight-theme.novelight-page-episode-edit .writing-surface #content{height:64vh!important;min-height:480px!important;font-size:16px!important;padding-top:16px!important}
+      .settings-drawer{top:auto;bottom:0;width:100%;height:min(78vh,720px);transform:translateY(105%);border-radius:18px 18px 0 0}
+      .settings-drawer.open{transform:translateY(0)}
+    }
+    @media(max-width:470px){
+      .editor-toolbar{align-items:flex-start;flex-direction:column}
+      .save-cluster{width:100%;justify-content:flex-end}
+      .editor-tools{width:100%;display:grid;grid-template-columns:repeat(4,1fr)}
+      .tool-button,.primary-action{width:100%;padding:8px 5px}
+      .editor-tools .tool-button[hidden]{display:none}
+    }
   </style>
-  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">\n  <link rel="stylesheet" href="novelight-characters.css">
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-characters.css">
   <link rel="stylesheet" href="novelight-episode-illustrations.css">
-<link rel="stylesheet" href="novelight-accessibility.css"></head>
+  <link rel="stylesheet" href="novelight-accessibility.css">
+</head>
 <body class="novelight-theme novelight-page-episode-edit"><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header><div class="header-inner"><a class="logo" href="index.html">NOVELIGHT</a><a id="back" class="back" href="my-novels.html">← 作品へ戻る</a></div></header>
 <main id="main-content" tabindex="-1">
-  <h1>エピソード編集</h1>
-  <section class="card">
-    <form id="form">
-      <div id="draftState" class="draft-state" hidden><strong>非公開下書き</strong> ・ この内容はまだ読者には公開されていません。サーバーへ保存すると別端末からも続きを編集できます。</div>
-      <div class="field"><label for="episodeNumber">話数</label><input id="episodeNumber" type="number" min="1" required readonly><p class="field-note">話数は本文編集と分離して安全に管理します。途中挿入・章分け・並び替えは <a id="structureLink" href="#">章・並び順管理</a> から変更してください。</p></div>
-      <div class="field"><label for="title">タイトル</label><input id="title" maxlength="150" required></div>
-      <div class="field"><label for="content">本文</label><textarea id="content" maxlength="100000" required></textarea></div>
-      <div id="episodeIllustrationsMount" hidden></div>
-      <div class="buttons"><a id="cancel" class="btn" href="my-novels.html">キャンセル</a><button id="publishDraft" class="btn publish" type="button" hidden disabled>この話を公開</button><button id="save" class="btn save" type="submit" disabled>保存</button></div>
+  <div class="editor-head"><p id="novelTitle" class="novel-title">エピソード情報を読み込み中...</p><span id="episodeState" class="episode-state" hidden></span></div>
+  <form id="form">
+    <div class="editor-toolbar" aria-label="執筆ツール">
+      <div class="save-cluster"><span id="saveState" class="save-state" aria-live="polite">読み込み中</span></div>
+      <div class="editor-tools">
+        <button id="openChapterSettings" class="tool-button" type="button" disabled>章</button>
+        <button id="openIllustrationEditor" class="tool-button" type="button" disabled>挿絵を追加</button>
+        <button id="openScheduleSettings" class="tool-button" type="button" disabled>予約</button>
+        <button id="save" class="primary-action" type="submit" disabled>保存</button>
+      </div>
+    </div>
+
+    <section class="writing-surface">
+      <div id="episodeHeading" class="episode-label">第—話</div>
+      <input id="episodeNumber" type="number" min="1" required readonly aria-hidden="true">
+      <div class="title-field"><label class="skip-link" for="title">エピソードタイトル</label><input id="title" maxlength="150" placeholder="エピソードタイトル"></div>
+      <div class="body-field"><label class="body-label" for="content">本文</label><textarea id="content" maxlength="100000" placeholder="本文を入力"></textarea></div>
       <div id="status" class="status" aria-live="polite"></div>
-    </form>
-  </section>
+    </section>
+    <div class="buttons" hidden></div>
+  </form>
+  <div id="historyHost" class="card history-host"></div>
 </main>
+
+<div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+<aside id="settingsDrawer" class="settings-drawer" aria-hidden="true" aria-labelledby="drawerTitle">
+  <div class="drawer-head"><h2 id="drawerTitle">設定</h2><button id="closeDrawer" class="drawer-close" type="button" aria-label="設定を閉じる">×</button></div>
+  <div class="drawer-body">
+    <section id="chapterPane" class="drawer-pane" hidden>
+      <label for="chapterId">この話の章</label>
+      <select id="chapterId"><option value="">章なし</option></select>
+      <p class="drawer-note">既存の章を選択できます。章の追加や話の並び替えは管理画面で行えます。</p>
+      <a id="manageStructureLink" class="drawer-action" href="#">章・並び順管理を開く</a>
+    </section>
+    <section id="illustrationPane" class="drawer-pane" hidden>
+      <p class="drawer-note">本文で挿入したい位置にカーソルを置いたまま、ここから画像を追加してください。本文への反映は保存時に行われます。</p>
+      <div id="episodeIllustrationsMount"></div>
+    </section>
+    <section id="schedulePane" class="drawer-pane" hidden>
+      <div id="scheduleCurrent" class="drawer-current">予約状態を確認中...</div>
+      <label for="scheduleAt">予約公開日時</label>
+      <input id="scheduleAt" type="datetime-local" step="60">
+      <p class="drawer-note">非公開下書きを指定日時に自動公開します。予約後も編集できます。</p>
+      <div class="drawer-actions">
+        <button id="scheduleSave" class="drawer-action primary" type="button" disabled>この日時に予約</button>
+        <button id="scheduleCancel" class="drawer-action" type="button" hidden disabled>予約を解除</button>
+      </div>
+    </section>
+  </div>
+</aside>
+
 <script src="/assets/vendor/supabase-js-2.112.3.js"></script><script src="novelight-client.js"></script><script src="novelight-characters.js"></script><script src="novelight-episode-illustrations.js"></script>
 <script>
 const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
-const id=new URLSearchParams(location.search).get('id');let session=null,episode=null,ready=false,busy=false,collaborationEditor=false;
-const status=document.getElementById('status'),save=document.getElementById('save'),publishDraft=document.getElementById('publishDraft'),draftState=document.getElementById('draftState');
+const id=new URLSearchParams(location.search).get('id');
+const status=document.getElementById('status'),primaryAction=document.getElementById('save'),openChapterSettings=document.getElementById('openChapterSettings'),openIllustrationEditor=document.getElementById('openIllustrationEditor'),openScheduleSettings=document.getElementById('openScheduleSettings'),chapterSelect=document.getElementById('chapterId'),content=document.getElementById('content'),titleInput=document.getElementById('title'),episodeHeading=document.getElementById('episodeHeading'),saveState=document.getElementById('saveState'),episodeState=document.getElementById('episodeState'),settingsDrawer=document.getElementById('settingsDrawer'),drawerBackdrop=document.getElementById('drawerBackdrop'),drawerTitle=document.getElementById('drawerTitle'),chapterPane=document.getElementById('chapterPane'),illustrationPane=document.getElementById('illustrationPane'),schedulePane=document.getElementById('schedulePane'),episodeIllustrationsMount=document.getElementById('episodeIllustrationsMount'),manageStructureLink=document.getElementById('manageStructureLink'),scheduleAt=document.getElementById('scheduleAt'),scheduleCurrent=document.getElementById('scheduleCurrent'),scheduleSave=document.getElementById('scheduleSave'),scheduleCancel=document.getElementById('scheduleCancel');
+let session=null,episode=null,ready=false,busy=false,collaborationEditor=false,illustrationEditorMounted=false,dirty=false,autoSaveTimer=null,autoSaveRunning=false,autoSavePromise=null,editRevision=0;
 function isDraft(){return episode?.status==='draft'}
-function setBusy(value){busy=value;save.disabled=value||!ready;publishDraft.disabled=value||!ready||!isDraft()||collaborationEditor}
+function pad(value){return String(value).padStart(2,'0')}
+function localDateTimeValue(value){const date=value instanceof Date?value:new Date(value);if(!Number.isFinite(date.getTime()))return'';return`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`}
+function formatLocal(value){const date=new Date(value);if(!Number.isFinite(date.getTime()))return'未設定';return new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(date)}
+function setSaveState(text,isError=false){saveState.textContent=text;saveState.classList.toggle('error',isError)}
+function setBusy(value){busy=value;primaryAction.disabled=value||!ready;openIllustrationEditor.disabled=value||!ready;openChapterSettings.disabled=value||!ready||collaborationEditor;openScheduleSettings.disabled=value||!ready||collaborationEditor||!isDraft();scheduleSave.disabled=value||!ready||collaborationEditor||!isDraft();scheduleCancel.disabled=value||!ready||collaborationEditor||!isDraft()}
 function clearLocalDraftBeforeNavigation(){window.NovelightAuthorDraft?.clearCurrentDraft?.();window.addEventListener('pagehide',()=>window.NovelightAuthorDraft?.clearCurrentDraft?.(),{once:true})}
-function values(){return{episodeNumber:Number(document.getElementById('episodeNumber').value),title:document.getElementById('title').value.trim(),content:document.getElementById('content').value}}
+function values(){return{episodeNumber:Number(document.getElementById('episodeNumber').value),title:titleInput.value.trim(),content:content.value,chapterId:collaborationEditor?(episode?.chapter_id??null):(chapterSelect.value?Number(chapterSelect.value):null)}}
 function validate(value,requireComplete){if(!Number.isFinite(value.episodeNumber)||value.episodeNumber<1)return'話数は1以上で入力してください。';if(value.title.length>150)return'タイトルは150文字以内で入力してください。';if(requireComplete&&value.title.length<1)return'タイトルを入力してください。';if(requireComplete&&value.content.trim().length<1)return'本文を入力してください。';if(value.content.length>100000)return'本文は100,000文字以内で入力してください。';return''}
-function collaborationUnavailable(error){const code=String(error?.code||''),message=String(error?.message||'');return ['42883','PGRST202','PGRST204'].includes(code)||/novelight_get_collaboration_episode|Could not find the function|does not exist/iu.test(message)}
-async function loadEditableEpisode(){const owned=await client.from('episodes').select('*').eq('id',id).single();if(!owned.error&&owned.data?.user_id===session.user.id)return owned.data;const collaborative=await client.rpc('novelight_get_collaboration_episode',{p_episode_id:Number(id)});if(!collaborative.error&&collaborative.data){const data=collaborative.data;collaborationEditor=String(data.owner_user_id)!==session.user.id;if(!collaborationEditor)throw new Error('owner episode row unavailable');return{id:data.id,novel_id:data.novel_id,user_id:data.owner_user_id,episode_number:data.episode_number,title:data.title,content:data.content,status:data.status}}if(collaborative.error&&!collaborationUnavailable(collaborative.error))throw collaborative.error;if(owned.error)throw owned.error;throw new Error('not editable')}
-async function saveServerDraft(){const value=values(),validation=validate(value,false);if(validation)throw new Error(validation);const result=collaborationEditor?await client.rpc('novelight_update_collaboration_episode',{p_episode_id:Number(id),p_title:value.title,p_content:value.content}):await client.rpc('novelight_save_episode_draft',{p_novel_id:episode.novel_id,p_episode_id:id,p_episode_number:value.episodeNumber,p_title:value.title,p_content:value.content});if(result.error)throw result.error;return result.data}
-(async()=>{void NovelightClient.recordVisit(client);if(!id){status.textContent='エピソードIDがありません。';return}try{const auth=await client.auth.getSession();session=auth.data.session;if(!session){location.href='login.html?redirect='+encodeURIComponent('episode-edit.html?id='+id);return}episode=await loadEditableEpisode();document.getElementById('episodeNumber').value=episode.episode_number;document.getElementById('title').value=episode.title||'';document.getElementById('content').value=episode.content||'';const collaborationUrl='collaboration.html?novel_id='+encodeURIComponent(episode.novel_id);document.getElementById('back').href=collaborationEditor?collaborationUrl:'novel.html?id='+episode.novel_id;document.getElementById('structureLink').href='episode-structure.html?novel_id='+encodeURIComponent(episode.novel_id);document.getElementById('cancel').href=collaborationEditor?collaborationUrl:(isDraft()?'episode-drafts.html?novel_id='+encodeURIComponent(episode.novel_id):'novel.html?id='+episode.novel_id);if(collaborationEditor){document.body.dataset.collaborationEditor='true';const note=document.getElementById('structureLink').parentElement;note.textContent='共同執筆者は話数・章・並び順を変更できません。公開・削除も作品所有者のみが行えます。';publishDraft.hidden=true;save.textContent=isDraft()?'共同下書きを保存':'共同編集を保存'}else if(isDraft()){draftState.hidden=false;publishDraft.hidden=false;save.textContent='下書きを保存';document.getElementById('title').required=false;document.getElementById('content').required=false}ready=true;setBusy(false);if(!collaborationEditor)void NovelightCharacters.mountEpisodeEditor({client,episodeId:id,novelId:episode.novel_id});void NovelightEpisodeIllustrations.mountEditor({client,root:document.getElementById('episodeIllustrationsMount'),episode,session,textarea:document.getElementById('content'),isOwner:!collaborationEditor})}catch(e){console.error(e);status.textContent='エピソード情報を読み込めませんでした。再読み込みしてお試しください。';ready=false;setBusy(false)}})();
-document.getElementById('form').addEventListener('submit',async e=>{e.preventDefault();if(!ready||busy){if(!ready)status.textContent='エピソード情報の読み込みが完了していません。';return}const value=values(),validation=validate(value,!isDraft());if(validation){status.textContent=validation;return}setBusy(true);status.textContent=isDraft()?'サーバーに下書き保存しています...':'保存しています...';try{if(isDraft()||collaborationEditor){await saveServerDraft();window.NovelightAuthorDraft?.clearCurrentDraft?.();status.textContent=collaborationEditor?'共同編集を保存しました。':'サーバーに下書きを保存しました。別端末からも続けられます。';if(collaborationEditor&&!isDraft())location.href='episode.html?id='+encodeURIComponent(id)}else{const r=await client.from('episodes').update({title:value.title,content:value.content}).eq('id',id).eq('user_id',session.user.id);if(r.error)throw r.error;clearLocalDraftBeforeNavigation();location.href='episode.html?id='+encodeURIComponent(id)}}catch(e){console.error(e);status.textContent='保存できませんでした。時間をおいて再度お試しください。'}finally{setBusy(false)}});
-publishDraft.addEventListener('click',async()=>{if(!ready||busy||!isDraft()||collaborationEditor)return;const value=values(),validation=validate(value,true);if(validation){status.textContent=validation;return}if(!confirm('このエピソードを公開しますか？公開後は読者が閲覧できるようになります。'))return;setBusy(true);status.textContent='最新の下書きを保存して公開しています...';try{await saveServerDraft();const result=await client.rpc('novelight_publish_episode_draft_atomic',{p_episode_id:id});if(result.error)throw result.error;clearLocalDraftBeforeNavigation();location.href='episode.html?id='+encodeURIComponent(id)}catch(e){console.error(e);status.textContent='公開できませんでした。タイトル・本文・第1話条件を確認してください。';setBusy(false)}});
+function collaborationUnavailable(error){const code=String(error?.code||''),message=String(error?.message||'');return['42883','PGRST202','PGRST204'].includes(code)||/novelight_get_collaboration_episode|Could not find the function|does not exist/iu.test(message)}
+async function loadEditableEpisode(){const owned=await client.from('episodes').select('*').eq('id',id).single();if(!owned.error&&owned.data?.user_id===session.user.id)return owned.data;const collaborative=await client.rpc('novelight_get_collaboration_episode',{p_episode_id:Number(id)});if(!collaborative.error&&collaborative.data){const data=collaborative.data;collaborationEditor=String(data.owner_user_id)!==session.user.id;if(!collaborationEditor)throw new Error('owner episode row unavailable');return{id:data.id,novel_id:data.novel_id,user_id:data.owner_user_id,episode_number:data.episode_number,title:data.title,content:data.content,status:data.status,chapter_id:null,scheduled_publish_at:null}}if(collaborative.error&&!collaborationUnavailable(collaborative.error))throw collaborative.error;if(owned.error)throw owned.error;throw new Error('not editable')}
+async function saveServerDraft(){const value=values(),validation=validate(value,false);if(validation)throw new Error(validation);const result=collaborationEditor?await client.rpc('novelight_update_collaboration_episode',{p_episode_id:Number(id),p_title:value.title,p_content:value.content}):await client.rpc('novelight_save_episode_draft',{p_novel_id:episode.novel_id,p_episode_id:id,p_episode_number:value.episodeNumber,p_title:value.title,p_content:value.content});if(result.error)throw result.error;if(!collaborationEditor){const chapterResult=await client.from('episodes').update({chapter_id:value.chapterId}).eq('id',id).eq('novel_id',episode.novel_id).eq('user_id',session.user.id);if(chapterResult.error)throw chapterResult.error;episode.chapter_id=value.chapterId}episode.title=value.title;episode.content=value.content;return result.data}
+async function savePublishedEpisode(){const value=values(),validation=validate(value,true);if(validation)throw new Error(validation);if(collaborationEditor){const result=await client.rpc('novelight_update_collaboration_episode',{p_episode_id:Number(id),p_title:value.title,p_content:value.content});if(result.error)throw result.error}else{const payload={title:value.title,content:value.content};if(Object.prototype.hasOwnProperty.call(episode,'chapter_id'))payload.chapter_id=value.chapterId;const result=await client.from('episodes').update(payload).eq('id',id).eq('user_id',session.user.id);if(result.error)throw result.error;episode.chapter_id=value.chapterId}episode.title=value.title;episode.content=value.content}
+function markDirty(){if(!ready)return;dirty=true;editRevision+=1;setSaveState('未保存');if(collaborationEditor||!isDraft())return;clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(()=>{void runAutoSave()},1200)}
+async function runAutoSave(){if(!ready||busy||collaborationEditor||!isDraft()||autoSaveRunning||!dirty)return;const value=values(),validation=validate(value,false);if(validation){setSaveState('保存待ち');return}const revision=editRevision;autoSaveRunning=true;setSaveState('保存中…');autoSavePromise=saveServerDraft();try{await autoSavePromise;if(editRevision===revision){dirty=false;setSaveState('保存済み')}else{setSaveState('変更あり');clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(()=>{void runAutoSave()},800)}}catch(error){console.error('episode autosave failed',error);setSaveState('保存できませんでした',true)}finally{autoSaveRunning=false;autoSavePromise=null}}
+async function waitForAutoSave(){clearTimeout(autoSaveTimer);if(autoSaveRunning&&autoSavePromise){try{await autoSavePromise}catch(error){console.error('episode autosave wait failed',error)}}if(dirty&&!collaborationEditor&&isDraft())await runAutoSave()}
+function openDrawer(mode){const panes={chapter:chapterPane,illustration:illustrationPane,schedule:schedulePane},titles={chapter:'章',illustration:'挿絵',schedule:'予約公開'};Object.values(panes).forEach(pane=>pane.hidden=true);panes[mode].hidden=false;drawerTitle.textContent=titles[mode];drawerBackdrop.hidden=false;settingsDrawer.classList.add('open');settingsDrawer.setAttribute('aria-hidden','false')}
+function closeDrawer(){settingsDrawer.classList.remove('open');settingsDrawer.setAttribute('aria-hidden','true');drawerBackdrop.hidden=true}
+function renderSchedule(){if(!isDraft()||collaborationEditor)return;const scheduled=episode?.scheduled_publish_at||null;scheduleCurrent.textContent=scheduled?`予約中：${formatLocal(scheduled)} に自動公開予定`:'現在、予約投稿は設定されていません。';scheduleCancel.hidden=!scheduled;if(scheduled&&!scheduleAt.value)scheduleAt.value=localDateTimeValue(scheduled);scheduleAt.min=localDateTimeValue(new Date(Date.now()+3*60*1000));scheduleAt.max=localDateTimeValue(new Date(Date.now()+365*24*60*60*1000))}
+async function mountIllustrationEditor(){if(illustrationEditorMounted)return;if(!window.NovelightEpisodeIllustrations?.mountEditor)throw new Error('挿絵機能を開けませんでした。');episode.title=titleInput.value.trim();episode.content=content.value;const mounted=await NovelightEpisodeIllustrations.mountEditor({client,root:episodeIllustrationsMount,episode,session,textarea:content,isOwner:!collaborationEditor});if(!mounted)throw new Error('挿絵機能を開けませんでした。');illustrationEditorMounted=true}
+document.getElementById('closeDrawer').addEventListener('click',closeDrawer);drawerBackdrop.addEventListener('click',closeDrawer);document.addEventListener('keydown',event=>{if(event.key==='Escape'&&settingsDrawer.classList.contains('open'))closeDrawer()});
+['title','content'].forEach(fieldId=>document.getElementById(fieldId).addEventListener('input',markDirty));chapterSelect.addEventListener('change',markDirty);
+(async()=>{void NovelightClient.recordVisit(client);if(!id){status.textContent='エピソードIDがありません。';setSaveState('読み込み失敗',true);return}try{const auth=await client.auth.getSession();session=auth.data.session;if(!session){location.href='login.html?redirect='+encodeURIComponent('episode-edit.html?id='+id);return}episode=await loadEditableEpisode();document.getElementById('episodeNumber').value=episode.episode_number;episodeHeading.textContent=`第${Number(episode.episode_number)}話`;titleInput.value=episode.title||'';content.value=episode.content||'';const collaborationUrl='collaboration.html?novel_id='+encodeURIComponent(episode.novel_id);document.getElementById('back').href=collaborationEditor?collaborationUrl:'novel.html?id='+encodeURIComponent(episode.novel_id);manageStructureLink.href='episode-structure.html?novel_id='+encodeURIComponent(episode.novel_id);try{const novelResult=await client.from('novels').select('id,title,user_id').eq('id',episode.novel_id).single();if(!novelResult.error&&novelResult.data?.title)document.getElementById('novelTitle').textContent=novelResult.data.title;else document.getElementById('novelTitle').textContent='エピソード編集'}catch(error){console.error('novel title unavailable',error);document.getElementById('novelTitle').textContent='エピソード編集'}if(collaborationEditor){document.body.dataset.collaborationEditor='true';episodeState.hidden=false;episodeState.textContent='共同編集中';openChapterSettings.hidden=true;openScheduleSettings.hidden=true;primaryAction.textContent='保存'}else{const chapterResult=await client.from('novel_chapters').select('id,title,position').eq('novel_id',episode.novel_id).order('position',{ascending:true});if(chapterResult.error)throw chapterResult.error;chapterSelect.replaceChildren(new Option('章なし',''));(chapterResult.data||[]).forEach(chapter=>chapterSelect.add(new Option(chapter.title,String(chapter.id))));chapterSelect.value=episode.chapter_id==null?'':String(episode.chapter_id);if(isDraft()){episodeState.hidden=false;episodeState.textContent='非公開下書き';primaryAction.textContent='公開';renderSchedule()}else{openScheduleSettings.hidden=true;primaryAction.textContent='保存'}void NovelightCharacters.mountEpisodeEditor({client,episodeId:id,novelId:episode.novel_id})}ready=true;dirty=false;setBusy(false);setSaveState(isDraft()&&!collaborationEditor?'保存済み':'変更なし')}catch(error){console.error(error);status.textContent='エピソード情報を読み込めませんでした。再読み込みしてお試しください。';ready=false;setBusy(false);setSaveState('読み込み失敗',true)}})();
+openChapterSettings.addEventListener('click',()=>{if(!ready||busy||collaborationEditor)return;openDrawer('chapter')});
+openScheduleSettings.addEventListener('click',()=>{if(!ready||busy||collaborationEditor||!isDraft())return;renderSchedule();openDrawer('schedule')});
+openIllustrationEditor.addEventListener('click',async()=>{if(!ready||busy)return;await waitForAutoSave();openDrawer('illustration');setBusy(true);status.textContent=illustrationEditorMounted?'':'挿絵を準備しています...';try{await mountIllustrationEditor();status.textContent=''}catch(error){console.error(error);status.textContent=String(error?.message||'挿絵機能を開けませんでした。時間をおいて再度お試しください。')}finally{setBusy(false)}});
+scheduleSave.addEventListener('click',async()=>{if(!ready||busy||collaborationEditor||!isDraft())return;await waitForAutoSave();const value=values(),validation=validate(value,true);if(validation){status.textContent=validation;return}const requested=new Date(scheduleAt.value);if(!scheduleAt.value||!Number.isFinite(requested.getTime())){status.textContent='予約する公開日時を入力してください。';return}if(requested.getTime()<Date.now()+2*60*1000){status.textContent='予約日時は現在より2分以上先に設定してください。';return}if(requested.getTime()>Date.now()+365*24*60*60*1000){status.textContent='予約日時は1年以内に設定してください。';return}setBusy(true);status.textContent='最新の下書きを保存して予約しています...';try{await saveServerDraft();const result=await client.rpc('novelight_schedule_episode_draft',{p_episode_id:id,p_publish_at:requested.toISOString()});if(result.error)throw result.error;episode.scheduled_publish_at=result.data||requested.toISOString();dirty=false;setSaveState('保存済み');window.NovelightAuthorDraft?.clearCurrentDraft?.();renderSchedule();status.textContent=`${formatLocal(episode.scheduled_publish_at)} に予約しました。`}catch(error){console.error(error);status.textContent='予約できませんでした。日時と公開条件を確認して、もう一度お試しください。'}finally{setBusy(false)}});
+scheduleCancel.addEventListener('click',async()=>{if(!ready||busy||collaborationEditor||!isDraft()||!episode?.scheduled_publish_at)return;setBusy(true);status.textContent='予約を解除しています...';try{const result=await client.rpc('novelight_cancel_episode_schedule',{p_episode_id:id});if(result.error)throw result.error;episode.scheduled_publish_at=null;scheduleAt.value='';renderSchedule();status.textContent='予約投稿を解除しました。下書きはそのまま保存されています。'}catch(error){console.error(error);status.textContent='予約を解除できませんでした。時間をおいて再度お試しください。'}finally{setBusy(false)}});
+document.getElementById('form').addEventListener('submit',async event=>{event.preventDefault();if(!ready||busy){if(!ready)status.textContent='エピソード情報の読み込みが完了していません。';return}await waitForAutoSave();const value=values();if(collaborationEditor){const validation=validate(value,!isDraft());if(validation){status.textContent=validation;return}setBusy(true);status.textContent='保存しています...';try{if(isDraft())await saveServerDraft();else await savePublishedEpisode();dirty=false;setSaveState('保存済み');window.NovelightAuthorDraft?.clearCurrentDraft?.();status.textContent='共同編集を保存しました。';if(!isDraft())location.href='episode.html?id='+encodeURIComponent(id)}catch(error){console.error(error);status.textContent='保存できませんでした。時間をおいて再度お試しください。'}finally{setBusy(false)}return}if(isDraft()){const validation=validate(value,true);if(validation){status.textContent=validation;return}if(!confirm('このエピソードを公開しますか？公開後は読者が閲覧できるようになります。'))return;setBusy(true);status.textContent='最新の下書きを保存して公開しています...';try{await saveServerDraft();const result=await client.rpc('novelight_publish_episode_draft_atomic',{p_episode_id:id});if(result.error)throw result.error;dirty=false;clearLocalDraftBeforeNavigation();location.href='episode.html?id='+encodeURIComponent(id)}catch(error){console.error(error);status.textContent='公開できませんでした。タイトル・本文・第1話条件を確認してください。';setBusy(false)}return}const validation=validate(value,true);if(validation){status.textContent=validation;return}setBusy(true);status.textContent='保存しています...';try{await savePublishedEpisode();dirty=false;setSaveState('保存済み');clearLocalDraftBeforeNavigation();location.href='episode.html?id='+encodeURIComponent(id)}catch(error){console.error(error);status.textContent='保存できませんでした。時間をおいて再度お試しください。';setBusy(false)}});
 </script>
 <script src="novelight-author-draft.js"></script>
-<script src="novelight-episode-schedule.js"></script>
 <script src="novelight-episode-history.js"></script>
 </body>
 </html>
