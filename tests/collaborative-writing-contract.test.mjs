@@ -40,6 +40,7 @@ test('B #22 storage stays private and preserves one novel owner', () => {
   assert.doesNotMatch(migration, /update\s+public\.novels\s+set\s+user_id/iu);
   assert.match(migration, /novels\.user_id remains the sole owner/iu);
 });
+
 test('B #22 invitation and membership are bounded and revocable', () => {
   assert.match(migration, /interval '7 days'/u);
   assert.match(migration, /At most 5 collaborators are available during beta/u);
@@ -71,14 +72,21 @@ test('B #22 editor RPC is content-only and cannot publish or delete', () => {
 });
 
 test('B #22 UI keeps invitation URLs out of indexing and referrers', () => {
-  assert.match(collaboration, /meta name="robots" content="noindex,nofollow"/u);
-  assert.match(collaboration, /meta name="referrer" content="no-referrer"/u);
+  assert.match(
+    collaboration,
+    /meta name="robots" content="noindex,nofollow"/u
+  );
+  assert.match(
+    collaboration,
+    /meta name="referrer" content="no-referrer"/u
+  );
   assert.match(collaboration, /novelight_accept_collaboration_invite/u);
   assert.match(collaboration, /novelight_rotate_collaboration_invite/u);
   assert.match(collaboration, /novelight_remove_novel_collaborator/u);
   assert.match(collaboration, /novelight_leave_novel_collaboration/u);
   assert.doesNotMatch(collaboration, /\.from\(['"]novel_collabor/iu);
 });
+
 test('B #22 collaboration editor reuses episode editor without owner powers', () => {
   assert.match(episodeEdit, /novelight_get_collaboration_episode/u);
   assert.match(episodeEdit, /novelight_update_collaboration_episode/u);
