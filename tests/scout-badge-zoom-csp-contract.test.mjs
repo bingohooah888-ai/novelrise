@@ -36,7 +36,11 @@ test('SCOUT badge zoom reuses a supported optimized detail artwork before enhanc
   );
   assert.match(
     zoomSource,
-    /sourceImage\.getAttribute\('data-novelight-original-src'\)/u
+    /originalArtworkSources\.set\(this, source\);/u
+  );
+  assert.match(
+    zoomSource,
+    /const originalSource = originalArtworkSources\.get\(sourceImage\) \|\| '';/u
   );
   assert.match(
     zoomSource,
