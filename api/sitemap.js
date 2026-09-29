@@ -46,9 +46,16 @@ export function createSitemapHandler({ supabase }) {
         fetchPublishedRows(supabase, 'episodes', 'id,novel_id')
       ]);
 
-      const publishedNovelIds = new Set(novels.map((novel) => String(novel.id)));
+      const publishedNovelIds = new Set(
+        novels.map((novel) => String(novel.id))
+      );
       const authorIds = [
-        ...new Set(novels.map((novel) => novel.user_id).filter(Boolean).map(String))
+        ...new Set(
+          novels
+            .map((novel) => novel.user_id)
+            .filter(Boolean)
+            .map(String)
+        )
       ];
 
       const paths = [
@@ -58,11 +65,20 @@ export function createSitemapHandler({ supabase }) {
         '/pricing.html',
         '/beta-authors',
         '/operator.html',
-        ...novels.map((novel) => `/novel.html?id=${encodeURIComponent(novel.id)}`),
+        ...novels.map(
+          (novel) => `/novel.html?id=${encodeURIComponent(novel.id)}`
+        ),
         ...episodes
-          .filter((episode) => publishedNovelIds.has(String(episode.novel_id)))
-          .map((episode) => `/episode.html?id=${encodeURIComponent(episode.id)}`),
-        ...authorIds.map((authorId) => `/author.html?id=${encodeURIComponent(authorId)}`)
+          .filter((episode) =>
+            publishedNovelIds.has(String(episode.novel_id))
+          )
+          .map(
+            (episode) =>
+              `/episode.html?id=${encodeURIComponent(episode.id)}`
+          ),
+        ...authorIds.map(
+          (authorId) => `/author.html?id=${encodeURIComponent(authorId)}`
+        )
       ];
 
       const xml = [
@@ -74,7 +90,10 @@ export function createSitemapHandler({ supabase }) {
       ].join('\n');
 
       res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=86400');
+      res.setHeader(
+        'Cache-Control',
+        'public, s-maxage=900, stale-while-revalidate=86400'
+      );
       return res.status(200).send(req.method === 'HEAD' ? '' : xml);
     } catch (error) {
       console.error('Sitemap generation failed', {
