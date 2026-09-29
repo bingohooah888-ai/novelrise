@@ -26,6 +26,7 @@ import './scout-lock-direct-register-bridge.js';
 import { mainProductionMigrationApproveBridge } from './production-migration-approve-bridge.js';
 import { mainProductionAuthSmokeDispatchBridge } from './production-auth-smoke-dispatch-bridge.js';
 import { mainWorktreeSafeBridge } from './worktree-safe-bridge.js';
+import { mainWorktreeSafeReplaceBridge } from './worktree-safe-replace-bridge.js';
 
 void mainProductionMigrationApproveBridge().catch(error => {
   console.error('[NLO production migration approval bridge] fatal:', error);
@@ -39,5 +40,10 @@ void mainProductionAuthSmokeDispatchBridge().catch(error => {
 
 void mainWorktreeSafeBridge().catch(error => {
   console.error('[NLO worktree safe bridge] fatal:', error);
+  process.exitCode = 1;
+});
+
+void mainWorktreeSafeReplaceBridge().catch(error => {
+  console.error('[NLO worktree safe replace bridge] fatal:', error);
   process.exitCode = 1;
 });
