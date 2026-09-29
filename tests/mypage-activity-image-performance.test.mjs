@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const runtime = await readFile(
   new URL('../novelight-scout-title-toast.js', import.meta.url),

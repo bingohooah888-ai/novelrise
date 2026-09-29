@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const zoomSource = await readFile(
   new URL('../novelight-scout-badge-zoom.js', import.meta.url),
