@@ -34,10 +34,7 @@ test('SCOUT badge zoom reuses a supported optimized detail artwork before enhanc
     zoomSource,
     /const displayedSource = sourceImage\.currentSrc \|\| sourceImage\.src;/u
   );
-  assert.match(
-    zoomSource,
-    /originalArtworkSources\.set\(this, source\);/u
-  );
+  assert.match(zoomSource, /originalArtworkSources\.set\(this, source\);/u);
   assert.match(
     zoomSource,
     /const originalSource = originalArtworkSources\.get\(sourceImage\) \|\| '';/u
