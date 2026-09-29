@@ -83,11 +83,9 @@ test('B #22 collaboration editor reuses episode editor without owner powers', ()
   assert.match(episodeEdit, /novelight_get_collaboration_episode/u);
   assert.match(episodeEdit, /novelight_update_collaboration_episode/u);
   assert.match(episodeEdit, /collaborationEditor/u);
-  assert.match(episodeEdit, /publishDraft\.hidden=true/u);
-  assert.match(
-    episodeEdit,
-    /共同執筆者は話数・章・並び順を変更できません。公開・削除も作品所有者のみ/u
-  );
+  assert.match(episodeEdit, /openChapterSettings\.hidden=true/u);
+  assert.match(episodeEdit, /openScheduleSettings\.hidden=true/u);
+  assert.match(episodeEdit, /isOwner:!collaborationEditor/u);
   assert.match(episodeEdit, /owned\.data\?\.user_id===session\.user\.id/u);
   assert.match(schedule, /dataset\.collaborationEditor === 'true'/u);
   assert.match(history, /dataset\.collaborationEditor === 'true'/u);
