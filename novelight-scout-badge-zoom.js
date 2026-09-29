@@ -1,9 +1,10 @@
 (() => {
   const OPTIMIZER_PREFIX = '/_vercel/image?';
-  const CARD_WIDTH = 384;
+  const CARD_WIDTH = 256;
   const CARD_QUALITY = 80;
-  const DETAIL_WIDTH = 1024;
-  const DETAIL_QUALITY = 88;
+  const CARD_IMMEDIATE_COUNT = 8;
+  const DETAIL_WIDTH = 1080;
+  const DETAIL_QUALITY = 85;
 
   function isScoutArtworkSource(value) {
     const source = String(value || '');
@@ -37,6 +38,7 @@
 
     const nativeSetSrc = descriptor.set;
     const deferredAttribute = 'data-novelight-deferred-src';
+    let immediateArtworkCount = 0;
 
     let observer;
     const hydrate = (image) => {
@@ -71,6 +73,9 @@
             this,
             optimizedScoutArtworkSource(source, DETAIL_WIDTH, DETAIL_QUALITY)
           );
+          this.loading = 'eager';
+          this.decoding = 'async';
+          if ('fetchPriority' in this) this.fetchPriority = 'high';
           return;
         }
 
@@ -79,12 +84,14 @@
           CARD_WIDTH,
           CARD_QUALITY
         );
+        const prioritized = immediateArtworkCount < CARD_IMMEDIATE_COUNT;
+        immediateArtworkCount += 1;
 
-        if (!('IntersectionObserver' in window)) {
+        if (prioritized || !('IntersectionObserver' in window)) {
           nativeSetSrc.call(this, optimizedSource);
-          this.loading = 'lazy';
+          this.loading = prioritized ? 'eager' : 'lazy';
           this.decoding = 'async';
-          if ('fetchPriority' in this) this.fetchPriority = 'low';
+          if ('fetchPriority' in this) this.fetchPriority = prioritized ? 'high' : 'low';
           return;
         }
 
@@ -107,7 +114,7 @@
       },
       {
         root: null,
-        rootMargin: mobile ? '240px 0px' : '640px 0px',
+        rootMargin: mobile ? '320px 0px' : '800px 0px',
         threshold: 0.01
       }
     );
@@ -217,7 +224,7 @@
       );
       const density = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
       const targetLongEdge = Math.min(
-        1024,
+        1080,
         Math.max(Math.max(naturalWidth, naturalHeight), Math.round(displayLimit * density)),
       );
 
