@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 const RENDER_BUCKET = 'novel-thumbnail-renders';
+const RENDER_CONTENT_TYPE = 'image/webp';
 const MAX_RENDER_SIZE = 2 * 1024 * 1024;
 const PATH_PATTERN = /^renders\/([0-9]+)\/([0-9a-f-]{36})\.webp$/i;
 const FAILURE_STAGES = new Set([
@@ -41,6 +42,38 @@ function boundedText(value, maxLength) {
   return String(value ?? '')
     .trim()
     .slice(0, maxLength);
+}
+
+function normalizeMime(value) {
+  return String(value ?? '')
+    .split(';', 1)[0]
+    .trim()
+    .toLowerCase();
+}
+
+export function isWebpSignature(value) {
+  let bytes;
+  if (value instanceof Uint8Array) {
+    bytes = value;
+  } else if (value instanceof ArrayBuffer) {
+    bytes = new Uint8Array(value);
+  } else if (ArrayBuffer.isView(value)) {
+    bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  } else {
+    return false;
+  }
+
+  return (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  );
 }
 
 async function requireUser({ req, res, supabase }) {
@@ -132,22 +165,68 @@ async function prepareUpload({ supabase, user, body }) {
 
   return {
     status: 200,
-    payload: { path, token: data.token, maxFileSize: MAX_RENDER_SIZE }
+    payload: {
+      path,
+      token: data.token,
+      maxFileSize: MAX_RENDER_SIZE,
+      contentType: RENDER_CONTENT_TYPE
+    }
   };
 }
 
-async function verifyStoredObject(supabase, path) {
+async function inspectStoredWebpObject(supabase, path) {
   const match = path.match(PATH_PATTERN);
-  if (!match) return false;
+  if (!match) return { exists: false, valid: false, reason: 'path' };
+
   const novelId = match[1];
   const fileName = path.slice(path.lastIndexOf('/') + 1);
-  const { data, error } = await supabase.storage
-    .from(RENDER_BUCKET)
-    .list(`renders/${novelId}`, { limit: 20, search: fileName });
-  if (error) {
-    throw new Error(`Thumbnail render verification failed: ${error.message}`);
+  const bucket = supabase.storage.from(RENDER_BUCKET);
+  const { data: entries, error: listError } = await bucket.list(
+    `renders/${novelId}`,
+    { limit: 20, search: fileName }
+  );
+  if (listError) {
+    throw new Error(
+      `Thumbnail render verification failed: ${listError.message}`
+    );
   }
-  return (data ?? []).some((entry) => entry.name === fileName);
+
+  const entry = (entries ?? []).find((item) => item.name === fileName);
+  if (!entry) return { exists: false, valid: false, reason: 'missing' };
+
+  const { data: storedObject, error: downloadError } =
+    await bucket.download(path);
+  if (downloadError || !storedObject) {
+    throw new Error(
+      `Thumbnail render download verification failed: ${downloadError?.message || 'missing object'}`
+    );
+  }
+
+  const metadataMime = normalizeMime(
+    entry.metadata?.mimetype ?? entry.metadata?.contentType
+  );
+  const downloadedMime = normalizeMime(storedObject.type);
+  const declaredMimes = [metadataMime, downloadedMime].filter(Boolean);
+  const mimeValid =
+    declaredMimes.length > 0 &&
+    declaredMimes.every((mime) => mime === RENDER_CONTENT_TYPE);
+
+  const bytes = new Uint8Array(await storedObject.arrayBuffer());
+  const signatureValid = isWebpSignature(bytes);
+  return {
+    exists: true,
+    valid: mimeValid && signatureValid,
+    reason: !mimeValid ? 'mime' : signatureValid ? null : 'signature'
+  };
+}
+
+async function removeRejectedRender(supabase, path) {
+  try {
+    const { error } = await supabase.storage.from(RENDER_BUCKET).remove([path]);
+    if (error) console.error('Rejected thumbnail render cleanup failed', error);
+  } catch (error) {
+    console.error('Rejected thumbnail render cleanup failed', error);
+  }
 }
 
 async function finalizeUpload({ supabase, user, body }) {
@@ -175,10 +254,21 @@ async function finalizeUpload({ supabase, user, body }) {
     };
   }
 
-  if (!(await verifyStoredObject(supabase, path))) {
+  const storedRender = await inspectStoredWebpObject(supabase, path);
+  if (!storedRender.exists) {
     return {
       status: 409,
       payload: { error: 'Uploaded render was not found' }
+    };
+  }
+  if (!storedRender.valid) {
+    await removeRejectedRender(supabase, path);
+    return {
+      status: 415,
+      payload: {
+        error: 'Uploaded render must be a real image/webp WebP file',
+        reason: storedRender.reason
+      }
     };
   }
 

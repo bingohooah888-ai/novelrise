@@ -6,6 +6,8 @@
   const STYLE_PATH = 'novelight-thumbnails.css';
   const THUMBNAIL_WIDTH = 384;
   const THUMBNAIL_QUALITY = 75;
+  const ABOVE_FOLD_DESKTOP = 6;
+  const ABOVE_FOLD_MOBILE = 4;
   const SUPPORTED_PAGES = new Set([
     'index',
     'search',
@@ -70,16 +72,49 @@
     }
   }
 
-  function candidateLinks() {
+  function cardLinks() {
     const selector = [
       'a.novel-card[href*="novel.html?id="]',
       'a.shelf-card[href*="novel.html?id="]',
       'body.novelight-page-ranking a.card[href*="novel.html?id="]'
     ].join(',');
-    return Array.from(document.querySelectorAll(selector)).filter(
+    return Array.from(document.querySelectorAll(selector));
+  }
+
+  function priorityCount() {
+    return window.matchMedia('(max-width:860px)').matches
+      ? ABOVE_FOLD_MOBILE
+      : ABOVE_FOLD_DESKTOP;
+  }
+
+  function setImagePriority(image, prioritized) {
+    image.loading = prioritized ? 'eager' : 'lazy';
+    image.decoding = 'async';
+    image.fetchPriority = prioritized ? 'high' : 'low';
+  }
+
+  function optimizeExistingImages() {
+    const links = cardLinks();
+    const highPriorityLimit = priorityCount();
+    links.forEach((link, index) => {
+      const images = link.querySelectorAll(
+        '.novel-cover-image, .novelight-official-thumbnail img'
+      );
+      images.forEach((image) => {
+        const source = image.getAttribute('src') || image.currentSrc || image.src;
+        const optimized = optimizedImageUrl(source);
+        if (optimized && optimized !== source) image.src = optimized;
+        setImagePriority(image, index < highPriorityLimit);
+        image.dataset.novelightThumbnailOptimized = '1';
+      });
+    });
+  }
+
+  function candidateLinks() {
+    return cardLinks().filter(
       (link) =>
         link.dataset.novelightThumbnailChecked !== '1' &&
-        !link.querySelector('.novel-cover-image')
+        !link.querySelector('.novel-cover-image,.novelight-official-thumbnail img')
     );
   }
 
@@ -88,9 +123,7 @@
     const image = document.createElement('img');
     image.src = optimizedImageUrl(url);
     image.alt = '';
-    image.loading = 'lazy';
-    image.decoding = 'async';
-    image.fetchPriority = 'low';
+    setImagePriority(image, false);
     return image;
   }
 
@@ -156,6 +189,8 @@
 
   async function decorate() {
     scheduled = false;
+    optimizeExistingImages();
+
     const links = candidateLinks();
     if (!links.length) return;
     links.forEach((link) => {
@@ -192,18 +227,20 @@
         }
       }
 
-      if (!unresolved.length) return;
-      const compositions = await loadCompositions(browserClient, unresolved);
-      await Promise.all(
-        compositions.map(async (composition) => {
-          const linksForNovel = byId.get(String(composition.novel_id)) ?? [];
-          try {
-            await applyComposition(linksForNovel, composition);
-          } catch (error) {
-            console.error('official cached thumbnail apply failed', error);
-          }
-        })
-      );
+      if (unresolved.length) {
+        const compositions = await loadCompositions(browserClient, unresolved);
+        await Promise.all(
+          compositions.map(async (composition) => {
+            const linksForNovel = byId.get(String(composition.novel_id)) ?? [];
+            try {
+              await applyComposition(linksForNovel, composition);
+            } catch (error) {
+              console.error('official cached thumbnail apply failed', error);
+            }
+          })
+        );
+      }
+      optimizeExistingImages();
     } catch (error) {
       console.error('official thumbnail lookup failed', error);
     }
