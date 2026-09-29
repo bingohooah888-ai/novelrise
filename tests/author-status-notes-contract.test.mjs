@@ -12,6 +12,8 @@ const authorRoomCss = await readFile('novelight-author-room.css', 'utf8');
 const authorPage = await readFile('author.html', 'utf8');
 const publicUi = await readFile('novelight-author-notes-public.js', 'utf8');
 const publicCss = await readFile('novelight-author-notes-public.css', 'utf8');
+const novelPage = await readFile('novel.html', 'utf8');
+const seriesUi = await readFile('novelight-series.js', 'utf8');
 const replay = await readFile('scripts/run-migration-replay.sh', 'utf8');
 const master = await readFile('docs/NOVELIGHT-MASTER.md', 'utf8');
 
@@ -38,10 +40,7 @@ test('rolling deployment fails safely without raw-table fallback', () => {
   assert.match(management, /42883|PGRST202/u);
   assert.match(management, /データベース反映待ち/u);
   assert.doesNotMatch(management, /\.from\(['"]author_notes['"]\)/u);
-  assert.match(
-    publicUi,
-    /if \(error \|\| !Array\.isArray\(data\) \|\| data\.length === 0\) return/u
-  );
+  assert.match(publicUi, /if \(error \|\| !Array\.isArray\(data\)\) return/u);
   assert.match(publicUi, /p_limit: 5/u);
   assert.doesNotMatch(publicUi, /\.from\(['"]author_notes['"]\)/u);
 });
@@ -85,10 +84,25 @@ test('author notes use the Author Studio shell and dashboard shortcuts stay stab
 test('public author notes are mounted safely on the author profile', () => {
   assert.match(authorPage, /novelight-author-notes-public\.css/u);
   assert.match(authorPage, /novelight-author-notes-public\.js/u);
+  assert.match(publicUi, /section\.id = 'author-notes'/u);
   assert.match(publicUi, /title\.textContent = note\.title/u);
   assert.match(publicUi, /body\.textContent = note\.body/u);
   assert.match(publicCss, /white-space:pre-wrap/u);
   assert.match(publicUi, /linked_novel/u);
+  assert.match(publicUi, /data\.length === 0/u);
+  assert.match(publicUi, /近況ノートはまだありません。/u);
+});
+
+test('work detail keeps the author profile and links to that author recent notes', () => {
+  assert.match(
+    novelPage,
+    /href="author\.html\?id=\$\{encodeURIComponent\(novel\.user_id\)\}"/u
+  );
+  assert.match(seriesUi, /#novelHeader \.author/u);
+  assert.match(seriesUi, /a\[href\^="author\.html\?id="\]/u);
+  assert.match(seriesUi, /profileLink\.getAttribute\('href'\).*#author-notes/u);
+  assert.match(seriesUi, /notesLink\.textContent = '近況ノート'/u);
+  assert.match(seriesUi, /MutationObserver\(mountAuthorNotesLink\)/u);
 });
 
 test('notes stay outside social, discovery, and analytics systems', () => {
