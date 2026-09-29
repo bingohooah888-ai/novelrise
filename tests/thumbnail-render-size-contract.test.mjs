@@ -19,9 +19,15 @@ test('browser sends the actual render Blob size without a client-side 2 MiB cap'
   assert.doesNotMatch(browser, /2\s*\*\s*1024\s*\*\s*1024/u);
 });
 
-test('legacy iPhone rewrite is inert until its dedicated removal step', () => {
-  assert.match(wrapper, /const LEGACY_RENDER_LIMIT = 8 \* 1024 \* 1024/u);
-  assert.match(wrapper, /const IOS_RENDER_LIMIT = 8 \* 1024 \* 1024/u);
-  assert.match(wrapper, /fileSize > LEGACY_RENDER_LIMIT[\s\S]*fileSize <= IOS_RENDER_LIMIT/u);
-  assert.doesNotMatch(wrapper, /const LEGACY_RENDER_LIMIT = 2 \* 1024 \* 1024/u);
+test('all clients use the same thumbnail render handler without UA-specific exceptions', () => {
+  assert.match(wrapper, /return handler\(req, res\);/u);
+  assert.doesNotMatch(wrapper, /iPhone/iu);
+  assert.doesNotMatch(wrapper, /user-agent/iu);
+  assert.doesNotMatch(wrapper, /LEGACY_RENDER_LIMIT|IOS_RENDER_LIMIT/u);
+});
+
+test('WebP and PNG share the same API size contract', () => {
+  assert.match(api, /'image\/webp': 'webp'/u);
+  assert.match(api, /'image\/png': 'png'/u);
+  assert.match(api, /fileSize > MAX_RENDER_SIZE/u);
 });
