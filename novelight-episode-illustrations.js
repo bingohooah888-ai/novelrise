@@ -39,38 +39,136 @@
     return data;
   }
 
-  function imageFromFile(file) {
+  function illustrationError(stage, message, cause, code) {
+    const error = new Error(message);
+    error.name = 'NovelightIllustrationError';
+    error.stage = stage;
+    if (code) error.code = code;
+    if (cause !== undefined) error.cause = cause;
+    return error;
+  }
+
+  function withStage(error, stage, fallbackMessage) {
+    if (error && typeof error === 'object') {
+      if (!error.stage) error.stage = stage;
+      return error;
+    }
+    return illustrationError(stage, fallbackMessage, error);
+  }
+
+  function imageFromUrl(source, revoke) {
     return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
       const image = new Image();
-      image.onload = () => {
-        URL.revokeObjectURL(url);
-        resolve(image);
+      let settled = false;
+      const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        if (revoke) revoke();
+        callback(value);
       };
-      image.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error('画像を読み込めませんでした。'));
-      };
-      image.src = url;
+      image.onload = () => finish(resolve, image);
+      image.onerror = (event) => finish(reject, event);
+      image.src = source;
     });
+  }
+
+  function fileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () =>
+        typeof reader.result === 'string'
+          ? resolve(reader.result)
+          : reject(new Error('FILE_READER_RESULT_INVALID'));
+      reader.onerror = () => reject(reader.error || new Error('FILE_READER_FAILED'));
+      reader.onabort = () => reject(new Error('FILE_READER_ABORTED'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function imageFromFile(file) {
+    let firstDecodeError = null;
+    try {
+      const url = URL.createObjectURL(file);
+      try {
+        return await imageFromUrl(url, () => URL.revokeObjectURL(url));
+      } catch (error) {
+        firstDecodeError = error;
+      }
+    } catch (error) {
+      firstDecodeError = error;
+    }
+
+    let dataUrl;
+    try {
+      dataUrl = await fileAsDataUrl(file);
+    } catch (error) {
+      throw illustrationError(
+        'read',
+        '画像ファイルを読み込めませんでした。ファイルを選び直して再度お試しください。',
+        error,
+        'ILLUSTRATION_IMAGE_READ_FAILED'
+      );
+    }
+
+    try {
+      return await imageFromUrl(dataUrl);
+    } catch (error) {
+      throw illustrationError(
+        'decode',
+        '画像を解析できませんでした。JPEG・PNG・WebPとして保存し直して再度お試しください。',
+        error || firstDecodeError,
+        'ILLUSTRATION_IMAGE_DECODE_FAILED'
+      );
+    }
   }
 
   function canvasBlob(canvas, type, quality) {
     return new Promise((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error('画像を最適化できませんでした。'))),
-        type,
-        quality
-      );
+      try {
+        canvas.toBlob(
+          (blob) =>
+            blob
+              ? resolve(blob)
+              : reject(
+                  illustrationError(
+                    'convert',
+                    '画像をWebPへ変換できませんでした。別の画像で再度お試しください。',
+                    null,
+                    'ILLUSTRATION_IMAGE_CONVERT_FAILED'
+                  )
+                ),
+          type,
+          quality
+        );
+      } catch (error) {
+        reject(
+          illustrationError(
+            'convert',
+            '画像をWebPへ変換できませんでした。別の画像で再度お試しください。',
+            error,
+            'ILLUSTRATION_IMAGE_CONVERT_FAILED'
+          )
+        );
+      }
     });
   }
 
   async function optimizeImage(file) {
     if (!file || !ACCEPTED_TYPES.has(String(file.type).toLowerCase())) {
-      throw new Error('JPEG・PNG・WebP画像を選択してください。');
+      throw illustrationError(
+        'format',
+        'JPEG・PNG・WebP画像を選択してください。',
+        null,
+        'ILLUSTRATION_IMAGE_FORMAT_INVALID'
+      );
     }
     if (file.size < 1 || file.size > INPUT_MAX_BYTES) {
-      throw new Error('画像は10MB以下にしてください。');
+      throw illustrationError(
+        'format',
+        '画像は10MB以下にしてください。',
+        null,
+        'ILLUSTRATION_IMAGE_SIZE_INVALID'
+      );
     }
 
     const image = await imageFromFile(file);
@@ -83,7 +181,12 @@
       height < 1 ||
       Math.max(width, height) > INPUT_MAX_EDGE
     ) {
-      throw new Error('画像の長辺は4096px以下にしてください。');
+      throw illustrationError(
+        'format',
+        '画像の長辺は4096px以下にしてください。',
+        null,
+        'ILLUSTRATION_IMAGE_DIMENSIONS_INVALID'
+      );
     }
 
     const scale = Math.min(1, DELIVERY_MAX_EDGE / Math.max(width, height));
@@ -93,11 +196,32 @@
     canvas.width = outputWidth;
     canvas.height = outputHeight;
     const context = canvas.getContext('2d', { alpha: true });
-    if (!context) throw new Error('画像を最適化できませんでした。');
-    context.drawImage(image, 0, 0, outputWidth, outputHeight);
+    if (!context) {
+      throw illustrationError(
+        'convert',
+        '画像を最適化できませんでした。別の画像で再度お試しください。',
+        null,
+        'ILLUSTRATION_IMAGE_CANVAS_UNAVAILABLE'
+      );
+    }
+    try {
+      context.drawImage(image, 0, 0, outputWidth, outputHeight);
+    } catch (error) {
+      throw illustrationError(
+        'convert',
+        '画像を最適化できませんでした。別の画像で再度お試しください。',
+        error,
+        'ILLUSTRATION_IMAGE_DRAW_FAILED'
+      );
+    }
     const blob = await canvasBlob(canvas, 'image/webp', 0.88);
     if (blob.size < 1 || blob.size > INPUT_MAX_BYTES) {
-      throw new Error('最適化後の画像容量が上限を超えました。');
+      throw illustrationError(
+        'convert',
+        '最適化後の画像容量が上限を超えました。別の画像で再度お試しください。',
+        null,
+        'ILLUSTRATION_IMAGE_OUTPUT_SIZE_INVALID'
+      );
     }
     return { blob, width: outputWidth, height: outputHeight };
   }
@@ -127,6 +251,25 @@
       .split(/\r?\n/u)
       .some((line) => line.trim() === marker);
   }
+
+  function referencedIds(content) {
+    const ids = new Set();
+    for (const line of String(content ?? '').replace(/\r\n?/gu, '\n').split('\n')) {
+      const marker = line.match(MARKER_LINE);
+      if (marker) ids.add(marker[1].toLowerCase());
+    }
+    return ids;
+  }
+
+  function assetsForContent(assets, content) {
+    const ids = referencedIds(content);
+    return new Map(
+      (assets || [])
+        .filter((asset) => ids.has(String(asset?.id || '').toLowerCase()))
+        .map((asset) => [String(asset.id).toLowerCase(), asset])
+    );
+  }
+
   function rulesDetails(documentRef) {
     const details = documentRef.createElement('details');
     details.className = 'episode-illustration-rules';
@@ -150,6 +293,45 @@
     }
     details.append(summary, list);
     return details;
+  }
+
+  function uploadFailureMessage(error) {
+    const message = String(error?.message || '');
+    if (message.includes('EPISODE_ILLUSTRATION_LIMIT_REACHED')) {
+      return 'このエピソードは挿絵10枚の上限に達しています。';
+    }
+    if (message.includes('EPISODE_ILLUSTRATION_UPLOAD_RATE_LIMITED')) {
+      return '短時間の挿絵アップロード回数が上限に達しました。時間を空けて再度お試しください。';
+    }
+    if (message.includes('ILLUSTRATION_AI_USAGE_REQUIRED')) {
+      return '先に挿絵のAI利用申告を設定してください。';
+    }
+    switch (error?.stage) {
+      case 'format':
+      case 'read':
+      case 'decode':
+      case 'convert':
+        return message || '画像を処理できませんでした。別の画像で再度お試しください。';
+      case 'prepare':
+        return 'アップロードの準備に失敗しました。時間をおいて再度お試しください。';
+      case 'upload':
+        return '画像の送信に失敗しました。通信状態を確認して再度お試しください。';
+      case 'finalize':
+        return 'アップロード後の画像検証に失敗しました。JPEG・PNG・WebPとして保存し直して再度お試しください。';
+      default:
+        return '挿絵をアップロードできませんでした。時間をおいて再度お試しください。';
+    }
+  }
+
+  function logUploadFailure(error, file, episodeId) {
+    console.error('episode illustration upload failed', {
+      stage: String(error?.stage || 'unknown'),
+      code: error?.code ? String(error.code) : null,
+      status: Number.isFinite(Number(error?.status)) ? Number(error.status) : null,
+      episodeId: Number(episodeId),
+      inputType: String(file?.type || ''),
+      inputBytes: Number(file?.size || 0)
+    });
   }
 
   async function mountEditor({ client, root, episode, session, textarea, isOwner }) {
@@ -210,7 +392,7 @@
       title.textContent = '挿絵のAI利用申告';
       const help = document.createElement('p');
       help.textContent =
-        '本文のAI利用区分とは別です。挿絵に画像生成AI・AI加工を含むかを作品単位で設定します。';
+        '本文のAI利用区分とは別です。挿絵に画像生成AI・AI加工を含むかを作品単位で設定します。選択後に「設定を保存」を押すと、挿絵を選択できます。';
       aiBox.append(title, help);
 
       if (!isOwner) {
@@ -260,17 +442,19 @@
             value: select.value === 'true'
           });
           await refresh();
-          setStatus('挿絵のAI利用申告を保存しました。');
+          setStatus('挿絵のAI利用申告を保存しました。挿絵を選択できます。');
         } catch (error) {
           console.error(error);
           setStatus('AI利用申告を保存できませんでした。');
         } finally {
           busy = false;
+          render();
         }
       });
       row.append(select, button);
       aiBox.appendChild(row);
     }
+
     function renderUpload() {
       uploadBox.replaceChildren();
       const file = document.createElement('input');
@@ -296,40 +480,61 @@
       note.className = 'episode-illustration-upload-note';
       note.textContent = declarationMissing
         ? isOwner
-          ? '先に挿絵のAI利用申告を設定してください。'
+          ? '先に挿絵のAI利用申告を選択し、「設定を保存」を押してください。保存後すぐに画像を選択できます。'
           : '作品所有者が挿絵のAI利用申告を設定するとアップロードできます。'
         : limitReached
           ? 'このエピソードは挿絵10枚の上限に達しています。'
           : 'JPEG・PNG・WebP／原本10MB以下／長辺4096px以下。配信用は長辺2000px以下のWebPへ最適化します。';
 
       button.addEventListener('click', async () => {
-        if (busy || !file.files?.[0]) {
-          if (!file.files?.[0]) setStatus('画像を選択してください。');
+        const selectedFile = file.files?.[0] || null;
+        if (busy || !selectedFile) {
+          if (!selectedFile) setStatus('画像を選択してください。');
           return;
         }
         busy = true;
         render();
         setStatus('画像を最適化しています...');
         try {
-          const optimized = await optimizeImage(file.files[0]);
-          const prepared = await apiRequest(session, {
-            action: 'prepare-upload',
-            episodeId: Number(episode.id),
-            fileSize: optimized.blob.size
-          });
-          const upload = await client.storage
-            .from(BUCKET)
-            .uploadToSignedUrl(prepared.path, prepared.token, optimized.blob, {
-              contentType: 'image/webp',
-              upsert: false
+          const optimized = await optimizeImage(selectedFile);
+          let prepared;
+          try {
+            prepared = await apiRequest(session, {
+              action: 'prepare-upload',
+              episodeId: Number(episode.id),
+              fileSize: optimized.blob.size
             });
-          if (upload.error) throw upload.error;
-          const finalized = await apiRequest(session, {
-            action: 'finalize-upload',
-            episodeId: Number(episode.id),
-            path: prepared.path,
-            altText: alt.value
-          });
+          } catch (error) {
+            throw withStage(error, 'prepare', 'Illustration upload could not be prepared');
+          }
+
+          let upload;
+          try {
+            upload = await client.storage
+              .from(BUCKET)
+              .uploadToSignedUrl(prepared.path, prepared.token, optimized.blob, {
+                contentType: 'image/webp',
+                upsert: false
+              });
+          } catch (error) {
+            throw withStage(error, 'upload', 'Illustration upload failed');
+          }
+          if (upload.error) {
+            throw withStage(upload.error, 'upload', 'Illustration upload failed');
+          }
+
+          let finalized;
+          try {
+            finalized = await apiRequest(session, {
+              action: 'finalize-upload',
+              episodeId: Number(episode.id),
+              path: prepared.path,
+              altText: alt.value
+            });
+          } catch (error) {
+            throw withStage(error, 'finalize', 'Illustration validation failed');
+          }
+
           await refresh();
           const asset = state.assets.find((item) => item.id === finalized.id);
           if (asset) insertMarker(textarea, asset.marker);
@@ -337,17 +542,8 @@
           alt.value = '';
           setStatus('挿絵をアップロードし、本文へ挿入しました。');
         } catch (error) {
-          console.error(error);
-          const message = String(error?.message || '');
-          if (message.includes('EPISODE_ILLUSTRATION_LIMIT_REACHED')) {
-            setStatus('このエピソードは挿絵10枚の上限に達しています。');
-          } else if (message.includes('EPISODE_ILLUSTRATION_UPLOAD_RATE_LIMITED')) {
-            setStatus('短時間の挿絵アップロード回数が上限に達しました。時間を空けて再度お試しください。');
-          } else if (message.includes('ILLUSTRATION_AI_USAGE_REQUIRED')) {
-            setStatus('先に挿絵のAI利用申告を設定してください。');
-          } else {
-            setStatus(message || '挿絵をアップロードできませんでした。');
-          }
+          logUploadFailure(error, selectedFile, episode.id);
+          setStatus(uploadFailureMessage(error));
         } finally {
           busy = false;
           try {
@@ -465,6 +661,7 @@
       return null;
     }
   }
+
   function illustrationFigure(root, asset) {
     const figure = root.ownerDocument.createElement('figure');
     figure.className = 'episode-inline-illustration';
@@ -531,6 +728,22 @@
     root.dataset.novelightProseRendered = 'true';
   }
 
+  function syncAiDisclosure(root, enabled) {
+    const previous = root.previousElementSibling;
+    if (
+      previous?.classList?.contains('episode-inline-ai-disclosure') &&
+      previous.dataset.novelightIllustrationDisclosure === 'true'
+    ) {
+      previous.remove();
+    }
+    if (!enabled) return;
+    const disclosure = root.ownerDocument.createElement('p');
+    disclosure.className = 'episode-inline-ai-disclosure';
+    disclosure.dataset.novelightIllustrationDisclosure = 'true';
+    disclosure.textContent = 'この作品の挿絵にはAI生成・AI支援画像が含まれます。';
+    root.before(disclosure);
+  }
+
   async function mountReader({ root, episodeId, content }) {
     if (!root || !episodeId) return null;
 
@@ -541,21 +754,42 @@
         action: 'reader-list',
         episodeId: Number(episodeId)
       });
-      const assets = new Map((data.assets || []).map((asset) => [asset.id, asset]));
+      const assets = assetsForContent(data.assets, content);
       renderReaderContent(root, content, assets, '挿絵を表示できません。');
-
-      if (data.aiUsage === true) {
-        const disclosure = root.ownerDocument.createElement('p');
-        disclosure.className = 'episode-inline-ai-disclosure';
-        disclosure.textContent =
-          'この作品の挿絵にはAI生成・AI支援画像が含まれます。';
-        root.before(disclosure);
-      }
+      syncAiDisclosure(root, data.aiUsage === true);
       return data;
     } catch (error) {
       renderReaderContent(root, content, new Map(), '挿絵を表示できません。');
+      syncAiDisclosure(root, false);
       if (!runtimeUnavailable(error)) {
         console.error('episode illustration reader unavailable', error);
+      }
+      return null;
+    }
+  }
+
+  async function mountPreview({ root, episodeId, content, session }) {
+    if (!root || !episodeId) return null;
+    if (!session?.access_token) return mountReader({ root, episodeId, content });
+
+    renderReaderContent(root, content, new Map(), '挿絵を読み込み中...');
+
+    try {
+      const data = await apiRequest(session, {
+        action: 'editor-list',
+        episodeId: Number(episodeId)
+      });
+      const assets = assetsForContent(data.assets, content);
+      renderReaderContent(root, content, assets, '挿絵を表示できません。');
+      syncAiDisclosure(root, data.aiUsage === true);
+      return data;
+    } catch (error) {
+      renderReaderContent(root, content, new Map(), '挿絵を表示できません。');
+      syncAiDisclosure(root, false);
+      if (!runtimeUnavailable(error)) {
+        console.error('episode illustration preview unavailable', {
+          status: Number.isFinite(Number(error?.status)) ? Number(error.status) : null
+        });
       }
       return null;
     }
@@ -569,6 +803,7 @@
     optimizeImage,
     insertMarker,
     mountEditor,
-    mountReader
+    mountReader,
+    mountPreview
   });
 })(typeof window === 'undefined' ? globalThis : window);

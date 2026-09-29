@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>Safari PNG thumbnail fallback fixture</title>
+  </head>
+  <body>
+    <div id="composer"></div>
+    <script src="/novelight-thumbnail-composer.js"></script>
+    <script>
+      (() => {
+        const pngDataUrl =
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+        const revision = '22222222-2222-4222-8222-222222222222';
+
+        function query(data) {
+          return {
+            select() {
+              return this;
+            },
+            eq() {
+              return this;
+            },
+            neq() {
+              return this;
+            },
+            order() {
+              return this;
+            },
+            then(resolve, reject) {
+              return Promise.resolve({ data, error: null }).then(resolve, reject);
+            }
+          };
+        }
+
+        window.runSafariPngFallbackRegression = async () => {
+          const originalFetch = window.fetch;
+          const originalToBlob = HTMLCanvasElement.prototype.toBlob;
+          const renderRequests = [];
+          let requestedCanvasType = null;
+          let uploaded = null;
+
+          HTMLCanvasElement.prototype.toBlob = function (callback, type) {
+            requestedCanvasType = type;
+            const bytes = new Uint8Array([
+              0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00
+            ]);
+            callback(new Blob([bytes], { type: 'image/png' }));
+          };
+
+          window.fetch = async (url, options = {}) => {
+            if (url !== '/api/thumbnail-render') {
+              return originalFetch(url, options);
+            }
+            const body = JSON.parse(options.body || '{}');
+            renderRequests.push(body);
+            if (body.action === 'prepare-upload') {
+              return new Response(
+                JSON.stringify({
+                  path: 'renders/42/11111111-1111-4111-8111-111111111111.png',
+                  token: 'signed-png-token',
+                  maxFileSize: 2 * 1024 * 1024,
+                  contentType: body.contentType
+                }),
+                { status: 200, headers: { 'Content-Type': 'application/json' } }
+              );
+            }
+            if (body.action === 'finalize-upload') {
+              return new Response(
+                JSON.stringify({
+                  renderUrl:
+                    'https://example.test/renders/42/11111111-1111-4111-8111-111111111111.png'
+                }),
+                { status: 200, headers: { 'Content-Type': 'application/json' } }
+              );
+            }
+            return new Response(JSON.stringify({ recorded: true }), {
+              status: 201,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          };
+
+          const template = {
+            template_key: 'test-template',
+            label: 'Test',
+            canvas_width: 1086,
+            canvas_height: 1448,
+            availability_status: 'active',
+            effect_allow_outside_cover: false,
+            cover_quad_space: 'canvas',
+            base_book_source_width: null,
+            base_book_source_height: null,
+            cover_mask_source: 'cover_quad',
+            cover_mask_revision: 1,
+            cover_mask_url: null,
+            cover_top_left_x: 0,
+            cover_top_left_y: 0,
+            cover_top_right_x: 1086,
+            cover_top_right_y: 0,
+            cover_bottom_right_x: 1086,
+            cover_bottom_right_y: 1448,
+            cover_bottom_left_x: 0,
+            cover_bottom_left_y: 1448
+          };
+          const assets = [
+            {
+              id: 'background-1',
+              label: 'Background',
+              image_url: pngDataUrl,
+              layer_type: 'background',
+              template_key: 'test-template',
+              sort_order: 1,
+              availability_status: 'active'
+            },
+            {
+              id: 'base-book-1',
+              label: 'Book',
+              image_url: pngDataUrl,
+              layer_type: 'base_book',
+              template_key: 'test-template',
+              sort_order: 1,
+              availability_status: 'active'
+            },
+            {
+              id: 'cover-1',
+              label: 'Cover',
+              image_url: pngDataUrl,
+              layer_type: 'cover',
+              template_key: 'test-template',
+              sort_order: 1,
+              availability_status: 'active'
+            }
+          ];
+          const client = {
+            from(table) {
+              if (table === 'novel_thumbnail_templates') return query([template]);
+              if (table === 'novel_thumbnail_assets') return query(assets);
+              throw new Error(`Unexpected table: ${table}`);
+            },
+            async rpc(name) {
+              if (name === 'novelight_set_my_thumbnail_composition') {
+                return { data: { revision }, error: null };
+              }
+              throw new Error(`Unexpected RPC: ${name}`);
+            },
+            storage: {
+              from(bucket) {
+                if (bucket !== 'novel-thumbnail-renders') {
+                  throw new Error(`Unexpected bucket: ${bucket}`);
+                }
+                return {
+                  async uploadToSignedUrl(path, token, blob, options) {
+                    uploaded = {
+                      path,
+                      token,
+                      blobType: blob.type,
+                      contentType: options.contentType
+                    };
+                    return { data: {}, error: null };
+                  }
+                };
+              }
+            }
+          };
+
+          try {
+            const mounted = await window.NovelightThumbnailComposer.mount({
+              client,
+              root: document.getElementById('composer')
+            });
+            if (!mounted.ready) throw new Error(`Composer not ready: ${mounted.reason}`);
+            const result = await mounted.controller.persist({
+              novelId: 42,
+              accessToken: 'test-token'
+            });
+            return {
+              requestedCanvasType,
+              prepare: renderRequests.find((item) => item.action === 'prepare-upload'),
+              finalize: renderRequests.find((item) => item.action === 'finalize-upload'),
+              uploaded,
+              renderUrl: result.render.renderUrl
+            };
+          } finally {
+            window.fetch = originalFetch;
+            HTMLCanvasElement.prototype.toBlob = originalToBlob;
+          }
+        };
+      })();
+    </script>
+  </body>
+</html>

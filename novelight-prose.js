@@ -42,7 +42,7 @@
         }
       }
 
-      if (source[cursor] === '｜') {
+      if (source[cursor] === '｜' || source[cursor] === '|') {
         const readingOpen = source.indexOf('《', cursor + 1);
         if (readingOpen !== -1) {
           const base = source.slice(cursor + 1, readingOpen);
@@ -54,8 +54,8 @@
               isSingleLine(reading) &&
               base.length <= LIMITS.rubyBase &&
               reading.length <= LIMITS.rubyReading &&
-              !/[《》｜]/u.test(base) &&
-              !/[《》｜]/u.test(reading)
+              !/[《》｜|]/u.test(base) &&
+              !/[《》｜|]/u.test(reading)
             ) {
               tokens.push({ type: 'ruby', base, reading });
               cursor = readingClose + 1;
@@ -78,7 +78,7 @@
             if (
               isSingleLine(reading) &&
               reading.length <= LIMITS.rubyReading &&
-              !/[《》｜]/u.test(reading)
+              !/[《》｜|]/u.test(reading)
             ) {
               tokens.push({ type: 'ruby', base: implicitBase, reading });
               cursor = readingClose + 1;

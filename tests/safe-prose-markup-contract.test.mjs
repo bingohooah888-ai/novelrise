@@ -24,6 +24,11 @@ test('safe prose tokenizer recognizes bounded ruby and emphasis syntax', () => {
     { type: 'ruby', base: '東京', reading: 'とうきょう' },
     { type: 'text', text: '中' }
   ]);
+  assert.deepEqual(prose.tokenize('前|東京《とうきょう》中'), [
+    { type: 'text', text: '前' },
+    { type: 'ruby', base: '東京', reading: 'とうきょう' },
+    { type: 'text', text: '中' }
+  ]);
   assert.deepEqual(prose.tokenize('玲《アキラ》の部屋'), [
     { type: 'ruby', base: '玲', reading: 'アキラ' },
     { type: 'text', text: 'の部屋' }

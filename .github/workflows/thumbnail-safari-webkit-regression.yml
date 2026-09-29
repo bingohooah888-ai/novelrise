@@ -1,0 +1,54 @@
+name: Safari PNG Thumbnail Regression
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - novelight-thumbnail-composer.js
+      - api/_lib/thumbnail-render.js
+      - tests/e2e/fixtures/thumbnail-safari-png-fallback.html
+      - tests/e2e/specs/thumbnail-safari-png-fallback.spec.js
+      - tests/e2e/playwright.thumbnail-safari.config.mjs
+      - .github/workflows/thumbnail-safari-webkit-regression.yml
+  push:
+    branches: [main]
+    paths:
+      - novelight-thumbnail-composer.js
+      - api/_lib/thumbnail-render.js
+      - tests/e2e/fixtures/thumbnail-safari-png-fallback.html
+      - tests/e2e/specs/thumbnail-safari-png-fallback.spec.js
+      - tests/e2e/playwright.thumbnail-safari.config.mjs
+      - .github/workflows/thumbnail-safari-webkit-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  webkit-safari-png-fallback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install browser test dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install WebKit
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps webkit
+
+      - name: Run Safari PNG fallback regression
+        working-directory: tests/e2e
+        run: npx playwright test --config=playwright.thumbnail-safari.config.mjs

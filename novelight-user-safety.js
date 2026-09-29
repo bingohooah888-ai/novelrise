@@ -39,10 +39,57 @@
     return String(row?.novel_id ?? row?.id ?? '');
   }
 
-  async function filterNovelRows(client, rows) {
+  function rowAuthorName(row) {
+    return String(row?.author_name ?? row?.pen_name ?? '').trim();
+  }
+
+  async function hydrateAuthorNames(client, rows) {
     const input = Array.isArray(rows) ? rows : [];
     if (!client || !input.length) return input;
 
+    const novelIds = [
+      ...new Set(
+        input
+          .filter((row) => !rowAuthorName(row))
+          .map(rowNovelId)
+          .filter(Boolean)
+      )
+    ].slice(0, 100);
+    if (!novelIds.length) return input;
+
+    try {
+      const result = await client.rpc('novelight_public_card_authors', {
+        p_novel_ids: novelIds
+      });
+      if (result.error) throw result.error;
+
+      const metadata = new Map(
+        (Array.isArray(result.data) ? result.data : []).map((row) => [
+          String(row.novel_id),
+          row
+        ])
+      );
+      return input.map((row) => {
+        if (rowAuthorName(row)) return row;
+        const author = metadata.get(rowNovelId(row));
+        const authorName = String(author?.author_name || '').trim();
+        if (!authorName) return row;
+        return Object.assign({}, row, {
+          author_id: row.author_id || author.author_id || null,
+          author_name: authorName
+        });
+      });
+    } catch (error) {
+      console.warn('public card author lookup unavailable', error);
+      return input;
+    }
+  }
+
+  async function filterNovelRows(client, rows) {
+    const source = Array.isArray(rows) ? rows : [];
+    if (!client || !source.length) return source;
+
+    const input = await hydrateAuthorNames(client, source);
     const session = await currentSession(client);
     if (!session) return input;
 
