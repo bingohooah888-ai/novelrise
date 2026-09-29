@@ -7,7 +7,7 @@ const source = await readFile(new URL('../episode.html', import.meta.url), 'utf8
 test('episode auth and safe metadata load in parallel without body content', () => {
   assert.match(source, /Promise\.all\(\[client\.auth\.getSession\(\),client\.from\('episodes'\)\.select\('id,novel_id,user_id,status,episode_number,title'\)/);
   const safeQuery = source.indexOf("select('id,novel_id,user_id,status,episode_number,title')");
-  const gateCheck = source.indexOf('novelNeedsGate()');
+  const gateCheck = source.indexOf('if(!isAuthor&&novelNeedsGate()');
   const bodyQuery = source.indexOf("select('novel_id,content,pv')");
   assert.ok(safeQuery >= 0);
   assert.ok(gateCheck > safeQuery);
