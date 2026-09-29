@@ -8,10 +8,8 @@ const [api, wrapper, browser] = await Promise.all([
   readFile('novelight-thumbnail-composer.js', 'utf8')
 ]);
 
-const EIGHT_MIB = '8 * 1024 * 1024';
-
 test('thumbnail render upload limit matches the 8 MiB Storage contract', () => {
-  assert.match(api, new RegExp(`const MAX_RENDER_SIZE = ${EIGHT_MIB.replaceAll('*', '\\*')}`));
+  assert.match(api, /const MAX_RENDER_SIZE = 8 \* 1024 \* 1024/u);
   assert.match(api, /fileSize > MAX_RENDER_SIZE/u);
   assert.match(api, /maxFileSize: MAX_RENDER_SIZE/u);
 });
