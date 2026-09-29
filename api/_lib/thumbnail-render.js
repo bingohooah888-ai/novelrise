@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
 const RENDER_BUCKET = 'novel-thumbnail-renders';
-const RENDER_CONTENT_TYPE = 'image/webp';
+const RENDER_CONTENT_TYPES = Object.freeze({
+  'image/webp': 'webp',
+  'image/png': 'png'
+});
+const EXTENSION_CONTENT_TYPES = Object.freeze({
+  webp: 'image/webp',
+  png: 'image/png'
+});
 const MAX_RENDER_SIZE = 2 * 1024 * 1024;
-const PATH_PATTERN = /^renders\/([0-9]+)\/([0-9a-f-]{36})\.webp$/i;
+const PATH_PATTERN = /^renders\/([0-9]+)\/([0-9a-f-]{36})\.(webp|png)$/i;
 const FAILURE_STAGES = new Set([
   'render',
   'prepare-upload',
@@ -76,6 +83,31 @@ export function isWebpSignature(value) {
   );
 }
 
+export function isPngSignature(value) {
+  let bytes;
+  if (value instanceof Uint8Array) {
+    bytes = value;
+  } else if (value instanceof ArrayBuffer) {
+    bytes = new Uint8Array(value);
+  } else if (ArrayBuffer.isView(value)) {
+    bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  } else {
+    return false;
+  }
+
+  return (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  );
+}
+
 async function requireUser({ req, res, supabase }) {
   const token = getBearerToken(req.headers.authorization);
   if (!token) {
@@ -125,9 +157,12 @@ async function prepareUpload({ supabase, user, body }) {
   const novelId = normalizeNovelId(body.novelId);
   const revision = normalizeRevision(body.revision);
   const fileSize = Number(body.fileSize);
+  const contentType = normalizeMime(body.contentType);
+  const extension = RENDER_CONTENT_TYPES[contentType];
   if (
     !novelId ||
     !revision ||
+    !extension ||
     !Number.isInteger(fileSize) ||
     fileSize < 1 ||
     fileSize > MAX_RENDER_SIZE
@@ -151,7 +186,7 @@ async function prepareUpload({ supabase, user, body }) {
     };
   }
 
-  const path = `renders/${novelId}/${randomUUID()}.webp`;
+  const path = `renders/${novelId}/${randomUUID()}.${extension}`;
   const { data, error } = await supabase.storage
     .from(RENDER_BUCKET)
     .createSignedUploadUrl(path);
@@ -169,16 +204,18 @@ async function prepareUpload({ supabase, user, body }) {
       path,
       token: data.token,
       maxFileSize: MAX_RENDER_SIZE,
-      contentType: RENDER_CONTENT_TYPE
+      contentType
     }
   };
 }
 
-async function inspectStoredWebpObject(supabase, path) {
+async function inspectStoredRenderObject(supabase, path) {
   const match = path.match(PATH_PATTERN);
   if (!match) return { exists: false, valid: false, reason: 'path' };
 
   const novelId = match[1];
+  const extension = match[3].toLowerCase();
+  const expectedContentType = EXTENSION_CONTENT_TYPES[extension];
   const fileName = path.slice(path.lastIndexOf('/') + 1);
   const bucket = supabase.storage.from(RENDER_BUCKET);
   const { data: entries, error: listError } = await bucket.list(
@@ -209,10 +246,11 @@ async function inspectStoredWebpObject(supabase, path) {
   const declaredMimes = [metadataMime, downloadedMime].filter(Boolean);
   const mimeValid =
     declaredMimes.length > 0 &&
-    declaredMimes.every((mime) => mime === RENDER_CONTENT_TYPE);
+    declaredMimes.every((mime) => mime === expectedContentType);
 
   const bytes = new Uint8Array(await storedObject.arrayBuffer());
-  const signatureValid = isWebpSignature(bytes);
+  const signatureValid =
+    extension === 'png' ? isPngSignature(bytes) : isWebpSignature(bytes);
   return {
     exists: true,
     valid: mimeValid && signatureValid,
@@ -254,7 +292,7 @@ async function finalizeUpload({ supabase, user, body }) {
     };
   }
 
-  const storedRender = await inspectStoredWebpObject(supabase, path);
+  const storedRender = await inspectStoredRenderObject(supabase, path);
   if (!storedRender.exists) {
     return {
       status: 409,
@@ -266,7 +304,8 @@ async function finalizeUpload({ supabase, user, body }) {
     return {
       status: 415,
       payload: {
-        error: 'Uploaded render must be a real image/webp WebP file',
+        error:
+          'Uploaded render must be a real image matching its declared format',
         reason: storedRender.reason
       }
     };
