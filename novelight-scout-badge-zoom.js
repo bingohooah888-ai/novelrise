@@ -4,7 +4,6 @@
   const CARD_QUALITY = 80;
   const DETAIL_WIDTH = 640;
   const DETAIL_QUALITY = 85;
-  const SEED_WIDTH = 256;
   const originalSourceAttribute = 'data-novelight-original-src';
 
   function isScoutArtworkSource(value) {
@@ -12,13 +11,8 @@
     return (
       /(?:^|\/)assets\/scout-badges\//.test(source) ||
       /(?:^|\/)assets\/founding-authors-badge-2026\.png(?:$|[?#])/.test(source) ||
-      /(?:^|\/)assets\/scout-record\/ranks\//.test(source) ||
-      /(?:^|\/)assets\/scout-record\/light-seed\//.test(source)
+      /(?:^|\/)assets\/scout-record\/ranks\//.test(source)
     );
-  }
-
-  function isLightSeedSource(value) {
-    return /(?:^|\/)assets\/scout-record\/light-seed\//.test(String(value || ''));
   }
 
   function optimizedScoutArtworkSource(value, width = CARD_WIDTH, quality = CARD_QUALITY) {
@@ -80,15 +74,6 @@
             this,
             optimizedScoutArtworkSource(source, DETAIL_WIDTH, DETAIL_QUALITY)
           );
-          return;
-        }
-
-        if (isLightSeedSource(source)) {
-          nativeSetSrc.call(
-            this,
-            optimizedScoutArtworkSource(source, SEED_WIDTH, CARD_QUALITY)
-          );
-          this.decoding = 'async';
           return;
         }
 
@@ -161,16 +146,6 @@
 
   installDeferredBadgeArtworkLoading();
 
-  // LIGHT SEED artwork exists in the static HTML before this script executes.
-  // Re-assign it once through the optimized setter so subsequent delivery uses
-  // the small cached rendition while the approved PNG master remains untouched.
-  document
-    .querySelectorAll('img[src*="assets/scout-record/light-seed/"]')
-    .forEach((image) => {
-      const source = image.getAttribute('src');
-      if (source && !source.startsWith(OPTIMIZER_PREFIX)) image.src = source;
-    });
-
   const sourceHost = document.getElementById('badgeDialogArtwork');
   const sourceImage = document.getElementById('badgeDialogArtworkImage');
   const zoomDialog = document.getElementById('badgeArtworkZoomDialog');
@@ -228,9 +203,6 @@
   }
 
   async function createEnhancedZoomSource() {
-    // Optimized card/detail images keep their approved PNG path in data. The
-    // zoom stage loads that original directly, so no client-side enlargement is
-    // needed and master quality is preserved.
     if (sourceImage.getAttribute(originalSourceAttribute)) return '';
 
     try {
