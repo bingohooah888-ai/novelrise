@@ -42,16 +42,18 @@
 
   function generateHint(total, minSample = MIN_SAMPLE) {
     const threshold = Math.max(1, Number(minSample) || MIN_SAMPLE);
-    const eligible = buildConversionSteps(total).filter(
-      (step) => step.denominator >= threshold && step.rate !== null
-    );
-    if (!eligible.length) {
+    const steps = buildConversionSteps(total);
+    if (
+      steps.some(
+        (step) => step.denominator < threshold || step.rate === null
+      )
+    ) {
       return {
         kind: 'collecting',
         text: `データ蓄積中（各区間${threshold}件以上で数値ヒントを表示します）`
       };
     }
-    const lowest = eligible.reduce((current, step) =>
+    const lowest = steps.reduce((current, step) =>
       step.rate < current.rate ? step : current
     );
     return {
