@@ -3,6 +3,7 @@
 
   const STYLE_ID = 'novelight-prose-style';
   const SELECTOR = '.novelight-page-episode .content:not([data-novelight-illustrations-rendered="true"]), .nl-preview-content, .nl-episode-prose-text';
+  const IMPLICIT_RUBY_BASE = /^[\p{Script=Han}々〆ヵヶ]+/u;
   const LIMITS = Object.freeze({
     rubyBase: 50,
     rubyReading: 30,
@@ -57,6 +58,26 @@
               !/[《》｜]/u.test(reading)
             ) {
               tokens.push({ type: 'ruby', base, reading });
+              cursor = readingClose + 1;
+              continue;
+            }
+          }
+        }
+      }
+
+      const implicitBase = source.slice(cursor).match(IMPLICIT_RUBY_BASE)?.[0] || '';
+      if (implicitBase && implicitBase.length <= LIMITS.rubyBase) {
+        const readingOpen = cursor + implicitBase.length;
+        if (source[readingOpen] === '《') {
+          const readingClose = source.indexOf('》', readingOpen + 1);
+          if (readingClose !== -1) {
+            const reading = source.slice(readingOpen + 1, readingClose);
+            if (
+              isSingleLine(reading) &&
+              reading.length <= LIMITS.rubyReading &&
+              !/[《》｜]/u.test(reading)
+            ) {
+              tokens.push({ type: 'ruby', base: implicitBase, reading });
               cursor = readingClose + 1;
               continue;
             }
