@@ -1,16 +1,14 @@
 {
-  "schemaVersion": 1,
   "activeIssue": 1433,
-  "legacyIssues": [400, 570, 737],
-  "issuer": "bingohooah888-ai",
+  "legacyIssues": [165, 460, 657, 737],
   "maxComments": 100,
   "activeSharedRoutes": [
-    "production-migration-approved-dispatch",
-    "production-migration-preflight",
-    "production-auth-smoke-approved-dispatch",
-    "vercel-admin-allowlist",
-    "production-auth-beta-email-mode",
-    "production-auth-confirmation-email-ja"
+    ".github/workflows/production-migration-approved-dispatch.yml",
+    ".github/workflows/production-migration-preflight.yml",
+    ".github/workflows/production-auth-smoke-approved-dispatch.yml",
+    ".github/workflows/vercel-admin-allowlist.yml",
+    ".github/workflows/production-auth-beta-email-mode.yml",
+    ".github/workflows/production-auth-confirmation-email-ja.yml"
   ],
-  "retiredSharedRoutes": []
+  "retiredLegacyRoutes": [".github/workflows/production-approved-dispatch.yml"]
 }
