@@ -19,7 +19,6 @@ const rollback = await readFile(
   'utf8'
 );
 const editor = await readFile('episode-edit.html', 'utf8');
-const scheduleUi = await readFile('novelight-episode-schedule.js', 'utf8');
 
 test('scheduled publication keeps episodes private drafts until database publication', () => {
   assert.match(migration, /add column scheduled_publish_at timestamptz/u);
@@ -56,15 +55,12 @@ test('scheduled publication rollback refuses to lose active schedules', () => {
   assert.doesNotMatch(rollback, /drop extension[^\n]*pg_cron/u);
 });
 
-test('draft editor exposes scheduling only after the database column exists', () => {
-  assert.match(editor, /novelight-episode-schedule\.js/u);
-  assert.match(
-    scheduleUi,
-    /hasOwnProperty\.call\(episode, 'scheduled_publish_at'\)/u
-  );
-  assert.match(scheduleUi, /novelight_schedule_episode_draft/u);
-  assert.match(scheduleUi, /novelight_cancel_episode_schedule/u);
-  assert.match(scheduleUi, /await saveServerDraft\(\)/u);
-  assert.match(scheduleUi, /requested\.toISOString\(\)/u);
-  assert.doesNotThrow(() => new Function(scheduleUi));
+test('unified draft editor keeps scheduling in the settings drawer', () => {
+  assert.match(editor, /id="openScheduleSettings"/u);
+  assert.match(editor, /id="schedulePane"/u);
+  assert.match(editor, /novelight_schedule_episode_draft/u);
+  assert.match(editor, /novelight_cancel_episode_schedule/u);
+  assert.match(editor, /await saveServerDraft\(\)/u);
+  assert.match(editor, /requested\.toISOString\(\)/u);
+  assert.match(editor, /collaborationEditor\|\|!isDraft\(\)/u);
 });
