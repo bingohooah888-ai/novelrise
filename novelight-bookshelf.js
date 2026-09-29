@@ -3,6 +3,7 @@
 
   const TABLE = 'reader_bookshelf_entries';
   const STYLE_ID = 'novelight-bookshelf-style';
+  const BOOKSHELF_INITIAL_LIMIT = 30;
   const STATES = Object.freeze({
     want_to_read: 'あとで読む',
     reading: '読書中',
@@ -43,14 +44,16 @@
     if (result.error) throw result.error;
     return result.data?.session || null;
   }
-  async function loadEntries(clientInstance, userId) {
-    const result = await clientInstance
+  async function loadEntries(clientInstance, userId, { limit = null } = {}) {
+    let query = clientInstance
       .from(TABLE)
       .select(
         'user_id,novel_id,reading_state,list_name,memo,created_at,updated_at'
       )
       .eq('user_id', userId)
       .order('updated_at', { ascending: false });
+    if (Number.isInteger(limit) && limit > 0) query = query.limit(limit);
+    const result = await query;
     if (result.error) {
       if (isMissingBookshelfTable(result.error)) {
         return { available: false, entries: [] };
@@ -135,6 +138,7 @@
       .nl-book-control{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.nl-book-panel{width:100%;margin-top:8px}
       .nl-book-panel[hidden]{display:none}.nl-book-note{margin:8px 0 0;color:#75695d;font-size:11px;line-height:1.6}
       .nl-bookshelf-unavailable{margin-bottom:16px;padding:12px;border:1px solid #e0d7c7;border-radius:10px;background:#fffaf0;color:#776957;font-size:12px}
+      .nl-bookshelf-load-all{display:block;margin:18px auto 0}
       @media(max-width:640px){
         .nl-bookshelf-toolbar,.nl-shelf-fields{grid-template-columns:1fr}
         .nl-shelf-fields textarea{grid-column:auto}
@@ -294,25 +298,42 @@
     void window.NovelightClient?.recordVisit?.(clientInstance);
     void window.NovelightClient?.claimAcquisition?.(clientInstance);
 
+    const loadAll = new URLSearchParams(window.location.search).get('all') === '1';
+    const initialQueryLimit = BOOKSHELF_INITIAL_LIMIT + 1;
+    let favoritesQuery = clientInstance
+      .from('favorites')
+      .select('novel_id,created_at')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+    if (!loadAll) favoritesQuery = favoritesQuery.limit(initialQueryLimit);
     const [favoritesResult, shelf] = await Promise.all([
-      clientInstance
-        .from('favorites')
-        .select('novel_id,created_at')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false }),
-      loadEntries(clientInstance, session.user.id)
+      favoritesQuery,
+      loadEntries(clientInstance, session.user.id, {
+        limit: loadAll ? null : initialQueryLimit
+      })
     ]);
     if (favoritesResult.error) throw favoritesResult.error;
 
-    const favorites = favoritesResult.data || [];
+    const rawFavorites = favoritesResult.data || [];
+    const rawShelfEntries = shelf.entries || [];
+    const hasMore =
+      !loadAll &&
+      (rawFavorites.length > BOOKSHELF_INITIAL_LIMIT ||
+        rawShelfEntries.length > BOOKSHELF_INITIAL_LIMIT);
+    const favorites = loadAll
+      ? rawFavorites
+      : rawFavorites.slice(0, BOOKSHELF_INITIAL_LIMIT);
+    const shelfEntries = loadAll
+      ? rawShelfEntries
+      : rawShelfEntries.slice(0, BOOKSHELF_INITIAL_LIMIT);
     const favoriteIds = new Set(favorites.map((row) => String(row.novel_id)));
     const entryMap = new Map(
-      shelf.entries.map((entry) => [String(entry.novel_id), entry])
+      shelfEntries.map((entry) => [String(entry.novel_id), entry])
     );
     const ids = [
       ...new Set([
         ...favorites.map((row) => String(row.novel_id)),
-        ...shelf.entries.map((row) => String(row.novel_id))
+        ...shelfEntries.map((row) => String(row.novel_id))
       ])
     ];
 
@@ -428,6 +449,18 @@
     }
 
     applyFilters(list);
+    if (hasMore) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'nl-book-control-button nl-bookshelf-load-all';
+      more.textContent = '本棚をすべて読み込む';
+      more.addEventListener('click', () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('all', '1');
+        window.location.href = url.toString();
+      });
+      list.insertAdjacentElement('afterend', more);
+    }
     return true;
   }
   async function installNovelControl(clientInstance) {
