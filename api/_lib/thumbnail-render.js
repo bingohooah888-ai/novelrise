@@ -194,7 +194,8 @@ async function inspectStoredWebpObject(supabase, path) {
   const entry = (entries ?? []).find((item) => item.name === fileName);
   if (!entry) return { exists: false, valid: false, reason: 'missing' };
 
-  const { data: storedObject, error: downloadError } = await bucket.download(path);
+  const { data: storedObject, error: downloadError } =
+    await bucket.download(path);
   if (downloadError || !storedObject) {
     throw new Error(
       `Thumbnail render download verification failed: ${downloadError?.message || 'missing object'}`
