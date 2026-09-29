@@ -1,0 +1,52 @@
+name: PR 1545 one-shot format
+
+on:
+  push:
+    branches:
+      - perf/full-performance-p0-p2-20260929-v4
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: perf/full-performance-p0-p2-20260929-v4
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Format performance contracts only
+        run: >-
+          npx prettier --write
+          tests/author-beta-onboarding.test.mjs
+          tests/beta-runtime-hardening.test.mjs
+          tests/episode-performance-gate-contract.test.mjs
+          tests/home-discovery-section-36.test.mjs
+          tests/mypage-activity-image-performance.test.mjs
+          tests/novel-detail-performance-gate-contract.test.mjs
+          tests/performance-p2-contracts.test.mjs
+          tests/public-scout-equipped-image-performance.test.mjs
+          tests/ranking-progressive-render-performance.test.mjs
+          tests/scout-badge-zoom-csp-contract.test.mjs
+          tests/scout-image-delivery-contract.test.mjs
+          tests/scout-title-earned-toast.test.mjs
+          tests/scout-title-toast-performance-contract.test.mjs
+      - name: Remove one-shot workflow and commit formatting
+        shell: bash
+        run: |
+          rm .github/workflows/pr1545-one-shot-format.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests .github/workflows/pr1545-one-shot-format.yml
+          git commit -m "Format performance contract tests"
+          git push origin HEAD:perf/full-performance-p0-p2-20260929-v4
