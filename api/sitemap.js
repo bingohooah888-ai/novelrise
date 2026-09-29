@@ -69,9 +69,7 @@ export function createSitemapHandler({ supabase }) {
           (novel) => `/novel.html?id=${encodeURIComponent(novel.id)}`
         ),
         ...episodes
-          .filter((episode) =>
-            publishedNovelIds.has(String(episode.novel_id))
-          )
+          .filter((episode) => publishedNovelIds.has(String(episode.novel_id)))
           .map(
             (episode) =>
               `/episode.html?id=${encodeURIComponent(episode.id)}`
