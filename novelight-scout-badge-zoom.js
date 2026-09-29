@@ -5,6 +5,9 @@
   const CARD_IMMEDIATE_COUNT = 8;
   const DETAIL_WIDTH = 1080;
   const DETAIL_QUALITY = 85;
+  const ZOOM_WIDTH = 1600;
+  const ZOOM_QUALITY = 90;
+  const originalArtworkSources = new WeakMap();
 
   function isScoutArtworkSource(value) {
     const source = String(value || '');
@@ -38,6 +41,7 @@
 
     const nativeSetSrc = descriptor.set;
     const deferredAttribute = 'data-novelight-deferred-src';
+    const originalAttribute = 'data-novelight-original-src';
     let immediateArtworkCount = 0;
 
     let observer;
@@ -63,8 +67,17 @@
           return;
         }
 
+        this.setAttribute(originalAttribute, source);
+        originalArtworkSources.set(this, source);
+
         if (this.id === 'badgeArtworkZoomImage') {
-          nativeSetSrc.call(this, source);
+          nativeSetSrc.call(
+            this,
+            optimizedScoutArtworkSource(source, ZOOM_WIDTH, ZOOM_QUALITY)
+          );
+          this.loading = 'eager';
+          this.decoding = 'async';
+          if ('fetchPriority' in this) this.fetchPriority = 'high';
           return;
         }
 
@@ -271,8 +284,11 @@
 
     renderVersion += 1;
     const currentVersion = renderVersion;
+    const originalSource = originalArtworkSources.get(sourceImage) || '';
 
-    zoomImage.src = displayedSource;
+    zoomImage.src = originalSource
+      ? optimizedScoutArtworkSource(originalSource, ZOOM_WIDTH, ZOOM_QUALITY)
+      : displayedSource;
     zoomImage.alt = sourceImage.alt || '称号紋章';
 
     if (!zoomDialog.open) {
@@ -284,7 +300,7 @@
     }
 
     createEnhancedZoomSource().then((enhancedSource) => {
-      if (!enhancedSource) return;
+      if (!enhancedSource || originalSource) return;
       if (currentVersion !== renderVersion || !zoomDialog.open) return;
       zoomImage.src = enhancedSource;
     });

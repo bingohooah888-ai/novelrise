@@ -1,8 +1,9 @@
 (() => {
   'use strict';
 
-  const SCOUT_TITLE_TOAST_POLL_MS = 3000;
+  const SCOUT_TITLE_TOAST_FALLBACK_POLL_MS = 60000;
   const SCOUT_TITLE_TOAST_VISIBLE_MS = 5000;
+  const SCOUT_RECORD_UPDATED_EVENT = 'novelight:scout-record-updated';
   const CURSOR_PREFIX = 'novelight_scout_title_toast_cursor_v1:';
   const memoryCursors = new Map();
 
@@ -90,11 +91,18 @@
   function watch(client) {
     if (!client || window.__novelightScoutTitleToastWatcherInstalled) return;
     window.__novelightScoutTitleToastWatcherInstalled = true;
-    let inFlight = false;
+
+    const monitorState =
+      window.__novelightScoutTitleToastMonitor ||
+      (window.__novelightScoutTitleToastMonitor = {
+        timer: 0,
+        inFlight: false,
+        listenersInstalled: false
+      });
 
     const check = async () => {
-      if (inFlight || document.hidden) return;
-      inFlight = true;
+      if (monitorState.inFlight || document.visibilityState !== 'visible') return;
+      monitorState.inFlight = true;
       try {
         const { data, error } = await client.auth.getSession();
         if (error || !data?.session?.access_token || !data.session.user?.id)
@@ -135,15 +143,97 @@
       } catch (error) {
         console.error('Scout title earned toast lookup failed', error);
       } finally {
-        inFlight = false;
+        monitorState.inFlight = false;
       }
     };
 
-    window.setInterval(() => void check(), SCOUT_TITLE_TOAST_POLL_MS);
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) void check();
-    });
+    const stopFallbackTimer = () => {
+      if (!monitorState.timer) return;
+      window.clearInterval(monitorState.timer);
+      monitorState.timer = 0;
+    };
+
+    const startFallbackTimer = () => {
+      if (
+        document.visibilityState !== 'visible' ||
+        monitorState.timer
+      ) {
+        return;
+      }
+      monitorState.timer = window.setInterval(
+        () => void check(),
+        SCOUT_TITLE_TOAST_FALLBACK_POLL_MS
+      );
+    };
+
+    if (!monitorState.listenersInstalled) {
+      monitorState.listenersInstalled = true;
+      window.addEventListener('focus', () => {
+        void check();
+        startFallbackTimer();
+      });
+      window.addEventListener(SCOUT_RECORD_UPDATED_EVENT, () => void check());
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') {
+          stopFallbackTimer();
+          return;
+        }
+        void check();
+        startFallbackTimer();
+      });
+    }
+
     void check();
+    startFallbackTimer();
+  }
+
+  function buildOptimizedAssetUrl(originalUrl, width = 96) {
+    const value = String(originalUrl || '').trim();
+    if (!value || value.startsWith('/_vercel/image?')) return value;
+    return (
+      '/_vercel/image?url=' +
+      encodeURIComponent(value) +
+      '&w=' +
+      encodeURIComponent(String(width)) +
+      '&q=85'
+    );
+  }
+
+  function installMypageActivityImageOptimization() {
+    const page = (window.location.pathname.split('/').pop() || 'index.html')
+      .replace(/\.html$/u, '')
+      .toLowerCase();
+    if (page !== 'mypage' || window.__novelightActivityImageOptimizationInstalled)
+      return false;
+
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      'src'
+    );
+    if (!descriptor?.get || !descriptor?.set || descriptor.configurable === false)
+      return false;
+
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      configurable: true,
+      enumerable: descriptor.enumerable,
+      get: descriptor.get,
+      set(value) {
+        const original = String(value || '').trim();
+        if (this.classList?.contains('activity-icon') && original) {
+          this.dataset.originalSrc = original;
+          this.width = 46;
+          this.height = 46;
+          this.loading = 'lazy';
+          this.decoding = 'async';
+          this.fetchPriority = 'low';
+          descriptor.set.call(this, buildOptimizedAssetUrl(original, 96));
+          return;
+        }
+        descriptor.set.call(this, value);
+      }
+    });
+    window.__novelightActivityImageOptimizationInstalled = true;
+    return true;
   }
 
   function installClientHook() {
@@ -165,6 +255,7 @@
     window.__novelightScoutTitleToastClientHookInstalled = true;
   }
 
+  installMypageActivityImageOptimization();
   window.__novelightAttachScoutTitleToastWatcher = watch;
   const pendingClients = Array.isArray(
     window.__novelightScoutTitleToastPendingClients
