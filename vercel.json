@@ -58,10 +58,6 @@
   ],
   "rewrites": [
     {
-      "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
-    },
-    {
       "source": "/beta-authors",
       "destination": "/beta-authors.html"
     },
