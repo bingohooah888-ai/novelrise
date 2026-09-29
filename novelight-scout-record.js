@@ -958,7 +958,9 @@
     void Promise.resolve(client.rpc('novelight_scout_badges'))
       .then((badges) => {
         if (badges.error) throw badges.error;
-        badgeRows = badges.data || [];
+        badgeRows = (badges.data || []).filter(
+          (row) => row.badge_id !== 'limited_founding_author'
+        );
         renderBadges();
       })
       .catch((error) => {
