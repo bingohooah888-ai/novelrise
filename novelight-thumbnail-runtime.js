@@ -4,6 +4,8 @@
   const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
   const STYLE_PATH = 'novelight-thumbnails.css';
+  const THUMBNAIL_WIDTH = 384;
+  const THUMBNAIL_QUALITY = 75;
   const SUPPORTED_PAGES = new Set([
     'index',
     'search',
@@ -14,6 +16,27 @@
   ]);
   let client = null;
   let scheduled = false;
+
+  function optimizedImageUrl(url, width = THUMBNAIL_WIDTH, quality = THUMBNAIL_QUALITY) {
+    const source = String(url || '').trim();
+    if (!source || source.startsWith('/_vercel/image?')) return source;
+
+    try {
+      const parsed = new URL(source, window.location.origin);
+      const sameOrigin = parsed.origin === window.location.origin;
+      const supabaseStorage =
+        parsed.hostname === 'fiepaguycecrredwrcwx.supabase.co' &&
+        parsed.pathname.startsWith('/storage/v1/object/');
+      if (!sameOrigin && !supabaseStorage) return source;
+
+      const optimizerSource = sameOrigin
+        ? `${parsed.pathname}${parsed.search}`
+        : parsed.href;
+      return `/_vercel/image?url=${encodeURIComponent(optimizerSource)}&w=${width}&q=${quality}`;
+    } catch {
+      return source;
+    }
+  }
 
   function pageSlug() {
     const file = window.location.pathname.split('/').pop() || 'index.html';
@@ -63,10 +86,11 @@
   function imageNode(url) {
     if (!url) return null;
     const image = document.createElement('img');
-    image.src = url;
+    image.src = optimizedImageUrl(url);
     image.alt = '';
     image.loading = 'lazy';
     image.decoding = 'async';
+    image.fetchPriority = 'low';
     return image;
   }
 
