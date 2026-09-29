@@ -77,7 +77,7 @@ test('homepage LIGHT SEED shelf uses the all-public seed feed with the same view
   assert.doesNotMatch(home, /light_seed_status/u);
   assert.match(
     home,
-    /Promise\.all\(\[loadDiscovery\(\),loadNewArrivals\(\),loadSeedShelf\(\)\]\)/u
+    /Promise\.all\(\[loadDiscovery\(\),loadNewArrivals\(\),loadSeedShelf\(\),loadRankDiscoveryShelves\(\)\]\)/u
   );
 });
 
