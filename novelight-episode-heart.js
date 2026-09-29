@@ -53,7 +53,8 @@
 
       root.hidden = false;
       const mark = state.hearted ? '♥' : '♡';
-      button.textContent = mark + ' ' + state.heartCount.toLocaleString('ja-JP') + ' ハート';
+      button.textContent =
+        mark + ' ' + state.heartCount.toLocaleString('ja-JP') + ' ハート';
       button.setAttribute('aria-pressed', state.hearted ? 'true' : 'false');
       button.classList.toggle('hearted', state.hearted);
       button.disabled = busy || isAuthor || (Boolean(session) && !state.canHeart);
@@ -80,7 +81,8 @@
         return;
       }
       if (!state.canHeart) {
-        status.textContent = 'この作者との直接のやり取りは現在利用できません。';
+        status.textContent =
+          'この作者との直接のやり取りは現在利用できません。';
         return;
       }
 
@@ -97,7 +99,9 @@
           hearted: result.data?.hearted === true,
           heartCount: Math.max(0, Number(result.data?.heart_count) || 0)
         };
-        status.textContent = state.hearted ? 'ハートを送りました。' : 'ハートを取り消しました。';
+        status.textContent = state.hearted
+          ? 'ハートを送りました。'
+          : 'ハートを取り消しました。';
       } catch (error) {
         if (runtimeMissing(error)) {
           root.hidden = true;
@@ -109,17 +113,20 @@
           return;
         }
         if (message.includes('DIRECT_INTERACTION_UNAVAILABLE')) {
-          status.textContent = 'この作者との直接のやり取りは現在利用できません。';
+          status.textContent =
+            'この作者との直接のやり取りは現在利用できません。';
           try {
             await loadState();
           } catch {}
           return;
         }
         if (message.includes('EPISODE_HEART_SELF_NOT_ALLOWED')) {
-          status.textContent = '作者本人は自分のエピソードへハートできません。';
+          status.textContent =
+            '作者本人は自分のエピソードへハートできません。';
           return;
         }
-        status.textContent = 'ハートを更新できませんでした。時間をおいてお試しください。';
+        status.textContent =
+          'ハートを更新できませんでした。時間をおいてお試しください。';
         console.error('episode heart toggle failed', error);
       } finally {
         busy = false;
@@ -141,5 +148,75 @@
     }
   }
 
+  function installEpisodeComments() {
+    const comments = window.NovelightComments;
+    if (!comments?.mount) return;
+
+    const baseMount = comments.mount;
+    async function mountEpisodeComments(options) {
+      const episodeId = new URLSearchParams(location.search).get('id');
+      if (!episodeId || !options?.client) return baseMount(options);
+
+      const client = options.client;
+      const episodeClient = {
+        rpc: async (name, params) => {
+          if (name === 'novelight_comment_feed') {
+            return client.rpc('novelight_episode_comment_feed', {
+              p_episode_id: String(episodeId),
+              p_limit: params?.p_limit
+            });
+          }
+          if (name === 'novelight_post_novel_comment') {
+            const result = await client.rpc('novelight_post_episode_comment', {
+              p_episode_id: String(episodeId),
+              p_body: params?.p_body,
+              p_is_spoiler: params?.p_is_spoiler === true
+            });
+            if (result.error && runtimeMissing(result.error)) {
+              return {
+                data: null,
+                error: {
+                  code: 'EPISODE_COMMENT_RPC_UNAVAILABLE',
+                  message: 'EPISODE_COMMENT_RPC_UNAVAILABLE'
+                }
+              };
+            }
+            return result;
+          }
+          if (name === 'post_novel_comment') {
+            return {
+              data: null,
+              error: {
+                code: 'EPISODE_COMMENT_RPC_UNAVAILABLE',
+                message: 'EPISODE_COMMENT_RPC_UNAVAILABLE'
+              }
+            };
+          }
+          return client.rpc(name, params);
+        }
+      };
+
+      const result = await baseMount({ ...options, client: episodeClient });
+      const label = document.querySelector(
+        '#novelight-comments .novelight-comments-label'
+      );
+      if (label) label.textContent = 'このエピソードへのコメント';
+      const textarea = document.querySelector(
+        '#novelight-comments .novelight-comments-textarea'
+      );
+      if (textarea) {
+        textarea.placeholder =
+          'このエピソードを読んで感じたことを作者へ届けましょう。';
+      }
+      return result;
+    }
+
+    window.NovelightComments = Object.freeze({
+      ...comments,
+      mount: mountEpisodeComments
+    });
+  }
+
+  installEpisodeComments();
   window.NovelightEpisodeHeart = Object.freeze({ mount });
 })();
