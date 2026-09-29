@@ -122,7 +122,8 @@ test('sitewide runtime renders a compact five-second top-right title toast', asy
   const runtime = await readFile('novelight-scout-title-toast.js', 'utf8');
   const endpoint = await readFile('api/scout-badge-awards.js', 'utf8');
 
-  assert.match(runtime, /SCOUT_TITLE_TOAST_POLL_MS\s*=\s*3000/u);
+  assert.match(runtime, /SCOUT_TITLE_TOAST_FALLBACK_POLL_MS\s*=\s*60000/u);
+  assert.match(runtime, /SCOUT_RECORD_UPDATED_EVENT\s*=\s*'novelight:scout-record-updated'/u);
   assert.match(runtime, /SCOUT_TITLE_TOAST_VISIBLE_MS\s*=\s*5000/u);
   assert.match(runtime, /novelight-scout-title-toast-stack/u);
   assert.match(runtime, /position:fixed;top:18px;right:18px/u);
