@@ -11,8 +11,8 @@ const userId = '11111111-1111-4111-8111-111111111111';
 const novelId = '123';
 const revision = '33333333-3333-4333-8333-333333333333';
 const pngBytes = Uint8Array.from([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-  0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49,
+  0x48, 0x44, 0x52
 ]);
 const pngBlob = new Blob([pngBytes], { type: 'image/png' });
 
@@ -65,7 +65,9 @@ function makeSupabase() {
       return { data: { token: 'signed-upload-token' }, error: null };
     },
     async list(prefix, options) {
-      const fileName = state.preparedPath.slice(state.preparedPath.lastIndexOf('/') + 1);
+      const fileName = state.preparedPath.slice(
+        state.preparedPath.lastIndexOf('/') + 1
+      );
       assert.equal(prefix, `renders/${novelId}`);
       assert.equal(options.search, fileName);
       return {
@@ -129,10 +131,19 @@ async function request(handler, body) {
 
 test('frontend propagates Safari PNG Blob MIME through prepare, signed upload, and finalize', () => {
   assert.match(browser, /contentType = String\(blob\.type \|\| ''\)/u);
-  assert.match(browser, /contentType !== 'image\/webp' && contentType !== 'image\/png'/u);
+  assert.match(
+    browser,
+    /contentType !== 'image\/webp' && contentType !== 'image\/png'/u
+  );
   assert.match(browser, /fileSize: blob\.size,[\s\S]*contentType/u);
-  assert.match(browser, /uploadToSignedUrl\([\s\S]*contentType,[\s\S]*upsert: false/u);
-  assert.match(browser, /action: 'finalize-upload',[\s\S]*path: prepared\.path/u);
+  assert.match(
+    browser,
+    /uploadToSignedUrl\([\s\S]*contentType,[\s\S]*upsert: false/u
+  );
+  assert.match(
+    browser,
+    /action: 'finalize-upload',[\s\S]*path: prepared\.path/u
+  );
 });
 
 test('PNG prepare creates .png path and finalize attaches that exact path', async () => {
@@ -161,7 +172,10 @@ test('PNG prepare creates .png path and finalize attaches that exact path', asyn
 
   assert.equal(finalized.statusCode, 200);
   assert.equal(supabase.state.attached.length, 1);
-  assert.equal(supabase.state.attached[0].name, 'novelight_attach_thumbnail_render');
+  assert.equal(
+    supabase.state.attached[0].name,
+    'novelight_attach_thumbnail_render'
+  );
   assert.equal(
     supabase.state.attached[0].args.p_storage_path,
     prepared.payload.path
@@ -177,5 +191,8 @@ test('thumbnail API path contract is not WebP-only', () => {
   assert.ok(pathPatternLine);
   assert.match(pathPatternLine, /\(webp\|png\)/u);
   assert.doesNotMatch(pathPatternLine, /\\\.webp\$/u);
-  assert.match(api, /extension === 'png' \? isPngSignature\(bytes\) : isWebpSignature\(bytes\)/u);
+  assert.match(
+    api,
+    /extension === 'png' \? isPngSignature\(bytes\) : isWebpSignature\(bytes\)/u
+  );
 });

@@ -41,7 +41,10 @@ test('PNG signature and IHDR dimensions are validated', () => {
 });
 
 test('browser propagates the actual canvas Blob MIME through upload', () => {
-  assert.match(browser, /const mimeType = String\(blob\.type \|\| ''\)\.toLowerCase\(\)/u);
+  assert.match(
+    browser,
+    /const mimeType = String\(blob\.type \|\| ''\)\.toLowerCase\(\)/u
+  );
   assert.match(browser, /DELIVERY_TYPES\.has\(mimeType\)/u);
   assert.match(browser, /mimeType: optimized\.mimeType/u);
   assert.match(browser, /contentType: optimized\.mimeType/u);
