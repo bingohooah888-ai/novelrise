@@ -61,6 +61,9 @@
               cursor = readingClose + 1;
               continue;
             }
+            pushText(tokens, source.slice(cursor, readingClose + 1));
+            cursor = readingClose + 1;
+            continue;
           }
         }
       }
