@@ -51,10 +51,7 @@ export function createSitemapHandler({ supabase }) {
       );
       const authorIds = [
         ...new Set(
-          novels
-            .map((novel) => novel.user_id)
-            .filter(Boolean)
-            .map(String)
+          novels.map((novel) => novel.user_id).filter(Boolean).map(String)
         )
       ];
 
@@ -71,8 +68,7 @@ export function createSitemapHandler({ supabase }) {
         ...episodes
           .filter((episode) => publishedNovelIds.has(String(episode.novel_id)))
           .map(
-            (episode) =>
-              `/episode.html?id=${encodeURIComponent(episode.id)}`
+            (episode) => `/episode.html?id=${encodeURIComponent(episode.id)}`
           ),
         ...authorIds.map(
           (authorId) => `/author.html?id=${encodeURIComponent(authorId)}`
