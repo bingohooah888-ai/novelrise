@@ -121,7 +121,7 @@
       mode === 'seed'
         ? `<div class="seed-count">✦ ${Number(novel.light_seed_count || 0).toLocaleString()}</div>`
         : '';
-    return `<a class="novel-card shelf-card${mode === 'seed' ? ' seed-card' : ''}" href="novel.html?id=${encodeURIComponent(novelId(novel))}">${seedBadge}${coverMarkup(novel)}<div class="card-copy"><div class="genre">${esc(novel.genre || '未設定')}</div><div class="novel-title">${esc(novel.title)}</div><div class="meta">投稿日 ${created} ・ 👁 ${Number(novel.pv || 0).toLocaleString()} ・ ★ ${Number(novel.favorite_count || 0).toLocaleString()}</div></div></a>`;
+    return `<a class="novel-card shelf-card${mode === 'seed' ? ' seed-card' : ''}" href="novel.html?id=${encodeURIComponent(novelId(novel))}">${seedBadge}${coverMarkup(novel)}<div class="card-copy"><div class="genre">${esc(novel.genre || '未設定')}</div><div class="novel-title">${esc(novel.title)}</div><div class="meta">作者 ${esc(novel.author_name || '未設定')} ・ 投稿日 ${created} ・ 👁 ${Number(novel.pv || 0).toLocaleString()} ・ ★ ${Number(novel.favorite_count || 0).toLocaleString()}</div></div></a>`;
   }
 
   function appendRows(rows) {
