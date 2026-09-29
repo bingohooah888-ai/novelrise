@@ -1,7 +1,34 @@
 (() => {
-  function installDeferredBadgeArtworkLoading() {
-    if (!('IntersectionObserver' in window)) return;
+  const OPTIMIZER_PREFIX = '/_vercel/image?';
+  const CARD_WIDTH = 384;
+  const CARD_QUALITY = 80;
+  const DETAIL_WIDTH = 1024;
+  const DETAIL_QUALITY = 88;
 
+  function isScoutArtworkSource(value) {
+    const source = String(value || '');
+    return (
+      /(?:^|\/)assets\/scout-badges\//.test(source) ||
+      /(?:^|\/)assets\/founding-authors-badge-2026\.png(?:$|[?#])/.test(source) ||
+      /(?:^|\/)assets\/scout-record\/ranks\//.test(source)
+    );
+  }
+
+  function optimizedScoutArtworkSource(value, width = CARD_WIDTH, quality = CARD_QUALITY) {
+    const source = String(value || '').trim();
+    if (!source || source.startsWith(OPTIMIZER_PREFIX)) return source;
+
+    try {
+      const parsed = new URL(source, window.location.origin);
+      if (parsed.origin !== window.location.origin) return source;
+      const optimizerSource = `${parsed.pathname}${parsed.search}`;
+      return `${OPTIMIZER_PREFIX}url=${encodeURIComponent(optimizerSource)}&w=${width}&q=${quality}`;
+    } catch {
+      return source;
+    }
+  }
+
+  function installDeferredBadgeArtworkLoading() {
     const descriptor = Object.getOwnPropertyDescriptor(
       HTMLImageElement.prototype,
       'src'
@@ -10,18 +37,6 @@
 
     const nativeSetSrc = descriptor.set;
     const deferredAttribute = 'data-novelight-deferred-src';
-    const excludedIds = new Set([
-      'badgeDialogArtworkImage',
-      'badgeArtworkZoomImage'
-    ]);
-
-    const isBadgeArtworkSource = (value) => {
-      const source = String(value || '');
-      return (
-        /(?:^|\/)assets\/scout-badges\//.test(source) ||
-        /(?:^|\/)assets\/founding-authors-badge-2026\.png(?:$|[?#])/.test(source)
-      );
-    };
 
     let observer;
     const hydrate = (image) => {
@@ -35,19 +50,53 @@
     Object.defineProperty(HTMLImageElement.prototype, 'src', {
       ...descriptor,
       set(value) {
-        if (
-          !excludedIds.has(this.id) &&
-          isBadgeArtworkSource(value)
-        ) {
-          this.setAttribute(deferredAttribute, String(value));
+        const source = String(value || '');
+        if (!isScoutArtworkSource(source)) {
+          nativeSetSrc.call(this, value);
+          return;
+        }
+
+        if (source.startsWith(OPTIMIZER_PREFIX)) {
+          nativeSetSrc.call(this, source);
+          return;
+        }
+
+        if (this.id === 'badgeArtworkZoomImage') {
+          nativeSetSrc.call(this, source);
+          return;
+        }
+
+        if (this.id === 'badgeDialogArtworkImage') {
+          nativeSetSrc.call(
+            this,
+            optimizedScoutArtworkSource(source, DETAIL_WIDTH, DETAIL_QUALITY)
+          );
+          return;
+        }
+
+        const optimizedSource = optimizedScoutArtworkSource(
+          source,
+          CARD_WIDTH,
+          CARD_QUALITY
+        );
+
+        if (!('IntersectionObserver' in window)) {
+          nativeSetSrc.call(this, optimizedSource);
           this.loading = 'lazy';
           this.decoding = 'async';
           if ('fetchPriority' in this) this.fetchPriority = 'low';
           return;
         }
-        nativeSetSrc.call(this, value);
+
+        this.removeAttribute('src');
+        this.setAttribute(deferredAttribute, optimizedSource);
+        this.loading = 'lazy';
+        this.decoding = 'async';
+        if ('fetchPriority' in this) this.fetchPriority = 'low';
       }
     });
+
+    if (!('IntersectionObserver' in window)) return;
 
     const mobile = window.matchMedia('(max-width: 768px)').matches;
     observer = new IntersectionObserver(
@@ -126,8 +175,6 @@
         const up = index - rowStride;
         const down = index + rowStride;
 
-        // Preserve the transparent anti-aliased edge instead of sharpening against
-        // transparent black pixels, which would create a visible halo.
         if (
           source[index + 3] < 64 ||
           source[left + 3] < 64 ||
@@ -174,7 +221,6 @@
         Math.max(Math.max(naturalWidth, naturalHeight), Math.round(displayLimit * density)),
       );
 
-      // If the source already has enough pixels, the browser can render it directly.
       if (Math.max(naturalWidth, naturalHeight) >= targetLongEdge * 0.95) return '';
 
       const scale = targetLongEdge / Math.max(naturalWidth, naturalHeight);
@@ -196,8 +242,6 @@
       sharpenImageData(pixels, width, height);
       context.putImageData(pixels, 0, 0);
 
-      // Production CSP allows data: images but intentionally does not allow blob:.
-      // Keep the enhanced render compatible with that policy instead of weakening CSP.
       const dataUrl = canvas.toDataURL('image/png');
       return dataUrl === 'data:,' ? '' : dataUrl;
     } catch (error) {
@@ -215,13 +259,13 @@
   }
 
   function openZoom() {
-    const source = sourceImage.getAttribute('src');
-    if (sourceHost.hidden || !source) return;
+    const displayedSource = sourceImage.currentSrc || sourceImage.src;
+    if (sourceHost.hidden || !displayedSource) return;
 
     renderVersion += 1;
     const currentVersion = renderVersion;
 
-    zoomImage.src = sourceImage.currentSrc || source;
+    zoomImage.src = displayedSource;
     zoomImage.alt = sourceImage.alt || '称号紋章';
 
     if (!zoomDialog.open) {
@@ -232,9 +276,6 @@
       }
     }
 
-    // The card/detail artwork is intentionally lightweight. For the second-stage
-    // zoom, redraw it once at the actual display size and apply a restrained
-    // sharpening pass so browser enlargement does not look soft or smeared.
     createEnhancedZoomSource().then((enhancedSource) => {
       if (!enhancedSource) return;
       if (currentVersion !== renderVersion || !zoomDialog.open) return;

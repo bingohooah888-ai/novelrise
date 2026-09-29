@@ -2,6 +2,8 @@
   const mode = document.body.dataset.discoveryMode;
   const pageSize = 24;
   const recommendedPoolSize = 96;
+  const coverWidth = 384;
+  const coverQuality = 75;
   const list = document.getElementById('discoveryList');
   const count = document.getElementById('discoveryCount');
   const moreWrap = document.getElementById('discoveryMoreWrap');
@@ -22,6 +24,27 @@
     const el = document.createElement('div');
     el.textContent = value ?? '';
     return el.innerHTML;
+  }
+
+  function optimizedImageUrl(url, width = coverWidth, quality = coverQuality) {
+    const source = String(url || '').trim();
+    if (!source || source.startsWith('/_vercel/image?')) return source;
+
+    try {
+      const parsed = new URL(source, window.location.origin);
+      const sameOrigin = parsed.origin === window.location.origin;
+      const supabaseStorage =
+        parsed.hostname === 'fiepaguycecrredwrcwx.supabase.co' &&
+        parsed.pathname.startsWith('/storage/v1/object/');
+      if (!sameOrigin && !supabaseStorage) return source;
+
+      const optimizerSource = sameOrigin
+        ? `${parsed.pathname}${parsed.search}`
+        : parsed.href;
+      return `/_vercel/image?url=${encodeURIComponent(optimizerSource)}&w=${width}&q=${quality}`;
+    } catch {
+      return source;
+    }
   }
 
   function visitor() {
@@ -84,7 +107,8 @@
   function coverMarkup(novel) {
     const url = String(novel.thumbnail_url || '').trim();
     if (url) {
-      return `<img class="novel-cover-image" src="${esc(url)}" alt="" loading="lazy" decoding="async">`;
+      const optimized = optimizedImageUrl(url);
+      return `<img class="novel-cover-image" src="${esc(optimized)}" alt="" loading="lazy" decoding="async" fetchpriority="low">`;
     }
     return `<div class="novel-cover-placeholder" aria-hidden="true"><span class="cover-mark">✦</span><span class="cover-genre">${esc(novel.genre || 'NOVELIGHT')}</span></div>`;
   }

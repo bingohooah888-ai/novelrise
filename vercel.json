@@ -8,6 +8,43 @@
       "dependabot/**": false
     }
   },
+  "images": {
+    "sizes": [128, 256, 384, 640, 1080, 1600],
+    "localPatterns": [
+      {
+        "pathname": "/assets/**",
+        "search": ""
+      }
+    ],
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "fiepaguycecrredwrcwx.supabase.co",
+        "port": "",
+        "pathname": "/storage/v1/object/**"
+      }
+    ],
+    "minimumCacheTTL": 2678400,
+    "qualities": [70, 75, 80, 85],
+    "formats": ["image/avif", "image/webp"]
+  },
+  "redirects": [
+    {
+      "source": "/assets/scout-record/light-seed/light_seed_gold.png",
+      "destination": "/_vercel/image?url=%2Fassets%2Fscout-record%2Flight-seed-source%2Flight_seed_gold.png&w=256&q=80",
+      "permanent": true
+    },
+    {
+      "source": "/assets/scout-record/light-seed/light_seed_silver.png",
+      "destination": "/_vercel/image?url=%2Fassets%2Fscout-record%2Flight-seed-source%2Flight_seed_silver.png&w=256&q=80",
+      "permanent": true
+    },
+    {
+      "source": "/assets/scout-record/light-seed/light_seed_bronze.png",
+      "destination": "/_vercel/image?url=%2Fassets%2Fscout-record%2Flight-seed-source%2Flight_seed_bronze.png&w=256&q=80",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/beta-authors",
