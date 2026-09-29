@@ -392,7 +392,7 @@
       title.textContent = '挿絵のAI利用申告';
       const help = document.createElement('p');
       help.textContent =
-        '本文のAI利用区分とは別です。挿絵に画像生成AI・AI加工を含むかを作品単位で設定します。';
+        '本文のAI利用区分とは別です。挿絵に画像生成AI・AI加工を含むかを作品単位で設定します。選択後に「設定を保存」を押すと、挿絵を選択できます。';
       aiBox.append(title, help);
 
       if (!isOwner) {
@@ -442,12 +442,13 @@
             value: select.value === 'true'
           });
           await refresh();
-          setStatus('挿絵のAI利用申告を保存しました。');
+          setStatus('挿絵のAI利用申告を保存しました。挿絵を選択できます。');
         } catch (error) {
           console.error(error);
           setStatus('AI利用申告を保存できませんでした。');
         } finally {
           busy = false;
+          render();
         }
       });
       row.append(select, button);
@@ -479,7 +480,7 @@
       note.className = 'episode-illustration-upload-note';
       note.textContent = declarationMissing
         ? isOwner
-          ? '先に挿絵のAI利用申告を設定してください。'
+          ? '先に挿絵のAI利用申告を選択し、「設定を保存」を押してください。保存後すぐに画像を選択できます。'
           : '作品所有者が挿絵のAI利用申告を設定するとアップロードできます。'
         : limitReached
           ? 'このエピソードは挿絵10枚の上限に達しています。'
