@@ -5,6 +5,7 @@
   const textarea = document.getElementById('content');
   const chapterButton = document.getElementById('openChapterSettings');
   const illustrationButton = document.getElementById('openIllustrationEditor');
+  const scheduleButton = document.getElementById('openScheduleSettings');
   const primaryButton = document.getElementById('publish') || document.getElementById('save');
   if (!toolbar || !textarea || !chapterButton || !primaryButton) return;
 
@@ -22,15 +23,21 @@
     .nl-author-popover button{display:block;width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:#403a48;text-align:left;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
     .nl-author-popover button:hover:not(:disabled){background:#f5f2fb}
     .nl-author-popover button:disabled{opacity:.45;cursor:not-allowed}
+    .nl-toolbar-divider{width:1px;height:26px;margin:0 3px;align-self:center;flex:0 0 auto;border-radius:999px;background:#dedbe6}
+    #openScheduleSettings.nl-schedule-action{border-color:#dfd1b7;background:#fffaf0;color:#6c5531}
+    #openScheduleSettings.nl-schedule-action:hover:not(:disabled){border-color:#cfbb96;background:#fff6e5}
+    @media(max-width:720px){.nl-toolbar-divider{display:none}}
     @media(max-width:470px){.nl-author-menu{width:100%}.nl-author-menu>summary{width:100%}.nl-author-popover{position:fixed;left:12px;right:12px;top:auto;bottom:14px;min-width:0}}
   `;
   document.head.appendChild(style);
 
   if (illustrationButton) illustrationButton.textContent = '挿絵';
+  if (scheduleButton) scheduleButton.classList.add('nl-schedule-action');
 
   const status = document.getElementById('status');
   const menus = [];
   const ownerTools = [];
+  const layoutSeparators = [];
 
   function closeMenus(except = null) {
     menus.forEach(menu => { if (menu !== except) menu.open = false; });
@@ -96,6 +103,15 @@
     menus.push(details);
     if (ownerOnly) ownerTools.push(details);
     return details;
+  }
+
+  function insertDivider(beforeNode) {
+    if (!beforeNode) return;
+    const divider = document.createElement('span');
+    divider.className = 'nl-toolbar-divider';
+    divider.setAttribute('aria-hidden', 'true');
+    toolbar.insertBefore(divider, beforeNode);
+    layoutSeparators.push(divider);
   }
 
   function selectedText() {
@@ -165,11 +181,14 @@
   toolbar.insertBefore(characterButton, chapterButton);
   toolbar.insertBefore(notesButton, chapterButton);
   toolbar.insertBefore(decorateMenu, chapterButton);
-  toolbar.insertBefore(moreMenu, primaryButton);
+  insertDivider(chapterButton);
+  toolbar.insertBefore(moreMenu, scheduleButton || primaryButton);
+  insertDivider(scheduleButton || primaryButton);
 
   function syncCollaborationMode() {
     const collaborative = document.body.dataset.collaborationEditor === 'true';
     ownerTools.forEach(tool => { tool.hidden = collaborative; });
+    layoutSeparators.forEach(divider => { divider.hidden = collaborative; });
   }
   syncCollaborationMode();
   new MutationObserver(syncCollaborationMode).observe(document.body, { attributes: true, attributeFilter: ['data-collaboration-editor'] });
