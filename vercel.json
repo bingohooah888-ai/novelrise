@@ -30,6 +30,17 @@
   },
   "redirects": [
     {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "novelrise.vercel.app"
+        }
+      ],
+      "destination": "https://novelight.jp/:path*",
+      "permanent": true
+    },
+    {
       "source": "/assets/scout-record/light-seed/light_seed_gold.png",
       "destination": "/_vercel/image?url=%2Fassets%2Fscout-record%2Flight-seed-source%2Flight_seed_gold.png&w=256&q=80",
       "permanent": true
@@ -46,6 +57,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
     {
       "source": "/beta-authors",
       "destination": "/beta-authors.html"
