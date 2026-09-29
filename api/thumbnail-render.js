@@ -13,7 +13,7 @@ const supabase = createClient(
 );
 
 const handler = createThumbnailRenderHandler({ supabase });
-const LEGACY_RENDER_LIMIT = 2 * 1024 * 1024;
+const LEGACY_RENDER_LIMIT = 8 * 1024 * 1024;
 const IOS_RENDER_LIMIT = 8 * 1024 * 1024;
 
 export default async function thumbnailRender(req, res) {
