@@ -1,0 +1,74 @@
+name: Temporary Ledger v5 CI Fix
+
+on:
+  push:
+    branches:
+      - ops/rotate-production-approval-ledger-v5-final
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/rotate-production-approval-ledger-v5-final
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Update stale active-ledger expectations only
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            tests/production-auth-beta-email-mode.test.mjs
+            tests/production-auth-smoke-approved-dispatch.test.mjs
+            tests/production-migration-approved-dispatch.test.mjs
+            tests/production-migration-preflight.test.mjs
+            tests/vercel-admin-allowlist.test.mjs
+          )
+          for file in "${files[@]}"; do
+            sed -i 's/Issue 737/Issue 1433/g; s/issue\.number == 737/issue.number == 1433/g; s/issue\\\.number == 737/issue\\.number == 1433/g; s/LEDGER_ISSUE: '\''737'\''/LEDGER_ISSUE: '\''1433'\''/g; s/ledger\.activeIssue, 737/ledger.activeIssue, 1433/g; s/github\\\.event\\\.issue\\\.number == 737/github\\.event\\.issue\\.number == 1433/g' "$file"
+          done
+      - name: Format exact affected files
+        run: >-
+          npx prettier --write
+          .github/workflows/production-auth-beta-email-mode.yml
+          .github/workflows/production-auth-confirmation-email-ja.yml
+          .github/workflows/production-auth-smoke-approved-dispatch.yml
+          .github/workflows/production-migration-approved-dispatch.yml
+          .github/workflows/production-migration-preflight.yml
+          tests/production-auth-beta-email-mode.test.mjs
+          tests/production-auth-smoke-approved-dispatch.test.mjs
+          tests/production-migration-approved-dispatch.test.mjs
+          tests/production-migration-preflight.test.mjs
+          tests/vercel-admin-allowlist.test.mjs
+      - name: Remove temporary workflow and commit exact fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/tmp-ledger-v5-ci-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/workflows/production-auth-beta-email-mode.yml \
+            .github/workflows/production-auth-confirmation-email-ja.yml \
+            .github/workflows/production-auth-smoke-approved-dispatch.yml \
+            .github/workflows/production-migration-approved-dispatch.yml \
+            .github/workflows/production-migration-preflight.yml \
+            tests/production-auth-beta-email-mode.test.mjs \
+            tests/production-auth-smoke-approved-dispatch.test.mjs \
+            tests/production-migration-approved-dispatch.test.mjs \
+            tests/production-migration-preflight.test.mjs \
+            tests/vercel-admin-allowlist.test.mjs \
+            .github/workflows/tmp-ledger-v5-ci-fix.yml
+          git diff --cached --check
+          git commit -m 'Fix ledger v5 CI expectations and formatting'
+          git push origin HEAD:ops/rotate-production-approval-ledger-v5-final
