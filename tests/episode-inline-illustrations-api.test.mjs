@@ -75,7 +75,12 @@ test('prepare upload is blocked until the work-level illustration AI declaration
     {
       method: 'POST',
       headers: { authorization: 'Bearer token' },
-      body: { action: 'prepare-upload', episodeId: 42, fileSize: 1000 }
+      body: {
+        action: 'prepare-upload',
+        episodeId: 42,
+        fileSize: 1000,
+        mimeType: 'image/webp'
+      }
     },
     res
   );
@@ -131,7 +136,12 @@ test('prepare upload issues a private-bucket signed upload only after editor acc
     {
       method: 'POST',
       headers: { authorization: 'Bearer token' },
-      body: { action: 'prepare-upload', episodeId: 42, fileSize: 1000 }
+      body: {
+        action: 'prepare-upload',
+        episodeId: 42,
+        fileSize: 1000,
+        mimeType: 'image/webp'
+      }
     },
     res
   );
@@ -183,7 +193,12 @@ test('prepare upload fails closed when signed-upload issuance is rate limited', 
     {
       method: 'POST',
       headers: { authorization: 'Bearer token' },
-      body: { action: 'prepare-upload', episodeId: 42, fileSize: 1000 }
+      body: {
+        action: 'prepare-upload',
+        episodeId: 42,
+        fileSize: 1000,
+        mimeType: 'image/webp'
+      }
     },
     res
   );
