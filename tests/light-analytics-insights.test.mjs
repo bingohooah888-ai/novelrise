@@ -19,7 +19,12 @@ test('conversion funnel uses only valid sequential reader steps', () => {
     favorites: 90
   });
   assert.deepEqual(
-    Array.from(steps, (step) => [step.label, step.numerator, step.denominator, step.rate]),
+    Array.from(steps, (step) => [
+      step.label,
+      step.numerator,
+      step.denominator,
+      step.rate
+    ]),
     [
       ['表示→作品ページ', 100, 200, 50],
       ['作品ページ→第1話10秒', 60, 100, 60],
@@ -53,10 +58,13 @@ test('sufficient samples produce a deterministic numeric hint', () => {
   assert.match(hint.text, /25\.0%/u);
 });
 
-test('insights reuse authenticated analytics output without a new data surface', () => {
+test('insights reuse authenticated output without a new data surface', () => {
   assert.match(analyticsPage, /novelight-analytics\.js/u);
   assert.match(analyticsPage, /novelight-analytics-insights\.js/u);
   assert.match(analyticsRuntime, /auth\.getSession\(\)/u);
   assert.match(analyticsRuntime, /novelight_author_exposure_funnel_v2/u);
-  assert.doesNotMatch(source, /\.rpc\(|\.from\(|URLSearchParams|p_user_id|user_id/u);
+  assert.doesNotMatch(
+    source,
+    /\.rpc\(|\.from\(|URLSearchParams|p_user_id|user_id/u
+  );
 });
