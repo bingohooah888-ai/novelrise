@@ -25,11 +25,13 @@ test('SCOUT badge enhanced zoom uses a Production-CSP-compatible image source', 
   assert.doesNotMatch(zoomSource, /URL\.revokeObjectURL/u);
 });
 
-test('SCOUT badge zoom falls back to the canonical artwork before enhancement', () => {
+test('SCOUT badge zoom reuses the optimized detail artwork before enhancement', () => {
+  assert.match(zoomSource, /const DETAIL_WIDTH = 1024;/u);
   assert.match(
     zoomSource,
-    /sourceImage\.getAttribute\(originalSourceAttribute\) \|\| displayedSource;/u
+    /const displayedSource = sourceImage\.currentSrc \|\| sourceImage\.src;/u
   );
-  assert.match(zoomSource, /zoomImage\.src = originalSource;/u);
+  assert.match(zoomSource, /zoomImage\.src = displayedSource;/u);
+  assert.doesNotMatch(zoomSource, /getAttribute\(originalSourceAttribute\)/u);
   assert.match(zoomSource, /if \(!enhancedSource\) return;/u);
 });
