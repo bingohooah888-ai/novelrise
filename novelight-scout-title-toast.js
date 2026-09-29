@@ -187,6 +187,55 @@
     startFallbackTimer();
   }
 
+  function buildOptimizedAssetUrl(originalUrl, width = 96) {
+    const value = String(originalUrl || '').trim();
+    if (!value || value.startsWith('/_vercel/image?')) return value;
+    return (
+      '/_vercel/image?url=' +
+      encodeURIComponent(value) +
+      '&w=' +
+      encodeURIComponent(String(width)) +
+      '&q=85'
+    );
+  }
+
+  function installMypageActivityImageOptimization() {
+    const page = (window.location.pathname.split('/').pop() || 'index.html')
+      .replace(/\.html$/u, '')
+      .toLowerCase();
+    if (page !== 'mypage' || window.__novelightActivityImageOptimizationInstalled)
+      return false;
+
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      'src'
+    );
+    if (!descriptor?.get || !descriptor?.set || descriptor.configurable === false)
+      return false;
+
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      configurable: true,
+      enumerable: descriptor.enumerable,
+      get: descriptor.get,
+      set(value) {
+        const original = String(value || '').trim();
+        if (this.classList?.contains('activity-icon') && original) {
+          this.dataset.originalSrc = original;
+          this.width = 46;
+          this.height = 46;
+          this.loading = 'lazy';
+          this.decoding = 'async';
+          this.fetchPriority = 'low';
+          descriptor.set.call(this, buildOptimizedAssetUrl(original, 96));
+          return;
+        }
+        descriptor.set.call(this, value);
+      }
+    });
+    window.__novelightActivityImageOptimizationInstalled = true;
+    return true;
+  }
+
   function installClientHook() {
     if (
       window.__novelightScoutTitleToastClientHookInstalled ||
@@ -206,6 +255,7 @@
     window.__novelightScoutTitleToastClientHookInstalled = true;
   }
 
+  installMypageActivityImageOptimization();
   window.__novelightAttachScoutTitleToastWatcher = watch;
   const pendingClients = Array.isArray(
     window.__novelightScoutTitleToastPendingClients
