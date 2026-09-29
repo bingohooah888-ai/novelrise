@@ -40,7 +40,8 @@ test('draft editing saves through the authenticated draft RPC and can publish at
   assert.match(edit, /episode\?\.status\s*===\s*['"]draft['"]/u);
   assert.match(edit, /novelight_save_episode_draft/u);
   assert.match(edit, /p_episode_id:\s*id/u);
-  assert.match(edit, /id="publishDraft"/u);
+  assert.match(edit, /id="save"/u);
+  assert.match(edit, /primaryAction\.textContent='公開'/u);
   assert.match(edit, /novelight_publish_episode_draft_atomic/u);
 });
 
