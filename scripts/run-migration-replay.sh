@@ -122,10 +122,22 @@ echo '::endgroup::'
 echo '::group::Verify work classification tags, RLS, rollback and reapply'
 "${REPLAY[@]}" -f supabase/checks/20260920221000_novel_classification_tags_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/novel-classification-tags.sql
+"${REPLAY[@]}" -f supabase/rollback/20260930210000_search_card_metadata_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260920221000_novel_classification_tags_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260920221000_novel_classification_tags_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260920221000_novel_classification_tags.sql
 "${REPLAY[@]}" -f supabase/checks/20260920221000_novel_classification_tags_postcheck.sql
+echo '::endgroup::'
+
+echo '::group::Verify search card metadata, privacy, rollback and reapply'
+"${REPLAY[@]}" -f supabase/checks/20260930210000_search_card_metadata_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260930210000_search_card_metadata.sql
+"${REPLAY[@]}" -f supabase/checks/20260930210000_search_card_metadata_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/search-card-metadata.sql
+"${REPLAY[@]}" -f supabase/rollback/20260930210000_search_card_metadata_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20260930210000_search_card_metadata_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20260930210000_search_card_metadata.sql
+"${REPLAY[@]}" -f supabase/checks/20260930210000_search_card_metadata_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify Founding and beta participation rollback before behavior fixtures'

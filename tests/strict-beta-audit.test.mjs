@@ -81,7 +81,7 @@ test('neutral search, ranking and author basic analytics aggregate in database R
     'supabase/migrations/20260828224000_author_basic_metrics.sql'
   );
 
-  assert.match(search, /rpc\('novelight_neutral_search'/);
+  assert.match(search, /rpc\('novelight_neutral_search_v2'/);
   assert.match(search, /p_offset:/);
   assert.doesNotMatch(search, /Promise\.all\(rows\.map\(async n=>/);
   assert.doesNotMatch(search, /from\('favorites'\).*count:'exact'/);

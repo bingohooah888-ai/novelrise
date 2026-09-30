@@ -224,6 +224,7 @@
     const title = normalize(row?.title, 500).toLowerCase();
     const description = normalize(row?.description, 20000).toLowerCase();
     const genre = normalize(row?.genre, 100);
+    const customTags = (row?.custom_tag_names || []).map((tag) => normalize(tag, 30).toLowerCase());
     let score = 0;
     const reasons = [];
 
@@ -243,15 +244,17 @@
       const needle = spec.term.toLowerCase();
       const titleHit = Boolean(needle && title.includes(needle));
       const descriptionHit = Boolean(needle && description.includes(needle));
-      if (!titleHit && !descriptionHit) continue;
+      const customTagHit = Boolean(needle && customTags.some((tag) => tag.includes(needle)));
+      if (!titleHit && !descriptionHit && !customTagHit) continue;
 
       const base = spec.kind === 'direct' ? 1 : 0.55;
       if (titleHit) score += 8 * base;
       if (descriptionHit) score += 4 * base;
+      if (customTagHit) score += 4 * base;
 
       if (spec.kind === 'direct') {
         reasons.push(
-          `「${spec.term}」が${titleHit ? 'タイトル' : 'あらすじ'}に一致`
+          `「${spec.term}」が${titleHit ? 'タイトル' : descriptionHit ? 'あらすじ' : '自由タグ'}に一致`
         );
       } else {
         reasons.push(`「${spec.label}」に近い語「${spec.term}」`);
@@ -302,21 +305,10 @@
     const hardTagIds = [...new Set([...selectedTagIds, ...inferredTagIds])].slice(0, 10);
     const hardGenre = plan.genreSource === 'selected' ? plan.genre : null;
     async function neutralRequest(keyword, genre) {
-      if (hardTagIds.length) {
-        const v2 = await client.rpc('novelight_neutral_search_v2', {
-          p_keyword: keyword || null,
-          p_genre: genre || null,
-          p_official_tag_ids: hardTagIds,
-          p_sort: 'new',
-          p_limit: CANDIDATE_LIMIT,
-          p_offset: 0
-        });
-        if (!v2.error) return v2;
-        if (!global.NovelightTags?.isMissingRpc?.(v2.error, 'novelight_neutral_search_v2')) return v2;
-      }
-      return client.rpc('novelight_neutral_search', {
+      return client.rpc('novelight_neutral_search_v2', {
         p_keyword: keyword || null,
         p_genre: genre || null,
+        p_official_tag_ids: hardTagIds,
         p_sort: 'new',
         p_limit: CANDIDATE_LIMIT,
         p_offset: 0

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja" class="novelight-page-account-settings">
 <head>
+  <script src="novelight-author-backgrounds.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow,noarchive">
@@ -50,6 +51,16 @@
       <div class="security-note">
         変更を開始できるのはログイン中の本人だけです。作品・契約・Founding Author資格はAuth user IDへ紐付くため、確認済みメールアドレスを変更しても所有権は変わりません。
       </div>
+    </section>
+
+    <section class="panel background-settings" aria-labelledby="backgroundSettingsTitle" style="margin-top:18px">
+      <h2 id="backgroundSettingsTitle" class="section-title">作者ページの背景</h2>
+      <p class="privacy-note">作品管理など作者向けページの背景表示を変更できます。このブラウザに保存されます。</p>
+      <div role="group" aria-labelledby="backgroundSettingsTitle">
+        <label><input type="radio" name="authorBackground" value="decorative"> NOVELIGHT イラスト背景</label><br>
+        <label><input type="radio" name="authorBackground" value="simple"> シンプル背景</label>
+      </div>
+      <p id="backgroundStatus" class="status" aria-live="polite"></p>
     </section>
 
     <section class="future" aria-labelledby="futureSettingsTitle">
@@ -116,6 +127,20 @@
       }
     });
 
+    const backgroundInputs = document.querySelectorAll('input[name="authorBackground"]');
+    function syncBackgroundInputs() {
+      const mode = document.documentElement.dataset.authorBackground;
+      backgroundInputs.forEach(input => { input.checked = input.value === mode; });
+    }
+    syncBackgroundInputs();
+    backgroundInputs.forEach(input => input.addEventListener('change', () => {
+      if (!input.checked) return;
+      const saved = NovelightAuthorBackground.set(input.value);
+      document.getElementById('backgroundStatus').textContent = saved
+        ? '背景設定をこのブラウザに保存しました。'
+        : '背景を変更しましたが、ブラウザに保存できませんでした。';
+    }));
+    window.addEventListener('storage', syncBackgroundInputs);
     void init();
   </script>
 </body>

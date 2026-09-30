@@ -87,6 +87,31 @@ test('ranking is deterministic and exposes match reasons', () => {
     rows[0].natural_match_reasons.some((reason) => reason.includes('宇宙'))
   );
 });
+test('a custom tag can produce one bounded natural-language match', () => {
+  const plan = {
+    genre: '',
+    officialTags: [],
+    terms: [{ term: '雨の日', label: '雨の日', kind: 'direct' }]
+  };
+  const rows = naturalSearch.rankRows(
+    [
+      {
+        novel_id: 'custom-1',
+        title: '静かな午後',
+        description: '再会の物語',
+        genre: '現代ドラマ',
+        custom_tag_names: ['雨の日', '手紙']
+      }
+    ],
+    plan,
+    24
+  );
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].natural_match_score, 4);
+  assert.deepEqual(rows[0].natural_match_reasons, [
+    '「雨の日」が自由タグに一致'
+  ]);
+});
 test('search only uses existing neutral public search RPC and bounded calls', async () => {
   const calls = [];
   const client = {
@@ -112,7 +137,7 @@ test('search only uses existing neutral public search RPC and bounded calls', as
   });
   assert.ok(result.rows.length > 0);
   assert.ok(calls.length <= 7);
-  assert.ok(calls.every((call) => call.name === 'novelight_neutral_search'));
+  assert.ok(calls.every((call) => call.name === 'novelight_neutral_search_v2'));
   assert.ok(calls.every((call) => call.args.p_sort === 'new'));
   assert.ok(calls.some((call) => call.args.p_genre === '恋愛'));
   assert.ok(calls.some((call) => call.args.p_genre === null));
