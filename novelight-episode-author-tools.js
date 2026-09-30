@@ -26,6 +26,7 @@
     .nl-toolbar-divider{width:1px;height:26px;margin:0 3px;align-self:center;flex:0 0 auto;border-radius:999px;background:#dedbe6}
     #openScheduleSettings.nl-schedule-action{border-color:#dfd1b7;background:#fffaf0;color:#6c5531}
     #openScheduleSettings.nl-schedule-action:hover:not(:disabled){border-color:#cfbb96;background:#fff6e5}
+    .nl-post-character-mount{min-height:90px}
     @media(max-width:720px){.nl-toolbar-divider{display:none}}
     @media(max-width:470px){.nl-author-menu{width:100%}.nl-author-menu>summary{width:100%}.nl-author-popover{position:fixed;left:12px;right:12px;top:auto;bottom:14px;min-width:0}}
   `;
@@ -40,7 +41,9 @@
   const layoutSeparators = [];
 
   function closeMenus(except = null) {
-    menus.forEach(menu => { if (menu !== except) menu.open = false; });
+    menus.forEach(menu => {
+      if (menu !== except) menu.open = false;
+    });
   }
 
   function currentNovelId() {
@@ -48,8 +51,11 @@
     if (direct) return direct;
     const structure = document.getElementById('manageStructureLink');
     if (!structure?.href) return null;
-    try { return new URL(structure.href, location.href).searchParams.get('novel_id'); }
-    catch { return null; }
+    try {
+      return new URL(structure.href, location.href).searchParams.get('novel_id');
+    } catch {
+      return null;
+    }
   }
 
   function showStatus(message) {
@@ -57,13 +63,13 @@
   }
 
   function openAuthorPage(path, key = 'novel_id') {
-    const novelId = currentNovelId();
-    if (!novelId) {
+    const novelIdValue = currentNovelId();
+    if (!novelIdValue) {
       showStatus('作品情報を読み込み中です。少し待ってからもう一度お試しください。');
       return;
     }
     const url = new URL(path, location.href);
-    url.searchParams.set(key, novelId);
+    url.searchParams.set(key, novelIdValue);
     window.open(url.href, '_blank', 'noopener');
   }
 
@@ -99,7 +105,9 @@
       panel.appendChild(button);
     });
     details.append(summary, panel);
-    details.addEventListener('toggle', () => { if (details.open) closeMenus(details); });
+    details.addEventListener('toggle', () => {
+      if (details.open) closeMenus(details);
+    });
     menus.push(details);
     if (ownerOnly) ownerTools.push(details);
     return details;
@@ -159,44 +167,165 @@
     replaceSelection(`《《${selection.text}》》`, selection.start, selection.end);
   }
 
+  function ensureCharacterAssets() {
+    if (!document.querySelector('link[data-novelight-character-editor-css]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'novelight-characters.css';
+      link.dataset.novelightCharacterEditorCss = 'true';
+      document.head.appendChild(link);
+    }
+    if (window.NovelightCharacters) return Promise.resolve();
+
+    const existing = document.querySelector('script[data-novelight-character-editor-script]');
+    if (existing) {
+      return new Promise((resolve, reject) => {
+        existing.addEventListener('load', resolve, { once: true });
+        existing.addEventListener('error', reject, { once: true });
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'novelight-characters.js';
+      script.dataset.novelightCharacterEditorScript = 'true';
+      script.addEventListener('load', resolve, { once: true });
+      script.addEventListener('error', reject, { once: true });
+      document.body.appendChild(script);
+    });
+  }
+
+  function ensurePostCharacterPane() {
+    const drawer = document.getElementById('settingsDrawer');
+    const drawerBody = drawer?.querySelector('.drawer-body');
+    if (!drawer || !drawerBody) return null;
+
+    let pane = document.getElementById('characterPane');
+    if (!pane) {
+      pane = document.createElement('section');
+      pane.id = 'characterPane';
+      pane.className = 'drawer-pane';
+      pane.hidden = true;
+      pane.innerHTML =
+        '<p class="drawer-note">必要に応じて先に下書きを確保し、この話だけの「自動／含める／除外」を設定します。</p><div id="postCharacterMount" class="nl-post-character-mount"></div>';
+      drawerBody.appendChild(pane);
+    }
+    return pane;
+  }
+
+  function showPostCharacterPane() {
+    const drawer = document.getElementById('settingsDrawer');
+    const backdrop = document.getElementById('drawerBackdrop');
+    const title = document.getElementById('drawerTitle');
+    const pane = ensurePostCharacterPane();
+    if (!drawer || !backdrop || !title || !pane) return null;
+
+    drawer.querySelectorAll('.drawer-pane').forEach(item => {
+      item.hidden = item !== pane;
+    });
+    title.textContent = '登場人物';
+    backdrop.hidden = false;
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    return document.getElementById('postCharacterMount');
+  }
+
+  async function openPostCharacterEditor(button) {
+    if (!isPost || typeof ready === 'undefined' || !ready || busy) return;
+    button.disabled = true;
+    try {
+      await waitForAutoSave();
+      const values = authorValues();
+      const validation = validateCommon(values, false);
+      if (validation) {
+        showStatus(validation);
+        return;
+      }
+
+      setBusy(true);
+      showStatus('登場人物設定を準備しています...');
+      const draftId = await persistDraft(values);
+      dirty = false;
+      setSaveState('保存済み');
+      await ensureCharacterAssets();
+      const mountTarget = showPostCharacterPane();
+      if (!mountTarget || !window.NovelightCharacters?.mountEpisodeEditor) {
+        throw new Error('登場人物設定を開けませんでした。');
+      }
+      await window.NovelightCharacters.mountEpisodeEditor({
+        client,
+        episodeId: draftId,
+        novelId,
+        mountTarget
+      });
+      showStatus('');
+    } catch (error) {
+      console.error('post character editor unavailable', error);
+      showStatus(String(error?.message || '登場人物設定を開けませんでした。'));
+    } finally {
+      if (typeof setBusy === 'function') setBusy(false);
+      button.disabled = typeof ready !== 'undefined' ? !ready : false;
+    }
+  }
+
   const characterButton = makeToolButton('人物', () => openAuthorPage('characters.html'), true);
+  const episodeCharacterButton = isPost
+    ? makeToolButton('登場人物', event => void openPostCharacterEditor(event.currentTarget), true)
+    : null;
   const notesButton = makeToolButton('ノート', () => openAuthorPage('story-notes.html'), true);
   const decorateMenu = makeMenu('装飾', [
     { label: 'ルビ', run: addRuby },
     { label: '傍点', run: addEmphasis }
   ]);
-  const moreMenu = makeMenu('その他', [
-    {
-      label: '改稿履歴',
-      disabled: !isEdit,
-      title: isEdit ? '' : 'エピソード保存後に利用できます。',
-      run: () => document.getElementById('historyHost')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    },
-    { label: '下書き一覧', run: () => openAuthorPage('episode-drafts.html') },
-    { label: '限定共有', run: () => openAuthorPage('share-link.html') },
-    { label: '共同執筆', run: () => openAuthorPage('collaboration.html') },
-    { label: '作品設定', run: () => openAuthorPage('novel-edit.html', 'id') }
-  ], true);
+  const moreMenu = makeMenu(
+    'その他',
+    [
+      {
+        label: '改稿履歴',
+        disabled: !isEdit,
+        title: isEdit ? '' : 'エピソード保存後に利用できます。',
+        run: () =>
+          document
+            .getElementById('historyHost')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      },
+      { label: '下書き一覧', run: () => openAuthorPage('episode-drafts.html') },
+      { label: '限定共有', run: () => openAuthorPage('share-link.html') },
+      { label: '共同執筆', run: () => openAuthorPage('collaboration.html') },
+      { label: '作品設定', run: () => openAuthorPage('novel-edit.html', 'id') }
+    ],
+    true
+  );
 
   toolbar.insertBefore(characterButton, chapterButton);
   toolbar.insertBefore(notesButton, chapterButton);
   toolbar.insertBefore(decorateMenu, chapterButton);
   insertDivider(chapterButton);
+  if (episodeCharacterButton) chapterButton.after(episodeCharacterButton);
   toolbar.insertBefore(moreMenu, scheduleButton || primaryButton);
   insertDivider(scheduleButton || primaryButton);
 
   function syncCollaborationMode() {
     const collaborative = document.body.dataset.collaborationEditor === 'true';
-    ownerTools.forEach(tool => { tool.hidden = collaborative; });
-    layoutSeparators.forEach(divider => { divider.hidden = collaborative; });
+    ownerTools.forEach(tool => {
+      tool.hidden = collaborative;
+    });
+    layoutSeparators.forEach(divider => {
+      divider.hidden = collaborative;
+    });
   }
   syncCollaborationMode();
-  new MutationObserver(syncCollaborationMode).observe(document.body, { attributes: true, attributeFilter: ['data-collaboration-editor'] });
+  new MutationObserver(syncCollaborationMode).observe(document.body, {
+    attributes: true,
+    attributeFilter: ['data-collaboration-editor']
+  });
 
   document.addEventListener('click', event => {
     if (!menus.some(menu => menu.contains(event.target))) closeMenus();
   });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenus(); });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeMenus();
+  });
 
   if (isEdit && !document.querySelector('script[data-novelight-episode-visual-editor]')) {
     const visualEditor = document.createElement('script');
