@@ -56,17 +56,48 @@ FULL PREFLIGHTでは次を1回ずつ確認する。
 5. 今回のProduction / Secret / Environment / Branch境界
 6. 現在作業branchが最新mainを基準にしていること
 
-MASTERはcontent-addressed reuseを許可する。同一blob/contentで完全読了証跡が有効なら、main SHAが進んだだけで全文再読しない。
+MASTERはcontent-addressed reuseを許可する。同一blob/contentで完全読了証跡が有効なら、main SHAが進んだだけで全文再読しない。成立時の正式状態名は `MASTER_CONTENT_REUSE` とする。
 
 MASTERまたは安全ゲート内容が変わっている場合、今回の判断が該当本文に依存する場合は再読する。
 
 ## 3. 実行カード
 
-FULL PREFLIGHT、Production mutation、Secret、2FA/OAuth、人間判断が必要な作業では、現在の実行範囲・主要工程・手動操作・待機・次の判断点をユーザーへ簡潔に可視化する。
+FAST PATCHでは、単なる局所変更を理由に重いカードを毎ターン再構築しない。
 
-同じworkstreamの継続でrisk/scopeが変わっていない場合、同じ説明を毎ターン長文で再構築しない。
+FULL PREFLIGHTでは従来の実行ターン安全契約を維持する。
 
-安全境界や承認範囲が変わった場合は更新する。
+### 3.1 FULL PREFLIGHT 実行ターン契約
+
+**実行ターン**とは、ユーザーから1通の新しいメッセージを受け、その応答内で高リスクのNOVELIGHTツール呼び出し・外部操作・ファイル変更を行う1回のアシスタントターンを指す。
+
+FULL PREFLIGHTでツールを使用する実行ターンでは、**そのターンの最初のユーザー可視メッセージを可視実行カードにする。カード送信前のツール呼び出しは禁止する。** 読み取り専用BootstrapもこのFULL PREFLIGHT契約では例外にしない。
+
+可視実行カードは現在のFULL PREFLIGHT実行ターンだけで有効とし、**次のユーザーメッセージを受けた時点で必ず失効する。前ターンのカードを再利用してはならない。** 「はい」「続けて」「次へ」、スクリーンショット、ログ、ユーザー本人の手動操作完了報告も新しいFULL PREFLIGHT実行ターンとして扱う。
+
+FAST PATCHはこの実行ターン・ハードリセット契約の対象外であり、`docs/NLO-EXECUTION-POLICY.md` の軽量機械ゲートを使用する。
+
+### 3.2 可視時間報告 Fail-Closed ゲート
+
+FULL PREFLIGHTで時間見積もりを提示できる実行環境では、可視実行カードに以下を含める。
+
+- `トータル予想時間`
+- `主要工程` と、必要に応じた主要工程ごとの予想所要時間
+- `手動操作` の有無と概算回数
+- `待機要否`
+
+実行環境の上位制約で時間情報を提示できない場合は `Degraded-Continue` を使用できる。これはProduction、Secret、課金、破壊的操作、安全境界不明等のHard Fail-Closedを回避するためには使用できない。
+
+### 3.3 短時間外部待機・自動継続ゲート
+
+FULL PREFLIGHTで外部処理待ちが発生し、概ね10分以内で完了確認できる場合は、可能なら同じworkstream内で自動継続する。ユーザーへ返す場合も「実行中です」だけで返していないことを確認し、次に何を判定するかを明示する。
+
+### 3.4 手動操作3回ゲート
+
+FULL PREFLIGHTでユーザー本人の手動操作が3回を超える見込みなら、CLI/API/Connector/Workflow/Scriptによる自動化経路を先に比較する。同じ手動操作を2回連続で依頼した場合も、3回目へ進む前に自動化できないか再評価する。2FA、OAuth、本人Secret入力など自動化できない操作は例外とする。
+
+### 3.5 工程切替・再見積もりゲート
+
+FULL PREFLIGHTで主要工程が変わる場合、残り工程・全体の予想所要時間・主要工程ごとの予想所要時間・手動操作・待機要否を再評価する。FAST PATCHでは、risk/scopeが変わっていない限りこの重い再見積もりを機械的に要求しない。
 
 ## 4. 現在状態の優先順位
 
@@ -121,6 +152,8 @@ FULL PREFLIGHTでも、Web調査や複数AIレビューを目的化しない。
 - dependency更新を無関係なpatchへ混ぜない
 - Secretをコード・diff・log・PRへ記録しない
 
+画像生成・画像編集は `docs/IMAGE-EXECUTION-GATE.md` の独立したロック/実行許可契約を維持し、FAST PATCH導入を理由に緩和しない。
+
 ## 8. 検証
 
 変更領域に応じて必要なgateだけ実行する。
@@ -172,15 +205,29 @@ FULL PREFLIGHTでも、Web調査や複数AIレビューを目的化しない。
 - CI/security gateを弱める変更
 - rollback不能またはリスク不明
 
-同一承認範囲について、機械的なSHA/challenge更新だけを理由に人間承認を何度も要求しない。機械証跡は自動再生成する。
+### 本番承認・機械証跡自動変換ゲート
 
-## 10. FAST PATCHへの降格禁止
+ユーザーがチャットで明示した「本番承認」を同一承認範囲の唯一の人間承認として扱い、SHA/challenge/Approval Ledger等の機械証跡は自動生成する。同一承認範囲について機械的なSHA/challenge更新だけを理由に人間承認を何度も要求しない。
+
+OWNER本人として機械可読承認を投入できない場合は、人間承認済みという事実を失わず、既存の安全な承認ブリッジまたは手動fallbackへ切り替える。承認済みscopeを拡大してはならない。
+
+## 10. Fast Path互換契約
+
+### SCOUT称号アートワーク Fast Path
+
+MASTERに定義済みのSCOUT称号アートワーク反復実装Fast Pathは維持する。既存の正式素材・provenance・品質contractを変えず、反復登録をまとめて処理できる。
+
+### チャット継続／切替
+
+`docs/CHAT-HANDOFF-PREFLIGHT.md` の基準を維持し、主要工程の安全な区切りでは継続／切替判定を必ず行う。CI・retry・rollback・cleanup等が未完了の途中では、原則として切替を提案しない。
+
+## 11. FAST PATCHへの降格禁止
 
 FULL PREFLIGHT必須条件が判明した後、速度だけを理由にFAST PATCHへ戻さない。
 
 FAST PATCH Machine Gateが拒否したpathを手動で除外・名称変更して回避しない。
 
-## 11. 完了条件
+## 12. 完了条件
 
 - 意図した差分だけが残っている
 - 必要なgateが成功している
