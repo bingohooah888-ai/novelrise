@@ -19,8 +19,7 @@ function compositionQuery(row, error = null) {
 }
 
 test('removes the current unadopted upload', async () => {
-  const attemptedPath =
-    'renders/42/11111111-1111-4111-8111-111111111111.png';
+  const attemptedPath = 'renders/42/11111111-1111-4111-8111-111111111111.png';
   const removed = [];
   const supabase = {
     from(table) {
@@ -58,8 +57,7 @@ test('removes the current unadopted upload', async () => {
 });
 
 test('never removes an adopted render', async () => {
-  const attemptedPath =
-    'renders/42/11111111-1111-4111-8111-111111111111.webp';
+  const attemptedPath = 'renders/42/11111111-1111-4111-8111-111111111111.webp';
   let removeCalled = false;
   const supabase = {
     from() {
@@ -92,8 +90,7 @@ test('never removes an adopted render', async () => {
 });
 
 test('swallows cleanup failure', async () => {
-  const attemptedPath =
-    'renders/42/11111111-1111-4111-8111-111111111111.png';
+  const attemptedPath = 'renders/42/11111111-1111-4111-8111-111111111111.png';
   const supabase = {
     from() {
       return compositionQuery({ render_storage_path: null });
