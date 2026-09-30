@@ -20,7 +20,8 @@ test('browser sends the actual render Blob size without a client-side 2 MiB cap'
 });
 
 test('all clients use the same thumbnail render handler without UA-specific exceptions', () => {
-  assert.match(wrapper, /return handler\(req, res\);/u);
+  assert.match(wrapper, /renderHandler = handler/u);
+  assert.match(wrapper, /await renderHandler\(req, res\);/u);
   assert.doesNotMatch(wrapper, /iPhone/iu);
   assert.doesNotMatch(wrapper, /user-agent/iu);
   assert.doesNotMatch(wrapper, /LEGACY_RENDER_LIMIT|IOS_RENDER_LIMIT/u);
