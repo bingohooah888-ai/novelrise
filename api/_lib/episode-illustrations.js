@@ -430,6 +430,49 @@ async function updateAlt({ supabase, user, body }) {
   return { status: 200, payload: { saved: data === true, altText: alt } };
 }
 
+async function deleteIllustration({ supabase, user, body }) {
+  const episodeId = positiveId(body.episodeId);
+  const novelId = positiveId(body.novelId);
+  const illustrationId = uuid(body.illustrationId);
+  if (!episodeId || !novelId || !illustrationId) {
+    return {
+      status: 400,
+      payload: { error: 'Invalid illustration delete request' }
+    };
+  }
+
+  const { data, error } = await supabase.rpc(
+    'novelight_delete_episode_illustration',
+    {
+      p_episode_id: episodeId,
+      p_novel_id: novelId,
+      p_illustration_id: illustrationId,
+      p_actor_user_id: user.id
+    }
+  );
+  if (error) {
+    const message = String(error.message ?? '');
+    if (message.includes('EPISODE_ILLUSTRATION_IN_USE')) {
+      return {
+        status: 409,
+        payload: { error: 'EPISODE_ILLUSTRATION_IN_USE' }
+      };
+    }
+    if (error.code === '42501') {
+      return {
+        status: 403,
+        payload: { error: 'Illustration edit access required' }
+      };
+    }
+    if (message.includes('EPISODE_ILLUSTRATION_NOT_FOUND')) {
+      return { status: 404, payload: { error: 'Illustration not found' } };
+    }
+    throw error;
+  }
+
+  return { status: 200, payload: { deleted: data === true } };
+}
+
 function referencedIds(content) {
   const ids = new Set();
   const source = String(content ?? '');
@@ -538,6 +581,8 @@ export function createEpisodeIllustrationsHandler({ supabase }) {
         result = await setAiUsage({ supabase, user, body });
       } else if (action === 'update-alt') {
         result = await updateAlt({ supabase, user, body });
+      } else if (action === 'delete') {
+        result = await deleteIllustration({ supabase, user, body });
       } else if (action === 'reader-list') {
         result = await readerList({ supabase, body });
       } else if (action === 'export-bundle') {
