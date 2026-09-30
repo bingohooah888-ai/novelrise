@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://novelight.jp/schemas/nlo-state.schema.json",
+  "title": "NOVELIGHT NLO Runtime State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "policyVersion",
+    "mode",
+    "mainSha",
+    "headSha",
+    "checkedAt",
+    "activeWorkstream",
+    "completedWorkstreams",
+    "checks"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "policyVersion": { "type": "string", "minLength": 1 },
+    "mode": { "enum": ["fast_patch", "full_preflight"] },
+    "mainSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "headSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "productionSha": {
+      "anyOf": [
+        { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        { "type": "null" }
+      ]
+    },
+    "checkedAt": { "type": "string", "format": "date-time" },
+    "activeWorkstream": {
+      "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
+    },
+    "completedWorkstreams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "mainSha", "completedAt"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "mainSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+          "completedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fingerprint", "verifiedAt"],
+        "properties": {
+          "fingerprint": { "type": "string", "minLength": 1 },
+          "verifiedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

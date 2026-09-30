@@ -1,198 +1,200 @@
 # Repository Guidelines
 
-## 最上位方針：NOVELIGHT MASTER
+## 1. 最上位方針
 
-このリポジトリで作業を始める際は、最初に `docs/NOVELIGHT-MASTER.md` を確認する。同ファイルをNOVELIGHTの正式なMASTERファイルかつ最優先のプロジェクト方針として扱う。実装・設計・提案は、MASTERの基本思想「すべての物語に、光を。」、3原則、意思決定原則と矛盾させない。
+`docs/NOVELIGHT-MASTER.md` をNOVELIGHTの正式なMASTERとして扱う。思想・3原則・意思決定原則・安全原則と矛盾する実装を行わない。
 
-MASTERを確認する際は、必ずGitHub上の最新 `main` ブランチにある `docs/NOVELIGHT-MASTER.md` を直接取得し、それを唯一の正本として扱う。プロジェクト添付ファイル、File Library、過去チャット、ローカルコピー、過去に取得したMASTERは参考資料にとどめ、正本として使用しない。内容が食い違う場合は最新 `main` 上のMASTERを優先する。MASTER本文の「最終更新」表記だけで最新版と判断せず、必要に応じて当該ファイルの最新コミットも確認する。GitHubの最新版を確認できない場合は古いコピーで代用せず、「最新版未確認」と明示して作業を止める。ユーザーが単に「MASTERを読んで」「マスターを確認して」と依頼した場合も、この最新版確認を自動実行する。
+ただし、**低リスクの局所変更ごとにMASTER全文を読み直すことは要求しない。** 最新 `main` 上のMASTER blob/contentが既に確認済み内容と同一である場合はcontent-addressed reuseを使用する。全文再読はMASTER内容が変わった場合、今回の判断がMASTER本文に依存する場合、またはFULL PREFLIGHT対象の場合に行う。
 
-MASTERと依頼内容が矛盾する可能性がある場合は、独自解釈で進めず、具体的な矛盾点と影響をユーザーへ指摘して判断を求める。MASTERの根本思想や既存方針を独断で変更・削除してはならない。新しい重要方針が決定した場合は、MASTER更新候補として扱う。
+現在状態の判断では、過去チャット・古いSHA・過去PRより最新 `main` と現在branch diffを優先する。
+
+## 2. NLO永続実行ポリシー
+
+NOVELIGHT実装では `docs/NLO-EXECUTION-POLICY.md` を必ず適用する。
+
+チャット記憶に依存して実行方法を決めない。新しいチャット・別エージェントでもrepoのこのポリシーを基準にする。
+
+NLOとRemote Desktop Commander（DC）は別物である。NLOが指定されている作業でDCをNLOとして代用・混同しない。
+
+## 3. 最初にリスク分類する
+
+実装開始時に、作業を次のどちらかへ分類する。
+
+### FAST PATCH — 低リスクの既定モード
+
+次のような局所・可逆変更はFAST PATCHを使う。
+
+- ボタン、リンク、文言
+- CSS、余白、整列、サイズ
+- ロゴ、画像、アイコン参照
+- 既存UIの小さな表示修正
+- 非機密の小規模バグ修正
+- 依頼範囲が明確なテスト・文書修正
+
+FAST PATCHの固定順序:
+
+1. 最新 `origin/main` を1回だけ確認する
+2. `npm run nlo:fast-patch -- --stage=before --target=<path> --workstream=<name>`
+3. 対象ファイルと直接依存だけ読む
+4. 最新コードですでに依頼を満たす場合はno-opで終了する
+5. 指定範囲だけ変更する
+6. 対象に必要な最小限の検証を行う
+7. diffを確認する
+8. `npm run nlo:fast-patch -- --stage=after --workstream=<name>`
+9. 完了する
+
+FAST PATCHでは、依頼自体が必要としない限りMASTER全文再読、Production SHA確認、過去PR/チャット調査、Web調査、repo全体監査、専門家スウォーム、全テスト、無関係refactorを行わない。
+
+同一タスク内で、入力が変わっていない同じ確認・検索・テストを「念のため」で繰り返さない。
+
+### FULL PREFLIGHT — 高リスク
+
+以下は必ず `docs/WORK-EXECUTION-PREFLIGHT.md` と既存Runtime Gateを使う。
+
+- Auth / session
+- Stripe / 課金 / entitlement
+- Supabase RLS / 権限 / 個人情報 / Secret
+- DB migration / schema / data mutation / deletion
+- Production外部state mutation
+- deploy / workflow / approval / rollback / infrastructure
+- セキュリティ境界
+- dependency追加・更新
+- 横断アーキテクチャ変更
+- 不可逆・rollback困難
+- `AGENTS.md`、NLO policy、Preflight、Runtime Gate等の安全・承認境界変更
+- リスクまたは影響範囲が不明
+- ユーザーが全体監査を要求
+
+FAST PATCH Machine Gateが拒否した場合は、回避せずFULL PREFLIGHTへ昇格する。
+
+## 4. 現在状態と履歴
+
+Source of Truthの優先順位:
+
+1. 現在のユーザー明示指示
+2. 最新 `main` + 現在branch diff
+3. 現行repo policy
+4. `.git/novelight-nlo-state.json`
+5. 過去PR / Issue / chat / log / old SHA
+
+過去履歴は、回帰原因・provenance・過去判断など依頼上必要な場合だけ読む。
+
+「古いチャットにそう書いてあった」ことを理由に最新コードを戻さない。
+
+## 5. 完了済み作業をやり直さない
+
+完了判定は現在repoで行う。
+
+stateに完了記録があり、最新コードが依頼を満たす場合は再実装しない。no-opとして報告して終了する。
+
+完了済みworkstreamを、過去会話の曖昧さだけを理由に再実行しない。
+
+## 6. Scope Lock
+
+FAST PATCHでは依頼された対象と直接依存以外を変更しない。
+
+別の問題を発見しても同じpatchへ混ぜない。重大なsecurity問題の場合のみFULL PREFLIGHTへ昇格する。
+
+ユーザーが「最短」「余計な仕事をしない」「これだけ」と指定した場合は、低リスクである限りScope Lockを特に厳格にする。
+
+## 7. Runtime State
+
+NLOの実行stateは `.git/novelight-nlo-state.json` に保存する。
+
+schemaは `.novelight/nlo-state.schema.json`。
+
+stateは高速化キャッシュでありSource of Truthではない。policy version不一致、破損、main不整合では捨てて必要な確認だけ再構築する。
+
+同じfingerprintの確認を同一状態で反復しない。
+
+## 8. テスト方針
+
+検証量はリスク比例とする。
+
+FAST PATCH:
+
+- 対象に直接必要なlint / syntax / focused test / visual checkのみ
+- diff check
+
+FULL PREFLIGHT:
+
+- 変更領域に応じたCI / DB / RLS / E2E / security checks
+- Production変更は既存安全ゲートを維持
+
+`npm run preflight:full` を通常のUI微修正へ機械的に使わない。
+
+## 9. 実行カード・進捗報告
+
+ユーザー可視の進捗は、長い作業または判断材料があるときに簡潔に行う。
+
+FAST PATCHで、単なるツール利用を理由に毎ターン重いExecution Cardの再構築を必須にしない。前回から作業目的・risk・scopeが変わっていない継続では同じ説明を反復しない。
+
+FULL PREFLIGHT、Production mutation、Secret、2FA/OAuth、人間判断が必要な場面では既存のExecution/Approval Gateを維持する。
 
 ## Runtime Execution Gate
 
-NOVELIGHTの実作業では、MASTER / Preflightを「一度読んだので以後は記憶で運用する」方式に戻さない。コード変更、GitHub、CI/E2E、deploy、Vercel、Supabase、Stripe、外部サービス設定、ファイル更新等の主要工程へ入る直前に `docs/WORK-EXECUTION-PREFLIGHT.md` と `docs/AUTOMATION-CONTINUATION-GATE.md` のRuntime Execution Gateを適用する。
-
-### Content-addressed MASTER reuse
-
-MASTER / Preflightを会話上の記憶だけで流用してはならない。ただし、過去にline 1からconfirmed EOFまで完全読了したMASTERとcurrent main上のMASTER blob / digestが一致し、Preflight / Continuation Gateも変化していないことをfreshに確認できる場合は、MASTERの正式な `MASTER_CONTENT_REUSE` を使用して全文再読を省略できる。main SHAが進んだだけでは同一内容の完全読了証跡を捨てない。
-
-新しいユーザーメッセージでは可視実行カードだけは必ず再発火する。MASTER / 安全ゲート自体の変更、Auth / RLS / Secret / Stripe / Production DB / 破壊的操作への新規拡大、または内容hash不一致ではreuseせず全文再読へ戻る。
-
-SCOUT称号画像の反復追加はMASTERの「SCOUT称号アートワーク反復実装 Fast Path」を優先し、batch取得・batch検証・1回の統合commit/PR/CIを基本とする。
+この節は **FULL PREFLIGHTにのみ適用**する。FAST PATCHは `docs/NLO-EXECUTION-POLICY.md` と `nlo:fast-patch` の機械ゲートを使用し、この重い実行ターン契約を通常の局所変更へ再導入しない。
 
 ### Execution Turn Card Gate
 
-NOVELIGHTでツールを1回でも使用するアシスタントターンは、**そのターンの最初のユーザー可視メッセージを可視実行カードにする。カード送信前のツール呼び出しは禁止する。** GitHub/Connectorの読み取り、最新main取得、状態確認、ツールdiscoveryも例外にしない。
+FULL PREFLIGHTの**実行ターン**では、そのターンの**最初のユーザー可視メッセージ**を可視実行カードにする。**カード送信前のツール呼び出しは禁止する。** 読み取り専用Bootstrapを含む。ユーザーから新しいメッセージを受けた時点で前ターンのカードは失効し、再利用しない。スクリーンショット、ログ、手動操作完了報告も新しいFULL PREFLIGHT実行ターンとして扱う。
 
-可視実行カードは現在のアシスタントターンだけで有効とする。**ユーザーから新しいメッセージを受けた時点で前ターンのカードは失効し、再利用禁止**とする。「はい」「続けて」「次へ」、スクリーンショット、ログ、手動操作完了報告、設定保存・再デプロイ完了報告もすべて新しい実行ターンとしてカードを再発火する。
+FULL PREFLIGHTでは、`npm run runtime:gate -- --phase=<phase>` を使用する。Connector等でローカルコマンドを使えない場合は、現在ターンの可視実行カード後に **GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得**する同等確認を行う。
 
-時間見積もりを提示できる環境のカードには、少なくとも `トータル予想時間`、主要工程別時間、手動操作の有無/概算回数、待機要否を含める。実行環境の上位制約により時間を提示できない場合はDegraded-Continueを使うが、時間を表示できない旨の固定文は出さない。カードは目的、主要工程、手動操作、待機要否、作業量、次のユーザー操作を中心とし、`別作業`は通常状態と異なる等、ユーザー判断に役立つ場合だけ表示する。
+時間見積もり表示が上位制約で使えない場合は **Degraded-Continue** を使用できるが、Production、Secret、課金、破壊的操作、安全境界不明を回避する用途には使わない。
 
-順序は固定する。
+ユーザーの「はい」「続けて」「次へ」が判断を伴わない**単なる続行ボタンになる場合は要求しない**。ただしFULL PREFLIGHTでユーザーへターンを返した後に再開する場合は、新しい可視実行カードを先に送る。
 
-1. 現在の実行ターンの可視実行カードを送信する
-2. 読み取り専用Bootstrapで最新main、MASTER、Preflightを取得する
-3. 禁止・ロック、Production、Secret、Environment / Branch境界を確認する
-4. 自動化経路を比較する
-5. 実作業を開始する
+## 10. AI / 自動化
 
-前ターンのカードを流用した状態、または現在のターンでカードを送信していない状態では、Connector/API/CLI/Workflow/ファイル更新等へ進まない。
+AIやツールを増やすこと自体を目的にしない。速度・品質・安全性を実際に改善する最小構成を使う。
 
-ローカルリポジトリを操作できる実装エージェントは、主要工程の入口でRuntime Gateを実行する。Runtime Gateはカード証跡がなければFAILする。
+低リスク局所変更で複数専門家レビューを一律必須にしない。
 
-通常の時間見積もりカードでは、例えば次を使う。
+認証、RLS、Stripe、権限、個人情報、破壊的migration等では必要に応じて独立レビューを追加する。
 
-```text
-npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --card-steps=<steps> --card-manual=<manual> --card-wait=<wait>
-```
+## 11. GitHub / merge
 
-Degraded-Continueでは `--card-mode=degraded` を追加し、`--card-total` を省略できる。`--card-reason=<reason>` は任意の内部メタデータとし、ユーザー可視カードには要求しない。同等の `NOVELIGHT_EXECUTION_CARD_*` 環境変数も使用できる。
+作業は最新 `main` からwork branchを作成する。直接mainへ編集しない。
 
-このコマンドはカード証跡を確認した後に `origin/main` を再取得し、最新mainのMASTER / Preflightを直接取得可能であることを確認する。`npm run preflight:agent` も実装用Runtime Gateを先頭で実行する。Connector等でローカルコマンドを使えない場合は、**現在のアシスタントターンでカードを先に送信したうえで** GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得する同等確認を行う。
+通常の低リスクPRは、意図した差分のみ、競合なし、必要CI成功、重大review未解決なしを確認できれば条件付き自動merge対象にできる。
 
-主要工程では次の順序を固定する。
+以下は高リスクであり、Productionへ影響するmerge直前にMASTERで定める明示的な「本番承認」を要求する。
 
-1. 可視実行カード：現在の実行ターンの最初のユーザー可視メッセージとして送信する
-2. 正式基準：最新mainのMASTER / Preflightと現在の明示指示を確認する
-3. 禁止・ロック：Production、Secret、破壊的操作、担当ツール境界等を確認する
-4. 自動化経路：Connector / API / CLI / Workflow / ScriptをUI手動操作より先に比較する
-5. 実行：1〜4を満たした場合だけ進む
-
-最新main、禁止・ロック、安全境界を確認できない場合はFail-Closedする。一方、実行環境の上位制約によって時間見積もり等の一部表示だけが禁止・非対応の場合、それだけを理由に安全・可逆・既承認スコープの作業まで停止しない。可能な実行カードを提示してDegraded-Continueする。これをProduction、Secret、課金、破壊的操作等の承認回避には使わない。
-
-ユーザーの「はい」「続けて」「次へ」が判断を伴わない単なる続行ボタンになる場合は要求しない。安全・可逆・既承認スコープ内で、追加の本人判断・Secret・2FA・OAuth・Production承認を必要としない工程は自動継続する。ただしユーザーへ一度ターンを返した後は、次の実行ターンで新しい可視実行カードを送ってから再開する。
-
-## 「MASTER更新」運用
-
-ユーザーが「MASTER更新：〜」と指示した場合は、次の手順を自動で実行する。
-
-1. `docs/NOVELIGHT-MASTER.md` を全文確認する。
-2. 指示内容が既存MASTERと矛盾しないか確認する。
-3. 最も適切な既存章へ、必要最小限の追記または修正を行う。
-4. 同じ内容を重複して追加しない。
-5. 根本思想や既存方針を独断で削除・変更しない。
-6. 文書冒頭の「最終更新」を作業当日の日付へ変更する。
-7. `git diff -- docs/NOVELIGHT-MASTER.md` を実行し、変更差分を確認する。
-8. 変更した章と内容をユーザーへ簡潔に報告する。
-9. commit・push・PR作成はMASTERの承認ゲート一本化に従い、開始済みworkstreamの範囲内では追加の承認を求めず自動継続する。
-10. MASTERへ入れるべきか判断が難しい内容は追加せず、判断が必要な点を示してユーザーへ確認する。
-
-新しい重要方針が決定した場合はMASTER更新候補として扱う。通常のMASTER更新でも上記と同じく、既存内容を不用意に消さず、適切な章への必要最小限の変更、最終更新日の更新、差分確認、変更報告を必須とする。
-
-## β版の開発優先順位
-
-β公開までは完成度を落とさず、寄り道を避ける。MASTERのロードマップ分類に従い、A（バグ、セキュリティ、重大UX、根幹機能）を最優先、Bを次点、Cは記録して後回しにする。「面白そう」だけで機能を追加せず、β版基本方針と検証目的に必要かを判断する。
-
-## AI開発フロー
-
-NOVELIGHTの標準AI開発フローは `docs/development-workflow.md` を基準とする。ChatGPTは戦略・設計・リスク判断、Codexは主な実装担当、自動テストとGitHub Actionsは客観的な検証担当とする。認証、Supabase RLS、Stripe、課金、権限、個人情報、破壊的migration等の高リスク変更は、実用上可能な場合にClaude Code等の別モデルによる独立レビューを追加する。
-
-AIの「問題ない」という判断だけをmerge根拠にしない。CI、RLS統合テスト、Playwright、依存脆弱性監査、CodeQL等の機械検証が失敗している場合は、原因が解決するまで未完了として扱う。AIを増やすこと自体を目的にせず、速度・品質・安全性を実際に改善する最小構成を使う。
-
-commit・push・PR作成は、開始済みworkstreamの範囲内では追加承認を求めず自動継続する。`main`へのmergeは下記の条件付き自動merge方針に従う。高リスクPRやProduction mutationで人間承認が必要な場合も、MASTERの「本番承認」を唯一の人間承認として扱い、GitHub用の機械可読コメント・challenge・Approval Ledger記録はChatGPTまたは自動化がその本番承認から生成する。
-
-## 条件付き自動merge方針
-
-ユーザーが着手を承認した通常の低リスクPRは、追加の「マージして」確認を毎回求めず、以下をすべて満たした時点でsquash mergeしてよい。
-
-- PRがdraftではなく、意図した変更範囲だけを含む
-- 最新 `main` を基準にしており、mergeableで競合がない
-- 必須aggregate status `check` がsuccessしている
-- CodeQLが適用される変更ではCodeQLがsuccessしている
-- 依存関係、DB/RLS、browser E2E等、その差分に必要と判定されたgateがすべてsuccessしている
-- deploy-relevant変更では必要なVercel Preview確認が完了している
-- Secretや資格情報が差分・ログ・PR本文へ混入していない
-- unresolvedなREQUEST_CHANGES、重大なreview指摘、原因未解決の失敗がない
-- 下記の明示承認必須カテゴリに該当しない
-
-通常の低リスクPRの例は、軽微なUI/文言修正、非機密の小規模バグ修正、テスト改善、非安全系ドキュメント修正、挙動を変えない限定的refactor等とする。低リスクPRのmergeに伴ってVercelが通常のProduction deployを行うことは、この条件付き自動merge方針の範囲に含める。ただし外部本番データ・課金・Secret等を変更する追加操作まで自動承認したことにはしない。
-
-次は高リスクとして扱い、Productionへ状態変化を起こし得るmergeの直前にMASTERで定める「本番承認」を得る。別の「マージ承認」「高リスク承認」は要求しない。
-
-- 認証、Supabase RLS、Stripe/課金、料金・entitlement、権限、個人情報、セキュリティ境界
-- Secret、API key、環境変数の秘密値、Production credentialsを扱う変更
-- Supabase migration、本番DB schema/data変更、データ削除・移行、破壊的変更
-- Production workflow、deploy infrastructure、approval gate、rollback/recovery経路を変更するPR
+- Auth / RLS / Stripe / 課金 / 権限 / 個人情報 / security boundary
+- Secret / Production credentials
+- migration / Production DB mutation
+- Production workflow / deploy infrastructure / approval / rollback
 - `docs/NOVELIGHT-MASTER.md` の方針変更
-- `AGENTS.md`、`docs/WORK-EXECUTION-PREFLIGHT.md`、`docs/development-workflow.md` 等で安全ゲート・承認境界・auto-merge条件そのものを変更するPR
-- CI/CodeQL/テストgateを弱める変更、または失敗gateを例外扱いしてmergeしようとする変更
-- リスク分類が曖昧、影響範囲が不明、rollback不能、またはユーザー判断が必要な変更
+- `AGENTS.md`、`docs/NLO-EXECUTION-POLICY.md`、`docs/WORK-EXECUTION-PREFLIGHT.md`、Runtime Gate等の安全・承認境界変更
+- CI/security gateを弱める変更
+- rollback不能またはリスク不明
 
-判定に迷う場合は自動mergeしない。高リスクPRではCIが全成功していても本番承認を省略しないが、同一Production範囲について承認文言を細分化して再要求しない。final head SHAやchallenge等の機械識別子だけが変わった場合は、実質的な承認範囲が同一であることをfresh evidenceで確認したうえで機械証跡だけを再生成する。
+高リスクではCI成功だけで本番承認を省略しない。
 
-## 本番承認から機械証跡への自動変換
+## 12. Project / Commands
 
-ユーザーが明示的に「本番承認」した後、GitHub側の固定workflowがOWNER由来の機械可読コメント、exact SHA、challenge、migration集合等を要求する場合、それらは追加の人間承認ではなく技術的証跡として扱う。
+ユーザー向けページはルートHTML、Vercel APIは `api/`、Node testsは `tests/`、Playwrightは `tests/e2e/`、方針資料は `docs/`、共通運用ロジックは `scripts/`、Supabase migrationは `supabase/migrations/` に置く。
 
-ChatGPT/実行エージェントは、最新main、対象Environment、pending migration、Approval Ledgerの利用状況をread-onlyで再確認し、現在のworkflow contractに一致する機械可読承認を自動生成して、OWNERとして認証された既接続GitHub経路から投入する。ユーザーへ長いJSONコメントのコピー＆ペーストを依頼しない。
+主なコマンド:
 
-接続経路がOWNER本人として投稿できない、対象が一意に定まらない、Production範囲が承認時から実質的に変わった、または既存contractとの不一致がある場合はfail closedする。安全ゲートを緩和したり、GitHub Actions bot等をOWNER相当として扱ったりして回避しない。
+- `npm test`
+- `npm run lint`
+- `npm run syntax:check`
+- `npm run nlo:fast-patch -- --stage=before --target=<path> --workstream=<name>`
+- `npm run nlo:fast-patch -- --stage=after --workstream=<name>`
+- `npm run runtime:gate -- --phase=<phase>` — FULL PREFLIGHT用
+- `npm run preflight:fast`
+- `npm run preflight:full` — 高リスク・横断変更に限定
+- `npm run preflight:db`
+- `npm run preflight:e2e`
 
-## 自動化・効率化原則
+依存関係を変更する場合は `package.json` と `package-lock.json` を同じ変更として扱う。
 
-MASTERの自動化効率基準に従い、「自動化されている」ことだけを完成条件にしない。変更範囲に応じた差分実行、独立処理の並列化、安定した共通処理の再利用、不要な二重実行の削除、失敗した箇所だけを再実行しやすい構造を優先する。
+## 13. 最終原則
 
-安全上意味のある重複は削らない。特に本番DBの承認前確認と承認後再確認、rollback検証、権限境界検証は効率化の名目で省略しない。一方、別Workflowが同じ変更で同じ準備・検査を無意味に繰り返す構造は整理する。新しいWorkflowを足す前に、既存Workflowの責務・path filter・共通スクリプトで解決できないか確認する。
+目的は手順を消化することではなく、NOVELIGHTを完成・成長させることである。
 
-## Project Structure & Module Organization
+安全上意味のある確認は残す。意味のない再確認、履歴再構築、二重実行、範囲外作業は削る。
 
-ユーザー向けページはルートのHTML（`index.html`、`novel.html`、`episode-post.html` など）で、CSSとブラウザJavaScriptも各ページ内にある。Vercel APIは `api/`、Node/RLS自動テストは `tests/`、Playwrightブラウザテストは `tests/e2e/`、正式な方針・設計資料は `docs/` に置く。Supabase関連は、適用SQLを `supabase/migrations/`、復旧SQLを `supabase/rollback/`、適用前後の検証SQLを `supabase/checks/` に配置する。共通のCI/運用ロジックは `scripts/` に置き、同じ処理を複数Workflowへコピペしない。
-
-## Build, Test, and Development Commands
-
-- Node.jsは24系を使用する。`.nvmrc` と `package.json` の `engines.node` を基準にする。
-- `npm ci`: `package-lock.json` に固定された依存関係を再現可能な状態でインストールする。通常の開発・CIではこちらを優先する。
-- `npm install`: 依存関係を追加・更新して `package-lock.json` を更新するときに使用する。
-- `npm test`: Node.js標準テストランナーで `tests/` のJavaScript自動テストを実行する。
-- `npm run lint`: `api/**/*.js`、`tests/**/*.js`、`tests/**/*.mjs` をESLintで検査する。
-- `npm run format`: API、テスト、設定ファイル、JSON/YAMLをPrettierで整形する。これは明示的な修正操作として使う。
-- `npm run format:check`: ファイルを書き換えず、Prettier整形が必要なファイルがないか検査する。
-- `npm run syntax:check`: `api/` と `scripts/` のJavaScript/ESM対象を自動検出して構文検査する。
-- `npm run runtime:gate -- --phase=<phase> --card-visible --card-total=<total> --card-steps=<steps> --card-manual=<manual> --card-wait=<wait>`: 現在の実行ターンのカード証跡を確認したうえで、`origin/main`、MASTER、Preflightの正式基準を機械確認する。
-- `npm run preflight:agent`: 実装エージェント向け。可視実行カード証跡を環境変数等で与えた状態でRuntime Gateを通してからformat fixer、lint、tests、syntax、merge-readiness、whitespace checksを実行する。
-- `npm run preflight` / `npm run preflight:fast`: 通常のread-only preflight。format check、ESLint、Node tests、syntax check、`git diff --check` を実行する。
-- `npm run preflight:fix`: 意図的にPrettier整形を適用してからfast checksを実行する。
-- `npm run preflight:db`: core RLS integration/rollback runnerを実行する。ローカルPostgreSQL test DBが必要。
-- `npm run preflight:e2e`: `tests/e2e/` のPlaywright smoke/async UIを実行する。互換Google Chromeが必要。
-- `npm run preflight:full`: fast + DB + E2E。高リスク・横断変更に限定し、通常変更で機械的に毎回実行しない。
-- `cd tests/e2e && npm ci`: Playwrightの固定依存関係をインストールする。
-- `cd tests/e2e && npm test`: 主要公開ページ、非同期UI、明示的な390px mobile viewport検証を実行する。CIはGitHub Runner既存Chromeを利用し、毎回別Chromiumをダウンロードしない。
-- `npm audit --audit-level=high`: 本体の既知high/critical脆弱性を監査する。
-- `cd tests/e2e && npm audit --audit-level=high`: Playwright側の既知high/critical脆弱性を監査する。
-- `npx serve .`: 静的ページをローカル配信する。
-- `npx vercel dev`: 環境変数を設定した状態で静的ページと `/api/*` を実行する。
-- `supabase migration list --linked`: link済み本番projectのlocal/remote migration historyを比較する。
-- `supabase db push --linked --dry-run`: 本番へ適用されるpending migrationを変更なしで確認する。
-- `git diff --check`: 不正な空白を検査する。
-
-GitHub Actionsの必須status `check` は、最初に変更ファイルを分類し、必要なgateだけを集約する。preflight、core DB/RLS、browser E2E、dependency auditは独立jobとして可能な限り並列実行し、無関係なjobはskipする。skipはclassifierが不要と判定した場合のみ正常として扱い、classifier自体や必要jobのfailureは`check`を失敗させる。
-
-CodeQLはコードを含むPR/main変更と定期scanで実行し、docs-only変更では重複実行しない。Playwrightのrequest-only・非同期UI検証をDesktop/Mobileの全projectで二重実行しない。mobile layoutはテスト内の明示viewportで担保する。Playwright failure時はtrace、screenshot、video、HTML report、console/page/request diagnosticsをartifactへ残す。
-
-RLS統合テストは `scripts/run-rls-integration.sh` をSingle Sourceとして、fixtureへ対象migrationを実際に適用し、閲覧・write権限境界、plan limit、LIGHT SEED、露出系、precheck/postcheck/rollbackを検証する。beta-P0やcontact inquiryのような専用DB gateは、そのWorkflowが実際に参照するファイルだけをpath filterへ含める。専用gate対象の変更だけで無関係なcore DB suiteを起動しない。
-
-依存関係を変更した場合は対応する `package.json` と `package-lock.json` を必ず同じ変更として扱う。`tests/e2e/` は独立したpackage/lockfileを持ち、ブラウザテスト依存を本体runtimeから分離する。現時点でbuildスクリプトはない。追加時は `package.json` と本書を同時に更新する。
-
-Vercelは `main` をproduction branchとして扱い、通常のfeature/fix/security branchはPreview対象とする。デプロイ枠浪費を避けるため、`vercel.json` で `chore/**`、`test/**`、`docs/**`、`dependabot/**` の自動Vercel deploymentを無効化する。これらのbranchで実際にdeploy確認が必要な変更を行った場合は、deploy-enabled branchへ移すか意図的にmanual previewを作成する。
-
-Stagingの現行自動検証は `docs/STAGING-RUNBOOK.md` を基準とし、独立Staging SupabaseとStripe test modeが未接続の間はread-onlyを維持する。独立環境が完成した場合のみ、認証・作品投稿・お気に入り・LIGHT SEED・分析・Stripe test Checkoutを含むwrite E2Eを `STAGING_E2E_READY` で有効化する。本番ホスト・本番Supabase・Stripe live modeをStagingへ混入させない。
-
-本番Supabase migrationの通常運用は `.github/workflows/supabase-production-auto-deploy.yml` を使う。`main` に `supabase/migrations/**` が入ると、今回のpushで追加されたmigrationと本番pendingが完全一致することを確認し、dry-run後に `production-approval` GitHub Environmentで人間の承認を要求する。承認後にpending一致を再確認し、dry-runを再実行してから自動deployし、migration historyとproduction observabilityを検証する。承認前後の再確認は安全上必要な重複なので削除しない。
-
-`.github/workflows/supabase-production.yml` は手動 `status` / `dry-run` / `repair-history` / `deploy` 専用のfallbackであり、通常のmigration pushでは起動しない。`repair-history` は本番適用済みをDB実状態で確認した既知versionに限り、正確な確認文字列 `REPAIR` で実行する。詳細は `docs/SUPABASE-PRODUCTION-DEPLOY.md` を参照する。
-
-## Coding Style & Naming Conventions
-
-HTML/CSS/JavaScriptは2スペースでインデントする。APIではES Modules、`const`、`async`/`await`、セミコロン、JavaScriptのシングルクォート、入力検証の早期returnを基本とする。ページ名はkebab-case、変数はcamelCase、SQL migration名はタイムスタンプ付きsnake_caseとし、既存SQLに合わせてキーワードは小文字にする。
-
-## Testing & High-Risk Changes
-
-変更ページはデスクトップ・モバイル、認証状態、所有者限定状態を手動確認する。安定した公開導線はPlaywright smoke testへ追加し、単純な表示崩れ・主要ページ404・基本フォーム欠落をPR段階で検出する。APIでは不正メソッド、認証不備、成功応答、安全なエラー内容を確認する。チェックアウトAPIの認証・プラン制限・Stripeへ渡すユーザー情報は自動テストで保護し、Stripe webhookは署名付きテストイベントで検証する。DB変更は対応するprecheck、migration、postcheck、非本番でのrollback確認を一組とする。
-
-novels/episodesのSELECT RLSは、公開作品・下書き・親作品の公開状態・所有者境界をCIのPostgreSQL統合テストで確認する。INSERT/UPDATE/DELETE RLSは正式なmigrationとして管理し、認証ユーザー本人だけが自分の作品を作成・更新・削除できること、エピソードは本人所有の作品にだけ追加できること、`user_id` や `novel_id` を使った所有権のすり替えができないことを自動テストする。既存write policyを置き換えるmigrationでは適用前ポリシーをバックアップし、rollbackで復元可能にする。
-
-認証、Supabase RLS、Stripe、課金、権限、個人情報、セキュリティ、データ削除・移行は高リスク変更として扱う。影響範囲、権限境界、失敗時の挙動を確認し、速度より安全性を優先する。破壊的変更の前にバックアップ、rollback、または再生成手段があり、実際に復旧可能かを確認する。高リスク変更ではCodeQL、該当する自動テスト、独立した別モデルレビューを組み合わせ、単一AIの判断に依存しない。
-
-## Commit & Pull Request Guidelines
-
-commitとpushは、ユーザーから明示的な指示があるまで行わない。指示されたcommitは `Fix checkout API authentication` のような短い命令形にし、変更単位を絞る。PRには目的、ユーザー影響、検証内容、関連issue、環境変数・migration・rollback要件を記載し、UI変更にはスクリーンショットを付ける。deploy-relevant変更ではVercel Previewも確認し、依存関係変更では脆弱性監査、高リスク変更ではCodeQLと必要に応じた独立AIレビューを確認する。秘密情報はcommitせず、Stripeキー、Supabase access token、Supabase database password、サーバー専用secret、価格IDはデプロイ環境またはGitHub Secretsで管理する。
+**低リスクは短く、高リスクは厳格に。**
