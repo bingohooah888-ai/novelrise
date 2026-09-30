@@ -26,7 +26,7 @@ test('SCOUT artwork keeps official logical source paths while normal display use
 test('SCOUT detail and zoom use display-appropriate optimized resolutions', () => {
   assert.match(zoomSource, /DETAIL_WIDTH\s*=\s*1080/);
   assert.match(zoomSource, /ZOOM_WIDTH\s*=\s*1600/);
-  assert.match(zoomSource, /ZOOM_QUALITY\s*=\s*90/);
+  assert.match(zoomSource, /ZOOM_QUALITY\s*=\s*85/);
   assert.match(zoomSource, /data-novelight-original-src/);
   assert.match(
     zoomSource,
