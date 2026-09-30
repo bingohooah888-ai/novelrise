@@ -61,9 +61,7 @@ export default async function handler(req, res) {
       supabase.rpc('novelight_public_profile', { p_user_id: id }),
       supabase
         .from('novels')
-        .select(
-          'id,title,genre,description,pv,ai_usage,content_rating,status'
-        )
+        .select('id,title,genre,description,pv,ai_usage,content_rating,status')
         .eq('user_id', id)
         .eq('status', 'published')
         .order('created_at', { ascending: false })
