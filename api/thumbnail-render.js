@@ -25,7 +25,8 @@ export async function runThumbnailRenderEndpoint({
   await cleanupFailedThumbnailFinalize({
     supabase: service,
     body: req?.body,
-    statusCode: res?.statusCode
+    statusCode: res?.statusCode,
+    authorization: req?.headers?.authorization
   });
 }
 
