@@ -16,7 +16,16 @@ end
 $$;
 SQL
 
+# Production already recorded search_card_metadata under the historical
+# 20260930153337 timestamp. The replay script still exercises the original
+# 20260930210000 test fixture path, so provide that path only inside the CI
+# workspace without reintroducing a second repository migration.
+SEARCH_CARD_COMPAT_MIGRATION="supabase/migrations/20260930210000_search_card_metadata.sql"
+cp supabase/migrations/20260930153337_search_card_metadata.sql "$SEARCH_CARD_COMPAT_MIGRATION"
+trap 'rm -f "$SEARCH_CARD_COMPAT_MIGRATION"' EXIT
 bash scripts/run-migration-replay.sh
+rm -f "$SEARCH_CARD_COMPAT_MIGRATION"
+trap - EXIT
 
 DB=(psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}" -d "${PGDATABASE:-novelight_test}" -v ON_ERROR_STOP=1)
 
