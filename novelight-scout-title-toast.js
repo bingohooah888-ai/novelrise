@@ -192,7 +192,7 @@
     if (!value || value.startsWith('/_vercel/image?')) return value;
     return (
       '/_vercel/image?url=' +
-      encodeURIComponent(value) +
+      encodeURIComponent(value.startsWith('assets/') ? '/' + value : value) +
       '&w=' +
       encodeURIComponent(String(width)) +
       '&q=85'
