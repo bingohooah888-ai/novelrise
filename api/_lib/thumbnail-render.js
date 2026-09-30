@@ -9,7 +9,7 @@ const EXTENSION_CONTENT_TYPES = Object.freeze({
   webp: 'image/webp',
   png: 'image/png'
 });
-const MAX_RENDER_SIZE = 2 * 1024 * 1024;
+const MAX_RENDER_SIZE = 8 * 1024 * 1024;
 const PATH_PATTERN = /^renders\/([0-9]+)\/([0-9a-f-]{36})\.(webp|png)$/i;
 const FAILURE_STAGES = new Set([
   'render',

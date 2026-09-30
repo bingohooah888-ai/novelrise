@@ -127,7 +127,7 @@ test('signed upload is issued only for an owned unchanged composition', async ()
   );
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.token, 'signed-token');
-  assert.equal(res.payload.maxFileSize, 2 * 1024 * 1024);
+  assert.equal(res.payload.maxFileSize, 8 * 1024 * 1024);
   assert.equal(res.payload.contentType, 'image/webp');
 });
 
