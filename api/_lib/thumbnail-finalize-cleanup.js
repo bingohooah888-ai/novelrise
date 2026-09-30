@@ -49,9 +49,8 @@ export async function cleanupFailedThumbnailFinalize({
   }
 
   try {
-    const { data: authData, error: authError } = await supabase.auth.getUser(
-      token
-    );
+    const { data: authData, error: authError } =
+      await supabase.auth.getUser(token);
     const userId = authData?.user?.id;
     if (authError || !userId) return false;
 
