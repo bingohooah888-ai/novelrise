@@ -6,7 +6,7 @@
   const DETAIL_WIDTH = 1080;
   const DETAIL_QUALITY = 85;
   const ZOOM_WIDTH = 1600;
-  const ZOOM_QUALITY = 90;
+  const ZOOM_QUALITY = 85;
   const originalArtworkSources = new WeakMap();
 
   function isScoutArtworkSource(value) {
