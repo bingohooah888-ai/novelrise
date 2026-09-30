@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = 'novelrise';
 const CONTROL_ISSUE = 797;
-const LEDGER_ISSUE = 737;
+const LEDGER_ISSUE = 1433;
 const CONTROL_TITLE = '[NOVELIGHT Commander] Local Bridge';
 const CONTROL_MARKER = 'NOVELIGHT_COMMANDER_CONTROL_V1';
 const CONTROL_PREFIX = 'NOVELIGHT_NLO_AUTH_SMOKE_DISPATCH ';
