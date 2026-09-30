@@ -7,20 +7,17 @@ const [browser, deleteApi] = await Promise.all([
   readFile('api/episode-illustration-delete.js', 'utf8')
 ]);
 
-test(
-  'editor exposes permanent delete only through the guarded delete API',
-  () => {
-    assert.match(
-      browser,
-      /const DELETE_API = '\/api\/episode-illustration-delete'/u
-    );
-    assert.match(browser, /remove\.textContent = '削除'/u);
-    assert.match(browser, /global\.confirm/u);
-    assert.match(browser, /EPISODE_ILLUSTRATION_IN_USE/u);
-    assert.match(browser, /アップロード枠が1枚分戻りました/u);
-    assert.match(browser, /本文から外す場合は挿絵IDの行を削除して保存/u);
-  }
-);
+test('editor exposes permanent delete only through the guarded delete API', () => {
+  assert.match(
+    browser,
+    /const DELETE_API = '\/api\/episode-illustration-delete'/u
+  );
+  assert.match(browser, /remove\.textContent = '削除'/u);
+  assert.match(browser, /global\.confirm/u);
+  assert.match(browser, /EPISODE_ILLUSTRATION_IN_USE/u);
+  assert.match(browser, /アップロード枠が1枚分戻りました/u);
+  assert.match(browser, /本文から外す場合は挿絵IDの行を削除して保存/u);
+});
 
 test('delete API authenticates and rechecks episode edit access', () => {
   assert.match(deleteApi, /supabase\.auth\.getUser\(token\)/u);
@@ -39,18 +36,15 @@ test('in-use illustrations are blocked before registry deletion', () => {
   assert.match(deleteApi, /status\(409\)/u);
 });
 
-test(
-  'successful deletion frees the database slot before best-effort storage cleanup',
-  () => {
-    const registryDelete = deleteApi.indexOf(".from('episode_illustrations')");
-    const storageDelete = deleteApi.indexOf('.from(BUCKET)');
-    assert.ok(registryDelete >= 0, 'registry delete must exist');
-    assert.ok(
-      storageDelete > registryDelete,
-      'storage cleanup must follow registry deletion'
-    );
-    assert.match(deleteApi, /\.delete\(\)/u);
-    assert.match(deleteApi, /\.remove\(\[storagePath\]\)/u);
-    assert.match(deleteApi, /storageCleanupPending/u);
-  }
-);
+test('successful deletion frees the database slot before best-effort storage cleanup', () => {
+  const registryDelete = deleteApi.indexOf(".from('episode_illustrations')");
+  const storageDelete = deleteApi.indexOf('.from(BUCKET)');
+  assert.ok(registryDelete >= 0, 'registry delete must exist');
+  assert.ok(
+    storageDelete > registryDelete,
+    'storage cleanup must follow registry deletion'
+  );
+  assert.match(deleteApi, /\.delete\(\)/u);
+  assert.match(deleteApi, /\.remove\(\[storagePath\]\)/u);
+  assert.match(deleteApi, /storageCleanupPending/u);
+});
