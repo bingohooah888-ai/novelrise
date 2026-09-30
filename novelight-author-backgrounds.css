@@ -47,3 +47,51 @@ html[data-author-background="simple"] body #main-content > .head > :is(p,.muted)
   color: #d6dbea !important;
   -webkit-text-fill-color: #d6dbea !important;
 }
+
+/* White-card contrast is shared by both decorative and simple author backgrounds. */
+html body :is(.panel,.card,.editor,.item,.notice) {
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+html body :is(.panel,.card,.editor,.item,.notice) :is(h1,h2,h3,.section-title,.title) {
+  color: #10233a !important;
+  -webkit-text-fill-color: #10233a !important;
+  text-shadow: none !important;
+}
+html body :is(.panel,.card,.editor,.item,.notice) :is(.privacy-note,.help,.muted,.description,.desc,.meta,.status,.security-note,.current-label,.panel-copy,.summary,.note-body,.note-meta,.count) {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+}
+html body :is(.panel,.card,.editor,.item,.notice) :is(label,.legend,.field label,.current-email,.value) {
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155 !important;
+}
+html body :is(.panel,.card,.editor,.item,.notice) a {
+  color: #2563eb !important;
+  -webkit-text-fill-color: #2563eb !important;
+}
+html body :is(.panel,.card,.editor,.item,.notice) :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea) {
+  color: #1f2937 !important;
+  border-color: #cbd5e1 !important;
+}
+html body :is(.panel,.card,.editor,.item,.notice) :is(input,textarea)::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+/* The standalone password-reset block sits directly on the navy simple background. */
+html[data-author-background="simple"] body .future {
+  border-color: #334155 !important;
+}
+html[data-author-background="simple"] body .future h2 {
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+}
+html[data-author-background="simple"] body .future p {
+  color: #cbd5e1 !important;
+  -webkit-text-fill-color: #cbd5e1 !important;
+}
+html[data-author-background="simple"] body .future a {
+  color: #60a5fa !important;
+  -webkit-text-fill-color: #60a5fa !important;
+}
