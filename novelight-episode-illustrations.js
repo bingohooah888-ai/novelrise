@@ -592,11 +592,10 @@
 
         const body = document.createElement('div');
         body.className = 'episode-illustration-item-body';
+        const isUsed = isMarkerUsed(textarea.value, asset.marker);
         const used = document.createElement('div');
         used.className = 'episode-illustration-used';
-        used.textContent = isMarkerUsed(textarea.value, asset.marker)
-          ? '本文で使用中'
-          : '未配置';
+        used.textContent = isUsed ? '本文で使用中' : '未配置';
 
         const alt = document.createElement('input');
         alt.type = 'text';
@@ -639,7 +638,61 @@
             saveAlt.disabled = false;
           }
         });
-        actions.append(insert, saveAlt);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.textContent = '削除';
+        deleteButton.disabled = busy || isUsed;
+        if (isUsed) {
+          deleteButton.title =
+            '本文で使用中です。先に本文から外して保存してください。';
+        }
+        deleteButton.addEventListener('click', async () => {
+          if (busy) return;
+          if (isMarkerUsed(textarea.value, asset.marker)) {
+            setStatus(
+              '本文で使用中のため削除できません。先に本文から外して保存してください。'
+            );
+            renderAssets();
+            return;
+          }
+          if (
+            typeof global.confirm === 'function' &&
+            !global.confirm('この挿絵をアップロード一覧から削除しますか？')
+          ) {
+            return;
+          }
+          busy = true;
+          render();
+          setStatus('挿絵を削除しています...');
+          try {
+            await apiRequest(session, {
+              action: 'delete',
+              episodeId: Number(episode.id),
+              novelId: Number(episode.novel_id),
+              illustrationId: asset.id
+            });
+            await refresh();
+            setStatus('挿絵を削除しました。10枚上限の枠が1つ戻りました。');
+          } catch (error) {
+            console.error(error);
+            if (
+              error?.status === 409 ||
+              String(error?.message || '').includes('EPISODE_ILLUSTRATION_IN_USE')
+            ) {
+              setStatus(
+                '本文で使用中のため削除できません。先に本文から外して保存してください。'
+              );
+            } else {
+              setStatus('挿絵を削除できませんでした。');
+            }
+          } finally {
+            busy = false;
+            render();
+          }
+        });
+
+        actions.append(insert, saveAlt, deleteButton);
         body.append(used, alt, actions);
         card.append(image, body);
         list.appendChild(card);
@@ -648,7 +701,7 @@
       const historyNote = document.createElement('p');
       historyNote.className = 'episode-illustration-history-note';
       historyNote.textContent =
-        '本文から外す場合は挿絵IDの行を削除してください。過去の改稿履歴を壊さないため、画像本体はすぐには物理削除しません。';
+        '本文から外す場合は挿絵IDの行を削除してください。保存後、未配置の挿絵は「削除」で一覧から外せます。過去の改稿履歴を壊さないため、画像本体はすぐには物理削除しません。';
       list.appendChild(historyNote);
     }
 
