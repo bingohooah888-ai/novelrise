@@ -147,7 +147,6 @@ async function disableChromiumCache(page) {
   await session.send('Network.enable');
   await session.send('Network.setCacheDisabled', { cacheDisabled: true });
 }
-
 async function assertExpectedSupabaseSession(page, expectedUserId) {
   const sessions = await page.evaluate(() => {
     const storedSessions = [];
@@ -297,7 +296,6 @@ async function recordDiscoveryImpression(page, novelId, novelTitle) {
         p_visitor_token: null
       });
       if (allocation.error) throw new Error(allocation.error.message);
-
       const matches = (allocation.data || []).filter(
         (row) => String(row.novel_id) === workId && row.title === title
       );
@@ -597,7 +595,6 @@ async function assertCheckoutSession(page, plan) {
     data: { plan }
   });
   const body = await response.json();
-
   expect(
     response.status(),
     `Checkout ${plan} failed: ${JSON.stringify(body)}`
@@ -909,7 +906,7 @@ test('authenticated beta-critical product flow works in target', async ({
       };
       authorPage.on('request', captureDelete);
       authorPage.once('dialog', (dialog) => dialog.accept());
-      await authorPage.locator('.owner-more > summary').click();
+      await authorPage.locator('#ownerActions > .owner-more > summary').click();
       await authorPage.locator('#deleteNovel').click();
       await authorPage.waitForURL(/\/my-novels\.html$/);
       authorPage.off('request', captureDelete);
