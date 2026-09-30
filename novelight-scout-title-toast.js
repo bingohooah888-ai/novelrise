@@ -187,7 +187,7 @@
     startFallbackTimer();
   }
 
-  function buildOptimizedAssetUrl(originalUrl, width = 96) {
+  function buildOptimizedAssetUrl(originalUrl, width = 128) {
     const value = String(originalUrl || '').trim();
     if (!value || value.startsWith('/_vercel/image?')) return value;
     return (
@@ -226,7 +226,7 @@
           this.loading = 'lazy';
           this.decoding = 'async';
           this.fetchPriority = 'low';
-          descriptor.set.call(this, buildOptimizedAssetUrl(original, 96));
+          descriptor.set.call(this, buildOptimizedAssetUrl(original, 128));
           return;
         }
         descriptor.set.call(this, value);
