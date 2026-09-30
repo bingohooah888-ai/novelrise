@@ -197,4 +197,11 @@
     if (!menus.some(menu => menu.contains(event.target))) closeMenus();
   });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenus(); });
+
+  if (isEdit && !document.querySelector('script[data-novelight-episode-visual-editor]')) {
+    const visualEditor = document.createElement('script');
+    visualEditor.src = 'novelight-episode-visual-editor.js';
+    visualEditor.dataset.novelightEpisodeVisualEditor = 'true';
+    document.body.appendChild(visualEditor);
+  }
 })();
