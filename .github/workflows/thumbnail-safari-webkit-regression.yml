@@ -6,6 +6,8 @@ on:
     paths:
       - novelight-thumbnail-composer.js
       - api/_lib/thumbnail-render.js
+      - api/_lib/thumbnail-finalize-cleanup.js
+      - api/thumbnail-render.js
       - tests/e2e/fixtures/thumbnail-safari-png-fallback.html
       - tests/e2e/specs/thumbnail-safari-png-fallback.spec.js
       - tests/e2e/playwright.thumbnail-safari.config.mjs
@@ -15,6 +17,8 @@ on:
     paths:
       - novelight-thumbnail-composer.js
       - api/_lib/thumbnail-render.js
+      - api/_lib/thumbnail-finalize-cleanup.js
+      - api/thumbnail-render.js
       - tests/e2e/fixtures/thumbnail-safari-png-fallback.html
       - tests/e2e/specs/thumbnail-safari-png-fallback.spec.js
       - tests/e2e/playwright.thumbnail-safari.config.mjs
