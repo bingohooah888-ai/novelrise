@@ -17,8 +17,35 @@ else
   if [ -f novelight-client.js ]; then
     echo 'novelight-client.js' >> "$routes_file"
   fi
-  sort -u -o "$routes_file" "$routes_file"
 fi
+
+# The homepage can look like raw HTML while still passing the old smoke when
+# its linked CSS/images are unavailable. Always verify the critical static
+# dependency chain used by the public home surface.
+critical_routes=(
+  'novelight-theme.css'
+  'novelight-theme-base.css'
+  'novelight-legacy-surfaces.css'
+  'novelight-font-unification.css'
+  'novelight-readability.css'
+  'novelight-discovery-spacing.css'
+  'novelight-public-dark.css'
+  'novelight-brand-refinement.css'
+  'novelight-home-thumbnails.css'
+  'novelight-accessibility.css'
+  'novelight-client.js'
+  'auth-reader-context.js'
+  'novelight-user-safety.js'
+  'assets/vendor/supabase-js-2.112.3.js'
+  'assets/novelight-header-logo.webp'
+)
+
+for route in "${critical_routes[@]}"; do
+  if [ -f "$route" ]; then
+    echo "$route" >> "$routes_file"
+  fi
+done
+sort -u -o "$routes_file" "$routes_file"
 
 if [ ! -s "$routes_file" ]; then
   echo 'No static routes require repository-to-production comparison.'
