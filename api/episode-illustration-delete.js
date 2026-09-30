@@ -56,7 +56,8 @@ export default async function episodeIllustrationDelete(req, res) {
     return;
   }
 
-  const { data: authData, error: authError } = await supabase.auth.getUser(token);
+  const { data: authData, error: authError } =
+    await supabase.auth.getUser(token);
   const user = authError ? null : authData?.user;
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -107,7 +108,8 @@ export default async function episodeIllustrationDelete(req, res) {
     if (markerUsed(episode.content, illustrationId)) {
       res.status(409).json({
         error: 'EPISODE_ILLUSTRATION_IN_USE',
-        message: '本文で使用中の挿絵は削除できません。本文から外して保存してから削除してください。'
+        message:
+          '本文で使用中の挿絵は削除できません。本文から外して保存してから削除してください。'
       });
       return;
     }
