@@ -12,14 +12,14 @@ const mypage = await readFile(
   'utf8'
 );
 
-test('mypage 46px activity icons use a 96px Vercel display derivative', () => {
+test('mypage 46px activity icons use a 128px Vercel display derivative', () => {
   assert.match(
     mypage,
     /icon\.className='activity-icon';icon\.src=activityIcon\(row\.activity_type\)/
   );
   assert.match(runtime, /installMypageActivityImageOptimization/);
   assert.match(runtime, /this\.classList\?\.contains\('activity-icon'\)/);
-  assert.match(runtime, /buildOptimizedAssetUrl\(original, 96\)/);
+  assert.match(runtime, /buildOptimizedAssetUrl\(original, 128\)/);
   assert.match(runtime, /\/_vercel\/image\?url=/);
 });
 
