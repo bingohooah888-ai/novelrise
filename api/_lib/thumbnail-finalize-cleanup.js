@@ -16,7 +16,10 @@ export async function cleanupFailedThumbnailFinalize({
   body,
   statusCode
 }) {
-  if (!failedStatus(statusCode) || String(body?.action ?? '') !== 'finalize-upload') {
+  if (
+    !failedStatus(statusCode) ||
+    String(body?.action ?? '') !== 'finalize-upload'
+  ) {
     return false;
   }
 
@@ -33,11 +36,14 @@ export async function cleanupFailedThumbnailFinalize({
       .maybeSingle();
 
     if (compositionError) {
-      console.error('Failed thumbnail finalize cleanup could not verify adoption', {
-        novelId,
-        path,
-        error: compositionError.message
-      });
+      console.error(
+        'Failed thumbnail finalize cleanup could not verify adoption',
+        {
+          novelId,
+          path,
+          error: compositionError.message
+        }
+      );
       return false;
     }
 
