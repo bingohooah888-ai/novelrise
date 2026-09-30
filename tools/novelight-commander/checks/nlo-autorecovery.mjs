@@ -46,6 +46,16 @@ test("NLO repair script restores both bridge and tunnel supervisors", async () =
   assert.match(source, /github-token[.]dpapi/);
 });
 
+test("NLO MCP startup triggers Windows bridge/watchdog self-repair", async () => {
+  const source = await read("src/x-bootstrap.js");
+  assert.match(source, /process[.]platform !== 'win32'/);
+  assert.match(source, /repair-nlo-services[.]ps1/);
+  assert.match(source, /install-nlo-autorecovery[.]ps1/);
+  assert.match(source, /windowsHide: true/);
+  assert.match(source, /child[.]unref\(\)/);
+  assert.match(source, /NOVELIGHT_DISABLE_STARTUP_AUTORECOVERY/);
+});
+
 test("NLO bridge publishes heartbeat and self-restarts after repeated poll failures", async () => {
   const source = await read("src/github-bridge-core.js");
   assert.match(source, /heartbeat[.]json/);
