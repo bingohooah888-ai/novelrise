@@ -53,11 +53,14 @@ export async function cleanupFailedThumbnailFinalize({
       .from(RENDER_BUCKET)
       .remove([path]);
     if (removeError) {
-      console.error('Failed thumbnail finalize cleanup could not remove render', {
-        novelId,
-        path,
-        error: removeError.message
-      });
+      console.error(
+        'Failed thumbnail finalize cleanup could not remove render',
+        {
+          novelId,
+          path,
+          error: removeError.message
+        }
+      );
       return false;
     }
     return true;
