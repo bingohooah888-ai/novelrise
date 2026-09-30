@@ -35,7 +35,7 @@ test('Home new arrivals hydrates and renders official thumbnails', () => {
 });
 
 test('Search hydrates official thumbnails through the bounded RPC', () => {
-  assert.match(search, /select\('id,ai_usage,content_rating'\)/u);
+  assert.match(search, /rpc\('novelight_search_card_metadata'/u);
   assert.match(search, /rpc\('novelight_public_thumbnail_urls'/u);
   assert.doesNotMatch(
     search,

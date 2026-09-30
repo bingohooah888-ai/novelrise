@@ -39,9 +39,13 @@ async function installSearchStub(page) {
             if (name === 'novelight_trusted_discovery_feed') {
               return Promise.resolve({ data: [], error: null });
             }
-            if (name === 'novelight_neutral_search') {
+            if (name === 'novelight_neutral_search_v2') {
               return Promise.resolve({ data: novels, error: null });
             }
+            if (name === 'novelight_search_card_metadata') {
+              return Promise.resolve({ data: novels.map((n, index) => ({novel_id:n.novel_id, author_name:'公開作者', ai_usage:'human', content_rating:'general', is_completed:index === 0, published_episode_count:10, published_character_count:52430, official_tag_names:['恋愛','青春','感動','現代'], custom_tag_names:['雨の日','再会','手紙']})), error:null });
+            }
+            if (name === 'novelight_official_tag_catalog') return Promise.resolve({data:[],error:null});
             if (name === 'novelight_public_thumbnail_urls') {
               return Promise.resolve({ data: [], error: null });
             }
@@ -115,13 +119,24 @@ test('natural-language search explains matches and keeps relevance separate', as
   await expect(page.locator('.natural-match-reason').first()).toContainText(
     '一致理由'
   );
+  await expect(page.locator('.novel-card').first()).toContainText('完結');
+  await expect(page.locator('.novel-card').first()).toContainText(
+    '全10話 ・ 52,430文字'
+  );
+  await expect(
+    page.locator('.novel-card').first().locator('.search-card-tag')
+  ).toHaveCount(7);
+  await expect(page.locator('.novel-card').first()).toContainText('+1');
+  await expect(page.locator('.novel-card').first()).toContainText(
+    '作者 公開作者'
+  );
   await expect(page.locator('#naturalSearchIntent')).toContainText(
     'ジャンル: 恋愛'
   );
 
   const calls = await page.evaluate(() => globalThis.__NOVELIGHT_B24_CALLS__);
   const neutralCalls = calls.filter(
-    (call) => call.name === 'novelight_neutral_search'
+    (call) => call.name === 'novelight_neutral_search_v2'
   );
   expect(neutralCalls.length).toBeGreaterThan(0);
   expect(
