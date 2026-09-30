@@ -56,14 +56,13 @@ test('SCOUT/read ledgers that can survive smoke cleanup are explicitly purged', 
   }
 });
 
-test('one-time orphan cleanup is signature-based and never hardcodes generated user ids', () => {
-  assert.match(migration, /novelight_scout_smoke_orphans/u);
-  assert.match(migration, /event_type = 'light_seed_sent'/u);
-  assert.match(migration, /event_type = 'valid_read'/u);
-  assert.match(migration, /v_candidate_count > 50/u);
-  assert.doesNotMatch(
+test('fresh migration replay never guesses deleted smoke users from activity shape', () => {
+  assert.doesNotMatch(migration, /novelight_scout_smoke_orphans/u);
+  assert.doesNotMatch(migration, /v_candidate_count/u);
+  assert.doesNotMatch(migration, /Safety stop: SCOUT smoke orphan cleanup matched/u);
+  assert.match(
     migration,
-    /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu
+    /Future Production Auth Smoke cleanup is handled by the trigger above/u
   );
 });
 
