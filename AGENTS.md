@@ -137,7 +137,7 @@ FULL PREFLIGHT、Production mutation、Secret、2FA/OAuth、人間判断が必�
 
 ### Execution Turn Card Gate
 
-FULL PREFLIGHTの**実行ターン**では、そのターンの**最初のユーザー可視メッセージ**を可視実行カードにする。**カード送信前のツール呼び出しは禁止する。** 読み取り専用Bootstrapを含む。ユーザーから新しいメッセージを受けた時点で**前ターンのカードは失効**し、再利用しない。スクリーンショット、ログ、手動操作完了報告も新しいFULL PREFLIGHT実行ターンとして扱う。
+FULL PREFLIGHTの**実行ターン**では、そのターンの**最初のユーザー可視メッセージ**を可視実行カードにする。**カード送信前のツール呼び出しは禁止する。** 読み取り専用Bootstrapを含む。ユーザーから新しいメッセージを受けた時点で前ターンのカードは失効し、再利用しない。スクリーンショット、ログ、手動操作完了報告も新しいFULL PREFLIGHT実行ターンとして扱う。
 
 FULL PREFLIGHTでは、`npm run runtime:gate -- --phase=<phase>` を使用する。Connector等でローカルコマンドを使えない場合は、現在ターンの可視実行カード後に **GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得**する同等確認を行う。
 
