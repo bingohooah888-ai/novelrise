@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "1.0",
+  "mode": "fast_patch",
+  "mainSha": "0000000000000000000000000000000000000000",
+  "headSha": "0000000000000000000000000000000000000000",
+  "productionSha": null,
+  "checkedAt": "2026-01-01T00:00:00.000Z",
+  "activeWorkstream": null,
+  "completedWorkstreams": [],
+  "targets": [],
+  "checks": {}
+}
