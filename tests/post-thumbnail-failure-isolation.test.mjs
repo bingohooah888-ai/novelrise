@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const postHtml = await readFile(
-  new URL('../post.html', import.meta.url),
-  'utf8'
-);
+const postHtml = await readFile('post.html', 'utf8');
 
 test('thumbnail persistence failure cannot enter new-novel cleanup', () => {
   const thumbnailStart = postHtml.indexOf(
