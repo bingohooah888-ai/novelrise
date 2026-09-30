@@ -257,10 +257,20 @@ test('ADMIN hub and login redirect include preregistration management', () => {
 });
 
 test('Vercel exposes clean preregistration routes and global security headers', () => {
-  assert.deepEqual(vercel.rewrites, [
-    { source: '/beta-authors', destination: '/beta-authors.html' },
-    { source: '/admin/beta-authors', destination: '/admin-beta-authors.html' }
-  ]);
+  assert.ok(
+    vercel.rewrites.some(
+      (route) =>
+        route.source === '/beta-authors' &&
+        route.destination === '/beta-authors.html'
+    )
+  );
+  assert.ok(
+    vercel.rewrites.some(
+      (route) =>
+        route.source === '/admin/beta-authors' &&
+        route.destination === '/admin-beta-authors.html'
+    )
+  );
   assert.ok(Array.isArray(vercel.headers));
   assert.ok(vercel.headers.length > 0);
 });
