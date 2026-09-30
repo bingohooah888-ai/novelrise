@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  cleanupFailedThumbnailFinalize
-} from '../api/_lib/thumbnail-finalize-cleanup.js';
+import * as cleanup from '../api/_lib/thumbnail-finalize-cleanup.js';
+
+const { cleanupFailedThumbnailFinalize } = cleanup;
 
 function compositionQuery(row, error = null) {
   return {
@@ -18,7 +18,7 @@ function compositionQuery(row, error = null) {
   };
 }
 
-test('finalize failure removes only the current unadopted upload', async () => {
+test('removes the current unadopted upload', async () => {
   const attemptedPath =
     'renders/42/11111111-1111-4111-8111-111111111111.png';
   const removed = [];
@@ -57,7 +57,7 @@ test('finalize failure removes only the current unadopted upload', async () => {
   assert.deepEqual(removed, [attemptedPath]);
 });
 
-test('finalize cleanup never removes an adopted render', async () => {
+test('never removes an adopted render', async () => {
   const attemptedPath =
     'renders/42/11111111-1111-4111-8111-111111111111.webp';
   let removeCalled = false;
@@ -91,41 +91,38 @@ test('finalize cleanup never removes an adopted render', async () => {
   assert.equal(removeCalled, false);
 });
 
-test(
-  'cleanup failure is swallowed and cannot replace the finalize result',
-  async () => {
-    const attemptedPath =
-      'renders/42/11111111-1111-4111-8111-111111111111.png';
-    const supabase = {
+test('swallows cleanup failure', async () => {
+  const attemptedPath =
+    'renders/42/11111111-1111-4111-8111-111111111111.png';
+  const supabase = {
+    from() {
+      return compositionQuery({ render_storage_path: null });
+    },
+    storage: {
       from() {
-        return compositionQuery({ render_storage_path: null });
-      },
-      storage: {
-        from() {
-          return {
-            async remove() {
-              return { error: { message: 'cleanup unavailable' } };
-            }
-          };
-        }
+        return {
+          async remove() {
+            return { error: { message: 'cleanup unavailable' } };
+          }
+        };
       }
-    };
+    }
+  };
 
-    const cleaned = await cleanupFailedThumbnailFinalize({
-      supabase,
-      statusCode: 500,
-      body: {
-        action: 'finalize-upload',
-        novelId: '42',
-        path: attemptedPath
-      }
-    });
+  const cleaned = await cleanupFailedThumbnailFinalize({
+    supabase,
+    statusCode: 500,
+    body: {
+      action: 'finalize-upload',
+      novelId: '42',
+      path: attemptedPath
+    }
+  });
 
-    assert.equal(cleaned, false);
-  }
-);
+  assert.equal(cleaned, false);
+});
 
-test('cleanup refuses paths belonging to another novel', async () => {
+test('refuses a path for another novel', async () => {
   let queried = false;
   const supabase = {
     from() {
