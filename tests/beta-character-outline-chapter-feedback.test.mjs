@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const migration = read(
   'supabase/migrations/20261001080000_beta_feedback_character_outline_chapters.sql'
@@ -12,7 +12,6 @@ const refreshMigration = read(
 );
 const charactersPage = read('characters.html');
 const charactersJs = read('novelight-characters.js');
-const charactersCss = read('novelight-characters.css');
 const episodePost = read('episode-post.html');
 const structurePage = read('episode-structure.html');
 
@@ -52,8 +51,11 @@ test('E: effective character state is available as text and a non-color-only vis
   assert.match(charactersJs, /is-inactive/);
   assert.match(charactersJs, /反映中/);
   assert.match(charactersJs, /未反映/);
-  assert.match(charactersCss, /\.novelight-character-editor-row\.is-effective/);
-  assert.match(charactersCss, /border-left/);
+  assert.match(
+    charactersJs,
+    /\.novelight-character-editor-row\.is-effective/
+  );
+  assert.match(charactersJs, /border-left/);
 });
 
 test('F-G: normal outline reveals titles only for public episodes while other spoiler-safe RPCs are not replaced', () => {
