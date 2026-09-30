@@ -13,7 +13,7 @@ const refreshMigration = read(
 const charactersPage = read('characters.html');
 const charactersJs = read('novelight-characters.js');
 const charactersCss = read('novelight-characters.css');
-const authorTools = read('novelight-episode-author-tools.js');
+const episodePost = read('episode-post.html');
 const structurePage = read('episode-structure.html');
 
 test('A-C: first-appearance boundary is enforced while manual overrides remain authoritative', () => {
@@ -38,12 +38,13 @@ test('character management exposes an episode selector and preserves unset backw
 });
 
 test('D: new episode posting reuses the existing draft flow before mounting the shared character editor', () => {
-  assert.match(authorTools, /登場人物/);
-  assert.match(authorTools, /waitForAutoSave\(\)/);
-  assert.match(authorTools, /persistDraft\(values\)/);
-  assert.match(authorTools, /NovelightCharacters\.mountEpisodeEditor/);
-  assert.match(authorTools, /episodeId: draftId/);
-  assert.match(authorTools, /mountTarget/);
+  assert.match(episodePost, /id="openCharacterSettings"[^>]*>登場人物</);
+  assert.match(episodePost, /p_episode_id:pendingDraftId/);
+  assert.match(episodePost, /pendingDraftId=draftId/);
+  assert.match(episodePost, /persistDraft\(values\)/);
+  assert.match(episodePost, /NovelightCharacters\?\.mountEpisodeEditor/);
+  assert.match(episodePost, /episodeId:draftId/);
+  assert.match(episodePost, /mountTarget:postCharacterEditor/);
 });
 
 test('E: effective character state is available as text and a non-color-only visual treatment', () => {
