@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cleanupFailedThumbnailFinalize } from '../api/_lib/thumbnail-finalize-cleanup.js';
+import {
+  cleanupFailedThumbnailFinalize
+} from '../api/_lib/thumbnail-finalize-cleanup.js';
 
 function compositionQuery(row, error = null) {
   return {
@@ -89,36 +91,39 @@ test('finalize cleanup never removes an adopted render', async () => {
   assert.equal(removeCalled, false);
 });
 
-test('cleanup failure is swallowed and cannot replace the finalize result', async () => {
-  const attemptedPath =
-    'renders/42/11111111-1111-4111-8111-111111111111.png';
-  const supabase = {
-    from() {
-      return compositionQuery({ render_storage_path: null });
-    },
-    storage: {
+test(
+  'cleanup failure is swallowed and cannot replace the finalize result',
+  async () => {
+    const attemptedPath =
+      'renders/42/11111111-1111-4111-8111-111111111111.png';
+    const supabase = {
       from() {
-        return {
-          async remove() {
-            return { error: { message: 'cleanup unavailable' } };
-          }
-        };
+        return compositionQuery({ render_storage_path: null });
+      },
+      storage: {
+        from() {
+          return {
+            async remove() {
+              return { error: { message: 'cleanup unavailable' } };
+            }
+          };
+        }
       }
-    }
-  };
+    };
 
-  const cleaned = await cleanupFailedThumbnailFinalize({
-    supabase,
-    statusCode: 500,
-    body: {
-      action: 'finalize-upload',
-      novelId: '42',
-      path: attemptedPath
-    }
-  });
+    const cleaned = await cleanupFailedThumbnailFinalize({
+      supabase,
+      statusCode: 500,
+      body: {
+        action: 'finalize-upload',
+        novelId: '42',
+        path: attemptedPath
+      }
+    });
 
-  assert.equal(cleaned, false);
-});
+    assert.equal(cleaned, false);
+  }
+);
 
 test('cleanup refuses paths belonging to another novel', async () => {
   let queried = false;
