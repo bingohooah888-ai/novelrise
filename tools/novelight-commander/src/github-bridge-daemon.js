@@ -28,6 +28,7 @@ import { mainProductionAuthSmokeDispatchBridge } from './production-auth-smoke-d
 import { mainWorktreeSafeBridge } from './worktree-safe-bridge.js';
 import { mainWorktreeTextPatchBridge } from './worktree-text-patch-bridge.js';
 import { mainHighRiskPrApproveBridgeV2 } from './high-risk-pr-approve-bridge.js';
+import { mainPrBranchSyncBridge } from './pr-branch-sync-bridge.js';
 
 void mainProductionMigrationApproveBridge().catch(error => {
   console.error('[NLO production migration approval bridge] fatal:', error);
@@ -51,5 +52,10 @@ void mainWorktreeTextPatchBridge().catch(error => {
 
 void mainHighRiskPrApproveBridgeV2().catch(error => {
   console.error('[NLO high-risk PR approval v2 bridge] fatal:', error);
+  process.exitCode = 1;
+});
+
+void mainPrBranchSyncBridge().catch(error => {
+  console.error('[NLO PR branch sync bridge] fatal:', error);
   process.exitCode = 1;
 });
