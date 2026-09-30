@@ -131,6 +131,20 @@ FAST PATCHで、単なるツール利用を理由に毎ターン重いExecution 
 
 FULL PREFLIGHT、Production mutation、Secret、2FA/OAuth、人間判断が必要な場面では既存のExecution/Approval Gateを維持する。
 
+## Runtime Execution Gate
+
+この節は **FULL PREFLIGHTにのみ適用**する。FAST PATCHは `docs/NLO-EXECUTION-POLICY.md` と `nlo:fast-patch` の機械ゲートを使用し、この重い実行ターン契約を通常の局所変更へ再導入しない。
+
+### Execution Turn Card Gate
+
+FULL PREFLIGHTの**実行ターン**では、そのターンの**最初のユーザー可視メッセージ**を可視実行カードにする。**カード送信前のツール呼び出しは禁止する。** 読み取り専用Bootstrapを含む。ユーザーから新しいメッセージを受けた時点で**前ターンのカードは失効**し、再利用しない。スクリーンショット、ログ、手動操作完了報告も新しいFULL PREFLIGHT実行ターンとして扱う。
+
+FULL PREFLIGHTでは、`npm run runtime:gate -- --phase=<phase>` を使用する。Connector等でローカルコマンドを使えない場合は、現在ターンの可視実行カード後に **GitHub Connector/APIで最新main SHA、MASTER、Preflightを直接再取得**する同等確認を行う。
+
+時間見積もり表示が上位制約で使えない場合は **Degraded-Continue** を使用できるが、Production、Secret、課金、破壊的操作、安全境界不明を回避する用途には使わない。
+
+ユーザーの「はい」「続けて」「次へ」が判断を伴わない**単なる続行ボタンになる場合は要求しない**。ただしFULL PREFLIGHTでユーザーへターンを返した後に再開する場合は、新しい可視実行カードを先に送る。
+
 ## 10. AI / 自動化
 
 AIやツールを増やすこと自体を目的にしない。速度・品質・安全性を実際に改善する最小構成を使う。
