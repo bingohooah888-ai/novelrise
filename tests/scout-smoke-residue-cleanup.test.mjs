@@ -14,18 +14,18 @@ test('Production Auth Smoke cleanup is gated to internal_e2e identities', () => 
   assert.match(migration, /before delete on public\.profiles/u);
   assert.match(
     migration,
-    /novelight_cleanup_internal_e2e_scout_residue\(old\.id\)/u
+    /novelight_cleanup_internal_e2e_scout_residue\(old\.id\)/u,
   );
 
   const profileDelete = fixture.indexOf(
-    "await deleteByIds('profiles', 'id', userIds);"
+    "await deleteByIds('profiles', 'id', userIds);",
   );
   const authDelete = fixture.indexOf('admin.auth.admin.deleteUser(userId)');
   assert.ok(profileDelete >= 0, 'fixture must delete smoke profiles');
   assert.ok(authDelete >= 0, 'fixture must delete smoke auth users');
   assert.ok(
     profileDelete < authDelete,
-    'profile cleanup must run while auth.users still retains internal_e2e metadata'
+    'profile cleanup must run while auth.users still retains internal_e2e metadata',
   );
 });
 
@@ -44,14 +44,14 @@ test('SCOUT/read ledgers that can survive smoke cleanup are explicitly purged', 
     'seed_discovery_state',
     'valid_read_events',
     'valid_read_sessions',
-    'scout_episode_badge_state'
+    'scout_episode_badge_state',
   ];
 
   for (const table of expectedTables) {
     assert.match(
       migration,
       new RegExp(`delete from public\\.${table}\\b`, 'u'),
-      `missing internal_e2e cleanup for ${table}`
+      `missing internal_e2e cleanup for ${table}`,
     );
   }
 });
@@ -62,7 +62,7 @@ test('fresh migration replay never guesses deleted smoke users from activity sha
   assert.doesNotMatch(migration, /Safety stop: SCOUT smoke orphan cleanup matched/u);
   assert.match(
     migration,
-    /Future Production Auth Smoke cleanup is handled by the trigger above/u
+    /Future Production Auth Smoke cleanup is handled by the trigger above/u,
   );
 });
 
@@ -75,7 +75,7 @@ test('reader_seed_001 point reconciliation is narrow and idempotent', () => {
   assert.match(migration, /join auth\.users auth_user/u);
   assert.match(
     migration,
-    /'badge:' \|\| b\.user_id::text \|\| ':' \|\| b\.badge_id/u
+    /'badge:' \|\| b\.user_id::text \|\| ':' \|\| b\.badge_id/u,
   );
   assert.match(migration, /not exists \([\s\S]*public\.scout_point_ledger/u);
 });
