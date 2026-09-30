@@ -2,6 +2,7 @@
   'use strict';
 
   const API = '/api/episode-illustrations';
+  const DELETE_API = '/api/episode-illustration-delete';
   const BUCKET = 'episode-illustrations';
   const INPUT_MAX_BYTES = 10 * 1024 * 1024;
   const INPUT_MAX_EDGE = 4096;
@@ -35,6 +36,29 @@
     if (!response.ok) {
       const error = new Error(data?.error || 'Illustration request failed');
       error.status = response.status;
+      throw error;
+    }
+    return data;
+  }
+
+  async function deleteRequest(session, payload) {
+    const response = await fetch(DELETE_API, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token
+          ? { Authorization: 'Bearer ' + session.access_token }
+          : {})
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(
+        data?.message || data?.error || 'Illustration delete failed'
+      );
+      error.status = response.status;
+      error.code = data?.error || '';
       throw error;
     }
     return data;
@@ -80,7 +104,8 @@
         typeof reader.result === 'string'
           ? resolve(reader.result)
           : reject(new Error('FILE_READER_RESULT_INVALID'));
-      reader.onerror = () => reject(reader.error || new Error('FILE_READER_FAILED'));
+      reader.onerror = () =>
+        reject(reader.error || new Error('FILE_READER_FAILED'));
       reader.onabort = () => reject(new Error('FILE_READER_ABORTED'));
       reader.readAsDataURL(file);
     });
@@ -378,7 +403,16 @@
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
 
-    root.append(heading, copy, warning, rulesDetails(document), aiBox, uploadBox, list, status);
+    root.append(
+      heading,
+      copy,
+      warning,
+      rulesDetails(document),
+      aiBox,
+      uploadBox,
+      list,
+      status
+    );
 
     let state = null;
     let busy = false;
@@ -516,7 +550,11 @@
               mimeType: optimized.mimeType
             });
           } catch (error) {
-            throw withStage(error, 'prepare', 'Illustration upload could not be prepared');
+            throw withStage(
+              error,
+              'prepare',
+              'Illustration upload could not be prepared'
+            );
           }
 
           let upload;
@@ -531,7 +569,11 @@
             throw withStage(error, 'upload', 'Illustration upload failed');
           }
           if (upload.error) {
-            throw withStage(upload.error, 'upload', 'Illustration upload failed');
+            throw withStage(
+              upload.error,
+              'upload',
+              'Illustration upload failed'
+            );
           }
 
           let finalized;
@@ -543,7 +585,11 @@
               altText: alt.value
             });
           } catch (error) {
-            throw withStage(error, 'finalize', 'Illustration validation failed');
+            throw withStage(
+              error,
+              'finalize',
+              'Illustration validation failed'
+            );
           }
 
           await refresh();
@@ -639,7 +685,66 @@
             saveAlt.disabled = false;
           }
         });
-        actions.append(insert, saveAlt);
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = '削除';
+        remove.addEventListener('click', async () => {
+          if (busy) return;
+          if (isMarkerUsed(textarea.value, asset.marker)) {
+            setStatus(
+              '本文で使用中の挿絵は削除できません。挿絵IDの行を本文から削除し、本文を保存してから削除してください。'
+            );
+            return;
+          }
+          if (
+            !global.confirm(
+              'この挿絵画像を完全に削除します。削除後は元に戻せません。よろしいですか？'
+            )
+          ) {
+            return;
+          }
+
+          busy = true;
+          remove.disabled = true;
+          setStatus('挿絵を削除しています...');
+          try {
+            const result = await deleteRequest(session, {
+              episodeId: Number(episode.id),
+              illustrationId: asset.id
+            });
+            state.assets = state.assets.filter((item) => item.id !== asset.id);
+            render();
+            setStatus(
+              result.storageCleanupPending
+                ? '挿絵を削除しました。10枚上限の枠は戻っています。画像ファイルの後処理は継続します。'
+                : '挿絵を削除しました。アップロード枠が1枚分戻りました。'
+            );
+          } catch (error) {
+            console.error('episode illustration delete failed', error);
+            if (
+              error?.status === 409 ||
+              error?.code === 'EPISODE_ILLUSTRATION_IN_USE'
+            ) {
+              setStatus(
+                '本文で使用中の挿絵は削除できません。本文から外して保存してから削除してください。'
+              );
+            } else {
+              setStatus(
+                '挿絵を削除できませんでした。時間をおいて再度お試しください。'
+              );
+            }
+          } finally {
+            busy = false;
+            try {
+              await refresh();
+            } catch {
+              render();
+            }
+          }
+        });
+
+        actions.append(insert, saveAlt, remove);
         body.append(used, alt, actions);
         card.append(image, body);
         list.appendChild(card);
@@ -648,7 +753,7 @@
       const historyNote = document.createElement('p');
       historyNote.className = 'episode-illustration-history-note';
       historyNote.textContent =
-        '本文から外す場合は挿絵IDの行を削除してください。過去の改稿履歴を壊さないため、画像本体はすぐには物理削除しません。';
+        '本文から外す場合は挿絵IDの行を削除して保存してください。過去の改稿履歴を壊さないため、本文で使用中の画像は削除できません。アップロード済み画像を完全に削除する場合は、未配置になった後に「削除」を押してください。';
       list.appendChild(historyNote);
     }
 
@@ -668,7 +773,8 @@
     } catch (error) {
       console.error('episode illustration editor unavailable', error);
       root.hidden = true;
-      if (!runtimeUnavailable(error)) setStatus('挿絵機能を読み込めませんでした。');
+      if (!runtimeUnavailable(error))
+        setStatus('挿絵機能を読み込めませんでした。');
       return null;
     }
   }
@@ -781,7 +887,8 @@
 
   async function mountPreview({ root, episodeId, content, session }) {
     if (!root || !episodeId) return null;
-    if (!session?.access_token) return mountReader({ root, episodeId, content });
+    if (!session?.access_token)
+      return mountReader({ root, episodeId, content });
 
     renderReaderContent(root, content, new Map(), '挿絵を読み込み中...');
 
@@ -799,7 +906,9 @@
       syncAiDisclosure(root, false);
       if (!runtimeUnavailable(error)) {
         console.error('episode illustration preview unavailable', {
-          status: Number.isFinite(Number(error?.status)) ? Number(error.status) : null
+          status: Number.isFinite(Number(error?.status))
+            ? Number(error.status)
+            : null
         });
       }
       return null;
