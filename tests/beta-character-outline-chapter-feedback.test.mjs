@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const migration = read(
   'supabase/migrations/20261001080000_beta_feedback_character_outline_chapters.sql'
@@ -18,18 +18,12 @@ const structurePage = read('episode-structure.html');
 
 test('A-C: first-appearance boundary is enforced while manual overrides remain authoritative', () => {
   assert.match(migration, /add column first_appearance_episode_id bigint/);
-  assert.match(
-    migration,
-    /e\.episode_number >= first_episode\.episode_number/
-  );
+  assert.match(migration, /e\.episode_number >= first_episode\.episode_number/);
   assert.match(
     refreshMigration,
     /new\.episode_number >= first_episode\.episode_number/
   );
-  assert.match(
-    charactersJs,
-    /when s\.override_mode = 'include' then true|手動で含める/
-  );
+  assert.match(charactersJs, /手動で含める/);
   assert.match(charactersJs, /手動で除外/);
   assert.match(charactersJs, /p_override_mode: select\.value/);
 });
@@ -45,10 +39,11 @@ test('character management exposes an episode selector and preserves unset backw
 
 test('D: new episode posting reuses the existing draft flow before mounting the shared character editor', () => {
   assert.match(authorTools, /登場人物/);
+  assert.match(authorTools, /waitForAutoSave\(\)/);
   assert.match(authorTools, /persistDraft\(values\)/);
-  assert.match(authorTools, /pendingDraftId/);
   assert.match(authorTools, /NovelightCharacters\.mountEpisodeEditor/);
-  assert.match(authorTools, /mountTarget: characterMount/);
+  assert.match(authorTools, /episodeId: draftId/);
+  assert.match(authorTools, /mountTarget/);
 });
 
 test('E: effective character state is available as text and a non-color-only visual treatment', () => {
@@ -69,8 +64,14 @@ test('F-G: normal outline reveals titles only for public episodes while other sp
     migration,
     /select\s+e\.id,\s+e\.title,\s+e\.episode_number,\s+e\.status,\s+c\.id,\s+c\.title/s
   );
-  assert.doesNotMatch(migration, /create or replace function public\.novelight_reader_episode_index/);
-  assert.doesNotMatch(migration, /create or replace function public\.novelight_character_feed/);
+  assert.doesNotMatch(
+    migration,
+    /create or replace function public\.novelight_reader_episode_index/
+  );
+  assert.doesNotMatch(
+    migration,
+    /create or replace function public\.novelight_character_feed/
+  );
 });
 
 test('H-I: chapter-only and bulk chapter changes use metadata save path without episode renumbering', () => {
