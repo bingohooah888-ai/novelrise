@@ -14,6 +14,27 @@
     return div.innerHTML;
   }
 
+  function ensureEditorStyles() {
+    if (document.getElementById('novelightCharacterEpisodeStateStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'novelightCharacterEpisodeStateStyles';
+    style.textContent = `
+      .novelight-character-editor-row{border-left:3px solid transparent;transition:background-color .15s ease,border-color .15s ease}
+      .novelight-character-editor-row.is-effective{background:rgba(109,74,255,.07);border-left-color:#8a73dd}
+      .novelight-character-editor-row.is-inactive{background:#fafafa;border-left-color:#dedede}
+      .novelight-character-effective-label{display:inline-flex;align-items:center;margin-right:5px;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.02em}
+      .novelight-character-editor-row.is-effective .novelight-character-effective-label{background:#eee9ff;color:#5740aa}
+      .novelight-character-editor-row.is-inactive .novelight-character-effective-label{background:#eeeeef;color:#68686d}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function overrideLabel(mode) {
+    if (mode === 'include') return '手動で含める';
+    if (mode === 'exclude') return '手動で除外';
+    return '自動';
+  }
+
   async function mountReader({ client, episodeId }) {
     const body = document.querySelector('.content');
     const meta = document.querySelector('.meta');
@@ -73,17 +94,30 @@
     }
   }
 
-  async function mountEpisodeEditor({ client, episodeId, novelId }) {
-    const form = document.getElementById('form');
-    const buttons = form?.querySelector('.buttons');
-    if (!form || !buttons || !episodeId) return;
+  async function mountEpisodeEditor({ client, episodeId, novelId, mountTarget = null }) {
+    if (!episodeId) return;
+    ensureEditorStyles();
 
-    let mount = document.getElementById('characterEpisodeEditor');
-    if (!mount) {
-      mount = document.createElement('section');
-      mount.id = 'characterEpisodeEditor';
-      mount.className = 'novelight-character-editor';
-      buttons.before(mount);
+    let mount;
+    if (mountTarget) {
+      mount = mountTarget.querySelector('[data-novelight-character-episode-editor]');
+      if (!mount) {
+        mount = document.createElement('section');
+        mount.dataset.novelightCharacterEpisodeEditor = 'true';
+        mount.className = 'novelight-character-editor';
+        mountTarget.replaceChildren(mount);
+      }
+    } else {
+      const form = document.getElementById('form');
+      const buttons = form?.querySelector('.buttons');
+      if (!form || !buttons) return;
+      mount = document.getElementById('characterEpisodeEditor');
+      if (!mount) {
+        mount = document.createElement('section');
+        mount.id = 'characterEpisodeEditor';
+        mount.className = 'novelight-character-editor';
+        buttons.before(mount);
+      }
     }
 
     async function load() {
@@ -120,12 +154,12 @@
           <p class="novelight-character-help">本文から自動判定します。必要なときだけ手動指定が優先されます。</p>
           <div class="novelight-character-editor-list">
             ${rows.map((row) => `
-              <label class="novelight-character-editor-row">
+              <label class="novelight-character-editor-row ${row.effective ? 'is-effective' : 'is-inactive'}">
                 <span>
                   <strong>${escapeHtml(row.name)}</strong>
-                  <small>${row.auto_detected ? '本文で自動検出' : '本文では未検出'}${row.effective ? '・この話に表示対象' : ''}</small>
+                  <small><span class="novelight-character-effective-label">${row.effective ? '反映中' : '未反映'}</span>${row.auto_detected ? '本文で自動検出' : '本文では未検出'}・${overrideLabel(row.override_mode)}</small>
                 </span>
-                <select data-character-override="${row.id}">
+                <select data-character-override="${row.id}" aria-label="${escapeHtml(row.name)}の反映方法">
                   <option value="auto" ${row.override_mode === 'auto' ? 'selected' : ''}>自動</option>
                   <option value="include" ${row.override_mode === 'include' ? 'selected' : ''}>この話に含める</option>
                   <option value="exclude" ${row.override_mode === 'exclude' ? 'selected' : ''}>この話から除外</option>
