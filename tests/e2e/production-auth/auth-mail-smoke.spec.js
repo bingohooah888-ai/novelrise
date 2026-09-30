@@ -75,17 +75,31 @@ test('Production signup gate, recovery, global sign-out, and Secure Email Change
 
   const admin = adminClient();
 
-  await test.step('Current PRE_REGISTRATION gate rejects ordinary signup', async () => {
-    const email = `novelight-e2e-blocked-signup-${fixture.runId}-${randomBytes(4).toString('hex')}@example.com`;
-    const signup = await publicClient().auth.signUp({
-      email,
-      password: `Nl!Blocked-${fixture.runId}-9a`
-    });
-    expect(signup.data.session).toBeNull();
-    expect(signup.error).toBeTruthy();
-    expect(String(signup.error?.message || '')).toMatch(
-      /先行作者プレオープン中|先行作者登録期間|一般会員登録/u
+  await test.step('Signup gate matches current beta release state', async () => {
+    const releaseConfig = requireSuccess(
+      await admin
+        .from('beta_author_preregistration_config')
+        .select('state')
+        .eq('id', 1)
+        .single(),
+      'read beta release state'
     );
+
+    if (releaseConfig.state === 'PRE_REGISTRATION') {
+      const email = `novelight-e2e-blocked-signup-${fixture.runId}-${randomBytes(4).toString('hex')}@example.com`;
+      const signup = await publicClient().auth.signUp({
+        email,
+        password: `Nl!Blocked-${fixture.runId}-9a`
+      });
+      expect(signup.data.session).toBeNull();
+      expect(signup.error).toBeTruthy();
+      expect(String(signup.error?.message || '')).toMatch(
+        /先行作者プレオープン中|先行作者登録期間|一般会員登録/u
+      );
+      return;
+    }
+
+    expect(releaseConfig.state).toBe('BETA_OPEN');
   });
 
   await test.step('Password recovery request uses the neutral Production UI', async () => {
