@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cleanupFailedThumbnailFinalize } from '../api/_lib/thumbnail-finalize-cleanup.js';
+import {
+  cleanupFailedThumbnailFinalize
+} from '../api/_lib/thumbnail-finalize-cleanup.js';
 
 function compositionQuery(row, error = null) {
   return {
