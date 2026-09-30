@@ -26,5 +26,6 @@
 .episode-inline-illustration img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:4px}
 .episode-inline-illustration-failed{margin:1.4em 0;padding:14px;border:1px dashed #d8d0c4;border-radius:8px;color:#81776b;font-size:12px;text-align:center}
 .episode-inline-ai-disclosure{margin:0 0 16px;padding:8px 10px;border-radius:8px;background:#f5f0ff;color:#67568a;font-size:11px;line-height:1.55}
+.episode-inline-ai-disclosure:not(:has(+ .content .episode-inline-illustration,+ .content .episode-inline-illustration-failed)){display:none}
 .nl-episode-prose-text{white-space:pre-wrap}
 @media(max-width:640px){.episode-illustration-item{grid-template-columns:1fr}.episode-illustration-item img{width:100%;height:auto;max-height:240px}.episode-illustration-ai-row,.episode-illustration-upload{align-items:stretch;flex-direction:column}.episode-illustration-ai-row>* ,.episode-illustration-upload>*{width:100%}}
