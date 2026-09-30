@@ -1,9 +1,24 @@
 const RENDER_BUCKET = 'novel-thumbnail-renders';
 const PATH_PATTERN = /^renders\/([0-9]+)\/[0-9a-f-]{36}\.(webp|png)$/i;
+const REVISION_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function getBearerToken(authorization) {
+  const match =
+    typeof authorization === 'string'
+      ? authorization.match(/^Bearer\s+(\S+)$/i)
+      : null;
+  return match?.[1] ?? null;
+}
 
 function normalizeNovelId(value) {
   const text = String(value ?? '').trim();
   return /^[0-9]+$/.test(text) ? text : null;
+}
+
+function normalizeRevision(value) {
+  const text = String(value ?? '').trim();
+  return REVISION_PATTERN.test(text) ? text : null;
 }
 
 function failedStatus(statusCode) {
@@ -14,7 +29,8 @@ function failedStatus(statusCode) {
 export async function cleanupFailedThumbnailFinalize({
   supabase,
   body,
-  statusCode
+  statusCode,
+  authorization
 }) {
   if (
     !failedStatus(statusCode) ||
@@ -24,11 +40,29 @@ export async function cleanupFailedThumbnailFinalize({
   }
 
   const novelId = normalizeNovelId(body?.novelId);
+  const revision = normalizeRevision(body?.revision);
   const path = String(body?.path ?? '').trim();
   const match = path.match(PATH_PATTERN);
-  if (!novelId || !match || match[1] !== novelId) return false;
+  const token = getBearerToken(authorization);
+  if (!novelId || !revision || !match || match[1] !== novelId || !token) {
+    return false;
+  }
 
   try {
+    const { data: authData, error: authError } =
+      await supabase.auth.getUser(token);
+    const userId = authData?.user?.id;
+    if (authError || !userId) return false;
+
+    const { data: novel, error: novelError } = await supabase
+      .from('novels')
+      .select('id')
+      .eq('id', Number(novelId))
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (novelError || !novel) return false;
+
     const { data: composition, error: compositionError } = await supabase
       .from('novel_thumbnail_compositions')
       .select('render_storage_path')
