@@ -1,0 +1,217 @@
+name: Temporary passive content advisories patch
+
+on:
+  push:
+    branches:
+      - codex/passive-content-advisories
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Add temporary content advisory patch workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/passive-content-advisories
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply focused reader advisory changes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, got {count}')
+              return text.replace(old, new, 1)
+
+          # Work detail page
+          path = Path('novel.html')
+          text = path.read_text(encoding='utf-8')
+          text = replace_once(
+              text,
+              '.continue:disabled{opacity:.6;cursor:wait}',
+              '.continue:disabled{opacity:.6;cursor:wait}.warning-remember{display:flex;align-items:center;gap:8px;margin:14px 0;color:#5f4a2b;font-size:13px;font-weight:800}.warning-remember input{width:17px;height:17px}.content-advisory{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px;width:100%;margin:0 0 10px;text-align:right}.content-advisory-chip{display:inline-flex;align-items:center;max-width:100%;padding:4px 8px;border:1px solid #dfd5c7;border-radius:999px;background:#faf7f2;color:#6c5a47;font-size:11px;font-weight:800;line-height:1.35}',
+              'novel css'
+          )
+          text = replace_once(
+              text,
+              '<ul id="warningList" class="warning-list"></ul><button id="continueButton" class="continue" type="button">内容を確認して表示</button>',
+              '<ul id="warningList" class="warning-list"></ul><label class="warning-remember"><input id="rememberWarning" type="checkbox" checked>この作品では今後この確認を表示しない</label><button id="continueButton" class="continue" type="button">内容を確認して表示</button>',
+              'novel remember checkbox'
+          )
+          text = replace_once(
+              text,
+              "function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}function visitor(){return NovelightClient.getVisitorToken()}function gateKey(){return'novelight:warning-ok:novel:'+String(novel?.id||novelId||'')+':'+normalizedRating()}function workTagMarkup()",
+              "function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}function visitor(){return NovelightClient.getVisitorToken()}function gateKey(){return'novelight:age-gate:novel:'+String(novel?.id||novelId||'')+':'+normalizedRating()}function workTagMarkup()",
+              'novel gate key'
+          )
+          text = replace_once(
+              text,
+              "function warningAccepted(){try{return sessionStorage.getItem(gateKey())==='1'}catch(e){return false}}function rememberWarningAccepted(){try{sessionStorage.setItem(gateKey(),'1')}catch(e){console.error('warning gate persistence failed',e)}}\nfunction warningItems(){const warnings=novel?.content_warnings||[];return warnings.length?warnings:['other']}function needsWarningGate(){return novel&&(normalizedRating()!=='general'||(novel?.content_warnings||[]).length>0)}",
+              "function warningAccepted(){const key=gateKey();try{if(localStorage.getItem(key)==='1')return true}catch(e){console.warn('persistent age gate state unavailable',e)}try{return sessionStorage.getItem(key)==='1'}catch(e){return false}}function rememberWarningAccepted(persist=false){const key=gateKey();try{sessionStorage.setItem(key,'1')}catch(e){console.error('age gate session persistence failed',e)}if(persist){try{localStorage.setItem(key,'1')}catch(e){console.error('age gate persistent storage failed',e)}}}\nfunction warningItems(){return novel?.content_warnings||[]}function needsWarningGate(){const rating=normalizedRating();return novel&&(rating==='sensitive_15'||rating==='adult_18_nonsexual')}function isOwner(){return Boolean(session&&novel?.user_id===session.user.id)}function contentAdvisoryItems(){const items=[];const rating=normalizedRating();if(rating==='sensitive_15')items.push('R15');else if(rating==='adult_18_nonsexual')items.push('R18');(novel?.content_warnings||[]).forEach(w=>items.push((warningLabels[w]||w)+'が含まれます'));return items}function contentAdvisoryMarkup(){const items=contentAdvisoryItems();return items.length?`<div id=\"contentAdvisory\" class=\"content-advisory\" aria-label=\"内容に関する注意\">${items.map(item=>`<span class=\"content-advisory-chip\">${esc(item)}</span>`).join('')}</div>`:''}",
+              'novel storage and gate logic'
+          )
+          text = replace_once(
+              text,
+              "function renderNovelShell(){document.getElementById('novelHeader').style.display='block';document.getElementById('novelHeader').innerHTML=`<div class=\"tags\"><span class=\"tag\">${esc(novel.genre||'未設定')}</span>${workTagMarkup()}<span class=\"tag ai\">${esc(aiLabels[novel.ai_usage]||'AI利用区分 未申告')}</span></div><h1 class=\"title\">",
+              "function renderNovelShell(){document.getElementById('novelHeader').style.display='block';document.getElementById('novelHeader').innerHTML=`<div class=\"tags\"><span class=\"tag\">${esc(novel.genre||'未設定')}</span>${workTagMarkup()}<span class=\"tag ai\">${esc(aiLabels[novel.ai_usage]||'AI利用区分 未申告')}</span></div>${contentAdvisoryMarkup()}<h1 class=\"title\">",
+              'novel shell advisory'
+          )
+          text = replace_once(
+              text,
+              "function renderNovel(){const created=new Date(novel.created_at).toLocaleDateString('ja-JP');document.getElementById('novelHeader').style.display='block';document.getElementById('episodesPanel').style.display='block';document.getElementById('novelHeader').innerHTML=`<div class=\"tags\"><span class=\"tag\">${esc(novel.genre||'未設定')}</span>${workTagMarkup()}<span class=\"tag ai\">${esc(aiLabels[novel.ai_usage]||'AI利用区分 未申告')}</span></div><h1 class=\"title\">",
+              "function renderNovel(){const created=new Date(novel.created_at).toLocaleDateString('ja-JP');document.getElementById('novelHeader').style.display='block';document.getElementById('episodesPanel').style.display='block';document.getElementById('novelHeader').innerHTML=`<div class=\"tags\"><span class=\"tag\">${esc(novel.genre||'未設定')}</span>${workTagMarkup()}<span class=\"tag ai\">${esc(aiLabels[novel.ai_usage]||'AI利用区分 未申告')}</span></div>${contentAdvisoryMarkup()}<h1 class=\"title\">",
+              'novel full advisory'
+          )
+          text = replace_once(
+              text,
+              "if(needsWarningGate()&&!warningAccepted()){showWarningGate();return}",
+              "if(!isOwner()&&needsWarningGate()&&!warningAccepted()){showWarningGate();return}",
+              'novel owner bypass'
+          )
+          text = replace_once(
+              text,
+              "document.getElementById('continueButton').onclick=async()=>{const b=document.getElementById('continueButton');b.disabled=true;try{rememberWarningAccepted();await loadFullNovelAndRender()}",
+              "document.getElementById('continueButton').onclick=async()=>{const b=document.getElementById('continueButton');b.disabled=true;try{rememberWarningAccepted(document.getElementById('rememberWarning')?.checked!==false);await loadFullNovelAndRender()}",
+              'novel continue persistence'
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # Episode reader
+          path = Path('episode.html')
+          text = path.read_text(encoding='utf-8')
+          text = replace_once(
+              text,
+              '.warning ul{margin:12px 0 16px;padding-left:20px}',
+              '.warning ul{margin:12px 0 16px;padding-left:20px}.warning-remember{display:flex;align-items:center;gap:8px;margin:14px 0;color:#5f4a2b;font-size:13px;font-weight:800}.warning-remember input{width:17px;height:17px}.content-advisory{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px;width:100%;margin:0 0 10px;text-align:right}.content-advisory-chip{display:inline-flex;align-items:center;max-width:100%;padding:4px 8px;border:1px solid #dfd5c7;border-radius:999px;background:#faf7f2;color:#6c5a47;font-size:11px;font-weight:800;line-height:1.35}',
+              'episode css'
+          )
+          text = replace_once(
+              text,
+              '<section id="warning" class="warning"><h2>内容に関する注意</h2><p style="margin-top:7px;color:#666">この作品には成熟したテーマまたは強い表現が含まれます。</p><ul id="warningList"></ul><button id="continue" class="action" type="button">内容を確認して読む</button></section>',
+              '<section id="warning" class="warning"><h2 id="warningTitle">内容に関する注意</h2><p id="warningCopy" style="margin-top:7px;color:#666">この作品には成熟したテーマまたは強い表現が含まれます。</p><ul id="warningList"></ul><label class="warning-remember"><input id="rememberWarning" type="checkbox" checked>この作品では今後この確認を表示しない</label><button id="continue" class="action" type="button">内容を確認して読む</button></section>',
+              'episode gate markup'
+          )
+          text = replace_once(
+              text,
+              "function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}function visitor(){return NovelightClient.getVisitorToken()}function gateKey(){return'novelight:warning-ok:novel:'+String(novel?.id||'')}function newSessionId()",
+              "function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}function visitor(){return NovelightClient.getVisitorToken()}function normalizedRating(){return novel?.content_rating==='mature'?'sensitive_15':(novel?.content_rating||'general')}function gateKey(){return'novelight:age-gate:novel:'+String(novel?.id||'')+':'+normalizedRating()}function newSessionId()",
+              'episode normalized gate key'
+          )
+          text = replace_once(
+              text,
+              "function warningAccepted(){try{return sessionStorage.getItem(gateKey())==='1'}catch(e){return false}}function rememberWarningAccepted(){try{sessionStorage.setItem(gateKey(),'1')}catch(e){console.error('warning gate persistence failed',e)}}\nfunction novelNeedsGate(){return novel&&(novel.content_rating==='mature'||(novel.content_warnings||[]).length>0)}function warningItems(){const warnings=novel?.content_warnings||[];return warnings.length?warnings:['other']}",
+              "function warningAccepted(){const key=gateKey();try{if(localStorage.getItem(key)==='1')return true}catch(e){console.warn('persistent age gate state unavailable',e)}try{return sessionStorage.getItem(key)==='1'}catch(e){return false}}function rememberWarningAccepted(persist=false){const key=gateKey();try{sessionStorage.setItem(key,'1')}catch(e){console.error('age gate session persistence failed',e)}if(persist){try{localStorage.setItem(key,'1')}catch(e){console.error('age gate persistent storage failed',e)}}}\nfunction novelNeedsGate(){const rating=normalizedRating();return novel&&(rating==='sensitive_15'||rating==='adult_18_nonsexual')}function warningItems(){return novel?.content_warnings||[]}function contentAdvisoryItems(){const items=[];const rating=normalizedRating();if(rating==='sensitive_15')items.push('R15');else if(rating==='adult_18_nonsexual')items.push('R18');(novel?.content_warnings||[]).forEach(w=>items.push((labels[w]||w)+'が含まれます'));return items}function contentAdvisoryMarkup(){const items=contentAdvisoryItems();return items.length?`<div id=\"contentAdvisory\" class=\"content-advisory\" aria-label=\"内容に関する注意\">${items.map(item=>`<span class=\"content-advisory-chip\">${esc(item)}</span>`).join('')}</div>`:''}",
+              'episode gate logic'
+          )
+          text = replace_once(
+              text,
+              "function showGate(){document.getElementById('warning').classList.add('visible');document.getElementById('warningList').innerHTML=warningItems().map(w=>'<li>'+esc(labels[w]||w)+'</li>').join('');document.getElementById('card').style.display='none'}",
+              "function showGate(){const rating=normalizedRating(),title=document.getElementById('warningTitle'),copy=document.getElementById('warningCopy'),button=document.getElementById('continue');if(rating==='adult_18_nonsexual'){title.textContent='18+作品の確認';copy.textContent='この作品には非常に強い非性的な残虐・流血・拷問等の表現が含まれます。18歳以上で、内容警告を確認したうえで閲覧してください。';button.textContent='18歳以上として読む'}else{title.textContent='センシティブな内容の確認';copy.textContent='この作品には15歳未満には不向きな可能性のある表現が含まれます。内容警告を確認してください。';button.textContent='内容を確認して読む'}document.getElementById('rememberWarning').checked=true;document.getElementById('warning').classList.add('visible');document.getElementById('warningList').innerHTML=warningItems().map(w=>'<li>'+esc(labels[w]||w)+'</li>').join('');document.getElementById('card').style.display='none'}",
+              'episode age gate copy'
+          )
+          text = replace_once(
+              text,
+              "function render(){document.getElementById('card').innerHTML=`<div class=\"novel-title\"><a href=\"novel.html?id=${encodeURIComponent(novel.id)}\">${esc(novel.title)}</a></div><div class=\"number\">",
+              "function render(){document.getElementById('card').innerHTML=`<div class=\"novel-title\"><a href=\"novel.html?id=${encodeURIComponent(novel.id)}\">${esc(novel.title)}</a></div>${contentAdvisoryMarkup()}<div class=\"number\">",
+              'episode passive advisory'
+          )
+          text = replace_once(
+              text,
+              "document.getElementById('continue').onclick=async()=>{const b=document.getElementById('continue');b.disabled=true;try{rememberWarningAccepted();await loadEpisodeContentAndRender()}",
+              "document.getElementById('continue').onclick=async()=>{const b=document.getElementById('continue');b.disabled=true;try{rememberWarningAccepted(document.getElementById('rememberWarning')?.checked!==false);await loadEpisodeContentAndRender()}",
+              'episode continue persistence'
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # Preserve work advisory in the V2 DOM rewrite.
+          path = Path('novelight-novel-detail.js')
+          text = path.read_text(encoding='utf-8')
+          text = replace_once(
+              text,
+              "    const meta = header?.querySelector('.meta');\n    if (!header || !favorite || !title || !tags || !author || !description || !meta) return;",
+              "    const meta = header?.querySelector('.meta');\n    const advisory = header?.querySelector('#contentAdvisory');\n    if (!header || !favorite || !title || !tags || !author || !description || !meta) return;",
+              'detail advisory lookup'
+          )
+          text = replace_once(
+              text,
+              "    main.append(title, author, meta);",
+              "    main.append(title);\n    if (advisory) main.appendChild(advisory);\n    main.append(author, meta);",
+              'detail advisory placement'
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # Rename the production helper so it is explicit that only age gates remain blocking.
+          path = Path('tests/e2e/production/reader-smoke.spec.js')
+          text = path.read_text(encoding='utf-8')
+          if 'unlockNovelWarningIfNeeded' in text:
+              text = text.replace('unlockNovelWarningIfNeeded', 'unlockNovelAgeGateIfNeeded')
+          path.write_text(text, encoding='utf-8')
+
+          # Focused static contract for the approved UX behavior.
+          contract = r'''import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          import test from 'node:test';
+
+          const [novel, episode, detail] = await Promise.all([
+            readFile(new URL('../novel.html', import.meta.url), 'utf8'),
+            readFile(new URL('../episode.html', import.meta.url), 'utf8'),
+            readFile(new URL('../novelight-novel-detail.js', import.meta.url), 'utf8')
+          ]);
+
+          test('ordinary content warnings are passive while only R15/R18 are gated', () => {
+            for (const source of [novel, episode]) {
+              assert.match(source, /rating==='sensitive_15'\|\|rating==='adult_18_nonsexual'/u);
+              assert.match(source, /contentAdvisoryMarkup/u);
+              assert.match(source, /が含まれます/u);
+            }
+            assert.doesNotMatch(novel, /normalizedRating\(\)!=='general'\|\|\(novel\?\.content_warnings/u);
+            assert.doesNotMatch(episode, /content_rating==='mature'\|\|\(novel\.content_warnings/u);
+          });
+
+          test('work and episode share one per-work age acknowledgement contract', () => {
+            const key = "novelight:age-gate:novel:";
+            for (const source of [novel, episode]) {
+              assert.ok(source.includes(key));
+              assert.match(source, /localStorage\.getItem\(key\)/u);
+              assert.match(source, /sessionStorage\.getItem\(key\)/u);
+              assert.match(source, /sessionStorage\.setItem\(key,'1'\)/u);
+              assert.match(source, /localStorage\.setItem\(key,'1'\)/u);
+              assert.ok(source.includes('この作品では今後この確認を表示しない'));
+              assert.match(source, /id="rememberWarning" type="checkbox" checked/u);
+              assert.match(source, /content_rating==='mature'\?'sensitive_15'/u);
+            }
+          });
+
+          test('R18 keeps explicit age wording and passive advisory survives detail V2', () => {
+            for (const source of [novel, episode]) {
+              assert.ok(source.includes('18歳以上'));
+              assert.ok(source.includes("items.push('R18')"));
+            }
+            assert.ok(detail.includes("header?.querySelector('#contentAdvisory')"));
+            assert.ok(detail.includes('if (advisory) main.appendChild(advisory);'));
+          });
+          '''
+          Path('tests/content-advisory-contract.test.mjs').write_text(contract, encoding='utf-8')
+          PY
+      - name: Run focused checks
+        shell: bash
+        run: |
+          node --test tests/content-advisory-contract.test.mjs
+          git diff --check
+      - name: Commit reader advisory implementation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add novel.html episode.html novelight-novel-detail.js tests/e2e/production/reader-smoke.spec.js tests/content-advisory-contract.test.mjs
+          git commit -m "Implement passive content advisories and per-work age gate"
+          git push origin HEAD:codex/passive-content-advisories
