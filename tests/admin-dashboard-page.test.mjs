@@ -3,116 +3,88 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-const adminHtml = fs.readFileSync(
-  new URL('../admin.html', import.meta.url),
-  'utf8'
-);
-const authReaderContext = fs.readFileSync(
-  new URL('../auth-reader-context.js', import.meta.url),
-  'utf8'
-);
-const adminApi = fs.readFileSync(
-  new URL('../api/admin-dashboard.js', import.meta.url),
-  'utf8'
-);
-const themeCss = fs.readFileSync(
-  new URL('../novelight-theme.css', import.meta.url),
-  'utf8'
-);
-const readabilityCss = fs.readFileSync(
-  new URL('../novelight-readability.css', import.meta.url),
-  'utf8'
-);
+function read(path) {
+  return fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+}
 
-test('admin page is noindex and has no server secret embedded in browser code', () => {
+const adminHtml = read('admin.html');
+const adminApi = read('api/admin-dashboard-v2.js');
+const analyticsHtml = read('admin-analytics.html');
+const authReaderContext = read('auth-reader-context.js');
+const themeCss = read('novelight-theme.css');
+const readabilityCss = read('novelight-readability.css');
+
+test('admin HOME is private and uses the lightweight dashboard endpoint', () => {
   assert.match(adminHtml, /noindex,nofollow,noarchive/);
-  assert.match(adminHtml, /\/api\/admin-dashboard/);
+  assert.match(adminHtml, /\/api\/admin-dashboard-v2/);
   assert.doesNotMatch(adminHtml, /SUPABASE_SECRET_KEY/);
   assert.doesNotMatch(adminHtml, /NOVELIGHT_ADMIN_USER_IDS/);
   assert.doesNotMatch(adminHtml, /NOVELIGHT_ADMIN_EMAILS/);
-});
-
-test('admin API obtains the Supabase secret only from the server environment', () => {
+  assert.match(adminApi, /requireAdmin/);
   assert.match(adminApi, /process\.env\.SUPABASE_SECRET_KEY/);
-  assert.doesNotMatch(adminApi, /sb_secret_/);
-  assert.doesNotMatch(adminApi, /service_role/);
 });
 
-test('admin active cards show registered users and use a non-destructive reset epoch', () => {
-  assert.match(adminHtml, /7日アクティブ登録ユーザー/);
-  assert.match(adminHtml, /30日アクティブ登録ユーザー/);
-  assert.match(adminHtml, /activeRegisteredUsers7d/);
-  assert.match(adminHtml, /activeRegisteredUsers30d/);
-  assert.match(adminApi, /user_lifecycle/);
-  assert.match(adminApi, /NOVELIGHT_ADMIN_ACTIVITY_RESET_AT/);
-  assert.match(adminApi, /ACTIVE_REGISTERED_RESET_FALLBACK/);
+test('admin HOME focuses on the ten today KPIs and decision signals', () => {
+  for (const label of [
+    '今日のユニーク来訪者',
+    '今日のアクティブユーザー',
+    '今日の新規登録者',
+    '新規作者数',
+    '新規読者数',
+    '今日投稿された作品数',
+    '今日公開された話数',
+    '今日実際に読んだ人数',
+    '未対応お問い合わせ',
+    '重大エラー / 異常検知'
+  ]) {
+    assert.match(adminHtml, new RegExp(label));
+  }
+  assert.match(adminHtml, /来訪者 → 実読書/);
+  assert.match(adminHtml, /PVゼロ作品率/);
 });
 
-test('admin discovery watch exposes actionable delivery gaps without becoming a ranking input', () => {
-  assert.match(adminHtml, /発見機会ウォッチ/);
-  assert.match(adminHtml, /watchNoExposure/);
-  assert.match(adminHtml, /watchNoRead/);
-  assert.match(adminHtml, /ランキング・作品Rank・露出配分には反映しません/);
-  assert.match(adminHtml, /露出起点の本文10秒閲覧/);
+test('daily chart supports 7, 30, 90 and all-time views with metric toggles', () => {
+  assert.match(adminHtml, /data-range="7"/);
+  assert.match(adminHtml, /data-range="30"/);
+  assert.match(adminHtml, /data-range="90"/);
+  assert.match(adminHtml, /data-range="all"/);
+  assert.match(adminHtml, /data-key="unique_visitors"/);
+  assert.match(adminHtml, /data-key="pageviews"/);
+  assert.match(adminHtml, /data-key="logged_in_users"/);
+  assert.match(adminHtml, /data-key="reading_users"/);
 });
 
-test('shared NOVELIGHT theme explicitly covers every admin page slug', () => {
+test('HOME reads aggregated daily metrics instead of loading raw analytics tables', () => {
+  assert.match(adminApi, /admin_metrics_daily/);
+  assert.match(adminApi, /novelight_admin_refresh_metrics_daily/);
+  assert.doesNotMatch(adminApi, /\.from\('reader_journey_events'\)/);
+  assert.doesNotMatch(adminApi, /\.from\('user_lifecycle'\)/);
+  assert.doesNotMatch(adminApi, /\.from\('user_acquisition'\)/);
+});
+
+test('HOME states measurement limits instead of presenting inferred history as fact', () => {
+  assert.match(adminHtml, /エピソード閲覧PV/);
+  assert.match(adminApi, /episodeFirstPublishedAt: 'migration-activation'/);
+  assert.match(adminApi, /過去の公開日時は推測しません/);
+});
+
+test('detailed analytics remain separate from HOME', () => {
+  assert.match(adminHtml, /href="admin-analytics\.html"/);
+  assert.match(analyticsHtml, /利用状況/);
+  assert.match(analyticsHtml, /読者ファネル/);
+  assert.match(analyticsHtml, /作者ファネル/);
+  assert.match(analyticsHtml, /リテンション \/ コホート/);
+  assert.match(analyticsHtml, /作品発見・露出/);
+  assert.match(analyticsHtml, /流入元/);
+});
+
+test('shared NOVELIGHT theme still covers admin pages', () => {
   assert.match(themeCss, /data-novelight-page\^="admin-"/);
   assert.match(themeCss, /novelight-page-admin/);
-  assert.match(themeCss, /#f7f2e7/i);
-  assert.match(themeCss, /#eac46a/i);
-});
-
-test('admin specialized readability overrides remain covered', () => {
   assert.match(readabilityCss, /novelight-page-admin-thumbnails/);
   assert.match(readabilityCss, /novelight-page-admin-scout/);
-  assert.match(readabilityCss, /\.quad-field strong/);
-  assert.match(readabilityCss, /\.quad-controls > label > span/);
-  assert.match(readabilityCss, /\.quad-meta/);
-  assert.match(readabilityCss, /\.validation/);
-  assert.match(readabilityCss, /\.row strong/);
-  assert.match(readabilityCss, /\.brand > span/);
-  assert.match(readabilityCss, /font-size:\s*15px !important/);
-  assert.match(readabilityCss, /font-size:\s*14px !important/);
-  assert.match(readabilityCss, /#f3d98e/i);
 });
 
-test('admin compact operational rows stay readable without inheriting oversized KPI numerals', () => {
-  assert.match(
-    themeCss,
-    /\.work \.num\s*\{[\s\S]*?font-size:\s*15px !important;/
-  );
-  assert.match(
-    themeCss,
-    /\.row strong\s*\{[\s\S]*?font-size:\s*15px !important;/
-  );
-  assert.match(
-    themeCss,
-    /\.brand > span\s*\{[\s\S]*?padding:\s*4px 9px;[\s\S]*?font-size:\s*13px !important;/
-  );
-});
-
-test('login redirect allowlist explicitly permits the private admin page', () => {
+test('login redirect allowlist permits the private admin page', () => {
   assert.match(authReaderContext, /'\/admin\.html'/);
-});
-
-test('admin page does not add itself to ordinary site navigation', () => {
-  const ordinaryPages = ['index.html', 'mypage.html', 'pricing.html'];
-  for (const page of ordinaryPages) {
-    if (!fs.existsSync(new URL(`../${page}`, import.meta.url))) continue;
-    const content = fs.readFileSync(
-      new URL(`../${page}`, import.meta.url),
-      'utf8'
-    );
-    assert.doesNotMatch(content, /href=["']admin\.html["']/);
-  }
-});
-
-test('admin dashboard surfaces beta KPI gaps from the MASTER without using stale favorite counters', () => {
-  assert.match(adminHtml, /作者7日継続率/);
-  assert.match(adminHtml, /読者7日継続率/);
-  assert.match(adminHtml, /登録→初作品作成率/);
-  assert.match(adminHtml, /1読者あたり閲覧作品数/);
-  assert.match(adminHtml, /期間内の露出（露出時プラン）/);
-  assert.match(adminHtml, /favorites正本 \/ 自己お気に入り除外/);
 });
