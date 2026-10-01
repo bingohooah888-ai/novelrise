@@ -8,6 +8,7 @@
     "syntax:check": "node scripts/check-js-syntax.mjs",
     "runtime:gate": "node scripts/runtime-gate-entry.mjs",
     "nlo:fast-patch": "node scripts/nlo-fast-patch-gate.mjs",
+    "nlo:capabilities": "node scripts/nlo-capability-core.mjs",
     "preflight": "npm run preflight:fast",
     "preflight:agent": "npm run runtime:gate -- --phase=implementation && npm run preflight:fix",
     "preflight:fast": "npm run format:check && npm run lint && npm test && npm run syntax:check && npm run preflight:merge-readiness && git diff --check",
