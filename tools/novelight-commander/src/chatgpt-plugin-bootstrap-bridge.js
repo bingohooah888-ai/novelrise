@@ -151,16 +151,31 @@ async function listCommentsSince(tokenValue, since) {
 
 async function poll(config, tokenValue, state) {
   const rows = await listCommentsSince(tokenValue, state.since);
-  for (const comment of rows.filter(item => Number(item.id) > state.last).sort((a, b) => a.id - b.id)) {
+  const pending = rows
+    .filter(item => Number(item.id) > state.last)
+    .sort((a, b) => a.id - b.id);
+  const pluginComments = pending.filter(
+    comment => comment.user?.login === OWNER && String(comment.body || '').startsWith(PREFIX)
+  );
+  const latestPluginCommentId = pluginComments.length
+    ? Number(pluginComments.at(-1).id)
+    : null;
+
+  for (const comment of pending) {
     if (comment.user?.login === OWNER && String(comment.body || '').startsWith(PREFIX)) {
       let request;
       try {
         request = parse(comment);
         if (!state.done.includes(request.requestId)) {
-          const result = await handle(config, request);
-          await post(tokenValue, request, 'success', result);
-          state.done.push(request.requestId);
-          state.done = state.done.slice(-200);
+          if (latestPluginCommentId !== null && Number(comment.id) !== latestPluginCommentId) {
+            state.done.push(request.requestId);
+            state.done = state.done.slice(-200);
+          } else {
+            const result = await handle(config, request);
+            await post(tokenValue, request, 'success', result);
+            state.done.push(request.requestId);
+            state.done = state.done.slice(-200);
+          }
         }
       } catch (error) {
         await post(tokenValue, request, 'failure', error instanceof Error ? error.message : String(error));
