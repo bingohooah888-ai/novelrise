@@ -12,9 +12,11 @@
 
 NOVELIGHT実装では `docs/NLO-EXECUTION-POLICY.md` を必ず適用する。
 
+NLOの能力不足・自己拡張では `docs/NLO-SELF-EXPANSION-POLICY.md` も必ず適用する。必要な能力がないことをNOVELIGHT作業の終端理由にせず、Capability Registryを確認し、再利用価値のある不足は `capability_gap` として安全な範囲で恒久能力化する。
+
 チャット記憶に依存して実行方法を決めない。新しいチャット・別エージェントでもrepoのこのポリシーを基準にする。
 
-NLOとRemote Desktop Commander（DC）は別物である。NLOが指定されている作業でDCをNLOとして代用・混同しない。
+NLOとRemote Desktop Commander（DC）は別物である。NLOが指定されている作業でDCをNLOとして代用・混同しない。DC deviceがofflineでも、それ単独ではNLO offlineと判定しない。直接NLO MCPが見えない場合はIssue #797の正式 `nlo_health` Bridge経路を確認する。
 
 ## 3. 最初にリスク分類する
 
@@ -153,6 +155,8 @@ AIやツールを増やすこと自体を目的にしない。速度・品質・
 
 認証、RLS、Stripe、権限、個人情報、破壊的migration等では必要に応じて独立レビューを追加する。
 
+NLOで必要能力が見つからない場合、単に別手段へ逃げて同じ不足を残さない。`.novelight/nlo-capabilities.json` を解決し、再利用価値があれば `capability_gap` を記録して `docs/NLO-SELF-EXPANSION-POLICY.md` のA/B/C境界で能力化する。Tier Aは可能な限り同一workstreamで実装・focused test・登録まで進め、Tier Bはbranch/PRまで進め、Tier Cは既存の明示承認境界で停止する。
+
 ## 11. GitHub / merge
 
 作業は最新 `main` からwork branchを作成する。直接mainへ編集しない。
@@ -183,6 +187,9 @@ AIやツールを増やすこと自体を目的にしない。速度・品質・
 - `npm run syntax:check`
 - `npm run nlo:fast-patch -- --stage=before --target=<path> --workstream=<name>`
 - `npm run nlo:fast-patch -- --stage=after --workstream=<name>`
+- `npm run nlo:capabilities -- validate`
+- `npm run nlo:capabilities -- resolve --intent="<intent>" --effect="<effect>"`
+- `npm run nlo:capabilities -- record-gap --intent="<intent>" --effect="<effect>"`
 - `npm run runtime:gate -- --phase=<phase>` — FULL PREFLIGHT用
 - `npm run preflight:fast`
 - `npm run preflight:full` — 高リスク・横断変更に限定
