@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const shortcutRuntime = readFileSync(
   new URL('../novelight-scout-title-toast.js', import.meta.url),
