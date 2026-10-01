@@ -251,13 +251,16 @@ test('novel edit loads existing work, saves changes, and renders the update', as
   ]);
 
   await page.waitForURL(/\/novel\.html\?id=novel-edit-e2e$/);
-  await expect(page.locator('#warningGate')).toBeVisible();
-  await page.locator('#continueButton').click();
+  await expect(page.locator('#warningGate')).toBeHidden();
   await expect(page.locator('.title')).toHaveText('編集後の作品');
   await expect(page.locator('.description')).toHaveText(
     '編集後のあらすじです。'
   );
   await expect(page.locator('.tag.ai')).toHaveText('AI支援');
+  await expect(page.locator('#contentAdvisory')).toContainText('R15');
+  await expect(page.locator('#contentAdvisory')).toContainText(
+    '暴力・戦闘が含まれます'
+  );
   expect(pageErrors).toEqual([]);
 });
 

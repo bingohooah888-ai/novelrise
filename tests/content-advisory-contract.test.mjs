@@ -41,14 +41,11 @@ test('work and episode share one per-work age acknowledgement contract', () => {
   }
 });
 
-test(
-  'R18 keeps explicit age wording and passive advisory survives detail V2',
-  () => {
-    for (const source of [novel, episode]) {
-      assert.ok(source.includes('18歳以上'));
-      assert.ok(source.includes("items.push('R18')"));
-    }
-    assert.ok(detail.includes("header?.querySelector('#contentAdvisory')"));
-    assert.ok(detail.includes('if (advisory) main.appendChild(advisory);'));
+test('R18 keeps explicit age wording and passive advisory survives detail V2', () => {
+  for (const source of [novel, episode]) {
+    assert.ok(source.includes('18歳以上'));
+    assert.ok(source.includes("items.push('R18')"));
   }
-);
+  assert.ok(detail.includes("header?.querySelector('#contentAdvisory')"));
+  assert.ok(detail.includes('if (advisory) main.appendChild(advisory);'));
+});
