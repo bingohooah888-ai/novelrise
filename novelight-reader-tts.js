@@ -81,9 +81,15 @@
     const Utterance = global.SpeechSynthesisUtterance;
     const supported = Boolean(synthesis && typeof Utterance === 'function');
     const controls = documentRef.createElement('section');
+    const panelId = `reader-tts-panel-${Math.random().toString(36).slice(2, 9)}`;
     controls.className = 'reader-tts';
     controls.setAttribute('aria-label', '本文の読み上げ');
-    controls.innerHTML = '<div class="reader-tts-title">本文の読み上げ</div>' +
+    controls.innerHTML = '<div class="reader-tts-head">' +
+      '<div class="reader-tts-title">🔊 本文の読み上げ</div>' +
+      `<button class="reader-tts-toggle" type="button" aria-expanded="false" aria-controls="${panelId}" data-tts-toggle aria-label="読み上げ設定を開く">` +
+      '<span class="reader-tts-compact-status" data-tts-compact-status></span>' +
+      '<span class="reader-tts-chevron" aria-hidden="true">＋</span></button></div>' +
+      `<div class="reader-tts-panel" id="${panelId}" data-tts-panel hidden>` +
       '<div class="reader-tts-actions">' +
       '<div class="reader-tts-rate">' +
       '<div class="reader-tts-rate-heading"><span>速度</span><output data-tts-rate-output>1.0×</output></div>' +
@@ -96,9 +102,14 @@
       '<button type="button" data-tts-action="pause">一時停止</button>' +
       '<button type="button" data-tts-action="resume">再開</button>' +
       '<button type="button" data-tts-action="stop">停止</button></div>' +
-      '<p class="reader-tts-status" role="status" aria-live="polite"></p>';
+      '<p class="reader-tts-status" role="status" aria-live="polite"></p></div>';
     content.before(controls);
 
+    const head = controls.querySelector('.reader-tts-head');
+    const toggleButton = controls.querySelector('[data-tts-toggle]');
+    const panel = controls.querySelector('[data-tts-panel]');
+    const compactStatus = controls.querySelector('[data-tts-compact-status]');
+    const chevron = controls.querySelector('.reader-tts-chevron');
     const rateSlider = controls.querySelector('[data-tts-rate-slider]');
     const rateInput = controls.querySelector('[data-tts-rate-input]');
     const rateOutput = controls.querySelector('[data-tts-rate-output]');
@@ -112,6 +123,21 @@
     let active = false;
     let paused = false;
     let runId = 0;
+
+    function setExpanded(expanded) {
+      panel.hidden = !expanded;
+      toggleButton.setAttribute('aria-expanded', String(expanded));
+      toggleButton.setAttribute('aria-label', expanded ? '読み上げ設定を閉じる' : '読み上げ設定を開く');
+      chevron.textContent = expanded ? '−' : '＋';
+    }
+    function toggleExpanded() {
+      setExpanded(toggleButton.getAttribute('aria-expanded') !== 'true');
+    }
+    toggleButton.addEventListener('click', toggleExpanded);
+    head.addEventListener('click', (event) => {
+      if (event.target.closest?.('button, a, input, label')) return;
+      toggleExpanded();
+    });
 
     function setRate(value, syncInput = true) {
       const rate = normalizePlaybackRate(value);
@@ -132,6 +158,12 @@
       stopButton.disabled = !supported || !active;
       rateSlider.disabled = !supported;
       rateInput.disabled = !supported;
+      if (!supported) compactStatus.textContent = '利用不可';
+      else if (active) compactStatus.textContent = paused
+        ? '一時停止中'
+        : `読み上げ中 ${formatPlaybackRate(selectedRate())}×`;
+      else if (message === '読み上げが完了しました。') compactStatus.textContent = '完了';
+      else compactStatus.textContent = '';
     }
     function announceRateChange() {
       if (active) {
@@ -223,6 +255,7 @@
       const link = event.target.closest?.('a[href]');
       if (link && !event.defaultPrevented && link.target !== '_blank') cancelForExit();
     }, true);
+    setExpanded(false);
     setRate(MIN_PLAYBACK_RATE);
     renderState(supported
       ? '速度を1.0〜3.0倍で調整して再生すると、このページに表示中の本文だけを読み上げます。'
