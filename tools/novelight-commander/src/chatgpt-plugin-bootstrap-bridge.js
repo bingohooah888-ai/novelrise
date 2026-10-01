@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { bootstrapChatgptPlugin } from './chatgpt-plugin-bootstrap.js';
+import { bootstrapChatgptPlugin } from './chatgpt-plugin-bootstrap-v2.js';
 import { redactSecrets } from './security.js';
 
 const OWNER = 'bingohooah888-ai';
