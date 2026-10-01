@@ -10,6 +10,8 @@ const PREFIX = 'NOVELIGHT_NLO_CHATGPT_PLUGIN_REQUEST ';
 const RESULT_PREFIX = 'NOVELIGHT_NLO_CHATGPT_PLUGIN_RESULT';
 const CONFIRMATION = 'CHAT_APPROVED';
 const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9][A-Za-z0-9_-]{2,63}$/;
+const RECENT_WINDOW_MS = 15 * 60 * 1000;
+const MAX_COMMENT_PAGES = 5;
 
 async function loadConfig() {
   const configPath = String(process.env.NOVELIGHT_BRIDGE_CONFIG || '').trim();
@@ -72,10 +74,17 @@ async function api(tokenValue, method, apiPath, body) {
   return payload;
 }
 
+function clampSince(value) {
+  const parsed = Date.parse(String(value || ''));
+  const floor = Date.now() - RECENT_WINDOW_MS;
+  const timestamp = Number.isFinite(parsed) ? Math.max(parsed, floor) : floor;
+  return new Date(timestamp).toISOString();
+}
+
 async function readState(config) {
   try { return JSON.parse(await fs.readFile(config.statePath, 'utf8')); }
   catch (error) {
-    if (error?.code === 'ENOENT') return { last: 0, since: new Date(Date.now() - 60 * 60 * 1000).toISOString(), done: [] };
+    if (error?.code === 'ENOENT') return { last: 0, since: new Date(Date.now() - RECENT_WINDOW_MS).toISOString(), done: [] };
     throw error;
   }
 }
@@ -140,8 +149,9 @@ async function handle(config, request) {
 
 async function listCommentsSince(tokenValue, since) {
   const rows = [];
-  for (let page = 1; page <= 50; page += 1) {
-    const query = new URLSearchParams({ per_page: '100', since, page: String(page) });
+  const boundedSince = clampSince(since);
+  for (let page = 1; page <= MAX_COMMENT_PAGES; page += 1) {
+    const query = new URLSearchParams({ per_page: '100', since: boundedSince, page: String(page) });
     const batch = await api(tokenValue, 'GET', `/repos/${OWNER}/${REPO}/issues/${ISSUE}/comments?${query}`);
     rows.push(...batch);
     if (batch.length < 100) break;
