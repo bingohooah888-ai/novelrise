@@ -93,8 +93,16 @@ function profileCandidates(browserExecutable) {
   return candidates.filter(item => { const key = path.resolve(item.userDataDir).toLowerCase(); if (seen.has(key)) return false; seen.add(key); return true; });
 }
 
+function normalizePlaywrightModule(imported) {
+  const candidate = imported?.chromium ? imported : imported?.default;
+  if (!candidate?.chromium?.launchPersistentContext) {
+    throw new Error('playwright-core chromium API is unavailable.');
+  }
+  return candidate;
+}
+
 async function ensurePlaywright(commanderDir) {
-  try { return await import('playwright-core'); }
+  try { return normalizePlaywrightModule(await import('playwright-core')); }
   catch (firstError) {
     const npm = process.platform === 'win32' ? (process.env.ComSpec || 'cmd.exe') : 'npm';
     const args = process.platform === 'win32'
@@ -102,7 +110,7 @@ async function ensurePlaywright(commanderDir) {
       : ['install', '--package-lock=false', '--ignore-scripts'];
     const result = await run(npm, args, commanderDir, 300_000);
     if (result.code !== 0) throw new Error(`playwright-core install failed: ${(result.stderr || result.stdout).slice(0, 1200)}`);
-    try { return await import('playwright-core'); } catch { throw firstError; }
+    try { return normalizePlaywrightModule(await import('playwright-core')); } catch { throw firstError; }
   }
 }
 

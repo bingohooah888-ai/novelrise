@@ -13,6 +13,7 @@ $BridgeRunner = Join-Path $Here "run-github-bridge.ps1"
 $TunnelKeyPath = Join-Path $RuntimeRoot "control-plane-key.dpapi"
 $TunnelInstaller = Join-Path $Here "install-openai-tunnel-autostart.ps1"
 $PluginAutoregisterScript = Join-Path $Here "src\chatgpt-plugin-autoregister.js"
+$PluginStatePath = Join-Path $RuntimeRoot "chatgpt-plugin.json"
 
 if (-not (Test-Path $RepairScript)) { throw "repair-nlo-services.ps1 is missing." }
 if (-not (Test-Path $ConfigPath)) { throw "Bridge config file is missing." }
@@ -63,6 +64,8 @@ Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger @($LogonTrig
 & $RepairScript -ConfigPath $ConfigPath
 
 $PluginAutoregisterStarted = $false
+$PluginAutoregisterTimedOut = $false
+$PluginProcess = $null
 if (Test-Path $PluginAutoregisterScript) {
   if (-not $env:NOVELIGHT_COMMANDER_TUNNEL_ID) {
     $SavedTunnelId = [Environment]::GetEnvironmentVariable("NOVELIGHT_COMMANDER_TUNNEL_ID", "User")
@@ -70,8 +73,26 @@ if (Test-Path $PluginAutoregisterScript) {
   }
   $Node = Get-Command node -ErrorAction SilentlyContinue
   if ($Node -and $env:NOVELIGHT_COMMANDER_TUNNEL_ID) {
-    Start-Process -FilePath $Node.Source -ArgumentList @($PluginAutoregisterScript) -WindowStyle Hidden | Out-Null
+    $PluginProcess = Start-Process -FilePath $Node.Source -ArgumentList @($PluginAutoregisterScript) -WindowStyle Hidden -PassThru
     $PluginAutoregisterStarted = $true
+    $Deadline = (Get-Date).AddSeconds(90)
+    while (-not $PluginProcess.HasExited -and (Get-Date) -lt $Deadline) {
+      Start-Sleep -Milliseconds 500
+      $PluginProcess.Refresh()
+    }
+    if (-not $PluginProcess.HasExited) {
+      $PluginAutoregisterTimedOut = $true
+      Stop-Process -Id $PluginProcess.Id -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
+
+$PluginState = $null
+if (Test-Path $PluginStatePath) {
+  try {
+    $PluginState = Get-Content -Raw -Path $PluginStatePath | ConvertFrom-Json
+  } catch {
+    $PluginState = $null
   }
 }
 
@@ -85,4 +106,14 @@ Write-Output ("tunnel_task: " + $(if ($TunnelTask) { $TunnelTask.State } else { 
 Write-Output ("bridge_startup_launcher: " + [bool](Test-Path $StartupFile))
 Write-Output ("watchdog_hidden_launcher: " + [bool](Test-Path $WatchdogLauncher))
 Write-Output ("chatgpt_plugin_autoregister_started: " + $PluginAutoregisterStarted)
+Write-Output ("chatgpt_plugin_autoregister_timed_out: " + $PluginAutoregisterTimedOut)
+Write-Output ("chatgpt_plugin_state_present: " + [bool]$PluginState)
+Write-Output ("chatgpt_plugin_status: " + $(if ($PluginState) { [string]$PluginState.status } else { "unknown" }))
+Write-Output ("chatgpt_plugin_id: " + $(if ($PluginState -and $PluginState.pluginId) { [string]$PluginState.pluginId } else { "none" }))
+Write-Output ("chatgpt_plugin_installed: " + $(if ($PluginState -and $null -ne $PluginState.installed) { [string]$PluginState.installed } else { "unknown" }))
+Write-Output ("chatgpt_plugin_profile: " + $(if ($PluginState -and $PluginState.profile) { [string]$PluginState.profile } else { "unknown" }))
+Write-Output ("chatgpt_plugin_name_filled: " + $(if ($PluginState -and $PluginState.details -and $null -ne $PluginState.details.nameFilled) { [string]$PluginState.details.nameFilled } else { "unknown" }))
+Write-Output ("chatgpt_plugin_description_filled: " + $(if ($PluginState -and $PluginState.details -and $null -ne $PluginState.details.descriptionFilled) { [string]$PluginState.details.descriptionFilled } else { "unknown" }))
+Write-Output ("chatgpt_plugin_tunnel_filled: " + $(if ($PluginState -and $PluginState.details -and $null -ne $PluginState.details.tunnelFilled) { [string]$PluginState.details.tunnelFilled } else { "unknown" }))
+Write-Output ("chatgpt_plugin_reason: " + $(if ($PluginState -and $PluginState.reason) { [string]$PluginState.reason } elseif ($PluginState -and $PluginState.error) { [string]$PluginState.error } else { "none" }))
 Write-Output "autorecovery_installed: true"
