@@ -62,14 +62,20 @@
     if (incomingNumber < currentNumber) return { ...current, lastReadAt };
 
     if (String(incoming.episodeId) !== String(current.episodeId)) {
-      const winner = timestamp(incoming.lastReadAt) >= timestamp(current.lastReadAt) ? incoming : current;
+      const winner =
+        timestamp(incoming.lastReadAt) >= timestamp(current.lastReadAt)
+          ? incoming
+          : current;
       return { ...winner, lastReadAt };
     }
 
     return {
       ...current,
       ...incoming,
-      progressRatio: Math.max(clamp(current.progressRatio), clamp(incoming.progressRatio)),
+      progressRatio: Math.max(
+        clamp(current.progressRatio),
+        clamp(incoming.progressRatio)
+      ),
       lastReadAt,
       syncUserId: incoming.syncUserId || current.syncUserId || null
     };
@@ -109,13 +115,23 @@
 
   async function hydrateRemoteProgress(clientInstance, novelIds) {
     const userId = await authenticatedUserId(clientInstance);
-    const ids = Array.from(new Set((novelIds || []).map((value) => String(value || '')).filter(Boolean)));
-    if (!userId || !ids.length) return { authenticated: Boolean(userId), userId, synced: false };
+    const ids = Array.from(
+      new Set(
+        (novelIds || [])
+          .map((value) => String(value || ''))
+          .filter(Boolean)
+      )
+    );
+    if (!userId || !ids.length) {
+      return { authenticated: Boolean(userId), userId, synced: false };
+    }
 
     try {
       const result = await clientInstance
         .from(REMOTE_TABLE)
-        .select('user_id,novel_id,episode_id,episode_number,progress_ratio,last_read_at')
+        .select(
+          'user_id,novel_id,episode_id,episode_number,progress_ratio,last_read_at'
+        )
         .eq('user_id', userId)
         .in('novel_id', ids);
       if (result.error) throw result.error;
@@ -124,7 +140,8 @@
         const remote = remoteProgress(row, userId);
         if (!remote) continue;
         const local = readProgress(remote.novelId);
-        const merged = local?.syncUserId === userId ? mergeProgress(remote, local) : remote;
+        const merged =
+          local?.syncUserId === userId ? mergeProgress(remote, local) : remote;
         writeProgress({ ...merged, syncUserId: userId });
       }
       return { authenticated: true, userId, synced: true };
@@ -142,20 +159,32 @@
     try {
       const result = await clientInstance
         .from(REMOTE_TABLE)
-        .upsert({
-          user_id: userId,
-          novel_id: String(stored.novelId),
-          episode_id: String(stored.episodeId),
-          progress_ratio: clamp(stored.progressRatio),
-          last_read_at: stored.lastReadAt || new Date().toISOString()
-        }, { onConflict: 'user_id,novel_id' })
-        .select('user_id,novel_id,episode_id,episode_number,progress_ratio,last_read_at')
+        .upsert(
+          {
+            user_id: userId,
+            novel_id: String(stored.novelId),
+            episode_id: String(stored.episodeId),
+            progress_ratio: clamp(stored.progressRatio),
+            last_read_at: stored.lastReadAt || new Date().toISOString()
+          },
+          { onConflict: 'user_id,novel_id' }
+        )
+        .select(
+          'user_id,novel_id,episode_id,episode_number,progress_ratio,last_read_at'
+        )
         .single();
       if (result.error) throw result.error;
+
       const canonical = remoteProgress(result.data, userId);
       if (canonical) {
         const latestLocal = readProgress(novelId);
-        writeProgress({ ...mergeProgress(canonical, latestLocal?.syncUserId === userId ? latestLocal : null), syncUserId: userId });
+        writeProgress({
+          ...mergeProgress(
+            canonical,
+            latestLocal?.syncUserId === userId ? latestLocal : null
+          ),
+          syncUserId: userId
+        });
       }
       return true;
     } catch (error) {
@@ -165,7 +194,14 @@
   }
 
   function scheduleRemoteProgress(clientInstance, userId, novelId) {
-    if (!clientInstance || !userId || !novelId || remoteSaveTimers.has(String(novelId))) return;
+    if (
+      !clientInstance ||
+      !userId ||
+      !novelId ||
+      remoteSaveTimers.has(String(novelId))
+    ) {
+      return;
+    }
     const key = String(novelId);
     const timer = window.setTimeout(() => {
       remoteSaveTimers.delete(key);
@@ -190,14 +226,78 @@
       .nl-continue-panel{margin:0 0 18px;padding:15px 16px;border:1px solid rgba(201,169,106,.3);border-radius:12px;background:linear-gradient(135deg,#fffdf7,#faf4e6)}
       .nl-continue-label{display:block;margin-bottom:7px;color:#7b6c58;font-size:11px;font-weight:800;letter-spacing:.08em}
       .nl-continue-link{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#39291c!important;font-weight:900;text-decoration:none!important}
-      .nl-continue-link strong{font-size:15px}.nl-continue-arrow{font-size:18px;color:#9b6e2c}
-      .nl-bookshelf-item{display:grid;gap:8px}.nl-bookshelf-item>.card{margin:0}
+      .nl-continue-link strong{font-size:15px}
+      .nl-continue-arrow{font-size:18px;color:#9b6e2c}
+      .nl-bookshelf-item{display:grid;gap:8px}
+      .nl-bookshelf-item>.card{margin:0}
       .nl-bookshelf-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e5e0d7;border-radius:10px;background:#fffdf8;flex-wrap:wrap}
-      .nl-bookshelf-state{font-size:12px;font-weight:800;color:#765e3b}.nl-bookshelf-state.updated{color:#9a5b16}
+      .nl-bookshelf-state{font-size:12px;font-weight:800;color:#765e3b}
+      .nl-bookshelf-state.updated{color:#9a5b16}
       .nl-bookshelf-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
       .nl-bookshelf-action{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 11px;border-radius:8px;border:1px solid #d8ccb9;background:#fff;color:#4b3928!important;font-size:12px;font-weight:900;text-decoration:none!important}
       .nl-bookshelf-action.primary{background:#3b2a1d;color:#fff!important;border-color:#3b2a1d}
-      @media(max-width:640px){.nl-reading-nav-main{grid-template-columns:1fr 1fr}.nl-reading-link.next{grid-column:1/-1;grid-row:1}.nl-reading-link.toc{grid-column:1/-1}.nl-bookshelf-meta{align-items:flex-start}.nl-bookshelf-actions{width:100%}.nl-bookshelf-action{flex:1}}
+
+      body.nl-novel-detail-refresh{background:#f6f3ed;color:#2f2923}
+      body.nl-novel-detail-refresh main{max-width:1040px;padding-top:34px}
+      body.nl-novel-detail-refresh .panel{border-color:#e5ddd1;box-shadow:0 10px 32px rgba(55,43,31,.04)}
+      body.nl-novel-detail-refresh #novelHeader.nl-novel-detail{padding:0;overflow:hidden;background:#fffdfa}
+      .nl-novel-hero{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,1fr);gap:34px;padding:32px}
+      .nl-novel-cover-shell{width:100%;aspect-ratio:2/3;border-radius:12px;overflow:hidden;background:linear-gradient(145deg,#f0eadf,#ddd2c1);border:1px solid #d8ccbb;box-shadow:0 18px 36px rgba(52,39,26,.14);display:grid;place-items:center;align-self:start}
+      .nl-novel-cover-shell img{width:100%;height:100%;display:block;object-fit:cover}
+      .nl-novel-cover-placeholder{display:grid;place-items:center;width:100%;height:100%;padding:28px;text-align:center;color:#776858;font-weight:900;letter-spacing:.12em;font-size:13px}
+      .nl-novel-main{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+      .nl-novel-main .tags{margin-bottom:16px}
+      .nl-novel-main .title{font-size:clamp(28px,4vw,42px);line-height:1.35;margin-bottom:12px;letter-spacing:.01em}
+      .nl-novel-main .author{margin-bottom:18px;color:#746b62}
+      .nl-novel-main .meta{width:100%;margin:0 0 20px;padding:12px 0;border-top:1px solid #eee7dc;border-bottom:1px solid #eee7dc;color:#7d746a}
+      .nl-novel-actions{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;width:100%;margin-top:auto}
+      .nl-novel-actions .favorite,.nl-novel-actions .nl-book-control-button,.nl-novel-read-action{min-height:46px;border-radius:10px;font-weight:900}
+      .nl-novel-actions .favorite,.nl-novel-actions .nl-book-control-button{padding:10px 14px;border:1px solid #d5c9b9;background:#fff;color:#4b3b2c}
+      .nl-novel-actions .nl-book-control{display:contents}
+      .nl-novel-actions .nl-book-panel{flex:1 0 100%;order:10}
+      .nl-novel-read-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;background:#3b2a1d;color:#fff!important;border:1px solid #3b2a1d;text-decoration:none!important;flex:1 1 220px}
+      .nl-novel-description-section{padding:27px 32px 30px;border-top:1px solid #eee7dc;background:#fff}
+      .nl-novel-section-kicker{margin-bottom:8px;color:#9a7b4e;font-size:11px;font-weight:900;letter-spacing:.14em}
+      .nl-novel-description-section h2,.nl-novel-characters h2{font-size:20px;margin-bottom:12px}
+      .nl-novel-description-section .description{margin:0;color:#4f4942;line-height:2}
+      body.nl-novel-detail-refresh #episodesPanel{margin-bottom:18px}
+      body.nl-novel-detail-refresh #episodesPanel>h2{font-size:23px}
+      .nl-novel-characters{margin-bottom:18px;padding:26px;background:#fffdfa;border:1px solid #e5ddd1;border-radius:16px;box-shadow:0 10px 32px rgba(55,43,31,.04)}
+      .nl-novel-character-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px}
+      .nl-novel-character-head p{color:#7d746a;font-size:12px;line-height:1.6}
+      .nl-novel-character-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+      .nl-novel-character-card{padding:14px 15px;border:1px solid #e7dfd4;border-radius:11px;background:#fff}
+      .nl-novel-character-card strong{display:block;font-size:14px;margin-bottom:4px}
+      .nl-novel-character-card span{display:block;color:#857b70;font-size:11px;line-height:1.5}
+      .nl-novel-character-empty{color:#857b70;font-size:13px}
+      body.nl-novel-detail-refresh #lightSeedArea,body.nl-novel-detail-refresh #receivedSeedArea,body.nl-novel-detail-refresh #novelPollArea{margin-bottom:18px}
+
+      @media(max-width:760px){
+        .nl-novel-hero{grid-template-columns:1fr;gap:24px;padding:22px 18px}
+        .nl-novel-cover-shell{width:min(62vw,230px);margin:0 auto}
+        .nl-novel-main{width:100%}
+        .nl-novel-main .title{text-align:left;font-size:29px}
+        .nl-novel-actions{display:grid;grid-template-columns:1fr 1fr}
+        .nl-novel-actions .favorite,.nl-novel-actions .nl-book-control-button,.nl-novel-read-action{width:100%}
+        .nl-novel-read-action{grid-column:1/-1;grid-row:1}
+        .nl-novel-actions .nl-book-control{display:contents}
+        .nl-novel-actions .nl-book-panel{grid-column:1/-1}
+        .nl-novel-description-section{padding:22px 18px 24px}
+        .nl-novel-character-grid{grid-template-columns:1fr}
+        .nl-novel-character-head{align-items:flex-start;flex-direction:column;gap:4px}
+      }
+      @media(max-width:640px){
+        .nl-reading-nav-main{grid-template-columns:1fr 1fr}
+        .nl-reading-link.next{grid-column:1/-1;grid-row:1}
+        .nl-reading-link.toc{grid-column:1/-1}
+        .nl-bookshelf-meta{align-items:flex-start}
+        .nl-bookshelf-actions{width:100%}
+        .nl-bookshelf-action{flex:1}
+      }
+      @media(max-width:430px){
+        .nl-novel-actions{grid-template-columns:1fr}
+        .nl-novel-read-action{grid-column:auto}
+      }
     `;
     document.head.appendChild(style);
   }
@@ -213,7 +313,10 @@
         clearTimeout(timer);
         resolve(node);
       });
-      observer.observe(root === document ? document.documentElement : root, { childList: true, subtree: true });
+      observer.observe(root === document ? document.documentElement : root, {
+        childList: true,
+        subtree: true
+      });
       const timer = setTimeout(() => {
         observer.disconnect();
         reject(new Error(`Timed out waiting for ${selector}`));
@@ -264,16 +367,39 @@
     button.textContent = `↪ 前回の続きへ（約${Math.round(ratio * 100)}%）`;
     button.addEventListener('click', () => {
       const top = window.scrollY + content.getBoundingClientRect().top;
-      const target = top + Math.max(0, content.scrollHeight * ratio - window.innerHeight * 0.35);
+      const target =
+        top +
+        Math.max(
+          0,
+          content.scrollHeight * ratio - window.innerHeight * 0.35
+        );
       window.scrollTo({ top: target, behavior: 'smooth' });
     });
     heading.insertAdjacentElement('afterend', button);
   }
 
-  function saveEpisodeProgress(row, content, clientInstance = null, userId = null) {
+  function saveEpisodeProgress(
+    row,
+    content,
+    clientInstance = null,
+    userId = null
+  ) {
     let previous = readProgress(row.novel_id);
-    if (userId && previous?.syncUserId && previous.syncUserId !== userId) previous = null;
-    if (userId && previous && !previous.syncUserId && String(previous.episodeId) !== String(row.id)) previous = null;
+    if (
+      userId &&
+      previous?.syncUserId &&
+      previous.syncUserId !== userId
+    ) {
+      previous = null;
+    }
+    if (
+      userId &&
+      previous &&
+      !previous.syncUserId &&
+      String(previous.episodeId) !== String(row.id)
+    ) {
+      previous = null;
+    }
 
     const candidate = {
       novelId: String(row.novel_id),
@@ -283,148 +409,599 @@
       lastReadAt: new Date().toISOString(),
       syncUserId: userId || null
     };
-    const stored = { ...mergeProgress(previous, candidate), syncUserId: userId || null };
+    const stored = {
+      ...mergeProgress(previous, candidate),
+      syncUserId: userId || null
+    };
     writeProgress(stored);
-    if (userId) scheduleRemoteProgress(clientInstance, userId, row.novel_id);
+    if (userId) {
+      scheduleRemoteProgress(
+        clientInstance,
+        userId,
+        row.novel_id
+      );
+    }
     return stored;
   }
 
   function renderEpisodeNavigation(row, rows) {
-    const currentIndex = rows.findIndex((item) => String(item.id) === String(row.id));
+    const currentIndex = rows.findIndex(
+      (item) => String(item.id) === String(row.id)
+    );
     if (currentIndex < 0) return;
     const card = document.getElementById('card');
     if (!card || document.getElementById('nlReadingNav')) return;
+
     const previous = rows[currentIndex - 1] || null;
     const next = rows[currentIndex + 1] || null;
     const nav = document.createElement('nav');
     nav.id = 'nlReadingNav';
     nav.className = 'nl-reading-nav';
     nav.setAttribute('aria-label', 'エピソード移動');
+
     const main = document.createElement('div');
     main.className = 'nl-reading-nav-main';
+
     const previousLink = document.createElement(previous ? 'a' : 'span');
-    previousLink.className = `nl-reading-link previous${previous ? '' : ' disabled'}`;
+    previousLink.className =
+      `nl-reading-link previous${previous ? '' : ' disabled'}`;
     if (previous) previousLink.href = episodeHref(previous.id);
-    previousLink.textContent = previous ? `← 第${previous.episode_number}話` : '← 前の話なし';
+    previousLink.textContent = previous
+      ? `← 第${previous.episode_number}話`
+      : '← 前の話なし';
+
     const toc = document.createElement('a');
     toc.className = 'nl-reading-link toc';
     toc.href = novelHref(row.novel_id);
     toc.textContent = '作品目次';
+
     const nextLink = document.createElement(next ? 'a' : 'span');
-    nextLink.className = `nl-reading-link next${next ? '' : ' disabled'}`;
+    nextLink.className =
+      `nl-reading-link next${next ? '' : ' disabled'}`;
     if (next) nextLink.href = episodeHref(next.id);
-    nextLink.textContent = next ? `第${next.episode_number}話を読む →` : '最新話まで読了';
+    nextLink.textContent = next
+      ? `第${next.episode_number}話を読む →`
+      : '最新話まで読了';
+
     main.append(previousLink, toc, nextLink);
     nav.appendChild(main);
+
     if (!next) {
       const finished = document.createElement('p');
       finished.className = 'nl-reading-finished';
-      finished.textContent = 'ここまで読んでいただきありがとうございます。お気に入りに追加すると作品を本棚から探しやすくなります。';
+      finished.textContent =
+        'ここまで読んでいただきありがとうございます。お気に入りに追加すると作品を本棚から探しやすくなります。';
       nav.appendChild(finished);
     }
+
     card.insertAdjacentElement('afterend', nav);
   }
 
   async function installEpisodeContinuity(clientInstance) {
-    const episodeId = new URLSearchParams(window.location.search).get('id');
+    const episodeId =
+      new URLSearchParams(window.location.search).get('id');
     if (!episodeId) return false;
+
     const content = await waitFor('#card .content').catch(() => null);
     if (!content) return false;
+
     const rowResult = await clientInstance
       .from('episodes')
       .select('id,novel_id,episode_number,status')
       .eq('id', episodeId)
       .single();
-    if (rowResult.error || !rowResult.data || rowResult.data.status !== 'published') return false;
+
+    if (
+      rowResult.error ||
+      !rowResult.data ||
+      rowResult.data.status !== 'published'
+    ) {
+      return false;
+    }
+
     const row = rowResult.data;
-    const syncState = await hydrateRemoteProgress(clientInstance, [row.novel_id]);
+    const syncState = await hydrateRemoteProgress(
+      clientInstance,
+      [row.novel_id]
+    );
     const stored = readProgress(row.novel_id);
     installResumeChip(content, stored, row);
-    const rows = await publishedEpisodes(clientInstance, row.novel_id);
+
+    const rows = await publishedEpisodes(
+      clientInstance,
+      row.novel_id
+    );
     renderEpisodeNavigation(row, rows);
-    saveEpisodeProgress(row, content, clientInstance, syncState.userId);
+    saveEpisodeProgress(
+      row,
+      content,
+      clientInstance,
+      syncState.userId
+    );
+
     let timer = null;
     const schedule = () => {
       if (timer) return;
       timer = window.setTimeout(() => {
         timer = null;
-        saveEpisodeProgress(row, content, clientInstance, syncState.userId);
+        saveEpisodeProgress(
+          row,
+          content,
+          clientInstance,
+          syncState.userId
+        );
       }, 500);
     };
+
     window.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('pagehide', () => {
-      saveEpisodeProgress(row, content, clientInstance, syncState.userId);
-      if (syncState.userId) void pushLocalProgress(clientInstance, syncState.userId, row.novel_id);
-    }, { once: true });
+    window.addEventListener(
+      'pagehide',
+      () => {
+        saveEpisodeProgress(
+          row,
+          content,
+          clientInstance,
+          syncState.userId
+        );
+        if (syncState.userId) {
+          void pushLocalProgress(
+            clientInstance,
+            syncState.userId,
+            row.novel_id
+          );
+        }
+      },
+      { once: true }
+    );
     return true;
   }
 
   function episodeRowsFromNovelPage() {
-    return Array.from(document.querySelectorAll('#episodeList .episode')).map((item) => {
-      const link = item.querySelector('a[href*="episode.html?id="]');
-      const numberText = item.querySelector('.episode-number')?.textContent || '';
-      const match = numberText.match(/第\s*(\d+)\s*話/u);
-      return link && match
-        ? { id: parseNovelId(link.href), href: link.href, episodeNumber: Number(match[1]), title: link.textContent.trim() }
-        : null;
-    }).filter(Boolean);
+    return Array.from(
+      document.querySelectorAll('#episodeList .episode')
+    )
+      .map((item) => {
+        const link = item.querySelector(
+          'a[href*="episode.html?id="]'
+        );
+        const numberText =
+          item.querySelector('.episode-number')?.textContent || '';
+        const match = numberText.match(/第\s*(\d+)\s*話/u);
+        return link && match
+          ? {
+              id: parseNovelId(link.href),
+              href: link.href,
+              episodeNumber: Number(match[1]),
+              title: link.textContent.trim()
+            }
+          : null;
+      })
+      .filter(Boolean);
   }
 
   function continueTarget(rows, stored) {
     if (!rows.length) return null;
-    if (!stored) return { row: rows[0], label: `第${rows[0].episodeNumber}話から読む`, unread: rows.length };
-    const index = rows.findIndex((row) => String(row.id) === String(stored.episodeId));
-    if (index < 0) return { row: rows[0], label: `第${rows[0].episodeNumber}話から読む`, unread: rows.length };
-    const completedCurrent = clamp(stored.progressRatio) >= 0.85;
-    const targetIndex = completedCurrent && rows[index + 1] ? index + 1 : index;
-    const unread = Math.max(0, rows.length - index - (completedCurrent ? 1 : 0));
+    if (!stored) {
+      return {
+        row: rows[0],
+        label: `第${rows[0].episodeNumber}話から読む`,
+        unread: rows.length
+      };
+    }
+
+    const index = rows.findIndex(
+      (row) => String(row.id) === String(stored.episodeId)
+    );
+    if (index < 0) {
+      return {
+        row: rows[0],
+        label: `第${rows[0].episodeNumber}話から読む`,
+        unread: rows.length
+      };
+    }
+
+    const completedCurrent =
+      clamp(stored.progressRatio) >= 0.85;
+    const targetIndex =
+      completedCurrent && rows[index + 1]
+        ? index + 1
+        : index;
+    const unread = Math.max(
+      0,
+      rows.length -
+        index -
+        (completedCurrent ? 1 : 0)
+    );
+
     return {
       row: rows[targetIndex],
-      label: targetIndex === index ? `第${rows[index].episodeNumber}話の続きから読む` : `第${rows[targetIndex].episodeNumber}話から続きを読む`,
+      label:
+        targetIndex === index
+          ? `第${rows[index].episodeNumber}話の続きから読む`
+          : `第${rows[targetIndex].episodeNumber}話から続きを読む`,
       unread
     };
   }
 
-  async function installNovelContinue(clientInstance) {
-    const novelId = new URLSearchParams(window.location.search).get('id');
-    if (!novelId) return false;
-    await waitFor('#episodeList a[href*="episode.html?id="]').catch(() => null);
-    const rows = episodeRowsFromNovelPage();
-    if (!rows.length || document.getElementById('nlContinueReading')) return false;
-    await hydrateRemoteProgress(clientInstance, [novelId]);
-    const target = continueTarget(rows, readProgress(novelId));
-    if (!target) return false;
-    const panel = document.createElement('div');
-    panel.id = 'nlContinueReading';
-    panel.className = 'nl-continue-panel';
-    panel.innerHTML = `<span class="nl-continue-label">READING</span><a class="nl-continue-link" href="${target.row.href}"><strong>${target.label}</strong><span class="nl-continue-arrow" aria-hidden="true">→</span></a>`;
-    const list = document.getElementById('episodeList');
-    const ownerActions = document.getElementById('ownerActions');
-    const isOwner = ownerActions && window.getComputedStyle(ownerActions).display !== 'none';
-    list?.insertAdjacentElement(isOwner ? 'afterend' : 'beforebegin', panel);
+  function optimizedImageUrl(url, width = 720, quality = 82) {
+    const source = String(url || '').trim();
+    if (!source || source.startsWith('/_vercel/image?')) return source;
+    try {
+      const parsed = new URL(source, window.location.origin);
+      const sameOrigin =
+        parsed.origin === window.location.origin;
+      const supabaseStorage =
+        parsed.hostname ===
+          'fiepaguycecrredwrcwx.supabase.co' &&
+        parsed.pathname.startsWith('/storage/v1/object/');
+      if (!sameOrigin && !supabaseStorage) return source;
+      const optimizerSource = sameOrigin
+        ? `${parsed.pathname}${parsed.search}`
+        : parsed.href;
+      return `/_vercel/image?url=${encodeURIComponent(
+        optimizerSource
+      )}&w=${width}&q=${quality}`;
+    } catch {
+      return source;
+    }
+  }
+
+  async function loadNovelCoverUrl(clientInstance, novelId) {
+    try {
+      const novelResult = await clientInstance
+        .from('novels')
+        .select('thumbnail_url')
+        .eq('id', novelId)
+        .maybeSingle();
+      if (!novelResult.error && novelResult.data?.thumbnail_url) {
+        return novelResult.data.thumbnail_url;
+      }
+
+      let composition = await clientInstance.rpc(
+        'novelight_thumbnail_compositions_v3',
+        { p_novel_ids: [String(novelId)] }
+      );
+      if (
+        ['42883', '42P01', '42703'].includes(
+          composition.error?.code
+        )
+      ) {
+        composition = await clientInstance.rpc(
+          'novelight_thumbnail_compositions_v2',
+          { p_novel_ids: [String(novelId)] }
+        );
+      }
+      if (composition.error) return '';
+      const row = Array.isArray(composition.data)
+        ? composition.data[0]
+        : null;
+      return row?.render_url || '';
+    } catch (error) {
+      console.warn('novel detail cover unavailable', error);
+      return '';
+    }
+  }
+
+  async function mountNovelCover(
+    clientInstance,
+    novelId,
+    mount
+  ) {
+    if (!mount) return;
+    const url = await loadNovelCoverUrl(clientInstance, novelId);
+    if (!url) return;
+    const image = document.createElement('img');
+    image.src = optimizedImageUrl(url);
+    image.alt = '';
+    image.decoding = 'async';
+    image.loading = 'eager';
+    image.fetchPriority = 'high';
+    mount.replaceChildren(image);
+  }
+
+  async function mountNovelCharacters(
+    clientInstance,
+    rows,
+    mount
+  ) {
+    if (!mount) return;
+    if (!rows.length) {
+      mount.hidden = true;
+      return;
+    }
+
+    try {
+      const last = rows[rows.length - 1];
+      const result = await clientInstance.rpc(
+        'novelight_character_feed',
+        { p_episode_id: String(last.id) }
+      );
+      if (result.error) {
+        const code = String(result.error.code || '');
+        if (['42883', 'PGRST202'].includes(code)) {
+          mount.hidden = true;
+          return;
+        }
+        throw result.error;
+      }
+
+      const characters = Array.isArray(result.data)
+        ? result.data
+        : [];
+      if (!characters.length) {
+        mount.hidden = true;
+        return;
+      }
+
+      mount.hidden = false;
+      const grid = mount.querySelector(
+        '.nl-novel-character-grid'
+      );
+      grid.replaceChildren();
+      for (const row of characters.slice(0, 12)) {
+        const article = document.createElement('article');
+        article.className = 'nl-novel-character-card';
+
+        const name = document.createElement('strong');
+        name.textContent = row.name || '登場人物';
+
+        const latest = document.createElement('span');
+        const latestNumber =
+          Number(row.latest_episode_number) || 0;
+        latest.textContent = latestNumber
+          ? `最新登場：第${latestNumber}話`
+          : '登場人物';
+
+        article.append(name, latest);
+        grid.appendChild(article);
+      }
+    } catch (error) {
+      console.warn('novel character summary unavailable', error);
+      mount.hidden = true;
+    }
+  }
+
+  async function installNovelDetailLayout(
+    clientInstance,
+    novelId
+  ) {
+    if (!novelId || document.body.classList.contains(
+      'nl-novel-detail-refresh'
+    )) {
+      return false;
+    }
+
+    const favoriteButton = await waitFor(
+      '#favoriteButton',
+      { timeout: 15000 }
+    ).catch(() => null);
+    const header =
+      document.getElementById('novelHeader');
+    if (!favoriteButton || !header) return false;
+
+    const title = header.querySelector('.title');
+    const tags = header.querySelector('.tags');
+    const author = header.querySelector('.author');
+    const description =
+      header.querySelector('.description');
+    const meta = header.querySelector('.meta');
+    if (!title || !tags || !author || !description || !meta) {
+      return false;
+    }
+
+    document.body.classList.add(
+      'nl-novel-detail-refresh'
+    );
+    header.classList.add('nl-novel-detail');
+
+    const hero = document.createElement('div');
+    hero.className = 'nl-novel-hero';
+
+    const cover = document.createElement('div');
+    cover.id = 'nlNovelDetailCover';
+    cover.className = 'nl-novel-cover-shell';
+    cover.innerHTML =
+      '<div class="nl-novel-cover-placeholder">NOVELIGHT</div>';
+
+    const main = document.createElement('div');
+    main.className = 'nl-novel-main';
+
+    const favoriteCount =
+      document.getElementById('favoriteCount');
+    if (favoriteCount) {
+      const favoriteStat = document.createElement('span');
+      favoriteStat.className = 'nl-novel-favorite-stat';
+      favoriteStat.append(
+        document.createTextNode('★ '),
+        favoriteCount
+      );
+      meta.appendChild(favoriteStat);
+    }
+
+    const actions = document.createElement('div');
+    actions.id = 'nlNovelDetailActions';
+    actions.className = 'nl-novel-actions';
+    actions.appendChild(favoriteButton);
+
+    main.append(tags, title, author, meta, actions);
+    hero.append(cover, main);
+
+    const synopsis = document.createElement('section');
+    synopsis.className =
+      'nl-novel-description-section';
+    const kicker = document.createElement('div');
+    kicker.className = 'nl-novel-section-kicker';
+    kicker.textContent = 'STORY';
+    const synopsisTitle = document.createElement('h2');
+    synopsisTitle.textContent = 'あらすじ';
+    synopsis.append(kicker, synopsisTitle, description);
+
+    header.replaceChildren(hero, synopsis);
+
+    const episodesPanel =
+      document.getElementById('episodesPanel');
+    if (episodesPanel) {
+      const characters = document.createElement('section');
+      characters.id = 'nlNovelCharacters';
+      characters.className = 'nl-novel-characters';
+      characters.hidden = true;
+      characters.innerHTML = `
+        <div class="nl-novel-character-head">
+          <div>
+            <div class="nl-novel-section-kicker">CHARACTERS</div>
+            <h2>登場人物</h2>
+          </div>
+          <p>公開済みの範囲で読者に表示できる人物だけを掲載します。</p>
+        </div>
+        <div class="nl-novel-character-grid"></div>
+      `;
+      episodesPanel.insertAdjacentElement(
+        'afterend',
+        characters
+      );
+
+      const lightSeed =
+        document.getElementById('lightSeedArea');
+      const received =
+        document.getElementById('receivedSeedArea');
+      const poll =
+        document.getElementById('novelPollArea');
+      if (lightSeed) {
+        characters.insertAdjacentElement(
+          'afterend',
+          lightSeed
+        );
+      }
+      if (received && lightSeed) {
+        lightSeed.insertAdjacentElement(
+          'afterend',
+          received
+        );
+      }
+      if (poll && received) {
+        received.insertAdjacentElement('afterend', poll);
+      }
+
+      await waitFor(
+        '#episodeList a[href*="episode.html?id="]',
+        { timeout: 15000 }
+      ).catch(() => null);
+      const rows = episodeRowsFromNovelPage();
+      void mountNovelCharacters(
+        clientInstance,
+        rows,
+        characters
+      );
+    }
+
+    void mountNovelCover(clientInstance, novelId, cover);
     return true;
   }
 
-  async function installFavoritesBookshelf(clientInstance) {
+  async function installNovelContinue(clientInstance) {
+    const novelId =
+      new URLSearchParams(window.location.search).get('id');
+    if (!novelId) return false;
+
+    await waitFor(
+      '#episodeList a[href*="episode.html?id="]'
+    ).catch(() => null);
+
+    const rows = episodeRowsFromNovelPage();
+    if (
+      !rows.length ||
+      document.getElementById('nlContinueReading')
+    ) {
+      return false;
+    }
+
+    await hydrateRemoteProgress(
+      clientInstance,
+      [novelId]
+    );
+    const target = continueTarget(
+      rows,
+      readProgress(novelId)
+    );
+    if (!target) return false;
+
+    const actionHost =
+      document.getElementById('nlNovelDetailActions');
+    if (actionHost) {
+      const link = document.createElement('a');
+      link.id = 'nlContinueReading';
+      link.className = 'nl-novel-read-action';
+      link.href = target.row.href;
+      link.innerHTML =
+        `<span>${target.label}</span><span aria-hidden="true">→</span>`;
+      actionHost.appendChild(link);
+      return true;
+    }
+
+    const panel = document.createElement('div');
+    panel.id = 'nlContinueReading';
+    panel.className = 'nl-continue-panel';
+    panel.innerHTML =
+      `<span class="nl-continue-label">READING</span>` +
+      `<a class="nl-continue-link" href="${target.row.href}">` +
+      `<strong>${target.label}</strong>` +
+      '<span class="nl-continue-arrow" aria-hidden="true">→</span></a>';
+
+    const list = document.getElementById('episodeList');
+    const ownerActions =
+      document.getElementById('ownerActions');
+    const isOwner =
+      ownerActions &&
+      window.getComputedStyle(ownerActions).display !== 'none';
+    list?.insertAdjacentElement(
+      isOwner ? 'afterend' : 'beforebegin',
+      panel
+    );
+    return true;
+  }
+
+  async function installFavoritesBookshelf(
+    clientInstance
+  ) {
     const list = document.getElementById('list');
     if (!list) return false;
-    await waitFor('#list a.card[href*="novel.html?id="]', { root: list }).catch(() => null);
-    const cards = Array.from(list.querySelectorAll('a.card[href*="novel.html?id="]'));
+
+    await waitFor(
+      '#list a.card[href*="novel.html?id="]',
+      { root: list }
+    ).catch(() => null);
+
+    const cards = Array.from(
+      list.querySelectorAll(
+        'a.card[href*="novel.html?id="]'
+      )
+    );
     if (!cards.length) return false;
 
     const back = document.querySelector('header .back');
-    if (back && back.getAttribute('href') === 'mypage.html') {
+    if (
+      back &&
+      back.getAttribute('href') === 'mypage.html'
+    ) {
       back.href = 'index.html';
       back.textContent = '← NOVELIGHTへ';
     }
 
-    const novelIds = cards.map((card) => parseNovelId(card.href)).filter(Boolean);
-    await hydrateRemoteProgress(clientInstance, novelIds);
+    const novelIds = cards
+      .map((card) => parseNovelId(card.href))
+      .filter(Boolean);
+
+    await hydrateRemoteProgress(
+      clientInstance,
+      novelIds
+    );
+
     const result = await clientInstance.rpc(
       'novelight_reader_episode_index',
       { p_novel_ids: novelIds.map(String) }
     );
     if (result.error) throw result.error;
+
     const groups = new Map();
     for (const row of result.data || []) {
       const key = String(row.novel_id);
@@ -432,7 +1009,8 @@
       groups.get(key).push({
         id: String(row.episode_id),
         href: episodeHref(row.episode_id),
-        episodeNumber: Number(row.episode_number) || 0,
+        episodeNumber:
+          Number(row.episode_number) || 0,
         title: row.episode_title || ''
       });
     }
@@ -442,58 +1020,95 @@
       const novelId = parseNovelId(card.href);
       const rows = groups.get(String(novelId)) || [];
       if (!novelId || !rows.length) continue;
-      const target = continueTarget(rows, readProgress(novelId));
+
+      const target = continueTarget(
+        rows,
+        readProgress(novelId)
+      );
       if (!target) continue;
+
       const wrapper = document.createElement('section');
       wrapper.className = 'nl-bookshelf-item';
       card.replaceWith(wrapper);
       wrapper.appendChild(card);
+
       const meta = document.createElement('div');
       meta.className = 'nl-bookshelf-meta';
+
       const state = document.createElement('span');
-      state.className = `nl-bookshelf-state${target.unread > 0 ? ' updated' : ''}`;
-      state.textContent = target.unread > 0 ? `更新あり・未読 ${target.unread}話` : '最新話まで読了';
+      state.className =
+        `nl-bookshelf-state${target.unread > 0 ? ' updated' : ''}`;
+      state.textContent =
+        target.unread > 0
+          ? `更新あり・未読 ${target.unread}話`
+          : '最新話まで読了';
+
       const actions = document.createElement('div');
       actions.className = 'nl-bookshelf-actions';
+
       const resume = document.createElement('a');
-      resume.className = 'nl-bookshelf-action primary';
+      resume.className =
+        'nl-bookshelf-action primary';
       resume.href = target.row.href;
       resume.textContent = target.label;
+
       const detail = document.createElement('a');
       detail.className = 'nl-bookshelf-action';
       detail.href = novelHref(novelId);
       detail.textContent = '作品ページ';
+
       actions.append(resume, detail);
       meta.append(state, actions);
       wrapper.appendChild(meta);
     }
+
     return true;
   }
 
   async function autoInstall() {
     if (typeof client === 'undefined' || !client) return;
     installStyles();
+
     const slug = pageSlug();
     try {
-      if (slug === 'episode') await installEpisodeContinuity(client);
-      if (slug === 'novel') await installNovelContinue(client);
-      if (slug === 'favorites') await installFavoritesBookshelf(client);
+      if (slug === 'episode') {
+        await installEpisodeContinuity(client);
+      }
+      if (slug === 'novel') {
+        const novelId =
+          new URLSearchParams(
+            window.location.search
+          ).get('id');
+        await installNovelDetailLayout(
+          client,
+          novelId
+        );
+        await installNovelContinue(client);
+      }
+      if (slug === 'favorites') {
+        await installFavoritesBookshelf(client);
+      }
     } catch (error) {
-      console.error('reading continuity enhancement failed', error);
+      console.error(
+        'reading continuity enhancement failed',
+        error
+      );
     }
   }
 
-  window.NovelightReadingContinuity = Object.freeze({
-    readProgress,
-    writeProgress,
-    mergeProgress,
-    hydrateRemoteProgress,
-    pushLocalProgress,
-    continueTarget,
-    installEpisodeContinuity,
-    installNovelContinue,
-    installFavoritesBookshelf
-  });
+  window.NovelightReadingContinuity =
+    Object.freeze({
+      readProgress,
+      writeProgress,
+      mergeProgress,
+      hydrateRemoteProgress,
+      pushLocalProgress,
+      continueTarget,
+      installEpisodeContinuity,
+      installNovelContinue,
+      installNovelDetailLayout,
+      installFavoritesBookshelf
+    });
 
   void autoInstall();
 })();
