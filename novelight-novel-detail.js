@@ -442,6 +442,7 @@
     const author = header?.querySelector('.author');
     const description = header?.querySelector('.description');
     const meta = header?.querySelector('.meta');
+    const advisory = header?.querySelector('#contentAdvisory');
     if (!header || !favorite || !title || !tags || !author || !description || !meta) return;
     installStyles();
     document.body.classList.add('nl-work-detail-v2');
@@ -467,7 +468,9 @@
     installOwnerCoverLink(id, left);
     const center = node('div', 'nl-work-detail-center');
     const main = node('section', 'nl-work-detail-main');
-    main.append(title, author, meta);
+    main.append(title);
+    if (advisory) main.appendChild(advisory);
+    main.append(author, meta);
     const synopsis = node('div', 'nl-work-detail-synopsis');
     synopsis.append(node('div', 'nl-work-detail-kicker', 'STORY'), node('h2', '', 'あらすじ'), description);
     main.appendChild(synopsis);

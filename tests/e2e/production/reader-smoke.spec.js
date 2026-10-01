@@ -81,7 +81,7 @@ async function findPublishedEpisode(page, novelHrefs) {
   return rows[0] ?? null;
 }
 
-async function unlockNovelWarningIfNeeded(page) {
+async function unlockNovelAgeGateIfNeeded(page) {
   const warningGate = page.locator('#warningGate');
   const novelHeader = page.locator('#novelHeader');
 
@@ -146,7 +146,7 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
   expect(novelHref).toBeTruthy();
 
   await page.goto(novelHref, { waitUntil: 'domcontentloaded' });
-  await unlockNovelWarningIfNeeded(page);
+  await unlockNovelAgeGateIfNeeded(page);
 
   const novelHeader = page.locator('#novelHeader');
   await expect(novelHeader).not.toContainText('読み込み中...', {
