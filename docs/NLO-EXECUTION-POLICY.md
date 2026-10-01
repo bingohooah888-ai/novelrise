@@ -1,6 +1,6 @@
 # NOVELIGHT NLO EXECUTION POLICY
 
-Version: 1.0
+Version: 1.1
 
 この文書は、チャット・セッション・実行エージェントが変わってもNOVELIGHT開発の実行方法を一定に保つための永続ポリシーである。
 
@@ -186,3 +186,43 @@ FULL PREFLIGHT:
 新しいチャットや別エージェントでも、repoの `AGENTS.md` から本ポリシーへ到達し、現在repo + stateを基準にモード判定する。
 
 過去会話を再構築してから作業開始する方式へ戻さない。
+
+## 12. NLO可用性判定
+
+NLOとRemote Desktop Commander（DC）は別物である。
+
+NLOの可用性は次の順序で確認する。
+
+1. 直接NLO MCPが露出している場合はそのhealth/status。
+2. 直接経路が見えない場合はIssue #797の正式 `nlo_health` Bridge経路。
+3. NLO自身のhealthが明示的にunavailable/offlineを返した場合のみNLO unavailableと判断する。
+
+Remote Desktop Commander deviceがofflineであること、または直接NLO MCPがツール一覧に見えないことだけを理由に、NLOをoffline・未接続・使用不能と表現してはいけない。
+
+接続状態と能力不足を分け、少なくとも `NLO_DIRECT_AVAILABLE`、`NLO_BRIDGE_AVAILABLE`、`NLO_UNAVAILABLE`、`CAPABILITY_MISSING`、`CAPABILITY_BLOCKED_PERMISSION`、`CAPABILITY_FAILED` を混同しない。
+
+## 13. Capability Self-Expansion
+
+NOVELIGHT作業で必要なNLO能力がない場合、「機能がありません」「別の方法を探します」だけで終了してはいけない。
+
+`docs/NLO-SELF-EXPANSION-POLICY.md` を適用し、次を行う。
+
+1. `.novelight/nlo-capabilities.json` で既存能力を解決する。
+2. 能力がなければ `capability_gap` として記録する。
+3. 安全なfallbackがある場合は現在依頼を継続する。
+4. gapをTier A/B/Cへ分類する。
+5. Tier Aは再利用可能adapterとして自動実装・focused test・登録まで進める。
+6. Tier Bはwork branch上で実装・test・PRまで自動で進め、検証前に自己有効化しない。
+7. Tier Cは安全な実装計画まで進めるが、既存の明示承認境界を越えて権限拡張・merge・Production mutationを行わない。
+8. 新能力が利用可能になったら、可能な範囲で元の依頼を再試行する。
+
+Capability Registryのschemaは `.novelight/nlo-capability-registry.schema.json` とする。
+
+能力解決・gap記録には次を使用できる。
+
+```bash
+npm run nlo:capabilities -- resolve --intent="<intent>" --effect="<effect>"
+npm run nlo:capabilities -- record-gap --intent="<intent>" --effect="<effect>"
+```
+
+自己拡張は安全ゲートを弱める理由にならない。同じ不足を二度繰り返さないことを目標とし、能力数そのものをKPIにしない。
