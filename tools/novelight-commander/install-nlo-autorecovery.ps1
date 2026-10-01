@@ -112,5 +112,8 @@ Write-Output ("chatgpt_plugin_status: " + $(if ($PluginState) { [string]$PluginS
 Write-Output ("chatgpt_plugin_id: " + $(if ($PluginState -and $PluginState.pluginId) { [string]$PluginState.pluginId } else { "none" }))
 Write-Output ("chatgpt_plugin_installed: " + $(if ($PluginState -and $null -ne $PluginState.installed) { [string]$PluginState.installed } else { "unknown" }))
 Write-Output ("chatgpt_plugin_profile: " + $(if ($PluginState -and $PluginState.profile) { [string]$PluginState.profile } else { "unknown" }))
+Write-Output ("chatgpt_plugin_name_filled: " + $(if ($PluginState -and $PluginState.details -and $null -ne $PluginState.details.nameFilled) { [string]$PluginState.details.nameFilled } else { "unknown" }))
+Write-Output ("chatgpt_plugin_description_filled: " + $(if ($PluginState -and $PluginState.details -and $null -ne $PluginState.details.descriptionFilled) { [string]$PluginState.details.descriptionFilled } else { "unknown" }))
+Write-Output ("chatgpt_plugin_tunnel_filled: " + $(if ($PluginState -and $PluginState.details -and $null -ne $PluginState.details.tunnelFilled) { [string]$PluginState.details.tunnelFilled } else { "unknown" }))
 Write-Output ("chatgpt_plugin_reason: " + $(if ($PluginState -and $PluginState.reason) { [string]$PluginState.reason } elseif ($PluginState -and $PluginState.error) { [string]$PluginState.error } else { "none" }))
 Write-Output "autorecovery_installed: true"
