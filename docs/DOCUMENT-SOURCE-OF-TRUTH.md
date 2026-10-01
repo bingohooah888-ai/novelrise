@@ -59,6 +59,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/NOVELIGHT-COMMANDER-GITHUB-BRIDGE.md","status":"CURRENT","role":"novelight-commander-github-bridge","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOVELIGHT-MASTER.md","status":"CURRENT","role":"master","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NLO-EXECUTION-POLICY.md","status":"CURRENT","role":"nlo-execution-policy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/NLO-SELF-EXPANSION-POLICY.md","status":"CURRENT","role":"nlo-self-expansion-policy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/novelight-tag-taxonomy.md","status":"CURRENT","role":"novelight-tag-taxonomy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PREVIEW-STAGING-AUTOMATION.md","status":"CURRENT","role":"preview-staging-automation","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRIVACY-REQUEST-RUNBOOK.md","status":"CURRENT","role":"privacy-request-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
