@@ -108,9 +108,7 @@ async function loadMetricRows(range, today) {
 }
 
 async function countRows(table, configure) {
-  let query = supabase
-    .from(table)
-    .select('*', { count: 'exact', head: true });
+  let query = supabase.from(table).select('*', { count: 'exact', head: true });
   query = configure(query);
   const { count, error } = await query;
   if (error) throw error;
@@ -127,9 +125,7 @@ async function loadCurrentSignals() {
   ] = await Promise.all([
     countRows('contact_inquiries', (query) => query.eq('status', 'new')),
     countRows('novels', (query) => query.eq('status', 'published')),
-    countRows('novels', (query) =>
-      query.eq('status', 'published').eq('pv', 0)
-    ),
+    countRows('novels', (query) => query.eq('status', 'published').eq('pv', 0)),
     countRows('thumbnail_render_failures', (query) =>
       query.gte('created_at', since).is('resolved_at', null)
     ).catch(() => 0)
