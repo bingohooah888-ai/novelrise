@@ -17,14 +17,11 @@ const indexHtml = read('index.html');
 
 const privatePages = [adminHtml, announcementsHtml, inquiriesHtml, reportsHtml];
 
-test('ADMIN top is an operations hub with links to all three operator queues', () => {
-  assert.match(adminHtml, /id="pendingInquiries"/);
-  assert.match(adminHtml, /id="pendingReports"/);
-  assert.match(adminHtml, /id="publishedAnnouncements"/);
+test('ADMIN HOME links to operational queues without embedding long lists', () => {
   assert.match(adminHtml, /href="admin-inquiries\.html"/);
   assert.match(adminHtml, /href="admin-reports\.html"/);
   assert.match(adminHtml, /href="admin-announcements\.html"/);
-  assert.match(adminHtml, /\/api\/admin-operations-summary/);
+  assert.doesNotMatch(adminHtml, /id="inquiryList"/);
 });
 
 test('ADMIN operation pages remain private surfaces backed by server endpoints', () => {
@@ -41,15 +38,28 @@ test('ADMIN operation pages remain private surfaces backed by server endpoints',
   assert.match(reportsHtml, /\/api\/admin-reports/);
 });
 
-test('inquiry detail includes a direct reply editor and explicit real-email confirmation', () => {
-  assert.match(inquiriesHtml, /id='replySubject'|id="replySubject"/);
-  assert.match(inquiriesHtml, /id='replyBody'|id="replyBody"/);
-  assert.match(inquiriesHtml, /id='sendReply'|id="sendReply"/);
-  assert.match(inquiriesHtml, /返信して対応済みにする/);
-  assert.match(inquiriesHtml, /実メールを1通送信/);
+test('inquiries use server-side pagination with requested filters', () => {
+  assert.match(inquiriesHtml, /20件\/ページ/);
+  assert.match(inquiriesHtml, /50件\/ページ/);
+  assert.match(inquiriesHtml, /pageSize/);
+  assert.match(inquiriesHtml, /filterStatus/);
+  assert.match(inquiriesHtml, /filterUser/);
+  assert.match(inquiriesHtml, /filterCategory/);
+  assert.match(inquiriesHtml, /filterFrom/);
+  assert.match(inquiriesHtml, /filterTo/);
+  assert.match(inquiriesHtml, /prevPage/);
+  assert.match(inquiriesHtml, /nextPage/);
 });
 
-test('contact page combines published announcements with the existing safe inquiry RPC', () => {
+test('inquiry detail keeps reply and status-change workflows', () => {
+  assert.match(inquiriesHtml, /この問い合わせに返信/);
+  assert.match(inquiriesHtml, /返信して完了にする/);
+  assert.match(inquiriesHtml, /実メールを1通送信/);
+  assert.match(inquiriesHtml, /\/api\/admin-inquiry-reply/);
+  assert.match(inquiriesHtml, /ステータス変更/);
+});
+
+test('contact page combines published announcements with the safe inquiry RPC', () => {
   assert.match(contactHtml, /お知らせ・お問い合わせ/);
   assert.match(contactHtml, /\/api\/announcements/);
   assert.match(contactHtml, /submit_contact_inquiry/);
@@ -58,18 +68,18 @@ test('contact page combines published announcements with the existing safe inqui
   assert.match(contactHtml, /短時間に送信できる回数/);
 });
 
-test('home footer routes support traffic to the combined announcements and contact page', () => {
+test('home footer routes support traffic to the contact page', () => {
   assert.match(indexHtml, /href="contact\.html">お知らせ・お問い合わせ<\/a>/);
 });
 
-test('login redirect allowlist covers every private ADMIN operations page', () => {
+test('login redirect allowlist covers private ADMIN operations pages', () => {
   assert.match(authReaderContext, /'\/admin\.html'/);
   assert.match(authReaderContext, /'\/admin-announcements\.html'/);
   assert.match(authReaderContext, /'\/admin-inquiries\.html'/);
   assert.match(authReaderContext, /'\/admin-reports\.html'/);
 });
 
-test('inquiry and report list pages state that sensitive raw fields are excluded', () => {
-  assert.match(inquiriesHtml, /一覧には必要最小限の情報だけを表示/);
-  assert.match(reportsHtml, /通報本文や通報者情報はこの一覧APIへ含めません/);
+test('inquiry list obtains details separately from the paged summary', () => {
+  assert.match(inquiriesHtml, /\/api\/admin-inquiries\?id=/);
+  assert.match(inquiriesHtml, /詳細情報は認証済み＋管理者allowlist確認済み/);
 });
