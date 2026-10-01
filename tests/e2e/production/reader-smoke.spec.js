@@ -90,9 +90,7 @@ async function unlockNovelWarningIfNeeded(page) {
       async () => {
         if (await warningGate.isVisible()) return true;
         const headerText = await novelHeader.textContent().catch(() => '');
-        return Boolean(
-          headerText && !headerText.includes('読み込み中...')
-        );
+        return Boolean(headerText && !headerText.includes('読み込み中...'));
       },
       { timeout: 20_000 }
     )
