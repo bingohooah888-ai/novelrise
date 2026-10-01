@@ -16,7 +16,10 @@ export function percentDelta(current, baseline) {
 
 export function average(rows, key) {
   if (!Array.isArray(rows) || rows.length === 0) return 0;
-  const total = rows.reduce((sum, row) => sum + Number(row?.[key] ?? 0), 0);
+  const total = rows.reduce(
+    (sum, row) => sum + Number(row?.[key] ?? 0),
+    0
+  );
   return total / rows.length;
 }
 
@@ -114,7 +117,9 @@ export function buildAdminAlerts({
       code: 'RENDER_FAILURES',
       severity: 'critical',
       title: 'サムネイル生成エラーが増加',
-      detail: `24時間以内の未解決エラーが ${Number(unresolvedRenderFailures)} 件あります。`
+      detail: `24時間以内の未解決エラーが ${Number(
+        unresolvedRenderFailures
+      )} 件あります。`
     });
   }
 
