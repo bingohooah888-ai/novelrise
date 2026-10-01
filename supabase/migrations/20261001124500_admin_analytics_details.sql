@@ -64,10 +64,10 @@ with params as (
   select jsonb_build_object(
     'siteVisit', (select count(distinct a.viewer_key_hash) from activity a),
     'workDetail', (select count(distinct j.viewer_key_hash) from journey j where j.event_type = 'detail_open'),
-    'episode1Read10s', (select count(distinct j.viewer_key_hash) from journey j join public.episodes e on e.id = j.episode_id_snapshot where j.event_type = 'episode_read_10s' and e.episode_number = 1),
-    'episode1ValidRead', (select count(distinct v.reader_id) from public.valid_read_events v join public.episodes e on e.id = v.episode_id_snapshot, bounds x where v.qualified_at >= x.start_ts and v.qualified_at < x.end_ts and e.episode_number = 1),
-    'episode2ValidRead', (select count(distinct v.reader_id) from public.valid_read_events v join public.episodes e on e.id = v.episode_id_snapshot, bounds x where v.qualified_at >= x.start_ts and v.qualified_at < x.end_ts and e.episode_number = 2),
-    'multiEpisodeValidRead', (select count(*) from (select v.reader_id from public.valid_read_events v join public.episodes e on e.id = v.episode_id_snapshot, bounds x where v.qualified_at >= x.start_ts and v.qualified_at < x.end_ts group by v.reader_id having count(distinct e.id) >= 2) q),
+    'episode1Read10s', (select count(distinct j.viewer_key_hash) from journey j join public.episodes e on e.id::text = j.episode_id_snapshot where j.event_type = 'episode_read_10s' and e.episode_number = 1),
+    'episode1ValidRead', (select count(distinct v.reader_id) from public.valid_read_events v join public.episodes e on e.id::text = v.episode_id_snapshot, bounds x where v.qualified_at >= x.start_ts and v.qualified_at < x.end_ts and e.episode_number = 1),
+    'episode2ValidRead', (select count(distinct v.reader_id) from public.valid_read_events v join public.episodes e on e.id::text = v.episode_id_snapshot, bounds x where v.qualified_at >= x.start_ts and v.qualified_at < x.end_ts and e.episode_number = 2),
+    'multiEpisodeValidRead', (select count(*) from (select v.reader_id from public.valid_read_events v join public.episodes e on e.id::text = v.episode_id_snapshot, bounds x where v.qualified_at >= x.start_ts and v.qualified_at < x.end_ts group by v.reader_id having count(distinct e.id) >= 2) q),
     'favoriteUsers', (select count(distinct f.user_id) from public.favorites f, bounds x where f.created_at >= x.start_ts and f.created_at < x.end_ts),
     'followUsers', (select count(distinct f.follower_user_id) from public.author_follows f, bounds x where f.created_at >= x.start_ts and f.created_at < x.end_ts),
     'revisit', (select count(*) from (select a.viewer_key_hash from activity a group by a.viewer_key_hash having count(distinct a.activity_date) >= 2) q)
@@ -115,7 +115,7 @@ with params as (
 ), work_exposure_counts as materialized (
   select w.id, count(e.id)::numeric as exposures
   from published_works w
-  left join public.novel_exposure_events e on e.novel_id_snapshot = w.id
+  left join public.novel_exposure_events e on e.novel_id_snapshot = w.id::text
     and e.exposed_at >= (select start_ts from bounds)
     and e.exposed_at < (select end_ts from bounds)
   group by w.id
@@ -136,7 +136,7 @@ with params as (
 ), first_reads as materialized (
   select n.id as novel_id, min(j.occurred_at) as first_read_at
   from published_works n
-  join public.reader_journey_events j on j.novel_id_snapshot = n.id and j.event_type = 'episode_read_10s'
+  join public.reader_journey_events j on j.novel_id_snapshot = n.id::text and j.event_type = 'episode_read_10s'
   where n.first_published_at is not null and j.occurred_at >= n.first_published_at
   group by n.id
 ), discovery as (
