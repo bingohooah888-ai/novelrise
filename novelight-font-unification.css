@@ -121,7 +121,8 @@ html body:is(.novelight-page-post, .novelight-page-novel-edit)
     font-size: max(14px, 0.875rem) !important;
   }
 
-  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-author-studio-shell):not([data-reading-theme="dark"])
+  /* Dark Author Studio surfaces must never inherit the light-surface muted ink. */
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-author-studio-shell):not(.novelight-page-mypage):not([data-reading-theme="dark"])
     :is(.help, .hint, .caption, .desc, .sub, .note, .policy, .meta, .thumbnail-state, .avatar-note) {
     color: #4f5967 !important;
   }
@@ -129,6 +130,11 @@ html body:is(.novelight-page-post, .novelight-page-novel-edit)
   html body.novelight-theme.novelight-public-dark
     :is(.desc, .sub, .note, .meta, .caption, .hint) {
     font-weight: 550 !important;
+  }
+
+  html body.novelight-theme.novelight-page-mypage .metric .sub {
+    color: #eef1f5 !important;
+    font-weight: 600 !important;
   }
 
   html body.novelight-theme.novelight-page-episode .modal-card :is(p, label) {
