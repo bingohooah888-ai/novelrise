@@ -23,6 +23,7 @@ import './scout-lock-artwork-bridge.js';
 import './scout-lock-artwork-final-bridge.js';
 import './scout-lock-local-cache-bridge.js';
 import './scout-lock-direct-register-bridge.js';
+import './worktree-replace-bridge.js';
 import { mainProductionMigrationApproveBridge } from './production-migration-approve-bridge.js';
 import { mainProductionAuthSmokeDispatchBridge } from './production-auth-smoke-dispatch-bridge.js';
 import { mainWorktreeSafeBridge } from './worktree-safe-bridge.js';
