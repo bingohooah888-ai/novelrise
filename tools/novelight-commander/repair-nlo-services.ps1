@@ -13,8 +13,10 @@ $BridgeRunner = Join-Path $Here "run-github-bridge.ps1"
 $TunnelInstaller = Join-Path $Here "install-openai-tunnel-autostart.ps1"
 $WatchdogLog = Join-Path $RuntimeRoot "watchdog.log"
 $BridgeHeartbeatPath = Join-Path $BridgeRoot "heartbeat.json"
+$BridgeBusyStatePath = Join-Path $RuntimeRoot "bridge-busy-watch.json"
 $BridgeHeartbeatMaxAgeSeconds = 120
 $BridgeHeartbeatMaxFailures = 3
+$BridgeBusyMaxAgeSeconds = 300
 
 New-Item -ItemType Directory -Force -Path $RuntimeRoot | Out-Null
 
@@ -34,23 +36,59 @@ function Get-FileAgeSeconds([string]$Path) {
 
 function Read-BridgeHeartbeat {
   if (-not (Test-Path $BridgeHeartbeatPath)) {
-    return [pscustomobject]@{ status = "missing"; consecutivePollFailures = 0 }
+    return [pscustomobject]@{ status = "missing"; consecutivePollFailures = 0; requestId = "" }
   }
   try {
     $Raw = Get-Content -Raw -Path $BridgeHeartbeatPath | ConvertFrom-Json
     return [pscustomobject]@{
       status = [string]$Raw.status
       consecutivePollFailures = [int]$Raw.consecutivePollFailures
+      requestId = [string]$Raw.requestId
     }
   } catch {
-    return [pscustomobject]@{ status = "invalid"; consecutivePollFailures = $BridgeHeartbeatMaxFailures }
+    return [pscustomobject]@{ status = "invalid"; consecutivePollFailures = $BridgeHeartbeatMaxFailures; requestId = "" }
   }
+}
+
+function Get-BridgeBusyAgeSeconds($Heartbeat) {
+  if ($Heartbeat.status -ne "busy" -or -not $Heartbeat.requestId) {
+    Remove-Item -Path $BridgeBusyStatePath -Force -ErrorAction SilentlyContinue
+    return 0
+  }
+
+  $Now = Get-Date
+  $FirstSeen = $Now
+  $ExistingRequestId = ""
+  if (Test-Path $BridgeBusyStatePath) {
+    try {
+      $Saved = Get-Content -Raw -Path $BridgeBusyStatePath | ConvertFrom-Json
+      $ExistingRequestId = [string]$Saved.requestId
+      if ($ExistingRequestId -eq $Heartbeat.requestId) {
+        $Parsed = [datetime]::Parse([string]$Saved.firstSeen)
+        $FirstSeen = $Parsed
+      }
+    } catch {
+      $ExistingRequestId = ""
+    }
+  }
+
+  if ($ExistingRequestId -ne $Heartbeat.requestId) {
+    $Record = [pscustomobject]@{
+      requestId = $Heartbeat.requestId
+      firstSeen = $Now.ToString("o")
+    }
+    $Record | ConvertTo-Json | Set-Content -Path $BridgeBusyStatePath -Encoding UTF8
+    return 0
+  }
+
+  return ($Now - $FirstSeen).TotalSeconds
 }
 
 $BridgeDaemonCount = Get-ProcessCount "github-bridge-daemon[.]js"
 $BridgeRunnerCount = Get-ProcessCount "run-github-bridge[.]ps1"
 $BridgeHeartbeatAgeSeconds = Get-FileAgeSeconds $BridgeHeartbeatPath
 $BridgeHeartbeat = Read-BridgeHeartbeat
+$BridgeBusyAgeSeconds = Get-BridgeBusyAgeSeconds $BridgeHeartbeat
 $BridgeHeartbeatStale = (
   ($BridgeDaemonCount -gt 0 -or $BridgeRunnerCount -gt 0) -and
   $BridgeHeartbeatAgeSeconds -gt $BridgeHeartbeatMaxAgeSeconds
@@ -63,10 +101,17 @@ $BridgeHeartbeatDegraded = (
   ) -and
   $BridgeHeartbeat.consecutivePollFailures -ge $BridgeHeartbeatMaxFailures
 )
-$BridgeNeedsRecycle = $BridgeHeartbeatStale -or $BridgeHeartbeatDegraded
+$BridgeBusyTimedOut = (
+  ($BridgeDaemonCount -gt 0 -or $BridgeRunnerCount -gt 0) -and
+  $BridgeHeartbeat.status -eq "busy" -and
+  $BridgeBusyAgeSeconds -ge $BridgeBusyMaxAgeSeconds
+)
+$BridgeNeedsRecycle = $BridgeHeartbeatStale -or $BridgeHeartbeatDegraded -or $BridgeBusyTimedOut
 
 if ($BridgeNeedsRecycle) {
-  if ($BridgeHeartbeatStale) {
+  if ($BridgeBusyTimedOut) {
+    Write-WatchdogLog ("GitHub Bridge busy request timed out (request=" + $BridgeHeartbeat.requestId + ", busy_age=" + [Math]::Round($BridgeBusyAgeSeconds, 1) + "s); recycling bridge processes.")
+  } elseif ($BridgeHeartbeatStale) {
     Write-WatchdogLog ("GitHub Bridge heartbeat stale (" + [Math]::Round($BridgeHeartbeatAgeSeconds, 1) + "s); recycling bridge processes.")
   } else {
     Write-WatchdogLog ("GitHub Bridge heartbeat degraded (status=" + $BridgeHeartbeat.status + ", failures=" + $BridgeHeartbeat.consecutivePollFailures + "); recycling bridge processes.")
@@ -80,6 +125,7 @@ if ($BridgeNeedsRecycle) {
   foreach ($Process in $BridgeProcesses) {
     Stop-Process -Id $Process.ProcessId -Force -ErrorAction SilentlyContinue
   }
+  Remove-Item -Path $BridgeBusyStatePath -Force -ErrorAction SilentlyContinue
   Start-Sleep -Seconds 1
   $BridgeDaemonCount = Get-ProcessCount "github-bridge-daemon[.]js"
   $BridgeRunnerCount = Get-ProcessCount "run-github-bridge[.]ps1"
@@ -169,6 +215,8 @@ Write-Output ("bridge_heartbeat_status: " + $BridgeHeartbeat.status)
 Write-Output ("bridge_heartbeat_failures: " + $BridgeHeartbeat.consecutivePollFailures)
 Write-Output ("bridge_heartbeat_stale: " + $BridgeHeartbeatStale)
 Write-Output ("bridge_heartbeat_degraded: " + $BridgeHeartbeatDegraded)
+Write-Output ("bridge_busy_age_seconds: " + [Math]::Round($BridgeBusyAgeSeconds, 1))
+Write-Output ("bridge_busy_timed_out: " + $BridgeBusyTimedOut)
 Write-Output ("tunnel_supervisor_processes: " + $TunnelRunnerCount)
 Write-Output ("tunnel_client_processes: " + $TunnelClientCount)
 Write-Output ("nlo_tunnel_client_processes: " + $NloTunnelClientCount)
