@@ -541,7 +541,6 @@
       stored = { ...touch, capturedAt: new Date().toISOString() };
       safeStorageSet(window.localStorage, TRAFFIC_KEY, JSON.stringify(stored));
     }
-
     if (safeStorageGet(window.sessionStorage, TOUCH_SESSION_KEY) === '1')
       return;
 
