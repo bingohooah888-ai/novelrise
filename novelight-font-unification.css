@@ -90,3 +90,55 @@ html body:is(.novelight-page-post, .novelight-page-novel-edit)
   padding: 0 !important;
   accent-color: #d6a447;
 }
+
+/*
+ * Desktop readability floor.
+ * Keep heading/value hierarchy intact, but remove the common combination of
+ * tiny text + light weight + low-contrast gray across legacy page surfaces.
+ * Reader prose remains owned by the reading settings and is intentionally not
+ * overridden here.
+ */
+@media (min-width: 701px) {
+  html body.novelight-theme :is(
+      small,
+      .help,
+      .hint,
+      .caption,
+      .desc,
+      .sub,
+      .note,
+      .policy,
+      .meta,
+      .thumbnail-state,
+      .avatar-note,
+      .footer-links
+    ) {
+    font-weight: 500 !important;
+    line-height: 1.7 !important;
+  }
+
+  html body.novelight-theme :is(small, .hint, .caption) {
+    font-size: max(14px, 0.875rem) !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-author-studio-shell):not([data-reading-theme="dark"])
+    :is(.help, .hint, .caption, .desc, .sub, .note, .policy, .meta, .thumbnail-state, .avatar-note) {
+    color: #4f5967 !important;
+  }
+
+  html body.novelight-theme.novelight-public-dark
+    :is(.desc, .sub, .note, .meta, .caption, .hint) {
+    font-weight: 550 !important;
+  }
+
+  html body.novelight-theme.novelight-page-episode .modal-card :is(p, label) {
+    color: #414b59 !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    line-height: 1.75 !important;
+  }
+
+  html body.novelight-theme.novelight-page-episode .content {
+    font-weight: 400;
+  }
+}
