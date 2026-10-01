@@ -13,7 +13,10 @@ const adminAccessApi = readFileSync(
 
 test('admin shortcut is gated by the server-side admin access endpoint', () => {
   assert.match(shortcutRuntime, /fetch\('\/api\/admin-access'/);
-  assert.match(shortcutRuntime, /Authorization: 'Bearer ' \+ session\.access_token/);
+  assert.match(
+    shortcutRuntime,
+    /Authorization: 'Bearer ' \+ session\.access_token/
+  );
   assert.match(shortcutRuntime, /if \(!payload\?\.admin\) return false/);
   assert.match(shortcutRuntime, /page\.startsWith\('admin'\)/);
 });
