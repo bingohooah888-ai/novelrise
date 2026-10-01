@@ -21,4 +21,15 @@
     if (event.key === key || event.key === null) apply(get());
   });
   global.NovelightAuthorBackground = Object.freeze({ get, set });
+
+  const page = (global.location.pathname.split('/').pop() || '').toLowerCase();
+  if (page === 'characters.html') {
+    global.addEventListener('DOMContentLoaded', () => {
+      if (document.querySelector('script[data-character-presentation-loader]')) return;
+      const script = document.createElement('script');
+      script.src = 'novelight-character-presentation.js';
+      script.dataset.characterPresentationLoader = '1';
+      document.body.appendChild(script);
+    }, { once: true });
+  }
 })(window);
