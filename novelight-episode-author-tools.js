@@ -26,7 +26,8 @@
     .nl-toolbar-divider{width:1px;height:26px;margin:0 3px;align-self:center;flex:0 0 auto;border-radius:999px;background:#dedbe6}
     #openScheduleSettings.nl-schedule-action{border-color:#dfd1b7;background:#fffaf0;color:#6c5531}
     #openScheduleSettings.nl-schedule-action:hover:not(:disabled){border-color:#cfbb96;background:#fff6e5}
-    @media(max-width:720px){.nl-toolbar-divider{display:none}}
+    .nl-inline-notes-frame{display:block;width:100%;height:calc(100vh - 120px);min-height:520px;border:0;background:#07121e}
+    @media(max-width:720px){.nl-toolbar-divider{display:none}.nl-inline-notes-frame{height:calc(78vh - 92px);min-height:430px}}
     @media(max-width:470px){.nl-author-menu{width:100%}.nl-author-menu>summary{width:100%}.nl-author-popover{position:fixed;left:12px;right:12px;top:auto;bottom:14px;min-width:0}}
   `;
   document.head.appendChild(style);
@@ -38,6 +39,8 @@
   const menus = [];
   const ownerTools = [];
   const layoutSeparators = [];
+  let characterEditor = null;
+  let notesFrame = null;
 
   function closeMenus(except = null) {
     menus.forEach(menu => { if (menu !== except) menu.open = false; });
@@ -66,6 +69,73 @@
     url.searchParams.set(key, novelId);
     window.open(url.href, '_blank', 'noopener');
   }
+
+  function openInlineTool(title, node) {
+    const drawer = document.getElementById('settingsDrawer');
+    const backdrop = document.getElementById('drawerBackdrop');
+    const drawerTitle = document.getElementById('drawerTitle');
+    const drawerBody = drawer?.querySelector('.drawer-body');
+    if (!drawer || !backdrop || !drawerTitle || !drawerBody || !node) return false;
+    drawerBody.querySelectorAll('.drawer-pane').forEach(pane => { pane.hidden = true; });
+    let pane = document.getElementById('novelightAuthorInlinePane');
+    if (!pane) {
+      pane = document.createElement('section');
+      pane.id = 'novelightAuthorInlinePane';
+      pane.className = 'drawer-pane';
+      drawerBody.appendChild(pane);
+    }
+    pane.hidden = false;
+    pane.replaceChildren(node);
+    drawerTitle.textContent = title;
+    backdrop.hidden = false;
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    return true;
+  }
+
+  function hideInlinePane() {
+    const pane = document.getElementById('novelightAuthorInlinePane');
+    if (pane) pane.hidden = true;
+  }
+
+  function openCharacterTool() {
+    if (isPost) {
+      const integratedButton = document.getElementById('openCharacterSettings');
+      if (integratedButton) {
+        integratedButton.click();
+        return;
+      }
+    }
+    if (!isEdit || !currentNovelId()) {
+      openAuthorPage('characters.html');
+      return;
+    }
+    characterEditor ||= document.getElementById('characterEpisodeEditor');
+    if (!characterEditor || !openInlineTool('人物', characterEditor)) {
+      showStatus('登場人物を準備しています。少し待ってからもう一度お試しください。');
+    }
+  }
+
+  function openNotesTool() {
+    const novelId = currentNovelId();
+    if (!novelId) {
+      showStatus('作品情報を読み込み中です。少し待ってからもう一度お試しください。');
+      return;
+    }
+    if (!notesFrame) {
+      notesFrame = document.createElement('iframe');
+      notesFrame.className = 'nl-inline-notes-frame';
+      notesFrame.title = '創作ノート';
+      const url = new URL('story-notes.html', location.href);
+      url.searchParams.set('novel_id', novelId);
+      notesFrame.src = url.href;
+    }
+    if (!openInlineTool('ノート', notesFrame)) openAuthorPage('story-notes.html');
+  }
+
+  [chapterButton, illustrationButton, scheduleButton].filter(Boolean).forEach(button => {
+    button.addEventListener('click', hideInlinePane, true);
+  });
 
   function makeToolButton(label, onClick, ownerOnly = false) {
     const button = document.createElement('button');
@@ -159,8 +229,8 @@
     replaceSelection(`《《${selection.text}》》`, selection.start, selection.end);
   }
 
-  const characterButton = makeToolButton('人物', () => openAuthorPage('characters.html'), true);
-  const notesButton = makeToolButton('ノート', () => openAuthorPage('story-notes.html'), true);
+  const characterButton = makeToolButton('人物', openCharacterTool, true);
+  const notesButton = makeToolButton('ノート', openNotesTool, true);
   const decorateMenu = makeMenu('装飾', [
     { label: 'ルビ', run: addRuby },
     { label: '傍点', run: addEmphasis }
@@ -189,6 +259,7 @@
     const collaborative = document.body.dataset.collaborationEditor === 'true';
     ownerTools.forEach(tool => { tool.hidden = collaborative; });
     layoutSeparators.forEach(divider => { divider.hidden = collaborative; });
+    if (collaborative) hideInlinePane();
   }
   syncCollaborationMode();
   new MutationObserver(syncCollaborationMode).observe(document.body, { attributes: true, attributeFilter: ['data-collaboration-editor'] });
