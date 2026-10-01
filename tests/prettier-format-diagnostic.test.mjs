@@ -1,5 +1,7 @@
-import { Buffer } from 'node:buffer';
-import { readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import prettier from 'prettier';
 
@@ -9,14 +11,24 @@ const files = [
   'api/admin-dashboard-v2.js'
 ];
 
-test('emit locked prettier output for admin formatting diagnostics', async () => {
-  for (const file of files) {
-    const source = await readFile(file, 'utf8');
-    const config = (await prettier.resolveConfig(file)) ?? {};
-    const formatted = await prettier.format(source, {
-      ...config,
-      filepath: file
-    });
-    console.log(`PRETTIER_FORMAT_BASE64 ${file} ${Buffer.from(formatted).toString('base64')}`);
+test('emit prettier diffs for admin formatting diagnostics', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'novelight-prettier-'));
+  try {
+    for (const file of files) {
+      const source = await readFile(file, 'utf8');
+      const config = (await prettier.resolveConfig(file)) ?? {};
+      const formatted = await prettier.format(source, {
+        ...config,
+        filepath: file
+      });
+      const output = join(dir, file.replaceAll('/', '__'));
+      await writeFile(output, formatted, 'utf8');
+      const result = spawnSync('diff', ['-u', file, output], {
+        encoding: 'utf8'
+      });
+      console.log(`PRETTIER_DIFF ${file}\n${result.stdout || '(already formatted)'}`);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 });
