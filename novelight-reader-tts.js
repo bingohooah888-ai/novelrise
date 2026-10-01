@@ -3,6 +3,7 @@
 
   const SKIPPED_ELEMENTS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'RT', 'RP']);
   const MAX_CHUNK_LENGTH = 220;
+  const PLAYBACK_RATES = new Set([1, 1.5, 2]);
   let mountedController = null;
 
   function displayedText(root) {
@@ -64,6 +65,9 @@
     controls.setAttribute('aria-label', '本文の読み上げ');
     controls.innerHTML = '<div class="reader-tts-title">本文の読み上げ</div>' +
       '<div class="reader-tts-actions">' +
+      '<label class="reader-tts-rate">速度<select data-tts-rate aria-label="読み上げ速度">' +
+      '<option value="1">1.0×</option><option value="1.5">1.5×</option><option value="2">2.0×</option>' +
+      '</select></label>' +
       '<button type="button" data-tts-action="start">最初から再生</button>' +
       '<button type="button" data-tts-action="pause">一時停止</button>' +
       '<button type="button" data-tts-action="resume">再開</button>' +
@@ -71,6 +75,7 @@
       '<p class="reader-tts-status" role="status" aria-live="polite"></p>';
     content.before(controls);
 
+    const rateSelect = controls.querySelector('[data-tts-rate]');
     const startButton = controls.querySelector('[data-tts-action="start"]');
     const pauseButton = controls.querySelector('[data-tts-action="pause"]');
     const resumeButton = controls.querySelector('[data-tts-action="resume"]');
@@ -82,12 +87,17 @@
     let paused = false;
     let runId = 0;
 
+    function selectedRate() {
+      const rate = Number(rateSelect?.value || 1);
+      return PLAYBACK_RATES.has(rate) ? rate : 1;
+    }
     function renderState(message) {
       status.textContent = message;
       startButton.disabled = !supported;
       pauseButton.disabled = !supported || !active || paused;
       resumeButton.disabled = !supported || !active || !paused;
       stopButton.disabled = !supported || !active;
+      rateSelect.disabled = !supported;
     }
     function stop(message = '停止しました。') {
       runId += 1;
@@ -108,6 +118,7 @@
       }
       const utterance = new Utterance(queue[queueIndex]);
       utterance.lang = 'ja-JP';
+      utterance.rate = selectedRate();
       const voice = preferredVoice(synthesis);
       if (voice) {
         utterance.voice = voice;
@@ -138,7 +149,7 @@
       queueIndex = 0;
       active = true;
       paused = false;
-      renderState('本文を最初から読み上げています。');
+      renderState(`本文を最初から${selectedRate()}倍速で読み上げています。`);
       speakNext(runId);
     });
     pauseButton.addEventListener('click', () => {
@@ -163,7 +174,7 @@
       if (link && !event.defaultPrevented && link.target !== '_blank') cancelForExit();
     }, true);
     renderState(supported
-      ? '再生すると、このページに表示中の本文だけを読み上げます。'
+      ? '速度を選んで再生すると、このページに表示中の本文だけを読み上げます。'
       : 'このブラウザは本文の読み上げに対応していません。');
     mountedController = { cancel: () => stop('') };
     return controls;
