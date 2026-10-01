@@ -82,8 +82,10 @@ function profileCandidates(browserExecutable) {
   const explicit = String(process.env.NOVELIGHT_CHATGPT_BROWSER_USER_DATA_DIR || '').trim();
   const dedicated = path.join(local, 'NOVELIGHT', 'ChatGPTBrowser');
   const lower = browserExecutable.toLowerCase();
+  if (explicit) {
+    return [{ userDataDir: explicit, profileDirectory: process.env.NOVELIGHT_CHATGPT_BROWSER_PROFILE_DIRECTORY || 'Default', source: 'explicit' }];
+  }
   const candidates = [];
-  if (explicit) candidates.push({ userDataDir: explicit, profileDirectory: process.env.NOVELIGHT_CHATGPT_BROWSER_PROFILE_DIRECTORY || 'Default', source: 'explicit' });
   if (lower.includes('msedge')) candidates.push({ userDataDir: path.join(local, 'Microsoft', 'Edge', 'User Data'), profileDirectory: 'Default', source: 'edge-default' });
   if (lower.includes('chrome')) candidates.push({ userDataDir: path.join(local, 'Google', 'Chrome', 'User Data'), profileDirectory: 'Default', source: 'chrome-default' });
   candidates.push({ userDataDir: dedicated, profileDirectory: 'Default', source: 'novelight-dedicated' });
@@ -215,6 +217,14 @@ async function saveState(stateFile, payload) {
   await fs.writeFile(stateFile, JSON.stringify(payload, null, 2) + '\n', 'utf8');
 }
 
+async function closeContext(context, timeoutMs = 5_000) {
+  if (!context) return;
+  await Promise.race([
+    context.close().catch(() => {}),
+    new Promise(resolve => setTimeout(resolve, timeoutMs))
+  ]);
+}
+
 export async function bootstrapChatgptPlugin({
   tunnelId,
   pluginName = DEFAULT_PLUGIN_NAME,
@@ -251,7 +261,7 @@ export async function bootstrapChatgptPlugin({
       if (classifyChatGptPage({ url: page.url(), bodyText: text }) === 'login_required') {
         lastFailure = { status: 'login_required', profile: profile.source };
         await screenshot(page, diagnosticsDir, `login-required-${profile.source}`);
-        await context.close();
+        await closeContext(context);
         continue;
       }
 
@@ -264,25 +274,25 @@ export async function bootstrapChatgptPlugin({
           const installed = await tryInstall(page);
           const result = { status: 'registered', pluginId, installed, profile: profile.source, existing: true };
           await saveState(stateFile, { ...result, pluginName: name, observedAt: new Date().toISOString() });
-          await context.close();
+          await closeContext(context);
           return result;
         }
       }
 
       const developer = await ensureDeveloperMode(page, diagnosticsDir);
-      if (!developer.ok) { lastFailure = { status: developer.reason, profile: profile.source }; await context.close(); continue; }
+      if (!developer.ok) { lastFailure = { status: developer.reason, profile: profile.source }; await closeContext(context); continue; }
       const form = await fillConnectionForm(page, { tunnelId: normalizedTunnelId, pluginName: name, description: safeDescription, diagnosticsDir });
-      if (!form.ok) { lastFailure = { status: form.reason, profile: profile.source, details: form }; await context.close(); continue; }
+      if (!form.ok) { lastFailure = { status: form.reason, profile: profile.source, details: form }; await closeContext(context); continue; }
       const pluginId = await extractPluginIdFromPage(page);
-      if (!pluginId) { await screenshot(page, diagnosticsDir, 'plugin-id-not-found-after-create'); lastFailure = { status: 'plugin_id_not_found', profile: profile.source }; await context.close(); continue; }
+      if (!pluginId) { await screenshot(page, diagnosticsDir, 'plugin-id-not-found-after-create'); lastFailure = { status: 'plugin_id_not_found', profile: profile.source }; await closeContext(context); continue; }
       const installed = await tryInstall(page);
       const result = { status: 'registered', pluginId, installed, profile: profile.source, existing: false };
       await saveState(stateFile, { ...result, pluginName: name, observedAt: new Date().toISOString() });
-      await context.close();
+      await closeContext(context);
       return result;
     } catch (error) {
       lastFailure = { status: 'browser_attempt_failed', profile: profile.source, error: error instanceof Error ? error.message.slice(0, 1000) : String(error).slice(0, 1000) };
-      if (context) await context.close().catch(() => {});
+      await closeContext(context);
     }
   }
   const result = lastFailure || { status: 'no_browser_profile_succeeded' };
