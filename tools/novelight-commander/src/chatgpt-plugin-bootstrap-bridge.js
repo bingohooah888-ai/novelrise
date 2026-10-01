@@ -17,12 +17,34 @@ async function loadConfig() {
   const resolved = path.resolve(configPath);
   const raw = JSON.parse(await fs.readFile(resolved, 'utf8'));
   if (raw.owner !== OWNER || raw.repository !== REPO || Number(raw.issueNumber) !== ISSUE) throw new Error('Bridge identity mismatch.');
+  const bridgeRoot = path.dirname(resolved);
+  const sharedDataRoot = path.resolve(String(raw.dataRoot || bridgeRoot));
   return {
     pollSeconds: Math.max(5, Math.min(300, Number(raw.pollSeconds || 10))),
-    statePath: path.join(path.dirname(resolved), 'chatgpt-plugin-bootstrap-state.json'),
+    statePath: path.join(bridgeRoot, 'chatgpt-plugin-bootstrap-state.json'),
     commanderDir: path.resolve(raw.repoRoot, 'tools', 'novelight-commander'),
-    dataRoot: path.join(path.dirname(resolved), 'chatgpt-plugin')
+    dataRoot: path.join(bridgeRoot, 'chatgpt-plugin'),
+    browserProfileDir: path.join(sharedDataRoot, 'chatgpt-browser-profile')
   };
+}
+
+async function existingFile(file) {
+  try { return (await fs.stat(file)).isFile(); }
+  catch { return false; }
+}
+
+async function findChromeExecutable() {
+  const local = process.env.LOCALAPPDATA || '';
+  const pf = process.env.ProgramFiles || 'C:\\Program Files';
+  const pfx86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+  const candidates = [
+    process.env.NOVELIGHT_CHATGPT_BROWSER_EXECUTABLE,
+    path.join(pf, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(pfx86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    local ? path.join(local, 'Google', 'Chrome', 'Application', 'chrome.exe') : ''
+  ].filter(Boolean);
+  for (const candidate of candidates) if (await existingFile(candidate)) return candidate;
+  return null;
 }
 
 function token() {
@@ -91,14 +113,29 @@ async function post(tokenValue, request, status, details) {
   await api(tokenValue, 'POST', `/repos/${OWNER}/${REPO}/issues/${ISSUE}/comments`, { body });
 }
 
+function restoreEnv(name, previous) {
+  if (previous == null) delete process.env[name];
+  else process.env[name] = previous;
+}
+
 async function handle(config, request) {
-  const result = await bootstrapChatgptPlugin({
-    pluginName: request.pluginName,
-    description: request.description,
-    commanderDir: config.commanderDir,
-    dataRoot: config.dataRoot
-  });
-  return JSON.stringify({ ...result, secretsExposed: false, credentialsRead: false, twoFactorBypassed: false }, null, 2);
+  const previousProfile = process.env.NOVELIGHT_CHATGPT_BROWSER_USER_DATA_DIR;
+  const previousExecutable = process.env.NOVELIGHT_CHATGPT_BROWSER_EXECUTABLE;
+  process.env.NOVELIGHT_CHATGPT_BROWSER_USER_DATA_DIR = config.browserProfileDir;
+  const chromeExecutable = await findChromeExecutable();
+  if (chromeExecutable) process.env.NOVELIGHT_CHATGPT_BROWSER_EXECUTABLE = chromeExecutable;
+  try {
+    const result = await bootstrapChatgptPlugin({
+      pluginName: request.pluginName,
+      description: request.description,
+      commanderDir: config.commanderDir,
+      dataRoot: config.dataRoot
+    });
+    return JSON.stringify({ ...result, browserProfile: 'nlo-managed', secretsExposed: false, credentialsRead: false, twoFactorBypassed: false }, null, 2);
+  } finally {
+    restoreEnv('NOVELIGHT_CHATGPT_BROWSER_USER_DATA_DIR', previousProfile);
+    restoreEnv('NOVELIGHT_CHATGPT_BROWSER_EXECUTABLE', previousExecutable);
+  }
 }
 
 async function listCommentsSince(tokenValue, since) {
