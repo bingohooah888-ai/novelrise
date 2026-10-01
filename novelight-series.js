@@ -104,4 +104,12 @@
   }
 
   window.NovelightSeries = Object.freeze({ fetchContext, mountNovelContext });
+
+  if ((window.location.pathname.split('/').pop() || '').toLowerCase() === 'novel.html'
+      && !document.querySelector('script[data-novelight-public-share-loader]')) {
+    const script = document.createElement('script');
+    script.src = 'novelight-public-share.js';
+    script.dataset.novelightPublicShareLoader = '1';
+    document.head.appendChild(script);
+  }
 })();
