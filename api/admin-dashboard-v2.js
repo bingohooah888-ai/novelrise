@@ -123,7 +123,9 @@ async function loadCurrentSignals() {
     zeroPvWorks,
     unresolvedRenderFailures
   ] = await Promise.all([
-    countRows('contact_inquiries', (query) => query.eq('status', 'new')),
+    countRows('contact_inquiries', (query) =>
+      query.in('status', ['new', 'reviewing'])
+    ),
     countRows('novels', (query) => query.eq('status', 'published')),
     countRows('novels', (query) => query.eq('status', 'published').eq('pv', 0)),
     countRows('thumbnail_render_failures', (query) =>
