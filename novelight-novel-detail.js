@@ -443,11 +443,12 @@
     const description = header?.querySelector('.description');
     const meta = header?.querySelector('.meta');
     if (!header || !favorite || !title || !tags || !author || !description || !meta) return;
+    const rows = episodeRows();
+    if (!rows.length) return;
     installStyles();
     document.body.classList.add('nl-work-detail-v2');
     stripReaderPv(meta);
     collapseTags(tags);
-    const rows = episodeRows();
     const items = outlineItems(rows);
     await syncProgress(id);
     const target = continueTarget(rows, readProgress(id));
