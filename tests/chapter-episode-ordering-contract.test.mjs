@@ -124,9 +124,11 @@ test('author structure manager supports chapter CRUD, assignment and whole-work 
   assert.ok(
     structurePage.includes("client.rpc('novelight_delete_novel_chapter'")
   );
+  assert.ok(structurePage.includes('novelight_reorder_novel_structure'));
   assert.ok(
-    structurePage.includes("client.rpc('novelight_reorder_novel_structure'")
+    structurePage.includes('novelight_update_novel_structure_metadata')
   );
+  assert.ok(structurePage.includes('client.rpc(rpc'));
   assert.ok(structurePage.includes('episodeItems=episodes.map'));
   assert.ok(structurePage.includes('chapterOrder=chapters.map'));
   assert.ok(!structurePage.includes('normalizeChapterBlocks'));
