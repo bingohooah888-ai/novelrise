@@ -101,9 +101,19 @@ async function handle(config, request) {
   return JSON.stringify({ ...result, secretsExposed: false, credentialsRead: false, twoFactorBypassed: false }, null, 2);
 }
 
+async function listCommentsSince(tokenValue, since) {
+  const rows = [];
+  for (let page = 1; page <= 50; page += 1) {
+    const query = new URLSearchParams({ per_page: '100', since, page: String(page) });
+    const batch = await api(tokenValue, 'GET', `/repos/${OWNER}/${REPO}/issues/${ISSUE}/comments?${query}`);
+    rows.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return rows;
+}
+
 async function poll(config, tokenValue, state) {
-  const query = new URLSearchParams({ per_page: '100', since: state.since });
-  const rows = await api(tokenValue, 'GET', `/repos/${OWNER}/${REPO}/issues/${ISSUE}/comments?${query}`);
+  const rows = await listCommentsSince(tokenValue, state.since);
   for (const comment of rows.filter(item => Number(item.id) > state.last).sort((a, b) => a.id - b.id)) {
     if (comment.user?.login === OWNER && String(comment.body || '').startsWith(PREFIX)) {
       let request;
