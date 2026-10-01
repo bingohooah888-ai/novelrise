@@ -270,6 +270,24 @@
     return true;
   }
 
+  function installPublicShareRuntime() {
+    const page = (window.location.pathname.split('/').pop() || 'index.html')
+      .replace(/\.html$/u, '')
+      .toLowerCase();
+    if (
+      !['my-novels', 'novel', 'episode'].includes(page) ||
+      document.querySelector('script[data-novelight-public-share-runtime]')
+    ) {
+      return false;
+    }
+    const script = document.createElement('script');
+    script.src = 'novelight-public-share.js';
+    script.defer = true;
+    script.dataset.novelightPublicShareRuntime = 'shared';
+    document.head.appendChild(script);
+    return true;
+  }
+
   installMypageActivityImageOptimization();
   window.__novelightAttachScoutTitleToastWatcher = watch;
   const pendingClients = Array.isArray(
@@ -279,5 +297,6 @@
     : [];
   pendingClients.forEach((client) => watch(client));
   installHelpRuntime();
+  installPublicShareRuntime();
   installClientHook();
 })();
