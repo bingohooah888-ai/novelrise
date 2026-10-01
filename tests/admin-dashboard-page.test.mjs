@@ -41,6 +41,7 @@ test('admin HOME focuses on the ten today KPIs and decision signals', () => {
   }
   assert.match(adminHtml, /来訪者 → 実読書/);
   assert.match(adminHtml, /PVゼロ作品率/);
+  assert.match(adminApi, /query\.in\('status', \['new', 'reviewing'\]\)/);
 });
 
 test('daily chart supports 7, 30, 90 and all-time views with metric toggles', () => {
