@@ -51,7 +51,7 @@
         cancelLink.href=`novel.html?id=${encodeURIComponent(novelId)}`;
         const mounted=await NovelightThumbnailComposer.mount({client,root,novelId:String(novelId)});
         if(!mounted.ready){root.innerHTML='<div class="thumbnail-state">公式サムネイル素材を準備しています。時間をおいて再度お試しください。</div>';setStatus('表紙設定を読み込めませんでした。','error');return}
-        controller=mounted.controller;saveButton.disabled=!controller.isValid();setStatus('現在の表紙設定を読み込みました。');
+        controller=mounted.controller;saveButton.disabled=false;setStatus('現在の表紙設定を読み込みました。');
       }catch(error){console.error(error);root.innerHTML='<div class="thumbnail-state">表紙設定を読み込めませんでした。</div>';setStatus('時間をおいて再度お試しください。','error')}
     })();
     saveButton.addEventListener('click',async()=>{
