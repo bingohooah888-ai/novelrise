@@ -31,6 +31,13 @@
     });
   }
 
+  function node(tag, className = '', text = '') {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (text !== '') element.textContent = String(text);
+    return element;
+  }
+
   function installStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement('style');
@@ -96,9 +103,9 @@
   function outlineItems(rows) {
     const rowByElement = new Map(rows.map((row) => [row.element, row]));
     const items = [];
-    document.querySelectorAll('#episodeList > .chapter-heading, #episodeList > .episode').forEach((node) => {
-      if (node.classList.contains('chapter-heading')) items.push({ type: 'chapter', title: node.textContent.trim() });
-      else if (rowByElement.has(node)) items.push({ type: 'episode', row: rowByElement.get(node) });
+    document.querySelectorAll('#episodeList > .chapter-heading, #episodeList > .episode').forEach((element) => {
+      if (element.classList.contains('chapter-heading')) items.push({ type: 'chapter', title: element.textContent.trim() });
+      else if (rowByElement.has(element)) items.push({ type: 'episode', row: rowByElement.get(element) });
     });
     return items;
   }
@@ -128,22 +135,21 @@
   }
 
   function buildToc(items, id) {
-    const wrap = document.createElement('div');
-    wrap.className = 'nl-work-toc-list';
+    const wrap = node('div', 'nl-work-toc-list');
     const progress = readProgress(id);
     const currentNumber = Number(progress?.episodeNumber) || 0;
     const currentId = progress?.episodeId ? String(progress.episodeId) : '';
     for (const item of items) {
       if (item.type === 'chapter') {
-        const chapter = document.createElement('div'); chapter.className = 'nl-work-toc-chapter'; chapter.textContent = item.title; wrap.appendChild(chapter); continue;
+        wrap.appendChild(node('div', 'nl-work-toc-chapter', item.title));
+        continue;
       }
       const row = item.row;
-      const link = document.createElement('a'); link.className = 'nl-work-toc-link'; link.href = row.href;
+      const link = node('a', 'nl-work-toc-link'); link.href = row.href;
       if (currentNumber && row.number <= currentNumber) link.classList.add('is-read');
       if (currentId && String(row.id) === currentId) link.classList.add('is-current');
-      const num = document.createElement('span'); num.className = 'nl-work-toc-num'; num.textContent = `第${row.number}話`;
-      const title = document.createElement('span'); title.textContent = row.title || `第${row.number}話`;
-      link.append(num, title); wrap.appendChild(link);
+      link.append(node('span', 'nl-work-toc-num', `第${row.number}話`), node('span', '', row.title || `第${row.number}話`));
+      wrap.appendChild(link);
     }
     return wrap;
   }
@@ -175,28 +181,28 @@
   async function mountCover(id, cover) {
     const url = await coverUrl(id);
     if (!url) return;
-    const image = document.createElement('img'); image.src = optimizedImageUrl(url); image.alt = ''; image.decoding = 'async'; image.loading = 'eager'; image.fetchPriority = 'high'; cover.replaceChildren(image);
+    const image = node('img'); image.src = optimizedImageUrl(url); image.alt = ''; image.decoding = 'async'; image.loading = 'eager'; image.fetchPriority = 'high'; cover.replaceChildren(image);
   }
 
   function installMobileToc(items, id, actions) {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'nl-work-toc-mobile-button'; button.textContent = '目次を見る';
-    const dialog = document.createElement('dialog'); dialog.id = 'nlWorkTocDialog'; dialog.className = 'nl-work-toc-dialog';
-    const sheet = document.createElement('section'); sheet.className = 'nl-work-toc-sheet';
-    const head = document.createElement('div'); head.className = 'nl-work-toc-sheet-head';
-    const title = document.createElement('h2'); title.textContent = '目次';
-    const close = document.createElement('button'); close.type = 'button'; close.className = 'nl-work-toc-close'; close.setAttribute('aria-label','目次を閉じる'); close.textContent = '×';
+    const button = node('button', 'nl-work-toc-mobile-button', '目次を見る'); button.type = 'button';
+    const dialog = node('dialog', 'nl-work-toc-dialog'); dialog.id = 'nlWorkTocDialog';
+    const sheet = node('section', 'nl-work-toc-sheet');
+    const head = node('div', 'nl-work-toc-sheet-head');
+    const title = node('h2', '', '目次');
+    const close = node('button', 'nl-work-toc-close', '×'); close.type = 'button'; close.setAttribute('aria-label','目次を閉じる');
     head.append(title, close); sheet.append(head, buildToc(items, id)); dialog.appendChild(sheet); document.body.appendChild(dialog);
     button.addEventListener('click', () => dialog.showModal()); close.addEventListener('click', () => dialog.close()); dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); }); dialog.addEventListener('close', () => button.focus()); actions.appendChild(button);
   }
 
   function addShareControls(actions) {
-    const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'nl-work-share-button'; copy.textContent = 'URLをコピー';
+    const copy = node('button', 'nl-work-share-button', 'URLをコピー'); copy.type = 'button';
     copy.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(window.location.href); }
       catch { const input=document.createElement('textarea'); input.value=window.location.href; input.style.position='fixed'; input.style.opacity='0'; document.body.appendChild(input); input.select(); document.execCommand('copy'); input.remove(); }
       copy.textContent='コピーしました'; window.setTimeout(()=>{copy.textContent='URLをコピー';},1600);
     });
-    const x=document.createElement('a'); x.className='nl-work-share-button nl-work-share-x'; x.target='_blank'; x.rel='noopener noreferrer'; x.href=`https://x.com/intent/post?text=${encodeURIComponent(document.querySelector('#novelHeader .title')?.textContent?.trim()||'NOVELIGHTの作品')}&url=${encodeURIComponent(window.location.href)}`; x.textContent='Xで共有';
+    const x=node('a', 'nl-work-share-button nl-work-share-x', 'Xで共有'); x.target='_blank'; x.rel='noopener noreferrer'; x.href=`https://x.com/intent/post?text=${encodeURIComponent(document.querySelector('#novelHeader .title')?.textContent?.trim()||'NOVELIGHTの作品')}&url=${encodeURIComponent(window.location.href)}`;
     actions.append(copy,x);
   }
 
@@ -220,16 +226,18 @@
     try {
       const result=await client.rpc('novelight_character_feed',{p_episode_id:String(boundary.id)}); if(result.error)throw result.error;
       const characters=Array.isArray(result.data)?result.data:[]; if(!characters.length)return;
-      const section=document.createElement('section'); section.className='nl-work-character-section';
-      const head=document.createElement('div'); head.className='nl-work-character-head'; head.innerHTML='<div><div class="nl-work-detail-kicker">CHARACTERS</div><h2>登場人物</h2></div><p>読んだ範囲までの人物だけを表示します。</p>';
-      const grid=document.createElement('div'); grid.className='nl-work-character-grid';
+      const section=node('section', 'nl-work-character-section');
+      const head=node('div', 'nl-work-character-head');
+      const headingWrap=node('div'); headingWrap.append(node('div', 'nl-work-detail-kicker', 'CHARACTERS'), node('h2', '', '登場人物'));
+      head.append(headingWrap, node('p', '', '読んだ範囲までの人物だけを表示します。'));
+      const grid=node('div', 'nl-work-character-grid');
       characters.slice(0,24).forEach((character,index)=>{
-        const card=document.createElement('article'); card.className=`nl-work-character-card${index>=6?' is-extra':''}`;
-        if(character.image_url){const image=document.createElement('img'); image.className='nl-work-character-image'; image.src=String(character.image_url); image.alt=`${character.name||'登場人物'}の画像`; image.loading='lazy'; image.decoding='async'; image.referrerPolicy='no-referrer'; card.appendChild(image);}else{const fallback=document.createElement('div'); fallback.className='nl-work-character-fallback'; fallback.setAttribute('aria-hidden','true'); fallback.textContent=String(character.name||'人').slice(0,1); card.appendChild(fallback);}
-        const copy=document.createElement('div'); copy.className='nl-work-character-copy'; const name=document.createElement('strong'); name.textContent=character.name||'登場人物'; const description=document.createElement('p'); description.textContent=character.description||(Number(character.latest_episode_number)?`第${Number(character.latest_episode_number)}話までに登場`:'登場人物'); copy.append(name,description); card.appendChild(copy); grid.appendChild(card);
+        const card=node('article', `nl-work-character-card${index>=6?' is-extra':''}`);
+        if(character.image_url){const image=node('img', 'nl-work-character-image'); image.src=String(character.image_url); image.alt=`${character.name||'登場人物'}の画像`; image.loading='lazy'; image.decoding='async'; image.referrerPolicy='no-referrer'; card.appendChild(image);}else{const fallback=node('div', 'nl-work-character-fallback', String(character.name||'人').slice(0,1)); fallback.setAttribute('aria-hidden','true'); card.appendChild(fallback);}
+        const copy=node('div', 'nl-work-character-copy'); copy.append(node('strong', '', character.name||'登場人物'), node('p', '', character.description||(Number(character.latest_episode_number)?`第${Number(character.latest_episode_number)}話までに登場`:'登場人物'))); card.appendChild(copy); grid.appendChild(card);
       });
       section.append(head,grid);
-      if(characters.length>6){const more=document.createElement('button'); more.type='button'; more.className='nl-work-character-more'; more.textContent='登場人物をもっと見る →'; more.addEventListener('click',()=>{const expanded=grid.classList.toggle('is-expanded');more.textContent=expanded?'登場人物を閉じる ↑':'登場人物をもっと見る →';}); section.appendChild(more);}
+      if(characters.length>6){const more=node('button', 'nl-work-character-more', '登場人物をもっと見る →'); more.type='button'; more.addEventListener('click',()=>{const expanded=grid.classList.toggle('is-expanded');more.textContent=expanded?'登場人物を閉じる ↑':'登場人物をもっと見る →';}); section.appendChild(more);}
       center.appendChild(section);
     } catch(error){console.warn('character cards unavailable',error);}
   }
@@ -243,19 +251,19 @@
     if(!header||!favorite||!title||!tags||!author||!description||!meta)return;
     installStyles(); document.body.classList.add('nl-work-detail-v2');
     const rows=episodeRows(),items=outlineItems(rows); await syncProgress(id); const target=continueTarget(rows,readProgress(id));
-    const grid=document.createElement('div'); grid.className='nl-work-detail-grid'; header.insertAdjacentElement('beforebegin',grid);
-    const left=document.createElement('aside'); left.className='nl-work-detail-left'; const cover=document.createElement('div'); cover.className='nl-work-detail-cover'; cover.innerHTML='<div class="nl-work-detail-cover-placeholder">NOVELIGHT</div>'; left.append(cover,tags);
-    const metaBox=document.createElement('div'); metaBox.className='nl-work-detail-bookmeta'; metaBox.innerHTML=`<strong>${rows.length?'公開中':'作品情報'}</strong><span>${rows.length}話</span><span>作品情報・目次・読書状態を一冊にまとめて表示</span>`; left.appendChild(metaBox);
-    const center=document.createElement('div'); center.className='nl-work-detail-center'; const main=document.createElement('section'); main.className='nl-work-detail-main'; const actions=document.createElement('div'); actions.className='nl-work-detail-actions';
+    const grid=node('div', 'nl-work-detail-grid'); header.insertAdjacentElement('beforebegin',grid);
+    const left=node('aside', 'nl-work-detail-left'); const cover=node('div', 'nl-work-detail-cover'); cover.appendChild(node('div', 'nl-work-detail-cover-placeholder', 'NOVELIGHT')); left.append(cover,tags);
+    const metaBox=node('div', 'nl-work-detail-bookmeta'); metaBox.append(node('strong', '', rows.length?'公開中':'作品情報'), node('span', '', `${rows.length}話`), node('span', '', '作品情報・目次・読書状態を一冊にまとめて表示')); left.appendChild(metaBox);
+    const center=node('div', 'nl-work-detail-center'); const main=node('section', 'nl-work-detail-main'); const actions=node('div', 'nl-work-detail-actions');
     main.append(title,author,meta);
-    if(target){const read=document.createElement('a'); read.className='nl-work-read-action'; read.href=target.row.href; const readCopy=document.createElement('span'); readCopy.textContent=target.label; const readStatus=document.createElement('small'); readStatus.textContent=target.unread>0?`未読 ${target.unread}話`:'最新話まで読了'; readCopy.appendChild(readStatus); const arrow=document.createElement('span'); arrow.setAttribute('aria-hidden','true'); arrow.textContent='→'; read.append(readCopy,arrow); actions.appendChild(read);}
+    if(target){const read=node('a', 'nl-work-read-action'); read.href=target.row.href; const readCopy=node('span', '', target.label); const readStatus=node('small', '', target.unread>0?`未読 ${target.unread}話`:'最新話まで読了'); readCopy.appendChild(readStatus); const arrow=node('span', '', '→'); arrow.setAttribute('aria-hidden','true'); read.append(readCopy,arrow); actions.appendChild(read);}
     actions.appendChild(favorite); addShareControls(actions); installMobileToc(items,id,actions);
     const report=document.getElementById('readerReportOpen'); if(report){report.classList.remove('action','report');report.classList.add('nl-work-report-button');report.textContent='通報';actions.appendChild(report);}
-    main.appendChild(actions); const synopsis=document.createElement('div'); synopsis.className='nl-work-detail-synopsis'; synopsis.innerHTML='<div class="nl-work-detail-kicker">STORY</div><h2>あらすじ</h2>'; synopsis.appendChild(description); main.appendChild(synopsis); center.appendChild(main);
-    const toc=document.createElement('aside'); toc.className='nl-work-detail-toc'; toc.setAttribute('aria-label','目次'); const tocHead=document.createElement('div'); tocHead.className='nl-work-detail-toc-head'; tocHead.innerHTML=`<h2>目次</h2><span class="nl-work-detail-toc-count">${rows.length}話</span>`; toc.append(tocHead,buildToc(items,id));
+    main.appendChild(actions); const synopsis=node('div', 'nl-work-detail-synopsis'); synopsis.append(node('div', 'nl-work-detail-kicker', 'STORY'), node('h2', '', 'あらすじ'), description); main.appendChild(synopsis); center.appendChild(main);
+    const toc=node('aside', 'nl-work-detail-toc'); toc.setAttribute('aria-label','目次'); const tocHead=node('div', 'nl-work-detail-toc-head'); tocHead.append(node('h2', '', '目次'), node('span', 'nl-work-detail-toc-count', `${rows.length}話`)); toc.append(tocHead,buildToc(items,id));
     grid.append(left,center,toc); header.remove(); document.getElementById('nlContinueReading')?.remove();
     await ensureExistingControls(id,actions); await renderCharacters(rows,id,center); void mountCover(id,cover);
-    const support=document.createElement('div'); support.className='nl-work-support-stack'; grid.insertAdjacentElement('afterend',support); ['lightSeedArea','receivedSeedArea','novelPollArea'].forEach((elementId)=>{const node=document.getElementById(elementId);if(node)support.appendChild(node);});
+    const support=node('div', 'nl-work-support-stack'); grid.insertAdjacentElement('afterend',support); ['lightSeedArea','receivedSeedArea','novelPollArea'].forEach((elementId)=>{const element=document.getElementById(elementId);if(element)support.appendChild(element);});
   }
 
   window.NovelightNovelDetailV2=Object.freeze({boot,episodeRows,buildToc});
