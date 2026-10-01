@@ -269,17 +269,7 @@
     });
   }
 
-  function loadNovelDetailRuntime() {
-    if (!/(^|\/)novel\.html$/u.test(window.location.pathname)) return;
-    if (document.getElementById('novelight-novel-detail-v2')) return;
-    const script = document.createElement('script');
-    script.id = 'novelight-novel-detail-v2';
-    script.src = 'novelight-novel-detail.js';
-    document.body.appendChild(script);
-  }
-
   applyStaticDisplayNames();
-  window.addEventListener('load', loadNovelDetailRuntime, { once: true });
 
   window.NovelightCuration = Object.freeze({
     isUnavailableError,
