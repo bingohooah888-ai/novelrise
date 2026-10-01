@@ -3,7 +3,9 @@
 
   const SKIPPED_ELEMENTS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'RT', 'RP']);
   const MAX_CHUNK_LENGTH = 220;
-  const PLAYBACK_RATES = new Set([1, 1.5, 2]);
+  const MIN_PLAYBACK_RATE = 1;
+  const MAX_PLAYBACK_RATE = 3;
+  const PLAYBACK_RATE_STEP = 0.05;
   let mountedController = null;
 
   function displayedText(root) {
@@ -52,6 +54,24 @@
     return voices.find((voice) => /^ja(?:-|_)/iu.test(voice.lang || '')) || null;
   }
 
+  function normalizePlaybackRate(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return MIN_PLAYBACK_RATE;
+    const clamped = Math.min(MAX_PLAYBACK_RATE, Math.max(MIN_PLAYBACK_RATE, numeric));
+    const stepped = MIN_PLAYBACK_RATE + Math.round(
+      (clamped - MIN_PLAYBACK_RATE) / PLAYBACK_RATE_STEP
+    ) * PLAYBACK_RATE_STEP;
+    return Number(stepped.toFixed(2));
+  }
+
+  function formatPlaybackRate(value) {
+    const normalized = normalizePlaybackRate(value);
+    const fixed = normalized.toFixed(2);
+    if (fixed.endsWith('00')) return `${normalized.toFixed(0)}.0`;
+    if (fixed.endsWith('0')) return fixed.slice(0, -1);
+    return fixed;
+  }
+
   function mount(content) {
     if (!content || content.dataset.ttsMounted === 'true') return null;
     mountedController?.cancel();
@@ -65,9 +85,13 @@
     controls.setAttribute('aria-label', '本文の読み上げ');
     controls.innerHTML = '<div class="reader-tts-title">本文の読み上げ</div>' +
       '<div class="reader-tts-actions">' +
-      '<label class="reader-tts-rate">速度<select data-tts-rate aria-label="読み上げ速度">' +
-      '<option value="1">1.0×</option><option value="1.5">1.5×</option><option value="2">2.0×</option>' +
-      '</select></label>' +
+      '<div class="reader-tts-rate">' +
+      '<div class="reader-tts-rate-heading"><span>速度</span><output data-tts-rate-output>1.0×</output></div>' +
+      '<div class="reader-tts-rate-main"><div class="reader-tts-rate-slider-wrap">' +
+      '<input type="range" min="1" max="3" step="0.05" value="1" data-tts-rate-slider aria-label="読み上げ速度">' +
+      '<div class="reader-tts-rate-scale" aria-hidden="true"><span>1.0</span><span>1.5</span><span>2.0</span><span>2.5</span><span>3.0</span></div>' +
+      '</div><label class="reader-tts-rate-input"><input type="number" inputmode="decimal" min="1" max="3" step="0.05" value="1.0" data-tts-rate-input aria-label="読み上げ速度を直接入力"><span>倍</span></label></div>' +
+      '</div>' +
       '<button type="button" data-tts-action="start">最初から再生</button>' +
       '<button type="button" data-tts-action="pause">一時停止</button>' +
       '<button type="button" data-tts-action="resume">再開</button>' +
@@ -75,7 +99,9 @@
       '<p class="reader-tts-status" role="status" aria-live="polite"></p>';
     content.before(controls);
 
-    const rateSelect = controls.querySelector('[data-tts-rate]');
+    const rateSlider = controls.querySelector('[data-tts-rate-slider]');
+    const rateInput = controls.querySelector('[data-tts-rate-input]');
+    const rateOutput = controls.querySelector('[data-tts-rate-output]');
     const startButton = controls.querySelector('[data-tts-action="start"]');
     const pauseButton = controls.querySelector('[data-tts-action="pause"]');
     const resumeButton = controls.querySelector('[data-tts-action="resume"]');
@@ -87,9 +113,16 @@
     let paused = false;
     let runId = 0;
 
+    function setRate(value, syncInput = true) {
+      const rate = normalizePlaybackRate(value);
+      const formatted = formatPlaybackRate(rate);
+      rateSlider.value = String(rate);
+      if (syncInput) rateInput.value = formatted;
+      rateOutput.textContent = `${formatted}×`;
+      return rate;
+    }
     function selectedRate() {
-      const rate = Number(rateSelect?.value || 1);
-      return PLAYBACK_RATES.has(rate) ? rate : 1;
+      return normalizePlaybackRate(rateSlider?.value || rateInput?.value || MIN_PLAYBACK_RATE);
     }
     function renderState(message) {
       status.textContent = message;
@@ -97,7 +130,13 @@
       pauseButton.disabled = !supported || !active || paused;
       resumeButton.disabled = !supported || !active || !paused;
       stopButton.disabled = !supported || !active;
-      rateSelect.disabled = !supported;
+      rateSlider.disabled = !supported;
+      rateInput.disabled = !supported;
+    }
+    function announceRateChange() {
+      if (active) {
+        renderState(`速度を${formatPlaybackRate(selectedRate())}倍に変更しました。次の区切りから反映されます。`);
+      }
     }
     function stop(message = '停止しました。') {
       runId += 1;
@@ -136,6 +175,17 @@
       synthesis.speak(utterance);
     }
 
+    rateSlider.addEventListener('input', () => setRate(rateSlider.value));
+    rateSlider.addEventListener('change', announceRateChange);
+    rateInput.addEventListener('input', () => {
+      if (rateInput.value === '' || !Number.isFinite(Number(rateInput.value))) return;
+      setRate(rateInput.value, false);
+    });
+    rateInput.addEventListener('change', () => {
+      setRate(rateInput.value);
+      announceRateChange();
+    });
+
     startButton.addEventListener('click', () => {
       global.NovelightProse?.enhance(content);
       const text = displayedText(content);
@@ -149,7 +199,7 @@
       queueIndex = 0;
       active = true;
       paused = false;
-      renderState(`本文を最初から${selectedRate()}倍速で読み上げています。`);
+      renderState(`本文を最初から${formatPlaybackRate(selectedRate())}倍速で読み上げています。`);
       speakNext(runId);
     });
     pauseButton.addEventListener('click', () => {
@@ -173,8 +223,9 @@
       const link = event.target.closest?.('a[href]');
       if (link && !event.defaultPrevented && link.target !== '_blank') cancelForExit();
     }, true);
+    setRate(MIN_PLAYBACK_RATE);
     renderState(supported
-      ? '速度を選んで再生すると、このページに表示中の本文だけを読み上げます。'
+      ? '速度を1.0〜3.0倍で調整して再生すると、このページに表示中の本文だけを読み上げます。'
       : 'このブラウザは本文の読み上げに対応していません。');
     mountedController = { cancel: () => stop('') };
     return controls;
