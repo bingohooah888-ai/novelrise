@@ -153,17 +153,19 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     timeout: 20_000
   });
 
-  const episodesPanel = page.locator('#episodesPanel');
-  await expect(episodesPanel).toBeVisible({ timeout: 20_000 });
+  const readerSurface = page
+    .locator('.nl-work-detail-grid, #episodesPanel')
+    .first();
+  await expect(readerSurface).toBeVisible({ timeout: 20_000 });
 
-  const firstEpisodeLink = page.locator('#episodeList .episode-title').first();
-  await expect(firstEpisodeLink).toBeVisible({ timeout: 20_000 });
+  const episodeLinks = page.locator(
+    '.nl-work-detail-toc .nl-work-toc-link, #episodeList .episode-title'
+  );
+  await expect(episodeLinks.first()).toBeVisible({ timeout: 20_000 });
 
-  const episodeHrefs = await page
-    .locator('.episode-title')
-    .evaluateAll((nodes) =>
-      nodes.map((node) => node.getAttribute('href')).filter(Boolean)
-    );
+  const episodeHrefs = await episodeLinks.evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute('href')).filter(Boolean)
+  );
   const episodeHref = episodeHrefs.find(
     (href) => resourceIdFromHref(href) === String(episode.id)
   );
