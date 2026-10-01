@@ -399,7 +399,9 @@
     panel.className = 'nl-continue-panel';
     panel.innerHTML = `<span class="nl-continue-label">READING</span><a class="nl-continue-link" href="${target.row.href}"><strong>${target.label}</strong><span class="nl-continue-arrow" aria-hidden="true">→</span></a>`;
     const list = document.getElementById('episodeList');
-    list?.insertAdjacentElement('beforebegin', panel);
+    const ownerActions = document.getElementById('ownerActions');
+    const isOwner = ownerActions && window.getComputedStyle(ownerActions).display !== 'none';
+    list?.insertAdjacentElement(isOwner ? 'afterend' : 'beforebegin', panel);
     return true;
   }
 
