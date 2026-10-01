@@ -88,6 +88,70 @@
     }, SCOUT_TITLE_TOAST_VISIBLE_MS);
   }
 
+  async function installAdminShortcut(session) {
+    if (!session?.access_token) return false;
+    const page = (window.location.pathname.split('/').pop() || 'index.html')
+      .replace(/\.html$/u, '')
+      .toLowerCase();
+    if (page.startsWith('admin')) return false;
+    if (document.querySelector('.novelight-admin-shortcut')) return true;
+
+    try {
+      const response = await fetch('/api/admin-access', {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer ' + session.access_token
+        }
+      });
+      if (!response.ok) return false;
+      const payload = await response.json().catch(() => null);
+      if (!payload?.admin) return false;
+
+      if (!document.getElementById('novelight-admin-shortcut-style')) {
+        const style = document.createElement('style');
+        style.id = 'novelight-admin-shortcut-style';
+        style.textContent =
+          '.novelight-admin-shortcut{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 12px;border:1px solid rgba(216,180,90,.6);border-radius:9px;color:inherit!important;text-decoration:none!important;font-size:13px;font-weight:850;white-space:nowrap}' +
+          '.novelight-admin-shortcut:hover{border-color:rgba(216,180,90,.95)}' +
+          '@media(max-width:900px){body.novelight-public-header-page .novelight-admin-shortcut-desktop{display:none!important}}';
+        document.head.appendChild(style);
+      }
+
+      const desktopTarget =
+        document.querySelector('header .header-actions') ||
+        document.querySelector('header .right') ||
+        document.querySelector('header .actions') ||
+        document.querySelector('header .header-inner');
+      if (desktopTarget) {
+        const link = document.createElement('a');
+        link.href = 'admin.html';
+        link.textContent = '管理画面';
+        link.className =
+          'novelight-admin-shortcut novelight-admin-shortcut-desktop';
+        link.setAttribute('aria-label', 'NOVELIGHT管理画面を開く');
+        const mobileMenu = desktopTarget.querySelector('details.mobile-menu');
+        desktopTarget.insertBefore(link, mobileMenu || null);
+      }
+
+      const mobileNav = document.querySelector('details.mobile-menu nav');
+      if (mobileNav) {
+        const link = document.createElement('a');
+        link.href = 'admin.html';
+        link.textContent = '管理画面';
+        link.className =
+          'novelight-admin-shortcut novelight-admin-shortcut-mobile';
+        mobileNav.appendChild(link);
+      }
+      return Boolean(desktopTarget || mobileNav);
+    } catch (error) {
+      console.error('Admin shortcut lookup failed', error);
+      return false;
+    }
+  }
+
   function watch(client) {
     if (!client || window.__novelightScoutTitleToastWatcherInstalled) return;
     window.__novelightScoutTitleToastWatcherInstalled = true;
@@ -107,6 +171,8 @@
         const { data, error } = await client.auth.getSession();
         if (error || !data?.session?.access_token || !data.session.user?.id)
           return;
+
+        void installAdminShortcut(data.session);
 
         const userId = data.session.user.id;
         const key = CURSOR_PREFIX + userId;

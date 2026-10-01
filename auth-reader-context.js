@@ -26,6 +26,7 @@
     '/analytics.html',
     '/my-novels.html',
     '/admin.html',
+    '/admin-analytics.html',
     '/admin-announcements.html',
     '/admin-inquiries.html',
     '/admin-reports.html',

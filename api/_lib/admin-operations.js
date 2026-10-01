@@ -2,10 +2,16 @@ import { requireAdmin } from './admin-auth.js';
 
 const ANNOUNCEMENT_STATUSES = new Set(['draft', 'published', 'archived']);
 const INQUIRY_STATUSES = new Set(['new', 'reviewing', 'resolved']);
+const INQUIRY_PAGE_SIZES = new Set([20, 50]);
 const ANNOUNCEMENT_COLUMNS =
   'id,title,body,category,status,published_at,created_at,updated_at';
-const INQUIRY_SUMMARY_COLUMNS = 'id,subject,status,created_at';
+const INQUIRY_SUMMARY_COLUMNS =
+  'id,email,subject,user_id,status,category,created_at';
+const INQUIRY_SUMMARY_COLUMNS_LEGACY =
+  'id,email,subject,user_id,status,created_at';
 const INQUIRY_DETAIL_COLUMNS =
+  'id,email,subject,message,status,category,created_at,user_id';
+const INQUIRY_DETAIL_COLUMNS_LEGACY =
   'id,email,subject,message,status,created_at,user_id';
 
 function isMissingRelation(error, relation) {
@@ -22,11 +28,43 @@ function isMissingRelation(error, relation) {
   );
 }
 
+function isMissingColumn(error, column) {
+  if (!error) return false;
+  const text = [error.message, error.details, error.hint]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    (text.includes(column.toLowerCase()) &&
+      (text.includes('column') || text.includes('schema cache')))
+  );
+}
+
 function parsePositiveId(value) {
   const text = String(value ?? '').trim();
   if (!/^\d+$/.test(text)) return null;
   const id = Number(text);
   return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+function parsePositiveInteger(value, fallback) {
+  const number = Number.parseInt(String(value ?? ''), 10);
+  return Number.isSafeInteger(number) && number > 0 ? number : fallback;
+}
+
+function normalizeSearchText(value, maxLength = 160) {
+  return String(value ?? '')
+    .trim()
+    .replace(/[,%()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, maxLength);
+}
+
+function normalizeDate(value) {
+  const text = String(value ?? '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
 }
 
 function normalizeAnnouncementInput(body, { partial = false } = {}) {
@@ -161,24 +199,114 @@ export async function updateAdminAnnouncement(
   return Array.isArray(data) ? (data[0] ?? null) : data;
 }
 
-export async function loadInquirySummaries(supabase) {
+async function findInquiryUserIds(supabase, term) {
+  if (!term) return [];
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (uuidPattern.test(term)) return [term];
+
   const { data, error } = await supabase
-    .from('contact_inquiries')
-    .select(INQUIRY_SUMMARY_COLUMNS)
-    .order('created_at', { ascending: false })
-    .limit(200);
-  if (error) throw error;
-  return data ?? [];
+    .from('profiles')
+    .select('id')
+    .ilike('display_name', `%${term}%`)
+    .limit(50);
+  if (error) return [];
+  return (data ?? []).map((row) => row.id).filter(Boolean);
+}
+
+function applyInquiryFilters(query, options, profileIds, hasCategory) {
+  const status = String(options.status ?? '')
+    .trim()
+    .toLowerCase();
+  const category = normalizeSearchText(options.category, 40);
+  const from = normalizeDate(options.from);
+  const to = normalizeDate(options.to);
+  const search = normalizeSearchText(options.q);
+  const user = normalizeSearchText(options.user);
+
+  if (INQUIRY_STATUSES.has(status)) query = query.eq('status', status);
+  if (hasCategory && category) query = query.eq('category', category);
+  if (from) query = query.gte('created_at', `${from}T00:00:00+09:00`);
+  if (to) query = query.lt('created_at', `${to}T23:59:59.999+09:00`);
+
+  if (user) {
+    const userClauses = [`email.ilike.%${user}%`];
+    if (profileIds.length)
+      userClauses.push(`user_id.in.(${profileIds.join(',')})`);
+    query = query.or(userClauses.join(','));
+  }
+
+  if (search) {
+    query = query.or(
+      `subject.ilike.%${search}%,email.ilike.%${search}%,message.ilike.%${search}%`
+    );
+  }
+  return query;
+}
+
+export async function loadInquirySummaries(supabase, options = {}) {
+  const page = parsePositiveInteger(options.page, 1);
+  const requestedPageSize = parsePositiveInteger(options.pageSize, 20);
+  const pageSize = INQUIRY_PAGE_SIZES.has(requestedPageSize)
+    ? requestedPageSize
+    : 20;
+  const offset = (page - 1) * pageSize;
+  const userTerm = normalizeSearchText(options.user);
+  const profileIds = await findInquiryUserIds(supabase, userTerm);
+
+  async function run(hasCategory) {
+    let query = supabase
+      .from('contact_inquiries')
+      .select(
+        hasCategory ? INQUIRY_SUMMARY_COLUMNS : INQUIRY_SUMMARY_COLUMNS_LEGACY,
+        { count: 'exact' }
+      );
+    query = applyInquiryFilters(query, options, profileIds, hasCategory)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    return query;
+  }
+
+  let result = await run(true);
+  let hasCategory = true;
+  if (result.error && isMissingColumn(result.error, 'category')) {
+    hasCategory = false;
+    result = await run(false);
+  }
+  if (result.error) throw result.error;
+
+  const items = (result.data ?? []).map((row) => ({
+    ...row,
+    category: row.category ?? 'general'
+  }));
+  const total = Number(result.count ?? 0);
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    pageCount: Math.max(1, Math.ceil(total / pageSize)),
+    hasCategory
+  };
 }
 
 export async function loadInquiryDetail(supabase, id) {
-  const { data, error } = await supabase
+  let result = await supabase
     .from('contact_inquiries')
     .select(INQUIRY_DETAIL_COLUMNS)
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
-  return data ?? null;
+  if (result.error && isMissingColumn(result.error, 'category')) {
+    result = await supabase
+      .from('contact_inquiries')
+      .select(INQUIRY_DETAIL_COLUMNS_LEGACY)
+      .eq('id', id)
+      .maybeSingle();
+  }
+  if (result.error) throw result.error;
+  return result.data
+    ? { ...result.data, category: result.data.category ?? 'general' }
+    : null;
 }
 
 export async function updateInquiryStatus(supabase, adminUserId, id, status) {
@@ -316,9 +444,20 @@ export function createAdminInquiriesHandler({
           return res.status(200).json({ inquiry });
         }
 
-        return res
-          .status(200)
-          .json({ inquiries: await listInquiries(supabase) });
+        const result = await listInquiries(supabase, req.query ?? {});
+        if (Array.isArray(result)) {
+          return res.status(200).json({ inquiries: result });
+        }
+        return res.status(200).json({
+          inquiries: result.items,
+          pagination: {
+            total: result.total,
+            page: result.page,
+            pageSize: result.pageSize,
+            pageCount: result.pageCount
+          },
+          capabilities: { category: result.hasCategory !== false }
+        });
       }
 
       const id = parsePositiveId(req.body?.id);
