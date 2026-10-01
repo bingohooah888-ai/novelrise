@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const [novel, episode, detail] = await Promise.all([
   readFile(new URL('../novel.html', import.meta.url), 'utf8'),
