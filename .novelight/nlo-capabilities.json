@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "1.0",
+  "capabilities": [
+    {
+      "id": "nlo.capability.resolve",
+      "description": "Resolve reusable NLO capabilities and convert unsupported requests into governed capability gaps.",
+      "intents": [
+        "resolve capability",
+        "capability gap",
+        "missing capability"
+      ],
+      "aliases": [
+        "missing nlo capability",
+        "unsupported nlo capability"
+      ],
+      "adapter": "scripts/nlo-capability-core.mjs",
+      "executionRisk": "A",
+      "requiredPermissions": [
+        "repo_read",
+        "local_git_state_write"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-capability-core.test.mjs"
+      ],
+      "version": "1.0.0",
+      "status": "enabled",
+      "provenance": "NOVELIGHT self-expansion core"
+    }
+  ]
+}
