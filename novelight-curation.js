@@ -75,34 +75,81 @@
   async function createList(client, values) {
     const title = cleanText(values?.title);
     const description = String(values?.description ?? '');
-    if (!title || title.length > 80) throw new Error('リスト名は1〜80文字で入力してください。');
-    if (description.length > 500) throw new Error('説明は500文字以内で入力してください。');
-    return call(client, RPC.create, { p_title: title, p_description: description });
+    if (!title || title.length > 80) {
+      throw new Error('リスト名は1〜80文字で入力してください。');
+    }
+    if (description.length > 500) {
+      throw new Error('説明は500文字以内で入力してください。');
+    }
+    return call(client, RPC.create, {
+      p_title: title,
+      p_description: description
+    });
   }
   async function updateList(client, listId, values) {
     const title = cleanText(values?.title);
     const description = String(values?.description ?? '');
     const visibility = String(values?.visibility ?? '');
-    if (!title || title.length > 80) throw new Error('リスト名は1〜80文字で入力してください。');
-    if (description.length > 500) throw new Error('説明は500文字以内で入力してください。');
-    if (!['private', 'shared'].includes(visibility)) throw new Error('公開状態を選択してください。');
-    return call(client, RPC.update, { p_list_id: Number(listId), p_title: title, p_description: description, p_visibility: visibility });
+    if (!title || title.length > 80) {
+      throw new Error('リスト名は1〜80文字で入力してください。');
+    }
+    if (description.length > 500) {
+      throw new Error('説明は500文字以内で入力してください。');
+    }
+    if (!['private', 'shared'].includes(visibility)) {
+      throw new Error('公開状態を選択してください。');
+    }
+    return call(client, RPC.update, {
+      p_list_id: Number(listId),
+      p_title: title,
+      p_description: description,
+      p_visibility: visibility
+    });
   }
 
-  function addItem(client, listId, novelId) { return call(client, RPC.add, { p_list_id: Number(listId), p_novel_id: Number(novelId) }); }
-  function removeItem(client, listId, novelId) { return call(client, RPC.remove, { p_list_id: Number(listId), p_novel_id: Number(novelId) }); }
-  function rotateShareToken(client, listId) { return call(client, RPC.rotate, { p_list_id: Number(listId) }); }
-  function deleteList(client, listId) { return call(client, RPC.delete, { p_list_id: Number(listId) }); }
+  function addItem(client, listId, novelId) {
+    return call(client, RPC.add, {
+      p_list_id: Number(listId),
+      p_novel_id: Number(novelId)
+    });
+  }
+
+  function removeItem(client, listId, novelId) {
+    return call(client, RPC.remove, {
+      p_list_id: Number(listId),
+      p_novel_id: Number(novelId)
+    });
+  }
+  function rotateShareToken(client, listId) {
+    return call(client, RPC.rotate, { p_list_id: Number(listId) });
+  }
+
+  function deleteList(client, listId) {
+    return call(client, RPC.delete, { p_list_id: Number(listId) });
+  }
 
   async function loadPublicList(client, shareToken) {
     const token = String(shareToken || '');
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(token)) return { available: true, list: null };
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+        token
+      )
+    ) {
+      return { available: true, list: null };
+    }
     try {
-      const list = await call(client, RPC.publicList, { p_share_token: token });
+      const list = await call(client, RPC.publicList, {
+        p_share_token: token
+      });
       if (list) requestAnimationFrame(() => applyPublicDisplayName(list));
-      return { available: true, list };
+      return {
+        available: true,
+        list
+      };
     } catch (error) {
-      if (isUnavailableError(error)) return { available: false, list: null };
+      if (isUnavailableError(error)) {
+        return { available: false, list: null };
+      }
       throw error;
     }
   }
@@ -132,13 +179,16 @@
   async function mountNovelControl(client, novel, session) {
     const favoriteButton = document.getElementById('favoriteButton');
     if (!favoriteButton || document.getElementById('curationAddButton')) return;
+
     const trigger = button('＋ おすすめリストに追加', 'novelight-curation-add-button');
     trigger.id = 'curationAddButton';
     favoriteButton.insertAdjacentElement('afterend', trigger);
+
     const panel = document.createElement('div');
     panel.id = 'curationAddPanel';
     panel.className = 'novelight-curation-add-panel';
     panel.hidden = true;
+
     const select = document.createElement('select');
     select.setAttribute('aria-label', '追加先おすすめリスト');
     const add = button('このリストに追加', 'novelight-curation-add-confirm');
@@ -147,31 +197,57 @@
     manage.className = 'novelight-curation-manage-link';
     manage.textContent = 'おすすめリスト';
     const status = statusNode();
+
     panel.append(select, add, manage, status);
     trigger.insertAdjacentElement('afterend', panel);
-
     async function refresh() {
       status.textContent = 'リストを確認中...';
       add.disabled = true;
       const loaded = await loadMyLists(client);
       select.replaceChildren();
-      if (!loaded.available) { status.textContent = 'おすすめリスト機能はデータベース反映待ちです。'; trigger.disabled = true; return; }
-      if (!loaded.lists.length) { const option = document.createElement('option'); option.value = ''; option.textContent = '先にリストを作成してください'; select.append(option); status.textContent = '管理画面から最初のリストを作成できます。'; return; }
-      for (const list of loaded.lists) { const option = document.createElement('option'); option.value = String(list.list_id); option.textContent = String(list.title || '名称未設定'); select.append(option); }
+
+      if (!loaded.available) {
+        status.textContent = 'おすすめリスト機能はデータベース反映待ちです。';
+        trigger.disabled = true;
+        return;
+      }
+      if (!loaded.lists.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = '先にリストを作成してください';
+        select.append(option);
+        status.textContent = '管理画面から最初のリストを作成できます。';
+        return;
+      }
+      for (const list of loaded.lists) {
+        const option = document.createElement('option');
+        option.value = String(list.list_id);
+        option.textContent = String(list.title || '名称未設定');
+        select.append(option);
+      }
       add.disabled = false;
       status.textContent = '';
     }
 
     trigger.addEventListener('click', async () => {
       if (!session) {
-        const redirect = 'login.html?redirect=' + encodeURIComponent(window.location.pathname.split('/').pop() + window.location.search);
+        const redirect =
+          'login.html?redirect=' +
+          encodeURIComponent(
+            window.location.pathname.split('/').pop() + window.location.search
+          );
         window.location.href = redirect;
         return;
       }
       panel.hidden = !panel.hidden;
       if (!panel.hidden && select.options.length === 0) {
-        try { await refresh(); }
-        catch (error) { console.error(error); status.textContent = 'おすすめリストを読み込めませんでした。時間をおいて再度お試しください。'; }
+        try {
+          await refresh();
+        } catch (error) {
+          console.error(error);
+          status.textContent =
+            'おすすめリストを読み込めませんでした。時間をおいて再度お試しください。';
+        }
       }
     });
 
@@ -179,9 +255,17 @@
       if (!select.value) return;
       add.disabled = true;
       status.textContent = '追加中...';
-      try { await addItem(client, select.value, novel.id); status.textContent = 'おすすめリストへ追加しました。'; }
-      catch (error) { console.error(error); status.textContent = /already/iu.test(String(error?.message || '')) ? 'この作品はすでにリストへ入っています。' : '追加できませんでした。'; }
-      finally { add.disabled = false; }
+      try {
+        await addItem(client, select.value, novel.id);
+        status.textContent = 'おすすめリストへ追加しました。';
+      } catch (error) {
+        console.error(error);
+        status.textContent = /already/iu.test(String(error?.message || ''))
+          ? 'この作品はすでにリストへ入っています。'
+          : '追加できませんでした。';
+      } finally {
+        add.disabled = false;
+      }
     });
   }
 
