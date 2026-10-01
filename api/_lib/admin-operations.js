@@ -215,7 +215,9 @@ async function findInquiryUserIds(supabase, term) {
 }
 
 function applyInquiryFilters(query, options, profileIds, hasCategory) {
-  const status = String(options.status ?? '').trim().toLowerCase();
+  const status = String(options.status ?? '')
+    .trim()
+    .toLowerCase();
   const category = normalizeSearchText(options.category, 40);
   const from = normalizeDate(options.from);
   const to = normalizeDate(options.to);
@@ -256,9 +258,7 @@ export async function loadInquirySummaries(supabase, options = {}) {
     let query = supabase
       .from('contact_inquiries')
       .select(
-        hasCategory
-          ? INQUIRY_SUMMARY_COLUMNS
-          : INQUIRY_SUMMARY_COLUMNS_LEGACY,
+        hasCategory ? INQUIRY_SUMMARY_COLUMNS : INQUIRY_SUMMARY_COLUMNS_LEGACY,
         { count: 'exact' }
       );
     query = applyInquiryFilters(query, options, profileIds, hasCategory)
@@ -309,12 +309,7 @@ export async function loadInquiryDetail(supabase, id) {
     : null;
 }
 
-export async function updateInquiryStatus(
-  supabase,
-  adminUserId,
-  id,
-  status
-) {
+export async function updateInquiryStatus(supabase, adminUserId, id, status) {
   const normalized = String(status ?? '')
     .trim()
     .toLowerCase();
@@ -467,12 +462,7 @@ export function createAdminInquiriesHandler({
 
       const id = parsePositiveId(req.body?.id);
       if (!id) return res.status(400).json({ error: 'Invalid request' });
-      const inquiry = await setStatus(
-        supabase,
-        admin.id,
-        id,
-        req.body?.status
-      );
+      const inquiry = await setStatus(supabase, admin.id, id, req.body?.status);
       return res.status(200).json({ inquiry });
     } catch (error) {
       return handleAdminError(res, error, 'NOVELIGHT inquiry operation failed');
