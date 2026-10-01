@@ -12,6 +12,7 @@ $RepairScript = Join-Path $Here "repair-nlo-services.ps1"
 $BridgeRunner = Join-Path $Here "run-github-bridge.ps1"
 $TunnelKeyPath = Join-Path $RuntimeRoot "control-plane-key.dpapi"
 $TunnelInstaller = Join-Path $Here "install-openai-tunnel-autostart.ps1"
+$PluginAutoregisterScript = Join-Path $Here "src\chatgpt-plugin-autoregister.js"
 
 if (-not (Test-Path $RepairScript)) { throw "repair-nlo-services.ps1 is missing." }
 if (-not (Test-Path $ConfigPath)) { throw "Bridge config file is missing." }
@@ -61,6 +62,19 @@ Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger @($LogonTrig
 
 & $RepairScript -ConfigPath $ConfigPath
 
+$PluginAutoregisterStarted = $false
+if (Test-Path $PluginAutoregisterScript) {
+  if (-not $env:NOVELIGHT_COMMANDER_TUNNEL_ID) {
+    $SavedTunnelId = [Environment]::GetEnvironmentVariable("NOVELIGHT_COMMANDER_TUNNEL_ID", "User")
+    if ($SavedTunnelId) { $env:NOVELIGHT_COMMANDER_TUNNEL_ID = $SavedTunnelId }
+  }
+  $Node = Get-Command node -ErrorAction SilentlyContinue
+  if ($Node -and $env:NOVELIGHT_COMMANDER_TUNNEL_ID) {
+    Start-Process -FilePath $Node.Source -ArgumentList @($PluginAutoregisterScript) -WindowStyle Hidden | Out-Null
+    $PluginAutoregisterStarted = $true
+  }
+}
+
 $WatchdogTask = Get-ScheduledTask -TaskName $TaskName
 $WatchdogInfo = Get-ScheduledTaskInfo -TaskName $TaskName
 $TunnelTask = Get-ScheduledTask -TaskName "NOVELIGHT Commander Tunnel" -ErrorAction SilentlyContinue
@@ -70,4 +84,5 @@ Write-Output ("watchdog_last_result: " + $WatchdogInfo.LastTaskResult)
 Write-Output ("tunnel_task: " + $(if ($TunnelTask) { $TunnelTask.State } else { "missing" }))
 Write-Output ("bridge_startup_launcher: " + [bool](Test-Path $StartupFile))
 Write-Output ("watchdog_hidden_launcher: " + [bool](Test-Path $WatchdogLauncher))
+Write-Output ("chatgpt_plugin_autoregister_started: " + $PluginAutoregisterStarted)
 Write-Output "autorecovery_installed: true"
