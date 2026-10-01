@@ -83,6 +83,18 @@ test("NLO bridge supervisor distinguishes planned, normal, and failed exits", as
   assert.match(core, /process[.]exit\(75\)/);
 });
 
+test("NLO bridge supervisor can self-recover invalid GitHub credentials from verified local owner auth", async () => {
+  const runner = await read("run-github-bridge.ps1");
+
+  assert.match(runner, /function Test-BridgeToken/);
+  assert.match(runner, /function Recover-BridgeTokenFromGh/);
+  assert.match(runner, /api user/);
+  assert.match(runner, /bingohooah888-ai/);
+  assert.match(runner, /Save-BridgeToken/);
+  assert.match(runner, /ConvertFrom-SecureString/);
+  assert.match(runner, /Resolve-BridgeToken -IssueNumber/);
+});
+
 test("NLO bridge supervisor does not treat native stderr warnings as fatal", async () => {
   const runner = await read("run-github-bridge.ps1");
 
