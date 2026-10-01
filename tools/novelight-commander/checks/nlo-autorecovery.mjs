@@ -30,6 +30,10 @@ test("NLO repair script restores both bridge and tunnel supervisors", async () =
   assert.match(source, /NloTunnelClientCount/);
   assert.match(source, /novelight-commander/);
   assert.match(source, /BridgeHeartbeatMaxAgeSeconds = 120/);
+  assert.match(source, /BridgeBusyMaxAgeSeconds = 300/);
+  assert.match(source, /bridge-busy-watch[.]json/);
+  assert.match(source, /busy request timed out/);
+  assert.match(source, /BridgeBusyTimedOut/);
   assert.match(source, /heartbeat stale/);
   assert.match(source, /Stop-Process -Id \$Process[.]ProcessId -Force/);
   assert.match(source, /\$TunnelHealthy = \(/);
