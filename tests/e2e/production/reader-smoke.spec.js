@@ -82,13 +82,10 @@ async function findPublishedEpisode(page, novelHrefs) {
 }
 
 async function novelReaderReady(page) {
-  if (await page.locator('.nl-work-detail-grid').isVisible().catch(() => false)) {
-    return true;
-  }
-  const headerText = await page
-    .locator('#novelHeader')
-    .textContent()
-    .catch(() => '');
+  const v2Surface = page.locator('.nl-work-detail-grid');
+  if (await v2Surface.isVisible().catch(() => false)) return true;
+  const novelHeader = page.locator('#novelHeader');
+  const headerText = await novelHeader.textContent().catch(() => '');
   return Boolean(headerText && !headerText.includes('読み込み中...'));
 }
 
@@ -97,16 +94,19 @@ async function unlockNovelWarningIfNeeded(page) {
 
   await expect
     .poll(
-      async () =>
-        (await warningGate.isVisible().catch(() => false)) ||
-        (await novelReaderReady(page)),
+      async () => {
+        if (await warningGate.isVisible().catch(() => false)) return true;
+        return novelReaderReady(page);
+      },
       { timeout: 20_000 }
     )
     .toBe(true);
 
   if (await warningGate.isVisible()) {
     await page.locator('#continueButton').click();
-    await expect.poll(() => novelReaderReady(page), { timeout: 20_000 }).toBe(true);
+    await expect
+      .poll(() => novelReaderReady(page), { timeout: 20_000 })
+      .toBe(true);
   }
 }
 
