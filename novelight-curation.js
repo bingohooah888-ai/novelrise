@@ -32,6 +32,34 @@
     return result.data;
   }
 
+  function applyStaticDisplayNames() {
+    if (document.body.classList.contains('novelight-page-curation-lists')) {
+      document.title = 'おすすめリスト | NOVELIGHT';
+      const heading = document.querySelector('.novelight-curation-hero h1');
+      if (heading) heading.textContent = 'おすすめリスト';
+    }
+    if (document.body.classList.contains('novelight-page-curation')) {
+      document.title = 'おすすめリスト | NOVELIGHT';
+      const heading = document.getElementById('title');
+      if (heading) heading.textContent = 'おすすめリスト';
+    }
+  }
+
+  function applyPublicDisplayName(list) {
+    if (!document.body.classList.contains('novelight-page-curation') || !list) return;
+    const curator = cleanText(list.curator_display_name) || '名前未設定';
+    const label = `${curator}さんのおすすめリスト`;
+    const heading = document.getElementById('title');
+    const meta = document.getElementById('meta');
+    if (heading) heading.textContent = label;
+    document.title = `${label} | NOVELIGHT`;
+    if (meta) {
+      const updated = new Date(list.updated_at);
+      const date = Number.isFinite(updated.getTime()) ? updated.toLocaleDateString('ja-JP') : '日時不明';
+      meta.textContent = `リスト：${cleanText(list.title) || '名称未設定'} ・ 更新 ${date}`;
+    }
+  }
+
   async function loadMyLists(client) {
     try {
       const data = await call(client, RPC.manage);
@@ -110,11 +138,13 @@
       return { available: true, list: null };
     }
     try {
+      const list = await call(client, RPC.publicList, {
+        p_share_token: token
+      });
+      if (list) requestAnimationFrame(() => applyPublicDisplayName(list));
       return {
         available: true,
-        list: await call(client, RPC.publicList, {
-          p_share_token: token
-        })
+        list
       };
     } catch (error) {
       if (isUnavailableError(error)) {
@@ -150,7 +180,7 @@
     const favoriteButton = document.getElementById('favoriteButton');
     if (!favoriteButton || document.getElementById('curationAddButton')) return;
 
-    const trigger = button('＋ キュレーション', 'novelight-curation-add-button');
+    const trigger = button('＋ おすすめリストに追加', 'novelight-curation-add-button');
     trigger.id = 'curationAddButton';
     favoriteButton.insertAdjacentElement('afterend', trigger);
 
@@ -160,12 +190,12 @@
     panel.hidden = true;
 
     const select = document.createElement('select');
-    select.setAttribute('aria-label', '追加先キュレーション');
+    select.setAttribute('aria-label', '追加先おすすめリスト');
     const add = button('このリストに追加', 'novelight-curation-add-confirm');
     const manage = document.createElement('a');
     manage.href = 'curation-lists.html';
     manage.className = 'novelight-curation-manage-link';
-    manage.textContent = 'キュレーション管理';
+    manage.textContent = 'おすすめリスト';
     const status = statusNode();
 
     panel.append(select, add, manage, status);
@@ -177,7 +207,7 @@
       select.replaceChildren();
 
       if (!loaded.available) {
-        status.textContent = 'キュレーション機能はデータベース反映待ちです。';
+        status.textContent = 'おすすめリスト機能はデータベース反映待ちです。';
         trigger.disabled = true;
         return;
       }
@@ -216,7 +246,7 @@
         } catch (error) {
           console.error(error);
           status.textContent =
-            'キュレーションを読み込めませんでした。時間をおいて再度お試しください。';
+            'おすすめリストを読み込めませんでした。時間をおいて再度お試しください。';
         }
       }
     });
@@ -227,7 +257,7 @@
       status.textContent = '追加中...';
       try {
         await addItem(client, select.value, novel.id);
-        status.textContent = 'キュレーションへ追加しました。';
+        status.textContent = 'おすすめリストへ追加しました。';
       } catch (error) {
         console.error(error);
         status.textContent = /already/iu.test(String(error?.message || ''))
@@ -238,6 +268,8 @@
       }
     });
   }
+
+  applyStaticDisplayNames();
 
   window.NovelightCuration = Object.freeze({
     isUnavailableError,
