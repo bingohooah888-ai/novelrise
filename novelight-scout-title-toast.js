@@ -255,6 +255,21 @@
     window.__novelightScoutTitleToastClientHookInstalled = true;
   }
 
+  function installHelpRuntime() {
+    if (
+      window.NovelightHelp?.version ||
+      document.querySelector('script[data-novelight-help-runtime]')
+    ) {
+      return false;
+    }
+    const script = document.createElement('script');
+    script.src = 'novelight-help.js';
+    script.defer = true;
+    script.dataset.novelightHelpRuntime = 'shared';
+    document.head.appendChild(script);
+    return true;
+  }
+
   installMypageActivityImageOptimization();
   window.__novelightAttachScoutTitleToastWatcher = watch;
   const pendingClients = Array.isArray(
@@ -263,5 +278,6 @@
     ? window.__novelightScoutTitleToastPendingClients
     : [];
   pendingClients.forEach((client) => watch(client));
+  installHelpRuntime();
   installClientHook();
 })();
