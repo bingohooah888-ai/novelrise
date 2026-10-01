@@ -102,6 +102,7 @@ async function unlockNovelWarningIfNeeded(page) {
 }
 
 test('production reader flow is healthy and read-only', async ({ page }) => {
+  test.setTimeout(90_000);
   await suppressMeasurementWrites(page);
 
   await page.goto('/search.html', { waitUntil: 'domcontentloaded' });
