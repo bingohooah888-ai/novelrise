@@ -14,6 +14,7 @@ $TunnelInstaller = Join-Path $Here "install-openai-tunnel-autostart.ps1"
 $WatchdogLog = Join-Path $RuntimeRoot "watchdog.log"
 $BridgeHeartbeatPath = Join-Path $BridgeRoot "heartbeat.json"
 $BridgeHeartbeatMaxAgeSeconds = 120
+$BridgeHeartbeatMaxFailures = 3
 
 New-Item -ItemType Directory -Force -Path $RuntimeRoot | Out-Null
 
@@ -31,16 +32,45 @@ function Get-FileAgeSeconds([string]$Path) {
   return ((Get-Date) - (Get-Item $Path).LastWriteTime).TotalSeconds
 }
 
+function Read-BridgeHeartbeat {
+  if (-not (Test-Path $BridgeHeartbeatPath)) {
+    return [pscustomobject]@{ status = "missing"; consecutivePollFailures = 0 }
+  }
+  try {
+    $Raw = Get-Content -Raw -Path $BridgeHeartbeatPath | ConvertFrom-Json
+    return [pscustomobject]@{
+      status = [string]$Raw.status
+      consecutivePollFailures = [int]$Raw.consecutivePollFailures
+    }
+  } catch {
+    return [pscustomobject]@{ status = "invalid"; consecutivePollFailures = $BridgeHeartbeatMaxFailures }
+  }
+}
+
 $BridgeDaemonCount = Get-ProcessCount "github-bridge-daemon[.]js"
 $BridgeRunnerCount = Get-ProcessCount "run-github-bridge[.]ps1"
 $BridgeHeartbeatAgeSeconds = Get-FileAgeSeconds $BridgeHeartbeatPath
+$BridgeHeartbeat = Read-BridgeHeartbeat
 $BridgeHeartbeatStale = (
   ($BridgeDaemonCount -gt 0 -or $BridgeRunnerCount -gt 0) -and
   $BridgeHeartbeatAgeSeconds -gt $BridgeHeartbeatMaxAgeSeconds
 )
+$BridgeHeartbeatDegraded = (
+  ($BridgeDaemonCount -gt 0 -or $BridgeRunnerCount -gt 0) -and
+  (
+    $BridgeHeartbeat.status -eq "degraded" -or
+    $BridgeHeartbeat.status -eq "invalid"
+  ) -and
+  $BridgeHeartbeat.consecutivePollFailures -ge $BridgeHeartbeatMaxFailures
+)
+$BridgeNeedsRecycle = $BridgeHeartbeatStale -or $BridgeHeartbeatDegraded
 
-if ($BridgeHeartbeatStale) {
-  Write-WatchdogLog ("GitHub Bridge heartbeat stale (" + [Math]::Round($BridgeHeartbeatAgeSeconds, 1) + "s); recycling bridge processes.")
+if ($BridgeNeedsRecycle) {
+  if ($BridgeHeartbeatStale) {
+    Write-WatchdogLog ("GitHub Bridge heartbeat stale (" + [Math]::Round($BridgeHeartbeatAgeSeconds, 1) + "s); recycling bridge processes.")
+  } else {
+    Write-WatchdogLog ("GitHub Bridge heartbeat degraded (status=" + $BridgeHeartbeat.status + ", failures=" + $BridgeHeartbeat.consecutivePollFailures + "); recycling bridge processes.")
+  }
   $BridgeProcesses = @(
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
       Where-Object {
@@ -135,7 +165,10 @@ $TunnelLog = Join-Path $RuntimeRoot "openai-tunnel.log"
 Write-Output ("bridge_daemon_processes: " + $BridgeDaemonCount)
 Write-Output ("bridge_supervisor_processes: " + $BridgeRunnerCount)
 Write-Output ("bridge_heartbeat_age_seconds: " + $(if ([double]::IsPositiveInfinity($BridgeHeartbeatAgeSeconds)) { "missing" } else { [Math]::Round($BridgeHeartbeatAgeSeconds, 1) }))
+Write-Output ("bridge_heartbeat_status: " + $BridgeHeartbeat.status)
+Write-Output ("bridge_heartbeat_failures: " + $BridgeHeartbeat.consecutivePollFailures)
 Write-Output ("bridge_heartbeat_stale: " + $BridgeHeartbeatStale)
+Write-Output ("bridge_heartbeat_degraded: " + $BridgeHeartbeatDegraded)
 Write-Output ("tunnel_supervisor_processes: " + $TunnelRunnerCount)
 Write-Output ("tunnel_client_processes: " + $TunnelClientCount)
 Write-Output ("nlo_tunnel_client_processes: " + $NloTunnelClientCount)
