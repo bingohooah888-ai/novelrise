@@ -10,6 +10,7 @@ $LogPath = Join-Path $RuntimeRoot "openai-tunnel.log"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ClientInstallRoot = Join-Path $env:LOCALAPPDATA "NOVELIGHT\TunnelClient"
 $ClientInstaller = Join-Path $Here "install-openai-tunnel-client.ps1"
+$PluginAutoregisterScript = Join-Path $Here "src\chatgpt-plugin-autoregister.js"
 
 New-Item -ItemType Directory -Force -Path $RuntimeRoot | Out-Null
 
@@ -66,9 +67,42 @@ function Resolve-TunnelClient {
   return $Installed.FullName
 }
 
+function Start-ChatGptPluginAutoregistration {
+  if (-not (Test-Path $PluginAutoregisterScript)) {
+    Write-TunnelLog "ChatGPT plugin autoregistration helper is unavailable; continuing tunnel startup."
+    return
+  }
+
+  if (-not $env:NOVELIGHT_COMMANDER_TUNNEL_ID) {
+    $SavedTunnelId = [Environment]::GetEnvironmentVariable("NOVELIGHT_COMMANDER_TUNNEL_ID", "User")
+    if ($SavedTunnelId) { $env:NOVELIGHT_COMMANDER_TUNNEL_ID = $SavedTunnelId }
+  }
+  if (-not $env:NOVELIGHT_COMMANDER_TUNNEL_ID) {
+    Write-TunnelLog "ChatGPT plugin autoregistration skipped because tunnel id is unavailable."
+    return
+  }
+
+  $Node = Get-Command node -ErrorAction SilentlyContinue
+  if (-not $Node) {
+    Write-TunnelLog "ChatGPT plugin autoregistration skipped because node is unavailable."
+    return
+  }
+
+  try {
+    Start-Process -FilePath $Node.Source -ArgumentList @($PluginAutoregisterScript) -WindowStyle Hidden | Out-Null
+    Write-TunnelLog "Started ChatGPT plugin autoregistration helper."
+  } catch {
+    Write-TunnelLog "Could not start ChatGPT plugin autoregistration helper: $($_.Exception.Message)"
+  }
+}
+
 $TunnelClient = Resolve-TunnelClient
 $ClientDir = Split-Path -Parent $TunnelClient
 $env:Path = "$ClientDir;$env:Path"
+
+# Start the idempotent ChatGPT registration helper before loading the control-plane
+# credential so the browser helper never inherits that secret.
+Start-ChatGptPluginAutoregistration
 $env:CONTROL_PLANE_API_KEY = Load-ControlPlaneKey
 $DelaySeconds = [Math]::Max(1, $BaseRestartDelaySeconds)
 
