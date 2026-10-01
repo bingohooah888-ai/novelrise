@@ -27,15 +27,14 @@
       '.novelight-public-share{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 0;padding:12px;border:1px solid #e2e0ea;border-radius:12px;background:#faf9ff}' +
       '.novelight-public-share-label{margin-right:2px;color:#5d566d;font-size:12px;font-weight:900}' +
       '.novelight-public-share-action{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 12px;border:1px solid #cbc5e8;border-radius:8px;background:#fff;color:#443875;font:inherit;font-size:12px;font-weight:900;line-height:1.2;text-decoration:none;cursor:pointer}' +
-      '.novelight-public-share-action:hover{border-color:#9b89e8;background:#f5f2ff}' +
+      '.novelight-public-share-action:hover{border-color:#9b89e8;background:#f5f2ff;color:#443875}' +
       '.novelight-public-share-action:focus-visible{outline:3px solid rgba(109,74,255,.35);outline-offset:2px}' +
-      '.novelight-public-share-action.x{border-color:#111;background:#111;color:#fff}' +
-      '.novelight-public-share-action.x:hover{background:#2a2a2a}' +
       '.novelight-public-share-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}' +
       '.novelight-public-share.episode-share{margin:18px 0}' +
       "body[data-reading-theme='dark'] .novelight-public-share{border-color:#464057;background:#292633}" +
       "body[data-reading-theme='dark'] .novelight-public-share-label{color:#d8d2e6}" +
-      "body[data-reading-theme='dark'] .novelight-public-share-action:not(.x){border-color:#5e5674;background:#353141;color:#f0ecff}" +
+      "body[data-reading-theme='dark'] .novelight-public-share-action{border-color:#5e5674;background:#353141;color:#f0ecff}" +
+      "body[data-reading-theme='dark'] .novelight-public-share-action:hover{border-color:#8275a1;background:#403a50;color:#fff}" +
       '@media(max-width:600px){.novelight-public-share{align-items:stretch}.novelight-public-share-label{flex:1 1 100%}.novelight-public-share-action{flex:1 1 calc(50% - 8px)}.novelight-public-share-action.open{flex-basis:100%}}';
     document.head.appendChild(style);
   }
