@@ -10,16 +10,25 @@ const [novel, episode, detail] = await Promise.all([
 
 test('ordinary content warnings are passive while only R15/R18 are gated', () => {
   for (const source of [novel, episode]) {
-    assert.match(source, /rating==='sensitive_15'\|\|rating==='adult_18_nonsexual'/u);
+    assert.match(
+      source,
+      /rating==='sensitive_15'\|\|rating==='adult_18_nonsexual'/u
+    );
     assert.match(source, /contentAdvisoryMarkup/u);
     assert.match(source, /が含まれます/u);
   }
-  assert.doesNotMatch(novel, /normalizedRating\(\)!=='general'\|\|\(novel\?\.content_warnings/u);
-  assert.doesNotMatch(episode, /content_rating==='mature'\|\|\(novel\.content_warnings/u);
+  assert.doesNotMatch(
+    novel,
+    /normalizedRating\(\)!=='general'\|\|\(novel\?\.content_warnings/u
+  );
+  assert.doesNotMatch(
+    episode,
+    /content_rating==='mature'\|\|\(novel\.content_warnings/u
+  );
 });
 
 test('work and episode share one per-work age acknowledgement contract', () => {
-  const key = "novelight:age-gate:novel:";
+  const key = 'novelight:age-gate:novel:';
   for (const source of [novel, episode]) {
     assert.ok(source.includes(key));
     assert.match(source, /localStorage\.getItem\(key\)/u);
@@ -32,11 +41,14 @@ test('work and episode share one per-work age acknowledgement contract', () => {
   }
 });
 
-test('R18 keeps explicit age wording and passive advisory survives detail V2', () => {
-  for (const source of [novel, episode]) {
-    assert.ok(source.includes('18歳以上'));
-    assert.ok(source.includes("items.push('R18')"));
+test(
+  'R18 keeps explicit age wording and passive advisory survives detail V2',
+  () => {
+    for (const source of [novel, episode]) {
+      assert.ok(source.includes('18歳以上'));
+      assert.ok(source.includes("items.push('R18')"));
+    }
+    assert.ok(detail.includes("header?.querySelector('#contentAdvisory')"));
+    assert.ok(detail.includes('if (advisory) main.appendChild(advisory);'));
   }
-  assert.ok(detail.includes("header?.querySelector('#contentAdvisory')"));
-  assert.ok(detail.includes('if (advisory) main.appendChild(advisory);'));
-});
+);
