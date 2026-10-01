@@ -153,7 +153,9 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     timeout: 20_000
   });
 
-  const readerSurface = page.locator('.nl-work-detail-grid, #episodesPanel').first();
+  const readerSurface = page
+    .locator('.nl-work-detail-grid, #episodesPanel')
+    .first();
   await expect(readerSurface).toBeVisible({ timeout: 20_000 });
 
   const episodeLinks = page.locator(
