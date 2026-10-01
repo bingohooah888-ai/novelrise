@@ -105,11 +105,16 @@
 
   window.NovelightSeries = Object.freeze({ fetchContext, mountNovelContext });
 
-  if ((window.location.pathname.split('/').pop() || '').toLowerCase() === 'novel.html'
-      && !document.querySelector('script[data-novelight-public-share-loader]')) {
+  function loadNovelReaderScript(src, marker) {
+    if (document.querySelector(`script[${marker}]`)) return;
     const script = document.createElement('script');
-    script.src = 'novelight-public-share.js';
-    script.dataset.novelightPublicShareLoader = '1';
+    script.src = src;
+    script.setAttribute(marker, '1');
     document.head.appendChild(script);
+  }
+
+  if ((window.location.pathname.split('/').pop() || '').toLowerCase() === 'novel.html') {
+    loadNovelReaderScript('novelight-public-share.js', 'data-novelight-public-share-loader');
+    loadNovelReaderScript('novelight-novel-detail-rescue.js', 'data-nlv2-rescue-loader');
   }
 })();
