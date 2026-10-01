@@ -29,6 +29,7 @@ import { mainWorktreeSafeBridge } from './worktree-safe-bridge.js';
 import { mainWorktreeTextPatchBridge } from './worktree-text-patch-bridge.js';
 import { mainHighRiskPrApproveBridgeV2 } from './high-risk-pr-approve-bridge.js';
 import { mainPrBranchSyncBridge } from './pr-branch-sync-bridge.js';
+import { mainChatgptPluginBootstrapBridge } from './chatgpt-plugin-bootstrap-bridge.js';
 
 void mainProductionMigrationApproveBridge().catch(error => {
   console.error('[NLO production migration approval bridge] fatal:', error);
@@ -57,5 +58,10 @@ void mainHighRiskPrApproveBridgeV2().catch(error => {
 
 void mainPrBranchSyncBridge().catch(error => {
   console.error('[NLO PR branch sync bridge] fatal:', error);
+  process.exitCode = 1;
+});
+
+void mainChatgptPluginBootstrapBridge().catch(error => {
+  console.error('[NLO ChatGPT plugin bootstrap bridge] fatal:', error);
   process.exitCode = 1;
 });
