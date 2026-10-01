@@ -208,7 +208,7 @@ async function findInquiryUserIds(supabase, term) {
   const { data, error } = await supabase
     .from('profiles')
     .select('id')
-    .or(`display_name.ilike.%${term}%,pen_name.ilike.%${term}%`)
+    .ilike('display_name', `%${term}%`)
     .limit(50);
   if (error) return [];
   return (data ?? []).map((row) => row.id).filter(Boolean);
