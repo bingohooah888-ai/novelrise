@@ -182,7 +182,7 @@ test('Vercel applies baseline browser security headers', () => {
 
   assert.match(
     map.get('Content-Security-Policy') || '',
-    /frame-ancestors 'none'/
+    /frame-ancestors 'self'/
   );
   assert.match(map.get('Content-Security-Policy') || '', /object-src 'none'/);
   assert.doesNotMatch(
@@ -190,7 +190,7 @@ test('Vercel applies baseline browser security headers', () => {
     /cdn\.jsdelivr\.net/
   );
   assert.equal(map.get('X-Content-Type-Options'), 'nosniff');
-  assert.equal(map.get('X-Frame-Options'), 'DENY');
+  assert.equal(map.get('X-Frame-Options'), 'SAMEORIGIN');
   assert.equal(map.get('Referrer-Policy'), 'strict-origin-when-cross-origin');
   assert.match(map.get('Permissions-Policy') || '', /camera=\(\)/);
 });

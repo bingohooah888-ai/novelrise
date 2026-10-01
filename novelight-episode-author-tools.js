@@ -26,8 +26,31 @@
     .nl-toolbar-divider{width:1px;height:26px;margin:0 3px;align-self:center;flex:0 0 auto;border-radius:999px;background:#dedbe6}
     #openScheduleSettings.nl-schedule-action{border-color:#dfd1b7;background:#fffaf0;color:#6c5531}
     #openScheduleSettings.nl-schedule-action:hover:not(:disabled){border-color:#cfbb96;background:#fff6e5}
-    .nl-inline-notes-frame{display:block;width:100%;height:calc(100vh - 120px);min-height:520px;border:0;background:#07121e}
-    @media(max-width:720px){.nl-toolbar-divider{display:none}.nl-inline-notes-frame{height:calc(78vh - 92px);min-height:430px}}
+    .nl-inline-notes{display:grid;gap:18px;color:#302b34}
+    .nl-note-editor,.nl-note-card{border:1px solid #e3e0e8;border-radius:12px;background:#fff}
+    .nl-note-editor{padding:15px}
+    .nl-note-field{display:grid;gap:6px;margin-bottom:12px}
+    .nl-note-field>span{font-size:12px;font-weight:900;color:#5e5765}
+    .nl-note-field textarea{width:100%;min-height:170px;padding:11px 12px;border:1px solid #d6d8df;border-radius:9px;background:#fff;color:#2d2931;resize:vertical;line-height:1.65}
+    .nl-note-field[hidden]{display:none}
+    .nl-note-actions{display:flex;gap:8px}
+    .nl-note-button{min-height:40px;padding:9px 12px;border:1px solid #cfc6e9;border-radius:9px;background:#faf8ff;color:#5840b4;font-weight:900;cursor:pointer}
+    .nl-note-button.primary{border-color:#6d4aff;background:#6d4aff;color:#fff}
+    .nl-note-button.danger{border-color:#e5c6c1;background:#fff8f7;color:#a44335}
+    .nl-note-button:disabled{opacity:.5;cursor:not-allowed}
+    .nl-note-status{min-height:20px;margin-top:10px;color:#736c63;font-size:12px;line-height:1.6}
+    .nl-note-status.error{color:#b42318}
+    .nl-note-list{display:grid;gap:10px}
+    .nl-note-card{padding:13px}
+    .nl-note-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .nl-note-card-title{margin:0;font-size:14px;line-height:1.5}
+    .nl-note-tag{flex:none;padding:3px 7px;border-radius:999px;background:#f3eefc;color:#664fb7;font-size:10px;font-weight:900}
+    .nl-note-character{margin-top:5px;color:#7a6e5b;font-size:11px;font-weight:800}
+    .nl-note-body{margin-top:8px;color:#5f5964;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;font-size:12px;max-height:150px;overflow:auto}
+    .nl-note-meta{margin-top:8px;color:#96909a;font-size:10px}
+    .nl-note-card-actions{display:flex;gap:7px;margin-top:10px}
+    .nl-note-empty{padding:20px 10px;text-align:center;color:#8b8590;font-size:12px}
+    @media(max-width:720px){.nl-toolbar-divider{display:none}.nl-note-actions,.nl-note-card-actions{flex-direction:column}.nl-note-button{width:100%}}
     @media(max-width:470px){.nl-author-menu{width:100%}.nl-author-menu>summary{width:100%}.nl-author-popover{position:fixed;left:12px;right:12px;top:auto;bottom:14px;min-width:0}}
   `;
   document.head.appendChild(style);
@@ -40,7 +63,7 @@
   const ownerTools = [];
   const layoutSeparators = [];
   let characterEditor = null;
-  let notesFrame = null;
+  let notesPanel = null;
 
   function closeMenus(except = null) {
     menus.forEach(menu => { if (menu !== except) menu.open = false; });
@@ -116,21 +139,258 @@
     }
   }
 
+  function notesUnavailable(error) {
+    const message = String(error?.message || '');
+    return ['42883', 'PGRST202'].includes(String(error?.code || '')) ||
+      message.includes('novelight_private_story_notes') ||
+      message.includes('novelight_save_private_story_note') ||
+      message.includes('does not exist') ||
+      message.includes('Could not find the function');
+  }
+
+  function createNotesPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'nl-inline-notes';
+    panel.innerHTML = `
+      <form class="nl-note-editor">
+        <input class="nl-note-id" type="hidden">
+        <label class="nl-note-field"><span>種類</span><select class="nl-note-type"><option value="plot">プロット</option><option value="world">世界観</option><option value="character">キャラクター</option></select></label>
+        <label class="nl-note-field nl-note-character-field" hidden><span>登場人物</span><select class="nl-note-character"><option value="">登場人物を選択</option></select></label>
+        <label class="nl-note-field"><span>タイトル</span><input class="nl-note-title" maxlength="120" required></label>
+        <label class="nl-note-field"><span>メモ</span><textarea class="nl-note-body-input" maxlength="20000" placeholder="伏線、展開、設定、人物の背景など"></textarea></label>
+        <div class="nl-note-actions"><button class="nl-note-button primary nl-note-save" type="submit" disabled>保存</button><button class="nl-note-button nl-note-cancel" type="button" hidden>編集をやめる</button></div>
+        <div class="nl-note-status" aria-live="polite">読み込み待ち</div>
+      </form>
+      <div class="nl-note-list"><div class="nl-note-empty">読み込み中...</div></div>
+    `;
+
+    const form = panel.querySelector('form');
+    const noteId = panel.querySelector('.nl-note-id');
+    const type = panel.querySelector('.nl-note-type');
+    const characterField = panel.querySelector('.nl-note-character-field');
+    const character = panel.querySelector('.nl-note-character');
+    const title = panel.querySelector('.nl-note-title');
+    const body = panel.querySelector('.nl-note-body-input');
+    const save = panel.querySelector('.nl-note-save');
+    const cancel = panel.querySelector('.nl-note-cancel');
+    const statusEl = panel.querySelector('.nl-note-status');
+    const list = panel.querySelector('.nl-note-list');
+    const typeLabels = { plot: 'プロット', world: '世界観', character: 'キャラクター' };
+    let novelId = null;
+    let notes = [];
+    let characters = [];
+    let ready = false;
+    let busy = false;
+
+    function setStatus(message, error = false) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle('error', error);
+    }
+
+    function setBusy(value) {
+      busy = value;
+      save.disabled = value || !ready;
+      cancel.disabled = value;
+    }
+
+    function syncCharacterField() {
+      characterField.hidden = type.value !== 'character';
+    }
+
+    function resetForm() {
+      form.reset();
+      noteId.value = '';
+      save.textContent = '保存';
+      cancel.hidden = true;
+      syncCharacterField();
+    }
+
+    function formatDate(value) {
+      const date = new Date(value);
+      return Number.isFinite(date.getTime()) ? date.toLocaleString('ja-JP') : '日時不明';
+    }
+
+    function renderCharacterOptions() {
+      character.replaceChildren(new Option('登場人物を選択', ''));
+      characters.forEach(item => character.appendChild(new Option(item.name, String(item.id))));
+    }
+
+    function editNote(note) {
+      noteId.value = String(note.id);
+      type.value = note.note_type;
+      character.value = note.character_id == null ? '' : String(note.character_id);
+      title.value = note.title || '';
+      body.value = note.body || '';
+      save.textContent = '変更を保存';
+      cancel.hidden = false;
+      syncCharacterField();
+      panel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+
+    async function deleteNote(id) {
+      if (!ready || busy || !confirm('この非公開創作ノートを削除しますか？')) return;
+      setBusy(true);
+      setStatus('削除しています...');
+      try {
+        const result = await client.rpc('novelight_delete_private_story_note', { p_note_id: Number(id) });
+        if (result.error) throw result.error;
+        if (String(noteId.value) === String(id)) resetForm();
+        await loadData(false);
+        setStatus('削除しました。');
+      } catch (error) {
+        console.error(error);
+        setStatus(notesUnavailable(error) ? '創作ノートはデータベース反映待ちです。' : '削除できませんでした。', true);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function renderNotes() {
+      list.replaceChildren();
+      if (!notes.length) {
+        const empty = document.createElement('div');
+        empty.className = 'nl-note-empty';
+        empty.textContent = '創作ノートはまだありません。';
+        list.appendChild(empty);
+        return;
+      }
+      notes.forEach(note => {
+        const card = document.createElement('article');
+        card.className = 'nl-note-card';
+        const head = document.createElement('div');
+        head.className = 'nl-note-card-head';
+        const heading = document.createElement('h3');
+        heading.className = 'nl-note-card-title';
+        heading.textContent = note.title || '無題';
+        const tag = document.createElement('span');
+        tag.className = 'nl-note-tag';
+        tag.textContent = typeLabels[note.note_type] || note.note_type;
+        head.append(heading, tag);
+        card.appendChild(head);
+        if (note.note_type === 'character') {
+          const characterName = document.createElement('div');
+          characterName.className = 'nl-note-character';
+          characterName.textContent = note.character_name ? `人物：${note.character_name}` : '人物：登録解除済み';
+          card.appendChild(characterName);
+        }
+        const noteBody = document.createElement('div');
+        noteBody.className = 'nl-note-body';
+        noteBody.textContent = note.body || '（本文なし）';
+        const meta = document.createElement('div');
+        meta.className = 'nl-note-meta';
+        meta.textContent = `更新 ${formatDate(note.updated_at)}`;
+        const actions = document.createElement('div');
+        actions.className = 'nl-note-card-actions';
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'nl-note-button';
+        edit.textContent = '編集';
+        edit.addEventListener('click', () => editNote(note));
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'nl-note-button danger';
+        remove.textContent = '削除';
+        remove.addEventListener('click', () => deleteNote(note.id));
+        actions.append(edit, remove);
+        card.append(noteBody, meta, actions);
+        list.appendChild(card);
+      });
+    }
+
+    async function loadData(showLoading = true) {
+      const value = Number(currentNovelId());
+      if (!Number.isInteger(value) || value <= 0) {
+        ready = false;
+        setBusy(false);
+        setStatus('作品情報を読み込み中です。少し待ってからもう一度お試しください。', true);
+        return;
+      }
+      novelId = value;
+      ready = false;
+      setBusy(true);
+      if (showLoading) setStatus('創作ノートを読み込んでいます...');
+      try {
+        const [characterResult, noteResult] = await Promise.all([
+          client.rpc('novelight_author_character_list', { p_novel_id: novelId }),
+          client.rpc('novelight_private_story_notes', { p_novel_id: novelId })
+        ]);
+        if (characterResult.error) throw characterResult.error;
+        if (noteResult.error) throw noteResult.error;
+        characters = Array.isArray(characterResult.data) ? characterResult.data : [];
+        notes = Array.isArray(noteResult.data) ? noteResult.data : [];
+        renderCharacterOptions();
+        renderNotes();
+        ready = true;
+        setStatus('作者本人だけに表示される非公開ノートです。');
+      } catch (error) {
+        console.error(error);
+        notes = [];
+        renderNotes();
+        setStatus(notesUnavailable(error) ? '創作ノートはデータベース反映待ちです。' : '創作ノートを読み込めませんでした。', true);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!ready || busy || !novelId) return;
+      const noteType = type.value;
+      const titleValue = title.value.trim();
+      const characterValue = character.value;
+      if (!titleValue) {
+        setStatus('タイトルを入力してください。', true);
+        return;
+      }
+      if (noteType === 'character' && !characterValue) {
+        setStatus('キャラクターノートは登場人物を選択してください。', true);
+        return;
+      }
+      setBusy(true);
+      setStatus('保存しています...');
+      try {
+        const result = await client.rpc('novelight_save_private_story_note', {
+          p_novel_id: novelId,
+          p_note_id: noteId.value ? Number(noteId.value) : null,
+          p_note_type: noteType,
+          p_character_id: noteType === 'character' ? Number(characterValue) : null,
+          p_title: titleValue,
+          p_body: body.value
+        });
+        if (result.error) throw result.error;
+        resetForm();
+        await loadData(false);
+        setStatus('非公開の創作ノートとして保存しました。');
+      } catch (error) {
+        console.error(error);
+        setStatus(notesUnavailable(error) ? '創作ノートはデータベース反映待ちです。' : '保存できませんでした。', true);
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    cancel.addEventListener('click', () => {
+      resetForm();
+      setStatus('編集を取り消しました。');
+    });
+    type.addEventListener('change', syncCharacterField);
+    panel.__novelightLoadNotes = () => loadData(true);
+    syncCharacterField();
+    return panel;
+  }
+
   function openNotesTool() {
     const novelId = currentNovelId();
     if (!novelId) {
       showStatus('作品情報を読み込み中です。少し待ってからもう一度お試しください。');
       return;
     }
-    if (!notesFrame) {
-      notesFrame = document.createElement('iframe');
-      notesFrame.className = 'nl-inline-notes-frame';
-      notesFrame.title = '創作ノート';
-      const url = new URL('story-notes.html', location.href);
-      url.searchParams.set('novel_id', novelId);
-      notesFrame.src = url.href;
+    notesPanel ||= createNotesPanel();
+    if (!openInlineTool('ノート', notesPanel)) {
+      openAuthorPage('story-notes.html');
+      return;
     }
-    if (!openInlineTool('ノート', notesFrame)) openAuthorPage('story-notes.html');
+    notesPanel.__novelightLoadNotes?.();
   }
 
   [chapterButton, illustrationButton, scheduleButton].filter(Boolean).forEach(button => {
