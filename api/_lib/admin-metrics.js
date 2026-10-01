@@ -1,7 +1,9 @@
 const RANGE_VALUES = new Set(['7', '30', '90', 'all']);
 
 export function normalizeAdminRange(value) {
-  const normalized = String(value ?? '30').trim().toLowerCase();
+  const normalized = String(value ?? '30')
+    .trim()
+    .toLowerCase();
   return RANGE_VALUES.has(normalized) ? normalized : '30';
 }
 
@@ -16,10 +18,7 @@ export function percentDelta(current, baseline) {
 
 export function average(rows, key) {
   if (!Array.isArray(rows) || rows.length === 0) return 0;
-  const total = rows.reduce(
-    (sum, row) => sum + Number(row?.[key] ?? 0),
-    0
-  );
+  const total = rows.reduce((sum, row) => sum + Number(row?.[key] ?? 0), 0);
   return total / rows.length;
 }
 
