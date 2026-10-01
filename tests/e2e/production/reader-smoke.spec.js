@@ -83,19 +83,20 @@ async function findPublishedEpisode(page, novelHrefs) {
 
 async function unlockNovelWarningIfNeeded(page) {
   const warningGate = page.locator('#warningGate');
+  const novelHeader = page.locator('#novelHeader');
 
-  await page.waitForFunction(
-    () => {
-      const gate = document.getElementById('warningGate');
-      const header = document.getElementById('novelHeader');
-      return (
-        gate?.classList.contains('visible') ||
-        (header && !header.textContent?.includes('読み込み中...'))
-      );
-    },
-    null,
-    { timeout: 20_000 }
-  );
+  await expect
+    .poll(
+      async () => {
+        if (await warningGate.isVisible()) return true;
+        const headerText = await novelHeader.textContent().catch(() => '');
+        return Boolean(
+          headerText && !headerText.includes('読み込み中...')
+        );
+      },
+      { timeout: 20_000 }
+    )
+    .toBe(true);
 
   if (await warningGate.isVisible()) {
     await page.locator('#continueButton').click();
