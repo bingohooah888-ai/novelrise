@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { bootstrapChatgptPlugin } from './chatgpt-plugin-bootstrap.js';
+import { bootstrapChatgptPlugin } from './chatgpt-plugin-bootstrap-v2.js';
 
 const dataRoot = path.join(process.env.LOCALAPPDATA || os.homedir(), 'NOVELIGHT', 'Commander');
 const stateFile = path.join(dataRoot, 'chatgpt-plugin.json');
