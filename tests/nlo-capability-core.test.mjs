@@ -49,8 +49,14 @@ test('classifies security and production effects as tier C', () => {
 
 test('validates registry and resolves enabled capability', () => {
   assert.deepEqual(validateRegistry(registry), []);
-  assert.equal(findCapability(registry, 'missing nlo capability')?.id, 'nlo.capability.resolve');
-  const result = resolveCapability(registry, { intent: 'resolve capability', effects: ['repo_read'] });
+  assert.equal(
+    findCapability(registry, 'missing nlo capability')?.id,
+    'nlo.capability.resolve'
+  );
+  const result = resolveCapability(registry, {
+    intent: 'resolve capability',
+    effects: ['repo_read']
+  });
   assert.equal(result.status, 'available');
   assert.equal(result.capability.id, 'nlo.capability.resolve');
 });
