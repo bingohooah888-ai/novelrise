@@ -69,7 +69,8 @@ async function refreshMetricsIfNeeded(today) {
     fromDate = addDays(latest.metric_date, 1);
   } else {
     const updatedAt = new Date(latest.updated_at).getTime();
-    const stale = !Number.isFinite(updatedAt) || Date.now() - updatedAt > 15 * 60 * 1000;
+    const stale =
+      !Number.isFinite(updatedAt) || Date.now() - updatedAt > 15 * 60 * 1000;
     if (stale) fromDate = today;
   }
 
@@ -107,7 +108,9 @@ async function loadMetricRows(range, today) {
 }
 
 async function countRows(table, configure) {
-  let query = supabase.from(table).select('*', { count: 'exact', head: true });
+  let query = supabase
+    .from(table)
+    .select('*', { count: 'exact', head: true });
   query = configure(query);
   const { count, error } = await query;
   if (error) throw error;
@@ -116,17 +119,21 @@ async function countRows(table, configure) {
 
 async function loadCurrentSignals() {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const [pendingInquiries, publishedWorks, zeroPvWorks, unresolvedRenderFailures] =
-    await Promise.all([
-      countRows('contact_inquiries', (query) => query.eq('status', 'new')),
-      countRows('novels', (query) => query.eq('status', 'published')),
-      countRows('novels', (query) =>
-        query.eq('status', 'published').eq('pv', 0)
-      ),
-      countRows('thumbnail_render_failures', (query) =>
-        query.gte('created_at', since).is('resolved_at', null)
-      ).catch(() => 0)
-    ]);
+  const [
+    pendingInquiries,
+    publishedWorks,
+    zeroPvWorks,
+    unresolvedRenderFailures
+  ] = await Promise.all([
+    countRows('contact_inquiries', (query) => query.eq('status', 'new')),
+    countRows('novels', (query) => query.eq('status', 'published')),
+    countRows('novels', (query) =>
+      query.eq('status', 'published').eq('pv', 0)
+    ),
+    countRows('thumbnail_render_failures', (query) =>
+      query.gte('created_at', since).is('resolved_at', null)
+    ).catch(() => 0)
+  ]);
 
   const zeroPvRate = publishedWorks
     ? Math.round((zeroPvWorks / publishedWorks) * 1000) / 10
