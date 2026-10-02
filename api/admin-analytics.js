@@ -13,12 +13,7 @@ function normalizeDays(value) {
 }
 
 function isMissingRpc(error) {
-  if (!error) return false;
-  const text = [error.message, error.details, error.hint]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  return error.code === '42883' || error.code === 'PGRST202' || text.includes('function');
+  return error?.code === '42883' || error?.code === 'PGRST202';
 }
 
 function isSchemaNotReady(error) {
