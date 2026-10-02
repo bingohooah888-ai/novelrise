@@ -62,7 +62,7 @@ function render(list){
     card.href='novel.html?id='+encodeURIComponent(item.novel_id);
     const genre=node('span','genre',String(item.genre||'ジャンル未設定'));
     const heading=node('h2','',String(item.title||'作品名未設定'));
-    const desc=node('p','',String(item.description||''));
+    const desc=node('p','',String(item.description||''));desc.dataset.novelightSynopsis='';
     card.append(genre,heading,desc);
     items.append(card);
   }
@@ -96,5 +96,5 @@ function render(list){
   }
 })();
 </script>
-</body>
+<script src="novelight-synopsis-fold.js"></script></body>
 </html>
