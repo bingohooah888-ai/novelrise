@@ -4,3 +4,4 @@ import './edit-existing-content.js';
 import './delete-existing-content.js';
 import './auth-async-rejection.js';
 import './thumbnail-composer-accordion.js';
+import './mobile-synopsis-layout.js';
