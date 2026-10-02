@@ -81,6 +81,76 @@ async function findPublishedEpisode(page, novelHrefs) {
   return rows[0] ?? null;
 }
 
+function installReaderDiagnostics(page) {
+  const pageErrors = [];
+  const consoleErrors = [];
+  const outlineResponses = [];
+
+  page.on('pageerror', (error) => {
+    pageErrors.push(String(error?.stack || error?.message || error));
+  });
+
+  page.on('console', (message) => {
+    if (!['error', 'warning'].includes(message.type())) return;
+    consoleErrors.push(`${message.type()}: ${message.text()}`);
+  });
+
+  page.on('response', async (response) => {
+    if (!response.url().includes('/rpc/novelight_novel_outline')) return;
+    outlineResponses.push({
+      status: response.status(),
+      body: await response.text().catch(() => '<unavailable>')
+    });
+  });
+
+  return async (stage) => {
+    const browserState = await page
+      .evaluate(() => {
+        const snapshot = (selector) => {
+          const element = document.querySelector(selector);
+          if (!element) return null;
+          const style = window.getComputedStyle(element);
+          return {
+            html: element.outerHTML.slice(0, 5000),
+            display: style.display,
+            visibility: style.visibility
+          };
+        };
+
+        return {
+          url: window.location.href,
+          readyState: document.readyState,
+          bodyClass: document.body?.className || '',
+          novelHeader: snapshot('#novelHeader'),
+          favoriteButton: snapshot('#favoriteButton'),
+          episodesPanel: snapshot('#episodesPanel'),
+          episodeList: snapshot('#episodeList'),
+          v2Grid: snapshot('.nl-work-detail-grid'),
+          hasNovelDetailV2: Boolean(window.NovelightNovelDetailV2),
+          scripts: Array.from(document.scripts).map(
+            (script) => script.src || '[inline]'
+          )
+        };
+      })
+      .catch((error) => ({ evaluationError: String(error) }));
+
+    console.error(
+      '[production-reader-diagnostic]',
+      JSON.stringify(
+        {
+          stage,
+          pageErrors,
+          consoleErrors,
+          outlineResponses,
+          browserState
+        },
+        null,
+        2
+      )
+    );
+  };
+}
+
 async function novelReaderReady(page) {
   const v2Surface = page.locator('.nl-work-detail-grid');
   if (await v2Surface.isVisible().catch(() => false)) return true;
@@ -126,6 +196,7 @@ async function episodeReaderReady(page) {
 test('production reader flow is healthy and read-only', async ({ page }) => {
   test.setTimeout(120_000);
   await suppressMeasurementWrites(page);
+  const dumpDiagnostics = installReaderDiagnostics(page);
 
   await page.goto('/search.html', {
     waitUntil: 'domcontentloaded',
@@ -175,7 +246,12 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     waitUntil: 'domcontentloaded',
     timeout: 20_000
   });
-  await unlockNovelWarningIfNeeded(page);
+  try {
+    await unlockNovelWarningIfNeeded(page);
+  } catch (error) {
+    await dumpDiagnostics('novel-reader-ready');
+    throw error;
+  }
 
   const readerSurface = page
     .locator('.nl-work-detail-grid, #episodesPanel')
@@ -185,7 +261,12 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
   const episodeLinks = page.locator(
     '.nl-work-detail-toc .nl-work-toc-link, #episodeList .episode-title'
   );
-  await expect(episodeLinks.first()).toBeVisible({ timeout: 20_000 });
+  try {
+    await expect(episodeLinks.first()).toBeVisible({ timeout: 20_000 });
+  } catch (error) {
+    await dumpDiagnostics('novel-episode-links');
+    throw error;
+  }
 
   const episodeHrefs = await episodeLinks.evaluateAll((nodes) =>
     nodes.map((node) => node.getAttribute('href')).filter(Boolean)
@@ -199,9 +280,14 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     waitUntil: 'commit',
     timeout: 20_000
   });
-  await expect
-    .poll(() => episodeReaderReady(page), { timeout: 20_000 })
-    .toBe(true);
+  try {
+    await expect
+      .poll(() => episodeReaderReady(page), { timeout: 20_000 })
+      .toBe(true);
+  } catch (error) {
+    await dumpDiagnostics('episode-reader-ready');
+    throw error;
+  }
 
   const episodeWarning = page.locator('#warning.visible');
   if (await episodeWarning.isVisible().catch(() => false)) {
