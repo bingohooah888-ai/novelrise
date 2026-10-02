@@ -14,8 +14,14 @@ async function read(path) {
 test('reader share attribution tables are private and protected by RLS', async () => {
   const sql = await readFile(migrationUrl, 'utf8');
 
-  assert.match(sql, /alter table public\.scout_share_links enable row level security/i);
-  assert.match(sql, /alter table public\.scout_share_claims enable row level security/i);
+  assert.match(
+    sql,
+    /alter table public\.scout_share_links enable row level security/i
+  );
+  assert.match(
+    sql,
+    /alter table public\.scout_share_claims enable row level security/i
+  );
   assert.match(
     sql,
     /revoke all on table public\.scout_share_links from public, anon, authenticated, service_role/i
@@ -48,10 +54,7 @@ test('share attribution never writes SCOUT scoring ledgers', async () => {
 test('a recipient and work can only be attributed once', async () => {
   const sql = await readFile(migrationUrl, 'utf8');
 
-  assert.match(
-    sql,
-    /unique \(recipient_user_id, novel_id\)/i
-  );
+  assert.match(sql, /unique \(recipient_user_id, novel_id\)/i);
   assert.match(sql, /on conflict \(recipient_user_id, novel_id\) do nothing/i);
 });
 
@@ -69,7 +72,10 @@ test('SCOUT share results are displayed as private, non-scoring information', as
   const source = await read('../novelight-scout-share-attribution.js');
 
   assert.match(source, /あなたと運営だけが確認できます/);
-  assert.match(source, /Scout XP・Scout Point・Scout Rank・作品Rankには影響しません/);
+  assert.match(
+    source,
+    /Scout XP・Scout Point・Scout Rank・作品Rankには影響しません/
+  );
   assert.doesNotMatch(source, /recipient_user_id/);
 });
 
