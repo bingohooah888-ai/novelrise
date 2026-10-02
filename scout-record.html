@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <script src="novelight-author-backgrounds.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>SCOUT RECORD | NOVELIGHT</title>
@@ -11,6 +12,14 @@
   <link rel="stylesheet" href="novelight-scout-record.css">
   <link rel="stylesheet" href="novelight-scout-badge-zoom.css">
   <style>
+    html[data-author-background="simple"] body.novelight-page-scout-record {
+      background: #0f1020 !important;
+    }
+
+    html[data-author-background="simple"] body.novelight-page-scout-record::before {
+      display: none;
+    }
+
     .scout-hero-copy .scout-rank-title {
       text-align: center;
     }
