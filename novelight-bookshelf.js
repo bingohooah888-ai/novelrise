@@ -216,7 +216,7 @@
     link.innerHTML = `
       <span class="genre">${escapeHtml(novel.genre || '未設定')}</span>
       <div class="title">${escapeHtml(novel.title)}</div>
-      <div class="desc">${escapeHtml(novel.description || '')}</div>
+      <div class="desc" data-novelight-synopsis>${escapeHtml(novel.description || '')}</div>
       <div class="meta">👁 ${Number(novel.pv || 0).toLocaleString()} PV</div>
       <div class="nl-shelf-badges"></div>
     `;
