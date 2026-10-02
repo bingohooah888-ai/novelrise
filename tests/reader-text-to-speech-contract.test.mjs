@@ -100,7 +100,7 @@ test('episode integrates explicit accessible TTS controls without autoplay', asy
   assert.match(script, /このブラウザは本文の読み上げに対応していません/);
 });
 
-test('reader TTS is browser-local, skips ruby annotations, and cancels on exit', async () => {
+test('reader TTS stays browser speech based, skips ruby annotations, and cancels on exit', async () => {
   const script = await text(scriptUrl);
   assert.match(script, /'RT'/);
   assert.match(script, /'RP'/);
@@ -109,8 +109,14 @@ test('reader TTS is browser-local, skips ruby annotations, and cancels on exit',
   assert.match(script, /pagehide/);
   assert.match(script, /beforeunload/);
   assert.match(script, /synthesis\.cancel\(\)/);
-  assert.doesNotMatch(
-    script,
-    /supabase|\.rpc\(|fetch\(|XMLHttpRequest|analytics/i
-  );
+  assert.doesNotMatch(script, /fetch\(|XMLHttpRequest|analytics/i);
+  assert.doesNotMatch(script, /recordJourney|recordEpisodePv/u);
+});
+
+test('reader TTS reports first-party reading progress without faking interactions', async () => {
+  const script = await text(scriptUrl);
+  assert.equal(readerTts.TTS_VALID_READ_RATIO, 0.8);
+  assert.match(script, /record_valid_read_progress/u);
+  assert.match(script, /reader_reading_progress/u);
+  assert.match(script, /p_interaction_count:\s*0/u);
 });

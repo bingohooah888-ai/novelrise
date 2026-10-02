@@ -6,7 +6,42 @@
   const MIN_PLAYBACK_RATE = 1;
   const MAX_PLAYBACK_RATE = 3;
   const PLAYBACK_RATE_STEP = 0.05;
+  const TTS_VALID_READ_RATIO = 0.8;
+  const TTS_HEARTBEAT_MS = 12000;
+  const READING_STORAGE_PREFIX = 'novelight:reading:v1:';
   let mountedController = null;
+
+  function clamp(value, min = 0, max = 1) {
+    return Math.max(min, Math.min(max, Number(value) || 0));
+  }
+
+  function newSessionId() {
+    if (global.crypto?.randomUUID) return global.crypto.randomUUID();
+    if (!global.crypto?.getRandomValues) return null;
+    const bytes = new Uint8Array(16);
+    global.crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 15) | 64;
+    bytes[8] = (bytes[8] & 63) | 128;
+    const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, '0'));
+    return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`;
+  }
+
+  function pageReadingContext() {
+    try {
+      if (typeof client === 'undefined' || typeof episode === 'undefined' || typeof novel === 'undefined') {
+        return null;
+      }
+      return {
+        client,
+        episode,
+        novel,
+        session: typeof session === 'undefined' ? null : session,
+        isAuthor: typeof isAuthor === 'undefined' ? false : Boolean(isAuthor)
+      };
+    } catch {
+      return null;
+    }
+  }
 
   function displayedText(root) {
     if (!root) return '';
@@ -72,6 +107,58 @@
     return fixed;
   }
 
+  function saveLocalTtsProgress(context, ratio) {
+    const novelId = String(context?.novel?.id || '');
+    const episodeId = String(context?.episode?.id || '');
+    if (!novelId || !episodeId) return { stored: null, shouldSync: false };
+    const userId = context?.session?.user?.id || null;
+    const episodeNumber = Number(context?.episode?.episode_number) || 0;
+    const key = READING_STORAGE_PREFIX + novelId;
+    let previous = null;
+    try {
+      previous = JSON.parse(global.localStorage.getItem(key) || 'null');
+    } catch {
+      previous = null;
+    }
+    if (userId && previous?.syncUserId && previous.syncUserId !== userId) previous = null;
+    const previousNumber = Number(previous?.episodeNumber) || 0;
+    if (previous && previousNumber > episodeNumber) {
+      return { stored: previous, shouldSync: false };
+    }
+    const sameEpisode = previous && String(previous.episodeId) === episodeId;
+    const nextRatio = sameEpisode ? Math.max(clamp(previous.progressRatio), clamp(ratio)) : clamp(ratio);
+    const stored = {
+      novelId,
+      episodeId,
+      episodeNumber,
+      progressRatio: nextRatio,
+      lastReadAt: new Date().toISOString(),
+      syncUserId: userId
+    };
+    try {
+      global.localStorage.setItem(key, JSON.stringify(stored));
+    } catch (error) {
+      console.warn('TTS reading progress could not be saved locally', error);
+    }
+    return { stored, shouldSync: Boolean(userId) };
+  }
+
+  async function syncTtsProgress(context, stored) {
+    if (!context?.client || !stored?.syncUserId || context.isAuthor) return;
+    try {
+      const result = await context.client.from('reader_reading_progress').upsert({
+        user_id: stored.syncUserId,
+        novel_id: stored.novelId,
+        episode_id: stored.episodeId,
+        progress_ratio: clamp(stored.progressRatio),
+        last_read_at: stored.lastReadAt
+      }, { onConflict: 'user_id,novel_id' });
+      if (result.error) throw result.error;
+    } catch (error) {
+      console.warn('TTS reading progress sync failed', error);
+    }
+  }
+
   function mount(content) {
     if (!content || content.dataset.ttsMounted === 'true') return null;
     mountedController?.cancel();
@@ -123,6 +210,10 @@
     let active = false;
     let paused = false;
     let runId = 0;
+    let ttsProgressRatio = 0;
+    let ttsReadSessionId = null;
+    let ttsClientSeq = 0;
+    let ttsHeartbeatTimer = null;
 
     function setExpanded(expanded) {
       panel.hidden = !expanded;
@@ -170,20 +261,74 @@
         renderState(`速度を${formatPlaybackRate(selectedRate())}倍に変更しました。次の区切りから反映されます。`);
       }
     }
+
+    async function heartbeatTtsRead() {
+      if (!active || paused || documentRef.visibilityState !== 'visible') return;
+      const context = pageReadingContext();
+      if (!context?.client || !context.session?.user?.id || context.isAuthor || !context.episode?.id) return;
+      if (!ttsReadSessionId) ttsReadSessionId = newSessionId();
+      if (!ttsReadSessionId) return;
+      ttsClientSeq += 1;
+      try {
+        const result = await context.client.rpc('record_valid_read_progress', {
+          p_episode_id: String(context.episode.id),
+          p_session_id: ttsReadSessionId,
+          p_progress_ratio: clamp(ttsProgressRatio),
+          p_interaction_count: 0,
+          p_client_seq: ttsClientSeq
+        });
+        if (result.error) throw result.error;
+        if (result.data?.qualified === true && ttsHeartbeatTimer) {
+          global.clearInterval(ttsHeartbeatTimer);
+          ttsHeartbeatTimer = null;
+        }
+      } catch (error) {
+        console.warn('TTS valid read progress failed', error);
+      }
+    }
+
+    function startTtsReadTracking() {
+      if (ttsHeartbeatTimer) global.clearInterval(ttsHeartbeatTimer);
+      void heartbeatTtsRead();
+      ttsHeartbeatTimer = global.setInterval(() => void heartbeatTtsRead(), TTS_HEARTBEAT_MS);
+    }
+
+    function stopTtsReadTracking() {
+      if (!ttsHeartbeatTimer) return;
+      global.clearInterval(ttsHeartbeatTimer);
+      ttsHeartbeatTimer = null;
+    }
+
+    function reportTtsProgress(ratio, completed = false) {
+      ttsProgressRatio = Math.max(ttsProgressRatio, clamp(ratio));
+      const context = pageReadingContext();
+      if (context) {
+        const { stored, shouldSync } = saveLocalTtsProgress(context, completed ? 1 : ttsProgressRatio);
+        if (shouldSync) void syncTtsProgress(context, stored);
+      }
+      documentRef.dispatchEvent(new global.CustomEvent('novelight:tts-progress', {
+        detail: { ratio: completed ? 1 : ttsProgressRatio, completed }
+      }));
+      if (ttsProgressRatio >= TTS_VALID_READ_RATIO) void heartbeatTtsRead();
+    }
+
     function stop(message = '停止しました。') {
       runId += 1;
       active = false;
       paused = false;
       queue = [];
       queueIndex = 0;
+      stopTtsReadTracking();
       if (supported) synthesis.cancel();
       renderState(message);
     }
     function speakNext(expectedRunId) {
       if (!active || expectedRunId !== runId) return;
       if (queueIndex >= queue.length) {
+        reportTtsProgress(1, true);
         active = false;
         paused = false;
+        stopTtsReadTracking();
         renderState('読み上げが完了しました。');
         return;
       }
@@ -198,6 +343,14 @@
       utterance.onend = () => {
         if (expectedRunId !== runId) return;
         queueIndex += 1;
+        reportTtsProgress(queue.length ? queueIndex / queue.length : 1, queueIndex >= queue.length);
+        if (queueIndex >= queue.length) {
+          active = false;
+          paused = false;
+          stopTtsReadTracking();
+          renderState('読み上げが完了しました。');
+          return;
+        }
         speakNext(expectedRunId);
       };
       utterance.onerror = (event) => {
@@ -231,23 +384,35 @@
       queueIndex = 0;
       active = true;
       paused = false;
+      ttsProgressRatio = 0;
+      ttsReadSessionId = newSessionId();
+      ttsClientSeq = 0;
       renderState(`本文を最初から${formatPlaybackRate(selectedRate())}倍速で読み上げています。`);
+      startTtsReadTracking();
       speakNext(runId);
     });
     pauseButton.addEventListener('click', () => {
       if (!active || paused) return;
       synthesis.pause();
       paused = true;
+      stopTtsReadTracking();
       renderState('一時停止しました。');
     });
     resumeButton.addEventListener('click', () => {
       if (!active || !paused) return;
       synthesis.resume();
       paused = false;
+      startTtsReadTracking();
       renderState('読み上げを再開しました。');
     });
     stopButton.addEventListener('click', () => stop());
 
+    const visibilityChanged = () => {
+      if (!active || paused) return;
+      if (documentRef.visibilityState === 'visible') startTtsReadTracking();
+      else stopTtsReadTracking();
+    };
+    documentRef.addEventListener('visibilitychange', visibilityChanged);
     const cancelForExit = () => stop('');
     global.addEventListener('pagehide', cancelForExit);
     global.addEventListener('beforeunload', cancelForExit);
@@ -295,7 +460,13 @@
   }
 
   global.NovelightReaderTts = Object.freeze({
-    MAX_CHUNK_LENGTH, displayedText, chunksFor, preferredVoice, mount, enhance
+    MAX_CHUNK_LENGTH,
+    TTS_VALID_READ_RATIO,
+    displayedText,
+    chunksFor,
+    preferredVoice,
+    mount,
+    enhance
   });
   start();
 })(typeof window === 'undefined' ? globalThis : window);
