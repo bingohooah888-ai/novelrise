@@ -81,16 +81,96 @@ async function findPublishedEpisode(page, novelHrefs) {
   return rows[0] ?? null;
 }
 
+function installReaderDiagnostics(page) {
+  const pageErrors = [];
+  const consoleErrors = [];
+  const outlineResponses = [];
+
+  page.on('pageerror', (error) => {
+    pageErrors.push(String(error?.stack || error?.message || error));
+  });
+
+  page.on('console', (message) => {
+    if (!['error', 'warning'].includes(message.type())) return;
+    consoleErrors.push(`${message.type()}: ${message.text()}`);
+  });
+
+  page.on('response', async (response) => {
+    if (!response.url().includes('/rpc/novelight_novel_outline')) return;
+    outlineResponses.push({
+      status: response.status(),
+      body: await response.text().catch(() => '<unavailable>')
+    });
+  });
+
+  return async (stage) => {
+    const browserState = await page
+      .evaluate(() => {
+        const snapshot = (selector) => {
+          const element = globalThis.document.querySelector(selector);
+          if (!element) return null;
+          const style = globalThis.getComputedStyle(element);
+          return {
+            html: element.outerHTML.slice(0, 5000),
+            display: style.display,
+            visibility: style.visibility
+          };
+        };
+
+        return {
+          url: globalThis.location.href,
+          readyState: globalThis.document.readyState,
+          bodyClass: globalThis.document.body?.className || '',
+          novelHeader: snapshot('#novelHeader'),
+          favoriteButton: snapshot('#favoriteButton'),
+          episodesPanel: snapshot('#episodesPanel'),
+          episodeList: snapshot('#episodeList'),
+          v2Grid: snapshot('.nl-work-detail-grid'),
+          hasNovelDetailV2: Boolean(globalThis.NovelightNovelDetailV2),
+          scripts: Array.from(globalThis.document.scripts).map(
+            (script) => script.src || '[inline]'
+          )
+        };
+      })
+      .catch((error) => ({ evaluationError: String(error) }));
+
+    console.error(
+      '[production-reader-diagnostic]',
+      JSON.stringify(
+        {
+          stage,
+          pageErrors,
+          consoleErrors,
+          outlineResponses,
+          browserState
+        },
+        null,
+        2
+      )
+    );
+  };
+}
+
+async function novelReaderReady(page) {
+  const v2Surface = page.locator('.nl-work-detail-grid');
+  if (await v2Surface.isVisible().catch(() => false)) return true;
+
+  const hydratedFavorite = page.locator('#favoriteButton');
+  if ((await hydratedFavorite.count()) < 1) return false;
+
+  const novelHeader = page.locator('#novelHeader');
+  const headerText = await novelHeader.textContent().catch(() => '');
+  return Boolean(headerText && !headerText.includes('読み込み中...'));
+}
+
 async function unlockNovelAgeGateIfNeeded(page) {
   const warningGate = page.locator('#warningGate');
-  const novelHeader = page.locator('#novelHeader');
 
   await expect
     .poll(
       async () => {
-        if (await warningGate.isVisible()) return true;
-        const headerText = await novelHeader.textContent().catch(() => '');
-        return Boolean(headerText && !headerText.includes('読み込み中...'));
+        if (await warningGate.isVisible().catch(() => false)) return true;
+        return novelReaderReady(page);
       },
       { timeout: 20_000 }
     )
@@ -98,13 +178,30 @@ async function unlockNovelAgeGateIfNeeded(page) {
 
   if (await warningGate.isVisible()) {
     await page.locator('#continueButton').click();
+    await expect
+      .poll(() => novelReaderReady(page), { timeout: 20_000 })
+      .toBe(true);
   }
 }
 
-test('production reader flow is healthy and read-only', async ({ page }) => {
-  await suppressMeasurementWrites(page);
+async function episodeReaderReady(page) {
+  const warning = page.locator('#warning.visible');
+  if (await warning.isVisible().catch(() => false)) return true;
+  return page
+    .locator('#report')
+    .isVisible()
+    .catch(() => false);
+}
 
-  await page.goto('/search.html', { waitUntil: 'domcontentloaded' });
+test('production reader flow is healthy and read-only', async ({ page }) => {
+  test.setTimeout(120_000);
+  await suppressMeasurementWrites(page);
+  const dumpDiagnostics = installReaderDiagnostics(page);
+
+  await page.goto('/search.html', {
+    waitUntil: 'domcontentloaded',
+    timeout: 20_000
+  });
   const resultCount = page.locator('#resultCount');
   await expect(resultCount).not.toHaveText('読み込み中...', {
     timeout: 20_000
@@ -145,37 +242,59 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
   );
   expect(novelHref).toBeTruthy();
 
-  await page.goto(novelHref, { waitUntil: 'domcontentloaded' });
-  await unlockNovelAgeGateIfNeeded(page);
-
-  const novelHeader = page.locator('#novelHeader');
-  await expect(novelHeader).not.toContainText('読み込み中...', {
+  await page.goto(novelHref, {
+    waitUntil: 'domcontentloaded',
     timeout: 20_000
   });
+  try {
+    await unlockNovelAgeGateIfNeeded(page);
+  } catch (error) {
+    await dumpDiagnostics('novel-reader-ready');
+    throw error;
+  }
 
-  const episodesPanel = page.locator('#episodesPanel');
-  await expect(episodesPanel).toBeVisible({ timeout: 20_000 });
+  const readerSurface = page
+    .locator('.nl-work-detail-grid, #episodesPanel')
+    .first();
+  await expect(readerSurface).toBeVisible({ timeout: 20_000 });
 
-  const firstEpisodeLink = page.locator('#episodeList .episode-title').first();
-  await expect(firstEpisodeLink).toBeVisible({ timeout: 20_000 });
+  const episodeLinks = page.locator(
+    '.nl-work-detail-toc .nl-work-toc-link, #episodeList .episode-title'
+  );
+  try {
+    await expect(episodeLinks.first()).toBeVisible({ timeout: 20_000 });
+  } catch (error) {
+    await dumpDiagnostics('novel-episode-links');
+    throw error;
+  }
 
-  const episodeHrefs = await page
-    .locator('.episode-title')
-    .evaluateAll((nodes) =>
-      nodes.map((node) => node.getAttribute('href')).filter(Boolean)
-    );
+  const episodeHrefs = await episodeLinks.evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute('href')).filter(Boolean)
+  );
   const episodeHref = episodeHrefs.find(
     (href) => resourceIdFromHref(href) === String(episode.id)
   );
   expect(episodeHref).toBeTruthy();
 
-  await page.goto(episodeHref, { waitUntil: 'domcontentloaded' });
+  await page.goto(episodeHref, {
+    waitUntil: 'commit',
+    timeout: 20_000
+  });
+  try {
+    await expect
+      .poll(() => episodeReaderReady(page), { timeout: 20_000 })
+      .toBe(true);
+  } catch (error) {
+    await dumpDiagnostics('episode-reader-ready');
+    throw error;
+  }
 
   const episodeWarning = page.locator('#warning.visible');
   if (await episodeWarning.isVisible().catch(() => false)) {
     await page.locator('#continue').click();
   }
 
+  await expect(page.locator('#report')).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('#card h1')).toBeVisible({ timeout: 20_000 });
   const content = page.locator('#card .content');
   await expect(content).toBeVisible();

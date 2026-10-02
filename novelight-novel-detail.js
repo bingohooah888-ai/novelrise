@@ -348,7 +348,12 @@
       if (curation && curation.parentElement !== actions) actions.appendChild(curation);
       if (panel && panel.parentElement !== actions) actions.appendChild(panel);
       if (book && book.parentElement !== actions) actions.appendChild(book);
-      if (secondaryActions?.parentElement === actions) actions.appendChild(secondaryActions);
+      if (
+        secondaryActions?.parentElement === actions &&
+        actions.lastElementChild !== secondaryActions
+      ) {
+        actions.appendChild(secondaryActions);
+      }
     };
     move();
     const observer = new MutationObserver(move);
@@ -444,11 +449,12 @@
     const meta = header?.querySelector('.meta');
     const advisory = header?.querySelector('#contentAdvisory');
     if (!header || !favorite || !title || !tags || !author || !description || !meta) return;
+    const rows = episodeRows();
+    if (!rows.length) return;
     installStyles();
     document.body.classList.add('nl-work-detail-v2');
     stripReaderPv(meta);
     collapseTags(tags);
-    const rows = episodeRows();
     const items = outlineItems(rows);
     await syncProgress(id);
     const target = continueTarget(rows, readProgress(id));
