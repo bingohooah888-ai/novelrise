@@ -384,12 +384,14 @@
 
   captureIncomingScoutShare();
   void claimPendingScoutShare();
-  attributionClient?.auth.onAuthStateChange((event, session) => {
-    shareUrlCache.clear();
-    if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-      void claimPendingScoutShare();
-    }
-  });
+  if (typeof attributionClient?.auth?.onAuthStateChange === 'function') {
+    attributionClient.auth.onAuthStateChange((event, session) => {
+      shareUrlCache.clear();
+      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        void claimPendingScoutShare();
+      }
+    });
+  }
 
   installStyles();
   installMyNovelsSharing();
