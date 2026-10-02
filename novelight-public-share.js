@@ -199,13 +199,9 @@
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
 
-    const copyShareUrl = scoutAttributedShareUrl(
-      url,
-      novelId,
-      'novelight',
-      'share'
-    );
-    const xShareUrl = scoutAttributedShareUrl(url, novelId, 'x', 'social');
+    const copyShareUrl = () =>
+      scoutAttributedShareUrl(url, novelId, 'novelight', 'share');
+    const xShareUrl = () => scoutAttributedShareUrl(url, novelId, 'x', 'social');
 
     const copy = document.createElement('button');
     copy.type = 'button';
@@ -213,7 +209,7 @@
     copy.textContent = 'URLをコピー';
     copy.addEventListener('click', async () => {
       try {
-        await copyUrl(await copyShareUrl);
+        await copyUrl(await copyShareUrl());
         temporaryLabel(copy, 'コピーしました');
         status.textContent = '共有用URLをコピーしました。';
       } catch (error) {
@@ -234,7 +230,7 @@
       if (popup) popup.opener = null;
       const intent = new URL('https://twitter.com/intent/tweet');
       intent.searchParams.set('text', text);
-      intent.searchParams.set('url', await xShareUrl);
+      intent.searchParams.set('url', await xShareUrl());
       if (popup && !popup.closed) {
         popup.location.replace(intent.toString());
       } else {
@@ -389,6 +385,7 @@
   captureIncomingScoutShare();
   void claimPendingScoutShare();
   attributionClient?.auth.onAuthStateChange((event, session) => {
+    shareUrlCache.clear();
     if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
       void claimPendingScoutShare();
     }
