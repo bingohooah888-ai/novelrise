@@ -148,7 +148,11 @@ function dependencies({
     },
     from(table) {
       const fallback = { data: null, error: null };
-      return createQueryResult(tableResults[table] || fallback, calls.queries, table);
+      return createQueryResult(
+        tableResults[table] || fallback,
+        calls.queries,
+        table
+      );
     },
     storage: {
       from(bucket) {

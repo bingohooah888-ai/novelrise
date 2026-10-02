@@ -1,14 +1,23 @@
 const CONFIRMATION_TEXT = 'アカウントを削除';
-const TERMINAL_SUBSCRIPTION_STATUSES = new Set(['canceled', 'incomplete_expired']);
+const TERMINAL_SUBSCRIPTION_STATUSES = new Set([
+  'canceled',
+  'incomplete_expired'
+]);
 
 function getBearerToken(req) {
-  const header = String(req.headers?.authorization || req.headers?.Authorization || '');
+  const header = String(
+    req.headers?.authorization || req.headers?.Authorization || ''
+  );
   const match = header.match(/^Bearer\s+(.+)$/iu);
   return match?.[1]?.trim() || '';
 }
 
 function uniquePaths(rows, key) {
-  return [...new Set((rows || []).map((row) => String(row?.[key] || '').trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      (rows || []).map((row) => String(row?.[key] || '').trim()).filter(Boolean)
+    )
+  ];
 }
 
 async function removeStoragePaths(supabase, bucket, paths) {
@@ -19,7 +28,9 @@ async function removeStoragePaths(supabase, bucket, paths) {
 
 async function cancelStripeSubscriptions(stripe, profile) {
   const customerId = String(profile?.stripe_customer_id || '').trim();
-  const profileSubscriptionId = String(profile?.stripe_subscription_id || '').trim();
+  const profileSubscriptionId = String(
+    profile?.stripe_subscription_id || ''
+  ).trim();
   const subscriptions = new Map();
 
   if (customerId) {
@@ -39,12 +50,18 @@ async function cancelStripeSubscriptions(stripe, profile) {
   }
 
   if (profileSubscriptionId && !subscriptions.has(profileSubscriptionId)) {
-    const subscription = await stripe.subscriptions.retrieve(profileSubscriptionId);
+    const subscription = await stripe.subscriptions.retrieve(
+      profileSubscriptionId
+    );
     subscriptions.set(subscription.id, subscription);
   }
 
   for (const subscription of subscriptions.values()) {
-    if (!subscription?.id || TERMINAL_SUBSCRIPTION_STATUSES.has(subscription.status)) continue;
+    if (
+      !subscription?.id ||
+      TERMINAL_SUBSCRIPTION_STATUSES.has(subscription.status)
+    )
+      continue;
     await stripe.subscriptions.cancel(subscription.id);
   }
 }
@@ -93,10 +110,16 @@ async function deleteUserData(supabase, userId) {
     .eq('owner_user_id', userId);
   if (illustrationDelete.error) throw illustrationDelete.error;
 
-  const novelsDelete = await supabase.from('novels').delete().eq('user_id', userId);
+  const novelsDelete = await supabase
+    .from('novels')
+    .delete()
+    .eq('user_id', userId);
   if (novelsDelete.error) throw novelsDelete.error;
 
-  const episodesDelete = await supabase.from('episodes').delete().eq('user_id', userId);
+  const episodesDelete = await supabase
+    .from('episodes')
+    .delete()
+    .eq('user_id', userId);
   if (episodesDelete.error) throw episodesDelete.error;
 
   const authDelete = await supabase.auth.admin.deleteUser(userId);
@@ -113,9 +136,11 @@ export function createDeleteAccountHandler({ stripe, supabase }) {
     const token = getBearerToken(req);
     if (!token) return res.status(401).json({ error: 'UNAUTHORIZED' });
 
-    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const { data: authData, error: authError } =
+      await supabase.auth.getUser(token);
     const user = authData?.user;
-    if (authError || !user?.id) return res.status(401).json({ error: 'UNAUTHORIZED' });
+    if (authError || !user?.id)
+      return res.status(401).json({ error: 'UNAUTHORIZED' });
 
     if (req.body?.confirmation !== CONFIRMATION_TEXT) {
       return res.status(400).json({ error: 'CONFIRMATION_REQUIRED' });
@@ -126,8 +151,16 @@ export function createDeleteAccountHandler({ stripe, supabase }) {
 
       await cancelStripeSubscriptions(stripe, targets.profile);
       await removeStoragePaths(supabase, 'author-avatars', targets.avatarPaths);
-      await removeStoragePaths(supabase, 'episode-illustrations', targets.illustrationPaths);
-      await removeStoragePaths(supabase, 'novel-thumbnail-renders', targets.renderPaths);
+      await removeStoragePaths(
+        supabase,
+        'episode-illustrations',
+        targets.illustrationPaths
+      );
+      await removeStoragePaths(
+        supabase,
+        'novel-thumbnail-renders',
+        targets.renderPaths
+      );
       await deleteUserData(supabase, user.id);
 
       return res.status(200).json({ ok: true });
