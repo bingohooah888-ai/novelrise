@@ -117,7 +117,10 @@ async function unlockNovelWarningIfNeeded(page) {
 async function episodeReaderReady(page) {
   const warning = page.locator('#warning.visible');
   if (await warning.isVisible().catch(() => false)) return true;
-  return page.locator('#report').isVisible().catch(() => false);
+  return page
+    .locator('#report')
+    .isVisible()
+    .catch(() => false);
 }
 
 test('production reader flow is healthy and read-only', async ({ page }) => {
