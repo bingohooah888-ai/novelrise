@@ -98,6 +98,11 @@
       .nl-preview-modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(18,14,10,.72)}
       .nl-preview-card{width:min(820px,100%);max-height:88vh;overflow:auto;border-radius:16px;background:#fffdf8;padding:30px;box-shadow:0 24px 80px rgba(0,0,0,.24)}
       .nl-preview-kicker{color:#8c775b;font-size:11px;font-weight:900;letter-spacing:.12em}.nl-preview-title{margin:7px 0 22px;font-size:28px;line-height:1.5}.nl-preview-content{white-space:pre-wrap;word-break:break-word;font-size:17px;line-height:2}.nl-preview-close{position:sticky;top:0;float:right;margin:-8px -8px 8px 12px;padding:8px 11px;border:1px solid #d8ccb9;border-radius:8px;background:#fff;font:inherit;font-weight:900;cursor:pointer}
+      #scheduleAt.nl-schedule-source{display:none!important}
+      .nl-schedule-picker{display:grid;grid-template-columns:minmax(0,1fr) 88px 88px;gap:8px;align-items:center}
+      .nl-schedule-picker input,.nl-schedule-picker select{width:100%;min-width:0}
+      .nl-schedule-picker select{cursor:pointer}
+      .nl-schedule-picker-help{grid-column:1/-1;color:#8a8176;font-size:11px;line-height:1.5}
       @media(max-width:640px){.nl-draft-tools{align-items:stretch}.nl-draft-actions{width:100%}.nl-draft-button{flex:1}.nl-preview-card{padding:22px 18px}.nl-preview-title{font-size:23px}.nl-preview-content{font-size:16px}}
     `;
     document.head.appendChild(style);
@@ -255,6 +260,118 @@
     return state;
   }
 
+  function installDesktopSchedulePicker() {
+    const scheduleAt = document.getElementById('scheduleAt');
+    const scheduleButton = document.getElementById('openScheduleSettings');
+    if (!scheduleAt || !scheduleButton || scheduleAt.dataset.novelightDesktopPicker === 'true') return false;
+
+    const desktopQuery = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 721px) and (pointer: fine)')
+      : null;
+    if (desktopQuery ? !desktopQuery.matches : window.innerWidth <= 720) return false;
+
+    scheduleAt.dataset.novelightDesktopPicker = 'true';
+    scheduleAt.classList.add('nl-schedule-source');
+    scheduleAt.tabIndex = -1;
+    scheduleAt.setAttribute('aria-hidden', 'true');
+
+    const picker = document.createElement('div');
+    picker.className = 'nl-schedule-picker';
+    picker.setAttribute('role', 'group');
+    picker.setAttribute('aria-label', '予約公開日時');
+
+    const date = document.createElement('input');
+    date.id = 'nlScheduleDate';
+    date.type = 'date';
+    date.setAttribute('aria-label', '予約公開日');
+
+    const hour = document.createElement('select');
+    hour.setAttribute('aria-label', '予約公開時刻の時');
+    for (let value = 0; value < 24; value += 1) {
+      const padded = String(value).padStart(2, '0');
+      hour.add(new Option(`${padded}時`, padded));
+    }
+
+    const minute = document.createElement('select');
+    minute.setAttribute('aria-label', '予約公開時刻の分');
+    for (let value = 0; value < 60; value += 1) {
+      const padded = String(value).padStart(2, '0');
+      minute.add(new Option(`${padded}分`, padded));
+    }
+
+    const help = document.createElement('div');
+    help.className = 'nl-schedule-picker-help';
+    help.textContent = '時・分はマウスホイールでも変更できます。';
+    picker.append(date, hour, minute, help);
+    scheduleAt.insertAdjacentElement('afterend', picker);
+
+    const sourceLabel = document.querySelector('label[for="scheduleAt"]');
+    if (sourceLabel) sourceLabel.setAttribute('for', date.id);
+
+    function suggestedTime() {
+      const value = new Date(Date.now() + 5 * 60 * 1000);
+      hour.value = String(value.getHours()).padStart(2, '0');
+      minute.value = String(value.getMinutes()).padStart(2, '0');
+    }
+
+    function syncBounds() {
+      date.min = String(scheduleAt.min || '').slice(0, 10);
+      date.max = String(scheduleAt.max || '').slice(0, 10);
+    }
+
+    function syncFromSource() {
+      syncBounds();
+      const match = String(scheduleAt.value || '').match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/u);
+      if (!match) {
+        date.value = '';
+        suggestedTime();
+        return;
+      }
+      date.value = match[1];
+      hour.value = match[2];
+      minute.value = match[3];
+    }
+
+    function syncToSource() {
+      const next = date.value ? `${date.value}T${hour.value}:${minute.value}` : '';
+      if (scheduleAt.value === next) return;
+      scheduleAt.value = next;
+      scheduleAt.dispatchEvent(new Event('input', { bubbles: true }));
+      scheduleAt.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function installWheel(select) {
+      select.addEventListener('wheel', (event) => {
+        if (!event.deltaY) return;
+        event.preventDefault();
+        const direction = event.deltaY > 0 ? 1 : -1;
+        const next = Math.max(0, Math.min(select.options.length - 1, select.selectedIndex + direction));
+        if (next === select.selectedIndex) return;
+        select.selectedIndex = next;
+        syncToSource();
+      }, { passive: false });
+    }
+
+    date.addEventListener('change', syncToSource);
+    hour.addEventListener('change', syncToSource);
+    minute.addEventListener('change', syncToSource);
+    installWheel(hour);
+    installWheel(minute);
+
+    scheduleButton.addEventListener('click', () => window.queueMicrotask(syncFromSource));
+    const scheduleCurrent = document.getElementById('scheduleCurrent');
+    if (scheduleCurrent && typeof MutationObserver === 'function') {
+      new MutationObserver(syncFromSource).observe(scheduleCurrent, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    }
+
+    syncFromSource();
+    return true;
+  }
+
   async function install() {
     if (!['episode-post', 'episode-edit'].includes(slug())) return false;
     const key = draftKey();
@@ -262,6 +379,7 @@
     const ready = await waitUntilReady();
     if (!ready) return false;
     installStyles();
+    installDesktopSchedulePicker();
     ensureProseRenderer();
     const stored = readDraft(key);
     insertRestorePrompt(key, stored);
