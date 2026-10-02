@@ -3,7 +3,17 @@
 
   const CANONICAL_ORIGIN = 'https://novelight.jp';
   const SHARE_CAMPAIGN = 'novelight_work_share';
+  const SCOUT_SHARE_PARAM = 'scout_share';
+  const PENDING_SCOUT_SHARE_KEY = 'novelight_pending_scout_share';
   const TARGET_PAGES = new Set(['my-novels', 'novel', 'episode']);
+  const shareUrlCache = new Map();
+
+  const attributionClient = window.supabase?.createClient
+    ? window.supabase.createClient(
+        'https://fiepaguycecrredwrcwx.supabase.co',
+        'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
+      )
+    : null;
 
   function currentPageSlug() {
     return (window.location.pathname.split('/').pop() || 'index.html')
@@ -27,6 +37,82 @@
     tracked.searchParams.set('utm_campaign', SHARE_CAMPAIGN);
     tracked.searchParams.set('utm_content', `novel:${String(novelId)}`);
     return tracked.toString();
+  }
+
+  async function scoutAttributedShareUrl(url, novelId, source, medium) {
+    const base = attributedShareUrl(url, novelId, source, medium);
+    if (!attributionClient || !/^\d+$/u.test(String(novelId))) return base;
+
+    const cacheKey = `${novelId}:${source}:${medium}`;
+    if (shareUrlCache.has(cacheKey)) return shareUrlCache.get(cacheKey);
+
+    const promise = (async () => {
+      try {
+        const { data: sessionData, error: sessionError } =
+          await attributionClient.auth.getSession();
+        if (sessionError || !sessionData?.session) return base;
+
+        const { data, error } = await attributionClient.rpc(
+          'novelight_scout_share_link',
+          { p_novel_id: Number(novelId) }
+        );
+        if (error || !data?.eligible || !data?.token) return base;
+
+        const tracked = new URL(base);
+        tracked.searchParams.set(SCOUT_SHARE_PARAM, String(data.token));
+        return tracked.toString();
+      } catch (error) {
+        console.warn('SCOUT share attribution unavailable', error);
+        return base;
+      }
+    })();
+
+    shareUrlCache.set(cacheKey, promise);
+    return promise;
+  }
+
+  function validScoutToken(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+      String(value || '')
+    );
+  }
+
+  function captureIncomingScoutShare() {
+    const token = new URLSearchParams(window.location.search).get(
+      SCOUT_SHARE_PARAM
+    );
+    if (!validScoutToken(token)) return;
+    try {
+      localStorage.setItem(PENDING_SCOUT_SHARE_KEY, token);
+    } catch {
+      // Attribution is optional; reading must never depend on storage access.
+    }
+  }
+
+  async function claimPendingScoutShare() {
+    if (!attributionClient) return;
+    let token = null;
+    try {
+      token = localStorage.getItem(PENDING_SCOUT_SHARE_KEY);
+    } catch {
+      return;
+    }
+    if (!validScoutToken(token)) return;
+
+    try {
+      const { data: sessionData, error: sessionError } =
+        await attributionClient.auth.getSession();
+      if (sessionError || !sessionData?.session) return;
+
+      const { error } = await attributionClient.rpc(
+        'novelight_claim_scout_share',
+        { p_token: token }
+      );
+      if (error) return;
+      localStorage.removeItem(PENDING_SCOUT_SHARE_KEY);
+    } catch (error) {
+      console.warn('SCOUT share claim unavailable', error);
+    }
   }
 
   function installStyles() {
@@ -113,13 +199,9 @@
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
 
-    const copyShareUrl = attributedShareUrl(
-      url,
-      novelId,
-      'novelight',
-      'share'
-    );
-    const xShareUrl = attributedShareUrl(url, novelId, 'x', 'social');
+    const copyShareUrl = () =>
+      scoutAttributedShareUrl(url, novelId, 'novelight', 'share');
+    const xShareUrl = () => scoutAttributedShareUrl(url, novelId, 'x', 'social');
 
     const copy = document.createElement('button');
     copy.type = 'button';
@@ -127,7 +209,7 @@
     copy.textContent = 'URLをコピー';
     copy.addEventListener('click', async () => {
       try {
-        await copyUrl(copyShareUrl);
+        await copyUrl(await copyShareUrl());
         temporaryLabel(copy, 'コピーしました');
         status.textContent = '共有用URLをコピーしました。';
       } catch (error) {
@@ -143,16 +225,22 @@
     shareX.type = 'button';
     shareX.className = 'novelight-public-share-action x';
     shareX.textContent = 'Xでシェア';
-    shareX.addEventListener('click', () => {
+    shareX.addEventListener('click', async () => {
+      const popup = window.open('about:blank', '_blank');
+      if (popup) popup.opener = null;
       const intent = new URL('https://twitter.com/intent/tweet');
       intent.searchParams.set('text', text);
-      intent.searchParams.set('url', xShareUrl);
-      const popup = window.open(
-        intent.toString(),
-        '_blank',
-        'noopener,noreferrer'
-      );
-      if (popup) popup.opener = null;
+      intent.searchParams.set('url', await xShareUrl());
+      if (popup && !popup.closed) {
+        popup.location.replace(intent.toString());
+      } else {
+        const fallback = window.open(
+          intent.toString(),
+          '_blank',
+          'noopener,noreferrer'
+        );
+        if (fallback) fallback.opener = null;
+      }
     });
     bar.appendChild(shareX);
     bar.appendChild(status);
@@ -292,6 +380,17 @@
       subtree: true
     });
     return true;
+  }
+
+  captureIncomingScoutShare();
+  void claimPendingScoutShare();
+  if (typeof attributionClient?.auth?.onAuthStateChange === 'function') {
+    attributionClient.auth.onAuthStateChange((event, session) => {
+      shareUrlCache.clear();
+      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        void claimPendingScoutShare();
+      }
+    });
   }
 
   installStyles();

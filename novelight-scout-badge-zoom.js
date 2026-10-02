@@ -1,4 +1,11 @@
 (() => {
+  if (!document.querySelector('script[data-novelight-scout-share-attribution]')) {
+    const attributionScript = document.createElement('script');
+    attributionScript.src = 'novelight-scout-share-attribution.js';
+    attributionScript.dataset.novelightScoutShareAttribution = 'true';
+    document.body.appendChild(attributionScript);
+  }
+
   const OPTIMIZER_PREFIX = '/_vercel/image?';
   const CARD_WIDTH = 256;
   const CARD_QUALITY = 80;
