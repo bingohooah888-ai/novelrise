@@ -23,9 +23,25 @@ test('TTS completion records 100% reading progress', () => {
   assert.match(ttsSource, /progress_ratio:\s*clamp\(stored\.progressRatio\)/u);
 });
 
-test('beta valid-read rules require 80% normal progress and 30 seconds foreground', () => {
+test('beta valid-read rules require 80% progress and 30 seconds foreground', () => {
   assert.match(migrationSource, /normal_progress_ratio\s*=\s*0\.80/u);
   assert.match(migrationSource, /short_progress_ratio\s*=\s*0\.80/u);
   assert.match(migrationSource, /normal_foreground_seconds\s*=\s*30/u);
   assert.match(migrationSource, /rule_version\s*=\s*'beta-v2'/u);
+});
+
+test('interaction telemetry cannot bypass the 80% progress requirement', () => {
+  assert.match(
+    migrationSource,
+    /if v_foreground_signal and v_progress_signal then/u
+  );
+  assert.match(
+    migrationSource,
+    /'qualified', \(v_foreground_signal and v_progress_signal\) or v_existing/u
+  );
+  assert.doesNotMatch(
+    migrationSource,
+    /v_foreground_signal and \(v_progress_signal or v_interaction_signal\)/u
+  );
+  assert.match(migrationSource, /interaction_signal/u);
 });
