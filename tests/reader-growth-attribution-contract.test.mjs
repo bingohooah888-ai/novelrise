@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const migrationUrl = new URL(
   '../supabase/migrations/20261002113000_reader_growth_attribution.sql',
