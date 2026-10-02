@@ -3,6 +3,7 @@
 
   const SELECTOR = '[data-novelight-synopsis]';
   const STYLE_ID = 'novelight-synopsis-fold-style';
+  const toggles = new WeakMap();
   let nextId = 0;
   let refreshFrame = 0;
 
@@ -28,7 +29,7 @@
   }
 
   function syncButton(host) {
-    const button = host.querySelector(':scope > .nl-synopsis-toggle');
+    const button = toggles.get(host);
     if (!button) return;
     const expanded = host.classList.contains('is-expanded');
     button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
@@ -37,7 +38,7 @@
 
   function refreshHost(host) {
     const copy = host.querySelector(':scope > .nl-synopsis-copy');
-    const button = host.querySelector(':scope > .nl-synopsis-toggle');
+    const button = toggles.get(host);
     if (!copy || !button) return;
 
     const wasExpanded = host.classList.contains('is-expanded');
@@ -85,7 +86,8 @@
       host.classList.toggle('is-expanded');
       syncButton(host);
     });
-    host.appendChild(button);
+    toggles.set(host, button);
+    host.insertAdjacentElement('afterend', button);
     requestAnimationFrame(() => refreshHost(host));
   }
 
