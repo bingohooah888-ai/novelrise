@@ -54,10 +54,10 @@ async function installSupabaseStub(page, rpcData) {
 async function captureLayout(page, selectors) {
   return page.evaluate((names) => {
     const box = (selector) => {
-      const element = document.querySelector(selector);
+      const element = globalThis.document.querySelector(selector);
       if (!element) return null;
       const rect = element.getBoundingClientRect();
-      const style = getComputedStyle(element);
+      const style = globalThis.getComputedStyle(element);
       return {
         x: rect.x,
         y: rect.y,
