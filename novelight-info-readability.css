@@ -1,0 +1,71 @@
+/* Sitewide information-icon readability.
+   Preserve each control surface; only force information glyphs/text to black. */
+
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [title*="情報"],
+    [title*="information" i],
+    [title*="info" i]
+  ),
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"]) {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  text-shadow: none !important;
+}
+
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [title*="情報"],
+    [title*="information" i],
+    [title*="info" i]
+  )::before,
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [title*="情報"],
+    [title*="information" i],
+    [title*="info" i]
+  )::after,
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"])::before,
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"])::after {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  text-shadow: none !important;
+}
+
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [title*="情報"],
+    [title*="information" i],
+    [title*="info" i]
+  ) :is(span, i, b, strong, svg),
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"]) :is(span, i, b, strong, svg) {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  fill: #000 !important;
+  stroke: #000 !important;
+  text-shadow: none !important;
+}
