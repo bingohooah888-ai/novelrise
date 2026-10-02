@@ -348,7 +348,12 @@
       if (curation && curation.parentElement !== actions) actions.appendChild(curation);
       if (panel && panel.parentElement !== actions) actions.appendChild(panel);
       if (book && book.parentElement !== actions) actions.appendChild(book);
-      if (secondaryActions?.parentElement === actions) actions.appendChild(secondaryActions);
+      if (
+        secondaryActions?.parentElement === actions &&
+        actions.lastElementChild !== secondaryActions
+      ) {
+        actions.appendChild(secondaryActions);
+      }
     };
     move();
     const observer = new MutationObserver(move);
