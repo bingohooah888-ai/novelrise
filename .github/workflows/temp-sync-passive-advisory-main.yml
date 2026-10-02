@@ -1,0 +1,67 @@
+name: Temporary sync passive advisory branch with main
+
+on:
+  push:
+    branches:
+      - codex/passive-content-advisories
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.event.head_commit.message == 'Add temporary main sync workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/passive-content-advisories
+          fetch-depth: 0
+      - name: Merge latest main and resolve known overlap
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          set +e
+          git merge --no-ff --no-commit origin/main
+          merge_rc=$?
+          set -e
+          if [ "$merge_rc" -ne 0 ]; then
+            git checkout --theirs -- novelight-novel-detail.js tests/e2e/production/reader-smoke.spec.js
+          fi
+          python3 <<'PY'
+          from pathlib import Path
+
+          detail = Path('novelight-novel-detail.js')
+          text = detail.read_text(encoding='utf-8')
+          if "const advisory = header?.querySelector('#contentAdvisory');" not in text:
+              old = "    const meta = header?.querySelector('.meta');\n"
+              new = old + "    const advisory = header?.querySelector('#contentAdvisory');\n"
+              if old not in text:
+                  raise SystemExit('novel detail advisory anchor not found')
+              text = text.replace(old, new, 1)
+          if "if (advisory) main.appendChild(advisory);" not in text:
+              old = "    main.append(title, author, meta);"
+              new = "    main.append(title);\n    if (advisory) main.appendChild(advisory);\n    main.append(author, meta);"
+              if old not in text:
+                  raise SystemExit('novel detail append anchor not found')
+              text = text.replace(old, new, 1)
+          detail.write_text(text, encoding='utf-8')
+
+          smoke = Path('tests/e2e/production/reader-smoke.spec.js')
+          text = smoke.read_text(encoding='utf-8')
+          text = text.replace('unlockNovelWarningIfNeeded', 'unlockNovelAgeGateIfNeeded')
+          smoke.write_text(text, encoding='utf-8')
+          PY
+          git add novelight-novel-detail.js tests/e2e/production/reader-smoke.spec.js
+          unresolved="$(git diff --name-only --diff-filter=U)"
+          if [ -n "$unresolved" ]; then
+            echo "Unresolved merge conflicts:" >&2
+            echo "$unresolved" >&2
+            exit 1
+          fi
+          git status --short
+          git commit -m 'Merge latest main into passive advisory branch'
+          git push origin HEAD:codex/passive-content-advisories
