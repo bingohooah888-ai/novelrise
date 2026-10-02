@@ -6,6 +6,7 @@
 .episode-heart-button:focus-visible{outline:2px solid #6d4aff;outline-offset:2px}
 .episode-heart-button:disabled{opacity:.62;cursor:not-allowed}
 .episode-heart-status{max-width:240px;color:#756a6a;font-size:11px;line-height:1.45}
+.novelight-page-episode #episodePv{display:none!important}
 .novelight-page-episode .card{position:relative}
 .novelight-page-episode .meta>a.action[href^="episode-edit.html?id="]{position:absolute;top:28px;right:42px;z-index:2;box-shadow:0 7px 18px rgba(55,43,102,.16)}
 .novelight-page-episode .card:has(.meta>a.action[href^="episode-edit.html?id="]) .novel-title{padding-right:112px}
