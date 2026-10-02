@@ -121,6 +121,20 @@ html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-he
    are intentionally excluded by using exact light-page selectors.
    -------------------------------------------------------------------------- */
 
+/* Author work-management pages still expose an older brown token downstream.
+   Lock only their primary-action token here; the imported rule is intentionally
+   important so the later legacy declaration cannot reintroduce the brown button. */
+html body:is(
+  .novelight-page-series,
+  .novelight-page-bulk-import,
+  .novelight-page-episode-drafts,
+  .novelight-page-episode-schedule,
+  .novelight-page-share-link,
+  .novelight-page-characters
+) {
+  --nl-work-primary: #0e1d35 !important;
+}
+
 html body:is(
   .novelight-page-episode-edit,
   .novelight-page-episode-post,
@@ -151,7 +165,9 @@ html body:is(
 html body.novelight-page-typo-reports .button.apply,
 html body.novelight-page-light-seed-history a.link,
 html body.novelight-page-interaction-settings .button:not(.secondary),
-body:not(.novelight-theme) :is(#loginButton, #signupButton, #preregistrationLink, #form > #button) {
+body:not(.novelight-theme) :is(#loginButton, #signupButton, #preregistrationLink),
+body:not(.novelight-theme):has(#form #email) #form > #button,
+body:not(.novelight-theme):has(#form #confirm) #form > #button {
   border-color: #0e1d35 !important;
   background: #0e1d35 !important;
   color: #fff !important;
@@ -188,7 +204,9 @@ html body:is(
 html body.novelight-page-typo-reports .button.apply:hover:not(:disabled),
 html body.novelight-page-light-seed-history a.link:hover,
 html body.novelight-page-interaction-settings .button:not(.secondary):hover:not(:disabled),
-body:not(.novelight-theme) :is(#loginButton, #signupButton, #preregistrationLink, #form > #button):hover:not(:disabled) {
+body:not(.novelight-theme) :is(#loginButton, #signupButton, #preregistrationLink):hover:not(:disabled),
+body:not(.novelight-theme):has(#form #email) #form > #button:hover:not(:disabled),
+body:not(.novelight-theme):has(#form #confirm) #form > #button:hover:not(:disabled) {
   border-color: #172a48 !important;
   background: #172a48 !important;
   color: #fff !important;
