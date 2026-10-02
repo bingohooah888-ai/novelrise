@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
-    <loc>https://novelight.jp/api/sitemap</loc>
+    <loc>https://novelight.jp/api/sitemap?type=core</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://novelight.jp/api/sitemap?type=novels</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://novelight.jp/api/sitemap?type=episodes</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://novelight.jp/api/sitemap?type=authors</loc>
   </sitemap>
 </sitemapindex>
