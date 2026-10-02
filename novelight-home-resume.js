@@ -5,6 +5,7 @@
   const REMOTE_TABLE = 'reader_reading_progress';
   const CANDIDATE_LIMIT = 10;
   const STYLE_ID = 'novelight-home-resume-style';
+  const READER_CTA_STYLE_ID = 'novelight-home-reader-cta-style';
 
   function clamp(value, min = 0, max = 1) {
     return Math.max(min, Math.min(max, Number(value) || 0));
@@ -13,6 +14,38 @@
   function timestamp(value) {
     const parsed = new Date(value || 0).getTime();
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function installReaderFirstView() {
+    const actions = document.querySelector('main > .hero .hero-actions');
+    if (!actions || actions.dataset.readerCtaReady === 'true') return false;
+    const links = actions.querySelectorAll('a');
+    if (links.length < 2) return false;
+
+    links[0].href = 'search.html';
+    links[0].textContent = '小説を読む';
+    links[1].href = 'signup.html';
+    links[1].textContent = '無料で始める';
+
+    let note = document.querySelector('main > .hero .hero-reader-free');
+    if (!note) {
+      note = document.createElement('p');
+      note.className = 'hero-reader-free';
+      note.textContent = '読者は完全無料';
+      actions.insertAdjacentElement('afterend', note);
+    }
+
+    if (!document.getElementById(READER_CTA_STYLE_ID)) {
+      const style = document.createElement('style');
+      style.id = READER_CTA_STYLE_ID;
+      style.textContent =
+        '.hero-reader-free{margin-top:10px;color:#d8e0ea;font-size:12px;font-weight:800;letter-spacing:.03em}' +
+        '@media(max-width:680px){.hero-reader-free{text-align:center}}';
+      document.head.appendChild(style);
+    }
+
+    actions.dataset.readerCtaReady = 'true';
+    return true;
   }
 
   function progressKey(novelId) {
@@ -264,6 +297,7 @@
   });
 
   if ((window.location.pathname.split('/').pop() || 'index.html') === 'index.html') {
+    installReaderFirstView();
     if (typeof client !== 'undefined' && client) {
       void installHomeResume(client);
     }

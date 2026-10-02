@@ -2,6 +2,7 @@
   'use strict';
 
   const CANONICAL_ORIGIN = 'https://novelight.jp';
+  const SHARE_CAMPAIGN = 'novelight_work_share';
   const TARGET_PAGES = new Set(['my-novels', 'novel', 'episode']);
 
   function currentPageSlug() {
@@ -17,6 +18,15 @@
     const url = new URL(page, `${CANONICAL_ORIGIN}/`);
     url.searchParams.set('id', String(id));
     return url.toString();
+  }
+
+  function attributedShareUrl(url, novelId, source, medium) {
+    const tracked = new URL(url);
+    tracked.searchParams.set('utm_source', source);
+    tracked.searchParams.set('utm_medium', medium);
+    tracked.searchParams.set('utm_campaign', SHARE_CAMPAIGN);
+    tracked.searchParams.set('utm_content', `novel:${String(novelId)}`);
+    return tracked.toString();
   }
 
   function installStyles() {
@@ -72,6 +82,7 @@
 
   function shareBar({
     url,
+    novelId,
     text,
     label,
     includeOpen = false,
@@ -102,15 +113,23 @@
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
 
+    const copyShareUrl = attributedShareUrl(
+      url,
+      novelId,
+      'novelight',
+      'share'
+    );
+    const xShareUrl = attributedShareUrl(url, novelId, 'x', 'social');
+
     const copy = document.createElement('button');
     copy.type = 'button';
     copy.className = 'novelight-public-share-action copy';
     copy.textContent = 'URLをコピー';
     copy.addEventListener('click', async () => {
       try {
-        await copyUrl(url);
+        await copyUrl(copyShareUrl);
         temporaryLabel(copy, 'コピーしました');
-        status.textContent = '公開URLをコピーしました。';
+        status.textContent = '共有用URLをコピーしました。';
       } catch (error) {
         console.error('public share URL copy failed', error);
         temporaryLabel(copy, 'コピーできませんでした', 1800);
@@ -127,7 +146,7 @@
     shareX.addEventListener('click', () => {
       const intent = new URL('https://twitter.com/intent/tweet');
       intent.searchParams.set('text', text);
-      intent.searchParams.set('url', url);
+      intent.searchParams.set('url', xShareUrl);
       const popup = window.open(
         intent.toString(),
         '_blank',
@@ -173,6 +192,7 @@
         actions.before(
           shareBar({
             url: canonicalUrl('novel.html', novelId),
+            novelId,
             text: `『${title}』をNOVELIGHTで読む`,
             label: '作品を共有',
             includeOpen: true,
@@ -204,6 +224,7 @@
       header.appendChild(
         shareBar({
           url: canonicalUrl('novel.html', novelId),
+          novelId,
           text: `『${title}』をNOVELIGHTで読む`,
           label: 'この作品を共有',
           position: 'novel'
@@ -237,7 +258,8 @@
       const titleNode = card.querySelector('h1');
       const content = card.querySelector('.content');
       const novelLink = card.querySelector('.novel-title a');
-      if (!titleNode || !content || !novelLink) return;
+      const novelId = idFromLink(novelLink);
+      if (!titleNode || !content || !novelLink || !novelId) return;
 
       const episodeTitle = titleNode.textContent.trim() || 'エピソード';
       const novelTitle = novelLink.textContent.trim() || '作品';
@@ -247,6 +269,7 @@
       titleNode.after(
         shareBar({
           url,
+          novelId,
           text,
           label: 'このエピソードを共有',
           position: 'episode-top'
@@ -255,6 +278,7 @@
       content.after(
         shareBar({
           url,
+          novelId,
           text,
           label: '読了したエピソードを共有',
           position: 'episode-bottom'

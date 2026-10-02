@@ -84,6 +84,30 @@
     </div>
   </section>
 
+  <section id="shareAttributionLite" class="share-attribution-lite" aria-labelledby="shareAttributionHeading">
+    <div class="share-attribution-head">
+      <div>
+        <div class="share-attribution-kicker">SHARE ATTRIBUTION</div>
+        <h2 id="shareAttributionHeading">作品共有の成果</h2>
+        <p>あなたの作品共有からNOVELIGHTへ来た読者の動きを確認できます。</p>
+      </div>
+      <span id="shareAttributionPeriod" class="share-attribution-period">直近30日</span>
+    </div>
+    <div class="share-attribution-grid">
+      <article class="share-attribution-card">
+        <div class="share-attribution-label">共有経由の訪問</div>
+        <div id="shareAttributionVisits" class="share-attribution-value">—</div>
+        <div class="share-attribution-sub">作品の共有URLからNOVELIGHTへ来た有効訪問</div>
+      </article>
+      <article class="share-attribution-card">
+        <div class="share-attribution-label">共有経由の登録</div>
+        <div id="shareAttributionRegistrations" class="share-attribution-value">—</div>
+        <div class="share-attribution-sub">共有を初回流入として登録まで進んだ人数</div>
+      </article>
+    </div>
+    <div id="shareAttributionStatus" class="share-attribution-status" aria-live="polite">共有経由の流入を集計しています...</div>
+  </section>
+
   <section id="summary" class="summary" aria-label="読書ファネル概要">
     <article class="metric">
       <div id="impressions" class="value">—</div>
@@ -187,5 +211,6 @@
 <script src="novelight-analytics.js"></script>
 <script src="novelight-analytics-opportunity.js"></script>
 <script src="novelight-analytics-insights.js"></script>
+<script src="novelight-share-attribution-lite.js"></script>
 </body>
 </html>

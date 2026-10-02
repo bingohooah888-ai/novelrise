@@ -2,6 +2,12 @@ import { createHmac } from 'node:crypto';
 import { URL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 
+const INTERNAL_REFERRER_HOSTS = new Set([
+  'novelight.jp',
+  'www.novelight.jp',
+  'novelrise.vercel.app'
+]);
+
 function firstHeader(value) {
   return String(value ?? '')
     .split(',')[0]
@@ -82,6 +88,29 @@ function optionalString(value) {
   return value === null || value === undefined ? null : String(value);
 }
 
+function normalizedHost(value) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\.$/, '');
+}
+
+export function isInternalReferral(body) {
+  if (!body || typeof body !== 'object') return false;
+  const host = normalizedHost(body.referrer_host);
+  const source = String(body.source ?? '')
+    .trim()
+    .toLowerCase();
+  const hasExplicitAttribution = Boolean(
+    String(body.campaign ?? '').trim() || String(body.content ?? '').trim()
+  );
+  return (
+    INTERNAL_REFERRER_HOSTS.has(host) &&
+    source === 'referral' &&
+    !hasExplicitAttribution
+  );
+}
+
 function isRateLimit(error) {
   return (
     error?.code === 'P0001' &&
@@ -124,6 +153,12 @@ export function createAnalyticsEventHandler({
 
       const fingerprint = fingerprintRequest(req);
       if (body.action === 'acquisition') {
+        if (isInternalReferral(body)) {
+          return res.status(200).json({
+            accepted: false,
+            ignored: 'internal_referrer'
+          });
+        }
         const { data, error } = await serviceClient.rpc(
           'record_acquisition_touch',
           {
