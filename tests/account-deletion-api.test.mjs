@@ -35,29 +35,55 @@ function request(overrides = {}) {
   };
 }
 
-function createQueryResult(result, calls, table, operation) {
-  return {
+function createQueryResult(result, calls, table) {
+  const state = { operation: 'query' };
+  const builder = {
     select(columns) {
+      state.operation = 'select';
       calls.push({ type: 'select', table, columns });
-      return createQueryResult(result, calls, table, 'select');
+      return builder;
     },
     delete() {
+      state.operation = 'delete';
       calls.push({ type: 'delete', table });
-      return createQueryResult(result, calls, table, 'delete');
+      return builder;
     },
-    async eq(column, value) {
-      calls.push({ type: operation || 'query', table, filter: 'eq', column, value });
-      return result;
+    eq(column, value) {
+      calls.push({
+        type: 'filter',
+        operation: state.operation,
+        table,
+        filter: 'eq',
+        column,
+        value
+      });
+      return builder;
     },
-    async in(column, values) {
-      calls.push({ type: operation || 'query', table, filter: 'in', column, values });
-      return result;
+    in(column, values) {
+      calls.push({
+        type: 'filter',
+        operation: state.operation,
+        table,
+        filter: 'in',
+        column,
+        values
+      });
+      return builder;
     },
     async maybeSingle() {
-      calls.push({ type: operation || 'query', table, filter: 'maybeSingle' });
+      calls.push({
+        type: 'terminal',
+        operation: state.operation,
+        table,
+        filter: 'maybeSingle'
+      });
       return result;
+    },
+    then(resolve, reject) {
+      return Promise.resolve(result).then(resolve, reject);
     }
   };
+  return builder;
 }
 
 function dependencies({
