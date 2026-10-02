@@ -27,7 +27,7 @@ test('novel detail never uses select star and fetches only missing display field
 
 test('R15 and R18 warning gate remains before the post-gate detail query', () => {
   const gate = source.indexOf(
-    'if(needsWarningGate()&&!warningAccepted()){showWarningGate();return}'
+    'if(!isOwner()&&needsWarningGate()&&!warningAccepted()){showWarningGate();return}'
   );
   const unlockCall = source.indexOf(
     'try{await loadFullNovelAndRender()}',
@@ -39,7 +39,7 @@ test('R15 and R18 warning gate remains before the post-gate detail query', () =>
   assert.match(source, /sensitive_15/);
   assert.match(
     source,
-    /rememberWarningAccepted\(\);await loadFullNovelAndRender\(\)/
+    /rememberWarningAccepted\([\s\S]*?\);await loadFullNovelAndRender\(\)/
   );
 });
 

@@ -30,7 +30,7 @@ test('sensitive episode body is only fetched after gate decision', () => {
   );
   assert.match(
     source,
-    /continue'\)\.onclick=async\(\)=>[\s\S]*rememberWarningAccepted\(\);await loadEpisodeContentAndRender\(\)/
+    /continue'\)\.onclick=async\(\)=>[\s\S]*rememberWarningAccepted\([\s\S]*?\);await loadEpisodeContentAndRender\(\)/
   );
 });
 

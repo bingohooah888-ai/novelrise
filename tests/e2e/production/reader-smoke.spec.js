@@ -163,7 +163,7 @@ async function novelReaderReady(page) {
   return Boolean(headerText && !headerText.includes('読み込み中...'));
 }
 
-async function unlockNovelWarningIfNeeded(page) {
+async function unlockNovelAgeGateIfNeeded(page) {
   const warningGate = page.locator('#warningGate');
 
   await expect
@@ -247,7 +247,7 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
     timeout: 20_000
   });
   try {
-    await unlockNovelWarningIfNeeded(page);
+    await unlockNovelAgeGateIfNeeded(page);
   } catch (error) {
     await dumpDiagnostics('novel-reader-ready');
     throw error;
