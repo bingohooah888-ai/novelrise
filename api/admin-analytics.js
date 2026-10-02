@@ -74,7 +74,10 @@ export default async function handler(req, res) {
 
     const analytics = {
       ...(data || {}),
-      acquisition: mergeAcquisitionRetention(data?.acquisition, sourceRetention),
+      acquisition: mergeAcquisitionRetention(
+        data?.acquisition,
+        sourceRetention
+      ),
       scoutShareAttribution: scoutShareAttribution || null
     };
 
