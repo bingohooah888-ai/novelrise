@@ -1,0 +1,103 @@
+/* Sitewide information/help control readability.
+   Preserve each control's surface while forcing its visible information glyph to black. */
+
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="help" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-help],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="説明"],
+    [aria-label*="ヘルプ"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [aria-label*="help" i],
+    [title*="情報"],
+    [title*="説明"],
+    [title*="ヘルプ"],
+    [title*="information" i],
+    [title*="info" i],
+    [title*="help" i]
+  ),
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"]) {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  text-shadow: none !important;
+}
+
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="help" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-help],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="説明"],
+    [aria-label*="ヘルプ"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [aria-label*="help" i],
+    [title*="情報"],
+    [title*="説明"],
+    [title*="ヘルプ"],
+    [title*="information" i],
+    [title*="info" i],
+    [title*="help" i]
+  )::before,
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="help" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-help],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="説明"],
+    [aria-label*="ヘルプ"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [aria-label*="help" i],
+    [title*="情報"],
+    [title*="説明"],
+    [title*="ヘルプ"],
+    [title*="information" i],
+    [title*="info" i],
+    [title*="help" i]
+  )::after,
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"])::before,
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"])::after {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  text-shadow: none !important;
+}
+
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="help" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-help],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="説明"],
+    [aria-label*="ヘルプ"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [aria-label*="help" i],
+    [title*="情報"],
+    [title*="説明"],
+    [title*="ヘルプ"],
+    [title*="information" i],
+    [title*="info" i],
+    [title*="help" i]
+  ) :is(span, i, b, strong, svg),
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"]) :is(span, i, b, strong, svg) {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  fill: #000 !important;
+  stroke: #000 !important;
+  text-shadow: none !important;
+}
