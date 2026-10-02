@@ -107,9 +107,9 @@ function installReaderDiagnostics(page) {
     const browserState = await page
       .evaluate(() => {
         const snapshot = (selector) => {
-          const element = document.querySelector(selector);
+          const element = globalThis.document.querySelector(selector);
           if (!element) return null;
-          const style = window.getComputedStyle(element);
+          const style = globalThis.getComputedStyle(element);
           return {
             html: element.outerHTML.slice(0, 5000),
             display: style.display,
@@ -118,16 +118,16 @@ function installReaderDiagnostics(page) {
         };
 
         return {
-          url: window.location.href,
-          readyState: document.readyState,
-          bodyClass: document.body?.className || '',
+          url: globalThis.location.href,
+          readyState: globalThis.document.readyState,
+          bodyClass: globalThis.document.body?.className || '',
           novelHeader: snapshot('#novelHeader'),
           favoriteButton: snapshot('#favoriteButton'),
           episodesPanel: snapshot('#episodesPanel'),
           episodeList: snapshot('#episodeList'),
           v2Grid: snapshot('.nl-work-detail-grid'),
-          hasNovelDetailV2: Boolean(window.NovelightNovelDetailV2),
-          scripts: Array.from(document.scripts).map(
+          hasNovelDetailV2: Boolean(globalThis.NovelightNovelDetailV2),
+          scripts: Array.from(globalThis.document.scripts).map(
             (script) => script.src || '[inline]'
           )
         };
