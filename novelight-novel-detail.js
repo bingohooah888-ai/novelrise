@@ -199,7 +199,7 @@
     }
     const candidates = [];
     raw.forEach((url) => {
-      const optimized = optimizedImageUrl(url, 960, 84);
+      const optimized = optimizedImageUrl(url, 384, 75);
       if (optimized && !candidates.includes(optimized)) candidates.push(optimized);
       if (url && !candidates.includes(url)) candidates.push(url);
     });
