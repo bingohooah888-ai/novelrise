@@ -81,16 +81,22 @@ async function findPublishedEpisode(page, novelHrefs) {
   return rows[0] ?? null;
 }
 
+async function novelReaderReady(page) {
+  const v2Surface = page.locator('.nl-work-detail-grid');
+  if (await v2Surface.isVisible().catch(() => false)) return true;
+  const novelHeader = page.locator('#novelHeader');
+  const headerText = await novelHeader.textContent().catch(() => '');
+  return Boolean(headerText && !headerText.includes('読み込み中...'));
+}
+
 async function unlockNovelWarningIfNeeded(page) {
   const warningGate = page.locator('#warningGate');
-  const novelHeader = page.locator('#novelHeader');
 
   await expect
     .poll(
       async () => {
-        if (await warningGate.isVisible()) return true;
-        const headerText = await novelHeader.textContent().catch(() => '');
-        return Boolean(headerText && !headerText.includes('読み込み中...'));
+        if (await warningGate.isVisible().catch(() => false)) return true;
+        return novelReaderReady(page);
       },
       { timeout: 20_000 }
     )
@@ -98,6 +104,9 @@ async function unlockNovelWarningIfNeeded(page) {
 
   if (await warningGate.isVisible()) {
     await page.locator('#continueButton').click();
+    await expect
+      .poll(() => novelReaderReady(page), { timeout: 20_000 })
+      .toBe(true);
   }
 }
 
@@ -148,11 +157,6 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
 
   await page.goto(novelHref, { waitUntil: 'domcontentloaded' });
   await unlockNovelWarningIfNeeded(page);
-
-  const novelHeader = page.locator('#novelHeader');
-  await expect(novelHeader).not.toContainText('読み込み中...', {
-    timeout: 20_000
-  });
 
   const readerSurface = page
     .locator('.nl-work-detail-grid, #episodesPanel')
