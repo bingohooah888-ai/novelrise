@@ -1,25 +1,17 @@
-/* Sitewide information/help control readability.
-   Preserve each control's surface while forcing its visible information glyph to black. */
+/* Sitewide information-icon readability.
+   Preserve each control surface; only force information glyphs/text to black. */
 
 :is(button, a, [role="button"]):is(
     [class*="info" i],
-    [class*="help" i],
     [class*="tooltip" i],
     [data-info],
-    [data-help],
     [data-tooltip],
     [aria-label*="情報"],
-    [aria-label*="説明"],
-    [aria-label*="ヘルプ"],
     [aria-label*="information" i],
     [aria-label*="info" i],
-    [aria-label*="help" i],
     [title*="情報"],
-    [title*="説明"],
-    [title*="ヘルプ"],
     [title*="information" i],
-    [title*="info" i],
-    [title*="help" i]
+    [title*="info" i]
   ),
 .novelight-page-scout-record .scout-stat :is(button, a, [role="button"]) {
   color: #000 !important;
@@ -29,43 +21,27 @@
 
 :is(button, a, [role="button"]):is(
     [class*="info" i],
-    [class*="help" i],
     [class*="tooltip" i],
     [data-info],
-    [data-help],
     [data-tooltip],
     [aria-label*="情報"],
-    [aria-label*="説明"],
-    [aria-label*="ヘルプ"],
     [aria-label*="information" i],
     [aria-label*="info" i],
-    [aria-label*="help" i],
     [title*="情報"],
-    [title*="説明"],
-    [title*="ヘルプ"],
     [title*="information" i],
-    [title*="info" i],
-    [title*="help" i]
+    [title*="info" i]
   )::before,
 :is(button, a, [role="button"]):is(
     [class*="info" i],
-    [class*="help" i],
     [class*="tooltip" i],
     [data-info],
-    [data-help],
     [data-tooltip],
     [aria-label*="情報"],
-    [aria-label*="説明"],
-    [aria-label*="ヘルプ"],
     [aria-label*="information" i],
     [aria-label*="info" i],
-    [aria-label*="help" i],
     [title*="情報"],
-    [title*="説明"],
-    [title*="ヘルプ"],
     [title*="information" i],
-    [title*="info" i],
-    [title*="help" i]
+    [title*="info" i]
   )::after,
 .novelight-page-scout-record .scout-stat :is(button, a, [role="button"])::before,
 .novelight-page-scout-record .scout-stat :is(button, a, [role="button"])::after {
@@ -76,23 +52,15 @@
 
 :is(button, a, [role="button"]):is(
     [class*="info" i],
-    [class*="help" i],
     [class*="tooltip" i],
     [data-info],
-    [data-help],
     [data-tooltip],
     [aria-label*="情報"],
-    [aria-label*="説明"],
-    [aria-label*="ヘルプ"],
     [aria-label*="information" i],
     [aria-label*="info" i],
-    [aria-label*="help" i],
     [title*="情報"],
-    [title*="説明"],
-    [title*="ヘルプ"],
     [title*="information" i],
-    [title*="info" i],
-    [title*="help" i]
+    [title*="info" i]
   ) :is(span, i, b, strong, svg),
 .novelight-page-scout-record .scout-stat :is(button, a, [role="button"]) :is(span, i, b, strong, svg) {
   color: #000 !important;
