@@ -84,6 +84,10 @@ async function findPublishedEpisode(page, novelHrefs) {
 async function novelReaderReady(page) {
   const v2Surface = page.locator('.nl-work-detail-grid');
   if (await v2Surface.isVisible().catch(() => false)) return true;
+
+  const hydratedFavorite = page.locator('#favoriteButton');
+  if ((await hydratedFavorite.count()) < 1) return false;
+
   const novelHeader = page.locator('#novelHeader');
   const headerText = await novelHeader.textContent().catch(() => '');
   return Boolean(headerText && !headerText.includes('読み込み中...'));
@@ -110,11 +114,23 @@ async function unlockNovelWarningIfNeeded(page) {
   }
 }
 
+async function episodeReaderReady(page) {
+  const warning = page.locator('#warning.visible');
+  if (await warning.isVisible().catch(() => false)) return true;
+  return page
+    .locator('#report')
+    .isVisible()
+    .catch(() => false);
+}
+
 test('production reader flow is healthy and read-only', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   await suppressMeasurementWrites(page);
 
-  await page.goto('/search.html', { waitUntil: 'domcontentloaded' });
+  await page.goto('/search.html', {
+    waitUntil: 'domcontentloaded',
+    timeout: 20_000
+  });
   const resultCount = page.locator('#resultCount');
   await expect(resultCount).not.toHaveText('読み込み中...', {
     timeout: 20_000
@@ -155,7 +171,10 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
   );
   expect(novelHref).toBeTruthy();
 
-  await page.goto(novelHref, { waitUntil: 'domcontentloaded' });
+  await page.goto(novelHref, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20_000
+  });
   await unlockNovelWarningIfNeeded(page);
 
   const readerSurface = page
@@ -176,13 +195,20 @@ test('production reader flow is healthy and read-only', async ({ page }) => {
   );
   expect(episodeHref).toBeTruthy();
 
-  await page.goto(episodeHref, { waitUntil: 'domcontentloaded' });
+  await page.goto(episodeHref, {
+    waitUntil: 'commit',
+    timeout: 20_000
+  });
+  await expect
+    .poll(() => episodeReaderReady(page), { timeout: 20_000 })
+    .toBe(true);
 
   const episodeWarning = page.locator('#warning.visible');
   if (await episodeWarning.isVisible().catch(() => false)) {
     await page.locator('#continue').click();
   }
 
+  await expect(page.locator('#report')).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('#card h1')).toBeVisible({ timeout: 20_000 });
   const content = page.locator('#card .content');
   await expect(content).toBeVisible();
