@@ -42,7 +42,10 @@ function createSupabase(fixtures) {
         order(column, { ascending } = {}) {
           rows.sort((left, right) => {
             const direction = ascending === false ? -1 : 1;
-            return String(left[column]).localeCompare(String(right[column])) * direction;
+            return (
+              String(left[column]).localeCompare(String(right[column])) *
+              direction
+            );
           });
           return this;
         },
@@ -120,7 +123,10 @@ test('unknown sitemap type is rejected and HEAD omits the body', async () => {
 });
 
 test('sitemap index points at all segmented dynamic sitemaps', async () => {
-  const xml = await readFile(new URL('../sitemap.xml', import.meta.url), 'utf8');
+  const xml = await readFile(
+    new URL('../sitemap.xml', import.meta.url),
+    'utf8'
+  );
   for (const type of ['core', 'novels', 'episodes', 'authors']) {
     assert.match(xml, new RegExp(`/api/sitemap\\?type=${type}`));
   }
