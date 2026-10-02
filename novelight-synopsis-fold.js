@@ -126,8 +126,43 @@
     requestAnimationFrame(() => refreshHost(host));
   }
 
+  function isPublicPvPage() {
+    return /(^|\/)(novel|search|ranking|author|favorites|reading-history|follow|recommended|new-arrivals|light-seed)\.html$/u.test(window.location.pathname);
+  }
+
+  function stripPublicPv(root) {
+    if (!isPublicPvPage()) return;
+    const metas = [];
+    if (root instanceof Element && root.matches('.meta,.bookshelf-card-meta')) metas.push(root);
+    root.querySelectorAll?.('.meta,.bookshelf-card-meta').forEach((element) => metas.push(element));
+
+    metas.forEach((meta) => {
+      Array.from(meta.children).forEach((child) => {
+        if (/^\s*👁?\s*[\d,]+\s*PV\s*$/u.test(child.textContent || '')) child.remove();
+      });
+      Array.from(meta.childNodes).forEach((child) => {
+        if (child.nodeType !== Node.TEXT_NODE) return;
+        child.textContent = (child.textContent || '').replace(/^\s*👁?\s*[\d,]+\s*PV\s*(?:・\s*)?/u, '');
+      });
+      if (/^\s*👁?\s*[\d,]+\s*PV\s*$/u.test(meta.textContent || '')) meta.remove();
+    });
+
+    if (/(^|\/)ranking\.html$/u.test(window.location.pathname)) {
+      document.querySelectorAll('p,div,span').forEach((element) => {
+        if (element.children.length) return;
+        if (element.textContent?.includes('契約プランの露出重みや参考PVは加算しません。')) {
+          element.textContent = element.textContent.replace(
+            '契約プランの露出重みや参考PVは加算しません。',
+            '契約プランの露出重みは加算しません。'
+          );
+        }
+      });
+    }
+  }
+
   function scan(root) {
     if (!(root instanceof Element) && root !== document) return;
+    stripPublicPv(root);
     if (root instanceof Element && root.matches(SELECTOR)) mount(root);
     root.querySelectorAll?.(SELECTOR).forEach(mount);
   }
@@ -154,12 +189,13 @@
 
     if (author.dataset.novelightDetailPolished !== 'true') {
       author.dataset.novelightDetailPolished = 'true';
+      const authorLink = author.querySelector('a[href*="author.html"]');
       const primary = document.createElement('span');
       primary.className = 'nl-work-author-primary';
-      while (author.firstChild) primary.appendChild(author.firstChild);
-      author.appendChild(primary);
+      primary.appendChild(document.createTextNode('作者：'));
+      if (authorLink) primary.appendChild(authorLink);
+      author.replaceChildren(primary);
 
-      const authorLink = primary.querySelector('a[href*="author.html"]');
       if (authorLink) {
         try {
           const noteUrl = new URL(authorLink.href, window.location.href);
