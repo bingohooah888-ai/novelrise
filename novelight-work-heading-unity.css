@@ -133,10 +133,7 @@ html body:is(
   .novelight-page-work-cover,
   .novelight-page-series,
   .novelight-page-share-link,
-  .novelight-page-typo-reports,
-  .novelight-page-light-seed-history,
-  .novelight-page-curation-lists,
-  .novelight-page-interaction-settings
+  .novelight-page-curation-lists
 ) :is(
   .primary-action,
   .drawer-action.primary,
@@ -147,13 +144,13 @@ html body:is(
   a.choice.primary,
   button.submit,
   .limited-share-primary,
-  .button.apply,
-  a.link,
   .novelight-curation-create button,
   .novelight-curation-actions .primary,
-  .novelight-curation-add-confirm,
-  .button:not(.secondary)
+  .novelight-curation-add-confirm
 ),
+html body.novelight-page-typo-reports .button.apply,
+html body.novelight-page-light-seed-history a.link,
+html body.novelight-page-interaction-settings .button:not(.secondary),
 body:not(.novelight-theme) :is(#loginButton, #signupButton, #preregistrationLink, #form > #button) {
   border-color: #0e1d35 !important;
   background: #0e1d35 !important;
@@ -173,10 +170,7 @@ html body:is(
   .novelight-page-work-cover,
   .novelight-page-series,
   .novelight-page-share-link,
-  .novelight-page-typo-reports,
-  .novelight-page-light-seed-history,
-  .novelight-page-curation-lists,
-  .novelight-page-interaction-settings
+  .novelight-page-curation-lists
 ) :is(
   .primary-action,
   .drawer-action.primary,
@@ -187,13 +181,13 @@ html body:is(
   a.choice.primary,
   button.submit,
   .limited-share-primary,
-  .button.apply,
-  a.link,
   .novelight-curation-create button,
   .novelight-curation-actions .primary,
-  .novelight-curation-add-confirm,
-  .button:not(.secondary)
+  .novelight-curation-add-confirm
 ):hover:not(:disabled),
+html body.novelight-page-typo-reports .button.apply:hover:not(:disabled),
+html body.novelight-page-light-seed-history a.link:hover,
+html body.novelight-page-interaction-settings .button:not(.secondary):hover:not(:disabled),
 body:not(.novelight-theme) :is(#loginButton, #signupButton, #preregistrationLink, #form > #button):hover:not(:disabled) {
   border-color: #172a48 !important;
   background: #172a48 !important;
