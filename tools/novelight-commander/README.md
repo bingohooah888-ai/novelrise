@@ -7,6 +7,7 @@ NOVELIGHT開発専用のローカルMCPオペレーション層です。Desktop 
 - 許可root内のファイル一覧・検索・読取・書込・情報取得・ハッシュ
 - コピー・移動・ディレクトリ作成。削除は既定OFF
 - PNG寸法と実アルファ透過検査
+- PNG/JPEG/WebPの画像専用Asset Pipeline。原本byte維持、SHA-256/size/dimensions検証、worktree、scope固定commit/push
 - background/base_book/pattern/symbol/frame別の素材ルール検証
 - サムネ素材フォルダ一括検査、完全重複SHA検出、合成プレビュー
 - 公式manifest/VALIDATION付きZIP自動生成
@@ -71,6 +72,22 @@ read_novel / read_novel_cached / get_novel_cache / list_novel_cache / read_audit
 ## バイナリ転送
 
 `begin_binary_write` → `append_binary_chunk` を複数回 → `finish_binary_write` の順で使います。数十MB級のZIPや画像を1回のMCP引数に載せず転送できます。
+
+## 画像専用Asset Pipeline
+
+今後の通常の画像挿入・画像登録では、汎用バイナリ転送やGitHub text APIではなく `npm run asset -- ...` を優先します。
+
+- `prepare`: 最新 `origin/main` から専用worktree/feature branchを作る。dirtyな元mainは変更しない
+- `verify`: SHA-256 / size / format / width / heightを確認
+- `add`: 1画像を再圧縮・再エンコードせずexact byteでコピー
+- `batch`: 複数画像を全件preflight後にまとめて配置
+- `finalize`: 宣言したファイルだけをstageし、scope一致とdiff check後にcommit/push
+
+Windowsでは `npm` / `npx` / `gh` / `supabase` / `vercel` を自動で `.cmd` shimへ解決し、`spawn npm ENOENT` を回避します。
+
+通常Asset Pipelineが利用できない場合は、NLOの状態確認と自動復旧を1回行い、それでも失敗する場合は停止します。ユーザーの明示承認なしにメール転送、Issue添付、GitHub Contents API、一時Workflowへ迂回しません。
+
+詳細は `docs/NLO-ASSET-PIPELINE.md` を参照してください。
 
 ## 位置付け
 
