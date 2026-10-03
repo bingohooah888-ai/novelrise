@@ -1,0 +1,33 @@
+name: Temporary Carousel Test Formatter
+
+on:
+  push:
+    branches:
+      - fix/home-carousel-loop-autoplay-20261003
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/home-carousel-loop-autoplay-20261003
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prettier --write tests/home-carousel-loop-autoplay.test.mjs
+      - run: rm .github/workflows/home-carousel-format-temp.yml
+      - name: Commit formatting
+        run: |
+          git config user.name "NOVELIGHT Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add tests/home-carousel-loop-autoplay.test.mjs .github/workflows/home-carousel-format-temp.yml
+          git commit -m "Format carousel behavior test"
+          git push origin HEAD:fix/home-carousel-loop-autoplay-20261003
