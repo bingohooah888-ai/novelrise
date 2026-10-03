@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { createSecurityConfig } from '../src/security.js';
+import { createSecurityConfig, resolveAllowedPath } from '../src/security.js';
 import { copyAssetBatch, copyAssetExact, finalizeAssetWorktree, prepareAssetWorktree, verifyAsset } from '../src/asset-pipeline.js';
 
 function parseArgs(argv) {
@@ -19,8 +19,9 @@ function parseArgs(argv) {
 function number(value) { return value == null ? undefined : Number(value); }
 function boolean(value) { return value === true || /^(1|true|yes|on)$/i.test(String(value || '')); }
 
-async function manifest(file) {
-  return JSON.parse(await fs.readFile(file, 'utf8'));
+async function manifest(file, security) {
+  const absolute = resolveAllowedPath(file, security);
+  return JSON.parse(await fs.readFile(absolute, 'utf8'));
 }
 
 const security = createSecurityConfig();
@@ -47,12 +48,12 @@ if (command === 'verify') {
     }
   }, security);
 } else if (command === 'batch') {
-  const data = await manifest(options.manifest);
+  const data = await manifest(options.manifest, security);
   result = await copyAssetBatch(data.items || data.files, security);
 } else if (command === 'prepare') {
   result = await prepareAssetWorktree(options.repo || '.', options.worktree, options.branch, security);
 } else if (command === 'finalize') {
-  const data = await manifest(options.manifest);
+  const data = await manifest(options.manifest, security);
   result = await finalizeAssetWorktree(
     options.worktree || data.worktree,
     data.commitFiles || data.files?.map(item => item.destination),
