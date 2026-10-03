@@ -33,7 +33,7 @@ export function startManagedProcess(command, args, cwd, config) {
 
 export function publicSession(session) {
   return {
-    id: session.id, command: session.command, args, cwd: session.cwd, pid: session.pid,
+    id: session.id, command: session.command, args: session.args, cwd: session.cwd, pid: session.pid,
     status: session.status, code: session.code, signal: session.signal, startedAt: session.startedAt, endedAt: session.endedAt
   };
 }
