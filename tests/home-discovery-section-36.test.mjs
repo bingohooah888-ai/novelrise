@@ -26,13 +26,25 @@ test('homepage exposes recommendations, real new arrivals, and a data-backed con
   assert.doesNotMatch(home, /id="premiumWrap"|id="premiumGrid"/);
 });
 
-test('homepage dark redesign keeps an approved-art replacement slot and avoids fake scale metrics', async () => {
+test('homepage promotional scroll uses approved artwork and avoids fake scale metrics', async () => {
   const home = await read('index.html');
   const css = await read('novelight-public-dark.css');
 
-  assert.match(home, /class="hero-art-slot"/u);
-  assert.match(home, /まだ見ぬ物語に、/u);
-  assert.match(home, /まだ見ぬ物語に、<br><span>光を<\/span>/u);
+  assert.match(home, /id="homeLeadVisual"/u);
+  assert.match(home, /teaser: 'assets\/home\/05_event_teaser_1600x900\.png'/u);
+  assert.match(home, /official: 'assets\/home\/05_campaign_official_after_announcement_1600x900\.png'/u);
+  assert.match(home, /const currentLeadVisual = 'teaser';/u);
+  assert.match(home, /srcset="assets\/home\/02_hero_mobile_900x1600\.png"/u);
+  assert.match(home, /src="assets\/home\/01_hero_pc_2560x1280\.png"/u);
+  assert.match(home, /src="assets\/home\/03_author_features_1600x900\.png"[^>]*loading="lazy"/u);
+  assert.match(home, /src="assets\/home\/04_reader_promo_1600x900\.png"[^>]*loading="lazy"/u);
+
+  const lead = home.indexOf('05_event_teaser_1600x900.png');
+  const hero = home.indexOf('01_hero_pc_2560x1280.png');
+  const author = home.indexOf('03_author_features_1600x900.png');
+  const reader = home.indexOf('04_reader_promo_1600x900.png');
+  assert.ok(lead >= 0 && hero > lead && author > hero && reader > author);
+
   assert.match(home, /class="recommend-ribbon">おすすめ<\/div>/u);
   assert.match(css, /--public-gold:/u);
   assert.match(css, /prefers-reduced-motion/u);

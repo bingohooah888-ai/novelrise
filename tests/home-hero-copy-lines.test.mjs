@@ -5,25 +5,20 @@ import test from 'node:test';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const homeHtml = readTextSync(path.join(repoRoot, 'index.html'), 'utf8');
-const heroCss = readTextSync(
-  path.join(repoRoot, 'novelight-home-hero.css'),
+const promoCss = readTextSync(
+  path.join(repoRoot, 'novelight-home-promo.css'),
   'utf8'
 );
 
-test('desktop Home hero supporting copy splits at the sentence boundary', () => {
-  assert.ok(
-    homeHtml.includes(
-      '<p><span class="hero-copy-line">ランキングだけでは出会えない物語がここにある。</span><span class="hero-copy-line">あなたの発見が、まだ知られていない作品を次の読者へつなぎます。</span></p>'
-    )
+test('Home hero switches approved desktop/mobile artwork without cropping', () => {
+  assert.match(
+    homeHtml,
+    /<source media="\(max-width: 767px\)" srcset="assets\/home\/02_hero_mobile_900x1600\.png" width="900" height="1600">/u
   );
-  assert.ok(
-    heroCss.includes(
-      'html body.novelight-page-index.novelight-public-dark .hero-copy-line {\n  display: block;'
-    )
+  assert.match(
+    homeHtml,
+    /<img class="home-promo-image" src="assets\/home\/01_hero_pc_2560x1280\.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。"/u
   );
-  assert.ok(
-    heroCss.includes(
-      'html body.novelight-page-index.novelight-public-dark .hero-copy-line {\n    display: inline;'
-    )
-  );
+  assert.match(promoCss, /\.home-promo-image \{[\s\S]*?display: block;[\s\S]*?width: 100%;[\s\S]*?height: auto;/u);
+  assert.doesNotMatch(promoCss, /object-fit:\s*cover/u);
 });
