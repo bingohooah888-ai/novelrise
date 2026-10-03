@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { readTextSync } from './test-text-utils.mjs';
+import path from 'node:path';
+import test from 'node:test';
+
+// Contract for infinite looping, manual controls, and timed autoplay.
+const repoRoot = path.resolve(import.meta.dirname, '..');
+const homeHtml = readTextSync(path.join(repoRoot, 'index.html'), 'utf8');
+const promoCss = readTextSync(
+  path.join(repoRoot, 'novelight-home-promo.css'),
+  'utf8'
+);
+
+test('Home promo loops manually and advances automatically', () => {
+  assert.match(homeHtml, /data-carousel-prev/u);
+  assert.match(homeHtml, /data-carousel-next/u);
+  assert.match(homeHtml, /data-carousel-dot/u);
+  assert.match(
+    homeHtml,
+    /const firstClone = originals\[0\]\.cloneNode\(true\);/u
+  );
+  assert.match(
+    homeHtml,
+    /const lastClone = originals\.at\(-1\)\.cloneNode\(true\);/u
+  );
+  assert.match(homeHtml, /track\.insertBefore\(lastClone, originals\[0\]\);/u);
+  assert.match(homeHtml, /track\.append\(firstClone\);/u);
+  assert.match(homeHtml, /physicalIndex === originals\.length \+ 1/u);
+  assert.match(
+    homeHtml,
+    /window\.setInterval\(\(\) => goTo\(physicalIndex \+ 1\), 6000\)/u
+  );
+  assert.match(homeHtml, /previousButton\.addEventListener\('click'/u);
+  assert.match(homeHtml, /nextButton\.addEventListener\('click'/u);
+  assert.match(
+    homeHtml,
+    /track\.addEventListener\('pointerdown', stopAutoplay/u
+  );
+  assert.match(
+    homeHtml,
+    /track\.addEventListener\('pointerup', startAutoplay/u
+  );
+  assert.match(homeHtml, /prefers-reduced-motion: reduce/u);
+  assert.match(promoCss, /\.home-promo-nav \{/u);
+  assert.match(promoCss, /\.home-promo-dots \{/u);
+  assert.match(promoCss, /\.home-promo-dot\[aria-current="true"\]/u);
+});

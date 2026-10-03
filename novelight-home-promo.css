@@ -1,6 +1,7 @@
 /* Home promotional horizontal carousel.
 Source PNGs are rendered as-is: no crop, no forced aspect ratio, no recompression. */
 body.novelight-page-index.novelight-public-dark .home-promo-carousel {
+  position: relative;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -44,6 +45,63 @@ body.novelight-page-index.novelight-public-dark .home-promo-image {
   height: auto;
 }
 
+body.novelight-page-index.novelight-public-dark .home-promo-nav {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(2, 7, 13, 0.58);
+  color: #fff;
+  font: inherit;
+  font-size: 34px;
+  line-height: 1;
+  place-items: center;
+  transform: translateY(-50%);
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-prev { left: 14px; }
+body.novelight-page-index.novelight-public-dark .home-promo-next { right: 14px; }
+
+body.novelight-page-index.novelight-public-dark .home-promo-nav:hover,
+body.novelight-page-index.novelight-public-dark .home-promo-nav:focus-visible {
+  background: rgba(2, 7, 13, 0.82);
+  border-color: rgba(214, 164, 71, 0.82);
+  outline: none;
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-dots {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  transform: translateX(-50%);
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  background: rgba(2, 7, 13, 0.54);
+  cursor: pointer;
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-dot[aria-current="true"] {
+  width: 24px;
+  border-color: #d6a447;
+  background: #d6a447;
+}
+
 body.novelight-page-index.novelight-public-dark .home-hero-actions {
   display: flex;
   justify-content: center;
@@ -60,11 +118,18 @@ body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-seconda
 }
 
 @media (max-width: 767px) {
+  body.novelight-page-index.novelight-public-dark .home-promo-nav {
+    width: 38px;
+    height: 38px;
+    font-size: 30px;
+  }
+  body.novelight-page-index.novelight-public-dark .home-promo-prev { left: 8px; }
+  body.novelight-page-index.novelight-public-dark .home-promo-next { right: 8px; }
+  body.novelight-page-index.novelight-public-dark .home-promo-dots { bottom: 8px; }
   body.novelight-page-index.novelight-public-dark .home-hero-actions {
     gap: 9px;
     padding: 11px 14px;
   }
-
   body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-primary,
   body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-secondary {
     min-width: 0;
