@@ -30,6 +30,10 @@ test('Home promo loops manually and advances automatically', () => {
     homeHtml,
     /window\.setInterval\(\(\) => goTo\(physicalIndex \+ 1\), 6000\)/u
   );
+  assert.match(homeHtml, /window\.matchMedia\('\(hover: hover\)'\)\.matches/u);
+  assert.match(homeHtml, /carousel\.matches\(':hover'\)/u);
+  assert.match(homeHtml, /carousel\.contains\(document\.activeElement\)/u);
+  assert.match(homeHtml, /document\.hidden \|\| hovering \|\| focusedWithin/u);
   assert.match(homeHtml, /previousButton\.addEventListener\('click'/u);
   assert.match(homeHtml, /nextButton\.addEventListener\('click'/u);
   assert.match(

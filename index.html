@@ -141,7 +141,9 @@
       };
       const startAutoplay = () => {
         stopAutoplay();
-        if (reducedMotion.matches || document.hidden) return;
+        const hovering = window.matchMedia('(hover: hover)').matches && carousel.matches(':hover');
+        const focusedWithin = carousel.contains(document.activeElement);
+        if (reducedMotion.matches || document.hidden || hovering || focusedWithin) return;
         autoplayTimer = window.setInterval(() => goTo(physicalIndex + 1), 6000);
       };
       const restartAutoplay = () => {
