@@ -3,6 +3,7 @@ import { readTextSync } from './test-text-utils.mjs';
 import path from 'node:path';
 import test from 'node:test';
 
+// Contract for infinite looping, manual controls, and timed autoplay.
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const homeHtml = readTextSync(path.join(repoRoot, 'index.html'), 'utf8');
 const promoCss = readTextSync(
