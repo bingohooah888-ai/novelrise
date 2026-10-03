@@ -1,0 +1,47 @@
+name: Home carousel format temp
+
+on:
+  push:
+    branches:
+      - fix/home-horizontal-carousel-20261003
+    paths:
+      - .github/workflows/home-carousel-format-temp.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format tests
+        run: npx prettier --write tests/home-discovery-section-36.test.mjs tests/home-hero-copy-lines.test.mjs tests/home-promo-assets.test.mjs
+
+      - name: Verify focused tests
+        run: node --test tests/home-hero-copy-lines.test.mjs tests/home-discovery-section-36.test.mjs tests/home-promo-assets.test.mjs
+
+      - name: Commit formatted tests and remove helper
+        shell: bash
+        run: |
+          rm .github/workflows/home-carousel-format-temp.yml
+          git config user.name "NOVELIGHT Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add tests/home-discovery-section-36.test.mjs tests/home-hero-copy-lines.test.mjs tests/home-promo-assets.test.mjs .github/workflows/home-carousel-format-temp.yml
+          git diff --cached --check
+          git commit -m "Format home carousel tests"
+          git push origin HEAD:fix/home-horizontal-carousel-20261003
