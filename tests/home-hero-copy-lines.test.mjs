@@ -18,7 +18,13 @@ test('Home promo uses the desktop hero artwork in the horizontal carousel', () =
   );
   assert.doesNotMatch(homeHtml, /02_hero_mobile_900x1600\.png/u);
   assert.match(promoCss, /scroll-snap-type:\s*x mandatory/u);
-  assert.match(promoCss, /\.home-promo-slide \{[\s\S]*?flex:\s*0 0 100%;[\s\S]*?scroll-snap-align:\s*start;/u);
-  assert.match(promoCss, /\.home-promo-image \{[\s\S]*?display: block;[\s\S]*?width: 100%;[\s\S]*?height: auto;/u);
+  assert.match(
+    promoCss,
+    /\.home-promo-slide \{[\s\S]*?flex:\s*0 0 100%;[\s\S]*?scroll-snap-align:\s*start;/u
+  );
+  assert.match(
+    promoCss,
+    /\.home-promo-image \{[\s\S]*?display: block;[\s\S]*?width: 100%;[\s\S]*?height: auto;/u
+  );
   assert.doesNotMatch(promoCss, /object-fit:\s*cover/u);
 });

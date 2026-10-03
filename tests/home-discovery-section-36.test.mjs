@@ -32,17 +32,28 @@ test('homepage promotional carousel uses approved artwork and avoids fake scale 
 
   assert.match(home, /id="homeLeadVisual"/u);
   assert.match(home, /teaser: 'assets\/home\/05_event_teaser_1600x900\.png'/u);
-  assert.match(home, /official: 'assets\/home\/05_campaign_official_after_announcement_1600x900\.png'/u);
+  assert.match(
+    home,
+    /official: 'assets\/home\/05_campaign_official_after_announcement_1600x900\.png'/u
+  );
   assert.match(home, /const currentLeadVisual = 'teaser';/u);
   assert.match(home, /class="home-promo-track"/u);
   assert.doesNotMatch(home, /02_hero_mobile_900x1600\.png/u);
   assert.match(home, /src="assets\/home\/01_hero_pc_2560x1280\.png"/u);
-  assert.match(home, /src="assets\/home\/03_author_features_1600x900\.png"[^>]*loading="lazy"/u);
-  assert.match(home, /src="assets\/home\/04_reader_promo_1600x900\.png"[^>]*loading="lazy"/u);
+  assert.match(
+    home,
+    /src="assets\/home\/03_author_features_1600x900\.png"[^>]*loading="lazy"/u
+  );
+  assert.match(
+    home,
+    /src="assets\/home\/04_reader_promo_1600x900\.png"[^>]*loading="lazy"/u
+  );
 
   const lead = home.indexOf('aria-label="NOVELIGHT イベント告知"');
   const hero = home.indexOf('src="assets/home/01_hero_pc_2560x1280.png"');
-  const author = home.indexOf('src="assets/home/03_author_features_1600x900.png"');
+  const author = home.indexOf(
+    'src="assets/home/03_author_features_1600x900.png"'
+  );
   const reader = home.indexOf('src="assets/home/04_reader_promo_1600x900.png"');
   assert.ok(lead >= 0 && hero > lead && author > hero && reader > author);
 

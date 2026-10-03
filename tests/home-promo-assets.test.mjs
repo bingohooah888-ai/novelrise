@@ -103,5 +103,9 @@ test('Home promotional visual order is teaser, hero, author, reader', () => {
     'src="assets/home/04_reader_promo_1600x900.png"'
   ].map((value) => homeHtml.indexOf(value));
   assert.ok(positions.every((position) => position >= 0));
-  assert.ok(positions.every((position, index) => index === 0 || position > positions[index - 1]));
+  assert.ok(
+    positions.every(
+      (position, index) => index === 0 || position > positions[index - 1]
+    )
+  );
 });
