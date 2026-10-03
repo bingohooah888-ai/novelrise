@@ -39,10 +39,25 @@
   </div>
 </header>
 <main id="main-content" tabindex="-1">
-<section class="home-promo-panel home-lead-panel" aria-label="NOVELIGHT イベント告知">
-  <div class="home-promo-frame home-promo-frame-wide">
-    <img id="homeLeadVisual" class="home-promo-image" width="1600" height="900" alt="NOVELIGHT イベント告知" loading="eager" fetchpriority="high" decoding="async">
+<section class="home-promo-carousel" aria-label="NOVELIGHT プロモーション">
+  <div class="home-promo-track">
+    <article class="home-promo-slide" aria-label="NOVELIGHT イベント告知">
+      <img id="homeLeadVisual" class="home-promo-image" width="1600" height="900" alt="NOVELIGHT イベント告知" loading="eager" fetchpriority="high" decoding="async">
+    </article>
+
+    <article class="home-promo-slide" aria-label="NOVELIGHT メインビジュアル">
+      <img class="home-promo-image" src="assets/home/01_hero_pc_2560x1280.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。" loading="eager" fetchpriority="high" decoding="async">
+    </article>
+
+    <article class="home-promo-slide" aria-label="作者向け機能">
+      <img class="home-promo-image" src="assets/home/03_author_features_1600x900.png" width="1600" height="900" alt="NOVELIGHT 作者向け機能" loading="lazy" decoding="async">
+    </article>
+
+    <article class="home-promo-slide" aria-label="読者向け機能">
+      <img class="home-promo-image" src="assets/home/04_reader_promo_1600x900.png" width="1600" height="900" alt="NOVELIGHT 読者向け機能" loading="lazy" decoding="async">
+    </article>
   </div>
+
   <script>
     (() => {
       const homeLeadVisuals = Object.freeze({
@@ -55,30 +70,10 @@
   </script>
 </section>
 
-<section class="home-promo-panel home-hero-panel" aria-label="NOVELIGHT メインビジュアル">
-  <div class="home-promo-frame home-promo-frame-hero">
-    <picture class="home-hero-picture">
-      <source media="(max-width: 767px)" srcset="assets/home/02_hero_mobile_900x1600.png" width="900" height="1600">
-      <img class="home-promo-image" src="assets/home/01_hero_pc_2560x1280.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。" loading="eager" fetchpriority="high" decoding="async">
-    </picture>
-  </div>
-  <div class="home-hero-actions" aria-label="NOVELIGHTを利用する">
-    <a class="hero-primary" href="search.html">作品を探す</a>
-    <a class="hero-secondary" href="post.html">小説を投稿する</a>
-  </div>
-</section>
-
-<section class="home-promo-panel" aria-label="作者向け機能">
-  <div class="home-promo-frame home-promo-frame-wide">
-    <img class="home-promo-image" src="assets/home/03_author_features_1600x900.png" width="1600" height="900" alt="NOVELIGHT 作者向け機能" loading="lazy" decoding="async">
-  </div>
-</section>
-
-<section class="home-promo-panel" aria-label="読者向け機能">
-  <div class="home-promo-frame home-promo-frame-wide">
-    <img class="home-promo-image" src="assets/home/04_reader_promo_1600x900.png" width="1600" height="900" alt="NOVELIGHT 読者向け機能" loading="lazy" decoding="async">
-  </div>
-</section>
+<div class="home-hero-actions" aria-label="NOVELIGHTを利用する">
+  <a class="hero-primary" href="search.html">作品を探す</a>
+  <a class="hero-secondary" href="post.html">小説を投稿する</a>
+</div>
 
 <section id="discover" class="discovery-section">
   <div class="container">

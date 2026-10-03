@@ -97,10 +97,10 @@ test('Home lead visual keeps teaser live and official campaign ready for a one-l
 
 test('Home promotional visual order is teaser, hero, author, reader', () => {
   const positions = [
-    '05_event_teaser_1600x900.png',
-    '01_hero_pc_2560x1280.png',
-    '03_author_features_1600x900.png',
-    '04_reader_promo_1600x900.png'
+    'aria-label="NOVELIGHT イベント告知"',
+    'src="assets/home/01_hero_pc_2560x1280.png"',
+    'src="assets/home/03_author_features_1600x900.png"',
+    'src="assets/home/04_reader_promo_1600x900.png"'
   ].map((value) => homeHtml.indexOf(value));
   assert.ok(positions.every((position) => position >= 0));
   assert.ok(
