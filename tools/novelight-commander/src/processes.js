@@ -3,15 +3,22 @@ import crypto from "node:crypto";
 import { assertSafeInvocation, redactSecrets } from "./security.js";
 
 const sessions = new Map();
+const WINDOWS_CMD_SHIMS = new Set(["npm", "npx", "gh", "supabase", "vercel"]);
 
 function clampBuffer(text) {
   return text.length > 1000000 ? text.slice(-1000000) : text;
 }
 
+export function resolveSpawnExecutable(executable, platform = process.platform) {
+  if (platform === "win32" && WINDOWS_CMD_SHIMS.has(String(executable).toLowerCase())) return executable + ".cmd";
+  return executable;
+}
+
 export function startManagedProcess(command, args, cwd, config) {
   const executable = assertSafeInvocation(command, args, config);
+  const spawnExecutable = resolveSpawnExecutable(executable);
   const id = crypto.randomUUID();
-  const child = spawn(executable, args, { cwd, shell: false, windowsHide: true, env: process.env });
+  const child = spawn(spawnExecutable, args, { cwd, shell: false, windowsHide: true, env: process.env });
   const session = {
     id, command: executable, args, cwd, pid: child.pid, status: "running", code: null, signal: null,
     startedAt: new Date().toISOString(), endedAt: null, stdout: "", stderr: "", child
@@ -57,9 +64,10 @@ export function stopManagedProcess(id) {
 
 export async function runOnce(command, args, cwd, config, timeoutMs) {
   const executable = assertSafeInvocation(command, args, config);
+  const spawnExecutable = resolveSpawnExecutable(executable);
   const limit = timeoutMs || config.commandTimeoutMs;
   return await new Promise((resolve, reject) => {
-    const child = spawn(executable, args, { cwd, shell: false, windowsHide: true, env: process.env });
+    const child = spawn(spawnExecutable, args, { cwd, shell: false, windowsHide: true, env: process.env });
     let stdout = ""; let stderr = ""; let settled = false;
     const timer = setTimeout(() => { child.kill(); if (!settled) { settled = true; reject(new Error("Command timed out after " + limit + "ms.")); } }, limit);
     child.stdout?.on("data", chunk => { stdout = clampBuffer(stdout + chunk.toString()); });
