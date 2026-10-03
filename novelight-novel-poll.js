@@ -320,3 +320,56 @@ window.setTimeout(() => {
 
   void setupAutoSeed();
 }, 0);
+
+(function attachEpisodeNumberVisibilityToNovel(global) {
+  'use strict';
+
+  const poll = global.NovelightNovelPoll;
+  if (!poll?.mount) return;
+  const baseMount = poll.mount;
+
+  function installStyle() {
+    if (document.getElementById('novelight-episode-number-visibility-style')) return;
+    const style = document.createElement('style');
+    style.id = 'novelight-episode-number-visibility-style';
+    style.textContent =
+      '.novelight-hide-auto-episode-numbers #episodeList .episode-number{display:none!important}';
+    document.head.appendChild(style);
+  }
+
+  async function applyVisibility(client, novel) {
+    const novelId = Number(novel?.id);
+    if (!client || !Number.isSafeInteger(novelId) || novelId <= 0) return;
+    const result = await client
+      .from('novels')
+      .select('show_episode_numbers')
+      .eq('id', novelId)
+      .maybeSingle();
+    if (result.error) {
+      const text = String(result.error?.message || '');
+      if (!text.includes('show_episode_numbers')) {
+        console.error('episode number visibility unavailable', result.error);
+      }
+      return;
+    }
+    installStyle();
+    document.documentElement.classList.toggle(
+      'novelight-hide-auto-episode-numbers',
+      result.data?.show_episode_numbers === false
+    );
+  }
+
+  async function mountWithEpisodeNumberVisibility(client, novel, session) {
+    const visibility = applyVisibility(client, novel).catch((error) => {
+      console.error('episode number visibility failed', error);
+    });
+    const result = await baseMount(client, novel, session);
+    await visibility;
+    return result;
+  }
+
+  global.NovelightNovelPoll = {
+    ...poll,
+    mount: mountWithEpisodeNumberVisibility
+  };
+})(globalThis);
