@@ -1,0 +1,152 @@
+name: NOVELIGHT Home Asset Transfer Temporary
+
+on:
+  push:
+    branches:
+      - codex/home-scroll-visuals-final-20261003
+    paths:
+      - .home-assets-transfer-trigger
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: novelight-home-assets-transfer-20261003
+  cancel-in-progress: false
+
+jobs:
+  transfer:
+    name: Transfer exact approved home assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_BRANCH: codex/home-scroll-visuals-final-20261003
+      CONTROL_ISSUE: '797'
+      TRANSFER_PREFIX: 'NOVELIGHT_HOME_ASSET_TRANSFER_V1 '
+      TRANSFER_ID: 'home-20261003-asset-transfer-01'
+    steps:
+      - name: Checkout trigger revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Validate trigger and branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "$TARGET_BRANCH"
+          test -f .home-assets-transfer-trigger
+          test "$(tr -d '\r\n' < .home-assets-transfer-trigger)" = "$TRANSFER_ID"
+
+      - name: Read one owner-scoped transfer request
+        id: request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          comments="$(gh api "repos/$GITHUB_REPOSITORY/issues/$CONTROL_ISSUE/comments?per_page=100")"
+          row="$(
+            printf '%s' "$comments" | jq -c --arg prefix "$TRANSFER_PREFIX" --arg transferId "$TRANSFER_ID" '
+              [ .[]
+                | select(.user.login == "bingohooah888-ai")
+                | select(.author_association == "OWNER")
+                | select(.body | startswith($prefix))
+                | . as $comment
+                | (($comment.body | ltrimstr($prefix) | fromjson?) // null) as $payload
+                | select($payload != null and $payload.transferId == $transferId)
+                | {id:$comment.id,payload:$payload}
+              ] | last // empty
+            '
+          )"
+          test -n "$row" || { echo 'No matching transfer request.'; exit 1; }
+          comment_id="$(jq -r '.id' <<<"$row")"
+          payload="$(jq -c '.payload' <<<"$row")"
+          jq -e '
+            type == "object" and
+            .transferId == "home-20261003-asset-transfer-01" and
+            (.files | type == "array" and length == 6) and
+            ((keys | sort) == (["files","transferId"] | sort)) and
+            ([.files[] | .name] | unique | length == 6) and
+            (all(.files[]; ((keys | sort) == (["name","sha256","size","url"] | sort)) and (.name|type=="string") and (.sha256|type=="string" and test("^[0-9a-f]{64}$")) and (.size|type=="number") and (.url|type=="string" and startswith("https://"))))
+          ' <<<"$payload" >/dev/null
+          printf '%s' "$payload" > /tmp/home-assets-transfer.json
+          echo "comment_id=$comment_id" >> "$GITHUB_OUTPUT"
+
+      - name: Download and verify exact bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/home
+          cat > /tmp/home-assets-contract.tsv <<'EOF'
+          01_hero_pc_2560x1280.png	4445832	035fd4bd947526fdfcbc2dcba2240b0d15aa393d0d7be17c9185a61f94913764	2560	1280
+          02_hero_mobile_900x1600.png	2426239	5a2d766291ad2e5055144e3872e1b7cb2cf4f1998cfa2ee338995e54d1008780	900	1600
+          03_author_features_1600x900.png	2108508	488239cbe38f2604ca23504aff73880028dc32d8b18f01eac79190ff88c6d250	1600	900
+          04_reader_promo_1600x900.png	2427122	5cad3e04a656f270e90bac2a4ee9222a744dcdc21dfa5de11cb313353ae807c4	1600	900
+          05_event_teaser_1600x900.png	2373879	9d6cb3a9ae6d4ee29b48bbc1364eee0c9aee4f6c9291bc865519176517f1cd39	1600	900
+          05_campaign_official_after_announcement_1600x900.png	2380490	7e86834eb288f0336a8642e5e6187362eff5019d921860b26207ffc94cc74bdf	1600	900
+          EOF
+
+          while IFS=$'\t' read -r name expected_size expected_sha width height; do
+            url="$(jq -er --arg name "$name" '.files[] | select(.name == $name) | .url' /tmp/home-assets-transfer.json)"
+            request_size="$(jq -er --arg name "$name" '.files[] | select(.name == $name) | .size' /tmp/home-assets-transfer.json)"
+            request_sha="$(jq -er --arg name "$name" '.files[] | select(.name == $name) | .sha256' /tmp/home-assets-transfer.json)"
+            test "$request_size" = "$expected_size"
+            test "$request_sha" = "$expected_sha"
+            curl --fail --location --silent --show-error --retry 2 --connect-timeout 15 --max-time 120 --output "assets/home/$name" "$url"
+            test "$(stat -c%s "assets/home/$name")" = "$expected_size"
+            test "$(sha256sum "assets/home/$name" | awk '{print $1}')" = "$expected_sha"
+            python - "$name" "$width" "$height" <<'PY'
+          import struct, sys
+          from pathlib import Path
+          name, ew, eh = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+          p = Path('assets/home') / name
+          data = p.read_bytes()[:24]
+          assert data[:8] == b'\x89PNG\r\n\x1a\n', name
+          w, h = struct.unpack('>II', data[16:24])
+          assert (w, h) == (ew, eh), (name, w, h, ew, eh)
+          PY
+          done < /tmp/home-assets-contract.tsv
+
+          test "$(find assets/home -maxdepth 1 -type f -name '*.png' | wc -l | tr -d ' ')" = '6'
+
+      - name: Scrub temporary signed URLs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ID: ${{ steps.request.outputs.comment_id }}
+        run: |
+          set -euo pipefail
+          consumed="NOVELIGHT_HOME_ASSET_TRANSFER_CONSUMED {\"transferId\":\"$TRANSFER_ID\",\"runId\":\"$GITHUB_RUN_ID\"}"
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID" -f body="$consumed" >/dev/null
+
+      - name: Commit only exact assets and remove temporary transfer helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/home-assets-transfer-temp.yml .home-assets-transfer-trigger
+          git add -- assets/home/01_hero_pc_2560x1280.png \
+            assets/home/02_hero_mobile_900x1600.png \
+            assets/home/03_author_features_1600x900.png \
+            assets/home/04_reader_promo_1600x900.png \
+            assets/home/05_event_teaser_1600x900.png \
+            assets/home/05_campaign_official_after_announcement_1600x900.png
+          git diff --cached --name-only | sort > /tmp/staged.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/home-assets-transfer-temp.yml
+          .home-assets-transfer-trigger
+          assets/home/01_hero_pc_2560x1280.png
+          assets/home/02_hero_mobile_900x1600.png
+          assets/home/03_author_features_1600x900.png
+          assets/home/04_reader_promo_1600x900.png
+          assets/home/05_campaign_official_after_announcement_1600x900.png
+          assets/home/05_event_teaser_1600x900.png
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/staged.txt
+          git commit -m 'Add exact home promotional image assets'
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
