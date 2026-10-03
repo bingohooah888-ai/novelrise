@@ -25,6 +25,7 @@ jobs:
       CONTROL_ISSUE: '797'
       TRANSFER_PREFIX: 'NOVELIGHT_HOME_ASSET_TRANSFER_V1 '
       TRANSFER_ID: 'home-20261003-asset-transfer-01'
+      TRANSFER_COMMENT_ID: '5965661311'
     steps:
       - name: Checkout trigger revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -47,18 +48,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          comments="$(gh api "repos/$GITHUB_REPOSITORY/issues/$CONTROL_ISSUE/comments?per_page=100")"
+          comment="$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$TRANSFER_COMMENT_ID")"
           row="$(
-            printf '%s' "$comments" | jq -c --arg prefix "$TRANSFER_PREFIX" --arg transferId "$TRANSFER_ID" '
-              [ .[]
-                | select(.user.login == "bingohooah888-ai")
-                | select(.author_association == "OWNER")
-                | select(.body | startswith($prefix))
-                | . as $comment
-                | (($comment.body | ltrimstr($prefix) | fromjson?) // null) as $payload
-                | select($payload != null and $payload.transferId == $transferId)
-                | {id:$comment.id,payload:$payload}
-              ] | last // empty
+            printf '%s' "$comment" | jq -c --arg prefix "$TRANSFER_PREFIX" --arg transferId "$TRANSFER_ID" '
+              select(.user.login == "bingohooah888-ai")
+              | select(.author_association == "OWNER")
+              | select(.body | startswith($prefix))
+              | . as $comment
+              | (($comment.body | ltrimstr($prefix) | fromjson?) // null) as $payload
+              | select($payload != null and $payload.transferId == $transferId)
+              | {id:$comment.id,payload:$payload}
             '
           )"
           test -n "$row" || { echo 'No matching transfer request.'; exit 1; }
