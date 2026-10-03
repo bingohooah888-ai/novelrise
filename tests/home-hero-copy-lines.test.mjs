@@ -10,18 +10,15 @@ const promoCss = readTextSync(
   'utf8'
 );
 
-test('Home hero switches approved desktop/mobile artwork without cropping', () => {
-  assert.match(
-    homeHtml,
-    /<source media="\(max-width: 767px\)" srcset="assets\/home\/02_hero_mobile_900x1600\.png" width="900" height="1600">/u
-  );
+test('Home promo uses the desktop hero artwork in the horizontal carousel', () => {
+  assert.match(homeHtml, /class="home-promo-track"/u);
   assert.match(
     homeHtml,
     /<img class="home-promo-image" src="assets\/home\/01_hero_pc_2560x1280\.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。"/u
   );
-  assert.match(
-    promoCss,
-    /\.home-promo-image \{[\s\S]*?display: block;[\s\S]*?width: 100%;[\s\S]*?height: auto;/u
-  );
+  assert.doesNotMatch(homeHtml, /02_hero_mobile_900x1600\.png/u);
+  assert.match(promoCss, /scroll-snap-type:\s*x mandatory/u);
+  assert.match(promoCss, /\.home-promo-slide \{[\s\S]*?flex:\s*0 0 100%;[\s\S]*?scroll-snap-align:\s*start;/u);
+  assert.match(promoCss, /\.home-promo-image \{[\s\S]*?display: block;[\s\S]*?width: 100%;[\s\S]*?height: auto;/u);
   assert.doesNotMatch(promoCss, /object-fit:\s*cover/u);
 });

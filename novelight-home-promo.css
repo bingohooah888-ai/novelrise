@@ -1,27 +1,43 @@
-/* Home promotional scroll visuals.
-   Source PNGs are rendered as-is: no crop, no forced aspect ratio, no recompression. */
-body.novelight-page-index.novelight-public-dark section.home-promo-panel {
-  padding: 0;
+/* Home promotional horizontal carousel.
+Source PNGs are rendered as-is: no crop, no forced aspect ratio, no recompression. */
+body.novelight-page-index.novelight-public-dark .home-promo-carousel {
   margin: 0;
+  padding: 0;
+  overflow: hidden;
   background: #02070d;
 }
 
-body.novelight-page-index.novelight-public-dark .home-promo-frame {
+body.novelight-page-index.novelight-public-dark .home-promo-track {
+  display: flex;
   width: 100%;
-  margin: 0 auto;
-  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-track::-webkit-scrollbar {
+  display: none;
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 100%;
+  margin: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
   line-height: 0;
+  background: #02070d;
 }
 
-body.novelight-page-index.novelight-public-dark .home-promo-frame-wide {
-  max-width: 1600px;
-}
-
-body.novelight-page-index.novelight-public-dark .home-promo-frame-hero {
-  max-width: 2560px;
-}
-
-body.novelight-page-index.novelight-public-dark .home-hero-picture,
 body.novelight-page-index.novelight-public-dark .home-promo-image {
   display: block;
   width: 100%;
@@ -44,10 +60,6 @@ body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-seconda
 }
 
 @media (max-width: 767px) {
-  body.novelight-page-index.novelight-public-dark .home-promo-frame-hero {
-    max-width: 900px;
-  }
-
   body.novelight-page-index.novelight-public-dark .home-hero-actions {
     gap: 9px;
     padding: 11px 14px;
