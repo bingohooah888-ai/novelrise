@@ -11,9 +11,19 @@ test('new episode authoring can save an account-backed server draft', () => {
   assert.match(post, /id="saveDraft"/u);
   assert.match(post, /novelight_save_episode_draft/u);
   assert.match(post, /pendingDraftId=null/u);
-  assert.match(post, /p_episode_id:\s*pendingDraftId/u);
+  assert.match(post, /const expectedId=pendingDraftId/u);
+  assert.match(post, /p_episode_id:\s*expectedId/u);
   assert.match(post, /episode-edit\.html\?id=/u);
   assert.match(post, /clearCurrentDraft/u);
+});
+
+test('new episode authoring preserves server draft identity across navigation', () => {
+  assert.match(post, /draftSaveTail=Promise\.resolve\(\)/u);
+  assert.match(post, /history\.replaceState\(history\.state,'',url\)/u);
+  assert.match(post, /queryParams\.get\('draft_id'\)/u);
+  assert.match(post, /\.eq\('id',requestedDraftId\)/u);
+  assert.match(post, /\.maybeSingle\(\)/u);
+  assert.match(post, /新しい話としては保存していません/u);
 });
 
 test('new episode authoring can schedule and continue directly to the next episode', () => {
