@@ -58,6 +58,19 @@
     </article>
   </div>
 
+  <button class="home-promo-nav home-promo-prev" type="button" data-carousel-prev aria-label="前の画像">
+    <span aria-hidden="true">‹</span>
+  </button>
+  <button class="home-promo-nav home-promo-next" type="button" data-carousel-next aria-label="次の画像">
+    <span aria-hidden="true">›</span>
+  </button>
+  <div class="home-promo-dots" aria-label="表示する画像を選択">
+    <button class="home-promo-dot" type="button" data-carousel-dot aria-label="1枚目を表示" aria-current="true"></button>
+    <button class="home-promo-dot" type="button" data-carousel-dot aria-label="2枚目を表示" aria-current="false"></button>
+    <button class="home-promo-dot" type="button" data-carousel-dot aria-label="3枚目を表示" aria-current="false"></button>
+    <button class="home-promo-dot" type="button" data-carousel-dot aria-label="4枚目を表示" aria-current="false"></button>
+  </div>
+
   <script>
     (() => {
       const homeLeadVisuals = Object.freeze({
@@ -65,7 +78,119 @@
         official: 'assets/home/05_campaign_official_after_announcement_1600x900.png'
       });
       const currentLeadVisual = 'teaser';
-      document.getElementById('homeLeadVisual').src = homeLeadVisuals[currentLeadVisual];
+      const lead = document.getElementById('homeLeadVisual');
+      lead.src = homeLeadVisuals[currentLeadVisual];
+
+      const carousel = lead.closest('.home-promo-carousel');
+      const track = carousel.querySelector('.home-promo-track');
+      const previousButton = carousel.querySelector('[data-carousel-prev]');
+      const nextButton = carousel.querySelector('[data-carousel-next]');
+      const dots = [...carousel.querySelectorAll('[data-carousel-dot]')];
+      const originals = [...track.querySelectorAll('.home-promo-slide')];
+      if (originals.length < 2) return;
+
+      const firstClone = originals[0].cloneNode(true);
+      const lastClone = originals.at(-1).cloneNode(true);
+      for (const clone of [firstClone, lastClone]) {
+        clone.dataset.carouselClone = 'true';
+        clone.setAttribute('aria-hidden', 'true');
+        clone.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+      }
+      track.insertBefore(lastClone, originals[0]);
+      track.append(firstClone);
+
+      let physicalIndex = 1;
+      let autoplayTimer = 0;
+      let settleTimer = 0;
+      let resizeTimer = 0;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const width = () => track.clientWidth;
+      const logicalIndex = index => {
+        if (index <= 0) return originals.length - 1;
+        if (index >= originals.length + 1) return 0;
+        return index - 1;
+      };
+      const updateDots = () => {
+        const active = logicalIndex(physicalIndex);
+        dots.forEach((dot, index) => {
+          dot.setAttribute('aria-current', index === active ? 'true' : 'false');
+          dot.tabIndex = index === active ? 0 : -1;
+        });
+      };
+      const goTo = (index, behavior = reducedMotion.matches ? 'auto' : 'smooth') => {
+        physicalIndex = index;
+        track.scrollTo({ left: width() * index, behavior });
+        updateDots();
+      };
+      const normalize = () => {
+        const slideWidth = width();
+        if (!slideWidth) return;
+        physicalIndex = Math.round(track.scrollLeft / slideWidth);
+        if (physicalIndex === 0) {
+          physicalIndex = originals.length;
+          track.scrollTo({ left: slideWidth * physicalIndex, behavior: 'auto' });
+        } else if (physicalIndex === originals.length + 1) {
+          physicalIndex = 1;
+          track.scrollTo({ left: slideWidth, behavior: 'auto' });
+        }
+        updateDots();
+      };
+      const stopAutoplay = () => {
+        if (autoplayTimer) window.clearInterval(autoplayTimer);
+        autoplayTimer = 0;
+      };
+      const startAutoplay = () => {
+        stopAutoplay();
+        if (reducedMotion.matches || document.hidden) return;
+        autoplayTimer = window.setInterval(() => goTo(physicalIndex + 1), 6000);
+      };
+      const restartAutoplay = () => {
+        stopAutoplay();
+        startAutoplay();
+      };
+
+      previousButton.addEventListener('click', () => {
+        goTo(physicalIndex - 1);
+        restartAutoplay();
+      });
+      nextButton.addEventListener('click', () => {
+        goTo(physicalIndex + 1);
+        restartAutoplay();
+      });
+      dots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+          goTo(index + 1);
+          restartAutoplay();
+        });
+      });
+
+      track.addEventListener('pointerdown', stopAutoplay, { passive: true });
+      track.addEventListener('pointerup', startAutoplay, { passive: true });
+      track.addEventListener('pointercancel', startAutoplay, { passive: true });
+      track.addEventListener('scroll', () => {
+        window.clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(normalize, 140);
+      }, { passive: true });
+      if ('onscrollend' in window) track.addEventListener('scrollend', normalize);
+
+      carousel.addEventListener('mouseenter', stopAutoplay);
+      carousel.addEventListener('mouseleave', startAutoplay);
+      carousel.addEventListener('focusin', stopAutoplay);
+      carousel.addEventListener('focusout', startAutoplay);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopAutoplay();
+        else startAutoplay();
+      });
+      reducedMotion.addEventListener?.('change', startAutoplay);
+      window.addEventListener('resize', () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => goTo(physicalIndex, 'auto'), 120);
+      });
+
+      window.requestAnimationFrame(() => {
+        goTo(1, 'auto');
+        startAutoplay();
+      });
     })();
   </script>
 </section>
