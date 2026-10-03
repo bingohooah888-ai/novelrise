@@ -20,12 +20,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
-        with:
-          node-version: 24
-
-      - name: Patch homepage carousel
+      - name: Patch homepage carousel and tests
         shell: bash
         run: |
           python3 - <<'PY'
@@ -34,10 +29,8 @@ jobs:
 
           index = Path('index.html')
           text = index.read_text(encoding='utf-8')
-          start_marker = '<section class="home-promo-panel home-lead-panel"'
-          end_marker = '<section id="discover"'
-          start = text.index(start_marker)
-          end = text.index(end_marker, start)
+          start = text.index('<section class="home-promo-panel home-lead-panel"')
+          end = text.index('<section id="discover"', start)
           replacement = '''<section class="home-promo-carousel" aria-label="NOVELIGHT プロモーション">
             <div class="home-promo-track">
               <article class="home-promo-slide" aria-label="NOVELIGHT イベント告知">
@@ -77,12 +70,12 @@ jobs:
           '''
           text = text[:start] + replacement + text[end:]
           if '02_hero_mobile_900x1600.png' in text:
-              raise SystemExit('mobile hero reference still present in index.html')
+              raise SystemExit('mobile hero reference still present')
           if text.count('class="home-promo-slide"') != 4:
-              raise SystemExit('expected exactly four carousel slides')
+              raise SystemExit('expected four slides')
           index.write_text(text, encoding='utf-8')
 
-          css = '''/* Home promotional horizontal carousel.
+          Path('novelight-home-promo.css').write_text('''/* Home promotional horizontal carousel.
              Source PNGs are rendered as-is: no crop, no forced aspect ratio, no recompression. */
           body.novelight-page-index.novelight-public-dark .home-promo-carousel {
             margin: 0;
@@ -156,13 +149,12 @@ jobs:
               padding-inline: 12px;
             }
           }
-          '''
-          Path('novelight-home-promo.css').write_text(css, encoding='utf-8')
+          ''', encoding='utf-8')
 
           hero = Path('tests/home-hero-copy-lines.test.mjs')
           h = hero.read_text(encoding='utf-8')
-          pattern = re.compile(r"test\('Home hero switches approved desktop/mobile artwork without cropping', \(\) => \{[\s\S]*?\n\}\);", re.M)
-          new_test = r'''test('Home promo uses the desktop hero artwork in the horizontal carousel', () => {
+          hero_pattern = re.compile(r"test\('Home hero switches approved desktop/mobile artwork without cropping', \(\) => \{[\s\S]*?\n\}\);", re.M)
+          hero_test = r'''test('Home promo uses the desktop hero artwork in the horizontal carousel', () => {
             assert.match(homeHtml, /class="home-promo-track"/u);
             assert.match(
               homeHtml,
@@ -180,23 +172,53 @@ jobs:
             );
             assert.doesNotMatch(promoCss, /object-fit:\s*cover/u);
           });'''
-          h2, count = pattern.subn(lambda m: new_test, h, count=1)
+          h, count = hero_pattern.subn(lambda _: hero_test, h, count=1)
           if count != 1:
               raise SystemExit(f'hero test replacement count={count}')
-          hero.write_text(h2, encoding='utf-8')
+          hero.write_text(h, encoding='utf-8')
 
           discovery = Path('tests/home-discovery-section-36.test.mjs')
           d = discovery.read_text(encoding='utf-8')
-          old = '''  assert.match(home, /const currentLeadVisual = 'teaser';/u);
-            assert.match(home, /srcset="assets\\/home\\/02_hero_mobile_900x1600\\.png"/u);
-            assert.match(home, /src="assets\\/home\\/01_hero_pc_2560x1280\\.png"/u);'''
-          new = '''  assert.match(home, /const currentLeadVisual = 'teaser';/u);
-            assert.match(home, /class="home-promo-track"/u);
-            assert.doesNotMatch(home, /02_hero_mobile_900x1600\\.png/u);
-            assert.match(home, /src="assets\\/home\\/01_hero_pc_2560x1280\\.png"/u);'''
-          if d.count(old) != 1:
-              raise SystemExit(f'discovery test replacement count={d.count(old)}')
-          discovery.write_text(d.replace(old, new, 1), encoding='utf-8')
+          d = d.replace(
+            '  assert.match(home, /srcset="assets\\/home\\/02_hero_mobile_900x1600\\.png"/u);\n',
+            '  assert.match(home, /class="home-promo-track"/u);\n  assert.doesNotMatch(home, /02_hero_mobile_900x1600\\.png/u);\n',
+            1
+          )
+          old_order = '''  const lead = home.indexOf('05_event_teaser_1600x900.png');
+          const hero = home.indexOf('01_hero_pc_2560x1280.png');
+          const author = home.indexOf('03_author_features_1600x900.png');
+          const reader = home.indexOf('04_reader_promo_1600x900.png');
+          assert.ok(lead >= 0 && hero > lead && author > hero && reader > author);'''
+          new_order = '''  const lead = home.indexOf('aria-label="NOVELIGHT イベント告知"');
+          const hero = home.indexOf('src="assets/home/01_hero_pc_2560x1280.png"');
+          const author = home.indexOf('src="assets/home/03_author_features_1600x900.png"');
+          const reader = home.indexOf('src="assets/home/04_reader_promo_1600x900.png"');
+          assert.ok(lead >= 0 && hero > lead && author > hero && reader > author);'''
+          if d.count(old_order) != 1:
+              raise SystemExit('discovery order block not found')
+          discovery.write_text(d.replace(old_order, new_order, 1), encoding='utf-8')
+
+          promo = Path('tests/home-promo-assets.test.mjs')
+          p = promo.read_text(encoding='utf-8')
+          promo_pattern = re.compile(r"test\('Home promotional visual order is teaser, hero, author, reader', \(\) => \{[\s\S]*?\n\}\);", re.M)
+          promo_test = r'''test('Home promotional visual order is teaser, hero, author, reader', () => {
+            const positions = [
+              'aria-label="NOVELIGHT イベント告知"',
+              'src="assets/home/01_hero_pc_2560x1280.png"',
+              'src="assets/home/03_author_features_1600x900.png"',
+              'src="assets/home/04_reader_promo_1600x900.png"'
+            ].map((value) => homeHtml.indexOf(value));
+            assert.ok(positions.every((position) => position >= 0));
+            assert.ok(
+              positions.every(
+                (position, index) => index === 0 || position > positions[index - 1]
+              )
+            );
+          });'''
+          p, count = promo_pattern.subn(lambda _: promo_test, p, count=1)
+          if count != 1:
+              raise SystemExit(f'promo order test replacement count={count}')
+          promo.write_text(p, encoding='utf-8')
           PY
 
       - name: Run focused tests
@@ -208,7 +230,7 @@ jobs:
           rm .github/workflows/home-carousel-hotfix-temp.yml
           git config user.name "NOVELIGHT Automation"
           git config user.email "actions@users.noreply.github.com"
-          git add index.html novelight-home-promo.css tests/home-hero-copy-lines.test.mjs tests/home-discovery-section-36.test.mjs .github/workflows/home-carousel-hotfix-temp.yml
+          git add index.html novelight-home-promo.css tests/home-hero-copy-lines.test.mjs tests/home-discovery-section-36.test.mjs tests/home-promo-assets.test.mjs .github/workflows/home-carousel-hotfix-temp.yml
           git diff --cached --check
           git commit -m "Fix home promo horizontal carousel"
           git push origin HEAD:fix/home-horizontal-carousel-20261003
