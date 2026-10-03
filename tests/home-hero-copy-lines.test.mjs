@@ -19,6 +19,9 @@ test('Home hero switches approved desktop/mobile artwork without cropping', () =
     homeHtml,
     /<img class="home-promo-image" src="assets\/home\/01_hero_pc_2560x1280\.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。"/u
   );
-  assert.match(promoCss, /\.home-promo-image \{[\s\S]*?display: block;[\s\S]*?width: 100%;[\s\S]*?height: auto;/u);
+  assert.match(
+    promoCss,
+    /\.home-promo-image \{[\s\S]*?display: block;[\s\S]*?width: 100%;[\s\S]*?height: auto;/u
+  );
   assert.doesNotMatch(promoCss, /object-fit:\s*cover/u);
 });
