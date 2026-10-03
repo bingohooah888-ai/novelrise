@@ -113,3 +113,121 @@ html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-he
     border-radius: 17px !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Light-surface action role contract.
+   Primary actions use NOVELIGHT navy everywhere on light surfaces. Secondary
+   actions remain paper/outline, danger actions remain red, and dark/gold surfaces
+   are intentionally excluded by using exact light-page selectors.
+   -------------------------------------------------------------------------- */
+
+/* Author work-management pages still expose an older brown token downstream.
+   Lock only their primary-action token here; the imported rule is intentionally
+   important so the later legacy declaration cannot reintroduce the brown button. */
+html body:is(
+  .novelight-page-series,
+  .novelight-page-bulk-import,
+  .novelight-page-episode-drafts,
+  .novelight-page-episode-schedule,
+  .novelight-page-share-link,
+  .novelight-page-characters
+) {
+  --nl-work-primary: #0e1d35 !important;
+}
+
+html body:is(
+  .novelight-page-episode-edit,
+  .novelight-page-episode-post,
+  .novelight-page-episode-schedule,
+  .novelight-page-episode-structure,
+  .novelight-page-episode-drafts,
+  .novelight-page-episode-import,
+  .novelight-page-bulk-import,
+  .novelight-page-characters,
+  .novelight-page-work-cover,
+  .novelight-page-series,
+  .novelight-page-share-link,
+  .novelight-page-curation-lists
+) :is(
+  .primary-action,
+  .drawer-action.primary,
+  button.publish,
+  .action.publish,
+  .btn.primary,
+  a.import,
+  a.choice.primary,
+  button.submit,
+  .limited-share-primary,
+  .novelight-curation-create button,
+  .novelight-curation-actions .primary,
+  .novelight-curation-add-confirm
+),
+html body.novelight-page-typo-reports .button.apply,
+html body.novelight-page-light-seed-history a.link,
+html body.novelight-page-interaction-settings .button:not(.secondary),
+body:not(.novelight-theme) :is(#loginButton, #signupButton, #preregistrationLink),
+body.novelight-page-forgot-password #form > #button,
+body.novelight-page-reset-password #form > #button {
+  border-color: #0e1d35 !important;
+  background: #0e1d35 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+html body:is(
+  .novelight-page-episode-edit,
+  .novelight-page-episode-post,
+  .novelight-page-episode-schedule,
+  .novelight-page-episode-structure,
+  .novelight-page-episode-drafts,
+  .novelight-page-episode-import,
+  .novelight-page-bulk-import,
+  .novelight-page-characters,
+  .novelight-page-work-cover,
+  .novelight-page-series,
+  .novelight-page-share-link,
+  .novelight-page-curation-lists
+) :is(
+  .primary-action,
+  .drawer-action.primary,
+  button.publish,
+  .action.publish,
+  .btn.primary,
+  a.import,
+  a.choice.primary,
+  button.submit,
+  .limited-share-primary,
+  .novelight-curation-create button,
+  .novelight-curation-actions .primary,
+  .novelight-curation-add-confirm
+):hover:not(:disabled),
+html body.novelight-page-typo-reports .button.apply:hover:not(:disabled),
+html body.novelight-page-light-seed-history a.link:hover,
+html body.novelight-page-interaction-settings .button:not(.secondary):hover:not(:disabled),
+body:not(.novelight-theme) :is(#loginButton, #signupButton, #preregistrationLink):hover:not(:disabled),
+body.novelight-page-forgot-password #form > #button:hover:not(:disabled),
+body.novelight-page-reset-password #form > #button:hover:not(:disabled) {
+  border-color: #172a48 !important;
+  background: #172a48 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* Button-like secondary controls that still carried prototype purple/gold styling. */
+html body:is(.novelight-page-episode-edit, .novelight-page-episode-post) .drawer-action:not(.primary),
+html body.novelight-page-interaction-settings .button.secondary,
+body:not(.novelight-theme) #resendConfirmationButton {
+  border-color: #b9ad95 !important;
+  background: #fffdf8 !important;
+  color: #0e1d35 !important;
+  -webkit-text-fill-color: #0e1d35 !important;
+}
+
+html body:is(.novelight-page-episode-edit, .novelight-page-episode-post) .drawer-action:not(.primary):hover,
+html body.novelight-page-interaction-settings .button.secondary:hover:not(:disabled),
+body:not(.novelight-theme) #resendConfirmationButton:hover:not(:disabled) {
+  border-color: #d6a447 !important;
+  background: #fff9eb !important;
+  color: #0e1d35 !important;
+  -webkit-text-fill-color: #0e1d35 !important;
+}
