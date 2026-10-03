@@ -48,7 +48,8 @@ test('character management selects a first episode', () => {
 
 test('new episode posting reuses the shared character editor', () => {
   assert.match(episodePost, /id="openCharacterSettings"[^>]*>登場人物/);
-  assert.match(episodePost, /p_episode_id:pendingDraftId/);
+  assert.match(episodePost, /const expectedId=pendingDraftId/);
+  assert.match(episodePost, /p_episode_id:expectedId/);
   assert.match(episodePost, /pendingDraftId=draftId/);
   assert.match(episodePost, /persistDraft\(values\)/);
   assert.match(episodePost, /NovelightCharacters\?\.mountEpisodeEditor/);
