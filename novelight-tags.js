@@ -360,3 +360,106 @@
     mount
   });
 })(globalThis);
+
+(function attachEpisodeNumberVisibilityEditor(global) {
+  'use strict';
+
+  const tags = global.NovelightTags;
+  if (!tags?.mount) return;
+  const baseMount = tags.mount;
+
+  function validNovelId() {
+    const value = Number(new URLSearchParams(global.location.search).get('id'));
+    return Number.isSafeInteger(value) && value > 0 ? value : null;
+  }
+
+  function missingColumn(error) {
+    const text = [error?.message, error?.details, error?.hint]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return error?.code === '42703' || text.includes('show_episode_numbers');
+  }
+
+  async function mountVisibilitySetting({ client, root }) {
+    const novelId = validNovelId();
+    if (!client || !root || !novelId || document.getElementById('episodeNumberVisibilityField')) return;
+
+    const result = await client
+      .from('novels')
+      .select('show_episode_numbers')
+      .eq('id', novelId)
+      .maybeSingle();
+    if (result.error) {
+      if (!missingColumn(result.error)) console.error('episode number visibility unavailable', result.error);
+      return;
+    }
+
+    const field = document.createElement('div');
+    field.id = 'episodeNumberVisibilityField';
+    field.className = 'field';
+
+    const title = document.createElement('div');
+    title.className = 'legend';
+    title.textContent = '話数番号の表示';
+
+    const label = document.createElement('label');
+    label.className = 'check';
+    const checkbox = document.createElement('input');
+    checkbox.id = 'showEpisodeNumbers';
+    checkbox.type = 'checkbox';
+    checkbox.checked = result.data?.show_episode_numbers !== false;
+    const copy = document.createElement('span');
+    copy.textContent = '各エピソードに「第1話」「第2話」…を表示する';
+    label.append(checkbox, copy);
+
+    const help = document.createElement('div');
+    help.className = 'help';
+    help.textContent = 'プロローグ・幕間・番外編など、独自の話数表記を使う作品ではオフにできます。並び順は変わりません。';
+
+    const status = document.createElement('div');
+    status.className = 'help';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+
+    field.append(title, label, help, status);
+    const anchor = root.closest('.field') || root.parentElement;
+    if (!anchor?.parentElement) return;
+    anchor.insertAdjacentElement('afterend', field);
+
+    checkbox.addEventListener('change', async () => {
+      const previous = !checkbox.checked;
+      checkbox.disabled = true;
+      status.textContent = '保存しています...';
+      const update = await client
+        .from('novels')
+        .update({ show_episode_numbers: checkbox.checked })
+        .eq('id', novelId);
+      checkbox.disabled = false;
+      if (update.error) {
+        checkbox.checked = previous;
+        status.textContent = '変更を保存できませんでした。もう一度お試しください。';
+        console.error('episode number visibility update failed', update.error);
+        return;
+      }
+      status.textContent = checkbox.checked
+        ? '「第○話」を表示する設定にしました。'
+        : '自動の「第○話」を非表示にしました。';
+    });
+  }
+
+  async function mountWithEpisodeNumberVisibility(options) {
+    const result = await baseMount(options);
+    try {
+      await mountVisibilitySetting(options || {});
+    } catch (error) {
+      console.error('episode number visibility editor failed', error);
+    }
+    return result;
+  }
+
+  global.NovelightTags = Object.freeze({
+    ...tags,
+    mount: mountWithEpisodeNumberVisibility
+  });
+})(globalThis);
