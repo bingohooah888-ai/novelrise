@@ -220,3 +220,56 @@
   installEpisodeComments();
   window.NovelightEpisodeHeart = Object.freeze({ mount });
 })();
+
+(function attachEpisodeNumberVisibilityToReader(global) {
+  'use strict';
+
+  const episodeHeart = global.NovelightEpisodeHeart;
+  if (!episodeHeart?.mount) return;
+  const baseMount = episodeHeart.mount;
+
+  function installStyle() {
+    if (document.getElementById('novelight-episode-number-visibility-style')) return;
+    const style = document.createElement('style');
+    style.id = 'novelight-episode-number-visibility-style';
+    style.textContent =
+      '.novelight-hide-auto-episode-numbers #card>.number{display:none!important}';
+    document.head.appendChild(style);
+  }
+
+  async function applyVisibility(client, episode) {
+    const novelId = Number(episode?.novel_id);
+    if (!client || !Number.isSafeInteger(novelId) || novelId <= 0) return;
+    const result = await client
+      .from('novels')
+      .select('show_episode_numbers')
+      .eq('id', novelId)
+      .maybeSingle();
+    if (result.error) {
+      const text = String(result.error?.message || '');
+      if (!text.includes('show_episode_numbers')) {
+        console.error('episode number visibility unavailable', result.error);
+      }
+      return;
+    }
+    installStyle();
+    document.documentElement.classList.toggle(
+      'novelight-hide-auto-episode-numbers',
+      result.data?.show_episode_numbers === false
+    );
+  }
+
+  async function mountWithEpisodeNumberVisibility(options) {
+    const visibility = applyVisibility(options?.client, options?.episode).catch((error) => {
+      console.error('episode number visibility failed', error);
+    });
+    const result = await baseMount(options);
+    await visibility;
+    return result;
+  }
+
+  global.NovelightEpisodeHeart = Object.freeze({
+    ...episodeHeart,
+    mount: mountWithEpisodeNumberVisibility
+  });
+})(globalThis);
