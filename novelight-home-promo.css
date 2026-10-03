@@ -1,0 +1,62 @@
+/* Home promotional scroll visuals.
+   Source PNGs are rendered as-is: no crop, no forced aspect ratio, no recompression. */
+body.novelight-page-index.novelight-public-dark section.home-promo-panel {
+  padding: 0;
+  margin: 0;
+  background: #02070d;
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-frame {
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  line-height: 0;
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-frame-wide {
+  max-width: 1600px;
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-frame-hero {
+  max-width: 2560px;
+}
+
+body.novelight-page-index.novelight-public-dark .home-hero-picture,
+body.novelight-page-index.novelight-public-dark .home-promo-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+body.novelight-page-index.novelight-public-dark .home-hero-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 22px;
+  border-top: 1px solid rgba(214, 164, 71, 0.16);
+  border-bottom: 1px solid rgba(214, 164, 71, 0.16);
+  background: #040b14;
+}
+
+body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-primary,
+body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-secondary {
+  min-width: 148px;
+}
+
+@media (max-width: 767px) {
+  body.novelight-page-index.novelight-public-dark .home-promo-frame-hero {
+    max-width: 900px;
+  }
+
+  body.novelight-page-index.novelight-public-dark .home-hero-actions {
+    gap: 9px;
+    padding: 11px 14px;
+  }
+
+  body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-primary,
+  body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-secondary {
+    min-width: 0;
+    flex: 1 1 0;
+    padding-inline: 12px;
+  }
+}

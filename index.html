@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="novelight-public-dark.css">
   <link rel="stylesheet" href="novelight-brand-refinement.css">
   <link rel="stylesheet" href="novelight-home-thumbnails.css">
+  <link rel="stylesheet" href="novelight-home-promo.css">
 <link rel="stylesheet" href="novelight-accessibility.css"></head>
 <body class="novelight-theme novelight-page-index novelight-public-dark"><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header class="site-header">
@@ -38,21 +39,44 @@
   </div>
 </header>
 <main id="main-content" tabindex="-1">
-<section class="hero">
-  <div class="hero-inner">
-    <div class="hero-copy">
-      <div class="eyebrow">NOVELIGHT — すべての物語に、光を。</div>
-      <h1>まだ見ぬ物語に、<br><span>光を</span></h1>
-      <p><span class="hero-copy-line">ランキングだけでは出会えない物語がここにある。</span><span class="hero-copy-line">あなたの発見が、まだ知られていない作品を次の読者へつなぎます。</span></p>
-      <div class="hero-actions"><a class="hero-primary" href="search.html">作品を探す</a><a class="hero-secondary" href="post.html">小説を投稿する</a></div>
-    </div>
-    <div class="hero-art-slot" aria-label="本と城の正式ヒーローアート差し替え領域" role="img">
-      <div class="hero-moon" aria-hidden="true"></div>
-      <div class="hero-castle" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-      <div class="hero-light-beam" aria-hidden="true"></div>
-      <div class="hero-book" aria-hidden="true"><span class="book-left"></span><span class="book-right"></span><span class="book-spine"></span></div>
-      <div class="hero-glow" aria-hidden="true"></div>
-    </div>
+<section class="home-promo-panel home-lead-panel" aria-label="NOVELIGHT イベント告知">
+  <div class="home-promo-frame home-promo-frame-wide">
+    <img id="homeLeadVisual" class="home-promo-image" width="1600" height="900" alt="NOVELIGHT イベント告知" loading="eager" fetchpriority="high" decoding="async">
+  </div>
+  <script>
+    (() => {
+      const homeLeadVisuals = Object.freeze({
+        teaser: 'assets/home/05_event_teaser_1600x900.png',
+        official: 'assets/home/05_campaign_official_after_announcement_1600x900.png'
+      });
+      const currentLeadVisual = 'teaser';
+      document.getElementById('homeLeadVisual').src = homeLeadVisuals[currentLeadVisual];
+    })();
+  </script>
+</section>
+
+<section class="home-promo-panel home-hero-panel" aria-label="NOVELIGHT メインビジュアル">
+  <div class="home-promo-frame home-promo-frame-hero">
+    <picture class="home-hero-picture">
+      <source media="(max-width: 767px)" srcset="assets/home/02_hero_mobile_900x1600.png" width="900" height="1600">
+      <img class="home-promo-image" src="assets/home/01_hero_pc_2560x1280.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。" loading="eager" fetchpriority="high" decoding="async">
+    </picture>
+  </div>
+  <div class="home-hero-actions" aria-label="NOVELIGHTを利用する">
+    <a class="hero-primary" href="search.html">作品を探す</a>
+    <a class="hero-secondary" href="post.html">小説を投稿する</a>
+  </div>
+</section>
+
+<section class="home-promo-panel" aria-label="作者向け機能">
+  <div class="home-promo-frame home-promo-frame-wide">
+    <img class="home-promo-image" src="assets/home/03_author_features_1600x900.png" width="1600" height="900" alt="NOVELIGHT 作者向け機能" loading="lazy" decoding="async">
+  </div>
+</section>
+
+<section class="home-promo-panel" aria-label="読者向け機能">
+  <div class="home-promo-frame home-promo-frame-wide">
+    <img class="home-promo-image" src="assets/home/04_reader_promo_1600x900.png" width="1600" height="900" alt="NOVELIGHT 読者向け機能" loading="lazy" decoding="async">
   </div>
 </section>
 
