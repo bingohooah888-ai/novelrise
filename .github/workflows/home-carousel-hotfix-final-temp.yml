@@ -1,0 +1,238 @@
+name: Home carousel hotfix final temp
+
+on:
+  push:
+    branches:
+      - fix/home-horizontal-carousel-20261003
+    paths:
+      - .github/workflows/home-carousel-hotfix-final-temp.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Apply carousel hotfix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Homepage: replace four vertical panels with one four-slide horizontal carousel.
+          path = Path('index.html')
+          s = path.read_text(encoding='utf-8')
+          a = s.index('<section class="home-promo-panel home-lead-panel"')
+          b = s.index('<section id="discover"', a)
+          block = '''<section class="home-promo-carousel" aria-label="NOVELIGHT プロモーション">
+            <div class="home-promo-track">
+              <article class="home-promo-slide" aria-label="NOVELIGHT イベント告知">
+                <img id="homeLeadVisual" class="home-promo-image" width="1600" height="900" alt="NOVELIGHT イベント告知" loading="eager" fetchpriority="high" decoding="async">
+              </article>
+
+              <article class="home-promo-slide" aria-label="NOVELIGHT メインビジュアル">
+                <img class="home-promo-image" src="assets/home/01_hero_pc_2560x1280.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。" loading="eager" fetchpriority="high" decoding="async">
+              </article>
+
+              <article class="home-promo-slide" aria-label="作者向け機能">
+                <img class="home-promo-image" src="assets/home/03_author_features_1600x900.png" width="1600" height="900" alt="NOVELIGHT 作者向け機能" loading="lazy" decoding="async">
+              </article>
+
+              <article class="home-promo-slide" aria-label="読者向け機能">
+                <img class="home-promo-image" src="assets/home/04_reader_promo_1600x900.png" width="1600" height="900" alt="NOVELIGHT 読者向け機能" loading="lazy" decoding="async">
+              </article>
+            </div>
+
+            <script>
+              (() => {
+                const homeLeadVisuals = Object.freeze({
+                  teaser: 'assets/home/05_event_teaser_1600x900.png',
+                  official: 'assets/home/05_campaign_official_after_announcement_1600x900.png'
+                });
+                const currentLeadVisual = 'teaser';
+                document.getElementById('homeLeadVisual').src = homeLeadVisuals[currentLeadVisual];
+              })();
+            </script>
+          </section>
+
+          <div class="home-hero-actions" aria-label="NOVELIGHTを利用する">
+            <a class="hero-primary" href="search.html">作品を探す</a>
+            <a class="hero-secondary" href="post.html">小説を投稿する</a>
+          </div>
+
+          '''
+          s = s[:a] + block + s[b:]
+          assert '02_hero_mobile_900x1600.png' not in s
+          assert s.count('class="home-promo-slide"') == 4
+          path.write_text(s, encoding='utf-8')
+
+          # Horizontal swipe + one-slide snap, no crop/recompression.
+          Path('novelight-home-promo.css').write_text('''/* Home promotional horizontal carousel.
+          Source PNGs are rendered as-is: no crop, no forced aspect ratio, no recompression. */
+          body.novelight-page-index.novelight-public-dark .home-promo-carousel {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #02070d;
+          }
+
+          body.novelight-page-index.novelight-public-dark .home-promo-track {
+            display: flex;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+            touch-action: pan-x pan-y;
+          }
+
+          body.novelight-page-index.novelight-public-dark .home-promo-track::-webkit-scrollbar {
+            display: none;
+          }
+
+          body.novelight-page-index.novelight-public-dark .home-promo-slide {
+            flex: 0 0 100%;
+            width: 100%;
+            min-width: 100%;
+            margin: 0;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            line-height: 0;
+            background: #02070d;
+          }
+
+          body.novelight-page-index.novelight-public-dark .home-promo-image {
+            display: block;
+            width: 100%;
+            height: auto;
+          }
+
+          body.novelight-page-index.novelight-public-dark .home-hero-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 14px 22px;
+            border-top: 1px solid rgba(214, 164, 71, 0.16);
+            border-bottom: 1px solid rgba(214, 164, 71, 0.16);
+            background: #040b14;
+          }
+
+          body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-primary,
+          body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-secondary {
+            min-width: 148px;
+          }
+
+          @media (max-width: 767px) {
+            body.novelight-page-index.novelight-public-dark .home-hero-actions {
+              gap: 9px;
+              padding: 11px 14px;
+            }
+
+            body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-primary,
+            body.novelight-page-index.novelight-public-dark .home-hero-actions .hero-secondary {
+              min-width: 0;
+              flex: 1 1 0;
+              padding-inline: 12px;
+            }
+          }
+          ''', encoding='utf-8')
+
+          # Hero/carousel contract test.
+          p = Path('tests/home-hero-copy-lines.test.mjs')
+          t = p.read_text(encoding='utf-8')
+          rx = re.compile(r"test\('Home hero switches approved desktop/mobile artwork without cropping', \(\) => \{[\s\S]*?\n\}\);", re.M)
+          repl = r'''test('Home promo uses the desktop hero artwork in the horizontal carousel', () => {
+            assert.match(homeHtml, /class="home-promo-track"/u);
+            assert.match(
+              homeHtml,
+              /<img class="home-promo-image" src="assets\/home\/01_hero_pc_2560x1280\.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。"/u
+            );
+            assert.doesNotMatch(homeHtml, /02_hero_mobile_900x1600\.png/u);
+            assert.match(promoCss, /scroll-snap-type:\s*x mandatory/u);
+            assert.match(promoCss, /\.home-promo-slide \{[\s\S]*?flex:\s*0 0 100%;[\s\S]*?scroll-snap-align:\s*start;/u);
+            assert.match(promoCss, /\.home-promo-image \{[\s\S]*?display: block;[\s\S]*?width: 100%;[\s\S]*?height: auto;/u);
+            assert.doesNotMatch(promoCss, /object-fit:\s*cover/u);
+          });'''
+          t, n = rx.subn(lambda _: repl, t, count=1)
+          assert n == 1
+          p.write_text(t, encoding='utf-8')
+
+          # Replace the discovery promo test as a whole so order is measured from slide markup.
+          p = Path('tests/home-discovery-section-36.test.mjs')
+          t = p.read_text(encoding='utf-8')
+          rx = re.compile(r"test\('homepage promotional scroll uses approved artwork and avoids fake scale metrics', async \(\) => \{[\s\S]*?\n\}\);", re.M)
+          repl = r'''test('homepage promotional carousel uses approved artwork and avoids fake scale metrics', async () => {
+            const home = await read('index.html');
+            const css = await read('novelight-public-dark.css');
+
+            assert.match(home, /id="homeLeadVisual"/u);
+            assert.match(home, /teaser: 'assets\/home\/05_event_teaser_1600x900\.png'/u);
+            assert.match(home, /official: 'assets\/home\/05_campaign_official_after_announcement_1600x900\.png'/u);
+            assert.match(home, /const currentLeadVisual = 'teaser';/u);
+            assert.match(home, /class="home-promo-track"/u);
+            assert.doesNotMatch(home, /02_hero_mobile_900x1600\.png/u);
+            assert.match(home, /src="assets\/home\/01_hero_pc_2560x1280\.png"/u);
+            assert.match(home, /src="assets\/home\/03_author_features_1600x900\.png"[^>]*loading="lazy"/u);
+            assert.match(home, /src="assets\/home\/04_reader_promo_1600x900\.png"[^>]*loading="lazy"/u);
+
+            const lead = home.indexOf('aria-label="NOVELIGHT イベント告知"');
+            const hero = home.indexOf('src="assets/home/01_hero_pc_2560x1280.png"');
+            const author = home.indexOf('src="assets/home/03_author_features_1600x900.png"');
+            const reader = home.indexOf('src="assets/home/04_reader_promo_1600x900.png"');
+            assert.ok(lead >= 0 && hero > lead && author > hero && reader > author);
+
+            assert.match(home, /class="recommend-ribbon">おすすめ<\/div>/u);
+            assert.match(css, /--public-gold:/u);
+            assert.match(css, /prefers-reduced-motion/u);
+            assert.doesNotMatch(home, /25万|210万|15万|4\.9/u);
+          });'''
+          t, n = rx.subn(lambda _: repl, t, count=1)
+          assert n == 1
+          p.write_text(t, encoding='utf-8')
+
+          # Asset/order contract: teaser is the first slide even though its URL lives in the switch map.
+          p = Path('tests/home-promo-assets.test.mjs')
+          t = p.read_text(encoding='utf-8')
+          rx = re.compile(r"test\('Home promotional visual order is teaser, hero, author, reader', \(\) => \{[\s\S]*?\n\}\);", re.M)
+          repl = r'''test('Home promotional visual order is teaser, hero, author, reader', () => {
+            const positions = [
+              'aria-label="NOVELIGHT イベント告知"',
+              'src="assets/home/01_hero_pc_2560x1280.png"',
+              'src="assets/home/03_author_features_1600x900.png"',
+              'src="assets/home/04_reader_promo_1600x900.png"'
+            ].map((value) => homeHtml.indexOf(value));
+            assert.ok(positions.every((position) => position >= 0));
+            assert.ok(positions.every((position, index) => index === 0 || position > positions[index - 1]));
+          });'''
+          t, n = rx.subn(lambda _: repl, t, count=1)
+          assert n == 1
+          p.write_text(t, encoding='utf-8')
+          PY
+
+      - name: Focused tests
+        run: node --test tests/home-hero-copy-lines.test.mjs tests/home-discovery-section-36.test.mjs tests/home-promo-assets.test.mjs
+
+      - name: Commit clean hotfix
+        shell: bash
+        run: |
+          rm -f .github/workflows/home-carousel-hotfix-temp.yml .github/workflows/home-carousel-hotfix-final-temp.yml
+          git config user.name "NOVELIGHT Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html novelight-home-promo.css tests/home-hero-copy-lines.test.mjs tests/home-discovery-section-36.test.mjs tests/home-promo-assets.test.mjs .github/workflows/home-carousel-hotfix-temp.yml .github/workflows/home-carousel-hotfix-final-temp.yml
+          git diff --cached --check
+          git commit -m "Fix home promo horizontal carousel"
+          git push origin HEAD:fix/home-horizontal-carousel-20261003
