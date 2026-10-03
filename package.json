@@ -22,7 +22,7 @@
     "node": "24.x"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.112.3",
+    "@supabase/supabase-js": "2.117.2",
     "stripe": "^20.4.0"
   },
   "devDependencies": {
