@@ -165,15 +165,40 @@ window.setTimeout(() => {
   const novelId = new URLSearchParams(window.location.search).get('id');
   if (!novelId) return;
 
+  const lightSeedHelpPoints = [
+    'GOLD / SILVER / BRONZEの3種類があります。',
+    '作品は内部的に区分されており、その区分に応じて使用されるLIGHT SEEDが自動で切り替わります。これは不具合ではなく仕様です。',
+    '自分の作品には贈れません。',
+    '送信後の取消はできません。',
+    '対象作品を実際に読んだ記録がある場合のみ送信できます。',
+    '同じ読者が同じ作品へ贈れるLIGHT SEEDは1回です。種類変更・再取得はできません。',
+    'LIGHT SEEDの送信・発掘実績はSCOUT RECORDの活動記録や成長要素と関係します。',
+    '作者の知名度や人間関係ではなく、作品を見つけた読者の発掘体験を残すための仕組みです。'
+  ];
+
+  function syncLightSeedHelpTopic() {
+    const topic = window.NovelightHelp?.topics?.['light-seed'];
+    if (!topic) return false;
+    topic.points = lightSeedHelpPoints.slice();
+    return true;
+  }
+
+  if (!syncLightSeedHelpTopic()) {
+    let helpSyncAttempts = 0;
+    const helpSyncTimer = window.setInterval(() => {
+      helpSyncAttempts += 1;
+      if (syncLightSeedHelpTopic() || helpSyncAttempts >= 50) {
+        window.clearInterval(helpSyncTimer);
+      }
+    }, 100);
+  }
+
   const style = document.createElement('style');
   style.id = 'novelight-beta-auto-seed-style';
   style.textContent =
     '.seed-types[data-auto-tier="true"]{grid-template-columns:minmax(0,360px)}' +
     '.seed-choice.auto-tier{min-height:58px;text-align:center;align-items:center;background:#fff;border-color:#9b89e8}' +
-    '.seed-classification-notice{margin-top:12px;padding:10px 12px;border:1px solid #ddd7ff;border-radius:9px;background:#fff;color:#425260;font-size:12px;line-height:1.7;font-weight:700}' +
-    '.seed-classification-notice .seed-info-line{display:block}' +
-    '.seed-classification-notice .seed-info-line+.seed-info-line{margin-top:2px}' +
-    '#lightSeedArea .seed-notice{color:#344254;font-weight:700}';
+    '#lightSeedArea .seed-notice{color:#182b3c;font-weight:700}';
   document.head.appendChild(style);
 
   types.dataset.autoTier = 'true';
@@ -188,24 +213,6 @@ window.setTimeout(() => {
   const button = document.getElementById('sendLightSeedButton');
   const oldNotice = area.querySelector('.seed-notice');
   if (oldNotice) oldNotice.textContent = '対象作品を実際に読んだ記録がある場合のみ送信できます。';
-
-  if (!area.querySelector('.seed-classification-notice')) {
-    const notice = document.createElement('p');
-    notice.className = 'seed-classification-notice';
-    const lines = [
-      '作品は内部的に区分されており、その区分に応じて使用されるLIGHT SEEDが自動で切り替わります。これは不具合ではなく仕様です。',
-      '自分の作品には贈れません。',
-      '送信後の取消はできません。',
-      '対象作品を実際に読んだ記録がある場合のみ送信できます。'
-    ];
-    for (const text of lines) {
-      const line = document.createElement('span');
-      line.className = 'seed-info-line';
-      line.textContent = text;
-      notice.appendChild(line);
-    }
-    types.insertAdjacentElement('afterend', notice);
-  }
 
   const api = window.supabase.createClient(
     'https://fiepaguycecrredwrcwx.supabase.co',
