@@ -629,6 +629,40 @@ function ensureNoArgs(args) {
   }
 }
 
+async function actionWindowsTaskAudit(request, config) {
+  ensureNoArgs(request.args);
+  if (os.platform() !== 'win32') {
+    throw new Error('Windows scheduled task audit is Windows-only.');
+  }
+
+  const script = [
+    "$ErrorActionPreference = 'Stop'",
+    "$tasks = Get-ScheduledTask | Where-Object { ($_.TaskName -like '*NOVELIGHT*') -or ($_.Actions.Execute -match 'powershell|pwsh|wscript|cscript|cmd') }",
+    "$rows = foreach ($t in $tasks) {",
+    "  $info = Get-ScheduledTaskInfo -TaskName $t.TaskName -TaskPath $t.TaskPath -ErrorAction SilentlyContinue",
+    "  $triggers = @($t.Triggers | ForEach-Object { [pscustomobject]@{ Type = $_.CimClass.CimClassName; Enabled = $_.Enabled; StartBoundary = $_.StartBoundary; RepetitionInterval = $(if ($_.Repetition) { $_.Repetition.Interval } else { $null }); RepetitionDuration = $(if ($_.Repetition) { $_.Repetition.Duration } else { $null }) } })",
+    "  foreach ($a in $t.Actions) {",
+    "    $argsText = [string]$a.Arguments",
+    "    if ($t.TaskName -notlike '*NOVELIGHT*' -and $argsText) { $argsText = '<present>' }",
+    "    [pscustomobject]@{ TaskName = $t.TaskName; TaskPath = $t.TaskPath; State = [string]$t.State; LastRunTime = $(if ($info) { $info.LastRunTime.ToString('o') } else { $null }); NextRunTime = $(if ($info) { $info.NextRunTime.ToString('o') } else { $null }); Execute = [string]$a.Execute; Arguments = $argsText; WorkingDirectory = [string]$a.WorkingDirectory; Triggers = $triggers }",
+    "  }",
+    "}",
+    "$rows | Sort-Object NextRunTime,TaskName | ConvertTo-Json -Depth 6 -Compress"
+  ].join('; ');
+
+  const result = await run(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+    { cwd: config.repoRoot, timeoutMs: 30000 }
+  );
+  if (result.code !== 0) {
+    throw new Error(
+      'Windows scheduled task audit failed.\n' + (result.stderr || result.stdout)
+    );
+  }
+  return result.stdout.trim() || '[]';
+}
+
 async function actionAutorecoveryInstall(request, config) {
   ensureNoArgs(request.args);
   if (os.platform() !== 'win32') {
@@ -1826,6 +1860,7 @@ const ACTIONS = new Map([
   ['codex_auth_diagnose', actionCodexAuthDiagnose],
   ['codex_auth_repair_user_override', actionCodexAuthRepairUserOverride],
   ['autorecovery_install', actionAutorecoveryInstall],
+  ['windows_task_audit', actionWindowsTaskAudit],
   ['repo_snapshot', actionRepoSnapshot],
   ['preflight_fast', actionPreflightFast],
   ['commander_check', actionCommanderCheck],
