@@ -38,6 +38,38 @@ function Write-HiddenLauncher(
   Set-Content -Path $Path -Value $Body -Encoding ascii
 }
 
+# Any NOVELIGHT scheduled task that still launches PowerShell directly can briefly
+# flash a console window even when PowerShell receives -WindowStyle Hidden.
+# Convert only single-action NOVELIGHT PowerShell tasks to a wscript/VBS launcher.
+# This preserves their existing triggers, settings, principal, arguments and working dir.
+$HiddenTaskConversions = @()
+$WScript = (Get-Command wscript.exe -ErrorAction Stop).Source
+$DirectPowerShellTasks = @(
+  Get-ScheduledTask -ErrorAction SilentlyContinue |
+    Where-Object { $_.TaskName -like "NOVELIGHT Commander*" } |
+    Where-Object {
+      $TaskActions = @($_.Actions)
+      if ($TaskActions.Count -ne 1) { return $false }
+      $TaskExecute = [string]$TaskActions[0].Execute
+      return $TaskExecute -match '(?i)(^|\\)(powershell|pwsh)(\.exe)?$'
+    }
+)
+foreach ($Task in $DirectPowerShellTasks) {
+  $TaskAction = @($Task.Actions)[0]
+  $TaskExecute = [string]$TaskAction.Execute
+  $TaskArguments = [string]$TaskAction.Arguments
+  $TaskWorkingDirectory = [string]$TaskAction.WorkingDirectory
+  $SafeTaskName = [regex]::Replace([string]$Task.TaskName, '[^A-Za-z0-9._-]', '_')
+  $TaskLauncher = Join-Path $RuntimeRoot ("hidden-task-" + $SafeTaskName + ".vbs")
+  $TaskCommand = '"' + $TaskExecute + '"' + $(if ($TaskArguments) { ' ' + $TaskArguments } else { '' })
+  Write-HiddenLauncher -Path $TaskLauncher -Command $TaskCommand -WaitForExit $true
+  $TaskLauncherArguments = '//B //NoLogo "{0}"' -f $TaskLauncher
+  $TaskActionWorkingDirectory = if ($TaskWorkingDirectory) { $TaskWorkingDirectory } else { $Here }
+  $HiddenTaskAction = New-ScheduledTaskAction -Execute $WScript -Argument $TaskLauncherArguments -WorkingDirectory $TaskActionWorkingDirectory
+  Set-ScheduledTask -TaskName $Task.TaskName -TaskPath $Task.TaskPath -Action $HiddenTaskAction | Out-Null
+  $HiddenTaskConversions += ($Task.TaskPath + $Task.TaskName)
+}
+
 $StartupDir = [Environment]::GetFolderPath("Startup")
 $LegacyStartupFile = Join-Path $StartupDir "NOVELIGHT-Commander-Bridge.cmd"
 $StartupFile = Join-Path $StartupDir "NOVELIGHT-Commander-Bridge.vbs"
@@ -50,7 +82,6 @@ $WatchdogCommand = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' +
 Write-HiddenLauncher -Path $WatchdogLauncher -Command $WatchdogCommand -WaitForExit $true
 
 $CurrentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-$WScript = (Get-Command wscript.exe -ErrorAction Stop).Source
 $Arguments = '//B //NoLogo "{0}"' -f $WatchdogLauncher
 
 $Action = New-ScheduledTaskAction -Execute $WScript -Argument $Arguments -WorkingDirectory $Here
@@ -105,6 +136,8 @@ Write-Output ("watchdog_last_result: " + $WatchdogInfo.LastTaskResult)
 Write-Output ("tunnel_task: " + $(if ($TunnelTask) { $TunnelTask.State } else { "missing" }))
 Write-Output ("bridge_startup_launcher: " + [bool](Test-Path $StartupFile))
 Write-Output ("watchdog_hidden_launcher: " + [bool](Test-Path $WatchdogLauncher))
+Write-Output ("hidden_direct_powershell_tasks_converted: " + $HiddenTaskConversions.Count)
+Write-Output ("hidden_direct_powershell_task_names: " + $(if ($HiddenTaskConversions.Count) { $HiddenTaskConversions -join ',' } else { "none" }))
 Write-Output ("chatgpt_plugin_autoregister_started: " + $PluginAutoregisterStarted)
 Write-Output ("chatgpt_plugin_autoregister_timed_out: " + $PluginAutoregisterTimedOut)
 Write-Output ("chatgpt_plugin_state_present: " + [bool]$PluginState)
