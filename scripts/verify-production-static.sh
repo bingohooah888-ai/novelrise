@@ -8,17 +8,31 @@ base_sha="${BASE_SHA:-}"
 routes_file=/tmp/novelight-static-routes.txt
 : > "$routes_file"
 
+critical_assets=(
+  novelight-client.js
+  novelight-episode-number-entry-visibility.js
+  novelight-episode-workflow-feedback.js
+  novelight-series.js
+  novelight-characters.js
+)
+
 if [ "$mode" = 'changed' ] && [ -n "$base_sha" ] && ! [[ "$base_sha" =~ ^0+$ ]]; then
-  git diff --name-only "$base_sha" HEAD -- '*.html' 'novelight-client.js' \
-    | awk '!/\// && ($0 ~ /\.html$/ || $0 == "novelight-client.js")' \
+  git diff --name-only "$base_sha" HEAD -- '*.html' \
+    | awk '!/\// && $0 ~ /\.html$/' \
     | sort -u > "$routes_file"
 else
   find . -maxdepth 1 -type f -name '*.html' -printf '%f\n' | sort -u > "$routes_file"
-  if [ -f novelight-client.js ]; then
-    echo 'novelight-client.js' >> "$routes_file"
-  fi
-  sort -u -o "$routes_file" "$routes_file"
 fi
+
+# These root assets are directly involved in authentication/session-aware author
+# navigation and the episode workflow. Always compare them byte-for-byte with
+# Production so a newly merged HTML page cannot race ahead of a stale JS asset.
+for asset in "${critical_assets[@]}"; do
+  if [ -f "$asset" ]; then
+    echo "$asset" >> "$routes_file"
+  fi
+done
+sort -u -o "$routes_file" "$routes_file"
 
 if [ ! -s "$routes_file" ]; then
   echo 'No static routes require repository-to-production comparison.'
