@@ -27,4 +27,8 @@ test('Home promo uses the desktop hero artwork in the horizontal carousel', () =
     /\.home-promo-image \{[\s\S]*?display: block;[\s\S]*?width: 100%;[\s\S]*?height: auto;/u
   );
   assert.doesNotMatch(promoCss, /object-fit:\s*cover/u);
+  assert.match(
+    promoCss,
+    /@media \(min-width: 768px\)[\s\S]*?\.home-promo-slide > \.home-promo-image,[\s\S]*?\.home-promo-link \{[\s\S]*?width:\s*min\(100%, 1200px\);/u
+  );
 });

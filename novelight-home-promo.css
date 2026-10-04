@@ -56,6 +56,23 @@ body.novelight-page-index.novelight-public-dark .home-promo-image {
   height: auto;
 }
 
+@media (min-width: 768px) {
+  body.novelight-page-index.novelight-public-dark .home-promo-slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  body.novelight-page-index.novelight-public-dark .home-promo-slide > .home-promo-image,
+  body.novelight-page-index.novelight-public-dark .home-promo-link {
+    width: min(100%, 1200px);
+  }
+
+  body.novelight-page-index.novelight-public-dark .home-promo-link .home-promo-image {
+    width: 100%;
+  }
+}
+
 @media (hover:hover) {
   body.novelight-page-index.novelight-public-dark .home-promo-link .home-promo-image {
     transition: filter 160ms ease;
