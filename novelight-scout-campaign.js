@@ -13,6 +13,8 @@
     month: 'long',
     day: 'numeric'
   });
+  const rankNames = ['', 'NOCTIS', 'VESPER', 'UMBRA'];
+  const previewNextRankXp = { 1: 1400, 2: 4800 };
 
   let payload = null;
   let submitting = false;
@@ -57,6 +59,22 @@
     const next = Number(progress.next_level_xp ?? total);
     const span = Math.max(1, next - floor);
     return Math.max(0, Math.min(100, ((total - floor) / span) * 100));
+  }
+
+  function nextRankProgress(progress) {
+    const tier = Math.max(1, Math.min(3, Number(progress.rank_tier ?? 1)));
+    if (tier >= 3) {
+      return { xp: 0, name: 'β版RANK上限' };
+    }
+    const nextName = rankNames[tier + 1] ?? 'NEXT RANK';
+    const targetXp = Number(
+      progress.next_rank_xp ?? previewNextRankXp[tier] ?? progress.total_xp ?? 0
+    );
+    const remaining = Number(
+      progress.xp_for_next_rank ??
+        Math.max(0, targetXp - Number(progress.total_xp ?? 0))
+    );
+    return { xp: remaining, name: `${nextName}まで` };
   }
 
   function claimStatusLabel(claim) {
@@ -107,9 +125,11 @@
     }
 
     const level = Number(progress.level ?? 1);
+    const nextRank = nextRankProgress(progress);
     setText('currentLevel', `Lv.${n(level)}`);
     setText('currentRank', progress.rank_name ?? 'NOCTIS');
-    setText('totalXp', `${n(progress.total_xp)} XP`);
+    setText('nextRankXp', nextRank.name === 'β版RANK上限' ? 'MAX' : `${n(nextRank.xp)} XP`);
+    setText('nextRankName', nextRank.name);
     setText('nextLevelXp', `${n(progress.xp_for_next_level)} XP`);
     setText('targetXpRemaining', `${n(progress.xp_to_target)} XP`);
     setText('targetXpCurrent', n(progress.total_xp));
@@ -124,13 +144,17 @@
     const targetPercent = progressPercent(progress);
     const targetTrack = el('targetProgressTrack');
     const targetBar = el('targetProgressBar');
-    if (targetTrack) targetTrack.setAttribute('aria-valuenow', String(Math.round(targetPercent)));
+    if (targetTrack) {
+      targetTrack.setAttribute('aria-valuenow', String(Math.round(targetPercent)));
+    }
     if (targetBar) targetBar.style.width = `${targetPercent}%`;
 
     const nextPercent = nextLevelPercent(progress);
     const nextTrack = el('nextProgressTrack');
     const nextBar = el('nextProgressBar');
-    if (nextTrack) nextTrack.setAttribute('aria-valuenow', String(Math.round(nextPercent)));
+    if (nextTrack) {
+      nextTrack.setAttribute('aria-valuenow', String(Math.round(nextPercent)));
+    }
     if (nextBar) nextBar.style.width = `${nextPercent}%`;
 
     const achieved = el('campaignAchieved');
@@ -233,7 +257,10 @@
       await request('POST');
       await load();
     } catch (error) {
-      setState('申請を受け付けられませんでした。条件と申請期限をご確認ください。', true);
+      setState(
+        '申請を受け付けられませんでした。条件と申請期限をご確認ください。',
+        true
+      );
       if (button) {
         button.disabled = false;
         button.textContent = '図書カードを受け取る';
