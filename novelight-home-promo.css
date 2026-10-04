@@ -38,10 +38,31 @@ body.novelight-page-index.novelight-public-dark .home-promo-slide {
   background: #02070d;
 }
 
+body.novelight-page-index.novelight-public-dark .home-promo-link {
+  display: block;
+  width: 100%;
+  line-height: 0;
+  cursor: pointer;
+}
+
+body.novelight-page-index.novelight-public-dark .home-promo-link:focus-visible {
+  outline: 2px solid #d6a447;
+  outline-offset: -3px;
+}
+
 body.novelight-page-index.novelight-public-dark .home-promo-image {
   display: block;
   width: 100%;
   height: auto;
+}
+
+@media (hover:hover) {
+  body.novelight-page-index.novelight-public-dark .home-promo-link .home-promo-image {
+    transition: filter 160ms ease;
+  }
+  body.novelight-page-index.novelight-public-dark .home-promo-link:hover .home-promo-image {
+    filter: brightness(1.035);
+  }
 }
 
 body.novelight-page-index.novelight-public-dark .home-promo-nav {
