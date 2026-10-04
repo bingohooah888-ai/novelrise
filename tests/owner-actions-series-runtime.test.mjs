@@ -21,6 +21,6 @@ test('series runtime independently restores verified owner actions', () => {
 test('entry-number runtime is cache-busted after owner recovery hotfix', () => {
   assert.match(
     source,
-    /novelight-episode-number-entry-visibility\.js\?v=20261004-owner-actions-v2/
+    /novelight-episode-number-entry-visibility\.js\?v=20261004-owner-actions-v3/
   );
 });
