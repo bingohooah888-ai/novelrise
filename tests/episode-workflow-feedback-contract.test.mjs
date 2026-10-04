@@ -29,7 +29,7 @@ test('author editor makes draft autosave, direct publish and draft navigation ex
   assert.match(source, /下書き一覧/);
   assert.match(source, /episode-drafts\.html\?novel_id=/);
   assert.match(source, /今すぐ公開/);
-  assert.match(source, /data\.publishNowFromSchedule|dataset\.publishNowFromSchedule/);
+  assert.match(source, /dataset\.publishNowFromSchedule/);
   assert.match(source, /show_episode_number/);
   assert.match(source, /幕間・人物紹介・設定資料/);
 });
@@ -79,6 +79,9 @@ test('reader runtime hides automatic number on only the opted-out entry', () => 
   assert.match(source, /select\('id,show_episode_number'\)/);
   assert.match(source, /novelight-entry-number-hidden/);
   assert.match(source, /show_episode_number === false/);
+  assert.match(source, /applyReadingNavigationLabels/);
+  assert.match(source, /前のエピソード/);
+  assert.match(source, /次のエピソード/);
   assert.match(novelLoader, /novelight-episode-number-entry-visibility\.js/);
   assert.match(episodeLoader, /novelight-episode-number-entry-visibility\.js/);
 });
