@@ -3,6 +3,7 @@
 
   const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const SUPABASE_PROJECT_REF = 'fiepaguycecrredwrcwx';
   const OWNER_RECOVERY_ATTEMPTS = 6;
   const OWNER_RECOVERY_RETRY_MS = 750;
 
@@ -45,6 +46,9 @@
       '.novelight-series-nav{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}' +
       '.novelight-series-nav a{padding:11px 13px;border:1px solid #d8d8df;border-radius:9px;background:#fff;font-size:13px;font-weight:800}' +
       '.novelight-series-nav a.next{text-align:right}' +
+      'html[data-novelight-verified-owner="true"] #ownerActions,html[data-novelight-verified-owner="true"] #ownerActionsTop{display:flex!important}' +
+      'html[data-novelight-verified-owner="true"] #backToMyNovels,html[data-novelight-verified-owner="true"] #backToMyNovelsTop{display:inline-block!important}' +
+      'html[data-novelight-verified-owner="true"] #readerReportAction{display:none!important}' +
       '@media(max-width:640px){.novelight-series-context{padding:21px 18px}.novelight-series-nav{grid-template-columns:1fr}}';
     document.head.appendChild(style);
   }
@@ -54,7 +58,54 @@
     return globalThis.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   }
 
+  function readStoredAccessToken() {
+    try {
+      const raw = globalThis.localStorage?.getItem(
+        `sb-${SUPABASE_PROJECT_REF}-auth-token`
+      );
+      if (!raw) return null;
+      const stored = JSON.parse(raw);
+      return stored?.access_token ?? stored?.currentSession?.access_token ?? null;
+    } catch (error) {
+      console.warn('verified owner stored session unavailable', error);
+      return null;
+    }
+  }
+
+  async function verifyOwnerViaRest(novelId) {
+    const accessToken = readStoredAccessToken();
+    if (!accessToken) throw new Error('authenticated access token unavailable');
+
+    const headers = {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json'
+    };
+    const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers });
+    if (!userResponse.ok) {
+      throw new Error(`authenticated user verification failed: ${userResponse.status}`);
+    }
+    const user = await userResponse.json();
+    if (!user?.id) throw new Error('authenticated user id unavailable');
+
+    const url = new URL(`${SUPABASE_URL}/rest/v1/novels`);
+    url.searchParams.set('select', 'id,user_id');
+    url.searchParams.set('id', `eq.${novelId}`);
+    url.searchParams.set('limit', '1');
+    const ownershipResponse = await fetch(url, { headers });
+    if (!ownershipResponse.ok) {
+      throw new Error(`owner verification query failed: ${ownershipResponse.status}`);
+    }
+    const rows = await ownershipResponse.json();
+    const ownership = Array.isArray(rows) ? rows[0] : null;
+    if (!ownership || String(ownership.user_id) !== String(user.id)) return null;
+    return { userId: user.id };
+  }
+
   function configureVerifiedOwnerActions(client, novelId, userId) {
+    ensureStyles();
+    document.documentElement.dataset.novelightVerifiedOwner = 'true';
+
     const novelParam = encodeURIComponent(novelId);
     const hrefs = {
       backToMyNovels: 'my-novels.html',
@@ -108,28 +159,30 @@
     const readerReportAction = document.getElementById('readerReportAction');
     if (readerReportAction) readerReportAction.style.display = 'none';
 
-    for (const id of ['deleteNovel', 'deleteNovelTop']) {
-      const button = document.getElementById(id);
-      if (!button || button.dataset.verifiedOwnerSeriesFallback === 'true') continue;
-      if (typeof button.onclick === 'function') continue;
-      button.dataset.verifiedOwnerSeriesFallback = 'true';
-      button.addEventListener('click', async () => {
-        if (!globalThis.confirm('この作品とエピソードを削除しますか？この操作は元に戻せません。')) return;
-        button.disabled = true;
-        try {
-          const result = await client
-            .from('novels')
-            .delete()
-            .eq('id', Number(novelId))
-            .eq('user_id', userId);
-          if (result.error) throw result.error;
-          globalThis.location.href = 'my-novels.html';
-        } catch (error) {
-          console.error('verified owner series delete failed', error);
-          globalThis.alert('作品を削除できませんでした。時間をおいて再度お試しください。');
-          button.disabled = false;
-        }
-      });
+    if (client) {
+      for (const id of ['deleteNovel', 'deleteNovelTop']) {
+        const button = document.getElementById(id);
+        if (!button || button.dataset.verifiedOwnerSeriesFallback === 'true') continue;
+        if (typeof button.onclick === 'function') continue;
+        button.dataset.verifiedOwnerSeriesFallback = 'true';
+        button.addEventListener('click', async () => {
+          if (!globalThis.confirm('この作品とエピソードを削除しますか？この操作は元に戻せません。')) return;
+          button.disabled = true;
+          try {
+            const result = await client
+              .from('novels')
+              .delete()
+              .eq('id', novelId)
+              .eq('user_id', userId);
+            if (result.error) throw result.error;
+            globalThis.location.href = 'my-novels.html';
+          } catch (error) {
+            console.error('verified owner series delete failed', error);
+            globalThis.alert('作品を削除できませんでした。時間をおいて再度お試しください。');
+            button.disabled = false;
+          }
+        });
+      }
     }
 
     const reportButton = document.getElementById('reportOpenTop');
@@ -156,28 +209,58 @@
     setTimeout(run, 12000);
   }
 
+  async function verifyOwnerWithClient(client, novelId) {
+    if (!client) return null;
+    const auth = await client.auth.getUser();
+    const userId = auth.data?.user?.id;
+    if (auth.error || !userId) {
+      throw auth.error || new Error('authenticated user unavailable');
+    }
+
+    const ownership = await client
+      .from('novels')
+      .select('id,user_id')
+      .eq('id', novelId)
+      .maybeSingle();
+    if (ownership.error) throw ownership.error;
+    if (!ownership.data || String(ownership.data.user_id) !== String(userId)) return null;
+    return { userId };
+  }
+
   async function restoreVerifiedOwnerActions(attempt = 0) {
     const page = (globalThis.location?.pathname?.split('/').pop() || '').toLowerCase();
     if (page !== 'novel.html' && page !== 'novel') return;
     const novelId = new URLSearchParams(globalThis.location.search).get('id');
     if (!novelId) return;
     const client = makeOwnerRecoveryClient();
-    if (!client) return;
 
     try {
-      const auth = await client.auth.getUser();
-      const userId = auth.data?.user?.id;
-      if (auth.error || !userId) throw auth.error || new Error('authenticated user unavailable');
+      let verified = null;
+      let clientError = null;
+      try {
+        verified = await verifyOwnerWithClient(client, novelId);
+      } catch (error) {
+        clientError = error;
+      }
 
-      const ownership = await client
-        .from('novels')
-        .select('id,user_id')
-        .eq('id', Number(novelId))
-        .maybeSingle();
-      if (ownership.error) throw ownership.error;
-      if (!ownership.data || String(ownership.data.user_id) !== String(userId)) return;
+      if (!verified) {
+        try {
+          verified = await verifyOwnerViaRest(novelId);
+        } catch (restError) {
+          if (clientError) {
+            throw new AggregateError(
+              [clientError, restError],
+              'verified owner recovery paths unavailable'
+            );
+          }
+          throw restError;
+        }
+      }
+      if (!verified) return;
 
-      waitForOwnerSurface(() => configureVerifiedOwnerActions(client, novelId, userId));
+      waitForOwnerSurface(() =>
+        configureVerifiedOwnerActions(client, novelId, verified.userId)
+      );
     } catch (error) {
       if (attempt + 1 < OWNER_RECOVERY_ATTEMPTS) {
         setTimeout(() => {
@@ -254,7 +337,7 @@
 
   if (!document.querySelector('script[data-novelight-entry-number-visibility]')) {
     const script = document.createElement('script');
-    script.src = 'novelight-episode-number-entry-visibility.js?v=20261004-owner-actions-v2';
+    script.src = 'novelight-episode-number-entry-visibility.js?v=20261004-owner-actions-v3';
     script.dataset.novelightEntryNumberVisibility = 'true';
     document.head.appendChild(script);
   }
