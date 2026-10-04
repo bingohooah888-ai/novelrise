@@ -31,6 +31,16 @@
     document.head.appendChild(style);
   }
 
+  function loadEditorWorkflow() {
+    if (!global.document?.head) return;
+    if (global.__novelightEpisodeWorkflowFeedbackLoaded) return;
+    if (document.querySelector('script[data-novelight-episode-workflow-feedback]')) return;
+    const script = document.createElement('script');
+    script.src = 'novelight-episode-workflow-feedback.js';
+    script.dataset.novelightEpisodeWorkflowFeedback = 'true';
+    document.head.appendChild(script);
+  }
+
   function makeClient() {
     if (!global.supabase?.createClient) return null;
     return global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -166,10 +176,20 @@
   }
 
   async function start() {
+    const page = pageName();
+    if (
+      page === 'episode-post.html' ||
+      page === 'episode-post' ||
+      page === 'episode-edit.html' ||
+      page === 'episode-edit'
+    ) {
+      loadEditorWorkflow();
+      return;
+    }
+
     const client = makeClient();
     if (!client) return;
     try {
-      const page = pageName();
       if (page === 'episode.html' || page === 'episode') {
         await applyEpisodePage(client);
       } else if (page === 'novel.html' || page === 'novel') {
