@@ -4,9 +4,18 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readFileSync('scout-record.html', 'utf8');
-const source = readFileSync('novelight-scout-session-stabilizer.js', 'utf8');
-const productionUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
-const productionKey = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+const source = readFileSync(
+  'novelight-scout-session-stabilizer.js',
+  'utf8'
+);
+const url = 'https://fiepaguycecrredwrcwx.supabase.co';
+const key = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+function authResult(userId = null, error = null) {
+  const user = userId ? { id: userId } : null;
+  const session = user ? { user } : null;
+  return { data: { session }, error };
+}
 
 function install(createClient) {
   const window = {
@@ -20,9 +29,11 @@ function install(createClient) {
   return window;
 }
 
-test('SCOUT RECORD installs the auth-session stabilizer before page clients', () => {
+test('stabilizer loads before page clients', () => {
   const vendor = html.indexOf('/assets/vendor/supabase-js-2.112.3.js');
-  const stabilizer = html.indexOf('novelight-scout-session-stabilizer.js');
+  const stabilizer = html.indexOf(
+    'novelight-scout-session-stabilizer.js'
+  );
   const client = html.indexOf('novelight-client.js');
   const scout = html.indexOf('novelight-scout-record.js');
 
@@ -32,107 +43,84 @@ test('SCOUT RECORD installs the auth-session stabilizer before page clients', ()
   assert.ok(scout > client);
 });
 
-test('SCOUT RECORD reuses one canonical default Supabase client', () => {
-  let createCount = 0;
+test('canonical clients are shared', () => {
+  let count = 0;
   const window = install(() => {
-    createCount += 1;
+    count += 1;
     return {
       auth: {
         async getSession() {
-          return {
-            data: { session: { user: { id: 'reader-1' } } },
-            error: null
-          };
+          return authResult('reader-1');
         }
       }
     };
   });
-
-  const first = window.supabase.createClient(productionUrl, productionKey);
-  const second = window.supabase.createClient(productionUrl, productionKey);
-  const third = window.supabase.createClient(productionUrl, productionKey);
+  const create = window.supabase.createClient;
+  const first = create(url, key);
+  const second = create(url, key);
+  const third = create(url, key);
 
   assert.strictEqual(first, second);
   assert.strictEqual(second, third);
-  assert.equal(createCount, 1);
+  assert.equal(count, 1);
 });
 
-test('SCOUT RECORD does not collapse clients with explicit options', () => {
-  let createCount = 0;
+test('explicit options keep separate clients', () => {
+  let count = 0;
   const window = install(() => {
-    createCount += 1;
+    count += 1;
     return {
       auth: {
         async getSession() {
-          return { data: { session: null }, error: null };
+          return authResult();
         }
       }
     };
   });
-
+  const create = window.supabase.createClient;
   const options = { auth: { persistSession: false } };
-  const first = window.supabase.createClient(
-    productionUrl,
-    productionKey,
-    options
-  );
-  const second = window.supabase.createClient(
-    productionUrl,
-    productionKey,
-    options
-  );
+  const first = create(url, key, options);
+  const second = create(url, key, options);
 
   assert.notStrictEqual(first, second);
-  assert.equal(createCount, 2);
+  assert.equal(count, 2);
 });
 
-test(
-  'SCOUT RECORD retries transient null sessions and preserves real auth errors',
-  async () => {
-    let sessionCalls = 0;
-    const window = install(() => ({
-      auth: {
-        async getSession() {
-          sessionCalls += 1;
-          if (sessionCalls < 4) {
-            return { data: { session: null }, error: null };
-          }
-          return {
-            data: { session: { user: { id: 'reader-1' } } },
-            error: null
-          };
-        }
+test('null sessions retry and real errors stop', async () => {
+  let calls = 0;
+  const window = install(() => ({
+    auth: {
+      async getSession() {
+        calls += 1;
+        if (calls < 4) return authResult();
+        return authResult('reader-1');
       }
-    }));
+    }
+  }));
+  const client = window.supabase.createClient(url, key);
+  const recovered = await client.auth.getSession();
 
-    const client = window.supabase.createClient(productionUrl, productionKey);
-    const recovered = await client.auth.getSession();
-    assert.equal(recovered.data.session.user.id, 'reader-1');
-    assert.equal(sessionCalls, 4);
+  assert.equal(recovered.data.session.user.id, 'reader-1');
+  assert.equal(calls, 4);
 
-    let errorCalls = 0;
-    const errorWindow = install(() => ({
-      auth: {
-        async getSession() {
-          errorCalls += 1;
-          return {
-            data: { session: null },
-            error: new Error('auth failed')
-          };
-        }
+  let errorCalls = 0;
+  const expectedError = new Error('auth failed');
+  const errorWindow = install(() => ({
+    auth: {
+      async getSession() {
+        errorCalls += 1;
+        return authResult(null, expectedError);
       }
-    }));
-    const errorClient = errorWindow.supabase.createClient(
-      productionUrl,
-      productionKey
-    );
-    const failed = await errorClient.auth.getSession();
-    assert.equal(failed.error.message, 'auth failed');
-    assert.equal(errorCalls, 1);
-  }
-);
+    }
+  }));
+  const errorClient = errorWindow.supabase.createClient(url, key);
+  const failed = await errorClient.auth.getSession();
 
-test('SCOUT RECORD stabilizer remains fail closed and never synthesizes credentials', () => {
+  assert.strictEqual(failed.error, expectedError);
+  assert.equal(errorCalls, 1);
+});
+
+test('stabilizer never synthesizes credentials', () => {
   assert.match(source, /const retryAttempts = 4;/);
   assert.match(source, /const retryDelayMs = 150;/);
   assert.match(source, /sharedCanonicalClient/);
