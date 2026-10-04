@@ -4,10 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readFileSync('scout-record.html', 'utf8');
-const source = readFileSync(
-  'novelight-scout-session-stabilizer.js',
-  'utf8'
-);
+const source = readFileSync('novelight-scout-session-stabilizer.js', 'utf8');
 const url = 'https://fiepaguycecrredwrcwx.supabase.co';
 const key = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
 
@@ -31,9 +28,7 @@ function install(createClient) {
 
 test('stabilizer loads before page clients', () => {
   const vendor = html.indexOf('/assets/vendor/supabase-js-2.112.3.js');
-  const stabilizer = html.indexOf(
-    'novelight-scout-session-stabilizer.js'
-  );
+  const stabilizer = html.indexOf('novelight-scout-session-stabilizer.js');
   const client = html.indexOf('novelight-client.js');
   const scout = html.indexOf('novelight-scout-record.js');
 
