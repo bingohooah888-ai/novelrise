@@ -50,11 +50,15 @@
     </article>
 
     <article class="home-promo-slide" aria-label="作者向け機能">
-      <img class="home-promo-image" src="assets/home/03_author_features_1600x900.png" width="1600" height="900" alt="NOVELIGHT 作者向け機能" loading="lazy" decoding="async">
+      <a class="home-promo-link" href="author-features.html" aria-label="NOVELIGHTの作者向け機能を見る">
+        <img class="home-promo-image" src="assets/home/03_author_features_1600x900.png" width="1600" height="900" alt="NOVELIGHT 作者向け機能" loading="lazy" decoding="async">
+      </a>
     </article>
 
     <article class="home-promo-slide" aria-label="読者向け機能">
-      <img class="home-promo-image" src="assets/home/04_reader_promo_1600x900.png" width="1600" height="900" alt="NOVELIGHT 読者向け機能" loading="lazy" decoding="async">
+      <a class="home-promo-link" href="reader-features.html" aria-label="NOVELIGHTの読者向け機能を見る">
+        <img class="home-promo-image" src="assets/home/04_reader_promo_1600x900.png" width="1600" height="900" alt="NOVELIGHT 読者向け機能" loading="lazy" decoding="async">
+      </a>
     </article>
   </div>
 
@@ -95,6 +99,7 @@
         clone.dataset.carouselClone = 'true';
         clone.setAttribute('aria-hidden', 'true');
         clone.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+        clone.querySelectorAll('a').forEach(link => { link.tabIndex = -1; });
       }
       track.insertBefore(lastClone, originals[0]);
       track.append(firstClone);
@@ -103,6 +108,9 @@
       let autoplayTimer = 0;
       let settleTimer = 0;
       let resizeTimer = 0;
+      let pointerStartX = 0;
+      let pointerStartY = 0;
+      let pointerDragged = false;
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       const width = () => track.clientWidth;
       const logicalIndex = index => {
@@ -166,9 +174,26 @@
         });
       });
 
-      track.addEventListener('pointerdown', stopAutoplay, { passive: true });
+      track.addEventListener('pointerdown', event => {
+        pointerStartX = event.clientX;
+        pointerStartY = event.clientY;
+        pointerDragged = false;
+        stopAutoplay();
+      }, { passive: true });
+      track.addEventListener('pointermove', event => {
+        if (Math.hypot(event.clientX - pointerStartX, event.clientY - pointerStartY) > 9) pointerDragged = true;
+      }, { passive: true });
+      track.addEventListener('click', event => {
+        if (!pointerDragged || !event.target.closest('.home-promo-link')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        pointerDragged = false;
+      }, true);
       track.addEventListener('pointerup', startAutoplay, { passive: true });
-      track.addEventListener('pointercancel', startAutoplay, { passive: true });
+      track.addEventListener('pointercancel', () => {
+        pointerDragged = false;
+        startAutoplay();
+      }, { passive: true });
       track.addEventListener('scroll', () => {
         window.clearTimeout(settleTimer);
         settleTimer = window.setTimeout(normalize, 140);

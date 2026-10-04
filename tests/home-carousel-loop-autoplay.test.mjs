@@ -3,7 +3,7 @@ import { readTextSync } from './test-text-utils.mjs';
 import path from 'node:path';
 import test from 'node:test';
 
-// Contract for infinite looping, manual controls, and timed autoplay.
+// Contract for infinite looping, manual controls, timed autoplay, and linked-slide drag safety.
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const homeHtml = readTextSync(path.join(repoRoot, 'index.html'), 'utf8');
 const promoCss = readTextSync(
@@ -36,10 +36,12 @@ test('Home promo loops manually and advances automatically', () => {
   assert.match(homeHtml, /document\.hidden \|\| hovering \|\| focusedWithin/u);
   assert.match(homeHtml, /previousButton\.addEventListener\('click'/u);
   assert.match(homeHtml, /nextButton\.addEventListener\('click'/u);
-  assert.match(
-    homeHtml,
-    /track\.addEventListener\('pointerdown', stopAutoplay/u
-  );
+  assert.match(homeHtml, /track\.addEventListener\('pointerdown', event =>/u);
+  assert.match(homeHtml, /pointerDragged = false;/u);
+  assert.match(homeHtml, /stopAutoplay\(\);/u);
+  assert.match(homeHtml, /track\.addEventListener\('pointermove', event =>/u);
+  assert.match(homeHtml, /event\.target\.closest\('\.home-promo-link'\)/u);
+  assert.match(homeHtml, /event\.preventDefault\(\);/u);
   assert.match(
     homeHtml,
     /track\.addEventListener\('pointerup', startAutoplay/u
