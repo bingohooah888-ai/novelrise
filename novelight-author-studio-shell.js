@@ -203,4 +203,11 @@
   });
 
   void loadAccount();
+
+  if (!document.querySelector('script[data-novelight-bookshelf-header]')) {
+    const bookshelfHeaderScript = document.createElement('script');
+    bookshelfHeaderScript.src = 'novelight-bookshelf-header.js';
+    bookshelfHeaderScript.dataset.novelightBookshelfHeader = '';
+    document.head.appendChild(bookshelfHeaderScript);
+  }
 })();

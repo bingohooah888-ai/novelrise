@@ -21,6 +21,11 @@ footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:900px;
 <p class="lead">お気に入り作品と、自分だけの読書整理をまとめて管理できます。読書状態・自分用リスト・メモは非公開で、作品評価や露出には影響しません。</p>
 <a class="reading-history-link" href="reading-history.html">読書記録を見る</a>
 <a class="reading-history-link" href="curation-lists.html">読者キュレーションを管理</a>
+<nav class="nl-bookshelf-tabs" aria-label="本棚クイック表示">
+<button class="nl-bookshelf-tab" type="button" data-bookshelf-tab="updates" aria-pressed="false">更新あり</button>
+<button class="nl-bookshelf-tab" type="button" data-bookshelf-tab="favorites" aria-pressed="false">お気に入り</button>
+<button class="nl-bookshelf-tab" type="button" data-bookshelf-tab="later" aria-pressed="false">後で読む</button>
+</nav>
 <div id="bookshelfUnavailable" class="nl-bookshelf-unavailable" hidden>本棚整理機能のデータベース反映待ちです。現在はお気に入り作品のみ表示します。</div>
 <div class="nl-bookshelf-toolbar" aria-label="本棚フィルター">
 <label>読書状態
@@ -46,5 +51,7 @@ footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:900px;
 <script>const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');</script>
 <script src="novelight-reading-continuity.js"></script>
 <script src="novelight-bookshelf.js"></script>
+<script src="novelight-favorite-updates.js"></script>
+<script src="novelight-bookshelf-tabs.js"></script>
 <script src="novelight-synopsis-fold.js"></script></body>
 </html>
