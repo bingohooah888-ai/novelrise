@@ -59,30 +59,38 @@ function jstDayBounds(now = new Date()) {
     month: '2-digit',
     day: '2-digit'
   }).formatToParts(now);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  const start = new Date(`${values.year}-${values.month}-${values.day}T00:00:00+09:00`);
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value])
+  );
+  const start = new Date(
+    `${values.year}-${values.month}-${values.day}T00:00:00+09:00`
+  );
   return { start, end: new Date(start.getTime() + DAY_MS) };
 }
 
 async function fallbackProgress(supabase, userId, campaign) {
-  const [{ data: xpRows, error: xpError }, { data: thresholds, error: thresholdError }] =
-    await Promise.all([
-      supabase
-        .from('scout_xp_ledger')
-        .select('id,xp_kind,xp_value,occurred_at')
-        .eq('user_id', userId)
-        .order('occurred_at', { ascending: true })
-        .order('id', { ascending: true }),
-      supabase
-        .from('scout_level_thresholds')
-        .select('level,cumulative_xp')
-        .lte('level', 30)
-        .order('level', { ascending: true })
-    ]);
+  const [
+    { data: xpRows, error: xpError },
+    { data: thresholds, error: thresholdError }
+  ] = await Promise.all([
+    supabase
+      .from('scout_xp_ledger')
+      .select('id,xp_kind,xp_value,occurred_at')
+      .eq('user_id', userId)
+      .order('occurred_at', { ascending: true })
+      .order('id', { ascending: true }),
+    supabase
+      .from('scout_level_thresholds')
+      .select('level,cumulative_xp')
+      .lte('level', 30)
+      .order('level', { ascending: true })
+  ]);
 
   if (xpError) throw new Error(`campaign XP query failed: ${xpError.message}`);
   if (thresholdError) {
-    throw new Error(`campaign threshold query failed: ${thresholdError.message}`);
+    throw new Error(
+      `campaign threshold query failed: ${thresholdError.message}`
+    );
   }
 
   const qualifyingRows = (xpRows ?? []).filter(
@@ -100,7 +108,9 @@ async function fallbackProgress(supabase, userId, campaign) {
     .reverse()
     .find((row) => Number(row.cumulative_xp) <= totalXp);
   const level = Math.max(1, Number(current?.level ?? 1));
-  const next = (thresholds ?? []).find((row) => Number(row.level) === level + 1);
+  const next = (thresholds ?? []).find(
+    (row) => Number(row.level) === level + 1
+  );
   const nextLevelXp = Number(next?.cumulative_xp ?? totalXp);
   const rankTier = Math.min(3, Math.floor((level - 1) / 10) + 1);
 
@@ -153,10 +163,13 @@ async function loadCampaign(supabase) {
 }
 
 async function loadProgress(supabase, userId, campaign) {
-  const { data, error } = await supabase.rpc('novelight_scout_campaign_progress', {
-    p_user_id: userId,
-    p_campaign_key: CAMPAIGN_KEY
-  });
+  const { data, error } = await supabase.rpc(
+    'novelight_scout_campaign_progress',
+    {
+      p_user_id: userId,
+      p_campaign_key: CAMPAIGN_KEY
+    }
+  );
   if (!error && data) return data;
   if (!isMissingCampaignSchema(error)) {
     throw new Error(`campaign progress failed: ${error.message}`);
@@ -186,15 +199,25 @@ function addDays(value, days) {
 
 function daysRemaining(endsAt, now) {
   if (!endsAt) return null;
-  return Math.max(0, Math.ceil((new Date(endsAt).getTime() - now.getTime()) / DAY_MS));
+  return Math.max(
+    0,
+    Math.ceil((new Date(endsAt).getTime() - now.getTime()) / DAY_MS)
+  );
 }
 
-function buildEligibility({ campaign, progress, user, claim, now = new Date() }) {
+function buildEligibility({
+  campaign,
+  progress,
+  user,
+  claim,
+  now = new Date()
+}) {
   const startsAt = campaign.starts_at ? new Date(campaign.starts_at) : null;
   const endsAt = campaign.ends_at ? new Date(campaign.ends_at) : null;
   const createdAt = user.created_at ? new Date(user.created_at) : null;
   const isConfigured = Boolean(startsAt && endsAt);
-  const isActive = campaign.status === 'active' && isConfigured && now >= startsAt;
+  const isActive =
+    campaign.status === 'active' && isConfigured && now >= startsAt;
   const isNewUser = Boolean(createdAt && startsAt && createdAt >= startsAt);
   const eligibilityDeadline =
     createdAt && startsAt
@@ -212,20 +235,22 @@ function buildEligibility({ campaign, progress, user, claim, now = new Date() })
     ? addDays(qualifiedAt, campaign.claim_window_days)
     : null;
   const reachedTarget = Number(progress.level) >= Number(campaign.target_level);
-  const withinEntryPeriod = Boolean(!createdAt || !endsAt || createdAt <= endsAt);
+  const withinEntryPeriod = Boolean(
+    !createdAt || !endsAt || createdAt <= endsAt
+  );
   const qualifiedInTime = Boolean(
     reachedTarget &&
-      qualifiedAt &&
-      eligibilityDeadline &&
-      qualifiedAt <= eligibilityDeadline
+    qualifiedAt &&
+    eligibilityDeadline &&
+    qualifiedAt <= eligibilityDeadline
   );
   const withinClaimWindow = Boolean(claimDeadline && now <= claimDeadline);
   const canClaim = Boolean(
     !claim &&
-      isActive &&
-      withinEntryPeriod &&
-      qualifiedInTime &&
-      withinClaimWindow
+    isActive &&
+    withinEntryPeriod &&
+    qualifiedInTime &&
+    withinClaimWindow
   );
 
   let reason = 'level_required';
@@ -270,7 +295,10 @@ function publicCampaign(campaign) {
   };
 }
 
-export function createScoutLv10CampaignHandler({ supabase, now = () => new Date() } = {}) {
+export function createScoutLv10CampaignHandler({
+  supabase,
+  now = () => new Date()
+} = {}) {
   if (!supabase) throw new Error('supabase is required');
 
   return async function scoutLv10Campaign(req, res) {
@@ -285,7 +313,8 @@ export function createScoutLv10CampaignHandler({ supabase, now = () => new Date(
     const token = getBearerToken(req.headers?.authorization);
     if (!token) return fail(res, 401, 'authentication_required');
 
-    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const { data: authData, error: authError } =
+      await supabase.auth.getUser(token);
     const user = authData?.user;
     if (authError || !user) return fail(res, 401, 'invalid_session');
 

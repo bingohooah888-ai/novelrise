@@ -104,7 +104,10 @@ test('campaign progress reuses canonical SCOUT XP, level and rank contracts', ()
   assert.match(migration, /scout_level_thresholds/);
   assert.match(migration, /xp_kind = 'valid_read'/);
   assert.match(migration, /Asia\/Tokyo/);
-  assert.match(rankMigration, /v_next_rank_level := \(v_rank_tier \* 10\) \+ 1/);
+  assert.match(
+    rankMigration,
+    /v_next_rank_level := \(v_rank_tier \* 10\) \+ 1/
+  );
   assert.match(rankMigration, /'xp_for_next_rank'/);
 });
 
