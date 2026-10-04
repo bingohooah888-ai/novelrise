@@ -9,6 +9,9 @@
     }
   },
   "functions": {
+    "api/seo/home.js": {
+      "includeFiles": "index.html"
+    },
     "api/seo/novel.js": {
       "includeFiles": "novel.html"
     },
@@ -68,6 +71,14 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/seo/home"
+    },
+    {
+      "source": "/index.html",
+      "destination": "/api/seo/home"
+    },
     {
       "source": "/novel.html",
       "destination": "/api/seo/novel"
