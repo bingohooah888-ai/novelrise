@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
-import { createAdminTrustSafetyHandler } from "./_lib/admin-trust-safety.js";
+import { createClient } from '@supabase/supabase-js';
+import { createAdminTrustSafetyHandler } from './_lib/admin-trust-safety.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -7,12 +7,12 @@ const supabase = createClient(
   {
     auth: {
       autoRefreshToken: false,
-      persistSession: false,
-    },
-  },
+      persistSession: false
+    }
+  }
 );
 
 export default createAdminTrustSafetyHandler({
   supabase,
-  env: process.env,
+  env: process.env
 });
