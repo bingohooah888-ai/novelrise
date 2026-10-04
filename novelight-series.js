@@ -102,6 +102,18 @@
     return { userId: user.id };
   }
 
+  function promoteCanonicalOwnerManagementLink() {
+    const canonical = document.getElementById('backToMyNovels');
+    const top = document.getElementById('backToMyNovelsTop');
+    if (!canonical || !top || !top.parentElement) return;
+    if (!canonical.closest('#episodesPanel')) return;
+
+    canonical.className = top.className;
+    canonical.textContent = top.textContent;
+    canonical.href = 'my-novels.html';
+    top.replaceWith(canonical);
+  }
+
   function configureVerifiedOwnerActions(client, novelId, userId) {
     ensureStyles();
     document.documentElement.dataset.novelightVerifiedOwner = 'true';
@@ -136,6 +148,8 @@
       const link = document.getElementById(id);
       if (link) link.href = href;
     }
+
+    promoteCanonicalOwnerManagementLink();
 
     for (const id of ['ownerActions', 'ownerActionsTop']) {
       const container = document.getElementById(id);
