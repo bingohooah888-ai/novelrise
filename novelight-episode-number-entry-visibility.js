@@ -82,6 +82,62 @@
     }, 12000);
   }
 
+  function navigationTitle(row, direction) {
+    const title = String(row?.title || '').trim() || (direction === 'previous' ? '前のエピソード' : '次のエピソード');
+    return direction === 'previous' ? `← ${title}` : `${title}を読む →`;
+  }
+
+  async function applyReadingNavigationLabels(client, novelId, showWorkNumbers) {
+    let result = await client
+      .from('episodes')
+      .select('id,title,episode_number,show_episode_number')
+      .eq('novel_id', Number(novelId))
+      .eq('status', 'published')
+      .order('episode_number', { ascending: true });
+
+    if (result.error && missingColumn(result.error, 'show_episode_number')) {
+      result = await client
+        .from('episodes')
+        .select('id,title,episode_number')
+        .eq('novel_id', Number(novelId))
+        .eq('status', 'published')
+        .order('episode_number', { ascending: true });
+    }
+    if (result.error) {
+      console.warn('reading navigation episode-number visibility unavailable', result.error);
+      return;
+    }
+
+    const rows = new Map(
+      (result.data || []).map((row) => [String(row.id), row])
+    );
+
+    function sync(nav) {
+      nav.querySelectorAll('a[href*="episode.html?id="]').forEach((link) => {
+        let linkedId = '';
+        try {
+          linkedId = new URL(link.getAttribute('href'), global.location.href).searchParams.get('id') || '';
+        } catch {}
+        const row = rows.get(String(linkedId));
+        if (!row) return;
+        const shouldShowNumber = showWorkNumbers && row.show_episode_number !== false;
+        if (shouldShowNumber) return;
+        if (link.classList.contains('previous')) {
+          link.textContent = navigationTitle(row, 'previous');
+        } else if (link.classList.contains('next')) {
+          link.textContent = navigationTitle(row, 'next');
+        }
+      });
+    }
+
+    waitForRendered('#nlReadingNav', (nav) => {
+      sync(nav);
+      if (typeof MutationObserver === 'function') {
+        new MutationObserver(() => sync(nav)).observe(nav, { childList: true, subtree: true });
+      }
+    });
+  }
+
   async function applyEpisodePage(client) {
     const episodeId = new URLSearchParams(global.location.search).get('id');
     if (!episodeId) return;
@@ -118,6 +174,7 @@
     waitForRendered('#card>.number', (number) => {
       number.classList.toggle('novelight-entry-number-hidden', !showEntryNumber);
     });
+    void applyReadingNavigationLabels(client, novelId, showWorkNumbers);
   }
 
   function applyNovelRows(rows) {
