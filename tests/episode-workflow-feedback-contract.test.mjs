@@ -21,13 +21,15 @@ test('per-episode automatic number visibility is backward compatible', () => {
   assert.match(migration, /show_episode_number set not null/i);
 });
 
-test('author editor makes draft autosave and draft navigation explicit', () => {
+test('author editor makes draft autosave, direct publish and draft navigation explicit', () => {
   const source = read('novelight-episode-workflow-feedback.js');
 
   assert.match(source, /下書きに自動保存済み/);
   assert.match(source, /入力内容は下書きに自動保存されます/);
   assert.match(source, /下書き一覧/);
   assert.match(source, /episode-drafts\.html\?novel_id=/);
+  assert.match(source, /今すぐ公開/);
+  assert.match(source, /data\.publishNowFromSchedule|dataset\.publishNowFromSchedule/);
   assert.match(source, /show_episode_number/);
   assert.match(source, /幕間・人物紹介・設定資料/);
 });
