@@ -166,6 +166,7 @@
           physicalIndex = 1;
           track.scrollTo({ left: slideWidth, behavior: 'auto' });
         }
+        hydrateSlide(physicalIndex);
         updateDots();
       };
       const stopAutoplay = () => {

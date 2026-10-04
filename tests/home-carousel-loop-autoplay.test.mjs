@@ -58,6 +58,7 @@ test('Home promo loops manually and advances automatically', () => {
     /window\.setTimeout\(\(\) => hydrateSlide\(next\), 1800\)/u
   );
   assert.match(homeHtml, /hydrateSlide\(index\);/u);
+  assert.match(homeHtml, /hydrateSlide\(physicalIndex\);/u);
   assert.match(homeHtml, /warmNextSlide\(index\);/u);
   assert.match(promoCss, /\.home-promo-nav \{/u);
   assert.match(promoCss, /\.home-promo-dots \{/u);
