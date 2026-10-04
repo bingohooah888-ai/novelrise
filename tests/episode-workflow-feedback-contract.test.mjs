@@ -6,16 +6,16 @@ const read = (path) => readFileSync(path, 'utf8');
 
 test('per-episode automatic number visibility is backward compatible', () => {
   const migration = read(
-    'supabase/migrations/20261004103000_add_episode_number_visibility_per_episode.sql'
+    'supabase/migrations/20261004103000_add_episode_number_visibility_per_episode.sql',
   );
 
   assert.match(
     migration,
-    /add column if not exists show_episode_number boolean/i
+    /add column if not exists show_episode_number boolean/i,
   );
   assert.match(
     migration,
-    /update public\.episodes\s+set show_episode_number = true\s+where show_episode_number is null/i
+    /update public\.episodes\s+set show_episode_number = true\s+where show_episode_number is null/i,
   );
   assert.match(migration, /show_episode_number set default true/i);
   assert.match(migration, /show_episode_number set not null/i);
