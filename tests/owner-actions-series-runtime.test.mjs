@@ -7,7 +7,10 @@ const source = readFileSync('novelight-series.js', 'utf8');
 test('series runtime independently restores verified owner actions', () => {
   assert.match(source, /client\.auth\.getUser\(\)/);
   assert.match(source, /select\('id,user_id'\)/);
-  assert.match(source, /String\(ownership\.data\.user_id\) !== String\(userId\)/);
+  assert.match(
+    source,
+    /String\(ownership\.data\.user_id\) !== String\(userId\)/
+  );
   assert.match(source, /ownerActions/);
   assert.match(source, /ownerActionsTop/);
   assert.match(source, /backToMyNovels/);
