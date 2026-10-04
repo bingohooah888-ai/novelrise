@@ -9,7 +9,7 @@ test('series runtime independently restores verified owner actions', () => {
   assert.match(source, /select\('id,user_id'\)/);
   assert.match(
     source,
-    /String\(ownership\.data\.user_id\) !== String\(userId\)/
+    /String\(ownership\.data\.user_id\) !== String\(userId\)/,
   );
   assert.match(source, /ownerActions/);
   assert.match(source, /ownerActionsTop/);
@@ -21,6 +21,6 @@ test('series runtime independently restores verified owner actions', () => {
 test('entry-number runtime is cache-busted after owner recovery hotfix', () => {
   assert.match(
     source,
-    /novelight-episode-number-entry-visibility\.js\?v=20261004-owner-actions-v3/
+    /novelight-episode-number-entry-visibility\.js\?v=20261004-owner-actions-v3/,
   );
 });
