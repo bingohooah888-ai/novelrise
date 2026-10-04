@@ -137,6 +137,29 @@
     tools.insertBefore(link, publishButton || null);
   }
 
+  function installImmediatePublish(initialRow) {
+    const draft = (initialRow?.status || episodeStatus) === 'draft';
+    if (!draft) return;
+
+    const primary = document.getElementById(isPostPage ? 'publish' : 'save');
+    if (primary) primary.textContent = '今すぐ公開';
+
+    if (!isEditPage) return;
+    const actions = document.querySelector('#schedulePane .drawer-actions');
+    if (!actions || actions.querySelector('[data-publish-now-from-schedule]')) return;
+    const publishNow = document.createElement('button');
+    publishNow.type = 'button';
+    publishNow.className = 'drawer-action';
+    publishNow.dataset.publishNowFromSchedule = 'true';
+    publishNow.textContent = '今すぐ公開';
+    publishNow.addEventListener('click', () => {
+      document.getElementById('closeDrawer')?.click();
+      const currentPrimary = document.getElementById('save');
+      if (currentPrimary && !currentPrimary.disabled) currentPrimary.click();
+    });
+    actions.prepend(publishNow);
+  }
+
   async function ensurePostDraft() {
     const fromUrl = currentDraftIdFromUrl();
     if (fromUrl) return fromUrl;
@@ -234,6 +257,7 @@
     }
     installAutosaveClarity();
     installDraftListLink();
+    installImmediatePublish(initialRow);
     try {
       await installNumberToggle(initialRow);
     } catch (error) {
