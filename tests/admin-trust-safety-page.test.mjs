@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const html = readFileSync(
   new URL('../admin-trust-safety.html', import.meta.url),
