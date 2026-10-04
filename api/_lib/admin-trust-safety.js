@@ -273,9 +273,7 @@ export function createAdminTrustSafetyHandler({
             p_window_days: windowDays,
           },
         );
-        if (error) throw new Error(
-            `Trust scan failed: ${error.message}`,
-        );
+        if (error) throw new Error(`Trust scan failed: ${error.message}`);
         return res.status(200).json({ ok: true, result: data });
       }
 
@@ -295,9 +293,7 @@ export function createAdminTrustSafetyHandler({
             p_note: note || null,
           },
         );
-        if (error) throw new Error(
-            `Trust review failed: ${error.message}`,
-        );
+        if (error) throw new Error(`Trust review failed: ${error.message}`);
         return res.status(200).json({ ok: true, profile: data });
       }
 
@@ -318,9 +314,7 @@ export function createAdminTrustSafetyHandler({
           },
         );
         if (error) {
-          throw new Error(
-            `Trust signal action failed: ${error.message}`,
-          );
+          throw new Error(`Trust signal action failed: ${error.message}`);
         }
         return res.status(200).json({ ok: true, result: data });
       }
