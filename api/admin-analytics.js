@@ -36,6 +36,33 @@ async function optionalRpc(name, args) {
   throw error;
 }
 
+async function countProfilesByPlan(plan = null) {
+  let query = supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true });
+  if (plan) query = query.eq('plan', plan);
+  const { count, error } = await query;
+  if (error) throw error;
+  return Number(count || 0);
+}
+
+async function getPlanUserCounts() {
+  const [total, free, standard, premium] = await Promise.all([
+    countProfilesByPlan(),
+    countProfilesByPlan('free'),
+    countProfilesByPlan('standard'),
+    countProfilesByPlan('premium')
+  ]);
+
+  return {
+    total,
+    free,
+    standard,
+    premium,
+    other: Math.max(0, total - free - standard - premium)
+  };
+}
+
 function mergeAcquisitionRetention(acquisition, retention) {
   const retentionBySource = new Map(
     (Array.isArray(retention) ? retention : []).map((row) => [
@@ -67,10 +94,12 @@ export default async function handler(req, res) {
     );
     if (error) throw error;
 
-    const [sourceRetention, scoutShareAttribution] = await Promise.all([
-      optionalRpc('novelight_admin_acquisition_retention', { p_days: days }),
-      optionalRpc('novelight_admin_scout_share_snapshot', { p_days: days })
-    ]);
+    const [sourceRetention, scoutShareAttribution, planUsers] =
+      await Promise.all([
+        optionalRpc('novelight_admin_acquisition_retention', { p_days: days }),
+        optionalRpc('novelight_admin_scout_share_snapshot', { p_days: days }),
+        getPlanUserCounts()
+      ]);
 
     const analytics = {
       ...(data || {}),
@@ -78,7 +107,8 @@ export default async function handler(req, res) {
         data?.acquisition,
         sourceRetention
       ),
-      scoutShareAttribution: scoutShareAttribution || null
+      scoutShareAttribution: scoutShareAttribution || null,
+      planUsers
     };
 
     res.setHeader(
