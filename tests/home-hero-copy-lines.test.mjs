@@ -14,7 +14,7 @@ test('Home promo uses the desktop hero artwork in the horizontal carousel', () =
   assert.match(homeHtml, /class="home-promo-track"/u);
   assert.match(
     homeHtml,
-    /<img class="home-promo-image" src="assets\/home\/01_hero_pc_2560x1280\.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。"/u
+    /<img class="home-promo-image" data-src="assets\/home\/01_hero_pc_2560x1280\.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。"/u
   );
   assert.doesNotMatch(homeHtml, /02_hero_mobile_900x1600\.png/u);
   assert.match(promoCss, /scroll-snap-type:\s*x mandatory/u);

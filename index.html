@@ -46,18 +46,18 @@
     </article>
 
     <article class="home-promo-slide" aria-label="NOVELIGHT メインビジュアル">
-      <img class="home-promo-image" src="assets/home/01_hero_pc_2560x1280.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。" loading="eager" fetchpriority="high" decoding="async">
+      <img class="home-promo-image" data-src="assets/home/01_hero_pc_2560x1280.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。" loading="lazy" fetchpriority="low" decoding="async">
     </article>
 
     <article class="home-promo-slide" aria-label="作者向け機能">
       <a class="home-promo-link" href="author-features.html" aria-label="NOVELIGHTの作者向け機能を見る">
-        <img class="home-promo-image" src="assets/home/03_author_features_1600x900.png" width="1600" height="900" alt="NOVELIGHT 作者向け機能" loading="lazy" decoding="async">
+        <img class="home-promo-image" data-src="assets/home/03_author_features_1600x900.png" width="1600" height="900" alt="NOVELIGHT 作者向け機能" loading="lazy" fetchpriority="low" decoding="async">
       </a>
     </article>
 
     <article class="home-promo-slide" aria-label="読者向け機能">
       <a class="home-promo-link" href="reader-features.html" aria-label="NOVELIGHTの読者向け機能を見る">
-        <img class="home-promo-image" src="assets/home/04_reader_promo_1600x900.png" width="1600" height="900" alt="NOVELIGHT 読者向け機能" loading="lazy" decoding="async">
+        <img class="home-promo-image" data-src="assets/home/04_reader_promo_1600x900.png" width="1600" height="900" alt="NOVELIGHT 読者向け機能" loading="lazy" fetchpriority="low" decoding="async">
       </a>
     </article>
   </div>
@@ -100,9 +100,32 @@
         clone.setAttribute('aria-hidden', 'true');
         clone.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
         clone.querySelectorAll('a').forEach(link => { link.tabIndex = -1; });
+        clone.querySelectorAll('img').forEach(image => {
+          const source = image.getAttribute('src');
+          if (source) {
+            image.dataset.src = source;
+            image.removeAttribute('src');
+          }
+          image.loading = 'lazy';
+          image.fetchPriority = 'low';
+        });
       }
       track.insertBefore(lastClone, originals[0]);
       track.append(firstClone);
+
+      const physicalSlides = [...track.querySelectorAll('.home-promo-slide')];
+      const hydrateSlide = index => {
+        const slide = physicalSlides[index];
+        if (!slide) return;
+        slide.querySelectorAll('img[data-src]').forEach(image => {
+          image.src = image.dataset.src;
+          image.removeAttribute('data-src');
+        });
+      };
+      const warmNextSlide = index => {
+        const next = index + 1 < physicalSlides.length ? index + 1 : 0;
+        window.setTimeout(() => hydrateSlide(next), 1800);
+      };
 
       let physicalIndex = 1;
       let autoplayTimer = 0;
@@ -126,9 +149,11 @@
         });
       };
       const goTo = (index, behavior = reducedMotion.matches ? 'auto' : 'smooth') => {
+        hydrateSlide(index);
         physicalIndex = index;
         track.scrollTo({ left: width() * index, behavior });
         updateDots();
+        warmNextSlide(index);
       };
       const normalize = () => {
         const slideWidth = width();
@@ -141,6 +166,7 @@
           physicalIndex = 1;
           track.scrollTo({ left: slideWidth, behavior: 'auto' });
         }
+        hydrateSlide(physicalIndex);
         updateDots();
       };
       const stopAutoplay = () => {
@@ -209,6 +235,7 @@
       });
 
       window.requestAnimationFrame(() => {
+        hydrateSlide(1);
         goTo(1, 'auto');
         startAutoplay();
       });
