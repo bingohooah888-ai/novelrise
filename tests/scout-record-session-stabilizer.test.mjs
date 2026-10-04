@@ -39,7 +39,10 @@ test('SCOUT RECORD reuses one canonical default Supabase client', () => {
     return {
       auth: {
         async getSession() {
-          return { data: { session: { user: { id: 'reader-1' } } }, error: null };
+          return {
+            data: { session: { user: { id: 'reader-1' } } },
+            error: null
+          };
         }
       }
     };
@@ -68,44 +71,66 @@ test('SCOUT RECORD does not collapse clients with explicit options', () => {
   });
 
   const options = { auth: { persistSession: false } };
-  const first = window.supabase.createClient(productionUrl, productionKey, options);
-  const second = window.supabase.createClient(productionUrl, productionKey, options);
+  const first = window.supabase.createClient(
+    productionUrl,
+    productionKey,
+    options
+  );
+  const second = window.supabase.createClient(
+    productionUrl,
+    productionKey,
+    options
+  );
 
   assert.notStrictEqual(first, second);
   assert.equal(createCount, 2);
 });
 
-test('SCOUT RECORD retries transient null sessions and preserves real auth errors', async () => {
-  let sessionCalls = 0;
-  const window = install(() => ({
-    auth: {
-      async getSession() {
-        sessionCalls += 1;
-        if (sessionCalls < 4) return { data: { session: null }, error: null };
-        return { data: { session: { user: { id: 'reader-1' } } }, error: null };
+test(
+  'SCOUT RECORD retries transient null sessions and preserves real auth errors',
+  async () => {
+    let sessionCalls = 0;
+    const window = install(() => ({
+      auth: {
+        async getSession() {
+          sessionCalls += 1;
+          if (sessionCalls < 4) {
+            return { data: { session: null }, error: null };
+          }
+          return {
+            data: { session: { user: { id: 'reader-1' } } },
+            error: null
+          };
+        }
       }
-    }
-  }));
+    }));
 
-  const client = window.supabase.createClient(productionUrl, productionKey);
-  const recovered = await client.auth.getSession();
-  assert.equal(recovered.data.session.user.id, 'reader-1');
-  assert.equal(sessionCalls, 4);
+    const client = window.supabase.createClient(productionUrl, productionKey);
+    const recovered = await client.auth.getSession();
+    assert.equal(recovered.data.session.user.id, 'reader-1');
+    assert.equal(sessionCalls, 4);
 
-  let errorCalls = 0;
-  const errorWindow = install(() => ({
-    auth: {
-      async getSession() {
-        errorCalls += 1;
-        return { data: { session: null }, error: new Error('auth failed') };
+    let errorCalls = 0;
+    const errorWindow = install(() => ({
+      auth: {
+        async getSession() {
+          errorCalls += 1;
+          return {
+            data: { session: null },
+            error: new Error('auth failed')
+          };
+        }
       }
-    }
-  }));
-  const errorClient = errorWindow.supabase.createClient(productionUrl, productionKey);
-  const failed = await errorClient.auth.getSession();
-  assert.equal(failed.error.message, 'auth failed');
-  assert.equal(errorCalls, 1);
-});
+    }));
+    const errorClient = errorWindow.supabase.createClient(
+      productionUrl,
+      productionKey
+    );
+    const failed = await errorClient.auth.getSession();
+    assert.equal(failed.error.message, 'auth failed');
+    assert.equal(errorCalls, 1);
+  }
+);
 
 test('SCOUT RECORD stabilizer remains fail closed and never synthesizes credentials', () => {
   assert.match(source, /const retryAttempts = 4;/);
