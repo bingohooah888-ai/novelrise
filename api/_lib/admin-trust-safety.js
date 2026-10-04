@@ -1,16 +1,8 @@
-import {
-  isSameOriginRequest,
-  parseAdminAllowlist,
-} from "./admin-dashboard.js";
+import { isSameOriginRequest, parseAdminAllowlist } from "./admin-dashboard.js";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const REVIEW_DECISIONS = new Set([
-  "clear",
-  "watch",
-  "hold",
-  "confirmed_abuse",
-]);
+const REVIEW_DECISIONS = new Set(["clear", "watch", "hold", "confirmed_abuse"]);
 const SIGNAL_ACTIONS = new Set(["dismiss", "confirm", "reactivate"]);
 
 function getBearerToken(value) {
@@ -139,7 +131,8 @@ export function summarizeTrustDashboard({
     email: emails.get(row.user_id) ?? null,
     signals: signals.filter((signal) => signal.user_id === row.user_id),
     links: links.filter(
-      (link) => link.user_id_a === row.user_id || link.user_id_b === row.user_id,
+      (link) =>
+        link.user_id_a === row.user_id || link.user_id_b === row.user_id,
     ),
     recentReviews: reviews
       .filter((review) => review.user_id === row.user_id)
@@ -203,13 +196,17 @@ export async function loadTrustDashboard({
   ]);
 
   if (signalResult.error) {
-    throw new Error(`Trust signals query failed: ${signalResult.error.message}`);
+    throw new Error(
+      `Trust signals query failed: ${signalResult.error.message}`,
+    );
   }
   if (linkResult.error) {
     throw new Error(`Trust links query failed: ${linkResult.error.message}`);
   }
   if (reviewResult.error) {
-    throw new Error(`Trust reviews query failed: ${reviewResult.error.message}`);
+    throw new Error(
+      `Trust reviews query failed: ${reviewResult.error.message}`,
+    );
   }
 
   const emails = await loadEmails(
@@ -269,11 +266,16 @@ export function createAdminTrustSafetyHandler({
         if (!userId || windowDays === null) {
           return fail(res, 400, "invalid_scan_request");
         }
-        const { data, error } = await supabase.rpc("novelight_trust_scan_user", {
-          p_user_id: userId,
-          p_window_days: windowDays,
-        });
-        if (error) throw new Error(`Trust scan failed: ${error.message}`);
+        const { data, error } = await supabase.rpc(
+          "novelight_trust_scan_user",
+          {
+            p_user_id: userId,
+            p_window_days: windowDays,
+          },
+        );
+        if (error) throw new Error(
+            `Trust scan failed: ${error.message}`,
+        );
         return res.status(200).json({ ok: true, result: data });
       }
 
@@ -281,11 +283,7 @@ export function createAdminTrustSafetyHandler({
         const userId = cleanUuid(body.userId);
         const decision = String(body.decision ?? "");
         const note = cleanNote(body.note);
-        if (
-          !userId ||
-          !REVIEW_DECISIONS.has(decision) ||
-          note === null
-        ) {
+        if (!userId || !REVIEW_DECISIONS.has(decision) || note === null) {
           return fail(res, 400, "invalid_review_request");
         }
         const { data, error } = await supabase.rpc(
@@ -297,7 +295,9 @@ export function createAdminTrustSafetyHandler({
             p_note: note || null,
           },
         );
-        if (error) throw new Error(`Trust review failed: ${error.message}`);
+        if (error) throw new Error(
+            `Trust review failed: ${error.message}`,
+        );
         return res.status(200).json({ ok: true, profile: data });
       }
 
@@ -305,11 +305,7 @@ export function createAdminTrustSafetyHandler({
         const signalId = cleanUuid(body.signalId);
         const signalAction = String(body.signalAction ?? "");
         const note = cleanNote(body.note);
-        if (
-          !signalId ||
-          !SIGNAL_ACTIONS.has(signalAction) ||
-          note === null
-        ) {
+        if (!signalId || !SIGNAL_ACTIONS.has(signalAction) || note === null) {
           return fail(res, 400, "invalid_signal_action");
         }
         const { data, error } = await supabase.rpc(
@@ -322,7 +318,9 @@ export function createAdminTrustSafetyHandler({
           },
         );
         if (error) {
-          throw new Error(`Trust signal action failed: ${error.message}`);
+          throw new Error(
+            `Trust signal action failed: ${error.message}`,
+          );
         }
         return res.status(200).json({ ok: true, result: data });
       }
