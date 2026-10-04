@@ -104,4 +104,11 @@
   }
 
   window.NovelightSeries = Object.freeze({ fetchContext, mountNovelContext });
+
+  if (!document.querySelector('script[data-novelight-entry-number-visibility]')) {
+    const script = document.createElement('script');
+    script.src = 'novelight-episode-number-entry-visibility.js';
+    script.dataset.novelightEntryNumberVisibility = 'true';
+    document.head.appendChild(script);
+  }
 })();
