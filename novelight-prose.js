@@ -180,6 +180,17 @@
     }
   }
 
+  function loadEpisodeWorkflowFeedback() {
+    if (!global.document?.head) return;
+    const page = (global.location?.pathname?.split('/').pop() || '').toLowerCase();
+    if (!['episode-post.html', 'episode-post', 'episode-edit.html', 'episode-edit'].includes(page)) return;
+    if (global.document.querySelector('script[data-novelight-episode-workflow-feedback]')) return;
+    const script = global.document.createElement('script');
+    script.src = 'novelight-episode-workflow-feedback.js';
+    script.dataset.novelightEpisodeWorkflowFeedback = 'true';
+    global.document.head.appendChild(script);
+  }
+
   global.NovelightProse = Object.freeze({
     LIMITS,
     tokenize,
@@ -189,4 +200,5 @@
   });
 
   start();
+  loadEpisodeWorkflowFeedback();
 })(typeof window === 'undefined' ? globalThis : window);
