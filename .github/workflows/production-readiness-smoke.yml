@@ -6,6 +6,7 @@ on:
     paths:
       - '*.html'
       - 'novelight-client.js'
+      - 'novelight-episode-number-entry-visibility.js'
       - 'vercel.json'
       - 'api/**'
       - 'supabase/checks/production_beta_observability.sql'
