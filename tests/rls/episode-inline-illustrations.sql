@@ -228,11 +228,10 @@ begin
   exception when insufficient_privilege then null;
   end;
 
-  begin
-    perform * from public.episode_illustrations;
-    raise exception 'service_role unexpectedly received raw illustration table access';
-  exception when insufficient_privilege then null;
-  end;
+  if not has_table_privilege(current_user, 'public.episode_illustrations', 'SELECT')
+     or not has_table_privilege(current_user, 'public.episode_illustrations', 'DELETE') then
+    raise exception 'service_role is missing account-deletion illustration privileges';
+  end if;
 
   begin
     perform * from public.episode_illustration_upload_audit;
