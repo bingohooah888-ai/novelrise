@@ -97,6 +97,7 @@
       paused: '現在受付を一時停止しています',
       ended: 'キャンペーンは終了しました',
       not_started: 'キャンペーン開始前です',
+      entry_required: '対象期間中のログインが必要です',
       entry_closed: '参加受付は終了しました',
       level_required: 'LEVEL 10達成で申請できます',
       qualification_deadline_passed: '達成期限を過ぎています',
@@ -121,7 +122,7 @@
       setText('countdownNote', '日程確定後に残り日数を表示します。');
     } else {
       setText('daysRemaining', n(eligibility.daysRemaining));
-      setText('countdownNote', `終了予定：${formatDate(campaign.endsAt)}（JST）`);
+      setText('countdownNote', `参加受付：${formatDate(campaign.endsAt)}まで（JST）`);
     }
 
     const level = Number(progress.level ?? 1);
@@ -173,8 +174,10 @@
         (eligibility.canClaim
           ? '条件を満たしています。申請すると不正利用確認後に配布対象となります。'
           : eligibility.reason === 'preparing'
-            ? '現在はページ確認用の準備状態です。日程確定後に申請受付を開始します。'
-            : 'LEVEL 10達成後、条件を満たすと申請ボタンが有効になります。')
+            ? '現在はページ確認用の準備状態です。申請受付はまだ有効化していません。'
+            : eligibility.reason === 'entry_required'
+              ? '10月31日までに対象ログインを行うと、そこから60日間がLEVEL 10達成期間になります。'
+              : 'LEVEL 10達成後、条件を満たすと申請ボタンが有効になります。')
     );
 
     setText(
@@ -184,7 +187,7 @@
 
     setText(
       'eligibilityWindow',
-      `既存ユーザー：開始から${n(campaign.existingUserWindowDays)}日以内／新規ユーザー：登録から${n(campaign.newUserWindowDays)}日以内にLEVEL ${n(campaign.targetLevel)}達成`
+      `既存ユーザー：10月31日までの対象ログインから${n(campaign.existingUserWindowDays)}日以内／新規ユーザー：10月31日までの登録から${n(campaign.newUserWindowDays)}日以内にLEVEL ${n(campaign.targetLevel)}達成。10月6日6:00までの事前ログインは10月6日6:00開始扱いです。`
     );
     setText(
       'claimWindow',
@@ -194,7 +197,7 @@
     document.body.classList.remove('campaign-loading');
     setState(
       campaign.status === 'draft'
-        ? 'ページ確認用の準備状態です。キャンペーン日程・申請受付はまだ有効化していません。'
+        ? 'ページ確認用の準備状態です。申請受付はまだ有効化していません。'
         : '最新のSCOUT RECORDを反映しています。'
     );
   }
