@@ -74,7 +74,7 @@ async function snapshotAuth(page) {
 
 async function snapshotDom(page) {
   return page.evaluate(() => {
-    const headings = Array.from(document.querySelectorAll('h1'));
+    const headings = Array.from(globalThis.document.querySelectorAll('h1'));
     const target = headings.find(
       (heading) => heading.textContent?.trim() === 'SCOUT RECORD'
     );
@@ -113,9 +113,11 @@ async function snapshotDom(page) {
             left: rect.left
           }
         : null,
-      mainExists: Boolean(document.querySelector('#main-content')),
-      bodyClass: document.body.className,
-      openDialogs: Array.from(document.querySelectorAll('dialog[open]')).map(
+      mainExists: Boolean(globalThis.document.querySelector('#main-content')),
+      bodyClass: globalThis.document.body.className,
+      openDialogs: Array.from(
+        globalThis.document.querySelectorAll('dialog[open]')
+      ).map(
         (dialog) => dialog.id || dialog.getAttribute('aria-label') || 'dialog'
       ),
       ancestry
