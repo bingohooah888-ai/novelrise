@@ -1,4 +1,21 @@
 (() => {
+  function configureCountdownShell() {
+    const countdown = document.querySelector('.campaign-countdown');
+    if (!countdown) return;
+
+    countdown.setAttribute('aria-label', 'LEVEL 10達成期限までの日数');
+
+    const label = countdown.querySelector('small');
+    if (label) label.textContent = 'LEVEL 10 DEADLINE';
+
+    const heading = countdown.querySelector('strong');
+    if (heading) {
+      heading.innerHTML = '達成期限まで あと <b id="daysRemaining">—</b> 日';
+    }
+  }
+
+  configureCountdownShell();
+
   if (!window.supabase) return;
 
   const client = window.supabase.createClient(
@@ -15,6 +32,7 @@
   });
   const rankNames = ['', 'NOCTIS', 'VESPER', 'UMBRA'];
   const previewNextRankXp = { 1: 1400, 2: 4800 };
+  const dayMs = 24 * 60 * 60 * 1000;
 
   let payload = null;
   let submitting = false;
@@ -37,6 +55,13 @@
   function formatDate(value) {
     if (!value) return '日程確定後に表示';
     return dateTime.format(new Date(value));
+  }
+
+  function deadlineDaysRemaining(value) {
+    if (!value) return null;
+    const deadline = new Date(value);
+    if (Number.isNaN(deadline.getTime())) return null;
+    return Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / dayMs));
   }
 
   function maskEmail(value) {
@@ -117,12 +142,23 @@
     setText('campaignStartDate', formatDate(campaign.startsAt));
     setText('campaignEndDate', formatDate(campaign.endsAt));
 
-    if (eligibility.daysRemaining === null) {
+    const personalDaysRemaining = deadlineDaysRemaining(
+      eligibility.eligibilityDeadline
+    );
+    if (personalDaysRemaining === null) {
       setText('daysRemaining', '—');
-      setText('countdownNote', '日程確定後に残り日数を表示します。');
+      setText(
+        'countdownNote',
+        eligibility.hasEntry
+          ? 'LEVEL 10達成期限を確認できませんでした。'
+          : '対象ログインまたは登録後から60日間がLEVEL 10達成期間です。'
+      );
     } else {
-      setText('daysRemaining', n(eligibility.daysRemaining));
-      setText('countdownNote', `参加受付：${formatDate(campaign.endsAt)}まで（JST）`);
+      setText('daysRemaining', n(personalDaysRemaining));
+      setText(
+        'countdownNote',
+        `LEVEL 10達成期限：${formatDate(eligibility.eligibilityDeadline)}まで（JST）`
+      );
     }
 
     const level = Number(progress.level ?? 1);
