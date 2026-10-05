@@ -65,11 +65,15 @@ begin
     v_eligibility_started_at := new.created_at;
     v_login_at := new.last_sign_in_at;
   else
-    if tg_op <> 'UPDATE' or new.last_sign_in_at is not distinct from old.last_sign_in_at then
-      return new;
+    if tg_op = 'UPDATE' then
+      if new.last_sign_in_at is not distinct from old.last_sign_in_at then
+        return new;
+      end if;
+      v_login_at := new.last_sign_in_at;
+    else
+      v_login_at := new.last_sign_in_at;
     end if;
 
-    v_login_at := new.last_sign_in_at;
     if v_login_at is null or v_login_at > v_campaign.ends_at then
       return new;
     end if;
