@@ -31,12 +31,17 @@ test('homepage promotional carousel uses approved artwork and avoids fake scale 
   const css = await read('novelight-public-dark.css');
 
   assert.match(home, /id="homeLeadVisual"/u);
-  assert.match(home, /teaser: 'assets\/home\/05_event_teaser_1600x900\.png'/u);
   assert.match(
     home,
-    /official: 'assets\/home\/05_campaign_official_after_announcement_1600x900\.png'/u
+    /teaser:\s*\{[\s\S]*?src: 'assets\/home\/05_event_teaser_1600x900\.png'/u
   );
+  assert.match(
+    home,
+    /official:\s*\{[\s\S]*?src: 'assets\/home\/05_campaign_official_after_announcement_1600x900\.png'/u
+  );
+  assert.match(home, /href: 'scout-lv10-campaign\.html'/u);
   assert.match(home, /const currentLeadVisual = 'teaser';/u);
+  assert.match(home, /時刻による自動切替は行わない/u);
   assert.match(home, /class="home-promo-track"/u);
   assert.doesNotMatch(home, /02_hero_mobile_900x1600\.png/u);
   assert.match(home, /src="assets\/home\/01_hero_pc_2560x1280\.png"/u);

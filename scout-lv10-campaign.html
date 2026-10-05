@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>SCOUT LEVEL 10 キャンペーン | NOVELIGHT</title>
+  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-accessibility.css">
+  <link rel="stylesheet" href="novelight-scout-campaign.css">
+  <style>
+    body.novelight-page-scout-campaign {
+      background:
+        radial-gradient(ellipse at 14% 12%, rgba(63, 91, 145, 0.22), transparent 34rem),
+        radial-gradient(ellipse at 84% 26%, rgba(206, 169, 82, 0.1), transparent 31rem),
+        linear-gradient(180deg, #131b2d 0%, #0d1424 48%, #080b13 100%);
+    }
+
+    body.novelight-page-scout-campaign .campaign-hero h1,
+    body.novelight-page-scout-campaign .campaign-section-head h2,
+    body.novelight-page-scout-campaign .campaign-card h2,
+    body.novelight-page-scout-campaign .campaign-card h3,
+    body.novelight-page-scout-campaign .campaign-stat strong,
+    body.novelight-page-scout-campaign .campaign-progress-head > strong,
+    body.novelight-page-scout-campaign .campaign-progress-head > strong span {
+      color: var(--campaign-text);
+    }
+
+    body.novelight-page-scout-campaign .campaign-hero h1 em,
+    body.novelight-page-scout-campaign .campaign-eyebrow,
+    body.novelight-page-scout-campaign .campaign-stat strong.gold,
+    body.novelight-page-scout-campaign .campaign-countdown strong b {
+      color: var(--campaign-gold-bright);
+    }
+
+    body.novelight-page-scout-campaign .campaign-section-head p,
+    body.novelight-page-scout-campaign .campaign-countdown-note,
+    body.novelight-page-scout-campaign .campaign-stat span,
+    body.novelight-page-scout-campaign .campaign-stat small,
+    body.novelight-page-scout-campaign .campaign-progress-head > div > span,
+    body.novelight-page-scout-campaign .campaign-progress-meta,
+    body.novelight-page-scout-campaign .campaign-claim-copy,
+    body.novelight-page-scout-campaign .campaign-claim-status,
+    body.novelight-page-scout-campaign .campaign-email,
+    body.novelight-page-scout-campaign .campaign-footer-note {
+      color: var(--campaign-muted);
+    }
+
+    body.novelight-page-scout-campaign .campaign-dashboard.campaign-dashboard-two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.novelight-page-scout-campaign .campaign-stat,
+    body.novelight-page-scout-campaign .campaign-progress-card,
+    body.novelight-page-scout-campaign .campaign-card {
+      background-color: rgba(18, 27, 45, 0.94);
+      border-color: rgba(216, 189, 120, 0.13);
+    }
+
+    body.novelight-page-scout-campaign .campaign-stat.highlight {
+      background:
+        linear-gradient(145deg, rgba(216, 189, 120, 0.09), transparent 62%),
+        rgba(18, 27, 45, 0.96);
+    }
+
+    body.novelight-page-scout-campaign .campaign-brand { font-size: 22px; }
+    body.novelight-page-scout-campaign .campaign-back { font-size: 16px; }
+    body.novelight-page-scout-campaign .campaign-eyebrow { font-size: 15px; }
+    body.novelight-page-scout-campaign .campaign-lead { font-size: 18px; }
+    body.novelight-page-scout-campaign .campaign-status-pill { font-size: 15px; }
+    body.novelight-page-scout-campaign .campaign-countdown small { font-size: 15px; }
+    body.novelight-page-scout-campaign .campaign-countdown-note { font-size: 15px; }
+    body.novelight-page-scout-campaign .campaign-state { font-size: 16px; }
+    body.novelight-page-scout-campaign .campaign-section-head h2 { font-size: 24px; }
+    body.novelight-page-scout-campaign .campaign-section-head p { font-size: 15px; }
+    body.novelight-page-scout-campaign .campaign-stat span { font-size: 14px; }
+    body.novelight-page-scout-campaign .campaign-stat strong { font-size: 33px; }
+    body.novelight-page-scout-campaign .campaign-stat small { font-size: 14px; }
+    body.novelight-page-scout-campaign .campaign-progress-head span { font-size: 15px; }
+    body.novelight-page-scout-campaign .campaign-progress-head strong { font-size: 23px; }
+    body.novelight-page-scout-campaign .campaign-progress-meta { font-size: 14px; }
+    body.novelight-page-scout-campaign .campaign-card h2 { font-size: 23px; }
+    body.novelight-page-scout-campaign .campaign-card h3 { font-size: 18px; }
+    body.novelight-page-scout-campaign .campaign-rules li { font-size: 16px; }
+    body.novelight-page-scout-campaign .campaign-rules li::before { font-size: 14px; }
+    body.novelight-page-scout-campaign .campaign-achieved { font-size: 19px; }
+    body.novelight-page-scout-campaign .campaign-claim-copy { font-size: 15px; }
+    body.novelight-page-scout-campaign .campaign-claim-button { font-size: 18px; min-height: 62px; }
+    body.novelight-page-scout-campaign .campaign-claim-status { font-size: 14px; }
+    body.novelight-page-scout-campaign .campaign-email { font-size: 14px; }
+    body.novelight-page-scout-campaign .campaign-footer-note { font-size: 14px; }
+
+    body.novelight-page-scout-campaign footer {
+      border-top: 1px solid rgba(216, 189, 120, 0.14);
+      background: #080b12;
+    }
+
+    body.novelight-page-scout-campaign .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 18px;
+      width: min(1120px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 22px 0 28px;
+    }
+
+    body.novelight-page-scout-campaign .footer-links a {
+      color: var(--campaign-muted);
+      font-size: 15px;
+      text-decoration: none;
+    }
+
+    @media (max-width: 560px) {
+      body.novelight-page-scout-campaign .campaign-dashboard.campaign-dashboard-two {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="novelight-page-scout-campaign campaign-loading">
+  <a class="skip-link" href="#main-content">本文へスキップ</a>
+
+  <header class="campaign-topbar">
+    <div class="campaign-shell campaign-topbar-inner">
+      <a class="campaign-brand" href="index.html">NOVELIGHT</a>
+      <a class="campaign-back" href="scout-record.html">SCOUT RECORDへ</a>
+    </div>
+  </header>
+
+  <main id="main-content" tabindex="-1">
+    <div class="campaign-shell campaign-main">
+      <section class="campaign-hero" aria-labelledby="campaignVisualTitle">
+        <p class="campaign-eyebrow">SCOUT RECORD LIMITED CAMPAIGN</p>
+        <h1 id="campaignVisualTitle">SCOUT LEVEL 10<br><em>達成キャンペーン</em></h1>
+        <p id="campaignDescription" class="campaign-lead">
+          SCOUT LEVEL 10を達成した方へ、図書カードネットギフト500円分をプレゼントします。
+        </p>
+        <div class="campaign-status-row" aria-label="キャンペーン概要">
+          <span class="campaign-status-pill">全員対象・抽選なし</span>
+          <span class="campaign-status-pill">1人1回まで</span>
+          <span class="campaign-status-pill">有料プラン加入不要</span>
+        </div>
+      </section>
+
+      <section class="campaign-countdown" aria-label="キャンペーン終了までの日数">
+        <div>
+          <small>CAMPAIGN END</small>
+          <strong>終了まで あと <b id="daysRemaining">—</b> 日</strong>
+        </div>
+        <div id="countdownNote" class="campaign-countdown-note">日程確定後に残り日数を表示します。</div>
+      </section>
+
+      <div id="campaignState" class="campaign-state" role="status" aria-live="polite">
+        SCOUT RECORDを読み込んでいます。
+      </div>
+
+      <section class="campaign-section" aria-labelledby="progressTitle">
+        <div class="campaign-section-head">
+          <div>
+            <h2 id="progressTitle">あなたの現在地</h2>
+            <p>現在のSCOUT RECORDをリアルタイムで反映します。</p>
+          </div>
+        </div>
+
+        <div class="campaign-dashboard campaign-dashboard-two">
+          <article class="campaign-stat highlight">
+            <span>CURRENT LEVEL</span>
+            <strong id="currentLevel" class="gold">—</strong>
+            <small>目標はLEVEL 10</small>
+          </article>
+          <article class="campaign-stat">
+            <span>SCOUT RANK</span>
+            <strong id="currentRank">—</strong>
+            <small>現在のSCOUT RANK</small>
+          </article>
+        </div>
+
+        <article class="campaign-progress-card">
+          <div class="campaign-progress-head">
+            <div>
+              <span>LEVEL 10 PROGRESS</span>
+              <strong>キャンペーン達成まで</strong>
+            </div>
+          </div>
+          <div id="targetProgressTrack" class="campaign-progress-track" role="progressbar" aria-label="LEVEL 10までの進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="targetProgressBar"></span>
+          </div>
+          <div class="campaign-progress-meta">
+            <span>START</span>
+            <span>LEVEL 10</span>
+          </div>
+        </article>
+
+        <article class="campaign-progress-card">
+          <div class="campaign-progress-head">
+            <div>
+              <span>NEXT LEVEL</span>
+              <strong>次のLEVELまで</strong>
+            </div>
+            <strong>あと <span id="nextLevelXp">—</span></strong>
+          </div>
+          <div id="nextProgressTrack" class="campaign-progress-track" role="progressbar" aria-label="次のLEVELまでの進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="nextProgressBar"></span>
+          </div>
+        </article>
+      </section>
+
+      <section class="campaign-section" aria-labelledby="todayXpTitle">
+        <div class="campaign-section-head">
+          <div>
+            <h2 id="todayXpTitle">今日のSCOUT活動</h2>
+            <p>有効読書で獲得できるXPの日次上限を表示します。</p>
+          </div>
+        </div>
+        <article class="campaign-stat highlight">
+          <span>本日の読書XP上限</span>
+          <strong id="todayXp" class="gold">—</strong>
+          <small id="todayXpRemaining">本日の残りXPを読み込んでいます。</small>
+        </article>
+      </section>
+
+      <section class="campaign-section campaign-grid-two" aria-label="参加条件と申請">
+        <article class="campaign-card">
+          <h2>キャンペーン参加条件</h2>
+          <ul class="campaign-rules">
+            <li id="eligibilityWindow">既存ユーザー・新規ユーザーそれぞれの達成期限を表示します。</li>
+            <li id="claimWindow">LEVEL 10達成後の申請期限を表示します。</li>
+            <li>対象期間中に条件を満たした方は全員対象です。抽選・人数上限はありません。</li>
+            <li>申請は1アカウントにつき1回までです。図書カードネットギフトは登録メールアドレスへお送りします。</li>
+            <li>BOT・複数アカウントなど不正利用の疑いがある場合は、配布前に確認を行うことがあります。</li>
+          </ul>
+
+          <div class="campaign-footer-note">
+            開始予定：<span id="campaignStartDate">日程確定後に表示</span><br>
+            終了予定：<span id="campaignEndDate">日程確定後に表示</span><br>
+            判定時刻は日本標準時（JST）を基準とします。
+          </div>
+        </article>
+
+        <aside class="campaign-card campaign-claim-card" aria-labelledby="claimTitle">
+          <div id="campaignAchieved" class="campaign-achieved" hidden>条件達成しました。</div>
+          <p class="campaign-eyebrow">REWARD CLAIM</p>
+          <h2 id="claimTitle">図書カードを受け取る</h2>
+          <p class="campaign-claim-copy">
+            LEVEL 10達成後、申請ボタンが有効になります。申請後に条件確認を行い、問題がなければ配布対象となります。
+          </p>
+          <button id="claimButton" class="campaign-claim-button" type="button" disabled>
+            LEVEL 10達成で申請できます
+          </button>
+          <div id="claimStatus" class="campaign-claim-status" aria-live="polite">
+            申請条件を確認しています。
+          </div>
+          <div class="campaign-email">
+            <strong id="campaignReward">図書カードネットギフト500円分</strong><br>
+            <span id="deliveryEmail">登録メールアドレス宛にお届けします。</span>
+          </div>
+        </aside>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-links">
+      <a href="terms.html">利用規約</a>
+      <a href="privacy.html">プライバシー</a>
+      <a href="contact.html">お問い合わせ</a>
+    </div>
+  </footer>
+
+  <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+  <script src="novelight-client.js"></script>
+  <script src="novelight-scout-campaign.js"></script>
+</body>
+</html>
