@@ -9,6 +9,13 @@
   <link rel="stylesheet" href="novelight-accessibility.css">
   <link rel="stylesheet" href="novelight-scout-campaign.css">
   <style>
+    body.novelight-page-scout-campaign {
+      background:
+        radial-gradient(ellipse at 14% 12%, rgba(63, 91, 145, 0.22), transparent 34rem),
+        radial-gradient(ellipse at 84% 26%, rgba(206, 169, 82, 0.1), transparent 31rem),
+        linear-gradient(180deg, #131b2d 0%, #0d1424 48%, #080b13 100%);
+    }
+
     body.novelight-page-scout-campaign .campaign-hero h1,
     body.novelight-page-scout-campaign .campaign-section-head h2,
     body.novelight-page-scout-campaign .campaign-card h2,
@@ -39,8 +46,21 @@
       color: var(--campaign-muted);
     }
 
-    body.novelight-page-scout-campaign .campaign-dashboard.campaign-dashboard-three {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+    body.novelight-page-scout-campaign .campaign-dashboard.campaign-dashboard-two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.novelight-page-scout-campaign .campaign-stat,
+    body.novelight-page-scout-campaign .campaign-progress-card,
+    body.novelight-page-scout-campaign .campaign-card {
+      background-color: rgba(18, 27, 45, 0.94);
+      border-color: rgba(216, 189, 120, 0.13);
+    }
+
+    body.novelight-page-scout-campaign .campaign-stat.highlight {
+      background:
+        linear-gradient(145deg, rgba(216, 189, 120, 0.09), transparent 62%),
+        rgba(18, 27, 45, 0.96);
     }
 
     body.novelight-page-scout-campaign footer {
@@ -64,9 +84,9 @@
       text-decoration: none;
     }
 
-    @media (max-width: 860px) {
-      body.novelight-page-scout-campaign .campaign-dashboard.campaign-dashboard-three {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    @media (max-width: 560px) {
+      body.novelight-page-scout-campaign .campaign-dashboard.campaign-dashboard-two {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -116,7 +136,7 @@
           </div>
         </div>
 
-        <div class="campaign-dashboard campaign-dashboard-three">
+        <div class="campaign-dashboard campaign-dashboard-two">
           <article class="campaign-stat highlight">
             <span>CURRENT LEVEL</span>
             <strong id="currentLevel" class="gold">—</strong>
@@ -126,11 +146,6 @@
             <span>SCOUT RANK</span>
             <strong id="currentRank">—</strong>
             <small>現在のSCOUT RANK</small>
-          </article>
-          <article class="campaign-stat">
-            <span>NEXT SCOUT RANK</span>
-            <strong id="nextRankXp">—</strong>
-            <small id="nextRankName">次のRANKまでに必要なXP</small>
           </article>
         </div>
 
