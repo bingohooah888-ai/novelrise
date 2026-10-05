@@ -9,7 +9,7 @@ const [
   navigation,
   characterAdmin,
   authorBackgrounds,
-  migration,
+  migration
 ] = await Promise.all([
   readFile('episode.html', 'utf8'),
   readFile('novel.html', 'utf8'),
@@ -19,15 +19,15 @@ const [
   readFile('novelight-author-backgrounds.js', 'utf8'),
   readFile(
     'supabase/migrations/20261005171000_work_navigation_character_surfaces.sql',
-    'utf8',
-  ),
+    'utf8'
+  )
 ]);
 
 test('episode reader uses one integrated navigation surface on desktop and mobile', () => {
   assert.match(episode, /novelight-work-navigation\.js/u);
   assert.match(
     episode,
-    /NovelightWorkNavigation\.mountEpisode\(\{client,episode,novel\}\)/u,
+    /NovelightWorkNavigation\.mountEpisode\(\{client,episode,novel\}\)/u
   );
   assert.doesNotMatch(episode, /NovelightCharacters\.mountReader/u);
   assert.match(navigation, /nl-worknav-support/u);
@@ -41,7 +41,7 @@ test('novel detail exposes continue CTA and compact spoiler-safe characters', ()
   assert.match(novel, /novelight-work-navigation\.js/u);
   assert.match(
     novel,
-    /NovelightWorkNavigation\.mountNovel\(\{client,novelId:novel\.id\}\)/u,
+    /NovelightWorkNavigation\.mountNovel\(\{client,novelId:novel\.id\}\)/u
   );
   assert.match(navigation, /第1話から読む/u);
   assert.match(navigation, /続きを読む/u);
@@ -65,43 +65,46 @@ test('author editing exposes the shared character management entry and surface c
 test('new character reader surfaces are opt-in for existing rows', () => {
   assert.match(
     migration,
-    /reader_body_visible boolean not null default false/u,
+    /reader_body_visible boolean not null default false/u
   );
   assert.match(
     migration,
-    /novel_detail_visible boolean not null default false/u,
+    /novel_detail_visible boolean not null default false/u
   );
   assert.match(migration, /display_order integer not null default 0/u);
   assert.match(
     migration,
-    /grant execute on function public\.novelight_upsert_character_v4[\s\S]*?to authenticated;/u,
+    /grant execute on function public\.novelight_upsert_character_v4[\s\S]*?to authenticated;/u
   );
 });
 
 test('episode character feed is publication and first-appearance bounded', () => {
   const start = migration.indexOf(
-    'create or replace function public.novelight_character_feed',
+    'create or replace function public.novelight_character_feed'
   );
   const end = migration.indexOf(
     'create or replace function public.novelight_novel_character_feed',
-    start,
+    start
   );
   const feed = migration.slice(start, end);
   assert.match(feed, /c\.reader_visible/u);
   assert.match(feed, /c\.reader_body_visible/u);
   assert.match(feed, /e\.status = 'published'/u);
   assert.match(feed, /e\.episode_number <= v_current_number/u);
-  assert.match(feed, /first_episode\.episode_number <= v_current_number/u);
+  assert.match(
+    feed,
+    /first_episode\.episode_number <= v_current_number/u
+  );
   assert.doesNotMatch(feed, /'aliases'/u);
 });
 
 test('novel-detail character feed never reveals beyond valid-read progress', () => {
   const start = migration.indexOf(
-    'create or replace function public.novelight_novel_character_feed',
+    'create or replace function public.novelight_novel_character_feed'
   );
   const end = migration.indexOf(
     'revoke all on function public.novelight_novel_character_feed',
-    start,
+    start
   );
   const feed = migration.slice(start, end);
   assert.match(feed, /c\.reader_visible/u);
@@ -111,7 +114,7 @@ test('novel-detail character feed never reveals beyond valid-read progress', () 
   assert.match(feed, /e\.status = 'published'/u);
   assert.match(
     feed,
-    /q\.first_appearance_episode_number <= v_reveal_through/u,
+    /q\.first_appearance_episode_number <= v_reveal_through/u
   );
   assert.doesNotMatch(feed, /'aliases'/u);
 });
