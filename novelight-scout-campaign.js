@@ -179,10 +179,31 @@
     setText('targetXpGoal', n(progress.target_level_xp));
 
     const today = Number(progress.today_valid_read_xp ?? 0);
-    const todayCap = 10;
+    const todayCap = Number(progress.today_valid_read_xp_cap ?? 10);
     const todayRemaining = Math.max(0, todayCap - today);
     setText('todayXp', `${n(today)} / ${n(todayCap)} XP`);
     setText('todayXpRemaining', `本日の有効読書XPはあと ${n(todayRemaining)} XP`);
+
+    const todayEpisode = Number(progress.today_valid_read_episode_xp ?? 0);
+    const todayEpisodeCap = Number(progress.today_valid_read_episode_xp_cap ?? 15);
+    const todayEpisodeRemaining = Math.max(0, todayEpisodeCap - todayEpisode);
+    setText(
+      'todayEpisodeXp',
+      `${n(todayEpisode)} / ${n(todayEpisodeCap)} XP`
+    );
+    setText(
+      'todayEpisodeXpRemaining',
+      `本日の有効読書（話）XPはあと ${n(todayEpisodeRemaining)} XP`
+    );
+
+    const todayComment = Number(progress.today_comment_xp ?? 0);
+    const todayCommentCap = Number(progress.today_comment_xp_cap ?? 15);
+    const todayCommentRemaining = Math.max(0, todayCommentCap - todayComment);
+    setText('todayCommentXp', `${n(todayComment)} / ${n(todayCommentCap)} XP`);
+    setText(
+      'todayCommentXpRemaining',
+      `本日のコメントXPはあと ${n(todayCommentRemaining)} XP`
+    );
 
     const targetPercent = progressPercent(progress);
     const targetTrack = el('targetProgressTrack');
