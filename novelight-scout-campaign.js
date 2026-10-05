@@ -1,4 +1,44 @@
 (() => {
+  function installCanonicalPublicHeader() {
+    document.body?.classList.add('novelight-public-header-page');
+
+    if (!document.querySelector('link[data-novelight-public-header]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'novelight-header-light.css';
+      link.dataset.novelightPublicHeader = 'shared';
+      document.head.appendChild(link);
+    }
+
+    const header = document.querySelector('header.site-header, header');
+    if (!header) return;
+
+    header.className = 'site-header';
+    header.innerHTML =
+      '<div class="header-inner public-header-inner">' +
+      '<a class="logo" href="index.html" aria-label="NOVELIGHT ホーム"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>' +
+      '<nav class="site-nav desktop-nav" aria-label="メインナビ">' +
+      '<a href="search.html">作品を探す</a>' +
+      '<a href="index.html#features">特徴</a>' +
+      '<a href="pricing.html">料金プラン</a>' +
+      '<a href="ranking.html">ランキング</a>' +
+      '</nav>' +
+      '<div class="header-actions">' +
+      '<a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>' +
+      '<a id="campaignHeaderLogin" class="btn btn-outline login-action" href="login.html">ログイン</a>' +
+      '<a id="campaignHeaderSignup" class="btn btn-primary signup-action" href="signup.html">会員登録</a>' +
+      '<details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ">' +
+      '<a href="search.html">作品を探す</a>' +
+      '<a href="index.html#features">特徴</a>' +
+      '<a href="pricing.html">料金プラン</a>' +
+      '<a href="ranking.html">ランキング</a>' +
+      '<a id="campaignHeaderMobileLogin" href="login.html">ログイン</a>' +
+      '<a id="campaignHeaderMobileSignup" href="signup.html">会員登録</a>' +
+      '</nav></details>' +
+      '</div>' +
+      '</div>';
+  }
+
   function configureCountdownShell() {
     const countdown = document.querySelector('.campaign-countdown');
     if (!countdown) return;
@@ -28,6 +68,8 @@
     const linkMap = {
       campaignHeaderLogin: 'login.html',
       campaignHeaderSignup: 'signup.html',
+      campaignHeaderMobileLogin: 'login.html',
+      campaignHeaderMobileSignup: 'signup.html',
       campaignHeroLogin: 'login.html',
       campaignHeroSignup: 'signup.html',
       campaignBottomLogin: 'login.html',
@@ -47,8 +89,30 @@
     document.querySelectorAll('[data-campaign-member]').forEach((node) => {
       node.hidden = !authenticated;
     });
+
+    const loginLinks = [
+      document.getElementById('campaignHeaderLogin'),
+      document.getElementById('campaignHeaderMobileLogin')
+    ].filter(Boolean);
+
+    loginLinks.forEach((link) => {
+      if (authenticated) {
+        link.textContent = '創作室';
+        link.href = 'mypage.html';
+        link.dataset.authState = 'authenticated';
+      } else {
+        link.textContent = 'ログイン';
+        link.href = authHref('login.html');
+        link.dataset.authState = 'anonymous';
+      }
+    });
+
+    document
+      .querySelectorAll('header.site-header a[href^="admin"]')
+      .forEach((link) => link.remove());
   }
 
+  installCanonicalPublicHeader();
   configureCountdownShell();
   configureAuthLinks();
 
