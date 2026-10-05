@@ -35,7 +35,7 @@ test('MASTER defines the canonical 40 XP daily SCOUT activity rules', () => {
   assert.match(master, /最大15 XP/);
 
   assert.match(master, /コメントScout XP/);
-  assert.match(master, /1作品につき5 Scout XP/);
+  assert.match(master, /有効コメント1作品につき5 XP/);
   assert.match(master, /1日3作品まで/);
   assert.match(master, /1日最大40 XP/);
 
@@ -48,17 +48,11 @@ test('MASTER defines the canonical 40 XP daily SCOUT activity rules', () => {
 test('valid reads award separate work and episode SCOUT XP buckets', () => {
   assert.match(migration, /xp_kind = 'valid_read'/);
   assert.match(migration, /v_work_awarded_today < 5/);
-  assert.match(
-    migration,
-    /'valid_read', 2, 'chapter49-beta-v2'/
-  );
+  assert.match(migration, /'valid_read', 2, 'chapter49-beta-v2'/);
 
   assert.match(migration, /xp_kind = 'valid_read_episode'/);
   assert.match(migration, /v_episode_awarded_today < 15/);
-  assert.match(
-    migration,
-    /'valid_read_episode', 1, 'chapter49-beta-v2'/
-  );
+  assert.match(migration, /'valid_read_episode', 1, 'chapter49-beta-v2'/);
   assert.match(migration, /episode_id_snapshot = new\.episode_id_snapshot/);
 });
 
