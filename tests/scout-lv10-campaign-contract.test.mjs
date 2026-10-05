@@ -41,6 +41,8 @@ const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 test('campaign destination page contains the requested progress and claim UI', () => {
   assert.match(page, /終了まで あと/);
   assert.match(page, /本日の有効読書XP/);
+  assert.match(page, /本日の有効読書（話）XP/);
+  assert.match(page, /本日のコメントXP/);
   assert.match(page, /CURRENT LEVEL/);
   assert.match(page, /SCOUT RANK/);
   assert.match(page, /次のLEVELまで/);
@@ -51,18 +53,18 @@ test('campaign destination page contains the requested progress and claim UI', (
   assert.match(page, /500円分/);
 });
 
-test('campaign explains the canonical 40 XP daily breakdown and valid-read rule', () => {
+test('campaign display shows the planned 40 XP daily breakdown', () => {
   assert.match(page, /SCOUT XPの獲得条件/);
-  assert.match(page, /有効読書/);
+  assert.match(page, /有効読書（作品）/);
   assert.match(page, /2 XP × 5作品まで/);
   assert.match(page, /最大10 XP/);
-  assert.match(page, /星評価/);
-  assert.match(page, /3 XP × 5作品まで/);
+  assert.match(page, /有効読書（話）/);
+  assert.match(page, /1 XP × 15話まで/);
   assert.match(page, /コメント/);
   assert.match(page, /5 XP × 3作品まで/);
   assert.match(page, /最大15 XP/);
   assert.match(page, /合計最大40 XP/);
-  assert.match(page, /本文の80%以上/);
+  assert.doesNotMatch(page, /星評価/);
   assert.match(client, /const todayCap = 10/);
   assert.match(client, /本日の有効読書XPはあと/);
 });
