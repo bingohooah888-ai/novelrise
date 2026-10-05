@@ -142,22 +142,28 @@
     setText('campaignStartDate', formatDate(campaign.startsAt));
     setText('campaignEndDate', formatDate(campaign.endsAt));
 
-    const personalDaysRemaining = deadlineDaysRemaining(
+    const deadlineRemaining = deadlineDaysRemaining(
       eligibility.eligibilityDeadline
     );
+    const configuredWindowDays = Number(
+      eligibility.isNewUser
+        ? campaign.newUserWindowDays
+        : campaign.existingUserWindowDays
+    );
+    const personalDaysRemaining =
+      deadlineRemaining ??
+      (Number.isFinite(configuredWindowDays) ? configuredWindowDays : null);
+
     if (personalDaysRemaining === null) {
       setText('daysRemaining', '—');
-      setText(
-        'countdownNote',
-        eligibility.hasEntry
-          ? 'LEVEL 10達成期限を確認できませんでした。'
-          : '対象ログインまたは登録後から60日間がLEVEL 10達成期間です。'
-      );
+      setText('countdownNote', 'LEVEL 10達成期限を確認できませんでした。');
     } else {
       setText('daysRemaining', n(personalDaysRemaining));
       setText(
         'countdownNote',
-        `LEVEL 10達成期限：${formatDate(eligibility.eligibilityDeadline)}まで（JST）`
+        eligibility.eligibilityDeadline
+          ? `LEVEL 10達成期限：${formatDate(eligibility.eligibilityDeadline)}まで（JST）`
+          : `LEVEL 10達成期間：対象ログインまたは登録後から${n(configuredWindowDays)}日間`
       );
     }
 
