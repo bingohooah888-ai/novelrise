@@ -310,7 +310,8 @@ function publicCampaign(campaign) {
     description: campaign.description,
     startsAt: campaign.starts_at,
     endsAt: campaign.ends_at,
-    prelaunchLoginGraceStartsAt: campaign.prelaunch_login_grace_starts_at ?? null,
+    prelaunchLoginGraceStartsAt:
+      campaign.prelaunch_login_grace_starts_at ?? null,
     targetLevel: Number(campaign.target_level),
     rewardLabel: campaign.reward_label,
     rewardValueYen: Number(campaign.reward_value_yen),
