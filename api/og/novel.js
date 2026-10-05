@@ -294,9 +294,9 @@ async function chooseImageFit(data) {
   if (data.coverSource !== 'author' || !data.coverUrl) return 'cover';
 
   try {
-    const response = await fetch(data.coverUrl, {
+    const response = await globalThis.fetch(data.coverUrl, {
       headers: { Range: 'bytes=0-65535' },
-      signal: AbortSignal.timeout(2200)
+      signal: globalThis.AbortSignal.timeout(2200)
     });
     if (!response.ok && response.status !== 206) return 'cover';
     const bytes = Buffer.from(await response.arrayBuffer());
