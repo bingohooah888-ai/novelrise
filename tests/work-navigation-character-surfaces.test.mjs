@@ -102,10 +102,7 @@ test(
     assert.match(feed, /c\.reader_body_visible/u);
     assert.match(feed, /e\.status = 'published'/u);
     assert.match(feed, /e\.episode_number <= v_current_number/u);
-    assert.match(
-      feed,
-      /first_episode\.episode_number <= v_current_number/u,
-    );
+    assert.match(feed, /first_episode\.episode_number <= v_current_number/u);
     assert.doesNotMatch(feed, /'aliases'/u);
   },
 );
