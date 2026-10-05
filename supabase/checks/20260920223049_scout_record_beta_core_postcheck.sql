@@ -4,6 +4,7 @@ do $$
 declare
   v_threshold_count integer;
   v_cap integer;
+  v_valid_read_definition text;
 begin
   if to_regclass('public.scout_level_thresholds') is null
      or to_regclass('public.scout_point_ledger') is null then
@@ -91,13 +92,17 @@ begin
     raise exception 'Chapter 49 SCOUT triggers are incomplete';
   end if;
 
-  if pg_catalog.strpos(
-    pg_get_functiondef('public.novelight_award_valid_read_scout_xp()'::regprocedure),
-    'v_awarded_today < 5'
-  ) = 0 or pg_catalog.strpos(
-    pg_get_functiondef('public.novelight_award_valid_read_scout_xp()'::regprocedure),
-    '''valid_read'', 2'
-  ) = 0 then
+  select pg_get_functiondef(
+    'public.novelight_award_valid_read_scout_xp()'::regprocedure
+  ) into v_valid_read_definition;
+
+  if (
+       pg_catalog.strpos(v_valid_read_definition, 'v_awarded_today < 5') = 0
+       and pg_catalog.strpos(v_valid_read_definition, 'v_work_awarded_today < 5') = 0
+     ) or pg_catalog.strpos(
+       v_valid_read_definition,
+       '''valid_read'', 2'
+     ) = 0 then
     raise exception 'Valid-read Scout XP rule drifted';
   end if;
 
