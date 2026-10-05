@@ -333,11 +333,7 @@
     if (!card || !episodeId) return false;
 
     const mount = () => {
-      if (
-        card.querySelector(
-          '[data-novelight-public-share="episode-top"]'
-        )
-      ) {
+      if (card.querySelector('[data-novelight-public-share="episode-top"]')) {
         return;
       }
 

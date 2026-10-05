@@ -59,13 +59,7 @@ export function canonicalUrl(page, id) {
 
 export function injectSeo(
   html,
-  {
-    title,
-    description,
-    canonical,
-    indexable = true,
-    openGraph = null
-  }
+  { title, description, canonical, indexable = true, openGraph = null }
 ) {
   const safeTitle = escapeHtml(title);
   const tags = [

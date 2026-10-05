@@ -103,7 +103,10 @@ test('X share sends only canonical URL while URL copy keeps attribution', async 
   assert.doesNotMatch(xHandler, /searchParams\.set\('text'/u);
   assert.doesNotMatch(xHandler, /scoutAttributedShareUrl/u);
   assert.doesNotMatch(xHandler, /utm_/u);
-  assert.match(share, /scoutAttributedShareUrl\(url, novelId, 'novelight', 'share'\)/u);
+  assert.match(
+    share,
+    /scoutAttributedShareUrl\(url, novelId, 'novelight', 'share'\)/u
+  );
 
   assert.match(seoNovel, /novelight-public-share\.js/u);
   assert.match(seoNovel, /openGraph:/u);
