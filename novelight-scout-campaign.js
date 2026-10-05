@@ -14,7 +14,43 @@
     }
   }
 
+  function campaignReturnTarget() {
+    return `scout-lv10-campaign.html${window.location.search || ''}`;
+  }
+
+  function authHref(page) {
+    const url = new URL(page, window.location.href);
+    url.searchParams.set('redirect', campaignReturnTarget());
+    return `${url.pathname.replace(/^\//, '')}${url.search}`;
+  }
+
+  function configureAuthLinks() {
+    const linkMap = {
+      campaignHeaderLogin: 'login.html',
+      campaignHeaderSignup: 'signup.html',
+      campaignHeroLogin: 'login.html',
+      campaignHeroSignup: 'signup.html',
+      campaignBottomLogin: 'login.html',
+      campaignBottomSignup: 'signup.html'
+    };
+
+    Object.entries(linkMap).forEach(([id, page]) => {
+      const node = document.getElementById(id);
+      if (node) node.href = authHref(page);
+    });
+  }
+
+  function setAuthUi(authenticated) {
+    document.querySelectorAll('[data-campaign-guest]').forEach((node) => {
+      node.hidden = Boolean(authenticated);
+    });
+    document.querySelectorAll('[data-campaign-member]').forEach((node) => {
+      node.hidden = !authenticated;
+    });
+  }
+
   configureCountdownShell();
+  configureAuthLinks();
 
   if (!window.supabase) return;
 
@@ -271,8 +307,8 @@
     return data.session;
   }
 
-  async function request(method = 'GET') {
-    const session = await getSession();
+  async function request(method = 'GET', existingSession = null) {
+    const session = existingSession ?? (await getSession());
     if (!session) throw new Error('login_required');
 
     const response = await fetch('/api/scout-lv10-campaign', {
@@ -287,23 +323,46 @@
     return data;
   }
 
+  function renderGuestState() {
+    payload = null;
+    setAuthUi(false);
+    document.body.classList.remove('campaign-loading');
+    setState('キャンペーン内容はログインせず確認できます。参加するには無料会員登録またはログインしてください。');
+    setText('currentLevel', '—');
+    setText('currentRank', '—');
+    setText('nextLevelXp', '—');
+    setText('todayXp', '— / 10 XP');
+    setText('todayEpisodeXp', '— / 15 XP');
+    setText('todayCommentXp', '— / 15 XP');
+    setText('todayXpRemaining', 'ログインすると本日の獲得状況を表示します。');
+    setText('todayEpisodeXpRemaining', 'ログインすると本日の獲得状況を表示します。');
+    setText('todayCommentXpRemaining', 'ログインすると本日の獲得状況を表示します。');
+    setText('claimStatus', 'LEVEL 10達成後、ログインした状態で景品を申請できます。');
+    setText('deliveryEmail', '登録メールアドレス宛にお届けします。');
+
+    const button = el('claimButton');
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'ログイン後に申請できます';
+      button.onclick = null;
+    }
+  }
+
   async function load() {
     try {
       setState('SCOUT RECORDを読み込んでいます。');
-      const data = await request('GET');
+      const session = await getSession();
+      if (!session) {
+        renderGuestState();
+        return;
+      }
+      setAuthUi(true);
+      const data = await request('GET', session);
       renderCampaign(data);
     } catch (error) {
       document.body.classList.remove('campaign-loading');
       if (error.message === 'login_required') {
-        setState('キャンペーンページを見るにはログインが必要です。', true);
-        const button = el('claimButton');
-        if (button) {
-          button.disabled = false;
-          button.textContent = 'ログインする';
-          button.onclick = () => {
-            window.location.href = 'login.html';
-          };
-        }
+        renderGuestState();
         return;
       }
       setState('キャンペーン情報を読み込めませんでした。', true);
