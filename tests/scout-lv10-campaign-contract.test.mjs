@@ -56,12 +56,22 @@ test('campaign remains draft while the approved entry schedule is encoded', () =
   assert.match(migration, /'draft'/);
   assert.match(entryMigration, /2026-10-06 06:00:00\+09/);
   assert.match(entryMigration, /2026-10-31 23:59:59\.999999\+09/);
+  assert.match(entryMigration, /2026-10-05 11:13:36\+09/);
   assert.doesNotMatch(entryMigration, /status\s*=\s*'active'/i);
   assert.match(client, /キャンペーン準備中/);
 });
 
-test('existing homepage banner is deliberately not wired to the campaign page yet', () => {
-  assert.doesNotMatch(home, /scout-lv10-campaign\.html/);
+test('homepage campaign banner is prewired but remains on manual teaser mode', () => {
+  assert.match(home, /id="homeLeadLink"/);
+  assert.match(home, /05_event_teaser_1600x900\.png/);
+  assert.match(home, /05_campaign_official_after_announcement_1600x900\.png/);
+  assert.match(home, /href: 'scout-lv10-campaign\.html'/);
+  assert.match(home, /const currentLeadVisual = 'teaser'/);
+  assert.match(home, /時刻による自動切替は行わない/);
+  assert.doesNotMatch(
+    home,
+    /currentLeadVisual\s*=\s*Date|currentLeadVisual\s*=\s*new Date/i
+  );
 });
 
 test('campaign claims are one-per-user and protected behind service role', () => {
@@ -126,19 +136,31 @@ test('eligibility clock is anchored to signup or first eligible login', () => {
     entryMigration,
     /v_eligibility_started_at := v_campaign\.starts_at/
   );
-  assert.match(
-    entryMigration,
-    /v_eligibility_started_at := v_login_at/
-  );
-  assert.match(
-    entryMigration,
-    /v_eligibility_started_at := new\.created_at/
-  );
+  assert.match(entryMigration, /v_eligibility_started_at := v_login_at/);
+  assert.match(entryMigration, /v_eligibility_started_at := new\.created_at/);
+  assert.match(entryMigration, /new\.created_at > v_campaign\.ends_at/);
+  assert.match(entryMigration, /v_login_at > v_campaign\.ends_at/);
   assert.match(api, /eligibilityStartedAt/);
   assert.match(api, /entry_required/);
   assert.match(
     client,
     /10月6日6:00までの事前ログインは10月6日6:00開始扱い/
+  );
+});
+
+test('prelaunch grace backfill preserves the first eligibility clock', () => {
+  assert.match(
+    entryMigration,
+    /u\.last_sign_in_at >= c\.prelaunch_login_grace_starts_at/
+  );
+  assert.match(entryMigration, /u\.last_sign_in_at < c\.starts_at/);
+  assert.match(
+    entryMigration,
+    /on conflict \(campaign_id, user_id\) do nothing/i
+  );
+  assert.doesNotMatch(
+    entryMigration,
+    /on conflict \(campaign_id, user_id\) do update/i
   );
 });
 
