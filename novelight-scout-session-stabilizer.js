@@ -5,12 +5,21 @@
 
   const productionUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
   const productionKey = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const productionStorageKey = 'sb-fiepaguycecrredwrcwx-auth-token';
   const originalCreateClient = supabase.createClient.bind(supabase);
-  const retryAttempts = 4;
-  const retryDelayMs = 150;
+  const retryAttempts = 20;
+  const retryDelayMs = 250;
   const delay = (ms) =>
     new Promise((resolve) => window.setTimeout(resolve, ms));
   let sharedCanonicalClient = null;
+
+  const hasPersistedCanonicalSession = () => {
+    try {
+      return Boolean(window.localStorage?.getItem(productionStorageKey));
+    } catch {
+      return false;
+    }
+  };
 
   const stabilizeSessionLookup = (client) => {
     const auth = client?.auth;
@@ -19,11 +28,15 @@
 
     const originalGetSession = auth.getSession.bind(auth);
     auth.getSession = async (...sessionArgs) => {
-      let result;
-      for (let attempt = 0; attempt < retryAttempts; attempt += 1) {
+      let result = await originalGetSession(...sessionArgs);
+      if (result?.error || result?.data?.session) return result;
+      if (!hasPersistedCanonicalSession()) return result;
+
+      for (let attempt = 1; attempt < retryAttempts; attempt += 1) {
+        await delay(retryDelayMs);
         result = await originalGetSession(...sessionArgs);
         if (result?.error || result?.data?.session) return result;
-        if (attempt + 1 < retryAttempts) await delay(retryDelayMs);
+        if (!hasPersistedCanonicalSession()) return result;
       }
       return result;
     };
