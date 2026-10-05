@@ -72,6 +72,59 @@ async function snapshotAuth(page) {
   );
 }
 
+async function snapshotDom(page) {
+  return page.evaluate(() => {
+    const headings = Array.from(globalThis.document.querySelectorAll('h1'));
+    const target = headings.find(
+      (heading) => heading.textContent?.trim() === 'SCOUT RECORD'
+    );
+    const style = target ? globalThis.getComputedStyle(target) : null;
+    const rect = target?.getBoundingClientRect();
+    const ancestry = [];
+    let current = target?.parentElement || null;
+    while (current) {
+      ancestry.push({
+        tag: current.tagName,
+        id: current.id || null,
+        className: current.className || null,
+        hidden: current.hidden,
+        ariaHidden: current.getAttribute('aria-hidden'),
+        inert: current.hasAttribute('inert'),
+        display: globalThis.getComputedStyle(current).display,
+        visibility: globalThis.getComputedStyle(current).visibility
+      });
+      current = current.parentElement;
+    }
+
+    return {
+      h1Count: headings.length,
+      h1Texts: headings.map((heading) => heading.textContent?.trim() || ''),
+      targetExists: Boolean(target),
+      targetHidden: target?.hidden ?? null,
+      targetAriaHidden: target?.getAttribute('aria-hidden') ?? null,
+      display: style?.display ?? null,
+      visibility: style?.visibility ?? null,
+      opacity: style?.opacity ?? null,
+      rect: rect
+        ? {
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left
+          }
+        : null,
+      mainExists: Boolean(globalThis.document.querySelector('#main-content')),
+      bodyClass: globalThis.document.body.className,
+      openDialogs: Array.from(
+        globalThis.document.querySelectorAll('dialog[open]')
+      ).map(
+        (dialog) => dialog.id || dialog.getAttribute('aria-label') || 'dialog'
+      ),
+      ancestry
+    };
+  });
+}
+
 test('SCOUT RECORD preserves authenticated reader session across navigation', async ({
   page
 }) => {
@@ -95,6 +148,8 @@ test('SCOUT RECORD preserves authenticated reader session across navigation', as
 
   const after = await snapshotAuth(page);
   console.log(`SCOUT_AUTH_DIAG after=${JSON.stringify(after)}`);
+  const dom = await snapshotDom(page);
+  console.log(`SCOUT_DOM_DIAG ${JSON.stringify(dom)}`);
 
   expect(after.pathname).toBe('/scout-record.html');
   expect(after.shape.storagePresent).toBe(true);
