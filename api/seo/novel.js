@@ -1,5 +1,6 @@
 import { URL } from 'node:url';
 
+import { loadNovelOgData } from '../og/novel-data.js';
 import {
   canonicalUrl,
   compactText,
@@ -16,6 +17,7 @@ import {
 const TEMPLATE_URL = new URL('../../novel.html', import.meta.url);
 const PLACEHOLDER =
   '<section id="novelHeader" class="panel novel-header">読み込み中...</section>';
+const SHARE_SCRIPT = '<script src="novelight-public-share.js"></script>';
 
 function isSensitive(novel) {
   return (
@@ -35,6 +37,11 @@ function noindexPage(template, id) {
     canonical,
     indexable: false
   });
+}
+
+function ensureShareScript(html) {
+  if (html.includes('novelight-public-share.js')) return html;
+  return html.replace('</body>', `${SHARE_SCRIPT}</body>`);
 }
 
 export default async function handler(req, res) {
@@ -72,10 +79,24 @@ export default async function handler(req, res) {
       ? `${novel.title} — 閲覧前に内容に関する注意をご確認ください。`
       : compactText(novel.description) ||
         `${novel.title} — NOVELIGHTで公開中の小説作品です。`;
+    const ogData = await loadNovelOgData(novel.id);
+    const ogDescription =
+      compactText(novel.description, 220) ||
+      `${novel.title} — NOVELIGHTで公開中の小説作品です。`;
+    const canonical = canonicalUrl('novel', novel.id);
     let html = injectSeo(template, {
       title,
       description,
-      canonical: canonicalUrl('novel', novel.id)
+      canonical,
+      openGraph: ogData
+        ? {
+            title: novel.title,
+            description: ogDescription,
+            image: ogData.imageUrl,
+            url: canonical,
+            type: 'article'
+          }
+        : null
     });
 
     if (!sensitive) {
@@ -86,6 +107,7 @@ export default async function handler(req, res) {
       );
     }
 
+    html = ensureShareScript(html);
     return sendHtml(req, res, html);
   } catch (error) {
     console.error('Novel SEO render failed', {

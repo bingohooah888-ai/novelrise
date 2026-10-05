@@ -22,6 +22,7 @@
     "node": "24.x"
   },
   "dependencies": {
+    "@vercel/og": "1.0.3",
     "@supabase/supabase-js": "2.112.3",
     "stripe": "^20.4.0"
   },

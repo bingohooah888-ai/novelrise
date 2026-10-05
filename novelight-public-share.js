@@ -201,7 +201,6 @@
 
     const copyShareUrl = () =>
       scoutAttributedShareUrl(url, novelId, 'novelight', 'share');
-    const xShareUrl = () => scoutAttributedShareUrl(url, novelId, 'x', 'social');
 
     const copy = document.createElement('button');
     copy.type = 'button';
@@ -225,12 +224,11 @@
     shareX.type = 'button';
     shareX.className = 'novelight-public-share-action x';
     shareX.textContent = 'Xでシェア';
-    shareX.addEventListener('click', async () => {
+    shareX.addEventListener('click', () => {
       const popup = window.open('about:blank', '_blank');
       if (popup) popup.opener = null;
       const intent = new URL('https://twitter.com/intent/tweet');
-      intent.searchParams.set('text', text);
-      intent.searchParams.set('url', await xShareUrl());
+      intent.searchParams.set('url', url);
       if (popup && !popup.closed) {
         popup.location.replace(intent.toString());
       } else {
@@ -335,11 +333,7 @@
     if (!card || !episodeId) return false;
 
     const mount = () => {
-      if (
-        card.querySelector(
-          '[data-novelight-public-share="episode-top"]'
-        )
-      ) {
+      if (card.querySelector('[data-novelight-public-share="episode-top"]')) {
         return;
       }
 
