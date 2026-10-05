@@ -1,10 +1,11 @@
 name: OGP lock refresh
 
 on:
-  push:
+  pull_request:
     branches:
-      - codex/x-share-ogp-final-20261006
+      - main
     paths:
+      - package.json
       - .github/workflows/ogp-lock-refresh.yml
 
 permissions:
@@ -15,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Checkout branch
+      - name: Checkout OGP branch
         uses: actions/checkout@v4
         with:
           ref: codex/x-share-ogp-final-20261006
