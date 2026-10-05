@@ -36,11 +36,18 @@ const entryMigration = readFileSync(
   ),
   'utf8'
 );
+const dailyXpMigration = readFileSync(
+  new URL(
+    '../supabase/migrations/20261005132000_scout_campaign_daily_xp_breakdown.sql',
+    import.meta.url
+  ),
+  'utf8'
+);
 const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 test('campaign destination page contains the requested progress and claim UI', () => {
   assert.match(page, /終了まで あと/);
-  assert.match(page, /本日の読書XP上限/);
+  assert.match(page, /本日のSCOUT XP/);
   assert.match(page, /CURRENT LEVEL/);
   assert.match(page, /SCOUT RANK/);
   assert.match(page, /次のLEVELまで/);
@@ -49,6 +56,20 @@ test('campaign destination page contains the requested progress and claim UI', (
   assert.match(page, /条件達成しました。/);
   assert.match(page, /図書カードを受け取る/);
   assert.match(page, /500円分/);
+});
+
+test('campaign explains the canonical 40 XP daily breakdown and valid-read rule', () => {
+  assert.match(page, /SCOUT XPの獲得条件/);
+  assert.match(page, /有効読書/);
+  assert.match(page, /2 XP × 5作品まで/);
+  assert.match(page, /最大10 XP/);
+  assert.match(page, /星評価/);
+  assert.match(page, /3 XP × 5作品まで/);
+  assert.match(page, /コメント/);
+  assert.match(page, /5 XP × 3作品まで/);
+  assert.match(page, /最大15 XP/);
+  assert.match(page, /合計最大40 XP/);
+  assert.match(page, /本文の80%以上/);
 });
 
 test('campaign remains draft while the approved entry schedule is encoded', () => {
@@ -115,8 +136,10 @@ test('campaign progress reuses canonical SCOUT XP, level and rank contracts', ()
   assert.match(migration, /xp_kind <> 'light_seed_discovery'/);
   assert.match(migration, /novelight_scout_level_for_xp/);
   assert.match(migration, /scout_level_thresholds/);
-  assert.match(migration, /xp_kind = 'valid_read'/);
-  assert.match(migration, /Asia\/Tokyo/);
+  assert.match(dailyXpMigration, /'valid_read', 'star_rating', 'comment'/);
+  assert.match(dailyXpMigration, /today_campaign_xp/);
+  assert.match(dailyXpMigration, /Asia\/Tokyo/);
+  assert.match(client, /today_campaign_xp/);
   assert.match(
     rankMigration,
     /v_next_rank_level := \(v_rank_tier \* 10\) \+ 1/
