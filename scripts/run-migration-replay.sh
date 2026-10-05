@@ -94,6 +94,9 @@ echo '::group::Verify SCOUT RECORD beta core with dependent controls removed'
 "${REPLAY[@]}" -f supabase/checks/20260921025328_scout_record_usage_controls_postcheck.sql
 "${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260921063000_badge_system_catalog.sql
+"${REPLAY[@]}" -f supabase/checks/20260921063000_badge_system_catalog_postcheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20261005153000_scout_xp_daily_40_rules.sql
+"${REPLAY[@]}" -f supabase/checks/20261005153000_scout_xp_daily_40_rules_postcheck.sql
 echo '::endgroup::'
 
 echo '::group::Verify canonical Badge System catalog, rollback and reapply'

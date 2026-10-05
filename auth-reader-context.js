@@ -13,6 +13,7 @@
     '/interaction-settings.html',
     '/pricing.html',
     '/scout-record.html',
+    '/scout-lv10-campaign.html',
     '/post.html',
     '/favorites.html',
     '/updates.html',
