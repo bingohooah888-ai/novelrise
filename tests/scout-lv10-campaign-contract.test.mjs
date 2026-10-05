@@ -64,7 +64,10 @@ test('campaign remains draft while the approved entry schedule is encoded', () =
 test('homepage campaign banner is prewired but remains on manual teaser mode', () => {
   assert.match(home, /id="homeLeadLink"/);
   assert.match(home, /05_event_teaser_1600x900\.png/);
-  assert.match(home, /05_campaign_official_after_announcement_1600x900\.png/);
+  assert.match(
+    home,
+    /05_campaign_official_after_announcement_1600x900\.png/
+  );
   assert.match(home, /href: 'scout-lv10-campaign\.html'/);
   assert.match(home, /const currentLeadVisual = 'teaser'/);
   assert.match(home, /時刻による自動切替は行わない/);
@@ -130,14 +133,23 @@ test('campaign progress reuses canonical SCOUT XP, level and rank contracts', ()
 test('eligibility clock is anchored to signup or first eligible login', () => {
   assert.match(entryMigration, /scout_reward_campaign_entries/);
   assert.match(entryMigration, /after insert on auth\.users/i);
-  assert.match(entryMigration, /after update of last_sign_in_at on auth\.users/i);
-  assert.match(entryMigration, /on conflict \(campaign_id, user_id\) do nothing/i);
+  assert.match(
+    entryMigration,
+    /after update of last_sign_in_at on auth\.users/i
+  );
+  assert.match(
+    entryMigration,
+    /on conflict \(campaign_id, user_id\) do nothing/i
+  );
   assert.match(
     entryMigration,
     /v_eligibility_started_at := v_campaign\.starts_at/
   );
   assert.match(entryMigration, /v_eligibility_started_at := v_login_at/);
-  assert.match(entryMigration, /v_eligibility_started_at := new\.created_at/);
+  assert.match(
+    entryMigration,
+    /v_eligibility_started_at := new\.created_at/
+  );
   assert.match(entryMigration, /new\.created_at > v_campaign\.ends_at/);
   assert.match(entryMigration, /v_login_at > v_campaign\.ends_at/);
   assert.match(api, /eligibilityStartedAt/);
