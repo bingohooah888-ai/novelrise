@@ -1,5 +1,5 @@
 -- Fix SCOUT Level 10 campaign eligibility windows.
--- Announcement/start: 2026-10-06 06:00 JST.
+-- Baseline start: 2026-10-06 06:00 JST.
 -- Registration/login cutoff: 2026-10-31 23:59:59.999999 JST.
 -- Existing users: first eligible login starts a 60-day window.
 -- Pre-announcement logins from 2026-10-05 11:13:36 JST until campaign start are treated as starting at campaign start.
@@ -63,17 +63,16 @@ begin
   if new.created_at >= v_campaign.starts_at then
     v_entry_kind := 'new_user';
     v_eligibility_started_at := new.created_at;
-    v_login_at := new.last_sign_in_at;
+    v_login_at := null;
   else
-    if tg_op = 'UPDATE' then
-      if new.last_sign_in_at is not distinct from old.last_sign_in_at then
-        return new;
-      end if;
-      v_login_at := new.last_sign_in_at;
-    else
-      v_login_at := new.last_sign_in_at;
+    if tg_op <> 'UPDATE' then
+      return new;
     end if;
 
+    v_login_at := new.last_sign_in_at;
+    if v_login_at is not distinct from old.last_sign_in_at then
+      return new;
+    end if;
     if v_login_at is null or v_login_at > v_campaign.ends_at then
       return new;
     end if;
@@ -118,36 +117,70 @@ create trigger novelight_scout_campaign_entry_on_signup
 after insert on auth.users
 for each row execute function public.novelight_capture_scout_campaign_entry();
 
-drop trigger if exists novelight_scout_campaign_entry_on_login on auth.users;
-create trigger novelight_scout_campaign_entry_on_login
-after update of last_sign_in_at on auth.users
-for each row execute function public.novelight_capture_scout_campaign_entry();
+-- Supabase auth.users has last_sign_in_at in Production. The CI compatibility
+-- fixture intentionally omits it, so install the login trigger only when the
+-- canonical Auth column exists instead of mutating the managed Auth schema.
+do $migration$
+begin
+  execute 'drop trigger if exists novelight_scout_campaign_entry_on_login on auth.users';
 
--- Backfill users who signed in during the pre-announcement grace period before this migration runs.
-insert into public.scout_reward_campaign_entries (
-  campaign_id,
-  user_id,
-  entry_kind,
-  account_created_at,
-  first_eligible_login_at,
-  eligibility_started_at
-)
-select
-  c.id,
-  u.id,
-  'existing_user',
-  u.created_at,
-  u.last_sign_in_at,
-  c.starts_at
-from auth.users u
-join public.scout_reward_campaigns c
-  on c.campaign_key = 'scout-lv10-bookcard-500'
-where u.created_at < c.starts_at
-  and u.last_sign_in_at is not null
-  and c.prelaunch_login_grace_starts_at is not null
-  and u.last_sign_in_at >= c.prelaunch_login_grace_starts_at
-  and u.last_sign_in_at < c.starts_at
-on conflict (campaign_id, user_id) do nothing;
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'auth'
+      and table_name = 'users'
+      and column_name = 'last_sign_in_at'
+  ) then
+    execute $sql$
+      create trigger novelight_scout_campaign_entry_on_login
+      after update of last_sign_in_at on auth.users
+      for each row execute function public.novelight_capture_scout_campaign_entry()
+    $sql$;
+  end if;
+end;
+$migration$;
+
+-- Backfill users who signed in during the pre-announcement grace period before
+-- this migration runs. Skip the compatibility fixture when last_sign_in_at is
+-- unavailable; Production Supabase has the canonical column.
+do $migration$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'auth'
+      and table_name = 'users'
+      and column_name = 'last_sign_in_at'
+  ) then
+    execute $sql$
+      insert into public.scout_reward_campaign_entries (
+        campaign_id,
+        user_id,
+        entry_kind,
+        account_created_at,
+        first_eligible_login_at,
+        eligibility_started_at
+      )
+      select
+        c.id,
+        u.id,
+        'existing_user',
+        u.created_at,
+        u.last_sign_in_at,
+        c.starts_at
+      from auth.users u
+      join public.scout_reward_campaigns c
+        on c.campaign_key = 'scout-lv10-bookcard-500'
+      where u.created_at < c.starts_at
+        and u.last_sign_in_at is not null
+        and c.prelaunch_login_grace_starts_at is not null
+        and u.last_sign_in_at >= c.prelaunch_login_grace_starts_at
+        and u.last_sign_in_at < c.starts_at
+      on conflict (campaign_id, user_id) do nothing
+    $sql$;
+  end if;
+end;
+$migration$;
 
 create or replace function public.novelight_scout_campaign_submit_claim(
   p_user_id uuid,
