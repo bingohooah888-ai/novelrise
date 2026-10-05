@@ -6,9 +6,13 @@
   <meta name="robots" content="noindex,nofollow,noarchive">
   <title>SCOUT LEVEL 10 キャンペーン | NOVELIGHT</title>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-public-dark.css">
+  <link rel="stylesheet" href="novelight-brand-refinement.css">
   <link rel="stylesheet" href="novelight-accessibility.css">
   <link rel="stylesheet" href="novelight-scout-campaign.css">
   <style>
+    .logo img{display:block;width:auto;height:44px;max-width:42vw;object-fit:contain}
+
     body.novelight-page-scout-campaign {
       background:
         radial-gradient(ellipse at 14% 12%, rgba(63, 91, 145, 0.22), transparent 34rem),
@@ -177,84 +181,6 @@
     body.novelight-page-scout-campaign .campaign-email { font-size: 14px; }
     body.novelight-page-scout-campaign .campaign-footer-note { font-size: 14px; }
 
-    body.novelight-page-scout-campaign .campaign-site-header {
-      position: sticky;
-      top: 0;
-      z-index: 70;
-      border-bottom: 1px solid rgba(216, 189, 120, 0.14);
-      background: rgba(8, 11, 18, 0.94);
-      backdrop-filter: blur(18px);
-    }
-
-    body.novelight-page-scout-campaign .campaign-site-header-inner {
-      min-height: 72px;
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 24px;
-      align-items: center;
-    }
-
-    body.novelight-page-scout-campaign .campaign-site-logo {
-      display: inline-flex;
-      align-items: center;
-      text-decoration: none;
-    }
-
-    body.novelight-page-scout-campaign .campaign-site-logo img {
-      display: block;
-      width: 164px;
-      max-height: 40px;
-      object-fit: contain;
-    }
-
-    body.novelight-page-scout-campaign .campaign-site-nav {
-      display: flex;
-      justify-content: center;
-      gap: clamp(14px, 2vw, 28px);
-      min-width: 0;
-    }
-
-    body.novelight-page-scout-campaign .campaign-site-nav a {
-      color: #cbd1dd;
-      font-size: 14px;
-      font-weight: 750;
-      text-decoration: none;
-      white-space: nowrap;
-    }
-
-    body.novelight-page-scout-campaign .campaign-site-nav a:hover,
-    body.novelight-page-scout-campaign .campaign-header-link:hover {
-      color: #fff;
-    }
-
-    body.novelight-page-scout-campaign .campaign-header-actions {
-      display: flex;
-      gap: 9px;
-      align-items: center;
-      justify-content: flex-end;
-    }
-
-    body.novelight-page-scout-campaign .campaign-header-link {
-      min-height: 38px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 14px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 9px;
-      color: #e3e7ef;
-      font-size: 13px;
-      font-weight: 850;
-      text-decoration: none;
-      white-space: nowrap;
-    }
-
-    body.novelight-page-scout-campaign .campaign-header-link.primary {
-      border-color: rgba(226, 197, 122, 0.8);
-      background: linear-gradient(180deg, #e3c77f, #b9974f);
-      color: #15110a;
-    }
-
     body.novelight-page-scout-campaign .campaign-entry-card {
       position: relative;
       z-index: 2;
@@ -341,21 +267,9 @@
       text-decoration: none;
     }
 
-    @media (max-width: 980px) {
-      body.novelight-page-scout-campaign .campaign-site-header-inner {
-        grid-template-columns: auto 1fr;
-      }
-
-      body.novelight-page-scout-campaign .campaign-site-nav {
-        display: none;
-      }
-
-      body.novelight-page-scout-campaign .campaign-header-actions {
-        justify-self: end;
-      }
-    }
-
     @media (max-width: 860px) {
+      .logo img{height:34px;max-width:42vw}
+
       body.novelight-page-scout-campaign .campaign-activity-grid {
         grid-template-columns: 1fr;
       }
@@ -378,25 +292,6 @@
         align-items: flex-start;
       }
 
-      body.novelight-page-scout-campaign .campaign-site-header-inner {
-        min-height: 64px;
-        gap: 10px;
-      }
-
-      body.novelight-page-scout-campaign .campaign-site-logo img {
-        width: 126px;
-      }
-
-      body.novelight-page-scout-campaign .campaign-header-actions {
-        gap: 6px;
-      }
-
-      body.novelight-page-scout-campaign .campaign-header-link {
-        min-height: 34px;
-        padding: 0 9px;
-        font-size: 11px;
-      }
-
       body.novelight-page-scout-campaign .campaign-entry-card {
         padding: 20px 18px;
       }
@@ -408,28 +303,42 @@
     }
   </style>
 </head>
-<body class="novelight-page-scout-campaign campaign-loading">
+<body class="novelight-theme novelight-page-scout-campaign novelight-public-dark campaign-loading">
   <a class="skip-link" href="#main-content">本文へスキップ</a>
 
-  <header class="campaign-site-header">
-    <div class="campaign-shell campaign-site-header-inner">
-      <a class="campaign-site-logo" href="index.html" aria-label="NOVELIGHT ホーム">
-        <img src="novelight-logo.png" alt="NOVELIGHT">
-      </a>
-      <nav class="campaign-site-nav" aria-label="主要ナビゲーション">
+  <header class="site-header">
+    <div class="header-inner public-header-inner">
+      <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
+      <nav class="site-nav desktop-nav" aria-label="メインナビ">
         <a href="index.html">ホーム</a>
-        <a href="works.html">作品を探す</a>
+        <a href="search.html">作品を探す</a>
         <a href="ranking.html">ランキング</a>
         <a href="favorites.html">本棚</a>
-        <a href="scout-record.html">SCOUT RECORD</a>
+        <a href="index.html#features">特徴</a>
+        <a href="pricing.html">料金プラン</a>
+        <a href="beta-authors.html">NOVELIGHT β版 先行作者登録</a>
       </nav>
-      <div class="campaign-header-actions" data-campaign-guest>
-        <a id="campaignHeaderLogin" class="campaign-header-link" href="login.html?redirect=scout-lv10-campaign.html">ログイン</a>
-        <a id="campaignHeaderSignup" class="campaign-header-link primary" href="signup.html?redirect=scout-lv10-campaign.html">無料会員登録</a>
+      <div class="header-actions" data-campaign-guest>
+        <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
+        <a id="campaignHeaderLogin" class="btn btn-outline login-action" href="login.html?redirect=scout-lv10-campaign.html">ログイン</a>
+        <a id="campaignHeaderSignup" class="btn btn-primary signup-action" href="signup.html?redirect=scout-lv10-campaign.html">会員登録</a>
+        <details class="mobile-menu">
+          <summary aria-label="メニューを開く">☰</summary>
+          <nav aria-label="モバイルナビ">
+            <a href="index.html">ホーム</a><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="favorites.html">本棚</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="beta-authors.html">NOVELIGHT β版 先行作者登録</a><a href="login.html?redirect=scout-lv10-campaign.html">ログイン</a>
+          </nav>
+        </details>
       </div>
-      <div class="campaign-header-actions" data-campaign-member hidden>
-        <a class="campaign-header-link" href="scout-record.html">SCOUT RECORD</a>
-        <a class="campaign-header-link primary" href="mypage.html">マイページ</a>
+      <div class="header-actions" data-campaign-member hidden>
+        <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
+        <a class="btn btn-outline" href="scout-record.html">SCOUT RECORD</a>
+        <a class="btn btn-primary" href="mypage.html">マイページ</a>
+        <details class="mobile-menu">
+          <summary aria-label="メニューを開く">☰</summary>
+          <nav aria-label="モバイルナビ">
+            <a href="index.html">ホーム</a><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="favorites.html">本棚</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="scout-record.html">SCOUT RECORD</a><a href="mypage.html">マイページ</a>
+          </nav>
+        </details>
       </div>
     </div>
   </header>
@@ -456,6 +365,17 @@
           <div class="campaign-entry-actions">
             <a id="campaignHeroSignup" class="campaign-entry-button primary" href="signup.html?redirect=scout-lv10-campaign.html">新規登録して無料で参加</a>
             <a id="campaignHeroLogin" class="campaign-entry-button" href="login.html?redirect=scout-lv10-campaign.html">ログインして参加</a>
+          </div>
+        </div>
+
+        <div class="campaign-entry-card" data-campaign-member hidden>
+          <div class="campaign-entry-copy">
+            <strong>このアカウントでキャンペーンに参加中です。</strong>
+            <span>作品を読んでSCOUT XPを貯め、LEVEL 10を目指してください。進捗はこのページとSCOUT RECORDで確認できます。</span>
+          </div>
+          <div class="campaign-entry-actions">
+            <a class="campaign-entry-button primary" href="search.html">作品を探してXPを貯める</a>
+            <a class="campaign-entry-button" href="scout-record.html">SCOUT RECORDを見る</a>
           </div>
         </div>
       </section>
@@ -631,6 +551,17 @@
           <a id="campaignBottomLogin" class="campaign-entry-button" href="login.html?redirect=scout-lv10-campaign.html">ログインして参加</a>
         </div>
       </section>
+
+      <section class="campaign-entry-card campaign-entry-bottom" data-campaign-member hidden aria-label="キャンペーン参加中">
+        <div class="campaign-entry-copy">
+          <strong>次に読む作品を見つけて、LEVEL 10へ。</strong>
+          <span>読書・コメントなどの有効なSCOUT活動を続けるとXPが貯まります。進捗を確認しながらキャンペーン達成を目指してください。</span>
+        </div>
+        <div class="campaign-entry-actions">
+          <a class="campaign-entry-button primary" href="search.html">作品を探す</a>
+          <a class="campaign-entry-button" href="scout-record.html">SCOUT RECORDを見る</a>
+        </div>
+      </section>
     </div>
   </main>
 
@@ -644,6 +575,6 @@
 
   <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
   <script src="novelight-client.js"></script>
-  <script src="novelight-scout-campaign.js?v=20261005a"></script>
+  <script src="novelight-scout-campaign.js?v=20261005b"></script>
 </body>
 </html>
