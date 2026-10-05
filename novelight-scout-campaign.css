@@ -84,7 +84,7 @@ body.novelight-page-scout-campaign::before {
 .campaign-hero {
   position: relative;
   overflow: hidden;
-  padding: 46px clamp(22px, 5vw, 62px);
+  padding: 52px clamp(32px, 5.4vw, 66px);
   border: 1px solid var(--campaign-line);
   border-radius: 26px;
   background:
@@ -110,11 +110,11 @@ body.novelight-page-scout-campaign::before {
 .campaign-eyebrow {
   position: relative;
   z-index: 1;
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   color: var(--campaign-gold-bright);
-  font-size: 11px;
+  font-size: 13px !important;
   font-weight: 900;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.18em;
 }
 
 .campaign-hero h1 {
@@ -123,25 +123,26 @@ body.novelight-page-scout-campaign::before {
   max-width: 760px;
   margin: 0;
   font-family: Georgia, "Times New Roman", "Yu Mincho", serif;
-  font-size: clamp(32px, 5.6vw, 58px);
+  font-size: clamp(38px, 4.5vw, 52px);
   font-weight: 700;
-  line-height: 1.17;
-  letter-spacing: 0.025em;
+  line-height: 1.14;
+  letter-spacing: 0.018em;
 }
 
 .campaign-hero h1 em {
   color: var(--campaign-gold-bright);
+  font-size: 0.88em;
   font-style: normal;
 }
 
 .campaign-lead {
   position: relative;
   z-index: 1;
-  max-width: 690px;
-  margin: 20px 0 0;
+  max-width: 760px;
+  margin: 22px 0 0;
   color: #c7ccd8;
-  font-size: 14px;
-  line-height: 1.9;
+  font-size: 16px !important;
+  line-height: 1.75;
 }
 
 .campaign-status-row {
@@ -157,23 +158,23 @@ body.novelight-page-scout-campaign::before {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 34px;
-  padding: 0 13px;
+  min-height: 32px;
+  padding: 0 12px;
   border: 1px solid rgba(216, 189, 120, 0.22);
   border-radius: 999px;
   background: rgba(216, 189, 120, 0.07);
   color: #e6d7b0;
-  font-size: 11px;
+  font-size: 13px !important;
   font-weight: 850;
 }
 
 .campaign-countdown {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  gap: 36px;
   align-items: center;
   margin-top: 18px;
-  padding: 24px 28px;
+  padding: 30px 34px;
   border: 1px solid rgba(216, 189, 120, 0.18);
   border-radius: 18px;
   background: rgba(14, 18, 28, 0.82);
@@ -182,28 +183,28 @@ body.novelight-page-scout-campaign::before {
 .campaign-countdown small {
   display: block;
   color: var(--campaign-muted);
-  font-size: 11px;
+  font-size: 13px !important;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .campaign-countdown strong {
   display: block;
-  margin-top: 5px;
-  font-size: clamp(25px, 4vw, 38px);
-  line-height: 1.1;
+  margin-top: 7px;
+  font-size: clamp(28px, 3vw, 34px);
+  line-height: 1.2;
 }
 
 .campaign-countdown strong b {
   color: var(--campaign-gold-bright);
-  font-size: 1.22em;
+  font-size: 1.16em;
 }
 
 .campaign-countdown-note {
-  max-width: 260px;
+  max-width: 300px;
   color: #8f97aa;
-  font-size: 11px;
-  line-height: 1.6;
+  font-size: 14px !important;
+  line-height: 1.65;
   text-align: right;
 }
 

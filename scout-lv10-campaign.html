@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="novelight-public-dark.css">
   <link rel="stylesheet" href="novelight-brand-refinement.css">
   <link rel="stylesheet" href="novelight-accessibility.css">
-  <link rel="stylesheet" href="novelight-scout-campaign.css">
+  <link rel="stylesheet" href="novelight-scout-campaign.css?v=20261006-balance2">
   <style>
     .logo img{display:block;width:auto;height:44px;max-width:42vw;object-fit:contain}
 
@@ -156,11 +156,70 @@
       line-height: 1.8;
     }
 
-    body.novelight-page-scout-campaign .campaign-eyebrow { font-size: 15px; }
-    body.novelight-page-scout-campaign .campaign-lead { font-size: 18px; }
-    body.novelight-page-scout-campaign .campaign-status-pill { font-size: 15px; }
-    body.novelight-page-scout-campaign .campaign-countdown small { font-size: 15px; }
-    body.novelight-page-scout-campaign .campaign-countdown-note { font-size: 15px; }
+    body.novelight-page-scout-campaign .campaign-hero {
+      padding: 44px clamp(34px, 4.5vw, 54px);
+    }
+
+    body.novelight-page-scout-campaign .campaign-eyebrow {
+      margin-bottom: 14px;
+      font-size: 13px;
+      letter-spacing: 0.18em;
+    }
+
+    body.novelight-page-scout-campaign .campaign-hero h1 {
+      max-width: 760px;
+      font-size: clamp(36px, 4vw, 50px);
+      line-height: 1.12;
+      letter-spacing: 0.015em;
+    }
+
+    body.novelight-page-scout-campaign .campaign-hero h1 em {
+      font-size: 0.84em;
+    }
+
+    body.novelight-page-scout-campaign .campaign-lead {
+      max-width: 780px;
+      margin-top: 20px;
+      font-size: 16px;
+      line-height: 1.75;
+    }
+
+    body.novelight-page-scout-campaign .campaign-status-row {
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-status-pill {
+      min-height: 30px;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-countdown {
+      grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+      gap: 34px;
+      padding: 28px 32px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-countdown small {
+      font-size: 13px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-countdown strong {
+      margin-top: 7px;
+      font-size: clamp(28px, 3vw, 34px);
+      line-height: 1.2;
+    }
+
+    body.novelight-page-scout-campaign .campaign-countdown strong b {
+      font-size: 1.14em;
+    }
+
+    body.novelight-page-scout-campaign .campaign-countdown-note {
+      max-width: 300px;
+      font-size: 13px;
+      line-height: 1.65;
+    }
     body.novelight-page-scout-campaign .campaign-state { font-size: 16px; }
     body.novelight-page-scout-campaign .campaign-section-head h2 { font-size: 24px; }
     body.novelight-page-scout-campaign .campaign-section-head p { font-size: 15px; }
@@ -188,8 +247,8 @@
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 24px;
       align-items: center;
-      margin-top: 30px;
-      padding: 22px 24px;
+      margin-top: 26px;
+      padding: 20px 22px;
       border: 1px solid rgba(242, 217, 153, 0.3);
       border-radius: 18px;
       background:
