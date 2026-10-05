@@ -39,8 +39,9 @@ function draftCampaign() {
     title: 'SCOUT LEVEL 10 達成キャンペーン',
     description:
       'SCOUT LEVEL 10を達成した方へ、図書カードネットギフト500円分をプレゼントします。',
-    starts_at: null,
-    ends_at: null,
+    starts_at: '2026-10-05T21:00:00.000Z',
+    ends_at: '2026-10-31T14:59:59.999Z',
+    prelaunch_login_grace_starts_at: '2026-10-05T02:13:36.000Z',
     target_level: 10,
     reward_label: '図書カードネットギフト500円分',
     reward_value_yen: 500,
@@ -193,6 +194,22 @@ async function loadClaim(supabase, campaign, userId) {
   return data ?? null;
 }
 
+async function loadEntry(supabase, campaign, userId) {
+  if (!campaign.id) return null;
+  const { data, error } = await supabase
+    .from('scout_reward_campaign_entries')
+    .select(
+      'entry_kind,account_created_at,first_eligible_login_at,eligibility_started_at'
+    )
+    .eq('campaign_id', campaign.id)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error && !isMissingCampaignSchema(error)) {
+    throw new Error(`campaign entry query failed: ${error.message}`);
+  }
+  return data ?? null;
+}
+
 function addDays(value, days) {
   return new Date(new Date(value).getTime() + Number(days) * DAY_MS);
 }
@@ -210,24 +227,28 @@ function buildEligibility({
   progress,
   user,
   claim,
+  entry,
   now = new Date()
 }) {
   const startsAt = campaign.starts_at ? new Date(campaign.starts_at) : null;
   const endsAt = campaign.ends_at ? new Date(campaign.ends_at) : null;
   const createdAt = user.created_at ? new Date(user.created_at) : null;
+  const entryStartedAt = entry?.eligibility_started_at
+    ? new Date(entry.eligibility_started_at)
+    : null;
   const isConfigured = Boolean(startsAt && endsAt);
   const isActive =
     campaign.status === 'active' && isConfigured && now >= startsAt;
-  const isNewUser = Boolean(createdAt && startsAt && createdAt >= startsAt);
-  const eligibilityDeadline =
-    createdAt && startsAt
-      ? addDays(
-          isNewUser ? createdAt : startsAt,
-          isNewUser
-            ? campaign.new_user_window_days
-            : campaign.existing_user_window_days
-        )
-      : null;
+  const isNewUser = Boolean(
+    entry?.entry_kind === 'new_user' ||
+      (createdAt && startsAt && createdAt >= startsAt)
+  );
+  const windowDays = isNewUser
+    ? campaign.new_user_window_days
+    : campaign.existing_user_window_days;
+  const eligibilityDeadline = entryStartedAt
+    ? addDays(entryStartedAt, windowDays)
+    : null;
   const qualifiedAt = progress.qualified_at
     ? new Date(progress.qualified_at)
     : null;
@@ -235,9 +256,8 @@ function buildEligibility({
     ? addDays(qualifiedAt, campaign.claim_window_days)
     : null;
   const reachedTarget = Number(progress.level) >= Number(campaign.target_level);
-  const withinEntryPeriod = Boolean(
-    !createdAt || !endsAt || createdAt <= endsAt
-  );
+  const hasEntry = Boolean(entryStartedAt);
+  const entryStillOpen = Boolean(!endsAt || now <= endsAt);
   const qualifiedInTime = Boolean(
     reachedTarget &&
     qualifiedAt &&
@@ -248,7 +268,7 @@ function buildEligibility({
   const canClaim = Boolean(
     !claim &&
     isActive &&
-    withinEntryPeriod &&
+    hasEntry &&
     qualifiedInTime &&
     withinClaimWindow
   );
@@ -259,7 +279,8 @@ function buildEligibility({
   else if (campaign.status === 'paused') reason = 'paused';
   else if (campaign.status === 'ended') reason = 'ended';
   else if (startsAt && now < startsAt) reason = 'not_started';
-  else if (!withinEntryPeriod) reason = 'entry_closed';
+  else if (!hasEntry && !entryStillOpen) reason = 'entry_closed';
+  else if (!hasEntry) reason = 'entry_required';
   else if (!reachedTarget) reason = 'level_required';
   else if (!qualifiedInTime) reason = 'qualification_deadline_passed';
   else if (!withinClaimWindow) reason = 'claim_deadline_passed';
@@ -269,9 +290,12 @@ function buildEligibility({
     isConfigured,
     isActive,
     isNewUser,
+    hasEntry,
     reachedTarget,
     canClaim,
     reason,
+    entryKind: entry?.entry_kind ?? null,
+    eligibilityStartedAt: entryStartedAt?.toISOString() ?? null,
     eligibilityDeadline: eligibilityDeadline?.toISOString() ?? null,
     claimDeadline: claimDeadline?.toISOString() ?? null,
     daysRemaining: daysRemaining(campaign.ends_at, now)
@@ -286,6 +310,7 @@ function publicCampaign(campaign) {
     description: campaign.description,
     startsAt: campaign.starts_at,
     endsAt: campaign.ends_at,
+    prelaunchLoginGraceStartsAt: campaign.prelaunch_login_grace_starts_at ?? null,
     targetLevel: Number(campaign.target_level),
     rewardLabel: campaign.reward_label,
     rewardValueYen: Number(campaign.reward_value_yen),
@@ -320,13 +345,17 @@ export function createScoutLv10CampaignHandler({
 
     try {
       const campaign = await loadCampaign(supabase);
-      const progress = await loadProgress(supabase, user.id, campaign);
-      const claim = await loadClaim(supabase, campaign, user.id);
+      const [progress, claim, entry] = await Promise.all([
+        loadProgress(supabase, user.id, campaign),
+        loadClaim(supabase, campaign, user.id),
+        loadEntry(supabase, campaign, user.id)
+      ]);
       const eligibility = buildEligibility({
         campaign,
         progress,
         user,
         claim,
+        entry,
         now: now()
       });
 
