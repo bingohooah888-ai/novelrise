@@ -102,17 +102,34 @@ select set_config(
   true
 );
 
--- New reader surfaces are opt-in. This legacy appearance-feed fixture enables
--- only the episode surface for the characters it intentionally exercises.
+-- New reader surfaces are opt-in. On the latest schema, enable only the
+-- episode surface for the characters this fixture intentionally exercises.
+-- Historical migration-replay coverage also runs this fixture before that
+-- column existed, so keep the legacy contract valid there without changing it.
 reset role;
-update public.novel_characters
-   set reader_body_visible = true
- where id in (
-   current_setting('novelight.test.character_soma')::bigint,
-   current_setting('novelight.test.character_ayane')::bigint,
-   current_setting('novelight.test.character_future')::bigint,
-   current_setting('novelight.test.character_guide')::bigint
- );
+do $$
+begin
+  if exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'novel_characters'
+       and column_name = 'reader_body_visible'
+  ) then
+    execute $sql$
+      update public.novel_characters
+         set reader_body_visible = true
+       where id = any($1)
+    $sql$
+    using array[
+      current_setting('novelight.test.character_soma')::bigint,
+      current_setting('novelight.test.character_ayane')::bigint,
+      current_setting('novelight.test.character_future')::bigint,
+      current_setting('novelight.test.character_guide')::bigint
+    ];
+  end if;
+end
+$$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','79900000-0000-0000-0000-000000000001',true);
 

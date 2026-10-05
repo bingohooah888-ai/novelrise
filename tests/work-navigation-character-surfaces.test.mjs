@@ -102,7 +102,10 @@ test(
     assert.match(feed, /c\.reader_body_visible/u);
     assert.match(feed, /e\.status = 'published'/u);
     assert.match(feed, /e\.episode_number <= v_current_number/u);
-    assert.match(feed, /first_episode\.episode_number <= v_current_number/u);
+    assert.match(
+      feed,
+      /first_episode\.episode_number <= v_current_number/u,
+    );
     assert.doesNotMatch(feed, /'aliases'/u);
   },
 );
@@ -123,7 +126,10 @@ test(
     assert.match(feed, /public\.valid_read_events/u);
     assert.match(feed, /vr\.reader_id = v_uid/u);
     assert.match(feed, /e\.status = 'published'/u);
-    assert.match(feed, /q\.first_appearance_episode_number <= v_reveal_through/u);
+    assert.match(
+      feed,
+      /q\.first_appearance_episode_number <= v_reveal_through/u,
+    );
     assert.doesNotMatch(feed, /'aliases'/u);
   },
 );
