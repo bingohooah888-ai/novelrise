@@ -39,6 +39,10 @@
       color: var(--campaign-muted);
     }
 
+    body.novelight-page-scout-campaign .campaign-dashboard.campaign-dashboard-three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     body.novelight-page-scout-campaign footer {
       border-top: 1px solid rgba(216, 189, 120, 0.14);
       background: #080b12;
@@ -58,6 +62,12 @@
       color: var(--campaign-muted);
       font-size: 11px;
       text-decoration: none;
+    }
+
+    @media (max-width: 860px) {
+      body.novelight-page-scout-campaign .campaign-dashboard.campaign-dashboard-three {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
   </style>
 </head>
@@ -106,7 +116,7 @@
           </div>
         </div>
 
-        <div class="campaign-dashboard">
+        <div class="campaign-dashboard campaign-dashboard-three">
           <article class="campaign-stat highlight">
             <span>CURRENT LEVEL</span>
             <strong id="currentLevel" class="gold">—</strong>
@@ -121,11 +131,6 @@
             <span>NEXT SCOUT RANK</span>
             <strong id="nextRankXp">—</strong>
             <small id="nextRankName">次のRANKまでに必要なXP</small>
-          </article>
-          <article class="campaign-stat highlight">
-            <span>LEVEL 10まで</span>
-            <strong id="targetXpRemaining" class="gold">—</strong>
-            <small>キャンペーン達成までに必要なXP</small>
           </article>
         </div>
 
