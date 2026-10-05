@@ -48,7 +48,7 @@ function draftCampaign() {
     existing_user_window_days: 60,
     new_user_window_days: 60,
     claim_window_days: 30,
-    daily_valid_read_xp_cap: 40,
+    daily_valid_read_xp_cap: 10,
     preview_fallback: true
   };
 }
@@ -123,13 +123,17 @@ async function fallbackProgress(supabase, userId, campaign) {
   }
 
   const { start, end } = jstDayBounds();
-  const todayValidReadXp = (xpRows ?? [])
-    .filter((row) => {
-      if (row.xp_kind !== 'valid_read') return false;
-      const occurred = new Date(row.occurred_at);
-      return occurred >= start && occurred < end;
-    })
-    .reduce((sum, row) => sum + Number(row.xp_value ?? 0), 0);
+  const todayRows = (xpRows ?? []).filter((row) => {
+    const occurred = new Date(row.occurred_at);
+    return occurred >= start && occurred < end;
+  });
+  const todayXpFor = (kind) =>
+    todayRows
+      .filter((row) => row.xp_kind === kind)
+      .reduce((sum, row) => sum + Number(row.xp_value ?? 0), 0);
+  const todayValidReadXp = todayXpFor('valid_read');
+  const todayValidReadEpisodeXp = todayXpFor('valid_read_episode');
+  const todayCommentXp = todayXpFor('comment');
 
   return {
     total_xp: totalXp,
@@ -143,11 +147,23 @@ async function fallbackProgress(supabase, userId, campaign) {
     xp_to_target: Math.max(0, targetXp - totalXp),
     qualified_at: qualifiedAt,
     today_valid_read_xp: todayValidReadXp,
-    today_valid_read_xp_cap: Number(campaign.daily_valid_read_xp_cap ?? 40),
+    today_valid_read_xp_cap: Number(campaign.daily_valid_read_xp_cap ?? 10),
     today_valid_read_xp_remaining: Math.max(
       0,
-      Number(campaign.daily_valid_read_xp_cap ?? 40) - todayValidReadXp
-    )
+      Number(campaign.daily_valid_read_xp_cap ?? 10) - todayValidReadXp
+    ),
+    today_valid_read_episode_xp: todayValidReadEpisodeXp,
+    today_valid_read_episode_xp_cap: 15,
+    today_valid_read_episode_xp_remaining: Math.max(
+      0,
+      15 - todayValidReadEpisodeXp
+    ),
+    today_comment_xp: todayCommentXp,
+    today_comment_xp_cap: 15,
+    today_comment_xp_remaining: Math.max(0, 15 - todayCommentXp),
+    today_activity_xp:
+      todayValidReadXp + todayValidReadEpisodeXp + todayCommentXp,
+    today_activity_xp_cap: 40
   };
 }
 
