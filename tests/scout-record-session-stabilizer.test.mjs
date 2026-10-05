@@ -7,6 +7,7 @@ const html = readFileSync('scout-record.html', 'utf8');
 const source = readFileSync('novelight-scout-session-stabilizer.js', 'utf8');
 const url = 'https://fiepaguycecrredwrcwx.supabase.co';
 const key = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+const storageKey = 'sb-fiepaguycecrredwrcwx-auth-token';
 
 function authResult(userId = null, error = null) {
   const user = userId ? { id: userId } : null;
@@ -14,9 +15,14 @@ function authResult(userId = null, error = null) {
   return { data: { session }, error };
 }
 
-function install(createClient) {
+function install(createClient, { persisted = false } = {}) {
   const window = {
     supabase: { createClient },
+    localStorage: {
+      getItem(requestedKey) {
+        return persisted && requestedKey === storageKey ? '{persisted}' : null;
+      }
+    },
     setTimeout(resolve) {
       resolve();
       return 1;
@@ -81,17 +87,37 @@ test('explicit options keep separate clients', () => {
   assert.equal(count, 2);
 });
 
-test('null sessions retry and real errors stop', async () => {
+test('signed-out null sessions return immediately', async () => {
   let calls = 0;
   const window = install(() => ({
     auth: {
       async getSession() {
         calls += 1;
-        if (calls < 4) return authResult();
-        return authResult('reader-1');
+        return authResult();
       }
     }
   }));
+  const client = window.supabase.createClient(url, key);
+  const result = await client.auth.getSession();
+
+  assert.equal(result.data.session, null);
+  assert.equal(calls, 1);
+});
+
+test('persisted null sessions retry and real errors stop', async () => {
+  let calls = 0;
+  const window = install(
+    () => ({
+      auth: {
+        async getSession() {
+          calls += 1;
+          if (calls < 4) return authResult();
+          return authResult('reader-1');
+        }
+      }
+    }),
+    { persisted: true }
+  );
   const client = window.supabase.createClient(url, key);
   const recovered = await client.auth.getSession();
 
@@ -100,14 +126,17 @@ test('null sessions retry and real errors stop', async () => {
 
   let errorCalls = 0;
   const expectedError = new Error('auth failed');
-  const errorWindow = install(() => ({
-    auth: {
-      async getSession() {
-        errorCalls += 1;
-        return authResult(null, expectedError);
+  const errorWindow = install(
+    () => ({
+      auth: {
+        async getSession() {
+          errorCalls += 1;
+          return authResult(null, expectedError);
+        }
       }
-    }
-  }));
+    }),
+    { persisted: true }
+  );
   const errorClient = errorWindow.supabase.createClient(url, key);
   const failed = await errorClient.auth.getSession();
 
@@ -116,8 +145,9 @@ test('null sessions retry and real errors stop', async () => {
 });
 
 test('stabilizer never synthesizes credentials', () => {
-  assert.match(source, /const retryAttempts = 4;/);
-  assert.match(source, /const retryDelayMs = 150;/);
+  assert.match(source, /const retryAttempts = 20;/);
+  assert.match(source, /const retryDelayMs = 250;/);
+  assert.match(source, /sb-fiepaguycecrredwrcwx-auth-token/);
   assert.match(source, /sharedCanonicalClient/);
   assert.doesNotMatch(source, /access_token\s*:/);
   assert.doesNotMatch(source, /refresh_token\s*:/);
