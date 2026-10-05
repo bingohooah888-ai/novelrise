@@ -59,13 +59,46 @@ export function canonicalUrl(page, id) {
 
 export function injectSeo(
   html,
-  { title, description, canonical, indexable = true }
+  {
+    title,
+    description,
+    canonical,
+    indexable = true,
+    openGraph = null
+  }
 ) {
   const safeTitle = escapeHtml(title);
   const tags = [
     `<meta name="description" content="${escapeHtml(description)}">`,
     `<link rel="canonical" href="${escapeHtml(canonical)}">`
   ];
+
+  if (openGraph) {
+    const ogTitle = escapeHtml(openGraph.title || title);
+    const ogDescription = escapeHtml(openGraph.description || description);
+    const ogUrl = escapeHtml(openGraph.url || canonical);
+    const ogType = escapeHtml(openGraph.type || 'website');
+    const ogImage = escapeHtml(openGraph.image || '');
+
+    tags.push(
+      `<meta property="og:title" content="${ogTitle}">`,
+      `<meta property="og:description" content="${ogDescription}">`,
+      `<meta property="og:url" content="${ogUrl}">`,
+      `<meta property="og:type" content="${ogType}">`,
+      '<meta name="twitter:card" content="summary_large_image">',
+      `<meta name="twitter:title" content="${ogTitle}">`,
+      `<meta name="twitter:description" content="${ogDescription}">`
+    );
+
+    if (ogImage) {
+      tags.push(
+        `<meta property="og:image" content="${ogImage}">`,
+        '<meta property="og:image:width" content="1200">',
+        '<meta property="og:image:height" content="630">',
+        `<meta name="twitter:image" content="${ogImage}">`
+      );
+    }
+  }
 
   if (!indexable) {
     tags.push('<meta name="robots" content="noindex, nofollow">');
