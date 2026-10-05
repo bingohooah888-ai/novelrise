@@ -13,11 +13,14 @@
     new Promise((resolve) => window.setTimeout(resolve, ms));
   let sharedCanonicalClient = null;
 
-  const hasPersistedCanonicalSession = () => {
+  const readPersistedCanonicalSession = () => {
     try {
-      return Boolean(window.localStorage?.getItem(productionStorageKey));
+      const raw = window.localStorage?.getItem(productionStorageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
     } catch {
-      return false;
+      return null;
     }
   };
 
@@ -30,15 +33,20 @@
     auth.getSession = async (...sessionArgs) => {
       let result = await originalGetSession(...sessionArgs);
       if (result?.error || result?.data?.session) return result;
-      if (!hasPersistedCanonicalSession()) return result;
+
+      let persistedSession = readPersistedCanonicalSession();
+      if (!persistedSession) return result;
 
       for (let attempt = 1; attempt < retryAttempts; attempt += 1) {
         await delay(retryDelayMs);
         result = await originalGetSession(...sessionArgs);
         if (result?.error || result?.data?.session) return result;
-        if (!hasPersistedCanonicalSession()) return result;
+        persistedSession = readPersistedCanonicalSession();
+        if (!persistedSession) return result;
       }
-      return result;
+
+      if (typeof auth.setSession !== 'function') return result;
+      return auth.setSession(persistedSession);
     };
 
     Object.defineProperty(auth, '__novelightScoutSessionLookupStabilized', {
