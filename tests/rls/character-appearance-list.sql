@@ -102,64 +102,19 @@ select set_config(
   true
 );
 
--- New reader surfaces are opt-in. Enable only the episode surface for the
--- characters this legacy appearance-feed fixture intentionally exercises.
-select public.novelight_upsert_character_v4(
-  799001,
-  current_setting('novelight.test.character_soma')::bigint,
-  '桐谷蒼真',
-  array['蒼真','ソーマ'],
-  true,
-  true,
-  null,
-  null,
-  null,
-  true,
-  false,
-  0
-);
-select public.novelight_upsert_character_v4(
-  799001,
-  current_setting('novelight.test.character_ayane')::bigint,
-  '九条彩音',
-  array['彩音'],
-  true,
-  true,
-  null,
-  null,
-  null,
-  true,
-  false,
-  0
-);
-select public.novelight_upsert_character_v4(
-  799001,
-  current_setting('novelight.test.character_future')::bigint,
-  '未来人',
-  '{}'::text[],
-  true,
-  true,
-  null,
-  null,
-  null,
-  true,
-  false,
-  0
-);
-select public.novelight_upsert_character_v4(
-  799001,
-  current_setting('novelight.test.character_guide')::bigint,
-  '案内人',
-  '{}'::text[],
-  true,
-  true,
-  null,
-  null,
-  null,
-  true,
-  false,
-  0
-);
+-- New reader surfaces are opt-in. This legacy appearance-feed fixture enables
+-- only the episode surface for the characters it intentionally exercises.
+reset role;
+update public.novel_characters
+   set reader_body_visible = true
+ where id in (
+   current_setting('novelight.test.character_soma')::bigint,
+   current_setting('novelight.test.character_ayane')::bigint,
+   current_setting('novelight.test.character_future')::bigint,
+   current_setting('novelight.test.character_guide')::bigint
+ );
+set local role authenticated;
+select set_config('request.jwt.claim.sub','79900000-0000-0000-0000-000000000001',true);
 
 do $$
 declare
