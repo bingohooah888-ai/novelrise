@@ -59,8 +59,13 @@ test('campaign countdown uses the personal 60-day LEVEL 10 deadline', () => {
   assert.match(client, /達成期限まで あと/);
   assert.match(client, /deadlineDaysRemaining/);
   assert.match(client, /eligibility\.eligibilityDeadline/);
+  assert.match(client, /campaign\.existingUserWindowDays/);
+  assert.match(client, /campaign\.newUserWindowDays/);
   assert.match(client, /LEVEL 10達成期限：/);
-  assert.match(client, /対象ログインまたは登録後から60日間/);
+  assert.match(
+    client,
+    /対象ログインまたは登録後から\$\{n\(configuredWindowDays\)\}日間/
+  );
   assert.doesNotMatch(
     client,
     /countdownNote', `参加受付：\$\{formatDate\(campaign\.endsAt\)\}まで（JST）`/
