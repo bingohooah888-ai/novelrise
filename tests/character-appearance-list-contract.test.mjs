@@ -106,7 +106,8 @@ test('author and reader UI fail safe when DB runtime is not deployed', () => {
   assert.match(runtime, /mountReader/u);
   assert.match(runtime, /mountEpisodeEditor/u);
   assert.match(manager, /データベース反映待ち/u);
-  assert.match(reader, /NovelightCharacters\.mountReader/u);
+  assert.match(reader, /NovelightWorkNavigation\.mountEpisode/u);
+  assert.doesNotMatch(reader, /NovelightCharacters\.mountReader/u);
   assert.match(editor, /NovelightCharacters\.mountEpisodeEditor/u);
   assert.match(work, /characters\.html\?novel_id=/u);
 });
