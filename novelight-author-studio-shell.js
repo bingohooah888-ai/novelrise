@@ -16,6 +16,9 @@
   const existingHeader = Array.from(document.body.children).find(node => node.tagName === 'HEADER');
   const main = Array.from(document.body.children).find(node => node.tagName === 'MAIN');
   if (!main) return;
+  if (page === 'scout-record.html') {
+    main.querySelector('.scout-page-head h1')?.setAttribute('aria-label', 'SCOUT RECORD');
+  }
   existingHeader?.remove();
 
   const menuToggle = document.createElement('button');

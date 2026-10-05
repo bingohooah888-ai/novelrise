@@ -219,6 +219,13 @@ html body.novelight-public-dark .site-header a[href="beta-authors.html"] {
   display: none !important;
 }
 
+/* Keep actionable controls clear of the sticky public header when browsers or
+   automation scroll them into view on narrow screens. */
+html body.novelight-public-dark .owner-more > summary,
+html body.novelight-public-dark .owner-more-tools .action {
+  scroll-margin-top: 104px;
+}
+
 @media (max-width: 1180px) {
   html body.novelight-public-dark .public-header-inner { gap: 20px !important; }
   html body.novelight-public-dark .logo { min-width: 218px !important; }
