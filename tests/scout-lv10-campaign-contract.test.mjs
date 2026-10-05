@@ -64,10 +64,7 @@ test('campaign remains draft while the approved entry schedule is encoded', () =
 test('homepage campaign banner is prewired but remains on manual teaser mode', () => {
   assert.match(home, /id="homeLeadLink"/);
   assert.match(home, /05_event_teaser_1600x900\.png/);
-  assert.match(
-    home,
-    /05_campaign_official_after_announcement_1600x900\.png/
-  );
+  assert.match(home, /05_campaign_official_after_announcement_1600x900\.png/);
   assert.match(home, /href: 'scout-lv10-campaign\.html'/);
   assert.match(home, /const currentLeadVisual = 'teaser'/);
   assert.match(home, /時刻による自動切替は行わない/);
@@ -110,10 +107,7 @@ test('claim submission performs Trust & Safety scan before assigning payout stat
   assert.ok(scanIndex > 0);
   assert.ok(statusIndex > scanIndex);
   assert.ok(insertIndex > statusIndex);
-  assert.match(
-    entryMigration,
-    /then 'risk_review' else 'approved_candidate'/
-  );
+  assert.match(entryMigration, /then 'risk_review' else 'approved_candidate'/);
   assert.doesNotMatch(entryMigration, /gift_code/i);
 });
 
@@ -146,18 +140,12 @@ test('eligibility clock is anchored to signup or first eligible login', () => {
     /v_eligibility_started_at := v_campaign\.starts_at/
   );
   assert.match(entryMigration, /v_eligibility_started_at := v_login_at/);
-  assert.match(
-    entryMigration,
-    /v_eligibility_started_at := new\.created_at/
-  );
+  assert.match(entryMigration, /v_eligibility_started_at := new\.created_at/);
   assert.match(entryMigration, /new\.created_at > v_campaign\.ends_at/);
   assert.match(entryMigration, /v_login_at > v_campaign\.ends_at/);
   assert.match(api, /eligibilityStartedAt/);
   assert.match(api, /entry_required/);
-  assert.match(
-    client,
-    /10月6日6:00までの事前ログインは10月6日6:00開始扱い/
-  );
+  assert.match(client, /10月6日6:00までの事前ログインは10月6日6:00開始扱い/);
 });
 
 test('prelaunch grace backfill preserves the first eligibility clock', () => {

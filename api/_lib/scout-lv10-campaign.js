@@ -241,7 +241,7 @@ function buildEligibility({
     campaign.status === 'active' && isConfigured && now >= startsAt;
   const isNewUser = Boolean(
     entry?.entry_kind === 'new_user' ||
-      (createdAt && startsAt && createdAt >= startsAt)
+    (createdAt && startsAt && createdAt >= startsAt)
   );
   const windowDays = isNewUser
     ? campaign.new_user_window_days
@@ -266,11 +266,7 @@ function buildEligibility({
   );
   const withinClaimWindow = Boolean(claimDeadline && now <= claimDeadline);
   const canClaim = Boolean(
-    !claim &&
-    isActive &&
-    hasEntry &&
-    qualifiedInTime &&
-    withinClaimWindow
+    !claim && isActive && hasEntry && qualifiedInTime && withinClaimWindow
   );
 
   let reason = 'level_required';
