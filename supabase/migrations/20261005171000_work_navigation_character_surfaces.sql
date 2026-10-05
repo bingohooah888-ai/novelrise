@@ -239,14 +239,32 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_uid uuid := (select auth.uid());
+  v_author_id uuid;
   v_show_images boolean := false;
+  v_reveal_through bigint := 0;
   v_result jsonb;
 begin
-  select n.character_images_visible into v_show_images
+  select n.user_id,n.character_images_visible
+    into v_author_id,v_show_images
   from public.novels n
   where n.id = p_novel_id and n.status = 'published';
 
   if not found then return '[]'::jsonb; end if;
+
+  if v_uid is not null and v_uid = v_author_id then
+    v_reveal_through := 9223372036854775807::bigint;
+  elsif v_uid is not null then
+    select coalesce(max(e.episode_number),0)::bigint
+      into v_reveal_through
+    from public.valid_read_events vr
+    join public.episodes e
+      on e.id::text = vr.episode_id_snapshot
+     and e.novel_id = p_novel_id
+     and e.status = 'published'
+    where vr.reader_id = v_uid
+      and vr.novel_id_snapshot = p_novel_id::text;
+  end if;
 
   select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
     'id',q.id,
@@ -257,8 +275,24 @@ begin
   ) order by q.display_order,q.name,q.id), '[]'::jsonb)
   into v_result
   from (
-    select c.id,c.name,c.description,c.image_url,c.display_order,
-      first_episode.episode_number as first_appearance_episode_number
+    select
+      c.id,
+      c.name,
+      c.description,
+      c.image_url,
+      c.display_order,
+      coalesce(
+        first_episode.episode_number,
+        (
+          select min(e2.episode_number)
+          from public.novel_character_episode_states s2
+          join public.episodes e2 on e2.id = s2.episode_id
+          where s2.character_id = c.id
+            and e2.novel_id = p_novel_id
+            and e2.status = 'published'
+            and (s2.override_mode = 'include' or (s2.override_mode is null and s2.auto_detected))
+        )
+      ) as first_appearance_episode_number
     from public.novel_characters c
     left join public.episodes first_episode
       on first_episode.id = c.first_appearance_episode_id
@@ -267,22 +301,9 @@ begin
     where c.novel_id = p_novel_id
       and c.reader_visible
       and c.novel_detail_visible
-      and (
-        (c.first_appearance_episode_id is not null and first_episode.id is not null)
-        or (
-          c.first_appearance_episode_id is null
-          and exists (
-            select 1
-            from public.novel_character_episode_states s
-            join public.episodes e on e.id = s.episode_id
-            where s.character_id = c.id
-              and e.novel_id = p_novel_id
-              and e.status = 'published'
-              and (s.override_mode = 'include' or (s.override_mode is null and s.auto_detected))
-          )
-        )
-      )
-  ) q;
+  ) q
+  where q.first_appearance_episode_number is not null
+    and q.first_appearance_episode_number <= v_reveal_through;
 
   return v_result;
 end
