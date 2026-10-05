@@ -40,7 +40,7 @@ test('homepage promotional carousel uses approved artwork and avoids fake scale 
     /official:\s*\{[\s\S]*?src: 'assets\/home\/05_campaign_official_after_announcement_1600x900\.png'/u
   );
   assert.match(home, /href: 'scout-lv10-campaign\.html'/u);
-  assert.match(home, /const currentLeadVisual = 'teaser';/u);
+  assert.match(home, /const currentLeadVisual = 'official';/u);
   assert.match(home, /時刻による自動切替は行わない/u);
   assert.match(home, /class="home-promo-track"/u);
   assert.doesNotMatch(home, /02_hero_mobile_900x1600\.png/u);
