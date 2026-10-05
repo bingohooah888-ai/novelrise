@@ -77,11 +77,11 @@ test('SCOUT RECORD preserves authenticated reader session across navigation', as
 }) => {
   const reader = loadDesktopReader();
 
-  await page.goto('/login.html?redirect=index.html');
+  await page.goto('/login.html?redirect=mypage.html');
   await page.locator('#email').fill(reader.email);
   await page.locator('#password').fill(reader.password);
   await page.locator('#loginButton').click();
-  await page.waitForURL((url) => url.pathname.endsWith('/index.html'));
+  await page.waitForURL((url) => url.pathname.endsWith('/mypage.html'));
 
   const before = await snapshotAuth(page);
   console.log(`SCOUT_AUTH_DIAG before=${JSON.stringify(before)}`);
