@@ -45,7 +45,8 @@ test('post-gate episode fetch only requests missing body fields and reuses safe 
 
 test('reader behavior remains wired after the optimized fetch path', () => {
   assert.match(source, /NovelightComments\.mount/);
-  assert.match(source, /NovelightCharacters\.mountReader/);
+  assert.match(source, /NovelightWorkNavigation\.mountEpisode/);
+  assert.doesNotMatch(source, /NovelightCharacters\.mountReader/);
   assert.match(source, /NovelightEpisodeHeart\.mount/);
   assert.match(source, /NovelightEpisodeIllustrations\.mountReader/);
   assert.match(source, /novelight-reading-continuity\.js/);
