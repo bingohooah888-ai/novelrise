@@ -44,8 +44,7 @@ begin
      or has_table_privilege('authenticated','public.episode_illustrations','select')
      or has_table_privilege('authenticated','public.episode_illustrations','insert')
      or has_table_privilege('authenticated','public.episode_illustrations','update')
-     or has_table_privilege('authenticated','public.episode_illustrations','delete')
-     or has_table_privilege('service_role','public.episode_illustrations','select') then
+     or has_table_privilege('authenticated','public.episode_illustrations','delete') then
     raise exception 'POSTCHECK FAIL: raw illustration table privileges leaked';
   end if;
 

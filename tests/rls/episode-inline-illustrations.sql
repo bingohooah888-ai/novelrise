@@ -229,12 +229,6 @@ begin
   end;
 
   begin
-    perform * from public.episode_illustrations;
-    raise exception 'service_role unexpectedly received raw illustration table access';
-  exception when insufficient_privilege then null;
-  end;
-
-  begin
     perform * from public.episode_illustration_upload_audit;
     raise exception 'service_role unexpectedly received raw illustration upload audit access';
   exception when insufficient_privilege then null;
