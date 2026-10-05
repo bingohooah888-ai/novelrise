@@ -53,6 +53,20 @@ test('campaign destination page contains the requested progress and claim UI', (
   assert.match(page, /500円分/);
 });
 
+test('campaign countdown uses the personal 60-day LEVEL 10 deadline', () => {
+  assert.match(client, /LEVEL 10 DEADLINE/);
+  assert.match(client, /LEVEL 10達成期限までの日数/);
+  assert.match(client, /達成期限まで あと/);
+  assert.match(client, /deadlineDaysRemaining/);
+  assert.match(client, /eligibility\.eligibilityDeadline/);
+  assert.match(client, /LEVEL 10達成期限：/);
+  assert.match(client, /対象ログインまたは登録後から60日間/);
+  assert.doesNotMatch(
+    client,
+    /countdownNote', `参加受付：\$\{formatDate\(campaign\.endsAt\)\}まで（JST）`/
+  );
+});
+
 test('campaign display shows the planned 40 XP daily breakdown', () => {
   assert.match(page, /SCOUT XPの獲得条件/);
   assert.match(page, /有効読書（作品）/);
