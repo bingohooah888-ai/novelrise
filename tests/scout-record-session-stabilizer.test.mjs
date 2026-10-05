@@ -153,68 +153,74 @@ test('persisted null sessions retry and real errors stop', async () => {
   assert.equal(errorCalls, 1);
 });
 
-test('persisted session is restored through Supabase after bounded retries', async () => {
-  let getCalls = 0;
-  let setCalls = 0;
-  let restoredPayload = null;
-  const persistedValue = JSON.stringify({
-    access_token: 'stored-access-token',
-    refresh_token: 'stored-refresh-token',
-    expires_at: 1
-  });
-  const window = install(
-    () => ({
-      auth: {
-        async getSession() {
-          getCalls += 1;
-          return authResult();
-        },
-        async setSession(payload) {
-          setCalls += 1;
-          restoredPayload = payload;
-          return authResult('reader-restored');
+test(
+  'persisted session is restored through Supabase after bounded retries',
+  async () => {
+    let getCalls = 0;
+    let setCalls = 0;
+    let restoredPayload = null;
+    const persistedValue = JSON.stringify({
+      access_token: 'stored-access-token',
+      refresh_token: 'stored-refresh-token',
+      expires_at: 1
+    });
+    const window = install(
+      () => ({
+        auth: {
+          async getSession() {
+            getCalls += 1;
+            return authResult();
+          },
+          async setSession(payload) {
+            setCalls += 1;
+            restoredPayload = payload;
+            return authResult('reader-restored');
+          }
         }
-      }
-    }),
-    { persisted: true, persistedValue }
-  );
-  const client = window.supabase.createClient(url, key);
-  const recovered = await client.auth.getSession();
+      }),
+      { persisted: true, persistedValue }
+    );
+    const client = window.supabase.createClient(url, key);
+    const recovered = await client.auth.getSession();
 
-  assert.equal(recovered.data.session.user.id, 'reader-restored');
-  assert.equal(getCalls, 20);
-  assert.equal(setCalls, 1);
-  assert.deepEqual(
-    JSON.parse(JSON.stringify(restoredPayload)),
-    JSON.parse(persistedValue)
-  );
-});
+    assert.equal(recovered.data.session.user.id, 'reader-restored');
+    assert.equal(getCalls, 20);
+    assert.equal(setCalls, 1);
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(restoredPayload)),
+      JSON.parse(persistedValue)
+    );
+  }
+);
 
-test('invalid persisted storage does not attempt session restoration', async () => {
-  let getCalls = 0;
-  let setCalls = 0;
-  const window = install(
-    () => ({
-      auth: {
-        async getSession() {
-          getCalls += 1;
-          return authResult();
-        },
-        async setSession() {
-          setCalls += 1;
-          return authResult('unexpected');
+test(
+  'invalid persisted storage does not attempt session restoration',
+  async () => {
+    let getCalls = 0;
+    let setCalls = 0;
+    const window = install(
+      () => ({
+        auth: {
+          async getSession() {
+            getCalls += 1;
+            return authResult();
+          },
+          async setSession() {
+            setCalls += 1;
+            return authResult('unexpected');
+          }
         }
-      }
-    }),
-    { persisted: true, persistedValue: '{not-json' }
-  );
-  const client = window.supabase.createClient(url, key);
-  const result = await client.auth.getSession();
+      }),
+      { persisted: true, persistedValue: '{not-json' }
+    );
+    const client = window.supabase.createClient(url, key);
+    const result = await client.auth.getSession();
 
-  assert.equal(result.data.session, null);
-  assert.equal(getCalls, 1);
-  assert.equal(setCalls, 0);
-});
+    assert.equal(result.data.session, null);
+    assert.equal(getCalls, 1);
+    assert.equal(setCalls, 0);
+  }
+);
 
 test('stabilizer never synthesizes credentials', () => {
   assert.match(source, /const retryAttempts = 20;/);
