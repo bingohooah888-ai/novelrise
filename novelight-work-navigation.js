@@ -15,7 +15,8 @@
     const style = document.createElement('style');
     style.id = 'novelightWorkNavigationStyles';
     style.textContent = `
-      .nl-worknav-episode-layout{display:grid;grid-template-columns:minmax(0,820px) 294px;align-items:start;gap:20px}
+      body.novelight-page-episode main#main-content{max-width:1180px}
+      .nl-worknav-episode-layout{display:grid;grid-template-columns:minmax(0,820px) 294px;align-items:start;justify-content:center;gap:20px}
       .nl-worknav-episode-main{min-width:0}.nl-worknav-support{position:sticky;top:18px;display:grid;gap:12px}
       .nl-worknav-panel{border:1px solid #e4dccf;border-radius:14px;background:#fffdf8;overflow:hidden;box-shadow:0 10px 28px rgba(55,42,29,.05)}
       .nl-worknav-panel-head{padding:13px 14px;border-bottom:1px solid #ece5d9;color:#4b3928;font-size:13px;font-weight:900}
