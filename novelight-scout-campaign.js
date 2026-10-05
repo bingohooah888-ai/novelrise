@@ -137,10 +137,10 @@
     setText('targetXpGoal', n(progress.target_level_xp));
 
     const today = Number(progress.today_valid_read_xp ?? 0);
-    const todayCap = Number(progress.today_valid_read_xp_cap ?? 40);
-    const todayRemaining = Number(progress.today_valid_read_xp_remaining ?? 0);
+    const todayCap = 10;
+    const todayRemaining = Math.max(0, todayCap - today);
     setText('todayXp', `${n(today)} / ${n(todayCap)} XP`);
-    setText('todayXpRemaining', `本日の読書XPはあと ${n(todayRemaining)} XP`);
+    setText('todayXpRemaining', `本日の有効読書XPはあと ${n(todayRemaining)} XP`);
 
     const targetPercent = progressPercent(progress);
     const targetTrack = el('targetProgressTrack');

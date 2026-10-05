@@ -29,7 +29,8 @@
     body.novelight-page-scout-campaign .campaign-hero h1 em,
     body.novelight-page-scout-campaign .campaign-eyebrow,
     body.novelight-page-scout-campaign .campaign-stat strong.gold,
-    body.novelight-page-scout-campaign .campaign-countdown strong b {
+    body.novelight-page-scout-campaign .campaign-countdown strong b,
+    body.novelight-page-scout-campaign .campaign-xp-breakdown b {
       color: var(--campaign-gold-bright);
     }
 
@@ -42,7 +43,9 @@
     body.novelight-page-scout-campaign .campaign-claim-copy,
     body.novelight-page-scout-campaign .campaign-claim-status,
     body.novelight-page-scout-campaign .campaign-email,
-    body.novelight-page-scout-campaign .campaign-footer-note {
+    body.novelight-page-scout-campaign .campaign-footer-note,
+    body.novelight-page-scout-campaign .campaign-xp-breakdown small,
+    body.novelight-page-scout-campaign .campaign-xp-note {
       color: var(--campaign-muted);
     }
 
@@ -61,6 +64,70 @@
       background:
         linear-gradient(145deg, rgba(216, 189, 120, 0.09), transparent 62%),
         rgba(18, 27, 45, 0.96);
+    }
+
+    body.novelight-page-scout-campaign .campaign-activity-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    body.novelight-page-scout-campaign .campaign-activity-grid > * {
+      margin: 0;
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-info {
+      padding: 24px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-info .campaign-eyebrow {
+      margin-bottom: 8px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-info h3 {
+      margin: 0 0 18px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-breakdown {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border-top: 1px solid rgba(216, 189, 120, 0.12);
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-breakdown li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(216, 189, 120, 0.1);
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-breakdown li > span {
+      display: grid;
+      gap: 3px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-breakdown strong {
+      color: var(--campaign-text);
+      font-size: 16px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-breakdown small {
+      font-size: 14px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-breakdown b {
+      flex: 0 0 auto;
+      font-size: 17px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-xp-note {
+      margin: 16px 0 0;
+      font-size: 14px;
+      line-height: 1.8;
     }
 
     body.novelight-page-scout-campaign .campaign-brand { font-size: 22px; }
@@ -111,9 +178,19 @@
       text-decoration: none;
     }
 
+    @media (max-width: 860px) {
+      body.novelight-page-scout-campaign .campaign-activity-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (max-width: 560px) {
       body.novelight-page-scout-campaign .campaign-dashboard.campaign-dashboard-two {
         grid-template-columns: 1fr;
+      }
+
+      body.novelight-page-scout-campaign .campaign-xp-breakdown li {
+        align-items: flex-start;
       }
     }
   </style>
@@ -210,14 +287,48 @@
         <div class="campaign-section-head">
           <div>
             <h2 id="todayXpTitle">今日のSCOUT活動</h2>
-            <p>有効読書で獲得できるXPの日次上限を表示します。</p>
+            <p>有効読書XPの獲得状況と、SCOUT XPの1日最大40 XPの内訳を表示します。</p>
           </div>
         </div>
-        <article class="campaign-stat highlight">
-          <span>本日の読書XP上限</span>
-          <strong id="todayXp" class="gold">—</strong>
-          <small id="todayXpRemaining">本日の残りXPを読み込んでいます。</small>
-        </article>
+
+        <div class="campaign-activity-grid">
+          <article class="campaign-stat highlight">
+            <span>本日の有効読書XP</span>
+            <strong id="todayXp" class="gold">—</strong>
+            <small id="todayXpRemaining">本日の残りXPを読み込んでいます。</small>
+          </article>
+
+          <aside class="campaign-card campaign-xp-info" aria-labelledby="xpInfoTitle">
+            <p class="campaign-eyebrow">INFORMATION</p>
+            <h3 id="xpInfoTitle">SCOUT XPの獲得条件</h3>
+            <ul class="campaign-xp-breakdown" aria-label="1日最大40 XPの内訳">
+              <li>
+                <span>
+                  <strong>有効読書</strong>
+                  <small>2 XP × 5作品まで</small>
+                </span>
+                <b>最大10 XP</b>
+              </li>
+              <li>
+                <span>
+                  <strong>星評価</strong>
+                  <small>3 XP × 5作品まで</small>
+                </span>
+                <b>最大15 XP</b>
+              </li>
+              <li>
+                <span>
+                  <strong>コメント</strong>
+                  <small>5 XP × 3作品まで</small>
+                </span>
+                <b>最大15 XP</b>
+              </li>
+            </ul>
+            <p class="campaign-xp-note">
+              1日に獲得できる対象XPは合計最大40 XPです。読書による2 XPは、本文の80%以上まで読み進め、必要な閲覧時間を満たして「有効読書」と判定された場合のみ獲得できます。同じ作品の読書XPは初回のみです。星評価はその作品への初回評価のみ、コメントは同じ作品で1日1回までが対象となり、自分の作品へのコメントではXPを獲得できません。
+            </p>
+          </aside>
+        </div>
       </section>
 
       <section class="campaign-section campaign-grid-two" aria-label="参加条件と申請">
