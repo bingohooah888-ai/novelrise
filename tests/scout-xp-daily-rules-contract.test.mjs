@@ -63,10 +63,7 @@ test('star rating remains product data but stops creating future SCOUT XP', () =
   );
   assert.match(migration, /'scout_xp_eligible', false/);
   assert.doesNotMatch(migration, /'star_rating'\s*,\s*3/);
-  assert.doesNotMatch(
-    migration,
-    /delete\s+from\s+public\.scout_xp_ledger/i
-  );
+  assert.doesNotMatch(migration, /delete\s+from\s+public\.scout_xp_ledger/i);
 });
 
 test('campaign progress exposes the three daily activity buckets', () => {
