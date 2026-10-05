@@ -99,7 +99,9 @@ test('SCOUT RECORD preserves authenticated reader session across navigation', as
 
   expect(after.pathname).toBe('/scout-record.html');
   expect(after.shape.storagePresent).toBe(true);
-  expect(after.shape.topLevelUserId ?? after.shape.nestedUserId).toBe(reader.id);
+  expect(after.shape.topLevelUserId ?? after.shape.nestedUserId).toBe(
+    reader.id
+  );
   expect(after.getSession.error).toBeNull();
   expect(after.getSession.hasSession).toBe(true);
   await expect(
