@@ -77,6 +77,28 @@
       margin: 0;
     }
 
+    body.novelight-page-scout-campaign .campaign-daily-xp-card {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    body.novelight-page-scout-campaign .campaign-daily-xp-row {
+      padding: 20px 18px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-daily-xp-row + .campaign-daily-xp-row {
+      border-top: 1px solid rgba(216, 189, 120, 0.1);
+    }
+
+    body.novelight-page-scout-campaign .campaign-daily-xp-row strong {
+      margin-top: 8px;
+      font-size: 27px;
+    }
+
+    body.novelight-page-scout-campaign .campaign-daily-xp-row small {
+      margin-top: 7px;
+    }
+
     body.novelight-page-scout-campaign .campaign-xp-info {
       padding: 24px;
     }
@@ -287,15 +309,27 @@
         <div class="campaign-section-head">
           <div>
             <h2 id="todayXpTitle">今日のSCOUT活動</h2>
-            <p>有効読書XPの獲得状況と、SCOUT XPの1日最大40 XPの内訳を表示します。</p>
+            <p>SCOUT XPの獲得状況と、1日最大40 XPの内訳を表示します。</p>
           </div>
         </div>
 
         <div class="campaign-activity-grid">
-          <article class="campaign-stat highlight">
-            <span>本日の有効読書XP</span>
-            <strong id="todayXp" class="gold">—</strong>
-            <small id="todayXpRemaining">本日の残りXPを読み込んでいます。</small>
+          <article class="campaign-stat highlight campaign-daily-xp-card">
+            <div class="campaign-daily-xp-row">
+              <span>本日の有効読書XP</span>
+              <strong id="todayXp" class="gold">—</strong>
+              <small id="todayXpRemaining">本日の残りXPを読み込んでいます。</small>
+            </div>
+            <div class="campaign-daily-xp-row">
+              <span>本日の有効読書（話）XP</span>
+              <strong id="todayEpisodeXp" class="gold">— / 15 XP</strong>
+              <small id="todayEpisodeXpRemaining">本日の有効読書（話）XPはあと — XP</small>
+            </div>
+            <div class="campaign-daily-xp-row">
+              <span>本日のコメントXP</span>
+              <strong id="todayCommentXp" class="gold">— / 15 XP</strong>
+              <small id="todayCommentXpRemaining">本日のコメントXPはあと — XP</small>
+            </div>
           </article>
 
           <aside class="campaign-card campaign-xp-info" aria-labelledby="xpInfoTitle">
@@ -304,15 +338,15 @@
             <ul class="campaign-xp-breakdown" aria-label="1日最大40 XPの内訳">
               <li>
                 <span>
-                  <strong>有効読書</strong>
+                  <strong>有効読書（作品）</strong>
                   <small>2 XP × 5作品まで</small>
                 </span>
                 <b>最大10 XP</b>
               </li>
               <li>
                 <span>
-                  <strong>星評価</strong>
-                  <small>3 XP × 5作品まで</small>
+                  <strong>有効読書（話）</strong>
+                  <small>1 XP × 15話まで</small>
                 </span>
                 <b>最大15 XP</b>
               </li>
@@ -325,7 +359,7 @@
               </li>
             </ul>
             <p class="campaign-xp-note">
-              1日に獲得できる対象XPは合計最大40 XPです。読書による2 XPは、本文の80%以上まで読み進め、必要な閲覧時間を満たして「有効読書」と判定された場合のみ獲得できます。同じ作品の読書XPは初回のみです。星評価はその作品への初回評価のみ、コメントは同じ作品で1日1回までが対象となり、自分の作品へのコメントではXPを獲得できません。
+              1日に獲得できる対象XPは合計最大40 XPです。有効読書（作品）・有効読書（話）は、本文を読み進め、必要な閲覧時間を満たして「有効読書」と判定された場合のみ対象です。コメントは同じ作品で1日1回までが対象となり、自分の作品へのコメントではXPを獲得できません。
             </p>
           </aside>
         </div>
