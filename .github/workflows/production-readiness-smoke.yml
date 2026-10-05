@@ -6,6 +6,8 @@ on:
     paths:
       - '*.html'
       - 'novelight-client.js'
+      - 'novelight-author-studio-shell.js'
+      - 'novelight-accessibility.css'
       - 'novelight-scout-session-stabilizer.js'
       - 'novelight-episode-number-entry-visibility.js'
       - 'novelight-episode-workflow-feedback.js'
