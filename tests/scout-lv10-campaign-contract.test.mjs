@@ -84,7 +84,9 @@ test('campaign display shows the planned 40 XP daily breakdown', () => {
   assert.match(page, /最大15 XP/);
   assert.match(page, /合計最大40 XP/);
   assert.doesNotMatch(page, /星評価/);
-  assert.match(client, /const todayCap = 10/);
+  assert.match(client, /today_valid_read_xp_cap \?\? 10/);
+  assert.match(client, /today_valid_read_episode_xp/);
+  assert.match(client, /today_comment_xp/);
   assert.match(client, /本日の有効読書XPはあと/);
 });
 
