@@ -17,7 +17,8 @@
     catch { return false; }
   }
   function installCharacterSurfaceAdmin() {
-    if (!/(^|\/)characters\.html$/u.test(global.location.pathname)) return;
+    const pathname = String(global.location?.pathname || '');
+    if (!/(^|\/)characters\.html$/u.test(pathname)) return;
     if (document.querySelector('script[data-novelight-character-surface-admin]')) return;
     const script = document.createElement('script');
     script.src = 'novelight-character-surface-admin.js';
