@@ -149,7 +149,7 @@
     const load = () => {
       loadScript(HOME_RESUME_SCRIPT_ID, 'novelight-home-resume.js');
       loadScript(HOME_UPDATES_SCRIPT_ID, 'novelight-favorite-updates.js');
-      loadScript(HOME_SPECIAL_LIGHT_SCRIPT_ID, 'novelight-home-special-light.js');
+      loadScript(HOME_SPECIAL_LIGHT_SCRIPT_ID, 'novelight-special-light-home.js');
     };
 
     if (document.readyState === 'loading') {
