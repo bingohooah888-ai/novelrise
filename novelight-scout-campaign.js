@@ -136,11 +136,19 @@
     setText('targetXpCurrent', n(progress.total_xp));
     setText('targetXpGoal', n(progress.target_level_xp));
 
-    const today = Number(progress.today_valid_read_xp ?? 0);
-    const todayCap = Number(progress.today_valid_read_xp_cap ?? 40);
-    const todayRemaining = Number(progress.today_valid_read_xp_remaining ?? 0);
+    const today = Number(
+      progress.today_campaign_xp ?? progress.today_valid_read_xp ?? 0
+    );
+    const todayCap = Number(
+      progress.today_campaign_xp_cap ?? progress.today_valid_read_xp_cap ?? 40
+    );
+    const todayRemaining = Number(
+      progress.today_campaign_xp_remaining ??
+        progress.today_valid_read_xp_remaining ??
+        0
+    );
     setText('todayXp', `${n(today)} / ${n(todayCap)} XP`);
-    setText('todayXpRemaining', `本日の読書XPはあと ${n(todayRemaining)} XP`);
+    setText('todayXpRemaining', `本日の対象SCOUT XPはあと ${n(todayRemaining)} XP`);
 
     const targetPercent = progressPercent(progress);
     const targetTrack = el('targetProgressTrack');
