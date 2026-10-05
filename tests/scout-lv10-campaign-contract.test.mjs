@@ -29,6 +29,13 @@ const rankMigration = readFileSync(
   ),
   'utf8'
 );
+const entryMigration = readFileSync(
+  new URL(
+    '../supabase/migrations/20261005112000_scout_campaign_entry_windows.sql',
+    import.meta.url
+  ),
+  'utf8'
+);
 const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 test('campaign destination page contains the requested progress and claim UI', () => {
@@ -36,22 +43,21 @@ test('campaign destination page contains the requested progress and claim UI', (
   assert.match(page, /本日の読書XP上限/);
   assert.match(page, /CURRENT LEVEL/);
   assert.match(page, /SCOUT RANK/);
-  assert.match(page, /NEXT SCOUT RANK/);
   assert.match(page, /次のLEVELまで/);
-  assert.match(page, /LEVEL 10まで/);
+  assert.doesNotMatch(page, /NEXT SCOUT RANK/);
+  assert.doesNotMatch(page, /id="targetXpRemaining"/);
   assert.match(page, /条件達成しました。/);
   assert.match(page, /図書カードを受け取る/);
   assert.match(page, /500円分/);
 });
 
-test('campaign page starts safely in preparation mode until dates are configured', () => {
+test('campaign remains draft while the approved entry schedule is encoded', () => {
   assert.match(migration, /'scout-lv10-bookcard-500'/);
   assert.match(migration, /'draft'/);
-  assert.match(migration, /starts_at timestamptz/);
-  assert.match(migration, /ends_at timestamptz/);
-  assert.doesNotMatch(migration, /2026-\d{2}-\d{2}T\d{2}:\d{2}/);
+  assert.match(entryMigration, /2026-10-06 06:00:00\+09/);
+  assert.match(entryMigration, /2026-10-31 23:59:59\.999999\+09/);
+  assert.doesNotMatch(entryMigration, /status\s*=\s*'active'/i);
   assert.match(client, /キャンペーン準備中/);
-  assert.match(client, /日程確定後に残り日数を表示します/);
 });
 
 test('existing homepage banner is deliberately not wired to the campaign page yet', () => {
@@ -69,34 +75,33 @@ test('campaign claims are one-per-user and protected behind service role', () =>
     /alter table public\.scout_reward_campaign_claims enable row level security/i
   );
   assert.match(
-    migration,
-    /revoke all on public\.scout_reward_campaigns from anon, authenticated/i
+    entryMigration,
+    /alter table public\.scout_reward_campaign_entries enable row level security/i
   );
   assert.match(
-    migration,
-    /revoke all on public\.scout_reward_campaign_claims from anon, authenticated/i
+    entryMigration,
+    /revoke all on public\.scout_reward_campaign_entries from anon, authenticated/i
   );
   assert.match(
-    migration,
-    /grant all on public\.scout_reward_campaigns to service_role/i
-  );
-  assert.match(
-    migration,
-    /grant all on public\.scout_reward_campaign_claims to service_role/i
+    entryMigration,
+    /grant all on public\.scout_reward_campaign_entries to service_role/i
   );
 });
 
 test('claim submission performs Trust & Safety scan before assigning payout state', () => {
-  const scanIndex = migration.indexOf('novelight_trust_scan_user');
-  const statusIndex = migration.indexOf('v_claim_status := case');
-  const insertIndex = migration.indexOf(
+  const scanIndex = entryMigration.indexOf('novelight_trust_scan_user');
+  const statusIndex = entryMigration.indexOf('v_claim_status := case');
+  const insertIndex = entryMigration.indexOf(
     'insert into public.scout_reward_campaign_claims'
   );
   assert.ok(scanIndex > 0);
   assert.ok(statusIndex > scanIndex);
   assert.ok(insertIndex > statusIndex);
-  assert.match(migration, /then 'risk_review' else 'approved_candidate'/);
-  assert.doesNotMatch(migration, /gift_code/i);
+  assert.match(
+    entryMigration,
+    /then 'risk_review' else 'approved_candidate'/
+  );
+  assert.doesNotMatch(entryMigration, /gift_code/i);
 });
 
 test('campaign progress reuses canonical SCOUT XP, level and rank contracts', () => {
@@ -110,6 +115,31 @@ test('campaign progress reuses canonical SCOUT XP, level and rank contracts', ()
     /v_next_rank_level := \(v_rank_tier \* 10\) \+ 1/
   );
   assert.match(rankMigration, /'xp_for_next_rank'/);
+});
+
+test('eligibility clock is anchored to signup or first eligible login', () => {
+  assert.match(entryMigration, /scout_reward_campaign_entries/);
+  assert.match(entryMigration, /after insert on auth\.users/i);
+  assert.match(entryMigration, /after update of last_sign_in_at on auth\.users/i);
+  assert.match(entryMigration, /on conflict \(campaign_id, user_id\) do nothing/i);
+  assert.match(
+    entryMigration,
+    /v_eligibility_started_at := v_campaign\.starts_at/
+  );
+  assert.match(
+    entryMigration,
+    /v_eligibility_started_at := v_login_at/
+  );
+  assert.match(
+    entryMigration,
+    /v_eligibility_started_at := new\.created_at/
+  );
+  assert.match(api, /eligibilityStartedAt/);
+  assert.match(api, /entry_required/);
+  assert.match(
+    client,
+    /10月6日6:00までの事前ログインは10月6日6:00開始扱い/
+  );
 });
 
 test('campaign API requires an authenticated same-origin request', () => {
