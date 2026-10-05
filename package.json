@@ -1,16 +1,25 @@
 {
-  "name": "novelight-beta-polish-1",
-  "version": "1.0.0",
-  "private": true,
   "type": "module",
-  "engines": {
-    "node": "24.x"
-  },
   "scripts": {
     "test": "node --test",
-    "lint": "eslint api tests",
-    "format:check": "prettier --check .",
-    "syntax": "node --check novelight-client.js && node --check novelight-public-share.js && node --check novelight-thumbnail-runtime.js && node --check novelight-author-studio-shell.js"
+    "lint": "eslint \"api/**/*.js\" \"tests/**/*.js\" \"tests/**/*.mjs\"",
+    "format": "prettier --write \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
+    "format:check": "prettier --check \"api/**/*.js\" \"tests/**/*.{js,mjs,json}\" \"*.json\" \".github/workflows/*.yml\" \"eslint.config.mjs\"",
+    "syntax:check": "node scripts/check-js-syntax.mjs",
+    "runtime:gate": "node scripts/runtime-gate-entry.mjs",
+    "nlo:fast-patch": "node scripts/nlo-fast-patch-gate.mjs",
+    "nlo:capabilities": "node scripts/nlo-capability-core.mjs",
+    "preflight": "npm run preflight:fast",
+    "preflight:agent": "npm run runtime:gate -- --phase=implementation && npm run preflight:fix",
+    "preflight:fast": "npm run format:check && npm run lint && npm test && npm run syntax:check && npm run preflight:merge-readiness && git diff --check",
+    "preflight:fix": "npm run format && npm run lint && npm test && npm run syntax:check && npm run preflight:merge-readiness && git diff --check",
+    "preflight:merge-readiness": "node scripts/check-merge-readiness.mjs",
+    "preflight:db": "bash scripts/run-rls-integration.sh",
+    "preflight:e2e": "npm --prefix tests/e2e test",
+    "preflight:full": "npm run preflight:fast && npm run preflight:db && npm run preflight:e2e"
+  },
+  "engines": {
+    "node": "24.x"
   },
   "dependencies": {
     "@vercel/og": "1.0.3",
