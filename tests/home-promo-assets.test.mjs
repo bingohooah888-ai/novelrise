@@ -86,12 +86,14 @@ test('Home lead visual keeps teaser live and official campaign ready for a one-l
   assert.match(homeHtml, /const currentLeadVisual = 'teaser';/u);
   assert.match(
     homeHtml,
-    /teaser: 'assets\/home\/05_event_teaser_1600x900\.png'/u
+    /teaser:\s*\{[\s\S]*?src: 'assets\/home\/05_event_teaser_1600x900\.png'/u
   );
   assert.match(
     homeHtml,
-    /official: 'assets\/home\/05_campaign_official_after_announcement_1600x900\.png'/u
+    /official:\s*\{[\s\S]*?src: 'assets\/home\/05_campaign_official_after_announcement_1600x900\.png'/u
   );
+  assert.match(homeHtml, /href: 'scout-lv10-campaign\.html'/u);
+  assert.match(homeHtml, /時刻による自動切替は行わない/u);
   assert.doesNotMatch(homeHtml, /const currentLeadVisual = 'official';/u);
 });
 
