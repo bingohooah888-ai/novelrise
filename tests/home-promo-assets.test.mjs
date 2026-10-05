@@ -82,8 +82,8 @@ test('Home promotional artwork preserves the approved source bytes', () => {
   }
 });
 
-test('Home lead visual keeps teaser live and official campaign ready for a one-line switch', () => {
-  assert.match(homeHtml, /const currentLeadVisual = 'teaser';/u);
+test('Home lead visual uses the manually approved official SCOUT campaign state', () => {
+  assert.match(homeHtml, /const currentLeadVisual = 'official';/u);
   assert.match(
     homeHtml,
     /teaser:\s*\{[\s\S]*?src: 'assets\/home\/05_event_teaser_1600x900\.png'/u
@@ -94,7 +94,7 @@ test('Home lead visual keeps teaser live and official campaign ready for a one-l
   );
   assert.match(homeHtml, /href: 'scout-lv10-campaign\.html'/u);
   assert.match(homeHtml, /時刻による自動切替は行わない/u);
-  assert.doesNotMatch(homeHtml, /const currentLeadVisual = 'official';/u);
+  assert.doesNotMatch(homeHtml, /const currentLeadVisual = 'teaser';/u);
 });
 
 test('Home promotional visual order is teaser, hero, author, reader', () => {

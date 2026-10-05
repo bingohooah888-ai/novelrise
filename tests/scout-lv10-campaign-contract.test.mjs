@@ -61,12 +61,12 @@ test('campaign remains draft while the approved entry schedule is encoded', () =
   assert.match(client, /キャンペーン準備中/);
 });
 
-test('homepage campaign banner is prewired but remains on manual teaser mode', () => {
+test('homepage campaign banner uses the manually approved official mode', () => {
   assert.match(home, /id="homeLeadLink"/);
   assert.match(home, /05_event_teaser_1600x900\.png/);
   assert.match(home, /05_campaign_official_after_announcement_1600x900\.png/);
   assert.match(home, /href: 'scout-lv10-campaign\.html'/);
-  assert.match(home, /const currentLeadVisual = 'teaser'/);
+  assert.match(home, /const currentLeadVisual = 'official'/);
   assert.match(home, /時刻による自動切替は行わない/);
   assert.doesNotMatch(
     home,
