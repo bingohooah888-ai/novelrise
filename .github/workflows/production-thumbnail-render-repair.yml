@@ -78,8 +78,9 @@ jobs:
             -H 'X-GitHub-Api-Version: 2022-11-28' \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments?per_page=100" \
             > "$RUNNER_TEMP/ledger-comments.json"
-          test "$(jq 'length' "$RUNNER_TEMP/ledger-comments.json")" -lt 100 || {
-            echo 'Safety stop: Production Approval Ledger reached its bounded comment limit.'
+          comment_count="$(jq 'length' "$RUNNER_TEMP/ledger-comments.json")"
+          [ "$comment_count" -lt 100 ] || {
+            echo 'Safety stop: Production Approval Ledger exceeded the bounded comment contract.'
             exit 1
           }
           reused="$(
