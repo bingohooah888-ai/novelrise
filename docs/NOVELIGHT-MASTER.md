@@ -982,9 +982,36 @@ PRのmerge、主要CI・E2Eの完了、MASTER更新完了、デプロイ完了�
 
 報告・再見積もり・工程切替・チャット継続判定は、ユーザー承認ゲートではない。明示的な承認要件または合理的停止理由がない限り、ユーザーの「続けて」「はい」等を要求せず、そのまま次工程へ着手する。
 
+
+Preview / Staging コスト承認ゲート（2026-10-06）
+
+Vercel Preview、Supabase Staging、Staging Smoke / E2E / Live Proof等、非Productionであっても外部の従量課金・ビルド時間・Staging稼働を増やす実行は、通常開発の自動継続から分離し、既定を **Default-Deny** とする。
+
+次の操作は、ユーザーがその時点の対象と目的を理解したうえで「ステージング承認」または同等の明示的なPreview / Staging実行承認を行うまで開始しない。
+
+- Vercel Preview deploymentの新規作成・再作成・Redeploy
+- Supabase Stagingを対象とするwrite-capable smoke / E2E / migration syncその他の状態変更
+- Staging Smoke / Staging Live Proof等、PreviewまたはStagingの実利用を発生させるworkflow
+- Staging用の専用Preview refを更新し、そのrefから有料Previewを生成する操作
+- その他、Preview / Stagingの外部従量課金を増やす実行
+
+単なる「はい」「続けて」「承認」、通常作業の依頼、過去チャットの承認、または「本番承認」だけを、このコスト承認へ読み替えてはならない。「本番承認」はProduction mutationの承認であり、Preview / Stagingコスト承認とは別の境界とする。
+
+コスト承認は、原則として **exact main SHA + 明示されたscope + 1回の実行** に束縛する。対象SHA、scope、または実行回数が変わる場合は新しいステージング承認を必要とする。承認済み実行が完了・失敗・中断した後は、自動的にDefault-Denyへ戻す。
+
+ユーザーへGitHub用JSONや長い承認文を手作業で入力させない。ユーザーの「ステージング承認」を受けたChatGPT / NLO / 自動化が、freshなcurrent mainと対象scopeを確認し、Issue #188等の固定されたStaging Approval Ledger / ControlへOWNER認証済みの機械可読承認として変換する。機械可読承認がない経路、または古い承認の再利用でPreview / Stagingを起動してはならない。
+
+Vercel Git integrationはProduction branchである `main` 以外の自動deploymentを既定で無効化する。通常の `fix/**`、`feat/**`、`codex/**`、`chore/**` 等へのpushやPR作成だけでPreviewを生成してはならない。Previewが必要な場合は、ステージング承認後に承認制御されたworkflow / API経路からexact targetを1回だけ生成する。
+
+Staging関連workflowは、PR、push、`deployment_status`、無条件の `workflow_dispatch` 等を理由に自動起動してはならない。OWNERの機械可読Staging approvalに束縛された固定経路だけを実行入口とする。
+
+この方針はチャット記憶ではなくrepository policyとして扱う。新しいチャット・別エージェント・NLO再起動後も、latest mainのMASTER / AGENTS / Staging policyをfreshに確認し、過去会話を知らないことを理由にPreview / Stagingを通常工程へ戻してはならない。
+
+Preview / Stagingの設定値、現在状態、請求、ログ等のread-only確認はコスト承認を必要としない。ただし、その確認からPreview作成・Staging実行へ移る直前には必ず本ゲートを適用する。
+
 承認ゲートの一本化（2026-09-21）
 
-NOVELIGHTの通常開発工程では、ユーザーへ「承認」「コミット承認」「push承認」「PR作成承認」「マージ承認」等の個別承認を求めない。実装、検証、commit、push、PR作成、CI確認、レビュー対応、merge、Staging反映、read-only監査は、開始時に合意されたworkstreamの範囲内で連続して進める。
+NOVELIGHTの通常開発工程では、ユーザーへ「承認」「コミット承認」「push承認」「PR作成承認」「マージ承認」等の個別承認を求めない。実装、検証、commit、push、PR作成、CI確認、レビュー対応、merge、read-only監査は、開始時に合意されたworkstreamの範囲内で連続して進める。ただし、後述するVercel Preview / Supabase Stagingの有料実行は通常の自動継続対象から除外する。
 
 ユーザーへ明示的に求める承認は、原則として「本番承認」の1種類に統一する。本番承認が必要なのは、Production環境に状態変化を発生させる操作の直前とする。対象には、Production deployment、Production DB / Supabase migration、Production設定・Secret変更、Stripe / 課金設定、本番データの破壊的・不可逆的変更、その他live userへ直接影響するProduction mutationを含む。
 
