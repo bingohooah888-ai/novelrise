@@ -64,9 +64,9 @@ export function createAdminAnnouncementImagesHandler({
               .toLowerCase()
               .includes('bucket')
           ) {
-            return res
-              .status(503)
-              .json({ error: 'Announcement image storage is not available yet' });
+            return res.status(503).json({
+              error: 'Announcement image storage is not available yet'
+            });
           }
           throw error ?? new Error('Signed upload token was not returned');
         }
@@ -82,7 +82,9 @@ export function createAdminAnnouncementImagesHandler({
 
       const path = normalizeAnnouncementImagePath(req.body?.path);
       if (!path) {
-        return res.status(400).json({ error: 'Invalid announcement image path' });
+        return res
+          .status(400)
+          .json({ error: 'Invalid announcement image path' });
       }
 
       const { error } = await supabase.storage
@@ -95,7 +97,9 @@ export function createAdminAnnouncementImagesHandler({
       console.error('NOVELIGHT announcement image operation failed', {
         message: error?.message ?? 'unknown error'
       });
-      return res.status(500).json({ error: 'Announcement image operation failed' });
+      return res
+        .status(500)
+        .json({ error: 'Announcement image operation failed' });
     }
   };
 }
