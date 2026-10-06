@@ -11,8 +11,9 @@
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = `
-      .workspace-top .nl-bookshelf-header-link{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:7px 10px;border:1px solid rgba(214,164,71,.28);border-radius:9px;color:inherit;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap}
-      .workspace-top .nl-bookshelf-header-link:hover{border-color:#d6a447;background:rgba(214,164,71,.08)}
+      .workspace-top .nl-bookshelf-header-link{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:7px 10px;border:1px solid rgba(214,164,71,.42);border-radius:9px;color:#f6ecd4!important;-webkit-text-fill-color:#f6ecd4!important;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap;text-shadow:0 1px 8px rgba(0,0,0,.72)}
+      .workspace-top .nl-bookshelf-header-link:hover{border-color:#e5c568;background:rgba(214,164,71,.12);color:#fff8e8!important;-webkit-text-fill-color:#fff8e8!important}
+      .nl-bookshelf-header-label,.nl-bookshelf-header-icon{color:#f6ecd4!important;-webkit-text-fill-color:#f6ecd4!important}
       .nl-bookshelf-header-icon{font-size:16px;line-height:1}
       .nl-bookshelf-header-badge{position:absolute;top:-7px;right:-7px;display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#d6a447;color:#101b28;font-size:10px;font-weight:950;box-shadow:0 0 0 2px #111b2c}
       @media(max-width:720px){.nl-bookshelf-header-label{display:none}.workspace-top .nl-bookshelf-header-link{padding:7px 9px}}
