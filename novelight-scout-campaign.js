@@ -123,6 +123,13 @@
     'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
   );
 
+  // Keep campaign traffic in the same acquisition / visit funnel as other
+  // public NOVELIGHT pages. Without these calls, campaign-only visitors are
+  // missing from acquisition_touches and beta_activity_days.
+  void NovelightClient.captureAcquisition(client);
+  void NovelightClient.recordVisit(client);
+  void NovelightClient.claimAcquisition(client);
+
   const number = new Intl.NumberFormat('ja-JP');
   const dateTime = new Intl.DateTimeFormat('ja-JP', {
     timeZone: 'Asia/Tokyo',
