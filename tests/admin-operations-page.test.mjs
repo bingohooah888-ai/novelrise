@@ -12,6 +12,7 @@ const announcementsHtml = read('admin-announcements.html');
 const inquiriesHtml = read('admin-inquiries.html');
 const reportsHtml = read('admin-reports.html');
 const contactHtml = read('contact.html');
+const publicAnnouncementsHtml = read('announcements.html');
 const authReaderContext = read('auth-reader-context.js');
 const indexHtml = read('index.html');
 
@@ -59,17 +60,20 @@ test('inquiry detail keeps reply and status-change workflows', () => {
   assert.match(inquiriesHtml, /ステータス変更/);
 });
 
-test('contact page combines published announcements with the safe inquiry RPC', () => {
-  assert.match(contactHtml, /お知らせ・お問い合わせ/);
-  assert.match(contactHtml, /\/api\/announcements/);
+test('public support pages separate announcements from the safe inquiry RPC', () => {
+  assert.doesNotMatch(contactHtml, /\/api\/announcements/);
   assert.match(contactHtml, /submit_contact_inquiry/);
   assert.match(contactHtml, /contactWebsite/);
   assert.match(contactHtml, /p_visitor_token/);
   assert.match(contactHtml, /短時間に送信できる回数/);
+
+  assert.match(publicAnnouncementsHtml, /\/api\/announcements/);
+  assert.doesNotMatch(publicAnnouncementsHtml, /submit_contact_inquiry/);
 });
 
-test('home footer routes support traffic to the contact page', () => {
-  assert.match(indexHtml, /href="contact\.html">お知らせ・お問い合わせ<\/a>/);
+test('home footer routes announcements and inquiries to separate pages', () => {
+  assert.match(indexHtml, /href="announcements\.html">お知らせ<\/a>/);
+  assert.match(indexHtml, /href="contact\.html">お問い合わせ<\/a>/);
 });
 
 test('login redirect allowlist covers private ADMIN operations pages', () => {
