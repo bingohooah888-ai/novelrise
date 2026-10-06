@@ -164,7 +164,9 @@ test('recovery workflow is one-time, owner-only, main-bound, and Staging-only', 
     workflow,
     /github\.event\.comment\.author_association == 'OWNER'/
   );
-  assert.match(workflow, /NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE/);
+  assert.match(workflow, /NOVELIGHT_STAGING_APPROVE/);
+  assert.match(workflow, /"scope":"base-books-recovery"/);
+  assert.match(workflow, /STAGING APPROVED/);
   assert.match(workflow, /RECOVER STAGING BASE BOOKS 32/);
   assert.match(workflow, /20260920204000/);
   assert.match(workflow, /environment: staging/);
@@ -184,8 +186,8 @@ test('recovery workflow is one-time, owner-only, main-bound, and Staging-only', 
     workflow,
     /Re-bind exact current main immediately before writes/
   );
-  assert.match(workflow, /workflow_dispatch:/);
-  assert.match(
+  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(
     workflow,
     /Audit official base-book recovery readiness \(read-only\)/
   );
