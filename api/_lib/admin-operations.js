@@ -4,7 +4,11 @@ const ANNOUNCEMENT_STATUSES = new Set(['draft', 'published', 'archived']);
 const INQUIRY_STATUSES = new Set(['new', 'reviewing', 'resolved']);
 const INQUIRY_PAGE_SIZES = new Set([20, 50]);
 const ANNOUNCEMENT_COLUMNS =
+  'id,title,body,category,status,image_path,published_at,created_at,updated_at';
+const ANNOUNCEMENT_COLUMNS_LEGACY =
   'id,title,body,category,status,published_at,created_at,updated_at';
+const ANNOUNCEMENT_IMAGE_PATH_PATTERN =
+  /^images\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:webp|png|jpg|jpeg)$/i;
 const INQUIRY_SUMMARY_COLUMNS =
   'id,email,subject,user_id,status,category,created_at';
 const INQUIRY_SUMMARY_COLUMNS_LEGACY =
@@ -39,6 +43,20 @@ function isMissingColumn(error, column) {
     error.code === 'PGRST204' ||
     (text.includes(column.toLowerCase()) &&
       (text.includes('column') || text.includes('schema cache')))
+  );
+}
+
+function isMissingFunction(error, functionName) {
+  if (!error) return false;
+  const text = [error.message, error.details, error.hint]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return (
+    error.code === '42883' ||
+    error.code === 'PGRST202' ||
+    (text.includes(functionName.toLowerCase()) &&
+      (text.includes('function') || text.includes('schema cache')))
   );
 }
 
@@ -81,6 +99,10 @@ function normalizeAnnouncementInput(body, { partial = false } = {}) {
     payload.status === undefined
       ? undefined
       : String(payload.status).trim().toLowerCase();
+  const imagePath =
+    payload.image_path === undefined
+      ? undefined
+      : String(payload.image_path ?? '').trim() || null;
 
   if (!partial || title !== undefined) {
     if (!title || title.length > 120) return null;
@@ -92,12 +114,16 @@ function normalizeAnnouncementInput(body, { partial = false } = {}) {
     if (!category || category.length > 40) return null;
   }
   if (status !== undefined && !ANNOUNCEMENT_STATUSES.has(status)) return null;
+  if (imagePath !== undefined && imagePath !== null) {
+    if (!ANNOUNCEMENT_IMAGE_PATH_PATTERN.test(imagePath)) return null;
+  }
 
   return {
     ...(title !== undefined ? { title } : {}),
     ...(content !== undefined ? { body: content } : {}),
     ...(category !== undefined ? { category } : {}),
-    ...(status !== undefined ? { status } : {})
+    ...(status !== undefined ? { status } : {}),
+    ...(imagePath !== undefined ? { image_path: imagePath } : {})
   };
 }
 
@@ -132,21 +158,39 @@ export async function loadOperationsSummary(supabase) {
 }
 
 export async function loadAdminAnnouncements(supabase) {
-  const { data, error } = await supabase
+  let result = await supabase
     .from('announcements')
     .select(ANNOUNCEMENT_COLUMNS)
     .order('updated_at', { ascending: false })
     .order('id', { ascending: false });
 
-  if (error) {
-    if (isMissingRelation(error, 'announcements')) {
+  if (result.error && isMissingColumn(result.error, 'image_path')) {
+    result = await supabase
+      .from('announcements')
+      .select(ANNOUNCEMENT_COLUMNS_LEGACY)
+      .order('updated_at', { ascending: false })
+      .order('id', { ascending: false });
+    if (!result.error) {
+      result.data = (result.data ?? []).map((row) => ({
+        ...row,
+        image_path: null
+      }));
+    }
+  }
+
+  if (result.error) {
+    if (isMissingRelation(result.error, 'announcements')) {
       const unavailable = new Error('Announcements schema is not available');
       unavailable.code = 'SCHEMA_NOT_READY';
       throw unavailable;
     }
-    throw error;
+    throw result.error;
   }
-  return data ?? [];
+  return result.data ?? [];
+}
+
+function announcementRpcUnavailable(error, name) {
+  return isMissingFunction(error, name);
 }
 
 export async function createAdminAnnouncement(supabase, adminUserId, input) {
@@ -157,18 +201,40 @@ export async function createAdminAnnouncement(supabase, adminUserId, input) {
     throw error;
   }
 
-  const { data, error } = await supabase.rpc(
-    'novelight_admin_create_announcement',
-    {
+  const imagePath = normalized.image_path ?? null;
+  let result = await supabase.rpc('novelight_admin_create_announcement_v2', {
+    p_admin_user_id: adminUserId,
+    p_title: normalized.title,
+    p_body: normalized.body,
+    p_category: normalized.category,
+    p_status: normalized.status ?? 'draft',
+    p_image_path: imagePath
+  });
+
+  if (
+    result.error &&
+    announcementRpcUnavailable(
+      result.error,
+      'novelight_admin_create_announcement_v2'
+    )
+  ) {
+    if (imagePath) {
+      const unavailable = new Error('Announcement image schema is not available');
+      unavailable.code = 'SCHEMA_NOT_READY';
+      throw unavailable;
+    }
+    result = await supabase.rpc('novelight_admin_create_announcement', {
       p_admin_user_id: adminUserId,
       p_title: normalized.title,
       p_body: normalized.body,
       p_category: normalized.category,
       p_status: normalized.status ?? 'draft'
-    }
-  );
-  if (error) throw error;
-  return Array.isArray(data) ? (data[0] ?? null) : data;
+    });
+  }
+
+  if (result.error) throw result.error;
+  const row = Array.isArray(result.data) ? (result.data[0] ?? null) : result.data;
+  return row ? { ...row, image_path: row.image_path ?? null } : row;
 }
 
 export async function updateAdminAnnouncement(
@@ -184,19 +250,42 @@ export async function updateAdminAnnouncement(
     throw error;
   }
 
-  const { data, error } = await supabase.rpc(
-    'novelight_admin_update_announcement',
-    {
+  const imagePath = normalized.image_path ?? null;
+  let result = await supabase.rpc('novelight_admin_update_announcement_v2', {
+    p_admin_user_id: adminUserId,
+    p_id: id,
+    p_title: normalized.title,
+    p_body: normalized.body,
+    p_category: normalized.category,
+    p_status: normalized.status ?? 'draft',
+    p_image_path: imagePath
+  });
+
+  if (
+    result.error &&
+    announcementRpcUnavailable(
+      result.error,
+      'novelight_admin_update_announcement_v2'
+    )
+  ) {
+    if (imagePath) {
+      const unavailable = new Error('Announcement image schema is not available');
+      unavailable.code = 'SCHEMA_NOT_READY';
+      throw unavailable;
+    }
+    result = await supabase.rpc('novelight_admin_update_announcement', {
       p_admin_user_id: adminUserId,
       p_id: id,
       p_title: normalized.title,
       p_body: normalized.body,
       p_category: normalized.category,
       p_status: normalized.status ?? 'draft'
-    }
-  );
-  if (error) throw error;
-  return Array.isArray(data) ? (data[0] ?? null) : data;
+    });
+  }
+
+  if (result.error) throw result.error;
+  const row = Array.isArray(result.data) ? (result.data[0] ?? null) : result.data;
+  return row ? { ...row, image_path: row.image_path ?? null } : row;
 }
 
 async function findInquiryUserIds(supabase, term) {
