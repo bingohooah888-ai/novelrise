@@ -195,7 +195,7 @@ FULL PREFLIGHTでも、Web調査や複数AIレビューを目的化しない。
 
 ## 8.5 Preview / Staging コスト承認
 
-Vercel Preview / Supabase Stagingを実際に使用する工程は、非Productionであっても外部コストを発生させるため、MASTERの「Preview / Staging コスト承認ゲート」を適用する。
+Vercel Preview / Supabase Stagingを実際に使用する工程は、非Productionであっても外部コストを発生させるため、MASTERの「Preview / Staging コスト承認ゲート」を適用する。 未承認時は **Default-Deny** とする。
 
 実行前に以下をすべて確認する。
 
