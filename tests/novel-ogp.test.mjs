@@ -135,13 +135,17 @@ test('OGP renderer stays on the pre-HarfBuzz stable release', async () => {
   assert.equal(vercelConfig.functions?.['api/og/novel.js'], undefined);
 });
 
-test('novel.html stays virtual so Vercel rewrite reaches the SEO function', async () => {
-  const [seoNovel, vercelConfig, staticServer, template] = await Promise.all([
-    readFile(new URL('../api/seo/novel.js', import.meta.url), 'utf8'),
-    readFile(new URL('../vercel.json', import.meta.url), 'utf8').then(JSON.parse),
-    readFile(new URL('./e2e/static-server.mjs', import.meta.url), 'utf8'),
-    readFile(new URL('../api/seo/templates/novel.html', import.meta.url), 'utf8')
-  ]);
+test('Vercel excludes the static novel shell so the SEO rewrite can run', async () => {
+  const [seoNovel, vercelConfig, vercelIgnore, rootTemplate, serverTemplate] =
+    await Promise.all([
+      readFile(new URL('../api/seo/novel.js', import.meta.url), 'utf8'),
+      readFile(new URL('../vercel.json', import.meta.url), 'utf8').then(
+        JSON.parse
+      ),
+      readFile(new URL('../.vercelignore', import.meta.url), 'utf8'),
+      readFile(new URL('../novel.html', import.meta.url), 'utf8'),
+      readFile(new URL('../api/seo/templates/novel.html', import.meta.url), 'utf8')
+    ]);
 
   assert.match(
     seoNovel,
@@ -151,11 +155,6 @@ test('novel.html stays virtual so Vercel rewrite reaches the SEO function', asyn
     vercelConfig.functions?.['api/seo/novel.js']?.includeFiles,
     'api/seo/templates/novel.html'
   );
-  assert.match(staticServer, /pathname === '\/novel\.html'/u);
-  assert.match(template, /<section id="novelHeader"/u);
-
-  await assert.rejects(
-    readFile(new URL('../novel.html', import.meta.url), 'utf8'),
-    (error) => error?.code === 'ENOENT'
-  );
+  assert.match(vercelIgnore, /^novel\.html$/mu);
+  assert.equal(serverTemplate, rootTemplate);
 });
