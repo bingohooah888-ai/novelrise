@@ -39,7 +39,9 @@ const server = createServer(async (request, response) => {
       pathname += 'index.html';
     }
 
-    const filePath = resolve(repositoryRoot, `.${pathname}`);
+    const localPath =
+      pathname === '/novel.html' ? '/api/seo/templates/novel.html' : pathname;
+    const filePath = resolve(repositoryRoot, `.${localPath}`);
 
     if (!filePath.startsWith(`${repositoryRoot}${sep}`)) {
       sendText(response, 403, 'Forbidden');
