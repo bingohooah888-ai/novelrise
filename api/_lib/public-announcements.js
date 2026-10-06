@@ -1,7 +1,5 @@
-const DETAIL_COLUMNS =
-  'id,title,body,category,image_path,published_at';
-const DETAIL_COLUMNS_LEGACY =
-  'id,title,body,category,published_at';
+const DETAIL_COLUMNS = 'id,title,body,category,image_path,published_at';
+const DETAIL_COLUMNS_LEGACY = 'id,title,body,category,published_at';
 const ANNOUNCEMENT_IMAGE_BUCKET = 'announcement-images';
 
 function errorText(error) {
