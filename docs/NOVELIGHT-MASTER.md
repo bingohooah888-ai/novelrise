@@ -999,7 +999,7 @@ Vercel Preview、Supabase Staging、Staging Smoke / E2E / Live Proof等、非Pro
 
 コスト承認は、原則として **exact main SHA + 明示されたscope + 1回の実行** に束縛する。対象SHA、scope、または実行回数が変わる場合は新しいステージング承認を必要とする。承認済み実行が完了・失敗・中断した後は、自動的にDefault-Denyへ戻す。
 
-ユーザーへGitHub用JSONや長い承認文を手作業で入力させない。ユーザーの「ステージング承認」を受けたChatGPT / NLO / 自動化が、freshなcurrent mainと対象scopeを確認し、Issue #188等の固定されたStaging Approval Ledger / ControlへOWNER認証済みの機械可読承認として変換する。機械可読承認がない経路、または古い承認の再利用でPreview / Stagingを起動してはならない。
+ユーザーへGitHub用JSONや長い承認文を手作業で入力させない。ユーザーの「ステージング承認」を受けたChatGPT / NLO / 自動化が、freshなcurrent mainと対象scopeを確認し、Preview / browser smokeはIssue #188、Supabase Staging migration / recoveryはIssue #294の固定されたStaging Approval Ledger / ControlへOWNER認証済みの機械可読承認として変換する。機械可読承認がない経路、または古い承認の再利用でPreview / Stagingを起動してはならない。
 
 Vercel Git integrationはProduction branchである `main` 以外の自動deploymentを既定で無効化する。通常の `fix/**`、`feat/**`、`codex/**`、`chore/**` 等へのpushやPR作成だけでPreviewを生成してはならない。Previewが必要な場合は、ステージング承認後に承認制御されたworkflow / API経路からexact targetを1回だけ生成する。
 
