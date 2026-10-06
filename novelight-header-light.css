@@ -275,3 +275,24 @@ html body.novelight-public-header-page header.site-header .logo img {
     max-width: 337.5px !important;
   }
 }
+
+/* Shared public-reader sticky guard.
+   Keep work-detail and episode navigation below the 120px desktop header.
+   The work cover must remain non-sticky. */
+@media (min-width: 1051px) {
+  html body.novelight-public-header-page.novelight-page-novel .nl-work-detail-left {
+    position: static !important;
+    top: auto !important;
+  }
+
+  html body.novelight-public-header-page.novelight-page-novel .nl-work-detail-toc {
+    top: 136px !important;
+    max-height: calc(100vh - 152px) !important;
+  }
+}
+
+@media (min-width: 961px) {
+  html body.novelight-public-header-page.novelight-page-episode .nl-worknav-support {
+    top: 136px !important;
+  }
+}
