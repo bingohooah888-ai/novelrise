@@ -13,6 +13,7 @@ const staticPublicPages = [
   'privacy.html',
   'billing-policy.html',
   'commerce-disclosure.html',
+  'announcements.html',
   'contact.html'
 ];
 
@@ -58,6 +59,7 @@ test('public pages use the shared public header', () => {
     'signup',
     'forgot-password',
     'reset-password',
+    'announcements',
     'contact',
     'news-detail'
   ]) {
