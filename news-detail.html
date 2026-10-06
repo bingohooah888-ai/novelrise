@@ -32,7 +32,7 @@
   </div>
 
   <section class="legal-card" aria-labelledby="newsTitle">
-    <a class="news-back" href="contact.html#announcements">← お知らせ一覧へ</a>
+    <a class="news-back" href="announcements.html">← お知らせ一覧へ</a>
     <div id="newsState" class="news-detail-state" role="status">お知らせを読み込んでいます...</div>
     <article id="newsContent" hidden>
       <div class="news-detail-meta">
@@ -45,13 +45,23 @@
     </article>
   </section>
 
-  <div class="legal-links"><a href="contact.html">お知らせ・お問い合わせ</a><a href="operator.html">運営者情報</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a></div>
+  <div class="legal-links"><a href="announcements.html">お知らせ一覧</a><a href="contact.html">お問い合わせ</a><a href="operator.html">運営者情報</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a></div>
 </main>
 
-<footer class="site-footer"><div class="site-footer-inner"><span>© NOVELIGHT</span><a href="operator.html">運営者情報</a><a href="contact.html">お知らせ・お問い合わせ</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="commerce-disclosure.html">特商法表記</a></div></footer>
+<footer class="site-footer"><div class="site-footer-inner"><span>© NOVELIGHT</span><a href="operator.html">運営者情報</a><a href="announcements.html">お知らせ</a><a href="contact.html">お問い合わせ</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="commerce-disclosure.html">特商法表記</a></div></footer>
 
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
 <script src="novelight-client.js"></script>
 <script>
+  const SUPPORT_SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const SUPPORT_SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const newsAuthClient = supabase.createClient(
+    SUPPORT_SUPABASE_URL,
+    SUPPORT_SUPABASE_KEY
+  );
+  void NovelightClient.syncAuthHeader(newsAuthClient);
+
+
   const URL_PATTERN = /https?:\/\/[^\s<>"']+/giu;
   const TRAILING_URL_PUNCTUATION = /[。、，．,.!！?？;；:：)）\]】」』〉》]+$/u;
 

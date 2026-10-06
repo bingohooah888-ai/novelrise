@@ -195,15 +195,23 @@ test('public announcement list omits body while detail returns the selected anno
   assert.equal(invalid.statusCode, 400);
 });
 
-test('contact page keeps inquiry workflow and uses title-only announcement navigation', () => {
+test('contact and announcement list are separate support pages', () => {
   const contact = read('contact.html');
+  const announcements = read('announcements.html');
+
+  assert.match(contact, /<title>お問い合わせ \| NOVELIGHT<\/title>/u);
   assert.match(contact, /submit_contact_inquiry/u);
   assert.match(contact, /contactWebsite/u);
   assert.match(contact, /p_visitor_token/u);
-  assert.match(contact, /news-detail\.html\?id=/u);
-  assert.match(contact, /announcement-title/u);
-  assert.doesNotMatch(contact, /body\.textContent = row\.body/u);
-  assert.match(contact, /novelight-support-page/u);
+  assert.doesNotMatch(contact, /id="announcementList"/u);
+  assert.doesNotMatch(contact, /loadAnnouncements/u);
+
+  assert.match(announcements, /<title>お知らせ \| NOVELIGHT<\/title>/u);
+  assert.match(announcements, /id="announcementList"/u);
+  assert.match(announcements, /news-detail\.html\?id=/u);
+  assert.match(announcements, /announcement-title/u);
+  assert.doesNotMatch(announcements, /submit_contact_inquiry/u);
+  assert.match(announcements, /novelight-support-page/u);
 });
 
 test('announcement detail safely linkifies URLs without arbitrary HTML rendering', () => {
@@ -221,13 +229,16 @@ test('announcement detail safely linkifies URLs without arbitrary HTML rendering
 test('support pages use the formal shared public header rather than the legal pseudo-logo', () => {
   const client = read('novelight-client.js');
   const legalCss = read('legal.css');
+  const announcements = read('announcements.html');
   const contact = read('contact.html');
   const detail = read('news-detail.html');
 
+  assert.match(client, /'announcements'/u);
   assert.match(client, /'contact'/u);
   assert.match(client, /'news-detail'/u);
   assert.match(client, /href="index\.html" aria-label="NOVELIGHT ホーム"/u);
   assert.match(legalCss, /:not\(\.novelight-support-page\)/u);
+  assert.match(announcements, /novelight-support-page/u);
   assert.match(contact, /novelight-support-page/u);
   assert.match(detail, /novelight-support-page/u);
 });
@@ -262,4 +273,28 @@ test('announcement migration is backward compatible and data-safe to roll back',
   assert.match(migration, /novelight_admin_update_announcement_v2/u);
   assert.match(rollback, /Refusing rollback/u);
   assert.match(rollback, /image_path is not null/u);
+});
+
+test('support headers reflect authenticated sessions and hide signup actions', () => {
+  const client = read('novelight-client.js');
+  const announcements = read('announcements.html');
+  const contact = read('contact.html');
+  const detail = read('news-detail.html');
+
+  assert.match(client, /\.login-action, \.mobile-login-action/u);
+  assert.match(client, /\.signup-action, \.mobile-signup-action/u);
+  assert.match(client, /loginLink\.textContent = '創作室'/u);
+  assert.match(client, /signupLink\.hidden = hidden/u);
+  assert.match(client, /setSignupVisibility\(true\)/u);
+  assert.match(client, /setSignupVisibility\(false\)/u);
+
+  for (const source of [announcements, contact, detail]) {
+    assert.match(source, /NovelightClient\.syncAuthHeader/u);
+  }
+});
+
+test('announcement detail returns to the dedicated announcement list', () => {
+  const detail = read('news-detail.html');
+  assert.match(detail, /href="announcements\.html">← お知らせ一覧へ/u);
+  assert.doesNotMatch(detail, /contact\.html#announcements/u);
 });

@@ -7,11 +7,15 @@ const clientScript = await readFile('novelight-client.js', 'utf8');
 test('shared client syncs desktop and mobile login links with Supabase session', () => {
   assert.match(clientScript, /async function syncAuthHeader\(client\)/);
   assert.match(clientScript, /client\.auth\.getSession\(\)/);
-  assert.match(clientScript, /querySelectorAll\('a\[href="login\.html"\]'\)/);
+  assert.match(clientScript, /\.login-action, \.mobile-login-action/);
+  assert.match(clientScript, /\.signup-action, \.mobile-signup-action/);
   assert.match(clientScript, /loginLinks\.forEach\(\(loginLink\) =>/);
   assert.match(clientScript, /loginLink\.textContent = '創作室'/);
   assert.match(clientScript, /loginLink\.href = 'mypage\.html'/);
+  assert.match(clientScript, /setSignupVisibility\(true\)/);
+  assert.match(clientScript, /signupLink\.hidden = hidden/);
   assert.match(clientScript, /loginLink\.textContent = 'ログイン'/);
   assert.match(clientScript, /loginLink\.href = 'login\.html'/);
+  assert.match(clientScript, /setSignupVisibility\(false\)/);
   assert.match(clientScript, /void syncAuthHeader\(client\)/);
 });
