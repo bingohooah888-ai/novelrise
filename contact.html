@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="legal.css">
   <link rel="stylesheet" href="novelight-header-light.css">
   <style>
-    .announcement-list{display:grid;gap:14px}.announcement-item{padding:18px;border:1px solid #e4e4ec;border-radius:12px;background:#fff}.announcement-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.announcement-title{margin:0;font-size:18px}.announcement-category{flex:0 0 auto;padding:4px 8px;border-radius:999px;background:#f0edff;color:#6d4aff;font-size:11px;font-weight:900}.announcement-date{margin-top:6px;color:#85858f;font-size:12px}.announcement-body{margin:13px 0 0;white-space:pre-wrap;line-height:1.8}.announcement-state{padding:20px;text-align:center;color:#777;border:1px dashed #d7d7e2;border-radius:10px}.contact-form{display:grid;gap:18px}.contact-field{display:grid;gap:7px}.contact-field label{font-size:14px;font-weight:800}.contact-field input,.contact-field select,.contact-field textarea{width:100%;border:1px solid #d7d7e2;border-radius:9px;padding:12px 13px;background:#fff;color:#222;font:inherit}.contact-field textarea{min-height:180px;resize:vertical}.contact-field input:focus,.contact-field select:focus,.contact-field textarea:focus{outline:3px solid rgba(109,74,255,.12);border-color:#6d4aff}.contact-submit{border:0;border-radius:9px;padding:13px 18px;background:#6d4aff;color:#fff;font:inherit;font-weight:900;cursor:pointer}.contact-submit:disabled{opacity:.55;cursor:wait}.contact-state{min-height:24px;font-size:13px;line-height:1.7}.contact-state.error{color:#b42318}.contact-state.success{color:#067647}.contact-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}@media(max-width:620px){.announcement-head{flex-direction:column;gap:8px}}
+    .announcement-list{display:grid;gap:10px}.announcement-item{padding:17px 18px;border:1px solid #e4e4ec;border-radius:12px;background:#fff;transition:border-color .18s ease,box-shadow .18s ease}.announcement-item:hover{border-color:#d6a447;box-shadow:0 5px 18px rgba(8,20,38,.05)}.announcement-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}.announcement-category{flex:0 0 auto;padding:4px 8px;border-radius:999px;background:#fff8e6;color:#7c5b12;font-size:11px;font-weight:900}.announcement-date{color:#777f89;font-size:12px}.announcement-title{margin:0;font-size:18px;line-height:1.55}.announcement-title a{color:#1b2430;text-decoration:none}.announcement-title a:hover,.announcement-title a:focus-visible{color:#8a6518;text-decoration:underline;text-underline-offset:3px}.announcement-guide{margin:0 0 14px;color:#69717d;font-size:14px;line-height:1.7}.announcement-state{padding:20px;text-align:center;color:#777;border:1px dashed #d7d7e2;border-radius:10px}.contact-form{display:grid;gap:18px}.contact-field{display:grid;gap:7px}.contact-field label{font-size:14px;font-weight:800}.contact-field input,.contact-field select,.contact-field textarea{width:100%;border:1px solid #d7d7e2;border-radius:9px;padding:12px 13px;background:#fff;color:#222;font:inherit}.contact-field textarea{min-height:180px;resize:vertical}.contact-field input:focus,.contact-field select:focus,.contact-field textarea:focus{outline:3px solid rgba(109,74,255,.12);border-color:#6d4aff}.contact-submit{border:0;border-radius:9px;padding:13px 18px;background:#6d4aff;color:#fff;font:inherit;font-weight:900;cursor:pointer}.contact-submit:disabled{opacity:.55;cursor:wait}.contact-state{min-height:24px;font-size:13px;line-height:1.7}.contact-state.error{color:#b42318}.contact-state.success{color:#067647}.contact-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}@media(max-width:620px){.announcement-item{padding:15px}.announcement-title{font-size:17px}}
   </style>
   <link rel="stylesheet" href="novelight-accessibility.css">
 </head>
-<body class="novelight-public-header-page"><a class="skip-link" href="#main-content">本文へスキップ</a>
+<body class="novelight-public-header-page novelight-support-page"><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header class="site-header">
   <div class="header-inner public-header-inner">
     <a class="logo" href="index.html" aria-label="NOVELIGHT ホーム"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
@@ -31,8 +31,9 @@
     <p class="legal-lead">NOVELIGHT運営からのお知らせ確認と、お問い合わせ送信をこのページで行えます。</p>
   </div>
 
-  <section class="legal-card" aria-labelledby="announcementHeading">
+  <section id="announcements" class="legal-card" aria-labelledby="announcementHeading">
     <h2 id="announcementHeading">お知らせ</h2>
+    <p class="announcement-guide">タイトルを選ぶと、お知らせの詳細を確認できます。</p>
     <div id="announcementList" class="announcement-list" aria-live="polite"><div class="announcement-state">お知らせを読み込んでいます...</div></div>
   </section>
 
@@ -126,22 +127,33 @@
     rows.forEach((row) => {
       const article = document.createElement('article');
       article.className = 'announcement-item';
-      const head = document.createElement('div');
-      head.className = 'announcement-head';
-      const title = document.createElement('h3');
-      title.className = 'announcement-title';
-      title.textContent = row.title;
+
+      const meta = document.createElement('div');
+      meta.className = 'announcement-meta';
+      const date = document.createElement('time');
+      date.className = 'announcement-date';
+      if (row.published_at) {
+        const publishedAt = new Date(row.published_at);
+        date.dateTime = publishedAt.toISOString();
+        date.textContent = publishedAt.toLocaleDateString('ja-JP', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+      }
       const category = document.createElement('span');
       category.className = 'announcement-category';
       category.textContent = row.category;
-      head.append(title, category);
-      const date = document.createElement('div');
-      date.className = 'announcement-date';
-      date.textContent = row.published_at ? `公開 ${new Date(row.published_at).toLocaleString('ja-JP')}` : '';
-      const body = document.createElement('p');
-      body.className = 'announcement-body';
-      body.textContent = row.body;
-      article.append(head, date, body);
+      meta.append(date, category);
+
+      const title = document.createElement('h3');
+      title.className = 'announcement-title';
+      const link = document.createElement('a');
+      link.href = `news-detail.html?id=${encodeURIComponent(row.id)}`;
+      link.textContent = row.title;
+      title.appendChild(link);
+
+      article.append(meta, title);
       container.appendChild(article);
     });
   }
