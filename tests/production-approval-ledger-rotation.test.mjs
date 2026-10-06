@@ -45,7 +45,8 @@ test('active mutation bridges keep the bounded ledger fail-closed contract', asy
   for (const path of [
     '.github/workflows/production-migration-approved-dispatch.yml',
     '.github/workflows/production-auth-smoke-approved-dispatch.yml',
-    '.github/workflows/vercel-admin-allowlist.yml'
+    '.github/workflows/vercel-admin-allowlist.yml',
+    '.github/workflows/production-thumbnail-render-repair.yml'
   ]) {
     const source = await read(path);
     assert.match(source, /comment_count=.*jq 'length'/);
