@@ -17,7 +17,7 @@
     style.textContent = `
       body.novelight-page-episode main#main-content{max-width:1180px}
       .nl-worknav-episode-layout{display:grid;grid-template-columns:minmax(0,820px) 294px;align-items:start;justify-content:center;gap:20px}
-      .nl-worknav-episode-main{min-width:0}.nl-worknav-support{position:sticky;top:18px;display:grid;gap:12px}
+      .nl-worknav-episode-main{min-width:0}.nl-worknav-support{position:sticky;top:136px;display:grid;gap:12px}
       .nl-worknav-panel{border:1px solid #e4dccf;border-radius:14px;background:#fffdf8;overflow:hidden;box-shadow:0 10px 28px rgba(55,42,29,.05)}
       .nl-worknav-panel-head{padding:13px 14px;border-bottom:1px solid #ece5d9;color:#4b3928;font-size:13px;font-weight:900}
       .nl-worknav-episode-list{max-height:42vh;overflow:auto;padding:7px}.nl-worknav-episode-link{display:block;padding:9px 10px;border-radius:8px;color:#665a4d;font-size:12px;line-height:1.45;text-decoration:none!important}
