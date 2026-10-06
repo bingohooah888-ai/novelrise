@@ -158,6 +158,6 @@ test('Vercel excludes the static novel shell so the SEO rewrite can run', async 
     vercelConfig.functions?.['api/seo/novel.js']?.includeFiles,
     'api/seo/templates/novel.html'
   );
-  assert.match(vercelIgnore, /^novel\.html$/mu);
+  assert.match(vercelIgnore, /^\/novel\.html$/mu);
   assert.equal(serverTemplate, rootTemplate);
 });
