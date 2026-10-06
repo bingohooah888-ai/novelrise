@@ -24,7 +24,7 @@
   "dependencies": {
     "@vercel/og": "0.8.5",
     "@supabase/supabase-js": "2.112.3",
-    "stripe": "^20.4.0"
+    "stripe": "^23.0.0"
   },
   "devDependencies": {
     "eslint": "^10.8.1",
