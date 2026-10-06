@@ -275,7 +275,6 @@ test('announcement migration is backward compatible and data-safe to roll back',
   assert.match(rollback, /image_path is not null/u);
 });
 
-
 test('support headers reflect authenticated sessions and hide signup actions', () => {
   const client = read('novelight-client.js');
   const announcements = read('announcements.html');
