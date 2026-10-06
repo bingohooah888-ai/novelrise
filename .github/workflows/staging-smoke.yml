@@ -37,7 +37,7 @@ jobs:
        github.event.deployment_status.state == 'success' &&
        github.event.deployment.environment != 'Production' &&
        github.event.deployment.environment != 'production' &&
-       github.event.deployment.ref != 'staging-thumbnail-smoke')
+       startsWith(github.event.deployment.ref, 'preview/'))
     runs-on: ubuntu-latest
     timeout-minutes: 40
     concurrency:
