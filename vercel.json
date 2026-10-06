@@ -17,6 +17,12 @@
       "includeFiles": "author.html"
     }
   },
+  "routes": [
+    {
+      "src": "^/novel\\.html$",
+      "dest": "/api/seo/novel"
+    }
+  ],
   "images": {
     "sizes": [128, 256, 384, 640, 1080, 1600],
     "localPatterns": [

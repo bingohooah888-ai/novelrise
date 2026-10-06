@@ -134,3 +134,21 @@ test('OGP renderer stays on the pre-HarfBuzz stable release', async () => {
   assert.equal(lockJson.packages?.['node_modules/harfbuzzjs'], undefined);
   assert.equal(vercelConfig.functions?.['api/og/novel.js'], undefined);
 });
+
+test('canonical novel URL is routed to SEO before the static filesystem', async () => {
+  const [vercelConfig, novelTemplate] = await Promise.all([
+    readFile(new URL('../vercel.json', import.meta.url), 'utf8').then(
+      JSON.parse
+    ),
+    readFile(new URL('../novel.html', import.meta.url), 'utf8')
+  ]);
+
+  const route = vercelConfig.routes?.find(
+    (entry) => entry.src === '^/novel\\\\.html$'
+  );
+  assert.deepEqual(route, {
+    src: '^/novel\\\\.html$',
+    dest: '/api/seo/novel'
+  });
+  assert.match(novelTemplate, /id="novelHeader"/u);
+});
