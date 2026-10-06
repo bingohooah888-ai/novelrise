@@ -134,3 +134,30 @@ test('OGP renderer stays on the pre-HarfBuzz stable release', async () => {
   assert.equal(lockJson.packages?.['node_modules/harfbuzzjs'], undefined);
   assert.equal(vercelConfig.functions?.['api/og/novel.js'], undefined);
 });
+
+test('Vercel excludes the static novel shell so the SEO rewrite can run', async () => {
+  const [seoNovel, vercelConfig, vercelIgnore, rootTemplate, serverTemplate] =
+    await Promise.all([
+      readFile(new URL('../api/seo/novel.js', import.meta.url), 'utf8'),
+      readFile(new URL('../vercel.json', import.meta.url), 'utf8').then(
+        JSON.parse
+      ),
+      readFile(new URL('../.vercelignore', import.meta.url), 'utf8'),
+      readFile(new URL('../novel.html', import.meta.url), 'utf8'),
+      readFile(
+        new URL('../api/seo/templates/novel.html', import.meta.url),
+        'utf8'
+      )
+    ]);
+
+  assert.match(
+    seoNovel,
+    /new URL\('\.\/templates\/novel\.html', import\.meta\.url\)/
+  );
+  assert.equal(
+    vercelConfig.functions?.['api/seo/novel.js']?.includeFiles,
+    'api/seo/templates/novel.html'
+  );
+  assert.match(vercelIgnore, /^novel\.html$/mu);
+  assert.equal(serverTemplate, rootTemplate);
+});

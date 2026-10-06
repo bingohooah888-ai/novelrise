@@ -8,7 +8,7 @@
   },
   "functions": {
     "api/seo/novel.js": {
-      "includeFiles": "novel.html"
+      "includeFiles": "api/seo/templates/novel.html"
     },
     "api/seo/episode.js": {
       "includeFiles": "episode.html"
