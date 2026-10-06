@@ -23,10 +23,8 @@ const PACKAGE_PATH = 'package.json';
 const RUNTIME_GATE_PATH = 'scripts/runtime-execution-gate.mjs';
 const STAGING_PROOF_PATH = '.github/workflows/staging-live-proof.yml';
 const STAGING_SMOKE_PATH = '.github/workflows/staging-smoke.yml';
-const STAGING_THUMBNAIL_PATH =
-  '.github/workflows/staging-thumbnail-smoke.yml';
-const PREVIEW_STAGING_POLICY_PATH =
-  'docs/PREVIEW-STAGING-AUTOMATION.md';
+const STAGING_THUMBNAIL_PATH = '.github/workflows/staging-thumbnail-smoke.yml';
+const PREVIEW_STAGING_POLICY_PATH = 'docs/PREVIEW-STAGING-AUTOMATION.md';
 const VERCEL_PATH = 'vercel.json';
 
 async function read(path) {
@@ -385,7 +383,7 @@ test('Preview and Staging are default-deny and approval-only', async () => {
       'issue_comment:',
       'NOVELIGHT_STAGING_APPROVE',
       'STAGING APPROVED',
-      "github.event.issue.number == 188",
+      'github.event.issue.number == 188',
       "github.event.comment.user.login == 'bingohooah888-ai'",
       "github.event.comment.author_association == 'OWNER'"
     ]);
