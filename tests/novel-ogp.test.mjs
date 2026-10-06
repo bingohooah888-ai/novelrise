@@ -115,9 +115,15 @@ test('X share sends only canonical URL while URL copy keeps attribution', async 
 
 test('OGP renderer stays on the pre-HarfBuzz stable release', async () => {
   const [packageJson, lockJson, vercelConfig] = await Promise.all([
-    readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse),
-    readFile(new URL('../package-lock.json', import.meta.url), 'utf8').then(JSON.parse),
-    readFile(new URL('../vercel.json', import.meta.url), 'utf8').then(JSON.parse)
+    readFile(new URL('../package.json', import.meta.url), 'utf8').then(
+      JSON.parse
+    ),
+    readFile(new URL('../package-lock.json', import.meta.url), 'utf8').then(
+      JSON.parse
+    ),
+    readFile(new URL('../vercel.json', import.meta.url), 'utf8').then(
+      JSON.parse
+    )
   ]);
 
   assert.equal(packageJson.dependencies?.['@vercel/og'], '0.8.5');
