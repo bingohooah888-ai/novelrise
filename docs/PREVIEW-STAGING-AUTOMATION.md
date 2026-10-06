@@ -6,7 +6,7 @@ This document records the stable operating model for Vercel Preview and Supabase
 
 Preview / Staging must remain available when it is genuinely needed, but it must never run merely because a normal implementation branch was pushed or a pull request was updated.
 
-The default state is **locked / no external Preview-Staging execution**.
+The default state is **Default-Deny / locked / no external Preview-Staging execution**.
 
 ## Default Vercel behavior
 
