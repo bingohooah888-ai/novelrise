@@ -41,14 +41,19 @@ After success, failure, or cancellation, the default lock applies again.
 
 The user is not asked to type JSON or GitHub comments manually.
 
-After the user gives `ステージング承認`, ChatGPT / NLO resolves current `main`, chooses the required scope, and writes one OWNER-authored approval comment to control Issue #188.
+After the user gives `ステージング承認`, ChatGPT / NLO resolves current `main`, chooses the required scope, and writes one OWNER-authored approval comment to the fixed control issue. Preview/browser smoke scopes use Issue #188; Supabase Staging mutation scopes use Issue #294.
 
 Canonical comments are:
 
 ```text
+# Issue #188
 NOVELIGHT_STAGING_APPROVE {"scope":"full-smoke","mainSha":"<40-char-sha>","confirmation":"STAGING APPROVED"}
 NOVELIGHT_STAGING_APPROVE {"scope":"thumbnail-smoke","mainSha":"<40-char-sha>","confirmation":"STAGING APPROVED"}
 NOVELIGHT_STAGING_APPROVE {"scope":"live-proof","mainSha":"<40-char-sha>","previewUrl":"https://<exact-preview>.vercel.app","confirmation":"STAGING APPROVED"}
+
+# Issue #294
+NOVELIGHT_STAGING_APPROVE {"scope":"migration-sync","mainSha":"<40-char-sha>","migration":"<14-digit-version>","confirmation":"STAGING APPROVED"}
+NOVELIGHT_STAGING_APPROVE {"scope":"base-books-recovery","mainSha":"<40-char-sha>","packKey":"NOVELIGHT_base_books_32_final","geometryMigration":"20260920204000","confirmation":"STAGING APPROVED"}
 ```
 
 Each workflow re-resolves current `main` and fails closed if it no longer matches the approved SHA.
@@ -91,7 +96,9 @@ It no longer reacts automatically to every Vercel deployment.
 
 Supabase Staging remains a dedicated non-Production target because some high-risk verification still needs realistic Auth / RLS / browser behavior.
 
-Keeping the Staging project available does **not** authorize arbitrary test traffic. Write-capable smoke, migration sync, and other paid/active Staging use remain behind their fixed control contracts.
+Keeping the Staging project available does **not** authorize arbitrary test traffic. Write-capable smoke, migration sync, recovery, and other paid/active Staging use remain behind their fixed control contracts.
+
+`.github/workflows/supabase-staging-sync.yml` is reusable-only and cannot be started with a direct `workflow_dispatch`. The Issue #294 request bridge is the only ordinary entry point for migration mutation. The base-book recovery workflow likewise has no direct manual dispatch bypass.
 
 Read-only inspection of Staging configuration, branch state, billing, usage, and logs does not require Staging approval.
 
