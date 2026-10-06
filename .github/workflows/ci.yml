@@ -176,16 +176,7 @@ jobs:
         run: npm ci
 
       - name: Check formatting
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! npm run format:check; then
-            npx prettier --write tests/work-execution-preflight.test.mjs
-            echo '--- PRETTIER DIFF START ---'
-            git diff -- tests/work-execution-preflight.test.mjs
-            echo '--- PRETTIER DIFF END ---'
-            exit 1
-          fi
+        run: npm run format:check
 
       - name: Run ESLint
         run: npm run lint
