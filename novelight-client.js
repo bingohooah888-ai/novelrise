@@ -36,6 +36,8 @@
     'signup',
     'forgot-password',
     'reset-password',
+    'contact',
+    'news-detail',
     'special-light',
     'special-zone'
   ]);

@@ -57,7 +57,9 @@ test('public pages use the shared public header', () => {
     'login',
     'signup',
     'forgot-password',
-    'reset-password'
+    'reset-password',
+    'contact',
+    'news-detail'
   ]) {
     assert.match(client, new RegExp(`'${slug}'`, 'u'));
   }
@@ -110,7 +112,7 @@ test('non-isolated legal pages keep the full public navigation', () => {
     );
     assert.match(
       source,
-      /class="novelight-public-header-page"/u,
+      /class="[^"]*\bnovelight-public-header-page\b[^"]*"/u,
       `${name} opts into shared header`
     );
     assert.match(
