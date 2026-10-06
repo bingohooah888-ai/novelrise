@@ -957,32 +957,6 @@ NLOの常時利用性は、NLO First Policyを実運用で成立させるため�
 NOVELIGHTの開発・運営作業を一貫した優先順位で、安全かつ効率的に完了させることである。
 
 
-### Preview / Staging コスト承認ゲート
-
-Vercel Preview / Supabase Stagingは、Productionではないという理由だけで自動継続してはならない。外部の従量課金、Build CPU、Staging稼働時間、Smoke/E2E実行量を増やすため、通常開発とは独立したコスト承認境界として扱う。
-
-既定状態はDefault-Denyとし、通常のbranch push、PR、CI、FAST PATCH、別チャットへの移動、別エージェントへの引継ぎを理由にVercel PreviewまたはSupabase Stagingを自動起動してはならない。
-
-以下を実行する直前には、ユーザーが明示的に「ステージング承認」と意思表示していることを必須とする。
-
-- Vercel Preview deploymentの作成またはRedeploy
-- Supabase Stagingへのwrite、migration sync、fixture作成
-- Staging Smoke / E2E / Live Proof
-- Staging専用ref更新と、それを起点とするPreview生成
-- その他、Preview / Stagingの従量課金または稼働時間を増加させる操作
-
-「はい」「続けて」「承認」「本番承認」はステージング承認の代用にしない。ステージング承認はProduction承認とも別物とする。
-
-承認を受けた場合でも、実行はexact current main SHA、実行scope、対象Environment、1回の実行へ束縛する。機械可読のStaging approval経路が存在する場合はその固定workflow contractを使用し、完了・失敗・claim済みの証跡を再利用しない。実行後は自動的にDefault-Denyへ戻す。
-
-Vercel Git integrationの自動deploymentはProduction branchである `main` のみに許可する。通常のfeature / fix / codex / docs / test等のbranch pushからPreviewを生成しない。Previewが必要な場合はステージング承認後に明示的な手動・承認済み経路を使用する。
-
-Staging Smoke / Live Proof等は、通常のPR、push、deployment_status、無条件workflow_dispatchを入口にしない。OWNER本人の機械可読Staging approvalをexact main SHAとscopeへ束縛する固定経路だけを使用する。
-
-read-onlyの請求確認、usage確認、設定確認、ログ調査、現在状態の監査はこの承認ゲートの対象外とする。
-
-このルールはチャット記憶に依存しない。新しいチャット、別エージェント、NLO、GitHub Connectorその他の実行経路でも、最新main上のMASTER / repository policyをfreshに確認して同じDefault-Denyを適用する。
-
 作業時間の可視化
 
 NOVELIGHTに関する作業を開始する際は、原則として作業開始前に「全体の予想所要時間」と「主要工程ごとの予想所要時間」をユーザーへ示す。
