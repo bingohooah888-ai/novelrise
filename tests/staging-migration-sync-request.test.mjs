@@ -25,7 +25,7 @@ test('Staging request bridge is owner-only', () => {
     /github\.event\.issue\.user\.login == 'bingohooah888-ai'/,
     /github\.event\.comment\.user\.login == 'bingohooah888-ai'/,
     /github\.event\.comment\.author_association == 'OWNER'/,
-    /NOVELIGHT_STAGING_MIGRATION_SYNC /
+    /NOVELIGHT_STAGING_APPROVE /
   ]);
 });
 
@@ -33,8 +33,9 @@ test('Staging request validates exact mutation inputs', () => {
   requirePatterns(requestWorkflow, [
     /test\("\^\[0-9a-f\]\{40\}\$"\)/,
     /test\("\^\[0-9\]\{14\}\$"\)/,
-    /\.confirmation == "SYNC STAGING"/,
-    /\["confirmation", "mainSha", "migration"\]/,
+    /\.scope == "migration-sync"/,
+    /\.confirmation == "STAGING APPROVED"/,
+    /\["confirmation", "mainSha", "migration", "scope"\]/,
     /main changed before the request was claimed/
   ]);
 });
@@ -59,12 +60,12 @@ test('Staging request delegates to fail-closed sync', () => {
   ]);
   requirePatterns(syncWorkflow, [
     /workflow_call:/,
-    /workflow_dispatch:/,
     /environment: staging/,
     /verify-staging-migrations\.sh pending/,
     /db push --db-url "\$STAGING_DATABASE_URL" --yes/,
     /verify-staging-migrations\.sh parity/
   ]);
+  assert.doesNotMatch(syncWorkflow, /workflow_dispatch:/);
 });
 
 test('Staging request bridge excludes DB credentials', () => {
