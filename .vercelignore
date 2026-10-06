@@ -1,1 +1,2 @@
+# Keep the local novel shell in-repo while routing Production /novel.html through api/seo/novel.
 /novel.html
