@@ -192,6 +192,23 @@ FULL PREFLIGHTでも、Web調査や複数AIレビューを目的化しない。
 
 `npm run preflight:full` は高リスク・横断変更に限定する。
 
+
+## 8.5 Preview / Staging コスト承認
+
+Vercel Preview / Supabase Stagingを実際に使用する工程は、非Productionであっても外部コストを発生させるため、MASTERの「Preview / Staging コスト承認ゲート」を適用する。
+
+実行前に以下をすべて確認する。
+
+- [ ] ユーザーの明示的な「ステージング承認」が現在のworkstreamに存在する
+- [ ] approvalをexact current main SHAへ束縛した
+- [ ] scope（Preview / full smoke / thumbnail smoke / live proof / migration sync等）が一意
+- [ ] 1回限りの実行であり、過去のapprovalを再利用していない
+- [ ] Issue #188等の固定されたOWNER機械可読approval経路を使用する
+- [ ] PR / push / deployment_status / 無条件workflow_dispatchによる自動起動ではない
+- [ ] Production Vercel / Production Supabaseへ到達しないことをfail-closedで確認できる
+
+上記を満たさない場合はPreview / Staging実行を開始しない。read-onlyの設定・請求・ログ確認だけならステージング承認は不要。
+
 ## 9. 本番承認
 
 以下はProductionへ状態変化を起こし得るmerge/mutation直前に、MASTERで定める明示的な「本番承認」を要求する。
@@ -235,6 +252,7 @@ FAST PATCH Machine Gateが拒否したpathを手動で除外・名称変更し�
 - Secret混入がない
 - rollback/recovery要件を満たす
 - Production承認が必要な場合は取得済み
+- Preview / Staging実行が必要な場合は、そのexact SHA + scope + 1回に対するステージング承認を取得済み
 - 完了stateを更新
 
 完了後、同じworkstreamを次チャットで再構築・再実行しない。現在repoが満たしているならno-opとする。
