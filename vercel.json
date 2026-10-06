@@ -17,6 +17,9 @@
     },
     "api/seo/author.js": {
       "includeFiles": "author.html"
+    },
+    "api/og/novel.js": {
+      "includeFiles": "node_modules/harfbuzzjs/hb.wasm"
     }
   },
   "images": {
