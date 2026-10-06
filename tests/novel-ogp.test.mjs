@@ -113,13 +113,18 @@ test('X share sends only canonical URL while URL copy keeps attribution', async 
   assert.match(seoNovel, /openGraph:/u);
 });
 
-test('Vercel OGP function bundles the HarfBuzz runtime wasm', async () => {
-  const config = JSON.parse(
-    await readFile(new URL('../vercel.json', import.meta.url), 'utf8')
-  );
+test('OGP renderer stays on the pre-HarfBuzz stable release', async () => {
+  const [packageJson, lockJson, vercelConfig] = await Promise.all([
+    readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse),
+    readFile(new URL('../package-lock.json', import.meta.url), 'utf8').then(JSON.parse),
+    readFile(new URL('../vercel.json', import.meta.url), 'utf8').then(JSON.parse)
+  ]);
 
+  assert.equal(packageJson.dependencies?.['@vercel/og'], '0.8.5');
   assert.equal(
-    config.functions?.['api/og/novel.js']?.includeFiles,
-    'node_modules/harfbuzzjs/hb.wasm'
+    lockJson.packages?.['node_modules/@vercel/og']?.version,
+    '0.8.5'
   );
+  assert.equal(lockJson.packages?.['node_modules/harfbuzzjs'], undefined);
+  assert.equal(vercelConfig.functions?.['api/og/novel.js'], undefined);
 });
