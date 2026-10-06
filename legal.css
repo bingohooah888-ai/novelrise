@@ -240,14 +240,14 @@ a {
  * an isolated trust surface: visitors can review operator/legal/support
  * information without being routed into the unreleased main product.
  */
-body.novelight-public-header-page .site-header {
+body.novelight-public-header-page:not(.novelight-support-page) .site-header {
   min-height: 96px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
 }
 
-body.novelight-public-header-page .site-header::before {
+body.novelight-public-header-page:not(.novelight-support-page) .site-header::before {
   width: min(320px, 72vw);
   height: 74px;
   display: block;
@@ -255,28 +255,28 @@ body.novelight-public-header-page .site-header::before {
   background: url("assets/novelight-header-logo.webp") center / contain no-repeat;
 }
 
-html body.novelight-public-header-page:not(.novelight-public-dark)
+html body.novelight-public-header-page:not(.novelight-public-dark):not(.novelight-support-page)
   .site-header
   .header-inner,
-html body.novelight-public-header-page:not(.novelight-public-dark)
+html body.novelight-public-header-page:not(.novelight-public-dark):not(.novelight-support-page)
   .site-header
   .public-header-inner,
-html body.novelight-public-header-page:not(.novelight-public-dark)
+html body.novelight-public-header-page:not(.novelight-public-dark):not(.novelight-support-page)
   .site-header
   .site-header-inner {
   display: none !important;
 }
 
-body.novelight-public-header-page .legal-main a[href^="index.html"],
-body.novelight-public-header-page .legal-main a[href^="search.html"],
-body.novelight-public-header-page .legal-main a[href^="pricing.html"],
-body.novelight-public-header-page .legal-main a[href^="ranking.html"],
-body.novelight-public-header-page .legal-main a[href^="login.html"],
-body.novelight-public-header-page .legal-main a[href^="signup.html"],
-body.novelight-public-header-page .legal-main a[href^="author-home.html"],
-body.novelight-public-header-page .legal-main a[href^="reader-home.html"],
-body.novelight-public-header-page .legal-main a[href^="novel.html"],
-body.novelight-public-header-page .legal-main a[href^="novels.html"] {
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="index.html"],
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="search.html"],
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="pricing.html"],
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="ranking.html"],
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="login.html"],
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="signup.html"],
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="author-home.html"],
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="reader-home.html"],
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="novel.html"],
+body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[href^="novels.html"] {
   display: none !important;
 }
 
