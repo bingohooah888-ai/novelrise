@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お知らせ | NOVELIGHT</title>
+  <link rel="stylesheet" href="legal.css">
+  <link rel="stylesheet" href="novelight-header-light.css">
+  <style>
+    .news-back{display:inline-flex;align-items:center;gap:6px;margin-bottom:18px;color:#7c5b12;font-weight:800;text-decoration:none}
+    .news-back:hover,.news-back:focus-visible{text-decoration:underline;text-underline-offset:3px}
+    .news-detail-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .news-detail-category{padding:5px 9px;border-radius:999px;background:#fff8e6;color:#7c5b12;font-size:12px;font-weight:900}
+    .news-detail-date{color:#777f89;font-size:13px}
+    .news-detail-title{margin:0 0 22px!important;font-size:27px!important;line-height:1.5!important}
+    .news-detail-image{display:block;width:auto;max-width:100%;height:auto;margin:0 auto 24px;border-radius:12px}
+    .news-detail-body{white-space:pre-wrap;overflow-wrap:anywhere;color:#27313d;font-size:16px;line-height:1.9}
+    .news-detail-body a{color:#7c5b12;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+    .news-detail-state{padding:20px;text-align:center;color:#69717d;border:1px dashed #d7d7e2;border-radius:10px}
+    @media(max-width:640px){.news-detail-title{font-size:22px!important}.news-detail-image{margin-bottom:20px}}
+  </style>
+  <link rel="stylesheet" href="novelight-accessibility.css">
+</head>
+<body class="novelight-public-header-page novelight-support-page">
+<a class="skip-link" href="#main-content">本文へスキップ</a>
+<header class="site-header"></header>
+
+<main id="main-content" tabindex="-1" class="legal-main">
+  <div class="legal-hero">
+    <div class="legal-kicker">NOVELIGHT INFORMATION</div>
+    <h1>お知らせ</h1>
+  </div>
+
+  <section class="legal-card" aria-labelledby="newsTitle">
+    <a class="news-back" href="contact.html#announcements">← お知らせ一覧へ</a>
+    <div id="newsState" class="news-detail-state" role="status">お知らせを読み込んでいます...</div>
+    <article id="newsContent" hidden>
+      <div class="news-detail-meta">
+        <time id="newsDate" class="news-detail-date"></time>
+        <span id="newsCategory" class="news-detail-category"></span>
+      </div>
+      <h2 id="newsTitle" class="news-detail-title"></h2>
+      <img id="newsImage" class="news-detail-image" alt="" hidden>
+      <div id="newsBody" class="news-detail-body"></div>
+    </article>
+  </section>
+
+  <div class="legal-links"><a href="contact.html">お知らせ・お問い合わせ</a><a href="operator.html">運営者情報</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a></div>
+</main>
+
+<footer class="site-footer"><div class="site-footer-inner"><span>© NOVELIGHT</span><a href="operator.html">運営者情報</a><a href="contact.html">お知らせ・お問い合わせ</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="commerce-disclosure.html">特商法表記</a></div></footer>
+
+<script src="novelight-client.js"></script>
+<script>
+  const URL_PATTERN = /https?:\/\/[^\s<>"']+/giu;
+  const TRAILING_URL_PUNCTUATION = /[。、，．,.!！?？;；:：)）\]】」』〉》]+$/u;
+
+  function appendAnnouncementText(container, text) {
+    const source = String(text ?? '');
+    container.replaceChildren();
+    let lastIndex = 0;
+
+    for (const match of source.matchAll(URL_PATTERN)) {
+      const raw = match[0];
+      const start = match.index ?? 0;
+      if (start > lastIndex) {
+        container.appendChild(
+          document.createTextNode(source.slice(lastIndex, start))
+        );
+      }
+
+      const trailing = raw.match(TRAILING_URL_PUNCTUATION)?.[0] ?? '';
+      const href = trailing ? raw.slice(0, -trailing.length) : raw;
+
+      let parsed;
+      try {
+        parsed = new URL(href);
+      } catch {
+        container.appendChild(document.createTextNode(raw));
+        lastIndex = start + raw.length;
+        continue;
+      }
+
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        container.appendChild(document.createTextNode(raw));
+        lastIndex = start + raw.length;
+        continue;
+      }
+
+      const link = document.createElement('a');
+      link.href = parsed.href;
+      link.textContent = href;
+      if (parsed.origin !== window.location.origin) {
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+      }
+      container.appendChild(link);
+      if (trailing) container.appendChild(document.createTextNode(trailing));
+      lastIndex = start + raw.length;
+    }
+
+    if (lastIndex < source.length) {
+      container.appendChild(document.createTextNode(source.slice(lastIndex)));
+    }
+  }
+
+  function showState(message) {
+    const state = document.getElementById('newsState');
+    state.textContent = message;
+    state.hidden = false;
+    document.getElementById('newsContent').hidden = true;
+  }
+
+  async function loadAnnouncement() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (!/^\d+$/.test(id ?? '')) {
+      showState('お知らせを指定できませんでした。');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/announcements?id=${encodeURIComponent(id)}`,
+        {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+          credentials: 'same-origin'
+        }
+      );
+      if (response.status === 404) {
+        showState('このお知らせは公開されていないか、見つかりませんでした。');
+        return;
+      }
+      if (!response.ok) throw new Error(`announcements ${response.status}`);
+
+      const data = await response.json();
+      const row = data.announcement;
+      if (!row) {
+        showState('このお知らせは見つかりませんでした。');
+        return;
+      }
+
+      const date = document.getElementById('newsDate');
+      if (row.published_at) {
+        const publishedAt = new Date(row.published_at);
+        date.dateTime = publishedAt.toISOString();
+        date.textContent = publishedAt.toLocaleDateString('ja-JP', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+      } else {
+        date.removeAttribute('datetime');
+        date.textContent = '';
+      }
+
+      document.getElementById('newsCategory').textContent = row.category || '';
+      document.getElementById('newsTitle').textContent = row.title || '';
+      document.title = `${row.title || 'お知らせ'} | NOVELIGHT`;
+      appendAnnouncementText(document.getElementById('newsBody'), row.body);
+
+      const image = document.getElementById('newsImage');
+      if (row.image_url) {
+        image.src = row.image_url;
+        image.alt = row.title ? `${row.title}のお知らせ画像` : 'お知らせ画像';
+        image.hidden = false;
+      } else {
+        image.removeAttribute('src');
+        image.alt = '';
+        image.hidden = true;
+      }
+
+      document.getElementById('newsState').hidden = true;
+      document.getElementById('newsContent').hidden = false;
+    } catch (error) {
+      console.error('announcement detail load failed', error);
+      showState('お知らせを読み込めませんでした。時間をおいて再度お試しください。');
+    }
+  }
+
+  void loadAnnouncement();
+</script>
+</body>
+</html>
