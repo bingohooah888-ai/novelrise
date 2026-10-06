@@ -219,7 +219,9 @@ export async function createAdminAnnouncement(supabase, adminUserId, input) {
     )
   ) {
     if (imagePath) {
-      const unavailable = new Error('Announcement image schema is not available');
+      const unavailable = new Error(
+        'Announcement image schema is not available'
+      );
       unavailable.code = 'SCHEMA_NOT_READY';
       throw unavailable;
     }
@@ -233,7 +235,9 @@ export async function createAdminAnnouncement(supabase, adminUserId, input) {
   }
 
   if (result.error) throw result.error;
-  const row = Array.isArray(result.data) ? (result.data[0] ?? null) : result.data;
+  const row = Array.isArray(result.data)
+    ? (result.data[0] ?? null)
+    : result.data;
   return row ? { ...row, image_path: row.image_path ?? null } : row;
 }
 
@@ -269,7 +273,9 @@ export async function updateAdminAnnouncement(
     )
   ) {
     if (imagePath) {
-      const unavailable = new Error('Announcement image schema is not available');
+      const unavailable = new Error(
+        'Announcement image schema is not available'
+      );
       unavailable.code = 'SCHEMA_NOT_READY';
       throw unavailable;
     }
@@ -284,7 +290,9 @@ export async function updateAdminAnnouncement(
   }
 
   if (result.error) throw result.error;
-  const row = Array.isArray(result.data) ? (result.data[0] ?? null) : result.data;
+  const row = Array.isArray(result.data)
+    ? (result.data[0] ?? null)
+    : result.data;
   return row ? { ...row, image_path: row.image_path ?? null } : row;
 }
 
