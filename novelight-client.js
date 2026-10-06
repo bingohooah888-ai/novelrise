@@ -36,6 +36,7 @@
     'signup',
     'forgot-password',
     'reset-password',
+    'announcements',
     'contact',
     'news-detail',
     'special-light',
@@ -297,8 +298,8 @@
       '<a href="index.html#features">特徴</a>' +
       `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
-      `<a href="login.html"${loginCurrent}>ログイン</a>` +
-      `<a href="signup.html"${signupCurrent}>会員登録</a>` +
+      `<a class="mobile-login-action" href="login.html"${loginCurrent}>ログイン</a>` +
+      `<a class="mobile-signup-action" href="signup.html"${signupCurrent}>会員登録</a>` +
       '</nav></details>' +
       '</div>' +
       '</div>';
@@ -500,9 +501,32 @@
 
     const headerActions = document.querySelector('.header-actions');
     const loginLinks = Array.from(
-      headerActions?.querySelectorAll('a[href="login.html"]') || []
+      headerActions?.querySelectorAll(
+        '.login-action, .mobile-login-action'
+      ) || []
+    );
+    const signupLinks = Array.from(
+      headerActions?.querySelectorAll(
+        '.signup-action, .mobile-signup-action'
+      ) || []
     );
     if (!loginLinks.length) return false;
+
+    function setSignupVisibility(hidden) {
+      signupLinks.forEach((signupLink) => {
+        signupLink.hidden = hidden;
+        signupLink.dataset.authState = hidden
+          ? 'authenticated-hidden'
+          : 'anonymous';
+        if (hidden) {
+          signupLink.setAttribute('aria-hidden', 'true');
+          signupLink.setAttribute('tabindex', '-1');
+        } else {
+          signupLink.removeAttribute('aria-hidden');
+          signupLink.removeAttribute('tabindex');
+        }
+      });
+    }
 
     try {
       const { data, error } = await client.auth.getSession();
@@ -517,6 +541,7 @@
           loginLink.href = 'mypage.html';
           loginLink.dataset.authState = 'authenticated';
         });
+        setSignupVisibility(true);
         return true;
       }
 
@@ -525,6 +550,7 @@
         loginLink.href = 'login.html';
         loginLink.dataset.authState = 'anonymous';
       });
+      setSignupVisibility(false);
       return false;
     } catch (error) {
       console.error('auth header session lookup failed', error);
