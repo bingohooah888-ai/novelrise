@@ -162,7 +162,7 @@
     }
 
     if (url) {
-      imagePreview.src = url;
+      imagePreview.src = encodeURI(url);
       imagePreview.hidden = false;
     } else {
       imagePreview.removeAttribute('src');
