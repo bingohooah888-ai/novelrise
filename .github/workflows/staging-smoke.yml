@@ -1,24 +1,8 @@
 name: NOVELIGHT Staging Smoke
 
 on:
-  deployment_status:
-  issues:
-    types: [reopened]
-  workflow_dispatch:
-    inputs:
-      staging_url:
-        description: 'Optional HTTPS Vercel Preview/Staging URL; otherwise STAGING_BASE_URL is used'
-        required: false
-        type: string
-      revision:
-        description: 'Exact 40-character commit SHA deployed at the manual Staging URL'
-        required: true
-        type: string
-      read_only_only:
-        description: 'Run only deployment and public/runtime read-only smoke; skip all authenticated and billing fixtures'
-        required: false
-        default: false
-        type: boolean
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -27,29 +11,21 @@ jobs:
   smoke:
     name: Verify staging surface, auth, and test billing once
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issues' &&
-       github.event.action == 'reopened' &&
-       github.event.issue.number == 188 &&
-       github.event.issue.user.login == 'bingohooah888-ai' &&
-       github.event.sender.login == 'bingohooah888-ai') ||
-      (github.event.sender.login == 'vercel[bot]' &&
-       github.event.deployment_status.state == 'success' &&
-       github.event.deployment.environment != 'Production' &&
-       github.event.deployment.environment != 'production' &&
-       startsWith(github.event.deployment.ref, 'preview/'))
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 188 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_APPROVE {"scope":"full-smoke",')
     runs-on: ubuntu-latest
     timeout-minutes: 40
     concurrency:
-      group: novelight-staging-smoke-${{ github.event_name == 'issues' && 'chat-control' || github.event.deployment.id || github.ref }}
+      group: novelight-staging-smoke-approved
       cancel-in-progress: true
     environment: staging
     env:
-      STAGING_TRIGGER: ${{ github.event_name == 'issues' && 'workflow_dispatch' || github.event_name }}
-      MANUAL_STAGING_URL: ${{ inputs.staging_url }}
+      STAGING_TRIGGER: approval_comment
+      STAGING_APPROVAL_BODY: ${{ github.event.comment.body }}
       CANONICAL_STAGING_URL: ${{ vars.STAGING_BASE_URL }}
-      DEPLOYMENT_ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
-      DEPLOYMENT_TARGET_URL: ${{ github.event.deployment_status.target_url }}
       STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
       STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
@@ -62,46 +38,55 @@ jobs:
       CHECKOUT_SESSION_PREFIX: cs_test_
 
     steps:
-      - name: Resolve exact Staging revision
+      - name: Resolve exact approved Staging revision
         id: revision
         env:
           GH_TOKEN: ${{ github.token }}
-          DISPATCH_REVISION: ${{ inputs.revision }}
-          DEPLOYMENT_REVISION: ${{ github.event.deployment.sha }}
         shell: bash
         run: |
           set -euo pipefail
 
-          case "$GITHUB_EVENT_NAME" in
-            issues)
-              target="$(
-                gh api \
-                  "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
-                  --jq '.object.sha'
-              )"
-              ;;
-            workflow_dispatch)
-              target="$DISPATCH_REVISION"
-              ;;
-            deployment_status)
-              target="$DEPLOYMENT_REVISION"
-              ;;
+          prefix='NOVELIGHT_STAGING_APPROVE '
+          case "$STAGING_APPROVAL_BODY" in
+            "$prefix"*) payload="${STAGING_APPROVAL_BODY#"$prefix"}" ;;
             *)
-              echo "CONFIG_DRIFT: unexpected Staging Smoke trigger $GITHUB_EVENT_NAME."
+              echo 'CONFIG_DRIFT: invalid Staging approval prefix.'
               exit 1
               ;;
           esac
 
+          echo "$payload" | jq -e 'keys == ["confirmation","mainSha","scope"]' >/dev/null
+          scope="$(echo "$payload" | jq -er '.scope')"
+          target="$(echo "$payload" | jq -er '.mainSha')"
+          confirmation="$(echo "$payload" | jq -er '.confirmation')"
+
+          test "$scope" = 'full-smoke' || {
+            echo "CONFIG_DRIFT: unexpected Staging approval scope: $scope"
+            exit 1
+          }
+          test "$confirmation" = 'STAGING APPROVED' || {
+            echo 'CONFIG_DRIFT: Staging approval confirmation mismatch.'
+            exit 1
+          }
           if [[ ! "$target" =~ ^[0-9a-f]{40}$ ]]; then
-            echo 'CONFIG_DRIFT: resolved Staging revision is not an exact 40-character commit SHA.'
+            echo 'CONFIG_DRIFT: approved Staging revision is not an exact 40-character commit SHA.'
             exit 1
           fi
+
+          current_main="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              --jq '.object.sha'
+          )"
+          test "$current_main" = "$target" || {
+            echo "CONFIG_DRIFT: approval targets $target but current main is $current_main."
+            exit 1
+          }
 
           echo "sha=$target" >> "$GITHUB_OUTPUT"
           echo "EXPECTED_REVISION=$target" >> "$GITHUB_ENV"
 
-      - name: Require write-ready Staging for chat control
-        if: github.event_name == 'issues'
+      - name: Require write-ready approved Staging
         shell: bash
         run: |
           set -euo pipefail
@@ -116,8 +101,7 @@ jobs:
           persist-credentials: false
           ref: ${{ steps.revision.outputs.sha }}
 
-      - name: Confirm controlled revision is still current main
-        if: github.event_name == 'issues'
+      - name: Confirm approved revision is still current main
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_REVISION: ${{ steps.revision.outputs.sha }}
@@ -181,7 +165,7 @@ jobs:
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         shell: bash
         run: |
           set -euo pipefail
@@ -198,7 +182,7 @@ jobs:
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         env:
           STAGING_REQUIRE_WRITE_CONFIG: 'true'
         run: node scripts/verify-staging-deployment.mjs
@@ -207,21 +191,21 @@ jobs:
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         run: node scripts/verify-staging-schema-capabilities.mjs
 
       - name: Install application dependencies once
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         run: npm ci
 
       - name: Create ephemeral authenticated Staging desktop users
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         id: auth_fixture_desktop
         env:
           AUTH_SMOKE_LABEL: ステージング認証スモーク
@@ -231,7 +215,7 @@ jobs:
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         id: auth_desktop
         continue-on-error: true
         working-directory: tests/e2e
@@ -263,7 +247,7 @@ jobs:
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         id: auth_fixture_mobile
         env:
           AUTH_SMOKE_LABEL: ステージング認証スモーク
@@ -273,7 +257,7 @@ jobs:
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         id: auth_mobile
         continue-on-error: true
         working-directory: tests/e2e
@@ -337,7 +321,7 @@ jobs:
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         id: billing_fixture
         env:
           AUTH_SMOKE_LABEL: ステージング課金スモーク
@@ -347,7 +331,7 @@ jobs:
         if: >-
           success() &&
           vars.STAGING_E2E_READY == 'true' &&
-          (github.event_name != 'workflow_dispatch' || inputs.read_only_only != true)
+          true
         working-directory: tests/e2e
         env:
           AUTH_SMOKE_LABEL: ステージング課金スモーク
