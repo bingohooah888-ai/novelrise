@@ -226,10 +226,7 @@ test('support pages use the formal shared public header rather than the legal ps
 
   assert.match(client, /'contact'/u);
   assert.match(client, /'news-detail'/u);
-  assert.match(
-    client,
-    /href="index\.html" aria-label="NOVELIGHT ホーム"/u
-  );
+  assert.match(client, /href="index\.html" aria-label="NOVELIGHT ホーム"/u);
   assert.match(legalCss, /:not\(\.novelight-support-page\)/u);
   assert.match(contact, /novelight-support-page/u);
   assert.match(detail, /novelight-support-page/u);
