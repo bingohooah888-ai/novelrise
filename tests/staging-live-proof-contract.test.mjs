@@ -21,10 +21,7 @@ test('Staging Live Proof is approval-only and exact-target bound', () => {
     workflow,
     /github\.event\.comment\.author_association == 'OWNER'/
   );
-  assert.match(
-    workflow,
-    /NOVELIGHT_STAGING_APPROVE \{"scope":"live-proof",/
-  );
+  assert.match(workflow, /NOVELIGHT_STAGING_APPROVE \{"scope":"live-proof",/);
   assert.match(
     workflow,
     /keys == \["confirmation","mainSha","previewUrl","scope"\]/
