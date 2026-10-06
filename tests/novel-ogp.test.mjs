@@ -112,3 +112,14 @@ test('X share sends only canonical URL while URL copy keeps attribution', async 
   assert.match(seoNovel, /novelight-public-share\.js/u);
   assert.match(seoNovel, /openGraph:/u);
 });
+
+test('Vercel OGP function bundles the HarfBuzz runtime wasm', async () => {
+  const config = JSON.parse(
+    await readFile(new URL('../vercel.json', import.meta.url), 'utf8')
+  );
+
+  assert.equal(
+    config.functions?.['api/og/novel.js']?.includeFiles,
+    'node_modules/harfbuzzjs/hb.wasm'
+  );
+});
