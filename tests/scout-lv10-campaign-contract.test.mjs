@@ -53,6 +53,12 @@ test('campaign destination page contains the requested progress and claim UI', (
   assert.match(page, /500円分/);
 });
 
+test('campaign destination records acquisition, visits and attribution claims', () => {
+  assert.match(client, /NovelightClient\.captureAcquisition\(client\)/);
+  assert.match(client, /NovelightClient\.recordVisit\(client\)/);
+  assert.match(client, /NovelightClient\.claimAcquisition\(client\)/);
+});
+
 test('campaign countdown uses the personal 60-day LEVEL 10 deadline', () => {
   assert.match(client, /LEVEL 10 DEADLINE/);
   assert.match(client, /LEVEL 10達成期限までの日数/);

@@ -123,6 +123,10 @@
     'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
   );
 
+  void NovelightClient.captureAcquisition(client);
+  void NovelightClient.recordVisit(client);
+  void NovelightClient.claimAcquisition(client);
+
   const number = new Intl.NumberFormat('ja-JP');
   const dateTime = new Intl.DateTimeFormat('ja-JP', {
     timeZone: 'Asia/Tokyo',
