@@ -8,13 +8,13 @@
   <style>
     *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}
     header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:980px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}
-    main{max-width:920px;margin:auto;padding:40px 22px 76px}.intro{margin-bottom:22px}.intro h1{font-size:30px}.intro p{margin-top:8px;color:#6b7280;line-height:1.8}.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:18px}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:15px;padding:22px}
+    main{max-width:920px;margin:auto;padding:40px 22px 76px}.intro{margin-bottom:22px}.intro h1{font-size:30px}.intro p{margin-top:8px;color:#6b7280;line-height:1.8}.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:18px;align-items:start}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:15px;padding:22px}.character-form-panel{position:sticky;top:18px;align-self:start}.character-list-panel{display:flex;max-height:calc(100vh - 36px);min-height:0;flex-direction:column}.character-list-scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
     .display-settings{margin-bottom:18px;padding:16px;border:1px solid #ded8f2;border-radius:13px;background:#faf8ff}.display-settings h2{font-size:16px;margin:0 0 8px}.display-settings p{margin:0 0 9px;color:#6f687a;font-size:12px;line-height:1.6}
     .field{margin-bottom:16px}.field label,.toggle{font-size:13px;font-weight:900}.field input,.field textarea,.field select{width:100%;margin-top:7px;padding:11px;border:1px solid #d6d8df;border-radius:9px;background:#fff;font:inherit}.field textarea{min-height:92px;resize:vertical}.field small{display:block;margin-top:7px;color:#777;font-size:11px;font-weight:400;line-height:1.6}.toggle{display:flex;align-items:flex-start;gap:9px;margin:11px 0}.toggle small{display:block;margin-top:3px;color:#777;font-weight:400;line-height:1.5}
     .character-image-picker{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;align-items:center;margin-top:7px}.character-image-preview{width:96px;height:96px;border:1px dashed #d6d8df;border-radius:12px;background:#f7f6fa;display:grid;place-items:center;overflow:hidden;color:#81788c;font-size:11px;font-weight:800;text-align:center;padding:8px}.character-image-preview img{width:100%;height:100%;display:block;object-fit:cover}.character-image-controls{display:grid;gap:8px;min-width:0}.character-image-controls input{margin-top:0}.character-image-controls .btn{justify-self:start}.character-image-controls small{margin-top:0}
     .actions{display:flex;gap:8px;margin-top:17px}.btn{padding:10px 13px;border-radius:8px;border:1px solid #d8d8df;background:#fff;font-weight:900;cursor:pointer}.btn.primary{background:#6d4aff;border-color:#6d4aff;color:#fff}.btn:disabled{opacity:.55;cursor:not-allowed}.status{min-height:20px;margin-top:12px;color:#6b7280;font-size:12px;line-height:1.6}
     .list{display:grid;gap:10px;margin-top:14px}.item{padding:14px;border:1px solid #e5e7eb;border-radius:11px}.item-top{display:grid;grid-template-columns:54px minmax(0,1fr);gap:12px}.item-avatar,.item-fallback{width:54px;height:54px;border-radius:10px;object-fit:cover;background:#f0edf6;display:grid;place-items:center;color:#66558f;font-weight:900;font-size:19px}.item h3{font-size:16px;margin:0}.description,.aliases,.latest,.first-appearance,.flags{margin-top:6px;color:#777;font-size:11px;line-height:1.6}.description{color:#5d5663}.first-appearance{color:#6556a3;font-weight:800}.flags{display:flex;gap:7px;flex-wrap:wrap}.flag{padding:3px 7px;border-radius:999px;background:#f1eff8;color:#5e4ca8;font-weight:900}.item-actions{display:flex;gap:7px;margin-top:10px}.danger{color:#b42318}
-    @media(max-width:720px){main{padding:28px 16px 60px}.grid{grid-template-columns:1fr}.actions,.item-actions{flex-direction:column}.btn{width:100%}}
+    @media(max-width:720px){main{padding:28px 16px 60px}.grid{grid-template-columns:1fr}.character-form-panel{position:static}.character-list-panel{display:block;max-height:none}.character-list-scroll{overflow:visible;padding-right:0}.actions,.item-actions{flex-direction:column}.btn{width:100%}}
     @media(max-width:480px){.character-image-picker{grid-template-columns:1fr}.character-image-preview{width:112px;height:112px}.character-image-controls .btn{width:auto}}
   </style>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
@@ -30,12 +30,12 @@
     <div id="settingsStatus" class="status" aria-live="polite"></div>
   </section>
   <div class="grid">
-    <section class="panel">
+    <section class="panel character-form-panel">
       <h2 id="formTitle">人物を登録</h2>
       <form id="characterForm">
         <div class="field"><label for="name">名前</label><input id="name" maxlength="80" required></div>
         <div class="field"><label for="description">紹介文</label><textarea id="description" maxlength="300" placeholder="作品ページに表示する短い紹介。300文字以内"></textarea></div>
-        <div class="field"><label for="imageFile">人物画像</label><div class="character-image-picker"><div id="imagePreview" class="character-image-preview">画像なし</div><div class="character-image-controls"><input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp"><button id="imageClear" class="btn" type="button" hidden>画像を外す</button><small>JPEG / PNG / WebP、2MB以下。スマホやPCから直接選択できます。</small></div></div></div>
+        <div class="field"><label for="imageFile">人物画像</label><div class="character-image-picker"><div id="imagePreview" class="character-image-preview">画像なし</div><div class="character-image-controls"><input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp"><button id="imageClear" class="btn" type="button" hidden>画像を外す</button><small>推奨サイズ：800 × 1200 px（縦横比 2:3）。JPEG / PNG / WebP、2MB以下。スマホやPCから直接選択できます。</small></div></div></div>
         <div class="field"><label for="aliases">別名・呼び名</label><textarea id="aliases" placeholder="1行またはカンマ区切り。最大12個"></textarea></div>
         <div class="field"><label for="firstAppearance">初登場話</label><select id="firstAppearance"><option value="">未設定（従来どおり全話から自動判定）</option></select><small>設定した話より前は本文の自動検出対象にしません。「凛」「零」など漢字1文字の人物名の誤検出防止にも有効です。各話の手動指定はこの設定より優先されます。</small></div>
         <label class="toggle"><input id="autoDetect" type="checkbox" checked><span>本文から自動検出<small>OFFにすると、各話の手動指定だけを使います。</small></span></label>
@@ -44,9 +44,9 @@
         <div id="status" class="status" aria-live="polite"></div>
       </form>
     </section>
-    <section class="panel">
+    <section class="panel character-list-panel">
       <h2>登録済み人物</h2>
-      <div id="list" class="list"><p class="status">読み込み中...</p></div>
+      <div class="character-list-scroll"><div id="list" class="list"><p class="status">読み込み中...</p></div></div>
     </section>
   </div>
 </main>
