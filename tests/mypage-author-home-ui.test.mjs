@@ -230,7 +230,6 @@ test('author room includes a collapsible mobile menu', () => {
   assert.match(mypage, /創作室メニュー/u);
 });
 
-
 test('author room bookshelf and guide controls stay legible on the dark header and hero', () => {
   assert.match(
     bookshelfHeader,
