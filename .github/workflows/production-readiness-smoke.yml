@@ -14,6 +14,7 @@ on:
       - 'novelight-series.js'
       - 'novelight-characters.js'
       - 'vercel.json'
+      - '.vercelignore'
       - 'api/**'
       - 'supabase/checks/production_beta_observability.sql'
       - 'scripts/verify-production-static.sh'
