@@ -16,11 +16,15 @@ import {
 } from '../scripts/master-read-proof.mjs';
 
 const AGENTS_PATH = 'AGENTS.md';
+const MASTER_PATH = 'docs/NOVELIGHT-MASTER.md';
 const PREFLIGHT_PATH = 'docs/WORK-EXECUTION-PREFLIGHT.md';
 const AUTOMATION_PATH = 'docs/AUTOMATION-CONTINUATION-GATE.md';
 const PACKAGE_PATH = 'package.json';
 const RUNTIME_GATE_PATH = 'scripts/runtime-execution-gate.mjs';
 const STAGING_PROOF_PATH = '.github/workflows/staging-live-proof.yml';
+const STAGING_SMOKE_PATH = '.github/workflows/staging-smoke.yml';
+const STAGING_THUMBNAIL_PATH = '.github/workflows/staging-thumbnail-smoke.yml';
+const PREVIEW_STAGING_POLICY_PATH = 'docs/PREVIEW-STAGING-AUTOMATION.md';
 const VERCEL_PATH = 'vercel.json';
 
 async function read(path) {
@@ -351,41 +355,62 @@ test('runtime gate hard stops are limited to real decision boundaries', () => {
   assert.throws(() => parsePhase(['--phase=unknown']), /Unsupported/u);
 });
 
-test('staging live proof runs only from real Vercel deployment evidence', async () => {
-  const workflow = await read(STAGING_PROOF_PATH);
+test('Preview and Staging are default-deny and approval-only', async () => {
+  const master = await read(MASTER_PATH);
+  const agents = await read(AGENTS_PATH);
+  const automation = await read(AUTOMATION_PATH);
+  const preflight = await read(PREFLIGHT_PATH);
+  const policy = await read(PREVIEW_STAGING_POLICY_PATH);
+  const liveProof = await read(STAGING_PROOF_PATH);
+  const smoke = await read(STAGING_SMOKE_PATH);
+  const thumbnail = await read(STAGING_THUMBNAIL_PATH);
   const vercel = JSON.parse(await read(VERCEL_PATH));
-  const deploymentEnabled = vercel.git?.deploymentEnabled ?? {};
-  const disabledPrefixes = Object.entries(deploymentEnabled)
-    .filter(([, enabled]) => enabled === false)
-    .map(([pattern]) => pattern.replace('/**', '/'));
 
-  assert.deepEqual(disabledPrefixes, [
-    'chore/',
-    'test/',
-    'docs/',
-    'dependabot/'
-  ]);
-  assert.equal(workflow.includes('pull_request:'), false);
+  assert.deepEqual(vercel.git?.deploymentEnabled, {
+    '**': false,
+    main: true
+  });
 
-  for (const prefix of disabledPrefixes) {
-    assert.equal(
-      workflow.includes(`!startsWith(github.head_ref, '${prefix}')`),
-      false,
-      `Deployment-status Live Proof must not recreate PR branch filtering: ${prefix}`
-    );
+  for (const source of [master, agents, automation, preflight, policy]) {
+    assertIncludesAll(source, ['ステージング承認', 'Default-Deny']);
   }
 
-  assertIncludesAll(workflow, [
-    'deployment_status:',
-    "github.event.deployment_status.state == 'success'",
-    'github.event.deployment_status.environment_url',
-    "contains(github.event.deployment_status.environment_url, '.vercel.app')",
-    'github.event.deployment.sha',
-    "github.event_name == 'workflow_dispatch'",
-    'MANUAL_PREVIEW_URL',
-    'MANUAL_REVISION',
-    'Preview URL must be an exact HTTPS origin.',
-    'Preview revision must be an exact 40-character commit SHA.'
+  assertIncludesAll(master, [
+    'exact main SHA + 明示されたscope + 1回の実行',
+    'Issue #188',
+    'main` 以外の自動deploymentを既定で無効化'
+  ]);
+
+  for (const workflow of [liveProof, smoke, thumbnail]) {
+    assertIncludesAll(workflow, [
+      'issue_comment:',
+      'NOVELIGHT_STAGING_APPROVE',
+      'STAGING APPROVED',
+      "github.event.issue.number == 188",
+      "github.event.comment.user.login == 'bingohooah888-ai'",
+      "github.event.comment.author_association == 'OWNER'"
+    ]);
+    assert.equal(workflow.includes('workflow_dispatch:'), false);
+    assert.equal(workflow.includes('deployment_status:'), false);
+  }
+
+  assertIncludesAll(smoke, [
+    '"scope":"full-smoke"',
+    'keys == ["confirmation","mainSha","scope"]',
+    'approval targets $target but current main is $current_main'
+  ]);
+
+  assertIncludesAll(thumbnail, [
+    '"scope":"thumbnail-smoke"',
+    'Pin dedicated Preview ref to approved main',
+    'Create exact non-Production Vercel Preview',
+    'node scripts/vercel-preview-deployment.mjs'
+  ]);
+
+  assertIncludesAll(liveProof, [
+    '"scope":"live-proof"',
+    'keys == ["confirmation","mainSha","previewUrl","scope"]',
+    'Preview URL must be an exact HTTPS origin.'
   ]);
 });
 
