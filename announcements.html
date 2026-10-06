@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お知らせ | NOVELIGHT</title>
+  <link rel="stylesheet" href="legal.css">
+  <link rel="stylesheet" href="novelight-header-light.css">
+  <style>
+    .announcement-list{display:grid;gap:10px}.announcement-item{padding:17px 18px;border:1px solid #e4e4ec;border-radius:12px;background:#fff;transition:border-color .18s ease,box-shadow .18s ease}.announcement-item:hover{border-color:#d6a447;box-shadow:0 5px 18px rgba(8,20,38,.05)}.announcement-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}.announcement-category{flex:0 0 auto;padding:4px 8px;border-radius:999px;background:#fff8e6;color:#7c5b12;font-size:11px;font-weight:900}.announcement-date{color:#777f89;font-size:12px}.announcement-title{margin:0;font-size:18px;line-height:1.55}.announcement-title a{color:#1b2430;text-decoration:none}.announcement-title a:hover,.announcement-title a:focus-visible{color:#8a6518;text-decoration:underline;text-underline-offset:3px}.announcement-guide{margin:0 0 14px;color:#69717d;font-size:14px;line-height:1.7}.announcement-state{padding:20px;text-align:center;color:#777;border:1px dashed #d7d7e2;border-radius:10px}@media(max-width:620px){.announcement-item{padding:15px}.announcement-title{font-size:17px}}
+  </style>
+  <link rel="stylesheet" href="novelight-accessibility.css">
+</head>
+<body class="novelight-public-header-page novelight-support-page">
+<a class="skip-link" href="#main-content">本文へスキップ</a>
+<header class="site-header">
+  <div class="header-inner public-header-inner">
+    <a class="logo" href="index.html" aria-label="NOVELIGHT ホーム"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
+    <nav class="site-nav desktop-nav" aria-label="メインナビ"><a href="search.html">作品を探す</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="ranking.html">ランキング</a></nav>
+    <div class="header-actions">
+      <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
+      <a class="btn btn-outline login-action" href="login.html">ログイン</a>
+      <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
+      <details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ"><a href="search.html">作品を探す</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="ranking.html">ランキング</a><a class="mobile-login-action" href="login.html">ログイン</a><a class="mobile-signup-action" href="signup.html">会員登録</a></nav></details>
+    </div>
+  </div>
+</header>
+
+<main id="main-content" tabindex="-1" class="legal-main">
+  <div class="legal-hero">
+    <div class="legal-kicker">NOVELIGHT INFORMATION</div>
+    <h1>お知らせ</h1>
+    <p class="legal-lead">NOVELIGHT運営からのお知らせをご確認いただけます。</p>
+  </div>
+
+  <section class="legal-card" aria-labelledby="announcementHeading">
+    <h2 id="announcementHeading">お知らせ一覧</h2>
+    <p class="announcement-guide">タイトルを選ぶと、お知らせの詳細を確認できます。</p>
+    <div id="announcementList" class="announcement-list" aria-live="polite">
+      <div class="announcement-state">お知らせを読み込んでいます...</div>
+    </div>
+  </section>
+
+  <div class="legal-links"><a href="contact.html">お問い合わせ</a><a href="operator.html">運営者情報</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="billing-policy.html">課金・解約ポリシー</a><a href="commerce-disclosure.html">特商法表記</a></div>
+</main>
+
+<footer class="site-footer"><div class="site-footer-inner"><span>© NOVELIGHT</span><a href="operator.html">運営者情報</a><a href="announcements.html">お知らせ</a><a href="contact.html">お問い合わせ</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="commerce-disclosure.html">特商法表記</a></div></footer>
+
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+<script src="novelight-client.js"></script>
+<script>
+  const SUPPORT_SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const SUPPORT_SUPABASE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+  const announcementAuthClient = supabase.createClient(
+    SUPPORT_SUPABASE_URL,
+    SUPPORT_SUPABASE_KEY
+  );
+  void NovelightClient.syncAuthHeader(announcementAuthClient);
+
+  function renderAnnouncements(rows) {
+    const container = document.getElementById('announcementList');
+    container.replaceChildren();
+
+    if (!rows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'announcement-state';
+      empty.textContent = '現在公開中のお知らせはありません。';
+      container.appendChild(empty);
+      return;
+    }
+
+    rows.forEach((row) => {
+      const article = document.createElement('article');
+      article.className = 'announcement-item';
+
+      const meta = document.createElement('div');
+      meta.className = 'announcement-meta';
+
+      const date = document.createElement('time');
+      date.className = 'announcement-date';
+      if (row.published_at) {
+        const publishedAt = new Date(row.published_at);
+        date.dateTime = publishedAt.toISOString();
+        date.textContent = publishedAt.toLocaleDateString('ja-JP', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+      }
+
+      const category = document.createElement('span');
+      category.className = 'announcement-category';
+      category.textContent = row.category || '';
+
+      const title = document.createElement('h3');
+      title.className = 'announcement-title';
+
+      const link = document.createElement('a');
+      link.href = `news-detail.html?id=${encodeURIComponent(row.id)}`;
+      link.textContent = row.title || 'お知らせ';
+      title.appendChild(link);
+
+      meta.append(date, category);
+      article.append(meta, title);
+      container.appendChild(article);
+    });
+  }
+
+  async function loadAnnouncements() {
+    try {
+      const response = await fetch('/api/announcements', {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+        credentials: 'same-origin'
+      });
+      if (!response.ok) throw new Error(`announcements ${response.status}`);
+      const data = await response.json();
+      renderAnnouncements(data.announcements || []);
+    } catch (error) {
+      console.error('announcements load failed', error);
+      const container = document.getElementById('announcementList');
+      container.replaceChildren();
+      const state = document.createElement('div');
+      state.className = 'announcement-state';
+      state.textContent =
+        'お知らせを読み込めませんでした。時間をおいて再度お試しください。';
+      container.appendChild(state);
+    }
+  }
+
+  void loadAnnouncements();
+</script>
+</body>
+</html>
