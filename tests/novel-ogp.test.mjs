@@ -144,7 +144,10 @@ test('Vercel excludes the static novel shell so the SEO rewrite can run', async 
       ),
       readFile(new URL('../.vercelignore', import.meta.url), 'utf8'),
       readFile(new URL('../novel.html', import.meta.url), 'utf8'),
-      readFile(new URL('../api/seo/templates/novel.html', import.meta.url), 'utf8')
+      readFile(
+        new URL('../api/seo/templates/novel.html', import.meta.url),
+        'utf8'
+      )
     ]);
 
   assert.match(
