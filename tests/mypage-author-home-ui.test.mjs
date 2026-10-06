@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [mypage, baseCss, roomCss] = await Promise.all([
+const [mypage, baseCss, roomCss, bookshelfHeader, helpCss] = await Promise.all([
   readFile('mypage.html', 'utf8'),
   readFile('novelight-author-home.css', 'utf8'),
-  readFile('novelight-author-room.css', 'utf8')
+  readFile('novelight-author-room.css', 'utf8'),
+  readFile('novelight-bookshelf-header.js', 'utf8'),
+  readFile('novelight-help.css', 'utf8')
 ]);
 
 test('author room uses the supplied background artwork with the night-study workspace shell', () => {
@@ -226,4 +228,23 @@ test('author room includes a collapsible mobile menu', () => {
   assert.match(baseCss, /transform:translateX\(-104%\)/u);
   assert.match(mypage, /aria-expanded="false"/u);
   assert.match(mypage, /創作室メニュー/u);
+});
+
+test('author room bookshelf and guide controls stay legible on the dark header and hero', () => {
+  assert.match(
+    bookshelfHeader,
+    /\.nl-bookshelf-header-link\{[^}]*color:#f6ecd4!important;[^}]*-webkit-text-fill-color:#f6ecd4!important;/u
+  );
+  assert.match(
+    bookshelfHeader,
+    /\.nl-bookshelf-header-label,\.nl-bookshelf-header-icon\{color:#f6ecd4!important;-webkit-text-fill-color:#f6ecd4!important\}/u
+  );
+  assert.match(
+    helpCss,
+    /body\.novelight-theme\.novelight-page-mypage \.nl-help-account-link\{color:#f6ecd4!important;-webkit-text-fill-color:#f6ecd4!important;/u
+  );
+  assert.match(
+    helpCss,
+    /body\.novelight-theme\.novelight-page-mypage \.nl-help-text\{[\s\S]*?-webkit-text-fill-color:#f6ecd4!important;/u
+  );
 });
