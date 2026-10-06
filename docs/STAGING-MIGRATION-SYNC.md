@@ -17,7 +17,7 @@ Production migration planは、Production承認handoff前にrepositoryとStaging
 - `.github/workflows/supabase-staging-sync-request.yml`
 - Control Issue: `#294 [Staging Control] Supabase migration sync`
 
-request bridgeはmutation SQLやDB credentialを扱わず、検証済みのexact inputだけをSingle Source workflowへ渡す。`workflow_dispatch` はfallbackとして残す。
+request bridgeはmutation SQLやDB credentialを扱わず、ユーザーの明示的な「ステージング承認」から生成された検証済みexact inputだけをSingle Source workflowへ渡す。Single Source mutation workflowは `workflow_call` 専用とし、直接の `workflow_dispatch` は許可しない。
 
 これらはProduction migration workflow、Production approval、通常のStaging smokeとは分離する。
 
@@ -56,18 +56,20 @@ Staging DBへ接続するfirst-party stepは `PGSSLMODE=require` を必須とし
 
 手動でGitHub Actions画面へ `revision` / `migrations` / `confirmation` を繰り返し入力することを通常運用にしない。
 
-Staging DB mutationについてユーザーの明示承認が得られた後、最新mainとactual pendingをread-onlyで再確認し、Control Issue #294へrepository ownerとして次の1行だけを投稿する。
+Staging DB mutationについてユーザーから明示的な「ステージング承認」が得られた後、最新mainとactual pendingをread-onlyで再確認し、ChatGPT / NLOがControl Issue #294へrepository ownerとして次の1行だけを投稿する。ユーザーへJSONを手入力させない。
 
 ```text
-NOVELIGHT_STAGING_MIGRATION_SYNC {"mainSha":"<exact-current-main-sha>","migration":"<single-14-digit-version>","confirmation":"SYNC STAGING"}
+NOVELIGHT_STAGING_APPROVE {"scope":"migration-sync","mainSha":"<exact-current-main-sha>","migration":"<single-14-digit-version>","confirmation":"STAGING APPROVED"}
 ```
+
+request bridgeはこの人間承認を検証した後、内部のreusable mutation workflowへだけ `confirmation=SYNC STAGING` を渡す。
 
 request bridgeは以下をFail-Closedで要求する。
 
 - Issue #294そのもの、固定title、owner作成issueであること
 - comment authorがrepository ownerであり `OWNER` associationであること
-- JSONがexactly `mainSha` / `migration` / `confirmation` の3キーだけを持つこと
-- `mainSha` が40文字lowercase hex、`migration` が14桁1件、`confirmation` がexactly `SYNC STAGING` であること
+- JSONがexactly `scope` / `mainSha` / `migration` / `confirmation` の4キーだけを持つこと
+- `scope` がexactly `migration-sync`、`mainSha` が40文字lowercase hex、`migration` が14桁1件、`confirmation` がexactly `STAGING APPROVED` であること
 - claim前にrequested SHAとcurrent `main` が一致すること
 - 同一request commentが過去に `CLAIMED` または `CONSUMED` されていないこと
 
@@ -114,12 +116,10 @@ DDLが途中まで適用された可能性がある場合、自動rollbackを続
 
 `20260919203910` / `20260920204000` がStaging migration historyでは適用済みなのに、Geometry Thumbnail Engineの公式素材データが欠落している場合、migrationを再適用したりmigration historyを書き換えたりしない。復旧対象はcanonicalな背景1点、`NOVELIGHT_thumbnail_assets_v1_30` の30点、`NOVELIGHT_base_books_32_final` の32冊、合計63素材とする。旧legacy素材やmanifest外のStorage objectは自動削除しない。
 
-この限定状態では `.github/workflows/staging-base-books-32-recovery.yml` を唯一の自動復旧経路とする。mutation承認を作る前に、同workflowを `workflow_dispatch` でexact current main SHAへ固定してread-only auditを実行し、公式素材precheckとrepository/Staging migration parityを確認する。必要な公開面確認は `.github/workflows/staging-smoke.yml` を `read_only_only=true` で実行し、認証fixture・課金fixtureその他のStaging writeを発生させない。
-
-read-only auditがPASSした後だけ、Issue #294へrepository ownerとしてexact current main SHAに固定した次のrequestを投稿する。
+この限定状態では `.github/workflows/staging-base-books-32-recovery.yml` を唯一の自動復旧経路とする。直接の `workflow_dispatch` は使わず、ユーザーの明示的な「ステージング承認」後にIssue #294へrepository ownerとしてexact current main SHAに固定したrequestを投稿する。workflow自身がwrite前に公式素材precheckとrepository/Staging migration parityをread-onlyで実行し、そこで不一致があれば承認をclaimせず停止する。
 
 ```text
-NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE {"mainSha":"<exact-current-main-sha>","packKey":"NOVELIGHT_base_books_32_final","geometryMigration":"20260920204000","confirmation":"RECOVER STAGING BASE BOOKS 32"}
+NOVELIGHT_STAGING_APPROVE {"scope":"base-books-recovery","mainSha":"<exact-current-main-sha>","packKey":"NOVELIGHT_base_books_32_final","geometryMigration":"20260920204000","confirmation":"STAGING APPROVED"}
 ```
 
 この復旧は次をFail-Closedで固定する。
@@ -141,7 +141,7 @@ NOVELIGHT_STAGING_BASE_BOOKS_32_RECOVERY_APPROVE {"mainSha":"<exact-current-main
 migrationを含む変更では次を維持する。
 
 1. migration / precheck / postcheck / rollbackと関連コードをCIで検証して `main` へmergeする。
-2. Staging DB mutationの明示承認後、latest mainとsingle pending migrationをread-onlyで再確認し、Issue #294のowner-only request bridgeから `supabase-staging-sync.yml` をexact current main SHAと単一のexact migration versionに固定して実行する。複数pendingがある場合は依存順序で1件ずつ同期する。manual `workflow_dispatch` はfallbackとする。
+2. ユーザーの明示的な「ステージング承認」後、latest mainとsingle pending migrationをread-onlyで再確認し、Issue #294のowner-only request bridgeから `supabase-staging-sync.yml` をexact current main SHAと単一のexact migration versionに固定して1回だけ実行する。複数pendingがある場合は依存順序で1件ずつ新しい承認を取得する。直接のmanual `workflow_dispatch` は禁止する。
 3. Staging schema capability gateをPASSさせる。
 4. authenticated / billing Staging smokeをPASSさせる。
 5. Production migration planでProduction pending一致・dry-run・Staging exact parityを確認する。

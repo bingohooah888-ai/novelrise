@@ -7,31 +7,33 @@ const workflow = await readFile(
   'utf8'
 );
 
-test('Staging Live Proof binds only to a real Vercel deployment URL and revision', () => {
-  assert.match(workflow, /deployment_status:/);
+test('Staging Live Proof is approval-only and exact-target bound', () => {
+  assert.match(workflow, /issue_comment:/);
+  assert.doesNotMatch(workflow, /deployment_status:/);
+  assert.doesNotMatch(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /pull_request:/);
-  assert.match(workflow, /github\.event\.deployment_status\.environment_url/);
+  assert.match(workflow, /github\.event\.issue\.number == 188/);
   assert.match(
     workflow,
-    /github\.event\.deployment_status\.environment_url != ''/
+    /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
   );
   assert.match(
     workflow,
-    /contains\(github\.event\.deployment_status\.environment_url, '\.vercel\.app'\)/
+    /github\.event\.comment\.author_association == 'OWNER'/
   );
-  assert.doesNotMatch(workflow, /DEPLOYMENT_TARGET_URL/);
-  assert.match(workflow, /github\.event\.deployment\.sha/);
+  assert.match(workflow, /NOVELIGHT_STAGING_APPROVE \{"scope":"live-proof",/);
+  assert.match(
+    workflow,
+    /keys == \["confirmation","mainSha","previewUrl","scope"\]/
+  );
+  assert.match(workflow, /STAGING APPROVED/);
+  assert.match(workflow, /\^https:\/\/\[\^\/\]\+\$/);
+  assert.match(workflow, /\^\[0-9a-f\]\{40\}\$/);
+  assert.match(workflow, /git\/ref\/heads\/main/);
   assert.match(workflow, /\/api\/deployment-revision/);
   assert.match(workflow, /deployed_revision.*EXPECTED_REVISION/);
   assert.doesNotMatch(workflow, /branch_slug/);
   assert.doesNotMatch(workflow, /novelrise-git-\$\{branch_slug\}/);
-});
-
-test('manual Staging Live Proof requires an exact URL and revision', () => {
-  assert.match(workflow, /preview_url:[\s\S]*required: true/);
-  assert.match(workflow, /revision:[\s\S]*required: true/);
-  assert.match(workflow, /\^https:\/\/\[\^\/\]\+\$/);
-  assert.match(workflow, /\^\[0-9a-f\]\{40\}\$/);
 });
 
 test('Staging Live Proof remains fail closed against Production Supabase', () => {

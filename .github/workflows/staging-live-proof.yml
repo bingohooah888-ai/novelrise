@@ -1,17 +1,8 @@
 name: Staging Live Proof
 
 on:
-  deployment_status:
-  workflow_dispatch:
-    inputs:
-      preview_url:
-        description: Exact HTTPS Vercel Preview URL
-        required: true
-        type: string
-      revision:
-        description: Exact 40-character commit SHA deployed at the Preview URL
-        required: true
-        type: string
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -19,53 +10,68 @@ permissions:
 jobs:
   prove-preview-target:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.deployment_status.state == 'success' &&
-      github.event.deployment.environment != 'Production' &&
-      github.event.deployment.environment != 'production' &&
-      github.event.deployment_status.environment_url != '' &&
-      contains(github.event.deployment_status.environment_url, '.vercel.app'))
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 188 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_APPROVE {"scope":"live-proof",')
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve exact Preview target
+      - name: Resolve exact approved Preview target
         id: preview
         env:
-          MANUAL_PREVIEW_URL: ${{ inputs.preview_url }}
-          MANUAL_REVISION: ${{ inputs.revision }}
-          DEPLOYMENT_ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
-          DEPLOYMENT_REVISION: ${{ github.event.deployment.sha }}
+          GH_TOKEN: ${{ github.token }}
+          STAGING_APPROVAL_BODY: ${{ github.event.comment.body }}
         shell: bash
         run: |
           set -euo pipefail
 
-          case "$GITHUB_EVENT_NAME" in
-            workflow_dispatch)
-              preview_url="${MANUAL_PREVIEW_URL%/}"
-              expected_revision="$MANUAL_REVISION"
-              ;;
-            deployment_status)
-              preview_url="${DEPLOYMENT_ENVIRONMENT_URL%/}"
-              expected_revision="$DEPLOYMENT_REVISION"
-              ;;
+          prefix='NOVELIGHT_STAGING_APPROVE '
+          case "$STAGING_APPROVAL_BODY" in
+            "$prefix"*) payload="${STAGING_APPROVAL_BODY#"$prefix"}" ;;
             *)
-              echo "Unexpected Staging Live Proof trigger: $GITHUB_EVENT_NAME"
+              echo 'CONFIG_DRIFT: invalid Staging approval prefix.'
               exit 1
               ;;
           esac
 
+          echo "$payload" | jq -e 'keys == ["confirmation","mainSha","previewUrl","scope"]' >/dev/null
+          scope="$(echo "$payload" | jq -er '.scope')"
+          expected_revision="$(echo "$payload" | jq -er '.mainSha')"
+          preview_url="$(echo "$payload" | jq -er '.previewUrl' | sed 's#/$##')"
+          confirmation="$(echo "$payload" | jq -er '.confirmation')"
+
+          test "$scope" = 'live-proof' || {
+            echo "CONFIG_DRIFT: unexpected Staging approval scope: $scope"
+            exit 1
+          }
+          test "$confirmation" = 'STAGING APPROVED' || {
+            echo 'CONFIG_DRIFT: Staging approval confirmation mismatch.'
+            exit 1
+          }
           if [[ ! "$preview_url" =~ ^https://[^/]+$ ]]; then
-            echo "Preview URL must be an exact HTTPS origin."
+            echo 'Preview URL must be an exact HTTPS origin.'
             exit 1
           fi
           if [[ ! "$expected_revision" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Preview revision must be an exact 40-character commit SHA."
+            echo 'Preview revision must be an exact 40-character commit SHA.'
             exit 1
           fi
 
+          current_main="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              --jq '.object.sha'
+          )"
+          test "$current_main" = "$expected_revision" || {
+            echo "CONFIG_DRIFT: approval targets $expected_revision but current main is $current_main."
+            exit 1
+          }
+
           echo "url=$preview_url" >> "$GITHUB_OUTPUT"
           echo "revision=$expected_revision" >> "$GITHUB_OUTPUT"
-          echo "Resolved Preview URL: $preview_url"
-          echo "Resolved Preview revision: $expected_revision"
+          echo "Resolved approved Preview URL: $preview_url"
+          echo "Resolved approved Preview revision: $expected_revision"
 
       - name: Verify exact deployed Preview revision
         env:

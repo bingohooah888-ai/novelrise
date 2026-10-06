@@ -195,11 +195,28 @@ Connectorやクラウド実行環境でローカルnpmコマンドを実行で�
 
 「はい」が単なる続行ボタンになる場合は、1回目から自動化対象とする。2回、3回と繰り返すまで待たない。ただしユーザーから実際に新しいメッセージが届いた後にツール作業を再開する場合、前ターンのカードは失効しているため新しいカードだけは先に送る。
 
+
+## Preview / Staging コスト承認ゲート
+
+Vercel Preview / Supabase Stagingは「Productionではないから安全な自動継続」と扱わない。外部の従量課金・ビルド時間・Staging稼働を増やすため、MASTERで定める独立したコスト承認境界とする。
+
+以下は明示的な「ステージング承認」なしではHard Fail-Closedする。
+
+- Preview deployment / Redeploy
+- Staging write / migration sync
+- Staging Smoke / E2E / Live Proof
+- Staging専用Preview ref更新とPreview生成
+
+「はい」「続けて」「承認」「本番承認」はこの承認の代用にしない。承認はexact main SHA + scope + 1回の実行に束縛し、完了後はDefault-Denyへ戻す。read-onlyの請求・設定・ログ確認は対象外とする。
+
+新しいチャット・別エージェントでもrepository policyをfreshに読み、過去会話を知らないことを理由にこのゲートを省略しない。
+
 ## 自動停止を残す場面
 
 以下は自動継続しない。
 
 - Productionへの破壊的・高影響変更
+- 明示的なステージング承認がないVercel Preview / Supabase Staging実行
 - 課金、決済、購入、契約変更
 - Secret、API key、2FA、Recovery code、OAuth本人承認
 - データ削除、不可逆migration等の破壊的操作

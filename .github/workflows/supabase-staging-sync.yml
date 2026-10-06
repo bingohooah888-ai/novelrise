@@ -15,20 +15,6 @@ on:
         description: Type SYNC STAGING to allow the Staging database mutation
         required: true
         type: string
-  workflow_dispatch:
-    inputs:
-      revision:
-        description: Exact current main SHA to synchronize to Staging
-        required: true
-        type: string
-      migrations:
-        description: Single canonical migration version expected to be pending on Staging
-        required: true
-        type: string
-      confirmation:
-        description: Type SYNC STAGING to allow the Staging database mutation
-        required: true
-        type: string
 
 permissions:
   contents: read

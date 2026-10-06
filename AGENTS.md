@@ -18,6 +18,24 @@ NLOの能力不足・自己拡張では `docs/NLO-SELF-EXPANSION-POLICY.md` も�
 
 NLOとRemote Desktop Commander（DC）は別物である。NLOが指定されている作業でDCをNLOとして代用・混同しない。DC deviceがofflineでも、それ単独ではNLO offlineと判定しない。直接NLO MCPが見えない場合はIssue #797の正式 `nlo_health` Bridge経路を確認する。
 
+
+## 2.5 Preview / Staging コストゲート
+
+チャット記憶に依存せず、Vercel Preview / Supabase Stagingの実行は既定で禁止する。通常のbranch push、PR、CI、FAST PATCHを理由にPreviewやStaging Smokeを自動起動しない。
+
+次を実行する直前には、最新main上のMASTERで定める明示的な「ステージング承認」が必要。
+
+- Vercel Preview deploymentの作成・Redeploy
+- Supabase Stagingへのwrite / migration sync
+- Staging Smoke / E2E / Live Proof
+- Staging専用Preview ref更新と、それに続くPreview生成
+
+「はい」「続けて」「承認」「本番承認」はステージング承認の代用にしない。承認はexact main SHA + scope + 1回の実行へ束縛し、完了後はDefault-Denyへ戻す。
+
+Vercel Git integrationは `main` 以外の自動deploymentを禁止する。Staging workflowはPR / push / deployment_status / 無条件workflow_dispatchから起動せず、Issue #188等のOWNER機械可読Staging approval経路だけを入口とする。
+
+read-onlyの設定・請求・ログ確認はこのゲートの対象外。
+
 ## 3. 最初にリスク分類する
 
 実装開始時に、作業を次のどちらかへ分類する。

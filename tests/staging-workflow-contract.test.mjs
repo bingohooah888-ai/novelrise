@@ -23,20 +23,32 @@ const billingSmoke = await readFile(
 const checkout = await readFile('api/_lib/checkout.js', 'utf8');
 const portal = await readFile('api/_lib/billing-portal.js', 'utf8');
 
-test('Staging workflow is not coupled to the historical temporary branch', () => {
+test('Staging workflow is approval-only and not coupled to historical triggers', () => {
   assert.doesNotMatch(workflow, /ci\/isolate-staging-auth-smoke/);
   assert.doesNotMatch(workflow, /novelrise-git-ci-isolate-staging-auth-smoke/);
-  assert.match(workflow, /deployment_status:/);
-  assert.match(workflow, /revision:/);
-  assert.match(workflow, /required: true/);
-});
-
-test('automatic deployment-status smoke only accepts Vercel deployments', () => {
-  assert.match(workflow, /github\.event\.sender\.login == 'vercel\[bot\]'/);
+  assert.match(workflow, /issue_comment:/);
+  assert.doesNotMatch(workflow, /deployment_status:/);
+  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /issues:\s*\n\s+types: \[reopened\]/);
   assert.match(
     workflow,
-    /github\.event\.deployment_status\.state == 'success'/
+    /NOVELIGHT_STAGING_APPROVE \{\"scope\":\"full-smoke\",/
   );
+  assert.match(workflow, /STAGING APPROVED/);
+});
+
+test('Staging approval is owner-only and exact-main bound', () => {
+  assert.match(workflow, /github\.event\.issue\.number == 188/);
+  assert.match(
+    workflow,
+    /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
+  );
+  assert.match(
+    workflow,
+    /github\.event\.comment\.author_association == 'OWNER'/
+  );
+  assert.match(workflow, /keys == \[\"confirmation\",\"mainSha\",\"scope\"\]/);
+  assert.match(workflow, /current main is \$current_main/);
 });
 
 test('authenticated smoke uses integrated SCOUT seed history', () => {
@@ -67,9 +79,8 @@ test('consolidated Staging workflow runs the shared deployment contract before p
   assert.ok(verifierIndex < installIndex);
 });
 
-test('manual Staging smoke can stop after read-only deployment and public/runtime checks', () => {
-  assert.match(workflow, /read_only_only:/);
-  assert.match(workflow, /default: false/);
+test('approved Staging smoke verifies read-only surface before write-capable phases', () => {
+  assert.doesNotMatch(workflow, /read_only_only:/);
   const readonlyRun = workflow.indexOf('Run read-only staging smoke');
   const firstWrite = workflow.indexOf(
     'Verify authenticated Staging credentials'
@@ -77,12 +88,6 @@ test('manual Staging smoke can stop after read-only deployment and public/runtim
   assert.notEqual(readonlyRun, -1);
   assert.notEqual(firstWrite, -1);
   assert.ok(readonlyRun < firstWrite);
-  const guards = [
-    ...workflow.matchAll(
-      /github\.event_name != 'workflow_dispatch' \|\| inputs\.read_only_only != true/g
-    )
-  ];
-  assert.ok(guards.length >= 10);
 });
 
 test('write Staging phases require deployed Supabase and Stripe isolation evidence', () => {
@@ -196,36 +201,21 @@ test('Preview billing return URLs use the exact Vercel deployment helper', () =>
   assert.doesNotMatch(portal, /function getAppBaseUrl/);
 });
 
-test('chat-controlled Staging smoke only accepts the dedicated owner-reopened control issue', () => {
-  assert.match(workflow, /issues:\s*\n\s+types: \[reopened\]/);
-  assert.doesNotMatch(workflow, /issue_comment:/);
-  assert.match(workflow, /github\.event\.issue\.number == 188/);
-  assert.match(
-    workflow,
-    /github\.event\.issue\.user\.login == 'bingohooah888-ai'/
-  );
-  assert.match(workflow, /github\.event\.sender\.login == 'bingohooah888-ai'/);
-});
-
-test('chat-controlled Staging smoke resolves and rechecks current main before write-capable verification', () => {
+test('approval-controlled Staging smoke rechecks current main before write-capable verification', () => {
   assert.match(workflow, /git\/ref\/heads\/main/);
   assert.match(workflow, /EXPECTED_REVISION=\$target/);
-  assert.match(workflow, /Confirm controlled revision is still current main/);
+  assert.match(workflow, /Confirm approved revision is still current main/);
   assert.match(
     workflow,
     /chat-controlled Staging Smoke requires STAGING_E2E_READY=true/
   );
-  assert.match(
-    workflow,
-    /github\.event_name == 'issues' && 'workflow_dispatch'/
-  );
 });
 
-test('Staging execution concurrency is job-scoped so skipped issue events cannot cancel a real smoke', () => {
+test('Staging execution concurrency is job-scoped for approved runs', () => {
   const jobsIndex = workflow.indexOf('jobs:');
   const concurrencyIndex = workflow.indexOf('concurrency:');
   assert.notEqual(jobsIndex, -1);
   assert.notEqual(concurrencyIndex, -1);
   assert.ok(concurrencyIndex > jobsIndex);
-  assert.match(workflow, /'chat-control'/);
+  assert.match(workflow, /novelight-staging-smoke-approved/);
 });

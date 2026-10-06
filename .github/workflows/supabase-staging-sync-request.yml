@@ -21,7 +21,7 @@ jobs:
       github.event.issue.user.login == 'bingohooah888-ai' &&
       github.event.comment.user.login == 'bingohooah888-ai' &&
       github.event.comment.author_association == 'OWNER' &&
-      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_MIGRATION_SYNC ')
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_APPROVE {"scope":"migration-sync",')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          prefix='NOVELIGHT_STAGING_MIGRATION_SYNC '
+          prefix='NOVELIGHT_STAGING_APPROVE '
           request_json="${COMMENT_BODY#"$prefix"}"
           if [ "$request_json" = "$COMMENT_BODY" ]; then
             echo 'Staging migration sync request blocked: command prefix mismatch.'
@@ -51,10 +51,11 @@ jobs:
 
           printf '%s\n' "$request_json" | jq -e '
             type == "object" and
+            (.scope == "migration-sync") and
             (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
             (.migration | type == "string" and test("^[0-9]{14}$")) and
-            (.confirmation == "SYNC STAGING") and
-            ((keys | sort) == (["confirmation", "mainSha", "migration"] | sort))
+            (.confirmation == "STAGING APPROVED") and
+            ((keys | sort) == (["confirmation", "mainSha", "migration", "scope"] | sort))
           ' >/dev/null || {
             echo 'Staging migration sync request blocked: invalid request JSON.'
             exit 1
@@ -62,7 +63,7 @@ jobs:
 
           main_sha="$(printf '%s\n' "$request_json" | jq -r '.mainSha')"
           migration="$(printf '%s\n' "$request_json" | jq -r '.migration')"
-          confirmation="$(printf '%s\n' "$request_json" | jq -r '.confirmation')"
+          confirmation='SYNC STAGING'
 
           {
             echo "main_sha=$main_sha"
