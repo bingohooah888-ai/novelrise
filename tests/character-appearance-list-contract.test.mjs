@@ -112,6 +112,27 @@ test('author and reader UI fail safe when DB runtime is not deployed', () => {
   assert.match(work, /characters\.html\?novel_id=/u);
 });
 
+test('character manager keeps editing visible beside a scrollable character list on desktop', () => {
+  assert.match(manager, /\.character-form-panel\{position:sticky;top:18px/iu);
+  assert.match(
+    manager,
+    /\.character-list-panel\{display:flex;max-height:calc\(100vh - 36px\)/iu
+  );
+  assert.match(
+    manager,
+    /\.character-list-scroll\{min-height:0;overflow-y:auto/iu
+  );
+  assert.match(
+    manager,
+    /@media\(max-width:720px\)[\s\S]*\.character-form-panel\{position:static\}[\s\S]*\.character-list-scroll\{overflow:visible/iu
+  );
+});
+
+test('character image picker shows the recommended pixel size and aspect ratio', () => {
+  assert.match(manager, /推奨サイズ：800 × 1200 px（縦横比 2:3）/u);
+  assert.match(manager, /JPEG \/ PNG \/ WebP、2MB以下/u);
+});
+
 test('reader wording explicitly states the no-future-information contract', () => {
   assert.match(runtime, /この話より先の登場情報は表示しません/u);
   assert.match(runtime, /appears_current_episode/u);
