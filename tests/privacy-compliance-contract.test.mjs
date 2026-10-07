@@ -7,7 +7,9 @@ const contact = readFileSync('contact.html', 'utf8');
 const betaAuthors = readFileSync('beta-authors.html', 'utf8');
 
 const requiredPrivacyFragments = [
-  '最終改定日：2026年9月27日',
+  '最終改定日：2026年10月7日',
+  'X Pixel',
+  'X（広告配信・効果測定）',
   'β版先行作者登録で入力するペンネーム',
   '読書進捗、最終閲覧日時、本棚の読書状態・リスト名・メモ',
   'Checkout Session ID',
