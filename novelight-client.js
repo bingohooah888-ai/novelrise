@@ -4,6 +4,18 @@
   const VISITOR_KEY = 'novelight_visitor_token';
   const TRAFFIC_KEY = 'novelight_first_touch';
   const TOUCH_SESSION_KEY = 'novelight_touch_recorded';
+  // X Pixel IDs are public measurement identifiers. Keep them blank until
+  // Event Manager values are formally configured for Production.
+  const X_PIXEL_CONFIG = Object.freeze({
+    pixelId: '',
+    signupEventId: ''
+  });
+  const X_PIXEL_LIBRARY_URL = 'https://static.ads-twitter.com/uwt.js';
+  const X_PIXEL_PRODUCTION_HOSTS = new Set([
+    'novelight.jp',
+    'www.novelight.jp'
+  ]);
+  const X_SIGNUP_STORAGE_PREFIX = 'novelight_x_signup_conversion:';
   // Infrastructure alias used only to distinguish Vercel Production from Preview.
   const VERCEL_INTERNAL_PRODUCTION_HOST = 'novelrise.vercel.app';
   const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
@@ -681,6 +693,111 @@
     }
   }
 
+  function getXPixelConfig() {
+    const runtimeConfig =
+      window.NOVELIGHT_X_PIXEL_CONFIG &&
+      typeof window.NOVELIGHT_X_PIXEL_CONFIG === 'object'
+        ? window.NOVELIGHT_X_PIXEL_CONFIG
+        : {};
+
+    return {
+      pixelId: String(
+        runtimeConfig.pixelId || X_PIXEL_CONFIG.pixelId || ''
+      ).trim(),
+      signupEventId: String(
+        runtimeConfig.signupEventId || X_PIXEL_CONFIG.signupEventId || ''
+      ).trim()
+    };
+  }
+
+  function isXPixelProductionHost() {
+    return X_PIXEL_PRODUCTION_HOSTS.has(window.location.hostname.toLowerCase());
+  }
+
+  function isValidXPixelId(value) {
+    return /^[A-Za-z0-9_-]{2,64}$/.test(String(value || ''));
+  }
+
+  function isValidXEventId(value) {
+    return /^tw-[A-Za-z0-9_-]{2,128}$/.test(String(value || ''));
+  }
+
+  function installXPixel() {
+    const config = getXPixelConfig();
+    if (!isXPixelProductionHost() || !isValidXPixelId(config.pixelId)) {
+      return false;
+    }
+    if (window.__novelightXPixelInstalled) return true;
+
+    const twq =
+      window.twq ||
+      function () {
+        twq.exe
+          ? twq.exe.apply(twq, arguments)
+          : twq.queue.push(arguments);
+      };
+
+    if (!window.twq) {
+      twq.version = '1.1';
+      twq.queue = [];
+      window.twq = twq;
+    }
+
+    if (!document.querySelector('script[data-novelight-x-pixel="base"]')) {
+      const script = document.createElement('script');
+      script.src = X_PIXEL_LIBRARY_URL;
+      script.async = true;
+      script.dataset.novelightXPixel = 'base';
+      document.head.appendChild(script);
+    }
+
+    window.twq('config', config.pixelId);
+    window.__novelightXPixelInstalled = true;
+    return true;
+  }
+
+  function trackXSignupConversion(userId) {
+    const config = getXPixelConfig();
+    if (
+      !isXPixelProductionHost() ||
+      !isValidXPixelId(config.pixelId) ||
+      !isValidXEventId(config.signupEventId) ||
+      !installXPixel()
+    ) {
+      return false;
+    }
+
+    const normalizedUserId = String(userId || '').trim();
+    const dedupeKey = normalizedUserId
+      ? `${X_SIGNUP_STORAGE_PREFIX}${normalizedUserId}`
+      : '';
+
+    try {
+      if (dedupeKey && window.localStorage.getItem(dedupeKey) === '1') {
+        return false;
+      }
+    } catch {
+      // Storage can be unavailable in hardened browser modes. Tracking itself
+      // remains best-effort and must never block registration.
+    }
+
+    try {
+      window.twq('event', config.signupEventId);
+      if (dedupeKey) {
+        try {
+          window.localStorage.setItem(dedupeKey, '1');
+        } catch {
+          // See storage note above.
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('X signup conversion failed', {
+        name: error?.name || 'Error'
+      });
+      return false;
+    }
+  }
 
   function installScoutTitleToastRuntime() {
     if (window.__novelightScoutTitleToastRuntimeInstalled) return false;
@@ -717,6 +834,7 @@
     return true;
   }
 
+  installXPixel();
   installScoutTitleToastRuntime();
 
   window.NovelightClient = {
@@ -727,6 +845,7 @@
     recordJourney,
     recordEpisodePv,
     recordNeutralSearchImpressions,
+    trackXSignupConversion,
     storedSource,
     syncAuthHeader,
     installPublicHeader,
