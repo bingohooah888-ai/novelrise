@@ -118,10 +118,8 @@
       ? new Date(novel.created_at).toLocaleDateString('ja-JP')
       : '';
     const seedBadge =
-      mode === 'seed'
-        ? `<div class="seed-count">✦ ${Number(novel.light_seed_count || 0).toLocaleString()}</div>`
-        : '';
-    return `<a class="novel-card shelf-card${mode === 'seed' ? ' seed-card' : ''}" href="novel.html?id=${encodeURIComponent(novelId(novel))}">${seedBadge}${coverMarkup(novel)}<div class="card-copy"><div class="genre">${esc(novel.genre || '未設定')}</div><div class="novel-title">${esc(novel.title)}</div><div class="meta">作者 ${esc(novel.author_name || '未設定')} ・ 投稿日 ${created} ・ ★ ${Number(novel.favorite_count || 0).toLocaleString()}</div></div></a>`;
+      mode === 'seed' ? '<div class="seed-count">✦ LIGHT SEED</div>' : '';
+    return `<a class="novel-card shelf-card${mode === 'seed' ? ' seed-card' : ''}" href="novel.html?id=${encodeURIComponent(novelId(novel))}">${seedBadge}${coverMarkup(novel)}<div class="card-copy"><div class="genre">${esc(novel.genre || '未設定')}</div><div class="novel-title">${esc(novel.title)}</div><div class="meta">作者 ${esc(novel.author_name || '未設定')} ・ 投稿日 ${created}</div></div></a>`;
   }
 
   function appendRows(rows) {
