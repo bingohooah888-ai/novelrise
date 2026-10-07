@@ -87,8 +87,8 @@ test('Home renders the formal LIGHT SEED feed once and respects the viewport lim
     'href',
     'novel.html?id=7000'
   );
-  await expect(page.locator('#seedGrid .seed-count').first()).toContainText(
-    '1'
+  await expect(page.locator('#seedGrid .seed-count').first()).toHaveText(
+    '✦ LIGHT SEED'
   );
 
   const calls = await page.evaluate(() => globalThis.__NOVELIGHT_E2E_CALLS__);
