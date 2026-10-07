@@ -18,7 +18,7 @@ test('X Pixel is fail closed', () => {
 
 test('signup fires one conversion per user', () => {
   const signupCall = signup.indexOf('client.auth.signUp');
-  const eventCall = signup.indexOf('trackXSignupConversion');
+  const eventCall = signup.indexOf('recordXSignupConversion(data?.user?.id)');
   assert.ok(signupCall >= 0);
   assert.ok(eventCall > signupCall);
   assert.match(client, /novelight_x_signup_conversion:/);
