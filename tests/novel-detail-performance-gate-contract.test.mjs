@@ -20,7 +20,7 @@ test('novel detail never uses select star and fetches only missing display field
   assert.doesNotMatch(source, /\.select\('\*'\)/);
   assert.match(
     source,
-    /loadFullNovelAndRender\(\)[\s\S]*select\('description,pv'\)/
+    /loadFullNovelAndRender\(\)[\s\S]*select\('description'\)/
   );
   assert.match(source, /novel=Object\.assign\(\{\},novel,result\.data\)/);
 });
