@@ -77,11 +77,13 @@
     if (!copy || !button) return;
 
     const wasExpanded = host.classList.contains('is-expanded');
-    if (wasExpanded) host.classList.remove('is-expanded');
-    const overflow = copy.scrollHeight > copy.clientHeight + 1;
+    host.classList.add('is-expanded');
+    const fullHeight = copy.getBoundingClientRect().height;
+    host.classList.remove('is-expanded');
+    const clampedHeight = copy.getBoundingClientRect().height;
+    const overflow = fullHeight > clampedHeight + 1;
     button.hidden = !overflow;
     if (overflow && wasExpanded) host.classList.add('is-expanded');
-    if (!overflow) host.classList.remove('is-expanded');
     host.dataset.novelightSynopsisOverflow = overflow ? 'true' : 'false';
     syncButton(host);
   }
