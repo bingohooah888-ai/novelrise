@@ -137,6 +137,12 @@
     month: 'long',
     day: 'numeric'
   });
+  const jstDateParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
   const rankNames = ['', 'NOCTIS', 'VESPER', 'UMBRA'];
   const previewNextRankXp = { 1: 1400, 2: 4800 };
   const dayMs = 24 * 60 * 60 * 1000;
@@ -164,11 +170,27 @@
     return dateTime.format(new Date(value));
   }
 
+  function jstDayNumber(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    const parts = Object.fromEntries(
+      jstDateParts.formatToParts(date).map((part) => [part.type, part.value])
+    );
+    return (
+      Date.UTC(
+        Number(parts.year),
+        Number(parts.month) - 1,
+        Number(parts.day)
+      ) / dayMs
+    );
+  }
+
   function deadlineDaysRemaining(value) {
     if (!value) return null;
-    const deadline = new Date(value);
-    if (Number.isNaN(deadline.getTime())) return null;
-    return Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / dayMs));
+    const deadlineDay = jstDayNumber(value);
+    const today = jstDayNumber(new Date());
+    if (deadlineDay === null || today === null) return null;
+    return Math.max(0, deadlineDay - today);
   }
 
   function maskEmail(value) {
@@ -249,28 +271,29 @@
     setText('campaignStartDate', formatDate(campaign.startsAt));
     setText('campaignEndDate', formatDate(campaign.endsAt));
 
-    const deadlineRemaining = deadlineDaysRemaining(
-      eligibility.eligibilityDeadline
-    );
-    const configuredWindowDays = Number(
-      eligibility.isNewUser
-        ? campaign.newUserWindowDays
-        : campaign.existingUserWindowDays
-    );
+    const serverDaysRemaining =
+      eligibility.daysRemaining === null ||
+      eligibility.daysRemaining === undefined
+        ? null
+        : Number(eligibility.daysRemaining);
     const personalDaysRemaining =
-      deadlineRemaining ??
-      (Number.isFinite(configuredWindowDays) ? configuredWindowDays : null);
+      eligibility.eligibilityDeadline && Number.isFinite(serverDaysRemaining)
+        ? Math.max(0, serverDaysRemaining)
+        : deadlineDaysRemaining(eligibility.eligibilityDeadline);
 
     if (personalDaysRemaining === null) {
       setText('daysRemaining', '—');
-      setText('countdownNote', 'LEVEL 10達成期限を確認できませんでした。');
+      setText(
+        'countdownNote',
+        eligibility.reason === 'entry_required'
+          ? '対象ログインまたは登録後にLEVEL 10達成期限を確定します。'
+          : 'LEVEL 10達成期限を確認できませんでした。'
+      );
     } else {
       setText('daysRemaining', n(personalDaysRemaining));
       setText(
         'countdownNote',
-        eligibility.eligibilityDeadline
-          ? `LEVEL 10達成期限：${formatDate(eligibility.eligibilityDeadline)}まで（JST）`
-          : `LEVEL 10達成期間：対象ログインまたは登録後から${n(configuredWindowDays)}日間`
+        `LEVEL 10達成期限：${formatDate(eligibility.eligibilityDeadline)}まで（JST）`
       );
     }
 
