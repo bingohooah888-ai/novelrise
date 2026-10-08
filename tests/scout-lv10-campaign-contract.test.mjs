@@ -232,3 +232,15 @@ test('campaign landing hero prioritizes reward and supports approved artwork', (
   assert.match(page, /STEP 2/);
   assert.match(page, /STEP 3/);
 });
+
+test('approved PC and mobile campaign image files are present before release', () => {
+  for (const name of [
+    'NOVELIGHT_SCOUT_PC_1888x913.webp',
+    'NOVELIGHT_SCOUT_MOBILE_941x1672.webp'
+  ]) {
+    const bytes = readFileSync(new URL('../assets/' + name, import.meta.url));
+    assert.ok(bytes.length > 10000, name + ': suspiciously small');
+    assert.equal(bytes.toString('ascii', 0, 4), 'RIFF');
+    assert.equal(bytes.toString('ascii', 8, 12), 'WEBP');
+  }
+});
