@@ -28,15 +28,15 @@ try {
   $sources = @()
   Add-Type -AssemblyName System.Drawing
   foreach ($item in $items) {
-    $matches = @(Get-ChildItem -LiteralPath $extract -Recurse -File | Where-Object { $_.Name -eq $item.Name })
-    if ($matches.Count -ne 1) { throw "Expected exactly one approved image: $($item.Name)" }
-    $img = [System.Drawing.Image]::FromFile($matches[0].FullName)
+    $foundFiles = @(Get-ChildItem -LiteralPath $extract -Recurse -File | Where-Object { $_.Name -eq $item.Name })
+    if ($foundFiles.Count -ne 1) { throw "Expected exactly one approved image: $($item.Name)" }
+    $img = [System.Drawing.Image]::FromFile($foundFiles[0].FullName)
     try {
       if ($img.Width -ne $item.Width -or $img.Height -ne $item.Height) {
         throw "Approved artwork dimensions mismatch: $($item.Name)"
       }
     } finally { $img.Dispose() }
-    $sources += $matches[0]
+    $sources += $foundFiles[0]
   }
   & git -C $gitRoot worktree add --detach $workspace $head
   if ($LASTEXITCODE -ne 0) { throw 'Could not create isolated campaign transfer worktree.' }
