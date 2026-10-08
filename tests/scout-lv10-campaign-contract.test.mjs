@@ -219,3 +219,16 @@ test('campaign API requires an authenticated same-origin request', () => {
   assert.match(api, /supabase\.auth\.getUser\(token\)/);
   assert.match(api, /novelight_scout_campaign_submit_claim/);
 });
+
+test('campaign landing hero prioritizes reward and supports approved artwork', () => {
+  assert.match(page, /小説を読んで、/);
+  assert.match(page, /図書カードネットギフト500円分/);
+  assert.match(page, /新規登録して無料で参加/);
+  assert.match(page, /ログインして参加/);
+  assert.match(page, /作品を探してXPを貯める/);
+  assert.match(page, /SCOUT RECORDを見る/);
+  assert.match(page, /NOVELIGHT_SCOUT_MOBILE_941x1672.webp/);
+  assert.match(page, /STEP 1/);
+  assert.match(page, /STEP 2/);
+  assert.match(page, /STEP 3/);
+});
