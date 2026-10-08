@@ -19,8 +19,8 @@ try {
   Expand-Archive -LiteralPath $archive.FullName -DestinationPath $extract -Force
   Add-Type -AssemblyName System.Drawing
   $approved = @(
-    @{ Name = 'NOVELIGHT_SCOUT_PC_1888x913.png'; Width = 1888; Height = 913 },
-    @{ Name = 'NOVELIGHT_SCOUT_MOBILE_941x1672.png'; Width = 941; Height = 1672 }
+    @{ Name = 'NOVELIGHT_SCOUT_PC_1888x913.png'; Width = 1888; Height = 913; Sha256 = 'aff5069c9539e25d535f9060bafd7788afc2b66b625fe93d1eb5167c12ba7c4f' },
+    @{ Name = 'NOVELIGHT_SCOUT_MOBILE_941x1672.png'; Width = 941; Height = 1672; Sha256 = '852448e431f457815ceec3e781557e4844f8f8e510371bbb7cd52ce991a0f68b' }
   )
   $sources = @()
   foreach ($item in $approved) {
@@ -32,6 +32,8 @@ try {
         throw "Approved image has unexpected dimensions: $($item.Name)"
       }
     } finally { $image.Dispose() }
+    $actualHash = (Get-FileHash -LiteralPath $found[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actualHash -ne $item.Sha256) { throw "Approved original file mismatch: $($item.Name)" }
     $sources += $found[0]
   }
   & git clone --depth 1 --filter=blob:none --single-branch --branch $branch --sparse $repoUrl $clone
