@@ -226,15 +226,96 @@ async function loadEntry(supabase, campaign, userId) {
   return data ?? null;
 }
 
+async function ensureEntry(supabase, campaign, user, entry, requestNow) {
+  if (entry || !campaign.id) return entry;
+
+  const startsAt = campaign.starts_at ? new Date(campaign.starts_at) : null;
+  const endsAt = campaign.ends_at ? new Date(campaign.ends_at) : null;
+  const createdAt = user.created_at ? new Date(user.created_at) : null;
+  if (
+    campaign.status !== 'active' ||
+    !startsAt ||
+    !endsAt ||
+    !createdAt ||
+    requestNow < startsAt ||
+    requestNow > endsAt
+  ) {
+    return null;
+  }
+
+  let entryKind = 'existing_user';
+  let firstEligibleLoginAt = requestNow;
+  let eligibilityStartedAt = requestNow;
+
+  if (createdAt >= startsAt) {
+    entryKind = 'new_user';
+    firstEligibleLoginAt = null;
+    eligibilityStartedAt = createdAt;
+  } else {
+    const lastSignInAt = user.last_sign_in_at
+      ? new Date(user.last_sign_in_at)
+      : null;
+    const graceStartsAt = campaign.prelaunch_login_grace_starts_at
+      ? new Date(campaign.prelaunch_login_grace_starts_at)
+      : null;
+    const validLastSignInAt =
+      lastSignInAt && !Number.isNaN(lastSignInAt.getTime())
+        ? lastSignInAt
+        : null;
+
+    if (
+      validLastSignInAt &&
+      graceStartsAt &&
+      validLastSignInAt >= graceStartsAt &&
+      validLastSignInAt < startsAt
+    ) {
+      firstEligibleLoginAt = validLastSignInAt;
+      eligibilityStartedAt = startsAt;
+    } else if (
+      validLastSignInAt &&
+      validLastSignInAt >= startsAt &&
+      validLastSignInAt <= endsAt
+    ) {
+      firstEligibleLoginAt = validLastSignInAt;
+      eligibilityStartedAt = validLastSignInAt;
+    }
+  }
+
+  const { error: insertError } = await supabase
+    .from('scout_reward_campaign_entries')
+    .insert({
+      campaign_id: campaign.id,
+      user_id: user.id,
+      entry_kind: entryKind,
+      account_created_at: createdAt.toISOString(),
+      first_eligible_login_at: firstEligibleLoginAt?.toISOString() ?? null,
+      eligibility_started_at: eligibilityStartedAt.toISOString()
+    });
+
+  if (
+    insertError &&
+    String(insertError.code ?? '') !== '23505' &&
+    !isMissingCampaignSchema(insertError)
+  ) {
+    throw new Error(`campaign entry insert failed: ${insertError.message}`);
+  }
+
+  return loadEntry(supabase, campaign, user.id);
+}
+
 function addDays(value, days) {
   return new Date(new Date(value).getTime() + Number(days) * DAY_MS);
 }
 
 function daysRemaining(endsAt, now) {
   if (!endsAt) return null;
+  const deadline = new Date(endsAt);
+  if (Number.isNaN(deadline.getTime())) return null;
+  const todayStart = jstDayBounds(now).start;
+  const deadlineStart = jstDayBounds(deadline).start;
   return Math.max(
     0,
-    Math.ceil((new Date(endsAt).getTime() - now.getTime()) / DAY_MS)
+    Math.round((deadlineStart.getTime() - todayStart.getTime()) / DAY_MS)
   );
 }
 
@@ -310,7 +391,7 @@ function buildEligibility({
     eligibilityStartedAt: entryStartedAt?.toISOString() ?? null,
     eligibilityDeadline: eligibilityDeadline?.toISOString() ?? null,
     claimDeadline: claimDeadline?.toISOString() ?? null,
-    daysRemaining: daysRemaining(campaign.ends_at, now)
+    daysRemaining: daysRemaining(eligibilityDeadline, now)
   };
 }
 
@@ -358,18 +439,26 @@ export function createScoutLv10CampaignHandler({
 
     try {
       const campaign = await loadCampaign(supabase);
-      const [progress, claim, entry] = await Promise.all([
+      const requestNow = now();
+      const [progress, claim, loadedEntry] = await Promise.all([
         loadProgress(supabase, user.id, campaign),
         loadClaim(supabase, campaign, user.id),
         loadEntry(supabase, campaign, user.id)
       ]);
+      const entry = await ensureEntry(
+        supabase,
+        campaign,
+        user,
+        loadedEntry,
+        requestNow
+      );
       const eligibility = buildEligibility({
         campaign,
         progress,
         user,
         claim,
         entry,
-        now: now()
+        now: requestNow
       });
 
       if (req.method === 'GET') {
