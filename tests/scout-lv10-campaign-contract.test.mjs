@@ -58,14 +58,14 @@ test('campaign countdown uses the personal 60-day LEVEL 10 deadline', () => {
   assert.match(client, /LEVEL 10達成期限までの日数/);
   assert.match(client, /達成期限まで あと/);
   assert.match(client, /deadlineDaysRemaining/);
+  assert.match(client, /jstDayNumber/);
+  assert.match(client, /timeZone: 'Asia\/Tokyo'/);
+  assert.match(client, /eligibility\.daysRemaining/);
   assert.match(client, /eligibility\.eligibilityDeadline/);
-  assert.match(client, /campaign\.existingUserWindowDays/);
-  assert.match(client, /campaign\.newUserWindowDays/);
   assert.match(client, /LEVEL 10達成期限：/);
-  assert.match(
-    client,
-    /対象ログインまたは登録後から\$\{n\(configuredWindowDays\)\}日間/
-  );
+  assert.doesNotMatch(client, /configuredWindowDays/);
+  assert.match(api, /daysRemaining\(eligibilityDeadline, now\)/);
+  assert.match(api, /jstDayBounds\(deadline\)\.start/);
   assert.doesNotMatch(
     client,
     /countdownNote', `参加受付：\$\{formatDate\(campaign\.endsAt\)\}まで（JST）`/
@@ -185,6 +185,16 @@ test('eligibility clock is anchored to signup or first eligible login', () => {
   assert.match(api, /eligibilityStartedAt/);
   assert.match(api, /entry_required/);
   assert.match(client, /10月6日6:00までの事前ログインは10月6日6:00開始扱い/);
+});
+
+test('authenticated campaign access safely backfills a missing eligibility entry', () => {
+  assert.match(api, /async function ensureEntry/);
+  assert.match(api, /if \(entry \|\| !campaign\.id\) return entry/);
+  assert.match(api, /campaign\.status !== 'active'/);
+  assert.match(api, /firstEligibleLoginAt = requestNow/);
+  assert.match(api, /eligibilityStartedAt = requestNow/);
+  assert.match(api, /String\(insertError\.code \?\? ''\) !== '23505'/);
+  assert.match(api, /const entry = await ensureEntry/);
 });
 
 test('prelaunch grace backfill preserves the first eligibility clock', () => {
