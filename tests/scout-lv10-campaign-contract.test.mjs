@@ -219,3 +219,29 @@ test('campaign API requires an authenticated same-origin request', () => {
   assert.match(api, /supabase\.auth\.getUser\(token\)/);
   assert.match(api, /novelight_scout_campaign_submit_claim/);
 });
+
+test('campaign landing hero prioritizes reward and supports approved artwork', () => {
+  assert.match(page, /小説を読んで、/);
+  assert.match(page, /図書カードネットギフト500円分/);
+  assert.match(page, /新規登録して無料で参加/);
+  assert.match(page, /ログインして参加/);
+  assert.match(page, /作品を探してXPを貯める/);
+  assert.match(page, /SCOUT RECORDを見る/);
+  assert.match(page, /NOVELIGHT_SCOUT_MOBILE_941x1672.png/);
+  assert.match(page, /STEP 1/);
+  assert.match(page, /STEP 2/);
+  assert.match(page, /STEP 3/);
+});
+
+test('approved PC and mobile campaign image files are present before release', () => {
+  for (const [name, width, height] of [
+    ['NOVELIGHT_SCOUT_PC_1888x913.png', 1888, 913],
+    ['NOVELIGHT_SCOUT_MOBILE_941x1672.png', 941, 1672]
+  ]) {
+    const bytes = readFileSync(new URL('../assets/' + name, import.meta.url));
+    assert.ok(bytes.length > 10000, name + ': suspiciously small');
+    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    assert.equal(bytes.readUInt32BE(16), width, name + ': width');
+    assert.equal(bytes.readUInt32BE(20), height, name + ': height');
+  }
+});

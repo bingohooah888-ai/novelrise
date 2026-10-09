@@ -548,3 +548,54 @@ body.novelight-page-scout-campaign::before {
     gap: 5px;
   }
 }
+
+/* SCOUT HERO VISUAL 20261008: approved artwork, presentation only */
+body.novelight-page-scout-campaign .campaign-hero {
+  position:relative;isolation:isolate;overflow:hidden;min-height:530px;
+  background-image:linear-gradient(90deg,rgba(255,251,239,.95) 0%,rgba(255,248,230,.89) 29%,rgba(255,248,230,.42) 53%,transparent 73%),url('assets/NOVELIGHT_SCOUT_PC_1888x913.png');
+  background-position:center;background-repeat:no-repeat;background-size:cover;
+  border:1px solid rgba(226,192,118,.55);
+}
+body.novelight-page-scout-campaign .campaign-hero-copy,
+body.novelight-page-scout-campaign .campaign-hero .campaign-status-row,
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-card {position:relative;z-index:1;max-width:min(580px,54%)}
+body.novelight-page-scout-campaign .campaign-hero h1 {color:#22223a !important;font-size:clamp(27px,3.1vw,44px);line-height:1.26;max-width:unset;overflow-wrap:anywhere}
+body.novelight-page-scout-campaign .campaign-hero h1 .campaign-hero-reward{color:#956019 !important;font-weight:900}
+body.novelight-page-scout-campaign .campaign-hero .campaign-eyebrow{color:#78552a !important}
+body.novelight-page-scout-campaign .campaign-hero-subtitle{font-size:clamp(18px,1.8vw,26px);color:#222c47;margin:18px 0 0;line-height:1.45}
+body.novelight-page-scout-campaign .campaign-hero .campaign-lead{color:#374259 !important;margin:12px 0 0;font-size:15px;line-height:1.65}
+body.novelight-page-scout-campaign .campaign-hero .campaign-status-row{margin-top:16px;flex-wrap:wrap}
+body.novelight-page-scout-campaign .campaign-hero .campaign-status-pill{background:rgba(255,255,255,.83);color:#59492e;border:1px solid #dbc59a}
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-card{grid-template-columns:1fr;padding:16px 18px;margin-top:18px;gap:12px;background:rgba(16,26,47,.94)}
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-copy strong{font-size:18px}
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-copy span{font-size:12px;line-height:1.5}
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-actions{justify-content:flex-start}
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-button{white-space:normal;line-height:1.3;text-align:center;min-height:50px}
+body.novelight-page-scout-campaign .campaign-hero-art-mobile{display:none}
+body.novelight-page-scout-campaign .campaign-guide{margin:24px 0;padding:20px 22px;border:1px solid rgba(216,189,120,.22);border-radius:18px;background:rgba(18,27,45,.94)}
+body.novelight-page-scout-campaign .campaign-guide h2{font-size:21px;color:#fff0ca;margin:0 0 16px}
+body.novelight-page-scout-campaign .campaign-guide-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+body.novelight-page-scout-campaign .campaign-guide-steps li{min-width:0;padding:16px;border-radius:12px;background:#222f48;display:grid;gap:8px}
+body.novelight-page-scout-campaign .campaign-guide-steps span{color:#ecd18d;font-size:12px;font-weight:800;letter-spacing:.08em}
+body.novelight-page-scout-campaign .campaign-guide-steps strong{color:#fff;font-size:15px;line-height:1.5}
+@media(max-width:760px){
+body.novelight-page-scout-campaign .campaign-hero{min-height:0;padding:24px 18px 0;background:#fff9ed;display:flex;flex-direction:column;border-radius:18px}
+body.novelight-page-scout-campaign .campaign-hero-copy,
+body.novelight-page-scout-campaign .campaign-hero .campaign-status-row,
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-card{max-width:100%;width:100%}
+body.novelight-page-scout-campaign .campaign-hero h1{font-size:clamp(25px,6vw,36px)}
+body.novelight-page-scout-campaign .campaign-hero-subtitle{font-size:clamp(17px,4.3vw,22px)}
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-card{margin-top:14px}
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-actions{display:grid;grid-template-columns:1fr;gap:8px}
+body.novelight-page-scout-campaign .campaign-hero .campaign-entry-button{width:100%;min-width:0}
+body.novelight-page-scout-campaign .campaign-hero-art-mobile{display:block;width:100%;margin-top:4px;text-align:center}
+body.novelight-page-scout-campaign .campaign-hero-art-mobile img{display:block;width:auto;max-width:100%;height:auto;max-height:460px;margin:0 auto;object-fit:contain}
+body.novelight-page-scout-campaign .campaign-guide-steps{grid-template-columns:1fr;gap:8px}
+body.novelight-page-scout-campaign .campaign-guide-steps li{padding:11px 14px;grid-template-columns:62px 1fr;align-items:center}
+}
+@media(max-width:360px){
+body.novelight-page-scout-campaign .campaign-hero{padding:19px 13px 0}
+body.novelight-page-scout-campaign .campaign-hero h1{font-size:25px}
+body.novelight-page-scout-campaign .campaign-hero .campaign-status-pill{font-size:11px;padding:4px 8px}
+body.novelight-page-scout-campaign .campaign-guide{padding:14px}
+}
