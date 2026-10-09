@@ -44,6 +44,28 @@ function esc(v){const d=document.createElement('div');d.textContent=v??'';return
 function pad(v){return String(v).padStart(2,'0')}
 function localValue(value){if(!value)return'';const d=new Date(value);if(!Number.isFinite(d.getTime()))return'';return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`}
 function fmt(value){if(!value)return'予約なし';const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString('ja-JP'):'予約なし'}
+// Focused datetime fields support wheel adjustment without trapping ordinary page scroll.
+document.addEventListener('wheel',event=>{
+  const input=event.target.closest?.('input[type="datetime-local"]');
+  if(!input||document.activeElement!==input||input.disabled||event.ctrlKey||!input.value)return;
+  const date=new Date(input.value);
+  if(!Number.isFinite(date.getTime())||event.deltaY===0)return;
+  event.preventDefault();
+  const direction=event.deltaY>0?1:-1;
+  if(event.shiftKey)date.setMinutes(date.getMinutes()+direction*5);
+  else date.setHours(date.getHours()+direction);
+  const next=localValue(date);
+  if(input.min&&next<input.min)return;
+  if(input.max&&next>input.max)return;
+  input.value=next;
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+  input.dispatchEvent(new Event('change',{bubbles:true}));
+},{passive:false});
+document.addEventListener('focusin',event=>{
+  if(event.target.matches?.('input[type="datetime-local"]')){
+    event.target.title='フォーカス中はホイールで1時間、Shift＋ホイールで5分ずつ変更できます';
+  }
+});
 function unavailable(error){const m=String(error?.message||'');return['42883','42703','PGRST202','PGRST204'].includes(error?.code)||m.includes('novelight_batch_manage_episode_schedules')||m.includes('scheduled_publish_at')||m.includes('does not exist')}
 function scheduleMessage(error){const m=String(error?.message||'');if(m.includes('Episode 1 must be the first'))return'未公開作品では第1話を最初の予約公開にしてください。';if(m.includes('Later episodes must be scheduled after episode 1'))return'未公開作品では第2話以降を第1話より後の日時にしてください。';if(m.includes('1 to 50'))return'一度に保存できる変更は50話までです。';if(m.includes('2 minutes'))return'予約日時は現在より2分以上先にしてください。';if(m.includes('1 year'))return'予約日時は1年以内にしてください。';return String(error?.message||'予約公開の変更を保存できませんでした。')}
 function controlsEnabled(value){for(const id of ['selectAll','clearSelection','fillSchedule','clearSchedule'])document.getElementById(id).disabled=!value;list.querySelectorAll('[data-publish-now]').forEach(button=>button.disabled=!value)}
