@@ -227,7 +227,7 @@ test('campaign landing hero prioritizes reward and supports approved artwork', (
   assert.match(page, /ログインして参加/);
   assert.match(page, /作品を探してXPを貯める/);
   assert.match(page, /SCOUT RECORDを見る/);
-  assert.match(page, /NOVELIGHT_SCOUT_MOBILE_941x1672.webp/);
+  assert.match(page, /NOVELIGHT_SCOUT_MOBILE_941x1672.png/);
   assert.match(page, /STEP 1/);
   assert.match(page, /STEP 2/);
   assert.match(page, /STEP 3/);
@@ -235,16 +235,13 @@ test('campaign landing hero prioritizes reward and supports approved artwork', (
 
 test('approved PC and mobile campaign image files are present before release', () => {
   for (const [name, width, height] of [
-    ['NOVELIGHT_SCOUT_PC_1888x913.webp', 1888, 913],
-    ['NOVELIGHT_SCOUT_MOBILE_941x1672.webp', 941, 1672]
+    ['NOVELIGHT_SCOUT_PC_1888x913.png', 1888, 913],
+    ['NOVELIGHT_SCOUT_MOBILE_941x1672.png', 941, 1672]
   ]) {
     const bytes = readFileSync(new URL('../assets/' + name, import.meta.url));
     assert.ok(bytes.length > 10000, name + ': suspiciously small');
-    assert.equal(bytes.toString('ascii', 0, 4), 'RIFF');
-    assert.equal(bytes.toString('ascii', 8, 12), 'WEBP');
-    // The approved compressed exports are simple VP8 WebP files.
-    assert.equal(bytes.toString('ascii', 12, 16), 'VP8 ');
-    assert.equal(bytes.readUInt16LE(26) & 0x3fff, width, name + ': width');
-    assert.equal(bytes.readUInt16LE(28) & 0x3fff, height, name + ': height');
+    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    assert.equal(bytes.readUInt32BE(16), width, name + ': width');
+    assert.equal(bytes.readUInt32BE(20), height, name + ': height');
   }
 });

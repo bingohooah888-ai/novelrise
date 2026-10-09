@@ -552,7 +552,7 @@ body.novelight-page-scout-campaign::before {
 /* SCOUT HERO VISUAL 20261008: approved artwork, presentation only */
 body.novelight-page-scout-campaign .campaign-hero {
   position:relative;isolation:isolate;overflow:hidden;min-height:530px;
-  background-image:linear-gradient(90deg,rgba(255,251,239,.95) 0%,rgba(255,248,230,.89) 29%,rgba(255,248,230,.42) 53%,transparent 73%),url('assets/NOVELIGHT_SCOUT_PC_1888x913.webp');
+  background-image:linear-gradient(90deg,rgba(255,251,239,.95) 0%,rgba(255,248,230,.89) 29%,rgba(255,248,230,.42) 53%,transparent 73%),url('assets/NOVELIGHT_SCOUT_PC_1888x913.png');
   background-position:center;background-repeat:no-repeat;background-size:cover;
   border:1px solid rgba(226,192,118,.55);
 }
