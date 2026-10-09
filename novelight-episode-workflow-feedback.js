@@ -210,7 +210,17 @@
       <label class="novelight-episode-number-toggle"><input type="checkbox" checked>表示する</label>
     `;
     const checkbox = panel.querySelector('input');
-    checkbox.checked = row?.show_episode_number !== false;
+    if (row) {
+      checkbox.checked = row.show_episode_number !== false;
+    } else if (novelId) {
+      const workSetting = await api.from('novels')
+        .select('show_episode_numbers')
+        .eq('id', novelId)
+        .maybeSingle();
+      if (!workSetting.error && workSetting.data) {
+        checkbox.checked = workSetting.data.show_episode_numbers !== false;
+      }
+    }
     surface.before(panel);
 
     checkbox.addEventListener('change', async () => {
