@@ -559,7 +559,8 @@ body.novelight-page-scout-campaign .campaign-hero {
 body.novelight-page-scout-campaign .campaign-hero-copy,
 body.novelight-page-scout-campaign .campaign-hero .campaign-status-row,
 body.novelight-page-scout-campaign .campaign-hero .campaign-entry-card {position:relative;z-index:1;max-width:min(580px,54%)}
-body.novelight-page-scout-campaign .campaign-hero h1 {color:#22223a !important;font-size:clamp(27px,3.1vw,44px);line-height:1.26;max-width:unset;overflow-wrap:anywhere}
+body.novelight-page-scout-campaign .campaign-hero h1 {color:#22223a !important;font-size:clamp(27px,2.7vw,38px);line-height:1.3;max-width:unset;overflow-wrap:normal}
+body.novelight-page-scout-campaign .campaign-hero h1 .campaign-hero-line{display:block;white-space:nowrap}
 body.novelight-page-scout-campaign .campaign-hero h1 .campaign-hero-reward{color:#956019 !important;font-weight:900}
 body.novelight-page-scout-campaign .campaign-hero .campaign-eyebrow{color:#78552a !important}
 body.novelight-page-scout-campaign .campaign-hero-subtitle{font-size:clamp(18px,1.8vw,26px);color:#222c47;margin:18px 0 0;line-height:1.45}
@@ -583,7 +584,8 @@ body.novelight-page-scout-campaign .campaign-hero{min-height:0;padding:24px 18px
 body.novelight-page-scout-campaign .campaign-hero-copy,
 body.novelight-page-scout-campaign .campaign-hero .campaign-status-row,
 body.novelight-page-scout-campaign .campaign-hero .campaign-entry-card{max-width:100%;width:100%}
-body.novelight-page-scout-campaign .campaign-hero h1{font-size:clamp(25px,6vw,36px)}
+body.novelight-page-scout-campaign .campaign-hero h1{font-size:clamp(24px,5.5vw,32px)}
+body.novelight-page-scout-campaign .campaign-hero h1 .campaign-hero-line{white-space:normal;overflow-wrap:anywhere}
 body.novelight-page-scout-campaign .campaign-hero-subtitle{font-size:clamp(17px,4.3vw,22px)}
 body.novelight-page-scout-campaign .campaign-hero .campaign-entry-card{margin-top:14px}
 body.novelight-page-scout-campaign .campaign-hero .campaign-entry-actions{display:grid;grid-template-columns:1fr;gap:8px}
