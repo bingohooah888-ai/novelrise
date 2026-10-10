@@ -14,6 +14,7 @@
         'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
       )
     : null;
+  window.NovelightXImageShare?.setClient(attributionClient);
 
   function currentPageSlug() {
     return (window.location.pathname.split('/').pop() || 'index.html')
