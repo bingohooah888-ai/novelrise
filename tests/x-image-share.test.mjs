@@ -10,7 +10,6 @@ const script = await readFile(
 
 function setup({ thumbnail = '', authorImage = '', compositionImage = '', mobile = false } = {}) {
   const calls = { fetched: [], shared: null, copied: null, intent: null, canvas: 0 };
-  const imageUrl = 'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/cover.webp';
   const target = compositionImage;
   const chain = (value) => ({
     select() { return this; },
