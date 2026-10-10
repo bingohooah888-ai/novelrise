@@ -8,13 +8,29 @@ const script = await readFile(
   'utf8'
 );
 
-function setup({ thumbnail = '', authorImage = '', compositionImage = '', mobile = false } = {}) {
-  const calls = { fetched: [], shared: null, copied: null, intent: null, canvas: 0 };
-  const target = compositionImage;
+function setup({
+  thumbnail = '',
+  authorImage = '',
+  compositionImage = '',
+  mobile = false
+} = {}) {
+  const calls = {
+    fetched: [],
+    shared: null,
+    copied: null,
+    intent: null,
+    canvas: 0
+  };
   const chain = (value) => ({
-    select() { return this; },
-    eq() { return this; },
-    async maybeSingle() { return { data: value, error: null }; }
+    select() {
+      return this;
+    },
+    eq() {
+      return this;
+    },
+    async maybeSingle() {
+      return { data: value, error: null };
+    }
   });
   const db = {
     from(table) {
@@ -31,14 +47,21 @@ function setup({ thumbnail = '', authorImage = '', compositionImage = '', mobile
       throw new Error('Unexpected table: ' + table);
     },
     async rpc() {
-      return { data: target ? [{ render_url: target }] : [], error: null };
+      return {
+        data: compositionImage ? [{ render_url: compositionImage }] : [],
+        error: null
+      };
     }
   };
   const nav = {
     canShare: () => mobile,
-    async share(payload) { calls.shared = payload; },
+    async share(payload) {
+      calls.shared = payload;
+    },
     clipboard: {
-      async write(items) { calls.copied = items; }
+      async write(items) {
+        calls.copied = items;
+      }
     }
   };
   const mockContext = {
@@ -61,7 +84,9 @@ function setup({ thumbnail = '', authorImage = '', compositionImage = '', mobile
       }
     },
     ClipboardItem: class {
-      constructor(items) { this.items = items; }
+      constructor(items) {
+        this.items = items;
+      }
     },
     AbortSignal,
     navigator: nav,
@@ -73,7 +98,8 @@ function setup({ thumbnail = '', authorImage = '', compositionImage = '', mobile
           calls.canvas += 1;
           return {
             getContext: () => mockContext,
-            toBlob: (callback) => callback(new Blob(['png'], { type: 'image/png' }))
+            toBlob: (callback) =>
+              callback(new Blob(['png'], { type: 'image/png' }))
           };
         }
         return { click() {}, remove() {} };
@@ -87,7 +113,11 @@ function setup({ thumbnail = '', authorImage = '', compositionImage = '', mobile
         return {
           closed: false,
           opener: null,
-          location: { replace(url) { calls.intent = url; } }
+          location: {
+            replace(url) {
+              calls.intent = url;
+            }
+          }
         };
       }
     },
@@ -116,24 +146,32 @@ function setup({ thumbnail = '', authorImage = '', compositionImage = '', mobile
 }
 
 test('author thumbnail takes priority and becomes a PNG share file', async () => {
-  const image = 'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/author.webp';
-  const { engine, calls } = setup({ authorImage: image, thumbnail: 'https://novelight.jp/assets/fallback.webp' });
+  const image =
+    'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/author.webp';
+  const { engine, calls } = setup({
+    authorImage: image,
+    thumbnail: 'https://novelight.jp/assets/fallback.webp'
+  });
   const file = await engine.prepare(354).promise;
   assert.equal(calls.fetched[0], image);
   assert.equal(file.type, 'image/png');
   assert.equal(file.name, 'NOVELIGHT-354.png');
 });
 
-test('no configured thumbnail generates the NOVELIGHT default without fetching a cover', async () => {
-  const { engine, calls } = setup();
-  const file = await engine.prepare(354).promise;
-  assert.equal(file.type, 'image/png');
-  assert.equal(calls.fetched.length, 0);
-  assert.ok(calls.canvas >= 1);
-});
+test(
+  'no configured thumbnail generates the NOVELIGHT default without fetching a cover',
+  async () => {
+    const { engine, calls } = setup();
+    const file = await engine.prepare(354).promise;
+    assert.equal(file.type, 'image/png');
+    assert.equal(calls.fetched.length, 0);
+    assert.ok(calls.canvas >= 1);
+  }
+);
 
 test('published Geometry render is used when thumbnail_url is absent', async () => {
-  const compositionImage = 'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/render.webp';
+  const compositionImage =
+    'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/render.webp';
   const { engine, calls } = setup({ compositionImage });
   await engine.prepare(354).promise;
   assert.equal(calls.fetched[0], compositionImage);
@@ -142,7 +180,11 @@ test('published Geometry render is used when thumbnail_url is absent', async () 
 test('native sharing passes image, title, and URL together', async () => {
   const { engine, calls } = setup({ mobile: true });
   await engine.prepare(354).promise;
-  await engine.share({ novelId: 354, title: '作品名', url: 'https://novelight.jp/novel.html?id=354' });
+  await engine.share({
+    novelId: 354,
+    title: '作品名',
+    url: 'https://novelight.jp/novel.html?id=354'
+  });
   assert.equal(calls.shared.files[0].type, 'image/png');
   assert.equal(calls.shared.url, 'https://novelight.jp/novel.html?id=354');
   assert.match(calls.shared.text, /作品名/);
@@ -151,9 +193,16 @@ test('native sharing passes image, title, and URL together', async () => {
 test('desktop copies the PNG before opening the canonical X intent', async () => {
   const { engine, calls } = setup();
   await engine.prepare(354).promise;
-  await engine.share({ novelId: 354, title: '作品名', url: 'https://novelight.jp/novel.html?id=354' });
+  await engine.share({
+    novelId: 354,
+    title: '作品名',
+    url: 'https://novelight.jp/novel.html?id=354'
+  });
   assert.ok(calls.copied);
   const intent = new URL(calls.intent);
-  assert.equal(intent.searchParams.get('url'), 'https://novelight.jp/novel.html?id=354');
+  assert.equal(
+    intent.searchParams.get('url'),
+    'https://novelight.jp/novel.html?id=354'
+  );
   assert.match(intent.searchParams.get('text'), /作品名/);
 });
