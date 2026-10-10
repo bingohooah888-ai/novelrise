@@ -8,10 +8,10 @@ const script = await readFile(
   'utf8'
 );
 
-function setup({ thumbnail = '', authorImage = '', mobile = false } = {}) {
+function setup({ thumbnail = '', authorImage = '', compositionImage = '', mobile = false } = {}) {
   const calls = { fetched: [], shared: null, copied: null, intent: null, canvas: 0 };
   const imageUrl = 'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/cover.webp';
-  const target = thumbnail || (authorImage ? '' : imageUrl);
+  const target = compositionImage;
   const chain = (value) => ({
     select() { return this; },
     eq() { return this; },
@@ -127,9 +127,16 @@ test('author thumbnail takes priority and becomes a PNG share file', async () =>
 test('no configured thumbnail generates the NOVELIGHT default without fetching a cover', async () => {
   const { engine, calls } = setup();
   const file = await engine.prepare(354).promise;
-  // The composer can have a persisted render even when novels.thumbnail_url is absent.
   assert.equal(file.type, 'image/png');
+  assert.equal(calls.fetched.length, 0);
   assert.ok(calls.canvas >= 1);
+});
+
+test('published Geometry render is used when thumbnail_url is absent', async () => {
+  const compositionImage = 'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/render.webp';
+  const { engine, calls } = setup({ compositionImage });
+  await engine.prepare(354).promise;
+  assert.equal(calls.fetched[0], compositionImage);
 });
 
 test('native sharing passes image, title, and URL together', async () => {
