@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { URL } from 'node:url';
 
 const mediaShare = await readFile(
   new URL('../novelight-x-image-share.js', import.meta.url),
