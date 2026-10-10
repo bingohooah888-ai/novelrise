@@ -27,6 +27,10 @@
     return '';
   }
 
+  function setClient(sharedClient) {
+    if (sharedClient) client = sharedClient;
+  }
+
   function getClient() {
     if (!client && window.supabase?.createClient) {
       client = window.supabase.createClient(SUPABASE_ORIGIN, PUBLIC_KEY);
@@ -119,7 +123,17 @@
     }
     const blob = await response.blob();
     if (blob.size > MAX_SOURCE_BYTES) throw new Error('Cover image is too large');
-    const bitmap = await createImageBitmap(blob);
+    const objectUrl = typeof createImageBitmap === 'function'
+      ? null
+      : URL.createObjectURL(blob);
+    const bitmap = objectUrl
+      ? await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = objectUrl;
+        })
+      : await createImageBitmap(blob);
     try {
       const scale = Math.min(1, 1200 / bitmap.width, 1800 / bitmap.height);
       const canvas = makeCanvas(
@@ -130,6 +144,7 @@
       return canvasPng(canvas);
     } finally {
       bitmap.close?.();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     }
   }
 
@@ -273,5 +288,5 @@
     );
   }
 
-  window.NovelightXImageShare = Object.freeze({ prepare, share });
+  window.NovelightXImageShare = Object.freeze({ prepare, share, setClient });
 })();
