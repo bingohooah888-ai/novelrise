@@ -84,7 +84,7 @@ test('injectSeo emits article Open Graph and large Twitter card in initial HTML'
   assert.match(result, /name="twitter:image"/u);
 });
 
-test('X share sends only canonical URL while URL copy keeps attribution', async () => {
+test('X share uses cover media while URL copy keeps attribution', async () => {
   const [endpoint, share, seoNovel] = await Promise.all([
     readFile(new URL('../api/og/novel.js', import.meta.url), 'utf8'),
     readFile(new URL('../novelight-public-share.js', import.meta.url), 'utf8'),
@@ -100,8 +100,9 @@ test('X share sends only canonical URL while URL copy keeps attribution', async 
     share.indexOf("shareX.addEventListener('click'"),
     share.indexOf('bar.appendChild(shareX)')
   );
+  assert.match(xHandler, /NovelightXImageShare\.share/u);
   assert.match(xHandler, /searchParams\.set\('url', url\)/u);
-  assert.doesNotMatch(xHandler, /searchParams\.set\('text'/u);
+  assert.match(xHandler, /searchParams\.set\('text', text\)/u);
   assert.doesNotMatch(xHandler, /scoutAttributedShareUrl/u);
   assert.doesNotMatch(xHandler, /utm_/u);
   assert.match(

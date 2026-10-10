@@ -314,9 +314,35 @@
       window.setTimeout(() => { copy.textContent = 'URLをコピー'; }, 1600);
     });
     const x = node('a', 'nl-work-share-button', 'Xで共有');
+    const workId = new URLSearchParams(window.location.search).get('id');
+    const publicUrl = workId
+      ? `https://novelight.jp/novel.html?id=${encodeURIComponent(workId)}`
+      : window.location.href;
+    const workTitle = () =>
+      document.querySelector('.nl-work-detail-main .title')?.textContent?.trim() ||
+      document.title ||
+      'NOVELIGHTの作品';
     x.target = '_blank';
     x.rel = 'noopener noreferrer';
-    x.href = `https://x.com/intent/post?text=${encodeURIComponent(document.querySelector('#novelHeader .title')?.textContent?.trim() || document.title || 'NOVELIGHTの作品')}&url=${encodeURIComponent(window.location.href)}`;
+    x.href = `https://x.com/intent/post?text=${encodeURIComponent(workTitle())}&url=${encodeURIComponent(publicUrl)}`;
+    x.addEventListener('pointerenter', () => {
+      const task = window.NovelightXImageShare?.prepare(workId);
+      void task?.promise.catch(() => {});
+    }, { once: true });
+    x.addEventListener('click', (event) => {
+      if (!window.NovelightXImageShare) return;
+      event.preventDefault();
+      void window.NovelightXImageShare.share({
+        novelId: workId,
+        title: workTitle(),
+        url: publicUrl,
+        onStatus: (message) => {
+          const note = node('p', 'nl-work-share-status', message);
+          menu.querySelector('.nl-work-share-status')?.remove();
+          menu.appendChild(note);
+        }
+      });
+    });
     menu.append(copy, x);
     if (reportButton) {
       reportButton.classList.remove('action', 'report');
