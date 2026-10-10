@@ -125,7 +125,7 @@
       '.novelight-public-share-action{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 12px;border:1px solid #cbc5e8;border-radius:8px;background:#fff;color:#443875;font:inherit;font-size:12px;font-weight:900;line-height:1.2;text-decoration:none;cursor:pointer}' +
       '.novelight-public-share-action:hover{border-color:#9b89e8;background:#f5f2ff;color:#443875}' +
       '.novelight-public-share-action:focus-visible{outline:3px solid rgba(109,74,255,.35);outline-offset:2px}' +
-      '.novelight-public-share-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}' +
+      '.novelight-public-share-status{flex-basis:100%;color:#5d566d;font-size:11px;line-height:1.5}.novelight-public-share-status:empty{display:none}' +
       '.novelight-public-share.episode-share{margin:18px 0}' +
       "body[data-reading-theme='dark'] .novelight-public-share{border-color:#464057;background:#292633}" +
       "body[data-reading-theme='dark'] .novelight-public-share-label{color:#d8d2e6}" +
@@ -171,6 +171,7 @@
     novelId,
     text,
     label,
+    shareTitle = '',
     includeOpen = false,
     position = 'default'
   }) {
@@ -224,22 +225,32 @@
     shareX.type = 'button';
     shareX.className = 'novelight-public-share-action x';
     shareX.textContent = 'Xでシェア';
+    const prepareImage = () => {
+      const task = window.NovelightXImageShare?.prepare(novelId);
+      void task?.promise.catch(() => {});
+    };
+    shareX.addEventListener('pointerenter', prepareImage, { once: true });
+    shareX.addEventListener('focus', prepareImage, { once: true });
     shareX.addEventListener('click', () => {
-      const popup = window.open('about:blank', '_blank');
-      if (popup) popup.opener = null;
-      const intent = new URL('https://twitter.com/intent/tweet');
-      intent.searchParams.set('url', url);
-      if (popup && !popup.closed) {
-        popup.location.replace(intent.toString());
-      } else {
-        const fallback = window.open(
-          intent.toString(),
-          '_blank',
-          'noopener,noreferrer'
-        );
-        if (fallback) fallback.opener = null;
+      if (window.NovelightXImageShare) {
+        void window.NovelightXImageShare.share({
+          novelId,
+          title: shareTitle || text,
+          url,
+          onStatus: (message) => {
+            status.textContent = message;
+          }
+        });
+        return;
       }
+      // If the optional media runtime fails, retain working text/URL sharing.
+      const intent = new URL('https://twitter.com/intent/tweet');
+      intent.searchParams.set('text', text);
+      intent.searchParams.set('url', url);
+      window.open(intent.toString(), '_blank', 'noopener,noreferrer');
+      status.textContent = '画像共有を利用できませんでした。URLのみ共有します。';
     });
+    if (position !== 'work-card') prepareImage();
     bar.appendChild(shareX);
     bar.appendChild(status);
 
@@ -280,6 +291,7 @@
             url: canonicalUrl('novel.html', novelId),
             novelId,
             text: `『${title}』をNOVELIGHTで読む`,
+            shareTitle: title,
             label: '作品を共有',
             includeOpen: true,
             position: 'work-card'
@@ -312,6 +324,7 @@
           url: canonicalUrl('novel.html', novelId),
           novelId,
           text: `『${title}』をNOVELIGHTで読む`,
+          shareTitle: title,
           label: 'この作品を共有',
           position: 'novel'
         })
@@ -353,6 +366,7 @@
           url,
           novelId,
           text,
+          shareTitle: `${novelTitle} ${episodeTitle}`,
           label: 'このエピソードを共有',
           position: 'episode-top'
         })
@@ -362,6 +376,7 @@
           url,
           novelId,
           text,
+          shareTitle: `${novelTitle} ${episodeTitle}`,
           label: '読了したエピソードを共有',
           position: 'episode-bottom'
         })
