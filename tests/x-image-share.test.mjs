@@ -80,6 +80,7 @@ function setup({ thumbnail = '', authorImage = '', compositionImage = '', mobile
       }
     },
     window: {
+      ClipboardItem: true,
       supabase: { createClient: () => db },
       setTimeout() {},
       open() {
