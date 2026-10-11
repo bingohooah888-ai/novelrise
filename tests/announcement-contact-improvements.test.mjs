@@ -258,7 +258,7 @@ test('announcement admin UI manages optional image upload, replacement, and remo
 
 test('announcement migration is backward compatible and data-safe to roll back', () => {
   const migration = read(
-    'supabase/migrations/20261006150500_announcement_images_and_detail.sql'
+    'supabase/migrations/20261006065711_announcement_images_and_detail.sql'
   );
   const rollback = read(
     'supabase/rollback/20261006150500_announcement_images_and_detail_rollback.sql'
