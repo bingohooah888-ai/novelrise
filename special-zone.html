@@ -58,9 +58,10 @@
 <script src="novelight-user-safety.js"></script>
 <script>
 const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
-const params=new URLSearchParams(location.search),allowedZones=new Set(['ai','r15','r18']);
+const params=new URLSearchParams(location.search),allowedZones=new Set(['ai','r18']);
+if(params.get('zone')==='r15')location.replace('search.html');
 const zone=allowedZones.has(params.get('zone'))?params.get('zone'):'ai';let mode=params.get('mode')==='ranking'?'ranking':'recommended',offset=0,busy=false;const pageSize=24;
-const zoneCopy={ai:{title:'AI作品',subtitle:'AI生成主体として公開された全年齢作品。作品本来のジャンルから、次の一冊を探せます。'},r15:{title:'R15',subtitle:'センシティブ15+として区分された作品。内容警告を確認しながら作品を探せます。'},r18:{title:'R18',subtitle:'18+（非性的な強表現）として区分された作品。強い残虐・流血等の内容警告を確認して閲覧してください。'}};
+const zoneCopy={ai:{title:'AI作品',subtitle:'AI生成主体として公開された作品（R15を含む）。作品本来のジャンルから、次の一冊を探せます。'},r18:{title:'R18',subtitle:'18+（非性的な強表現）として区分された作品。強い残虐・流血等の内容警告を確認して閲覧してください。'}};
 const esc=v=>{const d=document.createElement('div');d.textContent=v??'';return d.innerHTML};
 function visitor(){return NovelightClient.getVisitorToken()}
 function rotationKey(){return visitor()+':special:'+zone+':'+Math.floor(Date.now()/3600000)}
