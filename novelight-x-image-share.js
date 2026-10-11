@@ -248,6 +248,15 @@
   async function share({ novelId, title, url, onStatus = () => {} }) {
     const state = prepare(novelId);
     if (!state) return onStatus('作品IDが確認できません。');
+    // A link card does not need the local PNG. Open X immediately on PC,
+    // even if cover preparation is still running.
+    if (!isMobileShareTarget() && !state.file) {
+      window.open(intentUrl(title, url), '_blank', 'noopener,noreferrer');
+      onStatus(
+        'Xで作品URLを投稿すると画像付きリンクカードが表示されます（表示はX側の取得状況によります）。'
+      );
+      return;
+    }
     if (!state.file) {
       onStatus('画像を準備しています。完了後にもう一度「Xでシェア」を押してください。');
       try {
