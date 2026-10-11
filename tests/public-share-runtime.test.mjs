@@ -24,8 +24,8 @@ test('work sharing includes public page, copy, and X actions', () => {
 });
 
 test('work detail keeps one X share entry in the existing actions menu', () => {
-  assert.doesNotMatch(shareRuntime, /function installNovelSharing\\(/u);
-  assert.doesNotMatch(shareRuntime, /installNovelSharing\\(\\);/u);
+  assert.equal(shareRuntime.includes('function installNovelSharing()'), false);
+  assert.equal(shareRuntime.includes('installNovelSharing();'), false);
 });
 
 test('episode sharing is mounted above and below the episode body', () => {
