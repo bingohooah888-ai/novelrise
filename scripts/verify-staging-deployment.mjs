@@ -42,15 +42,15 @@ function resolveTarget(env) {
   let candidate = '';
   let source = '';
 
-  if (trigger === 'workflow_dispatch') {
-    if (env.MANUAL_STAGING_URL) {
+  if (trigger === 'workflow_dispatch' || trigger === 'approval_comment') {
+    if (trigger === 'workflow_dispatch' && env.MANUAL_STAGING_URL) {
       candidate = env.MANUAL_STAGING_URL;
       source = 'workflow input';
     } else {
       candidate = env.CANONICAL_STAGING_URL || '';
       source = 'STAGING_BASE_URL repository variable';
     }
-  } else {
+  } else if (trigger === 'deployment_status') {
     if (env.DEPLOYMENT_ENVIRONMENT_URL) {
       candidate = env.DEPLOYMENT_ENVIRONMENT_URL;
       source = 'deployment environment_url';
@@ -58,6 +58,8 @@ function resolveTarget(env) {
       candidate = env.DEPLOYMENT_TARGET_URL || '';
       source = 'deployment target_url';
     }
+  } else {
+    fail('CONFIG_DRIFT', 'unknown Staging deployment verification trigger.');
   }
 
   const parsed = parseOrigin('Staging deployment URL', candidate, '.vercel.app');
