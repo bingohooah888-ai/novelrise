@@ -1,3 +1,4 @@
+import { Blob } from 'node:buffer';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -107,7 +108,7 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
         toBlob: (done) => done(new Blob(['png'], { type: 'image/png' }))
       })
     },
-    console
+    console: { warn() {} }
   });
   await window.NovelightXImageShare.prepare('354').promise;
   await window.NovelightXImageShare.share({
