@@ -113,13 +113,69 @@
     return `<div class="novel-cover-placeholder" aria-hidden="true"><span class="cover-mark">✦</span><span class="cover-genre">${esc(novel.genre || 'NOVELIGHT')}</span></div>`;
   }
 
+  // All three discovery lists share one bounded, public metadata lookup.
+  // This is display-only and never changes trusted allocation or list ordering.
+  const cardStateCache = new Map();
+
+  async function hydrateCardState(rows) {
+    const ids = [...new Set(rows.map(novelId))]
+      .filter((id) => /^[0-9]+$/u.test(id) && !cardStateCache.has(id));
+    if (ids.length) {
+      let result = await client.rpc('novelight_public_discovery_card_state', {
+        p_novel_ids: ids
+      });
+      if (result.error) {
+        console.error('discovery card state lookup failed', result.error);
+        // Preserve author/status/count while a pending DB release propagates.
+        result = await client.rpc('novelight_search_card_metadata', {
+          p_novel_ids: ids
+        });
+      }
+      if (!result.error && Array.isArray(result.data)) {
+        const byId = new Map(
+          result.data.map((item) => [String(item.novel_id), item])
+        );
+        for (const id of ids) cardStateCache.set(id, byId.get(id) || null);
+      } else {
+        console.error('discovery card metadata unavailable', result.error);
+      }
+    }
+    for (const row of rows) {
+      const state = cardStateCache.get(novelId(row));
+      if (!state) continue;
+      row.card_state_loaded = true;
+      row.card_is_completed = state.is_completed === true;
+      row.card_published_episode_count = state.published_episode_count;
+      row.card_latest_published_at = state.latest_published_at || null;
+      row.author_name = state.author_name || row.author_name || '';
+    }
+  }
+
   function card(novel) {
-    const created = novel.created_at
-      ? new Date(novel.created_at).toLocaleDateString('ja-JP')
-      : '';
     const seedBadge =
       mode === 'seed' ? '<div class="seed-count">✦ LIGHT SEED</div>' : '';
-    return `<a class="novel-card shelf-card${mode === 'seed' ? ' seed-card' : ''}" href="novel.html?id=${encodeURIComponent(novelId(novel))}">${seedBadge}${coverMarkup(novel)}<div class="card-copy"><div class="genre">${esc(novel.genre || '未設定')}</div><div class="novel-title">${esc(novel.title)}</div><div class="meta">作者 ${esc(novel.author_name || '未設定')} ・ 投稿日 ${created}</div></div></a>`;
+    const name = novel.author_name || '作者情報を取得できません';
+    const known = novel.card_state_loaded === true;
+    const count = Number(novel.card_published_episode_count);
+    const countLabel =
+      known && Number.isSafeInteger(count) && count >= 0
+        ? `公開${count.toLocaleString('ja-JP')}話`
+        : '公開話数を確認できません';
+    const statusLabel = known
+      ? novel.card_is_completed
+        ? '完結済み'
+        : '連載中'
+      : '連載状況を確認できません';
+    const latest = novel.card_latest_published_at
+      ? new Date(novel.card_latest_published_at)
+      : null;
+    const publishedLabel =
+      latest && !Number.isNaN(latest.getTime())
+        ? latest.toLocaleDateString('ja-JP')
+        : known && count === 0
+          ? '掲載話なし'
+          : '確認できません';
+    return `<a class="novel-card shelf-card${mode === 'seed' ? ' seed-card' : ''}" href="novel.html?id=${encodeURIComponent(novelId(novel))}">${seedBadge}${coverMarkup(novel)}<div class="card-copy"><div class="genre">${esc(novel.genre || '未設定')}</div><div class="novel-title">${esc(novel.title)}</div><div class="discovery-card-meta"><div class="discovery-card-author">作者：${esc(name)}</div><div class="discovery-card-progress">${esc(statusLabel)} ・ ${esc(countLabel)}</div><div class="discovery-card-updated">最終投稿日：${esc(publishedLabel)}</div></div></div></a>`;
   }
 
   function appendRows(rows) {
@@ -245,6 +301,7 @@
     const filteredCandidates = await filterHiddenRows(candidates);
     candidates.splice(0, candidates.length, ...filteredCandidates);
     const page = candidates.slice(0, pageSize);
+    await hydrateCardState(page);
     const visible = appendRows(page);
     await recordTrusted(visible);
     moreWrap.hidden = candidates.length <= pageSize || page.length === 0;
@@ -270,6 +327,7 @@
     const pageOffset = neutralOffset;
     const rows = await fetchNeutralNew(pageSize);
     const filtered = await filterHiddenRows(rows);
+    await hydrateCardState(filtered);
     const visible = appendRows(filtered);
     await recordVisible('search_new', visible, pageOffset);
     moreWrap.hidden = rows.length < pageSize || neutralOffset >= Number(neutralTotal || 0);
@@ -296,6 +354,7 @@
     seedOffset += page.length;
     const filteredPage = await filterHiddenRows(page);
     page.splice(0, page.length, ...filteredPage);
+    await hydrateCardState(page);
     const visible = appendRows(page);
     await recordVisible('search_seed', visible, pageOffset);
     moreWrap.hidden = rows.length <= pageSize || rawPageLength === 0;
