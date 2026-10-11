@@ -261,15 +261,25 @@
       return;
     }
 
-    // Open synchronously under the click's user activation to avoid popup blockers.
+    // Start clipboard write while this page still has focus. Opening a new
+    // tab first can make the Clipboard API reject with NotAllowedError.
+    let copyResult = null;
+    try {
+      if (navigator.clipboard?.write && window.ClipboardItem) {
+        copyResult = navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': file })
+        ]);
+      }
+    } catch (error) {
+      console.warn('X share clipboard unavailable', error);
+    }
+    // Still open under the original user gesture so popup blockers allow it.
     const popup = window.open('about:blank', '_blank');
     if (popup) popup.opener = null;
     let copied = false;
     try {
-      if (navigator.clipboard?.write && window.ClipboardItem) {
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': file })
-        ]);
+      if (copyResult) {
+        await copyResult;
         copied = true;
       }
     } catch (error) {
