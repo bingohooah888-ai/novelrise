@@ -148,3 +148,70 @@ test('manual verification uses only explicit or canonical URL plus explicit revi
     /CONFIG_DRIFT: EXPECTED_REVISION must be an exact 40-character commit SHA/
   );
 });
+
+
+test('owner-approved full-smoke uses only canonical Preview URL, not deployment status', async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    calls.push(url);
+    return new globalThis.Response(JSON.stringify(facts()), { status: 200 });
+  });
+  await verifyStagingDeployment(
+    strictEnvironment({
+      STAGING_TRIGGER: 'approval_comment',
+      CANONICAL_STAGING_URL: BASE_URL,
+      DEPLOYMENT_ENVIRONMENT_URL: 'https://wrong-preview.vercel.app',
+      MANUAL_STAGING_URL: 'https://unapproved-preview.vercel.app'
+    })
+  );
+  assert.deepEqual(calls, [BASE_URL + '/api/staging-environment-facts']);
+});
+
+test('owner-approved full-smoke refuses missing canonical Preview URL before any network request', async (t) => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+    throw new Error('the verifier must fail before fetching');
+  });
+  await assert.rejects(
+    verifyStagingDeployment(
+      strictEnvironment({
+        STAGING_TRIGGER: 'approval_comment',
+        CANONICAL_STAGING_URL: '',
+        DEPLOYMENT_ENVIRONMENT_URL: BASE_URL
+      })
+    ),
+    /CONFIG_DRIFT: Staging deployment URL is not configured/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+test('owner-approved full-smoke refuses Production URL despite deployment status fallback', async (t) => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+    throw new Error('the verifier must fail before fetching');
+  });
+  await assert.rejects(
+    verifyStagingDeployment(
+      strictEnvironment({
+        STAGING_TRIGGER: 'approval_comment',
+        CANONICAL_STAGING_URL: 'https://novelrise.vercel.app'
+      })
+    ),
+    /CONFIG_DRIFT: refusing the Production Vercel host/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+test('unknown staging trigger is fail-closed and makes no network request', async (t) => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+    throw new Error('the verifier must fail before fetching');
+  });
+  await assert.rejects(
+    verifyStagingDeployment(
+      strictEnvironment({
+        STAGING_TRIGGER: 'unknown',
+        CANONICAL_STAGING_URL: BASE_URL
+      })
+    ),
+    /CONFIG_DRIFT: unknown Staging deployment verification trigger/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
