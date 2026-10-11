@@ -43,8 +43,10 @@ test('production novel OGP is server-rendered and returns a 1200x630 PNG', async
   expect(html).toContain(
     '<meta name="twitter:card" content="summary_large_image">'
   );
+  // X now receives a public, directly fetchable author/book cover instead
+  // of the dynamically generated NOVELIGHT OG banner.
   expect(html).toContain(
-    '<meta name="twitter:image" content="https://novelight.jp/api/og/novel?id=541&amp;v='
+    '<meta name="twitter:image" content="https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/'
   );
 
   const headResponse = await request.head(PRODUCTION_OG_URL, {
@@ -61,4 +63,30 @@ test('production novel OGP is server-rendered and returns a 1200x630 PNG', async
 
   const image = await imageResponse.body();
   expect(pngDimensions(image)).toEqual({ width: 1200, height: 630 });
+});
+
+test('published work 354 supplies a directly fetchable X cover image', async ({
+  request
+}) => {
+  test.setTimeout(60_000);
+
+  const page = await request.get('https://novelight.jp/novel.html?id=354', {
+    timeout: 20_000
+  });
+  expect(page.status()).toBe(200);
+  const html = await page.text();
+  const twitterImage = html.match(
+    /<meta name="twitter:image" content="([^"]+)">/u
+  )?.[1];
+  expect(twitterImage).toBeTruthy();
+  expect(twitterImage).toContain('/storage/v1/object/public/');
+
+  const response = await request.get(twitterImage, { timeout: 20_000 });
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toMatch(
+    /^image\/(webp|png|jpeg)/u
+  );
+  const image = await response.body();
+  expect(image.length).toBeGreaterThan(10_000);
+  expect(image.length).toBeLessThan(5 * 1024 * 1024);
 });

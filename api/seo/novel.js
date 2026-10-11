@@ -95,6 +95,12 @@ export default async function handler(req, res) {
             title: novel.title,
             description: ogDescription,
             image: ogData.imageUrl,
+            // X crawls the stored public cover directly, without waiting for
+            // dynamic banner generation. Other OG consumers keep the banner.
+            twitterImage:
+              ogData.authorImageUrl ||
+              ogData.bookThumbnailUrl ||
+              ogData.imageUrl,
             url: canonical,
             type: 'article'
           }

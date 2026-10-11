@@ -73,6 +73,9 @@ export function injectSeo(
     const ogUrl = escapeHtml(openGraph.url || canonical);
     const ogType = escapeHtml(openGraph.type || 'website');
     const ogImage = escapeHtml(openGraph.image || '');
+    const twitterImage = escapeHtml(
+      openGraph.twitterImage || openGraph.image || ''
+    );
 
     tags.push(
       `<meta property="og:title" content="${ogTitle}">`,
@@ -89,7 +92,7 @@ export function injectSeo(
         `<meta property="og:image" content="${ogImage}">`,
         '<meta property="og:image:width" content="1200">',
         '<meta property="og:image:height" content="630">',
-        `<meta name="twitter:image" content="${ogImage}">`
+        `<meta name="twitter:image" content="${twitterImage}">`
       );
     }
   }
