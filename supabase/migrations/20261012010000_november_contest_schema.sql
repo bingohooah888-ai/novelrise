@@ -77,7 +77,7 @@ create table public.novelight_contest_readers (
   kind text not null check (kind in ('guest','account')),
   user_id uuid,
   guest_key_hash text,
-  merged_into_reader_id uuid references public.novelight_contest_readers(id) on delete restrict,
+  merged_into_reader_id uuid,
   review_status text not null default 'provisional'
     check (review_status in ('provisional','review_hold','cleared','excluded','merged')),
   created_at timestamptz not null default pg_catalog.now(),
@@ -88,7 +88,9 @@ create table public.novelight_contest_readers (
       and guest_key_hash ~ '^[0-9a-f]{64}$') or
     (kind = 'account' and user_id is not null and guest_key_hash is null)
   ),
-  check (merged_into_reader_id is null or merged_into_reader_id <> id)
+  check (merged_into_reader_id is null or merged_into_reader_id <> id),
+  foreign key (merged_into_reader_id, contest_id)
+    references public.novelight_contest_readers (id, contest_id) on delete restrict
 );
 
 create unique index novelight_contest_readers_account_once
@@ -120,6 +122,7 @@ create table public.novelight_contest_read_sessions (
   status text not null default 'active'
     check (status in ('active','qualified','expired','review_hold','excluded')),
   updated_at timestamptz not null default pg_catalog.now(),
+  unique (id, contest_id),
   foreign key (reader_id, contest_id)
     references public.novelight_contest_readers (id, contest_id) on delete restrict,
   foreign key (entry_id, contest_id)
@@ -140,7 +143,7 @@ create table public.novelight_contest_read_events (
   reader_id uuid not null,
   entry_id uuid not null,
   episode_id_snapshot bigint not null,
-  first_session_id uuid references public.novelight_contest_read_sessions(id) on delete restrict,
+  first_session_id uuid,
   qualified_at timestamptz not null default pg_catalog.now(),
   status text not null default 'provisional'
     check (status in ('provisional','accepted','review_hold','excluded')),
@@ -151,7 +154,9 @@ create table public.novelight_contest_read_events (
     references public.novelight_contest_readers (id, contest_id) on delete restrict,
   foreign key (entry_id, contest_id)
     references public.novelight_contest_entries (id, contest_id) on delete restrict,
-  unique (contest_id, reader_id, episode_id_snapshot)
+  unique (contest_id, reader_id, episode_id_snapshot),
+  foreign key (first_session_id, contest_id)
+    references public.novelight_contest_read_sessions (id, contest_id) on delete restrict
 );
 
 create index novelight_contest_events_by_entry
@@ -197,17 +202,24 @@ create table public.novelight_contest_rank_snapshots (
   status text not null default 'draft'
     check (status in ('draft','published','retracted')),
   created_at timestamptz not null default pg_catalog.now(),
-  unique (contest_id, scheduled_publish_at)
+  unique (contest_id, scheduled_publish_at),
+  unique (id, contest_id),
+  check (cutoff_at <= scheduled_publish_at)
 );
 
 create table public.novelight_contest_rank_rows (
-  snapshot_id uuid not null references public.novelight_contest_rank_snapshots(id) on delete restrict,
-  entry_id uuid not null references public.novelight_contest_entries(id) on delete restrict,
+  snapshot_id uuid not null,
+  contest_id uuid not null,
+  entry_id uuid not null,
   ordinal_rank integer not null check (ordinal_rank >= 1),
   points bigint not null check (points >= 0),
   qualifying_readers integer not null check (qualifying_readers >= 0),
   created_at timestamptz not null default pg_catalog.now(),
-  primary key (snapshot_id, entry_id)
+  primary key (snapshot_id, entry_id),
+  foreign key (snapshot_id, contest_id)
+    references public.novelight_contest_rank_snapshots (id, contest_id) on delete restrict,
+  foreign key (entry_id, contest_id)
+    references public.novelight_contest_entries (id, contest_id) on delete restrict
 );
 
 create index novelight_contest_rank_rows_order
