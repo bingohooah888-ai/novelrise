@@ -6,7 +6,6 @@ import { renderEpisodeArticle } from './episode-article.js';
 import {
   canonicalUrl,
   compactText,
-  escapeHtml,
   getSupabase,
   injectSeo,
   methodAllowed,
