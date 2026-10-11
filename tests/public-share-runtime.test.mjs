@@ -17,7 +17,7 @@ test('public share links always use the official NOVELIGHT origin', () => {
 test('work sharing includes public page, copy, and X actions', () => {
   assert.match(shareRuntime, /公開ページを見る/);
   assert.match(shareRuntime, /URLをコピー/);
-  assert.match(shareRuntime, /Xでシェア/);
+  assert.match(shareRuntime, /Xで共有/);
   assert.match(shareRuntime, /twitter\.com\/intent\/tweet/);
   assert.match(shareRuntime, /canonicalUrl\('novel\.html', novelId\)/);
   assert.match(shareRuntime, /state\.textContent\.includes\('公開中'\)/);
