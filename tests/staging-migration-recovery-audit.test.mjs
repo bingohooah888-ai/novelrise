@@ -195,3 +195,18 @@ test('uses read-only remote migration history and local artifacts only', async (
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// Temporary one-run formatting proof; remove after reading CI output.
+test('temporary formatting diagnostic', async () => {
+  const prettier = await import('prettier');
+  const source = await import('node:fs/promises');
+  const original = await source.readFile('tests/staging-migration-recovery-audit.test.mjs', 'utf8');
+  const formatted = await prettier.format(original, {
+    parser: 'babel',
+    singleQuote: true,
+    semi: true,
+    tabWidth: 2,
+    trailingComma: 'none'
+  });
+  console.log('AUDIT_FORMAT_B64=' + Buffer.from(formatted).toString('base64'));
+});
