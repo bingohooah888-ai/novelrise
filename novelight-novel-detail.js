@@ -76,7 +76,7 @@
       .nl-work-detail-toc{position:sticky;top:136px;max-height:calc(100vh - 152px);display:flex;flex-direction:column;overflow:hidden;padding:19px;border:1px solid #e2d9cd;border-radius:16px;background:#fffdfa;box-shadow:0 10px 30px rgba(52,42,31,.05)}
       .nl-work-detail-toc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
       .nl-work-detail-toc h2{font-size:19px;margin:0}.nl-work-detail-toc-count{color:#667284;font-size:12px}
-      .nl-work-toc-list{display:grid;gap:5px;flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:#aeb7c3 transparent}.nl-work-toc-list::-webkit-scrollbar{width:7px}.nl-work-toc-list::-webkit-scrollbar-track{background:transparent}.nl-work-toc-list::-webkit-scrollbar-thumb{background:#aeb7c3;border-radius:999px}.nl-work-toc-chapter{margin:12px 0 3px;padding:9px 10px;border-left:3px solid #b28a4a;background:#f4f6f8;color:#26364b;font-size:13px;font-weight:900;line-height:1.5}
+      .nl-work-toc-list{display:grid;gap:5px;flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:#aeb7c3 transparent}.nl-work-toc-list::-webkit-scrollbar{width:7px}.nl-work-toc-list::-webkit-scrollbar-track{background:transparent}.nl-work-toc-list::-webkit-scrollbar-thumb{background:#aeb7c3;border-radius:999px}.nl-work-toc-group{border:1px solid #e4dccf;border-radius:9px;overflow:hidden;margin:7px 0}.nl-work-toc-chapter{display:block;margin:0;padding:10px 12px;border-left:3px solid #b28a4a;background:#f4f6f8;color:#26364b;font-size:13px;font-weight:900;line-height:1.5;cursor:pointer;list-style:none}.nl-work-toc-chapter::-webkit-details-marker{display:none}.nl-work-toc-chapter::after{content:'＋';float:right}.nl-work-toc-group[open]>.nl-work-toc-chapter::after{content:'－'}.nl-work-toc-chapter:focus-visible{outline:2px solid #7351d8;outline-offset:-2px}.nl-work-toc-chapter-episodes{padding:5px 8px}
       .nl-work-toc-link{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;padding:9px 10px;border-radius:8px;color:#26364b!important;text-decoration:none!important;font-size:15px;line-height:1.5}
       .nl-work-toc-link:hover{background:#f2f5f8}.nl-work-toc-link.is-read{color:#5b6675!important}.nl-work-toc-link.is-current{background:#edf1f6;color:#15243a!important;font-weight:900;box-shadow:inset 3px 0 0 #b28a4a}.nl-work-toc-num{white-space:nowrap;color:#5f6b7a;font-size:12px;padding-top:2px}
       body.nl-work-detail-v2 #episodesPanel{display:none!important}
@@ -87,7 +87,7 @@
       .nl-work-toc-mobile-button{display:none}.nl-work-toc-dialog{border:0;padding:0;background:transparent;max-width:none;max-height:none;width:100%;height:100%;margin:0}.nl-work-toc-dialog::backdrop{background:rgba(30,24,18,.48)}.nl-work-toc-sheet{position:absolute;left:0;right:0;bottom:0;max-height:82vh;overflow:auto;border-radius:20px 20px 0 0;background:#fffdfa;padding:18px 16px 28px;box-shadow:0 -18px 46px rgba(28,22,17,.18)}.nl-work-toc-sheet-head{position:sticky;top:-18px;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-18px -16px 10px;padding:17px 16px 12px;background:#fffdfa;border-bottom:1px solid #eee6db}.nl-work-toc-sheet-head h2{font-size:18px;margin:0}.nl-work-toc-close{border:1px solid #d8cec1;border-radius:999px;background:#fff;width:36px;height:36px;font-size:20px;cursor:pointer}
       .nl-work-cover-owner-link{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:38px;padding:8px 10px;border:1px solid #d7ccbd;border-radius:9px;background:#fffdfa;color:#4b3b2c!important;text-decoration:none!important;font-size:12px;font-weight:900}
       .nl-work-detail-left-support{display:grid;gap:12px;min-width:0}.nl-work-detail-left-support:empty{display:none}
-      @media(max-width:1050px){body.nl-work-detail-v2 main{max-width:980px!important}.nl-work-detail-grid{grid-template-columns:210px minmax(0,1fr)}.nl-work-detail-toc{grid-column:1/-1;position:static;max-height:none;overflow:visible}.nl-work-toc-list{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;overflow:visible;padding-right:0}.nl-work-toc-chapter{grid-column:1/-1}}
+      @media(max-width:1050px){body.nl-work-detail-v2 main{max-width:980px!important}.nl-work-detail-grid{grid-template-columns:210px minmax(0,1fr)}.nl-work-detail-toc{grid-column:1/-1;position:static;max-height:none;overflow:visible}.nl-work-toc-list{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;overflow:visible;padding-right:0}.nl-work-toc-group{grid-column:1/-1}}
       @media(max-width:760px){body.nl-work-detail-v2 main{padding:22px 14px 60px!important}.nl-work-detail-grid{grid-template-columns:1fr;gap:16px}.nl-work-detail-left{position:static;display:grid;place-items:center}.nl-work-detail-cover{width:min(64vw,230px)}.nl-work-detail-left .tags,.nl-work-detail-bookmeta,.nl-work-detail-left-support{width:100%}.nl-work-detail-main{padding:22px 18px}.nl-work-detail-main .title{font-size:clamp(24px,6.4vw,31px);line-height:1.18}.nl-work-detail-toc{display:none}.nl-work-toc-mobile-button{display:inline-flex;align-items:center;justify-content:center}.nl-work-character-grid{grid-template-columns:1fr}.nl-work-character-head{align-items:flex-start;flex-direction:column;gap:4px}.nl-work-detail-actions{display:grid;grid-template-columns:1fr 1fr}.nl-work-read-action{grid-column:1/-1}.nl-work-detail-actions .nl-book-panel,.nl-work-detail-actions .novelight-curation-add-panel{grid-column:1/-1}.nl-work-more-actions{position:relative}.nl-work-more-menu{right:0;left:auto}}
       @media(max-width:430px){.nl-work-detail-actions{grid-template-columns:1fr}.nl-work-detail-actions>*{width:100%}.nl-work-more-menu{left:0;right:0;width:100%}}
     `;
@@ -144,9 +144,23 @@
     const progress = readProgress(id);
     const currentNumber = Number(progress?.episodeNumber) || 0;
     const currentId = progress?.episodeId ? String(progress.episodeId) : '';
-    for (const item of items) {
+    let chapterBody = wrap;
+    let chapterOrdinal = 0;
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
       if (item.type === 'chapter') {
-        wrap.appendChild(node('div', 'nl-work-toc-chapter', item.title));
+        chapterOrdinal += 1;
+        const group = node('details', 'nl-work-toc-group');
+        const summary = node('summary', 'nl-work-toc-chapter', item.title || `第${chapterOrdinal}章`);
+        const body = node('div', 'nl-work-toc-chapter-episodes');
+        const nextChapter = items.findIndex((candidate, index) => index > i && candidate.type === 'chapter');
+        const end = nextChapter < 0 ? items.length : nextChapter;
+        group.open = items.slice(i + 1, end).some((candidate) =>
+          candidate.type === 'episode' && String(candidate.row.id) === currentId
+        ) || (!currentId && chapterOrdinal === 1);
+        group.append(summary, body);
+        wrap.appendChild(group);
+        chapterBody = body;
         continue;
       }
       const row = item.row;
@@ -155,7 +169,7 @@
       if (currentNumber && row.number <= currentNumber) link.classList.add('is-read');
       if (currentId && String(row.id) === currentId) link.classList.add('is-current');
       link.append(node('span', 'nl-work-toc-num', `第${row.number}話`), node('span', '', row.title || `第${row.number}話`));
-      wrap.appendChild(link);
+      chapterBody.appendChild(link);
     }
     return wrap;
   }
