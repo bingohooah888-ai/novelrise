@@ -33,7 +33,11 @@ function element(tag, className = '', text = '') {
       this.children.push(...children);
     }
   };
-  el.classList = { add(value) { el.classes.push(value); } };
+  el.classList = {
+    add(value) {
+      el.classes.push(value);
+    }
+  };
   return el;
 }
 
