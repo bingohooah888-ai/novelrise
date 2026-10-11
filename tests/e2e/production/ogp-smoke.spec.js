@@ -103,9 +103,7 @@ test('published work 354 supplies a directly fetchable X cover image', async ({
   expect(image.length).toBeLessThan(5 * 1024 * 1024);
 });
 
-test('published episode 3420 exposes the novel PNG card on its public URL', async ({
-  request
-}) => {
+test('episode 3420 exposes the novel PNG card', async ({ request }) => {
   test.setTimeout(90_000);
 
   const response = await request.get(
@@ -114,7 +112,9 @@ test('published episode 3420 exposes the novel PNG card on its public URL', asyn
   );
   expect(response.status()).toBe(200);
   const html = await response.text();
-  expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+  expect(html).toContain(
+    '<meta name="twitter:card" content="summary_large_image">'
+  );
   expect(html).toContain('<meta property="og:title" content="');
   expect(html).toContain(
     '<meta property="og:url" content="https://novelight.jp/episode.html?id=3420">'
