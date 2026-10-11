@@ -37,6 +37,22 @@ test('episode reader uses one integrated navigation surface on desktop and mobil
   assert.match(navigation, /novelight_reader_episode_index/u);
 });
 
+test('current episode characters are highlighted and sorted first', () => {
+  assert.match(navigation, /function prioritizeCurrentEpisodeCharacters/u);
+  assert.match(navigation, /Number\(b\.appears_current_episode === true\)/u);
+  assert.match(navigation, /Number\(a\.appears_current_episode === true\)/u);
+  assert.match(
+    navigation,
+    /prioritizeCurrentEpisodeCharacters\(Array\.isArray/u
+  );
+  assert.match(navigation, /card\.classList\.add\('is-current-episode'\)/u);
+  assert.match(
+    navigation,
+    /\.nl-worknav-character\.is-current-episode\{background:/u
+  );
+  assert.match(navigation, /client\.rpc\('novelight_character_feed'/u);
+});
+
 test('novel detail exposes continue CTA and compact spoiler-safe characters', () => {
   assert.match(novel, /novelight-work-navigation\.js/u);
   assert.match(
