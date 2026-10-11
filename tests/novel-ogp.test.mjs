@@ -13,7 +13,7 @@ import {
   selectNovelOgImage
 } from '../api/og/novel-data.js';
 
-test('X social card uses larger Mincho title/author without altering cover proportions', () => {
+test('X card uses Mincho text and unchanged cover width', () => {
   const data = {
     coverSource: 'common',
     coverUrl: '',
@@ -33,8 +33,14 @@ test('X social card uses larger Mincho title/author without altering cover propo
   assert.equal(author.props.style.fontSize, '30px');
   assert.equal(branding.props.children, 'NOVELIGHT ORIGINAL');
 
-  const longer = buildNovelOgElement({ ...data, title: '文字数が長い場合の作品タイトルを読みやすく自動調整するための作品タイトルです' });
-  assert.equal(longer.props.children[1].props.children[1].props.style.fontSize, '48px');
+  const longer = buildNovelOgElement({
+    ...data,
+    title: '文字数が長い場合の作品タイトルを読みやすく自動調整するための作品タイトルです'
+  });
+  assert.equal(
+    longer.props.children[1].props.children[1].props.style.fontSize,
+    '48px'
+  );
 });
 
 test('new Mincho layout invalidates the previous immutable OG card cache', () => {
