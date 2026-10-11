@@ -11,10 +11,10 @@ const source = await readFile(
 test('episode auth and safe metadata load in parallel without body content', () => {
   assert.match(
     source,
-    /Promise\.all\(\[client\.auth\.getSession\(\),client\.from\('episodes'\)\.select\('id,novel_id,user_id,status,episode_number,title'\)/
+    /Promise\.all\(\[client\.auth\.getSession\(\),client\.from\('episodes'\)\.select\('id,novel_id,user_id,status,episode_number,title,show_episode_number'\)/
   );
   const safeQuery = source.indexOf(
-    "select('id,novel_id,user_id,status,episode_number,title')"
+    "select('id,novel_id,user_id,status,episode_number,title,show_episode_number')"
   );
   const gateCheck = source.indexOf('if(!isAuthor&&novelNeedsGate()');
   const bodyQuery = source.indexOf("select('novel_id,content,pv')");

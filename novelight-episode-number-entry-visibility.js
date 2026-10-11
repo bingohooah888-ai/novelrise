@@ -327,10 +327,21 @@
               'id'
             ) || '';
         } catch {}
-        number.classList.toggle(
-          'novelight-entry-number-hidden',
-          hiddenIds.has(String(episodeId))
-        );
+        const showNumber =
+          !document.documentElement.classList.contains(
+            'novelight-hide-auto-episode-numbers'
+          ) && !hiddenIds.has(String(episodeId));
+        number.classList.toggle('novelight-entry-number-hidden', !showNumber);
+        if (link.dataset.rawTitle !== undefined) {
+          const raw = decodeURIComponent(link.dataset.rawTitle);
+          const visible = global.NovelightEpisodeTitleDisplay.visibleTitle(
+            raw,
+            Number(link.dataset.episodeNumber),
+            showNumber
+          );
+          const label = visible || '本文を読む';
+          if (link.textContent !== label) link.textContent = label;
+        }
       });
     }
 
