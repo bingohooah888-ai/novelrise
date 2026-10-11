@@ -33,14 +33,19 @@ test('initial search results do not wait for the official tag catalog', () => {
   );
 });
 
-test('search presents titles and synopsis before tags and shows public publication dates', () => {
+test('search cards prioritize title and include public dates', () => {
   const card = searchSource.slice(searchSource.indexOf('function card(n)'));
-  assert.ok(card.indexOf('<div class="title">') < card.indexOf('${tagMarkup}'));
-  assert.ok(card.indexOf('data-novelight-synopsis') < card.indexOf('${tagMarkup}'));
+  const titleIndex = card.indexOf('<div class="title">');
+  const tagsIndex = card.indexOf('${tagMarkup}');
+  assert.ok(titleIndex >= 0 && titleIndex < tagsIndex);
+  assert.ok(card.indexOf('data-novelight-synopsis') < tagsIndex);
   assert.match(card, /作品登録日/u);
   assert.match(card, /最終投稿日/u);
   assert.match(searchSource, /novelight_public_discovery_card_state/u);
-  assert.match(searchSource, /latest_published_at:publicationMap\.get\(key\)\|\|null/u);
+  assert.match(
+    searchSource,
+    /latest_published_at:publicationMap\.get\(key\)\|\|null/u
+  );
 });
 
 test('search tips and official tags are next to search inputs', () => {
