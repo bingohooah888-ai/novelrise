@@ -33,7 +33,7 @@ parallel safe
 set search_path = pg_catalog
 as $$
   select p_content_rating = 'general'
-    and pg_catalog.coalesce(p_ai_usage, '') <> 'ai_generated'
+    and coalesce(p_ai_usage, '') <> 'ai_generated'
 $$;
 
 revoke all on function public.novelight_is_light_seed_eligible(text, text)
