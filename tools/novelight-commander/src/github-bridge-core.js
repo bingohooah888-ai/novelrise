@@ -1820,9 +1820,15 @@ async function actionHighRiskPrApprove(request, config) {
   ].join('\n');
 }
 
+async function actionGscIndexInspect(request) {
+  const { runGscReadOnlyBridgeAction } = await import('./gsc-readonly-bridge.js');
+  return runGscReadOnlyBridgeAction({ args: request.args });
+}
+
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['nlo_health', actionNloHealth],
+  ['gsc_index_inspect', actionGscIndexInspect],
   ['codex_auth_diagnose', actionCodexAuthDiagnose],
   ['codex_auth_repair_user_override', actionCodexAuthRepairUserOverride],
   ['autorecovery_install', actionAutorecoveryInstall],

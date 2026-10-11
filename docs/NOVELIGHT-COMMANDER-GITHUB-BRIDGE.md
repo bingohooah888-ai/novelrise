@@ -43,6 +43,7 @@ ChatGPT側で直接NLO MCPが見えない、または直接Tunnel経路が応答
 
 - `doctor`
 - `nlo_health`
+- `gsc_index_inspect`（読み取り専用・ローカルGoogle OAuthと明示的許可を必須）
 - `codex_auth_diagnose`
 - `codex_auth_repair_user_override`
 - `repo_snapshot`
@@ -155,3 +156,7 @@ Production登録は `thumbnail_register_production` を使います。実行条�
 credentialはGitHub Issue・repository・bridge logへ出力しません。環境変数に設定されていない場合は、まずログイン済みSupabase CLIの `projects api-keys --output json` を使い、利用できなければリンク済みVercel CLIのProduction環境から `SUPABASE_SECRET_KEY` を一時ファイルへ取得します。一時ファイルは読み込み直後に削除し、credential値自体は結果へ返しません。
 
 登録処理は既存 `registerOfficialThumbnailPack` を再利用します。既存SHAはスキップし、同じlabelで異なるsourceなら停止し、Storage upload後にDB登録が失敗した場合はアップロード済みobjectを削除します。処理後は対象layerのactive件数を再取得して結果へ返します。
+
+## Google Search Console 読み取り専用URL検査
+
+`gsc_index_inspect` は、Google所有者ログインと `NLO_GSC_BRIDGE_READONLY_ENABLED=true` が明示的に設定された場合のみ、`https://novelight.jp/` のインデックス版をGoogle公式APIで検査する。要求の `args` は空のオブジェクト以外を拒否する。認証トークンはローカル環境変数またはGoogle Cloud CLIのADCからメモリ内で取得し、GitHubには限定的な登録状態のみ返す。認証未設定や権限不足の場合はfail-closedする。詳しくは `docs/NLO-GSC-INDEX-INSPECTION.md`。
