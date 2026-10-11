@@ -135,5 +135,5 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   assert.equal(sharedUrl.origin, 'https://novelight.jp');
   assert.equal(sharedUrl.pathname, '/novel.html');
   assert.equal(sharedUrl.searchParams.get('id'), '354');
-  assert.equal(sharedUrl.searchParams.get('x_card'), 'cover-v2');
+  assert.equal(sharedUrl.searchParams.get('x_card'), 'png-v3');
 });
