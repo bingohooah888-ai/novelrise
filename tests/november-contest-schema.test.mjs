@@ -21,7 +21,10 @@ const tables = [
 
 test('contest foundation keeps its tables private', () => {
   for (const table of tables) {
-    const pattern = new RegExp('create table public\\.' + table + '\\s*\\(', 'i');
+    const pattern = new RegExp(
+      'create table public\\.' + table + '\\s*\\(',
+      'i'
+    );
     assert.match(sql, pattern);
     assert.ok(sql.includes("'" + table + "'"));
   }
