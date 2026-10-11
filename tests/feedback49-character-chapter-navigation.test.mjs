@@ -20,7 +20,7 @@ const postcheck = read(
   'supabase/checks/20261011133000_reader_episode_chapter_index_postcheck.sql'
 );
 
-test('missing and broken character images have equal-size initial fallbacks', () => {
+test('character image fallbacks keep consistent sizing', () => {
   for (const pattern of [
     /if \(!String\(value \|\| ''\)\.trim\(\)\) return '';/u,
     /function characterFallback/u,
@@ -36,7 +36,7 @@ test('missing and broken character images have equal-size initial fallbacks', ()
   assert.doesNotMatch(nav, /\.nl-worknav-character\.no-image/u);
 });
 
-test('chapter index preserves existing title visibility and safe fallback', () => {
+test('safe chapter metadata preserves the title visibility contract', () => {
   for (const pattern of [
     /novelight_reader_episode_chapter_index/u,
     /result\.error && runtimeMissing\(result\.error\)/u,
