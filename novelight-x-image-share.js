@@ -10,6 +10,7 @@
   const PUBLIC_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
   const prepared = new Map();
+  const warming = new Map();
   let client;
 
   function safeCoverUrl(value) {
@@ -265,6 +266,31 @@
     });
   }
 
+  // Start fetching the published card while the reader is looking at the
+  // share button. This warms NOVELIGHT's immutable PNG without blocking the
+  // user gesture or opening a temporary, empty browser tab.
+  function warm(url) {
+    let publicUrl;
+    try {
+      publicUrl = new URL(url, ORIGIN);
+      if (publicUrl.origin !== ORIGIN) return null;
+    } catch {
+      return null;
+    }
+    const key = publicUrl.href;
+    if (!warming.has(key)) {
+      const task = ensureXCardReady(intentUrl('', key))
+        .then(() => true)
+        .catch((error) => {
+          warming.delete(key);
+          console.warn('X share card warmup unavailable', error);
+          return false;
+        });
+      warming.set(key, task);
+    }
+    return warming.get(key);
+  }
+
   function downloadFile(file) {
     const href = URL.createObjectURL(file);
     const link = document.createElement('a');
@@ -286,34 +312,23 @@
   }
 
   async function share({ novelId, title, url, onStatus = () => {} }) {
-    const state = prepare(novelId);
-    if (!state) return onStatus('作品IDが確認できません。');
-    // All desktop shares use one OG-link-card path, regardless of the local
-    // cover file's preparation state. Do not race X's card fetch or switch
-    // to clipboard/download attachment behavior after preloading.
+    if (!/^\\d+$/.test(String(novelId || ''))) {
+      return onStatus('作品IDが確認できません。');
+    }
     if (!isMobileShareTarget()) {
+      // The X composer must open on the first click, synchronously within
+      // the user gesture. Never show an about:blank loading tab or wait for
+      // NOVELIGHT/X to finish collecting OG metadata before navigation.
+      void warm(url);
       const intent = intentUrl(title, url);
-      const popup = window.open('about:blank', '_blank');
+      const popup = window.open(intent, '_blank');
       if (popup) popup.opener = null;
-      if (popup?.document?.body) {
-        popup.document.body.textContent = 'NOVELIGHTの共有画像を確認しています…';
-      }
-      onStatus('X共有画像の準備を確認しています…');
-      try {
-        await ensureXCardReady(intent);
-        if (popup && !popup.closed) {
-          popup.location.replace(intent);
-        } else {
-          window.location.assign(intent);
-        }
-        onStatus('共有画像の準備を確認しました。Xの投稿画面を開きます。');
-      } catch (error) {
-        console.warn('X card readiness failed', error);
-        if (popup && !popup.closed) popup.close?.();
-        onStatus('共有画像を確認できませんでした。時間をおいて再度お試しください。');
-      }
+      else window.location?.assign?.(intent);
       return;
     }
+
+    const state = prepare(novelId);
+    if (!state) return onStatus('作品IDが確認できません。');
     if (!state.file) {
       onStatus('画像を準備しています。完了後にもう一度「Xで共有」を押してください。');
       try {
@@ -385,5 +400,5 @@
     );
   }
 
-  window.NovelightXImageShare = Object.freeze({ prepare, share, setClient });
+  window.NovelightXImageShare = Object.freeze({ prepare, warm, share, setClient });
 })();
