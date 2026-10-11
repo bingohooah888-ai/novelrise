@@ -221,7 +221,13 @@
     const shareUrl = new URL(url, ORIGIN);
     if (shareUrl.origin === ORIGIN) {
       if (shareUrl.pathname === '/novel.html') {
-        shareUrl.searchParams.set('x_card', 'png-v5-mincho');
+        // This work's public PNG was updated after an older preview had
+        // already circulated. Refresh only its X crawler cache identity.
+        const revision =
+          shareUrl.searchParams.get('id') === '257'
+            ? 'png-v6-257-refresh'
+            : 'png-v5-mincho';
+        shareUrl.searchParams.set('x_card', revision);
       } else if (shareUrl.pathname === '/episode.html') {
         shareUrl.searchParams.set('x_card', 'episode-png-v4-fast');
       }

@@ -250,7 +250,11 @@
       intent.searchParams.set('text', text);
       const cardUrl = new URL(url, CANONICAL_ORIGIN);
       if (cardUrl.pathname === '/novel.html') {
-        cardUrl.searchParams.set('x_card', 'png-v5-mincho');
+        const revision =
+          cardUrl.searchParams.get('id') === '257'
+            ? 'png-v6-257-refresh'
+            : 'png-v5-mincho';
+        cardUrl.searchParams.set('x_card', revision);
       } else if (cardUrl.pathname === '/episode.html') {
         cardUrl.searchParams.set('x_card', 'episode-png-v4-fast');
       }
