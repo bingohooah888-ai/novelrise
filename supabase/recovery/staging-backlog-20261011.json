@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "mode": "STAGING_ONLY_BACKLOG_RECOVERY",
+  "baselineAppliedCount": 133,
+  "baselineFirstPendingVersion": "20261001080000",
+  "baselineLastPendingVersion": "20261011160000",
+  "expectedStagingProjectRef": "wmlzjgvxgoyrovdhbqbg",
+  "immutableMigrations": [
+    {
+      "version": "20261001080000",
+      "file": "20261001080000_beta_feedback_character_outline_chapters.sql",
+      "gitBlobSha": "97e5f09a7eeb734e5308230130aed0b808674a85"
+    },
+    {
+      "version": "20261001081500",
+      "file": "20261001081500_character_first_appearance_refresh.sql",
+      "gitBlobSha": "354338096017c5fd2ddda71643c3b3f2d0c58f04"
+    },
+    {
+      "version": "20261001123000",
+      "file": "20261001123000_admin_analytics_foundation.sql",
+      "gitBlobSha": "fe4b7a41f7cce67549268e33f27d1f57c43f7ce1"
+    },
+    {
+      "version": "20261001124000",
+      "file": "20261001124000_inquiry_categories.sql",
+      "gitBlobSha": "d3c25c6b492a7580ff135ca47eb09b2ed82e3e5d"
+    },
+    {
+      "version": "20261001124500",
+      "file": "20261001124500_admin_analytics_details.sql",
+      "gitBlobSha": "23b32bbaa5157e8620c3bd865f599cb663cb1a5f"
+    },
+    {
+      "version": "20261001134500",
+      "file": "20261001134500_character_reader_cards.sql",
+      "gitBlobSha": "d6815b6c0a88aa33fa1ad49bbf581f9d2f92a1dc"
+    },
+    {
+      "version": "20261002113000",
+      "file": "20261002113000_reader_growth_attribution.sql",
+      "gitBlobSha": "505aecb0694c33901509729a94fc6cd8ead220cf"
+    },
+    {
+      "version": "20261003020000",
+      "file": "20261003020000_tune_valid_read_thresholds_for_tts.sql",
+      "gitBlobSha": "d276b730bd3b3c4ba7582ee8135b3111e3a38a3a"
+    },
+    {
+      "version": "20261003030000",
+      "file": "20261003030000_backfill_pre_beta_v2_valid_reads.sql",
+      "gitBlobSha": "d3dcfd27c288879d58e02e89670e41d657786231"
+    },
+    {
+      "version": "20261003190000",
+      "file": "20261003190000_today_book_discovery.sql",
+      "gitBlobSha": "d10271763c5d572d00b69238c4944b5f8ad3bbb7"
+    },
+    {
+      "version": "20261004073000",
+      "file": "20261004073000_add_episode_number_visibility.sql",
+      "gitBlobSha": "3045e3c6b7610ebbe36710e3369d21c0e21bc37d"
+    },
+    {
+      "version": "20261004103000",
+      "file": "20261004103000_add_episode_number_visibility_per_episode.sql",
+      "gitBlobSha": "229a548ade6e12c3f6c898b06f91871cb1d4543b"
+    },
+    {
+      "version": "20261004193000",
+      "file": "20261004193000_trust_safety_v1.sql",
+      "gitBlobSha": "a528d43dd53be32d77fb6055ccf3eab941744b24"
+    },
+    {
+      "version": "20261004193500",
+      "file": "20261004193500_trust_safety_v1_behavior_and_audit.sql",
+      "gitBlobSha": "d23f14147bdcb3bed1f03d3edf1ac5e704181e2e"
+    },
+    {
+      "version": "20261004193600",
+      "file": "20261004193600_trust_safety_v1_composite_scan.sql",
+      "gitBlobSha": "ce1ef01ecea656f3faea287777e03f397d938cce"
+    },
+    {
+      "version": "20261005090000",
+      "file": "20261005090000_scout_lv10_bookcard_campaign.sql",
+      "gitBlobSha": "ae9752863034a7133bfc5f716ff27c6e0a2ae15c"
+    },
+    {
+      "version": "20261005090500",
+      "file": "20261005090500_scout_campaign_next_rank_progress.sql",
+      "gitBlobSha": "a375788acfa95cda3c895b67a724e38ded6895b8"
+    },
+    {
+      "version": "20261005112000",
+      "file": "20261005112000_scout_campaign_entry_windows.sql",
+      "gitBlobSha": "76aaa9d993075571dacb9e1107724bba4f797cf1"
+    },
+    {
+      "version": "20261005121137",
+      "file": "20261005121137_grant_service_role_episode_illustrations.sql",
+      "gitBlobSha": "a72cc8ae90451def57afd05207700231e3cb07ab"
+    },
+    {
+      "version": "20261005153000",
+      "file": "20261005153000_scout_xp_daily_40_rules.sql",
+      "gitBlobSha": "846681d2c2e9987fcd340fe8ebc0fc591c723934"
+    },
+    {
+      "version": "20261005171000",
+      "file": "20261005171000_work_navigation_character_surfaces.sql",
+      "gitBlobSha": "2e0ec092079d09f06ed100f1e0923d5ebfa735ec"
+    },
+    {
+      "version": "20261006051123",
+      "file": "20261006051123_limit_episode_illustrations_service_role_privileges.sql",
+      "gitBlobSha": "b653a6c9c73a02f883903787df79bb9952c8bf30"
+    },
+    {
+      "version": "20261006065711",
+      "file": "20261006065711_announcement_images_and_detail.sql",
+      "gitBlobSha": "76fc11170ed673cd4bb7eb81baac50365d7fc444"
+    },
+    {
+      "version": "20261011133000",
+      "file": "20261011133000_reader_episode_chapter_index.sql",
+      "gitBlobSha": "736e46e552e36d1f82d39ea5e7e0d6e0f08a5c7f"
+    },
+    {
+      "version": "20261011160000",
+      "file": "20261011160000_public_discovery_card_state.sql",
+      "gitBlobSha": "a776d91fd2721b3d7e614949e7d3dd630d31a02c"
+    }
+  ],
+  "policy": "One-time owner-approved recovery, backup first, then one migration per incremental verified step. No retry, no automatic rollback, no Production DB access."
+}
