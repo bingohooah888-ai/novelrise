@@ -215,7 +215,13 @@
   function intentUrl(title, url) {
     const intent = new URL('https://twitter.com/intent/tweet');
     intent.searchParams.set('text', '『' + String(title || '作品').slice(0, 90) + '』をNOVELIGHTで読む');
-    intent.searchParams.set('url', url);
+    // X may cache an older no-image card for a previously shared novel URL.
+    // Use a stable revision on X shares only; readers still land on the same work.
+    const shareUrl = new URL(url, ORIGIN);
+    if (shareUrl.origin === ORIGIN && shareUrl.pathname === '/novel.html') {
+      shareUrl.searchParams.set('x_card', 'cover-v2');
+    }
+    intent.searchParams.set('url', shareUrl.href);
     return intent.href;
   }
 
