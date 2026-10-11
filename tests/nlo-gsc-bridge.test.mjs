@@ -20,7 +20,7 @@ const fakeResult = {
   pageFetchState: 'SUCCESSFUL'
 };
 
-test('GitHub Bridge GSC action denies requests until locally enabled', async () => {
+test('Bridge denies requests until locally enabled', async () => {
   let called = false;
   await assert.rejects(
     runGscReadOnlyBridgeAction({
@@ -36,7 +36,7 @@ test('GitHub Bridge GSC action denies requests until locally enabled', async () 
   assert.equal(called, false);
 });
 
-test('GitHub Bridge GSC action never accepts arbitrary URLs or commands', async () => {
+test('Bridge rejects arbitrary URLs and commands', async () => {
   for (const args of [
     { url: 'https://example.com/' },
     { command: 'sh' },
@@ -55,7 +55,7 @@ test('GitHub Bridge GSC action never accepts arbitrary URLs or commands', async 
   }
 });
 
-test('read-only GSC action uses exact official property and homepage', async () => {
+test('Bridge uses the exact NOVELIGHT property and homepage', async () => {
   const rawToken = 'SENSITIVE_IN_MEMORY_TOKEN';
   const payload = await runGscReadOnlyBridgeAction({
     args: {},
@@ -85,19 +85,21 @@ test('read-only GSC action uses exact official property and homepage', async () 
   assert.equal(payload.includes(rawToken), false);
 });
 
-test('read-only GSC action rejects properties not owned by NOVELIGHT', async () => {
+test('Bridge rejects unrelated Search Console properties', async () => {
   await assert.rejects(
     runGscReadOnlyBridgeAction({
       args: {},
       env: ENV,
       tokenProvider: async () => 'SENSITIVE_IN_MEMORY_TOKEN',
-      listSites: async () => ({ properties: [{ siteUrl: 'https://other.test/' }] })
+      listSites: async () => ({
+        properties: [{ siteUrl: 'https://other.test/' }]
+      })
     }),
     (error) => error.code === 'gsc_property_access_required'
   );
 });
 
-test('Google raw errors and secrets never leave the bridge', async () => {
+test('Bridge never leaks raw Google errors or tokens', async () => {
   const secret = 'VERY_SENSITIVE_TOKEN';
   await assert.rejects(
     runGscReadOnlyBridgeAction({
@@ -108,11 +110,13 @@ test('Google raw errors and secrets never leave the bridge', async () => {
         throw new Error('Google error includes ' + secret);
       }
     }),
-    (error) => error.code === 'gsc_readonly_request_failed' && !error.message.includes(secret)
+    (error) =>
+      error.code === 'gsc_readonly_request_failed' &&
+      !error.message.includes(secret)
   );
 });
 
-test('local Google token provider uses fixed gcloud args with no shell interpolation', async () => {
+test('Local provider uses fixed gcloud arguments', async () => {
   const token = 'abcde0123456789abcdef012345';
   const calls = [];
   for (const platform of ['win32', 'linux']) {
@@ -126,15 +130,23 @@ test('local Google token provider uses fixed gcloud args with no shell interpola
     });
     assert.equal(actual, token);
   }
-  assert.deepEqual(calls[0].args, [
-    '/d', '/s', '/c', 'gcloud.cmd', 'auth', 'application-default', 'print-access-token'
-  ]);
-  assert.deepEqual(calls[1].args, ['auth', 'application-default', 'print-access-token']);
+  const windows = [
+    '/d',
+    '/s',
+    '/c',
+    'gcloud.cmd',
+    'auth',
+    'application-default',
+    'print-access-token'
+  ];
+  const linux = ['auth', 'application-default', 'print-access-token'];
+  assert.deepEqual(calls[0].args, windows);
+  assert.deepEqual(calls[1].args, linux);
   assert.equal(calls[0].options.windowsHide, true);
   assert.equal(calls[1].options.maxBuffer, 8192);
 });
 
-test('gcloud errors are opaque, never include command or access token output', async () => {
+test('gcloud errors do not leak tokens', async () => {
   const secret = 'very-private';
   await assert.rejects(
     acquireReadOnlyGscToken({
