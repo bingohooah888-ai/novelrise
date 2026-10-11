@@ -57,6 +57,8 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   let xIntent = '';
   let directIntent = '';
   let copyCount = 0;
+  let publicCardChecks = 0;
+  let openedTabs = 0;
   let releaseMetadata;
   const metadataGate = new Promise((resolve) => {
     releaseMetadata = resolve;
@@ -72,6 +74,7 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     setTimeout: () => 1,
     clearTimeout: () => {},
     open: (url) => {
+      openedTabs += 1;
       if (url !== 'about:blank') directIntent = url;
       return {
         closed: false,
@@ -102,6 +105,7 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     navigator,
     URL,
     fetch: async () => {
+      publicCardChecks += 1;
       await metadataGate;
       return {
         ok: true,
@@ -149,6 +153,8 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   assert.match(xIntent, /twitter\.com\/intent\/tweet/u);
   assert.equal(directIntent, '');
   assert.equal(copyCount, 0);
+  assert.equal(openedTabs, 1);
+  assert.equal(publicCardChecks, 1);
 
   await window.NovelightXImageShare.prepare('354').promise;
   await window.NovelightXImageShare.share({
@@ -157,7 +163,10 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     url: 'https://novelight.jp/novel.html?id=354'
   });
   assert.equal(nativeShares, 0);
-  assert.equal(copyCount, 1);
+  // Previously prepared covers must use the same OG link-card path.
+  assert.equal(copyCount, 0);
+  assert.equal(openedTabs, 2);
+  assert.equal(publicCardChecks, 2);
   const sharedUrl = new URL(new URL(xIntent).searchParams.get('url'));
   assert.equal(sharedUrl.origin, 'https://novelight.jp');
   assert.equal(sharedUrl.pathname, '/novel.html');
@@ -174,4 +183,7 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   assert.equal(episodeUrl.pathname, '/episode.html');
   assert.equal(episodeUrl.searchParams.get('id'), '3420');
   assert.equal(episodeUrl.searchParams.get('x_card'), 'episode-png-v2-cover');
+  assert.equal(copyCount, 0);
+  assert.equal(openedTabs, 3);
+  assert.equal(publicCardChecks, 3);
 });
