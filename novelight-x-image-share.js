@@ -252,13 +252,56 @@
   async function share({ novelId, title, url, onStatus = () => {} }) {
     const state = prepare(novelId);
     if (!state) return onStatus('作品IDが確認できません。');
-    // A link card does not need the local PNG. Open X immediately on PC,
-    // even if cover preparation is still running.
+    // First-click sharing must not race with public OG image preparation.
+    // Keep popup creation inside the user gesture; redirect only after the
+    // exact versioned public page and its linked PNG are reachable.
     if (!isMobileShareTarget() && !state.file) {
-      window.open(intentUrl(title, url), '_blank', 'noopener,noreferrer');
-      onStatus(
-        'Xで作品URLを投稿すると画像付きリンクカードが表示されます（表示はX側の取得状況によります）。'
-      );
+      const intent = intentUrl(title, url);
+      const shareUrl = new URL(new URL(intent).searchParams.get('url'));
+      const popup = window.open('about:blank', '_blank');
+      if (popup) popup.opener = null;
+      if (popup?.document?.body) {
+        popup.document.body.textContent = 'NOVELIGHTの共有画像を確認しています…';
+      }
+      onStatus('X共有画像の準備を確認しています…');
+      try {
+        if (shareUrl.origin !== ORIGIN) throw new Error('Untrusted share URL');
+        const response = await fetch(shareUrl.href, {
+          credentials: 'omit',
+          cache: 'no-store',
+          signal: AbortSignal.timeout(12000)
+        });
+        if (!response.ok) throw new Error('Public share page is unavailable');
+        const html = await response.text();
+        const imageUrl = safeCoverUrl(
+          html.match(/<meta name="twitter:image" content="([^"]+)">/u)?.[1]
+        );
+        if (!imageUrl) throw new Error('Public X image metadata is missing');
+        // IMG loading does not require CORS read access to public Storage.
+        await new Promise((resolve, reject) => {
+          const image = new Image();
+          const timer = window.setTimeout(() => reject(new Error('Image load timeout')), 8000);
+          image.onload = () => {
+            window.clearTimeout(timer);
+            resolve();
+          };
+          image.onerror = () => {
+            window.clearTimeout(timer);
+            reject(new Error('Public X image cannot be decoded'));
+          };
+          image.src = imageUrl;
+        });
+        if (popup && !popup.closed) {
+          popup.location.replace(intent);
+        } else {
+          window.location.assign(intent);
+        }
+        onStatus('共有画像の準備を確認しました。Xの投稿画面を開きます。');
+      } catch (error) {
+        console.warn('X card readiness failed', error);
+        if (popup && !popup.closed) popup.close?.();
+        onStatus('共有画像を確認できませんでした。時間をおいて再度お試しください。');
+      }
       return;
     }
     if (!state.file) {
