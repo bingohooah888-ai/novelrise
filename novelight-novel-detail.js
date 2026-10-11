@@ -358,9 +358,16 @@
         title: workTitle(),
         url: publicUrl,
         onStatus: (message) => {
-          const note = node('p', 'nl-work-share-status', message);
+          // Only actionable failures/retry prompts belong in this compact menu.
+          // Hide the verbose success tip after X opens.
           menu.querySelector('.nl-work-share-status')?.remove();
-          menu.appendChild(note);
+          if (
+            !message ||
+            (!message.includes('できません') && !message.includes('もう一度'))
+          ) {
+            return;
+          }
+          menu.appendChild(node('p', 'nl-work-share-status', message));
         }
       });
     });
