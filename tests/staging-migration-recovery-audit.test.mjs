@@ -46,12 +46,17 @@ test('reports all missing migration artifacts and never treats drift as permissi
 
   assert.equal(report.migrationParity, false);
   assert.equal(report.automaticRepairAllowed, false);
-  assert.deepEqual(report.missingOnStaging, ['20260930153337', '20261001124000']);
+  assert.deepEqual(report.missingOnStaging, [
+    '20260930153337',
+    '20261001124000'
+  ]);
   assert.deepEqual(report.unexpectedOnStaging, ['20260930210000']);
   assert.ok(report.blockers.includes('MULTIPLE_PENDING_MIGRATIONS'));
   assert.ok(report.blockers.includes('UNEXPECTED_STAGING_MIGRATION_HISTORY'));
   assert.ok(report.blockers.includes('MISSING_OR_AMBIGUOUS_SAFETY_ARTIFACTS'));
-  assert.ok(report.blockers.includes('POTENTIAL_DATA_MUTATION_REQUIRES_MANUAL_REVIEW'));
+  assert.ok(
+    report.blockers.includes('POTENTIAL_DATA_MUTATION_REQUIRES_MANUAL_REVIEW')
+  );
   assert.deepEqual(report.pending[1].advisorySqlMutationMarkers, ['UPDATE']);
 });
 
@@ -91,21 +96,25 @@ test('rejects ambiguous duplicate artifact files and duplicate history', () => {
   assert.equal(report.pending[0].artifactCountConflict, true);
   assert.ok(report.blockers.includes('MISSING_OR_AMBIGUOUS_SAFETY_ARTIFACTS'));
   assert.throws(
-    () => assessStagingMigrationRecovery({
-      localMigrations: [safe, safe],
-      remoteVersions: [],
-      checkNames: [],
-      rollbackNames: []
-    }),
+    () => {
+      assessStagingMigrationRecovery({
+        localMigrations: [safe, safe],
+        remoteVersions: [],
+        checkNames: [],
+        rollbackNames: []
+      });
+    },
     /duplicate migration history/
   );
   assert.throws(
-    () => assessStagingMigrationRecovery({
-      localMigrations: [safe],
-      remoteVersions: [version, version],
-      checkNames: [],
-      rollbackNames: []
-    }),
+    () => {
+      assessStagingMigrationRecovery({
+        localMigrations: [safe],
+        remoteVersions: [version, version],
+        checkNames: [],
+        rollbackNames: []
+      });
+    },
     /duplicate migration history/
   );
 });
@@ -139,15 +148,24 @@ test('uses read-only remote migration history and local artifacts only', async (
     await mkdir(join(root, 'supabase/rollback'));
     await writeFile(join(root, 'supabase/migrations', safe.name), safe.sql);
     await writeFile(
-      join(root, 'supabase/checks/20261011160000_public_discovery_card_state_precheck.sql'),
+      join(
+        root,
+        'supabase/checks/20261011160000_public_discovery_card_state_precheck.sql'
+      ),
       'do $$ begin end $$;'
     );
     await writeFile(
-      join(root, 'supabase/checks/20261011160000_public_discovery_card_state_postcheck.sql'),
+      join(
+        root,
+        'supabase/checks/20261011160000_public_discovery_card_state_postcheck.sql'
+      ),
       'do $$ begin end $$;'
     );
     await writeFile(
-      join(root, 'supabase/rollback/20261011160000_public_discovery_card_state_rollback.sql'),
+      join(
+        root,
+        'supabase/rollback/20261011160000_public_discovery_card_state_rollback.sql'
+      ),
       'begin; rollback;'
     );
 
