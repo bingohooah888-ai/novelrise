@@ -35,7 +35,7 @@ test('X card uses Mincho text and unchanged cover width', () => {
 
   const longer = buildNovelOgElement({
     ...data,
-    title: '文字数が長い場合の作品タイトルを読みやすく自動調整するための作品タイトルです'
+    title: '長い作品タイトルのサンプルです'.repeat(2)
   });
   assert.equal(
     longer.props.children[1].props.children[1].props.style.fontSize,
@@ -43,7 +43,7 @@ test('X card uses Mincho text and unchanged cover width', () => {
   );
 });
 
-test('new Mincho layout invalidates the previous immutable OG card cache', () => {
+test('Mincho layout invalidates the previous immutable card', () => {
   const source = {
     id: 549,
     title: '思い出の日記',
