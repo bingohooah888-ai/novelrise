@@ -11,7 +11,7 @@ import {
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
 export const OG_COVER_WIDTH = 440;
-export const COMMON_OG_VERSION = 'novelight-cover-webp-png-v2';
+export const COMMON_OG_VERSION = 'novelight-cover-mincho-title-v3';
 
 const IMAGE_HOSTS = new Set([
   'fiepaguycecrredwrcwx.supabase.co',
