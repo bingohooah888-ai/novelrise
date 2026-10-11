@@ -136,7 +136,8 @@ test('X share uses cover media while URL copy keeps attribution', async () => {
     share.indexOf('bar.appendChild(shareX)')
   );
   assert.match(xHandler, /NovelightXImageShare\.share/u);
-  assert.match(xHandler, /searchParams\.set\('url', url\)/u);
+  assert.match(xHandler, /searchParams\.set\('url', cardUrl\.href\)/u);
+  assert.match(xHandler, /searchParams\.set\('x_card'/u);
   assert.match(xHandler, /searchParams\.set\('text', text\)/u);
   assert.doesNotMatch(xHandler, /scoutAttributedShareUrl/u);
   assert.doesNotMatch(xHandler, /utm_/u);

@@ -172,7 +172,7 @@ test('public X sharing remains available and carries work attribution', async ()
     new URL('../novelight-public-share.js', import.meta.url),
     'utf8'
   );
-  assert.match(source, /Xでシェア/u);
+  assert.match(source, /Xで共有/u);
   assert.match(source, /https:\/\/twitter\.com\/intent\/tweet/u);
   assert.match(source, /novelight_work_share/u);
   assert.match(source, /utm_source/u);
