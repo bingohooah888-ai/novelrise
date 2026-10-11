@@ -54,7 +54,7 @@ begin
    where contest_id = v_contest.id
      and author_id = v_uid;
 
-  select pg_catalog.coalesce(
+  select coalesce(
     pg_catalog.jsonb_agg(
       pg_catalog.jsonb_build_object(
         'id', w.id,
