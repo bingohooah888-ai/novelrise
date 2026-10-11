@@ -114,9 +114,24 @@ export function replacePlaceholder(html, placeholder, replacement) {
     : html;
 }
 
-export function sendHtml(req, res, html, { indexable = true } = {}) {
+export function sendHtml(
+  req,
+  res,
+  html,
+  { indexable = true, socialCardCacheSeconds = 0 } = {}
+) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  // Only explicitly opted-in, published X-card pages can be cached briefly
+  // at the CDN. Ordinary pages and unpublished/noindex responses stay no-store.
+  if (indexable && req.method === 'GET' && socialCardCacheSeconds === 30) {
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.setHeader('CDN-Cache-Control', 's-maxage=30');
+    res.setHeader('Vercel-CDN-Cache-Control', 's-maxage=30');
+  } else {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('CDN-Cache-Control', 'no-store');
+    res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
+  }
   if (!indexable) {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   }

@@ -400,5 +400,5 @@
     );
   }
 
-  window.NovelightXImageShare = Object.freeze({ prepare, warm, share, setClient });
+  window.NovelightXImageShare = Object.freeze({ prepare, warm, share, setClient, isMobileShareTarget });
 })();

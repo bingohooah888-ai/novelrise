@@ -128,7 +128,12 @@ export default async function handler(req, res) {
     }
 
     html = ensureShareScript(html);
-    return sendHtml(req, res, html);
+    // X-only revision URLs are already public and safe to cache briefly.
+    // Ordinary work visits, missing/unpublished works and other parameters
+    // remain no-store. This avoids repeat cold SSR/database reads by X.
+    const socialCardCacheSeconds =
+      queryValue(req.query?.x_card) === 'png-v5-mincho' ? 30 : 0;
+    return sendHtml(req, res, html, { socialCardCacheSeconds });
   } catch (error) {
     console.error('Novel SEO render failed', {
       code: error?.code || null,

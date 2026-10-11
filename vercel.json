@@ -18,7 +18,14 @@
     }
   },
   "images": {
-    "sizes": [128, 256, 384, 640, 1080, 1600],
+    "sizes": [
+      128,
+      256,
+      384,
+      640,
+      1080,
+      1600
+    ],
     "localPatterns": [
       {
         "pathname": "/assets/**",
@@ -34,8 +41,16 @@
       }
     ],
     "minimumCacheTTL": 2678400,
-    "qualities": [70, 75, 80, 85],
-    "formats": ["image/avif", "image/webp"]
+    "qualities": [
+      70,
+      75,
+      80,
+      85
+    ],
+    "formats": [
+      "image/avif",
+      "image/webp"
+    ]
   },
   "redirects": [
     {
@@ -114,23 +129,6 @@
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=31536000"
-        }
-      ]
-    },
-    {
-      "source": "/novel.html",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, max-age=0"
-        },
-        {
-          "key": "CDN-Cache-Control",
-          "value": "no-store"
-        },
-        {
-          "key": "Vercel-CDN-Cache-Control",
-          "value": "no-store"
         }
       ]
     },

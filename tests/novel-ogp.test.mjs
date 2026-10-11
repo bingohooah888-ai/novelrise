@@ -244,3 +244,57 @@ test('Vercel excludes the static novel shell so the SEO rewrite can run', async 
   assert.match(vercelIgnore, /^\/novel\.html$/mu);
   assert.equal(serverTemplate, rootTemplate);
 });
+
+test('only published X revision work HTML opts in to short CDN cache', async () => {
+  const { sendHtml } = await import('../api/seo/public-page.js');
+  const responses = [];
+  const makeRes = () => {
+    const headers = new Map();
+    const res = {
+      headers,
+      setHeader: (key, value) => headers.set(key, value),
+      status: () => res,
+      send: (body) => {
+        responses.push(body);
+        return body;
+      }
+    };
+    return res;
+  };
+  const normal = makeRes();
+  sendHtml({ method: 'GET' }, normal, '<html></html>');
+  assert.equal(normal.headers.get('Cache-Control'), 'no-store, max-age=0');
+  assert.equal(normal.headers.get('Vercel-CDN-Cache-Control'), 'no-store');
+
+  const share = makeRes();
+  sendHtml({ method: 'GET' }, share, '<html></html>', {
+    socialCardCacheSeconds: 30
+  });
+  assert.equal(
+    share.headers.get('Vercel-CDN-Cache-Control'),
+    's-maxage=30'
+  );
+  assert.equal(share.headers.get('Cache-Control'), 'public, max-age=0, must-revalidate');
+
+  const hidden = makeRes();
+  sendHtml({ method: 'GET' }, hidden, '<html></html>', {
+    indexable: false,
+    socialCardCacheSeconds: 30
+  });
+  assert.equal(hidden.headers.get('Vercel-CDN-Cache-Control'), 'no-store');
+  const head = makeRes();
+  sendHtml({ method: 'HEAD' }, head, '<html></html>', {
+    socialCardCacheSeconds: 30
+  });
+  assert.equal(head.headers.get('Vercel-CDN-Cache-Control'), 'no-store');
+
+  const [route, config] = await Promise.all([
+    readFile(new URL('../api/seo/novel.js', import.meta.url), 'utf8'),
+    readFile(new URL('../vercel.json', import.meta.url), 'utf8')
+  ]);
+  assert.match(route, /queryValue\(req\.query\?\.x_card\) === 'png-v5-mincho'/u);
+  assert.doesNotMatch(JSON.parse(config).headers.map((h) => h.source), /novel\.html/u);
+  assert.ok(
+    JSON.parse(config).headers.some((entry) => entry.source === '/episode.html')
+  );
+});
