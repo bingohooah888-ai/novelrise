@@ -39,6 +39,17 @@
   },
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "novelrise.vercel.app"
+        }
+      ],
+      "destination": "https://novelight.jp/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
