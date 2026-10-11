@@ -2,6 +2,7 @@ import { URL } from 'node:url';
 
 import { loadNovelOgData } from '../og/novel-data.js';
 import { ensureNovelSocialCard } from '../og/social-card-storage.js';
+import { renderEpisodeArticle } from './episode-article.js';
 import {
   canonicalUrl,
   compactText,
@@ -53,7 +54,7 @@ export default async function handler(req, res) {
 
     const { data: episode, error: episodeError } = await getSupabase()
       .from('episodes')
-      .select('id,novel_id,status,episode_number,title')
+      .select('id,novel_id,status,episode_number,title,show_episode_number')
       .eq('id', id)
       .eq('status', 'published')
       .maybeSingle();
@@ -67,7 +68,7 @@ export default async function handler(req, res) {
 
     const { data: novel, error: novelError } = await getSupabase()
       .from('novels')
-      .select('id,title,status,content_rating,content_warnings')
+      .select('id,title,status,content_rating,content_warnings,show_episode_numbers')
       .eq('id', episode.novel_id)
       .eq('status', 'published')
       .maybeSingle();
@@ -135,7 +136,7 @@ export default async function handler(req, res) {
       html = replacePlaceholder(
         html,
         PLACEHOLDER,
-        `<article id="card" class="card"><div class="novel-title"><a href="novel.html?id=${encodeURIComponent(novel.id)}">${escapeHtml(novel.title)}</a></div><div class="number">第${escapeHtml(episode.episode_number)}話</div><h1>${escapeHtml(episode.title)}</h1><div class="content">${escapeHtml(content)}</div></article>`
+        renderEpisodeArticle(episode, novel, content)
       );
     }
 
