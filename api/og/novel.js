@@ -227,7 +227,7 @@ export async function prepareNovelOgCover(
   if (!trustedUrl) throw new Error('Social card cover URL is not trusted');
 
   const response = await fetchImage(trustedUrl, {
-    signal: AbortSignal.timeout(6500)
+    signal: globalThis.AbortSignal.timeout(6500)
   });
   if (!response.ok) {
     throw new Error(`Social card cover fetch failed: ${response.status}`);
