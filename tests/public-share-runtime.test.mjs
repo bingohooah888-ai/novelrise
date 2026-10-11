@@ -23,6 +23,11 @@ test('work sharing includes public page, copy, and X actions', () => {
   assert.match(shareRuntime, /state\.textContent\.includes\('公開中'\)/);
 });
 
+test('work and reader page buttons prewarm the exact public URL', () => {
+  assert.match(shareRuntime, /NovelightXImageShare\?\.warm\(url\)/u);
+  assert.match(shareRuntime, /if \(position !== 'work-card'\) prepareImage\(\)/u);
+});
+
 test('work detail keeps one X share entry in the existing actions menu', () => {
   assert.equal(shareRuntime.includes('function installNovelSharing()'), false);
   assert.equal(shareRuntime.includes('installNovelSharing();'), false);
