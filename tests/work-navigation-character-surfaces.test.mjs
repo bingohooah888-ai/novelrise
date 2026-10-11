@@ -62,6 +62,17 @@ test('author editing exposes the shared character management entry and surface c
   assert.match(characterAdmin, /p_display_order/u);
 });
 
+test('hidden reader characters keep author-managed display order editable', () => {
+  const syncSurface = characterAdmin.match(
+    /function syncSurfaceEnabled\(\) \{([\s\S]*?)\n  \}/u
+  )?.[1];
+  assert.ok(syncSurface);
+  assert.match(syncSurface, /if \(body\) body\.disabled = disabled;/u);
+  assert.match(syncSurface, /if \(detail\) detail\.disabled = disabled;/u);
+  assert.match(syncSurface, /if \(order\) order\.disabled = false;/u);
+  assert.match(characterAdmin, /p_display_order: orderValue/u);
+});
+
 test('new character reader surfaces are opt-in for existing rows', () => {
   assert.match(
     migration,
