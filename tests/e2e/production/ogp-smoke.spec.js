@@ -1,5 +1,3 @@
-import sharp from 'sharp';
-
 import { expect, test } from '@playwright/test';
 
 const PRODUCTION_NOVEL_URL = 'https://novelight.jp/novel.html?id=541';
@@ -145,7 +143,7 @@ test('episode 3420 exposes the novel PNG card', async ({ request }) => {
   });
 });
 
-test('work 257 social PNG contains its painted cover', async ({ request }) => {
+test('work 257 social PNG contains its painted cover', async ({ request, page }) => {
   test.setTimeout(90_000);
   const page = await request.get(
     'https://novelight.jp/episode.html?id=3420&x_card=episode-png-v2-cover',
@@ -165,10 +163,39 @@ test('work 257 social PNG contains its painted cover', async ({ request }) => {
 
   // A 1200x630 PNG can be valid while the entire cover panel is blank.
   // The designated work 257 thumbnail has artwork that must vary in colour.
-  const stats = await sharp(bytes)
-    .extract({ left: 32, top: 32, width: 376, height: 566 })
-    .stats();
-  expect(
-    Math.max(...stats.channels.slice(0, 3).map((c) => c.stdev))
-  ).toBeGreaterThan(6);
+  // The Production smoke runner installs Playwright, not sharp. Decode
+  // with the real browser and measure the image pixels via HTML Canvas.
+  const coverVariation = await page.evaluate(async (base64) => {
+    const image = new globalThis.Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = globalThis.document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 630;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) throw new Error('No canvas image context');
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(32, 32, 376, 566).data;
+    const sum = [0, 0, 0];
+    const sumOfSquares = [0, 0, 0];
+    const count = pixels.length / 4;
+    for (let i = 0; i < pixels.length; i += 4) {
+      for (let channel = 0; channel < 3; channel += 1) {
+        const value = pixels[i + channel];
+        sum[channel] += value;
+        sumOfSquares[channel] += value * value;
+      }
+    }
+    return Math.max(
+      ...sum.map((total, channel) =>
+        Math.sqrt(
+          Math.max(
+            0,
+            sumOfSquares[channel] / count - (total / count) ** 2
+          )
+        )
+      )
+    );
+  }, bytes.toString('base64'));
+  expect(coverVariation).toBeGreaterThan(6);
 });
