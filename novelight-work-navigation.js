@@ -21,6 +21,7 @@
       .nl-worknav-panel{border:1px solid #e4dccf;border-radius:14px;background:#fffdf8;overflow:hidden;box-shadow:0 10px 28px rgba(55,42,29,.05)}
       .nl-worknav-panel-head{padding:13px 14px;border-bottom:1px solid #ece5d9;color:#4b3928;font-size:13px;font-weight:900}
       .nl-worknav-episode-list{max-height:42vh;overflow:auto;padding:7px}.nl-worknav-episode-link{display:block;padding:9px 10px;border-radius:8px;color:#665a4d;font-size:12px;line-height:1.45;text-decoration:none!important}
+      .nl-worknav-chapter{border:1px solid #e8dfd2;border-radius:9px;overflow:hidden;background:#fff}.nl-worknav-chapter>summary{padding:10px 12px;cursor:pointer;font-size:12px;font-weight:900;color:#4b3928;list-style:none;background:#f8f3eb}.nl-worknav-chapter>summary::-webkit-details-marker{display:none}.nl-worknav-chapter>summary::after{content:'＋';float:right}.nl-worknav-chapter[open]>summary::after{content:'－'}.nl-worknav-chapter>summary:focus-visible{outline:2px solid #7351d8;outline-offset:-2px}.nl-worknav-chapter-episodes{padding:4px 6px 6px}
       .nl-worknav-episode-link:hover{background:#f5efe4}.nl-worknav-episode-link.current{background:#efe7d8;color:#382b1e;font-weight:900}.nl-worknav-episode-link small{display:block;margin-bottom:2px;color:#958878;font-size:10px}
       .nl-worknav-character-list{display:grid;gap:7px;padding:9px}.nl-worknav-character{display:grid;grid-template-columns:42px minmax(0,1fr);gap:9px;align-items:start;padding:8px;border-radius:9px;background:#fff}
       .nl-worknav-character img,.nl-worknav-character-placeholder{width:42px;height:42px;object-fit:cover;border-radius:50%;border:1px solid #e1d7c8;background:#f5f0e8}.nl-worknav-character-placeholder{display:grid;place-items:center;color:#7a6855;font-size:17px;font-weight:900}
@@ -53,18 +54,36 @@
   }
 
   async function publicEpisodes(client, novelId) {
-    const result = await client.rpc('novelight_reader_episode_index', {
-      p_novel_ids: [String(novelId)]
-    });
+    const params = { p_novel_ids: [String(novelId)] };
+    let result = await client.rpc('novelight_reader_episode_chapter_index', params);
+    // During migration rollout keep the existing spoiler-safe episode list available.
+    if (result.error && runtimeMissing(result.error)) {
+      result = await client.rpc('novelight_reader_episode_index', params);
+    }
     if (result.error) throw result.error;
     return (result.data || [])
       .filter((row) => String(row.novel_id) === String(novelId))
       .map((row) => ({
         id: row.episode_id,
         number: Number(row.episode_number) || 0,
-        title: String(row.episode_title || '')
+        title: String(row.episode_title || ''),
+        chapterId: row.chapter_id == null ? null : String(row.chapter_id),
+        chapterTitle: String(row.chapter_title || '')
       }))
       .sort((a, b) => a.number - b.number || Number(a.id) - Number(b.id));
+  }
+
+  function makeEpisodeLink(row, currentEpisodeId) {
+    const link = document.createElement('a');
+    link.className = `nl-worknav-episode-link${String(row.id) === String(currentEpisodeId) ? ' current' : ''}`;
+    link.href = episodeHref(row.id);
+    if (String(row.id) === String(currentEpisodeId)) link.setAttribute('aria-current', 'page');
+    const number = document.createElement('small');
+    number.textContent = `第${row.number}話`;
+    const title = document.createElement('span');
+    title.textContent = row.title || `第${row.number}話`;
+    link.append(number, title);
+    return link;
   }
 
   function makeEpisodeList(rows, currentEpisodeId = null) {
@@ -77,17 +96,30 @@
       list.appendChild(empty);
       return list;
     }
+    let currentChapterId = null;
+    let currentBody = list;
+    let chapterOrdinal = 0;
     for (const row of rows) {
-      const link = document.createElement('a');
-      link.className = `nl-worknav-episode-link${String(row.id) === String(currentEpisodeId) ? ' current' : ''}`;
-      link.href = episodeHref(row.id);
-      if (String(row.id) === String(currentEpisodeId)) link.setAttribute('aria-current', 'page');
-      const number = document.createElement('small');
-      number.textContent = `第${row.number}話`;
-      const title = document.createElement('span');
-      title.textContent = row.title || `第${row.number}話`;
-      link.append(number, title);
-      list.appendChild(link);
+      const chapterId = row.chapterId || null;
+      if (chapterId && chapterId !== currentChapterId) {
+        chapterOrdinal += 1;
+        const group = document.createElement('details');
+        group.className = 'nl-worknav-chapter';
+        const summary = document.createElement('summary');
+        const chapterRows = rows.filter((candidate) => candidate.chapterId === chapterId);
+        const visibleTitle = chapterRows.find((candidate) => candidate.chapterTitle)?.chapterTitle;
+        summary.textContent = visibleTitle || `第${chapterOrdinal}章`;
+        const body = document.createElement('div');
+        body.className = 'nl-worknav-chapter-episodes';
+        group.open = chapterRows.some((candidate) => String(candidate.id) === String(currentEpisodeId));
+        group.append(summary, body);
+        list.appendChild(group);
+        currentBody = body;
+      } else if (!chapterId) {
+        currentBody = list;
+      }
+      currentChapterId = chapterId;
+      currentBody.appendChild(makeEpisodeLink(row, currentEpisodeId));
     }
     return list;
   }
