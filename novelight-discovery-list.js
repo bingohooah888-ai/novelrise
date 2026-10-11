@@ -86,7 +86,7 @@
   }
 
   async function filterHiddenRows(rows) {
-    rows = await NovelightR15.filterRows(rows, client);
+    rows = typeof NovelightR15 === 'undefined' ? rows : await NovelightR15.filterRows(rows, client);
     if (!rows.length) return rows;
     const session = await currentSession();
     if (!session) return rows;
