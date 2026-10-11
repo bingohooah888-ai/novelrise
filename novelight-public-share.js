@@ -229,6 +229,8 @@
     const prepareImage = () => {
       const task = window.NovelightXImageShare?.prepare(novelId);
       void task?.promise.catch(() => {});
+      // Prime this exact work/episode URL before the reader presses X.
+      void window.NovelightXImageShare?.warm(url);
     };
     shareX.addEventListener('pointerenter', prepareImage, { once: true });
     shareX.addEventListener('focus', prepareImage, { once: true });
