@@ -344,12 +344,7 @@
     x.rel = 'noopener noreferrer';
     x.href = `https://x.com/intent/post?text=${encodeURIComponent(workTitle())}&url=${encodeURIComponent(publicUrl)}`;
     const prepareCover = () => {
-      // Desktop shares use stored OGP cards, not local canvas PNG files.
-      // Avoid fetching/encoding a second cover while X previews are loading.
-      if (window.NovelightXImageShare?.isMobileShareTarget()) {
-        const task = window.NovelightXImageShare.prepare(workId);
-        void task?.promise.catch(() => {});
-      }
+      // Mobile and desktop both use the same published OG link card.
       void window.NovelightXImageShare?.warm(publicUrl);
     };
     x.addEventListener('pointerenter', prepareCover, { once: true });

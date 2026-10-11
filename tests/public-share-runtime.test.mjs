@@ -50,3 +50,21 @@ test('shared site runtime loads sharing only on intended surfaces', () => {
   assert.match(sharedLoader, /\['my-novels', 'novel', 'episode'\]/);
   assert.match(sharedLoader, /data-novelight-public-share-runtime/);
 });
+
+test('public and work detail share only the link card', async () => {
+  const workDetail = await readFile('novelight-novel-detail.js', 'utf8');
+  const barStart = shareRuntime.indexOf('    const prepareImage = () => {');
+  const listener = '    shareX.addEventListener(';
+  const barEnd = shareRuntime.indexOf(listener, barStart);
+  const prepareBar = shareRuntime.slice(barStart, barEnd);
+  assert.ok(barStart >= 0 && barEnd > barStart);
+  assert.match(prepareBar, /NovelightXImageShare\?\.warm\(url\)/u);
+  assert.doesNotMatch(prepareBar, /\.prepare\(/u);
+
+  const detailStart = workDetail.indexOf('    const prepareCover = () => {');
+  const detailEnd = workDetail.indexOf('    x.addEventListener(', detailStart);
+  const prepareDetail = workDetail.slice(detailStart, detailEnd);
+  assert.ok(detailStart >= 0 && detailEnd > detailStart);
+  assert.match(prepareDetail, /NovelightXImageShare\?\.warm\(publicUrl\)/u);
+  assert.doesNotMatch(prepareDetail, /\.prepare\(/u);
+});
