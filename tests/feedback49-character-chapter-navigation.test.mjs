@@ -71,7 +71,7 @@ test('both reading surfaces offer native chapter folding', () => {
   }
   assert.match(novelDetail, /node\('details', 'nl-work-toc-group'\)/u);
   assert.match(novelDetail, /node\('summary', 'nl-work-toc-chapter'/u);
-  assert.match(novelDetail, /installMobileToc\(items, id, actions\)/u);
+  assert.match(novelDetail, /installMobileToc\(items, id, actions, viewerOwnsNovel\)/u);
 });
 
 test('migration provides isolated rollback and safe prerequisites', () => {
