@@ -168,6 +168,7 @@ test('work 257 social PNG contains its painted cover', async ({ request }) => {
   const stats = await sharp(bytes)
     .extract({ left: 32, top: 32, width: 376, height: 566 })
     .stats();
-  expect(Math.max(...stats.channels.slice(0, 3).map((c) => c.stdev)))
-    .toBeGreaterThan(6);
+  expect(
+    Math.max(...stats.channels.slice(0, 3).map((c) => c.stdev))
+  ).toBeGreaterThan(6);
 });
