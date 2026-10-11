@@ -18,7 +18,7 @@ function pngDimensions(bytes) {
 test('production novel OGP is server-rendered and returns a 1200x630 PNG', async ({
   request
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
 
   const novelResponse = await request.get(PRODUCTION_NOVEL_URL, {
     timeout: 20_000
@@ -35,19 +35,30 @@ test('production novel OGP is server-rendered and returns a 1200x630 PNG', async
     '<meta property="og:url" content="https://novelight.jp/novel.html?id=541">'
   );
   expect(html).toContain('<meta property="og:type" content="article">');
-  expect(html).toContain(
-    '<meta property="og:image" content="https://novelight.jp/api/og/novel?id=541&amp;v='
+  const ogImage = html.match(
+    /<meta property="og:image" content="([^"]+)">/u
+  )?.[1];
+  const twitterImage = html.match(
+    /<meta name="twitter:image" content="([^"]+)">/u
+  )?.[1];
+  expect(ogImage).toBeTruthy();
+  expect(twitterImage).toBe(ogImage);
+  expect(twitterImage).toMatch(
+    /\/storage\/v1\/object\/public\/novel-thumbnail-renders\/social-cards\/541\/[0-9a-f]{16}\.png$/u
   );
   expect(html).toContain('<meta property="og:image:width" content="1200">');
   expect(html).toContain('<meta property="og:image:height" content="630">');
   expect(html).toContain(
     '<meta name="twitter:card" content="summary_large_image">'
   );
-  // X now receives a public, directly fetchable author/book cover instead
-  // of the dynamically generated NOVELIGHT OG banner.
-  expect(html).toContain(
-    '<meta name="twitter:image" content="https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/'
-  );
+
+  const cardResponse = await request.get(twitterImage, { timeout: 30_000 });
+  expect(cardResponse.status()).toBe(200);
+  expect(cardResponse.headers()['content-type']).toContain('image/png');
+  expect(pngDimensions(await cardResponse.body())).toEqual({
+    width: 1200,
+    height: 630
+  });
 
   const headResponse = await request.head(PRODUCTION_OG_URL, {
     timeout: 30_000
@@ -68,7 +79,7 @@ test('production novel OGP is server-rendered and returns a 1200x630 PNG', async
 test('published work 354 supplies a directly fetchable X cover image', async ({
   request
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
 
   const page = await request.get('https://novelight.jp/novel.html?id=354', {
     timeout: 20_000
@@ -79,14 +90,15 @@ test('published work 354 supplies a directly fetchable X cover image', async ({
     /<meta name="twitter:image" content="([^"]+)">/u
   )?.[1];
   expect(twitterImage).toBeTruthy();
-  expect(twitterImage).toContain('/storage/v1/object/public/');
-
-  const response = await request.get(twitterImage, { timeout: 20_000 });
-  expect(response.status()).toBe(200);
-  expect(response.headers()['content-type']).toMatch(
-    /^image\/(webp|png|jpeg)/u
+  expect(twitterImage).toMatch(
+    /\/storage\/v1\/object\/public\/novel-thumbnail-renders\/social-cards\/354\/[0-9a-f]{16}\.png$/u
   );
+
+  const response = await request.get(twitterImage, { timeout: 30_000 });
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toContain('image/png');
   const image = await response.body();
+  expect(pngDimensions(image)).toEqual({ width: 1200, height: 630 });
   expect(image.length).toBeGreaterThan(10_000);
   expect(image.length).toBeLessThan(5 * 1024 * 1024);
 });
