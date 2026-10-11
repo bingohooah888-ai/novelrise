@@ -274,7 +274,10 @@ test('only published X revision work HTML opts in to short CDN cache', async () 
     share.headers.get('Vercel-CDN-Cache-Control'),
     's-maxage=30'
   );
-  assert.equal(share.headers.get('Cache-Control'), 'public, max-age=0, must-revalidate');
+  assert.equal(
+    share.headers.get('Cache-Control'),
+    'public, max-age=0, must-revalidate'
+  );
 
   const hidden = makeRes();
   sendHtml({ method: 'GET' }, hidden, '<html></html>', {
@@ -292,9 +295,11 @@ test('only published X revision work HTML opts in to short CDN cache', async () 
     readFile(new URL('../api/seo/novel.js', import.meta.url), 'utf8'),
     readFile(new URL('../vercel.json', import.meta.url), 'utf8')
   ]);
-  assert.match(route, /queryValue\(req\.query\?\.x_card\) === 'png-v5-mincho'/u);
-  assert.doesNotMatch(JSON.parse(config).headers.map((h) => h.source), /novel\.html/u);
-  assert.ok(
-    JSON.parse(config).headers.some((entry) => entry.source === '/episode.html')
+  assert.match(
+    route,
+    /queryValue\(req\.query\?\.x_card\) === 'png-v5-mincho'/u
   );
+  const headers = JSON.parse(config).headers;
+  assert.ok(headers.every((entry) => entry.source !== '/novel.html'));
+  assert.ok(headers.some((entry) => entry.source === '/episode.html'));
 });
