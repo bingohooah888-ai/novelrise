@@ -39,7 +39,9 @@ test('desktop image clipboard and X composer work together', () => {
   assert.match(mediaShare, /new ClipboardItem/u);
   assert.ok(
     mediaShare.indexOf('copyResult = navigator.clipboard.write') <
-      mediaShare.lastIndexOf("const popup = window.open('about:blank', '_blank')")
+      mediaShare.lastIndexOf(
+        "const popup = window.open('about:blank', '_blank')"
+      )
   );
   assert.match(mediaShare, /popup\.location\.replace/u);
   assert.match(mediaShare, /downloadFile\(file\)/u);
