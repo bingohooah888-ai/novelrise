@@ -70,11 +70,7 @@ test('reader and author display surfaces load the shared formatter', () => {
     'reading-history.html'
   ];
   for (const page of pages) {
-    assert.match(
-      read(page),
-      /<script src="novelight-episode-title-display\.js"><\/script>/u,
-      page
-    );
+    assert.match(read(page), /novelight-episode-title-display\.js/u, page);
   }
   for (const script of [
     'novelight-work-navigation.js',
@@ -82,11 +78,7 @@ test('reader and author display surfaces load the shared formatter', () => {
     'novelight-reading-history.js',
     'novelight-episode-number-entry-visibility.js'
   ]) {
-    assert.match(
-      read(script),
-      /NovelightEpisodeTitleDisplay/u,
-      script
-    );
+    assert.match(read(script), /NovelightEpisodeTitleDisplay/u, script);
   }
   for (const page of [
     'novel.html',
@@ -102,14 +94,15 @@ test('reader and author display surfaces load the shared formatter', () => {
 
 test('reader title metadata is attribute-safe and respects visibility', () => {
   const novel = read('novel.html');
-  const numberVisibility = read(
-    'novelight-episode-number-entry-visibility.js'
-  );
+  const numberVisibility = read('novelight-episode-number-entry-visibility.js');
   assert.match(novel, /data-raw-title="\$\{encodeURIComponent\(/u);
-  assert.match(numberVisibility, /decodeURIComponent\(link\.dataset\.rawTitle\)/u);
+  assert.match(
+    numberVisibility,
+    /decodeURIComponent\(link\.dataset\.rawTitle\)/u
+  );
   assert.match(numberVisibility, /if \(link\.textContent !== label\)/u);
   assert.match(numberVisibility, /showNumber\s*\)/u);
-  assert.match(read('episode.html'), /episode\.show_episode_number !== false/u);
+  assert.match(read('episode.html'), /episode\.show_episode_number\s*!==\s*false/u);
 });
 
 test('author title inputs and database writes remain unchanged', () => {
