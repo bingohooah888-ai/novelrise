@@ -73,6 +73,13 @@
       .sort((a, b) => a.number - b.number || Number(a.id) - Number(b.id));
   }
 
+  function tocDisplayTitle(value, episodeNumber) {
+    const title = String(value || '').trim();
+    const match = title.match(/^第[\s　]*(\d+)[\s　]*話(?=$|[\s　:：\-－—・、.．「『【（(])/u);
+    if (!match || Number(match[1]) !== Number(episodeNumber)) return title;
+    return title.slice(match[0].length).replace(/^[\s　:：\-－—・、.．]+/u, '').trim();
+  }
+
   function makeEpisodeLink(row, currentEpisodeId) {
     const link = document.createElement('a');
     link.className = `nl-worknav-episode-link${String(row.id) === String(currentEpisodeId) ? ' current' : ''}`;
@@ -80,9 +87,13 @@
     if (String(row.id) === String(currentEpisodeId)) link.setAttribute('aria-current', 'page');
     const number = document.createElement('small');
     number.textContent = `第${row.number}話`;
-    const title = document.createElement('span');
-    title.textContent = row.title || `第${row.number}話`;
-    link.append(number, title);
+    const displayTitle = tocDisplayTitle(row.title, row.number);
+    link.appendChild(number);
+    if (displayTitle) {
+      const title = document.createElement('span');
+      title.textContent = displayTitle;
+      link.appendChild(title);
+    }
     return link;
   }
 
