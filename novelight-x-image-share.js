@@ -215,7 +215,13 @@
   function intentUrl(title, url) {
     const intent = new URL('https://twitter.com/intent/tweet');
     intent.searchParams.set('text', '『' + String(title || '作品').slice(0, 90) + '』をNOVELIGHTで読む');
-    intent.searchParams.set('url', url);
+    // X may cache an older no-image card for a previously shared novel URL.
+    // Use a stable revision on X shares only; readers still land on the same work.
+    const shareUrl = new URL(url, ORIGIN);
+    if (shareUrl.origin === ORIGIN && shareUrl.pathname === '/novel.html') {
+      shareUrl.searchParams.set('x_card', 'cover-v2');
+    }
+    intent.searchParams.set('url', shareUrl.href);
     return intent.href;
   }
 
@@ -242,6 +248,15 @@
   async function share({ novelId, title, url, onStatus = () => {} }) {
     const state = prepare(novelId);
     if (!state) return onStatus('作品IDが確認できません。');
+    // A link card does not need the local PNG. Open X immediately on PC,
+    // even if cover preparation is still running.
+    if (!isMobileShareTarget() && !state.file) {
+      window.open(intentUrl(title, url), '_blank', 'noopener,noreferrer');
+      onStatus(
+        'Xで作品URLを投稿すると画像付きリンクカードが表示されます（表示はX側の取得状況によります）。'
+      );
+      return;
+    }
     if (!state.file) {
       onStatus('画像を準備しています。完了後にもう一度「Xでシェア」を押してください。');
       try {
@@ -308,8 +323,8 @@
     }
     onStatus(
       copied
-        ? '表紙画像をコピーしました。Xの投稿画面で貼り付け（Ctrl+V）してください。'
-        : '表紙画像を保存しました。Xの投稿画面に添付してください。'
+        ? 'Xで作品URLを投稿すると画像付きリンクカードが表示されます（表示はX側の取得状況によります）。表紙の直接添付は任意でCtrl+Vを使えます。'
+        : 'Xで作品URLを投稿すると画像付きリンクカードが表示されます（表示はX側の取得状況によります）。表紙の直接添付は任意です。'
     );
   }
 
