@@ -230,6 +230,15 @@
     window.setTimeout(() => URL.revokeObjectURL(href), 30000);
   }
 
+  function isMobileShareTarget() {
+    // Windows browsers can offer navigator.share(), but that opens the OS
+    // sharing menu instead of the X composer. Use it only on mobile devices.
+    return (
+      navigator.userAgentData?.mobile === true ||
+      /Android|iPhone|iPad|iPod/iu.test(navigator.userAgent || '')
+    );
+  }
+
   async function share({ novelId, title, url, onStatus = () => {} }) {
     const state = prepare(novelId);
     if (!state) return onStatus('作品IDが確認できません。');
@@ -251,7 +260,11 @@
       url,
       files: [file]
     };
-    if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
+    if (
+      isMobileShareTarget() &&
+      typeof navigator.share === 'function' &&
+      navigator.canShare?.({ files: [file] })
+    ) {
       try {
         await navigator.share(payload);
         onStatus('共有アプリでXを選択すると画像付きで投稿できます。');
