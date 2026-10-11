@@ -205,7 +205,7 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   const episodeUrl = new URL(new URL(directIntent).searchParams.get('url'));
   assert.equal(episodeUrl.pathname, '/episode.html');
   assert.equal(episodeUrl.searchParams.get('id'), '3420');
-  assert.equal(episodeUrl.searchParams.get('x_card'), 'episode-png-v3-mincho');
+  assert.equal(episodeUrl.searchParams.get('x_card'), 'episode-png-v4-fast');
   assert.equal(copyCount, 0);
   assert.equal(openedTabs, 3);
   assert.equal(publicCardChecks, 2);

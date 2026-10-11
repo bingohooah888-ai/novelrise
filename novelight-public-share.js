@@ -256,7 +256,7 @@
       if (cardUrl.pathname === '/novel.html') {
         cardUrl.searchParams.set('x_card', 'png-v5-mincho');
       } else if (cardUrl.pathname === '/episode.html') {
-        cardUrl.searchParams.set('x_card', 'episode-png-v3-mincho');
+        cardUrl.searchParams.set('x_card', 'episode-png-v4-fast');
       }
       intent.searchParams.set('url', cardUrl.href);
       window.open(intent.toString(), '_blank', 'noopener,noreferrer');

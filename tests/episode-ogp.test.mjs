@@ -66,3 +66,53 @@ test('episodes reuse the novel PNG for X and Open Graph', async () => {
   assert.ok(html.includes('https://novelight.jp/episode.html?id=3420'));
   assert.doesNotMatch(html, /noindex, nofollow/u);
 });
+
+test('episode X share can use CDN for a published revision only', async () => {
+  const { sendHtml } = await import('../api/seo/public-page.js');
+  const makeRes = () => {
+    const headers = new Map();
+    const res = {
+      setHeader: (key, value) => headers.set(key, value),
+      status: () => res,
+      send: (body) => body
+    };
+    return { headers, res };
+  };
+  const ordinary = makeRes();
+  sendHtml({ method: 'GET' }, ordinary.res, '<html></html>');
+  assert.equal(ordinary.headers.get('Vercel-CDN-Cache-Control'), 'no-store');
+
+  const share = makeRes();
+  sendHtml({ method: 'GET' }, share.res, '<html></html>', {
+    socialCardCacheSeconds: 30
+  });
+  assert.equal(share.headers.get('Vercel-CDN-Cache-Control'), 's-maxage=30');
+
+  const unpublished = makeRes();
+  sendHtml({ method: 'GET' }, unpublished.res, '<html></html>', {
+    indexable: false,
+    socialCardCacheSeconds: 30
+  });
+  assert.equal(
+    unpublished.headers.get('Vercel-CDN-Cache-Control'),
+    'no-store'
+  );
+
+  const head = makeRes();
+  sendHtml({ method: 'HEAD' }, head.res, '<html></html>', {
+    socialCardCacheSeconds: 30
+  });
+  assert.equal(head.headers.get('Vercel-CDN-Cache-Control'), 'no-store');
+
+  const [handler, config] = await Promise.all([
+    readFile(new URL('../api/seo/episode.js', import.meta.url), 'utf8'),
+    readFile(new URL('../vercel.json', import.meta.url), 'utf8')
+  ]);
+  assert.ok(
+    handler.includes("queryValue(req.query?.x_card) === 'episode-png-v4-fast'")
+  );
+  assert.match(handler, /\.eq\('status', 'published'\)/u);
+  assert.match(handler, /indexable: false/u);
+  const headers = JSON.parse(config).headers;
+  assert.ok(headers.every((entry) => entry.source !== '/episode.html'));
+});

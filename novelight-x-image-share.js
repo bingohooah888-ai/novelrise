@@ -223,7 +223,7 @@
       if (shareUrl.pathname === '/novel.html') {
         shareUrl.searchParams.set('x_card', 'png-v5-mincho');
       } else if (shareUrl.pathname === '/episode.html') {
-        shareUrl.searchParams.set('x_card', 'episode-png-v3-mincho');
+        shareUrl.searchParams.set('x_card', 'episode-png-v4-fast');
       }
     }
     intent.searchParams.set('url', shareUrl.href);
