@@ -73,12 +73,7 @@
       .sort((a, b) => a.number - b.number || Number(a.id) - Number(b.id));
   }
 
-  function tocDisplayTitle(value, episodeNumber) {
-    const title = String(value || '').trim();
-    const match = title.match(/^第[\s　]*(\d+)[\s　]*話(?=$|[\s　:：\-－—・、.．「『【（(])/u);
-    if (!match || Number(match[1]) !== Number(episodeNumber)) return title;
-    return title.slice(match[0].length).replace(/^[\s　:：\-－—・、.．]+/u, '').trim();
-  }
+  const tocDisplayTitle = window.NovelightEpisodeTitleDisplay.visibleTitle;
 
   function makeEpisodeLink(row, currentEpisodeId) {
     const link = document.createElement('a');
