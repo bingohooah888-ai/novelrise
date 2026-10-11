@@ -1,6 +1,7 @@
 import { URL } from 'node:url';
 
 import { loadNovelOgData } from '../og/novel-data.js';
+import { ensureNovelSocialCard } from '../og/social-card-storage.js';
 import {
   canonicalUrl,
   compactText,
@@ -85,6 +86,21 @@ export default async function handler(req, res) {
     const ogDescription =
       compactText(novel.description, 220) ||
       `${novel.title} — NOVELIGHTで公開中の小説作品です。`;
+    let socialCardImage = ogData?.imageUrl || '';
+    if (ogData) {
+      try {
+        // The first public visit materializes the versioned PNG; subsequent
+        // crawlers and shares fetch the immutable image directly from storage.
+        socialCardImage = await ensureNovelSocialCard(ogData);
+      } catch (error) {
+        console.warn('Novel social card preparation failed', {
+          novelId: novel.id,
+          code: error?.code || null,
+          message: error?.message || null
+        });
+        // Never make the novel page unavailable because card caching failed.
+      }
+    }
     const canonical = canonicalUrl('novel', novel.id);
     let html = injectSeo(template, {
       title,
@@ -94,13 +110,9 @@ export default async function handler(req, res) {
         ? {
             title: novel.title,
             description: ogDescription,
-            image: ogData.imageUrl,
-            // X crawls the stored public cover directly, without waiting for
-            // dynamic banner generation. Other OG consumers keep the banner.
-            twitterImage:
-              ogData.authorImageUrl ||
-              ogData.bookThumbnailUrl ||
-              ogData.imageUrl,
+            // X and Open Graph share the same pre-rendered 1200x630 PNG.
+            image: socialCardImage,
+            twitterImage: socialCardImage,
             url: canonical,
             type: 'article'
           }
