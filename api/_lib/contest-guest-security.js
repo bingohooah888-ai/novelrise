@@ -205,6 +205,9 @@ export function advanceContestGuestRead({
     !Number.isFinite(rule.maxHeartbeatCreditMs) ||
     !Number.isFinite(rule.minForegroundMs) ||
     !Number.isFinite(rule.minProgress) ||
+    !Number.isSafeInteger(rule.maxSequenceJump) ||
+    rule.maxSequenceJump < 1 ||
+    rule.maxHeartbeatCreditMs <= 0 ||
     rule.minForegroundMs <= 0 ||
     rule.minProgress <= 0 || rule.minProgress > 1 ||
     serverNow < previous.lastSeenAt ||
