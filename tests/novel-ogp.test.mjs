@@ -84,10 +84,9 @@ test('injectSeo emits article Open Graph and large Twitter card in initial HTML'
   assert.match(result, /name="twitter:image"/u);
 });
 
-test('X cards use the published cover image while OG keeps its branded banner', async () => {
-  const ogImage = 'https://novelight.jp/api/og/novel?id=354&v=abc';
-  const coverImage =
-    'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/renders/354/test.webp';
+test('X and Open Graph share the same versioned static PNG', async () => {
+  const staticImage =
+    'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/social-cards/354/0123456789abcdef.png';
   const html = injectSeo('<html><head></head><body></body></html>', {
     title: '作品354',
     description: '紹介',
@@ -95,28 +94,29 @@ test('X cards use the published cover image while OG keeps its branded banner', 
     openGraph: {
       title: '作品354',
       description: '紹介',
-      image: ogImage,
-      twitterImage: coverImage
+      image: staticImage,
+      twitterImage: staticImage
     }
   });
   assert.ok(
-    html.includes(
-      `<meta property="og:image" content="${ogImage.replaceAll('&', '&amp;')}">`
-    )
+    html.includes(`<meta property="og:image" content="${staticImage}">`)
   );
   assert.ok(
-    html.includes(`<meta name="twitter:image" content="${coverImage}">`)
+    html.includes(`<meta name="twitter:image" content="${staticImage}">`)
   );
   assert.ok(
     html.includes('<meta name="twitter:card" content="summary_large_image">')
   );
+  assert.ok(html.includes('<meta property="og:image:width" content="1200">'));
+  assert.ok(html.includes('<meta property="og:image:height" content="630">'));
 
   const seoNovel = await readFile(
     new URL('../api/seo/novel.js', import.meta.url),
     'utf8'
   );
-  assert.ok(seoNovel.includes('ogData.authorImageUrl ||'));
-  assert.ok(seoNovel.includes('ogData.bookThumbnailUrl ||'));
+  assert.match(seoNovel, /ensureNovelSocialCard\(ogData\)/u);
+  assert.match(seoNovel, /image: socialCardImage/u);
+  assert.match(seoNovel, /twitterImage: socialCardImage/u);
 });
 
 test('X share uses cover media while URL copy keeps attribution', async () => {
