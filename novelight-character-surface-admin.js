@@ -39,7 +39,7 @@
     const disabled = !master?.checked;
     if (body) body.disabled = disabled;
     if (detail) detail.disabled = disabled;
-    if (order) order.disabled = disabled;
+    if (order) order.disabled = false;
   }
 
   function resetSurfaceControls() {
