@@ -22,8 +22,8 @@ let minchoFontPromise;
 async function loadMinchoFont() {
   if (!minchoFontPromise) {
     minchoFontPromise = (async () => {
-      const response = await fetch(MINCHO_FONT_URL, {
-        signal: AbortSignal.timeout(8000)
+      const response = await globalThis.fetch(MINCHO_FONT_URL, {
+        signal: globalThis.AbortSignal.timeout(8000)
       });
       if (!response.ok) throw new Error('Japanese Mincho font unavailable');
       const bytes = Buffer.from(await response.arrayBuffer());
