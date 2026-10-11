@@ -3,8 +3,8 @@
 
   if (window.NovelightXImageShare) return;
 
-  // X intent URLs cannot attach media. Use native file sharing when available;
-  // otherwise copy the PNG so the reader can paste it into X's composer.
+  // X link cards should navigate to the work or episode, not open a media
+  // viewer. Use URL-only sharing on all devices, never an image attachment.
   const ORIGIN = 'https://novelight.jp';
   const SUPABASE_ORIGIN = 'https://fiepaguycecrredwrcwx.supabase.co';
   const PUBLIC_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
@@ -315,89 +315,13 @@
     if (!/^\d+$/.test(String(novelId || ''))) {
       return onStatus('作品IDが確認できません。');
     }
-    if (!isMobileShareTarget()) {
-      // The X composer must open on the first click, synchronously within
-      // the user gesture. Never show an about:blank loading tab or wait for
-      // NOVELIGHT/X to finish collecting OG metadata before navigation.
-      void warm(url);
-      const intent = intentUrl(title, url);
-      const popup = window.open(intent, '_blank');
-      if (popup) popup.opener = null;
-      else window.location?.assign?.(intent);
-      return;
-    }
-
-    const state = prepare(novelId);
-    if (!state) return onStatus('作品IDが確認できません。');
-    if (!state.file) {
-      onStatus('画像を準備しています。完了後にもう一度「Xで共有」を押してください。');
-      try {
-        await state.promise;
-        onStatus('画像の準備ができました。もう一度「Xで共有」を押してください。');
-      } catch {
-        onStatus('画像を準備できませんでした。時間をおいて再度お試しください。');
-      }
-      return;
-    }
-
-    const file = state.file;
-    const payload = {
-      title: String(title || 'NOVELIGHTの作品'),
-      text: '『' + String(title || '作品').slice(0, 90) + '』をNOVELIGHTで読む',
-      url,
-      files: [file]
-    };
-    if (
-      isMobileShareTarget() &&
-      typeof navigator.share === 'function' &&
-      navigator.canShare?.({ files: [file] })
-    ) {
-      try {
-        await navigator.share(payload);
-        onStatus('共有アプリでXを選択すると画像付きで投稿できます。');
-      } catch (error) {
-        if (error?.name !== 'AbortError') {
-          onStatus('画像共有が利用できませんでした。再度お試しください。');
-        }
-      }
-      return;
-    }
-
-    // Start clipboard write while this page still has focus. Opening a new
-    // tab first can make the Clipboard API reject with NotAllowedError.
-    let copyResult = null;
-    try {
-      if (navigator.clipboard?.write && window.ClipboardItem) {
-        copyResult = navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': file })
-        ]);
-      }
-    } catch (error) {
-      console.warn('X share clipboard unavailable', error);
-    }
-    // Still open under the original user gesture so popup blockers allow it.
-    const popup = window.open('about:blank', '_blank');
+    // Keep the first tap synchronous on iOS, Android, and desktop.
+    // Published X metadata provides the clickable 1200x630 image card.
+    void warm(url);
+    const intent = intentUrl(title, url);
+    const popup = window.open(intent, '_blank');
     if (popup) popup.opener = null;
-    let copied = false;
-    try {
-      if (copyResult) {
-        await copyResult;
-        copied = true;
-      }
-    } catch (error) {
-      console.warn('X share clipboard unavailable', error);
-    }
-    if (!copied) downloadFile(file);
-    if (popup && !popup.closed) {
-      popup.location.replace(intentUrl(title, url));
-    } else if (window.location?.assign) {
-      window.location.assign(intentUrl(title, url));
-    }
-    onStatus(
-      copied
-        ? 'Xで作品URLを投稿すると画像付きリンクカードが表示されます（表示はX側の取得状況によります）。表紙の直接添付は任意でCtrl+Vを使えます。'
-        : 'Xで作品URLを投稿すると画像付きリンクカードが表示されます（表示はX側の取得状況によります）。表紙の直接添付は任意です。'
-    );
+    else window.location?.assign?.(intent);
   }
 
   window.NovelightXImageShare = Object.freeze({ prepare, warm, share, setClient, isMobileShareTarget });

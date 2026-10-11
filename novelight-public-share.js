@@ -227,12 +227,8 @@
     shareX.className = 'novelight-public-share-action x';
     shareX.textContent = 'Xで共有';
     const prepareImage = () => {
-      // Local PNG encoding is only needed for mobile native file sharing.
-      if (window.NovelightXImageShare?.isMobileShareTarget()) {
-        const task = window.NovelightXImageShare.prepare(novelId);
-        void task?.promise.catch(() => {});
-      }
-      // Prime this exact published card before the reader presses X.
+      // Prime the same published link card on mobile and desktop.
+      // No file download or canvas conversion is needed on either device.
       void window.NovelightXImageShare?.warm(url);
     };
     shareX.addEventListener('pointerenter', prepareImage, { once: true });
@@ -259,8 +255,10 @@
         cardUrl.searchParams.set('x_card', 'episode-png-v4-fast');
       }
       intent.searchParams.set('url', cardUrl.href);
-      window.open(intent.toString(), '_blank', 'noopener,noreferrer');
-      status.textContent = '画像共有を利用できませんでした。URLのみ共有します。';
+      const popup = window.open(intent.toString(), '_blank');
+      if (popup) popup.opener = null;
+      else window.location?.assign?.(intent.toString());
+      status.textContent = '';
     });
     if (position !== 'work-card') prepareImage();
     bar.appendChild(shareX);

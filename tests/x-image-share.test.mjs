@@ -28,18 +28,15 @@ test('NOVELIGHT default image replaces missing or unreadable covers', () => {
   assert.match(mediaShare, /catch \(error\)/u);
 });
 
-test('mobile Web Share includes image, title, and URL', () => {
-  assert.match(mediaShare, /navigator\.canShare/u);
-  assert.match(mediaShare, /navigator\.share\(payload\)/u);
-  assert.match(mediaShare, /files: \[file\]/u);
-});
-
-test('desktop opens X directly; mobile clipboard fallback stays available', () => {
-  assert.match(mediaShare, /window\.open\(intent, '_blank'\)/u);
-  assert.match(mediaShare, /navigator\.clipboard\.write/u);
-  assert.match(mediaShare, /new ClipboardItem/u);
-  assert.match(mediaShare, /downloadFile\(file\)/u);
-  assert.doesNotMatch(mediaShare, /popup\.document\.body\.textContent/u);
+test('every device opens the same X link card without attaching media', () => {
+  const shareStart = mediaShare.indexOf('  async function share(');
+  const shareBody = mediaShare.slice(shareStart);
+  assert.match(shareBody, /window\.open\(intent, '_blank'\)/u);
+  assert.match(shareBody, /void warm\(url\)/u);
+  assert.doesNotMatch(shareBody, /navigator\.share/u);
+  assert.doesNotMatch(shareBody, /navigator\.clipboard/u);
+  assert.doesNotMatch(shareBody, /prepare\(novelId\)/u);
+  assert.doesNotMatch(shareBody, /about:blank/u);
 });
 
 test('work detail X button delegates to the image share runtime', () => {
@@ -209,4 +206,107 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   assert.equal(copyCount, 0);
   assert.equal(openedTabs, 3);
   assert.equal(publicCardChecks, 2);
+});
+
+test('iOS and Android share the clickable card on the first tap', async () => {
+  for (const userAgent of [
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',
+    'Mozilla/5.0 (Linux; Android 15; Pixel 9)'
+  ]) {
+    let openCount = 0;
+    let fileShareCount = 0;
+    let nativeShareCount = 0;
+    let clipboardWrites = 0;
+    let canvasCreates = 0;
+    let lastIntent = '';
+    let finishMetadata;
+    const metadataGate = new Promise((resolve) => {
+      finishMetadata = resolve;
+    });
+    const window = {
+      setTimeout: () => 1,
+      clearTimeout() {},
+      location: {
+        assign(url) {
+          lastIntent = url;
+        }
+      },
+      open(url) {
+        openCount += 1;
+        lastIntent = url;
+        return { opener: null };
+      }
+    };
+    const navigator = {
+      userAgent,
+      userAgentData: { mobile: true },
+      canShare: () => {
+        fileShareCount += 1;
+        return true;
+      },
+      share: async () => {
+        nativeShareCount += 1;
+      },
+      clipboard: {
+        write: async () => {
+          clipboardWrites += 1;
+        }
+      }
+    };
+    runInNewContext(mediaShare, {
+      window,
+      navigator,
+      URL,
+      AbortSignal: { timeout: () => null },
+      fetch: async () => {
+        await metadataGate;
+        return {
+          ok: true,
+          text: async () =>
+            '<meta name="twitter:image" content="https://novelight.jp/card.png">'
+        };
+      },
+      Image: class {
+        set src(_url) {
+          Promise.resolve().then(() => this.onload?.());
+        }
+      },
+      document: {
+        createElement() {
+          canvasCreates += 1;
+          throw new Error('X link cards must not create image attachments');
+        }
+      },
+      console: { warn() {} }
+    });
+    // Image metadata is still pending when the first mobile tap opens X.
+    const first = window.NovelightXImageShare.share({
+      novelId: '257',
+      title: '物語タイトル',
+      url: 'https://novelight.jp/novel.html?id=257'
+    });
+    assert.equal(openCount, 1);
+    assert.match(lastIntent, /twitter\.com\/intent\/tweet/u);
+    const novelUrl = new URL(new URL(lastIntent).searchParams.get('url'));
+    assert.equal(novelUrl.pathname, '/novel.html');
+    assert.equal(novelUrl.searchParams.get('id'), '257');
+    assert.equal(novelUrl.searchParams.get('x_card'), 'png-v5-mincho');
+    finishMetadata();
+    await first;
+
+    await window.NovelightXImageShare.share({
+      novelId: '257',
+      title: '第123話',
+      url: 'https://novelight.jp/episode.html?id=3420'
+    });
+    const episodeUrl = new URL(new URL(lastIntent).searchParams.get('url'));
+    assert.equal(openCount, 2);
+    assert.equal(episodeUrl.pathname, '/episode.html');
+    assert.equal(episodeUrl.searchParams.get('id'), '3420');
+    assert.equal(episodeUrl.searchParams.get('x_card'), 'episode-png-v4-fast');
+    assert.equal(nativeShareCount, 0);
+    assert.equal(fileShareCount, 0);
+    assert.equal(clipboardWrites, 0);
+    assert.equal(canvasCreates, 0);
+  }
 });
