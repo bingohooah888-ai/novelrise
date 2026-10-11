@@ -13,7 +13,7 @@ import {
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 for (const route of ['episode.html', 'novel.html']) {
-  test(`${route}: fully verifies the SEO-rewritten no-ID Production shell`, () => {
+  test(`${route}: matches the SEO no-ID shell`, () => {
     const source = readFileSync(join(ROOT, route), 'utf8');
     const template = readFileSync(
       join(ROOT, 'api/seo/templates', route),
@@ -94,7 +94,7 @@ test('only the two approved rewrite routes use the special comparison', () => {
   }
 });
 
-test('CLI fails closed on changed Production HTML with relative script path', () => {
+test('CLI rejects changed Production HTML', () => {
   const route = 'episode.html';
   const source = readFileSync(join(ROOT, route), 'utf8');
   const dir = mkdtempSync(join(tmpdir(), 'novelight-seo-check-'));
