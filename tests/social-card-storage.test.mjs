@@ -47,7 +47,7 @@ function mockStorage() {
   return { client, files, writes };
 }
 
-test('social card object paths reject invalid and untrusted identifiers', () => {
+test('social card paths reject invalid identifiers', () => {
   assert.equal(
     socialCardObjectPath({ id: 354, version: '0123456789abcdef' }),
     'social-cards/354/0123456789abcdef.png'
@@ -60,7 +60,7 @@ test('social card object paths reject invalid and untrusted identifiers', () => 
   );
 });
 
-test('first public visit saves one immutable 1200x630 PNG; later visits reuse it', async () => {
+test('rendered social cards are immutable and reused', async () => {
   const storage = mockStorage();
   const original = { id: 354, version: '0123456789abcdef' };
   let renders = 0;
