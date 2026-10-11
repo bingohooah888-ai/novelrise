@@ -3,11 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 
-const sql = readFileSync(
-  new URL('../supabase/migrations/20261012020000_november_contest_entries.sql',
-    import.meta.url),
-  'utf8'
-);
+const migrationPath =
+  '../supabase/migrations/20261012020000_november_contest_entries.sql';
+const sql = readFileSync(new URL(migrationPath, import.meta.url), 'utf8');
 const authorPage = readFileSync(
   new URL('../my-novels.html', import.meta.url),
   'utf8'
@@ -17,20 +15,36 @@ const entryClient = readFileSync(
   'utf8'
 );
 
-test('only authenticated authors may invoke enrollment RPCs', () => {
+test('only authenticated authors may use enrollment', () => {
   assert.match(sql, /security definer/g);
   assert.match(sql, /set search_path = ''/);
   assert.match(sql, /v_uid uuid := \(select auth\.uid\(\)\)/);
   assert.match(sql, /errcode = '42501'/);
-  assert.match(sql, /revoke all on function public\.novelight_contest_entry_context\(text\)/);
-  assert.match(sql, /revoke all on function public\.novelight_contest_entry_action\(text,bigint,text\)/);
-  assert.match(sql, /grant execute on function public\.novelight_contest_entry_context\(text\)/);
-  assert.match(sql, /grant execute on function public\.novelight_contest_entry_action\(text,bigint,text\)/);
+  assert.ok(
+    sql.includes(
+      'revoke all on function public.novelight_contest_entry_context(text)'
+    )
+  );
+  assert.ok(
+    sql.includes(
+      'revoke all on function public.novelight_contest_entry_action(text,bigint,text)'
+    )
+  );
+  assert.ok(
+    sql.includes(
+      'grant execute on function public.novelight_contest_entry_context(text)'
+    )
+  );
+  assert.ok(
+    sql.includes(
+      'grant execute on function public.novelight_contest_entry_action(text,bigint,text)'
+    )
+  );
   assert.match(sql, /to authenticated;/g);
   assert.doesNotMatch(sql, /grant execute[^;]*to anon/i);
 });
 
-test('RPCs use owner-bound work queries and authoritative published chapter count', () => {
+test('author owns the work and has ten published chapters', () => {
   assert.match(sql, /where n\.user_id = v_uid/);
   assert.match(sql, /and user_id = v_uid/);
   assert.match(sql, /and status = 'published'/);
@@ -40,7 +54,7 @@ test('RPCs use owner-bound work queries and authoritative published chapter coun
   assert.doesNotMatch(sql, /p_user_id/);
 });
 
-test('cutoff and race conditions are blocked at server after lock wait', () => {
+test('server rechecks the deadline after concurrent lock wait', () => {
   assert.match(sql, /v_contest\.status <> 'registration'/);
   assert.match(sql, /v_now > v_contest\.entry_deadline_at/);
   assert.match(sql, /v_now >= v_contest\.starts_at/);
@@ -49,10 +63,13 @@ test('cutoff and race conditions are blocked at server after lock wait', () => {
   assert.match(sql, /v_now := pg_catalog\.clock_timestamp\(\);/);
   assert.match(sql, /for update;/);
   assert.match(sql, /v_entry\.status = 'disqualified'/);
-  assert.match(sql, /v_entry\.status = 'entered' and v_entry\.novel_id = v_work\.id/);
+  assert.match(
+    sql,
+    /v_entry\.status = 'entered' and v_entry\.novel_id = v_work\.id/
+  );
 });
 
-test('replace or withdraw before deadline keeps a single author record', () => {
+test('withdrawal and replacement keep one author record', () => {
   assert.match(sql, /p_action not in \('enter', 'withdraw'\)/);
   assert.match(sql, /set status = 'withdrawn'/);
   assert.match(sql, /update public\.novelight_contest_entries/);
@@ -63,7 +80,7 @@ test('replace or withdraw before deadline keeps a single author record', () => {
   assert.doesNotMatch(sql, /\bupdate\s+public\.novels\b/i);
 });
 
-test('own-works page mounts entry control; contest landing reuses the same widget', () => {
+test('both author entry-point adapters exist', () => {
   assert.match(authorPage, /src="novelight-contest-entry\.js"/);
   assert.match(authorPage, /data-contest-novel-id/);
   assert.match(authorPage, /NovelightContestEntry\.mountMyNovels/);
@@ -76,8 +93,12 @@ test('own-works page mounts entry control; contest landing reuses the same widge
   assert.match(entryClient, /\.textContent = work\.title/);
 });
 
-test('contest phase 03 cannot modify SCOUT/PV/general ranking', () => {
-  assert.doesNotMatch(sql, /\bupdate\s+public\.(novels|episodes|scout_xp_ledger|episode_pv_events)\b/i);
+test('entry does not mutate PV or general ranking', () => {
+  const forbiddenWrite =
+    /\bupdate\s+public\.(novels|episodes|scout_xp_ledger|episode_pv_events)\b/i;
+  assert.doesNotMatch(sql, forbiddenWrite);
   assert.doesNotMatch(sql, /\bdelete\s+from\s+public\.(novels|episodes)\b/i);
-  assert.doesNotMatch(sql, /\bgrant\s+all\s+on\s+public\.novelight_contest_entries\s+to\s+authenticated/i);
+  const forbiddenGrant =
+    /\bgrant\s+all\s+on\s+public\.novelight_contest_entries\s+to\s+authenticated/i;
+  assert.doesNotMatch(sql, forbiddenGrant);
 });
