@@ -19,7 +19,7 @@ runInNewContext(
 );
 const client = browserContext.window.NovelightEpisodeTitleDisplay;
 
-test('SEO titles match the client for real published and edge case names', () => {
+test('SEO titles match the client across published titles', () => {
   const cases = [
     ['第121話　アルセラからのお礼状', 121],
     ['第10話：紙なら漉けると思った', 10],
@@ -42,7 +42,7 @@ test('SEO titles match the client for real published and edge case names', () =>
   }
 });
 
-test('SSR emits the author title intact when automatic numbers are disabled', () => {
+test('SSR preserves titles when automatic numbers are disabled', () => {
   const episode = {
     id: 3360,
     episode_number: 10,
@@ -69,7 +69,7 @@ test('SSR emits the author title intact when automatic numbers are disabled', ()
   assert.doesNotMatch(perEpisodeHidden, /class="number"/u);
 });
 
-test('SSR emits a separate number and title without duplicate prefixes', () => {
+test('SSR avoids duplicate episode numbers', () => {
   const episode = {
     id: 3417,
     episode_number: 121,
@@ -95,7 +95,7 @@ test('SSR emits a separate number and title without duplicate prefixes', () => {
   assert.equal((onlyNumber.match(/第121話/gu) || []).length, 1);
 });
 
-test('SEO article content is escaped and original author data is preserved', () => {
+test('SEO article escapes content without rewriting stored titles', () => {
   const episode = {
     episode_number: 3,
     title: '第3話　<script>alert(1)</script>'
@@ -113,7 +113,7 @@ test('SEO article content is escaped and original author data is preserved', () 
   assert.equal(episode.title, original);
 });
 
-test('SEO handler requires explicit visibility flags and safe pre-gate reads', () => {
+test('SEO handler loads visibility flags and keeps the content gate', () => {
   const source = readFileSync(
     new URL('../api/seo/episode.js', import.meta.url),
     'utf8'
@@ -122,5 +122,8 @@ test('SEO handler requires explicit visibility flags and safe pre-gate reads', (
   assert.match(source, /content_warnings,show_episode_numbers/u);
   assert.match(source, /if \(!sensitive\) \{/u);
   assert.match(source, /renderEpisodeArticle\(episode, novel, content\)/u);
-  assert.doesNotMatch(source, /<h1>\$\{escapeHtml\(episode\.title\)\}<\/h1>/u);
+  assert.doesNotMatch(
+    source,
+    /<h1>\$\{escapeHtml\(episode\.title\)\}<\/h1>/u
+  );
 });
