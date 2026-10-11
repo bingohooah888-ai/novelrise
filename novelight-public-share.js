@@ -225,7 +225,7 @@
     const shareX = document.createElement('button');
     shareX.type = 'button';
     shareX.className = 'novelight-public-share-action x';
-    shareX.textContent = 'Xでシェア';
+    shareX.textContent = 'Xで共有';
     const prepareImage = () => {
       const task = window.NovelightXImageShare?.prepare(novelId);
       void task?.promise.catch(() => {});
@@ -247,7 +247,13 @@
       // If the optional media runtime fails, retain working text/URL sharing.
       const intent = new URL('https://twitter.com/intent/tweet');
       intent.searchParams.set('text', text);
-      intent.searchParams.set('url', url);
+      const cardUrl = new URL(url, CANONICAL_ORIGIN);
+      if (cardUrl.pathname === '/novel.html') {
+        cardUrl.searchParams.set('x_card', 'png-v5-mincho');
+      } else if (cardUrl.pathname === '/episode.html') {
+        cardUrl.searchParams.set('x_card', 'episode-png-v3-mincho');
+      }
+      intent.searchParams.set('url', cardUrl.href);
       window.open(intent.toString(), '_blank', 'noopener,noreferrer');
       status.textContent = '画像共有を利用できませんでした。URLのみ共有します。';
     });
@@ -303,37 +309,6 @@
 
     mount();
     new MutationObserver(mount).observe(list, {
-      childList: true,
-      subtree: true
-    });
-    return true;
-  }
-
-  function installNovelSharing() {
-    if (currentPageSlug() !== 'novel') return false;
-    const header = document.getElementById('novelHeader');
-    const novelId = new URLSearchParams(window.location.search).get('id');
-    if (!header || !novelId) return false;
-
-    const mount = () => {
-      if (header.querySelector('[data-novelight-public-share]')) return;
-      const titleNode = header.querySelector('.title');
-      if (!titleNode) return;
-      const title = titleNode.textContent.trim() || '作品';
-      header.appendChild(
-        shareBar({
-          url: canonicalUrl('novel.html', novelId),
-          novelId,
-          text: `『${title}』をNOVELIGHTで読む`,
-          shareTitle: title,
-          label: 'この作品を共有',
-          position: 'novel'
-        })
-      );
-    };
-
-    mount();
-    new MutationObserver(mount).observe(header, {
       childList: true,
       subtree: true
     });
@@ -405,6 +380,5 @@
 
   installStyles();
   installMyNovelsSharing();
-  installNovelSharing();
   installEpisodeSharing();
 })();

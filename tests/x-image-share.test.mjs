@@ -52,11 +52,43 @@ test('work detail X button delegates to the image share runtime', () => {
   assert.match(workDetail, /event\.preventDefault\(\)/u);
 });
 
+test('work detail only shows actionable X share errors, not success tips', () => {
+  const start = workDetail.indexOf('onStatus: (message) => {');
+  const end = workDetail.indexOf('\n        }\n      });', start);
+  assert.ok(start >= 0 && end > start);
+  const callback = workDetail.slice(
+    start + 'onStatus: '.length,
+    end + '\n        }'.length
+  );
+  const notes = [];
+  const menu = {
+    querySelector: () => ({
+      remove: () => {
+        notes.length = 0;
+      }
+    }),
+    appendChild: (note) => {
+      notes.push(note);
+    }
+  };
+  const onStatus = runInNewContext(`(${callback})`, {
+    menu,
+    node: (type, className, text) => ({ type, className, text })
+  });
+  onStatus('Xで作品URLを投稿すると画像付きリンクカードが表示されます。');
+  assert.equal(notes.length, 0);
+  onStatus('画像を準備できませんでした。');
+  assert.equal(notes.length, 1);
+  assert.equal(notes[0].text, '画像を準備できませんでした。');
+});
+
 test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   let nativeShares = 0;
   let xIntent = '';
   let directIntent = '';
   let copyCount = 0;
+  let publicCardChecks = 0;
+  let openedTabs = 0;
   let releaseMetadata;
   const metadataGate = new Promise((resolve) => {
     releaseMetadata = resolve;
@@ -72,6 +104,7 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     setTimeout: () => 1,
     clearTimeout: () => {},
     open: (url) => {
+      openedTabs += 1;
       if (url !== 'about:blank') directIntent = url;
       return {
         closed: false,
@@ -102,6 +135,7 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     navigator,
     URL,
     fetch: async () => {
+      publicCardChecks += 1;
       await metadataGate;
       return {
         ok: true,
@@ -149,6 +183,8 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   assert.match(xIntent, /twitter\.com\/intent\/tweet/u);
   assert.equal(directIntent, '');
   assert.equal(copyCount, 0);
+  assert.equal(openedTabs, 1);
+  assert.equal(publicCardChecks, 1);
 
   await window.NovelightXImageShare.prepare('354').promise;
   await window.NovelightXImageShare.share({
@@ -157,7 +193,10 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     url: 'https://novelight.jp/novel.html?id=354'
   });
   assert.equal(nativeShares, 0);
-  assert.equal(copyCount, 1);
+  // Previously prepared covers must use the same OG link-card path.
+  assert.equal(copyCount, 0);
+  assert.equal(openedTabs, 2);
+  assert.equal(publicCardChecks, 2);
   const sharedUrl = new URL(new URL(xIntent).searchParams.get('url'));
   assert.equal(sharedUrl.origin, 'https://novelight.jp');
   assert.equal(sharedUrl.pathname, '/novel.html');
@@ -174,4 +213,7 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   assert.equal(episodeUrl.pathname, '/episode.html');
   assert.equal(episodeUrl.searchParams.get('id'), '3420');
   assert.equal(episodeUrl.searchParams.get('x_card'), 'episode-png-v3-mincho');
+  assert.equal(copyCount, 0);
+  assert.equal(openedTabs, 3);
+  assert.equal(publicCardChecks, 3);
 });

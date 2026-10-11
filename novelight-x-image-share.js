@@ -288,10 +288,10 @@
   async function share({ novelId, title, url, onStatus = () => {} }) {
     const state = prepare(novelId);
     if (!state) return onStatus('作品IDが確認できません。');
-    // First-click sharing must not race with public OG image preparation.
-    // Keep popup creation inside the user gesture; redirect only after the
-    // exact versioned public page and its linked PNG are reachable.
-    if (!isMobileShareTarget() && !state.file) {
+    // All desktop shares use one OG-link-card path, regardless of the local
+    // cover file's preparation state. Do not race X's card fetch or switch
+    // to clipboard/download attachment behavior after preloading.
+    if (!isMobileShareTarget()) {
       const intent = intentUrl(title, url);
       const popup = window.open('about:blank', '_blank');
       if (popup) popup.opener = null;
@@ -315,10 +315,10 @@
       return;
     }
     if (!state.file) {
-      onStatus('画像を準備しています。完了後にもう一度「Xでシェア」を押してください。');
+      onStatus('画像を準備しています。完了後にもう一度「Xで共有」を押してください。');
       try {
         await state.promise;
-        onStatus('画像の準備ができました。もう一度「Xでシェア」を押してください。');
+        onStatus('画像の準備ができました。もう一度「Xで共有」を押してください。');
       } catch {
         onStatus('画像を準備できませんでした。時間をおいて再度お試しください。');
       }
@@ -373,18 +373,6 @@
       console.warn('X share clipboard unavailable', error);
     }
     if (!copied) downloadFile(file);
-    // Even when local cover preparation completed before the first click,
-    // verify the server-rendered X card (the normal desktop path).
-    if (!isMobileShareTarget()) {
-      try {
-        await ensureXCardReady(intentUrl(title, url));
-      } catch (error) {
-        console.warn('X card readiness failed', error);
-        if (popup && !popup.closed) popup.close?.();
-        onStatus('共有画像を確認できませんでした。時間をおいて再度お試しください。');
-        return;
-      }
-    }
     if (popup && !popup.closed) {
       popup.location.replace(intentUrl(title, url));
     } else if (window.location?.assign) {
