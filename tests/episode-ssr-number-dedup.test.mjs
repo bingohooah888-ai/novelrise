@@ -62,10 +62,7 @@ test('SSR preserves titles when automatic numbers are disabled', () => {
   novel.show_episode_numbers = true;
   episode.show_episode_number = false;
   const perEpisodeHidden = renderEpisodeArticle(episode, novel, '本文');
-  assert.match(
-    perEpisodeHidden,
-    /<h1>第10話：紙なら漉けると思った<\/h1>/u
-  );
+  assert.match(perEpisodeHidden, /<h1>第10話：紙なら漉けると思った<\/h1>/u);
   assert.doesNotMatch(perEpisodeHidden, /class="number"/u);
 });
 
@@ -122,8 +119,5 @@ test('SEO handler loads visibility flags and keeps the content gate', () => {
   assert.match(source, /content_warnings,show_episode_numbers/u);
   assert.match(source, /if \(!sensitive\) \{/u);
   assert.match(source, /renderEpisodeArticle\(episode, novel, content\)/u);
-  assert.doesNotMatch(
-    source,
-    /<h1>\$\{escapeHtml\(episode\.title\)\}<\/h1>/u
-  );
+  assert.doesNotMatch(source, /<h1>\$\{escapeHtml\(episode\.title\)\}<\/h1>/u);
 });
