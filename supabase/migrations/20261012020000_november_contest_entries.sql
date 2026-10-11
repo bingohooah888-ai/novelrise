@@ -164,6 +164,21 @@ begin
     pg_catalog.hashtext(v_contest.id::text)
   );
 
+  -- Recheck with fresh server time AFTER possible lock wait. Keep the
+  -- contest status stable throughout this transaction.
+  select * into v_contest
+    from public.novelight_contests
+   where id = v_contest.id
+   for share;
+  v_now := pg_catalog.clock_timestamp();
+  if v_contest.status <> 'registration'
+     or v_now > v_contest.entry_deadline_at
+     or v_now >= v_contest.starts_at then
+    return pg_catalog.jsonb_build_object(
+      'ok', false, 'reason', 'registration_closed'
+    );
+  end if;
+
   select * into v_entry
     from public.novelight_contest_entries
    where contest_id = v_contest.id
