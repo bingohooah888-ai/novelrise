@@ -139,12 +139,7 @@
     return { row: { ...next, episodeNumber: next.number }, label: next === rows[index] ? `第${next.number}話の続きから読む` : `第${next.number}話から続きを読む`, unread: Math.max(0, rows.length - index - (complete ? 1 : 0)) };
   }
 
-  function tocDisplayTitle(value, episodeNumber) {
-    const title = String(value || '').trim();
-    const match = title.match(/^第[\s　]*(\d+)[\s　]*話(?=$|[\s　:：\-－—・、.．「『【（(])/u);
-    if (!match || Number(match[1]) !== Number(episodeNumber)) return title;
-    return title.slice(match[0].length).replace(/^[\s　:：\-－—・、.．]+/u, '').trim();
-  }
+  const tocDisplayTitle = window.NovelightEpisodeTitleDisplay.visibleTitle;
 
   function buildToc(items, id) {
     const wrap = node('div', 'nl-work-toc-list');
