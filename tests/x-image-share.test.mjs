@@ -136,4 +136,15 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   assert.equal(sharedUrl.pathname, '/novel.html');
   assert.equal(sharedUrl.searchParams.get('id'), '354');
   assert.equal(sharedUrl.searchParams.get('x_card'), 'png-v3');
+
+  // Episode links must retain the chapter URL and bust pre-OGP X cache.
+  await window.NovelightXImageShare.share({
+    novelId: '354',
+    title: '第123話　家族は宝物',
+    url: 'https://novelight.jp/episode.html?id=3420'
+  });
+  const episodeUrl = new URL(new URL(xIntent).searchParams.get('url'));
+  assert.equal(episodeUrl.pathname, '/episode.html');
+  assert.equal(episodeUrl.searchParams.get('id'), '3420');
+  assert.equal(episodeUrl.searchParams.get('x_card'), 'episode-png-v1');
 });
