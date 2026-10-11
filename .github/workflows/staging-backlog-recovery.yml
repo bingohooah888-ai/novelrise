@@ -1,0 +1,226 @@
+name: NOVELIGHT Staging Backlog Recovery
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+concurrency:
+  group: supabase-staging-migration-sync
+  cancel-in-progress: false
+jobs:
+  recover:
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_BACKLOG_APPROVE ')
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      issues: write
+    env:
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-staging-database-url
+    steps:
+      - name: Parse one-time owner approval
+        id: approval
+        run: |
+          set -euo pipefail
+          prefix='NOVELIGHT_STAGING_BACKLOG_APPROVE '
+          json="$(printf '%s' "$COMMENT_BODY" | sed "s/^$prefix//")"
+          test "$json" != "$COMMENT_BODY"
+          printf '%s\n' "$json" | jq -e '
+            type == "object" and
+            (.scope == "staging-backlog-recovery-20261011") and
+            (.mainSha | type == "string" and test("^[a-f0-9]{40}$")) and
+            (.planKey == "staging-backlog-20261011") and
+            (.confirmation == "STAGING APPROVED") and
+            ((keys | sort) == (["confirmation","mainSha","planKey","scope"] | sort))
+          ' >/dev/null
+          echo "main_sha=$(printf '%s\n' "$json" | jq -r .mainSha)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify current main
+        env:
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_SHA"
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA"
+
+      - name: Require dedicated Staging configuration
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$STAGING_SUPABASE_URL"
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          command -v pg_dump >/dev/null
+          command -v psql >/dev/null
+          command -v openssl >/dev/null
+
+      - name: Pin Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Resolve dedicated encrypted Staging database route
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+        run: node scripts/resolve-staging-session-pooler.mjs
+
+      - name: Verify exact Staging identity, history and baseline data
+        env:
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -At -v ON_ERROR_STOP=1 \
+            -c 'select version::text from supabase_migrations.schema_migrations order by version' \
+            > /tmp/novelight-staging-recovery-history.txt
+          node scripts/staging-backlog-recovery.mjs verify 0
+          psql "$STAGING_DATABASE_URL" -X -At -v ON_ERROR_STOP=1 \
+            -c "select (select count(*) from auth.users), (select count(*) from public.novels), (select count(*) from public.episodes), (select count(*) from public.valid_read_sessions), (select count(*) from public.scout_xp_ledger)" \
+            > /tmp/staging-backlog-row-counts.txt
+          test "$(cat /tmp/staging-backlog-row-counts.txt)" = '17|15|6|2741|2749'
+
+      - name: Create encrypted Staging recovery backup before any schema write
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          trap 'rm -f /tmp/staging-backlog-before.dump' EXIT
+          pg_dump --dbname="$STAGING_DATABASE_URL" --format=custom \
+            --no-owner --no-privileges --file=/tmp/staging-backlog-before.dump
+          test -s /tmp/staging-backlog-before.dump
+          openssl enc -aes-256-cbc -pbkdf2 -iter 250000 -salt \
+            -pass env:STAGING_DATABASE_URL_SOURCE \
+            -in /tmp/staging-backlog-before.dump \
+            -out /tmp/staging-backlog-before.dump.enc
+          test -s /tmp/staging-backlog-before.dump.enc
+          rm -f /tmp/staging-backlog-before.dump
+
+      - name: Preserve only encrypted pre-migration backup
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-backlog-encrypted-before-20261011
+          path: /tmp/staging-backlog-before.dump.enc
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Claim immutable one-use owner Staging approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA"
+          : > /tmp/staging-backlog-ledger.ndjson
+          page=1
+          while [ "$page" -le 20 ]; do
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100&page=$page" \
+              > /tmp/staging-backlog-comments.json
+            count="$(jq 'length' /tmp/staging-backlog-comments.json)"
+            jq -c '.[]' /tmp/staging-backlog-comments.json >> /tmp/staging-backlog-ledger.ndjson
+            if [ "$count" -lt 100 ]; then break; fi
+            page=$((page+1))
+          done
+          test "$page" -le 20
+          previous="$(jq -s '[.[] |
+            select(.user.login == "github-actions[bot]") |
+            select(.body | startswith("NOVELIGHT_STAGING_BACKLOG_CLAIMED "))
+          ] | length' /tmp/staging-backlog-ledger.ndjson)"
+          test "$previous" -eq 0
+          payload="$(jq -cn --arg id "$COMMENT_ID" --arg sha "$APPROVED_SHA" \
+            '{body:("NOVELIGHT_STAGING_BACKLOG_CLAIMED " +
+              ({requestCommentId:$id,mainSha:$sha,planKey:"staging-backlog-20261011"}|tojson))}')"
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Content-Type: application/json' -d "$payload" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            | jq -e '.id' >/dev/null
+
+      - name: Apply exactly 25 migration versions, checking each before proceeding
+        id: apply
+        env:
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          bash scripts/staging-backlog-restore-steps.sh
+
+      - name: Verify complete history parity and preserve baseline data counts
+        id: parity
+        env:
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          bash scripts/verify-staging-migrations.sh parity /tmp/staging-after-backlog.txt
+          psql "$STAGING_DATABASE_URL" -X -At -v ON_ERROR_STOP=1 \
+            -c "select (select count(*) from auth.users), (select count(*) from public.novels), (select count(*) from public.episodes), (select count(*) from public.valid_read_sessions), (select count(*) from public.scout_xp_ledger)" \
+            > /tmp/staging-backlog-after-counts.txt
+          test "$(cat /tmp/staging-backlog-row-counts.txt)" = \
+            "$(cat /tmp/staging-backlog-after-counts.txt)"
+
+      - name: Record consumed request and fail-closed partial-apply boundary
+        if: always() && steps.approval.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+          APPLY_OUTCOME: ${{ steps.apply.outcome }}
+          PARITY_OUTCOME: ${{ steps.parity.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$APPLY_OUTCOME" = skipped ]; then
+            echo 'No Staging migration was attempted.'
+            exit 0
+          fi
+          result=failure
+          if [ "$APPLY_OUTCOME" = success ] && [ "$PARITY_OUTCOME" = success ]; then
+            result=success
+          else
+            echo 'STAGING_BACKLOG_RECOVERY_REQUIRED: inspect actual DB history read-only.'
+            echo 'Do not auto-retry, reset, fabricate migration history or auto-rollback.'
+          fi
+          payload="$(jq -cn --arg id "$COMMENT_ID" --arg sha "$APPROVED_SHA" \
+            --arg result "$result" \
+            '{body:("NOVELIGHT_STAGING_BACKLOG_CONSUMED " +
+              ({requestCommentId:$id,mainSha:$sha,planKey:"staging-backlog-20261011",result:$result}|tojson))}')"
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Content-Type: application/json' -d "$payload" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            | jq -e '.id' >/dev/null
+
+      - name: Remove ephemeral Staging database URL and backup
+        if: always()
+        run: |
+          rm -f "$STAGING_DATABASE_URL_FILE"
+          rm -f /tmp/staging-backlog-before.dump
+          rm -f /tmp/staging-backlog-before.dump.enc
+          rm -rf /tmp/novelight-staging-recovery-project
