@@ -1,9 +1,12 @@
+import sharp from 'sharp';
+
 import { methodAllowed, queryValue } from '../seo/public-page.js';
 import {
   OG_COVER_WIDTH,
   OG_HEIGHT,
   OG_WIDTH,
-  loadNovelOgData
+  loadNovelOgData,
+  safeOgImageUrl
 } from './novel-data.js';
 
 const CACHE_HEADER = 'public, max-age=31536000, immutable';
@@ -209,103 +212,60 @@ export function buildNovelOgElement(data, { imageFit = 'cover' } = {}) {
   );
 }
 
-function jpegSize(bytes) {
-  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
-  let offset = 2;
-  while (offset + 8 < bytes.length) {
-    if (bytes[offset] !== 0xff) {
-      offset += 1;
-      continue;
-    }
-    const marker = bytes[offset + 1];
-    offset += 2;
-    if (marker === 0xd8 || marker === 0xd9) continue;
-    if (offset + 2 > bytes.length) break;
-    const length = bytes.readUInt16BE(offset);
-    if (length < 2 || offset + length > bytes.length) break;
-    if (
-      [
-        0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce,
-        0xcf
-      ].includes(marker)
-    ) {
-      return {
-        width: bytes.readUInt16BE(offset + 5),
-        height: bytes.readUInt16BE(offset + 3)
-      };
-    }
-    offset += length;
-  }
-  return null;
-}
+const MAX_COVER_SOURCE_BYTES = 5 * 1024 * 1024;
+const MAX_COVER_PNG_BYTES = 5 * 1024 * 1024;
 
-function webpSize(bytes) {
+// Satori (@vercel/og) may silently omit WebP covers. Decode them before
+// composing the social card; never persist a full-size PNG with a blank cover.
+export async function prepareNovelOgCover(
+  data,
+  { fetchImage = globalThis.fetch, imageProcessor = sharp } = {}
+) {
+  if (data.coverSource === 'common' || !data.coverUrl) return data;
+
+  const trustedUrl = safeOgImageUrl(data.coverUrl);
+  if (!trustedUrl) throw new Error('Social card cover URL is not trusted');
+
+  const response = await fetchImage(trustedUrl, {
+    signal: globalThis.AbortSignal.timeout(6500)
+  });
+  if (!response.ok) {
+    throw new Error(`Social card cover fetch failed: ${response.status}`);
+  }
+  const declaredBytes = Number(response.headers?.get?.('content-length'));
+  if (declaredBytes > MAX_COVER_SOURCE_BYTES) {
+    throw new Error('Social card cover exceeds input size limit');
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (!bytes.length || bytes.length > MAX_COVER_SOURCE_BYTES) {
+    throw new Error('Social card cover exceeds input size limit');
+  }
+
+  // Convert every cover to a real PNG before it reaches ImageResponse.
+  // "contain" preserves the complete user-selected vertical cover artwork.
+  const png = await imageProcessor(bytes, { limitInputPixels: 20_000_000 })
+    .resize({
+      width: OG_COVER_WIDTH,
+      height: OG_HEIGHT,
+      fit: 'contain',
+      background: '#071221'
+    })
+    .png()
+    .toBuffer();
   if (
-    bytes.length < 30 ||
-    bytes.toString('ascii', 0, 4) !== 'RIFF' ||
-    bytes.toString('ascii', 8, 12) !== 'WEBP'
+    png.length < 24 ||
+    png.length > MAX_COVER_PNG_BYTES ||
+    png.toString('hex', 0, 8) !== '89504e470d0a1a0a' ||
+    png.readUInt32BE(16) !== OG_COVER_WIDTH ||
+    png.readUInt32BE(20) !== OG_HEIGHT
   ) {
-    return null;
+    throw new Error('Social card cover PNG conversion failed');
   }
-  const type = bytes.toString('ascii', 12, 16);
-  if (type === 'VP8X') {
-    return {
-      width: 1 + bytes.readUIntLE(24, 3),
-      height: 1 + bytes.readUIntLE(27, 3)
-    };
-  }
-  if (type === 'VP8L' && bytes[20] === 0x2f && bytes.length >= 25) {
-    const bits = bytes.readUInt32LE(21);
-    return {
-      width: 1 + (bits & 0x3fff),
-      height: 1 + ((bits >>> 14) & 0x3fff)
-    };
-  }
-  if (
-    type === 'VP8 ' &&
-    bytes.length >= 30 &&
-    bytes[23] === 0x9d &&
-    bytes[24] === 0x01 &&
-    bytes[25] === 0x2a
-  ) {
-    return {
-      width: bytes.readUInt16LE(26) & 0x3fff,
-      height: bytes.readUInt16LE(28) & 0x3fff
-    };
-  }
-  return null;
-}
 
-function imageSize(bytes) {
-  if (
-    bytes.length >= 24 &&
-    bytes[0] === 0x89 &&
-    bytes.toString('ascii', 1, 4) === 'PNG'
-  ) {
-    return {
-      width: bytes.readUInt32BE(16),
-      height: bytes.readUInt32BE(20)
-    };
-  }
-  return jpegSize(bytes) || webpSize(bytes);
-}
-
-async function chooseImageFit(data) {
-  if (data.coverSource !== 'author' || !data.coverUrl) return 'cover';
-
-  try {
-    const response = await globalThis.fetch(data.coverUrl, {
-      headers: { Range: 'bytes=0-65535' },
-      signal: globalThis.AbortSignal.timeout(2200)
-    });
-    if (!response.ok && response.status !== 206) return 'cover';
-    const bytes = Buffer.from(await response.arrayBuffer());
-    const size = imageSize(bytes);
-    if (!size?.width || !size?.height) return 'cover';
-    return size.width / size.height > 1.05 ? 'contain' : 'cover';
-  } catch {
-    return 'cover';
-  }
+  return {
+    ...data,
+    coverUrl: `data:image/png;base64,${png.toString('base64')}`
+  };
 }
 
 function sendImageHeaders(res) {
@@ -317,12 +277,12 @@ function sendImageHeaders(res) {
 // Shared with the persistent X/OG social-card cache so its PNG pixels
 // always match the existing 1200x630 NOVELIGHT image design.
 export async function renderNovelOgPng(data) {
-  const imageFit = await chooseImageFit(data);
+  const prepared = await prepareNovelOgCover(data);
   const { ImageResponse } = await import('@vercel/og');
-  const image = new ImageResponse(buildNovelOgElement(data, { imageFit }), {
-    width: OG_WIDTH,
-    height: OG_HEIGHT
-  });
+  const image = new ImageResponse(
+    buildNovelOgElement(prepared, { imageFit: 'contain' }),
+    { width: OG_WIDTH, height: OG_HEIGHT }
+  );
   return Buffer.from(await image.arrayBuffer());
 }
 
