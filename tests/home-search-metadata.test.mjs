@@ -35,3 +35,18 @@ test('homepage metadata and sitemap agree on canonical domain', () => {
   assert.match(robots, /Sitemap: https:\/\/novelight\.jp\/sitemap\.xml/u);
   assert.match(sitemap, /https:\/\/novelight\.jp\/api\/sitemap/u);
 });
+
+test('all core sitemap destinations use the canonical novelight.jp URL', () => {
+  const coreRoutes = [
+    ['search.html', 'https://novelight.jp/search.html'],
+    ['ranking.html', 'https://novelight.jp/ranking.html'],
+    ['pricing.html', 'https://novelight.jp/pricing.html'],
+    ['beta-authors.html', 'https://novelight.jp/beta-authors']
+  ];
+  for (const [file, url] of coreRoutes) {
+    const page = readFileSync(fileURLToPath(new URL('../' + file, import.meta.url)), 'utf8');
+    const pageHead = page.slice(0, page.indexOf('</head>'));
+    assert.ok(pageHead.includes('<link rel="canonical" href="' + url + '">'), file);
+    assert.match(pageHead, /<title>[^<]*ノベライト/u, file);
+  }
+});
