@@ -11,6 +11,7 @@ routes_file=/tmp/novelight-static-routes.txt
 critical_assets=(
   novelight-client.js
   novelight-episode-number-entry-visibility.js
+  novelight-episode-title-display.js
   novelight-episode-workflow-feedback.js
   novelight-series.js
   novelight-characters.js
@@ -47,7 +48,17 @@ check_route() {
     curl --fail --silent --show-error --location \
       --connect-timeout 10 --max-time 20 \
       "$BASE_URL/$route" > "$target"
-    cmp -s "$route" "$target"
+    # These two routes are rewritten to server-rendered SEO functions in
+    # Production. Compare the *exact* expected SEO-injected HTML bytes,
+    # rather than incorrectly comparing an unmodified static source shell.
+    case "$route" in
+      novel.html|episode.html)
+        node scripts/verify-production-seo-shell.mjs "$route" "$target"
+        ;;
+      *)
+        cmp -s "$route" "$target"
+        ;;
+    esac
     return
   fi
 
