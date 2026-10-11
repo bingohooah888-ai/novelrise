@@ -227,9 +227,12 @@
     shareX.className = 'novelight-public-share-action x';
     shareX.textContent = 'Xで共有';
     const prepareImage = () => {
-      const task = window.NovelightXImageShare?.prepare(novelId);
-      void task?.promise.catch(() => {});
-      // Prime this exact work/episode URL before the reader presses X.
+      // Local PNG encoding is only needed for mobile native file sharing.
+      if (window.NovelightXImageShare?.isMobileShareTarget()) {
+        const task = window.NovelightXImageShare.prepare(novelId);
+        void task?.promise.catch(() => {});
+      }
+      // Prime this exact published card before the reader presses X.
       void window.NovelightXImageShare?.warm(url);
     };
     shareX.addEventListener('pointerenter', prepareImage, { once: true });

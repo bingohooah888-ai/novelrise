@@ -244,3 +244,55 @@ test('Vercel excludes the static novel shell so the SEO rewrite can run', async 
   assert.match(vercelIgnore, /^\/novel\.html$/mu);
   assert.equal(serverTemplate, rootTemplate);
 });
+
+test('published X revision caches only public HTML', async () => {
+  const { sendHtml } = await import('../api/seo/public-page.js');
+  const makeRes = () => {
+    const headers = new Map();
+    const res = {
+      setHeader: (key, value) => headers.set(key, value),
+      status: () => res,
+      send: (body) => body
+    };
+    return { headers, res };
+  };
+  const normal = makeRes();
+  sendHtml({ method: 'GET' }, normal.res, '<html></html>');
+  assert.equal(normal.headers.get('Cache-Control'), 'no-store, max-age=0');
+  const noStore = normal.headers.get('Vercel-CDN-Cache-Control');
+  assert.equal(noStore, 'no-store');
+
+  const share = makeRes();
+  sendHtml({ method: 'GET' }, share.res, '<html></html>', {
+    socialCardCacheSeconds: 30
+  });
+  const cache = share.headers.get('Vercel-CDN-Cache-Control');
+  assert.equal(cache, 's-maxage=30');
+  const browserCache = share.headers.get('Cache-Control');
+  assert.equal(browserCache, 'public, max-age=0, must-revalidate');
+
+  const hidden = makeRes();
+  sendHtml({ method: 'GET' }, hidden.res, '<html></html>', {
+    indexable: false,
+    socialCardCacheSeconds: 30
+  });
+  const hiddenCache = hidden.headers.get('Vercel-CDN-Cache-Control');
+  assert.equal(hiddenCache, 'no-store');
+
+  const head = makeRes();
+  sendHtml({ method: 'HEAD' }, head.res, '<html></html>', {
+    socialCardCacheSeconds: 30
+  });
+  const headCache = head.headers.get('Vercel-CDN-Cache-Control');
+  assert.equal(headCache, 'no-store');
+
+  const [route, config] = await Promise.all([
+    readFile(new URL('../api/seo/novel.js', import.meta.url), 'utf8'),
+    readFile(new URL('../vercel.json', import.meta.url), 'utf8')
+  ]);
+  const versionCheck = "queryValue(req.query?.x_card) === 'png-v5-mincho'";
+  assert.ok(route.includes(versionCheck));
+  const headers = JSON.parse(config).headers;
+  assert.ok(headers.every((entry) => entry.source !== '/novel.html'));
+  assert.ok(headers.some((entry) => entry.source === '/episode.html'));
+});
