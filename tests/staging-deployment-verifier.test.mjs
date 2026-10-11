@@ -149,7 +149,6 @@ test('manual verification uses only explicit or canonical URL plus explicit revi
   );
 });
 
-
 test('owner-approved full-smoke uses only canonical Preview URL, not deployment status', async (t) => {
   const calls = [];
   t.mock.method(globalThis, 'fetch', async (url) => {
@@ -214,19 +213,4 @@ test('unknown staging trigger is fail-closed and makes no network request', asyn
     /CONFIG_DRIFT: unknown Staging deployment verification trigger/
   );
   assert.equal(fetchMock.mock.callCount(), 0);
-});
-
-
-// Temporary CI-only formatting proof, removed in the next commit.
-test('temporary dump formatted Staging deployment verifier test', async () => {
-  const prettier = await import('prettier');
-  const source = await readFile('tests/staging-deployment-verifier.test.mjs', 'utf8');
-  const formatted = await prettier.format(source, {
-    parser: 'babel',
-    singleQuote: true,
-    semi: true,
-    tabWidth: 2,
-    trailingComma: 'none'
-  });
-  console.log('STAGING_DEPLOYMENT_FORMAT_B64=' + Buffer.from(formatted).toString('base64'));
 });
