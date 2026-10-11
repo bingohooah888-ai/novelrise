@@ -17,7 +17,9 @@ import {
 const TEMPLATE_URL = new URL('./templates/novel.html', import.meta.url);
 const PLACEHOLDER =
   '<section id="novelHeader" class="panel novel-header">読み込み中...</section>';
-const SHARE_SCRIPT = '<script src="novelight-public-share.js"></script>';
+const SHARE_SCRIPT =
+  '<script src="novelight-x-image-share.js"></script>' +
+  '<script src="novelight-public-share.js"></script>';
 
 function isSensitive(novel) {
   return (
