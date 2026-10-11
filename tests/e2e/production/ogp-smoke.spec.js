@@ -1,3 +1,5 @@
+import sharp from 'sharp';
+
 import { expect, test } from '@playwright/test';
 
 const PRODUCTION_NOVEL_URL = 'https://novelight.jp/novel.html?id=541';
@@ -141,4 +143,31 @@ test('episode 3420 exposes the novel PNG card', async ({ request }) => {
     width: 1200,
     height: 630
   });
+});
+
+test('work 257 social PNG contains its painted cover', async ({ request }) => {
+  test.setTimeout(90_000);
+  const page = await request.get(
+    'https://novelight.jp/episode.html?id=3420&x_card=episode-png-v2-cover',
+    { timeout: 30_000 }
+  );
+  expect(page.status()).toBe(200);
+  const html = await page.text();
+  const cardUrl = html.match(
+    /<meta name="twitter:image" content="([^"]+)">/u
+  )?.[1];
+  expect(cardUrl).toMatch(/\/social-cards\/257\/[0-9a-f]{16}\.png$/u);
+
+  const image = await request.get(cardUrl, { timeout: 30_000 });
+  expect(image.status()).toBe(200);
+  const bytes = await image.body();
+  expect(pngDimensions(bytes)).toEqual({ width: 1200, height: 630 });
+
+  // A 1200x630 PNG can be valid while the entire cover panel is blank.
+  // The designated work 257 thumbnail has artwork that must vary in colour.
+  const stats = await sharp(bytes)
+    .extract({ left: 32, top: 32, width: 376, height: 566 })
+    .stats();
+  expect(Math.max(...stats.channels.slice(0, 3).map((c) => c.stdev)))
+    .toBeGreaterThan(6);
 });
