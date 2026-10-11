@@ -52,15 +52,28 @@ test('work detail X button delegates to the image share runtime', () => {
   assert.match(workDetail, /event\.preventDefault\(\)/u);
 });
 
-test('work detail only shows actionable X share errors, not verbose success tips', () => {
+test('work detail only shows actionable X share errors, not success tips', () => {
+  const start = workDetail.indexOf('onStatus: (message) => {');
+  const end = workDetail.indexOf('\n        }\n      });', start);
+  assert.ok(start >= 0 && end > start);
   const callback = workDetail.slice(
-    workDetail.indexOf('onStatus: (message) => {'),
-    workDetail.indexOf('menu.append(copy, x)')
+    start + 'onStatus: '.length,
+    end + '\n        }'.length
   );
-  assert.match(callback, /message\\.includes\\('できません'\\)/u);
-  assert.match(callback, /message\\.includes\\('もう一度'\\)/u);
-  assert.match(callback, /menu\\.querySelector\\('\\.nl-work-share-status'\\)\\?\\.remove\\(\\)/u);
-  assert.doesNotMatch(callback, /Xで作品URLを投稿すると/u);
+  const notes = [];
+  const menu = {
+    querySelector: () => ({ remove: () => { notes.length = 0; } }),
+    appendChild: (note) => { notes.push(note); }
+  };
+  const onStatus = runInNewContext(`(${callback})`, {
+    menu,
+    node: (type, className, text) => ({ type, className, text })
+  });
+  onStatus('Xで作品URLを投稿すると画像付きリンクカードが表示されます。');
+  assert.equal(notes.length, 0);
+  onStatus('画像を準備できませんでした。');
+  assert.equal(notes.length, 1);
+  assert.equal(notes[0].text, '画像を準備できませんでした。');
 });
 
 test('Windows Chrome uses X intent rather than native OS sharing', async () => {
