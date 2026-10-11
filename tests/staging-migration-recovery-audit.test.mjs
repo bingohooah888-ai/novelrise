@@ -95,28 +95,22 @@ test('rejects ambiguous duplicate artifact files and duplicate history', () => {
   });
   assert.equal(report.pending[0].artifactCountConflict, true);
   assert.ok(report.blockers.includes('MISSING_OR_AMBIGUOUS_SAFETY_ARTIFACTS'));
-  assert.throws(
-    () => {
-      assessStagingMigrationRecovery({
-        localMigrations: [safe, safe],
-        remoteVersions: [],
-        checkNames: [],
-        rollbackNames: []
-      });
-    },
-    /duplicate migration history/
-  );
-  assert.throws(
-    () => {
-      assessStagingMigrationRecovery({
-        localMigrations: [safe],
-        remoteVersions: [version, version],
-        checkNames: [],
-        rollbackNames: []
-      });
-    },
-    /duplicate migration history/
-  );
+  assert.throws(() => {
+    assessStagingMigrationRecovery({
+      localMigrations: [safe, safe],
+      remoteVersions: [],
+      checkNames: [],
+      rollbackNames: []
+    });
+  }, /duplicate migration history/);
+  assert.throws(() => {
+    assessStagingMigrationRecovery({
+      localMigrations: [safe],
+      remoteVersions: [version, version],
+      checkNames: [],
+      rollbackNames: []
+    });
+  }, /duplicate migration history/);
 });
 
 test('refuses the Production Supabase URL before reading files or contacting a server', async () => {
@@ -194,19 +188,4 @@ test('uses read-only remote migration history and local artifacts only', async (
   } finally {
     await rm(root, { recursive: true, force: true });
   }
-});
-
-// Temporary one-run formatting proof; remove after reading CI output.
-test('temporary formatting diagnostic', async () => {
-  const prettier = await import('prettier');
-  const source = await import('node:fs/promises');
-  const original = await source.readFile('tests/staging-migration-recovery-audit.test.mjs', 'utf8');
-  const formatted = await prettier.format(original, {
-    parser: 'babel',
-    singleQuote: true,
-    semi: true,
-    tabWidth: 2,
-    trailingComma: 'none'
-  });
-  console.log('AUDIT_FORMAT_B64=' + Buffer.from(formatted).toString('base64'));
 });
