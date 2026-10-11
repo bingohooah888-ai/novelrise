@@ -33,6 +33,7 @@ test('episode sharing is mounted above and below the episode body', () => {
 
 test('shared site runtime loads sharing only on intended surfaces', () => {
   assert.match(sharedLoader, /novelight-public-share\.js/);
+  assert.match(sharedLoader, /novelight-x-image-share\.js/);
   assert.match(sharedLoader, /\['my-novels', 'novel', 'episode'\]/);
   assert.match(sharedLoader, /data-novelight-public-share-runtime/);
 });

@@ -346,11 +346,24 @@
     ) {
       return false;
     }
-    const script = document.createElement('script');
-    script.src = 'novelight-public-share.js';
-    script.defer = true;
-    script.dataset.novelightPublicShareRuntime = 'shared';
-    document.head.appendChild(script);
+    const loadPublicShare = () => {
+      const script = document.createElement('script');
+      script.src = 'novelight-public-share.js';
+      script.defer = true;
+      script.dataset.novelightPublicShareRuntime = 'shared';
+      document.head.appendChild(script);
+    };
+    if (window.NovelightXImageShare) {
+      loadPublicShare();
+    } else {
+      const helper = document.createElement('script');
+      helper.src = 'novelight-x-image-share.js';
+      helper.defer = true;
+      helper.dataset.novelightXImageShareRuntime = 'shared';
+      helper.onload = loadPublicShare;
+      helper.onerror = loadPublicShare; // URL sharing still works if media support fails.
+      document.head.appendChild(helper);
+    }
     return true;
   }
 
