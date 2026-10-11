@@ -185,6 +185,17 @@ test('search synopsis and metadata use the full mobile card width and keep deskt
 
   if (testInfo.project.name === 'mobile-chromium') {
     expectFullWidthSynopsis(layout);
+    const title = await page.locator('.search-card-copy > .title').boundingBox();
+    const finalDate = await page
+      .locator('.search-card-copy > .meta')
+      .last()
+      .boundingBox();
+    const tags = await page.locator('.search-card-tags').boundingBox();
+    expect(title).not.toBeNull();
+    expect(finalDate).not.toBeNull();
+    expect(tags).not.toBeNull();
+    expect(tags.y).toBeGreaterThan(title.y);
+    expect(tags.y).toBeGreaterThan(finalDate.y);
     expect(layout.meta.x - layout.card.x).toBeLessThan(32);
     expect(layout.card.right - layout.meta.right).toBeLessThan(26);
     const overflow = await page.locator('html').evaluate((html) => ({
