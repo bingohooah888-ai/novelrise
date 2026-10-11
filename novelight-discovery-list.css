@@ -214,7 +214,10 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card:hover {
 }
 
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-copy {
-  min-height: 146px;
+  display: flex;
+  min-width: 0;
+  min-height: 192px;
+  flex-direction: column;
   padding: 14px 14px 15px 17px;
   background:
     repeating-linear-gradient(0deg, rgba(102, 69, 35, 0.025) 0 1px, transparent 1px 6px),
@@ -238,11 +241,26 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .novel-
   letter-spacing: 0.012em;
 }
 
-html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .meta {
-  margin-top: 9px;
+/* Keep all public card facts visible even in four-column and mobile grids. */
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-meta {
+  min-width: 0;
+  margin-top: auto;
+  padding-top: 9px;
   color: #765f45;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-author {
+  color: #493223;
+  font-weight: 700;
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-progress,
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-updated {
+  margin-top: 3px;
 }
 
 .discovery-list-grid .state {
@@ -713,7 +731,7 @@ body.novelight-page-ranking > footer {
   }
 
   html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-copy {
-    min-height: 140px;
+    min-height: 186px;
     padding: 13px 12px 14px 15px;
   }
 
