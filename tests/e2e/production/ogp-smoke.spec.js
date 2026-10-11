@@ -43,8 +43,10 @@ test('production novel OGP is server-rendered and returns a 1200x630 PNG', async
   expect(html).toContain(
     '<meta name="twitter:card" content="summary_large_image">'
   );
+  // X now receives a public, directly fetchable author/book cover instead
+  // of the dynamically generated NOVELIGHT OG banner.
   expect(html).toContain(
-    '<meta name="twitter:image" content="https://novelight.jp/api/og/novel?id=541&amp;v='
+    '<meta name="twitter:image" content="https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/'
   );
 
   const headResponse = await request.head(PRODUCTION_OG_URL, {
