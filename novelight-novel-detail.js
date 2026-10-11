@@ -76,7 +76,7 @@
       .nl-work-detail-toc{position:sticky;top:136px;max-height:calc(100vh - 152px);display:flex;flex-direction:column;overflow:hidden;padding:19px;border:1px solid #e2d9cd;border-radius:16px;background:#fffdfa;box-shadow:0 10px 30px rgba(52,42,31,.05)}
       .nl-work-detail-toc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
       .nl-work-detail-toc h2{font-size:19px;margin:0}.nl-work-detail-toc-count{color:#667284;font-size:12px}
-      .nl-work-toc-list{display:grid;gap:5px;flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:#aeb7c3 transparent}.nl-work-toc-list::-webkit-scrollbar{width:7px}.nl-work-toc-list::-webkit-scrollbar-track{background:transparent}.nl-work-toc-list::-webkit-scrollbar-thumb{background:#aeb7c3;border-radius:999px}.nl-work-toc-group{border:1px solid #e4dccf;border-radius:9px;overflow:hidden;margin:7px 0}.nl-work-toc-chapter{display:block;margin:0;padding:10px 12px;border-left:3px solid #b28a4a;background:#f4f6f8;color:#26364b;font-size:13px;font-weight:900;line-height:1.5;cursor:pointer;list-style:none}.nl-work-toc-chapter::-webkit-details-marker{display:none}.nl-work-toc-chapter::after{content:'＋';float:right}.nl-work-toc-group[open]>.nl-work-toc-chapter::after{content:'－'}.nl-work-toc-chapter:focus-visible{outline:2px solid #7351d8;outline-offset:-2px}.nl-work-toc-chapter-episodes{padding:5px 8px}
+      .nl-work-toc-list{display:grid;gap:5px;grid-auto-rows:max-content;align-content:start;flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:#aeb7c3 transparent}.nl-work-toc-list::-webkit-scrollbar{width:7px}.nl-work-toc-list::-webkit-scrollbar-track{background:transparent}.nl-work-toc-list::-webkit-scrollbar-thumb{background:#aeb7c3;border-radius:999px}.nl-work-toc-group{border:1px solid #e4dccf;border-radius:9px;overflow:hidden;margin:7px 0}.nl-work-toc-chapter{display:block;margin:0;padding:10px 12px;border-left:3px solid #b28a4a;background:#f4f6f8;color:#26364b;font-size:13px;font-weight:900;line-height:1.5;cursor:pointer;list-style:none}.nl-work-toc-chapter::-webkit-details-marker{display:none}.nl-work-toc-chapter::after{content:'＋';float:right}.nl-work-toc-group[open]>.nl-work-toc-chapter::after{content:'－'}.nl-work-toc-chapter:focus-visible{outline:2px solid #7351d8;outline-offset:-2px}.nl-work-toc-chapter-episodes{padding:5px 8px}
       .nl-work-toc-link{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;padding:9px 10px;border-radius:8px;color:#26364b!important;text-decoration:none!important;font-size:15px;line-height:1.5}
       .nl-work-toc-link:hover{background:#f2f5f8}.nl-work-toc-link.is-read{color:#5b6675!important}.nl-work-toc-link.is-current{background:#edf1f6;color:#15243a!important;font-weight:900;box-shadow:inset 3px 0 0 #b28a4a}.nl-work-toc-num{white-space:nowrap;color:#5f6b7a;font-size:12px;padding-top:2px}
       body.nl-work-detail-v2 #episodesPanel{display:none!important}
@@ -141,9 +141,10 @@
 
   const tocDisplayTitle = window.NovelightEpisodeTitleDisplay.visibleTitle;
 
-  function buildToc(items, id) {
+  function buildToc(items, id, { isOwner = false } = {}) {
     const wrap = node('div', 'nl-work-toc-list');
-    const progress = readProgress(id);
+    // Owners navigate their own work; reading progress must not preselect a later chapter.
+    const progress = isOwner ? null : readProgress(id);
     const currentNumber = Number(progress?.episodeNumber) || 0;
     const currentId = progress?.episodeId ? String(progress.episodeId) : '';
     let chapterBody = wrap;
@@ -286,7 +287,7 @@
     });
   }
 
-  function installMobileToc(items, id, actions) {
+  function installMobileToc(items, id, actions, isOwner = false) {
     const button = node('button', 'nl-work-toc-mobile-button', '目次を見る');
     button.type = 'button';
     const dialog = node('dialog', 'nl-work-toc-dialog');
@@ -298,7 +299,7 @@
     close.type = 'button';
     close.setAttribute('aria-label', '目次を閉じる');
     head.append(title, close);
-    sheet.append(head, buildToc(items, id));
+    sheet.append(head, buildToc(items, id, { isOwner }));
     dialog.appendChild(sheet);
     document.body.appendChild(dialog);
     button.addEventListener('click', () => dialog.showModal());
@@ -552,7 +553,7 @@
       actions.appendChild(read);
     }
     actions.appendChild(favorite);
-    installMobileToc(items, id, actions);
+    installMobileToc(items, id, actions, viewerOwnsNovel);
     const secondaryActions = installSecondaryActions(actions, document.getElementById('readerReportOpen'));
     main.appendChild(actions);
     center.appendChild(main);
@@ -560,7 +561,7 @@
     toc.setAttribute('aria-label', '目次');
     const tocHead = node('div', 'nl-work-detail-toc-head');
     tocHead.append(node('h2', '', '目次'), node('span', 'nl-work-detail-toc-count', `${rows.length}話`));
-    toc.append(tocHead, buildToc(items, id));
+    toc.append(tocHead, buildToc(items, id, { isOwner: viewerOwnsNovel }));
     grid.append(left, center, toc);
     header.remove();
     document.getElementById('nlContinueReading')?.remove();
