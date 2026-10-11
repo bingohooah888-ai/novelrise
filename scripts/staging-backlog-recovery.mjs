@@ -46,12 +46,16 @@ export async function verifyCanonicalArtifacts(
   plan, { directory = 'supabase/migrations', gitHash = (path) =>
     execFileSync('git', ['hash-object', path], { encoding: 'utf8' }).trim() } = {}
 ) {
-  const names = (await readdir(directory)).filter((name) => VERSIONED.test(name));
-  if (names.length !== 158) refuse('repository migration count is no longer 158');
-  const localVersions = names.map((name) => name.slice(0, 14)).sort();
-  if (new Set(localVersions).size !== localVersions.length) {
+  const allNames = (await readdir(directory)).filter((name) => VERSIONED.test(name));
+  const allVersions = allNames.map((name) => name.slice(0, 14));
+  if (new Set(allVersions).size !== allVersions.length) {
     refuse('duplicate canonical migration version');
   }
+  // This immutable 2026-10-11 recovery plan covers the historical 158 files.
+  // Future migrations must not change the sealed, Git-blob-pinned backlog.
+  const names = allNames.filter((name) => name.slice(0, 14) <= plan.baselineLastPendingVersion);
+  if (names.length !== 158) refuse('historical recovery migration count is no longer 158');
+  const localVersions = names.map((name) => name.slice(0, 14)).sort();
   const pending = new Set(plan.immutableMigrations.map((item) => item.version));
   for (const migration of plan.immutableMigrations) {
     if (!names.includes(migration.file)) refuse('migration SQL file missing');
