@@ -4,9 +4,9 @@ import { test } from 'node:test';
 
 import { injectSeo } from '../api/seo/public-page.js';
 
-test('public episode route serves the bundled SEO template, not a static shell', async () => {
-  const [config, ignore, root, template] = await Promise.all([
-    readFile(new URL('../vercel.json', import.meta.url), 'utf8').then(JSON.parse),
+test('episode route uses a bundled SEO template', async () => {
+  const [configText, ignore, root, template] = await Promise.all([
+    readFile(new URL('../vercel.json', import.meta.url), 'utf8'),
     readFile(new URL('../.vercelignore', import.meta.url), 'utf8'),
     readFile(new URL('../episode.html', import.meta.url), 'utf8'),
     readFile(
@@ -15,21 +15,20 @@ test('public episode route serves the bundled SEO template, not a static shell',
     )
   ]);
 
+  const config = JSON.parse(configText);
   assert.match(ignore, /^\/episode\.html$/mu);
   assert.equal(template, root);
   assert.equal(
     config.functions['api/seo/episode.js'].includeFiles,
     'api/seo/templates/episode.html'
   );
-  assert.ok(
-    config.rewrites.some(
-      (r) => r.source === '/episode.html' &&
-        r.destination === '/api/seo/episode'
-    )
+  assert.deepEqual(
+    config.rewrites.find((route) => route.source === '/episode.html'),
+    { source: '/episode.html', destination: '/api/seo/episode' }
   );
 });
 
-test('published episodes reuse the works static PNG for X and Open Graph', async () => {
+test('episodes reuse the novel PNG for X and Open Graph', async () => {
   const seoSource = await readFile(
     new URL('../api/seo/episode.js', import.meta.url),
     'utf8'
@@ -60,7 +59,9 @@ test('published episodes reuse the works static PNG for X and Open Graph', async
   );
   assert.ok(html.includes(`<meta property="og:image" content="${image}">`));
   assert.ok(html.includes(`<meta name="twitter:image" content="${image}">`));
-  assert.ok(html.includes('<meta name="twitter:card" content="summary_large_image">'));
+  assert.ok(
+    html.includes('<meta name="twitter:card" content="summary_large_image">')
+  );
   assert.ok(html.includes('https://novelight.jp/episode.html?id=3420'));
   assert.doesNotMatch(html, /noindex, nofollow/u);
 });
