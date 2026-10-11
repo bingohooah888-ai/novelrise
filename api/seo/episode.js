@@ -1,5 +1,7 @@
 import { URL } from 'node:url';
 
+import { loadNovelOgData } from '../og/novel-data.js';
+import { ensureNovelSocialCard } from '../og/social-card-storage.js';
 import {
   canonicalUrl,
   compactText,
@@ -13,7 +15,7 @@ import {
   sendHtml
 } from './public-page.js';
 
-const TEMPLATE_URL = new URL('../../episode.html', import.meta.url);
+const TEMPLATE_URL = new URL('./templates/episode.html', import.meta.url);
 const PLACEHOLDER = '<article id="card" class="card">読み込み中...</article>';
 
 function isSensitive(novel) {
@@ -95,10 +97,38 @@ export default async function handler(req, res) {
       ? `${episode.title} — 閲覧前に内容に関する注意をご確認ください。`
       : compactText(content) ||
         `${episode.title} — ${novel.title}のエピソードです。`;
+    const canonical = canonicalUrl('episode', episode.id);
+    const ogData = await loadNovelOgData(novel.id);
+    let socialCardImage = ogData?.imageUrl || '';
+    if (ogData) {
+      try {
+        // Share the work's published 1200x630 PNG without exposing episode
+        // content in the image or generating a new asset for every chapter.
+        socialCardImage = await ensureNovelSocialCard(ogData);
+      } catch (error) {
+        console.warn('Episode social card preparation failed', {
+          episodeId: episode.id,
+          code: error?.code || null,
+          message: error?.message || null
+        });
+        // Fall back to the existing public PNG endpoint, not an empty card.
+      }
+    }
+
     let html = injectSeo(template, {
       title,
       description,
-      canonical: canonicalUrl('episode', episode.id)
+      canonical,
+      openGraph: ogData
+        ? {
+            title: `${episode.title} | ${novel.title}`,
+            description: compactText(description, 220),
+            image: socialCardImage,
+            twitterImage: socialCardImage,
+            url: canonical,
+            type: 'article'
+          }
+        : null
     });
 
     if (!sensitive) {
