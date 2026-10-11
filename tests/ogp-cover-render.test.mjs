@@ -3,10 +3,7 @@ import { test } from 'node:test';
 
 import sharp from 'sharp';
 
-import {
-  buildNovelOgElement,
-  prepareNovelOgCover
-} from '../api/og/novel.js';
+import { buildNovelOgElement, prepareNovelOgCover } from '../api/og/novel.js';
 
 const COVER_URL =
   'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/renders/257/test.webp';
