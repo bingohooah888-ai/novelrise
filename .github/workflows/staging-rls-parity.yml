@@ -1,0 +1,180 @@
+name: NOVELIGHT Staging RLS Parity Recovery
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+concurrency:
+  group: supabase-staging-migration-sync
+  cancel-in-progress: false
+jobs:
+  parity:
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_RLS_APPROVE ')
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      issues: write
+    env:
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-staging-database-url
+    steps:
+      - name: Validate one-time OWNER Staging RLS scope
+        id: approval
+        run: |
+          set -euo pipefail
+          prefix='NOVELIGHT_STAGING_RLS_APPROVE '
+          json="$(printf '%s' "$COMMENT_BODY" | sed "s/^$prefix//")"
+          test "$json" != "$COMMENT_BODY"
+          printf '%s\n' "$json" | jq -e '
+            type == "object" and .scope == "rls-parity" and
+            (.mainSha | type == "string" and test("^[a-f0-9]{40}$")) and
+            .confirmation == "STAGING APPROVED" and
+            ((keys | sort) == (["confirmation","mainSha","scope"] | sort))
+          ' >/dev/null
+          echo "main_sha=$(printf '%s\n' "$json" | jq -r .mainSha)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Bind request to current main
+        env:
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_SHA"
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA"
+
+      - name: Require dedicated Staging secret and SQL checks
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$STAGING_SUPABASE_URL"
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          test -f supabase/checks/staging_rls_parity_precheck.sql
+          test -f supabase/checks/staging_rls_parity_postcheck.sql
+          test -f supabase/maintenance/staging_rls_parity_enable.sql
+
+      - name: Resolve SSL-encrypted dedicated Staging route
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+        run: node scripts/resolve-staging-session-pooler.mjs
+
+      - name: Verify Staging identity and read-only exact RLS precheck
+        env:
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            --single-transaction -f supabase/checks/staging_rls_parity_precheck.sql
+
+      - name: Claim unique OWNER request before Staging metadata write
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA"
+          : > /tmp/staging-rls-ledger.ndjson
+          page=1
+          while [ "$page" -le 20 ]; do
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100&page=$page" \
+              > /tmp/staging-rls-comments.json
+            count="$(jq 'length' /tmp/staging-rls-comments.json)"
+            jq -c '.[]' /tmp/staging-rls-comments.json >> /tmp/staging-rls-ledger.ndjson
+            if [ "$count" -lt 100 ]; then break; fi
+            page=$((page+1))
+          done
+          test "$page" -le 20
+          used="$(jq -s '[.[] | select(.user.login == "github-actions[bot]") |
+            select(.body | startswith("NOVELIGHT_STAGING_RLS_CLAIMED "))
+          ] | length' /tmp/staging-rls-ledger.ndjson)"
+          test "$used" -eq 0
+          payload="$(jq -cn --arg id "$COMMENT_ID" --arg sha "$APPROVED_SHA" \
+            '{body:("NOVELIGHT_STAGING_RLS_CLAIMED " +
+              ({requestCommentId:$id,mainSha:$sha,scope:"rls-parity"}|tojson))}')"
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Content-Type: application/json' -d "$payload" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            | jq -e '.id' >/dev/null
+
+      - name: Apply five exact RLS metadata settings transactionally
+        id: apply
+        env:
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -f supabase/maintenance/staging_rls_parity_enable.sql
+
+      - name: Verify zero unprotected public tables
+        id: postcheck
+        env:
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            --single-transaction -f supabase/checks/staging_rls_parity_postcheck.sql
+
+      - name: Record consumed approval and no-auto-retry boundary
+        if: always() && steps.approval.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY_OUTCOME: ${{ steps.apply.outcome }}
+          POSTCHECK_OUTCOME: ${{ steps.postcheck.outcome }}
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          if [ "$APPLY_OUTCOME" = skipped ]; then
+            echo 'No Staging RLS metadata changed.'
+            exit 0
+          fi
+          result=failure
+          if [ "$APPLY_OUTCOME" = success ] && [ "$POSTCHECK_OUTCOME" = success ]; then
+            result=success
+          else
+            echo 'STAGING_RLS_RECOVERY_REQUIRED: inspect DB read-only; no automatic retry.'
+          fi
+          payload="$(jq -cn --arg id "$COMMENT_ID" --arg sha "$APPROVED_SHA" \
+            --arg result "$result" \
+            '{body:("NOVELIGHT_STAGING_RLS_CONSUMED " +
+              ({requestCommentId:$id,mainSha:$sha,scope:"rls-parity",result:$result}|tojson))}')"
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Content-Type: application/json' -d "$payload" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            | jq -e '.id' >/dev/null
+
+      - name: Remove ephemeral Staging DB route
+        if: always()
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
