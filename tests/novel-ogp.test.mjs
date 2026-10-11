@@ -99,15 +99,24 @@ test('X cards use the published cover image while OG keeps its branded banner', 
       twitterImage: coverImage
     }
   });
-  assert.ok(html.includes(`<meta property="og:image" content="${ogImage.replaceAll('&', '&amp;')}">`));
-  assert.ok(html.includes(`<meta name="twitter:image" content="${coverImage}">`));
-  assert.ok(html.includes('<meta name="twitter:card" content="summary_large_image">'));
+  assert.ok(
+    html.includes(
+      `<meta property="og:image" content="${ogImage.replaceAll('&', '&amp;')}">`
+    )
+  );
+  assert.ok(
+    html.includes(`<meta name="twitter:image" content="${coverImage}">`)
+  );
+  assert.ok(
+    html.includes('<meta name="twitter:card" content="summary_large_image">')
+  );
 
   const seoNovel = await readFile(
     new URL('../api/seo/novel.js', import.meta.url),
     'utf8'
   );
-  assert.match(seoNovel, /ogData\.authorImageUrl \|\| ogData\.bookThumbnailUrl \|\| ogData\.imageUrl/u);
+  assert.ok(seoNovel.includes('ogData.authorImageUrl ||'));
+  assert.ok(seoNovel.includes('ogData.bookThumbnailUrl ||'));
 });
 
 test('X share uses cover media while URL copy keeps attribution', async () => {
