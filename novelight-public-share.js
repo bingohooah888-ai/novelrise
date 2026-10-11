@@ -315,37 +315,6 @@
     return true;
   }
 
-  function installNovelSharing() {
-    if (currentPageSlug() !== 'novel') return false;
-    const header = document.getElementById('novelHeader');
-    const novelId = new URLSearchParams(window.location.search).get('id');
-    if (!header || !novelId) return false;
-
-    const mount = () => {
-      if (header.querySelector('[data-novelight-public-share]')) return;
-      const titleNode = header.querySelector('.title');
-      if (!titleNode) return;
-      const title = titleNode.textContent.trim() || '作品';
-      header.appendChild(
-        shareBar({
-          url: canonicalUrl('novel.html', novelId),
-          novelId,
-          text: `『${title}』をNOVELIGHTで読む`,
-          shareTitle: title,
-          label: 'この作品を共有',
-          position: 'novel'
-        })
-      );
-    };
-
-    mount();
-    new MutationObserver(mount).observe(header, {
-      childList: true,
-      subtree: true
-    });
-    return true;
-  }
-
   function installEpisodeSharing() {
     if (currentPageSlug() !== 'episode') return false;
     const card = document.getElementById('card');
@@ -411,6 +380,5 @@
 
   installStyles();
   installMyNovelsSharing();
-  installNovelSharing();
   installEpisodeSharing();
 })();
