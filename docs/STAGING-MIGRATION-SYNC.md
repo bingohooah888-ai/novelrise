@@ -219,7 +219,7 @@ Staging each expose the same 112 public tables and 44 RLS policies, but five
 legacy Staging tables have RLS disabled while Production has RLS enabled.
 Those five tables have no `anon`, `authenticated`, or `PUBLIC` DML privileges
 and no policies; enabling RLS is a metadata-only security alignment. The
-one-time OWNER Issue #294 route `.github/workflows/staging-rls-parity.yml`
+single-use OWNER Issue #294 route `.github/workflows/staging-rls-parity.yml`
 requires exact current main SHA and the explicit `STAGING APPROVED` confirmation
 with scope `rls-parity`, protected Staging DB target/TLS and the fixed five
 names. A read-only precheck verifies exactly those five names, grants, policies,
