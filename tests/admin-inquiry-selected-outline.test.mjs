@@ -9,7 +9,7 @@ const html = fs.readFileSync(
   'utf8'
 );
 
-test('the opened inquiry keeps a thick yellow selection border independent of hover', () => {
+test('selected inquiry gets a thick yellow border even on hover', () => {
   assert.match(
     html,
     /\.item\.active,\.item\.active:hover\{border:3px solid #ffd84d;padding:10px;/u
@@ -18,8 +18,11 @@ test('the opened inquiry keeps a thick yellow selection border independent of ho
   assert.match(html, /\.item\{[^}]*border:1px solid #303650;/u);
 });
 
-test('selected inquiry follows the currently displayed detail after list refresh', () => {
-  assert.match(html, /button\.className='item'\+\(row\.id===selectedId\?' active':''\)/u);
+test('selected inquiry follows the opened detail after refresh', () => {
+  assert.match(
+    html,
+    /button\.className='item'\+\(row\.id===selectedId\?' active':''\)/u
+  );
   assert.match(html, /function renderDetail\(row\)\{selectedId=row\.id;/u);
   assert.match(html, /renderDetail\(data\.inquiry\);await loadList\(false\)/u);
 });
