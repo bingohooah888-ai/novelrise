@@ -804,7 +804,8 @@ test('authenticated beta-critical product flow works in target', async ({
       );
       await favoriteButton.click();
       await expect(favoriteButton).toHaveText(/お気に入り済み/);
-      await expect(readerPage.locator('#favoriteCount')).toHaveText('1');
+      // Readers see the favorite state, while only the author sees the aggregate count.
+      await expect(readerPage.locator('#favoriteCount')).toBeHidden();
       expect((await favoriteConversion).ok()).toBeTruthy();
     });
 
