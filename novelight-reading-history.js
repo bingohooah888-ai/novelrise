@@ -156,7 +156,7 @@
         const episode = createElement(
           'div',
           'reading-history-episode-title',
-          `第${safeCount(item.episode_number)}話　${item.episode_title || ''}`
+          globalThis.NovelightEpisodeTitleDisplay.numberedTitle(item.episode_title, safeCount(item.episode_number))
         );
 
         link.append(top, novelTitle, episode);

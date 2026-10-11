@@ -73,6 +73,8 @@
       .sort((a, b) => a.number - b.number || Number(a.id) - Number(b.id));
   }
 
+  const tocDisplayTitle = window.NovelightEpisodeTitleDisplay.visibleTitle;
+
   function makeEpisodeLink(row, currentEpisodeId) {
     const link = document.createElement('a');
     link.className = `nl-worknav-episode-link${String(row.id) === String(currentEpisodeId) ? ' current' : ''}`;
@@ -80,9 +82,13 @@
     if (String(row.id) === String(currentEpisodeId)) link.setAttribute('aria-current', 'page');
     const number = document.createElement('small');
     number.textContent = `第${row.number}話`;
-    const title = document.createElement('span');
-    title.textContent = row.title || `第${row.number}話`;
-    link.append(number, title);
+    const displayTitle = tocDisplayTitle(row.title, row.number);
+    link.appendChild(number);
+    if (displayTitle) {
+      const title = document.createElement('span');
+      title.textContent = displayTitle;
+      link.appendChild(title);
+    }
     return link;
   }
 

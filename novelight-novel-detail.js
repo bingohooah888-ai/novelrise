@@ -139,6 +139,8 @@
     return { row: { ...next, episodeNumber: next.number }, label: next === rows[index] ? `第${next.number}話の続きから読む` : `第${next.number}話から続きを読む`, unread: Math.max(0, rows.length - index - (complete ? 1 : 0)) };
   }
 
+  const tocDisplayTitle = window.NovelightEpisodeTitleDisplay.visibleTitle;
+
   function buildToc(items, id) {
     const wrap = node('div', 'nl-work-toc-list');
     const progress = readProgress(id);
@@ -168,7 +170,9 @@
       link.href = row.href;
       if (currentNumber && row.number <= currentNumber) link.classList.add('is-read');
       if (currentId && String(row.id) === currentId) link.classList.add('is-current');
-      link.append(node('span', 'nl-work-toc-num', `第${row.number}話`), node('span', '', row.title || `第${row.number}話`));
+      link.appendChild(node('span', 'nl-work-toc-num', `第${row.number}話`));
+      const displayTitle = tocDisplayTitle(row.title, row.number);
+      if (displayTitle) link.appendChild(node('span', '', displayTitle));
       chapterBody.appendChild(link);
     }
     return wrap;
