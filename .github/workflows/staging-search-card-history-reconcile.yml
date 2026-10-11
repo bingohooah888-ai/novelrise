@@ -1,0 +1,218 @@
+name: Staging Search Card History Reconciliation
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-staging-migration-sync
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_HISTORY_APPROVE ')
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      issues: write
+    env:
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-staging-database-url
+    steps:
+      - name: Parse exact one-time owner request
+        id: approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix='NOVELIGHT_STAGING_HISTORY_APPROVE '
+          request_json="$(printf '%s' "$COMMENT_BODY" | sed "s/^$prefix//")"
+          test "$request_json" != "$COMMENT_BODY"
+          printf '%s\n' "$request_json" | jq -e '
+            type == "object" and
+            (.scope == "history-reconcile") and
+            (.mainSha | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.version == "20260930210000") and
+            (.confirmation == "STAGING APPROVED") and
+            ((keys | sort) == (["confirmation","mainSha","scope","version"] | sort))
+          ' >/dev/null
+          {
+            echo "main_sha=$(printf '%s\n' "$request_json" | jq -r .mainSha)"
+            echo "request_comment_id=$COMMENT_ID"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout approved main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify latest main and source SQL provenance
+        env:
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_SHA"
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA"
+          node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { canonicalMigrationStatement } from './scripts/verify-staging-search-card-history.mjs';
+          const source = readFileSync('supabase/migrations/20260930153337_search_card_metadata.sql','utf8');
+          const md5 = createHash('md5').update(canonicalMigrationStatement(source)).digest('hex');
+          if (md5 !== '35209c5b79644ca0d66c1a0c2112b535')
+            throw new Error('Staging-only history reconciliation blocked: reviewed SQL checksum drift');
+          JS
+          test -f supabase/checks/staging_search_card_history_reconcile_precheck.sql
+          test -f supabase/checks/staging_search_card_history_reconcile_postcheck.sql
+          test -f supabase/maintenance/staging_search_card_history_reconcile_manual_rollback.sql
+
+      - name: Require dedicated Staging secret and PostgreSQL client
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$STAGING_SUPABASE_URL"
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          command -v psql >/dev/null
+
+      - name: Resolve non-Production encrypted Staging route
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+        run: node scripts/resolve-staging-session-pooler.mjs
+
+      - name: Verify Staging identity and exact live schema/history preconditions
+        env:
+          PGSSLMODE: require
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            --single-transaction -f supabase/checks/staging_search_card_history_reconcile_precheck.sql
+
+      - name: Reject reused request, changed main or concurrent recovery
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA"
+          : > /tmp/staging-reconcile-ledger.ndjson
+          page=1
+          while [ "$page" -le 20 ]; do
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100&page=$page" \
+              > /tmp/staging-reconcile-comments.json
+            count="$(jq 'length' /tmp/staging-reconcile-comments.json)"
+            jq -c '.[]' /tmp/staging-reconcile-comments.json >> /tmp/staging-reconcile-ledger.ndjson
+            if [ "$count" -lt 100 ]; then break; fi
+            page=$((page+1))
+          done
+          test "$page" -le 20
+          used="$(jq -s --arg id "$COMMENT_ID" '
+            [.[] | select(.user.login == "github-actions[bot]")
+             | select(.body | startswith("NOVELIGHT_STAGING_HISTORY_CLAIMED ") or
+                                 startswith("NOVELIGHT_STAGING_HISTORY_CONSUMED "))
+             | select(.body | contains("\"requestCommentId\":\"" + $id + "\""))] | length
+          ' /tmp/staging-reconcile-ledger.ndjson)"
+          test "$used" -eq 0
+          # Explicit single-use claim before the first Staging database write.
+          payload="$(jq -cn --arg id "$COMMENT_ID" --arg sha "$APPROVED_SHA" \
+            '{body:("NOVELIGHT_STAGING_HISTORY_CLAIMED " +
+              ({requestCommentId:$id,mainSha:$sha,version:"20260930210000"}|tojson))}')"
+          curl --fail --silent --show-error \
+            -X POST -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'Content-Type: application/json' \
+            -d "$payload" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            | jq -e '.id' >/dev/null
+
+      - name: Apply transactionally to only the verified Staging history row
+        id: apply
+        env:
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+          PGSSLMODE: require
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -f supabase/maintenance/staging_search_card_history_reconcile.sql
+
+      - name: Verify canonical history and unchanged live function
+        id: verify
+        env:
+          PGSSLMODE: require
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            --single-transaction -f supabase/checks/staging_search_card_history_reconcile_postcheck.sql
+
+      - name: Record consumed request and recovery boundary
+        if: always() && steps.approval.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY_OUTCOME: ${{ steps.apply.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          APPROVED_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$APPLY_OUTCOME" = 'skipped' ]; then
+            echo 'Staging history reconciliation did not attempt mutation.'
+            exit 0
+          fi
+          result=failure
+          if [ "$APPLY_OUTCOME" = success ] && [ "$VERIFY_OUTCOME" = success ]; then
+            result=success
+          else
+            echo 'STAGING_HISTORY_RECOVERY_REQUIRED: inspect current DB read-only.'
+            echo 'Do not auto-retry or auto-rollback a potentially applied transaction.'
+          fi
+          payload="$(jq -cn --arg id "$COMMENT_ID" \
+            --arg sha "$APPROVED_SHA" --arg result "$result" \
+            '{body:("NOVELIGHT_STAGING_HISTORY_CONSUMED " +
+              ({requestCommentId:$id,mainSha:$sha,version:"20260930210000",result:$result}|tojson))}')"
+          curl --fail --silent --show-error \
+            -X POST -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'Content-Type: application/json' \
+            -d "$payload" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            | jq -e '.id' >/dev/null
+
+      - name: Remove ephemeral Staging database route
+        if: always()
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
