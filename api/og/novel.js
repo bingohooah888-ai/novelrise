@@ -10,6 +10,46 @@ import {
 } from './novel-data.js';
 
 const CACHE_HEADER = 'public, max-age=31536000, immutable';
+const MINCHO_FONT_FAMILY = 'Sawarabi Mincho';
+// Licensed under SIL OFL 1.1 by the Sawarabi Fonts contributors.
+// Pin the Google Fonts repository commit to keep immutable X PNGs deterministic.
+// https://github.com/google/fonts/blob/main/ofl/sawarabimincho/OFL.txt
+const MINCHO_FONT_URL =
+  'https://raw.githubusercontent.com/google/fonts/363ff1cd24a2d76345a97c9b58f80048aaaf0bc3/ofl/sawarabimincho/SawarabiMincho-Regular.ttf';
+const MAX_MINCHO_FONT_BYTES = 4_500_000;
+let minchoFontPromise;
+
+async function loadMinchoFont() {
+  if (!minchoFontPromise) {
+    minchoFontPromise = (async () => {
+      const response = await globalThis.fetch(MINCHO_FONT_URL, {
+        signal: globalThis.AbortSignal.timeout(8000)
+      });
+      if (!response.ok) throw new Error('Japanese Mincho font unavailable');
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (
+        bytes.length < 1000 ||
+        bytes.length > MAX_MINCHO_FONT_BYTES ||
+        !['00010000', '4f54544f'].includes(bytes.toString('hex', 0, 4))
+      ) {
+        throw new Error('Invalid Japanese Mincho font');
+      }
+      return bytes;
+    })().catch((error) => {
+      minchoFontPromise = null;
+      throw error;
+    });
+  }
+  return minchoFontPromise;
+}
+
+function socialTitleFontSize(value) {
+  const length = Array.from(String(value || '')).length;
+  if (length <= 15) return 70;
+  if (length <= 28) return 58;
+  if (length <= 42) return 48;
+  return 40;
+}
 
 function node(type, props = {}, ...children) {
   const flat = children
@@ -117,6 +157,7 @@ function imageCover(url, fit) {
 }
 
 export function buildNovelOgElement(data, { imageFit = 'cover' } = {}) {
+  const titleSize = socialTitleFontSize(data.title);
   const cover =
     data.coverSource === 'common'
       ? fallbackCover()
@@ -167,11 +208,12 @@ export function buildNovelOgElement(data, { imageFit = 'cover' } = {}) {
         {
           style: {
             display: 'flex',
-            maxHeight: '178px',
+            maxHeight: '270px',
             overflow: 'hidden',
-            fontSize: '52px',
-            lineHeight: 1.34,
-            fontWeight: 900,
+            fontFamily: MINCHO_FONT_FAMILY,
+            fontSize: `${titleSize}px`,
+            lineHeight: 1.2,
+            fontWeight: 400,
             letterSpacing: '-1px'
           }
         },
@@ -184,9 +226,10 @@ export function buildNovelOgElement(data, { imageFit = 'cover' } = {}) {
             display: 'flex',
             marginTop: '28px',
             color: '#cbc5b8',
-            fontSize: '25px',
+            fontFamily: MINCHO_FONT_FAMILY,
+            fontSize: '30px',
             lineHeight: 1.35,
-            fontWeight: 600
+            fontWeight: 400
           }
         },
         truncate(data.authorName, 34)
@@ -281,7 +324,18 @@ export async function renderNovelOgPng(data) {
   const { ImageResponse } = await import('@vercel/og');
   const image = new ImageResponse(
     buildNovelOgElement(prepared, { imageFit: 'contain' }),
-    { width: OG_WIDTH, height: OG_HEIGHT }
+    {
+      width: OG_WIDTH,
+      height: OG_HEIGHT,
+      fonts: [
+        {
+          name: MINCHO_FONT_FAMILY,
+          data: await loadMinchoFont(),
+          weight: 400,
+          style: 'normal'
+        }
+      ]
+    }
   );
   return Buffer.from(await image.arrayBuffer());
 }
