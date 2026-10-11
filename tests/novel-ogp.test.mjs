@@ -245,7 +245,7 @@ test('Vercel excludes the static novel shell so the SEO rewrite can run', async 
   assert.equal(serverTemplate, rootTemplate);
 });
 
-test('only published X revision work HTML opts in to short CDN cache', async () => {
+test('published X revision caches only public HTML', async () => {
   const { sendHtml } = await import('../api/seo/public-page.js');
   const makeRes = () => {
     const headers = new Map();
@@ -290,8 +290,8 @@ test('only published X revision work HTML opts in to short CDN cache', async () 
     readFile(new URL('../api/seo/novel.js', import.meta.url), 'utf8'),
     readFile(new URL('../vercel.json', import.meta.url), 'utf8')
   ]);
-  const versionParam = /queryValue\(req\.query\?\.x_card\) === 'png-v5-mincho'/u;
-  assert.match(route, versionParam);
+  const versionCheck = "queryValue(req.query?.x_card) === 'png-v5-mincho'";
+  assert.ok(route.includes(versionCheck));
   const headers = JSON.parse(config).headers;
   assert.ok(headers.every((entry) => entry.source !== '/novel.html'));
   assert.ok(headers.some((entry) => entry.source === '/episode.html'));
