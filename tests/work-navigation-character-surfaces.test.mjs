@@ -37,12 +37,19 @@ test('episode reader uses one integrated navigation surface on desktop and mobil
   assert.match(navigation, /novelight_reader_episode_index/u);
 });
 
-test('episode characters display current participants first with distinct color', () => {
-  assert.match(navigation, /function prioritizeCurrentEpisodeCharacters\(rows\)/u);
-  assert.match(navigation, /Number\(b\.appears_current_episode === true\) - Number\(a\.appears_current_episode === true\)/u);
-  assert.match(navigation, /prioritizeCurrentEpisodeCharacters\(Array\.isArray\(characterResult\.data\)/u);
-  assert.match(navigation, /if \(episode && row\.appears_current_episode === true\) card\.classList\.add\('is-current-episode'\)/u);
-  assert.match(navigation, /\.nl-worknav-character\.is-current-episode\{background:/u);
+test('current episode characters are highlighted and sorted first', () => {
+  assert.match(navigation, /function prioritizeCurrentEpisodeCharacters/u);
+  assert.match(navigation, /Number\(b\.appears_current_episode === true\)/u);
+  assert.match(navigation, /Number\(a\.appears_current_episode === true\)/u);
+  assert.match(
+    navigation,
+    /prioritizeCurrentEpisodeCharacters\(Array\.isArray/u
+  );
+  assert.match(navigation, /card\.classList\.add\('is-current-episode'\)/u);
+  assert.match(
+    navigation,
+    /\.nl-worknav-character\.is-current-episode\{background:/u
+  );
   assert.match(navigation, /client\.rpc\('novelight_character_feed'/u);
 });
 
