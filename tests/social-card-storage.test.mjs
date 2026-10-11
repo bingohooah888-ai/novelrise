@@ -74,10 +74,7 @@ test('rendered social cards are immutable and reused', async () => {
     ensureNovelSocialCard(original, { client: storage.client, render })
   ]);
   assert.equal(urlA, urlB);
-  assert.equal(
-    urlA,
-    `${ORIGIN}/social-cards/354/0123456789abcdef.png`
-  );
+  assert.equal(urlA, `${ORIGIN}/social-cards/354/0123456789abcdef.png`);
   assert.equal(renders, 1);
   assert.equal(storage.writes.length, 1);
   assert.equal(storage.writes[0].options.contentType, 'image/png');
