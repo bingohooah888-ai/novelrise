@@ -18,6 +18,7 @@
     try { localStorage.setItem(KEY, value ? '1' : '0'); }
     catch (error) { console.warn('R15 setting unavailable', error); }
     schedule();
+    window.location.reload();
   }
   function idOf(anchor) {
     try { return new URL(anchor.href).searchParams.get('id'); }
@@ -70,6 +71,25 @@
     const ids = [...unknown];
     for (let i = 0; i < ids.length; i += 50) void lookup(ids.slice(i, i + 50));
   }
+  async function filterRows(rows, sourceClient = client) {
+    if (!pref() || !Array.isArray(rows) || !rows.length) return rows;
+    const ids = [...new Set(rows.map(row => String(row.novel_id ?? row.id ?? '')).filter(id => /^[0-9]+$/u.test(id) && !known.has(id) && !rowHasRating(rows, id)))];
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      const result = await sourceClient.rpc('novelight_search_card_metadata', { p_novel_ids: batch });
+      if (result.error) throw result.error;
+      const map = new Map((result.data || []).map(item => [String(item.novel_id), item.content_rating]));
+      batch.forEach(id => known.set(id, map.get(id) || null));
+    }
+    return rows.filter(row => {
+      const id = String(row.novel_id ?? row.id ?? '');
+      const value = row.content_rating || known.get(id);
+      return value !== 'sensitive_15' && value !== 'mature' && typeof value === 'string';
+    });
+  }
+  function rowHasRating(rows, id) {
+    return rows.some(row => String(row.novel_id ?? row.id ?? '') === id && typeof row.content_rating === 'string');
+  }
   function mountControl() {
     const page = location.pathname.split('/').pop();
     if (!CONTROL_PAGES.has(page)) return;
@@ -116,6 +136,7 @@
     });
     schedule();
   }
+  window.NovelightR15 = Object.freeze({ hiddenPreference: pref, filterRows });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
 })();
