@@ -21,16 +21,17 @@
       .nl-worknav-panel{border:1px solid #e4dccf;border-radius:14px;background:#fffdf8;overflow:hidden;box-shadow:0 10px 28px rgba(55,42,29,.05)}
       .nl-worknav-panel-head{padding:13px 14px;border-bottom:1px solid #ece5d9;color:#4b3928;font-size:13px;font-weight:900}
       .nl-worknav-episode-list{max-height:42vh;overflow:auto;padding:7px}.nl-worknav-episode-link{display:block;padding:9px 10px;border-radius:8px;color:#665a4d;font-size:12px;line-height:1.45;text-decoration:none!important}
+      .nl-worknav-chapter{border:1px solid #e8dfd2;border-radius:9px;overflow:hidden;background:#fff}.nl-worknav-chapter>summary{padding:10px 12px;cursor:pointer;font-size:12px;font-weight:900;color:#4b3928;list-style:none;background:#f8f3eb}.nl-worknav-chapter>summary::-webkit-details-marker{display:none}.nl-worknav-chapter>summary::after{content:'＋';float:right}.nl-worknav-chapter[open]>summary::after{content:'－'}.nl-worknav-chapter>summary:focus-visible{outline:2px solid #7351d8;outline-offset:-2px}.nl-worknav-chapter-episodes{padding:4px 6px 6px}
       .nl-worknav-episode-link:hover{background:#f5efe4}.nl-worknav-episode-link.current{background:#efe7d8;color:#382b1e;font-weight:900}.nl-worknav-episode-link small{display:block;margin-bottom:2px;color:#958878;font-size:10px}
       .nl-worknav-character-list{display:grid;gap:7px;padding:9px}.nl-worknav-character{display:grid;grid-template-columns:42px minmax(0,1fr);gap:9px;align-items:start;padding:8px;border-radius:9px;background:#fff}
-      .nl-worknav-character.no-image{grid-template-columns:1fr}.nl-worknav-character img{width:42px;height:42px;object-fit:cover;border-radius:50%;border:1px solid #e1d7c8;background:#f5f0e8}
+      .nl-worknav-character img,.nl-worknav-character-placeholder{width:42px;height:42px;object-fit:cover;border-radius:50%;border:1px solid #e1d7c8;background:#f5f0e8}.nl-worknav-character-placeholder{display:grid;place-items:center;color:#7a6855;font-size:17px;font-weight:900}
       .nl-worknav-character strong{display:block;color:#382f27;font-size:12px}.nl-worknav-character p{margin:3px 0 0;color:#756b5f;font-size:10px;line-height:1.55}.nl-worknav-character-state{display:block;margin-top:3px;color:#9a7544;font-size:9px;font-weight:800}
       .nl-worknav-empty{padding:12px 14px;color:#85796a;font-size:11px;line-height:1.6}.nl-worknav-mobile{display:none;margin:0 0 14px}.nl-worknav-mobile details{border:1px solid #ded5c8;border-radius:10px;background:#fffdf9}.nl-worknav-mobile details+details{margin-top:8px}
       .nl-worknav-mobile summary{padding:11px 13px;cursor:pointer;color:#493c30;font-size:13px;font-weight:900;list-style:none}.nl-worknav-mobile summary::-webkit-details-marker{display:none}.nl-worknav-mobile summary::after{content:'＋';float:right;color:#8d7448}.nl-worknav-mobile details[open] summary::after{content:'－'}.nl-worknav-mobile-body{border-top:1px solid #eee6db}
       .nl-worknav-novel-panel{margin:0 0 18px;padding:22px;border:1px solid #e1d8ca;border-radius:16px;background:#fffdf8}.nl-worknav-novel-actions{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap}
       .nl-worknav-primary{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:11px 18px;border-radius:9px;background:#3b2a1d;color:#fff!important;font-size:14px;font-weight:900;text-decoration:none!important}.nl-worknav-primary:hover{opacity:.92}
       .nl-worknav-characters-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:18px 0 9px}.nl-worknav-characters-head h2{font-size:18px}.nl-worknav-novel-characters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-      .nl-worknav-novel-character{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:10px;border:1px solid #ebe3d7;border-radius:11px;background:#fff}.nl-worknav-novel-character.no-image{grid-template-columns:1fr}.nl-worknav-novel-character img{width:52px;height:52px;object-fit:cover;border-radius:10px;background:#f4eee5}
+      .nl-worknav-novel-character{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:10px;border:1px solid #ebe3d7;border-radius:11px;background:#fff}.nl-worknav-novel-character img,.nl-worknav-novel-character-placeholder{width:52px;height:52px;object-fit:cover;border-radius:10px;background:#f4eee5}.nl-worknav-novel-character-placeholder{display:grid;place-items:center;color:#7a6855;font-size:19px;font-weight:900}
       .nl-worknav-novel-character strong{font-size:13px}.nl-worknav-novel-character p{margin:4px 0 0;color:#70675e;font-size:11px;line-height:1.55}.nl-worknav-more{margin-top:10px;border:0;background:transparent;color:#6f542d;font-weight:900;cursor:pointer}.nl-worknav-novel-character.is-extra{display:none}.nl-worknav-novel-characters.is-expanded .nl-worknav-novel-character.is-extra{display:grid}
       @media(max-width:960px){.nl-worknav-episode-layout{display:block}.nl-worknav-support{display:none}.nl-worknav-mobile{display:block}}
       @media(max-width:640px){.nl-worknav-novel-panel{padding:17px 15px}.nl-worknav-novel-characters{grid-template-columns:1fr}.nl-worknav-primary{width:100%}}
@@ -43,6 +44,7 @@
   }
 
   function safeImageUrl(value) {
+    if (!String(value || '').trim()) return '';
     try {
       const url = new URL(String(value || ''), window.location.href);
       return url.protocol === 'https:' ? url.href : '';
@@ -52,18 +54,36 @@
   }
 
   async function publicEpisodes(client, novelId) {
-    const result = await client.rpc('novelight_reader_episode_index', {
-      p_novel_ids: [String(novelId)]
-    });
+    const params = { p_novel_ids: [String(novelId)] };
+    let result = await client.rpc('novelight_reader_episode_chapter_index', params);
+    // During migration rollout keep the existing spoiler-safe episode list available.
+    if (result.error && runtimeMissing(result.error)) {
+      result = await client.rpc('novelight_reader_episode_index', params);
+    }
     if (result.error) throw result.error;
     return (result.data || [])
       .filter((row) => String(row.novel_id) === String(novelId))
       .map((row) => ({
         id: row.episode_id,
         number: Number(row.episode_number) || 0,
-        title: String(row.episode_title || '')
+        title: String(row.episode_title || ''),
+        chapterId: row.chapter_id == null ? null : String(row.chapter_id),
+        chapterTitle: String(row.chapter_title || '')
       }))
       .sort((a, b) => a.number - b.number || Number(a.id) - Number(b.id));
+  }
+
+  function makeEpisodeLink(row, currentEpisodeId) {
+    const link = document.createElement('a');
+    link.className = `nl-worknav-episode-link${String(row.id) === String(currentEpisodeId) ? ' current' : ''}`;
+    link.href = episodeHref(row.id);
+    if (String(row.id) === String(currentEpisodeId)) link.setAttribute('aria-current', 'page');
+    const number = document.createElement('small');
+    number.textContent = `第${row.number}話`;
+    const title = document.createElement('span');
+    title.textContent = row.title || `第${row.number}話`;
+    link.append(number, title);
+    return link;
   }
 
   function makeEpisodeList(rows, currentEpisodeId = null) {
@@ -76,32 +96,60 @@
       list.appendChild(empty);
       return list;
     }
+    let currentChapterId = null;
+    let currentBody = list;
+    let chapterOrdinal = 0;
     for (const row of rows) {
-      const link = document.createElement('a');
-      link.className = `nl-worknav-episode-link${String(row.id) === String(currentEpisodeId) ? ' current' : ''}`;
-      link.href = episodeHref(row.id);
-      if (String(row.id) === String(currentEpisodeId)) link.setAttribute('aria-current', 'page');
-      const number = document.createElement('small');
-      number.textContent = `第${row.number}話`;
-      const title = document.createElement('span');
-      title.textContent = row.title || `第${row.number}話`;
-      link.append(number, title);
-      list.appendChild(link);
+      const chapterId = row.chapterId || null;
+      if (chapterId && chapterId !== currentChapterId) {
+        chapterOrdinal += 1;
+        const group = document.createElement('details');
+        group.className = 'nl-worknav-chapter';
+        const summary = document.createElement('summary');
+        const chapterRows = rows.filter((candidate) => candidate.chapterId === chapterId);
+        const visibleTitle = chapterRows.find((candidate) => candidate.chapterTitle)?.chapterTitle;
+        summary.textContent = visibleTitle || `第${chapterOrdinal}章`;
+        const body = document.createElement('div');
+        body.className = 'nl-worknav-chapter-episodes';
+        group.open = chapterRows.some((candidate) => String(candidate.id) === String(currentEpisodeId));
+        group.append(summary, body);
+        list.appendChild(group);
+        currentBody = body;
+      } else if (!chapterId) {
+        currentBody = list;
+      }
+      currentChapterId = chapterId;
+      currentBody.appendChild(makeEpisodeLink(row, currentEpisodeId));
     }
     return list;
+  }
+
+  function characterFallback(row, { episode = false } = {}) {
+    const fallback = document.createElement('div');
+    fallback.className = episode
+      ? 'nl-worknav-character-placeholder'
+      : 'nl-worknav-novel-character-placeholder';
+    fallback.textContent = Array.from(String(row.name || '人'))[0] || '人';
+    fallback.setAttribute('aria-hidden', 'true');
+    return fallback;
   }
 
   function characterCard(row, { episode = false } = {}) {
     const card = document.createElement('article');
     const imageUrl = safeImageUrl(row.image_url);
-    card.className = `${episode ? 'nl-worknav-character' : 'nl-worknav-novel-character'}${imageUrl ? '' : ' no-image'}`;
+    card.className = episode ? 'nl-worknav-character' : 'nl-worknav-novel-character';
     if (imageUrl) {
       const image = document.createElement('img');
-      image.src = imageUrl;
       image.alt = '';
       image.loading = 'lazy';
       image.referrerPolicy = 'no-referrer';
+      image.addEventListener('error', () => {
+        image.replaceWith(characterFallback(row, { episode }));
+      }, { once: true });
+      image.src = imageUrl;
       card.appendChild(image);
+    } else {
+      card.appendChild(characterFallback(row, { episode }));
     }
     const copy = document.createElement('div');
     const name = document.createElement('strong');
