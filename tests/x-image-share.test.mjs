@@ -39,7 +39,9 @@ test('desktop image clipboard and X composer work together', () => {
   assert.match(mediaShare, /new ClipboardItem/u);
   assert.ok(
     mediaShare.indexOf('copyResult = navigator.clipboard.write') <
-      mediaShare.indexOf("const popup = window.open('about:blank', '_blank')")
+      mediaShare.lastIndexOf(
+        "const popup = window.open('about:blank', '_blank')"
+      )
   );
   assert.match(mediaShare, /popup\.location\.replace/u);
   assert.match(mediaShare, /downloadFile\(file\)/u);
@@ -55,6 +57,10 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   let xIntent = '';
   let directIntent = '';
   let copyCount = 0;
+  let releaseMetadata;
+  const metadataGate = new Promise((resolve) => {
+    releaseMetadata = resolve;
+  });
   const canvasContext = {
     createLinearGradient: () => ({ addColorStop() {} }),
     fillRect() {},
@@ -63,6 +69,8 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   };
   const window = {
     ClipboardItem: true,
+    setTimeout: () => 1,
+    clearTimeout: () => {},
     open: (url) => {
       if (url !== 'about:blank') directIntent = url;
       return {
@@ -93,6 +101,20 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     window,
     navigator,
     URL,
+    fetch: async () => {
+      await metadataGate;
+      return {
+        ok: true,
+        text: async () =>
+          '<meta name="twitter:image" content="https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/social-cards/354/0123456789abcdef.png">'
+      };
+    },
+    Image: class {
+      set src(_url) {
+        Promise.resolve().then(() => this.onload?.());
+      }
+    },
+    AbortSignal: { timeout: () => null },
     Blob,
     File: class {
       constructor(parts, name, { type }) {
@@ -114,13 +136,18 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     },
     console: { warn() {} }
   });
-  // The first desktop click must open X without waiting for the PNG.
-  await window.NovelightXImageShare.share({
+  // First desktop click opens a placeholder but must not navigate to X
+  // before the public card page and its PNG are ready.
+  const initialShare = window.NovelightXImageShare.share({
     novelId: '354',
     title: '作品タイトル',
     url: 'https://novelight.jp/novel.html?id=354'
   });
-  assert.match(directIntent, /twitter\.com\/intent\/tweet/u);
+  assert.equal(xIntent, '');
+  releaseMetadata();
+  await initialShare;
+  assert.match(xIntent, /twitter\.com\/intent\/tweet/u);
+  assert.equal(directIntent, '');
   assert.equal(copyCount, 0);
 
   await window.NovelightXImageShare.prepare('354').promise;

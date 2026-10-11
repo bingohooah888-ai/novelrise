@@ -229,6 +229,42 @@
     return intent.href;
   }
 
+  async function ensureXCardReady(intent) {
+    const shareUrl = new URL(new URL(intent).searchParams.get('url'));
+    if (shareUrl.origin !== ORIGIN) throw new Error('Untrusted share URL');
+
+    const response = await fetch(shareUrl.href, {
+      credentials: 'omit',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!response.ok) throw new Error('Public share page is unavailable');
+
+    const html = await response.text();
+    const imageUrl = safeCoverUrl(
+      html.match(/<meta name="twitter:image" content="([^"]+)">/u)?.[1]
+    );
+    if (!imageUrl) throw new Error('Public X image metadata is missing');
+
+    // Image loading checks real PNG decoding without cross-origin read access.
+    await new Promise((resolve, reject) => {
+      const image = new Image();
+      const timer = window.setTimeout(
+        () => reject(new Error('Image load timeout')),
+        8000
+      );
+      image.onload = () => {
+        window.clearTimeout(timer);
+        resolve();
+      };
+      image.onerror = () => {
+        window.clearTimeout(timer);
+        reject(new Error('Public X image cannot be decoded'));
+      };
+      image.src = imageUrl;
+    });
+  }
+
   function downloadFile(file) {
     const href = URL.createObjectURL(file);
     const link = document.createElement('a');
@@ -252,13 +288,30 @@
   async function share({ novelId, title, url, onStatus = () => {} }) {
     const state = prepare(novelId);
     if (!state) return onStatus('作品IDが確認できません。');
-    // A link card does not need the local PNG. Open X immediately on PC,
-    // even if cover preparation is still running.
+    // First-click sharing must not race with public OG image preparation.
+    // Keep popup creation inside the user gesture; redirect only after the
+    // exact versioned public page and its linked PNG are reachable.
     if (!isMobileShareTarget() && !state.file) {
-      window.open(intentUrl(title, url), '_blank', 'noopener,noreferrer');
-      onStatus(
-        'Xで作品URLを投稿すると画像付きリンクカードが表示されます（表示はX側の取得状況によります）。'
-      );
+      const intent = intentUrl(title, url);
+      const popup = window.open('about:blank', '_blank');
+      if (popup) popup.opener = null;
+      if (popup?.document?.body) {
+        popup.document.body.textContent = 'NOVELIGHTの共有画像を確認しています…';
+      }
+      onStatus('X共有画像の準備を確認しています…');
+      try {
+        await ensureXCardReady(intent);
+        if (popup && !popup.closed) {
+          popup.location.replace(intent);
+        } else {
+          window.location.assign(intent);
+        }
+        onStatus('共有画像の準備を確認しました。Xの投稿画面を開きます。');
+      } catch (error) {
+        console.warn('X card readiness failed', error);
+        if (popup && !popup.closed) popup.close?.();
+        onStatus('共有画像を確認できませんでした。時間をおいて再度お試しください。');
+      }
       return;
     }
     if (!state.file) {
@@ -320,10 +373,22 @@
       console.warn('X share clipboard unavailable', error);
     }
     if (!copied) downloadFile(file);
+    // Even when local cover preparation completed before the first click,
+    // verify the server-rendered X card (the normal desktop path).
+    if (!isMobileShareTarget()) {
+      try {
+        await ensureXCardReady(intentUrl(title, url));
+      } catch (error) {
+        console.warn('X card readiness failed', error);
+        if (popup && !popup.closed) popup.close?.();
+        onStatus('共有画像を確認できませんでした。時間をおいて再度お試しください。');
+        return;
+      }
+    }
     if (popup && !popup.closed) {
       popup.location.replace(intentUrl(title, url));
-    } else {
-      window.open(intentUrl(title, url), '_blank', 'noopener,noreferrer');
+    } else if (window.location?.assign) {
+      window.location.assign(intentUrl(title, url));
     }
     onStatus(
       copied
