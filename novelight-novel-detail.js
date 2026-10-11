@@ -325,10 +325,13 @@
     x.target = '_blank';
     x.rel = 'noopener noreferrer';
     x.href = `https://x.com/intent/post?text=${encodeURIComponent(workTitle())}&url=${encodeURIComponent(publicUrl)}`;
-    x.addEventListener('pointerenter', () => {
+    const prepareCover = () => {
       const task = window.NovelightXImageShare?.prepare(workId);
       void task?.promise.catch(() => {});
-    }, { once: true });
+    };
+    x.addEventListener('pointerenter', prepareCover, { once: true });
+    // Prepare as soon as the work detail is shown, including touch devices.
+    prepareCover();
     x.addEventListener('click', (event) => {
       if (!window.NovelightXImageShare) return;
       event.preventDefault();
