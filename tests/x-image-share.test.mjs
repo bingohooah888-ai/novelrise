@@ -53,6 +53,7 @@ test('work detail X button delegates to the image share runtime', () => {
 test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   let nativeShares = 0;
   let xIntent = '';
+  let directIntent = '';
   let copyCount = 0;
   const canvasContext = {
     createLinearGradient: () => ({ addColorStop() {} }),
@@ -62,15 +63,18 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   };
   const window = {
     ClipboardItem: true,
-    open: () => ({
-      closed: false,
-      opener: null,
-      location: {
-        replace(url) {
-          xIntent = url;
+    open: (url) => {
+      if (url !== 'about:blank') directIntent = url;
+      return {
+        closed: false,
+        opener: null,
+        location: {
+          replace(nextUrl) {
+            xIntent = nextUrl;
+          }
         }
-      }
-    })
+      };
+    }
   };
   const navigator = {
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/154',
@@ -110,6 +114,15 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     },
     console: { warn() {} }
   });
+  // The first desktop click must open X without waiting for the PNG.
+  await window.NovelightXImageShare.share({
+    novelId: '354',
+    title: '作品タイトル',
+    url: 'https://novelight.jp/novel.html?id=354'
+  });
+  assert.match(directIntent, /twitter\.com\/intent\/tweet/u);
+  assert.equal(copyCount, 0);
+
   await window.NovelightXImageShare.prepare('354').promise;
   await window.NovelightXImageShare.share({
     novelId: '354',
