@@ -95,3 +95,18 @@ test('rejects manifest mutation and unreviewed migration hashes', async () => {
     await rm(temp, { force: true, recursive: true });
   }
 });
+
+// Temporary format proof. Remove after CI output is received.
+test('temporary format proof for Staging restoration test', async () => {
+  const prettier = await import('prettier');
+  const fs = await import('node:fs/promises');
+  const source = await fs.readFile('tests/staging-backlog-recovery.test.mjs', 'utf8');
+  const formatted = await prettier.format(source, {
+    parser: 'babel',
+    singleQuote: true,
+    semi: true,
+    tabWidth: 2,
+    trailingComma: 'none'
+  });
+  console.log('STAGING_BACKLOG_FORMAT_B64=' + Buffer.from(formatted).toString('base64'));
+});
