@@ -66,3 +66,17 @@ test('episodes reuse the novel PNG for X and Open Graph', async () => {
   assert.ok(html.includes('https://novelight.jp/episode.html?id=3420'));
   assert.doesNotMatch(html, /noindex, nofollow/u);
 });
+
+test('published episode share uses the versioned CDN route', async () => {
+  const [handler, config] = await Promise.all([
+    readFile(new URL('../api/seo/episode.js', import.meta.url), 'utf8'),
+    readFile(new URL('../vercel.json', import.meta.url), 'utf8')
+  ]);
+  const revision = "queryValue(req.query?.x_card) === 'episode-png-v4-fast'";
+  assert.ok(handler.includes(revision));
+  assert.match(handler, /socialCardCacheSeconds/u);
+  assert.match(handler, /\.eq\('status', 'published'\)/u);
+  assert.match(handler, /indexable: false/u);
+  const headers = JSON.parse(config).headers;
+  assert.ok(headers.every(({ source }) => source !== '/episode.html'));
+});

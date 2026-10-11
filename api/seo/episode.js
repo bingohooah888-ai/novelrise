@@ -141,7 +141,12 @@ export default async function handler(req, res) {
       );
     }
 
-    return sendHtml(req, res, html);
+    // Published episodes only: let X reuse this share-versioned public
+    // response for a short period. Normal reading, drafts, missing episodes,
+    // sensitive warning gates and HEAD requests retain their existing behavior.
+    const socialCardCacheSeconds =
+      queryValue(req.query?.x_card) === 'episode-png-v4-fast' ? 30 : 0;
+    return sendHtml(req, res, html, { socialCardCacheSeconds });
   } catch (error) {
     console.error('Episode SEO render failed', {
       code: error?.code || null,

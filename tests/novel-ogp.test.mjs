@@ -294,5 +294,5 @@ test('published X revision caches only public HTML', async () => {
   assert.ok(route.includes(versionCheck));
   const headers = JSON.parse(config).headers;
   assert.ok(headers.every((entry) => entry.source !== '/novel.html'));
-  assert.ok(headers.some((entry) => entry.source === '/episode.html'));
+  assert.ok(headers.every((entry) => entry.source !== '/episode.html'));
 });
