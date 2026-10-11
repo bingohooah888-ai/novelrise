@@ -27,7 +27,7 @@ test('signed guest cookie cannot be spoofed, replayed to another contest, or use
     guestHash
   );
   assert.equal(verifyContestGuestCredential({
-    token: token.replace(/.$/, '0'), secret, contestKey, now
+    token: token.slice(0, -1) + (token.endsWith('0') ? '1' : '0'), secret, contestKey, now
   }), null);
   assert.equal(verifyContestGuestCredential({
     token, secret, contestKey: 'different-contest', now
