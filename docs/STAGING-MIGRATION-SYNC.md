@@ -165,3 +165,48 @@ Staging同期の成功はProduction適用の承認ではない。Production muta
 - apply後の検証failureを「未変更」とみなして自動retryしない。
 - rollbackを自動実行しない。
 - Secretをecho、artifact、Issue、PR本文へ出さない。
+
+
+## 8. One-time immutable Staging backlog recovery (2026-10-11)
+
+The old search-card migration version alias was reconciled on dedicated Staging
+after exact SQL/function/grants checks. The remaining 25 historical migrations
+cannot pass the normal single-pending migration sync contract.
+
+For exactly the frozen 25 versions and Git blob SHAs listed in
+supabase/recovery/staging-backlog-20261011.json, a separately approved,
+single-use Staging-only recovery may use
+.github/workflows/staging-backlog-recovery.yml. This is **not** a general
+relaxation of the existing single-version Staging sync and cannot be reused for
+other migration sets, database projects, or a different Staging data baseline.
+
+The entry point is an OWNER-authored issue_comment on Staging Control Issue
+#294 with exact main SHA, fixed plan key, scope staging-backlog-recovery-20261011
+and confirmation STAGING APPROVED. It is one use and records CLAIMED/CONSUMED
+ledger events. A changed main SHA fails closed; there is no workflow_dispatch.
+
+Before any database schema write, the workflow requires the dedicated Staging
+identity, 133 matching canonical applied versions, exactly 25 fixed missing
+versions, and exact observed baseline row counts. It must create a full private
+Staging pg_dump snapshot, encrypt it immediately with a key derived from the
+existing Staging database secret, remove the plaintext, and successfully
+upload only encrypted bytes as a protected GitHub artifact. Missing backup or
+missing secret blocks all mutations. Never store or log unencrypted data.
+
+The workflow verifies immutable Git blob hashes for all pending SQL and uses
+an isolated temporary CLI project containing exactly all previously applied
+migrations and **one** next migration. For every next version, it validates
+current main, dedicated Staging identity and exact remote history prefix,
+runs a version-specific precheck if present, dry-runs a single migration,
+rechecks the same history, applies exactly that single migration with
+Supabase CLI and checks the exact next history prefix and available postcheck.
+It does not precheck all migrations against the original older schema.
+No future migration SQL may be exposed to CLI until the prior one succeeds.
+
+At completion it requires full repository/Staging migration parity and the
+initial Auth user, novel, episode, read session and XP ledger counts.
+Any partial apply, postcheck failure, unexpected data count or altered state
+requires read-only reinspection and a separately approved recovery design.
+Automatic retry, rollback, database reset, production changes and history
+fabrication are prohibited. Subsequent Staging smoke and Production promotion
+retain their independent safety gates and approvals.
