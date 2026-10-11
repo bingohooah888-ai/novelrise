@@ -102,7 +102,10 @@ test('reader title metadata is attribute-safe and respects visibility', () => {
   );
   assert.match(numberVisibility, /if \(link\.textContent !== label\)/u);
   assert.match(numberVisibility, /showNumber\s*\)/u);
-  assert.match(read('episode.html'), /episode\.show_episode_number\s*!==\s*false/u);
+  assert.match(
+    read('episode.html'),
+    /episode\.show_episode_number\s*!==\s*false/u
+  );
 });
 
 test('author title inputs and database writes remain unchanged', () => {
