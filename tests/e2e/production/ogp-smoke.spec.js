@@ -81,7 +81,9 @@ test('published work 354 supplies a directly fetchable X cover image', async ({
 
   const response = await request.get(twitterImage, { timeout: 20_000 });
   expect(response.status()).toBe(200);
-  expect(response.headers()['content-type']).toMatch(/^image\/(webp|png|jpeg)/u);
+  expect(response.headers()['content-type']).toMatch(
+    /^image\/(webp|png|jpeg)/u
+  );
   const image = await response.body();
   expect(image.length).toBeGreaterThan(10_000);
   expect(image.length).toBeLessThan(5 * 1024 * 1024);
