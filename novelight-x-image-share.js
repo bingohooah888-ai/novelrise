@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  if (window.NovelightXImageShare) return;
+
   // X intent URLs cannot attach media. Use native file sharing when available;
   // otherwise copy the PNG so the reader can paste it into X's composer.
   const ORIGIN = 'https://novelight.jp';
