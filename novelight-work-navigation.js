@@ -24,7 +24,8 @@
       .nl-worknav-chapter{border:1px solid #e8dfd2;border-radius:9px;overflow:hidden;background:#fff}.nl-worknav-chapter>summary{padding:10px 12px;cursor:pointer;font-size:12px;font-weight:900;color:#4b3928;list-style:none;background:#f8f3eb}.nl-worknav-chapter>summary::-webkit-details-marker{display:none}.nl-worknav-chapter>summary::after{content:'＋';float:right}.nl-worknav-chapter[open]>summary::after{content:'－'}.nl-worknav-chapter>summary:focus-visible{outline:2px solid #7351d8;outline-offset:-2px}.nl-worknav-chapter-episodes{padding:4px 6px 6px}
       .nl-worknav-episode-link:hover{background:#f5efe4}.nl-worknav-episode-link.current{background:#efe7d8;color:#382b1e;font-weight:900}.nl-worknav-episode-link small{display:block;margin-bottom:2px;color:#958878;font-size:10px}
       .nl-worknav-character-list{display:grid;gap:7px;padding:9px}.nl-worknav-character{display:grid;grid-template-columns:42px minmax(0,1fr);gap:9px;align-items:start;padding:8px;border-radius:9px;background:#fff}
-      .nl-worknav-character img,.nl-worknav-character-placeholder{width:42px;height:42px;object-fit:cover;border-radius:50%;border:1px solid #e1d7c8;background:#f5f0e8}.nl-worknav-character-placeholder{display:grid;place-items:center;color:#7a6855;font-size:17px;font-weight:900}
+      .nl-worknav-character.is-current-episode{background:#fff1d6;box-shadow:inset 3px 0 #c18c32}
+       .nl-worknav-character img,.nl-worknav-character-placeholder{width:42px;height:42px;object-fit:cover;border-radius:50%;border:1px solid #e1d7c8;background:#f5f0e8}.nl-worknav-character-placeholder{display:grid;place-items:center;color:#7a6855;font-size:17px;font-weight:900}
       .nl-worknav-character strong{display:block;color:#382f27;font-size:12px}.nl-worknav-character p{margin:3px 0 0;color:#756b5f;font-size:10px;line-height:1.55}.nl-worknav-character-state{display:block;margin-top:3px;color:#9a7544;font-size:9px;font-weight:800}
       .nl-worknav-empty{padding:12px 14px;color:#85796a;font-size:11px;line-height:1.6}.nl-worknav-mobile{display:none;margin:0 0 14px}.nl-worknav-mobile details{border:1px solid #ded5c8;border-radius:10px;background:#fffdf9}.nl-worknav-mobile details+details{margin-top:8px}
       .nl-worknav-mobile summary{padding:11px 13px;cursor:pointer;color:#493c30;font-size:13px;font-weight:900;list-style:none}.nl-worknav-mobile summary::-webkit-details-marker{display:none}.nl-worknav-mobile summary::after{content:'＋';float:right;color:#8d7448}.nl-worknav-mobile details[open] summary::after{content:'－'}.nl-worknav-mobile-body{border-top:1px solid #eee6db}
@@ -144,6 +145,7 @@
     const card = document.createElement('article');
     const imageUrl = safeImageUrl(row.image_url);
     card.className = episode ? 'nl-worknav-character' : 'nl-worknav-novel-character';
+    if (episode && row.appears_current_episode === true) card.classList.add('is-current-episode');
     if (imageUrl) {
       const image = document.createElement('img');
       image.alt = '';
@@ -221,6 +223,13 @@
     return details;
   }
 
+  // Stable sorting preserves author order within current and past groups.
+  function prioritizeCurrentEpisodeCharacters(rows) {
+    return [...rows].sort((a, b) =>
+      Number(b.appears_current_episode === true) - Number(a.appears_current_episode === true)
+    );
+  }
+
   async function mountEpisode({ client, episode, novel }) {
     if (!client || !episode?.id || !novel?.id || document.getElementById('nlEpisodeSupport')) return false;
     ensureStyles();
@@ -233,7 +242,7 @@
         if (runtimeMissing(characterResult.error)) return false;
         throw characterResult.error;
       }
-      const characters = Array.isArray(characterResult.data) ? characterResult.data : [];
+      const characters = prioritizeCurrentEpisodeCharacters(Array.isArray(characterResult.data) ? characterResult.data : []);
       const card = document.getElementById('card');
       if (!card) return false;
 
