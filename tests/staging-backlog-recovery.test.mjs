@@ -25,10 +25,17 @@ test('migration-history verification requires exact applied prefix, not just cou
   const plan = await readRecoveryPlan();
   const artifact = await verifyCanonicalArtifacts(plan);
   const baseline = artifact.baselineVersions.join('\n') + '\n';
-  assert.equal(verifyAppliedPrefix(artifact, plan, baseline, 0).appliedCount, 0);
-  const one = [...artifact.baselineVersions, plan.immutableMigrations[0].version];
   assert.equal(
-    verifyAppliedPrefix(artifact, plan, one.sort().join('\n') + '\n', 1).appliedCount,
+    verifyAppliedPrefix(artifact, plan, baseline, 0).appliedCount,
+    0
+  );
+  const one = [
+    ...artifact.baselineVersions,
+    plan.immutableMigrations[0].version
+  ];
+  assert.equal(
+    verifyAppliedPrefix(artifact, plan, one.sort().join('\n') + '\n', 1)
+      .appliedCount,
     1
   );
   assert.throws(
@@ -36,12 +43,13 @@ test('migration-history verification requires exact applied prefix, not just cou
     /history row count/
   );
   assert.throws(
-    () => verifyAppliedPrefix(
-      artifact,
-      plan,
-      baseline.replace('20260930153337', '20260930210000'),
-      0
-    ),
+    () =>
+      verifyAppliedPrefix(
+        artifact,
+        plan,
+        baseline.replace('20260930153337', '20260930210000'),
+        0
+      ),
     /history differs/
   );
   assert.throws(
@@ -94,19 +102,4 @@ test('rejects manifest mutation and unreviewed migration hashes', async () => {
   } finally {
     await rm(temp, { force: true, recursive: true });
   }
-});
-
-// Temporary format proof. Remove after CI output is received.
-test('temporary format proof for Staging restoration test', async () => {
-  const prettier = await import('prettier');
-  const fs = await import('node:fs/promises');
-  const source = await fs.readFile('tests/staging-backlog-recovery.test.mjs', 'utf8');
-  const formatted = await prettier.format(source, {
-    parser: 'babel',
-    singleQuote: true,
-    semi: true,
-    tabWidth: 2,
-    trailingComma: 'none'
-  });
-  console.log('STAGING_BACKLOG_FORMAT_B64=' + Buffer.from(formatted).toString('base64'));
 });
