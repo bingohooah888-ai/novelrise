@@ -34,17 +34,12 @@ test('mobile Web Share includes image, title, and URL', () => {
   assert.match(mediaShare, /files: \[file\]/u);
 });
 
-test('desktop image clipboard and X composer work together', () => {
+test('desktop opens X directly; mobile clipboard fallback stays available', () => {
+  assert.match(mediaShare, /window\.open\(intent, '_blank'\)/u);
   assert.match(mediaShare, /navigator\.clipboard\.write/u);
   assert.match(mediaShare, /new ClipboardItem/u);
-  assert.ok(
-    mediaShare.indexOf('copyResult = navigator.clipboard.write') <
-      mediaShare.lastIndexOf(
-        "const popup = window.open('about:blank', '_blank')"
-      )
-  );
-  assert.match(mediaShare, /popup\.location\.replace/u);
   assert.match(mediaShare, /downloadFile\(file\)/u);
+  assert.doesNotMatch(mediaShare, /popup\.document\.body\.textContent/u);
 });
 
 test('work detail X button delegates to the image share runtime', () => {
@@ -170,21 +165,19 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     },
     console: { warn() {} }
   });
-  // First desktop click opens a placeholder but must not navigate to X
-  // before the public card page and its PNG are ready.
+  // The first click opens X while the public metadata fetch is unresolved.
   const initialShare = window.NovelightXImageShare.share({
     novelId: '354',
     title: '作品タイトル',
     url: 'https://novelight.jp/novel.html?id=354'
   });
+  assert.match(directIntent, /twitter\.com\/intent\/tweet/u);
   assert.equal(xIntent, '');
-  releaseMetadata();
-  await initialShare;
-  assert.match(xIntent, /twitter\.com\/intent\/tweet/u);
-  assert.equal(directIntent, '');
   assert.equal(copyCount, 0);
   assert.equal(openedTabs, 1);
   assert.equal(publicCardChecks, 1);
+  releaseMetadata();
+  await initialShare;
 
   await window.NovelightXImageShare.prepare('354').promise;
   await window.NovelightXImageShare.share({
@@ -196,8 +189,8 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   // Previously prepared covers must use the same OG link-card path.
   assert.equal(copyCount, 0);
   assert.equal(openedTabs, 2);
-  assert.equal(publicCardChecks, 2);
-  const sharedUrl = new URL(new URL(xIntent).searchParams.get('url'));
+  assert.equal(publicCardChecks, 1);
+  const sharedUrl = new URL(new URL(directIntent).searchParams.get('url'));
   assert.equal(sharedUrl.origin, 'https://novelight.jp');
   assert.equal(sharedUrl.pathname, '/novel.html');
   assert.equal(sharedUrl.searchParams.get('id'), '354');
@@ -209,11 +202,11 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
     title: '第123話　家族は宝物',
     url: 'https://novelight.jp/episode.html?id=3420'
   });
-  const episodeUrl = new URL(new URL(xIntent).searchParams.get('url'));
+  const episodeUrl = new URL(new URL(directIntent).searchParams.get('url'));
   assert.equal(episodeUrl.pathname, '/episode.html');
   assert.equal(episodeUrl.searchParams.get('id'), '3420');
   assert.equal(episodeUrl.searchParams.get('x_card'), 'episode-png-v3-mincho');
   assert.equal(copyCount, 0);
   assert.equal(openedTabs, 3);
-  assert.equal(publicCardChecks, 3);
+  assert.equal(publicCardChecks, 2);
 });
