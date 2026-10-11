@@ -67,7 +67,9 @@ export default async function handler(req, res) {
 
     const { data: novel, error: novelError } = await getSupabase()
       .from('novels')
-      .select('id,title,status,content_rating,content_warnings,show_episode_numbers')
+      .select(
+        'id,title,status,content_rating,content_warnings,show_episode_numbers'
+      )
       .eq('id', episode.novel_id)
       .eq('status', 'published')
       .maybeSingle();
