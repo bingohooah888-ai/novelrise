@@ -346,6 +346,7 @@
     const prepareCover = () => {
       const task = window.NovelightXImageShare?.prepare(workId);
       void task?.promise.catch(() => {});
+      void window.NovelightXImageShare?.warm(publicUrl);
     };
     x.addEventListener('pointerenter', prepareCover, { once: true });
     // Prepare as soon as the work detail is shown, including touch devices.
