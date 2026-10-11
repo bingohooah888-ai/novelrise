@@ -23,6 +23,11 @@ test('work sharing includes public page, copy, and X actions', () => {
   assert.match(shareRuntime, /state\.textContent\.includes\('公開中'\)/);
 });
 
+test('work detail keeps one X share entry in the existing actions menu', () => {
+  assert.doesNotMatch(shareRuntime, /function installNovelSharing\\(/u);
+  assert.doesNotMatch(shareRuntime, /installNovelSharing\\(\\);/u);
+});
+
 test('episode sharing is mounted above and below the episode body', () => {
   assert.match(shareRuntime, /canonicalUrl\('episode\.html', episodeId\)/);
   assert.match(shareRuntime, /position: 'episode-top'/);
