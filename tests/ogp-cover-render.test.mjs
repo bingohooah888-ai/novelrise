@@ -12,14 +12,15 @@ const COVER_URL =
   'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/renders/257/test.webp';
 
 function dummyFetch(bytes) {
-  return async () =>
-    new Response(bytes, {
-      status: 200,
-      headers: { 'content-type': 'image/webp' }
-    });
+  return async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => String(bytes.length) },
+    arrayBuffer: async () => Uint8Array.from(bytes).buffer
+  });
 }
 
-test('existing WebP book thumbnails become an image-backed PNG cover', async () => {
+test('WebP covers are visibly painted by the OG renderer', async () => {
   const original = await sharp({
     create: {
       width: 200,
@@ -73,7 +74,7 @@ test('existing WebP book thumbnails become an image-backed PNG cover', async () 
   assert.ok(finalPixel[0] > finalPixel[2] * 2);
 });
 
-test('invalid or unreachable thumbnails cannot create a blank cached card', async () => {
+test('broken covers never become blank cached cards', async () => {
   const source = { coverSource: 'book', coverUrl: COVER_URL };
   await assert.rejects(
     prepareNovelOgCover(source, {
@@ -89,7 +90,7 @@ test('invalid or unreachable thumbnails cannot create a blank cached card', asyn
   );
 });
 
-test('a work without a cover retains its branded NOVELIGHT fallback', async () => {
+test('missing covers retain the branded fallback', async () => {
   const source = { coverSource: 'common', coverUrl: '' };
   assert.equal(await prepareNovelOgCover(source), source);
 });
