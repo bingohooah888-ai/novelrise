@@ -81,10 +81,13 @@ test('broken covers never become blank cached cards', async () => {
       fetchImage: dummyFetch(Buffer.from('not a cover'))
     })
   );
+  const failIfFetched = () => {
+    throw new Error('should not fetch');
+  };
   await assert.rejects(
     prepareNovelOgCover(
       { coverSource: 'book', coverUrl: 'https://example.org/cover.webp' },
-      { fetchImage: () => { throw Error('should not fetch'); } }
+      { fetchImage: failIfFetched }
     ),
     /not trusted/u
   );
