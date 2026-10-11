@@ -85,13 +85,13 @@ test('isolated CLI working tree contains exactly one forward migration', async (
 
 test('rejects manifest mutation and unreviewed migration hashes', async () => {
   const plan = await readRecoveryPlan();
-  const mutated = structuredClone(plan);
+  const mutated = JSON.parse(JSON.stringify(plan));
   mutated.immutableMigrations[0].gitBlobSha = '0'.repeat(40);
   await assert.rejects(
     verifyCanonicalArtifacts(mutated),
     /source content checksum mismatch/
   );
-  const missing = structuredClone(plan);
+  const missing = JSON.parse(JSON.stringify(plan));
   missing.immutableMigrations.pop();
   const temp = await mkdtemp(join(tmpdir(), 'staging-recovery-manifest-'));
   const path = join(temp, 'manifest.json');
