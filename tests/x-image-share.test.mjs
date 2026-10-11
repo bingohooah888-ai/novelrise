@@ -135,7 +135,7 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   assert.equal(sharedUrl.origin, 'https://novelight.jp');
   assert.equal(sharedUrl.pathname, '/novel.html');
   assert.equal(sharedUrl.searchParams.get('id'), '354');
-  assert.equal(sharedUrl.searchParams.get('x_card'), 'png-v3');
+  assert.equal(sharedUrl.searchParams.get('x_card'), 'png-v4-cover');
 
   // Episode links must retain the chapter URL and bust pre-OGP X cache.
   await window.NovelightXImageShare.share({
@@ -146,5 +146,5 @@ test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   const episodeUrl = new URL(new URL(xIntent).searchParams.get('url'));
   assert.equal(episodeUrl.pathname, '/episode.html');
   assert.equal(episodeUrl.searchParams.get('id'), '3420');
-  assert.equal(episodeUrl.searchParams.get('x_card'), 'episode-png-v1');
+  assert.equal(episodeUrl.searchParams.get('x_card'), 'episode-png-v2-cover');
 });
