@@ -84,6 +84,32 @@ test('injectSeo emits article Open Graph and large Twitter card in initial HTML'
   assert.match(result, /name="twitter:image"/u);
 });
 
+test('X cards use the published cover image while OG keeps its branded banner', async () => {
+  const ogImage = 'https://novelight.jp/api/og/novel?id=354&v=abc';
+  const coverImage =
+    'https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnail-renders/renders/354/test.webp';
+  const html = injectSeo('<html><head></head><body></body></html>', {
+    title: '作品354',
+    description: '紹介',
+    canonical: 'https://novelight.jp/novel.html?id=354',
+    openGraph: {
+      title: '作品354',
+      description: '紹介',
+      image: ogImage,
+      twitterImage: coverImage
+    }
+  });
+  assert.ok(html.includes(`<meta property="og:image" content="${ogImage.replaceAll('&', '&amp;')}">`));
+  assert.ok(html.includes(`<meta name="twitter:image" content="${coverImage}">`));
+  assert.ok(html.includes('<meta name="twitter:card" content="summary_large_image">'));
+
+  const seoNovel = await readFile(
+    new URL('../api/seo/novel.js', import.meta.url),
+    'utf8'
+  );
+  assert.match(seoNovel, /ogData\.authorImageUrl \|\| ogData\.bookThumbnailUrl \|\| ogData\.imageUrl/u);
+});
+
 test('X share uses cover media while URL copy keeps attribution', async () => {
   const [endpoint, share, seoNovel] = await Promise.all([
     readFile(new URL('../api/og/novel.js', import.meta.url), 'utf8'),
