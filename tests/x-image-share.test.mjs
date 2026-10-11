@@ -62,8 +62,14 @@ test('work detail only shows actionable X share errors, not success tips', () =>
   );
   const notes = [];
   const menu = {
-    querySelector: () => ({ remove: () => { notes.length = 0; } }),
-    appendChild: (note) => { notes.push(note); }
+    querySelector: () => ({
+      remove: () => {
+        notes.length = 0;
+      }
+    }),
+    appendChild: (note) => {
+      notes.push(note);
+    }
   };
   const onStatus = runInNewContext(`(${callback})`, {
     menu,
