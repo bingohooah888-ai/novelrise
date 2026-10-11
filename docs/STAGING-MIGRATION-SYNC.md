@@ -213,7 +213,8 @@ retain their independent safety gates and approvals.
 
 ## 9. Staging-only public-table RLS parity correction
 
-After live reconciliation of the 25-version historical backlog, production and
+Following read-only live catalog verification and reconciliation of the
+25-version historical backlog, production and
 Staging each expose the same 112 public tables and 44 RLS policies, but five
 legacy Staging tables have RLS disabled while Production has RLS enabled.
 Those five tables have no `anon`, `authenticated`, or `PUBLIC` DML privileges
