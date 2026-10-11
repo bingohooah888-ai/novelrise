@@ -12,10 +12,6 @@ import {
 } from '../scripts/verify-production-seo-shell.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const VERIFIER = fileURLToPath(
-  new URL('../scripts/verify-production-seo-shell.mjs', import.meta.url)
-);
-
 for (const route of ['episode.html', 'novel.html']) {
   test(`${route}: fully verifies the SEO-rewritten no-ID Production shell`, () => {
     const source = readFileSync(join(ROOT, route), 'utf8');
@@ -28,7 +24,10 @@ for (const route of ['episode.html', 'novel.html']) {
 
     assert.equal(verifySeoShell(route, source, template, rendered), true);
     assert.match(rendered, /<meta name="robots" content="noindex, nofollow">/u);
-    assert.match(rendered, /<link rel="canonical" href="https:\/\/novelight\.jp\//u);
+    assert.match(
+      rendered,
+      /<link rel="canonical" href="https:\/\/novelight\.jp\//u
+    );
     assert.match(
       rendered,
       /<script src="novelight-episode-title-display\.js"><\/script>/u
@@ -63,8 +62,7 @@ for (const route of ['episode.html', 'novel.html']) {
       'unexpected body injection must fail'
     );
     assert.throws(
-      () =>
-        verifySeoShell(route, source, template + 'stale', rendered),
+      () => verifySeoShell(route, source, template + 'stale', rendered),
       /public shell and SEO template differ/u,
       'stale local SEO template must fail'
     );
