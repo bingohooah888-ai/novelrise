@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROUTES = Object.freeze({
   'novel.html': {
     title: '作品詳細 | NOVELIGHT',
-    description: 'NOVELIGHTの作品詳細ページです.',
+    description: 'NOVELIGHTの作品詳細ページです。',
     canonical: 'https://novelight.jp/novel.html'
   },
   'episode.html': {
     title: 'エピソード | NOVELIGHT',
-    description: 'NOVELIGHTのエピソードページです.',
+    description: 'NOVELIGHTのエピソードページです。',
     canonical: 'https://novelight.jp/episode.html'
   }
 });
@@ -48,14 +49,25 @@ export function expectedSeoShell(route, template) {
 }
 
 export function verifySeoShell(route, source, template, live) {
-  assert.equal(source, template, `${route}: public shell and SEO template differ`);
+  assert.equal(
+    source,
+    template,
+    `${route}: public shell and SEO template differ`
+  );
   const expected = expectedSeoShell(route, template);
   assert.ok(live && live.length > 0, `${route}: empty response`);
-  assert.equal(live, expected, `${route}: Production SEO shell differs from approved template`);
+  assert.equal(
+    live,
+    expected,
+    `${route}: Production SEO shell differs from approved template`
+  );
   return true;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === resolve(process.argv[1])
+) {
   const [, , route, livePath] = process.argv;
   try {
     assert.ok(ROUTES[route], 'unsupported SEO rewrite route');
