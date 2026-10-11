@@ -26,6 +26,32 @@
       "version": "1.0.0",
       "status": "enabled",
       "provenance": "NOVELIGHT self-expansion core"
+    },
+    {
+      "id": "nlo.gsc.url-inspection",
+      "description": "Read-only Google Search Console URL Inspection for NOVELIGHT after explicitly authorized OAuth access.",
+      "intents": [
+        "inspect google index",
+        "google search console url inspection",
+        "ノベライトのGoogleインデックス確認"
+      ],
+      "aliases": [
+        "GSC URL inspection",
+        "google index status",
+        "Search Console URL検査"
+      ],
+      "adapter": "scripts/nlo-gsc-inspection.mjs",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "google_search_console_readonly_oauth",
+        "credential_environment_access"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-gsc-inspection.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "Google Search Console URL Inspection API; NLO self-expansion 2026-10-11"
     }
   ]
 }
