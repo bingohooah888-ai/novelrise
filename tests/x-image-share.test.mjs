@@ -52,6 +52,17 @@ test('work detail X button delegates to the image share runtime', () => {
   assert.match(workDetail, /event\.preventDefault\(\)/u);
 });
 
+test('work detail only shows actionable X share errors, not verbose success tips', () => {
+  const callback = workDetail.slice(
+    workDetail.indexOf('onStatus: (message) => {'),
+    workDetail.indexOf('menu.append(copy, x)')
+  );
+  assert.match(callback, /message\\.includes\\('できません'\\)/u);
+  assert.match(callback, /message\\.includes\\('もう一度'\\)/u);
+  assert.match(callback, /menu\\.querySelector\\('\\.nl-work-share-status'\\)\\?\\.remove\\(\\)/u);
+  assert.doesNotMatch(callback, /Xで作品URLを投稿すると/u);
+});
+
 test('Windows Chrome uses X intent rather than native OS sharing', async () => {
   let nativeShares = 0;
   let xIntent = '';
