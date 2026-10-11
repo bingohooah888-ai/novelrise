@@ -218,8 +218,12 @@
     // X may cache an older no-image card for a previously shared novel URL.
     // Use a stable revision on X shares only; readers still land on the same work.
     const shareUrl = new URL(url, ORIGIN);
-    if (shareUrl.origin === ORIGIN && shareUrl.pathname === '/novel.html') {
-      shareUrl.searchParams.set('x_card', 'png-v3');
+    if (shareUrl.origin === ORIGIN) {
+      if (shareUrl.pathname === '/novel.html') {
+        shareUrl.searchParams.set('x_card', 'png-v3');
+      } else if (shareUrl.pathname === '/episode.html') {
+        shareUrl.searchParams.set('x_card', 'episode-png-v1');
+      }
     }
     intent.searchParams.set('url', shareUrl.href);
     return intent.href;
