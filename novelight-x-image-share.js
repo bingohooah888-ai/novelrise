@@ -219,7 +219,7 @@
     // Use a stable revision on X shares only; readers still land on the same work.
     const shareUrl = new URL(url, ORIGIN);
     if (shareUrl.origin === ORIGIN && shareUrl.pathname === '/novel.html') {
-      shareUrl.searchParams.set('x_card', 'cover-v2');
+      shareUrl.searchParams.set('x_card', 'png-v3');
     }
     intent.searchParams.set('url', shareUrl.href);
     return intent.href;
