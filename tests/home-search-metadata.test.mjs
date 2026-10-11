@@ -21,8 +21,12 @@ test('home page provides Japanese and Latin brand search signals', () => {
 });
 
 test('home page consistently specifies canonical domain', () => {
-  assert.ok(head.includes('<link rel="canonical" href="https://novelight.jp/">'));
-  assert.ok(head.includes('<meta property="og:url" content="https://novelight.jp/">'));
+  assert.ok(
+    head.includes('<link rel="canonical" href="https://novelight.jp/">')
+  );
+  assert.ok(
+    head.includes('<meta property="og:url" content="https://novelight.jp/">')
+  );
   assert.ok(!head.includes('noindex'));
 });
 
@@ -39,7 +43,10 @@ test('home page provides parseable WebSite name with alternative name', () => {
 });
 
 test('homepage metadata and sitemap agree on canonical domain', () => {
-  assert.match(read('robots.txt'), /Sitemap: https:\/\/novelight\.jp\/sitemap\.xml/u);
+  assert.match(
+    read('robots.txt'),
+    /Sitemap: https:\/\/novelight\.jp\/sitemap\.xml/u
+  );
   assert.match(read('sitemap.xml'), /https:\/\/novelight\.jp\/api\/sitemap/u);
 });
 
