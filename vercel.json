@@ -11,7 +11,7 @@
       "includeFiles": "api/seo/templates/novel.html"
     },
     "api/seo/episode.js": {
-      "includeFiles": "episode.html"
+      "includeFiles": "api/seo/templates/episode.html"
     },
     "api/seo/author.js": {
       "includeFiles": "author.html"
@@ -119,6 +119,23 @@
     },
     {
       "source": "/novel.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "CDN-Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Vercel-CDN-Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/episode.html",
       "headers": [
         {
           "key": "Cache-Control",
