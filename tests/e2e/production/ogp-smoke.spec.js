@@ -143,14 +143,17 @@ test('episode 3420 exposes the novel PNG card', async ({ request }) => {
   });
 });
 
-test('work 257 social PNG contains its painted cover', async ({ request, page }) => {
+test('work 257 social PNG contains its painted cover', async ({
+  request,
+  page
+}) => {
   test.setTimeout(90_000);
-  const page = await request.get(
+  const response = await request.get(
     'https://novelight.jp/episode.html?id=3420&x_card=episode-png-v2-cover',
     { timeout: 30_000 }
   );
-  expect(page.status()).toBe(200);
-  const html = await page.text();
+  expect(response.status()).toBe(200);
+  const html = await response.text();
   const cardUrl = html.match(
     /<meta name="twitter:image" content="([^"]+)">/u
   )?.[1];
@@ -186,16 +189,11 @@ test('work 257 social PNG contains its painted cover', async ({ request, page })
         sumOfSquares[channel] += value * value;
       }
     }
-    return Math.max(
-      ...sum.map((total, channel) =>
-        Math.sqrt(
-          Math.max(
-            0,
-            sumOfSquares[channel] / count - (total / count) ** 2
-          )
-        )
-      )
-    );
+    const variance = sum.map((total, channel) => {
+      const mean = total / count;
+      return sumOfSquares[channel] / count - mean * mean;
+    });
+    return Math.sqrt(Math.max(...variance, 0));
   }, bytes.toString('base64'));
   expect(coverVariation).toBeGreaterThan(6);
 });
