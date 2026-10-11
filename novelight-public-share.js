@@ -225,7 +225,7 @@
     const shareX = document.createElement('button');
     shareX.type = 'button';
     shareX.className = 'novelight-public-share-action x';
-    shareX.textContent = 'Xでシェア';
+    shareX.textContent = 'Xで共有';
     const prepareImage = () => {
       const task = window.NovelightXImageShare?.prepare(novelId);
       void task?.promise.catch(() => {});
@@ -247,7 +247,13 @@
       // If the optional media runtime fails, retain working text/URL sharing.
       const intent = new URL('https://twitter.com/intent/tweet');
       intent.searchParams.set('text', text);
-      intent.searchParams.set('url', url);
+      const cardUrl = new URL(url, CANONICAL_ORIGIN);
+      if (cardUrl.pathname === '/novel.html') {
+        cardUrl.searchParams.set('x_card', 'png-v4-cover');
+      } else if (cardUrl.pathname === '/episode.html') {
+        cardUrl.searchParams.set('x_card', 'episode-png-v2-cover');
+      }
+      intent.searchParams.set('url', cardUrl.href);
       window.open(intent.toString(), '_blank', 'noopener,noreferrer');
       status.textContent = '画像共有を利用できませんでした。URLのみ共有します。';
     });
