@@ -17,20 +17,22 @@ async function evidence() {
   const source = await readFile(SOURCE_PATH, 'utf8');
   return {
     source,
-    remoteRows: [{
-      version: '20260930210000',
-      name: 'search_card_metadata',
-      statement_count: 1,
-      statement: canonicalMigrationStatement(source),
-      function_owner: 'postgres',
-      function_md5: FUNCTION_MD5,
-      security_definer: true,
-      volatility: 's',
-      anon_can_execute: true,
-      authenticated_can_execute: true,
-      public_can_execute: false,
-      function_comment: DESCRIPTION
-    }]
+    remoteRows: [
+      {
+        version: '20260930210000',
+        name: 'search_card_metadata',
+        statement_count: 1,
+        statement: canonicalMigrationStatement(source),
+        function_owner: 'postgres',
+        function_md5: FUNCTION_MD5,
+        security_definer: true,
+        volatility: 's',
+        anon_can_execute: true,
+        authenticated_can_execute: true,
+        public_can_execute: false,
+        function_comment: DESCRIPTION
+      }
+    ]
   };
 }
 
@@ -59,10 +61,11 @@ test('rejects missing or conflicting Staging migration history', async () => {
     { statement: row.statement + '\nselect 1;' }
   ]) {
     assert.throws(
-      () => verifyStagingSearchCardHistory({
-        ...e,
-        remoteRows: [{ ...row, ...patch }]
-      }),
+      () =>
+        verifyStagingSearchCardHistory({
+          ...e,
+          remoteRows: [{ ...row, ...patch }]
+        }),
       /historical Staging SQL differs/
     );
   }
@@ -82,10 +85,11 @@ test('rejects live function or public grants drift', async () => {
     { function_comment: 'different' }
   ]) {
     assert.throws(
-      () => verifyStagingSearchCardHistory({
-        ...e,
-        remoteRows: [{ ...row, ...patch }]
-      }),
+      () =>
+        verifyStagingSearchCardHistory({
+          ...e,
+          remoteRows: [{ ...row, ...patch }]
+        }),
       /function ownership, grants, definition or comment drifted/
     );
   }
@@ -108,7 +112,12 @@ test('prevents Production reads and executes only read_only Staging metadata que
         STAGING_SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co',
         SUPABASE_ACCESS_TOKEN: 'test-token'
       },
-      { readSource: async () => e.source, fetchImpl: async () => { calls++; } }
+      {
+        readSource: async () => e.source,
+        fetchImpl: async () => {
+          calls++;
+        }
+      }
     ),
     /refusing the Production Supabase project/
   );
@@ -138,18 +147,4 @@ test('prevents Production reads and executes only read_only Staging metadata que
   assert.equal(report.staging_project_ref, 'wmlzjgvxgoyrovdhbqbg');
   assert.equal(report.history_repair_authorized, false);
   assert.ok(!JSON.stringify(report).includes('sensitive-test-token'));
-});
-
-// Temporary exact Prettier proof; remove after CI.
-test('temporary format proof', async () => {
-  const prettier = await import('prettier');
-  const source = await readFile('tests/staging-search-card-history.test.mjs', 'utf8');
-  const formatted = await prettier.format(source, {
-    parser: 'babel',
-    singleQuote: true,
-    semi: true,
-    tabWidth: 2,
-    trailingComma: 'none'
-  });
-  console.log('STAGING_HISTORY_PRETTIER_B64=' + Buffer.from(formatted).toString('base64'));
 });
