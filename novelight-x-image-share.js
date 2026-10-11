@@ -312,7 +312,7 @@
   }
 
   async function share({ novelId, title, url, onStatus = () => {} }) {
-    if (!/^\\d+$/.test(String(novelId || ''))) {
+    if (!/^\d+$/.test(String(novelId || ''))) {
       return onStatus('作品IDが確認できません。');
     }
     if (!isMobileShareTarget()) {
