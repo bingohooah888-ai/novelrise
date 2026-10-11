@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { URL } from 'node:url';
 
+import { buildNovelOgElement } from '../api/og/novel.js';
 import { injectSeo } from '../api/seo/public-page.js';
 import {
   OG_HEIGHT,
@@ -11,6 +12,44 @@ import {
   novelOgVersion,
   selectNovelOgImage
 } from '../api/og/novel-data.js';
+
+test('X social card uses larger Mincho title/author without altering cover proportions', () => {
+  const data = {
+    coverSource: 'common',
+    coverUrl: '',
+    title: '思い出の日記',
+    authorName: '福子'
+  };
+  const card = buildNovelOgElement(data);
+  const detail = card.props.children[1];
+  const [branding, title, author] = detail.props.children;
+  assert.equal(card.props.style.width, '1200px');
+  assert.equal(card.props.style.height, '630px');
+  assert.equal(card.props.children[0].props.style.width, '440px');
+  assert.equal(title.props.style.fontFamily, 'Sawarabi Mincho');
+  assert.equal(title.props.style.fontSize, '70px');
+  assert.equal(title.props.style.maxHeight, '270px');
+  assert.equal(author.props.style.fontFamily, 'Sawarabi Mincho');
+  assert.equal(author.props.style.fontSize, '30px');
+  assert.equal(branding.props.children, 'NOVELIGHT ORIGINAL');
+
+  const longer = buildNovelOgElement({ ...data, title: '文字数が長い場合の作品タイトルを読みやすく自動調整するための作品タイトルです' });
+  assert.equal(longer.props.children[1].props.children[1].props.style.fontSize, '48px');
+});
+
+test('new Mincho layout invalidates the previous immutable OG card cache', () => {
+  const source = {
+    id: 549,
+    title: '思い出の日記',
+    authorName: '福子',
+    description: '',
+    authorImageUrl: '',
+    bookThumbnailUrl: ''
+  };
+  const current = novelOgVersion(source);
+  assert.notEqual(current, 'c638cfb90031bd4a');
+  assert.match(current, /^[0-9a-f]{16}$/u);
+});
 
 test('novel OGP image priority is author > book > common', () => {
   const author = selectNovelOgImage({
