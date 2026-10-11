@@ -314,6 +314,18 @@ function sendImageHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
 }
 
+// Shared with the persistent X/OG social-card cache so its PNG pixels
+// always match the existing 1200x630 NOVELIGHT image design.
+export async function renderNovelOgPng(data) {
+  const imageFit = await chooseImageFit(data);
+  const { ImageResponse } = await import('@vercel/og');
+  const image = new ImageResponse(buildNovelOgElement(data, { imageFit }), {
+    width: OG_WIDTH,
+    height: OG_HEIGHT
+  });
+  return Buffer.from(await image.arrayBuffer());
+}
+
 export default async function handler(req, res) {
   if (!methodAllowed(req, res)) return;
 
@@ -329,14 +341,7 @@ export default async function handler(req, res) {
     sendImageHeaders(res);
     if (req.method === 'HEAD') return res.status(200).end();
 
-    const imageFit = await chooseImageFit(data);
-    const { ImageResponse } = await import('@vercel/og');
-    const image = new ImageResponse(buildNovelOgElement(data, { imageFit }), {
-      width: OG_WIDTH,
-      height: OG_HEIGHT
-    });
-    const buffer = Buffer.from(await image.arrayBuffer());
-    return res.status(200).send(buffer);
+    return res.status(200).send(await renderNovelOgPng(data));
   } catch (error) {
     console.error('Novel OGP render failed', {
       code: error?.code || null,
