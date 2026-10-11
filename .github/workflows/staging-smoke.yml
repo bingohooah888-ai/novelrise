@@ -133,9 +133,16 @@ jobs:
             package-lock.json
             tests/e2e/package-lock.json
 
-      - name: Verify read-only Staging deployment contract
+      - name: Discover existing exact-SHA Preview without creating a deployment
         env:
-          STAGING_REQUIRE_WRITE_CONFIG: 'false'
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+        run: node scripts/resolve-existing-staging-preview.mjs
+
+      - name: Verify read-only Staging deployment contract
+        # The GET-only facts check must prove isolated Supabase and Stripe test mode
+        # before installing or running any browser test, not only before writes.
+        env:
+          STAGING_REQUIRE_WRITE_CONFIG: 'true'
         run: node scripts/verify-staging-deployment.mjs
 
       - name: Install browser test dependencies once

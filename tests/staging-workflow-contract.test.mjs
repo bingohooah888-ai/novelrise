@@ -90,6 +90,28 @@ test('approved Staging smoke verifies read-only surface before write-capable pha
   assert.ok(readonlyRun < firstWrite);
 });
 
+test('approved smoke proves isolated Staging facts before any browser action', () => {
+  const verifier = workflow.indexOf(
+    'Verify read-only Staging deployment contract'
+  );
+  const strictFlag = workflow.indexOf(
+    "STAGING_REQUIRE_WRITE_CONFIG: 'true'",
+    verifier
+  );
+  const firstBrowserInstall = workflow.indexOf(
+    'Install browser test dependencies once'
+  );
+  const firstBrowserSmoke = workflow.indexOf('Run read-only staging smoke');
+  const writePhase = workflow.indexOf(
+    'Verify authenticated Staging credentials'
+  );
+
+  assert.ok(verifier !== -1);
+  assert.ok(strictFlag > verifier && strictFlag < firstBrowserInstall);
+  assert.ok(firstBrowserInstall < firstBrowserSmoke);
+  assert.ok(firstBrowserSmoke < writePhase);
+});
+
 test('write Staging phases require deployed Supabase and Stripe isolation evidence', () => {
   assert.match(workflow, /STAGING_REQUIRE_WRITE_CONFIG: 'true'/);
   assert.match(workflow, /STAGING_EXPECTED_SUPABASE_URL/);

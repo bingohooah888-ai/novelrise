@@ -102,6 +102,21 @@ Keeping the Staging project available does **not** authorize arbitrary test traf
 
 Read-only inspection of Staging configuration, branch state, billing, usage, and logs does not require Staging approval.
 
+## Existing Preview reuse before any new deployment
+
+The OWNER-approved full Staging Smoke first tries the configured `STAGING_BASE_URL`.
+When absent, it makes **GET-only** Vercel API requests to look for one READY
+non-Production Preview matching the approved exact main SHA and the known
+`novelrise` Vercel project. It does not create, rebuild, redeploy, or alias
+a Preview. Zero matches or ambiguous matches stop safely. Even when one exists,
+the existing deployment verifier must check its exact SHA, dedicated Staging
+Supabase identity/key, and Stripe test mode via GET-only environment facts
+**before even read-only browser smoke**, and repeat the check before writes.
+
+The inventory lookup does not consume a Staging approval by itself, but the
+GitHub full-smoke workflow remains OWNER approval gated because its subsequent
+steps can exercise Staging. No new paid execution is authorized by this change.
+
 ## Canonical Preview variables
 
 Preview deployments that are explicitly approved use:
