@@ -220,9 +220,9 @@
     const shareUrl = new URL(url, ORIGIN);
     if (shareUrl.origin === ORIGIN) {
       if (shareUrl.pathname === '/novel.html') {
-        shareUrl.searchParams.set('x_card', 'png-v3');
+        shareUrl.searchParams.set('x_card', 'png-v4-cover');
       } else if (shareUrl.pathname === '/episode.html') {
-        shareUrl.searchParams.set('x_card', 'episode-png-v1');
+        shareUrl.searchParams.set('x_card', 'episode-png-v2-cover');
       }
     }
     intent.searchParams.set('url', shareUrl.href);
