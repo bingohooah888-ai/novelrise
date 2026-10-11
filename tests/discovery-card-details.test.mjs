@@ -175,10 +175,7 @@ test('public RPC cannot disclose draft works or future episodes', () => {
   assert.match(migration, /novelight_is_general_discovery_eligible/u);
   assert.match(migration, /e\.status = 'published'/u);
   assert.match(migration, /e\.scheduled_publish_at <= now\(\)/u);
-  assert.match(
-    migration,
-    /coalesce\(e\.first_published_at, e\.created_at\)/u
-  );
+  assert.match(migration, /coalesce\(e\.first_published_at, e\.created_at\)/u);
   assert.match(migration, /revoke all on function/u);
   assert.match(migration, /to anon, authenticated/u);
 });
