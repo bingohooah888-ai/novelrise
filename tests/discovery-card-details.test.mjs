@@ -23,7 +23,7 @@ const migration = readFileSync(
 async function renderDiscovery(mode, stateAvailable = true) {
   const row = {
     novel_id: '554',
-    title: '＜タイトル＞',
+    title: '<タイトル>',
     genre: '現代ドラマ',
     status: 'published',
     light_seed_count: 2,
@@ -140,7 +140,7 @@ async function renderDiscovery(mode, stateAvailable = true) {
 }
 
 for (const mode of ['recommended', 'new', 'seed']) {
-  test(`${mode} shows author, completion, count and latest episode date`, async () => {
+  test(`${mode} displays author and current publication details`, async () => {
     const { html, calls } = await renderDiscovery(mode);
     assert.match(html, /作者：正式な作家名/u);
     assert.match(html, /完結済み ・ 公開13話/u);
@@ -151,7 +151,7 @@ for (const mode of ['recommended', 'new', 'seed']) {
   });
 }
 
-test('legacy metadata fallback retains author and episode facts', async () => {
+test('legacy lookup retains author and episode count', async () => {
   const { html, calls } = await renderDiscovery('recommended', false);
   assert.match(html, /作者：正式な作家名/u);
   assert.match(html, /完結済み ・ 公開13話/u);
@@ -159,7 +159,7 @@ test('legacy metadata fallback retains author and episode facts', async () => {
   assert.ok(calls.includes('novelight_search_card_metadata'));
 });
 
-test('discovery CSS wraps authors and dates instead of truncating them', () => {
+test('discovery CSS wraps authors and dates', () => {
   assert.match(css, /\.discovery-card-meta/u);
   assert.match(css, /overflow-wrap: anywhere/u);
   assert.match(css, /white-space: normal/u);
@@ -173,7 +173,10 @@ test('public RPC cannot disclose draft works or future episodes', () => {
   assert.match(migration, /novelight_is_general_discovery_eligible/u);
   assert.match(migration, /e\.status = 'published'/u);
   assert.match(migration, /e\.scheduled_publish_at <= now\(\)/u);
-  assert.match(migration, /coalesce\(e\.first_published_at, e\.created_at\)/u);
+  assert.match(
+    migration,
+    /coalesce\(e\.first_published_at, e\.created_at\)/u
+  );
   assert.match(migration, /revoke all on function/u);
   assert.match(migration, /to anon, authenticated/u);
 });
