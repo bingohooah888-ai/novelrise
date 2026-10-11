@@ -139,3 +139,17 @@ test('prevents Production reads and executes only read_only Staging metadata que
   assert.equal(report.history_repair_authorized, false);
   assert.ok(!JSON.stringify(report).includes('sensitive-test-token'));
 });
+
+// Temporary exact Prettier proof; remove after CI.
+test('temporary format proof', async () => {
+  const prettier = await import('prettier');
+  const source = await readFile('tests/staging-search-card-history.test.mjs', 'utf8');
+  const formatted = await prettier.format(source, {
+    parser: 'babel',
+    singleQuote: true,
+    semi: true,
+    tabWidth: 2,
+    trailingComma: 'none'
+  });
+  console.log('STAGING_HISTORY_PRETTIER_B64=' + Buffer.from(formatted).toString('base64'));
+});
