@@ -16,10 +16,10 @@ begin
     raise exception 'Staging migration version count drifted';
   end if;
   if exists (
-    select 1 from pg_class c
-    join pg_namespace ns on ns.oid=c.relnamespace
-    where ns.nspname='public' and c.relkind in ('r','p')
-      and not c.relrowsecurity and c.relname <> all(expected)
+    select 1 from pg_class tbl
+    join pg_namespace ns on ns.oid=tbl.relnamespace
+    where ns.nspname='public' and tbl.relkind in ('r','p')
+      and not tbl.relrowsecurity and tbl.relname <> all(expected)
   ) then
     raise exception 'RLS disabled on unexpected public table';
   end if;
