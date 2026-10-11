@@ -231,7 +231,38 @@
 
   async function ensureXCardReady(intent) {
     const shareUrl = new URL(new URL(intent).searchParams.get('url'));
-    if (shareUrl.origin !== ORIGIN) throw new Error('Untrusted share URL');    const response = await fetch(shareUrl.href, {      credentials: 'omit',      cache: 'no-store',      signal: AbortSignal.timeout(12000)    });    if (!response.ok) throw new Error('Public share page is unavailable');    const html = await response.text();    const imageUrl = safeCoverUrl(      html.match(/<meta name="twitter:image" content="([^"]+)">/u)?.[1]    );    if (!imageUrl) throw new Error('Public X image metadata is missing');    // IMG loading does not require CORS read access to public Storage.    await new Promise((resolve, reject) => {      const image = new Image();      const timer = window.setTimeout(() => reject(new Error('Image load timeout')), 8000);      image.onload = () => {        window.clearTimeout(timer);        resolve();      };      image.onerror = () => {        window.clearTimeout(timer);        reject(new Error('Public X image cannot be decoded'));      };      image.src = imageUrl;    });
+    if (shareUrl.origin !== ORIGIN) throw new Error('Untrusted share URL');
+
+    const response = await fetch(shareUrl.href, {
+      credentials: 'omit',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!response.ok) throw new Error('Public share page is unavailable');
+
+    const html = await response.text();
+    const imageUrl = safeCoverUrl(
+      html.match(/<meta name="twitter:image" content="([^"]+)">/u)?.[1]
+    );
+    if (!imageUrl) throw new Error('Public X image metadata is missing');
+
+    // Image loading checks real PNG decoding without cross-origin read access.
+    await new Promise((resolve, reject) => {
+      const image = new Image();
+      const timer = window.setTimeout(
+        () => reject(new Error('Image load timeout')),
+        8000
+      );
+      image.onload = () => {
+        window.clearTimeout(timer);
+        resolve();
+      };
+      image.onerror = () => {
+        window.clearTimeout(timer);
+        reject(new Error('Public X image cannot be decoded'));
+      };
+      image.src = imageUrl;
+    });
   }
 
   function downloadFile(file) {
