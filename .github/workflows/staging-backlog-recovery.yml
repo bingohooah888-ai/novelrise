@@ -69,6 +69,7 @@ jobs:
           test -n "$STAGING_SUPABASE_URL"
           test -n "$STAGING_DATABASE_URL_SOURCE"
           command -v pg_dump >/dev/null
+          command -v pg_restore >/dev/null
           command -v psql >/dev/null
           command -v openssl >/dev/null
 
@@ -107,7 +108,7 @@ jobs:
         run: |
           set -euo pipefail
           STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
-          trap 'rm -f /tmp/staging-backlog-before.dump' EXIT
+          trap 'rm -f /tmp/staging-backlog-before.dump /tmp/staging-backlog-verify.dump' EXIT
           pg_dump --dbname="$STAGING_DATABASE_URL" --format=custom \
             --no-owner --no-privileges --file=/tmp/staging-backlog-before.dump
           test -s /tmp/staging-backlog-before.dump
@@ -116,7 +117,14 @@ jobs:
             -in /tmp/staging-backlog-before.dump \
             -out /tmp/staging-backlog-before.dump.enc
           test -s /tmp/staging-backlog-before.dump.enc
-          rm -f /tmp/staging-backlog-before.dump
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 \
+            -pass env:STAGING_DATABASE_URL_SOURCE \
+            -in /tmp/staging-backlog-before.dump.enc \
+            -out /tmp/staging-backlog-verify.dump
+          pg_restore --list /tmp/staging-backlog-verify.dump >/dev/null
+          test "$(sha256sum /tmp/staging-backlog-before.dump | cut -d' ' -f1)" = \
+            "$(sha256sum /tmp/staging-backlog-verify.dump | cut -d' ' -f1)"
+          rm -f /tmp/staging-backlog-before.dump /tmp/staging-backlog-verify.dump
 
       - name: Preserve only encrypted pre-migration backup
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
