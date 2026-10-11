@@ -129,7 +129,9 @@ async function renderDiscovery(mode, stateAvailable = true) {
   });
   for (let i = 0; i < 20; i += 1) {
     await new Promise((resolve) => setImmediate(resolve));
-    if (elements.get('discoveryList').innerHTML.includes('discovery-card-meta')) {
+    if (
+      elements.get('discoveryList').innerHTML.includes('discovery-card-meta')
+    ) {
       break;
     }
   }
