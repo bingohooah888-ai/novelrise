@@ -290,7 +290,7 @@ test('iOS and Android share the clickable card on the first tap', async () => {
     const novelUrl = new URL(new URL(lastIntent).searchParams.get('url'));
     assert.equal(novelUrl.pathname, '/novel.html');
     assert.equal(novelUrl.searchParams.get('id'), '257');
-    assert.equal(novelUrl.searchParams.get('x_card'), 'png-v5-mincho');
+    assert.equal(novelUrl.searchParams.get('x_card'), 'png-v6-257-refresh');
     finishMetadata();
     await first;
 

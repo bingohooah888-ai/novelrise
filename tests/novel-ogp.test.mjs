@@ -290,9 +290,25 @@ test('published X revision caches only public HTML', async () => {
     readFile(new URL('../api/seo/novel.js', import.meta.url), 'utf8'),
     readFile(new URL('../vercel.json', import.meta.url), 'utf8')
   ]);
-  const versionCheck = "queryValue(req.query?.x_card) === 'png-v5-mincho'";
-  assert.ok(route.includes(versionCheck));
+  assert.ok(route.includes("cardRevision === 'png-v5-mincho'"));
+  assert.ok(route.includes("cardRevision === 'png-v6-257-refresh'"));
   const headers = JSON.parse(config).headers;
   assert.ok(headers.every((entry) => entry.source !== '/novel.html'));
   assert.ok(headers.every((entry) => entry.source !== '/episode.html'));
+});
+
+test('only novel 257 refreshes its X preview revision', async () => {
+  const [seo, imageShare, publicShare] = await Promise.all([
+    readFile(new URL('../api/seo/novel.js', import.meta.url), 'utf8'),
+    readFile(new URL('../novelight-x-image-share.js', import.meta.url), 'utf8'),
+    readFile(new URL('../novelight-public-share.js', import.meta.url), 'utf8')
+  ]);
+  assert.match(seo, /String\(novel\.id\) === '257'/u);
+  assert.match(seo, /cardRevision === 'png-v6-257-refresh'/u);
+  assert.match(imageShare, /shareUrl\.searchParams\.get\('id'\) === '257'/u);
+  assert.match(imageShare, /'png-v6-257-refresh'/u);
+  assert.match(imageShare, /'png-v5-mincho'/u);
+  assert.match(publicShare, /cardUrl\.searchParams\.get\('id'\) === '257'/u);
+  assert.match(publicShare, /'png-v6-257-refresh'/u);
+  assert.match(publicShare, /'episode-png-v4-fast'/u);
 });
