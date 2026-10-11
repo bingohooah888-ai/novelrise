@@ -229,6 +229,11 @@
     return intent.href;
   }
 
+  async function ensureXCardReady(intent) {
+    const shareUrl = new URL(new URL(intent).searchParams.get('url'));
+    if (shareUrl.origin !== ORIGIN) throw new Error('Untrusted share URL');    const response = await fetch(shareUrl.href, {      credentials: 'omit',      cache: 'no-store',      signal: AbortSignal.timeout(12000)    });    if (!response.ok) throw new Error('Public share page is unavailable');    const html = await response.text();    const imageUrl = safeCoverUrl(      html.match(/<meta name="twitter:image" content="([^"]+)">/u)?.[1]    );    if (!imageUrl) throw new Error('Public X image metadata is missing');    // IMG loading does not require CORS read access to public Storage.    await new Promise((resolve, reject) => {      const image = new Image();      const timer = window.setTimeout(() => reject(new Error('Image load timeout')), 8000);      image.onload = () => {        window.clearTimeout(timer);        resolve();      };      image.onerror = () => {        window.clearTimeout(timer);        reject(new Error('Public X image cannot be decoded'));      };      image.src = imageUrl;    });
+  }
+
   function downloadFile(file) {
     const href = URL.createObjectURL(file);
     const link = document.createElement('a');
@@ -257,7 +262,6 @@
     // exact versioned public page and its linked PNG are reachable.
     if (!isMobileShareTarget() && !state.file) {
       const intent = intentUrl(title, url);
-      const shareUrl = new URL(new URL(intent).searchParams.get('url'));
       const popup = window.open('about:blank', '_blank');
       if (popup) popup.opener = null;
       if (popup?.document?.body) {
@@ -265,32 +269,7 @@
       }
       onStatus('X共有画像の準備を確認しています…');
       try {
-        if (shareUrl.origin !== ORIGIN) throw new Error('Untrusted share URL');
-        const response = await fetch(shareUrl.href, {
-          credentials: 'omit',
-          cache: 'no-store',
-          signal: AbortSignal.timeout(12000)
-        });
-        if (!response.ok) throw new Error('Public share page is unavailable');
-        const html = await response.text();
-        const imageUrl = safeCoverUrl(
-          html.match(/<meta name="twitter:image" content="([^"]+)">/u)?.[1]
-        );
-        if (!imageUrl) throw new Error('Public X image metadata is missing');
-        // IMG loading does not require CORS read access to public Storage.
-        await new Promise((resolve, reject) => {
-          const image = new Image();
-          const timer = window.setTimeout(() => reject(new Error('Image load timeout')), 8000);
-          image.onload = () => {
-            window.clearTimeout(timer);
-            resolve();
-          };
-          image.onerror = () => {
-            window.clearTimeout(timer);
-            reject(new Error('Public X image cannot be decoded'));
-          };
-          image.src = imageUrl;
-        });
+        await ensureXCardReady(intent);
         if (popup && !popup.closed) {
           popup.location.replace(intent);
         } else {
@@ -363,10 +342,22 @@
       console.warn('X share clipboard unavailable', error);
     }
     if (!copied) downloadFile(file);
+    // Even when local cover preparation completed before the first click,
+    // verify the server-rendered X card (the normal desktop path).
+    if (!isMobileShareTarget()) {
+      try {
+        await ensureXCardReady(intentUrl(title, url));
+      } catch (error) {
+        console.warn('X card readiness failed', error);
+        if (popup && !popup.closed) popup.close?.();
+        onStatus('共有画像を確認できませんでした。時間をおいて再度お試しください。');
+        return;
+      }
+    }
     if (popup && !popup.closed) {
       popup.location.replace(intentUrl(title, url));
-    } else {
-      window.open(intentUrl(title, url), '_blank', 'noopener,noreferrer');
+    } else if (window.location?.assign) {
+      window.location.assign(intentUrl(title, url));
     }
     onStatus(
       copied
