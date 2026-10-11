@@ -35,7 +35,9 @@ test('production novel OGP is server-rendered and returns a 1200x630 PNG', async
     '<meta property="og:url" content="https://novelight.jp/novel.html?id=541">'
   );
   expect(html).toContain('<meta property="og:type" content="article">');
-  const ogImage = html.match(/<meta property="og:image" content="([^"]+)">/u)?.[1];
+  const ogImage = html.match(
+    /<meta property="og:image" content="([^"]+)">/u
+  )?.[1];
   const twitterImage = html.match(
     /<meta name="twitter:image" content="([^"]+)">/u
   )?.[1];
