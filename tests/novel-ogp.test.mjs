@@ -111,6 +111,7 @@ test('X share uses cover media while URL copy keeps attribution', async () => {
   );
 
   assert.match(seoNovel, /novelight-public-share\.js/u);
+  assert.match(seoNovel, /novelight-x-image-share\\.js/u);
   assert.match(seoNovel, /openGraph:/u);
 });
 
