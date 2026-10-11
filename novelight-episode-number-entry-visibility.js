@@ -333,7 +333,7 @@
           ) && !hiddenIds.has(String(episodeId));
         number.classList.toggle('novelight-entry-number-hidden', !showNumber);
         if (link.dataset.rawTitle !== undefined) {
-          const raw = link.dataset.rawTitle;
+          const raw = decodeURIComponent(link.dataset.rawTitle);
           const visible = global.NovelightEpisodeTitleDisplay.visibleTitle(
             raw,
             Number(link.dataset.episodeNumber),
