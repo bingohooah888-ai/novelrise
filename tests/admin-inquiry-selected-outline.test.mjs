@@ -9,12 +9,22 @@ const html = fs.readFileSync(
   'utf8'
 );
 
-test('selected inquiry gets a thick yellow border even on hover', () => {
+test('opened inquiry remains high-contrast under shared admin theme', () => {
+  const theme = fs.readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '..', 'novelight-theme.css'),
+    'utf8'
+  );
+  assert.match(theme, /\.item,\s*\.asset/u);
+  assert.match(theme, /border-color: rgba\(214, 164, 71, 0\.24\) !important;/u);
   assert.match(
     html,
-    /\.item\.active,\.item\.active:hover\{border:3px solid #ffd84d;padding:10px;/u
+    /html body\.novelight-theme\.novelight-page-admin-inquiries #inquiryList \.item\.active,/u
   );
-  assert.match(html, /\.item:hover\{border-color:#806cff;/u);
+  assert.match(html, /border: 4px solid #ffe043 !important;/u);
+  assert.match(html, /background: #243650 !important;/u);
+  assert.match(html, /box-shadow: inset 6px 0 0 #ffe043,[^;]*!important;/u);
+  assert.match(html, /content: "表示中";/u);
+  assert.match(html, /\.item:hover:not\(\.active\)/u);
   assert.match(html, /\.item\{[^}]*border:1px solid #303650;/u);
 });
 
