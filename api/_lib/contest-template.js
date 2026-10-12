@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+export const contestPageTemplate = String.raw`<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -158,3 +158,4 @@
   <script src="novelight-contest-page.js"></script>
 </body>
 </html>
+`;

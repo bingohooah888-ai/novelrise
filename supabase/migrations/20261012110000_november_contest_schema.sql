@@ -25,6 +25,7 @@ create table public.novelight_contests (
   title text not null,
   status text not null default 'draft'
     check (status in ('draft','registration','active','review','finalized','cancelled')),
+  public_visible boolean not null default false,
   entry_deadline_at timestamptz not null,
   starts_at timestamptz not null,
   ends_at timestamptz not null,
@@ -39,7 +40,9 @@ create table public.novelight_contests (
     check (award_amount_yen = 10000),
   created_at timestamptz not null default pg_catalog.now(),
   updated_at timestamptz not null default pg_catalog.now(),
-  check (entry_deadline_at < starts_at and starts_at < ends_at)
+  check (entry_deadline_at < starts_at and starts_at < ends_at),
+  -- Activation and visibility require one explicitly approved transaction.
+  check (status not in ('registration','active') or public_visible)
 );
 
 -- Keep snapshots even if an author later deletes a work/account. The

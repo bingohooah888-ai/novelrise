@@ -78,3 +78,16 @@ test('entry page supports guest browsing, login and small screens', () => {
   assert.match(css, /max-width:560px/);
   assert.match(css, /prefers-reduced-motion/);
 });
+
+test('contest page is delivered only through the server publication gate', () => {
+  const vercel = JSON.parse(source('../vercel.json'));
+  for (const route of ['/contest.html', '/contest']) {
+    assert.ok(vercel.rewrites.some((item) =>
+      item.source === route && item.destination === '/api/contest-page'));
+  }
+  const serverPage = source('../api/contest-page.js');
+  assert.match(serverPage, /public_visible/);
+  assert.match(serverPage, /notFound\(res\)/);
+  assert.match(serverPage, /status\(404\)/);
+  assert.match(sql, /v_contest\.public_visible is not true/);
+});

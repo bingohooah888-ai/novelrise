@@ -58,6 +58,14 @@ test('November JST boundaries and prize tiers are locked', () => {
   assert.match(sql, /amount_yen = 10000/);
 });
 
+test('publication is independently default-hidden and cannot open registration alone', () => {
+  assert.match(sql, /public_visible boolean not null default false/);
+  assert.match(
+    sql,
+    /status not in \('registration','active'\) or public_visible/
+  );
+});
+
 test('stage 02 stays in draft and does not alter ordinary PV', () => {
   assert.match(sql, /'draft',\s*'2026-10-31 14:59:59\.999999\+00'/);
   assert.doesNotMatch(sql, /update\s+public\.novels/i);
