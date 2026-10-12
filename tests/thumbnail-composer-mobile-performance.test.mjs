@@ -12,6 +12,7 @@ function createRuntime() {
     naturalHeight = 1536;
     width = 1024;
     height = 1536;
+
     set src(value) {
       imageLoads.push(value);
       queueMicrotask(() => this.onload?.());
@@ -26,9 +27,15 @@ function createRuntime() {
 function createCanvas() {
   const calls = [];
   const context = {
-    setTransform(...args) { calls.push(['setTransform', ...args]); },
-    clearRect(...args) { calls.push(['clearRect', ...args]); },
-    drawImage(...args) { calls.push(['drawImage', ...args]); },
+    setTransform(...args) {
+      calls.push(['setTransform', ...args]);
+    },
+    clearRect(...args) {
+      calls.push(['clearRect', ...args]);
+    },
+    drawImage(...args) {
+      calls.push(['drawImage', ...args]);
+    },
     save() {},
     restore() {},
     beginPath() {},
@@ -57,11 +64,23 @@ function fixture(options = {}) {
     cover_bottom_left_y: 1110
   };
   const assets = [
-    { id: 'background', image_url: 'https://example.test/background.png', layer_type: 'background' },
-    { id: 'book', image_url: 'https://example.test/book.png', layer_type: 'base_book' }
+    {
+      id: 'background',
+      image_url: 'https://example.test/background.png',
+      layer_type: 'background'
+    },
+    {
+      id: 'book',
+      image_url: 'https://example.test/book.png',
+      layer_type: 'base_book'
+    }
   ];
   if (options.pattern) {
-    assets.push({ id: 'pattern', image_url: 'https://example.test/pattern.png', layer_type: 'pattern' });
+    assets.push({
+      id: 'pattern',
+      image_url: 'https://example.test/pattern.png',
+      layer_type: 'pattern'
+    });
   }
   return {
     library: { templates: [template], assets },
@@ -77,46 +96,81 @@ function fixture(options = {}) {
   };
 }
 
-test('mobile preview uses half-resolution raster while final export retains canonical dimensions', async () => {
+test('mobile preview uses half-resolution raster and full export', async () => {
   const { composer } = createRuntime();
   const { library, selection } = fixture({ pattern: true });
   const preview = createCanvas();
   const saved = createCanvas();
-  assert.equal(await composer.renderSelectionToCanvas({ canvas: preview, library, selection, preview: true }), preview);
+  const shown = await composer.renderSelectionToCanvas({
+    canvas: preview,
+    library,
+    selection,
+    preview: true
+  });
+  assert.equal(shown, preview);
   assert.equal(preview.width, 543);
   assert.equal(preview.height, 724);
-  assert.deepEqual(preview.calls.find((entry) => entry[0] === 'setTransform').slice(1), [0.5, 0, 0, 0.5, 0, 0]);
-  assert.equal(await composer.renderSelectionToCanvas({ canvas: saved, library, selection }), saved);
+  const previewTransform = preview.calls.find(
+    (entry) => entry[0] === 'setTransform'
+  );
+  assert.deepEqual(previewTransform.slice(1), [0.5, 0, 0, 0.5, 0, 0]);
+
+  const finished = await composer.renderSelectionToCanvas({
+    canvas: saved,
+    library,
+    selection
+  });
+  assert.equal(finished, saved);
   assert.equal(saved.width, 1086);
   assert.equal(saved.height, 1448);
-  assert.deepEqual(saved.calls.find((entry) => entry[0] === 'setTransform').slice(1), [1, 0, 0, 1, 0, 0]);
-  // Both paths draw exactly the same cover-surface perspective geometry.
-  assert.equal(preview.calls.filter((entry) => entry[0] === 'drawImage').length,
-    saved.calls.filter((entry) => entry[0] === 'drawImage').length);
+  const finalTransform = saved.calls.find(
+    (entry) => entry[0] === 'setTransform'
+  );
+  assert.deepEqual(finalTransform.slice(1), [1, 0, 0, 1, 0, 0]);
+  const drawCount = (canvas) =>
+    canvas.calls.filter((entry) => entry[0] === 'drawImage').length;
+  assert.equal(drawCount(preview), drawCount(saved));
 });
 
-test('repeated material rendering reuses decoded image objects', async () => {
+test('repeated rendering reuses decoded image objects', async () => {
   const { composer, imageLoads } = createRuntime();
   const { library, selection } = fixture();
-  await composer.renderSelectionToCanvas({ canvas: createCanvas(), library, selection, preview: true });
-  await composer.renderSelectionToCanvas({ canvas: createCanvas(), library, selection, preview: true });
-  assert.equal(imageLoads.length, 2, 'background and base book should load once each');
+  await composer.renderSelectionToCanvas({
+    canvas: createCanvas(),
+    library,
+    selection,
+    preview: true
+  });
+  await composer.renderSelectionToCanvas({
+    canvas: createCanvas(),
+    library,
+    selection,
+    preview: true
+  });
+  assert.equal(imageLoads.length, 2);
 });
 
-test('a superseded render returns null before painting the stale result', async () => {
+test('superseded render does not paint stale imagery', async () => {
   const { composer } = createRuntime();
   const { library, selection } = fixture();
   let cancelled = false;
   const canvas = createCanvas();
   const operation = composer.renderSelectionToCanvas({
-    canvas, library, selection, preview: true, shouldCancel: () => cancelled
+    canvas,
+    library,
+    selection,
+    preview: true,
+    shouldCancel: () => cancelled
   });
   cancelled = true;
   assert.equal(await operation, null);
-  assert.equal(canvas.calls.filter((entry) => entry[0] === 'drawImage').length, 0);
+  assert.equal(
+    canvas.calls.filter((entry) => entry[0] === 'drawImage').length,
+    0
+  );
 });
 
-test('option images are created only for opened accordions and saved canvas is independent', () => {
+test('options load on accordion open and export stays isolated', () => {
   assert.match(source, /if \(section\.open\) populateOptions\(\)/u);
   assert.match(source, /function populateOptions\(\)/u);
   assert.match(source, /populateOptions\(\);\s*state\.openLayerType = type/u);
