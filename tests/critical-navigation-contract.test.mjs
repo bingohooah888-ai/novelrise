@@ -182,7 +182,7 @@ test('beta-critical data-driven navigation targets stay wired', async () => {
   }
 });
 
-test('server-gated contest route never exists as a public static HTML file', async () => {
+test('contest route stays server-gated without a public HTML file', async () => {
   const files = await readdir(repoRoot);
   assert.equal(files.includes('contest.html'), false);
   const vercel = JSON.parse(await read('vercel.json'));
