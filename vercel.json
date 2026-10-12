@@ -78,6 +78,14 @@
   ],
   "rewrites": [
     {
+      "source": "/contest.html",
+      "destination": "/api/contest-page"
+    },
+    {
+      "source": "/contest",
+      "destination": "/api/contest-page"
+    },
+    {
       "source": "/novel.html",
       "destination": "/api/seo/novel"
     },
