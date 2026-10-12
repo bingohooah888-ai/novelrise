@@ -165,6 +165,8 @@ body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1
 
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid #76502e;
   border-radius: 7px 10px 10px 7px;
@@ -215,6 +217,7 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card:hover {
 
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-copy {
   display: flex;
+  flex: 1 0 auto;
   min-width: 0;
   min-height: 192px;
   flex-direction: column;
@@ -223,6 +226,32 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-c
     repeating-linear-gradient(0deg, rgba(102, 69, 35, 0.025) 0 1px, transparent 1px 6px),
     linear-gradient(145deg, #f0dfba, #dbc092);
   box-shadow: inset 0 1px rgba(255, 248, 227, 0.55);
+}
+
+/* Keep R15 and general cards on the same label/title baseline. */
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-labels {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-labels .genre {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-labels .nl-r15-badge {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/* Prevent flex shrinking the cover when another card has more text. */
+.discovery-list-grid .novel-cover-placeholder,
+.discovery-list-grid .novel-cover-image {
+  flex-shrink: 0;
 }
 
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .genre {
