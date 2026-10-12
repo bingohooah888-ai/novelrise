@@ -24,7 +24,11 @@ const runbook = readFileSync(
   'utf8'
 );
 
-function simulate(status, error = null, entryDeadline = '2099-10-31T14:59:59.999999Z') {
+function simulate(
+  status,
+  error = null,
+  entryDeadline = '2099-10-31T14:59:59.999999Z'
+) {
   const nodes = new Map();
   for (const id of [
     'novelightContestHomePromo',
@@ -72,7 +76,10 @@ test('home banner advertises enrollment only after opening', async () => {
   assert.equal(started.area.hidden, false);
   assert.equal(started.link.textContent, 'エントリーする →');
   assert.match(started.description.textContent, /10月31日23:59/);
-  assert.equal((await simulate('registration', null, '2020-10-31T14:59:59Z')).area.hidden, true);
+  assert.equal(
+    (await simulate('registration', null, '2020-10-31T14:59:59Z')).area.hidden,
+    true
+  );
   assert.equal((await simulate('registration', null, 'invalid')).area.hidden, true);
   const active = await simulate('active');
   assert.equal(active.area.hidden, false);
