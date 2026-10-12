@@ -1,14 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-const lines = Array.from({ length: 120 }, (_, index) =>
-  `第${index + 1}段落。改行と削除を繰り返しても本文が動かないことを確認します。`
-).join('\n');
+const lines = Array(120).fill('本文テスト。').join('\n');
 
 for (const surface of ['post', 'edit']) {
-  test(`episode-${surface} keeps caret editing and toolbar geometry stable`, async ({
-    page
-  }) => {
+  test(`episode-${surface}: caret and toolbar stay put`, async ({ page }) => {
     const html = readFileSync(
       new URL(`../../../episode-${surface}.html`, import.meta.url),
       'utf8'
@@ -41,9 +37,10 @@ for (const surface of ['post', 'edit']) {
     `);
 
     await page.evaluate(() => window.scrollTo(0, 310));
-    const toolbarTop = await page.locator('#toolbar').evaluate(
-      (element) => element.getBoundingClientRect().top
-    );
+    const toolbar = page.locator('#toolbar');
+    const toolbarTop = await toolbar.evaluate((element) => {
+      return element.getBoundingClientRect().top;
+    });
     expect(toolbarTop).toBeLessThan(0);
 
     const textarea = page.locator('#content');
