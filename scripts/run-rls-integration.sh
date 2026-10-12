@@ -24,6 +24,17 @@ SEARCH_CARD_COMPAT_MIGRATION="supabase/migrations/20260930210000_search_card_met
 cp supabase/migrations/20260930153337_search_card_metadata.sql "$SEARCH_CARD_COMPAT_MIGRATION"
 trap 'rm -f "$SEARCH_CARD_COMPAT_MIGRATION"' EXIT
 bash scripts/run-migration-replay.sh
+# The replay uses a separate disposable database, never Production.
+# Exercise the newly introduced contest functions on real PostgreSQL before
+# returning to existing historical RLS and rollback fixtures. The SQL fixture
+# is enclosed in a transaction that always rolls back.
+echo "::group::Verify November contest private enrollment on replay DB"
+CONTEST_REPLAY=(
+  psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}"
+  -d "${NOVELIGHT_REPLAY_DB:-novelight_migration_replay}" -v ON_ERROR_STOP=1
+)
+"${CONTEST_REPLAY[@]}" -f tests/rls/november-contest-integration.sql
+echo "::endgroup::"
 rm -f "$SEARCH_CARD_COMPAT_MIGRATION"
 trap - EXIT
 
