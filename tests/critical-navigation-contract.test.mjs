@@ -42,12 +42,26 @@ test('root HTML links do not point to missing local HTML pages', async () => {
     .map((entry) => entry.name)
     .sort();
   const htmlSet = new Set(htmlFiles);
+  const vercel = JSON.parse(await read('vercel.json'));
+  const contestRewrite = vercel.rewrites.some(
+    (route) =>
+      route.source === '/contest.html' &&
+      route.destination === '/api/contest-page'
+  );
+  const contestHandler = contestRewrite
+    ? await read('api/contest-page.js')
+    : '';
+  const gatedContest =
+    contestRewrite &&
+    contestHandler.includes('public_visible') &&
+    contestHandler.includes('notFound(res)') &&
+    !htmlSet.has('contest.html');
 
   for (const page of htmlFiles) {
     const source = await read(page);
     for (const target of localHtmlTargets(source)) {
       assert.ok(
-        htmlSet.has(target),
+        htmlSet.has(target) || (target === 'contest.html' && gatedContest),
         `${page} links to missing local page ${target}`
       );
     }
@@ -166,4 +180,21 @@ test('beta-critical data-driven navigation targets stay wired', async () => {
       );
     }
   }
+});
+
+test('contest route stays server-gated without a public HTML file', async () => {
+  const files = await readdir(repoRoot);
+  assert.equal(files.includes('contest.html'), false);
+  const vercel = JSON.parse(await read('vercel.json'));
+  for (const route of ['/contest.html', '/contest']) {
+    assert.ok(
+      vercel.rewrites.some(
+        (item) =>
+          item.source === route && item.destination === '/api/contest-page'
+      )
+    );
+  }
+  const handler = await read('api/contest-page.js');
+  assert.match(handler, /public_visible/);
+  assert.match(handler, /notFound\(res\)/);
 });
