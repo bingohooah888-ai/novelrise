@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 
 const migrationPath =
-  '../supabase/migrations/20261012020000_november_contest_entries.sql';
+  '../supabase/migrations/20261012111000_november_contest_entries.sql';
 const sql = readFileSync(new URL(migrationPath, import.meta.url), 'utf8');
 const authorPage = readFileSync(
   new URL('../my-novels.html', import.meta.url),

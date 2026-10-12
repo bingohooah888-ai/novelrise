@@ -6,7 +6,7 @@
 begin;
 
 select pg_catalog.pg_advisory_xact_lock(
-  pg_catalog.hashtext('novelight:20261012030000:contest-public-catalog')
+  pg_catalog.hashtext('novelight:20261012112000:contest-public-catalog')
 );
 
 do $$

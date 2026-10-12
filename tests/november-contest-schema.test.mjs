@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const migrationPath =
-  '../supabase/migrations/20261012010000_november_contest_schema.sql';
+  '../supabase/migrations/20261012110000_november_contest_schema.sql';
 const sql = readFileSync(new URL(migrationPath, import.meta.url), 'utf8');
 
 const tables = [
