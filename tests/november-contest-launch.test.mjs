@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
+import { setImmediate } from 'node:timers';
 
 const home = readFileSync(
   new URL('../index.html', import.meta.url),
