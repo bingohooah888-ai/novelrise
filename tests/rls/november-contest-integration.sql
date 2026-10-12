@@ -331,7 +331,7 @@ where c.contest_key = 'novelight-november-2026'
   );
 
 set local role anon;
-do $
+do $contest_zoning$
 declare
   v_all jsonb;
   v_no_r15 jsonb;
@@ -369,7 +369,7 @@ begin
     raise exception 'Filtered catalog pagination count drift: %', v_page;
   end if;
 end
-$;
+$contest_zoning$;
 reset role;
 
 -- Never leave draft-stage test activation running, even in disposable DB.
