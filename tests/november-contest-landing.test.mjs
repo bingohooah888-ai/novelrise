@@ -15,7 +15,7 @@ const page = source('../api/_lib/contest-template.js');
 const js = source('../novelight-contest-page.js');
 const css = source('../novelight-contest.css');
 
-test('page exposes the locked awards, reading tiers and update calendar', () => {
+test('contest awards and scoring milestones', () => {
   assert.match(page, /11月1日（日）〜30日（月）/);
   assert.match(page, /10月31日（土）23:59/);
   assert.match(page, /10話以上/);
@@ -30,7 +30,7 @@ test('page exposes the locked awards, reading tiers and update calendar', () => 
   assert.match(page, /同順位/);
 });
 
-test('page uses a reusable author enrollment widget, not direct table edits', () => {
+test('author enrollment uses a shared RPC widget', () => {
   assert.match(page, /src="novelight-contest-entry\.js"/);
   assert.match(page, /src="novelight-contest-page\.js"/);
   assert.match(js, /NovelightContestEntry\.mountContestPage/);
@@ -80,7 +80,7 @@ test('entry page supports guest browsing, login and small screens', () => {
   assert.match(css, /prefers-reduced-motion/);
 });
 
-test('contest page is delivered only through the server publication gate', () => {
+test('contest URL requires server publication approval', () => {
   assert.equal(existsSync(new URL('../contest.html', import.meta.url)), false);
   const vercel = JSON.parse(source('../vercel.json'));
   for (const route of ['/contest.html', '/contest']) {
@@ -100,7 +100,10 @@ test('contest page is delivered only through the server publication gate', () =>
 
 test('server page denies unpublished or invalid states', () => {
   assert.equal(isContestVisible(null), false);
-  assert.equal(isContestVisible({ status: 'draft', public_visible: false }), false);
+  assert.equal(
+    isContestVisible({ status: 'draft', public_visible: false }),
+    false
+  );
   assert.equal(
     isContestVisible({ status: 'registration', public_visible: false }),
     false
@@ -109,7 +112,10 @@ test('server page denies unpublished or invalid states', () => {
     isContestVisible({ status: 'registration', public_visible: true }),
     true
   );
-  assert.equal(isContestVisible({ status: 'active', public_visible: true }), true);
+  assert.equal(
+    isContestVisible({ status: 'active', public_visible: true }),
+    true
+  );
   assert.equal(
     isContestVisible({ status: 'cancelled', public_visible: true }),
     false
