@@ -4,10 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { URL } from 'node:url';
 import { setImmediate } from 'node:timers';
 
-const home = readFileSync(
-  new URL('../index.html', import.meta.url),
-  'utf8'
-);
+const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const widget = readFileSync(
   new URL('../novelight-contest-home-promo.js', import.meta.url),
   'utf8'
