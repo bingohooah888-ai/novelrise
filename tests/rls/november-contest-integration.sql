@@ -42,7 +42,7 @@ insert into public.novel_thumbnail_assets (
 ) values (
   'caf00000-0000-4000-8000-000000000003',
   'Contest disposable fixture',
-  'official/contest-ci-safe.webp',
+  'official/caf00000-0000-4000-8000-000000000003.webp',
   'https://example.com/contest-ci-safe.webp',
   true
 );
