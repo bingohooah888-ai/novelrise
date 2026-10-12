@@ -72,7 +72,7 @@ test('special-zone feed has separate recommendation and ranking modes without LI
   assert.doesNotMatch(sql, /light_seed_count/);
 });
 
-test('public special-light navigation exposes AI, R15 and R18 zones', async () => {
+test('special-light navigation keeps AI and R18 only', async () => {
   const [landing, zonePage, homeLoader, authContext] = await Promise.all([
     readFile(landingPath, 'utf8'),
     readFile(zonePath, 'utf8'),
@@ -82,7 +82,7 @@ test('public special-light navigation exposes AI, R15 and R18 zones', async () =
 
   assert.match(landing, /もうひとつの光を探す/);
   assert.match(landing, /special-zone\.html\?zone=ai/);
-  assert.match(landing, /special-zone\.html\?zone=r15/);
+  assert.doesNotMatch(landing, /special-zone\.html\?zone=r15/);
   assert.match(landing, /special-zone\.html\?zone=r18/);
   assert.match(zonePage, />おすすめ</);
   assert.match(zonePage, />ランキング</);
