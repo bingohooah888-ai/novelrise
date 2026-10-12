@@ -9,8 +9,13 @@ import {
   contestTermsTemplate
 } from '../api/_lib/contest-terms-template.js';
 
-const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
-const api = readFileSync(new URL('../api/contest-terms.js', import.meta.url), 'utf8');
+const vercel = JSON.parse(
+  readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')
+);
+const api = readFileSync(
+  new URL('../api/contest-terms.js', import.meta.url),
+  'utf8'
+);
 
 test('contest terms are not served before explicit contest release', () => {
   const base = {
@@ -20,12 +25,18 @@ test('contest terms are not served before explicit contest release', () => {
     terms_url: CONTEST_TERMS_URL_CANDIDATE
   };
   assert.equal(isContestTermsVisible(null), false);
-  assert.equal(isContestTermsVisible({ ...base, public_visible: false }), false);
+  assert.equal(
+    isContestTermsVisible({ ...base, public_visible: false }),
+    false
+  );
   assert.equal(isContestTermsVisible({ ...base, status: 'draft' }), false);
   assert.equal(isContestTermsVisible({ ...base, status: 'cancelled' }), false);
   assert.equal(isContestTermsVisible({ ...base, terms_version: '' }), false);
   assert.equal(isContestTermsVisible({ ...base, terms_url: '' }), false);
-  assert.equal(isContestTermsVisible({ ...base, terms_version: 'other' }), false);
+  assert.equal(
+    isContestTermsVisible({ ...base, terms_version: 'other' }),
+    false
+  );
   assert.equal(isContestTermsVisible(base), true);
   assert.equal(isContestTermsVisible({ ...base, status: 'active' }), true);
   assert.match(api, /status\(404\)/);
@@ -34,12 +45,16 @@ test('contest terms are not served before explicit contest release', () => {
 
 test('both official terms paths are server-gated', () => {
   for (const path of ['/contest-terms', '/contest-terms.html']) {
-    assert.equal(vercel.rewrites.find((v) => v.source === path)?.destination, '/api/contest-terms');
+    const route = vercel.rewrites.find((item) => item.source === path);
+    assert.equal(route?.destination, '/api/contest-terms');
   }
-  assert.equal(CONTEST_TERMS_URL_CANDIDATE, 'https://novelight.jp/contest-terms');
+  assert.equal(
+    CONTEST_TERMS_URL_CANDIDATE,
+    'https://novelight.jp/contest-terms'
+  );
 });
 
-test('candidate terms follow approved owner rules without silent disqualification', () => {
+test('candidate terms follow adopted contest rules', () => {
   const fragments = [
     '2026年10月31日',
     '2026年11月1日',
@@ -62,7 +77,9 @@ test('candidate terms follow approved owner rules without silent disqualificatio
     '明示的に同意',
     '賞金の配布がすべて完了した時点'
   ];
-  for (const fragment of fragments) assert.ok(contestTermsTemplate.includes(fragment), fragment);
-  assert.doesNotMatch(contestTermsTemplate, /銀行口座番号[^<]*公開/);
+  for (const fragment of fragments) {
+    assert.ok(contestTermsTemplate.includes(fragment), fragment);
+  }
+  assert.match(contestTermsTemplate, /一般お問い合わせフォームへ投稿しないでください/);
   assert.doesNotMatch(contestTermsTemplate, /賞金は非課税|申告不要/);
 });
