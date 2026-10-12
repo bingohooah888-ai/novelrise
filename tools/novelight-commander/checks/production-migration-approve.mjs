@@ -121,8 +121,8 @@ test('rejects extra args and non-canonical migration lists', () => {
 });
 
 test('contract is pinned to NLO control and Production ledger issues', () => {
-  assert.equal(productionMigrationApprovalContract.controlIssue, 797);
-  assert.equal(productionMigrationApprovalContract.ledgerIssue, 737);
+  assert.equal(productionMigrationApprovalContract.controlIssue, 1837);
+  assert.equal(productionMigrationApprovalContract.ledgerIssue, 2139);
   assert.equal(
     productionMigrationApprovalContract.confirmation,
     'CHAT_PRODUCTION_APPROVED'
