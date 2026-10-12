@@ -30,6 +30,23 @@ test('contest awards and scoring milestones', () => {
   assert.match(page, /同順位/);
 });
 
+test('contest public copy matches the owner-approved stage 05 rules', () => {
+  assert.match(page, /1pt以上の上位5作品/);
+  assert.match(page, /対象作品が5作品未満なら受賞数も減ります/);
+  assert.match(page, /5位境界の同点作品/);
+  assert.match(page, /公開済み10話以上の全年齢・R15作品/);
+  assert.match(page, /R18・AI生成主体の作品は対象外/);
+  assert.match(page, /コンテスト終了まで公開10話以上を維持/);
+  assert.match(page, /12月1日/);
+  assert.match(page, /NOVELIGHT登録メール/);
+  assert.match(page, /受賞者は通知から1か月以内に返信/);
+  assert.match(page, /返信受信から1か月以内に楽天銀行/);
+  assert.match(page, /手数料は運営が負担/);
+  assert.match(page, /公式応募要項への明示同意/);
+  assert.doesNotMatch(page, /最終結果は審査後に発表/);
+  assert.doesNotMatch(page, /詳しいコンテスト規約は受付開始時に/);
+});
+
 test('author enrollment uses a shared RPC widget', () => {
   assert.match(page, /src="novelight-contest-entry\.js"/);
   assert.match(page, /src="novelight-contest-page\.js"/);
