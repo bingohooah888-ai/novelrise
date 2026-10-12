@@ -24,7 +24,7 @@ test('November contest reader and prize data purposes are disclosed', () => {
   assert.match(privacy, /国内銀行への振込に必要な銀行名/);
 });
 
-test('contest-specific data deletion respects necessary record retention', () => {
+test('contest data deletion respects mandatory retention', () => {
   assert.match(privacy, /賞金の配布と必要な事後対応が完了した時点/);
   assert.match(privacy, /削除または匿名化/);
   assert.match(privacy, /受信・送信メール、添付資料、作業用の複製やバックアップ/);
