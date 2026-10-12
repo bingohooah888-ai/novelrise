@@ -29,10 +29,7 @@ test('an unapproved terms URL/version cannot activate registration', () => {
 
 test('entry v2 stores acceptance for new and replaced work', () => {
   assert.match(sql, /novelight_contest_entry_action_v2/);
-  assert.match(
-    sql,
-    /p_terms_version is distinct from v_contest.terms_version/
-  );
+  assert.match(sql, /p_terms_version is distinct from v_contest.terms_version/);
   assert.match(sql, /terms_accepted_version = v_contest.terms_version/);
   assert.match(sql, /terms_accepted_at = v_now/);
   assert.match(sql, /v_contest.terms_version, v_now/);
