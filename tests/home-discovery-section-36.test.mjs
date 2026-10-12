@@ -160,15 +160,12 @@ test('controlled rotation and fairness do not make paid status an unconditional 
   assert.ok(weightedAuthorExposure > initialPriority);
 });
 
-test('homepage selection protects author diversity before filling remaining slots', async () => {
+test('homepage recommendations do not reorder authors outside of plan rules', async () => {
   const home = await read('index.html');
 
-  assert.match(home, /const authors=new Set\(\),primary=\[\],deferred=\[\]/);
-  assert.match(
-    home,
-    /if\(author&&authors\.has\(author\)\)deferred\.push\(row\)/
-  );
-  assert.match(home, /primary\.concat\(deferred\)\.slice\(0,limit\)/);
+  assert.match(home, /return unique\.slice\(0,limit\)/);
+  assert.doesNotMatch(home, /authors\.has\(author\)/);
+  assert.doesNotMatch(home, /primary\.concat\(deferred\)/);
 });
 
 test('dedicated discovery pages refresh receipts and use the same formal LIGHT SEED feed as Home', async () => {

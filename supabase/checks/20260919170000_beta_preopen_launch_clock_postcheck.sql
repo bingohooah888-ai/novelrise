@@ -40,7 +40,16 @@ begin
   select pg_get_functiondef(
     'public.novelight_discovery_feed_v2(text,integer,text,text,text)'::regprocedure
   ) into v_definition;
-  if pg_catalog.strpos(v_definition, 'effective_publication_at <= now()') = 0
+  -- The recommendation algorithm is plan-only from 2026-10-12 onward:
+  -- it cannot activate or consume new-work boosts or exposure debt.
+  -- Preserve the old launch-clock assertion for prior schema versions.
+  if pg_catalog.strpos(v_definition, '4503599627370496::numeric') > 0 then
+    if pg_catalog.strpos(v_definition, 'premium_new_work_boost') <> 0
+       or pg_catalog.strpos(v_definition, 'normalized_author_exposure') <> 0
+       or pg_catalog.strpos(v_definition, 'novel_exposure_events') <> 0 then
+      raise exception 'Plan-only recommendations must not use preopen exposure';
+    end if;
+  elsif pg_catalog.strpos(v_definition, 'effective_publication_at <= now()') = 0
      or pg_catalog.strpos(
        v_definition,
        'e.exposed_at >= b.effective_publication_at'
