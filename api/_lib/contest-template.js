@@ -3,7 +3,7 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="NOVELIGHT 第1回小説コンテスト。2026年11月1日から30日まで開催。読者の読書ポイントで決まる作品ランキング。上位5作品にそれぞれ1万円。">
+  <meta name="description" content="NOVELIGHT 第1回小説コンテスト。2026年11月1日から30日まで開催。読書ポイント1pt以上の上位5位以内に各1万円、最終順位は12月1日発表。">
   <title>第1回 NOVELIGHT 小説コンテスト | 2026年11月</title>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
   <link rel="stylesheet" href="novelight-accessibility.css">
@@ -47,13 +47,13 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
       <div class="contest-shell contest-prize-layout">
         <div>
           <p class="contest-kicker">AWARDS</p>
-          <h2 id="prizeTitle">上位5作品に、<span>それぞれ1万円。</span></h2>
-          <p>読者の読書ポイントで順位が決まるコンテストです。5位以内で同点となった作品には、同順位として全作品に賞金を授与します。</p>
+          <h2 id="prizeTitle">1pt以上の上位5作品に、<span>それぞれ1万円。</span></h2>
+          <p>有効得点1pt以上が受賞条件です。対象作品が5作品未満なら受賞数も減ります。5位境界の同点作品は同順位としてすべて受賞できます。</p>
         </div>
         <div class="contest-prize-visual">
           <small>AWARD PER WINNING WORK</small>
           <strong>¥10,000</strong>
-          <span>1〜5位の各作品に</span>
+          <span>得点1pt以上の入賞作品に</span>
         </div>
       </div>
     </section>
@@ -91,7 +91,7 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
           <div>
             <p class="contest-kicker">FOR AUTHORS</p>
             <h2 id="enterTitle">あなたの物語を、届けよう。</h2>
-            <p class="contest-section-copy">応募できるのは、<strong>公開済み10話以上の作品</strong>。作者1人につき1作品。新作・既存作品どちらでも参加できます。</p>
+            <p class="contest-section-copy">応募できるのは<strong>公開済み10話以上の全年齢・R15作品</strong>（人間執筆またはAI補助）。R18・AI生成主体の作品は対象外です。作者1人1作品、既存作品も参加できます。</p>
           </div>
           <a href="my-novels.html" class="contest-text-link">自分の作品ページから応募 →</a>
         </div>
@@ -106,7 +106,7 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
             <a class="contest-text-link" href="signup.html">新規会員登録</a>
           </div>
           <div id="contestEnrollment" class="contest-enroll-works" aria-live="polite"></div>
-          <p class="contest-note">エントリー前に公開話数を確認してください。締切後の作品変更・取消はできません。</p>
+          <p class="contest-note">コンテスト終了まで公開10話以上を維持してください。締切後の作品変更・取消はできません。応募時には正式な応募要項への同意が必要です。</p>
         </div>
       </div>
     </section>
@@ -124,7 +124,7 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
         <input id="contestHideR15" type="checkbox">
         <span>R15作品を表示しない</span>
       </label>
-      <p class="contest-note">この設定は通常の作品一覧と共通です。18+・AI生成主体の作品は、専用ゾーンの案内に従ってください。</p>
+      <p class="contest-note">この設定は通常の作品一覧と共通です。R18・AI生成主体の作品は今回のコンテスト応募対象外です。</p>
       <div id="contestEntries" class="contest-entries-grid" aria-live="polite">
         <p class="contest-list-message">参加作品を読み込んでいます…</p>
       </div>
@@ -141,14 +141,14 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
           <div><small>第1回</small><strong>11月7日</strong><span>正午12:00 公開</span></div>
           <div><small>第2回</small><strong>11月15日</strong><span>正午12:00 更新</span></div>
           <div><small>第3回</small><strong>11月22日</strong><span>正午12:00 更新</span></div>
-          <div><small>コンテスト終了</small><strong>11月30日</strong><span>最終結果は審査後に発表</span></div>
+          <div><small>最終順位発表</small><strong>12月1日</strong><span>11月30日終了・審査後に発表</span></div>
         </div>
         <p class="contest-note">中間ランキングは11月7日から11月30日まで表示を継続します。発表回ごとの順位・得点を次回更新まで固定します。表示機能は開催準備の後続工程で公開します。</p>
       </div>
     </section>
 
     <section class="contest-shell contest-footnote">
-      <p>参加・読書は無料です。賞金は審査確定後、NOVELIGHT運営から銀行振込でお渡しする予定です。ご参加にあたってはNOVELIGHTの<a href="terms.html">利用規約</a>と<a href="content-guidelines.html">投稿ガイドライン</a>をご確認ください。詳しいコンテスト規約は受付開始時にご案内します。</p>
+      <p>参加・読書は無料です。受賞連絡はNOVELIGHT登録メールに送信し、受賞者は通知から1か月以内に返信してください。賞金は返信受信から1か月以内に楽天銀行から国内銀行口座へ振り込み、手数料は運営が負担します。ご参加には公式応募要項への明示同意が必要です。<a href="terms.html">利用規約</a>と<a href="content-guidelines.html">投稿ガイドライン</a>もご確認ください。</p>
     </section>
   </main>
 
