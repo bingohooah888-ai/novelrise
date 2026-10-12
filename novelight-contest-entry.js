@@ -5,7 +5,7 @@
 
   const CONTEST_KEY = 'novelight-november-2026';
   const RPC_CONTEXT = 'novelight_contest_entry_context';
-  const RPC_ACTION = 'novelight_contest_entry_action';
+  const RPC_ACTION = 'novelight_contest_entry_action_v2';
 
   function reasonMessage(reason, result) {
     const messages = {
@@ -18,7 +18,8 @@
       not_owned_published_work: '本人の公開作品のみエントリーできます。',
       invalid_work: '有効な作品を選択してください。',
       entry_locked: '運営の確認が必要なため変更できません。',
-      invalid_action: '操作を確認できませんでした。'
+      invalid_action: '操作を確認できませんでした。',
+      terms_consent_required: '正式な応募要項の確認と同意が必要です。'
     };
     return messages[reason] || '操作を完了できませんでした。';
   }
@@ -45,11 +46,12 @@
     return data;
   }
 
-  async function submitAction(client, action, novelId) {
+  async function submitAction(client, action, novelId, termsVersion = null) {
     const { data, error } = await client.rpc(RPC_ACTION, {
       p_action: action,
       p_novel_id: action === 'enter' ? Number(novelId) : null,
-      p_contest_key: CONTEST_KEY
+      p_contest_key: CONTEST_KEY,
+      p_terms_version: action === 'enter' ? termsVersion : null
     });
     if (error) throw error;
     if (!data?.ok) throw new Error(reasonMessage(data?.reason, data));
@@ -78,7 +80,11 @@
       return panel;
     }
 
-    const disabled = !context.accepting_entries || !work.eligible;
+    const termsReady = Boolean(
+      context.terms_version &&
+      /^https:\/\/novelight[.]jp\//u.test(context.terms_url || '')
+    );
+    const disabled = !context.accepting_entries || !work.eligible || !termsReady;
     let label;
     if (!context.accepting_entries) {
       label = context.contest_status === 'draft'
@@ -89,10 +95,31 @@
         ? '公開作品のみ応募可'
         : '公開10話以上で応募可（現在' +
           String(work.published_episodes) + '話）';
+    } else if (!termsReady) {
+      label = '応募要項の確認待ち';
     } else {
       label = current ? '応募作品を変更' : 'コンテストにエントリー';
     }
-    const button = createButton(label, 'enter', work.id, disabled);
+    const button = createButton(label, 'enter', work.id, true);
+    if (!disabled) {
+      const consentLabel = document.createElement('label');
+      consentLabel.className = 'nl-contest-terms-consent';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.dataset.contestConsent = '1';
+      const termsLink = document.createElement('a');
+      termsLink.href = context.terms_url;
+      termsLink.target = '_blank';
+      termsLink.rel = 'noopener noreferrer';
+      termsLink.textContent = '正式なコンテスト応募要項';
+      const suffix = document.createElement('span');
+      suffix.textContent = 'を確認し、同意します';
+      consentLabel.append(checkbox, termsLink, suffix);
+      checkbox.addEventListener('change', () => {
+        button.disabled = !checkbox.checked;
+      });
+      panel.append(consentLabel);
+    }
     panel.append(button);
     return panel;
   }
@@ -120,13 +147,21 @@
       const action = button.dataset.contestAction;
       const novelId = button.dataset.contestNovelId;
       if (action !== 'enter' && action !== 'withdraw') return;
+      const checkbox = button.closest('.nl-contest-entry-actions')
+        ?.querySelector('input[data-contest-consent]');
+      if (action === 'enter' &&
+          (!checkbox?.checked || !context.terms_version ||
+           !context.accepting_entries)) return;
       if (!confirmAction(action, action === 'enter' &&
         context.entry?.status === 'entered')) return;
 
       busy = true;
       button.disabled = true;
       try {
-        await submitAction(client, action, novelId);
+        await submitAction(
+          client, action, novelId,
+          action === 'enter' ? context.terms_version : null
+        );
         const latest = await loadContext(client);
         Object.assign(context, latest);
         draw(latest);
