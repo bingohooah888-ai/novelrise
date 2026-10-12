@@ -146,13 +146,32 @@ begin
     raise exception 'Entry context leaked before publication';
   end if;
 
-  select public.novelight_contest_entry_action('enter', v_owned) into v_data;
+  select public.novelight_contest_entry_action_v2('enter', v_owned)
+    into v_data;
   if v_data->>'reason' <> 'contest_unavailable' then
     raise exception 'Author entered while draft/hidden';
   end if;
 end
 $$;
 reset role;
+
+-- Even setting 'registration' must fail closed while no official terms
+-- version/URL has been approved by an operator.
+do $prelaunch_terms$
+declare v_blocked boolean := false;
+begin
+  begin
+    update public.novelight_contests
+       set status = 'registration', public_visible = true
+     where contest_key = 'novelight-november-2026';
+  exception when check_violation then
+    v_blocked := true;
+  end;
+  if not v_blocked then
+    raise exception 'Unconfigured official contest terms allowed activation';
+  end if;
+end
+$prelaunch_terms$;
 
 -- Test-only activation; the whole transaction is rolled back.
 -- Keep dates future relative to the CI execution so the test is reproducible.
@@ -161,7 +180,9 @@ set entry_deadline_at = clock_timestamp() + interval '30 days',
     starts_at = clock_timestamp() + interval '31 days',
     ends_at = clock_timestamp() + interval '61 days',
     status = 'registration',
-    public_visible = true
+    public_visible = true,
+    terms_version = 'ci-contest-v1',
+    terms_url = 'https://novelight.jp/contest-terms-ci'
 where contest_key = 'novelight-november-2026';
 
 set local role authenticated;
@@ -189,25 +210,42 @@ begin
       v_result;
   end if;
 
-  select public.novelight_contest_entry_action('enter', v_nine)
+  -- Legacy cached clients and mismatched consent can never enter.
+  select public.novelight_contest_entry_action('enter', v_eligible)
+    into v_result;
+  if v_result->>'reason' <> 'terms_consent_required' then
+    raise exception 'Legacy entry bypassed terms consent: %', v_result;
+  end if;
+  select public.novelight_contest_entry_action_v2(
+    'enter', v_eligible, 'novelight-november-2026', 'wrong-version'
+  ) into v_result;
+  if v_result->>'reason' <> 'terms_consent_required' then
+    raise exception 'Wrong terms version bypassed consent: %', v_result;
+  end if;
+
+  select public.novelight_contest_entry_action_v2('enter', v_nine,
+    'novelight-november-2026', 'ci-contest-v1')
     into v_result;
   if v_result->>'reason' <> 'insufficient_published_episodes' then
     raise exception 'Nine chapters incorrectly allowed: %', v_result;
   end if;
 
-  select public.novelight_contest_entry_action('enter', v_other)
+  select public.novelight_contest_entry_action_v2('enter', v_other,
+    'novelight-november-2026', 'ci-contest-v1')
     into v_result;
   if v_result->>'reason' <> 'not_owned_published_work' then
     raise exception 'Other author work allowed: %', v_result;
   end if;
 
-  select public.novelight_contest_entry_action('enter', v_eligible)
+  select public.novelight_contest_entry_action_v2('enter', v_eligible,
+    'novelight-november-2026', 'ci-contest-v1')
     into v_result;
   if v_result->>'state' <> 'entered' then
     raise exception 'Ten-chapter owned work rejected: %', v_result;
   end if;
 
-  select public.novelight_contest_entry_action('enter', v_eligible)
+  select public.novelight_contest_entry_action_v2('enter', v_eligible,
+    'novelight-november-2026', 'ci-contest-v1')
     into v_result;
   if v_result->>'state' <> 'already_entered' then
     raise exception 'Idempotent double click failed: %', v_result;
@@ -219,7 +257,8 @@ begin
     raise exception 'Entry withdrawal failed: %', v_result;
   end if;
 
-  select public.novelight_contest_entry_action('enter', v_eligible)
+  select public.novelight_contest_entry_action_v2('enter', v_eligible,
+    'novelight-november-2026', 'ci-contest-v1')
     into v_result;
   if v_result->>'state' <> 'entered' then
     raise exception 'Re-enrollment failed: %', v_result;
@@ -237,6 +276,13 @@ begin
   from public.novelight_contest_entries;
   if v_entries <> 1 then
     raise exception 'One-author / one-work invariant failed: %', v_entries;
+  end if;
+  if not exists (
+    select 1 from public.novelight_contest_entries
+     where terms_accepted_version = 'ci-contest-v1'
+       and terms_accepted_at is not null
+  ) then
+    raise exception 'No server-recorded contest terms acceptance evidence';
   end if;
 
   select e.novel_id into v_novel_id
