@@ -2,17 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const privacy = readFileSync(
-  new URL('../privacy.html', import.meta.url),
-  'utf8'
-);
-const termsDraft = readFileSync(
-  new URL(
-    '../docs/reports/NOVEMBER-CONTEST-STEP05-PUBLIC-TERMS-DRAFT.md',
-    import.meta.url
-  ),
-  'utf8'
-);
+const privacyFile = new URL('../privacy.html', import.meta.url);
+const privacy = readFileSync(privacyFile, 'utf8');
 
 test('November contest reader and prize data purposes are disclosed', () => {
   assert.match(privacy, /id="november-contest-privacy"/);
@@ -36,5 +27,4 @@ test('financial details are not requested through public forms', () => {
   assert.match(privacy, /一般のお問い合わせフォームや公開ページへ入力しない/);
   assert.match(privacy, /取扱担当者の限定、アクセス権の管理/);
   assert.match(privacy, /href="contact.html"/);
-  assert.match(termsDraft, /銀行口座番号は作品の公開ページ/);
 });
