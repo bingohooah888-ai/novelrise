@@ -381,7 +381,7 @@ do $$
 declare v_count integer;
 begin
   select count(*) into v_count from public.novelight_contest_entries;
-  if v_count <> 1 then
+  if v_count <> 4 then
     raise exception 'Unexpected entry mutation while pausing';
   end if;
 end
