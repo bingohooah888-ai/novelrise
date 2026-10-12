@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { URL } from 'node:url';
+import { isContestVisible } from '../api/contest-page.js';
 
 function source(path) {
   return readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -10,7 +11,7 @@ function source(path) {
 const sql = source(
   '../supabase/migrations/20261012112000_november_contest_public_catalog.sql'
 );
-const page = source('../contest.html');
+const page = source('../api/_lib/contest-template.js');
 const js = source('../novelight-contest-page.js');
 const css = source('../novelight-contest.css');
 
@@ -77,4 +78,33 @@ test('entry page supports guest browsing, login and small screens', () => {
   assert.match(css, /max-width:820px/);
   assert.match(css, /max-width:560px/);
   assert.match(css, /prefers-reduced-motion/);
+});
+
+test('contest page is delivered only through the server publication gate', () => {
+  assert.equal(existsSync(new URL('../contest.html', import.meta.url)), false);
+  const vercel = JSON.parse(source('../vercel.json'));
+  for (const route of ['/contest.html', '/contest']) {
+    assert.ok(vercel.rewrites.some((item) =>
+      item.source === route && item.destination === '/api/contest-page'));
+  }
+  const serverPage = source('../api/contest-page.js');
+  assert.match(serverPage, /public_visible/);
+  assert.match(serverPage, /notFound\(res\)/);
+  assert.match(serverPage, /status\(404\)/);
+  assert.match(sql, /v_contest\.public_visible is not true/);
+});
+
+test('server page remains inaccessible until publication and valid lifecycle', () => {
+  assert.equal(isContestVisible(null), false);
+  assert.equal(isContestVisible({ status: 'draft', public_visible: false }), false);
+  assert.equal(
+    isContestVisible({ status: 'registration', public_visible: false }),
+    false
+  );
+  assert.equal(
+    isContestVisible({ status: 'registration', public_visible: true }),
+    true
+  );
+  assert.equal(isContestVisible({ status: 'active', public_visible: true }), true);
+  assert.equal(isContestVisible({ status: 'cancelled', public_visible: true }), false);
 });

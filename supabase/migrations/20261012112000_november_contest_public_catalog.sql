@@ -51,7 +51,16 @@ begin
     );
   end if;
 
-  if v_contest.status in ('registration','active','review','finalized') then
+  -- A valid status alone must never make entries public.
+  if v_contest.public_visible is not true
+     or v_contest.status not in ('registration','active','review','finalized') then
+    return pg_catalog.jsonb_build_object(
+      'ok', false, 'reason', 'contest_unavailable'
+    );
+  end if;
+
+  if v_contest.public_visible is true
+     and v_contest.status in ('registration','active','review','finalized') then
     select pg_catalog.count(*)::bigint into v_total
     from public.novelight_contest_entries e
     join public.novels n on n.id = e.novel_id

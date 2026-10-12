@@ -92,6 +92,10 @@ test('home banner advertises enrollment only after opening', async () => {
 
 test('registration runbook does not allow premature launch', () => {
   assert.match(runbook, /本番承認/);
+  assert.match(runbook, /受付開始承認/);
+  assert.match(runbook, /public_visible=false/);
+  assert.match(runbook, /public_visible = true/);
+  assert.match(runbook, /rootに静的/);
   assert.match(runbook, /未承認／未実施/);
   assert.match(runbook, /draft/);
   assert.match(runbook, /⑤の「受付開始」完了/);

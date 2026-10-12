@@ -2,10 +2,19 @@
 
 **状態：実施準備のみ。受付開始・本番デプロイ・Production DB mutation は未承認／未実施。**
 
+## 3段階の独立した承認（決定済み）
+
+1. **本番承認：コードとDBの安全な本番反映のみ。** `novelight_contests.status='draft'`、`public_visible=false`を維持する。公開ページはルート直叩きでも404、作品応募RPCは拒否、ホームバナーは非表示。これだけではエントリー受付は始まらない。
+2. **受付開始承認：別の明示的な承認。** 必要な規約・技術検証後、同一トランザクションで`status='registration', public_visible=true`をセット。これで初めて特設ページ／告知が一般に見え、応募も可能になる。
+3. **11月1日開幕：読書ポイント計測を開始。** ⑥読書ポイント・⑦不正対策・⑧ランキング等を本番で検証し、開幕操作を別途承認する。②〜⑤だけを本番反映してもポイントは加算されない。時刻到来を根拠に仮の集計を有効化しない。
+
+**本番承認＝受付開始承認ではない。二つの承認を絶対に自動連結しない。**
+特設ページの公開防御はブラウザCSS・リンク非表示ではなく、Vercelサーバー関数 `/api/contest-page` とDB `public_visible` の両方で判定する。`/contest.html` と `/contest` を同じ関数へrewriteし、rootに静的 `contest.html` を配置しない。DB未接続・設定欠落・認可失敗は404で非公開とする。
+
 ## Source of truth / implementation order
 
 1. Issue [#2120](https://github.com/bingohooah888-ai/novelrise/issues/2120) の12工程を確認する。
-2. ②DB基盤 PR #2121 → ③作者エントリー PR #2124 → ④コンテスト特設ページ PR #2126 の順で検証・承認・リリースする。①〜④に差戻しがあれば先に修正する。
+2. ②DB基盤 PR #2121 → ③作者エントリー PR #2124 → ④コンテスト特設ページ PR #2126 の順で検証・承認・リリースする。**いずれもpublic_visible=falseの状態で安全に展開し、一般公開はしない。**①〜④に差戻しがあれば先に修正する。
 3. ⑤はエントリー受付開始と告知のみ。⑥読書ポイント、⑦不正対策、⑧ランキング、⑨管理画面、⑩総合テストを勝手に先行実装しない。
 4. `main`・MASTER・Production revision・pending migrations・PR head SHA は**実行直前**に読み直す。古いSHAで承認・実行しない。
 5. mainへのmergeがProduction deploymentを起動する場合、**mergeの直前に明示的な「本番承認」**が必要。Staging / Preview費用は別途「ステージング承認」が必要。
@@ -43,7 +52,9 @@
 - [ ] Nodeテスト、Formatting、Lint、RLS integration、rollback、CodeQL、署名付き承認ゲートを確認。GitHub CIが未実施なら「成功」と書かない。
 - [ ] データベースのowner-only RPCで、本人の10話以上作品のみ応募可能。他者作品や9話の作品は不可能。
 - [ ] 同時アクセス／連打で1作者1作品の一意制約が破れない。
-- [ ] 状態 `draft` 時は応募不可。受付開始操作はサービス権限だけで実施。
+- [ ] 状態 `draft` か `public_visible=false` 時は応募不可。受付開始操作はサービス権限だけで実施。
+- [ ] 直接URL `/contest.html`、`/contest`、`/api/contest-page` のすべてが非公開状態で404を返す。rootに静的HTMLなし。
+- [ ] 未公開状態の匿名RPCは参加作品を一件も返さない。ホームバナーも表示しない。
 - [ ] 受付前は公開作品一覧が空、受付後は公開作品かつ10話以上の参加作品だけ表示。
 - [ ] 登録が行われても `novels.pv`、SCOUT、LIGHT SEED、既存Rankは変わらない。
 - [ ] 未ログインで作品を読める。作者専用操作はログイン必須。閲覧年齢区分を守る。
@@ -64,7 +75,7 @@
 
 READ ONLY:
 ```sql
-select contest_key, status, entry_deadline_at, starts_at, ends_at
+select contest_key, status, public_visible, entry_deadline_at, starts_at, ends_at
 from public.novelight_contests
 where contest_key = 'novelight-november-2026';
 ```
@@ -80,9 +91,11 @@ declare
   v_updated integer;
 begin
   update public.novelight_contests
-     set status = 'registration', updated_at = pg_catalog.clock_timestamp()
+     set status = 'registration', public_visible = true,
+         updated_at = pg_catalog.clock_timestamp()
    where contest_key = 'novelight-november-2026'
      and status = 'draft'
+     and public_visible = false
      and pg_catalog.clock_timestamp() < entry_deadline_at;
   get diagnostics v_updated = row_count;
   if v_updated <> 1 then
@@ -93,11 +106,11 @@ $$;
 commit;
 ```
 
-操作後にread-onlyで `status='registration'` を確認し、作者の**同意済みテストアカウント**で実応募・取消の疎通を確認。投稿者の通常作品を勝手に変更しない。公開済みキャンペーンページからの2入口、応募後の更新、ゲスト側の公開作品一覧をチェックする。
+操作後にread-onlyで `status='registration' AND public_visible=true` を確認し、作者の**同意済みテストアカウント**で実応募・取消の疎通を確認。投稿者の通常作品を勝手に変更しない。公開済みキャンペーンページからの2入口、応募後の更新、ゲスト側の公開作品一覧をチェックする。
 
 ## 障害発生時
 
-- 作品公開や通常PVを止めずにコンテストのみ停止させる。必要な場合は運営判断と承認によりコンテストを `draft` または `cancelled` 状態へ変更する。進行中応募を消さず、監査証跡を保持する。
+- 作品公開や通常PVを止めずにコンテストのみ停止させる。必要な場合は運営判断と承認により**同一トランザクションで** `status='draft'` または `status='cancelled'` と `public_visible=false` を設定する。進行中応募を消さず、監査証跡を保持する。
 - 異常応募の行を一律削除しない。読者のCookie、本人確認情報等の個人データは適正な保護と最小限の取得を行う。
 - 既存サイトのAuth/RLSと通常読書を最優先に復旧する。
 - 受付停止・再開、延期、規約変更は運営が告知してから実施。

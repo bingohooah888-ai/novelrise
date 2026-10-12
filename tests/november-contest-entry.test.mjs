@@ -102,3 +102,8 @@ test('entry does not mutate PV or general ranking', () => {
     /\bgrant\s+all\s+on\s+public\.novelight_contest_entries\s+to\s+authenticated/i;
   assert.doesNotMatch(sql, forbiddenGrant);
 });
+
+test('entry functions deny undeclared public launch even if code is deployed', () => {
+  assert.match(sql, /v_contest\.public_visible is not true/);
+  assert.match(sql, /v_contest\.public_visible is true/);
+});
