@@ -40,11 +40,13 @@ function simulate(
   const document = { getElementById: (id) => nodes.get(id) ?? null };
   const client = {
     rpc: async () => ({
-      data: error ? null : {
-        ok: true,
-        contest_status: status,
-        entry_deadline_at: entryDeadline
-      },
+      data: error
+        ? null
+        : {
+            ok: true,
+            contest_status: status,
+            entry_deadline_at: entryDeadline
+          },
       error
     })
   };
@@ -80,7 +82,10 @@ test('home banner advertises enrollment only after opening', async () => {
     (await simulate('registration', null, '2020-10-31T14:59:59Z')).area.hidden,
     true
   );
-  assert.equal((await simulate('registration', null, 'invalid')).area.hidden, true);
+  assert.equal(
+    (await simulate('registration', null, 'invalid')).area.hidden,
+    true
+  );
   const active = await simulate('active');
   assert.equal(active.area.hidden, false);
   assert.equal(active.link.textContent, '参加作品を読む →');
