@@ -267,6 +267,11 @@ end
 $$;
 reset role;
 
+-- The earlier authenticated RPC fixture set request.jwt.claim.sub via a
+-- transaction-local GUC. Clear it before inserting test works for other owners.
+-- Otherwise pre-existing ownership guards correctly reject these fixtures.
+select set_config('request.jwt.claim.sub', '', true);
+
 -- General-zone listing protection; direct SQL inserts are isolated fixtures,
 -- not an implementation of the author entry workflow or an eligibility ruling.
 insert into auth.users (id, raw_user_meta_data) values
