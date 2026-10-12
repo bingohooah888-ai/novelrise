@@ -4,8 +4,10 @@ import { getSupabase, methodAllowed, sendHtml } from './seo/public-page.js';
 const KEY = 'novelight-november-2026';
 
 export function isContestVisible(record) {
-  return record?.public_visible === true &&
-    ['registration', 'active', 'review', 'finalized'].includes(record.status);
+  return (
+    record?.public_visible === true &&
+    ['registration', 'active', 'review', 'finalized'].includes(record.status)
+  );
 }
 
 function notFound(res) {

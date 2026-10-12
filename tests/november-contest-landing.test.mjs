@@ -84,8 +84,12 @@ test('contest page is delivered only through the server publication gate', () =>
   assert.equal(existsSync(new URL('../contest.html', import.meta.url)), false);
   const vercel = JSON.parse(source('../vercel.json'));
   for (const route of ['/contest.html', '/contest']) {
-    assert.ok(vercel.rewrites.some((item) =>
-      item.source === route && item.destination === '/api/contest-page'));
+    assert.ok(
+      vercel.rewrites.some(
+        (item) =>
+          item.source === route && item.destination === '/api/contest-page'
+      )
+    );
   }
   const serverPage = source('../api/contest-page.js');
   assert.match(serverPage, /public_visible/);
@@ -94,7 +98,7 @@ test('contest page is delivered only through the server publication gate', () =>
   assert.match(sql, /v_contest\.public_visible is not true/);
 });
 
-test('server page remains inaccessible until publication and valid lifecycle', () => {
+test('server page denies unpublished or invalid states', () => {
   assert.equal(isContestVisible(null), false);
   assert.equal(isContestVisible({ status: 'draft', public_visible: false }), false);
   assert.equal(
@@ -106,5 +110,8 @@ test('server page remains inaccessible until publication and valid lifecycle', (
     true
   );
   assert.equal(isContestVisible({ status: 'active', public_visible: true }), true);
-  assert.equal(isContestVisible({ status: 'cancelled', public_visible: true }), false);
+  assert.equal(
+    isContestVisible({ status: 'cancelled', public_visible: true }),
+    false
+  );
 });
