@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { URL } from 'node:url';
+import { isContestVisible } from '../api/contest-page.js';
 
 function source(path) {
   return readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -91,4 +92,13 @@ test('contest page is delivered only through the server publication gate', () =>
   assert.match(serverPage, /notFound\(res\)/);
   assert.match(serverPage, /status\(404\)/);
   assert.match(sql, /v_contest\.public_visible is not true/);
+});
+
+test('server page remains inaccessible until publication and valid lifecycle', () => {
+  assert.equal(isContestVisible(null), false);
+  assert.equal(isContestVisible({ status: 'draft', public_visible: false }), false);
+  assert.equal(isContestVisible({ status: 'registration', public_visible: false }), false);
+  assert.equal(isContestVisible({ status: 'registration', public_visible: true }), true);
+  assert.equal(isContestVisible({ status: 'active', public_visible: true }), true);
+  assert.equal(isContestVisible({ status: 'cancelled', public_visible: true }), false);
 });
