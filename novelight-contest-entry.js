@@ -16,6 +16,7 @@
         String(result?.published_episodes ?? '—') +
         '話）。',
       not_owned_published_work: '本人の公開作品のみエントリーできます。',
+      ineligible_work_category: '全年齢・R15の人間執筆またはAI補助作品のみ応募できます。',
       invalid_work: '有効な作品を選択してください。',
       entry_locked: '運営の確認が必要なため変更できません。',
       invalid_action: '操作を確認できませんでした。',
@@ -93,8 +94,10 @@
     } else if (!work.eligible) {
       label = work.status !== 'published'
         ? '公開作品のみ応募可'
-        : '公開10話以上で応募可（現在' +
-          String(work.published_episodes) + '話）';
+        : Number(work.published_episodes) < Number(context.minimum_published_episodes)
+          ? '公開10話以上で応募可（現在' +
+            String(work.published_episodes) + '話）'
+          : '応募対象外の作品区分';
     } else if (!termsReady) {
       label = '応募要項の確認待ち';
     } else {

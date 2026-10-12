@@ -313,6 +313,96 @@ end
 $$;
 reset role;
 
+-- Entry eligibility rejects owner work that moves into a restricted zone,
+-- even if the same author already enrolled the work. The fixture is rolled
+-- back as part of the containing transaction; no Production data is changed.
+update public.novels
+set content_rating = 'adult_18_nonsexual',
+    content_warnings = array['gore']::text[]
+where title = 'CONTEST_CI_ELIGIBLE_A';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub', 'caf00000-0000-4000-8000-000000000001', true
+);
+do $category_r18$
+declare
+  v_work bigint;
+  v_result jsonb;
+begin
+  select id into v_work from public.novels
+   where title = 'CONTEST_CI_ELIGIBLE_A';
+  select public.novelight_contest_entry_action_v2(
+    'enter', v_work, 'novelight-november-2026', 'ci-contest-v1'
+  ) into v_result;
+  if v_result->>'reason' <> 'ineligible_work_category' then
+    raise exception 'Owner R18 work bypassed entry-category gate: %', v_result;
+  end if;
+end
+$category_r18$;
+reset role;
+
+update public.novels
+set content_rating = 'general',
+    content_warnings = array[]::text[],
+    ai_usage = 'ai_generated'
+where title = 'CONTEST_CI_ELIGIBLE_A';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub', 'caf00000-0000-4000-8000-000000000001', true
+);
+do $category_ai$
+declare
+  v_work bigint;
+  v_result jsonb;
+begin
+  select id into v_work from public.novels
+   where title = 'CONTEST_CI_ELIGIBLE_A';
+  select public.novelight_contest_entry_action_v2(
+    'enter', v_work, 'novelight-november-2026', 'ci-contest-v1'
+  ) into v_result;
+  if v_result->>'reason' <> 'ineligible_work_category' then
+    raise exception 'Owner AI-generated work bypassed eligibility: %', v_result;
+  end if;
+end
+$category_ai$;
+reset role;
+
+update public.novels
+set content_rating = 'sensitive_15',
+    content_warnings = array['violence']::text[],
+    ai_usage = 'ai_assisted'
+where title = 'CONTEST_CI_ELIGIBLE_A';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub', 'caf00000-0000-4000-8000-000000000001', true
+);
+do $category_r15$
+declare
+  v_work bigint;
+  v_result jsonb;
+begin
+  select id into v_work from public.novels
+   where title = 'CONTEST_CI_ELIGIBLE_A';
+  select public.novelight_contest_entry_action_v2(
+    'enter', v_work, 'novelight-november-2026', 'ci-contest-v1'
+  ) into v_result;
+  if v_result->>'state' <> 'already_entered' then
+    raise exception 'R15 AI-assisted author work incorrectly excluded: %',
+      v_result;
+  end if;
+end
+$category_r15$;
+reset role;
+
+update public.novels
+set content_rating = 'general',
+    content_warnings = array[]::text[],
+    ai_usage = 'human'
+where title = 'CONTEST_CI_ELIGIBLE_A';
+
 -- The earlier authenticated RPC fixture set request.jwt.claim.sub via a
 -- transaction-local GUC. Clear it before inserting test works for other owners.
 -- Otherwise pre-existing ownership guards correctly reject these fixtures.
