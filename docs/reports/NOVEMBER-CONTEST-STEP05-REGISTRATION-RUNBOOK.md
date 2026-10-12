@@ -111,10 +111,12 @@ begin
      set status = 'registration', public_visible = true,
          updated_at = pg_catalog.clock_timestamp()
    where contest_key = 'novelight-november-2026'
-     and terms_version <> ''
-     and terms_url ~ '^https://novelight[.]jp/[^[:space:]]+
+     and status = 'draft'
+     and pg_catalog.length(pg_catalog.btrim(terms_version)) between 1 and 64
+     and terms_url ~ '^https://novelight[.]jp/[^[:space:]]+$'
      and public_visible = false
-     and pg_catalog.clock_timestamp() < entry_deadline_at;
+     and pg_catalog.clock_timestamp() < entry_deadline_at
+     and pg_catalog.clock_timestamp() < starts_at;
   get diagnostics v_updated = row_count;
   if v_updated <> 1 then
     raise exception 'CONTEST_REGISTRATION_OPEN_BLOCKED';
