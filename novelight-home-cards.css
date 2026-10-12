@@ -30,6 +30,7 @@ html body.novelight-page-index.novelight-public-dark .shelf-card .card-copy {
 html body.novelight-page-index.novelight-public-dark .shelf-card .novel-title {
   order: 1;
   display: -webkit-box;
+  min-height: 2.9em;
   overflow: hidden;
   margin: 0;
   color: var(--public-text);
@@ -51,15 +52,42 @@ html body.novelight-page-index.novelight-public-dark .shelf-card .novel-author {
   white-space: nowrap;
 }
 
+/* Missing author names still reserve the same single-line slot. */
+html body.novelight-page-index.novelight-public-dark .shelf-card .novel-author {
+  min-height: 1.45em;
+}
+
+html body.novelight-page-index.novelight-public-dark .shelf-card .novel-author:empty {
+  display: block;
+}
+
 html body.novelight-page-index.novelight-public-dark .shelf-card .genre {
   order: 3;
   align-self: flex-start;
   margin-top: auto;
+  max-width: 100%;
   padding-top: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--public-gold-light);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.02em;
+}
+
+/* R15 sits in the bottom-right corner, outside title/author/genre flow. */
+html body.novelight-page-index.novelight-public-dark .shelf-card .card-copy > .nl-r15-badge {
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  z-index: 5;
+  margin: 0;
+  padding: 3px 6px;
+}
+
+html body.novelight-page-index.novelight-public-dark .shelf-card.nl-r15-card .genre {
+  max-width: calc(100% - 46px);
 }
 
 @media (max-width: 640px) {

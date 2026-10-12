@@ -31,6 +31,15 @@
     badge.className = 'nl-r15-badge';
     badge.textContent = 'R15';
     badge.setAttribute('aria-label', '15歳以上向け・内容注意あり');
+    // On book-style shelves the R15 marker belongs to the card footer, not the label flow.
+    const shelfCopy = anchor.classList.contains('shelf-card')
+      ? anchor.querySelector('.card-copy')
+      : null;
+    if (shelfCopy) {
+      anchor.classList.add('nl-r15-card');
+      shelfCopy.append(badge);
+      return;
+    }
     (anchor.querySelector('.badges, .card-copy, .search-card-copy, .zone-copy, .copy') || anchor).prepend(badge);
   }
   function apply(anchor, rating) {
@@ -107,7 +116,7 @@
     label.append(input, document.createTextNode('R15作品を表示しない'));
     const note = document.createElement('small');
     note.id = 'nl-r15-status';
-    note.textContent = 'この端末の作品一覧に適用されます。';
+    note.textContent = 'チェックすると、この端末の作品一覧からR15作品が非表示になります。';
     wrap.append(label, note);
     after.insertAdjacentElement('afterend', wrap);
   }
@@ -120,10 +129,10 @@
     const style = document.createElement('style');
     style.textContent =
       '.nl-r15-badge{display:inline-flex;align-items:center;width:max-content;margin:0 6px 4px 0;padding:3px 8px;border-radius:6px;background:#fff0ce;color:#764e0b;font-size:11px;font-weight:800}' +
-      '.nl-r15-filter-wrap{margin:12px 0 18px;font-size:13px;color:inherit}' +
+      '.nl-r15-filter-wrap{margin:12px 0 18px;font-size:15px;color:#4b301e}' +
       '.nl-r15-filter{display:inline-flex;align-items:center;gap:8px;font-weight:750;cursor:pointer}' +
       '.nl-r15-filter input{width:auto;min-width:16px;height:16px;accent-color:#a17427}' +
-      '.nl-r15-filter-wrap small{display:block;margin-top:3px;opacity:.75}' +
+      '.nl-r15-filter-wrap small{display:block;margin-top:3px;font-size:13px;line-height:1.5;font-weight:600;color:#604731;opacity:1}' +
       'a[href*="novel.html?id="][hidden]{display:none!important}';
     document.head.appendChild(style);
     mountControl();

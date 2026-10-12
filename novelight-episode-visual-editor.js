@@ -56,7 +56,7 @@
     const style = document.createElement('style');
     style.id = 'novelightEpisodeVisualEditorStyle';
     style.textContent = `
-      #content.nl-visual-source{position:absolute!important;left:-100000px!important;top:auto!important;width:1px!important;height:1px!important;min-height:1px!important;opacity:0!important;pointer-events:none!important;resize:none!important}
+      #content.nl-visual-source{display:none!important}
       .nl-visual-body-editor{width:100%;height:68vh;min-height:560px;padding:22px 4px;border:0;background:transparent;outline:none;overflow:auto;white-space:normal;word-break:break-word;line-height:2;font-size:17px;color:#26231f;caret-color:#26231f}
       .nl-visual-body-editor:empty:before{content:'本文を入力';color:#aaa49b;pointer-events:none}
       .nl-visual-line{min-height:2em;white-space:pre-wrap}
@@ -112,7 +112,7 @@
       figure.remove();
       if (!editor.children.length) editor.appendChild(lineNode(''));
       syncToTextarea(true);
-      editor.focus();
+      editor.focus({ preventScroll: true });
     });
     tools.appendChild(remove);
     figure.appendChild(tools);
@@ -258,9 +258,11 @@
   async function refreshFromTextarea() {
     if (!active || refreshing) return;
     refreshing = true;
+    const scrollTop = editor.scrollTop;
     try {
       await loadAssets();
       renderSource(textarea.value);
+      editor.scrollTop = scrollTop;
     } catch (error) {
       console.error('episode visual illustration refresh failed', error);
     } finally {

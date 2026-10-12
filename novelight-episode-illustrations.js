@@ -237,6 +237,9 @@
   }
 
   function insertMarker(textarea, marker) {
+    const visualEditor = window.NovelightEpisodeVisualEditor;
+    const visualActive = visualEditor?.isActive?.() === true;
+    if (visualActive) visualEditor.sync();
     const start = Number.isInteger(textarea.selectionStart)
       ? textarea.selectionStart
       : textarea.value.length;
@@ -253,7 +256,7 @@
     textarea.selectionStart = cursor;
     textarea.selectionEnd = cursor;
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    textarea.focus();
+    if (!visualActive) textarea.focus({ preventScroll: true });
   }
 
   function isMarkerUsed(content, marker) {
