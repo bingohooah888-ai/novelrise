@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
   "git": {
     "deploymentEnabled": {
       "**": false,
@@ -18,14 +19,7 @@
     }
   },
   "images": {
-    "sizes": [
-      128,
-      256,
-      384,
-      640,
-      1080,
-      1600
-    ],
+    "sizes": [128, 256, 384, 640, 1080, 1600],
     "localPatterns": [
       {
         "pathname": "/assets/**",
@@ -41,16 +35,8 @@
       }
     ],
     "minimumCacheTTL": 2678400,
-    "qualities": [
-      70,
-      75,
-      80,
-      85
-    ],
-    "formats": [
-      "image/avif",
-      "image/webp"
-    ]
+    "qualities": [70, 75, 80, 85],
+    "formats": ["image/avif", "image/webp"]
   },
   "redirects": [
     {
@@ -386,6 +372,5 @@
         }
       ]
     }
-  ],
-  "ignoreCommand": "node scripts/vercel-ignore-build.mjs"
+  ]
 }

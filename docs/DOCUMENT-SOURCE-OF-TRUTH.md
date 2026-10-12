@@ -67,6 +67,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/PRIVACY-REQUEST-RUNBOOK.md","status":"CURRENT","role":"privacy-request-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRODUCTION-BILLING-INCIDENT-RUNBOOK.md","status":"CURRENT","role":"production-billing-incident-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRODUCTION-CHAT-DISPATCH.md","status":"CURRENT","role":"production-chat-dispatch","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/PRODUCTION-DEPLOY-COST-POLICY.md","status":"CURRENT","role":"production-deploy-cost-policy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/SCOUT-BADGE-ARTWORK-QUALITY-POLICY.md","status":"CURRENT","role":"scout-badge-artwork-quality-policy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/SECURITY-INCIDENT-RESPONSE.md","status":"CURRENT","role":"security-incident-response","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/STAGING-MIGRATION-SYNC.md","status":"CURRENT","role":"staging-migration-sync","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},

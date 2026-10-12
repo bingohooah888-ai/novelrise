@@ -10,30 +10,28 @@ import {
   shouldIgnoreProductionBuild
 } from '../scripts/vercel-ignore-build.mjs';
 
-const production = (changedPaths, overrides = {}) => ({
-  environment: 'production',
-  ref: 'main',
-  changedPaths,
-  ...overrides
-});
+const shouldSkip = (changedPaths, overrides = {}) =>
+  shouldIgnoreProductionBuild({
+    environment: 'production',
+    ref: 'main',
+    changedPaths,
+    ...overrides
+  });
 
-test('Vercel configuration retains main-only deploys and uses the guard', () => {
-  const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
+test('Vercel retains main-only deployments and uses the guard', () => {
+  const configPath = new URL('../vercel.json', import.meta.url);
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
   assert.deepEqual(config.git.deploymentEnabled, { '**': false, main: true });
   assert.equal(config.ignoreCommand, 'node scripts/vercel-ignore-build.mjs');
 });
 
 test('documentation, workflow and test-only commits skip Production build', () => {
-  assert.equal(
-    shouldIgnoreProductionBuild(
-      production(['README.md', 'docs/release-notes.md', '.github/workflows/ci.yml', 'tests/health.test.mjs'])
-    ),
-    true
-  );
-  assert.equal(shouldIgnoreProductionBuild(production(['AGENTS.md'])), true);
+  assert.equal(shouldSkip(['README.md', 'docs/release-notes.md']), true);
+  assert.equal(shouldSkip(['.github/workflows/ci.yml', 'tests/health.test.mjs']), true);
+  assert.equal(shouldSkip(['AGENTS.md']), true);
 });
 
-test('application code, deployment configuration, dependencies and assets must build', () => {
+test('application, config, dependencies and assets must build', () => {
   for (const file of [
     'index.html',
     'novelight-client.js',
@@ -44,27 +42,29 @@ test('application code, deployment configuration, dependencies and assets must b
     'supabase/migrations/20261012000000_change.sql',
     'assets/cover.png'
   ]) {
-    assert.equal(shouldIgnoreProductionBuild(production([file])), false, file);
+    assert.equal(shouldSkip([file]), false, file);
   }
 });
 
-test('mixed commits always build, even if most changed paths are documentation', () => {
-  assert.equal(shouldIgnoreProductionBuild(production(['docs/guide.md', 'api/index.js'])), false);
+test('mixed commits always build', () => {
+  assert.equal(shouldSkip(['docs/guide.md', 'api/index.js']), false);
 });
 
-test('Preview, non-main and missing environment do not skip builds', () => {
-  assert.equal(shouldIgnoreProductionBuild(production(['README.md'], { environment: 'preview' })), false);
-  assert.equal(shouldIgnoreProductionBuild(production(['README.md'], { environment: undefined })), false);
-  assert.equal(shouldIgnoreProductionBuild(production(['README.md'], { ref: 'feat/test' })), false);
+test('Preview, non-main and missing environment never skip builds', () => {
+  assert.equal(shouldSkip(['README.md'], { environment: 'preview' }), false);
+  assert.equal(shouldSkip(['README.md'], { environment: undefined }), false);
+  assert.equal(shouldSkip(['README.md'], { ref: 'feat/test' }), false);
 });
 
-test('missing or malformed git diff is build-first (fail-open)', () => {
-  for (const paths of [[], undefined, null, [''], ['docs/../api/foo.js'], ['docs\\bad.md']]) {
-    assert.equal(shouldIgnoreProductionBuild(production(paths)), false);
+test('missing or malformed git diff is build-first', () => {
+  const badDiffs = [[], undefined, null, [''], ['docs/../api/foo.js']];
+  for (const changedPaths of badDiffs) {
+    assert.equal(shouldSkip(changedPaths), false);
   }
+  assert.equal(shouldSkip(['docs\\bad.md']), false);
 });
 
-test('diff reader handles real commits and git parent errors', () => {
+test('diff reader handles real commits and missing-parent errors', () => {
   const dir = mkdtempSync(join(tmpdir(), 'novelight-build-guard-'));
   const git = (...args) =>
     execFileSync('git', args, {
@@ -78,6 +78,7 @@ test('diff reader handles real commits and git parent errors', () => {
         GIT_COMMITTER_EMAIL: 'test@example.invalid'
       }
     });
+
   git('init', '-q', '-b', 'main');
   writeFileSync(join(dir, 'README.md'), 'one\n');
   git('add', '.');
@@ -87,5 +88,5 @@ test('diff reader handles real commits and git parent errors', () => {
   git('add', '.');
   git('commit', '-qm', 'docs update');
   assert.deepEqual(readChangedPaths({ cwd: dir }), ['README.md']);
-  assert.equal(shouldIgnoreProductionBuild(production(readChangedPaths({ cwd: dir }))), true);
+  assert.equal(shouldSkip(readChangedPaths({ cwd: dir })), true);
 });
