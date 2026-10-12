@@ -276,7 +276,7 @@ test('SPECIAL LIGHT matches Home while zone headers keep their standard scale', 
       `${viewport.name}: special-light.html header must match Home exactly`
     ).toEqual(baseline);
 
-    for (const zone of ['ai', 'r15', 'r18']) {
+    for (const zone of ['ai', 'r18']) {
       const zoneResponse = await page.goto(`/special-zone.html?zone=${zone}`, {
         waitUntil: 'domcontentloaded'
       });
@@ -302,6 +302,9 @@ test('SPECIAL LIGHT matches Home while zone headers keep their standard scale', 
         ).toEqual(baseline);
       }
     }
+
+    await page.goto('/special-zone.html?zone=r15', { waitUntil: 'load' });
+    await expect(page).toHaveURL(/\/search\.html$/u);
 
     await context.close();
   }
