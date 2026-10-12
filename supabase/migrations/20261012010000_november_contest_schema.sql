@@ -303,7 +303,7 @@ insert into public.novelight_contests (
   'novelight-november-2026',
   '第1回 NOVELIGHT コンテスト',
   'draft',
-  '2026-10-31 14:59:59+00'::timestamptz,
+  '2026-10-31 14:59:59.999999+00'::timestamptz,
   '2026-10-31 15:00:00+00'::timestamptz,
   '2026-11-30 15:00:00+00'::timestamptz
 )
