@@ -21,12 +21,18 @@ test('an unapproved terms URL/version cannot activate registration', () => {
   assert.match(sql, /novelight_contest_registration_terms_required/);
   assert.match(sql, /status not in \('registration','active'\)/);
   assert.match(sql, /novelight\[.\]jp/);
-  assert.match(fixture, /Unconfigured official contest terms allowed activation/);
+  assert.match(
+    fixture,
+    /Unconfigured official contest terms allowed activation/
+  );
 });
 
-test('entry v2 records version and timestamp on new and replaced work', () => {
+test('entry v2 stores acceptance for new and replaced work', () => {
   assert.match(sql, /novelight_contest_entry_action_v2/);
-  assert.match(sql, /p_terms_version is distinct from v_contest.terms_version/);
+  assert.match(
+    sql,
+    /p_terms_version is distinct from v_contest.terms_version/
+  );
   assert.match(sql, /terms_accepted_version = v_contest.terms_version/);
   assert.match(sql, /terms_accepted_at = v_now/);
   assert.match(sql, /v_contest.terms_version, v_now/);
@@ -53,7 +59,10 @@ test('legacy clients cannot bypass terms acceptance', () => {
 test('entry client requires an unchecked-by-default consent checkbox', () => {
   assert.match(widget, /checkbox.type = 'checkbox'/);
   assert.match(widget, /checkbox.dataset.contestConsent/);
-  assert.match(widget, /const button = createButton\(label, 'enter', work.id, true\)/);
+  assert.match(
+    widget,
+    /const button = createButton\(label, 'enter', work.id, true\)/
+  );
   assert.match(widget, /button.disabled = !checkbox.checked/);
   assert.match(widget, /!checkbox\?\.checked/);
   assert.match(widget, /context.terms_version/);
