@@ -3,13 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 
-const sql = readFileSync(
-  new URL(
-    '../supabase/migrations/20261012133000_november_contest_catalog_zoning.sql',
-    import.meta.url
-  ),
-  'utf8'
-);
+const migrationPath =
+  '../supabase/migrations/20261012133000_november_contest_catalog_zoning.sql';
+const sql = readFileSync(new URL(migrationPath, import.meta.url), 'utf8');
 const js = readFileSync(
   new URL('../novelight-contest-page.js', import.meta.url),
   'utf8'
@@ -22,7 +18,10 @@ const template = readFileSync(
 test('public catalog rejects all nongeneral-zone works at the source', () => {
   assert.match(sql, /security definer/);
   assert.match(sql, /set search_path = ''/);
-  assert.match(sql, /n.content_rating in \('general','sensitive_15','mature'\)/);
+  assert.match(
+    sql,
+    /n.content_rating in \('general','sensitive_15','mature'\)/
+  );
   assert.match(sql, /n.ai_usage in \('human','ai_assisted'\)/);
   assert.match(sql, /p_include_r15/);
   assert.match(sql, /n.content_rating = 'general'/);
@@ -48,7 +47,7 @@ test('old catalog endpoint also delegates to general-zone filter', () => {
   );
   assert.match(
     sql,
-    /grant execute on function public.novelight_public_contest_catalog_filtered/
+    /grant execute on function\s+public.novelight_public_contest_catalog_filtered/
   );
 });
 
