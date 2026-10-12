@@ -31,6 +31,15 @@
     badge.className = 'nl-r15-badge';
     badge.textContent = 'R15';
     badge.setAttribute('aria-label', '15歳以上向け・内容注意あり');
+    // On book-style shelves the R15 marker belongs to the card footer, not the label flow.
+    const shelfCopy = anchor.classList.contains('shelf-card')
+      ? anchor.querySelector('.card-copy')
+      : null;
+    if (shelfCopy) {
+      anchor.classList.add('nl-r15-card');
+      shelfCopy.append(badge);
+      return;
+    }
     (anchor.querySelector('.badges, .card-copy, .search-card-copy, .zone-copy, .copy') || anchor).prepend(badge);
   }
   function apply(anchor, rating) {
