@@ -8,7 +8,7 @@ function source(path) {
 }
 
 const sql = source(
-  '../supabase/migrations/20261012030000_november_contest_public_catalog.sql'
+  '../supabase/migrations/20261012112000_november_contest_public_catalog.sql'
 );
 const page = source('../contest.html');
 const js = source('../novelight-contest-page.js');
