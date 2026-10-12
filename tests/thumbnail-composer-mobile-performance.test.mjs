@@ -15,7 +15,7 @@ function createRuntime() {
 
     set src(value) {
       imageLoads.push(value);
-      queueMicrotask(() => this.onload?.());
+      Promise.resolve().then(() => this.onload?.());
     }
   }
   const context = { window: {}, Image: FakeImage, console };
