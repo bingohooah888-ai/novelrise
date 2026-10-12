@@ -16,8 +16,10 @@ const css = readFileSync(
   'utf8'
 );
 const runbook = readFileSync(
-  new URL('../docs/reports/NOVEMBER-CONTEST-STEP05-REGISTRATION-RUNBOOK.md',
-    import.meta.url),
+  new URL(
+    '../docs/reports/NOVEMBER-CONTEST-STEP05-REGISTRATION-RUNBOOK.md',
+    import.meta.url
+  ),
   'utf8'
 );
 
@@ -68,8 +70,10 @@ test('home banner advertises enrollment only after opening', async () => {
   const active = await simulate('active');
   assert.equal(active.area.hidden, false);
   assert.equal(active.link.textContent, '参加作品を読む →');
-  assert.equal((await simulate('active', new Error('network down'))).area.hidden,
-    true);
+  assert.equal(
+    (await simulate('active', new Error('network down'))).area.hidden,
+    true
+  );
 });
 
 test('registration runbook does not allow premature launch', () => {
