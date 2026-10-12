@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { URL } from 'node:url';
 import { setImmediate } from 'node:timers';
 
@@ -96,4 +96,18 @@ test('registration runbook does not allow premature launch', () => {
   assert.match(runbook, /draft/);
   assert.match(runbook, /⑤の「受付開始」完了/);
   assert.match(runbook, /規約/);
+});
+
+test('all repository migration versions are distinct and ordered', () => {
+  const names = readdirSync(
+    new URL('../supabase/migrations/', import.meta.url)
+  ).filter((name) => /^\d{14}_.+\.sql$/.test(name));
+
+  const versions = names.map((name) => name.slice(0, 14));
+  assert.equal(new Set(versions).size, versions.length);
+
+  const contestVersions = versions.filter((version) =>
+    ['20261012110000', '20261012111000', '20261012112000'].includes(version)
+  );
+  assert.equal(contestVersions.length, 3);
 });
