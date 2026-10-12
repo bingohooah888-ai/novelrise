@@ -4,7 +4,10 @@ import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 
 const sql = readFileSync(
-  new URL('../supabase/migrations/20261012133000_november_contest_catalog_zoning.sql', import.meta.url),
+  new URL(
+    '../supabase/migrations/20261012133000_november_contest_catalog_zoning.sql',
+    import.meta.url
+  ),
   'utf8'
 );
 const js = readFileSync(
@@ -24,7 +27,10 @@ test('public catalog rejects all nongeneral-zone works at the source', () => {
   assert.match(sql, /p_include_r15/);
   assert.match(sql, /n.content_rating = 'general'/);
   assert.match(sql, /public_visible is not true/);
-  assert.match(sql, /status not in \('registration','active','review','finalized'\)/);
+  assert.match(
+    sql,
+    /status not in \('registration','active','review','finalized'\)/
+  );
   assert.match(sql, /limit p_limit offset p_offset/);
   assert.doesNotMatch(sql, /'guest_key_hash'/);
   assert.doesNotMatch(sql, /'reader_id'/);
@@ -136,7 +142,10 @@ async function simulate(initialPreference) {
 test('R15 hide preference filters before loading the first page', async () => {
   const hidden = await simulate('1');
   assert.equal(hidden.control.checked, true);
-  assert.equal(hidden.args[0].name, 'novelight_public_contest_catalog_filtered');
+  assert.equal(
+    hidden.args[0].name,
+    'novelight_public_contest_catalog_filtered'
+  );
   assert.equal(hidden.args[0].options.p_include_r15, false);
   const visible = await simulate('0');
   assert.equal(visible.control.checked, false);
