@@ -48,7 +48,7 @@ test('unique work and episode constraints are present', () => {
 test('November JST boundaries and prize tiers are locked', () => {
   assert.match(sql, /'2026-10-31 15:00:00\+00'/);
   assert.match(sql, /'2026-11-30 15:00:00\+00'/);
-  assert.match(sql, /'2026-10-31 14:59:59\+00'/);
+  assert.match(sql, /'2026-10-31 14:59:59\.999999\+00'/);
   assert.match(sql, /\{"3":1,"5":3,"10":5\}/);
   assert.match(sql, /points in \(0,1,3,5\)/);
   assert.match(sql, /qualified_episode_count between 3 and 4 and points = 1/);
@@ -59,7 +59,7 @@ test('November JST boundaries and prize tiers are locked', () => {
 });
 
 test('stage 02 stays in draft and does not alter ordinary PV', () => {
-  assert.match(sql, /'draft',\s*'2026-10-31 14:59:59\+00'/);
+  assert.match(sql, /'draft',\s*'2026-10-31 14:59:59\.999999\+00'/);
   assert.doesNotMatch(sql, /update\s+public\.novels/i);
   assert.doesNotMatch(sql, /update\s+public\.episodes/i);
   assert.doesNotMatch(sql, /create\s+or\s+replace\s+function/i);
