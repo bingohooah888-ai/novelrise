@@ -27,7 +27,10 @@ test('Vercel retains main-only deployments and uses the guard', () => {
 
 test('documentation, workflow and test-only commits skip Production build', () => {
   assert.equal(shouldSkip(['README.md', 'docs/release-notes.md']), true);
-  assert.equal(shouldSkip(['.github/workflows/ci.yml', 'tests/health.test.mjs']), true);
+  assert.equal(
+    shouldSkip(['.github/workflows/ci.yml', 'tests/health.test.mjs']),
+    true
+  );
   assert.equal(shouldSkip(['AGENTS.md']), true);
 });
 
