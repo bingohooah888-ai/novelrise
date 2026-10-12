@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 
 function source(path) {
@@ -10,7 +10,7 @@ function source(path) {
 const sql = source(
   '../supabase/migrations/20261012112000_november_contest_public_catalog.sql'
 );
-const page = source('../contest.html');
+const page = source('../api/_lib/contest-template.js');
 const js = source('../novelight-contest-page.js');
 const css = source('../novelight-contest.css');
 
@@ -80,6 +80,7 @@ test('entry page supports guest browsing, login and small screens', () => {
 });
 
 test('contest page is delivered only through the server publication gate', () => {
+  assert.equal(existsSync(new URL('../contest.html', import.meta.url)), false);
   const vercel = JSON.parse(source('../vercel.json'));
   for (const route of ['/contest.html', '/contest']) {
     assert.ok(vercel.rewrites.some((item) =>
