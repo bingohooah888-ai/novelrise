@@ -90,6 +90,55 @@
   function rowHasRating(rows, id) {
     return rows.some(row => String(row.novel_id ?? row.id ?? '') === id && typeof row.content_rating === 'string');
   }
+  // Keep each rating's exposure priority while avoiding a newly joined
+  // content-rating group taking every slot due to historical exposure gaps.
+  async function mixRecommendedRows(rows, sourceClient = client) {
+    if (!Array.isArray(rows) || rows.length < 2) return rows;
+
+    const ids = [...new Set(rows.map(row => String(row.novel_id ?? row.id ?? ''))
+      .filter(id => /^[0-9]+$/u.test(id) && !known.has(id)))];
+    for (let index = 0; index < ids.length; index += 50) {
+      const batch = ids.slice(index, index + 50);
+      const result = await sourceClient.rpc('novelight_search_card_metadata', {
+        p_novel_ids: batch
+      });
+      if (result.error || !Array.isArray(result.data)) {
+        console.error('R15 recommendation balance unavailable', result.error);
+        return rows;
+      }
+      const map = new Map(result.data.map(item => [String(item.novel_id), item.content_rating]));
+      batch.forEach(id => known.set(id, map.get(id) || null));
+    }
+
+    const r15 = [], other = [];
+    rows.forEach((row, position) => {
+      const rating = row.content_rating || known.get(String(row.novel_id ?? row.id ?? ''));
+      if (typeof rating !== 'string') return;
+      (rating === 'sensitive_15' || rating === 'mature' ? r15 : other)
+        .push({ row, position });
+    });
+    // Unknown metadata must not silently make works disappear or change order.
+    if (r15.length + other.length !== rows.length || !r15.length || !other.length) return rows;
+
+    const result = [];
+    let r15Index = 0, otherIndex = 0, shownR15 = 0;
+    while (r15Index < r15.length || otherIndex < other.length) {
+      const r15Allowed = r15Index < r15.length &&
+        (otherIndex >= other.length || shownR15 < Math.ceil((result.length + 1) / 3));
+      if (r15Allowed && (otherIndex >= other.length ||
+          r15[r15Index].position < other[otherIndex].position)) {
+        result.push(r15[r15Index++].row);
+        shownR15 += 1;
+      } else if (otherIndex < other.length) {
+        result.push(other[otherIndex++].row);
+      } else {
+        result.push(r15[r15Index++].row);
+        shownR15 += 1;
+      }
+    }
+    return result;
+  }
+
   function mountControl() {
     const page = location.pathname.split('/').pop();
     if (!CONTROL_PAGES.has(page)) return;
@@ -136,7 +185,7 @@
     });
     schedule();
   }
-  window.NovelightR15 = Object.freeze({ hiddenPreference: pref, filterRows });
+  window.NovelightR15 = Object.freeze({ hiddenPreference: pref, filterRows, mixRecommendedRows });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
 })();
