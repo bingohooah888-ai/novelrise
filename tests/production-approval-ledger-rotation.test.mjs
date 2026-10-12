@@ -14,9 +14,9 @@ async function read(path) {
   return readFile(path, 'utf8');
 }
 
-test('active shared Production approval routes are pinned to the v5 ledger', async () => {
-  assert.equal(activeIssue, 1433);
-  assert.deepEqual(legacyIssues, [165, 460, 657, 737]);
+test('active shared Production approval routes are pinned to the v6 ledger', async () => {
+  assert.equal(activeIssue, 2139);
+  assert.deepEqual(legacyIssues, [165, 460, 657, 737, 1433]);
   assert.equal(contract.maxComments, 100);
 
   for (const path of contract.activeSharedRoutes) {

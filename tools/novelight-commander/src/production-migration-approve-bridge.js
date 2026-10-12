@@ -3,8 +3,8 @@ import path from 'node:path';
 
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = 'novelrise';
-const CONTROL_ISSUE = 797;
-const LEDGER_ISSUE = 737;
+const CONTROL_ISSUE = 1837;
+const LEDGER_ISSUE = 2139;
 const CONTROL_TITLE = '[NOVELIGHT Commander] Local Bridge';
 const CONTROL_MARKER = 'NOVELIGHT_COMMANDER_CONTROL_V1';
 const REQUEST_PREFIX = 'NOVELIGHT_PRODUCTION_MIGRATION_APPROVE_REQUEST ';
