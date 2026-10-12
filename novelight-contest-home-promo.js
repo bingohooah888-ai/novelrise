@@ -23,7 +23,13 @@
       );
       if (error || !data?.ok) return false;
 
-      if (data.contest_status === 'registration') {
+      const deadline = Date.parse(data.entry_deadline_at || '');
+      const registrationOpen =
+        data.contest_status === 'registration' &&
+        Number.isFinite(deadline) &&
+        Date.now() <= deadline;
+
+      if (registrationOpen) {
         description.textContent =
           '公開10話以上の作品を1作者1作品エントリーできます。10月31日23:59締切。';
         link.textContent = 'エントリーする →';
