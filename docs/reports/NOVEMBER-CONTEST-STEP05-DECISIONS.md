@@ -3,9 +3,9 @@
 2026-10-12 / 対象: 2026年11月コンテスト、Issue #2120。これは運営意思決定の記録案。空欄を自動確定してはならない。
 
 ## 実証済み事項 — 再実装不要
-- 本番コード: PR #2135 / main \`76edd9083aecc68124c2299edb2a8d12b60ee450\` (当日確認。次回作業時はfreshに再照合)。
-- 本番 migration: \`20261012130000\`、\`20261012131000\`、\`20261012132000\` 適用済み。
-- 本番DB: \`status=draft\` / \`public_visible=false\`、応募0件。公開カタログが\`contest_unavailable\`。3種の公開URLはHTTP404。
+- 本番コード: PR #2135 / main `76edd9083aecc68124c2299edb2a8d12b60ee450` (当日確認。次回作業時はfreshに再照合)。
+- 本番 migration: `20261012130000`、`20261012131000`、`20261012132000` 適用済み。
+- 本番DB: `status=draft` / `public_visible=false`、応募0件。公開カタログが`contest_unavailable`。3種の公開URLはHTTP404。
 - **「本番承認」は既に②〜⑤基盤の非公開反映に使用済み。** 公開操作には別の明示的な「受付開始承認」が必要。
 - ⑥ポイント計測／⑦不正対策／⑧ランキングは未実装・未開始。受付と競技開始は別。
 
@@ -24,11 +24,11 @@
 | R9 | 賞金にかかる税務と外国送金 | **推奨: 入賞賞金1万円につき源泉徴収等の要否を税務確認してから公表** | 国税庁No.2792の「懸賞応募作品等の入選者賞金5万円以下の源泉徴収省略」規定を参照。自動適用と断言不可 |
 
 ## 受付開始の技術的な安全ロック
-- 一般公開URLはサーバーの\`public_visible\`判定で404にする。**ページのCSSを隠すだけにしない。**
-- 非公開DBの応募・一覧RPCはいずれも\`contest_unavailable\`。任意のクライアント書込みを許可しない。
+- 一般公開URLはサーバーの`public_visible`判定で404にする。**ページのCSSを隠すだけにしない。**
+- 非公開DBの応募・一覧RPCはいずれも`contest_unavailable`。任意のクライアント書込みを許可しない。
 - 未決裁R1〜R9と「募集規約の正式URL」および「R15/R18ゾーニング確認」がすべて済むまで、**受付開始承認を受けても安全性を満たさない場合には開かない**。
-- 公開操作は別の明示的「受付開始承認」の範囲で、独立したProduction approval flowに従い\`status='registration',public_visible=true\`を**原子的に**変更する。Vercelの非公開コード展開を繰り返さない。
-- 詳細は \`docs/reports/NOVEMBER-CONTEST-STEP05-REGISTRATION-RUNBOOK.md\`。公開後も11/1まで読書ポイントは開始しない。
+- 公開操作は別の明示的「受付開始承認」の範囲で、独立したProduction approval flowに従い`status='registration',public_visible=true`を**原子的に**変更する。Vercelの非公開コード展開を繰り返さない。
+- 詳細は `docs/reports/NOVEMBER-CONTEST-STEP05-REGISTRATION-RUNBOOK.md`。公開後も11/1まで読書ポイントは開始しない。
 
 ## 法務参照（運営用）
 - 消費者庁「景品類とは」、無料会員登録と有料サービスを含む企画の取引付随性: https://www.caa.go.jp/policies/policy/representation/fair_labeling/faq/premium/introduction
