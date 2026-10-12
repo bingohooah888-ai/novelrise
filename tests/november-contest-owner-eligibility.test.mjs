@@ -6,13 +6,19 @@ const migration = readFileSync(
   'supabase/migrations/20261012135000_november_contest_owner_entry_eligibility.sql',
   'utf8'
 );
-const widget = readFileSync('novelight-contest-entry.js','utf8');
-const fixture = readFileSync('tests/rls/november-contest-integration.sql','utf8');
+const widget = readFileSync('novelight-contest-entry.js', 'utf8');
+const fixture = readFileSync('tests/rls/november-contest-integration.sql', 'utf8');
 
 test('only general/R15 and human/AI-assisted authors are eligible', () => {
-  assert.match(migration, /w\.content_rating in \('general','sensitive_15','mature'\)/);
+  assert.match(
+    migration,
+    /w\.content_rating in \('general','sensitive_15','mature'\)/
+  );
   assert.match(migration, /w\.ai_usage in \('human','ai_assisted'\)/);
-  assert.match(migration, /v_work\.content_rating not in \('general','sensitive_15','mature'\)/);
+  assert.match(
+    migration,
+    /v_work\.content_rating not in \('general','sensitive_15','mature'\)/
+  );
   assert.match(migration, /v_work\.ai_usage not in \('human','ai_assisted'\)/);
   assert.match(migration, /ineligible_work_category/);
   assert.match(fixture, /Owner R18 work bypassed entry-category gate/);
@@ -23,7 +29,7 @@ test('only general/R15 and human/AI-assisted authors are eligible', () => {
 test('category check runs after ownership and before persistent author write', () => {
   const ownership = migration.indexOf("'not_owned_published_work'");
   const eligibility = migration.indexOf("'ineligible_work_category'");
-  const upsert = migration.indexOf('update public.novelight_contest_entries');
+  const upsert = migration.indexOf('set novel_id = v_work.id');
   assert.ok(ownership >= 0 && eligibility > ownership);
   assert.ok(upsert > eligibility);
   assert.match(migration, /security definer/);
