@@ -221,7 +221,8 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-c
   min-width: 0;
   min-height: 192px;
   flex-direction: column;
-  padding: 14px 14px 15px 17px;
+  /* Reserve a consistent footer line for the optional R15 badge. */
+  padding: 14px 14px 37px 17px;
   background:
     repeating-linear-gradient(0deg, rgba(102, 69, 35, 0.025) 0 1px, transparent 1px 6px),
     linear-gradient(145deg, #f0dfba, #dbc092);
@@ -243,9 +244,24 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discov
   margin: 0;
 }
 
-html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-labels .nl-r15-badge {
-  flex: 0 0 auto;
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-labels {
+  min-height: 33px;
+}
+
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-labels .genre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keep the R15 label out of the title/genre layout and off the metadata. */
+html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-copy > .nl-r15-badge {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  z-index: 5;
   margin: 0;
+  padding: 3px 7px;
 }
 
 /* Prevent flex shrinking the cover when another card has more text. */
@@ -264,10 +280,15 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .genre 
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .novel-title {
   color: #2d1d12;
   font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  display: -webkit-box;
+  min-height: 2.9em;
+  overflow: hidden;
   font-size: 21px;
   font-weight: 700;
   line-height: 1.45;
   letter-spacing: 0.012em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* Keep all public card facts visible even in four-column and mobile grids. */
@@ -283,8 +304,12 @@ html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discov
 }
 
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-author {
+  min-height: 1.55em;
+  overflow: hidden;
   color: #493223;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .discovery-card-progress,
@@ -761,7 +786,7 @@ body.novelight-page-ranking > footer {
 
   html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .card-copy {
     min-height: 186px;
-    padding: 13px 12px 14px 15px;
+    padding: 13px 12px 36px 15px;
   }
 
   html body.novelight-page-discovery-list .discovery-list-grid .shelf-card .novel-title {
