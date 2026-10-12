@@ -28,6 +28,10 @@
   const PERSPECTIVE_COLUMNS = 12;
   const PERSPECTIVE_ROWS = 16;
   const RENDER_RETRY_DELAYS_MS = [0, 500, 1500];
+  const PREVIEW_SCALE = 0.5;
+  const PREVIEW_DEBOUNCE_MS = 90;
+  const IMAGE_CACHE_LIMIT = 8;
+  const imageCache = new Map();
 
   function schemaUnavailable(error) {
     return ['42P01', '42703', '42883'].includes(error?.code);
@@ -455,14 +459,28 @@
   }
 
   function loadImage(url) {
-    return new Promise((resolve, reject) => {
+    const cached = imageCache.get(url);
+    if (cached) {
+      imageCache.delete(url);
+      imageCache.set(url, cached);
+      return cached;
+    }
+    const loading = new Promise((resolve, reject) => {
       const image = new Image();
       image.crossOrigin = 'anonymous';
       image.decoding = 'async';
       image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error('Thumbnail material could not be loaded'));
+      image.onerror = () => {
+        if (imageCache.get(url) === loading) imageCache.delete(url);
+        reject(new Error('Thumbnail material could not be loaded'));
+      };
       image.src = url;
     });
+    imageCache.set(url, loading);
+    while (imageCache.size > IMAGE_CACHE_LIMIT) {
+      imageCache.delete(imageCache.keys().next().value);
+    }
+    return loading;
   }
 
   async function drawAsset(context, asset, width, height) {
@@ -482,7 +500,7 @@
     drawPerspectiveImage(context, image, quad);
   }
 
-  async function renderSelectionToCanvas({ canvas, library, selection }) {
+  async function renderSelectionToCanvas({ canvas, library, selection, preview = false, shouldCancel = () => false }) {
     const template = library.templates.find((item) => item.template_key === selection.template_key);
     if (!template) throw new Error('Thumbnail template is unavailable');
 
@@ -497,25 +515,31 @@
       if (!selected[type]) throw new Error(`Required thumbnail layer is missing: ${type}`);
     }
 
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
+    // Only the interactive preview is downscaled; persisted artwork keeps official geometry.
+    const scale = preview ? PREVIEW_SCALE : 1;
+    canvas.width = Math.round(CANVAS_WIDTH * scale);
+    canvas.height = Math.round(CANVAS_HEIGHT * scale);
     const context = canvas.getContext('2d', { alpha: true });
     if (!context) throw new Error('Canvas is unavailable');
+    context.setTransform(scale, 0, 0, scale, 0, 0);
     context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
+    if (shouldCancel()) return null;
     const baseBookImage = await loadImage(selected.base_book.image_url);
+    if (shouldCancel()) return null;
     const resolved = resolveBookGeometry(
       template,
       baseBookImage.naturalWidth,
       baseBookImage.naturalHeight
     );
     await drawAsset(context, selected.background, CANVAS_WIDTH, CANVAS_HEIGHT);
+    if (shouldCancel()) return null;
     drawResolvedBaseBook(context, baseBookImage, resolved);
     for (const type of SURFACE_TYPES) {
+      if (shouldCancel()) return null;
       await drawPerspectiveAsset(context, selected[type], resolved.coverQuad);
     }
-
-    return canvas;
+    return shouldCancel() ? null : canvas;
   }
 
   function canvasBlob(canvas) {
@@ -721,8 +745,8 @@
     const preview = document.createElement('div');
     preview.className = 'nl-thumb-composer-preview';
     const canvas = document.createElement('canvas');
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
+    canvas.width = Math.round(CANVAS_WIDTH * PREVIEW_SCALE);
+    canvas.height = Math.round(CANVAS_HEIGHT * PREVIEW_SCALE);
     canvas.setAttribute('aria-label', '作品サムネイルのプレビュー');
     const previewStatus = document.createElement('div');
     previewStatus.className = 'nl-thumb-preview-status';
@@ -746,20 +770,41 @@
     function valid() {
       return PERSISTENCE_REQUIRED_TYPES.every((type) => Boolean(state.selected[type]));
     }
-    async function updatePreview() {
+    let previewTimer = null;
+    function updatePreview() {
       const serial = ++state.renderSerial;
+      if (previewTimer !== null) window.clearTimeout(previewTimer);
       if (!valid()) {
         previewStatus.textContent = '必須素材を選択してください。';
         return;
       }
       previewStatus.textContent = 'プレビューを更新しています…';
-      try {
-        await renderSelectionToCanvas({ canvas, library, selection: selection() });
-        if (serial === state.renderSerial) previewStatus.textContent = 'プレビュー';
-      } catch (error) {
-        console.error('thumbnail preview failed', error);
-        if (serial === state.renderSerial) previewStatus.textContent = '一部素材を読み込めませんでした。';
-      }
+      previewTimer = window.setTimeout(async () => {
+        previewTimer = null;
+        if (serial !== state.renderSerial) return;
+        // Render into a private canvas so stale asynchronous renders never overwrite the UI.
+        const staging = document.createElement('canvas');
+        try {
+          const rendered = await renderSelectionToCanvas({
+            canvas: staging,
+            library,
+            selection: selection(),
+            preview: true,
+            shouldCancel: () => serial !== state.renderSerial
+          });
+          if (!rendered || serial !== state.renderSerial) return;
+          canvas.width = staging.width;
+          canvas.height = staging.height;
+          const context = canvas.getContext('2d', { alpha: true });
+          if (!context) throw new Error('Canvas is unavailable');
+          context.drawImage(staging, 0, 0);
+          previewStatus.textContent = 'プレビュー';
+        } catch (error) {
+          if (serial !== state.renderSerial) return;
+          console.error('thumbnail preview failed', error);
+          previewStatus.textContent = '一部素材を読み込めませんでした。';
+        }
+      }, PREVIEW_DEBOUNCE_MS);
     }
     function displayLabel(type, asset) {
       if (!asset) return '';
@@ -798,6 +843,7 @@
         image.src = asset.image_url;
         image.alt = '';
         image.loading = 'lazy';
+        image.decoding = 'async';
         const label = document.createElement('span');
         label.className = 'nl-thumb-option-label';
         label.textContent = displayLabel(type, asset);
@@ -869,20 +915,25 @@
 
         const options = document.createElement('div');
         options.className = 'nl-thumb-layer-options';
-        if (!REQUIRED_TYPES.includes(type)) {
-          options.appendChild(optionButton(type, null, !state.selected[type]));
+        // Closed accordions must not allocate 100+ <img> nodes on mobile.
+        function populateOptions() {
+          if (options.childElementCount) return;
+          if (!REQUIRED_TYPES.includes(type)) {
+            options.appendChild(optionButton(type, null, !state.selected[type]));
+          }
+          for (const asset of available) {
+            options.appendChild(
+              optionButton(type, asset, String(asset.id) === String(state.selected[type]))
+            );
+          }
         }
-        for (const asset of available) {
-          options.appendChild(
-            optionButton(type, asset, String(asset.id) === String(state.selected[type]))
-          );
-        }
-
+        if (section.open) populateOptions();
         section.addEventListener('toggle', () => {
           if (!section.open) {
             if (state.openLayerType === type) state.openLayerType = '';
             return;
           }
+          populateOptions();
           state.openLayerType = type;
           for (const peer of controls.querySelectorAll('details.nl-thumb-layer')) {
             if (peer !== section) peer.open = false;
@@ -950,7 +1001,7 @@
             accessToken,
             novelId,
             revision,
-            canvas,
+            canvas: document.createElement('canvas'),
             library,
             selection: selected
           });
