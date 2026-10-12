@@ -97,8 +97,14 @@ test('contest page is delivered only through the server publication gate', () =>
 test('server page remains inaccessible until publication and valid lifecycle', () => {
   assert.equal(isContestVisible(null), false);
   assert.equal(isContestVisible({ status: 'draft', public_visible: false }), false);
-  assert.equal(isContestVisible({ status: 'registration', public_visible: false }), false);
-  assert.equal(isContestVisible({ status: 'registration', public_visible: true }), true);
+  assert.equal(
+    isContestVisible({ status: 'registration', public_visible: false }),
+    false
+  );
+  assert.equal(
+    isContestVisible({ status: 'registration', public_visible: true }),
+    true
+  );
   assert.equal(isContestVisible({ status: 'active', public_visible: true }), true);
   assert.equal(isContestVisible({ status: 'cancelled', public_visible: true }), false);
 });
