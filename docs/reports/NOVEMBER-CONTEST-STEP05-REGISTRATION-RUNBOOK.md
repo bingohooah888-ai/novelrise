@@ -79,6 +79,7 @@
 
 - [ ] 公開募集要項・個人情報の取扱い・賞金規約を最終確認。
 - [ ] 正式コンテスト要項の同意方法・適用版・同意記録（応募者に適用した版）の扱いを決定。未実装のまま「同意取得済み」と表現しない。
+- [ ] ドラフト開発 `20261012134000_november_contest_terms_consent.sql` の実DB検証・本番承認・migration適用を確認。正式規約版と公式URLを管理設定し、全応募で同意記録を確認。未承認・未反映なら受付開始不可。
 - [ ] 受賞者口座情報・コンテスト読者識別子の収集、保存、廃棄、案内を既存プライバシーポリシーと照合。
 - [ ] R15非表示設定とR18専用ゾーンを、コンテストカタログの一覧でも維持する実装・確認。未解決なら一般公開しない。
 - [ ] X告知文、正式URL、参加導線、FAQ、問い合わせ先、応募締切の正確な日付を準備。
@@ -110,6 +111,34 @@ begin
      set status = 'registration', public_visible = true,
          updated_at = pg_catalog.clock_timestamp()
    where contest_key = 'novelight-november-2026'
+     and terms_version <> ''
+     and terms_url ~ '^https://novelight[.]jp/[^[:space:]]+
+     and public_visible = false
+     and pg_catalog.clock_timestamp() < entry_deadline_at;
+  get diagnostics v_updated = row_count;
+  if v_updated <> 1 then
+    raise exception 'CONTEST_REGISTRATION_OPEN_BLOCKED';
+  end if;
+end
+$$;
+commit;
+```
+
+操作後にread-onlyで `status='registration' AND public_visible=true` を確認し、作者の**同意済みテストアカウント**で実応募・取消の疎通を確認。投稿者の通常作品を勝手に変更しない。公開済みキャンペーンページからの2入口、応募後の更新、ゲスト側の公開作品一覧をチェックする。
+
+## 障害発生時
+
+- 作品公開や通常PVを止めずにコンテストのみ停止させる。必要な場合は運営判断と承認により**同一トランザクションで** `status='draft'` または `status='cancelled'` と `public_visible=false` を設定する。進行中応募を消さず、監査証跡を保持する。
+- 異常応募の行を一律削除しない。読者のCookie、本人確認情報等の個人データは適正な保護と最小限の取得を行う。
+- 既存サイトのAuth/RLSと通常読書を最優先に復旧する。
+- 受付停止・再開、延期、規約変更は運営が告知してから実施。
+
+## 次工程への受渡し
+
+⑤の「受付開始」完了は **Production上で登録状態を開始し、応募・取消のスモークを終えたときだけ**とする。コードを作っただけではチェックしない。受付前に工程⑥以降を進めた場合でも、⑤の本番公開が完了したことにはしない。
+
+受付開始後、⑥読書ポイントシステムへ進む。⑦の先行PR #2119はその工程まで保留。
+
      and status = 'draft'
      and public_visible = false
      and pg_catalog.clock_timestamp() < entry_deadline_at;
