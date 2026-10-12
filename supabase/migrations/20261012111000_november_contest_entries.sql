@@ -49,6 +49,12 @@ begin
     );
   end if;
 
+  if v_contest.public_visible is not true then
+    return pg_catalog.jsonb_build_object(
+      'ok', false, 'reason', 'contest_unavailable'
+    );
+  end if;
+
   select * into v_entry
     from public.novelight_contest_entries
    where contest_id = v_contest.id
@@ -88,7 +94,8 @@ begin
     'entry_deadline_at', v_contest.entry_deadline_at,
     'starts_at', v_contest.starts_at,
     'accepting_entries',
-      (v_contest.status = 'registration'
+      (v_contest.public_visible is true
+       and v_contest.status = 'registration'
        and v_now <= v_contest.entry_deadline_at
        and v_now < v_contest.starts_at),
     'entry', case
@@ -149,7 +156,14 @@ begin
     );
   end if;
 
-  if v_contest.status <> 'registration'
+  if v_contest.public_visible is not true then
+    return pg_catalog.jsonb_build_object(
+      'ok', false, 'reason', 'contest_unavailable'
+    );
+  end if;
+
+  if v_contest.public_visible is not true
+     or v_contest.status <> 'registration'
      or v_now > v_contest.entry_deadline_at
      or v_now >= v_contest.starts_at then
     return pg_catalog.jsonb_build_object(
@@ -171,7 +185,8 @@ begin
    where id = v_contest.id
    for share;
   v_now := pg_catalog.clock_timestamp();
-  if v_contest.status <> 'registration'
+  if v_contest.public_visible is not true
+     or v_contest.status <> 'registration'
      or v_now > v_contest.entry_deadline_at
      or v_now >= v_contest.starts_at then
     return pg_catalog.jsonb_build_object(
