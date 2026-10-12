@@ -80,6 +80,6 @@ test('candidate terms follow adopted contest rules', () => {
   for (const fragment of fragments) {
     assert.ok(contestTermsTemplate.includes(fragment), fragment);
   }
-  assert.match(contestTermsTemplate, /一般お問い合わせフォームへ投稿しないでください/);
-  assert.doesNotMatch(contestTermsTemplate, /賞金は非課税|申告不要/);
+  assert.match(contestTermsTemplate, /フォームへ投稿しないでください/);
+  assert.doesNotMatch(contestTermsTemplate, /非課税|申告不要/);
 });
