@@ -27,6 +27,7 @@
   <link rel="stylesheet" href="novelight-brand-refinement.css">
   <link rel="stylesheet" href="novelight-home-thumbnails.css">
   <link rel="stylesheet" href="novelight-home-promo.css">
+  <link rel="stylesheet" href="novelight-contest-home-promo.css">
 <link rel="stylesheet" href="novelight-accessibility.css"></head>
 <body class="novelight-theme novelight-page-index novelight-public-dark"><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header class="site-header">
@@ -287,6 +288,17 @@
   <a class="hero-secondary" href="post.html">小説を投稿する</a>
 </div>
 
+<section class="novelight-contest-home-promo" id="novelightContestHomePromo" aria-labelledby="novelightContestHomePromoHeading" hidden>
+  <div class="novelight-contest-home-promo-inner">
+    <div class="novelight-contest-home-promo-copy">
+      <span>第1回 NOVELIGHT 小説コンテスト</span>
+      <h2 id="novelightContestHomePromoHeading">あなたの物語にも、読者の光を。</h2>
+      <p id="novelightContestHomePromoDescription">応募作品を募集中です。公開10話以上の作品で参加できます。</p>
+    </div>
+    <a class="novelight-contest-home-promo-link" href="contest.html" id="novelightContestHomePromoLink">コンテストに参加する →</a>
+  </div>
+</section>
+
 <section class="home-seo-intro" aria-label="NOVELIGHTについて">
   <h1>NOVELIGHT（ノベライト）｜小説投稿サイト</h1>
   <p>読者は完全無料。まだ知られていない物語との出会いを楽しもう。</p>
@@ -381,4 +393,4 @@ async function loadRankDiscoveryShelves(){await Promise.all([loadRankShelf('unse
 async function loadSeedShelf(){const section=document.getElementById('seedShelfSection'),grid=document.getElementById('seedGrid'),limit=discoveryVisibleLimit();try{const result=await lightSeedFeed(limit,0);if(result.error)throw result.error;let seeded=(Array.isArray(result.data)?result.data:[]).filter(row=>row.status==='published'&&Number(row.light_seed_count||0)>0).slice(0,limit);seeded=await NovelightUserSafety.filterNovelRows(client,seeded);section.hidden=!seeded.length;grid.innerHTML=seeded.length?seeded.map(seedCard).join(''):'';if(seeded.length)void issueAndRecord('home_seed',seeded)}catch(e){console.error('LIGHT SEED feed failed',e);section.hidden=true;grid.innerHTML=''}}
 async function loadNewArrivals(){const grid=document.getElementById('newGrid'),limit=discoveryVisibleLimit();try{const r=await neutralNew(10);if(r.error)throw r.error;const rows=Array.isArray(r.data)?r.data:[],hydrated=await withOfficialThumbnails(rows);let visible=hydrated.slice(0,limit);visible=await NovelightUserSafety.filterNovelRows(client,visible);visible=await NovelightR15.filterRows(visible,client);grid.innerHTML=visible.length?visible.map(card).join(''):'<div class="state">まだ新着作品がありません。</div>';if(visible.length)void issueAndRecord('home_new',visible)}catch(e){console.error(e);grid.innerHTML='<div class="state">新着作品を読み込めませんでした。時間をおいて再度お試しください。</div>'}}
 (async()=>{await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);void NovelightClient.claimAcquisition(client);await Promise.all([loadDiscovery(),loadNewArrivals(),loadSeedShelf(),loadRankDiscoveryShelves()])})();
-</script><script src="novelight-bookshelf.js"></script><script src="novelight-today-book-guard.js"></script><script src="novelight-today-book.js"></script></body></html>
+</script><script src="novelight-contest-home-promo.js"></script><script src="novelight-bookshelf.js"></script><script src="novelight-today-book-guard.js"></script><script src="novelight-today-book.js"></script></body></html>

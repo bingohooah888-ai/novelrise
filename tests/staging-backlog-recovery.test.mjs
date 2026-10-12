@@ -16,6 +16,7 @@ test('exact 25-version recovery manifest is complete and Git-blob pinned', async
   const artifact = await verifyCanonicalArtifacts(plan);
   assert.equal(artifact.localVersions.length, 158);
   assert.equal(artifact.baselineVersions.length, 133);
+  assert.equal(artifact.localVersions.includes('20261012130000'), false);
   assert.equal(plan.immutableMigrations.length, 25);
   assert.equal(plan.immutableMigrations[0].version, '20261001080000');
   assert.equal(plan.immutableMigrations.at(-1).version, '20261011160000');

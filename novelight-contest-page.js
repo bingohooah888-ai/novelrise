@@ -1,0 +1,165 @@
+// NOVELIGHT November contest landing page.
+// Guest readers can browse contest entries; only authors can submit enrollment.
+(function () {
+  'use strict';
+
+  const PAGE_SIZE = 24;
+  const endpoint = 'novelight_public_contest_catalog';
+  const databaseUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
+  const publishableKey = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+
+  const client = supabase.createClient(databaseUrl, publishableKey);
+  const statusEl = document.getElementById('contestStatus');
+  const entriesEl = document.getElementById('contestEntries');
+  const countEl = document.getElementById('entryCount');
+  const more = document.getElementById('contestMoreButton');
+  const loginPrompt = document.getElementById('contestLoginPrompt');
+  const enrollmentEl = document.getElementById('contestEnrollment');
+  const noteEl = document.getElementById('entryPhaseNote');
+
+  let offset = 0;
+  let loading = false;
+  let currentStatus = 'draft';
+
+  const stateText = {
+    draft: '開催準備中',
+    registration: '作品エントリー受付中',
+    active: 'コンテスト開催中',
+    review: '集計・審査中',
+    finalized: '結果確定',
+    cancelled: '中止'
+  };
+
+  function entryCard(work) {
+    const article = document.createElement('article');
+    article.className = 'contest-entry-card';
+
+    const tags = document.createElement('div');
+    tags.className = 'contest-entry-card-tags';
+
+    for (const label of [
+      String(work.genre || 'ジャンル未設定'),
+      '公開' + String(work.published_episodes) + '話'
+    ]) {
+      const chip = document.createElement('span');
+      chip.textContent = label;
+      tags.append(chip);
+    }
+
+    if (work.content_rating === 'sensitive_15' ||
+        work.content_rating === 'adult_18_nonsexual' ||
+        work.content_rating === 'mature') {
+      const warning = document.createElement('span');
+      warning.textContent = '内容注意';
+      tags.append(warning);
+    }
+
+    const title = document.createElement('h3');
+    title.textContent = String(work.title || '無題の作品');
+
+    const link = document.createElement('a');
+    link.className = 'contest-entry-card-action';
+    link.href = 'novel.html?id=' + encodeURIComponent(work.novel_id);
+    link.textContent = '作品を読む →';
+    link.setAttribute('aria-label', title.textContent + 'を読む');
+
+    article.append(tags, title, link);
+    return article;
+  }
+
+  async function loadEntries(reset) {
+    if (loading) return;
+    loading = true;
+    more.disabled = true;
+    if (reset) {
+      offset = 0;
+      entriesEl.replaceChildren();
+    }
+
+    try {
+      const { data, error } = await client.rpc(endpoint, {
+        p_limit: PAGE_SIZE,
+        p_offset: offset
+      });
+      if (error) throw error;
+      if (!data?.ok || !Array.isArray(data.entries)) {
+        throw new Error('contest_catalog_unavailable');
+      }
+
+      currentStatus = data.contest_status;
+      statusEl.textContent = stateText[currentStatus] || '開催情報を確認中';
+      const total = Math.max(0, Number(data.total_entries) || 0);
+      const works = data.entries;
+
+      countEl.textContent = total > 0 ? total.toLocaleString('ja-JP') + '作品が参加中' : '';
+
+      if (!works.length && offset === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'contest-list-message';
+        empty.textContent =
+          currentStatus === 'draft'
+            ? 'エントリー受付開始後、参加作品を掲載します。'
+            : '参加作品はまだありません。';
+        entriesEl.append(empty);
+      } else {
+        for (const work of works) entriesEl.append(entryCard(work));
+      }
+
+      offset += works.length;
+      more.hidden = offset >= total || works.length === 0;
+    } catch (error) {
+      console.warn('Contest catalog unavailable', error?.code || '');
+      if (reset) entriesEl.replaceChildren();
+      if (!entriesEl.children.length) {
+        const message = document.createElement('p');
+        message.className = 'contest-list-message';
+        message.textContent =
+          '参加作品の読み込みに失敗しました。時間をおいて再読み込みしてください。';
+        entriesEl.append(message);
+      }
+      more.textContent = '再読み込みする';
+      more.hidden = false;
+    } finally {
+      loading = false;
+      more.disabled = false;
+    }
+  }
+
+  async function loadAuthorEnrollment() {
+    if (!window.NovelightContestEntry?.mountContestPage) {
+      noteEl.textContent = 'エントリー受付の準備中です。';
+      return;
+    }
+    let session;
+    try {
+      const result = await client.auth.getSession();
+      if (result.error) throw result.error;
+      session = result.data.session;
+    } catch {
+      noteEl.textContent = 'ログイン状態を確認できませんでした。';
+      return;
+    }
+
+    if (!session) {
+      noteEl.textContent = '作者アカウントでログインすると応募できます。';
+      loginPrompt.hidden = false;
+      return;
+    }
+
+    noteEl.textContent = 'ご自身の作品から応募できます。';
+    await window.NovelightContestEntry.mountContestPage({
+      client,
+      root: enrollmentEl,
+      session
+    });
+  }
+
+  more.addEventListener('click', async () => {
+    more.textContent = 'もっと作品を見る';
+    await loadEntries(false);
+  });
+
+  void NovelightClient.recordVisit(client);
+  void loadEntries(true);
+  void loadAuthorEnrollment();
+})();
