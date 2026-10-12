@@ -4,7 +4,8 @@
   'use strict';
 
   const PAGE_SIZE = 24;
-  const endpoint = 'novelight_public_contest_catalog';
+  const endpoint = 'novelight_public_contest_catalog_filtered';
+  const R15_PREF_KEY = 'novelight:hide-r15-discovery';
   const databaseUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
   const publishableKey = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
 
@@ -16,10 +17,31 @@
   const loginPrompt = document.getElementById('contestLoginPrompt');
   const enrollmentEl = document.getElementById('contestEnrollment');
   const noteEl = document.getElementById('entryPhaseNote');
+  const hideR15Control = document.getElementById('contestHideR15');
 
   let offset = 0;
   let loading = false;
+  let requestRevision = 0;
   let currentStatus = 'draft';
+
+  function storedHideR15() {
+    try {
+      return window.localStorage.getItem(R15_PREF_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function setHideR15(value) {
+    try {
+      window.localStorage.setItem(R15_PREF_KEY, value ? '1' : '0');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  if (hideR15Control) hideR15Control.checked = storedHideR15();
 
   const stateText = {
     draft: '開催準備中',
@@ -68,7 +90,8 @@
   }
 
   async function loadEntries(reset) {
-    if (loading) return;
+    if (loading && !reset) return;
+    const myRevision = ++requestRevision;
     loading = true;
     more.disabled = true;
     if (reset) {
@@ -79,8 +102,10 @@
     try {
       const { data, error } = await client.rpc(endpoint, {
         p_limit: PAGE_SIZE,
-        p_offset: offset
+        p_offset: offset,
+        p_include_r15: !storedHideR15()
       });
+      if (myRevision !== requestRevision) return;
       if (error) throw error;
       if (!data?.ok || !Array.isArray(data.entries)) {
         throw new Error('contest_catalog_unavailable');
@@ -108,6 +133,7 @@
       offset += works.length;
       more.hidden = offset >= total || works.length === 0;
     } catch (error) {
+      if (myRevision !== requestRevision) return;
       console.warn('Contest catalog unavailable', error?.code || '');
       if (reset) entriesEl.replaceChildren();
       if (!entriesEl.children.length) {
@@ -120,8 +146,10 @@
       more.textContent = '再読み込みする';
       more.hidden = false;
     } finally {
-      loading = false;
-      more.disabled = false;
+      if (myRevision === requestRevision) {
+        loading = false;
+        more.disabled = false;
+      }
     }
   }
 
@@ -151,6 +179,20 @@
       client,
       root: enrollmentEl,
       session
+    });
+  }
+
+  if (hideR15Control) {
+    hideR15Control.addEventListener('change', () => {
+      if (!setHideR15(hideR15Control.checked)) {
+        hideR15Control.checked = storedHideR15();
+      }
+      void loadEntries(true);
+    });
+    window.addEventListener('storage', (event) => {
+      if (event.key !== R15_PREF_KEY) return;
+      hideR15Control.checked = storedHideR15();
+      void loadEntries(true);
     });
   }
 

@@ -120,6 +120,11 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
         </div>
         <p id="entryCount" class="contest-entry-count" aria-live="polite"></p>
       </div>
+      <label class="contest-r15-toggle" for="contestHideR15">
+        <input id="contestHideR15" type="checkbox">
+        <span>R15作品を表示しない</span>
+      </label>
+      <p class="contest-note">この設定は通常の作品一覧と共通です。18+・AI生成主体の作品は、専用ゾーンの案内に従ってください。</p>
       <div id="contestEntries" class="contest-entries-grid" aria-live="polite">
         <p class="contest-list-message">参加作品を読み込んでいます…</p>
       </div>
