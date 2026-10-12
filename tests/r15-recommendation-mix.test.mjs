@@ -90,8 +90,9 @@ test('already balanced ordering is preserved and unknown metadata fails open', a
 test('recommendation mix is shared by home and all-recommendations page', async () => {
   const home = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const list = await readFile(new URL('../novelight-discovery-list.js', import.meta.url), 'utf8');
-  assert.match(home, /p_surface:'home_discovery',p_limit:Math\.min\(100,limit\*4\)/);
-  assert.match(home, /NovelightR15\.mixRecommendedRows\(candidates,client\);const visible=candidates\.slice\(0,limit\)/);
+  assert.match(home, /p_surface:'home_discovery',p_limit:limit/);
+  const migration = await readFile(new URL('../supabase/migrations/20261012095500_balance_r15_recommendations.sql', import.meta.url), 'utf8');
+  assert.match(migration, /rating_ranked as materialized/);
   assert.match(list, /NovelightR15\.mixRecommendedRows\(filteredCandidates, client\)/);
   assert.match(list, /await recordTrusted\(visible\)/);
 });
