@@ -300,7 +300,10 @@
       candidates.push(row);
     }
     const filteredCandidates = await filterHiddenRows(candidates);
-    candidates.splice(0, candidates.length, ...filteredCandidates);
+    const mixedCandidates = typeof NovelightR15 === 'undefined'
+      ? filteredCandidates
+      : await NovelightR15.mixRecommendedRows(filteredCandidates, client);
+    candidates.splice(0, candidates.length, ...mixedCandidates);
     const page = candidates.slice(0, pageSize);
     await hydrateCardState(page);
     const visible = appendRows(page);
