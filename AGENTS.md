@@ -36,6 +36,10 @@ Vercel Git integrationは `main` 以外の自動deploymentを禁止する。Stag
 
 read-onlyの設定・請求・ログ確認はこのゲートの対象外。
 
+## 2.6 Production ビルド費用の最適化
+
+Production ビルドの削減手順は `docs/PRODUCTION-DEPLOY-COST-POLICY.md` を適用する。通常の関連修正は本番反映前に可能な範囲でまとめる。文書・テストのみの変更はVercelのIgnored Build Stepで無駄な本番ビルドを省く一方、コード変更、不明な差分、緊急修正は必ずビルドする。既存の本番承認・ステージング承認・CIを弱めない。
+
 ## 3. 最初にリスク分類する
 
 実装開始時に、作業を次のどちらかへ分類する。
