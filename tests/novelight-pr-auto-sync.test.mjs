@@ -48,7 +48,11 @@ function mockGithub({
     requests.push({ path, method, token: options.headers?.Authorization });
     let data;
     if (path.endsWith('/git/ref/heads/main')) {
-      data = { object: { sha: mainSequence[Math.min(mainReads++, mainSequence.length - 1)] } };
+      data = {
+        object: {
+          sha: mainSequence[Math.min(mainReads++, mainSequence.length - 1)]
+        }
+      };
     } else if (path.endsWith('/pulls/2204') && method === 'GET') {
       data = liveSequence[Math.min(prReads++, liveSequence.length - 1)];
     } else if (path.endsWith('/pulls?state=open&base=main&per_page=100')) {
@@ -57,14 +61,21 @@ function mockGithub({
       data = comments;
     } else if (path.includes('/compare/')) {
       data = comparison;
-    } else if (path.endsWith('/pulls/2204/update-branch') && method === 'PUT') {
+    } else if (
+      path.endsWith('/pulls/2204/update-branch') &&
+      method === 'PUT'
+    ) {
       assert.equal(options.headers.Authorization, 'Bearer ' + WRITE);
       assert.deepEqual(JSON.parse(options.body), { expected_head_sha: HEAD });
       data = { message: 'Updating pull request branch.' };
     } else {
       throw new Error('Unexpected GitHub request ' + method + ' ' + path);
     }
-    return { ok: true, status: method === 'PUT' ? 202 : 200, json: async () => data };
+    return {
+      ok: true,
+      status: method === 'PUT' ? 202 : 200,
+      json: async () => data
+    };
   };
   const args = {
     repository: REPO,
@@ -95,13 +106,19 @@ test('Only owner-created, same-repository, Draft main PRs are eligible', () => {
 test('Behind-by and mergeable state are required; conflicts fail closed', () => {
   assert.equal(shouldUpdateBranch({ behind_by: 2 }, pull()), true);
   assert.equal(shouldUpdateBranch({ behind_by: 0 }, pull()), false);
-  assert.equal(shouldUpdateBranch({ behind_by: 1 }, pull({ mergeable: false })), false);
+  assert.equal(
+    shouldUpdateBranch({ behind_by: 1 }, pull({ mergeable: false })),
+    false
+  );
   assert.throws(() => shouldUpdateBranch({}, pull()), /Unrecognized/);
 });
 
 test('An external write token is mandatory; no GitHub-token fallback', async () => {
   const { args, requests } = mockGithub();
-  await assert.rejects(synchronizeDrafts({ ...args, writeToken: '' }), /separate write/);
+  await assert.rejects(
+    synchronizeDrafts({ ...args, writeToken: '' }),
+    /separate write/
+  );
   await assert.rejects(
     synchronizeDrafts({ ...args, writeToken: READ }),
     /separate write/
@@ -118,10 +135,13 @@ test('Native API update uses an exact head SHA and never merges or approves', as
   assert.equal(writes.length, 1);
   assert.match(writes[0].path, /\/pulls\/2204\/update-branch$/);
   assert.ok(requests.every((x) => !/merge|deploy|workflow/.test(x.path)));
-  assert.equal(requests.filter((x) => x.path.endsWith('/git/ref/heads/main')).length, 2);
+  assert.equal(
+    requests.filter((x) => x.path.endsWith('/git/ref/heads/main')).length,
+    2
+  );
 });
 
-test('Already current, conflicting and approved Draft PRs are not modified', async () => {
+test('Current, conflicting or approved Draft PRs are not modified', async () => {
   for (const mock of [
     { comparison: { behind_by: 0 } },
     { draft: pull({ mergeable: false }) },
@@ -137,15 +157,26 @@ test('Already current, conflicting and approved Draft PRs are not modified', asy
 test('A changing PR head or main ref prevents the update', async () => {
   for (const mock of [
     { mainSequence: [MAIN, 'c'.repeat(40)] },
-    { liveSequence: [pull(), pull({ head: { sha: 'd'.repeat(40), repo: { full_name: REPO } } })] }
+    {
+      liveSequence: [
+        pull(),
+        pull(),
+        pull({
+          head: { sha: 'd'.repeat(40), repo: { full_name: REPO } }
+        })
+      ]
+    }
   ]) {
     const { args, requests } = mockGithub(mock);
-    await assert.rejects(synchronizeDrafts(args), /moved during synchronization/);
+    await assert.rejects(
+      synchronizeDrafts(args),
+      /moved during synchronization/
+    );
     assert.equal(requests.some((x) => x.method === 'PUT'), false);
   }
 });
 
-test('Push sync enumerates owner Draft PRs only; hidden PR pages fail closed', async () => {
+test('Push enumerates Draft PRs and denies incomplete pages', async () => {
   const { args } = mockGithub();
   const result = await synchronizeDrafts({ ...args, event: 'push', prNumber: 0 });
   assert.deepEqual(result.updated, [2204]);
@@ -155,9 +186,10 @@ test('Push sync enumerates owner Draft PRs only; hidden PR pages fail closed', a
   const badFetch = async (url) => ({
     ok: true,
     status: 200,
-    json: async () => url.endsWith('/git/ref/heads/main')
-      ? { object: { sha: MAIN } }
-      : candidates
+    json: async () =>
+      url.endsWith('/git/ref/heads/main')
+        ? { object: { sha: MAIN } }
+        : candidates
   });
   await assert.rejects(
     synchronizeDrafts({ ...args, event: 'push', fetchImpl: badFetch }),
@@ -175,6 +207,9 @@ test('Trusted workflow has no PR code execution and never grants approval', () =
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /secrets\.NOVELIGHT_BRANCH_SYNC_TOKEN/);
-  assert.doesNotMatch(workflow, /pull_request\.head\.ref|checkout.*head|gh pr merge/);
+  assert.doesNotMatch(
+    workflow,
+    /pull_request\.head\.ref|checkout.*head|gh pr merge/
+  );
   assert.doesNotMatch(workflow, /contents: write|pull-requests: write/);
 });
