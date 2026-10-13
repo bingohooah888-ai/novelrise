@@ -21,12 +21,23 @@ on:
       - '.github/workflows/*.yml'
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Exact owner PR number after native sync'
+        required: true
+        type: string
+      expected_head_sha:
+        description: 'Exact updated PR head SHA'
+        required: true
+        type: string
   schedule:
     - cron: '17 3 * * 1'
 
 permissions:
   contents: read
   security-events: write
+  pull-requests: read
 
 concurrency:
   group: codeql-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -43,6 +54,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Verify exact owner PR head on dispatch
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOVELIGHT_PR_NUMBER: ${{ inputs.pr_number }}
+          NOVELIGHT_EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+        run: node scripts/novelight-pr-sync-dispatch-guard.mjs
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
