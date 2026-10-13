@@ -22,7 +22,10 @@ test('guest claiming is one atomic provisional transaction', () => {
   assert.match(source, /for update/);
   assert.match(source, /review_status = 'merged'/);
   assert.match(source, /merged_into_reader_id = v_account[.]id/);
-  assert.match(source, /on conflict \(contest_id,reader_id,episode_id_snapshot\) do nothing/);
+  assert.match(
+    source,
+    /on conflict \(contest_id,reader_id,episode_id_snapshot\) do nothing/
+  );
   assert.match(source, /entry[.]author_id <> p_user_id/);
   assert.match(source, /not in \('provisional','cleared'\)/);
   assert.match(source, /'guest_account_link_provisional'/);
@@ -32,6 +35,9 @@ test('guest claiming is one atomic provisional transaction', () => {
 });
 
 test('rollback refuses to erase irreversible guest linking history', () => {
-  assert.match(rollback, /Guest links exist: manual audited recovery required/);
+  assert.match(
+    rollback,
+    /Guest links exist: manual audited recovery required/
+  );
   assert.match(rollback, /raise exception/);
 });

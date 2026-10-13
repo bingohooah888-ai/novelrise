@@ -377,10 +377,13 @@ test('account claiming proves both signed guest cookie and verified bearer', asy
   const signedCookie = guest.headers['Set-Cookie'].split(';')[0];
   const linked = response();
   await handler(db)(
-    request({ action: 'link' }, {
-      authorization: 'Bearer valid-token',
-      cookie: signedCookie
-    }),
+    request(
+      { action: 'link' },
+      {
+        authorization: 'Bearer valid-token',
+        cookie: signedCookie
+      }
+    ),
     linked
   );
   assert.equal(linked.statusCode, 200);
@@ -400,8 +403,13 @@ test('guest link rejects forged or unverified ownership', async () => {
   for (const [headers, code] of [
     [{}, 401],
     [{ authorization: 'Bearer invalid-token' }, 401],
-    [{ authorization: 'Bearer valid-token',
-      cookie: '__Host-novelight-contest-guest=v1.forged' }, 401]
+    [
+      {
+        authorization: 'Bearer valid-token',
+        cookie: '__Host-novelight-contest-guest=v1.forged'
+      },
+      401
+    ]
   ]) {
     const result = response();
     await handler(db)(request({ action: 'link' }, headers), result);
@@ -415,7 +423,9 @@ test('guest link rejects forged or unverified ownership', async () => {
   assert.equal(noGuest.statusCode, 200);
   assert.equal(noGuest.data.linked, false);
   assert.equal(
-    db.calls.some((call) => call[1] === 'novelight_contest_link_guest_account'),
+    db.calls.some(
+      (call) => call[1] === 'novelight_contest_link_guest_account'
+    ),
     false
   );
 });
