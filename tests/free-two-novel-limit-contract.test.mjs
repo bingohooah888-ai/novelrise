@@ -6,13 +6,8 @@ import { URL } from 'node:url';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 
-const [
-  migration,
-  precheck,
-  postcheck,
-  rollback,
-  rlsRunner
-] = await Promise.all([
+const [migration, precheck, postcheck, rollback, rlsRunner] =
+  await Promise.all([
   read('supabase/migrations/20260920152733_free_two_novel_limit.sql'),
   read('supabase/checks/20260920152733_free_two_novel_limit_precheck.sql'),
   read('supabase/checks/20260920152733_free_two_novel_limit_postcheck.sql'),
@@ -24,6 +19,7 @@ test('September two-work migration is retained as an immutable historical change
   assert.match(migration, /when 'free' then 2/u);
   assert.match(rollback, /when 'free' then 1/u);
 });
+
 test('database rule raises only Free while preserving concurrency enforcement', () => {
   assert.match(migration, /when 'free' then 2/u);
   assert.match(migration, /when 'standard' then 10/u);
