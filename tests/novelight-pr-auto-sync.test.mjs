@@ -217,3 +217,17 @@ test('Trusted workflow cannot run untrusted code', () => {
   );
   assert.doesNotMatch(workflow, /contents: write|pull-requests: write/);
 });
+
+/* NLO_PR_FORMAT_DIAG_BEGIN */
+test('Temporary format proof for the guarded PR sync test', async () => {
+  const prettier = await import('prettier');
+  const raw = readFileSync(new URL(import.meta.url), 'utf8');
+  const input = raw.split('\n/* NLO_PR_FORMAT_DIAG_BEGIN */')[0] + '\n';
+  const filepath = 'tests/novelight-pr-auto-sync.test.mjs';
+  const options = {
+    ...(await prettier.resolveConfig(filepath)),
+    filepath
+  };
+  const result = await prettier.format(input, options);
+  console.log('NLO_FORMATTED_JSON_START:' + JSON.stringify(result) + ':NLO_FORMATTED_JSON_END');
+});
