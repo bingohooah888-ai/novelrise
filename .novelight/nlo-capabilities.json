@@ -78,6 +78,34 @@
       "version": "0.1.0",
       "status": "testing",
       "provenance": "2026-10-13 source snapshot and safe standalone batch generator; no Production write"
+    },
+    {
+      "id": "nlo.github.owner-draft-pr-sync",
+      "description": "Automatically synchronize owner Draft PRs using NLO's existing owner-authenticated GitHub session, allowing native PR checks; no new PAT or Actions Secret.",
+      "intents": [
+        "synchronize draft pull request branch",
+        "keep owner draft PR up to date",
+        "NOVELIGHTのDraft PRをmainへ自動同期"
+      ],
+      "aliases": [
+        "automatic update branch",
+        "NLO GitHub branch sync"
+      ],
+      "adapter": "tools/novelight-commander/src/owner-draft-auto-sync.js",
+      "executionRisk": "B",
+      "requiredPermissions": [
+        "existing_nlo_dpapi_protected_owner_github_auth",
+        "repo_metadata_read",
+        "pull_request_read",
+        "issue_comments_read",
+        "pull_requests_write"
+      ],
+      "testCommands": [
+        "node --test tests/novelight-pr-auto-sync.test.mjs"
+      ],
+      "version": "0.3.0",
+      "status": "testing",
+      "provenance": "2026-10-14 migration away from incompatible GITHUB_TOKEN workflow_dispatch required-check path; activation requires live proof"
     }
   ]
 }

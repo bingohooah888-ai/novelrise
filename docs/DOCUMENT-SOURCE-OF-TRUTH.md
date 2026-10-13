@@ -64,6 +64,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/NLO-SELF-EXPANSION-POLICY.md","status":"CURRENT","role":"nlo-self-expansion-policy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/novelight-tag-taxonomy.md","status":"CURRENT","role":"novelight-tag-taxonomy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PREVIEW-STAGING-AUTOMATION.md","status":"CURRENT","role":"preview-staging-automation","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/PR-DRAFT-AUTO-SYNC-POLICY.md","status":"CURRENT","role":"pr-draft-auto-sync-policy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRIVACY-REQUEST-RUNBOOK.md","status":"CURRENT","role":"privacy-request-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRODUCTION-BILLING-INCIDENT-RUNBOOK.md","status":"CURRENT","role":"production-billing-incident-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/PRODUCTION-CHAT-DISPATCH.md","status":"CURRENT","role":"production-chat-dispatch","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
