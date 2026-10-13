@@ -10,7 +10,7 @@ const REQUEST_PREFIX = 'NOVELIGHT_MASTER_SYNC_REQUEST ';
 const RESULT_PREFIX = 'NOVELIGHT_MASTER_SYNC_RESULT_V1';
 const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9][A-Za-z0-9_-]{2,63}$/;
 const MAX_OUTPUT = 32000;
-const POLL_MS = 10000;
+const POLL_MS = 60_000;
 let busy = false;
 
 function bounded(value, limit = MAX_OUTPUT) {

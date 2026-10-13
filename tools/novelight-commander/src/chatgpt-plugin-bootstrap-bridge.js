@@ -20,7 +20,7 @@ async function loadConfig() {
   const bridgeRoot = path.dirname(resolved);
   const sharedDataRoot = path.resolve(String(raw.dataRoot || bridgeRoot));
   return {
-    pollSeconds: Math.max(5, Math.min(300, Number(raw.pollSeconds || 10))),
+    pollSeconds: Math.max(60, Math.min(300, Number(raw.pollSeconds || 10))),
     statePath: path.join(bridgeRoot, 'chatgpt-plugin-bootstrap-state.json'),
     commanderDir: path.resolve(raw.repoRoot, 'tools', 'novelight-commander'),
     dataRoot: path.join(bridgeRoot, 'chatgpt-plugin'),

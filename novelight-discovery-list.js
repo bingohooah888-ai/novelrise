@@ -176,7 +176,7 @@
         : known && count === 0
           ? '掲載話なし'
           : '確認できません';
-    return `<a class="novel-card shelf-card${mode === 'seed' ? ' seed-card' : ''}" href="novel.html?id=${encodeURIComponent(novelId(novel))}">${seedBadge}${coverMarkup(novel)}<div class="card-copy"><div class="genre">${esc(novel.genre || '未設定')}</div><div class="novel-title">${esc(novel.title)}</div><div class="discovery-card-meta"><div class="discovery-card-author">作者：${esc(name)}</div><div class="discovery-card-progress">${esc(statusLabel)} ・ ${esc(countLabel)}</div><div class="discovery-card-updated">最終投稿日：${esc(publishedLabel)}</div></div></div></a>`;
+    return `<a class="novel-card shelf-card${mode === 'seed' ? ' seed-card' : ''}" href="novel.html?id=${encodeURIComponent(novelId(novel))}">${seedBadge}${coverMarkup(novel)}<div class="card-copy"><div class="badges discovery-card-labels"><div class="genre">${esc(novel.genre || '未設定')}</div></div><div class="novel-title">${esc(novel.title)}</div><div class="discovery-card-meta"><div class="discovery-card-author">作者：${esc(name)}</div><div class="discovery-card-progress">${esc(statusLabel)} ・ ${esc(countLabel)}</div><div class="discovery-card-updated">最終投稿日：${esc(publishedLabel)}</div></div></div></a>`;
   }
 
   function appendRows(rows) {

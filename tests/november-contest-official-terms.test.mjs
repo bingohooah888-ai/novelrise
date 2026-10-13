@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 import test from 'node:test';
 import { isContestTermsVisible } from '../api/contest-terms.js';
+import { contestPageTemplate } from '../api/_lib/contest-template.js';
 import {
   CONTEST_TERMS_URL_CANDIDATE,
   CONTEST_TERMS_VERSION_CANDIDATE,
@@ -52,6 +53,11 @@ test('both official terms paths are server-gated', () => {
     CONTEST_TERMS_URL_CANDIDATE,
     'https://novelight.jp/contest-terms'
   );
+});
+
+test('approved contest landing offers a link to the official terms', () => {
+  assert.match(contestPageTemplate, /href="\/contest-terms"/);
+  assert.match(contestPageTemplate, /正式応募要項/);
 });
 
 test('candidate terms follow adopted contest rules', () => {

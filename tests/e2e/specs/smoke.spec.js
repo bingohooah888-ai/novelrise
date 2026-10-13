@@ -309,3 +309,74 @@ test('SPECIAL LIGHT matches Home while zone headers keep their standard scale', 
     await context.close();
   }
 });
+
+for (const surface of ['post', 'edit']) {
+  test(`episode-${surface} caret scroll`, async ({ page, request }) => {
+    const response = await request.get(`/episode-${surface}.html`);
+    expect(response.ok()).toBeTruthy();
+    const html = await response.text();
+    const css = html.match(/<style>([\s\S]*?)<\/style>/u)?.[1];
+    expect(css).toBeTruthy();
+
+    await page.setContent(`
+      <!doctype html>
+      <html lang="ja">
+      <head>
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <style>${css}</style>
+      </head>
+      <body class="novelight-theme novelight-page-episode-${surface}">
+        <main>
+          <form>
+            <div class="editor-toolbar" id="toolbar">
+              <span>保存済み</span>
+              <div class="editor-tools"><button type="button">装飾</button></div>
+            </div>
+            <section class="writing-surface">
+              <div class="body-field"><textarea id="content"></textarea></div>
+            </section>
+          </form>
+          <div style="height:1200px"></div>
+        </main>
+      </body>
+      </html>
+    `);
+
+    await page.evaluate(() => globalThis.scrollTo(0, 310));
+    const toolbar = page.locator('#toolbar');
+    const top = await toolbar.evaluate((element) => {
+      return element.getBoundingClientRect().top;
+    });
+    expect(top).toBeLessThan(0);
+
+    const field = page.locator('#content');
+    const paragraphs = Array(120).fill('本文テスト。').join('\n');
+    await field.fill(paragraphs);
+    await field.press('ControlOrMeta+End');
+
+    const before = await field.evaluate((element) => ({
+      value: element.value,
+      height: element.getBoundingClientRect().height,
+      scrollTop: element.scrollTop,
+      pageY: globalThis.scrollY,
+      caret: element.selectionStart
+    }));
+    expect(before.scrollTop).toBeGreaterThan(0);
+
+    await field.press('Enter');
+    await field.press('Backspace');
+
+    const after = await field.evaluate((element) => ({
+      value: element.value,
+      height: element.getBoundingClientRect().height,
+      scrollTop: element.scrollTop,
+      pageY: globalThis.scrollY,
+      caret: element.selectionStart
+    }));
+    expect(after.value).toBe(before.value);
+    expect(after.height).toBe(before.height);
+    expect(after.caret).toBe(before.caret);
+    expect(after.scrollTop).toBeGreaterThan(0);
+    expect(Math.abs(after.pageY - before.pageY)).toBeLessThan(3);
+  });
+}

@@ -148,7 +148,7 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
     </section>
 
     <section class="contest-shell contest-footnote">
-      <p>参加・読書は無料です。受賞連絡はNOVELIGHT登録メールに送信し、受賞者は通知から1か月以内に返信してください。賞金は返信受信から1か月以内に楽天銀行から国内銀行口座へ振り込み、手数料は運営が負担します。ご参加には公式応募要項への明示同意が必要です。<a href="terms.html">利用規約</a>と<a href="content-guidelines.html">投稿ガイドライン</a>もご確認ください。</p>
+      <p>参加・読書は無料です。受賞連絡はNOVELIGHT登録メールに送信し、受賞者は通知から1か月以内に返信してください。賞金は返信受信から1か月以内に楽天銀行から国内銀行口座へ振り込み、手数料は運営が負担します。ご参加には<a href="/contest-terms">正式応募要項</a>への明示同意が必要です。<a href="terms.html">利用規約</a>と<a href="content-guidelines.html">投稿ガイドライン</a>もご確認ください。</p>
     </section>
   </main>
 

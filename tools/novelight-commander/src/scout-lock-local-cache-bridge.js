@@ -14,7 +14,7 @@ const EXPECTED_SHA256 = '33b4056b430ab1bd54e0f614e1aa6f040def46da31f5fcc85a5b1ff
 const PNG_SIGNATURE = Buffer.from('89504e470d0a1a0a', 'hex');
 const MAX_SCAN_FILES = 30000;
 const MAX_CANDIDATE_BYTES = 8 * 1024 * 1024;
-const POLL_MS = 10000;
+const POLL_MS = 60_000;
 const LOOKBACK_MS = 60 * 60 * 1000;
 let busy = false;
 
