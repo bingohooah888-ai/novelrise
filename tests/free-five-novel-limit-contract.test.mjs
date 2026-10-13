@@ -7,8 +7,18 @@ const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 
 const migrationId = '20261013030000_free_five_novel_limit';
-const [home, pricing, billing, master, migration, precheck, postcheck, rollback, runner, rls] =
-  await Promise.all([
+const [
+  home,
+  pricing,
+  billing,
+  master,
+  migration,
+  precheck,
+  postcheck,
+  rollback,
+  runner,
+  rls
+] = await Promise.all([
     read('index.html'),
     read('pricing.html'),
     read('billing-policy.html'),
@@ -25,7 +35,10 @@ test('Free five-work cap is consistent across public billing pages and MASTER', 
   assert.match(home, /5作品まで投稿/u);
   assert.match(pricing, /投稿作品：5作品まで/u);
   assert.match(billing, /月額0円。投稿5作品まで。/u);
-  assert.match(master, /投稿可能作品数は、Free 5作品、Standard 10作品、Premium 30作品/u);
+  assert.match(
+    master,
+    /投稿可能作品数は、Free 5作品、Standard 10作品、Premium 30作品/u
+  );
   assert.doesNotMatch(pricing, /投稿作品：2作品まで/u);
   assert.doesNotMatch(billing, /月額0円。投稿2作品まで。/u);
 });
@@ -54,7 +67,9 @@ test('RLS integration replays migration, boundary test, and rollback', () => {
     'supabase/migrations/' + migrationId + '.sql',
     'supabase/checks/' + migrationId + '_postcheck.sql',
     'supabase/rollback/' + migrationId + '_rollback.sql'
-  ]) assert.ok(runner.includes(path), 'missing RLS runner fixture: ' + path);
+  ]) {
+    assert.ok(runner.includes(path), 'missing RLS runner fixture: ' + path);
+  }
   assert.match(rls, /first five novels succeed, sixth is rejected/u);
   assert.match(rls, /free user must remain capped at five novels/u);
 });
