@@ -58,7 +58,7 @@ begin
         'eligible',
           (w.status = 'published'
            and w.published_episodes >= v_contest.minimum_published_episodes
-           and w.content_rating in ('general','sensitive_15','mature')
+           and w.content_rating in ('general','sensitive_15')
            and w.ai_usage in ('human','ai_assisted'))
       )
       order by w.created_at desc, w.id desc
@@ -250,7 +250,7 @@ begin
   -- This server-side gate is independent of the public catalog zone filter
   -- and executes before the idempotent or replacement entry write.
   if v_work.content_rating is null
-     or v_work.content_rating not in ('general','sensitive_15','mature')
+     or v_work.content_rating not in ('general','sensitive_15')
      or v_work.ai_usage is null
      or v_work.ai_usage not in ('human','ai_assisted') then
     return pg_catalog.jsonb_build_object(
