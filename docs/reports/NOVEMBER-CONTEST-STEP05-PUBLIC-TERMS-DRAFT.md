@@ -2,7 +2,7 @@
 
 > 更新：2026-10-13／工程⑤。**一般公開禁止・正式応募要項として未発効。** 運営決裁の正本は [Issue #2120 の R1〜R11](https://github.com/bingohooah888-ai/novelrise/issues/2120#issuecomment-6122730903)。本書の本文は決裁済みルールに合わせたレビュー用候補であり、法務・運用確認や独立した公開承認を代替しない。
 >
-> 非公開の候補ページとして本番実装済み：[PR #2149](https://github.com/bingohooah888-ai/novelrise/pull/2149)。**候補版** `november-2026-v1-candidate`／**候補URL** `https://novelight.jp/contest-terms`。両者は正式採用前で、Production DB の `terms_version` と `terms_url` は未設定。本書を保存・PR作成しても公開・応募受付は開始しない。
+> 非公開の候補ページとして本番実装済み：[PR #2149](https://github.com/bingohooah888-ai/novelrise/pull/2149)。**正式採択前の提案版** `november-2026-v1`／**候補URL** `https://novelight.jp/contest-terms`。両者は正式採用前で、Production DB の `terms_version` と `terms_url` は未設定。本書を保存・PR作成しても公開・応募受付は開始しない。
 
 ## 1. 主催・企画の趣旨
 
@@ -77,7 +77,7 @@ SNSでの宣伝、家族・友人への読書依頼など、通常の周知・�
 3. **振込・本人確認**：登録メールが到達しない場合、通知後1か月以内に返信がない場合、返信はあるが必要資料や振込先が不備の場合、受賞者が国内銀行口座を用意できない場合の運用を募集前に明文化する。口座情報のメール受付について、なりすまし防止、誤送信防止、アクセス制限、保管・削除、海外居住者の本人確認を実地で確認する。
 4. **結果審査と異議**：12月1日の発表を維持できる集計・不正調査体制、10公開話数を維持できない場合の取扱い、異議申立の期間・通知・訂正、悪質な違反の判断証跡を確定する。旧「異議7日」案は**運営決裁されていない**。
 5. **データ・権利**：プライバシーポリシー2026-10-12版と、ゲスト読書識別子・最終振込後の不要情報削除（法定保存例外）を照合する。既存規約を黙って変更しない。
-6. **公開・DBゲート**：PR #2149の非公開候補ページは2026-10-13に本番反映済み。今回の振込文言は別PR・未本番であり、本番への反映には別途承認が必要。候補URL/版を正式採択し、Production `terms_version` / `terms_url` と応募画面の同意リンク・RPC保存を一致させる。現状は `draft / public_visible=false` のまま。DB migration `20261012135000` は従前の承認があるが正式Approval Ledger経路で未適用、**安全性チェックを迂回しない**。さらに**別の「受付開始承認」**がなければ、一般公開・応募開始は禁止。非公開時404／受付開始直後200の順で検証する。
+6. **公開・DBゲート**：PR #2149の非公開候補ページとPR #2163の振込規約候補文言は2026-10-13に本番反映済み。今回の版ID `november-2026-v1` は未採択の別PR提案で、本番への反映には別途承認が必要。候補URL/版を正式採択し、Production `terms_version` / `terms_url` と応募画面の同意リンク・RPC保存を一致させる。現状は `draft / public_visible=false` のまま。DB migration `20261012135000` は従前の承認があるが正式Approval Ledger経路で未適用、**安全性チェックを迂回しない**。さらに**別の「受付開始承認」**がなければ、一般公開・応募開始は禁止。非公開時404／受付開始直後200の順で検証する。
 
 参照：[Issue #2120](https://github.com/bingohooah888-ai/novelrise/issues/2120)／[現行プライバシーポリシー](https://novelight.jp/privacy.html)／[受付開始Runbook](NOVEMBER-CONTEST-STEP05-REGISTRATION-RUNBOOK.md)／[PR #2149](https://github.com/bingohooah888-ai/novelrise/pull/2149)。
 

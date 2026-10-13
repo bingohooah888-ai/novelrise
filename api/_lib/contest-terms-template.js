@@ -1,6 +1,7 @@
-// Stage 05 candidate content. The operator must separately approve its final
-// text/version and explicitly authorize contest registration before publication.
-export const CONTEST_TERMS_VERSION_CANDIDATE = 'november-2026-v1-candidate';
+// Stage 05 final-version PROPOSAL only. The operator must explicitly adopt its
+// legal text/version in a separate decision and authorize registration before
+// publication. Deployment of this file alone cannot publish the contest.
+export const CONTEST_TERMS_VERSION_CANDIDATE = 'november-2026-v1';
 export const CONTEST_TERMS_URL_CANDIDATE = 'https://novelight.jp/contest-terms';
 export const contestTermsTemplate = String.raw`<!DOCTYPE html>
 <html lang="ja">
