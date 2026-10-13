@@ -11,9 +11,17 @@ function response() {
   return {
     statusCode: 200,
     headers,
-    setHeader(key, value) { headers[key] = value; },
-    status(code) { this.statusCode = code; return this; },
-    json(body) { this.data = body; return this; }
+    setHeader(key, value) {
+      headers[key] = value;
+    },
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(body) {
+      this.data = body;
+      return this;
+    }
   };
 }
 
@@ -36,18 +44,32 @@ function createDatabase() {
   const tableCalls = [];
   const db = {
     auth: {
-      getUser: async (token) => token === 'authenticated-admin'
-        ? { data: { user: { id: ADMIN, email: 'admin@example.test' } }, error: null }
-        : { data: { user: null }, error: { message: 'invalid token' } }
+      getUser: async (token) =>
+        token === 'authenticated-admin'
+          ? {
+              data: { user: { id: ADMIN, email: 'admin@example.test' } },
+              error: null
+            }
+          : { data: { user: null }, error: { message: 'invalid token' } }
     },
     from(table) {
       tableCalls.push(table);
       const chained = {
-        select() { return this; },
-        eq() { return this; },
-        order() { return this; },
-        limit() { return Promise.resolve({ data: [], error: null }); },
-        range() { return Promise.resolve({ data: [], count: 0, error: null }); },
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
+        order() {
+          return this;
+        },
+        limit() {
+          return Promise.resolve({ data: [], error: null });
+        },
+        range() {
+          return Promise.resolve({ data: [], count: 0, error: null });
+        },
         maybeSingle() {
           if (table === 'novelight_contests') {
             return Promise.resolve({
@@ -55,7 +77,10 @@ function createDatabase() {
               error: null
             });
           }
-          return Promise.resolve({ data: { id: READER, review_status: 'provisional' }, error: null });
+          return Promise.resolve({
+            data: { id: READER, review_status: 'provisional' },
+            error: null
+          });
         }
       };
       return chained;
@@ -109,23 +134,29 @@ test('operator review validates inputs and uses verified admin UUID', async () =
   const { db, rpcCalls } = createDatabase();
   const handler = createAdminContestReviewHandler({ supabase: db, env });
   const bad = response();
-  await handler(request('POST', {
-    action: 'clear',
-    expected_status: 'provisional',
-    reader_id: READER,
-    reason_code: 'anomalous_reading',
-    note
-  }), bad);
+  await handler(
+    request('POST', {
+      action: 'clear',
+      expected_status: 'provisional',
+      reader_id: READER,
+      reason_code: 'anomalous_reading',
+      note
+    }),
+    bad
+  );
   assert.equal(bad.statusCode, 400);
 
   const good = response();
-  await handler(request('POST', {
-    action: 'hold',
-    expected_status: 'provisional',
-    reader_id: READER,
-    reason_code: 'anomalous_reading',
-    note
-  }), good);
+  await handler(
+    request('POST', {
+      action: 'hold',
+      expected_status: 'provisional',
+      reader_id: READER,
+      reason_code: 'anomalous_reading',
+      note
+    }),
+    good
+  );
   assert.equal(good.statusCode, 200);
   assert.equal(good.data.result.review_status, 'review_hold');
   assert.equal(good.data.prize_finalized, false);

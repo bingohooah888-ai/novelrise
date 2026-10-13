@@ -1,6 +1,7 @@
 import { requireAdmin, applyAdminSecurityHeaders } from './admin-auth.js';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REASONS = new Set([
   'anomalous_reading',
   'duplicate_identity',
@@ -55,22 +56,33 @@ export function createAdminContestReviewHandler({
 
       if (req.method === 'POST') {
         const body = req.body;
-        if (!body || typeof body !== 'object' ||
-            Array.isArray(body) ||
-            Object.keys(body).sort().join(',') !==
-              'action,expected_status,note,reader_id,reason_code') {
+        if (
+          !body ||
+          typeof body !== 'object' ||
+          Array.isArray(body) ||
+          Object.keys(body).sort().join(',') !==
+            'action,expected_status,note,reader_id,reason_code'
+        ) {
           return fail(res, 400, 'INVALID_REQUEST');
         }
         const { action, expected_status, reader_id, reason_code, note } = body;
-        if (!ACTIONS.has(action) || !EXPECTED.has(expected_status) ||
-            !REASONS.has(reason_code) || !UUID.test(String(reader_id ?? '')) ||
-            typeof note !== 'string' || note.trim().length < 20 ||
-            note.length > 500) {
+        if (
+          !ACTIONS.has(action) ||
+          !EXPECTED.has(expected_status) ||
+          !REASONS.has(reason_code) ||
+          !UUID.test(String(reader_id ?? '')) ||
+          typeof note !== 'string' ||
+          note.trim().length < 20 ||
+          note.length > 500
+        ) {
           return fail(res, 400, 'INVALID_REVIEW');
         }
-        if (action === 'clear' &&
-            !['manual_evidence', 'appeal_review', 'false_positive']
-              .includes(reason_code)) {
+        if (
+          action === 'clear' &&
+          !['manual_evidence', 'appeal_review', 'false_positive'].includes(
+            reason_code
+          )
+        ) {
           return fail(res, 400, 'INVALID_CLEAR_REASON');
         }
         const result = await resultOrFail(
@@ -109,10 +121,12 @@ export function createAdminContestReviewHandler({
         );
         if (!readerResult.data) return fail(res, 404, 'READER_NOT_FOUND');
         const [risk, scores, audit] = await Promise.all([
-          resultOrFail(supabase.rpc('novelight_contest_reader_risk_signals', {
-            p_contest_id: contest.id,
-            p_reader_id: readerId
-          })),
+          resultOrFail(
+            supabase.rpc('novelight_contest_reader_risk_signals', {
+              p_contest_id: contest.id,
+              p_reader_id: readerId
+            })
+          ),
           resultOrFail(
             supabase
               .from('novelight_contest_reader_scores')
@@ -125,7 +139,9 @@ export function createAdminContestReviewHandler({
           resultOrFail(
             supabase
               .from('novelight_contest_review_audit')
-              .select('actor_user_id,action,reason_code,evidence_summary,created_at')
+              .select(
+                'actor_user_id,action,reason_code,evidence_summary,created_at'
+              )
               .eq('contest_id', contest.id)
               .eq('reader_id', readerId)
               .order('created_at', { ascending: false })
@@ -145,8 +161,12 @@ export function createAdminContestReviewHandler({
 
       const page = req.query?.page ?? '1';
       const limit = req.query?.limit ?? '20';
-      if (typeof page !== 'string' || !/^[1-9][0-9]{0,2}$/.test(page) ||
-          typeof limit !== 'string' || !['10', '20'].includes(limit)) {
+      if (
+        typeof page !== 'string' ||
+        !/^[1-9][0-9]{0,2}$/.test(page) ||
+        typeof limit !== 'string' ||
+        !['10', '20'].includes(limit)
+      ) {
         return fail(res, 400, 'INVALID_PAGINATION');
       }
       const offset = (Number(page) - 1) * Number(limit);
@@ -161,8 +181,8 @@ export function createAdminContestReviewHandler({
           .order('id', { ascending: true })
           .range(offset, offset + Number(limit) - 1)
       );
-      const readers = await Promise.all((readerRows.data ?? []).map(
-        async (reader) => {
+      const readers = await Promise.all(
+        (readerRows.data ?? []).map(async (reader) => {
           const risk = await resultOrFail(
             supabase.rpc('novelight_contest_reader_risk_signals', {
               p_contest_id: contest.id,
@@ -172,11 +192,10 @@ export function createAdminContestReviewHandler({
           return {
             ...reader,
             risk_codes: risk.data?.signal_codes ?? [],
-            requires_manual_review:
-              risk.data?.requires_manual_review === true
+            requires_manual_review: risk.data?.requires_manual_review === true
           };
-        }
-      ));
+        })
+      );
       return res.status(200).json({
         ok: true,
         contest_status: contest.status,

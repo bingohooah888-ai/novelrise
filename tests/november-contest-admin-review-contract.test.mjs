@@ -4,11 +4,17 @@ import { URL } from 'node:url';
 import test from 'node:test';
 
 const sql = readFileSync(
-  new URL('../supabase/migrations/20261013183000_november_contest_admin_review.sql', import.meta.url),
+  new URL(
+    '../supabase/migrations/20261013183000_november_contest_admin_review.sql',
+    import.meta.url
+  ),
   'utf8'
 );
 const rollback = readFileSync(
-  new URL('../supabase/rollback/20261013183000_november_contest_admin_review_rollback.sql', import.meta.url),
+  new URL(
+    '../supabase/rollback/20261013183000_november_contest_admin_review_rollback.sql',
+    import.meta.url
+  ),
   'utf8'
 );
 
