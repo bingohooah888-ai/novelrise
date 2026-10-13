@@ -43,7 +43,7 @@ export function shouldUpdateBranch(comparison, pull) {
 }
 
 function validEvent(event) {
-  return ['push', 'pull_request_target', 'workflow_dispatch'].includes(event);
+  return ['push', 'workflow_run', 'pull_request_target', 'workflow_dispatch'].includes(event);
 }
 
 export async function synchronizeDrafts({
@@ -64,7 +64,8 @@ export async function synchronizeDrafts({
       'NOVELIGHT_BRANCH_SYNC_TOKEN must be a separate write-capable GitHub App/PAT credential'
     );
   }
-  if (event !== 'push' && (!Number.isSafeInteger(prNumber) ||
+  if (!['push', 'workflow_run'].includes(event) &&
+      (!Number.isSafeInteger(prNumber) ||
       prNumber <= 0)) {
     throw new Error('A positive PR number is required for this trigger');
   }
@@ -101,7 +102,7 @@ export async function synchronizeDrafts({
   }
 
   let pulls;
-  if (event === 'push') {
+  if (['push', 'workflow_run'].includes(event)) {
     pulls = await api(base + '/pulls?state=open&base=main&per_page=100', readToken);
     if (!Array.isArray(pulls) || pulls.length >= 100) {
       throw new Error('PR enumeration incomplete; not synchronizing any branches');
@@ -112,7 +113,8 @@ export async function synchronizeDrafts({
 
   const eligible = pulls.filter((pr) =>
     isEligibleDraft(pr, repository) &&
-    (event !== 'push' || isRecentlyActive(pr, nowMs))
+    (!['push', 'workflow_run'].includes(event) ||
+      isRecentlyActive(pr, nowMs))
   );
   if (eligible.length > MAX_PR_UPDATES_PER_RUN) {
     throw new Error('Too many Draft PRs; require an explicitly bounded run');
@@ -124,7 +126,8 @@ export async function synchronizeDrafts({
     outcome.checked += 1;
     const live = await api(base + '/pulls/' + number, readToken);
     if (!isEligibleDraft(live, repository) ||
-        (event === 'push' && !isRecentlyActive(live, nowMs))) {
+        (['push', 'workflow_run'].includes(event) &&
+          !isRecentlyActive(live, nowMs))) {
       outcome.deferred.push(number);
       continue;
     }
