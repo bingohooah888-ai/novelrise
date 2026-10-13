@@ -5,6 +5,7 @@ import { createGithubApiBudgetFetch } from '../tools/novelight-commander/src/git
 
 const src = 'tools/novelight-commander/src/';
 
+// prettier-ignore
 test('shared GitHub budget spaces parallel requests across all NLO bridge workers', async () => {
   let clock = 1000;
   const times = [];
@@ -28,6 +29,7 @@ test('shared GitHub budget spaces parallel requests across all NLO bridge worker
   assert.deepEqual(times, [1000, 2200, 3400, 4600]);
 });
 
+// prettier-ignore
 test('primary rate limit pauses subsequent GitHub calls until reset without extra traffic', async () => {
   let clock = 1000;
   let calls = 0;
@@ -60,6 +62,7 @@ test('primary rate limit pauses subsequent GitHub calls until reset without extr
   assert.equal(calls, 2);
 });
 
+// prettier-ignore
 test('ordinary 403 permissions errors do not trigger a global rate-limit pause', async () => {
   let calls = 0;
   const budget = createGithubApiBudgetFetch({
@@ -76,6 +79,7 @@ test('ordinary 403 permissions errors do not trigger a global rate-limit pause',
   assert.equal(budget.getPausedUntil(), 0);
 });
 
+// prettier-ignore
 test('non-GitHub requests are not delayed or modified', async () => {
   let calls = 0;
   const budget = createGithubApiBudgetFetch({
@@ -91,6 +95,7 @@ test('non-GitHub requests are not delayed or modified', async () => {
   assert.equal(calls, 2);
 });
 
+// prettier-ignore
 test('bridge starts shared budget before workers and avoids restart storms on quota exhaustion', async () => {
   const [entry, core] = await Promise.all([
     readFile(src + 'github-bridge-daemon.js', 'utf8'),
@@ -104,6 +109,7 @@ test('bridge starts shared budget before workers and avoids restart storms on qu
   assert.match(core, /pollSeconds: Math\.max\(20,/);
 });
 
+// prettier-ignore
 test('independent NLO pollers no longer each poll GitHub every 10 seconds', async () => {
   const workers = [
     'scout-badge-live-bridge.js',
