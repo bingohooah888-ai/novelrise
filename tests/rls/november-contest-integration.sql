@@ -763,6 +763,208 @@ begin
 end
 $contest_score_fixture$;
 
+
+-- Stage 06 part B: authorized session creation and server-timed heartbeat
+-- verified exclusively in the disposable migration replay transaction.
+do $session_security$
+begin
+  if has_function_privilege(
+     'anon', 'public.novelight_contest_begin_read_session(uuid,bigint,text)',
+     'execute'
+   ) or has_function_privilege(
+     'authenticated',
+     'public.novelight_contest_begin_read_session(uuid,bigint,text)',
+     'execute'
+   ) or has_function_privilege(
+     'anon',
+     'public.novelight_contest_heartbeat_read_session(uuid,uuid,integer,numeric,boolean,boolean)',
+     'execute'
+   ) or has_function_privilege(
+     'authenticated',
+     'public.novelight_contest_heartbeat_read_session(uuid,uuid,integer,numeric,boolean,boolean)',
+     'execute'
+   ) then
+    raise exception 'Stage 06 session RPC exposed to browser roles';
+  end if;
+  if not has_function_privilege(
+    'service_role',
+    'public.novelight_contest_heartbeat_read_session(uuid,uuid,integer,numeric,boolean,boolean)',
+    'execute'
+  ) then
+    raise exception 'Trusted backend heartbeat role unavailable';
+  end if;
+end
+$session_security$;
+
+do $session_integrated$
+declare
+  v_contest_id uuid;
+  v_episode_id bigint;
+  v_reader_id uuid := 'caf00000-0000-4000-8000-000000000020';
+  v_guest_reader uuid := 'caf00000-0000-4000-8000-000000000023';
+  v_owner_reader uuid := 'caf00000-0000-4000-8000-000000000022';
+  v_session uuid;
+  v_tts_session uuid;
+  v_bg_session uuid;
+  v_result jsonb;
+  v_number integer;
+begin
+  select c.id, ep.id into v_contest_id, v_episode_id
+    from public.novelight_contests c
+    join public.novelight_contest_entries en
+      on en.contest_id = c.id
+    join public.novels n on n.id = en.novel_id
+    join public.episodes ep on ep.novel_id = n.id
+   where c.contest_key = 'novelight-november-2026'
+     and n.title = 'CONTEST_CI_ELIGIBLE_A'
+     and ep.episode_number = 1;
+
+  update public.novelight_contest_readers
+     set review_status = 'provisional'
+   where id = v_reader_id;
+  select public.novelight_contest_begin_read_session(
+    v_reader_id, v_episode_id, 'scroll'
+  ) into v_result;
+  if v_result->>'reason' <> 'contest_inactive' then
+    raise exception 'Draft contest issued a reader session: %', v_result;
+  end if;
+
+  update public.novelight_contests
+     set entry_deadline_at = pg_catalog.clock_timestamp() - interval '2 hours',
+         starts_at = pg_catalog.clock_timestamp() - interval '1 hour',
+         ends_at = pg_catalog.clock_timestamp() + interval '1 hour',
+         status = 'active',
+         public_visible = true,
+         terms_version = 'ci-contest-v1',
+         terms_url = 'https://novelight.jp/contest-terms'
+   where id = v_contest_id;
+
+  select public.novelight_contest_begin_read_session(
+    v_owner_reader, v_episode_id, 'scroll'
+  ) into v_result;
+  if v_result->>'reason' <> 'self_read' then
+    raise exception 'Author obtained a contest session: %', v_result;
+  end if;
+
+  select public.novelight_contest_begin_read_session(
+    v_reader_id, v_episode_id, 'forged_mode'
+  ) into v_result;
+  if v_result->>'reason' <> 'invalid_request' then
+    raise exception 'Invalid mode accepted: %', v_result;
+  end if;
+
+  select public.novelight_contest_begin_read_session(
+    v_reader_id, v_episode_id, 'scroll'
+  ) into v_result;
+  if v_result->>'ok' <> 'true' or v_result->>'session_id' is null then
+    raise exception 'Real reader could not start session: %',v_result;
+  end if;
+  v_session := (v_result->>'session_id')::uuid;
+
+  select public.novelight_contest_heartbeat_read_session(
+    v_session, v_guest_reader, 1, 0.3, true, true
+  ) into v_result;
+  if v_result->>'reason' <> 'session_missing' then
+    raise exception 'Guest took over account session: %',v_result;
+  end if;
+  select public.novelight_contest_heartbeat_read_session(
+    v_session, v_reader_id, 1, 1.4, true, true
+  ) into v_result;
+  if v_result->>'reason' <> 'invalid_request' then
+    raise exception 'Out-of-range progress accepted: %',v_result;
+  end if;
+  select public.novelight_contest_heartbeat_read_session(
+    v_session, v_reader_id, 1, 1, true, true
+  ) into v_result;
+  if v_result->>'reason' <> 'invalid_interval' then
+    raise exception 'Immediate fake completion heartbeat accepted: %',v_result;
+  end if;
+
+  -- Backdate private timestamps only inside the disposable fixture; the
+  -- migration uses immutable database clock measurements in Production.
+  for v_number in 1..4 loop
+    update public.novelight_contest_read_sessions
+       set last_heartbeat_at = pg_catalog.clock_timestamp() - interval '12 seconds'
+     where id = v_session;
+    select public.novelight_contest_heartbeat_read_session(
+      v_session, v_reader_id, v_number,
+      v_number::numeric / 4, true, v_number = 2
+    ) into v_result;
+    if v_result->>'ok' <> 'true' then
+      raise exception 'Sequential heartbeat #% rejected: %',v_number,v_result;
+    end if;
+    if v_number < 4 and v_result->>'qualified' <> 'false' then
+      raise exception 'Reading was prematurely qualified at #%: %',v_number,v_result;
+    end if;
+  end loop;
+  if v_result->>'qualified' <> 'true' then
+    raise exception 'Four sequential valid heartbeats not qualified: %',v_result;
+  end if;
+
+  select public.novelight_contest_heartbeat_read_session(
+    v_session, v_reader_id, 4, 1, true, true
+  ) into v_result;
+  if v_result->>'qualified' <> 'true' then
+    raise exception 'Already qualified heartbeat was not idempotent: %',v_result;
+  end if;
+
+  select public.novelight_contest_begin_read_session(
+    v_guest_reader, v_episode_id, 'tts'
+  ) into v_result;
+  v_tts_session := (v_result->>'session_id')::uuid;
+  if v_result->>'ok' <> 'true' then
+    raise exception 'Guest TTS start denied: %',v_result;
+  end if;
+
+  for v_number in 1..4 loop
+    update public.novelight_contest_read_sessions
+       set last_heartbeat_at = pg_catalog.clock_timestamp() - interval '12 seconds'
+     where id = v_tts_session;
+    select public.novelight_contest_heartbeat_read_session(
+      v_tts_session, v_guest_reader, v_number,
+      v_number::numeric / 4, true, v_number = 1
+    ) into v_result;
+    if v_result->>'ok' <> 'true' then
+      raise exception 'Guest TTS heartbeat failed: %',v_result;
+    end if;
+  end loop;
+  if v_result->>'qualified' <> 'true'
+     or (v_result->>'foreground_seconds')::integer < 45 then
+    raise exception 'TTS verified interval failed: %',v_result;
+  end if;
+
+  select public.novelight_contest_begin_read_session(
+    v_guest_reader, v_episode_id, 'scroll'
+  ) into v_result;
+  v_bg_session := (v_result->>'session_id')::uuid;
+  update public.novelight_contest_read_sessions
+     set last_heartbeat_at = pg_catalog.clock_timestamp() - interval '12 seconds'
+   where id = v_bg_session;
+  select public.novelight_contest_heartbeat_read_session(
+    v_bg_session, v_guest_reader, 1, 1, false, true
+  ) into v_result;
+  if v_result->>'qualified' <> 'false'
+     or (v_result->>'foreground_seconds')::integer <> 0 then
+    raise exception 'Background time produced contest credit: %',v_result;
+  end if;
+
+  update public.novelight_contests
+     set status = 'draft',public_visible = false where id = v_contest_id;
+  select public.novelight_contest_begin_read_session(
+    v_reader_id, v_episode_id, 'scroll'
+  ) into v_result;
+  if v_result->>'reason' <> 'contest_inactive' then
+    raise exception 'Draft contest reissued scoring sessions';
+  end if;
+  select public.novelight_contest_heartbeat_read_session(
+    v_session, v_reader_id, 5, 1, true, true
+  ) into v_result;
+  if v_result->>'reason' <> 'contest_inactive' then
+    raise exception 'Draft contest accepted a heartbeat';
+  end if;
+end
+$session_integrated$;
+
 rollback;
 
-select 'PASS: November contest migrated schema, owner RPC, private RLS, catalog and score core on disposable replay DB' as result;
+select 'PASS: November contest migrated schema, owner RPC, private RLS, catalog and score core and read sessions on disposable replay DB' as result;
