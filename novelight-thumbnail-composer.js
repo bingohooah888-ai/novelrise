@@ -406,7 +406,32 @@
     return result;
   }
 
+  async function loadThumbnailPreviewIndex() {
+    try {
+      const response = await fetch('/assets/thumbnail-previews/v1/manifest.json', {
+        cache: 'force-cache'
+      });
+      if (!response.ok) return new Map();
+      const data = await response.json();
+      if (data?.version !== 1 || !Array.isArray(data.assets) ||
+          data.count !== data.assets.length) return new Map();
+      const index = new Map();
+      for (const row of data.assets) {
+        const id = String(row?.id || '');
+        if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(id) ||
+            row.previewUrl !== '/assets/thumbnail-previews/v1/' + id + '.webp' ||
+            typeof row.sourceUrl !== 'string') return new Map();
+        index.set(id, row);
+      }
+      return index;
+    } catch {
+      // Unavailable previews must never break author thumbnail editing.
+      return new Map();
+    }
+  }
+
   async function loadLibrary(client) {
+    const thumbnailPreviewIndexPromise = loadThumbnailPreviewIndex();
     const templatesResult = await loadTemplateRows(client);
     if (templatesResult.error) {
       if (schemaUnavailable(templatesResult.error)) {
@@ -436,10 +461,15 @@
       }
       throw assetsResult.error;
     }
+    const previewIndex = await thumbnailPreviewIndexPromise;
     const library = {
       ready: true,
       templates: templatesResult.data ?? [],
-      assets: assetsResult.data ?? []
+      assets: (assetsResult.data ?? []).map((asset) => {
+        const preview = previewIndex.get(String(asset.id));
+        if (!preview || preview.sourceUrl !== asset.image_url) return asset;
+        return { ...asset, preview_url: preview.previewUrl };
+      })
     };
     library.templates = library.templates.filter((template) => usableTemplate(library, template));
     if (!library.templates.length) return { ...library, ready: false, reason: 'materials' };
@@ -840,7 +870,13 @@
         button.appendChild(none);
       } else {
         const image = document.createElement('img');
-        image.src = asset.image_url;
+        if (asset.preview_url) {
+          image.onerror = () => {
+            image.onerror = null;
+            image.src = asset.image_url;
+          };
+        }
+        image.src = asset.preview_url || asset.image_url;
         image.alt = '';
         image.loading = 'lazy';
         image.decoding = 'async';
