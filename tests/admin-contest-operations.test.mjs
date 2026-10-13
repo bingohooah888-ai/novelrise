@@ -2,9 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import {
-  createAdminContestOperationsHandler
-} from '../api/_lib/admin-contest-operations.js';
+import { createAdminContestOperationsHandler } from '../api/_lib/admin-contest-operations.js';
 
 const ADMIN = 'caf00000-0000-4000-8000-000000000099';
 const CONTEST = 'caf00000-0000-4000-8000-000000000090';
