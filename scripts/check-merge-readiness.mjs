@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 
 import { verifyRegistryAtRef } from './document-freshness-lib.mjs';
+import { verifyPrDispatch } from './novelight-pr-sync-dispatch-guard.mjs';
 import {
   classifyHighRiskPaths,
   highRiskApprovalChallenge,
@@ -92,22 +93,51 @@ async function fetchPrComments(repository, prNumber) {
 }
 
 async function enforceHighRiskApproval() {
-  if (process.env.GITHUB_ACTIONS !== 'true' || process.env.GITHUB_EVENT_NAME !== 'pull_request') {
-    console.log('- High-risk approval gate is enforced by GitHub Actions on pull requests.');
+  if (
+    process.env.GITHUB_ACTIONS !== 'true' ||
+    !['pull_request', 'workflow_dispatch'].includes(process.env.GITHUB_EVENT_NAME)
+  ) {
+    console.log('- High-risk approval is enforced by GitHub Actions on PR CI.');
     return;
   }
 
   const eventPath = process.env.GITHUB_EVENT_PATH;
-  const baseRef = process.env.GITHUB_BASE_REF;
-  if (!eventPath || !baseRef) {
-    fail('GitHub pull request event metadata is unavailable for high-risk approval');
+  if (!eventPath) {
+    fail('GitHub event metadata is missing');
   }
 
   const event = JSON.parse(await readFile(eventPath, 'utf8'));
-  const prNumber = event.pull_request?.number;
-  const headSha = String(event.pull_request?.head?.sha || '').toLowerCase();
-  const repository = event.repository?.full_name;
-  if (!Number.isInteger(prNumber) || !/^[0-9a-f]{40}$/.test(headSha) || !repository) {
+  const dispatched = process.env.GITHUB_EVENT_NAME === 'workflow_dispatch';
+  let prNumber;
+  let headSha;
+  let repository;
+  let baseRef;
+
+  if (dispatched) {
+    const attested = await verifyPrDispatch({
+      repository: process.env.GITHUB_REPOSITORY,
+      prNumber: event.inputs?.pr_number,
+      expectedSha: event.inputs?.expected_head_sha,
+      runSha: process.env.GITHUB_SHA,
+      runRef: process.env.GITHUB_REF,
+      token: process.env.GH_TOKEN
+    });
+    prNumber = attested.prNumber;
+    headSha = attested.headSha;
+    repository = process.env.GITHUB_REPOSITORY;
+    baseRef = 'main';
+  } else {
+    prNumber = event.pull_request?.number;
+    headSha = String(event.pull_request?.head?.sha || '').toLowerCase();
+    repository = event.repository?.full_name;
+    baseRef = process.env.GITHUB_BASE_REF;
+  }
+  if (
+    !Number.isInteger(prNumber) ||
+    !/^[0-9a-f]{40}$/.test(headSha) ||
+    !repository ||
+    baseRef !== 'main'
+  ) {
     fail('GitHub pull request identity is incomplete for high-risk approval');
   }
 
