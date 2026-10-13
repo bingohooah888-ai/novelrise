@@ -133,6 +133,17 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
       </div>
     </section>
 
+    <section class="contest-shell contest-section" id="contestRankingSection" aria-labelledby="contestRankingTitle" hidden>
+      <div class="contest-section-heading">
+        <div><p class="contest-kicker">INTERIM RANKINGS</p>
+          <h2 id="contestRankingTitle">中間ランキング TOP 10</h2>
+          <p class="contest-section-copy" id="contestRankingDate"></p>
+        </div>
+      </div>
+      <p class="contest-note">発表時点で順位・得点を固定した暫定ランキングです。受賞は独立審査後に確定します。同点は同順位。R15非表示設定は参加作品一覧と共通です。</p>
+      <ol id="contestRankingList" class="contest-ranking-list" aria-live="polite"></ol>
+    </section>
+
     <section class="contest-timeline">
       <div class="contest-shell">
         <p class="contest-kicker">RANKING SCHEDULE</p>

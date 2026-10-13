@@ -18,10 +18,14 @@
   const enrollmentEl = document.getElementById('contestEnrollment');
   const noteEl = document.getElementById('entryPhaseNote');
   const hideR15Control = document.getElementById('contestHideR15');
+  const rankSection = document.getElementById('contestRankingSection');
+  const rankList = document.getElementById('contestRankingList');
+  const rankDate = document.getElementById('contestRankingDate');
 
   let offset = 0;
   let loading = false;
   let requestRevision = 0;
+  let rankRevision = 0;
   let currentStatus = 'draft';
 
   function storedHideR15() {
@@ -51,6 +55,49 @@
     finalized: '結果確定',
     cancelled: '中止'
   };
+
+  async function loadPublishedRanking() {
+    if (!rankSection || !rankList) return;
+    const revision = ++rankRevision;
+    rankSection.hidden = true;
+    rankList.replaceChildren();
+    if (!['active', 'review'].includes(currentStatus)) return;
+    try {
+      const { data, error } = await client.rpc('novelight_public_contest_rankings', {
+        p_include_r15: !storedHideR15()
+      });
+      if (revision !== rankRevision || error || data?.ok !== true ||
+          !Array.isArray(data.rows)) return;
+      rankDate.textContent =
+        '発表基準：' + new Date(data.scheduled_publish_at).toLocaleString(
+          'ja-JP', { timeZone: 'Asia/Tokyo', month: 'long', day: 'numeric',
+            hour: 'numeric', minute: '2-digit' }
+        ) + '（日本時間）';
+      for (const work of data.rows) {
+        const li = document.createElement('li');
+        li.className = 'contest-ranking-item';
+        const place = document.createElement('strong');
+        place.textContent = String(work.rank) + '位';
+        const link = document.createElement('a');
+        link.href = 'novel.html?id=' + encodeURIComponent(work.novel_id);
+        link.textContent = String(work.title || '無題の作品');
+        const points = document.createElement('span');
+        points.className = 'contest-ranking-points';
+        points.textContent = String(work.points) + 'pt';
+        li.append(place, link, points);
+        rankList.append(li);
+      }
+      if (!data.rows.length) {
+        const li = document.createElement('li');
+        li.textContent = '現在表示できる参加作品はありません。';
+        rankList.append(li);
+      }
+      rankSection.hidden = false;
+    } catch {
+      // Missing or unpublished snapshot must not leak any rank data.
+      rankSection.hidden = true;
+    }
+  }
 
   function entryCard(work) {
     const article = document.createElement('article');
@@ -113,6 +160,7 @@
 
       currentStatus = data.contest_status;
       statusEl.textContent = stateText[currentStatus] || '開催情報を確認中';
+      void loadPublishedRanking();
       const total = Math.max(0, Number(data.total_entries) || 0);
       const works = data.entries;
 
@@ -136,6 +184,8 @@
       if (myRevision !== requestRevision) return;
       console.warn('Contest catalog unavailable', error?.code || '');
       if (reset) entriesEl.replaceChildren();
+      ++rankRevision;
+      if (rankSection) rankSection.hidden = true;
       if (!entriesEl.children.length) {
         const message = document.createElement('p');
         message.className = 'contest-list-message';
