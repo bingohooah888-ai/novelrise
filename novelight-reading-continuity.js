@@ -326,8 +326,23 @@
   }
 
 
-  function installContestReadTracker(row, content) {
+  async function installContestReadTracker(row, content, clientInstance) {
     if (window.NOVELIGHT_CONTEST_READER_CLIENT_ENABLED !== true) return;
+    // The visible published body is proof of this page's content gate, not
+    // proof of a human read. Never use cross-script lexical globals.
+    if (!content?.isConnected || !content.textContent?.trim()) return;
+    let session = null;
+    try {
+      const result = await clientInstance.auth.getSession();
+      if (result.error) return;
+      session = result.data?.session || null;
+    } catch {
+      return;
+    }
+    const isAuthor = Boolean(
+      session?.user?.id && session.user.id === row.user_id
+    );
+    if (isAuthor) return;
     const script = document.createElement('script');
     script.src = 'novelight-contest-read-tracker.js';
     script.onload = () => {
@@ -336,9 +351,9 @@
           detail: {
             episode: row,
             novel: { id: row.novel_id },
-            session: typeof session === 'undefined' ? null : session,
-            isAuthor: typeof isAuthor !== 'undefined' && isAuthor,
-            unlocked: typeof unlocked !== 'undefined' && unlocked,
+            session,
+            isAuthor,
+            unlocked: true,
             content
           }
         })
@@ -354,12 +369,12 @@
     if (!content) return false;
     const rowResult = await clientInstance
       .from('episodes')
-      .select('id,novel_id,episode_number,status')
+      .select('id,novel_id,episode_number,status,user_id')
       .eq('id', episodeId)
       .single();
     if (rowResult.error || !rowResult.data || rowResult.data.status !== 'published') return false;
     const row = rowResult.data;
-    installContestReadTracker(row, content);
+    void installContestReadTracker(row, content, clientInstance);
     const syncState = await hydrateRemoteProgress(clientInstance, [row.novel_id]);
     const stored = readProgress(row.novel_id);
     installResumeChip(content, stored, row);

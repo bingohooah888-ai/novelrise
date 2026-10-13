@@ -105,6 +105,9 @@ function mockDatabase({ userId, active = true, owner = true } = {}) {
       if (name === 'novelight_contest_guest_creation_slot') {
         return { data: true, error: null };
       }
+      if (name === 'novelight_contest_link_guest_account') {
+        return { data: { ok: true, linked: true }, error: null };
+      }
       if (name === 'novelight_contest_begin_read_session') {
         return {
           data: { ok: true, session_id: SESSION, reading_mode: args.p_mode },
@@ -362,4 +365,57 @@ test('guest issuance requires a trusted address and consumes a DB quota', async 
   );
   assert.match(reservation[2].p_fingerprint, /^[0-9a-f]{64}$/);
   assert.equal(reservation[2].p_fingerprint.includes('203.0.113.9'), false);
+});
+
+test('account claiming proves both signed guest cookie and verified bearer', async () => {
+  const db = mockDatabase();
+  const guest = response();
+  await handler(db)(
+    request({ action: 'start', episode_id: 8, mode: 'scroll' }),
+    guest
+  );
+  const signedCookie = guest.headers['Set-Cookie'].split(';')[0];
+  const linked = response();
+  await handler(db)(
+    request({ action: 'link' }, {
+      authorization: 'Bearer valid-token',
+      cookie: signedCookie
+    }),
+    linked
+  );
+  assert.equal(linked.statusCode, 200);
+  assert.equal(linked.data.linked, true);
+  assert.equal(linked.data.provisional_only, true);
+  const rpc = db.calls.find(
+    (call) => call[1] === 'novelight_contest_link_guest_account'
+  );
+  assert.equal(rpc[2].p_user_id, UID);
+  assert.match(rpc[2].p_guest_key_hash, /^[0-9a-f]{64}$/);
+  assert.equal(rpc[2].p_guest_key_hash.includes('v1.'), false);
+  assert.equal(linked.headers['Set-Cookie'], undefined);
+});
+
+test('guest link rejects forged or unverified ownership', async () => {
+  const db = mockDatabase();
+  for (const [headers, code] of [
+    [{}, 401],
+    [{ authorization: 'Bearer invalid-token' }, 401],
+    [{ authorization: 'Bearer valid-token',
+      cookie: '__Host-novelight-contest-guest=v1.forged' }, 401]
+  ]) {
+    const result = response();
+    await handler(db)(request({ action: 'link' }, headers), result);
+    assert.equal(result.statusCode, code);
+  }
+  const noGuest = response();
+  await handler(db)(
+    request({ action: 'link' }, { authorization: 'Bearer valid-token' }),
+    noGuest
+  );
+  assert.equal(noGuest.statusCode, 200);
+  assert.equal(noGuest.data.linked, false);
+  assert.equal(
+    db.calls.some((call) => call[1] === 'novelight_contest_link_guest_account'),
+    false
+  );
 });
