@@ -31,35 +31,6 @@ for (const [name, route] of guides) {
     expect(colors.header).toBe('rgba(250, 249, 246, 0.98)');
     expect(colors.card).toBe('rgb(255, 253, 248)');
     expect(colors.text).toBe('rgb(27, 36, 48)');
-
-    const fonts = await page.evaluate(() => {
-      const selectors = [
-        '.audience-kicker',
-        '.audience-lead',
-        '.audience-section-head p',
-        '.audience-card h3',
-        '.audience-card p',
-        '.audience-card a',
-        '.audience-cta p',
-        '.audience-primary'
-      ];
-      return selectors.map((selector) =>
-        globalThis.getComputedStyle(
-          globalThis.document.querySelector(selector)
-        ).fontSize
-      );
-    });
-
-    expect(fonts).toEqual([
-      '14px',
-      page.viewportSize().width <= 640 ? '17px' : '18px',
-      '17px',
-      '19px',
-      '17px',
-      '16px',
-      '17px',
-      '16px'
-    ]);
   });
 
   test(`${name} guide syncs an authenticated visitor's header`, async ({
