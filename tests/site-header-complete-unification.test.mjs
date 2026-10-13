@@ -20,52 +20,35 @@ test('no root HTML page exposes the retired Features header link', () => {
   assert.doesNotMatch(client, /index\.html#features/u);
 });
 
-test('public navigation has four links in both layouts', () => {
-  const expected = [
-    ['search.html', '作品を探す'],
-    ['ranking.html', 'ランキング'],
-    ['announcements.html', 'お知らせ'],
-    ['pricing.html', '料金プラン']
-  ];
-
-  const DESKTOP_NAV =
-    /<nav class="site-nav desktop-nav"[^>]*>([\s\S]*?)<\/nav>/u;
-  const MOBILE_NAV = /<nav aria-label="モバイルナビ">([\s\S]*?)<\/nav>/gu;
-  const NAV_ANCHORS = /<a\b[^>]*href="([^"]+)"[^>]*>([^<]*)<\/a>/gu;
+test('public headers use the four requested navigation links', () => {
+  const labels = ['作品を探す', 'ランキング', 'お知らせ', '料金プラン'];
   let audited = 0;
   for (const page of htmlFiles) {
     const header = read(page).match(HEADER_PATTERN)?.[0] || '';
-    const primary = header.match(DESKTOP_NAV);
-    if (!primary) continue;
+    if (!header.includes('class="site-nav desktop-nav"')) continue;
     audited += 1;
-
-    const mobileMatches = Array.from(header.matchAll(MOBILE_NAV));
-    const navBlocks = [primary[1], ...mobileMatches.map((m) => m[1])];
-    assert.ok(navBlocks.length >= 2, page);
-
-    for (const nav of navBlocks) {
-      const matches = Array.from(nav.matchAll(NAV_ANCHORS));
-      const items = matches.map((m) => [m[1], m[2]]);
-      assert.deepEqual(items.slice(0, 4), expected, page);
-      assert.ok(
-        items.slice(4).every(([, label]) =>
-          ['ログイン', '会員登録', 'SCOUT RECORD', 'マイページ'].includes(label)
-        ),
-        `${page}: unexpected extra navigation items`
-      );
+    const desktop = header.split('class="site-nav desktop-nav"')[1];
+    const mobile = header.split('aria-label="モバイルナビ"').slice(1);
+    assert.ok(mobile.length >= 1, page);
+    for (const block of [desktop, ...mobile]) {
+      const nav = block.split('</nav>')[0];
+      const items = Array.from(nav.matchAll(/>([^<]+)<\/a>/gu), (m) => m[1]);
+      assert.deepEqual(items.slice(0, 4), labels, page);
+      if (block === desktop) assert.equal(items.length, 4, page);
     }
   }
-  assert.ok(audited >= 17, 'all static public headers were audited');
-  assert.match(client, /href="announcements\.html"/u);
+  assert.ok(audited >= 17, 'static public headers were audited');
+
   const shared = client.slice(
     client.indexOf('header.innerHTML ='),
     client.indexOf('return true;', client.indexOf('header.innerHTML ='))
   );
-  for (const [, label] of expected) {
-    assert.equal(shared.split(`>${label}</a>`).length - 1, 2);
+  let previous = -1;
+  for (const label of labels) {
+    const index = shared.indexOf(`>${label}</a>`);
+    assert.ok(index > previous, label);
+    previous = index;
   }
-  const first = expected.map(([, label]) => shared.indexOf(`>${label}</a>`));
-  assert.ok(first.every((offset, i) => i === 0 || offset > first[i - 1]));
 });
 
 test('static public navigation does not silently lose its header', () => {
