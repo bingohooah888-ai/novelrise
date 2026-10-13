@@ -299,6 +299,14 @@
       ttsHeartbeatTimer = null;
     }
 
+    function reportContestSpeechState(state) {
+      documentRef.dispatchEvent(
+        new global.CustomEvent('novelight:tts-state', {
+          detail: { state }
+        })
+      );
+    }
+
     function reportTtsProgress(ratio, completed = false) {
       ttsProgressRatio = Math.max(ttsProgressRatio, clamp(ratio));
       const context = pageReadingContext();
@@ -313,6 +321,7 @@
     }
 
     function stop(message = '停止しました。') {
+      const wasPlaying = active;
       runId += 1;
       active = false;
       paused = false;
@@ -320,6 +329,7 @@
       queueIndex = 0;
       stopTtsReadTracking();
       if (supported) synthesis.cancel();
+      if (wasPlaying) reportContestSpeechState('stopped');
       renderState(message);
     }
     function speakNext(expectedRunId) {
@@ -329,6 +339,7 @@
         active = false;
         paused = false;
         stopTtsReadTracking();
+        reportContestSpeechState('ended');
         renderState('読み上げが完了しました。');
         return;
       }
@@ -340,6 +351,11 @@
         utterance.voice = voice;
         utterance.lang = voice.lang || utterance.lang;
       }
+      utterance.onstart = () => {
+        if (expectedRunId === runId && active && !paused) {
+          reportContestSpeechState('playing');
+        }
+      };
       utterance.onend = () => {
         if (expectedRunId !== runId) return;
         queueIndex += 1;
@@ -348,6 +364,7 @@
           active = false;
           paused = false;
           stopTtsReadTracking();
+          reportContestSpeechState('ended');
           renderState('読み上げが完了しました。');
           return;
         }
@@ -396,12 +413,14 @@
       synthesis.pause();
       paused = true;
       stopTtsReadTracking();
+      reportContestSpeechState('paused');
       renderState('一時停止しました。');
     });
     resumeButton.addEventListener('click', () => {
       if (!active || !paused) return;
       synthesis.resume();
       paused = false;
+      reportContestSpeechState('playing');
       startTtsReadTracking();
       renderState('読み上げを再開しました。');
     });

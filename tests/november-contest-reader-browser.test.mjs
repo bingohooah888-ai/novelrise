@@ -9,6 +9,10 @@ const continuity = readFileSync(
   new URL('../novelight-reading-continuity.js', import.meta.url),
   'utf8'
 );
+const tts = readFileSync(
+  new URL('../novelight-reader-tts.js', import.meta.url),
+  'utf8'
+);
 const source = readFileSync(
   new URL('../novelight-contest-read-tracker.js', import.meta.url),
   'utf8'
@@ -116,7 +120,8 @@ test('episode render contract fires only after unlock and existing PV remains se
   assert.match(source, /NOVELIGHT_CONTEST_READER_CLIENT_ENABLED !== true/);
   assert.doesNotMatch(source, /record_valid_read_progress|record_episode_pv/);
   assert.match(source, /novelight:tts-progress/);
-  assert.match(source, /data-tts-action/);
+  assert.match(source, /novelight:tts-state/);
+  assert.doesNotMatch(source, /data-tts-action/);
   assert.match(source, /credentials: 'same-origin'/);
   assert.match(continuity, /clientInstance[.]auth[.]getSession\(\)/);
   assert.match(source, /action: 'link'/);
@@ -143,4 +148,74 @@ test('authenticated read links signed guest evidence before session creation', a
   assert.equal(b.requests[1].action, 'start');
   await b.tick();
   assert.equal(b.requests[2].action, 'heartbeat');
+});
+
+
+test('TTS requires a playback state signal, not a button click', async () => {
+  const b = browser(true);
+  b.documentEvents.get('novelight:episode-rendered')({
+    detail: {
+      unlocked: true,
+      isAuthor: false,
+      episode: { id: 55 },
+      session: null,
+      content: {
+        scrollHeight: 1000,
+        getBoundingClientRect: () => ({ top: 0, height: 1000 })
+      }
+    }
+  });
+  assert.equal(b.requests.length, 0);
+  b.documentEvents.get('novelight:tts-state')({
+    detail: { state: 'playing' }
+  });
+  await waitForMicrotasks();
+  assert.equal(b.requests[0].action, 'start');
+  assert.equal(b.requests[0].mode, 'tts');
+  b.documentEvents.get('novelight:tts-progress')({
+    detail: { ratio: 0.82 }
+  });
+  await b.tick();
+  assert.equal(b.requests[1].action, 'heartbeat');
+  assert.equal(b.requests[1].progress_ratio, 0.82);
+  b.documentEvents.get('novelight:tts-state')({
+    detail: { state: 'paused' }
+  });
+  assert.equal(b.tick(), undefined);
+  assert.match(tts, /utterance[.]onstart =/);
+  assert.match(tts, /reportContestSpeechState\('playing'\)/);
+  assert.match(tts, /reportContestSpeechState\('paused'\)/);
+  assert.match(tts, /reportContestSpeechState\('stopped'\)/);
+  assert.match(tts, /reportContestSpeechState\('ended'\)/);
+});
+
+test('TTS completion does not count as an immediate full read', async () => {
+  const b = browser(true);
+  b.documentEvents.get('novelight:episode-rendered')({
+    detail: {
+      unlocked: true,
+      isAuthor: false,
+      episode: { id: 56 },
+      session: null,
+      content: {
+        scrollHeight: 1000,
+        getBoundingClientRect: () => ({ top: 0, height: 1000 })
+      }
+    }
+  });
+  b.documentEvents.get('novelight:tts-state')({
+    detail: { state: 'playing' }
+  });
+  await waitForMicrotasks();
+  b.documentEvents.get('novelight:tts-progress')({
+    detail: { ratio: 1, completed: true }
+  });
+  b.documentEvents.get('novelight:tts-state')({
+    detail: { state: 'ended' }
+  });
+  await waitForMicrotasks();
+  assert.equal(b.requests.length, 2);
+  assert.equal(b.requests[1].action, 'heartbeat');
+  assert.equal(b.requests[1].progress_ratio, 1);
+  assert.equal(b.tick(), undefined);
 });
