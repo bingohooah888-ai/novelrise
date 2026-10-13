@@ -59,10 +59,13 @@
     const novelId = safeUrl(row.novel_id);
     if (!novelId) return null;
     const anchor = el('a', 'community-link');
-    anchor.href = 'novel.html?id=' + encodeURIComponent(novelId) + '&source=community';
+    const episodeId = safeUrl(row.episode_id);
+    anchor.href = episodeId
+      ? 'episode.html?id=' + encodeURIComponent(episodeId) + '&source=community'
+      : 'novel.html?id=' + encodeURIComponent(novelId) + '&source=community';
     anchor.dataset.communityWork = novelId;
     const source = String(row.thumbnail_url || '').trim();
-    if (source && /^https:\/\//i.test(source) && /^https:\/\/[^/]+\.supabase\.co\//i.test(source)) {
+    if (source && (/^https:\/\/[^/]+\.supabase\.co\//i.test(source) || /^assets\/[a-z0-9/_-]+\.(webp|png|jpe?g)$/i.test(source))) {
       const image = el('img');
       image.src = source;
       image.loading = 'lazy';
