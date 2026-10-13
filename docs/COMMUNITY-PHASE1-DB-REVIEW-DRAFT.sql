@@ -50,6 +50,15 @@ CREATE TABLE IF NOT EXISTS public.community_reports (
 ALTER TABLE public.community_reports ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.community_reports FROM PUBLIC, anon, authenticated;
 
+CREATE TABLE IF NOT EXISTS public.community_hidden_posts (
+  post_key text PRIMARY KEY,
+  hidden_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  reason text,
+  hidden_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.community_hidden_posts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.community_hidden_posts FROM PUBLIC, anon, authenticated;
+
 -- Restrict feed/event interaction to currently public source rows. Notes opt in
 -- explicitly and automatically disappear on archive / delete.
 CREATE OR REPLACE FUNCTION public.novelight_community_post_visible(p_key text)
@@ -98,8 +107,8 @@ AS $$
         AND a.published_at <= now()
     )
     ELSE false
-  END
-$$;
+  END AND NOT EXISTS (SELECT 1 FROM public.community_hidden_posts h WHERE h.post_key=p_key)
+$;
 REVOKE ALL ON FUNCTION public.novelight_community_post_visible(text) FROM PUBLIC, anon, authenticated;
 
 -- Feed: bounded DB pagination, no user-generated fake content, no realtime,
@@ -192,7 +201,9 @@ BEGIN
       )
   ),
   paged AS (
-    SELECT * FROM accepted ORDER BY occurred_at DESC,post_key DESC
+    SELECT * FROM accepted a
+    WHERE NOT EXISTS (SELECT 1 FROM public.community_hidden_posts h WHERE h.post_key=a.post_key)
+    ORDER BY occurred_at DESC,post_key DESC
     LIMIT p_limit OFFSET p_offset
   )
   SELECT coalesce(jsonb_agg(jsonb_build_object(
@@ -215,6 +226,43 @@ $$;
 REVOKE ALL ON FUNCTION public.novelight_community_feed(integer,integer,boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.novelight_community_feed(integer,integer,boolean) TO anon,authenticated;
 
+-- Check the other person's Block/Mute status for individual actions, even when
+-- a client crafts a post key instead of navigating through the filtered feed.
+CREATE OR REPLACE FUNCTION public.novelight_community_interaction_allowed(p_key text)
+RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $
+DECLARE v_user uuid:=(SELECT auth.uid()); v_author uuid;
+BEGIN
+  IF v_user IS NULL OR NOT public.novelight_community_post_visible(p_key) THEN
+    RETURN false;
+  END IF;
+  SELECT author_user_id INTO v_author FROM (
+    SELECT e.author_user_id, 'novel:' || e.id::text AS key
+      FROM public.author_follow_events e WHERE e.event_type='novel_published'
+    UNION ALL
+    SELECT e.author_user_id,
+      'ep:' || e.author_user_id::text || ':' || e.novel_id::text ||
+      ':' || floor(extract(epoch FROM e.occurred_at)/10800)::bigint::text
+      FROM public.author_follow_events e WHERE e.event_type='episode_published'
+    UNION ALL
+    SELECT note.author_user_id,'note:'||note.id::text
+      FROM public.author_notes note
+  ) act WHERE act.key=p_key LIMIT 1;
+  IF v_author IS NULL THEN RETURN true; END IF;
+  IF EXISTS(SELECT 1 FROM public.user_blocks b
+    WHERE (b.blocker_user_id=v_user AND b.blocked_user_id=v_author)
+       OR (b.blocker_user_id=v_author AND b.blocked_user_id=v_user))
+    OR EXISTS(SELECT 1 FROM public.user_mutes m
+    WHERE m.muter_user_id=v_user AND m.muted_user_id=v_author) THEN
+    RETURN false;
+  END IF;
+  RETURN true;
+END
+$;
+REVOKE ALL ON FUNCTION public.novelight_community_interaction_allowed(text)
+ FROM PUBLIC,anon,authenticated;
+
 CREATE OR REPLACE FUNCTION public.novelight_community_toggle_like(p_post_key text)
 RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER
 SET search_path = ''
@@ -225,7 +273,7 @@ DECLARE
   v_liked boolean;
 BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'Login required' USING errcode='42501'; END IF;
-  IF NOT public.novelight_community_post_visible(p_post_key) THEN
+  IF NOT public.novelight_community_interaction_allowed(p_post_key) THEN
     RAISE EXCEPTION 'Post unavailable' USING errcode='42501';
   END IF;
   -- One request/user/post at a time; unique primary key also prevents duplicates.
@@ -291,7 +339,7 @@ BEGIN
   IF char_length(v_body) NOT BETWEEN 1 AND 500 THEN
     RAISE EXCEPTION 'Comment length must be 1-500' USING errcode='22023';
   END IF;
-  IF NOT public.novelight_community_post_visible(p_post_key) THEN
+  IF NOT public.novelight_community_interaction_allowed(p_post_key) THEN
     RAISE EXCEPTION 'Post unavailable' USING errcode='42501';
   END IF;
   IF EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=v_user
@@ -328,7 +376,7 @@ BEGIN
   IF char_length(v_reason) NOT BETWEEN 1 AND 500 THEN
     RAISE EXCEPTION 'Invalid report reason' USING errcode='22023';
   END IF;
-  IF NOT public.novelight_community_post_visible(p_post_key) THEN
+  IF NOT public.novelight_community_interaction_allowed(p_post_key) THEN
     RAISE EXCEPTION 'Post unavailable' USING errcode='42501';
   END IF;
   INSERT INTO public.community_reports(post_key,reporter_user_id,reason)
