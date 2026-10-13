@@ -87,6 +87,14 @@
       "destination": "/api/contest-page"
     },
     {
+      "source": "/contest-terms.html",
+      "destination": "/api/contest-terms"
+    },
+    {
+      "source": "/contest-terms",
+      "destination": "/api/contest-terms"
+    },
+    {
       "source": "/novel.html",
       "destination": "/api/seo/novel"
     },
