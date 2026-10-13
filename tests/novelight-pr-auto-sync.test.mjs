@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
+import { runOwnerDraftSyncOnce } from '../tools/novelight-commander/src/owner-draft-auto-sync.js';
 import {
   isEligibleDraft,
   isRecentlyActive,
@@ -89,7 +90,7 @@ function mockGithub({
   };
   const args = {
     repository: REPO,
-    event: 'pull_request_target',
+    event: 'nlo_single',
     prNumber: 2204,
     readToken: READ,
     writeToken: READ,
@@ -137,7 +138,7 @@ test('Existing NLO owner credential is required', async () => {
   assert.equal(requests.length, 0);
 });
 
-test('Native GitHub update-branch uses exact head SHA without workflow dispatch', async () => {
+test('Native update-branch uses exact head without dispatch', async () => {
   const { args, requests } = mockGithub();
   const outcome = await synchronizeDrafts(args);
   assert.deepEqual(outcome.updated, [2204]);
@@ -194,7 +195,7 @@ test('A changing PR head or main ref prevents the update', async () => {
   }
 });
 
-test('NLO polling enumerates Draft PRs and denies incomplete pages', async () => {
+test('NLO polling rejects incomplete PR pages', async () => {
   const { args } = mockGithub();
   const result = await synchronizeDrafts({
     ...args,
@@ -235,12 +236,12 @@ test('Dormant PRs do not trigger surprise CI on NLO polls', async () => {
 
   const explicit = await synchronizeDrafts({
     ...mock.args,
-    event: 'workflow_dispatch'
+    event: 'nlo_single'
   });
   assert.deepEqual(explicit.updated, [2204]);
 });
 
-test('NLO poll handles a main update even when the merge used GITHUB_TOKEN', async () => {
+test('NLO polling handles Actions-authored main merges', async () => {
   const mock = mockGithub();
   const result = await synchronizeDrafts({
     ...mock.args,
@@ -256,18 +257,49 @@ test('NLO sync cannot dispatch bypass checks or merge PRs', () => {
     new URL('../scripts/novelight-pr-auto-sync.mjs', import.meta.url),
     'utf8'
   );
+  const bridgeDir = new URL('../tools/novelight-commander/src/', import.meta.url);
   const daemon = readFileSync(
-    new URL('../tools/novelight-commander/src/owner-draft-auto-sync.js', import.meta.url),
+    new URL('owner-draft-auto-sync.js', bridgeDir),
     'utf8'
   );
   const bridge = readFileSync(
-    new URL('../tools/novelight-commander/src/github-bridge-daemon.js', import.meta.url),
+    new URL('github-bridge-daemon.js', bridgeDir),
     'utf8'
   );
   assert.match(daemon, /NOVELIGHT_BRIDGE_GITHUB_TOKEN/);
-  assert.match(daemon, /status !== 'enabled'/);
+  assert.match(daemon, /capability\?\.status === 'enabled'/);
   assert.match(daemon, /login !== OWNER/);
   assert.match(bridge, /mainOwnerDraftAutoSync/);
   assert.doesNotMatch(source, /actions\/workflows\/|gh pr merge|--force/);
-  assert.doesNotMatch(daemon, /GITHUB_TOKEN\b|workflow_dispatch|gh pr merge/);
+  assert.doesNotMatch(daemon, /process\.env\.GITHUB_TOKEN|workflow_dispatch|gh pr merge/);
+});
+
+test('NLO rejects a non-owner token before repository access', async () => {
+  const requests = [];
+  const fetchImpl = async (url) => {
+    requests.push(url);
+    return { ok: true, json: async () => ({ login: 'other-user' }) };
+  };
+  await assert.rejects(
+    runOwnerDraftSyncOnce({ token: READ, fetchImpl }),
+    /not the repository owner/
+  );
+  assert.deepEqual(requests, ['https://api.github.com/user']);
+});
+
+test('NLO owner authentication triggers native PR update only', async () => {
+  const mock = mockGithub();
+  const fetchImpl = async (url, options) => {
+    if (url === 'https://api.github.com/user') {
+      return { ok: true, json: async () => ({ login: 'bingohooah888-ai' }) };
+    }
+    return mock.args.fetchImpl(url, options);
+  };
+  const outcome = await runOwnerDraftSyncOnce({
+    token: READ,
+    fetchImpl,
+    nowMs: mock.args.nowMs
+  });
+  assert.deepEqual(outcome.updated, [2204]);
+  assert.equal(mock.requests.filter((x) => x.method !== 'GET').length, 1);
 });

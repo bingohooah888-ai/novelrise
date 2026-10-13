@@ -43,7 +43,7 @@ export function shouldUpdateBranch(comparison, pull) {
 }
 
 function validEvent(event) {
-  return ['nlo_poll', 'workflow_dispatch'].includes(event);
+  return ['nlo_poll', 'nlo_single'].includes(event);
 }
 
 export async function synchronizeDrafts({
