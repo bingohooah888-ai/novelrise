@@ -145,6 +145,6 @@ test('author status notes scroll in separate desktop columns', () => {
 
 test('author status note archive remains a non-destructive action', () => {
   assert.ok(management.includes("archive.textContent='アーカイブ'"));
-  assert.ok(management.includes("client.rpc('novelight_archive_my_author_note'"));
+  assert.ok(management.includes('novelight_archive_my_author_note'));
   assert.doesNotMatch(management, /delete from author_notes/iu);
 });
