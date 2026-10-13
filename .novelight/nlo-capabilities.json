@@ -52,6 +52,32 @@
       "version": "0.1.0",
       "status": "testing",
       "provenance": "Google Search Console URL Inspection API; NLO self-expansion 2026-10-11"
+    },
+    {
+      "id": "nlo.thumbnail-preview-batch",
+      "description": "Convert public official NOVELIGHT thumbnail PNG originals into small versioned WebP selection-only derivatives inside a feature worktree.",
+      "intents": [
+        "thumbnail preview batch",
+        "lightweight thumbnail choices",
+        "公式サムネイル素材を一括WebP軽量化"
+      ],
+      "aliases": [
+        "NLO thumbnail preview conversion",
+        "113 official layer previews"
+      ],
+      "adapter": "scripts/generate-official-thumbnail-previews.mjs",
+      "executionRisk": "B",
+      "requiredPermissions": [
+        "repo_read",
+        "public_official_asset_read",
+        "isolated_worktree_write"
+      ],
+      "testCommands": [
+        "node --test tests/thumbnail-preview-pipeline.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "2026-10-13 source snapshot and safe standalone batch generator; no Production write"
     }
   ]
 }

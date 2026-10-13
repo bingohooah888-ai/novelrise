@@ -1,0 +1,797 @@
+{
+  "version": 1,
+  "generatedFrom": "NOVELIGHT Production public.novel_thumbnail_assets active 2026-10-13",
+  "items": [
+    {
+      "id": "0c453586-60ae-4df9-8e8e-316dd65ff298",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/ecab5112-8ac7-405b-aab2-1f15e65e0619.png",
+      "sourceBytes": 1913438
+    },
+    {
+      "id": "151ce20b-160b-4742-a2ae-8763d055f4cc",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a8bab8ab-9760-4645-ac9c-0735c8008a55.png",
+      "sourceBytes": 1879620
+    },
+    {
+      "id": "2790bbdf-2ab6-47cf-901f-02df651ce640",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/da243b36-afc2-4333-a400-65231b718c4f.png",
+      "sourceBytes": 2465312
+    },
+    {
+      "id": "27be1f1b-5035-4261-a322-af0f015ad5c5",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4b9a8b87-371e-4cbd-a322-3b32af3e62cf.png",
+      "sourceBytes": 2987611
+    },
+    {
+      "id": "4898e2f1-7629-4f5d-aea3-72cd8ea368ad",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a2e2f140-db7f-4764-be89-8eccc88c2908.png",
+      "sourceBytes": 2027666
+    },
+    {
+      "id": "53d0c215-83b8-4259-a188-d57ca676dafc",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/3e6ed95e-89cf-42c4-b59c-9f15a9e1b8d3.png",
+      "sourceBytes": 2164248
+    },
+    {
+      "id": "6e39d08e-5564-435c-ab86-0b094a62c6fb",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/22d2a19f-4dd2-4b6e-b808-02ad5e1a84b2.png",
+      "sourceBytes": 2416180
+    },
+    {
+      "id": "76738323-04a4-4ae8-a59f-0a3f301a79f0",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/901cca6e-9aa0-4ee8-abf8-aa40b76634cb.png",
+      "sourceBytes": 2647460
+    },
+    {
+      "id": "76c19021-dcfd-40dc-8026-80ba21543ad1",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d2a2da34-adfc-4e41-9517-538e0d56cbee.png",
+      "sourceBytes": 2825316
+    },
+    {
+      "id": "77068914-46a7-4cd6-b6fb-be699793b816",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f3eed4ca-b02b-469e-acc2-2967e51c390a.png",
+      "sourceBytes": 2392601
+    },
+    {
+      "id": "7de2be95-500e-4c10-8d5d-ecae408262ee",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d548bfec-a4e6-4886-ab5e-95604663c324.png",
+      "sourceBytes": 2264281
+    },
+    {
+      "id": "7f408d07-e917-416c-8f9e-3551e6c54031",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/cda6c72f-f12b-49a0-af7e-f042d71ddf1c.png",
+      "sourceBytes": 2817151
+    },
+    {
+      "id": "83741dc4-ba5f-4fd9-bd31-1ca31fd7d89d",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/054320f8-8e99-4f83-818b-e32378a95802.png",
+      "sourceBytes": 2090985
+    },
+    {
+      "id": "83c160ba-82a0-45dc-af87-f648f5e094c6",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/695c4778-dc2b-4f30-9d1d-308b968dc6ba.png",
+      "sourceBytes": 2007801
+    },
+    {
+      "id": "8b74bc14-13fc-454e-a2f5-b38313974635",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/3d689743-360b-4a6f-9a77-23117e6af098.png",
+      "sourceBytes": 2132195
+    },
+    {
+      "id": "9c231782-c158-4961-beb5-d4cc1462736c",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a29b07b1-b65c-43c6-8dc7-02fe34cdb09c.png",
+      "sourceBytes": 2625458
+    },
+    {
+      "id": "9ef6e8d4-3c32-4bf5-89ba-7fdaaf489928",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/21375c1a-0fc4-4ccb-9f9b-de06a697cc98.png",
+      "sourceBytes": 2534296
+    },
+    {
+      "id": "a176a831-fbef-43d6-b8e9-7d494710dcb1",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/fb25f2b5-66f2-482f-a3cf-edc610ee10b4.png",
+      "sourceBytes": 2308529
+    },
+    {
+      "id": "b8bf8ef3-0051-47d6-a062-1a58e7a4e332",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/44c2018b-6e73-4a80-b9a5-9510f5242b75.png",
+      "sourceBytes": 2319484
+    },
+    {
+      "id": "bd4c74e9-c489-4740-94e3-4185199159da",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/33064b13-1c29-4091-879c-f2356c1aab5b.png",
+      "sourceBytes": 2544704
+    },
+    {
+      "id": "f079d73d-3f2d-4b89-af40-35a0cd972d29",
+      "layerType": "background",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6c1bed78-8478-49b4-b1b2-74a2e9c304fe.png",
+      "sourceBytes": 2833246
+    },
+    {
+      "id": "0e1af9f0-b1f4-4486-986f-9e39acf0ff2c",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/1f138938-10f9-48ad-bc4c-d54e65d33dc7.png",
+      "sourceBytes": 1375462
+    },
+    {
+      "id": "0f58c543-0a31-4ecb-93eb-ab9e8019f998",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/bd2db25c-8cff-4ea6-abdf-64ce0f6f69ac.png",
+      "sourceBytes": 1479683
+    },
+    {
+      "id": "14a82bc8-91fc-4a53-8fb4-4f020e02781c",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/58c7f16c-8022-4039-a6da-4eab1be0d0a0.png",
+      "sourceBytes": 1232610
+    },
+    {
+      "id": "1d46a7f1-52bc-42da-9f97-8a18e6643107",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a9ebf52f-392a-43c6-9bf0-d4da9a73d615.png",
+      "sourceBytes": 1247562
+    },
+    {
+      "id": "22e224b3-2b7b-4581-80a7-03d3fbded340",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/fa25580b-03bd-4f11-8682-a4248140a0a4.png",
+      "sourceBytes": 1288458
+    },
+    {
+      "id": "2e6c0235-8647-42db-a996-8c57ef53e22d",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/5dc40e74-bb75-4361-84c8-fcaa9423ef5a.png",
+      "sourceBytes": 1292003
+    },
+    {
+      "id": "43785a5b-6da8-4a7d-abb8-9b4c1e51da2e",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/dced4df1-8478-4126-9147-165e9b827eca.png",
+      "sourceBytes": 1099159
+    },
+    {
+      "id": "4a1163d0-e042-4ced-acab-7afae1ae9e23",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/272354db-7b52-4892-909c-ba92e93968e9.png",
+      "sourceBytes": 1326807
+    },
+    {
+      "id": "4a885533-1cf2-496b-9d3f-2acf912374b8",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a999e8d6-5a0b-43c4-9a17-82c603d3cf76.png",
+      "sourceBytes": 1151616
+    },
+    {
+      "id": "4e47d9c4-c3fd-497d-8254-d8ac9b62298f",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/aa6979f1-f474-4081-b2d8-770aa5874092.png",
+      "sourceBytes": 1394522
+    },
+    {
+      "id": "54b5da7e-ec65-46da-863c-bda350de43b9",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f0089f59-34f5-41b3-ad48-5fcf01018d5a.png",
+      "sourceBytes": 1283434
+    },
+    {
+      "id": "5dd746b8-23b8-4a67-be7d-d0c2887b7e88",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/532596dd-dda4-4897-9b64-39d4c73b2287.png",
+      "sourceBytes": 1433297
+    },
+    {
+      "id": "612ac92d-8824-49fa-931c-979311737791",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/e48e1890-ff25-4a86-8a6f-77d324e1c533.png",
+      "sourceBytes": 1490193
+    },
+    {
+      "id": "638a31a4-128c-4239-9855-a2f4bbdf05a9",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/b1e82dcd-af6a-48ad-bcf6-9a78f576235b.png",
+      "sourceBytes": 1495761
+    },
+    {
+      "id": "64902de3-aef6-4848-970e-ff4309f3d357",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/103b6b21-0b75-408c-8200-f3423d6dd163.png",
+      "sourceBytes": 999013
+    },
+    {
+      "id": "6e0f67b6-3ad7-4e5f-b19f-b3ca9ab54a25",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6dfe3409-3557-43ea-8dc6-9c95666ab726.png",
+      "sourceBytes": 1639460
+    },
+    {
+      "id": "70fab67d-cdbe-4c1f-b27e-1ad72e6f5707",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/2d0b6967-4629-4f94-899d-67a9764529b6.png",
+      "sourceBytes": 1441135
+    },
+    {
+      "id": "7ede8135-5463-4390-a10a-412de7aa6a2c",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/df738a29-2ad4-4a17-aa75-5a8fc667f607.png",
+      "sourceBytes": 1326043
+    },
+    {
+      "id": "8bbd7be6-96fc-4ee6-a879-43493d1c9d98",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9620fb3f-ead1-4d25-9070-5c9788de03b6.png",
+      "sourceBytes": 1321982
+    },
+    {
+      "id": "9a9b56d4-f18b-4f52-9d00-dd6afc4bbf7d",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/8ddae664-7766-4373-a200-a3cdb59983b0.png",
+      "sourceBytes": 1129236
+    },
+    {
+      "id": "afaac653-6faf-47d3-bfcd-8f08b442513f",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/1a0a2f3c-8674-4250-9309-06523d0ac7e1.png",
+      "sourceBytes": 1375540
+    },
+    {
+      "id": "b201901f-56e5-46e0-82ca-e213033e06eb",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f54445c8-f033-4d36-b1c8-73a5edef8c59.png",
+      "sourceBytes": 1309505
+    },
+    {
+      "id": "b85a7293-12c3-416e-9caf-d336efb93fd5",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/e97b303b-7a61-48b8-a5a3-225607c6f8da.png",
+      "sourceBytes": 1310399
+    },
+    {
+      "id": "b9334e1e-ed68-4ce8-9770-c19a3c4bd662",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4fbd3bf7-b21e-4b01-bae1-1939ec1ba5a6.png",
+      "sourceBytes": 979430
+    },
+    {
+      "id": "be6fb9f8-9683-41cf-8fc4-7ec9cbef458a",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6a8791be-fa93-46aa-9a56-e13227a2e8f4.png",
+      "sourceBytes": 1587871
+    },
+    {
+      "id": "e0280860-3e3a-49c1-9f96-f7146df560ca",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/5d51b7db-9bed-4a9d-bc8f-731a45a99069.png",
+      "sourceBytes": 1336363
+    },
+    {
+      "id": "e0bf262c-d74f-43b7-9b01-377602c3adb8",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4638f25c-352c-45f3-8266-dd78fd7af0a6.png",
+      "sourceBytes": 1306447
+    },
+    {
+      "id": "e1f8a0ce-34ee-4921-bc83-d945d0a7e5b3",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/fc740a79-15a6-45a3-9bb0-d52c74c5c0f6.png",
+      "sourceBytes": 1316814
+    },
+    {
+      "id": "eb9f969f-62c9-4cfd-b1a5-676368f43339",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/eb16c9ad-e1ec-4f82-8195-9c0071257220.png",
+      "sourceBytes": 1140205
+    },
+    {
+      "id": "f1fae963-dba5-4a69-9aba-1e5759a05271",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/cd9371fd-478e-4168-87e7-dbc88f124264.png",
+      "sourceBytes": 993227
+    },
+    {
+      "id": "f8268232-acdb-4f0c-9a22-72e86ae04937",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/098c90a8-ac0e-4514-9a21-74763773ce00.png",
+      "sourceBytes": 1096660
+    },
+    {
+      "id": "fcf7e686-815b-4e2d-9f0e-57575521aa98",
+      "layerType": "base_book",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9612efa9-c711-4e33-8dc5-5ce7c8e503c5.png",
+      "sourceBytes": 1278065
+    },
+    {
+      "id": "0e15af8c-f317-4904-b67e-8dec460adaf4",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/614d73e3-9df8-4b06-9fca-d1a334119863.png",
+      "sourceBytes": 545083
+    },
+    {
+      "id": "37c1c296-18ee-410d-b6be-249cfc2c4557",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/712bf839-7225-4bc9-bca1-e950e5441a01.png",
+      "sourceBytes": 634355
+    },
+    {
+      "id": "5363628b-3aa4-46ac-9355-085112b3d665",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9591f2e1-9cde-4f33-afa3-aaebc9e3219a.png",
+      "sourceBytes": 525374
+    },
+    {
+      "id": "62e6fd5b-15e2-4b33-b0ba-23bc7904f937",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d4e5cf8a-1253-4a01-8735-fb8315649745.png",
+      "sourceBytes": 277532
+    },
+    {
+      "id": "8077ccaa-d541-4dc5-90e7-3c7ae108fa06",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d2161aa0-c472-47f1-99ba-bffb8357aa03.png",
+      "sourceBytes": 660534
+    },
+    {
+      "id": "876095c0-fc43-4621-8613-26e75e478386",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6017cd6b-c175-42bd-b17d-789303f340fc.png",
+      "sourceBytes": 631643
+    },
+    {
+      "id": "a1ca3f4d-21ec-4735-a051-b5dd67b499c7",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/38caf93d-1158-4cab-b06f-8158b2370f28.png",
+      "sourceBytes": 400856
+    },
+    {
+      "id": "b8a45ab6-6cf4-4fed-8ab8-832b35426942",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/e7ad9649-e508-43d1-a4ff-51f255b304c8.png",
+      "sourceBytes": 816966
+    },
+    {
+      "id": "bb0960b9-5ec2-40c3-aeb3-65d50ed617cc",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/be5429c3-9686-447a-a313-699ae745c5cf.png",
+      "sourceBytes": 635170
+    },
+    {
+      "id": "d10afc37-7ac7-4dad-b4ca-e15785914034",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/bd6e5ac7-e3dc-499c-9345-95511076655a.png",
+      "sourceBytes": 693988
+    },
+    {
+      "id": "d2a3588d-3222-4425-950a-5fc69ca6d3a0",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9a550064-7bbf-4bbd-814f-59d22840871b.png",
+      "sourceBytes": 713806
+    },
+    {
+      "id": "d88a2ee2-de57-4fc3-ae30-39bd8f75c6f6",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4a6805ce-60cf-43d8-b5b8-23ae9f3f8485.png",
+      "sourceBytes": 521781
+    },
+    {
+      "id": "df63f975-e488-403a-b2fd-5a0fabb864de",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4af31503-59c2-406c-bb3c-2ac1716fc848.png",
+      "sourceBytes": 812454
+    },
+    {
+      "id": "f407a0db-f7e7-41e6-a5d0-d89e05ea8021",
+      "layerType": "frame",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/7517d3a3-d2dc-4f4a-a18e-5187e97cc54b.png",
+      "sourceBytes": 559592
+    },
+    {
+      "id": "036c49b8-4ee7-43ef-8846-4edec6b4c358",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/c501de6e-c86d-48c4-89f8-88a1eb751b59.png",
+      "sourceBytes": 1547857
+    },
+    {
+      "id": "0a78be68-f872-4489-8f72-65fe3c2394a4",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/65c3740b-b7fe-4cb9-967c-be3c38d50155.png",
+      "sourceBytes": 754300
+    },
+    {
+      "id": "15559996-1a0d-4aab-9ee4-7c61623abdd0",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/82ff20d5-5665-4147-ad58-30fc1d539b1e.png",
+      "sourceBytes": 518610
+    },
+    {
+      "id": "28f24a7b-8c1b-410a-92a6-8c7a33c34582",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d2f82a75-8939-44be-a244-710ca8fa8207.png",
+      "sourceBytes": 925185
+    },
+    {
+      "id": "365fde1a-4ee9-45c8-81dc-e72104008245",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/fb5ab4a6-1af7-4924-b209-cf7730672db1.png",
+      "sourceBytes": 507707
+    },
+    {
+      "id": "49548d80-45b7-411c-8baf-576241a9ccbb",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/91f9684a-a72a-4d53-b1b5-45f0b91d80ee.png",
+      "sourceBytes": 1047616
+    },
+    {
+      "id": "4d803860-cd78-4f67-b2f1-f262c385959a",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/0208c5ba-ac80-455e-9905-f4331b8794be.png",
+      "sourceBytes": 591988
+    },
+    {
+      "id": "82e57cca-247a-44e6-ab64-1ee7797c9ca0",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f3a10a94-d1c4-42b7-9675-2cf11febd963.png",
+      "sourceBytes": 1284842
+    },
+    {
+      "id": "b75dc5ec-edbe-4234-ac12-d752980bdb28",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/595f7b23-4227-44f6-8e80-d706a4c0db49.png",
+      "sourceBytes": 1901555
+    },
+    {
+      "id": "f62de569-fa11-4991-b4b8-e1d28d555ebe",
+      "layerType": "pattern",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/b2e05014-3875-489e-b018-baaa72f4dd8c.png",
+      "sourceBytes": 1132304
+    },
+    {
+      "id": "009e3ee3-79ef-48a1-ac6e-03e62db557fb",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/ff789d7a-d5ec-4c25-be6c-ac8d8f1b5d08.png",
+      "sourceBytes": 240445
+    },
+    {
+      "id": "11b536f0-9292-4786-9f20-80b123a42f1a",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/1d4fe6a8-9def-4411-b92d-b26878e90521.png",
+      "sourceBytes": 403725
+    },
+    {
+      "id": "16e33592-0c1d-443c-bb21-5021c50ca26d",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/8858f544-5f9c-4170-a08d-6764ed10acc1.png",
+      "sourceBytes": 395109
+    },
+    {
+      "id": "19dfa8fa-34ee-486a-a716-dd8c1e45ff18",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d79c91aa-a691-4f15-be61-f85516ed084f.png",
+      "sourceBytes": 320285
+    },
+    {
+      "id": "1b4807c1-efc2-4be1-91b7-0f48aecf5f3a",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/0ef286ea-6b88-4dfe-83cf-611e5d5b9512.png",
+      "sourceBytes": 320604
+    },
+    {
+      "id": "228c07ab-3e30-4dfc-991a-990862e3a5f5",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/8e424eed-8830-4562-af75-be5bca46af26.png",
+      "sourceBytes": 270040
+    },
+    {
+      "id": "2369d0e9-973e-4780-aa24-d24616d8ac71",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/b0295875-51f4-4102-a366-d6ad7d7ad108.png",
+      "sourceBytes": 297194
+    },
+    {
+      "id": "2bfd22b4-aa9e-4296-85ee-4e3fa5d9efb7",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f2fb84fb-b339-4ac6-a7d1-872c2b5e41e3.png",
+      "sourceBytes": 799472
+    },
+    {
+      "id": "316e31bc-a6a6-41a9-a566-d9695227b6cf",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/c8d128bd-104c-4d32-8fc9-114aac380849.png",
+      "sourceBytes": 400984
+    },
+    {
+      "id": "49aa4085-b09d-4e2b-b4e3-fe37fb6ec8f6",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/bf206a2e-b15a-417e-927f-8fc4572a3f69.png",
+      "sourceBytes": 376813
+    },
+    {
+      "id": "49eaea4b-bc46-4ffb-ab27-7b05cc197550",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/564a6971-fdbd-4589-953c-1d19b4b31220.png",
+      "sourceBytes": 412546
+    },
+    {
+      "id": "4d33a89a-b1cf-463b-986b-7ecfa518c2cc",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a7febc99-586f-49a5-8d69-f355b2d6bd45.png",
+      "sourceBytes": 278271
+    },
+    {
+      "id": "4ebc9c19-b59e-4e17-969f-35ba17f8af1e",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9c464322-902a-4b88-b48c-c72c444e8263.png",
+      "sourceBytes": 255191
+    },
+    {
+      "id": "572ecc80-a976-4585-9afe-7f0c268e90f2",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/29aca9ad-10e3-46a3-8a7f-c838892000ab.png",
+      "sourceBytes": 342807
+    },
+    {
+      "id": "59b8f555-9a1a-4605-b215-9aa891340aca",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/7215fc04-27e9-4c0f-808d-413c90575f9a.png",
+      "sourceBytes": 414468
+    },
+    {
+      "id": "5b6917a7-61fe-4348-8266-84265a03f077",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d4028319-9120-4ea0-b21f-7c1e34086b9a.png",
+      "sourceBytes": 1232187
+    },
+    {
+      "id": "6230e9f9-06f0-421b-ade1-b08c5d993441",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/e87a48d8-18ed-4559-a224-bee752fe0ccf.png",
+      "sourceBytes": 806541
+    },
+    {
+      "id": "6c0fc2dc-406a-463a-b37d-aeb22c0227eb",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/3d0ac93e-fd41-4363-a668-dcde58385874.png",
+      "sourceBytes": 757694
+    },
+    {
+      "id": "716c49cf-da8a-40ad-80b2-a46480aa25ab",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6e4b8ccb-7b5b-4f34-8b2f-cbb408116797.png",
+      "sourceBytes": 248176
+    },
+    {
+      "id": "728156dd-2a93-4e7b-9752-dbc38295be89",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/55cee709-0456-4416-bf59-be6c1c024076.png",
+      "sourceBytes": 1364087
+    },
+    {
+      "id": "7c170bd6-ec45-4e41-a4db-1829b73c67ba",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/ee17df75-f6d7-44a2-be64-48907ee3ace4.png",
+      "sourceBytes": 339536
+    },
+    {
+      "id": "8095cf7b-00c5-4110-a0b6-95528f49579c",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/2958a599-a2f5-4c94-94c7-5d5eca2e95fb.png",
+      "sourceBytes": 515412
+    },
+    {
+      "id": "86a61f3b-3ce5-4636-9e75-d18f0f26180e",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/87ce71b9-02a5-43cd-857e-2ff56cb2873b.png",
+      "sourceBytes": 337366
+    },
+    {
+      "id": "a01c5608-93f3-4f84-a77a-35fcd91041e6",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/58531a7a-ad7f-4f45-a3e6-3915f014e63d.png",
+      "sourceBytes": 373734
+    },
+    {
+      "id": "a448b200-2e38-45e5-ae0d-a93f804f7d75",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/3bca4885-6f2b-4f2c-b9d1-eb61d6bfcde7.png",
+      "sourceBytes": 191968
+    },
+    {
+      "id": "aa1a6f8f-9c4a-471a-94f6-cc28d10958fa",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/5fb7d39d-6a96-4fff-8522-4a47d2c8485a.png",
+      "sourceBytes": 334112
+    },
+    {
+      "id": "ab97251e-3754-4bcc-8c1a-89398cef23e7",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4267aa5a-ed55-4768-8908-00fb2d9557f5.png",
+      "sourceBytes": 358477
+    },
+    {
+      "id": "bdf127e5-7702-404a-9508-669dae14cdb3",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/bd256fe2-bff0-4dfa-8d41-64c7f84be163.png",
+      "sourceBytes": 556731
+    },
+    {
+      "id": "e0be95a3-c3a7-4c4a-ba4f-a3bde4e9b2cb",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/567df4f9-558c-4d3e-8e0e-322cb5d405a5.png",
+      "sourceBytes": 350822
+    },
+    {
+      "id": "e779dd16-7bc3-4aea-a18a-a5eac2e4e45e",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a5171d23-13cc-4d03-9b0e-3b546de7f9bf.png",
+      "sourceBytes": 420581
+    },
+    {
+      "id": "ea0e0d5c-e989-401d-91c3-c78c27a4158a",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/ee3ba17d-191c-4424-bd47-895123aeaba8.png",
+      "sourceBytes": 571116
+    },
+    {
+      "id": "ebeadbfd-da9e-48d6-9cb3-581693bb13da",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/67da9fdd-6d9d-4737-bee3-de64d176f4eb.png",
+      "sourceBytes": 562312
+    },
+    {
+      "id": "ecbbe8d4-32e5-4b12-901a-a8f748df916f",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/c819d85f-4745-4bf4-8774-9875a0a67dad.png",
+      "sourceBytes": 377952
+    },
+    {
+      "id": "ed91b4c5-de44-47e9-855b-128eca2d9def",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/024a2c06-4f22-4fcc-8604-26ffe0c1aa75.png",
+      "sourceBytes": 622061
+    },
+    {
+      "id": "fa657878-aed6-4ebf-85ae-3012f29b9092",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/60996a6d-de77-45b3-bb00-2fb566c765aa.png",
+      "sourceBytes": 545739
+    },
+    {
+      "id": "fcec981c-9595-4b91-afda-3bf1ff8969f1",
+      "layerType": "symbol",
+      "templateKey": "book-v1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/66a5657c-9008-4843-b639-48d9149c3571.png",
+      "sourceBytes": 339785
+    }
+  ]
+}
