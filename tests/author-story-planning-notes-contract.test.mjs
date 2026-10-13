@@ -19,6 +19,8 @@ const rollback = await readFile(
   'utf8'
 );
 const page = await readFile('story-notes.html', 'utf8');
+const backgrounds = await readFile('novelight-author-backgrounds.css', 'utf8');
+const heading = await readFile('novelight-work-heading-unity.css', 'utf8');
 const myNovels = await readFile('my-novels.html', 'utf8');
 const novel = await readFile('novel.html', 'utf8');
 const master = await readFile('docs/NOVELIGHT-MASTER.md', 'utf8');
@@ -100,4 +102,21 @@ test('B23 owner surfaces link to the private story workspace and MASTER records 
       'Production migrationの適用は、PR mergeとは別の明示承認境界'
     )
   );
+});
+
+test('Inquiry #57 author workspace has a readable, styled heading and note cards', () => {
+  assert.match(page, /<body class="novelight-author-studio-shell">/u);
+  assert.match(backgrounds, /:has\(:is\(#workTitle,#novelTitle\)\)/u);
+  assert.match(heading, /:has\(:is\(#workTitle,#novelTitle\)\)/u);
+  assert.match(page, /\.note\{[^}]*background:#f8fafc[^}]*color:#182b3c/u);
+  assert.match(page, /\.privacy\{[^}]*color:#5c471d/u);
+});
+
+test('Inquiry #58 scrolls editor and note list independently on desktop', () => {
+  assert.match(page, /\.editor\{[^}]*max-height:calc\(100dvh - 36px\)[^}]*overflow-y:auto/u);
+  assert.match(page, /\.list-panel\{[^}]*max-height:calc\(100dvh - 36px\)/u);
+  assert.match(page, /\.note-list\{[^}]*overflow-y:auto[^}]*overscroll-behavior:contain/u);
+  assert.match(page, /form\.scrollTo\(\{top:0,behavior:'smooth'\}\)/u);
+  assert.match(page, /@media\(max-width:850px\)\{[^}]*\.editor\{position:static;max-height:none;overflow:visible\}/u);
+  assert.match(page, /\.note-list\{overflow:visible\}/u);
 });
