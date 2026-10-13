@@ -65,6 +65,21 @@ test('rendered terms show the exact consent version saved by the server', () => 
   assert.match(contestTermsTemplate, /応募要項の版ID/);
 });
 
+test('payout retries on failure without duplicate payment', () => {
+  const fragments = [
+    '振込ができなかった場合',
+    '振込後に返金された場合',
+    '運営は受賞者に連絡して口座情報を再確認',
+    '改めて振込手続き',
+    '理由に受賞資格を取り消すことはありません',
+    '原則として同じ賞金の再振込は行いません'
+  ];
+  for (const fragment of fragments) {
+    assert.ok(contestTermsTemplate.includes(fragment), fragment);
+  }
+  assert.doesNotMatch(contestTermsTemplate, /期限後も.*支払|期限後の.*柔軟/);
+});
+
 test('candidate terms follow adopted contest rules', () => {
   const fragments = [
     '2026年10月31日',

@@ -19,6 +19,15 @@ test('stage 05 terms and runbook align on award timing', () => {
   assert.match(runbook, paymentRule);
   assert.match(pack, paymentRule);
   assert.match(draft, /有効得点が1pt以上/);
+  assert.match(draft, /振込ができなかった場合/);
+  assert.match(draft, /振込後に返金された場合/);
+  assert.match(draft, /原則として同じ賞金の再振込は行いません/);
+  assert.match(draft, /銀行の取引履歴・返金状況/);
+  assert.match(runbook, /振込不能・振込後の返金/);
+  assert.match(runbook, /公開要項では約束しない/);
+  const approval = report('NOVEMBER-CONTEST-STEP05-APPROVAL-READY-20261013.md');
+  assert.match(approval, /振込不能・返金時は受賞者へ再連絡/);
+
   assert.match(draft, /R18・AI生成主体/);
   assert.match(draft, /2026年12月1日/);
   assert.match(runbook, /R1〜R11は2026-10-12にオーナー決裁済み/);
