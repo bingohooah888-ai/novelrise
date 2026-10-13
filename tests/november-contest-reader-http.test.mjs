@@ -345,7 +345,9 @@ test('guest issuance requires a trusted address and consumes a DB quota', async 
   );
   assert.equal(missing.statusCode, 503);
   assert.equal(
-    db.calls.some((call) => call[1] === 'novelight_contest_guest_creation_slot'),
+    db.calls.some(
+      (call) => call[1] === 'novelight_contest_guest_creation_slot'
+    ),
     false
   );
 

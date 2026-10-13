@@ -123,7 +123,11 @@
       }
     }
 
-    function onScroll() {
+    function onScroll(event) {
+      if (event?.type === 'keydown' &&
+          !['ArrowDown', 'PageDown', 'End', ' '].includes(event.key)) return;
+      const tag = String(event?.target?.tagName || '').toUpperCase();
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag)) return;
       if (disabled || speaking || doc.visibilityState !== 'visible') return;
       if (sessionId && mode !== 'scroll') reset();
       progress = Math.max(progress, visibleRatio(context.content));
@@ -153,6 +157,7 @@
         interaction = true;
       }
       if (event.detail?.completed) {
+        void beat();
         speaking = false;
         // Let the next foreground heartbeat observe the final progress if
         // one is already running. Ending speech is not itself proof of time.

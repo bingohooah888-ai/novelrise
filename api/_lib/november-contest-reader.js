@@ -115,7 +115,6 @@ function verifyCookie(value, secret, nowMs) {
   return parts[1];
 }
 
-
 function trustedClientIp(req) {
   // Only the trusted Vercel-managed header is accepted. Never accept
   // arbitrary body/query/X-Forwarded-For values as a guest quota identity.

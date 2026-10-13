@@ -103,7 +103,7 @@ test('active adapter sends bounded scroll evidence and stops on hidden tabs', as
 test('episode render contract fires only after unlock and existing PV remains separate', () => {
   assert.match(continuity, /novelight:episode-rendered/);
   assert.match(continuity, /novelight-contest-read-tracker[.]js/);
-  assert.match(continuity, /installContestReadTracker(row, content)/);
+  assert.match(continuity, /installContestReadTracker\(row, content\)/);
   assert.match(source, /NOVELIGHT_CONTEST_READER_CLIENT_ENABLED !== true/);
   assert.doesNotMatch(source, /record_valid_read_progress|record_episode_pv/);
   assert.match(source, /novelight:tts-progress/);
