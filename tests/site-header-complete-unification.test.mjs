@@ -28,17 +28,20 @@ test('public pages keep the exact four navigation links in desktop and mobile', 
     ['pricing.html', '料金プラン']
   ];
 
+  const DESKTOP_NAV = /<nav class="site-nav desktop-nav"[^>]*>([\s\S]*?)<\/nav>/u;
+  const MOBILE_NAV = /<nav aria-label="モバイルナビ">([\s\S]*?)<\/nav>/gu;
+  const NAV_ANCHORS = /<a\b[^>]*href="([^"]+)"[^>]*>([^<]*)<\/a>/gu;
   let audited = 0;
   for (const page of htmlFiles) {
     const header = read(page).match(HEADER_PATTERN)?.[0] || '';
-    const primary = header.match(/<nav class="site-nav desktop-nav"[^>]*>([\\s\\S]*?)<\\/nav>/u);
+    const primary = header.match(DESKTOP_NAV);
     if (!primary) continue;
     audited += 1;
 
     const navBlocks = [
       primary[1],
       ...Array.from(
-        header.matchAll(/<nav aria-label="モバイルナビ">([\\s\\S]*?)<\\/nav>/gu),
+        header.matchAll(MOBILE_NAV),
         (match) => match[1]
       )
     ];
@@ -46,7 +49,7 @@ test('public pages keep the exact four navigation links in desktop and mobile', 
 
     for (const nav of navBlocks) {
       const items = Array.from(
-        nav.matchAll(/<a\\b[^>]*href="([^"]+)"[^>]*>([^<]*)<\\/a>/gu),
+        nav.matchAll(NAV_ANCHORS),
         (match) => [match[1], match[2]]
       );
       assert.deepEqual(items.slice(0, 4), expected, page);
@@ -59,7 +62,7 @@ test('public pages keep the exact four navigation links in desktop and mobile', 
     }
   }
   assert.ok(audited >= 17, 'all static public headers were audited');
-  assert.match(client, /href="announcements\\.html"/u);
+  assert.match(client, /href="announcements\.html"/u);
   const shared = client.slice(
     client.indexOf('header.innerHTML ='),
     client.indexOf('return true;', client.indexOf('header.innerHTML ='))
