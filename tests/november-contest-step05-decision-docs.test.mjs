@@ -34,7 +34,7 @@ test('stage 05 terms and runbook align on award timing', () => {
   assert.match(runbook, /非公開状態の.*404が正常/);
   assert.match(runbook, /20261012135000/);
   assert.match(runbook, /非公開ページ基盤.*本番反映済み/);
-  assert.match(runbook, /Production v2には応募作品区分の判定が未実装/);
+  assert.match(runbook, /応募資格制限migration `20261012135000` は適用済み/);
   assert.match(runbook, /送信と受信はenabled/);
   assert.match(runbook, /公開・送信は禁止/);
   assert.match(runbook, /応募資格制限migration/);
@@ -42,4 +42,28 @@ test('stage 05 terms and runbook align on award timing', () => {
   assert.doesNotMatch(runbook, /参加許可カテゴリーと専用ゾーン掲載は未決裁/);
   assert.doesNotMatch(runbook, /R1〜R11の未決裁提案は/);
   assert.match(pack, /決裁前の提案記録/);
+});
+
+test('stage 05 current checkpoint supersedes historical notes', () => {
+  const runbook = report('NOVEMBER-CONTEST-STEP05-REGISTRATION-RUNBOOK.md');
+  const approval = report('NOVEMBER-CONTEST-STEP05-APPROVAL-READY-20261013.md');
+
+  const marker = '## 現行Productionスナップショット';
+  const snapshot = runbook.split(marker)[1]?.split('## 3段階')[0];
+  assert.ok(snapshot, 'Current Production snapshot is required');
+  assert.match(snapshot, /169件/);
+  assert.match(snapshot, /20261012135000.*適用済み/);
+  assert.match(snapshot, /6経路とも404/);
+  assert.match(snapshot, /entries=0|応募0件/);
+  assert.match(snapshot, /受付開始承認/);
+  assert.match(snapshot, /⑥読書ポイントの実装.*まだ着手しない/);
+
+  const currentHeader = runbook.split('## 現行Productionスナップショット')[0];
+  assert.match(currentHeader, /応募資格制限migration.*適用済み/);
+  assert.doesNotMatch(currentHeader, /応募資格制限migration.*未適用/);
+
+  const approvalHeader = approval.split('## 最新の公開前検証証跡')[0];
+  assert.match(approvalHeader, /応募資格migration.*適用済み/);
+  assert.doesNotMatch(approvalHeader, /応募資格migration.*未適用/);
+  assert.match(approval, /HTTP実測で404/);
 });
