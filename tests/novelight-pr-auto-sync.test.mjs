@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
-import { runOwnerDraftSyncOnce } from '../tools/novelight-commander/src/owner-draft-auto-sync.js';
+import {
+  runOwnerDraftSyncOnce
+} from '../tools/novelight-commander/src/owner-draft-auto-sync.js';
 import {
   isEligibleDraft,
   isRecentlyActive,
@@ -257,13 +259,13 @@ test('NLO sync cannot dispatch bypass checks or merge PRs', () => {
     new URL('../scripts/novelight-pr-auto-sync.mjs', import.meta.url),
     'utf8'
   );
-  const bridgeDir = new URL('../tools/novelight-commander/src/', import.meta.url);
+  const dir = new URL('../tools/novelight-commander/src/', import.meta.url);
   const daemon = readFileSync(
-    new URL('owner-draft-auto-sync.js', bridgeDir),
+    new URL('owner-draft-auto-sync.js', dir),
     'utf8'
   );
   const bridge = readFileSync(
-    new URL('github-bridge-daemon.js', bridgeDir),
+    new URL('github-bridge-daemon.js', dir),
     'utf8'
   );
   assert.match(daemon, /NOVELIGHT_BRIDGE_GITHUB_TOKEN/);
@@ -271,7 +273,10 @@ test('NLO sync cannot dispatch bypass checks or merge PRs', () => {
   assert.match(daemon, /login !== OWNER/);
   assert.match(bridge, /mainOwnerDraftAutoSync/);
   assert.doesNotMatch(source, /actions\/workflows\/|gh pr merge|--force/);
-  assert.doesNotMatch(daemon, /process\.env\.GITHUB_TOKEN|workflow_dispatch|gh pr merge/);
+  assert.doesNotMatch(
+    daemon,
+    /process\.env\.GITHUB_TOKEN|workflow_dispatch|gh pr merge/
+  );
 });
 
 test('NLO rejects a non-owner token before repository access', async () => {
