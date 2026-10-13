@@ -15,15 +15,18 @@ const fixture = readFileSync(
 test('only general/R15 human or assisted works are eligible', () => {
   assert.match(
     migration,
-    /w\.content_rating in \('general','sensitive_15','mature'\)/
+    /w\.content_rating in \('general','sensitive_15'\)/
   );
   assert.match(migration, /w\.ai_usage in \('human','ai_assisted'\)/);
   assert.match(
     migration,
-    /v_work\.content_rating not in \('general','sensitive_15','mature'\)/
+    /v_work\.content_rating not in \('general','sensitive_15'\)/
   );
   assert.match(migration, /v_work\.ai_usage not in \('human','ai_assisted'\)/);
   assert.match(migration, /ineligible_work_category/);
+  assert.doesNotMatch(migration, /'mature'/);
+  assert.doesNotMatch(migration, /'adult_18_nonsexual'/);
+
   assert.match(fixture, /Owner R18 work bypassed entry-category gate/);
   assert.match(fixture, /Owner AI-generated work bypassed eligibility/);
   assert.match(fixture, /R15 AI-assisted author work incorrectly excluded/);
