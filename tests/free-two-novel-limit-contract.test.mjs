@@ -6,8 +6,19 @@ import { URL } from 'node:url';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 
-const [migration, precheck, postcheck, rollback, rlsRunner] =
-  await Promise.all([
+const [
+  home,
+  pricing,
+  billingPolicy,
+  migration,
+  precheck,
+  postcheck,
+  rollback,
+  rlsRunner
+] = await Promise.all([
+  read('index.html'),
+  read('pricing.html'),
+  read('billing-policy.html'),
   read('supabase/migrations/20260920152733_free_two_novel_limit.sql'),
   read('supabase/checks/20260920152733_free_two_novel_limit_precheck.sql'),
   read('supabase/checks/20260920152733_free_two_novel_limit_postcheck.sql'),
@@ -15,9 +26,13 @@ const [migration, precheck, postcheck, rollback, rlsRunner] =
   read('scripts/run-rls-integration.sh')
 ]);
 
-test('September two-work migration is retained as an immutable historical change', () => {
-  assert.match(migration, /when 'free' then 2/u);
-  assert.match(rollback, /when 'free' then 1/u);
+test('Free plan copy is consistently five works on public billing surfaces', () => {
+  assert.match(home, /5作品まで投稿/u);
+  assert.doesNotMatch(home, /1作品まで投稿/u);
+  assert.match(pricing, /投稿作品：5作品まで/u);
+  assert.doesNotMatch(pricing, /投稿作品：1作品まで/u);
+  assert.match(billingPolicy, /月額0円。投稿5作品まで。/u);
+  assert.doesNotMatch(billingPolicy, /月額0円。投稿1作品まで。/u);
 });
 
 test('database rule raises only Free while preserving concurrency enforcement', () => {
