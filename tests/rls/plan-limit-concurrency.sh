@@ -79,7 +79,7 @@ select set_config(
   false
 );
 insert into public.novels (id, user_id, status) values (
-  '60000000-0000-0000-0000-000000000003',
+  '60000000-0000-0000-0000-000000000006',
   '66666666-6666-6666-6666-666666666666',
   'published'
 );
@@ -92,7 +92,7 @@ wait "$session_a_pid"
 
 if [[ "$session_b_status" -eq 0 ]]; then
   cat "$session_b_log"
-  echo 'Concurrent third Free-plan insert unexpectedly succeeded.' >&2
+  echo 'Concurrent sixth Free-plan insert unexpectedly succeeded.' >&2
   exit 1
 fi
 
