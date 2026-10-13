@@ -92,7 +92,7 @@ insert into public.novels (id, user_id, status) values
   ('30000000-0000-0000-0000-000000000004', '33333333-3333-3333-3333-333333333333', 'published'),
   ('30000000-0000-0000-0000-000000000005', '33333333-3333-3333-3333-333333333333', 'published');
 
-do $
+do $$
 begin
   begin
     insert into public.novels (id, user_id, status) values (
