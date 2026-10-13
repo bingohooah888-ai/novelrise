@@ -24,10 +24,11 @@ function notFound(res) {
   return res.status(404).send('Not Found');
 }
 
-export default async function handler(req, res) {
-  if (!methodAllowed(req, res)) return;
+export function createContestTermsHandler(getDatabase = getSupabase) {
+  return async function handler(req, res) {
+    if (!methodAllowed(req, res)) return;
   try {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getDatabase()
       .from('novelight_contests')
       .select('status,public_visible,terms_version,terms_url')
       .eq('contest_key', KEY)
@@ -37,7 +38,10 @@ export default async function handler(req, res) {
     res.setHeader('CDN-Cache-Control', 'no-store');
     res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
     return sendHtml(req, res, contestTermsTemplate);
-  } catch {
-    return notFound(res);
-  }
+    } catch {
+      return notFound(res);
+    }
+  };
 }
+
+export default createContestTermsHandler();
