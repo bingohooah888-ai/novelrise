@@ -11,6 +11,7 @@ export async function verifyPrDispatch({
     !SHA.test(expectedSha || '') ||
     expectedSha !== runSha ||
     typeof runRef !== 'string' || !runRef.startsWith('refs/heads/') ||
+    runRef === 'refs/heads/main' ||
     !token
   ) {
     throw new Error('Untrusted PR dispatch identity');
