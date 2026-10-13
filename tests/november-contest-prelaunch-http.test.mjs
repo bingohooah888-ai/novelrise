@@ -69,7 +69,7 @@ function database(row, { error = null, throwError = false } = {}) {
 }
 
 for (const [name, createHandler] of routes) {
-  test(`${name}: never publishes draft, disabled, or missing contest`, async () => {
+  test(`${name}: denies draft, disabled, or absent contest`, async () => {
     for (const row of [
       { ...released, status: 'draft' },
       { ...released, public_visible: false },
@@ -90,7 +90,10 @@ for (const [name, createHandler] of routes) {
   });
 
   test(`${name}: denies database errors and missing credentials`, async () => {
-    for (const options of [{ error: new Error('permission denied') }, { throwError: true }]) {
+    for (const options of [
+      { error: new Error('permission denied') },
+      { throwError: true }
+    ]) {
       const mock = database(released, options);
       const res = response();
       await createHandler(mock.getDatabase)({ method: 'GET' }, res);
