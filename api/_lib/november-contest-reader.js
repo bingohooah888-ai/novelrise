@@ -5,6 +5,7 @@ import {
   timingSafeEqual
 } from 'node:crypto';
 import { URL } from 'node:url';
+import { isIP } from 'node:net';
 
 const CONTEST_KEY = 'novelight-november-2026';
 const COOKIE_NAME = '__Host-novelight-contest-guest';
@@ -112,6 +113,22 @@ function verifyCookie(value, secret, nowMs) {
     return null;
   }
   return parts[1];
+}
+
+
+function trustedClientIp(req) {
+  // Only the trusted Vercel-managed header is accepted. Never accept
+  // arbitrary body/query/X-Forwarded-For values as a guest quota identity.
+  const value = req.headers?.['x-vercel-forwarded-for'];
+  if (typeof value !== 'string') return null;
+  const addresses = value.split(',').map((entry) => entry.trim());
+  return addresses.length === 1 && isIP(addresses[0]) ? addresses[0] : null;
+}
+
+function visitorRateHash(secret, ip) {
+  return createHmac('sha256', secret)
+    .update('novelight:november:guest-ip:v1:' + ip)
+    .digest('hex');
 }
 
 function guestHash(token) {
@@ -272,6 +289,16 @@ export function createNovemberContestReaderHandler({
           return jsonError(res, 401, 'INVALID_GUEST_COOKIE');
         }
         if (!token) {
+          const ip = trustedClientIp(req);
+          if (!ip) return jsonError(res, 503, 'GUEST_ISSUANCE_UNAVAILABLE');
+          const quota = await serviceClient.rpc(
+            'novelight_contest_guest_creation_slot',
+            { p_fingerprint: visitorRateHash(guestSecret, ip) }
+          );
+          if (quota.error) throw quota.error;
+          if (quota.data !== true) {
+            return jsonError(res, 429, 'GUEST_CREATION_LIMIT');
+          }
           const minted = signedCookie(guestSecret, nowMs);
           token = minted.token;
           newCookie =

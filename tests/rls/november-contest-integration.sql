@@ -968,3 +968,39 @@ $session_integrated$;
 rollback;
 
 select 'PASS: November contest migrated schema, owner RPC, private RLS, catalog and score core and read sessions on disposable replay DB' as result;
+
+
+-- Stage 06 guest credential guard (disposable replay only).
+begin;
+do $guest_creation_guard$
+declare
+  v_key text := pg_catalog.repeat('a',64);
+  v_number integer;
+  v_ok boolean;
+begin
+  if pg_catalog.has_function_privilege(
+    'anon', 'public.novelight_contest_guest_creation_slot(text)', 'EXECUTE'
+  ) or pg_catalog.has_function_privilege(
+    'authenticated', 'public.novelight_contest_guest_creation_slot(text)', 'EXECUTE'
+  ) then
+    raise exception 'Guest quota RPC leaked to a browser role';
+  end if;
+
+  if public.novelight_contest_guest_creation_slot('invalid') then
+    raise exception 'Untrusted fingerprint accepted';
+  end if;
+  for v_number in 1..6 loop
+    v_ok := public.novelight_contest_guest_creation_slot(v_key);
+    if v_ok is distinct from (v_number <= 5) then
+      raise exception 'Guest quota violation at attempt %', v_number;
+    end if;
+  end loop;
+  update public.novelight_contest_guest_creation_guard
+     set window_started_at = pg_catalog.clock_timestamp() - interval '25 hours'
+   where fingerprint = v_key;
+  if not public.novelight_contest_guest_creation_slot(v_key) then
+    raise exception 'Guest quota did not reopen after the 24-hour window';
+  end if;
+end
+$guest_creation_guard$;
+rollback;

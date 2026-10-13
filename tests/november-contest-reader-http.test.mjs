@@ -33,6 +33,7 @@ function request(body, extras = {}) {
     headers: {
       origin: 'https://novelight.jp',
       host: 'novelight.jp',
+      'x-vercel-forwarded-for': '203.0.113.9',
       ...extras
     },
     body
@@ -101,6 +102,9 @@ function mockDatabase({ userId, active = true, owner = true } = {}) {
     },
     async rpc(name, args) {
       calls.push(['rpc', name, args]);
+      if (name === 'novelight_contest_guest_creation_slot') {
+        return { data: true, error: null };
+      }
       if (name === 'novelight_contest_begin_read_session') {
         return {
           data: { ok: true, session_id: SESSION, reading_mode: args.p_mode },
@@ -327,4 +331,33 @@ test('invalid report fields, missing guest session, invalid cookie are rejected'
     forged
   );
   assert.equal(forged.statusCode, 401);
+});
+
+test('guest issuance requires a trusted address and consumes a DB quota', async () => {
+  const db = mockDatabase();
+  const missing = response();
+  await handler(db)(
+    request(
+      { action: 'start', episode_id: 1, mode: 'scroll' },
+      { 'x-vercel-forwarded-for': '' }
+    ),
+    missing
+  );
+  assert.equal(missing.statusCode, 503);
+  assert.equal(
+    db.calls.some((call) => call[1] === 'novelight_contest_guest_creation_slot'),
+    false
+  );
+
+  const responseWithQuota = response();
+  await handler(db)(
+    request({ action: 'start', episode_id: 1, mode: 'scroll' }),
+    responseWithQuota
+  );
+  assert.equal(responseWithQuota.statusCode, 200);
+  const reservation = db.calls.find(
+    (call) => call[1] === 'novelight_contest_guest_creation_slot'
+  );
+  assert.match(reservation[2].p_fingerprint, /^[0-9a-f]{64}$/);
+  assert.equal(reservation[2].p_fingerprint.includes('203.0.113.9'), false);
 });
