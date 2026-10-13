@@ -178,26 +178,26 @@ test('Current or approved PRs cannot be updated', async () => {
 test(
   'High-risk file paths are never automatically synced, even without approval',
   async () => {
-  for (const changedFiles of [
-    [{ filename: 'login.html' }],
-    [{ filename: '.github/workflows/ci.yml' }],
-    [{ filename: 'supabase/migrations/20261014_test.sql' }],
-    [
-      {
-        filename: 'tests/fixtures/safe.txt',
-        previous_filename: 'api/production-auth.js'
-      }
-    ]
-  ]) {
-    const { args, requests } = mockGithub({ changedFiles });
-    const out = await synchronizeDrafts(args);
-    assert.deepEqual(out.updated, []);
-    assert.deepEqual(out.deferred, [2204]);
-    assert.equal(
-      requests.some((request) => request.method === 'PUT'),
-      false
-    );
-  }
+    for (const changedFiles of [
+      [{ filename: 'login.html' }],
+      [{ filename: '.github/workflows/ci.yml' }],
+      [{ filename: 'supabase/migrations/20261014_test.sql' }],
+      [
+        {
+          filename: 'tests/fixtures/safe.txt',
+          previous_filename: 'api/production-auth.js'
+        }
+      ]
+    ]) {
+      const { args, requests } = mockGithub({ changedFiles });
+      const out = await synchronizeDrafts(args);
+      assert.deepEqual(out.updated, []);
+      assert.deepEqual(out.deferred, [2204]);
+      assert.equal(
+        requests.some((request) => request.method === 'PUT'),
+        false
+      );
+    }
   }
 );
 
