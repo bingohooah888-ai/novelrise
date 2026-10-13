@@ -140,15 +140,27 @@ begin
   for v_entry_id in
     select distinct entry_id
       from public.novelight_contest_read_events
-     where contest_id = v_contest.id and reader_id = v_guest.id
+     where contest_id = v_contest.id
+       and reader_id in (v_guest.id,v_account.id)
     union
     select distinct entry_id
       from public.novelight_contest_reader_scores
-     where contest_id = v_contest.id and reader_id = v_guest.id
+     where contest_id = v_contest.id
+       and reader_id in (v_guest.id,v_account.id)
   loop
-    perform public.novelight_contest_recompute_reader_score(
-      v_contest.id,v_guest.id,v_entry_id
-    );
+    if exists (
+      select 1 from public.novelight_contest_read_events
+       where contest_id = v_contest.id
+         and reader_id = v_guest.id and entry_id = v_entry_id
+    ) or exists (
+      select 1 from public.novelight_contest_reader_scores
+       where contest_id = v_contest.id
+         and reader_id = v_guest.id and entry_id = v_entry_id
+    ) then
+      perform public.novelight_contest_recompute_reader_score(
+        v_contest.id,v_guest.id,v_entry_id
+      );
+    end if;
     perform public.novelight_contest_recompute_reader_score(
       v_contest.id,v_account.id,v_entry_id
     );

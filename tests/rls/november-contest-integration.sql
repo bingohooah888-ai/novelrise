@@ -1012,6 +1012,11 @@ begin
     id,contest_id,kind,user_id
   ) values (v_target,v_contest,'account',v_target_user);
 
+  -- An already-cleared account must be returned to provisional review after
+  -- a new guest claim, rather than silently carrying old clearance forward.
+  update public.novelight_contest_readers
+     set review_status = 'cleared' where id = v_target;
+
   -- Target already read episode 1 and 4; guest read episode 1, 2 and 3.
   for v_episode in
     select id from public.episodes
@@ -1041,6 +1046,13 @@ begin
      and reader_id = v_target and entry_id = v_entry;
   if v_count <> 4 or v_points <> 1 then
     raise exception 'Merged overlap was double counted: %/%',v_count,v_points;
+  end if;
+  if not exists (
+    select 1 from public.novelight_contest_reader_scores
+     where reader_id = v_target and entry_id = v_entry
+       and review_status = 'provisional'
+  ) then
+    raise exception 'Account clearance was not downgraded on new guest evidence';
   end if;
 
   select points into v_points

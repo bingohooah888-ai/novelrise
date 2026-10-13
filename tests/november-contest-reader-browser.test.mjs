@@ -33,13 +33,18 @@ function browser(enabled) {
       events.set(name, fn);
     },
     fetch: async (_path, options) => {
-      requests.push(JSON.parse(options.body));
+      const message = JSON.parse(options.body);
+      requests.push(message);
       return {
         ok: true,
         async json() {
-          return requests.length === 1
-            ? { ok: true, session_id: 'test-session-id' }
-            : { ok: true, qualified: false };
+          if (message.action === 'link') {
+            return { ok: true, linked: true };
+          }
+          if (message.action === 'start') {
+            return { ok: true, session_id: 'test-session-id' };
+          }
+          return { ok: true, qualified: false };
         }
       };
     },
@@ -112,4 +117,27 @@ test('episode render contract fires only after unlock and existing PV remains se
   assert.match(source, /credentials: 'same-origin'/);
   assert.match(continuity, /clientInstance[.]auth[.]getSession\(\)/);
   assert.match(source, /action: 'link'/);
+});
+
+test('authenticated read links signed guest evidence before session creation', async () => {
+  const b = browser(true);
+  b.documentEvents.get('novelight:episode-rendered')({
+    detail: {
+      unlocked: true,
+      isAuthor: false,
+      episode: { id: 32 },
+      session: { access_token: 'test-access-token' },
+      content: {
+        scrollHeight: 1000,
+        getBoundingClientRect: () => ({ top: 0, height: 1000 })
+      }
+    }
+  });
+  b.events.get('scroll')();
+  await waitForMicrotasks();
+  await waitForMicrotasks();
+  assert.equal(b.requests[0].action, 'link');
+  assert.equal(b.requests[1].action, 'start');
+  await b.tick();
+  assert.equal(b.requests[2].action, 'heartbeat');
 });
