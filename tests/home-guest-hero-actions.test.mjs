@@ -52,8 +52,14 @@ test('homepage places recommendations after optional hero CTAs', () => {
 });
 
 test('guest author CTA preserves login and return to post', () => {
-  assert.ok(post.includes("window.location.href='login.html?redirect=post.html'"));
-  assert.ok(login.includes('const redirectTarget=NovelightAuthReturn.safeRedirectTarget(redirect)'));
+  assert.ok(
+    post.includes("window.location.href='login.html?redirect=post.html'")
+  );
+  assert.ok(
+    login.includes(
+      'const redirectTarget=NovelightAuthReturn.safeRedirectTarget(redirect)'
+    )
+  );
   assert.ok(login.includes('window.location.href=redirectTarget'));
   assert.ok(login.includes('signupLink.href=NovelightAuthReturn.authHref'));
 });
