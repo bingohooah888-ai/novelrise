@@ -43,11 +43,13 @@ function mockGithub({
     draft,
     draft,
     draft,
-    pull({ head: {
-      sha: 'c'.repeat(40),
-      ref: 'feat/test-owner-draft',
-      repo: { full_name: REPO }
-    } })
+    pull({
+      head: {
+        sha: 'c'.repeat(40),
+        ref: 'feat/test-owner-draft',
+        repo: { full_name: REPO }
+      }
+    })
   ]
 } = {}) {
   const requests = [];
