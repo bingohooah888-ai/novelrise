@@ -41,6 +41,7 @@
     'pricing',
     'search',
     'ranking',
+    'community',
     'novel',
     'episode',
     'author',
@@ -258,6 +259,8 @@
       return ' aria-current="page"';
     if (target === 'announcements' && ['announcements', 'news-detail'].includes(slug))
       return ' aria-current="page"';
+    if (target === 'community' && slug === 'community')
+      return ' aria-current="page"';
     if (target === 'ranking' && slug === 'ranking')
       return ' aria-current="page"';
     if (
@@ -291,6 +294,7 @@
     const pricingCurrent = publicHeaderCurrent(slug, 'pricing');
     const announcementsCurrent = publicHeaderCurrent(slug, 'announcements');
     const rankingCurrent = publicHeaderCurrent(slug, 'ranking');
+    const communityCurrent = publicHeaderCurrent(slug, 'community');
     const loginCurrent = publicHeaderCurrent(slug, 'login');
     const signupCurrent = publicHeaderCurrent(slug, 'signup');
 
@@ -301,6 +305,7 @@
       '<nav class="site-nav desktop-nav" aria-label="メインナビ">' +
       `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
+      `<a href="community.html"${communityCurrent}>交流</a>` +
       `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
       `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       '</nav>' +
@@ -311,6 +316,7 @@
       '<details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ">' +
       `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
+      `<a href="community.html"${communityCurrent}>交流</a>` +
       `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
       `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       `<a class="mobile-login-action" href="login.html"${loginCurrent}>ログイン</a>` +
