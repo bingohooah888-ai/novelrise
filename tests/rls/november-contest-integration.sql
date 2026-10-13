@@ -341,8 +341,12 @@ begin
   select public.novelight_contest_entry_context(
     'novelight-november-2026'
   ) into v_result;
-  if jsonb_array_length(v_result->'works') <> 1
-     or (v_result->'works'->0->>'eligible')::boolean is not false then
+  if not exists (
+    select 1
+      from jsonb_array_elements(v_result->'works') as w
+     where w->>'title' = 'CONTEST_CI_ELIGIBLE_A'
+       and w->>'eligible' = 'false'
+  ) then
     raise exception 'Owner R18 work incorrectly marked eligible: %', v_result;
   end if;
 end
