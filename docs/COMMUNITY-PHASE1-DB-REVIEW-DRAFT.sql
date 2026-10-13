@@ -362,8 +362,28 @@ $$;
 REVOKE ALL ON FUNCTION public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean) TO authenticated;
 
--- Management note RPC must be replaced, owner-bound, to additionally include
--- 'show_in_timeline' in each JSON object without raw table exposure.
+-- Extend management output without replacing the old RPC or exposing raw notes.
+CREATE OR REPLACE FUNCTION public.novelight_manage_my_author_notes_v2(p_limit integer DEFAULT 100)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $
+DECLARE v_user uuid:=(SELECT auth.uid()); v_result jsonb;
+BEGIN
+ IF v_user IS NULL THEN RAISE EXCEPTION 'Login required' USING errcode='42501'; END IF;
+ SELECT coalesce(jsonb_agg(item.value || jsonb_build_object(
+   'show_in_timeline',coalesce((SELECT n.show_in_timeline
+   FROM public.author_notes n WHERE n.id=(item.value->>'id')::bigint AND n.author_user_id=v_user),false)
+  ) ORDER BY (item.value->>'updated_at') DESC),'[]'::jsonb)
+ INTO v_result
+ FROM jsonb_array_elements(public.novelight_manage_my_author_notes(p_limit)) item(value);
+ RETURN v_result;
+END
+$;
+REVOKE ALL ON FUNCTION public.novelight_manage_my_author_notes_v2(integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.novelight_manage_my_author_notes_v2(integer) TO authenticated;
+
+-- Extend moderation in the next review iteration, without sharing raw reports.
+-- No feature release is allowed until all safety-critical requirements pass.
 -- Admin RLS and moderation RPCs, notification idempotency, and analytics require
 -- an additional reviewed migration before the release flag can be enabled.
 COMMIT;
