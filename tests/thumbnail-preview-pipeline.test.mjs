@@ -17,6 +17,7 @@ const URL =
   'novel-thumbnails/official/ecab5112-8ac7-405b-aab2-1f15e65e0619.png';
 const SOURCE = Buffer.from('89504e470d0a1a0a00000000', 'hex');
 
+// prettier-ignore
 function sources() {
   return {
     version: 1,
@@ -30,6 +31,7 @@ function sources() {
   };
 }
 
+// prettier-ignore
 test('official catalog rejects duplicate assets and non-official URLs', () => {
   assert.equal(validatePreviewSources(sources()).length, 1);
   assert.equal(previewAssetPath(ID), '/assets/thumbnail-previews/v1/' + ID + '.webp');
@@ -49,12 +51,14 @@ test('official catalog rejects duplicate assets and non-official URLs', () => {
   }
 });
 
+// prettier-ignore
 test('only designated static preview directory is writable', () => {
   const safe = '/tmp/worktree/assets/thumbnail-previews/v1';
   assert.equal(validateOutputLocation(safe), path.resolve(safe));
   assert.throws(() => validateOutputLocation('/tmp/worktree/assets/originals'), /Output/);
 });
 
+// prettier-ignore
 test('NLO creates preview and manifest atomically without changing the source', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'novelight-preview-'));
   const manifestPath = path.join(dir, 'sources.json');
@@ -99,6 +103,7 @@ test('NLO creates preview and manifest atomically without changing the source', 
   }
 });
 
+// prettier-ignore
 test('failed conversion removes temporary files but never replaces existing assets', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'novelight-preview-error-'));
   const manifestPath = path.join(dir, 'sources.json');
@@ -123,6 +128,7 @@ test('failed conversion removes temporary files but never replaces existing asse
   }
 });
 
+// prettier-ignore
 test('option preview is isolated from canonical render and guarded by matching original', async () => {
   const source = await readFile('novelight-thumbnail-composer.js', 'utf8');
   assert.match(source, /preview\.sourceUrl !== asset\.image_url/);
