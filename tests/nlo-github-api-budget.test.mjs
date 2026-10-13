@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { createGithubApiBudgetFetch } from '../tools/novelight-commander/src/github-api-budget.js';
 
+const { Response } = globalThis;
 const src = 'tools/novelight-commander/src/';
 
 // prettier-ignore
