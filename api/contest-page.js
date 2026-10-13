@@ -18,11 +18,12 @@ function notFound(res) {
   return res.status(404).send('Not Found');
 }
 
-export default async function handler(req, res) {
-  if (!methodAllowed(req, res)) return;
+export function createContestPageHandler(getDatabase = getSupabase) {
+  return async function handler(req, res) {
+    if (!methodAllowed(req, res)) return;
 
   try {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getDatabase()
       .from('novelight_contests')
       .select('public_visible,status')
       .eq('contest_key', KEY)
@@ -30,7 +31,10 @@ export default async function handler(req, res) {
 
     if (error || !isContestVisible(data)) return notFound(res);
     return sendHtml(req, res, contestPageTemplate);
-  } catch {
-    return notFound(res);
-  }
+    } catch {
+      return notFound(res);
+    }
+  };
 }
+
+export default createContestPageHandler();
