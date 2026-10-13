@@ -4,6 +4,7 @@ import test from 'node:test';
 import { URL } from 'node:url';
 import {
   isEligibleDraft,
+  isRecentlyActive,
   shouldUpdateBranch,
   synchronizeDrafts
 } from '../scripts/novelight-pr-auto-sync.mjs';
@@ -28,6 +29,7 @@ function pull(overrides = {}) {
       repo: { full_name: REPO }
     },
     auto_merge: null,
+    updated_at: '2026-10-13T15:00:00Z',
     ...overrides
   };
 }
@@ -80,6 +82,7 @@ function mockGithub({
     prNumber: 2204,
     readToken: READ,
     writeToken: WRITE,
+    nowMs: Date.parse('2026-10-13T16:00:00Z'),
     fetchImpl
   };
   return { requests, args };
@@ -202,6 +205,24 @@ test('Push enumerates Draft PRs and denies incomplete pages', async () => {
     synchronizeDrafts({ ...args, event: 'push', fetchImpl: badFetch }),
     /enumeration incomplete/
   );
+});
+
+test('Dormant PRs do not trigger surprise CI on main push', async () => {
+  const old = pull({ updated_at: '2026-10-01T00:00:00Z' });
+  assert.equal(isRecentlyActive(old, Date.parse('2026-10-13T16:00:00Z')), false);
+  const mock = mockGithub({ draft: old });
+  const result = await synchronizeDrafts({
+    ...mock.args,
+    event: 'push'
+  });
+  assert.deepEqual(result.updated, []);
+  assert.equal(result.checked, 0);
+
+  const explicit = await synchronizeDrafts({
+    ...mock.args,
+    event: 'workflow_dispatch'
+  });
+  assert.deepEqual(explicit.updated, [2204]);
 });
 
 test('Trusted workflow cannot run untrusted code', () => {
