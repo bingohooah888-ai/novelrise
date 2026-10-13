@@ -1449,3 +1449,65 @@ end
 $admin_review_fixture$;
 rollback;
 select 'PASS: Stage 07 operator review role isolation, stale locks, audit and safe statuses' as result;
+
+-- Step 08 part B: isolated operator/Cron boundaries, no Production change.
+begin;
+do $release_fixture$
+declare
+  v_contest uuid;
+  v_view jsonb;
+  v_out jsonb;
+begin
+  if pg_catalog.has_function_privilege(
+    'anon','public.novelight_contest_admin_rank_action(uuid,integer,uuid,text,uuid,text,text)',
+    'EXECUTE'
+  ) or pg_catalog.has_function_privilege(
+    'authenticated','public.novelight_contest_rank_release_preview(uuid,integer)',
+    'EXECUTE'
+  ) or pg_catalog.has_function_privilege(
+    'anon','public.novelight_contest_auto_prepare_rank_slot(uuid,integer)',
+    'EXECUTE'
+  ) then
+    raise exception 'Untrusted role acquired a private ranking operation';
+  end if;
+  select id into v_contest from public.novelight_contests
+   where contest_key='novelight-november-2026';
+  select public.novelight_contest_rank_release_preview(v_contest,1)
+    into v_view;
+  if v_view->>'available' <> 'false'
+     or v_view->>'ok' <> 'true' then
+    raise exception 'Missing private draft was not empty: %',v_view;
+  end if;
+  select public.novelight_contest_admin_rank_action(
+    v_contest,1,'caf00000-0000-4000-8000-000000000099',
+    'prepare',null,null,
+    'Operator check in disposable integration fixture only'
+  ) into v_out;
+  if v_out->>'reason' <> 'contest_inactive' then
+    raise exception 'Hidden contest permitted rank mutation: %',v_out;
+  end if;
+  select public.novelight_contest_admin_rank_action(
+    v_contest,1,'caf00000-0000-4000-8000-000000000099',
+    'publish',null,null,
+    'Operator check in disposable integration fixture only'
+  ) into v_out;
+  if v_out->>'reason' <> 'missing_snapshot_proof' then
+    raise exception 'Release request did not require version: %',v_out;
+  end if;
+  select public.novelight_contest_auto_prepare_rank_slot(v_contest,1)
+    into v_out;
+  if v_out->>'reason' <> 'outside_prepare_window' then
+    raise exception 'Future noon preparation ran today: %',v_out;
+  end if;
+  if exists (
+    select 1 from public.novelight_contest_review_audit
+     where action in (
+       'operator_rank_prepare','operator_rank_publish','automatic_rank_prepare'
+     )
+  ) then
+    raise exception 'Rejected action wrote a release audit';
+  end if;
+end
+$release_fixture$;
+rollback;
+select 'PASS: Step 08 admin ranking and dormant cron private, gated and audit-safe' as result;
