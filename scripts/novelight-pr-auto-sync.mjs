@@ -5,6 +5,7 @@ const SHA = /^[0-9a-f]{40}$/;
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const PREFIX = 'https://api.github.com';
 const MAX_PR_UPDATES_PER_RUN = 8;
+const ACTIVE_DRAFT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function isEligibleDraft(pr, repository) {
   const owner = repository.split('/')[0];
@@ -19,6 +20,15 @@ export function isEligibleDraft(pr, repository) {
     pr.number > 0 &&
     SHA.test(pr?.head?.sha || '')
   );
+}
+
+export function isRecentlyActive(pr, nowMs) {
+  const updatedAt = Date.parse(pr?.updated_at || '');
+  const age = nowMs - updatedAt;
+  return Number.isFinite(updatedAt) &&
+    Number.isFinite(nowMs) &&
+    age >= 0 &&
+    age <= ACTIVE_DRAFT_WINDOW_MS;
 }
 
 export function shouldUpdateBranch(comparison, pull) {
@@ -43,6 +53,7 @@ export async function synchronizeDrafts({
   readToken,
   writeToken,
   fetchImpl = fetch,
+  nowMs = Date.now(),
   log = () => {}
 }) {
   if (!REPO.test(repository || '') || !validEvent(event)) {
@@ -99,7 +110,10 @@ export async function synchronizeDrafts({
     pulls = [await api(base + '/pulls/' + prNumber, readToken)];
   }
 
-  const eligible = pulls.filter((pr) => isEligibleDraft(pr, repository));
+  const eligible = pulls.filter((pr) =>
+    isEligibleDraft(pr, repository) &&
+    (event !== 'push' || isRecentlyActive(pr, nowMs))
+  );
   if (eligible.length > MAX_PR_UPDATES_PER_RUN) {
     throw new Error('Too many Draft PRs; require an explicitly bounded run');
   }
@@ -109,7 +123,8 @@ export async function synchronizeDrafts({
     const number = item.number;
     outcome.checked += 1;
     const live = await api(base + '/pulls/' + number, readToken);
-    if (!isEligibleDraft(live, repository)) {
+    if (!isEligibleDraft(live, repository) ||
+        (event === 'push' && !isRecentlyActive(live, nowMs))) {
       outcome.deferred.push(number);
       continue;
     }
