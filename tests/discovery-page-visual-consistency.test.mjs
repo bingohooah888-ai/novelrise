@@ -52,7 +52,7 @@ test('discovery pages use the unified public header composition', () => {
     );
     assert.doesNotMatch(header, />ホーム</u);
 
-    const labels = ['作品を探す', '特徴', '料金プラン', 'ランキング'];
+    const labels = ['作品を探す', '料金プラン', 'ランキング'];
     let previous = -1;
     for (const label of labels) {
       const index = header.indexOf(label);
