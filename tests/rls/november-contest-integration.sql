@@ -1214,3 +1214,98 @@ end
 $risk_fixture$;
 rollback;
 select 'PASS: stage-07 private risk signals, role isolation, non-punitive evaluation' as result;
+
+
+-- Stage 07 operator review is private, serialized and audited.
+begin;
+do $admin_review_fixture$
+declare
+  v_contest uuid;
+  v_reader uuid;
+  v_actor uuid := 'caf00000-0000-4000-8000-000000000091';
+  v_result jsonb;
+  v_audits integer;
+begin
+  if pg_catalog.has_function_privilege(
+    'anon',
+    'public.novelight_contest_admin_review_reader(uuid,uuid,uuid,text,text,text,text)',
+    'EXECUTE'
+  ) or pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.novelight_contest_admin_review_reader(uuid,uuid,uuid,text,text,text,text)',
+    'EXECUTE'
+  ) then
+    raise exception 'Operator review leaked to a public role';
+  end if;
+  select id into v_contest from public.novelight_contests
+   where contest_key = 'novelight-november-2026';
+  insert into public.novelight_contest_readers (
+    contest_id,kind,user_id
+  ) values (
+    v_contest,'account','caf00000-0000-4000-8000-000000000092'
+  ) returning id into v_reader;
+
+  select public.novelight_contest_admin_review_reader(
+    v_contest,v_reader,v_actor,'hold','provisional',
+    'anomalous_reading','Two anomalous reading sessions require review'
+  ) into v_result;
+  if v_result->>'ok' <> 'true'
+    or v_result->>'review_status' <> 'review_hold'
+    or (select review_status from public.novelight_contest_readers
+         where id = v_reader) <> 'review_hold' then
+    raise exception 'Hold not applied: %',v_result;
+  end if;
+
+  select public.novelight_contest_admin_review_reader(
+    v_contest,v_reader,v_actor,'clear','provisional',
+    'false_positive','This stale request must not override a hold'
+  ) into v_result;
+  if v_result->>'reason' <> 'stale_review' then
+    raise exception 'Stale approval overwrote active hold: %',v_result;
+  end if;
+
+  select public.novelight_contest_admin_review_reader(
+    v_contest,v_reader,v_actor,'clear','review_hold',
+    'anomalous_reading','Insufficient reason must never clear an alert'
+  ) into v_result;
+  if v_result->>'reason' <> 'reason_not_sufficient' then
+    raise exception 'Insufficient clear reason accepted: %',v_result;
+  end if;
+
+  select public.novelight_contest_admin_review_reader(
+    v_contest,v_reader,v_actor,'reopen','review_hold',
+    'appeal_review','Reader evidence will receive another human review'
+  ) into v_result;
+  if v_result->>'review_status' <> 'provisional' then
+    raise exception 'Review re-open failed: %',v_result;
+  end if;
+
+  select public.novelight_contest_admin_review_reader(
+    v_contest,v_reader,v_actor,'clear','provisional',
+    'manual_evidence','Operator independently verified sufficient evidence'
+  ) into v_result;
+  if v_result->>'review_status' <> 'cleared' then
+    raise exception 'Manual clearance failed: %',v_result;
+  end if;
+
+  select pg_catalog.count(*)::integer into v_audits
+   from public.novelight_contest_review_audit
+   where reader_id = v_reader and actor_user_id = v_actor
+     and action like 'operator_review_%';
+  if v_audits <> 3 then
+    raise exception 'Audit trail missing/duplicated: %',v_audits;
+  end if;
+
+  update public.novelight_contest_readers
+     set review_status = 'excluded' where id = v_reader;
+  select public.novelight_contest_admin_review_reader(
+    v_contest,v_reader,v_actor,'clear','cleared',
+    'manual_evidence','Old reviewer state must never override excluded'
+  ) into v_result;
+  if v_result->>'reason' <> 'stale_review' then
+    raise exception 'Excluded reader was reactivated: %',v_result;
+  end if;
+end
+$admin_review_fixture$;
+rollback;
+select 'PASS: Stage 07 operator review role isolation, stale locks, audit and safe statuses' as result;
