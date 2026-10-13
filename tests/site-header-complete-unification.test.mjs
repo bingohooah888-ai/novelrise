@@ -20,6 +20,57 @@ test('no root HTML page exposes the retired Features header link', () => {
   assert.doesNotMatch(client, /index\.html#features/u);
 });
 
+test('public pages keep the exact four navigation links in desktop and mobile', () => {
+  const expected = [
+    ['search.html', '作品を探す'],
+    ['ranking.html', 'ランキング'],
+    ['announcements.html', 'お知らせ'],
+    ['pricing.html', '料金プラン']
+  ];
+
+  let audited = 0;
+  for (const page of htmlFiles) {
+    const header = read(page).match(HEADER_PATTERN)?.[0] || '';
+    const primary = header.match(/<nav class="site-nav desktop-nav"[^>]*>([\\s\\S]*?)<\\/nav>/u);
+    if (!primary) continue;
+    audited += 1;
+
+    const navBlocks = [
+      primary[1],
+      ...Array.from(
+        header.matchAll(/<nav aria-label="モバイルナビ">([\\s\\S]*?)<\\/nav>/gu),
+        (match) => match[1]
+      )
+    ];
+    assert.ok(navBlocks.length >= 2, page);
+
+    for (const nav of navBlocks) {
+      const items = Array.from(
+        nav.matchAll(/<a\\b[^>]*href="([^"]+)"[^>]*>([^<]*)<\\/a>/gu),
+        (match) => [match[1], match[2]]
+      );
+      assert.deepEqual(items.slice(0, 4), expected, page);
+      assert.ok(
+        items.slice(4).every(([, label]) =>
+          ['ログイン', '会員登録', 'SCOUT RECORD', 'マイページ'].includes(label)
+        ),
+        `${page}: unexpected extra navigation items`
+      );
+    }
+  }
+  assert.ok(audited >= 17, 'all static public headers were audited');
+  assert.match(client, /href="announcements\\.html"/u);
+  const shared = client.slice(
+    client.indexOf('header.innerHTML ='),
+    client.indexOf('return true;', client.indexOf('header.innerHTML ='))
+  );
+  for (const [, label] of expected) {
+    assert.equal(shared.split(`>${label}</a>`).length - 1, 2);
+  }
+  const first = expected.map(([, label]) => shared.indexOf(`>${label}</a>`));
+  assert.ok(first.every((offset, i) => i === 0 || offset > first[i - 1]));
+});
+
 test('static public navigation does not silently lose its header', () => {
   for (const page of [
     'terms.html',
