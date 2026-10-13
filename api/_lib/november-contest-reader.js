@@ -1,4 +1,9 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual
+} from 'node:crypto';
 import { URL } from 'node:url';
 
 const CONTEST_KEY = 'novelight-november-2026';
@@ -34,7 +39,11 @@ function parseBody(req) {
   let raw;
   if (typeof req.body === 'string') {
     raw = req.body;
-  } else if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
+  } else if (
+    req.body &&
+    typeof req.body === 'object' &&
+    !Array.isArray(req.body)
+  ) {
     raw = JSON.stringify(req.body);
   } else {
     return null;
@@ -52,11 +61,14 @@ function parseBody(req) {
 
 function cookieFromHeader(value) {
   if (typeof value !== 'string') return null;
-  const matches = value.split(';').map((part) => part.trim()).filter((part) =>
-    part.startsWith(COOKIE_NAME + '=')
-  );
+  const matches = value
+    .split(';')
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith(COOKIE_NAME + '='));
   if (matches.length > 1) return { invalid: true };
-  return matches.length ? { value: matches[0].slice(COOKIE_NAME.length + 1) } : null;
+  return matches.length
+    ? { value: matches[0].slice(COOKIE_NAME.length + 1) }
+    : null;
 }
 
 function signature(secret, token, expires) {
@@ -68,7 +80,10 @@ function signature(secret, token, expires) {
 function signedCookie(secret, nowMs) {
   const token = randomBytes(32).toString('base64url');
   const expires = Math.floor(nowMs / 1000) + COOKIE_AGE_SECONDS;
-  return { token, value: ['v1', token, expires, signature(secret, token, expires)].join('.') };
+  return {
+    token,
+    value: ['v1', token, expires, signature(secret, token, expires)].join('.')
+  };
 }
 
 function verifyCookie(value, secret, nowMs) {
@@ -88,7 +103,10 @@ function verifyCookie(value, secret, nowMs) {
   }
   const expected = Buffer.from(signature(secret, parts[1], parts[2]), 'utf8');
   const received = Buffer.from(parts[3], 'utf8');
-  if (expected.length !== received.length || !timingSafeEqual(expected, received)) {
+  if (
+    expected.length !== received.length ||
+    !timingSafeEqual(expected, received)
+  ) {
     return null;
   }
   return parts[1];
@@ -101,12 +119,14 @@ function guestHash(token) {
 }
 
 async function findIdentity(db, contestId, kind, value) {
-  let query = db.from('novelight_contest_readers')
+  let query = db
+    .from('novelight_contest_readers')
     .select('id,review_status')
     .eq('contest_id', contestId);
-  query = kind === 'account'
-    ? query.eq('user_id', value)
-    : query.eq('guest_key_hash', value);
+  query =
+    kind === 'account'
+      ? query.eq('user_id', value)
+      : query.eq('guest_key_hash', value);
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
   return data;
@@ -118,8 +138,11 @@ async function resolveIdentity(db, contestId, kind, value) {
   const fields = kind === 'account'
     ? { kind, contest_id: contestId, user_id: value }
     : { kind, contest_id: contestId, guest_key_hash: value };
-  const inserted = await db.from('novelight_contest_readers')
-    .insert(fields).select('id,review_status').single();
+  const inserted = await db
+    .from('novelight_contest_readers')
+    .insert(fields)
+    .select('id,review_status')
+    .single();
   if (inserted.error?.code === '23505') {
     const concurrent = await findIdentity(db, contestId, kind, value);
     if (concurrent) return concurrent;
@@ -130,17 +153,26 @@ async function resolveIdentity(db, contestId, kind, value) {
 
 function validAction(body) {
   if (body.action === 'start') {
-    return Number.isSafeInteger(body.episode_id) && body.episode_id > 0 &&
-      ['scroll', 'tts'].includes(body.mode);
+    return (
+      Number.isSafeInteger(body.episode_id) &&
+      body.episode_id > 0 &&
+      ['scroll', 'tts'].includes(body.mode)
+    );
   }
   if (body.action === 'heartbeat') {
-    return typeof body.session_id === 'string' && UUID.test(body.session_id) &&
-      Number.isSafeInteger(body.sequence) && body.sequence > 0 &&
-      body.sequence <= 1000 && typeof body.progress_ratio === 'number' &&
+    return (
+      typeof body.session_id === 'string' &&
+      UUID.test(body.session_id) &&
+      Number.isSafeInteger(body.sequence) &&
+      body.sequence > 0 &&
+      body.sequence <= 1000 &&
+      typeof body.progress_ratio === 'number' &&
       Number.isFinite(body.progress_ratio) &&
-      body.progress_ratio >= 0 && body.progress_ratio <= 1 &&
+      body.progress_ratio >= 0 &&
+      body.progress_ratio <= 1 &&
       typeof body.foreground === 'boolean' &&
-      typeof body.interacted === 'boolean';
+      typeof body.interacted === 'boolean'
+    );
   }
   return false;
 }
@@ -159,7 +191,8 @@ export function createNovemberContestReaderHandler({
   allowedOrigin = 'https://novelight.jp',
   now = () => Date.now()
 }) {
-  const secretIsValid = typeof guestSecret === 'string' &&
+  const secretIsValid =
+    typeof guestSecret === 'string' &&
     Buffer.byteLength(guestSecret, 'utf8') >= MIN_SECRET_BYTES;
 
   return async function handler(req, res) {
@@ -178,21 +211,32 @@ export function createNovemberContestReaderHandler({
       return jsonError(res, 403, 'ORIGIN_REJECTED');
     }
     const body = parseBody(req);
-    if (!body || !validAction(body) || 'reader_id' in body || 'contest_id' in body) {
+    if (
+      !body ||
+      !validAction(body) ||
+      'reader_id' in body ||
+      'contest_id' in body
+    ) {
       return jsonError(res, 400, 'INVALID_REQUEST');
     }
 
     try {
       const nowMs = now();
-      const contestResponse = await serviceClient.from('novelight_contests')
+      const contestResponse = await serviceClient
+        .from('novelight_contests')
         .select('id,status,public_visible,starts_at,ends_at')
-        .eq('contest_key', CONTEST_KEY).maybeSingle();
+        .eq('contest_key', CONTEST_KEY)
+        .maybeSingle();
       if (contestResponse.error) throw contestResponse.error;
       const contest = contestResponse.data;
       if (
-        !contest || contest.status !== 'active' || contest.public_visible !== true ||
+        !contest ||
+        contest.status !== 'active' ||
+        contest.public_visible !== true ||
         !(Date.parse(contest.starts_at) <= nowMs && nowMs < Date.parse(contest.ends_at))
-      ) return jsonError(res, 404, 'CONTEST_NOT_ACTIVE');
+      ) {
+        return jsonError(res, 404, 'CONTEST_NOT_ACTIVE');
+      }
 
       const authorization = authToken(req.headers?.authorization);
       if (authorization === false) return jsonError(res, 401, 'UNAUTHORIZED');
@@ -209,67 +253,97 @@ export function createNovemberContestReaderHandler({
         identifier = auth.data.user.id;
       } else {
         const rawCookie = cookieFromHeader(req.headers?.cookie);
-        if (rawCookie?.invalid) return jsonError(res, 401, 'INVALID_GUEST_COOKIE');
+        if (rawCookie?.invalid) {
+          return jsonError(res, 401, 'INVALID_GUEST_COOKIE');
+        }
         if (!rawCookie && body.action !== 'start') {
           return jsonError(res, 401, 'GUEST_SESSION_REQUIRED');
         }
         let token = rawCookie?.value
           ? verifyCookie(rawCookie.value, guestSecret, nowMs)
           : null;
-        if (rawCookie && !token) return jsonError(res, 401, 'INVALID_GUEST_COOKIE');
+        if (rawCookie && !token) {
+          return jsonError(res, 401, 'INVALID_GUEST_COOKIE');
+        }
         if (!token) {
           const minted = signedCookie(guestSecret, nowMs);
           token = minted.token;
-          newCookie = COOKIE_NAME + '=' + minted.value +
-            '; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=' + COOKIE_AGE_SECONDS;
+          newCookie =
+            COOKIE_NAME +
+            '=' +
+            minted.value +
+            '; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=' +
+            COOKIE_AGE_SECONDS;
         }
         kind = 'guest';
         identifier = guestHash(token);
       }
 
       const reader = await resolveIdentity(
-        serviceClient, contest.id, kind, identifier
+        serviceClient,
+        contest.id,
+        kind,
+        identifier
       );
-      if (!reader || !['provisional', 'cleared'].includes(reader.review_status)) {
+      if (
+        !reader ||
+        !['provisional', 'cleared'].includes(reader.review_status)
+      ) {
         return jsonError(res, 403, 'READER_UNAVAILABLE');
       }
       if (newCookie) res.setHeader('Set-Cookie', newCookie);
 
       if (body.action === 'start') {
-        const result = await serviceClient.rpc('novelight_contest_begin_read_session', {
-          p_reader_id: reader.id,
-          p_episode_id: body.episode_id,
-          p_mode: body.mode
-        });
+        const result = await serviceClient.rpc(
+          'novelight_contest_begin_read_session',
+          {
+            p_reader_id: reader.id,
+            p_episode_id: body.episode_id,
+            p_mode: body.mode
+          }
+        );
         if (result.error) throw result.error;
         if (result.data?.ok !== true) {
-          return res.status(200).json({ ok: false, reason: result.data?.reason || 'rejected' });
+          return res
+            .status(200)
+            .json({ ok: false, reason: result.data?.reason || 'rejected' });
         }
         return res.status(200).json({
-          ok: true, session_id: result.data.session_id,
-          reading_mode: result.data.reading_mode, provisional_only: true
+          ok: true,
+          session_id: result.data.session_id,
+          reading_mode: result.data.reading_mode,
+          provisional_only: true
         });
       }
 
       // This check is intentionally repeated by the service-only heartbeat
       // RPC: one browser can never submit another reader's session ID.
-      const owned = await serviceClient.from('novelight_contest_read_sessions')
-        .select('id').eq('id', body.session_id)
-        .eq('contest_id', contest.id).eq('reader_id', reader.id).maybeSingle();
+      const owned = await serviceClient
+        .from('novelight_contest_read_sessions')
+        .select('id')
+        .eq('id', body.session_id)
+        .eq('contest_id', contest.id)
+        .eq('reader_id', reader.id)
+        .maybeSingle();
       if (owned.error) throw owned.error;
       if (!owned.data) return jsonError(res, 404, 'SESSION_NOT_FOUND');
 
-      const beat = await serviceClient.rpc('novelight_contest_heartbeat_read_session', {
-        p_session_id: body.session_id,
-        p_reader_id: reader.id,
-        p_sequence: body.sequence,
-        p_progress_ratio: body.progress_ratio,
-        p_foreground: body.foreground,
-        p_interacted: body.interacted
-      });
+      const beat = await serviceClient.rpc(
+        'novelight_contest_heartbeat_read_session',
+        {
+          p_session_id: body.session_id,
+          p_reader_id: reader.id,
+          p_sequence: body.sequence,
+          p_progress_ratio: body.progress_ratio,
+          p_foreground: body.foreground,
+          p_interacted: body.interacted
+        }
+      );
       if (beat.error) throw beat.error;
       if (beat.data?.ok !== true) {
-        return res.status(200).json({ ok: false, reason: beat.data?.reason || 'rejected' });
+        return res
+          .status(200)
+          .json({ ok: false, reason: beat.data?.reason || 'rejected' });
       }
 
       if (beat.data.qualified === true) {

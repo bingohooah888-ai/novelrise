@@ -12,16 +12,29 @@ const SECRET = 'test-contest-guest-purpose-specific-secret-strong-enough';
 function response() {
   return {
     headers: {},
-    setHeader(k, v) { this.headers[k] = v; return this; },
-    status(n) { this.statusCode = n; return this; },
-    json(v) { this.data = v; return this; }
+    setHeader(k, v) {
+      this.headers[k] = v;
+      return this;
+    },
+    status(n) {
+      this.statusCode = n;
+      return this;
+    },
+    json(v) {
+      this.data = v;
+      return this;
+    }
   };
 }
 
 function request(body, extras = {}) {
   return {
     method: 'POST',
-    headers: { origin: 'https://novelight.jp', host: 'novelight.jp', ...extras },
+    headers: {
+      origin: 'https://novelight.jp',
+      host: 'novelight.jp',
+      ...extras
+    },
     body
   };
 }
@@ -55,7 +68,9 @@ function mockDatabase({ userId, active = true, owner = true } = {}) {
               ends_at: '2026-11-30T15:00:00Z'
             }, error: null
           };
-          if (table === 'novelight_contest_readers') return { data: reader, error: null };
+          if (table === 'novelight_contest_readers') {
+            return { data: reader, error: null };
+          }
           if (table === 'novelight_contest_read_sessions') {
             return { data: owner ? { id: SESSION } : null, error: null };
           }
@@ -66,7 +81,11 @@ function mockDatabase({ userId, active = true, owner = true } = {}) {
           reader = { id: READER, review_status: 'provisional' };
           return {
             select() {
-              return { async single() { return { data: reader, error: null }; } };
+              return {
+                async single() {
+                  return { data: reader, error: null };
+                }
+              };
             }
           };
         }
@@ -76,7 +95,10 @@ function mockDatabase({ userId, active = true, owner = true } = {}) {
     async rpc(name, args) {
       calls.push(['rpc', name, args]);
       if (name === 'novelight_contest_begin_read_session') {
-        return { data: { ok: true, session_id: SESSION, reading_mode: args.p_mode }, error: null };
+        return {
+          data: { ok: true, session_id: SESSION, reading_mode: args.p_mode },
+          error: null
+        };
       }
       if (name === 'novelight_contest_heartbeat_read_session') {
         return { data: { ok: true, qualified: true }, error: null };
@@ -92,7 +114,11 @@ function mockDatabase({ userId, active = true, owner = true } = {}) {
 
 function handler(db, opts = {}) {
   return createNovemberContestReaderHandler({
-    serviceClient: db, guestSecret: SECRET, enabled: true, now: () => NOW, ...opts
+    serviceClient: db,
+    guestSecret: SECRET,
+    enabled: true,
+    now: () => NOW,
+    ...opts
   });
 }
 
@@ -109,7 +135,10 @@ test('disabled API does not query backend or create identities', async () => {
 test('draft never creates a guest cookie or reader', async () => {
   const db = mockDatabase({ active: false });
   const res = response();
-  await handler(db)(request({ action: 'start', episode_id: 1, mode: 'scroll' }), res);
+  await handler(db)(
+    request({ action: 'start', episode_id: 1, mode: 'scroll' }),
+    res
+  );
   assert.equal(res.statusCode, 404);
   assert.equal(res.headers['Set-Cookie'], undefined);
   assert.equal(db.calls.filter((c) => c[0] === 'insert').length, 0);
@@ -118,9 +147,18 @@ test('draft never creates a guest cookie or reader', async () => {
 test('cross-site or spoofed Origin and supplied reader ID are rejected', async () => {
   const db = mockDatabase();
   for (const req of [
-    request({ action: 'start', episode_id: 1, mode: 'scroll' }, { origin: 'https://evil.test' }),
-    request({ action: 'start', episode_id: 1, mode: 'scroll' }, { host: 'evil.test' }),
-    request({ action: 'start', episode_id: 1, mode: 'scroll' }, { 'sec-fetch-site': 'cross-site' })
+    request(
+      { action: 'start', episode_id: 1, mode: 'scroll' },
+      { origin: 'https://evil.test' }
+    ),
+    request(
+      { action: 'start', episode_id: 1, mode: 'scroll' },
+      { host: 'evil.test' }
+    ),
+    request(
+      { action: 'start', episode_id: 1, mode: 'scroll' },
+      { 'sec-fetch-site': 'cross-site' }
+    )
   ]) {
     const res = response();
     await handler(db)(req, res);
@@ -148,7 +186,8 @@ test('verified authenticated user always derives reader identity on server', asy
   assert.equal(inserted[2].user_id, UID);
   assert.equal(inserted[2].kind, 'account');
   assert.equal(
-    db.calls.find((call) => call[1] === 'novelight_contest_begin_read_session')[2].p_reader_id,
+    db.calls.find((call) => call[1] === 'novelight_contest_begin_read_session')[2]
+      .p_reader_id,
     READER
   );
 });
@@ -167,7 +206,10 @@ test('invalid Bearer is never downgraded to a guest reader', async () => {
 test('guest cookie is signed HttpOnly and reused without exposing reader ID', async () => {
   const db = mockDatabase();
   const res = response();
-  await handler(db)(request({ action: 'start', episode_id: 8, mode: 'scroll' }), res);
+  await handler(db)(
+    request({ action: 'start', episode_id: 8, mode: 'scroll' }),
+    res
+  );
   assert.equal(res.statusCode, 200);
   const cookie = res.headers['Set-Cookie'];
   assert.match(cookie, /HttpOnly; Secure; SameSite=Strict/);
@@ -186,12 +228,18 @@ test('heartbeat enforces reader ownership and records only provisional qualifica
   const base = { action: 'heartbeat', session_id: SESSION, sequence: 1,
     progress_ratio: 0.85, foreground: true, interacted: true };
   const unauthorized = response();
-  await handler(db)(request(base, { authorization: 'Bearer valid-token' }), unauthorized);
+  await handler(db)(
+    request(base, { authorization: 'Bearer valid-token' }),
+    unauthorized
+  );
   assert.equal(unauthorized.statusCode, 200);
   assert.equal(unauthorized.data.provisional_only, true);
   assert.deepEqual(
     db.calls.filter((c) => c[0] === 'rpc').map((c) => c[1]),
-    ['novelight_contest_heartbeat_read_session', 'novelight_contest_record_qualified_session']
+    [
+      'novelight_contest_heartbeat_read_session',
+      'novelight_contest_record_qualified_session'
+    ]
   );
   const ownerMismatch = mockDatabase({ owner: false });
   const denied = response();

@@ -11,14 +11,22 @@ export default function handler(req, res) {
       Buffer.byteLength(secret, 'utf8') >= 32 &&
       secret !== process.env.SUPABASE_SECRET_KEY;
     productionHandler = createNovemberContestReaderHandler({
-      enabled: process.env.NOVELIGHT_CONTEST_READING_ENABLED === 'true' && validSecret,
+      enabled:
+        process.env.NOVELIGHT_CONTEST_READING_ENABLED === 'true' &&
+        validSecret,
       guestSecret: secret,
-      allowedOrigin: process.env.NOVELIGHT_CONTEST_ALLOWED_ORIGIN || 'https://novelight.jp',
-      serviceClient: validSecret && process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY
-        ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
-            auth: { autoRefreshToken: false, persistSession: false }
-          })
-        : null
+      allowedOrigin:
+        process.env.NOVELIGHT_CONTEST_ALLOWED_ORIGIN || 'https://novelight.jp',
+      serviceClient:
+        validSecret && process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY
+          ? createClient(
+              process.env.SUPABASE_URL,
+              process.env.SUPABASE_SECRET_KEY,
+              {
+                auth: { autoRefreshToken: false, persistSession: false }
+              }
+            )
+          : null
     });
   }
   return productionHandler(req, res);
