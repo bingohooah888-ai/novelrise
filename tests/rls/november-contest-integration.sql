@@ -534,6 +534,235 @@ begin
 end
 $$;
 
+-- Stage 06 scoring core: all test mutations remain inside disposable rollback.
+do $score_permissions$
+begin
+  if has_function_privilege(
+       'anon',
+       'public.novelight_contest_record_qualified_session(uuid)',
+       'execute'
+     )
+     or has_function_privilege(
+       'authenticated',
+       'public.novelight_contest_record_qualified_session(uuid)',
+       'execute'
+     )
+     or has_function_privilege(
+       'anon',
+       'public.novelight_contest_recompute_reader_score(uuid,uuid,uuid)',
+       'execute'
+     )
+     or has_function_privilege(
+       'authenticated',
+       'public.novelight_contest_recompute_reader_score(uuid,uuid,uuid)',
+       'execute'
+     )
+     or has_table_privilege(
+       'anon', 'public.novelight_contest_read_events', 'insert'
+     ) then
+    raise exception 'Stage 06 reader event writes were exposed';
+  end if;
+  if not has_function_privilege(
+    'service_role',
+    'public.novelight_contest_record_qualified_session(uuid)',
+    'execute'
+  ) then
+    raise exception 'Trusted score ingestion cannot access service-only RPC';
+  end if;
+  if public.novelight_contest_episode_points(0) <> 0
+    or public.novelight_contest_episode_points(2) <> 0
+    or public.novelight_contest_episode_points(3) <> 1
+    or public.novelight_contest_episode_points(4) <> 1
+    or public.novelight_contest_episode_points(5) <> 3
+    or public.novelight_contest_episode_points(9) <> 3
+    or public.novelight_contest_episode_points(10) <> 5
+    or public.novelight_contest_episode_points(100) <> 5 then
+    raise exception 'The 0/1/3/5 score thresholds drifted';
+  end if;
+end
+$score_permissions$;
+
+do $contest_score_fixture$
+declare
+  v_contest_id uuid;
+  v_entry_id uuid;
+  v_novel_id bigint;
+  v_reader_id uuid := 'caf00000-0000-4000-8000-000000000020';
+  v_owner_reader uuid := 'caf00000-0000-4000-8000-000000000022';
+  v_guest_reader uuid := 'caf00000-0000-4000-8000-000000000023';
+  v_episode_id bigint;
+  v_session uuid;
+  v_result jsonb;
+  v_count integer := 0;
+  v_points integer;
+  v_events integer;
+  v_existing_pv bigint;
+  v_current_pv bigint;
+begin
+  select c.id, e.id, e.novel_id
+  into v_contest_id, v_entry_id, v_novel_id
+  from public.novelight_contests c
+  join public.novelight_contest_entries e on e.contest_id = c.id
+  join public.novels n on n.id = e.novel_id
+  where n.title = 'CONTEST_CI_ELIGIBLE_A';
+
+  insert into public.novelight_contest_readers (
+    id, contest_id, kind, user_id
+  ) values
+    (
+      v_reader_id, v_contest_id, 'account',
+      'caf00000-0000-4000-8000-000000000021'
+    ),
+    (
+      v_owner_reader, v_contest_id, 'account',
+      'caf00000-0000-4000-8000-000000000001'
+    );
+  insert into public.novelight_contest_readers (
+    id, contest_id, kind, guest_key_hash
+  ) values (v_guest_reader, v_contest_id, 'guest', repeat('a',64));
+
+  select pg_catalog.sum(pv) into v_existing_pv from public.episodes
+    where novel_id = v_novel_id;
+
+  -- Even a pre-qualified (internal) session must not credit while hidden.
+  select id into v_episode_id from public.episodes
+    where novel_id = v_novel_id order by episode_number limit 1;
+  insert into public.novelight_contest_read_sessions (
+    contest_id, reader_id, entry_id, episode_id_snapshot, status
+  ) values (
+    v_contest_id, v_reader_id, v_entry_id, v_episode_id, 'qualified'
+  ) returning id into v_session;
+  select public.novelight_contest_record_qualified_session(v_session)
+    into v_result;
+  if v_result->>'reason' <> 'contest_inactive' then
+    raise exception 'Draft contest credited a read: %',v_result;
+  end if;
+
+  -- Travel a disposal-only fixture into a current contest window, never live.
+  update public.novelight_contests
+    set entry_deadline_at = pg_catalog.clock_timestamp() - interval '2 hours',
+        starts_at = pg_catalog.clock_timestamp() - interval '1 hour',
+        ends_at = pg_catalog.clock_timestamp() + interval '1 hour',
+        terms_version = 'ci-contest-v1',
+        terms_url = 'https://novelight.jp/contest-terms',
+        status = 'active', public_visible = true
+  where id = v_contest_id;
+
+  for v_episode_id in
+    select id from public.episodes
+     where novel_id = v_novel_id and status = 'published'
+     order by episode_number
+  loop
+    insert into public.novelight_contest_read_sessions (
+      contest_id, reader_id, entry_id, episode_id_snapshot, status
+    ) values (
+      v_contest_id, v_reader_id, v_entry_id, v_episode_id, 'qualified'
+    ) returning id into v_session;
+
+    select public.novelight_contest_record_qualified_session(v_session)
+      into v_result;
+    v_count := v_count + 1;
+    v_points := case when v_count >= 10 then 5
+                     when v_count >= 5 then 3
+                     when v_count >= 3 then 1
+                     else 0 end;
+    if v_result->>'ok' <> 'true'
+      or v_result->>'new_episode' <> 'true'
+      or (v_result->>'points')::integer <> v_points
+      or (v_result->>'qualified_episodes')::integer <> v_count then
+      raise exception 'Read #%, expected % points: %', v_count, v_points, v_result;
+    end if;
+    -- Duplicate session and replaying it can never create a second event.
+    select public.novelight_contest_record_qualified_session(v_session)
+      into v_result;
+    if v_result->>'new_episode' <> 'false'
+       or (v_result->>'points')::integer <> v_points then
+      raise exception 'Read replay credited twice: %',v_result;
+    end if;
+  end loop;
+
+  select pg_catalog.count(*) into v_events
+    from public.novelight_contest_read_events
+   where reader_id = v_reader_id and entry_id = v_entry_id;
+  if v_events <> 10 or v_count <> 10 then
+    raise exception 'A repeated episode was counted twice';
+  end if;
+
+  -- Fraud review must be able to revoke credit without touching ordinary PV.
+  update public.novelight_contest_read_events
+     set status = 'review_hold'
+   where reader_id = v_reader_id and entry_id = v_entry_id
+     and episode_id_snapshot in (
+       select id from public.episodes
+        where novel_id = v_novel_id and episode_number between 1 and 6
+     );
+  select public.novelight_contest_recompute_reader_score(
+    v_contest_id, v_reader_id, v_entry_id
+  ) into v_result;
+  if (v_result->>'qualified_episodes')::integer <> 4
+     or (v_result->>'points')::integer <> 1 then
+    raise exception 'Hold failed to reduce award credit: %',v_result;
+  end if;
+
+  update public.novelight_contest_readers
+     set review_status = 'review_hold'
+   where id = v_reader_id;
+  select public.novelight_contest_recompute_reader_score(
+    v_contest_id, v_reader_id, v_entry_id
+  ) into v_result;
+  if (v_result->>'points')::integer <> 0
+    or v_result->>'review_status' <> 'review_hold' then
+    raise exception 'Reader-level hold counted points: %',v_result;
+  end if;
+
+  -- An account reading its author's work never yields an award point.
+  insert into public.novelight_contest_read_sessions (
+    contest_id, reader_id, entry_id, episode_id_snapshot, status
+  ) values (
+    v_contest_id, v_owner_reader, v_entry_id, v_episode_id, 'qualified'
+  ) returning id into v_session;
+  select public.novelight_contest_record_qualified_session(v_session)
+    into v_result;
+  if v_result->>'reason' <> 'self_read' then
+    raise exception 'Author self-read credited: %',v_result;
+  end if;
+
+  -- A pseudonymous guest can reach 3 distinct episodes, never full-account proof.
+  v_count := 0;
+  for v_episode_id in
+    select id from public.episodes
+     where novel_id = v_novel_id order by episode_number limit 3
+  loop
+    insert into public.novelight_contest_read_sessions (
+      contest_id, reader_id, entry_id, episode_id_snapshot, status
+    ) values (
+      v_contest_id, v_guest_reader, v_entry_id, v_episode_id, 'qualified'
+    ) returning id into v_session;
+    select public.novelight_contest_record_qualified_session(v_session)
+      into v_result;
+    v_count := v_count + 1;
+  end loop;
+  if (v_result->>'qualified_episodes')::integer <> 3
+    or (v_result->>'points')::integer <> 1 then
+    raise exception 'Guest scored incorrectly: %',v_result;
+  end if;
+
+  select pg_catalog.sum(pv) into v_current_pv from public.episodes
+    where novel_id = v_novel_id;
+  if v_current_pv is distinct from v_existing_pv then
+    raise exception 'Contest scoring mutated ordinary episode PV';
+  end if;
+
+  update public.novelight_contests
+    set status = 'draft', public_visible = false where id = v_contest_id;
+  select public.novelight_contest_record_qualified_session(v_session)
+    into v_result;
+  if v_result->>'reason' <> 'contest_inactive' then
+    raise exception 'Draft contest still credited a qualified session';
+  end if;
+end
+$contest_score_fixture$;
+
 rollback;
 
-select 'PASS: November contest migrated schema, owner RPC, private RLS and catalog on disposable replay DB' as result;
+select 'PASS: November contest migrated schema, owner RPC, private RLS, catalog and score core on disposable replay DB' as result;
