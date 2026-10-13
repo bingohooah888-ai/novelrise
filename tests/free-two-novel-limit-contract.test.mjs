@@ -26,12 +26,12 @@ const [
   read('scripts/run-rls-integration.sh')
 ]);
 
-test('Free plan copy is consistently two works on public billing surfaces', () => {
-  assert.match(home, /2作品まで投稿/u);
+test('Free plan copy is consistently five works on public billing surfaces', () => {
+  assert.match(home, /5作品まで投稿/u);
   assert.doesNotMatch(home, /1作品まで投稿/u);
-  assert.match(pricing, /投稿作品：2作品まで/u);
+  assert.match(pricing, /投稿作品：5作品まで/u);
   assert.doesNotMatch(pricing, /投稿作品：1作品まで/u);
-  assert.match(billingPolicy, /月額0円。投稿2作品まで。/u);
+  assert.match(billingPolicy, /月額0円。投稿5作品まで。/u);
   assert.doesNotMatch(billingPolicy, /月額0円。投稿1作品まで。/u);
 });
 
