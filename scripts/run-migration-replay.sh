@@ -711,6 +711,15 @@ echo '::group::Verify #19 author status notes rollback and reapply'
 "${REPLAY[@]}" -f supabase/checks/20260919090000_author_status_notes_postcheck.sql
 echo '::endgroup::'
 
+echo '::group::Verify permanent author status note deletion'
+"${REPLAY[@]}" -f supabase/checks/20261013235500_author_status_note_delete_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/author-status-note-permanent-delete.sql
+"${REPLAY[@]}" -f supabase/rollback/20261013235500_author_status_note_delete_rollback.sql
+"${REPLAY[@]}" -f supabase/checks/20261013235500_author_status_note_delete_precheck.sql
+"${REPLAY[@]}" -f supabase/migrations/20261013235500_author_status_note_delete.sql
+"${REPLAY[@]}" -f supabase/checks/20261013235500_author_status_note_delete_postcheck.sql
+echo '::endgroup::'
+
 echo '::group::Verify B #20 author reader polls'
 "${REPLAY[@]}" -f supabase/rollback/20260919100000_author_reader_polls_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260919100000_author_reader_polls_precheck.sql
