@@ -24,20 +24,24 @@ function notFound(res) {
   return res.status(404).send('Not Found');
 }
 
-export default async function handler(req, res) {
-  if (!methodAllowed(req, res)) return;
-  try {
-    const { data, error } = await getSupabase()
-      .from('novelight_contests')
-      .select('status,public_visible,terms_version,terms_url')
-      .eq('contest_key', KEY)
-      .maybeSingle();
-    if (error || !isContestTermsVisible(data)) return notFound(res);
-    res.setHeader('Cache-Control', 'no-store, max-age=0');
-    res.setHeader('CDN-Cache-Control', 'no-store');
-    res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
-    return sendHtml(req, res, contestTermsTemplate);
-  } catch {
-    return notFound(res);
-  }
+export function createContestTermsHandler(getDatabase = getSupabase) {
+  return async function handler(req, res) {
+    if (!methodAllowed(req, res)) return;
+    try {
+      const { data, error } = await getDatabase()
+        .from('novelight_contests')
+        .select('status,public_visible,terms_version,terms_url')
+        .eq('contest_key', KEY)
+        .maybeSingle();
+      if (error || !isContestTermsVisible(data)) return notFound(res);
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+      res.setHeader('CDN-Cache-Control', 'no-store');
+      res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
+      return sendHtml(req, res, contestTermsTemplate);
+    } catch {
+      return notFound(res);
+    }
+  };
 }
+
+export default createContestTermsHandler();
