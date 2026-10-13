@@ -2,9 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
-import {
-  runOwnerDraftSyncOnce
-} from '../tools/novelight-commander/src/owner-draft-auto-sync.js';
+import { runOwnerDraftSyncOnce } from '../tools/novelight-commander/src/owner-draft-auto-sync.js';
 import {
   isEligibleDraft,
   isRecentlyActive,
