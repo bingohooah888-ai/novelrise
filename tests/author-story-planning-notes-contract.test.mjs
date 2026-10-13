@@ -121,3 +121,26 @@ test('Inquiry #58 keeps desktop note columns independently scrollable', () => {
   assert.ok(page.includes('.editor{position:static;max-height:none'));
   assert.ok(page.includes('.note-list{overflow:visible}'));
 });
+
+test('Inquiries #59/#60 keep badges fixed and long titles wrapping on mobile', () => {
+  assert.match(
+    page,
+    /\.note-top\s*\{\s*align-items:\s*flex-start;\s*min-width:\s*0;\s*\}/u
+  );
+  assert.match(
+    page,
+    /\.note h3\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-width:\s*0;[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;[^}]*\}/u
+  );
+  assert.match(
+    page,
+    /\.note-top \.tag\s*\{\s*align-self:\s*flex-start;\s*white-space:\s*nowrap;\s*\}/u
+  );
+  assert.match(
+    page,
+    /\.list-panel, \.note-list, \.note\s*\{\s*min-width:\s*0;\s*\}/u
+  );
+  assert.match(
+    page,
+    /@media \(max-width: 850px\)\s*\{\s*\.layout\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);\s*\}\s*\}/u
+  );
+});
