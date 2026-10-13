@@ -325,6 +325,28 @@
     card.insertAdjacentElement('afterend', nav);
   }
 
+
+  function installContestReadTracker(row, content) {
+    if (window.NOVELIGHT_CONTEST_READER_CLIENT_ENABLED !== true) return;
+    const script = document.createElement('script');
+    script.src = 'novelight-contest-read-tracker.js';
+    script.onload = () => {
+      document.dispatchEvent(
+        new CustomEvent('novelight:episode-rendered', {
+          detail: {
+            episode: row,
+            novel: { id: row.novel_id },
+            session: typeof session === 'undefined' ? null : session,
+            isAuthor: typeof isAuthor !== 'undefined' && isAuthor,
+            unlocked: typeof unlocked !== 'undefined' && unlocked,
+            content
+          }
+        })
+      );
+    };
+    document.body.appendChild(script);
+  }
+
   async function installEpisodeContinuity(clientInstance) {
     const episodeId = new URLSearchParams(window.location.search).get('id');
     if (!episodeId) return false;
@@ -337,6 +359,7 @@
       .single();
     if (rowResult.error || !rowResult.data || rowResult.data.status !== 'published') return false;
     const row = rowResult.data;
+    installContestReadTracker(row, content);
     const syncState = await hydrateRemoteProgress(clientInstance, [row.novel_id]);
     const stored = readProgress(row.novel_id);
     installResumeChip(content, stored, row);
