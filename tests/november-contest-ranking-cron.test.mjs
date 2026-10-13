@@ -12,8 +12,12 @@ function database() {
       from(table) {
         calls.push(table);
         return {
-          select() { return this; },
-          eq() { return this; },
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
           async maybeSingle() {
             return {
               data: { id: CONTEST, status: 'active', public_visible: true },
@@ -34,8 +38,14 @@ function res() {
   return {
     statusCode: 200,
     setHeader() {},
-    status(code) { this.statusCode = code; return this; },
-    json(value) { this.body = value; return this; }
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(value) {
+      this.body = value;
+      return this;
+    }
   };
 }
 
@@ -47,10 +57,13 @@ test('cron is inert by default, even with the correct secret', async () => {
     now: () => new Date('2026-11-07T03:00:00Z')
   });
   const response = res();
-  await handler({
-    method: 'GET',
-    headers: { authorization: 'Bearer genuine-secret' }
-  }, response);
+  await handler(
+    {
+      method: 'GET',
+      headers: { authorization: 'Bearer genuine-secret' }
+    },
+    response
+  );
   assert.equal(response.statusCode, 403);
   assert.equal(calls.length, 0);
 });
@@ -69,13 +82,18 @@ test('cron fails closed outside exactly three JST noon slots', async () => {
     '2026-11-23T03:00:00Z'
   ]) {
     const handler = createContestRankingPrepareHandler({
-      supabase: client, env, now: () => new Date(iso)
+      supabase: client,
+      env,
+      now: () => new Date(iso)
     });
     const response = res();
-    await handler({
-      method: 'GET',
-      headers: { authorization: 'Bearer genuine-secret' }
-    }, response);
+    await handler(
+      {
+        method: 'GET',
+        headers: { authorization: 'Bearer genuine-secret' }
+      },
+      response
+    );
     assert.equal(response.statusCode, 409);
   }
   assert.equal(calls.length, 0);
@@ -92,10 +110,13 @@ test('cron never publishes, even in an approved private preparation window', asy
     now: () => new Date('2026-11-15T03:04:00Z')
   });
   const response = res();
-  await handler({
-    method: 'GET',
-    headers: { authorization: 'Bearer genuine-secret' }
-  }, response);
+  await handler(
+    {
+      method: 'GET',
+      headers: { authorization: 'Bearer genuine-secret' }
+    },
+    response
+  );
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.published, false);
   assert.deepEqual(calls[1], [
@@ -116,10 +137,13 @@ test('wrong secret is rejected before Supabase read', async () => {
     now: () => new Date('2026-11-22T03:00:00Z')
   });
   const response = res();
-  await handler({
-    method: 'GET',
-    headers: { authorization: 'Bearer evil-secret' }
-  }, response);
+  await handler(
+    {
+      method: 'GET',
+      headers: { authorization: 'Bearer evil-secret' }
+    },
+    response
+  );
   assert.equal(response.statusCode, 403);
   assert.equal(calls.length, 0);
 });

@@ -11,9 +11,17 @@ function response() {
   return {
     headers: {},
     code: 200,
-    setHeader(key, value) { this.headers[key] = value; },
-    status(code) { this.code = code; return this; },
-    json(data) { this.body = data; return this; }
+    setHeader(key, value) {
+      this.headers[key] = value;
+    },
+    status(code) {
+      this.code = code;
+      return this;
+    },
+    json(data) {
+      this.body = data;
+      return this;
+    }
   };
 }
 
@@ -36,9 +44,12 @@ function database({ active = true } = {}) {
     auth: {
       async getUser(token) {
         return {
-          data: { user: token === 'admin-session'
-            ? { id: ADMIN, email: 'admin@example.test' }
-            : null },
+          data: {
+            user:
+              token === 'admin-session'
+                ? { id: ADMIN, email: 'admin@example.test' }
+                : null
+          },
           error: null
         };
       }
@@ -46,8 +57,12 @@ function database({ active = true } = {}) {
     from(table) {
       assert.equal(table, 'novelight_contests');
       return {
-        select() { return this; },
-        eq() { return this; },
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
         async maybeSingle() {
           return {
             data: {
@@ -63,7 +78,10 @@ function database({ active = true } = {}) {
     async rpc(name, args) {
       calls.push({ name, args });
       return name === 'novelight_contest_rank_release_preview'
-        ? { data: { ok: true, available: false, slot: args.p_slot }, error: null }
+        ? {
+            data: { ok: true, available: false, slot: args.p_slot },
+            error: null
+          }
         : { data: { ok: true, action: args.p_action }, error: null };
     }
   };
@@ -128,7 +146,10 @@ test('publish requires exact review confirmation and forwards verified actor', a
     }
   });
   const missing = response();
-  await handler(request('POST', { ...releaseBody, confirmation: 'yes' }), missing);
+  await handler(
+    request('POST', { ...releaseBody, confirmation: 'yes' }),
+    missing
+  );
   assert.equal(missing.code, 400);
   assert.equal(calls.length, 0);
   const okay = response();

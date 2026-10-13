@@ -12,7 +12,9 @@ function authorized(actual, expected) {
   if (!actual.startsWith(prefix)) return false;
   const candidate = Buffer.from(actual.slice(prefix.length));
   const secret = Buffer.from(expected);
-  return candidate.length === secret.length && timingSafeEqual(candidate, secret);
+  return (
+    candidate.length === secret.length && timingSafeEqual(candidate, secret)
+  );
 }
 
 export function createContestRankingPrepareHandler({
@@ -45,7 +47,9 @@ export function createContestRankingPrepareHandler({
         ? SLOTS.get(timestamp.getUTCDate())
         : undefined;
     if (!slot) {
-      return res.status(409).json({ ok: false, error: 'OUTSIDE_JST_NOON_WINDOW' });
+      return res
+        .status(409)
+        .json({ ok: false, error: 'OUTSIDE_JST_NOON_WINDOW' });
     }
     try {
       const { data: contest, error: lookupError } = await supabase
