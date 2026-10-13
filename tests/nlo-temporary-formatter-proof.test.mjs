@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-import prettier from 'prettier';
+import * as prettier from 'prettier';
 
 test('Temporary exact Prettier proof for PR-sync contracts', async () => {
   for (const filepath of [
