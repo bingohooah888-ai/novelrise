@@ -14,6 +14,7 @@ export const contestTermsTemplate = String.raw`<!DOCTYPE html>
 <body>
   <main id="main-content" class="legal-container">
     <h1>NOVELIGHT 第1回小説コンテスト 応募要項</h1>
+    <p>この応募要項の版ID：<strong>${CONTEST_TERMS_VERSION_CANDIDATE}</strong></p>
     <p>主催：NOVELIGHT。読者が物語を読み進めた実績によって作品を評価する小説コンテストです。</p>
     <h2>1. 応募・開催期間</h2>
     <p>作品応募締切は2026年10月31日（土）23:59:59（日本時間）。開催期間は2026年11月1日（日）00:00から11月30日（月）23:59:59（日本時間）です。締切までの作品変更・応募取消はできますが、その後はできません。</p>

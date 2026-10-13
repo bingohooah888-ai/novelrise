@@ -60,6 +60,11 @@ test('approved contest landing offers a link to the official terms', () => {
   assert.match(contestPageTemplate, /正式応募要項/);
 });
 
+test('rendered terms show the exact consent version saved by the server', () => {
+  assert.ok(contestTermsTemplate.includes(CONTEST_TERMS_VERSION_CANDIDATE));
+  assert.match(contestTermsTemplate, /応募要項の版ID/);
+});
+
 test('candidate terms follow adopted contest rules', () => {
   const fragments = [
     '2026年10月31日',
