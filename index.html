@@ -313,7 +313,7 @@
 
 <section id="new-arrivals" class="discovery-section alternate-section">
   <div class="container">
-    <div class="shelf-head"><div><span class="section-kicker">NEW STORIES</span><h2>新着作品</h2><p>今日も新しい物語が生まれています。</p></div><a class="shelf-more" href="new-arrivals.html">すべて見る <span aria-hidden="true">›</span></a></div>
+    <div class="shelf-head"><div><span class="section-kicker">NEW STORIES</span><h2>新着作品</h2><p>新しく投稿・更新された物語を届けます。</p></div><a class="shelf-more" href="new-arrivals.html">すべて見る <span aria-hidden="true">›</span></a></div>
     <div id="newGrid" class="shelf-grid"><div class="state">新着作品を読み込んでいます...</div></div>
   </div>
 </section>
@@ -384,7 +384,7 @@ function discoveryVisibleLimit(){return window.matchMedia('(max-width:860px)').m
 function rotationParity(){const key=visitor()+':'+Math.floor(Date.now()/3600000);let hash=0;for(let i=0;i<key.length;i++)hash=(hash*31+key.charCodeAt(i))>>>0;return hash%2}
 function selectVisibleDiscoveryRows(general,plan,premium,limit){const extras=rotationParity()?[...premium,...plan]:[...plan,...premium],ordered=[];let gi=0,ei=0;while(gi<general.length||ei<extras.length){if(gi<general.length)ordered.push(general[gi++]);if(gi<general.length)ordered.push(general[gi++]);if(ei<extras.length)ordered.push(extras[ei++])}const novelIds=new Set(),unique=[];for(const row of ordered){const id=String(row.novel_id);if(novelIds.has(id))continue;novelIds.add(id);unique.push(row)}return unique.slice(0,limit)}
 async function loadDiscovery(){const grid=document.getElementById('discoveryGrid'),limit=discoveryVisibleLimit();let r;try{r=await discoveryFeed({p_surface:'home_discovery',p_limit:limit,p_keyword:null,p_genre:null,p_visitor_token:visitor()})}catch(e){console.error(e);grid.innerHTML='<div class="state">作品を読み込めませんでした。時間をおいて再度お試しください。</div>';return}if(r.error){console.error(r.error);grid.innerHTML='<div class="state">作品を読み込めませんでした。時間をおいて再度お試しください。</div>';return}const rows=r.data||[],general=rows.filter(x=>!x.is_premium_slot),premium=rows.filter(x=>x.is_premium_slot),excluded=[...general,...premium].map(x=>String(x.novel_id));let pe;try{pe=await planExtraFeed({p_limit:1,p_exclude_novel_ids:excluded,p_visitor_token:visitor()})}catch(e){console.error('plan extra feed failed',e);pe={error:e,data:[]}}const planRows=pe.error?[]:(pe.data||[]);let visible=selectVisibleDiscoveryRows(general,planRows,premium,limit);visible=await NovelightUserSafety.filterNovelRows(client,visible);visible=await NovelightR15.filterRows(visible,client);await withOfficialThumbnails(visible);grid.innerHTML=visible.length?visible.map(card).join(''):'<div class="state">まだ公開作品がありません。</div>';if(visible.length)void record(visible)}
-async function neutralNew(limit){return client.rpc('novelight_neutral_search',{p_keyword:null,p_genre:null,p_sort:'new',p_limit:limit,p_offset:0})}
+async function neutralNew(limit){const updated=await client.rpc('novelight_recent_updates_feed',{p_limit:limit,p_offset:0});if(updated.error&&missingTrustedRpc(updated.error,'novelight_recent_updates_feed'))return client.rpc('novelight_neutral_search',{p_keyword:null,p_genre:null,p_sort:'new',p_limit:limit,p_offset:0});return updated}
 async function lightSeedFeed(limit,offset=0){return client.rpc('novelight_light_seed_feed',{p_limit:limit,p_offset:offset})}
 function rankShelfRotationKey(group){return visitor()+':home-rank-discovery:'+group+':'+Math.floor(Date.now()/3600000)}
 async function rankDiscoveryFeed(group,rotationKey){return client.rpc('novelight_beta_rank_discovery_feed',{p_group:group,p_limit:12,p_rotation_key:rotationKey})}
