@@ -569,3 +569,62 @@ html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admi
     font-size: 27px !important;
   }
 }
+
+/* Author/reader utility pages use the same header scale as the public shell.
+   Keep admin operations headers and author-studio page-heading blocks distinct. */
+html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner {
+  min-height: 120px !important;
+  width: min(1500px, calc(100% - 64px)) !important;
+  max-width: 1500px !important;
+  margin-inline: auto !important;
+}
+
+html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .logo img {
+  width: auto !important;
+  height: 104.4px !important;
+  max-width: 290px !important;
+  object-fit: contain !important;
+}
+
+html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .back {
+  font-size: 22px !important;
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .logo img {
+    height: 90px !important;
+    max-width: 245px !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .back {
+    font-size: 20px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner {
+    min-height: 96px !important;
+    width: calc(100% - 32px) !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .logo img {
+    height: 82.8px !important;
+    max-width: 55vw !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .back {
+    font-size: 20px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner {
+    min-height: 84px !important;
+    width: calc(100% - 24px) !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .logo img {
+    height: 72px !important;
+    max-width: 56vw !important;
+  }
+}

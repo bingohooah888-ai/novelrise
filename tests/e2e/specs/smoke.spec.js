@@ -230,7 +230,7 @@ async function capturePublicHeader(page) {
   });
 }
 
-test('SPECIAL LIGHT matches Home while zone headers keep their standard scale', async ({
+test('all public zones use the same responsive Home header scale', async ({
   browser
 }) => {
   const viewports = [
@@ -260,8 +260,8 @@ test('SPECIAL LIGHT matches Home while zone headers keep their standard scale', 
     if (viewport.name === 'desktop') {
       expect(
         baseline.logo?.rect.height,
-        'desktop: Home logo should use the approved 1.5x scale'
-      ).toBeCloseTo(156.6, 1);
+        'desktop: public header logo must use the shared 104.4px scale'
+      ).toBeCloseTo(104.4, 1);
     }
 
     const specialResponse = await page.goto('/special-light.html', {
@@ -290,17 +290,10 @@ test('SPECIAL LIGHT matches Home while zone headers keep their standard scale', 
         `${viewport.name}: ${zone} zone must not restore legacy beta-author links`
       ).toEqual([]);
 
-      if (viewport.name === 'desktop') {
-        expect(
-          zoneHeader.logo?.rect.height,
-          `${zone} zone should keep the standard desktop logo scale`
-        ).toBeLessThan(baseline.logo?.rect.height ?? Number.POSITIVE_INFINITY);
-      } else {
-        expect(
-          zoneHeader,
-          `${viewport.name}: ${zone} SPECIAL zone header should still match Home`
-        ).toEqual(baseline);
-      }
+      expect(
+        zoneHeader,
+        `${viewport.name}: ${zone} SPECIAL zone header should match Home`
+      ).toEqual(baseline);
     }
 
     await page.goto('/special-zone.html?zone=r15', { waitUntil: 'load' });

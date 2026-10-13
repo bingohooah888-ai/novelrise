@@ -57,3 +57,36 @@ body.novelight-theme.novelight-page-mypage .studio-sidebar{
     height:0;
   }
 }
+
+/* Help-center navigation matches the public header size without changing
+   the help article typography or independent navigation design. */
+.nl-help-page-header-inner {
+  width: min(1500px, calc(100% - 64px));
+  min-height: 120px;
+}
+.nl-help-page-brand-logo {
+  height: 104.4px;
+  max-width: 290px;
+}
+.nl-help-page-back {
+  font-size: 22px;
+}
+@media (min-width: 901px) and (max-width: 1180px) {
+  .nl-help-page-brand-logo { height: 90px; max-width: 245px; }
+  .nl-help-page-back { font-size: 20px; }
+}
+@media (max-width: 900px) {
+  .nl-help-page-header-inner {
+    width: calc(100% - 32px);
+    min-height: 96px;
+  }
+  .nl-help-page-brand-logo { height: 82.8px; max-width: 55vw; }
+  .nl-help-page-back { font-size: 20px; }
+}
+@media (max-width: 640px) {
+  .nl-help-page-header-inner {
+    width: calc(100% - 24px);
+    min-height: 84px;
+  }
+  .nl-help-page-brand-logo { height: 72px; max-width: 56vw; }
+}

@@ -34,8 +34,8 @@ test('homepage places recommendations after optional hero CTAs', () => {
   assert.ok(home.includes('<h1 class="home-heading-a11y">'));
   assert.ok(home.includes('.home-heading-a11y { position: absolute;'));
   assert.ok(!home.includes('href="#features"'));
-  const navLinks = home.split('href="author-features.html">特徴</a>');
-  assert.equal(navLinks.length, 3);
+  assert.ok(!home.includes('>特徴</a>'));
+  assert.ok(!home.includes('href="index.html#features"'));
 });
 
 test('guest author CTA preserves login and return to post', () => {

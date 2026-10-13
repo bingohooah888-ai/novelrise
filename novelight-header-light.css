@@ -165,9 +165,9 @@ html body.novelight-public-dark header.site-header .btn {
   }
 
   html body.novelight-public-dark header.site-header .desktop-nav {
-    display: grid !important;
+    display: flex !important;
     width: 100% !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    justify-content: space-evenly !important;
     align-items: stretch !important;
     align-self: stretch !important;
     gap: 0 !important;
@@ -200,9 +200,9 @@ html body.novelight-public-dark header.site-header .btn {
   }
 
   html body.novelight-public-dark header.site-header .desktop-nav {
-    display: grid !important;
+    display: flex !important;
     width: 100% !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    justify-content: space-evenly !important;
     align-items: stretch !important;
     gap: 0 !important;
     margin-left: 0 !important;
@@ -239,43 +239,6 @@ html body.novelight-public-header-page header.site-header .logo img {
   mix-blend-mode: normal !important;
 }
 
-/* Home and SPECIAL LIGHT only: enlarge the approved header logo to 1.5x. */
-@media (min-width: 1181px) {
-  html body.novelight-page-index.novelight-public-dark header.site-header .public-header-inner,
-  html body.novelight-page-special-light.novelight-public-dark header.site-header .public-header-inner {
-    grid-template-columns: 391.5px minmax(560px, 1fr) auto !important;
-  }
-
-  html body.novelight-page-index.novelight-public-dark header.site-header .logo,
-  html body.novelight-page-special-light.novelight-public-dark header.site-header .logo {
-    min-width: 391.5px !important;
-  }
-
-  html body.novelight-page-index.novelight-public-dark header.site-header .logo img,
-  html body.novelight-page-special-light.novelight-public-dark header.site-header .logo img {
-    height: 156.6px !important;
-    max-width: 391.5px !important;
-  }
-}
-
-@media (min-width: 901px) and (max-width: 1180px) {
-  html body.novelight-page-index.novelight-public-dark header.site-header .public-header-inner,
-  html body.novelight-page-special-light.novelight-public-dark header.site-header .public-header-inner {
-    grid-template-columns: 337.5px minmax(400px, 1fr) auto !important;
-  }
-
-  html body.novelight-page-index.novelight-public-dark header.site-header .logo,
-  html body.novelight-page-special-light.novelight-public-dark header.site-header .logo {
-    min-width: 337.5px !important;
-  }
-
-  html body.novelight-page-index.novelight-public-dark header.site-header .logo img,
-  html body.novelight-page-special-light.novelight-public-dark header.site-header .logo img {
-    height: 135px !important;
-    max-width: 337.5px !important;
-  }
-}
-
 /* Shared public-reader sticky guard.
    Keep work-detail and episode navigation below the 120px desktop header.
    The work cover must remain non-sticky. */
@@ -294,5 +257,79 @@ html body.novelight-public-header-page header.site-header .logo img {
 @media (min-width: 961px) {
   html body.novelight-public-header-page.novelight-page-episode .nl-worknav-support {
     top: 136px !important;
+  }
+}
+
+/* One header geometry for every public page, including static legal pages,
+   campaign/feature pages, and JavaScript-installed reader headers. */
+html body.novelight-public-dark header.site-header .public-header-inner,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
+  min-height: 120px !important;
+}
+
+html body.novelight-public-dark header.site-header .logo img,
+html body.novelight-public-header-page header.site-header .logo img {
+  width: auto !important;
+  height: 104.4px !important;
+  max-width: 290px !important;
+  object-fit: contain !important;
+}
+
+@media (min-width: 901px) {
+  html body.novelight-public-dark header.site-header .desktop-nav {
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: space-evenly !important;
+    gap: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+
+  html body.novelight-public-dark header.site-header .desktop-nav a,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav a {
+    font-size: 22px !important;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-public-dark header.site-header .logo img,
+  html body.novelight-public-header-page header.site-header .logo img {
+    height: 90px !important;
+    max-width: 245px !important;
+  }
+
+  html body.novelight-public-dark header.site-header .desktop-nav a,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav a {
+    font-size: 20px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html body.novelight-public-dark header.site-header .public-header-inner,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
+    min-height: 96px !important;
+  }
+
+  html body.novelight-public-dark header.site-header .logo img,
+  html body.novelight-public-header-page header.site-header .logo img {
+    height: 82.8px !important;
+    max-width: 55vw !important;
+  }
+
+  html body.novelight-public-dark header.site-header .mobile-menu > nav a,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .mobile-menu > nav a {
+    font-size: 20px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body.novelight-public-dark header.site-header .public-header-inner,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
+    min-height: 84px !important;
+  }
+
+  html body.novelight-public-dark header.site-header .logo img,
+  html body.novelight-public-header-page header.site-header .logo img {
+    height: 72px !important;
+    max-width: 56vw !important;
   }
 }
