@@ -61,10 +61,7 @@ function mockGithub({
       data = comments;
     } else if (path.includes('/compare/')) {
       data = comparison;
-    } else if (
-      path.endsWith('/pulls/2204/update-branch') &&
-      method === 'PUT'
-    ) {
+    } else if (path.endsWith('/pulls/2204/update-branch') && method === 'PUT') {
       assert.equal(options.headers.Authorization, 'Bearer ' + WRITE);
       assert.deepEqual(JSON.parse(options.body), { expected_head_sha: HEAD });
       data = { message: 'Updating pull request branch.' };
@@ -150,7 +147,10 @@ test('Current or approved PRs cannot be updated', async () => {
     const { args, requests } = mockGithub(mock);
     const out = await synchronizeDrafts(args);
     assert.deepEqual(out.updated, []);
-    assert.equal(requests.some((x) => x.method === 'PUT'), false);
+    assert.equal(
+      requests.some((x) => x.method === 'PUT'),
+      false
+    );
   }
 });
 
@@ -172,7 +172,10 @@ test('A changing PR head or main ref prevents the update', async () => {
       synchronizeDrafts(args),
       /moved during synchronization/
     );
-    assert.equal(requests.some((x) => x.method === 'PUT'), false);
+    assert.equal(
+      requests.some((x) => x.method === 'PUT'),
+      false
+    );
   }
 });
 
@@ -216,18 +219,4 @@ test('Trusted workflow cannot run untrusted code', () => {
     /pull_request\.head\.ref|checkout.*head|gh pr merge/
   );
   assert.doesNotMatch(workflow, /contents: write|pull-requests: write/);
-});
-
-/* NLO_PR_FORMAT_DIAG_BEGIN */
-test('Temporary format proof for the guarded PR sync test', async () => {
-  const prettier = await import('prettier');
-  const raw = readFileSync(new URL(import.meta.url), 'utf8');
-  const input = raw.split('\n/* NLO_PR_FORMAT_DIAG_BEGIN */')[0] + '\n';
-  const filepath = 'tests/novelight-pr-auto-sync.test.mjs';
-  const options = {
-    ...(await prettier.resolveConfig(filepath)),
-    filepath
-  };
-  const result = await prettier.format(input, options);
-  console.log('NLO_FORMATTED_JSON_START:' + JSON.stringify(result) + ':NLO_FORMATTED_JSON_END');
 });
