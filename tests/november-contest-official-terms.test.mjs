@@ -81,6 +81,18 @@ test('payout retries on failure without duplicate payment', () => {
   assert.doesNotMatch(contestTermsTemplate, /期限後も.*支払|期限後の.*柔軟/);
 });
 
+test('public terms reflect decided eligibility and appeal procedure', () => {
+  const fragments = [
+    '公開10話以上を維持できなかった作品は受賞対象外',
+    '不正判定への異議は期限を設けず',
+    '運営が再審査して結果をお知らせします'
+  ];
+  for (const fragment of fragments) {
+    assert.ok(contestTermsTemplate.includes(fragment), fragment);
+  }
+  assert.doesNotMatch(contestTermsTemplate, /異議申立ては7日以内/);
+});
+
 test('candidate terms follow adopted contest rules', () => {
   const fragments = [
     '2026年10月31日',
