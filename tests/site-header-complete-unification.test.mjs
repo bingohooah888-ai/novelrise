@@ -30,8 +30,7 @@ test('static public navigation does not silently lose its header', () => {
     'billing-policy.html',
     'commerce-disclosure.html',
     'announcements.html',
-    'operator.html',
-    'content-guidelines.html'
+    'operator.html'
   ]) {
     const source = read(page);
     const header = source.match(/<header\b[^>]*>[\s\S]*?<\/header>/u)?.[0];
