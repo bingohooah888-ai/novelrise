@@ -128,7 +128,7 @@ test('Inquiry #58 keeps desktop edit and saved-note scrolling separate', () => {
   assert.match(page, /form\.scrollTo\(\{top:0,behavior:'smooth'\}\)/u);
   assert.match(
     page,
-    /@media\(max-width:850px\)\{[^}]*\.editor\{position:static;max-height:none;overflow:visible\}/u
+    /@media\(max-width:850px\)\{\.layout\{grid-template-columns:1fr\}\.editor\{position:static;max-height:none;overflow:visible\}/u
   );
   assert.match(page, /\.note-list\{overflow:visible\}/u);
 });
