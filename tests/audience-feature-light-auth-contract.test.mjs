@@ -21,7 +21,7 @@ test('author and reader guides match the announcements light shell', () => {
     assert.match(html, /class="header-inner public-header-inner"/u, name);
     assert.match(html, /aria-label="NOVELIGHT ホーム"/u, name);
     assert.match(html, /class="site-footer-inner"/u, name);
-    assert.match(html, /href="assets\/novelight-header-logo\.webp"/u, name);
+    assert.match(html, /src="assets\/novelight-header-logo\.webp"/u, name);
     assert.match(html, /href="announcements\.html">お知らせ/u, name);
     assert.match(html, /href="pricing\.html">料金プラン/u, name);
   }
