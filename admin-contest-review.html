@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>コンテスト読書審査 | NOVELIGHT ADMIN</title>
+  <link rel="stylesheet" href="novelight-accessibility.css">
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,"Hiragino Kaku Gothic ProN",sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;background:#10131b;color:#f6f7fa}
+    header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;padding:19px clamp(16px,4vw,45px);border-bottom:1px solid #343b4b}
+    a{color:#c7bdff}
+    main{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+    h1{font-size:clamp(23px,3vw,32px);margin:0 0 12px}
+    h2{font-size:19px}
+    p{line-height:1.7}
+    .notice{background:#231e16;border:1px solid #78623d;border-radius:10px;padding:15px;color:#f5dda6}
+    .panel{background:#171d29;border:1px solid #333c4f;border-radius:12px;padding:18px;margin:20px 0}
+    .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+    .muted{font-size:13px;color:#b2bacb}
+    .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:15px 0}
+    select,textarea,button{font:inherit}
+    select,textarea{color:#fff;background:#0f1421;border:1px solid #64708a;border-radius:7px;padding:9px;width:100%}
+    button{background:#45369b;color:#fff;border:1px solid #8170e9;border-radius:7px;padding:9px 15px;cursor:pointer}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #e4c76d;outline-offset:3px}
+    .danger{background:#60312e;border-color:#a25951}
+    .simple{background:#253043;border-color:#5f738f}
+    table{border-collapse:collapse;width:100%;min-width:650px}
+    th,td{padding:10px;border-bottom:1px solid #343c4b;text-align:left;vertical-align:top;font-size:13px}
+    .scroll{overflow:auto}
+    .status{margin:16px 0;min-height:28px;color:#e5d7a4}
+    .risk{color:#ffc384}
+    label{display:block;margin:12px 0 5px;font-weight:600;font-size:14px}
+    .records{padding:0;list-style:none}
+    .records li{border-top:1px solid #394255;padding:9px 0;font-size:13px}
+    .detail-text{white-space:pre-wrap;overflow-wrap:anywhere}
+    .review-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    textarea{min-height:95px;resize:vertical}
+    [hidden]{display:none!important}
+    @media(max-width:800px){.grid,.review-fields{grid-template-columns:1fr}main{padding:18px 12px 70px}}
+  </style>
+</head>
+<body>
+<header><strong>NOVELIGHT / コンテスト読書審査</strong><nav><a href="admin.html">管理ダッシュボード</a>　<a href="admin-trust-safety.html">Trust & Safety</a></nav></header>
+<main id="main-content">
+  <h1>読書ポイントの審査</h1>
+  <p class="notice"><strong>リスク信号は不正の確定ではありません。</strong> 自動BAN・自動失格・賞金確定は行いません。根拠を確認し、操作する場合は20文字以上の理由を記録してください。一般公開・応募受付・ポイント計測はこの画面から開始できません。</p>
+  <div id="status" class="status" role="status" aria-live="polite">管理者権限を確認しています。</div>
+  <section id="workspace" hidden>
+    <div class="controls">
+      <button id="refresh" type="button" class="simple">一覧を更新</button>
+      <button id="previous" type="button" class="simple">前へ</button>
+      <span id="paging"></span>
+      <button id="next" type="button" class="simple">次へ</button>
+      <span id="contestState" class="muted"></span>
+    </div>
+    <section class="panel">
+      <h2>コンテスト読者一覧</h2>
+      <p class="muted">シグナルが出た読者は、人間による詳細調査の候補です。検出しても自動保留にはなりません。</p>
+      <div class="scroll"><table><thead><tr><th>読者ID</th><th>区分</th><th>審査状態</th><th>リスク兆候</th><th>更新</th><th>操作</th></tr></thead><tbody id="readers"></tbody></table></div>
+    </section>
+    <section id="detail" class="panel" hidden>
+      <h2>選択した読者の証跡</h2>
+      <p id="readerInfo" class="detail-text muted"></p>
+      <div class="grid">
+        <div><h3>リスク信号</h3><ul id="riskSignals" class="records"></ul><pre id="riskMetrics" class="detail-text muted"></pre></div>
+        <div><h3>作品別ポイント（参考値）</h3><ul id="scores" class="records"></ul></div>
+      </div>
+      <h3>審査履歴</h3>
+      <ul id="audit" class="records"></ul>
+      <h3>担当者による審査</h3>
+      <div class="review-fields">
+        <div><label for="action">操作</label><select id="action">
+          <option value="hold">保留（暫定ポイント抑止）</option>
+          <option value="reopen">再審査へ戻す</option>
+          <option value="clear">確認済みにする（賞金確定ではない）</option>
+        </select></div>
+        <div><label for="reason">判定理由</label><select id="reason">
+          <option value="anomalous_reading">異常な読書証跡</option>
+          <option value="duplicate_identity">複数IDの疑い</option>
+          <option value="manual_evidence">独立した証拠を確認</option>
+          <option value="appeal_review">再審査・異議申立</option>
+          <option value="false_positive">誤検知</option>
+          <option value="other">その他</option>
+        </select></div>
+      </div>
+      <label for="note">調査内容（20～500文字・必須）</label>
+      <textarea id="note" maxlength="500" minlength="20" placeholder="確認した証拠、誤検知の可能性、判断理由を具体的に記録してください。"></textarea>
+      <div class="controls"><button id="submit" type="button" class="danger">審査を記録する</button></div>
+    </section>
+  </section>
+</main>
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+<script src="admin-contest-review.js"></script>
+</body>
+</html>
