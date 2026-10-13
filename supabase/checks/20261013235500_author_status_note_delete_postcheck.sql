@@ -13,7 +13,7 @@ begin
     select 1 from pg_catalog.pg_proc
     where oid = v_function
       and prosecdef
-      and proconfig @> array['search_path=']::text[]
+      and proconfig @> array['search_path=""']::text[]
   ) then
     raise exception 'POSTCHECK FAIL: delete RPC security definer/search_path contract incorrect';
   end if;
