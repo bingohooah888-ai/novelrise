@@ -226,6 +226,7 @@ test('A changing PR head or main ref prevents the update', async () => {
     {
       liveSequence: [
         pull(),
+        pull(),
         pull({
           head: { sha: 'd'.repeat(40), repo: { full_name: REPO } }
         })
