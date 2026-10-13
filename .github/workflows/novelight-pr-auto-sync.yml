@@ -1,7 +1,7 @@
 name: NOVELIGHT Owner Draft PR Auto Sync
 
 # Trust boundary: this workflow only runs from main (never PR-supplied code).
-# Native GitHub update-branch only; no approvals, reviews, merge or deploy.
+# Native GitHub update-branch plus exact-HEAD CI/CodeQL dispatch. No merge or deploy.
 on:
   push:
     branches: [main]
@@ -19,7 +19,8 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
+  actions: write
   issues: read
 
 concurrency:
@@ -40,24 +41,8 @@ jobs:
           persist-credentials: false
           ref: main
 
-      - name: Check optional standalone branch sync credential
-        id: credential
-        env:
-          SYNC_TOKEN: ${{ secrets.NOVELIGHT_BRANCH_SYNC_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "${SYNC_TOKEN:-}" ]; then
-            echo '::notice::NOVELIGHT_BRANCH_SYNC_TOKEN not configured: auto-sync safely inactive.'
-            echo 'enabled=false' >> "${GITHUB_OUTPUT}"
-          else
-            echo 'enabled=true' >> "${GITHUB_OUTPUT}"
-          fi
-
       - name: Sync eligible owner Draft PRs with native GitHub API
-        if: steps.credential.outputs.enabled == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          NOVELIGHT_BRANCH_SYNC_TOKEN: ${{ secrets.NOVELIGHT_BRANCH_SYNC_TOKEN }}
           NOVELIGHT_PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number || '0' }}
         run: node scripts/novelight-pr-auto-sync.mjs
