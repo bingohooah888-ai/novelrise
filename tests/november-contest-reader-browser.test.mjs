@@ -4,7 +4,10 @@ import { URL } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
-const html = readFileSync(new URL('../episode.html', import.meta.url), 'utf8');
+const continuity = readFileSync(
+  new URL('../novelight-reading-continuity.js', import.meta.url),
+  'utf8'
+);
 const source = readFileSync(
   new URL('../novelight-contest-read-tracker.js', import.meta.url),
   'utf8'
@@ -98,8 +101,9 @@ test('active adapter sends bounded scroll evidence and stops on hidden tabs', as
 });
 
 test('episode render contract fires only after unlock and existing PV remains separate', () => {
-  assert.match(html, /novelight:episode-rendered/);
-  assert.match(html, /novelight-contest-read-tracker[.]js/);
+  assert.match(continuity, /novelight:episode-rendered/);
+  assert.match(continuity, /novelight-contest-read-tracker[.]js/);
+  assert.match(continuity, /installContestReadTracker(row, content)/);
   assert.match(source, /NOVELIGHT_CONTEST_READER_CLIENT_ENABLED !== true/);
   assert.doesNotMatch(source, /record_valid_read_progress|record_episode_pv/);
   assert.match(source, /novelight:tts-progress/);
