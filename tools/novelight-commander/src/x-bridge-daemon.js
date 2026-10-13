@@ -82,7 +82,7 @@ async function loadConfig() {
     ...raw,
     configPath: file,
     statePath: path.join(path.dirname(file), 'x-state.json'),
-    pollSeconds: Math.max(5, Math.min(300, Number(raw.pollSeconds || 10)))
+    pollSeconds: Math.max(60, Math.min(300, Number(raw.pollSeconds || 10)))
   };
 }
 

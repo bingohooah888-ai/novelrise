@@ -67,7 +67,7 @@ async function loadConfig() {
   return {
     security,
     root: security.primary,
-    pollSeconds: Math.max(5, Math.min(300, Number(raw.pollSeconds || 10))),
+    pollSeconds: Math.max(60, Math.min(300, Number(raw.pollSeconds || 10))),
     statePath: path.join(path.dirname(configPath), 'worktree-safe-bridge-state.json'),
     worktreesRoot: resolveAllowedPath('.novelight-commander/worktrees', security)
   };
