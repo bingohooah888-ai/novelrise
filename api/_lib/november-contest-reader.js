@@ -9,7 +9,8 @@ import { URL } from 'node:url';
 const CONTEST_KEY = 'novelight-november-2026';
 const COOKIE_NAME = '__Host-novelight-contest-guest';
 const COOKIE_AGE_SECONDS = 60 * 60 * 24 * 60;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const GUEST_TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const MIN_SECRET_BYTES = 32;
 const MAX_BODY_BYTES = 1024;
@@ -95,7 +96,8 @@ function verifyCookie(value, secret, nowMs) {
     !GUEST_TOKEN.test(parts[1]) ||
     !/^[0-9]{10}$/.test(parts[2]) ||
     !/^[A-Za-z0-9_-]{43}$/.test(parts[3])
-  ) return null;
+  )
+    return null;
   const expires = Number(parts[2]);
   const nowSeconds = Math.floor(nowMs / 1000);
   if (expires <= nowSeconds || expires > nowSeconds + COOKIE_AGE_SECONDS) {
@@ -135,9 +137,10 @@ async function findIdentity(db, contestId, kind, value) {
 async function resolveIdentity(db, contestId, kind, value) {
   const current = await findIdentity(db, contestId, kind, value);
   if (current) return current;
-  const fields = kind === 'account'
-    ? { kind, contest_id: contestId, user_id: value }
-    : { kind, contest_id: contestId, guest_key_hash: value };
+  const fields =
+    kind === 'account'
+      ? { kind, contest_id: contestId, user_id: value }
+      : { kind, contest_id: contestId, guest_key_hash: value };
   const inserted = await db
     .from('novelight_contest_readers')
     .insert(fields)
@@ -233,7 +236,10 @@ export function createNovemberContestReaderHandler({
         !contest ||
         contest.status !== 'active' ||
         contest.public_visible !== true ||
-        !(Date.parse(contest.starts_at) <= nowMs && nowMs < Date.parse(contest.ends_at))
+        !(
+          Date.parse(contest.starts_at) <= nowMs &&
+          nowMs < Date.parse(contest.ends_at)
+        )
       ) {
         return jsonError(res, 404, 'CONTEST_NOT_ACTIVE');
       }
@@ -360,7 +366,9 @@ export function createNovemberContestReaderHandler({
         });
       }
       return res.status(200).json({
-        ok: true, qualified: false, provisional_only: true
+        ok: true,
+        qualified: false,
+        provisional_only: true
       });
     } catch {
       // Never log bearer tokens, cookies, visitor IPs or identifiers.

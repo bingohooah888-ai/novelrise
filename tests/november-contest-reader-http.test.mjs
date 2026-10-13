@@ -55,19 +55,26 @@ function mockDatabase({ userId, active = true, owner = true } = {}) {
     from(table) {
       const clauses = [];
       const query = {
-        select() { return this; },
-        eq(name, value) { clauses.push([name, value]); return this; },
+        select() {
+          return this;
+        },
+        eq(name, value) {
+          clauses.push([name, value]);
+          return this;
+        },
         async maybeSingle() {
           calls.push(['find', table, clauses]);
-          if (table === 'novelight_contests') return {
-            data: {
-              id: CONTEST,
-              status: active ? 'active' : 'draft',
-              public_visible: active,
-              starts_at: '2026-11-01T00:00:00Z',
-              ends_at: '2026-11-30T15:00:00Z'
-            }, error: null
-          };
+          if (table === 'novelight_contests')
+            return {
+              data: {
+                id: CONTEST,
+                status: active ? 'active' : 'draft',
+                public_visible: active,
+                starts_at: '2026-11-01T00:00:00Z',
+                ends_at: '2026-11-30T15:00:00Z'
+              },
+              error: null
+            };
           if (table === 'novelight_contest_readers') {
             return { data: reader, error: null };
           }
@@ -126,7 +133,9 @@ test('disabled API does not query backend or create identities', async () => {
   const db = mockDatabase();
   const res = response();
   await createNovemberContestReaderHandler({
-    serviceClient: db, guestSecret: SECRET, enabled: false
+    serviceClient: db,
+    guestSecret: SECRET,
+    enabled: false
   })(request({ action: 'start', episode_id: 1, mode: 'scroll' }), res);
   assert.equal(res.statusCode, 503);
   assert.equal(db.calls.length, 0);
@@ -165,9 +174,15 @@ test('cross-site or spoofed Origin and supplied reader ID are rejected', async (
     assert.equal(res.statusCode, 403);
   }
   const res = response();
-  await handler(db)(request({
-    action: 'start', episode_id: 1, mode: 'scroll', reader_id: UID
-  }), res);
+  await handler(db)(
+    request({
+      action: 'start',
+      episode_id: 1,
+      mode: 'scroll',
+      reader_id: UID
+    }),
+    res
+  );
   assert.equal(res.statusCode, 400);
   assert.equal(db.calls.length, 0);
 });
@@ -175,10 +190,13 @@ test('cross-site or spoofed Origin and supplied reader ID are rejected', async (
 test('verified authenticated user always derives reader identity on server', async () => {
   const db = mockDatabase();
   const res = response();
-  await handler(db)(request(
-    { action: 'start', episode_id: 8, mode: 'tts' },
-    { authorization: 'Bearer valid-token' }
-  ), res);
+  await handler(db)(
+    request(
+      { action: 'start', episode_id: 8, mode: 'tts' },
+      { authorization: 'Bearer valid-token' }
+    ),
+    res
+  );
   assert.equal(res.statusCode, 200);
   assert.equal(res.data.session_id, SESSION);
   assert.equal(res.headers['Set-Cookie'], undefined);
@@ -186,8 +204,9 @@ test('verified authenticated user always derives reader identity on server', asy
   assert.equal(inserted[2].user_id, UID);
   assert.equal(inserted[2].kind, 'account');
   assert.equal(
-    db.calls.find((call) => call[1] === 'novelight_contest_begin_read_session')[2]
-      .p_reader_id,
+    db.calls.find(
+      (call) => call[1] === 'novelight_contest_begin_read_session'
+    )[2].p_reader_id,
     READER
   );
 });
@@ -195,12 +214,18 @@ test('verified authenticated user always derives reader identity on server', asy
 test('invalid Bearer is never downgraded to a guest reader', async () => {
   const db = mockDatabase();
   const res = response();
-  await handler(db)(request(
-    { action: 'start', episode_id: 8, mode: 'scroll' },
-    { authorization: 'Bearer invalid-token' }
-  ), res);
+  await handler(db)(
+    request(
+      { action: 'start', episode_id: 8, mode: 'scroll' },
+      { authorization: 'Bearer invalid-token' }
+    ),
+    res
+  );
   assert.equal(res.statusCode, 401);
-  assert.equal(db.calls.some((call) => call[0] === 'insert'), false);
+  assert.equal(
+    db.calls.some((call) => call[0] === 'insert'),
+    false
+  );
 });
 
 test('guest cookie is signed HttpOnly and reused without exposing reader ID', async () => {
@@ -215,18 +240,27 @@ test('guest cookie is signed HttpOnly and reused without exposing reader ID', as
   assert.match(cookie, /HttpOnly; Secure; SameSite=Strict/);
   assert.doesNotMatch(cookie, new RegExp(READER));
   const second = response();
-  await handler(db)(request(
-    { action: 'start', episode_id: 9, mode: 'scroll' },
-    { cookie: cookie.split(';')[0] }
-  ), second);
+  await handler(db)(
+    request(
+      { action: 'start', episode_id: 9, mode: 'scroll' },
+      { cookie: cookie.split(';')[0] }
+    ),
+    second
+  );
   assert.equal(second.statusCode, 200);
   assert.equal(second.headers['Set-Cookie'], undefined);
 });
 
 test('heartbeat enforces reader ownership and records only provisional qualification', async () => {
   const db = mockDatabase();
-  const base = { action: 'heartbeat', session_id: SESSION, sequence: 1,
-    progress_ratio: 0.85, foreground: true, interacted: true };
+  const base = {
+    action: 'heartbeat',
+    session_id: SESSION,
+    sequence: 1,
+    progress_ratio: 0.85,
+    foreground: true,
+    interacted: true
+  };
   const unauthorized = response();
   await handler(db)(
     request(base, { authorization: 'Bearer valid-token' }),
@@ -243,31 +277,54 @@ test('heartbeat enforces reader ownership and records only provisional qualifica
   );
   const ownerMismatch = mockDatabase({ owner: false });
   const denied = response();
-  await handler(ownerMismatch)(request(base, {
-    authorization: 'Bearer valid-token'
-  }), denied);
+  await handler(ownerMismatch)(
+    request(base, {
+      authorization: 'Bearer valid-token'
+    }),
+    denied
+  );
   assert.equal(denied.statusCode, 404);
-  assert.equal(ownerMismatch.calls.some((c) => c[0] === 'rpc'), false);
+  assert.equal(
+    ownerMismatch.calls.some((c) => c[0] === 'rpc'),
+    false
+  );
 });
 
 test('invalid report fields, missing guest session, invalid cookie are rejected', async () => {
   const db = mockDatabase();
   const noGuest = response();
-  await handler(db)(request({
-    action: 'heartbeat', session_id: SESSION, sequence: 1,
-    progress_ratio: 0.8, foreground: true, interacted: true
-  }), noGuest);
+  await handler(db)(
+    request({
+      action: 'heartbeat',
+      session_id: SESSION,
+      sequence: 1,
+      progress_ratio: 0.8,
+      foreground: true,
+      interacted: true
+    }),
+    noGuest
+  );
   assert.equal(noGuest.statusCode, 401);
   const invalid = response();
-  await handler(db)(request({
-    action: 'heartbeat', session_id: SESSION, sequence: 1,
-    progress_ratio: 3, foreground: true, interacted: true
-  }), invalid);
+  await handler(db)(
+    request({
+      action: 'heartbeat',
+      session_id: SESSION,
+      sequence: 1,
+      progress_ratio: 3,
+      foreground: true,
+      interacted: true
+    }),
+    invalid
+  );
   assert.equal(invalid.statusCode, 400);
   const forged = response();
-  await handler(db)(request(
-    { action: 'start', episode_id: 1, mode: 'scroll' },
-    { cookie: '__Host-novelight-contest-guest=v1.bad.signature' }
-  ), forged);
+  await handler(db)(
+    request(
+      { action: 'start', episode_id: 1, mode: 'scroll' },
+      { cookie: '__Host-novelight-contest-guest=v1.bad.signature' }
+    ),
+    forged
+  );
   assert.equal(forged.statusCode, 401);
 });
