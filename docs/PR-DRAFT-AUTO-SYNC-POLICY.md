@@ -20,7 +20,7 @@
 
 本番導入後、GitHub Actions Repository Secret NOVELIGHT_BRANCH_SYNC_TOKENを設定する。GitHub App installation tokenか、当該リポジトリだけに限定したfine-grained PATを使う。必要なアクセスは少なくともContents Read/Write、Pull requests Read/Write。PATを使う場合は有効期限管理が必要。資格情報自体をChat・Issue・PR・コードに記載しない。
 
-**GitHub Actionsの標準GITHUB_TOKENでは、branch更新から別のCIが自動起動しない場合がある。** そのため別資格情報を必須にする。未設定ならWorkflowが明確に失敗し、PRは変更しない。同期後のCI/CodeQLイベントが起動したことは導入後の実環境検証で別途確認する。
+**GitHub Actionsの標準GITHUB_TOKENでは、branch更新から別のCIが自動起動しない場合がある。** そのため別資格情報を必須にする。未設定の場合は通知だけ出して同期ステップをスキップし、PRを変更しない（認証不足による繰り返しの失敗ジョブを防ぐ）。これは**未設定でも自動同期が動く**という意味ではない。同期後のCI/CodeQLイベントが起動したことは導入後の実環境検証で別途確認する。
 
 ## セキュリティ境界
 
