@@ -104,7 +104,7 @@ test('B23 owner surfaces link to the private story workspace and MASTER records 
   );
 });
 
-test('Inquiry #57 author workspace has a readable, styled heading and note cards', () => {
+test('Inquiry #57 restores a readable author workspace', () => {
   assert.match(page, /<body class="novelight-author-studio-shell">/u);
   assert.match(backgrounds, /:has\(:is\(#workTitle,#novelTitle\)\)/u);
   assert.match(heading, /:has\(:is\(#workTitle,#novelTitle\)\)/u);
@@ -112,11 +112,23 @@ test('Inquiry #57 author workspace has a readable, styled heading and note cards
   assert.match(page, /\.privacy\{[^}]*color:#5c471d/u);
 });
 
-test('Inquiry #58 scrolls editor and note list independently on desktop', () => {
-  assert.match(page, /\.editor\{[^}]*max-height:calc\(100dvh - 36px\)[^}]*overflow-y:auto/u);
-  assert.match(page, /\.list-panel\{[^}]*max-height:calc\(100dvh - 36px\)/u);
-  assert.match(page, /\.note-list\{[^}]*overflow-y:auto[^}]*overscroll-behavior:contain/u);
+test('Inquiry #58 keeps desktop edit and saved-note scrolling separate', () => {
+  assert.match(
+    page,
+    /\.editor\{[^}]*max-height:calc\(100dvh - 36px\)[^}]*overflow-y:auto/u
+  );
+  assert.match(
+    page,
+    /\.list-panel\{[^}]*max-height:calc\(100dvh - 36px\)/u
+  );
+  assert.match(
+    page,
+    /\.note-list\{[^}]*overflow-y:auto[^}]*overscroll-behavior:contain/u
+  );
   assert.match(page, /form\.scrollTo\(\{top:0,behavior:'smooth'\}\)/u);
-  assert.match(page, /@media\(max-width:850px\)\{[^}]*\.editor\{position:static;max-height:none;overflow:visible\}/u);
+  assert.match(
+    page,
+    /@media\(max-width:850px\)\{[^}]*\.editor\{position:static;max-height:none;overflow:visible\}/u
+  );
   assert.match(page, /\.note-list\{overflow:visible\}/u);
 });
