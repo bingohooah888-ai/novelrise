@@ -32,7 +32,8 @@ export function validatePreviewSources(data) {
     const url = new URL(row.sourceUrl);
     if (url.origin !== TRUSTED_ORIGIN || url.search || url.hash ||
         !url.pathname.startsWith(TRUSTED_PREFIX) ||
-        !/^\/[\w/-]+\/[0-9a-f-]{36}\.png$/.test(url.pathname.slice(TRUSTED_PREFIX.length - 1))) {
+        !UUID.test(url.pathname.slice(TRUSTED_PREFIX.length).replace(/\.png$/, '')) ||
+        !url.pathname.endsWith('.png')) {
       throw new Error('Source URL is not an official public thumbnail PNG');
     }
     if (!Number.isSafeInteger(row.sourceBytes) || row.sourceBytes < 1 ||
