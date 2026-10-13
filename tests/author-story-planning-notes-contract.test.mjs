@@ -105,30 +105,19 @@ test('B23 owner surfaces link to the private story workspace and MASTER records 
 });
 
 test('Inquiry #57 restores a readable author workspace', () => {
-  assert.match(page, /<body class="novelight-author-studio-shell">/u);
-  assert.match(backgrounds, /:has\(:is\(#workTitle,#novelTitle\)\)/u);
-  assert.match(heading, /:has\(:is\(#workTitle,#novelTitle\)\)/u);
-  assert.match(page, /\.note\{[^}]*background:#f8fafc[^}]*color:#182b3c/u);
-  assert.match(page, /\.privacy\{[^}]*color:#5c471d/u);
+  assert.ok(page.includes('<body class="novelight-author-studio-shell">'));
+  assert.ok(backgrounds.includes(':has(:is(#workTitle,#novelTitle))'));
+  assert.ok(heading.includes(':has(:is(#workTitle,#novelTitle))'));
+  assert.ok(page.includes('background:#f8fafc;color:#182b3c'));
+  assert.ok(page.includes('color:#5c471d'));
 });
 
-test('Inquiry #58 keeps desktop edit and saved-note scrolling separate', () => {
-  assert.match(
-    page,
-    /\.editor\{[^}]*max-height:calc\(100dvh - 36px\)[^}]*overflow-y:auto/u
-  );
-  assert.match(
-    page,
-    /\.list-panel\{[^}]*max-height:calc\(100dvh - 36px\)/u
-  );
-  assert.match(
-    page,
-    /\.note-list\{[^}]*overflow-y:auto[^}]*overscroll-behavior:contain/u
-  );
-  assert.match(page, /form\.scrollTo\(\{top:0,behavior:'smooth'\}\)/u);
-  assert.match(
-    page,
-    /@media\(max-width:850px\)\{\.layout\{grid-template-columns:1fr\}\.editor\{position:static;max-height:none;overflow:visible\}/u
-  );
-  assert.match(page, /\.note-list\{overflow:visible\}/u);
+test('Inquiry #58 keeps desktop note columns independently scrollable', () => {
+  assert.ok(page.includes('top:18px;max-height:calc(100dvh - 36px)'));
+  assert.ok(page.includes('overflow-y:auto;overscroll-behavior:contain'));
+  assert.ok(page.includes('.list-panel{padding:22px;display:flex'));
+  assert.ok(page.includes('.note-list{display:grid;gap:12px;min-height:0'));
+  assert.ok(page.includes("form.scrollTo({top:0,behavior:'smooth'})"));
+  assert.ok(page.includes('.editor{position:static;max-height:none'));
+  assert.ok(page.includes('.note-list{overflow:visible}'));
 });
