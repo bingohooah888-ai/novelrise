@@ -1,0 +1,911 @@
+{
+  "version": 1,
+  "count": 113,
+  "assets": [
+    {
+      "id": "0c453586-60ae-4df9-8e8e-316dd65ff298",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/ecab5112-8ac7-405b-aab2-1f15e65e0619.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/0c453586-60ae-4df9-8e8e-316dd65ff298.webp",
+      "originalSha256": "9d9617a99e86e83b30def285e0e7203c17e40830f2f5367a76f3283f5a7aa8d5",
+      "previewSha256": "3b4889439d8098037d72e103a41a387e64fe6f027112e73d12f00930ca7c0b39",
+      "previewBytes": 3876
+    },
+    {
+      "id": "151ce20b-160b-4742-a2ae-8763d055f4cc",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a8bab8ab-9760-4645-ac9c-0735c8008a55.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/151ce20b-160b-4742-a2ae-8763d055f4cc.webp",
+      "originalSha256": "becb6bed8bddf386f3ba74be7a9a1097ef0112758e8b4892346eb3101d5e6bd6",
+      "previewSha256": "9216f7ac88427624f4c111960ed6a1dd60bf674ad42bd501021a117aecc6c68c",
+      "previewBytes": 4704
+    },
+    {
+      "id": "2790bbdf-2ab6-47cf-901f-02df651ce640",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/da243b36-afc2-4333-a400-65231b718c4f.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/2790bbdf-2ab6-47cf-901f-02df651ce640.webp",
+      "originalSha256": "f6be1712c67a0ab4522ed13e802e569d46fd23d07e44ab8c542985444a6a2216",
+      "previewSha256": "5be0f6d8d62dbf03c5f09015dc48d21c4714effc2f5f9272f1d779cd6bd689cc",
+      "previewBytes": 8480
+    },
+    {
+      "id": "27be1f1b-5035-4261-a322-af0f015ad5c5",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4b9a8b87-371e-4cbd-a322-3b32af3e62cf.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/27be1f1b-5035-4261-a322-af0f015ad5c5.webp",
+      "originalSha256": "d8073c8ec7fe419b50babd917419c22210f2d863f33e834b21206a3d77cf0af4",
+      "previewSha256": "4ab930a91c149771f18fc7cc344a9c6539a3ca07fbe85202b6715b43b7a9fa88",
+      "previewBytes": 10752
+    },
+    {
+      "id": "4898e2f1-7629-4f5d-aea3-72cd8ea368ad",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a2e2f140-db7f-4764-be89-8eccc88c2908.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/4898e2f1-7629-4f5d-aea3-72cd8ea368ad.webp",
+      "originalSha256": "6b6651f6f2006970031e2e11f5c8fc0d5219cf0fb16f3861be1c261b0ef7b5a5",
+      "previewSha256": "3b8b2bdc02deee669d88e557223ec4bf11121901d1900ab8c7a16f498c010888",
+      "previewBytes": 4994
+    },
+    {
+      "id": "53d0c215-83b8-4259-a188-d57ca676dafc",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/3e6ed95e-89cf-42c4-b59c-9f15a9e1b8d3.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/53d0c215-83b8-4259-a188-d57ca676dafc.webp",
+      "originalSha256": "85954e99da453aaeaa85c63e871ce2a8f83303eec8c336af83745586e0f4913f",
+      "previewSha256": "9e9e425c96b8df64c76fdf87d9a35e2c2e4af99332d66475e789a1315bba3e8d",
+      "previewBytes": 5000
+    },
+    {
+      "id": "6e39d08e-5564-435c-ab86-0b094a62c6fb",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/22d2a19f-4dd2-4b6e-b808-02ad5e1a84b2.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/6e39d08e-5564-435c-ab86-0b094a62c6fb.webp",
+      "originalSha256": "26df19d0b4a2b443a00de9ef1ee344acecbc2d0e732e6e5d5d69890fe1d31e06",
+      "previewSha256": "fc61bb2321e42ee1289b0b4b0b1c7321c195fe8f6dc8ba56030f3165b9b705cf",
+      "previewBytes": 6618
+    },
+    {
+      "id": "76738323-04a4-4ae8-a59f-0a3f301a79f0",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/901cca6e-9aa0-4ee8-abf8-aa40b76634cb.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/76738323-04a4-4ae8-a59f-0a3f301a79f0.webp",
+      "originalSha256": "982b9347b9a23c23ab4e14c022ac26029ef878dbda8f5a16fe0cec91d40365ca",
+      "previewSha256": "a4e6473fe31db86cd9f1f5d36fb1448df9f0ef38c183cd7fa415da1b54233e7d",
+      "previewBytes": 7038
+    },
+    {
+      "id": "76c19021-dcfd-40dc-8026-80ba21543ad1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d2a2da34-adfc-4e41-9517-538e0d56cbee.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/76c19021-dcfd-40dc-8026-80ba21543ad1.webp",
+      "originalSha256": "8f3484a76a2b1230ca1dc9d3f2c86fa8125c2910b149b6111b87b5906f71a41c",
+      "previewSha256": "21ead41186b54450c605d5f68071102182ce6e41be2caca32d89b7c7e1caea48",
+      "previewBytes": 11128
+    },
+    {
+      "id": "77068914-46a7-4cd6-b6fb-be699793b816",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f3eed4ca-b02b-469e-acc2-2967e51c390a.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/77068914-46a7-4cd6-b6fb-be699793b816.webp",
+      "originalSha256": "8b284ce15f4890da21f13a4af0b9fe0e11cc5358a9b2493b0c06eff21954819a",
+      "previewSha256": "c58a091c44702bd55b98c357f05d83ead720f4c054ddc3f5e07c0d058f26cf3f",
+      "previewBytes": 5438
+    },
+    {
+      "id": "7de2be95-500e-4c10-8d5d-ecae408262ee",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d548bfec-a4e6-4886-ab5e-95604663c324.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/7de2be95-500e-4c10-8d5d-ecae408262ee.webp",
+      "originalSha256": "26beac11aa4f0770bab41f0044f669bb7252a6d24324bd902b7b03780f1b00ac",
+      "previewSha256": "c67a1a7a908888d05cabd0c3cc178e7c15e041956dbbb11fc645355da22000c2",
+      "previewBytes": 4178
+    },
+    {
+      "id": "7f408d07-e917-416c-8f9e-3551e6c54031",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/cda6c72f-f12b-49a0-af7e-f042d71ddf1c.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/7f408d07-e917-416c-8f9e-3551e6c54031.webp",
+      "originalSha256": "e352b6f957c831367d678828198bd9d837f3dd9c75b3f4523080accc379aaf64",
+      "previewSha256": "d50e5e4eaa5917217d5aea8a512771ff0e323daacd218460734a4c6297b7de33",
+      "previewBytes": 9658
+    },
+    {
+      "id": "83741dc4-ba5f-4fd9-bd31-1ca31fd7d89d",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/054320f8-8e99-4f83-818b-e32378a95802.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/83741dc4-ba5f-4fd9-bd31-1ca31fd7d89d.webp",
+      "originalSha256": "b3380f872e449b3066fe8286df179f6747b3218999c54451ae096f2f5e32eae7",
+      "previewSha256": "b6c2bc7c844a5081d159d7a5352bc2bfc7793602dca68550e3c150c2e2e7d48f",
+      "previewBytes": 4932
+    },
+    {
+      "id": "83c160ba-82a0-45dc-af87-f648f5e094c6",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/695c4778-dc2b-4f30-9d1d-308b968dc6ba.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/83c160ba-82a0-45dc-af87-f648f5e094c6.webp",
+      "originalSha256": "1402bb8a0d0adefac13c230fad197df42ed3c1a80c9ef54e97a4aff9cbdea3cd",
+      "previewSha256": "8b50f1fd730dbe098a7e5f4c12c6f0cfb7eb16b117ac4215eb6143b838ca0c0f",
+      "previewBytes": 3468
+    },
+    {
+      "id": "8b74bc14-13fc-454e-a2f5-b38313974635",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/3d689743-360b-4a6f-9a77-23117e6af098.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/8b74bc14-13fc-454e-a2f5-b38313974635.webp",
+      "originalSha256": "95d7b765024bb1c56583efb8ab3d1fea1ddff90e954c58aaf7f39677e220bda5",
+      "previewSha256": "6cc56e7f460e9e61f6f50a35992afdc9933d23b27032b13fa6c335f95ce9d7ad",
+      "previewBytes": 6802
+    },
+    {
+      "id": "9c231782-c158-4961-beb5-d4cc1462736c",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a29b07b1-b65c-43c6-8dc7-02fe34cdb09c.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/9c231782-c158-4961-beb5-d4cc1462736c.webp",
+      "originalSha256": "6e493d3a1fb04703008ca43c8899e14102eae81a512ea22d24857aec583271fd",
+      "previewSha256": "082490915a37522ca4a9266191bda5ffb8126494fcff14613055193b28bf77da",
+      "previewBytes": 10270
+    },
+    {
+      "id": "9ef6e8d4-3c32-4bf5-89ba-7fdaaf489928",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/21375c1a-0fc4-4ccb-9f9b-de06a697cc98.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/9ef6e8d4-3c32-4bf5-89ba-7fdaaf489928.webp",
+      "originalSha256": "045d9a2c660186b9292360c4ca14268bdb604c3779fe9d110fe2bb17c15e9917",
+      "previewSha256": "b41b982c80a8987b17c338dc9d424fe09b0907bffe40bb90f7373ce825b6f1b9",
+      "previewBytes": 11840
+    },
+    {
+      "id": "a176a831-fbef-43d6-b8e9-7d494710dcb1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/fb25f2b5-66f2-482f-a3cf-edc610ee10b4.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/a176a831-fbef-43d6-b8e9-7d494710dcb1.webp",
+      "originalSha256": "8ac3a409ab9319f83250ec0dde3d81081151239de551876c5c056d589f4eef9e",
+      "previewSha256": "d5067eaee797b72ba85980b79994bef300960cc07a10a704e72b18432ab72c76",
+      "previewBytes": 5938
+    },
+    {
+      "id": "b8bf8ef3-0051-47d6-a062-1a58e7a4e332",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/44c2018b-6e73-4a80-b9a5-9510f5242b75.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/b8bf8ef3-0051-47d6-a062-1a58e7a4e332.webp",
+      "originalSha256": "d0b9630b23302a832c9016bb6bbd8214804eececa598eb3a64e2899628d2c23f",
+      "previewSha256": "97d8571f18b8ffd70aeacf44773d421aa6dd2d7da431e56f8a0fb6e19fe80fee",
+      "previewBytes": 6522
+    },
+    {
+      "id": "bd4c74e9-c489-4740-94e3-4185199159da",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/33064b13-1c29-4091-879c-f2356c1aab5b.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/bd4c74e9-c489-4740-94e3-4185199159da.webp",
+      "originalSha256": "e12e8554e3b64e3ff0713914a5fc6bf6bbd27ca389ddb6fa9dfdaf788be154a9",
+      "previewSha256": "9398aeb90b6f99dd6e8e99e60a28359411a12a3ada58ba04780efd7b3ba266a3",
+      "previewBytes": 6338
+    },
+    {
+      "id": "f079d73d-3f2d-4b89-af40-35a0cd972d29",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6c1bed78-8478-49b4-b1b2-74a2e9c304fe.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/f079d73d-3f2d-4b89-af40-35a0cd972d29.webp",
+      "originalSha256": "899a99df126eb68e5a2e8ee90f4dc70bc281c58d92288bf5f7bc91bb7b999eb6",
+      "previewSha256": "929847996350ed43face32cc870d3c92baa955314f760a0e9ec5cffdaf47ff0e",
+      "previewBytes": 10190
+    },
+    {
+      "id": "0e1af9f0-b1f4-4486-986f-9e39acf0ff2c",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/1f138938-10f9-48ad-bc4c-d54e65d33dc7.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/0e1af9f0-b1f4-4486-986f-9e39acf0ff2c.webp",
+      "originalSha256": "a29f142165dd2e872144f093961ea49fa4e43bc0e2ad0dc8e87f617f3f12fd29",
+      "previewSha256": "c5a8ef6fec642bdf8159a42a7c599aaa13a51331314128f8b31a92947efd9cbe",
+      "previewBytes": 7674
+    },
+    {
+      "id": "0f58c543-0a31-4ecb-93eb-ab9e8019f998",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/bd2db25c-8cff-4ea6-abdf-64ce0f6f69ac.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/0f58c543-0a31-4ecb-93eb-ab9e8019f998.webp",
+      "originalSha256": "b85f22dc6e0193998e377ff43ea27cfa12754afc750465425e83251a4a94cf80",
+      "previewSha256": "63f2f95e9291776563f7121c5a808f070f009fd948c79e6a1fe30ba0f565a946",
+      "previewBytes": 7534
+    },
+    {
+      "id": "14a82bc8-91fc-4a53-8fb4-4f020e02781c",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/58c7f16c-8022-4039-a6da-4eab1be0d0a0.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/14a82bc8-91fc-4a53-8fb4-4f020e02781c.webp",
+      "originalSha256": "f8eb0757bcc2a770c0d9aa601be978bef238bd50ecb72d09e91ffce38328c7f0",
+      "previewSha256": "a715b368ef7c1c7f0b54e99ee99f2d037c6362f7e3889eb4deebc5d4723fe9a9",
+      "previewBytes": 6770
+    },
+    {
+      "id": "1d46a7f1-52bc-42da-9f97-8a18e6643107",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a9ebf52f-392a-43c6-9bf0-d4da9a73d615.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/1d46a7f1-52bc-42da-9f97-8a18e6643107.webp",
+      "originalSha256": "10eec20e95b734f2dcdb47acb01f6873d6887c41cf888266afe9475fde03ba6c",
+      "previewSha256": "bd70268c461fe782ee6bd93d8c6f44204454fc97d7f22a57f6bc1e50526dd8d9",
+      "previewBytes": 7136
+    },
+    {
+      "id": "22e224b3-2b7b-4581-80a7-03d3fbded340",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/fa25580b-03bd-4f11-8682-a4248140a0a4.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/22e224b3-2b7b-4581-80a7-03d3fbded340.webp",
+      "originalSha256": "03ff72c24640495a15f24cf80ac4b4c6d3a791b29fe89deb417387a6674e43d7",
+      "previewSha256": "785be68d67080b7fd84aef442f1628a58f56aecf3b3293bf0fbb131cd3a06de0",
+      "previewBytes": 7082
+    },
+    {
+      "id": "2e6c0235-8647-42db-a996-8c57ef53e22d",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/5dc40e74-bb75-4361-84c8-fcaa9423ef5a.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/2e6c0235-8647-42db-a996-8c57ef53e22d.webp",
+      "originalSha256": "c816eb75a8c1917ea3fd16a92cdabe56263a9d661ff92518ff678e253a63f315",
+      "previewSha256": "9038ec86ac0c2bb2fca8fd3d04f0e192611d183944762830d9d6d364040c6398",
+      "previewBytes": 7846
+    },
+    {
+      "id": "43785a5b-6da8-4a7d-abb8-9b4c1e51da2e",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/dced4df1-8478-4126-9147-165e9b827eca.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/43785a5b-6da8-4a7d-abb8-9b4c1e51da2e.webp",
+      "originalSha256": "ad0cf5d22406c39319b96ab6cce26da9fd3db5cea517aae305135ab3136f0ff2",
+      "previewSha256": "7429fd635874834a461ae054f8fd0f8cc57487caab7bf3ec8a9458d92d78f78a",
+      "previewBytes": 6662
+    },
+    {
+      "id": "4a1163d0-e042-4ced-acab-7afae1ae9e23",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/272354db-7b52-4892-909c-ba92e93968e9.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/4a1163d0-e042-4ced-acab-7afae1ae9e23.webp",
+      "originalSha256": "aa19c081f6ca70a659dbb9970ad43c237dd6cd8fb306f00abaf0127c79595ea4",
+      "previewSha256": "34f01160146b6096db639ed5c57fc2ae42dcff47f07a7effb46dbe508ca99b4f",
+      "previewBytes": 7560
+    },
+    {
+      "id": "4a885533-1cf2-496b-9d3f-2acf912374b8",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a999e8d6-5a0b-43c4-9a17-82c603d3cf76.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/4a885533-1cf2-496b-9d3f-2acf912374b8.webp",
+      "originalSha256": "c0db28f4b326af091dba0fe30c06faac8e269d82987a6d6421d0f3b699c9d959",
+      "previewSha256": "98e097299d8768a2fe285d4fe71d8802b0bd0b89784775cdc8aeb3332d982c7e",
+      "previewBytes": 7048
+    },
+    {
+      "id": "4e47d9c4-c3fd-497d-8254-d8ac9b62298f",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/aa6979f1-f474-4081-b2d8-770aa5874092.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/4e47d9c4-c3fd-497d-8254-d8ac9b62298f.webp",
+      "originalSha256": "fbb4a01a1310b26aee9cb5b06893a626a81f39af778ea29c13c45d9eccdf7a15",
+      "previewSha256": "e3d96fc3548da6fc50843b1e6cc509e4444b04e41703e81a4db02a37af92d04b",
+      "previewBytes": 7556
+    },
+    {
+      "id": "54b5da7e-ec65-46da-863c-bda350de43b9",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f0089f59-34f5-41b3-ad48-5fcf01018d5a.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/54b5da7e-ec65-46da-863c-bda350de43b9.webp",
+      "originalSha256": "8a5d5d68ffa5a714180ccf3738e8d0608698424547025edcc9ba66df6b6d559c",
+      "previewSha256": "4065d48c240149b741c9dc5aa91a98318814d465b7cdb9bf44b1333f11a073e7",
+      "previewBytes": 7986
+    },
+    {
+      "id": "5dd746b8-23b8-4a67-be7d-d0c2887b7e88",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/532596dd-dda4-4897-9b64-39d4c73b2287.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/5dd746b8-23b8-4a67-be7d-d0c2887b7e88.webp",
+      "originalSha256": "67e427520e3eff89190858b17e99b7dd447e537e3730862b47e07b1d0b55c773",
+      "previewSha256": "0d0f019e9a710c1c8dc8d7ca4f2ffa8655cecc46e170b41b2a5c855bbca41fb2",
+      "previewBytes": 8038
+    },
+    {
+      "id": "612ac92d-8824-49fa-931c-979311737791",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/e48e1890-ff25-4a86-8a6f-77d324e1c533.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/612ac92d-8824-49fa-931c-979311737791.webp",
+      "originalSha256": "bf9afe716467372323a16f9377cd2f8da09faa071fb2f669f0f3934fdf994819",
+      "previewSha256": "36f43c04856a7e5af6eeaf92a40b5d753607ac240d6637114eef48816b08d2ba",
+      "previewBytes": 8382
+    },
+    {
+      "id": "638a31a4-128c-4239-9855-a2f4bbdf05a9",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/b1e82dcd-af6a-48ad-bcf6-9a78f576235b.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/638a31a4-128c-4239-9855-a2f4bbdf05a9.webp",
+      "originalSha256": "dbd119c7eb9ec68da201a95eea082472f40554a2a3975786fdee0e5520f2f49c",
+      "previewSha256": "178b9864d5355f451bb8cf8a926343e81e0355e81d54646f0c517e031f5eaa0f",
+      "previewBytes": 6978
+    },
+    {
+      "id": "64902de3-aef6-4848-970e-ff4309f3d357",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/103b6b21-0b75-408c-8200-f3423d6dd163.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/64902de3-aef6-4848-970e-ff4309f3d357.webp",
+      "originalSha256": "ff8e7e1735f3fce11be5d2aa1a2db81dcbe5ae8e476d93495fb5d30be7b9e794",
+      "previewSha256": "c9d8d7c8e9fe5062cc0d9893550f36fb9f28790daf7c4ae7e8384e0f816938d2",
+      "previewBytes": 6658
+    },
+    {
+      "id": "6e0f67b6-3ad7-4e5f-b19f-b3ca9ab54a25",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6dfe3409-3557-43ea-8dc6-9c95666ab726.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/6e0f67b6-3ad7-4e5f-b19f-b3ca9ab54a25.webp",
+      "originalSha256": "0ad60c41b1bc587cffce7453adde1db97ca6a88b10e8cd751d7e8f6d67856a8c",
+      "previewSha256": "d863a5836f67984e3ce7fde5bee51cbb3f4c39f1f4176cdaf14e502bb4ee083a",
+      "previewBytes": 6326
+    },
+    {
+      "id": "70fab67d-cdbe-4c1f-b27e-1ad72e6f5707",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/2d0b6967-4629-4f94-899d-67a9764529b6.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/70fab67d-cdbe-4c1f-b27e-1ad72e6f5707.webp",
+      "originalSha256": "91ade63c5ce123c0ed5c1d3d45a05f8670783e6bab372bc1c2686225b43ad9ac",
+      "previewSha256": "1e0aeebbffcdf4a8c9c2c79a5ad226f7f99df415af24238b1fee65d29f7c5e46",
+      "previewBytes": 8698
+    },
+    {
+      "id": "7ede8135-5463-4390-a10a-412de7aa6a2c",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/df738a29-2ad4-4a17-aa75-5a8fc667f607.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/7ede8135-5463-4390-a10a-412de7aa6a2c.webp",
+      "originalSha256": "41628e388ad6c0b3652aba9456532c5e2ff9e658eb4eb74c3ebceb6a71169277",
+      "previewSha256": "af70ad6f773d5f95946f8e19d1a436301bb680e4f0a50cc75b4ab4f3d76d6a41",
+      "previewBytes": 7736
+    },
+    {
+      "id": "8bbd7be6-96fc-4ee6-a879-43493d1c9d98",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9620fb3f-ead1-4d25-9070-5c9788de03b6.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/8bbd7be6-96fc-4ee6-a879-43493d1c9d98.webp",
+      "originalSha256": "c23d3d52325524baf26b638abcf6b7075091b8f8d1637e8f2952bc3f49133d19",
+      "previewSha256": "ba84cff66124b3c1f5cb767843ab4ff0ee348f1648699a3fbc953b70c46ae52a",
+      "previewBytes": 7400
+    },
+    {
+      "id": "9a9b56d4-f18b-4f52-9d00-dd6afc4bbf7d",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/8ddae664-7766-4373-a200-a3cdb59983b0.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/9a9b56d4-f18b-4f52-9d00-dd6afc4bbf7d.webp",
+      "originalSha256": "601bfe8ef08cedd95b559e5a67e65debedacaf2c2d14993f82ac0d1796b2956d",
+      "previewSha256": "2c87fac51f12a6a6790c92d4590b9a089468a4feabe32958ac6f0ab15fa50708",
+      "previewBytes": 6448
+    },
+    {
+      "id": "afaac653-6faf-47d3-bfcd-8f08b442513f",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/1a0a2f3c-8674-4250-9309-06523d0ac7e1.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/afaac653-6faf-47d3-bfcd-8f08b442513f.webp",
+      "originalSha256": "d11b76beb602dbbd3bd155a0c1f7cddccd0159386382a5bc24acf6377be2f2f9",
+      "previewSha256": "5cd74f8a3ebb83912c46697673487c4e5e37ecad06e00208421e9f6eb1428756",
+      "previewBytes": 7876
+    },
+    {
+      "id": "b201901f-56e5-46e0-82ca-e213033e06eb",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f54445c8-f033-4d36-b1c8-73a5edef8c59.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/b201901f-56e5-46e0-82ca-e213033e06eb.webp",
+      "originalSha256": "d7f64461d5a916107c93595a8eefb172041db608a86a1433ffcf88591797ad2e",
+      "previewSha256": "1f7c234bbf73a4702ed69e9f3c8be0165b68dba5890e05adce4ef3041c160e88",
+      "previewBytes": 7618
+    },
+    {
+      "id": "b85a7293-12c3-416e-9caf-d336efb93fd5",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/e97b303b-7a61-48b8-a5a3-225607c6f8da.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/b85a7293-12c3-416e-9caf-d336efb93fd5.webp",
+      "originalSha256": "b1d6912f280cf302f0dc206c8481afcac39440b6f8a7cedd8c3ef0aabbac5a0d",
+      "previewSha256": "37cfbbe94709f7eae64e0f6f340ef60c8741999206670c92f9f834d5a9831744",
+      "previewBytes": 7608
+    },
+    {
+      "id": "b9334e1e-ed68-4ce8-9770-c19a3c4bd662",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4fbd3bf7-b21e-4b01-bae1-1939ec1ba5a6.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/b9334e1e-ed68-4ce8-9770-c19a3c4bd662.webp",
+      "originalSha256": "75adb56828e9c2a7a30975fdff69f70e6312be739723a572a2cf693868023b8c",
+      "previewSha256": "d0797faf1aa8480d8e042d45bcdba9a8278b7555e59f6e952401136b963d9190",
+      "previewBytes": 7816
+    },
+    {
+      "id": "be6fb9f8-9683-41cf-8fc4-7ec9cbef458a",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6a8791be-fa93-46aa-9a56-e13227a2e8f4.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/be6fb9f8-9683-41cf-8fc4-7ec9cbef458a.webp",
+      "originalSha256": "746cc2ad3c424b71e58a150cc1b974fad0f059771c4ca8f7c98dbaf87d598d9f",
+      "previewSha256": "1f96a0bdda95080d6e6d2f1de360686baa2127902030231237eb769dfa1ef080",
+      "previewBytes": 7208
+    },
+    {
+      "id": "e0280860-3e3a-49c1-9f96-f7146df560ca",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/5d51b7db-9bed-4a9d-bc8f-731a45a99069.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/e0280860-3e3a-49c1-9f96-f7146df560ca.webp",
+      "originalSha256": "bc9f3abe497a826b070fdc8964b8fbffe7d99df23f6aea0fc3c594dead0b33c0",
+      "previewSha256": "a1859018a909dd5f20cc87b17dc2aef9b2f38e149aabf70df5d280e4efbfcbf2",
+      "previewBytes": 7068
+    },
+    {
+      "id": "e0bf262c-d74f-43b7-9b01-377602c3adb8",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4638f25c-352c-45f3-8266-dd78fd7af0a6.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/e0bf262c-d74f-43b7-9b01-377602c3adb8.webp",
+      "originalSha256": "46f963f521feafc2cf69a5fc1f4d3d6467577ea8a641a2c64fde2b1e5b4fb825",
+      "previewSha256": "f0252b93745e1dfb231f6679a1590947f3e67ed8ecc4b4db0ef37868eeaf639e",
+      "previewBytes": 7622
+    },
+    {
+      "id": "e1f8a0ce-34ee-4921-bc83-d945d0a7e5b3",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/fc740a79-15a6-45a3-9bb0-d52c74c5c0f6.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/e1f8a0ce-34ee-4921-bc83-d945d0a7e5b3.webp",
+      "originalSha256": "d535e112e527b64c7c49de40d165fd95cac839bc54e6796e78d97fe87a24df05",
+      "previewSha256": "5342936ab7ece7c91fef219292ad0329abc34d289e989659e4974bd630b185bd",
+      "previewBytes": 7384
+    },
+    {
+      "id": "eb9f969f-62c9-4cfd-b1a5-676368f43339",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/eb16c9ad-e1ec-4f82-8195-9c0071257220.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/eb9f969f-62c9-4cfd-b1a5-676368f43339.webp",
+      "originalSha256": "ffa55c72fc300aae730797ef4b9d09c351f48b82ac1c4abc1a86a55419f01faa",
+      "previewSha256": "b001cb63c63c1b2b39abeef311d3faf47f53d18c47f64d12a96642abf9460bf1",
+      "previewBytes": 6928
+    },
+    {
+      "id": "f1fae963-dba5-4a69-9aba-1e5759a05271",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/cd9371fd-478e-4168-87e7-dbc88f124264.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/f1fae963-dba5-4a69-9aba-1e5759a05271.webp",
+      "originalSha256": "dca07dd738d850fa08a1a0230d02c731df6e58933976c2ecbd4ae6ca14772293",
+      "previewSha256": "f2ff96726437809b55f61403ad2674a09ce45a1997b96c88be70680fe07a9eb7",
+      "previewBytes": 7208
+    },
+    {
+      "id": "f8268232-acdb-4f0c-9a22-72e86ae04937",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/098c90a8-ac0e-4514-9a21-74763773ce00.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/f8268232-acdb-4f0c-9a22-72e86ae04937.webp",
+      "originalSha256": "7238ff732ee503071d5a5dc53150d1c6391067794afc01a878ae598376941de3",
+      "previewSha256": "4e98a0e158441769c1317b3ef8968a2150c152f94d95ead8dcb4f9edf5dbd691",
+      "previewBytes": 7610
+    },
+    {
+      "id": "fcf7e686-815b-4e2d-9f0e-57575521aa98",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9612efa9-c711-4e33-8dc5-5ce7c8e503c5.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/fcf7e686-815b-4e2d-9f0e-57575521aa98.webp",
+      "originalSha256": "32a76d39a4de868743550248107122d3039d7761cd70af57540a61d3b6007c63",
+      "previewSha256": "195654a270d9c2f1a8628980530bbfa56ef3c7a405d4edc8e545206ab8e5a6a2",
+      "previewBytes": 8050
+    },
+    {
+      "id": "0e15af8c-f317-4904-b67e-8dec460adaf4",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/614d73e3-9df8-4b06-9fca-d1a334119863.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/0e15af8c-f317-4904-b67e-8dec460adaf4.webp",
+      "originalSha256": "d2b357f9397be05c6f299d75c388aaaf87c9b9b6c5a3d4aff07708f7c8227c73",
+      "previewSha256": "65175b82ef0ff68dda241129e123e7a37e9657bf2345eec7911c05f82d661e1c",
+      "previewBytes": 12478
+    },
+    {
+      "id": "37c1c296-18ee-410d-b6be-249cfc2c4557",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/712bf839-7225-4bc9-bca1-e950e5441a01.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/37c1c296-18ee-410d-b6be-249cfc2c4557.webp",
+      "originalSha256": "d2b60aa470b633fb2b2a007d7487cfd91612803758b9e67159e528f174e3c4b2",
+      "previewSha256": "8c4f22ab5243dc322ba6397ff85494d61a8972d57c13533c6e4e723e92d4807b",
+      "previewBytes": 13192
+    },
+    {
+      "id": "5363628b-3aa4-46ac-9355-085112b3d665",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9591f2e1-9cde-4f33-afa3-aaebc9e3219a.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/5363628b-3aa4-46ac-9355-085112b3d665.webp",
+      "originalSha256": "9b5550cc0c364aea42141131d0d34e0d39d9041e005e57c1e2b9a307391b1f8d",
+      "previewSha256": "2db148d5a5df9283413d373b2e00b3d67ca4cf7a30c8fb4d79a471a92c48f1cc",
+      "previewBytes": 12230
+    },
+    {
+      "id": "62e6fd5b-15e2-4b33-b0ba-23bc7904f937",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d4e5cf8a-1253-4a01-8735-fb8315649745.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/62e6fd5b-15e2-4b33-b0ba-23bc7904f937.webp",
+      "originalSha256": "c9b566a86cf264ea4e8c3c058291be2a9728e6b9b2893475a14be38edc12c719",
+      "previewSha256": "3ffe80991e1346b923ff015eca8bd7a490ee8c4a1eff5fc4b19ddb0da30592f1",
+      "previewBytes": 7054
+    },
+    {
+      "id": "8077ccaa-d541-4dc5-90e7-3c7ae108fa06",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d2161aa0-c472-47f1-99ba-bffb8357aa03.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/8077ccaa-d541-4dc5-90e7-3c7ae108fa06.webp",
+      "originalSha256": "85c1e41a6f3b12ceb31b0114b60f8d521434e0ea82391cd8b74af51b17b391c5",
+      "previewSha256": "36aef50531dcb81775e5b830ddbef9cbb610993004020834a2cac33fc5393825",
+      "previewBytes": 12814
+    },
+    {
+      "id": "876095c0-fc43-4621-8613-26e75e478386",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6017cd6b-c175-42bd-b17d-789303f340fc.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/876095c0-fc43-4621-8613-26e75e478386.webp",
+      "originalSha256": "b55ad8c9b3837e1c1af89691c38bbf607e0376f790d6781548e1655d4a5e1022",
+      "previewSha256": "5d43a2bd1317b35618e64521dd7d78a3eb9602cd65a858c7fa6bbcf31a89e1fe",
+      "previewBytes": 14268
+    },
+    {
+      "id": "a1ca3f4d-21ec-4735-a051-b5dd67b499c7",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/38caf93d-1158-4cab-b06f-8158b2370f28.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/a1ca3f4d-21ec-4735-a051-b5dd67b499c7.webp",
+      "originalSha256": "6d736b8238e1c18a230b513e7c2e01188a4bd2b2dccc0432beb6f5aa583d1524",
+      "previewSha256": "4c689d01adfde1bd5875ab415bc665609045511d29af2eda314dba1444f64912",
+      "previewBytes": 8188
+    },
+    {
+      "id": "b8a45ab6-6cf4-4fed-8ab8-832b35426942",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/e7ad9649-e508-43d1-a4ff-51f255b304c8.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/b8a45ab6-6cf4-4fed-8ab8-832b35426942.webp",
+      "originalSha256": "89ed581d6eab119e2f7be75bb84ba3d66504afbaa3d3ea61d0477222361f1825",
+      "previewSha256": "db89d3a5e9c6ddc4147abf73f5db654ae597a23dced5f1a879c0f685957fe489",
+      "previewBytes": 15686
+    },
+    {
+      "id": "bb0960b9-5ec2-40c3-aeb3-65d50ed617cc",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/be5429c3-9686-447a-a313-699ae745c5cf.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/bb0960b9-5ec2-40c3-aeb3-65d50ed617cc.webp",
+      "originalSha256": "9f99505a7e0217cca9748c3fb164697ff18cb3b34bd7b07f3acf35c98eb0953b",
+      "previewSha256": "d4c7b06813267e68e16db761f56d1eca2618f193022b62f2145f7e94bc873a80",
+      "previewBytes": 13282
+    },
+    {
+      "id": "d10afc37-7ac7-4dad-b4ca-e15785914034",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/bd6e5ac7-e3dc-499c-9345-95511076655a.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/d10afc37-7ac7-4dad-b4ca-e15785914034.webp",
+      "originalSha256": "717a92eecdd44c33c48e8ef7a9d0725554e1aa0c35d2b81a1e5b11a94a9ef7f1",
+      "previewSha256": "f6e6025501927de3b5d82a6ef132909f364f0edabb14a7038149bce523c44e09",
+      "previewBytes": 14934
+    },
+    {
+      "id": "d2a3588d-3222-4425-950a-5fc69ca6d3a0",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9a550064-7bbf-4bbd-814f-59d22840871b.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/d2a3588d-3222-4425-950a-5fc69ca6d3a0.webp",
+      "originalSha256": "53181596b2276d4fd48f99b3461e450ef71d899d79ca169ae3c9d0de8ae72bf4",
+      "previewSha256": "f583e7579c01f22a8e8633cb6de0e118bec57675a2dfe776b1d6b7c660fb4d46",
+      "previewBytes": 15152
+    },
+    {
+      "id": "d88a2ee2-de57-4fc3-ae30-39bd8f75c6f6",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4a6805ce-60cf-43d8-b5b8-23ae9f3f8485.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/d88a2ee2-de57-4fc3-ae30-39bd8f75c6f6.webp",
+      "originalSha256": "8b49ac564c7a67664ec5f97249db79a5d730a703826232a555039b800930365b",
+      "previewSha256": "663ea8863eb9747f3e04a92d3acf326bb92a993bc4a5e5471c6e26b46a7d3ab1",
+      "previewBytes": 10712
+    },
+    {
+      "id": "df63f975-e488-403a-b2fd-5a0fabb864de",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4af31503-59c2-406c-bb3c-2ac1716fc848.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/df63f975-e488-403a-b2fd-5a0fabb864de.webp",
+      "originalSha256": "d038a73c3488b77e5e828b0e02f395bac14dd0978f542937c750f2c89d5bce89",
+      "previewSha256": "c397b210bf4f3507f96b114046275c6ae690715ba6b92f45dea172ccd1d75fd4",
+      "previewBytes": 15156
+    },
+    {
+      "id": "f407a0db-f7e7-41e6-a5d0-d89e05ea8021",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/7517d3a3-d2dc-4f4a-a18e-5187e97cc54b.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/f407a0db-f7e7-41e6-a5d0-d89e05ea8021.webp",
+      "originalSha256": "bbc28b19a4bd5766b1c2f394c5f748c9fd3b43d80708fe16859a3efbbae574cf",
+      "previewSha256": "621ba948358600aba9e19d87b0d9e80ce3e9bc3eec774cc542867eafb5412bbf",
+      "previewBytes": 12156
+    },
+    {
+      "id": "036c49b8-4ee7-43ef-8846-4edec6b4c358",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/c501de6e-c86d-48c4-89f8-88a1eb751b59.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/036c49b8-4ee7-43ef-8846-4edec6b4c358.webp",
+      "originalSha256": "b6d261126c8ab5c6f08b49c8f52233b1a3826f300048b9b8e6b894f5c14ebf05",
+      "previewSha256": "3407a7627e369cf77407adc2d068857ae052a5e336e66159ca647b0281a1aee8",
+      "previewBytes": 29158
+    },
+    {
+      "id": "0a78be68-f872-4489-8f72-65fe3c2394a4",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/65c3740b-b7fe-4cb9-967c-be3c38d50155.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/0a78be68-f872-4489-8f72-65fe3c2394a4.webp",
+      "originalSha256": "e9f04c6ea08d1303637cd3e7892793a0f7f7b49525a0e6a030eadc3c1342e2d2",
+      "previewSha256": "149c45c327315353a432e621534aef310143360b1d921f0e4bcea26f594444da",
+      "previewBytes": 19236
+    },
+    {
+      "id": "15559996-1a0d-4aab-9ee4-7c61623abdd0",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/82ff20d5-5665-4147-ad58-30fc1d539b1e.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/15559996-1a0d-4aab-9ee4-7c61623abdd0.webp",
+      "originalSha256": "151e266a3dfcbd5a204f74e11e4394b5d3a96630140e10164e7ed4c0fc57139d",
+      "previewSha256": "31679be74878be72b081f68490cb35d7122af01c793f54ed472694d76118070a",
+      "previewBytes": 14822
+    },
+    {
+      "id": "28f24a7b-8c1b-410a-92a6-8c7a33c34582",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d2f82a75-8939-44be-a244-710ca8fa8207.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/28f24a7b-8c1b-410a-92a6-8c7a33c34582.webp",
+      "originalSha256": "bb452c0bdddd0668f700e6d738d9bbf34c90addb279ccbf03012c335561e9866",
+      "previewSha256": "b81daa141102f541ea8cbe2a08d2eff8cbbd0822432ab496074e28d79160434b",
+      "previewBytes": 21366
+    },
+    {
+      "id": "365fde1a-4ee9-45c8-81dc-e72104008245",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/fb5ab4a6-1af7-4924-b209-cf7730672db1.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/365fde1a-4ee9-45c8-81dc-e72104008245.webp",
+      "originalSha256": "dfc3305d4654fbfda3599dc2e5f20687040eadaada5ae132e7c6b51f17a05d89",
+      "previewSha256": "73061cdd989f31ec5f4eeb6e5f4d643da36113aebd232920760f84d1ea7a693b",
+      "previewBytes": 16538
+    },
+    {
+      "id": "49548d80-45b7-411c-8baf-576241a9ccbb",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/91f9684a-a72a-4d53-b1b5-45f0b91d80ee.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/49548d80-45b7-411c-8baf-576241a9ccbb.webp",
+      "originalSha256": "564e0d26b6c9dd1a94016bd85b37643ffe2ecf3d33e8f6bec4a49328ecb398f0",
+      "previewSha256": "ded26bb2d2fc387af709b2ad5a86cfcc80d2aba561a212566141666b30e5be48",
+      "previewBytes": 26320
+    },
+    {
+      "id": "4d803860-cd78-4f67-b2f1-f262c385959a",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/0208c5ba-ac80-455e-9905-f4331b8794be.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/4d803860-cd78-4f67-b2f1-f262c385959a.webp",
+      "originalSha256": "f01105c42d2952070c61f90a928aea8294b3010590b5fdea4fe76f3a0f3324c3",
+      "previewSha256": "e13df6711748cadcb68339691a1e87e3e971302f196b67712e33a263744d313f",
+      "previewBytes": 14392
+    },
+    {
+      "id": "82e57cca-247a-44e6-ab64-1ee7797c9ca0",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f3a10a94-d1c4-42b7-9675-2cf11febd963.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/82e57cca-247a-44e6-ab64-1ee7797c9ca0.webp",
+      "originalSha256": "3bda0fc137c24cc1d675f52e4a7b60bc94df81985f4b1a0ac42af382342dfad1",
+      "previewSha256": "8aa36d80fefc8f3c822ad1a3cfdfb89b66daf8de6e8e334f525b010d67c5acdf",
+      "previewBytes": 24588
+    },
+    {
+      "id": "b75dc5ec-edbe-4234-ac12-d752980bdb28",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/595f7b23-4227-44f6-8e80-d706a4c0db49.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/b75dc5ec-edbe-4234-ac12-d752980bdb28.webp",
+      "originalSha256": "d3ec7b931fdedaf4856473bed4646a85562705458aa6653ae94684bcae117ef2",
+      "previewSha256": "ff9d7e994b1c7d18782fc1aede83987560ed311c43ec0379ca2f707b8f63169b",
+      "previewBytes": 22730
+    },
+    {
+      "id": "f62de569-fa11-4991-b4b8-e1d28d555ebe",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/b2e05014-3875-489e-b018-baaa72f4dd8c.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/f62de569-fa11-4991-b4b8-e1d28d555ebe.webp",
+      "originalSha256": "1d16e53b77f9e61a157096995d987a805528e10b27e702a1737d3aa282fb11a6",
+      "previewSha256": "c8ee349dca4d2608ee844a3a7f4b4471e35e3392aa3ed2deaadcefa1338c40ca",
+      "previewBytes": 26122
+    },
+    {
+      "id": "009e3ee3-79ef-48a1-ac6e-03e62db557fb",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/ff789d7a-d5ec-4c25-be6c-ac8d8f1b5d08.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/009e3ee3-79ef-48a1-ac6e-03e62db557fb.webp",
+      "originalSha256": "6173eb93c38acc5ca2e1617d8436a443a4b7f49535ad85e26c40620e87a29504",
+      "previewSha256": "7bcaf129b0f02581bde561838ca4296b7ef777a73b99a4371739c5a26eff8d84",
+      "previewBytes": 4136
+    },
+    {
+      "id": "11b536f0-9292-4786-9f20-80b123a42f1a",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/1d4fe6a8-9def-4411-b92d-b26878e90521.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/11b536f0-9292-4786-9f20-80b123a42f1a.webp",
+      "originalSha256": "3ff24a00380f0c74687ddd6a45dbddf65b03c092da2c3499ff2941f73b19cb20",
+      "previewSha256": "ffbf87c3a74d07d6e0393b4628883aedf8225de56987eb3dd6e41f94b1c327fd",
+      "previewBytes": 8958
+    },
+    {
+      "id": "16e33592-0c1d-443c-bb21-5021c50ca26d",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/8858f544-5f9c-4170-a08d-6764ed10acc1.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/16e33592-0c1d-443c-bb21-5021c50ca26d.webp",
+      "originalSha256": "9ceb45ae53467fe88addc657c70f0515e8c5c370c161acfba2f2956c99dec2c4",
+      "previewSha256": "6b4927e1b83f4f7d70e06dde70a3f1c1b512e1667e6ae6f56cbc15af8dcf2798",
+      "previewBytes": 7104
+    },
+    {
+      "id": "19dfa8fa-34ee-486a-a716-dd8c1e45ff18",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d79c91aa-a691-4f15-be61-f85516ed084f.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/19dfa8fa-34ee-486a-a716-dd8c1e45ff18.webp",
+      "originalSha256": "c7b7117c91909d5375b3ec1bef431c7d855547cc1c2615f2157b1b35f44963fa",
+      "previewSha256": "e43d3a9c7866ec5bd772e8ab966f0da31961392bf1c8745782022af840d7f4af",
+      "previewBytes": 4744
+    },
+    {
+      "id": "1b4807c1-efc2-4be1-91b7-0f48aecf5f3a",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/0ef286ea-6b88-4dfe-83cf-611e5d5b9512.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/1b4807c1-efc2-4be1-91b7-0f48aecf5f3a.webp",
+      "originalSha256": "bbca9678a088c5c6bdf4cd7191a1649c3585e426518198c590b3685bdb3e72be",
+      "previewSha256": "cc1366f251aa39aaf7c3ee2f56a6bd39f391dc6a53343ae6bd900627e0238f9a",
+      "previewBytes": 4484
+    },
+    {
+      "id": "228c07ab-3e30-4dfc-991a-990862e3a5f5",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/8e424eed-8830-4562-af75-be5bca46af26.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/228c07ab-3e30-4dfc-991a-990862e3a5f5.webp",
+      "originalSha256": "22274443bc41fea4c868b6a5f637f06a630e54eed588b1aab39e221e2ba3b1d6",
+      "previewSha256": "b1abde8b4520ffb2ec16e7bad7c9f148565a2e2995b8d551701559f653168cf2",
+      "previewBytes": 2960
+    },
+    {
+      "id": "2369d0e9-973e-4780-aa24-d24616d8ac71",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/b0295875-51f4-4102-a366-d6ad7d7ad108.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/2369d0e9-973e-4780-aa24-d24616d8ac71.webp",
+      "originalSha256": "840501589b906911d3f0eec5b61097b61ed273264d568c2a1b28568dc61a2607",
+      "previewSha256": "ad0d0783434bb93e1bae51698e311c9bd8cb8ad0b444ff8e30051b5d1539eee5",
+      "previewBytes": 3244
+    },
+    {
+      "id": "2bfd22b4-aa9e-4296-85ee-4e3fa5d9efb7",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/f2fb84fb-b339-4ac6-a7d1-872c2b5e41e3.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/2bfd22b4-aa9e-4296-85ee-4e3fa5d9efb7.webp",
+      "originalSha256": "4055c9fccc04043a38223bd2d3f5d77ab6bbd9a62dd8db9555c4b77e80cedca2",
+      "previewSha256": "ae46dec116a6bc8366990d0276c68c288e48eb3417891ce7328ad3ce9ddff81f",
+      "previewBytes": 16506
+    },
+    {
+      "id": "316e31bc-a6a6-41a9-a566-d9695227b6cf",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/c8d128bd-104c-4d32-8fc9-114aac380849.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/316e31bc-a6a6-41a9-a566-d9695227b6cf.webp",
+      "originalSha256": "c67e3d49ea95a3dc2cccd03484b85869f465f2042aeca6775c6c3e51c2174018",
+      "previewSha256": "5ee007869855addc34ec8bced16af40b9ed00361c52f17ba466d5816b4f9e3b5",
+      "previewBytes": 9976
+    },
+    {
+      "id": "49aa4085-b09d-4e2b-b4e3-fe37fb6ec8f6",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/bf206a2e-b15a-417e-927f-8fc4572a3f69.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/49aa4085-b09d-4e2b-b4e3-fe37fb6ec8f6.webp",
+      "originalSha256": "eca6751da64bde068abe5558ed5b2ffd90fbfbe4327a17ca8f183c024ea6ea81",
+      "previewSha256": "a551fbf0234775f312b8295eb6572becba7247a1f8dd9585c0dea3883eb482af",
+      "previewBytes": 2540
+    },
+    {
+      "id": "49eaea4b-bc46-4ffb-ab27-7b05cc197550",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/564a6971-fdbd-4589-953c-1d19b4b31220.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/49eaea4b-bc46-4ffb-ab27-7b05cc197550.webp",
+      "originalSha256": "4efc780d231725c6b9ea337e9f9c8375a3c551c58c87faf46adf79ce17219013",
+      "previewSha256": "7aff31d961c59167d0b1f675182050597c7cc093e2e351986874f1b7abc2f577",
+      "previewBytes": 5102
+    },
+    {
+      "id": "4d33a89a-b1cf-463b-986b-7ecfa518c2cc",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a7febc99-586f-49a5-8d69-f355b2d6bd45.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/4d33a89a-b1cf-463b-986b-7ecfa518c2cc.webp",
+      "originalSha256": "e34f36d80b62e8b9ffa99b327423d1426f5fc2c98b6b406fd112270369a331d0",
+      "previewSha256": "362521c02430eb1d1971a9a7ea87b02123a24ab4f2581073fb533fba0e21a864",
+      "previewBytes": 5234
+    },
+    {
+      "id": "4ebc9c19-b59e-4e17-969f-35ba17f8af1e",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/9c464322-902a-4b88-b48c-c72c444e8263.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/4ebc9c19-b59e-4e17-969f-35ba17f8af1e.webp",
+      "originalSha256": "74fec456c20045403c9eb2a08745be6d96d6deeb9c9a7dbd238a5cef95fc1dc7",
+      "previewSha256": "833fb55a425c8eb85675a4121754233f0af163da3b87b56edb2167a08a2daa8f",
+      "previewBytes": 4730
+    },
+    {
+      "id": "572ecc80-a976-4585-9afe-7f0c268e90f2",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/29aca9ad-10e3-46a3-8a7f-c838892000ab.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/572ecc80-a976-4585-9afe-7f0c268e90f2.webp",
+      "originalSha256": "201029c70e9a0c4f341c6ae5ca4c782313ca15f0e0aa4669b313a95eaac2c9b3",
+      "previewSha256": "a8e3f413339ec4755a30662638a6aab8487f0d45a183887ddcf05f85eedd18e1",
+      "previewBytes": 4586
+    },
+    {
+      "id": "59b8f555-9a1a-4605-b215-9aa891340aca",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/7215fc04-27e9-4c0f-808d-413c90575f9a.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/59b8f555-9a1a-4605-b215-9aa891340aca.webp",
+      "originalSha256": "1a7c3a09f02891bda0467ced67d0312fd53a7c31b7ae510d53c53ee103af30ed",
+      "previewSha256": "44ddc474d3bc557b7643e52ab8d653f3895a8294f5d0790681725584b64c346b",
+      "previewBytes": 4072
+    },
+    {
+      "id": "5b6917a7-61fe-4348-8266-84265a03f077",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/d4028319-9120-4ea0-b21f-7c1e34086b9a.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/5b6917a7-61fe-4348-8266-84265a03f077.webp",
+      "originalSha256": "611c8ee5aaf8a41912c382d5a07bfdab3e58ea7e4dbf792bcc99c893ff6d37ac",
+      "previewSha256": "5b5dba04c5af5fe4fd4765d5e8f86c96ac62fdeb8bb20899dbd13ca4cc8d4e23",
+      "previewBytes": 13040
+    },
+    {
+      "id": "6230e9f9-06f0-421b-ade1-b08c5d993441",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/e87a48d8-18ed-4559-a224-bee752fe0ccf.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/6230e9f9-06f0-421b-ade1-b08c5d993441.webp",
+      "originalSha256": "02cfdbb39c4a95a65ff1aec7e43a137c6fffe2d7b2cc732d8f7f1736195075f1",
+      "previewSha256": "ccd0c65d1d4f8249d82447800992316216332e845bfb1831d024be3d385e7737",
+      "previewBytes": 6972
+    },
+    {
+      "id": "6c0fc2dc-406a-463a-b37d-aeb22c0227eb",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/3d0ac93e-fd41-4363-a668-dcde58385874.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/6c0fc2dc-406a-463a-b37d-aeb22c0227eb.webp",
+      "originalSha256": "c9afe137679bb49088395a2061ab597592fba2ddd11a2f69bb30ec458d82e068",
+      "previewSha256": "e2a05cdc98e45defd8f791c1cafe63347f529bdda342e303ae0101bcd9f91711",
+      "previewBytes": 7890
+    },
+    {
+      "id": "716c49cf-da8a-40ad-80b2-a46480aa25ab",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/6e4b8ccb-7b5b-4f34-8b2f-cbb408116797.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/716c49cf-da8a-40ad-80b2-a46480aa25ab.webp",
+      "originalSha256": "ce8b653f2a91a0e1582482bf4b126e4f70618e779cf366516eda7cece72a4234",
+      "previewSha256": "b10e58d5f2efd036be7478ab0253ba66f823ee7f935f04e8b56f1991a01f742e",
+      "previewBytes": 3564
+    },
+    {
+      "id": "728156dd-2a93-4e7b-9752-dbc38295be89",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/55cee709-0456-4416-bf59-be6c1c024076.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/728156dd-2a93-4e7b-9752-dbc38295be89.webp",
+      "originalSha256": "69d0a6958961aa4f7f2992ad79623baa6381ba6b122ed5b92f2425dda18949b8",
+      "previewSha256": "1c1eb2fc46aeae06820885c8ab528da5b239c39a9efced1e634f09ff025ee726",
+      "previewBytes": 11584
+    },
+    {
+      "id": "7c170bd6-ec45-4e41-a4db-1829b73c67ba",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/ee17df75-f6d7-44a2-be64-48907ee3ace4.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/7c170bd6-ec45-4e41-a4db-1829b73c67ba.webp",
+      "originalSha256": "14e5a69938597c711c154f6f4dcd9a4dc3626f1c2a90e5787d8e34c28744f642",
+      "previewSha256": "1ecf98363e58bd60e33e2788ce7371d3ad55f6069a6a70f3cf448c35df2c45db",
+      "previewBytes": 3958
+    },
+    {
+      "id": "8095cf7b-00c5-4110-a0b6-95528f49579c",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/2958a599-a2f5-4c94-94c7-5d5eca2e95fb.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/8095cf7b-00c5-4110-a0b6-95528f49579c.webp",
+      "originalSha256": "f37da667d231725db242b96f495e9daa0a92cd7dee2ffb0436f118f12ca7d722",
+      "previewSha256": "a23102d7e8f5ea5988a19916ac2302cda8678f6d152233e26b00b3b0bc470e36",
+      "previewBytes": 6506
+    },
+    {
+      "id": "86a61f3b-3ce5-4636-9e75-d18f0f26180e",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/87ce71b9-02a5-43cd-857e-2ff56cb2873b.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/86a61f3b-3ce5-4636-9e75-d18f0f26180e.webp",
+      "originalSha256": "27a3bdff4505d8f39a487c3172156bdee667b2ca7a10269ed696d6b3f2768b41",
+      "previewSha256": "fea29d152b885919fa2a2a0e1c1c5385cdac7b797ee8425fdf47a2ea1ba3035a",
+      "previewBytes": 4956
+    },
+    {
+      "id": "a01c5608-93f3-4f84-a77a-35fcd91041e6",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/58531a7a-ad7f-4f45-a3e6-3915f014e63d.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/a01c5608-93f3-4f84-a77a-35fcd91041e6.webp",
+      "originalSha256": "4cd76fbf0d19e674053be757990633f870a1c3a90e710bde72aeca7b6d427006",
+      "previewSha256": "7be6d0973802bc12df4c0f73c86d0410ac16a804699aafde2a473788289f42b9",
+      "previewBytes": 8630
+    },
+    {
+      "id": "a448b200-2e38-45e5-ae0d-a93f804f7d75",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/3bca4885-6f2b-4f2c-b9d1-eb61d6bfcde7.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/a448b200-2e38-45e5-ae0d-a93f804f7d75.webp",
+      "originalSha256": "1205cc2ff35cfe02c98b2c0934ef46cb09fd17869341b5b9bbc5cfb14caaa054",
+      "previewSha256": "d65a9b583a6c667d85404bb371fcdf5427432ad40ce459774edf2dc7bfc8dc31",
+      "previewBytes": 3694
+    },
+    {
+      "id": "aa1a6f8f-9c4a-471a-94f6-cc28d10958fa",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/5fb7d39d-6a96-4fff-8522-4a47d2c8485a.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/aa1a6f8f-9c4a-471a-94f6-cc28d10958fa.webp",
+      "originalSha256": "8e2eca13657538b7ecdaeaa68c711d1dc6e2f5e221495c7aafba4ef54aedd8f7",
+      "previewSha256": "1e348061ec429984cdcc7eadb6b4daf8565822d26b191dd6dd8d2db480153f07",
+      "previewBytes": 4320
+    },
+    {
+      "id": "ab97251e-3754-4bcc-8c1a-89398cef23e7",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/4267aa5a-ed55-4768-8908-00fb2d9557f5.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/ab97251e-3754-4bcc-8c1a-89398cef23e7.webp",
+      "originalSha256": "7db11906dcc5e983181aa503b0f968009ba9d77dac5e5f183785da324e083ee1",
+      "previewSha256": "138118c3beda91ce58de730a4b0a48e74fe325f595a41bdbacc5f9446c34929d",
+      "previewBytes": 4294
+    },
+    {
+      "id": "bdf127e5-7702-404a-9508-669dae14cdb3",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/bd256fe2-bff0-4dfa-8d41-64c7f84be163.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/bdf127e5-7702-404a-9508-669dae14cdb3.webp",
+      "originalSha256": "94831cef399618e8861c6fc4009774d8d744fc90f27e09faa1b34f4e4e707da1",
+      "previewSha256": "4277a92b088b08de6e8e092092dafaf1c60fc6f1c49dd7952ec425c41fcaf3bf",
+      "previewBytes": 7922
+    },
+    {
+      "id": "e0be95a3-c3a7-4c4a-ba4f-a3bde4e9b2cb",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/567df4f9-558c-4d3e-8e0e-322cb5d405a5.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/e0be95a3-c3a7-4c4a-ba4f-a3bde4e9b2cb.webp",
+      "originalSha256": "fda704fb0f0ac9f5df9a5da19ada03ae9447f140caf3eb68f6bc1d9b77542d1c",
+      "previewSha256": "bc5edc1300c686d85bf8cbf6bbbfe9606f45999a581d6caedf5d4e84a97bb3a6",
+      "previewBytes": 10580
+    },
+    {
+      "id": "e779dd16-7bc3-4aea-a18a-a5eac2e4e45e",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/a5171d23-13cc-4d03-9b0e-3b546de7f9bf.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/e779dd16-7bc3-4aea-a18a-a5eac2e4e45e.webp",
+      "originalSha256": "848125ce7a53560770c771bdd00b6c237b5bb4ce0021624cda1e15749aa5c426",
+      "previewSha256": "072fc4c666f7c0c5bc0dfaa0937612c8d478c16bf64c718e36e7796fa3475f6f",
+      "previewBytes": 5218
+    },
+    {
+      "id": "ea0e0d5c-e989-401d-91c3-c78c27a4158a",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/ee3ba17d-191c-4424-bd47-895123aeaba8.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/ea0e0d5c-e989-401d-91c3-c78c27a4158a.webp",
+      "originalSha256": "a2b26fc7353c6d838220cd42c5249886ec4171a4df4203fbcae33cddbe7eb141",
+      "previewSha256": "9edce70285630e8889ee43d9826ac711bd2353f7cf7e6eae5864a65203b3f723",
+      "previewBytes": 10120
+    },
+    {
+      "id": "ebeadbfd-da9e-48d6-9cb3-581693bb13da",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/67da9fdd-6d9d-4737-bee3-de64d176f4eb.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/ebeadbfd-da9e-48d6-9cb3-581693bb13da.webp",
+      "originalSha256": "cd7df1baa84ddfcee56b70e5ad86c41e561b6e71235935609bf3c18c926a48b3",
+      "previewSha256": "a489c195c5566084d40a3b7fda88a47fa6009146de2a333785c06d51c43a0414",
+      "previewBytes": 3768
+    },
+    {
+      "id": "ecbbe8d4-32e5-4b12-901a-a8f748df916f",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/c819d85f-4745-4bf4-8774-9875a0a67dad.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/ecbbe8d4-32e5-4b12-901a-a8f748df916f.webp",
+      "originalSha256": "01c5256c508f3dd3e73b549ff3bdaf691c55ced39eba7ebe0f74dc456bfe39cb",
+      "previewSha256": "227a09dc159db181b91fcfc18d886122a28a3cfacbff482050ac82c7b2696492",
+      "previewBytes": 5154
+    },
+    {
+      "id": "ed91b4c5-de44-47e9-855b-128eca2d9def",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/024a2c06-4f22-4fcc-8604-26ffe0c1aa75.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/ed91b4c5-de44-47e9-855b-128eca2d9def.webp",
+      "originalSha256": "fec2d4fb8cf5227b22e233b024c4c11214f131df9b1ff862564492a28830a74f",
+      "previewSha256": "8c85db9e6453132877d5ed619e8430954289866258e91aeafe6bd7a5e2a074dc",
+      "previewBytes": 7476
+    },
+    {
+      "id": "fa657878-aed6-4ebf-85ae-3012f29b9092",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/60996a6d-de77-45b3-bb00-2fb566c765aa.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/fa657878-aed6-4ebf-85ae-3012f29b9092.webp",
+      "originalSha256": "c3436ce9997693b77bf71eaa751ce46a0aac8d0a02f242137cc7ad0d0bd9f1a6",
+      "previewSha256": "1cf2ffedc8a9a4d3d845f946921eb2bf10bbda51bc89893073a310d2dc46df75",
+      "previewBytes": 10866
+    },
+    {
+      "id": "fcec981c-9595-4b91-afda-3bf1ff8969f1",
+      "sourceUrl": "https://fiepaguycecrredwrcwx.supabase.co/storage/v1/object/public/novel-thumbnails/official/66a5657c-9008-4843-b639-48d9149c3571.png",
+      "previewUrl": "/assets/thumbnail-previews/v1/fcec981c-9595-4b91-afda-3bf1ff8969f1.webp",
+      "originalSha256": "2d08dcfe3fe9b03524e5c8c2783c453d93933f12e6502378a96a2361728d89f5",
+      "previewSha256": "3aaf8ac5ba162198a7c8fe22a08d9670401fbec729dbe65cf4558d7d47046244",
+      "previewBytes": 3440
+    }
+  ],
+  "totalPreviewBytes": 1010580
+}
