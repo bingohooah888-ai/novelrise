@@ -61,6 +61,7 @@ test('approved contest landing offers a link to the official terms', () => {
 });
 
 test('rendered terms show the exact consent version saved by the server', () => {
+  assert.equal(CONTEST_TERMS_VERSION_CANDIDATE, 'november-2026-v1');
   assert.ok(contestTermsTemplate.includes(CONTEST_TERMS_VERSION_CANDIDATE));
   assert.match(contestTermsTemplate, /応募要項の版ID/);
 });
