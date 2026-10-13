@@ -136,7 +136,7 @@ BEGIN
 
   WITH activity AS (
     SELECT 'novel'::text AS kind, 'novel:' || e.id::text AS post_key,
-           e.author_user_id, n.id AS novel_id, n.title AS novel_title,
+           e.author_user_id, n.id AS novel_id, NULL::bigint AS episode_id, n.title AS novel_title,
            n.thumbnail_url, '新作「' || n.title || '」を公開しました' AS title,
            NULL::text AS body, NULL::bigint AS note_id,
            e.occurred_at
@@ -149,7 +149,8 @@ BEGIN
     UNION ALL
     SELECT 'episode', 'ep:' || e.author_user_id::text || ':' || e.novel_id::text ||
                    ':' || floor(extract(epoch FROM e.occurred_at)/10800)::bigint::text,
-           e.author_user_id, n.id, n.title, n.thumbnail_url,
+           e.author_user_id, n.id, CASE WHEN count(DISTINCT e.episode_id)=1 THEN max(e.episode_id) ELSE NULL::bigint END,
+           n.title, n.thumbnail_url,
            '「' || n.title || '」の' || count(DISTINCT e.episode_id)::text || 'エピソードを公開しました',
            NULL::text, NULL::bigint, max(e.occurred_at)
       FROM public.author_follow_events e
@@ -165,7 +166,7 @@ BEGIN
               floor(extract(epoch FROM e.occurred_at)/10800)::bigint
     UNION ALL
     SELECT 'note','note:' || note.id::text,
-           note.author_user_id, linked.id, linked.title, linked.thumbnail_url,
+           note.author_user_id, linked.id, NULL::bigint, linked.title, linked.thumbnail_url,
            note.title,note.body,note.id,note.published_at
       FROM public.author_notes note
       LEFT JOIN public.novels linked
@@ -177,7 +178,7 @@ BEGIN
        AND note.published_at<=now()
     UNION ALL
     SELECT 'official', 'official:' || a.id::text,
-           NULL::uuid,NULL::bigint,NULL::text,NULL::text,
+           NULL::uuid,NULL::bigint,NULL::bigint,NULL::text,NULL::text,
            a.title,left(a.body,500)::text,NULL::bigint,a.published_at
       FROM public.announcements a
      WHERE a.status='published' AND a.published_at<=now()
@@ -209,7 +210,7 @@ BEGIN
   SELECT coalesce(jsonb_agg(jsonb_build_object(
        'kind',p.kind,'post_key',p.post_key,'author_user_id',p.author_user_id,
        'author_name', CASE WHEN p.kind='official' THEN 'NOVELIGHT公式' ELSE p.author_name END,
-       'novel_id',p.novel_id,'novel_title',p.novel_title,
+       'novel_id',p.novel_id,'episode_id',p.episode_id,'novel_title',p.novel_title,
        'thumbnail_url',p.thumbnail_url,'title',p.title,'body',p.body,
        'note_id',p.note_id,'occurred_at',p.occurred_at,
        'like_count', (SELECT count(*) FROM public.community_reactions r WHERE r.post_key=p.post_key),
