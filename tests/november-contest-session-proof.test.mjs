@@ -43,7 +43,7 @@ test('backend checks contest state and published work every session', () => {
 
 test('heartbeats rely on server time and bounded sequential progress', () => {
   assert.match(sql, /p_sequence <> v_session\.last_sequence \+ 1/);
-  assert.match(sql, /v_delta := pg_catalog\.extract\(epoch from v_now/);
+  assert.match(sql, /v_delta := extract\(epoch from v_now/);
   assert.match(sql, /v_delta < 8 or v_delta > 45/);
   assert.match(sql, /pg_catalog\.least\(/);
   assert.match(sql, /p_progress_ratio > 1/);
