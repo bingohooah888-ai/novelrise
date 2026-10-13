@@ -33,13 +33,18 @@ function browser(enabled) {
       events.set(name, fn);
     },
     fetch: async (_path, options) => {
-      requests.push(JSON.parse(options.body));
+      const message = JSON.parse(options.body);
+      requests.push(message);
       return {
         ok: true,
         async json() {
-          return requests.length === 1
-            ? { ok: true, session_id: 'test-session-id' }
-            : { ok: true, qualified: false };
+          if (message.action === 'link') {
+            return { ok: true, linked: true };
+          }
+          if (message.action === 'start') {
+            return { ok: true, session_id: 'test-session-id' };
+          }
+          return { ok: true, qualified: false };
         }
       };
     },
@@ -104,10 +109,38 @@ test('active adapter sends bounded scroll evidence and stops on hidden tabs', as
 test('episode render contract fires only after unlock and existing PV remains separate', () => {
   assert.match(continuity, /novelight:episode-rendered/);
   assert.match(continuity, /novelight-contest-read-tracker[.]js/);
-  assert.match(continuity, /installContestReadTracker\(row, content\)/);
+  assert.match(
+    continuity,
+    /installContestReadTracker\(row, content, clientInstance\)/
+  );
   assert.match(source, /NOVELIGHT_CONTEST_READER_CLIENT_ENABLED !== true/);
   assert.doesNotMatch(source, /record_valid_read_progress|record_episode_pv/);
   assert.match(source, /novelight:tts-progress/);
   assert.match(source, /data-tts-action/);
   assert.match(source, /credentials: 'same-origin'/);
+  assert.match(continuity, /clientInstance[.]auth[.]getSession\(\)/);
+  assert.match(source, /action: 'link'/);
+});
+
+test('authenticated read links signed guest evidence before session creation', async () => {
+  const b = browser(true);
+  b.documentEvents.get('novelight:episode-rendered')({
+    detail: {
+      unlocked: true,
+      isAuthor: false,
+      episode: { id: 32 },
+      session: { access_token: 'test-access-token' },
+      content: {
+        scrollHeight: 1000,
+        getBoundingClientRect: () => ({ top: 0, height: 1000 })
+      }
+    }
+  });
+  b.events.get('scroll')();
+  await waitForMicrotasks();
+  await waitForMicrotasks();
+  assert.equal(b.requests[0].action, 'link');
+  assert.equal(b.requests[1].action, 'start');
+  await b.tick();
+  assert.equal(b.requests[2].action, 'heartbeat');
 });

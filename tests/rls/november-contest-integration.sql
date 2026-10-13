@@ -965,6 +965,140 @@ begin
 end
 $session_integrated$;
 
+-- Guest-to-account consolidation, exercised inside a disposable transaction.
+do $guest_account_proof$
+declare
+  v_contest uuid;
+  v_entry uuid;
+  v_novel bigint;
+  v_episode bigint;
+  v_session uuid;
+  v_target uuid := 'caf00000-0000-4000-8000-000000000024';
+  v_target_user uuid := 'caf00000-0000-4000-8000-000000000025';
+  v_guest uuid := 'caf00000-0000-4000-8000-000000000023';
+  v_result jsonb;
+  v_points integer;
+  v_count integer;
+begin
+  if pg_catalog.has_function_privilege(
+    'anon',
+    'public.novelight_contest_link_guest_account(uuid,text,uuid)',
+    'EXECUTE'
+  ) or pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.novelight_contest_link_guest_account(uuid,text,uuid)',
+    'EXECUTE'
+  ) then
+    raise exception 'Guest link privilege leaked to browser clients';
+  end if;
+
+  select c.id,en.id,en.novel_id into v_contest,v_entry,v_novel
+    from public.novelight_contests c
+    join public.novelight_contest_entries en on en.contest_id = c.id
+    join public.novels n on n.id = en.novel_id
+   where n.title = 'CONTEST_CI_ELIGIBLE_A';
+  select public.novelight_contest_link_guest_account(
+    v_contest,repeat('a',64),v_target_user
+  ) into v_result;
+  if v_result->>'reason' <> 'contest_inactive' then
+    raise exception 'Hidden contest allowed a guest claim';
+  end if;
+
+  update public.novelight_contests
+     set status = 'active',public_visible = true
+   where id = v_contest;
+
+  insert into public.novelight_contest_readers (
+    id,contest_id,kind,user_id
+  ) values (v_target,v_contest,'account',v_target_user);
+
+  -- An already-cleared account must be returned to provisional review after
+  -- a new guest claim, rather than silently carrying old clearance forward.
+  update public.novelight_contest_readers
+     set review_status = 'cleared' where id = v_target;
+
+  -- Target already read episode 1 and 4; guest read episode 1, 2 and 3.
+  for v_episode in
+    select id from public.episodes
+     where novel_id = v_novel and episode_number in (1,4)
+  loop
+    insert into public.novelight_contest_read_sessions (
+      contest_id,reader_id,entry_id,episode_id_snapshot,status
+    ) values (
+      v_contest,v_target,v_entry,v_episode,'qualified'
+    ) returning id into v_session;
+    select public.novelight_contest_record_qualified_session(v_session)
+      into v_result;
+  end loop;
+
+  select public.novelight_contest_link_guest_account(
+    v_contest,repeat('a',64),v_target_user
+  ) into v_result;
+  if v_result->>'ok' <> 'true'
+    or v_result->>'linked' <> 'true'
+    or (v_result->>'copied_episodes')::integer <> 2 then
+    raise exception 'Distinct episode consolidation failed: %',v_result;
+  end if;
+
+  select qualified_episode_count,points into v_count,v_points
+    from public.novelight_contest_reader_scores
+   where contest_id = v_contest
+     and reader_id = v_target and entry_id = v_entry;
+  if v_count <> 4 or v_points <> 1 then
+    raise exception 'Merged overlap was double counted: %/%',v_count,v_points;
+  end if;
+  if not exists (
+    select 1 from public.novelight_contest_reader_scores
+     where reader_id = v_target and entry_id = v_entry
+       and review_status = 'provisional'
+  ) then
+    raise exception 'Account clearance was not downgraded on new guest evidence';
+  end if;
+
+  select points into v_points
+    from public.novelight_contest_reader_scores
+   where contest_id = v_contest and reader_id = v_guest
+     and entry_id = v_entry;
+  if v_points <> 0 or not exists (
+    select 1 from public.novelight_contest_readers
+     where id = v_guest and review_status = 'merged'
+       and merged_into_reader_id = v_target
+  ) then
+    raise exception 'Guest points not retired after consolidation';
+  end if;
+
+  select public.novelight_contest_link_guest_account(
+    v_contest,repeat('a',64),v_target_user
+  ) into v_result;
+  if v_result->>'already_linked' <> 'true' then
+    raise exception 'Link replay was not idempotent: %',v_result;
+  end if;
+
+  select public.novelight_contest_link_guest_account(
+    v_contest,repeat('a',64),
+    'caf00000-0000-4000-8000-000000000029'
+  ) into v_result;
+  if v_result->>'reason' <> 'guest_already_linked' then
+    raise exception 'Guest was rebound to another account: %',v_result;
+  end if;
+
+  select id into v_session
+    from public.novelight_contest_read_sessions
+   where reader_id = v_guest and status = 'qualified' limit 1;
+  if v_session is not null then
+    select public.novelight_contest_record_qualified_session(v_session)
+      into v_result;
+    if v_result->>'reason' <> 'not_eligible' then
+      raise exception 'Retired guest session scored again: %',v_result;
+    end if;
+  end if;
+
+  update public.novelight_contests
+     set status = 'draft',public_visible = false
+   where id = v_contest;
+end
+$guest_account_proof$;
+
 rollback;
 
 select 'PASS: November contest migrated schema, owner RPC, private RLS, catalog and score core and read sessions on disposable replay DB' as result;

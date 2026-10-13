@@ -46,6 +46,7 @@
     let interaction = false;
     let speaking = false;
     let disabled = false;
+    let linkChecked = !context.session?.access_token;
     let activeRequest = false;
     let generation = 0;
     let timer = null;
@@ -103,6 +104,18 @@
       const current = generation;
       activeRequest = true;
       try {
+        // The signed guest credential is sent only as an HttpOnly cookie;
+        // the verified account token is sent as Bearer. A failed link never
+        // silently downgrades an authenticated session to guest scoring.
+        if (!linkChecked) {
+          const linked = await send(context, { action: 'link' });
+          if (current !== generation) return;
+          if (linked?.ok !== true) {
+            disabled = true;
+            return;
+          }
+          linkChecked = true;
+        }
         const result = await send(context, {
           action: 'start',
           episode_id: episodeId,

@@ -171,6 +171,7 @@ async function resolveIdentity(db, contestId, kind, value) {
 }
 
 function validAction(body) {
+  if (body.action === 'link') return Object.keys(body).length === 1;
   if (body.action === 'start') {
     return (
       Number.isSafeInteger(body.episode_id) &&
@@ -262,6 +263,48 @@ export function createNovemberContestReaderHandler({
 
       const authorization = authToken(req.headers?.authorization);
       if (authorization === false) return jsonError(res, 401, 'UNAUTHORIZED');
+
+      if (body.action === 'link') {
+        if (!authorization) return jsonError(res, 401, 'UNAUTHORIZED');
+        const auth = await serviceClient.auth.getUser(authorization);
+        const userId = String(auth.data?.user?.id ?? '');
+        if (auth.error || !UUID.test(userId)) {
+          return jsonError(res, 401, 'UNAUTHORIZED');
+        }
+        const rawCookie = cookieFromHeader(req.headers?.cookie);
+        if (rawCookie?.invalid) {
+          return jsonError(res, 401, 'INVALID_GUEST_COOKIE');
+        }
+        if (!rawCookie) {
+          return res.status(200).json({
+            ok: true,
+            linked: false,
+            provisional_only: true
+          });
+        }
+        const token = verifyCookie(rawCookie.value, guestSecret, nowMs);
+        if (!token) return jsonError(res, 401, 'INVALID_GUEST_COOKIE');
+        const linked = await serviceClient.rpc(
+          'novelight_contest_link_guest_account',
+          {
+            p_contest_id: contest.id,
+            p_guest_key_hash: guestHash(token),
+            p_user_id: userId
+          }
+        );
+        if (linked.error) throw linked.error;
+        if (linked.data?.ok !== true) {
+          return res.status(409).json({
+            ok: false,
+            reason: linked.data?.reason || 'link_rejected'
+          });
+        }
+        return res.status(200).json({
+          ok: true,
+          linked: linked.data.linked === true,
+          provisional_only: true
+        });
+      }
 
       let kind;
       let identifier;
