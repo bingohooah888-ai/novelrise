@@ -1,0 +1,5 @@
+NOVELIGHT disposable NLO owner Draft PR synchronize proof
+Date: 2026-10-14
+PR #2219 - NEVER MERGE; CLOSE AFTER LIVE CHECK
+This text fixture is deliberately not a formal document.
+This branch starts behind main so GitHub native update-branch can prove pull_request:synchronize checks.
