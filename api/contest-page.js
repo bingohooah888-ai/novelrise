@@ -22,15 +22,15 @@ export function createContestPageHandler(getDatabase = getSupabase) {
   return async function handler(req, res) {
     if (!methodAllowed(req, res)) return;
 
-  try {
-    const { data, error } = await getDatabase()
-      .from('novelight_contests')
-      .select('public_visible,status')
-      .eq('contest_key', KEY)
-      .maybeSingle();
+    try {
+      const { data, error } = await getDatabase()
+        .from('novelight_contests')
+        .select('public_visible,status')
+        .eq('contest_key', KEY)
+        .maybeSingle();
 
-    if (error || !isContestVisible(data)) return notFound(res);
-    return sendHtml(req, res, contestPageTemplate);
+      if (error || !isContestVisible(data)) return notFound(res);
+      return sendHtml(req, res, contestPageTemplate);
     } catch {
       return notFound(res);
     }
