@@ -184,7 +184,7 @@ begin
     return pg_catalog.jsonb_build_object('ok',false,'reason','invalid_sequence');
   end if;
 
-  v_delta := pg_catalog.extract(epoch from v_now - v_session.last_heartbeat_at);
+  v_delta := extract(epoch from v_now - v_session.last_heartbeat_at);
   if v_delta < 8 or v_delta > 45 then
     return pg_catalog.jsonb_build_object('ok',false,'reason','invalid_interval');
   end if;
