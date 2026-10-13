@@ -2,7 +2,15 @@
 
 > **非公開・運営専用。** 本書は承認判断の材料であり、正式な応募要項・法律意見・新たなオーナー決裁ではない。原本は [Issue #2120 R1〜R11](https://github.com/bingohooah888-ai/novelrise/issues/2120#issuecomment-6122730903)。非公開ページの本番実装は[PR #2149](https://github.com/bingohooah888-ai/novelrise/pull/2149)で2026-10-13にmerge完了。ただし応募要項の正式版採択と受付開始は未承認。
 >
-> 工程⑤は応募受付開始が完了条件。PRのmerge・規約採択だけで完了と判定しない。現在のProduction contestは `draft / public_visible=false`、規約版/URL空、応募0件。migration `20261012135000` は未適用（独立した以前の本番承認あり・正式Ledger経路の安全ブロックは迂回禁止）。
+> 工程⑤は応募受付開始が完了条件。PRのmerge・規約採択だけで完了と判定しない。**2026-10-13の最新監査では**Production contestは `draft / public_visible=false`、規約版/URL空、応募0件。応募資格migration `20261012135000` は正式Ledger経路で**適用済み**（最新main `b2660639b328a2703095f70b3a73f9893da95bb0`）。
+
+## 最新の公開前検証証跡（2026-10-13、以下の過去時点メモより優先）
+
+- **コード／本番**：[PR #2170](https://github.com/bingohooah888-ai/novelrise/pull/2170) で応募資格を全年齢/R15に厳密化しmainへmerge、[Production Approval Ledger #2139](https://github.com/bingohooah888-ai/novelrise/issues/2139) のOWNER署名に基づく [workflow #38344926991](https://github.com/bingohooah888-ai/novelrise/actions/runs/38344926991) により `20261012135000` を適用。claim/executed/postcheckはsuccess。**当初の未適用懸念は解消**、再適用不要。
+- **HTTP**：[PR #2176](https://github.com/bingohooah888-ai/novelrise/pull/2176) の隔離サーバーハンドラテストはNode CI/CodeQLとも成功。main `b2660639b328a2703095f70b3a73f9893da95bb0` のVercel Production/production-readiness-smokeもsuccess。 `/contest`、`/contest.html`、`/api/contest-page`、`/contest-terms`、`/contest-terms.html`、`/api/contest-terms` の6経路は**本番HTTP実測で404**、対照のトップ `/` は正常。取得経路でHTTP Cache-Control/X-Robots-Tagの本番ヘッダー実測はしていない。
+- **Production DB read-only**：migration 169件適用済み。コンテスト専用6件 `20261012130000` 〜 `20261012135000` は全件適用済み。 `draft/public_visible=false/terms_version=''/terms_url=''/entries=0` を維持。応募締切と開催期間は正式JST日時に整合。
+- **判断・承認境界**：応募要項の正式採択と法務・税務・個人情報・送金フロー最終確認はオーナーの希望で最後に回す。別の**「受付開始承認」なしで公開フラグを変更しない**。公開後の実応募/取消、公開200、個人情報/連絡体制はまだ未検証。工程⑤完了扱い・⑥の先行実装はしない。
+- この文書の下に残る「135000未適用」「公開URL404未測定」「余分なmatureがmigrationに含まれる」の記載は**対応前の歴史的分析**であり、現在の事実ではない。現行状態の参照はこの節と[Runbook](./NOVEMBER-CONTEST-STEP05-REGISTRATION-RUNBOOK.md)冒頭を優先する。
 
 ## すでに決定されたもの（追加承認を求め直さない）
 
@@ -28,7 +36,7 @@
 | 賞金予算 | **5位境界で何作品が同点でも全員に1万円ずつ支払うとオーナーが確定**。賞金に固定の総額上限を設けない。支払額の見積りと資金確保は経理上の準備であり、受賞者数の上限を再提案しない。 | **支払方針確定**／実額を運営側で確保 |
 | 後続工程 | ⑥読書ポイント・⑦不正対策・⑧ランキングは現時点で未本番完成。開催開始に間に合うか別工程で確認。 | 後続の検証・承認 |
 
-## 2026-10-13 追加preflight（次の承認までの確定・未確認を分離）
+## 2026-10-13 追加preflight（当時の判断履歴・最新の状況は上記）
 
 ### 前回の本番反映
 - PR #2163の振込不能時再確認・再振込候補文言はmain `e70a3fd89680c4e5c03ee7ec1074c1ad0fabc0c5`へsquash mergeし、Vercel Production `Deployment has completed`を確認済み。**本文は依然candidate、正式要項として未採択**。
