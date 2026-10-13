@@ -83,7 +83,14 @@
           interacted: interaction
         });
         if (current !== generation) return;
-        if (!result?.ok || result.qualified === true || ttsEnded) {
+        if (result?.qualified === true) {
+          // Distinct episode credit is already recorded server-side. Do not
+          // spawn more sessions while later TTS chunks are still playing.
+          disabled = true;
+          reset();
+          return;
+        }
+        if (!result?.ok || ttsEnded) {
           reset();
           return;
         }

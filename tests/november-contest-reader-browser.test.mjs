@@ -150,7 +150,6 @@ test('authenticated read links signed guest evidence before session creation', a
   assert.equal(b.requests[2].action, 'heartbeat');
 });
 
-
 test('TTS requires a playback state signal, not a button click', async () => {
   const b = browser(true);
   b.documentEvents.get('novelight:episode-rendered')({
