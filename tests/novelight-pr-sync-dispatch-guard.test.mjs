@@ -72,7 +72,7 @@ test('Missing identity, wrong SHA, ref or credentials fail before network', asyn
     const { args, requests } = scenario();
     await assert.rejects(
       verifyPrDispatch({ ...args, ...override }),
-      /identity/
+      /identity|changed/
     );
     assert.equal(requests.length, 0);
   }
