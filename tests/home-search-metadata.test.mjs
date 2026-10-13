@@ -17,7 +17,10 @@ test('home page provides Japanese and Latin brand search signals', () => {
     head,
     /<meta name="description" content="[^"]*ノベライト[^"]*小説/u
   );
-  assert.match(home, /<h1 class="home-heading-a11y">NOVELIGHT（ノベライト）｜小説投稿サイト<\/h1>/u);
+  assert.match(
+    home,
+    /<h1 class="home-heading-a11y">NOVELIGHT（ノベライト）｜小説投稿サイト<\/h1>/u
+  );
 });
 
 test('home page consistently specifies canonical domain', () => {
