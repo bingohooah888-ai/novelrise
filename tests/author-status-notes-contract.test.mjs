@@ -125,3 +125,26 @@ test('migration replay includes B #19 behavior and rollback coverage', () => {
   assert.match(replay, /tests\/rls\/author-status-notes\.sql/u);
   assert.match(replay, /20260919090000_author_status_notes_rollback\.sql/u);
 });
+
+test('author status notes keep readable input and saved cards', () => {
+  assert.ok(management.includes('background:rgba(255,255,255,.96)'));
+  assert.ok(management.includes('background:#fff;color:#1f2937'));
+  assert.ok(management.includes('background:#f8fafc;color:#182b3c'));
+  assert.ok(management.includes('.note-body{margin:10px 0;color:#475569'));
+  assert.ok(management.includes('.note.archived{border-color:'));
+});
+
+test('author status notes scroll in separate desktop columns', () => {
+  assert.ok(management.includes('top:18px;max-height:calc(100dvh - 36px)'));
+  assert.ok(management.includes('.list-panel{padding:22px;display:flex'));
+  assert.ok(management.includes('overflow-y:auto;overscroll-behavior:contain'));
+  assert.ok(management.includes('.note-list{overflow:visible}'));
+  assert.ok(management.includes('form.scrollTo({top:0,behavior:'));
+  assert.ok(management.includes("window.matchMedia('(max-width:820px)')"));
+});
+
+test('author status note archive remains a non-destructive action', () => {
+  assert.ok(management.includes("archive.textContent='アーカイブ'"));
+  assert.ok(management.includes('novelight_archive_my_author_note'));
+  assert.doesNotMatch(management, /delete from author_notes/iu);
+});
