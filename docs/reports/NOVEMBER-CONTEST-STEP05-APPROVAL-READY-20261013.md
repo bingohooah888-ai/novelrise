@@ -57,6 +57,12 @@
 
 **版IDを準備した段階の注意：** `november-2026-v1` はPR案に含む**未採択の提案文字列**で、公開規約の正式採用を意味しない。現行Production DBは `terms_version=''`、`terms_url=''`、コンテストは `draft/public_visible=false` のまま。PRを先に本番反映しても募集開始とはならない。オーナーの明示採択と必要な法務・税務確認を満たすまでは正式要項へ昇格させない。
 
+### 応募資格migrationの読み取り専用検証（2026-10-13）
+
+- 最新本番DBの`public.novels`制約 `novels_content_rating_check` は現在 `general`（全年齢）、`sensitive_15`（R15）、`adult_18_nonsexual`（R18）のみ保存可能。読み取り集計は順に81・23・1作品。R18は応募禁止とする正式決定済みルール。
+- 未適用の `20261012135000` は応募RPCの許容カテゴリーに `('general','sensitive_15','mature')` を含む。**現時点の本番CHECK制約では`mature`は保存できないので、これだけで現存するR18作品が応募できると断定しない。** ただし、正式な全年齢/R15だけという仕様と余分な値が一致しない。将来のDB制約緩和で意図せぬ許可が広がらないよう、公開前に厳格な区分一致を検討する。
+- **過去に承認済みのmigrationをその場で書き換えず**、新たなコード／migration修正が必要なら差分を独立レビュー・安全な正規承認に戻す。本人性と同意ゲート、法的な文言検証とは別項目として追跡する。
+
 ## 一次資料（2026-10-13時点）
 
 - 消費者庁「景品類とは」Q15/Q16：<https://www.caa.go.jp/policies/policy/representation/fair_labeling/faq/premium/introduction>
