@@ -110,7 +110,9 @@
         });
         if (current !== generation) return;
         if (!result?.ok || !result.session_id) {
-          if (result?.reason === 'contest_inactive') disabled = true;
+          // An inactive, denied, or exhausted reader must not retry on every
+          // scroll event. A transient transport exception remains retriable.
+          disabled = true;
           return;
         }
         sessionId = result.session_id;

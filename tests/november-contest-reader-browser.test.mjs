@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 import { runInNewContext } from 'node:vm';
+import { setImmediate as waitForMicrotasks } from 'node:timers/promises';
 import test from 'node:test';
 
 const continuity = readFileSync(
@@ -84,7 +85,7 @@ test('active adapter sends bounded scroll evidence and stops on hidden tabs', as
     }
   });
   b.events.get('scroll')();
-  await new Promise((resolve) => setImmediate(resolve));
+  await waitForMicrotasks();
   assert.deepEqual(b.requests[0], {
     action: 'start',
     episode_id: 32,
