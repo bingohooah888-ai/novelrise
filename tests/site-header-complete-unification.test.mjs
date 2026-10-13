@@ -20,7 +20,7 @@ test('no root HTML page exposes the retired Features header link', () => {
   assert.doesNotMatch(client, /index\.html#features/u);
 });
 
-test('public pages keep the exact four navigation links in desktop and mobile', () => {
+test('public navigation has four links in both layouts', () => {
   const expected = [
     ['search.html', '作品を探す'],
     ['ranking.html', 'ランキング'],
