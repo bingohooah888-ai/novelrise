@@ -715,6 +715,46 @@ begin
     raise exception 'Reader-level hold counted points: %',v_result;
   end if;
 
+  -- Operator state transitions must update scoring in the SAME transaction.
+  -- Six of ten episode events remain individually held; four are eligible.
+  select public.novelight_contest_admin_review_reader(
+    v_contest_id,v_reader_id,
+    'caf00000-0000-4000-8000-000000000091',
+    'reopen','review_hold','appeal_review',
+    'Contest reader contested the prior automatic evidence hold'
+  ) into v_result;
+  if v_result->>'review_status' <> 'provisional' or
+     (select points from public.novelight_contest_reader_scores
+       where reader_id = v_reader_id and entry_id = v_entry_id) <> 1 then
+    raise exception 'Reopen did not safely restore provisional work score: %',v_result;
+  end if;
+
+  select public.novelight_contest_admin_review_reader(
+    v_contest_id,v_reader_id,
+    'caf00000-0000-4000-8000-000000000091',
+    'clear','provisional','manual_evidence',
+    'Independent verification reviewed the underlying episode ledger'
+  ) into v_result;
+  if v_result->>'review_status' <> 'cleared' or
+     (select review_status from public.novelight_contest_reader_scores
+       where reader_id = v_reader_id and entry_id = v_entry_id) <> 'cleared' or
+     (select points from public.novelight_contest_reader_scores
+       where reader_id = v_reader_id and entry_id = v_entry_id) <> 1 then
+    raise exception 'Cleared operator score did not match evidence: %',v_result;
+  end if;
+
+  select public.novelight_contest_admin_review_reader(
+    v_contest_id,v_reader_id,
+    'caf00000-0000-4000-8000-000000000091',
+    'hold','cleared','manual_evidence',
+    'New conflicting evidence requires manual review of cleared state'
+  ) into v_result;
+  if v_result->>'review_status' <> 'review_hold' or
+     (select points from public.novelight_contest_reader_scores
+       where reader_id = v_reader_id and entry_id = v_entry_id) <> 0 then
+    raise exception 'Hold after clearance failed to suppress score: %',v_result;
+  end if;
+
   -- An account reading its author's work never yields an award point.
   insert into public.novelight_contest_read_sessions (
     contest_id, reader_id, entry_id, episode_id_snapshot, status
