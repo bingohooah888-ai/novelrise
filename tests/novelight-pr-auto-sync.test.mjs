@@ -39,6 +39,8 @@ function mockGithub({
   comparison = { behind_by: 1 },
   draft = pull(),
   comments = [],
+  commentsSequence = [comments],
+  changedFiles = [{ filename: 'tests/fixtures/safe-sync.txt' }],
   mainSequence = [MAIN, MAIN],
   liveSequence = [
     draft,
@@ -56,6 +58,7 @@ function mockGithub({
   const requests = [];
   let mainReads = 0;
   let prReads = 0;
+  let commentsReads = 0;
   const fetchImpl = async (url, options = {}) => {
     const path = url.replace('https://api.github.com', '');
     const method = options.method || 'GET';
@@ -72,7 +75,12 @@ function mockGithub({
     } else if (path.endsWith('/pulls?state=open&base=main&per_page=100')) {
       data = [draft];
     } else if (path.endsWith('/issues/2204/comments?per_page=100')) {
-      data = comments;
+      data =
+        commentsSequence[
+          Math.min(commentsReads++, commentsSequence.length - 1)
+        ];
+    } else if (path.endsWith('/pulls/2204/files?per_page=100')) {
+      data = changedFiles;
     } else if (path.includes('/compare/')) {
       data = path.includes('c'.repeat(40)) ? { behind_by: 0 } : comparison;
     } else if (path.endsWith('/pulls/2204/update-branch') && method === 'PUT') {
@@ -168,6 +176,69 @@ test('Current or approved PRs cannot be updated', async () => {
       false
     );
   }
+});
+
+test('High-risk file paths are never automatically synced, even without approval', async () => {
+  for (const changedFiles of [
+    [{ filename: 'login.html' }],
+    [{ filename: '.github/workflows/ci.yml' }],
+    [{ filename: 'supabase/migrations/20261014_test.sql' }],
+    [
+      {
+        filename: 'tests/fixtures/safe.txt',
+        previous_filename: 'api/production-auth.js'
+      }
+    ]
+  ]) {
+    const { args, requests } = mockGithub({ changedFiles });
+    const out = await synchronizeDrafts(args);
+    assert.deepEqual(out.updated, []);
+    assert.deepEqual(out.deferred, [2204]);
+    assert.equal(
+      requests.some((request) => request.method === 'PUT'),
+      false
+    );
+  }
+});
+
+test('Unsafe or incomplete PR file enumeration fails closed', async () => {
+  for (const changedFiles of [
+    [],
+    Array.from({ length: 100 }, () => ({
+      filename: 'tests/fixtures/marker.txt'
+    })),
+    [{ filename: null }]
+  ]) {
+    const { args, requests } = mockGithub({ changedFiles });
+    const out = await synchronizeDrafts(args);
+    assert.deepEqual(out.deferred, [2204]);
+    assert.equal(
+      requests.some((request) => request.method === 'PUT'),
+      false
+    );
+  }
+});
+
+test('New approval arriving after initial read blocks native update', async () => {
+  const { args, requests } = mockGithub({
+    commentsSequence: [
+      [],
+      [{ body: 'NOVELIGHT_HIGH_RISK_APPROVE test-only-late-approval' }]
+    ]
+  });
+  const out = await synchronizeDrafts(args);
+  assert.deepEqual(out.updated, []);
+  assert.deepEqual(out.deferred, [2204]);
+  assert.equal(
+    requests.filter((r) =>
+      r.path.endsWith('/issues/2204/comments?per_page=100')
+    ).length,
+    2
+  );
+  assert.equal(
+    requests.some((request) => request.method === 'PUT'),
+    false
+  );
 });
 
 test('A changing PR head or main ref prevents the update', async () => {

@@ -81,7 +81,7 @@
     },
     {
       "id": "nlo.github.owner-draft-pr-sync",
-      "description": "Automatically synchronize owner Draft PRs using NLO's existing owner-authenticated GitHub session, allowing native PR checks; no new PAT or Actions Secret.",
+      "description": "Automatically synchronize eligible non-high-risk owner Draft PRs using NLO's existing scoped GitHub owner credential and native PR CI; requires Pull requests and Contents write; no new PAT or Actions Secret.",
       "intents": [
         "synchronize draft pull request branch",
         "keep owner draft PR up to date",
@@ -98,14 +98,15 @@
         "repo_metadata_read",
         "pull_request_read",
         "issue_comments_read",
-        "pull_requests_write"
+        "pull_requests_write",
+        "repo_contents_write"
       ],
       "testCommands": [
         "node --test tests/novelight-pr-auto-sync.test.mjs"
       ],
-      "version": "0.3.0",
-      "status": "testing",
-      "provenance": "2026-10-14 migration away from incompatible GITHUB_TOKEN workflow_dispatch required-check path; activation requires live proof"
+      "version": "0.4.0",
+      "status": "enabled",
+      "provenance": "2026-10-14 #2219 live native PR synchronize CI/CodeQL proof; high-risk path and late-approval guards; activation requires protected main merge and local NLO update"
     }
   ]
 }
