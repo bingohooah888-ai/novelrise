@@ -5,14 +5,14 @@ import test from 'node:test';
 
 const sql = readFileSync(
   new URL(
-    '../supabase/migrations/20261013210000_november_contest_rank_operator.sql',
+    '../supabase/migrations/20261013223000_november_contest_rank_operator.sql',
     import.meta.url
   ),
   'utf8'
 );
 const rollback = readFileSync(
   new URL(
-    '../supabase/rollback/20261013210000_november_contest_rank_operator_rollback.sql',
+    '../supabase/rollback/20261013223000_november_contest_rank_operator_rollback.sql',
     import.meta.url
   ),
   'utf8'
