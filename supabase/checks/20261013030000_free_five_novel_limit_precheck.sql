@@ -1,4 +1,4 @@
--- NOVELIGHT: read-only read-only precheck before raising the Free novel limit from 2 to 5.
+-- NOVELIGHT: read-only precheck before raising the Free novel limit from 2 to 5.
 
 do $$
 declare
