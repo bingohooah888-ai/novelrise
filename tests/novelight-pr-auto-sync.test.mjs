@@ -13,7 +13,6 @@ const REPO = 'bingohooah888-ai/novelrise';
 const MAIN = 'a'.repeat(40);
 const HEAD = 'b'.repeat(40);
 const READ = 'readonly-test-token';
-const WRITE = 'separate-app-test-token';
 
 function pull(overrides = {}) {
   return {
@@ -26,6 +25,7 @@ function pull(overrides = {}) {
     base: { ref: 'main' },
     head: {
       sha: HEAD,
+      ref: 'feat/test-owner-draft',
       repo: { full_name: REPO }
     },
     auto_merge: null,
@@ -39,7 +39,15 @@ function mockGithub({
   draft = pull(),
   comments = [],
   mainSequence = [MAIN, MAIN],
-  liveSequence = [draft, draft]
+  liveSequence = [
+    draft,
+    draft,
+    pull({ head: {
+      sha: 'c'.repeat(40),
+      ref: 'feat/test-owner-draft',
+      repo: { full_name: REPO }
+    } })
+  ]
 } = {}) {
   const requests = [];
   let mainReads = 0;
@@ -62,11 +70,15 @@ function mockGithub({
     } else if (path.endsWith('/issues/2204/comments?per_page=100')) {
       data = comments;
     } else if (path.includes('/compare/')) {
-      data = comparison;
+      data = path.includes('c'.repeat(40)) ? { behind_by: 0 } : comparison;
     } else if (path.endsWith('/pulls/2204/update-branch') && method === 'PUT') {
-      assert.equal(options.headers.Authorization, 'Bearer ' + WRITE);
+      assert.equal(options.headers.Authorization, 'Bearer ' + READ);
       assert.deepEqual(JSON.parse(options.body), { expected_head_sha: HEAD });
       data = { message: 'Updating pull request branch.' };
+    } else if (path.includes('/actions/workflows/') && method === 'POST') {
+      assert.equal(options.headers.Authorization, 'Bearer ' + READ);
+      assert.equal(JSON.parse(options.body).ref, 'feat/test-owner-draft');
+      data = {};
     } else {
       throw new Error('Unexpected GitHub request ' + method + ' ' + path);
     }
@@ -81,7 +93,7 @@ function mockGithub({
     event: 'pull_request_target',
     prNumber: 2204,
     readToken: READ,
-    writeToken: WRITE,
+    writeToken: READ,
     nowMs: Date.parse('2026-10-13T16:00:00Z'),
     fetchImpl
   };
@@ -113,15 +125,15 @@ test('Behind branches sync only if mergeable', () => {
   assert.throws(() => shouldUpdateBranch({}, pull()), /Unrecognized/);
 });
 
-test('External write token is mandatory', async () => {
+test('Only the native GitHub Actions token is required', async () => {
   const { args, requests } = mockGithub();
   await assert.rejects(
     synchronizeDrafts({ ...args, writeToken: '' }),
-    /separate write/
+    /GitHub Actions token is required/
   );
   await assert.rejects(
-    synchronizeDrafts({ ...args, writeToken: READ }),
-    /separate write/
+    synchronizeDrafts({ ...args, readToken: '' }),
+    /GitHub Actions token is required/
   );
   assert.equal(requests.length, 0);
 });
@@ -132,12 +144,19 @@ test('GitHub update-branch needs exact head SHA', async () => {
   assert.deepEqual(outcome.updated, [2204]);
   assert.equal(outcome.checked, 1);
   const writes = requests.filter((x) => x.method !== 'GET');
-  assert.equal(writes.length, 1);
+  assert.equal(writes.length, 3);
   assert.match(writes[0].path, /\/pulls\/2204\/update-branch$/);
-  assert.ok(requests.every((x) => !/merge|deploy|workflow/.test(x.path)));
+  assert.equal(writes[0].method, 'PUT');
+  assert.deepEqual(
+    writes.filter((x) => x.method === 'POST').map((x) => x.path),
+    [
+      '/repos/' + REPO + '/actions/workflows/ci.yml/dispatches',
+      '/repos/' + REPO + '/actions/workflows/codeql.yml/dispatches'
+    ]
+  );
   assert.equal(
     requests.filter((x) => x.path.endsWith('/git/ref/heads/main')).length,
-    2
+    3
   );
 });
 
@@ -250,10 +269,12 @@ test('Trusted workflow cannot run untrusted code', () => {
   assert.match(workflow, /NOVELIGHT High-Risk PR Approval Relay/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /persist-credentials: false/);
-  assert.match(workflow, /secrets\.NOVELIGHT_BRANCH_SYNC_TOKEN/);
+  assert.match(workflow, /actions: write/);
+  assert.match(workflow, /pull-requests: write/);
+  assert.doesNotMatch(workflow, /secrets\.NOVELIGHT_BRANCH_SYNC_TOKEN/);
   assert.doesNotMatch(
     workflow,
     /pull_request\.head\.ref|checkout.*head|gh pr merge/
   );
-  assert.doesNotMatch(workflow, /contents: write|pull-requests: write/);
+  assert.doesNotMatch(workflow, /contents: write|gh pr merge/);
 });
