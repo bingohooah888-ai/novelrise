@@ -66,3 +66,22 @@ test('audience styles use ivory cards and dark ink instead of navy', () => {
   assert.match(css, /\.audience-card p\s*\{[^}]*color:\s*#56606e;/u);
   assert.doesNotMatch(css, /background:\s*#06101d|background:\s*#0b1727/u);
 });
+
+test('guide copy uses readable font sizes', () => {
+  const expected = [
+    ['.audience-kicker', 14],
+    ['.audience-lead', 18],
+    ['.audience-section-head p', 17],
+    ['.audience-card h3', 19],
+    ['.audience-card p', 17],
+    ['.audience-card a', 16],
+    ['.audience-cta p', 17],
+    ['.audience-primary,\n.audience-secondary', 16]
+  ];
+  for (const [selector, pixels] of expected) {
+    const block = css.split(selector + ' {')[1]?.split('}')[0] || '';
+    assert.ok(block.includes('font-size: ' + pixels + 'px;'), selector);
+  }
+  assert.ok(css.includes('font-size: clamp(32px, 5vw, 44px);'));
+  assert.ok(css.includes('.audience-lead {\n    font-size: 17px;'));
+});

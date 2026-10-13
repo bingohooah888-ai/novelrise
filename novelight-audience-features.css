@@ -26,7 +26,7 @@
   display: block;
   margin-bottom: 10px;
   color: #8a6518;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -51,7 +51,7 @@
   max-width: 760px;
   margin: 18px 0 0;
   color: #56606e;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.9;
 }
 
@@ -75,7 +75,7 @@
   max-width: 760px;
   margin: 10px 0 0;
   color: #626b76;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.85;
 }
 
@@ -97,14 +97,14 @@
 .audience-card h3 {
   margin: 0 0 9px;
   color: #1b2430;
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1.55;
 }
 
 .audience-card p {
   margin: 0;
   color: #56606e;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.85;
 }
 
@@ -112,7 +112,7 @@
   display: inline-flex;
   margin-top: 15px;
   color: #8a6518;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   text-decoration: none;
 }
@@ -145,7 +145,7 @@
   max-width: 640px;
   margin: 12px auto 22px;
   color: #56606e;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.85;
 }
 
@@ -164,7 +164,7 @@
   justify-content: center;
   padding: 11px 20px;
   border-radius: 9px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   text-decoration: none;
 }
@@ -220,7 +220,7 @@
   }
 
   .audience-lead {
-    font-size: 15px;
+    font-size: 17px;
   }
 
   .audience-cta {
