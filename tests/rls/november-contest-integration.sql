@@ -338,6 +338,17 @@ begin
   if v_result->>'reason' <> 'ineligible_work_category' then
     raise exception 'Owner R18 work bypassed entry-category gate: %', v_result;
   end if;
+  select public.novelight_contest_entry_context(
+    'novelight-november-2026'
+  ) into v_result;
+  if not exists (
+    select 1
+      from jsonb_array_elements(v_result->'works') as w
+     where w->>'title' = 'CONTEST_CI_ELIGIBLE_A'
+       and w->>'eligible' = 'false'
+  ) then
+    raise exception 'Owner R18 work incorrectly marked eligible: %', v_result;
+  end if;
 end
 $category_r18$;
 reset role;
