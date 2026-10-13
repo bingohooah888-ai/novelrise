@@ -310,13 +310,19 @@
   }
 
   async function fetchNeutralNew(limit = pageSize) {
-    const result = await client.rpc('novelight_neutral_search', {
-      p_keyword: null,
-      p_genre: null,
-      p_sort: 'new',
+    let result = await client.rpc('novelight_recent_updates_feed', {
       p_limit: limit,
       p_offset: neutralOffset
     });
+    if (shouldFallbackFeed(result, 'novelight_recent_updates_feed')) {
+      result = await client.rpc('novelight_neutral_search', {
+        p_keyword: null,
+        p_genre: null,
+        p_sort: 'new',
+        p_limit: limit,
+        p_offset: neutralOffset
+      });
+    }
     if (result.error) throw result.error;
     const rows = Array.isArray(result.data) ? result.data : [];
     if (neutralTotal === null) neutralTotal = Number(rows[0]?.total_count ?? rows.length);

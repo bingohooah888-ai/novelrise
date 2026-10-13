@@ -43,7 +43,7 @@ meet the public ranking publication requirement.
 ## Risks and next gates
 
 - One new migration:
-  \`20261013210000_november_contest_rank_operator.sql\`; no new tables.
+  \`20261013223000_november_contest_rank_operator.sql\`; no new tables.
   Private RPC roles, audit idempotency boundaries, draft mismatch protection.
 - Rollback refuses to erase functions after automatic or operator audit events.
 - Test scope: Node admin-auth/CSRF/flag validation, Cron secret / date window /

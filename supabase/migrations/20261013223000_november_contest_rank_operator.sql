@@ -2,7 +2,7 @@
 -- No scheduled job, activation flag, opening or automatic publication here.
 begin;
 select pg_catalog.pg_advisory_xact_lock(
-  pg_catalog.hashtext('novelight:20261013210000:ranking-operator')
+  pg_catalog.hashtext('novelight:20261013223000:ranking-operator')
 );
 
 create or replace function public.novelight_contest_rank_release_preview(
