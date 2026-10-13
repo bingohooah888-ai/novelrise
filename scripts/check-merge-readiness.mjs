@@ -239,7 +239,7 @@ requireIncludes(
 );
 requireIncludes(
   mergeReadinessJob,
-  'git merge-base --is-ancestor "origin/${GITHUB_BASE_REF}" HEAD',
+  'git merge-base --is-ancestor "origin/${base_ref}" HEAD',
   'merge-readiness latest-main check',
 );
 requireIncludes(
