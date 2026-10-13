@@ -1,6 +1,6 @@
 # NOVELIGHT 11月コンテスト：工程⑤ 本番反映承認前チェック（2026-10-13）
 
-> **非公開・運営専用。** 本書は承認判断の材料であり、正式な応募要項・法律意見・新たなオーナー決裁ではない。原本は [Issue #2120 R1〜R11](https://github.com/bingohooah888-ai/novelrise/issues/2120#issuecomment-6122730903)。製品実装候補は[PR #2149](https://github.com/bingohooah888-ai/novelrise/pull/2149)。
+> **非公開・運営専用。** 本書は承認判断の材料であり、正式な応募要項・法律意見・新たなオーナー決裁ではない。原本は [Issue #2120 R1〜R11](https://github.com/bingohooah888-ai/novelrise/issues/2120#issuecomment-6122730903)。非公開ページの本番実装は[PR #2149](https://github.com/bingohooah888-ai/novelrise/pull/2149)で2026-10-13にmerge完了。ただし応募要項の正式版採択と受付開始は未承認。
 >
 > 工程⑤は応募受付開始が完了条件。PRのmerge・規約採択だけで完了と判定しない。現在のProduction contestは `draft / public_visible=false`、規約版/URL空、応募0件。migration `20261012135000` は未適用（独立した以前の本番承認あり・正式Ledger経路の安全ブロックは迂回禁止）。
 
@@ -38,7 +38,7 @@
 
 ## 承認・本番操作の境界
 
-1. **PR #2149 の本番反映**は、規約の正式採択および対象を限定したオーナーの「PR #2149 本番承認」後にのみ実行。現状の規約は **候補**。本番へ反映しても contest が draft の限り404が正常。
+1. **PR #2149 の非公開基盤はユーザー指定の『PR #2149 本番承認』で2026-10-13にsquash merge完了**（main `8cf68be53c2f19afff2e5f48df91fe39ead97f07`、Vercel成功）。**規約はなお候補で正式採択されていない**。応募受付や一般公開の承認を意味せず、contest が draft の限り404が正常。
 2. 既に承認されたmigration `20261012135000` の正規Approval Ledgerが安全性チェックに拒否された履歴は保持し、別経路・直接SQL等で迂回しない。新しい実行の許可と機械証跡は現行手続による。
 3. **「受付開始承認」は独立した最後の公開操作**。正式版/URLのDB反映、応募資格RPC、受付期間、非公開404、応募同意・取消の検証完了を条件にし、承認なしで `status='registration'` や `public_visible=true` に変更しない。
 4. 新規Preview / Supabase Stagingは費用発生の別承認がない限り作らない。

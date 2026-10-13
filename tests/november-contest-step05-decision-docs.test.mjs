@@ -24,6 +24,10 @@ test('stage 05 terms and runbook align on award timing', () => {
   assert.match(runbook, /R1〜R11は2026-10-12にオーナー決裁済み/);
   assert.match(runbook, /非公開状態の.*404が正常/);
   assert.match(runbook, /20261012135000/);
+  assert.match(runbook, /非公開ページ基盤.*本番反映済み/);
+  assert.match(runbook, /Production v2には応募作品区分の判定が未実装/);
+  assert.match(runbook, /送信と受信はenabled/);
+  assert.match(runbook, /公開・送信は禁止/);
   assert.match(runbook, /応募資格制限migration/);
   assert.match(runbook, /参加資格R2.*決裁済み/);
   assert.doesNotMatch(runbook, /参加許可カテゴリーと専用ゾーン掲載は未決裁/);
