@@ -1138,3 +1138,79 @@ begin
 end
 $guest_creation_guard$;
 rollback;
+
+
+-- Stage 07 private risk signals; all changes rolled back in CI.
+begin;
+do $risk_fixture$
+declare
+  v_contest uuid;
+  v_account uuid;
+  v_result jsonb;
+  v_guest integer;
+begin
+  if pg_catalog.has_function_privilege(
+    'anon',
+    'public.novelight_contest_reader_risk_signals(uuid,uuid)',
+    'EXECUTE'
+  ) or pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.novelight_contest_reader_risk_signals(uuid,uuid)',
+    'EXECUTE'
+  ) then
+    raise exception 'Risk detection RPC leaked to ordinary readers';
+  end if;
+
+  select id into v_contest from public.novelight_contests
+   where contest_key = 'novelight-november-2026';
+
+  select public.novelight_contest_reader_risk_signals(
+    v_contest,pg_catalog.gen_random_uuid()
+  ) into v_result;
+  if v_result->>'reason' <> 'reader_not_found' then
+    raise exception 'Risk RPC revealed an unknown reader: %',v_result;
+  end if;
+
+  insert into public.novelight_contest_readers (
+    contest_id,kind,user_id
+  ) values (
+    v_contest,'account','caf00000-0000-4000-8000-000000000089'
+  ) returning id into v_account;
+
+  select public.novelight_contest_reader_risk_signals(
+    v_contest,v_account
+  ) into v_result;
+  if v_result->>'ok' <> 'true'
+     or v_result->>'requires_manual_review' <> 'false'
+     or v_result->>'review_status' <> 'provisional' then
+    raise exception 'Clean reader falsely flagged: %',v_result;
+  end if;
+
+  for v_guest in 1..3 loop
+    insert into public.novelight_contest_readers (
+      contest_id,kind,guest_key_hash,review_status,merged_into_reader_id
+    ) values (
+      v_contest,'guest',
+      pg_catalog.repeat(v_guest::text,64),
+      'merged',v_account
+    );
+  end loop;
+
+  select public.novelight_contest_reader_risk_signals(
+    v_contest,v_account
+  ) into v_result;
+  if v_result->>'requires_manual_review' <> 'true'
+     or not (v_result->'signal_codes' @>
+       '["multiple_linked_guest_credentials"]'::jsonb)
+     or (v_result->'metrics'->>'linked_guest_credentials')::integer <> 3 then
+    raise exception 'Multi-guest claim evidence was missed: %',v_result;
+  end if;
+  if (select review_status
+       from public.novelight_contest_readers
+      where id = v_account) <> 'provisional' then
+    raise exception 'Read-only risk assessment made a punitive mutation';
+  end if;
+end
+$risk_fixture$;
+rollback;
+select 'PASS: stage-07 private risk signals, role isolation, non-punitive evaluation' as result;

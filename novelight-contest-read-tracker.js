@@ -45,6 +45,7 @@
     let progress = 0;
     let interaction = false;
     let speaking = false;
+    let ttsEnded = false;
     let disabled = false;
     let linkChecked = !context.session?.access_token;
     let activeRequest = false;
@@ -53,6 +54,7 @@
 
     function reset() {
       generation += 1;
+      ttsEnded = false;
       sessionId = null;
       sequence = 0;
       progress = 0;
@@ -81,7 +83,14 @@
           interacted: interaction
         });
         if (current !== generation) return;
-        if (!result?.ok || result.qualified === true) {
+        if (result?.qualified === true) {
+          // Distinct episode credit is already recorded server-side. Do not
+          // spawn more sessions while later TTS chunks are still playing.
+          disabled = true;
+          reset();
+          return;
+        }
+        if (!result?.ok || ttsEnded) {
           reset();
           return;
         }
@@ -150,17 +159,23 @@
       if (!sessionId) void begin('scroll');
     }
 
-    function onTtsControls(event) {
-      const action = event.target?.closest?.('[data-tts-action]')
-        ?.getAttribute('data-tts-action');
-      if (!action) return;
-      if (action === 'start' || action === 'resume') {
+    function onTtsState(event) {
+      const state = event.detail?.state;
+      if (state === 'playing') {
+        if (doc.visibilityState !== 'visible') return;
         speaking = true;
+        ttsEnded = false;
         if (mode !== 'tts') reset();
         if (!sessionId) void begin('tts');
-      } else if (action === 'pause' || action === 'stop') {
+      } else if (state === 'paused' || state === 'stopped') {
         speaking = false;
+        ttsEnded = false;
         if (mode === 'tts') reset();
+      } else if (state === 'ended' && mode === 'tts') {
+        // The final progress event runs first. Keep the ongoing heartbeat
+        // alive until its result, then close without inventing more time.
+        ttsEnded = true;
+        if (!activeRequest) void beat();
       }
     }
 
@@ -172,10 +187,10 @@
         interaction = true;
       }
       if (event.detail?.completed) {
-        void beat();
-        speaking = false;
-        // Let the next foreground heartbeat observe the final progress if
-        // one is already running. Ending speech is not itself proof of time.
+        ttsEnded = true;
+        if (!activeRequest) void beat();
+        // Do not infer a qualification from speech ending alone. The
+        // server-observed heartbeat must pass its time/progress thresholds.
       }
     }
 
@@ -194,7 +209,7 @@
     inputs.forEach((event) => {
       global.addEventListener(event, onScroll, { passive: true });
     });
-    doc.addEventListener('click', onTtsControls);
+    doc.addEventListener('novelight:tts-state', onTtsState);
     doc.addEventListener('novelight:tts-progress', onTtsProgress);
     doc.addEventListener('visibilitychange', onVisibility);
     global.addEventListener('offline', onOffline);
