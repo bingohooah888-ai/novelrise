@@ -1,6 +1,6 @@
 // NOVELIGHT: sync owner-authored Draft PRs from current main.
 // This module never checks out PR code and has no merge/approval/deploy action.
-// A separate scoped GitHub App/PAT token is required so PR CI is emitted.
+// Uses GITHUB_TOKEN with explicit workflow_dispatch CI/CodeQL follow-up.
 const SHA = /^[0-9a-f]{40}$/;
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const PREFIX = 'https://api.github.com';
@@ -59,10 +59,8 @@ export async function synchronizeDrafts({
   if (!REPO.test(repository || '') || !validEvent(event)) {
     throw new Error('Unexpected repository or trigger');
   }
-  if (!readToken || !writeToken || readToken === writeToken) {
-    throw new Error(
-      'NOVELIGHT_BRANCH_SYNC_TOKEN must be a separate write-capable GitHub App/PAT credential'
-    );
+  if (!readToken || !writeToken) {
+    throw new Error('GitHub Actions token is required');
   }
   if (!['push', 'workflow_run'].includes(event) &&
       (!Number.isSafeInteger(prNumber) ||
@@ -91,6 +89,7 @@ export async function synchronizeDrafts({
         path.split('?')[0].replace(/\/\d+(?=\/|$)/g, '/:id')
       );
     }
+    if (response.status === 204) return {};
     return response.json();
   }
 
@@ -177,8 +176,51 @@ export async function synchronizeDrafts({
         !/updat/i.test(result.message)) {
       throw new Error('GitHub did not confirm update-branch request');
     }
+    // GitHub's native branch update is asynchronous. Dispatch checks only
+    // after the new owner-branch HEAD contains the current main.
+    let newHead = null;
+    for (let poll = 0; poll < 15; poll += 1) {
+      const synced = await api(base + '/pulls/' + number, readToken);
+      if (
+        synced.head?.sha !== live.head.sha &&
+        synced.head?.repo?.full_name === repository &&
+        synced.head?.ref === live.head.ref &&
+        isEligibleDraft(synced, repository)
+      ) {
+        const state = await api(
+          base + '/compare/' + currentMain + '...' + synced.head.sha,
+          readToken
+        );
+        if (state.behind_by === 0) {
+          newHead = synced.head.sha;
+          break;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    }
+    if (!SHA.test(newHead || '')) {
+      throw new Error('Branch update not verifiably complete; CI dispatch blocked');
+    }
+    const latestBase = (await getMain()).object?.sha;
+    if (latestBase !== currentMain) {
+      throw new Error('main moved before CI dispatch; refusing stale attestation');
+    }
+    const inputs = {
+      pr_number: String(number),
+      expected_head_sha: newHead
+    };
+    for (const workflow of ['ci.yml', 'codeql.yml']) {
+      await api(
+        base + '/actions/workflows/' + workflow + '/dispatches',
+        writeToken,
+        {
+          method: 'POST',
+          body: { ref: live.head.ref, inputs }
+        }
+      );
+    }
     outcome.updated.push(number);
-    log('Requested GitHub native update-branch for Draft PR #' + number);
+    log('Synced Draft PR #' + number + ' and dispatched exact-HEAD CI/CodeQL');
   }
   return outcome;
 }
@@ -191,7 +233,7 @@ async function main() {
     event,
     prNumber: eventNumber,
     readToken: process.env.GITHUB_TOKEN,
-    writeToken: process.env.NOVELIGHT_BRANCH_SYNC_TOKEN,
+    writeToken: process.env.GITHUB_TOKEN,
     log: console.log
   });
   console.log('PR autosync: ' + JSON.stringify(result));
