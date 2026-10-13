@@ -78,10 +78,6 @@ function mockGithub({
       assert.equal(options.headers.Authorization, 'Bearer ' + READ);
       assert.deepEqual(JSON.parse(options.body), { expected_head_sha: HEAD });
       data = { message: 'Updating pull request branch.' };
-    } else if (path.includes('/actions/workflows/') && method === 'POST') {
-      assert.equal(options.headers.Authorization, 'Bearer ' + READ);
-      assert.equal(JSON.parse(options.body).ref, 'feat/test-owner-draft');
-      data = {};
     } else {
       throw new Error('Unexpected GitHub request ' + method + ' ' + path);
     }
@@ -128,35 +124,29 @@ test('Behind branches sync only if mergeable', () => {
   assert.throws(() => shouldUpdateBranch({}, pull()), /Unrecognized/);
 });
 
-test('Only the native GitHub Actions token is required', async () => {
+test('Existing NLO owner credential is required', async () => {
   const { args, requests } = mockGithub();
   await assert.rejects(
     synchronizeDrafts({ ...args, writeToken: '' }),
-    /GitHub Actions token is required/
+    /Existing NLO owner GitHub credential is required/
   );
   await assert.rejects(
     synchronizeDrafts({ ...args, readToken: '' }),
-    /GitHub Actions token is required/
+    /Existing NLO owner GitHub credential is required/
   );
   assert.equal(requests.length, 0);
 });
 
-test('GitHub update-branch needs exact head SHA', async () => {
+test('Native GitHub update-branch uses exact head SHA without workflow dispatch', async () => {
   const { args, requests } = mockGithub();
   const outcome = await synchronizeDrafts(args);
   assert.deepEqual(outcome.updated, [2204]);
   assert.equal(outcome.checked, 1);
   const writes = requests.filter((x) => x.method !== 'GET');
-  assert.equal(writes.length, 3);
+  assert.equal(writes.length, 1);
   assert.match(writes[0].path, /\/pulls\/2204\/update-branch$/);
   assert.equal(writes[0].method, 'PUT');
-  assert.deepEqual(
-    writes.filter((x) => x.method === 'POST').map((x) => x.path),
-    [
-      '/repos/' + REPO + '/actions/workflows/ci.yml/dispatches',
-      '/repos/' + REPO + '/actions/workflows/codeql.yml/dispatches'
-    ]
-  );
+  assert.equal(writes.filter((x) => x.method === 'POST').length, 0);
   assert.equal(
     requests.filter((x) => x.path.endsWith('/git/ref/heads/main')).length,
     3
@@ -204,11 +194,11 @@ test('A changing PR head or main ref prevents the update', async () => {
   }
 });
 
-test('Push enumerates Draft PRs and denies incomplete pages', async () => {
+test('NLO polling enumerates Draft PRs and denies incomplete pages', async () => {
   const { args } = mockGithub();
   const result = await synchronizeDrafts({
     ...args,
-    event: 'push',
+    event: 'nlo_poll',
     prNumber: 0
   });
   assert.deepEqual(result.updated, [2204]);
@@ -224,12 +214,12 @@ test('Push enumerates Draft PRs and denies incomplete pages', async () => {
         : candidates
   });
   await assert.rejects(
-    synchronizeDrafts({ ...args, event: 'push', fetchImpl: badFetch }),
+    synchronizeDrafts({ ...args, event: 'nlo_poll', fetchImpl: badFetch }),
     /enumeration incomplete/
   );
 });
 
-test('Dormant PRs do not trigger surprise CI on main push', async () => {
+test('Dormant PRs do not trigger surprise CI on NLO polls', async () => {
   const old = pull({ updated_at: '2026-10-01T00:00:00Z' });
   assert.equal(
     isRecentlyActive(old, Date.parse('2026-10-13T16:00:00Z')),
@@ -238,7 +228,7 @@ test('Dormant PRs do not trigger surprise CI on main push', async () => {
   const mock = mockGithub({ draft: old });
   const result = await synchronizeDrafts({
     ...mock.args,
-    event: 'push'
+    event: 'nlo_poll'
   });
   assert.deepEqual(result.updated, []);
   assert.equal(result.checked, 0);
@@ -250,34 +240,34 @@ test('Dormant PRs do not trigger surprise CI on main push', async () => {
   assert.deepEqual(explicit.updated, [2204]);
 });
 
-test('Trusted approval relay completion also catches bot-led main merges', async () => {
+test('NLO poll handles a main update even when the merge used GITHUB_TOKEN', async () => {
   const mock = mockGithub();
   const result = await synchronizeDrafts({
     ...mock.args,
-    event: 'workflow_run',
+    event: 'nlo_poll',
     prNumber: 0
   });
   assert.deepEqual(result.updated, [2204]);
   assert.equal(mock.requests.filter((x) => x.method === 'PUT').length, 1);
 });
 
-test('Trusted workflow cannot run untrusted code', () => {
-  const workflow = readFileSync(
-    new URL('../.github/workflows/novelight-pr-auto-sync.yml', import.meta.url),
+test('NLO sync cannot dispatch bypass checks or merge PRs', () => {
+  const source = readFileSync(
+    new URL('../scripts/novelight-pr-auto-sync.mjs', import.meta.url),
     'utf8'
   );
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /pull_request_target:/);
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /NOVELIGHT High-Risk PR Approval Relay/);
-  assert.match(workflow, /ref: main/);
-  assert.match(workflow, /persist-credentials: false/);
-  assert.match(workflow, /actions: write/);
-  assert.match(workflow, /pull-requests: write/);
-  assert.doesNotMatch(workflow, /secrets\.NOVELIGHT_BRANCH_SYNC_TOKEN/);
-  assert.doesNotMatch(
-    workflow,
-    /pull_request\.head\.ref|checkout.*head|gh pr merge/
+  const daemon = readFileSync(
+    new URL('../tools/novelight-commander/src/owner-draft-auto-sync.js', import.meta.url),
+    'utf8'
   );
-  assert.doesNotMatch(workflow, /contents: write|gh pr merge/);
+  const bridge = readFileSync(
+    new URL('../tools/novelight-commander/src/github-bridge-daemon.js', import.meta.url),
+    'utf8'
+  );
+  assert.match(daemon, /NOVELIGHT_BRIDGE_GITHUB_TOKEN/);
+  assert.match(daemon, /status !== 'enabled'/);
+  assert.match(daemon, /login !== OWNER/);
+  assert.match(bridge, /mainOwnerDraftAutoSync/);
+  assert.doesNotMatch(source, /actions\/workflows\/|gh pr merge|--force/);
+  assert.doesNotMatch(daemon, /GITHUB_TOKEN\b|workflow_dispatch|gh pr merge/);
 });

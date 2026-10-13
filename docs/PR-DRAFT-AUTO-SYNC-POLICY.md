@@ -1,33 +1,31 @@
-# NOVELIGHT — Owner Draft PRの自動同期（GitHub標準トークン方式・検証中）
+# NOVELIGHT — Owner Draft PR自動同期（NLO既存GitHub認証方式・検証中）
 
-## 目的と非対象
+## 目的
+GitHubの「Update branch」の手動操作をなくす。新しいPATの作成、GitHub Actions Secretの追加、ブランチ保護の緩和を不要にする。ただしGitHubへの更新には認証が必要であり、**無認証方式ではない**。既存のNLOがWindows DPAPIで保護・再利用しているGitHub owner認証を使う。
 
-「Update branch → Update with merge commit」を原則自動化し、専用GitHub App・PATの作成とSecret入力を不要にする。
+## GITHUB_TOKEN-only案を採用しない理由
+GitHub Actions標準のGITHUB_TOKENからPRを更新すると、後続のpull_request CIは実行承認が必要になる。workflow_dispatchでCI/CodeQLを起動しても、そのjobのチェックはPRのrequired status checkを満たさない。mainのruleset Protect main はGitHub Actions由来の check を必須としており、従来案では要求を満たせない。
+- https://docs.github.com/en/actions/concepts/security/github_token
+- https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks
 
-**ブランチ更新だけ**を自動化する。PR承認、Draft解除、マージ、migration適用、Vercel/Supabase変更、コンテスト公開、Cron、賞金管理は既存の独立したゲートを通す。
+## 実装
+- NLOの既存常駐Bridge内で `tools/novelight-commander/src/owner-draft-auto-sync.js` を起動する。15分ごとに実行し、Registryの状態が `enabled` でなければ**更新しない**。
+- `NOVELIGHT_BRIDGE_GITHUB_TOKEN` は、既存の `run-github-bridge.ps1` がDPAPIの認証を復号し、必要時はログイン済み `gh` のowner sessionから安全に復旧するもの。Chat、Issue、Gitに資格情報を保存しない。新しいPATやActions Secretを登録しない。
+- GitHub API `/user` のloginを `bingohooah888-ai` と厳密に確認してから、`scripts/novelight-pr-auto-sync.mjs` を呼ぶ。ownerでない場合、API失敗時、権限不足時はfail closed。
+- owner作成・同一repo・base=main・Open/Draft・auto-mergeなしのPRに限定する。活動24時間以内、最大8PR。高リスク承認コメントがあればHEADを変更しない。
+- update直前にmain HEADとPR HEADを再確認する。GitHub `update-branch` APIへ `expected_head_sha` を渡す。競合時や状態不明時、レース、コメント100件以上では安全停止。force push/rebaseは行わない。
+- NLOのowner認証経由の同期で正規の `pull_request: synchronize` が発火し、既存CIとCodeQLがPRチェックとして動く設計。同期スクリプト自身はworkflow_dispatchしない。PR承認、Draft解除、PRマージ、Production変更はしない。
+- mainへのmergeがGitHub Actions tokenで行われても、NLOの定期pollingが新しいmainを観測するため、main pushイベントに依存しない。
 
-## GitHub Actions標準トークン方式
+## ロールアウト手順と制約
+1. このDraft PRのコード、Node tests、Static quality、CodeQL、Actions semantic lintでまず検証する。安全のためNLO Capability Registryの `nlo.github.owner-draft-pr-sync` は `testing` のまま。
+2. 新規「本番承認」後に限りmainへmergeする。従来の高リスクSHA承認ルールを迂回しない。
+3. main反映後、NLOを安全な既存経路で更新・再起動し、実際にowner認証が有効なことを確認する。NLOが停止/PCが停止/gh authが失効している場合は自動同期できない。
+4. 害のないowner Draft PRで、main追従更新→通常のpull_request CI/CodeQL起動→必須 check のPR紐付け→高リスク未承認の保護を実地で検証する。
+5. その後のみRegistry status を `enabled` にする。安全な試験中以外はデフォルト停止。動作確認後もPR自動マージは認めない。
+6. この機能の検証は新しいPATもGitHub Actions Secretも不要だが、既存のNLO GitHub認証の維持は必要。
 
-- 信頼済みのmain上で `.github/workflows/novelight-pr-auto-sync.yml` を起動。
-- `GITHUB_TOKEN` の `pull-requests: write` で、同一repoのowner作成・Open・Draft・base=mainのPRにだけ正式API `update-branch` を適用。force pushやrebaseはしない。
-- 更新直前にlatest mainとPR headのSHAを再検査。競合、未知のmergeability、すでに高リスク承認済み、更新中のhead変更はfail-closed。
-- main更新時は直近24時間のDraft PRだけ。最大8件。休眠PRは指定されたworkflow_dispatchでだけ同期可能。
-- `GITHUB_TOKEN` による更新後、通常のpull_request CIが自動実行されない、または手動実行承認待ちになることがある。そのため更新後の**新しいPR head SHA**をポーリング確認し、同じ `GITHUB_TOKEN` で `ci.yml` と `codeql.yml` の `workflow_dispatch` を明示起動する。
-- workflow_dispatch入力はPR番号・新head SHAだけ。CI/CodeQLの起動先はそのPRの同一repoブランチに限る。更新後のmainが再び動いたらdispatchしない。
-- dispatchされたCI/CodeQLは実行開始時に `novelight-pr-sync-dispatch-guard.mjs` でGitHub APIの現在PRとブランチのSHA、owner、main祖先関係を確認する。未知・改ざん・時差があれば停止。
-- CIのMerge readinessは**pull_requestだけでなくこの検証済みworkflow_dispatchでも必須**。doc registry、main ancestry、head-bound OWNERの高リスク承認は省略しない。高リスク承認ワークフローも同じhead SHAのdispatch/PR CIだけを採用し、失敗チェックだけ再実行する。
-- 実行用トークンは個別Secretを使わず、Actions標準 `github.token` を使用。PR作成者の未信頼PRヘッドを高権限でcheckoutすることは禁止。CIとCodeQLは最小の読み取り・解析権限を維持。
-
-## 導入前の必須実地検証
-
-1. このDraft PRのNode契約テスト・RLS・Actions lint・CodeQLを通す。
-2. 専用トークン不要方式の本番マージは**新規「本番承認」必須**。前回のPR #2207承認は使い回さない。
-3. 本番導入後、owner Draftの無害なテストPRで、main更新→update-branch→正しい新head SHAへのworkflow_dispatch→CI/CodeQLの完了を確認。
-4. **重要:** GitHubのブランチ保護がdispatchで作られたチェックを当該PRの必須チェックとして認識すること、正式な高リスク承認後にのみそのチェックが成功することを検証する。関連付けが不十分なら自動運用を有効化せず、手動同期へ戻す。必須チェックの無効化、ルール緩和、admin overrideは禁止。
-5. NLO Capability Registryのstatusは実地検証まで `testing` のまま。正式承認・実地成功後だけ `enabled` へ変更する。
-
-## 緊急停止と戻し方
-
-Workflowを無効にすると以後の自動同期が停止する。以前のGitHub Update branch手動手順へ戻す。PRのforce-pushや履歴書換えは行わない。追加Secretは不要なので削除作業もない。
-
-詳細実装：`scripts/novelight-pr-auto-sync.mjs`、`scripts/novelight-pr-sync-dispatch-guard.mjs`、`.github/workflows/novelight-pr-auto-sync.yml`、`.github/workflows/ci.yml`、`.github/workflows/codeql.yml`、`.github/workflows/high-risk-pr-approval.yml`。
+## コスト対策と緊急停止
+- 15分間隔、24時間活動限定、8PRまで、up-to-dateならupdate/CIを発生させない。古いDraftは明示的対象外。
+- Registryを `testing` または `disabled` にすれば次回pollから更新しない。NLOのBridgeが使えなくても既存の手動Update branchは利用できる。
+- ブランチ保護、required checks、CodeQLルール、Preview/Staging、本番承認は変更しない。

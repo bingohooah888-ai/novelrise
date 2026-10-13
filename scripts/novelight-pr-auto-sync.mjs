@@ -1,6 +1,6 @@
 // NOVELIGHT: sync owner-authored Draft PRs from current main.
 // This module never checks out PR code and has no merge/approval/deploy action.
-// Uses GITHUB_TOKEN with explicit workflow_dispatch CI/CodeQL follow-up.
+// Invoked only by trusted NLO with an existing owner-authenticated GitHub session.
 const SHA = /^[0-9a-f]{40}$/;
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const PREFIX = 'https://api.github.com';
@@ -43,7 +43,7 @@ export function shouldUpdateBranch(comparison, pull) {
 }
 
 function validEvent(event) {
-  return ['push', 'workflow_run', 'pull_request_target', 'workflow_dispatch'].includes(event);
+  return ['nlo_poll', 'workflow_dispatch'].includes(event);
 }
 
 export async function synchronizeDrafts({
@@ -60,9 +60,9 @@ export async function synchronizeDrafts({
     throw new Error('Unexpected repository or trigger');
   }
   if (!readToken || !writeToken) {
-    throw new Error('GitHub Actions token is required');
+    throw new Error('Existing NLO owner GitHub credential is required');
   }
-  if (!['push', 'workflow_run'].includes(event) &&
+  if (!['nlo_poll'].includes(event) &&
       (!Number.isSafeInteger(prNumber) ||
       prNumber <= 0)) {
     throw new Error('A positive PR number is required for this trigger');
@@ -101,7 +101,7 @@ export async function synchronizeDrafts({
   }
 
   let pulls;
-  if (['push', 'workflow_run'].includes(event)) {
+  if (['nlo_poll'].includes(event)) {
     pulls = await api(base + '/pulls?state=open&base=main&per_page=100', readToken);
     if (!Array.isArray(pulls) || pulls.length >= 100) {
       throw new Error('PR enumeration incomplete; not synchronizing any branches');
@@ -112,7 +112,7 @@ export async function synchronizeDrafts({
 
   const eligible = pulls.filter((pr) =>
     isEligibleDraft(pr, repository) &&
-    (!['push', 'workflow_run'].includes(event) ||
+    (!['nlo_poll'].includes(event) ||
       isRecentlyActive(pr, nowMs))
   );
   if (eligible.length > MAX_PR_UPDATES_PER_RUN) {
@@ -125,7 +125,7 @@ export async function synchronizeDrafts({
     outcome.checked += 1;
     const live = await api(base + '/pulls/' + number, readToken);
     if (!isEligibleDraft(live, repository) ||
-        (['push', 'workflow_run'].includes(event) &&
+        (['nlo_poll'].includes(event) &&
           !isRecentlyActive(live, nowMs))) {
       outcome.deferred.push(number);
       continue;
@@ -205,44 +205,9 @@ export async function synchronizeDrafts({
     if (latestBase !== currentMain) {
       throw new Error('main moved before CI dispatch; refusing stale attestation');
     }
-    const inputs = {
-      pr_number: String(number),
-      expected_head_sha: newHead
-    };
-    for (const workflow of ['ci.yml', 'codeql.yml']) {
-      await api(
-        base + '/actions/workflows/' + workflow + '/dispatches',
-        writeToken,
-        {
-          method: 'POST',
-          body: { ref: live.head.ref, inputs }
-        }
-      );
-    }
     outcome.updated.push(number);
-    log('Synced Draft PR #' + number + ' and dispatched exact-HEAD CI/CodeQL');
+    log('Synced Draft PR #' + number + '; GitHub will trigger PR CI/CodeQL');
   }
   return outcome;
 }
 
-async function main() {
-  const event = process.env.GITHUB_EVENT_NAME;
-  const eventNumber = Number(process.env.NOVELIGHT_PR_NUMBER || 0);
-  const result = await synchronizeDrafts({
-    repository: process.env.GITHUB_REPOSITORY,
-    event,
-    prNumber: eventNumber,
-    readToken: process.env.GITHUB_TOKEN,
-    writeToken: process.env.GITHUB_TOKEN,
-    log: console.log
-  });
-  console.log('PR autosync: ' + JSON.stringify(result));
-}
-
-if (process.argv[1] && import.meta.url ===
-    new URL('file://' + process.argv[1]).href) {
-  main().catch((error) => {
-    console.error('NOVELIGHT PR autosync stopped: ' + error.message);
-    process.exitCode = 1;
-  });
-}
