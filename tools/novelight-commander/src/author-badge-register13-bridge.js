@@ -17,7 +17,7 @@ const CONFIRMATION = 'REGISTER_AUTHOR_EASY_NORMAL_01_08';
 const REQUEST_ID_RE = /^cmdr-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9][A-Za-z0-9_-]{2,63}$/;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '../../..');
-const POLL_MS = 10000;
+const POLL_MS = 60_000;
 let busy = false;
 
 const PACKS = [

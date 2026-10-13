@@ -16,7 +16,7 @@ const TARGET_FILE = 'assets/scout-badges/unearned-locked.png';
 const TARGET_JS = 'novelight-scout-record.js';
 const TARGET_HTML = 'scout-record.html';
 const TARGET_TEST = 'tests/scout-badge-concealment.test.mjs';
-const POLL_MS = 10000;
+const POLL_MS = 60_000;
 const LOOKBACK_MS = 60 * 60 * 1000;
 let busy = false;
 

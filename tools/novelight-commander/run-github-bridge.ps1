@@ -50,7 +50,14 @@ function Test-BridgeToken([string]$Token, [int]$IssueNumber) {
   } catch {
     $Status = $null
     try { $Status = [int]$_.Exception.Response.StatusCode } catch {}
-    if ($Status -in @(401, 403)) { return $false }
+    if ($Status -eq 401) { return $false }
+    if ($Status -eq 403) {
+      $Details = [string]$_.Exception.Message + ' ' + [string]$_.ErrorDetails.Message
+      if ($Details -match 'rate limit|abuse detection') {
+        throw 'GITHUB_RATE_LIMIT_ACTIVE'
+      }
+      return $false
+    }
     throw
   }
 }
@@ -91,8 +98,18 @@ function Recover-BridgeTokenFromGh([int]$IssueNumber) {
 
 function Resolve-BridgeToken([int]$IssueNumber) {
   $Stored = Read-EncryptedBridgeToken
-  if (Test-BridgeToken -Token $Stored -IssueNumber $IssueNumber) {
-    return $Stored
+  try {
+    if (Test-BridgeToken -Token $Stored -IssueNumber $IssueNumber) {
+      return $Stored
+    }
+  } catch {
+    if ($_.Exception.Message -eq 'GITHUB_RATE_LIMIT_ACTIVE') {
+      # GitHub quota exhaustion is not credential expiration. Keep the
+      # DPAPI-stored credential and let the Node rate budget back off.
+      Add-Content -Path $LogPath -Value "$(Get-Date -Format o) NLO GitHub API rate limited; retained stored credential."
+      return $Stored
+    }
+    throw
   }
   return Recover-BridgeTokenFromGh -IssueNumber $IssueNumber
 }

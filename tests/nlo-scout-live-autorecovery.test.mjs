@@ -9,7 +9,7 @@ const sourcePath = 'tools/novelight-commander/src/scout-badge-live-bridge.js';
 test('NLO SCOUT live bridge polls pending work', async () => {
   const source = await readFile(sourcePath, 'utf8');
 
-  assert.ok(source.includes('const POLL_INTERVAL_MS = 10_000;'));
+  assert.ok(source.includes('const POLL_INTERVAL_MS = 60_000;'));
   assert.ok(source.includes('async function runPollLoop()'));
   assert.ok(source.includes('setTimeout(runPollLoop, POLL_INTERVAL_MS)'));
   assert.ok(source.includes('if (!token() || processing) return;'));

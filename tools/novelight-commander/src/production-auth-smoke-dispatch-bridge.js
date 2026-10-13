@@ -31,7 +31,7 @@ async function loadConfig() {
     throw new Error('Auth Smoke bridge identity mismatch.');
   }
   return {
-    pollSeconds: Math.max(5, Math.min(300, Number(raw.pollSeconds || 10))),
+    pollSeconds: Math.max(60, Math.min(300, Number(raw.pollSeconds || 10))),
     statePath: path.join(path.dirname(configPath), 'production-auth-smoke-dispatch-state.json')
   };
 }
