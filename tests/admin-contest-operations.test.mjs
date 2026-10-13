@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { createAdminContestOperationsHandler } from '../api/_lib/admin-contest-operations.js';
+import {
+  createAdminContestOperationsHandler
+} from '../api/_lib/admin-contest-operations.js';
 
 const ADMIN = 'caf00000-0000-4000-8000-000000000099';
 const CONTEST = 'caf00000-0000-4000-8000-000000000090';
@@ -63,9 +65,10 @@ function database({ rpcError = false } = {}) {
       async getUser(token) {
         return {
           data: {
-            user: token === 'admin-session'
-              ? { id: ADMIN, email: 'admin@example.test' }
-              : null
+            user:
+              token === 'admin-session'
+                ? { id: ADMIN, email: 'admin@example.test' }
+                : null
           },
           error: null
         };
@@ -75,8 +78,12 @@ function database({ rpcError = false } = {}) {
       calls.push({ table });
       assert.equal(table, 'novelight_contests');
       return {
-        select() { return this; },
-        eq() { return this; },
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
         async maybeSingle() {
           return { data: { id: CONTEST }, error: null };
         }
@@ -104,7 +111,7 @@ function database({ rpcError = false } = {}) {
   return { supabase, calls };
 }
 
-test('operations GET requires same-origin verified allowlisted administrator', async () => {
+test('GET requires verified administrator and same origin', async () => {
   const { supabase, calls } = database();
   const handler = createAdminContestOperationsHandler({
     supabase,
@@ -130,7 +137,10 @@ test('operations page reads only the service-role private RPC', async () => {
     env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN }
   });
   const res = response();
-  await handler(request('GET', { page: '2', limit: '10', status: 'entered' }), res);
+  await handler(
+    request('GET', { page: '2', limit: '10', status: 'entered' }),
+    res
+  );
   assert.equal(res.code, 200);
   assert.equal(res.body.contest_status, 'draft');
   assert.equal(res.body.public_visible, false);
@@ -149,7 +159,7 @@ test('operations page reads only the service-role private RPC', async () => {
   });
 });
 
-test('operations fails closed on non-GET and unbounded pagination', async () => {
+test('non-GET and unbounded pagination fail closed', async () => {
   const { supabase, calls } = database();
   const handler = createAdminContestOperationsHandler({
     supabase,
@@ -159,8 +169,11 @@ test('operations fails closed on non-GET and unbounded pagination', async () => 
   await handler(request('POST'), post);
   assert.equal(post.code, 405);
   for (const query of [
-    { page: '0' }, { page: '102' }, { limit: '1000' },
-    { status: 'paid' }, { status: ['all', 'entered'] }
+    { page: '0' },
+    { page: '102' },
+    { limit: '1000' },
+    { status: 'paid' },
+    { status: ['all', 'entered'] }
   ]) {
     const res = response();
     await handler(request('GET', query), res);
@@ -181,7 +194,7 @@ test('operations fails closed when private aggregation fails', async () => {
   assert.equal(res.body.error, 'OPERATIONS_UNAVAILABLE');
 });
 
-test('SQL enforces service-role-only access and never mutates contest data', () => {
+test('private SQL permits only service role and never writes', () => {
   assert.match(migration, /security definer/i);
   assert.match(migration, /set search_path = ''/i);
   assert.match(
@@ -192,15 +205,21 @@ test('SQL enforces service-role-only access and never mutates contest data', () 
     migration,
     /grant execute on function\s+public\.novelight_contest_admin_operations_overview\(uuid,text,integer,integer\)\s+to service_role/i
   );
-  assert.match(migration, /reader\.review_status in \('provisional','cleared'\)/i);
+  assert.match(
+    migration,
+    /reader\.review_status in \('provisional','cleared'\)/i
+  );
   assert.match(migration, /s\.review_status in \('provisional','cleared'\)/i);
   assert.match(migration, /p_offset > 2000/i);
-  assert.doesNotMatch(migration, /\b(?:insert into|update public|delete from)\b/i);
+  assert.doesNotMatch(
+    migration,
+    /\b(?:insert into|update public|delete from)\b/i
+  );
   assert.match(rollback, /drop function if exists/i);
   assert.doesNotMatch(rollback, /(?:drop table|truncate|delete from)/i);
 });
 
-test('operator UI uses text nodes and cannot trigger a write or transfer', () => {
+test('operator UI shows text only and cannot write', () => {
   assert.match(frontend, /textContent/);
   assert.doesNotMatch(frontend, /innerHTML/);
   assert.doesNotMatch(frontend, /\bPOST\b|\bPUT\b|\bPATCH\b|\bDELETE\b/);
