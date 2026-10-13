@@ -228,6 +228,17 @@ test('Dormant PRs do not trigger surprise CI on main push', async () => {
   assert.deepEqual(explicit.updated, [2204]);
 });
 
+test('Trusted approval relay completion also catches bot-led main merges', async () => {
+  const mock = mockGithub();
+  const result = await synchronizeDrafts({
+    ...mock.args,
+    event: 'workflow_run',
+    prNumber: 0
+  });
+  assert.deepEqual(result.updated, [2204]);
+  assert.equal(mock.requests.filter((x) => x.method === 'PUT').length, 1);
+});
+
 test('Trusted workflow cannot run untrusted code', () => {
   const workflow = readFileSync(
     new URL('../.github/workflows/novelight-pr-auto-sync.yml', import.meta.url),
@@ -235,6 +246,8 @@ test('Trusted workflow cannot run untrusted code', () => {
   );
   assert.match(workflow, /branches: \[main\]/);
   assert.match(workflow, /pull_request_target:/);
+  assert.match(workflow, /workflow_run:/);
+  assert.match(workflow, /NOVELIGHT High-Risk PR Approval Relay/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /secrets\.NOVELIGHT_BRANCH_SYNC_TOKEN/);
