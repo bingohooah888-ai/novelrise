@@ -1,6 +1,7 @@
 // NOVELIGHT: sync owner-authored Draft PRs from current main.
 // This module never checks out PR code and has no merge/approval/deploy action.
 // Invoked only by trusted NLO with an existing owner-authenticated GitHub session.
+import { classifyHighRiskPaths } from './high-risk-approval-lib.mjs';
 const SHA = /^[0-9a-f]{40}$/;
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const PREFIX = 'https://api.github.com';
@@ -146,6 +147,27 @@ export async function synchronizeDrafts({
       continue;
     }
 
+    // Never auto-rewrite a PR touching high-risk paths, including renamed paths.
+    // This protects SHA-bound approvals even if a new approval arrives concurrently.
+    const files = await api(
+      base + '/pulls/' + number + '/files?per_page=100',
+      readToken
+    );
+    if (!Array.isArray(files) || files.length === 0 || files.length >= 100 ||
+        files.some((file) => typeof file?.filename !== 'string' ||
+          (file.previous_filename != null &&
+            typeof file.previous_filename !== 'string'))) {
+      outcome.deferred.push(number);
+      continue;
+    }
+    const changedPaths = files.flatMap((file) =>
+      [file.filename, file.previous_filename].filter(Boolean)
+    );
+    if (classifyHighRiskPaths(changedPaths).length) {
+      outcome.deferred.push(number);
+      continue;
+    }
+
     const comparison = await api(
       base + '/compare/' + currentMain + '...' + live.head.sha,
       readToken
@@ -157,14 +179,22 @@ export async function synchronizeDrafts({
     }
 
     // Recheck the head and main immediately before the mutation.
-    const [latestMain, latestPull] = await Promise.all([
+    const [latestMain, latestPull, latestComments] = await Promise.all([
       getMain(),
-      api(base + '/pulls/' + number, readToken)
+      api(base + '/pulls/' + number, readToken),
+      api(base + '/issues/' + number + '/comments?per_page=100', readToken)
     ]);
     if (latestMain.object?.sha !== currentMain ||
         latestPull.head?.sha !== live.head.sha ||
         !isEligibleDraft(latestPull, repository)) {
       throw new Error('Main or PR head moved during synchronization');
+    }
+    if (!Array.isArray(latestComments) || latestComments.length >= 100 ||
+        latestComments.some((comment) =>
+          typeof comment.body === 'string' &&
+          comment.body.startsWith('NOVELIGHT_HIGH_RISK_APPROVE '))) {
+      outcome.deferred.push(number);
+      continue;
     }
 
     const result = await api(
@@ -176,8 +206,8 @@ export async function synchronizeDrafts({
         !/updat/i.test(result.message)) {
       throw new Error('GitHub did not confirm update-branch request');
     }
-    // GitHub's native branch update is asynchronous. Dispatch checks only
-    // after the new owner-branch HEAD contains the current main.
+    // GitHub's native branch update is asynchronous. Confirm exact HEAD
+    // contains current main; normal PR CI/CodeQL comes from synchronize.
     let newHead = null;
     for (let poll = 0; poll < 15; poll += 1) {
       const synced = await api(base + '/pulls/' + number, readToken);
@@ -199,11 +229,11 @@ export async function synchronizeDrafts({
       await new Promise((resolve) => setTimeout(resolve, 1200));
     }
     if (!SHA.test(newHead || '')) {
-      throw new Error('Branch update not verifiably complete; CI dispatch blocked');
+      throw new Error('Branch update not verifiably complete; safe stop');
     }
     const latestBase = (await getMain()).object?.sha;
     if (latestBase !== currentMain) {
-      throw new Error('main moved before CI dispatch; refusing stale attestation');
+      throw new Error('main moved during native branch update; refusing stale attestation');
     }
     outcome.updated.push(number);
     log('Synced Draft PR #' + number + '; GitHub will trigger PR CI/CodeQL');
