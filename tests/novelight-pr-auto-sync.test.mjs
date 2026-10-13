@@ -209,7 +209,10 @@ test('Push enumerates Draft PRs and denies incomplete pages', async () => {
 
 test('Dormant PRs do not trigger surprise CI on main push', async () => {
   const old = pull({ updated_at: '2026-10-01T00:00:00Z' });
-  assert.equal(isRecentlyActive(old, Date.parse('2026-10-13T16:00:00Z')), false);
+  assert.equal(
+    isRecentlyActive(old, Date.parse('2026-10-13T16:00:00Z')),
+    false
+  );
   const mock = mockGithub({ draft: old });
   const result = await synchronizeDrafts({
     ...mock.args,
