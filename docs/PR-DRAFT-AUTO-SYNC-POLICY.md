@@ -12,8 +12,9 @@
 ## 自動実行
 
 1. mainへのpush・マージ後、owner自身が作成し**直近24時間に更新された**Open/Draft PRを検出する。古いDraft PRを大量に同期して不要なCI費用を生まない。
-2. Draft PRを作成・再開・Draftに戻したとき、そのPRだけ検査する。
-3. 管理者が必要時にworkflow_dispatchを実行する場合、明示のPR番号を必要とする。指定実行では24時間制限を適用せず、休眠PRでも安全に同期できる。
+2. 既存の保護された「NOVELIGHT High-Risk PR Approval Relay」が完了したときも、更新されたmainと直近24時間のDraft PRを照合する。GitHub Actions自身によるマージでは通常のpushイベントが発火しない場合があるための補完。マージや承認は実行しない。
+3. Draft PRを作成・再開・Draftに戻したとき、そのPRだけ検査する。
+4. 管理者が必要時にworkflow_dispatchを実行する場合、明示のPR番号を必要とする。指定実行では24時間制限を適用せず、休眠PRでも安全に同期できる。
 
 ## 一度だけ必要になる認証設定
 
