@@ -83,11 +83,13 @@ test('Any later PR mutation invalidates dispatch attestation', async () => {
     { state: 'closed' },
     { user: { login: 'outside' } },
     { base: { ref: 'feature' } },
-    { head: {
-      sha: 'd'.repeat(40),
-      ref: 'feat/owner-draft',
-      repo: { full_name: REPO }
-    } }
+    {
+      head: {
+        sha: 'd'.repeat(40),
+        ref: 'feat/owner-draft',
+        repo: { full_name: REPO }
+      }
+    }
   ]) {
     const { args } = scenario(alteration);
     await assert.rejects(verifyPrDispatch(args), /changed/);
