@@ -28,7 +28,8 @@ test('public pages keep the exact four navigation links in desktop and mobile', 
     ['pricing.html', '料金プラン']
   ];
 
-  const DESKTOP_NAV = /<nav class="site-nav desktop-nav"[^>]*>([\s\S]*?)<\/nav>/u;
+  const DESKTOP_NAV =
+    /<nav class="site-nav desktop-nav"[^>]*>([\s\S]*?)<\/nav>/u;
   const MOBILE_NAV = /<nav aria-label="モバイルナビ">([\s\S]*?)<\/nav>/gu;
   const NAV_ANCHORS = /<a\b[^>]*href="([^"]+)"[^>]*>([^<]*)<\/a>/gu;
   let audited = 0;
@@ -38,20 +39,13 @@ test('public pages keep the exact four navigation links in desktop and mobile', 
     if (!primary) continue;
     audited += 1;
 
-    const navBlocks = [
-      primary[1],
-      ...Array.from(
-        header.matchAll(MOBILE_NAV),
-        (match) => match[1]
-      )
-    ];
+    const mobileMatches = Array.from(header.matchAll(MOBILE_NAV));
+    const navBlocks = [primary[1], ...mobileMatches.map((m) => m[1])];
     assert.ok(navBlocks.length >= 2, page);
 
     for (const nav of navBlocks) {
-      const items = Array.from(
-        nav.matchAll(NAV_ANCHORS),
-        (match) => [match[1], match[2]]
-      );
+      const matches = Array.from(nav.matchAll(NAV_ANCHORS));
+      const items = matches.map((m) => [m[1], m[2]]);
       assert.deepEqual(items.slice(0, 4), expected, page);
       assert.ok(
         items.slice(4).every(([, label]) =>

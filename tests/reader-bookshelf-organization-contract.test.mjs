@@ -104,7 +104,8 @@ test('rollout is safe before migration and mobile controls collapse to one colum
 });
 
 test('bookshelf remains accessible from the update center after the public nav refresh', () => {
-  const header = homePage.match(/<header\b[^>]*>[\s\S]*?<\/header>/u)?.[0] || '';
+  const header =
+    homePage.match(/<header\b[^>]*>[\s\S]*?<\/header>/u)?.[0] || '';
   assert.doesNotMatch(header, /<a href="favorites\.html">本棚<\/a>/u);
   assert.match(updateRuntime, /favorites\.textContent = '本棚を見る'/u);
   assert.match(favoritesPage, /<h1>本棚<\/h1>/u);
