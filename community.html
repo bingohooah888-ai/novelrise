@@ -46,15 +46,22 @@
  const timeline=document.getElementById('communityTimeline');
  const board=document.getElementById('communityBoardInfo');
  const tabs=document.querySelectorAll('.community-tab');
- boardTab.addEventListener('click',event=>{
-   event.preventDefault();
-   const showingBoard=board.hidden;
+ function setTab(showingBoard){
    board.hidden=!showingBoard;
    timeline.hidden=showingBoard;
    tabs.forEach(tab=>tab.removeAttribute('aria-current'));
    tabs[showingBoard?1:0].setAttribute('aria-current','page');
-   if(!showingBoard) history.replaceState(null,'','community.html');
+   history.replaceState(null,'',showingBoard?'community.html#board':'community.html');
+ }
+ boardTab.addEventListener('click',event=>{
+   event.preventDefault();
+   setTab(board.hidden);
  });
+ tabs[0].addEventListener('click',event=>{
+   event.preventDefault();
+   setTab(false);
+ });
+ if(location.hash==='#board') setTab(true);
 })();
 </script>
 </body></html>
