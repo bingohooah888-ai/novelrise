@@ -30,3 +30,7 @@ call the review RPC. There is no automatic punishment or contest activation.
 Live operator-browser E2E, fraud appeals policies, human review procedures,
 multi-identity resolution and contest opening remain separate work.
 Preview/Staging remain default-denied without \`ステージング承認\`.
+
+## Operator UI concurrency regression
+
+UI keeps an operator's evidence note after a stale writer or server rejection, refreshes the current review state and prevents stale network responses from overriding a more recent selected reader. Review actions on excluded/merged readers are disabled in the client in addition to server/DB rejection. Local Playwright API mocks are not equivalent to staging/live HTTP proof.

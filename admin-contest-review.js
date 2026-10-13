@@ -11,6 +11,7 @@
   let total = 0;
   let selected = null;
   let busy = false;
+  let detailRequestId = 0;
 
   function status(message) { $('status').textContent = message; }
 
@@ -100,12 +101,16 @@
     }
   }
 
-  async function showReader(id) {
+  async function showReader(id, { preserveNote = false } = {}) {
+    if (busy) return;
+    const requestId = ++detailRequestId;
+    const previousNote = preserveNote ? $('note').value : '';
     try {
       status('証跡を取得中…');
       const payload = await request(
         'GET', '?reader_id=' + encodeURIComponent(id)
       );
+      if (requestId !== detailRequestId) return;
       selected = payload.reader;
       $('detail').hidden = false;
       $('readerInfo').textContent =
@@ -143,9 +148,11 @@
         );
       }
       if (!payload.audit?.length) item($('audit'), '履歴なし');
-      $('note').value = '';
+      $('note').value = previousNote;
+      $('submit').disabled = !['provisional', 'review_hold', 'cleared'].includes(selected.review_status);
       status('証跡を取得しました。');
     } catch (error) {
+      if (requestId !== detailRequestId) return;
       selected = null;
       $('detail').hidden = true;
       status('証跡を取得できません：' + error.message);
@@ -154,6 +161,12 @@
 
   async function saveReview() {
     if (!selected || busy) return;
+    const readerId = selected.id;
+    const expectedStatus = selected.review_status;
+    if (!['provisional', 'review_hold', 'cleared'].includes(expectedStatus)) {
+      status('この読者は審査操作の対象外です。');
+      return;
+    }
     const action = $('action').value;
     const reason = $('reason').value;
     const note = $('note').value.trim();
@@ -175,21 +188,23 @@
     try {
       await request('POST', '', {
         action,
-        reader_id: selected.id,
-        expected_status: selected.review_status,
+        reader_id: readerId,
+        expected_status: expectedStatus,
         reason_code: reason,
         note
       });
+      busy = false;
+      await showReader(readerId);
+      await loadReaders();
       status('審査結果を記録しました。');
     } catch (error) {
-      status('審査を保存できません：' + error.message);
+      busy = false;
+      await showReader(readerId, { preserveNote: true });
+      status('審査を保存できません：' + error.message + '。最新の審査状態と入力内容を確認してください。');
     } finally {
       busy = false;
-      $('submit').disabled = false;
+      $('submit').disabled = Boolean(!selected || !['provisional', 'review_hold', 'cleared'].includes(selected.review_status));
     }
-    const id = selected.id;
-    await showReader(id);
-    await loadReaders();
   }
 
   $('refresh').addEventListener('click', () => void loadReaders());
