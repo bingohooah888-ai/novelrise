@@ -40,19 +40,22 @@ jobs:
           persist-credentials: false
           ref: main
 
-      - name: Verify standalone branch sync credential
+      - name: Check optional standalone branch sync credential
+        id: credential
         env:
           SYNC_TOKEN: ${{ secrets.NOVELIGHT_BRANCH_SYNC_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           if [ -z "${SYNC_TOKEN:-}" ]; then
-            echo 'NOVELIGHT_BRANCH_SYNC_TOKEN is not configured. Sync is not active; no PR changed.' >&2
-            echo 'Create a separately scoped GitHub App or fine-grained PAT repo secret; do not use github.token for branch writes.' >&2
-            exit 1
+            echo '::notice::NOVELIGHT_BRANCH_SYNC_TOKEN not configured: auto-sync safely inactive.'
+            echo 'enabled=false' >> "${GITHUB_OUTPUT}"
+          else
+            echo 'enabled=true' >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Sync eligible owner Draft PRs with native GitHub API
+        if: steps.credential.outputs.enabled == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           NOVELIGHT_BRANCH_SYNC_TOKEN: ${{ secrets.NOVELIGHT_BRANCH_SYNC_TOKEN }}
