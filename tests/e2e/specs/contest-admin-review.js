@@ -1,3 +1,4 @@
+import { URL } from 'node:url';
 import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
 const READER = 'caf00000-0000-4000-8000-000000000092';
