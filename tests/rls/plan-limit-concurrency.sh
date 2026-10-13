@@ -26,7 +26,10 @@ insert into public.novels (id, user_id, status) values (
   '60000000-0000-0000-0000-000000000001',
   '66666666-6666-6666-6666-666666666666',
   'published'
-);
+),
+('60000000-0000-0000-0000-000000000002', '66666666-6666-6666-6666-666666666666', 'published'),
+('60000000-0000-0000-0000-000000000003', '66666666-6666-6666-6666-666666666666', 'published'),
+('60000000-0000-0000-0000-000000000004', '66666666-6666-6666-6666-666666666666', 'published');
 SQL
 
 PGAPPNAME=novelight-plan-limit-a "${psql_base[@]}" >"$session_a_log" 2>&1 <<'SQL' &
@@ -38,7 +41,7 @@ select set_config(
   false
 );
 insert into public.novels (id, user_id, status) values (
-  '60000000-0000-0000-0000-000000000002',
+  '60000000-0000-0000-0000-000000000005',
   '66666666-6666-6666-6666-666666666666',
   'published'
 );
@@ -96,10 +99,10 @@ fi
 count=$("${psql_base[@]}" -Atc \
   "select count(*) from public.novels where user_id = '66666666-6666-6666-6666-666666666666';")
 
-if [[ "$count" != '2' ]]; then
+if [[ "$count" != '5' ]]; then
   cat "$session_a_log"
   cat "$session_b_log"
-  echo "Expected two novels after concurrent Free-plan inserts, found $count." >&2
+  echo "Expected five novels after concurrent Free-plan inserts, found $count." >&2
   exit 1
 fi
 
