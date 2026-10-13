@@ -81,7 +81,7 @@
     },
     {
       "id": "nlo.github.owner-draft-pr-sync",
-      "description": "Synchronize only owner-authored open Draft PRs with latest main using the native GitHub update-branch API; never approve, merge or deploy.",
+      "description": "Synchronize owner-authored Draft PRs with latest main using native GITHUB_TOKEN and exact-head CI/CodeQL dispatch; never approve, merge or deploy.",
       "intents": [
         "synchronize draft pull request branch",
         "keep owner draft PR up to date",
@@ -97,12 +97,13 @@
         "repo_metadata_read",
         "pull_request_read",
         "issue_comments_read",
-        "scoped_github_app_or_pat_pr_branch_write"
+        "github_actions_native_pull_requests_write",
+        "github_actions_native_actions_write"
       ],
       "testCommands": [
         "node --test tests/novelight-pr-auto-sync.test.mjs"
       ],
-      "version": "0.1.0",
+      "version": "0.2.0",
       "status": "testing",
       "provenance": "2026-10-14 owner requested permanent Update branch automation; protected production gates preserved"
     }
