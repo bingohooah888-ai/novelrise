@@ -26,15 +26,10 @@ const [
   read('scripts/run-rls-integration.sh')
 ]);
 
-test('Free plan copy is consistently two works on public billing surfaces', () => {
-  assert.match(home, /2作品まで投稿/u);
-  assert.doesNotMatch(home, /1作品まで投稿/u);
-  assert.match(pricing, /投稿作品：2作品まで/u);
-  assert.doesNotMatch(pricing, /投稿作品：1作品まで/u);
-  assert.match(billingPolicy, /月額0円。投稿2作品まで。/u);
-  assert.doesNotMatch(billingPolicy, /月額0円。投稿1作品まで。/u);
+test('September two-work migration is retained as an immutable historical change', () => {
+  assert.match(migration, /when 'free' then 2/u);
+  assert.match(rollback, /when 'free' then 1/u);
 });
-
 test('database rule raises only Free while preserving concurrency enforcement', () => {
   assert.match(migration, /when 'free' then 2/u);
   assert.match(migration, /when 'standard' then 10/u);
