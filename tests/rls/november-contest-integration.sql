@@ -1139,6 +1139,100 @@ begin
 end
 $guest_account_proof$;
 
+
+-- Stage 08 provisional rankings never publish while the contest is hidden.
+do $ranking_proof$
+declare
+  v_contest uuid;
+  v_entry uuid;
+  v_novel bigint;
+  v_reader uuid := 'caf00000-0000-4000-8000-000000000030';
+  v_ep bigint;
+  v_build jsonb;
+  v_result jsonb;
+  v_row public.novelight_contest_rank_rows%rowtype;
+begin
+  if pg_catalog.has_function_privilege(
+    'anon','public.novelight_contest_prepare_rank_snapshot(uuid,integer)',
+    'EXECUTE'
+  ) or pg_catalog.has_function_privilege(
+    'authenticated','public.novelight_contest_publish_rank_snapshot(uuid,integer)',
+    'EXECUTE'
+  ) then
+    raise exception 'Public roles gained access to ranking mutators';
+  end if;
+  select id into v_contest from public.novelight_contests
+   where contest_key='novelight-november-2026';
+  select public.novelight_public_contest_rankings(true) into v_result;
+  if v_result->>'reason' <> 'ranking_unavailable' then
+    raise exception 'Hidden contest exposed rankings: %',v_result;
+  end if;
+  select public.novelight_contest_prepare_rank_snapshot(v_contest,1)
+    into v_result;
+  if v_result->>'reason' <> 'contest_inactive' then
+    raise exception 'Hidden contest allowed ranking preparation: %',v_result;
+  end if;
+
+  update public.novelight_contests
+     set entry_deadline_at=pg_catalog.clock_timestamp()-interval '2 hours',
+         starts_at=pg_catalog.clock_timestamp()-interval '1 hour',
+         ends_at='2026-12-01 00:00:00+00'::timestamptz,
+         terms_version='ci-contest-v1',
+         terms_url='https://novelight.jp/contest-terms',
+         status='active',public_visible=true
+   where id=v_contest;
+
+  select e.id,e.novel_id into v_entry,v_novel
+    from public.novelight_contest_entries e
+    join public.novels n on n.id=e.novel_id
+   where e.contest_id=v_contest and n.title='CONTEST_CI_ELIGIBLE_A';
+  insert into public.novelight_contest_readers (
+    id,contest_id,kind,user_id
+  ) values (
+    v_reader,v_contest,'account',
+    'caf00000-0000-4000-8000-000000000031'
+  );
+  for v_ep in
+    select id from public.episodes where novel_id=v_novel
+     and status='published' order by episode_number limit 10
+  loop
+    insert into public.novelight_contest_read_events (
+      contest_id,reader_id,entry_id,episode_id_snapshot,
+      qualified_at,status,rule_version
+    ) values (
+      v_contest,v_reader,v_entry,v_ep,pg_catalog.clock_timestamp(),
+      'provisional','november-2026-points-v1'
+    );
+  end loop;
+  select public.novelight_contest_prepare_rank_snapshot(v_contest,1)
+    into v_build;
+  if v_build->>'ok' <> 'true' or
+     (v_build->>'row_count')::integer < 1 then
+    raise exception 'Private ranking snapshot failed: %',v_build;
+  end if;
+  select * into v_row from public.novelight_contest_rank_rows
+   where snapshot_id=(v_build->>'snapshot_id')::uuid and entry_id=v_entry;
+  if v_row.points <> 5 or v_row.ordinal_rank <> 1
+     or v_row.qualifying_readers <> 1 then
+    raise exception 'Stage 08 ignored distinct ten episode points: %',v_row;
+  end if;
+  select public.novelight_contest_prepare_rank_snapshot(v_contest,1)
+    into v_result;
+  if v_result->>'already_prepared' <> 'true' then
+    raise exception 'Stage 08 snapshot replay not idempotent: %',v_result;
+  end if;
+  select public.novelight_contest_publish_rank_snapshot(v_contest,1)
+    into v_result;
+  if v_result->>'reason' <> 'outside_publish_window' then
+    raise exception 'Rankings could publish before scheduled noon: %',v_result;
+  end if;
+  select public.novelight_public_contest_rankings(true) into v_result;
+  if v_result->>'ok' = 'true' then
+    raise exception 'Draft ranking snapshot leaked to public';
+  end if;
+end
+$ranking_proof$;
+
 rollback;
 
 select 'PASS: November contest migrated schema, owner RPC, private RLS, catalog and score core and read sessions on disposable replay DB' as result;
