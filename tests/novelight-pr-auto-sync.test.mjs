@@ -42,6 +42,7 @@ function mockGithub({
   liveSequence = [
     draft,
     draft,
+    draft,
     pull({ head: {
       sha: 'c'.repeat(40),
       ref: 'feat/test-owner-draft',
@@ -181,6 +182,7 @@ test('A changing PR head or main ref prevents the update', async () => {
     { mainSequence: [MAIN, 'c'.repeat(40)] },
     {
       liveSequence: [
+        pull(),
         pull(),
         pull({
           head: { sha: 'd'.repeat(40), repo: { full_name: REPO } }
