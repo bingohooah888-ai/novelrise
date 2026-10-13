@@ -7,18 +7,12 @@ const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 
 const [
-  home,
-  pricing,
-  billingPolicy,
   migration,
   precheck,
   postcheck,
   rollback,
   rlsRunner
 ] = await Promise.all([
-  read('index.html'),
-  read('pricing.html'),
-  read('billing-policy.html'),
   read('supabase/migrations/20260920152733_free_two_novel_limit.sql'),
   read('supabase/checks/20260920152733_free_two_novel_limit_precheck.sql'),
   read('supabase/checks/20260920152733_free_two_novel_limit_postcheck.sql'),
