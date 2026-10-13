@@ -19,6 +19,8 @@ const rollback = await readFile(
   'utf8'
 );
 const page = await readFile('story-notes.html', 'utf8');
+const backgrounds = await readFile('novelight-author-backgrounds.css', 'utf8');
+const heading = await readFile('novelight-work-heading-unity.css', 'utf8');
 const myNovels = await readFile('my-novels.html', 'utf8');
 const novel = await readFile('novel.html', 'utf8');
 const master = await readFile('docs/NOVELIGHT-MASTER.md', 'utf8');
@@ -100,4 +102,22 @@ test('B23 owner surfaces link to the private story workspace and MASTER records 
       'Production migrationの適用は、PR mergeとは別の明示承認境界'
     )
   );
+});
+
+test('Inquiry #57 restores a readable author workspace', () => {
+  assert.ok(page.includes('<body class="novelight-author-studio-shell">'));
+  assert.ok(backgrounds.includes(':has(:is(#workTitle,#novelTitle))'));
+  assert.ok(heading.includes(':has(:is(#workTitle,#novelTitle))'));
+  assert.ok(page.includes('background:#f8fafc;color:#182b3c'));
+  assert.ok(page.includes('color:#5c471d'));
+});
+
+test('Inquiry #58 keeps desktop note columns independently scrollable', () => {
+  assert.ok(page.includes('top:18px;max-height:calc(100dvh - 36px)'));
+  assert.ok(page.includes('overflow-y:auto;overscroll-behavior:contain'));
+  assert.ok(page.includes('.list-panel{padding:22px;display:flex'));
+  assert.ok(page.includes('.note-list{display:grid;gap:12px;min-height:0'));
+  assert.ok(page.includes("form.scrollTo({top:0,behavior:'smooth'})"));
+  assert.ok(page.includes('.editor{position:static;max-height:none'));
+  assert.ok(page.includes('.note-list{overflow:visible}'));
 });

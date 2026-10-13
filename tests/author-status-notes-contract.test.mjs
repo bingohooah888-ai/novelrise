@@ -7,6 +7,26 @@ const migration = await readFile(
   'utf8'
 );
 const management = await readFile('author-notes.html', 'utf8');
+const permanentDelete = await readFile(
+  'supabase/migrations/20261013235500_author_status_note_delete.sql',
+  'utf8'
+);
+const deletePrecheck = await readFile(
+  'supabase/checks/20261013235500_author_status_note_delete_precheck.sql',
+  'utf8'
+);
+const deletePostcheck = await readFile(
+  'supabase/checks/20261013235500_author_status_note_delete_postcheck.sql',
+  'utf8'
+);
+const deleteRollback = await readFile(
+  'supabase/rollback/20261013235500_author_status_note_delete_rollback.sql',
+  'utf8'
+);
+const deleteRls = await readFile(
+  'tests/rls/author-status-note-permanent-delete.sql',
+  'utf8'
+);
 const authorStudio = await readFile('mypage.html', 'utf8');
 const authorRoomCss = await readFile('novelight-author-room.css', 'utf8');
 const authorPage = await readFile('author.html', 'utf8');
@@ -124,4 +144,62 @@ test('migration replay includes B #19 behavior and rollback coverage', () => {
   assert.match(replay, /Verify #19 author status notes/u);
   assert.match(replay, /tests\/rls\/author-status-notes\.sql/u);
   assert.match(replay, /20260919090000_author_status_notes_rollback\.sql/u);
+});
+
+test('author status notes keep readable input and saved cards', () => {
+  assert.ok(management.includes('background:rgba(255,255,255,.96)'));
+  assert.ok(management.includes('background:#fff;color:#1f2937'));
+  assert.ok(management.includes('background:#f8fafc;color:#182b3c'));
+  assert.ok(management.includes('.note-body{margin:10px 0;color:#475569'));
+  assert.ok(management.includes('.note.archived{border-color:'));
+});
+
+test('author status notes scroll in separate desktop columns', () => {
+  assert.ok(management.includes('top:18px;max-height:calc(100dvh - 36px)'));
+  assert.ok(management.includes('.list-panel{padding:22px;display:flex'));
+  assert.ok(management.includes('overflow-y:auto;overscroll-behavior:contain'));
+  assert.ok(management.includes('.note-list{overflow:visible}'));
+  assert.ok(management.includes('form.scrollTo({top:0,behavior:'));
+  assert.ok(management.includes("window.matchMedia('(max-width:820px)')"));
+});
+
+test('author status note archive remains a non-destructive action', () => {
+  assert.ok(management.includes("archive.textContent='アーカイブ'"));
+  assert.ok(management.includes('novelight_archive_my_author_note'));
+  assert.doesNotMatch(management, /delete from author_notes/iu);
+});
+
+test('published and archived notes can be permanently deleted', () => {
+  assert.match(management, /remove.textContent='完全削除'/u);
+  assert.match(management, /card.appendChild\(deleteActions\)/u);
+  assert.match(management, /remove.onclick=\(\)=>deleteNote\(note\)/u);
+  assert.match(management, /復元できません/u);
+  assert.match(management, /confirm\(/u);
+  assert.match(management, /novelight_delete_my_author_note/u);
+  assert.match(management, /result.data!==true/u);
+  assert.doesNotMatch(management, /\.from\(['"]author_notes['"]\)/u);
+});
+
+test('permanent deletion stays owner-bound and RPC-only', () => {
+  assert.match(permanentDelete, /v_uid uuid := \(select auth.uid\(\)\)/u);
+  assert.match(
+    permanentDelete,
+    /where note.id = p_note_id\s+and note.author_user_id = v_uid/u
+  );
+  assert.match(permanentDelete, /if not found then/u);
+  assert.match(permanentDelete, /security definer/u);
+  assert.match(permanentDelete, /set search_path = ''/u);
+  assert.match(permanentDelete, /to authenticated;/u);
+  assert.doesNotMatch(
+    permanentDelete,
+    /grant (?:select|delete|insert|update) on table/iu
+  );
+  assert.match(deletePrecheck, /PRECHECK PASS/u);
+  assert.match(deletePostcheck, /POSTCHECK PASS/u);
+  assert.match(deleteRollback, /drop function if exists/u);
+  assert.doesNotMatch(deleteRollback, /drop table/iu);
+  assert.match(deleteRls, /Cross-author published deletion/u);
+  assert.match(deleteRls, /Cross-author archived deletion/u);
+  assert.match(deleteRls, /Anonymous note deletion unexpectedly succeeded/u);
+  assert.match(replay, /author-status-note-permanent-delete\.sql/u);
 });

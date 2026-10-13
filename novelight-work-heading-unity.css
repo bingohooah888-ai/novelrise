@@ -14,7 +14,7 @@ html body.novelight-page-episode-schedule #main-content > .head > div:first-chil
 html body.novelight-page-share-link > .page-head,
 html body.novelight-page-characters #main-content > .intro,
 html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head,
-html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head {
+html body.novelight-author-studio-shell:has(:is(#workTitle,#novelTitle)) #main-content > .page-head {
   position: relative !important;
   width: min(100%, 900px) !important;
   max-width: 100% !important;
@@ -46,7 +46,7 @@ html body.novelight-page-episode-schedule #main-content > .head > div:first-chil
 html body.novelight-page-share-link > .page-head::after,
 html body.novelight-page-characters #main-content > .intro::after,
 html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head::after,
-html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head::after {
+html body.novelight-author-studio-shell:has(:is(#workTitle,#novelTitle)) #main-content > .page-head::after {
   content: "✦" !important;
   display: block !important;
   position: absolute !important;
@@ -65,7 +65,7 @@ html body.novelight-page-episode-schedule #main-content > .head > div:first-chil
 html body.novelight-page-share-link > .page-head h1,
 html body.novelight-page-characters #main-content > .intro h1,
 html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head h1,
-html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head h1 {
+html body.novelight-author-studio-shell:has(:is(#workTitle,#novelTitle)) #main-content > .page-head h1 {
   margin-top: 0 !important;
   color: #182b3c !important;
   -webkit-text-fill-color: #182b3c !important;
@@ -82,7 +82,7 @@ html body.novelight-page-episode-schedule #main-content > .head > div:first-chil
 html body.novelight-page-share-link > .page-head p,
 html body.novelight-page-characters #main-content > .intro p,
 html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head p,
-html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head p {
+html body.novelight-author-studio-shell:has(:is(#workTitle,#novelTitle)) #main-content > .page-head p {
   color: #425260 !important;
   -webkit-text-fill-color: #425260 !important;
   text-shadow: none !important;
@@ -92,7 +92,7 @@ html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-he
 }
 
 html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head .kicker,
-html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head .kicker {
+html body.novelight-author-studio-shell:has(:is(#workTitle,#novelTitle)) #main-content > .page-head .kicker {
   color: #98721f !important;
   -webkit-text-fill-color: #98721f !important;
   text-shadow: none !important;
@@ -106,7 +106,7 @@ html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-he
   html body.novelight-page-share-link > .page-head,
   html body.novelight-page-characters #main-content > .intro,
   html body.novelight-author-studio-shell:has(#collaborationList) #main-content > .page-head,
-  html body.novelight-author-studio-shell:has(#workTitle) #main-content > .page-head {
+  html body.novelight-author-studio-shell:has(:is(#workTitle,#novelTitle)) #main-content > .page-head {
     width: 100% !important;
     max-width: none !important;
     padding: 20px 20px 18px !important;

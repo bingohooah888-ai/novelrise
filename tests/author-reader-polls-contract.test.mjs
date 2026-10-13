@@ -7,6 +7,8 @@ const migration = await readFile(
   'utf8'
 );
 const manager = await readFile('novel-polls.html', 'utf8');
+const heading = await readFile('novelight-work-heading-unity.css', 'utf8');
+const backgrounds = await readFile('novelight-author-backgrounds.css', 'utf8');
 const publicUi = await readFile('novelight-novel-poll.js', 'utf8');
 const novelPage = await readFile('novel.html', 'utf8');
 const replay = await readFile('scripts/run-migration-replay.sh', 'utf8');
@@ -129,4 +131,13 @@ test('B #20 migration replay covers behavior and safe rollback', () => {
   assert.match(replay, /Verify B #20 author reader polls/u);
   assert.match(replay, /tests\/rls\/author-reader-polls\.sql/u);
   assert.match(replay, /20260919100000_author_reader_polls_rollback\.sql/u);
+});
+
+test('Inquiry #57 poll manager uses the author shell and readable work heading', () => {
+  assert.match(manager, /<body class="novelight-author-studio-shell">/u);
+  assert.match(manager, /novelight-author-backgrounds\.js/u);
+  assert.match(heading, /:has\(:is\(#workTitle,#novelTitle\)\)/u);
+  assert.match(backgrounds, /:has\(:is\(#workTitle,#novelTitle\)\)/u);
+  assert.match(manager, /\.poll\{[^}]*background:#f8fafc[^}]*color:#182b3c/u);
+  assert.match(manager, /\.poll\.closed \.tag\{[^}]*color:#475569/u);
 });
