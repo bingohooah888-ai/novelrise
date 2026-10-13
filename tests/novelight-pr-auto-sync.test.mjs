@@ -175,31 +175,47 @@ test('Current or approved PRs cannot be updated', async () => {
   }
 });
 
-test('High-risk file paths are never automatically synced, even without approval', async () => {
+test(
+  'High-risk file paths are never automatically synced, even without approval',
+  async () => {
   for (const changedFiles of [
     [{ filename: 'login.html' }],
     [{ filename: '.github/workflows/ci.yml' }],
     [{ filename: 'supabase/migrations/20261014_test.sql' }],
-    [{ filename: 'tests/fixtures/safe.txt', previous_filename: 'api/production-auth.js' }]
+    [
+      {
+        filename: 'tests/fixtures/safe.txt',
+        previous_filename: 'api/production-auth.js'
+      }
+    ]
   ]) {
     const { args, requests } = mockGithub({ changedFiles });
     const out = await synchronizeDrafts(args);
     assert.deepEqual(out.updated, []);
     assert.deepEqual(out.deferred, [2204]);
-    assert.equal(requests.some((request) => request.method === 'PUT'), false);
+    assert.equal(
+      requests.some((request) => request.method === 'PUT'),
+      false
+    );
   }
-});
+  }
+);
 
 test('Unsafe or incomplete PR file enumeration fails closed', async () => {
   for (const changedFiles of [
     [],
-    Array.from({ length: 100 }, () => ({ filename: 'tests/fixtures/marker.txt' })),
+    Array.from({ length: 100 }, () => ({
+      filename: 'tests/fixtures/marker.txt'
+    })),
     [{ filename: null }]
   ]) {
     const { args, requests } = mockGithub({ changedFiles });
     const out = await synchronizeDrafts(args);
     assert.deepEqual(out.deferred, [2204]);
-    assert.equal(requests.some((request) => request.method === 'PUT'), false);
+    assert.equal(
+      requests.some((request) => request.method === 'PUT'),
+      false
+    );
   }
 });
 
@@ -214,7 +230,9 @@ test('New approval arriving after initial read blocks native update', async () =
   assert.deepEqual(out.updated, []);
   assert.deepEqual(out.deferred, [2204]);
   assert.equal(
-    requests.filter((r) => r.path.endsWith('/issues/2204/comments?per_page=100')).length,
+    requests.filter((r) =>
+      r.path.endsWith('/issues/2204/comments?per_page=100')
+    ).length,
     2
   );
   assert.equal(requests.some((request) => request.method === 'PUT'), false);
