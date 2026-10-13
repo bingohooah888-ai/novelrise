@@ -142,7 +142,7 @@ test('Inquiry #57 poll manager uses the author shell and readable work heading',
   assert.match(manager, /\.poll\.closed \.tag\{[^}]*color:#475569/u);
 });
 
-test('Poll management panes scroll separately on desktop and flow vertically on mobile', () => {
+test('Poll manager scrolls panels independently on desktop only', () => {
   assert.match(manager, /<section class="panel poll-editor">/u);
   assert.match(manager, /<section class="panel poll-history">/u);
   const rule = (name) => {
@@ -160,8 +160,12 @@ test('Poll management panes scroll separately on desktop and flow vertically on 
   assert.ok(history.includes('max-height:calc(100dvh - 36px)'));
   assert.ok(list.includes('min-height:0;overflow-y:auto'));
   const mobile = manager.slice(manager.indexOf('@media(max-width:820px)'));
-  assert.ok(mobile.includes('.layout{grid-template-columns:1fr}'));
-  assert.ok(mobile.includes('.poll-editor{position:static;max-height:none;overflow:visible}'));
-  assert.ok(mobile.includes('.poll-history{max-height:none}'));
-  assert.ok(mobile.includes('.poll-list{overflow:visible}'));
+  for (const css of [
+    '.layout{grid-template-columns:1fr}',
+    '.poll-editor{position:static;max-height:none;overflow:visible}',
+    '.poll-history{max-height:none}',
+    '.poll-list{overflow:visible}'
+  ]) {
+    assert.ok(mobile.includes(css));
+  }
 });
