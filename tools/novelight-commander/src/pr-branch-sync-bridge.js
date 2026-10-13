@@ -44,7 +44,7 @@ async function loadConfig() {
   if (!repoRoot) throw new Error('NLO repoRoot is missing.');
   return {
     repoRoot,
-    pollSeconds: Math.max(5, Math.min(300, Number(raw.pollSeconds || 10))),
+    pollSeconds: Math.max(60, Math.min(300, Number(raw.pollSeconds || 10))),
     statePath: path.join(path.dirname(configPath), 'pr-branch-sync-state.json'),
     worktreesRoot: path.join(repoRoot, '.novelight-commander', 'worktrees')
   };

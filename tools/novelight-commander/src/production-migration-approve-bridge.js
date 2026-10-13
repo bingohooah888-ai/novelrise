@@ -136,7 +136,7 @@ async function loadConfig() {
   }
   return {
     configPath,
-    pollSeconds: Math.max(5, Math.min(300, Number(raw.pollSeconds || 10))),
+    pollSeconds: Math.max(60, Math.min(300, Number(raw.pollSeconds || 10))),
     statePath: path.join(path.dirname(configPath), 'production-migration-approval-state.json')
   };
 }

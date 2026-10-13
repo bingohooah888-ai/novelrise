@@ -114,7 +114,7 @@ async function loadConfig() {
     configPath,
     repoRoot,
     dataRoot,
-    pollSeconds: Math.max(5, Math.min(300, Number(raw.pollSeconds || 10))),
+    pollSeconds: Math.max(20, Math.min(300, Number(raw.pollSeconds || 10))),
     statePath: path.resolve(
       String(raw.statePath || path.join(bridgeRoot, 'state.json'))
     ),
@@ -2019,6 +2019,11 @@ async function main() {
         consecutivePollFailures,
         error: message
       });
+      // An exhausted shared GitHub API budget is an expected wait, not a daemon crash.
+      // Keep the watchdog alive without repeatedly restarting into the same 403.
+      if (globalThis.__novelightGithubApiBudget?.getPausedUntil() > Date.now()) {
+        consecutivePollFailures = 0;
+      }
       if (consecutivePollFailures >= 6) {
         await appendAudit(config, 'poll-stalled-restart', {
           consecutivePollFailures,
