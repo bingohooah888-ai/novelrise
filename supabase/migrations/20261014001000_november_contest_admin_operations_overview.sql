@@ -56,7 +56,7 @@ begin
    where e.contest_id = p_contest_id
      and (p_entry_status is null or e.status = p_entry_status);
 
-  select pg_catalog.coalesce(
+  select coalesce(
     pg_catalog.jsonb_agg(pg_catalog.to_jsonb(rows)
       order by rows.entered_at desc, rows.id desc),
     '[]'::jsonb
@@ -64,10 +64,10 @@ begin
   from (
     select e.id, e.novel_id, e.novel_title_snapshot,
            e.status, e.entered_at, e.published_episodes_at_entry,
-           pg_catalog.coalesce(scores.points,0)::bigint as provisional_points,
-           pg_catalog.coalesce(scores.qualifying_readers,0)::bigint
+           coalesce(scores.points,0)::bigint as provisional_points,
+           coalesce(scores.qualifying_readers,0)::bigint
              as qualifying_readers,
-           pg_catalog.coalesce(aw.status,'not_assigned') as award_status,
+           coalesce(aw.status,'not_assigned') as award_status,
            aw.final_rank, aw.amount_yen, aw.paid_at
       from (
         select id, novel_id, novel_title_snapshot, status, entered_at,
@@ -79,7 +79,7 @@ begin
          limit p_limit offset p_offset
       ) e
       left join lateral (
-        select pg_catalog.coalesce(pg_catalog.sum(s.points),0)::bigint
+        select coalesce(pg_catalog.sum(s.points),0)::bigint
                  as points,
                pg_catalog.count(*) filter (where s.points > 0)::bigint
                  as qualifying_readers
@@ -97,7 +97,7 @@ begin
         on aw.contest_id = p_contest_id and aw.entry_id = e.id
   ) rows;
 
-  select pg_catalog.coalesce(
+  select coalesce(
     pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
       'action',log.action,'reason_code',log.reason_code,
       'actor_user_id',log.actor_user_id,'created_at',log.created_at
@@ -146,7 +146,7 @@ begin
       'awards_paid',v_award_paid
     ),
     'provisional_only',true,
-    'payments_executed',false
+    'payment_actions_available',false
   );
 end
 $operations$;
