@@ -14,14 +14,18 @@ for (const [name, route] of guides) {
     await expect(header).toBeVisible();
     await expect(card).toBeVisible();
 
-    const colors = await page.evaluate(() => ({
-      background: globalThis.getComputedStyle(globalThis.document.body).backgroundColor,
-      header: globalThis.getComputedStyle(globalThis.document.querySelector('header.site-header'))
-        .backgroundColor,
-      card: globalThis.getComputedStyle(globalThis.document.querySelector('.audience-card'))
-        .backgroundColor,
-      text: globalThis.getComputedStyle(globalThis.document.querySelector('.audience-card h3')).color
-    }));
+    const colors = await page.evaluate(() => {
+      const computed = (selector) =>
+        globalThis.getComputedStyle(
+          globalThis.document.querySelector(selector)
+        );
+      return {
+        background: computed('body').backgroundColor,
+        header: computed('header.site-header').backgroundColor,
+        card: computed('.audience-card').backgroundColor,
+        text: computed('.audience-card h3').color
+      };
+    });
 
     expect(colors.background).toBe('rgb(247, 244, 237)');
     expect(colors.header).toBe('rgba(250, 249, 246, 0.98)');
