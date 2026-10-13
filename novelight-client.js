@@ -256,6 +256,8 @@
     }
     if (target === 'pricing' && slug === 'pricing')
       return ' aria-current="page"';
+    if (target === 'announcements' && ['announcements', 'news-detail'].includes(slug))
+      return ' aria-current="page"';
     if (target === 'ranking' && slug === 'ranking')
       return ' aria-current="page"';
     if (
@@ -287,6 +289,7 @@
 
     const discoverCurrent = publicHeaderCurrent(slug, 'discover');
     const pricingCurrent = publicHeaderCurrent(slug, 'pricing');
+    const announcementsCurrent = publicHeaderCurrent(slug, 'announcements');
     const rankingCurrent = publicHeaderCurrent(slug, 'ranking');
     const loginCurrent = publicHeaderCurrent(slug, 'login');
     const signupCurrent = publicHeaderCurrent(slug, 'signup');
@@ -297,9 +300,9 @@
       '<a class="logo" href="index.html" aria-label="NOVELIGHT ホーム"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>' +
       '<nav class="site-nav desktop-nav" aria-label="メインナビ">' +
       `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
-      '<a href="index.html#features">特徴</a>' +
-      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
+      `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
+      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       '</nav>' +
       '<div class="header-actions">' +
       '<a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>' +
@@ -307,9 +310,9 @@
       `<a class="btn btn-primary signup-action" href="signup.html"${signupCurrent}>会員登録</a>` +
       '<details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ">' +
       `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
-      '<a href="index.html#features">特徴</a>' +
-      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
+      `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
+      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       `<a class="mobile-login-action" href="login.html"${loginCurrent}>ログイン</a>` +
       `<a class="mobile-signup-action" href="signup.html"${signupCurrent}>会員登録</a>` +
       '</nav></details>' +
