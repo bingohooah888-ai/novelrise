@@ -7,13 +7,15 @@ const sql = readFileSync(
   new URL(
     '../supabase/migrations/20261013194500_november_contest_ranking_snapshots.sql',
     import.meta.url
-  ), 'utf8'
+  ),
+  'utf8'
 );
 const rollback = readFileSync(
   new URL(
     '../supabase/rollback/20261013194500_november_contest_ranking_snapshots_rollback.sql',
     import.meta.url
-  ), 'utf8'
+  ),
+  'utf8'
 );
 
 test('rank scheduling uses fixed JST noon slots and no live PV', () => {

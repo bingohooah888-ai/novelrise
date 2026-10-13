@@ -1204,6 +1204,12 @@ begin
       'provisional','november-2026-points-v1'
     );
   end loop;
+  -- Existing fixture readers were deliberately used by earlier tests.
+  -- Hold them so this snapshot tests exactly one new qualified reader.
+  update public.novelight_contest_readers
+     set review_status='review_hold'
+   where contest_id=v_contest and id<>v_reader
+     and review_status in ('provisional','cleared');
   select public.novelight_contest_prepare_rank_snapshot(v_contest,1)
     into v_build;
   if v_build->>'ok' <> 'true' or
