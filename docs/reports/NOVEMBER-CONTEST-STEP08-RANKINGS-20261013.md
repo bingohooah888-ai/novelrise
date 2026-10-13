@@ -34,3 +34,5 @@ remain separate.
 The new SQL is validated only on disposable PostgreSQL CI and has a
 manual rollback that refuses to erase published history. Preview/Staging,
 Production DB, Vercel deployment and activation remain approval-bound.
+
+An early private draft can be prepared for internal CI, but can NEVER be published from its stale cutoff. At/after the scheduled JST noon slot, a serialised new prepare call atomically replaces only that unpublished early draft and stamps the fresh generation time. Published snapshots remain locked. Scheduling and operator-controlled publication are still NOT connected.

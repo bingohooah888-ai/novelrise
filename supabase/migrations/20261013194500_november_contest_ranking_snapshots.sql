@@ -70,6 +70,17 @@ begin
       'ok',false,'reason','snapshot_locked'
     );
   end if;
+  -- An early draft is never publishable. On or after the release slot,
+  -- serialize and refresh that private draft with the actual cutoff events
+  -- instead of leaving it permanently stale and impossible to publish.
+  if v_snapshot.created_at < v_scheduled
+     and pg_catalog.clock_timestamp() >= v_scheduled then
+    delete from public.novelight_contest_rank_rows
+     where snapshot_id = v_snapshot.id;
+    update public.novelight_contest_rank_snapshots
+       set created_at=pg_catalog.clock_timestamp()
+     where id=v_snapshot.id;
+  end if;
   if exists (
     select 1 from public.novelight_contest_rank_rows
      where snapshot_id = v_snapshot.id
