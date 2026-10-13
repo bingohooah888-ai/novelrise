@@ -38,8 +38,12 @@ async function mockAdminReview(page, options = {}) {
         status = 409;
         payload = { ok: false, error: 'stale_review' };
       } else {
-        state.status = body.action === 'hold' ? 'review_hold'
-          : body.action === 'reopen' ? 'provisional' : 'cleared';
+        state.status =
+          body.action === 'hold'
+            ? 'review_hold'
+            : body.action === 'reopen'
+              ? 'provisional'
+              : 'cleared';
         payload = {
           ok: true,
           prize_finalized: false,
@@ -55,32 +59,38 @@ async function mockAdminReview(page, options = {}) {
           signal_codes: ['overlapping_episode_sessions'],
           metrics: { overlapping_session_pairs_last_day: 2 }
         },
-        scores: [{
-          entry_id: CONTEST,
-          points: 3,
-          qualified_episode_count: 5,
-          review_status: state.status
-        }],
-        audit: [{
-          created_at: '2026-10-13T10:00:00Z',
-          action: 'operator_review_hold',
-          actor_user_id: CONTEST,
-          reason_code: 'anomalous_reading',
-          evidence_summary: { operator_note: state.maliciousNote }
-        }]
+        scores: [
+          {
+            entry_id: CONTEST,
+            points: 3,
+            qualified_episode_count: 5,
+            review_status: state.status
+          }
+        ],
+        audit: [
+          {
+            created_at: '2026-10-13T10:00:00Z',
+            action: 'operator_review_hold',
+            actor_user_id: CONTEST,
+            reason_code: 'anomalous_reading',
+            evidence_summary: { operator_note: state.maliciousNote }
+          }
+        ]
       };
     } else {
       payload = {
         ok: true,
-        readers: [{
-          id: READER,
-          kind: 'account',
-          user_id: CONTEST,
-          review_status: state.status,
-          updated_at: '2026-10-13T10:00:00Z',
-          risk_codes: ['overlapping_episode_sessions'],
-          requires_manual_review: true
-        }],
+        readers: [
+          {
+            id: READER,
+            kind: 'account',
+            user_id: CONTEST,
+            review_status: state.status,
+            updated_at: '2026-10-13T10:00:00Z',
+            risk_codes: ['overlapping_episode_sessions'],
+            requires_manual_review: true
+          }
+        ],
         contest_status: 'draft',
         public_visible: false,
         total: 1,
@@ -130,7 +140,8 @@ test('operator hold requires evidence and submits expected version', async ({
   await expect(page.locator('#status')).toContainText('20～500文字');
   expect(state.posts).toHaveLength(0);
 
-  const note = 'Two anomalous reading sessions need manual inspection before acceptance';
+  const note =
+    'Two anomalous reading sessions need manual inspection before acceptance';
   await page.locator('#note').fill(note);
   await page.locator('#submit').click();
   await expect.poll(() => state.posts.length).toBe(1);
@@ -152,7 +163,8 @@ test('stale review conflict preserves entered evidence for operator', async ({
   await page.goto('/admin-contest-review.html');
   await page.getByRole('button', { name: '証跡を表示' }).click();
   await expect(page.locator('#readerInfo')).toContainText('provisional');
-  const note = 'The same two reader sessions require further manual investigation';
+  const note =
+    'The same two reader sessions require further manual investigation';
   await page.locator('#note').fill(note);
   await page.locator('#submit').click();
   await expect.poll(() => state.posts.length).toBe(1);
