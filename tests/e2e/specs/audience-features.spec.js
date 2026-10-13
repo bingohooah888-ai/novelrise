@@ -33,30 +33,33 @@ for (const [name, route] of guides) {
     expect(colors.text).toBe('rgb(27, 36, 48)');
 
     const fonts = await page.evaluate(() => {
-      const size = (selector) =>
+      const selectors = [
+        '.audience-kicker',
+        '.audience-lead',
+        '.audience-section-head p',
+        '.audience-card h3',
+        '.audience-card p',
+        '.audience-card a',
+        '.audience-cta p',
+        '.audience-primary'
+      ];
+      return selectors.map((selector) =>
         globalThis.getComputedStyle(
           globalThis.document.querySelector(selector)
-        ).fontSize;
-      return {
-        lead: size('.audience-lead'),
-        kicker: size('.audience-kicker'),
-        section: size('.audience-section-head p'),
-        heading: size('.audience-card h3'),
-        card: size('.audience-card p'),
-        link: size('.audience-card a'),
-        cta: size('.audience-cta p'),
-        action: size('.audience-primary')
-      };
+        ).fontSize
+      );
     });
 
-    expect(fonts.lead).toBe(page.viewportSize().width <= 640 ? '17px' : '18px');
-    expect(fonts.kicker).toBe('14px');
-    expect(fonts.section).toBe('17px');
-    expect(fonts.heading).toBe('19px');
-    expect(fonts.card).toBe('17px');
-    expect(fonts.link).toBe('16px');
-    expect(fonts.cta).toBe('17px');
-    expect(fonts.action).toBe('16px');
+    expect(fonts).toEqual([
+      '14px',
+      page.viewportSize().width <= 640 ? '17px' : '18px',
+      '17px',
+      '19px',
+      '17px',
+      '16px',
+      '17px',
+      '16px'
+    ]);
   });
 
   test(`${name} guide syncs an authenticated visitor's header`, async ({

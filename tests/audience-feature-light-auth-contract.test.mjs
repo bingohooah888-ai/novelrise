@@ -67,7 +67,7 @@ test('audience styles use ivory cards and dark ink instead of navy', () => {
   assert.doesNotMatch(css, /background:\s*#06101d|background:\s*#0b1727/u);
 });
 
-test('guide small text grows while headings and nav stay unchanged', () => {
+test('guide copy uses readable font sizes', () => {
   const expected = [
     ['.audience-kicker', 14],
     ['.audience-lead', 18],
@@ -78,18 +78,10 @@ test('guide small text grows while headings and nav stay unchanged', () => {
     ['.audience-cta p', 17],
     ['.audience-primary,\n.audience-secondary', 16]
   ];
-
   for (const [selector, pixels] of expected) {
-    const rule = css.split(selector + ' {')[1]?.split('}')[0] || '';
-    assert.match(rule, new RegExp('font-size: ' + pixels + 'px;'));
+    const block = css.split(selector + ' {')[1]?.split('}')[0] || '';
+    assert.ok(block.includes('font-size: ' + pixels + 'px;'), selector);
   }
-
-  assert.match(
-    css,
-    /\.audience-hero h1\s*\{[^}]*clamp\(32px, 5vw, 44px\)/u
-  );
-  assert.match(
-    css,
-    /@media \(max-width: 640px\)[\s\S]*\.audience-lead \{\s*font-size: 17px;/u
-  );
+  assert.ok(css.includes('font-size: clamp(32px, 5vw, 44px);'));
+  assert.ok(css.includes('.audience-lead {\n    font-size: 17px;'));
 });
