@@ -28,9 +28,10 @@ declare
   v_now timestamptz := pg_catalog.clock_timestamp();
 begin
   if p_contest_id is null or p_reader_id is null or p_admin_user_id is null
-     or p_action not in ('hold','clear','reopen')
+     or p_action is null or p_action not in ('hold','clear','reopen')
+     or p_expected_status is null
      or p_expected_status not in ('provisional','review_hold','cleared')
-     or p_reason_code not in (
+     or p_reason_code is null or p_reason_code not in (
        'anomalous_reading','duplicate_identity','manual_evidence',
        'appeal_review','false_positive','other'
      )
@@ -44,9 +45,6 @@ begin
     when 'clear' then 'cleared'
     when 'reopen' then 'provisional'
   end;
-  if v_next_status = p_expected_status then
-    return pg_catalog.jsonb_build_object('ok',false,'reason','unchanged');
-  end if;
   if p_action = 'clear' and p_reason_code not in (
     'manual_evidence','appeal_review','false_positive'
   ) then
@@ -75,6 +73,9 @@ begin
   end if;
   if v_reader.review_status in ('excluded','merged') then
     return pg_catalog.jsonb_build_object('ok',false,'reason','immutable_reader');
+  end if;
+  if v_next_status = p_expected_status then
+    return pg_catalog.jsonb_build_object('ok',false,'reason','unchanged');
   end if;
 
   update public.novelight_contest_readers
