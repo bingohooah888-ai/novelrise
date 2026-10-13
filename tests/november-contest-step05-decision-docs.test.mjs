@@ -44,12 +44,12 @@ test('stage 05 terms and runbook align on award timing', () => {
   assert.match(pack, /決裁前の提案記録/);
 });
 
-
-test('stage 05 current checkpoint overrides pre-migration historical notes', () => {
+test('stage 05 current checkpoint supersedes historical notes', () => {
   const runbook = report('NOVEMBER-CONTEST-STEP05-REGISTRATION-RUNBOOK.md');
   const approval = report('NOVEMBER-CONTEST-STEP05-APPROVAL-READY-20261013.md');
 
-  const snapshot = runbook.split('## 現行Productionスナップショット')[1]?.split('## 3段階')[0];
+  const marker = '## 現行Productionスナップショット';
+  const snapshot = runbook.split(marker)[1]?.split('## 3段階')[0];
   assert.ok(snapshot, 'Current Production snapshot is required');
   assert.match(snapshot, /169件/);
   assert.match(snapshot, /20261012135000.*適用済み/);
