@@ -423,9 +423,7 @@ test('guest link rejects forged or unverified ownership', async () => {
   assert.equal(noGuest.statusCode, 200);
   assert.equal(noGuest.data.linked, false);
   assert.equal(
-    db.calls.some(
-      (call) => call[1] === 'novelight_contest_link_guest_account'
-    ),
+    db.calls.some((call) => call[1] === 'novelight_contest_link_guest_account'),
     false
   );
 });

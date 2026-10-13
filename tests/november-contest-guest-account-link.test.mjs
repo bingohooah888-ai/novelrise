@@ -35,9 +35,6 @@ test('guest claiming is one atomic provisional transaction', () => {
 });
 
 test('rollback refuses to erase irreversible guest linking history', () => {
-  assert.match(
-    rollback,
-    /Guest links exist: manual audited recovery required/
-  );
+  assert.match(rollback, /Guest links exist: manual audited recovery required/);
   assert.match(rollback, /raise exception/);
 });
