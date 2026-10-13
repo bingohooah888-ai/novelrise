@@ -75,7 +75,10 @@ function mockGithub({
     } else if (path.endsWith('/pulls?state=open&base=main&per_page=100')) {
       data = [draft];
     } else if (path.endsWith('/issues/2204/comments?per_page=100')) {
-      data = commentsSequence[Math.min(commentsReads++, commentsSequence.length - 1)];
+      data =
+        commentsSequence[
+          Math.min(commentsReads++, commentsSequence.length - 1)
+        ];
     } else if (path.endsWith('/pulls/2204/files?per_page=100')) {
       data = changedFiles;
     } else if (path.includes('/compare/')) {
@@ -175,31 +178,28 @@ test('Current or approved PRs cannot be updated', async () => {
   }
 });
 
-test(
-  'High-risk file paths are never automatically synced, even without approval',
-  async () => {
-    for (const changedFiles of [
-      [{ filename: 'login.html' }],
-      [{ filename: '.github/workflows/ci.yml' }],
-      [{ filename: 'supabase/migrations/20261014_test.sql' }],
-      [
-        {
-          filename: 'tests/fixtures/safe.txt',
-          previous_filename: 'api/production-auth.js'
-        }
-      ]
-    ]) {
-      const { args, requests } = mockGithub({ changedFiles });
-      const out = await synchronizeDrafts(args);
-      assert.deepEqual(out.updated, []);
-      assert.deepEqual(out.deferred, [2204]);
-      assert.equal(
-        requests.some((request) => request.method === 'PUT'),
-        false
-      );
-    }
+test('High-risk file paths are never automatically synced, even without approval', async () => {
+  for (const changedFiles of [
+    [{ filename: 'login.html' }],
+    [{ filename: '.github/workflows/ci.yml' }],
+    [{ filename: 'supabase/migrations/20261014_test.sql' }],
+    [
+      {
+        filename: 'tests/fixtures/safe.txt',
+        previous_filename: 'api/production-auth.js'
+      }
+    ]
+  ]) {
+    const { args, requests } = mockGithub({ changedFiles });
+    const out = await synchronizeDrafts(args);
+    assert.deepEqual(out.updated, []);
+    assert.deepEqual(out.deferred, [2204]);
+    assert.equal(
+      requests.some((request) => request.method === 'PUT'),
+      false
+    );
   }
-);
+});
 
 test('Unsafe or incomplete PR file enumeration fails closed', async () => {
   for (const changedFiles of [
@@ -235,7 +235,10 @@ test('New approval arriving after initial read blocks native update', async () =
     ).length,
     2
   );
-  assert.equal(requests.some((request) => request.method === 'PUT'), false);
+  assert.equal(
+    requests.some((request) => request.method === 'PUT'),
+    false
+  );
 });
 
 test('A changing PR head or main ref prevents the update', async () => {
