@@ -88,7 +88,7 @@ function mockGithub({
   return { requests, args };
 }
 
-test('Only owner-created, same-repository, Draft main PRs are eligible', () => {
+test('Only owner Draft PRs in this repository are eligible', () => {
   assert.equal(isEligibleDraft(pull(), REPO), true);
   for (const data of [
     { draft: false },
@@ -103,7 +103,7 @@ test('Only owner-created, same-repository, Draft main PRs are eligible', () => {
   }
 });
 
-test('Behind-by and mergeable state are required; conflicts fail closed', () => {
+test('Behind branches sync only if mergeable', () => {
   assert.equal(shouldUpdateBranch({ behind_by: 2 }, pull()), true);
   assert.equal(shouldUpdateBranch({ behind_by: 0 }, pull()), false);
   assert.equal(
@@ -113,7 +113,7 @@ test('Behind-by and mergeable state are required; conflicts fail closed', () => 
   assert.throws(() => shouldUpdateBranch({}, pull()), /Unrecognized/);
 });
 
-test('An external write token is mandatory; no GitHub-token fallback', async () => {
+test('External write token is mandatory', async () => {
   const { args, requests } = mockGithub();
   await assert.rejects(
     synchronizeDrafts({ ...args, writeToken: '' }),
@@ -126,7 +126,7 @@ test('An external write token is mandatory; no GitHub-token fallback', async () 
   assert.equal(requests.length, 0);
 });
 
-test('Native API update uses an exact head SHA and never merges or approves', async () => {
+test('GitHub update-branch needs exact head SHA', async () => {
   const { args, requests } = mockGithub();
   const outcome = await synchronizeDrafts(args);
   assert.deepEqual(outcome.updated, [2204]);
@@ -141,7 +141,7 @@ test('Native API update uses an exact head SHA and never merges or approves', as
   );
 });
 
-test('Current, conflicting or approved Draft PRs are not modified', async () => {
+test('Current or approved PRs cannot be updated', async () => {
   for (const mock of [
     { comparison: { behind_by: 0 } },
     { draft: pull({ mergeable: false }) },
@@ -178,7 +178,11 @@ test('A changing PR head or main ref prevents the update', async () => {
 
 test('Push enumerates Draft PRs and denies incomplete pages', async () => {
   const { args } = mockGithub();
-  const result = await synchronizeDrafts({ ...args, event: 'push', prNumber: 0 });
+  const result = await synchronizeDrafts({
+    ...args,
+    event: 'push',
+    prNumber: 0
+  });
   assert.deepEqual(result.updated, [2204]);
   const candidates = Array.from({ length: 100 }, (_, index) =>
     pull({ number: index + 1 })
@@ -197,7 +201,7 @@ test('Push enumerates Draft PRs and denies incomplete pages', async () => {
   );
 });
 
-test('Trusted workflow has no PR code execution and never grants approval', () => {
+test('Trusted workflow cannot run untrusted code', () => {
   const workflow = readFileSync(
     new URL('../.github/workflows/novelight-pr-auto-sync.yml', import.meta.url),
     'utf8'
