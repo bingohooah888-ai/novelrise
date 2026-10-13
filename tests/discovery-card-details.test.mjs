@@ -69,6 +69,9 @@ async function renderDiscovery(mode, stateAvailable = true) {
       if (name === 'novelight_trusted_discovery_feed_v2') {
         return { data: [row], error: null };
       }
+      if (name === 'novelight_recent_updates_feed') {
+        return { data: [row], error: null };
+      }
       if (name === 'novelight_neutral_search') {
         return { data: [row], error: null };
       }
