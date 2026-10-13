@@ -66,12 +66,17 @@ test('rendered terms show the exact consent version saved by the server', () => 
 });
 
 test('payout retries on failure without duplicate payment', () => {
-  assert.match(contestTermsTemplate, /振込ができなかった場合/);
-  assert.match(contestTermsTemplate, /振込後に返金された場合/);
-  assert.match(contestTermsTemplate, /運営は受賞者に連絡して口座情報を再確認/);
-  assert.match(contestTermsTemplate, /改めて振込手続き/);
-  assert.match(contestTermsTemplate, /理由に受賞資格を取り消すことはありません/);
-  assert.match(contestTermsTemplate, /原則として同じ賞金の再振込は行いません/);
+  const fragments = [
+    '振込ができなかった場合',
+    '振込後に返金された場合',
+    '運営は受賞者に連絡して口座情報を再確認',
+    '改めて振込手続き',
+    '理由に受賞資格を取り消すことはありません',
+    '原則として同じ賞金の再振込は行いません'
+  ];
+  for (const fragment of fragments) {
+    assert.ok(contestTermsTemplate.includes(fragment), fragment);
+  }
   assert.doesNotMatch(contestTermsTemplate, /期限後も.*支払|期限後の.*柔軟/);
 });
 
