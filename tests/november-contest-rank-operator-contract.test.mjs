@@ -21,6 +21,8 @@ test('operator approval requires a timestamp and immutable snapshot identity', (
   assert.match(sql, /for update/);
   assert.match(sql, /operator_rank_/);
   assert.match(sql, /actor_user_id/);
+  assert.match(sql, /automatic_rank_prepare/);
+  assert.match(sql, /interval '15 minutes'/);
 });
 
 test('release is private and rollback retains operator evidence', () => {

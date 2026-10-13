@@ -191,4 +191,56 @@ revoke all on function public.novelight_contest_admin_rank_action(
 grant execute on function public.novelight_contest_admin_rank_action(
   uuid,integer,uuid,text,uuid,text,text
 ) to service_role;
+
+-- This RPC only PREPARES unpublished rows, never publishes them.
+-- It stays dormant without separately authorized Cron wiring + feature flag.
+create or replace function public.novelight_contest_auto_prepare_rank_slot(
+  p_contest_id uuid,p_slot integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $auto$
+declare
+  v_slot timestamptz;
+  v_now timestamptz := pg_catalog.clock_timestamp();
+  v_result jsonb;
+  v_contest public.novelight_contests%rowtype;
+begin
+  v_slot := public.novelight_contest_rank_slot_at(p_slot);
+  if p_contest_id is null or v_slot is null then
+    return pg_catalog.jsonb_build_object('ok',false,'reason','invalid_slot');
+  end if;
+  if v_now < v_slot or v_now >= v_slot + interval '15 minutes' then
+    return pg_catalog.jsonb_build_object('ok',false,'reason','outside_prepare_window');
+  end if;
+  select * into v_contest from public.novelight_contests
+   where id=p_contest_id and contest_key='novelight-november-2026';
+  if v_contest.id is null or v_contest.status <> 'active'
+     or v_contest.public_visible is not true then
+    return pg_catalog.jsonb_build_object('ok',false,'reason','contest_inactive');
+  end if;
+  select public.novelight_contest_prepare_rank_snapshot(p_contest_id,p_slot)
+    into v_result;
+  if v_result->>'ok' <> 'true' then return v_result; end if;
+  insert into public.novelight_contest_review_audit (
+    contest_id,action,reason_code,evidence_summary
+  ) values (
+    p_contest_id,'automatic_rank_prepare','scheduled_private_snapshot',
+    pg_catalog.jsonb_build_object(
+      'slot',p_slot,'snapshot_id',v_result->>'snapshot_id',
+      'automated',true,'published',false
+    )
+  );
+  return v_result;
+end
+$auto$;
+revoke all on function
+  public.novelight_contest_auto_prepare_rank_slot(uuid,integer)
+  from public,anon,authenticated;
+grant execute on function
+  public.novelight_contest_auto_prepare_rank_slot(uuid,integer)
+  to service_role;
+
 commit;

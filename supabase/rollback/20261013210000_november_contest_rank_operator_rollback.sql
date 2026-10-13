@@ -4,12 +4,13 @@ do $guard$
 begin
   if exists (
     select 1 from public.novelight_contest_review_audit
-     where action in ('operator_rank_prepare','operator_rank_publish')
+     where action in ('operator_rank_prepare','operator_rank_publish','automatic_rank_prepare')
   ) then
     raise exception 'Operator ranking audit exists: audited rollback required';
   end if;
 end
 $guard$;
+drop function if exists public.novelight_contest_auto_prepare_rank_slot(uuid,integer);
 drop function if exists public.novelight_contest_admin_rank_action(
   uuid,integer,uuid,text,uuid,text,text
 );
