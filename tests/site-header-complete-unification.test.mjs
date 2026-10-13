@@ -6,6 +6,7 @@ import test from 'node:test';
 const root = path.resolve(import.meta.dirname, '..');
 const read = (name) => readFileSync(path.join(root, name), 'utf8');
 const htmlFiles = readdirSync(root).filter((name) => name.endsWith('.html'));
+const HEADER_PATTERN = /<header\b[^>]*>[\s\S]*?<\/header>/u;
 const client = read('novelight-client.js');
 const publicCss = read('novelight-header-light.css');
 const utilityCss = read('novelight-theme.css');
@@ -13,12 +14,8 @@ const utilityCss = read('novelight-theme.css');
 test('no root HTML page exposes the retired Features header link', () => {
   for (const page of htmlFiles) {
     const source = read(page);
-    const header = source.match(/<header\b[^>]*>[\s\S]*?<\/header>/u)?.[0] || '';
-    assert.doesNotMatch(
-      header,
-      /<a\b[^>]*>\s*特徴\s*<\/a>/u,
-      page
-    );
+    const header = source.match(HEADER_PATTERN)?.[0] || '';
+    assert.doesNotMatch(header, /<a\b[^>]*>\s*特徴\s*<\/a>/u, page);
   }
   assert.doesNotMatch(client, /index\.html#features/u);
 });
@@ -33,7 +30,7 @@ test('static public navigation does not silently lose its header', () => {
     'operator.html'
   ]) {
     const source = read(page);
-    const header = source.match(/<header\b[^>]*>[\s\S]*?<\/header>/u)?.[0];
+    const header = source.match(HEADER_PATTERN)?.[0];
     assert.ok(header, page);
     assert.match(header, /class="header-inner public-header-inner"/u, page);
     assert.match(header, /href="index\.html"/u, page);
@@ -42,6 +39,14 @@ test('static public navigation does not silently lose its header', () => {
     assert.match(header, /href="ranking\.html"/u, page);
     assert.match(source, /href="novelight-header-light\.css"/u, page);
   }
+});
+
+test('pre-registration content guidelines retain the isolated header', () => {
+  const header = read('content-guidelines.html').match(HEADER_PATTERN)?.[0];
+  assert.equal(
+    header,
+    '<header class="site-header" aria-label="NOVELIGHT"></header>'
+  );
 });
 
 test('public campaign and audience pages load shared header geometry', () => {
