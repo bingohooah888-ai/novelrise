@@ -260,14 +260,8 @@ test('NLO sync cannot dispatch bypass checks or merge PRs', () => {
     'utf8'
   );
   const dir = new URL('../tools/novelight-commander/src/', import.meta.url);
-  const daemon = readFileSync(
-    new URL('owner-draft-auto-sync.js', dir),
-    'utf8'
-  );
-  const bridge = readFileSync(
-    new URL('github-bridge-daemon.js', dir),
-    'utf8'
-  );
+  const daemon = readFileSync(new URL('owner-draft-auto-sync.js', dir), 'utf8');
+  const bridge = readFileSync(new URL('github-bridge-daemon.js', dir), 'utf8');
   assert.match(daemon, /NOVELIGHT_BRIDGE_GITHUB_TOKEN/);
   assert.match(daemon, /capability\?\.status === 'enabled'/);
   assert.match(daemon, /login !== OWNER/);
