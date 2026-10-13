@@ -189,10 +189,10 @@ begin
     return pg_catalog.jsonb_build_object('ok',false,'reason','invalid_interval');
   end if;
   v_seconds := v_session.foreground_seconds
-    + case when p_foreground then pg_catalog.least(
+    + case when p_foreground then least(
        pg_catalog.floor(v_delta)::integer, 15
       ) else 0 end;
-  v_ratio := pg_catalog.greatest(
+  v_ratio := greatest(
     v_session.maximum_progress_ratio, p_progress_ratio
   );
   v_interactions := v_session.interaction_count
