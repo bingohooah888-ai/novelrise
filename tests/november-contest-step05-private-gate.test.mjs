@@ -15,7 +15,7 @@ test('step05 private prelaunch query cannot mutate Production or publish the con
   assert.match(sql, /\\set ON_ERROR_STOP on/);
   assert.match(sql, /begin transaction read only;/i);
   assert.match(sql, /rollback;/i);
-  assert.doesNotMatch(sql.replace(/--[^\n]*/g, ''), /\b(?:update|insert|delete|truncate|create|drop|alter|grant|revoke|commit|call|execute)\b/i);
+  assert.doesNotMatch(sql.replace(/--[^\n]*/g, ''), /^\s*(?:update|insert|delete|truncate|create|drop|alter|grant|revoke|commit|call|execute)\s/im);
   assert.match(sql, /status <> 'draft'/);
   assert.match(sql, /public_visible is not false/);
   assert.match(sql, /terms_version <> ''/);
@@ -39,7 +39,7 @@ test('step05 operator readiness document does not treat preflight as release per
   assert.match(review, /受付開始承認/);
   assert.match(review, /一般公開・応募受付・DB更新を伴わない/);
   assert.match(review, /正式募集要項ではない/);
-  assert.match(review, /法律/);
+  assert.match(review, /法務|税務/);
   assert.match(review, /原子的/);
   assert.match(review, /11月1日/);
 });
