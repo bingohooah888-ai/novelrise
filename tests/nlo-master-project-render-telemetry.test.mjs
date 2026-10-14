@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { observeProjectPageLoad } from '../tools/novelight-commander/src/master-project-render-telemetry.js';
+import {
+  observeProjectPageLoad
+} from '../tools/novelight-commander/src/master-project-render-telemetry.js';
 
 function fixture() {
   const listeners = new Map();
@@ -61,10 +63,7 @@ test('categorizes HTTP errors without capturing response URLs or bodies', () => 
     http4xxScript: 1,
     http4xxFetchOrXhr: 2
   });
-  assert.doesNotMatch(
-    JSON.stringify(f.counts),
-    /PRIVATE|secret\.example/
-  );
+  assert.doesNotMatch(JSON.stringify(f.counts), /PRIVATE|secret\.example/);
 });
 
 test('treats a clean browser load as zero diagnostics', () => {
@@ -76,10 +75,7 @@ test('treats a clean browser load as zero diagnostics', () => {
     }
   });
   f.send('console', { type: () => 'log' });
-  assert.equal(
-    Object.values(f.counts).every(count => count === 0),
-    true
-  );
+  assert.equal(Object.values(f.counts).every(count => count === 0), true);
 });
 
 test('diagnostics cannot bypass the MASTER project identity gate', () => {
