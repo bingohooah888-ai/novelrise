@@ -346,3 +346,24 @@ direct RPC requests could still read comments or interact with a hidden
 post. Proposed draft now rejects hidden posts centrally, so direct
 comments, likes, reports, and notifications inherit the same ban.
 This is a pending CI hypothesis until the new behavior replay succeeds.
+
+## 2026-10-14 confirmed two-user disposable integration pass
+
+GitHub CI run `38514339032`, RLS job `115689891039`, completed
+**success**. Runner evidence includes the SQL DDL, role test, and a separate
+transaction-starting behavior fixture with two auth.users, public note,
+like/comment, author Block, reader Mute, hidden post, legacy save, V2
+opt-in, private/shared curated list, revoked share URL, edited list text,
+and attempted non-owner opt-in. All assertions passed and the fixture
+transaction rolled back. CodeQL and relevant browser checks were also
+successful on the previous head. The new public-visibility check forbids
+direct comment retrieval and like/report interactions for admin-hidden
+posts, not only hiding cards from the timeline.
+
+This is **NOT evidence of cross-user Supabase Staging validation**:
+the replay PostgreSQL does not include all Supabase gateway/auth/session
+semantics or the latest hosted RLS policies. The feature remains gated off.
+The remaining publishing prerequisites are a formal CLI migration and
+postchecks, specifically authorized Staging SQL/RLS and rollback checks,
+full moderator flow and retention review, and the project-specific
+high-risk merge/Production authorizations.
