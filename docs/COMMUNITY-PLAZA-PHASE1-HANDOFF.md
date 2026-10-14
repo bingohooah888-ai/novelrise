@@ -149,3 +149,48 @@ An in-memory read-only inspection on current branch confirms:
   with SELECT/INSERT exposed only via bounded security-checked RPCs.
 - SQL dollar quoting is balanced, without any observed SQL execution.
 This is **not** a substitute for Prettier/ESLint, SQL validation or live tests.
+
+## 2026-10-14 authorized Staging preflight — read-only outcome
+
+User explicitly authorized one-time **Supabase Staging validation** for Phase 1
+PR #2222, scoped to main `a40dcf9a0cc7a841c95c075aa448ec794f4fb470`.
+No Vercel Preview, Production changes or merge were authorized.
+
+- Production Supabase: `fiepaguycecrredwrcwx`.
+- Verified separate Supabase Staging ref: `wmlzjgvxgoyrovdhbqbg`
+  (an existing branch of the Production project).
+- Staging has 123 public tables. Its 179 recorded migration versions exactly
+  match the 179 files in latest main; last applied version `20261013235500`.
+  No community table has been migrated.
+- Staging is mostly empty; it has 2 source author-follow events, 0 published
+  author notes and 0 published announcements. Representative lifecycle tests
+  would need isolated fixtures and cannot rely on seeded production-like data.
+- Read-only schema comparison confirmed the legacy note save RPC returns
+  `{"note_id": bigint, "status": "published"}`, and the existing manage RPC
+  returns JSONB. `admin_operation_audit` uses `admin_user_id` as expected.
+- Discovered and fixed a breaking typo: the six-argument note-save v2
+  previously had a five-argument `GRANT EXECUTE` signature; migration would
+  have failed and rolled back.
+- Closed a direct comments RPC Block/Mute bypass and excluded timeline near
+  notes linked to inaccessible, draft or adult-only novels. Added static
+  regression assertions.
+- NLO online was verified from Bridge Issue #1837; do not infer NLO state
+  from Remote Desktop Commander.
+- Recent PR CI: Node tests, formatting/lint, desktop and normal mobile smoke,
+  desktop async UI and CodeQL passed on head `b7dc4497...`; mobile async
+  synopsis-layout is independently failing in search.html and should be
+  rechecked on the new head.
+
+**Hard boundary / no deployment:** The formally authorized Issue #294
+`migration-sync` Staging ledger accepts only a 14-digit migration **already
+committed on exact latest main**. The Phase 1 review draft is not a migration,
+and merging it into main would be a Production deployment action requiring
+`本番承認`. A direct Supabase MCP DDL execution would bypass the
+OWNER-ledger safety requirement. Accordingly, **NO Staging DDL/write**
+occurred under this approval; this is a safe read-only preflight, NOT a
+passing Staging integration test. The one-time approval must not be reused
+as permission to bypass the gate. Before another external Staging mutation,
+the repository's approved sandbox/migration testing route must be
+established with a correctly scoped authorization.
+
+Current Phase 1 remains **Draft / not ready to merge**.
