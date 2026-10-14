@@ -96,7 +96,6 @@ test('review SQL protects private rows and notifications', () => {
   assert.match(sql, /note\.linked_novel_id IS NULL OR linked\.id IS NOT NULL/);
 });
 
-
 test('community journeys override source without altering acquisition', () => {
   const client = read('novelight-client.js');
   assert.match(client, /function readerJourneySource\(\)/);
@@ -119,8 +118,9 @@ test('owner metrics use existing qualified reads rather than PV', () => {
 
 test('shared URL alone never permits curation-wide timeline discovery', () => {
   const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
-  assert.match(sql, /community_share_enabled boolean NOT NULL DEFAULT false/);
-  assert.match(sql, /visibility='shared' AND l\.community_share_enabled/);
+  const defaultOptIn = 'community_share_enabled boolean NOT NULL DEFAULT false';
+  assert.ok(sql.includes(defaultOptIn));
+  assert.ok(sql.includes("visibility='shared' AND l.community_share_enabled"));
   assert.match(sql, /novelight_set_my_curation_community_share/);
   assert.match(sql, /community_curation_visibility_guard/);
   const ui = read('curation-lists.html');
@@ -131,10 +131,10 @@ test('shared URL alone never permits curation-wide timeline discovery', () => {
 
 test('light seed timeline publicity requires explicit donor consent', () => {
   const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
-  assert.match(sql, /community_seed_shares ENABLE ROW LEVEL SECURITY/);
+  assert.ok(sql.includes('community_seed_shares ENABLE ROW LEVEL SECURITY'));
   assert.match(sql, /novelight_set_my_seed_community_share/);
   assert.match(sql, /s\.reader_id=v_user/);
-  assert.match(sql, /seed:[0-9a-f-]/);
+  assert.ok(sql.includes('seed:[0-9a-f-]'));
   const history = read('light-seed-history.html');
   assert.match(history, /novelight_my_seed_community_shares/);
   assert.match(history, /交流広場にも共有する/);
