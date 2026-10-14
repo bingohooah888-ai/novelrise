@@ -139,3 +139,18 @@ test('light seed timeline publicity requires explicit donor consent', () => {
   assert.match(history, /novelight_my_seed_community_shares/);
   assert.match(history, /交流広場にも共有する/);
 });
+
+test('legacy note edits invalidate old timeline consent', () => {
+  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  assert.match(sql, /community_author_note_consent_guard/);
+  assert.match(sql, /NEW\.show_in_timeline:=false/);
+  assert.match(sql, /BEFORE UPDATE OF title,body,linked_novel_id,status/);
+});
+
+test('shared list URL and content changes invalidate global consent', () => {
+  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  assert.match(sql, /new\.share_token IS DISTINCT FROM old\.share_token/);
+  assert.match(sql, /new\.title IS DISTINCT FROM old\.title/);
+  assert.match(sql, /new\.description IS DISTINCT FROM old\.description/);
+  assert.match(sql, /BEFORE UPDATE OF visibility,share_token,title,description/);
+});

@@ -206,6 +206,7 @@ BEGIN
         ON linked.id=note.linked_novel_id AND linked.user_id=note.author_user_id
        AND linked.status='published'
        AND linked.content_rating IN ('general','sensitive_15')
+       AND linked.first_published_at<=now()
      WHERE note.status='published'
        AND note.show_in_timeline
        AND note.published_at<=now()
@@ -497,6 +498,25 @@ $$;
 REVOKE ALL ON FUNCTION public.novelight_community_report(text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.novelight_community_report(text,text) TO authenticated;
 
+-- Legacy note edits revoke previous global feed consent.
+CREATE OR REPLACE FUNCTION public.novelight_community_reset_note_consent()
+RETURNS trigger LANGUAGE plpgsql SET search_path = ''
+AS $$
+BEGIN
+ IF NEW.title IS DISTINCT FROM OLD.title OR NEW.body IS DISTINCT FROM OLD.body
+   OR NEW.linked_novel_id IS DISTINCT FROM OLD.linked_novel_id
+   OR NEW.status IS DISTINCT FROM OLD.status THEN
+   NEW.show_in_timeline:=false;
+ END IF;
+ RETURN NEW;
+END
+$$;
+REVOKE ALL ON FUNCTION public.novelight_community_reset_note_consent() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS community_author_note_consent_guard ON public.author_notes;
+CREATE TRIGGER community_author_note_consent_guard
+ BEFORE UPDATE OF title,body,linked_novel_id,status ON public.author_notes
+ FOR EACH ROW EXECUTE FUNCTION public.novelight_community_reset_note_consent();
+
 -- Legacy note RPC retains its API and ownership checks. Opt-in/save is atomic
 -- by invoking it from the new v2 wrapper rather than writing raw note records.
 CREATE OR REPLACE FUNCTION public.novelight_save_my_author_note_v2(
@@ -731,14 +751,19 @@ CREATE OR REPLACE FUNCTION public.novelight_curation_share_reset_private()
 RETURNS trigger LANGUAGE plpgsql SET search_path = ''
 AS $$
 BEGIN
- IF new.visibility <> 'shared' THEN new.community_share_enabled:=false; END IF;
+ IF new.visibility <> 'shared'
+   OR new.share_token IS DISTINCT FROM old.share_token
+   OR new.title IS DISTINCT FROM old.title
+   OR new.description IS DISTINCT FROM old.description THEN
+   new.community_share_enabled:=false;
+ END IF;
  RETURN new;
 END
 $$;
 REVOKE ALL ON FUNCTION public.novelight_curation_share_reset_private() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS community_curation_visibility_guard ON public.reader_curation_lists;
 CREATE TRIGGER community_curation_visibility_guard
- BEFORE UPDATE OF visibility ON public.reader_curation_lists
+ BEFORE UPDATE OF visibility,share_token,title,description ON public.reader_curation_lists
  FOR EACH ROW EXECUTE FUNCTION public.novelight_curation_share_reset_private();
 
 -- A LIGHT SEED award is never automatically announced. Donor consent

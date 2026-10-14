@@ -264,3 +264,15 @@ NOTE: Previous early-document statements describing missing features
 refer to the historical implementation phase; this dated continuation
 supersedes those status items. Nothing in this document authorizes
 a Production change or a paid Preview.
+
+## 2026-10-14 additional public-feed consent invalidation
+
+Read-only inspection of existing Staging RPC code showed that legacy note
+edits and curation-list share-token rotation could preserve earlier public
+feed consent. Proposed, unexecuted SQL now includes before-update triggers:
+editing note title/body/linked novel/status resets `show_in_timeline`;
+changing list title/description/visibility/share token resets
+`community_share_enabled`. Re-sharing requires explicit owner opt-in.
+The v2 note save wrapper reasserts consent after a canonical legacy save,
+only after a fresh general-audience confirmation. Both server trigger
+behaviors require isolated authorized testing before launch.
