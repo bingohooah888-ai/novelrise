@@ -212,3 +212,10 @@ test('release SQL is scoped, atomic and auditable', () => {
     /STEP05_APPROVAL_BLOCKED/
   );
 });
+
+// TEMP_FORMAT_DIAGNOSTIC_20261015
+const debugSource = (await import('node:fs')).readFileSync(new URL(import.meta.url), 'utf8');
+const debugBaseline = debugSource.split('\n// TEMP_FORMAT_DIAGNOSTIC_20261015')[0].trimEnd() + '\n';
+const debugPrettier = await import('prettier');
+const debugExpected = await debugPrettier.format(debugBaseline, { filepath: 'tests/november-contest-registration-open-plan.test.mjs' });
+console.log('PRETTIER_EXPECTED_BEGIN\n' + debugExpected + 'PRETTIER_EXPECTED_END');
