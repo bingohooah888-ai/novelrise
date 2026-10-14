@@ -136,6 +136,7 @@
   }
   function card(row) {
     const article = el('article', 'community-card');
+    article.id = 'post-' + String(row.post_key || '').replace(/[^a-z0-9:_-]/gi,'');
     article.append(profile(row));
     const typeLabels = {novel:'新作公開',episode:'エピソード更新',note:'近況ノート',official:'NOVELIGHT公式'};
     article.append(el('span','community-type',typeLabels[row.kind] || 'お知らせ'));
@@ -224,5 +225,9 @@
       void load(true);
     });
   });
-  void load();
+  void load().then(() => {
+    if (!isHome && location.hash.startsWith('#post-')) {
+      document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({block:'center'});
+    }
+  });
 })();
