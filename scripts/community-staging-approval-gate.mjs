@@ -75,11 +75,16 @@ export function assertCommunityCandidateAdmission({
     request.mainSha === request.candidateSha) {
     fail('request target SHA or scope drift');
   }
+  // GitHub's compare REST response has commits[] but no head_commit field.
+  // Require the complete commit list and bind its final tip to the exact PR head.
+  const commits = compare?.commits;
+  const compareTip = Array.isArray(commits) ? commits.at(-1)?.sha : '';
   if (!compare || compare.status !== 'ahead' ||
     compare.behind_by !== 0 || compare.ahead_by < 1 ||
     compare.base_commit?.sha !== request.mainSha ||
-    !SHA.test(compare.head_commit?.sha ?? '') ||
-    compare.head_commit.sha !== request.candidateSha) {
+    !Array.isArray(commits) || commits.length !== compare.ahead_by ||
+    compare.total_commits !== compare.ahead_by ||
+    !SHA.test(compareTip ?? '') || compareTip !== request.candidateSha) {
     fail('candidate is not a proven descendant of current main');
   }
   if (!Array.isArray(ledgerPages) || ledgerPages.length < 1 ||
