@@ -100,6 +100,13 @@ AS $$
         AND note.status = 'published'
         AND note.show_in_timeline = true
         AND note.published_at <= now()
+        AND (note.linked_novel_id IS NULL OR EXISTS (
+          SELECT 1 FROM public.novels linked
+           WHERE linked.id=note.linked_novel_id AND linked.user_id=note.author_user_id
+             AND linked.status='published'
+             AND linked.content_rating IN ('general','sensitive_15')
+             AND linked.first_published_at<=now()
+        ))
     )
     WHEN p_key ~ '^official:[0-9]+$' THEN EXISTS (
       SELECT 1 FROM public.announcements a
@@ -177,6 +184,7 @@ BEGIN
      WHERE note.status='published'
        AND note.show_in_timeline
        AND note.published_at<=now()
+        AND (note.linked_novel_id IS NULL OR linked.id IS NOT NULL)
     UNION ALL
     SELECT 'official', 'official:' || a.id::text,
            NULL::uuid,NULL::bigint,NULL::bigint,NULL::text,NULL::text,
@@ -309,6 +317,10 @@ AS $$
 DECLARE v_output jsonb; v_uid uuid:=(SELECT auth.uid());
 BEGIN
   IF NOT public.novelight_community_post_visible(p_post_key) THEN
+    RETURN '[]'::jsonb;
+  END IF;
+  -- Logged-in users must not bypass author Block/Mute via direct comments RPC.
+  IF v_uid IS NOT NULL AND NOT public.novelight_community_interaction_allowed(p_post_key) THEN
     RETURN '[]'::jsonb;
   END IF;
   SELECT coalesce(jsonb_agg(jsonb_build_object(
@@ -455,7 +467,7 @@ BEGIN
 END
 $$;
 REVOKE ALL ON FUNCTION public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean,boolean) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean,boolean) TO authenticated;
 
 -- Extend management output without replacing the old RPC or exposing raw notes.
 CREATE OR REPLACE FUNCTION public.novelight_manage_my_author_notes_v2(p_limit integer DEFAULT 100)
@@ -609,6 +621,9 @@ $$;
 REVOKE ALL ON FUNCTION public.novelight_admin_community_moderate(uuid,text,text,uuid,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.novelight_admin_community_moderate(uuid,text,text,uuid,text) TO service_role;
 
+-- Staging preflight 2026-10-14: corrected six-arg grant and closed blocked-author
+-- comment and R18-linked note backdoors. Staging schema must not be mutated
+-- outside the OWNER-approved #294 ledger; this is still a review-only draft.
 -- Still needs authorized SQL integration and lifecycle/analytics tests before launch.
 -- This document is not an executable migration and must not be applied as-is.
 COMMIT;
