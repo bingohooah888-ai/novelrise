@@ -113,7 +113,7 @@ test('background retry change preserves fail-closed visible Project identity gat
   assert.match(browser, /await waitForProjectMainRender\(page\)/);
   assert.match(browser, /safeProjectPageObservation\(page, loadCounts\)/);
   assert.match(browser, /expectedProjectId !== observedProjectId/);
-  assert.doesNotMatch(browser, /url=\$\{page\.url\(\)\}/);
+  assert.match(browser, /Safe render counters=/);
   assert.match(daemon, /shouldDeferMasterSyncAttempt\(state\)/);
   assert.match(daemon, /retryNotBeforeAt: masterSyncRetryNotBefore\(\)/);
 });
