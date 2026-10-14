@@ -5,6 +5,19 @@
 -- This migration does not publish the feature or grant OWNER release approval.
 BEGIN;
 
+-- This independent DB gate, not the UI flag, controls direct client RPCs.
+-- No public access is enabled by this migration.
+CREATE TABLE IF NOT EXISTS public.community_runtime_control (
+ singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
+ public_enabled boolean NOT NULL DEFAULT false,
+ activated_at timestamptz,
+ activated_by uuid
+);
+INSERT INTO public.community_runtime_control(singleton,public_enabled)
+ VALUES(true,false) ON CONFLICT(singleton) DO NOTHING;
+ALTER TABLE public.community_runtime_control ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.community_runtime_control FROM PUBLIC,anon,authenticated;
+
 ALTER TABLE public.author_notes
   ADD COLUMN IF NOT EXISTS show_in_timeline boolean NOT NULL DEFAULT false;
 ALTER TABLE public.reader_curation_lists
@@ -79,6 +92,10 @@ LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = ''
 AS $$
   SELECT CASE
+    WHEN NOT EXISTS (
+      SELECT 1 FROM public.community_runtime_control ctl
+      WHERE ctl.singleton AND ctl.public_enabled
+    ) THEN false
     -- Moderation must revoke direct RPC access, not only hide the feed card.
     WHEN EXISTS (
       SELECT 1 FROM public.community_hidden_posts h WHERE h.post_key=p_key
@@ -163,6 +180,10 @@ DECLARE
   v_user uuid := (select auth.uid());
   v_rows jsonb;
 BEGIN
+  IF NOT EXISTS(
+    SELECT 1 FROM public.community_runtime_control ctl
+    WHERE ctl.singleton AND ctl.public_enabled
+  ) THEN RETURN '[]'::jsonb; END IF;
   IF p_following AND v_user IS NULL THEN
     RAISE EXCEPTION 'Sign in to view followed authors' USING errcode = '42501';
   END IF;
@@ -533,6 +554,9 @@ AS $$
 DECLARE v_result jsonb; v_user uuid:=(SELECT auth.uid()); v_note_id bigint;
 BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'Login required' USING errcode='42501'; END IF;
+  IF coalesce(p_show_in_timeline,false) AND NOT EXISTS(
+    SELECT 1 FROM public.community_runtime_control ctl WHERE ctl.singleton AND ctl.public_enabled
+  ) THEN RAISE EXCEPTION 'Community not available yet' USING errcode='42501'; END IF;
   IF coalesce(p_show_in_timeline,false) AND NOT coalesce(p_general_audience_confirmed,false) THEN
     RAISE EXCEPTION 'General audience confirmation required' USING errcode='42501';
   END IF;
@@ -737,6 +761,9 @@ BEGIN
  IF v_user IS NULL OR p_list_id IS NULL OR p_enabled IS NULL THEN
    RAISE EXCEPTION 'Invalid request' USING errcode='42501';
  END IF;
+ IF p_enabled AND NOT EXISTS(
+   SELECT 1 FROM public.community_runtime_control ctl WHERE ctl.singleton AND ctl.public_enabled
+ ) THEN RAISE EXCEPTION 'Community not available yet' USING errcode='42501'; END IF;
  UPDATE public.reader_curation_lists l
     SET community_share_enabled=p_enabled,updated_at=now()
   WHERE l.id=p_list_id AND l.owner_user_id=v_user
@@ -796,6 +823,9 @@ BEGIN
  IF v_user IS NULL OR p_seed_id IS NULL OR p_enabled IS NULL THEN
    RAISE EXCEPTION 'Invalid request' USING errcode='42501';
  END IF;
+ IF p_enabled AND NOT EXISTS(
+   SELECT 1 FROM public.community_runtime_control ctl WHERE ctl.singleton AND ctl.public_enabled
+ ) THEN RAISE EXCEPTION 'Community not available yet' USING errcode='42501'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.light_seeds s WHERE s.id=p_seed_id AND s.reader_id=v_user) THEN
    RAISE EXCEPTION 'Seed unavailable' USING errcode='42501';
  END IF;

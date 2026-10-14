@@ -7,13 +7,20 @@ BEGIN
  FOREACH v_table IN ARRAY ARRAY[
  'community_reactions','community_comments','community_reports',
  'community_hidden_posts','community_user_restrictions','community_notifications',
- 'community_seed_shares'] LOOP
+ 'community_seed_shares','community_runtime_control'] LOOP
   IF to_regclass('public.'||v_table) IS NULL THEN
    RAISE EXCEPTION 'Missing community table: %',v_table;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid=to_regclass('public.'||v_table)
      AND relrowsecurity) THEN RAISE EXCEPTION 'RLS missing: %',v_table; END IF;
  END LOOP;
+ IF NOT EXISTS(SELECT 1 FROM public.community_runtime_control ctl
+  WHERE ctl.singleton AND ctl.public_enabled=false) THEN
+   RAISE EXCEPTION 'DB public gate must default disabled';
+ END IF;
+ IF has_table_privilege('anon','public.community_runtime_control','SELECT')
+ OR has_table_privilege('authenticated','public.community_runtime_control','UPDATE')
+ THEN RAISE EXCEPTION 'DB public gate grants unsafe'; END IF;
  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='author_notes'
     AND column_name='show_in_timeline' AND is_nullable='NO'

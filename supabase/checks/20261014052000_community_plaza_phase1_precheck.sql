@@ -7,7 +7,7 @@ BEGIN
  FOREACH v_name IN ARRAY ARRAY[
  'community_reactions','community_comments','community_reports',
  'community_hidden_posts','community_user_restrictions','community_notifications',
- 'community_seed_shares'] LOOP
+ 'community_seed_shares','community_runtime_control'] LOOP
   IF to_regclass('public.'||v_name) IS NOT NULL THEN
    RAISE EXCEPTION 'Community schema collision: % already exists',v_name;
   END IF;

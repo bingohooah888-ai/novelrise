@@ -5,7 +5,8 @@
 BEGIN;
 DO $guard$
 BEGIN
- IF EXISTS(SELECT 1 FROM public.community_reactions LIMIT 1)
+ IF EXISTS(SELECT 1 FROM public.community_runtime_control WHERE public_enabled)
+ OR EXISTS(SELECT 1 FROM public.community_reactions LIMIT 1)
  OR EXISTS(SELECT 1 FROM public.community_comments LIMIT 1)
  OR EXISTS(SELECT 1 FROM public.community_reports LIMIT 1)
  OR EXISTS(SELECT 1 FROM public.community_hidden_posts LIMIT 1)
@@ -48,6 +49,7 @@ DROP TABLE IF EXISTS public.community_reactions;
 DROP TABLE IF EXISTS public.community_hidden_posts;
 DROP TABLE IF EXISTS public.community_user_restrictions;
 DROP TABLE IF EXISTS public.community_seed_shares;
+DROP TABLE IF EXISTS public.community_runtime_control;
 
 ALTER TABLE public.author_notes DROP COLUMN IF EXISTS show_in_timeline;
 ALTER TABLE public.reader_curation_lists DROP COLUMN IF EXISTS community_share_enabled;
