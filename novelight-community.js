@@ -82,6 +82,14 @@
     a.href = 'author.html?id=' + encodeURIComponent(row.author_user_id) + '#author-notes';
     return a;
   }
+  function curationDetails(row) {
+    const token = String(row.curation_share_token || '');
+    if (row.kind !== 'curation' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)) return null;
+    const a = el('a', 'community-more', 'おすすめリストを見る →');
+    a.href = 'curation.html?share=' + encodeURIComponent(token);
+    return a;
+  }
   async function toggleLike(button, row) {
     button.disabled = true;
     try {
@@ -149,7 +157,7 @@
     const article = el('article', 'community-card');
     article.id = 'post-' + String(row.post_key || '').replace(/[^a-z0-9:_-]/gi,'');
     article.append(profile(row));
-    const typeLabels = {novel:'新作公開',episode:'エピソード更新',note:'近況ノート',official:'NOVELIGHT公式'};
+    const typeLabels = {novel:'新作公開',episode:'エピソード更新',note:'近況ノート',curation:'おすすめリスト',official:'NOVELIGHT公式'};
     article.append(el('span','community-type',typeLabels[row.kind] || 'お知らせ'));
     article.append(el('h3','community-card-title',row.title || '新しい活動'));
     if (row.body) {
@@ -165,7 +173,7 @@
         article.append(expand);
       }
     }
-    const link = linkToNovel(row) || noteDetails(row);
+    const link = linkToNovel(row) || noteDetails(row) || curationDetails(row);
     if (link) article.append(link);
     const actions = el('div','community-actions');
     const like = el('button','community-action','♡ '+Number(row.like_count||0));

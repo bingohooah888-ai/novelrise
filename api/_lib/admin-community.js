@@ -1,7 +1,7 @@
 import { requireAdmin } from './admin-auth.js';
 
 const KEY_PATTERN =
-  /^(?:novel:\d+|note:\d+|official:\d+|ep:[0-9a-f-]{36}:\d+:\d+)$/i;
+  /^(?:novel:\d+|note:\d+|curation:\d+|official:\d+|ep:[0-9a-f-]{36}:\d+:\d+)$/i;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
 const POST_ACTIONS = new Set(['hide', 'restore']);

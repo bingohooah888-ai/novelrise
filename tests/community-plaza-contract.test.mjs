@@ -116,3 +116,15 @@ test('owner metrics use existing qualified reads rather than PV', () => {
   assert.match(admin, /novelight_admin_community_metrics/);
   assert.match(admin, /requireAdmin/);
 });
+
+test('shared URL alone never permits curation-wide timeline discovery', () => {
+  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  assert.match(sql, /community_share_enabled boolean NOT NULL DEFAULT false/);
+  assert.match(sql, /visibility='shared' AND l\.community_share_enabled/);
+  assert.match(sql, /novelight_set_my_curation_community_share/);
+  assert.match(sql, /community_curation_visibility_guard/);
+  const ui = read('curation-lists.html');
+  assert.match(ui, /novelight_manage_my_curation_lists_v2/);
+  assert.match(ui, /公開範囲が広がります/);
+  assert.match(read('novelight-community.js'), /curationDetails/);
+});
