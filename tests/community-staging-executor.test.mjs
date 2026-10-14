@@ -47,7 +47,8 @@ function good() {
       ahead_by: 2,
       behind_by: 0,
       base_commit: { sha: mainSha },
-      head_commit: { sha: headSha }
+      total_commits: 2,
+      commits: [{ sha: 'b'.repeat(40) }, { sha: headSha }]
     },
     ledgerPages: [[]]
   };
@@ -62,6 +63,24 @@ test('a valid offline admission requires exact OWNER and SHA evidence', () => {
   assert.equal(result.migrationVersion, '20261014052000');
   assert.equal(result.candidateSha, headSha);
   assert.equal(result.requestCommentId, '2222');
+});
+
+test('real GitHub REST comparison pins exact final commit and full pagination', () => {
+  const valid = good();
+  assert.equal(valid.compare.head_commit, undefined);
+  assert.equal(assertCommunityCandidateAdmission(valid).candidateSha, headSha);
+
+  const missing = good();
+  delete missing.compare.commits;
+  reject(missing, /proven descendant/u);
+
+  const incorrect = good();
+  incorrect.compare.commits[1].sha = 'f'.repeat(40);
+  reject(incorrect, /proven descendant/u);
+
+  const incomplete = good();
+  incomplete.compare.total_commits = 3;
+  reject(incomplete, /proven descendant/u);
 });
 
 test('previously consumed requests are rejected too', () => {
