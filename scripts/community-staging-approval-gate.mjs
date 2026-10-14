@@ -92,9 +92,10 @@ export function assertCommunityCandidateAdmission({
     if (!entry || typeof entry.body !== 'string') fail('invalid ledger entry');
     const marker = CONSUMPTION_MARKERS.find((x) => entry.body.startsWith(x));
     if (!marker) continue;
-    const used = parseCommand(entry.body, marker, [
-      'requestCommentId', 'mainSha', 'candidateSha', 'runId'
-    ]);
+    const fields = marker === CONSUMPTION_MARKERS[1]
+      ? ['requestCommentId', 'mainSha', 'candidateSha', 'runId', 'result']
+      : ['requestCommentId', 'mainSha', 'candidateSha', 'runId'];
+    const used = parseCommand(entry.body, marker, fields);
     if (String(used.requestCommentId) === String(comment.id)) {
       fail('approval already claimed or consumed');
     }

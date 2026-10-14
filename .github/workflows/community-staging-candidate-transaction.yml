@@ -34,6 +34,13 @@ jobs:
       candidate_sha: ${{ steps.verify.outputs.candidate_sha }}
       request_id: ${{ steps.verify.outputs.request_id }}
     steps:
+      - name: Checkout only trusted default-branch code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+
       - name: Resolve exact OWNER request without Staging secrets
         id: verify
         env:
@@ -57,9 +64,12 @@ jobs:
             "$GITHUB_EVENT_PATH" /tmp/community-main.json \
             /tmp/community-pr.json /tmp/community-compare.json \
             /tmp/community-ledger-pages.json > /tmp/community-decision.json
-          echo "main_sha=$(jq -er '.currentMainSha' /tmp/community-decision.json)" >> "$GITHUB_OUTPUT"
-          echo "candidate_sha=$(jq -er '.candidateSha' /tmp/community-decision.json)" >> "$GITHUB_OUTPUT"
-          echo "request_id=$(jq -er '.requestCommentId' /tmp/community-decision.json)" >> "$GITHUB_OUTPUT"
+          test "$(git rev-parse HEAD)" = "$main_sha"
+          {
+            echo "main_sha=$(jq -er '.currentMainSha' /tmp/community-decision.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/community-decision.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/community-decision.json)"
+          } >> "$GITHUB_OUTPUT"
           echo 'Verified OWNER Issue #294, exact main, immutable Draft PR and unused request.'
 
       - name: Mark approval claimed before touching Staging
@@ -119,6 +129,9 @@ jobs:
           current_head="$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')"
           test "$current_main" = "$APPROVED_MAIN_SHA"
           test "$current_head" = "$CANDIDATE_SHA"
+          current_state="$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222")"
+          test "$(jq -r '.state' <<< "$current_state")" = 'open'
+          test "$(jq -r '.draft' <<< "$current_state")" = 'true'
 
       - name: Fetch exactly four reviewed SQL blobs, never candidate code
         env:
@@ -163,7 +176,10 @@ jobs:
             -c 'SELECT version FROM supabase_migrations.schema_migrations ORDER BY version' \
             > /tmp/community-staging-migrations
           diff -u /tmp/community-expected-migrations /tmp/community-staging-migrations
-          ! grep -Fxq '20261014052000' /tmp/community-staging-migrations
+          if grep -Fxq '20261014052000' /tmp/community-staging-migrations; then
+            echo 'Community migration already installed on Staging; refusing candidate check.'
+            exit 1
+          fi
           echo 'Exact 179-migration baseline parity and candidate-not-installed proven.'
 
       - name: Run temporary schema and RLS tests in ONE rollback-only transaction
@@ -175,6 +191,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')" = "$CANDIDATE_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.draft')" = 'true'
           export STAGING_DATABASE_URL
           STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
           node scripts/verify-staging-migration-target.mjs

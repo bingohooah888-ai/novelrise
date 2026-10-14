@@ -64,6 +64,20 @@ test('a valid offline admission requires exact OWNER and SHA evidence', () => {
   assert.equal(result.requestCommentId, '2222');
 });
 
+test('previously consumed requests are rejected too', () => {
+  const input = good();
+  const spent = {
+    requestCommentId: '2222',
+    mainSha,
+    candidateSha: headSha,
+    runId: '777',
+    result: 'success'
+  };
+  const marker = 'NOVELIGHT_STAGING_COMMUNITY_CONSUMED ';
+  input.ledgerPages = [[{ body: marker + JSON.stringify(spent) }]];
+  reject(input, /already claimed or consumed/u);
+});
+
 test('forged author, scope, and branch changes fail closed', () => {
   const a = good();
   a.comment.author_association = 'MEMBER';
