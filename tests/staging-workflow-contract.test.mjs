@@ -54,8 +54,8 @@ test('Staging approval is owner-only and exact-main bound', () => {
 test('authenticated smoke uses integrated SCOUT seed history', () => {
   const legacySeedLink = 'href="light-seed-history.html">SEED履歴 →</a>';
   assert.ok(scoutRecord.includes('id="activityTitle"'));
-  assert.ok(scoutRecord.includes('id="seedHistoryTitle"'));
-  assert.ok(scoutRecord.includes('id="seedHistoryList"'));
+  assert.ok(scoutRecord.includes('data-activity-filter="seed"'));
+  assert.ok(!scoutRecord.includes('id="seedHistoryList"'));
   assert.ok(!scoutRecord.includes(legacySeedLink));
   assert.ok(
     scoutRecord.includes(
@@ -66,8 +66,8 @@ test('authenticated smoke uses integrated SCOUT seed history', () => {
   assert.ok(scoutRecord.includes('data-badge-group="normal"'));
   assert.ok(scoutRecord.includes('data-badge-group="hard"'));
   assert.ok(!scoutRecord.includes('data-badge-difficulty='));
-  assert.ok(authenticatedSmoke.includes("name: '最近のSCOUT活動'"));
-  assert.ok(authenticatedSmoke.includes("name: 'LIGHT SEED送信履歴'"));
+  assert.ok(authenticatedSmoke.includes("name: 'SCOUT活動履歴'"));
+  assert.ok(authenticatedSmoke.includes('data-activity-filter="seed"'));
 });
 test('consolidated Staging workflow runs the shared deployment contract before package installation', () => {
   const verifierIndex = workflow.indexOf(

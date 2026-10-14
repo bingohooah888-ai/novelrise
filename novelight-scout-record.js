@@ -57,8 +57,8 @@
   const activityLabels = {
     valid_read: '有効読書',
     light_seed_sent: 'LIGHT SEED',
-    light_seed_discovery: '発掘成功',
-    star_rating_set: '☆評価',
+    favorite_added: 'お気に入り',
+    x_share_open: 'X共有',
     comment_posted: 'コメント'
   };
   const unearnedBadgeArtworkPath = 'assets/scout-badges/unearned-locked.png';
@@ -711,121 +711,115 @@
     });
   }
 
-  function renderActivity(rows) {
+  const activityPageSize = 20;
+  let activityFilter = 'all';
+  let activityOffset = 0;
+  let activityRequestId = 0;
+  let activityLoading = false;
+
+  function activityMessage(row) {
+    const name = row.novel_title || '現在表示できない作品';
+    switch (row.event_type) {
+      case 'valid_read':
+        return `『${name}』で有効読書が記録されました`;
+      case 'favorite_added':
+        return `『${name}』をお気に入りに登録しました`;
+      case 'light_seed_sent':
+        return `『${name}』に${row.seed_type ? row.seed_type + ' ' : ''}LIGHT SEEDを贈りました`;
+      case 'x_share_open':
+        return `${row.author_name ? row.author_name + 'の' : ''}『${name}』のX共有画面を開きました`;
+      case 'comment_posted':
+        return `『${name}』にコメントしました`;
+      default:
+        return `『${name}』でSCOUT活動を記録しました`;
+    }
+  }
+
+  function renderActivity(rows, { append = false, hasMore = false } = {}) {
     const host = document.getElementById('activityList');
     if (!host) return;
-    host.replaceChildren();
-    setText('statActivity', n(rows.length));
-    if (!rows.length) {
-      host.innerHTML = '<div class="scout-empty">まだ表示できるSCOUT活動はありません。</div>';
-      return;
+    if (!append) host.replaceChildren();
+    if (!rows.length && !append) {
+      host.innerHTML = '<div class="scout-empty">この条件の活動履歴はありません。</div>';
     }
-    rows.slice(0, 12).forEach((row) => {
-      const item = document.createElement('div');
-      item.className = 'scout-row';
-      const copy = document.createElement('div');
-      const title = document.createElement('b');
-      title.textContent = `${activityLabels[row.event_type] || 'SCOUT活動'} · ${row.novel_title || '作品情報は現在非公開'}`;
-      const meta = document.createElement('small');
-      meta.textContent = dateTime(row.occurred_at);
-      copy.append(title, meta);
-      item.appendChild(copy);
-    });
-  }
-
-  function renderSeedHistory(rows, novelMap, metadataUnavailable = false) {
-    const host = document.getElementById('seedHistoryList');
-    if (!host) return;
-    host.replaceChildren();
-    setText('seedHistoryCount', `${n(rows.length)}件`);
-
-    if (!rows.length) {
-      host.innerHTML =
-        '<div class="scout-empty">まだLIGHT SEEDを贈った作品はありません。</div>';
-      return;
-    }
-
     rows.forEach((row) => {
-      const id = String(row.novel_id_snapshot || '');
-      const novel = novelMap.get(id);
-      const published = !metadataUnavailable && novel?.status === 'published';
-
       const item = document.createElement('div');
       item.className = 'scout-row';
       const copy = document.createElement('div');
       const title = document.createElement('b');
-      title.textContent = metadataUnavailable
-        ? '作品情報を取得できません'
-        : published
-          ? novel.title
-          : '現在表示できない作品';
+      title.textContent = activityMessage(row);
       const meta = document.createElement('small');
-      meta.textContent = `LIGHT SEEDを贈った日時：${dateTime(row.seeded_at)} · ${
-        metadataUnavailable
-          ? '作品情報の取得エラー'
-          : published
-            ? '公開中'
-            : '現在非公開または削除済み'
-      }`;
+      meta.textContent = `${activityLabels[row.event_type] || 'SCOUT活動'} · ${dateTime(row.occurred_at)}`;
       copy.append(title, meta);
       item.appendChild(copy);
-
-      if (published) {
+      if (row.novel_title && /^[0-9]+$/u.test(String(row.novel_id || ''))) {
         const link = document.createElement('a');
         link.className = 'scout-mini-button';
-        link.href = `novel.html?id=${encodeURIComponent(id)}`;
+        link.href = `novel.html?id=${encodeURIComponent(row.novel_id)}`;
         link.textContent = '作品を見る →';
         item.appendChild(link);
-      } else {
-        const state = document.createElement('strong');
-        state.textContent = metadataUnavailable ? '再読み込み' : '表示不可';
-        item.appendChild(state);
       }
-
       host.appendChild(item);
     });
+    setText('statActivity', hasMore ? `${host.children.length}+` : n(host.children.length));
+    const more = document.getElementById('activityMore');
+    if (more) more.hidden = !hasMore;
   }
 
-  async function loadSeedHistory() {
-    const host = document.getElementById('seedHistoryList');
+  async function loadActivityPage(reset = false) {
+    const more = document.getElementById('activityMore');
+    const host = document.getElementById('activityList');
     if (!host) return;
-
-    let rows;
+    if (activityLoading && !reset) return;
+    const requestId = ++activityRequestId;
+    if (reset) {
+      activityOffset = 0;
+      host.innerHTML = '<div class="scout-loading">SCOUT活動を読み込んでいます。</div>';
+    }
+    activityLoading = true;
+    if (more) more.disabled = true;
     try {
-      const result = await client
-        .from('light_seeds')
-        .select('novel_id_snapshot,seeded_at')
-        .order('seeded_at', { ascending: false });
-      if (result.error) throw result.error;
-      rows = result.data || [];
+      const { data, error } = await client.rpc('novelight_scout_activity_feed', {
+        p_kind: activityFilter,
+        p_limit: activityPageSize + 1,
+        p_offset: activityOffset
+      });
+      if (requestId !== activityRequestId) return;
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      const page = rows.slice(0, activityPageSize);
+      renderActivity(page, { append: activityOffset > 0, hasMore: rows.length > activityPageSize });
+      activityOffset += page.length;
     } catch (error) {
-      console.error(error);
-      setText('seedHistoryCount', '—');
-      host.innerHTML =
-        '<div class="scout-error">LIGHT SEED送信履歴を読み込めませんでした。</div>';
-      return;
+      if (requestId !== activityRequestId) return;
+      console.error('SCOUT activity unavailable', error);
+      if (activityOffset === 0) {
+        host.innerHTML = '<div class="scout-error">活動履歴を取得できませんでした。再読み込みしてください。</div>';
+      }
+      if (more) more.hidden = true;
+    } finally {
+      if (requestId === activityRequestId) {
+        activityLoading = false;
+        if (more) more.disabled = false;
+      }
     }
+  }
 
-    if (!rows.length) {
-      renderSeedHistory([], new Map());
-      return;
-    }
-
-    const ids = [...new Set(rows.map((row) => String(row.novel_id_snapshot)))];
-    try {
-      const result = await client
-        .from('novels')
-        .select('id,title,status')
-        .in('id', ids);
-      if (result.error) throw result.error;
-      renderSeedHistory(
-        rows,
-        new Map((result.data || []).map((row) => [String(row.id), row]))
-      );
-    } catch (error) {
-      console.error(error);
-      renderSeedHistory(rows, new Map(), true);
-    }
+  function bindActivityFilters() {
+    document.querySelectorAll('[data-activity-filter]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const next = button.dataset.activityFilter;
+        if (next === activityFilter) return;
+        activityFilter = next;
+        document.querySelectorAll('[data-activity-filter]').forEach((item) => {
+          item.setAttribute('aria-pressed', String(item.dataset.activityFilter === next));
+        });
+        void loadActivityPage(true);
+      });
+    });
+    document.getElementById('activityMore')?.addEventListener('click', () => {
+      void loadActivityPage();
+    });
   }
 
   function renderDiscoveries(rows) {
@@ -953,7 +947,7 @@
         console.error('SCOUT RECORD usage telemetry failed', error)
       );
 
-    void loadSeedHistory();
+    void loadActivityPage(true);
 
     void Promise.resolve(client.rpc('novelight_scout_badges'))
       .then((badges) => {
@@ -970,12 +964,11 @@
         }
       });
 
-    const [summary, inventory, points, activity, discoveries] =
+    const [summary, inventory, points, discoveries] =
       await Promise.all([
         client.rpc('novelight_scout_record_summary'),
         client.rpc('novelight_light_seed_inventory'),
         client.rpc('novelight_scout_point_history', { p_limit: 30 }),
-        client.rpc('novelight_scout_recent_activity', { p_limit: 20 }),
         client.rpc('novelight_scout_discoveries', { p_limit: 20 })
       ]);
 
@@ -998,14 +991,12 @@
     if (points.error) console.error(points.error);
     renderPoints(points.error ? [] : points.data || []);
 
-    if (activity.error) console.error(activity.error);
-    renderActivity(activity.error ? [] : activity.data || []);
-
     if (discoveries.error) console.error(discoveries.error);
     renderDiscoveries(discoveries.error ? [] : discoveries.data || []);
   }
 
   bindFilters();
+  bindActivityFilters();
   bindDialogs();
   void load();
 })();

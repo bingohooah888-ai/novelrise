@@ -326,6 +326,8 @@
     void warm(url);
     const intent = intentUrl(title, url);
     const popup = window.open(intent, '_blank');
+    // Track opening NOVELIGHT's X composer, not whether the post was published.
+    void window.NovelightClient?.recordJourney?.(getClient(), 'x_share_open', novelId);
     if (popup) popup.opener = null;
     else window.location?.assign?.(intent);
   }
