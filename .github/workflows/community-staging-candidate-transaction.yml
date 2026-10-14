@@ -1,0 +1,216 @@
+name: Community Phase 1 Candidate Staging Transaction (OWNER only)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+# Serialize with existing one-time migration approvals. Never cancel mid-DDL.
+concurrency:
+  group: supabase-staging-migration-sync
+  cancel-in-progress: false
+
+jobs:
+  admit:
+    name: Bind one OWNER approval to exact PR and commit
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_COMMUNITY_CANDIDATE_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.verify.outputs.main_sha }}
+      candidate_sha: ${{ steps.verify.outputs.candidate_sha }}
+      request_id: ${{ steps.verify.outputs.request_id }}
+    steps:
+      - name: Resolve exact OWNER request without Staging secrets
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main")"
+          printf '%s\n' "$current_main" > /tmp/community-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-pr.json
+          main_sha="$(jq -er '.object.sha' /tmp/community-main.json)"
+          head_sha="$(jq -er '.head.sha' /tmp/community-pr.json)"
+          [[ "$main_sha" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$head_sha" =~ ^[a-f0-9]{40}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main_sha...$head_sha" > /tmp/community-compare.json
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" \
+            > /tmp/community-ledger-pages.json
+          node scripts/community-staging-approval-gate.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/community-main.json \
+            /tmp/community-pr.json /tmp/community-compare.json \
+            /tmp/community-ledger-pages.json > /tmp/community-decision.json
+          echo "main_sha=$(jq -er '.currentMainSha' /tmp/community-decision.json)" >> "$GITHUB_OUTPUT"
+          echo "candidate_sha=$(jq -er '.candidateSha' /tmp/community-decision.json)" >> "$GITHUB_OUTPUT"
+          echo "request_id=$(jq -er '.requestCommentId' /tmp/community-decision.json)" >> "$GITHUB_OUTPUT"
+          echo 'Verified OWNER Issue #294, exact main, immutable Draft PR and unused request.'
+
+      - name: Mark approval claimed before touching Staging
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_ID: ${{ steps.verify.outputs.request_id }}
+          MAIN_SHA: ${{ steps.verify.outputs.main_sha }}
+          CANDIDATE_SHA: ${{ steps.verify.outputs.candidate_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN_SHA" --arg candidateSha "$CANDIDATE_SHA" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_CLAIMED $payload" > /dev/null
+
+  transaction:
+    name: Rollback-only schema and role tests on dedicated Staging
+    if: needs.admit.result == 'success'
+    needs: admit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      CANDIDATE_SHA: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-staging-database-url
+      PGSSLMODE: require
+    steps:
+      - name: Checkout only approved current main runner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Recheck exact main and candidate without secrets in logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          current_head="$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')"
+          test "$current_main" = "$APPROVED_MAIN_SHA"
+          test "$current_head" = "$CANDIDATE_SHA"
+
+      - name: Fetch exactly four reviewed SQL blobs, never candidate code
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=/tmp/novelight-community-approved
+          mkdir -p "$root"
+          node scripts/community-staging-transaction.mjs manifest > /tmp/community-manifest
+          while IFS='|' read -r relative blob_sha; do
+            [[ "$relative" == supabase/* || "$relative" == tests/rls/* ]]
+            [[ "$blob_sha" =~ ^[a-f0-9]{40}$ ]]
+            mkdir -p "$root/$(dirname "$relative")"
+            gh api "repos/$GITHUB_REPOSITORY/contents/$relative?ref=$CANDIDATE_SHA" \
+              > /tmp/community-blob-response.json
+            jq -e --arg expected "$blob_sha" \
+              '.sha == $expected and .encoding == "base64"' \
+              /tmp/community-blob-response.json > /dev/null
+            jq -r '.content' /tmp/community-blob-response.json | base64 -d > "$root/$relative"
+            test "$(git hash-object "$root/$relative")" = "$blob_sha"
+          done < /tmp/community-manifest
+          node scripts/community-staging-transaction.mjs compose "$root" \
+            > /tmp/novelight-community-rollback-only.sql
+          echo 'Pinned SQL compiled from exact Git blobs; PR scripts were not run.'
+
+      - name: Require exact dedicated Staging identity and migration parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$STAGING_SUPABASE_URL" = \
+            'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          node scripts/resolve-staging-session-pooler.mjs
+          export STAGING_DATABASE_URL
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          node scripts/verify-staging-migration-target.mjs
+          find supabase/migrations -maxdepth 1 -type f \
+            -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*.sql' \
+            -printf '%f\n' | cut -c1-14 | sort -u > /tmp/community-expected-migrations
+          psql "$STAGING_DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c 'SELECT version FROM supabase_migrations.schema_migrations ORDER BY version' \
+            > /tmp/community-staging-migrations
+          diff -u /tmp/community-expected-migrations /tmp/community-staging-migrations
+          ! grep -Fxq '20261014052000' /tmp/community-staging-migrations
+          echo 'Exact 179-migration baseline parity and candidate-not-installed proven.'
+
+      - name: Run temporary schema and RLS tests in ONE rollback-only transaction
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')" = "$CANDIDATE_SHA"
+          export STAGING_DATABASE_URL
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -f /tmp/novelight-community-rollback-only.sql
+          psql "$STAGING_DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c 'SELECT version FROM supabase_migrations.schema_migrations ORDER BY version' \
+            > /tmp/community-staging-migrations-after
+          diff -u /tmp/community-staging-migrations \
+            /tmp/community-staging-migrations-after
+          echo 'Candidate Staging transaction ended in ROLLBACK. Migration ledger unchanged.'
+
+  record:
+    name: Consume OWNER approval regardless of outcome
+    needs: [admit, transaction]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Record single-use completion on Issue #294
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+          CANDIDATE_SHA: ${{ needs.admit.outputs.candidate_sha }}
+          RESULT: ${{ needs.transaction.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN_SHA" --arg candidateSha "$CANDIDATE_SHA" \
+            --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_CONSUMED $payload" > /dev/null
+          echo 'Approval consumed; manual OWNER authorization needed for any repeat.'
