@@ -70,6 +70,7 @@ test('ADMIN bearer protects moderator changes', () => {
 test('review SQL protects private rows and notifications', () => {
   const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
   const quotes = sql.match(/\$\$/g) || [];
+  assert.doesNotMatch(sql, /^AS \$|^\$;$/m);
   assert.equal(quotes.length % 2, 0);
   const tables = [
     'community_reactions',

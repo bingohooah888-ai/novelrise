@@ -631,7 +631,7 @@ CREATE OR REPLACE FUNCTION public.novelight_admin_community_metrics(
  p_days integer DEFAULT 7
 )
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
-AS $
+AS $$
 DECLARE v_start timestamptz;
   v_entries bigint;
   v_visitors bigint;
@@ -686,7 +686,7 @@ BEGIN
    'interactors',v_interactors,'repeat_interactors',v_repeat
  );
 END
-$;
+$$;
 REVOKE ALL ON FUNCTION public.novelight_admin_community_metrics(integer)
  FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.novelight_admin_community_metrics(integer)
