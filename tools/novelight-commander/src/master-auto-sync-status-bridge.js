@@ -1,6 +1,10 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import {
+  HEADFUL_DIAGNOSTIC_CONFIRMATION,
+  diagnoseMasterHeadfulReadOnly
+} from './master-headful-readonly-diagnostic.js';
 
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = 'novelrise';
@@ -40,6 +44,7 @@ async function loadBridgeConfig() {
   }
   return {
     issueNumber: raw.issueNumber,
+    repoRoot: path.resolve(String(raw.repoRoot || '')),
     dataRoot: path.resolve(String(raw.dataRoot || path.join(os.homedir(), 'Documents', 'NOVELIGHT-Bridge')))
   };
 }
@@ -87,10 +92,17 @@ function parseRequest(comment) {
   if (request.version !== 1 || !REQUEST_ID_RE.test(String(request.requestId || ''))) {
     throw new Error('MASTER status request version or requestId is invalid.');
   }
-  if (request.action !== 'master_auto_sync_status' || !exactKeys(request.args, [])) {
-    throw new Error('Only master_auto_sync_status with empty args is supported.');
+  if (request.action === 'master_auto_sync_status' && exactKeys(request.args, [])) {
+    return request;
   }
-  return request;
+  if (
+    request.action === 'master_headful_readonly_diagnose' &&
+    exactKeys(request.args, ['confirmation']) &&
+    request.args.confirmation === HEADFUL_DIAGNOSTIC_CONFIRMATION
+  ) {
+    return request;
+  }
+  throw new Error('Unsupported or unapproved MASTER diagnostic request.');
 }
 
 async function readStatus(config) {
@@ -190,7 +202,11 @@ async function processPendingRequests() {
     pending.sort((a, b) => a.commentId - b.commentId);
     for (const entry of pending) {
       try {
-        await postResult(config, entry.request, 'success', await readStatus(config));
+        const details =
+          entry.request.action === 'master_headful_readonly_diagnose'
+            ? JSON.stringify(await diagnoseMasterHeadfulReadOnly(config))
+            : await readStatus(config);
+        await postResult(config, entry.request, 'success', details);
       } catch (error) {
         await postResult(
           config,
