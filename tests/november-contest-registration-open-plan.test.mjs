@@ -68,7 +68,7 @@ function mutatePayload(context, mutation) {
   };
 }
 
-test('only exact OWNER/issue/chat-opening evidence yields inert approval plan', () => {
+test('owner approval creates an inert plan', () => {
   const result = verifyRegistrationOpenApproval(fixture());
   assert.equal(result.approvalContractValidated, true);
   assert.equal(result.productionMutationPerformed, false);
@@ -77,7 +77,7 @@ test('only exact OWNER/issue/chat-opening evidence yields inert approval plan', 
   assert.equal(Object.isFrozen(result), true);
 });
 
-test('ordinary continuation or Production approval never authorizes opening', () => {
+test('ordinary or Production approvals cannot open entry', () => {
   const context = fixture();
   for (const body of [
     'はい',
@@ -110,18 +110,36 @@ test('ordinary continuation or Production approval never authorizes opening', ()
   );
 });
 
-test('mismatched terms, signature, evidence and legal readiness all stop', () => {
+test('mismatched terms and missing evidence block approval', () => {
   const original = fixture();
   const edits = [
-    (p) => { p.termsVersion = 'other'; },
-    (p) => { p.termsUrl = 'https://example.org/contest'; },
-    (p) => { p.termsSourceSha = 'b'.repeat(40); },
-    (p) => { p.challenge = '00000000'; },
-    (p) => { p.confirmation = 'CHAT_PRODUCTION_APPROVED'; },
-    (p) => { p.attestations.legalReviewCompleted = false; },
-    (p) => { p.attestations.residentAndNonresidentTaxReviewed = false; },
-    (p) => { p.attestations.recipientIdentityAndMailVerified = false; },
-    (p) => { p.extra = true; }
+    (p) => {
+      p.termsVersion = 'other';
+    },
+    (p) => {
+      p.termsUrl = 'https://example.org/contest';
+    },
+    (p) => {
+      p.termsSourceSha = 'b'.repeat(40);
+    },
+    (p) => {
+      p.challenge = '00000000';
+    },
+    (p) => {
+      p.confirmation = 'CHAT_PRODUCTION_APPROVED';
+    },
+    (p) => {
+      p.attestations.legalReviewCompleted = false;
+    },
+    (p) => {
+      p.attestations.residentAndNonresidentTaxReviewed = false;
+    },
+    (p) => {
+      p.attestations.recipientIdentityAndMailVerified = false;
+    },
+    (p) => {
+      p.extra = true;
+    }
   ];
   for (const edit of edits) {
     assert.throws(
@@ -141,7 +159,7 @@ test('mismatched terms, signature, evidence and legal readiness all stop', () =>
   );
 });
 
-test('approval must be narrow in time and cannot be reused after expiration', () => {
+test('approval has a short validity window', () => {
   const context = fixture();
   assert.throws(
     () => verifyRegistrationOpenApproval({
@@ -167,7 +185,7 @@ test('approval must be narrow in time and cannot be reused after expiration', ()
   );
 });
 
-test('SQL release plan is atomic, scoped and includes durable audit evidence', () => {
+test('release SQL is scoped, atomic and auditable', () => {
   const verified = verifyRegistrationOpenApproval(fixture());
   const sql = buildAtomicRegistrationOpenSql(verified);
   assert.match(sql, /^-- DANGEROUS IF EXECUTED:/);
@@ -179,7 +197,10 @@ test('SQL release plan is atomic, scoped and includes durable audit evidence', (
   assert.match(sql, /terms_version not in/);
   assert.match(sql, /v_now >= v_contest.entry_deadline_at/);
   assert.match(sql, /v_now >= v_contest.starts_at/);
-  assert.match(sql, /if exists \(select 1 from public.novelight_contest_entries/);
+  assert.match(
+    sql,
+    /if exists \(select 1 from public.novelight_contest_entries/
+  );
   assert.match(sql, /status = 'registration', public_visible = true/);
   assert.match(sql, /STEP05_REGISTRATION_OPEN_BLOCKED/);
   assert.match(sql, /insert into public.novelight_contest_review_audit/);
