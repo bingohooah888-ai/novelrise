@@ -8,6 +8,8 @@ import {
   prepareLatestMaster
 } from './master-sync.js';
 
+import { observeProjectPageLoad } from './master-project-render-telemetry.js';
+
 const DEFAULT_PROJECT_NAME = 'NOVELIGHT';
 const DEFAULT_CDP_URL = 'http://127.0.0.1:9222';
 
@@ -155,29 +157,6 @@ function looksLikeProjectUrl(value) {
   } catch {
     return false;
   }
-}
-
-function observeProjectPageLoad(page) {
-  // Deliberately record counts only: never page text, JS exception messages,
-  // URLs, cookies, response bodies, accounts or ChatGPT content.
-  const counts = {
-    scriptExceptions: 0,
-    consoleErrors: 0,
-    failedRequests: 0,
-    http4xx: 0,
-    http5xx: 0
-  };
-  page.on('pageerror', () => { counts.scriptExceptions += 1; });
-  page.on('console', message => {
-    if (message.type() === 'error') counts.consoleErrors += 1;
-  });
-  page.on('requestfailed', () => { counts.failedRequests += 1; });
-  page.on('response', response => {
-    const status = response.status();
-    if (status >= 400 && status < 500) counts.http4xx += 1;
-    if (status >= 500 && status < 600) counts.http5xx += 1;
-  });
-  return counts;
 }
 
 async function waitForProjectMainRender(page) {
