@@ -54,37 +54,15 @@ export function createAdminCommunityHandler({ supabase, env = process.env }) {
         return fail(res, 400, 'Invalid user');
       }
       const target = ['hide', 'restore'].includes(action) ? postKey : userId;
-      const audit = {
-        admin_user_id: admin.id,
-        action: 'community.' + action,
-        resource_type: ['hide','restore'].includes(action) ? 'community_post' : 'community_user',
-        resource_id: target,
-        metadata: { reason: reason.trim().slice(0, 500) }
-      };
-
-      let mutation;
-      if (action === 'hide') {
-        mutation = await supabase.from('community_hidden_posts').upsert(
-          { post_key: postKey, hidden_by: admin.id, reason: reason.trim() },
-          { onConflict: 'post_key' }
-        );
-      } else if (action === 'restore') {
-        mutation = await supabase.from('community_hidden_posts').delete().eq('post_key', postKey);
-      } else if (action === 'restrict') {
-        mutation = await supabase.from('community_user_restrictions').upsert({
-          user_id: userId, imposed_by: admin.id, reason: reason.trim(),
-          expires_at: new Date(Date.now() + 7 * 86400000).toISOString()
-        }, { onConflict: 'user_id' });
-      } else {
-        mutation = await supabase.from('community_user_restrictions').delete().eq('user_id', userId);
-      }
-      if (mutation.error) throw mutation.error;
-
-      const auditResult = await supabase.from('admin_operation_audit').insert(audit);
-      if (auditResult.error) {
-        // The mutation occurred; fail closed and surface a monitoring signal.
-        console.error('NOVELIGHT community moderation audit failed', { action });
-        return fail(res, 500, 'Moderation audit failed; state may have changed');
+      const result = await supabase.rpc('novelight_admin_community_moderate', {
+        p_admin_user_id: admin.id,
+        p_action: action,
+        p_post_key: ['hide', 'restore'].includes(action) ? postKey : null,
+        p_user_id: ['restrict', 'unrestrict'].includes(action) ? userId : null,
+        p_reason: reason.trim()
+      });
+      if (result.error || result.data !== true) {
+        throw result.error || new Error('Moderation transaction failed');
       }
       return res.status(200).json({ ok: true, action, target });
     } catch (error) {
