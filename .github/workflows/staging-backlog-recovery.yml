@@ -4,11 +4,11 @@ on:
     types: [created]
 permissions:
   contents: read
-concurrency:
-  group: supabase-staging-migration-sync
-  cancel-in-progress: false
 jobs:
   recover:
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
     if: >-
       github.event.issue.number == 294 &&
       github.event.issue.pull_request == null &&
