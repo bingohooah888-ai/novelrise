@@ -154,3 +154,14 @@ test('shared list URL and content changes invalidate global consent', () => {
   assert.match(sql, /new\.description IS DISTINCT FROM old\.description/);
   assert.match(sql, /BEFORE UPDATE OF visibility,share_token,title,description/);
 });
+
+test('disposable DB role test covers guest and staff RPC gates', () => {
+  const sql = read('tests/rls/community-plaza-phase1-security.sql');
+  assert.match(sql, /BEGIN;/);
+  assert.match(sql, /ROLLBACK;/);
+  assert.match(sql, /SET LOCAL ROLE anon/);
+  assert.match(sql, /SET LOCAL ROLE authenticated/);
+  assert.match(sql, /has_table_privilege/);
+  assert.match(sql, /has_function_privilege/);
+  assert.match(sql, /novelight_admin_community_moderate/);
+});

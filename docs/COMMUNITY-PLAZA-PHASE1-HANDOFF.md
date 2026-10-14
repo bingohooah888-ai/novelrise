@@ -276,3 +276,14 @@ changing list title/description/visibility/share token resets
 The v2 note save wrapper reasserts consent after a canonical legacy save,
 only after a fresh general-audience confirmation. Both server trigger
 behaviors require isolated authorized testing before launch.
+
+## 2026-10-14 isolated post-migration role tests prepared
+
+`tests/rls/community-plaza-phase1-security.sql` is a focused role/RLS
+test for **disposable migration-replay PostgreSQL only**. Once an isolated
+DB has applied the approved formal migration, use
+`psql -v ON_ERROR_STOP=1 -f tests/rls/community-plaza-phase1-security.sql`
+there. It checks seven private tables, raw client grants, ADMIN-only RPC
+grants, anonymous feed and unauthenticated interaction denial. The
+transaction rolls back. It is NOT an applied migration or a passing
+integration test; cross-user, consent and notification fixtures remain.
