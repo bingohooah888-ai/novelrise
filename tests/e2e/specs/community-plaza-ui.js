@@ -24,8 +24,8 @@ async function installIsolatedMock(page, enabled) {
   await page.route('**/*.supabase.co/**', (route) =>
     route.abort('blockedbyclient')
   );
-  await page.route('**/assets/vendor/supabase-js-2.112.3.js', (route) =>
-    route.fulfill({
+  await page.route('**/assets/vendor/supabase-js-2.112.3.js', async (route) => {
+    await route.fulfill({
       status: 200,
       contentType: 'application/javascript',
       body: `
@@ -73,8 +73,8 @@ async function installIsolatedMock(page, enabled) {
           window.supabase = {createClient: () => client};
         })();
       `
-    })
-  );
+    });
+  });
   if (enabled) {
     await page.route('**/novelight-client.js', async (route) => {
       const response = await route.fetch();
@@ -91,9 +91,7 @@ async function installIsolatedMock(page, enabled) {
   }
 }
 
-test('community stays noninteractive with public release gate OFF', async ({
-  page
-}) => {
+test('community gate OFF prevents RPC calls', async ({ page }) => {
   await installIsolatedMock(page, false);
   await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.community-card')).toHaveCount(0);
@@ -103,19 +101,13 @@ test('community stays noninteractive with public release gate OFF', async ({
   ).toEqual([]);
 });
 
-test('community local-only feed, interactions and board tab work on desktop/mobile', async ({
-  page
-}) => {
+test('community UI interactions use mocked data', async ({ page }) => {
   await installIsolatedMock(page, true);
   await page.goto('/community.html', {waitUntil:'domcontentloaded'});
   const card = page.locator('.community-card');
   await expect(card).toHaveCount(1);
-  await expect(card.locator('.community-card-title')).toHaveText(
-    'テスト用の近況'
-  );
-  await expect(card.locator('.community-card-body')).toContainText(
-    '安全な画面表示'
-  );
+  await expect(card.locator('.community-card-title')).toHaveText('テスト用の近況');
+  await expect(card.locator('.community-card-body')).toContainText('安全な画面表示');
   await card.locator('.community-expand').click();
   await expect(card.locator('.community-expand')).toHaveAttribute(
     'aria-expanded',
