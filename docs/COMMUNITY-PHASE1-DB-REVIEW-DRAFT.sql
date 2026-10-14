@@ -79,6 +79,10 @@ LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = ''
 AS $$
   SELECT CASE
+    -- Moderation must revoke direct RPC access, not only hide the feed card.
+    WHEN EXISTS (
+      SELECT 1 FROM public.community_hidden_posts h WHERE h.post_key=p_key
+    ) THEN false
     WHEN p_key ~ '^novel:[0-9]+$' THEN EXISTS (
       SELECT 1
       FROM public.author_follow_events e

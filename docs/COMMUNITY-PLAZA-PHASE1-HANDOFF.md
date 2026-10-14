@@ -328,3 +328,21 @@ Production, or cross-user behavior tests. The SQL remains review-only and
 requires formal CLI-created migration, explicit rollback decision and
 authorized Staging testing before activation. Manual Production approval
 is NOT granted by CI success.
+
+## 2026-10-14 cross-user and moderation behavior replay
+
+Added `tests/rls/community-plaza-phase1-behavior.sql` to the
+disposable replay job to simulate two isolated authenticated users,
+author Block, reader Mute, direct comment/like, admin-hidden posts,
+legacy note edit, confirmed V2 re-share, shared-link-only curation,
+explicit discovery opt-in, token rotation, changed description, and
+cross-user permission denial. All records roll back in a disposable CI
+PostgreSQL container.
+
+Review of the prior draft found that a moderated, hidden post was
+excluded from the feed but `novelight_community_post_visible`
+did not itself check `community_hidden_posts`. Therefore crafted
+direct RPC requests could still read comments or interact with a hidden
+post. Proposed draft now rejects hidden posts centrally, so direct
+comments, likes, reports, and notifications inherit the same ban.
+This is a pending CI hypothesis until the new behavior replay succeeds.

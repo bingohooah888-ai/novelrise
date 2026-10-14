@@ -177,3 +177,13 @@ test('episode publication grouping uses an explicit GROUP BY key', () => {
     sql.includes('GROUP BY e.author_user_id,n.id,n.title,n.thumbnail_url')
   );
 });
+
+test('hidden posts are inaccessible through all community RPCs', () => {
+  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  assert.match(sql, /WHEN EXISTS \(\s*SELECT 1 FROM public\.community_hidden_posts h/);
+  assert.match(sql, /NOT public\.novelight_community_post_visible\(p_key\)/);
+  const fixture = read('tests/rls/community-plaza-phase1-behavior.sql');
+  assert.match(fixture, /Hidden post accepted direct like/);
+  assert.match(fixture, /Blocked author direct comments RPC leaked/);
+  assert.match(fixture, /Rotated share-token retained public feed consent/);
+});

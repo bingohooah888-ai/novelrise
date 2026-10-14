@@ -42,6 +42,7 @@ echo "::endgroup::"
 echo "::group::Community Phase 1 isolated review DDL and role contract"
 "${CONTEST_REPLAY[@]}" -f docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-security.sql
+"${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-behavior.sql
 echo "::endgroup::"
 
 rm -f "$SEARCH_CARD_COMPAT_MIGRATION"
