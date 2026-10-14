@@ -259,3 +259,20 @@ test('mutation failure after claim is recorded and not automatically retried', a
   );
   await assert.rejects(performRegistrationRelease(h.input), /reconciliation/);
 });
+
+test('main advancing after claim blocks SQL and requires reconciliation', async () => {
+  const h = makeHarness();
+  const originalGet = h.input.github.get;
+  let checkedMain = 0;
+  h.input.github.get = async (path) => {
+    if (path === ROOT + '/git/ref/heads/main') {
+      checkedMain++;
+      if (checkedMain === 3) return { object: { sha: 'a'.repeat(40) } };
+    }
+    return originalGet(path);
+  };
+  await assert.rejects(performRegistrationRelease(h.input), /main advanced after claim/);
+  assert.equal(h.getMutations(), 0);
+  assert.equal(h.ledger.length, 2);
+  assert.match(h.ledger[1].body, /^NOVELIGHT_CONTEST_REGISTRATION_OPEN_FAILED /);
+});

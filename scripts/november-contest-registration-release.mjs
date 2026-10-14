@@ -146,8 +146,13 @@ export async function performRegistrationRelease({
   // From here, do not auto-retry: a partial or ambiguous response needs
   // manual reconciliation before another independently signed approval.
   await github.postComment(ISSUE, CLAIMED + JSON.stringify(claim));
-  let phase = 'production_mutation_unknown';
+  let phase = 'fresh_main_check';
   try {
+    const beforeMutation = await github.get(PREFIX + '/git/ref/heads/main');
+    if (beforeMutation?.object?.sha !== approval.mainSha) {
+      stop('main advanced after claim; no SQL executed');
+    }
+    phase = 'production_mutation_unknown';
     // The SQL is a single bounded transaction, with no cron or award changes.
     await supabase.query(buildAtomicRegistrationOpenSql(approval), false);
     phase = 'postcheck';
