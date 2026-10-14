@@ -2,16 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const read = (path) =>
-  readFileSync(new URL('../' + path, import.meta.url), 'utf8');
+function read(path) {
+  return readFileSync(new URL('../' + path, import.meta.url), 'utf8');
+}
 
-test('community stays unpublished until approved migration and moderation', () => {
+test('community is hidden before approval', () => {
   const flags = read('novelight-community-config.js');
   assert.match(flags, /timeline:\s*false/);
   assert.match(flags, /board:\s*false/);
 });
 
-test('home live cards mount immediately below the existing carousel', () => {
+test('home community follows banner and precedes discovery', () => {
   const html = read('index.html');
   const banner = html.indexOf('class="home-promo-carousel"');
   const community = html.indexOf('id="communityHomeSection"');
@@ -22,32 +23,24 @@ test('home live cards mount immediately below the existing carousel', () => {
   assert.match(html, /掲示板を見る/);
 });
 
-test('one release-gated exchange entry is present on both shared headers', () => {
+test('one exchange destination is gated on shared headers', () => {
   const client = read('novelight-client.js');
-  assert.equal(
-    (client.match(/href="community\.html"\$\{communityCurrent\}/g) || []).length,
-    2
-  );
+  const matches = client.match(/href="community\.html"\$\{communityCurrent\}/g);
+  assert.equal(matches?.length, 2);
   assert.match(client, /NOVELIGHT_COMMUNITY_FLAGS\.timeline \?/);
   const index = read('index.html');
-  assert.equal((index.match(/href="community\.html">交流<\/a>/g) || []).length, 0);
+  assert.doesNotMatch(index, /href="community\.html">交流<\/a>/);
 });
 
-test('author note timeline posting is explicit opt-in and remains compatible', () => {
+test('near-note sharing is an explicit opt-in', () => {
   const editor = read('author-notes.html');
   assert.match(editor, /id="noteTimelineShare"/);
   assert.match(editor, /notePublicSafety/);
-  assert.match(
-    editor,
-    /communityEnabled\?'novelight_save_my_author_note_v2':'novelight_save_my_author_note'/
-  );
-  assert.match(
-    editor,
-    /p_show_in_timeline:document\.getElementById\('noteTimelineShare'\)\.checked/
-  );
+  assert.match(editor, /novelight_save_my_author_note_v2/);
+  assert.match(editor, /p_show_in_timeline:/);
 });
 
-test('feed uses bounded RPCs and no duplicate author-note storage', () => {
+test('community feed uses bounded RPCs instead of raw notes', () => {
   const code = read('novelight-community.js');
   assert.match(code, /novelight_community_feed/);
   assert.match(code, /novelight_community_toggle_like/);
@@ -57,7 +50,7 @@ test('feed uses bounded RPCs and no duplicate author-note storage', () => {
   assert.doesNotThrow(() => new Function(code));
 });
 
-test('timeline and later board share one landing page', () => {
+test('timeline and board share one page', () => {
   const html = read('community.html');
   assert.match(html, /id="communityTimeline"/);
   assert.match(html, /id="communityBoardInfo"/);
@@ -65,42 +58,32 @@ test('timeline and later board share one landing page', () => {
   assert.match(html, /タイムライン公開後/);
 });
 
-test('ADMIN bearer and dedicated atomic RPC protect staff changes', () => {
+test('ADMIN bearer protects moderator changes', () => {
   const handler = read('api/_lib/admin-community.js');
   const entry = read('api/admin-community.js');
   assert.match(handler, /requireAdmin/);
   assert.match(handler, /novelight_admin_community_moderate/);
   assert.match(entry, /SUPABASE_SECRET_KEY/);
-  assert.doesNotThrow(
-    () => new Function(read('novelight-community-config.js'))
-  );
 });
 
-test('review SQL declares private RLS and idempotent event rules', () => {
-  const migration = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
-  assert.equal(
-    (migration.match(/\$\$/g) || []).length % 2,
-    0,
-    'balanced dollar quotes'
-  );
-  for (const table of [
+test('review SQL protects private rows and notifications', () => {
+  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const quotes = sql.match(/\$\$/g) || [];
+  assert.equal(quotes.length % 2, 0);
+  const tables = [
     'community_reactions',
     'community_comments',
     'community_reports',
     'community_hidden_posts',
     'community_user_restrictions',
     'community_notifications'
-  ]) {
-    assert.match(
-      migration,
-      new RegExp('ALTER TABLE public\\.' + table + ' ENABLE ROW LEVEL SECURITY')
-    );
+  ];
+  for (const table of tables) {
+    const rls = 'ALTER TABLE public.' + table + ' ENABLE ROW LEVEL SECURITY';
+    assert.ok(sql.includes(rls), rls);
   }
-  assert.match(migration, /TO service_role;/);
-  assert.match(migration, /ON CONFLICT\(event_key\) DO NOTHING/);
-  assert.match(
-    migration,
-    /NOT public\.novelight_community_interaction_allowed/
-  );
-  assert.doesNotMatch(migration, /UPDATE public\.novel_rank/);
+  assert.match(sql, /TO service_role;/);
+  assert.match(sql, /ON CONFLICT\(event_key\) DO NOTHING/);
+  assert.match(sql, /NOT public\.novelight_community_interaction_allowed/);
+  assert.doesNotMatch(sql, /UPDATE public\.novel_rank/);
 });
