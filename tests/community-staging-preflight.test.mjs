@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import {
   COMMUNITY_PREP_PATHS,
-  verifyCommunityStagingPreparation,
+  verifyCommunityStagingPreparation
 } from '../scripts/community-staging-preflight.mjs';
 
 const mainSha = 'a40dcf9a0cc7a841c95c075aa448ec794f4fb470';
@@ -48,7 +48,7 @@ test('migration must leave the public database gate disabled', () => {
       return [
         sql,
         'UPDATE public.community_runtime_control',
-        'SET public_enabled=true;',
+        'SET public_enabled=true;'
       ].join('\n');
     }
     return sql;
