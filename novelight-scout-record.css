@@ -75,7 +75,7 @@ body.novelight-page-scout-record .workspace{
 .scout-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
 .scout-stat{padding:17px;border:1px solid rgba(226,190,92,.18);border-radius:15px;background:rgba(7,29,51,.82)}
 .scout-stat span{color:#91a1b0;font-size:10px;font-weight:900;letter-spacing:.08em}.scout-stat strong{display:block;margin-top:7px;color:#fff8e8;font-size:25px}
-.scout-main-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:18px;margin-top:18px}
+.scout-main-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:18px;margin-top:18px;align-items:start}
 .badge-filters{display:flex;gap:7px;flex-wrap:wrap;margin-top:16px}
 .badge-filter{
   min-height:34px;padding:7px 11px;border:1px solid rgba(226,190,92,.18);border-radius:999px;
@@ -107,6 +107,16 @@ body.novelight-page-scout-record .workspace{
 .badge-empty,.scout-empty,.scout-loading,.scout-error{padding:22px;border:1px dashed rgba(226,190,92,.2);border-radius:12px;color:#96a5b3;font-size:11px;line-height:1.7;text-align:center}
 .scout-error{border-color:rgba(255,156,152,.36);color:var(--danger)}
 .scout-list{display:grid;gap:9px;margin-top:15px}
+/* Keep the Point ledger usable without allowing it to determine full page height. */
+#pointHistory{
+  max-height:min(58vh,560px);
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  align-content:start;
+  padding-right:4px
+}
 .scout-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 13px;border:1px solid rgba(255,255,255,.06);border-radius:12px;background:rgba(2,13,24,.38)}
 .scout-row b{color:#eef3f7;font-size:12px}.scout-row small{display:block;margin-top:4px;color:#81909e;font-size:9px;line-height:1.55}.scout-row strong{color:var(--gold-bright);font-size:12px;text-align:right}
 .scout-note{margin-top:12px;color:#8d9ca9;font-size:10px;line-height:1.7}

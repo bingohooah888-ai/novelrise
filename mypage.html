@@ -9,7 +9,12 @@
   <style>
     .profile-summary{align-items:center}
     .profile-equipped-field{display:grid;gap:8px}
-    .profile-equipped-field select{width:100%;min-height:40px;padding:9px 10px;border:1px solid #b9c7d6;border-radius:9px;background:#fff;color:#172536;font:inherit}
+    .profile-equipped-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);align-items:start;gap:12px}
+    .profile-equipped-field select{width:100%;min-width:0;min-height:40px;padding:9px 10px;border:1px solid #b9c7d6;border-radius:9px;background:#fff;color:#172536;font:inherit}
+    .profile-equipped-condition{min-width:0;padding:10px 12px;border:1px solid rgba(216,180,90,.4);border-radius:10px;background:rgba(2,15,29,.75);color:#f6e7c4;line-height:1.65;overflow-wrap:anywhere}
+    .profile-equipped-condition-label{display:block;margin-bottom:5px;color:#e5c568;font-size:12px;font-weight:800}
+    .profile-equipped-condition-description{margin:0;color:#f6f3e8;font-size:13px}
+    @media(max-width:600px){.profile-equipped-grid{grid-template-columns:1fr}}
     .profile-equipped-field select:disabled{opacity:.65}
     .profile-equipped-field p{margin:0;font-size:12px;line-height:1.5}
     .profile-equipped-field a{font-size:12px;color:#caa748;text-decoration:underline}
@@ -146,7 +151,13 @@
               <div><label for="bio">自己紹介</label><textarea id="bio" maxlength="500"></textarea></div>
               <div class="profile-equipped-field">
                 <label for="equippedBadge">装備する称号</label>
-                <select id="equippedBadge" disabled><option value="">プロフィール編集を開くと読み込まれます</option></select>
+                <div class="profile-equipped-grid">
+                  <select id="equippedBadge" aria-describedby="equippedBadgeCondition" disabled><option value="">プロフィール編集を開くと読み込まれます</option></select>
+                  <div id="equippedBadgeCondition" class="profile-equipped-condition" role="status" aria-live="polite">
+                    <span class="profile-equipped-condition-label">獲得条件</span>
+                    <p id="equippedBadgeConditionText" class="profile-equipped-condition-description">称号を選ぶと獲得条件を表示します。</p>
+                  </div>
+                </div>
                 <p id="equippedBadgeStatus" role="status" aria-live="polite">獲得した称号を1つ選んで公開できます。</p>
                 <a href="scout-record.html#badgeTitle">称号一覧・獲得条件を見る →</a>
               </div>
@@ -189,6 +200,17 @@ async function loadOwnProfile(){let r=await client.from('profiles').select('disp
 async function savePublicProfile(displayName,bio,avatarPath){if(avatarFeatureReady){const r=await client.rpc('novelight_update_my_public_profile',{p_display_name:displayName,p_bio:bio,p_avatar_path:avatarPath||null});if(r.error)throw r.error;return}const r=await client.from('profiles').update({display_name:displayName,bio}).eq('id',session.user.id);if(r.error)throw r.error}
 
 let equippedBadgeLoaded=false;
+let equippedBadgeDescriptions=new Map();
+function showEquippedBadgeCondition(badgeId){
+  const target=document.getElementById('equippedBadgeConditionText');
+  if(!target)return;
+  if(!badgeId){
+    target.textContent='装備する称号を選ぶと、その獲得条件を確認できます。';
+    return;
+  }
+  const description=equippedBadgeDescriptions.get(badgeId);
+  target.textContent=description||'獲得条件を取得できませんでした。称号一覧で詳細を確認してください。';
+}
 async function loadEquippedBadges(){
   if(equippedBadgeLoaded||!session?.user?.id)return;
   const select=document.getElementById('equippedBadge'),status=document.getElementById('equippedBadgeStatus');
@@ -197,6 +219,7 @@ async function loadEquippedBadges(){
     const {data,error}=await client.rpc('novelight_scout_badges');
     if(error)throw error;
     const earned=Array.isArray(data)?data.filter(row=>row.status==='earned'):[];
+    equippedBadgeDescriptions=new Map(earned.map(row=>[String(row.badge_id),String(row.description||'').trim()]));
     select.replaceChildren(new Option('装備しない',''));
     earned.forEach(row=>{
       const name=row.badge_id==='limited_founding_author'&&Number.isInteger(Number(row.metadata?.founding_number))
@@ -207,12 +230,14 @@ async function loadEquippedBadges(){
     const current=earned.find(row=>row.is_public===true);
     select.value=current?.badge_id||'';
     select.dataset.saved=select.value;
+    showEquippedBadgeCondition(select.value);
     select.disabled=earned.length===0;
     status.textContent=earned.length?'選択するとすぐにプロフィールへ反映されます。':'獲得済みの称号がありません。';
     equippedBadgeLoaded=true;
   }catch(error){
     console.error('badge selector load failed',error);
     select.disabled=true;
+    document.getElementById('equippedBadgeConditionText').textContent='称号の獲得条件を読み込めませんでした。';
     status.textContent='称号を読み込めませんでした。SCOUT RECORDから設定してください。';
   }
 }
@@ -222,6 +247,7 @@ document.querySelector('.profile-editor').addEventListener('toggle',event=>{
 document.getElementById('equippedBadge').addEventListener('change',async event=>{
   const select=event.currentTarget,status=document.getElementById('equippedBadgeStatus');
   const previous=select.dataset.saved||'',next=select.value;
+  showEquippedBadgeCondition(next);
   if(previous===next)return;
   select.disabled=true;
   status.textContent='称号を更新しています...';
@@ -238,6 +264,7 @@ document.getElementById('equippedBadge').addEventListener('change',async event=>
   }catch(error){
     console.error('badge selector update failed',error);
     select.value=previous;
+    showEquippedBadgeCondition(previous);
     status.textContent='称号を変更できませんでした。もう一度お試しください。';
   }finally{
     select.disabled=false;
