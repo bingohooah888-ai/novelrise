@@ -23,8 +23,9 @@ test('step05 private prelaunch cannot publish the contest', () => {
   assert.match(sql, /rollback;/i);
   for (const line of sql.replace(/--[^\n]*/g, '').split('\n')) {
     const statement = line.trimStart();
-    assert.doesNotMatch(statement, /^(update|insert|delete|truncate|create|drop|alter)\s/i);
-    assert.doesNotMatch(statement, /^(grant|revoke|commit|call|execute)\s/i);
+    assert.doesNotMatch(statement, /^(update|insert|delete|truncate)\s/i);
+    assert.doesNotMatch(statement, /^(create|drop|alter|grant|revoke)\s/i);
+    assert.doesNotMatch(statement, /^(commit|call|execute)\s/i);
   }
   assert.match(sql, /status <> 'draft'/);
   assert.match(sql, /public_visible is not false/);
