@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS public.community_comments (
   post_key text NOT NULL,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   body text NOT NULL CHECK (char_length(body) BETWEEN 1 AND 500),
+  parent_comment_id uuid REFERENCES public.community_comments(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   deleted_at timestamptz,
   admin_hidden_at timestamptz,
@@ -286,6 +287,11 @@ BEGIN
   IF v_deleted=0 THEN
     INSERT INTO public.community_reactions(post_key,user_id) VALUES (p_post_key,v_user);
     v_liked=true;
+    INSERT INTO public.community_notifications(recipient_user_id,actor_user_id,post_key,kind,event_key)
+    SELECT owner_id,v_user,p_post_key,'like','like:'||p_post_key||':'||v_user::text
+    FROM (SELECT public.novelight_community_post_author(p_post_key) AS owner_id) sub
+    WHERE owner_id IS NOT NULL AND owner_id<>v_user
+    ON CONFLICT(event_key) DO NOTHING;
   ELSE
     v_liked=false;
   END IF;
@@ -306,10 +312,11 @@ BEGIN
     RETURN '[]'::jsonb;
   END IF;
   SELECT coalesce(jsonb_agg(jsonb_build_object(
-    'id',r.id,'body',r.body,'display_name',r.display_name,'created_at',r.created_at
+    'id',r.id,'body',r.body,'parent_comment_id',r.parent_comment_id,
+    'display_name',r.display_name,'created_at',r.created_at
    ) ORDER BY r.created_at ASC),'[]'::jsonb)
    INTO v_output FROM (
-    SELECT c.id,c.body,p.display_name,c.created_at
+    SELECT c.id,c.body,c.parent_comment_id,p.display_name,c.created_at
     FROM public.community_comments c
     JOIN public.profiles p ON p.id=c.user_id
     WHERE c.post_key=p_post_key AND c.deleted_at IS NULL AND c.admin_hidden_at IS NULL
@@ -329,43 +336,78 @@ $$;
 REVOKE ALL ON FUNCTION public.novelight_community_comments(text,integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.novelight_community_comments(text,integer) TO anon,authenticated;
 
-CREATE OR REPLACE FUNCTION public.novelight_community_post_comment(p_post_key text,p_body text)
+CREATE OR REPLACE FUNCTION public.novelight_community_post_comment(
+ p_post_key text,p_body text,p_parent_comment_id uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER
 SET search_path = ''
 AS $$
-DECLARE v_user uuid:=(SELECT auth.uid()); v_body text:=btrim(coalesce(p_body,''));
-        v_comment_id uuid;
+DECLARE v_user uuid:=(SELECT auth.uid());
+  v_body text:=btrim(coalesce(p_body,''));
+  v_comment_id uuid;
+  v_parent_author uuid;
+  v_post_author uuid;
 BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'Login required' USING errcode='42501'; END IF;
   IF char_length(v_body) NOT BETWEEN 1 AND 500 THEN
     RAISE EXCEPTION 'Comment length must be 1-500' USING errcode='22023';
   END IF;
+  IF EXISTS(SELECT 1 FROM public.community_user_restrictions
+            WHERE user_id=v_user AND expires_at>now()) THEN
+    RAISE EXCEPTION 'Community posting restricted' USING errcode='42501';
+  END IF;
   IF NOT public.novelight_community_interaction_allowed(p_post_key) THEN
     RAISE EXCEPTION 'Post unavailable' USING errcode='42501';
   END IF;
-  IF EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=v_user
-      AND p.created_at > now()-interval '10 minutes') THEN
+  IF p_parent_comment_id IS NOT NULL THEN
+    SELECT c.user_id INTO v_parent_author FROM public.community_comments c
+     WHERE c.id=p_parent_comment_id AND c.post_key=p_post_key
+       AND c.deleted_at IS NULL AND c.admin_hidden_at IS NULL;
+    IF v_parent_author IS NULL THEN
+      RAISE EXCEPTION 'Invalid reply target' USING errcode='22023';
+    END IF;
+    IF EXISTS(SELECT 1 FROM public.user_blocks b
+      WHERE (b.blocker_user_id=v_user AND b.blocked_user_id=v_parent_author)
+         OR (b.blocker_user_id=v_parent_author AND b.blocked_user_id=v_user))
+      OR EXISTS(SELECT 1 FROM public.user_mutes m
+      WHERE m.muter_user_id=v_user AND m.muted_user_id=v_parent_author) THEN
+      RAISE EXCEPTION 'Reply unavailable' USING errcode='42501';
+    END IF;
+  END IF;
+  IF EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=v_user
+     AND p.created_at>now()-interval '10 minutes') THEN
     RAISE EXCEPTION 'Account too new' USING errcode='42501';
   END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(v_user::text));
-  IF EXISTS(SELECT 1 FROM public.community_comments c WHERE c.user_id=v_user
-        AND c.created_at>now()-interval '20 seconds') OR
-     (SELECT count(*) FROM public.community_comments c WHERE c.user_id=v_user
-        AND c.created_at>now()-interval '1 day') >= 30 THEN
-    RAISE EXCEPTION 'Comment rate limited' USING errcode='42901';
-  END IF;
   IF EXISTS(SELECT 1 FROM public.community_comments c
-     WHERE c.user_id=v_user AND c.post_key=p_post_key AND c.body=v_body
-       AND c.created_at>now()-interval '1 day') THEN
+      WHERE c.user_id=v_user AND c.created_at>now()-interval '20 seconds')
+    OR (SELECT count(*) FROM public.community_comments c
+      WHERE c.user_id=v_user AND c.created_at>now()-interval '1 day')>=30 THEN
+    RAISE EXCEPTION 'Comment rate limited' USING errcode='P0001';
+  END IF;
+  IF EXISTS(SELECT 1 FROM public.community_comments c WHERE c.user_id=v_user
+      AND c.post_key=p_post_key AND c.body=v_body
+      AND c.created_at>now()-interval '1 day') THEN
     RAISE EXCEPTION 'Duplicate comment' USING errcode='23505';
   END IF;
-  INSERT INTO public.community_comments(post_key,user_id,body)
-    VALUES(p_post_key,v_user,v_body) RETURNING id INTO v_comment_id;
+  INSERT INTO public.community_comments(post_key,user_id,body,parent_comment_id)
+    VALUES(p_post_key,v_user,v_body,p_parent_comment_id) RETURNING id INTO v_comment_id;
+  v_post_author:=public.novelight_community_post_author(p_post_key);
+  IF v_parent_author IS NOT NULL AND v_parent_author<>v_user THEN
+    INSERT INTO public.community_notifications(recipient_user_id,actor_user_id,post_key,kind,event_key)
+    VALUES(v_parent_author,v_user,p_post_key,'reply','reply:'||v_comment_id::text)
+    ON CONFLICT(event_key) DO NOTHING;
+  END IF;
+  IF v_post_author IS NOT NULL AND v_post_author<>v_user AND
+     v_post_author IS DISTINCT FROM v_parent_author THEN
+    INSERT INTO public.community_notifications(recipient_user_id,actor_user_id,post_key,kind,event_key)
+    VALUES(v_post_author,v_user,p_post_key,'comment','comment:'||v_comment_id::text)
+    ON CONFLICT(event_key) DO NOTHING;
+  END IF;
   RETURN jsonb_build_object('id',v_comment_id);
 END
 $$;
-REVOKE ALL ON FUNCTION public.novelight_community_post_comment(text,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.novelight_community_post_comment(text,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.novelight_community_post_comment(text,text,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.novelight_community_post_comment(text,text,uuid) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.novelight_community_report(p_post_key text,p_reason text)
 RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER
