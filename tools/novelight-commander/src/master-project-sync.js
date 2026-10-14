@@ -157,6 +157,70 @@ function looksLikeProjectUrl(value) {
   }
 }
 
+function observeProjectPageLoad(page) {
+  // Deliberately record counts only: never page text, JS exception messages,
+  // URLs, cookies, response bodies, accounts or ChatGPT content.
+  const counts = {
+    scriptExceptions: 0,
+    consoleErrors: 0,
+    failedRequests: 0,
+    http4xx: 0,
+    http5xx: 0
+  };
+  page.on('pageerror', () => { counts.scriptExceptions += 1; });
+  page.on('console', message => {
+    if (message.type() === 'error') counts.consoleErrors += 1;
+  });
+  page.on('requestfailed', () => { counts.failedRequests += 1; });
+  page.on('response', response => {
+    const status = response.status();
+    if (status >= 400 && status < 500) counts.http4xx += 1;
+    if (status >= 500 && status < 600) counts.http5xx += 1;
+  });
+  return counts;
+}
+
+async function waitForProjectMainRender(page) {
+  // The load event alone does not prove ChatGPT's JavaScript UI hydrated.
+  // Wait while the page remains open, not from an external diagnostic process.
+  await page.waitForFunction(
+    () => {
+      const main = document.querySelector('main');
+      return Boolean(main && String(main.innerText || '').trim());
+    },
+    null,
+    { timeout: 12000 }
+  ).catch(() => {});
+}
+
+async function safeProjectPageObservation(page, loadCounts) {
+  const dom = await page.evaluate(() => ({
+    documentComplete: document.readyState === 'complete',
+    hasMain: Boolean(document.querySelector('main')),
+    bodyEmpty: !String(document.body?.innerText || '').trim(),
+    mainEmpty: !String(document.querySelector('main')?.innerText || '').trim(),
+    mainHeadingCount: document.querySelectorAll('main h1, main h2').length
+  })).catch(() => ({
+    documentComplete: false,
+    hasMain: false,
+    bodyEmpty: true,
+    mainEmpty: true,
+    mainHeadingCount: 0
+  }));
+  return { ...dom, ...loadCounts };
+}
+
+function canonicalProjectId(projectUrl) {
+  try {
+    const url = new URL(projectUrl);
+    if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com') return null;
+    const match = url.pathname.match(/^\/g\/(g-p-[A-Za-z0-9_-]+)(?:\/|$)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 async function pageVisiblyNamesProject(page, name) {
   const body = await page.locator('body').innerText().catch(() => '');
   return body
@@ -236,13 +300,14 @@ async function discoverProjectPage(context, projectUrl, projectName) {
   }
 
   const page = await context.newPage();
+  const loadCounts = observeProjectPageLoad(page);
   if (projectUrl) {
     await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } else {
     await page.goto('https://chatgpt.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
   }
   await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
-  await page.waitForTimeout(1200);
+  await waitForProjectMainRender(page);
 
   if (loginRequiredByUrl(page) || await loginRequiredByUi(page)) {
     return { page, loginRequired: true };
@@ -285,10 +350,16 @@ async function discoverProjectPage(context, projectUrl, projectName) {
   if (loginRequiredByUrl(page) || await loginRequiredByUi(page)) {
     return { page, loginRequired: true };
   }
+  const expectedProjectId = canonicalProjectId(projectUrl);
+  const observedProjectId = canonicalProjectId(page.url());
+  if (expectedProjectId && expectedProjectId !== observedProjectId) {
+    throw new Error('ChatGPT Project identity mismatch; no files changed.');
+  }
   if (!(await pageVisiblyNamesProject(page, name))) {
+    const observation = await safeProjectPageObservation(page, loadCounts);
     throw new Error(
-      `Opened ChatGPT page does not visibly identify Project ${JSON.stringify(name)}. ` +
-      `url=${page.url()}`
+      'Opened ChatGPT page does not visibly identify the expected Project; ' +
+      'no files changed. Safe render counters=' + JSON.stringify(observation)
     );
   }
   return { page, loginRequired: false };
