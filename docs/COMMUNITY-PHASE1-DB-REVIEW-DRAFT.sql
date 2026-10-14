@@ -108,7 +108,7 @@ AS $$
     )
     ELSE false
   END AND NOT EXISTS (SELECT 1 FROM public.community_hidden_posts h WHERE h.post_key=p_key)
-$;
+$$;
 REVOKE ALL ON FUNCTION public.novelight_community_post_visible(text) FROM PUBLIC, anon, authenticated;
 
 -- Feed: bounded DB pagination, no user-generated fake content, no realtime,
@@ -260,7 +260,7 @@ BEGIN
   END IF;
   RETURN true;
 END
-$;
+$$;
 REVOKE ALL ON FUNCTION public.novelight_community_interaction_allowed(text)
  FROM PUBLIC,anon,authenticated;
 
@@ -427,7 +427,7 @@ BEGIN
  FROM jsonb_array_elements(public.novelight_manage_my_author_notes(p_limit)) item(value);
  RETURN v_result;
 END
-$;
+$$;
 REVOKE ALL ON FUNCTION public.novelight_manage_my_author_notes_v2(integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.novelight_manage_my_author_notes_v2(integer) TO authenticated;
 
@@ -563,11 +563,6 @@ $$;
 REVOKE ALL ON FUNCTION public.novelight_admin_community_moderate(uuid,text,text,uuid,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.novelight_admin_community_moderate(uuid,text,text,uuid,text) TO service_role;
 
--- NOTE: The final migration must add notification inserts to the two
--- interaction RPCs and deny writes for restricted users before release.
-
--- Extend moderation in the next review iteration, without sharing raw reports.
--- No feature release is allowed until all safety-critical requirements pass.
--- Admin RLS and moderation RPCs, notification idempotency, and analytics require
--- an additional reviewed migration before the release flag can be enabled.
+-- Still needs authorized SQL integration and lifecycle/analytics tests before launch.
+-- This document is not an executable migration and must not be applied as-is.
 COMMIT;
