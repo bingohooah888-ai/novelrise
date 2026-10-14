@@ -752,6 +752,13 @@
       meta.textContent = `${activityLabels[row.event_type] || 'SCOUT活動'} · ${dateTime(row.occurred_at)}`;
       copy.append(title, meta);
       item.appendChild(copy);
+      if (row.novel_title && /^[0-9]+$/u.test(String(row.novel_id || ''))) {
+        const link = document.createElement('a');
+        link.className = 'scout-mini-button';
+        link.href = `novel.html?id=${encodeURIComponent(row.novel_id)}`;
+        link.textContent = '作品を見る →';
+        item.appendChild(link);
+      }
       host.appendChild(item);
     });
     setText('statActivity', hasMore ? `${host.children.length}+` : n(host.children.length));
