@@ -235,7 +235,7 @@ test('mutation failure after claim is recorded and not automatically retried', a
 // TEMP_FORMAT_DIAGNOSTIC
 const formatter = await import('prettier');
 const fsFormatter = await import('node:fs');
-const source = fsFormatter.readFileSync(new URL(import.meta.url), 'utf8');
+const source = fsFormatter.readFileSync(new (await import('node:url')).URL(import.meta.url), 'utf8');
 const sourceWithoutDiagnostic = source.split('\n// TEMP_FORMAT_DIAGNOSTIC')[0].trimEnd() + '\n';
 const config = await formatter.resolveConfig('tests/november-contest-registration-release.test.mjs');
 const pretty = await formatter.format(sourceWithoutDiagnostic, { ...config, filepath: 'tests/november-contest-registration-release.test.mjs' });
