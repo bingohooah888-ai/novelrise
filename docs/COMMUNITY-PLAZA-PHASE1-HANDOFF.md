@@ -91,3 +91,61 @@ Static header count on desktop/mobile: PASS.
 Static opt-in v2 references: PASS.
 Actual browser UX, integration, RLS, notification, DB migration, migration rollback
 and Production behavior: **NOT YET VERIFIED**.
+
+
+## 2026-10-14 additional Phase 1 branch changes (pre-approval)
+
+- Release flags now originate in `novelight-client.js` for shared public
+  headers; `novelight-community-config.js` is a compatibility shim. Both
+  remain disabled and no hidden header link should be promoted pre-approval.
+- New moderator API `api/admin-community.js` wraps
+  `api/_lib/admin-community.js`, calling existing `requireAdmin`, requiring
+  a Bearer token, and invoking the private atomic SQL moderation function.
+- `admin-community.html` provides report/hidden/restriction review and
+  reversible staff actions. It is not to be enabled until schema + permissions
+  are verified. `admin.html` links to the preparation screen.
+- Notes now require explicit general-audience confirmation whenever the
+  author opts into timeline display. The SQL v2 note-save function validates
+  this independently of the UI.
+- `novelight-community-alerts.js` introduces a small per-user reaction inbox,
+  without changing existing author-follow update notifications. SQL draft adds
+  idempotent like/comment/reply entries, and per-user rate restrictions.
+- Comments may reply to a specific earlier comment. The server draft checks
+  ownership visibility and Block/Mute in addition to input/rate validation.
+
+## Current pre-approval blocker
+
+**The feature is NOT yet ready for Production approval.** Before switching its
+flag on, the remaining required checks are:
+
+1. Convert `docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql` to a formal
+   `supabase/migrations/` file with `supabase migration new` on a correctly
+   authorized, isolated worktree. Verify migration syntax, ordering and
+   backward-compatible restoration.
+2. Run focused isolated DB integration tests (role/permission, anon viewing,
+   owner-only note sharing, age zoning, hidden/deleted/scheduled events, likes
+   and comments, moderation, notification idempotency and restrictions).
+3. Integrate and verify community-specific visits, transitions, authoritative
+   valid-read attribution and retention metrics without touching Rank/SCOUT.
+4. Run responsive browser checks for the home, community, note editor and
+   moderation screen. Confirm no regressions to other discovery shelves.
+5. Pass repository Prettier, ESLint, syntax, focused tests and security CI.
+6. Prepare a reviewed MASTER v1.0 supersession note for its existing
+   near-note restriction; never silently override chapter 43 in Production.
+7. The Stage/Preview approvals are independent and **not granted** by
+   a generic implementation request. No Vercel Preview or Supabase staging
+   mutation has been executed.
+8. After successful authorized staging tests, a separate `本番承認`
+   is required before high-risk merge, Production DB migration or release.
+
+## Static verification
+
+An in-memory read-only inspection on current branch confirms:
+- 10 executable script/module syntax checks passed after excluding JSON-LD
+  (which is data, not executable JavaScript).
+- Disabled flag, shared header gating, home carousel placement and
+  server-side owner guard present.
+- Six private new logical tables in the review draft have RLS declarations,
+  with SELECT/INSERT exposed only via bounded security-checked RPCs.
+- SQL dollar quoting is balanced, without any observed SQL execution.
+This is **not** a substitute for Prettier/ESLint, SQL validation or live tests.
