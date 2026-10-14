@@ -42,6 +42,14 @@
 - [ ] Phase 1の実画面確認は**公開OFFの画面回帰**と、同意・Block/Mute・通報・コメント等の**Staging限定interaction証明**を分離する。公開OFFの本番サイトだけを見ても新機能の動作証明にはならない。
 - [ ] Previewを流用する場合も、対象コミット一致・Production alias拒否・保護・接続先の確認を省略しない。無承認の新規Previewデプロイ、Staging DBへのfixture作成を行わない。
 
+### A-3. 既存Preview workflowとの対象差（2026-10-14 再確認）
+
+- [ ] 既存のIssue #188 `full-smoke`・`thumbnail-smoke`・`live-proof` は**承認対象をcurrent main SHAに固定**する。したがって**Draft PR #2222のHEADを直接Preview表示・操作する検証には使用できない**。この経路で「ステージング承認」を受けても未マージの交流広場機能の実画面検証にならない。
+- [ ] `staging-thumbnail-smoke.yml` はmain SHAを専用Preview refに固定して非Production Previewを作る既存ルートであり、PR #2222のheadへの切り替えは既存契約外。無断でrefを書き換えたり、コメントの`mainSha`に候補SHAを入れたりしない。
+- [ ] Phase 1専用の候補SHAを扱うPreview経路を設けるなら、**既存のtrusted mainから実行される独立のOWNER認証/一回限りの承認台帳/候補PR ancestry/非Production接続先の証明/CIレビュー**が先に必要。default branchへの承認済み経路導入とPreview実行の承認は別境界。
+- [ ] 初期DB runtime gateはOFFで、一般公開フラグもOFF。単にPreviewを作成してホームの非表示を確認しただけでは、交流広場の「いいね・コメント・通報・運営管理」の実機能証明にはならない。DB/RPC実動作を試す際はStagingに接続した状態と書き込み権限を別途証明し、Prod接続の可能性があるテストを避ける。
+- [ ] 2026-10-14 のfeature HEADは一時的にmain同期される場合があり、承認時に必ず最新SHAを固定し、既存SQL blobsとの一致を再証明する。
+
 ### B. 非公開状態でのProductionコード・DB導入（**Production承認が必要**）
 
 - [ ] **承認対象を「Draft PR #2222のmain merge / Vercel Production deploy、公開OFFの維持」として明示し、本番承認・GitHub high-risk gate・required checksを満たす。** mainへのmergeはProduction deployの開始点であり、単なる準備作業ではない。
