@@ -9,7 +9,6 @@ jobs:
     concurrency:
       group: supabase-staging-migration-sync
       cancel-in-progress: false
-      queue: max
     if: >-
       github.event.issue.number == 294 &&
       github.event.issue.pull_request == null &&

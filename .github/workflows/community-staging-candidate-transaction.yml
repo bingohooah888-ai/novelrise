@@ -7,8 +7,6 @@ on:
 permissions:
   contents: read
 
-# Serialize with existing one-time migration approvals. Never cancel mid-DDL.
-
 jobs:
   admit:
     name: Bind one OWNER approval to exact PR and commit
@@ -86,10 +84,10 @@ jobs:
             -f body="NOVELIGHT_STAGING_COMMUNITY_CLAIMED $payload" > /dev/null
 
   transaction:
+    # Serialize eligible Staging DB jobs; unrelated issue comments never take this lock.
     concurrency:
       group: supabase-staging-migration-sync
       cancel-in-progress: false
-      queue: max
     name: Rollback-only schema and role tests on dedicated Staging
     if: needs.admit.result == 'success'
     needs: admit

@@ -19,13 +19,11 @@ on:
 permissions:
   contents: read
 
-
 jobs:
   sync:
     concurrency:
       group: supabase-staging-migration-sync
       cancel-in-progress: false
-      queue: max
     name: Synchronize approved migrations to dedicated Staging
     runs-on: ubuntu-latest
     environment: staging
