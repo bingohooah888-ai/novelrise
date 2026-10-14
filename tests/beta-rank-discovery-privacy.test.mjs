@@ -58,8 +58,9 @@ test('beta public RPCs hide rank discovery and rank-derived points', () => {
 
 test('SCOUT RECORD beta UI shows SEED activity without work-Rank discovery surfaces', () => {
   assert.match(page, /あなたのLIGHT SEED活動とスカウトとしての成長/);
-  assert.match(page, /LIGHT SEED送信履歴/);
-  assert.match(page, /作品Rankに関する発掘結果はβ版では表示しません/);
+  assert.match(page, /data-activity-filter="seed"/);
+  assert.match(page, /id="activityList"/);
+  assert.doesNotMatch(page, /id="seedHistoryList"/);
   assert.doesNotMatch(page, /id="statDiscoveries"/);
   assert.doesNotMatch(page, /id="discoveriesTitle"/);
   assert.doesNotMatch(page, /id="discoveriesList"/);
