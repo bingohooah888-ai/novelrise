@@ -310,3 +310,21 @@ activity branch. The feed now uses grouped `n.id` (equal by join) for the
 episode post key, preserving the canonical key format. Static assertions
 pin the grouped column. A fresh disposable SQL replay is required to
 establish runtime success; Staging and Production have not been changed.
+
+## 2026-10-14 confirmed disposable SQL integration proof
+
+GitHub Actions run `38512225649`, job `115683134543`
+(`RLS integration and rollback`) **passed** after replaying latest main
+migrations into a temporary PostgreSQL 17 CI container. The job applied
+`docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql` successfully, then passed
+`tests/rls/community-plaza-phase1-security.sql` including client-role
+table isolation, admin RPC grant separation, anonymous feed, and missing-user
+interaction denial. An earlier disposable replay (job
+`115682448309`) found the grouped episode key error; the fix replaced
+`e.novel_id` with grouped `n.id`.
+
+This is **CI-disposable DB evidence only**, not Supabase Staging,
+Production, or cross-user behavior tests. The SQL remains review-only and
+requires formal CLI-created migration, explicit rollback decision and
+authorized Staging testing before activation. Manual Production approval
+is NOT granted by CI success.

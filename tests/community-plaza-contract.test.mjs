@@ -173,5 +173,7 @@ test('episode publication grouping uses an explicit GROUP BY key', () => {
   const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
   assert.ok(sql.includes("SELECT 'episode', 'ep:' || e.author_user_id::text"));
   assert.ok(sql.includes("' || n.id::text ||"));
-  assert.ok(sql.includes('GROUP BY e.author_user_id,n.id,n.title,n.thumbnail_url'));
+  assert.ok(
+    sql.includes('GROUP BY e.author_user_id,n.id,n.title,n.thumbnail_url')
+  );
 });
