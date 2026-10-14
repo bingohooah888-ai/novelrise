@@ -10,6 +10,15 @@ ALTER TABLE public.author_notes
 ALTER TABLE public.reader_curation_lists
  ADD COLUMN IF NOT EXISTS community_share_enabled boolean NOT NULL DEFAULT false;
 
+CREATE TABLE IF NOT EXISTS public.community_seed_shares (
+ seed_id uuid PRIMARY KEY REFERENCES public.light_seeds(id) ON DELETE CASCADE,
+ reader_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS community_seed_shares_reader_idx ON public.community_seed_shares(reader_id);
+ALTER TABLE public.community_seed_shares ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.community_seed_shares FROM PUBLIC,anon,authenticated;
+
 CREATE TABLE IF NOT EXISTS public.community_reactions (
   post_key text NOT NULL,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -110,6 +119,14 @@ AS $$
              AND linked.first_published_at<=now()
         ))
     )
+    WHEN p_key ~ '^seed:[0-9a-f-]{36}$' THEN EXISTS (
+      SELECT 1 FROM public.community_seed_shares cs
+      JOIN public.light_seeds s ON s.id=cs.seed_id AND s.reader_id=cs.reader_id
+      JOIN public.novels n ON n.id::text=s.novel_id_snapshot
+      WHERE p_key='seed:'||cs.seed_id::text AND n.status='published'
+        AND n.content_rating IN ('general','sensitive_15')
+        AND n.first_published_at<=now()
+    )
     WHEN p_key ~ '^curation:[0-9]+$' THEN EXISTS (
      SELECT 1 FROM public.reader_curation_lists l
      WHERE p_key='curation:'||l.id::text
@@ -193,6 +210,16 @@ BEGIN
        AND note.show_in_timeline
        AND note.published_at<=now()
         AND (note.linked_novel_id IS NULL OR linked.id IS NOT NULL)
+    UNION ALL
+    SELECT 'seed','seed:'||cs.seed_id::text,
+           cs.reader_id,n.id,NULL::bigint,n.title,n.thumbnail_url,
+           '「'||n.title||'」にLIGHT SEEDを贈りました',NULL::text,
+           NULL::bigint,cs.created_at
+      FROM public.community_seed_shares cs
+      JOIN public.light_seeds s ON s.id=cs.seed_id AND s.reader_id=cs.reader_id
+      JOIN public.novels n ON n.id::text=s.novel_id_snapshot
+     WHERE n.status='published' AND n.content_rating IN ('general','sensitive_15')
+       AND n.first_published_at<=now()
     UNION ALL
     SELECT 'curation', 'curation:' || l.id::text,
            l.owner_user_id,NULL::bigint,NULL::bigint,NULL::text,NULL::text,
@@ -282,6 +309,9 @@ BEGIN
     UNION ALL
     SELECT l.owner_user_id,'curation:'||l.id::text
       FROM public.reader_curation_lists l
+    UNION ALL
+    SELECT cs.reader_id,'seed:'||cs.seed_id::text
+      FROM public.community_seed_shares cs
   ) act WHERE act.key=p_key LIMIT 1;
   IF v_author IS NULL THEN RETURN true; END IF;
   IF EXISTS(SELECT 1 FROM public.user_blocks b
@@ -557,6 +587,8 @@ AS $$
   SELECT n.author_user_id,'note:'||n.id::text FROM public.author_notes n
   UNION ALL
   SELECT l.owner_user_id,'curation:'||l.id::text FROM public.reader_curation_lists l
+  UNION ALL
+  SELECT cs.reader_id,'seed:'||cs.seed_id::text FROM public.community_seed_shares cs
  ) x WHERE x.k=p_key LIMIT 1
 $$;
 REVOKE ALL ON FUNCTION public.novelight_community_post_author(text) FROM PUBLIC,anon,authenticated;
@@ -607,7 +639,7 @@ BEGIN
  END IF;
  IF p_action IN ('hide','restore') THEN
   IF p_post_key IS NULL OR char_length(p_post_key)>150
-    OR p_post_key !~ '^(novel:[0-9]+|note:[0-9]+|curation:[0-9]+|official:[0-9]+|ep:[0-9a-f-]{36}:[0-9]+:[0-9]+)$' THEN
+    OR p_post_key !~ '^(novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[0-9a-f-]{36}|official:[0-9]+|ep:[0-9a-f-]{36}:[0-9]+:[0-9]+)$' THEN
    RAISE EXCEPTION 'Invalid post key' USING errcode='22023';
   END IF;
   v_target:=p_post_key;
@@ -708,6 +740,57 @@ DROP TRIGGER IF EXISTS community_curation_visibility_guard ON public.reader_cura
 CREATE TRIGGER community_curation_visibility_guard
  BEFORE UPDATE OF visibility ON public.reader_curation_lists
  FOR EACH ROW EXECUTE FUNCTION public.novelight_curation_share_reset_private();
+
+-- A LIGHT SEED award is never automatically announced. Donor consent
+-- is separate from the original award and is reversible.
+CREATE OR REPLACE FUNCTION public.novelight_my_seed_community_shares()
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_user uuid:=(SELECT auth.uid()); v_result jsonb;
+BEGIN
+ IF v_user IS NULL THEN RAISE EXCEPTION 'Login required' USING errcode='42501'; END IF;
+ SELECT coalesce(jsonb_agg(cs.seed_id),'[]'::jsonb) INTO v_result
+ FROM public.community_seed_shares cs WHERE cs.reader_id=v_user;
+ RETURN v_result;
+END
+$$;
+REVOKE ALL ON FUNCTION public.novelight_my_seed_community_shares() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.novelight_my_seed_community_shares() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.novelight_set_my_seed_community_share(
+ p_seed_id uuid,p_enabled boolean
+)
+RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_user uuid:=(SELECT auth.uid());
+BEGIN
+ IF v_user IS NULL OR p_seed_id IS NULL OR p_enabled IS NULL THEN
+   RAISE EXCEPTION 'Invalid request' USING errcode='42501';
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.light_seeds s WHERE s.id=p_seed_id AND s.reader_id=v_user) THEN
+   RAISE EXCEPTION 'Seed unavailable' USING errcode='42501';
+ END IF;
+ IF p_enabled THEN
+   IF NOT EXISTS(
+     SELECT 1 FROM public.light_seeds s
+     JOIN public.novels n ON n.id::text=s.novel_id_snapshot
+     WHERE s.id=p_seed_id AND s.reader_id=v_user AND n.status='published'
+       AND n.content_rating IN ('general','sensitive_15')
+       AND n.first_published_at<=now()
+   ) THEN RAISE EXCEPTION 'Work unavailable' USING errcode='42501'; END IF;
+   INSERT INTO public.community_seed_shares(seed_id,reader_id)
+    VALUES(p_seed_id,v_user) ON CONFLICT(seed_id) DO NOTHING;
+ ELSE
+   DELETE FROM public.community_seed_shares
+   WHERE seed_id=p_seed_id AND reader_id=v_user;
+ END IF;
+ RETURN true;
+END
+$$;
+REVOKE ALL ON FUNCTION public.novelight_set_my_seed_community_share(uuid,boolean)
+ FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.novelight_set_my_seed_community_share(uuid,boolean)
+ TO authenticated;
 
 -- Read-only staff KPI. This uses already-qualified valid-read events; neither
 -- journey entries nor community interactions create valid reads, PV or XP.

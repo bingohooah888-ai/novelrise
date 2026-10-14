@@ -157,7 +157,7 @@
     const article = el('article', 'community-card');
     article.id = 'post-' + String(row.post_key || '').replace(/[^a-z0-9:_-]/gi,'');
     article.append(profile(row));
-    const typeLabels = {novel:'新作公開',episode:'エピソード更新',note:'近況ノート',curation:'おすすめリスト',official:'NOVELIGHT公式'};
+    const typeLabels = {novel:'新作公開',episode:'エピソード更新',note:'近況ノート',curation:'おすすめリスト',seed:'LIGHT SEED',official:'NOVELIGHT公式'};
     article.append(el('span','community-type',typeLabels[row.kind] || 'お知らせ'));
     article.append(el('h3','community-card-title',row.title || '新しい活動'));
     if (row.body) {

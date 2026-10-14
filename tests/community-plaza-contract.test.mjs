@@ -128,3 +128,14 @@ test('shared URL alone never permits curation-wide timeline discovery', () => {
   assert.match(ui, /公開範囲が広がります/);
   assert.match(read('novelight-community.js'), /curationDetails/);
 });
+
+test('light seed timeline publicity requires explicit donor consent', () => {
+  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  assert.match(sql, /community_seed_shares ENABLE ROW LEVEL SECURITY/);
+  assert.match(sql, /novelight_set_my_seed_community_share/);
+  assert.match(sql, /s\.reader_id=v_user/);
+  assert.match(sql, /seed:[0-9a-f-]/);
+  const history = read('light-seed-history.html');
+  assert.match(history, /novelight_my_seed_community_shares/);
+  assert.match(history, /交流広場にも共有する/);
+});
