@@ -662,6 +662,17 @@
     }
   }
 
+  // Only reader journey attribution is overridden by a verified internal landing
+  // marker. Never rewrite acquisition source, paid marketing attribution or PV.
+  function readerJourneySource() {
+    const path = window.location.pathname.split('/').pop();
+    if (path === 'novel.html' || path === 'episode.html') {
+      const marker = new URLSearchParams(window.location.search).get('source');
+      if (marker === 'community') return 'community';
+    }
+    return storedSource();
+  }
+
   async function recordJourney(client, eventType, novelId, episodeId = null) {
     if (!client || !novelId) return false;
     try {
@@ -670,7 +681,7 @@
         event_type: eventType,
         novel_id: String(novelId),
         episode_id: episodeId == null ? null : String(episodeId),
-        source: storedSource()
+        source: readerJourneySource()
       });
       return result?.accepted === true;
     } catch (error) {

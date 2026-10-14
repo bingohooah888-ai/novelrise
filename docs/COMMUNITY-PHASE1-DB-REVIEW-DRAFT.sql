@@ -624,6 +624,74 @@ GRANT EXECUTE ON FUNCTION public.novelight_admin_community_moderate(uuid,text,te
 -- Staging preflight 2026-10-14: corrected six-arg grant and closed blocked-author
 -- comment and R18-linked note backdoors. Staging schema must not be mutated
 -- outside the OWNER-approved #294 ledger; this is still a review-only draft.
+-- Read-only staff KPI. This uses already-qualified valid-read events; neither
+-- journey entries nor community interactions create valid reads, PV or XP.
+-- Only server-side requireAdmin -> service_role may execute it.
+CREATE OR REPLACE FUNCTION public.novelight_admin_community_metrics(
+ p_days integer DEFAULT 7
+)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $
+DECLARE v_start timestamptz;
+  v_entries bigint;
+  v_visitors bigint;
+  v_reads bigint;
+  v_interactors bigint;
+  v_repeat bigint;
+BEGIN
+ IF p_days IS NULL OR p_days NOT IN (7,30) THEN
+   RAISE EXCEPTION 'Period must be 7 or 30 days' USING errcode='22023';
+ END IF;
+ v_start:=now()-pg_catalog.make_interval(days=>p_days);
+
+ SELECT count(*),count(DISTINCT e.viewer_key_hash)
+   INTO v_entries,v_visitors
+ FROM public.reader_journey_events e
+ WHERE e.source='community' AND e.occurred_at>=v_start
+   AND e.event_type IN ('detail_open','episode_read_10s');
+
+ -- Only existing server-qualified valid reads count as reading outcomes.
+ -- Attribution to a prior community journey is bounded to 24 hours.
+ SELECT count(DISTINCT vr.id) INTO v_reads
+ FROM public.valid_read_events vr
+ WHERE vr.qualified_at>=v_start AND vr.reader_id IS NOT NULL
+   AND EXISTS(
+     SELECT 1 FROM public.reader_journey_events e
+     WHERE e.source='community'
+       AND e.user_id=vr.reader_id
+       AND e.novel_id_snapshot=vr.novel_id_snapshot
+       AND e.event_type IN ('detail_open','episode_read_10s')
+       AND e.occurred_at<=vr.qualified_at
+       AND e.occurred_at>=vr.qualified_at-interval '24 hours'
+   );
+
+ WITH interactions AS (
+   SELECT user_id,created_at FROM public.community_reactions
+     WHERE created_at>=v_start
+   UNION ALL
+   SELECT user_id,created_at FROM public.community_comments
+     WHERE created_at>=v_start AND deleted_at IS NULL AND admin_hidden_at IS NULL
+ ), daily AS (
+   SELECT user_id,pg_catalog.date_trunc('day',created_at AT TIME ZONE 'Asia/Tokyo') AS day
+   FROM interactions GROUP BY user_id,pg_catalog.date_trunc('day',created_at AT TIME ZONE 'Asia/Tokyo')
+ ), actor_days AS (
+   SELECT user_id,count(*) AS days_active FROM daily GROUP BY user_id
+ )
+ SELECT count(*),count(*) FILTER (WHERE days_active>=2)
+ INTO v_interactors,v_repeat FROM actor_days;
+
+ RETURN pg_catalog.jsonb_build_object(
+   'days',p_days,'journey_entries',v_entries,
+   'unique_visitors',v_visitors,'qualified_reads',v_reads,
+   'interactors',v_interactors,'repeat_interactors',v_repeat
+ );
+END
+$;
+REVOKE ALL ON FUNCTION public.novelight_admin_community_metrics(integer)
+ FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.novelight_admin_community_metrics(integer)
+ TO service_role;
+
 -- Still needs authorized SQL integration and lifecycle/analytics tests before launch.
 -- This document is not an executable migration and must not be applied as-is.
 COMMIT;

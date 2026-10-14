@@ -94,3 +94,24 @@ test('review SQL protects private rows and notifications', () => {
   assert.match(sql, /Logged-in users must not bypass author Block\/Mute/);
   assert.match(sql, /note\.linked_novel_id IS NULL OR linked\.id IS NOT NULL/);
 });
+
+
+test('community journeys override source without altering acquisition', () => {
+  const client = read('novelight-client.js');
+  assert.match(client, /function readerJourneySource\(\)/);
+  assert.match(client, /marker === 'community'/);
+  assert.match(client, /source: readerJourneySource\(\)/);
+  assert.match(client, /async function recordVisit\(client\)/);
+});
+
+test('owner metrics use existing qualified reads rather than PV', () => {
+  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  assert.match(sql, /public\.valid_read_events/);
+  assert.match(sql, /public\.reader_journey_events/);
+  assert.match(sql, /e\.source='community'/);
+  assert.match(sql, /novelight_admin_community_metrics\(integer\)/);
+  assert.match(sql, /TO service_role;/);
+  const admin = read('api/_lib/admin-community.js');
+  assert.match(admin, /novelight_admin_community_metrics/);
+  assert.match(admin, /requireAdmin/);
+});

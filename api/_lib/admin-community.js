@@ -78,8 +78,12 @@ export function createAdminCommunityHandler({ supabase, env = process.env }) {
 
     try {
       if (req.method === 'GET') {
-        const rows = await loadCommunityState(supabase);
-        return res.status(200).json(rows);
+        const [rows, metrics] = await Promise.all([
+          loadCommunityState(supabase),
+          supabase.rpc('novelight_admin_community_metrics', { p_days: 7 })
+        ]);
+        if (metrics.error) throw metrics.error;
+        return res.status(200).json({ ...rows, metrics: metrics.data });
       }
       const input = parseInput(req.body);
       if (!input) return fail(res, 400, 'Invalid moderation action');

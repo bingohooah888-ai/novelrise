@@ -18,6 +18,10 @@ textarea{min-height:60px}section{margin-top:25px}form{display:grid;gap:12px;max-
 <div class="bar"><h1>交流広場の管理</h1><a href="admin.html">ADMINへ戻る</a></div>
 <p id="communityAdminStatus" class="status" role="status">管理者権限を確認しています。</p>
 <div id="communityAdminContent" hidden>
+<section aria-labelledby="metricsTitle"><h2 id="metricsTitle">交流広場の指標（直近7日）</h2>
+<ul id="communityMetrics" aria-live="polite"></ul>
+<p>有効読書は既存の認定済み読書記録から算出します。作品ランキング・SCOUTのポイントには影響しません。</p>
+</section>
 <section aria-labelledby="reportsTitle"><h2 id="reportsTitle">未処理の通報</h2>
 <table><thead><tr><th>投稿ID</th><th>理由</th><th>日時</th><th>管理</th></tr></thead><tbody id="communityReportRows"></tbody></table></section>
 <section aria-labelledby="hiddenTitle"><h2 id="hiddenTitle">非表示中</h2><ul id="communityHiddenRows"></ul></section>
@@ -64,6 +68,16 @@ textarea{min-height:60px}section{margin-top:25px}form{display:grid;gap:12px;max-
    const data=await access('GET');
    if(!data)return;
    root.hidden=false;status.textContent='最新の管理状況を表示しています。';
+   const metrics=document.getElementById('communityMetrics');metrics.replaceChildren();
+   const values=data.metrics||{};
+   for(const [key,label] of [
+    ['journey_entries','交流経由の作品・話閲覧'],
+    ['unique_visitors','交流経由のユニーク閲覧者'],
+    ['qualified_reads','交流経由の認定有効読書'],
+    ['interactors','交流参加ユーザー'],
+    ['repeat_interactors','複数日参加ユーザー']
+   ]){metrics.append(node('li',label+'：'+Number(values[key]||0).toLocaleString('ja-JP')));}
+
    const reports=document.getElementById('communityReportRows');
    reports.replaceChildren();
    if(!data.reports.length){const r=node('tr','');const t=node('td','未処理の通報はありません');t.colSpan=4;r.append(t);reports.append(r);}
