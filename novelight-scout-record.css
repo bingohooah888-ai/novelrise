@@ -706,3 +706,12 @@ body.novelight-page-scout-record #badgeDialog .scout-visibility .scout-note{
 .rank-orb.rank-orb-artwork{overflow:visible;background:transparent}
 .rank-orb.rank-orb-artwork img{display:block;width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 5px 9px rgba(0,0,0,.28))}
 .rank-node.current .rank-orb.rank-orb-artwork img{width:48px;height:48px}
+
+/* Unified SCOUT activity timeline: keep history within the card. */
+.scout-activity-filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.scout-activity-filter{min-height:38px;padding:8px 11px;border:1px solid rgba(226,190,92,.3);border-radius:999px;background:#081b2e;color:#f3e9d5;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.scout-activity-filter[aria-pressed="true"]{background:#362b12;border-color:#e2be5c;color:#ffeba7}
+.scout-activity-filter:focus-visible{outline:2px solid #ffe082;outline-offset:3px}
+#activityList{max-height:min(58vh,560px);min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;align-content:start;padding-right:4px}
+.scout-activity-more{margin-top:14px}
+.scout-activity-note{margin:12px 0 0;color:#e2e5eb;font-size:12px;line-height:1.65}
