@@ -27,8 +27,7 @@ function good() {
       id: 1789,
       user: { login: 'bingohooah888-ai' },
       author_association: 'OWNER',
-      body: communityCandidateApprovalContract.prefix +
-        JSON.stringify(payload)
+      body: communityCandidateApprovalContract.prefix + JSON.stringify(payload)
     },
     currentMainSha: main,
     pr: {
@@ -99,23 +98,16 @@ test('consumed request or incomplete ledger is never reusable', () => {
   a.ledgerComplete = false;
   deny(a, /not fully observed/u);
   const b = good();
-  b.ledger = [
-    {
-      body:
-        'NOVELIGHT_STAGING_COMMUNITY_CONSUMED ' +
-        JSON.stringify({
-          requestCommentId: '1789',
-          candidateSha: head,
-          scope: 'community-phase1-isolated'
-        })
-    }
-  ];
+  const spent = {
+    requestCommentId: '1789',
+    candidateSha: head,
+    scope: 'community-phase1-isolated'
+  };
+  const marker = 'NOVELIGHT_STAGING_COMMUNITY_CONSUMED ';
+  b.ledger.push({ body: marker + JSON.stringify(spent) });
   deny(b, /already claimed or consumed/u);
   const c = good();
-  c.ledger = [
-    {
-      body: 'NOVELIGHT_STAGING_COMMUNITY_CLAIMED {not valid JSON}'
-    }
-  ];
+  const invalid = 'NOVELIGHT_STAGING_COMMUNITY_CLAIMED {not valid JSON}';
+  c.ledger.push({ body: invalid });
   deny(c, /invalid JSON/u);
 });
