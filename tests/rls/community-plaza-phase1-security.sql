@@ -9,7 +9,8 @@ BEGIN
  FOREACH v_table IN ARRAY ARRAY[
  'community_reactions','community_comments','community_reports',
  'community_hidden_posts','community_user_restrictions',
- 'community_notifications','community_seed_shares'] LOOP
+ 'community_notifications','community_seed_shares',
+ 'community_runtime_control'] LOOP
   IF to_regclass('public.'||v_table) IS NULL THEN
     RAISE EXCEPTION 'Community table absent: %',v_table;
   END IF;
@@ -27,6 +28,10 @@ BEGIN
     END IF;
   END LOOP;
  END LOOP;
+ IF NOT EXISTS(SELECT 1 FROM public.community_runtime_control WHERE singleton AND public_enabled=false)
+ THEN RAISE EXCEPTION 'DB runtime gate must remain disabled before approval'; END IF;
+ IF jsonb_array_length(public.novelight_community_feed(5,0,false))<>0 THEN
+ RAISE EXCEPTION 'Public feed returned data with DB gate disabled'; END IF;
  IF to_regprocedure('public.novelight_admin_community_moderate(uuid,text,text,uuid,text)') IS NULL
    OR to_regprocedure('public.novelight_admin_community_metrics(integer)') IS NULL
    OR to_regprocedure('public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean,boolean)') IS NULL

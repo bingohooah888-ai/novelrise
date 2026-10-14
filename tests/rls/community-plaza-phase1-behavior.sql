@@ -3,6 +3,19 @@
 -- This test runs ONLY on disposable CI migration replay PostgreSQL.
 BEGIN;
 
+-- CI-only activation inside transaction; test rolls back every change.
+DO $before_release$
+BEGIN
+ IF (SELECT public_enabled FROM public.community_runtime_control WHERE singleton) THEN
+  RAISE EXCEPTION 'Community gate was enabled before owner approval';
+ END IF;
+ IF jsonb_array_length(public.novelight_community_feed(5,0,false))<>0 THEN
+  RAISE EXCEPTION 'Public community RPC active before release';
+ END IF;
+ UPDATE public.community_runtime_control SET public_enabled=true WHERE singleton=true;
+END
+$before_release$;
+
 INSERT INTO auth.users(id,raw_user_meta_data) VALUES
  ('c0a00000-0000-4000-8000-000000000001','{"display_name":"Plaza Test Author"}'::jsonb),
  ('c0a00000-0000-4000-8000-000000000002','{"display_name":"Plaza Test Reader"}'::jsonb)

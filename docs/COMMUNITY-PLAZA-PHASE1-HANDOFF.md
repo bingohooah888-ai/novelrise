@@ -394,3 +394,23 @@ This PR remains draft, is NOT part of main, and must not be merged or
 applied to hosted Staging as a workaround. Do not interpret PR branch
 migration readiness as Production approval. Next real Staging step
 requires separately approved, policy-compliant execution.
+
+## 2026-10-14 database release switch added
+
+UI-only gating was not sufficient: public REST/RPC calls were reachable
+immediately after an approved DB install. The migration now creates a
+single private `community_runtime_control` row, default
+`public_enabled=false`, without client table grants. Public feed
+returns an empty JSON array and post visibility returns false when OFF.
+Owner opt-in enrolment cannot be newly enabled while OFF. Only a
+separately approved SQL mutation after final hosted Staging tests may
+enable the switch. CI enables it temporarily in a transaction which
+always rolls back; Production and Staging remain OFF / unchanged.
+
+The historical migration-replay runner rolls back and recreates canonical
+author-notes and curation-list source tables after replay, which can
+remove additive community columns. The focused community test group now
+replays the idempotent community migration once after those historical
+fixtures restore the canonical tables, before checking grants and
+exercising guarded rollback/reapply. This is a CI-only integration order
+fix and does not affect deployment ordering.

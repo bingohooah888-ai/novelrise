@@ -40,6 +40,9 @@ echo "::endgroup::"
 # after a clean historical migration replay in the disposable CI Postgres DB.
 # Missing syntax, RLS or grants must fail CI before a formal migration is made.
 echo "::group::Community Phase 1 isolated review DDL and role contract"
+# Historical rollback/reapply test fixtures rebuild canonical source tables.
+# Reapply idempotent community migration against the final restored schema.
+"${CONTEST_REPLAY[@]}" -f supabase/migrations/20261014052000_community_plaza_phase1.sql
 "${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-security.sql
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-behavior.sql
