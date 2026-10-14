@@ -75,11 +75,18 @@ export function assertCommunityCandidateAdmission({
     request.mainSha === request.candidateSha) {
     fail('request target SHA or scope drift');
   }
+  // The GitHub REST compare API provides "commits", not "head_commit".
+  // Reject truncated/paginated results instead of trusting a partial last SHA.
+  const comparedCommits = compare?.commits;
   if (!compare || compare.status !== 'ahead' ||
     compare.behind_by !== 0 || compare.ahead_by < 1 ||
     compare.base_commit?.sha !== request.mainSha ||
-    !SHA.test(compare.head_commit?.sha ?? '') ||
-    compare.head_commit.sha !== request.candidateSha) {
+    !Number.isSafeInteger(compare.total_commits) ||
+    compare.total_commits < 1 ||
+    !Array.isArray(comparedCommits) ||
+    comparedCommits.length !== compare.total_commits ||
+    !SHA.test(comparedCommits.at(-1)?.sha ?? '') ||
+    comparedCommits.at(-1).sha !== request.candidateSha) {
     fail('candidate is not a proven descendant of current main');
   }
   if (!Array.isArray(ledgerPages) || ledgerPages.length < 1 ||
