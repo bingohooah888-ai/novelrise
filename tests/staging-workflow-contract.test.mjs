@@ -67,7 +67,7 @@ test('authenticated smoke uses integrated SCOUT seed history', () => {
   assert.ok(scoutRecord.includes('data-badge-group="hard"'));
   assert.ok(!scoutRecord.includes('data-badge-difficulty='));
   assert.ok(authenticatedSmoke.includes("name: 'SCOUT活動履歴'"));
-  assert.ok(authenticatedSmoke.includes("data-activity-filter=\"seed\""));
+  assert.ok(authenticatedSmoke.includes('data-activity-filter="seed"'));
 });
 test('consolidated Staging workflow runs the shared deployment contract before package installation', () => {
   const verifierIndex = workflow.indexOf(
