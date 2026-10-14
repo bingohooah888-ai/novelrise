@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  expectedRegistrationChallenge
-} from '../scripts/november-contest-registration-open-plan.mjs';
+import { expectedRegistrationChallenge } from '../scripts/november-contest-registration-open-plan.mjs';
 import {
   checkLedgerForOneTimeUse,
   performRegistrationRelease,
@@ -64,8 +62,7 @@ function makeHarness() {
     ),
     10002: record(
       10002,
-      'NOVELIGHT_CONTEST_REGISTRATION_OPEN_APPROVE ' +
-        JSON.stringify(approved),
+      'NOVELIGHT_CONTEST_REGISTRATION_OPEN_APPROVE ' + JSON.stringify(approved),
       '2026-10-15T00:00:01Z'
     )
   };
@@ -116,10 +113,12 @@ function makeHarness() {
       query: async (sql, readOnly) => {
         if (readOnly) {
           if (/audit_count/.test(sql)) {
-            return [{
-              ...state,
-              audit_count: mutations > 0 ? 1 : 0
-            }];
+            return [
+              {
+                ...state,
+                audit_count: mutations > 0 ? 1 : 0
+              }
+            ];
           }
           return [{ ...state }];
         }
@@ -135,7 +134,14 @@ function makeHarness() {
       }
     }
   };
-  return { input, ledger, comments, paths, state, getMutations: () => mutations };
+  return {
+    input,
+    ledger,
+    comments,
+    paths,
+    state,
+    getMutations: () => mutations
+  };
 }
 
 test('approved synthetic transaction claims once, checks after state, records receipt', async () => {
@@ -144,8 +150,14 @@ test('approved synthetic transaction claims once, checks after state, records re
   assert.equal(result.status, 'REGISTRATION_OPEN_VERIFIED');
   assert.equal(h.getMutations(), 1);
   assert.equal(h.ledger.length, 2);
-  assert.match(h.ledger[0].body, /^NOVELIGHT_CONTEST_REGISTRATION_OPEN_CLAIMED /);
-  assert.match(h.ledger[1].body, /^NOVELIGHT_CONTEST_REGISTRATION_OPEN_EXECUTED /);
+  assert.match(
+    h.ledger[0].body,
+    /^NOVELIGHT_CONTEST_REGISTRATION_OPEN_CLAIMED /
+  );
+  assert.match(
+    h.ledger[1].body,
+    /^NOVELIGHT_CONTEST_REGISTRATION_OPEN_EXECUTED /
+  );
   await assert.rejects(performRegistrationRelease(h.input), /BLOCKED/);
   assert.equal(h.getMutations(), 1);
 });
@@ -182,13 +194,20 @@ test('manual reconciliation is mandatory for any old claim or failed attempt', (
     'NOVELIGHT_CONTEST_REGISTRATION_OPEN_EXECUTED '
   ]) {
     assert.throws(
-      () => checkLedgerForOneTimeUse(
-        [{ body: prefix + JSON.stringify({
-          contestKey: 'novelight-november-2026',
-          approvalCommentId: 4444
-        }) }],
-        10002
-      ),
+      () =>
+        checkLedgerForOneTimeUse(
+          [
+            {
+              body:
+                prefix +
+                JSON.stringify({
+                  contestKey: 'novelight-november-2026',
+                  approvalCommentId: 4444
+                })
+            }
+          ],
+          10002
+        ),
       /reconciliation/
     );
   }
@@ -200,13 +219,20 @@ test('malformed DB results fail closed', () => {
     /unexpected DB/
   );
   assert.throws(
-    () => validateReadOnlyRows([{
-      status: 'registration',
-      public_visible: true,
-      terms_version: 'november-2026-v1',
-      terms_url: 'https://novelight.jp/contest-terms',
-      audit_count: 0
-    }], 'after', 10002),
+    () =>
+      validateReadOnlyRows(
+        [
+          {
+            status: 'registration',
+            public_visible: true,
+            terms_version: 'november-2026-v1',
+            terms_url: 'https://novelight.jp/contest-terms',
+            audit_count: 0
+          }
+        ],
+        'after',
+        10002
+      ),
     /audit row mismatch/
   );
 });
@@ -215,28 +241,21 @@ test('mutation failure after claim is recorded and not automatically retried', a
   const h = makeHarness();
   h.input.supabase.query = async (sql, readOnly) => {
     if (!readOnly) throw new Error('simulated ambiguous DB response');
-    return [{
-      status: 'draft',
-      public_visible: false,
-      terms_version: '',
-      terms_url: '',
-      entry_count: 0
-    }];
+    return [
+      {
+        status: 'draft',
+        public_visible: false,
+        terms_version: '',
+        terms_url: '',
+        entry_count: 0
+      }
+    ];
   };
-  await assert.rejects(
-    performRegistrationRelease(h.input),
-    /ambiguous DB/
-  );
+  await assert.rejects(performRegistrationRelease(h.input), /ambiguous DB/);
   assert.equal(h.ledger.length, 2);
-  assert.match(h.ledger[1].body, /^NOVELIGHT_CONTEST_REGISTRATION_OPEN_FAILED /);
+  assert.match(
+    h.ledger[1].body,
+    /^NOVELIGHT_CONTEST_REGISTRATION_OPEN_FAILED /
+  );
   await assert.rejects(performRegistrationRelease(h.input), /reconciliation/);
 });
-
-// TEMP_FORMAT_DIAGNOSTIC
-const formatter = await import('prettier');
-const fsFormatter = await import('node:fs');
-const source = fsFormatter.readFileSync(new (await import('node:url')).URL(import.meta.url), 'utf8');
-const sourceWithoutDiagnostic = source.split('\n// TEMP_FORMAT_DIAGNOSTIC')[0].trimEnd() + '\n';
-const config = await formatter.resolveConfig('tests/november-contest-registration-release.test.mjs');
-const pretty = await formatter.format(sourceWithoutDiagnostic, { ...config, filepath: 'tests/november-contest-registration-release.test.mjs' });
-console.log('PRETTIER_RELEASE_BEGIN\n' + pretty + 'PRETTIER_RELEASE_END');
