@@ -1,7 +1,9 @@
 import { requireAdmin } from './admin-auth.js';
 
-const KEY_PATTERN = /^(?:novel:\d+|note:\d+|official:\d+|ep:[0-9a-f-]{36}:\d+:\d+)$/i;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const KEY_PATTERN =
+  /^(?:novel:\d+|note:\d+|official:\d+|ep:[0-9a-f-]{36}:\d+:\d+)$/i;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIONS = new Set(['hide', 'restore', 'restrict', 'unrestrict']);
 
 function fail(res, status, message) {
@@ -20,15 +22,22 @@ export function createAdminCommunityHandler({ supabase, env = process.env }) {
     try {
       if (req.method === 'GET') {
         const [reports, hidden, restricted] = await Promise.all([
-          supabase.from('community_reports')
+          supabase
+            .from('community_reports')
             .select('id,post_key,reporter_user_id,reason,status,created_at')
             .in('status', ['pending', 'reviewing'])
-            .order('created_at', { ascending: false }).limit(100),
-          supabase.from('community_hidden_posts')
-            .select('post_key,reason,hidden_at').order('hidden_at', { ascending: false }).limit(50),
-          supabase.from('community_user_restrictions')
+            .order('created_at', { ascending: false })
+            .limit(100),
+          supabase
+            .from('community_hidden_posts')
+            .select('post_key,reason,hidden_at')
+            .order('hidden_at', { ascending: false })
+            .limit(50),
+          supabase
+            .from('community_user_restrictions')
             .select('user_id,expires_at,reason,created_at')
-            .order('created_at', { ascending: false }).limit(50)
+            .order('created_at', { ascending: false })
+            .limit(50)
         ]);
         for (const result of [reports, hidden, restricted]) {
           if (result.error) throw result.error;
@@ -44,13 +53,23 @@ export function createAdminCommunityHandler({ supabase, env = process.env }) {
         return fail(res, 400, 'Invalid request');
       }
       const { action, post_key: postKey, user_id: userId, reason = '' } = req.body;
-      if (!ACTIONS.has(action) || typeof reason !== 'string' || reason.length > 500) {
+      if (
+        !ACTIONS.has(action) ||
+        typeof reason !== 'string' ||
+        reason.length > 500
+      ) {
         return fail(res, 400, 'Invalid moderation action');
       }
-      if (['hide', 'restore'].includes(action) && (!KEY_PATTERN.test(postKey || '') || String(postKey).length > 150)) {
+      if (
+        ['hide', 'restore'].includes(action) &&
+        (!KEY_PATTERN.test(postKey || '') || String(postKey).length > 150)
+      ) {
         return fail(res, 400, 'Invalid post');
       }
-      if (['restrict', 'unrestrict'].includes(action) && !UUID_PATTERN.test(userId || '')) {
+      if (
+        ['restrict', 'unrestrict'].includes(action) &&
+        !UUID_PATTERN.test(userId || '')
+      ) {
         return fail(res, 400, 'Invalid user');
       }
       const target = ['hide', 'restore'].includes(action) ? postKey : userId;

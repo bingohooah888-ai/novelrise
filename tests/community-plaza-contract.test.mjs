@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
+const read = (path) =>
+  readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
 test('community stays unpublished until approved migration and moderation', () => {
   const flags = read('novelight-community-config.js');
@@ -21,21 +22,32 @@ test('home live cards mount immediately below the existing carousel', () => {
   assert.match(html, /掲示板を見る/);
 });
 
-test('one exchange entry is present on both header sizes', () => {
+test('one release-gated exchange entry is present on both shared headers', () => {
   const client = read('novelight-client.js');
-  assert.equal((client.match(/href="community\.html"\$\{communityCurrent\}/g) || []).length, 2);
+  assert.equal(
+    (client.match(/href="community\.html"\$\{communityCurrent\}/g) || []).length,
+    2
+  );
+  assert.match(client, /NOVELIGHT_COMMUNITY_FLAGS\.timeline \?/);
   const index = read('index.html');
-  assert.equal((index.match(/href="community\.html" hidden>交流<\/a>/g) || []).length, 2);
+  assert.equal((index.match(/href="community\.html">交流<\/a>/g) || []).length, 0);
 });
 
-test('author note timeline posting is explicit opt-in and keeps legacy editor compatible', () => {
+test('author note timeline posting is explicit opt-in and remains compatible', () => {
   const editor = read('author-notes.html');
   assert.match(editor, /id="noteTimelineShare"/);
-  assert.match(editor, /communityEnabled\?'novelight_save_my_author_note_v2':'novelight_save_my_author_note'/);
-  assert.match(editor, /p_show_in_timeline:document\.getElementById\('noteTimelineShare'\)\.checked/);
+  assert.match(editor, /notePublicSafety/);
+  assert.match(
+    editor,
+    /communityEnabled\?'novelight_save_my_author_note_v2':'novelight_save_my_author_note'/
+  );
+  assert.match(
+    editor,
+    /p_show_in_timeline:document\.getElementById\('noteTimelineShare'\)\.checked/
+  );
 });
 
-test('feed uses bounded public RPC, scoped interactions, and no independent post form', () => {
+test('feed uses bounded RPCs and no duplicate author-note storage', () => {
   const code = read('novelight-community.js');
   assert.match(code, /novelight_community_feed/);
   assert.match(code, /novelight_community_toggle_like/);
@@ -45,7 +57,7 @@ test('feed uses bounded public RPC, scoped interactions, and no independent post
   assert.doesNotThrow(() => new Function(code));
 });
 
-test('timelines and the later board share one entry and hash navigation', () => {
+test('timeline and later board share one landing page', () => {
   const html = read('community.html');
   assert.match(html, /id="communityTimeline"/);
   assert.match(html, /id="communityBoardInfo"/);
@@ -53,27 +65,42 @@ test('timelines and the later board share one entry and hash navigation', () => 
   assert.match(html, /タイムライン公開後/);
 });
 
-
-test('only allowed ADMIN bearer can read and mutate moderator state', () => {
+test('ADMIN bearer and dedicated atomic RPC protect staff changes', () => {
   const handler = read('api/_lib/admin-community.js');
   const entry = read('api/admin-community.js');
   assert.match(handler, /requireAdmin/);
   assert.match(handler, /novelight_admin_community_moderate/);
   assert.match(entry, /SUPABASE_SECRET_KEY/);
-  assert.doesNotThrow(() => new Function(read('novelight-community-config.js')));
+  assert.doesNotThrow(
+    () => new Function(read('novelight-community-config.js'))
+  );
 });
 
-test('SQL review draft protects all private rows and limits RPC grants', () => {
+test('review SQL declares private RLS and idempotent event rules', () => {
   const migration = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
-  assert.equal((migration.match(/\$\$/g) || []).length % 2, 0, 'balanced dollar quotes');
+  assert.equal(
+    (migration.match(/\$\$/g) || []).length % 2,
+    0,
+    'balanced dollar quotes'
+  );
   for (const table of [
-    'community_reactions','community_comments','community_reports',
-    'community_hidden_posts','community_user_restrictions','community_notifications'
+    'community_reactions',
+    'community_comments',
+    'community_reports',
+    'community_hidden_posts',
+    'community_user_restrictions',
+    'community_notifications'
   ]) {
-    assert.match(migration, new RegExp('ALTER TABLE public\\.' + table + ' ENABLE ROW LEVEL SECURITY'));
+    assert.match(
+      migration,
+      new RegExp('ALTER TABLE public\\.' + table + ' ENABLE ROW LEVEL SECURITY')
+    );
   }
   assert.match(migration, /TO service_role;/);
   assert.match(migration, /ON CONFLICT\(event_key\) DO NOTHING/);
-  assert.match(migration, /NOT public\.novelight_community_interaction_allowed/);
+  assert.match(
+    migration,
+    /NOT public\.novelight_community_interaction_allowed/
+  );
   assert.doesNotMatch(migration, /UPDATE public\.novel_rank/);
 });
