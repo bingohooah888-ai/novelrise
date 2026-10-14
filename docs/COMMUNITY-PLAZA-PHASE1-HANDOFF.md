@@ -300,3 +300,13 @@ endpoint, no migration ledger entry, no Preview deployment. This does
 NOT make the review draft a deployable migration. Any successful
 result is explicitly limited to the disposable SQL replay; separate
 user-authorized Staging and formal migration procedures remain required.
+
+## 2026-10-14 isolated PostgreSQL runtime finding
+
+Disposable CI replay successfully installed the proposed review DDL, but its
+first role/anonymous-feed execution exposed PostgreSQL `GROUP BY`
+error `e.novel_id must appear in GROUP BY` within the grouped episode
+activity branch. The feed now uses grouped `n.id` (equal by join) for the
+episode post key, preserving the canonical key format. Static assertions
+pin the grouped column. A fresh disposable SQL replay is required to
+establish runtime success; Staging and Production have not been changed.

@@ -180,7 +180,7 @@ BEGIN
        AND n.content_rating IN ('general','sensitive_15')
        AND COALESCE(n.first_published_at,n.created_at)<=now()
     UNION ALL
-    SELECT 'episode', 'ep:' || e.author_user_id::text || ':' || e.novel_id::text ||
+    SELECT 'episode', 'ep:' || e.author_user_id::text || ':' || n.id::text ||
                    ':' || floor(extract(epoch FROM e.occurred_at)/10800)::bigint::text,
            e.author_user_id, n.id, CASE WHEN count(DISTINCT e.episode_id)=1 THEN max(e.episode_id) ELSE NULL::bigint END,
            n.title, n.thumbnail_url,
