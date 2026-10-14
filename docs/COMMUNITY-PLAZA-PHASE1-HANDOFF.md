@@ -287,3 +287,16 @@ there. It checks seven private tables, raw client grants, ADMIN-only RPC
 grants, anonymous feed and unauthenticated interaction denial. The
 transaction rolls back. It is NOT an applied migration or a passing
 integration test; cross-user, consent and notification fixtures remain.
+
+## 2026-10-14 automatic disposable SQL replay integration
+
+The existing `scripts/run-rls-integration.sh` now applies the **review
+draft only to its fresh, disposable local PostgreSQL migration-replay
+database**, immediately after all main migrations and the existing
+contest fixture. It then runs
+`tests/rls/community-plaza-phase1-security.sql`. This is a CI-only
+syntax/schema/role safety gate: no hosted Supabase Staging or Production
+endpoint, no migration ledger entry, no Preview deployment. This does
+NOT make the review draft a deployable migration. Any successful
+result is explicitly limited to the disposable SQL replay; separate
+user-authorized Staging and formal migration procedures remain required.

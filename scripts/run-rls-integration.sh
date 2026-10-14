@@ -35,6 +35,15 @@ CONTEST_REPLAY=(
 )
 "${CONTEST_REPLAY[@]}" -f tests/rls/november-contest-integration.sql
 echo "::endgroup::"
+
+# This review draft never touches a hosted Supabase project. Execute it only
+# after a clean historical migration replay in the disposable CI Postgres DB.
+# Missing syntax, RLS or grants must fail CI before a formal migration is made.
+echo "::group::Community Phase 1 isolated review DDL and role contract"
+"${CONTEST_REPLAY[@]}" -f docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql
+"${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-security.sql
+echo "::endgroup::"
+
 rm -f "$SEARCH_CARD_COMPAT_MIGRATION"
 trap - EXIT
 
