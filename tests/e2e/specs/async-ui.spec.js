@@ -6,3 +6,4 @@ import './auth-async-rejection.js';
 import './thumbnail-composer-accordion.js';
 import './mobile-synopsis-layout.js';
 import './contest-admin-review.js';
+import './community-plaza-ui.js';
