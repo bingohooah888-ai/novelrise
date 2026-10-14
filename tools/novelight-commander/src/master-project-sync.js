@@ -355,11 +355,12 @@ async function discoverProjectPage(context, projectUrl, projectName) {
   if (expectedProjectId && expectedProjectId !== observedProjectId) {
     throw new Error('ChatGPT Project identity mismatch; no files changed.');
   }
-  if (!(await pageVisiblyNamesProject(page, name))) {
-    const observation = await safeProjectPageObservation(page, loadCounts);
+  const observation = await safeProjectPageObservation(page, loadCounts);
+  if (observation.mainEmpty || !(await pageVisiblyNamesProject(page, name))) {
     throw new Error(
-      'Opened ChatGPT page does not visibly identify the expected Project; ' +
-      'no files changed. Safe render counters=' + JSON.stringify(observation)
+      'Opened ChatGPT page does not visibly identify Project ' +
+      JSON.stringify(name) + '; no files changed. Safe render counters=' +
+      JSON.stringify(observation)
     );
   }
   return { page, loginRequired: false };
