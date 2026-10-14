@@ -34,6 +34,14 @@
 - [ ] 作者近況ノート・共有キュレーション・LIGHT SEEDの明示的なopt-in/revoke動作、legacy編集時の同意取り消し、管理画面の認証と監査ログを確認。
 - [ ] 本番SQL適用後のread-only検査、障害時にUIとDBの両側を止める経路、監視指標・当番、既存機能への影響、バックアップ/復旧判断権限を確定する。
 
+### A-2. 実画面Previewの接続先証明（**別途ステージング承認が必要**）
+
+- [ ] 新しいPreview作成、Issue #188経由のFull Smoke、Staging/E2Eの実行は、**対象とscopeを固定した別途「ステージング承認」**を取得する。過去のIssue #294 rollback-only SQL検証の承認は再利用しない。
+- [ ] `docs/STAGING-RUNBOOK.md` の既知の制約：Vercel Previewを作成しただけでは、既存HTMLのブラウザ側Supabase URL/keyはStagingへ自動で切り替わらない。保護Previewをブラウザで手動操作して**投稿・コメント・いいね・管理操作等を試さない**。Production DBへ誤書き込みする危険がある。
+- [ ] Preview画面の既存read-only機能と、隔離されたStaging write/interactionテストを区別する。write試験は非Production Vercel deploymentであること、exact SHA、`VERCEL_ENV=preview`、独立Staging Supabase refとbrowser key、Stripe test mode（課金導線を使用する場合）、`STAGING_E2E_READY`等が既存contractを満たす場合のみ、許可されたHarness上で実行する。
+- [ ] Phase 1の実画面確認は**公開OFFの画面回帰**と、同意・Block/Mute・通報・コメント等の**Staging限定interaction証明**を分離する。公開OFFの本番サイトだけを見ても新機能の動作証明にはならない。
+- [ ] Previewを流用する場合も、対象コミット一致・Production alias拒否・保護・接続先の確認を省略しない。無承認の新規Previewデプロイ、Staging DBへのfixture作成を行わない。
+
 ### B. 非公開状態でのProductionコード・DB導入（**Production承認が必要**）
 
 - [ ] **承認対象を「Draft PR #2222のmain merge / Vercel Production deploy、公開OFFの維持」として明示し、本番承認・GitHub high-risk gate・required checksを満たす。** mainへのmergeはProduction deployの開始点であり、単なる準備作業ではない。
