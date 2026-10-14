@@ -1,0 +1,144 @@
+// Local browser proof only: synthetic activity, mocked Supabase, no hosted DB traffic.
+// This is not a Production or hosted Staging acceptance test.
+import { expect, test } from '../fixtures/diagnostic-fixture.js';
+
+const FIXTURE = {
+  post_key: 'note:42',
+  kind: 'note',
+  title: 'テスト用の近況',
+  body: '交流広場の安全な画面表示をテストしています。'.repeat(9),
+  author_name: 'テスト作者',
+  author_user_id: 'c0a00000-0000-4000-8000-000000000001',
+  occurred_at: '2026-10-14T09:00:00Z',
+  like_count: 1,
+  comment_count: 1,
+  liked_by_me: false
+};
+
+async function installIsolatedMock(page, enabled) {
+  // Fulfill the vendor library locally so the hard-coded Production URL
+  // is never sent to the network; record any unexpected RPC names.
+  await page.addInitScript(() => {
+    window.__communityTestCalls = [];
+  });
+  await page.route('**/*.supabase.co/**', (route) => route.abort('blockedbyclient'));
+  await page.route('**/assets/vendor/supabase-js-2.112.3.js', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: `
+        (() => {
+          let total = 0;
+          const feed = ${JSON.stringify(FIXTURE)};
+          const client = {
+            auth: {
+              getSession: async () => ({
+                data: { session: { user: { id: 'c0a00000-0000-4000-8000-000000000002' } } },
+                error: null
+              }),
+              getUser: async () => ({data: {user: {id: 'c0a00000-0000-4000-8000-000000000002'}}, error: null}),
+              onAuthStateChange: () => ({data: {subscription: {unsubscribe() {}}}})
+            },
+            rpc: async (name, payload = {}) => {
+              window.__communityTestCalls.push(name);
+              if (name === 'novelight_community_feed') {
+                return {data: payload.p_following ? [] : [feed], error:null};
+              }
+              if (name === 'novelight_community_toggle_like') {
+                return {data: {liked: true, like_count: 2}, error:null};
+              }
+              if (name === 'novelight_community_comments') {
+                return {data: [{id:'c0a00000-0000-4000-8000-000000000012',body:'既存コメント',display_name:'読者A'}],error:null};
+              }
+              if (name === 'novelight_community_post_comment') {
+                return {data: {id:'c0a00000-0000-4000-8000-000000000013'},error:null};
+              }
+              if (name === 'novelight_community_report') return {data: {id:'report'},error:null};
+              if (name === 'novelight_community_my_notifications') return {data: [],error:null};
+              return {data: [],error:null};
+            },
+            from: () => {
+              const builder = new Proxy({}, {
+                get(_, key) {
+                  if (key === 'then') {
+                    return (resolve) => Promise.resolve({data:[],error:null,count:0}).then(resolve);
+                  }
+                  return () => builder;
+                }
+              });
+              return builder;
+            }
+          };
+          window.supabase = {createClient: () => client};
+        })();
+      `
+    })
+  );
+  if (enabled) {
+    await page.route('**/novelight-client.js', async (route) => {
+      const response = await route.fetch();
+      const original = await response.text();
+      const marker = 'timeline: false,';
+      if (!original.includes(marker)) {
+        throw new Error('Preview-only fixture could not find the exact release flag');
+      }
+      await route.fulfill({
+        response,
+        body: original.replace(marker, 'timeline: true,')
+      });
+    });
+  }
+}
+
+test('community stays noninteractive with public release gate OFF', async ({
+  page
+}) => {
+  await installIsolatedMock(page, false);
+  await page.goto('/community.html', {waitUntil:'domcontentloaded'});
+  await expect(page.locator('.community-card')).toHaveCount(0);
+  const calls = await page.evaluate(() => window.__communityTestCalls);
+  expect(calls.filter((name) => name.startsWith('novelight_community_'))).toEqual([]);
+});
+
+test('community local-only feed, interactions and board tab work on desktop/mobile', async ({
+  page
+}) => {
+  await installIsolatedMock(page, true);
+  await page.goto('/community.html', {waitUntil:'domcontentloaded'});
+  const card = page.locator('.community-card');
+  await expect(card).toHaveCount(1);
+  await expect(card.locator('.community-card-title')).toHaveText('テスト用の近況');
+  await expect(card.locator('.community-card-body')).toContainText('安全な画面表示');
+  await card.locator('.community-expand').click();
+  await expect(card.locator('.community-expand')).toHaveAttribute('aria-expanded','true');
+
+  const like = card.locator('[aria-label="いいね"]');
+  await like.click();
+  await expect(like).toHaveAttribute('aria-pressed', 'true');
+  await expect(like).toContainText('2');
+
+  await card.locator('.community-action', {hasText:'コメント'}).click();
+  await expect(card.locator('.community-comment')).toContainText('既存コメント');
+  await card.locator('.community-comment-form input').fill('テストの返信です');
+  await card.locator('.community-comment-form button[type="submit"]').click();
+
+  page.once('dialog', (dialog) => dialog.accept('テスト理由'));
+  await card.locator('.community-action', {hasText:'通報'}).click();
+  await expect(card.locator('.community-action', {hasText:'通報済み'})).toBeDisabled();
+
+  await page.locator('[data-community-filter="following"]').click();
+  await expect(page.locator('.community-card')).toHaveCount(0);
+  await expect(page.locator('.community-state')).toContainText('まだ公開中の交流はありません');
+
+  await page.locator('#communityBoardTab').click();
+  await expect(page.locator('#communityBoardInfo')).toBeVisible();
+  await expect(page.locator('#communityTimeline')).toBeHidden();
+  const calls = await page.evaluate(() => window.__communityTestCalls);
+  for (const operation of [
+    'novelight_community_feed',
+    'novelight_community_toggle_like',
+    'novelight_community_comments',
+    'novelight_community_post_comment',
+    'novelight_community_report'
+  ]) expect(calls).toContain(operation);
+});
