@@ -15,7 +15,7 @@ function deny(input, message) {
   assert.throws(() => verifyCommunityStagingPreparation(input), message);
 }
 
-test('staging candidate preparation is read-only, not a live approval', () => {
+test('staging manifest is read-only', () => {
   const report = verifyCommunityStagingPreparation({ mainSha, candidateSha });
   assert.equal(report.result, 'PREPARATION_ONLY');
   assert.equal(report.prNumber, 2222);
@@ -28,38 +28,26 @@ test('staging candidate preparation is read-only, not a live approval', () => {
   assert.deepEqual(report.candidateArtifacts, COMMUNITY_PREP_PATHS);
 });
 
-test('candidate SHA and current main must be distinct and exact', () => {
+test('candidate and main SHAs must be distinct and exact', () => {
   deny({ mainSha: 'main', candidateSha }, /exact 40-character SHAs/u);
   deny({ mainSha, candidateSha: mainSha }, /must not be confused/u);
 });
 
-test('missing artifacts fail before any Staging operation', () => {
-  deny(
-    {
-      mainSha,
-      candidateSha,
-      read: () => {
-        throw new Error('missing');
-      },
-    },
-    /missing required review artifact/u
-  );
+test('missing files fail before Staging operations', () => {
+  const read = () => {
+    throw new Error('missing');
+  };
+  deny({ mainSha, candidateSha, read }, /missing required review artifact/u);
 });
 
-test('migration must not enable the public database gate', () => {
+test('migration must leave the public database gate disabled', () => {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-  deny(
-    {
-      mainSha,
-      candidateSha,
-      read: (path) => {
-        const sql = readFileSync(resolve(root, path), 'utf8');
-        return path === COMMUNITY_PREP_PATHS[0]
-          ? sql +
-              '\nUPDATE public.community_runtime_control SET public_enabled=true;'
-          : sql;
-      },
-    },
-    /must never enable/u
-  );
+  const read = (path) => {
+    const sql = readFileSync(resolve(root, path), 'utf8');
+    if (path === COMMUNITY_PREP_PATHS[0]) {
+      return sql + '\nUPDATE public.community_runtime_control SET public_enabled=true;';
+    }
+    return sql;
+  };
+  deny({ mainSha, candidateSha, read }, /must never enable/u);
 });
