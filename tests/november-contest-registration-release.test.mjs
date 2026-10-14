@@ -271,8 +271,14 @@ test('main advancing after claim blocks SQL and requires reconciliation', async 
     }
     return originalGet(path);
   };
-  await assert.rejects(performRegistrationRelease(h.input), /main advanced after claim/);
+  await assert.rejects(
+    performRegistrationRelease(h.input),
+    /main advanced after claim/
+  );
   assert.equal(h.getMutations(), 0);
   assert.equal(h.ledger.length, 2);
-  assert.match(h.ledger[1].body, /^NOVELIGHT_CONTEST_REGISTRATION_OPEN_FAILED /);
+  assert.match(
+    h.ledger[1].body,
+    /^NOVELIGHT_CONTEST_REGISTRATION_OPEN_FAILED /
+  );
 });
