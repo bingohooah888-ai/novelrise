@@ -91,10 +91,11 @@ test('ordinary or Production approvals cannot open entry', () => {
     );
   }
   assert.throws(
-    () => verifyRegistrationOpenApproval({
-      ...context,
-      commentAuthor: 'github-actions[bot]'
-    }),
+    () =>
+      verifyRegistrationOpenApproval({
+        ...context,
+        commentAuthor: 'github-actions[bot]'
+      }),
     /owner-authored/
   );
   assert.throws(
@@ -102,10 +103,11 @@ test('ordinary or Production approvals cannot open entry', () => {
     /wrong control issue/
   );
   assert.throws(
-    () => verifyRegistrationOpenApproval({
-      ...context,
-      currentMainSha: 'a'.repeat(40)
-    }),
+    () =>
+      verifyRegistrationOpenApproval({
+        ...context,
+        currentMainSha: 'a'.repeat(40)
+      }),
     /stale/
   );
 });
@@ -148,13 +150,14 @@ test('mismatched terms and missing evidence block approval', () => {
     );
   }
   assert.throws(
-    () => verifyRegistrationOpenApproval({
-      ...original,
-      termsAdoptionEvidence: {
-        ...original.termsAdoptionEvidence,
-        ownerVerified: false
-      }
-    }),
+    () =>
+      verifyRegistrationOpenApproval({
+        ...original,
+        termsAdoptionEvidence: {
+          ...original.termsAdoptionEvidence,
+          ownerVerified: false
+        }
+      }),
     /terms-adoption evidence/
   );
 });
@@ -162,25 +165,28 @@ test('mismatched terms and missing evidence block approval', () => {
 test('approval has a short validity window', () => {
   const context = fixture();
   assert.throws(
-    () => verifyRegistrationOpenApproval({
-      ...context,
-      now: '2026-10-15T00:10:00Z'
-    }),
+    () =>
+      verifyRegistrationOpenApproval({
+        ...context,
+        now: '2026-10-15T00:10:00Z'
+      }),
     /expired/
   );
   assert.throws(
-    () => verifyRegistrationOpenApproval({
-      ...context,
-      now: '2026-10-14T23:58:00Z'
-    }),
+    () =>
+      verifyRegistrationOpenApproval({
+        ...context,
+        now: '2026-10-14T23:58:00Z'
+      }),
     /issued in future/
   );
   assert.throws(
-    () => verifyRegistrationOpenApproval(
-      mutatePayload(context, (p) => {
-        p.expiresAt = '2026-10-15T02:00:00Z';
-      })
-    ),
+    () =>
+      verifyRegistrationOpenApproval(
+        mutatePayload(context, (p) => {
+          p.expiresAt = '2026-10-15T02:00:00Z';
+        })
+      ),
     /expired/
   );
 });
@@ -212,11 +218,3 @@ test('release SQL is scoped, atomic and auditable', () => {
     /STEP05_APPROVAL_BLOCKED/
   );
 });
-
-// TEMP_FORMAT_DIAGNOSTIC_20261015
-const debugSource = (await import('node:fs')).readFileSync(new URL(import.meta.url), 'utf8');
-const debugBaseline = debugSource.split('\n// TEMP_FORMAT_DIAGNOSTIC_20261015')[0].trimEnd() + '\n';
-const debugPrettier = await import('prettier');
-const debugConfig = await debugPrettier.resolveConfig('tests/november-contest-registration-open-plan.test.mjs');
-const debugExpected = await debugPrettier.format(debugBaseline, { ...debugConfig, filepath: 'tests/november-contest-registration-open-plan.test.mjs' });
-console.log('PRETTIER_EXPECTED_BEGIN\n' + debugExpected + 'PRETTIER_EXPECTED_END');
