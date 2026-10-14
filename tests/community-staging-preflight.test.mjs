@@ -45,7 +45,11 @@ test('migration must leave the public database gate disabled', () => {
   const read = (path) => {
     const sql = readFileSync(resolve(root, path), 'utf8');
     if (path === COMMUNITY_PREP_PATHS[0]) {
-      return sql + '\nUPDATE public.community_runtime_control SET public_enabled=true;';
+      return [
+        sql,
+        'UPDATE public.community_runtime_control',
+        'SET public_enabled=true;',
+      ].join('\n');
     }
     return sql;
   };
