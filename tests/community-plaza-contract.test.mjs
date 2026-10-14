@@ -152,7 +152,10 @@ test('shared list URL and content changes invalidate global consent', () => {
   assert.match(sql, /new\.share_token IS DISTINCT FROM old\.share_token/);
   assert.match(sql, /new\.title IS DISTINCT FROM old\.title/);
   assert.match(sql, /new\.description IS DISTINCT FROM old\.description/);
-  assert.match(sql, /BEFORE UPDATE OF visibility,share_token,title,description/);
+  assert.match(
+    sql,
+    /BEFORE UPDATE OF visibility,share_token,title,description/
+  );
 });
 
 test('disposable DB role test covers guest and staff RPC gates', () => {
