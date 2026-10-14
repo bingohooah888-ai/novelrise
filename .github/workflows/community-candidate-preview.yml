@@ -81,6 +81,7 @@ jobs:
       STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
       STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
       STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_SECRET_READONLY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
       VERCEL_PROJECT_NAME: novelrise
       GITHUB_REPOSITORY_ID: '1335499017'
@@ -121,6 +122,7 @@ jobs:
           test "$STAGING_E2E_READY" = 'true'
           test "$STAGING_EXPECTED_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
           test -n "$STAGING_EXPECTED_PUBLISHABLE_KEY"
+          test -n "$STAGING_SECRET_READONLY"
           test -n "$VERCEL_API_TOKEN"
           node --input-type=module <<'NODE'
           const resp=await fetch(process.env.STAGING_EXPECTED_SUPABASE_URL+'/rest/v1/rpc/novelight_community_feed',{
@@ -129,7 +131,19 @@ jobs:
             body:'{"p_limit":1}',signal:AbortSignal.timeout(15000)
           });
           if (!resp.ok || JSON.stringify(await resp.json()) !== '[]')
-            throw new Error('Community schema or default-OFF gate not verified. Preview creation denied.');
+            throw new Error('Community schema not verified. Preview creation denied.');
+          const key=process.env.STAGING_SECRET_READONLY;
+          const ctl=await fetch(
+            process.env.STAGING_EXPECTED_SUPABASE_URL+
+            '/rest/v1/community_runtime_control?select=public_enabled&singleton=eq.true',
+            {headers:{apikey:key,Authorization:'Bearer '+key},
+              signal:AbortSignal.timeout(15000)}
+          );
+          const rows=ctl.ok?await ctl.json():null;
+          if(!Array.isArray(rows) || rows.length!==1 ||
+             rows[0]?.public_enabled!==false) {
+            throw new Error('Community DB public_enabled=false is not proven. Preview denied.');
+          }
           NODE
       - name: Recheck exact refs immediately before cost-bearing creation
         run: |
