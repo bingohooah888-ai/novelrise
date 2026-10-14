@@ -52,3 +52,28 @@ test('timelines and the later board share one entry and hash navigation', () => 
   assert.match(html, /location\.hash==='#board'/);
   assert.match(html, /タイムライン公開後/);
 });
+
+
+test('only allowed ADMIN bearer can read and mutate moderator state', () => {
+  const handler = read('api/_lib/admin-community.js');
+  const entry = read('api/admin-community.js');
+  assert.match(handler, /requireAdmin/);
+  assert.match(handler, /novelight_admin_community_moderate/);
+  assert.match(entry, /SUPABASE_SECRET_KEY/);
+  assert.doesNotThrow(() => new Function(read('novelight-community-config.js')));
+});
+
+test('SQL review draft protects all private rows and limits RPC grants', () => {
+  const migration = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  assert.equal((migration.match(/\$\$/g) || []).length % 2, 0, 'balanced dollar quotes');
+  for (const table of [
+    'community_reactions','community_comments','community_reports',
+    'community_hidden_posts','community_user_restrictions','community_notifications'
+  ]) {
+    assert.match(migration, new RegExp('ALTER TABLE public\\.' + table + ' ENABLE ROW LEVEL SECURITY'));
+  }
+  assert.match(migration, /TO service_role;/);
+  assert.match(migration, /ON CONFLICT\(event_key\) DO NOTHING/);
+  assert.match(migration, /NOT public\.novelight_community_interaction_allowed/);
+  assert.doesNotMatch(migration, /UPDATE public\.novel_rank/);
+});
