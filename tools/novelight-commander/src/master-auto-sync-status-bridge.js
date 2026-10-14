@@ -119,6 +119,7 @@ async function readStatus(config) {
     'last_synced_main_sha: ' + String(state.lastSyncedMainSha || ''),
     'last_synced_content_sha256: ' + String(state.lastSyncedContentSha256 || ''),
     'last_checked_at: ' + String(state.lastCheckedAt || ''),
+    'retry_not_before_at: ' + String(state.retryNotBeforeAt || ''),
     'last_checked_main_sha: ' + String(state.lastCheckedMainSha || ''),
     'last_checked_content_sha256: ' + String(state.lastCheckedContentSha256 || ''),
     'uploaded: ' + String(state.uploaded || ''),
