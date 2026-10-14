@@ -76,7 +76,10 @@ BEGIN
  IF jsonb_array_length(public.novelight_community_comments(v_key,20))<>0 THEN
    RAISE EXCEPTION 'Blocked author direct comments RPC leaked';
  END IF;
- IF public.novelight_community_interaction_allowed(v_key) THEN
+ IF EXISTS(
+   SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
+   WHERE item->>'post_key'=v_key
+ ) THEN
    RAISE EXCEPTION 'Blocked author allowed interaction';
  END IF;
  BEGIN
@@ -100,12 +103,20 @@ SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000002'
 DO $muted_plaza$
 DECLARE v_key text:='note:'||current_setting('novelight.test.community_note');
 BEGIN
- IF public.novelight_community_interaction_allowed(v_key) THEN
+ IF EXISTS(
+   SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
+   WHERE item->>'post_key'=v_key
+ ) THEN
    RAISE EXCEPTION 'Muted author allowed interaction';
  END IF;
  IF jsonb_array_length(public.novelight_community_comments(v_key,20))<>0 THEN
    RAISE EXCEPTION 'Muted author direct comments RPC leaked';
  END IF;
+ BEGIN
+   PERFORM public.novelight_community_toggle_like(v_key);
+   RAISE EXCEPTION 'Muted reader liked author post';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
 END
 $muted_plaza$;
 RESET ROLE;
@@ -126,7 +137,10 @@ SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000002'
 DO $hidden_plaza$
 DECLARE v_key text:='note:'||current_setting('novelight.test.community_note');
 BEGIN
- IF public.novelight_community_post_visible(v_key) THEN
+ IF EXISTS(
+   SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
+   WHERE item->>'post_key'=v_key
+ ) THEN
    RAISE EXCEPTION 'Hidden post remains visible to direct RPC';
  END IF;
  IF jsonb_array_length(public.novelight_community_comments(v_key,20))<>0 THEN
@@ -159,7 +173,10 @@ SELECT public.novelight_save_my_author_note(
 DO $legacy_note_plaza$
 DECLARE v_key text:='note:'||current_setting('novelight.test.community_note');
 BEGIN
- IF public.novelight_community_post_visible(v_key) THEN
+ IF EXISTS(
+   SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
+   WHERE item->>'post_key'=v_key
+ ) THEN
    RAISE EXCEPTION 'Legacy edit silently retained global feed permission';
  END IF;
 END
@@ -171,7 +188,10 @@ SELECT public.novelight_save_my_author_note_v2(
 DO $v2_note_plaza$
 DECLARE v_key text:='note:'||current_setting('novelight.test.community_note');
 BEGIN
- IF NOT public.novelight_community_post_visible(v_key) THEN
+ IF NOT EXISTS(
+   SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
+   WHERE item->>'post_key'=v_key
+ ) THEN
    RAISE EXCEPTION 'Re-confirmed V2 note was not published';
  END IF;
 END
@@ -193,7 +213,10 @@ SELECT public.novelight_update_my_curation_list(
 DO $unlisted_plaza$
 DECLARE v_key text:='curation:'||current_setting('novelight.test.community_list');
 BEGIN
- IF public.novelight_community_post_visible(v_key) THEN
+ IF EXISTS(
+   SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
+   WHERE item->>'post_key'=v_key
+ ) THEN
    RAISE EXCEPTION 'Shared URL alone caused global discovery';
  END IF;
 END
@@ -205,7 +228,10 @@ SELECT public.novelight_set_my_curation_community_share(
 DO $opted_list_plaza$
 DECLARE v_key text:='curation:'||current_setting('novelight.test.community_list');
 BEGIN
- IF NOT public.novelight_community_post_visible(v_key) THEN
+ IF NOT EXISTS(
+   SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
+   WHERE item->>'post_key'=v_key
+ ) THEN
    RAISE EXCEPTION 'Explicit opt-in curation list not discoverable';
  END IF;
 END
@@ -217,7 +243,10 @@ SELECT public.novelight_rotate_my_curation_share_token(
 DO $rotated_list_plaza$
 DECLARE v_key text:='curation:'||current_setting('novelight.test.community_list');
 BEGIN
- IF public.novelight_community_post_visible(v_key) THEN
+ IF EXISTS(
+   SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
+   WHERE item->>'post_key'=v_key
+ ) THEN
    RAISE EXCEPTION 'Rotated share-token retained public feed consent';
  END IF;
 END
@@ -233,7 +262,10 @@ SELECT public.novelight_update_my_curation_list(
 DO $edited_list_plaza$
 DECLARE v_key text:='curation:'||current_setting('novelight.test.community_list');
 BEGIN
- IF public.novelight_community_post_visible(v_key) THEN
+ IF EXISTS(
+   SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
+   WHERE item->>'post_key'=v_key
+ ) THEN
    RAISE EXCEPTION 'Edited list silently retained public feed consent';
  END IF;
 END
