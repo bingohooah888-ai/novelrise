@@ -4,6 +4,10 @@ import path from 'node:path';
 import { MASTER_SYNC_CONFIRMATION, prepareLatestMaster } from './master-sync.js';
 import { syncMasterToChatgptProjectInBackground } from './master-project-sync-background.js';
 import { withMasterProjectSyncLock } from './master-project-sync-lock.js';
+import {
+  masterSyncRetryNotBefore,
+  shouldDeferMasterSyncAttempt
+} from './master-auto-sync-retry-policy.js';
 
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = 'novelrise';
@@ -74,6 +78,7 @@ async function writeDeferredState(stateFile, state, prepared, result) {
     lastCheckedAt: new Date().toISOString(),
     lastCheckedMainSha: prepared.mainSha,
     lastCheckedContentSha256: prepared.contentSha256,
+    retryNotBeforeAt: masterSyncRetryNotBefore(),
     lastError: result.reason || null
   });
 }
@@ -85,6 +90,9 @@ async function tick() {
     const config = await loadConfig();
     const stateFile = path.join(config.dataRoot, 'master-sync', 'AUTO-SYNC.json');
     const state = (await readJson(stateFile)) || {};
+    // Persisted cooldown also survives daemon restarts. An unverifiable
+    // ChatGPT Project page must not be retried every two minutes.
+    if (shouldDeferMasterSyncAttempt(state)) return;
     const prepared = await prepareLatestMaster(config);
 
     if (
@@ -138,6 +146,7 @@ async function tick() {
         ...state,
         enabled: true,
         status: 'login_required',
+        retryNotBeforeAt: masterSyncRetryNotBefore(),
         uiLaunchAllowed: false,
         runtimeVerified: false,
         projectName: String(state.projectName || DEFAULT_PROJECT_NAME),
@@ -187,6 +196,7 @@ async function tick() {
         ...state,
         enabled: true,
         status: 'error',
+        retryNotBeforeAt: masterSyncRetryNotBefore(),
         uiLaunchAllowed: false,
         runtimeVerified: false,
         lastCheckedAt: new Date().toISOString(),
