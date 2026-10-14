@@ -43,3 +43,13 @@ test('activity feed uses authenticated user data only', () => {
   assert.match(sql, /e\.user_id = \(select auth\.uid\(\)\)/u);
   assert.match(sql, /to authenticated;/u);
 });
+
+test('SCOUT activity and Point panels match heights on desktop only', () => {
+  assert.match(css, /@media \(min-width: 901px\)/u);
+  assert.match(css, /\.scout-main-grid > \.scout-panel \{/u);
+  assert.match(css, /height: clamp\(620px, 82vh, 790px\)/u);
+  assert.match(css, /\.scout-main-grid > \.scout-panel > #activityList,/u);
+  assert.match(css, /\.scout-main-grid > \.scout-panel > #pointHistory \{/u);
+  assert.match(css, /max-height: none/u);
+  assert.match(css, /flex: 1 1 auto/u);
+});
