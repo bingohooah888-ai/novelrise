@@ -87,4 +87,10 @@ test('review SQL protects private rows and notifications', () => {
   assert.match(sql, /ON CONFLICT\(event_key\) DO NOTHING/);
   assert.match(sql, /NOT public\.novelight_community_interaction_allowed/);
   assert.doesNotMatch(sql, /UPDATE public\.novel_rank/);
+  assert.match(
+    sql,
+    /novelight_save_my_author_note_v2\(bigint,text,text,bigint,boolean,boolean\) TO authenticated/
+  );
+  assert.match(sql, /Logged-in users must not bypass author Block\/Mute/);
+  assert.match(sql, /note\.linked_novel_id IS NULL OR linked\.id IS NOT NULL/);
 });
