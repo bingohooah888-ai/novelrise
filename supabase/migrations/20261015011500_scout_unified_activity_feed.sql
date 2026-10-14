@@ -148,7 +148,7 @@ begin
   get diagnostics v_inserted = row_count;
   return v_inserted = 1;
 end
-$function$
+$function$;
 
 create or replace function public.novelight_scout_activity_feed(
   p_kind text default 'all',
