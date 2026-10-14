@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertCommunityPreviewAdmission } from '../scripts/community-preview-admission.mjs';
+import {
+  assertCommunityPreviewAdmission
+} from '../scripts/community-preview-admission.mjs';
 
 const mainSha = 'a'.repeat(40);
 const candidateSha = 'b'.repeat(40);
