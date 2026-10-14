@@ -81,3 +81,30 @@ flag, payments and Vercel configuration remain untouched.
 - A failed job requiring recovery must not be retried automatically.
 - The workflow and runtime gates are security-sensitive and require a
   separate security review plus Production approval for installation.
+
+## 2026-10-14 concurrency incident and fail-closed repair
+
+Owner-scoped request comment `6162999828` generated GitHub Actions
+run `38526998061`. The run ended `cancelled` with **zero jobs** and
+no `CLAIMED` or `CONSUMED` Issue #294 marker. Other Staging
+issue-comment workflows started for the same event and share the
+`supabase-staging-migration-sync` **workflow-level** concurrency group;
+one unrelated workflow (Staging Search Card History Reconciliation)
+also showed cancellation. GitHub's single pending run per group can
+displace a pending valid run even with `cancel-in-progress: false`.
+
+Mitigation: the Community workflow's top-level admission group now
+includes `github.event.comment.id`, so unrelated Issue #294 workflows
+cannot displace the OWNER admission stage. The `transaction` job alone
+uses the canonical shared `supabase-staging-migration-sync` group,
+preserving serialization for actual DB activity without letting
+irrelevant skipped workflows occupy the admission lane. The
+`cancel-in-progress: false` invariant remains.
+
+The cancelled run made **no** Staging connection or DB mutation;
+Staging migration history remained at 179 entries, without migration
+`20261014052000`. This fix is a new, independently reviewed DRAFT
+PR; the earlier user `ステージング承認` does not authorize a new Issue
+comment or Production merge. A fresh `本番承認` is required to install
+the workflow repair. After installation and preflight verification, a
+fresh one-time `ステージング承認` is required to start the test.
