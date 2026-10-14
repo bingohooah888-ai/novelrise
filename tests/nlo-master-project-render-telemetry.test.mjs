@@ -73,7 +73,10 @@ test('treats a clean browser load as zero diagnostics', () => {
     }
   });
   f.send('console', { type: () => 'log' });
-  assert.equal(Object.values(f.counts).every(count => count === 0), true);
+  assert.equal(
+    Object.values(f.counts).every((count) => count === 0),
+    true
+  );
 });
 
 test('diagnostics cannot bypass the MASTER project identity gate', () => {
