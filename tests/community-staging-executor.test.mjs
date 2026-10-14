@@ -47,7 +47,8 @@ function good() {
       ahead_by: 2,
       behind_by: 0,
       base_commit: { sha: mainSha },
-      head_commit: { sha: headSha }
+      total_commits: 2,
+      commits: [{ sha: 'c'.repeat(40) }, { sha: headSha }]
     },
     ledgerPages: [[]]
   };
@@ -62,6 +63,20 @@ test('a valid offline admission requires exact OWNER and SHA evidence', () => {
   assert.equal(result.migrationVersion, '20261014052000');
   assert.equal(result.candidateSha, headSha);
   assert.equal(result.requestCommentId, '2222');
+});
+
+test('GitHub compare must include the complete tip-bound commit list', () => {
+  const stale = good();
+  stale.compare.commits[1].sha = 'f'.repeat(40);
+  reject(stale, /proven descendant/u);
+
+  const truncated = good();
+  truncated.compare.commits.pop();
+  reject(truncated, /proven descendant/u);
+
+  const mismatchedTotal = good();
+  mismatchedTotal.compare.total_commits = 3;
+  reject(mismatchedTotal, /proven descendant/u);
 });
 
 test('previously consumed requests are rejected too', () => {
