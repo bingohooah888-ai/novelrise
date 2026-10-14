@@ -1511,3 +1511,69 @@ end
 $release_fixture$;
 rollback;
 select 'PASS: Step 08 admin ranking and dormant cron private, gated and audit-safe' as result;
+
+-- Step 09: private operations overview is read-only even while hidden.
+begin;
+do $operations_fixture$
+declare
+  v_contest uuid;
+  v_view jsonb;
+  v_bad jsonb;
+  v_before bigint;
+  v_after bigint;
+begin
+  if pg_catalog.has_function_privilege(
+    'anon',
+    'public.novelight_contest_admin_operations_overview(uuid,text,integer,integer)',
+    'EXECUTE'
+  ) or pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.novelight_contest_admin_operations_overview(uuid,text,integer,integer)',
+    'EXECUTE'
+  ) then
+    raise exception 'Stage 09 operations overview accessible without service role';
+  end if;
+  if not pg_catalog.has_function_privilege(
+    'service_role',
+    'public.novelight_contest_admin_operations_overview(uuid,text,integer,integer)',
+    'EXECUTE'
+  ) then
+    raise exception 'Stage 09 service role cannot read private overview';
+  end if;
+
+  select id into v_contest
+    from public.novelight_contests
+   where contest_key = 'novelight-november-2026';
+  select pg_catalog.count(*) into v_before
+    from public.novelight_contest_review_audit
+   where contest_id = v_contest;
+  select public.novelight_contest_admin_operations_overview(
+    v_contest,null,20,0
+  ) into v_view;
+  if v_view->>'ok' <> 'true'
+     or v_view->>'contest_status' <> 'draft'
+     or (v_view->>'public_visible')::boolean is not false
+     or v_view->>'provisional_only' <> 'true'
+     or pg_catalog.jsonb_typeof(v_view->'entries') <> 'array'
+     or pg_catalog.jsonb_typeof(v_view->'audit') <> 'array'
+  then
+    raise exception 'Private Stage 09 overview failed closed: %',v_view;
+  end if;
+
+  select public.novelight_contest_admin_operations_overview(
+    v_contest,'unknown',20,0
+  ) into v_bad;
+  if v_bad->>'reason' <> 'invalid_request' then
+    raise exception 'Stage 09 accepted invalid page/filter: %',v_bad;
+  end if;
+  select pg_catalog.count(*) into v_after
+    from public.novelight_contest_review_audit
+   where contest_id = v_contest;
+  if v_after <> v_before then
+    raise exception 'Stage 09 read-only operation wrote an audit record';
+  end if;
+end
+$operations_fixture$;
+rollback;
+select 'PASS: Step 09 private operations, service-role isolation and no mutation'
+  as result;

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>11月コンテスト運営 | NOVELIGHT ADMIN</title>
+  <link rel="stylesheet" href="novelight-accessibility.css">
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,"Hiragino Kaku Gothic ProN",sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;background:#10131b;color:#f6f7fa}
+    header{padding:19px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid #343b4b}
+    a{color:#c7bdff}
+    main{max-width:1180px;margin:auto;padding:27px 20px 70px}
+    h1{margin:0 0 14px;font-size:clamp(22px,3vw,30px)}
+    h2{font-size:18px;margin-top:0}
+    .notice{background:#241f17;color:#f5dda6;border:1px solid #77613c;border-radius:9px;padding:15px;line-height:1.75}
+    .status{min-height:28px;margin:18px 0;color:#e2d7ac}
+    .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .card,.panel{background:#171d29;border:1px solid #343c4c;border-radius:11px;padding:16px}
+    .card span{color:#b5bed0;font-size:13px;display:block}
+    .card strong{font-size:25px;display:block;margin-top:9px}
+    .panel{margin-top:19px}
+    .muted{font-size:13px;line-height:1.6;color:#b5bed0}
+    .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    select,button{font:inherit;border-radius:7px;padding:9px 12px}
+    select{background:#0f1421;color:#fff;border:1px solid #65748a}
+    button{background:#49378e;color:#fff;border:1px solid #8074ca;cursor:pointer}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #e4c76d;outline-offset:3px}
+    .scroll{overflow:auto;margin-top:12px}
+    table{border-collapse:collapse;width:100%;min-width:800px}
+    th,td{padding:11px;border-bottom:1px solid #394253;text-align:left;vertical-align:top;font-size:13px}
+    td.title{max-width:260px;overflow-wrap:anywhere}
+    .audit{list-style:none;padding:0}
+    .audit li{border-top:1px solid #394253;padding:9px 0;font-size:13px;overflow-wrap:anywhere}
+    [hidden]{display:none!important}
+    @media(max-width:700px){main{padding:18px 12px 60px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:440px){.cards{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">本文へスキップ</a>
+<header>
+  <strong>NOVELIGHT / コンテスト運営</strong>
+  <nav><a href="admin.html">管理トップ</a>　<a href="admin-contest-review.html">読書審査</a>　<a href="admin-contest-rankings.html">順位発表</a></nav>
+</header>
+<main id="main-content" tabindex="-1">
+  <h1>11月コンテスト・運営状況</h1>
+  <p class="notice">この画面は管理者専用・読み取り専用です。表示するポイントは暫定値であり、最終順位・受賞資格・賞金支払を確定しません。振込操作や口座情報の取得はできません。応募受付とランキング一般公開も開始できません。</p>
+  <p id="status" class="status" role="status" aria-live="polite">管理者認証を確認しています。</p>
+  <section id="workspace" hidden>
+    <p id="contestStatus" class="muted"></p>
+    <section class="cards" aria-label="コンテスト運営指標">
+      <div class="card"><span>応募状態：参加中</span><strong id="entered">—</strong></div>
+      <div class="card"><span>審査保留中の読者</span><strong id="reviewHold">—</strong></div>
+      <div class="card"><span>賞金審査待ち</span><strong id="awardPending">—</strong></div>
+      <div class="card"><span>賞金保留</span><strong id="awardHold">—</strong></div>
+      <div class="card"><span>賞金承認済み（振込前）</span><strong id="awardApproved">—</strong></div>
+      <div class="card"><span>振込済み記録</span><strong id="awardPaid">—</strong></div>
+    </section>
+    <section class="panel">
+      <h2>応募作品・暫定ポイント・賞金状況</h2>
+      <div class="controls">
+        <label for="filter">応募状態</label>
+        <select id="filter">
+          <option value="all">すべて</option>
+          <option value="entered">参加中</option>
+          <option value="withdrawn">取下げ</option>
+          <option value="ineligible">資格なし</option>
+          <option value="disqualified">失格</option>
+        </select>
+        <button id="refresh" type="button">最新状態を取得</button>
+        <button id="previous" type="button">前のページ</button>
+        <span id="paging" class="muted"></span>
+        <button id="next" type="button">次のページ</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>作品</th><th>応募状態</th><th>暫定pt</th><th>有効読者</th><th>賞金記録</th><th>順位</th><th>振込記録日時</th></tr></thead>
+          <tbody id="entries"></tbody>
+        </table>
+      </div>
+      <p class="muted">ポイントは現在の暫定スコアから審査保留・除外読者を除いた参考値です。最終順位は別途監査・裁定が必要です。賞金記録が未作成なら「未確定」と表示します。</p>
+    </section>
+    <section class="panel">
+      <h2>最近の監査履歴</h2>
+      <p class="muted">最新12件の操作種別・日時のみ。個別の根拠・不正疑義は<a href="admin-contest-review.html">読書審査</a>で確認してください。</p>
+      <ul id="audit" class="audit"></ul>
+    </section>
+  </section>
+</main>
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+<script src="admin-contest-operations.js"></script>
+</body>
+</html>
