@@ -65,9 +65,8 @@ export function checkLedgerForOneTimeUse(comments, approvalId) {
       stop('malformed ledger record: manual review required');
     }
     // Any other released contest must block a new opening as well.
-    if (pre === EXECUTED && data?.contestKey ===
-        'novelight-november-2026') {
-      stop('contest registration was previously released');
+    if (data?.contestKey === 'novelight-november-2026') {
+      stop('an earlier release claim requires reconciliation');
     }
     if (data?.approvalCommentId === approvalId) {
       stop('approval already claimed or consumed');
