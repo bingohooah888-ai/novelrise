@@ -10,7 +10,7 @@
 - `GET /api/admin-contest-operations`: 既存の `requireAdmin`、同一Origin、
   Bearerのserver-side確認、allowlist、private/no-store。許可status・ページサイズ・
   offsetを限定し、POST等を405で拒否する。作品題名はブラウザの `textContent` のみ。
-- migration `20261014001000_november_contest_admin_operations_overview.sql`:
+- migration `20261014230000_november_contest_admin_operations_overview.sql`:
   既存のprivate contest/entry/reader score/review audit/awardsテーブルを再利用する
   **service_role限定・読み取り専用集計RPC**。一般ユーザーのRPC呼出し権限は付与しない。
   1ページ最大20件・offset最大2000、審査保留または除外読者のptを計上しない。
@@ -36,3 +36,7 @@
 振込記録の安全な更新UI・監査RPC（人間の操作と別承認が必要）、
 異議申立フロー、Production HTTP E2E、最新main統合、
 本番反映後の実検証は今回含まない。
+
+## Migration順序の更新（2026-10-14）
+
+本番には既に `20261014224500` が適用されているため、工程⑨の未適用migration版番号のみ `20261014001000` から `20261014230000` に変更した。RPC/権限/業務ロジックに変更はない。旧番号ファイルは削除し、新版番号1件だけをpendingとして検証する。公開・受付・振込は行わない。

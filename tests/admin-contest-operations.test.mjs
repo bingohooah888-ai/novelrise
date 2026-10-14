@@ -9,14 +9,14 @@ const ADMIN = 'caf00000-0000-4000-8000-000000000099';
 const CONTEST = 'caf00000-0000-4000-8000-000000000090';
 const migration = readFileSync(
   new URL(
-    '../supabase/migrations/20261014001000_november_contest_admin_operations_overview.sql',
+    '../supabase/migrations/20261014230000_november_contest_admin_operations_overview.sql',
     import.meta.url
   ),
   'utf8'
 );
 const rollback = readFileSync(
   new URL(
-    '../supabase/rollback/20261014001000_november_contest_admin_operations_overview_rollback.sql',
+    '../supabase/rollback/20261014230000_november_contest_admin_operations_overview_rollback.sql',
     import.meta.url
   ),
   'utf8'

@@ -3,7 +3,7 @@
 -- All scoring shown here is provisional; no prize eligibility is finalized.
 begin;
 select pg_catalog.pg_advisory_xact_lock(
-  pg_catalog.hashtext('novelight:20261014001000:contest-admin-overview')
+  pg_catalog.hashtext('novelight:20261014230000:contest-admin-overview')
 );
 
 create or replace function public.novelight_contest_admin_operations_overview(
