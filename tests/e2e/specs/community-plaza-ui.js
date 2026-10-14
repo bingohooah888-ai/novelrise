@@ -19,7 +19,7 @@ async function installIsolatedMock(page, enabled) {
   // Fulfill the vendor library locally so the hard-coded Production URL
   // is never sent to the network; record any unexpected RPC names.
   await page.addInitScript(() => {
-    window.__communityTestCalls = [];
+    globalThis.__communityTestCalls = [];
   });
   await page.route('**/*.supabase.co/**', (route) =>
     route.abort('blockedbyclient')
@@ -41,7 +41,7 @@ async function installIsolatedMock(page, enabled) {
               onAuthStateChange: () => ({data: {subscription: {unsubscribe() {}}}})
             },
             rpc: async (name, payload = {}) => {
-              window.__communityTestCalls.push(name);
+              globalThis.__communityTestCalls.push(name);
               if (name === 'novelight_community_feed') {
                 return {data: payload.p_following ? [] : [feed], error:null};
               }
@@ -97,7 +97,7 @@ test('community gate OFF prevents RPC calls', async ({ page }) => {
   await installIsolatedMock(page, false);
   await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.community-card')).toHaveCount(0);
-  const calls = await page.evaluate(() => window.__communityTestCalls);
+  const calls = await page.evaluate(() => globalThis.__communityTestCalls);
   expect(
     calls.filter((name) => name.startsWith('novelight_community_'))
   ).toEqual([]);
@@ -147,7 +147,7 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await page.locator('#communityBoardTab').click();
   await expect(page.locator('#communityBoardInfo')).toBeVisible();
   await expect(page.locator('#communityTimeline')).toBeHidden();
-  const calls = await page.evaluate(() => window.__communityTestCalls);
+  const calls = await page.evaluate(() => globalThis.__communityTestCalls);
   for (const operation of [
     'novelight_community_feed',
     'novelight_community_toggle_like',
