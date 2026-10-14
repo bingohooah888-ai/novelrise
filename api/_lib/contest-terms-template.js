@@ -8,13 +8,13 @@ export const contestTermsTemplate = String.raw`<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="NOVELIGHT 第1回小説コンテスト応募要項。">
-  <title>第1回小説コンテスト 応募要項 | NOVELIGHT</title>
+  <meta name="description" content="NOVELIGHT 第1回 星灯祭 応募要項。">
+  <title>第1回 星灯祭 応募要項 | NOVELIGHT</title>
   <link rel="stylesheet" href="/legal.css">
 </head>
 <body>
   <main id="main-content" class="legal-container">
-    <h1>NOVELIGHT 第1回小説コンテスト 応募要項</h1>
+    <h1>NOVELIGHT 第1回 星灯祭 応募要項</h1>
     <p>この応募要項の版ID：<strong>${CONTEST_TERMS_VERSION_CANDIDATE}</strong></p>
     <p>主催：NOVELIGHT。読者が物語を読み進めた実績によって作品を評価する小説コンテストです。</p>
     <h2>1. 応募・開催期間</h2>
