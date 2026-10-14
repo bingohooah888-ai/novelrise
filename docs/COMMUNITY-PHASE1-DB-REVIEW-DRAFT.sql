@@ -393,13 +393,17 @@ GRANT EXECUTE ON FUNCTION public.novelight_community_report(text,text) TO authen
 -- by invoking it from the new v2 wrapper rather than writing raw note records.
 CREATE OR REPLACE FUNCTION public.novelight_save_my_author_note_v2(
  p_note_id bigint,p_title text,p_body text,
- p_linked_novel_id bigint DEFAULT NULL,p_show_in_timeline boolean DEFAULT false)
+ p_linked_novel_id bigint DEFAULT NULL,p_show_in_timeline boolean DEFAULT false,
+ p_general_audience_confirmed boolean DEFAULT false)
 RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE v_result jsonb; v_user uuid:=(SELECT auth.uid()); v_note_id bigint;
 BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'Login required' USING errcode='42501'; END IF;
+  IF coalesce(p_show_in_timeline,false) AND NOT coalesce(p_general_audience_confirmed,false) THEN
+    RAISE EXCEPTION 'General audience confirmation required' USING errcode='42501';
+  END IF;
   v_result:=public.novelight_save_my_author_note(p_note_id,p_title,p_body,p_linked_novel_id);
   v_note_id:=(v_result->>'note_id')::bigint;
   UPDATE public.author_notes SET show_in_timeline=coalesce(p_show_in_timeline,false)
@@ -408,7 +412,7 @@ BEGIN
   RETURN v_result;
 END
 $$;
-REVOKE ALL ON FUNCTION public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean,boolean) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean) TO authenticated;
 
 -- Extend management output without replacing the old RPC or exposing raw notes.
