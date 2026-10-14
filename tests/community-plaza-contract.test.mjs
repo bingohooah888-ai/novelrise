@@ -25,7 +25,7 @@ test('one exchange entry is present on both header sizes', () => {
   const client = read('novelight-client.js');
   assert.equal((client.match(/href="community\.html"\$\{communityCurrent\}/g) || []).length, 2);
   const index = read('index.html');
-  assert.equal((index.match(/href="community\.html">交流<\/a>/g) || []).length, 2);
+  assert.equal((index.match(/href="community\.html" hidden>交流<\/a>/g) || []).length, 2);
 });
 
 test('author note timeline posting is explicit opt-in and keeps legacy editor compatible', () => {
