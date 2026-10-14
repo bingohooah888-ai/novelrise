@@ -21,15 +21,16 @@ async function installIsolatedMock(page, enabled) {
   await page.addInitScript(() => {
     window.__communityTestCalls = [];
   });
-  await page.route('**/*.supabase.co/**', (route) => route.abort('blockedbyclient'));
+  await page.route('**/*.supabase.co/**', (route) =>
+    route.abort('blockedbyclient')
+  );
   await page.route('**/assets/vendor/supabase-js-2.112.3.js', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/javascript',
       body: `
         (() => {
-          let total = 0;
-          const feed = ${JSON.stringify(FIXTURE)};
+              const feed = ${JSON.stringify(FIXTURE)};
           const client = {
             auth: {
               getSession: async () => ({
@@ -94,10 +95,12 @@ test('community stays noninteractive with public release gate OFF', async ({
   page
 }) => {
   await installIsolatedMock(page, false);
-  await page.goto('/community.html', {waitUntil:'domcontentloaded'});
+  await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.community-card')).toHaveCount(0);
   const calls = await page.evaluate(() => window.__communityTestCalls);
-  expect(calls.filter((name) => name.startsWith('novelight_community_'))).toEqual([]);
+  expect(
+    calls.filter((name) => name.startsWith('novelight_community_'))
+  ).toEqual([]);
 });
 
 test('community local-only feed, interactions and board tab work on desktop/mobile', async ({
@@ -107,28 +110,39 @@ test('community local-only feed, interactions and board tab work on desktop/mobi
   await page.goto('/community.html', {waitUntil:'domcontentloaded'});
   const card = page.locator('.community-card');
   await expect(card).toHaveCount(1);
-  await expect(card.locator('.community-card-title')).toHaveText('テスト用の近況');
-  await expect(card.locator('.community-card-body')).toContainText('安全な画面表示');
+  await expect(card.locator('.community-card-title')).toHaveText(
+    'テスト用の近況'
+  );
+  await expect(card.locator('.community-card-body')).toContainText(
+    '安全な画面表示'
+  );
   await card.locator('.community-expand').click();
-  await expect(card.locator('.community-expand')).toHaveAttribute('aria-expanded','true');
+  await expect(card.locator('.community-expand')).toHaveAttribute(
+    'aria-expanded',
+    'true'
+  );
 
   const like = card.locator('[aria-label="いいね"]');
   await like.click();
   await expect(like).toHaveAttribute('aria-pressed', 'true');
   await expect(like).toContainText('2');
 
-  await card.locator('.community-action', {hasText:'コメント'}).click();
+  await card.locator('.community-action', { hasText: 'コメント' }).click();
   await expect(card.locator('.community-comment')).toContainText('既存コメント');
   await card.locator('.community-comment-form input').fill('テストの返信です');
   await card.locator('.community-comment-form button[type="submit"]').click();
 
   page.once('dialog', (dialog) => dialog.accept('テスト理由'));
-  await card.locator('.community-action', {hasText:'通報'}).click();
-  await expect(card.locator('.community-action', {hasText:'通報済み'})).toBeDisabled();
+  await card.locator('.community-action', { hasText: '通報' }).click();
+  await expect(
+    card.locator('.community-action', { hasText: '通報済み' })
+  ).toBeDisabled();
 
   await page.locator('[data-community-filter="following"]').click();
   await expect(page.locator('.community-card')).toHaveCount(0);
-  await expect(page.locator('.community-state')).toContainText('まだ公開中の交流はありません');
+  await expect(page.locator('#communityPageFeed .community-state')).toContainText(
+    'まだ公開中の交流はありません'
+  );
 
   await page.locator('#communityBoardTab').click();
   await expect(page.locator('#communityBoardInfo')).toBeVisible();
@@ -140,5 +154,7 @@ test('community local-only feed, interactions and board tab work on desktop/mobi
     'novelight_community_comments',
     'novelight_community_post_comment',
     'novelight_community_report'
-  ]) expect(calls).toContain(operation);
+  ]) {
+    expect(calls).toContain(operation);
+  }
 });
