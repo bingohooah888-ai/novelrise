@@ -26,8 +26,7 @@ function fixture() {
       user: { login: owner },
       author_association: 'OWNER',
       body:
-        'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE ' +
-        JSON.stringify(command)
+        'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE ' + JSON.stringify(command)
     },
     main: { object: { sha: mainSha } },
     pr: {
