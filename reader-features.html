@@ -5,26 +5,22 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>読者向け機能 | NOVELIGHT</title>
   <meta name="description" content="NOVELIGHTの読者向け機能。作品検索・読書設定・読み上げ・LIGHT SEED・SCOUT RECORD・おすすめリストなどを紹介します。">
-  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
-  <link rel="stylesheet" href="novelight-public-dark.css">
-  <link rel="stylesheet" href="novelight-brand-refinement.css">
-  <link rel="stylesheet" href="novelight-font-unification.css?v=20260303">
+  <link rel="stylesheet" href="legal.css">
+  <link rel="stylesheet" href="novelight-header-light.css">
   <link rel="stylesheet" href="novelight-audience-features.css">
   <link rel="stylesheet" href="novelight-accessibility.css">
 </head>
-<body class="novelight-theme novelight-public-dark novelight-audience-page">
+<body class="novelight-public-header-page novelight-support-page novelight-audience-page">
 <a class="skip-link" href="#main-content">本文へスキップ</a>
 <header class="site-header">
   <div class="header-inner public-header-inner">
-    <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
-    <nav class="site-nav desktop-nav" aria-label="メインナビ">
-      <a href="index.html">ホーム</a><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="favorites.html">本棚</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="beta-authors.html">NOVELIGHT β版 先行作者登録</a>
-    </nav>
+    <a class="logo" href="index.html" aria-label="NOVELIGHT ホーム"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
+    <nav class="site-nav desktop-nav" aria-label="メインナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="announcements.html">お知らせ</a><a href="pricing.html">料金プラン</a></nav>
     <div class="header-actions">
       <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
       <a class="btn btn-outline login-action" href="login.html">ログイン</a>
       <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
-      <details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ"><a href="index.html">ホーム</a><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="favorites.html">本棚</a><a href="index.html#features">特徴</a><a href="pricing.html">料金プラン</a><a href="beta-authors.html">NOVELIGHT β版 先行作者登録</a><a href="login.html">ログイン</a></nav></details>
+      <details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="announcements.html">お知らせ</a><a href="pricing.html">料金プラン</a><a class="mobile-login-action" href="login.html">ログイン</a><a class="mobile-signup-action" href="signup.html">会員登録</a></nav></details>
     </div>
   </div>
 </header>
@@ -79,6 +75,15 @@
     </div>
   </section>
 </main>
-<footer class="site-footer"><div class="footer-inner"><span>© 2026 NOVELIGHT</span><div class="footer-links"><a href="operator.html">運営者情報</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="billing-policy.html">課金・解約</a><a href="commerce-disclosure.html">特商法表記</a><a href="contact.html">お知らせ・お問い合わせ</a></div></div></footer>
+<footer class="site-footer"><div class="site-footer-inner"><span>© 2026 NOVELIGHT</span><a href="operator.html">運営者情報</a><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="billing-policy.html">課金・解約</a><a href="commerce-disclosure.html">特商法表記</a><a href="contact.html">お知らせ・お問い合わせ</a></div></footer>
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+<script src="novelight-client.js"></script>
+<script>
+  const audienceAuthClient = supabase.createClient(
+    'https://fiepaguycecrredwrcwx.supabase.co',
+    'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
+  );
+  void NovelightClient.syncAuthHeader(audienceAuthClient);
+</script>
 </body>
 </html>

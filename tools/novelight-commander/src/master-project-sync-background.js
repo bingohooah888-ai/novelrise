@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { syncMasterToChatgptProjectSafely as syncBase } from './master-project-sync.js';
+import { isMasterProjectIdentityMismatch } from './master-auto-sync-retry-policy.js';
 
 const DEFAULT_BACKGROUND_CDP_PORT = 9333;
 const CDP_READY_TIMEOUT_MS = 10000;
@@ -100,14 +101,24 @@ export async function syncMasterToChatgptProjectInBackground(options = {}) {
       return deferred('DEFERRED_CDP_UNAVAILABLE');
     }
 
-    const result = await syncBase({
-      ...options,
-      cdpUrl: endpoint
-    });
-    return {
-      ...result,
-      backgroundOnly: true
-    };
+    try {
+      const result = await syncBase({
+        ...options,
+        cdpUrl: endpoint
+      });
+      return {
+        ...result,
+        backgroundOnly: true
+      };
+    } catch (error) {
+      // Never bypass the exact Project identity check or upload to a
+      // different Project. Back off rather than retrying unsafe UI every 2m.
+      if (!isMasterProjectIdentityMismatch(error)) throw error;
+      return deferred(
+        'DEFERRED_PROJECT_IDENTITY_UNVERIFIED',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   } finally {
     await context.close().catch(() => {});
   }

@@ -19,12 +19,11 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: supabase-staging-migration-sync
-  cancel-in-progress: false
-
 jobs:
   sync:
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
     name: Synchronize approved migrations to dedicated Staging
     runs-on: ubuntu-latest
     environment: staging

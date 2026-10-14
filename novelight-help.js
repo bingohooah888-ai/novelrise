@@ -289,7 +289,9 @@
   }
   function installNovel() { decorate(document.querySelector('#lightSeedArea h2'), 'light-seed'); decorate(document.querySelector('#receivedSeedArea h2'), 'light-seed'); }
   function installScoutRecord() {
-    const oldHelp = document.getElementById('scoutHelp'); if (oldHelp) oldHelp.hidden = true; decorate(document.querySelector('.scout-page-head h1'), 'scout-record'); decorate(document.getElementById('seedInventoryTitle'), 'light-seed'); decorate(document.querySelector('.scout-rank-title'), 'scout-record'); decorate(document.querySelector('.scout-xp-meta span:first-child'), 'scout-record'); decorate(document.getElementById('xpNext'), 'scout-record'); decorate(document.querySelector('.scout-point-card .label'), 'scout-record'); document.querySelectorAll('.scout-stat span').forEach((label) => decorate(label, label.textContent.trim() === 'LIGHT SEED' ? 'light-seed' : 'scout-record'));
+    const oldHelp = document.getElementById('scoutHelp'); if (oldHelp) oldHelp.hidden = true;
+    decorate(document.querySelector('.scout-page-head h1'), 'scout-record');
+    decorate(document.getElementById('seedInventoryTitle'), 'light-seed');
   }
   function installRanking() { addTextHelp(document.querySelector('main h1'), 'ranking', 'ランキングについて'); }
   function installPricing() { addTextHelp(document.querySelector('main h1'), 'plans', '各プランの違い'); }
