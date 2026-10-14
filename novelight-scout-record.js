@@ -730,6 +730,7 @@
       meta.textContent = dateTime(row.occurred_at);
       copy.append(title, meta);
       item.appendChild(copy);
+      host.appendChild(item);
     });
   }
 
