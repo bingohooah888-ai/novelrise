@@ -706,3 +706,39 @@ body.novelight-page-scout-record #badgeDialog .scout-visibility .scout-note{
 .rank-orb.rank-orb-artwork{overflow:visible;background:transparent}
 .rank-orb.rank-orb-artwork img{display:block;width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 5px 9px rgba(0,0,0,.28))}
 .rank-node.current .rank-orb.rank-orb-artwork img{width:48px;height:48px}
+
+/* Unified SCOUT activity timeline: keep history within the card. */
+.scout-activity-filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.scout-activity-filter{min-height:38px;padding:8px 11px;border:1px solid rgba(226,190,92,.3);border-radius:999px;background:#081b2e;color:#f3e9d5;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.scout-activity-filter[aria-pressed="true"]{background:#362b12;border-color:#e2be5c;color:#ffeba7}
+.scout-activity-filter:focus-visible{outline:2px solid #ffe082;outline-offset:3px}
+#activityList{max-height:min(58vh,560px);min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;align-content:start;padding-right:4px}
+.scout-activity-more{margin-top:14px}
+.scout-activity-note{margin:12px 0 0;color:#e2e5eb;font-size:12px;line-height:1.65}
+
+/* Match both SCOUT history cards at desktop widths while allowing independent scrolling. */
+@media (min-width: 901px) {
+  .scout-main-grid {
+    align-items: stretch;
+  }
+  .scout-main-grid > .scout-panel {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: clamp(620px, 82vh, 790px);
+    min-height: 0;
+    min-width: 0;
+  }
+  .scout-main-grid > .scout-panel > #activityList,
+  .scout-main-grid > .scout-panel > #pointHistory {
+    align-content: start;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+  .scout-main-grid > .scout-panel > #activityMore {
+    align-self: flex-start;
+    flex-shrink: 0;
+  }
+}
