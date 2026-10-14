@@ -1,6 +1,11 @@
 (function () {
   'use strict';
 
+  // Single public release gate; also applies to all shared public headers.
+  window.NOVELIGHT_COMMUNITY_FLAGS = Object.freeze({
+    timeline: false,
+    board: false
+  });
   const VISITOR_KEY = 'novelight_visitor_token';
   const TRAFFIC_KEY = 'novelight_first_touch';
   const TOUCH_SESSION_KEY = 'novelight_touch_recorded';
@@ -305,7 +310,7 @@
       '<nav class="site-nav desktop-nav" aria-label="メインナビ">' +
       `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
-      `<a href="community.html"${communityCurrent}>交流</a>` +
+      (window.NOVELIGHT_COMMUNITY_FLAGS.timeline ? `<a href="community.html"${communityCurrent}>交流</a>` : '') +
       `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
       `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       '</nav>' +
@@ -316,7 +321,7 @@
       '<details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ">' +
       `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
-      `<a href="community.html"${communityCurrent}>交流</a>` +
+      (window.NOVELIGHT_COMMUNITY_FLAGS.timeline ? `<a href="community.html"${communityCurrent}>交流</a>` : '') +
       `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
       `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       `<a class="mobile-login-action" href="login.html"${loginCurrent}>ログイン</a>` +
