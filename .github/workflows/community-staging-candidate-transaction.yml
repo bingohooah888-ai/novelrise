@@ -83,8 +83,8 @@ jobs:
           gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
             -f body="NOVELIGHT_STAGING_COMMUNITY_CLAIMED $payload" > /dev/null
 
+  # Serialize eligible Staging DB jobs; unrelated issue comments never take this lock.
   transaction:
-    # Serialize eligible Staging DB jobs; unrelated issue comments never take this lock.
     concurrency:
       group: supabase-staging-migration-sync
       cancel-in-progress: false
