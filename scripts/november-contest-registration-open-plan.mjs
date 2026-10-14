@@ -196,7 +196,7 @@ export function buildAtomicRegistrationOpenSql(verified) {
     "      'approval_challenge', '" + verified.challenge + "',",
     "      'terms_version', 'november-2026-v1',",
     "      'terms_url', 'https://novelight.jp/contest-terms'));",
-    'end',
+    'end;',
     '$novelight_stage05_open$;',
     'commit;'
   ].join('\n') + '\n';
