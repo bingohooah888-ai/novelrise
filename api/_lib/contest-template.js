@@ -3,8 +3,8 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="NOVELIGHT 第1回小説コンテスト。2026年11月1日から30日まで開催。読書ポイント1pt以上の上位5位以内に各1万円、最終順位は12月1日発表。">
-  <title>第1回 NOVELIGHT 小説コンテスト | 2026年11月</title>
+  <meta name="description" content="NOVELIGHT 第1回 星灯祭。2026年11月1日から30日まで開催。読書ポイント1pt以上の上位5位以内に各1万円、最終順位は12月1日発表。">
+  <title>NOVELIGHT 第1回 星灯祭 | 2026年11月</title>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
   <link rel="stylesheet" href="novelight-accessibility.css">
   <link rel="stylesheet" href="novelight-contest.css">
@@ -28,10 +28,10 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
     <section class="contest-hero">
       <div class="contest-hero-light" aria-hidden="true"></div>
       <div class="contest-hero-inner">
-        <span class="contest-eyebrow">NOVELIGHT / NOVEMBER 2026</span>
+        <span class="contest-eyebrow">NOVELIGHT 第1回 星灯祭 / 2026年11月</span>
         <span class="contest-status" id="contestStatus">開催準備中</span>
         <h1>まだ知られていない物語に、<em>光を。</em></h1>
-        <p class="contest-hero-lead">第1回 NOVELIGHT 小説コンテスト。読者に届き、続きを読みたいと思わせた物語が、上位を目指せる30日間。</p>
+        <p class="contest-hero-lead">NOVELIGHT 第1回 星灯祭。読者に届き、続きを読みたいと思わせた物語が、上位を目指せる30日間。</p>
         <div class="contest-hero-actions">
           <a class="contest-button contest-button-primary" href="#enter">作品をエントリーする</a>
           <a class="contest-button contest-button-secondary" href="#entries">参加作品を読む</a>
