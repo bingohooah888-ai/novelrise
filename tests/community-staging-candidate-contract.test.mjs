@@ -50,7 +50,7 @@ function deny(value, pattern) {
   assert.throws(() => inspectCommunityCandidateApproval(value), pattern);
 }
 
-test('valid offline contract never becomes actual Staging authorization', () => {
+test('offline contract never grants Staging access', () => {
   const r = inspectCommunityCandidateApproval(good());
   assert.equal(r.verdict, 'CONTRACT_MATCH_ONLY');
   assert.equal(r.issueNumber, 294);
@@ -85,12 +85,9 @@ test('current main drift and unverified ancestry fail closed', () => {
   deny(c, /candidate PR has moved/u);
 });
 
-test('unknown fields, wrong confirmation and stale scope are refused', () => {
+test('wrong confirmation and fields are refused', () => {
   const a = good();
-  a.comment.body = a.comment.body.replace(
-    '"STAGING APPROVED"',
-    '"APPROVED"'
-  );
+  a.comment.body = a.comment.body.replace('"STAGING APPROVED"', '"APPROVED"');
   deny(a, /approval target or scope drift/u);
   const b = good();
   b.comment.body = b.comment.body.slice(0, -1) + ',"extra":true}';
@@ -102,18 +99,23 @@ test('consumed request or incomplete ledger is never reusable', () => {
   a.ledgerComplete = false;
   deny(a, /not fully observed/u);
   const b = good();
-  b.ledger = [{
-    body: 'NOVELIGHT_STAGING_COMMUNITY_CONSUMED ' +
-      JSON.stringify({
-        requestCommentId: '1789',
-        candidateSha: head,
-        scope: 'community-phase1-isolated'
-      })
-  }];
+  b.ledger = [
+    {
+      body:
+        'NOVELIGHT_STAGING_COMMUNITY_CONSUMED ' +
+        JSON.stringify({
+          requestCommentId: '1789',
+          candidateSha: head,
+          scope: 'community-phase1-isolated'
+        })
+    }
+  ];
   deny(b, /already claimed or consumed/u);
   const c = good();
-  c.ledger = [{
-    body: 'NOVELIGHT_STAGING_COMMUNITY_CLAIMED {not valid JSON}'
-  }];
+  c.ledger = [
+    {
+      body: 'NOVELIGHT_STAGING_COMMUNITY_CLAIMED {not valid JSON}'
+    }
+  ];
   deny(c, /invalid JSON/u);
 });
