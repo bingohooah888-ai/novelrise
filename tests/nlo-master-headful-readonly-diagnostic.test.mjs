@@ -8,7 +8,8 @@ import {
   validatedMasterProjectUrl
 } from '../tools/novelight-commander/src/master-headful-readonly-diagnostic.js';
 
-const PROJECT = 'https://chatgpt.com/g/g-p-6a8777e13564819192ce63521b795156-novelight/project';
+const PROJECT =
+  'https://chatgpt.com/g/g-p-6a8777e13564819192ce63521b795156-novelight/project';
 
 test('only canonical ChatGPT Project URLs are accepted for a visible diagnostic', () => {
   assert.equal(validatedMasterProjectUrl(PROJECT), PROJECT);
