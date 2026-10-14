@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import { observeProjectPageLoad } from '../tools/novelight-commander/src/master-project-render-telemetry.js';
 
 function fixture() {
