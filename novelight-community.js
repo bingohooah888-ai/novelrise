@@ -99,18 +99,27 @@
     try {
       const data = await rpc('novelight_community_comments', {p_post_key:row.post_key,p_limit:20});
       container.replaceChildren();
-      for (const comment of Array.isArray(data) ? data : []) {
-        const c = el('div', 'community-comment');
-        c.append(el('strong', '', comment.display_name || 'ユーザー'));
-        c.append(el('span', '', comment.body || ''));
-        container.append(c);
-      }
       const form = el('form', 'community-comment-form');
       const input = el('input');
       input.required = true;
       input.maxLength = 500;
       input.placeholder = 'コメントを書く（500文字以内）';
       input.setAttribute('aria-label', 'コメント');
+      let replyTo = null;
+      for (const comment of Array.isArray(data) ? data : []) {
+        const c = el('div', 'community-comment');
+        const author = el('strong', '', (comment.parent_comment_id ? '↳ ' : '') + (comment.display_name || 'ユーザー'));
+        c.append(author, el('span', '', comment.body || ''));
+        const replyButton = el('button','community-action','返信');
+        replyButton.type='button';
+        replyButton.addEventListener('click',()=>{
+          replyTo = String(comment.id || '');
+          input.placeholder = (comment.display_name || 'ユーザー') + 'さんへの返信';
+          input.focus();
+        });
+        c.append(replyButton);
+        container.append(c);
+      }
       const submit = el('button', '', '送信');
       submit.type = 'submit';
       form.append(input,submit);
@@ -119,7 +128,9 @@
         submit.disabled = true;
         try {
           if (!await authed()) return requireLogin();
-          await rpc('novelight_community_post_comment',{p_post_key:row.post_key,p_body:input.value.trim()});
+          await rpc('novelight_community_post_comment',{
+            p_post_key:row.post_key,p_body:input.value.trim(),p_parent_comment_id:replyTo
+          });
           await comments(container,row);
         } catch(error) {
           console.warn('community comment failed',error);
