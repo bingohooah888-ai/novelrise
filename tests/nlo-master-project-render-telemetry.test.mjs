@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import {
-  observeProjectPageLoad
-} from '../tools/novelight-commander/src/master-project-render-telemetry.js';
+import { observeProjectPageLoad } from '../tools/novelight-commander/src/master-project-render-telemetry.js';
 
 function fixture() {
   const listeners = new Map();
