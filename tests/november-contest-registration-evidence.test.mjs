@@ -151,3 +151,12 @@ test('approval clock and one exact comment must match', async () => {
     /unexpected API/
   );
 });
+
+// TEMP_FORMAT_DIAGNOSTIC_20261015
+const fsFormatter = await import('node:fs');
+const formatter = await import('prettier');
+const rawFile = fsFormatter.readFileSync(new URL(import.meta.url), 'utf8');
+const baseFile = rawFile.split('\n// TEMP_FORMAT_DIAGNOSTIC_20261015')[0].trimEnd() + '\n';
+const prettyConfig = await formatter.resolveConfig('tests/november-contest-registration-evidence.test.mjs');
+const expected = await formatter.format(baseFile, { ...prettyConfig, filepath: 'tests/november-contest-registration-evidence.test.mjs' });
+console.log('PRETTIER_EXPECTED_BEGIN\n' + expected + 'PRETTIER_EXPECTED_END');
