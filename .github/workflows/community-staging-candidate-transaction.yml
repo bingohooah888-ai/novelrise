@@ -7,9 +7,11 @@ on:
 permissions:
   contents: read
 
-# Serialize with existing one-time migration approvals. Never cancel mid-DDL.
+# This approval event also starts unrelated staging workflows.
+# Give admission its own comment-bound lane: skipped workflows must not
+# displace the one real request while GitHub has a single pending slot.
 concurrency:
-  group: supabase-staging-migration-sync
+  group: novelight-community-staging-admission-${{ github.event.comment.id }}
   cancel-in-progress: false
 
 jobs:
@@ -92,6 +94,11 @@ jobs:
     name: Rollback-only schema and role tests on dedicated Staging
     if: needs.admit.result == 'success'
     needs: admit
+    # Lock only the real DB operation against canonical migration syncs.
+    # Do not put this shared lock on all issue_comment workflow runs.
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: staging

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -152,5 +155,28 @@ test('nested commits, metacommands and missing boundaries fail closed', () => {
   assert.throws(
     () => composeCommunityRollbackOnlySQL(injected),
     /psql metacommand forbidden/u
+  );
+});
+
+test('staging admission is isolated while DB operations share migration lock', () => {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const path = resolve(
+    root,
+    '.github/workflows/community-staging-candidate-transaction.yml'
+  );
+  const source = readFileSync(path, 'utf8');
+  const [preamble, jobs] = source.split('\njobs:\n');
+  assert.match(preamble, /group: novelight-community-staging-admission-/u);
+  assert.doesNotMatch(preamble, /group: supabase-staging-migration-sync/u);
+  const transaction = jobs.split('\n  transaction:\n')[1];
+  assert.ok(transaction);
+  const beforeRecord = transaction.split('\n  record:\n')[0];
+  assert.match(
+    beforeRecord,
+    /group: supabase-staging-migration-sync\n      cancel-in-progress: false/u
+  );
+  assert.equal(
+    (source.match(/group: supabase-staging-migration-sync/gmu) ?? []).length,
+    1
   );
 });
