@@ -81,7 +81,9 @@ async function installIsolatedMock(page, enabled) {
       const original = await response.text();
       const marker = 'timeline: false,';
       if (!original.includes(marker)) {
-        throw new Error('Preview-only fixture could not find the exact release flag');
+        throw new Error(
+          'Preview-only fixture could not find the exact release flag'
+        );
       }
       await route.fulfill({
         response,
@@ -103,11 +105,15 @@ test('community gate OFF prevents RPC calls', async ({ page }) => {
 
 test('community UI interactions use mocked data', async ({ page }) => {
   await installIsolatedMock(page, true);
-  await page.goto('/community.html', {waitUntil:'domcontentloaded'});
+  await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
   const card = page.locator('.community-card');
   await expect(card).toHaveCount(1);
-  await expect(card.locator('.community-card-title')).toHaveText('テスト用の近況');
-  await expect(card.locator('.community-card-body')).toContainText('安全な画面表示');
+  await expect(card.locator('.community-card-title')).toHaveText(
+    'テスト用の近況'
+  );
+  await expect(card.locator('.community-card-body')).toContainText(
+    '安全な画面表示'
+  );
   await card.locator('.community-expand').click();
   await expect(card.locator('.community-expand')).toHaveAttribute(
     'aria-expanded',
@@ -120,7 +126,9 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await expect(like).toContainText('2');
 
   await card.locator('.community-action', { hasText: 'コメント' }).click();
-  await expect(card.locator('.community-comment')).toContainText('既存コメント');
+  await expect(card.locator('.community-comment')).toContainText(
+    '既存コメント'
+  );
   await card.locator('.community-comment-form input').fill('テストの返信です');
   await card.locator('.community-comment-form button[type="submit"]').click();
 
@@ -132,9 +140,9 @@ test('community UI interactions use mocked data', async ({ page }) => {
 
   await page.locator('[data-community-filter="following"]').click();
   await expect(page.locator('.community-card')).toHaveCount(0);
-  await expect(page.locator('#communityPageFeed .community-state')).toContainText(
-    'まだ公開中の交流はありません'
-  );
+  await expect(
+    page.locator('#communityPageFeed .community-state')
+  ).toContainText('まだ公開中の交流はありません');
 
   await page.locator('#communityBoardTab').click();
   await expect(page.locator('#communityBoardInfo')).toBeVisible();
