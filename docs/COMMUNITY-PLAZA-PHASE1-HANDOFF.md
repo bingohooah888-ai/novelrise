@@ -194,3 +194,73 @@ the repository's approved sandbox/migration testing route must be
 established with a correctly scoped authorization.
 
 Current Phase 1 remains **Draft / not ready to merge**.
+
+
+## 2026-10-14 subsequent pre-approval implementation
+
+- Existing reader journey events now attribute a community-marked novel/episode
+  landing as `source=community` **only for reader journeys**. The shared
+  acquisition source, X attribution, PV, Rank and SCOUT are unaffected.
+- Proposed `novelight_admin_community_metrics(7|30)` aggregates source-tagged
+  journeys, unique visitors, distinct existing server-qualified
+  `valid_read_events` within a 24-hour prior community journey window,
+  interaction participants, and participants returning on two distinct days.
+  It is service-role-only and exposed via existing owner-authenticated admin
+  handler; there is no raw user data in the response.
+- Curated lists are deliberately NOT auto-discoverable merely because their
+  visibility is `shared` (shared URL). The new
+  `community_share_enabled` column defaults FALSE and can be set only
+  through owner-scoped RPC. Switching a list to `private` resets consent.
+  The share token enters the public timeline response only after this extra
+  consent and remains revocable.
+- LIGHT SEED giver activity is also **strict opt-in**. The
+  `community_seed_shares` table (RLS, no raw reader/client access) records
+  one share per existing awarded seed. A giver can opt in or revoke via
+  the history page and an owner-bound RPC. Unpublished/R18 works disappear
+  from the feed without deleting the underlying historical LIGHT SEED;
+  the Rank/XP/award ledgers are never written by community.
+- The review SQL was reconstructed after accidental JavaScript replacement
+  expansion was found; verified one `BEGIN`, one `COMMIT`, 18 function
+  definitions, 36 `$$` markers and zero invalid `AS $` delimiters.
+  This is **static text validation only**, not SQL execution.
+
+### Production rollback and failure containment
+
+1. Before a formal migration, rollback consists solely of discarding this
+   draft PR. Production remains unchanged.
+2. If an approved database migration is subsequently installed but the UI
+   remains gated off, leave both `timeline` and `board` FALSE. Avoid
+   destructive rollback of consent and notification records unless a
+   separately audited restore has been approved.
+3. If the community feature is approved and later creates a public-content
+   or moderation incident, disable the `timeline` feature gate through
+   the separately authorized Production route, then verify home/navigation,
+   author notes, and community RPC access. Do not assume hiding a link alone
+   revokes RPC privileges; the DB needs its own separately approved
+   fail-closed revocation mechanism in the formal migration.
+4. Preserve the original existing `author_notes`,
+   `author_follow_events`, `reader_curation_lists`, `light_seeds`,
+   `valid_read_events`, Rank and SCOUT source data throughout rollback.
+   New community records should only be archived or dropped following
+   an explicit retention/privacy review and verified backup.
+5. The restored Production revision, schema versions, delegated RPC grants,
+   hidden post visibility and activity counters require read-only postcheck.
+
+### Missing completion evidence
+
+The formal 14-digit Supabase CLI-created migration has **not** been
+generated or installed. No authorized PR-head SQL integration test can use
+the existing Issue #294 ledger, because it accepts only a migration
+already committed on exact current `main`. The one-time earlier Staging
+approval was used for read-only isolation/provenance inspection; it must
+not be stretched into another mutation or workaround. The Staging
+database still had zero `community_%` tables at last inspection.
+The feature cannot truthfully be called Production-ready without a
+reviewed PR-head isolated RLS test route, migration order proof,
+role-separation and direct-RPC attacks testing, official moderation
+and data retention review, plus full responsive E2E.
+
+NOTE: Previous early-document statements describing missing features
+refer to the historical implementation phase; this dated continuation
+supersedes those status items. Nothing in this document authorizes
+a Production change or a paid Preview.
