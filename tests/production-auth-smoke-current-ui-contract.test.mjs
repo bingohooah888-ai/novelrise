@@ -90,11 +90,11 @@ test('Production Auth Smoke stays aligned with current beta UI contracts', () =>
     authenticatedSmoke,
     /\.seed-choice\[data-seed-type=\"BRONZE\"\]/
   );
-  assert.match(authenticatedSmoke, /LIGHT SEED送信履歴/);
+  assert.match(authenticatedSmoke, /data-activity-filter="seed"/);
   assert.match(authenticatedSmoke, /\/scout-record\.html/);
   assert.match(authenticatedSmoke, /name: 'SCOUT RECORD'/);
-  assert.match(authenticatedSmoke, /name: '最近のSCOUT活動'/);
-  assert.match(authenticatedSmoke, /name: 'LIGHT SEED送信履歴'/);
+  assert.match(authenticatedSmoke, /name: 'SCOUT活動履歴'/);
+  assert.doesNotMatch(authenticatedSmoke, /name: 'LIGHT SEED送信履歴'/);
   assert.doesNotMatch(authenticatedSmoke, /name: \/\^SEED履歴\//);
   assert.doesNotMatch(authenticatedSmoke, /\/light-seed-history\\\.html/);
   assert.match(authenticatedSmoke, /globalThis\.document\.body\.scrollHeight/);

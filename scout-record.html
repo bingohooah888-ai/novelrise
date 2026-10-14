@@ -175,9 +175,18 @@
     <div class="scout-main-grid">
       <section class="scout-panel" aria-labelledby="activityTitle">
         <div class="scout-section-head">
-          <div><h2 id="activityTitle">最近のSCOUT活動</h2><p>有効読書、評価、コメント、LIGHT SEEDの記録。</p></div>
+          <div><h2 id="activityTitle">SCOUT活動履歴</h2><p>読書・お気に入り・LIGHT SEED・X共有画面の表示履歴を確認できます。</p></div>
         </div>
-        <div id="activityList" class="scout-list"><div class="scout-loading">読み込み中...</div></div>
+        <div class="scout-activity-filters" role="group" aria-label="SCOUT活動履歴の種類">
+          <button class="scout-activity-filter" type="button" data-activity-filter="all" aria-pressed="true">すべて</button>
+          <button class="scout-activity-filter" type="button" data-activity-filter="read" aria-pressed="false">読書</button>
+          <button class="scout-activity-filter" type="button" data-activity-filter="favorite" aria-pressed="false">お気に入り</button>
+          <button class="scout-activity-filter" type="button" data-activity-filter="seed" aria-pressed="false">LIGHT SEED</button>
+          <button class="scout-activity-filter" type="button" data-activity-filter="share" aria-pressed="false">共有</button>
+        </div>
+        <div id="activityList" class="scout-list" aria-live="polite"><div class="scout-loading">読み込み中...</div></div>
+        <button id="activityMore" class="scout-mini-button scout-activity-more" type="button" hidden>さらに20件表示</button>
+        <p class="scout-activity-note">X共有は投稿完了ではなく共有画面を開いた記録です。過去のX共有は遡って記録されません。</p>
       </section>
 
       <section class="scout-panel" aria-labelledby="pointHistoryTitle">
@@ -186,13 +195,6 @@
       </section>
     </div>
 
-    <section class="scout-panel" aria-labelledby="seedHistoryTitle">
-      <div class="scout-section-head">
-        <div><h2 id="seedHistoryTitle">LIGHT SEED送信履歴</h2><p>あなたがLIGHT SEEDを贈った作品と送信日時を確認できます。作品Rankに関する発掘結果はβ版では表示しません。</p></div>
-        <strong id="seedHistoryCount">—</strong>
-      </div>
-      <div id="seedHistoryList" class="scout-list"><div class="scout-loading">LIGHT SEED履歴を読み込んでいます。</div></div>
-    </section>
   </main>
 
   <dialog id="badgeDialog" class="scout-modal">
