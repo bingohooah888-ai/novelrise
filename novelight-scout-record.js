@@ -727,7 +727,7 @@
       case 'light_seed_sent':
         return `『${name}』に${row.seed_type ? row.seed_type + ' ' : ''}LIGHT SEEDを贈りました`;
       case 'x_share_open':
-        return `『${name}』のX共有画面を開きました`;
+        return `${row.author_name ? row.author_name + 'の' : ''}『${name}』のX共有画面を開きました`;
       case 'comment_posted':
         return `『${name}』にコメントしました`;
       default:

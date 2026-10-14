@@ -160,7 +160,8 @@ returns table (
   novel_id text,
   novel_title text,
   occurred_at timestamp with time zone,
-  seed_type text
+  seed_type text,
+  author_name text
 )
 language plpgsql
 stable security definer
@@ -206,9 +207,11 @@ begin
   )
   select a.event_type, a.work_id,
          case when n.status = 'published' then n.title else null end,
-         a.event_time, a.light_seed_type
+         a.event_time, a.light_seed_type,
+         case when n.status = 'published' then p.display_name else null end
     from activity a
     left join public.novels n on n.id::text = a.work_id
+    left join public.profiles p on p.id = n.user_id
    where p_kind = 'all'
       or (p_kind = 'read' and a.event_type = 'valid_read')
       or (p_kind = 'favorite' and a.event_type = 'favorite_added')
