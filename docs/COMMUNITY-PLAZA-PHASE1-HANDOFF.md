@@ -367,3 +367,30 @@ The remaining publishing prerequisites are a formal CLI migration and
 postchecks, specifically authorized Staging SQL/RLS and rollback checks,
 full moderator flow and retention review, and the project-specific
 high-risk merge/Production authorizations.
+
+## 20261014052000 formal migration candidate (not merged/deployed)
+
+The Phase 1 SQL single source of truth has moved to
+`supabase/migrations/20261014052000_community_plaza_phase1.sql`. This is a **reviewed filename/content candidate in a
+DRAFT PR**, not proof of Supabase CLI migration registration or hosted DB
+application. The retired `docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql`
+contains only a pointer to prevent conflicting SQL copies.
+
+Precheck: `supabase/checks/20261014052000_community_plaza_phase1_precheck.sql`.
+Postcheck: `supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql`.
+Guarded rollback: `supabase/rollback/20261014052000_community_plaza_phase1_rollback.sql`.
+Postrollback: `supabase/checks/20261014052000_community_plaza_phase1_postrollback.sql`.
+
+Disposable PostgreSQL CI must precheck + replay migration, postcheck +
+role/cross-user behavioral tests, then guarded rollback/postrollback +
+fresh reapply and re-test. Rollback refuses to destroy any community
+interactions, notifications, public opt-ins or seed shares. On hosted
+environments, disabling the app feature flag is the primary containment;
+a destructive rollback requires separate audit, approval and backup.
+
+**Approval boundary:** current Issue #294 Staging sync requires an
+exact-main committed migration plus one-time OWNER ledger authorization.
+This PR remains draft, is NOT part of main, and must not be merged or
+applied to hosted Staging as a workaround. Do not interpret PR branch
+migration readiness as Production approval. Next real Staging step
+requires separately approved, policy-compliant execution.

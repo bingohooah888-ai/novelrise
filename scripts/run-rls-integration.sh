@@ -40,7 +40,16 @@ echo "::endgroup::"
 # after a clean historical migration replay in the disposable CI Postgres DB.
 # Missing syntax, RLS or grants must fail CI before a formal migration is made.
 echo "::group::Community Phase 1 isolated review DDL and role contract"
-"${CONTEST_REPLAY[@]}" -f docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql
+"${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
+"${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-security.sql
+"${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-behavior.sql
+echo "::endgroup::"
+echo "::group::Community Phase 1 reversible schema rollback/reapply on disposable DB"
+"${CONTEST_REPLAY[@]}" -f supabase/rollback/20261014052000_community_plaza_phase1_rollback.sql
+"${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postrollback.sql
+"${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_precheck.sql
+"${CONTEST_REPLAY[@]}" -f supabase/migrations/20261014052000_community_plaza_phase1.sql
+"${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-security.sql
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-behavior.sql
 echo "::endgroup::"

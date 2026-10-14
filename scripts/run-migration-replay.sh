@@ -65,8 +65,14 @@ for migration in supabase/migrations/*.sql; do
     echo "::notice::Defer $migration until historical Founding/Auth replay checks finish"
     continue
   fi
+  if [[ "$migration" == "supabase/migrations/20261014052000_community_plaza_phase1.sql" ]]; then
+    "${REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_precheck.sql
+  fi
   echo "::group::Replay $migration"
   "${REPLAY[@]}" -f "$migration"
+  if [[ "$migration" == "supabase/migrations/20261014052000_community_plaza_phase1.sql" ]]; then
+    "${REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
+  fi
   echo '::endgroup::'
 done
 

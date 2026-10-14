@@ -68,7 +68,7 @@ test('ADMIN bearer protects moderator changes', () => {
 });
 
 test('review SQL protects private rows and notifications', () => {
-  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const sql = read('supabase/migrations/20261014052000_community_plaza_phase1.sql');
   const quotes = sql.match(/\$\$/g) || [];
   assert.doesNotMatch(sql, /^(?:AS \$|\$;)$/m);
   assert.equal(quotes.length % 2, 0);
@@ -105,7 +105,7 @@ test('community journeys override source without altering acquisition', () => {
 });
 
 test('owner metrics use existing qualified reads rather than PV', () => {
-  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const sql = read('supabase/migrations/20261014052000_community_plaza_phase1.sql');
   assert.match(sql, /public\.valid_read_events/);
   assert.match(sql, /public\.reader_journey_events/);
   assert.match(sql, /e\.source='community'/);
@@ -117,7 +117,7 @@ test('owner metrics use existing qualified reads rather than PV', () => {
 });
 
 test('shared URL alone never permits curation-wide timeline discovery', () => {
-  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const sql = read('supabase/migrations/20261014052000_community_plaza_phase1.sql');
   const defaultOptIn = 'community_share_enabled boolean NOT NULL DEFAULT false';
   assert.ok(sql.includes(defaultOptIn));
   assert.ok(sql.includes("visibility='shared' AND l.community_share_enabled"));
@@ -130,7 +130,7 @@ test('shared URL alone never permits curation-wide timeline discovery', () => {
 });
 
 test('light seed timeline publicity requires explicit donor consent', () => {
-  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const sql = read('supabase/migrations/20261014052000_community_plaza_phase1.sql');
   assert.ok(sql.includes('community_seed_shares ENABLE ROW LEVEL SECURITY'));
   assert.match(sql, /novelight_set_my_seed_community_share/);
   assert.match(sql, /s\.reader_id=v_user/);
@@ -141,14 +141,14 @@ test('light seed timeline publicity requires explicit donor consent', () => {
 });
 
 test('legacy note edits invalidate old timeline consent', () => {
-  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const sql = read('supabase/migrations/20261014052000_community_plaza_phase1.sql');
   assert.match(sql, /community_author_note_consent_guard/);
   assert.match(sql, /NEW\.show_in_timeline:=false/);
   assert.match(sql, /BEFORE UPDATE OF title,body,linked_novel_id,status/);
 });
 
 test('shared list URL and content changes invalidate global consent', () => {
-  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const sql = read('supabase/migrations/20261014052000_community_plaza_phase1.sql');
   assert.match(sql, /new\.share_token IS DISTINCT FROM old\.share_token/);
   assert.match(sql, /new\.title IS DISTINCT FROM old\.title/);
   assert.match(sql, /new\.description IS DISTINCT FROM old\.description/);
@@ -170,7 +170,7 @@ test('disposable DB role test covers guest and staff RPC gates', () => {
 });
 
 test('episode publication grouping uses an explicit GROUP BY key', () => {
-  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const sql = read('supabase/migrations/20261014052000_community_plaza_phase1.sql');
   assert.ok(sql.includes("SELECT 'episode', 'ep:' || e.author_user_id::text"));
   assert.ok(sql.includes("' || n.id::text ||"));
   assert.ok(
@@ -179,7 +179,7 @@ test('episode publication grouping uses an explicit GROUP BY key', () => {
 });
 
 test('hidden posts are inaccessible through all community RPCs', () => {
-  const sql = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const sql = read('supabase/migrations/20261014052000_community_plaza_phase1.sql');
   assert.match(
     sql,
     /WHEN EXISTS \(\s*SELECT 1 FROM public\.community_hidden_posts h/
@@ -189,4 +189,14 @@ test('hidden posts are inaccessible through all community RPCs', () => {
   assert.match(fixture, /Hidden post accepted direct like/);
   assert.match(fixture, /Blocked author direct comments RPC leaked/);
   assert.match(fixture, /Rotated share-token retained public feed consent/);
+});
+
+test('formal community migration is primary; draft is a retired historical pointer', () => {
+  const migration = read('supabase/migrations/20261014052000_community_plaza_phase1.sql');
+  const draft = read('docs/COMMUNITY-PHASE1-DB-REVIEW-DRAFT.sql');
+  const script = read('scripts/run-rls-integration.sh');
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.community_reactions/);
+  assert.match(migration, /community_author_note_consent_guard/);
+  assert.match(draft, /supabase\/migrations\/20261014052000_community_plaza_phase1\.sql/);
+  assert.match(script, /20261014052000_community_plaza_phase1_rollback\.sql/);
 });
