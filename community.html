@@ -21,6 +21,7 @@
     <a class="community-tab" href="community.html" aria-current="page">タイムライン</a>
     <a class="community-tab" href="#board" id="communityBoardTab">掲示板</a>
   </nav>
+  <section id="communityNotifications" aria-label="あなたへの交流通知" hidden></section>
   <section id="communityTimeline" aria-label="タイムライン">
    <div class="community-filters" aria-label="表示する投稿">
      <button type="button" data-community-filter="everyone" aria-pressed="true">みんな</button>
@@ -40,6 +41,7 @@
 <script src="novelight-community-config.js"></script>
 <script src="novelight-client.js"></script>
 <script src="novelight-community.js" defer></script>
+<script src="novelight-community-alerts.js" defer></script>
 <script>
 (() => {
  const boardTab=document.getElementById('communityBoardTab');
