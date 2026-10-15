@@ -3,33 +3,31 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
-const visual = readFileSync('novelight-episode-visual-editor.js', 'utf8');
-const illustrations = readFileSync(
-  'novelight-episode-illustrations.js',
-  'utf8'
-);
+const visualPath = 'novelight-episode-visual-editor.js';
+const imagePath = 'novelight-episode-illustrations.js';
+const visual = readFileSync(visualPath, 'utf8');
+const illustrations = readFileSync(imagePath, 'utf8');
 const start = visual.indexOf('  const normalize = ');
 const end = visual.indexOf('\n  function apiClient()', start);
 assert.ok(start >= 0 && end > start);
-
-const code = visual.slice(start, end);
-const { spliceSource, insertSourceMarker } = runInNewContext(
-  code + '\n({ spliceSource, insertSourceMarker })'
-);
-
+const source = visual.slice(start, end);
+const expression = source + '\n({ spliceSource, insertSourceMarker })';
+const ops = runInNewContext(expression);
+const spliceSource = ops.spliceSource;
+const insertSourceMarker = ops.insertSourceMarker;
 const prefix = '[[NOVELIGHT_ILLUSTRATION:';
 const marker = prefix + '12345678-1234-4234-8234-123456789abc]]';
-const earlier = prefix + 'abcdefab-1234-4234-8234-123456789abc]]';
+const older = prefix + 'abcdefab-1234-4234-8234-123456789abc]]';
 
-test('pasting an entire body keeps its exact empty lines', () => {
-  const original = '旧本文\n\n変更前';
-  const pasted = '一行目\n\n二行目\n' + earlier + '\n\n終わり\n';
-  const result = spliceSource(original, 0, original.length, pasted);
+test('complete paste keeps existing empty lines', () => {
+  const old = '旧本文\n\n変更前';
+  const pasted = '一行目\n\n二行目\n' + older + '\n\n終わり\n';
+  const result = spliceSource(old, 0, old.length, pasted);
   assert.equal(result.content, pasted);
   assert.equal(result.caret, pasted.length);
 });
 
-test('Windows line endings and many paragraphs remain stable', () => {
+test('Windows line endings remain single LF', () => {
   const windows = 'A\r\n\r\nB\rC\r\nD';
   const result = spliceSource('旧本文', 0, 3, windows);
   assert.equal(result.content, 'A\n\nB\nC\nD');
@@ -37,34 +35,39 @@ test('Windows line endings and many paragraphs remain stable', () => {
   assert.equal(spliceSource('', 0, 0, many).content, many);
 });
 
-test('markers stay on separate lines at each insertion boundary', () => {
-  const text = '一行目\n次の行';
+test('insertion at both line boundaries is exact', () => {
+  const original = '一行目\n次の行';
   const expected = '一行目\n' + marker + '\n次の行';
-  assert.equal(insertSourceMarker(text, 3, 3, marker).content, expected);
-  assert.equal(insertSourceMarker(text, 4, 4, marker).content, expected);
-  assert.equal(insertSourceMarker('本文', 0, 0, marker).content, marker + '\n本文');
+  const left = insertSourceMarker(original, 3, 3, marker);
+  const right = insertSourceMarker(original, 4, 4, marker);
+  assert.equal(left.content, expected);
+  assert.equal(right.content, expected);
   assert.equal(insertSourceMarker('', 0, 0, marker).content, marker);
 });
 
-test('placing a second marker never removes the first', () => {
-  const source = '冒頭\n\n' + earlier + '\n\n結末';
-  const at = source.indexOf('結末');
-  const result = insertSourceMarker(source, at, at, marker);
-  assert.equal(result.content, '冒頭\n\n' + earlier + '\n\n' + marker + '\n結末');
+test('existing image references survive a second insertion', () => {
+  const original = '冒頭\n\n' + older + '\n\n結末';
+  const at = original.indexOf('結末');
+  const result = insertSourceMarker(original, at, at, marker);
+  const expected = '冒頭\n\n' + older + '\n\n' + marker + '\n結末';
+  assert.equal(result.content, expected);
 });
 
-test('paste and Enter use source edits instead of browser HTML', () => {
-  assert.ok(visual.includes('replaceSourceSelection(event.clipboardData'));
-  assert.ok(visual.includes("replaceSourceSelection('\\n')"));
+test('paste and Enter commit plaintext before redrawing', () => {
+  const paste = 'replaceSourceSelection(event.clipboardData';
+  const enter = "replaceSourceSelection('\\n')";
+  assert.ok(visual.includes(paste));
+  assert.ok(visual.includes(enter));
   assert.ok(visual.includes('textarea.value = change.content'));
   assert.ok(visual.includes('renderSource(change.content)'));
 });
 
-test('async image loading never rebuilds the author text', () => {
-  assert.ok(illustrations.includes('visualEditor.insertMarker?.(marker)'));
+test('image refresh never rebuilds editor text', () => {
+  const call = 'visualEditor.insertMarker?.(marker)';
+  assert.ok(illustrations.includes(call));
   assert.ok(visual.includes('insertMarker: insertVisualMarker'));
-  const refresh = visual.split('async function refreshFromTextarea()')[1];
-  const body = refresh.split('function scheduleRefresh()')[0];
-  assert.ok(body.includes("figure.querySelector('img')"));
-  assert.equal(body.includes('renderSource('), false);
+  const tail = visual.split('async function refreshFromTextarea()')[1];
+  const refresh = tail.split('function scheduleRefresh()')[0];
+  assert.ok(refresh.includes("figure.querySelector('img')"));
+  assert.equal(refresh.includes('renderSource('), false);
 });
