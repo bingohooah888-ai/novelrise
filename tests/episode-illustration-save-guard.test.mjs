@@ -70,3 +70,63 @@ test('both insertion paths and explicit removal notify the guard', () => {
   assert.ok(visual.includes('novelight:illustration-removed'));
   assert.ok(html.includes('illustrationSaveGuard(value)'));
 });
+
+function makePublishedSave(hasMatchingRow) {
+  const start = html.indexOf('async function savePublishedEpisode(){');
+  const end = html.indexOf('\nfunction markDirty()', start);
+  assert.ok(start >= 0 && end > start);
+  const checks = new Map();
+  const query = {
+    update() {
+      return this;
+    },
+    eq(field, value) {
+      checks.set(field, value);
+      return this;
+    },
+    select() {
+      return this;
+    },
+    async maybeSingle() {
+      const data = hasMatchingRow
+        ? { id: 2401, updated_at: 'new-version' }
+        : null;
+      return { data, error: null };
+    }
+  };
+  const episode = {
+    content: '本文',
+    title: '第6話',
+    updated_at: 'old-version'
+  };
+  const sandbox = {
+    episode,
+    id: 2401,
+    session: { user: { id: 'owner' } },
+    client: { from: () => query },
+    collaborationEditor: false,
+    values: () => ({
+      title: '第6話',
+      content: '本文\n' + marker,
+      chapterId: null
+    }),
+    validate: () => '',
+    illustrationSaveGuard: () => {}
+  };
+  const source = html.slice(start, end);
+  const save = runInNewContext(source + '\nsavePublishedEpisode', sandbox);
+  return { save, checks, episode };
+}
+
+test('a concurrent update is rejected instead of reported as saved', async () => {
+  const state = makePublishedSave(false);
+  await assert.rejects(state.save(), /別の画面などでこの話が更新/);
+  assert.equal(state.checks.get('updated_at'), 'old-version');
+});
+
+test('a matching revision may save new markers', async () => {
+  const state = makePublishedSave(true);
+  await state.save();
+  assert.equal(state.episode.updated_at, 'new-version');
+  assert.ok(state.episode.content.includes(marker));
+});
