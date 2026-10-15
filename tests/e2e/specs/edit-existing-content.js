@@ -280,8 +280,7 @@ test('novel edit loads existing work, saves changes, and renders the update', as
   });
   expect(evidence.filters).toEqual([
     ['id', 'novel-edit-e2e'],
-    ['user_id', 'author-e2e'],
-    ['updated_at', '2026-10-15T12:00:00.000Z']
+    ['user_id', 'author-e2e']
   ]);
 
   await page.waitForURL(/\/novel\.html\?id=novel-edit-e2e$/);
@@ -411,7 +410,8 @@ test('episode edit loads existing episode, saves changes, and renders the update
   });
   expect(evidence.filters).toEqual([
     ['id', 'episode-edit-e2e'],
-    ['user_id', 'author-e2e']
+    ['user_id', 'author-e2e'],
+    ['updated_at', '2026-10-15T12:00:00.000Z']
   ]);
 
   await page.waitForURL(/\/episode\.html\?id=episode-edit-e2e$/);
