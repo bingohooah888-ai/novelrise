@@ -4,7 +4,10 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
 const html = readFileSync('episode-edit.html', 'utf8');
-const illustrations = readFileSync('novelight-episode-illustrations.js', 'utf8');
+const illustrations = readFileSync(
+  'novelight-episode-illustrations.js',
+  'utf8'
+);
 const visual = readFileSync('novelight-episode-visual-editor.js', 'utf8');
 const prefix = '[[NOVELIGHT_ILLUSTRATION:';
 const marker = prefix + '12345678-1234-4234-8234-123456789abc]]';
