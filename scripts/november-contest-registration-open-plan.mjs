@@ -149,15 +149,17 @@ export function buildAtomicRegistrationOpenSql(verified) {
   return [
     '-- DANGEROUS IF EXECUTED: requires separate one-time OWNER and Production gates.',
     '-- Does not start reading points, schedule ranking Cron, or issue awards.',
-    'begin;',
-    "set local lock_timeout = '5s';",
-    "set local statement_timeout = '20s';",
+    // The Management Query API public beta docs do not establish
+    // multi-statement transaction semantics. Send one DO statement so a
+    // failed UPDATE or audit INSERT rolls back the entire statement.
     'do $novelight_stage05_open$',
     'declare',
     '  v_contest public.novelight_contests%rowtype;',
     '  v_updated integer;',
     '  v_now timestamptz := pg_catalog.clock_timestamp();',
     'begin',
+    "  perform pg_catalog.set_config('lock_timeout', '5s', true);",
+    "  perform pg_catalog.set_config('statement_timeout', '20s', true);",
     "  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('novelight:contest:registration-open'));",
     '  select * into strict v_contest from public.novelight_contests',
     "   where contest_key = 'novelight-november-2026' for update;",
@@ -197,7 +199,6 @@ export function buildAtomicRegistrationOpenSql(verified) {
     "      'terms_version', 'november-2026-v1',",
     "      'terms_url', 'https://novelight.jp/contest-terms'));",
     'end;',
-    '$novelight_stage05_open$;',
-    'commit;'
+    '$novelight_stage05_open$;'
   ].join('\n') + '\n';
 }
