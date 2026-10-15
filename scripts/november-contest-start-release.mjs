@@ -28,7 +28,8 @@ export function validateStartState(rows, phase) {
     if (r.status !== 'registration' || r.public_visible !== true ||
         r.terms_version !== 'november-2026-v1' ||
         r.terms_url !== 'https://novelight.jp/contest-terms' ||
-        Number(r.registered_entries) < 1 ||
+        (!Number.isSafeInteger(Number(r.registered_entries)) ||
+         Number(r.registered_entries) < 1) ||
         Number(r.registration_audits) !== 1 ||
         Number(r.read_events) !== 0 || Number(r.rank_snapshots) !== 0 ||
         Number(r.awards) !== 0) {
