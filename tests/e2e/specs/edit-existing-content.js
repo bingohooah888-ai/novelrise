@@ -461,3 +461,37 @@ test('episode edit recovers after an async save failure', async ({ page }) => {
   expect(updateEvidenceFor('episodes', calls).update).toBeTruthy();
   expect(pageErrors).toEqual([]);
 });
+
+test('stale episode editor never reports an overwritten save', async ({
+  page
+}) => {
+  await installEditSupabaseStub(page, {
+    session: { user: { id: 'author-e2e' } },
+    staleUpdates: { episodes: true },
+    singleData: {
+      episodes: {
+        id: 'episode-edit-stale-e2e',
+        novel_id: 'novel-for-stale-e2e',
+        user_id: 'author-e2e',
+        episode_number: 3,
+        title: '編集前',
+        content: '挿絵のある本文',
+        status: 'published',
+        updated_at: '2026-10-15T12:00:00.000Z'
+      }
+    }
+  });
+
+  await page.goto('/episode-edit.html?id=episode-edit-stale-e2e');
+  await expect(page.locator('#save')).toBeEnabled();
+  await page.locator('#title').fill('別タブと競合する編集');
+  await page.locator('#save').click();
+
+  await expect(page.locator('#status')).toContainText(
+    '別の画面などでこの話が更新されています'
+  );
+  await expect(page.locator('#save')).toBeEnabled();
+  await expect(page).toHaveURL(
+    /\/episode-edit\.html\?id=episode-edit-stale-e2e$/
+  );
+});
