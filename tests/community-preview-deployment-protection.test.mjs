@@ -7,23 +7,30 @@ const workflow = readFileSync(
   new URL('../.github/workflows/community-candidate-preview.yml', import.meta.url),
   'utf8'
 );
-const bypassBinding =
-  'VERCEL_AUTOMATION_BYPASS_SECRET: $' + '{{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}';
+const bypass = [
+  'VERCEL_AUTOMATION_BYPASS_SECRET: $',
+  '{{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}'
+].join('');
 
-test('Preview cannot spend build capacity without a configured bypass', () => {
-  const check = workflow.split(
-    '      - name: Prove dedicated Staging is gated OFF before Preview exists'
-  )[1].split('      - name: Recheck exact refs immediately before cost-bearing creation')[0];
-  assert.ok(check.includes(bypassBinding));
-  assert.ok(check.includes('test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"'));
+test('bypass is checked before any Preview deployment cost', () => {
+  const start = workflow.indexOf('Prove dedicated Staging');
+  const end = workflow.indexOf('Recheck exact refs');
+  const gate = workflow.slice(start, end);
+  assert.ok(start > 0);
+  assert.ok(end > start);
+  assert.ok(gate.includes(bypass));
+  assert.ok(gate.includes('test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"'));
 });
 
-test('protected environment fact check receives only the existing bypass', () => {
-  const verify = workflow.split(
-    '      - name: Verify Preview environment facts before browser access'
-  )[1].split('  consume:')[0];
-  assert.ok(verify.includes(bypassBinding));
+test('protected verification receives the same scoped bypass', () => {
+  const start = workflow.indexOf('Verify Preview environment facts');
+  const verify = workflow.slice(start);
+  assert.ok(start > 0);
+  assert.ok(verify.includes(bypass));
   assert.match(verify, /run: node scripts\/verify-staging-deployment\.mjs/u);
-  assert.doesNotMatch(workflow.split('  preview:')[1].split('    steps:')[0], /VERCEL_AUTOMATION_BYPASS_SECRET/u);
+
+  const job = workflow.split('  preview:')[1];
+  const header = job.split('    steps:')[0];
+  assert.doesNotMatch(header, /VERCEL_AUTOMATION_BYPASS_SECRET/u);
   assert.doesNotMatch(workflow, /workflow_dispatch:/u);
 });
