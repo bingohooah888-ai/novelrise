@@ -180,9 +180,9 @@ test('owner issue comment still fails closed on insufficient actor', async () =>
       env: { ...ownerEnv, GITHUB_ACTOR: 'outsider' },
       readEvent: async () => ownerEvent,
       request: async () => {
-          fetchCount++;
-          return { status: 201, json: async () => [row] };
-        },
+        fetchCount++;
+        return { status: 201, json: async () => [row] };
+      },
       report: () => {}
     }),
     /execution identity mismatch/
