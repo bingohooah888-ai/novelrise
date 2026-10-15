@@ -17,8 +17,9 @@ const { spliceSource, insertSourceMarker } = runInNewContext(
   code + '\n({ spliceSource, insertSourceMarker })'
 );
 
-const marker = '[[NOVELIGHT_ILLUSTRATION:' + '12345678-1234-4234-8234-123456789abc]]';
-const earlier = '[[NOVELIGHT_ILLUSTRATION:' + 'abcdefab-1234-4234-8234-123456789abc]]';
+const prefix = '[[NOVELIGHT_ILLUSTRATION:';
+const marker = prefix + '12345678-1234-4234-8234-123456789abc]]';
+const earlier = prefix + 'abcdefab-1234-4234-8234-123456789abc]]';
 
 test('pasting an entire body keeps its exact empty lines', () => {
   const original = '旧本文\n\n変更前';
