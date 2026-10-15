@@ -2,6 +2,13 @@
 
 > **運営専用・公開禁止・応募要項の正式採択ではない。** 出所：最新main `ae9ff5ae62f0fbd1da92ee6b34b56d1724c0dfba`、正本 Issue #2120、既決定R1〜R11、実証済みPR #2252/#2254とProduction Approval Ledger #2139。過去履歴と矛盾する場合は現行DBのread-only観測と最新Owner決定を優先する。
 
+## 0.1 2026-10-15 継続確認：非公開HTTP・API前提・安全な検査方法（未公開）
+
+- **本番HTTP（読み取り専用・今回確認）**：`https://novelight.jp/contest`、`/api/contest-page`、`/contest-terms`、`/api/contest-terms` は404。ホームの静的HTMLにはコンテスト文言が含まれるが、`<section id="novelightContestHomePromo" hidden>` で初期非表示、専用CSSに `.novelight-contest-home-promo[hidden]{display:none!important}`、専用JSは公開カタログの`registration`または`active`を確認した場合にのみ表示する。**単なる本文抽出と実画面での表示を混同しない**。実ブラウザの見た目とheader revisionの検証は未完。
+- **Supabase一次資料（2026-10-15確認）**：Management API `POST /v1/projects/{ref}/database/query/read-only` はBeta、`database:read` scope、細分化PATでは `database_read` が必要、HTTP成功は201。**201のJSON応答本文の厳密スキーマは公式文書に定義されていない**。一方、書き込み側`/database/query`は`database:write`・細分化PATでは`database_read`または`database_write`の記載があり、対象GitHub Actions secretの実権限は未照合。公式資料：<https://supabase.com/docs/reference/api/v1-read-only-query>、<https://supabase.com/docs/reference/api/v1-run-a-query>。
+- **追加の安全な検証コード（PR未マージ）**：`scripts/november-contest-management-readonly-preflight.mjs` と`.github/workflows/november-contest-management-readonly-preflight.yml`。手動`workflow_dispatch`・OWNER・exact mainのみ、Production環境に登録済み既存secretを非表示で使い、**固定SELECT一回**をread-only専用endpointへ送信し、HTTPコードと`Array<Row>`・`draft/private/entries0`形だけを検証。JSON本文・tokenをログに出さない。GitHub/DB書き込み、規約採択、公開・応募開始のコードパスは持たない。**独立した本番承認があるまでマージしない。マージ後も所有者が手動実行するまで未実証のまま**。
+- **Owner決裁・専門確認待ち（不変）**：合法性、税務居住地と非居住者支払、送金情報の安全受領、返信不達・口座未準備時のSOP、正式応募要項採択、Vercel Production revision/alias独立照合。**本番承認と「受付開始承認」を混同しない**。
+
 ## 0. 2026-10-15 引継ぎ後の差分監査（下の旧スナップショットより優先）
 
 **証拠と未確認事項を分ける。** この追補は運営文書の訂正であり、公式応募要項の採択、Production変更、応募受付開始ではない。
