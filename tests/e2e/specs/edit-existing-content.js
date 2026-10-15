@@ -87,7 +87,40 @@ async function installEditSupabaseStub(page, overrides = {}) {
                 data: singleDataFor(table),
                 error: errorFor(state.singleErrors?.[table])
               }),
-              maybeSingle: async () => ({ data: null, error: null }),
+              maybeSingle: async () => {
+                if (operation !== 'update') {
+                  return { data: null, error: null };
+                }
+                await wait(state.updateDelayMs);
+                const error = errorFor(state.updateErrors?.[table]);
+                if (error) return { data: null, error };
+                if (state.staleUpdates?.[table] === true) {
+                  return { data: null, error: null };
+                }
+                const current = singleDataFor(table);
+                const matchingVersion = calls
+                  .filter((call) =>
+                    call.type === 'eq' &&
+                    call.table === table &&
+                    call.operation === 'update' &&
+                    call.column === 'updated_at'
+                  )
+                  .at(-1)?.value;
+                if (
+                  !current ||
+                  (hasOwn(current, 'updated_at') &&
+                    matchingVersion !== current.updated_at)
+                ) {
+                  return { data: null, error: null };
+                }
+                const saved = {
+                  ...current,
+                  ...mutationPayload,
+                  updated_at: new Date().toISOString()
+                };
+                persistUpdate(table, saved);
+                return { data: saved, error: null };
+              },
               then(resolve, reject) {
                 const finish = async () => {
                   if (operation === 'update') {
@@ -247,7 +280,8 @@ test('novel edit loads existing work, saves changes, and renders the update', as
   });
   expect(evidence.filters).toEqual([
     ['id', 'novel-edit-e2e'],
-    ['user_id', 'author-e2e']
+    ['user_id', 'author-e2e'],
+    ['updated_at', '2026-10-15T12:00:00.000Z']
   ]);
 
   await page.waitForURL(/\/novel\.html\?id=novel-edit-e2e$/);
@@ -325,6 +359,7 @@ test('episode edit loads existing episode, saves changes, and renders the update
         episode_number: 2,
         title: '編集前の第2話',
         content: '編集前の本文です。',
+        updated_at: '2026-10-15T12:00:00.000Z',
         pv: 2,
         status: 'published'
       },
@@ -398,7 +433,8 @@ test('episode edit recovers after an async save failure', async ({ page }) => {
         user_id: 'author-e2e',
         episode_number: 1,
         title: '保存失敗前の第1話',
-        content: '保存失敗テストの本文です。'
+        content: '保存失敗テストの本文です。',
+        updated_at: '2026-10-15T12:00:00.000Z'
       }
     }
   });
