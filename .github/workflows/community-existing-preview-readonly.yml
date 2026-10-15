@@ -1,0 +1,148 @@
+name: Community Phase 1 Existing Preview Read-only Proof (OWNER only)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Bind one OWNER approval to immutable existing Preview
+    if: >-
+      github.event.issue.number == 188 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_COMMUNITY_REUSE_APPROVE ')
+    concurrency:
+      group: community-existing-preview-readonly-approval
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      main_sha: ${{ steps.bind.outputs.main_sha }
+      candidate_sha: ${{ steps.bind.outputs.candidate_sha }
+      request_id: ${{ steps.bind.outputs.request_id }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Bind exact current main and unused OWNER ledger entry
+        id: bind
+        env:
+          GH_TOKEN: ${{ github.token }
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/reuse-main.json
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" \
+            > /tmp/reuse-ledger.json
+          node scripts/community-preview-reuse-admission.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/reuse-main.json /tmp/reuse-ledger.json \
+            > /tmp/reuse-decision.json
+          main="$(jq -er '.mainSha' /tmp/reuse-decision.json)"
+          test "$(git rev-parse HEAD)" = "$main"
+          {
+            echo "main_sha=$main"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/reuse-decision.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/reuse-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Claim approval before Staging network requests
+        env:
+          GH_TOKEN: ${{ github.token }
+          MAIN: ${{ steps.bind.outputs.main_sha }
+          HEAD: ${{ steps.bind.outputs.candidate_sha }
+          REQUEST: ${{ steps.bind.outputs.request_id }
+        shell: bash
+        run: |
+          set -euo pipefail
+          data="$(jq -cn --arg requestCommentId "$REQUEST" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_REUSE_CLAIMED $data" > /dev/null
+
+  verify:
+    name: Verify ONE protected existing Preview without redeploy
+    needs: admit
+    if: needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }
+      EXPECTED_REVISION: ${{ needs.admit.outputs.candidate_sha }
+      CANONICAL_STAGING_URL: https://novelrise-ibyeza739-ranobe1.vercel.app
+      STAGING_TRIGGER: approval_comment
+      STAGING_REQUIRE_WRITE_CONFIG: 'true'
+      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }
+      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Refuse wrong revision, Production or unset access protection
+        env:
+          GH_TOKEN: ${{ github.token }
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$EXPECTED_REVISION" = '0fb3cd158c4ef2b16185abb7b628b161cd0f0e92'
+          test "$CANONICAL_STAGING_URL" = 'https://novelrise-ibyeza739-ranobe1.vercel.app'
+          test "$STAGING_EXPECTED_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test "$STAGING_E2E_READY" = 'true'
+          test -n "$STAGING_EXPECTED_PUBLISHABLE_KEY"
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+      - name: Prove Preview revision, isolated server, and Stripe test mode
+        run: node scripts/verify-staging-deployment.mjs
+      - name: Verify deployed browser config and community shell by GET only
+        run: node scripts/community-existing-preview-readonly.mjs verify
+
+  consume:
+    name: Consume one-time approval even if verification fails
+    if: always() && needs.admit.result == 'success'
+    needs: [admit, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Record single-use completion
+        env:
+          GH_TOKEN: ${{ github.token }
+          MAIN: ${{ needs.admit.outputs.main_sha }
+          HEAD: ${{ needs.admit.outputs.candidate_sha }
+          REQUEST: ${{ needs.admit.outputs.request_id }
+          OUTCOME: ${{ needs.verify.result }
+        shell: bash
+        run: |
+          set -euo pipefail
+          data="$(jq -cn --arg requestCommentId "$REQUEST" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" --arg result "$OUTCOME" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_REUSE_CONSUMED $data" > /dev/null
