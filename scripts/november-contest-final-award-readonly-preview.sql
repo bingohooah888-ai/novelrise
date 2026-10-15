@@ -4,15 +4,15 @@
 -- Results are PRIVATE. Do not paste into public issues, chats or X.
 -- The preview is not a final adjudication: human risk/eligibility review is required.
 -- Deliberately reads ALL eligible entries, not the interim top-10 snapshot.
--- Fail-closed: returns NO ROWS until contest is in review/finalized state,
--- public_visible=true, and the official end time has passed. Also blocks on any
+-- Fail-closed: returns NO ROWS before the official end time, or unless
+-- status is active/review/finalized and public_visible=true. Also blocks on any
 -- unresolved reader review_hold. No row == not ready OR no winners; check gates first.
 WITH contest AS (
   SELECT id, starts_at, ends_at, minimum_published_episodes,
          award_rank_limit, award_amount_yen
   FROM public.novelight_contests
   WHERE contest_key = 'novelight-november-2026'
-    AND status IN ('review','finalized')
+    AND status IN ('active','review','finalized')
     AND public_visible IS TRUE
     AND ends_at <= pg_catalog.clock_timestamp()
 ),
