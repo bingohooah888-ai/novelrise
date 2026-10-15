@@ -137,9 +137,21 @@ test('exact issue 2120 owner comment can invoke only the fixed SELECT', async ()
 
 test('issue trigger rejects forged owner, wrong issue, edited request and PR comment', async () => {
   const invalidEvents = [
-    { ...ownerEvent, comment: { ...ownerEvent.comment, user: { login: 'outsider' } } },
-    { ...ownerEvent, comment: { ...ownerEvent.comment, author_association: 'NONE' } },
-    { ...ownerEvent, comment: { ...ownerEvent.comment, body: 'NOVELIGHT_CONTEST_READONLY_PREFLIGHT_RUN extra' } },
+    {
+      ...ownerEvent,
+      comment: { ...ownerEvent.comment, user: { login: 'outsider' } }
+    },
+    {
+      ...ownerEvent,
+      comment: { ...ownerEvent.comment, author_association: 'NONE' }
+    },
+    {
+      ...ownerEvent,
+      comment: {
+        ...ownerEvent.comment,
+        body: 'NOVELIGHT_CONTEST_READONLY_PREFLIGHT_RUN extra'
+      }
+    },
     { ...ownerEvent, issue: { number: 188 } },
     { ...ownerEvent, issue: { number: 2120, pull_request: { url: 'pr' } } }
   ];
@@ -149,7 +161,10 @@ test('issue trigger rejects forged owner, wrong issue, edited request and PR com
       runManagementReadOnlyProbe({
         env: ownerEnv,
         readEvent: async () => event,
-        request: async () => { fetchCount++; return { status: 201, json: async () => [row] }; },
+        request: async () => {
+          fetchCount++;
+          return { status: 201, json: async () => [row] };
+        },
         report: () => {}
       }),
       /invalid owner issue request/
@@ -164,7 +179,10 @@ test('owner issue comment still fails closed on insufficient actor', async () =>
     runManagementReadOnlyProbe({
       env: { ...ownerEnv, GITHUB_ACTOR: 'outsider' },
       readEvent: async () => ownerEvent,
-      request: async () => { fetchCount++; return { status: 201, json: async () => [row] }; },
+      request: async () => {
+          fetchCount++;
+          return { status: 201, json: async () => [row] };
+        },
       report: () => {}
     }),
     /execution identity mismatch/
