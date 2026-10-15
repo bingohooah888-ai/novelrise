@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -10,9 +9,7 @@ import {
   REUSE_SHA,
   REUSE_URL
 } from '../scripts/community-preview-reuse-admission.mjs';
-import {
-  verifyCommunityExistingPreviewReadOnly
-} from '../scripts/community-existing-preview-readonly.mjs';
+import { verifyCommunityExistingPreviewReadOnly } from '../scripts/community-existing-preview-readonly.mjs';
 
 const mainSha = 'a'.repeat(40);
 const staging = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
@@ -119,16 +116,4 @@ test('existing Preview workflow cannot create or redeploy a build', () => {
   assert.match(yaml, /NOVELIGHT_STAGING_COMMUNITY_REUSE_APPROVE/u);
   assert.doesNotMatch(yaml, /workflow_dispatch:/u);
   assert.doesNotMatch(yaml, /vercel-preview-deployment/u);
-});
-
-test('temporary formatter diagnosis', () => {
-  const prettier = spawnSync(
-    process.execPath,
-    ['node_modules/prettier/bin/prettier.cjs', import.meta.filename],
-    { encoding: 'utf8' }
-  );
-  if (prettier.status !== 0) throw new Error(prettier.stderr);
-  console.log('PRETTIER_OUTPUT_START');
-  console.log(prettier.stdout);
-  console.log('PRETTIER_OUTPUT_END');
 });
