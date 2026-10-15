@@ -2,6 +2,19 @@
 
 > **運営専用・公開禁止・応募要項の正式採択ではない。** 出所：最新main `ae9ff5ae62f0fbd1da92ee6b34b56d1724c0dfba`、正本 Issue #2120、既決定R1〜R11、実証済みPR #2252/#2254とProduction Approval Ledger #2139。過去履歴と矛盾する場合は現行DBのread-only観測と最新Owner決定を優先する。
 
+## 0. 2026-10-15 引継ぎ後の差分監査（下の旧スナップショットより優先）
+
+**証拠と未確認事項を分ける。** この追補は運営文書の訂正であり、公式応募要項の採択、Production変更、応募受付開始ではない。
+
+- **GitHub現行main（確認時）**: `c9dc98d6db487028b29e88c876d4e30fd1971c0a`。PR #2256（運営資料改訂、merge `fd7b0fa905183bd3395654be874a8a7ecea7463d`）、PR #2257（単一SQL文への安全化、merge `c9dc98d6db487028b29e88c876d4e30fd1971c0a`）ともにmerge済み。後続の運用では**必ずその時点のmainを再確認**。
+- **GitHubから見たVercel**: 上記コミットに対する `Vercel` commit status は `success`。ただし**Vercel Production deploymentのrevision/aliasまでを独立して実測したことにはならない**。開放前の必須read-only postcheckとして残す。CodeQL/Node/Static quality/RLS integrationの現コミットchecksはsuccess。
+- **2026-10-15 Production SupabaseのSELECT再確認**: `status=draft`, `public_visible=false`, `terms_version=''`, `terms_url=''`, 応募0、読了イベント0。Migration `20261015120000`は履歴に存在し、**再適用禁止**。本確認では変更を行っていない。
+- **PR #2257により修正済み**: 現在の `scripts/november-contest-registration-open-plan.mjs` は、トップレベル複数SQL文ではなく**単一 `DO $novelight_stage05_open$ ... $novelight_stage05_open$;`** を生成する。UPDATEと監査INSERTは同一PostgreSQL文の中で処理され、使い捨てPostgreSQLテストは成功。旧 `BEGIN; SET LOCAL; DO; COMMIT;` 前提を採用しない。
+- **未実証の技術ゲート**: GitHub Actionsの `SUPABASE_ACCESS_TOKEN` がSupabase Management APIの `database:read` / `database:write` に**実際に認可されるか**、read-only APIのHTTP応答本文が `Array<Row>` 形式か、Production APIが単一DO文を受理するかは未確認。接続済みSupabaseコネクタでのSELECT成功は**GitHub Actionsの別トークンの権限確認にはならない**。本番DO文やダミーUPDATEによる「試し書き」は禁止。
+- **未実証の法務・運用ゲート**: 景品表示法・居住者/非居住者の税務区分、本人確認/銀行情報、返信不達時の処理、個人情報の保存/削除などは専門的確認と運営SOPが必要。応募要項版 `november-2026-v1` とURL `https://novelight.jp/contest-terms` は候補であり未採択。
+- **安全な次手順**: (1) mainとVercel Production revisionをread-only照合、(2) 正規の秘密情報保護された経路でManagement APIのread-only SELECTと**HTTPステータス/レスポンス形**のみを検査（トークン/口座情報をログ表示しない）、(3) write権限・DO実行可能性は未証明と記録し、本番への試験書き込みはしない、(4) 法務/税務・規約内容を独立決裁、(5) **別個の「受付開始承認」**後にのみ正規の一回限りのreleaseを実行し、曖昧な応答では自動再試行をしない。
+- **NLO**: Issue #1837 の直近 `nlo_health` 要求 `cmdr-20261015T0605Z-conteststep05-health` は確認時点で返答未着。重複health要求は出さず、NLOとDCの状態を混同しない。
+
 ## 1. 実装済み・再実行しない
 
 | 項目 | 実測根拠／状態 |
@@ -31,13 +44,13 @@
 - 応募要項候補表示：`api/_lib/contest-terms-template.js`。草案：`docs/reports/NOVEMBER-CONTEST-STEP05-PUBLIC-TERMS-DRAFT.md`。
 - 応募要項の**候補**版 `november-2026-v1`、**候補**URL `https://novelight.jp/contest-terms` は採択・施行されていない。Production DBでは両方とも空欄。
 - 告知・FAQ・受賞通知の最新版は `NOVEMBER-CONTEST-STEP05-REGISTRATION-RUNBOOK.md` の**2026-10-15の最上段スナップショットと改訂済み公開文案**を使う。歴史節の旧「第1回小説コンテスト」「話数だけ」を転載しない。
-- 受付開始のGitHub approval workflowはowner-authored terms採択、別個の登録開始承認、exact mainとchallenge、単発DBトランザクションを要求する。**Supabase Management APIのProduction `database:read` / `database:write`権限と複文SQLの原子性は未実測**。過去のSupabase CLI migration成功はこの証拠にならない。
+- 受付開始のGitHub approval workflowはowner-authored terms採択、別個の登録開始承認、exact mainとchallenge、単発DBトランザクションを要求する。**単一DO文への移行と隔離PostgreSQLの原子性は検証済み。ただしGitHub Actionsの本番Management API認可、read-only応答本文の形、実APIでのDO文受理は未実測**。過去のSupabase CLI migration成功はこの証拠にならない。
 
 ## 4. 残る停止ゲート（順序を守る）
 
 1. 弁護士・税理士等と確認すべき税務・景品表示法・未成年・個人情報・銀行実務の事実と書面記録を揃える。自動合法判定をしない。
 2. オーナーが**最新の正式応募要項本文、版 `november-2026-v1`、URL、発効日を明示的に採択**。これだけでは非公開状態のまま。
-3. Supabase Management API / 原子性 / fail-closed / 二重発火防止の不足分を承認された安全な方法で検証する。必要なトークンを露出しない。新たな従量課金ステージングは「ステージング承認」なしでは使わない。
+3. Supabase Management APIの本番トークン権限・read-onlyレスポンス形を安全な読み取り専用経路で検証する。単一DOの隔離DB原子性確認は再実行せず、ProductionのDO実行可能性は別途承認まで未実証と記録する。必要なトークンを露出しない。新たな従量課金ステージングは「ステージング承認」なしでは使わない。
 4. 別途オーナーの**「受付開始承認」**があって初めて、正規の単発release workflowで`registration/public_visible=true`にする。公開直後の実HTTP/応募/取消/ゾーニング/規約同意の検証を行う。
 5. 11/1の競技本番稼働・中間ランキング・12/1最終発表は、それぞれ日程・審査・権限・証拠に従い別途安全確認する。期限の到来だけで起動しない。
 
