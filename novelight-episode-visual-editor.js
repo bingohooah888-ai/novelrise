@@ -136,6 +136,7 @@
       figure.remove();
       if (!editor.children.length) editor.appendChild(lineNode(''));
       syncToTextarea(true);
+      window.dispatchEvent(new CustomEvent('novelight:illustration-removed', { detail: { marker } }));
       editor.focus({ preventScroll: true });
     });
     tools.appendChild(remove);

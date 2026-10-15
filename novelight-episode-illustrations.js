@@ -243,6 +243,7 @@
     // Commit to the visible editor and hidden source in the same event.
     // A delayed textarea refresh must never erase an inserted marker on Save.
     if (visualActive && visualEditor.insertMarker?.(marker)) {
+      window.dispatchEvent(new CustomEvent('novelight:illustration-inserted', { detail: { marker } }));
       void visualEditor.refresh?.();
       return;
     }
@@ -262,6 +263,7 @@
     textarea.selectionStart = cursor;
     textarea.selectionEnd = cursor;
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    window.dispatchEvent(new CustomEvent('novelight:illustration-inserted', { detail: { marker } }));
     if (!visualActive) textarea.focus({ preventScroll: true });
   }
 
