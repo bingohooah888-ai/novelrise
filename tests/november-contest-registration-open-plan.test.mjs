@@ -195,8 +195,13 @@ test('release SQL is scoped, atomic and auditable', () => {
   const verified = verifyRegistrationOpenApproval(fixture());
   const sql = buildAtomicRegistrationOpenSql(verified);
   assert.match(sql, /^-- DANGEROUS IF EXECUTED:/);
-  assert.match(sql, /\nbegin;\n/);
-  assert.match(sql, /\ncommit;\n$/);
+  // A single DO statement is atomic in PostgreSQL; unlike a payload
+  // containing BEGIN/COMMIT it does not rely on API multi-query behavior.
+  assert.match(sql, /\ndo \$novelight_stage05_open\$/);
+  assert.match(sql, /\n\$novelight_stage05_open\$;\n$/);
+  assert.doesNotMatch(sql, /^begin;|^commit;|^set local /im);
+  assert.match(sql, /pg_catalog\.set_config\('lock_timeout', '5s', true\)/);
+  assert.match(sql, /pg_catalog\.set_config\('statement_timeout', '20s', true\)/);
   assert.match(sql, /pg_advisory_xact_lock/);
   assert.match(sql, /for update;/);
   assert.match(sql, /public_visible is not false/);
