@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import test from 'node:test';
 import { runQueryRouteSelectPreflight } from '../scripts/november-contest-query-route-readonly-preflight.mjs';
 
