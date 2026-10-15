@@ -109,3 +109,48 @@ if (process.argv[2] === 'compose') {
     process.exitCode = 1;
   }
 }
+
+
+// The permanent Staging variant does NOT execute the fourth RLS simulation
+// fixture: it is rollback-only. Use the pinned precheck/migration/postcheck
+// trio and record migration history atomically in the same transaction.
+export function composeCommunityPersistentSQL(contents) {
+  if (!Array.isArray(contents) || contents.length !== 3) {
+    fail('exactly three reviewed persistent SQL artifacts required');
+  }
+  const statements = contents.map((content, index) =>
+    unwrapSQL(content, COMMUNITY_CANDIDATE_ARTIFACTS[index].closing)
+  );
+  return [
+    '-- Dedicated Staging ONLY; approved workflow must verify target and pins.',
+    '\\set ON_ERROR_STOP on',
+    'BEGIN;',
+    "SET LOCAL statement_timeout = '120s';",
+    "SET LOCAL lock_timeout = '5s';",
+    "SET LOCAL idle_in_transaction_session_timeout = '180s';",
+    "DO $gate$ BEGIN IF EXISTS (SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '20261014052000') THEN RAISE EXCEPTION 'Community migration already recorded'; END IF; END $gate$;",
+    ...statements,
+    "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('20261014052000', 'community_plaza_phase1');",
+    'COMMIT;',
+    ''
+  ].join('\n');
+}
+
+if (process.argv[2] === 'manifest-persistent') {
+  for (const artifact of COMMUNITY_CANDIDATE_ARTIFACTS.slice(0, 3)) {
+    process.stdout.write(artifact.path + '|' + artifact.blob + '\n');
+  }
+}
+if (process.argv[2] === 'compose-persistent') {
+  try {
+    const root = process.argv[3];
+    if (!root || process.argv.length !== 4) fail('exact artifact root required');
+    process.stdout.write(composeCommunityPersistentSQL(
+      COMMUNITY_CANDIDATE_ARTIFACTS.slice(0, 3)
+        .map((artifact) => readFileSync(join(root, artifact.path), 'utf8'))
+    ));
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+}
