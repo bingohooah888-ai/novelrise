@@ -35,6 +35,13 @@ CONTEST_REPLAY=(
 )
 "${CONTEST_REPLAY[@]}" -f tests/rls/november-contest-integration.sql
 echo "::endgroup::"
+# Test a real one-statement PostgreSQL DO launch plus its audit row in the
+# disposable replay database. This generator never contacts Production.
+echo "::group::Verify contest registration atomic SQL (disposable replay)"
+NOVELIGHT_DISPOSABLE_CONTEST_REPLAY=1 \
+  node tests/november-contest-registration-atomic-replay.mjs \
+  | "${CONTEST_REPLAY[@]}"
+echo "::endgroup::"
 rm -f "$SEARCH_CARD_COMPAT_MIGRATION"
 trap - EXIT
 
