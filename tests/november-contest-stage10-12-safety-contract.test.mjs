@@ -52,7 +52,10 @@ test('final 1pt+ awards are rank-based across ALL entries, never interim top 10'
 test('11/1 workflow is distinct from registration and cannot bypass production gate', () => {
   assert.match(workflow, /issue_comment:/);
   assert.match(workflow, /github\.event\.issue\.number == 2120/);
-  assert.match(workflow, /github\.event\.comment\.author_association == 'OWNER'/);
+  assert.match(
+    workflow,
+    /github\.event\.comment\.author_association == 'OWNER'/
+  );
   assert.match(workflow, /NOVELIGHT_CONTEST_START_APPROVE/);
   assert.match(workflow, /environment: production/);
   assert.match(workflow, /OWNER_APPROVED_START_ONLY/);

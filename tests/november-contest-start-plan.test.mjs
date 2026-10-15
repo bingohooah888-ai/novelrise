@@ -81,7 +81,10 @@ test('ordinary approvals, wrong owner, or stale main cannot start contest', () =
     makeContext({ termsVersion: 'november-2026-v2' }),
     makeContext({ challenge: 'DEADBEEF' })
   ]) {
-    assert.throws(() => verifyContestStartApproval(ctx), /STEP12_START_BLOCKED/);
+    assert.throws(
+      () => verifyContestStartApproval(ctx),
+      /STEP12_START_BLOCKED/
+    );
   }
 });
 

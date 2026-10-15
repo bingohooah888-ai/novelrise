@@ -174,9 +174,7 @@ test('validation rejects arrays, missing states and old claims', () => {
   );
   assert.throws(
     () =>
-      assertUnclaimedStart([
-        { body: 'NOVELIGHT_CONTEST_START_FAILED broken' }
-      ]),
+      assertUnclaimedStart([{ body: 'NOVELIGHT_CONTEST_START_FAILED broken' }]),
     /BLOCKED/
   );
 });
