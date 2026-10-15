@@ -4,7 +4,10 @@ import { test } from 'node:test';
 import { URL } from 'node:url';
 
 const workflow = readFileSync(
-  new URL('../.github/workflows/community-candidate-preview.yml', import.meta.url),
+  new URL(
+    '../.github/workflows/community-candidate-preview.yml',
+    import.meta.url
+  ),
   'utf8'
 );
 const bypass = [
