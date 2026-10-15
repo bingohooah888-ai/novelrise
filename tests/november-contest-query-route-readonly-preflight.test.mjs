@@ -44,10 +44,8 @@ test('query route uses fixed read-only SELECT', async () => {
       );
       assert.equal(options.method, 'POST');
       assert.equal(options.redirect, 'error');
-      assert.equal(
-        options.headers.Authorization,
-        '***'
-      );
+      const bearer = options.headers.Authorization;
+      assert.equal(bearer, 'Bearer ' + env.SUPABASE_ACCESS_TOKEN);
       const body = JSON.parse(options.body);
       assert.deepEqual(Object.keys(body).sort(), ['query', 'read_only']);
       assert.equal(body.read_only, true);
