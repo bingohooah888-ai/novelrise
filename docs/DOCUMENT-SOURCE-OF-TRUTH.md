@@ -41,6 +41,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/BETA-RELEASE-EVIDENCE-LATEST.md","status":"CURRENT","role":"beta-release-evidence-current","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":["docs/BETA-RELEASE-DECISION-2026-08-28.md"]},
     {"path":"docs/CHAT-HANDOFF-PREFLIGHT.md","status":"CURRENT","role":"chat-handoff-preflight","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/CODEX-FIRST-EXECUTION-GATE.md","status":"CURRENT","role":"codex-first-gate","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/COMMUNITY-EXISTING-PREVIEW-READONLY-RUNBOOK.md","status":"CURRENT","role":"community-existing-preview-readonly-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/COMMUNITY-PHASE1-RELEASE-READINESS.md","status":"CURRENT","role":"community-phase1-release-readiness","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/COMMUNITY-STAGING-TRANSACTION-EXECUTOR-REVIEW.md","status":"CURRENT","role":"community-staging-transaction-executor-review","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/COMPETITOR-FEATURE-AUDIT-2026-09-16.md","status":"CURRENT","role":"competitor-feature-audit-current","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
