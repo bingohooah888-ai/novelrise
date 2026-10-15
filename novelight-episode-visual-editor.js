@@ -22,6 +22,30 @@
   const normalize = (value) => String(value ?? '').replace(/\r\n?/gu, '\n');
   const hasMarker = (value) => normalize(value).split('\n').some(line => MARKER_RE.test(line));
 
+  // All programmatic edits operate on the plain-text source. The contenteditable
+  // DOM is only a projection: browser-generated <div>/<br> must not alter newlines.
+  function spliceSource(source, start, end, replacement) {
+    const original = normalize(source);
+    const from = Math.max(0, Math.min(original.length, Number.isFinite(start) ? start : original.length));
+    const to = Math.max(from, Math.min(original.length, Number.isFinite(end) ? end : from));
+    const inserted = normalize(replacement);
+    return {
+      content: original.slice(0, from) + inserted + original.slice(to),
+      caret: from + inserted.length
+    };
+  }
+
+  function insertSourceMarker(source, start, end, marker) {
+    const original = normalize(source);
+    const from = Math.max(0, Math.min(original.length, Number.isFinite(start) ? start : original.length));
+    const to = Math.max(from, Math.min(original.length, Number.isFinite(end) ? end : from));
+    const before = original.slice(0, from);
+    const after = original.slice(to);
+    const prefix = before.length && !before.endsWith('\n') ? '\n' : '';
+    const suffix = after.length && !after.startsWith('\n') ? '\n' : '';
+    return spliceSource(original, from, to, prefix + marker + suffix);
+  }
+
   function apiClient() {
     try {
       return typeof client !== 'undefined' ? client : null;
@@ -154,9 +178,76 @@
     const next = serializeEditor();
     if (textarea.value === next) return;
     syncing = true;
-    textarea.value = next;
-    if (dispatchInput) textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    syncing = false;
+    try {
+      textarea.value = next;
+      if (dispatchInput) textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    } finally {
+      syncing = false;
+    }
+  }
+
+  function placeCaretAtOffset(offset) {
+    if (!editor) return;
+    let remaining = Math.max(0, Math.min(normalize(textarea.value).length, offset));
+    const range = document.createRange();
+    for (const node of editor.childNodes) {
+      const length = serializeTopLevel(node).length;
+      if (remaining <= length) {
+        if (node.classList?.contains('nl-visual-illustration')) {
+          range.setStartBefore(node);
+        } else if (node.firstChild?.nodeType === Node.TEXT_NODE) {
+          range.setStart(node.firstChild, Math.min(remaining, node.firstChild.nodeValue.length));
+        } else {
+          range.setStart(node, 0);
+        }
+        range.collapse(true);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        return;
+      }
+      remaining -= length + 1;
+    }
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  }
+
+  function commitSourceChange(change) {
+    if (!active || !editor) return false;
+    const scrollTop = editor.scrollTop;
+    syncing = true;
+    try {
+      textarea.value = change.content;
+      renderSource(change.content);
+      editor.scrollTop = scrollTop;
+      placeCaretAtOffset(change.caret);
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    } finally {
+      syncing = false;
+    }
+    return true;
+  }
+
+  function replaceSourceSelection(replacement) {
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return false;
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) return false;
+    mirrorSelection();
+    return commitSourceChange(spliceSource(
+      textarea.value, textarea.selectionStart, textarea.selectionEnd, replacement
+    ));
+  }
+
+  function insertVisualMarker(marker) {
+    if (!active || !editor) return false;
+    syncToTextarea(false);
+    return commitSourceChange(insertSourceMarker(
+      textarea.value, textarea.selectionStart, textarea.selectionEnd, marker
+    ));
   }
 
   function topLevelNode(node) {
@@ -179,6 +270,13 @@
 
   function canonicalOffset(container, offset) {
     if (!editor || !editor.contains(container)) return textarea.value.length;
+    if (container === editor) {
+      let total = 0;
+      for (let index = 0; index < Math.min(offset, editor.childNodes.length); index++) {
+        total += serializeTopLevel(editor.childNodes[index]).length + 1;
+      }
+      return Math.min(total, textarea.value.length);
+    }
     const top = topLevelNode(container);
     if (!top) return textarea.value.length;
     let total = 0;
@@ -258,11 +356,27 @@
   async function refreshFromTextarea() {
     if (!active || refreshing) return;
     refreshing = true;
-    const scrollTop = editor.scrollTop;
     try {
       await loadAssets();
-      renderSource(textarea.value);
-      editor.scrollTop = scrollTop;
+      // Never rebuild the editable text after an async request. An edit made while
+      // fetching image URLs would otherwise be replaced by a stale DOM snapshot.
+      for (const figure of editor.querySelectorAll('.nl-visual-illustration')) {
+        const asset = assets.get(String(figure.dataset.illustrationId || '').toLowerCase());
+        if (!asset?.url) continue;
+        let image = figure.querySelector('img');
+        if (!image) {
+          const missing = figure.querySelector('.nl-visual-illustration-missing');
+          if (!missing) continue;
+          image = document.createElement('img');
+          image.loading = 'lazy';
+          image.decoding = 'async';
+          missing.replaceWith(image);
+        }
+        image.src = asset.url;
+        image.alt = asset.altText || '';
+        if (asset.width) image.width = Number(asset.width);
+        if (asset.height) image.height = Number(asset.height);
+      }
     } catch (error) {
       console.error('episode visual illustration refresh failed', error);
     } finally {
@@ -349,14 +463,22 @@
     active = true;
 
     editor.addEventListener('input', () => syncToTextarea(true));
+    editor.addEventListener('beforeinput', event => {
+      if (event.isComposing) return;
+      if (event.inputType !== 'insertParagraph' && event.inputType !== 'insertLineBreak') return;
+      event.preventDefault();
+      replaceSourceSelection('\n');
+    });
     editor.addEventListener('keyup', mirrorSelection);
     editor.addEventListener('mouseup', mirrorSelection);
     editor.addEventListener('focus', mirrorSelection);
     editor.addEventListener('paste', event => {
       event.preventDefault();
-      insertPlainText(event.clipboardData?.getData('text/plain') || '');
-      syncToTextarea(true);
-      mirrorSelection();
+      if (!replaceSourceSelection(event.clipboardData?.getData('text/plain') || '')) {
+        insertPlainText(event.clipboardData?.getData('text/plain') || '');
+        syncToTextarea(true);
+        mirrorSelection();
+      }
     });
     document.addEventListener('selectionchange', mirrorSelection);
     document.addEventListener('click', interceptDecoration, true);
@@ -368,6 +490,15 @@
     if (!active) {
       if (hasMarker(textarea.value)) void activate();
       return;
+    }
+    // Other controls can edit the hidden source. Project it synchronously so the
+    // save handler cannot serialize an obsolete visible editor over a new marker.
+    if (serializeEditor() !== normalize(textarea.value)) {
+      const scrollTop = editor.scrollTop;
+      const caret = textarea.selectionStart;
+      renderSource(textarea.value);
+      editor.scrollTop = scrollTop;
+      placeCaretAtOffset(caret);
     }
     scheduleRefresh();
   });
@@ -388,6 +519,7 @@
     selectedText,
     replaceSelection,
     sync: () => syncToTextarea(false),
+    insertMarker: insertVisualMarker,
     refresh: refreshFromTextarea
   });
 
