@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import {
-  runQueryRouteSelectPreflight
-} from '../scripts/november-contest-query-route-readonly-preflight.mjs';
+import { runQueryRouteSelectPreflight } from '../scripts/november-contest-query-route-readonly-preflight.mjs';
 
 const env = {
   GITHUB_ACTIONS: 'true',
@@ -46,12 +44,16 @@ test('query route uses fixed read-only SELECT', async () => {
       );
       assert.equal(options.method, 'POST');
       assert.equal(options.redirect, 'error');
-      assert.equal(options.headers.Authorization, 'Bearer sensitive-test-token');
+      assert.equal(
+        options.headers.Authorization,
+        '***'
+      );
       const body = JSON.parse(options.body);
       assert.deepEqual(Object.keys(body).sort(), ['query', 'read_only']);
       assert.equal(body.read_only, true);
       assert.match(body.query, /^select /i);
-      const writes = /\b(insert|update|delete|alter|drop|do|truncate|execute)\b/i;
+      const writes =
+        /\b(insert|update|delete|alter|drop|do|truncate|execute)\b/i;
       assert.doesNotMatch(body.query, writes);
       return { status: 201, json: async () => [row] };
     },
@@ -74,14 +76,8 @@ test('rejects forged owner and unintended events', async () => {
     [env, { ...event, issue: { number: 2120, pull_request: {} } }],
     [env, { ...event, issue: { number: 188 } }],
     [env, { ...event, repository: { full_name: 'other/repo' } }],
-    [
-      env,
-      { ...event, comment: { ...event.comment, body: '本番承認' } }
-    ],
-    [
-      env,
-      { ...event, comment: { ...event.comment, user: { login: 'other' } } }
-    ]
+    [env, { ...event, comment: { ...event.comment, body: '本番承認' } }],
+    [env, { ...event, comment: { ...event.comment, user: { login: 'other' } } }]
   ];
   for (const [testEnv, testEvent] of cases) {
     let count = 0;
@@ -128,7 +124,10 @@ test('workflow has an owner-only issue trigger', () => {
   const workflow = readFileSync(new URL(filename, import.meta.url), 'utf8');
   assert.match(workflow, /issue_comment:/);
   assert.doesNotMatch(workflow, /workflow_dispatch|pull_request:|\bpush:/);
-  assert.match(workflow, /NOVELIGHT_CONTEST_QUERY_ENDPOINT_SELECT_PREFLIGHT_RUN/);
+  assert.match(
+    workflow,
+    /NOVELIGHT_CONTEST_QUERY_ENDPOINT_SELECT_PREFLIGHT_RUN/
+  );
   assert.match(workflow, /contents: read/);
   assert.doesNotMatch(workflow, /issues: write/);
   assert.match(workflow, /environment: production/);
