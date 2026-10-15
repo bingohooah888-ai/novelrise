@@ -31,7 +31,7 @@ eligible AS MATERIALIZED (
     ON e.contest_id = c.id AND e.status = 'entered'
   JOIN public.novels n
     ON n.id = e.novel_id AND n.status = 'published'
-  WHERE n.content_rating IN ('general','sensitive_15','mature')
+  WHERE n.content_rating IN ('general','sensitive_15')
     AND n.ai_usage IN ('human','ai_assisted')
     AND (
       SELECT pg_catalog.count(*) FROM public.episodes ep
