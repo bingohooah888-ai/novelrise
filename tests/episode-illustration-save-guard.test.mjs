@@ -6,73 +6,64 @@ import { runInNewContext } from 'node:vm';
 const html = readFileSync('episode-edit.html', 'utf8');
 const illustrations = readFileSync('novelight-episode-illustrations.js', 'utf8');
 const visual = readFileSync('novelight-episode-visual-editor.js', 'utf8');
+const prefix = '[[NOVELIGHT_ILLUSTRATION:';
+const marker = prefix + '12345678-1234-4234-8234-123456789abc]]';
 
 function makeGuard(initialContent) {
   const head = html.indexOf('const insertedIllustrationMarkers=new Set();');
   const tail = html.indexOf('function saveFailureMessage(', head);
   assert.ok(head >= 0 && tail > head);
   const handlers = new Map();
-  const fakeWindow = {
-    addEventListener(name, callback) {
-      handlers.set(name, callback);
-    }
-  };
   const sandbox = {
-    window: fakeWindow,
+    window: {
+      addEventListener(name, fn) {
+        handlers.set(name, fn);
+      }
+    },
     episode: { content: initialContent }
   };
-  const code = html.slice(head, tail);
-  const expose = '\n({ illustrationSaveGuard, markersIn })';
-  const guard = runInNewContext(code + expose, sandbox);
+  const script = html.slice(head, tail);
+  const expression = script + '\n({ illustrationSaveGuard })';
+  const api = runInNewContext(expression, sandbox);
   return {
-    guard: guard.illustrationSaveGuard,
-    fire(name, marker) {
+    guard: api.illustrationSaveGuard,
+    fire(name) {
       handlers.get(name)?.({ detail: { marker } });
     }
   };
 }
 
-const marker = '[[NOVELIGHT_ILLUSTRATION:' +
-  '12345678-1234-4234-8234-123456789abc]]';
-
-test('newly inserted image cannot disappear in submitted body', () => {
-  const state = makeGuard('既存本文');
-  state.fire('novelight:illustration-inserted', marker);
-  assert.throws(
-    () => state.guard({ content: '既存本文' }),
-    /挿絵の参照が本文から消えた/
-  );
-  assert.doesNotThrow(() => {
-    state.guard({ content: '既存本文\n' + marker });
-  });
+test('saving may not silently lose an inserted image', () => {
+  const state = makeGuard('本文');
+  state.fire('novelight:illustration-inserted');
+  assert.throws(() => state.guard({ content: '本文' }));
+  assert.doesNotThrow(() => state.guard({ content: '本文\n' + marker }));
 });
 
-test('a preexisting referenced image cannot be silently lost', () => {
-  const state = makeGuard('既存本文\n' + marker);
-  assert.throws(() => state.guard({ content: '既存本文' }));
-  assert.doesNotThrow(() => {
-    state.guard({ content: '既存本文\n' + marker });
-  });
+test('saving may not silently lose an existing image', () => {
+  const state = makeGuard('本文\n' + marker);
+  assert.throws(() => state.guard({ content: '本文' }));
+  assert.doesNotThrow(() => state.guard({ content: '本文\n' + marker }));
 });
 
-test('explicit editor removal is allowed but accidental loss is not', () => {
-  const state = makeGuard('既存本文\n' + marker);
-  state.fire('novelight:illustration-removed', marker);
-  assert.doesNotThrow(() => state.guard({ content: '既存本文' }));
-  state.fire('novelight:illustration-inserted', marker);
-  assert.throws(() => state.guard({ content: '既存本文' }));
+test('an explicit removal can be saved', () => {
+  const state = makeGuard('本文\n' + marker);
+  state.fire('novelight:illustration-removed');
+  assert.doesNotThrow(() => state.guard({ content: '本文' }));
+  state.fire('novelight:illustration-inserted');
+  assert.throws(() => state.guard({ content: '本文' }));
 });
 
-test('stale edit saves are conditioned on loaded database revision', () => {
+test('published saves use revision compare and zero-row failure', () => {
   assert.ok(html.includes(".eq('updated_at',episode.updated_at)"));
   assert.ok(html.includes(".select('id,updated_at').maybeSingle()"));
   assert.ok(html.includes("error.code='EPISODE_STALE'"));
   assert.ok(html.includes("error.code='ILLUSTRATION_MARKERS_LOST'"));
 });
 
-test('all illustration placement and removal paths signal the guard', () => {
-  const insertion = "novelight:illustration-inserted";
-  assert.equal(illustrations.split(insertion).length - 1, 2);
-  assert.ok(visual.includes("novelight:illustration-removed"));
+test('both insertion paths and explicit removal notify the guard', () => {
+  const insert = 'novelight:illustration-inserted';
+  assert.equal(illustrations.split(insert).length - 1, 2);
+  assert.ok(visual.includes('novelight:illustration-removed'));
   assert.ok(html.includes('illustrationSaveGuard(value)'));
 });
