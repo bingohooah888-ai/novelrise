@@ -200,10 +200,7 @@ test('release SQL is scoped, atomic and auditable', () => {
   assert.match(sql, /\ndo \$novelight_stage05_open\$/);
   assert.match(sql, /\n\$novelight_stage05_open\$;\n$/);
   assert.doesNotMatch(sql, /^begin;|^commit;|^set local /im);
-  assert.match(
-    sql,
-    /pg_catalog\.set_config\('lock_timeout', '5s', true\)/
-  );
+  assert.match(sql, /pg_catalog\.set_config\('lock_timeout', '5s', true\)/);
   assert.match(
     sql,
     /pg_catalog\.set_config\('statement_timeout', '20s', true\)/
