@@ -649,6 +649,30 @@ begin
         status = 'active', public_visible = true
   where id = v_contest_id;
 
+  -- One qualified session on a 199-character published episode cannot
+  -- create contest credit; the normal-read signal alone is insufficient.
+  select id into v_episode_id from public.episodes
+   where novel_id = v_novel_id and episode_number = 1;
+  update public.episodes set content=repeat('a',199) where id=v_episode_id;
+  insert into public.novelight_contest_read_sessions (
+    contest_id,reader_id,entry_id,episode_id_snapshot,status
+  ) values (
+    v_contest_id,v_reader_id,v_entry_id,v_episode_id,'qualified'
+  ) returning id into v_session;
+  select public.novelight_contest_record_qualified_session(v_session)
+    into v_result;
+  if v_result->>'reason' <> 'episode_below_min_chars'
+     or exists (
+       select 1 from public.novelight_contest_read_events
+        where contest_id=v_contest_id and reader_id=v_reader_id
+          and episode_id_snapshot=v_episode_id
+     ) then
+    raise exception '199-character episode received contest credit: %',v_result;
+  end if;
+  update public.episodes
+     set content=repeat('Contest fixture text. ',32)
+   where id=v_episode_id;
+
   for v_episode_id in
     select id from public.episodes
      where novel_id = v_novel_id and status = 'published'
