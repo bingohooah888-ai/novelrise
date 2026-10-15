@@ -361,13 +361,13 @@ begin
   end if;
   if v_body_chars < v_rule.normal_min_chars then
     v_progress_required := v_rule.short_progress_ratio;
-    v_required_seconds := pg_catalog.least(
+    v_required_seconds := least(
       v_rule.normal_foreground_seconds,
-      pg_catalog.greatest(
+      greatest(
         v_rule.min_short_foreground_seconds,
         pg_catalog.ceil(
           v_rule.normal_foreground_seconds::numeric
-          * pg_catalog.greatest(v_body_chars,1)::numeric
+          * greatest(v_body_chars,1)::numeric
           / v_rule.normal_min_chars::numeric
         )::integer
       )
