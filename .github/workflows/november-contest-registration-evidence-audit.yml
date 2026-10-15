@@ -1,0 +1,54 @@
+name: NOVELIGHT Contest Registration Approval Evidence Only
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: novelight-contest-registration-evidence-${{ github.event.comment.id }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Prove exact owner adoption and registration approval (no release)
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 2120 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_CONTEST_REGISTRATION_OPEN_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout default branch for evidence-only verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify event SHA matches checked-out main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA" || {
+            echo 'STEP05_EVIDENCE_BLOCKED: main advanced after comment.'
+            exit 1
+          }
+
+      - name: Check live GitHub evidence without performing a release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node scripts/november-contest-registration-evidence.mjs
+
+      - name: Declare read-only audit scope
+        shell: bash
+        run: |
+          echo 'READ_ONLY_EVIDENCE_AUDIT; no SQL, no Production secrets, no registration state changes.'

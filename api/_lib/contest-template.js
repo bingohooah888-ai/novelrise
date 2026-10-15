@@ -3,8 +3,8 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="NOVELIGHT 第1回小説コンテスト。2026年11月1日から30日まで開催。読書ポイント1pt以上の上位5位以内に各1万円、最終順位は12月1日発表。">
-  <title>第1回 NOVELIGHT 小説コンテスト | 2026年11月</title>
+  <meta name="description" content="NOVELIGHT 第1回 星灯祭。2026年11月1日から30日まで開催。読書ポイント1pt以上の上位5位以内に各1万円、最終順位は12月1日発表。">
+  <title>NOVELIGHT 第1回 星灯祭 | 2026年11月</title>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
   <link rel="stylesheet" href="novelight-accessibility.css">
   <link rel="stylesheet" href="novelight-contest.css">
@@ -28,10 +28,10 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
     <section class="contest-hero">
       <div class="contest-hero-light" aria-hidden="true"></div>
       <div class="contest-hero-inner">
-        <span class="contest-eyebrow">NOVELIGHT / NOVEMBER 2026</span>
+        <span class="contest-eyebrow">NOVELIGHT 第1回 星灯祭 / 2026年11月</span>
         <span class="contest-status" id="contestStatus">開催準備中</span>
         <h1>まだ知られていない物語に、<em>光を。</em></h1>
-        <p class="contest-hero-lead">第1回 NOVELIGHT 小説コンテスト。読者に届き、続きを読みたいと思わせた物語が、上位を目指せる30日間。</p>
+        <p class="contest-hero-lead">NOVELIGHT 第1回 星灯祭。読者に届き、続きを読みたいと思わせた物語が、上位を目指せる30日間。</p>
         <div class="contest-hero-actions">
           <a class="contest-button contest-button-primary" href="#enter">作品をエントリーする</a>
           <a class="contest-button contest-button-secondary" href="#entries">参加作品を読む</a>
@@ -61,28 +61,28 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
     <section class="contest-shell contest-section" id="rules" aria-labelledby="rulesTitle">
       <p class="contest-kicker">HOW TO WIN</p>
       <h2 id="rulesTitle">読まれた深さが、ポイントになる。</h2>
-      <p class="contest-section-copy">同じ読者が1作品で読了した<strong>異なるエピソード数</strong>に応じて得点が変わります。途中の段階を足し算せず、最も高い到達段階のポイントだけを採用します。</p>
+      <p class="contest-section-copy">通常の読書と共通の有効読書判定を満たした話が対象です。同じ読者が1作品で有効読了した<strong>異なる話数と合計本文文字数の両方</strong>によって得点が変わり、最も高い到達段階のポイントだけを採用します。</p>
       <div class="contest-points-grid">
         <article class="contest-points-card">
           <span class="contest-points-level">STEP 01</span>
           <h3>3話以上</h3>
           <strong>1<span>pt</span></strong>
-          <p>まず物語に触れてもらう。</p>
+          <p>有効読了した本文合計1,500文字以上</p>
         </article>
         <article class="contest-points-card">
           <span class="contest-points-level">STEP 02</span>
           <h3>5話以上</h3>
           <strong>3<span>pt</span></strong>
-          <p>続きが気になる物語に。</p>
+          <p>有効読了した本文合計3,000文字以上</p>
         </article>
         <article class="contest-points-card">
           <span class="contest-points-level">STEP 03</span>
           <h3>10話以上</h3>
           <strong>5<span>pt</span></strong>
-          <p>夢中になれる物語を見つける。</p>
+          <p>有効読了した本文合計6,000文字以上</p>
         </article>
       </div>
-      <p class="contest-note">ログインしていない読者も対象です。1読者・1作品あたり最大5pt。同じ話の読み直しは加算されません。実際の読書実績に基づいて判定し、不正が疑われる記録は審査対象になります。</p>
+      <p class="contest-note">本文200文字未満の話は話数・文字数のどちらにも含めません。ログインしていない読者も対象です。1読者・1作品あたり最大5pt。同じ話の読み直しは加算されず、文字数水増しなど不正が疑われる記録は運営審査の対象になります。</p>
     </section>
 
     <section class="contest-section contest-enroll-section" id="enter" aria-labelledby="enterTitle">

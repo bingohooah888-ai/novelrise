@@ -94,7 +94,7 @@ test('SCOUT RECORD uses Author Studio shell and full beta information architectu
 test('SCOUT RECORD loads owner progression, badge progress and visibility through RPCs', () => {
   assert.match(scoutJs, /novelight_scout_record_summary/u);
   assert.match(scoutJs, /novelight_scout_point_history/u);
-  assert.match(scoutJs, /novelight_scout_recent_activity/u);
+  assert.match(scoutJs, /novelight_scout_activity_feed/u);
   assert.match(scoutJs, /novelight_scout_discoveries/u);
   assert.match(scoutJs, /novelight_scout_badges/u);
   assert.match(scoutJs, /novelight_set_scout_badge_visibility/u);
@@ -210,9 +210,10 @@ test('Master Scout renders composite progress', () => {
 });
 
 test('LIGHT SEED history is integrated while the legacy route stays compatible', () => {
-  assert.match(scout, /<h2 id="seedHistoryTitle">LIGHT SEED送信履歴<\/h2>/u);
-  assert.match(scout, /id="seedHistoryList"/u);
-  assert.match(scoutJs, /\.from\('light_seeds'\)/u);
+  assert.match(scout, /data-activity-filter="seed"/u);
+  assert.match(scout, /id="activityList"/u);
+  assert.match(scoutJs, /novelight_scout_activity_feed/u);
+  assert.doesNotMatch(scout, /id="seedHistoryList"/u);
   assert.match(history, /<title>LIGHT SEED送信履歴 \| NOVELIGHT<\/title>/u);
   assert.match(history, /<h1>LIGHT SEED送信履歴<\/h1>/u);
   assert.match(history, /client\.from\('light_seeds'\)/u);

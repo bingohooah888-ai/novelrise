@@ -832,26 +832,16 @@ test('authenticated beta-critical product flow works in target', async ({
       await expect(readerPage.locator('#seedMessage')).toContainText('を贈りました');
     });
 
-    await test.step('Verify LIGHT SEED send history inside SCOUT RECORD', async () => {
+    await test.step('Verify LIGHT SEED history through unified SCOUT activity', async () => {
       await readerPage.goto('/scout-record.html');
       await expect(
         readerPage.getByRole('heading', { name: 'SCOUT RECORD', exact: true })
       ).toBeVisible();
       await expect(
-        readerPage.getByRole('heading', {
-          name: '最近のSCOUT活動',
-          exact: true
-        })
+        readerPage.getByRole('heading', { name: 'SCOUT活動履歴', exact: true })
       ).toBeVisible();
-      await expect(
-        readerPage.getByRole('heading', {
-          name: 'LIGHT SEED送信履歴',
-          exact: true
-        })
-      ).toBeVisible();
-      await expect(
-        readerPage.getByText(novelTitle, { exact: true })
-      ).toBeVisible();
+      await readerPage.locator('[data-activity-filter="seed"]').click();
+      await expect(readerPage.locator('#activityList')).toContainText(novelTitle);
     });
 
     await test.step('Read second episode with engagement', async () => {
