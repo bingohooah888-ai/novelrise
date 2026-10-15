@@ -127,6 +127,7 @@ test('workflow requires dedicated Staging and single-use approval', () => {
   assert.match(yaml, /manifest-persistent/u);
   assert.match(yaml, /compose-persistent/u);
   assert.match(yaml, /public_enabled::text/u);
+  assert.ok(yaml.includes('test "$gate" = false'));
   assert.match(yaml, /wmlzjgvxgoyrovdhbqbg/u);
   assert.doesNotMatch(yaml, /workflow_dispatch:/u);
 });
