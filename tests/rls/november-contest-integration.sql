@@ -83,7 +83,7 @@ insert into public.episodes (
   novel_id, user_id, episode_number, title, content, status, pv
 )
 select n.id, n.user_id, gs.n, 'Contest CI episode ' || gs.n,
-       repeat('Contest fixture text. ', 24), 'published', 0
+       repeat('Contest fixture text. ', 32), 'published', 0
 from public.novels n
 cross join lateral generate_series(
   1, case when n.title = 'CONTEST_CI_NINE_A' then 9 else 10 end
@@ -569,14 +569,15 @@ begin
   ) then
     raise exception 'Trusted score ingestion cannot access service-only RPC';
   end if;
-  if public.novelight_contest_episode_points(0) <> 0
-    or public.novelight_contest_episode_points(2) <> 0
-    or public.novelight_contest_episode_points(3) <> 1
-    or public.novelight_contest_episode_points(4) <> 1
-    or public.novelight_contest_episode_points(5) <> 3
-    or public.novelight_contest_episode_points(9) <> 3
-    or public.novelight_contest_episode_points(10) <> 5
-    or public.novelight_contest_episode_points(100) <> 5 then
+  if public.novelight_contest_episode_points(0, 50000) <> 0
+    or public.novelight_contest_episode_points(2, 50000) <> 0
+    or public.novelight_contest_episode_points(3, 1499) <> 0
+    or public.novelight_contest_episode_points(3, 1500) <> 1
+    or public.novelight_contest_episode_points(5, 2999) <> 1
+    or public.novelight_contest_episode_points(5, 3000) <> 3
+    or public.novelight_contest_episode_points(10, 5999) <> 3
+    or public.novelight_contest_episode_points(10, 6000) <> 5
+    or public.novelight_contest_episode_points(100, 6000) <> 5 then
     raise exception 'The 0/1/3/5 score thresholds drifted';
   end if;
 end
@@ -1198,10 +1199,11 @@ begin
   loop
     insert into public.novelight_contest_read_events (
       contest_id,reader_id,entry_id,episode_id_snapshot,
-      qualified_at,status,rule_version
+      qualified_at,status,rule_version,body_char_count
     ) values (
       v_contest,v_reader,v_entry,v_ep,pg_catalog.clock_timestamp(),
-      'provisional','november-2026-points-v1'
+      'provisional','november-2026-points-v2',
+      (select pg_catalog.char_length(coalesce(content,'')) from public.episodes where id=v_ep)
     );
   end loop;
   -- Existing fixture readers were deliberately used by earlier tests.
