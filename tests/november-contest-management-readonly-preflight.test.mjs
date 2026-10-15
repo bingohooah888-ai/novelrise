@@ -5,10 +5,11 @@ import { runManagementReadOnlyProbe } from '../scripts/november-contest-manageme
 
 const env = {
   GITHUB_ACTIONS: 'true',
+  GITHUB_ACTOR: 'bingohooah888-ai',
   GITHUB_EVENT_NAME: 'workflow_dispatch',
   GITHUB_REF: 'refs/heads/main',
   GITHUB_REPOSITORY: 'bingohooah888-ai/novelrise',
-  NOVELIGHT_CONTEST_READONLY_PREFLIGHT: 'MANUAL_READONLY_ONLY',
+  NOVELIGHT_CONTEST_READONLY_PREFLIGHT: 'OWNER_READONLY_ONLY',
   SUPABASE_ACCESS_TOKEN: 'sensitive-test-token'
 };
 const row = {
@@ -86,7 +87,7 @@ test('read-only probe blocks failed authorization', async () => {
   );
 });
 
-test('read-only probe rejects non-manual execution', async () => {
+test('read-only probe rejects issue events without verified owner evidence', async () => {
   let calls = 0;
   await assert.rejects(
     runManagementReadOnlyProbe({
@@ -97,7 +98,94 @@ test('read-only probe rejects non-manual execution', async () => {
       },
       report: () => {}
     }),
-    /execution identity mismatch/
+    /owner issue event validation failed/
   );
   assert.equal(calls, 0);
+});
+
+const ownerEvent = {
+  issue: { number: 2120 },
+  comment: {
+    user: { login: 'bingohooah888-ai' },
+    author_association: 'OWNER',
+    body: 'NOVELIGHT_CONTEST_READONLY_PREFLIGHT_RUN'
+  }
+};
+
+const ownerEnv = {
+  ...env,
+  GITHUB_EVENT_NAME: 'issue_comment',
+  GITHUB_EVENT_PATH: 'test-event.json'
+};
+
+test('exact issue 2120 owner comment can invoke only the fixed SELECT', async () => {
+  let sqlCount = 0;
+  const passed = await runManagementReadOnlyProbe({
+    env: ownerEnv,
+    readEvent: async () => ownerEvent,
+    request: async (url, opts) => {
+      sqlCount++;
+      assert.match(url, /\/database\/query\/read-only$/);
+      assert.match(JSON.parse(opts.body).query, /^select /i);
+      return { status: 201, json: async () => [row] };
+    },
+    report: () => {}
+  });
+  assert.equal(passed, true);
+  assert.equal(sqlCount, 1);
+});
+
+test('issue trigger rejects forged owner, wrong issue, edited request and PR comment', async () => {
+  const invalidEvents = [
+    {
+      ...ownerEvent,
+      comment: { ...ownerEvent.comment, user: { login: 'outsider' } }
+    },
+    {
+      ...ownerEvent,
+      comment: { ...ownerEvent.comment, author_association: 'NONE' }
+    },
+    {
+      ...ownerEvent,
+      comment: {
+        ...ownerEvent.comment,
+        body: 'NOVELIGHT_CONTEST_READONLY_PREFLIGHT_RUN extra'
+      }
+    },
+    { ...ownerEvent, issue: { number: 188 } },
+    { ...ownerEvent, issue: { number: 2120, pull_request: { url: 'pr' } } }
+  ];
+  for (const event of invalidEvents) {
+    let fetchCount = 0;
+    await assert.rejects(
+      runManagementReadOnlyProbe({
+        env: ownerEnv,
+        readEvent: async () => event,
+        request: async () => {
+          fetchCount++;
+          return { status: 201, json: async () => [row] };
+        },
+        report: () => {}
+      }),
+      /invalid owner issue request/
+    );
+    assert.equal(fetchCount, 0);
+  }
+});
+
+test('owner issue comment still fails closed on insufficient actor', async () => {
+  let fetchCount = 0;
+  await assert.rejects(
+    runManagementReadOnlyProbe({
+      env: { ...ownerEnv, GITHUB_ACTOR: 'outsider' },
+      readEvent: async () => ownerEvent,
+      request: async () => {
+        fetchCount++;
+        return { status: 201, json: async () => [row] };
+      },
+      report: () => {}
+    }),
+    /execution identity mismatch/
+  );
+  assert.equal(fetchCount, 0);
 });
