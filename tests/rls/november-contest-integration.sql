@@ -83,7 +83,7 @@ insert into public.episodes (
   novel_id, user_id, episode_number, title, content, status, pv
 )
 select n.id, n.user_id, gs.n, 'Contest CI episode ' || gs.n,
-       repeat('Contest fixture text. ', 24), 'published', 0
+       repeat('Contest fixture text. ', 32), 'published', 0
 from public.novels n
 cross join lateral generate_series(
   1, case when n.title = 'CONTEST_CI_NINE_A' then 9 else 10 end
@@ -569,14 +569,15 @@ begin
   ) then
     raise exception 'Trusted score ingestion cannot access service-only RPC';
   end if;
-  if public.novelight_contest_episode_points(0) <> 0
-    or public.novelight_contest_episode_points(2) <> 0
-    or public.novelight_contest_episode_points(3) <> 1
-    or public.novelight_contest_episode_points(4) <> 1
-    or public.novelight_contest_episode_points(5) <> 3
-    or public.novelight_contest_episode_points(9) <> 3
-    or public.novelight_contest_episode_points(10) <> 5
-    or public.novelight_contest_episode_points(100) <> 5 then
+  if public.novelight_contest_episode_points(0, 50000) <> 0
+    or public.novelight_contest_episode_points(2, 50000) <> 0
+    or public.novelight_contest_episode_points(3, 1499) <> 0
+    or public.novelight_contest_episode_points(3, 1500) <> 1
+    or public.novelight_contest_episode_points(5, 2999) <> 1
+    or public.novelight_contest_episode_points(5, 3000) <> 3
+    or public.novelight_contest_episode_points(10, 5999) <> 3
+    or public.novelight_contest_episode_points(10, 6000) <> 5
+    or public.novelight_contest_episode_points(100, 6000) <> 5 then
     raise exception 'The 0/1/3/5 score thresholds drifted';
   end if;
 end
@@ -647,6 +648,30 @@ begin
         terms_url = 'https://novelight.jp/contest-terms',
         status = 'active', public_visible = true
   where id = v_contest_id;
+
+  -- One qualified session on a 199-character published episode cannot
+  -- create contest credit; the normal-read signal alone is insufficient.
+  select id into v_episode_id from public.episodes
+   where novel_id = v_novel_id and episode_number = 1;
+  update public.episodes set content=repeat('a',199) where id=v_episode_id;
+  insert into public.novelight_contest_read_sessions (
+    contest_id,reader_id,entry_id,episode_id_snapshot,status
+  ) values (
+    v_contest_id,v_reader_id,v_entry_id,v_episode_id,'qualified'
+  ) returning id into v_session;
+  select public.novelight_contest_record_qualified_session(v_session)
+    into v_result;
+  if v_result->>'reason' <> 'episode_below_min_chars'
+     or exists (
+       select 1 from public.novelight_contest_read_events
+        where contest_id=v_contest_id and reader_id=v_reader_id
+          and episode_id_snapshot=v_episode_id
+     ) then
+    raise exception '199-character episode received contest credit: %',v_result;
+  end if;
+  update public.episodes
+     set content=repeat('Contest fixture text. ',32)
+   where id=v_episode_id;
 
   for v_episode_id in
     select id from public.episodes
@@ -1198,10 +1223,11 @@ begin
   loop
     insert into public.novelight_contest_read_events (
       contest_id,reader_id,entry_id,episode_id_snapshot,
-      qualified_at,status,rule_version
+      qualified_at,status,rule_version,body_char_count
     ) values (
       v_contest,v_reader,v_entry,v_ep,pg_catalog.clock_timestamp(),
-      'provisional','november-2026-points-v1'
+      'provisional','november-2026-points-v2',
+      (select pg_catalog.char_length(coalesce(content,'')) from public.episodes where id=v_ep)
     );
   end loop;
   -- Existing fixture readers were deliberately used by earlier tests.
