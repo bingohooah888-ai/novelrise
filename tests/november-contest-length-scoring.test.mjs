@@ -55,6 +55,15 @@ test('contest uses the shared valid-read rules', () => {
   assert.match(sql, /v_contest\.public_visible is not true/);
 });
 
+test('fraud risk review does not flag normal valid reads for old TTS timing', () => {
+  assert.match(sql, /novelight_contest_reader_risk_signals/);
+  assert.match(sql, /join public\.valid_read_rules vr on vr\.id = 1/);
+  assert.match(sql, /vr\.short_progress_ratio/);
+  assert.match(sql, /vr\.normal_progress_ratio/);
+  assert.match(sql, /vr\.min_short_foreground_seconds/);
+  assert.doesNotMatch(sql, /reading_mode = 'tts' then 45 else 30/);
+});
+
 test('rankings apply the same dual thresholds as reader scores', () => {
   assert.match(sql, /novelight_contest_prepare_rank_snapshot/);
   assert.match(sql, /sum\(ev\.body_char_count\)/);
