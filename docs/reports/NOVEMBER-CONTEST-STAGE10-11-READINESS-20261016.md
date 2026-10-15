@@ -83,3 +83,10 @@
 - 純粋な承認チェック／SQL生成について**インメモリの合成ケース11件PASS**。本番の read-only SQL 検証15件は既述のとおりPASS。作成したNode`node:test`新ファイルは**まだGitHub CIや実Nodeでの実行証拠なし**。合格と偽らない。正式なmain反映はOwnerの明示 `本番承認`、PRの正規CI/品質検査/CodeQL/ステージングコスト確認を経た後のみ。
 - ⑤の受付開始や⑫の11/1開幕は未実施。**公開後の実応募/取消テストはOwner方針どおり受付開始後**。
 - ⑨の受賞候補抽出は読み取り専用で対応、**実際の人間の裁定・異議修正・支払済み記録の責任者操作と検証は未了**。手動メール/楽天銀行振込を維持。大がかりな自動振込システムを作らない。
+
+## 2026-10-16 追加検証：本番反映前の安全な模擬テスト
+
+- 実GitHubブランチから `start-plan` / `start-release` / 3本の新テスト本文 / read-only賞金SQL / 既存読書API / workflowを読み込んで、**外部接続なしのJavaScript模擬実行で10/10テスト項目PASS**。テスト本文からNode専用のimport・FS読込を切り離し、同内容のassert/テスト関数を代替実装して実行。**Node 24標準 `node --test`、ESLint、Prettier、GitHub CI/CodeQL、実デプロイの合格証拠ではない。**
+- 模擬テストで確認：明示Owner承認の妥当性、通常「はい」/「本番承認」/旧SHA/他人/期限切れ/別操作の拒否、claim→execute→監査、二重実行拒否、失敗後の再実行禁止、賞金TOP10切り捨て禁止、読書環境flag依存。
+- 最終賞金read-only SQLの作品ジャンル条件を**正式参加資格の`general`／`sensitive_15`のみ**へ限定。従前の余分な`mature`を除外。Supabase Productionの`EXPLAIN`（SELECTは未実行）で関数・表参照の構文解決が成功した。**Productionの行データ/環境設定を書き換えていない。**
+- **残る安全ゲート：** 新NodeテストのNode24/Prettier/ESLint、SQL隔離統合テストとCI/CodeQLは正式実行証拠なし。通常PR作成だけでVercel PreviewやCIを自動起動する恐れがあるため、**Ownerの既存「有料Preview/Stagingは別承認」ポリシーを尊重し、この段階ではDraft PRを勝手に開かない**。PR・merge・本番反映・受付/開幕公開・実送金はすべて未実施。
