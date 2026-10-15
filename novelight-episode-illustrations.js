@@ -240,6 +240,12 @@
     const visualEditor = window.NovelightEpisodeVisualEditor;
     const visualActive = visualEditor?.isActive?.() === true;
     if (visualActive) visualEditor.sync();
+    // Commit to the visible editor and hidden source in the same event.
+    // A delayed textarea refresh must never erase an inserted marker on Save.
+    if (visualActive && visualEditor.insertMarker?.(marker)) {
+      void visualEditor.refresh?.();
+      return;
+    }
     const start = Number.isInteger(textarea.selectionStart)
       ? textarea.selectionStart
       : textarea.value.length;
