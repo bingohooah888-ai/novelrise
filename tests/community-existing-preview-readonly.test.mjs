@@ -80,10 +80,16 @@ test('reject reused approval, changed URL, or absent original ledger', () => {
         runId: '7'
       })
   });
-  assert.throws(() => assertCommunityReuseAdmission(y), /already claimed/u);
+  assert.throws(
+    () => assertCommunityReuseAdmission(y),
+    /already claimed/u
+  );
   const z = input();
   z.ledgerPages = [[]];
-  assert.throws(() => assertCommunityReuseAdmission(z), /not ledger-proven/u);
+  assert.throws(
+    () => assertCommunityReuseAdmission(z),
+    /not ledger-proven/u
+  );
 });
 
 const staging = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
@@ -126,7 +132,7 @@ test('protected verification uses GET only and never deploys', async () => {
   assert.ok(calls.every((call) => call.url.startsWith(REUSE_URL)));
 });
 
-test('rejects missing bypass before network and Production browser target', async () => {
+test('rejects missing bypass and Production browser target', async () => {
   await assert.rejects(
     verifyCommunityExistingPreviewReadOnly({
       env: { ...env, VERCEL_AUTOMATION_BYPASS_SECRET: '' },
@@ -139,15 +145,16 @@ test('rejects missing bypass before network and Production browser target', asyn
   await assert.rejects(
     verifyCommunityExistingPreviewReadOnly({
       env,
-      fetchImpl: async (url) => new Response(
-        new URL(url).pathname === '/api/staging-browser-config'
-          ? JSON.stringify({
-            supabaseUrl: 'https://fiepaguycecrredwrcwx.supabase.co',
-            supabasePublishableKey: 'sb_publishable_test'
-          })
-          : '',
-        { status: 200 }
-      )
+      fetchImpl: async (url) =>
+        new Response(
+          new URL(url).pathname === '/api/staging-browser-config'
+            ? JSON.stringify({
+                supabaseUrl: 'https://fiepaguycecrredwrcwx.supabase.co',
+                supabasePublishableKey: 'sb_publishable_test'
+              })
+            : '',
+          { status: 200 }
+        )
     }),
     /browser config differs/u
   );

@@ -27,9 +27,9 @@ jobs:
       contents: read
       issues: write
     outputs:
-      main_sha: ${{ steps.bind.outputs.main_sha }
-      candidate_sha: ${{ steps.bind.outputs.candidate_sha }
-      request_id: ${{ steps.bind.outputs.request_id }
+      main_sha: ${{ steps.bind.outputs.main_sha }}
+      candidate_sha: ${{ steps.bind.outputs.candidate_sha }}
+      request_id: ${{ steps.bind.outputs.request_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -39,7 +39,7 @@ jobs:
       - name: Bind exact current main and unused OWNER ledger entry
         id: bind
         env:
-          GH_TOKEN: ${{ github.token }
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -59,10 +59,10 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       - name: Claim approval before Staging network requests
         env:
-          GH_TOKEN: ${{ github.token }
-          MAIN: ${{ steps.bind.outputs.main_sha }
-          HEAD: ${{ steps.bind.outputs.candidate_sha }
-          REQUEST: ${{ steps.bind.outputs.request_id }
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.bind.outputs.main_sha }}
+          HEAD: ${{ steps.bind.outputs.candidate_sha }}
+          REQUEST: ${{ steps.bind.outputs.request_id }}
         shell: bash
         run: |
           set -euo pipefail
@@ -83,20 +83,20 @@ jobs:
     permissions:
       contents: read
     env:
-      GH_TOKEN: ${{ github.token }
-      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }
-      EXPECTED_REVISION: ${{ needs.admit.outputs.candidate_sha }
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      EXPECTED_REVISION: ${{ needs.admit.outputs.candidate_sha }}
       CANONICAL_STAGING_URL: https://novelrise-ibyeza739-ranobe1.vercel.app
       STAGING_TRIGGER: approval_comment
       STAGING_REQUIRE_WRITE_CONFIG: 'true'
-      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }
-      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }
-      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }
-      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }
+      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.admit.outputs.main_sha }
+          ref: ${{ needs.admit.outputs.main_sha }}
           persist-credentials: false
           fetch-depth: 1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -104,7 +104,7 @@ jobs:
           node-version: 24
       - name: Refuse wrong revision, Production or unset access protection
         env:
-          GH_TOKEN: ${{ github.token }
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -132,11 +132,11 @@ jobs:
     steps:
       - name: Record single-use completion
         env:
-          GH_TOKEN: ${{ github.token }
-          MAIN: ${{ needs.admit.outputs.main_sha }
-          HEAD: ${{ needs.admit.outputs.candidate_sha }
-          REQUEST: ${{ needs.admit.outputs.request_id }
-          OUTCOME: ${{ needs.verify.result }
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          HEAD: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST: ${{ needs.admit.outputs.request_id }}
+          OUTCOME: ${{ needs.verify.result }}
         shell: bash
         run: |
           set -euo pipefail
