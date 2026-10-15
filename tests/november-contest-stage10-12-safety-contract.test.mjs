@@ -3,8 +3,11 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const awards = readFileSync(
-  new URL('../scripts/november-contest-final-award-readonly-preview.sql',
-    import.meta.url), 'utf8'
+  new URL(
+    '../scripts/november-contest-final-award-readonly-preview.sql',
+    import.meta.url
+  ),
+  'utf8'
 );
 const start = readFileSync(
   new URL('../scripts/november-contest-start-plan.mjs', import.meta.url),
@@ -15,11 +18,15 @@ const release = readFileSync(
   'utf8'
 );
 const reader = readFileSync(
-  new URL('../api/november-contest-read.js', import.meta.url), 'utf8'
+  new URL('../api/november-contest-read.js', import.meta.url),
+  'utf8'
 );
 const workflow = readFileSync(
-  new URL('../.github/workflows/november-contest-start-approved-release.yml',
-    import.meta.url), 'utf8'
+  new URL(
+    '../.github/workflows/november-contest-start-approved-release.yml',
+    import.meta.url
+  ),
+  'utf8'
 );
 
 test('final 1pt+ awards are rank-based across ALL entries, never interim top 10', () => {
@@ -32,8 +39,14 @@ test('final 1pt+ awards are rank-based across ALL entries, never interim top 10'
   assert.match(awards, /NOT \(reader\.kind = 'account'/);
   assert.match(awards, /review_status = 'review_hold'/);
   assert.match(awards, /ends_at <= pg_catalog\.clock_timestamp\(\)/);
-  assert.doesNotMatch(awards, /\bLIMIT\s+10\b|position\s*<=\s*10|row_number\(\)/i);
-  assert.doesNotMatch(awards, /\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP)\s+(?:INTO\s+|FROM\s+)?(?:public\.)?novelight_contest_/i);
+  assert.doesNotMatch(
+    awards,
+    /\bLIMIT\s+10\b|position\s*<=\s*10|row_number\(\)/i
+  );
+  assert.doesNotMatch(
+    awards,
+    /\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP)\s+(?:INTO\s+|FROM\s+)?(?:public\.)?novelight_contest_/i
+  );
 });
 
 test('11/1 workflow is distinct from registration and cannot bypass production gate', () => {

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
 import {
   CONTEST_START_PREFIX,
   buildContestStartSql,
@@ -60,7 +61,10 @@ test('explicit fresh owner approval creates inert single-DO SQL only', () => {
   assert.match(sql, /github-comment-123456/);
   assert.match(sql, /insert into public.novelight_contest_review_audit/);
   assert.doesNotMatch(sql, /^begin;|^commit;/im);
-  assert.doesNotMatch(sql, /novelight_contest_awards\s+set|novelight_contest_rank_snapshots\s+set/i);
+  assert.doesNotMatch(
+    sql,
+    /novelight_contest_awards\s+set|novelight_contest_rank_snapshots\s+set/i
+  );
   assert.match(sql, /\$novelight_contest_start\$;\n$/);
 });
 
@@ -83,7 +87,9 @@ test('ordinary approvals, wrong owner, or stale main cannot start contest', () =
 
 test('unverified endpoint, missing or extra attestation and expired approvals fail closed', () => {
   const base = makeContext();
-  const att = JSON.parse(base.commentBody.slice(CONTEST_START_PREFIX.length)).attestations;
+  const att = JSON.parse(
+    base.commentBody.slice(CONTEST_START_PREFIX.length)
+  ).attestations;
   for (const p of [
     { attestations: { ...att, readingEndpointConfigVerified: false } },
     { attestations: { ...att, extra: true } },
@@ -91,10 +97,16 @@ test('unverified endpoint, missing or extra attestation and expired approvals fa
     { issuedAt: '2026-10-31T15:15:00Z' },
     { expiresAt: '2026-10-31T16:00:00Z' }
   ]) {
-    assert.throws(() => verifyContestStartApproval(makeContext(p)), /STEP12_START_BLOCKED/);
+    assert.throws(
+      () => verifyContestStartApproval(makeContext(p)),
+      /STEP12_START_BLOCKED/
+    );
   }
   assert.throws(
-    () => verifyContestStartApproval(makeContext({}, { now: '2026-10-31T15:11:00Z' })),
+    () =>
+      verifyContestStartApproval(
+        makeContext({}, { now: '2026-10-31T15:11:00Z' })
+      ),
     /STEP12_START_BLOCKED/
   );
   assert.throws(
