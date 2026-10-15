@@ -101,7 +101,7 @@ test('Preview verifier makes GET requests only', async () => {
     fetchImpl: async (url, options) => {
       calls.push(options.method);
       const path = new URL(url).pathname;
-      return new Response(bodies[path], { status: 200 });
+      return new globalThis.Response(bodies[path], { status: 200 });
     }
   });
   assert.equal(result.interactiveProof, false);
