@@ -124,7 +124,8 @@ function makeHarness() {
         }
         assert.match(sql, /STEP05_REGISTRATION_OPEN_BLOCKED/);
         assert.match(sql, /github-comment-10002/);
-        assert.match(sql, /\ncommit;\n$/);
+        assert.match(sql, /\n\$novelight_stage05_open\$;\n$/);
+        assert.doesNotMatch(sql, /^begin;|^commit;/im);
         mutations++;
         state.status = 'registration';
         state.public_visible = true;
