@@ -41,7 +41,7 @@ eligible AS MATERIALIZED (
 per_reader AS (
   SELECT ev.entry_id, ev.reader_id,
          pg_catalog.count(DISTINCT ev.episode_id_snapshot)::integer AS chapters,
-         pg_catalog.coalesce(pg_catalog.sum(ev.body_char_count),0)::bigint AS body_chars
+         coalesce(pg_catalog.sum(ev.body_char_count),0)::bigint AS body_chars
   FROM clear_to_preview c
   JOIN public.novelight_contest_read_events ev ON ev.contest_id = c.id
   JOIN eligible en ON en.entry_id = ev.entry_id
@@ -57,7 +57,7 @@ per_reader AS (
 ),
 work_points AS (
   SELECT entry_id,
-         pg_catalog.coalesce(pg_catalog.sum(
+         coalesce(pg_catalog.sum(
            public.novelight_contest_episode_points(chapters,body_chars)
          ),0)::bigint AS points,
          pg_catalog.count(*) FILTER (
@@ -68,10 +68,10 @@ work_points AS (
 ),
 ranked AS (
   SELECT en.entry_id,en.novel_id,
-         pg_catalog.coalesce(wp.points,0)::bigint AS points,
-         pg_catalog.coalesce(wp.qualifying_readers,0)::integer AS qualifying_readers,
+         coalesce(wp.points,0)::bigint AS points,
+         coalesce(wp.qualifying_readers,0)::integer AS qualifying_readers,
          pg_catalog.rank() OVER (
-           ORDER BY pg_catalog.coalesce(wp.points,0) DESC
+           ORDER BY coalesce(wp.points,0) DESC
          )::integer AS final_rank
   FROM eligible en LEFT JOIN work_points wp ON wp.entry_id=en.entry_id
 )
