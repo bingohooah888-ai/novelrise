@@ -57,7 +57,7 @@
 
 ## 禁止と出荷境界
 
-このファイルは**検証資料**。単体のSQL fixtureは受賞者をDBに挿入しない。新PR/CI、DB migration、Preview/Staging起動、Vercel本番deploy、実応募、Cron発火、受付開始、11/1開幕、受賞メール、振込操作は全て未実施。変更はmainではなく枝の資料2ファイルだけ。
+このファイルは**検証資料**。単体のSQL fixtureは受賞者をDBに挿入しない。新PR/CI、DB migration、Preview/Staging起動、Vercel本番deploy、実応募、Cron発火、受付開始、11/1開幕、受賞メール、振込操作は全て未実施。変更はmainではなく作業ブランチのみ。※この文書作成時点の履歴であり、後述の⑫準備コードも同じブランチに追加した。
 
 ## ⑨最終受賞候補の最小限・読み取り専用補助（今回追加）
 
@@ -65,3 +65,21 @@
 - **安全停止条件**：コンテストが`review/finalized`かつ`public_visible=true`で公式終了時刻以降になるまで、また読者の`review_hold`が1件でも残る場合は**0行返す**。0行は「受賞者なし」の確定ではなく、未準備/未解決の可能性がある。正規の事前状態SELECTと人間審査が必須。
 - **本番DBで非変更検証**：`EXPLAIN`で構文/テーブル/参照関数の解決成功、`SELECT count(*)`のラップで現在の非公開draftに対し0行。**本番の受賞状態・口座情報・利用者データは更新/取得していない**。
 - SQLファイルのプレビュー出力が正しくとも、**最終審査・受賞裁定・異議対応・通知・振込の実施を自動化したことにはならない**。事後の人間確認が必要。このクエリは運営者権限のprivate用途に限定し、一般画面・ChatGPT・GitHub Issueに受賞IDを貼らない。
+
+## 2026-10-16 追加作業：⑫のOwner専用・一回限り開幕システム（非本番）
+
+**単なる計画だけでなく、開幕を安全に行うコード一式を作業ブランチへ保存した。ただし、現時点ではコードはmain/Productionに反映されておらず、実開幕できるという意味ではない。**
+
+- `scripts/november-contest-start-plan.mjs`: `NOVELIGHT_CONTEST_START_APPROVE ` で始まる**専用Ownerコメント**だけを解釈し、最新main一致・本人権限・規約v1・SHA challenge・最大15分の期限・全6項目の確認・明示 `CHAT_CONTEST_START_APPROVED` がない場合は拒否。**受賞/賞金/Rank/銀行/メール/環境フラグは変更しない**、単一SQL `DO` を生成するだけ。
+- 同SQLの必須条件：**すでに受付済み `registration/public_visible=true`／正式規約設定／既存の受付開始監査／対象応募作品1以上／読書イベント・順位スナップショット・賞金記録が早期に存在しないこと／11月1日00:00 JSTより前は一切不可／同日終了までの遅延復旧窓**。条件一致時だけ行ロック＋監査を1トランザクションで `active` に移す。
+- `scripts/november-contest-start-release.mjs`: GitHub APIの**現在のOwnerコメント・main・過去の実行CLAIM/FAILED/EXECUTED**を別取得。**Production SELECT-only前処理→CLAIM監査→fresh-main再検証→単一DO→postcheck→EXECUTED**。曖昧応答はFAILED監査・自動再試行不可。
+- `.github/workflows/november-contest-start-approved-release.yml`: **#2120のOwner専用コメント**に限定し `environment: production` で実行する専用workflow。通常の「本番承認」「受付開始承認」「はい」「つづけて」では起動しない。workflowは**まだ作業ブランチ上のみ**で無効。
+- `tests/november-contest-start-plan.test.mjs` / `tests/november-contest-start-release.test.mjs` / `tests/november-contest-stage10-12-safety-contract.test.mjs`: 専用承認の異常系、二重実行禁止、曖昧応答、読書フラグとランキング/賞金非介入の確認を記述。
+- **独立して重要な環境条件**：`api/november-contest-read.js` は `NOVELIGHT_CONTEST_READING_ENABLED=true` と十分長い署名secret等がなければ受信を拒否する。**DBがactiveになっただけではポイントが加算されない可能性がある**ため、独立した当日オペレータが実配信revisionとVercel環境設定/再デプロイ要否を検証し、6項目の誠実なattestationを満たさないときは開幕を許可しない。Secret本文をIssue/ログ/チャットへ出さない。
+- `scripts/november-contest-final-award-readonly-preview.sql` は**公式終了時刻経過後であれば `active/review/finalized`から読む**よう改善。受賞候補プレビューのためだけに、12/1の不要な書込 `active→review` を必須にしない。一般公開はしない。実DBのEXPLAINで構文解決成功。
+
+### 追加テストの実行状況と安全な次手順
+
+- 純粋な承認チェック／SQL生成について**インメモリの合成ケース11件PASS**。本番の read-only SQL 検証15件は既述のとおりPASS。作成したNode`node:test`新ファイルは**まだGitHub CIや実Nodeでの実行証拠なし**。合格と偽らない。正式なmain反映はOwnerの明示 `本番承認`、PRの正規CI/品質検査/CodeQL/ステージングコスト確認を経た後のみ。
+- ⑤の受付開始や⑫の11/1開幕は未実施。**公開後の実応募/取消テストはOwner方針どおり受付開始後**。
+- ⑨の受賞候補抽出は読み取り専用で対応、**実際の人間の裁定・異議修正・支払済み記録の責任者操作と検証は未了**。手動メール/楽天銀行振込を維持。大がかりな自動振込システムを作らない。
