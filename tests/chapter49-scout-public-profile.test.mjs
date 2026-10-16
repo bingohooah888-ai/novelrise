@@ -24,7 +24,7 @@ test('public SCOUT RECORD loads only the public-safe RPC', () => {
   );
 });
 
-test('public SCOUT rank uses the official ten rank artworks beside Scout Level', () => {
+test('public SCOUT rank shows official artwork beside Scout Level', () => {
   assert.match(js, /scout_rank_01_noctis\.png/u);
   assert.match(js, /scout_rank_02_vesper\.png/u);
   assert.match(js, /scout_rank_03_umbra\.png/u);
@@ -32,6 +32,7 @@ test('public SCOUT rank uses the official ten rank artworks beside Scout Level',
   assert.match(js, /class="public-scout-rank-image"/u);
   assert.match(js, /optimizedArtworkPath\(rankArtwork\)/u);
   assert.match(js, /rankImage\.src = rankArtwork/u);
+  assert.match(js, /rankImage\.complete/u);
   assert.match(js, /<div class="public-scout-summary">/u);
   assert.match(css, /\.public-scout-emblem\{position:relative/u);
   assert.match(css, /\.public-scout-rank\{display:flex;align-items:center/u);
