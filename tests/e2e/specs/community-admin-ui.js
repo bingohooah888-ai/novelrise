@@ -10,14 +10,16 @@ const DATE = '2026-10-16T09:00:00Z';
 async function installIsolatedAdmin(page, { forbidden = false } = {}) {
   const state = {
     requests: [],
-    reports: [{
-      id: 1,
-      post_key: POST_KEY,
-      reporter_user_id: USER_ID,
-      reason: INERT_REASON,
-      status: 'pending',
-      created_at: DATE
-    }],
+    reports: [
+      {
+        id: 1,
+        post_key: POST_KEY,
+        reporter_user_id: USER_ID,
+        reason: INERT_REASON,
+        status: 'pending',
+        created_at: DATE
+      }
+    ],
     hidden: [],
     restrictions: []
   };
@@ -65,12 +67,14 @@ async function installIsolatedAdmin(page, { forbidden = false } = {}) {
       } else if (action === 'restore') {
         state.hidden = state.hidden.filter((row) => row.post_key !== postKey);
       } else if (action === 'restrict') {
-        state.restrictions = [{
-          user_id: userId,
-          reason,
-          expires_at: '2026-10-23T09:00:00Z',
-          created_at: DATE
-        }];
+        state.restrictions = [
+          {
+            user_id: userId,
+            reason,
+            expires_at: '2026-10-23T09:00:00Z',
+            created_at: DATE
+          }
+        ];
       } else if (action === 'unrestrict') {
         state.restrictions = state.restrictions.filter(
           (row) => row.user_id !== userId
@@ -104,7 +108,7 @@ async function installIsolatedAdmin(page, { forbidden = false } = {}) {
   return state;
 }
 
-test('community moderator mock: unauthorized response hides all private rows', async ({
+test('unauthorized moderator response hides all private rows', async ({
   page
 }) => {
   const state = await installIsolatedAdmin(page, { forbidden: true });
@@ -117,7 +121,7 @@ test('community moderator mock: unauthorized response hides all private rows', a
   expect(state.requests.map((call) => call.method)).toEqual(['GET']);
 });
 
-test('community moderator mock: hide, restore, restrict and unrestrict remain isolated', async ({
+test('isolated moderator UI hide, restore, restrict and unrestrict', async ({
   page
 }) => {
   const state = await installIsolatedAdmin(page);
@@ -142,32 +146,35 @@ test('community moderator mock: hide, restore, restrict and unrestrict remain is
   await expect(page.locator('#communityReportRows img')).toHaveCount(0);
   expect(injectedAlertCount).toBe(0);
 
-  await page.locator('#communityReportRows')
-    .getByRole('button', { name: '非表示' }).click();
+  const reportRows = page.locator('#communityReportRows');
+  await reportRows.getByRole('button', { name: '非表示' }).click();
   await expect(page.locator('#communityHiddenRows li')).toHaveCount(1);
-  await page.locator('#communityHiddenRows')
-    .getByRole('button', { name: '復元' }).click();
+  const hiddenRows = page.locator('#communityHiddenRows');
+  await hiddenRows.getByRole('button', { name: '復元' }).click();
   await expect(page.locator('#communityHiddenRows li')).toHaveCount(0);
 
-  await page.locator('#communityRestrictForm input[name="userId"]')
-    .fill(USER_ID);
-  await page.locator('#communityRestrictForm textarea[name="reason"]')
-    .fill('通報内容を確認して7日間制限');
+  const form = page.locator('#communityRestrictForm');
+  await form.locator('input[name="userId"]').fill(USER_ID);
+  await form.locator('textarea[name="reason"]').fill('通報内容を確認して7日間制限');
   await page.locator('#communityRestrictForm button[type="submit"]').click();
   await expect(page.locator('#communityRestrictedRows li')).toHaveCount(1);
-  await page.locator('#communityRestrictedRows')
-    .getByRole('button', { name: '解除' }).click();
+  const restrictedRows = page.locator('#communityRestrictedRows');
+  await restrictedRows.getByRole('button', { name: '解除' }).click();
   await expect(page.locator('#communityRestrictedRows li')).toHaveCount(0);
 
   const writes = state.requests.filter((call) => call.method === 'POST');
   expect(writes.map((call) => call.body.action)).toEqual([
-    'hide', 'restore', 'restrict', 'unrestrict'
+    'hide',
+    'restore',
+    'restrict',
+    'unrestrict'
   ]);
   expect(writes[0].body.post_key).toBe(POST_KEY);
   expect(writes[2].body.user_id).toBe(USER_ID);
-  expect(state.requests.every(
+  const allAuthenticated = state.requests.every(
     (call) => call.auth === 'Bearer synthetic-admin-token'
-  )).toBe(true);
+  );
+  expect(allAuthenticated).toBe(true);
   expect(injectedAlertCount).toBe(0);
 
   const sizes = await page.evaluate(() => ({
