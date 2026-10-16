@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  const PAGE_SIZE = 24;
+  const PAGE_SIZE = 6;
   const endpoint = 'novelight_public_contest_catalog_filtered';
   const R15_PREF_KEY = 'novelight:hide-r15-discovery';
   const databaseUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
@@ -11,6 +11,9 @@
 
   const client = supabase.createClient(databaseUrl, publishableKey);
   const statusEl = document.getElementById('contestStatus');
+  const browseLink = document.getElementById('contestBrowseLink');
+  const entriesTitle = document.getElementById('entriesTitle');
+  const entriesIntro = document.getElementById('contestEntriesIntro');
   const entriesEl = document.getElementById('contestEntries');
   const countEl = document.getElementById('entryCount');
   const more = document.getElementById('contestMoreButton');
@@ -99,7 +102,13 @@
     }
   }
 
-  function entryCard(work) {
+  // The contest itself controls the launch; 11/1 is not a client-only timer.
+  // Existing public novels remain readable through their ordinary pages.
+  function contestReadingOpen(status) {
+    return ['active', 'review', 'finalized'].includes(status);
+  }
+
+  function entryCard(work, readingOpen) {
     const article = document.createElement('article');
     article.className = 'contest-entry-card';
 
@@ -126,13 +135,19 @@
     const title = document.createElement('h3');
     title.textContent = String(work.title || '無題の作品');
 
-    const link = document.createElement('a');
-    link.className = 'contest-entry-card-action';
-    link.href = 'novel.html?id=' + encodeURIComponent(work.novel_id);
-    link.textContent = '作品を読む →';
-    link.setAttribute('aria-label', title.textContent + 'を読む');
-
-    article.append(tags, title, link);
+    if (readingOpen) {
+      const link = document.createElement('a');
+      link.className = 'contest-entry-card-action';
+      link.href = 'novel.html?id=' + encodeURIComponent(work.novel_id);
+      link.textContent = '作品を読む →';
+      link.setAttribute('aria-label', title.textContent + 'を読む');
+      article.append(tags, title, link);
+    } else {
+      const notice = document.createElement('span');
+      notice.className = 'contest-entry-card-action contest-entry-card-prestart';
+      notice.textContent = '11月1日の開幕後に読めます';
+      article.append(tags, title, notice);
+    }
     return article;
   }
 
@@ -159,7 +174,13 @@
       }
 
       currentStatus = data.contest_status;
+      const readingOpen = contestReadingOpen(currentStatus);
       statusEl.textContent = stateText[currentStatus] || '開催情報を確認中';
+      browseLink.textContent = readingOpen ? '参加作品を読む' : '参加作品を見る';
+      entriesTitle.textContent = readingOpen ? '参加作品を読む' : 'エントリー作品一覧';
+      entriesIntro.textContent = readingOpen
+        ? '知名度に関係なく、気になる物語の最初の1話から。'
+        : '応募受付中はエントリー作品の情報を先行公開します。星灯祭の読書リンクは11月1日の開幕後からご利用いただけます。';
       void loadPublishedRanking();
       const total = Math.max(0, Number(data.total_entries) || 0);
       const works = data.entries;
@@ -175,7 +196,7 @@
             : '参加作品はまだありません。';
         entriesEl.append(empty);
       } else {
-        for (const work of works) entriesEl.append(entryCard(work));
+        for (const work of works) entriesEl.append(entryCard(work, readingOpen));
       }
 
       offset += works.length;
@@ -247,7 +268,7 @@
   }
 
   more.addEventListener('click', async () => {
-    more.textContent = 'もっと作品を見る';
+    more.textContent = 'もっと見る';
     await loadEntries(false);
   });
 

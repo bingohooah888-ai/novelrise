@@ -34,7 +34,7 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
         <p class="contest-hero-lead">NOVELIGHT 第1回 星灯祭。読者に届き、続きを読みたいと思わせた物語が、上位を目指せる30日間。</p>
         <div class="contest-hero-actions">
           <a class="contest-button contest-button-primary" href="#enter">作品をエントリーする</a>
-          <a class="contest-button contest-button-secondary" href="#entries">参加作品を読む</a>
+          <a class="contest-button contest-button-secondary" href="#entries" id="contestBrowseLink">参加作品を見る</a>
         </div>
         <div class="contest-hero-dates">
           <span><strong>応募締切</strong><time datetime="2026-10-31T23:59:59+09:00">10月31日（土）23:59</time></span>
@@ -115,8 +115,8 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
       <div class="contest-section-heading">
         <div>
           <p class="contest-kicker">ENTRIES</p>
-          <h2 id="entriesTitle">参加作品を読む</h2>
-          <p class="contest-section-copy">知名度に関係なく、気になる物語の最初の1話から。</p>
+          <h2 id="entriesTitle">エントリー作品一覧</h2>
+          <p class="contest-section-copy" id="contestEntriesIntro">応募受付中はエントリー作品の情報を先行公開します。星灯祭の読書リンクは11月1日の開幕後からご利用いただけます。</p>
         </div>
         <p id="entryCount" class="contest-entry-count" aria-live="polite"></p>
       </div>
@@ -129,7 +129,7 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
         <p class="contest-list-message">参加作品を読み込んでいます…</p>
       </div>
       <div class="contest-list-bottom">
-        <button type="button" id="contestMoreButton" class="contest-button contest-button-secondary" hidden>もっと作品を見る</button>
+        <button type="button" id="contestMoreButton" class="contest-button contest-button-secondary" hidden>もっと見る</button>
       </div>
     </section>
 

@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { URL } from 'node:url';
+import { runInNewContext } from 'node:vm';
+import { setImmediate as nextTick } from 'node:timers/promises';
 import { isContestVisible } from '../api/contest-page.js';
 
 function source(path) {
@@ -137,4 +139,183 @@ test('server page denies unpublished or invalid states', () => {
     isContestVisible({ status: 'cancelled', public_visible: true }),
     false
   );
+});
+
+function makeContestGalleryBrowser(status, total = 8, signedIn = false) {
+  const workList = Array.from({ length: total }, (_, i) => ({
+    novel_id: i + 100,
+    title: '応募作品' + (i + 1),
+    genre: 'ファンタジー',
+    published_episodes: 10,
+    content_rating: 'general'
+  }));
+  function node(tag = 'div') {
+    return {
+      tagName: tag.toUpperCase(),
+      children: [],
+      listeners: {},
+      textContent: '',
+      hidden: false,
+      disabled: false,
+      append(...items) {
+        this.children.push(...items);
+      },
+      replaceChildren(...items) {
+        this.children = items;
+      },
+      addEventListener(name, handler) {
+        this.listeners[name] = handler;
+      },
+      setAttribute(name, value) {
+        this[name] = value;
+      }
+    };
+  }
+  const ids = new Map();
+  const prompt = node();
+  prompt.hidden = true;
+  ids.set('contestLoginPrompt', prompt);
+  const mounted = [];
+  const doc = {
+    getElementById(id) {
+      if (!ids.has(id)) ids.set(id, node());
+      return ids.get(id);
+    },
+    createElement: node
+  };
+  const requests = [];
+  const client = {
+    auth: {
+      async getSession() {
+        const session = signedIn ? { user: { id: 'author-1' } } : null;
+        return { data: { session }, error: null };
+      }
+    },
+    async rpc(name, params) {
+      requests.push({ name, params });
+      if (name === 'novelight_public_contest_rankings') {
+        return { data: { ok: false }, error: null };
+      }
+      assert.equal(name, 'novelight_public_contest_catalog_filtered');
+      return {
+        data: {
+          ok: true,
+          contest_status: status,
+          total_entries: workList.length,
+          entries: workList.slice(
+            params.p_offset,
+            params.p_offset + params.p_limit
+          )
+        },
+        error: null
+      };
+    }
+  };
+  runInNewContext(js, {
+    document: doc,
+    supabase: { createClient: () => client },
+    NovelightClient: { recordVisit: () => Promise.resolve() },
+    window: {
+      localStorage: { getItem: () => null },
+      addEventListener() {},
+      NovelightContestEntry: {
+        async mountContestPage(options) {
+          mounted.push(options);
+        }
+      }
+    },
+    console
+  });
+  return { ids, requests, mounted };
+}
+
+test('registration shows non-clickable entered works', async () => {
+  const gallery = makeContestGalleryBrowser('registration');
+  await nextTick();
+  const entries = gallery.ids.get('contestEntries');
+  const more = gallery.ids.get('contestMoreButton');
+  assert.equal(entries.children.length, 6);
+  assert.equal(
+    gallery.ids.get('contestBrowseLink').textContent,
+    '参加作品を見る'
+  );
+  assert.equal(
+    gallery.ids.get('entriesTitle').textContent,
+    'エントリー作品一覧'
+  );
+  assert.match(
+    gallery.ids.get('contestEntriesIntro').textContent,
+    /11月1日の開幕後/
+  );
+  for (const card of entries.children) {
+    assert.equal(
+      card.children.some((part) => part.tagName === 'A'),
+      false
+    );
+    assert.match(card.children.at(-1).textContent, /11月1日の開幕後に読めます/);
+  }
+  assert.equal(more.hidden, false);
+  assert.equal(gallery.requests[0].params.p_limit, 6);
+  assert.equal(gallery.requests[0].params.p_offset, 0);
+
+  await more.listeners.click();
+  assert.equal(entries.children.length, 8);
+  assert.equal(gallery.requests[1].params.p_offset, 6);
+  assert.equal(more.hidden, true);
+});
+
+test('active contest restores links for entered works', async () => {
+  const gallery = makeContestGalleryBrowser('active', 2);
+  await nextTick();
+  assert.equal(
+    gallery.ids.get('contestBrowseLink').textContent,
+    '参加作品を読む'
+  );
+  assert.equal(gallery.ids.get('entriesTitle').textContent, '参加作品を読む');
+  const cards = gallery.ids.get('contestEntries').children;
+  assert.equal(cards.length, 2);
+  for (const card of cards) {
+    const link = card.children.find((part) => part.tagName === 'A');
+    assert.match(link.href, /^novel\.html\?id=\d+$/);
+    assert.equal(link.textContent, '作品を読む →');
+  }
+  assert.equal(gallery.ids.get('contestMoreButton').hidden, true);
+});
+
+test('unexpected contest phases have no reading links', async () => {
+  for (const state of ['draft', 'registration', 'cancelled', 'unexpected']) {
+    const gallery = makeContestGalleryBrowser(state, 1);
+    await nextTick();
+    const card = gallery.ids.get('contestEntries').children[0];
+    assert.equal(
+      card.children.some((part) => part.tagName === 'A'),
+      false
+    );
+  }
+});
+
+test('contest honors hidden prompts and pagination buttons', () => {
+  assert.ok(css.includes('body.novelight-page-contest [hidden]'));
+  assert.ok(css.includes('[hidden]{display:none!important}'));
+  assert.match(page, /id="contestLoginPrompt"[^>]* hidden>/);
+  assert.match(page, /id="contestMoreButton"[^>]* hidden>/);
+});
+
+test('logged-in author sees enrollment without a login prompt', async () => {
+  const gallery = makeContestGalleryBrowser('registration', 1, true);
+  await nextTick();
+  assert.equal(gallery.ids.get('contestLoginPrompt').hidden, true);
+  assert.equal(gallery.mounted.length, 1);
+  assert.equal(gallery.mounted[0].session.user.id, 'author-1');
+  assert.equal(
+    gallery.ids.get('entryPhaseNote').textContent,
+    'ご自身の作品から応募できます。'
+  );
+});
+
+test('guest sees login prompt without mounting author enrollment', async () => {
+  const gallery = makeContestGalleryBrowser('registration', 1);
+  await nextTick();
+  assert.equal(gallery.ids.get('contestLoginPrompt').hidden, false);
+  assert.equal(gallery.mounted.length, 0);
 });
