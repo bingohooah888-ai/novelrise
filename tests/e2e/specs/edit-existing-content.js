@@ -531,14 +531,16 @@ test('first inline illustration must persist before reader navigation', async ({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        assets: [{
-          id: imageId,
-          marker,
-          url: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
-          altText: 'テスト挿絵',
-          width: 1,
-          height: 1
-        }]
+        assets: [
+          {
+            id: imageId,
+            marker,
+            url: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+            altText: 'テスト挿絵',
+            width: 1,
+            height: 1
+          }
+        ]
       })
     });
   });
