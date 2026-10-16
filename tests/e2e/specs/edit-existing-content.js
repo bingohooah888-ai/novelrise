@@ -547,14 +547,14 @@ test('first inline illustration must persist before reader navigation', async ({
 
   await page.goto('/episode-edit.html?id=2367');
   await expect(page.locator('#content')).toHaveValue('本文の最後です。');
-  await page.waitForFunction(() => !!window.NovelightEpisodeVisualEditor);
+  await page.waitForFunction(() => !!globalThis.NovelightEpisodeVisualEditor);
 
   // The first image is placed in an episode loaded without any marker.
   await page.evaluate((value) => {
-    const source = document.getElementById('content');
+    const source = globalThis.document.getElementById('content');
     source.selectionStart = source.value.length;
     source.selectionEnd = source.value.length;
-    window.NovelightEpisodeIllustrations.insertMarker(source, value);
+    globalThis.NovelightEpisodeIllustrations.insertMarker(source, value);
   }, marker);
   await expect(page.locator('.nl-visual-illustration')).toBeVisible();
   await expect(page.locator('#content')).toHaveValue(
@@ -567,7 +567,7 @@ test('first inline illustration must persist before reader navigation', async ({
   // The prior bug redirected without calling the update, leaving no stored row.
   const stored = await page.evaluate(() => {
     const tables = JSON.parse(
-      sessionStorage.getItem('__novelight_edit_e2e_tables__') || '{}'
+      globalThis.sessionStorage.getItem('__novelight_edit_e2e_tables__') || '{}'
     );
     return tables.episodes?.content || '';
   });
