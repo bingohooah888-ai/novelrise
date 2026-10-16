@@ -1,0 +1,203 @@
+name: Community Phase 1 Auth-safe Browser Read-only Proof (OWNER only)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Bind one OWNER approval to immutable existing Preview
+    if: >-
+      github.event.issue.number == 188 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_COMMUNITY_BROWSER_APPROVE ')
+    concurrency:
+      group: community-browser-readonly-approval
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      main_sha: ${{ steps.bind.outputs.main_sha }}
+      candidate_sha: ${{ steps.bind.outputs.candidate_sha }}
+      request_id: ${{ steps.bind.outputs.request_id }}
+      feature_sha: ${{ steps.bind.outputs.feature_sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Bind exact current main and unused OWNER ledger entry
+        id: bind
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/reuse-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/reuse-pr.json
+          feature_head="$(jq -er '.head.sha' /tmp/reuse-pr.json)"
+          gh api "repos/$GITHUB_REPOSITORY/git/trees/$feature_head?recursive=1" > /tmp/reuse-feature-tree.json
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" \
+            > /tmp/reuse-ledger.json
+          node scripts/community-browser-readonly-admission.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/reuse-main.json /tmp/reuse-pr.json \
+            /tmp/reuse-feature-tree.json /tmp/reuse-ledger.json \
+            > /tmp/reuse-decision.json
+          main="$(jq -er '.mainSha' /tmp/reuse-decision.json)"
+          test "$(git rev-parse HEAD)" = "$main"
+          {
+            echo "main_sha=$main"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/reuse-decision.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/reuse-decision.json)"
+            echo "feature_sha=$(jq -er '.featurePrSha' /tmp/reuse-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Claim approval before Staging network requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.bind.outputs.main_sha }}
+          HEAD: ${{ steps.bind.outputs.candidate_sha }}
+          REQUEST: ${{ steps.bind.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          data="$(jq -cn --arg requestCommentId "$REQUEST" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_BROWSER_CLAIMED $data" > /dev/null
+
+  verify:
+    name: Verify ONE protected existing Preview without redeploy
+    needs: admit
+    if: needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      EXPECTED_REVISION: ${{ needs.admit.outputs.candidate_sha }}
+      EXPECTED_FEATURE_SHA: ${{ needs.admit.outputs.feature_sha }}
+      CANONICAL_STAGING_URL: https://novelrise-pbe0wvv7t-ranobe1.vercel.app
+      STAGING_TRIGGER: approval_comment
+      STAGING_REQUIRE_WRITE_CONFIG: 'true'
+      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      STAGING_SECRET_READONLY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Refuse wrong revision, Production or unset access protection
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$EXPECTED_REVISION" = '944b406bd3cb1d87a27e038e0d514a0254d30ed2'
+          test "$CANONICAL_STAGING_URL" = 'https://novelrise-pbe0wvv7t-ranobe1.vercel.app'
+          test "$STAGING_EXPECTED_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test "$STAGING_E2E_READY" = 'true'
+          test -n "$STAGING_EXPECTED_PUBLISHABLE_KEY"
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+          test -n "$STAGING_SECRET_READONLY"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')" = "$EXPECTED_FEATURE_SHA"
+      - name: Prove Preview revision, isolated server, and Stripe test mode
+        run: node scripts/verify-staging-deployment.mjs
+      - name: Verify deployed browser config and community shell by GET only
+        run: node scripts/community-browser-readonly-proof.mjs verify
+
+      - name: Require DB public gate OFF before any browser traffic
+        run: |
+          node --input-type=module <<'NODE'
+          const url=process.env.STAGING_EXPECTED_SUPABASE_URL;
+          const key=process.env.STAGING_SECRET_READONLY;
+          if(url!=='https://wmlzjgvxgoyrovdhbqbg.supabase.co'||!key)
+            throw Error('Dedicated Staging gate proof unavailable.');
+          const response=await fetch(url+'/rest/v1/community_runtime_control?select=public_enabled&singleton=eq.true',{
+            method:'GET',headers:{apikey:key,Authorization:'Bearer '+key},
+            signal:AbortSignal.timeout(15000)
+          });
+          const rows=response.ok?await response.json():null;
+          if(!Array.isArray(rows)||rows.length!==1||rows[0]?.public_enabled!==false)
+            throw Error('Community public gate is not verified OFF.');
+          NODE
+      - name: Install isolated browser dependencies
+        working-directory: tests/e2e
+        run: npm ci
+      - name: Install Chromium browser only
+        working-directory: tests/e2e
+        run: npx playwright install chrome
+      - name: Run exact-Preview read-only browser check
+        working-directory: tests/e2e
+        env:
+          STAGING_BASE_URL: ${{ env.CANONICAL_STAGING_URL }}
+          NOVELIGHT_COMMUNITY_PREVIEW_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ''
+          NOVELIGHT_COMMUNITY_READONLY_APPROVED: '1'
+          NOVELIGHT_COMMUNITY_EXPECTED_SHA: ${{ env.EXPECTED_REVISION }}
+          NOVELIGHT_COMMUNITY_EXPECTED_SUPABASE_URL: ${{ env.STAGING_EXPECTED_SUPABASE_URL }}
+          NOVELIGHT_COMMUNITY_STAGING_APPROVAL_ID: ${{ needs.admit.outputs.request_id }}
+        run: >-
+          npx playwright test community-gated-readonly.spec.js
+          --config=playwright.staging.config.mjs
+      - name: Upload read-only browser diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: community-browser-readonly-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tests/e2e/staging-test-results
+            tests/e2e/staging-playwright-report
+          if-no-files-found: warn
+          retention-days: 14
+
+  consume:
+    name: Consume one-time approval even if verification fails
+    if: always() && needs.admit.result == 'success'
+    needs: [admit, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Record single-use completion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          HEAD: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST: ${{ needs.admit.outputs.request_id }}
+          OUTCOME: ${{ needs.verify.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          data="$(jq -cn --arg requestCommentId "$REQUEST" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" --arg result "$OUTCOME" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_BROWSER_CONSUMED $data" > /dev/null
