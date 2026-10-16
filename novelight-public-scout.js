@@ -238,6 +238,14 @@
           }
           rankImage.remove();
         });
+        if (rankImage.complete) {
+          if (rankImage.naturalWidth > 0) {
+            rankImage.parentElement.classList.add('has-rank-artwork');
+          } else {
+            rankImage.dataset.triedOriginal = 'true';
+            rankImage.src = rankArtwork;
+          }
+        }
       }
       host.hidden = false;
     } catch (error) {
