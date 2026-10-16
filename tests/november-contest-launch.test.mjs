@@ -32,7 +32,11 @@ function simulate(
     'novelightContestHomePromoDescription',
     'novelightContestHomePromoLink'
   ]) {
-    nodes.set(id, { hidden: true, textContent: '' });
+    nodes.set(id, {
+      hidden: true,
+      textContent: '',
+      setAttribute(name, value) { this[name] = value; }
+    });
   }
   const document = { getElementById: (id) => nodes.get(id) ?? null };
   const client = {
@@ -73,7 +77,7 @@ test('home banner is present but hidden before launch', async () => {
 test('home banner advertises enrollment only after opening', async () => {
   const started = await simulate('registration');
   assert.equal(started.area.hidden, false);
-  assert.equal(started.link.textContent, 'エントリーする →');
+  assert.equal(started.link['aria-label'], '第1回 星灯祭へエントリーする');
   assert.match(started.description.textContent, /10月31日23:59/);
   assert.equal(
     (await simulate('registration', null, '2020-10-31T14:59:59Z')).area.hidden,
@@ -84,8 +88,7 @@ test('home banner advertises enrollment only after opening', async () => {
     true
   );
   const active = await simulate('active');
-  assert.equal(active.area.hidden, false);
-  assert.equal(active.link.textContent, '参加作品を読む →');
+  assert.equal(active.area.hidden, true);
   assert.equal(
     (await simulate('active', new Error('network down'))).area.hidden,
     true
