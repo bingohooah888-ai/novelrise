@@ -54,20 +54,23 @@ test('one equipped title is mounted inside the public profile card', () => {
   assert.match(js, /reader\|author\|limited/u);
 });
 
-test('large badge art appears to the right of the public pen name', () => {
+test('public profile centers pen name, badge, and equipped title in three equal columns', () => {
   assert.match(js, /badge\.appendChild\(artworkWrap\)/u);
+  assert.match(js, /titleName\.textContent = title\.display_name/u);
+  assert.match(js, /badge\.insertAdjacentElement\('afterend', titleName\)/u);
   assert.match(js, /profileHost\.classList\.add\('has-equipped-title'\)/u);
   assert.doesNotMatch(js, /public-profile-equipped-copy/u);
   assert.match(
     css,
-    /#profile\.has-equipped-title\{display:grid;grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/u
+    /#profile\.has-equipped-title\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/u
   );
   assert.match(css, />\.name\{grid-column:1;grid-row:1/u);
-  assert.match(css, /justify-self:end;align-self:center;text-align:right/u);
+  assert.match(css, /justify-self:center;align-self:center;text-align:center/u);
   assert.match(css, />\.bio\{grid-column:1\/-1;grid-row:2/u);
+  assert.match(css, />\.public-profile-equipped-name\{grid-column:3;grid-row:1/u);
   assert.match(
     css,
-    />\.public-profile-equipped-title\{grid-column:2;grid-row:1;justify-self:start;align-self:center/u
+    />\.public-profile-equipped-title\{grid-column:2;grid-row:1;justify-self:center;align-self:center/u
   );
   assert.match(
     css,
@@ -79,7 +82,7 @@ test('large badge art appears to the right of the public pen name', () => {
   );
   assert.match(
     css,
-    /@media\(max-width:640px\)\{\.novelight-page-author #profile\.has-equipped-title\{column-gap:12px/u
+    /@media\(max-width:640px\)\{\.novelight-page-author #profile\.has-equipped-title\{column-gap:8px/u
   );
 });
 
