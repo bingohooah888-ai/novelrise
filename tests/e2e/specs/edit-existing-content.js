@@ -495,3 +495,79 @@ test('stale episode editor never reports an overwritten save', async ({
     /\/episode-edit\.html\?id=episode-edit-stale-e2e$/
   );
 });
+
+test('first inline illustration must persist before reader navigation', async ({
+  page
+}) => {
+  const imageId = '12345678-1234-4234-8234-123456789abc';
+  const marker = `[[NOVELIGHT_ILLUSTRATION:${imageId}]]`;
+  await installEditSupabaseStub(page, {
+    session: {
+      user: { id: 'author-e2e' },
+      access_token: 'e2e-test-token'
+    },
+    updateDelayMs: 250,
+    singleData: {
+      episodes: {
+        id: 2367,
+        novel_id: 257,
+        user_id: 'author-e2e',
+        episode_number: 3,
+        title: '第3話',
+        content: '本文の最後です。',
+        status: 'published',
+        updated_at: '2026-10-15T12:00:00.000Z'
+      },
+      novels: {
+        id: 257,
+        title: 'テスト作品',
+        user_id: 'author-e2e',
+        status: 'published'
+      }
+    }
+  });
+  await page.route('**/api/episode-illustrations', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        assets: [{
+          id: imageId,
+          marker,
+          url: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+          altText: 'テスト挿絵',
+          width: 1,
+          height: 1
+        }]
+      })
+    });
+  });
+
+  await page.goto('/episode-edit.html?id=2367');
+  await expect(page.locator('#content')).toHaveValue('本文の最後です。');
+  await page.waitForFunction(() => !!window.NovelightEpisodeVisualEditor);
+
+  // The first image is placed in an episode loaded without any marker.
+  await page.evaluate((value) => {
+    const source = document.getElementById('content');
+    source.selectionStart = source.value.length;
+    source.selectionEnd = source.value.length;
+    window.NovelightEpisodeIllustrations.insertMarker(source, value);
+  }, marker);
+  await expect(page.locator('.nl-visual-illustration')).toBeVisible();
+  await expect(page.locator('#content')).toHaveValue(
+    '本文の最後です。\n' + marker
+  );
+
+  await page.locator('#save').click();
+  await page.waitForURL(/\/episode\.html\?id=2367$/);
+
+  // The prior bug redirected without calling the update, leaving no stored row.
+  const stored = await page.evaluate(() => {
+    const tables = JSON.parse(
+      sessionStorage.getItem('__novelight_edit_e2e_tables__') || '{}'
+    );
+    return tables.episodes?.content || '';
+  });
+  expect(stored).toContain(marker);
+});
