@@ -141,7 +141,7 @@ test('server page denies unpublished or invalid states', () => {
   );
 });
 
-function makeContestGalleryBrowser(status, total = 8) {
+function makeContestGalleryBrowser(status, total = 8, signedIn = false) {
   const workList = Array.from({ length: total }, (_, i) => ({
     novel_id: i + 100,
     title: '応募作品' + (i + 1),
@@ -172,6 +172,10 @@ function makeContestGalleryBrowser(status, total = 8) {
     };
   }
   const ids = new Map();
+  const prompt = node();
+  prompt.hidden = true;
+  ids.set('contestLoginPrompt', prompt);
+  const mounted = [];
   const doc = {
     getElementById(id) {
       if (!ids.has(id)) ids.set(id, node());
@@ -183,7 +187,8 @@ function makeContestGalleryBrowser(status, total = 8) {
   const client = {
     auth: {
       async getSession() {
-        return { data: { session: null }, error: null };
+        const session = signedIn ? { user: { id: 'author-1' } } : null;
+        return { data: { session }, error: null };
       }
     },
     async rpc(name, params) {
@@ -212,11 +217,16 @@ function makeContestGalleryBrowser(status, total = 8) {
     NovelightClient: { recordVisit: () => Promise.resolve() },
     window: {
       localStorage: { getItem: () => null },
-      addEventListener() {}
+      addEventListener() {},
+      NovelightContestEntry: {
+        async mountContestPage(options) {
+          mounted.push(options);
+        }
+      }
     },
     console
   });
-  return { ids, requests };
+  return { ids, requests, mounted };
 }
 
 test('registration shows non-clickable entered works', async () => {
@@ -282,4 +292,32 @@ test('unexpected contest phases have no reading links', async () => {
       false
     );
   }
+});
+
+test('contest honors hidden prompts and pagination buttons', () => {
+  assert.match(
+    css,
+    /body\\.novelight-page-contest \\[hidden\\]\\{display:none!important\\}/
+  );
+  assert.match(page, /id="contestLoginPrompt"[^>]* hidden>/);
+  assert.match(page, /id="contestMoreButton"[^>]* hidden>/);
+});
+
+test('logged-in author sees enrollment without a login prompt', async () => {
+  const gallery = makeContestGalleryBrowser('registration', 1, true);
+  await nextTick();
+  assert.equal(gallery.ids.get('contestLoginPrompt').hidden, true);
+  assert.equal(gallery.mounted.length, 1);
+  assert.equal(gallery.mounted[0].session.user.id, 'author-1');
+  assert.equal(
+    gallery.ids.get('entryPhaseNote').textContent,
+    'ご自身の作品から応募できます。'
+  );
+});
+
+test('guest sees login prompt without mounting author enrollment', async () => {
+  const gallery = makeContestGalleryBrowser('registration', 1);
+  await nextTick();
+  assert.equal(gallery.ids.get('contestLoginPrompt').hidden, false);
+  assert.equal(gallery.mounted.length, 0);
 });
