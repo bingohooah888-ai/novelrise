@@ -22,6 +22,20 @@
     'SERAPH',
     'LUMINARIS'
   ];
+  // The same official rank artwork paths as the main SCOUT RECORD screen.
+  const rankArtworkPaths = [
+    '',
+    'assets/scout-record/ranks/scout_rank_01_noctis.png',
+    'assets/scout-record/ranks/scout_rank_02_vesper.png',
+    'assets/scout-record/ranks/scout_rank_03_umbra.png',
+    'assets/scout-record/ranks/scout_rank_04_astra.png',
+    'assets/scout-record/ranks/scout_rank_05_lucent.png',
+    'assets/scout-record/ranks/scout_rank_06_aurelis.png',
+    'assets/scout-record/ranks/scout_rank_07_celestia.png',
+    'assets/scout-record/ranks/scout_rank_08_empyrean.png',
+    'assets/scout-record/ranks/scout_rank_09_seraph.png',
+    'assets/scout-record/ranks/scout_rank_10_luminaris.png'
+  ];
   const EQUIPPED_BADGE_WIDTH = 256;
   const EQUIPPED_BADGE_QUALITY = 80;
 
@@ -191,24 +205,40 @@
       mountEquippedTitle(equippedTitle);
 
       if (!host) return;
+      const rankArtwork = rankArtworkPaths[tier];
       host.innerHTML = `
         <div class="public-scout-head">
           <div>
             <h2>SCOUT RECORD</h2>
             <p>公開されている発掘実績</p>
           </div>
-          <div class="public-scout-rank">
-            <div class="public-scout-emblem">${esc(rankNames[tier].slice(0, 1))}</div>
-            <strong>SCOUT RANK — ${esc(rankNames[tier])}</strong>
-          </div>
         </div>
         <div class="public-scout-summary">
           <div class="public-scout-kv"><span>Scout Level</span><strong>Lv.${level.toLocaleString('ja-JP')}</strong></div>
-          <div class="public-scout-kv"><span>発掘成功</span><strong>${Number(data.discovery_success_count || 0).toLocaleString('ja-JP')}</strong></div>
+          <div class="public-scout-rank">
+            <div class="public-scout-emblem">
+              <span class="public-scout-rank-fallback" aria-hidden="true">${esc(rankNames[tier].slice(0, 1))}</span>
+              <img class="public-scout-rank-image" src="${esc(optimizedArtworkPath(rankArtwork))}" alt="${esc(rankNames[tier])}のランクバッジ" width="96" height="96" loading="lazy" decoding="async">
+            </div>
+            <strong>${esc(rankNames[tier])}</strong>
+          </div>
         </div>
-        ${equippedTitle ? `<div class="public-scout-label">装備称号</div><div class="public-scout-badges"><span class="public-scout-badge">${esc(equippedTitle.display_name)}</span></div>` : ''}
         ${discoveries.length ? `<div class="public-scout-label">代表的な発掘実績</div><div class="public-scout-discoveries">${discoveries.map((item) => `<span class="public-scout-discovery">${esc(item.title || '作品')} · ${item.nova_prediction ? 'NOVA' : '+' + Number(item.rank_delta || 0) + ' Rank'}</span>`).join('')}</div>` : ''}
       `;
+      const rankImage = host.querySelector('.public-scout-rank-image');
+      if (rankImage) {
+        rankImage.addEventListener('load', () => {
+          rankImage.parentElement.classList.add('has-rank-artwork');
+        });
+        rankImage.addEventListener('error', () => {
+          if (rankImage.dataset.triedOriginal !== 'true') {
+            rankImage.dataset.triedOriginal = 'true';
+            rankImage.src = rankArtwork;
+            return;
+          }
+          rankImage.remove();
+        });
+      }
       host.hidden = false;
     } catch (error) {
       console.error('Public SCOUT RECORD unavailable', error);
