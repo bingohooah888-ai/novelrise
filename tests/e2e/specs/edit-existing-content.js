@@ -87,7 +87,40 @@ async function installEditSupabaseStub(page, overrides = {}) {
                 data: singleDataFor(table),
                 error: errorFor(state.singleErrors?.[table])
               }),
-              maybeSingle: async () => ({ data: null, error: null }),
+              maybeSingle: async () => {
+                if (operation !== 'update') {
+                  return { data: null, error: null };
+                }
+                await wait(state.updateDelayMs);
+                const error = errorFor(state.updateErrors?.[table]);
+                if (error) return { data: null, error };
+                if (state.staleUpdates?.[table] === true) {
+                  return { data: null, error: null };
+                }
+                const current = singleDataFor(table);
+                const matchingVersion = calls
+                  .filter((call) =>
+                    call.type === 'eq' &&
+                    call.table === table &&
+                    call.operation === 'update' &&
+                    call.column === 'updated_at'
+                  )
+                  .at(-1)?.value;
+                if (
+                  !current ||
+                  (hasOwn(current, 'updated_at') &&
+                    matchingVersion !== current.updated_at)
+                ) {
+                  return { data: null, error: null };
+                }
+                const saved = {
+                  ...current,
+                  ...mutationPayload,
+                  updated_at: new Date().toISOString()
+                };
+                persistUpdate(table, saved);
+                return { data: saved, error: null };
+              },
               then(resolve, reject) {
                 const finish = async () => {
                   if (operation === 'update') {
@@ -325,6 +358,7 @@ test('episode edit loads existing episode, saves changes, and renders the update
         episode_number: 2,
         title: '編集前の第2話',
         content: '編集前の本文です。',
+        updated_at: '2026-10-15T12:00:00.000Z',
         pv: 2,
         status: 'published'
       },
@@ -376,7 +410,8 @@ test('episode edit loads existing episode, saves changes, and renders the update
   });
   expect(evidence.filters).toEqual([
     ['id', 'episode-edit-e2e'],
-    ['user_id', 'author-e2e']
+    ['user_id', 'author-e2e'],
+    ['updated_at', '2026-10-15T12:00:00.000Z']
   ]);
 
   await page.waitForURL(/\/episode\.html\?id=episode-edit-e2e$/);
@@ -398,7 +433,8 @@ test('episode edit recovers after an async save failure', async ({ page }) => {
         user_id: 'author-e2e',
         episode_number: 1,
         title: '保存失敗前の第1話',
-        content: '保存失敗テストの本文です。'
+        content: '保存失敗テストの本文です。',
+        updated_at: '2026-10-15T12:00:00.000Z'
       }
     }
   });
@@ -424,4 +460,116 @@ test('episode edit recovers after an async save failure', async ({ page }) => {
   );
   expect(updateEvidenceFor('episodes', calls).update).toBeTruthy();
   expect(pageErrors).toEqual([]);
+});
+
+test('stale episode editor never reports an overwritten save', async ({
+  page
+}) => {
+  await installEditSupabaseStub(page, {
+    session: { user: { id: 'author-e2e' } },
+    staleUpdates: { episodes: true },
+    singleData: {
+      episodes: {
+        id: 'episode-edit-stale-e2e',
+        novel_id: 'novel-for-stale-e2e',
+        user_id: 'author-e2e',
+        episode_number: 3,
+        title: '編集前',
+        content: '挿絵のある本文',
+        status: 'published',
+        updated_at: '2026-10-15T12:00:00.000Z'
+      }
+    }
+  });
+
+  await page.goto('/episode-edit.html?id=episode-edit-stale-e2e');
+  await expect(page.locator('#save')).toBeEnabled();
+  await page.locator('#title').fill('別タブと競合する編集');
+  await page.locator('#save').click();
+
+  await expect(page.locator('#status')).toContainText(
+    '別の画面などでこの話が更新されています'
+  );
+  await expect(page.locator('#save')).toBeEnabled();
+  await expect(page).toHaveURL(
+    /\/episode-edit\.html\?id=episode-edit-stale-e2e$/
+  );
+});
+
+test('first inline illustration must persist before reader navigation', async ({
+  page
+}) => {
+  const imageId = '12345678-1234-4234-8234-123456789abc';
+  const marker = `[[NOVELIGHT_ILLUSTRATION:${imageId}]]`;
+  await installEditSupabaseStub(page, {
+    session: {
+      user: { id: 'author-e2e' },
+      access_token: 'e2e-test-token'
+    },
+    updateDelayMs: 250,
+    singleData: {
+      episodes: {
+        id: 2367,
+        novel_id: 257,
+        user_id: 'author-e2e',
+        episode_number: 3,
+        title: '第3話',
+        content: '本文の最後です。',
+        status: 'published',
+        updated_at: '2026-10-15T12:00:00.000Z'
+      },
+      novels: {
+        id: 257,
+        title: 'テスト作品',
+        user_id: 'author-e2e',
+        status: 'published'
+      }
+    }
+  });
+  await page.route('**/api/episode-illustrations', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        assets: [
+          {
+            id: imageId,
+            marker,
+            url: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+            altText: 'テスト挿絵',
+            width: 1,
+            height: 1
+          }
+        ]
+      })
+    });
+  });
+
+  await page.goto('/episode-edit.html?id=2367');
+  await expect(page.locator('#content')).toHaveValue('本文の最後です。');
+  await page.waitForFunction(() => !!globalThis.NovelightEpisodeVisualEditor);
+
+  // The first image is placed in an episode loaded without any marker.
+  await page.evaluate((value) => {
+    const source = globalThis.document.getElementById('content');
+    source.selectionStart = source.value.length;
+    source.selectionEnd = source.value.length;
+    globalThis.NovelightEpisodeIllustrations.insertMarker(source, value);
+  }, marker);
+  await expect(page.locator('.nl-visual-illustration')).toBeVisible();
+  await expect(page.locator('#content')).toHaveValue(
+    '本文の最後です。\n' + marker
+  );
+
+  await page.locator('#save').click();
+  await page.waitForURL(/\/episode\.html\?id=2367$/);
+
+  // The prior bug redirected without calling the update, leaving no stored row.
+  const stored = await page.evaluate(() => {
+    const tables = JSON.parse(
+      globalThis.sessionStorage.getItem('__novelight_edit_e2e_tables__') || '{}'
+    );
+    return tables.episodes?.content || '';
+  });
+  expect(stored).toContain(marker);
 });

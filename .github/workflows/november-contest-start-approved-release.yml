@@ -1,0 +1,54 @@
+name: NOVELIGHT November Contest Start One-Time Release
+
+# Dedicated 11/1 START ONLY. Registration opening, routine Production approvals,
+# ordinary comments and manual workflow dispatch do NOT start the contest.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-contest-2026-start-once
+  cancel-in-progress: false
+
+jobs:
+  owner-approved-contest-start:
+    name: Validate separate OWNER start approval and transition once
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 2120 &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_CONTEST_START_APPROVE ')
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      NOVELIGHT_CONTEST_RELEASE_SCOPE: OWNER_APPROVED_START_ONLY
+
+    steps:
+      - name: Check out exact event main and disable repository token persistence
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fail closed on mismatch or absent explicit Production credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA" || exit 1
+          test -n "$SUPABASE_ACCESS_TOKEN" || exit 1
+          test "$NOVELIGHT_CONTEST_RELEASE_SCOPE" = "OWNER_APPROVED_START_ONLY" || exit 1
+
+      - name: Revalidate owner claim, preflight, atomic start and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/november-contest-start-release.mjs
