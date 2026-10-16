@@ -239,7 +239,10 @@ test('registration shows non-clickable entered works', async () => {
     /11月1日の開幕後/
   );
   for (const card of entries.children) {
-    assert.equal(card.children.some((part) => part.tagName === 'A'), false);
+    assert.equal(
+      card.children.some((part) => part.tagName === 'A'),
+      false
+    );
     assert.match(card.children.at(-1).textContent, /11月1日の開幕後に読めます/);
   }
   assert.equal(more.hidden, false);
@@ -275,24 +278,9 @@ test('unexpected contest phases have no reading links', async () => {
     const gallery = makeContestGalleryBrowser(state, 1);
     await nextTick();
     const card = gallery.ids.get('contestEntries').children[0];
-    assert.equal(card.children.some((part) => part.tagName === 'A'), false);
+    assert.equal(
+      card.children.some((part) => part.tagName === 'A'),
+      false
+    );
   }
-});
-
-test('temporary formatting diagnostic', async () => {
-  const prettier = await import('prettier');
-  const original = readFileSync(
-    new URL('./november-contest-landing.test.mjs', import.meta.url),
-    'utf8'
-  );
-  const config = await prettier.resolveConfig(
-    'tests/november-contest-landing.test.mjs'
-  );
-  const formatted = await prettier.format(original, {
-    ...config,
-    filepath: 'tests/november-contest-landing.test.mjs'
-  });
-  const start = formatted.indexOf('function makeContestGalleryBrowser');
-  const end = formatted.indexOf("test('temporary formatting diagnostic'");
-  console.log('PRETTIER_DEBUG_BEGIN\n' + formatted.slice(start, end) + '\nPRETTIER_DEBUG_END');
 });
