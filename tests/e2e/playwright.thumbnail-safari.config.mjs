@@ -4,7 +4,10 @@ const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:4173';
 
 export default defineConfig({
   testDir: './specs',
-  testMatch: 'thumbnail-safari-png-fallback.spec.js',
+  testMatch: [
+    'thumbnail-safari-png-fallback.spec.js',
+    'episode-illustrations-webkit.spec.js'
+  ],
   outputDir: 'test-results',
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
