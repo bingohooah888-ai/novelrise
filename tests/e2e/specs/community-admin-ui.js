@@ -59,8 +59,12 @@ async function installIsolatedAdmin(page, { forbidden = false } = {}) {
     }
 
     if (request.method() === 'POST') {
-      const { action, post_key: postKey, user_id: userId, reason } =
-        request.postDataJSON();
+      const {
+        action,
+        post_key: postKey,
+        user_id: userId,
+        reason
+      } = request.postDataJSON();
       if (action === 'hide') {
         state.reports = state.reports.filter((row) => row.post_key !== postKey);
         state.hidden = [{ post_key: postKey, reason, hidden_at: DATE }];
@@ -155,7 +159,9 @@ test('isolated moderator UI hide, restore, restrict and unrestrict', async ({
 
   const form = page.locator('#communityRestrictForm');
   await form.locator('input[name="userId"]').fill(USER_ID);
-  await form.locator('textarea[name="reason"]').fill('通報内容を確認して7日間制限');
+  await form
+    .locator('textarea[name="reason"]')
+    .fill('通報内容を確認して7日間制限');
   await page.locator('#communityRestrictForm button[type="submit"]').click();
   await expect(page.locator('#communityRestrictedRows li')).toHaveCount(1);
   const restrictedRows = page.locator('#communityRestrictedRows');
