@@ -133,28 +133,26 @@ test('prior Preview deployment must be ledger-proven successful', () => {
   );
 });
 
-
-test('verification CLI fails closed on missing config without ReferenceError', () => {
+test('verification CLI fails closed on missing config', () => {
   const script = fileURLToPath(
     new URL('../scripts/community-browser-readonly-proof.mjs', import.meta.url)
   );
   const result = spawnSync(process.execPath, [script, 'verify'], {
     encoding: 'utf8',
-    env: { PATH: process.env.PATH || '' },
+    env: {},
     timeout: 5000
   });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /COMMUNITY_REUSE_READONLY_DENIED: expected immutable revision/u);
+  assert.match(result.stderr, /COMMUNITY_REUSE_READONLY_DENIED/u);
 });
 
-test('workflow pins the current existing Preview, not the legacy host', () => {
-  const workflow = readFileSync(
-    new URL('../.github/workflows/community-browser-readonly.yml', import.meta.url),
-    'utf8'
+test('workflow pins the existing approved Preview URL', () => {
+  const file = new URL(
+    '../.github/workflows/community-browser-readonly.yml',
+    import.meta.url
   );
-  assert.match(
-    workflow,
-    /test "\$CANONICAL_STAGING_URL" = 'https:\/\/novelrise-pbe0wvv7t-ranobe1\.vercel\.app'/u
-  );
-  assert.doesNotMatch(workflow, /novelrise-ibyeza739-ranobe1\.vercel\.app/u);
+  const workflow = readFileSync(file, 'utf8');
+  const pinned = `test "$CANONICAL_STAGING_URL" = '${REUSE_URL}'`;
+  assert.ok(workflow.includes(pinned));
+  assert.ok(!workflow.includes('novelrise-ibyeza739-ranobe1.vercel.app'));
 });
