@@ -198,7 +198,10 @@ function makeContestGalleryBrowser(status, total = 8) {
           ok: true,
           contest_status: status,
           total_entries: workList.length,
-          entries: workList.slice(params.p_offset, params.p_offset + params.p_limit)
+          entries: workList.slice(
+            params.p_offset,
+            params.p_offset + params.p_limit
+          )
         },
         error: null
       };
@@ -225,16 +228,10 @@ test('registration shows non-clickable entered works', async () => {
   assert.equal(entries.children.length, 6);
   assert.equal(gallery.ids.get('contestBrowseLink').textContent, '参加作品を見る');
   assert.equal(gallery.ids.get('entriesTitle').textContent, 'エントリー作品一覧');
-  assert.match(
-    gallery.ids.get('contestEntriesIntro').textContent,
-    /11月1日の開幕後/
-  );
+  assert.match(gallery.ids.get('contestEntriesIntro').textContent, /11月1日の開幕後/);
   for (const card of entries.children) {
     assert.equal(card.children.some((part) => part.tagName === 'A'), false);
-    assert.match(
-      card.children.at(-1).textContent,
-      /11月1日の開幕後に読めます/
-    );
+    assert.match(card.children.at(-1).textContent, /11月1日の開幕後に読めます/);
   }
   assert.equal(more.hidden, false);
   assert.equal(gallery.requests[0].params.p_limit, 6);
