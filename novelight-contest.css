@@ -124,3 +124,31 @@ body.novelight-page-contest::before{
 .novelight-page-contest .contest-prize-section{background:rgba(12,23,39,.68)}
 .novelight-page-contest .contest-enroll-section{background:rgba(13,25,43,.72)}
 .novelight-page-contest .contest-timeline{background:rgba(13,23,39,.72)}
+
+/* Star Festival typography and contrast: navy sections stay light; only white cards are dark. */
+html body.novelight-theme.novelight-page-contest,
+body.novelight-page-contest button,
+body.novelight-page-contest input,
+body.novelight-page-contest select,
+body.novelight-page-contest textarea {
+ font-family:"Yu Mincho","游明朝","Hiragino Mincho ProN","Noto Serif CJK JP","Noto Serif JP","MS PMincho",serif !important
+}
+body.novelight-page-contest .contest-hero h1{color:#ffe0a0;font-size:clamp(48px,7vw,82px);line-height:1.25;letter-spacing:.025em}
+body.novelight-page-contest .contest-prize-layout h2,
+body.novelight-page-contest .contest-section h2,
+body.novelight-page-contest .contest-timeline h2{color:#f9f5e9}
+body.novelight-page-contest .contest-prize-layout p,
+body.novelight-page-contest .contest-section-copy,
+body.novelight-page-contest .contest-note{color:#e1e7ee}
+body.novelight-page-contest .contest-prize-layout h2 span{color:#edca7d}
+body.novelight-page-contest :is(.contest-prize-visual,.contest-points-card,.contest-enroll-panel,.contest-entry-card,.contest-list-message,.contest-timeline-grid > div,.contest-ranking-item){
+ background:#fff;color:#1b1e23;border-color:rgba(18,27,44,.14);box-shadow:0 12px 28px rgba(0,0,0,.16)
+}
+body.novelight-page-contest :is(.contest-prize-visual,.contest-points-card,.contest-enroll-panel,.contest-entry-card,.contest-list-message,.contest-timeline-grid > div,.contest-ranking-item)
+:is(h1,h2,h3,h4,p,span,small,strong,a,div,li,label){color:#20242b}
+body.novelight-page-contest :is(.contest-prize-visual,.contest-points-card,.contest-timeline-grid > div,.contest-ranking-item) strong{color:#936018}
+body.novelight-page-contest .contest-enroll-panel .contest-note{color:#343b46}
+body.novelight-page-contest .contest-entry-card-tags span{border-color:rgba(18,27,44,.14)}
+body.novelight-page-contest .contest-panel-title,
+body.novelight-page-contest .nl-contest-entry-work{border-color:rgba(18,27,44,.15)}
+@media(max-width:560px){body.novelight-page-contest .contest-hero h1{font-size:clamp(38px,9vw,50px)}}
