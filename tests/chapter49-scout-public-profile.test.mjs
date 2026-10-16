@@ -46,7 +46,7 @@ test('one equipped title is mounted inside the public profile card', () => {
   assert.match(js, /mountEquippedTitle\(equippedTitle\)/u);
   assert.match(js, /profileHost\.querySelector\('\.name'\)/u);
   assert.match(js, /public-profile-equipped-title/u);
-  assert.match(js, /name\.insertAdjacentElement\('afterend', badge\)/u);
+  assert.match(js, /name\.insertAdjacentElement\('afterend', titleGroup\)/u);
   assert.match(js, /limited_founding_author/u);
   assert.match(js, /assets\/founding-authors-badge-2026\.png/u);
   assert.match(js, /assets\/scout-badges/u);
@@ -54,33 +54,28 @@ test('one equipped title is mounted inside the public profile card', () => {
   assert.match(js, /reader\|author\|limited/u);
 });
 
-test('large badge art appears to the right of the public pen name', () => {
-  assert.match(js, /badge\.appendChild\(artworkWrap\)/u);
+test('public profile keeps name left and equipped group right', () => {
+  assert.match(js, /titleName\.textContent = title\.display_name/u);
+  assert.match(js, /titleGroup\.append\(badge, titleName\)/u);
+  assert.match(js, /name\.insertAdjacentElement\('afterend', titleGroup\)/u);
   assert.match(js, /profileHost\.classList\.add\('has-equipped-title'\)/u);
-  assert.doesNotMatch(js, /public-profile-equipped-copy/u);
-  assert.match(
-    css,
-    /#profile\.has-equipped-title\{display:grid;grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/u
-  );
+  assert.match(css, /grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/u);
+  assert.match(css, /padding-inline:clamp\(22px,4vw,64px\)/u);
   assert.match(css, />\.name\{grid-column:1;grid-row:1/u);
-  assert.match(css, /justify-self:end;align-self:center;text-align:right/u);
+  assert.match(css, /justify-self:start;align-self:center;text-align:left/u);
   assert.match(css, />\.bio\{grid-column:1\/-1;grid-row:2/u);
-  assert.match(
-    css,
-    />\.public-profile-equipped-title\{grid-column:2;grid-row:1;justify-self:start;align-self:center/u
-  );
+  assert.match(css, />\.public-profile-equipped-group\{grid-column:2/u);
+  assert.match(css, /align-items:center;justify-self:end;gap:14px/u);
+  assert.match(css, /\.public-profile-equipped-name\{min-width:0/u);
   assert.match(
     css,
     />\.author-follow-controls,.*>\.user-safety-controls\{grid-column:1\/-1\}/u
   );
   assert.match(
     css,
-    /\.public-profile-equipped-title\{display:block;width:120px;height:120px;.*border:0;background:transparent/u
+    /\.public-profile-equipped-title\{display:block;flex:0 0 120px/u
   );
-  assert.match(
-    css,
-    /@media\(max-width:640px\)\{\.novelight-page-author #profile\.has-equipped-title\{column-gap:12px/u
-  );
+  assert.match(css, /\.public-profile-equipped-title\{flex-basis:90px/u);
 });
 
 test('equipped title artwork has a safe fallback and responsive styling', () => {

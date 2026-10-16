@@ -1,12 +1,13 @@
 .public-scout{margin:0 0 27px;padding:22px;border:1px solid #d9c897;border-radius:15px;background:linear-gradient(135deg,#fffdf6,#f5f0e5)}
 .public-scout[hidden]{display:none}
-/* Public profile identity: pen name/bio on the left, artwork-only title on the right. */
-.novelight-page-author #profile.has-equipped-title{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto;column-gap:clamp(12px,3vw,36px);align-items:center}
-.novelight-page-author #profile.has-equipped-title>.name{grid-column:1;grid-row:1;min-width:0;overflow-wrap:anywhere;justify-self:end;align-self:center;text-align:right}
+/* Public profile identity: pen name left, grouped artwork and title right. */
+.novelight-page-author #profile.has-equipped-title{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto;column-gap:clamp(12px,3vw,32px);align-items:center;padding-inline:clamp(22px,4vw,64px)}
+.novelight-page-author #profile.has-equipped-title>.name{grid-column:1;grid-row:1;min-width:0;overflow-wrap:anywhere;justify-self:start;align-self:center;text-align:left}
 .novelight-page-author #profile.has-equipped-title>.bio{grid-column:1/-1;grid-row:2;min-width:0;overflow-wrap:anywhere}
-.novelight-page-author #profile.has-equipped-title>.public-profile-equipped-title{grid-column:2;grid-row:1;justify-self:start;align-self:center}
+.novelight-page-author #profile.has-equipped-title>.public-profile-equipped-group{grid-column:2;grid-row:1;display:flex;align-items:center;justify-self:end;gap:14px;max-width:100%;min-width:0}
+.novelight-page-author #profile.has-equipped-title .public-profile-equipped-name{min-width:0;overflow-wrap:anywhere;color:#0b223a;font-size:clamp(15px,2vw,21px);font-weight:900;line-height:1.4}
 .novelight-page-author #profile.has-equipped-title>.author-follow-controls,.novelight-page-author #profile.has-equipped-title>.user-safety-controls{grid-column:1/-1}
-.public-profile-equipped-title{display:block;width:120px;height:120px;max-width:100%;margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+.public-profile-equipped-title{display:block;flex:0 0 120px;width:120px;height:120px;max-width:100%;margin:0;padding:0;border:0;background:transparent;box-shadow:none}
 .public-profile-equipped-artwork{position:relative;display:grid;width:120px;height:120px;place-items:center;color:#b58a3e;font-size:27px;font-weight:900}
 .public-profile-equipped-artwork img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
 .public-profile-equipped-fallback{display:grid;width:100%;height:100%;place-items:center}
@@ -20,4 +21,4 @@
 .public-scout-emblem.has-rank-artwork .public-scout-rank-fallback{visibility:hidden}
 .public-scout-discoveries{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}.public-scout-discovery{padding:7px 9px;border:1px solid #d9dee5;border-radius:8px;background:#fff;color:#4b5563;font-size:10px}
 .public-scout-label{margin-top:16px;color:#5c6671;font-size:11px;font-weight:900}
-@media(max-width:640px){.novelight-page-author #profile.has-equipped-title{column-gap:12px}.public-profile-equipped-title,.public-profile-equipped-artwork{width:90px;height:90px}.public-scout-summary{gap:10px}.public-scout-kv,.public-scout-rank{min-height:110px}.public-scout-rank{flex-direction:column;justify-content:center;gap:5px}.public-scout-rank strong{font-size:15px;text-align:center}.public-scout-emblem{width:68px;height:68px;flex-basis:68px}}
+@media(max-width:640px){.novelight-page-author #profile.has-equipped-title{grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr);column-gap:8px}.novelight-page-author #profile.has-equipped-title>.name{font-size:clamp(16px,4vw,22px)}.novelight-page-author #profile.has-equipped-title .public-profile-equipped-group{gap:7px}.novelight-page-author #profile.has-equipped-title .public-profile-equipped-name{font-size:clamp(11px,3vw,15px)}.public-profile-equipped-title,.public-profile-equipped-artwork{width:90px;height:90px}.public-profile-equipped-title{flex-basis:90px}.public-scout-summary{gap:10px}.public-scout-kv,.public-scout-rank{min-height:110px}.public-scout-rank{flex-direction:column;justify-content:center;gap:5px}.public-scout-rank strong{font-size:15px;text-align:center}.public-scout-emblem{width:68px;height:68px;flex-basis:68px}}
