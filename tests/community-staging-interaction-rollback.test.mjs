@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -58,10 +57,17 @@ test('claimed or consumed approval cannot be replayed', () => {
       runId: '100'
     };
     if (verb === 'CONSUMED') record.result = 'failure';
-    x.ledgerPages = [[{
-      body: 'NOVELIGHT_STAGING_COMMUNITY_INTERACTION_' + verb +
-        ' ' + JSON.stringify(record)
-    }]];
+    x.ledgerPages = [
+      [
+        {
+          body:
+            'NOVELIGHT_STAGING_COMMUNITY_INTERACTION_' +
+            verb +
+            ' ' +
+            JSON.stringify(record)
+        }
+      ]
+    ];
     assert.throws(
       () => assertCommunityInteractionAdmission(x),
       /already been claimed/u
@@ -95,7 +101,10 @@ test('OWNER-gated trusted workflow never deploys a Preview or alters Production'
   assert.match(yml, /issue_comment:/u);
   assert.match(yml, /author_association == 'OWNER'/u);
   assert.match(yml, /environment: staging/u);
-  assert.match(yml, /STAGING_DATABASE_URL_SOURCE: \$\{\{ secrets.STAGING_DATABASE_URL \}\}/u);
+  assert.match(
+    yml,
+    /STAGING_DATABASE_URL_SOURCE: \$\{\{ secrets.STAGING_DATABASE_URL \}\}/u
+  );
   assert.match(yml, /community-staging-interaction-admission\.mjs validate/u);
   assert.match(yml, /verify-staging-migration-target\.mjs/u);
   assert.match(yml, /if: always\(\)/u);
@@ -103,19 +112,4 @@ test('OWNER-gated trusted workflow never deploys a Preview or alters Production'
   assert.doesNotMatch(yml, /workflow_dispatch:/u);
   assert.doesNotMatch(yml, /vercel-preview-deployment/u);
   assert.doesNotMatch(yml, /supabase db push/u);
-});
-
-test('temporary formatter proof for draft CI', () => {
-  const output = spawnSync(
-    process.execPath,
-    [
-      'node_modules/prettier/bin/prettier.cjs',
-      'tests/community-staging-interaction-rollback.test.mjs'
-    ],
-    { encoding: 'utf8' }
-  );
-  if (output.status !== 0) throw new Error(output.stderr);
-  console.log('STAGING_PRETTIER_START');
-  console.log(output.stdout);
-  console.log('STAGING_PRETTIER_END');
 });
