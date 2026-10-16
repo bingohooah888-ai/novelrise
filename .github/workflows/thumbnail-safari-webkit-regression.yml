@@ -1,4 +1,4 @@
-name: Safari PNG Thumbnail Regression
+name: Safari WebKit Image Regression
 
 on:
   pull_request:
@@ -8,6 +8,11 @@ on:
       - api/_lib/thumbnail-render.js
       - api/_lib/thumbnail-finalize-cleanup.js
       - api/thumbnail-render.js
+      - novelight-episode-visual-editor.js
+      - novelight-episode-illustrations.js
+      - episode-edit.html
+      - episode.html
+      - tests/e2e/specs/episode-illustrations-webkit.spec.js
       - tests/e2e/fixtures/thumbnail-safari-png-fallback.html
       - tests/e2e/specs/thumbnail-safari-png-fallback.spec.js
       - tests/e2e/playwright.thumbnail-safari.config.mjs
@@ -19,6 +24,11 @@ on:
       - api/_lib/thumbnail-render.js
       - api/_lib/thumbnail-finalize-cleanup.js
       - api/thumbnail-render.js
+      - novelight-episode-visual-editor.js
+      - novelight-episode-illustrations.js
+      - episode-edit.html
+      - episode.html
+      - tests/e2e/specs/episode-illustrations-webkit.spec.js
       - tests/e2e/fixtures/thumbnail-safari-png-fallback.html
       - tests/e2e/specs/thumbnail-safari-png-fallback.spec.js
       - tests/e2e/playwright.thumbnail-safari.config.mjs
@@ -28,7 +38,7 @@ permissions:
   contents: read
 
 jobs:
-  webkit-safari-png-fallback:
+  webkit-safari-image-regression:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -53,6 +63,6 @@ jobs:
         working-directory: tests/e2e
         run: npx playwright install --with-deps webkit
 
-      - name: Run Safari PNG fallback regression
+      - name: Run Safari image and editor regression
         working-directory: tests/e2e
         run: npx playwright test --config=playwright.thumbnail-safari.config.mjs
