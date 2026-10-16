@@ -180,6 +180,28 @@ test('iPhone Safari WebKit retains an earlier illustration', async ({
 });
 
 // prettier-ignore
+test('iPhone WebKit drawer button can place and persist existing image', async ({
+  page,
+  browserName
+}) => {
+  expect(browserName).toBe('webkit');
+  const content = '作者の原稿です。';
+  await installFixture(page, content);
+  await page.goto('/episode-edit.html?id=73006');
+  await expect(page.locator('#openIllustrationEditor')).toBeEnabled();
+  await page.locator('#openIllustrationEditor').click();
+  await expect(page.locator('.episode-illustration-item')).toHaveCount(2);
+  await page
+    .getByRole('button', { name: 'カーソル位置へ挿入' })
+    .first()
+    .click();
+  await expect(page.locator('#content')).toContainText(markerA);
+  await expect(page.locator('.nl-visual-illustration')).toHaveCount(1);
+  await page.locator('#closeDrawer').click();
+  await page.locator('#save').click();
+  await verifySaved(page, content + '\n' + markerA);
+});
+
 test('iPhone Safari WebKit accepts PNG fallback from illustration canvas', async ({
   page,
   browserName
