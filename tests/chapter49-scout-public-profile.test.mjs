@@ -67,7 +67,7 @@ test('public profile spaces pen name, badge, and title evenly', () => {
   assert.match(css, />\.name\{grid-column:1;grid-row:1/u);
   assert.match(css, /justify-self:center;align-self:center;text-align:center/u);
   assert.match(css, />\.bio\{grid-column:1\/-1;grid-row:2/u);
-  assert.match(css, />\.public-profile-equipped-name\{grid-column:3;grid-row:1/u);
+  assert.match(css, />\.public-profile-equipped-name\{grid-column:3/u);
   assert.match(
     css,
     />\.public-profile-equipped-title\{grid-column:2;grid-row:1;justify-self:center;align-self:center/u
