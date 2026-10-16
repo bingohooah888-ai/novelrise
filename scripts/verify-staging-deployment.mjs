@@ -179,6 +179,7 @@ async function fetchFacts(baseUrl, bypassSecret) {
 
   const response = await fetch(`${baseUrl}/api/staging-environment-facts`, {
     headers,
+    redirect: 'error',
     signal: AbortSignal.timeout(20_000)
   });
 
