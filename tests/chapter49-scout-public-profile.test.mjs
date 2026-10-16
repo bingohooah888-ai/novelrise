@@ -37,6 +37,18 @@ test('one equipped title is mounted inside the public profile card', () => {
   assert.match(js, /reader\|author\|limited/u);
 });
 
+test('public profile places only large badge art to the right of pen name', () => {
+  assert.match(js, /badge\.appendChild\(artworkWrap\)/u);
+  assert.match(js, /profileHost\.classList\.add\('has-equipped-title'\)/u);
+  assert.doesNotMatch(js, /public-profile-equipped-copy/u);
+  assert.match(css, /#profile\.has-equipped-title\{display:grid;grid-template-columns:minmax\(0,1fr\) 120px/u);
+  assert.match(css, />\.name\{grid-column:1;grid-row:1/u);
+  assert.match(css, />\.public-profile-equipped-title\{grid-column:2;grid-row:1 \/ span 2/u);
+  assert.match(css, />\.author-follow-controls,.*>\.user-safety-controls\{grid-column:1\/-1\}/u);
+  assert.match(css, /\.public-profile-equipped-title\{display:block;width:120px;height:120px;.*border:0;background:transparent/u);
+  assert.match(css, /#profile\.has-equipped-title\{grid-template-columns:minmax\(0,1fr\) 90px/u);
+});
+
 test('equipped title artwork has a safe fallback and responsive styling', () => {
   assert.match(js, /image\.addEventListener\('error'/u);
   assert.match(css, /\.public-profile-equipped-title\{/u);
