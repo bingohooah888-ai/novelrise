@@ -24,6 +24,15 @@ test('recent activity is left and profile is right on desktop', () => {
   assert.ok(activity > profile);
 });
 
+test('profile edits are protected from accidental navigation loss', () => {
+  assert.match(mypage, /hasUnsavedProfileChanges/u);
+  assert.match(mypage, /beforeunload/u);
+  assert.match(mypage, /rememberSavedProfile/u);
+  assert.match(mypage, /target="_blank" rel="noopener noreferrer"/u);
+  assert.match(mypage, /placeholder="表示名を入力"/u);
+  assert.match(mypage, /placeholder="自己紹介を入力"/u);
+});
+
 test('avatar upload is restricted to safe author images', () => {
   assert.match(mypage, /id="avatarInput"/u);
   assert.match(mypage, /image\/jpeg,image\/png,image\/webp/u);

@@ -28,9 +28,13 @@ test('reader-facing pages load the reading continuity runtime', () => {
 test('episode continuity keeps public reading open and uses spoiler-safe surrounding metadata', () => {
   assert.match(runtime, /novelight_reader_episode_index/);
   assert.match(runtime, /rowResult\.data\.status !== 'published'/);
-  assert.match(runtime, /第\$\{previous\.episode_number\}話/);
+  assert.match(runtime, /episodeNavigationTitle\(previous\)/);
   assert.match(runtime, /作品目次/);
-  assert.match(runtime, /第\$\{next\.episode_number\}話を読む/);
+  assert.match(runtime, /episodeNavigationTitle\(next\)/);
+  assert.match(
+    runtime,
+    /numberedTitle\(item\.title, item\.episode_number, true\)/
+  );
   assert.doesNotMatch(runtime, /login\.html\?redirect=.*episode/);
 });
 

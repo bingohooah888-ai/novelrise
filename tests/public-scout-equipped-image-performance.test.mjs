@@ -8,12 +8,13 @@ const source = await readFile(
   'utf8'
 );
 
-test('equipped SCOUT artwork uses a small optimized derivative', () => {
-  assert.match(source, /EQUIPPED_BADGE_WIDTH\s*=\s*96/);
+test('equipped SCOUT artwork uses a proportionate optimized derivative', () => {
+  assert.match(source, /EQUIPPED_BADGE_WIDTH\s*=\s*256/);
   assert.match(source, /EQUIPPED_BADGE_QUALITY\s*=\s*80/);
   assert.match(source, /\/_vercel\/image\?url=/);
   assert.match(source, /image\.src\s*=\s*optimizedArtworkPath\(artworkPath\)/);
-  assert.doesNotMatch(source, /image\.src\s*=\s*artworkPath\s*;/);
+  assert.match(source, /novelightTriedOriginal/u);
+  assert.match(source, /image\.src\s*=\s*artworkPath/u);
 });
 
 test('equipped SCOUT artwork preserves provenance and avoids eager original loading', () => {
@@ -24,6 +25,6 @@ test('equipped SCOUT artwork preserves provenance and avoids eager original load
   assert.match(source, /image\.loading\s*=\s*'lazy'/);
   assert.match(source, /image\.decoding\s*=\s*'async'/);
   assert.match(source, /image\.fetchPriority\s*=\s*'low'/);
-  assert.match(source, /image\.width\s*=\s*46/);
-  assert.match(source, /image\.height\s*=\s*46/);
+  assert.match(source, /image\.width\s*=\s*120/);
+  assert.match(source, /image\.height\s*=\s*120/);
 });

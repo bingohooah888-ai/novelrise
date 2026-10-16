@@ -5,6 +5,7 @@ import { URL } from 'node:url';
 import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
 const approval = process.env.NOVELIGHT_COMMUNITY_READONLY_APPROVED === '1';
+const bypass = process.env.NOVELIGHT_COMMUNITY_PREVIEW_BYPASS || '';
 const expectedSha = process.env.NOVELIGHT_COMMUNITY_EXPECTED_SHA || '';
 const expectedSupabaseUrl =
   process.env.NOVELIGHT_COMMUNITY_EXPECTED_SUPABASE_URL || '';
@@ -24,7 +25,11 @@ test.skip(
 );
 
 function requirePinnedPreview(baseURL) {
-  if (!shaPattern.test(expectedSha) || !/^[0-9]+$/.test(approvalCommentId)) {
+  if (
+    !bypass ||
+    !shaPattern.test(expectedSha) ||
+    !/^[0-9]+$/.test(approvalCommentId)
+  ) {
     throw new Error('Missing exact-SHA or one-use Staging approval reference.');
   }
 
@@ -45,9 +50,12 @@ function requirePinnedPreview(baseURL) {
 
 test('Preview facts and admin denial', async ({ request, baseURL }) => {
   const targets = requirePinnedPreview(baseURL);
-  const factsResponse = await request.get('/api/staging-environment-facts', {
-    maxRedirects: 0
-  });
+  const readPreview = (path) =>
+    request.get(path, {
+      maxRedirects: 0,
+      headers: { 'x-vercel-protection-bypass': bypass }
+    });
+  const factsResponse = await readPreview('/api/staging-environment-facts');
   expect(factsResponse.status()).toBe(200);
   const facts = await factsResponse.json();
   expect(facts.vercelEnv).toBe('preview');
@@ -59,16 +67,12 @@ test('Preview facts and admin denial', async ({ request, baseURL }) => {
     /^(publishable|legacy-anon)$/
   );
 
-  const browserConfig = await request.get('/api/staging-browser-config', {
-    maxRedirects: 0
-  });
+  const browserConfig = await readPreview('/api/staging-browser-config');
   expect(browserConfig.status()).toBe(200);
   const config = await browserConfig.json();
   expect(new URL(config.supabaseUrl).origin).toBe(targets.staging);
 
-  const admin = await request.get('/api/admin-community', {
-    maxRedirects: 0
-  });
+  const admin = await readPreview('/api/admin-community');
   expect(admin.status()).toBe(401);
 });
 
@@ -84,7 +88,17 @@ test('gated anonymous browser has no writes', async ({ page, baseURL }) => {
     const url = new URL(request.url());
     const method = request.method();
     if (method !== 'GET' && method !== 'HEAD') {
-      violations.push('non-read-only request: ' + method);
+      // The page attempts first-party analytics on navigation. Block it too,
+      // but only unexpected write attempts should fail this read-only proof.
+      const blockedTelemetry =
+        method === 'POST' &&
+        url.origin === targets.preview &&
+        url.pathname === '/api/analytics-event' &&
+        !url.search &&
+        !url.hash;
+      if (!blockedTelemetry) {
+        violations.push('non-read-only request: ' + method);
+      }
       await route.abort('blockedbyclient');
       return;
     }
@@ -96,6 +110,12 @@ test('gated anonymous browser has no writes', async ({ page, baseURL }) => {
     if (!allowedHosts.has(url.hostname)) {
       // Other third-party assets are not required for this proof.
       await route.abort('blockedbyclient');
+      return;
+    }
+    if (url.hostname === new URL(targets.preview).hostname) {
+      await route.continue({
+        headers: { ...request.headers(), 'x-vercel-protection-bypass': bypass }
+      });
       return;
     }
     await route.continue();

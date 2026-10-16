@@ -59,6 +59,8 @@ body.novelight-page-contest{margin:0;background:var(--c-bg);color:var(--c-ink);f
 .contest-panel-title h3{font-size:19px;margin:0}
 .contest-panel-title span{color:#e8c77f;font-size:12px}
 .contest-enroll-works,.contest-login-prompt{display:grid;gap:12px}
+/* Respect native hidden state despite custom grid and inline-flex layouts. */
+body.novelight-page-contest [hidden]{display:none!important}
 .contest-login-prompt p{font-size:14px;line-height:1.75;color:var(--c-muted)}
 .contest-login-prompt .contest-button{justify-self:start}
 .nl-contest-entry-work{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 0;border-bottom:1px solid var(--c-line)}
@@ -152,3 +154,69 @@ body.novelight-page-contest .contest-entry-card-tags span{border-color:rgba(18,2
 body.novelight-page-contest .contest-panel-title,
 body.novelight-page-contest .nl-contest-entry-work{border-color:rgba(18,27,44,.15)}
 @media(max-width:560px){body.novelight-page-contest .contest-hero h1{font-size:clamp(38px,9vw,50px)}}
+
+
+/* Star Festival hero: increase supporting type by roughly three visual steps.
+   The approved "第1回 星灯祭" heading size remains unchanged. */
+body.novelight-page-contest .contest-hero .contest-eyebrow{
+  font-size:17px;
+  line-height:1.6;
+  letter-spacing:.13em
+}
+body.novelight-page-contest .contest-hero .contest-status{
+  font-size:16px;
+  line-height:1.45;
+  padding:9px 16px
+}
+body.novelight-page-contest .contest-hero .contest-hero-lead{
+  max-width:820px;
+  font-size:21px;
+  line-height:1.85
+}
+body.novelight-page-contest .contest-hero .contest-hero-actions .contest-button{
+  min-height:58px;
+  padding:16px 27px;
+  font-size:19px
+}
+body.novelight-page-contest .contest-hero .contest-hero-dates{
+  gap:48px;
+  margin-top:44px;
+  padding-top:24px
+}
+body.novelight-page-contest .contest-hero .contest-hero-dates span{
+  gap:8px;
+  font-size:19px;
+  line-height:1.6
+}
+body.novelight-page-contest .contest-hero .contest-hero-dates strong{
+  font-size:16px;
+  letter-spacing:.08em
+}
+@media(max-width:560px){
+  body.novelight-page-contest .contest-hero .contest-eyebrow{
+    font-size:14px;
+    letter-spacing:.11em
+  }
+  body.novelight-page-contest .contest-hero .contest-status{
+    font-size:15px;
+    padding:8px 13px
+  }
+  body.novelight-page-contest .contest-hero .contest-hero-lead{
+    font-size:18px;
+    line-height:1.85
+  }
+  body.novelight-page-contest .contest-hero .contest-hero-actions .contest-button{
+    min-height:56px;
+    font-size:18px
+  }
+  body.novelight-page-contest .contest-hero .contest-hero-dates{
+    gap:24px;
+    margin-top:34px
+  }
+  body.novelight-page-contest .contest-hero .contest-hero-dates span{
+    font-size:17px
+  }
+  body.novelight-page-contest .contest-hero .contest-hero-dates strong{
+    font-size:14px
+  }
+}
