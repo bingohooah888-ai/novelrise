@@ -289,6 +289,13 @@
     return stored;
   }
 
+  function episodeNavigationTitle(item) {
+    const numberedTitle = window.NovelightEpisodeTitleDisplay?.numberedTitle;
+    return typeof numberedTitle === 'function'
+      ? numberedTitle(item.title, item.episode_number, true)
+      : `第${item.episode_number}話${item.title ? '　' + String(item.title).trim() : ''}`;
+  }
+
   function renderEpisodeNavigation(row, rows) {
     const currentIndex = rows.findIndex((item) => String(item.id) === String(row.id));
     if (currentIndex < 0) return;
@@ -305,7 +312,7 @@
     const previousLink = document.createElement(previous ? 'a' : 'span');
     previousLink.className = `nl-reading-link previous${previous ? '' : ' disabled'}`;
     if (previous) previousLink.href = episodeHref(previous.id);
-    previousLink.textContent = previous ? `← 第${previous.episode_number}話` : '← 前の話なし';
+    previousLink.textContent = previous ? `← ${episodeNavigationTitle(previous)}` : '← 前の話なし';
     const toc = document.createElement('a');
     toc.className = 'nl-reading-link toc';
     toc.href = novelHref(row.novel_id);
@@ -313,7 +320,7 @@
     const nextLink = document.createElement(next ? 'a' : 'span');
     nextLink.className = `nl-reading-link next${next ? '' : ' disabled'}`;
     if (next) nextLink.href = episodeHref(next.id);
-    nextLink.textContent = next ? `第${next.episode_number}話を読む →` : '最新話まで読了';
+    nextLink.textContent = next ? `${episodeNavigationTitle(next)}を読む →` : '最新話まで読了';
     main.append(previousLink, toc, nextLink);
     nav.appendChild(main);
     if (!next) {
