@@ -49,9 +49,9 @@ test('lazy signed URL expiration refreshes image without losing content', async 
   await expect(
     page.locator('#illustrationTestRoot .episode-inline-illustration img')
   ).toHaveCount(1);
-  await expect.poll(async () =>
-    page.locator('.episode-inline-illustration img').evaluate((img) => img.naturalWidth)
-  ).toBe(1);
+  await expect(
+    page.locator('.episode-inline-illustration img')
+  ).toHaveJSProperty('naturalWidth', 1);
   expect(requests()).toBe(2);
   await expect(page.locator('.episode-inline-illustration-failed')).toHaveCount(
     0
