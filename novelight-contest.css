@@ -59,6 +59,8 @@ body.novelight-page-contest{margin:0;background:var(--c-bg);color:var(--c-ink);f
 .contest-panel-title h3{font-size:19px;margin:0}
 .contest-panel-title span{color:#e8c77f;font-size:12px}
 .contest-enroll-works,.contest-login-prompt{display:grid;gap:12px}
+/* Respect native hidden state despite custom grid and inline-flex layouts. */
+body.novelight-page-contest [hidden]{display:none!important}
 .contest-login-prompt p{font-size:14px;line-height:1.75;color:var(--c-muted)}
 .contest-login-prompt .contest-button{justify-self:start}
 .nl-contest-entry-work{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 0;border-bottom:1px solid var(--c-line)}
