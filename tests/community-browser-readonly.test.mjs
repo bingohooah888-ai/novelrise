@@ -53,16 +53,22 @@ function validApproval() {
       })),
       truncated: false
     },
-    ledgerPages: [[{
-      user: { login: 'github-actions[bot]' },
-      body: 'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_CONSUMED ' + JSON.stringify({
-        requestCommentId: '6213881253',
-        mainSha: 'c'.repeat(40),
-        candidateSha: REUSE_SHA,
-        runId: '38889986330',
-        result: 'success'
-      })
-    }]]
+    ledgerPages: [
+      [
+        {
+          user: { login: 'github-actions[bot]' },
+          body:
+            'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_CONSUMED ' +
+            JSON.stringify({
+              requestCommentId: '6213881253',
+              mainSha: 'c'.repeat(40),
+              candidateSha: REUSE_SHA,
+              runId: '38889986330',
+              result: 'success'
+            })
+        }
+      ]
+    ]
   };
 }
 
@@ -97,19 +103,29 @@ test('owner, exact current main and exact Draft PR HEAD are mandatory', () => {
 test('a consumed or claimed approval cannot be reused', () => {
   const input = validApproval();
   input.ledgerPages[0].push({
-    body: 'NOVELIGHT_STAGING_COMMUNITY_BROWSER_CLAIMED ' + JSON.stringify({
-      requestCommentId: String(input.comment.id),
-      mainSha,
-      candidateSha: REUSE_SHA,
-      runId: '11'
-    })
+    body:
+      'NOVELIGHT_STAGING_COMMUNITY_BROWSER_CLAIMED ' +
+      JSON.stringify({
+        requestCommentId: String(input.comment.id),
+        mainSha,
+        candidateSha: REUSE_SHA,
+        runId: '11'
+      })
   });
-  assert.throws(() => assertCommunityBrowserAdmission(input), /already claimed/u);
+  assert.throws(
+    () => assertCommunityBrowserAdmission(input),
+    /already claimed/u
+  );
 });
 
 test('prior Preview deployment must be ledger-proven successful', () => {
   const input = validApproval();
-  input.ledgerPages[0][0].body =
-    input.ledgerPages[0][0].body.replace('"success"', '"failure"');
-  assert.throws(() => assertCommunityBrowserAdmission(input), /not ledger-proven/u);
+  input.ledgerPages[0][0].body = input.ledgerPages[0][0].body.replace(
+    '"success"',
+    '"failure"'
+  );
+  assert.throws(
+    () => assertCommunityBrowserAdmission(input),
+    /not ledger-proven/u
+  );
 });

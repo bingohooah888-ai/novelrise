@@ -25,7 +25,11 @@ test.skip(
 );
 
 function requirePinnedPreview(baseURL) {
-  if (!bypass || !shaPattern.test(expectedSha) || !/^[0-9]+$/.test(approvalCommentId)) {
+  if (
+    !bypass ||
+    !shaPattern.test(expectedSha) ||
+    !/^[0-9]+$/.test(approvalCommentId)
+  ) {
     throw new Error('Missing exact-SHA or one-use Staging approval reference.');
   }
 
