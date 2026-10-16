@@ -107,3 +107,20 @@ body.novelight-page-contest{margin:0;background:var(--c-bg);color:var(--c-ink);f
 /* Star Festival official art: only the contest hero requests this 334-KiB WebP. */
 .contest-hero{background-color:#0a1220;background-image:linear-gradient(90deg,rgba(8,15,30,.87) 0%,rgba(8,15,30,.68) 42%,rgba(8,15,30,.28) 72%,rgba(8,15,30,.10) 100%),url('/assets/november-contest-star-festival-hero-b51977ec.webp');background-position:center center;background-size:cover;background-repeat:no-repeat}
 @media(max-width:560px){.contest-hero{background-image:linear-gradient(90deg,rgba(8,15,30,.80),rgba(8,15,30,.58)),url('/assets/november-contest-star-festival-hero-b51977ec.webp');background-position:58% center}}
+
+/* Full-page starfield: reuse the hero WebP once and keep text/content panels legible. */
+body.novelight-page-contest{isolation:isolate}
+body.novelight-page-contest::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background-image:linear-gradient(180deg,rgba(6,12,25,.74),rgba(6,12,25,.84)),url('/assets/november-contest-star-festival-hero-b51977ec.webp');
+  background-size:cover;
+  background-position:center center;
+  background-repeat:no-repeat
+}
+.novelight-page-contest .contest-prize-section{background:rgba(12,23,39,.68)}
+.novelight-page-contest .contest-enroll-section{background:rgba(13,25,43,.72)}
+.novelight-page-contest .contest-timeline{background:rgba(13,23,39,.72)}
