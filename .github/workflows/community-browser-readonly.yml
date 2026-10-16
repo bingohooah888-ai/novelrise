@@ -151,7 +151,7 @@ jobs:
         run: npm ci
       - name: Install Chromium browser only
         working-directory: tests/e2e
-        run: npx playwright install chromium
+        run: npx playwright install chrome
       - name: Run exact-Preview read-only browser check
         working-directory: tests/e2e
         env:
