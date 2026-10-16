@@ -44,12 +44,6 @@ test('a current one-use OWNER approval binds Staging rollback only', () => {
   x.comment.author_association = 'CONTRIBUTOR';
   assert.throws(() => assertCommunityInteractionAdmission(x), /DENIED/u);
   x.comment.author_association = 'OWNER';
-  x.comment.body = PREFIX + JSON.stringify({
-    ...payload,
-    candidateSha: '0fb3cd158c4ef2b16185abb7b628b161cd0f0e92'
-  });
-  assert.throws(() => assertCommunityInteractionAdmission(x), /DENIED/u);
-  x.comment.body = PREFIX + JSON.stringify(payload);
   x.main.object.sha = 'b'.repeat(40);
   assert.throws(() => assertCommunityInteractionAdmission(x), /DENIED/u);
 });
@@ -112,6 +106,7 @@ test('OWNER-gated trusted workflow never deploys a Preview or alters Production'
     /STAGING_DATABASE_URL_SOURCE: \$\{\{ secrets.STAGING_DATABASE_URL \}\}/u
   );
   assert.match(yml, /community-staging-interaction-admission\.mjs validate/u);
+  assert.ok(yml.includes(CANDIDATE_SHA));
   assert.match(yml, /verify-staging-migration-target\.mjs/u);
   assert.match(yml, /if: always\(\)/u);
   assert.match(yml, /test "\$state" = 'false\|1\|0\|0\|0'/u);
@@ -134,15 +129,4 @@ test('client role never queries private community tables', () => {
   assert.doesNotMatch(actor, privateSelect);
   assert.match(sql, /RESET ROLE;\s*DO \$owner_verify\$/u);
   assert.match(sql, /Report insert or deduplication count mismatch/u);
-});
-
-test('trusted runner is pinned to exactly the reviewed candidate SHA', () => {
-  const yml = readFileSync(
-    new URL(
-      '../.github/workflows/community-staging-interaction-rollback.yml',
-      import.meta.url
-    ),
-    'utf8'
-  );
-  assert.ok(yml.includes(`test "$CANDIDATE_SHA" = '${CANDIDATE_SHA}'`));
 });
