@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -124,20 +123,9 @@ test('client role never queries private community tables', () => {
     'utf8'
   );
   const actor = sql.split('DO $interaction$')[1].split('RESET ROLE;')[0];
-  const privateSelect = /FROM public\.community_(?:comments|reports|reactions)/u;
+  const privateSelect =
+    /FROM public\.community_(?:comments|reports|reactions)/u;
   assert.doesNotMatch(actor, privateSelect);
   assert.match(sql, /RESET ROLE;\s*DO \$owner_verify\$/u);
   assert.match(sql, /Report insert or deduplication count mismatch/u);
-});
-
-test('temporary pinned-Prettier formatting diagnostic', () => {
-  const output = spawnSync(
-    process.execPath,
-    ['node_modules/prettier/bin/prettier.cjs', 'tests/community-staging-interaction-rollback.test.mjs'],
-    { encoding: 'utf8' }
-  );
-  if (output.status !== 0) throw new Error(output.stderr);
-  console.log('INTERACTION_FORMAT_START');
-  console.log(output.stdout);
-  console.log('INTERACTION_FORMAT_END');
 });
