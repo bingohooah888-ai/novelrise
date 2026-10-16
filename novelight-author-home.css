@@ -420,13 +420,14 @@ details.profile-editor summary::-webkit-details-marker{display:none}
 .form input,.form textarea{
   width:100%;
   padding:9px 10px;
-  border:1px solid rgba(216,180,90,.30);
+  border:1.5px solid rgba(229,197,111,.78);
   border-radius:9px;
   outline:none;
-  background:rgba(2,14,25,.78);
+  background:#17283b;
   color:#f7f2e8;
   font-size:11px;
 }
+.form input::placeholder,.form textarea::placeholder{color:#c0cad4;opacity:1}
 .form input:focus,.form textarea:focus{border-color:rgba(242,215,125,.76);box-shadow:0 0 0 3px rgba(216,180,90,.07)}
 .form textarea{min-height:84px;resize:vertical}
 .save{
@@ -522,7 +523,7 @@ body.novelight-theme.novelight-page-mypage .panel-header h2{color:#fff2d4}
 body.novelight-theme.novelight-page-mypage .profile-summary h3{color:#fff5dc}
 body.novelight-theme.novelight-page-mypage .founding{border-color:rgba(242,215,125,.72);background:rgba(216,180,90,.10);color:#ffe69a}
 body.novelight-theme.novelight-page-mypage .form input,
-body.novelight-theme.novelight-page-mypage .form textarea{border-color:rgba(216,180,90,.30);background:rgba(2,14,25,.78);color:#f7f2e8}
+body.novelight-theme.novelight-page-mypage .form textarea{border-color:rgba(229,197,111,.78);background:#17283b;color:#f7f2e8}
 body.novelight-theme.novelight-page-mypage .save{border-color:rgba(242,215,125,.64);background:linear-gradient(180deg,rgba(216,180,90,.22),rgba(216,180,90,.08));color:#ffe8a5}
 body.novelight-theme.novelight-page-mypage footer{border-color:rgba(216,180,90,.17);background:#020b14;color:#909cab}
 
