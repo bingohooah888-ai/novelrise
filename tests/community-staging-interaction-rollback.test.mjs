@@ -138,7 +138,10 @@ test('client role never queries private community tables', () => {
 
 test('trusted runner is pinned to exactly the reviewed candidate SHA', () => {
   const yml = readFileSync(
-    new URL('../.github/workflows/community-staging-interaction-rollback.yml', import.meta.url),
+    new URL(
+      '../.github/workflows/community-staging-interaction-rollback.yml',
+      import.meta.url
+    ),
     'utf8'
   );
   assert.ok(yml.includes(`test "$CANDIDATE_SHA" = '${CANDIDATE_SHA}'`));
