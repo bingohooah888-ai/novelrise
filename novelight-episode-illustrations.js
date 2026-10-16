@@ -737,7 +737,7 @@
     }
   }
 
-  function illustrationFigure(root, asset) {
+  function illustrationFigure(root, asset, renewSignedUrl) {
     const figure = root.ownerDocument.createElement('figure');
     figure.className = 'episode-inline-illustration';
     const image = root.ownerDocument.createElement('img');
@@ -747,22 +747,38 @@
     image.decoding = 'async';
     image.width = asset.width;
     image.height = asset.height;
-    image.addEventListener(
-      'error',
-      () => {
-        figure.replaceChildren();
-        const failed = root.ownerDocument.createElement('div');
-        failed.className = 'episode-inline-illustration-failed';
-        failed.textContent = '挿絵を表示できませんでした。';
-        figure.appendChild(failed);
-      },
-      { once: true }
-    );
+    let renewalAttempted = false;
+    const showFailure = () => {
+      figure.replaceChildren();
+      const failed = root.ownerDocument.createElement('div');
+      failed.className = 'episode-inline-illustration-failed';
+      failed.textContent = '挿絵を表示できませんでした。';
+      figure.appendChild(failed);
+    };
+    image.addEventListener('error', () => {
+      // Readers may reach a lazy-loaded image after its 10-minute signed URL
+      // has expired. Refresh it once; never loop indefinitely on bad files.
+      if (renewalAttempted || typeof renewSignedUrl !== 'function') {
+        showFailure();
+        return;
+      }
+      renewalAttempted = true;
+      void Promise.resolve()
+        .then(() => renewSignedUrl(asset.id))
+        .then((url) => {
+          if (!url || url === image.src || !figure.contains(image)) {
+            showFailure();
+            return;
+          }
+          image.src = url;
+        })
+        .catch(showFailure);
+    });
     figure.appendChild(image);
     return figure;
   }
 
-  function renderReaderContent(root, content, assets, missingText) {
+  function renderReaderContent(root, content, assets, missingText, renewSignedUrl) {
     const lines = String(content ?? '').replace(/\r\n?/gu, '\n').split('\n');
     const fragment = root.ownerDocument.createDocumentFragment();
     const textBuffer = [];
@@ -787,7 +803,7 @@
       flushText();
       const asset = assets.get(marker[1].toLowerCase());
       if (asset) {
-        fragment.appendChild(illustrationFigure(root, asset));
+        fragment.appendChild(illustrationFigure(root, asset, renewSignedUrl));
       } else {
         const missing = root.ownerDocument.createElement('div');
         missing.className = 'episode-inline-illustration-failed';
@@ -830,7 +846,21 @@
         episodeId: Number(episodeId)
       });
       const assets = assetsForContent(data.assets, content);
-      renderReaderContent(root, content, assets, '挿絵を表示できません。');
+      const renewSignedUrl = async (imageId) => {
+        const refreshed = await apiRequest(null, {
+          action: 'reader-list',
+          episodeId: Number(episodeId)
+        });
+        const updated = assetsForContent(refreshed.assets, content);
+        return updated.get(String(imageId).toLowerCase())?.url || null;
+      };
+      renderReaderContent(
+        root,
+        content,
+        assets,
+        '挿絵を表示できません。',
+        renewSignedUrl
+      );
       syncAiDisclosure(root, data.aiUsage === true);
       return data;
     } catch (error) {
@@ -855,7 +885,21 @@
         episodeId: Number(episodeId)
       });
       const assets = assetsForContent(data.assets, content);
-      renderReaderContent(root, content, assets, '挿絵を表示できません。');
+      const renewSignedUrl = async (imageId) => {
+        const refreshed = await apiRequest(session, {
+          action: 'editor-list',
+          episodeId: Number(episodeId)
+        });
+        const updated = assetsForContent(refreshed.assets, content);
+        return updated.get(String(imageId).toLowerCase())?.url || null;
+      };
+      renderReaderContent(
+        root,
+        content,
+        assets,
+        '挿絵を表示できません。',
+        renewSignedUrl
+      );
       syncAiDisclosure(root, data.aiUsage === true);
       return data;
     } catch (error) {
