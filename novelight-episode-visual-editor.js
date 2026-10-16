@@ -6,10 +6,7 @@
   const MARKER_RE = /^[\t ]*\[\[NOVELIGHT_ILLUSTRATION:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\]\][\t ]*$/iu;
   const textarea = document.getElementById('content');
   const form = document.getElementById('form');
-  const titleInput = document.getElementById('title');
-  const chapterSelect = document.getElementById('chapterId');
-  const saveButton = document.getElementById('save');
-  if (!textarea || !form || !titleInput || !saveButton) return;
+  if (!textarea || !form) return;
 
   let editor = null;
   let assets = new Map();
@@ -17,7 +14,6 @@
   let syncing = false;
   let refreshing = false;
   let refreshTimer = null;
-  let initialSnapshot = null;
 
   const normalize = (value) => String(value ?? '').replace(/\r\n?/gu, '\n');
   const hasMarker = (value) => normalize(value).split('\n').some(line => MARKER_RE.test(line));
@@ -422,19 +418,6 @@
     replaceSelection(`《《${text}》》`);
   }
 
-  function unchangedPublishedOwnerSave() {
-    if (!initialSnapshot || document.body.dataset.collaborationEditor === 'true') return false;
-    if (saveButton.textContent.trim() !== '保存') return false;
-    const current = {
-      title: titleInput.value,
-      content: normalize(textarea.value),
-      chapter: chapterSelect?.value ?? ''
-    };
-    return current.title === initialSnapshot.title &&
-      current.content === initialSnapshot.content &&
-      current.chapter === initialSnapshot.chapter;
-  }
-
   async function activate() {
     if (active || !hasMarker(textarea.value)) return false;
     try {
@@ -456,11 +439,6 @@
     textarea.setAttribute('aria-hidden', 'true');
     textarea.tabIndex = -1;
     renderSource(textarea.value);
-    initialSnapshot = {
-      title: titleInput.value,
-      content: normalize(textarea.value),
-      chapter: chapterSelect?.value ?? ''
-    };
     active = true;
 
     editor.addEventListener('input', () => syncToTextarea(true));
@@ -504,15 +482,10 @@
     scheduleRefresh();
   });
 
-  form.addEventListener('submit', event => {
-    if (!active) return;
-    syncToTextarea(false);
-    if (!unchangedPublishedOwnerSave()) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    window.NovelightAuthorDraft?.clearCurrentDraft?.();
-    const episodeId = new URLSearchParams(location.search).get('id');
-    location.href = 'episode.html?id=' + encodeURIComponent(episodeId || '');
+  form.addEventListener('submit', () => {
+    // The first inline image can be the only change since loading the episode.
+    // Never navigate from this projection: the form must persist the new marker.
+    if (active) syncToTextarea(false);
   }, true);
 
   window.NovelightEpisodeVisualEditor = Object.freeze({
