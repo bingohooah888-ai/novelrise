@@ -278,3 +278,21 @@ test('unexpected contest phases have no reading links', async () => {
     assert.equal(card.children.some((part) => part.tagName === 'A'), false);
   }
 });
+
+test('temporary formatting diagnostic', async () => {
+  const prettier = await import('prettier');
+  const original = readFileSync(
+    new URL('./november-contest-landing.test.mjs', import.meta.url),
+    'utf8'
+  );
+  const config = await prettier.resolveConfig(
+    'tests/november-contest-landing.test.mjs'
+  );
+  const formatted = await prettier.format(original, {
+    ...config,
+    filepath: 'tests/november-contest-landing.test.mjs'
+  });
+  const start = formatted.indexOf('function makeContestGalleryBrowser');
+  const end = formatted.indexOf("test('temporary formatting diagnostic'");
+  console.log('PRETTIER_DEBUG_BEGIN\n' + formatted.slice(start, end) + '\nPRETTIER_DEBUG_END');
+});
