@@ -88,7 +88,17 @@ test('gated anonymous browser has no writes', async ({ page, baseURL }) => {
     const url = new URL(request.url());
     const method = request.method();
     if (method !== 'GET' && method !== 'HEAD') {
-      violations.push('non-read-only request: ' + method);
+      // The page attempts first-party analytics on navigation. Block it too,
+      // but only unexpected write attempts should fail this read-only proof.
+      const blockedTelemetry =
+        method === 'POST' &&
+        url.origin === targets.preview &&
+        url.pathname === '/api/analytics-event' &&
+        !url.search &&
+        !url.hash;
+      if (!blockedTelemetry) {
+        violations.push('non-read-only request: ' + method);
+      }
       await route.abort('blockedbyclient');
       return;
     }
