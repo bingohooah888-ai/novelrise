@@ -15,13 +15,29 @@ test('author profile has a public SCOUT RECORD surface', () => {
 test('public SCOUT RECORD loads only the public-safe RPC', () => {
   assert.match(js, /novelight_public_scout_record/u);
   assert.match(js, /Scout Level/u);
-  assert.match(js, /発掘成功/u);
+  assert.doesNotMatch(js, /<span>発掘成功/u);
   assert.match(js, /装備称号/u);
   assert.match(js, /代表的な発掘実績/u);
   assert.doesNotMatch(
     js,
     /scout_point_ledger|point_balance|pending_points|total_xp|next_level_xp/iu
   );
+});
+
+test('public SCOUT rank uses the official ten rank artworks beside Scout Level', () => {
+  assert.match(js, /scout_rank_01_noctis\.png/u);
+  assert.match(js, /scout_rank_02_vesper\.png/u);
+  assert.match(js, /scout_rank_03_umbra\.png/u);
+  assert.match(js, /scout_rank_10_luminaris\.png/u);
+  assert.match(js, /class="public-scout-rank-image"/u);
+  assert.match(js, /optimizedArtworkPath\(rankArtwork\)/u);
+  assert.match(js, /rankImage\.src = rankArtwork/u);
+  assert.match(js, /<div class="public-scout-summary">/u);
+  assert.match(css, /\.public-scout-emblem\{position:relative/u);
+  assert.match(css, /\.public-scout-rank\{display:flex;align-items:center/u);
+  assert.doesNotMatch(js, /SCOUT RANK —/u);
+  assert.doesNotMatch(js, /class="public-scout-badges"/u);
+  assert.doesNotMatch(js, /data\.discovery_success_count/u);
 });
 
 test('one equipped title is mounted inside the public profile card', () => {
@@ -75,5 +91,5 @@ test('equipped title artwork has a safe fallback and responsive styling', () => 
 
 test('public SCOUT surface remains mobile responsive', () => {
   assert.match(css, /@media\(max-width:640px\)/u);
-  assert.match(css, /\.public-scout-summary\{grid-template-columns:1fr 1fr\}/u);
+  assert.match(css, /\.public-scout-summary\{gap:10px\}/u);
 });
