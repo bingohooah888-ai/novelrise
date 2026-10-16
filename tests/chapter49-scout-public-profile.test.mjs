@@ -59,10 +59,7 @@ test('public profile keeps name left and equipped group right', () => {
   assert.match(js, /titleGroup\.append\(badge, titleName\)/u);
   assert.match(js, /name\.insertAdjacentElement\('afterend', titleGroup\)/u);
   assert.match(js, /profileHost\.classList\.add\('has-equipped-title'\)/u);
-  assert.match(
-    css,
-    /grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/u
-  );
+  assert.match(css, /grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/u);
   assert.match(css, />\.name\{grid-column:1;grid-row:1/u);
   assert.match(css, /justify-self:start;align-self:center;text-align:left/u);
   assert.match(css, />\.bio\{grid-column:1\/-1;grid-row:2/u);
