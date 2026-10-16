@@ -115,9 +115,8 @@ BEGIN
   v_comment := public.novelight_community_post_comment(
     v_key,'Staging-only transaction rollback proof',NULL
   );
-  IF v_comment->>'id' IS NULL
-     OR (SELECT count(*) FROM public.community_comments WHERE post_key=v_key) <> 1 THEN
-    RAISE EXCEPTION 'Comment insert failed';
+  IF v_comment->>'id' IS NULL THEN
+    RAISE EXCEPTION 'Comment insert returned no id';
   END IF;
   IF pg_catalog.jsonb_array_length(
     public.novelight_community_comments(v_key,20)
@@ -132,17 +131,34 @@ BEGIN
   IF NOT v_rate_limited THEN RAISE EXCEPTION 'Comment rate limit failed'; END IF;
 
   v_ok := public.novelight_community_report(v_key,'Staging-only report smoke');
-  IF v_ok IS DISTINCT FROM true OR (
-    SELECT count(*) FROM public.community_reports WHERE post_key=v_key
-  ) <> 1 THEN RAISE EXCEPTION 'Report insert failed'; END IF;
-  PERFORM public.novelight_community_report(v_key,'Staging-only report smoke');
-  IF (SELECT count(*) FROM public.community_reports WHERE post_key=v_key) <> 1 THEN
-    RAISE EXCEPTION 'Duplicate report not deduplicated';
+  IF v_ok IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Report RPC failed';
+  END IF;
+  IF public.novelight_community_report(
+    v_key,'Staging-only report smoke'
+  ) IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Report retry failed';
   END IF;
 END
 $interaction$;
 
+-- Authenticated role must not SELECT private tables; it uses granted RPCs only.
+-- After dropping the client role, privileged test harness checks exact row counts.
 RESET ROLE;
+DO $owner_verify$
+DECLARE v_key text := pg_catalog.current_setting('novelight.smoke.post_key');
+BEGIN
+  IF (SELECT count(*) FROM public.community_comments WHERE post_key=v_key) <> 1 THEN
+    RAISE EXCEPTION 'Comment insert count mismatch';
+  END IF;
+  IF (SELECT count(*) FROM public.community_reports WHERE post_key=v_key) <> 1 THEN
+    RAISE EXCEPTION 'Report insert or deduplication count mismatch';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.community_reactions WHERE post_key=v_key) THEN
+    RAISE EXCEPTION 'Unlike did not remove the reaction';
+  END IF;
+END
+$owner_verify$;
 -- Block/Mute are simulated as rollback-contained test fixtures.
 INSERT INTO public.user_blocks(blocker_user_id,blocked_user_id)
 VALUES (

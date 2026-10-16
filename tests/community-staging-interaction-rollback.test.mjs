@@ -113,3 +113,17 @@ test('OWNER-gated trusted workflow never deploys a Preview or alters Production'
   assert.doesNotMatch(yml, /vercel-preview-deployment/u);
   assert.doesNotMatch(yml, /supabase db push/u);
 });
+
+test('authenticated actor never reads private community tables directly', () => {
+  const sql = readFileSync(
+    new URL(
+      '../supabase/checks/20261016053000_community_phase1_interaction_rollback.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const actor = sql.split('DO $interaction$')[1].split('RESET ROLE;')[0];
+  assert.doesNotMatch(actor, /FROM public\.community_(?:comments|reports|reactions)/u);
+  assert.match(sql, /RESET ROLE;\s*DO \$owner_verify\$/u);
+  assert.match(sql, /Report insert or deduplication count mismatch/u);
+});
