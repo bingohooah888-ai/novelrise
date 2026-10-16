@@ -89,7 +89,7 @@ export async function verifyCommunityBrowserReadOnly({
 
 if (process.argv[2] === 'verify') {
   try {
-    const proof = await verifyCommunityExistingPreviewReadOnly();
+    const proof = await verifyCommunityBrowserReadOnly();
     console.log('Existing immutable Preview verified via GET only.');
     console.log(JSON.stringify(proof));
   } catch (error) {

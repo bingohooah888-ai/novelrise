@@ -119,7 +119,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
           test "$EXPECTED_REVISION" = '944b406bd3cb1d87a27e038e0d514a0254d30ed2'
-          test "$CANONICAL_STAGING_URL" = 'https://novelrise-ibyeza739-ranobe1.vercel.app'
+          test "$CANONICAL_STAGING_URL" = 'https://novelrise-pbe0wvv7t-ranobe1.vercel.app'
           test "$STAGING_EXPECTED_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
           test "$STAGING_E2E_READY" = 'true'
           test -n "$STAGING_EXPECTED_PUBLISHABLE_KEY"
