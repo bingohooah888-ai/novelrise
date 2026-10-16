@@ -175,3 +175,48 @@ test('iPhone Safari WebKit retains an earlier illustration', async ({
   await page.locator('#save').click();
   await verifySaved(page, content + '\n' + markerB);
 });
+
+test('iPhone Safari WebKit accepts PNG fallback from illustration canvas', async ({
+  page,
+  browserName
+}) => {
+  expect(browserName).toBe('webkit');
+  await installFixture(page, '画像のない本文');
+  await page.goto('/episode-edit.html?id=73006');
+  await page.waitForFunction(
+    () => !!globalThis.NovelightEpisodeIllustrations?.optimizeImage
+  );
+  const output = await page.evaluate(async () => {
+    const proto = globalThis.HTMLCanvasElement.prototype;
+    const toBlob = proto.toBlob;
+    const original = globalThis.document.createElement('canvas');
+    original.width = 2;
+    original.height = 2;
+    original.getContext('2d').fillRect(0, 0, 2, 2);
+    const png = await new Promise((resolve) => {
+      original.toBlob(resolve, 'image/png');
+    });
+    const source = new globalThis.File([png], 'author.png', {
+      type: 'image/png'
+    });
+    proto.toBlob = function (done) {
+      return toBlob.call(this, done, 'image/png');
+    };
+    try {
+      const result =
+        await globalThis.NovelightEpisodeIllustrations.optimizeImage(source);
+      return {
+        outputType: result.mimeType,
+        blobType: result.blob.type,
+        width: result.width,
+        byteCount: result.blob.size
+      };
+    } finally {
+      proto.toBlob = toBlob;
+    }
+  });
+  expect(output.outputType).toBe('image/png');
+  expect(output.blobType).toBe('image/png');
+  expect(output.width).toBe(2);
+  expect(output.byteCount).toBeGreaterThan(0);
+});
