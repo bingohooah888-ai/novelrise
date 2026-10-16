@@ -114,7 +114,7 @@ test('OWNER-gated trusted workflow never deploys a Preview or alters Production'
   assert.doesNotMatch(yml, /supabase db push/u);
 });
 
-test('authenticated actor never reads private community tables directly', () => {
+test('client role never queries private community tables', () => {
   const sql = readFileSync(
     new URL(
       '../supabase/checks/20261016053000_community_phase1_interaction_rollback.sql',
@@ -123,7 +123,8 @@ test('authenticated actor never reads private community tables directly', () => 
     'utf8'
   );
   const actor = sql.split('DO $interaction$')[1].split('RESET ROLE;')[0];
-  assert.doesNotMatch(actor, /FROM public\.community_(?:comments|reports|reactions)/u);
+  const privateSelect = /FROM public\.community_(?:comments|reports|reactions)/u;
+  assert.doesNotMatch(actor, privateSelect);
   assert.match(sql, /RESET ROLE;\s*DO \$owner_verify\$/u);
   assert.match(sql, /Report insert or deduplication count mismatch/u);
 });
