@@ -107,6 +107,31 @@
       "version": "0.4.0",
       "status": "enabled",
       "provenance": "2026-10-14 #2219 live native PR synchronize CI/CodeQL proof; high-risk path and late-approval guards; activation requires protected main merge and local NLO update"
+    },
+    {
+      "id": "nlo.contest.banner-stage",
+      "description": "Stage exactly the two owner-approved Star Festival WebP images from a verified Downloads ZIP into the existing Draft PR #2305, with no Production merge.",
+      "intents": [
+        "stage approved contest banner images",
+        "星灯祭採用画像をPRへ登録"
+      ],
+      "aliases": [
+        "NLO contest banner upload",
+        "星灯祭バナー登録"
+      ],
+      "adapter": "tools/novelight-commander/src/contest-banner-stage.js",
+      "executionRisk": "B",
+      "requiredPermissions": [
+        "local_downloads_zip_read",
+        "existing_nlo_owner_github_auth",
+        "repo_feature_branch_write"
+      ],
+      "testCommands": [
+        "node --test tools/novelight-commander/checks/contest-banner-stage.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "2026-10-16 PR #2305 approved PC and mobile WebP SHA256 lock"
     }
   ]
 }
