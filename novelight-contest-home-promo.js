@@ -32,11 +32,7 @@
       if (registrationOpen) {
         description.textContent =
           '公開10話以上の作品を1作者1作品エントリーできます。10月31日23:59締切。';
-        link.textContent = 'エントリーする →';
-      } else if (data.contest_status === 'active') {
-        description.textContent =
-          '11月30日まで開催。読者の読書ポイントで順位が決まります。';
-        link.textContent = '参加作品を読む →';
+        link.setAttribute('aria-label', '第1回 星灯祭へエントリーする');
       } else {
         // Do not advertise a contest that is draft, under review or cancelled.
         area.hidden = true;
