@@ -226,9 +226,18 @@ test('registration shows non-clickable entered works', async () => {
   const entries = gallery.ids.get('contestEntries');
   const more = gallery.ids.get('contestMoreButton');
   assert.equal(entries.children.length, 6);
-  assert.equal(gallery.ids.get('contestBrowseLink').textContent, '参加作品を見る');
-  assert.equal(gallery.ids.get('entriesTitle').textContent, 'エントリー作品一覧');
-  assert.match(gallery.ids.get('contestEntriesIntro').textContent, /11月1日の開幕後/);
+  assert.equal(
+    gallery.ids.get('contestBrowseLink').textContent,
+    '参加作品を見る'
+  );
+  assert.equal(
+    gallery.ids.get('entriesTitle').textContent,
+    'エントリー作品一覧'
+  );
+  assert.match(
+    gallery.ids.get('contestEntriesIntro').textContent,
+    /11月1日の開幕後/
+  );
   for (const card of entries.children) {
     assert.equal(card.children.some((part) => part.tagName === 'A'), false);
     assert.match(card.children.at(-1).textContent, /11月1日の開幕後に読めます/);
@@ -246,7 +255,10 @@ test('registration shows non-clickable entered works', async () => {
 test('active contest restores links for entered works', async () => {
   const gallery = makeContestGalleryBrowser('active', 2);
   await nextTick();
-  assert.equal(gallery.ids.get('contestBrowseLink').textContent, '参加作品を読む');
+  assert.equal(
+    gallery.ids.get('contestBrowseLink').textContent,
+    '参加作品を読む'
+  );
   assert.equal(gallery.ids.get('entriesTitle').textContent, '参加作品を読む');
   const cards = gallery.ids.get('contestEntries').children;
   assert.equal(cards.length, 2);
