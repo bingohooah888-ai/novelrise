@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 
 const source = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -24,4 +24,13 @@ test('home promo preserves picture and hides closed registration', () => {
   assert.match(script, /area\.hidden = true/);
   assert.match(css, /\.novelight-contest-home-promo-link picture/);
   assert.match(css, /height:auto/);
+});
+
+test('approved binary assets must exist before production merge', () => {
+  for (const filename of [
+    '../assets/contest/starfestival-entry-desktop.webp',
+    '../assets/contest/starfestival-entry-mobile.webp'
+  ]) {
+    assert.ok(existsSync(new URL(filename, import.meta.url)), filename);
+  }
 });
