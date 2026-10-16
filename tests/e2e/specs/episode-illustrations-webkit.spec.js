@@ -5,6 +5,8 @@ const idB = 'abcdefab-1234-4234-8234-123456789abc';
 const markerA = '[[NOVELIGHT_ILLUSTRATION:' + idA + ']]';
 const markerB = '[[NOVELIGHT_ILLUSTRATION:' + idB + ']]';
 
+// The exact serialized function body is used as a browser-injected fixture.
+// prettier-ignore
 function provideMockSupabase() {
   const current = () => globalThis.__safariFixture__;
   const episode = () => ({
