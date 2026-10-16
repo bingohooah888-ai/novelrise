@@ -34,7 +34,7 @@ test('one equipped title is mounted inside the public profile card', () => {
   assert.match(js, /assets\/founding-authors-badge-2026\.png/u);
   assert.match(js, /assets\/scout-badges/u);
   assert.match(js, /hard_reader_read_500/u);
-  assert.match(js, /author_novel_001/u);
+  assert.match(js, /reader\|author\|limited/u);
 });
 
 test('equipped title artwork has a safe fallback and responsive styling', () => {
