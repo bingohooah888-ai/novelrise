@@ -67,7 +67,6 @@ function provideMockSupabase() {
   };
 }
 
-
 // prettier-ignore
 async function installFixture(page, content) {
   await page.addInitScript((initialContent) => {
