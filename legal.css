@@ -331,3 +331,102 @@ body.novelight-public-header-page:not(.novelight-support-page) .legal-main a[hre
     padding-top: 0;
   }
 }
+
+/*
+ * The contest terms are rendered with <main class="legal-container">.
+ * Keep this scoped to that page rather than changing other legal pages.
+ */
+main.legal-container {
+  width: calc(100% - 64px);
+  max-width: 1024px;
+  margin: 40px auto 72px;
+  padding: 48px 56px 64px;
+  border: 1px solid #e5ded0;
+  border-radius: 18px;
+  background: #fffdf9;
+  box-shadow: 0 12px 38px rgba(8, 20, 38, 0.055);
+  color: #253044;
+  font-family: var(--brand-reading-font);
+  font-size: 18px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+main.legal-container h1,
+main.legal-container h2 {
+  color: #1b2430;
+  font-family: var(--brand-display-font);
+  font-weight: 700;
+}
+
+main.legal-container h1 {
+  margin: 0 0 26px;
+  font-size: 38px;
+  line-height: 1.4;
+}
+
+main.legal-container h2 {
+  margin: 48px 0 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e9e2d5;
+  font-size: 27px;
+  line-height: 1.5;
+}
+
+main.legal-container p {
+  margin: 0 0 22px;
+}
+
+main.legal-container table {
+  width: 100%;
+  margin: 24px 0 32px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+main.legal-container th,
+main.legal-container td {
+  padding: 14px 16px;
+  border: 1px solid #e5ded0;
+  font-size: 18px;
+  line-height: 1.8;
+  text-align: left;
+  vertical-align: top;
+}
+
+main.legal-container th {
+  background: #f4efe4;
+  color: #1b2430;
+}
+
+@media (max-width: 640px) {
+  main.legal-container {
+    width: calc(100% - 24px);
+    margin: 16px auto 36px;
+    padding: 28px 20px 40px;
+    border-radius: 12px;
+    font-size: 16px;
+    line-height: 1.9;
+  }
+
+  main.legal-container h1 {
+    margin-bottom: 20px;
+    font-size: 29px;
+  }
+
+  main.legal-container h2 {
+    margin: 36px 0 15px;
+    font-size: 23px;
+  }
+
+  main.legal-container p {
+    margin-bottom: 18px;
+  }
+
+  main.legal-container th,
+  main.legal-container td {
+    padding: 10px 9px;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+}
