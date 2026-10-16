@@ -31,7 +31,10 @@ test('episode continuity keeps public reading open and uses spoiler-safe surroun
   assert.match(runtime, /episodeNavigationTitle\(previous\)/);
   assert.match(runtime, /作品目次/);
   assert.match(runtime, /episodeNavigationTitle\(next\)/);
-  assert.match(runtime, /numberedTitle\(item\.title, item\.episode_number, true\)/);
+  assert.match(
+    runtime,
+    /numberedTitle\(item\.title, item\.episode_number, true\)/
+  );
   assert.doesNotMatch(runtime, /login\.html\?redirect=.*episode/);
 });
 
