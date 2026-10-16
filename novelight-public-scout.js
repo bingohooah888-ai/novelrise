@@ -22,7 +22,7 @@
     'SERAPH',
     'LUMINARIS'
   ];
-  const EQUIPPED_BADGE_WIDTH = 96;
+  const EQUIPPED_BADGE_WIDTH = 256;
   const EQUIPPED_BADGE_QUALITY = 80;
 
   function esc(value) {
@@ -138,8 +138,8 @@
         image.loading = 'lazy';
         image.decoding = 'async';
         if ('fetchPriority' in image) image.fetchPriority = 'low';
-        image.width = 46;
-        image.height = 46;
+        image.width = 120;
+        image.height = 120;
         image.addEventListener('load', () => {
           artworkWrap.classList.add('has-artwork');
         });
@@ -155,18 +155,11 @@
         artworkWrap.prepend(image);
       }
 
-      const copy = document.createElement('span');
-      copy.className = 'public-profile-equipped-copy';
-
-      const label = document.createElement('small');
-      label.textContent = '装備称号';
-
-      const titleName = document.createElement('strong');
-      titleName.textContent = title.display_name || '称号';
-
-      copy.append(label, titleName);
-      badge.append(artworkWrap, copy);
+      // The title is already accessible through the badge's aria-label.
+      // Keep the public profile header visual limited to pen name + artwork.
+      badge.appendChild(artworkWrap);
       name.insertAdjacentElement('afterend', badge);
+      profileHost.classList.add('has-equipped-title');
       return true;
     };
 
