@@ -13,7 +13,8 @@ test('equipped SCOUT artwork uses a small optimized derivative', () => {
   assert.match(source, /EQUIPPED_BADGE_QUALITY\s*=\s*80/);
   assert.match(source, /\/_vercel\/image\?url=/);
   assert.match(source, /image\.src\s*=\s*optimizedArtworkPath\(artworkPath\)/);
-  assert.doesNotMatch(source, /image\.src\s*=\s*artworkPath\s*;/);
+  assert.match(source, /novelightTriedOriginal/u);
+  assert.match(source, /image\.src\s*=\s*artworkPath/u);
 });
 
 test('equipped SCOUT artwork preserves provenance and avoids eager original loading', () => {
