@@ -169,15 +169,16 @@
         artworkWrap.prepend(image);
       }
 
-      // Keep the pen name, equipped artwork, and title name as three
-      // independent items so each occupies one equally spaced column.
+      // Group the equipped badge with its title at the right of the pen name.
       const titleName = document.createElement('strong');
       titleName.className = 'public-profile-equipped-name';
       titleName.textContent = title.display_name || '称号';
 
+      const titleGroup = document.createElement('div');
+      titleGroup.className = 'public-profile-equipped-group';
       badge.appendChild(artworkWrap);
-      name.insertAdjacentElement('afterend', badge);
-      badge.insertAdjacentElement('afterend', titleName);
+      titleGroup.append(badge, titleName);
+      name.insertAdjacentElement('afterend', titleGroup);
       profileHost.classList.add('has-equipped-title');
       return true;
     };
