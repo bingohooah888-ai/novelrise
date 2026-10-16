@@ -54,7 +54,7 @@ test('one equipped title is mounted inside the public profile card', () => {
   assert.match(js, /reader\|author\|limited/u);
 });
 
-test('public profile centers pen name, badge, and equipped title in three equal columns', () => {
+test('public profile spaces pen name, badge, and title evenly', () => {
   assert.match(js, /badge\.appendChild\(artworkWrap\)/u);
   assert.match(js, /titleName\.textContent = title\.display_name/u);
   assert.match(js, /badge\.insertAdjacentElement\('afterend', titleName\)/u);
