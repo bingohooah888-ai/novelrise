@@ -106,6 +106,7 @@ test('OWNER-gated trusted workflow never deploys a Preview or alters Production'
     /STAGING_DATABASE_URL_SOURCE: \$\{\{ secrets.STAGING_DATABASE_URL \}\}/u
   );
   assert.match(yml, /community-staging-interaction-admission\.mjs validate/u);
+  assert.ok(yml.includes(CANDIDATE_SHA));
   assert.match(yml, /verify-staging-migration-target\.mjs/u);
   assert.match(yml, /if: always\(\)/u);
   assert.match(yml, /test "\$state" = 'false\|1\|0\|0\|0'/u);
