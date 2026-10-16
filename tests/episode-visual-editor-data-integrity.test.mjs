@@ -71,3 +71,15 @@ test('image refresh never rebuilds editor text', () => {
   assert.ok(refresh.includes("figure.querySelector('img')"));
   assert.equal(refresh.includes('renderSource('), false);
 });
+
+test('visual editor submits to the real save handler', () => {
+  const start = visual.indexOf("form.addEventListener('submit'");
+  const end = visual.indexOf('window.NovelightEpisodeVisualEditor', start);
+  assert.ok(start >= 0 && end > start);
+  const submit = visual.slice(start, end);
+  assert.ok(submit.includes('syncToTextarea(false)'));
+  assert.equal(submit.includes('stopImmediatePropagation'), false);
+  assert.equal(submit.includes('preventDefault'), false);
+  assert.equal(submit.includes('location.href'), false);
+  assert.equal(visual.includes('unchangedPublishedOwnerSave'), false);
+});
