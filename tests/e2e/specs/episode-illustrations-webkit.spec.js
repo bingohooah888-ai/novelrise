@@ -195,7 +195,7 @@ test('iPhone WebKit drawer button can place and persist existing image', async (
     .getByRole('button', { name: 'カーソル位置へ挿入' })
     .first()
     .click();
-  await expect(page.locator('#content')).toContainText(markerA);
+  await expect(page.locator('#content')).toHaveValue(content + '\n' + markerA);
   await expect(page.locator('.nl-visual-illustration')).toHaveCount(1);
   await page.locator('#closeDrawer').click();
   await page.locator('#save').click();
