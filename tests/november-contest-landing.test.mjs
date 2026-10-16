@@ -141,7 +141,6 @@ test('server page denies unpublished or invalid states', () => {
   );
 });
 
-
 function makeContestGalleryBrowser(status, total = 8) {
   const workList = Array.from({ length: total }, (_, i) => ({
     novel_id: i + 100,
