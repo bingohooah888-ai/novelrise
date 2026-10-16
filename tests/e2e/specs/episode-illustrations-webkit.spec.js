@@ -42,7 +42,7 @@ function provideMockSupabase() {
           updates: current().updates + 1
         };
         globalThis.__safariFixture__ = next;
-        sessionStorage.setItem('__safariFixture__', JSON.stringify(next));
+        globalThis.sessionStorage.setItem('__safariFixture__', JSON.stringify(next));
         return {
           data: { id: 73006, updated_at: next.updated_at },
           error: null
