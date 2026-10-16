@@ -41,18 +41,11 @@ test('large badge art appears to the right of the public pen name', () => {
   assert.match(js, /badge\.appendChild\(artworkWrap\)/u);
   assert.match(js, /profileHost\.classList\.add\('has-equipped-title'\)/u);
   assert.doesNotMatch(js, /public-profile-equipped-copy/u);
-  assert.match(
-    css,
-    /#profile\.has-equipped-title\{display:grid;grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/u
-  );
-  assert.match(
-    css,
-    />\.name\{grid-column:1;grid-row:1;.*justify-self:end;align-self:center/u
-  );
-  assert.match(
-    css,
-    />\.public-profile-equipped-title\{grid-column:2;grid-row:1;justify-self:start;align-self:center/u
-  );
+  assert.match(css, /grid-template-columns:minmax\(0,1fr\) minmax/u);
+  assert.match(css, />\.name\{grid-column:1;grid-row:1/u);
+  assert.match(css, /justify-self:end;align-self:center;text-align:right/u);
+  assert.match(css, />\.public-profile-equipped-title\{grid-column:2;grid-row:1/u);
+  assert.match(css, /justify-self:start;align-self:center/u);
   assert.match(css, />\.bio\{grid-column:1\/-1;grid-row:2/u);
   assert.match(
     css,
@@ -62,10 +55,7 @@ test('large badge art appears to the right of the public pen name', () => {
     css,
     /\.public-profile-equipped-title\{display:block;width:120px;height:120px;.*border:0;background:transparent/u
   );
-  assert.match(
-    css,
-    /#profile\.has-equipped-title\{column-gap:12px/u
-  );
+  assert.match(css, /#profile\.has-equipped-title\{column-gap:12px/u);
 });
 
 test('equipped title artwork has a safe fallback and responsive styling', () => {
