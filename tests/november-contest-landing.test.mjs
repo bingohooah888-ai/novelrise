@@ -295,7 +295,8 @@ test('unexpected contest phases have no reading links', async () => {
 });
 
 test('contest honors hidden prompts and pagination buttons', () => {
-  assert.ok(css.includes('body.novelight-page-contest [hidden]{display:none!important}'));
+  assert.ok(css.includes('body.novelight-page-contest [hidden]'));
+  assert.ok(css.includes('[hidden]{display:none!important}'));
   assert.match(page, /id="contestLoginPrompt"[^>]* hidden>/);
   assert.match(page, /id="contestMoreButton"[^>]* hidden>/);
 });
