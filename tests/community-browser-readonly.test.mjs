@@ -156,3 +156,12 @@ test('workflow pins the existing approved Preview URL', () => {
   assert.ok(workflow.includes(pinned));
   assert.ok(!workflow.includes('novelrise-ibyeza739-ranobe1.vercel.app'));
 });
+
+test('Staging facts GET must not redirect its Preview bypass header', () => {
+  const file = new URL(
+    '../scripts/verify-staging-deployment.mjs',
+    import.meta.url
+  );
+  const source = readFileSync(file, 'utf8');
+  assert.match(source, /redirect: 'error'/u);
+});
