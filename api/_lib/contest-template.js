@@ -28,9 +28,9 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
     <section class="contest-hero">
       <div class="contest-hero-light" aria-hidden="true"></div>
       <div class="contest-hero-inner">
-        <span class="contest-eyebrow">NOVELIGHT 第1回 星灯祭 / 2026年11月</span>
+        <span class="contest-eyebrow">NOVELIGHT CONTEST / 2026年11月</span>
         <span class="contest-status" id="contestStatus">開催準備中</span>
-        <h1>まだ知られていない物語に、<em>光を。</em></h1>
+        <h1>第1回 星灯祭</h1>
         <p class="contest-hero-lead">NOVELIGHT 第1回 星灯祭。読者に届き、続きを読みたいと思わせた物語が、上位を目指せる30日間。</p>
         <div class="contest-hero-actions">
           <a class="contest-button contest-button-primary" href="#enter">作品をエントリーする</a>
