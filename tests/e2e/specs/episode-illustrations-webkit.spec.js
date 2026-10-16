@@ -68,6 +68,7 @@ function provideMockSupabase() {
 }
 
 
+// prettier-ignore
 async function installFixture(page, content) {
   await page.addInitScript((initialContent) => {
     const key = '__safariFixture__';
@@ -108,6 +109,7 @@ async function installFixture(page, content) {
   );
 }
 
+// prettier-ignore
 async function verifySaved(page, expected) {
   await expect(page).toHaveURL(/\/episode\.html\?id=73006$/);
   const stored = await page.evaluate(() => globalThis.__safariFixture__);
@@ -122,6 +124,7 @@ async function verifySaved(page, expected) {
   ).toHaveCount(0);
 }
 
+// prettier-ignore
 test('iPhone Safari WebKit saves the first image before redirect', async ({
   page,
   browserName
@@ -146,6 +149,7 @@ test('iPhone Safari WebKit saves the first image before redirect', async ({
   await verifySaved(page, content + '\n' + markerA);
 });
 
+// prettier-ignore
 test('iPhone Safari WebKit retains an earlier illustration', async ({
   page,
   browserName
@@ -176,6 +180,7 @@ test('iPhone Safari WebKit retains an earlier illustration', async ({
   await verifySaved(page, content + '\n' + markerB);
 });
 
+// prettier-ignore
 test('iPhone Safari WebKit accepts PNG fallback from illustration canvas', async ({
   page,
   browserName
