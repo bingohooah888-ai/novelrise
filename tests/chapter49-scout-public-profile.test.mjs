@@ -54,7 +54,7 @@ test('one equipped title is mounted inside the public profile card', () => {
   assert.match(js, /reader\|author\|limited/u);
 });
 
-test('public profile groups badge and title to the right of the pen name', () => {
+test('public profile keeps name left and equipped group right', () => {
   assert.match(js, /titleName\.textContent = title\.display_name/u);
   assert.match(js, /titleGroup\.append\(badge, titleName\)/u);
   assert.match(js, /name\.insertAdjacentElement\('afterend', titleGroup\)/u);
@@ -73,7 +73,10 @@ test('public profile groups badge and title to the right of the pen name', () =>
     css,
     />\.author-follow-controls,.*>\.user-safety-controls\{grid-column:1\/-1\}/u
   );
-  assert.match(css, /\.public-profile-equipped-title\{display:block;flex:0 0 120px/u);
+  assert.match(
+    css,
+    /\.public-profile-equipped-title\{display:block;flex:0 0 120px/u
+  );
   assert.match(css, /\.public-profile-equipped-title\{flex-basis:90px/u);
 });
 
