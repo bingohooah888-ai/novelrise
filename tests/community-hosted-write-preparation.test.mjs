@@ -24,7 +24,11 @@ const inputs = {
 const inspect = (changes = {}) =>
   inspectCommunityHostedWritePreparation({ ...inputs, ...changes });
 
-test('all structural checks still return preparation-only and no authorization', () => {
+function reject(changes) {
+  assert.throws(() => inspect(changes), /DENIED/u);
+}
+
+test('structural checks never authorize Staging writes', () => {
   const result = inspect();
   assert.equal(result.status, 'PREPARATION_ONLY');
   assert.equal(result.writeAuthorized, false);
@@ -34,75 +38,39 @@ test('all structural checks still return preparation-only and no authorization',
   assert.ok(Object.isFrozen(result));
 });
 
-test('wrong commit revision cannot be used as a hosted test target', () => {
-  assert.throws(() => inspect({ previewRevision: 'd'.repeat(40) }), /DENIED/u);
-  assert.throws(() => inspect({ mainSha: 'broken' }), /DENIED/u);
-  assert.throws(
-    () => inspect({ candidateSha: inputs.mainSha }),
-    /DENIED/u
-  );
+test('wrong candidate or Preview revision is rejected', () => {
+  reject({ previewRevision: 'd'.repeat(40) });
+  reject({ mainSha: 'broken' });
+  reject({ candidateSha: inputs.mainSha });
 });
 
-test('Production and shared Staging resources are always forbidden', () => {
-  for (const projectRef of [
-    PRODUCTION_PROJECT_REF,
-    EXISTING_SHARED_STAGING_REF
-  ]) {
-    assert.throws(
-      () =>
-        inspect({
-          isolatedProjectRef: projectRef,
-          supabaseOrigin: `https://${projectRef}.supabase.co`
-        }),
-      /DENIED/u
-    );
+test('Production and shared Staging resources are forbidden', () => {
+  const forbidden = [PRODUCTION_PROJECT_REF, EXISTING_SHARED_STAGING_REF];
+  for (const projectRef of forbidden) {
+    reject({
+      isolatedProjectRef: projectRef,
+      supabaseOrigin: `https://${projectRef}.supabase.co`
+    });
   }
-  assert.throws(
-    () => inspect({ previewOrigin: 'https://novelrise.vercel.app' }),
-    /DENIED/u
-  );
-  assert.throws(
-    () => inspect({ previewOrigin: 'https://novelight.jp' }),
-    /DENIED/u
-  );
+  reject({ previewOrigin: 'https://novelrise.vercel.app' });
+  reject({ previewOrigin: 'https://novelight.jp' });
 });
 
-test('inconsistent and unsafe origins are rejected', () => {
-  assert.throws(
-    () => inspect({ supabaseOrigin: 'https://dddddddddddddddddddd.supabase.co' }),
-    /DENIED/u
-  );
-  assert.throws(
-    () =>
-      inspect({
-        previewOrigin: 'https://community-preview-test.vercel.app.evil.com'
-      }),
-    /DENIED/u
-  );
-  assert.throws(
-    () => inspect({ previewOrigin: 'https://name:secret@demo.vercel.app' }),
-    /DENIED/u
-  );
-  assert.throws(
-    () => inspect({ supabaseOrigin: 'http://cccccccccccccccccccc.supabase.co' }),
-    /DENIED/u
-  );
+test('invalid or inconsistent origins are rejected', () => {
+  reject({ supabaseOrigin: 'https://dddddddddddddddddddd.supabase.co' });
+  reject({
+    previewOrigin: 'https://community-preview-test.vercel.app.evil.com'
+  });
+  reject({ previewOrigin: 'https://name:secret@demo.vercel.app' });
+  reject({ supabaseOrigin: 'http://cccccccccccccccccccc.supabase.co' });
 });
 
-test('synthetic author, reader and admin identities must remain separate', () => {
-  assert.throws(() => inspect({ userIds: undefined }), /DENIED/u);
-  assert.throws(
-    () =>
-      inspect({
-        userIds: { ...inputs.userIds, admin: inputs.userIds.reader }
-      }),
-    /DENIED/u
-  );
-  assert.throws(
-    () =>
-      inspect({
-        userIds: { ...inputs.userIds, author: 'not-a-uuid' }
-      }),
-    /DENIED/u
-  );
+test('three separate synthetic user identities are required', () => {
+  reject({ userIds: undefined });
+  reject({
+    userIds: { ...inputs.userIds, admin: inputs.userIds.reader }
+  });
+  reject({
+    userIds: { ...inputs.userIds, author: 'not-a-uuid' }
+  });
 });
