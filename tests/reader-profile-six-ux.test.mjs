@@ -40,7 +40,7 @@ test('profile prioritizes author publications and shows one scout title within t
   assert.ok(author.indexOf('id="publicScoutRecord"') > author.indexOf('id="list"'));
   assert.match(scout, /<div class="public-scout-label">装備称号<\/div>/u);
   assert.doesNotMatch(scout, /<span>装備称号<\/span><strong>/u);
-  assert.match(css, /public-scout-summary\{grid-template-columns:repeat\(2,minmax/u);
+  assert.match(css, /public-scout-summary\{[^}]*grid-template-columns:repeat\(2,minmax/u);
 });
 
 test('public profile resolves official author, normal and hard scout artwork', () => {
