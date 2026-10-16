@@ -108,6 +108,8 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
   const card = page.locator('.community-card');
   await expect(card).toHaveCount(1);
+  await expect(page.locator('#communityPageHeading')).toBeVisible();
+  await expect(page.locator('.community-tabs')).toBeVisible();
   await expect(card.locator('.community-card-title')).toHaveText(
     'テスト用の近況'
   );
@@ -131,6 +133,13 @@ test('community UI interactions use mocked data', async ({ page }) => {
   );
   await card.locator('.community-comment-form input').fill('テストの返信です');
   await card.locator('.community-comment-form button[type="submit"]').click();
+  // Desktop and Pixel-sized mobile must keep the interactive card within the
+  // viewport, including the expanded comments/form state.
+  const layout = await page.evaluate(() => ({
+    clientWidth: globalThis.document.documentElement.clientWidth,
+    scrollWidth: globalThis.document.documentElement.scrollWidth
+  }));
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
 
   page.once('dialog', (dialog) => dialog.accept('テスト理由'));
   await card.locator('.community-action', { hasText: '通報' }).click();
