@@ -126,12 +126,12 @@ body.novelight-page-contest::before{
 .novelight-page-contest .contest-timeline{background:rgba(13,23,39,.72)}
 
 /* Star Festival typography and contrast: navy sections stay light; only white cards are dark. */
+/* Enforce the same NOVELIGHT Mincho on every text-bearing descendant.
+   Body-only inheritance was overridden by individual theme/component font rules. */
 html body.novelight-theme.novelight-page-contest,
-body.novelight-page-contest button,
-body.novelight-page-contest input,
-body.novelight-page-contest select,
-body.novelight-page-contest textarea {
- font-family:"Yu Mincho","游明朝","Hiragino Mincho ProN","Noto Serif CJK JP","Noto Serif JP","MS PMincho",serif !important
+html body.novelight-theme.novelight-page-contest :where(*):not(svg):not(path) {
+ font-family:var(--novelight-brand-reading-font,
+  "Yu Mincho","Hiragino Mincho ProN","Noto Serif JP","Noto Serif CJK JP","MS PMincho",serif) !important
 }
 body.novelight-page-contest .contest-hero h1{color:#ffe0a0;font-size:clamp(48px,7vw,82px);line-height:1.25;letter-spacing:.025em}
 body.novelight-page-contest .contest-prize-layout h2,
