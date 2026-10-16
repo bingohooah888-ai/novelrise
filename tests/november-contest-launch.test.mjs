@@ -35,7 +35,9 @@ function simulate(
     nodes.set(id, {
       hidden: true,
       textContent: '',
-      setAttribute(name, value) { this[name] = value; }
+      setAttribute(name, value) {
+        this[name] = value;
+      }
     });
   }
   const document = { getElementById: (id) => nodes.get(id) ?? null };
