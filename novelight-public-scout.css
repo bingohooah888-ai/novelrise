@@ -1,7 +1,7 @@
 .public-scout{margin:0 0 27px;padding:22px;border:1px solid #d9c897;border-radius:15px;background:linear-gradient(135deg,#fffdf6,#f5f0e5)}
 .public-scout[hidden]{display:none}
 /* Public profile identity: pen name left, grouped artwork and title right. */
-.novelight-page-author #profile.has-equipped-title{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto;column-gap:clamp(12px,3vw,32px);align-items:center}
+.novelight-page-author #profile.has-equipped-title{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto;column-gap:clamp(12px,3vw,32px);align-items:center;padding-inline:clamp(22px,4vw,64px)}
 .novelight-page-author #profile.has-equipped-title>.name{grid-column:1;grid-row:1;min-width:0;overflow-wrap:anywhere;justify-self:start;align-self:center;text-align:left}
 .novelight-page-author #profile.has-equipped-title>.bio{grid-column:1/-1;grid-row:2;min-width:0;overflow-wrap:anywhere}
 .novelight-page-author #profile.has-equipped-title>.public-profile-equipped-group{grid-column:2;grid-row:1;display:flex;align-items:center;justify-self:end;gap:14px;max-width:100%;min-width:0}
