@@ -169,10 +169,15 @@
         artworkWrap.prepend(image);
       }
 
-      // The title is already accessible through the badge's aria-label.
-      // Keep the public profile header visual limited to pen name + artwork.
+      // Keep the pen name, equipped artwork, and title name as three
+      // independent items so each occupies one equally spaced column.
+      const titleName = document.createElement('strong');
+      titleName.className = 'public-profile-equipped-name';
+      titleName.textContent = title.display_name || '称号';
+
       badge.appendChild(artworkWrap);
       name.insertAdjacentElement('afterend', badge);
+      badge.insertAdjacentElement('afterend', titleName);
       profileHost.classList.add('has-equipped-title');
       return true;
     };
