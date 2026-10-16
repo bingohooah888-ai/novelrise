@@ -1,0 +1,193 @@
+name: Community Phase 1 Isolated Staging Interaction Rollback (OWNER only)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: community-phase1-interaction-rollback-single-use
+  cancel-in-progress: false
+
+jobs:
+  admit:
+    name: Authenticate one OWNER approval for Staging-only rollback
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_COMMUNITY_INTERACTION_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      main_sha: ${{ steps.approve.outputs.main_sha }}
+      candidate_sha: ${{ steps.approve.outputs.candidate_sha }}
+      request_id: ${{ steps.approve.outputs.request_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Verify exact main, scope and unused OWNER approval
+        id: approve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+            > /tmp/community-interaction-main.json
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" \
+            > /tmp/community-interaction-ledger.json
+          node scripts/community-staging-interaction-admission.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/community-interaction-main.json \
+            /tmp/community-interaction-ledger.json \
+            > /tmp/community-interaction-decision.json
+          main="$(jq -er '.mainSha' /tmp/community-interaction-decision.json)"
+          test "$main" = "$(git rev-parse HEAD)"
+          {
+            echo "main_sha=$main"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/community-interaction-decision.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/community-interaction-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Claim exact approval before any Staging access
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ steps.approve.outputs.main_sha }}
+          HEAD_SHA: ${{ steps.approve.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.approve.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN_SHA" --arg candidateSha "$HEAD_SHA" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_INTERACTION_CLAIMED $payload" \
+            > /dev/null
+
+  test:
+    name: Test isolated Staging RPCs within mandatory PostgreSQL ROLLBACK
+    needs: admit
+    if: needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      CANDIDATE_SHA: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-staging-interaction-url
+      PGSSLMODE: require
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Reject changing refs, other DBs, missing Staging credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')" = "$CANDIDATE_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.state')" = 'open'
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.draft')" = 'true'
+          test "$CANDIDATE_SHA" = '0fb3cd158c4ef2b16185abb7b628b161cd0f0e92'
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          node scripts/resolve-staging-session-pooler.mjs
+          export STAGING_DATABASE_URL
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          node scripts/verify-staging-migration-target.mjs
+      - name: Prove committed community gate OFF and zero existing fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          db="$(cat "$STAGING_DATABASE_URL_FILE")"
+          state="$(psql "$db" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT public_enabled::text || '|' ||
+             (SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version='20261014052000')::text || '|' ||
+             (SELECT count(*) FROM public.community_comments)::text || '|' ||
+             (SELECT count(*) FROM public.community_reactions)::text || '|' ||
+             (SELECT count(*) FROM public.community_reports)::text
+             FROM public.community_runtime_control WHERE singleton")"
+          test "$state" = 'false|1|0|0|0'
+      - name: Prove likes, comments, reports, Block/Mute and hidden posts using one ROLLBACK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          db="$(cat "$STAGING_DATABASE_URL_FILE")"
+          psql "$db" -X -v ON_ERROR_STOP=1 \
+            -f supabase/checks/20261016053000_community_phase1_interaction_rollback.sql \
+            > /tmp/community-interaction-proof.log
+          grep -Fxq 'COMMUNITY_STAGING_INTERACTIONS_ROLLBACK_OK' \
+            /tmp/community-interaction-proof.log
+          echo 'Community Phase 1 RPC fixture assertions passed within a mandatory PostgreSQL ROLLBACK.'
+      - name: Require committed gate OFF and no persisted fixtures, even on failure
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$STAGING_DATABASE_URL_FILE"
+          db="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL="$db"
+          node scripts/verify-staging-migration-target.mjs
+          state="$(psql "$db" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT public_enabled::text || '|' ||
+             (SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version='20261014052000')::text || '|' ||
+             (SELECT count(*) FROM public.community_comments)::text || '|' ||
+             (SELECT count(*) FROM public.community_reactions)::text || '|' ||
+             (SELECT count(*) FROM public.community_reports)::text
+             FROM public.community_runtime_control WHERE singleton")"
+          test "$state" = 'false|1|0|0|0'
+          echo 'Staging committed public gate OFF; migration and interaction counts unchanged.'
+
+  consume:
+    name: Consume one-use OWNER approval on success or failure
+    needs: [admit, test]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Record single-use outcome in Issue #294
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+          HEAD_SHA: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          OUTCOME: ${{ needs.test.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN_SHA" --arg candidateSha "$HEAD_SHA" \
+            --arg runId "$GITHUB_RUN_ID" --arg result "$OUTCOME" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_INTERACTION_CONSUMED $payload" \
+            > /dev/null

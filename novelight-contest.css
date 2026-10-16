@@ -103,3 +103,7 @@ body.novelight-page-contest{margin:0;background:var(--c-bg);color:var(--c-ink);f
 .contest-ranking-item>a:hover{text-decoration:underline}
 .contest-ranking-points{text-align:right;color:var(--c-gold-bright);font-weight:850;font-variant-numeric:tabular-nums}
 @media(max-width:560px){.contest-ranking-item{grid-template-columns:46px minmax(0,1fr) 50px;gap:9px;padding:15px 11px}.contest-ranking-item>strong{font-size:15px}.contest-ranking-item>a{font-size:13px}.contest-ranking-points{font-size:14px}}
+
+/* Star Festival official art: only the contest hero requests this 334-KiB WebP. */
+.contest-hero{background-color:#0a1220;background-image:linear-gradient(90deg,rgba(8,15,30,.87) 0%,rgba(8,15,30,.68) 42%,rgba(8,15,30,.28) 72%,rgba(8,15,30,.10) 100%),url('/assets/november-contest-star-festival-hero-b51977ec.webp');background-position:center center;background-size:cover;background-repeat:no-repeat}
+@media(max-width:560px){.contest-hero{background-image:linear-gradient(90deg,rgba(8,15,30,.80),rgba(8,15,30,.58)),url('/assets/november-contest-star-festival-hero-b51977ec.webp');background-position:58% center}}
