@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -102,4 +103,19 @@ test('OWNER-gated trusted workflow never deploys a Preview or alters Production'
   assert.doesNotMatch(yml, /workflow_dispatch:/u);
   assert.doesNotMatch(yml, /vercel-preview-deployment/u);
   assert.doesNotMatch(yml, /supabase db push/u);
+});
+
+test('temporary formatter proof for draft CI', () => {
+  const output = spawnSync(
+    process.execPath,
+    [
+      'node_modules/prettier/bin/prettier.cjs',
+      'tests/community-staging-interaction-rollback.test.mjs'
+    ],
+    { encoding: 'utf8' }
+  );
+  if (output.status !== 0) throw new Error(output.stderr);
+  console.log('STAGING_PRETTIER_START');
+  console.log(output.stdout);
+  console.log('STAGING_PRETTIER_END');
 });
