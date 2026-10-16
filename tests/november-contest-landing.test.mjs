@@ -158,10 +158,18 @@ function makeContestGalleryBrowser(status, total = 8) {
       textContent: '',
       hidden: false,
       disabled: false,
-      append(...items) { this.children.push(...items); },
-      replaceChildren(...items) { this.children = items; },
-      addEventListener(name, handler) { this.listeners[name] = handler; },
-      setAttribute(name, value) { this[name] = value; }
+      append(...items) {
+        this.children.push(...items);
+      },
+      replaceChildren(...items) {
+        this.children = items;
+      },
+      addEventListener(name, handler) {
+        this.listeners[name] = handler;
+      },
+      setAttribute(name, value) {
+        this[name] = value;
+      }
     };
   }
   const ids = new Map();
@@ -175,7 +183,9 @@ function makeContestGalleryBrowser(status, total = 8) {
   const requests = [];
   const client = {
     auth: {
-      async getSession() { return { data: { session: null }, error: null }; }
+      async getSession() {
+        return { data: { session: null }, error: null };
+      }
     },
     async rpc(name, params) {
       requests.push({ name, params });
@@ -207,29 +217,36 @@ function makeContestGalleryBrowser(status, total = 8) {
   return { ids, requests };
 }
 
-test('during registration only entered work cards display, with no reading links', async () => {
+test('registration shows non-clickable entered works', async () => {
   const gallery = makeContestGalleryBrowser('registration');
   await nextTick();
-  const cards = gallery.ids.get('contestEntries').children;
-  assert.equal(cards.length, 6);
+  const entries = gallery.ids.get('contestEntries');
+  const more = gallery.ids.get('contestMoreButton');
+  assert.equal(entries.children.length, 6);
   assert.equal(gallery.ids.get('contestBrowseLink').textContent, '参加作品を見る');
   assert.equal(gallery.ids.get('entriesTitle').textContent, 'エントリー作品一覧');
-  assert.match(gallery.ids.get('contestEntriesIntro').textContent, /11月1日の開幕後/);
-  for (const card of cards) {
+  assert.match(
+    gallery.ids.get('contestEntriesIntro').textContent,
+    /11月1日の開幕後/
+  );
+  for (const card of entries.children) {
     assert.equal(card.children.some((part) => part.tagName === 'A'), false);
-    assert.match(card.children.at(-1).textContent, /11月1日の開幕後に読めます/);
+    assert.match(
+      card.children.at(-1).textContent,
+      /11月1日の開幕後に読めます/
+    );
   }
-  assert.equal(gallery.ids.get('contestMoreButton').hidden, false);
+  assert.equal(more.hidden, false);
   assert.equal(gallery.requests[0].params.p_limit, 6);
   assert.equal(gallery.requests[0].params.p_offset, 0);
 
-  await gallery.ids.get('contestMoreButton').listeners.click();
-  assert.equal(gallery.ids.get('contestEntries').children.length, 8);
+  await more.listeners.click();
+  assert.equal(entries.children.length, 8);
   assert.equal(gallery.requests[1].params.p_offset, 6);
-  assert.equal(gallery.ids.get('contestMoreButton').hidden, true);
+  assert.equal(more.hidden, true);
 });
 
-test('after contest opens the same entered works have reading links', async () => {
+test('active contest restores links for entered works', async () => {
   const gallery = makeContestGalleryBrowser('active', 2);
   await nextTick();
   assert.equal(gallery.ids.get('contestBrowseLink').textContent, '参加作品を読む');
@@ -244,13 +261,11 @@ test('after contest opens the same entered works have reading links', async () =
   assert.equal(gallery.ids.get('contestMoreButton').hidden, true);
 });
 
-test('pre-opening and unexpected states never expose contest reading links', async () => {
+test('unexpected contest phases have no reading links', async () => {
   for (const state of ['draft', 'registration', 'cancelled', 'unexpected']) {
     const gallery = makeContestGalleryBrowser(state, 1);
     await nextTick();
-    assert.equal(
-      gallery.ids.get('contestEntries').children[0].children.some((part) => part.tagName === 'A'),
-      false
-    );
+    const card = gallery.ids.get('contestEntries').children[0];
+    assert.equal(card.children.some((part) => part.tagName === 'A'), false);
   }
 });
