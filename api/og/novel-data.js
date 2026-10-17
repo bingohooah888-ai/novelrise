@@ -88,7 +88,9 @@ async function loadCustomCover(client, novelId) {
     return '';
   }
   const path = String(data?.storage_path || '');
-  if (!/^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.(?:webp|png|jpg)$/u.test(path)) return '';
+  if (
+    !/^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.(?:webp|png|jpg)$/u.test(path)
+  ) return '';
   const { data: url } = client.storage
     .from('novel-custom-covers')
     .getPublicUrl(path);
