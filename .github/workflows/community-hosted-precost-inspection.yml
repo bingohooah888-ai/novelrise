@@ -81,3 +81,19 @@ jobs:
           jq -e '.status == "RESERVATION_TAG_RULESET_READ_ONLY_INSPECTION" and .protectionObserved == true and .protectionFreshAtExecution == false and .stagingCostApproved == false and .mayClaim == false and .runAuthorized == false and .writeAuthorized == false' \
             /tmp/community-hosted-tag-protection-verdict.json > /dev/null
           echo 'Read-only reservation tag ruleset inspection passed; no claim or Staging cost authorized.'
+      - name: Require exact OWNER and trusted-main context without granting execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOSTED_TRUSTED_CHECKOUT_SHA="$(git rev-parse HEAD)"
+          node scripts/community-hosted-trusted-runner-gate.mjs validate \
+            "$GITHUB_EVENT_PATH" \
+            /tmp/community-precost-main.json \
+            /tmp/community-precost-feature.json \
+            /tmp/community-precost-ledger.json \
+            /tmp/community-hosted-ruleset-inventory.json \
+            /tmp/community-hosted-active-tag-details.json \
+            > /tmp/community-hosted-trusted-main-precheck.json
+          jq -e '.status == "COMMUNITY_HOSTED_TRUSTED_MAIN_READ_ONLY_PRECHECK" and .authenticatedOwnerByThisModule == false and .atomicClaimVerified == false and .stagingCostApproved == false and .mayClaim == false and .runAuthorized == false and .writeAuthorized == false and .releaseAuthorized == false' \
+            /tmp/community-hosted-trusted-main-precheck.json > /dev/null
+          echo 'OWNER event and trusted main verified read-only. No reservation or cost action authorized.'
