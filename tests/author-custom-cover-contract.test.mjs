@@ -51,7 +51,10 @@ test('custom covers affect work detail and X, not discovery', async () => {
   const officialAt = work.indexOf("from('novels').select('thumbnail_url')");
   assert.ok(customAt >= 0 && customAt < officialAt);
   assert.match(og, /loadCustomCover\(client, novel\.id\)/u);
-  assert.match(og, /const authorImageUrl = customCoverUrl \|\| officialAssetUrl/u);
+  assert.match(
+    og,
+    /const authorImageUrl = customCoverUrl \|\| officialAssetUrl/u
+  );
   assert.match(x, /from\('novel_custom_covers'\)/u);
   assert.match(x, /currentCardRevision\(shareUrl\)/u);
   assert.doesNotMatch(list, /novel_custom_covers/u);
