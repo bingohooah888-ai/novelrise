@@ -44,6 +44,7 @@ function setup() {
   const draws = [];
   let removedUrlCount = 0;
   let currentPath = '';
+  let nextId = 0;
   const bucket = {
     getPublicUrl(path) {
       return { data: { publicUrl: 'https://example.com/' + path } };
@@ -142,7 +143,7 @@ function setup() {
     },
     crypto: {
       randomUUID() {
-        return 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+        return 'aaaaaaaa-bbbb-4ccc-8ddd-' + String(++nextId).padStart(12, '0');
       }
     },
     document: {
