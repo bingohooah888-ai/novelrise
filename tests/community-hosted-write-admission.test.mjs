@@ -110,10 +110,12 @@ test('owner, exact current main and immutable Draft PR are required', () => {
 
 test('separate scope, SHA, Preview and isolated branch are checked', () => {
   rejects((x) => {
-    x.comment.body = HOSTED_APPROVE + JSON.stringify({
-      ...request,
-      scope: 'community-phase1-interaction-rollback'
-    });
+    x.comment.body =
+      HOSTED_APPROVE +
+      JSON.stringify({
+        ...request,
+        scope: 'community-phase1-interaction-rollback'
+      });
   });
   rejects((x) => {
     x.branch.project_ref = 'wmlzjgvxgoyrovdhbqbg';
@@ -166,9 +168,11 @@ test('truncated and malformed ledger or unrecognized fields fail shut', () => {
     x.ledgerPages = [[null]];
   });
   rejects((x) => {
-    x.comment.body = HOSTED_APPROVE + JSON.stringify({
-      ...request,
-      injected: true
-    });
+    x.comment.body =
+      HOSTED_APPROVE +
+      JSON.stringify({
+        ...request,
+        injected: true
+      });
   });
 });
