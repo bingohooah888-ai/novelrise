@@ -159,25 +159,25 @@ test('fresh exact main, untouched Draft head and scope are mandatory', () => {
     x.event.comment.body =
       HOSTED_PRE_COST_APPROVE +
       JSON.stringify({
-      ...proposal,
-      scope: 'migration-sync'
-    });
+        ...proposal,
+        scope: 'migration-sync'
+      });
   });
   denied((x) => {
     x.event.comment.body =
       HOSTED_PRE_COST_APPROVE +
       JSON.stringify({
-      ...proposal,
-      mainSha: 'not-a-sha'
-    });
+        ...proposal,
+        mainSha: 'not-a-sha'
+      });
   });
   denied((x) => {
     x.event.comment.body =
       HOSTED_PRE_COST_APPROVE +
       JSON.stringify({
-      ...proposal,
-      target: 'shared-staging'
-    });
+        ...proposal,
+        target: 'shared-staging'
+      });
   });
 });
 
@@ -189,19 +189,19 @@ test(
     });
     denied((x) => {
       x.event.comment.body =
-      HOSTED_PRE_COST_APPROVE +
-      JSON.stringify({
-        ...proposal,
-        confirmation: 'PREFLIGHT ONLY'
-      });
+        HOSTED_PRE_COST_APPROVE +
+        JSON.stringify({
+          ...proposal,
+          confirmation: 'PREFLIGHT ONLY'
+        });
     });
     denied((x) => {
       x.event.comment.body =
-      HOSTED_PRE_COST_APPROVE +
-      JSON.stringify({
-        ...proposal,
-        command: 'create-branch'
-      });
+        HOSTED_PRE_COST_APPROVE +
+        JSON.stringify({
+          ...proposal,
+          command: 'create-branch'
+        });
     });
     denied((x) => {
       x.event.comment.body = HOSTED_PRE_COST_APPROVE + '{';
