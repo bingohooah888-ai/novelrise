@@ -101,25 +101,37 @@ test('stale main, altered head or active feature refuse preflight', () => {
 
 test('wrong intent or injected JSON keys refuse preflight', () => {
   rejects((x) => {
-    x.event.comment.body = COMMUNITY_HOSTED_PREFLIGHT_MARKER +
+    x.event.comment.body =
+      COMMUNITY_HOSTED_PREFLIGHT_MARKER +
       JSON.stringify({ ...request, confirmation: 'STAGING APPROVED' });
   });
   rejects((x) => {
-    x.event.comment.body = COMMUNITY_HOSTED_PREFLIGHT_MARKER +
+    x.event.comment.body =
+      COMMUNITY_HOSTED_PREFLIGHT_MARKER +
       JSON.stringify({ ...request, unexpected: true });
   });
   rejects((x) => {
-    x.event.comment.body = COMMUNITY_HOSTED_PREFLIGHT_MARKER +
-      JSON.stringify({ ...request, scope: 'community-phase1-hosted-authenticated-write' });
+    x.event.comment.body =
+      COMMUNITY_HOSTED_PREFLIGHT_MARKER +
+      JSON.stringify({
+        ...request,
+        scope: 'community-phase1-hosted-authenticated-write'
+      });
   });
 });
 
 test('future workflow cannot have side-effectful permissions or operations', () => {
   const yaml = readFileSync(
-    new URL('../.github/workflows/community-hosted-preflight.yml', import.meta.url),
+    new URL(
+      '../.github/workflows/community-hosted-preflight.yml',
+      import.meta.url
+    ),
     'utf8'
   );
-  assert.match(yaml, /permissions:\n  contents: read\n  issues: read\n  pull-requests: read/u);
+  assert.match(
+    yaml,
+    /permissions:\n  contents: read\n  issues: read\n  pull-requests: read/u
+  );
   assert.match(yaml, /ref: main/u);
   assert.match(yaml, /persist-credentials: false/u);
   assert.match(yaml, /github.event.issue.number == 188/u);
