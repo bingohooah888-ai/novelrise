@@ -1,0 +1,47 @@
+name: Community Phase 1 Hosted Write Read-only Preflight (OWNER only)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: community-hosted-preflight
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify current feature and owner intent without side effects
+    if: >-
+      github.event.issue.number == 188 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_COMMUNITY_HOSTED_PREFLIGHT_REQUEST ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted main without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Bind actual main and current Draft feature
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/community-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-pr.json
+          test "$(git rev-parse HEAD)" = "$(jq -er '.object.sha' /tmp/community-main.json)"
+          node scripts/community-hosted-preprovision.mjs validate             "$GITHUB_EVENT_PATH" /tmp/community-main.json /tmp/community-pr.json             > /tmp/community-verdict.json
+          jq -e '.status == "READ_ONLY_PREFLIGHT_ONLY" and .mayCreateBranch == false and .mayRunBrowser == false and .mayModifyProduction == false'             /tmp/community-verdict.json > /dev/null
+          echo 'Verified the exact owner request and Draft candidate. No branch, Preview, secrets or Staging writes touched.'
