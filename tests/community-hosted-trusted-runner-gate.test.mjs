@@ -7,12 +7,8 @@ import {
   HOSTED_CLAIMED,
   HOSTED_SCOPE
 } from '../scripts/community-hosted-write-admission.mjs';
-import {
-  HOSTED_PRE_COST_APPROVE
-} from '../scripts/community-hosted-precost-admission.mjs';
-import {
-  inspectCommunityHostedTrustedRunner
-} from '../scripts/community-hosted-trusted-runner-gate.mjs';
+import { HOSTED_PRE_COST_APPROVE } from '../scripts/community-hosted-precost-admission.mjs';
+import { inspectCommunityHostedTrustedRunner } from '../scripts/community-hosted-trusted-runner-gate.mjs';
 
 const REPO = 'bingohooah888-ai/novelrise';
 const OWNER = 'bingohooah888-ai';
@@ -71,38 +67,41 @@ function fixture() {
       head: { sha: FEATURE, repo: { full_name: REPO } }
     },
     ledgerPages: [[comment]],
-    inventoryPages: [[{
-      id: 900,
-      target: 'tag',
-      enforcement: 'active',
-      source_type: 'Repository'
-    }]],
-    tagRuleDetails: [{
-      id: 900,
-      target: 'tag',
-      enforcement: 'active',
-      source_type: 'Repository',
-      source: REPO,
-      current_user_can_bypass: 'never',
-      bypass_actors: [],
-      conditions: {
-        ref_name: {
-          include: ['refs/tags/novelight-community-hosted-once-v1-*'],
-          exclude: []
+    inventoryPages: [
+      [
+        {
+          id: 900,
+          target: 'tag',
+          enforcement: 'active',
+          source_type: 'Repository'
         }
-      },
-      rules: [{ type: 'deletion' }, { type: 'update' }]
-    }]
+      ]
+    ],
+    tagRuleDetails: [
+      {
+        id: 900,
+        target: 'tag',
+        enforcement: 'active',
+        source_type: 'Repository',
+        source: REPO,
+        current_user_can_bypass: 'never',
+        bypass_actors: [],
+        conditions: {
+          ref_name: {
+            include: ['refs/tags/novelight-community-hosted-once-v1-*'],
+            exclude: []
+          }
+        },
+        rules: [{ type: 'deletion' }, { type: 'update' }]
+      }
+    ]
   };
 }
 
 function reject(mutator) {
   const x = fixture();
   mutator(x);
-  assert.throws(
-    () => inspectCommunityHostedTrustedRunner(x),
-    /DENIED/u
-  );
+  assert.throws(() => inspectCommunityHostedTrustedRunner(x), /DENIED/u);
 }
 
 test('valid synthetic OWNER context produces only a frozen non-grant', () => {
@@ -133,12 +132,16 @@ test('valid synthetic OWNER context produces only a frozen non-grant', () => {
 
 test('actual branch-only protection denies trusted runner preflight', () => {
   reject((x) => {
-    x.inventoryPages = [[{
-      id: 21196358,
-      target: 'branch',
-      source_type: 'Repository',
-      enforcement: 'active'
-    }]];
+    x.inventoryPages = [
+      [
+        {
+          id: 21196358,
+          target: 'branch',
+          source_type: 'Repository',
+          enforcement: 'active'
+        }
+      ]
+    ];
     x.tagRuleDetails = [];
   });
 });
@@ -229,19 +232,19 @@ test('missing nonbypassable active tag ruleset or partial scope denies', () => {
     x.tagRuleDetails[0].enforcement = 'evaluate';
   });
   reject((x) => {
-    x.tagRuleDetails[0].bypass_actors = [{
-      actor_type: 'RepositoryRole',
-      actor_id: 5,
-      bypass_mode: 'always'
-    }];
+    x.tagRuleDetails[0].bypass_actors = [
+      {
+        actor_type: 'RepositoryRole',
+        actor_id: 5,
+        bypass_mode: 'always'
+      }
+    ];
   });
   reject((x) => {
     x.tagRuleDetails[0].rules = [{ type: 'deletion' }];
   });
   reject((x) => {
-    x.tagRuleDetails[0].conditions.ref_name.include = [
-      'refs/tags/other-*'
-    ];
+    x.tagRuleDetails[0].conditions.ref_name.include = ['refs/tags/other-*'];
   });
 });
 
@@ -254,7 +257,7 @@ test('pre-cost workflow remains owner-only, read-only, and fail-closed', () => {
   for (const required of [
     'issue_comment:',
     'types: [created]',
-    'github.event.comment.author_association == \'OWNER\'',
+    "github.event.comment.author_association == 'OWNER'",
     'ref: main',
     'persist-credentials: false',
     'community-hosted-reservation-protection.mjs validate',
