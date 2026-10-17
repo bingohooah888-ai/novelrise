@@ -286,7 +286,9 @@ test('malformed, truncated and ambiguous control ledger fails closed', () => {
   });
 });
 
-test('trusted OWNER pre-cost workflow is read-only and cannot grant access', () => {
+test(
+  'trusted OWNER pre-cost workflow is read-only and cannot grant access',
+  () => {
   const file = new URL(
     '../.github/workflows/community-hosted-precost-inspection.yml',
     import.meta.url
@@ -298,12 +300,13 @@ test('trusted OWNER pre-cost workflow is read-only and cannot grant access', () 
   assert.match(yaml, /contents: read/u);
   assert.match(yaml, /issues: read/u);
   assert.match(yaml, /pull-requests: read/u);
-  assert.match(yaml, /community-hosted-precost-admission\\.mjs validate/u);
+  assert.match(yaml, /community-hosted-precost-admission\.mjs validate/u);
   assert.match(yaml, /\.runAuthorized == false/u);
   assert.match(yaml, /\.mayCreateBranch == false/u);
   assert.match(yaml, /\.stagingCostApproved == false/u);
   assert.doesNotMatch(yaml, /issues: write|contents: write/u);
-  assert.doesNotMatch(yaml, /secrets\\.|environment: staging/u);
+  assert.doesNotMatch(yaml, /secrets\.|environment: staging/u);
   assert.doesNotMatch(yaml, /gh api -X|curl --request|npx vercel/u);
-  assert.doesNotMatch(yaml, /workflow_dispatch|api\\.supabase\\.com/u);
-});
+  assert.doesNotMatch(yaml, /workflow_dispatch|api\.supabase\.com/u);
+  }
+);
