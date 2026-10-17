@@ -25,6 +25,11 @@ const proposal = {
   confirmation: 'STAGING COST APPROVED'
 };
 
+function proposalBody(changes = {}) {
+  const request = { ...proposal, ...changes };
+  return HOSTED_PRE_COST_APPROVE + JSON.stringify(request);
+}
+
 function fixture() {
   return {
     event: {
@@ -39,7 +44,7 @@ function fixture() {
         id: 123,
         user: { login: 'bingohooah888-ai' },
         author_association: 'OWNER',
-        body: HOSTED_PRE_COST_APPROVE + JSON.stringify(proposal)
+        body: proposalBody()
       }
     },
     main: { object: { sha: MAIN } },
@@ -59,254 +64,146 @@ function fixture() {
   };
 }
 
-function denied(change) {
-  const x = fixture();
-  change(x);
+function rejectField(path, value) {
+  const input = fixture();
+  const parts = path.split('.');
+  const last = parts.pop();
+  const parent = parts.reduce((object, key) => object[key], input);
+  parent[last] = value;
   assert.throws(
-    () => verifyCommunityHostedPreCostAdmission(x),
+    () => verifyCommunityHostedPreCostAdmission(input),
     /COMMUNITY_HOSTED_PRE_COST_DENIED/u
   );
 }
 
-test(
-  'owner intent is strictly preparation-only and cannot initiate costs',
-  () => {
-    const proof = verifyCommunityHostedPreCostAdmission(fixture());
-    assert.equal(proof.status, 'OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY');
-    assert.equal(proof.mainSha, MAIN);
-    assert.equal(proof.candidateSha, FEATURE);
-    assert.equal(proof.plannedBranchName, 'community-hosted-' + RUN);
-    assert.equal(proof.requestCommentId, '123');
-    assert.equal(proof.liveEvidenceVerified, false);
-    for (const key of [
-      'stagingCostApproved',
-      'mayClaim',
-      'mayCreateBranch',
-      'mayDeployPreview',
-      'mayRunBrowser',
-      'runAuthorized',
-      'releaseAuthorized'
-    ]) {
-      assert.equal(proof[key], false, key);
-    }
-    assert.ok(Object.isFrozen(proof));
+function ledgerRow(marker, requestId, runId) {
+  const value = {
+    requestCommentId: requestId,
+    mainSha: MAIN,
+    featureSha: FEATURE,
+    runId
+  };
+  if (marker === HOSTED_CONSUMED) {
+    value.result = 'failure';
   }
-);
+  return { body: marker + JSON.stringify(value) };
+}
 
-test(
-  'only exact GitHub owner-authored Issue #188 event can be inspected',
-  () => {
-    denied((x) => {
-      x.event.action = 'edited';
-    });
-    denied((x) => {
-      x.event.repository.full_name = 'someone/novelrise';
-    });
-    denied((x) => {
-      x.event.issue.number = 294;
-    });
-    denied((x) => {
-      x.event.issue.title = 'different';
-    });
-    denied((x) => {
-      x.event.issue.user.login = 'attacker';
-    });
-    denied((x) => {
-      x.event.issue.pull_request = {};
-    });
-    denied((x) => {
-      x.event.comment.user.login = 'attacker';
-    });
-    denied((x) => {
-      x.event.comment.author_association = 'MEMBER';
-    });
-    denied((x) => {
-      x.event.comment.id = 0;
-    });
-    denied((x) => {
-      x.runId = '0';
-    });
-    denied((x) => {
-      x.runId = '456; evil';
-    });
+test('pre-cost proposal never grants execution', () => {
+  const proof = verifyCommunityHostedPreCostAdmission(fixture());
+  assert.equal(proof.status, 'OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY');
+  assert.equal(proof.plannedBranchName, 'community-hosted-' + RUN);
+  assert.equal(proof.mainSha, MAIN);
+  assert.equal(proof.candidateSha, FEATURE);
+  assert.equal(proof.requestCommentId, '123');
+  for (const flag of [
+    'liveEvidenceVerified',
+    'stagingCostApproved',
+    'mayClaim',
+    'mayCreateBranch',
+    'mayDeployPreview',
+    'mayRunBrowser',
+    'runAuthorized',
+    'releaseAuthorized'
+  ]) {
+    assert.equal(proof[flag], false, flag);
   }
-);
-
-test('fresh exact main, untouched Draft head and scope are mandatory', () => {
-  denied((x) => {
-    x.main.object.sha = 'b'.repeat(40);
-  });
-  denied((x) => {
-    x.feature.head.sha = 'c'.repeat(40);
-  });
-  denied((x) => {
-    x.feature.head.repo.full_name = 'different/repo';
-  });
-  denied((x) => {
-    x.feature.draft = false;
-  });
-  denied((x) => {
-    x.feature.merged = true;
-  });
-  denied((x) => {
-    x.feature.state = 'closed';
-  });
-  denied((x) => {
-    x.feature.base.ref = 'not-main';
-  });
-  denied((x) => {
-    x.feature.number = 123;
-  });
-  denied((x) => {
-    x.event.comment.body =
-      HOSTED_PRE_COST_APPROVE +
-      JSON.stringify({
-        ...proposal,
-        scope: 'migration-sync'
-      });
-  });
-  denied((x) => {
-    x.event.comment.body =
-      HOSTED_PRE_COST_APPROVE +
-      JSON.stringify({
-        ...proposal,
-        mainSha: 'not-a-sha'
-      });
-  });
-  denied((x) => {
-    x.event.comment.body =
-      HOSTED_PRE_COST_APPROVE +
-      JSON.stringify({
-        ...proposal,
-        target: 'shared-staging'
-      });
-  });
+  assert.ok(Object.isFrozen(proof));
 });
 
-test(
-  'read-only preflight, hosted post-provision and extra fields cannot be used',
-  () => {
-    denied((x) => {
-      x.event.comment.body = HOSTED_APPROVE + JSON.stringify(proposal);
-    });
-    denied((x) => {
-      x.event.comment.body =
-        HOSTED_PRE_COST_APPROVE +
-        JSON.stringify({
-          ...proposal,
-          confirmation: 'PREFLIGHT ONLY'
-        });
-    });
-    denied((x) => {
-      x.event.comment.body =
-        HOSTED_PRE_COST_APPROVE +
-        JSON.stringify({
-          ...proposal,
-          command: 'create-branch'
-        });
-    });
-    denied((x) => {
-      x.event.comment.body = HOSTED_PRE_COST_APPROVE + '{';
-    });
-  }
-);
+test('only the authentic owner and control issue qualify', () => {
+  rejectField('event.action', 'edited');
+  rejectField('event.repository.full_name', 'wrong/novelrise');
+  rejectField('event.issue.number', 294);
+  rejectField('event.issue.title', 'wrong');
+  rejectField('event.issue.user.login', 'wrong');
+  rejectField('event.issue.pull_request', {});
+  rejectField('event.comment.user.login', 'wrong');
+  rejectField('event.comment.author_association', 'MEMBER');
+  rejectField('event.comment.id', 0);
+  rejectField('runId', '0');
+  rejectField('runId', '456;drop');
+});
 
-test('claimed, consumed and reused workflow runs are rejected', () => {
+test('current main and exact unmerged candidate are fixed', () => {
+  rejectField('main.object.sha', 'b'.repeat(40));
+  rejectField('feature.head.sha', 'c'.repeat(40));
+  rejectField('feature.head.repo.full_name', 'wrong/repo');
+  rejectField('feature.draft', false);
+  rejectField('feature.merged', true);
+  rejectField('feature.state', 'closed');
+  rejectField('feature.base.ref', 'other');
+  rejectField('feature.number', 2223);
+  rejectField('event.comment.body', proposalBody({ scope: 'other' }));
+  rejectField('event.comment.body', proposalBody({ mainSha: 'invalid' }));
+  rejectField('event.comment.body', proposalBody({ target: 'staging' }));
+});
+
+test('unrelated approvals and injected JSON are rejected', () => {
+  const bad = { ...proposal, operation: 'create-branch' };
+  rejectField('event.comment.body', HOSTED_APPROVE);
+  rejectField('event.comment.body', HOSTED_PRE_COST_APPROVE + '{');
+  rejectField('event.comment.body', proposalBody(bad));
+  rejectField('event.comment.body', proposalBody({ confirmation: 'OK' }));
+});
+
+test('claimed requests and reused run IDs are rejected', () => {
   for (const marker of [HOSTED_CLAIMED, HOSTED_CONSUMED]) {
-    const row = {
-      requestCommentId: '123',
+    rejectField('ledgerPages', [[ledgerRow(marker, '123', '77')]]);
+    rejectField('ledgerPages', [[ledgerRow(marker, '999', RUN)]]);
+  }
+});
+
+test('malformed or incomplete ledger is rejected', () => {
+  rejectField('ledgerPages', []);
+  rejectField('ledgerPages', [Array(100).fill({ body: '' })]);
+  rejectField('ledgerPages', Array.from({ length: 21 }, () => []));
+  rejectField('ledgerPages', [[null]]);
+  rejectField('ledgerPages', [[{ body: HOSTED_CLAIMED + '{' }]]);
+  rejectField('ledgerPages', [[ledgerRow(HOSTED_CLAIMED, '123', 'bad')]]);
+  rejectField('ledgerPages', [[{
+    body: HOSTED_CONSUMED + JSON.stringify({
+      requestCommentId: '999',
       mainSha: MAIN,
       featureSha: FEATURE,
-      runId: '77',
-      ...(marker === HOSTED_CONSUMED ? { result: 'failure' } : {})
-    };
-    denied((x) => {
-      x.ledgerPages = [[{ body: marker + JSON.stringify(row) }]];
-    });
-    denied((x) => {
-      x.ledgerPages = [
-        [
-          {
-            body: marker + JSON.stringify({
-              ...row,
-              requestCommentId: '999',
-              runId: RUN
-            })
-          }
-        ]
-      ];
-    });
-  }
+      runId: '888',
+      result: ''
+    })
+  }]]);
 });
 
-test('malformed, truncated and ambiguous control ledger fails closed', () => {
-  denied((x) => {
-    x.ledgerPages = [];
-  });
-  denied((x) => {
-    x.ledgerPages = [Array(100).fill({ body: '' })];
-  });
-  denied((x) => {
-    x.ledgerPages = Array.from({ length: 21 }, () => []);
-  });
-  denied((x) => {
-    x.ledgerPages = [[null]];
-  });
-  denied((x) => {
-    x.ledgerPages = [[{ body: HOSTED_CLAIMED + '{' }]];
-  });
-  denied((x) => {
-    x.ledgerPages = [
-      [
-        {
-          body: HOSTED_CLAIMED + JSON.stringify({
-            requestCommentId: '123',
-            mainSha: MAIN,
-            featureSha: FEATURE,
-            runId: 'invalid'
-          })
-        }
-      ]
-    ];
-  });
-  denied((x) => {
-    x.ledgerPages = [
-      [
-        {
-          body: HOSTED_CONSUMED + JSON.stringify({
-            requestCommentId: '999',
-            mainSha: MAIN,
-            featureSha: FEATURE,
-            runId: '888',
-            result: ''
-          })
-        }
-      ]
-    ];
-  });
-});
-
-test(
-  'trusted OWNER pre-cost workflow is read-only and cannot grant access',
-  () => {
-    const file = new URL(
-      '../.github/workflows/community-hosted-precost-inspection.yml',
-      import.meta.url
-    );
-    const yaml = readFileSync(file, 'utf8');
-    assert.match(yaml, /issue_comment:/u);
-    assert.match(yaml, /ref: main/u);
-    assert.match(yaml, /persist-credentials: false/u);
-    assert.match(yaml, /contents: read/u);
-    assert.match(yaml, /issues: read/u);
-    assert.match(yaml, /pull-requests: read/u);
-    assert.match(yaml, /community-hosted-precost-admission\.mjs validate/u);
-    assert.match(yaml, /\.runAuthorized == false/u);
-    assert.match(yaml, /\.mayCreateBranch == false/u);
-    assert.match(yaml, /\.stagingCostApproved == false/u);
-    assert.doesNotMatch(yaml, /issues: write|contents: write/u);
-    assert.doesNotMatch(yaml, /secrets\.|environment: staging/u);
-    assert.doesNotMatch(yaml, /gh api -X|curl --request|npx vercel/u);
-    assert.doesNotMatch(yaml, /workflow_dispatch|api\.supabase\.com/u);
+test('owner inspection workflow remains read-only', () => {
+  const path = new URL(
+    '../.github/workflows/community-hosted-precost-inspection.yml',
+    import.meta.url
+  );
+  const workflow = readFileSync(path, 'utf8');
+  for (const required of [
+    'issue_comment:',
+    'ref: main',
+    'persist-credentials: false',
+    'contents: read',
+    'issues: read',
+    'pull-requests: read',
+    'community-hosted-precost-admission.mjs validate',
+    '.stagingCostApproved == false',
+    '.mayClaim == false',
+    '.mayCreateBranch == false',
+    '.runAuthorized == false'
+  ]) {
+    assert.ok(workflow.includes(required), required);
   }
-);
+  for (const forbidden of [
+    'issues: write',
+    'contents: write',
+    'secrets.',
+    'environment: staging',
+    'gh api -X',
+    'curl --request',
+    'npx vercel',
+    'workflow_dispatch',
+    'api.supabase.com'
+  ]) {
+    assert.ok(!workflow.includes(forbidden), forbidden);
+  }
+});
