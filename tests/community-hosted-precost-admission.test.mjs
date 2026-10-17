@@ -66,63 +66,67 @@ function denied(change) {
   );
 }
 
-test('owner intent is strictly preparation-only and cannot initiate costs', () => {
-  const proof = verifyCommunityHostedPreCostAdmission(fixture());
-  assert.equal(proof.status, 'OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY');
-  assert.equal(proof.mainSha, MAIN);
-  assert.equal(proof.candidateSha, FEATURE);
-  assert.equal(proof.plannedBranchName, 'community-hosted-' + RUN);
-  assert.equal(proof.requestCommentId, '123');
-  assert.equal(proof.liveEvidenceVerified, false);
-  for (const key of [
-    'stagingCostApproved',
-    'mayClaim',
-    'mayCreateBranch',
-    'mayDeployPreview',
-    'mayRunBrowser',
-    'runAuthorized',
-    'releaseAuthorized'
-  ]) {
-    assert.equal(proof[key], false, key);
+test(
+  'owner intent is strictly preparation-only and cannot initiate costs',
+  () => {    const proof = verifyCommunityHostedPreCostAdmission(fixture());
+    assert.equal(proof.status, 'OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY');
+    assert.equal(proof.mainSha, MAIN);
+    assert.equal(proof.candidateSha, FEATURE);
+    assert.equal(proof.plannedBranchName, 'community-hosted-' + RUN);
+    assert.equal(proof.requestCommentId, '123');
+    assert.equal(proof.liveEvidenceVerified, false);
+    for (const key of [
+      'stagingCostApproved',
+      'mayClaim',
+      'mayCreateBranch',
+      'mayDeployPreview',
+      'mayRunBrowser',
+      'runAuthorized',
+      'releaseAuthorized'
+    ]) {
+      assert.equal(proof[key], false, key);
+    }
+    assert.ok(Object.isFrozen(proof));
   }
-  assert.ok(Object.isFrozen(proof));
-});
+);
 
-test('only exact GitHub owner-authored Issue #188 event can be inspected', () => {
-  denied((x) => {
-    x.event.action = 'edited';
-  });
-  denied((x) => {
-    x.event.repository.full_name = 'someone/novelrise';
-  });
-  denied((x) => {
-    x.event.issue.number = 294;
-  });
-  denied((x) => {
-    x.event.issue.title = 'different';
-  });
-  denied((x) => {
-    x.event.issue.user.login = 'attacker';
-  });
-  denied((x) => {
-    x.event.issue.pull_request = {};
-  });
-  denied((x) => {
-    x.event.comment.user.login = 'attacker';
-  });
-  denied((x) => {
-    x.event.comment.author_association = 'MEMBER';
-  });
-  denied((x) => {
-    x.event.comment.id = 0;
-  });
-  denied((x) => {
-    x.runId = '0';
-  });
-  denied((x) => {
-    x.runId = '456; evil';
-  });
-});
+test(
+  'only exact GitHub owner-authored Issue #188 event can be inspected',
+  () => {    denied((x) => {
+      x.event.action = 'edited';
+    });
+    denied((x) => {
+      x.event.repository.full_name = 'someone/novelrise';
+    });
+    denied((x) => {
+      x.event.issue.number = 294;
+    });
+    denied((x) => {
+      x.event.issue.title = 'different';
+    });
+    denied((x) => {
+      x.event.issue.user.login = 'attacker';
+    });
+    denied((x) => {
+      x.event.issue.pull_request = {};
+    });
+    denied((x) => {
+      x.event.comment.user.login = 'attacker';
+    });
+    denied((x) => {
+      x.event.comment.author_association = 'MEMBER';
+    });
+    denied((x) => {
+      x.event.comment.id = 0;
+    });
+    denied((x) => {
+      x.runId = '0';
+    });
+    denied((x) => {
+      x.runId = '456; evil';
+    });
+  }
+);
 
 test('fresh exact main, untouched Draft head and scope are mandatory', () => {
   denied((x) => {
@@ -169,26 +173,28 @@ test('fresh exact main, untouched Draft head and scope are mandatory', () => {
   });
 });
 
-test('read-only preflight, hosted post-provision and extra fields cannot be used', () => {
-  denied((x) => {
-    x.event.comment.body = HOSTED_APPROVE + JSON.stringify(proposal);
-  });
-  denied((x) => {
-    x.event.comment.body = HOSTED_PRE_COST_APPROVE + JSON.stringify({
-      ...proposal,
-      confirmation: 'PREFLIGHT ONLY'
+test(
+  'read-only preflight, hosted post-provision and extra fields cannot be used',
+  () => {    denied((x) => {
+      x.event.comment.body = HOSTED_APPROVE + JSON.stringify(proposal);
     });
-  });
-  denied((x) => {
-    x.event.comment.body = HOSTED_PRE_COST_APPROVE + JSON.stringify({
-      ...proposal,
-      command: 'create-branch'
+    denied((x) => {
+      x.event.comment.body = HOSTED_PRE_COST_APPROVE + JSON.stringify({
+        ...proposal,
+        confirmation: 'PREFLIGHT ONLY'
+      });
     });
-  });
-  denied((x) => {
-    x.event.comment.body = HOSTED_PRE_COST_APPROVE + '{';
-  });
-});
+    denied((x) => {
+      x.event.comment.body = HOSTED_PRE_COST_APPROVE + JSON.stringify({
+        ...proposal,
+        command: 'create-branch'
+      });
+    });
+    denied((x) => {
+      x.event.comment.body = HOSTED_PRE_COST_APPROVE + '{';
+    });
+  }
+);
 
 test('claimed, consumed and reused workflow runs are rejected', () => {
   for (const marker of [HOSTED_CLAIMED, HOSTED_CONSUMED]) {
@@ -203,13 +209,17 @@ test('claimed, consumed and reused workflow runs are rejected', () => {
       x.ledgerPages = [[{ body: marker + JSON.stringify(row) }]];
     });
     denied((x) => {
-      x.ledgerPages = [[{
-        body: marker + JSON.stringify({
-          ...row,
-          requestCommentId: '999',
-          runId: RUN
-        })
-      }]];
+      x.ledgerPages = [
+        [
+          {
+            body: marker + JSON.stringify({
+              ...row,
+              requestCommentId: '999',
+              runId: RUN
+            })
+          }
+        ]
+      ];
     });
   }
 });
@@ -231,24 +241,32 @@ test('malformed, truncated and ambiguous control ledger fails closed', () => {
     x.ledgerPages = [[{ body: HOSTED_CLAIMED + '{' }]];
   });
   denied((x) => {
-    x.ledgerPages = [[{
-      body: HOSTED_CLAIMED + JSON.stringify({
-        requestCommentId: '123',
-        mainSha: MAIN,
-        featureSha: FEATURE,
-        runId: 'invalid'
-      })
-    }]];
+    x.ledgerPages = [
+      [
+        {
+          body: HOSTED_CLAIMED + JSON.stringify({
+            requestCommentId: '123',
+            mainSha: MAIN,
+            featureSha: FEATURE,
+            runId: 'invalid'
+          })
+        }
+      ]
+    ];
   });
   denied((x) => {
-    x.ledgerPages = [[{
-      body: HOSTED_CONSUMED + JSON.stringify({
-        requestCommentId: '999',
-        mainSha: MAIN,
-        featureSha: FEATURE,
-        runId: '888',
-        result: ''
-      })
-    }]];
+    x.ledgerPages = [
+      [
+        {
+          body: HOSTED_CONSUMED + JSON.stringify({
+            requestCommentId: '999',
+            mainSha: MAIN,
+            featureSha: FEATURE,
+            runId: '888',
+            result: ''
+          })
+        }
+      ]
+    ];
   });
 });
