@@ -211,8 +211,12 @@ test('source OWNER comment must be present, exact and authentic', () => {
   denies((x) => { x.ledgerPages[0][0].body = 'tampered'; });
   denies((x) => { x.ledgerPages[0][0].user.login = 'attacker'; });
   denies((x) => { x.ledgerPages[0][0].author_association = 'NONE'; });
-  denies((x) => { x.preparation.runId = '999'; });
-  denies((x) => { x.preparation.mainSha = 'b'.repeat(40); });
+  denies((x) => {
+    x.preparation = { ...x.preparation, runId: '999' };
+  });
+  denies((x) => {
+    x.preparation = { ...x.preparation, mainSha: 'b'.repeat(40) };
+  });
 });
 
 test('all pages must be complete and comments strictly ordered', () => {
