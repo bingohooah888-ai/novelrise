@@ -17,13 +17,15 @@ const REPO = OWNER + '/novelrise';
 const MAIN = 'a'.repeat(40);
 const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const RUN = '456';
-const BODY = HOSTED_PRE_COST_APPROVE + JSON.stringify({
-  scope: HOSTED_SCOPE,
-  mainSha: MAIN,
-  featureSha: FEATURE,
-  confirmation: 'STAGING COST APPROVED',
-  target: 'new-data-less-isolated-branch'
-});
+const BODY =
+  HOSTED_PRE_COST_APPROVE +
+  JSON.stringify({
+    scope: HOSTED_SCOPE,
+    mainSha: MAIN,
+    featureSha: FEATURE,
+    confirmation: 'STAGING COST APPROVED',
+    target: 'new-data-less-isolated-branch'
+  });
 const claimBody = {
   requestCommentId: '123',
   mainSha: MAIN,
@@ -127,9 +129,7 @@ test('failed and cancelled consumption remain final records only', () => {
   for (const result of ['failure', 'cancelled']) {
     const x = input();
     x.ledgerPages[0].push(transition(124, HOSTED_CLAIMED));
-    x.ledgerPages[0].push(
-      transition(125, HOSTED_CONSUMED, { result })
-    );
+    x.ledgerPages[0].push(transition(125, HOSTED_CONSUMED, { result }));
     assert.equal(check(x).terminalResult, result);
   }
 });
@@ -154,9 +154,7 @@ test('duplicate, orphan and out-of-order transitions are rejected', () => {
 
 test('matching request or run ID cannot be reused', () => {
   denies((x) => {
-    x.ledgerPages[0].push(
-      transition(124, HOSTED_CLAIMED, { runId: '999' })
-    );
+    x.ledgerPages[0].push(transition(124, HOSTED_CLAIMED, { runId: '999' }));
   });
   denies((x) => {
     x.ledgerPages[0].push(
