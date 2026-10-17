@@ -92,11 +92,21 @@ test('current actual main branch rule does not protect one-use tags', () => {
 });
 
 test('disabled, evaluation-only, branch and bypassable rules deny', () => {
-  denies((x) => { x.tagRuleDetails[0].enforcement = 'evaluate'; });
-  denies((x) => { x.tagRuleDetails[0].target = 'branch'; });
-  denies((x) => { x.tagRuleDetails[0].source_type = 'Organization'; });
-  denies((x) => { x.tagRuleDetails[0].source = 'other/repo'; });
-  denies((x) => { x.tagRuleDetails[0].current_user_can_bypass = 'always'; });
+  denies((x) => {
+    x.tagRuleDetails[0].enforcement = 'evaluate';
+  });
+  denies((x) => {
+    x.tagRuleDetails[0].target = 'branch';
+  });
+  denies((x) => {
+    x.tagRuleDetails[0].source_type = 'Organization';
+  });
+  denies((x) => {
+    x.tagRuleDetails[0].source = 'other/repo';
+  });
+  denies((x) => {
+    x.tagRuleDetails[0].current_user_can_bypass = 'always';
+  });
   denies((x) => {
     x.tagRuleDetails[0].bypass_actors = [{
       actor_type: 'RepositoryRole',
@@ -107,9 +117,15 @@ test('disabled, evaluation-only, branch and bypassable rules deny', () => {
 });
 
 test('unprotected deletion or mutation is always denied', () => {
-  denies((x) => { x.tagRuleDetails[0].rules = [{ type: 'update' }]; });
-  denies((x) => { x.tagRuleDetails[0].rules = [{ type: 'deletion' }]; });
-  denies((x) => { x.tagRuleDetails[0].rules = []; });
+  denies((x) => {
+    x.tagRuleDetails[0].rules = [{ type: 'update' }];
+  });
+  denies((x) => {
+    x.tagRuleDetails[0].rules = [{ type: 'deletion' }];
+  });
+  denies((x) => {
+    x.tagRuleDetails[0].rules = [];
+  });
   denies((x) => {
     x.tagRuleDetails[0].conditions.ref_name.exclude = ['refs/tags/*'];
   });
@@ -133,8 +149,12 @@ test('repository wildcard tag protection is acceptable without exclusions', () =
 });
 
 test('incomplete, malformed or duplicated ruleset inventory denies', () => {
-  denies((x) => { x.inventoryPages = []; });
-  denies((x) => { x.inventoryPages = [[]]; });
+  denies((x) => {
+    x.inventoryPages = [];
+  });
+  denies((x) => {
+    x.inventoryPages = [[]];
+  });
   denies((x) => {
     x.inventoryPages.push([]);
   });
@@ -153,8 +173,12 @@ test('incomplete, malformed or duplicated ruleset inventory denies', () => {
 });
 
 test('all active tag rules must have trustworthy matching details', () => {
-  denies((x) => { x.tagRuleDetails = []; });
-  denies((x) => { x.tagRuleDetails[0].id = 999; });
+  denies((x) => {
+    x.tagRuleDetails = [];
+  });
+  denies((x) => {
+    x.tagRuleDetails[0].id = 999;
+  });
   denies((x) => {
     x.tagRuleDetails.push({ ...x.tagRuleDetails[0] });
   });
@@ -169,7 +193,9 @@ test('all active tag rules must have trustworthy matching details', () => {
 });
 
 test('caller cannot redirect policy inspector to a different repository', () => {
-  denies((x) => { x.repository = 'attacker/repo'; });
+  denies((x) => {
+    x.repository = 'attacker/repo';
+  });
 });
 
 test('OWNER read-only pre-cost workflow must inspect reservation tag protection', () => {
