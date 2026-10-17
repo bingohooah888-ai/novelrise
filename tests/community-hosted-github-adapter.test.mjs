@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import { makeCommunityHostedGitHubAdapter } from '../scripts/community-hosted-github-adapter.mjs';
 
 const TOKEN = 'synthetic-test-token-1234567890';
 const REPO = 'bingohooah888-ai/novelrise';
-const ROOT = 'https://api.github.com/repos/' + REPO;
 const REF = 'refs/tags/novelight-community-hosted-once-v1-123';
 const SHA = 'a'.repeat(40);
 const bot = { login: 'github-actions[bot]' };
