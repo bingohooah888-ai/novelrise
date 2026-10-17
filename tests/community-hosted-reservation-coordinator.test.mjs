@@ -51,7 +51,56 @@ function harness(options = {}) {
   let mainSha = MAIN;
   let candidateSha = FEATURE;
   let nextCommentId = 124;
+  let protectionReadCount = 0;
   const actions = {
+    loadProtectionEvidence: async () => {
+      calls.push('loadProtectionEvidence');
+      protectionReadCount += 1;
+      if (options.protectionThrows) {
+        throw new Error('SECRET_MUST_NOT_LEAK');
+      }
+      if (
+        options.protectionMissing ||
+        (options.protectionRemovedAfterReservation &&
+          protectionReadCount > 1)
+      ) {
+        return {
+          inventoryPages: [[{
+            id: 21196358,
+            target: 'branch',
+            enforcement: 'active',
+            source_type: 'Repository'
+          }]],
+          tagRuleDetails: []
+        };
+      }
+      return {
+        inventoryPages: [[{
+          id: 412,
+          target: 'tag',
+          enforcement: 'active',
+          source_type: 'Repository'
+        }]],
+        tagRuleDetails: [{
+          id: 412,
+          target: 'tag',
+          enforcement: 'active',
+          source_type: 'Repository',
+          source: REPO,
+          current_user_can_bypass: 'never',
+          bypass_actors: options.bypassPresent
+            ? [{ actor_type: 'RepositoryRole', actor_id: 5 }]
+            : [],
+          conditions: {
+            ref_name: {
+              include: ['refs/tags/novelight-community-hosted-once-v1-*'],
+              exclude: []
+            }
+          },
+          rules: [{ type: 'deletion' }, { type: 'update' }]
+        }]
+      };
+    },
     loadLiveSnapshot: async () => {
       calls.push('loadLiveSnapshot');
       if (options.loadThrows) throw new Error('SECRET_MUST_NOT_LEAK');
@@ -228,9 +277,11 @@ test('single Git ref reservation records exactly one matching claim without auth
   assertDisabled(receipt);
   assert.deepEqual(x.calls, [
     'loadLiveSnapshot',
+    'loadProtectionEvidence',
     'createUniqueRef',
     'readRef',
     'loadLiveSnapshot',
+    'loadProtectionEvidence',
     'postIssueComment',
     'loadLiveSnapshot'
   ]);
@@ -413,6 +464,47 @@ test('missing GitHub write adapters fail before any API invocation', async () =>
   const x = harness();
   const args = x.args();
   delete args.actions.createUniqueRef;
+  await assert.rejects(reserveAndRecordCommunityHostedClaim(args), /DENIED/u);
+  assert.deepEqual(x.calls, []);
+});
+
+test('real main-only branch protection cannot authorize a reservation', async () => {
+  const x = harness({ protectionMissing: true });
+  await assert.rejects(x.reserve(), /COMMUNITY_HOSTED_REF_PROTECTION_DENIED/u);
+  assert.deepEqual(x.calls, ['loadLiveSnapshot', 'loadProtectionEvidence']);
+  assert.equal(x.references.size, 0);
+  assert.equal(x.comments.length, 1);
+});
+
+test('tag ruleset bypass and unreadable evidence deny before any write', async () => {
+  for (const options of [{ bypassPresent: true }, { protectionThrows: true }]) {
+    const x = harness(options);
+    await assert.rejects(x.reserve(), (error) => {
+      assert.match(error.message, /DENIED/u);
+      assert.doesNotMatch(error.message, /SECRET_MUST_NOT_LEAK/u);
+      return true;
+    });
+    assert.equal(x.references.size, 0);
+    assert.equal(x.comments.length, 1);
+  }
+});
+
+test('protection removed after reservation prevents claim comment POST', async () => {
+  const x = harness({ protectionRemovedAfterReservation: true });
+  await assert.rejects(x.reserve(), /DENIED/u);
+  assert.equal(x.references.size, 1);
+  assert.ok(!x.calls.includes('postIssueComment'));
+  assert.equal(x.comments.length, 1);
+  assert.equal(
+    x.calls.filter((name) => name === 'loadProtectionEvidence').length,
+    2
+  );
+});
+
+test('missing protection evidence adapter is rejected before any API call', async () => {
+  const x = harness();
+  const args = x.args();
+  delete args.actions.loadProtectionEvidence;
   await assert.rejects(reserveAndRecordCommunityHostedClaim(args), /DENIED/u);
   assert.deepEqual(x.calls, []);
 });
