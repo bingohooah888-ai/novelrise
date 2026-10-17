@@ -78,12 +78,14 @@ function harness(options = {}) {
         comments.push({
           id: nextCommentId++,
           user: { login: 'github-actions[bot]' },
-          body: HOSTED_CLAIMED + JSON.stringify({
-            requestCommentId: '123',
-            mainSha: MAIN,
-            featureSha: FEATURE,
-            runId: '777'
-          })
+          body:
+            HOSTED_CLAIMED +
+            JSON.stringify({
+              requestCommentId: '123',
+              mainSha: MAIN,
+              featureSha: FEATURE,
+              runId: '777'
+            })
         });
       }
       return {
@@ -171,8 +173,12 @@ function harness(options = {}) {
     consume,
     event,
     preparation,
-    setMain: (next) => { mainSha = next; },
-    setCandidate: (next) => { candidateSha = next; }
+    setMain: (next) => {
+      mainSha = next;
+    },
+    setCandidate: (next) => {
+      candidateSha = next;
+    }
   };
 }
 
@@ -207,7 +213,10 @@ function assertDisabled(result) {
 test('single Git ref reservation records exactly one matching claim without authorization', async () => {
   const x = harness();
   const receipt = await x.reserve();
-  assert.equal(receipt.status, 'RESERVATION_AND_CLAIM_RECORDED_NO_RUN_AUTHORIZATION');
+  assert.equal(
+    receipt.status,
+    'RESERVATION_AND_CLAIM_RECORDED_NO_RUN_AUTHORIZATION'
+  );
   assert.equal(
     receipt.reservationRef,
     'refs/tags/novelight-community-hosted-once-v1-123'
@@ -233,9 +242,10 @@ test('two concurrent attempts sharing one approval can reserve only once', async
   assert.equal(results.filter((row) => row.status === 'fulfilled').length, 1);
   assert.equal(results.filter((row) => row.status === 'rejected').length, 1);
   assert.equal(x.references.size, 1);
-  assert.equal(x.comments.filter((row) =>
-    row.body.startsWith(HOSTED_CLAIMED)
-  ).length, 1);
+  assert.equal(
+    x.comments.filter((row) => row.body.startsWith(HOSTED_CLAIMED)).length,
+    1
+  );
 });
 
 test('later replay never creates another reservation or claim', async () => {
@@ -403,9 +413,6 @@ test('missing GitHub write adapters fail before any API invocation', async () =>
   const x = harness();
   const args = x.args();
   delete args.actions.createUniqueRef;
-  await assert.rejects(
-    reserveAndRecordCommunityHostedClaim(args),
-    /DENIED/u
-  );
+  await assert.rejects(reserveAndRecordCommunityHostedClaim(args), /DENIED/u);
   assert.deepEqual(x.calls, []);
 });
