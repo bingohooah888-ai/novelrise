@@ -29,6 +29,15 @@ function requireAdapter(actions, names) {
   }
 }
 
+// Never forward adapter exceptions: they can contain response bodies or tokens.
+async function safeCall(actions, name, argumentsObject) {
+  try {
+    return await actions[name](argumentsObject);
+  } catch {
+    deny(name + ' failed or outcome ambiguous; no automatic retry');
+  }
+}
+
 function requireRunner({ repository, trustedMainSha, event, runId }) {
   if (
     repository !== REPO ||
@@ -105,7 +114,7 @@ export async function reserveAndRecordCommunityHostedClaim({
     'readRef',
     'postIssueComment'
   ]);
-  const initial = await actions.loadLiveSnapshot();
+  const initial = await safeCall(actions, 'loadLiveSnapshot');
   const preparation = inspectLivePreCost(
     initial,
     event,
@@ -122,7 +131,7 @@ export async function reserveAndRecordCommunityHostedClaim({
 
   // A single atomic Git ref creation reserves this APPROVAL NUMBER, not a
   // runner ID. An uncertain create outcome is NOT retried automatically.
-  const created = await actions.createUniqueRef({
+  const created = await safeCall(actions, 'createUniqueRef', {
     repository,
     ref: reservationRef,
     sha: preparation.mainSha
@@ -134,7 +143,7 @@ export async function reserveAndRecordCommunityHostedClaim({
   ) {
     deny('unique reservation outcome is unconfirmed; do not retry');
   }
-  const observed = await actions.readRef({ repository, ref: reservationRef });
+  const observed = await safeCall(actions, 'readRef', { repository, ref: reservationRef });
   if (
     observed?.status !== 200 ||
     observed.ref !== reservationRef ||
@@ -145,7 +154,7 @@ export async function reserveAndRecordCommunityHostedClaim({
 
   // Refresh the complete ledger once again AFTER reserving and BEFORE posting.
   // A stale or consumed request stays reserved but never proceeds to costs.
-  const beforeWrite = await actions.loadLiveSnapshot();
+  const beforeWrite = await safeCall(actions, 'loadLiveSnapshot');
   const renewedPlan = prepareCommunityHostedClaimMarker({
     event,
     main: beforeWrite.main,
@@ -160,7 +169,7 @@ export async function reserveAndRecordCommunityHostedClaim({
   ) {
     deny('claim data changed after reservation');
   }
-  const sent = await actions.postIssueComment({
+  const sent = await safeCall(actions, 'postIssueComment', {
     repository,
     issueNumber: ISSUE_NUMBER,
     body: renewedPlan.body
@@ -171,7 +180,7 @@ export async function reserveAndRecordCommunityHostedClaim({
     Number(renewedPlan.observedLastCommentId)
   );
 
-  const afterWrite = await actions.loadLiveSnapshot();
+  const afterWrite = await safeCall(actions, 'loadLiveSnapshot');
   if (afterWrite.main?.object?.sha !== trustedMainSha) {
     deny('main moved while confirming claim receipt');
   }
@@ -222,7 +231,7 @@ export async function recordCommunityHostedConsumption({
   ) {
     deny('terminal identity mismatches the original approved request');
   }
-  const reserved = await actions.readRef({ repository, ref });
+  const reserved = await safeCall(actions, 'readRef', { repository, ref });
   if (
     reserved?.status !== 200 ||
     reserved.ref !== ref ||
@@ -230,7 +239,7 @@ export async function recordCommunityHostedConsumption({
   ) {
     deny('terminal record lacks immutable reservation evidence');
   }
-  const beforeWrite = await actions.loadLiveSnapshot();
+  const beforeWrite = await safeCall(actions, 'loadLiveSnapshot');
   const plan = prepareCommunityHostedConsumeMarker({
     event,
     preparation,
@@ -240,7 +249,7 @@ export async function recordCommunityHostedConsumption({
     freshMainSha: beforeWrite.main?.object?.sha,
     freshCandidateSha: beforeWrite.feature?.head?.sha
   });
-  const sent = await actions.postIssueComment({
+  const sent = await safeCall(actions, 'postIssueComment', {
     repository,
     issueNumber: ISSUE_NUMBER,
     body: plan.body
@@ -250,7 +259,7 @@ export async function recordCommunityHostedConsumption({
     plan.body,
     Number(beforeWrite.ledgerPages.at(-1).at(-1)?.id ?? 0)
   );
-  const afterWrite = await actions.loadLiveSnapshot();
+  const afterWrite = await safeCall(actions, 'loadLiveSnapshot');
   const receipt = inspectCommunityHostedConsumeReceipt({
     event,
     preparation,
