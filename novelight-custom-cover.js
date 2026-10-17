@@ -7,13 +7,37 @@
   const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
   const PATH_RE = /^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.webp$/u;
 
+  async function decodePicture(file) {
+    if (typeof createImageBitmap === 'function') return createImageBitmap(file);
+
+    // Older mobile WebViews may not expose createImageBitmap.
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    try {
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error('画像を読み込めませんでした。'));
+        image.src = objectUrl;
+      });
+    } catch (error) {
+      URL.revokeObjectURL(objectUrl);
+      throw error;
+    }
+    return {
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      drawable: image,
+      close: () => URL.revokeObjectURL(objectUrl)
+    };
+  }
+
   async function convert(file) {
     if (!file || !ALLOWED.has(file.type) || file.size < 1 || file.size > MAX_BYTES) {
       throw new Error('5MB以下のJPEG・PNG・WebP画像を選択してください。');
     }
     let picture;
     try {
-      picture = await createImageBitmap(file);
+      picture = await decodePicture(file);
     } catch {
       throw new Error('画像を読み込めませんでした。別の画像でお試しください。');
     }
@@ -31,7 +55,7 @@
       const scale = Math.min(WIDTH / picture.width, HEIGHT / picture.height);
       const w = picture.width * scale;
       const h = picture.height * scale;
-      ctx.drawImage(picture, (WIDTH - w) / 2, (HEIGHT - h) / 2, w, h);
+      ctx.drawImage(picture.drawable || picture, (WIDTH - w) / 2, (HEIGHT - h) / 2, w, h);
       for (const quality of [0.9, 0.8, 0.7, 0.6]) {
         const blob = await new Promise((resolve) =>
           canvas.toBlob(resolve, 'image/webp', quality)
