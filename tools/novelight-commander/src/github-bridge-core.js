@@ -1825,9 +1825,15 @@ async function actionGscIndexInspect(request) {
   return runGscReadOnlyBridgeAction({ args: request.args });
 }
 
+async function actionContestBannerStageBridge(request, config) {
+  const { actionContestBannerStage } = await import('./contest-banner-stage.js');
+  return actionContestBannerStage(request, config);
+}
+
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['nlo_health', actionNloHealth],
+  ['contest_banner_stage', actionContestBannerStageBridge],
   ['gsc_index_inspect', actionGscIndexInspect],
   ['codex_auth_diagnose', actionCodexAuthDiagnose],
   ['codex_auth_repair_user_override', actionCodexAuthRepairUserOverride],
