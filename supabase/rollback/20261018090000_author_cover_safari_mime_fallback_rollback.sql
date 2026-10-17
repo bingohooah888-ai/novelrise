@@ -21,14 +21,14 @@ alter table public.novel_custom_covers add constraint novel_custom_cover_path_ch
 create or replace function public.novelight_custom_cover_can_upload_v1(p_name text)
 returns boolean language plpgsql security definer
 set search_path = pg_catalog, public, auth, storage
-as $
+as $$
 declare
   v_uid uuid := (select auth.uid());
   v_novel text := split_part(coalesce(p_name, ''), '/', 2);
   v_count integer;
 begin
   if v_uid is null or p_name !~ (
-    '^' || v_uid::text || '/[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp
+    '^' || v_uid::text || '/[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$'
   ) then return false; end if;
   if not exists (
     select 1 from public.novels n
@@ -42,8 +42,9 @@ begin
 exception when undefined_table or invalid_schema_name then
   return false;
 end
-$;
-do $
+$$;
+
+do $$
 begin
  if to_regclass('storage.buckets') is null or to_regclass('storage.objects') is null then
   raise notice 'Storage unavailable during isolated migration replay'; return;
@@ -56,10 +57,10 @@ begin
  on storage.objects for insert to authenticated with check (
   bucket_id='novel-custom-covers'
   and name ~ ('^' || (select auth.uid())::text ||
-  '/[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp)
+  '/[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$')
   and public.novelight_custom_cover_can_upload_v1(name)
  )
  $policy$;
 end
-$;
+$$;
 commit;
