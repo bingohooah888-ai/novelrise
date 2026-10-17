@@ -85,7 +85,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export HOSTED_TRUSTED_CHECKOUT_SHA="$(git rev-parse HEAD)"
+          HOSTED_TRUSTED_CHECKOUT_SHA="$(git rev-parse HEAD)"
+          export HOSTED_TRUSTED_CHECKOUT_SHA
           node scripts/community-hosted-trusted-runner-gate.mjs validate \
             "$GITHUB_EVENT_PATH" \
             /tmp/community-precost-main.json \
