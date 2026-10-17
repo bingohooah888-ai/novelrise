@@ -74,6 +74,23 @@ export function novelOgImageUrl(id, version) {
   return url.toString();
 }
 
+async function loadCustomCover(client, novelId) {
+  const { data, error } = await client
+    .from('novel_custom_covers')
+    .select('storage_path')
+    .eq('novel_id', Number(novelId))
+    .maybeSingle();
+  // Rollout-safe before the new table exists or after rollback.
+  if (error) {
+    console.warn('Author work cover lookup unavailable', { code: error.code || null });
+    return '';
+  }
+  const path = String(data?.storage_path || '');
+  if (!/^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.webp$/u.test(path)) return '';
+  const { data: url } = client.storage.from('novel-custom-covers').getPublicUrl(path);
+  return safeOgImageUrl(url?.publicUrl);
+}
+
 async function loadAuthorImage(client, thumbnailAssetId) {
   if (!thumbnailAssetId) return '';
   const { data, error } = await client
@@ -144,11 +161,14 @@ export async function loadNovelOgData(id) {
   if (error) throw error;
   if (!novel) return null;
 
-  const [authorImageUrl, authorName, bookThumbnailUrl] = await Promise.all([
-    loadAuthorImage(client, novel.thumbnail_asset_id),
-    loadAuthorName(client, novel.user_id),
-    loadBookThumbnail(client, novel.id, novel.thumbnail_url)
-  ]);
+  const [customCoverUrl, officialAssetUrl, authorName, bookThumbnailUrl] =
+    await Promise.all([
+      loadCustomCover(client, novel.id),
+      loadAuthorImage(client, novel.thumbnail_asset_id),
+      loadAuthorName(client, novel.user_id),
+      loadBookThumbnail(client, novel.id, novel.thumbnail_url)
+    ]);
+  const authorImageUrl = customCoverUrl || officialAssetUrl;
 
   const description =
     compactText(novel.description, 222) ||
