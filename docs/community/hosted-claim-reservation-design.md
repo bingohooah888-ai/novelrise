@@ -58,3 +58,43 @@ Supabase/Vercel/StripeへのAPI呼び出しを実装しない。
 - `.github/workflows/community-hosted-precost-inspection.yml` にread-onlyのruleset監査を追加。現状のtag保護未設定では、OWNERが正しい申請を行った場合でも、この最終監査は失敗して停止する。
 - このread-only監査は**GitHub設定を変更しない**。保護ルール追加・変更は別工程であり、このDraft PR作成やCI実行によりタグを作成したり、承認コメントを投稿したりしない。
 - rulesetの読み取り成功は一回限りの実行権限ではない。実際の予約・費用発生前には最新ruleset、OWNERイベント、main SHA、候補SHA、台帳、排他実行、認証済みAPIを改めて検証する。
+
+
+## trusted-main / OWNER 実行前ゲート（2026-10-17追加、read-only）
+
+`scripts/community-hosted-trusted-runner-gate.mjs` は、将来の書き込み実行に先立つ**読取専用の前提検査**として追加された。
+
+- `issue_comment.created` のGitHub Actions正規イベント、OWNERのsender/comment/actor/triggering actor、固定Issue #188、登録済みOWNERコメントを要求する。
+- workflow refは `.github/workflows/community-hosted-precost-inspection.yml@refs/heads/main` に限定する。`GITHUB_SHA`・checkout SHA・fresh main SHAが一致しない場合は拒否する。
+- `GITHUB_RUN_ATTEMPT=1` に限定し、再実行を拒否する。同一申請に対するCLAIM/CONSUMEを検出した場合、候補PR #2222が固定SHAから変わった場合、台帳が不完全な場合も停止する。
+- GitHub tag rulesetの`active`・`deletion`・`update`・bypassなしの検査が成功して初めて**read-only事前検査のみ**成功する。現状のmain保護ルール1件だけでは失敗する。
+- 返却値の`mayClaim`、`stagingCostApproved`、`runAuthorized`、`writeAuthorized`、`releaseAuthorized`はすべて`false`。GitHubのAPI接続やCLAIM/CONSUME書込をこのstepから行わない。
+
+### GitHubで別途設定するタグ用ルールの提案（**未適用**）
+
+GitHub repository ruleset APIの`POST /repos/bingohooah888-ai/novelrise/rulesets`用提案値：
+
+```json
+{
+  "name": "NOVELIGHT Community Hosted reservation tags",
+  "target": "tag",
+  "enforcement": "active",
+  "bypass_actors": [],
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/tags/novelight-community-hosted-once-v1-*"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "update" }
+  ]
+}
+```
+
+`creation`ルールを追加すると予約タグ自体を作成できなくなる可能性があるため、この提案には含めない。既存の`Protect main`ブランチルールは変更しない。
+
+**適用前の別チェック：** GitHub Admin権限・利用プランでのtag ruleset制約、同名ルールの重複、bypass設定、既存タグ、ワークフローでの特権トークンの扱い、予定通り初回作成だけができるかを確認する。今ある`ruleset`検査と提案JSONの一致だけをもって、実環境の実行を許可しない。
+
+このDraft PRは設定値を文書化しただけで、GitHub Ruleset APIへのPOST、タグ作成、承認台帳への書込は行わない。
