@@ -56,12 +56,12 @@
       if(!novelId){workName.textContent='作品を指定できませんでした。';setStatus('自分の作品一覧から設定する作品を選んでください。','error');return}
       try{
         const auth=await client.auth.getSession();session=auth.data.session;if(!session){location.href=`login.html?redirect=${encodeURIComponent(`work-cover.html?novel_id=${novelId}`)}`;return}
-        const result=await client.from('novels').select('id,title,user_id').eq('id',novelId).maybeSingle();
+        const result=await client.from('novels').select('id,title,user_id,status').eq('id',novelId).maybeSingle();
         if(result.error)throw result.error;
         const work=result.data;
         if(!work||String(work.user_id)!==String(session.user.id)){workName.textContent='この作品の表紙は編集できません。';setStatus('作品の所有者としてログインしているか確認してください。','error');return}
         workName.textContent=work.title||'タイトル未設定';
-        void window.NovelightCustomCover?.mount({client,root:document.getElementById('customCover'),novelId,session});
+        void window.NovelightCustomCover?.mount({client,root:document.getElementById('customCover'),novelId,session,published:work.status==='published'});
         cancelLink.href=`novel.html?id=${encodeURIComponent(novelId)}`;
         const mounted=await NovelightThumbnailComposer.mount({client,root,novelId:String(novelId)});
         if(!mounted.ready){root.innerHTML='<div class="thumbnail-state">公式サムネイル素材を準備しています。時間をおいて再度お試しください。</div>';setStatus('表紙設定を読み込めませんでした。','error');return}
