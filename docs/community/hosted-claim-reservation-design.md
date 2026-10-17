@@ -49,3 +49,12 @@ Supabase/Vercel/StripeへのAPI呼び出しを実装しない。
 - 別途の「ステージング承認」がない限り有料検証を行わない。mainマージ・Production変更には別途「本番承認」が必要。
 
 この変更は**準備のみ**であり、GitHubの実際の予約参照、Issueコメント、Staging、Preview、ProductionのいずれもこのPRの作成・CIで操作しない。
+
+
+## 予約タグの保護ルール確認（2026-10-17、read-only準備）
+
+- 現時点のGitHub ruleset APIで確認できた有効ルールは `Protect main`（branch保護）だけで、`refs/tags/novelight-community-hosted-once-v1-*` を保護する**有効なtag rulesetは未確認**。branch保護をtag保護として流用しない。
+- `scripts/community-hosted-reservation-protection.mjs` は、GitHubの最新ruleset一覧と、該当するactive tag rulesetの詳細を全件検査する。専用タグの削除禁止と書き換え禁止、active enforcement、bypassなし、除外パターンなしが確認できない限り **DENY**。
+- `.github/workflows/community-hosted-precost-inspection.yml` にread-onlyのruleset監査を追加。現状のtag保護未設定では、OWNERが正しい申請を行った場合でも、この最終監査は失敗して停止する。
+- このread-only監査は**GitHub設定を変更しない**。保護ルール追加・変更は別工程であり、このDraft PR作成やCI実行によりタグを作成したり、承認コメントを投稿したりしない。
+- rulesetの読み取り成功は一回限りの実行権限ではない。実際の予約・費用発生前には最新ruleset、OWNERイベント、main SHA、候補SHA、台帳、排他実行、認証済みAPIを改めて検証する。
