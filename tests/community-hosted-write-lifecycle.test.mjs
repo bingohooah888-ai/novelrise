@@ -80,6 +80,7 @@ test('success requires gate OFF, zero residue and proven branch deletion', async
   const result = await run(x.actions);
   assert.equal(result.status, 'BROWSER_VERIFIED_AND_BRANCH_DISPOSED');
   assert.equal(result.cleanupVerified, true);
+  assert.equal(result.runId, GRANT.runId);
   assert.deepEqual(x.calls, [
     'getSnapshot',
     'openGate',
@@ -132,10 +133,35 @@ test('unavailable initial snapshot never opens gate and attempts full teardown',
   assert.equal(x.calls.at(-1), 'confirmBranchDeleted');
 });
 
-test('dirty starting state prevents any write or destructive cleanup', async () => {
+test('dirty starting state never runs browser or removes unowned fixtures', async () => {
   const x = harness({ baseline: { ...clean(), comments: 1 } });
-  await assert.rejects(run(x.actions), /DENIED/u);
-  assert.deepEqual(x.calls, ['getSnapshot']);
+  await assert.rejects(run(x.actions), /dirty_initial_snapshot/u);
+  assert.deepEqual(x.calls, [
+    'getSnapshot',
+    'closeGate',
+    'destroyIsolatedBranch',
+    'confirmBranchDeleted'
+  ]);
+});
+
+test('dirty starting state still reports failed isolated branch cleanup', async () => {
+  const x = harness({
+    baseline: { ...clean(), testUsers: 1 },
+    failAt: 'destroyIsolatedBranch',
+    branchDeleted: false
+  });
+  await assert.rejects(run(x.actions), (error) => {
+    assert.match(error.message, /dirty_initial_snapshot/u);
+    assert.match(error.message, /destroy_branch/u);
+    assert.match(error.message, /branch_deletion_postcheck/u);
+    assert.doesNotMatch(error.message, /SECRET_MUST_NEVER_LEAK/u);
+    return true;
+  });
+  assert.ok(!x.calls.includes('runBrowser'));
+  assert.ok(!x.calls.includes('removeFixtureRows'));
+  assert.ok(!x.calls.includes('removeTestUsers'));
+  assert.ok(!x.calls.includes('revokeSessions'));
+  assert.equal(x.calls.at(-1), 'confirmBranchDeleted');
 });
 
 test('browser error cannot bypass cleanup or leak secrets', async () => {

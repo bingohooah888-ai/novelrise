@@ -85,14 +85,20 @@ export async function runCommunityHostedWriteLifecycle({
     // Never open the gate; still attempt every cleanup and branch deletion.
     failures.push('initial_snapshot_unavailable');
   }
+  let initialClean = false;
   if (initialRead) {
-    // A readable but dirty starting state is not an owned test fixture.
-    // Fail without erasing anything whose ownership is unproven.
-    assertCleanSnapshot(initial);
+    try {
+      assertCleanSnapshot(initial);
+      initialClean = true;
+    } catch {
+      // Do not open the gate or delete rows/users from a dirty baseline.
+      // Still run the exact run-owned isolated-branch disposal adapter.
+      failures.push('dirty_initial_snapshot');
+    }
   }
 
   try {
-    if (initialRead) {
+    if (initialClean) {
       // Gate opening may partially succeed before it throws: always clean up.
       await actions.openGate();
       await actions.runBrowser();
@@ -105,9 +111,13 @@ export async function runCommunityHostedWriteLifecycle({
     // credentials should be copied into audit output.
     const cleanup = [
       ['close_gate', () => actions.closeGate()],
-      ['revoke_sessions', () => actions.revokeSessions()],
-      ['remove_fixture_rows', () => actions.removeFixtureRows()],
-      ['remove_test_users', () => actions.removeTestUsers()]
+      ...(!initialRead || initialClean
+        ? [
+            ['revoke_sessions', () => actions.revokeSessions()],
+            ['remove_fixture_rows', () => actions.removeFixtureRows()],
+            ['remove_test_users', () => actions.removeTestUsers()]
+          ]
+        : [])
     ];
     for (const [name, operation] of cleanup) {
       try {
@@ -116,12 +126,16 @@ export async function runCommunityHostedWriteLifecycle({
         failures.push(name);
       }
     }
-    try {
-      assertCleanSnapshot(await actions.getSnapshot());
-    } catch {
-      failures.push('committed_state_postcheck');
+    if (!initialRead || initialClean) {
+      try {
+        assertCleanSnapshot(await actions.getSnapshot());
+      } catch {
+        failures.push('committed_state_postcheck');
+      }
     }
     try {
+      // The adapter must independently verify exact run-owned branch identity
+      // before deleting it. A dirty baseline never authorizes row deletion.
       await actions.destroyIsolatedBranch();
     } catch {
       failures.push('destroy_branch');
@@ -143,6 +157,7 @@ export async function runCommunityHostedWriteLifecycle({
     cleanupVerified: true,
     mainSha: target.mainSha,
     candidateSha: target.candidateSha,
-    requestCommentId: String(grant.requestCommentId)
+    requestCommentId: String(grant.requestCommentId),
+    runId: String(grant.runId)
   });
 }
