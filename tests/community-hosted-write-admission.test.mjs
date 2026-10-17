@@ -50,7 +50,10 @@ function input() {
       draft: true,
       merged: false,
       base: { ref: 'main' },
-      head: { sha: FEATURE, repo: { full_name: 'bingohooah888-ai/novelrise' } }
+      head: {
+        sha: FEATURE,
+        repo: { full_name: 'bingohooah888-ai/novelrise' }
+      }
     },
     branch: {
       project_ref: PROJECT,
