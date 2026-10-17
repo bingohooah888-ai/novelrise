@@ -98,6 +98,55 @@ export function makeCommunityHostedGitHubAdapter({
     deny('approval ledger exceeds bounded pagination');
   }
 
+  // Fresh, bounded read-only inventory. This data is not itself a grant;
+  // the coordinator independently verifies that a non-bypassable active
+  // TAG ruleset blocks both deletion and update of the exact reservation.
+  async function loadProtectionEvidence() {
+    const inventoryPages = [];
+    const tagRuleDetails = [];
+    for (let page = 1; page <= 20; page += 1) {
+      const result = await api(
+        '/rulesets?includes_parents=true&per_page=100&page=' + page
+      );
+      if (
+        result.status !== 200 ||
+        !Array.isArray(result.data) ||
+        result.data.length > 100
+      ) {
+        deny('reservation tag ruleset inventory unavailable');
+      }
+      inventoryPages.push(result.data);
+      if (result.data.length < 100) break;
+      if (page === 20) deny('reservation ruleset inventory truncated');
+    }
+    const activeTagIds = [
+      ...new Set(
+        inventoryPages
+          .flat()
+          .filter(
+            (item) => item?.target === 'tag' && item.enforcement === 'active'
+          )
+          .map((item) => item.id)
+      )
+    ];
+    if (
+      activeTagIds.length > 100 ||
+      activeTagIds.some(
+        (id) => !Number.isSafeInteger(id) || id <= 0
+      )
+    ) {
+      deny('active tag ruleset identifiers invalid');
+    }
+    for (const id of activeTagIds) {
+      const result = await api('/rulesets/' + id);
+      if (result.status !== 200) {
+        deny('active tag ruleset details unavailable');
+      }
+      tagRuleDetails.push(result.data);
+    }
+    return { inventoryPages, tagRuleDetails };
+  }
+
   async function createUniqueRef({ repository, ref, sha }) {
     requireRepo(repository);
     requireRef(ref);
@@ -141,6 +190,7 @@ export function makeCommunityHostedGitHubAdapter({
 
   return Object.freeze({
     loadLiveSnapshot,
+    loadProtectionEvidence,
     createUniqueRef,
     readRef,
     postIssueComment
