@@ -63,8 +63,7 @@ function protect(context, { preview, staging, env }) {
         method === 'POST' &&
         (path.startsWith('/auth/v1/') ||
           path.startsWith('/rest/v1/rpc/novelight_community_'));
-      const stagingPreflight =
-        url.origin === staging && method === 'OPTIONS';
+      const stagingPreflight = url.origin === staging && method === 'OPTIONS';
       const adminWrite =
         url.origin === preview &&
         method === 'POST' &&
@@ -175,18 +174,16 @@ test('real isolated author/reader/admin sessions and moderation', async ({
     );
 
     await card.getByRole('button', { name: /コメント/u }).click();
-    await card.getByRole('textbox', { name: 'コメント' }).fill(
-      'Hosted isolated synthetic reader comment'
-    );
+    await card
+      .getByRole('textbox', { name: 'コメント' })
+      .fill('Hosted isolated synthetic reader comment');
     await card.getByRole('button', { name: '送信' }).click();
     await expect(card).toContainText(
       'Hosted isolated synthetic reader comment'
     );
 
     await authorPage.reload({ waitUntil: 'domcontentloaded' });
-    await expect(
-      authorPage.locator('#communityNotifications')
-    ).toBeVisible();
+    await expect(authorPage.locator('#communityNotifications')).toBeVisible();
 
     readerPage.on('dialog', async (dialog) => {
       if (dialog.type() === 'prompt') {

@@ -60,8 +60,7 @@ test('data-less branch creation is explicitly scoped and safe', async () => {
   assert.equal(mock.requests[0].method, 'POST');
   assert.equal(
     mock.requests[0].url,
-    'https://api.supabase.com/v1/projects/' +
-      'fiepaguycecrredwrcwx/branches'
+    'https://api.supabase.com/v1/projects/' + 'fiepaguycecrredwrcwx/branches'
   );
   const body = JSON.parse(mock.requests[0].body);
   assert.equal(body.with_data, false);
