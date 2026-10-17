@@ -51,7 +51,7 @@ function record(body, prefix, fields) {
   return data;
 }
 
-function unusedLedger(ledgerPages, requestId, runId) {
+function unusedLedger(ledgerPages, requestComment, runId) {
   if (
     !Array.isArray(ledgerPages) ||
     ledgerPages.length < 1 ||
@@ -59,13 +59,31 @@ function unusedLedger(ledgerPages, requestId, runId) {
     !ledgerPages.every(
       (page) => Array.isArray(page) && page.length <= 100
     ) ||
+    ledgerPages.slice(0, -1).some((page) => page.length !== 100) ||
     ledgerPages.at(-1).length === 100
   ) {
     deny('unverified or truncated approval ledger');
   }
+  let priorId = 0;
+  let requestSeen = 0;
   for (const entry of ledgerPages.flat()) {
-    if (typeof entry?.body !== 'string') {
-      deny('malformed ledger entry');
+    if (
+      !Number.isSafeInteger(entry?.id) ||
+      entry.id <= priorId ||
+      typeof entry.body !== 'string'
+    ) {
+      deny('malformed or unordered ledger entry');
+    }
+    priorId = entry.id;
+    if (entry.id === requestComment.id) {
+      if (
+        entry.body !== requestComment.body ||
+        entry.user?.login !== OWNER ||
+        entry.author_association !== 'OWNER'
+      ) {
+        deny('original OWNER request not authentic in ledger');
+      }
+      requestSeen += 1;
     }
     const prefix = entry.body.startsWith(HOSTED_CLAIMED)
       ? HOSTED_CLAIMED
@@ -91,11 +109,14 @@ function unusedLedger(ledgerPages, requestId, runId) {
       deny('invalid one-use ledger claim');
     }
     if (
-      String(row.requestCommentId) === String(requestId) ||
+      String(row.requestCommentId) === String(requestComment.id) ||
       String(row.runId) === String(runId)
     ) {
       deny('already claimed/consumed approval or runner');
     }
+  }
+  if (requestSeen !== 1) {
+    deny('original OWNER request missing from complete ledger');
   }
 }
 
@@ -145,7 +166,7 @@ export function verifyCommunityHostedPreCostAdmission({
   ) {
     deny('fresh main, immutable Draft feature or request scope mismatch');
   }
-  unusedLedger(ledgerPages, event.comment.id, runId);
+  unusedLedger(ledgerPages, event.comment, runId);
 
   // Structural/synthetic evidence is NOT a permission to allocate resources.
   // A trusted-main runner must re-fetch live ledger and external resource

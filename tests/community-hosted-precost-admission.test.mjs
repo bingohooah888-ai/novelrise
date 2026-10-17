@@ -31,7 +31,7 @@ function proposalBody(changes = {}) {
 }
 
 function fixture() {
-  return {
+  const input = {
     event: {
       action: 'created',
       repository: { full_name: 'bingohooah888-ai/novelrise' },
@@ -59,9 +59,11 @@ function fixture() {
         repo: { full_name: 'bingohooah888-ai/novelrise' }
       }
     },
-    ledgerPages: [[]],
+    ledgerPages: [],
     runId: RUN
   };
+  input.ledgerPages = [[input.event.comment]];
+  return input;
 }
 
 function rejectField(path, value) {
@@ -86,7 +88,11 @@ function ledgerRow(marker, requestId, runId) {
   if (marker === HOSTED_CONSUMED) {
     value.result = 'failure';
   }
-  return { body: marker + JSON.stringify(value) };
+  return {
+    id: 124,
+    user: { login: 'github-actions[bot]' },
+    body: marker + JSON.stringify(value)
+  };
 }
 
 test('pre-cost proposal never grants execution', () => {
@@ -149,8 +155,17 @@ test('unrelated approvals and injected JSON are rejected', () => {
 
 test('claimed requests and reused run IDs are rejected', () => {
   for (const marker of [HOSTED_CLAIMED, HOSTED_CONSUMED]) {
-    rejectField('ledgerPages', [[ledgerRow(marker, '123', '77')]]);
-    rejectField('ledgerPages', [[ledgerRow(marker, '999', RUN)]]);
+    for (const [requestId, runId] of [
+      ['123', '77'],
+      ['999', RUN]
+    ]) {
+      const input = fixture();
+      input.ledgerPages[0].push(ledgerRow(marker, requestId, runId));
+      assert.throws(
+        () => verifyCommunityHostedPreCostAdmission(input),
+        /COMMUNITY_HOSTED_PRE_COST_DENIED/u
+      );
+    }
   }
 });
 
@@ -209,4 +224,18 @@ test('owner inspection workflow remains read-only', () => {
   ]) {
     assert.ok(!workflow.includes(forbidden), forbidden);
   }
+});
+
+test('partial pagination or missing OWNER source is rejected', () => {
+  const sample = fixture();
+  rejectField('ledgerPages', [sample.ledgerPages[0], []]);
+  rejectField('ledgerPages', [[]]);
+  const fake = {
+    ...sample.event.comment,
+    body: 'forged'
+  };
+  rejectField('ledgerPages', [[fake]]);
+  rejectField('ledgerPages', [
+    [sample.event.comment, { ...sample.event.comment, id: 123 }]
+  ]);
 });
