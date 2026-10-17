@@ -68,7 +68,8 @@ function denied(change) {
 
 test(
   'owner intent is strictly preparation-only and cannot initiate costs',
-  () => {    const proof = verifyCommunityHostedPreCostAdmission(fixture());
+  () => {
+    const proof = verifyCommunityHostedPreCostAdmission(fixture());
     assert.equal(proof.status, 'OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY');
     assert.equal(proof.mainSha, MAIN);
     assert.equal(proof.candidateSha, FEATURE);
@@ -92,7 +93,8 @@ test(
 
 test(
   'only exact GitHub owner-authored Issue #188 event can be inspected',
-  () => {    denied((x) => {
+  () => {
+    denied((x) => {
       x.event.action = 'edited';
     });
     denied((x) => {
@@ -175,7 +177,8 @@ test('fresh exact main, untouched Draft head and scope are mandatory', () => {
 
 test(
   'read-only preflight, hosted post-provision and extra fields cannot be used',
-  () => {    denied((x) => {
+  () => {
+    denied((x) => {
       x.event.comment.body = HOSTED_APPROVE + JSON.stringify(proposal);
     });
     denied((x) => {
