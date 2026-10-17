@@ -156,19 +156,25 @@ test('fresh exact main, untouched Draft head and scope are mandatory', () => {
     x.feature.number = 123;
   });
   denied((x) => {
-    x.event.comment.body = HOSTED_PRE_COST_APPROVE + JSON.stringify({
+    x.event.comment.body =
+      HOSTED_PRE_COST_APPROVE +
+      JSON.stringify({
       ...proposal,
       scope: 'migration-sync'
     });
   });
   denied((x) => {
-    x.event.comment.body = HOSTED_PRE_COST_APPROVE + JSON.stringify({
+    x.event.comment.body =
+      HOSTED_PRE_COST_APPROVE +
+      JSON.stringify({
       ...proposal,
       mainSha: 'not-a-sha'
     });
   });
   denied((x) => {
-    x.event.comment.body = HOSTED_PRE_COST_APPROVE + JSON.stringify({
+    x.event.comment.body =
+      HOSTED_PRE_COST_APPROVE +
+      JSON.stringify({
       ...proposal,
       target: 'shared-staging'
     });
@@ -182,13 +188,17 @@ test(
       x.event.comment.body = HOSTED_APPROVE + JSON.stringify(proposal);
     });
     denied((x) => {
-      x.event.comment.body = HOSTED_PRE_COST_APPROVE + JSON.stringify({
+      x.event.comment.body =
+      HOSTED_PRE_COST_APPROVE +
+      JSON.stringify({
         ...proposal,
         confirmation: 'PREFLIGHT ONLY'
       });
     });
     denied((x) => {
-      x.event.comment.body = HOSTED_PRE_COST_APPROVE + JSON.stringify({
+      x.event.comment.body =
+      HOSTED_PRE_COST_APPROVE +
+      JSON.stringify({
         ...proposal,
         command: 'create-branch'
       });
