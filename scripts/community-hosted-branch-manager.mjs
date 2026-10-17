@@ -1,0 +1,153 @@
+// Supabase Management API adapter for a ONE-RUN, data-less preview branch.
+// This module cannot grant staging approval. It has no CLI or auto-execution.
+// Only invoke from the audited main-only OWNER workflow after the approval
+// comment is claimed and a dedicated cost authorization is proven.
+const PARENT = 'fiepaguycecrredwrcwx';
+const SHARED = 'wmlzjgvxgoyrovdhbqbg';
+const ENDPOINT = 'https://api.supabase.com/v1';
+const ID = /^[1-9][0-9]*$/u;
+const REF = /^[a-z0-9]{20}$/u;
+const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/iu;
+
+function deny(reason) {
+  throw new Error('COMMUNITY_ISOLATED_BRANCH_DENIED: ' + reason);
+}
+function guard({ grant, managementToken }) {
+  if (
+    grant?.status !== 'AUTHORIZED_BY_TRUSTED_MAIN_WORKFLOW' ||
+    grant?.scope !== 'community-phase1-hosted-authenticated-write' ||
+    grant?.runAuthorized !== true ||
+    grant?.stagingCostApproved !== true ||
+    grant?.productionMutationApproved === true ||
+    !ID.test(String(grant.runId || '')) ||
+    !ID.test(String(grant.requestCommentId || '')) ||
+    typeof managementToken !== 'string' ||
+    managementToken.length < 20
+  ) {
+    deny('missing reviewed one-use staging authorization');
+  }
+}
+function requestOptions(token, method, body) {
+  return {
+    method,
+    redirect: 'error',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      Accept: 'application/json',
+      ...(body ? { 'Content-Type': 'application/json' } : {})
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+    signal: AbortSignal.timeout(15000)
+  };
+}
+function validateBranch(branch, expectedName) {
+  if (
+    !branch ||
+    !UUID.test(branch.id || '') ||
+    !REF.test(branch.project_ref || '') ||
+    branch.project_ref === PARENT ||
+    branch.project_ref === SHARED ||
+    branch.parent_project_ref !== PARENT ||
+    branch.name !== expectedName ||
+    branch.is_default !== false ||
+    branch.persistent !== false ||
+    branch.with_data !== false
+  ) {
+    deny('created branch does not prove data-less isolated ownership');
+  }
+}
+function nameFor(runId) {
+  if (!ID.test(String(runId))) deny('invalid exact run identifier');
+  return 'community-hosted-' + String(runId);
+}
+
+export async function createCommunityIsolatedBranch({
+  grant,
+  managementToken,
+  fetchImpl = fetch
+}) {
+  guard({ grant, managementToken });
+  const name = nameFor(grant.runId);
+  const response = await fetchImpl(
+    ENDPOINT + '/projects/' + PARENT + '/branches',
+    requestOptions(managementToken, 'POST', {
+      branch_name: name,
+      persistent: false,
+      with_data: false,
+      is_default: false
+    })
+  );
+  if (response.status !== 201) deny('isolated branch creation rejected');
+  const branch = await response.json();
+  validateBranch(branch, name);
+  return Object.freeze({
+    id: branch.id,
+    ref: branch.project_ref,
+    parentRef: PARENT,
+    name,
+    runId: String(grant.runId),
+    requestCommentId: String(grant.requestCommentId),
+    dataCopied: false,
+    deleteRequired: true
+  });
+}
+
+async function listBranches(token, fetchImpl) {
+  const response = await fetchImpl(
+    ENDPOINT + '/projects/' + PARENT + '/branches',
+    requestOptions(token, 'GET')
+  );
+  if (response.status !== 200) deny('cannot verify isolated branch listing');
+  const rows = await response.json();
+  if (!Array.isArray(rows)) deny('invalid branch listing');
+  return rows;
+}
+
+// For safety, preflight also independently checks that the exact branch exists
+// in the live Management API listing before issuing an irreversible DELETE.
+// This is never a generic "delete project" endpoint.
+export async function destroyCommunityIsolatedBranch({
+  grant,
+  created,
+  managementToken,
+  fetchImpl = fetch
+}) {
+  guard({ grant, managementToken });
+  const expectedName = nameFor(grant.runId);
+  if (
+    created?.name !== expectedName ||
+    created?.runId !== String(grant.runId) ||
+    created?.requestCommentId !== String(grant.requestCommentId) ||
+    created?.parentRef !== PARENT ||
+    created?.dataCopied !== false ||
+    created?.deleteRequired !== true ||
+    !REF.test(created?.ref || '') ||
+    created.ref === PARENT ||
+    created.ref === SHARED ||
+    !UUID.test(created?.id || '')
+  ) {
+    deny('unproven disposable branch deletion request');
+  }
+  const before = await listBranches(managementToken, fetchImpl);
+  const matched = before.filter((row) => row.id === created.id);
+  if (matched.length !== 1) deny('exact disposable branch not found');
+  validateBranch(matched[0], expectedName);
+  if (matched[0].project_ref !== created.ref) {
+    deny('branch ref changed since provisioning');
+  }
+  const response = await fetchImpl(
+    ENDPOINT + '/branches/' + created.id + '?force=true',
+    requestOptions(managementToken, 'DELETE')
+  );
+  if (response.status !== 200) deny('branch deletion failed');
+  const after = await listBranches(managementToken, fetchImpl);
+  if (after.some((row) => row.id === created.id)) {
+    deny('branch remains after deletion request');
+  }
+  return Object.freeze({
+    deleted: true,
+    ref: created.ref,
+    runId: String(grant.runId),
+    verifiedAbsent: true
+  });
+}
