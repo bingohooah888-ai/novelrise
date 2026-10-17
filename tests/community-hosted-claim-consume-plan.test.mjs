@@ -92,9 +92,7 @@ function claimed() {
 
 function consumed(outcome = 'failure') {
   const input = claimed();
-  input.ledgerPages[0].push(
-    record(125, HOSTED_CONSUMED, { result: outcome })
-  );
+  input.ledgerPages[0].push(record(125, HOSTED_CONSUMED, { result: outcome }));
   return input;
 }
 
@@ -205,10 +203,7 @@ test('claim receipt requires exactly one authentic bot claim, not consume', () =
   assert.equal(receipt.claimCommentId, '124');
   assert.equal(receipt.runAuthorized, false);
   assert.equal(receipt.atomicClaimVerified, false);
-  assert.throws(
-    () => inspectCommunityHostedClaimReceipt(fixture()),
-    /DENIED/u
-  );
+  assert.throws(() => inspectCommunityHostedClaimReceipt(fixture()), /DENIED/u);
   assert.throws(
     () => inspectCommunityHostedClaimReceipt(consumed()),
     /DENIED/u
@@ -231,10 +226,7 @@ test('failure and cancelled consumption require a matching recorded claim', () =
   }
   assert.throws(() => finish(fixture()), /DENIED/u);
   assert.throws(() => finish(consumed()), /DENIED/u);
-  assert.throws(
-    () => finish(claimed(), { outcome: 'reset' }),
-    /DENIED/u
-  );
+  assert.throws(() => finish(claimed(), { outcome: 'reset' }), /DENIED/u);
 });
 
 test('successful consumption demands exact run-bound cleanup proof', () => {
