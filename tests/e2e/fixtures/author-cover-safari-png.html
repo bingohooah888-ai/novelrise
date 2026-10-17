@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>Safari Author Cover PNG Regression</title></head>
+<body>
+<section id="customCover" hidden>
+ <input type="file" data-cover-file>
+ <button type="button" data-cover-upload>保存</button>
+ <button type="button" data-cover-remove>解除</button>
+ <img data-cover-preview hidden alt="test cover">
+ <a data-cover-x-preview hidden href="#">X Preview</a>
+ <p data-cover-status></p>
+</section>
+<script src="/novelight-custom-cover.js"></script>
+<script>
+window.runAuthorCoverSafariPngRegression = async (published = true) => {
+  const owner = '12345678-1234-4123-8123-123456789abc';
+  const novelId = '42';
+  const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+  const bytes = Uint8Array.from(atob(pngBase64), c => c.charCodeAt(0));
+  const inputFile = new File([bytes], 'photo.PNG', {type:'image/png'});
+  const input = document.querySelector('[data-cover-file]');
+  Object.defineProperty(input, 'files', {configurable:true, value:[inputFile]});
+  const originalToBlob = HTMLCanvasElement.prototype.toBlob;
+  let requested = '';
+  let currentPath = '';
+  const recorded = [];
+  let uploaded;
+  const bucket = {
+    getPublicUrl(path) { return {data:{publicUrl:'https://example.org/'+path}}; },
+    async list() { return {data:[], error:null}; },
+    async upload(path, blob, options) {
+      uploaded = {path, blobType:blob.type, contentType:options.contentType, size:blob.size};
+      recorded.push('storage');
+      return {error:null};
+    },
+    async remove() {return {error:null};}
+  };
+  const client = {
+    storage:{ from(name) {
+      if (name !== 'novel-custom-covers') throw Error('unexpected bucket');
+      return bucket;
+    }},
+    from(name) {
+      if(name!=='novel_custom_covers') throw Error('unexpected table');
+      return {
+        select(){return this}, eq(){return this},
+        async maybeSingle(){return {data:currentPath?{storage_path:currentPath}:null,error:null}},
+        async upsert(row) {currentPath=row.storage_path; recorded.push('db'); return {error:null}},
+        delete(){return {async eq(){currentPath='';return {error:null}}}}
+      };
+    }
+  };
+  HTMLCanvasElement.prototype.toBlob = function(callback, type) {
+    requested = type;
+    callback(new Blob([bytes], {type:'image/png'}));
+  };
+  try {
+    await window.NovelightCustomCover.mount({
+      client, root:document.getElementById('customCover'), novelId,
+      session:{user:{id:owner}}, published
+    });
+    input.dispatchEvent(new Event('change'));
+    document.querySelector('[data-cover-upload]').click();
+    const until = performance.now()+7000;
+    while (!uploaded && performance.now()<until) await new Promise(r=>setTimeout(r,20));
+    while (recorded.length<2 && performance.now()<until) await new Promise(r=>setTimeout(r,20));
+    return {
+      requested, uploaded, recorded, currentPath,
+      previewHidden:document.querySelector('[data-cover-preview]').hidden,
+      xPreviewHidden:document.querySelector('[data-cover-x-preview]').hidden,
+      status:document.querySelector('[data-cover-status]').textContent
+    };
+  } finally {
+    HTMLCanvasElement.prototype.toBlob = originalToBlob;
+  }
+};
+</script>
+</body></html>
