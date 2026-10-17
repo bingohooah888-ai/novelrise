@@ -54,6 +54,9 @@ function harness({ failAt, baseline, final, branchDeleted = true } = {}) {
     getSnapshot: async () => {
       calls.push('getSnapshot');
       reads += 1;
+      if (failAt === 'getSnapshot') {
+        throw new Error('SECRET_MUST_NEVER_LEAK');
+      }
       return reads === 1 ? baseline || clean() : final || clean();
     },
     openGate: make('openGate'),
@@ -111,6 +114,22 @@ test('Production or shared Staging inputs are denied without network', async () 
     /DENIED/u
   );
   assert.deepEqual(x.calls, []);
+});
+
+test('unavailable initial snapshot never opens gate and attempts full teardown', async () => {
+  const x = harness({ failAt: 'getSnapshot' });
+  await assert.rejects(run(x.actions), (error) => {
+    assert.match(error.message, /initial_snapshot_unavailable/u);
+    assert.doesNotMatch(error.message, /SECRET_MUST_NEVER_LEAK/u);
+    return true;
+  });
+  assert.ok(!x.calls.includes('openGate'));
+  assert.ok(!x.calls.includes('runBrowser'));
+  assert.ok(x.calls.includes('closeGate'));
+  assert.ok(x.calls.includes('revokeSessions'));
+  assert.ok(x.calls.includes('removeFixtureRows'));
+  assert.ok(x.calls.includes('removeTestUsers'));
+  assert.equal(x.calls.at(-1), 'confirmBranchDeleted');
 });
 
 test('dirty starting state prevents any write or destructive cleanup', async () => {
