@@ -40,6 +40,34 @@ function harness({ pages, throwOn, override } = {}) {
       const forced = override(path, init);
       if (forced) return forced;
     }
+    if (path.includes('/rulesets?')) {
+      return reply(200, [
+        {
+          id: 412,
+          target: 'tag',
+          enforcement: 'active',
+          source_type: 'Repository'
+        }
+      ]);
+    }
+    if (path.endsWith('/rulesets/412')) {
+      return reply(200, {
+        id: 412,
+        target: 'tag',
+        enforcement: 'active',
+        source_type: 'Repository',
+        source: REPO,
+        current_user_can_bypass: 'never',
+        bypass_actors: [],
+        conditions: {
+          ref_name: {
+            include: ['refs/tags/novelight-community-hosted-once-v1-*'],
+            exclude: []
+          }
+        },
+        rules: [{ type: 'deletion' }, { type: 'update' }]
+      });
+    }
     if (path.endsWith('/git/ref/heads/main')) {
       return reply(200, { object: { sha: SHA } });
     }
@@ -244,4 +272,76 @@ test('API token cannot be omitted or malformed', () => {
       }),
     /DENIED/u
   );
+});
+
+test('read-only ruleset fetch obtains complete active tag details', async () => {
+  const x = harness();
+  const evidence = await x.transport.loadProtectionEvidence();
+  assert.equal(evidence.inventoryPages.length, 1);
+  assert.equal(evidence.tagRuleDetails.length, 1);
+  assert.equal(evidence.tagRuleDetails[0].id, 412);
+  assert.deepEqual(
+    x.requests.map((request) => request.path),
+    [
+      '/repos/' + REPO + '/rulesets?includes_parents=true&per_page=100&page=1',
+      '/repos/' + REPO + '/rulesets/412'
+    ]
+  );
+  assert.ok(x.requests.every((request) => request.method === 'GET'));
+});
+
+test('unknown or truncated ruleset inventory fails before external writes', async () => {
+  for (const result of [
+    reply(403, { message: 'SECRET_MUST_NOT_LEAK' }),
+    reply(200, { unexpected: true })
+  ]) {
+    const x = harness({
+      override: (path) => (path.includes('/rulesets?') ? result : undefined)
+    });
+    await assert.rejects(x.transport.loadProtectionEvidence(), /DENIED/u);
+    assert.ok(x.requests.every((request) => request.method === 'GET'));
+  }
+  const x = harness({
+    override: (path) =>
+      path.endsWith('/rulesets/412')
+        ? reply(404, { message: 'missing rule' })
+        : undefined
+  });
+  await assert.rejects(x.transport.loadProtectionEvidence(), /DENIED/u);
+});
+
+test('ruleset inventory paginates strictly rather than sampling only first page', async () => {
+  const rule = {
+    target: 'branch',
+    enforcement: 'active',
+    source_type: 'Repository'
+  };
+  const x = harness({
+    override: (path) => {
+      if (path.includes('/rulesets?') && path.endsWith('page=1')) {
+        return reply(
+          200,
+          Array.from({ length: 100 }, (_, i) => ({ ...rule, id: i + 1 }))
+        );
+      }
+      if (path.includes('/rulesets?') && path.endsWith('page=2')) {
+        return reply(200, [
+          {
+            id: 412,
+            target: 'tag',
+            enforcement: 'active',
+            source_type: 'Repository'
+          }
+        ]);
+      }
+      return undefined;
+    }
+  });
+  const evidence = await x.transport.loadProtectionEvidence();
+  assert.deepEqual(
+    evidence.inventoryPages.map((page) => page.length),
+    [100, 1]
+  );
+  assert.equal(evidence.tagRuleDetails.length, 1);
+  assert.ok(x.requests.every((request) => request.method === 'GET'));
 });
