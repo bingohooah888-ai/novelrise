@@ -181,7 +181,8 @@ test('mobile Image fallback uploads and removes an owner-scoped 2:3 cover', asyn
     client: app.client,
     root: app.root,
     novelId: '42',
-    session: { user: { id: app.uid } }
+    session: { user: { id: app.uid } },
+    published: true
   });
 
   assert.equal(app.root.hidden, false);
