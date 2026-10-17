@@ -3,7 +3,8 @@ import test from 'node:test';
 
 import {
   createCommunityIsolatedBranch,
-  destroyCommunityIsolatedBranch
+  destroyCommunityIsolatedBranch,
+  reconcileCommunityIsolatedBranchCreation
 } from '../scripts/community-hosted-branch-manager.mjs';
 
 const grant = {
@@ -34,6 +35,18 @@ function harness(options = {}) {
   const fetchImpl = async (url, init) => {
     requests.push({ url, method: init.method, body: init.body });
     if (init.method === 'POST') {
+      if (options.createThrows) {
+        throw new Error('SECRET_MUST_NEVER_LEAK');
+      }
+      if (options.createStatus) return reply(options.createStatus, {});
+      if (options.createUnreadable) {
+        return {
+          status: 201,
+          json: async () => {
+            throw new Error('SECRET_MUST_NEVER_LEAK');
+          }
+        };
+      }
       return reply(201, { ...branch, ...options.created });
     }
     if (init.method === 'DELETE') {
@@ -41,7 +54,16 @@ function harness(options = {}) {
       removed = true;
       return reply(200, { message: 'ok' });
     }
-    const rows = removed ? [] : [{ ...branch, ...options.listed }];
+    if (options.inventoryThrows) {
+      throw new Error('SECRET_MUST_NEVER_LEAK');
+    }
+    const row = { ...branch, ...options.listed };
+    const rows =
+      removed || options.listEmpty
+        ? []
+        : options.listDuplicates
+          ? [row, { ...row, id: 'c0c00000-0000-4000-8000-000000000999' }]
+          : [row];
     return reply(200, rows);
   };
   return { requests, fetchImpl };
@@ -66,6 +88,116 @@ test('data-less branch creation is explicitly scoped and safe', async () => {
   assert.equal(body.with_data, false);
   assert.equal(body.persistent, false);
   assert.equal(body.is_default, false);
+});
+
+test('uncertain POST is never retried and exact existing branch can be recovered', async () => {
+  const mock = harness({ createThrows: true });
+  await assert.rejects(
+    createCommunityIsolatedBranch({
+      grant,
+      managementToken: auth,
+      fetchImpl: mock.fetchImpl
+    }),
+    (error) => {
+      assert.match(error.message, /inventory reconciliation required/u);
+      assert.doesNotMatch(error.message, /SECRET_MUST_NEVER_LEAK/u);
+      return true;
+    }
+  );
+  const recovery = await reconcileCommunityIsolatedBranchCreation({
+    grant,
+    managementToken: auth,
+    fetchImpl: mock.fetchImpl
+  });
+  assert.equal(recovery.status, 'BRANCH_FOUND_REQUIRES_CLEANUP');
+  assert.equal(recovery.created.runId, grant.runId);
+  assert.equal(recovery.created.ref, branch.project_ref);
+  assert.equal(recovery.creationRetryAuthorized, false);
+  const cleanup = await destroyCommunityIsolatedBranch({
+    grant,
+    created: recovery.created,
+    managementToken: auth,
+    fetchImpl: mock.fetchImpl
+  });
+  assert.equal(cleanup.verifiedAbsent, true);
+  assert.deepEqual(
+    mock.requests.map((row) => row.method),
+    ['POST', 'GET', 'GET', 'DELETE', 'GET']
+  );
+});
+
+test('unknown create with absent inventory is not proof of deletion or retry permission', async () => {
+  const mock = harness({ createStatus: 500, listEmpty: true });
+  await assert.rejects(
+    createCommunityIsolatedBranch({
+      grant,
+      managementToken: auth,
+      fetchImpl: mock.fetchImpl
+    }),
+    /inventory reconciliation required/u
+  );
+  const recovery = await reconcileCommunityIsolatedBranchCreation({
+    grant,
+    managementToken: auth,
+    fetchImpl: mock.fetchImpl
+  });
+  assert.equal(recovery.status, 'NO_BRANCH_OBSERVED_DO_NOT_RETRY');
+  assert.equal(recovery.creationRetryAuthorized, false);
+  assert.equal(recovery.deletionVerified, false);
+  assert.deepEqual(
+    mock.requests.map((row) => row.method),
+    ['POST', 'GET']
+  );
+});
+
+test('unreadable create result and inventory errors conceal secrets', async () => {
+  const mock = harness({ createUnreadable: true, inventoryThrows: true });
+  await assert.rejects(
+    createCommunityIsolatedBranch({
+      grant,
+      managementToken: auth,
+      fetchImpl: mock.fetchImpl
+    }),
+    /inventory reconciliation required/u
+  );
+  await assert.rejects(
+    reconcileCommunityIsolatedBranchCreation({
+      grant,
+      managementToken: auth,
+      fetchImpl: mock.fetchImpl
+    }),
+    (error) => {
+      assert.match(error.message, /reconciliation unavailable/u);
+      assert.doesNotMatch(error.message, /SECRET_MUST_NEVER_LEAK/u);
+      return true;
+    }
+  );
+  assert.deepEqual(
+    mock.requests.map((row) => row.method),
+    ['POST', 'GET']
+  );
+});
+
+test('duplicate or malformed branch inventory cannot authorize deletion', async () => {
+  for (const options of [
+    { listDuplicates: true },
+    { listed: { with_data: true } },
+    { listed: { parent_project_ref: 'unrelated-project' } }
+  ]) {
+    const mock = harness(options);
+    await assert.rejects(
+      reconcileCommunityIsolatedBranchCreation({
+        grant,
+        managementToken: auth,
+        fetchImpl: mock.fetchImpl
+      }),
+      /DENIED/u
+    );
+    assert.deepEqual(
+      mock.requests.map((row) => row.method),
+      ['GET']
+    );
+  }
 });
 
 test('owner approval required before even the first API request', async () => {
@@ -99,6 +231,38 @@ test('creation rejects a Production-linked or data-copying response', async () =
       /DENIED/u
     );
   }
+});
+
+test('unexpected 201 metadata requires reconciliation before any retry', async () => {
+  const mock = harness({ created: { with_data: true } });
+  await assert.rejects(
+    createCommunityIsolatedBranch({
+      grant,
+      managementToken: auth,
+      fetchImpl: mock.fetchImpl
+    }),
+    /inventory reconciliation required/u
+  );
+  // The creation reply is not trusted. A separate live inventory is required
+  // before cleanup; a second billable POST is never allowed.
+  const recovery = await reconcileCommunityIsolatedBranchCreation({
+    grant,
+    managementToken: auth,
+    fetchImpl: mock.fetchImpl
+  });
+  assert.equal(recovery.status, 'BRANCH_FOUND_REQUIRES_CLEANUP');
+  assert.equal(recovery.creationRetryAuthorized, false);
+  const cleaned = await destroyCommunityIsolatedBranch({
+    grant,
+    created: recovery.created,
+    managementToken: auth,
+    fetchImpl: mock.fetchImpl
+  });
+  assert.equal(cleaned.verifiedAbsent, true);
+  assert.deepEqual(
+    mock.requests.map((row) => row.method),
+    ['POST', 'GET', 'GET', 'DELETE', 'GET']
+  );
 });
 
 test('only exact verified disposable branch can be deleted', async () => {
