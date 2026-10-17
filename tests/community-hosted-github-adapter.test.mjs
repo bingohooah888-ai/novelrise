@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  makeCommunityHostedGitHubAdapter
-} from '../scripts/community-hosted-github-adapter.mjs';
+import { makeCommunityHostedGitHubAdapter } from '../scripts/community-hosted-github-adapter.mjs';
 
 const TOKEN = 'synthetic-test-token-1234567890';
 const REPO = 'bingohooah888-ai/novelrise';
@@ -18,12 +16,16 @@ function reply(status, data) {
 
 function harness({ pages, throwOn, override } = {}) {
   const requests = [];
-  const records = pages ?? [[{
-    id: 123,
-    body: 'owner request',
-    user: { login: 'bingohooah888-ai' },
-    author_association: 'OWNER'
-  }]];
+  const records = pages ?? [
+    [
+      {
+        id: 123,
+        body: 'owner request',
+        user: { login: 'bingohooah888-ai' },
+        author_association: 'OWNER'
+      }
+    ]
+  ];
   const fetchImpl = async (url, init) => {
     const parsed = new URL(url);
     const path = parsed.pathname + parsed.search;
@@ -100,8 +102,14 @@ test('complete pagination continues past 100 and retains separate pages', async 
   }));
   const x = harness({ pages: [first, [{ id: 101, body: 'last' }]] });
   const state = await x.transport.loadLiveSnapshot();
-  assert.deepEqual(state.ledgerPages.map((page) => page.length), [100, 1]);
-  assert.equal(x.requests.filter((q) => q.path.includes('?per_page=')).length, 2);
+  assert.deepEqual(
+    state.ledgerPages.map((page) => page.length),
+    [100, 1]
+  );
+  assert.equal(
+    x.requests.filter((q) => q.path.includes('?per_page=')).length,
+    2
+  );
 });
 
 test('Git ref creation and readback are scoped to reservation namespace', async () => {
@@ -229,10 +237,11 @@ test('API token cannot be omitted or malformed', () => {
     /DENIED/u
   );
   assert.throws(
-    () => makeCommunityHostedGitHubAdapter({
-      token: 'short',
-      fetchImpl: async () => undefined
-    }),
+    () =>
+      makeCommunityHostedGitHubAdapter({
+        token: 'short',
+        fetchImpl: async () => undefined
+      }),
     /DENIED/u
   );
 });
