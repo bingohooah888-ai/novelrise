@@ -63,7 +63,7 @@
       const custom = await db.from('novel_custom_covers')
         .select('storage_path').eq('novel_id', Number(id)).maybeSingle();
       const customPath = String(custom.data?.storage_path || '');
-      if (!custom.error && /^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.webp$/u.test(customPath)) {
+      if (!custom.error && /^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.(?:webp|png|jpg)$/u.test(customPath)) {
         const customUrl = db.storage.from('novel-custom-covers').getPublicUrl(customPath);
         add(customUrl.data?.publicUrl);
       }

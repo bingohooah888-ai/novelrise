@@ -4,13 +4,17 @@
   const MAX_BYTES = 5 * 1024 * 1024;
   const WIDTH = 1200;
   const HEIGHT = 1800;
-  const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
-  const PATH_RE = /^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.webp$/u;
+  const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+  const OUTPUT_EXTENSIONS = Object.freeze({ 'image/webp': 'webp', 'image/png': 'png', 'image/jpeg': 'jpg' });
+  const PATH_RE = /^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.(?:webp|png|jpg)$/u;
 
   async function decodePicture(file) {
-    if (typeof createImageBitmap === 'function') return createImageBitmap(file);
+    if (typeof createImageBitmap === 'function') {
+      try { return await createImageBitmap(file); }
+      catch { /* iPhone HEIC and some Photos files require an Image decoder. */ }
+    }
 
-    // Older mobile WebViews may not expose createImageBitmap.
+    // Older WebViews and iPhone Photos may require Image decoding.
     const objectUrl = URL.createObjectURL(file);
     const image = new Image();
     try {
@@ -56,15 +60,20 @@
       const w = picture.width * scale;
       const h = picture.height * scale;
       ctx.drawImage(picture.drawable || picture, (WIDTH - w) / 2, (HEIGHT - h) / 2, w, h);
-      for (const quality of [0.9, 0.8, 0.7, 0.6]) {
-        const blob = await new Promise((resolve) =>
-          canvas.toBlob(resolve, 'image/webp', quality)
-        );
-        if (blob && blob.type === 'image/webp' && blob.size <= MAX_BYTES) {
-          return blob;
+      // Safari/WebKit is allowed to return PNG even when WebP was requested.
+      // Always use the *actual* Blob MIME for extension and Storage metadata.
+      for (const format of ['image/webp', 'image/jpeg', 'image/png']) {
+        const qualities = format === 'image/png' ? [undefined] : [0.9, 0.8, 0.7, 0.6];
+        for (const quality of qualities) {
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, format, quality));
+          const contentType = String(blob?.type || '').toLowerCase();
+          const extension = OUTPUT_EXTENSIONS[contentType];
+          if (extension && blob.size > 0 && blob.size <= MAX_BYTES) {
+            return { blob, contentType, extension };
+          }
         }
       }
-      throw new Error('画像を5MB以下に変換できませんでした。');
+      throw new Error('画像を5MB以下の対応形式へ変換できませんでした。');
     } finally {
       picture.close?.();
     }
@@ -136,10 +145,10 @@
       report('画像を最適化して保存しています…');
       let newPath = '';
       try {
-        const blob = await convert(fileInput.files[0]);
-        newPath = session.user.id + '/' + novelId + '/' + crypto.randomUUID() + '.webp';
+        const { blob, contentType, extension } = await convert(fileInput.files[0]);
+        newPath = session.user.id + '/' + novelId + '/' + crypto.randomUUID() + '.' + extension;
         const sent = await bucket.upload(newPath, blob, {
-          contentType: 'image/webp', cacheControl: '31536000', upsert: false
+          contentType, cacheControl: '31536000', upsert: false
         });
         if (sent.error) throw sent.error;
         const stored = await client.from('novel_custom_covers').upsert({
