@@ -1,6 +1,7 @@
 // Hosted authenticated Community Phase 1 acceptance. NEVER runs by default.
 // Only an OWNER one-use workflow may set the approval environment and provision
 // separate synthetic accounts on a data-less isolated Supabase preview branch.
+import { URL } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 const FEATURE_SHA = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
@@ -97,7 +98,7 @@ async function signIn(page, cfg, role, publishableKey) {
   await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
   const success = await page.evaluate(
     async ({ staging, publishableKey, email, password }) => {
-      const client = window.supabase.createClient(staging, publishableKey);
+      const client = globalThis.supabase.createClient(staging, publishableKey);
       const result = await client.auth.signInWithPassword({ email, password });
       return !result.error && Boolean(result.data.session?.user);
     },
@@ -113,7 +114,7 @@ async function isolatedContext(browser, cfg) {
   await context.addInitScript(() => {
     // ONLY inside the data-less hosted browser test. Static release flags
     // remain OFF in all version-controlled Production assets.
-    Object.defineProperty(window, 'NOVELIGHT_COMMUNITY_FLAGS', {
+    Object.defineProperty(globalThis, 'NOVELIGHT_COMMUNITY_FLAGS', {
       configurable: false,
       value: Object.freeze({ timeline: true, board: false })
     });
