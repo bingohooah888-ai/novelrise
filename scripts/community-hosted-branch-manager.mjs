@@ -93,7 +93,14 @@ export async function createCommunityIsolatedBranch({
   } catch {
     deny('branch response unreadable; inventory reconciliation required');
   }
-  validateBranch(branch, name);
+  try {
+    validateBranch(branch, name);
+  } catch {
+    // A 201 response proves a POST was accepted, not that its metadata is
+    // trustworthy. The remote branch may already incur charges. Do not
+    // retry POST; require a fresh inventory check and guarded disposal.
+    deny('branch response identity unconfirmed; inventory reconciliation required');
+  }
   return Object.freeze({
     id: branch.id,
     ref: branch.project_ref,
