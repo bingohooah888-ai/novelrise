@@ -80,6 +80,7 @@ test('success requires gate OFF, zero residue and proven branch deletion', async
   const result = await run(x.actions);
   assert.equal(result.status, 'BROWSER_VERIFIED_AND_BRANCH_DISPOSED');
   assert.equal(result.cleanupVerified, true);
+  assert.equal(result.runId, GRANT.runId);
   assert.deepEqual(x.calls, [
     'getSnapshot',
     'openGate',
