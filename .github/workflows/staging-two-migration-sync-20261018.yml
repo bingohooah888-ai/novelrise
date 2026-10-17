@@ -100,7 +100,21 @@ jobs:
           bash scripts/verify-staging-migrations.sh pending /tmp/staging-two-pending-before.txt
           psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction \
             -f supabase/checks/20261016212500_public_readable_episode_titles_precheck.sql
-          supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+          # Preserve the exact existing Staging-only migration as a verified
+          # local source artifact. This does not repair or mutate DB history.
+          test "$(grep -Fxc '20261014052000' /tmp/staging-validated-remote.txt)" = 1
+          stagedir="$(mktemp -d)"
+          mkdir -p "$stagedir/supabase/migrations"
+          cp supabase/config.toml "$stagedir/supabase/config.toml"
+          cp supabase/migrations/*.sql "$stagedir/supabase/migrations/"
+          original="20261014052000_community_plaza_phase1.sql"
+          gh api "repos/$GITHUB_REPOSITORY/git/blobs/1f5ef773a4073f10cc2e1b886eb3a8c942beb5c4"             --jq '.content' | base64 --decode > "$stagedir/supabase/migrations/$original"
+          test "$(git hash-object "$stagedir/supabase/migrations/$original")" =             '1f5ef773a4073f10cc2e1b886eb3a8c942beb5c4'
+          echo "STAGING_WORK_DIR=$stagedir" >> "$GITHUB_ENV"
+          (
+            cd "$stagedir"
+            supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+          )
 
       - name: Record one-time claim before any Staging write
         id: claim
@@ -146,7 +160,9 @@ jobs:
           folder="$(mktemp -d)"
           mkdir -p "$folder/supabase/migrations"
           cp supabase/config.toml "$folder/supabase/config.toml"
-          for file in supabase/migrations/*.sql; do
+          test -n "$STAGING_WORK_DIR"
+          test -f "$STAGING_WORK_DIR/supabase/migrations/20261014052000_community_plaza_phase1.sql"
+          for file in "$STAGING_WORK_DIR"/supabase/migrations/*.sql; do
             filename="$(basename "$file")"
             [[ "$filename" =~ ^[0-9]{14}_[a-z0-9_]+\.sql$ ]] || exit 1
             if [[ "${filename:0:14}" -le 20261016212500 ]]; then
@@ -188,8 +204,11 @@ jobs:
           node scripts/verify-staging-migration-target.mjs
           EXPECTED_MIGRATIONS='20261018060000' \
             bash scripts/verify-staging-migrations.sh pending /tmp/staging-two-immediate-second.txt
-          supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
-          supabase db push --db-url "$STAGING_DATABASE_URL" --yes
+          (
+            cd "$STAGING_WORK_DIR"
+            supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+            supabase db push --db-url "$STAGING_DATABASE_URL" --yes
+          )
 
       - name: Validate both postchecks and exact Staging parity
         id: parity
@@ -199,7 +218,11 @@ jobs:
           export STAGING_DATABASE_URL
           psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction \
             -f supabase/checks/20261018060000_author_custom_covers_postcheck.sql
-          bash scripts/verify-staging-migrations.sh parity /tmp/staging-two-after.txt
+          supabase migration list --db-url "$STAGING_DATABASE_URL"             | tee /tmp/staging-two-after.txt
+          bash scripts/extract-supabase-remote.sh /tmp/staging-two-after.txt             | sort -u > /tmp/staging-two-applied.txt
+          find "$STAGING_WORK_DIR/supabase/migrations" -maxdepth 1 -type f             -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*.sql'             -printf '%f\n' | sed -E 's/^([0-9]{14})_.*/\1/'             | sort -u > /tmp/staging-two-expected-applied.txt
+          diff -u /tmp/staging-two-expected-applied.txt             /tmp/staging-two-applied.txt
+          echo 'Staging now matches all main migrations plus exact pinned Staging-only 20261014052000.'
 
       - name: Record one-time outcome; never automatically retry or roll back
         if: always() && steps.claim.outcome == 'success'
@@ -224,6 +247,11 @@ jobs:
           gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
             -f body="NOVELIGHT_STAGING_TWO_MIGRATIONS_CONSUMED $payload" >/dev/null
 
-      - name: Remove temporary Staging credential
+      - name: Remove temporary Staging credential and isolated source tree
         if: always()
-        run: rm -f "$STAGING_DATABASE_URL_FILE"
+        shell: bash
+        run: |
+          rm -f "$STAGING_DATABASE_URL_FILE"
+          if [ -n "${STAGING_WORK_DIR:-}" ] && [ -d "$STAGING_WORK_DIR" ]; then
+            rm -rf -- "$STAGING_WORK_DIR"
+          fi
