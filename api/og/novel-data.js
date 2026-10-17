@@ -82,12 +82,16 @@ async function loadCustomCover(client, novelId) {
     .maybeSingle();
   // Rollout-safe before the new table exists or after rollback.
   if (error) {
-    console.warn('Author work cover lookup unavailable', { code: error.code || null });
+    console.warn('Author work cover lookup unavailable', {
+      code: error.code || null
+    });
     return '';
   }
   const path = String(data?.storage_path || '');
   if (!/^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.webp$/u.test(path)) return '';
-  const { data: url } = client.storage.from('novel-custom-covers').getPublicUrl(path);
+  const { data: url } = client.storage
+    .from('novel-custom-covers')
+    .getPublicUrl(path);
   return safeOgImageUrl(url?.publicUrl);
 }
 

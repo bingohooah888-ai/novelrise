@@ -6,8 +6,10 @@ async function source(path) {
   return readFile(new URL('../' + path, import.meta.url), 'utf8');
 }
 
-test('custom cover storage is owner-scoped, bounded and separate from discovery', async () => {
-  const sql = await source('supabase/migrations/20261018060000_author_custom_covers.sql');
+test('custom covers have owner RLS and upload limits', async () => {
+  const sql = await source(
+    'supabase/migrations/20261018060000_author_custom_covers.sql'
+  );
   assert.match(sql, /create table public\.novel_custom_covers/u);
   assert.match(sql, /novel_id bigint primary key/u);
   assert.match(sql, /enable row level security/u);
@@ -18,7 +20,7 @@ test('custom cover storage is owner-scoped, bounded and separate from discovery'
   assert.doesNotMatch(sql, /update public\.novels set thumbnail_url/iu);
 });
 
-test('author cover is cropped neither in the editor nor in X', async () => {
+test('cover processing and social card preserve the artwork', async () => {
   const [editor, page, og] = await Promise.all([
     source('novelight-custom-cover.js'),
     source('work-cover.html'),
@@ -28,13 +30,16 @@ test('author cover is cropped neither in the editor nor in X', async () => {
   assert.match(page, /data-cover-x-preview/u);
   assert.match(editor, /const WIDTH = 1200/u);
   assert.match(editor, /const HEIGHT = 1800/u);
-  assert.match(editor, /Math\.min\(WIDTH \/ picture\.width, HEIGHT \/ picture\.height\)/u);
+  assert.match(
+    editor,
+    /Math\.min\(WIDTH \/ picture\.width, HEIGHT \/ picture\.height\)/u
+  );
   assert.match(editor, /bucket\.upload\(newPath/u);
   assert.match(editor, /onConflict: 'novel_id'/u);
   assert.match(og, /fit: 'contain'/u);
 });
 
-test('custom cover takes priority only on detail and X share', async () => {
+test('custom covers affect work detail and X, not discovery', async () => {
   const [work, og, x, list] = await Promise.all([
     source('novelight-novel-detail.js'),
     source('api/og/novel-data.js'),
@@ -42,8 +47,9 @@ test('custom cover takes priority only on detail and X share', async () => {
     source('novelight-thumbnail-runtime.js')
   ]);
   assert.match(work, /from\('novel_custom_covers'\)/u);
-  assert.ok(work.indexOf("from('novel_custom_covers')") <
-    work.indexOf("from('novels').select('thumbnail_url')"));
+  const customAt = work.indexOf("from('novel_custom_covers')");
+  const officialAt = work.indexOf("from('novels').select('thumbnail_url')");
+  assert.ok(customAt >= 0 && customAt < officialAt);
   assert.match(og, /loadCustomCover\(client, novel\.id\)/u);
   assert.match(og, /const authorImageUrl = customCoverUrl \|\| officialAssetUrl/u);
   assert.match(x, /from\('novel_custom_covers'\)/u);
