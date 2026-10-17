@@ -3,9 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-import {
-  inspectCommunityHostedReservationProtection
-} from '../scripts/community-hosted-reservation-protection.mjs';
+import { inspectCommunityHostedReservationProtection } from '../scripts/community-hosted-reservation-protection.mjs';
 
 const REPO = 'bingohooah888-ai/novelrise';
 const MATCH = 'refs/tags/novelight-community-hosted-once-v1-*';
@@ -34,12 +32,16 @@ function input() {
   const detail = rule();
   return {
     repository: REPO,
-    inventoryPages: [[{
-      id: detail.id,
-      source_type: detail.source_type,
-      target: detail.target,
-      enforcement: detail.enforcement
-    }]],
+    inventoryPages: [
+      [
+        {
+          id: detail.id,
+          source_type: detail.source_type,
+          target: detail.target,
+          enforcement: detail.enforcement
+        }
+      ]
+    ],
     tagRuleDetails: [detail]
   };
 }
@@ -78,12 +80,16 @@ test('matching active non-bypassable tag rule is read-only evidence only', () =>
 
 test('current actual main branch rule does not protect one-use tags', () => {
   const x = input();
-  x.inventoryPages = [[{
-    id: 21196358,
-    target: 'branch',
-    enforcement: 'active',
-    source_type: 'Repository'
-  }]];
+  x.inventoryPages = [
+    [
+      {
+        id: 21196358,
+        target: 'branch',
+        enforcement: 'active',
+        source_type: 'Repository'
+      }
+    ]
+  ];
   x.tagRuleDetails = [];
   assert.throws(
     () => inspectCommunityHostedReservationProtection(x),
@@ -108,11 +114,13 @@ test('disabled, evaluation-only, branch and bypassable rules deny', () => {
     x.tagRuleDetails[0].current_user_can_bypass = 'always';
   });
   denies((x) => {
-    x.tagRuleDetails[0].bypass_actors = [{
-      actor_type: 'RepositoryRole',
-      actor_id: 5,
-      bypass_mode: 'always'
-    }];
+    x.tagRuleDetails[0].bypass_actors = [
+      {
+        actor_type: 'RepositoryRole',
+        actor_id: 5,
+        bypass_mode: 'always'
+      }
+    ];
   });
 });
 
@@ -130,9 +138,7 @@ test('unprotected deletion or mutation is always denied', () => {
     x.tagRuleDetails[0].conditions.ref_name.exclude = ['refs/tags/*'];
   });
   denies((x) => {
-    x.tagRuleDetails[0].conditions.ref_name.include = [
-      'refs/tags/unrelated-*'
-    ];
+    x.tagRuleDetails[0].conditions.ref_name.include = ['refs/tags/unrelated-*'];
   });
   denies((x) => {
     x.tagRuleDetails[0].conditions.ref_name.include = [];
