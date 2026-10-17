@@ -254,7 +254,15 @@
           cardUrl.searchParams.get('id') === '257'
             ? 'png-v6-257-refresh'
             : 'png-v5-mincho';
-        cardUrl.searchParams.set('x_card', revision);
+        let currentRevision = '';
+        if (window.location?.pathname === '/novel.html' &&
+          new URL(window.location.href).searchParams.get('id') === cardUrl.searchParams.get('id')) {
+          const meta = document.querySelector('meta[name="twitter:image"]');
+          const match = String(meta?.getAttribute('content') || '')
+            .match(/\/social-cards\/\d+\/([0-9a-f]{16})\.png(?:\?|$)/u);
+          if (match) currentRevision = 'png-' + match[1];
+        }
+        cardUrl.searchParams.set('x_card', currentRevision || revision);
       } else if (cardUrl.pathname === '/episode.html') {
         cardUrl.searchParams.set('x_card', 'episode-png-v4-fast');
       }

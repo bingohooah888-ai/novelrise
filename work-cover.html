@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>表紙を設定 | NOVELIGHT</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:1000px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}main{max-width:920px;margin:auto;padding:42px 22px 76px}.page-title{margin-bottom:24px}.page-title h1{font-size:31px;margin:0 0 8px}.page-title p{color:#6b7280;line-height:1.7}.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:30px}.work-name{margin:0 0 22px;padding:13px 15px;border-radius:10px;background:#f7f5ff;color:#4f3e88;font-size:14px;font-weight:900}.composer-intro{margin:0 0 14px;color:#5f6571;font-size:13px;line-height:1.7}.thumbnail-state{padding:22px;border:1px dashed #d9dbe2;border-radius:10px;color:#6b7280;text-align:center;font-size:13px}.buttons{display:flex;justify-content:flex-end;gap:12px;margin-top:26px}.cancel,.submit{padding:12px 20px;border-radius:9px;font:inherit;font-weight:900}.cancel{border:1px solid #d5d7de;background:#fff}.submit{border:0;background:#6d4aff;color:#fff;cursor:pointer}.submit:disabled{opacity:.6;cursor:not-allowed}.status{min-height:24px;margin-top:14px;color:#666;font-size:13px;line-height:1.6}.status.success{color:#16803d;font-weight:800}.status.error{color:#b42318}.view-link{display:inline-block;margin-left:8px;color:#6d4aff;text-decoration:underline}@media(max-width:640px){main{padding:30px 16px 60px}.card{padding:22px 18px}.buttons{flex-direction:column}.cancel,.submit{width:100%;text-align:center}}
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f7f8fb;color:#222}a{color:inherit;text-decoration:none}header{background:#fff;border-bottom:1px solid #e5e7eb}.header-inner{max-width:1000px;min-height:72px;margin:auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px}.logo{color:#6d4aff;font-size:25px;font-weight:900}.back{color:#666;font-size:14px}main{max-width:920px;margin:auto;padding:42px 22px 76px}.page-title{margin-bottom:24px}.page-title h1{font-size:31px;margin:0 0 8px}.page-title p{color:#6b7280;line-height:1.7}.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:30px}.work-name{margin:0 0 22px;padding:13px 15px;border-radius:10px;background:#f7f5ff;color:#4f3e88;font-size:14px;font-weight:900}.composer-intro{margin:0 0 14px;color:#5f6571;font-size:13px;line-height:1.7}.thumbnail-state{padding:22px;border:1px dashed #d9dbe2;border-radius:10px;color:#6b7280;text-align:center;font-size:13px}.buttons{display:flex;justify-content:flex-end;gap:12px;margin-top:26px}.cancel,.submit{padding:12px 20px;border-radius:9px;font:inherit;font-weight:900}.cancel{border:1px solid #d5d7de;background:#fff}.submit{border:0;background:#6d4aff;color:#fff;cursor:pointer}.submit:disabled{opacity:.6;cursor:not-allowed}.status{min-height:24px;margin-top:14px;color:#666;font-size:13px;line-height:1.6}.status.success{color:#16803d;font-weight:800}.status.error{color:#b42318}.view-link{display:inline-block;margin-left:8px;color:#6d4aff;text-decoration:underline}.custom-cover{margin:0 0 25px;padding:18px;border:1px solid #d9dfeb;border-radius:12px;background:#f8fafc}.custom-cover h2{font-size:17px;margin:0 0 10px}.custom-cover p{color:#566174;font-size:13px;line-height:1.8}.custom-cover img{display:block;max-width:180px;width:100%;aspect-ratio:2/3;object-fit:contain;border-radius:8px;margin:10px 0}.custom-cover-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.custom-cover button{padding:9px 13px;border:1px solid #c6b8ee;border-radius:8px;background:#fff;color:#59419a;font-weight:800;cursor:pointer}.custom-cover button:disabled{opacity:.5}.custom-cover [data-cover-status][data-error=true]{color:#b42318}@media(max-width:640px){main{padding:30px 16px 60px}.card{padding:22px 18px}.buttons{flex-direction:column}.cancel,.submit{width:100%;text-align:center}}
   </style>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
   <link rel="stylesheet" href="novelight-thumbnail-composer.css">
@@ -19,10 +19,22 @@
   <a class="skip-link" href="#main-content">本文へスキップ</a>
   <header><div class="header-inner"><a href="index.html" class="logo">NOVELIGHT</a><a href="my-novels.html" class="back">← 自分の作品</a></div></header>
   <main id="main-content" tabindex="-1">
-    <div class="page-title novelight-page-heading"><h1>表紙を設定</h1><p>NOVELIGHT公式素材を組み合わせて、作品ページに表示する表紙を設定できます。</p></div>
+    <div class="page-title novelight-page-heading"><h1>表紙を設定</h1><p>作品ページの画像は自由に設定できます。ランキング・おすすめ欄では従来どおり公式サムネイルを使用します。</p></div>
     <section class="card">
       <div id="workName" class="work-name">作品を確認しています...</div>
-      <p class="composer-intro">新規投稿時と同じGeometry Thumbnail Composerを使用します。背景・本・表紙・装飾を選び、保存すると作品ページの左側へ反映されます。</p>
+      <section id="customCover" class="custom-cover" aria-label="オリジナル表紙画像" hidden>
+        <h2>作品ページ・Xシェア用のオリジナル画像</h2>
+        <p>推奨画像サイズ：<strong>1200×1800px（縦横比2:3）</strong>。JPEG・PNG・WebP、最大5MB。異なる比率でも切り取らずに余白で調整します。ご自身が権利を持ち、投稿ガイドラインに沿う画像をご利用ください。Xでは横長1200×630pxのカードに自動合成されます。</p>
+        <img data-cover-preview hidden alt="現在設定されているオリジナル表紙画像">
+        <a data-cover-x-preview href="#" target="_blank" rel="noopener noreferrer" hidden>Xシェア画像をプレビュー</a>
+        <input data-cover-file type="file" accept="image/jpeg,image/png,image/webp" disabled aria-label="オリジナル表紙画像を選ぶ">
+        <div class="custom-cover-actions">
+          <button data-cover-upload type="button" disabled>画像を設定</button>
+          <button data-cover-remove type="button" disabled>公式サムネイルに戻す</button>
+        </div>
+        <p data-cover-status aria-live="polite">作品を確認しています…</p>
+      </section>
+      <p class="composer-intro"><strong>ランキング・おすすめ欄用の公式サムネイル</strong>：背景・本・模様・装飾を組み合わせます。オリジナル画像を設定していても、一覧ではこちらが使われます。</p>
       <div id="thumbnailComposer"><div class="thumbnail-state">公式素材を読み込んでいます...</div></div>
       <div class="buttons"><a id="cancelLink" href="my-novels.html" class="cancel">キャンセル</a><button id="saveButton" class="submit" type="button" disabled>表紙を保存</button></div>
       <div id="status" class="status" aria-live="polite"></div>
@@ -31,6 +43,7 @@
   <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
   <script src="novelight-client.js"></script>
   <script src="novelight-thumbnail-composer.js"></script>
+  <script src="novelight-custom-cover.js"></script>
   <script>
     const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
     const params=new URLSearchParams(location.search),novelId=params.get('novel_id');
@@ -48,6 +61,7 @@
         const work=result.data;
         if(!work||String(work.user_id)!==String(session.user.id)){workName.textContent='この作品の表紙は編集できません。';setStatus('作品の所有者としてログインしているか確認してください。','error');return}
         workName.textContent=work.title||'タイトル未設定';
+        void window.NovelightCustomCover?.mount({client,root:document.getElementById('customCover'),novelId,session});
         cancelLink.href=`novel.html?id=${encodeURIComponent(novelId)}`;
         const mounted=await NovelightThumbnailComposer.mount({client,root,novelId:String(novelId)});
         if(!mounted.ready){root.innerHTML='<div class="thumbnail-state">公式サムネイル素材を準備しています。時間をおいて再度お試しください。</div>';setStatus('表紙設定を読み込めませんでした。','error');return}
