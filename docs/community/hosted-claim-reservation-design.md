@@ -58,3 +58,11 @@ Supabase/Vercel/StripeへのAPI呼び出しを実装しない。
 - `.github/workflows/community-hosted-precost-inspection.yml` にread-onlyのruleset監査を追加。現状のtag保護未設定では、OWNERが正しい申請を行った場合でも、この最終監査は失敗して停止する。
 - このread-only監査は**GitHub設定を変更しない**。保護ルール追加・変更は別工程であり、このDraft PR作成やCI実行によりタグを作成したり、承認コメントを投稿したりしない。
 - rulesetの読み取り成功は一回限りの実行権限ではない。実際の予約・費用発生前には最新ruleset、OWNERイベント、main SHA、候補SHA、台帳、排他実行、認証済みAPIを改めて検証する。
+
+
+## 予約処理本体のタグ保護再照合（追加安全条件）
+
+- `reserveAndRecordCommunityHostedClaim` は、OWNER申請・新しいmain/PR/台帳検証に加えて、**Git参照予約の作成直前**にGitHub rulesetの全件GET・詳細照合を独立して実施する。保護がない・更新/削除が可能・bypassがある・読み取り失敗・ページ欠落の場合は予約用Git refを**作らず**停止する。
+- Git ref作成と読み戻し後、CLAIMコメントをPOSTする直前にもrulesetを再照合する。途中で保護がなくなった場合、作成済みrefは再利用・削除せず、CLAIM投稿を中止する。
+- 保護の読み取り専用アダプターは`scripts/community-hosted-github-adapter.mjs`に追加し、`scripts/community-hosted-reservation-protection.mjs`の検証器に渡す。外部への書き込み権限・Staging実行権限は発行しない。
+- タグ保護だけでは完全な排他・実行許可を証明しない。実GitHub rulesetは**未設定のまま**であり、現状では必ず拒否する。OWNER本番リリース／ステージング実行承認とは独立する。

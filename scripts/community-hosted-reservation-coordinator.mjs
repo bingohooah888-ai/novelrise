@@ -6,6 +6,7 @@
 import {
   verifyCommunityHostedPreCostAdmission
 } from './community-hosted-precost-admission.mjs';
+import { inspectCommunityHostedReservationProtection } from './community-hosted-reservation-protection.mjs';
 import {
   inspectCommunityHostedClaimReceipt,
   inspectCommunityHostedConsumeReceipt,
@@ -90,6 +91,26 @@ function stopped(fields) {
   });
 }
 
+// A separate OWNER pre-cost inspection is insufficient: the write adapter
+// must independently re-fetch active GitHub tag ruleset evidence immediately
+// before a reservation and again before posting its claim comment.
+async function requireReservationTagProtection(actions, repository) {
+  const evidence = await safeCall(actions, 'loadProtectionEvidence');
+  const state = inspectCommunityHostedReservationProtection({
+    repository,
+    inventoryPages: evidence?.inventoryPages,
+    tagRuleDetails: evidence?.tagRuleDetails
+  });
+  if (
+    state.protectionObserved !== true ||
+    state.stagingCostApproved !== false ||
+    state.runAuthorized !== false ||
+    state.writeAuthorized !== false
+  ) {
+    deny('reservation tag protection did not fail closed');
+  }
+}
+
 // The GitHub create-ref endpoint is a unique-key reservation: creating the
 // SAME ref a second time MUST fail. Keep refs permanently; never automatically
 // delete/reforge them, including after a failed or ambiguous POST.
@@ -110,6 +131,7 @@ export async function reserveAndRecordCommunityHostedClaim({
   });
   requireAdapter(actions, [
     'loadLiveSnapshot',
+    'loadProtectionEvidence',
     'createUniqueRef',
     'readRef',
     'postIssueComment'
@@ -128,6 +150,8 @@ export async function reserveAndRecordCommunityHostedClaim({
     ledgerPages: initial.ledgerPages,
     runId
   });
+
+  await requireReservationTagProtection(actions, repository);
 
   // A single atomic Git ref creation reserves this APPROVAL NUMBER, not a
   // runner ID. An uncertain create outcome is NOT retried automatically.
@@ -169,6 +193,7 @@ export async function reserveAndRecordCommunityHostedClaim({
   ) {
     deny('claim data changed after reservation');
   }
+  await requireReservationTagProtection(actions, repository);
   const sent = await safeCall(actions, 'postIssueComment', {
     repository,
     issueNumber: ISSUE_NUMBER,
