@@ -60,8 +60,11 @@ function protect(context, { preview, staging, env }) {
       const path = url.pathname;
       const stagingWrite =
         url.origin === staging &&
+        method === 'POST' &&
         (path.startsWith('/auth/v1/') ||
           path.startsWith('/rest/v1/rpc/novelight_community_'));
+      const stagingPreflight =
+        url.origin === staging && method === 'OPTIONS';
       const adminWrite =
         url.origin === preview &&
         method === 'POST' &&
@@ -69,7 +72,7 @@ function protect(context, { preview, staging, env }) {
         !url.search;
       if (
         !allow.has(url.origin) ||
-        (isWrite && !stagingWrite && !adminWrite)
+        (isWrite && !stagingWrite && !stagingPreflight && !adminWrite)
       ) {
         violations.push('blocked unexpected browser request');
         await route.abort('blockedbyclient');
@@ -195,6 +198,9 @@ test('real isolated author/reader/admin sessions and moderation', async ({
     await card.getByRole('button', { name: '通報' }).click();
     await expect(card.getByRole('button', { name: '通報済み' })).toBeVisible();
 
+    adminPage.on('dialog', async (dialog) => {
+      await dialog.accept();
+    });
     await adminPage.goto('/admin-community.html', {
       waitUntil: 'domcontentloaded'
     });
