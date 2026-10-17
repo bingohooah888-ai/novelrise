@@ -61,44 +61,53 @@ function harness(options = {}) {
       }
       if (
         options.protectionMissing ||
-        (options.protectionRemovedAfterReservation &&
-          protectionReadCount > 1)
+        (options.protectionRemovedAfterReservation && protectionReadCount > 1)
       ) {
         return {
-          inventoryPages: [[{
-            id: 21196358,
-            target: 'branch',
-            enforcement: 'active',
-            source_type: 'Repository'
-          }]],
+          inventoryPages: [
+            [
+              {
+                id: 21196358,
+                target: 'branch',
+                enforcement: 'active',
+                source_type: 'Repository'
+              }
+            ]
+          ],
           tagRuleDetails: []
         };
       }
       return {
-        inventoryPages: [[{
-          id: 412,
-          target: 'tag',
-          enforcement: 'active',
-          source_type: 'Repository'
-        }]],
-        tagRuleDetails: [{
-          id: 412,
-          target: 'tag',
-          enforcement: 'active',
-          source_type: 'Repository',
-          source: REPO,
-          current_user_can_bypass: 'never',
-          bypass_actors: options.bypassPresent
-            ? [{ actor_type: 'RepositoryRole', actor_id: 5 }]
-            : [],
-          conditions: {
-            ref_name: {
-              include: ['refs/tags/novelight-community-hosted-once-v1-*'],
-              exclude: []
+        inventoryPages: [
+          [
+            {
+              id: 412,
+              target: 'tag',
+              enforcement: 'active',
+              source_type: 'Repository'
             }
-          },
-          rules: [{ type: 'deletion' }, { type: 'update' }]
-        }]
+          ]
+        ],
+        tagRuleDetails: [
+          {
+            id: 412,
+            target: 'tag',
+            enforcement: 'active',
+            source_type: 'Repository',
+            source: REPO,
+            current_user_can_bypass: 'never',
+            bypass_actors: options.bypassPresent
+              ? [{ actor_type: 'RepositoryRole', actor_id: 5 }]
+              : [],
+            conditions: {
+              ref_name: {
+                include: ['refs/tags/novelight-community-hosted-once-v1-*'],
+                exclude: []
+              }
+            },
+            rules: [{ type: 'deletion' }, { type: 'update' }]
+          }
+        ]
       };
     },
     loadLiveSnapshot: async () => {
