@@ -207,12 +207,20 @@ test('claim/consume require authentic bot metadata and exact JSON schema', () =>
 });
 
 test('source OWNER comment must be present, exact and authentic', () => {
-  denies((x) => { x.ledgerPages = [[]]; });
-  denies((x) => { x.ledgerPages[0][0].body = 'tampered'; });
-  denies((x) => { x.ledgerPages[0][0].user.login = 'attacker'; });
-  denies((x) => { x.ledgerPages[0][0].author_association = 'NONE'; });
   denies((x) => {
-    x.preparation = { ...x.preparation, runId: '999' };
+    x.ledgerPages = [[]];
+  });
+  denies((x) => {
+    x.ledgerPages[0][0].body = 'tampered';
+  });
+  denies((x) => {
+    x.ledgerPages[0][0].user.login = 'attacker';
+  });
+  denies((x) => {
+    x.ledgerPages[0][0].author_association = 'NONE';
+  });
+  denies((x) => {
+    x.preparation = { ...x.preparation, runId: '999;invalid' };
   });
   denies((x) => {
     x.preparation = { ...x.preparation, mainSha: 'b'.repeat(40) };
