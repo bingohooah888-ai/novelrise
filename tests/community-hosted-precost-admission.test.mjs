@@ -157,7 +157,10 @@ test('claimed requests and reused run IDs are rejected', () => {
 test('malformed or incomplete ledger is rejected', () => {
   rejectField('ledgerPages', []);
   rejectField('ledgerPages', [Array(100).fill({ body: '' })]);
-  rejectField('ledgerPages', Array.from({ length: 21 }, () => []));
+  rejectField(
+    'ledgerPages',
+    Array.from({ length: 21 }, () => [])
+  );
   rejectField('ledgerPages', [[null]]);
   rejectField('ledgerPages', [[{ body: HOSTED_CLAIMED + '{' }]]);
   rejectField('ledgerPages', [[ledgerRow(HOSTED_CLAIMED, '123', 'bad')]]);
