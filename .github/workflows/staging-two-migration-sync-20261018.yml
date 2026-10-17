@@ -148,7 +148,8 @@ jobs:
           cp supabase/config.toml "$folder/supabase/config.toml"
           for file in supabase/migrations/*.sql; do
             filename="$(basename "$file")"
-            if [[ "$filename" < "20261018060000" ]]; then
+            [[ "$filename" =~ ^[0-9]{14}_[a-z0-9_]+\.sql$ ]] || exit 1
+            if [[ "${filename:0:14}" -le 20261016212500 ]]; then
               cp "$file" "$folder/supabase/migrations/$filename"
             fi
           done
