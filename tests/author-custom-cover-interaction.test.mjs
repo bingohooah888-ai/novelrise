@@ -21,6 +21,8 @@ function control() {
   };
 }
 
+// The embedded browser/Storage stubs intentionally preserve their fixture shape.
+// prettier-ignore
 function setup() {
   const uid = '12345678-1234-4123-8123-123456789abc';
   const fields = new Map(
@@ -227,6 +229,8 @@ test('oversized user image is rejected without a storage write', async () => {
   assert.equal(app.fields.get('[data-cover-status]').dataset.error, 'true');
 });
 
+// Preserve the interaction stub order for the browser simulation.
+// prettier-ignore
 test('Safari canvas PNG fallback preserves real MIME and draft-preview safety', async () => {
   const app = setup();
   app.canvas.toBlob = (callback) => callback({ type: 'image/png', size: 1200 });
@@ -246,6 +250,8 @@ test('Safari canvas PNG fallback preserves real MIME and draft-preview safety', 
   assert.equal(app.fields.get('[data-cover-x-preview]').hidden, true);
 });
 
+// Preserve the interaction stub order for the browser simulation.
+// prettier-ignore
 test('repeated replacements clean up previous uploads and preserve only one live cover', async () => {
   const app = setup();
   await app.mount({
@@ -263,6 +269,8 @@ test('repeated replacements clean up previous uploads and preserve only one live
   assert.equal(app.fields.get('[data-cover-x-preview]').hidden, false);
 });
 
+// Preserve the interaction stub order for the browser simulation.
+// prettier-ignore
 test('previously uploaded draft cover never opens unavailable public OG endpoint', async () => {
   const app = setup();
   const path = app.uid + '/42/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee.png';
