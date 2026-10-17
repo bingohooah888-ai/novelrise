@@ -36,8 +36,12 @@
   }
 
   async function convert(file) {
-    if (!file || !ALLOWED.has(file.type) || file.size < 1 || file.size > MAX_BYTES) {
-      throw new Error('5MB以下のJPEG・PNG・WebP画像を選択してください。');
+    const extension = String(file?.name || '').split('.').pop().toLowerCase();
+    const inferred = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+      webp: 'image/webp', heic: 'image/heic', heif: 'image/heif' };
+    const sourceType = String(file?.type || '').toLowerCase() || inferred[extension];
+    if (!file || !ALLOWED.has(sourceType) || file.size < 1 || file.size > MAX_BYTES) {
+      throw new Error('5MB以下のJPEG・PNG・WebP・HEIC/HEIF画像を選択してください。');
     }
     let picture;
     try {
@@ -84,7 +88,7 @@
     return client.storage.from(BUCKET).getPublicUrl(path).data.publicUrl || '';
   }
 
-  async function mount({ client, root, novelId, session }) {
+  async function mount({ client, root, novelId, session, published = false }) {
     if (!root || !client || !session?.user?.id || !/^\d+$/u.test(String(novelId))) return;
     const fileInput = root.querySelector('[data-cover-file]');
     const upload = root.querySelector('[data-cover-upload]');
@@ -105,8 +109,9 @@
       preview.hidden = !url;
       if (url) preview.src = url;
       else preview.removeAttribute('src');
-      xPreview.hidden = !url;
-      if (url) {
+      // The public OG endpoint intentionally returns 404 for draft/private works.
+      xPreview.hidden = !url || !published;
+      if (url && published) {
         xPreview.href = '/api/og/novel?id=' + encodeURIComponent(novelId) +
           '&v=' + encodeURIComponent(currentPath.split('/').pop());
       } else xPreview.removeAttribute('href');
@@ -118,16 +123,42 @@
       upload.disabled = value || !fileInput.files?.length;
       remove.disabled = value || !currentPath;
     };
-    try {
+    const fetchActivePath = async () => {
       const result = await client.from('novel_custom_covers')
         .select('storage_path').eq('novel_id', Number(novelId)).maybeSingle();
       if (result.error) throw result.error;
-      render(result.data?.storage_path);
+      return String(result.data?.storage_path || '');
+    };
+    const cleanupOrphans = async () => {
+      const active = await fetchActivePath();
+      if (active !== currentPath) {
+        render(active);
+        throw new Error('別の画面で表紙が変更されました。確認してからもう一度保存してください。');
+      }
+      const folder = session.user.id + '/' + novelId;
+      const listed = await bucket.list(folder, { limit: 100 });
+      if (listed.error) throw listed.error;
+      const stale = (listed.data || [])
+        .map((item) => String(item.name || ''))
+        .filter((name) => /^[0-9a-f-]{36}\.(webp|png|jpg)$/u.test(name))
+        .map((name) => folder + '/' + name)
+        .filter((path) => path !== active);
+      if (!stale.length) return;
+      // Revalidate before removing orphan objects; never delete the live cover.
+      if ((await fetchActivePath()) !== active) {
+        throw new Error('別の画面で表紙が変更されました。再読み込みしてください。');
+      }
+      const removed = await bucket.remove(stale);
+      if (removed.error) throw removed.error;
+    };
+    try {
+      render(await fetchActivePath());
       root.hidden = false;
       fileInput.disabled = false;
       upload.disabled = true;
       report(currentPath
-        ? 'この画像が作品詳細とXシェアで使用されます。'
+        ? (published ? 'この画像が作品詳細とXシェアで使用されます。'
+          : '画像は保存されています。公開後にXシェア画像を確認できます。')
         : '未設定の場合は公式サムネイルを表示します。');
     } catch (error) {
       console.warn('author cover unavailable', error);
@@ -146,6 +177,7 @@
       let newPath = '';
       try {
         const { blob, contentType, extension } = await convert(fileInput.files[0]);
+        await cleanupOrphans();
         newPath = session.user.id + '/' + novelId + '/' + crypto.randomUUID() + '.' + extension;
         const sent = await bucket.upload(newPath, blob, {
           contentType, cacheControl: '31536000', upsert: false
@@ -161,14 +193,28 @@
         const oldPath = currentPath;
         render(newPath);
         fileInput.value = '';
-        report('保存しました。作品詳細・Xシェアには新しい画像が使われます。');
         if (oldPath && oldPath !== newPath) {
-          void bucket.remove([oldPath]).catch(() => {});
+          try {
+            const removed = await bucket.remove([oldPath]);
+            if (removed.error) throw removed.error;
+          } catch (error) {
+            console.warn('old cover cleanup deferred', error);
+            report('画像は保存できましたが、古い画像の整理に失敗しました。次回の保存時に再試行します。');
+            return;
+          }
         }
+        report(published
+          ? '保存しました。作品詳細・Xシェアで新しい画像が使われます。'
+          : '保存しました。公開後にXシェア画像を確認できます。');
       } catch (error) {
         console.error('custom cover upload failed', error);
         if (newPath && newPath !== currentPath) {
-          await bucket.remove([newPath]).catch(() => {});
+          try {
+            const removed = await bucket.remove([newPath]);
+            if (removed.error) console.warn('failed upload cleanup deferred', removed.error);
+          } catch (cleanupError) {
+            console.warn('failed upload cleanup deferred', cleanupError);
+          }
         }
         report(error.message || '保存できませんでした。もう一度お試しください。', true);
       } finally {
@@ -185,8 +231,14 @@
         if (removed.error) throw removed.error;
         const oldPath = currentPath;
         render('');
-        report('公式サムネイルへ戻しました。');
-        await bucket.remove([oldPath]).catch(() => {});
+        try {
+          const deleted = await bucket.remove([oldPath]);
+          if (deleted.error) throw deleted.error;
+          report('公式サムネイルへ戻しました。');
+        } catch (error) {
+          console.warn('removed cover object cleanup deferred', error);
+          report('公式サムネイルへ戻しました。古い画像の整理は次回保存時に再試行します。');
+        }
       } catch (error) {
         console.error('custom cover removal failed', error);
         report('画像を解除できませんでした。', true);
