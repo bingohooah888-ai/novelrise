@@ -161,15 +161,15 @@ test('malformed or incomplete ledger is rejected', () => {
   rejectField('ledgerPages', [[null]]);
   rejectField('ledgerPages', [[{ body: HOSTED_CLAIMED + '{' }]]);
   rejectField('ledgerPages', [[ledgerRow(HOSTED_CLAIMED, '123', 'bad')]]);
-  rejectField('ledgerPages', [[{
-    body: HOSTED_CONSUMED + JSON.stringify({
-      requestCommentId: '999',
-      mainSha: MAIN,
-      featureSha: FEATURE,
-      runId: '888',
-      result: ''
-    })
-  }]]);
+  const invalid = {
+    requestCommentId: '999',
+    mainSha: MAIN,
+    featureSha: FEATURE,
+    runId: '888',
+    result: ''
+  };
+  const text = HOSTED_CONSUMED + JSON.stringify(invalid);
+  rejectField('ledgerPages', [[{ body: text }]]);
 });
 
 test('owner inspection workflow remains read-only', () => {
