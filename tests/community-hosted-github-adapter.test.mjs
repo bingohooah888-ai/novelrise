@@ -41,12 +41,14 @@ function harness({ pages, throwOn, override } = {}) {
       if (forced) return forced;
     }
     if (path.includes('/rulesets?')) {
-      return reply(200, [{
-        id: 412,
-        target: 'tag',
-        enforcement: 'active',
-        source_type: 'Repository'
-      }]);
+      return reply(200, [
+        {
+          id: 412,
+          target: 'tag',
+          enforcement: 'active',
+          source_type: 'Repository'
+        }
+      ]);
     }
     if (path.endsWith('/rulesets/412')) {
       return reply(200, {
@@ -294,15 +296,16 @@ test('unknown or truncated ruleset inventory fails before external writes', asyn
     reply(200, { unexpected: true })
   ]) {
     const x = harness({
-      override: (path) => path.includes('/rulesets?') ? result : undefined
+      override: (path) => (path.includes('/rulesets?') ? result : undefined)
     });
     await assert.rejects(x.transport.loadProtectionEvidence(), /DENIED/u);
     assert.ok(x.requests.every((request) => request.method === 'GET'));
   }
   const x = harness({
-    override: (path) => path.endsWith('/rulesets/412')
-      ? reply(404, { message: 'missing rule' })
-      : undefined
+    override: (path) =>
+      path.endsWith('/rulesets/412')
+        ? reply(404, { message: 'missing rule' })
+        : undefined
   });
   await assert.rejects(x.transport.loadProtectionEvidence(), /DENIED/u);
 });
@@ -322,18 +325,23 @@ test('ruleset inventory paginates strictly rather than sampling only first page'
         );
       }
       if (path.includes('/rulesets?') && path.endsWith('page=2')) {
-        return reply(200, [{
-          id: 412,
-          target: 'tag',
-          enforcement: 'active',
-          source_type: 'Repository'
-        }]);
+        return reply(200, [
+          {
+            id: 412,
+            target: 'tag',
+            enforcement: 'active',
+            source_type: 'Repository'
+          }
+        ]);
       }
       return undefined;
     }
   });
   const evidence = await x.transport.loadProtectionEvidence();
-  assert.deepEqual(evidence.inventoryPages.map((page) => page.length), [100, 1]);
+  assert.deepEqual(
+    evidence.inventoryPages.map((page) => page.length),
+    [100, 1]
+  );
   assert.equal(evidence.tagRuleDetails.length, 1);
   assert.ok(x.requests.every((request) => request.method === 'GET'));
 });
