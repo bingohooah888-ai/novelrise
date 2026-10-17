@@ -157,6 +157,7 @@ export async function runCommunityHostedWriteLifecycle({
     cleanupVerified: true,
     mainSha: target.mainSha,
     candidateSha: target.candidateSha,
-    requestCommentId: String(grant.requestCommentId)
+    requestCommentId: String(grant.requestCommentId),
+    runId: String(grant.runId)
   });
 }
