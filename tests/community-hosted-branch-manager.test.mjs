@@ -233,6 +233,38 @@ test('creation rejects a Production-linked or data-copying response', async () =
   }
 });
 
+test('unexpected 201 metadata requires reconciliation before any retry', async () => {
+  const mock = harness({ created: { with_data: true } });
+  await assert.rejects(
+    createCommunityIsolatedBranch({
+      grant,
+      managementToken: auth,
+      fetchImpl: mock.fetchImpl
+    }),
+    /inventory reconciliation required/u
+  );
+  // The creation reply is not trusted. A separate live inventory is required
+  // before cleanup; a second billable POST is never allowed.
+  const recovery = await reconcileCommunityIsolatedBranchCreation({
+    grant,
+    managementToken: auth,
+    fetchImpl: mock.fetchImpl
+  });
+  assert.equal(recovery.status, 'BRANCH_FOUND_REQUIRES_CLEANUP');
+  assert.equal(recovery.creationRetryAuthorized, false);
+  const cleaned = await destroyCommunityIsolatedBranch({
+    grant,
+    created: recovery.created,
+    managementToken: auth,
+    fetchImpl: mock.fetchImpl
+  });
+  assert.equal(cleaned.verifiedAbsent, true);
+  assert.deepEqual(
+    mock.requests.map((row) => row.method),
+    ['POST', 'GET', 'GET', 'DELETE', 'GET']
+  );
+});
+
 test('only exact verified disposable branch can be deleted', async () => {
   const mock = harness();
   const created = await createCommunityIsolatedBranch({
