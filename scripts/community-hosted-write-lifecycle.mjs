@@ -73,16 +73,31 @@ export async function runCommunityHostedWriteLifecycle({
   actions
 }) {
   checkInputs({ grant, target, actions });
-  const initial = await actions.getSnapshot();
-  assertCleanSnapshot(initial);
-
   const failures = [];
   let browserVerified = false;
+  let initial;
+  let initialRead = false;
   try {
-    // Gate opening may partially succeed before it throws: always clean up.
-    await actions.openGate();
-    await actions.runBrowser();
-    browserVerified = true;
+    initial = await actions.getSnapshot();
+    initialRead = true;
+  } catch {
+    // Provisioning may already have succeeded before snapshot access failed.
+    // Never open the gate; still attempt every cleanup and branch deletion.
+    failures.push('initial_snapshot_unavailable');
+  }
+  if (initialRead) {
+    // A readable but dirty starting state is not an owned test fixture.
+    // Fail without erasing anything whose ownership is unproven.
+    assertCleanSnapshot(initial);
+  }
+
+  try {
+    if (initialRead) {
+      // Gate opening may partially succeed before it throws: always clean up.
+      await actions.openGate();
+      await actions.runBrowser();
+      browserVerified = true;
+    }
   } catch {
     failures.push('browser_or_gate');
   } finally {
