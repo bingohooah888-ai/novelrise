@@ -1,0 +1,229 @@
+name: NOVELIGHT Exact Two-Migration Staging Sync 20261018
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_TWO_MIGRATIONS_APPROVE ')
+    name: Apply only the two explicitly approved Staging migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-staging-database-url
+      PGSSLMODE: require
+      EXPECTED_MIGRATIONS: '20261016212500,20261018060000'
+      EXPECTED_PROJECT_REF: wmlzjgvxgoyrovdhbqbg
+    steps:
+      - name: Verify exact OWNER scope and 1-use request identity
+        id: approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          request_json="$(printf '%s\n' "$COMMENT_BODY" |
+            sed -n 's/^NOVELIGHT_STAGING_TWO_MIGRATIONS_APPROVE //p')"
+          test -n "$request_json"
+          printf '%s\n' "$request_json" | jq -e '
+            type == "object" and
+            (.scope == "author-cover-staging-two-migrations-20261018") and
+            (.mainSha | type == "string" and test("^[a-f0-9]{40}$")) and
+            (.versions == ["20261016212500", "20261018060000"]) and
+            (.confirmation == "STAGING APPROVED") and
+            ((keys | sort) == (["confirmation","mainSha","scope","versions"] | sort))
+          ' >/dev/null
+          main_sha="$(printf '%s\n' "$request_json" | jq -er '.mainSha')"
+          echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact current main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.approval.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Validate main, Staging config and immutable artifacts
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$MAIN_SHA"
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$MAIN_SHA"
+          test -n "$STAGING_SUPABASE_URL"
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          test "$STAGING_SUPABASE_URL" = "https://$EXPECTED_PROJECT_REF.supabase.co"
+          bash scripts/verify-staging-migrations.sh artifacts /tmp/staging-two-artifacts.txt
+          test "$(wc -l < /tmp/staging-two-artifacts.txt | tr -d ' ')" = 2
+          command -v psql
+          command -v pg_dump
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.111.0
+
+      - name: Resolve isolated Staging SSL database route
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+        run: node scripts/resolve-staging-session-pooler.mjs
+
+      - name: Verify exact Staging identity and both pending versions
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          bash scripts/verify-staging-migrations.sh pending /tmp/staging-two-pending-before.txt
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction \
+            -f supabase/checks/20261016212500_public_readable_episode_titles_precheck.sql
+          supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+
+      - name: Record one-time claim before any Staging write
+        id: claim
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$MAIN_SHA"
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" \
+            > /tmp/approved-staging-two-ledger.json
+          jq -e --arg id "$COMMENT_ID" --arg body "$COMMENT_BODY" '
+            [ .[][] | select((.id|tostring)==$id and .body==$body and
+              .user.login=="bingohooah888-ai" and .author_association=="OWNER") ]
+            | length == 1
+          ' /tmp/approved-staging-two-ledger.json >/dev/null
+          claimed="$(jq --arg id "$COMMENT_ID" '
+            [ .[][] | select(.body | startswith("NOVELIGHT_STAGING_TWO_MIGRATIONS_CLAIMED "))
+              | select(.body | contains($id)) ] | length
+          ' /tmp/approved-staging-two-ledger.json)"
+          test "$claimed" = 0
+          payload="$(jq -cn --arg id "$COMMENT_ID" --arg sha "$MAIN_SHA" \
+            --arg run "$GITHUB_RUN_ID" \
+            '{requestCommentId:$id,mainSha:$sha,runId:$run,versions:["20261016212500","20261018060000"]}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_TWO_MIGRATIONS_CLAIMED $payload" >/dev/null
+
+      - name: Apply only 20261016212500 via isolated migration prefix
+        id: apply16
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$MAIN_SHA"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          bash scripts/verify-staging-migrations.sh pending /tmp/staging-two-before-first.txt
+          folder="$(mktemp -d)"
+          mkdir -p "$folder/supabase/migrations"
+          cp supabase/config.toml "$folder/supabase/config.toml"
+          for file in supabase/migrations/*.sql; do
+            filename="$(basename "$file")"
+            [[ "$filename" =~ ^[0-9]{14}_[a-z0-9_]+\.sql$ ]] || exit 1
+            if [[ "${filename:0:14}" -le 20261016212500 ]]; then
+              cp "$file" "$folder/supabase/migrations/$filename"
+            fi
+          done
+          test "$(find "$folder/supabase/migrations" -maxdepth 1 -name '20261016212500_*.sql' | wc -l | tr -d ' ')" = 1
+          test "$(find "$folder/supabase/migrations" -maxdepth 1 -name '20261018060000_*.sql' | wc -l | tr -d ' ')" = 0
+          (
+            cd "$folder"
+            supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+            supabase db push --db-url "$STAGING_DATABASE_URL" --yes
+          )
+          rm -rf "$folder"
+
+      - name: Postcheck first migration and require second alone pending
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction \
+            -f supabase/checks/20261016212500_public_readable_episode_titles_postcheck.sql
+          EXPECTED_MIGRATIONS='20261018060000' \
+            bash scripts/verify-staging-migrations.sh pending /tmp/staging-two-before-second.txt
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction \
+            -f supabase/checks/20261018060000_author_custom_covers_precheck.sql
+
+      - name: Apply only 20261018060000
+        id: apply18
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          test "$(git rev-parse FETCH_HEAD)" = "$MAIN_SHA"
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          EXPECTED_MIGRATIONS='20261018060000' \
+            bash scripts/verify-staging-migrations.sh pending /tmp/staging-two-immediate-second.txt
+          supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+          supabase db push --db-url "$STAGING_DATABASE_URL" --yes
+
+      - name: Validate both postchecks and exact Staging parity
+        id: parity
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction \
+            -f supabase/checks/20261018060000_author_custom_covers_postcheck.sql
+          bash scripts/verify-staging-migrations.sh parity /tmp/staging-two-after.txt
+
+      - name: Record one-time outcome; never automatically retry or roll back
+        if: always() && steps.claim.outcome == 'success'
+        env:
+          MAIN_SHA: ${{ steps.approval.outputs.main_sha }}
+          FIRST: ${{ steps.apply16.outcome }}
+          SECOND: ${{ steps.apply18.outcome }}
+          PARITY: ${{ steps.parity.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          result=failure
+          if [ "$FIRST" = success ] && [ "$SECOND" = success ] && [ "$PARITY" = success ]; then
+            result=success
+          else
+            echo 'STAGING_RECOVERY_REQUIRED: assess read-only migration state before another approved operation.'
+          fi
+          payload="$(jq -cn --arg id "$COMMENT_ID" --arg sha "$MAIN_SHA" \
+            --arg run "$GITHUB_RUN_ID" --arg result "$result" \
+            --arg first "$FIRST" --arg second "$SECOND" --arg parity "$PARITY" \
+            '{requestCommentId:$id,mainSha:$sha,runId:$run,result:$result,first:$first,second:$second,parity:$parity}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_TWO_MIGRATIONS_CONSUMED $payload" >/dev/null
+
+      - name: Remove temporary Staging credential
+        if: always()
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
