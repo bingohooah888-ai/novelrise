@@ -201,6 +201,13 @@
       if (url && !raw.includes(url)) raw.push(url);
     };
     try {
+      const custom = await client.from('novel_custom_covers')
+        .select('storage_path').eq('novel_id', Number(id)).maybeSingle();
+      const path = String(custom.data?.storage_path || '');
+      if (!custom.error && /^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.webp$/u.test(path)) {
+        const url = client.storage.from('novel-custom-covers').getPublicUrl(path);
+        push(url.data?.publicUrl);
+      }
       const direct = await client.from('novels').select('thumbnail_url').eq('id', id).maybeSingle();
       if (!direct.error) push(direct.data?.thumbnail_url);
       let composition = await client.rpc('novelight_thumbnail_compositions_v3', { p_novel_ids: [String(id)] });
