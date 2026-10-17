@@ -68,17 +68,31 @@ export async function createCommunityIsolatedBranch({
 }) {
   guard({ grant, managementToken });
   const name = nameFor(grant.runId);
-  const response = await fetchImpl(
-    ENDPOINT + '/projects/' + PARENT + '/branches',
-    requestOptions(managementToken, 'POST', {
-      branch_name: name,
-      persistent: false,
-      with_data: false,
-      is_default: false
-    })
-  );
-  if (response.status !== 201) deny('isolated branch creation rejected');
-  const branch = await response.json();
+  let response;
+  try {
+    response = await fetchImpl(
+      ENDPOINT + '/projects/' + PARENT + '/branches',
+      requestOptions(managementToken, 'POST', {
+        branch_name: name,
+        persistent: false,
+        with_data: false,
+        is_default: false
+      })
+    );
+  } catch {
+    // A timed-out POST may already have created a billable branch.
+    // Never retry automatically: reconcile the exact run name using GET.
+    deny('branch creation outcome unknown; inventory reconciliation required');
+  }
+  if (response?.status !== 201) {
+    deny('branch creation unconfirmed; inventory reconciliation required');
+  }
+  let branch;
+  try {
+    branch = await response.json();
+  } catch {
+    deny('branch response unreadable; inventory reconciliation required');
+  }
   validateBranch(branch, name);
   return Object.freeze({
     id: branch.id,
@@ -101,6 +115,55 @@ async function listBranches(token, fetchImpl) {
   const rows = await response.json();
   if (!Array.isArray(rows)) deny('invalid branch listing');
   return rows;
+}
+
+// Read-only recovery after a create POST times out, returns an ambiguous
+// status, or returns unreadable metadata. It NEVER retries creation or deletes.
+export async function reconcileCommunityIsolatedBranchCreation({
+  grant,
+  managementToken,
+  fetchImpl = fetch
+}) {
+  guard({ grant, managementToken });
+  const name = nameFor(grant.runId);
+  let rows;
+  try {
+    rows = await listBranches(managementToken, fetchImpl);
+  } catch {
+    deny('branch inventory reconciliation unavailable');
+  }
+  const matches = rows.filter((row) => row?.name === name);
+  if (matches.length > 1) {
+    deny('multiple branches use the approved run name');
+  }
+  if (matches.length === 0) {
+    // The API might be eventually consistent: absence here is not a license
+    // to repeat the POST or proof that any billable branch was cleaned up.
+    return Object.freeze({
+      status: 'NO_BRANCH_OBSERVED_DO_NOT_RETRY',
+      runId: String(grant.runId),
+      requestCommentId: String(grant.requestCommentId),
+      creationRetryAuthorized: false,
+      deletionVerified: false
+    });
+  }
+  validateBranch(matches[0], name);
+  const created = Object.freeze({
+    id: matches[0].id,
+    ref: matches[0].project_ref,
+    parentRef: PARENT,
+    name,
+    runId: String(grant.runId),
+    requestCommentId: String(grant.requestCommentId),
+    dataCopied: false,
+    deleteRequired: true
+  });
+  return Object.freeze({
+    status: 'BRANCH_FOUND_REQUIRES_CLEANUP',
+    created,
+    creationRetryAuthorized: false,
+    deletionVerified: false
+  });
 }
 
 // For safety, preflight also independently checks that the exact branch exists
