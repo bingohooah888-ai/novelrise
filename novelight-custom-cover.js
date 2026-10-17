@@ -90,6 +90,7 @@
         .select('storage_path').eq('novel_id', Number(novelId)).maybeSingle();
       if (result.error) throw result.error;
       render(result.data?.storage_path);
+      root.hidden = false;
       fileInput.disabled = false;
       upload.disabled = true;
       report(currentPath

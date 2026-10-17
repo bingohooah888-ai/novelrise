@@ -29,6 +29,8 @@ test('cover processing and social card preserve the artwork', async () => {
   ]);
   assert.match(page, /1200×1800px/u);
   assert.match(page, /data-cover-x-preview/u);
+  assert.match(page, /class="custom-cover"[^>]+hidden/u);
+  assert.match(editor, /root\.hidden = false/u);
   assert.match(editor, /const WIDTH = 1200/u);
   assert.match(editor, /const HEIGHT = 1800/u);
   assert.match(
