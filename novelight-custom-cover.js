@@ -57,6 +57,7 @@
     const upload = root.querySelector('[data-cover-upload]');
     const remove = root.querySelector('[data-cover-remove]');
     const preview = root.querySelector('[data-cover-preview]');
+    const xPreview = root.querySelector('[data-cover-x-preview]');
     const status = root.querySelector('[data-cover-status]');
     const bucket = client.storage.from(BUCKET);
     let currentPath = '';
@@ -71,6 +72,11 @@
       preview.hidden = !url;
       if (url) preview.src = url;
       else preview.removeAttribute('src');
+      xPreview.hidden = !url;
+      if (url) {
+        xPreview.href = '/api/og/novel?id=' + encodeURIComponent(novelId) +
+          '&v=' + encodeURIComponent(currentPath.split('/').pop());
+      } else xPreview.removeAttribute('href');
       remove.disabled = !currentPath || working;
     };
     const busy = (value) => {

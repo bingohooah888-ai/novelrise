@@ -68,6 +68,35 @@ using (
   )
 );
 
+-- Bound abandoned direct uploads to three images per work.
+create or replace function public.novelight_custom_cover_can_upload_v1(p_name text)
+returns boolean language plpgsql security definer
+set search_path = pg_catalog, public, auth, storage
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_novel text := split_part(coalesce(p_name, ''), '/', 2);
+  v_count integer;
+begin
+  if v_uid is null or p_name !~ (
+    '^' || v_uid::text || '/[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$'
+  ) then return false; end if;
+  if not exists (
+    select 1 from public.novels n
+    where n.id::text = v_novel and n.user_id = v_uid
+  ) then return false; end if;
+  perform pg_advisory_xact_lock(hashtext('novelight:custom-cover:' || v_uid::text || ':' || v_novel));
+  select count(*)::integer into v_count from storage.objects o
+  where o.bucket_id = 'novel-custom-covers'
+    and o.name like v_uid::text || '/' || v_novel || '/%';
+  return v_count < 3;
+exception when undefined_table or invalid_schema_name then
+  return false;
+end
+$$;
+revoke all on function public.novelight_custom_cover_can_upload_v1(text) from public, anon;
+grant execute on function public.novelight_custom_cover_can_upload_v1(text) to authenticated;
+
 do $$
 declare
   v_public boolean;
@@ -114,11 +143,7 @@ begin
           '^' || (select auth.uid())::text ||
           '/[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$'
         )
-        and exists (
-          select 1 from public.novels n
-          where n.id::text = split_part(name, '/', 2)
-            and n.user_id = (select auth.uid())
-        )
+        and public.novelight_custom_cover_can_upload_v1(name)
       )
   $policy$;
   execute $policy$

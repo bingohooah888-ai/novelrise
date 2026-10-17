@@ -11,4 +11,5 @@ begin
 end
 $$;
 drop table if exists public.novel_custom_covers;
+drop function if exists public.novelight_custom_cover_can_upload_v1(text);
 commit;
