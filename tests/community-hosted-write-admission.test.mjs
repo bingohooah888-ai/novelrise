@@ -147,7 +147,9 @@ test('claimed and consumed approvals cannot be reused', () => {
         featureSha: FEATURE,
         runId: '77'
       };
-      if (prefix === HOSTED_CONSUMED) row.result = 'failure';
+      if (prefix === HOSTED_CONSUMED) {
+        row.result = 'failure';
+      }
       x.ledgerPages = [[{ body: prefix + JSON.stringify(row) }]];
     });
   }
