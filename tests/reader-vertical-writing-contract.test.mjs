@@ -57,10 +57,7 @@ test('legacy settings remain horizontal; vertical mode persists', () => {
   assert.equal(document.body.dataset.readingDirection, 'vertical');
   api.save(configured);
   assert.equal(api.load().writingMode, 'vertical');
-  assert.equal(
-    JSON.parse(values.get(api.STORAGE_KEY)).writingMode,
-    'vertical'
-  );
+  assert.equal(JSON.parse(values.get(api.STORAGE_KEY)).writingMode, 'vertical');
   api.apply(api.DEFAULTS);
   assert.equal(document.body.dataset.readingDirection, 'horizontal');
 });
