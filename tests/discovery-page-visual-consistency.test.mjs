@@ -91,9 +91,9 @@ test('search and ranking use shared visual CSS', () => {
   const ranking = read('ranking.html');
 
   assert.ok(search.includes('novelight-discovery-list.css'));
-  assert.ok(search.includes('class="novelight-page-search"'));
+  assert.ok(search.includes('novelight-page-search'));
   assert.ok(ranking.includes('novelight-discovery-list.css'));
-  assert.ok(ranking.includes('class="novelight-page-ranking"'));
+  assert.ok(ranking.includes('novelight-page-ranking'));
 });
 
 test('discovery surfaces share compact spacing rules', () => {

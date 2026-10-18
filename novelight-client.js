@@ -367,7 +367,12 @@
     if (!logos.length) return 0;
 
     const styleId = 'novelight-brand-logo-style';
-    if (!document.getElementById(styleId)) {
+    // The sitewide CSS already includes this exact first-paint geometry.
+    // Do not inject a later duplicate that changes cascade order after paint.
+    const hasFirstPaintCss = [...document.querySelectorAll('link[rel="stylesheet"]')].some(
+      (link) => new URL(link.href, document.baseURI).pathname.endsWith('/novelight-accessibility.css')
+    );
+    if (!document.getElementById(styleId) && !hasFirstPaintCss) {
       const style = document.createElement('style');
       style.id = styleId;
       style.textContent =
