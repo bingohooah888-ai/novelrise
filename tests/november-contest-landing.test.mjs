@@ -17,6 +17,26 @@ const page = source('../api/_lib/contest-template.js');
 const js = source('../novelight-contest-page.js');
 const css = source('../novelight-contest.css');
 
+test('contest header follows scrolling and matches shared header scale', () => {
+  assert.match(page, /class="contest-site-header"/u);
+  assert.match(css, /\.contest-site-header\{[^}]*position:sticky;top:0/u);
+  assert.match(css, /\.contest-header-inner\{[^}]*min-height:120px/u);
+  assert.match(css, /\.contest-brand img\{[^}]*height:104\.4px/u);
+  assert.match(css, /@media\(max-width:900px\)/u);
+  assert.match(css, /min-height:96px/u);
+  assert.match(css, /min-height:84px/u);
+  assert.match(css, /section\[id\]\{scroll-margin-top:136px\}/u);
+});
+
+test('contest navigation includes the official entry rules on all widths', () => {
+  assert.match(page, /href="\/contest-terms">応募要項<\/a>/u);
+  assert.match(page, /href="#entries">参加作品<\/a>/u);
+  assert.match(page, /href="#rules">参加方法<\/a>/u);
+  assert.match(page, /href="my-novels.html">自分の作品<\/a>/u);
+  assert.match(css, /\.contest-header-nav a:nth-child\(2\)\{display:inline\}/u);
+  assert.match(css, /grid-template-columns:repeat\(2,max-content\)/u);
+});
+
 test('contest awards and scoring milestones', () => {
   assert.match(page, /11月1日（日）〜30日（月）/);
   assert.match(page, /10月31日（土）23:59/);
