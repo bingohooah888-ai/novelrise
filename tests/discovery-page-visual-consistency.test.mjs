@@ -6,6 +6,7 @@ import test from 'node:test';
 const root = path.resolve(import.meta.dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const css = read('novelight-discovery-list.css');
+const headerCss = read('novelight-header-light.css');
 const spacingCss = read('novelight-discovery-spacing.css');
 const themeCss = read('novelight-theme.css');
 const finishCss = read('novelight-reader-parchment-finish.css');
@@ -71,16 +72,16 @@ test('discovery list headers follow homepage layout at desktop widths', () => {
     assert.equal(headerMarkup(read(file)), home);
   }
   assert.match(
-    css,
+    headerCss,
     /grid-template-columns: minmax\(250px, 290px\) minmax\(560px, 1fr\) auto/u
   );
   assert.match(
-    css,
+    headerCss,
     /grid-template-columns: minmax\(210px, 230px\) minmax\(400px, 1fr\) auto/u
   );
-  assert.match(css, /justify-content: space-evenly !important/u);
-  assert.match(css, /column-gap: 24px !important/u);
-  assert.match(css, /column-gap: 14px !important/u);
+  assert.match(headerCss, /justify-content: space-evenly !important/u);
+  assert.match(headerCss, /column-gap: 24px !important/u);
+  assert.match(headerCss, /column-gap: 14px !important/u);
   for (const file of discoveryPages) {
     assert.ok(!read(file).includes('novelight-public-dark'));
   }

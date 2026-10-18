@@ -26,7 +26,9 @@ test('the shared header styles are present before JavaScript hydration', () => {
     'pricing.html',
     'recommended.html',
     'new-arrivals.html',
-    'light-seed.html'
+    'light-seed.html',
+    'search.html',
+    'ranking.html'
   ]) {
     const html = read(page);
     const head = html.split('</head>')[0];
@@ -35,16 +37,29 @@ test('the shared header styles are present before JavaScript hydration', () => {
   }
 });
 
-test('the first-paint logo CSS and the runtime fallback cannot diverge', () => {
-  const start = client.indexOf('style.textContent =');
-  const end = client.indexOf('document.head.appendChild(style);', start);
-  assert.ok(start >= 0 && end > start);
-  const parts = client.slice(start, end).match(/'(?:\\.|[^'\\])*'/gu) || [];
-  const runtimeCss = parts
-    .map((part) => part.slice(1, -1).replace(/\\(.)/gu, '$1'))
-    .join('');
-  assert.ok(runtimeCss.length > 3000);
-  assert.equal(canonicalCss(firstPaint), canonicalCss(runtimeCss));
+test('header artwork ratio is reserved and never restyled after paint', () => {
+  assert.match(firstPaint, /aspect-ratio: 5 \/ 2/u);
+  const install = client.slice(
+    client.indexOf('function installBrandLogo()'),
+    client.indexOf('installBrandLogo();')
+  );
+  assert.doesNotMatch(install, /document\.createElement\('style'\)/u);
+  assert.doesNotMatch(install, /novelight-brand-logo-style/u);
+});
+
+test('search and ranking have a fully styled header in their initial HTML', () => {
+  for (const page of ['search.html', 'ranking.html']) {
+    const html = read(page);
+    const head = html.split('</head>')[0];
+    const header = html.match(/<header class="site-header">[\s\S]*?<\/header>/u)?.[0];
+    assert.ok(header, page);
+    assert.match(head, /href="novelight-theme\.css"/u, page);
+    assert.match(head, /href="novelight-header-light\.css"/u, page);
+    assert.match(html, /novelight-public-header-page/u, page);
+    assert.match(header, /class="site-nav desktop-nav"/u, page);
+    assert.match(header, /class="public-header-inner"/u, page);
+    assert.match(header, /src="assets\/novelight-header-logo\.webp"/u, page);
+  }
 });
 
 test('authenticated public headers keep their navigation width', () => {

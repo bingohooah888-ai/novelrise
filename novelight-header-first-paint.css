@@ -2,6 +2,12 @@
  * Kept in the render-blocking site stylesheet so late client hydration does
  * not change geometry; update alongside installBrandLogo in novelight-client.js.
  */
+/* The approved header artwork is 300x120. Reserve its aspect ratio before download. */
+header.site-header .logo img,
+header.site-header .site-logo img {
+  aspect-ratio: 5 / 2;
+}
+
 .novelight-brand-logo-image,
 .logo img,
 .site-logo img {
