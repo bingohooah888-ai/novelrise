@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 import { URL, URLSearchParams } from 'node:url';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 
 const [script, css, navigation, episode, seo] = await Promise.all([
   readFile('novelight-landscape-reader.js', 'utf8'),
@@ -153,7 +154,7 @@ function readerFixture({
   return { body, button, content, document, media, session, events, calls };
 }
 
-test('one tap immediately expands the book on portrait without a rotation hint', () => {
+test('tap immediately opens book view in portrait', () => {
   const view = readerFixture({ landscape: false });
   view.button.click();
   assert.equal(view.body.dataset.landscapeReader, 'active');
@@ -175,15 +176,14 @@ test('one tap immediately expands the book on portrait without a rotation hint',
   assert.deepEqual(view.calls, ['vertical', 'horizontal']);
 });
 
-test('supported browsers request fullscreen and native landscape from the tap', async () => {
+test('fullscreen and landscape lock are requested on tap', async () => {
   const view = readerFixture({
     landscape: false,
     fullscreen: true,
     orientationLock: 'allowed'
   });
   view.button.click();
-  await Promise.resolve();
-  await Promise.resolve();
+  await nextTurn();
   assert.deepEqual(view.calls.slice(0, 3), [
     'vertical',
     'requestFullscreen',
@@ -196,15 +196,14 @@ test('supported browsers request fullscreen and native landscape from the tap', 
   assert.equal(view.body.dataset.landscapeReader, 'off');
 });
 
-test('orientation denied by OS still displays a rotated fullscreen reader', async () => {
+test('failed orientation lock uses rotated fullscreen view', async () => {
   const view = readerFixture({
     landscape: false,
     fullscreen: true,
     orientationLock: 'denied'
   });
   view.button.click();
-  await Promise.resolve();
-  await Promise.resolve();
+  await nextTurn();
   assert.equal(view.body.dataset.landscapeReader, 'active');
   assert.equal(view.body.dataset.landscapeReaderRotated, 'true');
 });
@@ -230,7 +229,10 @@ test('following Next preserves expanded mode without another gesture', () => {
       })
     }
   });
-  assert.equal(view.session.get('novelight:landscape-reader-next:v1'), 'episode-3');
+  assert.equal(
+    view.session.get('novelight:landscape-reader-next:v1'),
+    'episode-3'
+  );
 
   const following = readerFixture({
     landscape: false,
@@ -241,7 +243,7 @@ test('following Next preserves expanded mode without another gesture', () => {
   assert.equal(following.session.size, 0);
 });
 
-test('book view rotates the original content and preserves the Next button', () => {
+test('rotated view keeps original content and Next', () => {
   for (const html of [episode, seo]) {
     assert.match(html, /novelight-landscape-reader\.js\?v=20261018c/);
     assert.match(html, /NovelightLandscapeReader\.mount\(\)/);
