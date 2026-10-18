@@ -233,7 +233,7 @@ html body.novelight-public-header-page header.site-header .logo img {
   content: url("assets/novelight-header-logo-approved-20260928.webp") !important;
   opacity: 1 !important;
   visibility: visible !important;
-  /* Home keeps the approved gold-on-navy treatment from the dark stylesheet. */
+  /* Preserve approved artwork colors on the off-white public header. */
 }
 
 /* Shared public-reader sticky guard.
