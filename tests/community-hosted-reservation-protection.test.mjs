@@ -236,3 +236,55 @@ test('OWNER read-only pre-cost workflow must inspect reservation tag protection'
     assert.ok(!workflow.includes(forbidden), forbidden);
   }
 });
+
+test('live observed ruleset 25337852 plus existing Protect main satisfies the guard without any grant', () => {
+  const x = input();
+  x.inventoryPages = [
+    [
+      {
+        id: 25337852,
+        target: 'tag',
+        enforcement: 'active',
+        source_type: 'Repository'
+      },
+      {
+        id: 21196358,
+        target: 'branch',
+        enforcement: 'active',
+        source_type: 'Repository'
+      }
+    ]
+  ];
+  x.tagRuleDetails = [
+    {
+      id: 25337852,
+      name: 'NOVELIGHT Community one-use reservation tags',
+      target: 'tag',
+      source_type: 'Repository',
+      source: REPO,
+      enforcement: 'active',
+      current_user_can_bypass: 'never',
+      bypass_actors: [],
+      conditions: {
+        ref_name: {
+          exclude: [],
+          include: ['refs/tags/novelight-community-hosted-once-v1-*']
+        }
+      },
+      rules: [{ type: 'update' }, { type: 'deletion' }]
+    }
+  ];
+  const result = inspectCommunityHostedReservationProtection(x);
+  assert.deepEqual(result.matchingRulesetIds, [25337852]);
+  assert.equal(result.protectionObserved, true);
+  assert.equal(result.runAuthorized, false);
+  assert.equal(result.stagingCostApproved, false);
+  assert.equal(result.writeAuthorized, false);
+  assert.equal(result.releaseAuthorized, false);
+  assert.equal(result.protectionFreshAtExecution, false);
+  x.tagRuleDetails[0].rules = [{ type: 'deletion' }];
+  assert.throws(
+    () => inspectCommunityHostedReservationProtection(x),
+    /COMMUNITY_HOSTED_REF_PROTECTION_DENIED/u
+  );
+});
