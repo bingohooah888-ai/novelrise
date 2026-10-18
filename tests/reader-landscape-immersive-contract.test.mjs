@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
+import { URL, URLSearchParams } from 'node:url';
 
 const [script, css, navigation, episode, seo] = await Promise.all([
   readFile('novelight-landscape-reader.js', 'utf8'),
@@ -104,7 +105,7 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
     document,
     URLSearchParams,
     URL,
-    Event,
+    Event: globalThis.Event,
     MutationObserver: class {
       observe() {}
     },
