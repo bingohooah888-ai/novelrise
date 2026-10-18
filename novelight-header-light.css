@@ -396,3 +396,18 @@ html body.novelight-public-header-page header.site-header .logo img {
     gap: 8px !important;
   }
 }
+
+/* Reserve identical login width for anonymous / authenticated header states.
+   Signup is already held as a non-interactive placeholder during auth checks. */
+@media (min-width: 1181px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .login-action {
+    min-width: calc(4em + 48px) !important;
+    justify-content: center !important;
+  }
+}
+@media (min-width: 641px) and (max-width: 1180px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .login-action {
+    min-width: calc(4em + 28px) !important;
+    justify-content: center !important;
+  }
+}
