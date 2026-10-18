@@ -148,11 +148,10 @@ test('immersive vertical scroll forwards the same progress to contest heartbeats
 
 test('episode render contract fires only after unlock and existing PV remains separate', () => {
   assert.match(continuity, /novelight:episode-rendered/);
-  assert.match(continuity, /november-contest-reader-ready\\?episode_id=/);
-  assert.match(continuity, /result\\?\\.enabled === true/);
-  assert.match(
-    continuity,
-    /window\\.NOVELIGHT_CONTEST_READER_CLIENT_ENABLED = true/
+  assert.ok(continuity.includes('november-contest-reader-ready?episode_id='));
+  assert.ok(continuity.includes('result?.enabled === true'));
+  assert.ok(
+    continuity.includes('window.NOVELIGHT_CONTEST_READER_CLIENT_ENABLED = true')
   );
   assert.match(continuity, /novelight-contest-read-tracker[.]js/);
   assert.match(
