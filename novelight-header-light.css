@@ -285,8 +285,17 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
   }
 
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+    width: max-content !important;
+    min-width: 0 !important;
     margin-left: auto !important;
     flex: 0 0 auto !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+    width: 46px !important;
+    flex: 0 0 46px !important;
   }
 
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
@@ -303,6 +312,11 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
 
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .login-action {
     display: none !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+    width: 42px !important;
+    flex-basis: 42px !important;
   }
 }
 
