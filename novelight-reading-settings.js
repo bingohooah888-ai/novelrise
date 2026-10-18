@@ -6,7 +6,8 @@
     fontSize: 'standard',
     lineHeight: 'standard',
     theme: 'light',
-    width: 'standard'
+    width: 'standard',
+    writingMode: 'horizontal'
   });
   const PRESETS = Object.freeze({
     fontSize: Object.freeze({
@@ -28,6 +29,10 @@
       narrow: '680px',
       standard: '820px',
       wide: '1040px'
+    }),
+    writingMode: Object.freeze({
+      horizontal: 'horizontal',
+      vertical: 'vertical'
     })
   });
 
@@ -73,7 +78,8 @@
       fontSize: normalizedChoice('fontSize', source.fontSize),
       lineHeight: normalizedChoice('lineHeight', source.lineHeight),
       theme: normalizedChoice('theme', source.theme),
-      width: normalizedChoice('width', source.width)
+      width: normalizedChoice('width', source.width),
+      writingMode: normalizedChoice('writingMode', source.writingMode)
     };
   }
 
@@ -102,7 +108,44 @@
     body.style.setProperty('--reader-line-height', PRESETS.lineHeight[next.lineHeight]);
     body.style.setProperty('--reader-max-width', PRESETS.width[next.width]);
     body.dataset.readingTheme = PRESETS.theme[next.theme];
+    body.dataset.readingDirection = PRESETS.writingMode[next.writingMode];
     return next;
+  }
+
+  function clampProgress(value) {
+    return Math.max(0, Math.min(1, Number(value) || 0));
+  }
+
+  function contentProgress(content) {
+    if (!content) return 0;
+    if (document.body.dataset.readingDirection === 'vertical') {
+      const total = Math.max(1, content.scrollWidth);
+      return clampProgress((Math.abs(content.scrollLeft) + content.clientWidth) / total);
+    }
+    const rect = content.getBoundingClientRect();
+    const absoluteTop = global.scrollY + rect.top;
+    const height = Math.max(content.scrollHeight, rect.height, 1);
+    const viewportBottom = global.scrollY + global.innerHeight;
+    return clampProgress((viewportBottom - absoluteTop) / height);
+  }
+
+  function seekProgress(content, ratio, behavior = 'auto') {
+    if (!content) return;
+    const progress = clampProgress(ratio);
+    if (document.body.dataset.readingDirection === 'vertical') {
+      const maxScroll = Math.max(0, content.scrollWidth - content.clientWidth);
+      const offset = Math.min(
+        maxScroll,
+        Math.max(0, content.scrollWidth * progress - content.clientWidth * 0.35)
+      );
+      content.scrollTo({ left: -offset, behavior });
+      return;
+    }
+    const absoluteTop = global.scrollY + content.getBoundingClientRect().top;
+    global.scrollTo({
+      top: absoluteTop + Math.max(0, content.scrollHeight * progress - global.innerHeight * 0.35),
+      behavior
+    });
   }
 
   function option(value, label) {
@@ -125,6 +168,36 @@
     select.value = value;
     label.append(title, select);
     return { label, select };
+  }
+
+  function writingModeControl(value) {
+    const field = document.createElement('div');
+    field.className = 'reading-setting-field reading-setting-writing-mode';
+    const title = document.createElement('span');
+    title.id = 'readingWritingModeLabel';
+    title.textContent = '本文の向き';
+    const group = document.createElement('div');
+    group.className = 'reading-writing-mode-buttons';
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-labelledby', title.id);
+    const buttons = {};
+    for (const [key, label] of [['horizontal', '横書き'], ['vertical', '縦書き']]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'reading-writing-mode-button';
+      button.dataset.writingMode = key;
+      button.textContent = label;
+      buttons[key] = button;
+      group.append(button);
+    }
+    const sync = (selected) => {
+      for (const [key, button] of Object.entries(buttons)) {
+        button.setAttribute('aria-pressed', String(key === selected));
+      }
+    };
+    sync(value);
+    field.append(title, group);
+    return { field, buttons, sync };
   }
 
   function mount() {
@@ -163,6 +236,7 @@
       ['standard', '標準'],
       ['wide', '広め']
     ]);
+    const writingMode = writingModeControl(settings.writingMode);
     const reset = document.createElement('button');
     reset.type = 'button';
     reset.className = 'reading-settings-reset';
@@ -172,8 +246,18 @@
     note.textContent = 'この端末の読書表示だけを変更します。作品の評価やSCOUT判定には影響しません。';
 
     function commit(patch) {
+      const changed = patch.writingMode && patch.writingMode !== settings.writingMode;
+      const content = changed ? document.querySelector('#card .content') : null;
+      const progress = content ? contentProgress(content) : null;
       settings = apply({ ...settings, ...patch });
       save(settings);
+      writingMode.sync(settings.writingMode);
+      if (changed && content) {
+        global.requestAnimationFrame(() => {
+          seekProgress(content, progress);
+          document.dispatchEvent(new Event('novelight-reading-mode-changed'));
+        });
+      }
     }
 
     font.select.addEventListener('change', () => {
@@ -188,9 +272,11 @@
     width.select.addEventListener('change', () => {
       commit({ width: width.select.value });
     });
+    for (const [key, button] of Object.entries(writingMode.buttons)) {
+      button.addEventListener('click', () => commit({ writingMode: key }));
+    }
     reset.addEventListener('click', () => {
-      settings = apply(DEFAULTS);
-      save(settings);
+      commit(DEFAULTS);
       font.select.value = settings.fontSize;
       line.select.value = settings.lineHeight;
       theme.select.value = settings.theme;
@@ -202,6 +288,7 @@
       line.label,
       theme.label,
       width.label,
+      writingMode.field,
       reset,
       note
     );
@@ -215,6 +302,7 @@
       line.select.value = settings.lineHeight;
       theme.select.value = settings.theme;
       width.select.value = settings.width;
+      writingMode.sync(settings.writingMode);
     });
   }
 
@@ -226,6 +314,8 @@
     load,
     save,
     apply,
+    contentProgress,
+    seekProgress,
     mount
   });
 })(window);
