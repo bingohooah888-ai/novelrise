@@ -313,7 +313,9 @@ html body.novelight-theme header.site-header .site-nav a {
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
     position: relative !important;
     box-sizing: border-box !important;
+    width: 440px !important;
     padding-right: 108px !important;
+    justify-content: flex-end !important;
     gap: 12px !important;
   }
 
@@ -340,6 +342,10 @@ html body.novelight-theme header.site-header .site-nav a {
     column-gap: 14px !important;
   }
 
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+    width: 400px !important;
+  }
+
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
     display: flex !important;
     width: 100% !important;
@@ -352,11 +358,6 @@ html body.novelight-theme header.site-header .site-nav a {
     justify-content: center !important;
     padding: 0 6px !important;
     font-size: clamp(16px, 1.5vw, 20px) !important;
-  }
-
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo img {
-    height: 90px !important;
-    max-width: 245px !important;
   }
 
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .btn {

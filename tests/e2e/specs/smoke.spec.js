@@ -538,9 +538,12 @@ test('public header colors and menu coordinates stay stable with owner shortcut'
       );
 
       await page.evaluate(() => {
-        const actions = document.querySelector('header.site-header .header-actions');
+        const actions = document.querySelector(
+          'header.site-header .header-actions'
+        );
         const link = document.createElement('a');
-        link.className = 'novelight-admin-shortcut novelight-admin-shortcut-desktop';
+        link.className =
+          'novelight-admin-shortcut novelight-admin-shortcut-desktop';
         link.href = 'admin.html';
         link.textContent = '管理画面';
         actions.insertBefore(link, actions.querySelector('details.mobile-menu'));

@@ -141,7 +141,8 @@ test('static public headers survive client initialization without replacement', 
 test('public light header CSS does not recolor the dark Home header', () => {
   const base = read('novelight-header-light-base.css');
   const light = read('novelight-header-light.css');
-  const darkRule = /html body\.novelight-public-dark \.site-header,\s*html body\.novelight-public-header-page/u;
+  const darkRule =
+    /html body\.novelight-public-dark \.site-header,\s*html body\.novelight-public-header-page/u;
   assert.doesNotMatch(base, darkRule);
   assert.doesNotMatch(light, darkRule);
   assert.match(
