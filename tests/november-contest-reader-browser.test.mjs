@@ -64,9 +64,7 @@ function browser(enabled, { vertical = false } = {}) {
   if (vertical) {
     win.NovelightReadingSettings = {
       contentProgress(content) {
-        return (
-          Math.abs(content.scrollLeft) + content.clientWidth
-        ) / content.scrollWidth;
+        return (Math.abs(content.scrollLeft) + content.clientWidth) / content.scrollWidth;
       }
     };
   }
@@ -119,7 +117,7 @@ test('active adapter sends bounded scroll evidence and stops on hidden tabs', as
   assert.equal(b.requests.length, 2);
 });
 
-test('immersive vertical scroll forwards the same progress to contest heartbeats', async () => {
+test('immersive vertical scroll sends shared reader progress', async () => {
   const b = browser(true, { vertical: true });
   const content = {
     scrollWidth: 1000,
