@@ -3,12 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-import {
-  inspectCommunityHostedExecutorPreclaim
-} from '../scripts/community-hosted-executor-gate.mjs';
-import {
-  HOSTED_PRE_COST_APPROVE
-} from '../scripts/community-hosted-precost-admission.mjs';
+import { inspectCommunityHostedExecutorPreclaim } from '../scripts/community-hosted-executor-gate.mjs';
+import { HOSTED_PRE_COST_APPROVE } from '../scripts/community-hosted-precost-admission.mjs';
 import {
   HOSTED_CLAIMED,
   HOSTED_SCOPE
@@ -213,15 +209,4 @@ test('workflow cannot claim, write or run paid Staging', () => {
   ]) {
     assert.ok(!source.includes(forbidden), forbidden);
   }
-});
-
-import { execFileSync } from 'node:child_process';
-
-test('format-audit-probe', () => {
-  const output = execFileSync(
-    './node_modules/.bin/prettier',
-    ['tests/community-hosted-executor-gate.test.mjs'],
-    { encoding: 'utf8' }
-  );
-  console.log('PRETTIER_TEST_BASE64=' + Buffer.from(output).toString('base64'));
 });
