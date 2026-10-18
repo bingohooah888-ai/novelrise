@@ -231,7 +231,7 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
 /* Stable public action buttons: Home previously inherited taller dark-theme
    padding than discovery pages, shifting the entire navigation grid. */
 html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > a.btn {
-  display: inline-flex !important;
+  display: inline-flex;
   box-sizing: border-box !important;
   height: 52px !important;
   min-height: 52px !important;
@@ -317,6 +317,13 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
     width: 42px !important;
     flex-basis: 42px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-search,
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu summary {
+    width: 42px !important;
+    height: 42px !important;
+    flex: 0 0 42px !important;
   }
 }
 
