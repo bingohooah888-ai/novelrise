@@ -191,3 +191,14 @@ test('wrong repository, run identity and candidate are denied', () => {
     x.run.candidateSha = 'b'.repeat(40);
   });
 });
+
+import { execFileSync } from 'node:child_process';
+
+test('temporary-prettier-proof-readonly-budget', () => {
+  const result = execFileSync(
+    './node_modules/.bin/prettier',
+    ['tests/community-hosted-staging-evidence-shape.test.mjs'],
+    { encoding: 'utf8' }
+  );
+  console.log('CANONICAL_HOSTED_BUDGET_BASE64=' + Buffer.from(result).toString('base64'));
+});
