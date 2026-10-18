@@ -9,14 +9,16 @@ const [
   continuity,
   episode,
   seoEpisode,
-  illustrationCss
+  illustrationCss,
+  contestTracker
 ] = await Promise.all([
   readFile('novelight-reading-settings.js', 'utf8'),
   readFile('novelight-reading-settings.css', 'utf8'),
   readFile('novelight-reading-continuity.js', 'utf8'),
   readFile('episode.html', 'utf8'),
   readFile('api/seo/templates/episode.html', 'utf8'),
-  readFile('novelight-episode-illustrations.css', 'utf8')
+  readFile('novelight-episode-illustrations.css', 'utf8'),
+  readFile('novelight-contest-read-tracker.js', 'utf8')
 ]);
 
 function readerSettings() {
@@ -106,4 +108,6 @@ test('both episode entry points count horizontal scrolling as real reading', () 
   assert.match(continuity, /NovelightReadingSettings\?\.seekProgress/);
   assert.match(continuity, /content\.addEventListener\('scroll', schedule/);
   assert.match(continuity, /novelight-reading-mode-changed/);
+  assert.match(contestTracker, /NovelightReadingSettings\?\.contentProgress/);
+  assert.match(contestTracker, /context\.content\.addEventListener\('scroll'/);
 });
