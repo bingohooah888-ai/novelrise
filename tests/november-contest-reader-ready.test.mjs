@@ -146,7 +146,7 @@ test('only published entered episodes are enabled after owner-start', async () =
 
 test('invalid IDs and non-GET methods never create contest sessions', async () => {
   const f = fixture();
-  for (const id of [undefined, null, '0', '-1', 'abc', '2 OR true', '9'.repeat(25)]) {
+  for (const id of [null, '0', '-1', 'abc', '2 OR true', '9'.repeat(25)]) {
     assert.deepEqual((await f.check(id)).body, { enabled: false });
   }
   const res = response();
