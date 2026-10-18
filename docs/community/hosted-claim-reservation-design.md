@@ -131,3 +131,11 @@ CONSUMEの実行入口の認証、実行後の資源廃棄検証。これらの�
 - `tests/community-hosted-coordinator-bindings.test.mjs` は実コードの3部品を組み合わせたメモリー内の模擬GitHubタグ・台帳と隔離環境で、正常経路、ブラウザ失敗のcleanup後failure記録、CLAIM不明時の自動再試行拒否、IDすり替え拒否を確認する。
 - **境界維持**：結合アダプターは `verifyFreshProtectedBoundary` と `obtainIndependentExecutionGrant` を実装も発行もしない。単体では前段の実行条件を満たせず、実行できない。実環境のOWNER/費用/保護/排他/独立環境の認証には使用できない。模擬入力と成功を実際の費用許可に読み替えてはならない。
 - 今回の変更ではGitHub Actions、GitHubタグ・Issue台帳、Supabase、Vercel、実ブラウザ、Production、一般公開のいずれにも操作を追加しない。GitHub main mergeは別途本番承認、有料Stagingは独立した一回限りのステージング承認を要する。
+
+## Environment・費用上限の証拠形式チェック（2026-10-18、read-only）
+
+- `scripts/community-hosted-staging-evidence-shape.mjs` は、独立したGitHub Environmentの承認者・自己承認禁止・管理者bypass禁止・main限定branch policy、OWNERが申請ID・run ID・候補SHAへ結び付けた通貨建て総額上限、Supabase/Vercelごとの強制停止上限、データを複製しない一時隔離ブランチ計画を**形式的に**確認する。
+- GitHub Environmentが実際にその設定になっているか、別のレビュアーが承認したか、Supabase/Vercelが請求額を強制停止できるかは **実環境で未確認**。GitHub connectorからEnvironmentの設定APIを直接参照する試行は不可だった。記述した費用例はテスト用の仮数値であって、運営が費用上限を承認したものではない。
+- 既存のOWNER事前承認形式には最大許容費用の数値・通貨・プロバイダー別限度額がないため、**実稼働での費用上限の証拠はまだ作れない**。実際の別途ステージング承認と、検証可能なサービス側の強制停止・資源廃棄手段が揃わなければ次のgateへ接続してはならない。
+- 本関数にはGitHub/Supabase/Vercelへの通信・Secret・CLI・実行grant・CLAIM・CONSUME処理がない。形式検査に合格しても `evidenceAuthenticated=false` 等、すべての実行・費用・公開許可はfalse。既存のread-only executor workflowと同一runライフサイクルへの接続はしない。
+- Production DB・公開フラグ・有料Staging・Preview・Branchの作成は行わない。mainマージには別途「本番承認」が必要。
