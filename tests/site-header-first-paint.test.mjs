@@ -7,13 +7,6 @@ const client = read('novelight-client.js');
 const firstPaint = read('novelight-header-first-paint.css');
 const accessibility = read('novelight-accessibility.css');
 
-function canonicalCss(css) {
-  return css
-    .replace(/\/\*[\s\S]*?\*\//gu, '')
-    .replace(/\s+/gu, '')
-    .replaceAll(';}', '}');
-}
-
 test('the shared header styles are present before JavaScript hydration', () => {
   assert.match(accessibility, /novelight-header-light\.css/u);
   assert.match(accessibility, /novelight-header-first-paint\.css/u);
@@ -51,7 +44,9 @@ test('search and ranking have a fully styled header in their initial HTML', () =
   for (const page of ['search.html', 'ranking.html']) {
     const html = read(page);
     const head = html.split('</head>')[0];
-    const header = html.match(/<header class="site-header">[\s\S]*?<\/header>/u)?.[0];
+    const header = html.match(
+      /<header class="site-header">[\s\S]*?<\/header>/u
+    )?.[0];
     assert.ok(header, page);
     assert.match(head, /href="novelight-theme\.css"/u, page);
     assert.match(head, /href="novelight-header-light\.css"/u, page);

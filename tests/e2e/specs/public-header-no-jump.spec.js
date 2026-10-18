@@ -57,7 +57,9 @@ function expectGeometryUnchanged(before, after, label) {
 }
 
 for (const path of pages) {
-  test('header geometry is stable before and after JS: ' + path, async ({ page }) => {
+  test(
+    'header geometry is stable before and after JS: ' + path,
+    async ({ page }) => {
     let unblockClient;
     await page.route('**/novelight-client.js', async (route) => {
       await new Promise((resolve) => {
@@ -83,11 +85,14 @@ for (const path of pages) {
     } finally {
       unblockClient?.();
     }
-  });
+    }
+  );
 }
 
 for (const path of ['/', '/recommended.html', '/search.html']) {
-  test('login-to-creator label swap does not move public header: ' + path, async ({ page }) => {
+  test(
+    'login-to-creator label swap does not move public header: ' + path,
+    async ({ page }) => {
     await page.goto(path);
     const before = await measureHeader(page);
     await page.evaluate(async () => {
@@ -100,7 +105,9 @@ for (const path of ['/', '/recommended.html', '/search.html']) {
         }
       });
     });
-    await expect(page.locator('header.site-header .login-action')).toHaveText('創作室');
+    await expect(
+      page.locator('header.site-header .login-action')
+    ).toHaveText('創作室');
     const authenticated = await measureHeader(page);
     expectGeometryUnchanged(before, authenticated, path + ':authenticated');
 
@@ -114,8 +121,11 @@ for (const path of ['/', '/recommended.html', '/search.html']) {
         }
       });
     });
-    await expect(page.locator('header.site-header .login-action')).toHaveText('ログイン');
+    await expect(
+      page.locator('header.site-header .login-action')
+    ).toHaveText('ログイン');
     const anonymous = await measureHeader(page);
     expectGeometryUnchanged(before, anonymous, path + ':anonymous');
-  });
+    }
+  );
 }
