@@ -24,7 +24,7 @@ const pages = [
   'light-seed.html'
 ];
 
-test('all shared public headers ship completed markup and blocking styles', () => {
+test('public headers ship complete markup and styles', () => {
   for (const page of pages) {
     const source = read(page);
     const head = source.split('</head>')[0];
