@@ -6,9 +6,7 @@ import {
   inspectCommunityHostedClaimEntry,
   recordCommunityHostedOwnerClaim
 } from '../scripts/community-hosted-claim-entry.mjs';
-import {
-  HOSTED_PRE_COST_APPROVE
-} from '../scripts/community-hosted-precost-admission.mjs';
+import { HOSTED_PRE_COST_APPROVE } from '../scripts/community-hosted-precost-admission.mjs';
 import {
   HOSTED_CLAIMED,
   HOSTED_SCOPE
@@ -85,28 +83,34 @@ function harness() {
     loadProtectionEvidence: async () => {
       calls.push('loadProtectionEvidence');
       return {
-        inventoryPages: [[{
-          id: 25337852,
-          target: 'tag',
-          enforcement: 'active',
-          source_type: 'Repository'
-        }]],
-        tagRuleDetails: [{
-          id: 25337852,
-          target: 'tag',
-          enforcement: 'active',
-          source_type: 'Repository',
-          source: REPO,
-          current_user_can_bypass: 'never',
-          bypass_actors: [],
-          conditions: {
-            ref_name: {
-              include: ['refs/tags/novelight-community-hosted-once-v1-*'],
-              exclude: []
+        inventoryPages: [
+          [
+            {
+              id: 25337852,
+              target: 'tag',
+              enforcement: 'active',
+              source_type: 'Repository'
             }
-          },
-          rules: [{ type: 'update' }, { type: 'deletion' }]
-        }]
+          ]
+        ],
+        tagRuleDetails: [
+          {
+            id: 25337852,
+            target: 'tag',
+            enforcement: 'active',
+            source_type: 'Repository',
+            source: REPO,
+            current_user_can_bypass: 'never',
+            bypass_actors: [],
+            conditions: {
+              ref_name: {
+                include: ['refs/tags/novelight-community-hosted-once-v1-*'],
+                exclude: []
+              }
+            },
+            rules: [{ type: 'update' }, { type: 'deletion' }]
+          }
+        ]
       };
     },
     createUniqueRef: async ({ ref, sha }) => {
@@ -131,7 +135,17 @@ function harness() {
       return claim;
     }
   };
-  return { event, issue, comment, environment, checkedOutSha: MAIN, actions, ledger, refs, calls };
+  return {
+    event,
+    issue,
+    comment,
+    environment,
+    checkedOutSha: MAIN,
+    actions,
+    ledger,
+    refs,
+    calls
+  };
 }
 
 test('fresh OWNER workflow identity is recognized without granting any execution', () => {
@@ -154,7 +168,10 @@ test('fresh OWNER workflow identity is recognized without granting any execution
 test('one authentic claim creates exactly one immutable reservation and no grant', async () => {
   const x = harness();
   const output = await recordCommunityHostedOwnerClaim(x);
-  assert.equal(output.status, 'COMMUNITY_HOSTED_OWNER_CLAIM_RECORDED_NO_EXECUTION');
+  assert.equal(
+    output.status,
+    'COMMUNITY_HOSTED_OWNER_CLAIM_RECORDED_NO_EXECUTION'
+  );
   assert.equal(output.runAuthorized, false);
   assert.equal(output.writeAuthorized, false);
   assert.equal(output.stagingCostApproved, false);
@@ -178,27 +195,62 @@ test('one authentic claim creates exactly one immutable reservation and no grant
 
 test('spoofed, stale, edited or rerun owner event is rejected before writes', async () => {
   const cases = [
-    (x) => { x.environment.GITHUB_ACTOR = 'random-contributor'; },
-    (x) => { x.environment.GITHUB_TRIGGERING_ACTOR = 'random-contributor'; },
-    (x) => { x.environment.GITHUB_SHA = 'b'.repeat(40); },
-    (x) => { x.environment.GITHUB_WORKFLOW_REF = 'other.yml'; },
-    (x) => { x.environment.GITHUB_RUN_ID = '1; echo hi'; },
-    (x) => { x.environment.GITHUB_REF = 'refs/heads/staging'; },
-    (x) => { x.event.action = 'edited'; },
-    (x) => { x.event.issue.id = 1001; },
-    (x) => { x.issue.user.login = 'somebody'; },
-    (x) => { x.issue.pull_request = { url: 'pull' }; },
-    (x) => { x.comment.issue_url = 'https://api.github.com/repos/other/issues/188'; },
-    (x) => { x.comment.updated_at = '2026-10-18T02:01:00Z'; },
-    (x) => { x.comment.body += 'changed'; },
-    (x) => { x.event.comment.user.login = 'somebody'; },
-    (x) => { x.event.comment.author_association = 'CONTRIBUTOR'; },
-    (x) => { x.checkedOutSha = 'b'.repeat(40); }
+    (x) => {
+      x.environment.GITHUB_ACTOR = 'random-contributor';
+    },
+    (x) => {
+      x.environment.GITHUB_TRIGGERING_ACTOR = 'random-contributor';
+    },
+    (x) => {
+      x.environment.GITHUB_SHA = 'b'.repeat(40);
+    },
+    (x) => {
+      x.environment.GITHUB_WORKFLOW_REF = 'other.yml';
+    },
+    (x) => {
+      x.environment.GITHUB_RUN_ID = '1; echo hi';
+    },
+    (x) => {
+      x.environment.GITHUB_REF = 'refs/heads/staging';
+    },
+    (x) => {
+      x.event.action = 'edited';
+    },
+    (x) => {
+      x.event.issue.id = 1001;
+    },
+    (x) => {
+      x.issue.user.login = 'somebody';
+    },
+    (x) => {
+      x.issue.pull_request = { url: 'pull' };
+    },
+    (x) => {
+      x.comment.issue_url = 'https://api.github.com/repos/other/issues/188';
+    },
+    (x) => {
+      x.comment.updated_at = '2026-10-18T02:01:00Z';
+    },
+    (x) => {
+      x.comment.body += 'changed';
+    },
+    (x) => {
+      x.event.comment.user.login = 'somebody';
+    },
+    (x) => {
+      x.event.comment.author_association = 'CONTRIBUTOR';
+    },
+    (x) => {
+      x.checkedOutSha = 'b'.repeat(40);
+    }
   ];
   for (const mutate of cases) {
     const x = harness();
     mutate(x);
-    await assert.rejects(recordCommunityHostedOwnerClaim(x), /CLAIM_ENTRY_DENIED/u);
+    await assert.rejects(
+      recordCommunityHostedOwnerClaim(x),
+      /CLAIM_ENTRY_DENIED/u
+    );
     assert.deepEqual(x.calls, []);
     assert.equal(x.refs.size, 0);
   }
@@ -217,7 +269,10 @@ test('reservation ruleset denial is never a cost or execution permission', async
 
 test('the only workflow entry is an OWNER-bound, tag-only audit with no staging', () => {
   const text = readFileSync(
-    new URL('../.github/workflows/community-hosted-claim-only.yml', import.meta.url),
+    new URL(
+      '../.github/workflows/community-hosted-claim-only.yml',
+      import.meta.url
+    ),
     'utf8'
   );
   for (const necessary of [
