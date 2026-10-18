@@ -383,6 +383,9 @@ test('public header stays in place through delayed client script', async ({
     '/light-seed.html',
     '/search.html',
     '/ranking.html',
+    '/login.html',
+    '/author.html',
+    '/novel.html',
     '/pricing.html',
     '/announcements.html',
     '/news-detail.html',
@@ -450,5 +453,30 @@ test('public header stays in place through delayed client script', async ({
       resume?.();
       await page.unroute('**/novelight-client.js');
     }
+  }
+});
+
+
+test('authenticated header label preserves its initial geometry', async ({
+  page
+}) => {
+  await page.goto('/');
+  const before = await page.locator('.public-header-inner').boundingBox();
+  await page.evaluate(async () => {
+    await globalThis.NovelightClient.syncAuthHeader({
+      auth: {
+        getSession: async () => ({
+          data: { session: { user: { id: 'test-only' } } },
+          error: null
+        })
+      }
+    });
+  });
+  await expect(page.locator('.login-action')).toHaveText('創作室');
+  const after = await page.locator('.public-header-inner').boundingBox();
+  expect(before).not.toBeNull();
+  expect(after).not.toBeNull();
+  for (const key of ['x', 'y', 'width', 'height']) {
+    expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
   }
 });

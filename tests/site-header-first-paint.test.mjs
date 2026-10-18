@@ -75,6 +75,28 @@ test('the shared header stylesheet is not reinserted after first paint', () => {
   assert.match(news, /class="header-inner public-header-inner"/u);
 });
 
+test('legacy public reader and auth pages ship their final header in HTML', () => {
+  for (const page of [
+    'login.html',
+    'signup.html',
+    'novel.html',
+    'episode.html',
+    'author.html',
+    'news-detail.html'
+  ]) {
+    const source = read(page);
+    const header = source.match(
+      /<header class="site-header">[\s\S]*?<\/header>/u
+    )?.[0];
+    assert.ok(header, page);
+    assert.match(source, /novelight-public-header-page/u, page);
+    assert.match(header, /class="header-inner public-header-inner"/u, page);
+    assert.match(header, /class="site-nav desktop-nav"/u, page);
+    assert.match(header, /src="assets\/novelight-header-logo\.webp"/u, page);
+    assert.match(source.split('</head>')[0], /novelight-accessibility\.css/u, page);
+  }
+});
+
 test('authenticated public headers keep their navigation width', () => {
   assert.match(accessibility, /\.signup-action\[hidden\]/u);
   assert.match(accessibility, /visibility: hidden !important/u);
