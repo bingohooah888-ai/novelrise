@@ -52,7 +52,7 @@ test('search and ranking have a fully styled header in their initial HTML', () =
     assert.match(head, /href="novelight-header-light\.css"/u, page);
     assert.match(html, /novelight-public-header-page/u, page);
     assert.match(header, /class="site-nav desktop-nav"/u, page);
-    assert.match(header, /class="public-header-inner"/u, page);
+    assert.match(header, /class="header-inner public-header-inner"/u, page);
     assert.match(header, /src="assets\/novelight-header-logo\.webp"/u, page);
   }
 });

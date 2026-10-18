@@ -9,6 +9,7 @@ const client = readFileSync(join(root, 'novelight-client.js'), 'utf8');
 const themeCss = readFileSync(join(root, 'novelight-theme.css'), 'utf8');
 const legalCss = readFileSync(join(root, 'legal.css'), 'utf8');
 const lightCss = readFileSync(join(root, 'novelight-header-light.css'), 'utf8');
+const firstPaintCss = readFileSync(join(root, 'novelight-header-first-paint.css'), 'utf8');
 const planCss = readFileSync(join(root, 'novelight-plan-badges.css'), 'utf8');
 const logoPath = join(root, 'assets', 'novelight-header-logo.webp');
 const htmlFiles = readdirSync(root).filter((name) => name.endsWith('.html'));
@@ -19,26 +20,26 @@ test('shared app branding uses the official logo asset at the enlarged sitewide 
   assert.match(client, /novelight-header-logo\.webp/u);
   assert.match(client, /installBrandLogo/u);
   assert.match(client, /novelight-brand-logo-image/u);
-  assert.match(client, /height:75\.6px!important/u);
-  assert.match(client, /height:61\.2px!important/u);
-  assert.match(client, /height:104\.4px!important/u);
-  assert.match(client, /height:90px!important/u);
-  assert.match(client, /height:82\.8px!important/u);
-  assert.match(client, /height:72px!important/u);
-  assert.match(client, /filter:none!important/u);
-  assert.match(client, /mix-blend-mode:normal!important/u);
+  assert.match(firstPaintCss, /height:75\.6px!important/u);
+  assert.match(firstPaintCss, /height:61\.2px!important/u);
+  assert.match(firstPaintCss, /height:104\.4px!important/u);
+  assert.match(firstPaintCss, /height:90px!important/u);
+  assert.match(firstPaintCss, /height:82\.8px!important/u);
+  assert.match(firstPaintCss, /height:72px!important/u);
+  assert.match(firstPaintCss, /filter:none!important/u);
+  assert.match(firstPaintCss, /mix-blend-mode:normal!important/u);
 });
 
 test('public headers share the expanded pricing-style desktop composition', () => {
   assert.match(
-    client,
+    firstPaintCss,
     /grid-template-columns:auto minmax\(520px,1fr\) auto!important/u
   );
-  assert.match(client, /gap:clamp\(24px,2\.4vw,48px\)!important/u);
-  assert.match(client, /site-nav a\{font-size:18px!important/u);
-  assert.match(client, /header-actions\{gap:18px!important/u);
-  assert.match(client, /min-height:52px!important/u);
-  assert.match(client, /font-size:17px!important/u);
+  assert.match(firstPaintCss, /gap:clamp\(24px,2\.4vw,48px\)!important/u);
+  assert.match(firstPaintCss, /site-nav a\{font-size:18px!important/u);
+  assert.match(firstPaintCss, /header-actions\{gap:18px!important/u);
+  assert.match(firstPaintCss, /min-height:52px!important/u);
+  assert.match(firstPaintCss, /font-size:17px!important/u);
 });
 
 test('public headers use the light treatment and larger action text', () => {
@@ -62,13 +63,13 @@ test('public headers use the light treatment and larger action text', () => {
 
 test('selected public navigation relies on highlighted text without a second underline', () => {
   assert.match(
-    client,
+    firstPaintCss,
     /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important\}/u
   );
 });
 
 test('legacy app headers use the Home-matched responsive action reading floor', () => {
-  assert.match(client, /min-height:96px!important;gap:32px!important/u);
+  assert.match(firstPaintCss, /min-height:96px!important;gap:32px!important/u);
   assert.match(
     themeCss,
     /html body\.novelight-theme:not\(\.novelight-public-dark\) header \.right > a \{[\s\S]*?font-size:\s*22px\s*!important/u

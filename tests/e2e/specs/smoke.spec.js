@@ -373,3 +373,76 @@ for (const surface of ['post', 'edit']) {
     expect(Math.abs(after.pageY - before.pageY)).toBeLessThan(3);
   });
 }
+
+test('public header stays in place through delayed client script', async ({
+  page
+}) => {
+  const paths = [
+    '/',
+    '/recommended.html',
+    '/light-seed.html',
+    '/search.html',
+    '/ranking.html',
+    '/pricing.html',
+    '/announcements.html',
+    '/special-light.html'
+  ];
+  for (const path of paths) {
+    let resume;
+    await page.route('**/novelight-client.js', async (route) => {
+      await new Promise((resolve) => {
+        resume = resolve;
+      });
+      await route.continue();
+    });
+    await page.goto(path, { waitUntil: 'commit' });
+    try {
+      const header = page.locator('header.site-header .public-header-inner');
+      await expect(header).toBeVisible();
+      await expect.poll(() => Boolean(resume)).toBe(true);
+      const before = await page.evaluate(() => {
+        const inner = document.querySelector('.public-header-inner');
+        const logo = inner.querySelector('.logo img');
+        const box = inner.getBoundingClientRect();
+        const logoBox = logo.getBoundingClientRect();
+        return [
+          box.x,
+          box.y,
+          box.width,
+          box.height,
+          logoBox.x,
+          logoBox.y,
+          logoBox.width,
+          logoBox.height
+        ];
+      });
+      resume();
+      await page.waitForLoadState('load');
+      const after = await page.evaluate(() => {
+        const inner = document.querySelector('.public-header-inner');
+        const logo = inner.querySelector('.logo img');
+        const box = inner.getBoundingClientRect();
+        const logoBox = logo.getBoundingClientRect();
+        return [
+          box.x,
+          box.y,
+          box.width,
+          box.height,
+          logoBox.x,
+          logoBox.y,
+          logoBox.width,
+          logoBox.height
+        ];
+      });
+      for (let i = 0; i < before.length; i += 1) {
+        expect(
+          Math.abs(after[i] - before[i]),
+          path + ' metric ' + i
+        ).toBeLessThanOrEqual(1);
+      }
+    } finally {
+      resume?.();
+      await page.unroute('**/novelight-client.js');
+    }
+  }
+});
