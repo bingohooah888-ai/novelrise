@@ -223,6 +223,40 @@ html body.novelight-public-dark header.site-header .btn {
   }
 }
 
+/* Stable public action buttons: Home previously inherited taller dark-theme
+   padding than discovery pages, shifting the entire navigation grid. */
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > a.btn {
+  display: inline-flex !important;
+  box-sizing: border-box !important;
+  height: 52px !important;
+  min-height: 52px !important;
+  padding: 0 24px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9px !important;
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.025em !important;
+  white-space: nowrap !important;
+}
+
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .btn-primary {
+  border: 1px solid #c8942f !important;
+  background: #d6a447 !important;
+  color: #081426 !important;
+  box-shadow: none !important;
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > a.btn {
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 14px !important;
+    font-size: 17px !important;
+  }
+}
+
 /* Logged-in public headers keep the Creation Room action and hide signup. */
 html body.novelight-public-header-page .header-actions:has(a[data-auth-state="authenticated"]) .signup-action,
 html body.novelight-public-header-page .header-actions:has(a[data-auth-state="authenticated"]) .mobile-menu a[href="signup.html"] {
