@@ -73,7 +73,10 @@ test('all discovery headers share the canonical Home CSS geometry', () => {
     assert.equal(headerMarkup(read(file)), home);
     assert.ok(!read(file).includes('novelight-public-dark'));
   }
-  assert.match(headerCss, /body:is\(\.novelight-public-dark, \.novelight-public-header-page\)/u);
+  assert.match(
+    headerCss,
+    /body:is\(\.novelight-public-dark, \.novelight-public-header-page\)/u
+  );
   assert.match(
     headerCss,
     /grid-template-columns: minmax\(250px, 290px\) minmax\(560px, 1fr\) auto/u
@@ -82,7 +85,10 @@ test('all discovery headers share the canonical Home CSS geometry', () => {
     headerCss,
     /grid-template-columns: minmax\(210px, 230px\) minmax\(400px, 1fr\) auto/u
   );
-  assert.doesNotMatch(accessibility, /background: rgba\(3, 10, 18, 0\.9\) !important/u);
+  assert.doesNotMatch(
+    accessibility,
+    /background: rgba\(3, 10, 18, 0\.9\) !important/u
+  );
   assert.doesNotMatch(accessibility, /filter: invert\(1\) sepia/u);
   assert.doesNotMatch(
     css,
