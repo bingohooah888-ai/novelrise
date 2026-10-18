@@ -228,3 +228,14 @@ test('mismatched terminal receipt fails closed without a second POST', async () 
   );
   assert.equal(x.calls.filter((s) => s.startsWith('consume')).length, 1);
 });
+
+import { execFileSync } from 'node:child_process';
+
+test('temporary-prettier-format-inspection', () => {
+  const output = execFileSync(
+    './node_modules/.bin/prettier',
+    ['tests/community-hosted-ordered-handoff.test.mjs'],
+    { encoding: 'utf8' }
+  );
+  console.log('PRETTIER_ORDERED_HANDOFF_BASE64=' + Buffer.from(output).toString('base64'));
+});
