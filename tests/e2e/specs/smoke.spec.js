@@ -435,10 +435,16 @@ test('public header stays in place through delayed client script', async ({
           logoBox.height
         ];
       });
+      const viewport = await page.evaluate(() => ({
+        innerWidth: globalThis.innerWidth,
+        clientWidth: globalThis.document.documentElement.clientWidth,
+        documentWidth: globalThis.document.documentElement.scrollWidth
+      }));
       for (let i = 0; i < before.length; i += 1) {
         expect(
           Math.abs(after[i] - before[i]),
-          path + ' metric ' + i
+          path + ' metric ' + i + ' before=' + before[i] +
+            ' after=' + after[i] + ' viewport=' + JSON.stringify(viewport)
         ).toBeLessThanOrEqual(1);
       }
     } finally {

@@ -30,6 +30,11 @@ test('the shared header styles are present before JavaScript hydration', () => {
   }
 });
 
+test('the initial public viewport reserves the classic scrollbar gutter', () => {
+  assert.match(firstPaint, /scrollbar-gutter: stable/u);
+  assert.match(firstPaint, /html:has\(> body\.novelight-public-dark\)/u);
+});
+
 test('header artwork ratio is reserved and never restyled after paint', () => {
   assert.match(firstPaint, /aspect-ratio: 5 \/ 2/u);
   const install = client.slice(
