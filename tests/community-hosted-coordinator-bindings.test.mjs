@@ -1,15 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  makeCommunityHostedCoordinatorBindings
-} from '../scripts/community-hosted-coordinator-bindings.mjs';
-import {
-  verifyCommunityHostedPreCostAdmission
-} from '../scripts/community-hosted-precost-admission.mjs';
-import {
-  runCommunityHostedSingleLifecycle
-} from '../scripts/community-hosted-ordered-handoff.mjs';
+import { makeCommunityHostedCoordinatorBindings } from '../scripts/community-hosted-coordinator-bindings.mjs';
+import { verifyCommunityHostedPreCostAdmission } from '../scripts/community-hosted-precost-admission.mjs';
+import { runCommunityHostedSingleLifecycle } from '../scripts/community-hosted-ordered-handoff.mjs';
 import {
   HOSTED_CLAIMED,
   HOSTED_CONSUMED,
@@ -248,8 +242,12 @@ test('existing coordinator, isolated lifecycle and terminal receipt interoperate
   assert.ok(x.rows[2].body.includes('"result":"success"'));
   assert.equal(x.calls.filter((c) => c === 'reserve').length, 1);
   assert.equal(x.calls.filter((c) => c === 'post').length, 2);
-  assert.ok(x.calls.indexOf('runBrowser') < x.calls.indexOf('destroyIsolatedBranch'));
-  assert.ok(x.calls.indexOf('confirmBranchDeleted') < x.calls.lastIndexOf('post'));
+  assert.ok(
+    x.calls.indexOf('runBrowser') < x.calls.indexOf('destroyIsolatedBranch')
+  );
+  assert.ok(
+    x.calls.indexOf('confirmBranchDeleted') < x.calls.lastIndexOf('post')
+  );
   assert.equal(result.runAuthorized, false);
 });
 
@@ -305,15 +303,4 @@ test('candidate and request identity drift is denied before GitHub mutations', a
     /DENIED/u
   );
   assert.deepEqual(x.calls, []);
-});
-
-import { execFileSync } from 'node:child_process';
-
-test('temporary-coordinator-bindings-prettier-inspection', () => {
-  const result = execFileSync(
-    './node_modules/.bin/prettier',
-    ['tests/community-hosted-coordinator-bindings.test.mjs'],
-    { encoding: 'utf8' }
-  );
-  console.log('CANONICAL_BINDINGS_TEST_BASE64=' + Buffer.from(result).toString('base64'));
 });
