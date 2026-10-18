@@ -1,3 +1,5 @@
+@import url("novelight-header-light.css");
+@import url("novelight-header-first-paint.css");
 @import url("novelight-author-backgrounds.css");
 
 .skip-link {
@@ -284,5 +286,22 @@ html body.novelight-public-dark .owner-more-tools .action {
   html body.novelight-public-dark .logo img,
   html body.novelight-public-dark .novelight-brand-logo-image {
     max-width: 62vw !important;
+  }
+}
+
+/* Keep borderless navigation link metrics identical across Home and SPECIAL zones. */
+html body.novelight-theme header.site-header .site-nav a {
+  border-bottom-color: #28364a !important;
+}
+
+/* Reserve the public header's anonymous action width after sign-in.
+ * Keep the hidden signup control invisible and non-interactive while its box
+ * holds the navigation grid stable during the async session check. */
+@media (min-width: 901px) {
+  html body.novelight-public-dark header.site-header .header-actions > .signup-action[hidden],
+  html body.novelight-public-header-page header.site-header .header-actions > .signup-action[hidden] {
+    display: inline-flex !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 }
