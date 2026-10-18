@@ -21,6 +21,8 @@ function control() {
   };
 }
 
+// The embedded browser/Storage stubs intentionally preserve their fixture shape.
+// prettier-ignore
 function setup() {
   const uid = '12345678-1234-4123-8123-123456789abc';
   const fields = new Map(
@@ -40,19 +42,28 @@ function setup() {
     }
   };
   const events = [];
+  const objects = new Set();
   const draws = [];
   let removedUrlCount = 0;
   let currentPath = '';
+  let nextId = 0;
   const bucket = {
     getPublicUrl(path) {
       return { data: { publicUrl: 'https://example.com/' + path } };
     },
+    async list(folder) {
+      return { data: [...objects]
+        .filter((path) => path.startsWith(folder + '/'))
+        .map((path) => ({ name: path.slice(folder.length + 1) })), error: null };
+    },
     async upload(path, blob, options) {
       events.push({ action: 'upload', path, blob, options });
+      objects.add(path);
       return { error: null };
     },
     async remove(paths) {
       events.push({ action: 'remove', paths });
+      for (const path of paths) objects.delete(path);
       return { error: null };
     }
   };
@@ -134,7 +145,7 @@ function setup() {
     },
     crypto: {
       randomUUID() {
-        return 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+        return 'aaaaaaaa-bbbb-4ccc-8ddd-' + String(++nextId).padStart(12, '0');
       }
     },
     document: {
@@ -151,6 +162,7 @@ function setup() {
     client,
     uid,
     events,
+    objects,
     draws,
     canvas,
     get revoked() {
@@ -171,7 +183,8 @@ test('mobile Image fallback uploads and removes an owner-scoped 2:3 cover', asyn
     client: app.client,
     root: app.root,
     novelId: '42',
-    session: { user: { id: app.uid } }
+    session: { user: { id: app.uid } },
+    published: true
   });
 
   assert.equal(app.root.hidden, false);
@@ -214,4 +227,64 @@ test('oversized user image is rejected without a storage write', async () => {
 
   assert.equal(app.events.length, 0);
   assert.equal(app.fields.get('[data-cover-status]').dataset.error, 'true');
+});
+
+// Preserve the interaction stub order for the browser simulation.
+// prettier-ignore
+test('Safari canvas PNG fallback preserves real MIME and draft-preview safety', async () => {
+  const app = setup();
+  app.canvas.toBlob = (callback) => callback({ type: 'image/png', size: 1200 });
+  await app.mount({
+    client: app.client, root: app.root, novelId: '42',
+    session: { user: { id: app.uid } }, published: false
+  });
+  const file = app.fields.get('[data-cover-file]');
+  file.files = [{ name: 'IMG_1234.HEIC', type: 'image/heic', size: 2200 }];
+  file.listeners.get('change')();
+  await app.fields.get('[data-cover-upload]').listeners.get('click')();
+  assert.equal(app.events[0].action, 'upload');
+  assert.equal(app.events[0].options.contentType, 'image/png');
+  assert.equal(app.events[0].blob.type, 'image/png');
+  assert.ok(app.events[0].path.endsWith('.png'));
+  assert.equal(app.fields.get('[data-cover-preview]').hidden, false);
+  assert.equal(app.fields.get('[data-cover-x-preview]').hidden, true);
+});
+
+// Preserve the interaction stub order for the browser simulation.
+// prettier-ignore
+test('repeated replacements clean up previous uploads and preserve only one live cover', async () => {
+  const app = setup();
+  await app.mount({
+    client: app.client, root: app.root, novelId: '42',
+    session: { user: { id: app.uid } }, published: true
+  });
+  const file = app.fields.get('[data-cover-file]');
+  for (let i = 0; i < 3; i += 1) {
+    file.files = [{ name: 'story.jpeg', type: 'image/jpeg', size: 1100 }];
+    file.listeners.get('change')();
+    await app.fields.get('[data-cover-upload]').listeners.get('click')();
+  }
+  assert.equal(app.events.filter((event) => event.action === 'upsert').length, 3);
+  assert.equal(app.objects.size, 1);
+  assert.equal(app.fields.get('[data-cover-x-preview]').hidden, false);
+});
+
+// Preserve the interaction stub order for the browser simulation.
+// prettier-ignore
+test('previously uploaded draft cover never opens unavailable public OG endpoint', async () => {
+  const app = setup();
+  const path = app.uid + '/42/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee.png';
+  app.objects.add(path);
+  const originalFrom = app.client.from;
+  app.client.from = (table) => {
+    const query = originalFrom(table);
+    query.maybeSingle = async () => ({ data: { storage_path: path }, error: null });
+    return query;
+  };
+  await app.mount({
+    client: app.client, root: app.root, novelId: '42',
+    session: { user: { id: app.uid } }, published: false
+  });
+  assert.equal(app.fields.get('[data-cover-preview]').hidden, false);
+  assert.equal(app.fields.get('[data-cover-x-preview]').hidden, true);
 });

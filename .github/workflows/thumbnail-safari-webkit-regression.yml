@@ -12,6 +12,10 @@ on:
       - novelight-episode-illustrations.js
       - episode-edit.html
       - episode.html
+      - novelight-custom-cover.js
+      - work-cover.html
+      - tests/e2e/fixtures/author-cover-safari-png.html
+      - tests/e2e/specs/author-cover-safari-png.spec.js
       - tests/e2e/specs/episode-illustrations-webkit.spec.js
       - tests/e2e/fixtures/thumbnail-safari-png-fallback.html
       - tests/e2e/specs/thumbnail-safari-png-fallback.spec.js
@@ -28,6 +32,10 @@ on:
       - novelight-episode-illustrations.js
       - episode-edit.html
       - episode.html
+      - novelight-custom-cover.js
+      - work-cover.html
+      - tests/e2e/fixtures/author-cover-safari-png.html
+      - tests/e2e/specs/author-cover-safari-png.spec.js
       - tests/e2e/specs/episode-illustrations-webkit.spec.js
       - tests/e2e/fixtures/thumbnail-safari-png-fallback.html
       - tests/e2e/specs/thumbnail-safari-png-fallback.spec.js

@@ -6,7 +6,8 @@ export default defineConfig({
   testDir: './specs',
   testMatch: [
     'thumbnail-safari-png-fallback.spec.js',
-    'episode-illustrations-webkit.spec.js'
+    'episode-illustrations-webkit.spec.js',
+    'author-cover-safari-png.spec.js'
   ],
   outputDir: 'test-results',
   fullyParallel: false,
