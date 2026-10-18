@@ -6,6 +6,7 @@ import test from 'node:test';
 const root = path.resolve(import.meta.dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const css = read('novelight-discovery-list.css');
+const headerCss = read('novelight-header-light.css');
 const spacingCss = read('novelight-discovery-spacing.css');
 const themeCss = read('novelight-theme.css');
 const finishCss = read('novelight-reader-parchment-finish.css');
@@ -65,25 +66,21 @@ test('discovery pages use the unified public header composition', () => {
   }
 });
 
-test('discovery list headers follow homepage layout at desktop widths', () => {
+test('discovery header geometry is defined once for Home and public lists', () => {
   const home = headerMarkup(read('index.html'));
   for (const file of discoveryPages) {
     assert.equal(headerMarkup(read(file)), home);
   }
   assert.match(
-    css,
+    headerCss,
     /grid-template-columns: minmax\(250px, 290px\) minmax\(560px, 1fr\) auto/u
   );
   assert.match(
-    css,
+    headerCss,
     /grid-template-columns: minmax\(210px, 230px\) minmax\(400px, 1fr\) auto/u
   );
-  assert.match(css, /justify-content: space-evenly !important/u);
-  assert.match(css, /column-gap: 24px !important/u);
-  assert.match(css, /column-gap: 14px !important/u);
-  for (const file of discoveryPages) {
-    assert.ok(!read(file).includes('novelight-public-dark'));
-  }
+  assert.match(headerCss, /justify-content: space-evenly !important/u);
+  assert.doesNotMatch(css, /homepage's approved public header layout/u);
 });
 
 test('search and ranking use shared visual CSS', () => {
