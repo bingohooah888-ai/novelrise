@@ -337,7 +337,7 @@ test('public headers do not jump when shared JavaScript hydrates', async ({
       await page.goto(destination, { waitUntil: 'commit' });
       await expect.poll(() => typeof releaseClient).toBe('function');
       await expect(page.locator('header.site-header .logo img')).toBeVisible();
-      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => globalThis.document.fonts.ready);
       const firstPaint = await capturePublicHeader(page);
 
       releaseClient();
