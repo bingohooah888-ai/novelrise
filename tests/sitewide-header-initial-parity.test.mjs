@@ -35,11 +35,7 @@ test('public headers ship complete markup and styles', () => {
     assert.match(head, /data-novelight-public-header="shared"/u, page);
     assert.match(body, /novelight-theme/u, page);
     assert.match(body, /novelight-public-(?:header-page|dark)/u, page);
-    assert.match(
-      header,
-      /class="header-inner public-header-inner"/u,
-      page
-    );
+    assert.match(header, /class="header-inner public-header-inner"/u, page);
     assert.match(header, /class="site-nav desktop-nav"/u, page);
     assert.match(header, /class="header-actions"/u, page);
     assert.match(header, /class="mobile-menu"/u, page);
