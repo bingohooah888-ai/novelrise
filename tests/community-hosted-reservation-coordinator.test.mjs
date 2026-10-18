@@ -62,7 +62,8 @@ function harness(options = {}) {
       }
       if (
         options.protectionMissing ||
-        (options.protectionRemovedAfterReservation && protectionReadCount > 1) ||
+        (options.protectionRemovedAfterReservation &&
+          protectionReadCount > 1) ||
         (options.protectionRemovedDuringConsume && protectionReadCount >= 3) ||
         (options.protectionRemovedBeforeConsumePost && protectionReadCount >= 4)
       ) {
@@ -164,10 +165,11 @@ function harness(options = {}) {
         ? {
             status: 200,
             ref,
-            sha: options.tamperRef ||
+            sha:
+              options.tamperRef ||
               (options.tamperBeforeConsumePost && refReadCount >= 3)
-              ? 'b'.repeat(40)
-              : sha
+                ? 'b'.repeat(40)
+                : sha
           }
         : { status: 404 };
     },
