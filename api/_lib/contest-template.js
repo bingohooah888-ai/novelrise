@@ -19,6 +19,7 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
       <nav class="contest-header-nav" aria-label="ページメニュー">
         <a href="#entries">参加作品</a>
         <a href="#rules">参加方法</a>
+        <a href="/contest-terms">応募要項</a>
         <a href="my-novels.html">自分の作品</a>
       </nav>
     </div>
