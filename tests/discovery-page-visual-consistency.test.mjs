@@ -66,9 +66,9 @@ test('discovery pages use the unified public header composition', () => {
 });
 
 test('discovery list headers follow homepage layout at desktop widths', () => {
-  const client = read('novelight-client.js');
-  for (const slug of ['recommended', 'new-arrivals', 'light-seed']) {
-    assert.ok(client.includes(`    '${slug}',`));
+  const home = headerMarkup(read('index.html'));
+  for (const file of discoveryPages) {
+    assert.equal(headerMarkup(read(file)), home);
   }
   assert.match(
     css,
