@@ -13,6 +13,19 @@ const COUNTERS = Object.freeze([
   'restrictions',
   'testUsers'
 ]);
+// The browser adapter must return a run-bound assertion receipt; merely
+// completing without throwing is NOT evidence that any check was performed.
+// These booleans are an internal contract, not independent authentication.
+const REQUIRED_BROWSER_ASSERTIONS = Object.freeze([
+  'twoIndependentUserSessions',
+  'separateAdminSession',
+  'anonymousAccessDenied',
+  'crossUserBlockMuteVerified',
+  'ownerOptInRevokeVerified',
+  'likesCommentsReportsNotificationsVerified',
+  'adminModerationAuditVerified',
+  'r15R18PrivateUnpublishedRpcExcluded'
+]);
 const ACTIONS = Object.freeze([
   'getSnapshot',
   'openGate',
@@ -37,6 +50,26 @@ function assertCleanSnapshot(snapshot) {
     if (snapshot[key] !== 0) {
       deny('test data is not verifiably absent: ' + key);
     }
+  }
+}
+
+function assertBrowserProof(proof, grant, target) {
+  if (
+    proof?.status !== 'COMMUNITY_HOSTED_BROWSER_ASSERTIONS_COMPLETE' ||
+    proof.mainSha !== target.mainSha ||
+    proof.candidateSha !== target.candidateSha ||
+    proof.requestCommentId !== String(grant.requestCommentId) ||
+    proof.runId !== String(grant.runId) ||
+    proof.projectRef !== target.isolatedProjectRef ||
+    proof.previewOrigin !== target.previewOrigin ||
+    proof.productionMutationObserved !== false ||
+    !proof.userIds ||
+    ['author', 'reader', 'admin'].some(
+      (role) => proof.userIds[role] !== target.userIds[role]
+    ) ||
+    REQUIRED_BROWSER_ASSERTIONS.some((name) => proof[name] !== true)
+  ) {
+    deny('browser assertions missing or not bound to exact isolated run');
   }
 }
 
@@ -101,7 +134,8 @@ export async function runCommunityHostedWriteLifecycle({
     if (initialClean) {
       // Gate opening may partially succeed before it throws: always clean up.
       await actions.openGate();
-      await actions.runBrowser();
+      const proof = await actions.runBrowser();
+      assertBrowserProof(proof, grant, target);
       browserVerified = true;
     }
   } catch {

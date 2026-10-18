@@ -139,3 +139,10 @@ CONSUMEの実行入口の認証、実行後の資源廃棄検証。これらの�
 - 既存のOWNER事前承認形式には最大許容費用の数値・通貨・プロバイダー別限度額がないため、**実稼働での費用上限の証拠はまだ作れない**。実際の別途ステージング承認と、検証可能なサービス側の強制停止・資源廃棄手段が揃わなければ次のgateへ接続してはならない。
 - 本関数にはGitHub/Supabase/Vercelへの通信・Secret・CLI・実行grant・CLAIM・CONSUME処理がない。形式検査に合格しても `evidenceAuthenticated=false` 等、すべての実行・費用・公開許可はfalse。既存のread-only executor workflowと同一runライフサイクルへの接続はしない。
 - Production DB・公開フラグ・有料Staging・Preview・Branchの作成は行わない。mainマージには別途「本番承認」が必要。
+
+## ブラウザ検証の成功誤認防止（2026-10-18、実環境未起動）
+
+- `scripts/community-hosted-write-lifecycle.mjs` は、`runBrowser()` の正常return（`undefined`を含む）だけで`browserVerified=true`と扱っていたため、必要な操作を確認せずにterminal successへ進み得た。
+- 修正後は、同じ申請ID・run ID・main/candidate SHA・隔離project ref・Preview URL・作者/読者/管理者のテストIDに一致する明示的なブラウザ証跡を要求する。匿名拒否、Block/Mute、作者opt-in/revoke、like/comment/report/notification、管理者moderation監査、R15/R18と非公開/未公開/RPCの除外、Production mutationなしの各判定が全て一致しなければcleanup後もsuccessにしない。
+- 模擬テストは未返却・欠落・偽のrun ID・偽のproject ref・失敗した個別判定を拒否し、後片付けを継続する。**このレシートは構造上の検査であり、実際のブラウザ操作の独立した認証にはならない**。今後の保護されたrunnerでは実セッション・動作証跡を独立取得する必要がある。
+- この修正は既存の依存注入ライブラリとテストだけ。GitHub Actionsのトリガー・CLAIM、Supabase、Vercel、実ブラウザ、Preview、本番DB、一般公開は変更せず、料金を発生させる実行を許可しない。
