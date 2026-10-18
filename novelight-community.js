@@ -13,6 +13,8 @@
   let page = 0;
   let following = false;
   let loading = false;
+  let filterRevision = 0;
+  let pendingReset = false;
   const limit = isHome ? (window.matchMedia('(max-width:640px)').matches ? 2 : 3) : 15;
   const dateString = value => {
     const parsed = new Date(value);
@@ -209,11 +211,19 @@
     return article;
   }
   async function load(reset=true) {
-    if (loading) return;
+    if (loading) {
+      // A filter change must not disappear behind a slower request.
+      if (reset) pendingReset = true;
+      return;
+    }
     loading=true;
+    const revision=filterRevision;
+    const requestedFollowing=following;
     if(reset){page=0; message('交流を読み込んでいます...');}
     try {
-      const data=await rpc('novelight_community_feed',{p_limit:limit,p_offset:page*limit,p_following:following});
+      const data=await rpc('novelight_community_feed',{p_limit:limit,p_offset:page*limit,p_following:requestedFollowing});
+      // A stale response must never overwrite the selected filter.
+      if (revision !== filterRevision) return;
       const list=Array.isArray(data)?data:[];
       if(reset)root.replaceChildren();
       if(!list.length && page===0) {
@@ -229,8 +239,14 @@
       page += 1;
     } catch(error) {
       console.warn('community feed unavailable; rest of page remains usable',error);
-      if(reset)message('交流を読み込めませんでした。作品の閲覧は通常どおり利用できます。');
-    } finally {loading=false;}
+      if(reset && revision===filterRevision)message('交流を読み込めませんでした。作品の閲覧は通常どおり利用できます。');
+    } finally {
+      loading=false;
+      if(pendingReset){
+        pendingReset=false;
+        void load(true);
+      }
+    }
   }
   document.getElementById('communityLoadMore')?.addEventListener('click',()=>{void load(false);});
   document.querySelectorAll('[data-community-filter]').forEach(button=>{
@@ -238,6 +254,7 @@
       const requested = button.dataset.communityFilter==='following';
       if(requested && !(await authed()))return requireLogin();
       following=requested;
+      filterRevision += 1;
       document.querySelectorAll('[data-community-filter]').forEach(item=>{
         item.setAttribute('aria-pressed',String(item===button));
       });
