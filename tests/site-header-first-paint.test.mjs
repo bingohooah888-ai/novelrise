@@ -37,7 +37,7 @@ test('the shared header styles are present before JavaScript hydration', () => {
     const html = read(page);
     const head = html.split('</head>')[0];
     assert.match(head, /href="novelight-accessibility\.css"/u, page);
-    assert.match(head, /href="novelight-header-logo\.webp"/u, page);
+    assert.match(html, /src="assets\/novelight-header-logo\.webp"/u, page);
   }
 });
 
