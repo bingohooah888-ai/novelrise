@@ -509,17 +509,19 @@ test('admin shortcut does not shift the public header', async ({ browser }) => {
             const box = element.getBoundingClientRect();
             return [box.x, box.y, box.width, box.height];
           };
-          const header = document.querySelector('header.site-header');
+          const header = globalThis.document.querySelector(
+            'header.site-header'
+          );
           const inner = header.querySelector('.public-header-inner');
           const nav = header.querySelector('.desktop-nav');
           const links = Array.from(nav.querySelectorAll('a'));
-          const showNav = getComputedStyle(nav).display !== 'none';
+          const showNav = globalThis.getComputedStyle(nav).display !== 'none';
           return {
-            headerColor: getComputedStyle(header).backgroundColor,
+            headerColor: globalThis.getComputedStyle(header).backgroundColor,
             inner: rect(inner),
             logo: rect(header.querySelector('.logo img')),
             links: showNav ? links.map(rect) : [],
-            viewportWidth: document.documentElement.clientWidth
+            viewportWidth: globalThis.document.documentElement.clientWidth
           };
         });
 
@@ -529,10 +531,10 @@ test('admin shortcut does not shift the public header', async ({ browser }) => {
       expect(before.headerColor).toBe(expectedColor);
 
       await page.evaluate(() => {
-        const actions = document.querySelector(
+        const actions = globalThis.document.querySelector(
           'header.site-header .header-actions'
         );
-        const link = document.createElement('a');
+        const link = globalThis.document.createElement('a');
         link.className =
           'novelight-admin-shortcut novelight-admin-shortcut-desktop';
         link.href = 'admin.html';
