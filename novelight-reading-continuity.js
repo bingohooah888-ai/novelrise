@@ -77,6 +77,8 @@
 
   function contentProgress(content) {
     if (!content) return 0;
+    const readerProgress = window.NovelightReadingSettings?.contentProgress;
+    if (typeof readerProgress === 'function') return clamp(readerProgress(content));
     const rect = content.getBoundingClientRect();
     const absoluteTop = window.scrollY + rect.top;
     const height = Math.max(content.scrollHeight, rect.height, 1);
@@ -263,6 +265,11 @@
     button.type = 'button';
     button.textContent = `↪ 前回の続きへ（約${Math.round(ratio * 100)}%）`;
     button.addEventListener('click', () => {
+      const seek = window.NovelightReadingSettings?.seekProgress;
+      if (typeof seek === 'function') {
+        seek(content, ratio, 'smooth');
+        return;
+      }
       const top = window.scrollY + content.getBoundingClientRect().top;
       const target = top + Math.max(0, content.scrollHeight * ratio - window.innerHeight * 0.35);
       window.scrollTo({ top: target, behavior: 'smooth' });
@@ -397,6 +404,8 @@
       }, 500);
     };
     window.addEventListener('scroll', schedule, { passive: true });
+    content.addEventListener('scroll', schedule, { passive: true });
+    document.addEventListener('novelight-reading-mode-changed', schedule);
     window.addEventListener('pagehide', () => {
       saveEpisodeProgress(row, content, clientInstance, syncState.userId);
       if (syncState.userId) void pushLocalProgress(clientInstance, syncState.userId, row.novel_id);
