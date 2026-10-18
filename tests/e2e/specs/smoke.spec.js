@@ -33,12 +33,12 @@ test('public header keeps the same geometry before and after hydration', async (
   ];
   const measure = async (page) =>
     page.evaluate(() => {
-      const header = document.querySelector('header.site-header');
+      const header = globalThis.document.querySelector('header.site-header');
       const select = (selector) => {
         const node = header?.querySelector(selector);
         if (!node) return null;
         const rect = node.getBoundingClientRect();
-        const style = getComputedStyle(node);
+        const style = globalThis.getComputedStyle(node);
         return {
           x: Math.round(rect.x),
           y: Math.round(rect.y),
