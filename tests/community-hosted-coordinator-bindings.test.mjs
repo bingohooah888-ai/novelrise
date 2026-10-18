@@ -178,6 +178,25 @@ function fixture({ failBrowser = false, failClaim = false } = {}) {
   isolatedActions.runBrowser = async () => {
     calls.push('runBrowser');
     if (failBrowser) throw Error('SECRET_BROWSER_FAILURE');
+    return {
+      status: 'COMMUNITY_HOSTED_BROWSER_ASSERTIONS_COMPLETE',
+      mainSha: MAIN,
+      candidateSha: FEATURE,
+      requestCommentId: run.requestCommentId,
+      runId: run.runId,
+      projectRef: PROJECT,
+      previewOrigin: ORIGIN,
+      userIds: { ...target.userIds },
+      productionMutationObserved: false,
+      twoIndependentUserSessions: true,
+      separateAdminSession: true,
+      anonymousAccessDenied: true,
+      crossUserBlockMuteVerified: true,
+      ownerOptInRevokeVerified: true,
+      likesCommentsReportsNotificationsVerified: true,
+      adminModerationAuditVerified: true,
+      r15R18PrivateUnpublishedRpcExcluded: true
+    };
   };
   isolatedActions.confirmBranchDeleted = async () => {
     calls.push('confirmBranchDeleted');
