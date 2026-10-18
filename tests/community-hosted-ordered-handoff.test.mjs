@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  runCommunityHostedSingleLifecycle
-} from '../scripts/community-hosted-ordered-handoff.mjs';
+import { runCommunityHostedSingleLifecycle } from '../scripts/community-hosted-ordered-handoff.mjs';
 
 const RUN = Object.freeze({
   repository: 'bingohooah888-ai/novelrise',
@@ -183,12 +181,7 @@ test('grant failure records one terminal failure, never runs browser', async () 
     runCommunityHostedSingleLifecycle({ run: RUN, operations: x.operations }),
     /terminal failure recorded/u
   );
-  assert.deepEqual(x.calls, [
-    'preflight',
-    'claim',
-    'grant',
-    'consume:failure'
-  ]);
+  assert.deepEqual(x.calls, ['preflight', 'claim', 'grant', 'consume:failure']);
 });
 
 test('browser or cleanup failure must not be a success CONSUME', async () => {
@@ -227,15 +220,4 @@ test('mismatched terminal receipt fails closed without a second POST', async () 
     /terminal receipt ambiguous/u
   );
   assert.equal(x.calls.filter((s) => s.startsWith('consume')).length, 1);
-});
-
-import { execFileSync } from 'node:child_process';
-
-test('temporary-prettier-format-inspection', () => {
-  const output = execFileSync(
-    './node_modules/.bin/prettier',
-    ['tests/community-hosted-ordered-handoff.test.mjs'],
-    { encoding: 'utf8' }
-  );
-  console.log('PRETTIER_ORDERED_HANDOFF_BASE64=' + Buffer.from(output).toString('base64'));
 });
