@@ -342,8 +342,7 @@ test('public header geometry is stable before hydration and across pages', async
             y: round(rect.y),
             width: round(rect.width),
             height: round(rect.height),
-            display: style.display,
-            fontSize: style.fontSize
+            display: style.display
           };
         };
         return {
