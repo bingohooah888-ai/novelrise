@@ -276,7 +276,13 @@
 
     document.body?.classList.add('novelight-public-header-page');
 
-    if (!document.querySelector('link[data-novelight-public-header]')) {
+    // The render-blocking accessibility stylesheet already imports the
+    // canonical header CSS. Re-appending it after paint changed the cascade
+    // order and made the header visibly jump.
+    if (
+      !document.querySelector('link[data-novelight-public-header]') &&
+      !document.querySelector('link[href*="novelight-accessibility.css"]')
+    ) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = PUBLIC_HEADER_STYLESHEET_PATH;
