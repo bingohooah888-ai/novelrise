@@ -488,3 +488,96 @@ test('authenticated header label preserves its initial geometry', async ({
     expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
   }
 });
+
+test('public header colors and menu coordinates stay stable with owner shortcut', async ({
+  browser
+}) => {
+  const viewports = [
+    { width: 1600, height: 900 },
+    { width: 1280, height: 850 },
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 }
+  ];
+  for (const viewport of viewports) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    let homeCoordinates;
+
+    for (const route of ['/', '/search.html', '/ranking.html']) {
+      await page.goto(route, { waitUntil: 'load' });
+      const readHeader = () =>
+        page.evaluate(() => {
+          const rect = (element) => {
+            const box = element.getBoundingClientRect();
+            return [box.x, box.y, box.width, box.height];
+          };
+          const header = document.querySelector('header.site-header');
+          const inner = header.querySelector('.public-header-inner');
+          const links = Array.from(header.querySelectorAll('.desktop-nav a'));
+          return {
+            headerColor: getComputedStyle(header).backgroundColor,
+            inner: rect(inner),
+            logo: rect(header.querySelector('.logo img')),
+            links:
+              getComputedStyle(header.querySelector('.desktop-nav')).display === 'none'
+                ? []
+                : links.map(rect),
+            scrollWidth: document.documentElement.scrollWidth,
+            viewportWidth: document.documentElement.clientWidth
+          };
+        });
+
+      const before = await readHeader();
+      expect(
+        before.headerColor,
+        `${viewport.width}px ${route} background`
+      ).toBe(
+        route === '/'
+          ? 'rgba(3, 10, 18, 0.9)'
+          : 'rgba(250, 249, 246, 0.98)'
+      );
+
+      await page.evaluate(() => {
+        const actions = document.querySelector('header.site-header .header-actions');
+        const link = document.createElement('a');
+        link.className = 'novelight-admin-shortcut novelight-admin-shortcut-desktop';
+        link.href = 'admin.html';
+        link.textContent = '管理画面';
+        actions.insertBefore(link, actions.querySelector('details.mobile-menu'));
+      });
+      const after = await readHeader();
+      expect(
+        after.scrollWidth <= after.viewportWidth + 1,
+        `${viewport.width}px ${route} should not overflow horizontally`
+      ).toBe(true);
+      for (const key of ['inner', 'logo']) {
+        for (let index = 0; index < 4; index += 1) {
+          expect(
+            Math.abs(after[key][index] - before[key][index]),
+            `${viewport.width}px ${route} ${key} metric ${index}`
+          ).toBeLessThanOrEqual(1);
+        }
+      }
+      expect(after.links.length).toBe(before.links.length);
+      for (let index = 0; index < before.links.length; index += 1) {
+        for (let metric = 0; metric < 4; metric += 1) {
+          expect(
+            Math.abs(after.links[index][metric] - before.links[index][metric]),
+            `${viewport.width}px ${route} nav ${index} metric ${metric}`
+          ).toBeLessThanOrEqual(1);
+        }
+      }
+
+      if (homeCoordinates && viewport.width >= 1101) {
+        for (let index = 0; index < before.links.length; index += 1) {
+          expect(
+            Math.abs(before.links[index][0] - homeCoordinates.links[index][0]),
+            `${viewport.width}px ${route} menu ${index} should match Home`
+          ).toBeLessThanOrEqual(2);
+        }
+      }
+      if (route === '/') homeCoordinates = before;
+    }
+    await context.close();
+  }
+});

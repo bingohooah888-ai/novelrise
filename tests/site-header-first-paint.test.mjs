@@ -137,3 +137,29 @@ test('static public headers survive client initialization without replacement', 
   assert.doesNotMatch(reuse, /header\.innerHTML\s*=/u);
   assert.match(client, /header\.innerHTML\s*=/u);
 });
+
+test('public light header CSS does not recolor the dark Home header', () => {
+  const base = read('novelight-header-light-base.css');
+  const light = read('novelight-header-light.css');
+  const darkRule = /html body\.novelight-public-dark \.site-header,\s*html body\.novelight-public-header-page/u;
+  assert.doesNotMatch(base, darkRule);
+  assert.doesNotMatch(light, darkRule);
+  assert.match(
+    accessibility,
+    /html body\.novelight-public-dark \.site-header \{[\s\S]*?background: rgba\(3, 10, 18, 0\.9\) !important/u
+  );
+  assert.doesNotMatch(
+    light,
+    /visibility: visible !important;\s*filter: none !important/u
+  );
+});
+
+test('admin shortcut has a fixed header slot and a compact-layout fallback', () => {
+  const toast = read('novelight-scout-title-toast.js');
+  assert.match(toast, /insertBefore\(link, mobileMenu \|\| null\)/u);
+  assert.match(toast, /novelight-admin-shortcut-desktop/u);
+  assert.match(accessibility, /padding-right: 108px !important/u);
+  assert.match(accessibility, /position: absolute !important/u);
+  assert.match(accessibility, /min-width: 100px !important/u);
+  assert.match(accessibility, /max-width: 1100px/u);
+});
