@@ -481,3 +481,17 @@ html body.novelight-public-header-page:not(.novelight-public-dark) header.site-h
     font-size: 17px !important;
   }
 }
+
+/* Preserve mobile visibility rules against desktop action sizing overrides. */
+@media (max-width: 900px) {
+  html body.novelight-public-dark header.site-header .header-actions > .signup-action,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .signup-action {
+    display: none !important;
+  }
+}
+@media (max-width: 640px) {
+  html body.novelight-public-dark header.site-header .header-actions > .login-action,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
+    display: none !important;
+  }
+}
