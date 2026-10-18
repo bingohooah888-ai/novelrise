@@ -361,8 +361,8 @@ html body.novelight-public-dark header.site-header .novelight-brand-logo-image {
   max-width: 270px !important;
   object-fit: contain !important;
   object-position: left center !important;
-  filter: invert(1) sepia(.78) saturate(3.2) hue-rotate(348deg) brightness(1.24) contrast(1.04) !important;
-  mix-blend-mode: screen !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
 }
 html body.novelight-public-dark header.site-header .desktop-nav {
   display: flex !important;
