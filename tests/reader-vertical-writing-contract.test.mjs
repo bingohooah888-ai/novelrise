@@ -84,7 +84,8 @@ test('vertical reading measures and resumes leftward progress', () => {
 
 test('illustrations stay upright and bounded in vertical mode', () => {
   assert.match(settingsCss, /writing-mode: vertical-rl/);
-  assert.match(settingsCss, /text-orientation: mixed/);
+  assert.match(settingsCss, /text-orientation: upright/);
+  assert.match(settingsCss, /line-break: anywhere/);
   assert.match(settingsCss, /overflow-x: auto/);
   assert.match(settingsCss, /\.content > \.episode-inline-illustration/);
   assert.match(settingsCss, /writing-mode: horizontal-tb/);

@@ -9,7 +9,8 @@ test('portrait reader expands sideways when rotation is denied', async ({
       '<!doctype html><html lang="ja">',
       '<body class="novelight-page-episode" data-reading-direction="horizontal">',
       '<main><article id="card"><div class="content">',
-      '日本語の縦書き小説。'.repeat(500),
+      '日本語の第2話と3人の物語。'.repeat(500),
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.repeat(9),
       '</div></article></main>',
       '<nav id="nlReadingNav"><div class="nl-reading-nav-main">',
       '<a class="nl-reading-link next" data-landscape-label="第2話に進む"',
@@ -53,12 +54,23 @@ test('portrait reader expands sideways when rotation is denied', async ({
     return {
       transform: computed.transform,
       width: box.width,
-      height: box.height
+      height: box.height,
+      textOrientation: computed.textOrientation,
+      lineBreak: computed.lineBreak,
+      scrollHeight: element.scrollHeight,
+      clientHeight: element.clientHeight,
+      paddingTop: parseFloat(computed.paddingTop),
+      paddingBottom: parseFloat(computed.paddingBottom)
     };
   });
   expect(style.transform).not.toBe('none');
   expect(style.width).toBeCloseTo(390, 0);
   expect(style.height).toBeCloseTo(844, 0);
+  expect(style.textOrientation).toBe('upright');
+  expect(style.lineBreak).toBe('anywhere');
+  expect(style.paddingTop).toBeGreaterThanOrEqual(28);
+  expect(style.paddingBottom).toBeGreaterThanOrEqual(28);
+  expect(style.scrollHeight).toBeLessThanOrEqual(style.clientHeight + 1);
 
   await expand.click();
   await expect(page.locator('body')).toHaveAttribute(
