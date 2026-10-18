@@ -333,3 +333,81 @@ html body.novelight-public-header-page header.site-header .logo img {
     max-width: 56vw !important;
   }
 }
+
+/* Shared first-paint public-header geometry for all light public pages.
+   Keep the approved Home grid while preserving each page's own colors. */
+@media (min-width: 1181px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
+    display: grid !important;
+    width: min(1440px, calc(100% - 48px)) !important;
+    max-width: 1440px !important;
+    grid-template-columns: minmax(250px, 290px) minmax(560px, 1fr) auto !important;
+    align-items: center !important;
+    column-gap: 24px !important;
+  }
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav {
+    display: flex !important;
+    width: 100% !important;
+    justify-content: space-evenly !important;
+    align-items: stretch !important;
+    align-self: stretch !important;
+    gap: 0 !important;
+    margin-left: 0 !important;
+  }
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav a {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 12px !important;
+    font-size: 22px !important;
+    letter-spacing: 0.025em !important;
+    text-align: center !important;
+  }
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions {
+    margin-left: 0 !important;
+    gap: 12px !important;
+  }
+}
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
+    display: grid !important;
+    width: calc(100% - 32px) !important;
+    grid-template-columns: minmax(210px, 230px) minmax(400px, 1fr) auto !important;
+    align-items: center !important;
+    column-gap: 14px !important;
+  }
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav {
+    display: flex !important;
+    width: 100% !important;
+    justify-content: space-evenly !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    margin-left: 0 !important;
+  }
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav a {
+    justify-content: center !important;
+    padding: 0 7px !important;
+    font-size: 20px !important;
+    letter-spacing: 0.015em !important;
+    text-align: center !important;
+  }
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions {
+    margin-left: 0 !important;
+    gap: 8px !important;
+  }
+}
+
+/* Reserve identical login width for anonymous / authenticated header states.
+   Signup is already held as a non-interactive placeholder during auth checks. */
+@media (min-width: 1181px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .login-action {
+    min-width: calc(4em + 48px) !important;
+    justify-content: center !important;
+  }
+}
+@media (min-width: 641px) and (max-width: 1180px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .login-action {
+    min-width: calc(4em + 28px) !important;
+    justify-content: center !important;
+  }
+}
