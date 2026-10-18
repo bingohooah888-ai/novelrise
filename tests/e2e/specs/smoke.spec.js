@@ -403,6 +403,13 @@ test('public header stays in place through delayed client script', async ({
     try {
       const header = page.locator('header.site-header .public-header-inner');
       await expect(header).toBeVisible();
+      await expect.poll(() =>
+        page.evaluate(() =>
+          [...globalThis.document.querySelectorAll('link[rel="stylesheet"]')].every(
+            (sheet) => Boolean(sheet.sheet)
+          )
+        )
+      ).toBe(true);
       await expect.poll(() => Boolean(resume)).toBe(true);
       const before = await page.evaluate(() => {
         const inner = globalThis.document.querySelector('.public-header-inner');

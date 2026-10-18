@@ -101,6 +101,21 @@ test('legacy public reader and auth pages ship their final header in HTML', () =
   }
 });
 
+test('legacy and announcement pages load their finished theme before paint', () => {
+  for (const page of [
+    'login.html',
+    'signup.html',
+    'novel.html',
+    'announcements.html',
+    'news-detail.html'
+  ]) {
+    const source = read(page);
+    const head = source.split('</head>')[0];
+    assert.match(head, /href="novelight-theme\.css"/u, page);
+    assert.match(source, /class="novelight-theme /u, page);
+  }
+});
+
 test('authenticated public headers keep their navigation width', () => {
   assert.match(accessibility, /\.signup-action\[hidden\]/u);
   assert.match(accessibility, /visibility: hidden !important/u);
