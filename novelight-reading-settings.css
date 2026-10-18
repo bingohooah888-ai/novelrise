@@ -154,3 +154,92 @@ body.novelight-page-episode[data-reading-theme='dark'] .meta {
     grid-template-columns: 1fr;
   }
 }
+
+/* Optional Japanese book-style reading: columns flow from right to left. */
+.reading-setting-writing-mode {
+  min-width: 0;
+}
+
+.reading-writing-mode-buttons {
+  display: flex;
+  min-height: 40px;
+  gap: 4px;
+}
+
+.reading-writing-mode-button {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #d7dae0;
+  border-radius: 8px;
+  background: #fff;
+  color: #575c66;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reading-writing-mode-button[aria-pressed='true'] {
+  border-color: #7462d8;
+  background: #efeafe;
+  color: #4b36ab;
+}
+
+body.novelight-page-episode[data-reading-direction='vertical'] .content {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  width: 100%;
+  height: min(72dvh, 680px);
+  min-height: 280px;
+  padding: 16px 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(120, 105, 87, .18);
+  border-radius: 8px;
+}
+
+/* Images remain upright, proportional and constrained to the reading viewport. */
+body.novelight-page-episode[data-reading-direction='vertical'] .content > .episode-inline-illustration,
+body.novelight-page-episode[data-reading-direction='vertical'] .content > .episode-inline-illustration-failed {
+  writing-mode: horizontal-tb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(72vw, 520px);
+  height: 100%;
+  margin: 0 1.2em;
+  flex: none;
+}
+
+body.novelight-page-episode[data-reading-direction='vertical'] .content > .episode-inline-illustration img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-button {
+  background: #1d2430;
+  border-color: #394352;
+  color: #edf0f5;
+}
+
+body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-button[aria-pressed='true'] {
+  background: #352d53;
+  border-color: #a594f3;
+  color: #f6f0ff;
+}
+
+@media (max-width: 600px) {
+  body.novelight-page-episode[data-reading-direction='vertical'] .content {
+    height: min(70dvh, 580px);
+    min-height: 240px;
+  }
+}
