@@ -3,7 +3,7 @@
 
   // A one-shot handoff: immersive mode continues only when the reader follows Next.
   const NEXT_EPISODE_KEY = 'novelight:landscape-reader-next:v1';
-  const LANDSCAPE_PHONE = '(orientation: landscape) and (pointer: coarse), (orientation: landscape) and (hover: none)';
+  const LANDSCAPE_PHONE = '(orientation: landscape) and (pointer: coarse), (orientation: landscape) and (hover: none), (orientation: landscape) and (max-height: 600px)';
 
   function mount() {
     const settings = global.NovelightReadingSettings;
@@ -98,7 +98,11 @@
         content.addEventListener('scroll', syncEnd, { passive: true });
         if (requestedEpisode) {
           requestedEpisode = null;
-          enter();
+          if (media.matches) enter();
+          else {
+            awaitingLandscape = true;
+            hint.hidden = false;
+          }
         }
       }
     }
