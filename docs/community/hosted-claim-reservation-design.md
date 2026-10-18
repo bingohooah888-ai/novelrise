@@ -124,3 +124,10 @@ CONSUMEの実行入口の認証、実行後の資源廃棄検証。これらの�
 - CONSUME POSTが曖昧・失敗・受領証不一致の場合、自動再POSTせず台帳と外部資源を手動で照合する。adapter例外内のtokenやレスポンスを報告へ転記しない。
 - 本実装は接続インターフェースとエラー遷移を検証する段階であり、**認証済み実行grant、費用上限、GitHub Environment protection、排他の外部証明、実際のSupabase branch/Preview/browser adaptersは未接続**。よってこのファイルを追加しても実際のCLAIM/CONSUME、有料Staging、Preview、一般公開は不可能なまま。
 - GitHub mainマージには本PR固有の「本番承認」が必要。実際の有料検証には別途exact SHA/scope/一回限りの「ステージング承認」が必要。
+
+## 既存3部品のコーディネーター結合（2026-10-18、未有効化）
+
+- `scripts/community-hosted-coordinator-bindings.mjs` は既存の `reserveAndRecordCommunityHostedClaim`、`runCommunityHostedWriteLifecycle`、`recordCommunityHostedConsumption` の引数・受領証を、前段の `runCommunityHostedSingleLifecycle` に合わせる依存注入アダプターである。
+- `tests/community-hosted-coordinator-bindings.test.mjs` は実コードの3部品を組み合わせたメモリー内の模擬GitHubタグ・台帳と隔離環境で、正常経路、ブラウザ失敗のcleanup後failure記録、CLAIM不明時の自動再試行拒否、IDすり替え拒否を確認する。
+- **境界維持**：結合アダプターは `verifyFreshProtectedBoundary` と `obtainIndependentExecutionGrant` を実装も発行もしない。単体では前段の実行条件を満たせず、実行できない。実環境のOWNER/費用/保護/排他/独立環境の認証には使用できない。模擬入力と成功を実際の費用許可に読み替えてはならない。
+- 今回の変更ではGitHub Actions、GitHubタグ・Issue台帳、Supabase、Vercel、実ブラウザ、Production、一般公開のいずれにも操作を追加しない。GitHub main mergeは別途本番承認、有料Stagingは独立した一回限りのステージング承認を要する。
