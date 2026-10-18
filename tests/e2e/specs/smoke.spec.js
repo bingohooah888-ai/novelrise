@@ -303,6 +303,83 @@ test('all public zones use the same responsive Home header scale', async ({
   }
 });
 
+test('public header geometry is stable before hydration and across pages', async ({
+  browser
+}) => {
+  test.setTimeout(120_000);
+  const pages = [
+    '/index.html',
+    '/recommended.html',
+    '/new-arrivals.html',
+    '/light-seed.html',
+    '/pricing.html',
+    '/special-light.html',
+    '/special-zone.html?zone=ai',
+    '/search.html',
+    '/ranking.html',
+    '/novel.html',
+    '/episode.html',
+    '/author.html',
+    '/login.html',
+    '/signup.html',
+    '/news-detail.html'
+  ];
+  for (const width of [1440, 390]) {
+    const context = await browser.newContext({
+      viewport: { width, height: 900 }
+    });
+    const page = await context.newPage();
+    const read = () =>
+      page.evaluate(() => {
+        const measure = (selector) => {
+          const element = globalThis.document.querySelector(selector);
+          if (!element) return null;
+          const rect = element.getBoundingClientRect();
+          const style = globalThis.getComputedStyle(element);
+          const round = (n) => Math.round(n * 10) / 10;
+          return {
+            x: round(rect.x),
+            y: round(rect.y),
+            width: round(rect.width),
+            height: round(rect.height),
+            display: style.display
+          };
+        };
+        return {
+          background: globalThis.getComputedStyle(
+            globalThis.document.querySelector('header.site-header')
+          ).backgroundColor,
+          header: measure('header.site-header'),
+          inner: measure('header.site-header .public-header-inner'),
+          logo: measure('header.site-header .logo img'),
+          navigation: measure('header.site-header .desktop-nav'),
+          firstLink: measure('header.site-header .desktop-nav a'),
+          actions: measure('header.site-header .header-actions')
+        };
+      });
+
+    await page.route('**/novelight-client.js', (route) =>
+      route.fulfill({ status: 200, contentType: 'text/javascript', body: '' })
+    );
+    await page.goto('/index.html', { waitUntil: 'load' });
+    const beforeHydration = await read();
+    await page.unroute('**/novelight-client.js');
+    await page.reload({ waitUntil: 'load' });
+    const home = await read();
+    expect(home, width + 'px: Home must not move after hydration').toEqual(
+      beforeHydration
+    );
+    for (const path of pages.slice(1)) {
+      await page.goto(path, { waitUntil: 'load' });
+      expect(
+        await read(),
+        width + 'px: ' + path + ' must match the shared Home header'
+      ).toEqual(home);
+    }
+    await context.close();
+  }
+});
+
 for (const surface of ['post', 'edit']) {
   test(`episode-${surface} caret scroll`, async ({ page, request }) => {
     const response = await request.get(`/episode-${surface}.html`);

@@ -65,25 +65,35 @@ test('discovery pages use the unified public header composition', () => {
   }
 });
 
-test('discovery list headers follow homepage layout at desktop widths', () => {
+test('all discovery headers share the canonical Home CSS geometry', () => {
   const home = headerMarkup(read('index.html'));
+  const headerCss = read('novelight-header-light.css');
+  const accessibility = read('novelight-accessibility.css');
   for (const file of discoveryPages) {
     assert.equal(headerMarkup(read(file)), home);
+    assert.ok(!read(file).includes('novelight-public-dark'));
   }
   assert.match(
-    css,
+    headerCss,
+    /body:is\(\.novelight-public-dark, \.novelight-public-header-page\)/u
+  );
+  assert.match(
+    headerCss,
     /grid-template-columns: minmax\(250px, 290px\) minmax\(560px, 1fr\) auto/u
   );
   assert.match(
-    css,
+    headerCss,
     /grid-template-columns: minmax\(210px, 230px\) minmax\(400px, 1fr\) auto/u
   );
-  assert.match(css, /justify-content: space-evenly !important/u);
-  assert.match(css, /column-gap: 24px !important/u);
-  assert.match(css, /column-gap: 14px !important/u);
-  for (const file of discoveryPages) {
-    assert.ok(!read(file).includes('novelight-public-dark'));
-  }
+  assert.doesNotMatch(
+    accessibility,
+    /background: rgba\(3, 10, 18, 0\.9\) !important/u
+  );
+  assert.doesNotMatch(accessibility, /filter: invert\(1\) sepia/u);
+  assert.doesNotMatch(
+    css,
+    /\.novelight-page-discovery-list header\.site-header \.public-header-inner/u
+  );
 });
 
 test('search and ranking use shared visual CSS', () => {
@@ -91,9 +101,9 @@ test('search and ranking use shared visual CSS', () => {
   const ranking = read('ranking.html');
 
   assert.ok(search.includes('novelight-discovery-list.css'));
-  assert.ok(search.includes('class="novelight-page-search"'));
+  assert.match(search, /class="[^"]*novelight-page-search\b/u);
   assert.ok(ranking.includes('novelight-discovery-list.css'));
-  assert.ok(ranking.includes('class="novelight-page-ranking"'));
+  assert.match(ranking, /class="[^"]*novelight-page-ranking\b/u);
 });
 
 test('discovery surfaces share compact spacing rules', () => {

@@ -152,10 +152,15 @@ html body.novelight-public-dark header.site-header .btn {
   }
 }
 
-/* Public header balance pass: keep the current logo treatment, but make the
-   Home / SPECIAL LIGHT / AI / R15 / R18 navigation read as one balanced row. */
+/* Protect the public header's intrinsic height from auth-page inline CSS. */
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header {
+  height: auto !important;
+}
+
+/* One shared desktop header grid for Home, SPECIAL and reader discovery pages.
+ * Prevent per-page copies from drifting between releases. */
 @media (min-width: 1181px) {
-  html body.novelight-public-dark header.site-header .public-header-inner {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
     display: grid !important;
     width: min(1440px, calc(100% - 48px)) !important;
     max-width: 1440px !important;
@@ -164,7 +169,7 @@ html body.novelight-public-dark header.site-header .btn {
     column-gap: 24px !important;
   }
 
-  html body.novelight-public-dark header.site-header .desktop-nav {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
     display: flex !important;
     width: 100% !important;
     justify-content: space-evenly !important;
@@ -174,7 +179,7 @@ html body.novelight-public-dark header.site-header .btn {
     margin-left: 0 !important;
   }
 
-  html body.novelight-public-dark header.site-header .desktop-nav a {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -184,14 +189,14 @@ html body.novelight-public-dark header.site-header .btn {
     text-align: center !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
     margin-left: 0 !important;
     gap: 12px !important;
   }
 }
 
 @media (min-width: 901px) and (max-width: 1180px) {
-  html body.novelight-public-dark header.site-header .public-header-inner {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
     display: grid !important;
     width: calc(100% - 32px) !important;
     grid-template-columns: minmax(210px, 230px) minmax(400px, 1fr) auto !important;
@@ -199,16 +204,17 @@ html body.novelight-public-dark header.site-header .btn {
     column-gap: 14px !important;
   }
 
-  html body.novelight-public-dark header.site-header .desktop-nav {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
     display: flex !important;
     width: 100% !important;
     justify-content: space-evenly !important;
     align-items: stretch !important;
+    align-self: stretch !important;
     gap: 0 !important;
     margin-left: 0 !important;
   }
 
-  html body.novelight-public-dark header.site-header .desktop-nav a {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
     justify-content: center !important;
     padding: 0 7px !important;
     font-size: 20px !important;
@@ -216,9 +222,108 @@ html body.novelight-public-dark header.site-header .btn {
     text-align: center !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
     margin-left: 0 !important;
     gap: 8px !important;
+  }
+}
+
+/* Stable public action buttons: Home previously inherited taller dark-theme
+   padding than discovery pages, shifting the entire navigation grid. */
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > a.btn {
+  display: inline-flex;
+  box-sizing: border-box !important;
+  height: 52px !important;
+  min-height: 52px !important;
+  padding: 0 24px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9px !important;
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.025em !important;
+  white-space: nowrap !important;
+}
+
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .btn-primary {
+  border: 1px solid #c8942f !important;
+  background: #d6a447 !important;
+  color: #081426 !important;
+  box-shadow: none !important;
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > a.btn {
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 14px !important;
+    font-size: 17px !important;
+  }
+}
+
+/* Mobile public headers use a single flex row, never the desktop
+   three-column grid. This prevents horizontal overflow on 390px screens. */
+@media (max-width: 900px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+    display: flex !important;
+    width: calc(100% - 32px) !important;
+    grid-template-columns: none !important;
+    min-height: 96px !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo {
+    min-width: 0 !important;
+    flex: 0 1 auto !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav,
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .signup-action {
+    display: none !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+    width: max-content !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+    width: 46px !important;
+    flex: 0 0 46px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+    display: block !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+    width: calc(100% - 24px) !important;
+    min-height: 84px !important;
+    gap: 8px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .login-action {
+    display: none !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+    width: 42px !important;
+    flex-basis: 42px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-search,
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu summary {
+    width: 42px !important;
+    height: 42px !important;
+    flex: 0 0 42px !important;
   }
 }
 
