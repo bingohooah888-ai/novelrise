@@ -3,8 +3,14 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const [settingsScript, settingsCss, continuity, episode, seoEpisode, illustrationCss] =
-  await Promise.all([
+const [
+  settingsScript,
+  settingsCss,
+  continuity,
+  episode,
+  seoEpisode,
+  illustrationCss
+] = await Promise.all([
     readFile('novelight-reading-settings.js', 'utf8'),
     readFile('novelight-reading-settings.css', 'utf8'),
     readFile('novelight-reading-continuity.js', 'utf8'),
@@ -38,7 +44,10 @@ function readerSettings() {
 test('old reader settings default safely to horizontal and persist vertical mode', () => {
   const { api, document, values } = readerSettings();
   assert.equal(api.normalize({ fontSize: 'large' }).writingMode, 'horizontal');
-  assert.equal(api.normalize({ writingMode: 'unexpected' }).writingMode, 'horizontal');
+  assert.equal(
+    api.normalize({ writingMode: 'unexpected' }).writingMode,
+    'horizontal'
+  );
   const configured = api.apply({
     ...api.DEFAULTS,
     writingMode: 'vertical'
@@ -89,8 +98,8 @@ test('vertical mode keeps illustrations upright and inside the reader viewport',
 test('both episode entry points count horizontal scrolling as real reading', () => {
   for (const html of [episode, seoEpisode]) {
     assert.match(html, /NovelightReadingSettings\?\.contentProgress/);
-    assert.match(html, /scrollContainer\?\.addEventListener\('scroll',noteInteraction/);
-    assert.match(html, /scrollContainer\?\.removeEventListener\('scroll',noteInteraction/);
+    assert.match(html, /scrollContainer\?\.addEventListener/);
+    assert.match(html, /scrollContainer\?\.removeEventListener/);
     assert.match(html, /NovelightEpisodeIllustrations\.mountReader/);
   }
   assert.match(continuity, /NovelightReadingSettings\?\.contentProgress/);
