@@ -249,13 +249,21 @@ export async function recordCommunityHostedConsumption({
     event,
     runId: preparation?.runId
   });
-  requireAdapter(actions, ['loadLiveSnapshot', 'readRef', 'postIssueComment']);
+  requireAdapter(actions, [
+    'loadLiveSnapshot',
+    'loadProtectionEvidence',
+    'readRef',
+    'postIssueComment'
+  ]);
   if (
     preparation?.mainSha !== trustedMainSha ||
     preparation?.requestCommentId !== String(event.comment.id)
   ) {
     deny('terminal identity mismatches the original approved request');
   }
+  // The original immutable tag must remain protected even on a terminal
+  // failure/cancellation path. A prior reservation is not enough.
+  await requireReservationTagProtection(actions, repository);
   const reserved = await safeCall(actions, 'readRef', { repository, ref });
   if (
     reserved?.status !== 200 ||
@@ -274,6 +282,20 @@ export async function recordCommunityHostedConsumption({
     freshMainSha: beforeWrite.main?.object?.sha,
     freshCandidateSha: beforeWrite.feature?.head?.sha
   });
+  // Re-check BOTH protection and the original ref immediately before a
+  // terminal write. An ambiguous outcome must still never be replayed.
+  await requireReservationTagProtection(actions, repository);
+  const beforePostRef = await safeCall(actions, 'readRef', {
+    repository,
+    ref
+  });
+  if (
+    beforePostRef?.status !== 200 ||
+    beforePostRef.ref !== ref ||
+    beforePostRef.sha !== trustedMainSha
+  ) {
+    deny('terminal reservation changed before final write');
+  }
   const sent = await safeCall(actions, 'postIssueComment', {
     repository,
     issueNumber: ISSUE_NUMBER,
@@ -285,6 +307,12 @@ export async function recordCommunityHostedConsumption({
     Number(beforeWrite.ledgerPages.at(-1).at(-1)?.id ?? 0)
   );
   const afterWrite = await safeCall(actions, 'loadLiveSnapshot');
+  if (
+    afterWrite.main?.object?.sha !== trustedMainSha ||
+    afterWrite.feature?.head?.sha !== preparation.candidateSha
+  ) {
+    deny('terminal revision moved before persisted receipt confirmation');
+  }
   const receipt = inspectCommunityHostedConsumeReceipt({
     event,
     preparation,
