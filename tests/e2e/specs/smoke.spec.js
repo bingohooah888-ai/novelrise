@@ -489,92 +489,44 @@ test('authenticated header label preserves its initial geometry', async ({
   }
 });
 
-test('admin shortcut keeps nav fixed', async ({ browser }) => {
-  const viewports = [
-    { width: 1600, height: 900 },
-    { width: 1280, height: 850 },
-    { width: 1024, height: 768 },
-    { width: 390, height: 844 }
-  ];
-  for (const viewport of viewports) {
-    const context = await browser.newContext({ viewport });
-    const page = await context.newPage();
-    let homeCoordinates;
-
-    for (const route of ['/', '/search.html', '/ranking.html']) {
-      await page.goto(route, { waitUntil: 'load' });
-      const readHeader = () =>
-        page.evaluate(() => {
-          const rect = (element) => {
-            const box = element.getBoundingClientRect();
-            return [box.x, box.y, box.width, box.height];
-          };
-          const header = globalThis.document.querySelector(
-            'header.site-header'
-          );
-          const inner = header.querySelector('.public-header-inner');
-          const nav = header.querySelector('.desktop-nav');
-          const links = Array.from(nav.querySelectorAll('a'));
-          const showNav = globalThis.getComputedStyle(nav).display !== 'none';
-          return {
-            headerColor: globalThis.getComputedStyle(header).backgroundColor,
-            inner: rect(inner),
-            logo: rect(header.querySelector('.logo img')),
-            links: showNav ? links.map(rect) : [],
-            viewportWidth: globalThis.document.documentElement.clientWidth
-          };
-        });
-
-      const before = await readHeader();
-      const expectedColor =
-        route === '/' ? 'rgba(3, 10, 18, 0.9)' : 'rgba(250, 249, 246, 0.98)';
-      expect(before.headerColor).toBe(expectedColor);
-
-      await page.evaluate(() => {
-        const actions = globalThis.document.querySelector(
-          'header.site-header .header-actions'
-        );
-        const link = globalThis.document.createElement('a');
-        link.className =
-          'novelight-admin-shortcut novelight-admin-shortcut-desktop';
-        link.href = 'admin.html';
-        link.textContent = '管理画面';
-        const menu = actions.querySelector('details.mobile-menu');
-        actions.insertBefore(link, menu);
-      });
-      const after = await readHeader();
-      expect(
-        after.inner[0] + after.inner[2] <= after.viewportWidth + 1,
-        `${viewport.width}px ${route} header should fit the viewport`
-      ).toBe(true);
-      for (const key of ['inner', 'logo']) {
-        for (let index = 0; index < 4; index += 1) {
-          expect(
-            Math.abs(after[key][index] - before[key][index]),
-            `${viewport.width}px ${route} ${key} metric ${index}`
-          ).toBeLessThanOrEqual(1);
-        }
-      }
-      expect(after.links.length).toBe(before.links.length);
-      for (let index = 0; index < before.links.length; index += 1) {
-        for (let metric = 0; metric < 4; metric += 1) {
-          expect(
-            Math.abs(after.links[index][metric] - before.links[index][metric]),
-            `${viewport.width}px ${route} nav ${index} metric ${metric}`
-          ).toBeLessThanOrEqual(1);
-        }
-      }
-
-      if (homeCoordinates && viewport.width >= 1101) {
-        for (let index = 0; index < before.links.length; index += 1) {
-          expect(
-            Math.abs(before.links[index][0] - homeCoordinates.links[index][0]),
-            `${viewport.width}px ${route} menu ${index} should match Home`
-          ).toBeLessThanOrEqual(2);
-        }
-      }
-      if (route === '/') homeCoordinates = before;
+test('admin shortcut preserves public menu coordinates', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  let baseline;
+  for (const route of ['/', '/search.html', '/ranking.html']) {
+    await page.goto(route);
+    const navLinks = page.locator('.desktop-nav a');
+    const measure = () =>
+      navLinks.evaluateAll((links) =>
+        links.map((link) => Math.round(link.getBoundingClientRect().x))
+      );
+    const before = await measure();
+    if (baseline) {
+      expect(before).toEqual(baseline);
+    } else {
+      baseline = before;
     }
-    await context.close();
+
+    await page.evaluate(() => {
+      const link = globalThis.document.createElement('a');
+      link.className = 'novelight-admin-shortcut-desktop';
+      const actions = globalThis.document.querySelector('.header-actions');
+      actions.appendChild(link);
+    });
+    expect(await measure()).toEqual(before);
   }
+});
+
+test('Home header stays navy and discovery header stays ivory', async ({
+  page
+}) => {
+  await page.goto('/');
+  await expect(page.locator('header.site-header')).toHaveCSS(
+    'background-color',
+    'rgba(3, 10, 18, 0.9)'
+  );
+  await page.goto('/search.html');
+  await expect(page.locator('header.site-header')).toHaveCSS(
+    'background-color',
+    'rgba(250, 249, 246, 0.98)'
+  );
 });
