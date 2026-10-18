@@ -67,7 +67,7 @@ test('public headers use the light treatment and larger action text', () => {
 test('selected public navigation relies on highlighted text without a second underline', () => {
   assert.match(
     firstPaintCss,
-    /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important\}/u
+    /site-nav a\[aria-current="page"\]::after\{display:none!important;content:none!important;?\}/u
   );
 });
 
