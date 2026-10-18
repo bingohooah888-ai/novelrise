@@ -457,3 +457,27 @@ html body.novelight-public-header-page:not(.novelight-public-dark) header.site-h
     max-width: 56vw !important;
   }
 }
+
+/* Header actions must use exactly the same metrics on dark and light pages.
+ * Previously the dark Home buttons inherited block display and natural
+ * line-height while discovery buttons used flex with a 52px minimum. */
+html body.novelight-public-dark header.site-header .header-actions > .btn,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .btn {
+  display: inline-flex !important;
+  min-height: 52px !important;
+  padding: 12px 24px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9px !important;
+  font-size: 19px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-public-dark header.site-header .header-actions > .btn,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .btn {
+    min-height: 48px !important;
+    padding: 10px 14px !important;
+    font-size: 17px !important;
+  }
+}
