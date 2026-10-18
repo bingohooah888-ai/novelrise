@@ -401,7 +401,7 @@ test('public header stays in place through delayed client script', async ({
       await expect(header).toBeVisible();
       await expect.poll(() => Boolean(resume)).toBe(true);
       const before = await page.evaluate(() => {
-        const inner = document.querySelector('.public-header-inner');
+        const inner = globalThis.document.querySelector('.public-header-inner');
         const logo = inner.querySelector('.logo img');
         const box = inner.getBoundingClientRect();
         const logoBox = logo.getBoundingClientRect();
@@ -419,7 +419,7 @@ test('public header stays in place through delayed client script', async ({
       resume();
       await page.waitForLoadState('load');
       const after = await page.evaluate(() => {
-        const inner = document.querySelector('.public-header-inner');
+        const inner = globalThis.document.querySelector('.public-header-inner');
         const logo = inner.querySelector('.logo img');
         const box = inner.getBoundingClientRect();
         const logoBox = logo.getBoundingClientRect();
