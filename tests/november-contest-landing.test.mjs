@@ -28,13 +28,19 @@ test('contest header follows scrolling and matches shared header scale', () => {
   assert.match(css, /section\[id\]\{scroll-margin-top:136px\}/u);
 });
 
+test('contest header spaces navigation evenly', () => {
+  assert.match(css, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/u);
+  assert.ok(css.includes('flex:1;min-width:0'));
+  assert.match(css, /\.contest-header-nav a\{[^}]*text-align:center/u);
+});
+
 test('contest navigation includes the official entry rules on all widths', () => {
   assert.match(page, /href="\/contest-terms">応募要項<\/a>/u);
   assert.match(page, /href="#entries">参加作品<\/a>/u);
   assert.match(page, /href="#rules">参加方法<\/a>/u);
   assert.match(page, /href="my-novels.html">自分の作品<\/a>/u);
   assert.match(css, /\.contest-header-nav a:nth-child\(2\)\{display:inline\}/u);
-  assert.match(css, /grid-template-columns:repeat\(2,max-content\)/u);
+  assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/u);
 });
 
 test('contest awards and scoring milestones', () => {
