@@ -21,6 +21,68 @@ const publicPages = [
   ['bulk import', '/bulk-import.html']
 ];
 
+test('public header keeps the same geometry before and after hydration', async ({
+  browser
+}) => {
+  const paths = [
+    '/index.html',
+    '/search.html',
+    '/ranking.html',
+    '/recommended.html',
+    '/pricing.html'
+  ];
+  const measure = async (page) =>
+    page.evaluate(() => {
+      const header = document.querySelector('header.site-header');
+      const select = (selector) => {
+        const node = header?.querySelector(selector);
+        if (!node) return null;
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          w: Math.round(rect.width),
+          h: Math.round(rect.height),
+          display: style.display,
+          fontSize: style.fontSize
+        };
+      };
+      return {
+        header: select('.public-header-inner'),
+        logo: select('.logo img'),
+        navigation: select('.desktop-nav'),
+        actions: select('.header-actions')
+      };
+    });
+
+  for (const width of [1440, 390]) {
+    const context = await browser.newContext({
+      viewport: { width, height: 900 }
+    });
+    const page = await context.newPage();
+    for (const path of paths) {
+      await page.route('**/novelight-client.js', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/javascript',
+          body: ''
+        })
+      );
+      await page.goto(path, { waitUntil: 'load' });
+      const initial = await measure(page);
+      await page.unroute('**/novelight-client.js');
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForTimeout(200);
+      const hydrated = await measure(page);
+      expect(initial, `${path} ${width}px initial vs hydrated`).toEqual(
+        hydrated
+      );
+    }
+    await context.close();
+  }
+});
+
 for (const [name, path] of publicPages) {
   test(`${name} page renders`, async ({ request }) => {
     const response = await request.get(path);
