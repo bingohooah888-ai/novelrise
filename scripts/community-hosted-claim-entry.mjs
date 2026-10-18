@@ -10,7 +10,7 @@ import { reserveAndRecordCommunityHostedClaim } from './community-hosted-reserva
 const REPO = 'bingohooah888-ai/novelrise';
 const OWNER = 'bingohooah888-ai';
 const WORKFLOW_REF =
-  REPO + '/.github/workflows/community-hosted-claim-only.yml@refs/heads/main';
+  REPO + '/.github/workflows/community-hosted-executor.yml@refs/heads/main';
 const ISSUE_URL = 'https://api.github.com/repos/' + REPO + '/issues/188';
 const ISSUE_TITLE = '[Staging Approval Control] Preview / Staging cost gate';
 const MARKER = 'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ';
