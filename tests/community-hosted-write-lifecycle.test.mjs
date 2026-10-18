@@ -42,7 +42,35 @@ const clean = () => ({
   testUsers: 0
 });
 
-function harness({ failAt, baseline, final, branchDeleted = true } = {}) {
+function completeBrowserProof() {
+  return {
+    status: 'COMMUNITY_HOSTED_BROWSER_ASSERTIONS_COMPLETE',
+    mainSha: TARGET.mainSha,
+    candidateSha: TARGET.candidateSha,
+    requestCommentId: GRANT.requestCommentId,
+    runId: GRANT.runId,
+    projectRef: TARGET.isolatedProjectRef,
+    previewOrigin: TARGET.previewOrigin,
+    userIds: { ...TARGET.userIds },
+    productionMutationObserved: false,
+    twoIndependentUserSessions: true,
+    separateAdminSession: true,
+    anonymousAccessDenied: true,
+    crossUserBlockMuteVerified: true,
+    ownerOptInRevokeVerified: true,
+    likesCommentsReportsNotificationsVerified: true,
+    adminModerationAuditVerified: true,
+    r15R18PrivateUnpublishedRpcExcluded: true
+  };
+}
+
+function harness({
+  failAt,
+  baseline,
+  final,
+  browserProof = completeBrowserProof(),
+  branchDeleted = true
+} = {}) {
   const calls = [];
   let reads = 0;
   const make = (name, result) => async () => {
@@ -60,7 +88,7 @@ function harness({ failAt, baseline, final, branchDeleted = true } = {}) {
       return reads === 1 ? baseline || clean() : final || clean();
     },
     openGate: make('openGate'),
-    runBrowser: make('runBrowser'),
+    runBrowser: make('runBrowser', browserProof),
     closeGate: make('closeGate'),
     revokeSessions: make('revokeSessions'),
     removeFixtureRows: make('removeFixtureRows'),
@@ -206,4 +234,42 @@ test('all mandatory cleanup adapters must exist before execution', async () => {
   delete x.actions.revokeSessions;
   await assert.rejects(run(x.actions), /DENIED/u);
   assert.deepEqual(x.calls, []);
+});
+
+test('browser success requires complete, run-bound assertions', async () => {
+  const invalidProofs = [
+    null,
+    {},
+    { ...completeBrowserProof(), anonymousAccessDenied: false },
+    { ...completeBrowserProof(), adminModerationAuditVerified: undefined },
+    { ...completeBrowserProof(), r15R18PrivateUnpublishedRpcExcluded: false },
+    { ...completeBrowserProof(), projectRef: 'd'.repeat(20) },
+    { ...completeBrowserProof(), runId: '999' },
+    {
+      ...completeBrowserProof(),
+      userIds: {
+        ...TARGET.userIds,
+        reader: TARGET.userIds.author
+      }
+    },
+    { ...completeBrowserProof(), productionMutationObserved: true }
+  ];
+  for (const browserProof of invalidProofs) {
+    const x = harness({ browserProof });
+    await assert.rejects(run(x.actions), /browser_or_gate/u);
+    assert.ok(x.calls.includes('runBrowser'));
+    assert.ok(x.calls.includes('closeGate'));
+    assert.ok(x.calls.includes('removeTestUsers'));
+    assert.equal(x.calls.at(-1), 'confirmBranchDeleted');
+  }
+});
+
+test('a browser adapter resolving without a receipt still fails closed', async () => {
+  const x = harness();
+  x.actions.runBrowser = async () => {
+    x.calls.push('runBrowser');
+  };
+  await assert.rejects(run(x.actions), /browser_or_gate/u);
+  assert.ok(x.calls.includes('closeGate'));
+  assert.equal(x.calls.at(-1), 'confirmBranchDeleted');
 });
