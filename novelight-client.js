@@ -274,7 +274,12 @@
     const slug = currentPageSlug();
     if (!PUBLIC_HEADER_PAGES.has(slug)) return false;
 
-    document.body?.classList.add('novelight-public-header-page');
+    // Dark public pages are already styled from their original body class.
+    // Adding the light-header class after first paint changes selectors and
+    // can shift the Home/SPECIAL navigation even without replacing its HTML.
+    if (!document.body?.classList.contains('novelight-public-dark')) {
+      document.body?.classList.add('novelight-public-header-page');
+    }
 
     // The render-blocking accessibility stylesheet already imports the
     // canonical header CSS. Re-appending it after paint changed the cascade
