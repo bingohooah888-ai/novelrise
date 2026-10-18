@@ -306,6 +306,7 @@ test('all public zones use the same responsive Home header scale', async ({
 test('public header geometry is stable before hydration and across pages', async ({
   browser
 }) => {
+  test.setTimeout(120_000);
   const pages = [
     '/index.html',
     '/recommended.html',
@@ -313,7 +314,15 @@ test('public header geometry is stable before hydration and across pages', async
     '/light-seed.html',
     '/pricing.html',
     '/special-light.html',
-    '/special-zone.html?zone=ai'
+    '/special-zone.html?zone=ai',
+    '/search.html',
+    '/ranking.html',
+    '/novel.html',
+    '/episode.html',
+    '/author.html',
+    '/login.html',
+    '/signup.html',
+    '/news-detail.html'
   ];
   for (const width of [1440, 390]) {
     const context = await browser.newContext({
