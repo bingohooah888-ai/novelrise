@@ -519,3 +519,29 @@ html body.novelight-public-header-page:not(.novelight-public-dark) header.site-h
   background: #fffdf8 !important;
   color: #0e1d35 !important;
 }
+
+/* Identical mobile controls and inherited text metrics on Home and reader
+ * lists. Prior dark/light page-local rules used 46px vs 42px controls. */
+html body.novelight-public-dark header.site-header .logo,
+html body.novelight-public-dark header.site-header .desktop-nav,
+html body.novelight-public-dark header.site-header .header-actions,
+html body.novelight-public-dark header.site-header .mobile-menu,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .logo,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .mobile-menu {
+  font-size: 16px !important;
+}
+@media (max-width: 900px) {
+  html body.novelight-public-dark header.site-header .header-search,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-search {
+    width: 46px !important;
+    height: 46px !important;
+    font-size: 30px !important;
+  }
+  html body.novelight-public-dark header.site-header .mobile-menu summary,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .mobile-menu summary {
+    width: 46px !important;
+    height: 46px !important;
+  }
+}
