@@ -1,0 +1,121 @@
+// Connect existing hosted reservation, terminal receipt and isolated lifecycle
+// adapters without providing authority. Pure dependency wiring: no CLI,
+// workflow trigger, token lookup, browser or network adapter is introduced.
+// A separately audited trusted-main runner must independently supply OWNER,
+// environment, budget and exclusivity evidence before calling the handoff.
+import {
+  recordCommunityHostedConsumption,
+  reserveAndRecordCommunityHostedClaim
+} from './community-hosted-reservation-coordinator.mjs';
+import { runCommunityHostedWriteLifecycle } from './community-hosted-write-lifecycle.mjs';
+
+const REPO = 'bingohooah888-ai/novelrise';
+const SHA = /^[0-9a-f]{40}$/u;
+const ID = /^[1-9][0-9]*$/u;
+
+function deny() {
+  // Suppress raw external responses, events and credentials.
+  throw new Error('COMMUNITY_HOSTED_BINDINGS_DENIED');
+}
+
+export function makeCommunityHostedCoordinatorBindings({
+  repository,
+  trustedMainSha,
+  event,
+  preparation,
+  githubActions,
+  isolatedTarget,
+  isolatedActions
+}) {
+  if (
+    repository !== REPO ||
+    !SHA.test(trustedMainSha ?? '') ||
+    event?.action !== 'created' ||
+    event.repository?.full_name !== REPO ||
+    !Number.isSafeInteger(event.comment?.id) ||
+    event.comment.id <= 0 ||
+    preparation?.status !== 'OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY' ||
+    preparation.mainSha !== trustedMainSha ||
+    preparation.candidateSha !==
+      '6bf0ea608183e4977fcdaa17d36b1712974d5a49' ||
+    preparation.requestCommentId !== String(event.comment.id) ||
+    !ID.test(preparation.runId ?? '') ||
+    preparation.stagingCostApproved !== false ||
+    preparation.runAuthorized !== false ||
+    !githubActions ||
+    !isolatedTarget ||
+    !isolatedActions
+  ) {
+    deny();
+  }
+
+  function verifyRun(run) {
+    if (
+      run?.repository !== repository ||
+      run.mainSha !== trustedMainSha ||
+      run.candidateSha !== preparation.candidateSha ||
+      run.requestCommentId !== preparation.requestCommentId ||
+      run.runId !== preparation.runId ||
+      run.scope !== 'community-phase1-hosted-authenticated-write'
+    ) {
+      deny();
+    }
+  }
+
+  return Object.freeze({
+    // These three operations DO NOT form a full executable handoff:
+    // independent verifyFreshProtectedBoundary and
+    // obtainIndependentExecutionGrant are deliberately absent.
+    reserveAndRecordClaim: async (run) => {
+      verifyRun(run);
+      return reserveAndRecordCommunityHostedClaim({
+        repository,
+        trustedMainSha,
+        event,
+        runId: preparation.runId,
+        actions: githubActions
+      });
+    },
+    runIsolatedLifecycle: async (run, grant) => {
+      verifyRun(run);
+      if (
+        grant?.scope !== run.scope ||
+        grant.mainSha !== run.mainSha ||
+        grant.candidateSha !== run.candidateSha ||
+        grant.requestCommentId !== run.requestCommentId ||
+        grant.runId !== run.runId
+      ) {
+        deny();
+      }
+      return runCommunityHostedWriteLifecycle({
+        grant,
+        target: isolatedTarget,
+        actions: isolatedActions
+      });
+    },
+    recordTerminalConsumption: async ({
+      run,
+      claim,
+      outcome,
+      lifecycleProof
+    }) => {
+      verifyRun(run);
+      if (
+        claim?.requestCommentId !== run.requestCommentId ||
+        claim.runId !== run.runId ||
+        !['success', 'failure', 'cancelled'].includes(outcome)
+      ) {
+        deny();
+      }
+      return recordCommunityHostedConsumption({
+        repository,
+        trustedMainSha,
+        event,
+        preparation,
+        outcome,
+        lifecycleProof,
+        actions: githubActions
+      });
+    }
+  });
+}

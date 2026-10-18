@@ -107,3 +107,35 @@ CONSUMEの実行入口の認証、実行後の資源廃棄検証。これらの�
 - 呼ばれた場合も「不変タグ予約 + 同一IssueへのCLAIM記録」までで、`runAuthorized` / `writeAuthorized` / `stagingCostApproved` はすべてfalse。Supabase、Vercel、ブラウザ、Productionの操作は行わない。
 - **重要**：CLAIMだけを先に独立実行すると、その申請を一回限りで消費し、検証を実行できなくなる。実際のOWNER承認イベントからCLAIM→検証→CONSUMEを**同一の保護された実行ライフサイクル**へ接続し、全経路の排他・環境保護・失敗回復・費用上限・隔離資源削除の証拠が完成するまでこの入口を起動しない。
 - このPRはコード/Workflowの**準備のみ**。Gitタグ生成やIssueコメント、費用、Staging/Preview、一般公開は発生しない。mainへのマージは「本番承認」、有料検証実行は別途exact SHA + scope + 一回限りの「ステージング承認」が必要。
+
+## trusted-main executorのread-only入口（2026-10-18、CLAIM未接続）
+
+- .github/workflows/community-hosted-executor.yml は固定Issue #188に対するOWNERの新規申請のみを read-only job で検証する。triggering actor、eventのworkflow identity、main SHA、Issue・申請コメントとGitHub APIの最新状態、申請の一回限り台帳を独立再照合する。
+- scripts/community-hosted-executor-gate.mjs は既存のOWNER認証・一回限り申請検査を組み合わせるだけであり、CLAIM、Git tag、台帳書込み、Staging、Preview、ブラウザ、Secret、Productionにはアクセスしない。返却値の実行権限はすべてfalse。
+- community-hosted-claim-only.yml は本入口から呼び出さない。実際のCLAIM→隔離検証→CONSUMEを保護された同一runへ接続し、すべての実行経路の排他制御、費用上限、GitHub Environment protection、隔離資源とcleanupの実証、失敗時回復が揃うまで承認を消費してはならない。
+- 本変更で許容するのはGitHub Actionsのread-only短時間検証jobのみ。mainマージに本番承認が必要であり、有料Staging/Previewは別の一回限りのステージング承認が必要。
+
+## 同一runの順序・障害時停止ハンドオフ（2026-10-18、未有効化）
+
+- `scripts/community-hosted-ordered-handoff.mjs` に、CLAIM → 隔離検証 → CONSUMEを一つの実行呼び出しで順序付けるdependency-injected coordinatorを追加する。API接続、CLI、GitHub Actionsからの起動点、資格情報読み取り、実行grant発行は含めない。
+- 開始前に必須操作アダプター、固定候補SHA、run/request ID、scopeを確認する。外部から供給される `verifyFreshProtectedBoundary` はGitHub最新証跡・費用承認・Environment protection・共通排他・後片付け能力を**独立認証で証明できる将来のtrusted-main runner**のみが提供してよい。
+- CLAIMが不明・書込み確認できない場合、再予約せず、後続の隔離検証とCONSUMEも自動実行しない。受領済みCLAIMから費用許可を導出しない。別の独立認証済み `obtainIndependentExecutionGrant` が不足する場合、Stage実行せず失敗CONSUMEを一度だけ要求する。
+- `runIsolatedLifecycle` が成功した場合も、ブラウザ検証と隔離ブランチ削除の証跡がrun ID、request ID、main/candidate SHAに全て一致する場合のみ成功CONSUMEを要求する。失敗・証拠欠落時はfailureとして記録し、cleanup成功と偽らない。
+- CONSUME POSTが曖昧・失敗・受領証不一致の場合、自動再POSTせず台帳と外部資源を手動で照合する。adapter例外内のtokenやレスポンスを報告へ転記しない。
+- 本実装は接続インターフェースとエラー遷移を検証する段階であり、**認証済み実行grant、費用上限、GitHub Environment protection、排他の外部証明、実際のSupabase branch/Preview/browser adaptersは未接続**。よってこのファイルを追加しても実際のCLAIM/CONSUME、有料Staging、Preview、一般公開は不可能なまま。
+- GitHub mainマージには本PR固有の「本番承認」が必要。実際の有料検証には別途exact SHA/scope/一回限りの「ステージング承認」が必要。
+
+## 既存3部品のコーディネーター結合（2026-10-18、未有効化）
+
+- `scripts/community-hosted-coordinator-bindings.mjs` は既存の `reserveAndRecordCommunityHostedClaim`、`runCommunityHostedWriteLifecycle`、`recordCommunityHostedConsumption` の引数・受領証を、前段の `runCommunityHostedSingleLifecycle` に合わせる依存注入アダプターである。
+- `tests/community-hosted-coordinator-bindings.test.mjs` は実コードの3部品を組み合わせたメモリー内の模擬GitHubタグ・台帳と隔離環境で、正常経路、ブラウザ失敗のcleanup後failure記録、CLAIM不明時の自動再試行拒否、IDすり替え拒否を確認する。
+- **境界維持**：結合アダプターは `verifyFreshProtectedBoundary` と `obtainIndependentExecutionGrant` を実装も発行もしない。単体では前段の実行条件を満たせず、実行できない。実環境のOWNER/費用/保護/排他/独立環境の認証には使用できない。模擬入力と成功を実際の費用許可に読み替えてはならない。
+- 今回の変更ではGitHub Actions、GitHubタグ・Issue台帳、Supabase、Vercel、実ブラウザ、Production、一般公開のいずれにも操作を追加しない。GitHub main mergeは別途本番承認、有料Stagingは独立した一回限りのステージング承認を要する。
+
+## Environment・費用上限の証拠形式チェック（2026-10-18、read-only）
+
+- `scripts/community-hosted-staging-evidence-shape.mjs` は、独立したGitHub Environmentの承認者・自己承認禁止・管理者bypass禁止・main限定branch policy、OWNERが申請ID・run ID・候補SHAへ結び付けた通貨建て総額上限、Supabase/Vercelごとの強制停止上限、データを複製しない一時隔離ブランチ計画を**形式的に**確認する。
+- GitHub Environmentが実際にその設定になっているか、別のレビュアーが承認したか、Supabase/Vercelが請求額を強制停止できるかは **実環境で未確認**。GitHub connectorからEnvironmentの設定APIを直接参照する試行は不可だった。記述した費用例はテスト用の仮数値であって、運営が費用上限を承認したものではない。
+- 既存のOWNER事前承認形式には最大許容費用の数値・通貨・プロバイダー別限度額がないため、**実稼働での費用上限の証拠はまだ作れない**。実際の別途ステージング承認と、検証可能なサービス側の強制停止・資源廃棄手段が揃わなければ次のgateへ接続してはならない。
+- 本関数にはGitHub/Supabase/Vercelへの通信・Secret・CLI・実行grant・CLAIM・CONSUME処理がない。形式検査に合格しても `evidenceAuthenticated=false` 等、すべての実行・費用・公開許可はfalse。既存のread-only executor workflowと同一runライフサイクルへの接続はしない。
+- Production DB・公開フラグ・有料Staging・Preview・Branchの作成は行わない。mainマージには別途「本番承認」が必要。
