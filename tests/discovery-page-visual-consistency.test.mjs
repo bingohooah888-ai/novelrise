@@ -70,8 +70,14 @@ test('discovery list headers follow homepage layout at desktop widths', () => {
   for (const slug of ['recommended', 'new-arrivals', 'light-seed']) {
     assert.ok(client.includes(`    '${slug}',`));
   }
-  assert.match(css, /grid-template-columns: minmax\(250px, 290px\) minmax\(560px, 1fr\) auto/u);
-  assert.match(css, /grid-template-columns: minmax\(210px, 230px\) minmax\(400px, 1fr\) auto/u);
+  assert.match(
+    css,
+    /grid-template-columns: minmax\(250px, 290px\) minmax\(560px, 1fr\) auto/u
+  );
+  assert.match(
+    css,
+    /grid-template-columns: minmax\(210px, 230px\) minmax\(400px, 1fr\) auto/u
+  );
   assert.match(css, /justify-content: space-evenly !important/u);
   assert.match(css, /column-gap: 24px !important/u);
   assert.match(css, /column-gap: 14px !important/u);
