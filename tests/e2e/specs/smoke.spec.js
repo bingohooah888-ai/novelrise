@@ -61,6 +61,7 @@ test('public header keeps the same geometry before and after hydration', async (
       viewport: { width, height: 900 }
     });
     const page = await context.newPage();
+    let homeHeader = null;
     for (const path of paths) {
       await page.route('**/novelight-client.js', (route) =>
         route.fulfill({
@@ -78,6 +79,14 @@ test('public header keeps the same geometry before and after hydration', async (
       expect(initial, `${path} ${width}px initial vs hydrated`).toEqual(
         hydrated
       );
+      if (path === '/index.html') {
+        homeHeader = hydrated;
+      } else {
+        expect(
+          hydrated,
+          `${path} at ${width}px must match the Home header geometry`
+        ).toEqual(homeHeader);
+      }
     }
     await context.close();
   }
