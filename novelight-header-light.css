@@ -545,3 +545,11 @@ html body.novelight-public-header-page:not(.novelight-public-dark) header.site-h
     height: 46px !important;
   }
 }
+
+/* Final public header font base, independent of dark/light page typography. */
+html body.novelight-public-dark header.site-header,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header,
+html body.novelight-public-dark header.site-header .public-header-inner,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
+  font-size: 16px !important;
+}
