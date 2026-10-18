@@ -91,3 +91,11 @@ CONSUMEの実行入口の認証、実行後の資源廃棄検証。これらの�
 
 この追記は、環境変更・GitHub設定変更・Staging操作・Production mutationを伴わない
 設計の現状修正であり、mainマージには別途`本番承認`が必要。
+
+## CONSUMEの保護状態再確認（2026-10-18、未実行）
+
+- CLAIMが記録済みであっても、`CONSUMED`マーカーを作成するための`recordCommunityHostedConsumption`は、**読み戻し前**と**最終POST直前**にGitHubタグ保護ルールを再取得して変更・削除禁止／bypassなしを照合する。
+- 最終POST直前には、予約タグ`refs/tags/novelight-community-hosted-once-v1-<requestCommentId>`のSHAも再読し、当初のmain SHAとの一致を確認する。GitHubの設定が変更された場合や参照内容が変わった場合は、failure/cancelledを含めて自動POSTを拒否する。
+- terminalマーカーPOST後は台帳の受領証に加え、mainとDraft候補のSHAが同じままかを再照合する。途中で改訂が発生した場合、**POST済みの可能性がある**ため自動再試行しない。
+- これは既存のdependency-injected coordinatorの局所安全強化であり、**新しい実行workflow、OWNER承認経路、費用承認、GitHub Secret / Environment、外部サービス操作を追加しない**。実行許可は引き続き全てfalse。
+- 完全な一回限り実行には、なお実行経路の共通排他、OWNER真正性、claim recovery、資源廃棄と確証可能な事後記録が必要。これが揃うまで実運用不可。有料Stagingには別途一回限りの`ステージング承認`が必須。
