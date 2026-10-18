@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createContestReaderReadyHandler } from '../api/november-contest-reader-ready.js';
+import {
+  createContestReaderReadyHandler
+} from '../api/november-contest-reader-ready.js';
 
 const START = Date.parse('2026-10-31T15:00:00Z');
 const END = Date.parse('2026-11-30T15:00:00Z');
 const env = {
   NOVELIGHT_CONTEST_READING_ENABLED: 'true',
-  NOVELIGHT_CONTEST_GUEST_SIGNING_SECRET: 'contest-guest-signature-purpose-32-bytes-strong',
+  NOVELIGHT_CONTEST_GUEST_SIGNING_SECRET:
+    'contest-guest-signature-purpose-32-bytes-strong',
   SUPABASE_SECRET_KEY: 'different-service-key'
 };
 
@@ -95,7 +98,7 @@ function fixture({
   return { check, queries, handler };
 }
 
-test('probe refuses premature launch without consulting user data', async () => {
+test('probe refuses premature contest launch', async () => {
   const disabled = fixture({
     settings: { ...env, NOVELIGHT_CONTEST_READING_ENABLED: 'false' }
   });
@@ -121,7 +124,7 @@ test('probe refuses premature launch without consulting user data', async () => 
   }
 });
 
-test('only published entered episodes are enabled after owner-start', async () => {
+test('only entered published episodes become eligible', async () => {
   const eligible = fixture();
   const response = await eligible.check();
   assert.deepEqual(response.body, { enabled: true });
@@ -144,7 +147,7 @@ test('only published entered episodes are enabled after owner-start', async () =
   }
 });
 
-test('invalid IDs and non-GET methods never create contest sessions', async () => {
+test('invalid IDs and write methods cannot launch scoring', async () => {
   const f = fixture();
   for (const id of [null, '0', '-1', 'abc', '2 OR true', '9'.repeat(25)]) {
     assert.deepEqual((await f.check(id)).body, { enabled: false });
