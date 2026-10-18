@@ -12,6 +12,8 @@
   let initialized = false;
 
   function visibleRatio(content) {
+    const shared = global.NovelightReadingSettings?.contentProgress;
+    if (typeof shared === 'function') return shared(content);
     const bounds = content.getBoundingClientRect();
     const height = Math.max(content.scrollHeight, bounds.height, 1);
     return Math.min(1, Math.max(0, (global.innerHeight - bounds.top) / height));
@@ -149,7 +151,7 @@
 
     function onScroll(event) {
       if (event?.type === 'keydown' &&
-          !['ArrowDown', 'PageDown', 'End', ' '].includes(event.key)) return;
+          !['ArrowDown', 'ArrowLeft', 'PageDown', 'End', ' '].includes(event.key)) return;
       const tag = String(event?.target?.tagName || '').toUpperCase();
       if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag)) return;
       if (disabled || speaking || doc.visibilityState !== 'visible') return;
@@ -209,6 +211,7 @@
     inputs.forEach((event) => {
       global.addEventListener(event, onScroll, { passive: true });
     });
+    context.content.addEventListener('scroll', onScroll, { passive: true });
     doc.addEventListener('novelight:tts-state', onTtsState);
     doc.addEventListener('novelight:tts-progress', onTtsProgress);
     doc.addEventListener('visibilitychange', onVisibility);
