@@ -107,3 +107,10 @@ CONSUMEの実行入口の認証、実行後の資源廃棄検証。これらの�
 - 呼ばれた場合も「不変タグ予約 + 同一IssueへのCLAIM記録」までで、`runAuthorized` / `writeAuthorized` / `stagingCostApproved` はすべてfalse。Supabase、Vercel、ブラウザ、Productionの操作は行わない。
 - **重要**：CLAIMだけを先に独立実行すると、その申請を一回限りで消費し、検証を実行できなくなる。実際のOWNER承認イベントからCLAIM→検証→CONSUMEを**同一の保護された実行ライフサイクル**へ接続し、全経路の排他・環境保護・失敗回復・費用上限・隔離資源削除の証拠が完成するまでこの入口を起動しない。
 - このPRはコード/Workflowの**準備のみ**。Gitタグ生成やIssueコメント、費用、Staging/Preview、一般公開は発生しない。mainへのマージは「本番承認」、有料検証実行は別途exact SHA + scope + 一回限りの「ステージング承認」が必要。
+
+## trusted-main executorのread-only入口（2026-10-18、CLAIM未接続）
+
+- .github/workflows/community-hosted-executor.yml は固定Issue #188に対するOWNERの新規申請のみを read-only job で検証する。triggering actor、eventのworkflow identity、main SHA、Issue・申請コメントとGitHub APIの最新状態、申請の一回限り台帳を独立再照合する。
+- scripts/community-hosted-executor-gate.mjs は既存のOWNER認証・一回限り申請検査を組み合わせるだけであり、CLAIM、Git tag、台帳書込み、Staging、Preview、ブラウザ、Secret、Productionにはアクセスしない。返却値の実行権限はすべてfalse。
+- community-hosted-claim-only.yml は本入口から呼び出さない。実際のCLAIM→隔離検証→CONSUMEを保護された同一runへ接続し、すべての実行経路の排他制御、費用上限、GitHub Environment protection、隔離資源とcleanupの実証、失敗時回復が揃うまで承認を消費してはならない。
+- 本変更で許容するのはGitHub Actionsのread-only短時間検証jobのみ。mainマージに本番承認が必要であり、有料Staging/Previewは別の一回限りのステージング承認が必要。

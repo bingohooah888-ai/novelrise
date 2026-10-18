@@ -1,0 +1,62 @@
+name: Community Phase 1 Hosted Executor Pre-CLAIM Inspection (OWNER only)
+
+# Only a read-only admission; never calls CLAIM or any billable service.
+on:
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: community-hosted-executor-readonly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  inspect:
+    name: Authenticate exact OWNER request on trusted main (read-only)
+    if: >-
+      github.event.issue.number == 188 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact trusted main without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Fresh issue, comment, main, Draft candidate and ledger inspection
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          comment_id="$(jq -er '.comment.id | select(type == "number")' "$GITHUB_EVENT_PATH")"
+          [[ "$comment_id" =~ ^[1-9][0-9]*$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/community-exec-issue.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" > /tmp/community-exec-comment.json
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/community-exec-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-exec-feature.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" > /tmp/community-exec-ledger.json
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(jq -er '.object.sha' /tmp/community-exec-main.json)" = "$GITHUB_SHA"
+          node scripts/community-hosted-executor-gate.mjs inspect \
+            /tmp/community-exec-issue.json \
+            /tmp/community-exec-comment.json \
+            /tmp/community-exec-main.json \
+            /tmp/community-exec-feature.json \
+            /tmp/community-exec-ledger.json \
+            "$(git rev-parse HEAD)" > /tmp/community-exec-verdict.json
+          jq -e '.status == "COMMUNITY_HOSTED_EXECUTOR_PRECLAIM_READONLY_ONLY" and .ownerEvidenceVerified == true and .exactApprovalSnapshotVerified == true and .claimAuthorized == false and .stagingCostApproved == false and .runAuthorized == false and .writeAuthorized == false and .releaseAuthorized == false and .mayCreateBranch == false and .mayDeployPreview == false and .mayRunBrowser == false' /tmp/community-exec-verdict.json > /dev/null
+          echo 'Read-only OWNER request authenticated. CLAIM, cost, Preview, Staging, browser and release remain disabled.'
