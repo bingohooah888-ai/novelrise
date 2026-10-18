@@ -243,3 +243,124 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
     min-height: 240px;
   }
 }
+
+/* Landscape smartphone book view: show only the original reading body and Next link. */
+.nl-landscape-reader-toggle {
+  display: none;
+}
+
+@media (orientation: landscape) and (pointer: coarse) {
+  body.novelight-page-episode[data-landscape-reader-ready='true'] .nl-landscape-reader-toggle {
+    position: fixed;
+    left: max(12px, env(safe-area-inset-left));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 151;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(255, 255, 255, .3);
+    border-radius: 10px;
+    background: rgba(26, 31, 42, .77);
+    color: #fff;
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  body.novelight-page-episode[data-landscape-reader='active'] {
+    overflow: hidden;
+  }
+
+  body.novelight-page-episode[data-landscape-reader='active'] #card .content {
+    position: fixed;
+    inset: 0;
+    z-index: 130;
+    box-sizing: border-box;
+    display: block;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    min-height: 0;
+    margin: 0;
+    padding: max(12px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    border: 0;
+    border-radius: 0;
+    background: #fffaf0;
+    color: #29251f;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+
+  body.novelight-page-episode[data-landscape-reader='active'][data-reading-theme='dark'] #card .content {
+    background: #10151d;
+    color: #f0f1f5;
+  }
+
+  /* Keep illustration orientation and aspect ratio intact in expanded view. */
+  body.novelight-page-episode[data-landscape-reader='active'] #card .content > .episode-inline-illustration,
+  body.novelight-page-episode[data-landscape-reader='active'] #card .content > .episode-inline-illustration-failed {
+    width: min(68vw, 520px);
+    max-height: 100%;
+    height: 100%;
+  }
+
+  body.novelight-page-episode[data-landscape-reader='active'] #nlReadingNav {
+    position: fixed;
+    z-index: 141;
+    top: 50%;
+    left: max(58px, calc(env(safe-area-inset-left) + 58px));
+    transform: translateY(-50%);
+    display: none;
+    width: auto;
+    max-width: 90px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  body.novelight-page-episode[data-landscape-reader='active'][data-landscape-reader-at-end='true'] #nlReadingNav {
+    display: block;
+  }
+
+  body.novelight-page-episode[data-landscape-reader='active'] #nlReadingNav .nl-reading-nav-main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  body.novelight-page-episode[data-landscape-reader='active'] #nlReadingNav .nl-reading-link:not(.next),
+  body.novelight-page-episode[data-landscape-reader='active'] #nlReadingNav .nl-reading-finished,
+  body.novelight-page-episode[data-landscape-reader='active'] #nlReadingNav .nl-reading-link.next.disabled {
+    display: none;
+  }
+
+  /* Reuse the live Next episode anchor; replace only its visual label. */
+  body.novelight-page-episode[data-landscape-reader='active'] #nlReadingNav .nl-reading-link.next:not(.disabled) {
+    display: flex;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    min-width: 52px;
+    min-height: 116px;
+    max-height: calc(100dvh - 48px);
+    padding: 15px 12px;
+    font-size: 0;
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  body.novelight-page-episode[data-landscape-reader='active'] #nlReadingNav .nl-reading-link.next::after {
+    content: attr(data-landscape-label);
+    font-size: 15px;
+    line-height: 1.4;
+  }
+}
