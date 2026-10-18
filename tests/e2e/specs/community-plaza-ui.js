@@ -21,6 +21,8 @@ function initializeCommunityMock(delayFeed) {
   globalThis.__communityDelayFirstFeed = delayFeed;
 }
 
+// Keep the injected Playwright fixture verbatim; it is intentionally test-only.
+// prettier-ignore
 async function installIsolatedMock(page, enabled, options = {}) {
   const delayFirstFeed = options.delayFirstFeed === true;
   // Fulfill the vendor library locally so the hard-coded Production URL
@@ -107,6 +109,7 @@ async function installIsolatedMock(page, enabled, options = {}) {
   }
 }
 
+// prettier-ignore
 test('latest filter wins during pending feed request', async ({ page }) => {
   await installIsolatedMock(page, true, { delayFirstFeed: true });
   await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
