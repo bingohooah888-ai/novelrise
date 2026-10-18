@@ -18,7 +18,7 @@ const source = readFileSync(
   'utf8'
 );
 
-function browser(enabled) {
+function browser(enabled, { vertical = false } = {}) {
   const events = new Map();
   const documentEvents = new Map();
   const requests = [];
@@ -61,6 +61,15 @@ function browser(enabled) {
       interval = null;
     }
   };
+  if (vertical) {
+    win.NovelightReadingSettings = {
+      contentProgress(content) {
+        return (
+          Math.abs(content.scrollLeft) + content.clientWidth
+        ) / content.scrollWidth;
+      }
+    };
+  }
   runInNewContext(source, { window: win });
   return {
     doc,
@@ -110,8 +119,41 @@ test('active adapter sends bounded scroll evidence and stops on hidden tabs', as
   assert.equal(b.requests.length, 2);
 });
 
+test('immersive vertical scroll forwards the same progress to contest heartbeats', async () => {
+  const b = browser(true, { vertical: true });
+  const content = {
+    scrollWidth: 1000,
+    clientWidth: 300,
+    scrollLeft: -500,
+    addEventListener(name, fn) {
+      if (name === 'scroll') this.onScroll = fn;
+    }
+  };
+  b.documentEvents.get('novelight:episode-rendered')({
+    detail: {
+      unlocked: true,
+      isAuthor: false,
+      episode: { id: 32 },
+      session: null,
+      content
+    }
+  });
+  content.onScroll({ type: 'scroll', target: content });
+  await waitForMicrotasks();
+  await b.tick();
+  assert.equal(b.requests[0].action, 'start');
+  assert.equal(b.requests[1].action, 'heartbeat');
+  assert.equal(b.requests[1].progress_ratio, 0.8);
+});
+
 test('episode render contract fires only after unlock and existing PV remains separate', () => {
   assert.match(continuity, /novelight:episode-rendered/);
+  assert.match(continuity, /november-contest-reader-ready\\?episode_id=/);
+  assert.match(continuity, /result\\?\\.enabled === true/);
+  assert.match(
+    continuity,
+    /window\\.NOVELIGHT_CONTEST_READER_CLIENT_ENABLED = true/
+  );
   assert.match(continuity, /novelight-contest-read-tracker[.]js/);
   assert.match(
     continuity,
