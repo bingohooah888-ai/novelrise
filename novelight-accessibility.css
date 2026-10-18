@@ -310,7 +310,7 @@ html body.novelight-theme header.site-header .site-nav a {
 /* Keep async admin access from changing the public navigation grid.
    Reserve the same right-side slot before and after OWNER session lookup. */
 @media (min-width: 1101px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions {
     position: relative !important;
     box-sizing: border-box !important;
     width: 440px !important;
@@ -319,7 +319,7 @@ html body.novelight-theme header.site-header .site-nav a {
     gap: 12px !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .novelight-admin-shortcut-desktop {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .novelight-admin-shortcut-desktop {
     position: absolute !important;
     top: 50% !important;
     right: 0 !important;
@@ -334,7 +334,7 @@ html body.novelight-theme header.site-header .site-nav a {
 /* Between compact and wide desktop, keep both public themes on the same
    grid and prevent the optional admin slot from crowding the four links. */
 @media (min-width: 1101px) and (max-width: 1440px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .public-header-inner {
     display: grid !important;
     width: calc(100% - 32px) !important;
     max-width: 1440px !important;
@@ -342,11 +342,11 @@ html body.novelight-theme header.site-header .site-nav a {
     column-gap: 14px !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions {
     width: 400px !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .desktop-nav {
     display: flex !important;
     width: 100% !important;
     justify-content: space-evenly !important;
@@ -354,13 +354,13 @@ html body.novelight-theme header.site-header .site-nav a {
     margin-left: 0 !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .desktop-nav a {
     justify-content: center !important;
     padding: 0 6px !important;
     font-size: clamp(16px, 1.5vw, 20px) !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .btn {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .btn {
     padding: 10px 14px !important;
     font-size: 15px !important;
   }
@@ -369,29 +369,29 @@ html body.novelight-theme header.site-header .site-nav a {
 /* A cramped 901-1100px row cannot fit 4 links, auth actions and the
    OWNER-only shortcut. Use the already-supported mobile navigation instead. */
 @media (min-width: 901px) and (max-width: 1100px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .public-header-inner {
     display: flex !important;
     width: calc(100% - 32px) !important;
     min-height: 96px !important;
     gap: 12px !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .logo {
     min-width: 0 !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav,
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .signup-action,
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .signup-action[hidden],
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .novelight-admin-shortcut-desktop {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .desktop-nav,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .signup-action,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .signup-action[hidden],
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .novelight-admin-shortcut-desktop {
     display: none !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .mobile-menu {
     display: block !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions {
     margin-left: auto !important;
     padding-right: 0 !important;
     gap: 12px !important;
@@ -399,7 +399,7 @@ html body.novelight-theme header.site-header .site-nav a {
 }
 
 @media (max-width: 900px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .novelight-admin-shortcut-desktop {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .novelight-admin-shortcut-desktop {
     display: none !important;
   }
 }
@@ -408,7 +408,7 @@ html body.novelight-theme header.site-header .site-nav a {
 /* Equal-width navigation tracks keep each menu label in the same position
    on Home and light discovery pages regardless of their font metrics. */
 @media (min-width: 1101px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .desktop-nav {
     display: grid !important;
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     align-items: stretch !important;
@@ -418,7 +418,7 @@ html body.novelight-theme header.site-header .site-nav a {
     margin-left: 0 !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .desktop-nav a {
     display: flex !important;
     justify-content: center !important;
     text-align: center !important;

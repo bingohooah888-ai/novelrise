@@ -489,7 +489,7 @@ test('authenticated header label preserves its initial geometry', async ({
   }
 });
 
-test('admin shortcut does not shift the public header', async ({ browser }) => {
+test('admin shortcut keeps nav fixed', async ({ browser }) => {
   const viewports = [
     { width: 1600, height: 900 },
     { width: 1280, height: 850 },
