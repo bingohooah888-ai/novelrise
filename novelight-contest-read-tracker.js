@@ -211,7 +211,7 @@
     inputs.forEach((event) => {
       global.addEventListener(event, onScroll, { passive: true });
     });
-    context.content.addEventListener('scroll', onScroll, { passive: true });
+    context.content.addEventListener?.('scroll', onScroll, { passive: true });
     doc.addEventListener('novelight:tts-state', onTtsState);
     doc.addEventListener('novelight:tts-progress', onTtsProgress);
     doc.addEventListener('visibilitychange', onVisibility);
