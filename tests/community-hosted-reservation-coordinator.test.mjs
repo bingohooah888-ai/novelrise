@@ -52,6 +52,7 @@ function harness(options = {}) {
   let candidateSha = FEATURE;
   let nextCommentId = 124;
   let protectionReadCount = 0;
+  let refReadCount = 0;
   const actions = {
     loadProtectionEvidence: async () => {
       calls.push('loadProtectionEvidence');
@@ -61,7 +62,9 @@ function harness(options = {}) {
       }
       if (
         options.protectionMissing ||
-        (options.protectionRemovedAfterReservation && protectionReadCount > 1)
+        (options.protectionRemovedAfterReservation && protectionReadCount > 1) ||
+        (options.protectionRemovedDuringConsume && protectionReadCount >= 3) ||
+        (options.protectionRemovedBeforeConsumePost && protectionReadCount >= 4)
       ) {
         return {
           inventoryPages: [
@@ -154,13 +157,17 @@ function harness(options = {}) {
     },
     readRef: async ({ ref }) => {
       calls.push('readRef');
+      refReadCount += 1;
       if (options.readThrows) throw new Error('SECRET_MUST_NOT_LEAK');
       const sha = references.get(ref);
       return sha
         ? {
             status: 200,
             ref,
-            sha: options.tamperRef ? 'b'.repeat(40) : sha
+            sha: options.tamperRef ||
+              (options.tamperBeforeConsumePost && refReadCount >= 3)
+              ? 'b'.repeat(40)
+              : sha
           }
         : { status: 404 };
     },
@@ -179,6 +186,12 @@ function harness(options = {}) {
       };
       if (!options.omitPersistedPost) comments.push(row);
       if (options.moveMainAfterPost) mainSha = 'b'.repeat(40);
+      if (comments.length === 3 && options.moveMainAfterConsumePost) {
+        mainSha = 'b'.repeat(40);
+      }
+      if (comments.length === 3 && options.moveFeatureAfterConsumePost) {
+        candidateSha = 'b'.repeat(40);
+      }
       return row;
     }
   };
@@ -516,4 +529,56 @@ test('missing protection evidence adapter is rejected before any API call', asyn
   delete args.actions.loadProtectionEvidence;
   await assert.rejects(reserveAndRecordCommunityHostedClaim(args), /DENIED/u);
   assert.deepEqual(x.calls, []);
+});
+
+test('terminal CONSUME refuses unprotected tags, even for a valid recorded claim', async () => {
+  const x = harness({ protectionRemovedDuringConsume: true });
+  await x.reserve();
+  const existing = x.comments.length;
+  await assert.rejects(x.consume('failure'), /DENIED/u);
+  assert.equal(x.comments.length, existing);
+  assert.equal(x.references.size, 1);
+  assert.ok(!x.calls.slice(-2).includes('postIssueComment'));
+});
+
+test('terminal CONSUME aborts when tag protection disappears before posting', async () => {
+  const x = harness({ protectionRemovedBeforeConsumePost: true });
+  await x.reserve();
+  const existing = x.comments.length;
+  await assert.rejects(x.consume('cancelled'), /DENIED/u);
+  assert.equal(x.comments.length, existing);
+  assert.equal(x.references.size, 1);
+  assert.equal(
+    x.calls.filter((name) => name === 'loadProtectionEvidence').length,
+    4
+  );
+});
+
+test('CONSUME refuses mutation of reserved ref just before terminal POST', async () => {
+  const x = harness({ tamperBeforeConsumePost: true });
+  await x.reserve();
+  await assert.rejects(x.consume('failure'), /DENIED/u);
+  assert.equal(x.comments.length, 2);
+  assert.equal(x.references.size, 1);
+});
+
+test('CONSUME rejects main or candidate revision movement after a terminal write', async () => {
+  for (const options of [
+    { moveMainAfterConsumePost: true },
+    { moveFeatureAfterConsumePost: true }
+  ]) {
+    const x = harness(options);
+    await x.reserve();
+    await assert.rejects(x.consume('failure'), /DENIED/u);
+    assert.equal(x.comments.length, 3);
+    assert.equal(x.references.size, 1);
+  }
+});
+
+test('CONSUME requires protection adapter even for already-claimed requests', async () => {
+  const x = harness();
+  await x.reserve();
+  delete x.actions.loadProtectionEvidence;
+  await assert.rejects(x.consume('failure'), /DENIED/u);
+  assert.equal(x.comments.length, 2);
 });
