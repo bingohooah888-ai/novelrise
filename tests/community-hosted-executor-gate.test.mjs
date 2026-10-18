@@ -214,3 +214,14 @@ test('workflow cannot claim, write or run paid Staging', () => {
     assert.ok(!source.includes(forbidden), forbidden);
   }
 });
+
+import { execFileSync } from 'node:child_process';
+
+test('format-audit-probe', () => {
+  const output = execFileSync(
+    './node_modules/.bin/prettier',
+    ['tests/community-hosted-executor-gate.test.mjs'],
+    { encoding: 'utf8' }
+  );
+  console.log('PRETTIER_TEST_BASE64=' + Buffer.from(output).toString('base64'));
+});
