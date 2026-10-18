@@ -1,11 +1,14 @@
 name: Community Phase 1 Hosted One-use CLAIM Audit (OWNER only)
 
+# No event trigger and no independent Staging operation. A future reviewed,
+# OWNER-only trusted-main executor must call this after obtaining explicit,
+# exact-SHA one-use cost approval. It MUST continue in that same run; this
+# isolated component never grants cost or browser execution.
 on:
-  issue_comment:
-    types: [created]
+  workflow_call:
 
 # Single repo-wide CLAIM entry. Git ref creation is the final per-request
-# unique-key reservation; this concurrency key does not grant Staging use.
+# unique-key reservation; this concurrency key does not grant Staging cost approval.
 concurrency:
   group: community-hosted-claim-one-use-audit
   cancel-in-progress: false
