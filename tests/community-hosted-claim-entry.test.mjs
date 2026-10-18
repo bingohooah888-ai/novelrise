@@ -57,7 +57,7 @@ function harness() {
     GITHUB_REPOSITORY: REPO,
     GITHUB_REF: 'refs/heads/main',
     GITHUB_WORKFLOW_REF:
-      REPO + '/.github/workflows/community-hosted-claim-only.yml@refs/heads/main',
+      REPO + '/.github/workflows/community-hosted-executor.yml@refs/heads/main',
     GITHUB_ACTOR: OWNER,
     GITHUB_TRIGGERING_ACTOR: OWNER,
     GITHUB_RUN_ID: '456',
@@ -221,8 +221,7 @@ test('the only workflow entry is an OWNER-bound, tag-only audit with no staging'
     'utf8'
   );
   for (const necessary of [
-    'issue_comment:',
-    'types: [created]',
+    'workflow_call:',
     'cancel-in-progress: false',
     'github.triggering_actor',
     'persist-credentials: false',
@@ -235,6 +234,7 @@ test('the only workflow entry is an OWNER-bound, tag-only audit with no staging'
     assert.ok(text.includes(necessary), necessary);
   }
   for (const forbidden of [
+    'issue_comment:',
     'workflow_dispatch',
     'environment: staging',
     'secrets.',
