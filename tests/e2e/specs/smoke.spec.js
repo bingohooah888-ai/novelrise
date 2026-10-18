@@ -443,8 +443,7 @@ test('public header stays in place through delayed client script', async ({
       for (let i = 0; i < before.length; i += 1) {
         expect(
           Math.abs(after[i] - before[i]),
-          path + ' metric ' + i + ' before=' + before[i] +
-            ' after=' + after[i] + ' viewport=' + JSON.stringify(viewport)
+          `${path} metric ${i} before=${before[i]} after=${after[i]} viewport=${JSON.stringify(viewport)}`
         ).toBeLessThanOrEqual(1);
       }
     } finally {
