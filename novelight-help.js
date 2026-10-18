@@ -278,7 +278,9 @@
     document.querySelectorAll('details.mobile-menu nav').forEach((nav) => { if (!nav.querySelector('[data-nl-help-global]')) nav.appendChild(globalLink()); });
     document.querySelectorAll('.studio-nav, .novelight-author-nav').forEach((nav) => { if (nav.querySelector('[data-nl-help-global]')) return; const link = globalLink('ヘルプ'); link.className = 'nl-help-nav-link'; const icon = document.createElement('span'); icon.className = nav.classList.contains('studio-nav') ? 'nav-icon' : 'novelight-author-nav-icon'; icon.textContent = '?'; link.prepend(icon); nav.appendChild(link); });
     const accountHeader = document.querySelector('.workspace-top'); if (accountHeader && !accountHeader.querySelector('[data-nl-help-account-link]')) { const link = globalLink('ヘルプ'); link.className = 'nl-help-account-link'; link.dataset.nlHelpAccountLink = 'true'; const logout = accountHeader.querySelector('.logout'); if (logout) accountHeader.insertBefore(link, logout); else accountHeader.appendChild(link); }
-    const headerActions = document.querySelector('.header-actions'); if (headerActions && !headerActions.querySelector('[data-nl-help-desktop-link]')) { const link = globalLink('ヘルプ'); link.className = 'nl-help-desktop-link'; link.dataset.nlHelpDesktopLink = 'true'; const mobile = headerActions.querySelector('.mobile-menu'); if (mobile) headerActions.insertBefore(link, mobile); else headerActions.appendChild(link); }
+    // The hidden desktop help link is deliberately not injected into the
+    // public header: doing so after first paint causes a 50px navigation jump.
+    // Help remains reachable via the footer and mobile navigation.
   }
   function findLabel(root, text) {
     return Array.from(root?.querySelectorAll?.('.label, label, legend, h2, .scout-kicker, .seed-inventory-name, .scout-stat span') || []).find((node) => String(node.childNodes?.[0]?.textContent || node.textContent || '').trim().includes(text));
