@@ -47,6 +47,14 @@ test('the first-paint logo CSS and the runtime fallback cannot diverge', () => {
   assert.equal(canonicalCss(firstPaint), canonicalCss(runtimeCss));
 });
 
+test('authenticated public headers keep their navigation width', () => {
+  assert.match(accessibility, /\.signup-action\[hidden\]/u);
+  assert.match(accessibility, /visibility: hidden !important/u);
+  assert.match(accessibility, /pointer-events: none !important/u);
+  assert.match(client, /signupLink\.dataset\.authState = hidden/u);
+  assert.match(client, /signupLink\.setAttribute\('aria-hidden', 'true'\)/u);
+});
+
 test('static public headers survive client initialization without replacement', () => {
   assert.match(client, /const staticHeader =/u);
   assert.match(client, /if \(staticHeader\) \{/u);
