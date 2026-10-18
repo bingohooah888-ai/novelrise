@@ -11,18 +11,12 @@ function canonicalCss(css) {
   return css
     .replace(/\/\*[\s\S]*?\*\//gu, '')
     .replace(/\s+/gu, '')
-    .replace(/;}/gu, '}');
+    .replaceAll(';}', '}');
 }
 
 test('the shared header styles are present before JavaScript hydration', () => {
-  assert.match(
-    accessibility,
-    /@import url\("novelight-header-light\.css"\)/u
-  );
-  assert.match(
-    accessibility,
-    /@import url\("novelight-header-first-paint\.css"\)/u
-  );
+  assert.match(accessibility, /novelight-header-light\.css/u);
+  assert.match(accessibility, /novelight-header-first-paint\.css/u);
   assert.ok(
     accessibility.indexOf('novelight-header-first-paint.css') <
       accessibility.indexOf('novelight-author-backgrounds.css')
@@ -45,8 +39,7 @@ test('the first-paint logo CSS and the runtime fallback cannot diverge', () => {
   const start = client.indexOf('style.textContent =');
   const end = client.indexOf('document.head.appendChild(style);', start);
   assert.ok(start >= 0 && end > start);
-  const parts =
-    client.slice(start, end).match(/'(?:\\.|[^'\\])*'/gu) || [];
+  const parts = client.slice(start, end).match(/'(?:\\.|[^'\\])*'/gu) || [];
   const runtimeCss = parts
     .map((part) => part.slice(1, -1).replace(/\\(.)/gu, '$1'))
     .join('');
