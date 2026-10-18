@@ -114,3 +114,13 @@ CONSUMEの実行入口の認証、実行後の資源廃棄検証。これらの�
 - scripts/community-hosted-executor-gate.mjs は既存のOWNER認証・一回限り申請検査を組み合わせるだけであり、CLAIM、Git tag、台帳書込み、Staging、Preview、ブラウザ、Secret、Productionにはアクセスしない。返却値の実行権限はすべてfalse。
 - community-hosted-claim-only.yml は本入口から呼び出さない。実際のCLAIM→隔離検証→CONSUMEを保護された同一runへ接続し、すべての実行経路の排他制御、費用上限、GitHub Environment protection、隔離資源とcleanupの実証、失敗時回復が揃うまで承認を消費してはならない。
 - 本変更で許容するのはGitHub Actionsのread-only短時間検証jobのみ。mainマージに本番承認が必要であり、有料Staging/Previewは別の一回限りのステージング承認が必要。
+
+## 同一runの順序・障害時停止ハンドオフ（2026-10-18、未有効化）
+
+- `scripts/community-hosted-ordered-handoff.mjs` に、CLAIM → 隔離検証 → CONSUMEを一つの実行呼び出しで順序付けるdependency-injected coordinatorを追加する。API接続、CLI、GitHub Actionsからの起動点、資格情報読み取り、実行grant発行は含めない。
+- 開始前に必須操作アダプター、固定候補SHA、run/request ID、scopeを確認する。外部から供給される `verifyFreshProtectedBoundary` はGitHub最新証跡・費用承認・Environment protection・共通排他・後片付け能力を**独立認証で証明できる将来のtrusted-main runner**のみが提供してよい。
+- CLAIMが不明・書込み確認できない場合、再予約せず、後続の隔離検証とCONSUMEも自動実行しない。受領済みCLAIMから費用許可を導出しない。別の独立認証済み `obtainIndependentExecutionGrant` が不足する場合、Stage実行せず失敗CONSUMEを一度だけ要求する。
+- `runIsolatedLifecycle` が成功した場合も、ブラウザ検証と隔離ブランチ削除の証跡がrun ID、request ID、main/candidate SHAに全て一致する場合のみ成功CONSUMEを要求する。失敗・証拠欠落時はfailureとして記録し、cleanup成功と偽らない。
+- CONSUME POSTが曖昧・失敗・受領証不一致の場合、自動再POSTせず台帳と外部資源を手動で照合する。adapter例外内のtokenやレスポンスを報告へ転記しない。
+- 本実装は接続インターフェースとエラー遷移を検証する段階であり、**認証済み実行grant、費用上限、GitHub Environment protection、排他の外部証明、実際のSupabase branch/Preview/browser adaptersは未接続**。よってこのファイルを追加しても実際のCLAIM/CONSUME、有料Staging、Preview、一般公開は不可能なまま。
+- GitHub mainマージには本PR固有の「本番承認」が必要。実際の有料検証には別途exact SHA/scope/一回限りの「ステージング承認」が必要。
