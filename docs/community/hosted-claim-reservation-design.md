@@ -99,3 +99,18 @@ CONSUMEの実行入口の認証、実行後の資源廃棄検証。これらの�
 - terminalマーカーPOST後は台帳の受領証に加え、mainとDraft候補のSHAが同じままかを再照合する。途中で改訂が発生した場合、**POST済みの可能性がある**ため自動再試行しない。
 - これは既存のdependency-injected coordinatorの局所安全強化であり、**新しい実行workflow、OWNER承認経路、費用承認、GitHub Secret / Environment、外部サービス操作を追加しない**。実行許可は引き続き全てfalse。
 - 完全な一回限り実行には、なお実行経路の共通排他、OWNER真正性、claim recovery、資源廃棄と確証可能な事後記録が必要。これが揃うまで実運用不可。有料Stagingには別途一回限りの`ステージング承認`が必須。
+
+## trusted-main CLAIM-only 再利用入口の準備（2026-10-18、未有効化）
+
+- `scripts/community-hosted-claim-entry.mjs` は、GitHub Actions の正規の issue_comment イベントを fresh API の Issue #188 と申請コメントに照合する。OWNER本人の actor / triggering_actor、main SHA、`GITHUB_WORKFLOW_REF` と実際のチェックアウトSHAを必須とする。編集済みコメント、偽装Issue、非OWNER再実行、古いSHAは拒否する。
+- `.github/workflows/community-hosted-claim-only.yml` は **`workflow_call` 専用で、issue_comment / push / workflow_dispatch で直接起動しない**。信頼された将来の `community-hosted-executor.yml`（main）からのみ呼び出す前提であり、その呼び出し元は現時点で未設置。
+- 呼ばれた場合も「不変タグ予約 + 同一IssueへのCLAIM記録」までで、`runAuthorized` / `writeAuthorized` / `stagingCostApproved` はすべてfalse。Supabase、Vercel、ブラウザ、Productionの操作は行わない。
+- **重要**：CLAIMだけを先に独立実行すると、その申請を一回限りで消費し、検証を実行できなくなる。実際のOWNER承認イベントからCLAIM→検証→CONSUMEを**同一の保護された実行ライフサイクル**へ接続し、全経路の排他・環境保護・失敗回復・費用上限・隔離資源削除の証拠が完成するまでこの入口を起動しない。
+- このPRはコード/Workflowの**準備のみ**。Gitタグ生成やIssueコメント、費用、Staging/Preview、一般公開は発生しない。mainへのマージは「本番承認」、有料検証実行は別途exact SHA + scope + 一回限りの「ステージング承認」が必要。
+
+## trusted-main executorのread-only入口（2026-10-18、CLAIM未接続）
+
+- .github/workflows/community-hosted-executor.yml は固定Issue #188に対するOWNERの新規申請のみを read-only job で検証する。triggering actor、eventのworkflow identity、main SHA、Issue・申請コメントとGitHub APIの最新状態、申請の一回限り台帳を独立再照合する。
+- scripts/community-hosted-executor-gate.mjs は既存のOWNER認証・一回限り申請検査を組み合わせるだけであり、CLAIM、Git tag、台帳書込み、Staging、Preview、ブラウザ、Secret、Productionにはアクセスしない。返却値の実行権限はすべてfalse。
+- community-hosted-claim-only.yml は本入口から呼び出さない。実際のCLAIM→隔離検証→CONSUMEを保護された同一runへ接続し、すべての実行経路の排他制御、費用上限、GitHub Environment protection、隔離資源とcleanupの実証、失敗時回復が揃うまで承認を消費してはならない。
+- 本変更で許容するのはGitHub Actionsのread-only短時間検証jobのみ。mainマージに本番承認が必要であり、有料Staging/Previewは別の一回限りのステージング承認が必要。
