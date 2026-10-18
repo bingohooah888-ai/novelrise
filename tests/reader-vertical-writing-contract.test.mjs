@@ -11,13 +11,13 @@ const [
   seoEpisode,
   illustrationCss
 ] = await Promise.all([
-    readFile('novelight-reading-settings.js', 'utf8'),
-    readFile('novelight-reading-settings.css', 'utf8'),
-    readFile('novelight-reading-continuity.js', 'utf8'),
-    readFile('episode.html', 'utf8'),
-    readFile('api/seo/templates/episode.html', 'utf8'),
-    readFile('novelight-episode-illustrations.css', 'utf8')
-  ]);
+  readFile('novelight-reading-settings.js', 'utf8'),
+  readFile('novelight-reading-settings.css', 'utf8'),
+  readFile('novelight-reading-continuity.js', 'utf8'),
+  readFile('episode.html', 'utf8'),
+  readFile('api/seo/templates/episode.html', 'utf8'),
+  readFile('novelight-episode-illustrations.css', 'utf8')
+]);
 
 function readerSettings() {
   const values = new Map();
