@@ -345,6 +345,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) header.site-h
   background: rgba(250, 249, 246, 0.98) !important;
   border-bottom: 1px solid rgba(14, 29, 53, 0.14) !important;
   box-shadow: 0 8px 28px rgba(8, 20, 38, 0.08) !important;
+  color: #28364a !important;
 }
 html body.novelight-public-dark header.site-header .public-header-inner,
 html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
@@ -355,6 +356,7 @@ html body.novelight-public-header-page:not(.novelight-public-dark) header.site-h
   grid-template-columns: minmax(250px, 290px) minmax(560px, 1fr) auto !important;
   align-items: center !important;
   column-gap: 24px !important;
+  row-gap: 0 !important;
   margin: auto !important;
   padding: 0 !important;
 }
@@ -494,4 +496,26 @@ html body.novelight-public-header-page:not(.novelight-public-dark) header.site-h
   html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
     display: none !important;
   }
+}
+
+/* Typography and action colors must not inherit the page's dark/light body
+ * palette. Only the public header is standardized; page content is untouched. */
+html body.novelight-public-dark header.site-header .header-actions > .btn,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .btn {
+  font-family: inherit !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  box-shadow: none !important;
+}
+html body.novelight-public-dark header.site-header .header-actions > .signup-action,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .signup-action {
+  border: 1px solid #c8942f !important;
+  background: #d6a447 !important;
+  color: #081426 !important;
+}
+html body.novelight-public-dark header.site-header .header-actions > .login-action,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
+  border: 1px solid rgba(14, 29, 53, 0.24) !important;
+  background: #fffdf8 !important;
+  color: #0e1d35 !important;
 }
