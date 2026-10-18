@@ -15,14 +15,17 @@ const FIXTURE = {
   liked_by_me: false
 };
 
-async function installIsolatedMock(page, enabled, { delayFirstFeed = false } = {}) {
+function initializeCommunityMock(delayFeed) {
+  globalThis.__communityTestCalls = [];
+  globalThis.__communityTestFeedFilters = [];
+  globalThis.__communityDelayFirstFeed = delayFeed;
+}
+
+async function installIsolatedMock(page, enabled, options = {}) {
+  const delayFirstFeed = options.delayFirstFeed === true;
   // Fulfill the vendor library locally so the hard-coded Production URL
   // is never sent to the network; record any unexpected RPC names.
-  await page.addInitScript((delayFeed) => {
-    globalThis.__communityTestCalls = [];
-    globalThis.__communityTestFeedFilters = [];
-    globalThis.__communityDelayFirstFeed = delayFeed;
-  }, delayFirstFeed);
+  await page.addInitScript(initializeCommunityMock, delayFirstFeed);
   await page.route('**/*.supabase.co/**', (route) =>
     route.abort('blockedbyclient')
   );
@@ -104,21 +107,21 @@ async function installIsolatedMock(page, enabled, { delayFirstFeed = false } = {
   }
 }
 
-test('switching filters during a pending feed fetch shows the latest selection', async ({ page }) => {
+test('latest filter wins during pending feed request', async ({ page }) => {
   await installIsolatedMock(page, true, { delayFirstFeed: true });
   await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
-  await expect.poll(() =>
-    page.evaluate(() => typeof globalThis.__communityReleaseFirstFeed)
-  ).toBe('function');
+  const firstFeedReady = () =>
+    page.evaluate(() => typeof globalThis.__communityReleaseFirstFeed);
+  await expect.poll(firstFeedReady).toBe('function');
 
   const followingTab = page.locator('[data-community-filter="following"]');
   await followingTab.click();
   await expect(followingTab).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => globalThis.__communityReleaseFirstFeed());
 
-  await expect.poll(() =>
-    page.evaluate(() => globalThis.__communityTestFeedFilters)
-  ).toEqual([false, true]);
+  const requestedFilters = () =>
+    page.evaluate(() => globalThis.__communityTestFeedFilters);
+  await expect.poll(requestedFilters).toEqual([false, true]);
   await expect(page.locator('.community-card')).toHaveCount(0);
   await expect(page.locator('#communityPageFeed .community-state')).toContainText(
     'まだ公開中の交流はありません'
