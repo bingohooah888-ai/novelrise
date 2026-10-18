@@ -303,6 +303,66 @@ test('all public zones use the same responsive Home header scale', async ({
   }
 });
 
+test('public headers do not jump when shared JavaScript hydrates', async ({
+  browser
+}) => {
+  const destinations = [
+    '/index.html',
+    '/recommended.html',
+    '/new-arrivals.html',
+    '/light-seed.html',
+    '/special-light.html',
+    '/special-zone.html?zone=ai',
+    '/special-zone.html?zone=r18'
+  ];
+
+  for (const width of [1440, 390]) {
+    const context = await browser.newContext({
+      viewport: { width, height: 900 }
+    });
+    const page = await context.newPage();
+    let canonical = null;
+
+    for (const destination of destinations) {
+      let releaseClient;
+      await page.route('**/novelight-client.js', async (route) => {
+        await new Promise((resolve) => {
+          releaseClient = () => {
+            void route.continue();
+            resolve();
+          };
+        });
+      });
+
+      await page.goto(destination, { waitUntil: 'commit' });
+      await expect.poll(() => typeof releaseClient).toBe('function');
+      await expect(page.locator('header.site-header .logo img')).toBeVisible();
+      await page.evaluate(() => globalThis.document.fonts.ready);
+      const firstPaint = await capturePublicHeader(page);
+      releaseClient();
+      await page.waitForLoadState('domcontentloaded');
+      const hydrated = await capturePublicHeader(page);
+      expect(
+        hydrated,
+        `${width}px ${destination}: first paint must match hydrated header`
+      ).toEqual(firstPaint);
+
+      if (canonical === null) {
+        canonical = hydrated;
+      } else {
+        expect(
+          hydrated,
+          `${width}px ${destination}: header must match homepage`
+        ).toEqual(canonical);
+      }
+
+      await page.unroute('**/novelight-client.js');
+    }
+
+    await context.close();
+  }
+});
+
 for (const surface of ['post', 'edit']) {
   test(`episode-${surface} caret scroll`, async ({ page, request }) => {
     const response = await request.get(`/episode-${surface}.html`);
