@@ -152,6 +152,11 @@ html body.novelight-public-dark header.site-header .btn {
   }
 }
 
+/* Protect the public header's intrinsic height from auth-page inline CSS. */
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header {
+  height: auto !important;
+}
+
 /* One shared desktop header grid for Home, SPECIAL and reader discovery pages.
  * Prevent per-page copies from drifting between releases. */
 @media (min-width: 1181px) {
@@ -254,6 +259,50 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
     min-height: 48px !important;
     padding: 0 14px !important;
     font-size: 17px !important;
+  }
+}
+
+/* Mobile public headers use a single flex row, never the desktop
+   three-column grid. This prevents horizontal overflow on 390px screens. */
+@media (max-width: 900px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+    display: flex !important;
+    width: calc(100% - 32px) !important;
+    grid-template-columns: none !important;
+    min-height: 96px !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo {
+    min-width: 0 !important;
+    flex: 0 1 auto !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav,
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .signup-action {
+    display: none !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+    display: block !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+    width: calc(100% - 24px) !important;
+    min-height: 84px !important;
+    gap: 8px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .login-action {
+    display: none !important;
   }
 }
 
