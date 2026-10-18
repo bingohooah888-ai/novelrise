@@ -488,3 +488,45 @@ test('authenticated header label preserves its initial geometry', async ({
     expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
   }
 });
+
+test('admin shortcut preserves public menu coordinates', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  let baseline;
+  for (const route of ['/', '/search.html', '/ranking.html']) {
+    await page.goto(route);
+    const navLinks = page.locator('.desktop-nav a');
+    const measure = () =>
+      navLinks.evaluateAll((links) =>
+        links.map((link) => Math.round(link.getBoundingClientRect().x))
+      );
+    const before = await measure();
+    if (baseline) {
+      expect(before).toEqual(baseline);
+    } else {
+      baseline = before;
+    }
+
+    await page.evaluate(() => {
+      const link = globalThis.document.createElement('a');
+      link.className = 'novelight-admin-shortcut-desktop';
+      const actions = globalThis.document.querySelector('.header-actions');
+      actions.appendChild(link);
+    });
+    expect(await measure()).toEqual(before);
+  }
+});
+
+test('Home header stays navy and discovery header stays ivory', async ({
+  page
+}) => {
+  await page.goto('/');
+  await expect(page.locator('header.site-header')).toHaveCSS(
+    'background-color',
+    'rgba(3, 10, 18, 0.9)'
+  );
+  await page.goto('/search.html');
+  await expect(page.locator('header.site-header')).toHaveCSS(
+    'background-color',
+    'rgba(250, 249, 246, 0.98)'
+  );
+});
