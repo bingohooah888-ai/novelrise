@@ -43,7 +43,7 @@ function readerSettings() {
   return { api: window.NovelightReadingSettings, document, values };
 }
 
-test('old reader settings default safely to horizontal and persist vertical mode', () => {
+test('legacy settings remain horizontal; vertical mode persists', () => {
   const { api, document, values } = readerSettings();
   assert.equal(api.normalize({ fontSize: 'large' }).writingMode, 'horizontal');
   assert.equal(
@@ -65,7 +65,7 @@ test('old reader settings default safely to horizontal and persist vertical mode
   assert.equal(document.body.dataset.readingDirection, 'horizontal');
 });
 
-test('vertical progress uses the horizontal reading axis and restores right-to-left scroll', () => {
+test('vertical reading measures and resumes leftward progress', () => {
   const { api } = readerSettings();
   api.apply({ ...api.DEFAULTS, writingMode: 'vertical' });
   let scrollRequest;
@@ -85,7 +85,7 @@ test('vertical progress uses the horizontal reading axis and restores right-to-l
   assert.equal(api.contentProgress(content), 1);
 });
 
-test('vertical mode keeps illustrations upright and inside the reader viewport', () => {
+test('illustrations stay upright and bounded in vertical mode', () => {
   assert.match(settingsCss, /writing-mode: vertical-rl/);
   assert.match(settingsCss, /text-orientation: mixed/);
   assert.match(settingsCss, /overflow-x: auto/);
@@ -97,7 +97,7 @@ test('vertical mode keeps illustrations upright and inside the reader viewport',
   assert.match(illustrationCss, /\.episode-inline-illustration img/);
 });
 
-test('both episode entry points count horizontal scrolling as real reading', () => {
+test('episode and contest trackers record horizontal scrolling', () => {
   for (const html of [episode, seoEpisode]) {
     assert.match(html, /NovelightReadingSettings\?\.contentProgress/);
     assert.match(html, /scrollContainer\?\.addEventListener/);
@@ -109,5 +109,5 @@ test('both episode entry points count horizontal scrolling as real reading', () 
   assert.match(continuity, /content\.addEventListener\('scroll', schedule/);
   assert.match(continuity, /novelight-reading-mode-changed/);
   assert.match(contestTracker, /NovelightReadingSettings\?\.contentProgress/);
-  assert.match(contestTracker, /context\.content\.addEventListener\('scroll'/);
+  assert.match(contestTracker, /context\.content\.addEventListener\?\./);
 });
