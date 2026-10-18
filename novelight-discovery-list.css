@@ -76,7 +76,7 @@
   letter-spacing: 0.16em;
 }
 
-body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1 {
+body.novelight-page-discovery-list .discovery-list-copy h1 {
   margin: 0;
   color: #3a2618;
   font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;

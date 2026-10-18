@@ -29,6 +29,8 @@ test('discovery pages share visual CSS', () => {
     const html = read(file);
     assert.ok(html.includes('novelight-discovery-list.css'));
     assert.ok(html.includes('novelight-page-discovery-list'));
+    assert.ok(!html.includes('novelight-public-dark'));
+    assert.ok(!html.includes('novelight-brand-refinement.css'));
   }
 });
 
@@ -110,9 +112,7 @@ test('shared CSS keeps parchment colors and readable type', () => {
   assert.ok(css.includes('--discovery-paper-2: #e6d3ad'));
   assert.ok(css.includes('--discovery-paper-3: #dcc294'));
   assert.ok(
-    css.includes(
-      'body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1'
-    )
+    css.includes('body.novelight-page-discovery-list .discovery-list-copy h1')
   );
   assert.ok(css.includes('color: #3a2618'));
   assert.ok(css.includes('font-size: clamp(30px, 4vw, 46px)'));
