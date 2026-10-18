@@ -119,15 +119,15 @@ test('portrait mode never offers immersive reading and rotates out safely', () =
 
 test('book mode uses the live Next button and excludes social/action panels', () => {
   for (const html of [episode, seo]) {
-    assert.match(html, /novelight-landscape-reader\\.js/);
-    assert.match(html, /NovelightLandscapeReader\\.mount\\(\\)/);
+    assert.match(html, /novelight-landscape-reader\.js/);
+    assert.match(html, /NovelightLandscapeReader\.mount\(\)/);
   }
-  assert.match(navigation, /nextLink\\.dataset\\.landscapeLabel = `第\\$\\{Number\\(next\\.episode_number\\)\\}話に進む`/);
-  assert.match(css, /#card \\.content\\s*\\{/);
+  assert.match(navigation, /nextLink\.dataset\.landscapeLabel = `第\$\{Number\(next\.episode_number\)\}話に進む`/);
+  assert.match(css, /#card \.content\s*\{/);
   assert.match(css, /position: fixed/);
   assert.match(css, /height: 100dvh/);
-  assert.match(css, /#nlReadingNav \\.nl-reading-link:not\\(\\.next\\)/);
-  assert.match(css, /content: attr\\(data-landscape-label\\)/);
+  assert.match(css, /#nlReadingNav \.nl-reading-link:not\(\.next\)/);
+  assert.match(css, /content: attr\(data-landscape-label\)/);
   assert.match(css, /object-fit: contain/);
   assert.doesNotMatch(script, /record_valid_read_progress|reader_reading_progress|SCOUT_RECORD|LIGHT_SEED/);
 });
