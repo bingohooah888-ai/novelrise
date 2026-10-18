@@ -22,7 +22,8 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
   const body = {
     dataset: {},
     appendChild(node) {
-      this.button = node;
+      if (node.id === 'nlLandscapeReaderToggle') this.button = node;
+      if (node.id === 'nlLandscapeReaderHint') this.hint = node;
     }
   };
   const button = {
@@ -33,6 +34,10 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
     addEventListener(name, fn) {
       this[name] = fn;
     }
+  };
+  const hint = {
+    hidden: true,
+    setAttribute() {}
   };
   const content = {
     isConnected: true,
@@ -56,8 +61,9 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
       return id === 'nlLandscapeReaderToggle' ? body.button : null;
     },
     createElement(name) {
-      assert.equal(name, 'button');
-      return button;
+      if (name === 'button') return button;
+      assert.equal(name, 'div');
+      return hint;
     },
     addEventListener(name, fn) {
       events.set(name, fn);
@@ -112,7 +118,7 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
     console
   });
   window.NovelightLandscapeReader.mount();
-  return { body, button, content, document, media, session, events, applied };
+  return { body, button, hint, content, document, media, session, events, applied };
 }
 
 test('landscape expands, tracks the end, and restores writing mode', () => {
@@ -158,17 +164,26 @@ test('Next click alone opts the following episode into book mode', () => {
   assert.equal(next.session.size, 0, 'handoff is consumed after navigation');
 });
 
-test('portrait cannot expand and rotating portrait exits safely', () => {
-  const portrait = readerFixture({
-    landscape: false,
-    nextEpisode: 'episode-2'
-  });
-  assert.notEqual(portrait.body.dataset.landscapeReader, 'active');
-  const landscape = readerFixture();
-  landscape.button.click();
-  landscape.media.matches = false;
-  landscape.media.onChange();
-  assert.equal(landscape.body.dataset.landscapeReader, 'off');
+test('portrait entry stays visible and activates after rotation', () => {
+  const portrait = readerFixture({ landscape: false });
+  assert.equal(portrait.body.dataset.landscapeReaderReady, 'true');
+  assert.equal(portrait.button.attributes['aria-pressed'], 'false');
+  portrait.button.click();
+  assert.equal(portrait.body.dataset.landscapeReader, undefined);
+  assert.equal(portrait.hint.hidden, false);
+  portrait.media.matches = true;
+  portrait.media.onChange();
+  assert.equal(portrait.body.dataset.landscapeReader, 'active');
+  assert.equal(portrait.hint.hidden, true);
+  portrait.media.matches = false;
+  portrait.media.onChange();
+  assert.equal(portrait.body.dataset.landscapeReader, 'off');
+
+  const following = readerFixture({ landscape: false, nextEpisode: 'episode-2' });
+  assert.equal(following.hint.hidden, false);
+  following.media.matches = true;
+  following.media.onChange();
+  assert.equal(following.body.dataset.landscapeReader, 'active');
 });
 
 test('book mode reuses Next and excludes social and action panels', () => {
@@ -180,6 +195,8 @@ test('book mode reuses Next and excludes social and action panels', () => {
   assert.match(navigation, /話に進む/);
   assert.match(css, /#card \.content\s*\{/);
   assert.match(css, /position: fixed/);
+  assert.match(css, /@media \(max-width: 960px\), \(pointer: coarse\), \(hover: none\)/);
+  assert.match(css, /data-landscape-reader-ready='true'/);
   assert.match(css, /height: 100dvh/);
   assert.match(css, /#nlReadingNav \.nl-reading-link:not\(\.next\)/);
   assert.match(css, /content: attr\(data-landscape-label\)/);
