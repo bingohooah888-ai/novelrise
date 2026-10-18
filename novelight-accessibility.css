@@ -305,3 +305,71 @@ html body.novelight-theme header.site-header .site-nav a {
     pointer-events: none !important;
   }
 }
+
+/* Canonical public header: resolve the light treatment and geometry before
+   JavaScript without relying on a late duplicate stylesheet. */
+html body.novelight-public-dark header.site-header,
+html body.novelight-public-header-page header.site-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  background: rgba(250, 249, 246, 0.98) !important;
+  border-bottom: 1px solid rgba(14, 29, 53, 0.14) !important;
+  box-shadow: 0 8px 28px rgba(8, 20, 38, 0.08) !important;
+}
+html body.novelight-public-dark header.site-header .desktop-nav a,
+html body.novelight-public-header-page header.site-header .desktop-nav a {
+  color: #28364a !important;
+}
+@media (min-width: 1181px) {
+  html body.novelight-public-dark header.site-header .public-header-inner,
+  html body.novelight-public-header-page header.site-header .public-header-inner {
+    display: grid !important;
+    width: min(1440px, calc(100% - 48px)) !important;
+    max-width: 1440px !important;
+    min-height: 120px !important;
+    grid-template-columns: minmax(250px, 290px) minmax(560px, 1fr) auto !important;
+    align-items: center !important;
+    column-gap: 24px !important;
+  }
+  html body.novelight-public-dark header.site-header .desktop-nav,
+  html body.novelight-public-header-page header.site-header .desktop-nav {
+    display: flex !important;
+    width: 100% !important;
+    justify-content: space-evenly !important;
+    align-items: stretch !important;
+    align-self: stretch !important;
+    gap: 0 !important;
+    margin-left: 0 !important;
+  }
+  html body.novelight-public-dark header.site-header .header-actions,
+  html body.novelight-public-header-page header.site-header .header-actions {
+    margin-left: 0 !important;
+    gap: 12px !important;
+  }
+}
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-public-dark header.site-header .public-header-inner,
+  html body.novelight-public-header-page header.site-header .public-header-inner {
+    display: grid !important;
+    width: calc(100% - 32px) !important;
+    min-height: 120px !important;
+    grid-template-columns: minmax(210px, 230px) minmax(400px, 1fr) auto !important;
+    align-items: center !important;
+    column-gap: 14px !important;
+  }
+  html body.novelight-public-dark header.site-header .desktop-nav,
+  html body.novelight-public-header-page header.site-header .desktop-nav {
+    display: flex !important;
+    width: 100% !important;
+    justify-content: space-evenly !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    margin-left: 0 !important;
+  }
+  html body.novelight-public-dark header.site-header .header-actions,
+  html body.novelight-public-header-page header.site-header .header-actions {
+    margin-left: 0 !important;
+    gap: 8px !important;
+  }
+}
