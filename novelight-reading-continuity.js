@@ -326,7 +326,10 @@
     toc.textContent = '作品目次';
     const nextLink = document.createElement(next ? 'a' : 'span');
     nextLink.className = `nl-reading-link next${next ? '' : ' disabled'}`;
-    if (next) nextLink.href = episodeHref(next.id);
+    if (next) {
+      nextLink.href = episodeHref(next.id);
+      nextLink.dataset.landscapeLabel = `第${Number(next.episode_number)}話に進む`;
+    }
     nextLink.textContent = next ? `${episodeNavigationTitle(next)}を読む →` : '最新話まで読了';
     main.append(previousLink, toc, nextLink);
     nav.appendChild(main);
