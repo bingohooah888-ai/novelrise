@@ -12,9 +12,15 @@ const [script, css, navigation, episode, seo] = await Promise.all([
   readFile('api/seo/templates/episode.html', 'utf8')
 ]);
 
-function readerFixture({ landscape = true, nextEpisode = null } = {}) {
+function readerFixture({
+  landscape = true,
+  nextEpisode = null,
+  fullscreen = false,
+  orientationLock = 'unsupported'
+} = {}) {
   const events = new Map();
   const session = new Map();
+  const calls = [];
   if (nextEpisode) {
     session.set('novelight:landscape-reader-next:v1', nextEpisode);
   }
@@ -23,7 +29,6 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
     dataset: {},
     appendChild(node) {
       if (node.id === 'nlLandscapeReaderToggle') this.button = node;
-      if (node.id === 'nlLandscapeReaderHint') this.hint = node;
     }
   };
   const button = {
@@ -34,10 +39,6 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
     addEventListener(name, fn) {
       this[name] = fn;
     }
-  };
-  const hint = {
-    hidden: true,
-    setAttribute() {}
   };
   const content = {
     isConnected: true,
@@ -54,22 +55,6 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
       return selector === '.content' ? content : null;
     }
   };
-  const document = {
-    body,
-    getElementById(id) {
-      if (id === 'card') return card;
-      return id === 'nlLandscapeReaderToggle' ? body.button : null;
-    },
-    createElement(name) {
-      if (name === 'button') return button;
-      assert.equal(name, 'div');
-      return hint;
-    },
-    addEventListener(name, fn) {
-      events.set(name, fn);
-    },
-    dispatchEvent() {}
-  };
   const media = {
     matches: landscape,
     addEventListener(name, fn) {
@@ -77,11 +62,37 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
       this.onChange = fn;
     }
   };
-  const applied = [];
+  const document = {
+    body,
+    fullscreenElement: null,
+    documentElement: {},
+    getElementById(id) {
+      if (id === 'card') return card;
+      return id === 'nlLandscapeReaderToggle' ? body.button : null;
+    },
+    createElement(name) {
+      assert.equal(name, 'button');
+      return button;
+    },
+    addEventListener(name, fn) {
+      events.set(name, fn);
+    },
+    dispatchEvent() {},
+    async exitFullscreen() {
+      calls.push('exitFullscreen');
+      this.fullscreenElement = null;
+    }
+  };
+  if (fullscreen) {
+    document.documentElement.requestFullscreen = async () => {
+      calls.push('requestFullscreen');
+      document.fullscreenElement = document.documentElement;
+    };
+  }
   const settings = {
     load: () => ({ writingMode: 'horizontal', fontSize: 'standard' }),
     apply(next) {
-      applied.push(next.writingMode);
+      calls.push(next.writingMode);
       body.dataset.readingDirection = next.writingMode;
     },
     contentProgress(node) {
@@ -93,18 +104,39 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
   };
   const window = {
     NovelightReadingSettings: settings,
+    innerWidth: landscape ? 844 : 390,
+    innerHeight: landscape ? 390 : 844,
     location: {
       search: '?id=episode-2',
       href: 'https://novelight.jp/episode.html?id=episode-2'
     },
     matchMedia: () => media,
     requestAnimationFrame: (fn) => fn(),
+    addEventListener() {},
     sessionStorage: {
       getItem: (key) => session.get(key) || null,
       setItem: (key, value) => session.set(key, value),
       removeItem: (key) => session.delete(key)
     }
   };
+  if (orientationLock !== 'unsupported') {
+    window.screen = {
+      orientation: {
+        async lock(value) {
+          calls.push(value);
+          if (orientationLock === 'denied') {
+            throw new Error('orientation denied');
+          }
+          window.innerWidth = 844;
+          window.innerHeight = 390;
+          media.matches = true;
+        },
+        unlock() {
+          calls.push('unlock');
+        }
+      }
+    };
+  }
 
   vm.runInNewContext(script, {
     window,
@@ -118,103 +150,110 @@ function readerFixture({ landscape = true, nextEpisode = null } = {}) {
     console
   });
   window.NovelightLandscapeReader.mount();
-  return {
-    body,
-    button,
-    hint,
-    content,
-    document,
-    media,
-    session,
-    events,
-    applied
-  };
+  return { body, button, content, document, media, session, events, calls };
 }
 
-test('landscape expands, tracks the end, and restores writing mode', () => {
-  const fixture = readerFixture();
-  const { body, button, content, applied } = fixture;
-  assert.equal(body.dataset.landscapeReaderReady, 'true');
-  assert.equal(body.dataset.landscapeReader, undefined);
+test('one tap immediately expands the book on portrait without a rotation hint', () => {
+  const view = readerFixture({ landscape: false });
+  view.button.click();
+  assert.equal(view.body.dataset.landscapeReader, 'active');
+  assert.equal(view.body.dataset.landscapeReaderRotated, 'true');
+  assert.equal(view.body.dataset.readingDirection, 'vertical');
+  assert.equal(view.button.attributes['aria-pressed'], 'true');
+  assert.equal(view.content.lastSeek, 0.5);
+  assert.deepEqual(view.calls, ['vertical']);
 
-  button.click();
-  assert.equal(body.dataset.landscapeReader, 'active');
-  assert.equal(body.dataset.readingDirection, 'vertical');
-  assert.equal(button.attributes['aria-pressed'], 'true');
-  assert.equal(content.lastSeek, 0.5);
-  assert.equal(body.dataset.landscapeReaderAtEnd, 'false');
+  view.content.scrollLeft = -700;
+  view.content.scroll();
+  assert.equal(view.body.dataset.landscapeReaderAtEnd, 'true');
 
-  content.scrollLeft = -700;
-  content.scroll();
-  assert.equal(body.dataset.landscapeReaderAtEnd, 'true');
-
-  button.click();
-  assert.equal(body.dataset.landscapeReader, 'off');
-  assert.equal(body.dataset.readingDirection, 'horizontal');
-  assert.equal(button.attributes['aria-pressed'], 'false');
-  assert.equal(body.dataset.landscapeReaderAtEnd, undefined);
-  assert.deepEqual(applied, ['vertical', 'horizontal']);
+  view.button.click();
+  assert.equal(view.body.dataset.landscapeReader, 'off');
+  assert.equal(view.body.dataset.landscapeReaderRotated, undefined);
+  assert.equal(view.body.dataset.readingDirection, 'horizontal');
+  assert.equal(view.button.attributes['aria-pressed'], 'false');
+  assert.deepEqual(view.calls, ['vertical', 'horizontal']);
 });
 
-test('Next click alone opts the following episode into book mode', () => {
-  const fixture = readerFixture();
-  const { button, events, session } = fixture;
-  button.click();
-  events.get('click')({
+test('supported browsers request fullscreen and native landscape from the tap', async () => {
+  const view = readerFixture({
+    landscape: false,
+    fullscreen: true,
+    orientationLock: 'allowed'
+  });
+  view.button.click();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(view.calls.slice(0, 3), [
+    'vertical',
+    'requestFullscreen',
+    'landscape'
+  ]);
+  assert.equal(view.body.dataset.landscapeReaderRotated, 'false');
+  view.button.click();
+  assert.ok(view.calls.includes('unlock'));
+  assert.ok(view.calls.includes('exitFullscreen'));
+  assert.equal(view.body.dataset.landscapeReader, 'off');
+});
+
+test('orientation denied by OS still displays a rotated fullscreen reader', async () => {
+  const view = readerFixture({
+    landscape: false,
+    fullscreen: true,
+    orientationLock: 'denied'
+  });
+  view.button.click();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(view.body.dataset.landscapeReader, 'active');
+  assert.equal(view.body.dataset.landscapeReaderRotated, 'true');
+});
+
+test('changing physical orientation does not dismiss reading mode', () => {
+  const view = readerFixture({ landscape: false });
+  view.button.click();
+  view.media.matches = true;
+  view.media.onChange();
+  assert.equal(view.body.dataset.landscapeReader, 'active');
+  view.media.matches = false;
+  view.media.onChange();
+  assert.equal(view.body.dataset.landscapeReader, 'active');
+});
+
+test('following Next preserves expanded mode without another gesture', () => {
+  const view = readerFixture({ landscape: false });
+  view.button.click();
+  view.events.get('click')({
     target: {
       closest: () => ({
         href: 'https://novelight.jp/episode.html?id=episode-3'
       })
     }
   });
-  assert.equal(session.get('novelight:landscape-reader-next:v1'), 'episode-3');
-
-  const next = readerFixture({ nextEpisode: 'episode-2' });
-  assert.equal(next.body.dataset.landscapeReader, 'active');
-  assert.equal(next.session.size, 0, 'handoff is consumed after navigation');
-});
-
-test('portrait entry stays visible and activates after rotation', () => {
-  const portrait = readerFixture({ landscape: false });
-  assert.equal(portrait.body.dataset.landscapeReaderReady, 'true');
-  assert.equal(portrait.button.attributes['aria-pressed'], 'false');
-  portrait.button.click();
-  assert.equal(portrait.body.dataset.landscapeReader, undefined);
-  assert.equal(portrait.hint.hidden, false);
-  portrait.media.matches = true;
-  portrait.media.onChange();
-  assert.equal(portrait.body.dataset.landscapeReader, 'active');
-  assert.equal(portrait.hint.hidden, true);
-  portrait.media.matches = false;
-  portrait.media.onChange();
-  assert.equal(portrait.body.dataset.landscapeReader, 'off');
+  assert.equal(view.session.get('novelight:landscape-reader-next:v1'), 'episode-3');
 
   const following = readerFixture({
     landscape: false,
     nextEpisode: 'episode-2'
   });
-  assert.equal(following.hint.hidden, false);
-  following.media.matches = true;
-  following.media.onChange();
   assert.equal(following.body.dataset.landscapeReader, 'active');
+  assert.equal(following.body.dataset.landscapeReaderRotated, 'true');
+  assert.equal(following.session.size, 0);
 });
 
-test('book mode reuses Next and excludes social and action panels', () => {
+test('book view rotates the original content and preserves the Next button', () => {
   for (const html of [episode, seo]) {
-    assert.match(html, /novelight-landscape-reader\.js/);
+    assert.match(html, /novelight-landscape-reader\.js\?v=20261018c/);
     assert.match(html, /NovelightLandscapeReader\.mount\(\)/);
   }
+  assert.match(script, /requestFullscreen/);
+  assert.match(script, /orientation\.lock\('landscape'\)/);
+  assert.doesNotMatch(script, /スマホを横向きにしてください/);
   assert.match(navigation, /nextLink\.dataset\.landscapeLabel/);
-  assert.match(navigation, /話に進む/);
-  assert.match(css, /#card \.content\s*\{/);
-  assert.match(css, /position: fixed/);
-  assert.match(
-    css,
-    /@media \(max-width: 960px\), \(pointer: coarse\), \(hover: none\)/
-  );
-  assert.match(css, /data-landscape-reader-ready='true'/);
-  assert.match(css, /height: 100dvh/);
-  assert.match(css, /#nlReadingNav \.nl-reading-link:not\(\.next\)/);
+  assert.match(css, /data-landscape-reader-rotated='true'/);
+  assert.match(css, /transform: rotate\(90deg\)/);
+  assert.match(css, /width: 100dvh/);
+  assert.match(css, /height: 100dvw/);
   assert.match(css, /content: attr\(data-landscape-label\)/);
   assert.match(css, /object-fit: contain/);
   assert.doesNotMatch(
