@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  createContestReaderReadyHandler
-} from '../api/november-contest-reader-ready.js';
+import { createContestReaderReadyHandler } from '../api/november-contest-reader-ready.js';
 
 const START = Date.parse('2026-10-31T15:00:00Z');
 const END = Date.parse('2026-11-30T15:00:00Z');
