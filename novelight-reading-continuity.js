@@ -326,7 +326,10 @@
     toc.textContent = '作品目次';
     const nextLink = document.createElement(next ? 'a' : 'span');
     nextLink.className = `nl-reading-link next${next ? '' : ' disabled'}`;
-    if (next) nextLink.href = episodeHref(next.id);
+    if (next) {
+      nextLink.href = episodeHref(next.id);
+      nextLink.dataset.landscapeLabel = `第${Number(next.episode_number)}話に進む`;
+    }
     nextLink.textContent = next ? `${episodeNavigationTitle(next)}を読む →` : '最新話まで読了';
     main.append(previousLink, toc, nextLink);
     nav.appendChild(main);
@@ -341,10 +344,28 @@
 
 
   async function installContestReadTracker(row, content, clientInstance) {
-    if (window.NOVELIGHT_CONTEST_READER_CLIENT_ENABLED !== true) return;
+    // The scoring API and contest start are independently owner-gated.
+    // Probe only public, read-only readiness. Never create sessions in
+    // registration, outside the contest dates, or for non-entered works.
+    if (!content?.isConnected || !content.textContent?.trim()) return;
+    let ready = false;
+    try {
+      const response = await window.fetch(
+        '/api/november-contest-reader-ready?episode_id=' +
+          encodeURIComponent(String(row.id)),
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
+      );
+      if (!response.ok) return;
+      const result = await response.json();
+      ready = result?.enabled === true;
+    } catch {
+      // Never fail or block ordinary reading if the contest API is unavailable.
+      return;
+    }
+    if (!ready || !content.isConnected) return;
+    window.NOVELIGHT_CONTEST_READER_CLIENT_ENABLED = true;
     // The visible published body is proof of this page's content gate, not
     // proof of a human read. Never use cross-script lexical globals.
-    if (!content?.isConnected || !content.textContent?.trim()) return;
     let session = null;
     try {
       const result = await clientInstance.auth.getSession();
