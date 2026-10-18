@@ -204,7 +204,7 @@
       const custom = await client.from('novel_custom_covers')
         .select('storage_path').eq('novel_id', Number(id)).maybeSingle();
       const path = String(custom.data?.storage_path || '');
-      if (!custom.error && /^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.webp$/u.test(path)) {
+      if (!custom.error && /^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.(?:webp|png|jpg)$/u.test(path)) {
         const url = client.storage.from('novel-custom-covers').getPublicUrl(path);
         push(url.data?.publicUrl);
       }

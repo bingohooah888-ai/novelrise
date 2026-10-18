@@ -24,10 +24,10 @@
       <div id="workName" class="work-name">作品を確認しています...</div>
       <section id="customCover" class="custom-cover" aria-label="オリジナル表紙画像" hidden>
         <h2>作品ページ・Xシェア用のオリジナル画像</h2>
-        <p>推奨画像サイズ：<strong>1200×1800px（縦横比2:3）</strong>。JPEG・PNG・WebP、最大5MB。異なる比率でも切り取らずに余白で調整します。ご自身が権利を持ち、投稿ガイドラインに沿う画像をご利用ください。Xでは横長1200×630pxのカードに自動合成されます。</p>
+        <p>推奨画像サイズ：<strong>1200×1800px（縦横比2:3）</strong>。JPEG・PNG・WebP・HEIC/HEIF（ブラウザーが読み込める場合）、最大5MB。異なる比率でも切り取らずに余白で調整します。ご自身が権利を持ち、投稿ガイドラインに沿う画像をご利用ください。Xでは横長1200×630pxのカードに自動合成されます。</p>
         <img data-cover-preview hidden alt="現在設定されているオリジナル表紙画像">
         <a data-cover-x-preview href="#" target="_blank" rel="noopener noreferrer" hidden>Xシェア画像をプレビュー</a>
-        <input data-cover-file type="file" accept="image/jpeg,image/png,image/webp" disabled aria-label="オリジナル表紙画像を選ぶ">
+        <input data-cover-file type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" disabled aria-label="オリジナル表紙画像を選ぶ">
         <div class="custom-cover-actions">
           <button data-cover-upload type="button" disabled>画像を設定</button>
           <button data-cover-remove type="button" disabled>公式サムネイルに戻す</button>
@@ -56,12 +56,12 @@
       if(!novelId){workName.textContent='作品を指定できませんでした。';setStatus('自分の作品一覧から設定する作品を選んでください。','error');return}
       try{
         const auth=await client.auth.getSession();session=auth.data.session;if(!session){location.href=`login.html?redirect=${encodeURIComponent(`work-cover.html?novel_id=${novelId}`)}`;return}
-        const result=await client.from('novels').select('id,title,user_id').eq('id',novelId).maybeSingle();
+        const result=await client.from('novels').select('id,title,user_id,status').eq('id',novelId).maybeSingle();
         if(result.error)throw result.error;
         const work=result.data;
         if(!work||String(work.user_id)!==String(session.user.id)){workName.textContent='この作品の表紙は編集できません。';setStatus('作品の所有者としてログインしているか確認してください。','error');return}
         workName.textContent=work.title||'タイトル未設定';
-        void window.NovelightCustomCover?.mount({client,root:document.getElementById('customCover'),novelId,session});
+        void window.NovelightCustomCover?.mount({client,root:document.getElementById('customCover'),novelId,session,published:work.status==='published'});
         cancelLink.href=`novel.html?id=${encodeURIComponent(novelId)}`;
         const mounted=await NovelightThumbnailComposer.mount({client,root,novelId:String(novelId)});
         if(!mounted.ready){root.innerHTML='<div class="thumbnail-state">公式サムネイル素材を準備しています。時間をおいて再度お試しください。</div>';setStatus('表紙設定を読み込めませんでした。','error');return}
