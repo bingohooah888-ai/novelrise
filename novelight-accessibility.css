@@ -288,3 +288,8 @@ html body.novelight-public-dark .owner-more-tools .action {
     max-width: 62vw !important;
   }
 }
+
+/* Keep borderless navigation link metrics identical across Home and SPECIAL zones. */
+html body.novelight-theme header.site-header .site-nav a {
+  border-bottom-color: #28364a !important;
+}
