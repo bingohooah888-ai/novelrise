@@ -4,7 +4,6 @@
 /* Keep the shared-header source contract visible in the canonical stylesheet.
    The complete legacy-compatible rules live in the base stylesheet; these
    declarations intentionally mirror its public-header contract. */
-html body.novelight-public-dark .site-header,
 html body.novelight-public-header-page:not(.novelight-public-dark) .site-header {
   background: rgba(250, 249, 246, 0.98) !important;
   font-family: var(
@@ -31,7 +30,6 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .novelight-br
   height: 104.4px !important;
 }
 
-html body.novelight-public-dark .site-nav a,
 html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
   color: #28364a !important;
   font-size: 22px !important;
@@ -235,8 +233,7 @@ html body.novelight-public-header-page header.site-header .logo img {
   content: url("assets/novelight-header-logo-approved-20260928.webp") !important;
   opacity: 1 !important;
   visibility: visible !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
+  /* Home keeps the approved gold-on-navy treatment from the dark stylesheet. */
 }
 
 /* Shared public-reader sticky guard.
