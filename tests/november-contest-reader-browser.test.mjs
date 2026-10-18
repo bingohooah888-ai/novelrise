@@ -64,7 +64,8 @@ function browser(enabled, { vertical = false } = {}) {
   if (vertical) {
     win.NovelightReadingSettings = {
       contentProgress(content) {
-        return (Math.abs(content.scrollLeft) + content.clientWidth) / content.scrollWidth;
+        const offset = Math.abs(content.scrollLeft);
+        return (offset + content.clientWidth) / content.scrollWidth;
       }
     };
   }
