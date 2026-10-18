@@ -1,0 +1,64 @@
+name: Community Phase 1 Hosted One-use CLAIM Audit (OWNER only)
+
+# No event trigger and no independent Staging operation. A future reviewed,
+# OWNER-only trusted-main executor must call this after obtaining explicit,
+# exact-SHA one-use cost approval. It MUST continue in that same run; this
+# isolated component never grants cost or browser execution.
+on:
+  workflow_call:
+
+# Single repo-wide CLAIM entry. Git ref creation is the final per-request
+# unique-key reservation; this concurrency key does not grant Staging cost approval.
+concurrency:
+  group: community-hosted-claim-one-use-audit
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  claim-only:
+    name: Persist owner approval CLAIM without running or granting Staging
+    if: >-
+      github.event.issue.number == 188 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Checkout trusted main with no persisted token
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Bind workflow event to fresh GitHub OWNER evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Reject non-numeric event IDs before placing them in a URL.
+          comment_id="$(jq -er '.comment.id | select(type == "number")' "$GITHUB_EVENT_PATH")"
+          [[ "$comment_id" =~ ^[1-9][0-9]*$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/community-hosted-issue.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" > /tmp/community-hosted-comment.json
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$GITHUB_SHA"
+          node scripts/community-hosted-claim-entry.mjs claim \
+            /tmp/community-hosted-issue.json \
+            /tmp/community-hosted-comment.json \
+            "$(git rev-parse HEAD)" > /tmp/community-hosted-claim-verdict.json
+          jq -e '.status == "COMMUNITY_HOSTED_OWNER_CLAIM_RECORDED_NO_EXECUTION" and .stagingCostApproved == false and .runAuthorized == false and .writeAuthorized == false and .releaseAuthorized == false' /tmp/community-hosted-claim-verdict.json > /dev/null
+          echo 'The one-use Git tag and CLAIM were audited; NO Stage execution, Preview, browser or cost grant was issued.'

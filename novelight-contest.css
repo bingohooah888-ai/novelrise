@@ -6,11 +6,11 @@ body.novelight-page-contest{margin:0;background:var(--c-bg);color:var(--c-ink);f
 .novelight-page-contest button{font:inherit}
 .novelight-page-contest :focus-visible{outline:3px solid #f9df99;outline-offset:3px}
 .contest-shell{width:min(1110px,calc(100% - 44px));margin:0 auto}
-.contest-site-header{background:#0c1727;border-bottom:1px solid var(--c-line);position:relative;z-index:5}
-.contest-header-inner{width:min(1170px,calc(100% - 38px));margin:auto;min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:24px}
-.contest-brand img{display:block;max-width:190px;width:100%;height:48px;object-fit:contain;object-position:left}
-.contest-header-nav{display:flex;gap:clamp(12px,2.5vw,28px);align-items:center;flex-wrap:wrap}
-.contest-header-nav a{font-size:13px;font-weight:700;color:#d4dce5}
+.contest-site-header{background:#0c1727;border-bottom:1px solid var(--c-line);position:sticky;top:0;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.contest-header-inner{width:min(1440px,calc(100% - 48px));margin:auto;min-height:120px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.contest-brand img{display:block;max-width:290px;width:auto;height:104.4px;object-fit:contain;object-position:left}
+.contest-header-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));flex:1;min-width:0;gap:0;align-items:center}
+.contest-header-nav a{font-size:22px;font-weight:700;color:#d4dce5;white-space:nowrap;text-align:center}
 .contest-header-nav a:hover,.contest-text-link:hover,.contest-footer a:hover{color:var(--c-gold-bright)}
 .contest-hero{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 55% 25%,#203249 0%,#0d1828 62%,#09111f 100%);min-height:525px}
 .contest-hero-light{position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 50% 120%,rgba(214,173,88,.19),transparent 52%),linear-gradient(120deg,transparent 10%,rgba(236,208,149,.035) 44%,transparent 65%)}
@@ -219,4 +219,33 @@ body.novelight-page-contest .contest-hero .contest-hero-dates strong{
   body.novelight-page-contest .contest-hero .contest-hero-dates strong{
     font-size:14px
   }
+}
+
+/* Match the public site's header scale while preserving the contest palette. */
+.novelight-page-contest section[id]{scroll-margin-top:136px}
+@media(min-width:901px) and (max-width:1180px){
+  .contest-header-inner{width:calc(100% - 32px)}
+  .contest-brand img{height:90px;max-width:245px}
+  .contest-header-nav{gap:14px}
+  .contest-header-nav a{font-size:20px}
+}
+@media(max-width:900px){
+  .contest-header-inner{width:calc(100% - 32px);min-height:96px;gap:12px}
+  .contest-brand img{height:82.8px;max-width:245px}
+  .contest-header-nav{gap:10px}
+  .contest-header-nav a{font-size:17px}
+  .novelight-page-contest section[id]{scroll-margin-top:110px}
+}
+@media(max-width:640px){
+  .contest-header-inner{width:calc(100% - 24px);min-height:84px;gap:8px}
+  .contest-brand img{height:72px;max-width:42vw}
+  .contest-header-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px;row-gap:7px}
+  .contest-header-nav a{font-size:12px;line-height:1.4}
+  .contest-header-nav a:nth-child(2){display:inline}
+  .novelight-page-contest section[id]{scroll-margin-top:98px}
+}
+@media(max-width:360px){
+  .contest-brand img{max-width:38vw}
+  .contest-header-nav{column-gap:8px}
+  .contest-header-nav a{font-size:11px}
 }

@@ -303,6 +303,44 @@
     const loginCurrent = publicHeaderCurrent(slug, 'login');
     const signupCurrent = publicHeaderCurrent(slug, 'signup');
 
+    // Most public pages already ship the finished header in their HTML.
+    // Replacing it after first paint causes visible navigation and logo jumps.
+    // Only rebuild truly legacy headers; keep auth link classes up to date.
+    const staticHeader =
+      header.classList.contains('site-header') &&
+      header.querySelector('.public-header-inner > .logo img') &&
+      header.querySelector('.site-nav.desktop-nav') &&
+      header.querySelector('.header-actions .header-search') &&
+      header.querySelector('.header-actions .login-action') &&
+      header.querySelector('.header-actions .signup-action') &&
+      header.querySelector('.mobile-menu nav[aria-label="モバイルナビ"]');
+
+    if (staticHeader) {
+      const currentLinks = [
+        ['search.html', discoverCurrent],
+        ['ranking.html', rankingCurrent],
+        ['announcements.html', announcementsCurrent],
+        ['pricing.html', pricingCurrent]
+      ];
+      header.querySelectorAll('.site-nav a, .mobile-menu nav a').forEach((link) => {
+        const current = currentLinks.find(([href]) => link.getAttribute('href') === href);
+        if (current?.[1]) link.setAttribute('aria-current', 'page');
+      });
+
+      const mobileNav = header.querySelector('.mobile-menu nav');
+      const mobileLogin = mobileNav.querySelector('a[href="login.html"]');
+      if (mobileLogin) mobileLogin.classList.add('mobile-login-action');
+      if (!mobileNav.querySelector('.mobile-signup-action')) {
+        const mobileSignup = document.createElement('a');
+        mobileSignup.className = 'mobile-signup-action';
+        mobileSignup.href = 'signup.html';
+        mobileSignup.textContent = '会員登録';
+        if (signupCurrent) mobileSignup.setAttribute('aria-current', 'page');
+        mobileNav.appendChild(mobileSignup);
+      }
+      return true;
+    }
+
     header.className = 'site-header';
     header.innerHTML =
       '<div class="header-inner public-header-inner">' +

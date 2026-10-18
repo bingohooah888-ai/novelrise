@@ -29,6 +29,8 @@ test('discovery pages share visual CSS', () => {
     const html = read(file);
     assert.ok(html.includes('novelight-discovery-list.css'));
     assert.ok(html.includes('novelight-page-discovery-list'));
+    assert.ok(!html.includes('novelight-public-dark'));
+    assert.ok(!html.includes('novelight-brand-refinement.css'));
   }
 });
 
@@ -45,11 +47,9 @@ test('discovery pages use the unified public header composition', () => {
       html.includes('novelight-public-header-page'),
       `${file} opts into shared header`
     );
-    assert.match(header, /aria-label="NOVELIGHT ホーム"/u);
-    assert.match(
-      header,
-      /href="search\.html" aria-current="page">作品を探す</u
-    );
+    assert.equal(header, headerMarkup(read('index.html')));
+    assert.match(header, /aria-label="NOVELIGHT トップへ"/u);
+    assert.doesNotMatch(header, /aria-current="page"/u);
     assert.doesNotMatch(header, />ホーム</u);
 
     const labels = ['作品を探す', 'ランキング', 'お知らせ', '料金プラン'];
@@ -62,6 +62,27 @@ test('discovery pages use the unified public header composition', () => {
 
     assert.match(header, /login-action[\s\S]*?>ログイン</u);
     assert.match(header, /signup-action[\s\S]*?>会員登録</u);
+  }
+});
+
+test('discovery list headers follow homepage layout at desktop widths', () => {
+  const home = headerMarkup(read('index.html'));
+  for (const file of discoveryPages) {
+    assert.equal(headerMarkup(read(file)), home);
+  }
+  assert.match(
+    css,
+    /grid-template-columns: minmax\(250px, 290px\) minmax\(560px, 1fr\) auto/u
+  );
+  assert.match(
+    css,
+    /grid-template-columns: minmax\(210px, 230px\) minmax\(400px, 1fr\) auto/u
+  );
+  assert.match(css, /justify-content: space-evenly !important/u);
+  assert.match(css, /column-gap: 24px !important/u);
+  assert.match(css, /column-gap: 14px !important/u);
+  for (const file of discoveryPages) {
+    assert.ok(!read(file).includes('novelight-public-dark'));
   }
 });
 
@@ -110,9 +131,7 @@ test('shared CSS keeps parchment colors and readable type', () => {
   assert.ok(css.includes('--discovery-paper-2: #e6d3ad'));
   assert.ok(css.includes('--discovery-paper-3: #dcc294'));
   assert.ok(
-    css.includes(
-      'body.novelight-page-discovery-list.novelight-public-dark .discovery-list-copy h1'
-    )
+    css.includes('body.novelight-page-discovery-list .discovery-list-copy h1')
   );
   assert.ok(css.includes('color: #3a2618'));
   assert.ok(css.includes('font-size: clamp(30px, 4vw, 46px)'));

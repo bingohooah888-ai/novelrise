@@ -77,6 +77,8 @@
 
   function contentProgress(content) {
     if (!content) return 0;
+    const readerProgress = window.NovelightReadingSettings?.contentProgress;
+    if (typeof readerProgress === 'function') return clamp(readerProgress(content));
     const rect = content.getBoundingClientRect();
     const absoluteTop = window.scrollY + rect.top;
     const height = Math.max(content.scrollHeight, rect.height, 1);
@@ -263,6 +265,11 @@
     button.type = 'button';
     button.textContent = `↪ 前回の続きへ（約${Math.round(ratio * 100)}%）`;
     button.addEventListener('click', () => {
+      const seek = window.NovelightReadingSettings?.seekProgress;
+      if (typeof seek === 'function') {
+        seek(content, ratio, 'smooth');
+        return;
+      }
       const top = window.scrollY + content.getBoundingClientRect().top;
       const target = top + Math.max(0, content.scrollHeight * ratio - window.innerHeight * 0.35);
       window.scrollTo({ top: target, behavior: 'smooth' });
@@ -319,7 +326,10 @@
     toc.textContent = '作品目次';
     const nextLink = document.createElement(next ? 'a' : 'span');
     nextLink.className = `nl-reading-link next${next ? '' : ' disabled'}`;
-    if (next) nextLink.href = episodeHref(next.id);
+    if (next) {
+      nextLink.href = episodeHref(next.id);
+      nextLink.dataset.landscapeLabel = `第${Number(next.episode_number)}話に進む`;
+    }
     nextLink.textContent = next ? `${episodeNavigationTitle(next)}を読む →` : '最新話まで読了';
     main.append(previousLink, toc, nextLink);
     nav.appendChild(main);
@@ -334,10 +344,28 @@
 
 
   async function installContestReadTracker(row, content, clientInstance) {
-    if (window.NOVELIGHT_CONTEST_READER_CLIENT_ENABLED !== true) return;
+    // The scoring API and contest start are independently owner-gated.
+    // Probe only public, read-only readiness. Never create sessions in
+    // registration, outside the contest dates, or for non-entered works.
+    if (!content?.isConnected || !content.textContent?.trim()) return;
+    let ready = false;
+    try {
+      const response = await window.fetch(
+        '/api/november-contest-reader-ready?episode_id=' +
+          encodeURIComponent(String(row.id)),
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
+      );
+      if (!response.ok) return;
+      const result = await response.json();
+      ready = result?.enabled === true;
+    } catch {
+      // Never fail or block ordinary reading if the contest API is unavailable.
+      return;
+    }
+    if (!ready || !content.isConnected) return;
+    window.NOVELIGHT_CONTEST_READER_CLIENT_ENABLED = true;
     // The visible published body is proof of this page's content gate, not
     // proof of a human read. Never use cross-script lexical globals.
-    if (!content?.isConnected || !content.textContent?.trim()) return;
     let session = null;
     try {
       const result = await clientInstance.auth.getSession();
@@ -397,6 +425,8 @@
       }, 500);
     };
     window.addEventListener('scroll', schedule, { passive: true });
+    content.addEventListener('scroll', schedule, { passive: true });
+    document.addEventListener('novelight-reading-mode-changed', schedule);
     window.addEventListener('pagehide', () => {
       saveEpisodeProgress(row, content, clientInstance, syncState.userId);
       if (syncState.userId) void pushLocalProgress(clientInstance, syncState.userId, row.novel_id);

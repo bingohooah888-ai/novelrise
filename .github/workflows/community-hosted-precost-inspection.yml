@@ -1,0 +1,83 @@
+name: Community Phase 1 Hosted Pre-cost Read-only Inspection (OWNER only)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: community-hosted-precost-inspection
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Validate exact OWNER intent without allocating resources
+    if: >-
+      github.event.issue.number == 188 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Inspect current main, Draft PR and complete read-only ledger
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/community-precost-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-precost-feature.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" > /tmp/community-precost-ledger.json
+          test "$(git rev-parse HEAD)" = "$(jq -er '.object.sha' /tmp/community-precost-main.json)"
+          node scripts/community-hosted-precost-admission.mjs validate \
+            "$GITHUB_EVENT_PATH" \
+            /tmp/community-precost-main.json \
+            /tmp/community-precost-feature.json \
+            /tmp/community-precost-ledger.json \
+            "$GITHUB_RUN_ID" > /tmp/community-precost-verdict.json
+          jq -e '.status == "OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY" and .liveEvidenceVerified == false and .stagingCostApproved == false and .mayClaim == false and .mayCreateBranch == false and .mayDeployPreview == false and .mayRunBrowser == false and .runAuthorized == false and .releaseAuthorized == false' /tmp/community-precost-verdict.json > /dev/null
+          echo 'Verified preparation-only OWNER intent. No grants, claims, billable resources or Staging writes were performed.'
+      - name: Require read-only immutable reservation-tag policy evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/rulesets?includes_parents=true&per_page=100" \
+            > /tmp/community-hosted-ruleset-inventory.json
+          printf '[]\n' > /tmp/community-hosted-active-tag-details.json
+          while IFS= read -r rule_id; do
+            gh api "repos/$GITHUB_REPOSITORY/rulesets/$rule_id" \
+              > /tmp/community-hosted-active-tag-detail.json
+            jq --slurpfile detail /tmp/community-hosted-active-tag-detail.json \
+              '. + $detail' /tmp/community-hosted-active-tag-details.json \
+              > /tmp/community-hosted-active-tag-details-next.json
+            mv /tmp/community-hosted-active-tag-details-next.json \
+              /tmp/community-hosted-active-tag-details.json
+          done < <(
+            jq -r '[.[][] | select(.target == "tag" and .enforcement == "active") | .id] | unique[]' \
+              /tmp/community-hosted-ruleset-inventory.json
+          )
+          node scripts/community-hosted-reservation-protection.mjs validate \
+            "$GITHUB_REPOSITORY" \
+            /tmp/community-hosted-ruleset-inventory.json \
+            /tmp/community-hosted-active-tag-details.json \
+            > /tmp/community-hosted-tag-protection-verdict.json
+          jq -e '.status == "RESERVATION_TAG_RULESET_READ_ONLY_INSPECTION" and .protectionObserved == true and .protectionFreshAtExecution == false and .stagingCostApproved == false and .mayClaim == false and .runAuthorized == false and .writeAuthorized == false' \
+            /tmp/community-hosted-tag-protection-verdict.json > /dev/null
+          echo 'Read-only reservation tag ruleset inspection passed; no claim or Staging cost authorized.'

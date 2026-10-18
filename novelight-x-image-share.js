@@ -60,6 +60,13 @@
       if (result.error || !result.data) return [];
 
       const novel = result.data;
+      const custom = await db.from('novel_custom_covers')
+        .select('storage_path').eq('novel_id', Number(id)).maybeSingle();
+      const customPath = String(custom.data?.storage_path || '');
+      if (!custom.error && /^[0-9a-f-]{36}\/[0-9]+\/[0-9a-f-]{36}\.(?:webp|png|jpg)$/u.test(customPath)) {
+        const customUrl = db.storage.from('novel-custom-covers').getPublicUrl(customPath);
+        add(customUrl.data?.publicUrl);
+      }
       if (novel.thumbnail_asset_id) {
         const asset = await db
           .from('novel_thumbnail_assets')
@@ -213,6 +220,18 @@
     return prepared.get(id);
   }
 
+  function currentCardRevision(shareUrl) {
+    // The SSR Twitter image contains an immutable, content-derived card hash.
+    // An updated author cover changes the hash and thus the X share URL.
+    if (window.location?.pathname !== '/novel.html') return '';
+    const here = new URL(window.location.href);
+    if (here.searchParams.get('id') !== shareUrl.searchParams.get('id')) return '';
+    const meta = document.querySelector?.('meta[name="twitter:image"]');
+    const imageUrl = meta?.getAttribute?.('content') || '';
+    const match = imageUrl.match(/\/social-cards\/\d+\/([0-9a-f]{16})\.png(?:\?|$)/u);
+    return match ? 'png-' + match[1] : '';
+  }
+
   function intentUrl(title, url) {
     const intent = new URL('https://twitter.com/intent/tweet');
     intent.searchParams.set('text', '『' + String(title || '作品').slice(0, 90) + '』をNOVELIGHTで読む');
@@ -227,7 +246,7 @@
           shareUrl.searchParams.get('id') === '257'
             ? 'png-v6-257-refresh'
             : 'png-v5-mincho';
-        shareUrl.searchParams.set('x_card', revision);
+        shareUrl.searchParams.set('x_card', currentCardRevision(shareUrl) || revision);
       } else if (shareUrl.pathname === '/episode.html') {
         shareUrl.searchParams.set('x_card', 'episode-png-v4-fast');
       }
