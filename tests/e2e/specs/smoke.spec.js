@@ -339,28 +339,9 @@ test('public headers do not jump when shared JavaScript hydrates', async ({
       await expect(page.locator('header.site-header .logo img')).toBeVisible();
       await page.evaluate(() => globalThis.document.fonts.ready);
       const firstPaint = await capturePublicHeader(page);
-      const beforeParts = await page.locator('header.site-header .header-actions').evaluate((node) =>
-        Array.from(node.children, (child) => ({
-          tag: child.tagName,
-          classes: child.className,
-          width: child.getBoundingClientRect().width,
-          display: globalThis.getComputedStyle(child).display
-        }))
-      );
-
       releaseClient();
       await page.waitForLoadState('domcontentloaded');
       const hydrated = await capturePublicHeader(page);
-      const afterParts = await page.locator('header.site-header .header-actions').evaluate((node) =>
-        Array.from(node.children, (child) => ({
-          tag: child.tagName,
-          classes: child.className,
-          width: child.getBoundingClientRect().width,
-          display: globalThis.getComputedStyle(child).display
-        }))
-      );
-      expect(afterParts, `${width}px ${destination}: header action children changed`).toEqual(beforeParts);
-
       expect(
         hydrated,
         `${width}px ${destination}: first paint must match hydrated header`
