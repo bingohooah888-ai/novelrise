@@ -142,9 +142,9 @@ html body.novelight-public-dark .site-header {
   position: sticky !important;
   top: 0 !important;
   z-index: 50 !important;
-  border-bottom: 1px solid rgba(214, 164, 71, 0.15) !important;
-  background: rgba(3, 10, 18, 0.9) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+  border-bottom: 1px solid rgba(14, 29, 53, 0.14) !important;
+  background: rgba(250, 249, 246, 0.98) !important;
+  box-shadow: 0 8px 28px rgba(8, 20, 38, 0.08) !important;
   backdrop-filter: blur(16px) !important;
 }
 html body.novelight-public-dark .public-header-inner {
@@ -174,8 +174,8 @@ html body.novelight-public-dark .novelight-brand-logo-image {
   max-width: 270px !important;
   object-fit: contain !important;
   object-position: left center !important;
-  filter: invert(1) sepia(.78) saturate(3.2) hue-rotate(348deg) brightness(1.24) contrast(1.04) !important;
-  mix-blend-mode: screen !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
 }
 html body.novelight-public-dark .desktop-nav {
   display: flex !important;
@@ -188,7 +188,7 @@ html body.novelight-public-dark .desktop-nav a {
   position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
-  color: #d8dce3 !important;
+  color: #28364a !important;
   font-size: 16px !important;
   font-weight: 700 !important;
   letter-spacing: .035em !important;
@@ -206,7 +206,7 @@ html body.novelight-public-dark .header-search {
   width: 44px !important;
   height: 44px !important;
   place-items: center !important;
-  color: #f0cb72 !important;
+  color: #0e1d35 !important;
   font-size: 28px !important;
   line-height: 1 !important;
 }
@@ -424,4 +424,13 @@ html body.novelight-theme header.site-header .site-nav a {
     text-align: center !important;
     padding: 0 6px !important;
   }
+}
+
+/* PR #341's approved off-white public-header palette is used on Home,
+   Pricing and SPECIAL; dark content below the header remains unchanged.
+   Admin-only links must be readable even when inserted after sign-in. */
+html body.novelight-public-dark header.site-header .novelight-admin-shortcut {
+  color: #0e1d35 !important;
+  -webkit-text-fill-color: #0e1d35 !important;
+  border-color: rgba(14, 29, 53, 0.24) !important;
 }

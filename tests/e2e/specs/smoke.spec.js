@@ -516,17 +516,39 @@ test('admin shortcut preserves public menu coordinates', async ({ page }) => {
   }
 });
 
-test('Home header stays navy and discovery header stays ivory', async ({
+test('Home and public pages keep the approved off-white header', async ({
   page
 }) => {
-  await page.goto('/');
-  await expect(page.locator('header.site-header')).toHaveCSS(
-    'background-color',
-    'rgba(3, 10, 18, 0.9)'
-  );
-  await page.goto('/search.html');
-  await expect(page.locator('header.site-header')).toHaveCSS(
-    'background-color',
-    'rgba(250, 249, 246, 0.98)'
-  );
+  const paths = [
+    '/',
+    '/pricing.html',
+    '/special-light.html',
+    '/search.html',
+    '/ranking.html'
+  ];
+  for (const path of paths) {
+    await page.goto(path);
+    const header = page.locator('header.site-header');
+    const logo = header.locator('.logo img');
+    await expect(header).toHaveCSS(
+      'background-color',
+      'rgba(250, 249, 246, 0.98)'
+    );
+    await expect(logo).toHaveCSS('filter', 'none');
+    await expect(logo).toHaveCSS('mix-blend-mode', 'normal');
+    if (path === '/') {
+      await page.evaluate(() => {
+        const link = globalThis.document.createElement('a');
+        link.className =
+          'novelight-admin-shortcut novelight-admin-shortcut-desktop';
+        link.textContent = '管理画面';
+        const actions = globalThis.document.querySelector('.header-actions');
+        actions.appendChild(link);
+      });
+      await expect(header.locator('.novelight-admin-shortcut')).toHaveCSS(
+        'color',
+        'rgb(14, 29, 53)'
+      );
+    }
+  }
 });
