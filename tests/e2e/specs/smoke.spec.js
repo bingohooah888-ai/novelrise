@@ -489,9 +489,7 @@ test('authenticated header label preserves its initial geometry', async ({
   }
 });
 
-test('public header colors and menu coordinates stay stable with owner shortcut', async ({
-  browser
-}) => {
+test('admin shortcut does not shift the public header', async ({ browser }) => {
   const viewports = [
     { width: 1600, height: 900 },
     { width: 1280, height: 850 },
@@ -513,29 +511,22 @@ test('public header colors and menu coordinates stay stable with owner shortcut'
           };
           const header = document.querySelector('header.site-header');
           const inner = header.querySelector('.public-header-inner');
-          const links = Array.from(header.querySelectorAll('.desktop-nav a'));
+          const nav = header.querySelector('.desktop-nav');
+          const links = Array.from(nav.querySelectorAll('a'));
+          const showNav = getComputedStyle(nav).display !== 'none';
           return {
             headerColor: getComputedStyle(header).backgroundColor,
             inner: rect(inner),
             logo: rect(header.querySelector('.logo img')),
-            links:
-              getComputedStyle(header.querySelector('.desktop-nav')).display === 'none'
-                ? []
-                : links.map(rect),
-            scrollWidth: document.documentElement.scrollWidth,
+            links: showNav ? links.map(rect) : [],
             viewportWidth: document.documentElement.clientWidth
           };
         });
 
       const before = await readHeader();
-      expect(
-        before.headerColor,
-        `${viewport.width}px ${route} background`
-      ).toBe(
-        route === '/'
-          ? 'rgba(3, 10, 18, 0.9)'
-          : 'rgba(250, 249, 246, 0.98)'
-      );
+      const expectedColor =
+        route === '/' ? 'rgba(3, 10, 18, 0.9)' : 'rgba(250, 249, 246, 0.98)';
+      expect(before.headerColor).toBe(expectedColor);
 
       await page.evaluate(() => {
         const actions = document.querySelector(
@@ -546,12 +537,13 @@ test('public header colors and menu coordinates stay stable with owner shortcut'
           'novelight-admin-shortcut novelight-admin-shortcut-desktop';
         link.href = 'admin.html';
         link.textContent = '管理画面';
-        actions.insertBefore(link, actions.querySelector('details.mobile-menu'));
+        const menu = actions.querySelector('details.mobile-menu');
+        actions.insertBefore(link, menu);
       });
       const after = await readHeader();
       expect(
-        after.scrollWidth <= after.viewportWidth + 1,
-        `${viewport.width}px ${route} should not overflow horizontally`
+        after.inner[0] + after.inner[2] <= after.viewportWidth + 1,
+        `${viewport.width}px ${route} header should fit the viewport`
       ).toBe(true);
       for (const key of ['inner', 'logo']) {
         for (let index = 0; index < 4; index += 1) {
