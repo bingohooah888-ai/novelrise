@@ -456,7 +456,6 @@ test('public header stays in place through delayed client script', async ({
   }
 });
 
-
 test('authenticated header label preserves its initial geometry', async ({
   page
 }) => {

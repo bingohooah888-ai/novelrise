@@ -93,7 +93,11 @@ test('legacy public reader and auth pages ship their final header in HTML', () =
     assert.match(header, /class="header-inner public-header-inner"/u, page);
     assert.match(header, /class="site-nav desktop-nav"/u, page);
     assert.match(header, /src="assets\/novelight-header-logo\.webp"/u, page);
-    assert.match(source.split('</head>')[0], /novelight-accessibility\.css/u, page);
+    assert.match(
+      source.split('</head>')[0],
+      /novelight-accessibility\.css/u,
+      page
+    );
   }
 });
 
