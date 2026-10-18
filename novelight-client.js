@@ -38,6 +38,9 @@
   ]);
   const PUBLIC_HEADER_PAGES = new Set([
     'index',
+    'recommended',
+    'new-arrivals',
+    'light-seed',
     'pricing',
     'search',
     'ranking',
