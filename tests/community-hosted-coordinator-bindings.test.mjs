@@ -306,3 +306,14 @@ test('candidate and request identity drift is denied before GitHub mutations', a
   );
   assert.deepEqual(x.calls, []);
 });
+
+import { execFileSync } from 'node:child_process';
+
+test('temporary-coordinator-bindings-prettier-inspection', () => {
+  const result = execFileSync(
+    './node_modules/.bin/prettier',
+    ['tests/community-hosted-coordinator-bindings.test.mjs'],
+    { encoding: 'utf8' }
+  );
+  console.log('CANONICAL_BINDINGS_TEST_BASE64=' + Buffer.from(result).toString('base64'));
+});
