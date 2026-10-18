@@ -249,7 +249,9 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
   display: none;
 }
 
-@media (orientation: landscape) and (pointer: coarse) {
+@media (orientation: landscape) and (pointer: coarse),
+  (orientation: landscape) and (hover: none),
+  (orientation: landscape) and (max-height: 600px) {
   body.novelight-page-episode[data-landscape-reader-ready='true'] .nl-landscape-reader-toggle {
     position: fixed;
     left: max(12px, env(safe-area-inset-left));
