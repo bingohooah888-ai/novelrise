@@ -8,13 +8,15 @@ import {
 
 const mainSha = 'a'.repeat(40);
 const candidateSha = 'b'.repeat(40);
-const sources = (value) => Object.fromEntries(
-  CANDIDATE_GUARD_PATHS.map((path) => [path, value])
-);
+const sources = (value) =>
+  Object.fromEntries(CANDIDATE_GUARD_PATHS.map((path) => [path, value]));
 
 function check(sourceByPath, approvalIssueState = 'closed') {
   return auditCommunityPhase1Readiness({
-    mainSha, candidateSha, sourceByPath, approvalIssueState
+    mainSha,
+    candidateSha,
+    sourceByPath,
+    approvalIssueState
   });
 }
 
@@ -36,9 +38,11 @@ test('even current pins and open control state do not grant access', () => {
   assert.equal(result.stagingCostApproved, false);
   assert.equal(result.mayRunHostedBrowser, false);
   assert.equal(result.mayMutateProduction, false);
-  assert.ok(result.blockers.includes(
-    'INDEPENDENT_ENVIRONMENT_AND_PROVIDER_SPEND_PROOF_MISSING'
-  ));
+  assert.ok(
+    result.blockers.includes(
+      'INDEPENDENT_ENVIRONMENT_AND_PROVIDER_SPEND_PROOF_MISSING'
+    )
+  );
 });
 
 test('a historical pin is flagged even alongside a current pin', () => {
@@ -57,8 +61,12 @@ test('missing and unclassified sources fail closed', () => {
 
 test('bad or obsolete SHA identities are rejected', () => {
   for (const bad of [null, 'X'.repeat(40), mainSha, LEGACY_CANDIDATE_SHA]) {
-    assert.throws(() => auditCommunityPhase1Readiness({
-      mainSha, candidateSha: bad, sourceByPath: sources('irrelevant')
-    }), /invalid or superseded/u);
+    const invalidRequest = () =>
+      auditCommunityPhase1Readiness({
+        mainSha,
+        candidateSha: bad,
+        sourceByPath: sources('irrelevant')
+      });
+    assert.throws(invalidRequest, /invalid or superseded/u);
   }
 });
