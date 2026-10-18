@@ -9,7 +9,10 @@ const client = readFileSync(join(root, 'novelight-client.js'), 'utf8');
 const themeCss = readFileSync(join(root, 'novelight-theme.css'), 'utf8');
 const legalCss = readFileSync(join(root, 'legal.css'), 'utf8');
 const lightCss = readFileSync(join(root, 'novelight-header-light.css'), 'utf8');
-const firstPaintCss = readFileSync(join(root, 'novelight-header-first-paint.css'), 'utf8');
+const firstPaintCss = readFileSync(
+  join(root, 'novelight-header-first-paint.css'),
+  'utf8'
+).replace(/\s*([:;{},])\s*/gu, '$1');
 const planCss = readFileSync(join(root, 'novelight-plan-badges.css'), 'utf8');
 const logoPath = join(root, 'assets', 'novelight-header-logo.webp');
 const htmlFiles = readdirSync(root).filter((name) => name.endsWith('.html'));

@@ -545,6 +545,15 @@ body.novelight-page-search .novel-card {
   box-shadow: 0 10px 20px rgba(55, 32, 15, 0.2);
 }
 
+/* The global theme clamps the outer synopsis host. Once the fold component
+ * mounts, only its inner .nl-synopsis-copy may be clamped; otherwise the
+ * expanded-height measurement sees identical heights and hides the toggle. */
+body.novelight-page-search .novel-card .description.nl-synopsis-host {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
 body.novelight-page-search .novel-card:hover {
   border-color: #a8783e;
   box-shadow: 0 15px 28px rgba(55, 32, 15, 0.28);
