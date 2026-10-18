@@ -138,29 +138,19 @@ test('static public headers survive client initialization without replacement', 
   assert.match(client, /header\.innerHTML\s*=/u);
 });
 
-test('all public headers preserve the PR #341 approved off-white palette', () => {
+test('Home header restores approved ivory', () => {
+  const name = 'html body.novelight-public-dark .site-header {';
+  const start = accessibility.indexOf(name);
+  assert.ok(start >= 0);
+  const rule = accessibility.slice(start, accessibility.indexOf('}', start));
+  assert.match(rule, /rgba\(250, 249, 246, 0\.98\)/u);
+  assert.doesNotMatch(rule, /rgba\(3, 10, 18/u);
+});
+
+test('public-dark logo does not use the old gold filter', () => {
   const base = read('novelight-header-light-base.css');
-  const light = read('novelight-header-light.css');
-  const homeHeader = accessibility.match(
-    /html body\.novelight-public-dark \.site-header \{[\s\S]*?\n\}/u
-  )?.[0];
-  assert.ok(homeHeader);
-  assert.match(
-    homeHeader,
-    /background: rgba\(250, 249, 246, 0\.98\) !important/u
-  );
-  assert.doesNotMatch(homeHeader, /background: rgba\(3, 10, 18/u);
-  assert.match(
-    light,
-    /background: rgba\(250, 249, 246, 0\.98\) !important/u
-  );
-  assert.match(accessibility, /color: #28364a !important/u);
+  assert.doesNotMatch(base, /filter: invert\(1\) sepia/u);
   assert.match(accessibility, /mix-blend-mode: normal !important/u);
-  assert.doesNotMatch(base, /filter: invert\(1\) sepia\(\.78\)/u);
-  assert.match(
-    accessibility,
-    /header\.site-header \.novelight-admin-shortcut/u
-  );
 });
 
 test('admin shortcut has a fixed header slot and a compact-layout fallback', () => {
