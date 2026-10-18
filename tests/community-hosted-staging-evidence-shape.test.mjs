@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  inspectCommunityHostedStagingEvidenceShape
-} from '../scripts/community-hosted-staging-evidence-shape.mjs';
+import { inspectCommunityHostedStagingEvidenceShape } from '../scripts/community-hosted-staging-evidence-shape.mjs';
 
 const MAIN = 'a'.repeat(40);
 const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
@@ -91,10 +89,7 @@ function denied(mutator) {
 
 test('valid shape remains read-only and creates no runtime authority', () => {
   const receipt = inspectCommunityHostedStagingEvidenceShape(fixture());
-  assert.equal(
-    receipt.status,
-    'READ_ONLY_UNAUTHENTICATED_EVIDENCE_SHAPE_ONLY'
-  );
+  assert.equal(receipt.status, 'READ_ONLY_UNAUTHENTICATED_EVIDENCE_SHAPE_ONLY');
   assert.ok(Object.isFrozen(receipt));
   assert.equal(receipt.mainSha, MAIN);
   assert.equal(receipt.candidateSha, FEATURE);
@@ -190,15 +185,4 @@ test('wrong repository, run identity and candidate are denied', () => {
   denied((x) => {
     x.run.candidateSha = 'b'.repeat(40);
   });
-});
-
-import { execFileSync } from 'node:child_process';
-
-test('temporary-prettier-proof-readonly-budget', () => {
-  const result = execFileSync(
-    './node_modules/.bin/prettier',
-    ['tests/community-hosted-staging-evidence-shape.test.mjs'],
-    { encoding: 'utf8' }
-  );
-  console.log('CANONICAL_HOSTED_BUDGET_BASE64=' + Buffer.from(result).toString('base64'));
 });
