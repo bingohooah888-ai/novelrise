@@ -57,6 +57,19 @@ test('search and ranking have a fully styled header in their initial HTML', () =
   }
 });
 
+test('the shared header stylesheet is not reinserted after first paint', () => {
+  const install = client.slice(
+    client.indexOf('function installPublicHeader()'),
+    client.indexOf('installPublicHeader();')
+  );
+  assert.match(install, /const hasHeaderCss =/u);
+  assert.match(install, /link\[href="novelight-accessibility\.css"\]/u);
+  assert.match(install, /if \(!hasHeaderCss\) \{/u);
+  const news = read('news-detail.html');
+  assert.match(news, /<header class="site-header">/u);
+  assert.match(news, /class="header-inner public-header-inner"/u);
+});
+
 test('authenticated public headers keep their navigation width', () => {
   assert.match(accessibility, /\.signup-action\[hidden\]/u);
   assert.match(accessibility, /visibility: hidden !important/u);

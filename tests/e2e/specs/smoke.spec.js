@@ -385,6 +385,7 @@ test('public header stays in place through delayed client script', async ({
     '/ranking.html',
     '/pricing.html',
     '/announcements.html',
+    '/news-detail.html',
     '/special-light.html'
   ];
   for (const path of paths) {

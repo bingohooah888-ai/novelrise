@@ -276,7 +276,14 @@
 
     document.body?.classList.add('novelight-public-header-page');
 
-    if (!document.querySelector('link[data-novelight-public-header]')) {
+    // The accessibility entry stylesheet already imports the complete public
+    // header CSS. Avoid appending the same stylesheet after first paint.
+    const hasHeaderCss = document.querySelector(
+      'link[data-novelight-public-header], ' +
+        'link[href="novelight-header-light.css"], ' +
+        'link[href="novelight-accessibility.css"]'
+    );
+    if (!hasHeaderCss) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = PUBLIC_HEADER_STYLESHEET_PATH;
