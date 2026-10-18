@@ -332,10 +332,10 @@ test('public header geometry is stable before hydration and across pages', async
     const read = () =>
       page.evaluate(() => {
         const measure = (selector) => {
-          const element = document.querySelector(selector);
+          const element = globalThis.document.querySelector(selector);
           if (!element) return null;
           const rect = element.getBoundingClientRect();
-          const style = getComputedStyle(element);
+          const style = globalThis.getComputedStyle(element);
           const round = (n) => Math.round(n * 10) / 10;
           return {
             x: round(rect.x),
@@ -347,8 +347,8 @@ test('public header geometry is stable before hydration and across pages', async
           };
         };
         return {
-          background: getComputedStyle(
-            document.querySelector('header.site-header')
+          background: globalThis.getComputedStyle(
+            globalThis.document.querySelector('header.site-header')
           ).backgroundColor,
           header: measure('header.site-header'),
           inner: measure('header.site-header .public-header-inner'),
