@@ -20,7 +20,18 @@ test('profile editor offers ten canonical genres and independent save', () => {
   assert.match(mypage, /id="saveFavoriteGenres"/u);
   assert.match(mypage, /mountEditor\(client\)/u);
   assert.match(moduleSource, /const MAX = 3/u);
-  for (const genre of ['異世界ファンタジー', '現代ファンタジー', '恋愛', 'ラブコメ', 'SF', 'ミステリー', 'ホラー', '歴史', '現代ドラマ', 'その他']) {
+  for (const genre of [
+    '異世界ファンタジー',
+    '現代ファンタジー',
+    '恋愛',
+    'ラブコメ',
+    'SF',
+    'ミステリー',
+    'ホラー',
+    '歴史',
+    '現代ドラマ',
+    'その他'
+  ]) {
     assert.ok(moduleSource.includes(genre));
   }
 });
