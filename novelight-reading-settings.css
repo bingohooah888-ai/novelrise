@@ -187,7 +187,8 @@ body.novelight-page-episode[data-reading-theme='dark'] .meta {
 
 body.novelight-page-episode[data-reading-direction='vertical'] .content {
   writing-mode: vertical-rl;
-  text-orientation: mixed;
+  text-orientation: upright;
+  line-break: anywhere;
   width: 100%;
   height: min(72dvh, 680px);
   min-height: 280px;
@@ -287,8 +288,8 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
     height: 100dvh;
     min-height: 0;
     margin: 0;
-    padding: max(12px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
-      max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    padding: max(28px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right))
+      max(28px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
     border: 0;
     border-radius: 0;
     background: #fffaf0;
@@ -298,7 +299,10 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     writing-mode: vertical-rl;
-    text-orientation: mixed;
+    text-orientation: upright;
+    line-break: anywhere;
+    overflow-wrap: anywhere;
+    scroll-padding-inline: 28px;
   }
 
   body.novelight-page-episode[data-landscape-reader='active'][data-reading-theme='dark'] #card .content {
@@ -350,7 +354,7 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
   body.novelight-page-episode[data-landscape-reader='active'] #nlReadingNav .nl-reading-link.next:not(.disabled) {
     display: flex;
     writing-mode: vertical-rl;
-    text-orientation: mixed;
+    text-orientation: upright;
     min-width: 52px;
     min-height: 116px;
     max-height: calc(100dvh - 48px);
@@ -432,7 +436,7 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
     min-height: 0;
     max-height: none;
     margin: 0;
-    padding: 12px 20px;
+    padding: 28px 32px;
     border: 0;
     border-radius: 0;
     background: #fffaf0;
@@ -442,7 +446,10 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     writing-mode: vertical-rl;
-    text-orientation: mixed;
+    text-orientation: upright;
+    line-break: anywhere;
+    overflow-wrap: anywhere;
+    scroll-padding-inline: 28px;
     transform: rotate(90deg);
     transform-origin: top left;
   }
@@ -514,7 +521,7 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
     font-size: 0;
     color: #fff;
     writing-mode: vertical-rl;
-    text-orientation: mixed;
+    text-orientation: upright;
     white-space: nowrap;
   }
 
