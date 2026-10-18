@@ -19,12 +19,12 @@ test('portrait reader expands sideways when rotation is denied', async ({
   );
   await page.addStyleTag({ path: '../../novelight-reading-settings.css' });
   await page.evaluate(() => {
-    document.documentElement.requestFullscreen = () =>
+    globalThis.document.documentElement.requestFullscreen = () =>
       Promise.reject(new Error('fullscreen denied in test'));
     globalThis.NovelightReadingSettings = {
       load: () => ({ writingMode: 'horizontal' }),
       apply(value) {
-        document.body.dataset.readingDirection = value.writingMode;
+        globalThis.document.body.dataset.readingDirection = value.writingMode;
       },
       contentProgress: () => 0.2,
       seekProgress: () => {}
@@ -48,7 +48,7 @@ test('portrait reader expands sideways when rotation is denied', async ({
 
   const content = page.locator('#card .content');
   const style = await content.evaluate((element) => {
-    const computed = getComputedStyle(element);
+    const computed = globalThis.getComputedStyle(element);
     const box = element.getBoundingClientRect();
     return {
       transform: computed.transform,
