@@ -403,14 +403,15 @@ test('public header stays in place through delayed client script', async ({
     try {
       const header = page.locator('header.site-header .public-header-inner');
       await expect(header).toBeVisible();
-      await expect.poll(async () => {
-        return page.evaluate(() => {
-          const links = globalThis.document.querySelectorAll(
-            'link[rel="stylesheet"]'
-          );
-          return Array.from(links).every((link) => Boolean(link.sheet));
-        });
-      }).toBe(true);
+      await page.waitForFunction(() => {
+        const header = globalThis.document.querySelector('header.site-header');
+        const skip = globalThis.document.querySelector('.skip-link');
+        return (
+          header &&
+          globalThis.getComputedStyle(header).position === 'sticky' &&
+          (!skip || globalThis.getComputedStyle(skip).position === 'fixed')
+        );
+      });
       await expect.poll(() => Boolean(resume)).toBe(true);
       const before = await page.evaluate(() => {
         const inner = globalThis.document.querySelector('.public-header-inner');
