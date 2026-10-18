@@ -1,7 +1,21 @@
+/* Reserve viewport scrollbar space from the very first render. Without this,
+ * deferred page data can introduce a classic scrollbar and nudge a centered
+ * header horizontally by half the gutter width (4px in Chromium CI). */
+html:has(> body.novelight-public-dark),
+html:has(> body.novelight-public-header-page) {
+  scrollbar-gutter: stable;
+}
+
 /* First-paint mirror of NOVELIGHT's existing shared header/logo layout.
  * Kept in the render-blocking site stylesheet so late client hydration does
  * not change geometry; update alongside installBrandLogo in novelight-client.js.
  */
+/* The approved header artwork is 300x120. Reserve its aspect ratio before download. */
+header.site-header .logo img,
+header.site-header .site-logo img {
+  aspect-ratio: 5 / 2;
+}
+
 .novelight-brand-logo-image,
 .logo img,
 .site-logo img {
