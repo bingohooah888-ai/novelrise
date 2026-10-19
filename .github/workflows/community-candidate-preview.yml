@@ -108,9 +108,9 @@ jobs:
           test "$(jq -r '.head.ref' <<< "$pr")" = "$STAGING_PREVIEW_REF"
           test "$(jq -r '.state' <<< "$pr")" = open
           test "$(jq -r '.draft' <<< "$pr")" = true
-          gh api "repos/$GITHUB_REPOSITORY/compare/$APPROVED_MAIN_SHA...$EXPECTED_REVISION" \\
+          gh api "repos/$GITHUB_REPOSITORY/compare/$APPROVED_MAIN_SHA...$EXPECTED_REVISION" \
             > /tmp/preview-reviewed-compare.json
-          node scripts/community-phase1-reviewed-candidate.mjs verify-compare \\
+          node scripts/community-phase1-reviewed-candidate.mjs verify-compare \
             "$APPROVED_MAIN_SHA" "$EXPECTED_REVISION" /tmp/preview-reviewed-compare.json
       - name: Prove dedicated Staging is gated OFF before Preview exists
         env:

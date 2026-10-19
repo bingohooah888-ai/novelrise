@@ -56,7 +56,11 @@ function fixture() {
       base_commit: { sha: mainSha },
       head_commit: { sha: candidateSha },
       commits: [{ sha: candidateSha }],
-      files: REVIEWED_COMMUNITY_FILES.map((f) => ({ filename: f.path, sha: f.sha, status: f.status }))
+      files: REVIEWED_COMMUNITY_FILES.map((f) => ({
+        filename: f.path,
+        sha: f.sha,
+        status: f.status
+      }))
     },
     ledgerPages: [[{ body: 'ordinary discussion' }]]
   };
@@ -181,33 +185,51 @@ test('cost-bearing Preview workflow refuses a closed Issue', () => {
   assert.ok(rechecks.length >= 2);
 });
 
-
-test('reviewed candidate manifest denies unreviewed file additions and removals', () => {
+test('reviewed file set rejects additions and omissions', () => {
   const extra = fixture();
-  extra.compare.files.push({ filename: 'api/unsafe.js', sha: 'f'.repeat(40), status: 'added' });
-  assert.throws(() => assertCommunityPreviewAdmission(extra), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+  extra.compare.files.push({
+    filename: 'api/unsafe.js',
+    sha: 'f'.repeat(40),
+    status: 'added'
+  });
+  assert.throws(
+    () => assertCommunityPreviewAdmission(extra),
+    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
+  );
   const missing = fixture();
   missing.compare.files.pop();
-  assert.throws(() => assertCommunityPreviewAdmission(missing), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+  assert.throws(
+    () => assertCommunityPreviewAdmission(missing),
+    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
+  );
 });
 
-test('reviewed candidate manifest denies changed blobs and renamed files', () => {
+test('reviewed blob hashes and paths cannot drift', () => {
   const changed = fixture();
   changed.compare.files[0].sha = 'f'.repeat(40);
-  assert.throws(() => assertCommunityPreviewAdmission(changed), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+  assert.throws(
+    () => assertCommunityPreviewAdmission(changed),
+    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
+  );
   const renamed = fixture();
   renamed.compare.files[0].filename = 'new-file.js';
-  assert.throws(() => assertCommunityPreviewAdmission(renamed), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+  assert.throws(
+    () => assertCommunityPreviewAdmission(renamed),
+    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
+  );
 });
 
-test('reviewed candidate remains valid after safe main-only sync with identical diff', () => {
+test('main-only sync keeps reviewed content valid', () => {
   const next = fixture();
   const newMain = 'c'.repeat(40);
   const newCandidate = 'd'.repeat(40);
-  const command = JSON.parse(next.comment.body.slice('NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE '.length));
+  const command = JSON.parse(
+    next.comment.body.slice('NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE '.length)
+  );
   command.mainSha = newMain;
   command.candidateSha = newCandidate;
-  next.comment.body = 'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE ' + JSON.stringify(command);
+  next.comment.body =
+    'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE ' + JSON.stringify(command);
   next.main.object.sha = newMain;
   next.pr.base.sha = newMain;
   next.pr.head.sha = newCandidate;
@@ -215,15 +237,23 @@ test('reviewed candidate remains valid after safe main-only sync with identical 
   next.compare.head_commit.sha = newCandidate;
   next.compare.commits = [{ sha: newCandidate }];
   assert.deepEqual(assertCommunityPreviewAdmission(next), {
-    mainSha: newMain, candidateSha: newCandidate, requestCommentId: '123'
+    mainSha: newMain,
+    candidateSha: newCandidate,
+    requestCommentId: '123'
   });
 });
 
-test('reviewed candidate denies a mismatched compare head or truncated compare', () => {
+test('mismatched or incomplete compare is denied', () => {
   const stale = fixture();
   stale.compare.head_commit.sha = 'c'.repeat(40);
-  assert.throws(() => assertCommunityPreviewAdmission(stale), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+  assert.throws(
+    () => assertCommunityPreviewAdmission(stale),
+    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
+  );
   const truncated = fixture();
   truncated.compare.files = undefined;
-  assert.throws(() => assertCommunityPreviewAdmission(truncated), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+  assert.throws(
+    () => assertCommunityPreviewAdmission(truncated),
+    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
+  );
 });
