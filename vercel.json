@@ -404,6 +404,5 @@
       ]
     }
   ],
-  "buildCommand": "node scripts/sync-public-header.mjs --write",
-  "outputDirectory": "."
+  "buildCommand": "node scripts/sync-public-header.mjs --write"
 }
