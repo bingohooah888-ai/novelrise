@@ -3,6 +3,7 @@
 // A future trusted-main workflow must independently fetch and verify evidence,
 // atomically claim an approval BEFORE costs, and consume it after the run.
 import { readFileSync } from 'node:fs';
+import { assertReviewedCommunityCandidate } from './community-phase1-reviewed-candidate.mjs';
 
 import {
   HOSTED_CLAIMED,
@@ -13,7 +14,6 @@ import {
 const OWNER = 'bingohooah888-ai';
 const REPO = OWNER + '/novelrise';
 const ISSUE = '[Staging Approval Control] Preview / Staging cost gate';
-const FEATURE_SHA = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const SHA = /^[0-9a-f]{40}$/u;
 const ID = /^[1-9][0-9]*$/u;
 
@@ -122,8 +122,10 @@ function unusedLedger(ledgerPages, requestComment, runId) {
 
 export function verifyCommunityHostedPreCostAdmission({
   event,
+  liveIssue,
   main,
   feature,
+  compare,
   ledgerPages,
   runId
 }) {
@@ -131,6 +133,7 @@ export function verifyCommunityHostedPreCostAdmission({
     event?.action !== 'created' ||
     event.repository?.full_name !== REPO ||
     event.issue?.number !== 188 ||
+    event.issue?.state !== 'open' ||
     event.issue?.title !== ISSUE ||
     event.issue?.pull_request ||
     event.issue?.user?.login !== OWNER ||
@@ -141,6 +144,19 @@ export function verifyCommunityHostedPreCostAdmission({
     !ID.test(String(runId || ''))
   ) {
     deny('not an authentic owner-controlled single-run proposal');
+  }
+  if (
+    !Number.isSafeInteger(event.issue.id) ||
+    event.issue.id <= 0 ||
+    liveIssue?.id !== event.issue.id ||
+    liveIssue?.number !== 188 ||
+    liveIssue?.state !== 'open' ||
+    liveIssue?.url !== event.issue.url ||
+    liveIssue.url !== `https://api.github.com/repos/${REPO}/issues/188` ||
+    liveIssue.title !== ISSUE ||
+    liveIssue.user?.login !== OWNER
+  ) {
+    deny('live approval issue is closed or does not match the event');
   }
   const proposal = record(event.comment.body, HOSTED_PRE_COST_APPROVE, [
     'confirmation',
@@ -155,16 +171,27 @@ export function verifyCommunityHostedPreCostAdmission({
     proposal.target !== 'new-data-less-isolated-branch' ||
     !SHA.test(proposal.mainSha) ||
     proposal.mainSha !== main?.object?.sha ||
-    proposal.featureSha !== FEATURE_SHA ||
+    !SHA.test(proposal.featureSha) ||
+    proposal.featureSha === proposal.mainSha ||
     feature?.number !== 2222 ||
     feature.state !== 'open' ||
     feature.draft !== true ||
     feature.merged === true ||
     feature.base?.ref !== 'main' ||
-    feature.head?.sha !== FEATURE_SHA ||
+    feature.base?.sha !== proposal.mainSha ||
+    feature.head?.sha !== proposal.featureSha ||
     feature.head?.repo?.full_name !== REPO
   ) {
     deny('fresh main, immutable Draft feature or request scope mismatch');
+  }
+  try {
+    assertReviewedCommunityCandidate({
+      compare,
+      mainSha: proposal.mainSha,
+      candidateSha: proposal.featureSha
+    });
+  } catch {
+    deny('unreviewed feature blobs or incomplete ancestry proof');
   }
   unusedLedger(ledgerPages, event.comment, runId);
 
@@ -192,13 +219,18 @@ export function verifyCommunityHostedPreCostAdmission({
 if (process.argv[2] === 'validate') {
   try {
     const paths = process.argv.slice(3);
-    if (paths.length !== 5) deny('four evidence files and run ID required');
-    const [eventPath, mainPath, featurePath, ledgerPath, runId] = paths;
+    if (paths.length !== 7) deny('six evidence files and run ID required');
+    const [
+      eventPath, issuePath, mainPath, featurePath,
+      comparePath, ledgerPath, runId
+    ] = paths;
     const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
     const verdict = verifyCommunityHostedPreCostAdmission({
       event: read(eventPath),
+      liveIssue: read(issuePath),
       main: read(mainPath),
       feature: read(featurePath),
+      compare: read(comparePath),
       ledgerPages: read(ledgerPath),
       runId
     });

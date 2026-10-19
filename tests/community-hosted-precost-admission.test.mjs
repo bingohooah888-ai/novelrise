@@ -7,6 +7,7 @@ import {
   HOSTED_PRE_COST_APPROVE,
   verifyCommunityHostedPreCostAdmission
 } from '../scripts/community-hosted-precost-admission.mjs';
+import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
 import {
   HOSTED_APPROVE,
   HOSTED_CLAIMED,
@@ -15,7 +16,7 @@ import {
 } from '../scripts/community-hosted-write-admission.mjs';
 
 const MAIN = 'a'.repeat(40);
-const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
+const FEATURE = 'b'.repeat(40);
 const RUN = '456';
 const proposal = {
   scope: HOSTED_SCOPE,
@@ -36,7 +37,10 @@ function fixture() {
       action: 'created',
       repository: { full_name: 'bingohooah888-ai/novelrise' },
       issue: {
+        id: 999,
         number: 188,
+        state: 'open',
+        url: 'https://api.github.com/repos/bingohooah888-ai/novelrise/issues/188',
         title: '[Staging Approval Control] Preview / Staging cost gate',
         user: { login: 'bingohooah888-ai' }
       },
@@ -53,15 +57,29 @@ function fixture() {
       state: 'open',
       draft: true,
       merged: false,
-      base: { ref: 'main' },
+      base: { ref: 'main', sha: MAIN },
       head: {
         sha: FEATURE,
         repo: { full_name: 'bingohooah888-ai/novelrise' }
       }
     },
+    compare: {
+      status: 'ahead',
+      behind_by: 0,
+      ahead_by: 1,
+      total_commits: 1,
+      base_commit: { sha: MAIN },
+      commits: [{ sha: FEATURE }],
+      files: REVIEWED_COMMUNITY_FILES.map((f) => ({
+        filename: f.path,
+        sha: f.sha,
+        status: f.status
+      }))
+    },
     ledgerPages: [],
     runId: RUN
   };
+  input.liveIssue = { ...input.event.issue };
   input.ledgerPages = [[input.event.comment]];
   return input;
 }
@@ -121,6 +139,10 @@ test('only the authentic owner and control issue qualify', () => {
   rejectField('event.action', 'edited');
   rejectField('event.repository.full_name', 'wrong/novelrise');
   rejectField('event.issue.number', 294);
+  rejectField('event.issue.state', 'closed');
+  rejectField('liveIssue.state', 'closed');
+  rejectField('liveIssue.id', 123);
+  rejectField('liveIssue.url', 'https://invalid.example/188');
   rejectField('event.issue.title', 'wrong');
   rejectField('event.issue.user.login', 'wrong');
   rejectField('event.issue.pull_request', {});
@@ -139,6 +161,8 @@ test('current main and exact unmerged candidate are fixed', () => {
   rejectField('feature.merged', true);
   rejectField('feature.state', 'closed');
   rejectField('feature.base.ref', 'other');
+  rejectField('feature.base.sha', 'c'.repeat(40));
+  rejectField('event.comment.body', proposalBody({ featureSha: 'c'.repeat(40) }));
   rejectField('feature.number', 2223);
   rejectField('event.comment.body', proposalBody({ scope: 'other' }));
   rejectField('event.comment.body', proposalBody({ mainSha: 'invalid' }));
@@ -204,6 +228,9 @@ test('owner inspection workflow remains read-only', () => {
     'issues: read',
     'pull-requests: read',
     'community-hosted-precost-admission.mjs validate',
+    '/tmp/community-precost-issue.json',
+    '/tmp/community-precost-reviewed-compare.json',
+    "github.event.issue.state == 'open'",
     '.stagingCostApproved == false',
     '.mayClaim == false',
     '.mayCreateBranch == false',
@@ -238,4 +265,49 @@ test('partial pagination or missing OWNER source is rejected', () => {
   rejectField('ledgerPages', [
     [sample.event.comment, { ...sample.event.comment, id: 123 }]
   ]);
+});
+
+test('full reviewed blob manifest rejects stale, extra and missing content', () => {
+  for (const mutation of [
+    (x) => { x.compare.files[0].sha = 'f'.repeat(40); },
+    (x) => { x.compare.files.pop(); },
+    (x) => {
+      x.compare.files.push({
+        filename: 'unaudited.js',
+        sha: 'f'.repeat(40),
+        status: 'added'
+      });
+    },
+    (x) => { x.compare.behind_by = 1; },
+    (x) => { x.compare.commits[0].sha = 'f'.repeat(40); },
+    (x) => { x.compare.base_commit.sha = 'f'.repeat(40); }
+  ]) {
+    const input = fixture();
+    mutation(input);
+    assert.throws(
+      () => verifyCommunityHostedPreCostAdmission(input),
+      /COMMUNITY_HOSTED_PRE_COST_DENIED/u
+    );
+  }
+});
+
+test('current main and a descendant head pass only as preparation', () => {
+  const input = fixture();
+  const nextMain = 'c'.repeat(40);
+  const nextHead = 'd'.repeat(40);
+  input.main.object.sha = nextMain;
+  input.feature.base.sha = nextMain;
+  input.feature.head.sha = nextHead;
+  input.compare.base_commit.sha = nextMain;
+  input.compare.commits[0].sha = nextHead;
+  const nextBody = proposalBody({ mainSha: nextMain, featureSha: nextHead });
+  input.event.comment.body = nextBody;
+  input.ledgerPages[0][0].body = nextBody;
+  const result = verifyCommunityHostedPreCostAdmission(input);
+  assert.equal(result.candidateSha, nextHead);
+  assert.equal(result.mainSha, nextMain);
+  assert.equal(result.stagingCostApproved, false);
+  assert.equal(result.mayClaim, false);
+  assert.equal(result.mayCreateBranch, false);
+  assert.equal(result.mayDeployPreview, false);
 });
