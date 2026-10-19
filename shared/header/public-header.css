@@ -2,13 +2,13 @@
  * Based on the approved HOME header. All selectors are scoped to the
  * header itself so story, campaign content and account panels stay untouched.
  * Change this file to update header styling on all managed pages. */
-html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header {
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header {
   background: rgba(250, 249, 246, 0.98) !important;
   border-bottom: 1px solid rgba(14, 29, 53, 0.14) !important;
   color: #142a40 !important;
 }
 
-html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo {
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .logo {
   display: inline-flex !important;
   min-width: 250px !important;
   flex: 0 0 auto !important;
@@ -18,17 +18,17 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
   line-height: 0 !important;
 }
 
-html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo img {
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .logo img {
   display: block !important;
   width: auto !important;
-  height: 58px !important;
-  max-width: 270px !important;
+  height: 104.4px !important;
+  max-width: 290px !important;
   object-fit: contain !important;
   object-position: left center !important;
   filter: none !important;
 }
 
-html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav a {
   color: #142a40 !important;
   -webkit-text-fill-color: #142a40 !important;
   font-weight: 800 !important;
@@ -37,20 +37,20 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
   text-decoration: none !important;
 }
 
-html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a:is(:hover, :focus-visible, [aria-current="page"]) {
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav a:is(:hover, :focus-visible, [aria-current="page"]) {
   color: #70460c !important;
   -webkit-text-fill-color: #70460c !important;
 }
 
-html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .nl-reader-account-bar .nl-reader-nav-link,
-html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .nl-reader-account-bar .nl-reader-account-chip,
-html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .novelight-admin-shortcut-desktop {
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .nl-reader-account-bar .nl-reader-nav-link,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .nl-reader-account-bar .nl-reader-account-chip,
+html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .novelight-admin-shortcut-desktop {
   color: #142a40 !important;
   -webkit-text-fill-color: #142a40 !important;
 }
 
 @media (min-width: 1101px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
     display: flex !important;
     width: min(1380px, calc(100% - 48px)) !important;
     max-width: none !important;
@@ -62,7 +62,7 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
     flex-wrap: nowrap !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav {
     display: grid !important;
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 0 !important;
@@ -71,18 +71,18 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
     margin: 0 !important;
   }
 
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav a {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     text-align: center !important;
     padding: 0 5px !important;
-    font-size: 16px !important;
+    font-size: 22px !important;
   }
 
   /* A fixed five-column action track keeps the public header still while
      authentication / OWNER controls are added after the first paint. */
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions {
     display: grid !important;
     width: 480px !important;
     min-width: 480px !important;
@@ -94,37 +94,37 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
 }
 
 @media (min-width: 1101px) and (max-width: 1440px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
     display: grid !important;
     width: calc(100% - 32px) !important;
     max-width: 1440px !important;
     grid-template-columns: minmax(200px, 230px) minmax(360px, 1fr) auto !important;
     column-gap: 14px !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav a {
     font-size: clamp(16px, 1.5vw, 20px) !important;
   }
 }
 
 @media (min-width: 1101px) and (max-width: 1180px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .logo {
     min-width: 218px !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
     width: calc(100% - 24px) !important;
     grid-template-columns: minmax(185px, 220px) minmax(320px, 1fr) 480px !important;
     column-gap: 12px !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav a {
     font-size: clamp(16px, 1.5vw, 20px) !important;
   }
 }
 
 @media (min-width: 641px) and (max-width: 1100px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .logo {
     min-width: 0 !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
     display: flex !important;
     min-height: 96px !important;
     width: calc(100% - 32px) !important;
@@ -132,29 +132,29 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
     align-items: center !important;
     gap: 12px !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo img {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .logo img {
     height: 46px !important;
     max-width: 250px !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav {
     display: none !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .mobile-menu {
     display: block !important;
   }
 }
 
 @media (min-width: 641px) and (max-width: 900px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
     min-height: 76px !important;
   }
 }
 
 @media (max-width: 640px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .logo {
     min-width: 0 !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .public-header-inner {
     display: flex !important;
     min-height: 68px !important;
     width: calc(100% - 24px) !important;
@@ -162,14 +162,14 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
     align-items: center !important;
     gap: 8px !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .logo img {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .logo img {
     height: 40px !important;
     max-width: 56vw !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .desktop-nav {
     display: none !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .mobile-menu {
     display: block !important;
   }
 }

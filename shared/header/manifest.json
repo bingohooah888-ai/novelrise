@@ -65,11 +65,13 @@
     },
     "author-features.html": {
       "mobileAuthClasses": true,
-      "mobileSignup": true
+      "mobileSignup": true,
+      "logoLabel": "NOVELIGHT ホーム"
     },
     "reader-features.html": {
       "mobileAuthClasses": true,
-      "mobileSignup": true
+      "mobileSignup": true,
+      "logoLabel": "NOVELIGHT ホーム"
     }
   },
   "custom": {

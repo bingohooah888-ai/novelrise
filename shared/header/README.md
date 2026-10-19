@@ -24,7 +24,7 @@
 2. `npm run header:sync` で対象ページの初期HTMLを自動更新。
 3. `npm run header:check` で同期漏れを検出。
 4. PRのCIで差分とPC・スマホの初期表示を確認。
-5. Vercel本番ビルドでもヘッダー同期処理が自動実行されます。
+5. Vercelビルド時に同期します。本番へ反映する前にビルド出力を確認します。
 
 ページごとのJS/課金/権限/SEOの動作は本マネージャーの管理対象外です。
 新しい通常ページは `managed` に加え、初期HTMLに `site-header` と `public-header-inner` を配置してください。
