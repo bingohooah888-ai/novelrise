@@ -162,3 +162,23 @@ test('admin shortcut has a fixed header slot and a compact-layout fallback', () 
   assert.match(accessibility, /min-width: 100px !important/u);
   assert.match(accessibility, /max-width: 1100px/u);
 });
+
+test('Home action slots stay stable after auth', () => {
+  const marker = 'Keep the public header actions in reserved slots';
+  const fixed = accessibility.slice(accessibility.indexOf(marker));
+  assert.ok(fixed.startsWith(marker));
+  assert.match(fixed, /width: 480px !important/u);
+  assert.match(fixed, /grid-template-columns: 44px 116px 80px 120px 96px/u);
+  assert.match(fixed, /header-search/u);
+  assert.match(fixed, /login-action/u);
+  assert.match(fixed, /signup-action\[hidden\]/u);
+  assert.match(fixed, /visibility: hidden !important/u);
+  assert.match(fixed, /nl-reader-account-bar/u);
+  assert.match(fixed, /novelight-admin-shortcut-desktop/u);
+  assert.match(fixed, /position: static !important/u);
+  assert.match(fixed, /max-width: 1100px/u);
+  assert.match(fixed, /grid-template-columns: 32px 36px 40px/u);
+  assert.match(fixed, /grid-template-columns: minmax\(185px, 220px\)/u);
+  const reader = read('novelight-reader-account.js');
+  assert.match(reader, /header\.insertBefore\(bar/u);
+});

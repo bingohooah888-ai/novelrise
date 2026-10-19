@@ -44,12 +44,17 @@ jobs:
           test "$(jq -er '.state' /tmp/community-precost-issue.json)" = 'open'
           gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/community-precost-main.json
           gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-precost-feature.json
+          main="$(jq -er '.object.sha' /tmp/community-precost-main.json)"
+          head="$(jq -er '.head.sha' /tmp/community-precost-feature.json)"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/community-precost-reviewed-compare.json
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" > /tmp/community-precost-ledger.json
           test "$(git rev-parse HEAD)" = "$(jq -er '.object.sha' /tmp/community-precost-main.json)"
-          node scripts/community-hosted-precost-admission.mjs validate \
+          node scripts/community-hosted-precost-review-only.mjs validate \
             "$GITHUB_EVENT_PATH" \
+            /tmp/community-precost-issue.json \
             /tmp/community-precost-main.json \
             /tmp/community-precost-feature.json \
+            /tmp/community-precost-reviewed-compare.json \
             /tmp/community-precost-ledger.json \
             "$GITHUB_RUN_ID" > /tmp/community-precost-verdict.json
           jq -e '.status == "OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY" and .liveEvidenceVerified == false and .stagingCostApproved == false and .mayClaim == false and .mayCreateBranch == false and .mayDeployPreview == false and .mayRunBrowser == false and .runAuthorized == false and .releaseAuthorized == false' /tmp/community-precost-verdict.json > /dev/null
