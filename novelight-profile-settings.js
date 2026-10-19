@@ -176,6 +176,7 @@
         window.location.replace('login.html?redirect=profile-settings.html');
         return;
       }
+      void NovelightClient.syncAuthHeader(client);
       const result = await client.from('profiles').select('display_name,bio,avatar_path')
         .eq('id', session.user.id).maybeSingle();
       if (result.error) throw result.error;
