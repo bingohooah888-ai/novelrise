@@ -524,3 +524,206 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     gap: 7px !important;
   }
 }
+
+/* Keep the public header actions in reserved slots from the FIRST paint.
+   The previous :has(reader-account) rule changed the width from 440px to
+   480px after auth, reflowing Search, Studio, bookshelf, avatar and OWNER. */
+@media (min-width: 1101px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions:has(.nl-reader-account-bar) {
+    display: grid !important;
+    width: 480px !important;
+    min-width: 480px !important;
+    padding: 0 !important;
+    grid-template-columns: 44px 116px 80px 120px 96px !important;
+    column-gap: 6px !important;
+    justify-content: stretch !important;
+    align-items: center !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .header-search {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .login-action {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0 !important;
+    width: 100% !important;
+    padding-inline: 8px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .signup-action {
+    grid-column: 3;
+    grid-row: 1;
+    min-width: 0 !important;
+    width: 100% !important;
+    padding-inline: 5px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .signup-action[hidden],
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions:has(.nl-reader-account-bar) > .signup-action[hidden] {
+    display: inline-flex !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .nl-reader-account-bar {
+    grid-column: 4;
+    grid-row: 1;
+    width: 120px !important;
+    min-width: 0 !important;
+    justify-content: center;
+    gap: 7px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .novelight-admin-shortcut-desktop,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions:has(.nl-reader-account-bar) > .novelight-admin-shortcut-desktop {
+    grid-column: 5;
+    grid-row: 1;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+    width: 96px !important;
+    min-width: 0 !important;
+    max-width: 96px !important;
+    margin: 0 !important;
+    padding: 8px 5px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-name {
+    display: none !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-account-chip {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    padding: 4px !important;
+  }
+}
+
+/* Reserve the same auth/avatar/menu slots for narrow desktop and tablet.
+   Admin-only controls remain hidden by the existing <=1100px policy. */
+@media (min-width: 641px) and (max-width: 1100px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions {
+    display: grid !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    padding: 0 !important;
+    grid-template-columns: 44px 110px 42px 46px !important;
+    column-gap: 6px !important;
+    justify-content: stretch !important;
+    align-items: center !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .header-search {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .login-action {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0 !important;
+    width: 100% !important;
+    padding-inline: 8px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .nl-reader-account-bar {
+    grid-column: 3;
+    grid-row: 1;
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    justify-content: center !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .mobile-menu {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-nav-link,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-name {
+    display: none !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-account-chip {
+    width: 42px !important;
+    max-width: 42px !important;
+    padding: 4px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions {
+    display: grid !important;
+    width: 120px !important;
+    min-width: 120px !important;
+    padding: 0 !important;
+    grid-template-columns: 32px 36px 40px !important;
+    column-gap: 6px !important;
+    justify-content: stretch !important;
+    align-items: center !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .logo img {
+    max-width: min(56vw, calc(100vw - 162px)) !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .header-search {
+    grid-column: 1;
+    grid-row: 1;
+    width: 32px !important;
+    height: 40px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .nl-reader-account-bar {
+    grid-column: 2;
+    grid-row: 1;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    justify-content: center !important;
+    gap: 0 !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .mobile-menu {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .mobile-menu summary {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-nav-link,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-name {
+    display: none !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-account-chip {
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    padding: 2px !important;
+  }
+
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-avatar {
+    width: 29px !important;
+    height: 29px !important;
+  }
+}
+
+/* At 1101-1180px the desktop column totals must fit before and after auth. */
+@media (min-width: 1101px) and (max-width: 1180px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .public-header-inner {
+    width: calc(100% - 24px) !important;
+    grid-template-columns: minmax(185px, 220px) minmax(320px, 1fr) 480px !important;
+    column-gap: 12px !important;
+  }
+}
