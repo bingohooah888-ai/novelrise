@@ -1,11 +1,11 @@
 // Read-only, exact-SHA preprovision gate. This NEVER authorizes a write,
 // starts a Preview, creates a Supabase branch, or consumes Staging approval.
 import { readFileSync } from 'node:fs';
+import { assertReviewedCommunityCandidate } from './community-phase1-reviewed-candidate.mjs';
 
 const OWNER = 'bingohooah888-ai';
 const REPO = OWNER + '/novelrise';
 const ISSUE = '[Staging Approval Control] Preview / Staging cost gate';
-const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const SHA = /^[0-9a-f]{40}$/u;
 const MARKER = 'NOVELIGHT_COMMUNITY_HOSTED_PREFLIGHT_REQUEST ';
 
@@ -17,11 +17,13 @@ export function verifyCommunityHostedPreprovision({
   event,
   main,
   feature,
+  compare,
   currentBranchRefs
 }) {
   if (
     event?.repository?.full_name !== REPO ||
     event?.issue?.number !== 188 ||
+    event.issue.state !== 'open' ||
     event.issue?.title !== ISSUE ||
     event.issue?.user?.login !== OWNER ||
     event.issue?.pull_request ||
@@ -64,16 +66,26 @@ export function verifyCommunityHostedPreprovision({
     !SHA.test(request.mainSha || '') ||
     !SHA.test(request.featureSha || '') ||
     request.mainSha !== main?.object?.sha ||
-    request.featureSha !== FEATURE ||
+    request.mainSha === request.featureSha ||
+    request.featureSha !== feature?.head?.sha ||
     feature?.number !== 2222 ||
     feature.state !== 'open' ||
     feature.draft !== true ||
     feature.merged === true ||
     feature.base?.ref !== 'main' ||
-    feature.head?.sha !== FEATURE ||
+    feature.base.sha !== request.mainSha ||
     feature.head?.repo?.full_name !== REPO
   ) {
     deny('immutable main, feature, mode or Draft PR mismatch');
+  }
+  try {
+    assertReviewedCommunityCandidate({
+      compare,
+      mainSha: request.mainSha,
+      candidateSha: request.featureSha
+    });
+  } catch {
+    deny('unreviewed feature diff or main ancestry');
   }
   if (
     !Array.isArray(currentBranchRefs) ||
@@ -90,7 +102,7 @@ export function verifyCommunityHostedPreprovision({
   return Object.freeze({
     status: 'READ_ONLY_PREFLIGHT_ONLY',
     mainSha: request.mainSha,
-    featureSha: FEATURE,
+    featureSha: request.featureSha,
     requestCommentId: String(event.comment.id),
     requiresSeparateStagingApproval: true,
     mayCreateBranch: false,
@@ -102,16 +114,18 @@ export function verifyCommunityHostedPreprovision({
 
 if (process.argv[2] === 'validate') {
   try {
-    const [eventPath, mainPath, featurePath] = process.argv.slice(3);
-    if (!eventPath || !mainPath || !featurePath ||
-        process.argv.slice(3).length !== 3) {
-      deny('event, main and PR evidence files are required');
+    const [eventPath, mainPath, featurePath, comparePath] =
+      process.argv.slice(3);
+    if (!eventPath || !mainPath || !featurePath || !comparePath ||
+        process.argv.slice(3).length !== 4) {
+      deny('event, main, PR and reviewed compare evidence required');
     }
     const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
     const result = verifyCommunityHostedPreprovision({
       event: read(eventPath),
       main: read(mainPath),
       feature: read(featurePath),
+      compare: read(comparePath),
       currentBranchRefs: []
     });
     process.stdout.write(JSON.stringify(result) + '\n');

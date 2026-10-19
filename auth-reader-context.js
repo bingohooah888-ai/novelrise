@@ -10,6 +10,7 @@
   const ALLOWED_PATHS = new Set([
     '/mypage.html',
     '/account-settings.html',
+    '/profile-settings.html',
     '/interaction-settings.html',
     '/pricing.html',
     '/scout-record.html',
