@@ -83,3 +83,16 @@ test('every HTML page has a declared header-layout owner', () => {
     assert.ok(managed.has(page) || custom.has(page), page);
   }
 });
+
+test('canonical header CSS applies to light and dark public layouts', () => {
+  const css = read('shared/header/public-header.css');
+  assert.match(
+    css,
+    /body:is\(\.novelight-public-dark, \.novelight-public-header-page\)/u
+  );
+  for (const page of ['index.html', 'search.html', 'terms.html']) {
+    assert.match(read(page), /data-novelight-shared-header="true"/u);
+  }
+  assert.match(read('terms.html'), /<body class="novelight-public-header-page"/u);
+});
+
