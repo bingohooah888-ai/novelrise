@@ -49,7 +49,11 @@ export function renderHeader(page) {
 }
 export function synchronizeHtml(html, page) {
   if (!headerPattern.test(html)) throw new Error('Missing managed header in ' + page);
-  return html.replace(headerPattern, renderHeader(page));
+  const shell = html.replace(headerPattern, renderHeader(page));
+  const link = '<link rel="stylesheet" href="' + manifest.style + '" data-novelight-shared-header="true">';
+  if (shell.includes(link)) return shell;
+  if (!shell.includes('</head>')) throw new Error('Missing head in ' + page);
+  return shell.replace('</head>', link + '\n</head>');
 }
 
 if (new Set(manifest.managed).size !== manifest.managed.length) throw new Error('Duplicate managed page');

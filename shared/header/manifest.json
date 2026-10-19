@@ -120,5 +120,6 @@
       "shared.html",
       "updates.html"
     ]
-  }
+  },
+  "style": "/shared/header/public-header.css"
 }

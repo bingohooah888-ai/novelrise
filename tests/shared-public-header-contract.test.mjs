@@ -49,6 +49,7 @@ test('deployed HTML is generated in build rather than injected after paint', () 
     const html = read(path);
     assert.match(html, /<header class="site-header">/u, path);
     assert.match(html, /class="header-inner public-header-inner"/u, path);
+    assert.match(html, /data-novelight-shared-header="true"/u, path);
   }
 });
 
