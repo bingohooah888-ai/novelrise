@@ -14,6 +14,11 @@ const CURRENT_BLOBS = {
   'tests/accessibility-baseline.test.mjs':
     'cb72484530f211c56c335b2fe62dcc81e8d9b831'
 };
+const REVIEWED_SMOKE = Object.freeze({
+  path: 'tests/e2e/specs/smoke.spec.js',
+  previous: 'fc5fa385bb5f285e971367a0c04fa30ff4047126',
+  current: 'eae105adb9704a1a694764904b522a1f372c7014'
+});
 const PREVIOUS_BLOBS = {
   'author-notes.html': 'b55355a64dcc75225e9a59ff2432fd0e460b46c5',
   'index.html': '104fd490a8326277a6a5f855dae1883064e336a6',
@@ -52,6 +57,29 @@ test('only three reviewed integration blobs replace prior fingerprints', () => {
   assert.equal(
     assertReviewedCommunityCandidate(evidence()).reviewedFileCount,
     37
+  );
+});
+
+test('current Phase 1 and public-header smoke Git blob is pinned', () => {
+  const found = REVIEWED_COMMUNITY_FILES.find(
+    (x) => x.path === REVIEWED_SMOKE.path
+  );
+  assert.ok(found);
+  assert.equal(found.status, 'modified');
+  assert.equal(found.sha, REVIEWED_SMOKE.current);
+  assert.equal(
+    assertReviewedCommunityCandidate(evidence()).reviewedFileCount,
+    37
+  );
+  const retired = evidence();
+  const oldFile = retired.compare.files.find(
+    (x) => x.filename === REVIEWED_SMOKE.path
+  );
+  assert.ok(oldFile);
+  oldFile.sha = REVIEWED_SMOKE.previous;
+  assert.throws(
+    () => assertReviewedCommunityCandidate(retired),
+    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/u
   );
 });
 
