@@ -206,3 +206,14 @@ test('read-only inspection cannot grant hosted writes', () => {
     /const FEATURE_SHA = '6bf0ea608183e4977fcdaa17d36b1712974d5a49'/u
   );
 });
+
+const NOVELIGHT_TEMP_FORMAT_DIAGNOSTIC = 'NOVELIGHT_PRETTIER_RESULT_BASE64=';
+const { execFileSync } = await import('node:child_process');
+const formatted = execFileSync(
+  'node_modules/.bin/prettier',
+  ['tests/community-hosted-precost-review-only.test.mjs'],
+  { encoding: 'utf8' }
+);
+process.stdout.write(
+  NOVELIGHT_TEMP_FORMAT_DIAGNOSTIC + Buffer.from(formatted).toString('base64') + '\n'
+);
