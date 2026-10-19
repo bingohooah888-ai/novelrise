@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
@@ -57,4 +57,17 @@ test('SEO route templates and root shells share identical static markup', () => 
     assert.equal(read(name + '.html'), read('api/seo/templates/' + name + '.html'));
   }
   assert.ok(manifest.managed.includes('author.html'));
+});
+
+test('all pages with public site-header are classified by manifest', () => {
+  const publicPages = readdirSync(new URL('../', import.meta.url)).filter(
+    (name) => name.endsWith('.html')
+  );
+  for (const page of publicPages) {
+    if (!read(page).includes('<header class="site-header">')) continue;
+    assert.ok(
+      manifest.managed.includes(page) || Boolean(manifest.custom[page]),
+      'unmanaged shared header: ' + page
+    );
+  }
 });
