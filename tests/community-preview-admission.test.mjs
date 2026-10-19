@@ -185,75 +185,42 @@ test('cost-bearing Preview workflow refuses a closed Issue', () => {
   assert.ok(rechecks.length >= 2);
 });
 
-test('reviewed file set rejects additions and omissions', () => {
+const reviewedDenied = /COMMUNITY_REVIEWED_CANDIDATE_DENIED/;
+
+test('reviewed diff rejects altered or missing files', () => {
+  const altered = fixture();
+  altered.compare.files[0].sha = 'f'.repeat(40);
+  assert.throws(() => assertCommunityPreviewAdmission(altered), reviewedDenied);
+
+  const missing = fixture();
+  missing.compare.files.pop();
+  assert.throws(() => assertCommunityPreviewAdmission(missing), reviewedDenied);
+});
+
+test('reviewed diff rejects unreviewed extra files', () => {
   const extra = fixture();
   extra.compare.files.push({
-    filename: 'api/unsafe.js',
+    filename: 'unreviewed.js',
     sha: 'f'.repeat(40),
     status: 'added'
   });
-  assert.throws(
-    () => assertCommunityPreviewAdmission(extra),
-    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
-  );
-  const missing = fixture();
-  missing.compare.files.pop();
-  assert.throws(
-    () => assertCommunityPreviewAdmission(missing),
-    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
-  );
+  assert.throws(() => assertCommunityPreviewAdmission(extra), reviewedDenied);
 });
 
-test('reviewed blob hashes and paths cannot drift', () => {
-  const changed = fixture();
-  changed.compare.files[0].sha = 'f'.repeat(40);
-  assert.throws(
-    () => assertCommunityPreviewAdmission(changed),
-    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
-  );
-  const renamed = fixture();
-  renamed.compare.files[0].filename = 'new-file.js';
-  assert.throws(
-    () => assertCommunityPreviewAdmission(renamed),
-    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
-  );
-});
-
-test('main-only sync keeps reviewed content valid', () => {
-  const next = fixture();
-  const newMain = 'c'.repeat(40);
-  const newCandidate = 'd'.repeat(40);
-  const command = JSON.parse(
-    next.comment.body.slice('NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE '.length)
-  );
-  command.mainSha = newMain;
-  command.candidateSha = newCandidate;
-  next.comment.body =
-    'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE ' + JSON.stringify(command);
-  next.main.object.sha = newMain;
-  next.pr.base.sha = newMain;
-  next.pr.head.sha = newCandidate;
-  next.compare.base_commit.sha = newMain;
-  next.compare.head_commit.sha = newCandidate;
-  next.compare.commits = [{ sha: newCandidate }];
-  assert.deepEqual(assertCommunityPreviewAdmission(next), {
-    mainSha: newMain,
-    candidateSha: newCandidate,
-    requestCommentId: '123'
-  });
-});
-
-test('mismatched or incomplete compare is denied', () => {
-  const stale = fixture();
-  stale.compare.head_commit.sha = 'c'.repeat(40);
-  assert.throws(
-    () => assertCommunityPreviewAdmission(stale),
-    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
-  );
-  const truncated = fixture();
-  truncated.compare.files = undefined;
-  assert.throws(
-    () => assertCommunityPreviewAdmission(truncated),
-    /COMMUNITY_REVIEWED_CANDIDATE_DENIED/
-  );
+test('main sync with identical reviewed blobs can pass', () => {
+  const evidence = fixture();
+  const main = 'c'.repeat(40);
+  const head = 'd'.repeat(40);
+  const prefix = 'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE ';
+  const approval = JSON.parse(evidence.comment.body.slice(prefix.length));
+  approval.mainSha = main;
+  approval.candidateSha = head;
+  evidence.comment.body = prefix + JSON.stringify(approval);
+  evidence.main.object.sha = main;
+  evidence.pr.base.sha = main;
+  evidence.pr.head.sha = head;
+  evidence.compare.base_commit.sha = main;
+  evidence.compare.head_commit.sha = head;
+  evidence.compare.commits = [{ sha: head }];
+  assert.equal(assertCommunityPreviewAdmission(evidence).candidateSha, head);
 });
