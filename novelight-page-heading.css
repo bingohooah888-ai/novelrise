@@ -104,3 +104,41 @@ html.novelight-page-account-settings body.novelight-author-studio-shell .page-he
     border-radius: 17px !important;
   }
 }
+
+/* Inquiry #69: the desktop 620px flex-basis becomes an unwanted HEIGHT when
+   .head switches to a column on phones. Let the heading size to its text. */
+@media (max-width: 640px) {
+  html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading > div:first-child {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    align-self: stretch;
+  }
+
+  html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading .head-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading .head-actions .new {
+    display: flex;
+    flex: none !important;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px !important;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 8px !important;
+    font-size: 14px !important;
+    line-height: 1.4;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  html body.novelight-theme.novelight-page-my-novels .head.novelight-page-heading .head-actions .new[hidden] {
+    display: none !important;
+  }
+}
