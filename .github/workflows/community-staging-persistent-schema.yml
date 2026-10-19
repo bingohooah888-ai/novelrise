@@ -214,7 +214,7 @@ jobs:
             -f /tmp/novelight-community-approved/supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
           gate="$(psql "$STAGING_DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 \
             -c 'SELECT public_enabled::text FROM public.community_runtime_control WHERE singleton')"
-          test "$gate" = f
+          test "$gate" = false
           echo 'Dedicated Staging persisted schema, exact +1 ledger migration, RLS postcheck and public_enabled=false verified.'
 
   record:
