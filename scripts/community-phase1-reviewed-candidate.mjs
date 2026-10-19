@@ -179,7 +179,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "tests/e2e/specs/smoke.spec.js",
-      "sha": "fc5fa385bb5f285e971367a0c04fa30ff4047126",
+      "sha": "eae105adb9704a1a694764904b522a1f372c7014",
       "status": "modified"
     },
     {
