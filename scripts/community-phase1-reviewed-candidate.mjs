@@ -24,7 +24,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "author-notes.html",
-      "sha": "b55355a64dcc75225e9a59ff2432fd0e460b46c5",
+      "sha": "5bd92792238608743d00d4d3eef72862cfcb070b",
       "status": "modified"
     },
     {
@@ -64,7 +64,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "index.html",
-      "sha": "104fd490a8326277a6a5f855dae1883064e336a6",
+      "sha": "6267de4d01d91839f155af745d1577bb2bbc0395",
       "status": "modified"
     },
     {
@@ -144,7 +144,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "tests/accessibility-baseline.test.mjs",
-      "sha": "7922d5506fddd0567d1e5fd1394d2e698a689a69",
+      "sha": "cb72484530f211c56c335b2fe62dcc81e8d9b831",
       "status": "modified"
     },
     {
