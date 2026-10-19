@@ -7,9 +7,7 @@ import {
   COMMUNITY_HOSTED_PREFLIGHT_MARKER,
   verifyCommunityHostedPreprovision
 } from '../scripts/community-hosted-preprovision.mjs';
-import {
-  REVIEWED_COMMUNITY_FILES
-} from '../scripts/community-phase1-reviewed-candidate.mjs';
+import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
 
 const MAIN = 'a'.repeat(40);
 const FEATURE = 'b'.repeat(40);

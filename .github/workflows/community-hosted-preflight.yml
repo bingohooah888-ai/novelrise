@@ -47,8 +47,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(jq -er '.object.sha' /tmp/community-main.json)"
           candidate="$(jq -er '.head.sha' /tmp/community-pr.json)"
           main="$(jq -er '.object.sha' /tmp/community-main.json)"
-          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$candidate" \\
-            > /tmp/community-reviewed-compare.json
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$candidate" > /tmp/community-reviewed-compare.json
           node scripts/community-hosted-preprovision.mjs validate \
             "$GITHUB_EVENT_PATH" \
             /tmp/community-main.json \
