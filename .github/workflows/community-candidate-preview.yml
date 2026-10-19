@@ -98,6 +98,7 @@ jobs:
         with:
           node-version: 24
       - name: Reject unreviewed candidate changes
+        shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
@@ -107,17 +108,10 @@ jobs:
           test "$(jq -r '.head.ref' <<< "$pr")" = "$STAGING_PREVIEW_REF"
           test "$(jq -r '.state' <<< "$pr")" = open
           test "$(jq -r '.draft' <<< "$pr")" = true
-          while IFS='|' read -r path sha; do
-            actual="$(gh api "repos/$GITHUB_REPOSITORY/contents/$path?ref=$EXPECTED_REVISION" --jq '.sha')"
-            test "$actual" = "$sha" || { echo "Reviewed candidate blob changed: $path"; exit 1; }
-          done <<'REVIEWED'
-          supabase/migrations/20261014052000_community_plaza_phase1.sql|1f5ef773a4073f10cc2e1b886eb3a8c942beb5c4
-          novelight-client.js|17ac35b2f2513615682d13203f258b4ffa9c7274
-          novelight-community-config.js|edefc63df53af401063f66819262a2b986b58090
-          novelight-community.js|3c1eac4cf8032b5652b8f9202fa621c29279e95f
-          novelight-community-alerts.js|4c40ce14c93a7d35735d94918216d0bcf5c2cb57
-          community.html|bc1c5243c3f1fd902096983cbeddc56662c970b0
-          REVIEWED
+          gh api "repos/$GITHUB_REPOSITORY/compare/$APPROVED_MAIN_SHA...$EXPECTED_REVISION" \\
+            > /tmp/preview-reviewed-compare.json
+          node scripts/community-phase1-reviewed-candidate.mjs verify-compare \\
+            "$APPROVED_MAIN_SHA" "$EXPECTED_REVISION" /tmp/preview-reviewed-compare.json
       - name: Prove dedicated Staging is gated OFF before Preview exists
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

@@ -7,7 +7,7 @@ const RUN = Object.freeze({
   repository: 'bingohooah888-ai/novelrise',
   scope: 'community-phase1-hosted-authenticated-write',
   mainSha: 'a'.repeat(40),
-  candidateSha: '91114a536688411caa37a5640a14eca01c8e0335',
+  candidateSha: '6bf0ea608183e4977fcdaa17d36b1712974d5a49',
   requestCommentId: '123',
   runId: '456'
 });

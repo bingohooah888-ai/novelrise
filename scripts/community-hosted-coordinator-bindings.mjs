@@ -37,7 +37,7 @@ export function makeCommunityHostedCoordinatorBindings({
     preparation?.status !== 'OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY' ||
     preparation.mainSha !== trustedMainSha ||
     preparation.candidateSha !==
-      '91114a536688411caa37a5640a14eca01c8e0335' ||
+      '6bf0ea608183e4977fcdaa17d36b1712974d5a49' ||
     preparation.requestCommentId !== String(event.comment.id) ||
     !ID.test(preparation.runId ?? '') ||
     preparation.stagingCostApproved !== false ||

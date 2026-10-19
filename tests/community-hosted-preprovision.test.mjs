@@ -9,7 +9,7 @@ import {
 } from '../scripts/community-hosted-preprovision.mjs';
 
 const MAIN = 'a'.repeat(40);
-const FEATURE = '91114a536688411caa37a5640a14eca01c8e0335';
+const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const request = {
   scope: 'community-phase1-hosted-write-preflight-only',
   mainSha: MAIN,

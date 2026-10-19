@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 import { assertCommunityPreviewAdmission } from '../scripts/community-preview-admission.mjs';
+import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
 
 const mainSha = 'a'.repeat(40);
 const candidateSha = 'b'.repeat(40);
@@ -53,7 +54,9 @@ function fixture() {
       ahead_by: 1,
       total_commits: 1,
       base_commit: { sha: mainSha },
-      commits: [{ sha: candidateSha }]
+      head_commit: { sha: candidateSha },
+      commits: [{ sha: candidateSha }],
+      files: REVIEWED_COMMUNITY_FILES.map((f) => ({ filename: f.path, sha: f.sha, status: f.status }))
     },
     ledgerPages: [[{ body: 'ordinary discussion' }]]
   };
@@ -176,4 +179,51 @@ test('cost-bearing Preview workflow refuses a closed Issue', () => {
   assert.match(workflow, /scripts\/community-preview-admission\.mjs/u);
   const rechecks = workflow.match(/--jq '\.state'/gu) ?? [];
   assert.ok(rechecks.length >= 2);
+});
+
+
+test('reviewed candidate manifest denies unreviewed file additions and removals', () => {
+  const extra = fixture();
+  extra.compare.files.push({ filename: 'api/unsafe.js', sha: 'f'.repeat(40), status: 'added' });
+  assert.throws(() => assertCommunityPreviewAdmission(extra), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+  const missing = fixture();
+  missing.compare.files.pop();
+  assert.throws(() => assertCommunityPreviewAdmission(missing), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+});
+
+test('reviewed candidate manifest denies changed blobs and renamed files', () => {
+  const changed = fixture();
+  changed.compare.files[0].sha = 'f'.repeat(40);
+  assert.throws(() => assertCommunityPreviewAdmission(changed), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+  const renamed = fixture();
+  renamed.compare.files[0].filename = 'new-file.js';
+  assert.throws(() => assertCommunityPreviewAdmission(renamed), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+});
+
+test('reviewed candidate remains valid after safe main-only sync with identical diff', () => {
+  const next = fixture();
+  const newMain = 'c'.repeat(40);
+  const newCandidate = 'd'.repeat(40);
+  const command = JSON.parse(next.comment.body.slice('NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE '.length));
+  command.mainSha = newMain;
+  command.candidateSha = newCandidate;
+  next.comment.body = 'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE ' + JSON.stringify(command);
+  next.main.object.sha = newMain;
+  next.pr.base.sha = newMain;
+  next.pr.head.sha = newCandidate;
+  next.compare.base_commit.sha = newMain;
+  next.compare.head_commit.sha = newCandidate;
+  next.compare.commits = [{ sha: newCandidate }];
+  assert.deepEqual(assertCommunityPreviewAdmission(next), {
+    mainSha: newMain, candidateSha: newCandidate, requestCommentId: '123'
+  });
+});
+
+test('reviewed candidate denies a mismatched compare head or truncated compare', () => {
+  const stale = fixture();
+  stale.compare.head_commit.sha = 'c'.repeat(40);
+  assert.throws(() => assertCommunityPreviewAdmission(stale), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
+  const truncated = fixture();
+  truncated.compare.files = undefined;
+  assert.throws(() => assertCommunityPreviewAdmission(truncated), /COMMUNITY_REVIEWED_CANDIDATE_DENIED/);
 });

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const OWNER = 'bingohooah888-ai';
 const REPO = OWNER + '/novelrise';
 const ISSUE = '[Staging Approval Control] Preview / Staging cost gate';
-const FEATURE = '91114a536688411caa37a5640a14eca01c8e0335';
+const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const SHA = /^[0-9a-f]{40}$/u;
 const MARKER = 'NOVELIGHT_COMMUNITY_HOSTED_PREFLIGHT_REQUEST ';
 
