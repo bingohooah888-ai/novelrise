@@ -1,0 +1,81 @@
+{
+  "template": "shared/header/public-header.html",
+  "managed": [
+    "index.html",
+    "search.html",
+    "ranking.html",
+    "recommended.html",
+    "new-arrivals.html",
+    "light-seed.html",
+    "login.html",
+    "signup.html",
+    "profile-settings.html",
+    "special-zone.html",
+    "special-light.html",
+    "news-detail.html",
+    "pricing.html",
+    "announcements.html",
+    "contact.html",
+    "terms.html",
+    "privacy.html",
+    "operator.html",
+    "billing-policy.html",
+    "commerce-disclosure.html",
+    "author-features.html",
+    "reader-features.html"
+  ],
+  "overrides": {
+    "pricing.html": {
+      "active": "pricing.html"
+    },
+    "announcements.html": {
+      "active": "announcements.html",
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileAuthClasses": true,
+      "mobileSignup": true
+    },
+    "contact.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "terms.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "privacy.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "operator.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "billing-policy.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "commerce-disclosure.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "author-features.html": {
+      "mobileAuthClasses": true,
+      "mobileSignup": true
+    },
+    "reader-features.html": {
+      "mobileAuthClasses": true,
+      "mobileSignup": true
+    }
+  },
+  "custom": {
+    "scout-lv10-campaign.html": "Dual guest/member toolbar with redirect-specific links",
+    "content-guidelines.html": "Standalone editorial header",
+    "beta-authors.html": "Founding author preregistration site",
+    "help.html": "Dedicated help header",
+    "forgot-password.html": "Password recovery UI",
+    "reset-password.html": "Password recovery UI",
+    "novel.html": "SEO static shell, see api/seo/templates/novel.html",
+    "episode.html": "SEO static shell, see api/seo/templates/episode.html",
+    "author.html": "SEO static shell, see api/seo/author.js"
+  }
+}
