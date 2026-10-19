@@ -129,7 +129,7 @@
   }
 
   function isPublicPvPage() {
-    return /(^|\/)(novel|search|ranking|author|favorites|reading-history|follow|recommended|new-arrivals|light-seed)\.html$/u.test(window.location.pathname);
+    if (window.location.pathname.split('/').pop() === 'novel.html') {
   }
 
   function stripPublicPv(root) {
