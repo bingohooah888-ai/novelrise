@@ -43,3 +43,14 @@ test('new browser code parses', () => {
   assert.doesNotThrow(() => new vm.Script(nav));
   assert.doesNotThrow(() => new vm.Script(profile));
 });
+
+test('phone author heading ignores desktop width basis as vertical height', () => {
+  const page = read('my-novels.html');
+  const styles = read('novelight-page-heading.css');
+  assert.match(page, /class="head novelight-page-heading"/);
+  assert.match(styles, /flex: 1 1 620px/);
+  assert.match(styles, /@media \(max-width: 640px\)/);
+  assert.match(styles, /flex: 0 0 auto !important/);
+  assert.match(styles, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.new\[hidden\]/);
+});
