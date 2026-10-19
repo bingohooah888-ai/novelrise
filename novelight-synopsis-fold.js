@@ -129,7 +129,7 @@
   }
 
   function isPublicPvPage() {
-    if (window.location.pathname.split('/').pop() === 'novel.html') {
+    return /(^|\/)(novel|search|ranking|author|favorites|reading-history|follow|recommended|new-arrivals|light-seed)\.html$/u.test(window.location.pathname);
   }
 
   function stripPublicPv(root) {
@@ -167,7 +167,7 @@
     stripPublicPv(root);
     // The canonical novel HTML is byte-identical to its SEO template.
     // Enhance the rendered synopsis without changing that protected shell.
-    if (/(^|\\/)novel\\.html$/u.test(window.location.pathname)) {
+    if (window.location.pathname.split('/').pop() === 'novel.html') {
       const description = document.querySelector(
         '#novelHeader .description, .nl-work-detail-synopsis .description'
       );
