@@ -59,15 +59,26 @@ test('SEO route templates and root shells share identical static markup', () => 
   assert.ok(manifest.managed.includes('author.html'));
 });
 
-test('all pages with public site-header are classified by manifest', () => {
-  const publicPages = readdirSync(new URL('../', import.meta.url)).filter(
+test('every HTML page has a declared header-layout owner', () => {
+  const pages = readdirSync(new URL('../', import.meta.url)).filter(
     (name) => name.endsWith('.html')
   );
-  for (const page of publicPages) {
+  const separate = Object.values(manifest.separateLayouts).flat();
+  const managed = new Set(manifest.managed);
+  const custom = new Set(Object.keys(manifest.custom));
+  const excluded = new Set(separate);
+  for (const page of pages) {
+    const adminPage = /^admin(?:-|\.html)/u.test(page);
+    const verification = /^google[^/]*\.html$/u.test(page);
+    const classifications = [
+      managed.has(page),
+      custom.has(page),
+      excluded.has(page),
+      adminPage,
+      verification
+    ].filter(Boolean);
+    assert.equal(classifications.length, 1, page + ' requires one header owner');
     if (!read(page).includes('<header class="site-header">')) continue;
-    assert.ok(
-      manifest.managed.includes(page) || Boolean(manifest.custom[page]),
-      'unmanaged shared header: ' + page
-    );
+    assert.ok(managed.has(page) || custom.has(page), page);
   }
 });
