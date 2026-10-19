@@ -44,7 +44,7 @@ test('campaign, SEO and standalone flows are explicit exceptions', () => {
 test('deployed HTML is generated in build rather than injected after paint', () => {
   const deploy = JSON.parse(read('vercel.json'));
   assert.equal(deploy.buildCommand, 'node scripts/sync-public-header.mjs --write');
-  assert.equal(deploy.outputDirectory, '.');
+  assert.equal(deploy.outputDirectory, undefined);
   for (const path of manifest.managed) {
     const html = read(path);
     assert.match(html, /<header class="site-header">/u, path);
