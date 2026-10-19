@@ -17,7 +17,7 @@ test('single source-of-truth public header is materialized before first paint', 
   assert.match(header, /<header class="site-header">/u);
   assert.match(header, /public-header-inner/u);
   assert.match(header, /class="header-actions"/u);
-  assert.ok(manifest.managed.length >= 20);
+  assert.ok(manifest.managed.length >= 27);
 });
 
 test('page-level active navigation and accessibility labels survive sync', () => {
@@ -32,10 +32,8 @@ test('page-level active navigation and accessibility labels survive sync', () =>
 test('campaign, SEO and standalone flows are explicit exceptions', () => {
   for (const path of [
     'scout-lv10-campaign.html',
-    'novel.html',
-    'episode.html',
-    'author.html',
-    'help.html'
+    'help.html',
+    'beta-authors.html'
   ]) {
     assert.ok(manifest.custom[path], path);
     assert.ok(!manifest.managed.includes(path), path);
@@ -52,4 +50,11 @@ test('deployed HTML is generated in build rather than injected after paint', () 
     assert.match(html, /<header class="site-header">/u, path);
     assert.match(html, /class="header-inner public-header-inner"/u, path);
   }
+});
+
+test('SEO route templates and root shells share identical static markup', () => {
+  for (const name of ['novel', 'episode']) {
+    assert.equal(read(name + '.html'), read('api/seo/templates/' + name + '.html'));
+  }
+  assert.ok(manifest.managed.includes('author.html'));
 });

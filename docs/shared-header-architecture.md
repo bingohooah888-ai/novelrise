@@ -41,3 +41,8 @@
 
 固有ページは通常ヘッダーの色・ロゴ・寸法をできる限り共通CSSから継承し、
 変更が必要な属性だけページ専用CSSで上書きしてください。
+
+## SEO連携
+
+作品詳細、エピソード、作者プロフィールも共通原本から更新します。
+`novel.html` と `api/seo/templates/novel.html`、`episode.html` と `api/seo/templates/episode.html` は同時に生成し、内容一致のテストを行います。作品本文やmeta情報は同期処理で変更しません。

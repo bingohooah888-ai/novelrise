@@ -55,7 +55,7 @@ export function synchronizeHtml(html, page) {
 if (new Set(manifest.managed).size !== manifest.managed.length) throw new Error('Duplicate managed page');
 const drift = [];
 for (const page of manifest.managed) {
-  if (page.includes('/') || !page.endsWith('.html') || manifest.custom[page]) throw new Error('Invalid managed page: ' + page);
+  if (!/^(?:[a-z0-9-]+\.html|api\/seo\/templates\/(?:novel|episode)\.html)$/u.test(page) || manifest.custom[page]) throw new Error('Invalid managed page: ' + page);
   const path = join(root, page);
   if (!existsSync(path)) throw new Error('Missing managed page: ' + page);
   const before = readFileSync(path, 'utf8');

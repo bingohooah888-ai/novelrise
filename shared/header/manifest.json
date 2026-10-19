@@ -22,7 +22,12 @@
     "billing-policy.html",
     "commerce-disclosure.html",
     "author-features.html",
-    "reader-features.html"
+    "reader-features.html",
+    "novel.html",
+    "episode.html",
+    "author.html",
+    "api/seo/templates/novel.html",
+    "api/seo/templates/episode.html"
   ],
   "overrides": {
     "pricing.html": {
@@ -73,9 +78,6 @@
     "beta-authors.html": "Founding author preregistration site",
     "help.html": "Dedicated help header",
     "forgot-password.html": "Password recovery UI",
-    "reset-password.html": "Password recovery UI",
-    "novel.html": "SEO static shell, see api/seo/templates/novel.html",
-    "episode.html": "SEO static shell, see api/seo/templates/episode.html",
-    "author.html": "SEO static shell, see api/seo/author.js"
+    "reset-password.html": "Password recovery UI"
   }
 }
