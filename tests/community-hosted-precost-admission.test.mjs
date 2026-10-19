@@ -203,7 +203,7 @@ test('owner inspection workflow remains read-only', () => {
     'contents: read',
     'issues: read',
     'pull-requests: read',
-    'community-hosted-precost-admission.mjs validate',
+    'community-hosted-precost-review-only.mjs validate',
     '.stagingCostApproved == false',
     '.mayClaim == false',
     '.mayCreateBranch == false',

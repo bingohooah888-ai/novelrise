@@ -3,9 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-import {
-  verifyCommunityHostedReadOnlyPreCostProposal
-} from '../scripts/community-hosted-precost-review-only.mjs';
+import { verifyCommunityHostedReadOnlyPreCostProposal } from '../scripts/community-hosted-precost-review-only.mjs';
 import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
 import { HOSTED_SCOPE } from '../scripts/community-hosted-write-admission.mjs';
 
@@ -82,7 +80,7 @@ function rejected(change) {
   );
 }
 
-test('reviewed content admits preparation only with no capability grants', () => {
+test('reviewed content permits only preparation', () => {
   const result = verifyCommunityHostedReadOnlyPreCostProposal(fixture());
   assert.equal(result.status, 'OWNER_PRE_COST_PROPOSAL_PREPARATION_ONLY');
   for (const key of [
@@ -117,7 +115,7 @@ test('closed, forged or mismatched live issue is denied', () => {
   });
 });
 
-test('unreviewed content, changed refs and reused ledger are denied', () => {
+test('stale blobs and replayed ledger reject', () => {
   rejected((x) => {
     x.compare.files[0].sha = 'f'.repeat(40);
   });
@@ -145,7 +143,7 @@ test('unreviewed content, changed refs and reused ledger are denied', () => {
   });
 });
 
-test('moving main and head is allowed only with unchanged reviewed blobs', () => {
+test('new main and head require the same reviewed file blobs', () => {
   const x = fixture();
   const updatedMain = 'c'.repeat(40);
   const updatedHead = 'd'.repeat(40);
@@ -165,7 +163,7 @@ test('moving main and head is allowed only with unchanged reviewed blobs', () =>
   assert.equal(verdict.stagingCostApproved, false);
 });
 
-test('read-only inspection cannot invoke legacy write or external costs', () => {
+test('read-only inspection cannot grant hosted writes', () => {
   const workflow = readFileSync(
     new URL(
       '../.github/workflows/community-hosted-precost-inspection.yml',
@@ -173,7 +171,10 @@ test('read-only inspection cannot invoke legacy write or external costs', () => 
     ),
     'utf8'
   );
-  assert.match(workflow, /community-hosted-precost-review-only\.mjs validate/u);
+  assert.match(
+    workflow,
+    /community-hosted-precost-review-only\.mjs validate/u
+  );
   assert.match(workflow, /community-precost-reviewed-compare\.json/u);
   for (const token of [
     'contents: read',
@@ -194,7 +195,10 @@ test('read-only inspection cannot invoke legacy write or external costs', () => 
     assert.ok(!workflow.includes(forbidden), forbidden);
   }
   const legacy = readFileSync(
-    new URL('../scripts/community-hosted-precost-admission.mjs', import.meta.url),
+    new URL(
+      '../scripts/community-hosted-precost-admission.mjs',
+      import.meta.url
+    ),
     'utf8'
   );
   assert.match(
