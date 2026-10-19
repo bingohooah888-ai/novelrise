@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import { assertCommunityPreviewAdmission } from '../scripts/community-preview-admission.mjs';
 
 const mainSha = 'a'.repeat(40);
@@ -14,13 +16,18 @@ function fixture() {
     candidateSha,
     confirmation: 'STAGING APPROVED'
   };
+  const issue = {
+    id: 999,
+    number: 188,
+    state: 'open',
+    url: 'https://api.github.com/repos/' + repo + '/issues/188',
+    title: '[Staging Approval Control] Preview / Staging cost gate',
+    user: { login: owner }
+  };
   return {
     repository: repo,
-    issue: {
-      number: 188,
-      title: '[Staging Approval Control] Preview / Staging cost gate',
-      user: { login: owner }
-    },
+    issue,
+    liveIssue: { ...issue },
     comment: {
       id: 123,
       user: { login: owner },
@@ -125,4 +132,48 @@ test('reject unreviewed fork', () => {
     () => assertCommunityPreviewAdmission(fork),
     /COMMUNITY_PREVIEW_DENIED/
   );
+});
+
+test('closed issue is denied even with valid OWNER and SHA', () => {
+  const closedEvent = fixture();
+  closedEvent.issue.state = 'closed';
+  assert.throws(
+    () => assertCommunityPreviewAdmission(closedEvent),
+    /COMMUNITY_PREVIEW_DENIED/
+  );
+  const closedLive = fixture();
+  closedLive.liveIssue.state = 'closed';
+  assert.throws(
+    () => assertCommunityPreviewAdmission(closedLive),
+    /COMMUNITY_PREVIEW_DENIED/
+  );
+});
+
+test('fresh issue identity, state and existence are mandatory', () => {
+  for (const kind of ['missing', 'wrongId', 'wrongUrl', 'wrongOwner']) {
+    const x = fixture();
+    if (kind === 'missing') delete x.liveIssue;
+    if (kind === 'wrongId') x.liveIssue.id += 1;
+    if (kind === 'wrongUrl') x.liveIssue.url = 'https://invalid.example/188';
+    if (kind === 'wrongOwner') x.liveIssue.user = { login: 'other' };
+    assert.throws(
+      () => assertCommunityPreviewAdmission(x),
+      /COMMUNITY_PREVIEW_DENIED/
+    );
+  }
+});
+
+test('cost-bearing Preview workflow refuses a closed Issue', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/community-candidate-preview.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(workflow, /github\.event\.issue\.state == 'open'/u);
+  assert.match(workflow, /\/tmp\/preview-issue\.json/u);
+  assert.match(workflow, /scripts\/community-preview-admission\.mjs/u);
+  const rechecks = workflow.match(/--jq '\.state'/gu) ?? [];
+  assert.ok(rechecks.length >= 2);
 });

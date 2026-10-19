@@ -375,3 +375,182 @@ for (const surface of ['post', 'edit']) {
     expect(Math.abs(after.pageY - before.pageY)).toBeLessThan(3);
   });
 }
+
+test('public header stays in place through delayed client script', async ({
+  page
+}) => {
+  const paths = [
+    '/',
+    '/recommended.html',
+    '/light-seed.html',
+    '/search.html',
+    '/ranking.html',
+    '/login.html',
+    '/author.html',
+    '/novel.html',
+    '/pricing.html',
+    '/announcements.html',
+    '/news-detail.html',
+    '/special-light.html'
+  ];
+  for (const path of paths) {
+    let resume;
+    await page.route('**/novelight-client.js', async (route) => {
+      await new Promise((resolve) => {
+        resume = resolve;
+      });
+      await route.continue();
+    });
+    await page.goto(path, { waitUntil: 'commit' });
+    try {
+      const header = page.locator('header.site-header .public-header-inner');
+      await expect(header).toBeVisible();
+      await page.waitForFunction(() => {
+        const header = globalThis.document.querySelector('header.site-header');
+        const skip = globalThis.document.querySelector('.skip-link');
+        return (
+          header &&
+          globalThis.getComputedStyle(header).position === 'sticky' &&
+          (!skip || globalThis.getComputedStyle(skip).position === 'fixed')
+        );
+      });
+      await expect.poll(() => Boolean(resume)).toBe(true);
+      const before = await page.evaluate(() => {
+        const inner = globalThis.document.querySelector('.public-header-inner');
+        const logo = inner.querySelector('.logo img');
+        const box = inner.getBoundingClientRect();
+        const logoBox = logo.getBoundingClientRect();
+        return [
+          box.x,
+          box.y,
+          box.width,
+          box.height,
+          logoBox.x,
+          logoBox.y,
+          logoBox.width,
+          logoBox.height
+        ];
+      });
+      resume();
+      await page.waitForLoadState('load');
+      const after = await page.evaluate(() => {
+        const inner = globalThis.document.querySelector('.public-header-inner');
+        const logo = inner.querySelector('.logo img');
+        const box = inner.getBoundingClientRect();
+        const logoBox = logo.getBoundingClientRect();
+        return [
+          box.x,
+          box.y,
+          box.width,
+          box.height,
+          logoBox.x,
+          logoBox.y,
+          logoBox.width,
+          logoBox.height
+        ];
+      });
+      const viewport = await page.evaluate(() => ({
+        innerWidth: globalThis.innerWidth,
+        clientWidth: globalThis.document.documentElement.clientWidth,
+        documentWidth: globalThis.document.documentElement.scrollWidth
+      }));
+      for (let i = 0; i < before.length; i += 1) {
+        expect(
+          Math.abs(after[i] - before[i]),
+          `${path} metric ${i} before=${before[i]} after=${after[i]} viewport=${JSON.stringify(viewport)}`
+        ).toBeLessThanOrEqual(1);
+      }
+    } finally {
+      resume?.();
+      await page.unroute('**/novelight-client.js');
+    }
+  }
+});
+
+test('authenticated header label preserves its initial geometry', async ({
+  page
+}) => {
+  await page.goto('/');
+  const before = await page.locator('.public-header-inner').boundingBox();
+  await page.evaluate(async () => {
+    await globalThis.NovelightClient.syncAuthHeader({
+      auth: {
+        getSession: async () => ({
+          data: { session: { user: { id: 'test-only' } } },
+          error: null
+        })
+      }
+    });
+  });
+  await expect(page.locator('.login-action')).toHaveText('創作室');
+  const after = await page.locator('.public-header-inner').boundingBox();
+  expect(before).not.toBeNull();
+  expect(after).not.toBeNull();
+  for (const key of ['x', 'y', 'width', 'height']) {
+    expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
+  }
+});
+
+test('admin shortcut preserves public menu coordinates', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  let baseline;
+  for (const route of ['/', '/search.html', '/ranking.html']) {
+    await page.goto(route);
+    const navLinks = page.locator('.desktop-nav a');
+    const measure = () =>
+      navLinks.evaluateAll((links) =>
+        links.map((link) => Math.round(link.getBoundingClientRect().x))
+      );
+    const before = await measure();
+    if (baseline) {
+      expect(before).toEqual(baseline);
+    } else {
+      baseline = before;
+    }
+
+    await page.evaluate(() => {
+      const link = globalThis.document.createElement('a');
+      link.className = 'novelight-admin-shortcut-desktop';
+      const actions = globalThis.document.querySelector('.header-actions');
+      actions.appendChild(link);
+    });
+    expect(await measure()).toEqual(before);
+  }
+});
+
+test('Home and public pages keep the approved off-white header', async ({
+  page
+}) => {
+  const paths = [
+    '/',
+    '/pricing.html',
+    '/special-light.html',
+    '/search.html',
+    '/ranking.html'
+  ];
+  for (const path of paths) {
+    await page.goto(path);
+    const header = page.locator('header.site-header');
+    const logo = header.locator('.logo img');
+    await expect(header).toHaveCSS(
+      'background-color',
+      'rgba(250, 249, 246, 0.98)'
+    );
+    await expect(logo).toHaveCSS('filter', 'none');
+    await expect(logo).toHaveCSS('mix-blend-mode', 'normal');
+    if (path === '/') {
+      await page.evaluate(() => {
+        const link = globalThis.document.createElement('a');
+        link.className =
+          'novelight-admin-shortcut novelight-admin-shortcut-desktop';
+        link.textContent = '管理画面';
+        const actions = globalThis.document.querySelector('.header-actions');
+        actions.appendChild(link);
+      });
+      await expect(header.locator('.novelight-admin-shortcut')).toHaveCSS(
+        'color',
+        'rgb(14, 29, 53)'
+      );
+    }
+  }
+});

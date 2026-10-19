@@ -17,9 +17,12 @@ test('homepage header uses the official NOVELIGHT logo asset', () => {
 });
 
 test('homepage logo uses the shared sitewide responsive sizing override', () => {
-  const client = readFileSync(join(root, 'novelight-client.js'), 'utf8');
-  assert.match(client, /height:104\.4px!important/u);
-  assert.match(client, /height:90px!important/u);
-  assert.match(client, /height:82\.8px!important/u);
-  assert.match(client, /height:72px!important/u);
+  const css = readFileSync(
+    join(root, 'novelight-header-first-paint.css'),
+    'utf8'
+  ).replace(/\s*([:;{},])\s*/gu, '$1');
+  assert.match(css, /height:104\.4px!important/u);
+  assert.match(css, /height:90px!important/u);
+  assert.match(css, /height:82\.8px!important/u);
+  assert.match(css, /height:72px!important/u);
 });

@@ -3,7 +3,6 @@
 /* NOVELIGHT shared light header treatment.
    Home/Pricing keep their dark content surfaces; reader/auth pages can opt into the
    same header composition through .novelight-public-header-page. */
-html body.novelight-public-dark .site-header,
 html body.novelight-public-header-page:not(.novelight-public-dark) .site-header {
   position: sticky !important;
   top: 0;
@@ -68,7 +67,6 @@ html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav {
   margin-left: 0 !important;
 }
 
-html body.novelight-public-dark .site-nav a,
 html body.novelight-public-header-page:not(.novelight-public-dark) .site-nav a {
   position: relative;
   display: inline-flex;
@@ -363,8 +361,8 @@ html body.novelight-public-dark header.site-header .novelight-brand-logo-image {
   max-width: 270px !important;
   object-fit: contain !important;
   object-position: left center !important;
-  filter: invert(1) sepia(.78) saturate(3.2) hue-rotate(348deg) brightness(1.24) contrast(1.04) !important;
-  mix-blend-mode: screen !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
 }
 html body.novelight-public-dark header.site-header .desktop-nav {
   display: flex !important;
