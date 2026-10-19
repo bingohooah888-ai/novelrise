@@ -434,3 +434,93 @@ html body.novelight-public-dark header.site-header .novelight-admin-shortcut {
   -webkit-text-fill-color: #0e1d35 !important;
   border-color: rgba(14, 29, 53, 0.24) !important;
 }
+
+/* Public header: navigation and owner controls on the pale header must retain
+   readable ink, even when selected/visited or inserted after sign-in. */
+html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .desktop-nav a {
+  color: #142a40 !important;
+  -webkit-text-fill-color: #142a40 !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+}
+
+html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .desktop-nav a:is(:hover, :focus-visible, [aria-current="page"]) {
+  color: #70460c !important;
+  -webkit-text-fill-color: #70460c !important;
+  font-weight: 900 !important;
+}
+
+html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-reader-nav-link,
+html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-reader-account-chip {
+  color: #142a40 !important;
+  -webkit-text-fill-color: #142a40 !important;
+  border-color: #987b4b !important;
+  background: #fffdf8;
+  font-weight: 800 !important;
+}
+
+html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-reader-nav-link:hover,
+html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-reader-account-chip:hover {
+  background: #f5ecd7 !important;
+}
+
+/* The OWNER button used to be absolutely pinned into a 108px reserve.
+   A signed-in reader's bookshelf/avatar controls also occupy that reserve.
+   Keep the owner shortcut in normal flex flow and drop the invisible signup
+   placeholder only when the reader controls have actually mounted. */
+@media (min-width: 1101px) {
+  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) {
+    position: relative !important;
+    box-sizing: border-box !important;
+    width: 480px !important;
+    padding-right: 0 !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 9px !important;
+  }
+
+  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) > .signup-action[hidden] {
+    display: none !important;
+  }
+
+  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) > .novelight-admin-shortcut-desktop {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 90px !important;
+    max-width: 110px !important;
+    margin: 0 !important;
+  }
+
+  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) > .nl-reader-account-bar {
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    gap: 7px !important;
+    margin: 0 !important;
+  }
+
+  /* Profile identity remains accessible through the avatar's aria-label. */
+  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) .nl-reader-name {
+    display: none !important;
+  }
+
+  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) .nl-reader-account-chip {
+    min-width: 40px !important;
+    padding: 4px !important;
+  }
+}
+
+@media (min-width: 1101px) and (max-width: 1180px) {
+  html body.novelight-public-dark header.site-header .public-header-inner {
+    grid-template-columns: minmax(185px, 220px) minmax(320px, 1fr) 430px !important;
+  }
+
+  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) {
+    width: 430px !important;
+    gap: 7px !important;
+  }
+}

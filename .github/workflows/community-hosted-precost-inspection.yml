@@ -18,6 +18,7 @@ jobs:
     name: Validate exact OWNER intent without allocating resources
     if: >-
       github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
       github.event.issue.pull_request == null &&
       github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
       github.event.issue.user.login == 'bingohooah888-ai' &&
@@ -39,6 +40,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/community-precost-issue.json
+          test "$(jq -er '.state' /tmp/community-precost-issue.json)" = 'open'
           gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/community-precost-main.json
           gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-precost-feature.json
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" > /tmp/community-precost-ledger.json

@@ -21,6 +21,7 @@ jobs:
     name: Persist owner approval CLAIM without running or granting Staging
     if: >-
       github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
       github.event.issue.pull_request == null &&
       github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
       github.event.issue.user.login == 'bingohooah888-ai' &&
@@ -53,6 +54,7 @@ jobs:
           comment_id="$(jq -er '.comment.id | select(type == "number")' "$GITHUB_EVENT_PATH")"
           [[ "$comment_id" =~ ^[1-9][0-9]*$ ]]
           gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/community-hosted-issue.json
+          test "$(jq -er '.state' /tmp/community-hosted-issue.json)" = 'open'
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" > /tmp/community-hosted-comment.json
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$GITHUB_SHA"

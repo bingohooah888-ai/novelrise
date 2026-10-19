@@ -18,6 +18,7 @@ jobs:
     name: Verify current feature and owner intent without side effects
     if: >-
       github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
       github.event.issue.pull_request == null &&
       github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
       github.event.issue.user.login == 'bingohooah888-ai' &&
@@ -39,9 +40,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/community-issue.json
+          test "$(jq -er '.state' /tmp/community-issue.json)" = 'open'
           gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/community-main.json
           gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-pr.json
           test "$(git rev-parse HEAD)" = "$(jq -er '.object.sha' /tmp/community-main.json)"
-          node scripts/community-hosted-preprovision.mjs validate             "$GITHUB_EVENT_PATH" /tmp/community-main.json /tmp/community-pr.json             > /tmp/community-verdict.json
+          candidate="$(jq -er '.head.sha' /tmp/community-pr.json)"
+          main="$(jq -er '.object.sha' /tmp/community-main.json)"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$candidate" > /tmp/community-reviewed-compare.json
+          node scripts/community-hosted-preprovision.mjs validate \
+            "$GITHUB_EVENT_PATH" \
+            /tmp/community-main.json \
+            /tmp/community-pr.json \
+            /tmp/community-reviewed-compare.json \
+            > /tmp/community-verdict.json
           jq -e '.status == "READ_ONLY_PREFLIGHT_ONLY" and .mayCreateBranch == false and .mayRunBrowser == false and .mayModifyProduction == false'             /tmp/community-verdict.json > /dev/null
           echo 'Verified the exact owner request and Draft candidate. No branch, Preview, secrets or Staging writes touched.'
