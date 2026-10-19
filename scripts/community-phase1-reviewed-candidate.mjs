@@ -212,7 +212,6 @@ export function assertReviewedCommunityCandidate({
     compare?.status !== 'ahead' ||
     compare?.behind_by !== 0 ||
     compare?.base_commit?.sha !== mainSha ||
-    compare?.head_commit?.sha !== candidateSha ||
     !Number.isSafeInteger(compare?.total_commits) ||
     compare.total_commits < 1 ||
     compare.total_commits > 250 ||

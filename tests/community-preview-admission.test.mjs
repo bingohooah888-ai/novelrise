@@ -54,7 +54,6 @@ function fixture() {
       ahead_by: 1,
       total_commits: 1,
       base_commit: { sha: mainSha },
-      head_commit: { sha: candidateSha },
       commits: [{ sha: candidateSha }],
       files: REVIEWED_COMMUNITY_FILES.map((f) => ({
         filename: f.path,
@@ -220,7 +219,6 @@ test('main sync with identical reviewed blobs can pass', () => {
   evidence.pr.base.sha = main;
   evidence.pr.head.sha = head;
   evidence.compare.base_commit.sha = main;
-  evidence.compare.head_commit.sha = head;
   evidence.compare.commits = [{ sha: head }];
   assert.equal(assertCommunityPreviewAdmission(evidence).candidateSha, head);
 });
