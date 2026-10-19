@@ -165,6 +165,18 @@
   function scan(root) {
     if (!(root instanceof Element) && root !== document) return;
     stripPublicPv(root);
+    // The canonical novel HTML is byte-identical to its SEO template.
+    // Enhance the rendered synopsis without changing that protected shell.
+    if (/(^|\\/)novel\\.html$/u.test(window.location.pathname)) {
+      const description = document.querySelector(
+        '#novelHeader .description, .nl-work-detail-synopsis .description'
+      );
+      if (description) {
+        description.dataset.novelightSynopsis = '';
+        description.dataset.novelightSynopsisLines = '3';
+        mount(description);
+      }
+    }
     if (root instanceof Element && root.matches(SELECTOR)) mount(root);
     root.querySelectorAll?.(SELECTOR).forEach(mount);
   }
