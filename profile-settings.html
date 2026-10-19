@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>プロフィール編集 | NOVELIGHT</title>
+<meta name="robots" content="noindex,nofollow,noarchive">
+<link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+<link rel="stylesheet" href="novelight-accessibility.css">
+<style>
+/* The reader/author profile editor follows NOVELIGHT's shared paper and navy palette. */
+*{box-sizing:border-box}
+html body.novelight-page-profile-settings{margin:0;background:#f7f4ed;color:#1b2939;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif}
+html body.novelight-page-profile-settings main{max-width:920px;margin:0 auto;padding:38px 22px 80px;line-height:1.7}
+html body.novelight-page-profile-settings main h1{margin:0;font-family:"Yu Mincho",Georgia,serif;font-size:clamp(29px,4vw,38px);line-height:1.35;color:#10283e!important}
+html body.novelight-page-profile-settings main .lead{margin:12px 0 16px;color:#34475b!important;font-size:16px;line-height:1.85}
+html body.novelight-page-profile-settings main .profile-back{margin:0 0 24px;font-size:15px;font-weight:800}
+html body.novelight-page-profile-settings main a{color:#76500d;text-decoration:underline;text-underline-offset:3px}
+html body.novelight-page-profile-settings main a:hover{color:#3d2b10}
+html body.novelight-page-profile-settings main .panel{background:#fffdf8!important;color:#18293c!important;border:1px solid #d5cbbb!important;border-radius:16px;padding:26px;margin:0 0 20px;box-shadow:0 5px 16px rgba(13,31,49,.065)}
+html body.novelight-page-profile-settings main .panel h2{font-size:21px;margin:0 0 16px;color:#142d43!important;line-height:1.4}
+html body.novelight-page-profile-settings main .field{display:grid;gap:7px;margin-bottom:18px}
+html body.novelight-page-profile-settings main .field label{font-size:15px;font-weight:800;color:#243950}
+html body.novelight-page-profile-settings main .field input,
+html body.novelight-page-profile-settings main .field textarea,
+html body.novelight-page-profile-settings main .field select{width:100%;border:1px solid #9caaba;border-radius:9px;padding:12px;background:#fff;color:#16283a;font:inherit;font-size:16px}
+html body.novelight-page-profile-settings main .field textarea{min-height:120px;line-height:1.7;resize:vertical}
+html body.novelight-page-profile-settings main .avatar-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:12px 0 20px}
+html body.novelight-page-profile-settings main .avatar-preview{display:grid;place-items:center;width:78px;height:78px;flex:none;overflow:hidden;border-radius:50%;background:#b99241;color:#091b2b;font-size:29px;font-weight:900}
+html body.novelight-page-profile-settings main .avatar-preview img{width:100%;height:100%;object-fit:cover}
+html body.novelight-page-profile-settings main .avatar-upload{display:grid;gap:8px;max-width:100%;color:#25394d;font-weight:800}
+html body.novelight-page-profile-settings main .avatar-upload input{max-width:100%;font-size:14px;font-weight:400;color:#25394d}
+html body.novelight-page-profile-settings main .hint{font-size:14px!important;color:#435467!important;line-height:1.7}
+html body.novelight-page-profile-settings main button{min-height:44px;padding:10px 17px;border:1px solid #b18a36;border-radius:9px;background:#e7c576;color:#17283b;font:inherit;font-size:15px;font-weight:800;cursor:pointer}
+html body.novelight-page-profile-settings main button:disabled{opacity:.68;cursor:not-allowed}
+html body.novelight-page-profile-settings main .status{min-height:22px;margin-top:12px;color:#3a5064!important;font-size:14px;line-height:1.75}
+html body.novelight-page-profile-settings main .status.error{color:#ad2222!important}
+html body.novelight-page-profile-settings main .favorite-genre-choices{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0}
+html body.novelight-page-profile-settings main .favorite-genre-choice{display:inline-flex;align-items:center;gap:7px;border:1px solid #91a0b2;border-radius:9px;padding:9px 12px;background:#fff;color:#22384b!important;-webkit-text-fill-color:#22384b;font-size:14px;font-weight:700;line-height:1.5;cursor:pointer}
+html body.novelight-page-profile-settings main .favorite-genre-choice:has(input:checked){background:#ffedba!important;border-color:#98701d!important;color:#322510!important;-webkit-text-fill-color:#322510!important;box-shadow:inset 0 0 0 1px rgba(152,112,29,.18)}
+html body.novelight-page-profile-settings main .favorite-genre-choice input{width:16px;height:16px;accent-color:#8b631c;cursor:pointer}
+html body.novelight-page-profile-settings main .favorite-genre-choice:has(input:disabled):not(:has(input:checked)){opacity:.68;cursor:not-allowed}
+html body.novelight-page-profile-settings main .favorite-genre-public{display:block;margin:14px 0;color:#263b50;font-size:15px}
+html body.novelight-page-profile-settings main .favorite-genre-public input{accent-color:#87601b}
+html body.novelight-page-profile-settings main .profile-links{display:flex;gap:12px 20px;flex-wrap:wrap;margin-top:14px;font-size:14px}
+@media(max-width:560px){
+html body.novelight-page-profile-settings main{padding:24px 15px 54px}
+html body.novelight-page-profile-settings main .panel{padding:18px}
+html body.novelight-page-profile-settings main .lead{font-size:15px}
+html body.novelight-page-profile-settings main .favorite-genre-choice{padding:9px 10px}
+}
+</style>
+</head>
+<body class="novelight-theme novelight-public-header-page novelight-page-profile-settings">
+<a class="skip-link" href="#main-content">本文へスキップ</a>
+<header class="site-header">
+  <div class="header-inner public-header-inner">
+    <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
+    <nav class="site-nav desktop-nav" aria-label="メインナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="announcements.html">お知らせ</a><a href="pricing.html">料金プラン</a></nav>
+    <div class="header-actions">
+      <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
+      <a class="btn btn-outline login-action" href="login.html">ログイン</a>
+      <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
+      <details class="mobile-menu">
+        <summary aria-label="メニューを開く">☰</summary>
+        <nav aria-label="モバイルナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="announcements.html">お知らせ</a><a href="pricing.html">料金プラン</a><a href="login.html">ログイン</a></nav>
+      </details>
+    </div>
+  </div>
+</header>
+<main id="main-content" tabindex="-1">
+<h1>プロフィール編集</h1>
+<p class="lead">読者・作者共通のプロフィール設定です。創作室を使わなくても、表示名やアイコンなどを変更できます。</p>
+<p class="profile-back"><a href="favorites.html">← 本棚へ戻る</a></p>
+<section class="panel" aria-labelledby="basicTitle">
+<h2 id="basicTitle">基本プロフィール</h2>
+<div class="avatar-row">
+<div id="avatarPreview" class="avatar-preview" aria-label="現在のアイコン">読</div>
+<label class="avatar-upload">アイコンを変更
+<input id="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" disabled>
+<span class="hint">JPEG・PNG・WebP／2MB以下</span></label>
+</div>
+<form id="profileForm">
+<div class="field"><label for="displayName">表示名</label><input id="displayName" maxlength="40" required autocomplete="nickname"></div>
+<div class="field"><label for="bio">自己紹介</label><textarea id="bio" maxlength="500"></textarea></div>
+<button id="saveProfile" type="submit" disabled>プロフィールを保存</button>
+<div id="profileStatus" class="status" role="status" aria-live="polite">読み込み中...</div>
+</form>
+<div class="profile-links">
+<a id="publicProfileLink" href="author.html" hidden>公開プロフィールを見る →</a>
+<a href="account-settings.html">アカウント設定 →</a>
+<a href="mypage.html">創作室へ →</a>
+</div>
+</section>
+<section class="panel" aria-labelledby="genresTitle">
+<h2 id="genresTitle">好きな小説ジャンル（最大3つ）</h2>
+<p class="hint">プロフィールへの公開は任意です。</p>
+<div id="favoriteGenreChoices" class="favorite-genre-choices"></div>
+<div id="favoriteGenreCount" class="hint">読み込み中...</div>
+<label class="favorite-genre-public"><input id="favoriteGenresPublic" type="checkbox" disabled> 公開プロフィールに表示する</label>
+<button id="saveFavoriteGenres" type="button" disabled>ジャンル設定を保存</button>
+<div id="favoriteGenreStatus" class="status" role="status" aria-live="polite"></div>
+</section>
+<section class="panel" aria-labelledby="badgeTitle">
+<h2 id="badgeTitle">公開称号</h2>
+<div class="field"><label for="equippedBadge">プロフィールに表示する称号</label><select id="equippedBadge" disabled><option>読み込み中...</option></select></div>
+<div id="badgeCondition" class="hint">獲得済みの称号のみ選べます。</div>
+<div id="badgeStatus" class="status" role="status" aria-live="polite"></div>
+<a href="scout-record.html">SCOUT RECORDで称号を確認 →</a>
+</section>
+</main>
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+<script src="novelight-client.js"></script>
+<script src="novelight-profile-favorite-genres.js"></script>
+<script src="novelight-profile-settings.js"></script>
+</body>
+</html>
