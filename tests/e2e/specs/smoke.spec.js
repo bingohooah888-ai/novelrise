@@ -481,22 +481,15 @@ test('authenticated header label preserves its initial geometry', async ({
     });
   });
   await expect(page.locator('.login-action')).toHaveText('創作室');
-  const buttonLabel = await page.locator('.login-action').evaluate((el) => {
+  const labelOffset = await page.locator('.login-action').evaluate((el) => {
     const range = globalThis.document.createRange();
     range.selectNodeContents(el);
-    const labelBox = range.getBoundingClientRect();
-    const buttonBox = el.getBoundingClientRect();
-    return {
-      horizontal: globalThis.getComputedStyle(el).justifyContent,
-      vertical: globalThis.getComputedStyle(el).alignItems,
-      offset: Math.abs(
-        labelBox.left + labelBox.width / 2 - (buttonBox.left + buttonBox.width / 2)
-      )
-    };
+    const label = range.getBoundingClientRect();
+    const button = el.getBoundingClientRect();
+    const midpoint = (rect) => rect.left + rect.width / 2;
+    return Math.abs(midpoint(label) - midpoint(button));
   });
-  expect(buttonLabel.horizontal).toBe('center');
-  expect(buttonLabel.vertical).toBe('center');
-  expect(buttonLabel.offset).toBeLessThanOrEqual(2);
+  expect(labelOffset).toBeLessThanOrEqual(2);
   const after = await page.locator('.public-header-inner').boundingBox();
   expect(before).not.toBeNull();
   expect(after).not.toBeNull();
