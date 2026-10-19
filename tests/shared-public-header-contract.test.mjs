@@ -52,3 +52,16 @@ test('Vercel keeps existing deployment configuration', () => {
   assert.equal(deploy.buildCommand, undefined);
   assert.equal(deploy.outputDirectory, undefined);
 });
+
+test('local watcher refreshes generated HTML when the source changes', () => {
+  const script = read('scripts/sync-public-header.mjs');
+  const packageJson = JSON.parse(read('package.json'));
+  assert.equal(
+    packageJson.scripts['header:watch'],
+    'node scripts/sync-public-header.mjs --watch'
+  );
+  assert.match(script, /watch\(directory,/u);
+  assert.match(script, /name !== 'public-header\.html'/u);
+  assert.match(script, /name !== 'manifest\.json'/u);
+  assert.match(script, /\[fileURLToPath\(import\.meta\.url\), '--write'\]/u);
+});

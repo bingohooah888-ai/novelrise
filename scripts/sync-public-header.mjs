@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /* NOVELIGHT canonical public-header materializer.
  * Keep final markup in initial HTML to prevent post-load layout shifts. */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, watch } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(readFileSync(join(root, 'shared/header/manifest.json'), 'utf8'));
 const canonical = readFileSync(join(root, manifest.template), 'utf8').trimEnd();
 const headerPattern = /<header class="site-header">[\s\S]*?<\/header>/u;
-const write = process.argv.includes('--write');
+const watching = process.argv.includes('--watch');
+const write = watching || process.argv.includes('--write');
 
 export function renderHeader(page) {
   const config = manifest.overrides[page] || {};
@@ -74,3 +76,29 @@ if (!write && drift.length) {
   process.exitCode = 1;
 }
 console.log('Shared public header: ' + manifest.managed.length + ' pages, ' + drift.length + ' different (' + (write ? 'synced' : 'checked') + ').');
+
+// Optional local development mode: materialize the source of truth whenever
+// its template or page-variant manifest changes. Do not watch generated HTML:
+// doing so would create an infinite sync loop.
+if (watching) {
+  let pending;
+  const directory = join(root, 'shared/header');
+  watch(directory, (_event, filename) => {
+    const name = filename ? String(filename) : '';
+    if (name && name !== 'public-header.html' && name !== 'manifest.json') {
+      return;
+    }
+    clearTimeout(pending);
+    pending = setTimeout(() => {
+      const result = spawnSync(
+        process.execPath,
+        [fileURLToPath(import.meta.url), '--write'],
+        { stdio: 'inherit' }
+      );
+      if (result.status !== 0) {
+        console.error('Header auto-sync failed. Fix the template or manifest.');
+      }
+    }, 150);
+  });
+  console.log('Watching shared/header/ for source changes. Ctrl+C to stop.');
+}
