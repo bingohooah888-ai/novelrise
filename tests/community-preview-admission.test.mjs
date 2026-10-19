@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import { assertCommunityPreviewAdmission } from '../scripts/community-preview-admission.mjs';
 
 const mainSha = 'a'.repeat(40);
