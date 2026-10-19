@@ -516,6 +516,47 @@ test('admin shortcut preserves public menu coordinates', async ({ page }) => {
   }
 });
 
+test('public header actions stay fixed as reader and owner links appear', async ({
+  page
+}) => {
+  for (const width of [1600, 1150, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/');
+    const measure = () =>
+      page.evaluate(() =>
+        Array.from(
+          globalThis.document.querySelectorAll(
+            '.public-header-inner, .header-search, .login-action, .mobile-menu > summary, .desktop-nav a'
+          )
+        ).map((element) => {
+          const box = element.getBoundingClientRect();
+          return [box.x, box.y, box.width, box.height].map(Math.round);
+        })
+      );
+    const baseline = await measure();
+    await page.evaluate(() => {
+      const header = globalThis.document.querySelector('.header-actions');
+      const login = header.querySelector('.login-action');
+      const signup = header.querySelector('.signup-action');
+      const menu = header.querySelector('.mobile-menu');
+      login.textContent = '創作室';
+      login.dataset.authState = 'authenticated';
+      signup.hidden = true;
+      const reader = globalThis.document.createElement('div');
+      reader.className = 'nl-reader-account-bar';
+      reader.innerHTML =
+        '<a class="nl-reader-nav-link">本棚</a>' +
+        '<a class="nl-reader-account-chip"><span class="nl-reader-avatar">読</span></a>';
+      header.insertBefore(reader, menu);
+      const owner = globalThis.document.createElement('a');
+      owner.className = 'novelight-admin-shortcut-desktop';
+      owner.textContent = '管理画面';
+      header.insertBefore(owner, menu);
+    });
+    expect(await measure(), `viewport ${width}`).toEqual(baseline);
+  }
+});
+
 test('Home and public pages keep the approved off-white header', async ({
   page
 }) => {
