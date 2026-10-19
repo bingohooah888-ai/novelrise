@@ -18,10 +18,23 @@ function payload(body, prefix, fields) {
   if (!exactKeys(value, fields)) deny('unknown/missing fields');
   return value;
 }
-export function assertCommunityPreviewAdmission({repository, issue, comment, main, pr, compare, ledgerPages}) {
+export function assertCommunityPreviewAdmission({
+  repository, issue, liveIssue, comment, main, pr, compare, ledgerPages
+}) {
+  const expectedIssueUrl = 'https://api.github.com/repos/' + REPO + '/issues/188';
   if (repository !== REPO || issue?.number !== 188 ||
+      issue?.state !== 'open' ||
       issue?.title !== '[Staging Approval Control] Preview / Staging cost gate' ||
-      issue?.pull_request || issue?.user?.login !== OWNER) deny('unexpected control issue');
+      issue?.pull_request || issue?.user?.login !== OWNER ||
+      !Number.isSafeInteger(issue.id) || issue.id <= 0 ||
+      issue.url !== expectedIssueUrl ||
+      !liveIssue || liveIssue.number !== 188 ||
+      liveIssue.state !== 'open' || liveIssue.id !== issue.id ||
+      liveIssue.url !== expectedIssueUrl ||
+      liveIssue.title !== issue.title ||
+      liveIssue.pull_request || liveIssue.user?.login !== OWNER) {
+    deny('closed, moved or unauthenticated control issue');
+  }
   if (!Number.isSafeInteger(comment?.id) || comment.id < 1 ||
       comment?.user?.login !== OWNER || comment.author_association !== 'OWNER') deny('not an OWNER approval');
   const req = payload(comment.body, PREFIX, ['scope','mainSha','candidateSha','confirmation']);
@@ -54,11 +67,14 @@ export function assertCommunityPreviewAdmission({repository, issue, comment, mai
 }
 if (process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).href) {
   try {
-    const [eventFile, mainFile, prFile, compareFile, ledgerFile] = process.argv.slice(2);
-    if (!ledgerFile) deny('five input JSON files required');
+    const inputFiles = process.argv.slice(2);
+    if (inputFiles.length !== 6) deny('six evidence files required');
+    const [eventFile, issueFile, mainFile, prFile, compareFile, ledgerFile] =
+      inputFiles;
     const event = JSON.parse(readFileSync(eventFile,'utf8'));
     const decision = assertCommunityPreviewAdmission({
       repository: event.repository?.full_name, issue: event.issue, comment:event.comment,
+      liveIssue: JSON.parse(readFileSync(issueFile,'utf8')),
       main: JSON.parse(readFileSync(mainFile,'utf8')), pr:JSON.parse(readFileSync(prFile,'utf8')),
       compare: JSON.parse(readFileSync(compareFile,'utf8')),
       ledgerPages: JSON.parse(readFileSync(ledgerFile,'utf8'))

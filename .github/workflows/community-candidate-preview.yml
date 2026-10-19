@@ -8,6 +8,7 @@ jobs:
   admit:
     if: >-
       github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
       github.event.issue.pull_request == null &&
       github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
       github.event.issue.user.login == 'bingohooah888-ai' &&
@@ -41,13 +42,14 @@ jobs:
         run: |
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/preview-main.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/preview-issue.json
           gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/preview-pr.json
           main="$(jq -er '.object.sha' /tmp/preview-main.json)"
           head="$(jq -er '.head.sha' /tmp/preview-pr.json)"
           test "$(git rev-parse HEAD)" = "$main"
           gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/preview-compare.json
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" > /tmp/preview-ledger.json
-          node scripts/community-preview-admission.mjs "$GITHUB_EVENT_PATH" /tmp/preview-main.json /tmp/preview-pr.json /tmp/preview-compare.json /tmp/preview-ledger.json > /tmp/preview-decision.json
+          node scripts/community-preview-admission.mjs "$GITHUB_EVENT_PATH" /tmp/preview-issue.json /tmp/preview-main.json /tmp/preview-pr.json /tmp/preview-compare.json /tmp/preview-ledger.json > /tmp/preview-decision.json
           {
             echo "main_sha=$(jq -er '.mainSha' /tmp/preview-decision.json)"
             echo "candidate_sha=$(jq -er '.candidateSha' /tmp/preview-decision.json)"
@@ -61,6 +63,7 @@ jobs:
           REQUEST: ${{ steps.bind.outputs.request_id }}
         run: |
           set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
           data="$(jq -cn --arg requestCommentId "$REQUEST" --arg mainSha "$MAIN" --arg candidateSha "$HEAD" --arg runId "$GITHUB_RUN_ID" '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
           gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" -f body="NOVELIGHT_STAGING_COMMUNITY_PREVIEW_CLAIMED $data" > /dev/null
   preview:
@@ -148,9 +151,10 @@ jobs:
             throw new Error('Community DB public_enabled=false is not proven. Preview denied.');
           }
           NODE
-      - name: Recheck exact refs immediately before cost-bearing creation
+      - name: Recheck exact refs and open OWNER gate before cost-bearing creation
         run: |
           set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')" = "$EXPECTED_REVISION"
       - name: Create exactly one non-Production Preview at candidate SHA
