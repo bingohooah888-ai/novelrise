@@ -529,8 +529,8 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
    The previous :has(reader-account) rule changed the width from 440px to
    480px after auth, reflowing Search, Studio, bookshelf, avatar and OWNER. */
 @media (min-width: 1101px) {
-  html body.novelight-public-dark header.site-header .header-actions,
-  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions:has(.nl-reader-account-bar) {
     display: grid !important;
     width: 480px !important;
     min-width: 480px !important;
@@ -541,12 +541,12 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     align-items: center !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .header-search {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .header-search {
     grid-column: 1;
     grid-row: 1;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .login-action {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .login-action {
     grid-column: 2;
     grid-row: 1;
     min-width: 0 !important;
@@ -554,7 +554,7 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     padding-inline: 8px !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .signup-action {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .signup-action {
     grid-column: 3;
     grid-row: 1;
     min-width: 0 !important;
@@ -562,14 +562,14 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     padding-inline: 5px !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .signup-action[hidden],
-  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) > .signup-action[hidden] {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .signup-action[hidden],
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions:has(.nl-reader-account-bar) > .signup-action[hidden] {
     display: inline-flex !important;
     visibility: hidden !important;
     pointer-events: none !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .nl-reader-account-bar {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .nl-reader-account-bar {
     grid-column: 4;
     grid-row: 1;
     width: 120px !important;
@@ -578,8 +578,8 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     gap: 7px !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .novelight-admin-shortcut-desktop,
-  html body.novelight-public-dark header.site-header .header-actions:has(.nl-reader-account-bar) > .novelight-admin-shortcut-desktop {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .novelight-admin-shortcut-desktop,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions:has(.nl-reader-account-bar) > .novelight-admin-shortcut-desktop {
     grid-column: 5;
     grid-row: 1;
     position: static !important;
@@ -593,11 +593,11 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     padding: 8px 5px !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions .nl-reader-name {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-name {
     display: none !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions .nl-reader-account-chip {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-account-chip {
     width: 42px !important;
     min-width: 42px !important;
     max-width: 42px !important;
@@ -608,7 +608,7 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
 /* Reserve the same auth/avatar/menu slots for narrow desktop and tablet.
    Admin-only controls remain hidden by the existing <=1100px policy. */
 @media (min-width: 641px) and (max-width: 1100px) {
-  html body.novelight-public-dark header.site-header .header-actions {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions {
     display: grid !important;
     width: 260px !important;
     min-width: 260px !important;
@@ -619,12 +619,12 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     align-items: center !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .header-search {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .header-search {
     grid-column: 1;
     grid-row: 1;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .login-action {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .login-action {
     grid-column: 2;
     grid-row: 1;
     min-width: 0 !important;
@@ -632,7 +632,7 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     padding-inline: 8px !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .nl-reader-account-bar {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .nl-reader-account-bar {
     grid-column: 3;
     grid-row: 1;
     width: 42px !important;
@@ -641,17 +641,17 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     justify-content: center !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .mobile-menu {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .mobile-menu {
     grid-column: 4;
     grid-row: 1;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions .nl-reader-nav-link,
-  html body.novelight-public-dark header.site-header .header-actions .nl-reader-name {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-nav-link,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-name {
     display: none !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions .nl-reader-account-chip {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-account-chip {
     width: 42px !important;
     max-width: 42px !important;
     padding: 4px !important;
@@ -659,7 +659,7 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
 }
 
 @media (max-width: 640px) {
-  html body.novelight-public-dark header.site-header .header-actions {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions {
     display: grid !important;
     width: 120px !important;
     min-width: 120px !important;
@@ -670,18 +670,18 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     align-items: center !important;
   }
 
-  html body.novelight-public-dark header.site-header .logo img {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .logo img {
     max-width: min(56vw, calc(100vw - 162px)) !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .header-search {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .header-search {
     grid-column: 1;
     grid-row: 1;
     width: 32px !important;
     height: 40px !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .nl-reader-account-bar {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .nl-reader-account-bar {
     grid-column: 2;
     grid-row: 1;
     width: 36px !important;
@@ -691,29 +691,29 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
     gap: 0 !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .mobile-menu {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .mobile-menu {
     grid-column: 3;
     grid-row: 1;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions > .mobile-menu summary {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .mobile-menu summary {
     width: 40px !important;
     height: 40px !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions .nl-reader-nav-link,
-  html body.novelight-public-dark header.site-header .header-actions .nl-reader-name {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-nav-link,
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-name {
     display: none !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions .nl-reader-account-chip {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-account-chip {
     width: 36px !important;
     min-width: 36px !important;
     max-width: 36px !important;
     padding: 2px !important;
   }
 
-  html body.novelight-public-dark header.site-header .header-actions .nl-reader-avatar {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions .nl-reader-avatar {
     width: 29px !important;
     height: 29px !important;
   }
@@ -721,7 +721,7 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
 
 /* At 1101-1180px the desktop column totals must fit before and after auth. */
 @media (min-width: 1101px) and (max-width: 1180px) {
-  html body.novelight-public-dark header.site-header .public-header-inner {
+  html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .public-header-inner {
     width: calc(100% - 24px) !important;
     grid-template-columns: minmax(185px, 220px) minmax(320px, 1fr) 480px !important;
     column-gap: 12px !important;
