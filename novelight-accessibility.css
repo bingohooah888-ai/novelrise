@@ -549,6 +549,10 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
   html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .login-action {
     grid-column: 2;
     grid-row: 1;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
     min-width: 0 !important;
     width: 100% !important;
     padding-inline: 8px !important;
@@ -627,6 +631,10 @@ html body.novelight-public-dark header.site-header .nl-reader-account-bar .nl-re
   html body:is(.novelight-public-dark, .novelight-public-header-page:not(.novelight-public-dark)) header.site-header .header-actions > .login-action {
     grid-column: 2;
     grid-row: 1;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
     min-width: 0 !important;
     width: 100% !important;
     padding-inline: 8px !important;
