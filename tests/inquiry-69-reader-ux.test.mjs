@@ -74,10 +74,7 @@ test('inquiry 69: profile editing uses existing secured operations', () => {
 });
 
 test('inquiry 69: new runtime scripts parse', () => {
-  const names = [
-    'novelight-reader-account.js',
-    'novelight-profile-settings.js'
-  ];
+  const names = ['novelight-reader-account.js', 'novelight-profile-settings.js'];
   for (const name of names) {
     assert.doesNotThrow(() => new vm.Script(read(name), { filename: name }));
   }
