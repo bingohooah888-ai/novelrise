@@ -1,5 +1,6 @@
 // Trusted default-branch, read-only admission logic. Never execute candidate code here.
 import { readFileSync } from 'node:fs';
+import { assertReviewedCommunityCandidate } from './community-phase1-reviewed-candidate.mjs';
 const OWNER = 'bingohooah888-ai';
 const REPO = OWNER + '/novelrise';
 const PREFIX = 'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE ';
@@ -53,6 +54,7 @@ export function assertCommunityPreviewAdmission({
       !Array.isArray(compare.commits) ||
       compare.commits.length !== compare.total_commits ||
       compare.commits.at(-1)?.sha !== req.candidateSha) deny('candidate ancestry not proven');
+  assertReviewedCommunityCandidate({ compare, mainSha: req.mainSha, candidateSha: req.candidateSha });
   if (!Array.isArray(ledgerPages) || ledgerPages.length < 1 || ledgerPages.length > 20 ||
       !ledgerPages.every(page => Array.isArray(page) && page.length <= 100) ||
       ledgerPages.at(-1).length >= 100) deny('ledger pagination incomplete');

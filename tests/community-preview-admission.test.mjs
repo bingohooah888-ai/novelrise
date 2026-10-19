@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 import { assertCommunityPreviewAdmission } from '../scripts/community-preview-admission.mjs';
+import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
 
 const mainSha = 'a'.repeat(40);
 const candidateSha = 'b'.repeat(40);
@@ -53,7 +54,12 @@ function fixture() {
       ahead_by: 1,
       total_commits: 1,
       base_commit: { sha: mainSha },
-      commits: [{ sha: candidateSha }]
+      commits: [{ sha: candidateSha }],
+      files: REVIEWED_COMMUNITY_FILES.map((f) => ({
+        filename: f.path,
+        sha: f.sha,
+        status: f.status
+      }))
     },
     ledgerPages: [[{ body: 'ordinary discussion' }]]
   };
@@ -176,4 +182,43 @@ test('cost-bearing Preview workflow refuses a closed Issue', () => {
   assert.match(workflow, /scripts\/community-preview-admission\.mjs/u);
   const rechecks = workflow.match(/--jq '\.state'/gu) ?? [];
   assert.ok(rechecks.length >= 2);
+});
+
+const reviewedDenied = /COMMUNITY_REVIEWED_CANDIDATE_DENIED/;
+
+test('reviewed diff rejects altered or missing files', () => {
+  const altered = fixture();
+  altered.compare.files[0].sha = 'f'.repeat(40);
+  assert.throws(() => assertCommunityPreviewAdmission(altered), reviewedDenied);
+
+  const missing = fixture();
+  missing.compare.files.pop();
+  assert.throws(() => assertCommunityPreviewAdmission(missing), reviewedDenied);
+});
+
+test('reviewed diff rejects unreviewed extra files', () => {
+  const extra = fixture();
+  extra.compare.files.push({
+    filename: 'unreviewed.js',
+    sha: 'f'.repeat(40),
+    status: 'added'
+  });
+  assert.throws(() => assertCommunityPreviewAdmission(extra), reviewedDenied);
+});
+
+test('main sync with identical reviewed blobs can pass', () => {
+  const evidence = fixture();
+  const main = 'c'.repeat(40);
+  const head = 'd'.repeat(40);
+  const prefix = 'NOVELIGHT_STAGING_COMMUNITY_PREVIEW_APPROVE ';
+  const approval = JSON.parse(evidence.comment.body.slice(prefix.length));
+  approval.mainSha = main;
+  approval.candidateSha = head;
+  evidence.comment.body = prefix + JSON.stringify(approval);
+  evidence.main.object.sha = main;
+  evidence.pr.base.sha = main;
+  evidence.pr.head.sha = head;
+  evidence.compare.base_commit.sha = main;
+  evidence.compare.commits = [{ sha: head }];
+  assert.equal(assertCommunityPreviewAdmission(evidence).candidateSha, head);
 });
