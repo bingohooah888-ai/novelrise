@@ -19,6 +19,7 @@ jobs:
     name: Authenticate exact OWNER request on trusted main (read-only)
     if: >-
       github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
       github.event.issue.pull_request == null &&
       github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
       github.event.issue.user.login == 'bingohooah888-ai' &&
@@ -45,6 +46,7 @@ jobs:
           comment_id="$(jq -er '.comment.id | select(type == "number")' "$GITHUB_EVENT_PATH")"
           [[ "$comment_id" =~ ^[1-9][0-9]*$ ]]
           gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/community-exec-issue.json
+          test "$(jq -er '.state' /tmp/community-exec-issue.json)" = 'open'
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" > /tmp/community-exec-comment.json
           gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/community-exec-main.json
           gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-exec-feature.json

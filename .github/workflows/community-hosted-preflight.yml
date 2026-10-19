@@ -18,6 +18,7 @@ jobs:
     name: Verify current feature and owner intent without side effects
     if: >-
       github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
       github.event.issue.pull_request == null &&
       github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
       github.event.issue.user.login == 'bingohooah888-ai' &&
@@ -39,6 +40,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/community-issue.json
+          test "$(jq -er '.state' /tmp/community-issue.json)" = 'open'
           gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/community-main.json
           gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-pr.json
           test "$(git rev-parse HEAD)" = "$(jq -er '.object.sha' /tmp/community-main.json)"
