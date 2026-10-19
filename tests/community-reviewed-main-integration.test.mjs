@@ -49,7 +49,10 @@ test('only three reviewed integration blobs replace prior fingerprints', () => {
     assert.equal(found.status, 'modified');
     assert.equal(found.sha, sha);
   }
-  assert.equal(assertReviewedCommunityCandidate(evidence()).reviewedFileCount, 37);
+  assert.equal(
+    assertReviewedCommunityCandidate(evidence()).reviewedFileCount,
+    37
+  );
 });
 
 test('previous blobs, extra files and divergent ancestry remain denied', () => {
