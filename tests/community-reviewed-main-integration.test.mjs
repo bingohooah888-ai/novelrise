@@ -72,9 +72,11 @@ test('current Phase 1 and public-header smoke Git blob is pinned', () => {
     37
   );
   const retired = evidence();
-  retired.compare.files.find(
+  const oldFile = retired.compare.files.find(
     (x) => x.filename === REVIEWED_SMOKE.path
-  ).sha = REVIEWED_SMOKE.previous;
+  );
+  assert.ok(oldFile);
+  oldFile.sha = REVIEWED_SMOKE.previous;
   assert.throws(
     () => assertReviewedCommunityCandidate(retired),
     /COMMUNITY_REVIEWED_CANDIDATE_DENIED/u
