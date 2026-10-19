@@ -40,7 +40,8 @@ function fixture() {
         id: 999,
         number: 188,
         state: 'open',
-        url: 'https://api.github.com/repos/bingohooah888-ai/novelrise/issues/188',
+        url:
+          'https://api.github.com/repos/bingohooah888-ai/novelrise/issues/188',
         title: '[Staging Approval Control] Preview / Staging cost gate',
         user: { login: 'bingohooah888-ai' }
       },
@@ -162,7 +163,10 @@ test('current main and exact unmerged candidate are fixed', () => {
   rejectField('feature.state', 'closed');
   rejectField('feature.base.ref', 'other');
   rejectField('feature.base.sha', 'c'.repeat(40));
-  rejectField('event.comment.body', proposalBody({ featureSha: 'c'.repeat(40) }));
+  rejectField(
+    'event.comment.body',
+    proposalBody({ featureSha: 'c'.repeat(40) })
+  );
   rejectField('feature.number', 2223);
   rejectField('event.comment.body', proposalBody({ scope: 'other' }));
   rejectField('event.comment.body', proposalBody({ mainSha: 'invalid' }));
@@ -267,10 +271,14 @@ test('partial pagination or missing OWNER source is rejected', () => {
   ]);
 });
 
-test('full reviewed blob manifest rejects stale, extra and missing content', () => {
+test('altered, extra and missing reviewed blobs are denied', () => {
   for (const mutation of [
-    (x) => { x.compare.files[0].sha = 'f'.repeat(40); },
-    (x) => { x.compare.files.pop(); },
+    (x) => {
+      x.compare.files[0].sha = 'f'.repeat(40);
+    },
+    (x) => {
+      x.compare.files.pop();
+    },
     (x) => {
       x.compare.files.push({
         filename: 'unaudited.js',
@@ -278,9 +286,15 @@ test('full reviewed blob manifest rejects stale, extra and missing content', () 
         status: 'added'
       });
     },
-    (x) => { x.compare.behind_by = 1; },
-    (x) => { x.compare.commits[0].sha = 'f'.repeat(40); },
-    (x) => { x.compare.base_commit.sha = 'f'.repeat(40); }
+    (x) => {
+      x.compare.behind_by = 1;
+    },
+    (x) => {
+      x.compare.commits[0].sha = 'f'.repeat(40);
+    },
+    (x) => {
+      x.compare.base_commit.sha = 'f'.repeat(40);
+    }
   ]) {
     const input = fixture();
     mutation(input);
