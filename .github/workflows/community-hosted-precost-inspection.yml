@@ -49,7 +49,7 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/community-precost-reviewed-compare.json
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" > /tmp/community-precost-ledger.json
           test "$(git rev-parse HEAD)" = "$(jq -er '.object.sha' /tmp/community-precost-main.json)"
-          node scripts/community-hosted-precost-admission.mjs validate \
+          node scripts/community-hosted-precost-review-only.mjs validate \
             "$GITHUB_EVENT_PATH" \
             /tmp/community-precost-issue.json \
             /tmp/community-precost-main.json \
