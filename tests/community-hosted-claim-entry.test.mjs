@@ -16,7 +16,7 @@ import {
 const REPO = 'bingohooah888-ai/novelrise';
 const OWNER = 'bingohooah888-ai';
 const MAIN = 'a'.repeat(40);
-const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
+const FEATURE = '91114a536688411caa37a5640a14eca01c8e0335';
 const ISSUE = 'https://api.github.com/repos/' + REPO + '/issues/188';
 
 function harness() {

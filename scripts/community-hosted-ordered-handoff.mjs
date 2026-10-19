@@ -7,7 +7,7 @@
 // exclusion and cleanup evidence are proven and separately approved.
 const REPO = 'bingohooah888-ai/novelrise';
 const SCOPE = 'community-phase1-hosted-authenticated-write';
-const CANDIDATE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
+const CANDIDATE = '91114a536688411caa37a5640a14eca01c8e0335';
 const SHA = /^[a-f0-9]{40}$/u;
 const ID = /^[1-9][0-9]*$/u;
 const REQUIRED = Object.freeze([

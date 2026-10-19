@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 
 export const SCOPE = 'community-phase1-interaction-rollback';
-export const CANDIDATE_SHA = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
+export const CANDIDATE_SHA = '91114a536688411caa37a5640a14eca01c8e0335';
 export const MIGRATION = '20261014052000';
 export const PREFIX = 'NOVELIGHT_STAGING_COMMUNITY_INTERACTION_APPROVE ';
 const CLAIMED = 'NOVELIGHT_STAGING_COMMUNITY_INTERACTION_CLAIMED ';

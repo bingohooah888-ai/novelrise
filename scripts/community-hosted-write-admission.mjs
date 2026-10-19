@@ -11,7 +11,7 @@ import {
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = OWNER + '/novelrise';
 const CONTROL_TITLE = '[Staging Approval Control] Preview / Staging cost gate';
-const CANDIDATE_SHA = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
+const CANDIDATE_SHA = '91114a536688411caa37a5640a14eca01c8e0335';
 const SHA = /^[a-f0-9]{40}$/u;
 const ID = /^[1-9][0-9]*$/u;
 

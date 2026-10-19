@@ -3,7 +3,7 @@
 // Caller-supplied snapshots are NOT authenticated facts, even if valid.
 const REPO = 'bingohooah888-ai/novelrise';
 const OWNER = 'bingohooah888-ai';
-const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
+const FEATURE = '91114a536688411caa37a5640a14eca01c8e0335';
 const PARENT = 'fiepaguycecrredwrcwx';
 const SHARED = 'wmlzjgvxgoyrovdhbqbg';
 const SHA = /^[0-9a-f]{40}$/u;
