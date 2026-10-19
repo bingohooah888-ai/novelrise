@@ -52,7 +52,8 @@
     'contact',
     'news-detail',
     'special-light',
-    'special-zone'
+    'special-zone',
+    'profile-settings'
   ]);
   let memoryVisitorToken = null;
 
