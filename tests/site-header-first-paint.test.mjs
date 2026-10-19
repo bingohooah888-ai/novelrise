@@ -163,8 +163,8 @@ test('admin shortcut has a fixed header slot and a compact-layout fallback', () 
   assert.match(accessibility, /max-width: 1100px/u);
 });
 
-test('Home reserves action slots before authenticated and OWNER controls mount', () => {
-  const marker = 'Keep the public header actions in reserved slots from the FIRST paint.';
+test('Home action slots stay stable after auth', () => {
+  const marker = 'Keep the public header actions in reserved slots';
   const fixed = accessibility.slice(accessibility.indexOf(marker));
   assert.ok(fixed.startsWith(marker));
   assert.match(fixed, /width: 480px !important/u);
