@@ -369,6 +369,35 @@
 
   installPublicHeader();
 
+  // Public pages share the Home bookshelf/avatar renderer. Install it once
+  // through the sitewide client instead of copying a script into every page.
+  // Home already loads this runtime statically; Author Studio uses its own
+  // independent dark header and is intentionally outside this public scope.
+  function installPublicReaderAccount() {
+    const slug = currentPageSlug();
+    if (slug === 'index' || slug === 'favorites') return false;
+    if (
+      !document.body?.classList.contains('novelight-public-header-page') ||
+      !document.querySelector(
+        'header.site-header .public-header-inner .header-actions'
+      )
+    ) {
+      return false;
+    }
+    // Keep campaign, admin, and custom headers outside this runtime.
+    if (!window.supabase?.createClient) return false;
+    if (document.querySelector('script[src^="novelight-reader-account.js"]')) {
+      return true;
+    }
+    const script = document.createElement('script');
+    script.src = 'novelight-reader-account.js';
+    script.dataset.novelightReaderAccount = 'public';
+    document.body.appendChild(script);
+    return true;
+  }
+
+  installPublicReaderAccount();
+
   function installBrandLogo() {
     const logos = document.querySelectorAll('.logo, .site-logo');
     if (!logos.length) return 0;
