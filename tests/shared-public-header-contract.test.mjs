@@ -85,9 +85,17 @@ test('workspace headers share the approved Home logo at first paint', () => {
 
 test('workspace managed pages cannot overlap dedicated layouts', () => {
   const workspace = new Set(manifest.workspaceManaged);
-  assert.ok(!manifest.managed.some((page) => workspace.has(page)));
-  assert.ok(!Object.keys(manifest.custom).some((page) => workspace.has(page)));
-  assert.ok(!Object.values(manifest.separateLayouts).flat().some((page) => workspace.has(page)));
+  for (const page of manifest.managed) {
+    assert.ok(!workspace.has(page), page);
+  }
+  for (const page of Object.keys(manifest.custom)) {
+    assert.ok(!workspace.has(page), page);
+  }
+  for (const pages of Object.values(manifest.separateLayouts)) {
+    for (const page of pages) {
+      assert.ok(!workspace.has(page), page);
+    }
+  }
   assert.ok(!workspace.has('scout-lv10-campaign.html'));
   assert.ok(!workspace.has('mypage.html'));
   assert.ok(!workspace.has('admin.html'));
