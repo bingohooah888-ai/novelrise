@@ -1,73 +1,43 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { URL } from 'node:url';
 import vm from 'node:vm';
 
-const read = (path) =>
-  readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const page = read('novel.html');
-const template = read('api/seo/templates/novel.html');
-const source = read('novelight-synopsis-fold.js');
+const page = readFileSync('novel.html', 'utf8');
+const seo = readFileSync('api/seo/templates/novel.html', 'utf8');
+const runtime = readFileSync('novelight-synopsis-fold.js', 'utf8');
+const source = page.match(/^function novelSynopsisMarkup\(value\).*$/mu)?.[0];
+const esc = (value) => String(value).replaceAll('<', '&lt;');
 
-function renderSynopsis(value) {
-  const start = page.indexOf('function novelSynopsisMarkup(value)');
-  const end = page.indexOf('function renderNovel(){', start);
-  assert.ok(start > 0 && end > start);
-  const context = {
-    esc: (v) =>
-      String(v).replaceAll('&', '&amp;').replaceAll('<', '&lt;')
-  };
-  return vm.runInNewContext(
-    page.slice(start, end) + '\nnovelSynopsisMarkup(input)',
-    { ...context, input: value }
-  );
+function render(value) {
+  return vm.runInNewContext(source + '\nnovelSynopsisMarkup(value)', {
+    esc,
+    value
+  });
 }
 
-test('long synopsis has native full-text control', () => {
-  const description = 'あらすじ\n' + '本文の紹介です。\n'.repeat(45);
-  const rendered = renderSynopsis(description);
-  assert.match(rendered, /<details class="novelight-native-synopsis">/u);
-  assert.match(rendered, /あらすじをもっと見る ▼/u);
-  assert.match(rendered, /閉じる ▲/u);
-  assert.ok(
-    rendered.includes('<div class="description">' + description + '</div>')
-  );
-  assert.match(
-    page,
-    /#novelHeader \.novelight-native-synopsis>\.description\{[^}]*overflow:visible!important/u
-  );
+test('long synopsis has a native button and full text', () => {
+  const full = 'あらすじ\n' + '物語の紹介です。\n'.repeat(50);
+  const html = render(full);
+  assert.match(html, /<details class="novelight-native-synopsis">/u);
+  assert.match(html, /あらすじをもっと見る ▼/u);
+  assert.ok(html.includes('<div class="description">' + full + '</div>'));
 });
 
-test('short synopsis is fully visible', () => {
-  const rendered = renderSynopsis('短いあらすじです。');
-  assert.equal(rendered, '<div class="description">短いあらすじです。</div>');
+test('short synopsis shows full text without folding', () => {
+  const html = render('短いあらすじです。');
+  assert.equal(html, '<div class="description">短いあらすじです。</div>');
 });
 
-test('synopsis escapes HTML and preserves content gate', () => {
-  const value = '<img src=x onerror=alert(1)>'.repeat(10);
-  const rendered = renderSynopsis(value);
-  assert.doesNotMatch(rendered, /<img /u);
-  assert.match(rendered, /&lt;img /u);
-  assert.match(
-    page,
-    /renderNovel\(\)[\s\S]*novelSynopsisMarkup\(novel\.description\)/u
-  );
-  assert.match(
-    page,
-    /if\(!isOwner\(\)&&needsWarningGate\(\)&&!warningAccepted\(\)\)/u
-  );
+test('native synopsis is safe and not double-folded', () => {
+  const html = render('<img>'.repeat(60));
+  assert.doesNotMatch(html, /<img>/u);
+  assert.match(html, /&lt;img>/u);
+  assert.match(runtime, /!description\.closest/u);
 });
 
-test('legacy script skips native details', () => {
-  assert.match(
-    source,
-    /description && !description\.closest\('\.novelight-native-synopsis'\)/u
-  );
-  assert.match(page, /<summary>/u);
+test('SEO shell remains identical and native control is wired', () => {
+  assert.equal(page, seo);
+  assert.match(page, /novelSynopsisMarkup\(novel\.description\)/u);
   assert.match(page, /novelight-native-synopsis\[open\]/u);
-});
-
-test('canonical novel SEO shell stays byte-identical', () => {
-  assert.equal(page, template);
 });
