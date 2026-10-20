@@ -103,11 +103,116 @@ for (const page of manifest.workspaceManaged) {
     if (write) writeFileSync(path, after);
   }
 }
+
+/* Specialist pages retain their original navigation and permissions.
+   Materialize only their brand artwork before first paint. */
+const homeImage = logo.match(/<img\b[^>]*>/u)?.[0];
+const imageSrc = homeImage?.match(/\bsrc="([^"]+)"/u)?.[1];
+const imageAlt = homeImage?.match(/\balt="([^"]+)"/u)?.[1];
+if (!imageSrc || !imageAlt) throw new Error('Invalid Home brand image');
+const adminStyle = '<link rel="stylesheet" href="/shared/header/brand-variants.css" data-novelight-brand-variants="true">';
+const groups = manifest.brandManaged || {};
+const brandPages = Object.values(groups).flat();
+const unique = [...manifest.managed, ...manifest.workspaceManaged, ...brandPages];
+if (new Set(unique).size !== unique.length) throw new Error('Header management page overlap');
+function logoImage(tag) {
+  if (!/\bsrc="[^"]*"/u.test(tag) || !/\balt="[^"]*"/u.test(tag)) throw new Error('Invalid specialist image');
+  return tag.replace(/\bsrc="[^"]*"/u, 'src="' + imageSrc + '"')
+    .replace(/\balt="[^"]*"/u, 'alt="' + imageAlt + '"');
+}
+function adminLogo() {
+  return '<a class="nl-admin-brand-link" href="index.html" aria-label="NOVELIGHT ホーム"><img src="' +
+    imageSrc + '" alt="' + imageAlt + '" width="154" height="40"></a>';
+}
+export function synchronizeBrandHtml(html, page, group) {
+  if (group === 'authorShell') {
+    if (!html.includes('novelight-author-studio-shell.js')) {
+      throw new Error(page + ': author shell script missing');
+    }
+    return html.includes(adminStyle) ? html : html.replace('</head>', adminStyle + '\n</head>');
+  }
+  if (group === 'standaloneAuthor') {
+    const render = '<header class="nl-author-standalone-header"><a class="nl-author-standalone-brand" href="index.html" aria-label="NOVELIGHT ホーム"><img src="' + imageSrc + '" alt="' + imageAlt + '" width="154" height="40"></a><a class="nl-author-standalone-back" href="mypage.html">← 創作室へ戻る</a></header>';
+    let output;
+    if (html.includes('<header></header>')) {
+      output = html.replace('<header></header>', render);
+    } else if (/<header class="nl-author-standalone-header">[\s\S]*?<\/header>/u.test(html)) {
+      output = html.replace(/<header class="nl-author-standalone-header">[\s\S]*?<\/header>/u, render);
+    } else throw new Error(page + ': standalone header not found');
+    return output.includes(adminStyle) ? output : output.replace('</head>', adminStyle + '\n</head>');
+  }
+  if (group !== 'admin') {
+    const cls = {reader:'logo',help:'nl-help-page-brand',studio:'studio-brand'}[group];
+    if (!cls) throw new Error('Unknown brand group: ' + group);
+    const anchors = [...html.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/gu)];
+    const matches = anchors.filter(([a]) => {
+      const opening = a.slice(0, a.indexOf('>'));
+      const value = opening.match(/\bclass="([^"]+)"/u)?.[1] || '';
+      return value.split(/\s+/u).includes(cls);
+    });
+    if (matches.length !== 1) throw new Error(page + ': missing/duplicated specialist brand anchor');
+    const anchor = matches[0][0];
+    if (!/<img\b[^>]*>/u.test(anchor)) throw new Error(page + ': brand image missing');
+    let output = html.replace(anchor, anchor.replace(/<img\b[^>]*>/u, logoImage));
+    if (group === 'studio' && !output.includes(adminStyle)) {
+      output = output.replace('</head>', adminStyle + '\n</head>');
+    }
+    return output;
+  }
+  const match = html.match(/<header(?:\s[^>]*)?>[\s\S]*?<\/header>/u);
+  if (!match) throw new Error(page + ': missing admin header');
+  const before = match[0];
+  const brand = adminLogo();
+  let after;
+  if (before.includes('class="nl-admin-brand-link"')) {
+    after = before.replace(/<a class="nl-admin-brand-link"[^>]*>[\s\S]*?<\/a>/u, brand);
+  } else if (before.includes('<div class="logo">NOVELIGHT</div>')) {
+    after = before.replace('<div class="logo">NOVELIGHT</div>', brand);
+  } else if (before.includes('<div class="brand">NOVELIGHT')) {
+    after = before.replace('<div class="brand">NOVELIGHT', '<div class="brand">' + brand);
+  } else if (before.includes('<strong>NOVELIGHT')) {
+    after = before.replace('<strong>NOVELIGHT', '<strong>' + brand);
+  } else throw new Error(page + ': unknown admin logo structure');
+  if (!after.includes('class="nl-admin-brand-link"')) throw new Error(page + ': admin brand missing');
+  let output = html.replace(before, after);
+  if (!output.includes(adminStyle)) {
+    if (!output.includes('</head>')) throw new Error(page + ': missing head');
+    output = output.replace('</head>', adminStyle + '\n</head>');
+  }
+  return output;
+}
+for (const [group, pages] of Object.entries(groups)) {
+  for (const page of pages) {
+    if (!/^[a-z0-9-]+\.html$/u.test(page) || !existsSync(join(root, page))) throw new Error('Invalid brand page: ' + page);
+    const path = join(root, page);
+    const before = readFileSync(path, 'utf8');
+    const after = synchronizeBrandHtml(before, page, group);
+    if (before !== after) {
+      drift.push(page);
+      if (write) writeFileSync(path, after);
+    }
+  }
+}
+
+// Legacy Author Studio shell still renders its sidebar in JS; keep that
+// exact source logo URL in sync while protecting account/logout behavior.
+const authorShellPath = join(root, 'novelight-author-studio-shell.js');
+const authorShellBefore = readFileSync(authorShellPath, 'utf8');
+const authorShellPattern = /brandImage\.src = '[^']*';/u;
+if (!authorShellPattern.test(authorShellBefore)) throw new Error('Author shell brand source missing');
+const authorShellAfter = authorShellBefore.replace(
+  authorShellPattern, "brandImage.src = '" + imageSrc + "';"
+);
+if (authorShellBefore !== authorShellAfter) {
+  drift.push('novelight-author-studio-shell.js');
+  if (write) writeFileSync(authorShellPath, authorShellAfter);
+}
+
 if (!write && drift.length) {
   console.error('Header markup drift detected: ' + drift.join(', ') + '. Run npm run header:sync.');
   process.exitCode = 1;
 }
-console.log('Shared headers: ' + (manifest.managed.length + manifest.workspaceManaged.length) + ' pages, ' + drift.length + ' different (' + (write ? 'synced' : 'checked') + ').');
+console.log('Shared headers: ' + (manifest.managed.length + manifest.workspaceManaged.length + brandPages.length) + ' pages, ' + drift.length + ' different (' + (write ? 'synced' : 'checked') + ').');
 
 // Optional local development mode: materialize the source of truth whenever
 // its template or page-variant manifest changes. Do not watch generated HTML:
