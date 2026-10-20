@@ -181,7 +181,9 @@
       const description = document.querySelector(
         '#novelHeader .description, .nl-work-detail-synopsis .description'
       );
-      if (description) {
+      // The work page now renders a native <details> control that must not be
+      // wrapped a second time by the generic JavaScript synopsis expander.
+      if (description && !description.closest('.novelight-native-synopsis')) {
         description.dataset.novelightSynopsis = '';
         description.dataset.novelightSynopsisLines = '3';
         mount(description);
