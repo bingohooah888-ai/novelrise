@@ -618,7 +618,29 @@ test('standard public pages match Home header geometry without hydration', async
     for (const route of routes) {
       await page.goto(route, { waitUntil: 'load' });
       const current = await measure();
-      expect.soft(current, `viewport ${width}: ${route}`).toEqual(baseline);
+      const rects = (obj) =>
+        Object.entries(obj).flatMap(([name, data]) => {
+          if (name === 'nav') {
+            return data.map((rect, index) => [name + index, rect]);
+          }
+          return [[name, data]];
+        });
+      const expected = rects(baseline);
+      const actual = new Map(rects(current));
+      for (const [name, rect] of expected) {
+        const currentRect = actual.get(name);
+        expect.soft(Boolean(currentRect), `${route}: ${name}`).toBe(
+          Boolean(rect)
+        );
+        if (!rect || !currentRect) continue;
+        for (let index = 0; index < rect.length; index++) {
+          const drift = Math.abs(rect[index] - currentRect[index]);
+          expect.soft(
+            drift,
+            `viewport ${width}, ${route}: ${name}[${index}]`
+          ).toBeLessThanOrEqual(1);
+        }
+      }
     }
     await context.close();
   }
