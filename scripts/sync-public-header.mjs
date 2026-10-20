@@ -125,6 +125,22 @@ function adminLogo() {
     imageSrc + '" alt="' + imageAlt + '" width="154" height="40"></a>';
 }
 export function synchronizeBrandHtml(html, page, group) {
+  if (group === 'authorShell') {
+    if (!html.includes('novelight-author-studio-shell.js')) {
+      throw new Error(page + ': author shell script missing');
+    }
+    return html.includes(adminStyle) ? html : html.replace('</head>', adminStyle + '\n</head>');
+  }
+  if (group === 'standaloneAuthor') {
+    const render = '<header class="nl-author-standalone-header"><a class="nl-author-standalone-brand" href="index.html" aria-label="NOVELIGHT ホーム"><img src="' + imageSrc + '" alt="' + imageAlt + '" width="154" height="40"></a><a class="nl-author-standalone-back" href="mypage.html">← 創作室へ戻る</a></header>';
+    let output;
+    if (html.includes('<header></header>')) {
+      output = html.replace('<header></header>', render);
+    } else if (/<header class="nl-author-standalone-header">[\s\S]*?<\/header>/u.test(html)) {
+      output = html.replace(/<header class="nl-author-standalone-header">[\s\S]*?<\/header>/u, render);
+    } else throw new Error(page + ': standalone header not found');
+    return output.includes(adminStyle) ? output : output.replace('</head>', adminStyle + '\n</head>');
+  }
   if (group !== 'admin') {
     const cls = {reader:'logo',help:'nl-help-page-brand',studio:'studio-brand'}[group];
     if (!cls) throw new Error('Unknown brand group: ' + group);
@@ -137,7 +153,11 @@ export function synchronizeBrandHtml(html, page, group) {
     if (matches.length !== 1) throw new Error(page + ': missing/duplicated specialist brand anchor');
     const anchor = matches[0][0];
     if (!/<img\b[^>]*>/u.test(anchor)) throw new Error(page + ': brand image missing');
-    return html.replace(anchor, anchor.replace(/<img\b[^>]*>/u, logoImage));
+    let output = html.replace(anchor, anchor.replace(/<img\b[^>]*>/u, logoImage));
+    if (group === 'studio' && !output.includes(adminStyle)) {
+      output = output.replace('</head>', adminStyle + '\n</head>');
+    }
+    return output;
   }
   const match = html.match(/<header(?:\s[^>]*)?>[\s\S]*?<\/header>/u);
   if (!match) throw new Error(page + ': missing admin header');
@@ -172,6 +192,20 @@ for (const [group, pages] of Object.entries(groups)) {
       if (write) writeFileSync(path, after);
     }
   }
+}
+
+// Legacy Author Studio shell still renders its sidebar in JS; keep that
+// exact source logo URL in sync while protecting account/logout behavior.
+const authorShellPath = join(root, 'novelight-author-studio-shell.js');
+const authorShellBefore = readFileSync(authorShellPath, 'utf8');
+const authorShellPattern = /brandImage\.src = '[^']*';/u;
+if (!authorShellPattern.test(authorShellBefore)) throw new Error('Author shell brand source missing');
+const authorShellAfter = authorShellBefore.replace(
+  authorShellPattern, "brandImage.src = '" + imageSrc + "';"
+);
+if (authorShellBefore !== authorShellAfter) {
+  drift.push('novelight-author-studio-shell.js');
+  if (write) writeFileSync(authorShellPath, authorShellAfter);
 }
 
 if (!write && drift.length) {

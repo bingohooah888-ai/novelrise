@@ -152,6 +152,17 @@
       "admin-thumbnail-batch.html",
       "admin-thumbnails.html",
       "admin-trust-safety.html"
+    ],
+    "authorShell": [
+      "account-settings.html",
+      "author-notes.html",
+      "collaboration.html",
+      "novel-polls.html",
+      "story-notes.html",
+      "scout-record.html"
+    ],
+    "standaloneAuthor": [
+      "interaction-settings.html"
     ]
   }
 }

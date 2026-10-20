@@ -107,6 +107,8 @@ test('specialist brand pages are tracked and keep local links', () => {
   assert.equal(groups.reader.length, 1);
   assert.equal(groups.help.length, 1);
   assert.equal(groups.studio.length, 1);
+  assert.equal(groups.authorShell.length, 6);
+  assert.equal(groups.standaloneAuthor.length, 1);
   for (const page of groups.admin) {
     assert.match(read(page), /class="nl-admin-brand-link"/u);
   }
