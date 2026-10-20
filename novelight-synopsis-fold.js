@@ -13,7 +13,7 @@
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = [
-      '.nl-synopsis-copy{display:block;}',
+      '.nl-synopsis-copy{display:block;white-space:pre-wrap;overflow-wrap:anywhere;}',
       '.nl-synopsis-host:not(.is-expanded) .nl-synopsis-copy{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--nl-synopsis-lines,3);overflow:hidden;}',
       '.nl-synopsis-host.is-expanded .nl-synopsis-copy{display:block;overflow:visible;}',
       '.nl-synopsis-toggle{display:inline-flex;align-items:center;margin-top:4px;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;font-size:12px;font-weight:800;line-height:1.5;cursor:pointer;text-decoration:underline;text-underline-offset:3px;opacity:.82;}',
@@ -81,7 +81,17 @@
     const fullHeight = copy.getBoundingClientRect().height;
     host.classList.remove('is-expanded');
     const clampedHeight = copy.getBoundingClientRect().height;
-    const overflow = fullHeight > clampedHeight + 1;
+    const clippedScrollHeight = copy.scrollHeight > copy.clientHeight + 1;
+    // WebKit line-clamp measurements can be equal even when paragraphs are hidden.
+    // Keep the work-detail expander available for substantial descriptions.
+    const isNovelDetail = window.location.pathname.split('/').pop() === 'novel.html'
+      && Boolean(host.closest('#novelHeader, .nl-work-detail-synopsis'));
+    const text = copy.textContent || '';
+    const paragraphCount = text.split(/\r?\n/u).length;
+    const substantialNovelSynopsis = isNovelDetail
+      && (paragraphCount > lineLimit(host) || text.length > 160);
+    const overflow = fullHeight > clampedHeight + 1
+      || clippedScrollHeight || substantialNovelSynopsis;
     button.hidden = !overflow;
     if (overflow && wasExpanded) host.classList.add('is-expanded');
     host.dataset.novelightSynopsisOverflow = overflow ? 'true' : 'false';
@@ -171,7 +181,9 @@
       const description = document.querySelector(
         '#novelHeader .description, .nl-work-detail-synopsis .description'
       );
-      if (description) {
+      // The work page now renders a native <details> control that must not be
+      // wrapped a second time by the generic JavaScript synopsis expander.
+      if (description && !description.closest('.novelight-native-synopsis')) {
         description.dataset.novelightSynopsis = '';
         description.dataset.novelightSynopsisLines = '3';
         mount(description);
