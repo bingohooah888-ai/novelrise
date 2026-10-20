@@ -9,6 +9,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(readFileSync(join(root, 'shared/header/manifest.json'), 'utf8'));
 const canonical = readFileSync(join(root, manifest.template), 'utf8').trimEnd();
 const headerPattern = /<header class="site-header">[\s\S]*?<\/header>/u;
+const workspaceTemplate = readFileSync(join(root, manifest.workspaceTemplate), 'utf8').trimEnd();
+const logo = canonical.match(/<a class="logo"[^>]*>[\s\S]*?<\/a>/u)?.[0];
+if (!logo || !logo.includes('<img')) throw new Error('Canonical Home logo missing');
+const workspacePattern = /<header(?:\s[^>]*)?>\s*<div class="header-inner">[\s\S]*?<\/div>\s*<\/header>/u;
 const watching = process.argv.includes('--watch');
 const write = watching || process.argv.includes('--write');
 
@@ -58,7 +62,22 @@ export function synchronizeHtml(html, page) {
   return shell.replace('</head>', link + '\n</head>');
 }
 
+export function synchronizeWorkspaceHtml(html, page) {
+  const existing = html.match(workspacePattern)?.[0];
+  if (!existing) throw new Error(page + ': workspace header not found');
+  const back = existing.match(/<a\b[^>]*\bclass="back"[^>]*>[\s\S]*?<\/a>/u)?.[0];
+  if (!back) throw new Error(page + ': workspace return link not found');
+  const rendered = workspaceTemplate.replace('{{HOME_LOGO}}', logo).replace('{{PAGE_BACK}}', back);
+  if (rendered.includes('{{')) throw new Error('Unresolved workspace template');
+  return html.replace(workspacePattern, rendered);
+}
+
 if (new Set(manifest.managed).size !== manifest.managed.length) throw new Error('Duplicate managed page');
+if (new Set([...manifest.managed, ...manifest.workspaceManaged]).size !==
+    manifest.managed.length + manifest.workspaceManaged.length) {
+  throw new Error('Overlapping managed header page');
+}
+
 const drift = [];
 for (const page of manifest.managed) {
   if (!/^(?:[a-z0-9-]+\.html|api\/seo\/templates\/(?:novel|episode)\.html)$/u.test(page) || manifest.custom[page]) throw new Error('Invalid managed page: ' + page);
@@ -71,11 +90,24 @@ for (const page of manifest.managed) {
     if (write) writeFileSync(path, after);
   }
 }
+for (const page of manifest.workspaceManaged) {
+  if (!/^[a-z0-9-]+\.html$/u.test(page) || manifest.custom[page]) {
+    throw new Error('Invalid workspace page: ' + page);
+  }
+  const path = join(root, page);
+  if (!existsSync(path)) throw new Error('Missing workspace page: ' + page);
+  const before = readFileSync(path, 'utf8');
+  const after = synchronizeWorkspaceHtml(before, page);
+  if (before !== after) {
+    drift.push(page);
+    if (write) writeFileSync(path, after);
+  }
+}
 if (!write && drift.length) {
   console.error('Header markup drift detected: ' + drift.join(', ') + '. Run npm run header:sync.');
   process.exitCode = 1;
 }
-console.log('Shared public header: ' + manifest.managed.length + ' pages, ' + drift.length + ' different (' + (write ? 'synced' : 'checked') + ').');
+console.log('Shared headers: ' + (manifest.managed.length + manifest.workspaceManaged.length) + ' pages, ' + drift.length + ' different (' + (write ? 'synced' : 'checked') + ').');
 
 // Optional local development mode: materialize the source of truth whenever
 // its template or page-variant manifest changes. Do not watch generated HTML:
@@ -85,7 +117,7 @@ if (watching) {
   const directory = join(root, 'shared/header');
   watch(directory, (_event, filename) => {
     const name = filename ? String(filename) : '';
-    if (name && name !== 'public-header.html' && name !== 'manifest.json') {
+    if (name && name !== 'public-header.html' && name !== 'workspace-header.html' && name !== 'manifest.json') {
       return;
     }
     clearTimeout(pending);

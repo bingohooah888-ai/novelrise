@@ -65,3 +65,38 @@ test('local watcher refreshes generated HTML when the source changes', () => {
   assert.match(script, /name !== 'manifest\.json'/u);
   assert.match(script, /\[fileURLToPath\(import\.meta\.url\), '--write'\]/u);
 });
+
+test('workspace headers share the approved Home logo at first paint', () => {
+  const logo = read('shared/header/public-header.html').match(
+    /<a class="logo"[^>]*>[\s\S]*?<\/a>/u
+  )?.[0];
+  assert.ok(logo);
+  assert.equal(manifest.workspaceManaged.length, 20);
+  for (const page of manifest.workspaceManaged) {
+    const html = read(page);
+    const header = html.match(
+      /<header>\s*<div class="header-inner">[\s\S]*?<\/div>\s*<\/header>/u
+    )?.[0];
+    assert.ok(header, page);
+    assert.ok(header.includes(logo), page);
+    assert.match(header, /<a\b[^>]*class="back"[^>]*>/u, page);
+  }
+});
+
+test('workspace managed pages cannot overlap dedicated layouts', () => {
+  const workspace = new Set(manifest.workspaceManaged);
+  for (const page of manifest.managed) {
+    assert.ok(!workspace.has(page), page);
+  }
+  for (const page of Object.keys(manifest.custom)) {
+    assert.ok(!workspace.has(page), page);
+  }
+  for (const pages of Object.values(manifest.separateLayouts)) {
+    for (const page of pages) {
+      assert.ok(!workspace.has(page), page);
+    }
+  }
+  assert.ok(!workspace.has('scout-lv10-campaign.html'));
+  assert.ok(!workspace.has('mypage.html'));
+  assert.ok(!workspace.has('admin.html'));
+});
