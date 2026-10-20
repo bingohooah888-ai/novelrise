@@ -13,7 +13,8 @@ test('public header loads one shared reader runtime', () => {
   assert.match(clientSource, /script\.src = 'novelight-reader-account\.js'/u);
   assert.match(clientSource, /slug === 'index' \|\| slug === 'favorites'/u);
   assert.match(clientSource, /novelight-public-header-page/u);
-  assert.match(clientSource, /script\[src\^="novelight-reader-account\.js"\]/u);
+  const scriptGuard = 'script[src^="novelight-reader-account.js"]';
+  assert.ok(clientSource.includes(scriptGuard));
   for (const page of [
     'recommended.html',
     'new-arrivals.html',
@@ -56,11 +57,8 @@ function fakeElement(tagName) {
     setAttribute(key, value) {
       this.attributes[key] = value;
     },
-    querySelector(selector) {
-      if (selector !== '.nl-reader-mobile-items') return null;
-      return this.children.find((child) => {
-        return child.className === 'nl-reader-mobile-items';
-      }) || null;
+    querySelector() {
+      return null;
     }
   };
   return node;
