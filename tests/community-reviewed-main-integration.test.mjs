@@ -11,7 +11,7 @@ const HEAD = 'b'.repeat(40);
 const CURRENT_BLOBS = {
   'curation-lists.html': '5c21090e36753d60fc4baa7e617c940abc19ff72',
   'light-seed-history.html': '49c5e4ab426e70750abdca070d09e3a3c29252ac',
-  'author-notes.html': '5bd92792238608743d00d4d3eef72862cfcb070b',
+  'author-notes.html': 'c6e28d122f323ce8544c5ffeb8596795f6d0ec22',
   'index.html': '7cef83bbaa236c2a9a45ca80020395f75b943d77',
   'tests/accessibility-baseline.test.mjs':
     'cb72484530f211c56c335b2fe62dcc81e8d9b831'
