@@ -573,8 +573,10 @@ test('standard public pages match Home header geometry without hydration', async
     '/search.html',
     '/ranking.html',
     '/announcements.html',
-    '/terms.html',
-    '/author-features.html'
+    '/author-features.html',
+    '/pricing.html',
+    '/login.html',
+    '/special-light.html'
   ];
   for (const width of [1600, 390]) {
     const context = await browser.newContext({
