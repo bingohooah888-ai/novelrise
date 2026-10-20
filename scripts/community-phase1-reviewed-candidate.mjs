@@ -24,7 +24,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "author-notes.html",
-      "sha": "5bd92792238608743d00d4d3eef72862cfcb070b",
+      "sha": "c6e28d122f323ce8544c5ffeb8596795f6d0ec22",
       "status": "modified"
     },
     {
