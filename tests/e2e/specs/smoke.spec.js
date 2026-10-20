@@ -617,9 +617,8 @@ test('standard public pages match Home header geometry without hydration', async
     const baseline = await measure();
     for (const route of routes) {
       await page.goto(route, { waitUntil: 'load' });
-      expect.soft(await measure(), `viewport ${width}, route ${route}`).toEqual(
-        baseline
-      );
+      const current = await measure();
+      expect.soft(current, `viewport ${width}: ${route}`).toEqual(baseline);
     }
     await context.close();
   }
