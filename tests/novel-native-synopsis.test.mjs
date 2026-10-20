@@ -24,7 +24,7 @@ function renderSynopsis(value) {
   );
 }
 
-test('long descriptions render a native expand button and the entire text', () => {
+test('long synopsis has native full-text control', () => {
   const description = 'あらすじ\n' + '本文の紹介です。\n'.repeat(45);
   const rendered = renderSynopsis(description);
   assert.match(rendered, /<details class="novelight-native-synopsis">/u);
@@ -39,24 +39,27 @@ test('long descriptions render a native expand button and the entire text', () =
   );
 });
 
-test('small synopsis is entirely visible without an unnecessary toggle', () => {
+test('short synopsis is fully visible', () => {
   const rendered = renderSynopsis('短いあらすじです。');
-  assert.equal(
-    rendered,
-    '<div class="description">短いあらすじです。</div>'
-  );
+  assert.equal(rendered, '<div class="description">短いあらすじです。</div>');
 });
 
-test('synopsis is HTML escaped and only rendered after the content gate', () => {
+test('synopsis escapes HTML and preserves content gate', () => {
   const value = '<img src=x onerror=alert(1)>'.repeat(10);
   const rendered = renderSynopsis(value);
   assert.doesNotMatch(rendered, /<img /u);
   assert.match(rendered, /&lt;img /u);
-  assert.match(page, /renderNovel\(\)[\s\S]*novelSynopsisMarkup\(novel\.description\)/u);
-  assert.match(page, /if\(!isOwner\(\)&&needsWarningGate\(\)&&!warningAccepted\(\)\)/u);
+  assert.match(
+    page,
+    /renderNovel\(\)[\s\S]*novelSynopsisMarkup\(novel\.description\)/u
+  );
+  assert.match(
+    page,
+    /if\(!isOwner\(\)&&needsWarningGate\(\)&&!warningAccepted\(\)\)/u
+  );
 });
 
-test('legacy client expander skips native details instead of double clamping', () => {
+test('legacy script skips native details', () => {
   assert.match(
     source,
     /description && !description\.closest\('\.novelight-native-synopsis'\)/u
