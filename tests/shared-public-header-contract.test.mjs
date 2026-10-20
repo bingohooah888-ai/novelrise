@@ -101,7 +101,6 @@ test('workspace managed pages cannot overlap dedicated layouts', () => {
   assert.ok(!workspace.has('admin.html'));
 });
 
-
 test('specialist brand pages are tracked and keep local links', () => {
   const groups = manifest.brandManaged;
   assert.equal(groups.admin.length, 14);
