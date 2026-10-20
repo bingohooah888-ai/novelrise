@@ -7,7 +7,14 @@
   const isShelf = document.body.classList.contains('novelight-page-favorites');
   // Studio is a visual variant of the same reader account, not a second identity.
   const isWorkspace = Boolean(document.querySelector('.workspace-top'));
-  if (!isHome && !isShelf && !isWorkspace) return;
+  const isPublic =
+    document.body.classList.contains('novelight-public-header-page') &&
+    Boolean(
+      document.querySelector(
+        'header.site-header .public-header-inner .header-actions'
+      )
+    );
+  if (!isHome && !isShelf && !isWorkspace && !isPublic) return;
 
   function installStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -22,6 +29,8 @@
       '.nl-reader-avatar img{display:block;width:100%;height:100%;object-fit:cover}',
       '.nl-reader-name{min-width:0;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:800}',
       '.nl-reader-mobile-items{display:none}',
+      'body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .nl-reader-account-bar .nl-reader-nav-link,body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .nl-reader-account-bar .nl-reader-account-chip{color:#28364a!important;-webkit-text-fill-color:#28364a!important;border-color:rgba(112,70,12,.42)}',
+      'body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .nl-reader-avatar{-webkit-text-fill-color:#081526!important}',
       '.workspace-top .nl-reader-account-bar{display:inline-flex;align-items:center;gap:9px;min-width:0}',
       '.workspace-top .nl-reader-account-chip{display:inline-flex;align-items:center;gap:8px;min-width:0;max-width:200px;padding:4px 7px;border:0;background:transparent;color:#f6ecd4!important;-webkit-text-fill-color:#f6ecd4!important}',
       '.workspace-top .nl-reader-account-chip:hover{background:rgba(218,181,90,.1)}',
@@ -32,7 +41,7 @@
       'body.novelight-page-favorites .nl-reader-account-bar .nl-reader-account-chip{color:#51391b!important}',
       'body.novelight-page-favorites .header-inner{gap:12px;flex-wrap:wrap}',
       'body.novelight-page-favorites .nl-reader-account-bar{margin-left:auto}',
-      '@media(max-width:760px){body.novelight-page-index .nl-reader-account-bar{gap:5px}body.novelight-page-index .nl-reader-account-bar .nl-reader-nav-link{display:none}body.novelight-page-index .nl-reader-account-chip{padding:4px;border:0}.nl-reader-account-chip .nl-reader-name{display:none}.nl-reader-mobile-items{display:contents}.nl-reader-account-chip{max-width:44px}body.novelight-page-favorites .header-inner{padding-inline:14px}body.novelight-page-favorites .nl-reader-nav-link{padding:6px 8px}}',
+      '@media(max-width:760px){body.novelight-public-header-page .nl-reader-account-bar{gap:5px}body.novelight-public-header-page .nl-reader-account-bar .nl-reader-nav-link{display:none}body.novelight-public-header-page .nl-reader-account-chip{padding:4px;border:0}.nl-reader-account-chip .nl-reader-name{display:none}.nl-reader-mobile-items{display:contents}.nl-reader-account-chip{max-width:44px}body.novelight-page-favorites .header-inner{padding-inline:14px}body.novelight-page-favorites .nl-reader-nav-link{padding:6px 8px}}',
       '@media(max-width:420px){body.novelight-page-favorites .nl-reader-nav-link{font-size:11px}body.novelight-page-favorites .header-inner{gap:7px}}'
     ].join('');
     document.head.appendChild(style);
@@ -126,15 +135,17 @@
       header.insertBefore(bar, header.querySelector('#logout') || null);
       return;
     }
-    if (isHome) bar.appendChild(bookshelfLink());
+    if (isHome || isPublic) bar.appendChild(bookshelfLink());
     const chip = anchor('profile-settings.html', '', 'nl-reader-account-chip');
     installAvatar(chip, name, avatarPath, client);
     bar.appendChild(chip);
-    if (isHome) {
+    if (isHome || isPublic) {
       const header = document.querySelector('.site-header .header-actions');
-      if (header) header.insertBefore(bar, header.querySelector('.mobile-menu') || null);
+      if (header && !header.querySelector('.nl-reader-account-bar')) {
+        header.insertBefore(bar, header.querySelector('.mobile-menu') || null);
+      }
       const mobileNav = header?.querySelector('.mobile-menu nav');
-      if (mobileNav) {
+      if (mobileNav && !mobileNav.querySelector('.nl-reader-mobile-items')) {
         const group = document.createElement('span');
         group.className = 'nl-reader-mobile-items';
         group.append(anchor('favorites.html', '本棚', 'nl-reader-mobile-link'));
