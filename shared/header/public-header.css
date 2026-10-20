@@ -1,0 +1,10 @@
+/* Public-header design tokens. Existing production layout CSS remains
+ * authoritative until visual regression tests confirm exact parity.
+ * Do not mutate layout metrics here: shared HTML is synchronized at build
+ * preparation time, never replaced after the browser first paint. */
+html header.site-header {
+  --novelight-common-header-bg: rgba(250, 249, 246, 0.98);
+  --novelight-common-header-ink: #0e1d35;
+  --novelight-common-header-link: #28364a;
+  --novelight-common-header-accent: #70460c;
+}
