@@ -400,6 +400,22 @@ button{color:inherit}
   border-bottom:1px solid rgba(216,180,90,.22);
 }
 .panel-header h2{color:#fff2d4;font-size:16px}
+.profile-panel .panel-header{
+  justify-content:flex-start;
+  flex-wrap:wrap;
+  gap:8px 12px;
+}
+.profile-panel .panel-header h2{
+  flex:1 0 100%;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.profile-panel .panel-header .section-link{
+  min-width:0;
+  max-width:100%;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
 .activity-empty{min-height:235px;padding:38px 24px;display:grid;place-items:center;text-align:center;color:#b6c0cd}
 .activity-empty .empty-icon{display:block;margin-bottom:12px;color:#d7b55f;font-size:34px;text-shadow:0 0 18px rgba(216,180,90,.24)}
 .activity-empty strong{display:block;color:#f0eadf;font-size:14px}

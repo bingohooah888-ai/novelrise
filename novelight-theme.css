@@ -628,3 +628,55 @@ html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-head
     max-width: 56vw !important;
   }
 }
+
+/* Compact the existing work-detail layout on phones without moving its controls. */
+@media (max-width: 640px) {
+  body.novelight-page-novel main {
+    padding: 22px 14px 52px;
+  }
+  body.novelight-page-novel #novelHeader {
+    padding: 20px 17px;
+    margin-bottom: 14px;
+  }
+  body.novelight-page-novel #novelHeader .tags {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  body.novelight-page-novel #novelHeader .title {
+    font-size: clamp(23px, 6vw, 28px);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  body.novelight-page-novel #novelHeader .author {
+    margin-bottom: 13px;
+    overflow-wrap: anywhere;
+  }
+  body.novelight-page-novel #novelHeader .description {
+    margin-bottom: 12px;
+    line-height: 1.85;
+    overflow-wrap: anywhere;
+  }
+  body.novelight-page-novel #novelHeader .meta {
+    gap: 8px 12px;
+    min-width: 0;
+  }
+  body.novelight-page-novel #ownerActionsTop .owner-core,
+  body.novelight-page-novel #ownerActions .owner-core {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+  body.novelight-page-novel .owner-core > .action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: 10px 7px;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  body.novelight-page-novel #episodesPanel {
+    padding: 20px 17px;
+  }
+}
