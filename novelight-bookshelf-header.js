@@ -25,8 +25,16 @@
     const header = document.querySelector('.workspace-top');
     if (!header) return null;
     let link = document.getElementById(LINK_ID);
-    if (link) return link;
     installStyles();
+    if (link) {
+      if (!link.querySelector('.nl-bookshelf-header-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'nl-bookshelf-header-badge';
+        badge.hidden = true;
+        link.appendChild(badge);
+      }
+      return link;
+    }
     link = document.createElement('a');
     link.id = LINK_ID;
     link.className = 'nl-bookshelf-header-link';
@@ -106,6 +114,7 @@
   }
 
   async function mount() {
+    await window.NovelightReaderAccount?.ready;
     const link = ensureLink();
     if (!link || !window.supabase) return;
     const badge = link.querySelector('.nl-bookshelf-header-badge');
