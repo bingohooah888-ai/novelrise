@@ -85,35 +85,15 @@
   "separateLayouts": {
     "authorWorkspace": [
       "account-settings.html",
-      "analytics.html",
       "author-notes.html",
-      "bulk-import.html",
-      "characters.html",
       "collaboration.html",
-      "episode-drafts.html",
-      "episode-edit.html",
-      "episode-import.html",
-      "episode-post.html",
-      "episode-schedule.html",
-      "episode-structure.html",
       "interaction-settings.html",
-      "light-seed-history.html",
-      "my-novels.html",
       "mypage.html",
-      "novel-edit.html",
       "novel-polls.html",
-      "post.html",
-      "series.html",
-      "share-link.html",
       "story-notes.html",
-      "typo-reports.html",
-      "work-cover.html",
       "works.html"
     ],
     "readerWorkspace": [
-      "curation-lists.html",
-      "curation.html",
-      "favorites.html",
       "reading-history.html",
       "scout-record.html"
     ],
@@ -123,5 +103,28 @@
       "updates.html"
     ]
   },
-  "style": "/shared/header/public-header.css"
+  "style": "/shared/header/public-header.css",
+  "workspaceTemplate": "shared/header/workspace-header.html",
+  "workspaceManaged": [
+    "analytics.html",
+    "bulk-import.html",
+    "characters.html",
+    "episode-drafts.html",
+    "episode-edit.html",
+    "episode-import.html",
+    "episode-post.html",
+    "episode-schedule.html",
+    "episode-structure.html",
+    "light-seed-history.html",
+    "my-novels.html",
+    "novel-edit.html",
+    "post.html",
+    "series.html",
+    "share-link.html",
+    "typo-reports.html",
+    "work-cover.html",
+    "curation-lists.html",
+    "curation.html",
+    "favorites.html"
+  ]
 }
