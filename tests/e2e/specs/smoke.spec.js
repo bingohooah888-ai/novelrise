@@ -566,6 +566,65 @@ test('public header actions stay fixed as reader and owner links appear', async 
   }
 });
 
+test('standard public pages match Home header geometry without hydration', async ({
+  browser
+}) => {
+  const routes = [
+    '/search.html',
+    '/ranking.html',
+    '/announcements.html',
+    '/terms.html',
+    '/author-features.html'
+  ];
+  for (const width of [1600, 390]) {
+    const context = await browser.newContext({
+      viewport: { width, height: 900 },
+      javaScriptEnabled: false
+    });
+    const page = await context.newPage();
+    const measure = () =>
+      page.evaluate(() => {
+        const box = (selector) => {
+          const node = globalThis.document.querySelector(selector);
+          if (!node) return null;
+          const computed = globalThis.getComputedStyle(node);
+          if (computed.display === 'none') return null;
+          const rect = node.getBoundingClientRect();
+          return [rect.x, rect.y, rect.width, rect.height].map(Math.round);
+        };
+        return {
+          header: box('header.site-header'),
+          inner: box('header.site-header .public-header-inner'),
+          logo: box('header.site-header .logo img'),
+          nav: Array.from(
+            globalThis.document.querySelectorAll(
+              'header.site-header .desktop-nav a'
+            )
+          ).map((node) => {
+            if (globalThis.getComputedStyle(node).display === 'none') {
+              return null;
+            }
+            const rect = node.getBoundingClientRect();
+            return [rect.x, rect.y, rect.width, rect.height].map(Math.round);
+          }),
+          actions: box('header.site-header .header-actions'),
+          search: box('header.site-header .header-search'),
+          login: box('header.site-header .login-action'),
+          mobileMenu: box('header.site-header .mobile-menu summary')
+        };
+      });
+    await page.goto('/index.html', { waitUntil: 'load' });
+    const baseline = await measure();
+    for (const route of routes) {
+      await page.goto(route, { waitUntil: 'load' });
+      expect(await measure(), `viewport ${width}, route ${route}`).toEqual(
+        baseline
+      );
+    }
+    await context.close();
+  }
+});
+
 test('Home and public pages keep the approved off-white header', async ({
   page
 }) => {
