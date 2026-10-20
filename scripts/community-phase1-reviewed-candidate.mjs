@@ -34,7 +34,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "curation-lists.html",
-      "sha": "aead1789740310ac83e7c1f964dc168d4782369c",
+      "sha": "5c21090e36753d60fc4baa7e617c940abc19ff72",
       "status": "modified"
     },
     {
@@ -64,12 +64,12 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "index.html",
-      "sha": "6267de4d01d91839f155af745d1577bb2bbc0395",
+      "sha": "7cef83bbaa236c2a9a45ca80020395f75b943d77",
       "status": "modified"
     },
     {
       "path": "light-seed-history.html",
-      "sha": "1de9e85364d0cc5733487b93a5b3407f048f035a",
+      "sha": "49c5e4ab426e70750abdca070d09e3a3c29252ac",
       "status": "modified"
     },
     {
@@ -179,7 +179,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "tests/e2e/specs/smoke.spec.js",
-      "sha": "eae105adb9704a1a694764904b522a1f372c7014",
+      "sha": "5e9f8ad9cf9e238f908207896826d09dc6c6e346",
       "status": "modified"
     },
     {

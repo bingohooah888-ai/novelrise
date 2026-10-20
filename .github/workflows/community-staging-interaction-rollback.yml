@@ -114,7 +114,7 @@ jobs:
           test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')" = "$CANDIDATE_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.state')" = 'open'
           test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.draft')" = 'true'
-          test "$CANDIDATE_SHA" = '6bf0ea608183e4977fcdaa17d36b1712974d5a49'
+          test "$CANDIDATE_SHA" = '203fa256c33b0a46b274192eba9263e45877b938'
           test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
           test -n "$STAGING_DATABASE_URL_SOURCE"
           node scripts/resolve-staging-session-pooler.mjs
