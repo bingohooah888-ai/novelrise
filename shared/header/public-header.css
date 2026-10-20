@@ -8,3 +8,17 @@ html header.site-header {
   --novelight-common-header-link: #28364a;
   --novelight-common-header-accent: #70460c;
 }
+
+/* Keep non-Home public header action controls at the approved Home dimensions.
+   Do not modify Home itself; its existing CSS remains the visual baseline. */
+@media (min-width: 1101px) {
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .header-search {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
+    height: 53px !important;
+    min-height: 53px !important;
+  }
+}
