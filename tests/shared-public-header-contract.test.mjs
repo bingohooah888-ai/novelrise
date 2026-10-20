@@ -100,3 +100,39 @@ test('workspace managed pages cannot overlap dedicated layouts', () => {
   assert.ok(!workspace.has('mypage.html'));
   assert.ok(!workspace.has('admin.html'));
 });
+
+test('specialist brand pages are tracked and keep local links', () => {
+  const groups = manifest.brandManaged;
+  assert.equal(groups.admin.length, 14);
+  assert.equal(groups.reader.length, 1);
+  assert.equal(groups.help.length, 1);
+  assert.equal(groups.studio.length, 1);
+  assert.equal(groups.authorShell.length, 6);
+  assert.equal(groups.standaloneAuthor.length, 1);
+  for (const page of groups.admin) {
+    assert.match(read(page), /class="nl-admin-brand-link"/u);
+  }
+  assert.match(read('admin.html'), /href="admin-analytics\.html"/u);
+  assert.match(read('reading-history.html'), /href="favorites\.html"/u);
+  assert.match(read('help.html'), /nl-help-page-back/u);
+});
+
+test('Author Studio preserves its gold logo and dark header', () => {
+  const studio = read('mypage.html');
+  const roomCss = read('novelight-author-room.css');
+  const shellCss = read('novelight-author-studio-shell.css');
+  const variants = read('shared/header/brand-variants.css');
+  assert.match(studio, /<aside id="studioSidebar" class="studio-sidebar"/u);
+  assert.match(studio, /<header class="workspace-top">/u);
+  assert.match(
+    roomCss,
+    /assets\/author-room\/novelight-author-room-logo\.webp/u
+  );
+  assert.match(
+    shellCss,
+    /assets\/author-room\/novelight-author-room-logo\.webp/u
+  );
+  assert.match(roomCss, /\.studio-brand::before/u);
+  assert.doesNotMatch(variants, /\.studio-sidebar\s+\.studio-brand/u);
+  assert.match(studio, /src="assets\/novelight-header-logo\.webp"/u);
+});
