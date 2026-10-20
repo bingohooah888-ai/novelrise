@@ -101,9 +101,10 @@ test('workspace managed pages cannot overlap dedicated layouts', () => {
   assert.ok(!workspace.has('admin.html'));
 });
 
-
 test('specialist logo synchronization preserves page-local actions', () => {
-  const image = read('shared/header/public-header.html').match(/<img\b[^>]*>/u)?.[0];
+  const image = read('shared/header/public-header.html').match(
+    /<img\b[^>]*>/u
+  )?.[0];
   const src = image?.match(/\bsrc="([^"]+)"/u)?.[1];
   assert.ok(src);
   const groups = manifest.brandManaged;
@@ -121,6 +122,8 @@ test('specialist logo synchronization preserves page-local actions', () => {
   assert.match(read('admin.html'), /href="admin-analytics\.html"/u);
   assert.match(read('reading-history.html'), /href="favorites\.html"/u);
   assert.match(read('help.html'), /nl-help-page-back/u);
-  assert.ok(!Object.values(groups).flat().includes('scout-lv10-campaign.html'));
+  assert.ok(
+    !Object.values(groups).flat().includes('scout-lv10-campaign.html')
+  );
   assert.ok(!Object.values(groups).flat().includes('beta-authors.html'));
 });
