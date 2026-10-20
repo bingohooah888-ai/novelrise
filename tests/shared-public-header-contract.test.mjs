@@ -117,15 +117,21 @@ test('specialist brand pages are tracked and keep local links', () => {
   assert.match(read('help.html'), /nl-help-page-back/u);
 });
 
-test('approved Author Studio gold logo and dark workspace header remain intact', () => {
+test('Author Studio preserves its gold logo and dark header', () => {
   const studio = read('mypage.html');
   const roomCss = read('novelight-author-room.css');
   const shellCss = read('novelight-author-studio-shell.css');
   const variants = read('shared/header/brand-variants.css');
   assert.match(studio, /<aside id="studioSidebar" class="studio-sidebar"/u);
   assert.match(studio, /<header class="workspace-top">/u);
-  assert.match(roomCss, /assets\/author-room\/novelight-author-room-logo\.webp/u);
-  assert.match(shellCss, /assets\/author-room\/novelight-author-room-logo\.webp/u);
+  assert.match(
+    roomCss,
+    /assets\/author-room\/novelight-author-room-logo\.webp/u
+  );
+  assert.match(
+    shellCss,
+    /assets\/author-room\/novelight-author-room-logo\.webp/u
+  );
   assert.match(roomCss, /\.studio-brand::before/u);
   assert.doesNotMatch(variants, /\.studio-sidebar\s+\.studio-brand/u);
   assert.match(studio, /src="assets\/novelight-header-logo\.webp"/u);
