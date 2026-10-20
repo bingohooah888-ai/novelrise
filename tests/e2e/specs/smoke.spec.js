@@ -566,6 +566,60 @@ test('public header actions stay fixed as reader and owner links appear', async 
   }
 });
 
+test('standard public pages match Home header geometry without hydration', async ({
+  browser
+}) => {
+  const routes = [
+    '/search.html',
+    '/ranking.html',
+    '/announcements.html',
+    '/author-features.html',
+    '/pricing.html',
+    '/login.html',
+    '/special-light.html'
+  ];
+  for (const width of [1600, 390]) {
+    const context = await browser.newContext({
+      viewport: { width, height: 900 },
+      javaScriptEnabled: false
+    });
+    const page = await context.newPage();
+    const measure = () =>
+      page.evaluate(() => {
+        const selectors = [
+          'header.site-header',
+          'header.site-header .public-header-inner',
+          'header.site-header .logo img',
+          'header.site-header .desktop-nav a:nth-child(1)',
+          'header.site-header .desktop-nav a:nth-child(2)',
+          'header.site-header .desktop-nav a:nth-child(3)',
+          'header.site-header .desktop-nav a:nth-child(4)',
+          'header.site-header .header-actions',
+          'header.site-header .header-search',
+          'header.site-header .login-action',
+          'header.site-header .mobile-menu summary'
+        ];
+        return selectors.flatMap((selector) => {
+          const element = globalThis.document.querySelector(selector);
+          const rect = element.getBoundingClientRect();
+          return [rect.x, rect.y, rect.width, rect.height].map(Math.round);
+        });
+      });
+    await page.goto('/index.html', { waitUntil: 'load' });
+    const baseline = await measure();
+    for (const route of routes) {
+      await page.goto(route, { waitUntil: 'load' });
+      const current = await measure();
+      expect(current.length).toBe(baseline.length);
+      for (let index = 0; index < baseline.length; index++) {
+        const delta = Math.abs(current[index] - baseline[index]);
+        expect.soft(delta, `${route} metric ${index}`).toBeLessThanOrEqual(1);
+      }
+    }
+    await context.close();
+  }
+});
+
 test('Home and public pages keep the approved off-white header', async ({
   page
 }) => {
