@@ -9,15 +9,17 @@ import {
 const MAIN = 'a'.repeat(40);
 const HEAD = 'b'.repeat(40);
 const CURRENT_BLOBS = {
+  'curation-lists.html': '5c21090e36753d60fc4baa7e617c940abc19ff72',
+  'light-seed-history.html': '49c5e4ab426e70750abdca070d09e3a3c29252ac',
   'author-notes.html': '5bd92792238608743d00d4d3eef72862cfcb070b',
-  'index.html': '6267de4d01d91839f155af745d1577bb2bbc0395',
+  'index.html': '7cef83bbaa236c2a9a45ca80020395f75b943d77',
   'tests/accessibility-baseline.test.mjs':
     'cb72484530f211c56c335b2fe62dcc81e8d9b831'
 };
 const REVIEWED_SMOKE = Object.freeze({
   path: 'tests/e2e/specs/smoke.spec.js',
   previous: 'fc5fa385bb5f285e971367a0c04fa30ff4047126',
-  current: 'eae105adb9704a1a694764904b522a1f372c7014'
+  current: '5e9f8ad9cf9e238f908207896826d09dc6c6e346'
 });
 const PREVIOUS_BLOBS = {
   'author-notes.html': 'b55355a64dcc75225e9a59ff2432fd0e460b46c5',
