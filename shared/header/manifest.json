@@ -126,5 +126,32 @@
     "curation-lists.html",
     "curation.html",
     "favorites.html"
-  ]
+  ],
+  "brandManaged": {
+    "reader": [
+      "reading-history.html"
+    ],
+    "help": [
+      "help.html"
+    ],
+    "studio": [
+      "mypage.html"
+    ],
+    "admin": [
+      "admin.html",
+      "admin-analytics.html",
+      "admin-announcements.html",
+      "admin-base-books-32.html",
+      "admin-beta-authors.html",
+      "admin-contest-operations.html",
+      "admin-contest-rankings.html",
+      "admin-contest-review.html",
+      "admin-inquiries.html",
+      "admin-reports.html",
+      "admin-scout.html",
+      "admin-thumbnail-batch.html",
+      "admin-thumbnails.html",
+      "admin-trust-safety.html"
+    ]
+  }
 }

@@ -100,3 +100,27 @@ test('workspace managed pages cannot overlap dedicated layouts', () => {
   assert.ok(!workspace.has('mypage.html'));
   assert.ok(!workspace.has('admin.html'));
 });
+
+
+test('specialist logo synchronization preserves page-local actions', () => {
+  const image = read('shared/header/public-header.html').match(/<img\b[^>]*>/u)?.[0];
+  const src = image?.match(/\bsrc="([^"]+)"/u)?.[1];
+  assert.ok(src);
+  const groups = manifest.brandManaged;
+  assert.equal(groups.admin.length, 14);
+  for (const [group, paths] of Object.entries(groups)) {
+    for (const path of paths) {
+      const html = read(path);
+      assert.ok(html.includes('src="' + src + '"'), path);
+      if (group === 'admin') {
+        assert.match(html, /class="nl-admin-brand-link"/u, path);
+        assert.match(html, /data-novelight-brand-variants="true"/u, path);
+      }
+    }
+  }
+  assert.match(read('admin.html'), /href="admin-analytics\.html"/u);
+  assert.match(read('reading-history.html'), /href="favorites\.html"/u);
+  assert.match(read('help.html'), /nl-help-page-back/u);
+  assert.ok(!Object.values(groups).flat().includes('scout-lv10-campaign.html'));
+  assert.ok(!Object.values(groups).flat().includes('beta-authors.html'));
+});

@@ -1,0 +1,5 @@
+/* Admin-only logo plate: keep Home's official image visible on dark navigation. */
+.nl-admin-brand-link{box-sizing:border-box;display:inline-flex;flex:0 0 auto;vertical-align:middle;align-items:center;justify-content:center;width:162px;height:46px;padding:4px 7px;border-radius:7px;background:#faf9f6;color:#0e1d35;text-decoration:none}
+.nl-admin-brand-link img{display:block;width:100%;height:100%;object-fit:contain}
+.nl-admin-brand-link:focus-visible{outline:3px solid #d6a447;outline-offset:3px}
+@media(max-width:640px){.nl-admin-brand-link{width:132px;height:42px;padding:3px 5px}}
