@@ -74,7 +74,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "novelight-client.js",
-      "sha": "cfdc22837decfeb8e4b9e2396c6e8d9981a7acd4",
+      "sha": "f753236d30f9b5376a0060ba2ec2ad2dcf23e79a",
       "status": "modified"
     },
     {
