@@ -4,27 +4,11 @@
 .nl-admin-brand-link:focus-visible{outline:3px solid #d6a447;outline-offset:3px}
 @media(max-width:640px){.nl-admin-brand-link{width:132px;height:42px;padding:3px 5px}}
 
-/* Studio keeps its independent navigation, but always displays the Home logo,
-   not the obsolete pseudo-element image that hid the actual <img>. */
-html body.novelight-author-studio-shell .studio-sidebar .studio-brand img,
-html body.novelight-theme.novelight-page-mypage .studio-sidebar .studio-brand img,
-html body.novelight-page-scout-record .studio-sidebar .studio-brand img {
-  display: block !important;
-  box-sizing: border-box;
-  width: 190px !important;
-  max-width: 100% !important;
-  height: 64px !important;
-  padding: 5px !important;
-  background: #faf9f6 !important;
-  border-radius: 7px !important;
-  object-fit: contain !important;
-}
-html body.novelight-author-studio-shell .studio-sidebar .studio-brand::before,
-html body.novelight-theme.novelight-page-mypage .studio-sidebar .studio-brand::before,
-html body.novelight-page-scout-record .studio-sidebar .studio-brand::before {
-  content: none !important;
-  display: none !important;
-}
+/* Approved Author Studio visual exception:
+   Keep the original gold mark (novelight-author-room-logo.webp), dark sidebar,
+   and black workspace header. The Home-synced <img> remains in the page as
+   fallback markup, but studio CSS controls the visible brand treatment.
+   Never override .studio-brand img or .studio-brand::before here. */
 .nl-author-standalone-header {
   box-sizing: border-box;
   min-height: 72px;

@@ -76,6 +76,6 @@ CIは同期待ちの差分を検出してPRを止め、未承認の自動デプ�
 
 `brandManaged` は公開27＋workspace20の外にある専用画面の **ブランド画像のみ** を同期します。読書記録・ヘルプ・創作室トップの画像、および管理画面14ファイルの文字ロゴが対象です。個別ナビ・管理者機能・ログアウト・法務・キャンペーンCTAは移行しません。管理画面専用の淡色ロゴプレートは `brand-variants.css` だけで変更します。
 
-`header:sync`／`header:check`／`header:watch` に連動します。JavaScriptで生成する創作室サイドバーは今回の変更に含めません。
+`header:sync`／`header:check`／`header:watch` に連動します。創作室のJS生成サイドバーの構造・認証・操作は変えず、内部のフォールバック用 `<img>` の参照先だけをホーム原本に同期します。
 
-創作室の詳細5ページとSCOUT RECORDは旧来のJS生成サイドバーを保持しますが、既存画像を隠す擬似要素を専用CSSで無効化し、ホーム由来の公式画像を表示します。JS内の画像パスも `header:sync` に追随させます。交流設定は空ヘッダーを静的な公式ロゴ＋創作室戻り導線に変換し、権限操作はそのままです。
+**承認済みの創作室デザインは表示上の例外です。** 創作室トップ、作者専用ページ5ページ、SCOUT RECORDでは、左サイドバーの金色ロゴ `assets/author-room/novelight-author-room-logo.webp` と黒紺背景、上部の黒い `workspace-top` ヘッダーを維持します。表示用金色ロゴは既存の `novelight-author-room.css`／`novelight-author-studio-shell.css` の `.studio-brand::before` で管理します。`brand-variants.css` で `.studio-brand img` を強制表示したり `.studio-brand::before` を消したりしてはいけません。ホーム原本の更新はフォールバック画像へ同期されますが、**表示中の金色ロゴを自動的に置き換えません**。交流設定の独立ヘッダーと管理画面はそれぞれの専用表示を維持します。
