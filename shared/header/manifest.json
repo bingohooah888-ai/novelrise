@@ -1,0 +1,127 @@
+{
+  "template": "shared/header/public-header.html",
+  "managed": [
+    "index.html",
+    "search.html",
+    "ranking.html",
+    "recommended.html",
+    "new-arrivals.html",
+    "light-seed.html",
+    "login.html",
+    "signup.html",
+    "profile-settings.html",
+    "special-zone.html",
+    "special-light.html",
+    "news-detail.html",
+    "pricing.html",
+    "announcements.html",
+    "contact.html",
+    "terms.html",
+    "privacy.html",
+    "operator.html",
+    "billing-policy.html",
+    "commerce-disclosure.html",
+    "author-features.html",
+    "reader-features.html",
+    "novel.html",
+    "episode.html",
+    "author.html",
+    "api/seo/templates/novel.html",
+    "api/seo/templates/episode.html"
+  ],
+  "overrides": {
+    "pricing.html": {
+      "active": "pricing.html"
+    },
+    "announcements.html": {
+      "active": "announcements.html",
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileAuthClasses": true,
+      "mobileSignup": true
+    },
+    "contact.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "terms.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "privacy.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "operator.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "billing-policy.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "commerce-disclosure.html": {
+      "logoLabel": "NOVELIGHT ホーム",
+      "mobileSignup": true
+    },
+    "author-features.html": {
+      "mobileAuthClasses": true,
+      "mobileSignup": true,
+      "logoLabel": "NOVELIGHT ホーム"
+    },
+    "reader-features.html": {
+      "mobileAuthClasses": true,
+      "mobileSignup": true,
+      "logoLabel": "NOVELIGHT ホーム"
+    }
+  },
+  "custom": {
+    "scout-lv10-campaign.html": "Dual guest/member toolbar with redirect-specific links",
+    "content-guidelines.html": "Standalone editorial header",
+    "beta-authors.html": "Founding author preregistration site",
+    "help.html": "Dedicated help header",
+    "forgot-password.html": "Password recovery UI",
+    "reset-password.html": "Password recovery UI"
+  },
+  "separateLayouts": {
+    "authorWorkspace": [
+      "account-settings.html",
+      "analytics.html",
+      "author-notes.html",
+      "bulk-import.html",
+      "characters.html",
+      "collaboration.html",
+      "episode-drafts.html",
+      "episode-edit.html",
+      "episode-import.html",
+      "episode-post.html",
+      "episode-schedule.html",
+      "episode-structure.html",
+      "interaction-settings.html",
+      "light-seed-history.html",
+      "my-novels.html",
+      "mypage.html",
+      "novel-edit.html",
+      "novel-polls.html",
+      "post.html",
+      "series.html",
+      "share-link.html",
+      "story-notes.html",
+      "typo-reports.html",
+      "work-cover.html",
+      "works.html"
+    ],
+    "readerWorkspace": [
+      "curation-lists.html",
+      "curation.html",
+      "favorites.html",
+      "reading-history.html",
+      "scout-record.html"
+    ],
+    "standaloneUtility": [
+      "invite-preview.html",
+      "shared.html",
+      "updates.html"
+    ]
+  },
+  "style": "/shared/header/public-header.css"
+}

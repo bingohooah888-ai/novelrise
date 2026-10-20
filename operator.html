@@ -10,7 +10,8 @@
   <style>
     .operator-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}.operator-summary article{padding:20px;border:1px solid #ded8cb;border-radius:14px;background:#fffdf8}.operator-label{margin:0 0 6px;color:#8a6518;font-size:13px;font-weight:800;letter-spacing:.04em}.operator-value{margin:0;color:#1b2430;font-size:18px;font-weight:800;line-height:1.6}.operator-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}.operator-link{display:block;padding:16px 18px;border:1px solid #ded8cb;border-radius:12px;background:#fffdf8;color:#0e1d35;text-decoration:none}.operator-link strong{display:block;margin-bottom:4px;color:#1b2430;font-size:16px}.operator-link span{display:block;color:#69717d;font-size:14px;line-height:1.65}.operator-link:hover{border-color:#d6a447;box-shadow:0 5px 18px rgba(8,20,38,.06)}@media(max-width:640px){.operator-summary,.operator-links{grid-template-columns:1fr}.operator-summary article{padding:18px}.operator-value{font-size:17px}}
   </style>
-<link rel="stylesheet" href="novelight-accessibility.css"></head>
+<link rel="stylesheet" href="novelight-accessibility.css"><link rel="stylesheet" href="/shared/header/public-header.css" data-novelight-shared-header="true">
+</head>
 <body class="novelight-public-header-page"><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header class="site-header">
   <div class="header-inner public-header-inner">
@@ -20,7 +21,10 @@
       <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
       <a class="btn btn-outline login-action" href="login.html">ログイン</a>
       <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
-      <details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="announcements.html">お知らせ</a><a href="pricing.html">料金プラン</a><a href="login.html">ログイン</a><a href="signup.html">会員登録</a></nav></details>
+      <details class="mobile-menu">
+        <summary aria-label="メニューを開く">☰</summary>
+        <nav aria-label="モバイルナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="announcements.html">お知らせ</a><a href="pricing.html">料金プラン</a><a href="login.html">ログイン</a><a href="signup.html">会員登録</a></nav>
+      </details>
     </div>
   </div>
 </header>
