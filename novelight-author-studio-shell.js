@@ -207,10 +207,23 @@
 
   void loadAccount();
 
-  if (!document.querySelector('script[data-novelight-bookshelf-header]')) {
-    const bookshelfHeaderScript = document.createElement('script');
-    bookshelfHeaderScript.src = 'novelight-bookshelf-header.js';
-    bookshelfHeaderScript.dataset.novelightBookshelfHeader = '';
-    document.head.appendChild(bookshelfHeaderScript);
+  // Home and Studio now use the same profile/avatar/bookshelf renderer.
+  // The Studio badge augments that shared link without adding a duplicate.
+  function loadStudioBookshelfBadge() {
+    if (document.querySelector('script[data-novelight-bookshelf-header]')) return;
+    const badgeScript = document.createElement('script');
+    badgeScript.src = 'novelight-bookshelf-header.js';
+    badgeScript.dataset.novelightBookshelfHeader = '';
+    document.head.appendChild(badgeScript);
+  }
+  if (document.querySelector('script[data-novelight-reader-account]')) {
+    loadStudioBookshelfBadge();
+  } else {
+    const readerScript = document.createElement('script');
+    readerScript.src = 'novelight-reader-account.js';
+    readerScript.dataset.novelightReaderAccount = 'studio';
+    readerScript.onload = loadStudioBookshelfBadge;
+    readerScript.onerror = loadStudioBookshelfBadge;
+    document.head.appendChild(readerScript);
   }
 })();
