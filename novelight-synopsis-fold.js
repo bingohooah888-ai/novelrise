@@ -87,7 +87,7 @@
     const isNovelDetail = window.location.pathname.split('/').pop() === 'novel.html'
       && Boolean(host.closest('#novelHeader, .nl-work-detail-synopsis'));
     const text = copy.textContent || '';
-    const paragraphCount = text.split(/\\r?\\n/u).length;
+    const paragraphCount = text.split(/\r?\n/u).length;
     const substantialNovelSynopsis = isNovelDetail
       && (paragraphCount > lineLimit(host) || text.length > 160);
     const overflow = fullHeight > clampedHeight + 1
