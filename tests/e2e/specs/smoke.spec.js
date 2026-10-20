@@ -586,62 +586,34 @@ test('standard public pages match Home header geometry without hydration', async
     const page = await context.newPage();
     const measure = () =>
       page.evaluate(() => {
-        const box = (selector) => {
-          const node = globalThis.document.querySelector(selector);
-          if (!node) return null;
-          const computed = globalThis.getComputedStyle(node);
-          if (computed.display === 'none') return null;
-          const rect = node.getBoundingClientRect();
+        const selectors = [
+          'header.site-header',
+          'header.site-header .public-header-inner',
+          'header.site-header .logo img',
+          'header.site-header .desktop-nav a:nth-child(1)',
+          'header.site-header .desktop-nav a:nth-child(2)',
+          'header.site-header .desktop-nav a:nth-child(3)',
+          'header.site-header .desktop-nav a:nth-child(4)',
+          'header.site-header .header-actions',
+          'header.site-header .header-search',
+          'header.site-header .login-action',
+          'header.site-header .mobile-menu summary'
+        ];
+        return selectors.flatMap((selector) => {
+          const element = globalThis.document.querySelector(selector);
+          const rect = element.getBoundingClientRect();
           return [rect.x, rect.y, rect.width, rect.height].map(Math.round);
-        };
-        return {
-          header: box('header.site-header'),
-          inner: box('header.site-header .public-header-inner'),
-          logo: box('header.site-header .logo img'),
-          nav: Array.from(
-            globalThis.document.querySelectorAll(
-              'header.site-header .desktop-nav a'
-            )
-          ).map((node) => {
-            if (globalThis.getComputedStyle(node).display === 'none') {
-              return null;
-            }
-            const rect = node.getBoundingClientRect();
-            return [rect.x, rect.y, rect.width, rect.height].map(Math.round);
-          }),
-          actions: box('header.site-header .header-actions'),
-          search: box('header.site-header .header-search'),
-          login: box('header.site-header .login-action'),
-          mobileMenu: box('header.site-header .mobile-menu summary')
-        };
+        });
       });
     await page.goto('/index.html', { waitUntil: 'load' });
     const baseline = await measure();
     for (const route of routes) {
       await page.goto(route, { waitUntil: 'load' });
       const current = await measure();
-      const rects = (obj) =>
-        Object.entries(obj).flatMap(([name, data]) => {
-          if (name === 'nav') {
-            return data.map((rect, index) => [name + index, rect]);
-          }
-          return [[name, data]];
-        });
-      const expected = rects(baseline);
-      const actual = new Map(rects(current));
-      for (const [name, rect] of expected) {
-        const currentRect = actual.get(name);
-        expect.soft(Boolean(currentRect), `${route}: ${name}`).toBe(
-          Boolean(rect)
-        );
-        if (!rect || !currentRect) continue;
-        for (let index = 0; index < rect.length; index++) {
-          const drift = Math.abs(rect[index] - currentRect[index]);
-          expect.soft(
-            drift,
-            `viewport ${width}, ${route}: ${name}[${index}]`
-          ).toBeLessThanOrEqual(1);
-        }
+      expect(current.length).toBe(baseline.length);
+      for (let index = 0; index < baseline.length; index++) {
+        const delta = Math.abs(current[index] - baseline[index]);
+        expect.soft(delta, `${route} metric ${index}`).toBeLessThanOrEqual(1);
       }
     }
     await context.close();
