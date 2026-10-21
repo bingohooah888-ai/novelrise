@@ -1,14 +1,14 @@
 // A read-only trusted-main OWNER entry. Never claims an approval or creates resources.
 import { readFileSync } from 'node:fs';
 import { inspectCommunityHostedClaimEntry } from './community-hosted-claim-entry.mjs';
-import { verifyCommunityHostedPreCostAdmission } from './community-hosted-precost-admission.mjs';
+import { verifyCommunityHostedReadOnlyPreCostProposal } from './community-hosted-precost-review-only.mjs';
 
 function deny() {
   throw new Error('COMMUNITY_HOSTED_EXECUTOR_PRECLAIM_DENIED');
 }
 
 export function inspectCommunityHostedExecutorPreclaim({
-  environment, event, issue, comment, main, feature, ledgerPages, checkedOutSha
+  environment, event, issue, comment, main, feature, compare, ledgerPages, checkedOutSha
 }) {
   const owner = inspectCommunityHostedClaimEntry({
     environment, event, issue, comment, checkedOutSha
@@ -16,8 +16,8 @@ export function inspectCommunityHostedExecutorPreclaim({
   if (main?.object?.sha !== checkedOutSha || !Array.isArray(ledgerPages)) deny();
   let proposal;
   try {
-    proposal = verifyCommunityHostedPreCostAdmission({
-      event, main, feature, ledgerPages, runId: owner.runId
+    proposal = verifyCommunityHostedReadOnlyPreCostProposal({
+      event, liveIssue: issue, main, feature, compare, ledgerPages, runId: owner.runId
     });
   } catch {
     deny();
@@ -53,15 +53,15 @@ export function inspectCommunityHostedExecutorPreclaim({
 if (process.argv[2] === 'inspect') {
   try {
     const args = process.argv.slice(3);
-    if (args.length !== 6 || !process.env.GITHUB_EVENT_PATH) deny();
-    const [issuePath, commentPath, mainPath, featurePath, ledgerPath, checkedOutSha] = args;
+    if (args.length !== 7 || !process.env.GITHUB_EVENT_PATH) deny();
+    const [issuePath, commentPath, mainPath, featurePath, comparePath, ledgerPath, checkedOutSha] = args;
     const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
     const decision = inspectCommunityHostedExecutorPreclaim({
       environment: process.env,
       event: read(process.env.GITHUB_EVENT_PATH),
       issue: read(issuePath), comment: read(commentPath),
       main: read(mainPath), feature: read(featurePath),
-      ledgerPages: read(ledgerPath), checkedOutSha
+      compare: read(comparePath), ledgerPages: read(ledgerPath), checkedOutSha
     });
     process.stdout.write(JSON.stringify(decision) + '\n');
   } catch {

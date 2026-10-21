@@ -4,6 +4,7 @@ import test from 'node:test';
 import { URL } from 'node:url';
 
 import { inspectCommunityHostedExecutorPreclaim } from '../scripts/community-hosted-executor-gate.mjs';
+import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
 import { HOSTED_PRE_COST_APPROVE } from '../scripts/community-hosted-precost-admission.mjs';
 import {
   HOSTED_CLAIMED,
@@ -37,6 +38,7 @@ function fixture() {
   const issue = {
     id: 999,
     number: 188,
+    state: 'open',
     url: ISSUE_URL,
     title: '[Staging Approval Control] Preview / Staging cost gate',
     user: { login: OWNER }
@@ -71,8 +73,21 @@ function fixture() {
       state: 'open',
       draft: true,
       merged: false,
-      base: { ref: 'main' },
+      base: { ref: 'main', sha: MAIN },
       head: { sha: CANDIDATE, repo: { full_name: REPO } }
+    },
+    compare: {
+      status: 'ahead',
+      behind_by: 0,
+      base_commit: { sha: MAIN },
+      total_commits: 1,
+      ahead_by: 1,
+      commits: [{ sha: CANDIDATE }],
+      files: REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({
+        filename: path,
+        sha,
+        status
+      }))
     },
     ledgerPages: [[comment]]
   };
@@ -144,6 +159,18 @@ test('owner identity, event, SHA drift and used approval fail closed', () => {
       x.ledgerPages = [];
     },
     (x) => {
+      x.issue.state = 'closed';
+    },
+    (x) => {
+      x.event.issue.state = 'closed';
+    },
+    (x) => {
+      x.compare.behind_by = 1;
+    },
+    (x) => {
+      x.compare.files[0].sha = 'b'.repeat(40);
+    },
+    (x) => {
       x.ledgerPages = [
         [
           x.comment,
@@ -187,6 +214,7 @@ test('workflow cannot claim, write or run paid Staging', () => {
     'github.triggering_actor',
     'persist-credentials: false',
     'community-hosted-executor-gate.mjs inspect',
+    'community-exec-compare.json',
     'mayDeployPreview == false',
     'claimAuthorized == false'
   ]) {
