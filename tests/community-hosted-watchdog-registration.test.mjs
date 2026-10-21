@@ -51,10 +51,11 @@ function harness({ existing = [], change = {} } = {}) {
       },
       protection_rules: []
     },
-    '/environments/community-hosted-cleanup/deployment-branch-policies?per_page=100': {
-      total_count: 1,
-      branch_policies: [{ name: 'main', type: 'branch' }]
-    },
+    '/environments/community-hosted-cleanup/deployment-branch-policies?per_page=100':
+      {
+        total_count: 1,
+        branch_policies: [{ name: 'main', type: 'branch' }]
+      },
     '/actions/workflows/78/runs?event=schedule&branch=main&per_page=20': {
       workflow_runs: [
         {
