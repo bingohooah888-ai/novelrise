@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { makeHostedReviewEvidence } from './helpers/community-hosted-review-fixture.mjs';
 import { URL } from 'node:url';
 
 import {
@@ -63,6 +64,10 @@ function fixture() {
     runId: RUN
   };
   input.ledgerPages = [[input.event.comment]];
+  Object.assign(
+    input,
+    makeHostedReviewEvidence(input.event, input.feature, MAIN, FEATURE)
+  );
   return input;
 }
 
@@ -122,6 +127,10 @@ test('only the authentic owner and control issue qualify', () => {
   rejectField('event.repository.full_name', 'wrong/novelrise');
   rejectField('event.issue.number', 294);
   rejectField('event.issue.title', 'wrong');
+  rejectField('event.issue.state', 'closed');
+  rejectField('liveIssue.state', 'closed');
+  rejectField('compare.behind_by', 1);
+  rejectField('compare.files', []);
   rejectField('event.issue.user.login', 'wrong');
   rejectField('event.issue.pull_request', {});
   rejectField('event.comment.user.login', 'wrong');
@@ -238,4 +247,18 @@ test('partial pagination or missing OWNER source is rejected', () => {
   rejectField('ledgerPages', [
     [sample.event.comment, { ...sample.event.comment, id: 123 }]
   ]);
+});
+
+test('newly synced approved candidate is accepted only with exact reviewed proof', () => {
+  const input = fixture();
+  const fresh = 'b'.repeat(40);
+  input.event.comment.body = proposalBody({ featureSha: fresh });
+  input.ledgerPages[0][0] = input.event.comment;
+  input.feature.head.sha = fresh;
+  input.compare.commits[0].sha = fresh;
+  const proof = verifyCommunityHostedPreCostAdmission(input);
+  assert.equal(proof.candidateSha, fresh);
+  assert.equal(proof.runAuthorized, false);
+  input.compare.files[0].sha = 'f'.repeat(40);
+  assert.throws(() => verifyCommunityHostedPreCostAdmission(input), /DENIED/u);
 });
