@@ -59,18 +59,23 @@ function fixture(overrides = {}) {
         protected_branches: false,
         custom_branch_policies: true
       },
-      protection_rules: [{
-        type: 'required_reviewers',
-        reviewers: [{
-          type: 'User',
-          reviewer: { login: 'independent-reviewer' }
-        }]
-      }]
+      protection_rules: [
+        {
+          type: 'required_reviewers',
+          reviewers: [
+            {
+              type: 'User',
+              reviewer: { login: 'independent-reviewer' }
+            }
+          ]
+        }
+      ]
     },
-    '/environments/community-hosted-isolated/deployment-branch-policies?per_page=100': {
-      total_count: 1,
-      branch_policies: [{ name: 'main', type: 'branch' }]
-    },
+    '/environments/community-hosted-isolated/deployment-branch-policies?per_page=100':
+      {
+        total_count: 1,
+        branch_policies: [{ name: 'main', type: 'branch' }]
+      },
     ...overrides
   };
   return {
@@ -149,13 +154,14 @@ test('self-review, bypass, or extra branch violates protection', async () => {
       }
     },
     {
-      '/environments/community-hosted-isolated/deployment-branch-policies?per_page=100': {
-        total_count: 2,
-        branch_policies: [
-          { name: 'main', type: 'branch' },
-          { name: 'develop', type: 'branch' }
-        ]
-      }
+      '/environments/community-hosted-isolated/deployment-branch-policies?per_page=100':
+        {
+          total_count: 2,
+          branch_policies: [
+            { name: 'main', type: 'branch' },
+            { name: 'develop', type: 'branch' }
+          ]
+        }
     }
   ];
   for (const change of cases) {
@@ -168,18 +174,20 @@ test('self-review, bypass, or extra branch violates protection', async () => {
 
 test('workflow replay, identity drift, and missing credentials deny', async () => {
   await assert.rejects(
-    inspect(fixture({
-      '/actions/runs/456': {
-        id: 456,
-        event: 'issue_comment',
-        head_sha: MAIN,
-        head_branch: 'main',
-        path: '.github/workflows/community-hosted-executor.yml',
-        actor: { login: 'bingohooah888-ai' },
-        triggering_actor: { login: 'bingohooah888-ai' },
-        run_attempt: 2
-      }
-    })),
+    inspect(
+      fixture({
+        '/actions/runs/456': {
+          id: 456,
+          event: 'issue_comment',
+          head_sha: MAIN,
+          head_branch: 'main',
+          path: '.github/workflows/community-hosted-executor.yml',
+          actor: { login: 'bingohooah888-ai' },
+          triggering_actor: { login: 'bingohooah888-ai' },
+          run_attempt: 2
+        }
+      })
+    ),
     /PROTECTED_READINESS_DENIED/u
   );
   await assert.rejects(

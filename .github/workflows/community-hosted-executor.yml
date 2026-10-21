@@ -82,4 +82,3 @@ jobs:
           jq -e '.status == "AUTHENTICATED_PROTECTED_READINESS_ONLY" and .runAuthorized == false and .stagingCostApproved == false and .releaseAuthorized == false' \
             /tmp/community-protection-readiness.json > /dev/null
           echo 'Protected runner read verified, but cost and execution remain disabled.'
-
