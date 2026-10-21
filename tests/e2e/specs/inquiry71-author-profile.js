@@ -106,7 +106,8 @@ test('author cards preserve paragraphs, covers and links', async ({ page }) => {
     .first()
     .locator('.desc')
     .evaluate((node) => {
-      const style = getComputedStyle(node);
+      const win = node.ownerDocument.defaultView;
+    const style = win.getComputedStyle(node);
       const parent = node.closest('.novel-card');
       return {
         text: node.textContent,
@@ -115,14 +116,14 @@ test('author cards preserve paragraphs, covers and links', async ({ page }) => {
         height: node.getBoundingClientRect().height,
         lineHeight: parseFloat(style.lineHeight),
         cardRight: parent.getBoundingClientRect().right,
-        viewport: window.innerWidth,
-        scrollWidth: document.documentElement.scrollWidth
+        viewport: win.innerWidth,
+        scrollWidth: node.ownerDocument.documentElement.scrollWidth
       };
     });
   expect(content.text).toBe(longSynopsis);
   expect(content.whiteSpace).toBe('pre-wrap');
   const expectedClamp = await page.evaluate(() =>
-    window.matchMedia('(max-width:640px)').matches ? 4 : 5
+    globalThis.matchMedia('(max-width:640px)').matches ? 4 : 5
   );
   expect(content.clamp).toBe(String(expectedClamp));
   expect(content.height).toBeLessThanOrEqual(
