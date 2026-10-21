@@ -50,6 +50,11 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" > /tmp/community-exec-comment.json
           gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/community-exec-main.json
           gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/community-exec-feature.json
+          main_sha="$(jq -er '.object.sha' /tmp/community-exec-main.json)"
+          candidate_sha="$(jq -er '.head.sha' /tmp/community-exec-feature.json)"
+          [[ "$main_sha" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$candidate_sha" =~ ^[a-f0-9]{40}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main_sha...$candidate_sha" > /tmp/community-exec-compare.json
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" > /tmp/community-exec-ledger.json
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(jq -er '.object.sha' /tmp/community-exec-main.json)" = "$GITHUB_SHA"
@@ -58,6 +63,7 @@ jobs:
             /tmp/community-exec-comment.json \
             /tmp/community-exec-main.json \
             /tmp/community-exec-feature.json \
+            /tmp/community-exec-compare.json \
             /tmp/community-exec-ledger.json \
             "$(git rev-parse HEAD)" > /tmp/community-exec-verdict.json
           jq -e '.status == "COMMUNITY_HOSTED_EXECUTOR_PRECLAIM_READONLY_ONLY" and .ownerEvidenceVerified == true and .exactApprovalSnapshotVerified == true and .claimAuthorized == false and .stagingCostApproved == false and .runAuthorized == false and .writeAuthorized == false and .releaseAuthorized == false and .mayCreateBranch == false and .mayDeployPreview == false and .mayRunBrowser == false' /tmp/community-exec-verdict.json > /dev/null
