@@ -209,7 +209,7 @@ test('malformed and main-identical candidates are denied', () => {
   });
 });
 
-test('timeboxed cleanup planning stays read-only and validates every safety requirement', () => {
+test('timeboxed plan stays read-only and rejects unsafe limits', () => {
   const input = fixture();
   input.ownerBudget.strategy = 'timeboxed-independent-cleanup-v1';
   input.providerLimits.strategy = input.ownerBudget.strategy;
