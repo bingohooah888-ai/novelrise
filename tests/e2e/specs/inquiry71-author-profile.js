@@ -102,20 +102,23 @@ test('author cards preserve paragraphs, covers and links', async ({ page }) => {
   );
   await expect(page.locator('#list .nl-synopsis-toggle')).toHaveCount(0);
 
-  const content = await cards.first().locator('.desc').evaluate((node) => {
-    const style = getComputedStyle(node);
-    const parent = node.closest('.novel-card');
-    return {
-      text: node.textContent,
-      whiteSpace: style.whiteSpace,
-      clamp: style.getPropertyValue('-webkit-line-clamp'),
-      height: node.getBoundingClientRect().height,
-      lineHeight: parseFloat(style.lineHeight),
-      cardRight: parent.getBoundingClientRect().right,
-      viewport: window.innerWidth,
-      scrollWidth: document.documentElement.scrollWidth
-    };
-  });
+  const content = await cards
+    .first()
+    .locator('.desc')
+    .evaluate((node) => {
+      const style = getComputedStyle(node);
+      const parent = node.closest('.novel-card');
+      return {
+        text: node.textContent,
+        whiteSpace: style.whiteSpace,
+        clamp: style.getPropertyValue('-webkit-line-clamp'),
+        height: node.getBoundingClientRect().height,
+        lineHeight: parseFloat(style.lineHeight),
+        cardRight: parent.getBoundingClientRect().right,
+        viewport: window.innerWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      };
+    });
   expect(content.text).toBe(longSynopsis);
   expect(content.whiteSpace).toBe('pre-wrap');
   const expectedClamp = await page.evaluate(() =>
