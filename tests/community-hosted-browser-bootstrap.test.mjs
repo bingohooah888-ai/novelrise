@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { installHostedCommunityFlags } from './e2e/staging/community-hosted-flag-bootstrap.mjs';
+import {
+  installHostedCommunityFlags
+} from './e2e/staging/community-hosted-flag-bootstrap.mjs';
 
-test('isolated browser flag tolerates real strict-mode public OFF bootstrap', () => {
+test('hosted flags allow strict-mode public OFF bootstrap', () => {
   const preview = {};
   installHostedCommunityFlags(preview);
   (function siteReleaseDefaults() {
