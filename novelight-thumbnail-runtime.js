@@ -14,6 +14,7 @@
     'ranking',
     'recommended',
     'new-arrivals',
+    'author',
     'light-seed'
   ]);
   let client = null;
