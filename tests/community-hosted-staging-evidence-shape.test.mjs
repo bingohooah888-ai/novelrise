@@ -208,3 +208,45 @@ test('malformed and main-identical candidates are denied', () => {
     x.ownerBudget.candidateSha = MAIN;
   });
 });
+
+test('timeboxed cleanup planning stays read-only and validates every safety requirement', () => {
+  const input = fixture();
+  input.ownerBudget.strategy = 'timeboxed-independent-cleanup-v1';
+  input.providerLimits.strategy = input.ownerBudget.strategy;
+  input.providerLimits.supabase.enforcement = 'timeboxed-teardown-not-a-hard-cap';
+  input.providerLimits.vercel.enforcement = 'timeboxed-teardown-not-a-hard-cap';
+  input.providerLimits.timebox = {
+    maxMinutes: 60,
+    watchdogIntervalMinutes: 5,
+    cleanupGraceMinutes: 10,
+    independentTrustedMainMonitorRequired: true,
+    failClosedBeforeProvisioning: true,
+    cancelOnTimeout: true,
+    destroyRunOwnedBranchOnAnyOutcome: true,
+    verifyRemoteBranchAbsent: true,
+    recordBothProviderBills: true
+  };
+  const receipt = inspectCommunityHostedStagingEvidenceShape(input);
+  assert.equal(receipt.runAuthorized, false);
+  assert.equal(receipt.mayCreateBranch, false);
+  assert.equal(receipt.independentWatchdogLiveVerified, false);
+  assert.equal(receipt.timeboxExpiryArmed, false);
+  assert.equal(receipt.providerBillsReconciled, false);
+  const mutations = [
+    (x) => { x.providerLimits.timebox.maxMinutes = 121; },
+    (x) => { x.providerLimits.timebox.watchdogIntervalMinutes = 6; },
+    (x) => { x.providerLimits.timebox.cleanupGraceMinutes = 16; },
+    (x) => { x.providerLimits.timebox.destroyRunOwnedBranchOnAnyOutcome = false; },
+    (x) => { x.providerLimits.timebox.recordBothProviderBills = false; },
+    (x) => { x.providerLimits.strategy = 'provider-hard-stop'; },
+    (x) => { x.providerLimits.vercel.enforcement = 'warning-only'; }
+  ];
+  for (const mutate of mutations) {
+    const broken = structuredClone(input);
+    mutate(broken);
+    assert.throws(
+      () => inspectCommunityHostedStagingEvidenceShape(broken),
+      /COMMUNITY_HOSTED_EVIDENCE_SHAPE_DENIED/u
+    );
+  }
+});
