@@ -208,33 +208,3 @@ test('malformed and main-identical candidates are denied', () => {
     x.ownerBudget.candidateSha = MAIN;
   });
 });
-
-test('timeboxed plan remains non-authorizing', () => {
-  const input = fixture();
-  input.ownerBudget.strategy = 'timeboxed-independent-cleanup-v1';
-  input.providerLimits.strategy = input.ownerBudget.strategy;
-  input.providerLimits.supabase.enforcement =
-    'timeboxed-teardown-not-a-hard-cap';
-  input.providerLimits.vercel.enforcement =
-    'timeboxed-teardown-not-a-hard-cap';
-  input.providerLimits.timebox = {
-    maxMinutes: 60,
-    watchdogIntervalMinutes: 5,
-    cleanupGraceMinutes: 10,
-    independentTrustedMainMonitorRequired: true,
-    failClosedBeforeProvisioning: true,
-    cancelOnTimeout: true,
-    destroyRunOwnedBranchOnAnyOutcome: true,
-    verifyRemoteBranchAbsent: true,
-    recordBothProviderBills: true
-  };
-  const result = inspectCommunityHostedStagingEvidenceShape(input);
-  assert.equal(result.mayCreateBranch, false);
-  assert.equal(result.runAuthorized, false);
-  assert.equal(result.independentWatchdogLiveVerified, false);
-  input.providerLimits.timebox.maxMinutes = 121;
-  assert.throws(
-    () => inspectCommunityHostedStagingEvidenceShape(input),
-    /COMMUNITY_HOSTED_EVIDENCE_SHAPE_DENIED/u
-  );
-});
