@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
 
 import {
   HOSTED_APPROVE,
@@ -34,6 +35,7 @@ function input() {
     repository: 'bingohooah888-ai/novelrise',
     issue: {
       number: 188,
+      state: 'open',
       title: '[Staging Approval Control] Preview / Staging cost gate',
       user: { login: 'bingohooah888-ai' }
     },
@@ -49,11 +51,20 @@ function input() {
       state: 'open',
       draft: true,
       merged: false,
-      base: { ref: 'main' },
+      base: { ref: 'main', sha: MAIN },
       head: {
         sha: FEATURE,
         repo: { full_name: 'bingohooah888-ai/novelrise' }
       }
+    },
+    compare: {
+      status: 'ahead',
+      behind_by: 0,
+      base_commit: { sha: MAIN },
+      total_commits: 1,
+      ahead_by: 1,
+      commits: [{ sha: FEATURE }],
+      files: REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({ filename: path, sha, status }))
     },
     branch: {
       project_ref: PROJECT,
@@ -175,4 +186,35 @@ test('truncated and malformed ledger or unrecognized fields fail shut', () => {
         injected: true
       });
   });
+});
+
+test('a freshly synced identical reviewed candidate is accepted', () => {
+  const row = input();
+  const fresh = 'd'.repeat(40);
+  row.comment.body = HOSTED_APPROVE + JSON.stringify({
+    ...request,
+    featureSha: fresh,
+    previewSha: fresh
+  });
+  row.pr.head.sha = fresh;
+  row.preview.commitSha = fresh;
+  row.compare.commits[0].sha = fresh;
+  const proof = verifyCommunityHostedApproval(row);
+  assert.equal(proof.featureSha, fresh);
+  assert.equal(proof.runAuthorized, false);
+  assert.equal(proof.writeAuthorized, false);
+});
+
+test('closed approval issue, unreviewed blobs, and stale ancestry are denied', () => {
+  rejects((row) => { row.issue.state = 'closed'; });
+  rejects((row) => { row.pr.base.sha = 'e'.repeat(40); });
+  rejects((row) => { row.compare.behind_by = 1; });
+  rejects((row) => { row.compare.commits[0].sha = 'f'.repeat(40); });
+  rejects((row) => { row.compare.files.pop(); });
+  rejects((row) => { row.compare.files[0].sha = 'a'.repeat(40); });
+  rejects((row) => { row.compare.files[0].status = 'removed'; });
+  rejects((row) => { row.comment.body = HOSTED_APPROVE + JSON.stringify({
+    ...request,
+    previewSha: 'e'.repeat(40)
+  }); });
 });

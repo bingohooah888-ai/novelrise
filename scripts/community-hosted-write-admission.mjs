@@ -1,6 +1,7 @@
 // Pure OWNER-ledger and isolated-resource proof for a future hosted browser executor.
 // NEVER starts, approves, or performs a browser, Preview, Supabase or Production mutation.
 import { readFileSync } from 'node:fs';
+import { assertReviewedCommunityCandidate } from './community-phase1-reviewed-candidate.mjs';
 
 import {
   EXISTING_SHARED_STAGING_REF,
@@ -11,7 +12,6 @@ import {
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = OWNER + '/novelrise';
 const CONTROL_TITLE = '[Staging Approval Control] Preview / Staging cost gate';
-const CANDIDATE_SHA = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const SHA = /^[a-f0-9]{40}$/u;
 const ID = /^[1-9][0-9]*$/u;
 
@@ -55,6 +55,7 @@ export function verifyCommunityHostedApproval({
   comment,
   main,
   pr,
+  compare,
   ledgerPages,
   branch,
   preview,
@@ -63,6 +64,7 @@ export function verifyCommunityHostedApproval({
   if (
     repository !== REPOSITORY ||
     issue?.number !== 188 ||
+    issue?.state !== 'open' ||
     issue?.title !== CONTROL_TITLE ||
     issue.pull_request ||
     issue?.user?.login !== OWNER
@@ -92,17 +94,29 @@ export function verifyCommunityHostedApproval({
     request.scope !== HOSTED_SCOPE ||
     request.confirmation !== 'STAGING APPROVED' ||
     request.mainSha !== main.object.sha ||
-    request.featureSha !== CANDIDATE_SHA ||
-    request.previewSha !== CANDIDATE_SHA ||
+    !SHA.test(request.featureSha) ||
+    request.featureSha === request.mainSha ||
+    request.previewSha !== request.featureSha ||
     pr?.number !== 2222 ||
     pr?.state !== 'open' ||
     pr?.draft !== true ||
     pr?.merged === true ||
     pr?.base?.ref !== 'main' ||
-    pr?.head?.sha !== CANDIDATE_SHA ||
+    pr?.base?.sha !== request.mainSha ||
+    pr?.head?.sha !== request.featureSha ||
     pr?.head?.repo?.full_name !== REPOSITORY
   ) {
     deny('current main, immutable candidate, approval or PR mismatch');
+  }
+
+  try {
+    assertReviewedCommunityCandidate({
+      compare,
+      mainSha: request.mainSha,
+      candidateSha: request.featureSha
+    });
+  } catch {
+    deny('unreviewed candidate contents or incomplete ancestry');
   }
 
   const result = inspectCommunityHostedWritePreparation({
@@ -130,7 +144,7 @@ export function verifyCommunityHostedApproval({
   if (
     !preview ||
     preview.vercelEnv !== 'preview' ||
-    preview.commitSha !== CANDIDATE_SHA ||
+    preview.commitSha !== request.featureSha ||
     preview.appBaseUrl !== request.previewUrl ||
     preview.supabase?.url !==
       'https://' + request.supabaseProjectRef + '.supabase.co'
@@ -192,11 +206,12 @@ export function verifyCommunityHostedApproval({
 if (process.argv[2] === 'validate') {
   try {
     const paths = process.argv.slice(3);
-    if (paths.length !== 8) deny('eight trusted evidence files required');
+    if (paths.length !== 9) deny('nine trusted evidence files required');
     const [
       event,
       main,
       pr,
+      compare,
       ledgerPages,
       branch,
       preview,
@@ -209,6 +224,7 @@ if (process.argv[2] === 'validate') {
       comment: event.comment,
       main,
       pr,
+      compare,
       ledgerPages,
       branch,
       preview,
