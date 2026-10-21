@@ -9,7 +9,9 @@ export function installHostedCommunityFlags(target = globalThis) {
     (typeof target !== 'object' && typeof target !== 'function') ||
     Object.getOwnPropertyDescriptor(target, 'NOVELIGHT_COMMUNITY_FLAGS')
   ) {
-    throw new Error('HOSTED_COMMUNITY_BROWSER_DENIED: flag target not pristine');
+    throw new Error(
+      'HOSTED_COMMUNITY_BROWSER_DENIED: flag target not pristine'
+    );
   }
   const flags = Object.freeze({ timeline: true, board: false });
   Object.defineProperty(target, 'NOVELIGHT_COMMUNITY_FLAGS', {
@@ -26,7 +28,9 @@ export function installHostedCommunityFlags(target = globalThis) {
         next.board !== false ||
         Object.keys(next).length !== 2
       ) {
-        throw new Error('HOSTED_COMMUNITY_BROWSER_DENIED: release gate mutation');
+        throw new Error(
+          'HOSTED_COMMUNITY_BROWSER_DENIED: release gate mutation'
+        );
       }
       // Intentionally ignore the public site's single OFF assignment in
       // novelight-client.js. No release state is changed outside Playwright.

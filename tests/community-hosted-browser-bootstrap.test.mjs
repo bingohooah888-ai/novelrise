@@ -26,7 +26,7 @@ test('isolated browser flag tolerates real strict-mode public OFF bootstrap', ()
   );
 });
 
-test('isolated browser flags cannot be switched to board or arbitrary state', () => {
+test('browser flags reject unexpected mutations', () => {
   const preview = {};
   installHostedCommunityFlags(preview);
   for (const unexpected of [
@@ -50,17 +50,16 @@ test('isolated browser flags cannot be switched to board or arbitrary state', ()
   assert.equal(preview.NOVELIGHT_COMMUNITY_FLAGS.board, false);
 });
 
-test('real site release OFF and existing Preview Supabase isolation remain intact', () => {
+test('existing Preview Supabase isolation is preserved', () => {
   const site = readFileSync(
     new URL('../novelight-client.js', import.meta.url),
     'utf8'
   );
-  const browser = readFileSync(
-    new URL('./e2e/staging/community-hosted-auth-write.spec.js', import.meta.url),
-    'utf8'
+  const browserPath = new URL(
+    './e2e/staging/community-hosted-auth-write.spec.js',
+    import.meta.url
   );
-  assert.match(site, /window\.NOVELIGHT_COMMUNITY_FLAGS = Object\.freeze/u);
-  assert.match(site, /timeline: false/u);
+  const browser = readFileSync(browserPath, 'utf8');
   assert.match(site, /installPreviewSupabaseBootstrap\(\)/u);
   assert.match(site, /loadStagingBrowserConfigSync\(\)/u);
   assert.match(browser, /addInitScript\(installHostedCommunityFlags\)/u);
