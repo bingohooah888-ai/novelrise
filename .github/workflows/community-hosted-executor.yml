@@ -68,3 +68,18 @@ jobs:
             "$(git rev-parse HEAD)" > /tmp/community-exec-verdict.json
           jq -e '.status == "COMMUNITY_HOSTED_EXECUTOR_PRECLAIM_READONLY_ONLY" and .ownerEvidenceVerified == true and .exactApprovalSnapshotVerified == true and .claimAuthorized == false and .stagingCostApproved == false and .runAuthorized == false and .writeAuthorized == false and .releaseAuthorized == false and .mayCreateBranch == false and .mayDeployPreview == false and .mayRunBrowser == false' /tmp/community-exec-verdict.json > /dev/null
           echo 'Read-only OWNER request authenticated. CLAIM, cost, Preview, Staging, browser and release remain disabled.'
+      - name: Recheck protected OWNER runner environment (read-only)
+        env:
+          COMMUNITY_PROTECTION_READ_TOKEN: ${{ secrets.NOVELIGHT_COMMUNITY_PROTECTION_READ_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          comment_id="$(jq -er '.comment.id | select(type == "number")' "$GITHUB_EVENT_PATH")"
+          candidate_sha="$(jq -er '.head.sha' /tmp/community-exec-feature.json)"
+          node scripts/community-hosted-protected-readiness.mjs inspect \
+            "$(git rev-parse HEAD)" "$candidate_sha" "$comment_id" "$GITHUB_RUN_ID" \
+            > /tmp/community-protection-readiness.json
+          jq -e '.status == "AUTHENTICATED_PROTECTED_READINESS_ONLY" and .runAuthorized == false and .stagingCostApproved == false and .releaseAuthorized == false' \
+            /tmp/community-protection-readiness.json > /dev/null
+          echo 'Protected runner read verified, but cost and execution remain disabled.'
+
