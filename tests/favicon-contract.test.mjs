@@ -25,5 +25,8 @@ test('NOVELIGHT serves the approved site-wide 16/32/48 favicon', () => {
 
 test('homepage explicitly links approved favicon with a fresh URL', () => {
   const homepage = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.ok(homepage.includes('rel="icon" type="image/x-icon" href="/favicon.ico?v=20261022"'));
+  assert.match(
+    homepage,
+    /<link rel="icon" type="image\/x-icon" href="\/favicon.ico\?v=20261022">/
+  );
 });
