@@ -3,7 +3,6 @@
 // Caller-supplied snapshots are NOT authenticated facts, even if valid.
 const REPO = 'bingohooah888-ai/novelrise';
 const OWNER = 'bingohooah888-ai';
-const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const PARENT = 'fiepaguycecrredwrcwx';
 const SHARED = 'wmlzjgvxgoyrovdhbqbg';
 const SHA = /^[0-9a-f]{40}$/u;
@@ -24,7 +23,8 @@ function checkRun(run) {
     run?.repository !== REPO ||
     run?.scope !== 'community-phase1-hosted-authenticated-write' ||
     !SHA.test(run.mainSha ?? '') ||
-    run.candidateSha !== FEATURE ||
+    !SHA.test(run.candidateSha ?? '') ||
+    run.candidateSha === run.mainSha ||
     !ID.test(run.requestCommentId ?? '') ||
     !ID.test(run.runId ?? '')
   ) {

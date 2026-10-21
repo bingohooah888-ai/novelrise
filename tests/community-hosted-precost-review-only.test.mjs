@@ -198,8 +198,6 @@ test('read-only inspection cannot grant hosted writes', () => {
     ),
     'utf8'
   );
-  assert.match(
-    legacy,
-    /const FEATURE_SHA = '6bf0ea608183e4977fcdaa17d36b1712974d5a49'/u
-  );
+  assert.doesNotMatch(legacy, /const FEATURE_SHA =/u);
+  assert.match(legacy, /verifyCommunityHostedReadOnlyPreCostProposal/u);
 });

@@ -186,3 +186,25 @@ test('wrong repository, run identity and candidate are denied', () => {
     x.run.candidateSha = 'b'.repeat(40);
   });
 });
+
+test('fresh reviewed candidate shape remains non-authorizing', () => {
+  const input = fixture();
+  const fresh = 'b'.repeat(40);
+  input.run.candidateSha = fresh;
+  input.ownerBudget.candidateSha = fresh;
+  const proof = inspectCommunityHostedStagingEvidenceShape(input);
+  assert.equal(proof.candidateSha, fresh);
+  assert.equal(proof.runAuthorized, false);
+  assert.equal(proof.mayRunBrowser, false);
+});
+
+test('malformed and main-identical candidates are denied', () => {
+  denied((x) => {
+    x.run.candidateSha = 'invalid';
+    x.ownerBudget.candidateSha = 'invalid';
+  });
+  denied((x) => {
+    x.run.candidateSha = MAIN;
+    x.ownerBudget.candidateSha = MAIN;
+  });
+});

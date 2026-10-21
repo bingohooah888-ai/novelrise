@@ -12,7 +12,6 @@ import { HOSTED_PRE_COST_APPROVE } from './community-hosted-precost-admission.mj
 const OWNER = 'bingohooah888-ai';
 const REPO = OWNER + '/novelrise';
 const CONTROL = '[Staging Approval Control] Preview / Staging cost gate';
-const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const SHA = /^[0-9a-f]{40}$/u;
 const ID = /^[1-9][0-9]*$/u;
 
@@ -84,7 +83,8 @@ function requestAndPreparation(event, preparation) {
     preparation.requestCommentId !== String(event.comment.id) ||
     !ID.test(preparation.runId) ||
     !SHA.test(preparation.mainSha) ||
-    preparation.candidateSha !== FEATURE
+    !SHA.test(preparation.candidateSha ?? '') ||
+    preparation.candidateSha === preparation.mainSha
   ) {
     deny('OWNER request or independent preparation mismatched');
   }
@@ -100,7 +100,7 @@ function requestAndPreparation(event, preparation) {
     request.confirmation !== 'STAGING COST APPROVED' ||
     request.target !== 'new-data-less-isolated-branch' ||
     request.mainSha !== preparation.mainSha ||
-    request.featureSha !== FEATURE
+    request.featureSha !== preparation.candidateSha
   ) {
     deny('proposal not bound to exact immutable scope');
   }

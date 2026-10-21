@@ -3,6 +3,7 @@ import test from 'node:test';
 import { URL } from 'node:url';
 
 import { makeCommunityHostedGitHubAdapter } from '../scripts/community-hosted-github-adapter.mjs';
+import * as reviewed from '../scripts/community-phase1-reviewed-candidate.mjs';
 
 const TOKEN = 'synthetic-test-token-1234567890';
 const REPO = 'bingohooah888-ai/novelrise';
@@ -74,6 +75,26 @@ function harness({ pages, throwOn, override } = {}) {
     if (path.endsWith('/pulls/2222')) {
       return reply(200, { head: { sha: 'b'.repeat(40) } });
     }
+    if (path.endsWith('/issues/188')) {
+      return reply(200, { id: 999, number: 188, state: 'open' });
+    }
+    if (path.endsWith('/compare/' + SHA + '...' + 'b'.repeat(40))) {
+      return reply(200, {
+        status: 'ahead',
+        behind_by: 0,
+        ahead_by: 1,
+        total_commits: 1,
+        base_commit: { sha: SHA },
+        commits: [{ sha: 'b'.repeat(40) }],
+        files: reviewed.REVIEWED_COMMUNITY_FILES.map(
+          ({ path: filename, sha, status }) => ({
+            filename,
+            sha,
+            status
+          })
+        )
+      });
+    }
     if (path.includes('/issues/188/comments?')) {
       const page = Number(parsed.searchParams.get('page'));
       return reply(200, records[page - 1] ?? []);
@@ -110,6 +131,8 @@ test('fresh authenticated snapshot only reads exact main/PR and full bounded led
   const x = harness();
   const state = await x.transport.loadLiveSnapshot();
   assert.equal(state.main.object.sha, SHA);
+  assert.equal(state.liveIssue.state, 'open');
+  assert.equal(state.compare.files.length, 37);
   assert.equal(state.ledgerPages.length, 1);
   assert.equal(state.ledgerPages[0][0].id, 123);
   assert.deepEqual(
@@ -117,6 +140,8 @@ test('fresh authenticated snapshot only reads exact main/PR and full bounded led
     [
       '/repos/' + REPO + '/git/ref/heads/main',
       '/repos/' + REPO + '/pulls/2222',
+      '/repos/' + REPO + '/issues/188',
+      '/repos/' + REPO + '/compare/' + SHA + '...' + 'b'.repeat(40),
       '/repos/' + REPO + '/issues/188/comments?per_page=100&page=1'
     ]
   );
