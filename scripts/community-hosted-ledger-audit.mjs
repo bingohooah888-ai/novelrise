@@ -12,7 +12,6 @@ import { HOSTED_PRE_COST_APPROVE } from './community-hosted-precost-admission.mj
 const OWNER = 'bingohooah888-ai';
 const REPO = OWNER + '/novelrise';
 const CONTROL = '[Staging Approval Control] Preview / Staging cost gate';
-const SHA = /^[a-f0-9]{40}$/u;
 const SHA = /^[0-9a-f]{40}$/u;
 const ID = /^[1-9][0-9]*$/u;
 
