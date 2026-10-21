@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const favicon = readFileSync(new URL('../favicon.ico', import.meta.url));
 const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
