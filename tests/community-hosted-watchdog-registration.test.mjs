@@ -56,23 +56,27 @@ function harness({ existing = [], change = {} } = {}) {
       branch_policies: [{ name: 'main', type: 'branch' }]
     },
     '/actions/workflows/78/runs?event=schedule&branch=main&per_page=20': {
-      workflow_runs: [{
-        id: 90,
-        event: 'schedule',
-        head_branch: 'main',
-        head_sha: run.mainSha,
-        status: 'completed',
-        conclusion: 'success',
-        created_at: '2026-10-22T00:56:00.000Z'
-      }]
+      workflow_runs: [
+        {
+          id: 90,
+          event: 'schedule',
+          head_branch: 'main',
+          head_sha: run.mainSha,
+          status: 'completed',
+          conclusion: 'success',
+          created_at: '2026-10-22T00:56:00.000Z'
+        }
+      ]
     },
     '/actions/runs/90/jobs?per_page=100': {
-      jobs: [{
-        name: 'cleanup',
-        status: 'completed',
-        conclusion: 'success',
-        completed_at: '2026-10-22T00:57:00.000Z'
-      }]
+      jobs: [
+        {
+          name: 'cleanup',
+          status: 'completed',
+          conclusion: 'success',
+          completed_at: '2026-10-22T00:57:00.000Z'
+        }
+      ]
     },
     ...change
   };
@@ -111,7 +115,7 @@ function execute(h, overrides = {}) {
   });
 }
 
-test('authenticated recent independent scheduled cleanup precedes registration', async () => {
+test('recent scheduled cleanup is required before registration', async () => {
   const x = harness();
   const receipt = await execute(x);
   assert.equal(receipt.signatureReadBackVerified, true);
@@ -126,7 +130,7 @@ test('existing run branch blocks registration', async () => {
   assert.ok(!x.calls.includes('POST'));
 });
 
-test('disabled schedule or manually blocked cleanup environment denies', async () => {
+test('disabled or blocked cleanup environment denies', async () => {
   const cases = [
     {
       '/actions/variables/NOVELIGHT_COMMUNITY_WATCHDOG_ENABLED': {
@@ -152,29 +156,33 @@ test('disabled schedule or manually blocked cleanup environment denies', async (
   }
 });
 
-test('skipped cleanup job, stale run, or changed main prevents a POST', async () => {
+test('skipped, stale or drifted run prevents a POST', async () => {
   const cases = [
     {
       '/actions/runs/90/jobs?per_page=100': {
-        jobs: [{
-          name: 'cleanup',
-          status: 'completed',
-          conclusion: 'skipped',
-          completed_at: '2026-10-22T00:57:00.000Z'
-        }]
+        jobs: [
+          {
+            name: 'cleanup',
+            status: 'completed',
+            conclusion: 'skipped',
+            completed_at: '2026-10-22T00:57:00.000Z'
+          }
+        ]
       }
     },
     {
       '/actions/workflows/78/runs?event=schedule&branch=main&per_page=20': {
-        workflow_runs: [{
-          id: 90,
-          event: 'schedule',
-          head_branch: 'main',
-          head_sha: run.mainSha,
-          status: 'completed',
-          conclusion: 'success',
-          created_at: '2026-10-21T23:00:00.000Z'
-        }]
+        workflow_runs: [
+          {
+            id: 90,
+            event: 'schedule',
+            head_branch: 'main',
+            head_sha: run.mainSha,
+            status: 'completed',
+            conclusion: 'success',
+            created_at: '2026-10-21T23:00:00.000Z'
+          }
+        ]
       }
     },
     { '/git/ref/heads/main': { object: { sha: 'c'.repeat(40) } } }
@@ -186,7 +194,7 @@ test('skipped cleanup job, stale run, or changed main prevents a POST', async ()
   }
 });
 
-test('lack of authenticated GitHub read privilege blocks signed registration', async () => {
+test('GitHub 403 blocks signed registration', async () => {
   const x = harness();
   await assert.rejects(
     execute(x, { fetchImpl: async () => ({ status: 403 }) }),
