@@ -231,6 +231,20 @@ function fixture({ failBrowser = false, failClaim = false } = {}) {
       };
     },
     ...bindings,
+    registerAndVerifyCleanupWatch: async () => {
+      calls.push('watch');
+      return {
+        ...run,
+        status: 'CLEANUP_WATCH_REGISTERED_NO_PROVISION',
+        claimCommentId: '124',
+        registrationCommentId: '126',
+        signatureReadBackVerified: true,
+        providerBranchAbsentAtRegistration: true,
+        independentWatchdogReadyVerified: true,
+        runAuthorized: false,
+        mayCreateBranch: false
+      };
+    },
     obtainIndependentExecutionGrant: async () => {
       calls.push('grant');
       return {

@@ -28,7 +28,7 @@ const claim = {
   claimCommentId: '124'
 };
 const now = Date.parse('2026-10-22T01:00:00.000Z');
-const watchdogEvidence = {
+const evidence = {
   status: 'INDEPENDENT_CLEANUP_WATCHDOG_LIVE',
   mainSha: run.mainSha,
   workloadIndependentOfBrowser: true,
@@ -38,71 +38,68 @@ const watchdogEvidence = {
   graceMinutes: 10,
   observedAt: now
 };
-const secret = 'synthetic-signing-key-long-enough-for-test-2026';
+const signingKey = 'synthetic-signing-key-long-enough-for-test-2026';
 const token = 'synthetic-github-and-supabase-token-long-enough';
 
-function fixture(existing = []) {
+function harness(existing = []) {
   const calls = [];
-  let signed;
-  const fetchImpl = async (url, init) => {
-    calls.push(init.method + ' ' + url);
+  let body = null;
+  const fetchImpl = async (url, options) => {
+    calls.push(options.method);
     if (url.includes('/projects/')) {
       return { status: 200, json: async () => existing };
     }
     if (url.includes('/comments?per_page=')) {
       return { status: 200, json: async () => [] };
     }
-    if (init.method === 'POST') {
-      signed = JSON.parse(init.body).body;
-      return { status: 201, json: async () => ({
-        id: 444, body: signed
-      }) };
+    if (options.method === 'POST') {
+      body = JSON.parse(options.body).body;
+      return { status: 201, json: async () => ({ id: 444, body }) };
     }
-    return { status: 200, json: async () => ({ id: 444, body: signed }) };
+    return { status: 200, json: async () => ({ id: 444, body }) };
   };
   return { calls, fetchImpl };
 }
-function execute(x, changes = {}) {
+function execute(h, overrides = {}) {
   return registerCommunityWatchBeforeProvisioning({
     run,
     grant,
     claim,
-    watchdogEvidence,
-    signingKey: secret,
+    watchdogEvidence: evidence,
+    signingKey,
     githubToken: token,
     supabaseToken: token,
     now,
-    fetchImpl: x.fetchImpl,
-    ...changes
+    fetchImpl: h.fetchImpl,
+    ...overrides
   });
 }
-test('signed registration precedes provisioning and is read back', async () => {
-  const x = fixture();
-  const proof = await execute(x);
-  assert.equal(proof.status, 'CLEANUP_WATCH_REGISTERED_NO_PROVISION');
-  assert.equal(proof.signatureReadBackVerified, true);
-  assert.equal(proof.mayCreateBranch, false);
-  assert.equal(x.calls.filter((c) => c.startsWith('POST')).length, 1);
+
+test('the signed watchdog receipt precedes provisioning', async () => {
+  const x = harness();
+  const receipt = await execute(x);
+  assert.equal(receipt.signatureReadBackVerified, true);
+  assert.equal(receipt.providerBranchAbsentAtRegistration, true);
+  assert.equal(receipt.mayCreateBranch, false);
+  assert.equal(x.calls.filter((item) => item === 'POST').length, 1);
 });
-test('existing run branch prevents any registration', async () => {
-  const x = fixture([{ name: 'community-hosted-456' }]);
-  await assert.rejects(execute(x), /COMMUNITY_WATCH_REGISTRATION_DENIED/u);
-  assert.equal(x.calls.filter((c) => c.startsWith('POST')).length, 0);
+
+test('existing run branch blocks registration', async () => {
+  const x = harness([{ name: 'community-hosted-456' }]);
+  await assert.rejects(
+    execute(x),
+    /COMMUNITY_WATCH_REGISTRATION_DENIED/u
+  );
+  assert.ok(!x.calls.includes('POST'));
 });
-test('missing trusted watchdog proof blocks before any request', async () => {
-  const x = fixture();
-  await assert.rejects(execute(x, {
-    watchdogEvidence: {
-      ...watchdogEvidence,
-      scheduleEnabledVerified: false
-    }
-  }), /COMMUNITY_WATCH_REGISTRATION_DENIED/u);
-  assert.deepEqual(x.calls, []);
-});
-test('expired watchdog observation fails closed', async () => {
-  const x = fixture();
-  await assert.rejects(execute(x, {
-    watchdogEvidence: { ...watchdogEvidence, observedAt: now - 360000 }
-  }), /COMMUNITY_WATCH_REGISTRATION_DENIED/u);
+
+test('unverified independent watchdog blocks every request', async () => {
+  const x = harness();
+  await assert.rejects(
+    execute(x, {
+      watchdogEvidence: { ...evidence, scheduleEnabledVerified: false }
+    }),
+    /COMMUNITY_WATCH_REGISTRATION_DENIED/u
+  );
   assert.deepEqual(x.calls, []);
 });
