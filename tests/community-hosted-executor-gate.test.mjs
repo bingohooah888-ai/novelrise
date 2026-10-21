@@ -28,17 +28,17 @@ function fixture() {
     body:
       HOSTED_PRE_COST_APPROVE +
       JSON.stringify({
-    budget: {
-      acknowledgement: 'TIMEBOX IS NOT A PROVIDER BILLING HARD STOP',
-      cleanupGraceMinutes: 15,
-      currency: 'JPY',
-      maxMinutes: 120,
-      maxTotalMinor: 500,
-      strategy: 'timeboxed-independent-cleanup-v1',
-      supabaseMaxMinor: 300,
-      vercelMaxMinor: 200,
-      watchdogIntervalMinutes: 5
-    },
+        budget: {
+          acknowledgement: 'TIMEBOX IS NOT A PROVIDER BILLING HARD STOP',
+          cleanupGraceMinutes: 15,
+          currency: 'JPY',
+          maxMinutes: 120,
+          maxTotalMinor: 500,
+          strategy: 'timeboxed-independent-cleanup-v1',
+          supabaseMaxMinor: 300,
+          vercelMaxMinor: 200,
+          watchdogIntervalMinutes: 5
+        },
         confirmation: 'STAGING COST APPROVED',
         featureSha: CANDIDATE,
         mainSha: MAIN,
@@ -254,10 +254,18 @@ test('workflow cannot claim, write or run paid Staging', () => {
 
 test('missing or unaffordable OWNER cost envelope blocks the executor', () => {
   for (const update of [
-    (v) => { delete v.budget; },
-    (v) => { v.budget.maxTotalMinor = 100; },
-    (v) => { v.budget.maxMinutes = 121; },
-    (v) => { v.budget.acknowledgement = 'HARD CAP'; }
+    (v) => {
+      delete v.budget;
+    },
+    (v) => {
+      v.budget.maxTotalMinor = 100;
+    },
+    (v) => {
+      v.budget.maxMinutes = 121;
+    },
+    (v) => {
+      v.budget.acknowledgement = 'HARD CAP';
+    }
   ]) {
     const x = fixture();
     const prefix = HOSTED_PRE_COST_APPROVE;
@@ -265,9 +273,6 @@ test('missing or unaffordable OWNER cost envelope blocks the executor', () => {
     update(body);
     x.comment.body = prefix + JSON.stringify(body);
     x.event.comment.body = x.comment.body;
-    assert.throws(
-      () => inspectCommunityHostedExecutorPreclaim(x),
-      /DENIED/u
-    );
+    assert.throws(() => inspectCommunityHostedExecutorPreclaim(x), /DENIED/u);
   }
 });
