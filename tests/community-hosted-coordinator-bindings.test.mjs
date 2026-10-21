@@ -21,6 +21,7 @@ const ORIGIN = 'https://isolated-community-preview.vercel.app';
 function fixture({
   failBrowser = false,
   failClaim = false,
+  omitBudget = false,
   watchdogCredentials,
   watchdogFetch
 } = {}) {
@@ -40,6 +41,22 @@ function fixture({
       body:
         'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ' +
         JSON.stringify({
+          ...(omitBudget
+            ? {}
+            : {
+                budget: {
+                  acknowledgement:
+                    'TIMEBOX IS NOT A PROVIDER BILLING HARD STOP',
+                  cleanupGraceMinutes: 15,
+                  currency: 'JPY',
+                  maxMinutes: 120,
+                  maxTotalMinor: 500,
+                  strategy: 'timeboxed-independent-cleanup-v1',
+                  supabaseMaxMinor: 300,
+                  vercelMaxMinor: 200,
+                  watchdogIntervalMinutes: 5
+                }
+              }),
           confirmation: 'STAGING COST APPROVED',
           featureSha: FEATURE,
           mainSha: MAIN,
@@ -382,4 +399,11 @@ test('watchdog connector uses authenticated GitHub reads, not fake flags', async
   );
   assert.equal(requests, 1);
   assert.ok(!x.calls.includes('runBrowser'));
+});
+
+test('legacy OWNER request without budget cannot construct coordinator', () => {
+  assert.throws(
+    () => fixture({ omitBudget: true }),
+    /COMMUNITY_HOSTED_BINDINGS_DENIED/u
+  );
 });

@@ -46,6 +46,7 @@ export function makeCommunityHostedCoordinatorBindings({
     !ID.test(preparation.runId ?? '') ||
     preparation.stagingCostApproved !== false ||
     preparation.runAuthorized !== false ||
+    preparation.ownerBudgetShapeVerified !== true ||
     !githubActions ||
     !isolatedTarget ||
     !isolatedActions
