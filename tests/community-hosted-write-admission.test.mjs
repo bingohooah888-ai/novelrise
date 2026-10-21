@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  REVIEWED_COMMUNITY_FILES
-} from '../scripts/community-phase1-reviewed-candidate.mjs';
+import * as reviewed from '../scripts/community-phase1-reviewed-candidate.mjs';
 
 import {
   HOSTED_APPROVE,
@@ -66,7 +64,7 @@ function input() {
       total_commits: 1,
       ahead_by: 1,
       commits: [{ sha: FEATURE }],
-      files: REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({
+      files: reviewed.REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({
         filename: path,
         sha,
         status
@@ -213,7 +211,7 @@ test('a freshly synced identical reviewed candidate is accepted', () => {
   assert.equal(proof.writeAuthorized, false);
 });
 
-test('closed approval issue, unreviewed blobs, and stale ancestry are denied', () => {
+test('closed issue and unreviewed blobs are denied', () => {
   rejects((row) => {
     row.issue.state = 'closed';
   });
