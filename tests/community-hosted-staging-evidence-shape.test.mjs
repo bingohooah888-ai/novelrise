@@ -213,8 +213,10 @@ test('timeboxed cleanup planning stays read-only and validates every safety requ
   const input = fixture();
   input.ownerBudget.strategy = 'timeboxed-independent-cleanup-v1';
   input.providerLimits.strategy = input.ownerBudget.strategy;
-  input.providerLimits.supabase.enforcement = 'timeboxed-teardown-not-a-hard-cap';
-  input.providerLimits.vercel.enforcement = 'timeboxed-teardown-not-a-hard-cap';
+  input.providerLimits.supabase.enforcement =
+    'timeboxed-teardown-not-a-hard-cap';
+  input.providerLimits.vercel.enforcement =
+    'timeboxed-teardown-not-a-hard-cap';
   input.providerLimits.timebox = {
     maxMinutes: 60,
     watchdogIntervalMinutes: 5,
@@ -233,13 +235,27 @@ test('timeboxed cleanup planning stays read-only and validates every safety requ
   assert.equal(receipt.timeboxExpiryArmed, false);
   assert.equal(receipt.providerBillsReconciled, false);
   const mutations = [
-    (x) => { x.providerLimits.timebox.maxMinutes = 121; },
-    (x) => { x.providerLimits.timebox.watchdogIntervalMinutes = 6; },
-    (x) => { x.providerLimits.timebox.cleanupGraceMinutes = 16; },
-    (x) => { x.providerLimits.timebox.destroyRunOwnedBranchOnAnyOutcome = false; },
-    (x) => { x.providerLimits.timebox.recordBothProviderBills = false; },
-    (x) => { x.providerLimits.strategy = 'provider-hard-stop'; },
-    (x) => { x.providerLimits.vercel.enforcement = 'warning-only'; }
+    (x) => {
+      x.providerLimits.timebox.maxMinutes = 121;
+    },
+    (x) => {
+      x.providerLimits.timebox.watchdogIntervalMinutes = 6;
+    },
+    (x) => {
+      x.providerLimits.timebox.cleanupGraceMinutes = 16;
+    },
+    (x) => {
+      x.providerLimits.timebox.destroyRunOwnedBranchOnAnyOutcome = false;
+    },
+    (x) => {
+      x.providerLimits.timebox.recordBothProviderBills = false;
+    },
+    (x) => {
+      x.providerLimits.strategy = 'provider-hard-stop';
+    },
+    (x) => {
+      x.providerLimits.vercel.enforcement = 'warning-only';
+    }
   ];
   for (const mutate of mutations) {
     const broken = structuredClone(input);
