@@ -71,8 +71,10 @@ function inspectLivePreCost(snapshot, event, runId, trustedMainSha) {
   }
   return verifyCommunityHostedPreCostAdmission({
     event,
+    liveIssue: snapshot.liveIssue,
     main: snapshot.main,
     feature: snapshot.feature,
+    compare: snapshot.compare,
     ledgerPages: snapshot.ledgerPages,
     runId
   });
@@ -145,8 +147,10 @@ export async function reserveAndRecordCommunityHostedClaim({
   );
   const initialPlan = prepareCommunityHostedClaimMarker({
     event,
+    liveIssue: initial.liveIssue,
     main: initial.main,
     feature: initial.feature,
+    compare: initial.compare,
     ledgerPages: initial.ledgerPages,
     runId
   });
@@ -181,8 +185,10 @@ export async function reserveAndRecordCommunityHostedClaim({
   const beforeWrite = await safeCall(actions, 'loadLiveSnapshot');
   const renewedPlan = prepareCommunityHostedClaimMarker({
     event,
+    liveIssue: beforeWrite.liveIssue,
     main: beforeWrite.main,
     feature: beforeWrite.feature,
+    compare: beforeWrite.compare,
     ledgerPages: beforeWrite.ledgerPages,
     runId
   });

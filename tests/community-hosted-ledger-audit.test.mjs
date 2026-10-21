@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { makeHostedReviewEvidence } from './helpers/community-hosted-review-fixture.mjs';
 
 import {
   HOSTED_CLAIMED,
@@ -59,7 +60,9 @@ function input() {
     base: { ref: 'main' },
     head: { sha: FEATURE, repo: { full_name: REPO } }
   };
+  const reviewed = makeHostedReviewEvidence(event, feature, MAIN, FEATURE);
   const preparation = verifyCommunityHostedPreCostAdmission({
+    ...reviewed,
     event,
     main,
     feature,
