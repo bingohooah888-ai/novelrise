@@ -56,15 +56,19 @@ function inspect(event, preparation, ledgerPages) {
 // claim lock and a new ledger read before even considering a POST.
 export function prepareCommunityHostedClaimMarker({
   event,
+  liveIssue,
   main,
   feature,
+  compare,
   ledgerPages,
   runId
 }) {
   const preparation = verifyCommunityHostedPreCostAdmission({
     event,
+    liveIssue,
     main,
     feature,
+    compare,
     ledgerPages,
     runId
   });

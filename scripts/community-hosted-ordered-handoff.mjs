@@ -7,7 +7,6 @@
 // exclusion and cleanup evidence are proven and separately approved.
 const REPO = 'bingohooah888-ai/novelrise';
 const SCOPE = 'community-phase1-hosted-authenticated-write';
-const CANDIDATE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const SHA = /^[a-f0-9]{40}$/u;
 const ID = /^[1-9][0-9]*$/u;
 const REQUIRED = Object.freeze([
@@ -43,7 +42,8 @@ function checkRun(run, operations) {
     run?.repository !== REPO ||
     run?.scope !== SCOPE ||
     !SHA.test(run?.mainSha ?? '') ||
-    run.candidateSha !== CANDIDATE ||
+    !SHA.test(run?.candidateSha ?? '') ||
+    run.candidateSha === run.mainSha ||
     !ID.test(run.requestCommentId ?? '') ||
     !ID.test(run.runId ?? '') ||
     !operations ||

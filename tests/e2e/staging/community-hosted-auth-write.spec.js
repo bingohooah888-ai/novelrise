@@ -3,8 +3,12 @@
 // separate synthetic accounts on a data-less isolated Supabase preview branch.
 import { URL } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { installHostedCommunityFlags } from './community-hosted-flag-bootstrap.mjs';
 
-const FEATURE_SHA = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
+// A separately authenticated OWNER runner must validate the exact latest PR
+// HEAD against the trusted reviewed-file manifest before setting this value.
+const FEATURE_SHA = process.env.NOVELIGHT_HOSTED_EXPECTED_SHA || '';
+const SHA = /^[a-f0-9]{40}$/u;
 const PROD_REF = 'fiepaguycecrredwrcwx';
 const SHARED_REF = 'wmlzjgvxgoyrovdhbqbg';
 const REF = /^[a-z0-9]{20}$/u;
@@ -33,7 +37,8 @@ function configuration() {
     !REF.test(ref) ||
     [PROD_REF, SHARED_REF].includes(ref) ||
     !/^[1-9][0-9]*$/u.test(approvalId) ||
-    env.NOVELIGHT_HOSTED_EXPECTED_SHA !== FEATURE_SHA ||
+    !SHA.test(FEATURE_SHA) ||
+    env.NOVELIGHT_HOSTED_AUTH_WRITE_APPROVED !== '1' ||
     preview.protocol !== 'https:' ||
     !preview.hostname.endsWith('.vercel.app') ||
     preview.hostname === 'novelrise.vercel.app' ||
@@ -111,14 +116,12 @@ async function signIn(page, cfg, role, publishableKey) {
 async function isolatedContext(browser, cfg) {
   const context = await browser.newContext({ baseURL: cfg.preview });
   const violations = await protect(context, cfg);
-  await context.addInitScript(() => {
-    // ONLY inside the data-less hosted browser test. Static release flags
-    // remain OFF in all version-controlled Production assets.
-    Object.defineProperty(globalThis, 'NOVELIGHT_COMMUNITY_FLAGS', {
-      configurable: false,
-      value: Object.freeze({ timeline: true, board: false })
-    });
-  });
+  // Preview-only: the real site initializes the public release gate to OFF
+  // in strict mode. Permit that OFF assignment while retaining the synthetic
+  // hosted-test flag ON, rather than breaking novelight-client.js bootstrap.
+  // The existing site Preview bootstrap independently rewrites Supabase
+  // clients to /api/staging-browser-config; no Production API is permitted.
+  await context.addInitScript(installHostedCommunityFlags);
   return { context, violations };
 }
 

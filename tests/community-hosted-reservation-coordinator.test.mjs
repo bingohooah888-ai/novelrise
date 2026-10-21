@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { makeHostedReviewEvidence } from './helpers/community-hosted-review-fixture.mjs';
 
 import {
   HOSTED_PRE_COST_APPROVE,
@@ -45,6 +46,7 @@ function harness(options = {}) {
         })
     }
   };
+  const reviewed = makeHostedReviewEvidence(event, { base: {} }, MAIN, FEATURE);
   const comments = [event.comment];
   const references = new Map();
   const calls = [];
@@ -124,9 +126,11 @@ function harness(options = {}) {
           state: 'open',
           draft: true,
           merged: false,
-          base: { ref: 'main' },
+          base: { ref: 'main', sha: MAIN },
           head: { sha: candidateSha, repo: { full_name: REPO } }
         },
+        liveIssue: reviewed.liveIssue,
+        compare: reviewed.compare,
         ledgerPages: [[...comments]]
       };
     },
@@ -212,13 +216,17 @@ function harness(options = {}) {
         state: 'open',
         draft: true,
         merged: false,
-        base: { ref: 'main' },
+        base: { ref: 'main', sha: MAIN },
         head: { sha: FEATURE, repo: { full_name: REPO } }
       },
+      liveIssue: reviewed.liveIssue,
+      compare: reviewed.compare,
       ledgerPages: [[event.comment]]
     };
     return verifyCommunityHostedPreCostAdmission({
       event,
+      liveIssue: snapshot.liveIssue,
+      compare: snapshot.compare,
       main: snapshot.main,
       feature: snapshot.feature,
       ledgerPages: snapshot.ledgerPages,

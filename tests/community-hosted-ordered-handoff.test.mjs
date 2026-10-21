@@ -14,9 +14,10 @@ const RUN = Object.freeze({
 
 function fixture(options = {}) {
   const calls = [];
+  const testedRun = options.run ?? RUN;
   const ref = 'refs/tags/novelight-community-hosted-once-v1-123';
   const boundary = {
-    ...RUN,
+    ...testedRun,
     status: 'FRESH_OWNER_PROTECTED_ENVIRONMENT_AND_BUDGET',
     ownerVerified: true,
     trustedMainVerified: true,
@@ -29,7 +30,7 @@ function fixture(options = {}) {
     ...options.boundary
   };
   const claim = {
-    ...RUN,
+    ...testedRun,
     status: 'RESERVATION_AND_CLAIM_RECORDED_NO_RUN_AUTHORIZATION',
     reservationRef: ref,
     claimCommentId: '124',
@@ -42,7 +43,7 @@ function fixture(options = {}) {
     ...options.claim
   };
   const grant = {
-    ...RUN,
+    ...testedRun,
     status: 'AUTHORIZED_BY_TRUSTED_MAIN_WORKFLOW',
     stagingCostApproved: true,
     runAuthorized: true,
@@ -53,7 +54,7 @@ function fixture(options = {}) {
     ...options.grant
   };
   const proof = {
-    ...RUN,
+    ...testedRun,
     status: 'BROWSER_VERIFIED_AND_BRANCH_DISPOSED',
     browserVerified: true,
     cleanupVerified: true,
@@ -85,7 +86,7 @@ function fixture(options = {}) {
       if (options.throwAt === 'consume') throw Error('SECRET');
       assert.equal(lifecycleProof === null, outcome !== 'success');
       return {
-        ...RUN,
+        ...testedRun,
         status: 'CONSUMPTION_RECORDED_NO_RUN_AUTHORIZATION',
         reservationRef: ref,
         claimCommentId: '124',
@@ -132,7 +133,7 @@ test('missing adapters and identity drift fail before any activity', async () =>
   const y = fixture();
   await assert.rejects(
     runCommunityHostedSingleLifecycle({
-      run: { ...RUN, candidateSha: 'b'.repeat(40) },
+      run: { ...RUN, candidateSha: 'invalid' },
       operations: y.operations
     }),
     /DENIED/u
@@ -220,4 +221,35 @@ test('mismatched terminal receipt fails closed without a second POST', async () 
     /terminal receipt ambiguous/u
   );
   assert.equal(x.calls.filter((s) => s.startsWith('consume')).length, 1);
+});
+
+test('a newly synced candidate stays bound to the trusted run through CONSUME', async () => {
+  const run = { ...RUN, candidateSha: 'b'.repeat(40) };
+  const x = fixture({ run });
+  const receipt = await runCommunityHostedSingleLifecycle({
+    run,
+    operations: x.operations
+  });
+  assert.equal(receipt.candidateSha, run.candidateSha);
+  assert.equal(receipt.runAuthorized, false);
+  assert.equal(receipt.releaseAuthorized, false);
+  assert.deepEqual(x.calls, [
+    'preflight',
+    'claim',
+    'grant',
+    'isolated',
+    'consume:success'
+  ]);
+});
+
+test('a main-identical candidate fails before touching any adapter', async () => {
+  const x = fixture();
+  await assert.rejects(
+    runCommunityHostedSingleLifecycle({
+      run: { ...RUN, candidateSha: RUN.mainSha },
+      operations: x.operations
+    }),
+    /DENIED/u
+  );
+  assert.deepEqual(x.calls, []);
 });

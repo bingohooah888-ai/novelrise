@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { makeHostedReviewEvidence } from './helpers/community-hosted-review-fixture.mjs';
 
 import {
   HOSTED_CLAIMED,
@@ -59,7 +60,9 @@ function input() {
     base: { ref: 'main' },
     head: { sha: FEATURE, repo: { full_name: REPO } }
   };
+  const reviewed = makeHostedReviewEvidence(event, feature, MAIN, FEATURE);
   const preparation = verifyCommunityHostedPreCostAdmission({
+    ...reviewed,
     event,
     main,
     feature,
@@ -244,4 +247,16 @@ test('all pages must be complete and comments strictly ordered', () => {
   }
   x.ledgerPages.push([transition(223, HOSTED_CLAIMED)]);
   assert.equal(check(x).status, 'CLAIM_RECORD_INSPECTION_ONLY');
+});
+
+test('ledger uses independently prepared candidate instead of stale SHA pin', () => {
+  const x = input();
+  const fresh = 'b'.repeat(40);
+  const old = x.preparation.candidateSha;
+  x.preparation = { ...x.preparation, candidateSha: fresh };
+  x.event.comment.body = x.event.comment.body.replace(old, fresh);
+  x.ledgerPages[0][0] = x.event.comment;
+  const receipt = inspectCommunityHostedLedgerTrail(x);
+  assert.equal(receipt.status, 'UNCLAIMED_RECORD_INSPECTION_ONLY');
+  assert.equal(receipt.runAuthorized, false);
 });
