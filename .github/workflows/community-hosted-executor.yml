@@ -70,7 +70,7 @@ jobs:
           echo 'Read-only OWNER request authenticated. CLAIM, cost, Preview, Staging, browser and release remain disabled.'
       - name: Recheck protected OWNER runner environment (read-only)
         env:
-          COMMUNITY_PROTECTION_READ_TOKEN: ${{ secrets.NOVELIGHT_COMMUNITY_PROTECTION_READ_TOKEN }}
+          COMMUNITY_PROTECTION_READ_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
