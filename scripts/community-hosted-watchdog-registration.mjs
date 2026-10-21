@@ -5,6 +5,7 @@ import {
   signCommunityWatchIntent,
   verifyCommunityWatchIntent
 } from './community-hosted-expiry-watchdog.mjs';
+import { readCommunityWatchdogLiveEvidence } from './community-hosted-watchdog-live-readiness.mjs';
 
 const REPO = 'bingohooah888-ai/novelrise';
 const API = 'https://api.github.com/repos/' + REPO;
@@ -41,7 +42,7 @@ async function requestJson(fetchImpl, url, token, method = 'GET', body) {
     deny();
   }
 }
-function validate(grant, run, claim, evidence, now) {
+function validate(grant, run, claim) {
   if (
     run?.repository !== REPO ||
     run.scope !== 'community-phase1-hosted-authenticated-write' ||
@@ -63,18 +64,8 @@ function validate(grant, run, claim, evidence, now) {
     claim?.status !== 'RESERVATION_AND_CLAIM_RECORDED_NO_RUN_AUTHORIZATION' ||
     claim.runId !== run.runId ||
     claim.requestCommentId !== run.requestCommentId ||
-    !ID.test(claim.claimCommentId ?? '') ||
-    evidence?.status !== 'INDEPENDENT_CLEANUP_WATCHDOG_LIVE' ||
-    evidence.mainSha !== run.mainSha ||
-    evidence.workloadIndependentOfBrowser !== true ||
-    evidence.cleanupEnvironmentProtected !== true ||
-    evidence.scheduleEnabledVerified !== true ||
-    !Number.isSafeInteger(evidence.maxMinutes) ||
-    evidence.maxMinutes < 1 || evidence.maxMinutes > 120 ||
-    !Number.isSafeInteger(evidence.graceMinutes) ||
-    evidence.graceMinutes < 1 || evidence.graceMinutes > 15 ||
-    !Number.isSafeInteger(evidence.observedAt) ||
-    now < evidence.observedAt || now - evidence.observedAt > 300000
+    !ID.test(claim.claimCommentId ?? '')
+
   ) deny();
 }
 // Trusted main must independently authenticate live GitHub OWNER approvals.
@@ -84,17 +75,23 @@ export async function registerCommunityWatchBeforeProvisioning({
   run,
   grant,
   claim,
-  watchdogEvidence,
   signingKey,
   githubToken,
   supabaseToken,
   now = Date.now(),
   fetchImpl = fetch
 }) {
-  validate(grant, run, claim, watchdogEvidence, now);
+  validate(grant, run, claim);
   if ([signingKey, githubToken, supabaseToken].some(
     (item) => typeof item !== 'string' || item.length < 32
   )) deny();
+  // No caller-supplied readiness flag can authorize a signed registration.
+  const watchdogEvidence = await readCommunityWatchdogLiveEvidence({
+    githubToken,
+    mainSha: run.mainSha,
+    now,
+    fetchImpl
+  });
   const branchName = 'community-hosted-' + run.runId;
   const inventory = await requestJson(
     fetchImpl,
