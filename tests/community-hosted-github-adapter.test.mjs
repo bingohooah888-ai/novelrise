@@ -3,7 +3,7 @@ import test from 'node:test';
 import { URL } from 'node:url';
 
 import { makeCommunityHostedGitHubAdapter } from '../scripts/community-hosted-github-adapter.mjs';
-import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
+import * as reviewed from '../scripts/community-phase1-reviewed-candidate.mjs';
 
 const TOKEN = 'synthetic-test-token-1234567890';
 const REPO = 'bingohooah888-ai/novelrise';
@@ -86,11 +86,13 @@ function harness({ pages, throwOn, override } = {}) {
         total_commits: 1,
         base_commit: { sha: SHA },
         commits: [{ sha: 'b'.repeat(40) }],
-        files: REVIEWED_COMMUNITY_FILES.map(({ path: filename, sha, status }) => ({
-          filename,
-          sha,
-          status
-        }))
+        files: reviewed.REVIEWED_COMMUNITY_FILES.map(
+          ({ path: filename, sha, status }) => ({
+            filename,
+            sha,
+            status
+          })
+        )
       });
     }
     if (path.includes('/issues/188/comments?')) {

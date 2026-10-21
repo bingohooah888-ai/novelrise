@@ -64,7 +64,10 @@ function fixture() {
     runId: RUN
   };
   input.ledgerPages = [[input.event.comment]];
-  Object.assign(input, makeHostedReviewEvidence(input.event, input.feature, MAIN, FEATURE));
+  Object.assign(
+    input,
+    makeHostedReviewEvidence(input.event, input.feature, MAIN, FEATURE)
+  );
   return input;
 }
 
