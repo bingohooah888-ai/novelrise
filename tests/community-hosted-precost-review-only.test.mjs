@@ -216,7 +216,8 @@ test('read-only inspection cannot grant hosted writes', () => {
 test('OWNER budget is structural only, and overflow is rejected', () => {
   const value = fixture();
   assert.equal(
-    verifyCommunityHostedReadOnlyPreCostProposal(value).ownerBudgetShapeVerified,
+    verifyCommunityHostedReadOnlyPreCostProposal(value)
+      .ownerBudgetShapeVerified,
     true
   );
   const prefix = 'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ';
