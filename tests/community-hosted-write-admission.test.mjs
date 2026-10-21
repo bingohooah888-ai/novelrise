@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
+import {
+  REVIEWED_COMMUNITY_FILES
+} from '../scripts/community-phase1-reviewed-candidate.mjs';
 
 import {
   HOSTED_APPROVE,
@@ -195,11 +197,13 @@ test('truncated and malformed ledger or unrecognized fields fail shut', () => {
 test('a freshly synced identical reviewed candidate is accepted', () => {
   const row = input();
   const fresh = 'd'.repeat(40);
-  row.comment.body = HOSTED_APPROVE + JSON.stringify({
-    ...request,
-    featureSha: fresh,
-    previewSha: fresh
-  });
+  row.comment.body =
+    HOSTED_APPROVE +
+    JSON.stringify({
+      ...request,
+      featureSha: fresh,
+      previewSha: fresh
+    });
   row.pr.head.sha = fresh;
   row.preview.commitSha = fresh;
   row.compare.commits[0].sha = fresh;
