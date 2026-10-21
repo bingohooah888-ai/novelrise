@@ -7,7 +7,14 @@ import { URL } from 'node:url';
 const imageFile = '../assets/ogp/novelight-ogp-1200x630.png';
 const image = readFileSync(new URL(imageFile, import.meta.url));
 const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const imageUrl = 'https://novelight.jp/assets/ogp/novelight-ogp-1200x630.png';
+const imageUrl = 'https://novelight.jp/assets/ogp/novelight-card-20261022.png';
+const welcome = readFileSync(
+  new URL('../welcome.html', import.meta.url),
+  'utf8'
+);
+const freshImage = readFileSync(
+  new URL('../assets/ogp/novelight-card-20261022.png', import.meta.url)
+);
 
 test('approved NOVELIGHT OGP image is valid', () => {
   assert.equal(image.toString('hex', 0, 8), '89504e470d0a1a0a');
@@ -33,4 +40,22 @@ test('homepage uses approved OGP image', () => {
   for (const tag of tags) {
     assert.ok(home.includes(tag), `Missing OGP tag: ${tag}`);
   }
+});
+
+test('new share URL has its own X card and canonical metadata', () => {
+  const tags = [
+    'href="https://novelight.jp/welcome.html"',
+    'property="og:url" content="https://novelight.jp/welcome.html"',
+    'name="twitter:card" content="summary_large_image"',
+    'name="twitter:image" content="https://novelight.jp/assets/ogp/novelight-card-20261022.png"',
+    'property="og:image" content="https://novelight.jp/assets/ogp/novelight-card-20261022.png"',
+    'name="twitter:site" content="@NOVELIGHT_jp"'
+  ];
+  for (const tag of tags) {
+    assert.ok(welcome.includes(tag), `Missing welcome tag: ${tag}`);
+  }
+  assert.ok(
+    freshImage.equals(image),
+    'Versioned sharing image must be exact approved PNG'
+  );
 });
