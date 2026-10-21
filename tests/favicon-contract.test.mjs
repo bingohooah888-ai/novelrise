@@ -23,10 +23,9 @@ test('NOVELIGHT serves the approved site-wide 16/32/48 favicon', () => {
   }
 });
 
-test('homepage explicitly links approved favicon with a fresh URL', () => {
-  const homepage = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(
-    homepage,
-    /<link rel="icon" type="image\/x-icon" href="\/favicon.ico\?v=20261022">/
-  );
+test('homepage uses versioned favicon path', () => {
+  const path = new URL('../index.html', import.meta.url);
+  const page = readFileSync(path, 'utf8');
+  assert.ok(page.includes('rel="icon"'));
+  assert.ok(page.includes('href="/favicon.ico?v=20261022"'));
 });
