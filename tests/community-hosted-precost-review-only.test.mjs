@@ -14,6 +14,17 @@ const ISSUE_URL = 'https://api.github.com/repos/' + REPO + '/issues/188';
 
 function fixture() {
   const proposal = {
+    budget: {
+      acknowledgement: 'TIMEBOX IS NOT A PROVIDER BILLING HARD STOP',
+      cleanupGraceMinutes: 15,
+      currency: 'JPY',
+      maxMinutes: 120,
+      maxTotalMinor: 500,
+      strategy: 'timeboxed-independent-cleanup-v1',
+      supabaseMaxMinor: 300,
+      vercelMaxMinor: 200,
+      watchdogIntervalMinutes: 5
+    },
     confirmation: 'STAGING COST APPROVED',
     featureSha: HEAD,
     mainSha: MAIN,
@@ -200,4 +211,20 @@ test('read-only inspection cannot grant hosted writes', () => {
   );
   assert.doesNotMatch(legacy, /const FEATURE_SHA =/u);
   assert.match(legacy, /verifyCommunityHostedReadOnlyPreCostProposal/u);
+});
+
+test('OWNER budget is structural only, and overflow is rejected', () => {
+  const value = fixture();
+  assert.equal(
+    verifyCommunityHostedReadOnlyPreCostProposal(value).ownerBudgetShapeVerified,
+    true
+  );
+  const prefix = 'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ';
+  const body = JSON.parse(value.event.comment.body.slice(prefix.length));
+  body.budget.vercelMaxMinor = 300;
+  value.event.comment.body = prefix + JSON.stringify(body);
+  assert.throws(
+    () => verifyCommunityHostedReadOnlyPreCostProposal(value),
+    /OWNER_BUDGET_ENVELOPE_DENIED/u
+  );
 });

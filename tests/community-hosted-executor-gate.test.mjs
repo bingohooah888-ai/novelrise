@@ -28,6 +28,17 @@ function fixture() {
     body:
       HOSTED_PRE_COST_APPROVE +
       JSON.stringify({
+    budget: {
+      acknowledgement: 'TIMEBOX IS NOT A PROVIDER BILLING HARD STOP',
+      cleanupGraceMinutes: 15,
+      currency: 'JPY',
+      maxMinutes: 120,
+      maxTotalMinor: 500,
+      strategy: 'timeboxed-independent-cleanup-v1',
+      supabaseMaxMinor: 300,
+      vercelMaxMinor: 200,
+      watchdogIntervalMinutes: 5
+    },
         confirmation: 'STAGING COST APPROVED',
         featureSha: CANDIDATE,
         mainSha: MAIN,
@@ -105,6 +116,8 @@ test('exact OWNER preclaim is read-only and grants no execution', () => {
   assert.equal(receipt.runId, '456');
   assert.equal(receipt.ownerEvidenceVerified, true);
   assert.equal(receipt.exactApprovalSnapshotVerified, true);
+  assert.equal(receipt.ownerBudgetStructureVerified, true);
+  assert.equal(receipt.providerCostHardStopVerified, false);
   for (const field of [
     'claimAuthorized',
     'stagingCostApproved',
@@ -236,5 +249,25 @@ test('workflow cannot claim, write or run paid Staging', () => {
     'supabase db'
   ]) {
     assert.ok(!source.includes(forbidden), forbidden);
+  }
+});
+
+test('missing or unaffordable OWNER cost envelope blocks the executor', () => {
+  for (const update of [
+    (v) => { delete v.budget; },
+    (v) => { v.budget.maxTotalMinor = 100; },
+    (v) => { v.budget.maxMinutes = 121; },
+    (v) => { v.budget.acknowledgement = 'HARD CAP'; }
+  ]) {
+    const x = fixture();
+    const prefix = HOSTED_PRE_COST_APPROVE;
+    const body = JSON.parse(x.comment.body.slice(prefix.length));
+    update(body);
+    x.comment.body = prefix + JSON.stringify(body);
+    x.event.comment.body = x.comment.body;
+    assert.throws(
+      () => inspectCommunityHostedExecutorPreclaim(x),
+      /DENIED/u
+    );
   }
 });

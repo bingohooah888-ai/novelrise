@@ -4,6 +4,7 @@
 // atomically claim an approval BEFORE costs, and consume it after the run.
 import { readFileSync } from 'node:fs';
 import { assertReviewedCommunityCandidate } from './community-phase1-reviewed-candidate.mjs';
+import { inspectCommunityHostedOwnerBudgetEnvelope } from './community-hosted-owner-budget-envelope.mjs';
 
 import {
   HOSTED_CLAIMED,
@@ -26,7 +27,7 @@ function deny(reason) {
   throw new Error('COMMUNITY_HOSTED_PRE_COST_DENIED: ' + reason);
 }
 
-function record(body, prefix, fields) {
+function record(body, prefix, fields, allowBudget = false) {
   if (
     typeof body !== 'string' ||
     body.length > 2048 ||
@@ -44,7 +45,10 @@ function record(body, prefix, fields) {
     !data ||
     typeof data !== 'object' ||
     Array.isArray(data) ||
-    Object.keys(data).sort().join(',') !== [...fields].sort().join(',')
+    ![
+      [...fields].sort().join(','),
+      ...(allowBudget ? [[...fields, 'budget'].sort().join(',')] : [])
+    ].includes(Object.keys(data).sort().join(','))
   ) {
     deny('unexpected control fields');
   }
@@ -164,7 +168,10 @@ export function verifyCommunityHostedReadOnlyPreCostProposal({
     'mainSha',
     'scope',
     'target'
-  ]);
+  ], true);
+  const ownerBudget = proposal.budget === undefined
+    ? null
+    : inspectCommunityHostedOwnerBudgetEnvelope(proposal.budget);
   if (
     proposal.scope !== HOSTED_SCOPE ||
     proposal.confirmation !== 'STAGING COST APPROVED' ||
@@ -205,6 +212,7 @@ export function verifyCommunityHostedReadOnlyPreCostProposal({
     requestCommentId: String(event.comment.id),
     runId: String(runId),
     plannedBranchName: 'community-hosted-' + String(runId),
+    ownerBudgetShapeVerified: ownerBudget !== null,
     liveEvidenceVerified: false,
     stagingCostApproved: false,
     mayClaim: false,

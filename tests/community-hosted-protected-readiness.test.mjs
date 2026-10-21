@@ -10,6 +10,17 @@ const API = 'https://api.github.com/repos/bingohooah888-ai/novelrise';
 const commentBody =
   'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ' +
   JSON.stringify({
+    budget: {
+      acknowledgement: 'TIMEBOX IS NOT A PROVIDER BILLING HARD STOP',
+      cleanupGraceMinutes: 15,
+      currency: 'JPY',
+      maxMinutes: 120,
+      maxTotalMinor: 500,
+      strategy: 'timeboxed-independent-cleanup-v1',
+      supabaseMaxMinor: 300,
+      vercelMaxMinor: 200,
+      watchdogIntervalMinutes: 5
+    },
     confirmation: 'STAGING COST APPROVED',
     featureSha: FEATURE,
     mainSha: MAIN,
@@ -201,4 +212,21 @@ test('workflow replay, identity drift, and missing credentials deny', async () =
     }),
     /PROTECTED_READINESS_DENIED/u
   );
+});
+
+test('budget-free legacy OWNER approval cannot pass protected-readiness', async () => {
+  const prefix = 'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ';
+  const body = JSON.parse(commentBody.slice(prefix.length));
+  delete body.budget;
+  const x = fixture({
+    '/issues/comments/123': {
+      id: 123,
+      user: { login: 'bingohooah888-ai' },
+      author_association: 'OWNER',
+      issue_url: API + '/issues/188',
+      body: prefix + JSON.stringify(body)
+    }
+  });
+  await assert.rejects(inspect(x), /PROTECTED_READINESS_DENIED/u);
+  assert.ok(!x.urls.some((url) => url.startsWith('/environments/')));
 });

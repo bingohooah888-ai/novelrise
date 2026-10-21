@@ -3,6 +3,8 @@
 // All GitHub facts are fetched with the separately configured read-only token.
 const REPO = 'bingohooah888-ai/novelrise';
 const API = 'https://api.github.com/repos/' + REPO;
+import { inspectCommunityHostedOwnerBudgetEnvelope } from './community-hosted-owner-budget-envelope.mjs';
+
 const OWNER = 'bingohooah888-ai';
 const SCOPE = 'community-phase1-hosted-authenticated-write';
 const MARKER = 'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ';
@@ -61,13 +63,14 @@ function matchesApproval(comment, issue, mainSha, candidateSha) {
     !data ||
     Array.isArray(data) ||
     Object.keys(data).sort().join(',') !==
-      'confirmation,featureSha,mainSha,scope,target' ||
+      'budget,confirmation,featureSha,mainSha,scope,target' ||
     data.confirmation !== 'STAGING COST APPROVED' ||
     data.scope !== SCOPE ||
     data.target !== 'new-data-less-isolated-branch' ||
     data.mainSha !== mainSha ||
     data.featureSha !== candidateSha
   ) deny();
+  inspectCommunityHostedOwnerBudgetEnvelope(data.budget);
 }
 
 function protect(environment, policies) {
