@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { makeHostedReviewEvidence } from './helpers/community-hosted-review-fixture.mjs';
 
 import { makeCommunityHostedCoordinatorBindings } from '../scripts/community-hosted-coordinator-bindings.mjs';
 import { verifyCommunityHostedPreCostAdmission } from '../scripts/community-hosted-precost-admission.mjs';
@@ -51,6 +52,7 @@ function fixture({ failBrowser = false, failClaim = false } = {}) {
     base: { ref: 'main' },
     head: { sha: FEATURE, repo: { full_name: REPO } }
   };
+  const reviewed = makeHostedReviewEvidence(event, feature, MAIN, FEATURE);
   const rows = [event.comment];
   const refs = new Map();
   const run = {
@@ -62,6 +64,7 @@ function fixture({ failBrowser = false, failClaim = false } = {}) {
     runId: '456'
   };
   const preparation = verifyCommunityHostedPreCostAdmission({
+    ...reviewed,
     event,
     main,
     feature,
@@ -72,7 +75,7 @@ function fixture({ failBrowser = false, failClaim = false } = {}) {
   const githubActions = {
     loadLiveSnapshot: async () => {
       calls.push('snapshot');
-      return { main, feature, ledgerPages: [[...rows]] };
+      return { main, feature, ...reviewed, ledgerPages: [[...rows]] };
     },
     loadProtectionEvidence: async () => {
       calls.push('protection');

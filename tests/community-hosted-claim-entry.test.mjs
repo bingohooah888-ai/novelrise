@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { makeHostedReviewEvidence } from './helpers/community-hosted-review-fixture.mjs';
 import { URL } from 'node:url';
 
 import {
@@ -40,6 +41,7 @@ function harness() {
   const issue = {
     id: 999,
     number: 188,
+    state: 'open',
     title: '[Staging Approval Control] Preview / Staging cost gate',
     user: { login: OWNER },
     url: ISSUE
@@ -50,6 +52,7 @@ function harness() {
     issue: { ...issue },
     comment: { ...comment }
   };
+  const reviewed = makeHostedReviewEvidence(event, { base: {} }, MAIN, FEATURE);
   const environment = {
     GITHUB_ACTIONS: 'true',
     GITHUB_EVENT_NAME: 'issue_comment',
@@ -75,9 +78,11 @@ function harness() {
           state: 'open',
           draft: true,
           merged: false,
-          base: { ref: 'main' },
+          base: { ref: 'main', sha: MAIN },
           head: { sha: FEATURE, repo: { full_name: REPO } }
         },
+        liveIssue: reviewed.liveIssue,
+        compare: reviewed.compare,
         ledgerPages: [[...ledger]]
       };
     },

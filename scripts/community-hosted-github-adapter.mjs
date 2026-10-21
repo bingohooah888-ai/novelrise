@@ -74,6 +74,16 @@ export function makeCommunityHostedGitHubAdapter({
     if (main.status !== 200 || feature.status !== 200) {
       deny('fresh main or exact Draft candidate cannot be read');
     }
+    const mainSha = main.data?.object?.sha;
+    const candidateSha = feature.data?.head?.sha;
+    if (!SHA.test(mainSha ?? '') || !SHA.test(candidateSha ?? '') || mainSha === candidateSha) {
+      deny('invalid revision identities');
+    }
+    const liveIssue = await api('/issues/188');
+    const compare = await api('/compare/' + mainSha + '...' + candidateSha);
+    if (liveIssue.status !== 200 || compare.status !== 200) {
+      deny('live OWNER issue or reviewed GitHub compare unavailable');
+    }
     const ledgerPages = [];
     for (let page = 1; page <= 20; page += 1) {
       const item = await api(
@@ -91,6 +101,8 @@ export function makeCommunityHostedGitHubAdapter({
         return {
           main: main.data,
           feature: feature.data,
+          liveIssue: liveIssue.data,
+          compare: compare.data,
           ledgerPages
         };
       }

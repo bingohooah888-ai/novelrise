@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { makeHostedReviewEvidence } from './helpers/community-hosted-review-fixture.mjs';
 
 import {
   HOSTED_CLAIMED,
@@ -57,14 +58,16 @@ function fixture() {
     head: { sha: FEATURE, repo: { full_name: REPO } }
   };
   const ledgerPages = [[event.comment]];
+  const reviewed = makeHostedReviewEvidence(event, feature, MAIN, FEATURE);
   const preparation = verifyCommunityHostedPreCostAdmission({
+    ...reviewed,
     event,
     main,
     feature,
     ledgerPages,
     runId: RUN
   });
-  return { event, main, feature, ledgerPages, preparation };
+  return { event, main, feature, ...reviewed, ledgerPages, preparation };
 }
 
 function record(id, prefix, changes = {}) {
@@ -123,6 +126,8 @@ test('claim marker is deterministic, frozen and never authorizes a write', () =>
     event: x.event,
     main: x.main,
     feature: x.feature,
+    liveIssue: x.liveIssue,
+    compare: x.compare,
     ledgerPages: x.ledgerPages,
     runId: RUN
   });
@@ -159,6 +164,8 @@ test('fresh claim proposal rejects previously claimed or consumed requests', () 
           event: state.event,
           main: state.main,
           feature: state.feature,
+          liveIssue: state.liveIssue,
+          compare: state.compare,
           ledgerPages: state.ledgerPages,
           runId: RUN
         }),
@@ -176,6 +183,8 @@ test('fresh claim proposal rejects main drift or missing OWNER source', () => {
         event: x.event,
         main: x.main,
         feature: x.feature,
+        liveIssue: x.liveIssue,
+        compare: x.compare,
         ledgerPages: x.ledgerPages,
         runId: RUN
       }),
@@ -189,6 +198,8 @@ test('fresh claim proposal rejects main drift or missing OWNER source', () => {
         event: other.event,
         main: other.main,
         feature: other.feature,
+        liveIssue: other.liveIssue,
+        compare: other.compare,
         ledgerPages: other.ledgerPages,
         runId: RUN
       }),
