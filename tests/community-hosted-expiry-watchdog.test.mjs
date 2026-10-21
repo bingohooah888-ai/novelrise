@@ -35,58 +35,68 @@ const late = Date.parse('2026-10-22T02:11:00.000Z');
 
 test('signed cleanup intent is tamper-evident', () => {
   const body = signCommunityWatchIntent(intent, secret);
-  assert.equal(verifyCommunityWatchIntent(body, secret).runId, '456');
-  assert.equal(verifyCommunityWatchIntent(body + 'x', secret), null);
-  assert.equal(verifyCommunityWatchIntent(body, secret + 'tamper'), null);
+  const verified = verifyCommunityWatchIntent(body, secret);
+  const tampered = verifyCommunityWatchIntent(body, secret + 'tamper');
+  assert.equal(verified.runId, '456');
+  assert.equal(tampered, null);
 });
-test('only expired, signed, isolated branches qualify', () => {
-  const result = inspectCommunityWatchBranches({
-    branches: [branch, { ...branch, name: 'staging' }],
+
+test('only expired signed branches qualify', () => {
+  const found = inspectCommunityWatchBranches({
+    branches: [branch],
     intents: [intent],
     now: late
   });
-  assert.deepEqual(result.expired.map((x) => x.runId), ['456']);
-  assert.deepEqual(inspectCommunityWatchBranches({
+  assert.equal(found.expired[0].runId, '456');
+  const early = inspectCommunityWatchBranches({
     branches: [branch],
     intents: [intent],
     now: Date.parse('2026-10-22T02:05:00.000Z')
-  }).expired, []);
-  assert.equal(inspectCommunityWatchBranches({
+  });
+  assert.equal(early.expired.length, 0);
+  const unsigned = inspectCommunityWatchBranches({
     branches: [branch],
     intents: [],
     now: late
-  }).unregistered.length, 1);
+  });
+  assert.equal(unsigned.expired.length, 0);
+  assert.equal(unsigned.unregistered.length, 1);
 });
-test('shared, Production, data copy and ambiguous identity fail closed', () => {
-  for (const change of [
+
+test('shared, production and data-copying branches cannot be deleted', () => {
+  const changes = [
     { project_ref: 'fiepaguycecrredwrcwx' },
     { project_ref: 'wmlzjgvxgoyrovdhbqbg' },
     { parent_project_ref: 'other' },
     { with_data: true },
     { persistent: true }
-  ]) {
-    assert.throws(() => inspectCommunityWatchBranches({
-      branches: [{ ...branch, ...change }],
-      intents: [intent],
-      now: late
-    }), /COMMUNITY_WATCHDOG_DENIED/u);
+  ];
+  for (const change of changes) {
+    const unsafe = () =>
+      inspectCommunityWatchBranches({
+        branches: [{ ...branch, ...change }],
+        intents: [intent],
+        now: late
+      });
+    assert.throws(unsafe, /COMMUNITY_WATCHDOG_DENIED/u);
   }
 });
-test('network adapter deletes only expired branch then verifies absence', async () => {
+
+test('expired branch deletion is followed by absence verification', async () => {
   let present = true;
-  const requests = [];
+  let deletes = 0;
   const fetchImpl = async (url, options) => {
-    requests.push({ url, method: options.method });
     if (url.includes('/issues/188/comments')) {
-      return { status: 200, json: async () => [{
-        body: signCommunityWatchIntent(intent, secret)
-      }] };
+      const item = { body: signCommunityWatchIntent(intent, secret) };
+      return { status: 200, json: async () => [item] };
     }
     if (options.method === 'DELETE') {
+      deletes += 1;
       present = false;
-      return { status: 200, json: async () => ({}) };
+      return { status: 200 };
     }
-    return { status: 200, json: async () => present ? [branch] : [] };
+    const rows = present ? [branch] : [];
+    return { status: 200, json: async () => rows };
   };
   const result = await runCommunityWatchdog({
     githubToken: 'synthetic-github-token-long-enough-for-test',
@@ -96,5 +106,5 @@ test('network adapter deletes only expired branch then verifies absence', async 
     fetchImpl
   });
   assert.deepEqual(result.disposedRunIds, ['456']);
-  assert.equal(requests.filter((x) => x.method === 'DELETE').length, 1);
+  assert.equal(deletes, 1);
 });

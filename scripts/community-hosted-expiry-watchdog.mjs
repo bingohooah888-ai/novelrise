@@ -119,6 +119,7 @@ async function getJson(url, token, fetchImpl, method = 'GET') {
     deny();
   }
   if (result?.status !== 200) deny();
+  if (method === 'DELETE') return null;
   try {
     return await result.json();
   } catch {
