@@ -5,7 +5,7 @@ import {
   registerCommunityWatchBeforeProvisioning
 } from '../scripts/community-hosted-watchdog-registration.mjs';
 
-test('untrusted inputs never register cleanup or make provider calls', async () => {
+test('untrusted cleanup registration makes no requests', async () => {
   let called = false;
   const fetchImpl = async () => {
     called = true;
