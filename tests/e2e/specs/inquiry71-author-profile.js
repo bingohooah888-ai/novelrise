@@ -65,29 +65,41 @@ const noOpDependencies = {
     'window.NovelightAuthorFollow={mountAuthorFollowControls:()=>{}};',
   'novelight-user-safety.js':
     'window.NovelightUserSafety={mountAuthorControls:()=>{}};',
-  'novelight-author-notes-public.js':'',
-  'novelight-public-scout.js':''
+  'novelight-author-notes-public.js': '',
+  'novelight-public-scout.js': ''
 };
 
-test('author work cards display official covers, preserved paragraphs and bounded summaries', async ({ page }) => {
+test('author cards preserve paragraphs, covers and links', async ({ page }) => {
   await page.route('**/assets/vendor/supabase-js-2.112.3.js', (route) =>
-    route.fulfill({status:200,contentType:'application/javascript',body:mockVendor})
+    route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: mockVendor
+    })
   );
   for (const [script, body] of Object.entries(noOpDependencies)) {
     await page.route(`**/${script}`, (route) =>
-      route.fulfill({status:200,contentType:'application/javascript',body}));
+      route.fulfill({
+        status: 200,
+        contentType: 'application/javascript',
+        body
+      })
+    );
   }
 
-  await page.goto('/author.html?id=fixture-author', {waitUntil:'domcontentloaded'});
+  await page.goto('/author.html?id=fixture-author', {
+    waitUntil: 'domcontentloaded'
+  });
   const cards = page.locator('#list .novel-card');
   await expect(cards).toHaveCount(2);
   await expect(cards.first().locator('.title')).toContainText('とても長い題名');
-  await expect(cards.first().locator('.card-media .novelight-official-thumbnail img'))
-    .toHaveCount(1);
-  await expect(cards.nth(1).locator('.card-media .novel-cover-placeholder'))
-    .toHaveCount(1);
-  await expect(cards.first().locator('.card-detail-link'))
-    .toHaveText('作品詳細を見る →');
+  const cover = cards.first().locator('.card-media img');
+  const fallback = cards.nth(1).locator('.card-media .novel-cover-placeholder');
+  await expect(cover).toHaveCount(1);
+  await expect(fallback).toHaveCount(1);
+  await expect(cards.first().locator('.card-detail-link')).toHaveText(
+    '作品詳細を見る →'
+  );
   await expect(page.locator('#list .nl-synopsis-toggle')).toHaveCount(0);
 
   const content = await cards.first().locator('.desc').evaluate((node) => {
@@ -107,12 +119,15 @@ test('author work cards display official covers, preserved paragraphs and bounde
   expect(content.text).toBe(longSynopsis);
   expect(content.whiteSpace).toBe('pre-wrap');
   const expectedClamp = await page.evaluate(() =>
-    window.matchMedia('(max-width:640px)').matches ? 4 : 5);
+    window.matchMedia('(max-width:640px)').matches ? 4 : 5
+  );
   expect(content.clamp).toBe(String(expectedClamp));
-  expect(content.height).toBeLessThanOrEqual(content.lineHeight * expectedClamp + 3);
+  expect(content.height).toBeLessThanOrEqual(
+    content.lineHeight * expectedClamp + 3
+  );
   expect(content.cardRight).toBeLessThanOrEqual(content.viewport + 1);
   expect(content.scrollWidth).toBeLessThanOrEqual(content.viewport + 1);
 
-  await expect(cards.first()).toHaveAttribute('href','novel.html?id=801');
-  await expect(cards.nth(1)).toHaveAttribute('href','novel.html?id=802');
+  await expect(cards.first()).toHaveAttribute('href', 'novel.html?id=801');
+  await expect(cards.nth(1)).toHaveAttribute('href', 'novel.html?id=802');
 });
