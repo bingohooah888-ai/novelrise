@@ -86,10 +86,7 @@ test('the signed watchdog receipt precedes provisioning', async () => {
 
 test('existing run branch blocks registration', async () => {
   const x = harness([{ name: 'community-hosted-456' }]);
-  await assert.rejects(
-    execute(x),
-    /COMMUNITY_WATCH_REGISTRATION_DENIED/u
-  );
+  await assert.rejects(execute(x), /COMMUNITY_WATCH_REGISTRATION_DENIED/u);
   assert.ok(!x.calls.includes('POST'));
 });
 
