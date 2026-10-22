@@ -427,6 +427,20 @@ begin
              terms_accepted_at = v_now,
              updated_at = v_now
        where id = v_entry.id;
+      -- Keep an immutable record of the original consent before replacement.
+      insert into public.novelight_contest_review_audit
+        (contest_id, entry_id, actor_user_id, action, reason_code,
+         evidence_summary)
+      values (
+        v_contest.id, v_entry.id, v_uid, 'terms_reaccepted',
+        'december_calendar_amendment',
+        pg_catalog.jsonb_build_object(
+          'previous_terms_version', v_entry.terms_accepted_version,
+          'previous_accepted_at', v_entry.terms_accepted_at,
+          'new_terms_version', v_contest.terms_version,
+          'new_accepted_at', v_now
+        )
+      );
       return pg_catalog.jsonb_build_object(
         'ok', true, 'state', 'terms_updated',
         'novel_id', v_work.id
