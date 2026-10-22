@@ -416,6 +416,92 @@ END
 $owner_notifications_plaza$;
 RESET ROLE;
 
+-- A normal logged-in user cannot invoke staff moderation or dismiss reports.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000002',true);
+DO $community_staff_grants$
+BEGIN
+ IF has_function_privilege(current_user,
+    'public.novelight_admin_community_moderate(uuid,text,text,uuid,text)','EXECUTE')
+    OR has_function_privilege(current_user,
+    'public.novelight_admin_community_dismiss_report(uuid,uuid)','EXECUTE') THEN
+    RAISE EXCEPTION 'Authenticated reader has administrative RPC access';
+ END IF;
+END
+$community_staff_grants$;
+-- Keep the post-level report independent of the prior comment report.
+SELECT public.novelight_community_report(
+ 'note:'||current_setting('novelight.test.community_note'),'CI post report for dismissal'
+);
+RESET ROLE;
+
+-- Exercise the real privileged RPCs in disposable CI only.
+-- Hiding a comment must resolve its report and restoring it must not
+-- reinstate the already-handled report. Dismissing a separate report
+-- must not hide the underlying post.
+SET LOCAL ROLE service_role;
+DO $community_staff_moderation$
+DECLARE v_comment uuid:=current_setting('novelight.test.community_comment')::uuid;
+ v_post_key text:='note:'||current_setting('novelight.test.community_note');
+ v_report_id uuid;
+ v_admin uuid:='c0a00000-0000-4000-8000-000000000001';
+BEGIN
+ PERFORM public.novelight_admin_community_moderate(
+   v_admin,'hide','comment:'||v_comment::text,NULL,'CI hide moderation');
+ IF NOT EXISTS (SELECT 1 FROM public.community_comments c
+                WHERE c.id=v_comment AND c.admin_hidden_at IS NOT NULL) THEN
+   RAISE EXCEPTION 'Moderator failed to hide a community comment';
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.community_reports r
+                WHERE r.post_key='comment:'||v_comment::text
+                  AND r.status='resolved') THEN
+   RAISE EXCEPTION 'Hiding a reported comment failed to resolve its report';
+ END IF;
+ PERFORM public.novelight_admin_community_moderate(
+   v_admin,'restore','comment:'||v_comment::text,NULL,'CI restore moderation');
+ IF NOT EXISTS (SELECT 1 FROM public.community_comments c
+                WHERE c.id=v_comment AND c.admin_hidden_at IS NULL) THEN
+   RAISE EXCEPTION 'Moderator failed to restore community comment';
+ END IF;
+ SELECT r.id INTO v_report_id FROM public.community_reports r
+ WHERE r.post_key=v_post_key
+  AND r.reporter_user_id='c0a00000-0000-4000-8000-000000000002';
+ IF v_report_id IS NULL OR public.novelight_admin_community_dismiss_report(
+   v_admin,v_report_id) IS DISTINCT FROM true THEN
+   RAISE EXCEPTION 'Moderator failed to dismiss separate post report';
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.community_reports r
+       WHERE r.id=v_report_id AND r.status='dismissed')
+    OR EXISTS(SELECT 1 FROM public.community_hidden_posts h
+       WHERE h.post_key=v_post_key) THEN
+   RAISE EXCEPTION 'Dismissing a report incorrectly hid the post';
+ END IF;
+ IF (SELECT count(*) FROM public.admin_operation_audit a
+     WHERE a.admin_user_id=v_admin AND a.action IN
+       ('community.hide','community.restore','community.dismiss_report'))<3 THEN
+   RAISE EXCEPTION 'Staff moderation actions were not audited';
+ END IF;
+END
+$community_staff_moderation$;
+RESET ROLE;
+
+-- Admin-hidden comments must not be readable via the ordinary RPC
+-- even while the containing post itself remains visible.
+-- Restore returns the same saved comment, without silently re-posting it.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000001',true);
+DO $community_restored_detail$
+DECLARE v_key text:='note:'||current_setting('novelight.test.community_note');
+ v_comment uuid:=current_setting('novelight.test.community_comment')::uuid;
+BEGIN
+ IF public.novelight_community_comment_detail(v_key,v_comment)->>'body'
+       IS DISTINCT FROM 'Edited fixture comment' THEN
+   RAISE EXCEPTION 'Restored comment missing from normal direct-detail RPC';
+ END IF;
+END
+$community_restored_detail$;
+RESET ROLE;
+
 -- The commenter cannot read or acknowledge the author's notifications;
 -- deleting their own comment must hide its deep link and revoke its alert.
 SET LOCAL ROLE authenticated;
