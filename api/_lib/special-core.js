@@ -50,7 +50,10 @@ export function permittedOgp(project, permissions, now = new Date()) {
   return Boolean(project.ogp_url && safeUrl(project.ogp_url, {external:true}) && permissions.some(p => p.kind === 'ogp' && !p.content_id && permissionIsValid(p, ogpRightsDigest(project), now)));
 }
 export function contentIsVisible(content, permissions, now = new Date()) {
-  if (content?.status !== 'published') return false;
+  // Fail closed: inline bodies currently bypass the standard reader's
+  // R15/R18 age gate and TTS settings. Publish only through existing
+  // episode or approved external-link modes until the reader integration lands.
+  if (content?.status !== 'published' || content.mode === 'inline') return false;
   return permissions.some(p => p.kind === 'content' && p.content_id === content.id && permissionIsValid(p, contentRightsDigest(content), now));
 }
 export function validateProject(input) {
