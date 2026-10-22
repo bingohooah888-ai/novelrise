@@ -523,6 +523,44 @@ $$;
 REVOKE ALL ON FUNCTION public.novelight_community_report(text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.novelight_community_report(text,text) TO authenticated;
 
+-- One report per reader per comment. Reuse the private report ledger while
+-- keeping post reports independent (their keys do not start with comment:).
+-- The comment and its parent post must both be visible to this caller.
+CREATE OR REPLACE FUNCTION public.novelight_community_report_comment(
+ p_comment_id uuid,p_reason text
+)
+RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE v_user uuid := (SELECT auth.uid()); v_reason text := btrim(coalesce(p_reason,''));
+BEGIN
+ IF v_user IS NULL THEN RAISE EXCEPTION 'Login required' USING errcode='42501'; END IF;
+ IF char_length(v_reason) NOT BETWEEN 1 AND 500 THEN
+   RAISE EXCEPTION 'Invalid report reason' USING errcode='22023';
+ END IF;
+ IF p_comment_id IS NULL OR NOT EXISTS(
+   SELECT 1 FROM public.community_comments c
+   WHERE c.id=p_comment_id AND c.deleted_at IS NULL AND c.admin_hidden_at IS NULL
+     AND public.novelight_community_interaction_allowed(c.post_key)
+     AND NOT EXISTS(SELECT 1 FROM public.user_blocks b
+       WHERE (b.blocker_user_id=v_user AND b.blocked_user_id=c.user_id)
+          OR (b.blocker_user_id=c.user_id AND b.blocked_user_id=v_user))
+     AND NOT EXISTS(SELECT 1 FROM public.user_mutes m
+       WHERE m.muter_user_id=v_user AND m.muted_user_id=c.user_id)
+ ) THEN
+   RAISE EXCEPTION 'Comment unavailable' USING errcode='42501';
+ END IF;
+ INSERT INTO public.community_reports(post_key,reporter_user_id,reason)
+ VALUES('comment:'||p_comment_id::text,v_user,v_reason)
+ ON CONFLICT(post_key,reporter_user_id) DO NOTHING;
+ RETURN true;
+END
+$$;
+REVOKE ALL ON FUNCTION public.novelight_community_report_comment(uuid,text)
+ FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.novelight_community_report_comment(uuid,text)
+ TO authenticated;
+
 -- Legacy note edits revoke previous global feed consent.
 CREATE OR REPLACE FUNCTION public.novelight_community_reset_note_consent()
 RETURNS trigger LANGUAGE plpgsql SET search_path = ''
@@ -718,6 +756,7 @@ CREATE OR REPLACE FUNCTION public.novelight_admin_community_moderate(
 RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
 AS $$
 DECLARE v_reason text:=btrim(coalesce(p_reason,'')); v_target text;
+ v_comment_id uuid; v_affected integer;
 BEGIN
  IF p_admin_user_id IS NULL OR p_action NOT IN
    ('hide','restore','restrict','unrestrict')
@@ -726,11 +765,28 @@ BEGIN
  END IF;
  IF p_action IN ('hide','restore') THEN
   IF p_post_key IS NULL OR char_length(p_post_key)>150
-    OR p_post_key !~ '^(novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[0-9a-f-]{36}|official:[0-9]+|ep:[0-9a-f-]{36}:[0-9]+:[0-9]+)$' THEN
+    OR p_post_key !~ '^(novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[0-9a-f-]{36}|official:[0-9]+|ep:[0-9a-f-]{36}:[0-9]+:[0-9]+|comment:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$' THEN
    RAISE EXCEPTION 'Invalid post key' USING errcode='22023';
   END IF;
   v_target:=p_post_key;
-  IF p_action='hide' THEN
+  IF left(p_post_key,8)='comment:' THEN
+   v_comment_id:=substring(p_post_key FROM 9)::uuid;
+   IF p_action='hide' THEN
+     UPDATE public.community_comments SET admin_hidden_at=now()
+      WHERE id=v_comment_id AND deleted_at IS NULL;
+   ELSE
+     UPDATE public.community_comments SET admin_hidden_at=NULL
+      WHERE id=v_comment_id AND deleted_at IS NULL;
+   END IF;
+   GET DIAGNOSTICS v_affected = ROW_COUNT;
+   IF v_affected<>1 THEN
+     RAISE EXCEPTION 'Comment unavailable' USING errcode='22023';
+   END IF;
+   IF p_action='hide' THEN
+     UPDATE public.community_reports SET status='resolved',updated_at=now()
+      WHERE post_key=p_post_key AND status IN ('pending','reviewing');
+   END IF;
+  ELSIF p_action='hide' THEN
    INSERT INTO public.community_hidden_posts(post_key,hidden_by,reason)
      VALUES(p_post_key,p_admin_user_id,v_reason)
      ON CONFLICT(post_key) DO UPDATE SET hidden_by=excluded.hidden_by,
@@ -758,7 +814,10 @@ BEGIN
  INSERT INTO public.admin_operation_audit(
   admin_user_id,action,resource_type,resource_id,metadata)
  VALUES(p_admin_user_id,'community.'||p_action,
-   CASE WHEN p_action IN ('hide','restore') THEN 'community_post' ELSE 'community_user' END,
+   CASE WHEN left(coalesce(p_post_key,''),8)='comment:' AND
+     p_action IN ('hide','restore') THEN 'community_comment'
+     WHEN p_action IN ('hide','restore') THEN 'community_post'
+     ELSE 'community_user' END,
    v_target,jsonb_build_object('reason',v_reason));
  RETURN true;
 END

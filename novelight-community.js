@@ -164,6 +164,69 @@
           input.focus();
         });
         c.append(replyButton);
+        const reportComment = el('button', 'community-action', 'コメントを通報');
+        reportComment.type = 'button';
+        reportComment.setAttribute('aria-expanded', 'false');
+        const reportForm = el('form', 'community-comment-report');
+        reportForm.hidden = true;
+        const reason = el('textarea');
+        reason.required = true;
+        reason.maxLength = 500;
+        reason.rows = 2;
+        reason.placeholder = '通報理由（500文字以内）';
+        reason.setAttribute('aria-label', 'コメントの通報理由');
+        const send = el('button', 'community-report-submit', '送信');
+        send.type = 'submit';
+        const cancel = el('button', 'community-action', 'キャンセル');
+        cancel.type = 'button';
+        const reportFeedback = el('p', 'community-comment-feedback');
+        reportFeedback.setAttribute('role', 'status');
+        reportFeedback.hidden = true;
+        reportComment.addEventListener('click', () => {
+          reportForm.hidden = !reportForm.hidden;
+          reportComment.setAttribute('aria-expanded', String(!reportForm.hidden));
+          reportFeedback.hidden = true;
+          if (!reportForm.hidden) reason.focus();
+        });
+        cancel.addEventListener('click', () => {
+          reportForm.hidden = true;
+          reportComment.setAttribute('aria-expanded', 'false');
+          reportComment.focus();
+        });
+        reportForm.addEventListener('submit', async event => {
+          event.preventDefault();
+          const text = reason.value.trim();
+          if (!text) {
+            reason.setCustomValidity('通報理由を入力してください');
+            reason.reportValidity();
+            reason.setCustomValidity('');
+            return;
+          }
+          send.disabled = true;
+          cancel.disabled = true;
+          try {
+            if (!await authed()) return requireLogin();
+            const response = await rpc('novelight_community_report_comment', {
+              p_comment_id: comment.id, p_reason: text
+            });
+            if (response !== true) throw new Error('Comment report rejected');
+            reportForm.hidden = true;
+            reportComment.textContent = '通報済み';
+            reportComment.disabled = true;
+            reportComment.setAttribute('aria-expanded', 'false');
+            reportFeedback.textContent = '通報を受け付けました';
+            reportFeedback.hidden = false;
+          } catch (error) {
+            console.warn('community comment report failed', error);
+            reportFeedback.textContent = '通報できませんでした。再度お試しください。';
+            reportFeedback.hidden = false;
+          } finally {
+            send.disabled = false;
+            cancel.disabled = false;
+          }
+        });
+        reportForm.append(reason, send, cancel);
+        c.append(reportComment, reportForm, reportFeedback);
         container.append(c);
       }
       if (data.length >= 20) {

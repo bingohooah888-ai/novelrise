@@ -1,7 +1,7 @@
 import { requireAdmin } from './admin-auth.js';
 
 const KEY_PATTERN =
-  /^(?:novel:\d+|note:\d+|curation:\d+|seed:[0-9a-f-]{36}|official:\d+|ep:[0-9a-f-]{36}:\d+:\d+)$/i;
+  /^(?:novel:\d+|note:\d+|curation:\d+|seed:[0-9a-f-]{36}|official:\d+|comment:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|ep:[0-9a-f-]{36}:\d+:\d+)$/i;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
 const POST_ACTIONS = new Set(['hide', 'restore']);
@@ -12,7 +12,7 @@ function fail(res, status, message) {
 }
 
 async function loadCommunityState(supabase) {
-  const [reports, hidden, restricted] = await Promise.all([
+  const [reports, hidden, restricted, hiddenComments] = await Promise.all([
     supabase
       .from('community_reports')
       .select('id,post_key,reporter_user_id,reason,status,created_at')
@@ -28,14 +28,27 @@ async function loadCommunityState(supabase) {
       .from('community_user_restrictions')
       .select('user_id,expires_at,reason,created_at')
       .order('created_at', { ascending: false })
+      .limit(50),
+    supabase
+      .from('community_comments')
+      .select('id,post_key,body,admin_hidden_at')
+      .not('admin_hidden_at','is',null)
+      .order('admin_hidden_at', { ascending: false })
       .limit(50)
   ]);
-  for (const result of [reports, hidden, restricted]) {
+  for (const result of [reports, hidden, restricted, hiddenComments]) {
     if (result.error) throw result.error;
   }
   return {
     reports: reports.data ?? [],
-    hidden: hidden.data ?? [],
+    hidden: [
+      ...(hidden.data ?? []),
+      ...(hiddenComments.data ?? []).map((row) => ({
+        post_key: 'comment:' + row.id,
+        reason: 'コメント: ' + String(row.body || '').slice(0,80),
+        hidden_at: row.admin_hidden_at
+      }))
+    ],
     restrictions: restricted.data ?? []
   };
 }
