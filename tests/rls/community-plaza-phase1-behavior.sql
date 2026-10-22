@@ -68,8 +68,63 @@ BEGIN
  IF v_result->>'id' IS NULL THEN
    RAISE EXCEPTION 'Reader comment on public note failed';
  END IF;
+ PERFORM set_config('novelight.test.community_comment',v_result->>'id',true);
 END
 $reader_plaza$;
+RESET ROLE;
+
+
+-- Recently added read/edit APIs must be scoped to one post and its author.
+-- Keep all fixtures transaction-local; never touch hosted users or data.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000002',true);
+DO $comment_owner_plaza$
+DECLARE v_key text:='note:'||current_setting('novelight.test.community_note');
+ v_id uuid:=current_setting('novelight.test.community_comment')::uuid;
+ v_result jsonb;
+BEGIN
+ v_result:=public.novelight_community_comment_detail(v_key,v_id);
+ IF v_result->>'body' IS DISTINCT FROM 'First shared fixture comment'
+    OR (v_result->>'is_mine')::boolean IS DISTINCT FROM true THEN
+   RAISE EXCEPTION 'Owner comment detail is missing or incorrect';
+ END IF;
+ IF public.novelight_community_edit_my_comment(v_id,'Edited fixture comment') IS DISTINCT FROM true THEN
+   RAISE EXCEPTION 'Comment author failed to edit';
+ END IF;
+ v_result:=public.novelight_community_comment_detail(v_key,v_id);
+ IF v_result->>'body' IS DISTINCT FROM 'Edited fixture comment'
+    OR v_result->>'edited_at' IS NULL THEN
+   RAISE EXCEPTION 'Comment edit not visible through detail RPC';
+ END IF;
+ IF public.novelight_community_comment_detail('note:0',v_id) IS NOT NULL THEN
+   RAISE EXCEPTION 'Comment detail accepted a different post key';
+ END IF;
+ BEGIN
+   PERFORM public.novelight_community_edit_my_comment(v_id,'Second rapid edit');
+   RAISE EXCEPTION 'Comment edit bypassed rate limit';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END
+$comment_owner_plaza$;
+RESET ROLE;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000001',true);
+DO $comment_other_user_plaza$
+DECLARE v_id uuid:=current_setting('novelight.test.community_comment')::uuid;
+BEGIN
+ BEGIN
+   PERFORM public.novelight_community_edit_my_comment(v_id,'Illicit other-user edit');
+   RAISE EXCEPTION 'Non-owner edited a community comment';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ BEGIN
+   PERFORM public.novelight_community_delete_my_comment(v_id);
+   RAISE EXCEPTION 'Non-owner deleted a community comment';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END
+$comment_other_user_plaza$;
 RESET ROLE;
 
 -- Existing Block controls must apply to both feed and direct comments/actions.
@@ -88,6 +143,10 @@ BEGIN
  ) THEN RAISE EXCEPTION 'Blocked author leaked to reader feed'; END IF;
  IF jsonb_array_length(public.novelight_community_comments(v_key,20))<>0 THEN
    RAISE EXCEPTION 'Blocked author direct comments RPC leaked';
+ END IF;
+ IF public.novelight_community_comment_detail(
+   v_key,current_setting('novelight.test.community_comment')::uuid) IS NOT NULL THEN
+   RAISE EXCEPTION 'Blocked author comment detail leaked';
  END IF;
  IF EXISTS(
    SELECT 1 FROM jsonb_array_elements(public.novelight_community_feed(30,0,false)) item
@@ -158,6 +217,10 @@ BEGIN
  END IF;
  IF jsonb_array_length(public.novelight_community_comments(v_key,20))<>0 THEN
    RAISE EXCEPTION 'Hidden post comments leaked via RPC';
+ END IF;
+ IF public.novelight_community_comment_detail(
+   v_key,current_setting('novelight.test.community_comment')::uuid) IS NOT NULL THEN
+   RAISE EXCEPTION 'Admin-hidden post comment detail leaked';
  END IF;
  BEGIN
    PERFORM public.novelight_community_toggle_like(v_key);

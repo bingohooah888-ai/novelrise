@@ -38,6 +38,25 @@ BEGIN
    OR to_regprocedure('public.novelight_community_feed(integer,integer,boolean)') IS NULL THEN
    RAISE EXCEPTION 'Required community RPC signature missing';
  END IF;
+ IF to_regprocedure('public.novelight_community_edit_my_comment(uuid,text)') IS NULL
+    OR to_regprocedure('public.novelight_community_delete_my_comment(uuid)') IS NULL
+    OR to_regprocedure('public.novelight_community_comment_detail(text,uuid)') IS NULL THEN
+   RAISE EXCEPTION 'Community comment management RPC missing';
+ END IF;
+ IF has_function_privilege('anon',
+   'public.novelight_community_edit_my_comment(uuid,text)','EXECUTE')
+   OR has_function_privilege('anon',
+   'public.novelight_community_delete_my_comment(uuid)','EXECUTE')
+   OR NOT has_function_privilege('authenticated',
+   'public.novelight_community_edit_my_comment(uuid,text)','EXECUTE')
+   OR NOT has_function_privilege('authenticated',
+   'public.novelight_community_delete_my_comment(uuid)','EXECUTE')
+   OR NOT has_function_privilege('anon',
+   'public.novelight_community_comment_detail(text,uuid)','EXECUTE')
+   OR NOT has_function_privilege('authenticated',
+   'public.novelight_community_comment_detail(text,uuid)','EXECUTE') THEN
+   RAISE EXCEPTION 'Community comment RPC grants unsafe';
+ END IF;
  IF has_function_privilege('anon',
    'public.novelight_admin_community_moderate(uuid,text,text,uuid,text)','EXECUTE')
    OR has_function_privilege('authenticated',
