@@ -293,7 +293,7 @@ async function kakuyomuEpisode(url) {
     if (body) break;
   }
   if (!body) throw new Error("Kakuyomu body not found: " + finalUrl);
-  return { url: finalUrl, title, body };
+  return { url: finalUrl || url, title, body };
 }
 
 
