@@ -468,12 +468,19 @@ $community_hidden_moderation$;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000001',true);
 DO $community_hidden_detail$
+DECLARE v_alerts jsonb;
 BEGIN
  IF public.novelight_community_comment_detail(
     'note:'||current_setting('novelight.test.community_note'),
     current_setting('novelight.test.community_comment')::uuid
  ) IS NOT NULL THEN
    RAISE EXCEPTION 'Hidden comment leaked from direct-detail RPC';
+ END IF;
+ v_alerts:=public.novelight_community_my_notifications(40);
+ IF jsonb_array_length(v_alerts)<>1
+    OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_alerts) item
+                   WHERE item->>'kind'='like') THEN
+   RAISE EXCEPTION 'Moderated comment leaked through notification inbox';
  END IF;
 END
 $community_hidden_detail$;
@@ -539,10 +546,17 @@ SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000001'
 DO $community_restored_detail$
 DECLARE v_key text:='note:'||current_setting('novelight.test.community_note');
  v_comment uuid:=current_setting('novelight.test.community_comment')::uuid;
+ v_alerts jsonb;
 BEGIN
  IF public.novelight_community_comment_detail(v_key,v_comment)->>'body'
        IS DISTINCT FROM 'Edited fixture comment' THEN
    RAISE EXCEPTION 'Restored comment missing from normal direct-detail RPC';
+ END IF;
+ v_alerts:=public.novelight_community_my_notifications(40);
+ IF jsonb_array_length(v_alerts)<>2
+    OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_alerts) item
+                   WHERE item->>'kind'='comment') THEN
+   RAISE EXCEPTION 'Restored comment did not recover its original notification';
  END IF;
 END
 $community_restored_detail$;
