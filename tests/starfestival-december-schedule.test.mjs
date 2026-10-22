@@ -23,8 +23,9 @@ test('original contest key and existing entries remain unchanged', () => {
   assert.ok(migration.includes('novelight_contest_read_events'));
   assert.ok(migration.includes('novelight_contest_rank_snapshots'));
   assert.ok(migration.includes('novelight_contest_awards'));
-  assert.ok(!migration.includes('delete from public.novelight_contest_entries'));
-  assert.ok(!migration.includes('update public.novelight_contest_entries'));
+  const protectedTable = 'public.novelight_contest_entries';
+  assert.ok(!migration.includes('delete from ' + protectedTable));
+  assert.ok(!migration.includes('update ' + protectedTable));
   assert.ok(migration.includes('december-2026-v2'));
 });
 
