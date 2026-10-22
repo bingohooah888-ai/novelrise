@@ -16,6 +16,14 @@
     @media(max-width:700px){
       main{padding:22px 12px 48px}
       .head{align-items:flex-start;flex-direction:column;gap:10px;margin-bottom:12px}
+      /* The shared title-frame rule uses flex-basis:620px for desktop rows.
+         In a mobile column that becomes a 620px HEIGHT; reset it locally. */
+      html body#novelight-schedule-page #main-content > .head > div:first-child{
+        flex:0 1 auto!important;
+        width:100%!important;
+        max-width:100%!important;
+        min-height:0!important;
+      }
       .head h1{font-size:25px}
       .sub{overflow-wrap:anywhere}
       .head-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
