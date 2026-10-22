@@ -97,3 +97,7 @@
 .community-follow-toggle{border:1px solid #d6a447;border-radius:7px;background:#25364c;color:#f2dfb6;padding:7px 11px;cursor:pointer;font:inherit;font-size:.81rem}
 .community-follow-toggle:disabled,.community-follow-open:disabled{opacity:.65;cursor:wait}
 .community-follow-panel .community-more[hidden]{display:none}
+
+.community-comment-form textarea{background:#081626;color:#fff;border:1px solid #5d5034;border-radius:7px;padding:9px;min-height:76px;resize:vertical;width:100%;font:inherit;font-size:.86rem;line-height:1.6;box-sizing:border-box}
+.community-comment-counter{flex:1;align-self:center;font-size:.78rem;color:#adb9c7}
+.community-comments-refresh{display:block;margin:8px 0;color:#e6bd6e}

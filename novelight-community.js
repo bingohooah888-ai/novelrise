@@ -23,6 +23,7 @@
   let filterRevision = 0;
   let pendingReset = false;
   const followStateCache = new Map();
+  const commentDrafts = new Map();
   const limit = isHome ? (window.matchMedia('(max-width:640px)').matches ? 2 : 3) : 15;
   const dateString = value => {
     const parsed = new Date(value);
@@ -242,25 +243,54 @@
       });
       if (!Array.isArray(data)) throw new Error('Invalid comment list');
       container.replaceChildren();
+      // Drafts live only in this page, not in a profile or on the server.
+      // Keep them intact when expanding, refreshing or reopening comments.
+      const postKey = String(row.post_key || '');
+      let draft = commentDrafts.get(postKey);
+      if (!draft) {
+        draft = {body:'',parentId:null,parentName:''};
+        commentDrafts.set(postKey,draft);
+      }
       const form = el('form', 'community-comment-form');
-      const input = el('input');
+      const input = el('textarea');
       input.required = true;
+      input.rows = 3;
       input.maxLength = 500;
-      input.placeholder = 'コメントを書く（500文字以内）';
+      input.value = draft.body;
       input.setAttribute('aria-label', 'コメント');
-      let replyTo = null;
+      const counter = el('span','community-comment-counter');
+      const updateCounter = () => {
+        counter.textContent = '残り' + (500 - input.value.length) + '文字';
+      };
+      input.addEventListener('input', () => {
+        draft.body = input.value;
+        updateCounter();
+      });
+      input.addEventListener('keydown', event => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !event.isComposing) {
+          event.preventDefault();
+          form.requestSubmit();
+        }
+      });
+      updateCounter();
+      let replyTo = draft.parentId;
       const replyHint = el('p', 'community-reply-target');
-      replyHint.hidden = true;
       const cancelReply = el('button', 'community-action', '返信を取り消す');
       cancelReply.type = 'button';
-      cancelReply.hidden = true;
+      function syncReply() {
+        replyHint.hidden = !replyTo;
+        cancelReply.hidden = !replyTo;
+        replyHint.textContent = replyTo ? (draft.parentName || 'ユーザー') + 'さんに返信中' : '';
+        input.placeholder = replyTo ? '返信を書く（500文字以内）' : 'コメントを書く（500文字以内）';
+      }
       cancelReply.addEventListener('click', () => {
         replyTo = null;
-        replyHint.hidden = true;
-        cancelReply.hidden = true;
-        input.placeholder = 'コメントを書く（500文字以内）';
+        draft.parentId = null;
+        draft.parentName = '';
+        syncReply();
         input.focus();
       });
+      syncReply();
       for (const comment of Array.isArray(data) ? data : []) {
         const c = el('div', 'community-comment');
         const author = el('strong', '', (comment.parent_comment_id ? '↳ ' : '') + (comment.display_name || 'ユーザー'));
@@ -271,10 +301,9 @@
           const id = String(comment.id || '');
           if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id)) return;
           replyTo = id;
-          replyHint.textContent = (comment.display_name || 'ユーザー') + 'さんに返信中';
-          replyHint.hidden = false;
-          cancelReply.hidden = false;
-          input.placeholder = '返信を書く（500文字以内）';
+          draft.parentId = id;
+          draft.parentName = comment.display_name || 'ユーザー';
+          syncReply();
           input.focus();
         });
         c.append(replyButton);
@@ -367,6 +396,10 @@
         }
         container.append(c);
       }
+      const refresh = el('button','community-action community-comments-refresh','コメントを更新');
+      refresh.type = 'button';
+      refresh.addEventListener('click', () => { void comments(container,row,onPosted,displayLimit); });
+      container.append(refresh);
       if (data.length >= 20) {
         if (displayLimit === 20) {
           const older = el('button', 'community-action community-comments-older', '過去のコメントも表示（最大50件）');
@@ -382,7 +415,7 @@
       const feedback = el('p', 'community-comment-feedback');
       feedback.setAttribute('role','status');
       feedback.hidden = true;
-      form.append(replyHint, cancelReply, input, submit, feedback);
+      form.append(replyHint, cancelReply, input, counter, submit, feedback);
       form.addEventListener('submit', async evt => {
         evt.preventDefault();
         submit.disabled = true;
@@ -399,6 +432,7 @@
           await rpc('novelight_community_post_comment',{
             p_post_key:row.post_key,p_body:body,p_parent_comment_id:replyTo
           });
+          commentDrafts.delete(postKey);
           if (typeof onPosted === 'function') onPosted();
           await comments(container,row,onPosted,displayLimit);
         } catch(error) {

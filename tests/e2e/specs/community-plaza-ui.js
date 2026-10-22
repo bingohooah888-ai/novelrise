@@ -182,7 +182,13 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await expect(card.locator('.community-comment')).toContainText(
     '既存コメント'
   );
-  await card.locator('.community-comment-form input').fill('テストの返信です');
+  const editor = card.locator('.community-comment-form textarea');
+  await editor.fill('テストの返信です\n2行目です');
+  await expect(card.locator('.community-comment-counter')).toContainText('残り');
+  await card.locator('.community-comments-refresh').click();
+  await expect(card.locator('.community-comment-form textarea')).toHaveValue(
+    'テストの返信です\n2行目です'
+  );
   await card.locator('.community-comment-form button[type="submit"]').click();
   // Desktop and Pixel-sized mobile must keep the interactive card within the
   // viewport, including the expanded comments/form state.
