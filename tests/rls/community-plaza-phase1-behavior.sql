@@ -364,4 +364,110 @@ END
 $not_owner_plaza$;
 RESET ROLE;
 
+-- Only authenticated actors may report comments or acknowledge notifications.
+-- Readers must never be able to enumerate another user's inbox or private rows.
+DO $community_rpc_grants$
+BEGIN
+ IF has_function_privilege('anon',
+     'public.novelight_community_report_comment(uuid,text)','EXECUTE')
+    OR has_function_privilege('anon',
+     'public.novelight_community_my_notifications(integer)','EXECUTE')
+    OR has_function_privilege('anon',
+     'public.novelight_community_mark_notifications_read(bigint[])','EXECUTE')
+    OR NOT has_function_privilege('authenticated',
+     'public.novelight_community_report_comment(uuid,text)','EXECUTE')
+    OR NOT has_function_privilege('authenticated',
+     'public.novelight_community_my_notifications(integer)','EXECUTE')
+    OR NOT has_function_privilege('authenticated',
+     'public.novelight_community_mark_notifications_read(bigint[])','EXECUTE') THEN
+   RAISE EXCEPTION 'Comment reports or notification RPC grants unsafe';
+ END IF;
+END
+$community_rpc_grants$;
+
+-- A reader's like and comment should generate distinct, owner-only alerts.
+-- Editing the original comment must not create additional notifications.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000001',true);
+DO $owner_notifications_plaza$
+DECLARE v_alerts jsonb; v_ids bigint[];
+ v_comment uuid:=current_setting('novelight.test.community_comment')::uuid;
+BEGIN
+ v_alerts:=public.novelight_community_my_notifications(40);
+ IF jsonb_array_length(v_alerts)<>2
+   OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_alerts) e WHERE e->>'kind'='like')
+   OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_alerts) e WHERE e->>'kind'='comment') THEN
+   RAISE EXCEPTION 'Owner notifications missing, duplicated, or misclassified';
+ END IF;
+ SELECT array_agg((e->>'id')::bigint) INTO v_ids
+   FROM jsonb_array_elements(v_alerts) e;
+ PERFORM set_config('novelight.test.community_owner_alert',v_ids[1]::text,true);
+ IF public.novelight_community_mark_notifications_read(v_ids)<>2
+    OR public.novelight_community_mark_notifications_read(v_ids)<>0 THEN
+   RAISE EXCEPTION 'Owner notification read acknowledgement not idempotent';
+ END IF;
+ IF public.novelight_community_report_comment(v_comment,'Report fixture comment')
+      IS DISTINCT FROM true
+    OR public.novelight_community_report_comment(v_comment,'Duplicate fixture report')
+      IS DISTINCT FROM true THEN
+   RAISE EXCEPTION 'Visible comment report failed';
+ END IF;
+END
+$owner_notifications_plaza$;
+RESET ROLE;
+
+-- The commenter cannot read or acknowledge the author's notifications;
+-- deleting their own comment must hide its deep link and revoke its alert.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000002',true);
+DO $reader_notification_delete_plaza$
+DECLARE v_key text:='note:'||current_setting('novelight.test.community_note');
+ v_comment uuid:=current_setting('novelight.test.community_comment')::uuid;
+ v_alert bigint:=current_setting('novelight.test.community_owner_alert')::bigint;
+BEGIN
+ IF jsonb_array_length(public.novelight_community_my_notifications(40))<>0 THEN
+   RAISE EXCEPTION 'Another user notifications leaked to commenter';
+ END IF;
+ IF public.novelight_community_mark_notifications_read(ARRAY[v_alert])<>0 THEN
+   RAISE EXCEPTION 'Commenter acknowledged another user notification';
+ END IF;
+ IF public.novelight_community_delete_my_comment(v_comment) IS DISTINCT FROM true THEN
+   RAISE EXCEPTION 'Comment owner failed to delete';
+ END IF;
+ IF public.novelight_community_comment_detail(v_key,v_comment) IS NOT NULL
+   OR EXISTS(SELECT 1 FROM jsonb_array_elements(
+     public.novelight_community_comments(v_key,20)) item
+     WHERE item->>'id'=v_comment::text) THEN
+   RAISE EXCEPTION 'Deleted comment leaked through direct read RPCs';
+ END IF;
+ BEGIN
+   PERFORM public.novelight_community_report_comment(v_comment,'Deleted comment');
+   RAISE EXCEPTION 'Deleted comment accepted new report';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ BEGIN
+   PERFORM public.novelight_community_delete_my_comment(v_comment);
+   RAISE EXCEPTION 'Deleted comment was deleted twice';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END
+$reader_notification_delete_plaza$;
+RESET ROLE;
+
+DO $deleted_comment_effects_plaza$
+DECLARE v_comment uuid:=current_setting('novelight.test.community_comment')::uuid;
+ v_reports integer; v_deleted_alerts integer;
+BEGIN
+ SELECT count(*) INTO v_reports FROM public.community_reports
+ WHERE post_key='comment:'||v_comment::text
+  AND reporter_user_id='c0a00000-0000-4000-8000-000000000001';
+ IF v_reports<>1 THEN RAISE EXCEPTION 'Duplicate comment report stored'; END IF;
+ SELECT count(*) INTO v_deleted_alerts FROM public.community_notifications
+ WHERE event_key='comment:'||v_comment::text;
+ IF v_deleted_alerts<>0 THEN
+   RAISE EXCEPTION 'Deleted comment notification was not removed';
+ END IF;
+END
+$deleted_comment_effects_plaza$;
+
 ROLLBACK;
