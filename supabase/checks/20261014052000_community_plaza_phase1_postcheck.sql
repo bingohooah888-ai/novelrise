@@ -38,6 +38,15 @@ BEGIN
     WHERE tgrelid='public.reader_curation_lists'::regclass
       AND tgname='community_curation_visibility_guard' AND NOT tgisinternal)
  THEN RAISE EXCEPTION 'Consent invalidation triggers missing'; END IF;
+ IF to_regprocedure('public.novelight_community_mark_notifications_read(bigint[])') IS NULL THEN
+   RAISE EXCEPTION 'Missing notification read acknowledgement RPC';
+ END IF;
+ IF has_function_privilege('anon',
+    'public.novelight_community_mark_notifications_read(bigint[])','EXECUTE')
+ OR NOT has_function_privilege('authenticated',
+    'public.novelight_community_mark_notifications_read(bigint[])','EXECUTE') THEN
+   RAISE EXCEPTION 'Notification read acknowledgement permission mismatch';
+ END IF;
  IF has_function_privilege('anon',
    'public.novelight_admin_community_metrics(integer)','execute')
  OR has_function_privilege('authenticated',

@@ -28,6 +28,7 @@ DROP FUNCTION IF EXISTS public.novelight_my_seed_community_shares();
 DROP FUNCTION IF EXISTS public.novelight_set_my_curation_community_share(bigint,boolean);
 DROP FUNCTION IF EXISTS public.novelight_manage_my_curation_lists_v2();
 DROP FUNCTION IF EXISTS public.novelight_admin_community_moderate(uuid,text,text,uuid,text);
+DROP FUNCTION IF EXISTS public.novelight_community_mark_notifications_read(bigint[]);
 DROP FUNCTION IF EXISTS public.novelight_community_my_notifications(integer);
 DROP FUNCTION IF EXISTS public.novelight_community_post_author(text);
 DROP FUNCTION IF EXISTS public.novelight_manage_my_author_notes_v2(integer);

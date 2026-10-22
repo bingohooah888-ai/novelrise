@@ -12,6 +12,7 @@ BEGIN
    END IF;
  END LOOP;
  IF to_regprocedure('public.novelight_community_feed(integer,integer,boolean)') IS NOT NULL
+    OR to_regprocedure('public.novelight_community_mark_notifications_read(bigint[])') IS NOT NULL
     OR to_regprocedure('public.novelight_admin_community_metrics(integer)') IS NOT NULL
     OR to_regprocedure('public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean,boolean)') IS NOT NULL THEN
    RAISE EXCEPTION 'Rollback retained community RPC';
