@@ -17,17 +17,17 @@ function fixture() {
   const adoption = {
     operation: 'adopt-november-contest-terms',
     confirmation: 'CHAT_CONTEST_TERMS_ADOPTED',
-    termsVersion: 'november-2026-v1',
+    termsVersion: 'december-2026-v2',
     termsUrl: 'https://novelight.jp/contest-terms',
     termsSourceSha: TERMS
   };
   const payload = {
     version: 1,
-    operation: 'open-november-contest-registration',
+    operation: 'open-december-contest-registration',
     requestId: 'contest-regopen-test-evidence',
     mainSha: MAIN,
     contestKey: 'novelight-november-2026',
-    termsVersion: 'november-2026-v1',
+    termsVersion: 'december-2026-v2',
     termsUrl: 'https://novelight.jp/contest-terms',
     termsSourceSha: TERMS,
     termsAdoptionCommentId: 10001,
