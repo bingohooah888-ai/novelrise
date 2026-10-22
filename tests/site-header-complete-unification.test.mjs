@@ -29,7 +29,9 @@ test('managed public headers include the SPECIAL navigation link', () => {
     '料金プラン'
   ];
   let audited = 0;
-  const managed = new Set(JSON.parse(read('shared/header/manifest.json')).managed);
+  const managed = new Set(
+    JSON.parse(read('shared/header/manifest.json')).managed
+  );
   for (const page of htmlFiles) {
     // Standalone campaign/utility headers are intentionally outside the shared manifest.
     if (!managed.has(page)) continue;
