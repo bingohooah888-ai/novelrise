@@ -9,6 +9,10 @@
 - Dedicated existing Staging ref `wmlzjgvxgoyrovdhbqbg`; never Production
   `fiepaguycecrredwrcwx`. Existing branch status `MIGRATIONS_FAILED`,
   project `ACTIVE_HEALTHY`.
+- Existing routine baseline: 17 community/related functions,
+  deterministic catalog MD5 `a720cfed2ffe976cecd071589ccb40e5`.
+  The trusted workflow and atomic guard both reject function-body drift
+  before replay so later edits cannot be overwritten silently.
 - Ledger: exactly 188 migration versions; version `20261014052000` is
   **already recorded exactly once**. Sorted comma-joined ledger MD5:
   `3851f0dfc1e5bdb6bc7c0e317c5c4fd4`.

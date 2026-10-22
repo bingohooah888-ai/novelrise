@@ -101,6 +101,18 @@ test('incomplete ledger and extra fields fail closed', () => {
   deny(full, /incomplete/u);
   deny(changeRequest(fixture(), 'extra', true), /unexpected fields/u);
 });
+test('Staging routine catalog guard rejects changed definitions', () => {
+  const guard = renderer.composeRoutineBaselineGuard();
+  const count = renderer.REVIEWED_STAGING_ROUTINE_COUNT;
+  const digest = renderer.REVIEWED_STAGING_ROUTINE_DIGEST;
+  assert.equal(count, 17);
+  assert.match(digest, /^[0-9a-f]{32}$/u);
+  assert.match(guard, /Staging routine fingerprint drift/u);
+  assert.match(guard, /pg_get_functiondef/u);
+  assert.match(guard, /pg_get_function_identity_arguments/u);
+  assert.match(guard, /novelight_save_my_author_note_v2/u);
+  assert.match(guard, new RegExp(digest, 'u'));
+});
 test('unpinned SQL refused and Git blob hash verified', () => {
   const hash = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
   assert.equal(renderer.gitBlobHash(''), hash);

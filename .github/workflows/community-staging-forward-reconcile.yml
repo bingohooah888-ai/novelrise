@@ -154,6 +154,22 @@ jobs:
           psql "$STAGING_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 \
             -c "SELECT md5(string_agg(version, ',' ORDER BY version)) FROM supabase_migrations.schema_migrations" \
             | grep -Fxq 3851f0dfc1e5bdb6bc7c0e317c5c4fd4
+          psql "$STAGING_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT count(*)::text || '|' || md5(string_agg(
+              p.proname || '(' || pg_get_function_identity_arguments(p.oid) ||
+              ')' || ':' || md5(pg_get_functiondef(p.oid)), '|'
+              ORDER BY p.proname, pg_get_function_identity_arguments(p.oid)))
+              FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+              WHERE n.nspname='public'
+              AND (p.proname LIKE 'novelight_community_%'
+              OR p.proname LIKE 'novelight_admin_community_%'
+              OR p.proname IN (
+               'novelight_save_my_author_note_v2',
+               'novelight_manage_my_author_notes_v2',
+               'novelight_manage_my_curation_lists_v2',
+               'novelight_set_my_curation_community_share',
+               'novelight_curation_share_reset_private'))" \
+            | grep -Fxq '17|a720cfed2ffe976cecd071589ccb40e5'
       - name: Repeat exact refs before the ONE guarded atomic SQL transaction
         env:
           GH_TOKEN: ${{ github.token }}

@@ -8,6 +8,9 @@ export const REVIEWED_MIGRATION_BLOB =
   'df651446da99e299005b4c8ec262c528bf477922';
 export const REVIEWED_STAGING_LEDGER_DIGEST =
   '3851f0dfc1e5bdb6bc7c0e317c5c4fd4';
+export const REVIEWED_STAGING_ROUTINE_COUNT = 17;
+export const REVIEWED_STAGING_ROUTINE_DIGEST =
+  'a720cfed2ffe976cecd071589ccb40e5';
 const APPROVED_FILE = '/tmp/novelight-community-reviewed.sql';
 
 export function gitBlobHash(content) {
@@ -15,6 +18,44 @@ export function gitBlobHash(content) {
   return createHash('sha1').update(
     Buffer.from('blob ' + data.length + '\0')
   ).update(data).digest('hex');
+}
+
+
+// The existing routines are checked before any schema change. A version
+// ledger alone cannot detect later changes to function definitions.
+export function composeRoutineBaselineGuard() {
+  const fingerprintSQL = [
+    'SELECT count(*)::integer, md5(string_agg(',
+    " p.proname || '(' || pg_get_function_identity_arguments(p.oid)",
+    " || ')' || ':' || md5(pg_get_functiondef(p.oid)), '|'",
+    ' ORDER BY p.proname, pg_get_function_identity_arguments(p.oid)))',
+    ' INTO routine_count, routine_digest',
+    ' FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace',
+    " WHERE n.nspname='public'",
+    " AND (p.proname LIKE 'novelight_community_%'",
+    " OR p.proname LIKE 'novelight_admin_community_%'",
+    ' OR p.proname IN (',
+    " 'novelight_save_my_author_note_v2',",
+    " 'novelight_manage_my_author_notes_v2',",
+    " 'novelight_manage_my_curation_lists_v2',",
+    " 'novelight_set_my_curation_community_share',",
+    " 'novelight_curation_share_reset_private'))"
+  ].join('\n');
+  return [
+    'DO $community_routine_fingerprint$',
+    'DECLARE routine_count integer; routine_digest text;',
+    'BEGIN',
+    fingerprintSQL + ';',
+    ' IF routine_count IS DISTINCT FROM ' +
+      REVIEWED_STAGING_ROUTINE_COUNT,
+    " OR routine_digest IS DISTINCT FROM '" +
+      REVIEWED_STAGING_ROUTINE_DIGEST + "'",
+    " THEN RAISE EXCEPTION 'Staging routine fingerprint drift';",
+    ' END IF;',
+    'END',
+    '$community_routine_fingerprint$;',
+    ''
+  ].join('\n');
 }
 
 export function composeReviewedForwardSQL(sql, expectedBlob) {
@@ -39,7 +80,9 @@ export function composeReviewedForwardSQL(sql, expectedBlob) {
     '$community_ledger_fingerprint$;',
     ''
   ].join('\n');
-  return candidate.replace(marker, fingerprint + marker);
+  return candidate.replace(
+    marker, fingerprint + composeRoutineBaselineGuard() + marker
+  );
 }
 
 if (process.argv[2] === 'render') {
