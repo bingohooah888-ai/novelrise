@@ -5,18 +5,18 @@ import { URL } from 'node:url';
 
 import {
   assertCommunityInteractionAdmission,
-  CANDIDATE_SHA,
   MIGRATION,
   PREFIX,
   SCOPE
 } from '../scripts/community-staging-interaction-admission.mjs';
 
 const mainSha = 'a'.repeat(40);
+const candidateSha = 'b'.repeat(40);
 const commentId = 12345;
 const payload = {
   scope: SCOPE,
   mainSha,
-  candidateSha: CANDIDATE_SHA,
+  candidateSha,
   migration: MIGRATION,
   confirmation: 'STAGING APPROVED'
 };
@@ -25,6 +25,7 @@ function admission() {
     repository: 'bingohooah888-ai/novelrise',
     issue: {
       number: 294,
+      state: 'open',
       title: '[Staging Control] Supabase migration sync',
       user: { login: 'bingohooah888-ai' }
     },
@@ -35,6 +36,25 @@ function admission() {
       body: PREFIX + JSON.stringify(payload)
     },
     main: { object: { sha: mainSha } },
+    pr: {
+      number: 2222,
+      state: 'open',
+      draft: true,
+      merged: false,
+      base: { ref: 'main', sha: mainSha },
+      head: {
+        sha: candidateSha,
+        repo: { full_name: 'bingohooah888-ai/novelrise' }
+      }
+    },
+    compare: {
+      status: 'ahead',
+      behind_by: 0,
+      base_commit: { sha: mainSha },
+      ahead_by: 1,
+      total_commits: 1,
+      commits: [{ sha: candidateSha }]
+    },
     ledgerPages: [[]]
   };
 }
@@ -53,7 +73,7 @@ test('claimed or consumed approval cannot be replayed', () => {
     const record = {
       requestCommentId: String(commentId),
       mainSha,
-      candidateSha: CANDIDATE_SHA,
+      candidateSha,
       runId: '100'
     };
     if (verb === 'CONSUMED') record.result = 'failure';
@@ -73,6 +93,26 @@ test('claimed or consumed approval cannot be replayed', () => {
       /already been claimed/u
     );
   }
+});
+test('stale current main or candidate ancestry cannot be accepted', () => {
+  const headMoved = admission();
+  headMoved.pr.head.sha = 'c'.repeat(40);
+  assert.throws(
+    () => assertCommunityInteractionAdmission(headMoved),
+    /wrong main/u
+  );
+  const diverged = admission();
+  diverged.compare.behind_by = 1;
+  assert.throws(
+    () => assertCommunityInteractionAdmission(diverged),
+    /not complete/u
+  );
+  const closed = admission();
+  closed.issue.state = 'closed';
+  assert.throws(
+    () => assertCommunityInteractionAdmission(closed),
+    /wrong OWNER/u
+  );
 });
 test('Staging SQL has single transaction and unconditional ROLLBACK', () => {
   const file = new URL(
@@ -106,7 +146,10 @@ test('OWNER-gated trusted workflow never deploys a Preview or alters Production'
     /STAGING_DATABASE_URL_SOURCE: \$\{\{ secrets.STAGING_DATABASE_URL \}\}/u
   );
   assert.match(yml, /community-staging-interaction-admission\.mjs validate/u);
-  assert.ok(yml.includes(CANDIDATE_SHA));
+  assert.ok(yml.includes('df651446da99e299005b4c8ec262c528bf477922'));
+  assert.doesNotMatch(yml, /203fa256c33b0a46b274192eba9263e45877b938/u);
+  assert.match(yml, /community-interaction-compare\.json/u);
+  assert.match(yml, /supabase-staging-migration-sync/u);
   assert.match(yml, /verify-staging-migration-target\.mjs/u);
   assert.match(yml, /if: always\(\)/u);
   assert.match(yml, /test "\$state" = 'false\|1\|0\|0\|0'/u);
