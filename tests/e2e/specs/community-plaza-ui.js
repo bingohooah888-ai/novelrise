@@ -250,6 +250,7 @@ test('community UI interactions use mocked data', async ({ page }) => {
   }
 });
 
+// prettier-ignore
 test('a shared older comment link opens a permitted single-comment preview', async ({ page }) => {
   await installIsolatedMock(page, true);
   const oldId = 'c0a00000-0000-4000-8000-000000000099';
