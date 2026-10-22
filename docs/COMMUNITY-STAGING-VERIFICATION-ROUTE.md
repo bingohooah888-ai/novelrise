@@ -148,3 +148,35 @@ users A and B plus staff, including direct RPC cross-ownership, blocking,
 muting, reporting, moderation and notification isolation. Then revisit
 Production merge, schema migration and public activation as separate
 release decisions; do not infer permission from offline checks.
+
+## 8. 2026-10-22 hosted RPC-definition drift (read-only)
+
+Additional pg_proc / to_regprocedure checks in dedicated Staging prove
+that the migration version being recorded is **not** proof that its
+currently deployed SQL matches the latest Draft PR candidate.
+
+The following six RPC signatures are present in the candidate migration
+but **absent** in the actual Staging public schema at the inspection time:
+
+- novelight_community_comment_detail(text, uuid)
+- novelight_community_edit_my_comment(uuid, text)
+- novelight_community_delete_my_comment(uuid)
+- novelight_community_report_comment(uuid, text)
+- novelight_community_mark_notifications_read(bigint[])
+- novelight_admin_community_dismiss_report(uuid, uuid)
+
+By contrast, novelight_community_my_notifications(integer) and
+novelight_community_post_comment(text, text, uuid) were found.
+All eight Staging community_% tables had RLS enabled and no anon
+SELECT, authenticated SELECT, or authenticated INSERT table grants.
+Admin moderation and metrics RPCs were service-role-only in the
+Staging privilege snapshot. These grant observations do **not** replace
+live authenticated cross-user or IDOR testing.
+
+**Additional hard blocker:** Staging is an older Phase 1 schema snapshot
+under the same migration version. Do not treat it as the current PR's
+hosted acceptance target, attempt a repeat of the applied version,
+manually alter migration history, or auto-rebase/reset the branch.
+Future approved isolated acceptance must use the exact reviewed candidate
+schema from a clean known baseline; any shared-Staging reconciliation
+requires an independently reviewed additive migration/ledger plan.
