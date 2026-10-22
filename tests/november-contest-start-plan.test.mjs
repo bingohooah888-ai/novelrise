@@ -12,14 +12,14 @@ const MAIN = 'a'.repeat(40);
 function makeContext(patch = {}, envelope = {}) {
   const p = {
     version: 1,
-    operation: 'start-november-contest',
+    operation: 'start-december-contest',
     requestId: 'contest-start-test-request-0001',
     mainSha: MAIN,
     contestKey: 'novelight-november-2026',
-    termsVersion: 'november-2026-v1',
+    termsVersion: 'december-2026-v2',
     termsUrl: 'https://novelight.jp/contest-terms',
-    issuedAt: '2026-10-31T15:00:00Z',
-    expiresAt: '2026-10-31T15:10:00Z',
+    issuedAt: '2026-11-30T15:00:00Z',
+    expiresAt: '2026-11-30T15:10:00Z',
     challenge: 'AAAAAAAA',
     confirmation: 'CHAT_CONTEST_START_APPROVED',
     attestations: {
@@ -40,7 +40,7 @@ function makeContext(patch = {}, envelope = {}) {
     commentId: 123456,
     commentBody: CONTEST_START_PREFIX + JSON.stringify(p),
     currentMainSha: MAIN,
-    now: '2026-10-31T15:01:00Z',
+    now: '2026-11-30T15:01:00Z',
     ...envelope
   };
 }
@@ -97,7 +97,7 @@ test('unverified endpoint, missing or extra attestation and expired approvals fa
     { attestations: { ...att, readingEndpointConfigVerified: false } },
     { attestations: { ...att, extra: true } },
     { attestations: { operatorReady: true } },
-    { issuedAt: '2026-10-31T15:15:00Z' },
+    { issuedAt: '2026-11-30T15:15:00Z' },
     { expiresAt: '2026-10-31T16:00:00Z' }
   ]) {
     assert.throws(
@@ -108,7 +108,7 @@ test('unverified endpoint, missing or extra attestation and expired approvals fa
   assert.throws(
     () =>
       verifyContestStartApproval(
-        makeContext({}, { now: '2026-10-31T15:11:00Z' })
+        makeContext({}, { now: '2026-11-30T15:11:00Z' })
       ),
     /STEP12_START_BLOCKED/
   );

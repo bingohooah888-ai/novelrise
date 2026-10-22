@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 export const CONTEST_REGISTRATION_PREFIX =
   'NOVELIGHT_CONTEST_REGISTRATION_OPEN_APPROVE ';
 export const CONTEST_KEY = 'novelight-november-2026';
-export const TERMS_VERSION = 'november-2026-v1';
+export const TERMS_VERSION = 'december-2026-v2';
 export const TERMS_URL = 'https://novelight.jp/contest-terms';
 export const CONTROL_ISSUE = 2120;
 const REPOSITORY = 'bingohooah888-ai/novelrise';
@@ -79,7 +79,7 @@ export function verifyRegistrationOpenApproval(context) {
     'termsVersion', 'termsUrl', 'termsSourceSha', 'termsAdoptionCommentId',
     'issuedAt', 'expiresAt', 'challenge', 'confirmation', 'attestations'
   ]), 'approval JSON schema mismatch');
-  assert(p.version === 1 && p.operation === 'open-november-contest-registration',
+  assert(p.version === 1 && p.operation === 'open-december-contest-registration',
     'operation not allowed');
   assert(REQUEST_ID.test(p.requestId), 'request identity invalid');
   assert(SHA.test(p.mainSha) && p.mainSha === context.currentMainSha,
@@ -164,12 +164,12 @@ export function buildAtomicRegistrationOpenSql(verified) {
     '  select * into strict v_contest from public.novelight_contests',
     "   where contest_key = 'novelight-november-2026' for update;",
     "  if v_contest.status <> 'draft' or v_contest.public_visible is not false",
-    "     or v_contest.terms_version not in ('', 'november-2026-v1')",
+    "     or v_contest.terms_version not in ('', 'december-2026-v2')",
     "     or v_contest.terms_url not in ('', 'https://novelight.jp/contest-terms')",
     "     or v_contest.minimum_published_episodes <> 10",
-    "     or v_contest.entry_deadline_at <> '2026-10-31 14:59:59.999999+00'::timestamptz",
-    "     or v_contest.starts_at <> '2026-10-31 15:00:00+00'::timestamptz",
-    "     or v_contest.ends_at <> '2026-11-30 15:00:00+00'::timestamptz",
+    "     or v_contest.entry_deadline_at <> '2026-11-30 14:59:59.999999+00'::timestamptz",
+    "     or v_contest.starts_at <> '2026-11-30 15:00:00+00'::timestamptz",
+    "     or v_contest.ends_at <> '2026-12-31 15:00:00+00'::timestamptz",
     '     or v_now >= v_contest.entry_deadline_at',
     '     or v_now >= v_contest.starts_at then',
     "    raise exception 'STEP05_REGISTRATION_OPEN_BLOCKED: stale state or expired window';",
@@ -179,7 +179,7 @@ export function buildAtomicRegistrationOpenSql(verified) {
     "    raise exception 'STEP05_REGISTRATION_OPEN_BLOCKED: entries unexpectedly exist';",
     '  end if;',
     '  update public.novelight_contests',
-    "     set terms_version = 'november-2026-v1',",
+    "     set terms_version = 'december-2026-v2',",
     "         terms_url = 'https://novelight.jp/contest-terms',",
     "         status = 'registration', public_visible = true,",
     '         updated_at = v_now',
@@ -196,7 +196,7 @@ export function buildAtomicRegistrationOpenSql(verified) {
     "      'approval_comment', '" + releaseId + "',",
     "      'approval_main_sha', '" + verified.mainSha + "',",
     "      'approval_challenge', '" + verified.challenge + "',",
-    "      'terms_version', 'november-2026-v1',",
+    "      'terms_version', 'december-2026-v2',",
     "      'terms_url', 'https://novelight.jp/contest-terms'));",
     'end;',
     '$novelight_stage05_open$;'

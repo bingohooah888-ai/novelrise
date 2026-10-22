@@ -26,7 +26,7 @@ export function validateStartState(rows, phase) {
   const r = rows[0];
   if (phase === 'before') {
     if (r.status !== 'registration' || r.public_visible !== true ||
-        r.terms_version !== 'november-2026-v1' ||
+        r.terms_version !== 'december-2026-v2' ||
         r.terms_url !== 'https://novelight.jp/contest-terms' ||
         (!Number.isSafeInteger(Number(r.registered_entries)) ||
          Number(r.registered_entries) < 1) ||
@@ -129,7 +129,7 @@ export async function performContestStart({ event, checkoutSha, now, github, sup
   assertUnclaimedStart(ledger);
   validateStartState(await supabase.query(BEFORE, true), 'before');
   const claim = {
-    operation: 'start-november-contest',
+    operation: 'start-december-contest',
     contestKey: 'novelight-november-2026',
     approvalCommentId: approved.commentId,
     mainSha: approved.mainSha,

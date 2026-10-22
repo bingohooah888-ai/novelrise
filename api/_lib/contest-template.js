@@ -3,8 +3,8 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="NOVELIGHT 第1回 星灯祭。2026年11月1日から30日まで開催。読書ポイント1pt以上の上位5位以内に各1万円、最終順位は12月1日発表。">
-  <title>NOVELIGHT 第1回 星灯祭 | 2026年11月</title>
+  <meta name="description" content="NOVELIGHT 第1回 星灯祭。2026年12月1日から31日まで開催。読書ポイント1pt以上の上位5位以内に各1万円、最終順位は2027年1月1日以降、審査後に発表。">
+  <title>NOVELIGHT 第1回 星灯祭 | 2026年12月</title>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
   <link rel="stylesheet" href="novelight-accessibility.css">
   <link rel="stylesheet" href="novelight-contest.css">
@@ -29,17 +29,17 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
     <section class="contest-hero">
       <div class="contest-hero-light" aria-hidden="true"></div>
       <div class="contest-hero-inner">
-        <span class="contest-eyebrow">NOVELIGHT CONTEST / 2026年11月</span>
+        <span class="contest-eyebrow">NOVELIGHT CONTEST / 2026年12月</span>
         <span class="contest-status" id="contestStatus">開催準備中</span>
         <h1>第1回 星灯祭</h1>
-        <p class="contest-hero-lead">NOVELIGHT 第1回 星灯祭。読者に届き、続きを読みたいと思わせた物語が、上位を目指せる30日間。</p>
+        <p class="contest-hero-lead">NOVELIGHT 第1回 星灯祭。読者に届き、続きを読みたいと思わせた物語が、上位を目指せる31日間。</p>
         <div class="contest-hero-actions">
           <a class="contest-button contest-button-primary" href="#enter">作品をエントリーする</a>
           <a class="contest-button contest-button-secondary" href="#entries" id="contestBrowseLink">参加作品を見る</a>
         </div>
         <div class="contest-hero-dates">
-          <span><strong>応募締切</strong><time datetime="2026-10-31T23:59:59+09:00">10月31日（土）23:59</time></span>
-          <span><strong>開催期間</strong><time datetime="2026-11-01T00:00:00+09:00">11月1日（日）〜30日（月）</time></span>
+          <span><strong>応募締切</strong><time datetime="2026-11-30T23:59:59+09:00">11月30日（月）23:59</time></span>
+          <span><strong>開催期間</strong><time datetime="2026-12-01T00:00:00+09:00">12月1日（火）〜31日（木）</time></span>
         </div>
       </div>
     </section>
@@ -117,7 +117,7 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
         <div>
           <p class="contest-kicker">ENTRIES</p>
           <h2 id="entriesTitle">エントリー作品一覧</h2>
-          <p class="contest-section-copy" id="contestEntriesIntro">応募受付中はエントリー作品の情報を先行公開します。星灯祭の読書リンクは11月1日の開幕後からご利用いただけます。</p>
+          <p class="contest-section-copy" id="contestEntriesIntro">応募受付中はエントリー作品の情報を先行公開します。星灯祭の読書リンクは12月1日の開幕後からご利用いただけます。</p>
         </div>
         <p id="entryCount" class="contest-entry-count" aria-live="polite"></p>
       </div>
@@ -150,12 +150,12 @@ export const contestPageTemplate = String.raw`<!DOCTYPE html>
         <p class="contest-kicker">RANKING SCHEDULE</p>
         <h2>順位は3回の中間発表で更新。</h2>
         <div class="contest-timeline-grid">
-          <div><small>第1回</small><strong>11月7日</strong><span>正午12:00 公開</span></div>
-          <div><small>第2回</small><strong>11月15日</strong><span>正午12:00 更新</span></div>
-          <div><small>第3回</small><strong>11月22日</strong><span>正午12:00 更新</span></div>
-          <div><small>最終順位発表</small><strong>12月1日</strong><span>11月30日終了・審査後に発表</span></div>
+          <div><small>第1回</small><strong>12月7日</strong><span>正午12:00 公開</span></div>
+          <div><small>第2回</small><strong>12月15日</strong><span>正午12:00 更新</span></div>
+          <div><small>第3回</small><strong>12月22日</strong><span>正午12:00 更新</span></div>
+          <div><small>最終順位発表</small><strong>2027年1月1日以降</strong><span>12月31日終了・審査後に発表</span></div>
         </div>
-        <p class="contest-note">中間ランキングは11月7日から11月30日まで表示を継続します。発表回ごとの順位・得点を次回更新まで固定します。表示機能は開催準備の後続工程で公開します。</p>
+        <p class="contest-note">中間ランキングは12月7日から12月31日まで表示を継続します。発表回ごとの順位・得点を次回更新まで固定します。表示機能は開催準備の後続工程で公開します。</p>
       </div>
     </section>
 

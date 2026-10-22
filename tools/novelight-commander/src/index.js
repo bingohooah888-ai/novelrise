@@ -12,6 +12,7 @@ import { appendBinaryChunk, beginBinaryWrite, cancelBinaryWrite, finishBinaryWri
 import { copyFile, deletePath, fileInfo, hashFile, inspectPng, makeDirectory, moveFile, searchFiles } from "./files.js";
 import { getNovelCache, listNovelCache, readNovelCached } from "./novel-cache.js";
 import { readNovel } from "./novel.js";
+import { listSavedNovelSources, readSavedNovelChunk } from "./novel-saved-reading.js";
 import { registerOfficialThumbnailPack } from "./thumbnail-register.js";
 import { listManagedProcesses, readManagedProcess, runOnce, startManagedProcess, stopManagedProcess } from "./processes.js";
 
@@ -294,6 +295,15 @@ register("read_novel", "Read every discoverable episode from a public novel URL 
 register("read_novel_cached", "Read a novel while reusing already cached episodes and fetching new episodes only.", { url: z.string().url(), maxEpisodes: z.number().int().min(1).max(1000).optional(), refreshExisting: z.boolean().default(false) }, async a => readNovelCached(a.url,{ delayMs:Number(process.env.NOVELIGHT_COMMANDER_FETCH_DELAY_MS || 700), maxEpisodes:a.maxEpisodes || Number(process.env.NOVELIGHT_COMMANDER_MAX_EPISODES || 500), refreshExisting:a.refreshExisting },security));
 register("get_novel_cache", "Read cached novel content for one URL without network access.", { url: z.string().url() }, async a => getNovelCache(a.url,security));
 register("list_novel_cache", "List cached novels.", {}, async () => listNovelCache(security));
+register("novel_saved_catalog", "List private locally saved novels (NLO Bridge, cache, and guarded prior proof exports). Returns manifest only, never full text.", {}, async () => listSavedNovelSources(security));
+register("novel_saved_read_chunk", "Read a bounded consecutive passage of a private saved novel via direct NLO MCP. Follow nextCursor and pin expectedSha256 to cover all episodes; do not claim all read until every chunk was consumed. Never post returned copyrighted prose into GitHub Issues.", {
+  source: z.enum(["bridge", "cache", "proof"]),
+  id: z.string().min(1).max(200),
+  episodeNumber: z.number().int().min(1).max(1000).default(1),
+  charOffset: z.number().int().nonnegative().default(0),
+  maxChars: z.number().int().min(1).max(100000).default(60000),
+  expectedSha256: z.string().regex(/^[a-f0-9]{64}$/).optional()
+}, async a => readSavedNovelChunk(a, security));
 register("read_audit", "Read recent NOVELIGHT Commander audit records.", { limit: z.number().int().min(1).max(1000).default(100) }, async a => readAudit(security,a.limit));
 
 await server.connect(new StdioServerTransport());

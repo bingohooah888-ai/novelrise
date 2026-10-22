@@ -80,7 +80,7 @@ test('home banner advertises enrollment only after opening', async () => {
   const started = await simulate('registration');
   assert.equal(started.area.hidden, false);
   assert.equal(started.link['aria-label'], '第1回 星灯祭へエントリーする');
-  assert.match(started.description.textContent, /10月31日23:59/);
+  assert.match(started.description.textContent, /11月30日23:59/);
   assert.equal(
     (await simulate('registration', null, '2020-10-31T14:59:59Z')).area.hidden,
     true
