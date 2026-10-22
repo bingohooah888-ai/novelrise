@@ -12,9 +12,11 @@ const CURRENT_BLOBS = {
   'curation-lists.html': '5c21090e36753d60fc4baa7e617c940abc19ff72',
   'light-seed-history.html': '49c5e4ab426e70750abdca070d09e3a3c29252ac',
   'author-notes.html': 'c6e28d122f323ce8544c5ffeb8596795f6d0ec22',
-  'index.html': '7cef83bbaa236c2a9a45ca80020395f75b943d77',
+  'index.html': '3acd9fc20b3f891d94427abc7448ccdcd7cf84b4',
   'tests/accessibility-baseline.test.mjs':
-    'cb72484530f211c56c335b2fe62dcc81e8d9b831'
+    'ff4d22ab2c3fb54d63f99d5ba069edc7ae647e86',
+  'tests/e2e/specs/async-ui.spec.js':
+    '24c5759d4c1238d4f59a2dda1a4b9a1f80bf0ecd'
 };
 const REVIEWED_SMOKE = Object.freeze({
   path: 'tests/e2e/specs/smoke.spec.js',
@@ -22,6 +24,11 @@ const REVIEWED_SMOKE = Object.freeze({
   current: '5e9f8ad9cf9e238f908207896826d09dc6c6e346'
 });
 const PREVIOUS_BLOBS = {
+  'tests/e2e/specs/async-ui.spec.js':
+    '477962f8349fcd7f26a498d8df12e315dfc568fb',
+  'index.html': '7cef83bbaa236c2a9a45ca80020395f75b943d77',
+  'tests/accessibility-baseline.test.mjs':
+    'cb72484530f211c56c335b2fe62dcc81e8d9b831',
   'author-notes.html': 'b55355a64dcc75225e9a59ff2432fd0e460b46c5',
   'index.html': '104fd490a8326277a6a5f855dae1883064e336a6',
   'tests/accessibility-baseline.test.mjs':
