@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if ! npm install --no-audit --no-fund --prefix /tmp/nl-vercel-cli vercel@latest > /tmp/nl-npm.out 2> /tmp/nl-npm.err; then
+          if ! npm install --no-audit --no-fund --prefix /tmp/nl-vercel-cli vercel@50 > /tmp/nl-npm.out 2> /tmp/nl-npm.err; then
             echo "vercel_cli_install_failed=true"
             grep -E '(ERR!|error|EBADENGINE|EACCES|ENOTFOUND|ETIMEDOUT|ENOMEM|ERR_)' /tmp/nl-npm.err | head -15 | sed -E 's,https?://[^ ]+,<redacted-url>,g' || true
             exit 0
