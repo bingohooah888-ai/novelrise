@@ -118,3 +118,9 @@
 .community-follow-choice{display:inline-flex;gap:6px;align-items:center;cursor:pointer;color:#d9dfe8}
 .community-follow-choice input{width:17px;height:17px;accent-color:#d6a447}
 .community-follow-choice input:disabled{opacity:.65;cursor:wait}
+
+.community-comment-time{display:inline-block;margin:4px 0 0 9px;color:#adbbcc;font-size:.75rem}
+.community-comment-context{color:#e6bd6e;font-size:.78rem}
+.community-comment-context-missing{display:block;margin-top:6px;color:#adbbcc;font-size:.76rem}
+.community-comment-share-status{display:block;margin-top:7px;color:#d8dce3;font-size:.8rem}
+.community-comment-share-status[hidden]{display:none}

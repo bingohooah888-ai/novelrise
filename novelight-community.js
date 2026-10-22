@@ -354,7 +354,8 @@
         input.focus();
       });
       syncReply();
-      for (const comment of Array.isArray(data) ? data : []) {
+      const commentIndex = new Map(data.map(entry => [String(entry.id || ''), entry]));
+      for (const comment of data) {
         const c = el('div', 'community-comment');
         const commentKey = String(comment.id || '');
         if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commentKey)) {
@@ -363,7 +364,56 @@
         const author = el('strong', '', (comment.parent_comment_id ? '↳ ' : '') + (comment.display_name || 'ユーザー'));
         const commentText = el('span', '', comment.body || '');
         c.append(author, commentText);
+        const postedAt = dateString(comment.created_at);
+        if (postedAt) {
+          const time = el('time','community-comment-time',postedAt);
+          time.dateTime = comment.created_at;
+          c.append(time);
+        }
         if (comment.edited_at) c.append(el('small','community-comment-edited','編集済み'));
+        const parentId = String(comment.parent_comment_id || '');
+        const parent = commentIndex.get(parentId);
+        if (parent) {
+          const jump = el('button','community-action community-comment-context',
+            (parent.display_name || 'ユーザー') + 'さんへの返信を見る ↑');
+          jump.type = 'button';
+          jump.addEventListener('click',() => {
+            const target = document.getElementById('community-comment-' + parentId);
+            if (!target || !container.contains(target)) return;
+            target.setAttribute('tabindex','-1');
+            target.scrollIntoView({block:'center',behavior:'smooth'});
+            target.focus({preventScroll:true});
+          });
+          c.append(jump);
+        } else if (parentId) {
+          c.append(el('small','community-comment-context-missing','以前のコメントへの返信'));
+        }
+        if (c.id) {
+          const share = el('button','community-action community-comment-share','コメントを共有');
+          share.type = 'button';
+          const shareStatus = el('span','community-comment-share-status');
+          shareStatus.setAttribute('role','status');
+          shareStatus.hidden = true;
+          share.addEventListener('click',async () => {
+            const url = new URL('/community.html?comment=' + encodeURIComponent(commentKey)
+              + '#post-' + encodeURIComponent(postKey),location.origin).href;
+            share.disabled = true;
+            try {
+              if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+              await navigator.clipboard.writeText(url);
+              shareStatus.textContent = 'コメントのリンクをコピーしました。';
+            } catch(error) {
+              console.warn('community comment link copy unavailable',error);
+              const fallback = el('a','community-share-url','コメントへのリンク');
+              fallback.href = url;
+              shareStatus.replaceChildren('コピーできませんでした。',fallback,'から共有できます。');
+            } finally {
+              share.disabled = false;
+              shareStatus.hidden = false;
+            }
+          });
+          c.append(share,shareStatus);
+        }
         const replyButton = el('button','community-action','返信');
         replyButton.type='button';
         replyButton.addEventListener('click',()=>{

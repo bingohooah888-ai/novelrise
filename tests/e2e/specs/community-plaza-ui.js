@@ -74,7 +74,7 @@ async function installIsolatedMock(page, enabled, options = {}) {
                 return {data: {liked: true, like_count: 2}, error:null};
               }
               if (name === 'novelight_community_comments') {
-                return {data: [{id:'c0a00000-0000-4000-8000-000000000012',body:'既存コメント',display_name:'読者A',is_mine:true}],error:null};
+                return {data: [{id:'c0a00000-0000-4000-8000-000000000012',body:'既存コメント',display_name:'読者A',created_at:'2026-10-14T10:15:00Z',is_mine:true}],error:null};
               }
               if (name === 'novelight_community_post_comment') {
                 return {data: {id:'c0a00000-0000-4000-8000-000000000013'},error:null};
@@ -194,6 +194,11 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await card.locator('.community-comment-edit textarea').fill('修正したコメント');
   await card.locator('.community-comment-edit button[type="submit"]').click();
   await expect(card.locator('.community-comment')).toContainText('修正したコメント');
+  await expect(card.locator('.community-comment-time')).toContainText('10/14');
+  await card.locator('.community-comment-share').click();
+  await expect(card.locator('.community-comment-share-status')).toContainText(
+    /コメントのリンクをコピー|コメントへのリンク/
+  );
   const editor = card.locator('.community-comment-form textarea');
   await editor.fill('テストの返信です\n2行目です');
   await expect(card.locator('.community-comment-counter')).toContainText('残り');
