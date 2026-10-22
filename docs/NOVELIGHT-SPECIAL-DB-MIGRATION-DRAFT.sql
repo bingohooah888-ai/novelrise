@@ -139,16 +139,20 @@ grant all on table public.special_projects, public.special_contents,
   public.special_events to service_role;
 
 
--- Private contract/email proof; never expose raw assets to public readers.
-insert into storage.buckets
-  (id,name,public,file_size_limit,allowed_mime_types)
-values
-  ('special-evidence','special-evidence',false,10485760,
-   array['application/pdf','image/png','image/jpeg','image/webp']::text[])
-on conflict (id) do nothing;
-
+-- Private contract/email proof. Existing Supabase Storage is required for
+-- Production; compatibility replay without storage skips bucket bootstrap.
 do $$
 begin
+  if to_regclass('storage.buckets') is null then
+    raise notice 'special-evidence Storage unavailable in isolated migration replay';
+    return;
+  end if;
+  insert into storage.buckets
+    (id,name,public,file_size_limit,allowed_mime_types)
+  values
+    ('special-evidence','special-evidence',false,10485760,
+     array['application/pdf','image/png','image/jpeg','image/webp']::text[])
+  on conflict (id) do nothing;
   if not exists (
     select 1 from storage.buckets
     where id='special-evidence' and public=false
