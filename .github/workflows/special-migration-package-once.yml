@@ -1,0 +1,37 @@
+name: SPECIAL migration package once
+on:
+  push:
+    branches:
+      - feat/novelight-special-v1-20261023
+permissions:
+  contents: write
+concurrency:
+  group: special-migration-package-once
+  cancel-in-progress: false
+jobs:
+  package:
+    if: github.repository == 'bingohooah888-ai/novelrise' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/novelight-special-v1-20261023
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Create Supabase CLI-named migration without executing SQL
+        run: |
+          npx --yes supabase@2.81.3 migration new novelight_special
+          target="$(ls -t supabase/migrations/*_novelight_special.sql | head -1)"
+          test -n "$target"
+          sed '1,3d' docs/NOVELIGHT-SPECIAL-DB-MIGRATION-DRAFT.sql > "$target"
+          sed -i '1i-- Prepared NOVELIGHT SPECIAL schema. Apply only after isolated Staging test and Production approval.' "$target"
+          test "$(grep -c '^create table public.special_' "$target")" -eq 5
+          test "$(grep -c '^create trigger special_' "$target")" -ge 4
+          git add "$target"
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "feat(special): package CLI-named unexecuted Supabase migration"
+          git push origin HEAD:refs/heads/feat/novelight-special-v1-20261023
