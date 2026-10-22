@@ -649,10 +649,10 @@ BEGIN
  IF v_user IS NULL THEN RAISE EXCEPTION 'Sign in required' USING errcode='42501'; END IF;
  SELECT coalesce(jsonb_agg(jsonb_build_object(
   'id',r.id,'kind',r.kind,'post_key',r.post_key,'created_at',r.created_at,
-  'actor_name',r.actor_name
+  'actor_name',r.actor_name,'read_at',r.read_at
  ) ORDER BY r.created_at DESC),'[]'::jsonb) INTO v_result
  FROM (
-  SELECT n.id,n.kind,n.post_key,n.created_at,
+  SELECT n.id,n.kind,n.post_key,n.created_at,n.read_at,
     coalesce(p.display_name,'ユーザー') AS actor_name
   FROM public.community_notifications n JOIN public.profiles p ON p.id=n.actor_user_id
   WHERE n.recipient_user_id=v_user
@@ -669,6 +669,45 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.novelight_community_my_notifications(integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.novelight_community_my_notifications(integer) TO authenticated;
+
+-- A notification is owned by its recipient. Clients can acknowledge at most
+-- forty of their own rows per request, never another user's notices.
+CREATE OR REPLACE FUNCTION public.novelight_community_mark_notifications_read(
+ p_ids bigint[]
+)
+RETURNS integer LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path = ''
+AS $
+DECLARE v_user uuid := (SELECT auth.uid());
+  v_updated integer;
+BEGIN
+ IF v_user IS NULL THEN
+   RAISE EXCEPTION 'Sign in required' USING errcode='42501';
+ END IF;
+ IF NOT EXISTS (
+   SELECT 1 FROM public.community_runtime_control ctl
+   WHERE ctl.singleton AND ctl.public_enabled
+ ) THEN
+   RAISE EXCEPTION 'Community not available' USING errcode='42501';
+ END IF;
+ IF coalesce(cardinality(p_ids),0) NOT BETWEEN 1 AND 40 OR
+    EXISTS (SELECT 1 FROM unnest(p_ids) AS i(id)
+            WHERE i.id IS NULL OR i.id<=0) THEN
+   RAISE EXCEPTION 'Invalid notification IDs' USING errcode='22023';
+ END IF;
+ UPDATE public.community_notifications n
+    SET read_at=now()
+  WHERE n.recipient_user_id=v_user
+    AND n.id=ANY(p_ids)
+    AND n.read_at IS NULL;
+ GET DIAGNOSTICS v_updated = ROW_COUNT;
+ RETURN v_updated;
+END
+$;
+REVOKE ALL ON FUNCTION public.novelight_community_mark_notifications_read(bigint[])
+  FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.novelight_community_mark_notifications_read(bigint[])
+  TO authenticated;
 
 -- Staff write is atomic with existing ADMIN audit; only a service-role call from
 -- a requireAdmin-protected Vercel API is permitted. Not a public client RPC.

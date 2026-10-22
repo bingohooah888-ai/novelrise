@@ -54,3 +54,18 @@
 .community-actions{flex-wrap:wrap}
 .community-like-status{flex-basis:100%;font-size:.82rem;color:#d8dce3}
 .community-like-status[hidden]{display:none}
+
+#communityNotifications{margin:18px 0 24px;padding:18px;border:1px solid var(--community-line);border-radius:12px;background:#102035}
+#communityNotifications h2{margin:0 0 10px;font-size:1rem;color:#f8ebce}
+.community-notice-toolbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
+.community-notice-count{color:#d8dce3;font-size:.83rem}
+.community-notice-list{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.community-notice-list li{padding:9px 10px;border-radius:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.85rem}
+.community-notice-unread{background:#24354a;border-left:3px solid #d6a447}
+.community-notice-read{background:#0b1728;opacity:.78}
+.community-notice-list a{color:#e6bd6e}
+.community-notice-mark,.community-notice-all-read{padding:5px 10px;border:1px solid #8c7649;border-radius:7px;background:#14283e;color:#f3dba8;font:inherit;font-size:.81rem;cursor:pointer}
+.community-notice-mark{margin-left:auto}
+.community-notice-mark[hidden],.community-notice-all-read[hidden],.community-notice-feedback[hidden]{display:none}
+.community-notice-mark:disabled,.community-notice-all-read:disabled{opacity:.65;cursor:wait}
+.community-notice-feedback{margin:9px 0 0;font-size:.83rem;color:#efd1ab}

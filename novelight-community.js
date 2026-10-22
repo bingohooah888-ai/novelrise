@@ -31,7 +31,7 @@
     return Number.isSafeInteger(Number(link)) && Number(link) > 0 ? String(Number(link)) : null;
   }
   function requireLogin() {
-    const next = encodeURIComponent(location.pathname.split('/').pop() + location.search);
+    const next = encodeURIComponent(location.pathname.split('/').pop() + location.search + location.hash);
     location.href = 'login.html?redirect=' + next;
   }
   function message(value) {
