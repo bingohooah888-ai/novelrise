@@ -284,3 +284,25 @@ test('invalid trusted input prevents network requests', async () => {
   );
   assert.equal(requests, 0);
 });
+
+// Temporary formatting diagnostic; remove before review.
+if (process.env.CI === 'true') {
+  const prettier = await import('prettier');
+  const fs = await import('node:fs');
+  const file = new URL(import.meta.url);
+  const original = fs.readFileSync(file, 'utf8');
+  const expected = await prettier.format(original, {
+    ...(await prettier.resolveConfig(file)),
+    filepath: file.pathname
+  });
+  if (original !== expected) {
+    const a = original.split('\n');
+    const b = expected.split('\n');
+    const n = a.findIndex((line, i) => line !== b[i]);
+    console.log('PRETTIER_FORMAT_DIAGNOSTIC', JSON.stringify({
+      firstDifferentLine: n + 1,
+      current: a.slice(Math.max(0, n - 4), n + 14),
+      expected: b.slice(Math.max(0, n - 4), n + 14)
+    }));
+  }
+}
