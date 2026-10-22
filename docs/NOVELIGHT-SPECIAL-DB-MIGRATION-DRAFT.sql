@@ -147,7 +147,7 @@ values
    array['application/pdf','image/png','image/jpeg','image/webp']::text[])
 on conflict (id) do nothing;
 
-do $
+do $$
 begin
   if not exists (
     select 1 from storage.buckets
@@ -157,7 +157,7 @@ begin
     raise exception 'special-evidence bucket must remain private and bounded';
   end if;
 end
-$;
+$$;
 
 -- Atomic, append-only audit snapshots for every row mutation.
 -- Audit failures roll back the originating INSERT/UPDATE/DELETE.
@@ -166,7 +166,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 declare
   actor uuid;
   pid uuid;
@@ -217,20 +217,20 @@ begin
   values (pid,cid,actor,operation_name,prior,subsequent);
   return case when tg_op='DELETE' then old else new end;
 end
-$;
+$$;
 
 
 -- Freeze public slug after first publication (even direct service mutations).
 create or replace function public.special_guard_published_slug()
 returns trigger language plpgsql security invoker set search_path=''
-as $
+as $$
 begin
   if old.first_published_at is not null and new.slug is distinct from old.slug then
     raise exception 'SPECIAL_PUBLISHED_SLUG_IMMUTABLE';
   end if;
   return new;
 end
-$;
+$$;
 create trigger special_published_slug_lock
 before update on public.special_projects
 for each row execute function public.special_guard_published_slug();
@@ -248,11 +248,11 @@ for each row execute function public.special_audit_row();
 -- Immutable revisions: restoring a revision must write a NEW row version.
 create or replace function public.special_prevent_audit_mutation()
 returns trigger language plpgsql security invoker set search_path=''
-as $
+as $$
 begin
   raise exception 'SPECIAL_AUDIT_IMMUTABLE';
 end
-$;
+$$;
 create trigger special_audit_immutable before update or delete
 on public.special_change_log for each row
 execute function public.special_prevent_audit_mutation();
