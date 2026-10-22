@@ -270,7 +270,21 @@ async function kakuyomuIndex(rawUrl) {
 }
 
 async function kakuyomuEpisode(url) {
-  const { html, url: finalUrl } = await fetchHtml(url);
+  let response;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      response = await fetchHtml(url);
+      break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const temporary = /HTTP (?:429|500|502|503|504)\\b/.test(message) ||
+        /fetch failed|socket hang up|network timeout/i.test(message);
+      if (!temporary || attempt === 2) throw error;
+      // Back off instead of hammering Kakuyomu after transient failures.
+      await sleep(1500 * (attempt + 1));
+    }
+  }
+  const { html, url: finalUrl } = response;
   const $ = cheerio.load(html);
   const title = clean($("h1").first().text()) || clean($("[itemprop=\"name\"]").first().text());
   let body = "";
