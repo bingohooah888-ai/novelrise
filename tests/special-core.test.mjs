@@ -68,6 +68,11 @@ test('未許諾コンテンツは本文公開を拒否',()=>{
   assert.equal(contentIsVisible(content,[...rights,right],now),true);
   assert.equal(contentIsVisible({...content,title:'無断差替え'},[...rights,right],now),false);
 });
+test('既存リーダーの年齢確認が未統合の直接本文は許諾済みでも非公開',()=>{
+  const inline={...content,mode:'inline',body:'安全導線未接続の本文',episode_id:null};
+  const approval=permit('content',contentRightsDigest(inline),inline.id);
+  assert.equal(contentIsVisible(inline,[approval],now),false);
+});
 test('別コンテンツの権利を流用できない',()=>{
   const right=permit('content',contentRightsDigest(content),'cccccccc-cccc-4ccc-8ccc-cccccccccccc');
   assert.equal(contentIsVisible(content,[right],now),false);
