@@ -175,7 +175,7 @@ export function createAdminSpecialHandler({
         const log = await unwrap(
           supabase
             .from('special_change_log')
-            .select('id,operation,actor_id,created_at')
+            .select('id,operation,actor_id,created_at,content_id,before_value')
             .eq('project_id', id)
             .order('id', { ascending: false })
             .limit(50)
@@ -197,7 +197,15 @@ export function createAdminSpecialHandler({
           project,
           contents,
           permissions,
-          log,
+          log: (log || []).map((entry) => ({
+            id: entry.id,
+            operation: entry.operation,
+            actor_id: entry.actor_id,
+            content_id: entry.content_id,
+            created_at: entry.created_at,
+            restorable: Boolean(entry.before_value) &&
+              ['project.update', 'content.update'].includes(entry.operation)
+          })),
           metrics: {
             last30dPageviews: pageviews.length,
             last30dVisitors: new Set(pageviews.map((x) => x.visitor_hash)).size,
@@ -246,6 +254,62 @@ export function createAdminSpecialHandler({
       }
       if (!uuid(b.id)) return fail(res, 400, 'INVALID_PROJECT_ID');
       const project = await projectOf(supabase, b.id);
+      if (action === 'restore') {
+        const logId = String(b.log_id ?? '');
+        if (!/^[1-9][0-9]{0,15}$/.test(logId))
+          return fail(res, 400, 'INVALID_REVISION_ID');
+        const previous = await unwrap(
+          supabase
+            .from('special_change_log')
+            .select('id,project_id,content_id,operation,before_value')
+            .eq('id', logId)
+            .eq('project_id', project.id)
+            .maybeSingle()
+        );
+        if (!previous?.before_value)
+          return fail(res, 404, 'REVISION_NOT_FOUND');
+
+        if (previous.operation === 'project.update') {
+          const restored = pick(previous.before_value, PROJECT_FIELDS);
+          restored.slug = project.slug;
+          validateProject(restored);
+          const after = await unwrap(
+            supabase
+              .from('special_projects')
+              .update({
+                ...restored,
+                status: 'paused',
+                updated_by: admin.id,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', project.id)
+              .select('*')
+              .single()
+          );
+          return res.status(200).json({ project: after, paused: true });
+        }
+        if (previous.operation === 'content.update' && uuid(previous.content_id)) {
+          const restored = pick(previous.before_value, CONTENT_FIELDS);
+          restored.status = 'draft';
+          validateContent(restored);
+          const after = await unwrap(
+            supabase
+              .from('special_contents')
+              .update({
+                ...restored,
+                updated_by: admin.id,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', previous.content_id)
+              .eq('project_id', project.id)
+              .select('*')
+              .single()
+          );
+          // Restoring content never restores its publication or its grant.
+          return res.status(200).json({ content: after, status: 'draft' });
+        }
+        return fail(res, 409, 'REVISION_NOT_RESTORABLE');
+      }
       if (action === 'clone') {
         const source = pick(project, PROJECT_FIELDS);
         const suffix = Math.random().toString(36).slice(2, 8);
