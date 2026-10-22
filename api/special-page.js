@@ -178,8 +178,12 @@ function safeAnchor(url, title, eventType = '', target = '') {
     ' →</a>'
   );
 }
-function detailHtml(project, permissions, contents) {
-  const visible = contents.filter((c) => contentIsVisible(c, permissions));
+function detailHtml(project, permissions, contents, publishedEpisodeIds, publishedNovelIds) {
+  const visible = contents.filter(
+    (c) =>
+      contentIsVisible(c, permissions) &&
+      (c.mode !== 'episode' || publishedEpisodeIds.has(String(c.episode_id)))
+  );
   const contentBlocks = visible
     .map((c) => {
       let reader = '';
@@ -219,7 +223,7 @@ function detailHtml(project, permissions, contents) {
       'other'
     ),
     safeAnchor(project.work_url, '作品の公式掲載先', 'official_click', 'work'),
-    project.novel_id
+    project.novel_id && publishedNovelIds.has(String(project.novel_id))
       ? '<a data-special-event="novel_click" data-special-target="' +
         escapeHtml(project.novel_id) +
         '" href="/novel.html?id=' +
@@ -328,7 +332,37 @@ export function createSpecialPageHandler(
             .eq('status', 'published')
             .order('sort_order', { ascending: true })
         );
-        return reply(req, res, 200, detailHtml(project, permissions, contents));
+        const episodeIds = contents
+          .filter((c) => c.mode === 'episode' && c.episode_id != null)
+          .map((c) => c.episode_id);
+        const episodes = episodeIds.length
+          ? await rows(
+              supabase.from('episodes').select('id,novel_id,status')
+                .in('id', episodeIds).eq('status', 'published')
+            )
+          : [];
+        const novelIds = [
+          ...episodes.map((episode) => episode.novel_id),
+          project.novel_id
+        ].filter((id) => id != null);
+        const publishedNovels = novelIds.length
+          ? await rows(
+              supabase.from('novels').select('id,status')
+                .in('id', novelIds).eq('status', 'published')
+            )
+          : [];
+        const publishedNovelIds = new Set(
+          publishedNovels.map((novel) => String(novel.id))
+        );
+        const publishedEpisodeIds = new Set(
+          episodes.filter((episode) =>
+            publishedNovelIds.has(String(episode.novel_id))
+          ).map((episode) => String(episode.id))
+        );
+        return reply(
+          req, res, 200,
+          detailHtml(project, permissions, contents, publishedEpisodeIds, publishedNovelIds)
+        );
       }
       const projects = await rows(
         supabase
