@@ -107,6 +107,31 @@
       "version": "0.4.0",
       "status": "enabled",
       "provenance": "2026-10-14 #2219 live native PR synchronize CI/CodeQL proof; high-risk path and late-approval guards; activation requires protected main merge and local NLO update"
+    },
+    {
+      "id": "nlo.novel.saved-private-reading",
+      "description": "Read private NLO-saved novel episode text in ordered bounded chunks through direct MCP without publishing copyrighted full text to GitHub Issue. Supports pinned checksums and audited complete-read coverage.",
+      "intents": [
+        "read saved novel completely",
+        "summarize saved entire novel",
+        "保存済み小説を全話読んで感想を書く"
+      ],
+      "aliases": [
+        "NLO novel saved reading",
+        "全話読了・感想分析連携"
+      ],
+      "adapter": "tools/novelight-commander/src/novel-saved-reading.js",
+      "executionRisk": "B",
+      "requiredPermissions": [
+        "local_saved_novel_read",
+        "connected_private_nlo_mcp"
+      ],
+      "testCommands": [
+        "node --test tools/novelight-commander/checks/novel-saved-reading.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "NOVELIGHT request 2026-10-22; NLO direct MCP only; no GitHub Issue body export"
     }
   ]
 }

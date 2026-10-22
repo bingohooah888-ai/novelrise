@@ -25,7 +25,10 @@ test('original contest key and existing entries remain unchanged', () => {
   assert.ok(migration.includes('novelight_contest_awards'));
   const protectedTable = 'public.novelight_contest_entries';
   assert.ok(!migration.includes('delete from ' + protectedTable));
-  assert.ok(!migration.includes('update ' + protectedTable));
+  // The reschedule itself must not rewrite entries. The new RPC may
+  // update consent fields only in the author's explicit reacceptance action.
+  const setupSql = migration.split('create or replace function')[0];
+  assert.ok(!setupSql.includes('update ' + protectedTable));
   assert.ok(migration.includes('december-2026-v2'));
 });
 
