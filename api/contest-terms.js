@@ -4,14 +4,22 @@ import {
   contestTermsTemplate
 } from './_lib/contest-terms-template.js';
 import { getSupabase, methodAllowed, sendHtml } from './seo/public-page.js';
+import {
+  LEGACY_CONTEST_TERMS_VERSION,
+  legacyContestTermsTemplate
+} from './_lib/contest-terms-november-v1.js';
 
 const KEY = 'novelight-november-2026';
+const SUPPORTED_TERMS_VERSIONS = new Set([
+  CONTEST_TERMS_VERSION_CANDIDATE,
+  LEGACY_CONTEST_TERMS_VERSION
+]);
 
 export function isContestTermsVisible(record) {
   return (
     record?.public_visible === true &&
     ['registration', 'active', 'review', 'finalized'].includes(record.status) &&
-    record.terms_version === CONTEST_TERMS_VERSION_CANDIDATE &&
+    SUPPORTED_TERMS_VERSIONS.has(record.terms_version) &&
     record.terms_url === CONTEST_TERMS_URL_CANDIDATE
   );
 }
@@ -37,7 +45,11 @@ export function createContestTermsHandler(getDatabase = getSupabase) {
       res.setHeader('Cache-Control', 'no-store, max-age=0');
       res.setHeader('CDN-Cache-Control', 'no-store');
       res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
-      return sendHtml(req, res, contestTermsTemplate);
+      const termsHtml =
+        data.terms_version === LEGACY_CONTEST_TERMS_VERSION
+          ? legacyContestTermsTemplate
+          : contestTermsTemplate;
+      return sendHtml(req, res, termsHtml);
     } catch {
       return notFound(res);
     }

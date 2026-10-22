@@ -31,7 +31,7 @@
 
       if (registrationOpen) {
         description.textContent =
-          '公開10話以上の作品を1作者1作品エントリーできます。10月31日23:59締切。';
+          '公開10話以上の作品を1作者1作品エントリーできます。11月30日23:59締切。';
         link.setAttribute('aria-label', '第1回 星灯祭へエントリーする');
       } else {
         // Do not advertise a contest that is draft, under review or cancelled.

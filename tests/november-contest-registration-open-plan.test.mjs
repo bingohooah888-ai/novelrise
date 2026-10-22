@@ -14,11 +14,11 @@ const MAIN_SHA = '93764e4ab50d87b5d7d0f93677b610b599bf8e9f';
 function fixture() {
   const approval = {
     version: 1,
-    operation: 'open-november-contest-registration',
+    operation: 'open-december-contest-registration',
     requestId: 'contest-regopen-test-request-01',
     mainSha: MAIN_SHA,
     contestKey: 'novelight-november-2026',
-    termsVersion: 'november-2026-v1',
+    termsVersion: 'december-2026-v2',
     termsUrl: 'https://novelight.jp/contest-terms',
     termsSourceSha: TERMS_SHA,
     termsAdoptionCommentId: 123456,
@@ -50,7 +50,7 @@ function fixture() {
       ownerVerified: true,
       commentId: 123456,
       termsSourceSha: TERMS_SHA,
-      termsVersion: 'november-2026-v1',
+      termsVersion: 'december-2026-v2',
       termsUrl: 'https://novelight.jp/contest-terms'
     },
     now: '2026-10-15T00:00:00Z'

@@ -1,8 +1,8 @@
-// Trusted default-branch admission: one rollback-only Phase 1 Staging transaction.
+// Trusted-main, OWNER-only, one-use admission for rollback-only Staging checks.
+// An approval from chat is not a GitHub OWNER comment or a reused approval.
 import { readFileSync } from 'node:fs';
 
 export const SCOPE = 'community-phase1-interaction-rollback';
-export const CANDIDATE_SHA = '203fa256c33b0a46b274192eba9263e45877b938';
 export const MIGRATION = '20261014052000';
 export const PREFIX = 'NOVELIGHT_STAGING_COMMUNITY_INTERACTION_APPROVE ';
 const CLAIMED = 'NOVELIGHT_STAGING_COMMUNITY_INTERACTION_CLAIMED ';
@@ -13,6 +13,7 @@ const SHA = /^[0-9a-f]{40}$/u;
 function deny(reason) {
   throw new Error('COMMUNITY_STAGING_INTERACTION_DENIED: ' + reason);
 }
+
 function record(body, prefix, fields) {
   if (typeof body !== 'string' || body.length > 2048 ||
       !body.startsWith(prefix)) deny('invalid ledger marker');
@@ -30,10 +31,10 @@ function record(body, prefix, fields) {
 }
 
 export function assertCommunityInteractionAdmission({
-  repository, issue, comment, main, ledgerPages
+  repository, issue, comment, main, pr, compare, ledgerPages
 }) {
   if (repository !== OWNER + '/novelrise' ||
-      issue?.number !== 294 ||
+      issue?.number !== 294 || issue?.state !== 'open' ||
       issue?.title !== '[Staging Control] Supabase migration sync' ||
       issue?.pull_request || issue?.user?.login !== OWNER) {
     deny('wrong OWNER Staging control issue');
@@ -47,11 +48,31 @@ export function assertCommunityInteractionAdmission({
     'scope', 'mainSha', 'candidateSha', 'migration', 'confirmation'
   ]);
   if (!SHA.test(main?.object?.sha ?? '') ||
-      req.scope !== SCOPE || req.mainSha !== main.object.sha ||
-      req.candidateSha !== CANDIDATE_SHA ||
+      !SHA.test(pr?.head?.sha ?? '') ||
+      !SHA.test(pr?.base?.sha ?? '') ||
+      req.scope !== SCOPE ||
+      req.mainSha !== main.object.sha ||
+      req.candidateSha !== pr.head.sha ||
+      req.mainSha !== pr.base.sha ||
       req.migration !== MIGRATION ||
-      req.confirmation !== 'STAGING APPROVED') {
-    deny('not exact current main, migration or approval scope');
+      req.confirmation !== 'STAGING APPROVED' ||
+      pr.number !== 2222 || pr.state !== 'open' ||
+      pr.draft !== true || pr.merged === true ||
+      pr.base.ref !== 'main' ||
+      pr.head.repo?.full_name !== repository) {
+    deny('wrong main, candidate PR or approval scope');
+  }
+  if (compare?.status !== 'ahead' ||
+      compare.behind_by !== 0 ||
+      compare.base_commit?.sha !== req.mainSha ||
+      !Number.isSafeInteger(compare.total_commits) ||
+      compare.total_commits < 1 ||
+      compare.total_commits > 250 ||
+      compare.ahead_by !== compare.total_commits ||
+      !Array.isArray(compare.commits) ||
+      compare.commits.length !== compare.total_commits ||
+      compare.commits.at(-1)?.sha !== req.candidateSha) {
+    deny('candidate is not complete current-main descendant');
   }
   if (!Array.isArray(ledgerPages) || ledgerPages.length === 0 ||
       ledgerPages.length > 20 ||
@@ -62,37 +83,35 @@ export function assertCommunityInteractionAdmission({
   }
   for (const item of ledgerPages.flat()) {
     if (typeof item?.body !== 'string') deny('malformed ledger row');
-    const marker = item.body.startsWith(CLAIMED)
-      ? CLAIMED
-      : item.body.startsWith(CONSUMED) ? CONSUMED : null;
+    const marker = item.body.startsWith(CLAIMED) ? CLAIMED :
+      item.body.startsWith(CONSUMED) ? CONSUMED : null;
     if (!marker) continue;
-    const entry = record(item.body, marker,
-      marker === CLAIMED
-        ? ['requestCommentId','mainSha','candidateSha','runId']
-        : ['requestCommentId','mainSha','candidateSha','runId','result']);
+    const entry = record(item.body, marker, marker === CLAIMED
+      ? ['requestCommentId','mainSha','candidateSha','runId']
+      : ['requestCommentId','mainSha','candidateSha','runId','result']);
     if (String(entry.requestCommentId) === String(comment.id)) {
       deny('approval has already been claimed/consumed');
     }
   }
   return {
     mainSha: req.mainSha,
-    candidateSha: CANDIDATE_SHA,
+    candidateSha: req.candidateSha,
     migration: MIGRATION,
     requestCommentId: String(comment.id)
   };
 }
+
 if (process.argv[2] === 'validate') {
   try {
-    const [e, m, ledger] = process.argv.slice(3).map(
+    const inputs = process.argv.slice(3);
+    if (inputs.length !== 5) deny('five JSON input files required');
+    const [event, main, pr, compare, ledgerPages] = inputs.map(
       (path) => JSON.parse(readFileSync(path, 'utf8'))
     );
-    if (!ledger) deny('event, main and ledger required');
     const result = assertCommunityInteractionAdmission({
-      repository: e.repository?.full_name,
-      issue: e.issue,
-      comment: e.comment,
-      main: m,
-      ledgerPages: ledger
+      repository: event.repository?.full_name,
+      issue: event.issue, comment: event.comment,
+      main, pr, compare, ledgerPages
     });
     process.stdout.write(JSON.stringify(result) + '\n');
   } catch (error) {
