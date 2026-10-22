@@ -198,7 +198,7 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await card.locator('.community-comment-edit button[type="submit"]').click();
   await expect(card.locator('.community-comment-body')).toContainText('修正した');
   expect(
-    await card.locator('.community-comment-body').evaluate(el => getComputedStyle(el).whiteSpace)
+    await card.locator('.community-comment-body').evaluate(el => globalThis.getComputedStyle(el).whiteSpace)
   ).toBe('pre-wrap');
   await expect(card.locator('.community-comment-time')).toContainText('10/14');
   await card.locator('.community-comment-share').click();
