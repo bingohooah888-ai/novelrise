@@ -15,8 +15,7 @@ const CURRENT_BLOBS = {
   'index.html': '3acd9fc20b3f891d94427abc7448ccdcd7cf84b4',
   'tests/accessibility-baseline.test.mjs':
     'ff4d22ab2c3fb54d63f99d5ba069edc7ae647e86',
-  'tests/e2e/specs/async-ui.spec.js':
-    '24c5759d4c1238d4f59a2dda1a4b9a1f80bf0ecd'
+  'tests/e2e/specs/async-ui.spec.js': '24c5759d4c1238d4f59a2dda1a4b9a1f80bf0ecd'
 };
 const REVIEWED_SMOKE = Object.freeze({
   path: 'tests/e2e/specs/smoke.spec.js',
