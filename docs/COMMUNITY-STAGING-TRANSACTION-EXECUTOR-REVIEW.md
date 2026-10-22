@@ -81,3 +81,44 @@ flag, payments and Vercel configuration remain untouched.
 - A failed job requiring recovery must not be retried automatically.
 - The workflow and runtime gates are security-sensitive and require a
   separate security review plus Production approval for installation.
+
+
+## 2026-10-22 follow-up — installed Phase 1 schema, current-head rollback-only check
+
+This section documents a **separate** maintenance proposal for the previously
+installed `community-staging-interaction-rollback.yml` on trusted main.
+Its historical fixed candidate SHA is obsolete after the successful
+Phase 1 forward reconciliation (GitHub run #39777797935).
+Do not reuse any prior Issue #294 approval.
+
+Verified by live read-only inspection of the dedicated Staging project:
+- `20261014052000` is recorded once among 188 versions, with ledger MD5
+  `3851f0dfc1e5bdb6bc7c0e317c5c4fd4`.
+- All eight `community_*` tables are RLS enabled; anon/authenticated roles
+  have no direct table SELECT or INSERT.
+- Six new comment / notification / admin RPC signatures exist.
+  Moderation RPCs cannot be executed by anon or authenticated users.
+- `public_enabled=false`; anonymous feed and missing-post comments yield
+  empty arrays. No committed community interaction fixtures were observed.
+- At least two **eligible Staging-only author/reader pairs** exist for the
+  existing main-checked-in, one-transaction rollback SQL fixture.
+  Only aggregate counts were inspected; no private identities were surfaced.
+
+The review proposal binds the exact current main and Draft PR #2222 HEAD,
+requires GitHub OWNER Issue #294 evidence and complete PR ancestry, checks
+the candidate migration blob
+`df651446da99e299005b4c8ec262c528bf477922`, and pins the trusted-main
+rollback fixture `142ae6ea08826c304b9aac5b7c192126f44be1a6`.
+The workflow must enforce dedicated Staging credentials, zero existing
+interaction rows, immutable ledger digest and OFF public gate. One SQL
+session tests likes, comments, reports, blocking, muting and hidden posts
+with **mandatory ROLLBACK**; postchecks prove no committed fixtures.
+No new Preview and no hosted browser interaction are performed.
+
+**Not authorized by this review:** merging the maintenance workflow to main,
+running the Staging rollback fixture, using a Production connection, enabling
+public features, or deploying a cost-bearing Preview. A separate
+current-head `本番承認` is needed to install changed trusted-main workflow
+code; a further one-use `ステージング承認` is needed to invoke it.
+This interaction proof does **not** replace real browser, multi-role admin,
+age-zone and user-authenticated acceptance checks.

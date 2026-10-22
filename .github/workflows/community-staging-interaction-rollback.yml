@@ -16,11 +16,14 @@ jobs:
     name: Authenticate one OWNER approval for Staging-only rollback
     if: >-
       github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
       github.event.issue.pull_request == null &&
       github.event.issue.title == '[Staging Control] Supabase migration sync' &&
       github.event.issue.user.login == 'bingohooah888-ai' &&
       github.event.comment.user.login == 'bingohooah888-ai' &&
       github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
       startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_COMMUNITY_INTERACTION_APPROVE ')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -46,11 +49,20 @@ jobs:
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
             > /tmp/community-interaction-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2222" \
+            > /tmp/community-interaction-pr.json
+          base="$(jq -er '.object.sha' /tmp/community-interaction-main.json)"
+          head="$(jq -er '.head.sha' /tmp/community-interaction-pr.json)"
+          test "$base" = "$(git rev-parse HEAD)"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$base...$head" \
+            > /tmp/community-interaction-compare.json
           gh api --paginate --slurp \
             "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" \
             > /tmp/community-interaction-ledger.json
           node scripts/community-staging-interaction-admission.mjs validate \
             "$GITHUB_EVENT_PATH" /tmp/community-interaction-main.json \
+            /tmp/community-interaction-pr.json \
+            /tmp/community-interaction-compare.json \
             /tmp/community-interaction-ledger.json \
             > /tmp/community-interaction-decision.json
           main="$(jq -er '.mainSha' /tmp/community-interaction-decision.json)"
@@ -79,6 +91,9 @@ jobs:
 
   test:
     name: Test isolated Staging RPCs within mandatory PostgreSQL ROLLBACK
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
     needs: admit
     if: needs.admit.result == 'success'
     runs-on: ubuntu-latest
@@ -114,8 +129,9 @@ jobs:
           test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')" = "$CANDIDATE_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.state')" = 'open'
           test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.draft')" = 'true'
-          test "$CANDIDATE_SHA" = '203fa256c33b0a46b274192eba9263e45877b938'
           test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test "$(gh api "repos/$GITHUB_REPOSITORY/contents/supabase/migrations/20261014052000_community_plaza_phase1.sql?ref=$CANDIDATE_SHA" --jq .sha)" = 'df651446da99e299005b4c8ec262c528bf477922'
+          test "$(git hash-object supabase/checks/20261016053000_community_phase1_interaction_rollback.sql)" = '142ae6ea08826c304b9aac5b7c192126f44be1a6'
           test -n "$STAGING_DATABASE_URL_SOURCE"
           node scripts/resolve-staging-session-pooler.mjs
           export STAGING_DATABASE_URL
@@ -134,6 +150,12 @@ jobs:
              (SELECT count(*) FROM public.community_reports)::text
              FROM public.community_runtime_control WHERE singleton")"
           test "$state" = 'false|1|0|0|0'
+          ledger="$(psql "$db" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT md5(string_agg(version, ',' ORDER BY version)) FROM supabase_migrations.schema_migrations")"
+          test "$ledger" = '3851f0dfc1e5bdb6bc7c0e317c5c4fd4'
+          missing="$(psql "$db" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT CASE WHEN to_regprocedure('public.novelight_community_comment_detail(text,uuid)') IS NULL OR to_regprocedure('public.novelight_community_edit_my_comment(uuid,text)') IS NULL OR to_regprocedure('public.novelight_community_mark_notifications_read(bigint[])') IS NULL THEN 'missing' ELSE 'ready' END")"
+          test "$missing" = 'ready'
       - name: Prove likes, comments, reports, Block/Mute and hidden posts using one ROLLBACK
         shell: bash
         run: |
@@ -163,6 +185,9 @@ jobs:
              (SELECT count(*) FROM public.community_reports)::text
              FROM public.community_runtime_control WHERE singleton")"
           test "$state" = 'false|1|0|0|0'
+          digest="$(psql "$db" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT md5(string_agg(version, ',' ORDER BY version)) FROM supabase_migrations.schema_migrations")"
+          test "$digest" = '3851f0dfc1e5bdb6bc7c0e317c5c4fd4'
           echo 'Staging committed public gate OFF; migration and interaction counts unchanged.'
 
   consume:
