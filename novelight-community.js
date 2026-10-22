@@ -113,10 +113,13 @@
       status.hidden = false;
     } finally { button.disabled = false; }
   }
-  async function comments(container, row, onPosted) {
+  async function comments(container, row, onPosted, displayLimit = 20) {
     container.replaceChildren(el('p', 'community-state', 'コメントを読み込んでいます...'));
     try {
-      const data = await rpc('novelight_community_comments', {p_post_key:row.post_key,p_limit:20});
+      const data = await rpc('novelight_community_comments', {
+        p_post_key:row.post_key,p_limit:displayLimit
+      });
+      if (!Array.isArray(data)) throw new Error('Invalid comment list');
       container.replaceChildren();
       const form = el('form', 'community-comment-form');
       const input = el('input');
@@ -156,12 +159,26 @@
         c.append(replyButton);
         container.append(c);
       }
+      if (data.length >= 20) {
+        if (displayLimit === 20) {
+          const older = el('button', 'community-action community-comments-older', '過去のコメントも表示（最大50件）');
+          older.type = 'button';
+          older.addEventListener('click', () => { void comments(container,row,onPosted,50); });
+          container.append(older);
+        } else if (data.length >= 50) {
+          container.append(el('p', 'community-comment-tip', '最新50件までを表示しています。'));
+        }
+      }
       const submit = el('button', '', '送信');
       submit.type = 'submit';
-      form.append(replyHint, cancelReply, input, submit);
+      const feedback = el('p', 'community-comment-feedback');
+      feedback.setAttribute('role','status');
+      feedback.hidden = true;
+      form.append(replyHint, cancelReply, input, submit, feedback);
       form.addEventListener('submit', async evt => {
         evt.preventDefault();
         submit.disabled = true;
+        feedback.hidden = true;
         try {
           if (!await authed()) return requireLogin();
           const body = input.value.trim();
@@ -175,18 +192,23 @@
             p_post_key:row.post_key,p_body:body,p_parent_comment_id:replyTo
           });
           if (typeof onPosted === 'function') onPosted();
-          await comments(container,row,onPosted);
+          await comments(container,row,onPosted,displayLimit);
         } catch(error) {
           console.warn('community comment failed',error);
-          input.setCustomValidity('コメントを送信できませんでした');
-          input.reportValidity();
-          input.setCustomValidity('');
+          feedback.textContent = 'コメントを送信できませんでした。内容を確認して再度お試しください。';
+          feedback.hidden = false;
         } finally {submit.disabled=false;}
       });
       container.append(form);
     } catch(error) {
       console.warn('community comments unavailable',error);
-      container.replaceChildren(el('p', 'community-state', 'コメントを表示できませんでした'));
+      const state = el('p', 'community-state', 'コメントを表示できませんでした。');
+      state.setAttribute('role','status');
+      const retry = el('button', 'community-action', 'もう一度読み込む');
+      retry.type = 'button';
+      retry.addEventListener('click',() => { void comments(container,row,onPosted,displayLimit); });
+      state.append(el('span','', ' '),retry);
+      container.replaceChildren(state);
     }
   }
   function card(row) {

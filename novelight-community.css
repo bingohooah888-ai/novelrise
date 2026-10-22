@@ -69,3 +69,7 @@
 .community-notice-mark[hidden],.community-notice-all-read[hidden],.community-notice-feedback[hidden]{display:none}
 .community-notice-mark:disabled,.community-notice-all-read:disabled{opacity:.65;cursor:wait}
 .community-notice-feedback{margin:9px 0 0;font-size:.83rem;color:#efd1ab}
+
+.community-comments-older{display:block;margin:10px 0;color:#e6bd6e;text-decoration:underline}
+.community-comment-tip,.community-comment-feedback{flex-basis:100%;margin:4px 0;color:#cbd3de;font-size:.82rem}
+.community-comment-feedback[hidden]{display:none}
