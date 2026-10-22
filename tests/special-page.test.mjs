@@ -78,14 +78,14 @@ test('作品の公開状態が変わったら特別企画から未公開話へ�
   await handler({ method: 'GET', query: { slug: project.slug } }, res);
   assert.equal(res.statusCode, 200);
   assert.match(res.body, /許諾された特別企画/);
-  assert.doesNotMatch(res.body, /episode\\.html\\?id=10/);
-  assert.doesNotMatch(res.body, /novel\\.html\\?id=50/);
+  assert.equal(res.body.includes('episode.html?id=10'), false);
+  assert.equal(res.body.includes('novel.html?id=50'), false);
 });
 test('元作品とエピソードが両方公開中ならゲスト向け導線を表示する', async () => {
   const handler = createSpecialPageHandler(() => fakeDb('published'), () => now);
   const res = response();
   await handler({ method: 'GET', query: { slug: project.slug } }, res);
   assert.equal(res.statusCode, 200);
-  assert.match(res.body, /episode\\.html\\?id=10/);
-  assert.match(res.body, /novel\\.html\\?id=50/);
+  assert.equal(res.body.includes('episode.html?id=10'), true);
+  assert.equal(res.body.includes('novel.html?id=50'), true);
 });
