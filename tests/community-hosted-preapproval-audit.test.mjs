@@ -1,12 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  auditCommunityHostedNoCostReadiness
-} from '../scripts/community-hosted-preapproval-audit.mjs';
-import {
-  REVIEWED_COMMUNITY_FILES
-} from '../scripts/community-phase1-reviewed-candidate.mjs';
+import { auditCommunityHostedNoCostReadiness } from '../scripts/community-hosted-preapproval-audit.mjs';
+import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-candidate.mjs';
 
 const MAIN = 'a'.repeat(40);
 const FEATURE = 'b'.repeat(40);
@@ -64,7 +60,9 @@ function harness(overrides = {}) {
       base_commit: { sha: MAIN },
       commits: [{ sha: FEATURE }],
       files: REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({
-        filename: path, sha, status
+        filename: path,
+        sha,
+        status
       }))
     },
     '/environments/community-hosted-isolated': ENV,
@@ -177,7 +175,9 @@ test('blocked by unreadable environment and disabled watchdog', async () => {
 
 test('reject changed blobs and nonindependent reviewers', async () => {
   const bad = REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({
-    filename: path, sha, status
+    filename: path,
+    sha,
+    status
   }));
   bad[0].sha = 'f'.repeat(40);
   const sample = harness({
