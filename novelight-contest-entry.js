@@ -76,6 +76,24 @@
       marker.textContent = 'コンテスト参加中';
       panel.append(marker);
       if (context.accepting_entries) {
+        if (context.entry.terms_accepted_version !== context.terms_version) {
+          const consent = document.createElement('label');
+          consent.className = 'nl-contest-terms-consent';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.dataset.contestConsent = '1';
+          const link = document.createElement('a');
+          link.href = context.terms_url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = '改訂後の応募要項';
+          const caption = document.createElement('span');
+          caption.textContent = 'に同意します（既存の応募は保持されます）';
+          consent.append(checkbox, link, caption);
+          const button = createButton('改訂要項に再同意', 'enter', work.id, true);
+          checkbox.addEventListener('change', () => { button.disabled = !checkbox.checked; });
+          panel.append(consent, button);
+        }
         panel.append(createButton('エントリー取消', 'withdraw', work.id));
       }
       return panel;
@@ -133,11 +151,11 @@
     }
     if (isReplacement) {
       return window.confirm(
-        'エントリー作品を変更しますか？応募できるのは1作者1作品です。'
+        'エントリー内容を確認しますか？応募できるのは1作者1作品です。既存の応募は保持されます。'
       );
     }
     return window.confirm(
-      'この作品で11月コンテストにエントリーしますか？'
+      'この作品で第1回 星灯祭にエントリーしますか？'
     );
   }
 
@@ -172,7 +190,8 @@
         window.alert(error?.message || 'エントリー処理に失敗しました。');
       } finally {
         busy = false;
-        button.disabled = false;
+        button.disabled = Boolean(action === 'enter' &&
+          !button.closest('.nl-contest-entry-actions')?.querySelector('input[data-contest-consent]:checked'));
       }
     });
   }

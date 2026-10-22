@@ -102,7 +102,7 @@
     }
   }
 
-  // The contest itself controls the launch; 11/1 is not a client-only timer.
+  // The contest itself controls the launch; 12/1 is not a client-only timer.
   // Existing public novels remain readable through their ordinary pages.
   function contestReadingOpen(status) {
     return ['active', 'review', 'finalized'].includes(status);
@@ -145,7 +145,7 @@
     } else {
       const notice = document.createElement('span');
       notice.className = 'contest-entry-card-action contest-entry-card-prestart';
-      notice.textContent = '11月1日の開幕後に読めます';
+      notice.textContent = '12月1日の開幕後に読めます';
       article.append(tags, title, notice);
     }
     return article;
@@ -180,7 +180,7 @@
       entriesTitle.textContent = readingOpen ? '参加作品を読む' : 'エントリー作品一覧';
       entriesIntro.textContent = readingOpen
         ? '知名度に関係なく、気になる物語の最初の1話から。'
-        : '応募受付中はエントリー作品の情報を先行公開します。星灯祭の読書リンクは11月1日の開幕後からご利用いただけます。';
+        : '応募受付中はエントリー作品の情報を先行公開します。星灯祭の読書リンクは12月1日の開幕後からご利用いただけます。';
       void loadPublishedRanking();
       const total = Math.max(0, Number(data.total_entries) || 0);
       const works = data.entries;

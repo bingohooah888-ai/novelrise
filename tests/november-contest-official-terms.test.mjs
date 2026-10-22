@@ -61,7 +61,7 @@ test('approved contest landing offers a link to the official terms', () => {
 });
 
 test('rendered terms show the exact consent version saved by the server', () => {
-  assert.equal(CONTEST_TERMS_VERSION_CANDIDATE, 'november-2026-v1');
+  assert.equal(CONTEST_TERMS_VERSION_CANDIDATE, 'december-2026-v2');
   assert.ok(contestTermsTemplate.includes(CONTEST_TERMS_VERSION_CANDIDATE));
   assert.match(contestTermsTemplate, /応募要項の版ID/);
 });
@@ -95,9 +95,9 @@ test('public terms reflect decided eligibility and appeal procedure', () => {
 
 test('candidate terms follow adopted contest rules', () => {
   const fragments = [
-    '2026年10月31日',
-    '2026年11月1日',
+    '2026年11月30日',
     '2026年12月1日',
+    '2027年1月1日',
     '公開済み10話以上',
     '全年齢・R15',
     'R18作品とAI生成主体作品は対象外',

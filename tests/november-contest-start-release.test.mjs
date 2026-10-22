@@ -12,14 +12,14 @@ const ROOT = '/repos/bingohooah888-ai/novelrise';
 const url = 'https://api.github.com' + ROOT + '/issues/2120';
 const body = {
   version: 1,
-  operation: 'start-november-contest',
+  operation: 'start-december-contest',
   requestId: 'contest-start-test-request-0001',
   mainSha: MAIN,
   contestKey: 'novelight-november-2026',
-  termsVersion: 'november-2026-v1',
+  termsVersion: 'december-2026-v2',
   termsUrl: 'https://novelight.jp/contest-terms',
-  issuedAt: '2026-10-31T15:00:00Z',
-  expiresAt: '2026-10-31T15:10:00Z',
+  issuedAt: '2026-11-30T15:00:00Z',
+  expiresAt: '2026-11-30T15:10:00Z',
   challenge: 'AAAAAAAA',
   confirmation: 'CHAT_CONTEST_START_APPROVED',
   attestations: {
@@ -43,7 +43,7 @@ function fixture() {
   const state = {
     status: 'registration',
     public_visible: true,
-    terms_version: 'november-2026-v1',
+    terms_version: 'december-2026-v2',
     terms_url: 'https://novelight.jp/contest-terms',
     registered_entries: 2,
     registration_audits: 1,
@@ -61,7 +61,7 @@ function fixture() {
       comment: { id: 111 }
     },
     checkoutSha: MAIN,
-    now: '2026-10-31T15:01:00Z',
+    now: '2026-11-30T15:01:00Z',
     github: {
       get: async (path) => {
         if (path === ROOT + '/issues/comments/111') return record;
@@ -115,7 +115,7 @@ test('wrong owner, wrong terms, or stale preflight make no change', async () => 
     const f = fixture();
     if (kind === 'owner') f.record.user.login = 'someone_else';
     if (kind === 'terms')
-      f.record.body = f.record.body.replace('november-2026-v1', 'fake');
+      f.record.body = f.record.body.replace('december-2026-v2', 'fake');
     if (kind === 'preflight') f.state.registered_entries = 0;
     await assert.rejects(performContestStart(f.input), /BLOCKED/);
     assert.equal(f.getMutations(), 0);
@@ -143,7 +143,7 @@ test('validation rejects arrays, missing states and old claims', () => {
   const before = {
     status: 'registration',
     public_visible: true,
-    terms_version: 'november-2026-v1',
+    terms_version: 'december-2026-v2',
     terms_url: 'https://novelight.jp/contest-terms',
     registered_entries: 1,
     registration_audits: 1,

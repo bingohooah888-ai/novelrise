@@ -13,9 +13,9 @@ export function verifyContestStartApproval(ctx){
  let p;try{p=JSON.parse(ctx.commentBody.slice('NOVELIGHT_CONTEST_START_APPROVE '.length));}catch{check(false,'invalid JSON');}
  const keys=['version','operation','requestId','mainSha','contestKey','termsVersion','termsUrl','issuedAt','expiresAt','challenge','confirmation','attestations'];
  check(obj(p)&&Object.keys(p).sort().join(',')===keys.sort().join(','),'unexpected approval keys');
- check(p.version===1&&p.operation==='start-november-contest'&&/^contest-start-[a-z0-9-]{10,60}$/.test(p.requestId),'invalid operation/request');
+ check(p.version===1&&p.operation==='start-december-contest'&&/^contest-start-[a-z0-9-]{10,60}$/.test(p.requestId),'invalid operation/request');
  check(/^[0-9a-f]{40}$/.test(p.mainSha)&&p.mainSha===ctx.currentMainSha,'stale main');
- check(p.contestKey==='novelight-november-2026'&&p.termsVersion==='november-2026-v1'&&p.termsUrl==='https://novelight.jp/contest-terms','wrong terms');
+ check(p.contestKey==='novelight-november-2026'&&p.termsVersion==='december-2026-v2'&&p.termsUrl==='https://novelight.jp/contest-terms','wrong terms');
  check(p.confirmation==='CHAT_CONTEST_START_APPROVED'&&p.challenge===p.mainSha.slice(0,8).toUpperCase(),'separate confirmation/challenge required');
  const required=['registrationOpenVerified','entryDeadlineVerified','scoringSafetyReviewed','readingEndpointConfigVerified','guestSecretVerified','operatorReady'];
  check(obj(p.attestations)&&Object.keys(p.attestations).sort().join(',')===required.sort().join(',')&&required.every(k=>p.attestations[k]===true),'attestations missing');
@@ -41,12 +41,12 @@ export function buildContestStartSql(a){
   '  select * into strict c from public.novelight_contests',
   "    where contest_key='novelight-november-2026' for update;",
   "  if c.status <> 'registration' or c.public_visible is not true",
-  "     or c.terms_version <> 'november-2026-v1'",
+  "     or c.terms_version <> 'december-2026-v2'",
   "     or c.terms_url <> 'https://novelight.jp/contest-terms'",
   '     or c.minimum_published_episodes <> 10',
-  "     or c.entry_deadline_at <> '2026-10-31 14:59:59.999999+00'::timestamptz",
-  "     or c.starts_at <> '2026-10-31 15:00:00+00'::timestamptz",
-  "     or c.ends_at <> '2026-11-30 15:00:00+00'::timestamptz",
+  "     or c.entry_deadline_at <> '2026-11-30 14:59:59.999999+00'::timestamptz",
+  "     or c.starts_at <> '2026-11-30 15:00:00+00'::timestamptz",
+  "     or c.ends_at <> '2026-12-31 15:00:00+00'::timestamptz",
   "     or now_at < c.starts_at or now_at >= c.starts_at + interval '1 day' then",
   "    raise exception 'STEP12_START_BLOCKED: state, terms or clock mismatch';",
   '  end if;',
