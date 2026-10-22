@@ -154,6 +154,17 @@ test("Kakuyomu rejects damaged embedded metadata instead of silently falling bac
   );
 });
 
+test("Kakuyomu refuses completion when the public count is missing from both sources", () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 3 });
+  const withoutCounts = html
+    .replace(/"publicEpisodeCount":3,/, "")
+    .replace(/連載中 全3話/, "連載中");
+  assert.throws(
+    () => parseKakuyomuIndexHtml(withoutCounts, root),
+    /episode count cannot be verified/
+  );
+});
+
 test("Kakuyomu allows a legacy HTML index only when its episode count is verified", () => {
   const { html, root } = kakuyomuFixture({ episodeCount: 3, visibleLinks: 3 });
   const withoutNextData = html.replace(/<script id="__NEXT_DATA__"[^>]*>[\s\S]*?<\/script>/, "");
