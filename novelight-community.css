@@ -84,3 +84,7 @@
 .community-filter-status{margin:-10px 0 14px;color:#efd1ab;font-size:.86rem}
 .community-filter-status[hidden]{display:none}
 @media(max-width:640px){#communityRefresh{margin-left:0}}
+
+.community-share-status{font-size:.82rem;color:#d8dce3;flex-basis:100%}
+.community-share-status[hidden]{display:none}
+.community-share-url{color:#e6bd6e;text-decoration:underline}

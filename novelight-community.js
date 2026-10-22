@@ -350,6 +350,34 @@
       });
     });
     actions.append(like,comment,likeStatus);
+    const postKey = String(row.post_key || '');
+    if (/^(?:novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[0-9a-f-]{36}|official:[0-9]+|ep:[0-9a-f-]{36}:[0-9]+:[0-9]+)$/i.test(postKey)) {
+      const share = el('button', 'community-action community-share', 'リンクを共有');
+      share.type = 'button';
+      const shareStatus = el('span', 'community-share-status');
+      shareStatus.hidden = true;
+      shareStatus.setAttribute('role', 'status');
+      share.addEventListener('click', async () => {
+        const href = new URL('/community.html#post-' + encodeURIComponent(postKey), location.origin).href;
+        share.disabled = true;
+        try {
+          if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+          await navigator.clipboard.writeText(href);
+          shareStatus.textContent = '投稿へのリンクをコピーしました';
+        } catch (error) {
+          console.warn('community link copy unavailable', error);
+          const fallback = el('a', 'community-share-url', '投稿リンクを開く');
+          fallback.href = href;
+          shareStatus.replaceChildren('コピーできないため、', fallback, 'からURLを共有してください。');
+          shareStatus.hidden = false;
+          return;
+        } finally {
+          share.disabled = false;
+        }
+        shareStatus.hidden = false;
+      });
+      actions.append(share, shareStatus);
+    }
     const report = el('button', 'community-action', '通報');
     report.type = 'button';
     report.setAttribute('aria-expanded', 'false');
