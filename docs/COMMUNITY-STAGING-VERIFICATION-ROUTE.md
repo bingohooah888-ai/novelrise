@@ -105,3 +105,46 @@ for a Vercel Preview. Browser preview tests are not in this preparation scope.
   **「ステージング承認」**) after identifying the immutable target and scope.
 - Run Staging role/RLS, consent, audit, notifications, restore/disable tests.
 - Separately obtain 「本番承認」 before merge or production mutation.
+
+## 7. 2026-10-22 hosted ledger-divergence inspection (read-only)
+
+Hosted management and SQL retrieval was repeated. This dated snapshot is
+**not** a migration request, execution permit, or live 3-role acceptance result.
+
+| Source | Recorded migrations | Community 20261014052000 | New author activity migrations |
+| --- | ---: | --- | --- |
+| Production fiepaguycecrredwrcwx | 189 | Absent | 20261022010000, 20261022010100 |
+| Staging wmlzjgvxgoyrovdhbqbg | 188 | Present once | Both absent |
+
+- Production-only: author_activity_publication_timestamps (20261022010000)
+  and author_activity_first_episode (20261022010100).
+- Staging-only: community_plaza_phase1 (20261014052000).
+  Common migration versions and names matched in the retrieved lists.
+  **The migration ledgers are not equivalent.**
+- Staging branch management reported MIGRATIONS_FAILED while preview project
+  health reported ACTIVE_HEALTHY. These are distinct states; neither permits a write.
+- A read-only Staging SQL query found public_enabled=false, activated_at=null,
+  and zero community comments or notifications.
+- The user's recent 本番承認 does not include a new ステージング承認.
+  Issue #188 is closed. Issue #294 accepts only installed trusted-main routes,
+  while this draft candidate is ineligible for the existing main-only sync.
+- Do not reset/rebase Staging, edit the ledger, force-sync migrations,
+  create billed isolation, or deploy a Preview without new scoped approval.
+
+The offline inspectCommunityStagingLedger helper in
+scripts/community-staging-preflight.mjs accepts only explicitly complete
+migration snapshots and fixed production/staging identities. It reports
+production-only, Staging-only, and renamed-version conflicts, and rejects
+missing, duplicated, malformed, or incomplete inputs. All results keep
+canSyncOrReset=false, canRunHostedAcceptance=false, and
+canMergeOrDeployProduction=false; this helper cannot prove host authenticity,
+snapshot freshness or approval. Tests model the observed divergence as a
+fixture; those tests do not touch hosted Supabase.
+
+**Next safe boundary:** establish a reviewed trusted-main one-use runner
+bound to immutable candidate artifacts; verify isolation cost, budgets and
+cleanup, and obtain exact-scope ステージング承認. Test separate authenticated
+users A and B plus staff, including direct RPC cross-ownership, blocking,
+muting, reporting, moderation and notification isolation. Then revisit
+Production merge, schema migration and public activation as separate
+release decisions; do not infer permission from offline checks.
