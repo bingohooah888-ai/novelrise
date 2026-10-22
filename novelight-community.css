@@ -126,3 +126,5 @@
 .community-comment-share-status[hidden]{display:none}
 
 .community-comment-target:focus{outline:2px solid #d6a447;outline-offset:3px}
+
+.community-comment-body{white-space:pre-wrap;overflow-wrap:anywhere;display:block;line-height:1.65}

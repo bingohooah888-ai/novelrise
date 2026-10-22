@@ -362,7 +362,7 @@
           c.id = 'community-comment-' + commentKey;
         }
         const author = el('strong', '', (comment.parent_comment_id ? '↳ ' : '') + (comment.display_name || 'ユーザー'));
-        const commentText = el('span', '', comment.body || '');
+        const commentText = el('span', 'community-comment-body', comment.body || '');
         c.append(author, commentText);
         const postedAt = dateString(comment.created_at);
         if (postedAt) {
@@ -705,7 +705,7 @@
           preview.setAttribute('tabindex','-1');
           preview.append(
             el('strong','',detail.display_name || 'ユーザー'),
-            el('span','',detail.body || '')
+            el('span','community-comment-body',detail.body || '')
           );
           const when = dateString(detail.created_at);
           if (when) {

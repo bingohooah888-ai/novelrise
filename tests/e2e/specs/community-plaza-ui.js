@@ -194,9 +194,12 @@ test('community UI interactions use mocked data', async ({ page }) => {
     '既存コメント'
   );
   await card.locator('.community-comment .community-action', { hasText: /^編集$/ }).click();
-  await card.locator('.community-comment-edit textarea').fill('修正したコメント');
+  await card.locator('.community-comment-edit textarea').fill('修正した\nコメント');
   await card.locator('.community-comment-edit button[type="submit"]').click();
-  await expect(card.locator('.community-comment')).toContainText('修正したコメント');
+  await expect(card.locator('.community-comment-body')).toContainText('修正した');
+  expect(
+    await card.locator('.community-comment-body').evaluate(el => getComputedStyle(el).whiteSpace)
+  ).toBe('pre-wrap');
   await expect(card.locator('.community-comment-time')).toContainText('10/14');
   await card.locator('.community-comment-share').click();
   await expect(card.locator('.community-comment-share-status')).toContainText(
