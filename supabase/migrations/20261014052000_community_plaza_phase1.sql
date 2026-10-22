@@ -677,7 +677,7 @@ CREATE OR REPLACE FUNCTION public.novelight_community_mark_notifications_read(
 )
 RETURNS integer LANGUAGE plpgsql VOLATILE SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $$
 DECLARE v_user uuid := (SELECT auth.uid());
   v_updated integer;
 BEGIN
@@ -703,7 +703,7 @@ BEGIN
  GET DIAGNOSTICS v_updated = ROW_COUNT;
  RETURN v_updated;
 END
-$;
+$$;
 REVOKE ALL ON FUNCTION public.novelight_community_mark_notifications_read(bigint[])
   FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.novelight_community_mark_notifications_read(bigint[])
