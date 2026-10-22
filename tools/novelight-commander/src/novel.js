@@ -193,7 +193,7 @@ export function parseKakuyomuIndexHtml(html, root) {
     seenEpisodeIds.add(id);
     episodes.push({
       url: root + "/episodes/" + id,
-      label: clean(item.title) || "Episode " + episodes.length + 1
+      label: clean(item.title) || "Episode " + (episodes.length + 1)
     });
   };
   const visit = (node, depth = 0) => {
