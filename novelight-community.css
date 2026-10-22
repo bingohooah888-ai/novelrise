@@ -88,3 +88,12 @@
 .community-share-status{font-size:.82rem;color:#d8dce3;flex-basis:100%}
 .community-share-status[hidden]{display:none}
 .community-share-url{color:#e6bd6e;text-decoration:underline}
+
+.community-follow{margin:8px 0 4px}
+.community-follow-open{font-size:.78rem;color:#e6bd6e;text-decoration:underline;text-underline-offset:3px}
+.community-follow-panel{margin-top:7px;border:1px solid var(--community-line);border-radius:9px;padding:10px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:#0b192b}
+.community-follow-panel[hidden]{display:none}
+.community-follow-status{margin:0;font-size:.81rem;color:#d6dce5;flex-basis:100%}
+.community-follow-toggle{border:1px solid #d6a447;border-radius:7px;background:#25364c;color:#f2dfb6;padding:7px 11px;cursor:pointer;font:inherit;font-size:.81rem}
+.community-follow-toggle:disabled,.community-follow-open:disabled{opacity:.65;cursor:wait}
+.community-follow-panel .community-more[hidden]{display:none}

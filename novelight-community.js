@@ -22,6 +22,7 @@
   let loading = false;
   let filterRevision = 0;
   let pendingReset = false;
+  const followStateCache = new Map();
   const limit = isHome ? (window.matchMedia('(max-width:640px)').matches ? 2 : 3) : 15;
   const dateString = value => {
     const parsed = new Date(value);
@@ -99,6 +100,119 @@
     a.href = 'curation.html?share=' + encodeURIComponent(token);
     return a;
   }
+  // Load follow state only when the user opens a card control. The feed
+  // itself makes no extra requests or changes to reader/author ranking.
+  function authorFollowControl(row) {
+    if (!['novel','episode','note'].includes(row.kind)) return null;
+    const authorId = String(row.author_user_id || '');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authorId)) return null;
+    const block = el('div','community-follow');
+    const opener = el('button','community-action community-follow-open','作者フォローを管理');
+    opener.type = 'button';
+    opener.setAttribute('aria-expanded','false');
+    const panel = el('div','community-follow-panel');
+    panel.hidden = true;
+    const status = el('p','community-follow-status');
+    status.setAttribute('role','status');
+    const toggle = el('button','community-follow-toggle','フォロー');
+    toggle.type = 'button';
+    toggle.disabled = true;
+    const settings = el('a','community-more','作者ページで通知設定 →');
+    settings.href = 'author.html?id=' + encodeURIComponent(authorId);
+    const signIn = el('a','community-more','ログインしてフォロー →');
+    const target = isHome
+      ? 'author.html?id=' + encodeURIComponent(authorId)
+      : 'community.html#post-' + encodeURIComponent(String(row.post_key || ''));
+    signIn.href = 'login.html?redirect=' + encodeURIComponent(target);
+    signIn.hidden = true;
+    settings.hidden = true;
+    panel.append(status,toggle,signIn,settings);
+    block.append(opener,panel);
+    let state = null;
+    let loading = false;
+    function render() {
+      if (!state) return;
+      toggle.textContent = state.following ? 'フォローを解除' : 'フォローする';
+      toggle.setAttribute('aria-pressed',String(state.following));
+      toggle.disabled = false;
+      status.textContent = state.following ? 'この作者をフォロー中です。' : 'この作者はフォローしていません。';
+      settings.hidden = false;
+      signIn.hidden = true;
+    }
+    opener.addEventListener('click',async () => {
+      panel.hidden = !panel.hidden;
+      opener.setAttribute('aria-expanded',String(!panel.hidden));
+      if (panel.hidden || loading) return;
+      if (followStateCache.has(authorId)) {
+        state = followStateCache.get(authorId);
+        render();
+        return;
+      }
+      loading = true;
+      opener.disabled = true;
+      status.textContent = 'フォロー状態を確認しています...';
+      try {
+        const user = await authed();
+        if (!user) {
+          status.textContent = 'フォローするにはログインが必要です。';
+          signIn.hidden = false;
+          return;
+        }
+        if (user.id === authorId) {
+          status.textContent = '自分のアカウントはフォローできません。';
+          return;
+        }
+        const result = await rpc('novelight_author_follow_state',{
+          p_author_user_id:authorId
+        });
+        const normalized = Array.isArray(result) ? result[0] : result;
+        if (typeof normalized?.following !== 'boolean') throw new Error('Invalid follow state');
+        state = {following:normalized.following};
+        followStateCache.set(authorId,state);
+        render();
+      } catch(error) {
+        console.warn('community author follow state unavailable',error);
+        status.textContent = 'フォロー状態を取得できませんでした。閉じて再度お試しください。';
+      } finally {
+        loading = false;
+        opener.disabled = false;
+      }
+    });
+    toggle.addEventListener('click',async () => {
+      if (!state || loading) return;
+      loading = true;
+      toggle.disabled = true;
+      status.textContent = 'フォロー設定を保存しています...';
+      try {
+        const latest = followStateCache.get(authorId) || state;
+        const desired = !latest.following;
+        const result = await rpc('novelight_set_author_follow',{
+          p_author_user_id:authorId,p_following:desired
+        });
+        const normalized = Array.isArray(result) ? result[0] : result;
+        if (typeof normalized?.following !== 'boolean' || normalized.following !== desired) {
+          throw new Error('Invalid follow receipt');
+        }
+        state = {following:normalized.following};
+        followStateCache.set(authorId,state);
+        render();
+        if (following && !state.following) {
+          filterRevision += 1;
+          void load(true);
+        }
+      } catch(error) {
+        console.warn('community author follow update failed',error);
+        state = followStateCache.get(authorId) || state;
+        render();
+        status.textContent = 'フォローを変更できませんでした。もう一度お試しください。';
+      } finally {
+        loading = false;
+        toggle.disabled = false;
+      }
+    });
+    return block;
+  }
+
   async function toggleLike(button, row, status) {
     button.disabled = true;
     status.hidden = true;
@@ -309,6 +423,8 @@
     const article = el('article', 'community-card');
     article.id = 'post-' + String(row.post_key || '').replace(/[^a-z0-9:_-]/gi,'');
     article.append(profile(row));
+    const followControl = authorFollowControl(row);
+    if (followControl) article.append(followControl);
     const typeLabels = {novel:'新作公開',episode:'エピソード更新',note:'近況ノート',curation:'おすすめリスト',seed:'LIGHT SEED',official:'NOVELIGHT公式'};
     article.append(el('span','community-type',typeLabels[row.kind] || 'お知らせ'));
     article.append(el('h3','community-card-title',row.title || '新しい活動'));
