@@ -54,7 +54,8 @@ textarea{min-height:60px}section{margin-top:25px}form{display:grid;gap:12px;max-
  async function moderate(action,id,reason=''){
   try{
    const body={action,reason};
-   body[['hide','restore'].includes(action)?'post_key':'user_id']=id;
+   if(action==='dismiss')body.report_id=id;
+   else body[['hide','restore'].includes(action)?'post_key':'user_id']=id;
    await access('POST',body);status.textContent='処理を記録しました。';
    await load();
   }catch(error){status.textContent=error.message||'更新できませんでした。';}
@@ -85,6 +86,7 @@ textarea{min-height:60px}section{margin-top:25px}form{display:grid;gap:12px;max-
     const tr=node('tr','');[row.post_key,row.reason,new Date(row.created_at).toLocaleString('ja-JP')].forEach(value=>tr.append(node('td',value)));
     const actions=node('td','');
     actions.append(button('非表示','hide',row.post_key,row.reason));
+    actions.append(button('通報を却下','dismiss',row.id));
     tr.append(actions);reports.append(tr);
    });
    const hidden=document.getElementById('communityHiddenRows');hidden.replaceChildren();

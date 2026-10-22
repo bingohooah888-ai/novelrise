@@ -66,6 +66,8 @@ test('ADMIN bearer protects moderator changes', () => {
   const entry = read('api/admin-community.js');
   assert.match(handler, /requireAdmin/);
   assert.match(handler, /novelight_admin_community_moderate/);
+  assert.match(handler, /novelight_admin_community_dismiss_report/);
+  assert.match(handler, /report_id: reportId/);
   assert.match(entry, /SUPABASE_SECRET_KEY/);
 });
 
@@ -87,6 +89,8 @@ test('review SQL protects private rows and notifications', () => {
     assert.ok(sql.includes(rls), rls);
   }
   assert.match(sql, /TO service_role;/);
+  assert.match(sql, /novelight_admin_community_dismiss_report/);
+  assert.match(sql, /status='dismissed'/);
   assert.match(sql, /ON CONFLICT\(event_key\) DO NOTHING/);
   assert.match(sql, /NOT public\.novelight_community_interaction_allowed/);
   assert.doesNotMatch(sql, /UPDATE public\.novel_rank/);

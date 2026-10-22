@@ -5,7 +5,7 @@ const KEY_PATTERN =
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
 const POST_ACTIONS = new Set(['hide', 'restore']);
-const ACTIONS = new Set(['hide', 'restore', 'restrict', 'unrestrict']);
+const ACTIONS = new Set(['hide', 'restore', 'restrict', 'unrestrict', 'dismiss']);
 
 function fail(res, status, message) {
   return res.status(status).json({ error: message });
@@ -32,7 +32,7 @@ async function loadCommunityState(supabase) {
     supabase
       .from('community_comments')
       .select('id,post_key,body,admin_hidden_at')
-      .not('admin_hidden_at','is',null)
+      .not('admin_hidden_at', 'is', null)
       .order('admin_hidden_at', { ascending: false })
       .limit(50)
   ]);
@@ -45,7 +45,7 @@ async function loadCommunityState(supabase) {
       ...(hidden.data ?? []),
       ...(hiddenComments.data ?? []).map((row) => ({
         post_key: 'comment:' + row.id,
-        reason: 'コメント: ' + String(row.body || '').slice(0,80),
+        reason: 'コメント: ' + String(row.body || '').slice(0, 80),
         hidden_at: row.admin_hidden_at
       }))
     ],
@@ -55,13 +55,30 @@ async function loadCommunityState(supabase) {
 
 function parseInput(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
-  const { action, post_key: postKey, user_id: userId, reason = '' } = body;
+  const {
+    action,
+    post_key: postKey,
+    user_id: userId,
+    report_id: reportId,
+    reason = ''
+  } = body;
   if (
     !ACTIONS.has(action) ||
     typeof reason !== 'string' ||
     reason.length > 500
   ) {
     return null;
+  }
+  if (action === 'dismiss') {
+    if (!UUID_PATTERN.test(reportId || '')) return null;
+    return {
+      action,
+      target: reportId,
+      reportId,
+      postKey: null,
+      userId: null,
+      reason: ''
+    };
   }
   const isPost = POST_ACTIONS.has(action);
   if (
@@ -76,6 +93,7 @@ function parseInput(body) {
     target: isPost ? postKey : userId,
     postKey: isPost ? postKey : null,
     userId: isPost ? null : userId,
+    reportId: null,
     reason: reason.trim()
   };
 }
@@ -100,13 +118,19 @@ export function createAdminCommunityHandler({ supabase, env = process.env }) {
       }
       const input = parseInput(req.body);
       if (!input) return fail(res, 400, 'Invalid moderation action');
-      const result = await supabase.rpc('novelight_admin_community_moderate', {
-        p_admin_user_id: admin.id,
-        p_action: input.action,
-        p_post_key: input.postKey,
-        p_user_id: input.userId,
-        p_reason: input.reason
-      });
+      const result =
+        input.action === 'dismiss'
+          ? await supabase.rpc('novelight_admin_community_dismiss_report', {
+              p_admin_user_id: admin.id,
+              p_report_id: input.reportId
+            })
+          : await supabase.rpc('novelight_admin_community_moderate', {
+              p_admin_user_id: admin.id,
+              p_action: input.action,
+              p_post_key: input.postKey,
+              p_user_id: input.userId,
+              p_reason: input.reason
+            });
       if (result.error || result.data !== true) {
         throw result.error || new Error('Moderation transaction failed');
       }

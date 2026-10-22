@@ -179,13 +179,13 @@ test('community UI interactions use mocked data', async ({ page }) => {
   }));
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
 
-  await card.locator('.community-action', { hasText: '通報' }).click();
+  await card.locator('.community-actions button', { hasText: /^通報$/ }).click();
   await expect(card.locator('.community-report-form')).toBeVisible();
   await card.locator('.community-report-form textarea').fill('テスト理由');
   await card.locator('.community-report-submit').click();
   await expect(card.locator('.community-report-form')).toBeHidden();
   await expect(
-    card.locator('.community-action', { hasText: '通報済み' })
+    card.locator('.community-actions button', { hasText: /^通報済み$/ })
   ).toBeDisabled();
 
   await page.locator('[data-community-filter="following"]').click();

@@ -850,6 +850,37 @@ $$;
 REVOKE ALL ON FUNCTION public.novelight_admin_community_moderate(uuid,text,text,uuid,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.novelight_admin_community_moderate(uuid,text,text,uuid,text) TO service_role;
 
+-- Dismiss exactly one report without hiding the post or affecting other
+-- reports of the same post. This remains a service_role-only admin action.
+CREATE OR REPLACE FUNCTION public.novelight_admin_community_dismiss_report(
+ p_admin_user_id uuid,p_report_id uuid
+)
+RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_post_key text;
+BEGIN
+ IF p_admin_user_id IS NULL OR p_report_id IS NULL THEN
+   RAISE EXCEPTION 'Invalid report dismissal' USING errcode='22023';
+ END IF;
+ UPDATE public.community_reports
+    SET status='dismissed',updated_at=now()
+  WHERE id=p_report_id AND status IN ('pending','reviewing')
+  RETURNING post_key INTO v_post_key;
+ IF v_post_key IS NULL THEN
+   RAISE EXCEPTION 'Report not available for review' USING errcode='22023';
+ END IF;
+ INSERT INTO public.admin_operation_audit(
+   admin_user_id,action,resource_type,resource_id,metadata)
+ VALUES(p_admin_user_id,'community.dismiss_report','community_report',
+   p_report_id::text,jsonb_build_object('post_key',v_post_key));
+ RETURN true;
+END
+$$;
+REVOKE ALL ON FUNCTION public.novelight_admin_community_dismiss_report(uuid,uuid)
+ FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.novelight_admin_community_dismiss_report(uuid,uuid)
+ TO service_role;
+
 -- Staging preflight 2026-10-14: corrected six-arg grant and closed blocked-author
 -- comment and R18-linked note backdoors. Staging schema must not be mutated
 -- outside the OWNER-approved #294 ledger; this is still a review-only draft.
