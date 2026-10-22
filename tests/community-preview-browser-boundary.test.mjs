@@ -32,7 +32,7 @@ function response(payload = config()) {
   };
 }
 
-test('reject browser config pointing at Production or a wrong Staging project', () => {
+test('reject Production or wrong Staging browser config', () => {
   assert.throws(
     () =>
       assertPreviewBrowserBoundary({
@@ -57,8 +57,11 @@ test('reject browser config pointing at Production or a wrong Staging project', 
   );
 });
 
-test('reject Production alias, non-HTTPS, secret key and unreviewed keys', () => {
-  for (const url of ['https://novelrise.vercel.app', 'http://preview.vercel.app']) {
+test('reject unsafe Preview hosts, secret keys and extra fields', () => {
+  for (const url of [
+    'https://novelrise.vercel.app',
+    'http://preview.vercel.app'
+  ]) {
     assert.throws(
       () =>
         assertPreviewBrowserBoundary({
@@ -94,9 +97,9 @@ test('reject Production alias, non-HTTPS, secret key and unreviewed keys', () =>
   );
 });
 
-test('verified Preview browser config is read-only with no key logs', async () => {
+test('verify browser config via a read-only protected GET', async () => {
   let requests = 0;
-  const result = await checkPreviewBrowserBoundary(credentials, async (url, options) => {
+  async function mockRequest(url, options) {
     requests += 1;
     assert.equal(url, origin + '/api/staging-browser-config');
     assert.equal(options.method, 'GET');
@@ -106,13 +109,14 @@ test('verified Preview browser config is read-only with no key logs', async () =
       credentials.VERCEL_AUTOMATION_BYPASS_SECRET
     );
     return response();
-  });
+  }
+  const result = await checkPreviewBrowserBoundary(credentials, mockRequest);
   assert.equal(requests, 1);
   assert.deepEqual(result, { origin, stagingUrl: staging });
   assert.doesNotMatch(JSON.stringify(result), /sb_publishable/u);
 });
 
-test('reject non-JSON or unavailable endpoint without retrying writes', async () => {
+test('reject blocked and non-JSON config endpoints', async () => {
   await assert.rejects(
     () =>
       checkPreviewBrowserBoundary(credentials, async () => ({
@@ -131,7 +135,7 @@ test('reject non-JSON or unavailable endpoint without retrying writes', async ()
   );
 });
 
-test('missing explicit Preview protection refuses requests before network', async () => {
+test('missing bypass secret denies network access', async () => {
   let calls = 0;
   await assert.rejects(
     () =>
