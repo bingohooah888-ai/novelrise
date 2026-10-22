@@ -139,7 +139,7 @@ export async function listSavedNovelSources(config, roots = {}) {
       if (e.code === "ENOENT") return [];
       throw e;
     });
-    for (const entry of files.filter(e => e.isFile() && entry.name.endsWith(".json")).slice(0, 100)) {
+    for (const entry of files.filter(e => e.isFile() && e.name.endsWith(".json")).slice(0, 100)) {
       const id = location.source === "proof" ? location.folder + "/" + entry.name :
         entry.name.slice(0, -5);
       try {
