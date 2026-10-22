@@ -84,26 +84,6 @@ async function rightsOf(db, id) {
     )) || []
   );
 }
-async function audit(
-  db,
-  actor,
-  projectId,
-  operation,
-  before = null,
-  after = null,
-  contentId = null
-) {
-  await unwrap(
-    db.from('special_change_log').insert({
-      actor_id: actor,
-      project_id: projectId,
-      content_id: contentId,
-      operation,
-      before_value: before,
-      after_value: after
-    })
-  );
-}
 async function canPublish(db, id) {
   const [p, contents, rights] = await Promise.all([
     projectOf(db, id),
@@ -250,32 +230,17 @@ export function createAdminSpecialHandler({
               .from('special_projects')
               .update({
                 ...input,
+                updated_by: admin.id,
                 updated_at: new Date().toISOString()
               })
               .eq('id', b.id)
               .select('*')
               .single()
           );
-          await audit(
-            supabase,
-            admin.id,
-            b.id,
-            'project.update',
-            before,
-            after
-          );
           return res.status(200).json({ project: after });
         }
         const after = await unwrap(
-          supabase.from('special_projects').insert(input).select('*').single()
-        );
-        await audit(
-          supabase,
-          admin.id,
-          after.id,
-          'project.create',
-          null,
-          after
+          supabase.from('special_projects').insert({ ...input, created_by: admin.id, updated_by: admin.id }).select('*').single()
         );
         return res.status(201).json({ project: after });
       }
@@ -291,6 +256,8 @@ export function createAdminSpecialHandler({
             .insert({
               ...source,
               slug: cleanSlug + '-copy-' + suffix,
+              created_by: admin.id,
+              updated_by: admin.id,
               featured: false,
               status: 'draft'
             })
@@ -306,13 +273,12 @@ export function createAdminSpecialHandler({
                 contents.map((c) => ({
                   ...pick(c, CONTENT_FIELDS),
                   project_id: clone.id,
+                  created_by: admin.id,
+                  updated_by: admin.id,
                   status: 'draft'
                 }))
               )
           );
-        await audit(supabase, admin.id, clone.id, 'project.clone', null, {
-          source_project_id: project.id
-        });
         return res.status(201).json({ project: clone });
       }
       if (action === 'save_content') {
@@ -335,21 +301,13 @@ export function createAdminSpecialHandler({
               .from('special_contents')
               .update({
                 ...input,
+                updated_by: admin.id,
                 updated_at: new Date().toISOString()
               })
               .eq('id', b.content_id)
               .eq('project_id', project.id)
               .select('*')
               .single()
-          );
-          await audit(
-            supabase,
-            admin.id,
-            project.id,
-            'content.update',
-            before,
-            after,
-            after.id
           );
           return res.status(200).json({ content: after });
         }
@@ -358,19 +316,12 @@ export function createAdminSpecialHandler({
             .from('special_contents')
             .insert({
               ...input,
-              project_id: project.id
+              project_id: project.id,
+              created_by: admin.id,
+              updated_by: admin.id
             })
             .select('*')
             .single()
-        );
-        await audit(
-          supabase,
-          admin.id,
-          project.id,
-          'content.create',
-          null,
-          after,
-          after.id
         );
         return res.status(201).json({ content: after });
       }
@@ -444,7 +395,7 @@ export function createAdminSpecialHandler({
           await unwrap(
             supabase
               .from('special_permissions')
-              .update({ revoked_at: new Date().toISOString() })
+              .update({ revoked_at: new Date().toISOString(), revoked_by: admin.id })
               .in(
                 'id',
                 active.map((p) => p.id)
@@ -457,15 +408,6 @@ export function createAdminSpecialHandler({
             .select('*')
             .single()
         );
-        await audit(
-          supabase,
-          admin.id,
-          project.id,
-          'rights.confirm',
-          null,
-          { id: after.id, kind, approved_digest: digest },
-          contentId
-        );
         return res.status(200).json({ permission: after });
       }
       if (action === 'revoke' || action === 'emergency_pause') {
@@ -474,6 +416,7 @@ export function createAdminSpecialHandler({
             supabase
               .from('special_projects')
               .update({
+                updated_by: admin.id,
                 status: 'paused',
                 updated_at: new Date().toISOString()
               })
@@ -482,17 +425,9 @@ export function createAdminSpecialHandler({
         await unwrap(
           supabase
             .from('special_permissions')
-            .update({ revoked_at: new Date().toISOString() })
+            .update({ revoked_at: new Date().toISOString(), revoked_by: admin.id })
             .eq('project_id', project.id)
             .is('revoked_at', null)
-        );
-        await audit(
-          supabase,
-          admin.id,
-          project.id,
-          action,
-          { status: project.status },
-          { status: action === 'emergency_pause' ? 'paused' : project.status }
         );
         return res.status(200).json({ ok: true });
       }
@@ -509,7 +444,8 @@ export function createAdminSpecialHandler({
             .from('special_projects')
             .update({
               status,
-              updated_at: new Date().toISOString(),
+              updated_by: admin.id,
+            updated_at: new Date().toISOString(),
               first_published_at:
                 status === 'published'
                   ? project.first_published_at || new Date().toISOString()
@@ -518,14 +454,6 @@ export function createAdminSpecialHandler({
             .eq('id', project.id)
             .select('*')
             .single()
-        );
-        await audit(
-          supabase,
-          admin.id,
-          project.id,
-          'status.' + status,
-          { status: project.status },
-          { status: after.status }
         );
         return res.status(200).json({ project: after });
       }
