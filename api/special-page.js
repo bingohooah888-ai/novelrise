@@ -178,7 +178,13 @@ function safeAnchor(url, title, eventType = '', target = '') {
     ' →</a>'
   );
 }
-function detailHtml(project, permissions, contents, publishedEpisodeIds, publishedNovelIds) {
+function detailHtml(
+  project,
+  permissions,
+  contents,
+  publishedEpisodeIds,
+  publishedNovelIds
+) {
   const visible = contents.filter(
     (c) =>
       contentIsVisible(c, permissions) &&
@@ -337,8 +343,11 @@ export function createSpecialPageHandler(
           .map((c) => c.episode_id);
         const episodes = episodeIds.length
           ? await rows(
-              supabase.from('episodes').select('id,novel_id,status')
-                .in('id', episodeIds).eq('status', 'published')
+              supabase
+                .from('episodes')
+                .select('id,novel_id,status')
+                .in('id', episodeIds)
+                .eq('status', 'published')
             )
           : [];
         const novelIds = [
@@ -347,21 +356,34 @@ export function createSpecialPageHandler(
         ].filter((id) => id != null);
         const publishedNovels = novelIds.length
           ? await rows(
-              supabase.from('novels').select('id,status')
-                .in('id', novelIds).eq('status', 'published')
+              supabase
+                .from('novels')
+                .select('id,status')
+                .in('id', novelIds)
+                .eq('status', 'published')
             )
           : [];
         const publishedNovelIds = new Set(
           publishedNovels.map((novel) => String(novel.id))
         );
         const publishedEpisodeIds = new Set(
-          episodes.filter((episode) =>
-            publishedNovelIds.has(String(episode.novel_id))
-          ).map((episode) => String(episode.id))
+          episodes
+            .filter((episode) =>
+              publishedNovelIds.has(String(episode.novel_id))
+            )
+            .map((episode) => String(episode.id))
         );
         return reply(
-          req, res, 200,
-          detailHtml(project, permissions, contents, publishedEpisodeIds, publishedNovelIds)
+          req,
+          res,
+          200,
+          detailHtml(
+            project,
+            permissions,
+            contents,
+            publishedEpisodeIds,
+            publishedNovelIds
+          )
         );
       }
       const projects = await rows(

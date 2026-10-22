@@ -203,7 +203,8 @@ export function createAdminSpecialHandler({
             actor_id: entry.actor_id,
             content_id: entry.content_id,
             created_at: entry.created_at,
-            restorable: Boolean(entry.before_value) &&
+            restorable:
+              Boolean(entry.before_value) &&
               ['project.update', 'content.update'].includes(entry.operation)
           })),
           metrics: {
@@ -248,7 +249,11 @@ export function createAdminSpecialHandler({
           return res.status(200).json({ project: after });
         }
         const after = await unwrap(
-          supabase.from('special_projects').insert({ ...input, created_by: admin.id, updated_by: admin.id }).select('*').single()
+          supabase
+            .from('special_projects')
+            .insert({ ...input, created_by: admin.id, updated_by: admin.id })
+            .select('*')
+            .single()
         );
         return res.status(201).json({ project: after });
       }
@@ -288,7 +293,10 @@ export function createAdminSpecialHandler({
           );
           return res.status(200).json({ project: after, paused: true });
         }
-        if (previous.operation === 'content.update' && uuid(previous.content_id)) {
+        if (
+          previous.operation === 'content.update' &&
+          uuid(previous.content_id)
+        ) {
           const restored = pick(previous.before_value, CONTENT_FIELDS);
           restored.status = 'draft';
           validateContent(restored);
@@ -331,17 +339,15 @@ export function createAdminSpecialHandler({
         const contents = await contentsOf(supabase, project.id);
         if (contents.length)
           await unwrap(
-            supabase
-              .from('special_contents')
-              .insert(
-                contents.map((c) => ({
-                  ...pick(c, CONTENT_FIELDS),
-                  project_id: clone.id,
-                  created_by: admin.id,
-                  updated_by: admin.id,
-                  status: 'draft'
-                }))
-              )
+            supabase.from('special_contents').insert(
+              contents.map((c) => ({
+                ...pick(c, CONTENT_FIELDS),
+                project_id: clone.id,
+                created_by: admin.id,
+                updated_by: admin.id,
+                status: 'draft'
+              }))
+            )
           );
         return res.status(201).json({ project: clone });
       }
@@ -415,9 +421,10 @@ export function createAdminSpecialHandler({
           )
         )
           return fail(res, 400, 'RIGHTS_EVIDENCE_INVALID');
-        const { data: evidenceFiles, error: evidenceError } = await supabase.storage
-          .from('special-evidence')
-          .list(project.id, { limit: 20, search: evidenceName });
+        const { data: evidenceFiles, error: evidenceError } =
+          await supabase.storage
+            .from('special-evidence')
+            .list(project.id, { limit: 20, search: evidenceName });
         if (evidenceError) throw evidenceError;
         if (
           !evidenceFiles?.some(
@@ -459,7 +466,10 @@ export function createAdminSpecialHandler({
           await unwrap(
             supabase
               .from('special_permissions')
-              .update({ revoked_at: new Date().toISOString(), revoked_by: admin.id })
+              .update({
+                revoked_at: new Date().toISOString(),
+                revoked_by: admin.id
+              })
               .in(
                 'id',
                 active.map((p) => p.id)
@@ -489,7 +499,10 @@ export function createAdminSpecialHandler({
         await unwrap(
           supabase
             .from('special_permissions')
-            .update({ revoked_at: new Date().toISOString(), revoked_by: admin.id })
+            .update({
+              revoked_at: new Date().toISOString(),
+              revoked_by: admin.id
+            })
             .eq('project_id', project.id)
             .is('revoked_at', null)
         );
@@ -509,7 +522,7 @@ export function createAdminSpecialHandler({
             .update({
               status,
               updated_by: admin.id,
-            updated_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
               first_published_at:
                 status === 'published'
                   ? project.first_published_at || new Date().toISOString()

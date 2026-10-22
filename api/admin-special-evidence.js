@@ -10,14 +10,19 @@ const EVIDENCE_TYPES = new Map([
   ['image/webp', 'webp']
 ]);
 const MAX_BYTES = 10 * 1024 * 1024;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 let singleton;
 function database() {
   if (!singleton) {
-    singleton = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
+    singleton = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SECRET_KEY,
+      {
+        auth: { autoRefreshToken: false, persistSession: false }
+      }
+    );
   }
   return singleton;
 }
@@ -49,21 +54,31 @@ export function createSpecialEvidenceHandler({
     const projectId = String(body.project_id || '');
     const mime = String(body.mime_type || '').toLowerCase();
     const size = Number(body.size);
-    if (!UUID.test(projectId) || !EVIDENCE_TYPES.has(mime) ||
-        !Number.isSafeInteger(size) || size < 1 || size > MAX_BYTES) {
+    if (
+      !UUID.test(projectId) ||
+      !EVIDENCE_TYPES.has(mime) ||
+      !Number.isSafeInteger(size) ||
+      size < 1 ||
+      size > MAX_BYTES
+    ) {
       return res.status(400).json({ error: 'INVALID_EVIDENCE' });
     }
     try {
       const { data: project, error: projectError } = await supabase
-        .from('special_projects').select('id').eq('id', projectId).maybeSingle();
+        .from('special_projects')
+        .select('id')
+        .eq('id', projectId)
+        .maybeSingle();
       if (projectError) throw projectError;
       if (!project) return res.status(404).json({ error: 'NOT_FOUND' });
 
       const path = evidencePath(projectId, mime, makeId());
       if (!path) return res.status(503).json({ error: 'UPLOAD_UNAVAILABLE' });
       const { data, error } = await supabase.storage
-        .from(EVIDENCE_BUCKET).createSignedUploadUrl(path);
-      if (error || !data?.token) throw error || new Error('SIGNED_UPLOAD_UNAVAILABLE');
+        .from(EVIDENCE_BUCKET)
+        .createSignedUploadUrl(path);
+      if (error || !data?.token)
+        throw error || new Error('SIGNED_UPLOAD_UNAVAILABLE');
       res.setHeader('Cache-Control', 'private, no-store');
       return res.status(200).json({
         bucket: EVIDENCE_BUCKET,
@@ -73,7 +88,9 @@ export function createSpecialEvidenceHandler({
         expires_in_seconds: 7200
       });
     } catch (error) {
-      console.error('SPECIAL evidence upload ticket failed', { code: error?.code || null });
+      console.error('SPECIAL evidence upload ticket failed', {
+        code: error?.code || null
+      });
       return res.status(503).json({ error: 'UPLOAD_UNAVAILABLE' });
     }
   };
