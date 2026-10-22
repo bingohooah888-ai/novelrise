@@ -73,3 +73,9 @@
 .community-comments-older{display:block;margin:10px 0;color:#e6bd6e;text-decoration:underline}
 .community-comment-tip,.community-comment-feedback{flex-basis:100%;margin:4px 0;color:#cbd3de;font-size:.82rem}
 .community-comment-feedback[hidden]{display:none}
+
+#communityRefresh{margin-left:auto}
+#communityRefresh:disabled{opacity:.65;cursor:wait}
+.community-filter-status{margin:-10px 0 14px;color:#efd1ab;font-size:.86rem}
+.community-filter-status[hidden]{display:none}
+@media(max-width:640px){#communityRefresh{margin-left:0}}

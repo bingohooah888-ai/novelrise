@@ -9,6 +9,13 @@
   const panel = document.getElementById('communityHomeSection') || document.getElementById('communityPage');
   if (!panel) return;
   panel.hidden = false;
+  const refreshButton = document.getElementById('communityRefresh');
+  const filterStatus = document.getElementById('communityFilterStatus');
+  function filterMessage(value) {
+    if (!filterStatus) return;
+    filterStatus.textContent = value;
+    filterStatus.hidden = !value;
+  }
   const client = supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co', 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
   let page = 0;
   let following = false;
@@ -333,6 +340,7 @@
       return;
     }
     loading=true;
+    if (refreshButton) refreshButton.disabled = true;
     const revision=filterRevision;
     const requestedFollowing=following;
     if(reset){
@@ -384,6 +392,7 @@
       return false;
     } finally {
       loading=false;
+      if (refreshButton) refreshButton.disabled = false;
       if(pendingReset){
         pendingReset=false;
         void load(true);
@@ -391,10 +400,22 @@
     }
   }
   document.getElementById('communityLoadMore')?.addEventListener('click',()=>{void load(false);});
+  refreshButton?.addEventListener('click',()=>{
+    filterMessage('');
+    filterRevision += 1;
+    void load(true);
+  });
   document.querySelectorAll('[data-community-filter]').forEach(button=>{
     button.addEventListener('click',async()=>{
       const requested = button.dataset.communityFilter==='following';
-      if(requested && !(await authed()))return requireLogin();
+      try {
+        if(requested && !(await authed()))return requireLogin();
+      } catch(error) {
+        console.warn('community following filter unavailable',error);
+        filterMessage('フォロー中の投稿を確認できませんでした。再度お試しください。');
+        return;
+      }
+      filterMessage('');
       following=requested;
       filterRevision += 1;
       document.querySelectorAll('[data-community-filter]').forEach(item=>{
