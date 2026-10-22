@@ -23,7 +23,7 @@ async function rows(query) {
   if (error) throw error;
   return data || [];
 }
-function document({ title, description, canonical, body, image = '' }) {
+function document({ title, description, canonical, body, image = '', projectId = '' }) {
   const cleanTitle = escapeHtml(title), cleanDescription = escapeHtml(description);
   const head = '<!doctype html><html lang="ja"><head><meta charset="utf-8">'
     + '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -39,7 +39,7 @@ function document({ title, description, canonical, body, image = '' }) {
     + (image ? '<meta property="og:image" content="' + escapeHtml(image) + '"><meta name="twitter:image" content="' + escapeHtml(image) + '">' : '')
     + '<link rel="stylesheet" href="/novelight-accessibility.css"><style>' + STYLES + '</style></head>';
   return head + '<body><a class="skip-link" href="#main">本文へスキップ</a>' + HEADER
-    + '<main id="main">' + body + '</main><footer class="footer"><a href="/">NOVELIGHT</a>　／　<a href="/special.html">特別企画</a><p>すべての物語に、光を。</p></footer></body></html>';
+    + '<main id="main"' + (projectId ? ' data-special-project="' + escapeHtml(projectId) + '"' : '') + '>' + body + '</main><footer class="footer"><a href="/">NOVELIGHT</a>　／　<a href="/special.html">特別企画</a><p>すべての物語に、光を。</p></footer>' + (projectId ? '<script defer src="/special-analytics.js"></script>' : '') + '</body></html>';
 }
 function renderCover(project, permissions) {
   return permittedCover(project, permissions)
@@ -67,27 +67,30 @@ function indexHtml(projects, permissionsById) {
     description:'NOVELIGHTの作家コラボ・特別SS・番外編・インタビューをご紹介します。',
     canonical: ORIGIN+'/special.html', body});
 }
-function safeAnchor(url, title) {
+function safeAnchor(url, title, eventType = '', target = '') {
   const href = safeUrl(url, {external:true});
   if (!href) return '';
-  return '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener noreferrer">'
+  const tracked = ['content_click','official_click'].includes(eventType)
+    && /^[a-z0-9-]{1,80}$/.test(target)
+    ? ' data-special-event="' + eventType + '" data-special-target="' + target + '"' : '';
+  return '<a' + tracked + ' href="' + escapeHtml(href) + '" target="_blank" rel="noopener noreferrer">'
     + escapeHtml(title) + ' →</a>';
 }
 function detailHtml(project, permissions, contents) {
   const visible = contents.filter(c => contentIsVisible(c,permissions));
   const contentBlocks = visible.map(c => {
     let reader = '';
-    if (c.mode === 'episode') reader = '<a class="cta" href="/episode.html?id='
+    if (c.mode === 'episode') reader = '<a class="cta" data-special-event="content_click" data-special-target="' + escapeHtml(c.id) + '" href="/episode.html?id='
       + encodeURIComponent(c.episode_id) + '">特別作品を無料で読む →</a>';
-    if (c.mode === 'external') reader = safeAnchor(c.external_url, '外部掲載先で読む');
+    if (c.mode === 'external') reader = safeAnchor(c.external_url, '外部掲載先で読む', 'content_click', c.id);
     if (c.mode === 'inline') reader = '<div class="body">' + escapeHtml(c.body || '') + '</div>';
     return '<article class="block"><span class="badge">' + escapeHtml(c.kind || labelFor(project.kind))
       + '</span><h3>' + escapeHtml(c.title) + '</h3>' + reader + '</article>';
   }).join('');
-  const partners = [safeAnchor(project.author_x_url,'作家公式X'),
-    safeAnchor(project.author_other_url,'作家公式サイト'),
-    safeAnchor(project.work_url,'作品の公式掲載先'),
-    project.novel_id ? '<a href="/novel.html?id=' + encodeURIComponent(project.novel_id) + '">NOVELIGHT内の作品 →</a>' : ''].filter(Boolean);
+  const partners = [safeAnchor(project.author_x_url,'作家公式X','official_click','x'),
+    safeAnchor(project.author_other_url,'作家公式サイト','official_click','other'),
+    safeAnchor(project.work_url,'作品の公式掲載先','official_click','work'),
+    project.novel_id ? '<a data-special-event="novel_click" data-special-target="' + escapeHtml(project.novel_id) + '" href="/novel.html?id=' + encodeURIComponent(project.novel_id) + '">NOVELIGHT内の作品 →</a>' : ''].filter(Boolean);
   const body = '<a class="back" href="/special.html">← 特別企画一覧へ</a>'
     + '<section class="hero"><div class="eyebrow">NOVELIGHT SPECIAL</div>'
     + (project.pr_label ? '<span class="badge">PR／タイアップ</span>' : '')
@@ -102,7 +105,7 @@ function detailHtml(project, permissions, contents) {
   const image = permittedOgp(project,permissions) ? safeUrl(project.ogp_url, {external:true}) : '';
   return document({title:project.seo_title || project.title+' | NOVELIGHT SPECIAL',
     description:project.seo_description || project.summary || 'NOVELIGHTの特別企画',
-    canonical:ORIGIN+'/special/'+encodeURIComponent(project.slug),image,body});
+    canonical:ORIGIN+'/special/'+encodeURIComponent(project.slug),image,body,projectId:project.id});
 }
 function reply(req,res,status,html,indexable=true) {
   res.setHeader('Content-Type','text/html; charset=utf-8');
