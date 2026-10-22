@@ -71,6 +71,8 @@ async function canPublish(db,id) {
   if (p.ogp_url && !permittedOgp(p,rights))
     return {ok:false,reason:'OGP画像の掲載許諾が未確認です'};
   for (const item of contents.filter(c=>c.status==='published')) {
+    if (item.mode === 'inline')
+      return {ok:false,reason:'直接本文は既存読書画面の年齢確認に対応するまで公開できません'};
     if (!contentIsVisible(item,rights))
       return {ok:false,reason:'コンテンツの掲載許諾が未確認です: '+item.title};
     if (item.mode==='episode') {
