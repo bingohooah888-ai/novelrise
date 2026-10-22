@@ -270,9 +270,11 @@
       const more=document.getElementById('communityLoadMore');
       if(more)more.hidden=list.length<limit || (page+1)*limit>300;
       page += 1;
+      return true;
     } catch(error) {
       console.warn('community feed unavailable; rest of page remains usable',error);
       if(reset && revision===filterRevision)message('交流を読み込めませんでした。作品の閲覧は通常どおり利用できます。');
+      return false;
     } finally {
       loading=false;
       if(pendingReset){
@@ -320,7 +322,7 @@
       }
       const more = document.getElementById('communityLoadMore');
       if (!more || more.hidden) break;
-      await load(false);
+      if (!await load(false)) break;
     }
     if (filterRevision === revision) {
       const notice = el('p', 'community-state', '指定された投稿は見つかりませんでした。公開終了または閲覧制限の可能性があります。');
