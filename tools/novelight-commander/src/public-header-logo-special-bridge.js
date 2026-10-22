@@ -119,27 +119,10 @@ async function git(config, args, options = {}) {
   return result.stdout.trim();
 }
 
-function sharedPublicHeader() {
+function isolatedStaticLogoHeader() {
   return `<header class="site-header" aria-label="NOVELIGHT">
   <div class="header-inner public-header-inner">
-    <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="${CANONICAL_LOGO}" alt="NOVELIGHT"></a>
-    <nav class="site-nav desktop-nav" aria-label="メインナビ">
-      <a href="index.html">ホーム</a>
-      <a href="search.html">作品を探す</a>
-      <a href="ranking.html">ランキング</a>
-      <a href="favorites.html">本棚</a>
-      <a href="pricing.html">料金プラン</a>
-      <a href="beta-authors.html">NOVELIGHT β版 先行作者登録</a>
-    </nav>
-    <div class="header-actions">
-      <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
-      <a class="btn btn-outline login-action" href="login.html">ログイン</a>
-      <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
-      <details class="mobile-menu">
-        <summary aria-label="メニューを開く">☰</summary>
-        <nav aria-label="モバイルナビ"><a href="index.html">ホーム</a><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="favorites.html">本棚</a><a href="pricing.html">料金プラン</a><a href="beta-authors.html">NOVELIGHT β版 先行作者登録</a><a href="login.html">ログイン</a></nav>
-      </details>
-    </div>
+    <span class="logo" aria-label="NOVELIGHT"><img src="${CANONICAL_LOGO}" alt="NOVELIGHT"></span>
   </div>
 </header>`;
 }
@@ -170,13 +153,17 @@ async function repairSpecialPages(root) {
   const guidelinesPath = path.join(root, 'content-guidelines.html');
   let guidelines = await fs.readFile(guidelinesPath, 'utf8');
   const emptySiteHeader = /<header\b[^>]*class=["'][^"']*site-header[^"']*["'][^>]*>\s*<\/header>/i;
-  const guidelinesNext = guidelines.replace(emptySiteHeader, sharedPublicHeader());
+  const guidelinesNext = guidelines.replace(emptySiteHeader, isolatedStaticLogoHeader());
   if (guidelinesNext !== guidelines) {
     await fs.writeFile(guidelinesPath, guidelinesNext, 'utf8');
     changed.push('content-guidelines.html');
     guidelines = guidelinesNext;
   }
   if (!guidelines.includes(CANONICAL_LOGO)) throw new Error('content-guidelines.html still does not use the canonical header logo.');
+  const guidelinesHeader = guidelines.match(/<header\b[\s\S]*?<\/header>/i)?.[0] || '';
+  if (!guidelinesHeader || /<a\b/i.test(guidelinesHeader) || /\bhref\s*=/i.test(guidelinesHeader)) {
+    throw new Error('content-guidelines.html header must remain static and isolated from main-product navigation.');
+  }
 
   return { changed, canonicalLogo: CANONICAL_LOGO, canonicalAssetBytes: asset.size };
 }
