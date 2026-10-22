@@ -118,8 +118,19 @@
     const toggle = el('button','community-follow-toggle','フォロー');
     toggle.type = 'button';
     toggle.disabled = true;
-    const settings = el('a','community-more','作者ページで通知設定 →');
+    const settings = el('a','community-more','作者ページを見る →');
     settings.href = 'author.html?id=' + encodeURIComponent(authorId);
+    const preferences = el('div','community-follow-preferences');
+    const newWorkLabel = el('label','community-follow-choice');
+    const newWorkInput = el('input');
+    newWorkInput.type = 'checkbox';
+    newWorkLabel.append(newWorkInput,document.createTextNode(' 新作通知'));
+    const updateLabel = el('label','community-follow-choice');
+    const updatesInput = el('input');
+    updatesInput.type = 'checkbox';
+    updateLabel.append(updatesInput,document.createTextNode(' 更新通知'));
+    preferences.append(newWorkLabel,updateLabel);
+    preferences.hidden = true;
     const signIn = el('a','community-more','ログインしてフォロー →');
     const target = isHome
       ? 'author.html?id=' + encodeURIComponent(authorId)
@@ -127,7 +138,7 @@
     signIn.href = 'login.html?redirect=' + encodeURIComponent(target);
     signIn.hidden = true;
     settings.hidden = true;
-    panel.append(status,toggle,signIn,settings);
+    panel.append(status,toggle,preferences,signIn,settings);
     block.append(opener,panel);
     let state = null;
     let loading = false;
@@ -136,6 +147,9 @@
       toggle.textContent = state.following ? 'フォローを解除' : 'フォローする';
       toggle.setAttribute('aria-pressed',String(state.following));
       toggle.disabled = false;
+      preferences.hidden = !state.following;
+      newWorkInput.checked = state.notifyNewWorks;
+      updatesInput.checked = state.notifyUpdates;
       status.textContent = state.following ? 'この作者をフォロー中です。' : 'この作者はフォローしていません。';
       settings.hidden = false;
       signIn.hidden = true;
@@ -168,7 +182,11 @@
         });
         const normalized = Array.isArray(result) ? result[0] : result;
         if (typeof normalized?.following !== 'boolean') throw new Error('Invalid follow state');
-        state = {following:normalized.following};
+        state = {
+          following:normalized.following,
+          notifyNewWorks:normalized.notify_new_works !== false,
+          notifyUpdates:normalized.notify_updates !== false
+        };
         followStateCache.set(authorId,state);
         render();
       } catch(error) {
@@ -194,7 +212,11 @@
         if (typeof normalized?.following !== 'boolean' || normalized.following !== desired) {
           throw new Error('Invalid follow receipt');
         }
-        state = {following:normalized.following};
+        state = {
+          following:normalized.following,
+          notifyNewWorks:normalized.notify_new_works !== false,
+          notifyUpdates:normalized.notify_updates !== false
+        };
         followStateCache.set(authorId,state);
         render();
         if (following && !state.following) {
@@ -211,6 +233,47 @@
         toggle.disabled = false;
       }
     });
+    async function saveNotificationPreferences() {
+      if (!state?.following || loading) return;
+      loading = true;
+      toggle.disabled = true;
+      newWorkInput.disabled = true;
+      updatesInput.disabled = true;
+      status.textContent = '通知設定を保存しています...';
+      try {
+        const response = await rpc('novelight_set_author_follow_notifications',{
+          p_author_user_id:authorId,
+          p_notify_new_works:newWorkInput.checked,
+          p_notify_updates:updatesInput.checked
+        });
+        const normalized = Array.isArray(response) ? response[0] : response;
+        if (normalized?.following !== true ||
+            typeof normalized.notify_new_works !== 'boolean' ||
+            typeof normalized.notify_updates !== 'boolean') {
+          throw new Error('Invalid follow notification receipt');
+        }
+        state = {
+          following:true,
+          notifyNewWorks:normalized.notify_new_works,
+          notifyUpdates:normalized.notify_updates
+        };
+        followStateCache.set(authorId,state);
+        render();
+        status.textContent = '通知設定を保存しました。';
+      } catch(error) {
+        console.warn('community follow notification update failed',error);
+        state = followStateCache.get(authorId) || state;
+        render();
+        status.textContent = '通知設定を保存できませんでした。再度お試しください。';
+      } finally {
+        loading = false;
+        toggle.disabled = false;
+        newWorkInput.disabled = false;
+        updatesInput.disabled = false;
+      }
+    }
+    newWorkInput.addEventListener('change',()=>{void saveNotificationPreferences();});
+    updatesInput.addEventListener('change',()=>{void saveNotificationPreferences();});
     return block;
   }
 

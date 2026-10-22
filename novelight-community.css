@@ -112,3 +112,9 @@
 .community-notice-list li[hidden]{display:none}
 
 .community-comment-target{outline:2px solid #d6a447;outline-offset:3px;border-radius:7px;background:rgba(214,164,71,.09)}
+
+.community-follow-preferences{display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;font-size:.81rem}
+.community-follow-preferences[hidden]{display:none}
+.community-follow-choice{display:inline-flex;gap:6px;align-items:center;cursor:pointer;color:#d9dfe8}
+.community-follow-choice input{width:17px;height:17px;accent-color:#d6a447}
+.community-follow-choice input:disabled{opacity:.65;cursor:wait}

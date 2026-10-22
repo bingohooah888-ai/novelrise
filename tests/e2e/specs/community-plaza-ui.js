@@ -67,6 +67,9 @@ async function installIsolatedMock(page, enabled, options = {}) {
               if (name === 'novelight_set_author_follow') {
                 return {data: {following: payload.p_following, notify_new_works: true, notify_updates: true}, error:null};
               }
+              if (name === 'novelight_set_author_follow_notifications') {
+                return {data: {following: true, notify_new_works: payload.p_notify_new_works, notify_updates: payload.p_notify_updates}, error:null};
+              }
               if (name === 'novelight_community_toggle_like') {
                 return {data: {liked: true, like_count: 2}, error:null};
               }
@@ -148,6 +151,7 @@ test('community gate OFF prevents RPC calls', async ({ page }) => {
   ).toEqual([]);
 });
 
+// prettier-ignore
 test('community UI interactions use mocked data', async ({ page }) => {
   await installIsolatedMock(page, true);
   await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
@@ -173,7 +177,10 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await follow.click();
   await expect(follow).toHaveText('フォローを解除');
   await expect(follow).toHaveAttribute('aria-pressed', 'true');
-
+  await card.locator('.community-follow-choice input').first().uncheck();
+  await expect(card.locator('.community-follow-status')).toContainText(
+    '通知設定を保存しました'
+  );
   const like = card.locator('[aria-label="いいね"]');
   await like.click();
   await expect(like).toHaveAttribute('aria-pressed', 'true');

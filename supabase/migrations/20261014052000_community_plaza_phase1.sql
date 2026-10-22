@@ -518,6 +518,10 @@ BEGIN
  IF p_comment_id IS NULL OR char_length(v_body) NOT BETWEEN 1 AND 500 THEN
    RAISE EXCEPTION 'Invalid comment edit' USING errcode='22023';
  END IF;
+ IF EXISTS(SELECT 1 FROM public.community_user_restrictions
+   WHERE user_id=v_user AND expires_at>now()) THEN
+   RAISE EXCEPTION 'Community posting restricted' USING errcode='42501';
+ END IF;
  UPDATE public.community_comments c
     SET body=v_body,edited_at=now()
   WHERE c.id=p_comment_id AND c.user_id=v_user
