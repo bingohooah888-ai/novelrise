@@ -358,14 +358,6 @@ export function createAdminSpecialHandler({
           return fail(res, 400, 'CONTENT_STATUS_INVALID');
         if (b.content_id) {
           if (!uuid(b.content_id)) return fail(res, 400, 'INVALID_CONTENT_ID');
-          const before = await unwrap(
-            supabase
-              .from('special_contents')
-              .select('*')
-              .eq('id', b.content_id)
-              .eq('project_id', project.id)
-              .single()
-          );
           const after = await unwrap(
             supabase
               .from('special_contents')

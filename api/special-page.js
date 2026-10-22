@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import {
   escapeHtml,
@@ -339,7 +340,7 @@ export function createSpecialPageHandler(
             .order('sort_order', { ascending: true })
         );
         const episodeIds = contents
-          .filter((c) => c.mode === 'episode' && c.episode_id != null)
+          .filter((c) => c.mode === 'episode' && c.episode_id !== null && c.episode_id !== undefined)
           .map((c) => c.episode_id);
         const episodes = episodeIds.length
           ? await rows(
@@ -353,7 +354,7 @@ export function createSpecialPageHandler(
         const novelIds = [
           ...episodes.map((episode) => episode.novel_id),
           project.novel_id
-        ].filter((id) => id != null);
+        ].filter((id) => id !== null && id !== undefined);
         const publishedNovels = novelIds.length
           ? await rows(
               supabase

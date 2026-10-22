@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { URL } from 'node:url';
 
 export const SPECIAL_KINDS = new Set(['ss', 'extra', 'interview', 'other']);
 export const CONTENT_MODES = new Set(['episode', 'external', 'inline']);

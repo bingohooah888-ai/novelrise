@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { URL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { projectIsVisible } from './_lib/special-core.js';
 
