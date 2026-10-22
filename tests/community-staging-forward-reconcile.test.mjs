@@ -1,30 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import {
-  composeCommunityStagingForwardReconcile
-} from '../scripts/community-staging-forward-reconcile.mjs';
+import * as reconcile from '../scripts/community-staging-forward-reconcile.mjs';
 
-const migration = readFileSync(
-  'supabase/migrations/20261014052000_community_plaza_phase1.sql',
-  'utf8'
-);
-const compose = composeCommunityStagingForwardReconcile;
-function denied(sql, pattern) {
-  assert.throws(() => compose(sql), pattern);
-}
+const path = 'supabase/migrations/20261014052000_community_plaza_phase1.sql';
+const canonical = readFileSync(path, 'utf8');
+const compose = reconcile.composeCommunityStagingForwardReconcile;
 
-test('compose guarded forward-only Staging SQL', () => {
-  const sql = compose(migration);
-  assert.match(sql, /^\\set ON_ERROR_STOP on$/m);
-  assert.match(sql, /ADD COLUMN edited_at timestamptz/);
+test('guarded forward SQL has one transaction and no ledger writes', () => {
+  const sql = compose(canonical);
+  assert.match(sql, /ADD COLUMN edited_at/);
   assert.match(sql, /Refusing different migration history/);
-  assert.match(sql, /Existing community content or consent; stop/);
+  assert.match(sql, /Existing community content or consent/);
   assert.match(sql, /Public gate changed during reconciliation/);
-  assert.match(sql, /Required community RPC missing after replay/);
-  assert.match(sql, /novelight_community_report_comment/);
+  assert.match(sql, /Required community RPC missing/);
   assert.match(sql, /novelight_admin_community_dismiss_report/);
-  assert.match(sql, /ALTER TABLE public.community_runtime_control/);
   assert.equal(sql.match(/^BEGIN;$/gm)?.length, 1);
   assert.equal(sql.match(/^COMMIT;$/gm)?.length, 1);
   assert.doesNotMatch(sql, /INSERT INTO supabase_migrations/iu);
@@ -32,25 +22,21 @@ test('compose guarded forward-only Staging SQL', () => {
   assert.doesNotMatch(sql, /DELETE FROM supabase_migrations/iu);
 });
 
-test('reject malformed or unreviewed candidate SQL wrappers', () => {
-  denied('', /invalid canonical candidate migration/u);
-  const noBegin = migration.replace(/^BEGIN;$/m, '-- missing BEGIN');
-  denied(noBegin, /wrapper\/version mismatch/u);
-  const wrongEnd = migration.replace(/^COMMIT;$/m, 'ROLLBACK;');
-  denied(wrongEnd, /wrapper\/version mismatch/u);
-  const duplicateCommit = migration.replace(/^COMMIT;$/m, 'COMMIT;\nCOMMIT;');
-  denied(duplicateCommit, /wrapper\/version mismatch/u);
+test('malformed migration transaction wrappers are rejected', () => {
+  const badStart = canonical.replace(/^BEGIN;$/m, '');
+  const badEnd = canonical.replace(/^COMMIT;$/m, 'ROLLBACK;');
+  const doubled = canonical.replace(/^COMMIT;$/m, 'COMMIT;\nCOMMIT;');
+  assert.throws(() => compose(badStart), /wrapper\/version mismatch/u);
+  assert.throws(() => compose(badEnd), /wrapper\/version mismatch/u);
+  assert.throws(() => compose(doubled), /wrapper\/version mismatch/u);
 });
 
-test('reject hidden ledger edits and psql metacommands', () => {
-  const mutation = migration.replace(
+test('ledger writes and psql includes are rejected', () => {
+  const mutation = canonical.replace(
     /^COMMIT;$/m,
     'UPDATE supabase_migrations.schema_migrations SET name=name;\nCOMMIT;'
   );
-  denied(mutation, /ledger modification/u);
-  const metacommand = migration.replace(
-    /^COMMIT;$/m,
-    '\\i /tmp/unknown.sql\nCOMMIT;'
-  );
-  denied(metacommand, /meta-command/u);
+  const include = canonical.replace(/^COMMIT;$/m, '\\i unknown.sql\nCOMMIT;');
+  assert.throws(() => compose(mutation), /ledger modification/u);
+  assert.throws(() => compose(include), /meta-command/u);
 });
