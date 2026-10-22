@@ -20,6 +20,7 @@ export default defineConfig({
   use: {
     baseURL,
     storageState: bypassStorageState,
+    serviceWorkers: 'block',
     actionTimeout: 15_000,
     navigationTimeout: 20_000,
     serviceWorkers: 'block',
