@@ -1201,7 +1201,7 @@ begin
   update public.novelight_contests
      set entry_deadline_at=pg_catalog.clock_timestamp()-interval '2 hours',
          starts_at=pg_catalog.clock_timestamp()-interval '1 hour',
-         ends_at='2026-12-01 00:00:00+00'::timestamptz,
+         ends_at='2026-12-31 15:00:00+00'::timestamptz,
          terms_version='ci-contest-v1',
          terms_url='https://novelight.jp/contest-terms',
          status='active',public_visible=true
@@ -1267,7 +1267,7 @@ $ranking_proof$;
 
 rollback;
 
-select 'PASS: November contest migrated schema, owner RPC, private RLS, catalog and score core and read sessions on disposable replay DB' as result;
+select 'PASS: December Star Festival migrated schema, owner RPC, private RLS, catalog and score core and read sessions on disposable replay DB' as result;
 
 
 -- Stage 06 guest credential guard (disposable replay only).
