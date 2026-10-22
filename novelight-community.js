@@ -610,9 +610,15 @@
             input.setCustomValidity('');
             return;
           }
-          await rpc('novelight_community_post_comment',{
+          const receipt = await rpc('novelight_community_post_comment',{
             p_post_key:row.post_key,p_body:body,p_parent_comment_id:replyTo
           });
+          // Treat an invalid or empty success response as a failure.
+          // Keep the user's draft and do not inflate the visible count.
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            String(receipt?.id || ''))) {
+            throw new Error('Invalid posted-comment receipt');
+          }
           commentDrafts.delete(postKey);
           if (typeof onPosted === 'function') onPosted();
           await comments(container,row,onPosted,displayLimit);
@@ -821,9 +827,11 @@
       }
     });
     reportButtons.append(sendReport, cancelReport);
-    reportForm.append(reason, reportButtons, reportStatus);
+    // Keep the live feedback outside the form so it remains visible to
+    // readers and assistive technology after closeReport() hides the form.
+    reportForm.append(reason, reportButtons);
     actions.append(report);
-    article.append(actions, commentArea, reportForm);
+    article.append(actions, commentArea, reportForm, reportStatus);
     return article;
   }
   async function load(reset=true) {
