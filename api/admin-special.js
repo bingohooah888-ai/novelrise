@@ -390,6 +390,30 @@ export function createAdminSpecialHandler({
           1000,
           'RIGHTS_EVIDENCE'
         );
+        const evidencePrefix = `special-evidence/${project.id}/`;
+        const evidenceName = evidence.startsWith(evidencePrefix)
+          ? evidence.slice(evidencePrefix.length)
+          : '';
+        if (
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:pdf|png|jpg|webp)$/i.test(
+            evidenceName
+          )
+        )
+          return fail(res, 400, 'RIGHTS_EVIDENCE_INVALID');
+        const { data: evidenceFiles, error: evidenceError } = await supabase.storage
+          .from('special-evidence')
+          .list(project.id, { limit: 20, search: evidenceName });
+        if (evidenceError) throw evidenceError;
+        if (
+          !evidenceFiles?.some(
+            (file) =>
+              file.name === evidenceName &&
+              file.id &&
+              Number(file.metadata?.size) > 0 &&
+              Number(file.metadata?.size) <= 10 * 1024 * 1024
+          )
+        )
+          return fail(res, 409, 'RIGHTS_EVIDENCE_NOT_FOUND');
         const digest = approvedDigest(
           project,
           await contentsOf(supabase, project.id),
