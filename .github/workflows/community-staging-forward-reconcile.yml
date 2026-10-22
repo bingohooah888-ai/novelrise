@@ -61,9 +61,11 @@ jobs:
             "$GITHUB_EVENT_PATH" /tmp/forward-main.json \
             /tmp/forward-pr.json /tmp/forward-compare.json \
             /tmp/forward-ledger.json > /tmp/forward-admission.json
-          echo "main_sha=$(jq -er '.mainSha' /tmp/forward-admission.json)" >> "$GITHUB_OUTPUT"
-          echo "candidate_sha=$(jq -er '.candidateSha' /tmp/forward-admission.json)" >> "$GITHUB_OUTPUT"
-          echo "request_id=$(jq -er '.requestId' /tmp/forward-admission.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/forward-admission.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/forward-admission.json)"
+            echo "request_id=$(jq -er '.requestId' /tmp/forward-admission.json)"
+          } >> "$GITHUB_OUTPUT"
       - name: CLAIM the single-use approval before any Staging access
         env:
           GH_TOKEN: ${{ github.token }}

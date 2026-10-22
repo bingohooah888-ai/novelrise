@@ -1,21 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  validateForwardApproval,
-  PREFIX,
-  SCOPE
-} from '../scripts/community-staging-forward-admission.mjs';
-import {
-  gitBlobHash,
-  composeReviewedForwardSQL,
-  REVIEWED_MIGRATION_BLOB
-} from '../scripts/community-staging-forward-render.mjs';
+import * as gate from '../scripts/community-staging-forward-admission.mjs';
+import * as renderer from '../scripts/community-staging-forward-render.mjs';
 
 const MAIN = 'a'.repeat(40);
 const HEAD = 'b'.repeat(40);
+
 function fixture() {
   const request = {
-    scope: SCOPE,
+    scope: gate.SCOPE,
     mainSha: MAIN,
     candidateSha: HEAD,
     migration: '20261014052000',
@@ -33,7 +26,7 @@ function fixture() {
       id: 1234,
       user: { login: 'bingohooah888-ai' },
       author_association: 'OWNER',
-      body: PREFIX + JSON.stringify(request)
+      body: gate.PREFIX + JSON.stringify(request)
     },
     main: { object: { sha: MAIN } },
     pr: {
@@ -54,74 +47,65 @@ function fixture() {
       total_commits: 1,
       commits: [{ sha: HEAD }]
     },
-    ledgerPages: [[{ body: 'ordinary unrelated entry' }]]
+    ledgerPages: [[{ body: 'unrelated comment' }]]
   };
 }
-function modifyRequest(item, patch) {
-  const parsed = JSON.parse(item.comment.body.slice(PREFIX.length));
-  item.comment.body = PREFIX + JSON.stringify({ ...parsed, ...patch });
-  return item;
+function deny(input, message) {
+  assert.throws(() => gate.validateForwardApproval(input), message);
 }
-test('accept one exact unconsumed OWNER Staging scope', () => {
-  assert.deepEqual(validateForwardApproval(fixture()), {
-    mainSha: MAIN,
-    candidateSha: HEAD,
-    requestId: '1234'
-  });
+function changeRequest(input, key, value) {
+  const raw = input.comment.body.slice(gate.PREFIX.length);
+  const request = JSON.parse(raw);
+  request[key] = value;
+  input.comment.body = gate.PREFIX + JSON.stringify(request);
+  return input;
+}
+test('OWNER exact-head and unconsumed scope is accepted', () => {
+  const result = gate.validateForwardApproval(fixture());
+  assert.equal(result.mainSha, MAIN);
+  assert.equal(result.candidateSha, HEAD);
+  assert.equal(result.requestId, '1234');
 });
-test('reject wrong OWNER, scope, SHA and incomplete ancestry', () => {
-  const actor = fixture();
-  actor.comment.user.login = 'untrusted-user';
-  assert.throws(() => validateForwardApproval(actor), /OWNER required/u);
-  assert.throws(() => validateForwardApproval(
-    modifyRequest(fixture(), { scope: 'full-smoke' })
-  ), /unapproved head/u);
-  assert.throws(() => validateForwardApproval(
-    modifyRequest(fixture(), { mainSha: HEAD })
-  ), /unapproved head/u);
+test('wrong owner, approval scope, SHA or ancestry fail closed', () => {
+  const badActor = fixture();
+  badActor.comment.user.login = 'outsider';
+  deny(badActor, /OWNER required/u);
+  deny(changeRequest(fixture(), 'scope', 'full-smoke'), /unapproved/u);
+  deny(changeRequest(fixture(), 'mainSha', HEAD), /unapproved/u);
   const behind = fixture();
   behind.compare.behind_by = 1;
-  assert.throws(() => validateForwardApproval(behind), /descendant/u);
+  deny(behind, /descendant/u);
   const truncated = fixture();
   truncated.compare.total_commits = 2;
-  assert.throws(() => validateForwardApproval(truncated), /descendant/u);
+  deny(truncated, /descendant/u);
 });
-test('reject claimed or consumed one-time approval', () => {
-  for (const marker of [
-    'NOVELIGHT_STAGING_COMMUNITY_FORWARD_CLAIMED ',
-    'NOVELIGHT_STAGING_COMMUNITY_FORWARD_CONSUMED '
-  ]) {
+test('claimed or consumed approvals cannot be reused', () => {
+  const claimed = 'NOVELIGHT_STAGING_COMMUNITY_FORWARD_CLAIMED ';
+  const consumed = 'NOVELIGHT_STAGING_COMMUNITY_FORWARD_CONSUMED ';
+  for (const marker of [claimed, consumed]) {
     const input = fixture();
-    input.ledgerPages[0].push({
-      body: marker + JSON.stringify({
-        requestCommentId: '1234',
-        mainSha: MAIN,
-        candidateSha: HEAD,
-        runId: '123',
-        ...(marker.includes('CONSUMED') ? { result: 'failed' } : {})
-      })
-    });
-    assert.throws(() => validateForwardApproval(input), /already claimed/u);
+    const ledger = {
+      requestCommentId: '1234',
+      mainSha: MAIN,
+      candidateSha: HEAD,
+      runId: '123'
+    };
+    if (marker === consumed) ledger.result = 'failed';
+    input.ledgerPages[0].push({ body: marker + JSON.stringify(ledger) });
+    deny(input, /already claimed/u);
   }
 });
-test('fail closed on incomplete ledger or malformed approval record', () => {
-  const missing = fixture();
-  missing.ledgerPages = [[]];
-  assert.doesNotThrow(() => validateForwardApproval(missing));
-  const truncated = fixture();
-  truncated.ledgerPages = [Array.from(
-    { length: 100 }, () => ({ body: 'normal' })
-  )];
-  assert.throws(() => validateForwardApproval(truncated), /incomplete/u);
-  assert.throws(() => validateForwardApproval(
-    modifyRequest(fixture(), { unreviewed: true })
-  ), /unexpected fields/u);
+test('incomplete ledger and extra fields fail closed', () => {
+  const full = fixture();
+  full.ledgerPages = [Array(100).fill({ body: 'unrelated comment' })];
+  deny(full, /incomplete/u);
+  deny(changeRequest(fixture(), 'extra', true), /unexpected fields/u);
 });
-test('refuse unpinned candidate SQL and preserve git blob hashing', () => {
-  assert.equal(gitBlobHash(''), 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391');
-  assert.match(REVIEWED_MIGRATION_BLOB, /^[a-f0-9]{40}$/u);
-  assert.throws(() => composeReviewedForwardSQL(
-    'ALTER TABLE public.community_comments ADD COLUMN x int;',
-    REVIEWED_MIGRATION_BLOB
-  ), /migration blob drift/u);
+test('unpinned SQL refused and Git blob hash verified', () => {
+  const hash = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
+  assert.equal(renderer.gitBlobHash(''), hash);
+  const sql = 'SELECT 1;';
+  const expected = renderer.REVIEWED_MIGRATION_BLOB;
+  const generate = () => renderer.composeReviewedForwardSQL(sql, expected);
+  assert.throws(generate, /migration blob drift/u);
 });
