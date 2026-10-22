@@ -9,12 +9,12 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
   [
     {
       "path": "admin-community.html",
-      "sha": "a2eeda861ca56409932d6e832ac8567c2aef1753",
+      "sha": "b90560c57113d7e27f92715a55685a6391c7f59f",
       "status": "added"
     },
     {
       "path": "api/_lib/admin-community.js",
-      "sha": "84647957d25d8b5591dfc7abfa58c5c1b922a510",
+      "sha": "3a3a4ce8b46f41fd3f33159d0d4f79d9af53be42",
       "status": "added"
     },
     {
@@ -23,13 +23,18 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
       "status": "added"
     },
     {
+      "path": "auth-reader-context.js",
+      "sha": "aa7b56e218373f3f47caaa4e8b34880249b6ddb9",
+      "status": "modified"
+    },
+    {
       "path": "author-notes.html",
       "sha": "c6e28d122f323ce8544c5ffeb8596795f6d0ec22",
       "status": "modified"
     },
     {
       "path": "community.html",
-      "sha": "bc1c5243c3f1fd902096983cbeddc56662c970b0",
+      "sha": "74ce2b544deef6de2413b723a23dd67ef672b10b",
       "status": "added"
     },
     {
@@ -54,17 +59,17 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "docs/COMMUNITY-STAGING-VERIFICATION-ROUTE.md",
-      "sha": "41d1974afe8c61806171fc1be6b4d04f3fe87d4c",
+      "sha": "fb359b60a7a20ab948f9b82c9dd89e4c4b820834",
       "status": "added"
     },
     {
       "path": "docs/DOCUMENT-SOURCE-OF-TRUTH.md",
-      "sha": "20f13881500f5fe18e8d48e0a1c39a91f48fa404",
+      "sha": "0b6b225315be2eb7d0ea8a2be37351302198189a",
       "status": "modified"
     },
     {
       "path": "index.html",
-      "sha": "7cef83bbaa236c2a9a45ca80020395f75b943d77",
+      "sha": "fcef7b7c3e0392d9ccd82dbfec0fdd899fba509c",
       "status": "modified"
     },
     {
@@ -79,7 +84,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "novelight-community-alerts.js",
-      "sha": "4c40ce14c93a7d35735d94918216d0bcf5c2cb57",
+      "sha": "bb0e379514c3351777773e38393c3557b0659aa8",
       "status": "added"
     },
     {
@@ -89,12 +94,12 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "novelight-community.css",
-      "sha": "2cf2fe3c195daea347f0e9f8e40a7fb0d6b72745",
+      "sha": "668d5edd9273268341c074d0ac251768c659afbe",
       "status": "added"
     },
     {
       "path": "novelight-community.js",
-      "sha": "febf2652faa0cf73be3ad4b6ccc41e5f0816957c",
+      "sha": "938946b0370fd05f51a27a2686b520617455751b",
       "status": "added"
     },
     {
@@ -104,7 +109,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "scripts/community-staging-preflight.mjs",
-      "sha": "a6b8a3a3d7a7cfd1f8e00d1a7fac651a2dcbded7",
+      "sha": "a3ad5844897d85af9ee40d84a282b035a5dce05b",
       "status": "added"
     },
     {
@@ -119,12 +124,12 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql",
-      "sha": "b328980f483acfe738ae066dc430dd6d02b63687",
+      "sha": "1e99763224b61233ec8b58226e08336d7ac7ec20",
       "status": "added"
     },
     {
       "path": "supabase/checks/20261014052000_community_plaza_phase1_postrollback.sql",
-      "sha": "ba701423b4ee97593220ef3b51f149bef3429823",
+      "sha": "8f92fe4d6da2ee4ad42415bb8a3b9ec3a2371fc7",
       "status": "added"
     },
     {
@@ -134,22 +139,22 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "supabase/migrations/20261014052000_community_plaza_phase1.sql",
-      "sha": "1f5ef773a4073f10cc2e1b886eb3a8c942beb5c4",
+      "sha": "df651446da99e299005b4c8ec262c528bf477922",
       "status": "added"
     },
     {
       "path": "supabase/rollback/20261014052000_community_plaza_phase1_rollback.sql",
-      "sha": "18b96aea8d1618ba65765cbbda01a76eb636e45c",
+      "sha": "c6f41da90aece8df16d1d3d967507b3e5914e7cb",
       "status": "added"
     },
     {
       "path": "tests/accessibility-baseline.test.mjs",
-      "sha": "cb72484530f211c56c335b2fe62dcc81e8d9b831",
+      "sha": "ff4d22ab2c3fb54d63f99d5ba069edc7ae647e86",
       "status": "modified"
     },
     {
       "path": "tests/community-plaza-contract.test.mjs",
-      "sha": "97edda9e0db093c8e84905148480b30dbd867bae",
+      "sha": "47d924d00413c5338fc2b7985f80149c85548b8c",
       "status": "added"
     },
     {
@@ -158,13 +163,18 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
       "status": "added"
     },
     {
+      "path": "tests/community-staging-forward-reconcile.test.mjs",
+      "sha": "43aee4fafb30e3d69a60dcceeac15d2916766db2",
+      "status": "added"
+    },
+    {
       "path": "tests/community-staging-preflight.test.mjs",
-      "sha": "9b88ebcd81e2936d465519d86a566b90af96c27c",
+      "sha": "8c7721c3df45a9619501c394a718a94916c7ea1d",
       "status": "added"
     },
     {
       "path": "tests/e2e/specs/async-ui.spec.js",
-      "sha": "477962f8349fcd7f26a498d8df12e315dfc568fb",
+      "sha": "24c5759d4c1238d4f59a2dda1a4b9a1f80bf0ecd",
       "status": "modified"
     },
     {
@@ -174,7 +184,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "tests/e2e/specs/community-plaza-ui.js",
-      "sha": "55c45b544c930941e5fab4533c9c399d0cb8c8c0",
+      "sha": "90924558498bb54f07580426f51b3aa86e8012e8",
       "status": "added"
     },
     {
@@ -184,12 +194,12 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "tests/rls/community-plaza-phase1-behavior.sql",
-      "sha": "c8a01773489e791c3c9e69bf6b094795a058e122",
+      "sha": "c95f2254c1c90cd84b67d410e96b5335f427b3cd",
       "status": "added"
     },
     {
       "path": "tests/rls/community-plaza-phase1-security.sql",
-      "sha": "3503bc992bd7c05a6105f3529ce6764e3b5c862c",
+      "sha": "45b70546a7dc9853769f49389ed6df712c9a52b1",
       "status": "added"
     }
   ]
