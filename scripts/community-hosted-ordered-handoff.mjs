@@ -13,6 +13,7 @@ const REQUIRED = Object.freeze([
   'verifyFreshProtectedBoundary',
   'reserveAndRecordClaim',
   'obtainIndependentExecutionGrant',
+  'registerAndVerifyCleanupWatch',
   'runIsolatedLifecycle',
   'recordTerminalConsumption'
 ]);
@@ -112,6 +113,26 @@ function checkIndependentGrant(grant, run) {
   }
 }
 
+function checkWatchReceipt(receipt, run, claim) {
+  // A receipt is not a grant. The runner's registration adapter must
+  // independently read back the exact signed Issue #188 comment and prove
+  // the watchdog is active BEFORE allocating a disposable branch.
+  if (
+    receipt?.status !== 'CLEANUP_WATCH_REGISTERED_NO_PROVISION' ||
+    !sameRun(receipt, run) ||
+    !sameRevision(receipt, run) ||
+    receipt.claimCommentId !== claim.claimCommentId ||
+    !ID.test(receipt.registrationCommentId ?? '') ||
+    receipt.signatureReadBackVerified !== true ||
+    receipt.providerBranchAbsentAtRegistration !== true ||
+    receipt.independentWatchdogReadyVerified !== true ||
+    receipt.runAuthorized !== false ||
+    receipt.mayCreateBranch !== false
+  ) {
+    deny('independent cleanup registration not verified before provisioning');
+  }
+}
+
 function checkLifecycle(proof, run) {
   return (
     proof?.status === 'BROWSER_VERIFIED_AND_BRANCH_DISPOSED' &&
@@ -169,7 +190,18 @@ export async function runCommunityHostedSingleLifecycle({ run, operations }) {
   try {
     const grant = await operations.obtainIndependentExecutionGrant(run, claim);
     checkIndependentGrant(grant, run);
-    lifecycleProof = await operations.runIsolatedLifecycle(run, grant, claim);
+    const watch = await operations.registerAndVerifyCleanupWatch(
+      run,
+      grant,
+      claim
+    );
+    checkWatchReceipt(watch, run, claim);
+    lifecycleProof = await operations.runIsolatedLifecycle(
+      run,
+      grant,
+      claim,
+      watch
+    );
     if (checkLifecycle(lifecycleProof, run)) {
       outcome = 'success';
     }

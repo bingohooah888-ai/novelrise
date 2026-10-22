@@ -89,8 +89,6 @@ function checkBudget(run, approval, limits) {
   if (
     supabase?.provider !== 'supabase' ||
     vercel?.provider !== 'vercel' ||
-    supabase.enforcement !== 'provider-hard-stop' ||
-    vercel.enforcement !== 'provider-hard-stop' ||
     !positiveMinor(supabase.maxMinor) ||
     !positiveMinor(vercel.maxMinor) ||
     supabase.maxMinor > approval.maxTotalMinor ||
@@ -98,6 +96,34 @@ function checkBudget(run, approval, limits) {
   ) {
     deny();
   }
+  const hardStopped =
+    supabase.enforcement === 'provider-hard-stop' &&
+    vercel.enforcement === 'provider-hard-stop' &&
+    approval.strategy === undefined &&
+    limits.strategy === undefined;
+  // These are untrusted planned controls, never a grant or live watchdog proof.
+  const box = limits.timebox;
+  const timeboxed =
+    approval.strategy === 'timeboxed-independent-cleanup-v1' &&
+    limits.strategy === approval.strategy &&
+    supabase.enforcement === 'timeboxed-teardown-not-a-hard-cap' &&
+    vercel.enforcement === 'timeboxed-teardown-not-a-hard-cap' &&
+    Number.isSafeInteger(box?.maxMinutes) &&
+    box.maxMinutes >= 1 &&
+    box.maxMinutes <= 120 &&
+    Number.isSafeInteger(box.watchdogIntervalMinutes) &&
+    box.watchdogIntervalMinutes >= 1 &&
+    box.watchdogIntervalMinutes <= 5 &&
+    Number.isSafeInteger(box.cleanupGraceMinutes) &&
+    box.cleanupGraceMinutes >= 1 &&
+    box.cleanupGraceMinutes <= 15 &&
+    box.independentTrustedMainMonitorRequired === true &&
+    box.failClosedBeforeProvisioning === true &&
+    box.cancelOnTimeout === true &&
+    box.destroyRunOwnedBranchOnAnyOutcome === true &&
+    box.verifyRemoteBranchAbsent === true &&
+    box.recordBothProviderBills === true;
+  if (!hardStopped && !timeboxed) deny();
 }
 
 function checkIsolation(run, isolation) {
@@ -142,6 +168,9 @@ export function inspectCommunityHostedStagingEvidenceShape({
     evidenceAuthenticated: false,
     githubEnvironmentLiveVerified: false,
     providerHardStopLiveVerified: false,
+    independentWatchdogLiveVerified: false,
+    timeboxExpiryArmed: false,
+    providerBillsReconciled: false,
     ownerApprovalLedgerLiveVerified: false,
     isolationCreated: false,
     cleanupVerified: false,
