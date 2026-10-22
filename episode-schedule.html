@@ -13,7 +13,34 @@
     .tool-row{display:flex;gap:9px;align-items:end;flex-wrap:wrap}.field{display:grid;gap:6px}.field label{font-size:11px;font-weight:900;color:#655846}.field input{min-height:40px;padding:8px 10px;border:1px solid #d6d8df;border-radius:8px}.field.interval input{width:110px}
     .btn{min-height:40px;padding:8px 12px;border:1px solid #d6d8df;border-radius:8px;background:#fff;color:#4b3a2a;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.btn.primary{background:#3d2d20;color:#fff;border-color:#3d2d20}.btn.publish-now{background:#fff8e8;border-color:#c99e50;color:#684919}.btn:disabled{opacity:.55;cursor:not-allowed}.summary{margin-top:11px;color:#6b7280;font-size:12px}
     .list{display:grid;gap:11px}.card{padding:16px;display:grid;grid-template-columns:auto minmax(0,1fr) minmax(250px,330px);gap:13px;align-items:center}.select{width:19px;height:19px}.number{font-size:11px;color:#8c765d;font-weight:900}.title{font-size:16px;font-weight:900;margin-top:3px}.state{font-size:11px;color:#777;margin-top:5px}.schedule-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.schedule-input{width:100%;padding:10px;border:1px solid #d6d8df;border-radius:8px}.dirty{border-color:#8a70e5;background:#faf8ff}.empty{padding:34px;text-align:center;color:#6b7280}.status{min-height:23px;margin-top:14px;color:#666;font-size:13px}
-    @media(max-width:700px){main{padding:28px 16px 60px}.head{align-items:flex-start;flex-direction:column}.head-actions,.tool-row{width:100%;align-items:stretch;flex-direction:column}.head-actions .btn,.tool-row .btn{width:100%}.field.interval input{width:100%}.card{grid-template-columns:auto 1fr}.schedule-wrap{grid-column:1/-1;grid-template-columns:1fr}.schedule-input{width:100%}.btn.publish-now{width:100%}}
+    @media(max-width:700px){
+      main{padding:22px 12px 48px}
+      .head{align-items:flex-start;flex-direction:column;gap:10px;margin-bottom:12px}
+      .head h1{font-size:25px}
+      .sub{overflow-wrap:anywhere}
+      .head-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+      .head-actions .btn{width:100%;min-width:0}
+      .notice{padding:12px;margin-bottom:12px}
+      .tools{padding:12px;margin-bottom:12px}
+      .tool-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:end}
+      .tool-row .btn{width:100%;min-width:0;white-space:normal;line-height:1.4}
+      .tool-row .field{min-width:0}
+      .tool-row .field:not(.interval){grid-column:1/-1}
+      .tool-row .field input{width:100%;min-width:0;max-width:100%}
+      .tool-row #clearSchedule{grid-column:1/-1}
+      .list{gap:8px}
+      .card{padding:12px;grid-template-columns:20px minmax(0,1fr);gap:8px;align-items:start}
+      .card>div:not(.schedule-wrap){min-width:0}
+      .card .title,.card .state{overflow-wrap:anywhere}
+      .schedule-wrap{grid-column:1/-1;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+      .schedule-input{min-width:0;max-width:100%;min-height:42px}
+      .btn.publish-now{width:auto;min-width:0}
+    }
+    @media(max-width:380px){
+      .head-actions{grid-template-columns:1fr}
+      .schedule-wrap{grid-template-columns:1fr}
+      .btn.publish-now{width:100%}
+    }
   </style>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
 <link rel="stylesheet" href="novelight-accessibility.css"><script src="novelight-episode-title-display.js"></script></head><body class="novelight-theme novelight-page-episode-schedule"><a class="skip-link" href="#main-content">本文へスキップ</a>
