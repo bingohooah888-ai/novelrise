@@ -93,10 +93,7 @@ function invalid(overrides, pattern) {
 test('observed migration drift cannot authorize staging', () => {
   const audit = inspect();
   assert.equal(audit.verdict, 'READ_ONLY_LEDGER_AUDIT');
-  assert.deepEqual(audit.productionOnly, [
-    '20261022010000',
-    '20261022010100'
-  ]);
+  assert.deepEqual(audit.productionOnly, ['20261022010000', '20261022010100']);
   assert.deepEqual(audit.stagingOnly, ['20261014052000']);
   assert.deepEqual(audit.nameConflicts, []);
   assert.ok(audit.blockers.includes('migration history differs'));
