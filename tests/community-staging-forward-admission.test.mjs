@@ -105,12 +105,14 @@ test('Staging routine catalog guard rejects changed definitions', () => {
   const guard = renderer.composeRoutineBaselineGuard();
   const count = renderer.REVIEWED_STAGING_ROUTINE_COUNT;
   const digest = renderer.REVIEWED_STAGING_ROUTINE_DIGEST;
-  assert.equal(count, 17);
+  assert.equal(count, 19);
   assert.match(digest, /^[0-9a-f]{32}$/u);
   assert.match(guard, /Staging routine fingerprint drift/u);
   assert.match(guard, /pg_get_functiondef/u);
   assert.match(guard, /pg_get_function_identity_arguments/u);
   assert.match(guard, /novelight_save_my_author_note_v2/u);
+  assert.match(guard, /novelight_my_seed_community_shares/u);
+  assert.match(guard, /novelight_set_my_seed_community_share/u);
   assert.match(guard, new RegExp(digest, 'u'));
 });
 test('unpinned SQL refused and Git blob hash verified', () => {

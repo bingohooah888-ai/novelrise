@@ -8,9 +8,9 @@ export const REVIEWED_MIGRATION_BLOB =
   'df651446da99e299005b4c8ec262c528bf477922';
 export const REVIEWED_STAGING_LEDGER_DIGEST =
   '3851f0dfc1e5bdb6bc7c0e317c5c4fd4';
-export const REVIEWED_STAGING_ROUTINE_COUNT = 17;
+export const REVIEWED_STAGING_ROUTINE_COUNT = 19;
 export const REVIEWED_STAGING_ROUTINE_DIGEST =
-  'a720cfed2ffe976cecd071589ccb40e5';
+  'ccd2c2b8c66f3b9fa025b0163d75b156';
 const APPROVED_FILE = '/tmp/novelight-community-reviewed.sql';
 
 export function gitBlobHash(content) {
@@ -39,7 +39,9 @@ export function composeRoutineBaselineGuard() {
     " 'novelight_manage_my_author_notes_v2',",
     " 'novelight_manage_my_curation_lists_v2',",
     " 'novelight_set_my_curation_community_share',",
-    " 'novelight_curation_share_reset_private'))"
+    " 'novelight_curation_share_reset_private',",
+    " 'novelight_my_seed_community_shares',",
+    " 'novelight_set_my_seed_community_share'))"
   ].join('\n');
   return [
     'DO $community_routine_fingerprint$',

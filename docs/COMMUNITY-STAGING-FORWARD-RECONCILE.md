@@ -9,8 +9,9 @@
 - Dedicated existing Staging ref `wmlzjgvxgoyrovdhbqbg`; never Production
   `fiepaguycecrredwrcwx`. Existing branch status `MIGRATIONS_FAILED`,
   project `ACTIVE_HEALTHY`.
-- Existing routine baseline: 17 community/related functions,
-  deterministic catalog MD5 `a720cfed2ffe976cecd071589ccb40e5`.
+- Existing routine baseline: 19 community/related functions (including
+  LIGHT SEED share routines), deterministic catalog MD5
+  `ccd2c2b8c66f3b9fa025b0163d75b156`.
   The trusted workflow and atomic guard both reject function-body drift
   before replay so later edits cannot be overwritten silently.
 - Ledger: exactly 188 migration versions; version `20261014052000` is

@@ -168,8 +168,10 @@ jobs:
                'novelight_manage_my_author_notes_v2',
                'novelight_manage_my_curation_lists_v2',
                'novelight_set_my_curation_community_share',
-               'novelight_curation_share_reset_private'))" \
-            | grep -Fxq '17|a720cfed2ffe976cecd071589ccb40e5'
+               'novelight_curation_share_reset_private',
+               'novelight_my_seed_community_shares',
+               'novelight_set_my_seed_community_share'))" \
+            | grep -Fxq '19|ccd2c2b8c66f3b9fa025b0163d75b156'
       - name: Repeat exact refs before the ONE guarded atomic SQL transaction
         env:
           GH_TOKEN: ${{ github.token }}
