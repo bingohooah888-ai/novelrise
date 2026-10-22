@@ -23,12 +23,14 @@ const REVIEWED_SMOKE = Object.freeze({
   previous: 'fc5fa385bb5f285e971367a0c04fa30ff4047126',
   current: '5e9f8ad9cf9e238f908207896826d09dc6c6e346'
 });
-const PREVIOUS_BLOBS = {
+const RETIRED_SYNC_BLOBS = {
   'tests/e2e/specs/async-ui.spec.js':
     '477962f8349fcd7f26a498d8df12e315dfc568fb',
   'index.html': '7cef83bbaa236c2a9a45ca80020395f75b943d77',
   'tests/accessibility-baseline.test.mjs':
-    'cb72484530f211c56c335b2fe62dcc81e8d9b831',
+    'cb72484530f211c56c335b2fe62dcc81e8d9b831'
+};
+const PREVIOUS_BLOBS = {
   'author-notes.html': 'b55355a64dcc75225e9a59ff2432fd0e460b46c5',
   'index.html': '104fd490a8326277a6a5f855dae1883064e336a6',
   'tests/accessibility-baseline.test.mjs':
@@ -93,7 +95,10 @@ test('current Phase 1 and public-header smoke Git blob is pinned', () => {
 });
 
 test('previous blobs, extra files and divergent ancestry remain denied', () => {
-  for (const [path, oldSha] of Object.entries(PREVIOUS_BLOBS)) {
+  for (const [path, oldSha] of [
+    ...Object.entries(PREVIOUS_BLOBS),
+    ...Object.entries(RETIRED_SYNC_BLOBS)
+  ]) {
     const input = evidence();
     input.compare.files.find((x) => x.filename === path).sha = oldSha;
     assert.throws(
