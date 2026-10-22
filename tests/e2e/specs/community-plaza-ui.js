@@ -19,6 +19,7 @@ function initializeCommunityMock(delayFeed) {
   globalThis.__communityTestCalls = [];
   globalThis.__communityTestFeedFilters = [];
   globalThis.__communityDelayFirstFeed = delayFeed;
+  globalThis.__communityRejectNextCommentReceipt = false;
 }
 
 // Keep the injected Playwright fixture verbatim; it is intentionally test-only.
@@ -77,6 +78,10 @@ async function installIsolatedMock(page, enabled, options = {}) {
                 return {data: [{id:'c0a00000-0000-4000-8000-000000000012',body:'既存コメント',display_name:'読者A',created_at:'2026-10-14T10:15:00Z',is_mine:true}],error:null};
               }
               if (name === 'novelight_community_post_comment') {
+                if (globalThis.__communityRejectNextCommentReceipt) {
+                  globalThis.__communityRejectNextCommentReceipt = false;
+                  return {data: {id: 'not-a-comment-id'},error:null};
+                }
                 return {data: {id:'c0a00000-0000-4000-8000-000000000013'},error:null};
               }
               if (name === 'novelight_community_edit_my_comment') return {data:true,error:null};
@@ -212,7 +217,18 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await expect(card.locator('.community-comment-form textarea')).toHaveValue(
     'テストの返信です\n2行目です'
   );
+  await page.evaluate(() => { globalThis.__communityRejectNextCommentReceipt = true; });
   await card.locator('.community-comment-form button[type="submit"]').click();
+  await expect(card.locator('.community-comment-form .community-comment-feedback'))
+    .toContainText('コメントを送信できませんでした');
+  await expect(card.locator('.community-comment-form textarea')).toHaveValue(
+    'テストの返信です\n2行目です'
+  );
+  await expect(card.locator('.community-actions button', {hasText:/^コメント/}))
+    .toHaveText('コメント 1');
+  await card.locator('.community-comment-form button[type="submit"]').click();
+  await expect(card.locator('.community-actions button', {hasText:/^コメント/}))
+    .toHaveText('コメント 2');
   // Desktop and Pixel-sized mobile must keep the interactive card within the
   // viewport, including the expanded comments/form state.
   const layout = await page.evaluate(() => ({
@@ -228,6 +244,10 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await card.locator('.community-report-form textarea').fill('テスト理由');
   await card.locator('.community-report-form .community-report-submit').click();
   await expect(card.locator('.community-report-form')).toBeHidden();
+  await expect(card.locator('.community-report-status'))
+    .toBeVisible();
+  await expect(card.locator('.community-report-status'))
+    .toHaveText('通報を受け付けました');
   await expect(
     card.locator('.community-actions button', { hasText: /^通報済み$/ })
   ).toBeDisabled();
