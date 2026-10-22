@@ -110,3 +110,5 @@
 .community-notice-filter{padding:5px 10px;border:1px solid #8c7649;border-radius:7px;background:#14283e;color:#f3dba8;font:inherit;font-size:.81rem;cursor:pointer}
 .community-notice-filter[aria-pressed="true"]{background:#3f5267}
 .community-notice-list li[hidden]{display:none}
+
+.community-comment-target{outline:2px solid #d6a447;outline-offset:3px;border-radius:7px;background:rgba(214,164,71,.09)}

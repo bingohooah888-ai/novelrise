@@ -95,8 +95,13 @@
         const li = item('li',undefined,hasRead?'community-notice-read':'community-notice-unread');
         const label = notice.kind === 'like' ? 'いいね' : notice.kind === 'reply' ? '返信' : 'コメント';
         li.append(item('span',(notice.actor_name || 'ユーザー') + 'さんから' + label + 'が届きました'));
-        const link = item('a','投稿を確認');
-        link.href = 'community.html#post-' + encodeURIComponent(key);
+        const commentId = String(notice.comment_id || '');
+        const focusComment = (notice.kind === 'reply' || notice.kind === 'comment') &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commentId);
+        const link = item('a',focusComment ? 'コメントを見る' : '投稿を確認');
+        link.href = 'community.html' +
+          (focusComment ? '?comment=' + encodeURIComponent(commentId) : '') +
+          '#post-' + encodeURIComponent(key);
         if (!hasRead) {
           // Read acknowledgement precedes navigation, but never prevents
           // visiting the post if the network is slow or unavailable.

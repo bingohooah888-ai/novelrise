@@ -293,6 +293,10 @@
       syncReply();
       for (const comment of Array.isArray(data) ? data : []) {
         const c = el('div', 'community-comment');
+        const commentKey = String(comment.id || '');
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commentKey)) {
+          c.id = 'community-comment-' + commentKey;
+        }
         const author = el('strong', '', (comment.parent_comment_id ? '↳ ' : '') + (comment.display_name || 'ユーザー'));
         const commentText = el('span', '', comment.body || '');
         c.append(author, commentText);
@@ -555,14 +559,32 @@
     comment.setAttribute('aria-expanded','false');
     const commentArea = el('div','community-comment-panel');
     commentArea.hidden = true;
+    function updateCommentCount(delta=1) {
+      row.comment_count=Math.max(0,Number(row.comment_count||0)+delta);
+      comment.textContent='コメント '+row.comment_count;
+    }
     comment.addEventListener('click',()=>{
       commentArea.hidden=!commentArea.hidden;
       comment.setAttribute('aria-expanded',String(!commentArea.hidden));
-      if (!commentArea.hidden) void comments(commentArea,row,(delta=1)=>{
-        row.comment_count=Math.max(0,Number(row.comment_count||0)+delta);
-        comment.textContent='コメント '+row.comment_count;
-      });
+      if (!commentArea.hidden) void comments(commentArea,row,updateCommentCount);
     });
+    // A reply notification should open its specific comment automatically.
+    article.revealLinkedComment = async commentId => {
+      commentArea.hidden = false;
+      comment.setAttribute('aria-expanded','true');
+      await comments(commentArea,row,updateCommentCount,50);
+      const target = document.getElementById('community-comment-' + commentId);
+      if (target && commentArea.contains(target)) {
+        target.classList.add('community-comment-target');
+        target.setAttribute('tabindex','-1');
+        target.scrollIntoView({block:'center'});
+        target.focus({preventScroll:true});
+      } else {
+        const note = el('p','community-state','指定されたコメントは表示できません。削除・非表示または最新50件の範囲外の可能性があります。');
+        note.setAttribute('role','status');
+        commentArea.prepend(note);
+      }
+    };
     actions.append(like,comment,likeStatus);
     const postKey = String(row.post_key || '');
     if (/^(?:novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[0-9a-f-]{36}|official:[0-9]+|ep:[0-9a-f-]{36}:[0-9]+:[0-9]+)$/i.test(postKey)) {
@@ -772,9 +794,16 @@
       if (filterRevision !== revision) return;
       const found = document.getElementById(target);
       if (found) {
-        found.setAttribute('tabindex', '-1');
-        found.scrollIntoView({block:'center'});
-        found.focus({preventScroll:true});
+        const linkedComment = new URLSearchParams(location.search).get('comment');
+        if (linkedComment &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(linkedComment) &&
+          typeof found.revealLinkedComment === 'function') {
+          await found.revealLinkedComment(linkedComment);
+        } else {
+          found.setAttribute('tabindex', '-1');
+          found.scrollIntoView({block:'center'});
+          found.focus({preventScroll:true});
+        }
         return;
       }
       const more = document.getElementById('communityLoadMore');

@@ -746,10 +746,13 @@ BEGIN
  IF v_user IS NULL THEN RAISE EXCEPTION 'Sign in required' USING errcode='42501'; END IF;
  SELECT coalesce(jsonb_agg(jsonb_build_object(
   'id',r.id,'kind',r.kind,'post_key',r.post_key,'created_at',r.created_at,
-  'actor_name',r.actor_name,'read_at',r.read_at
+  'actor_name',r.actor_name,'read_at',r.read_at,'comment_id',r.comment_id
  ) ORDER BY r.created_at DESC),'[]'::jsonb) INTO v_result
  FROM (
   SELECT n.id,n.kind,n.post_key,n.created_at,n.read_at,
+    CASE WHEN n.kind IN ('comment','reply')
+       AND n.event_key ~ '^(comment|reply):[0-9a-f-]{36}$'
+      THEN split_part(n.event_key,':',2) ELSE NULL END AS comment_id,
     coalesce(p.display_name,'ユーザー') AS actor_name
   FROM public.community_notifications n JOIN public.profiles p ON p.id=n.actor_user_id
   WHERE n.recipient_user_id=v_user
