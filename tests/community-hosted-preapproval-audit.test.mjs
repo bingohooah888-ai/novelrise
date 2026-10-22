@@ -222,7 +222,7 @@ test('reject changed blobs and nonindependent reviewers', async () => {
   assert.equal(result.checks.independentEnvironment, false);
 });
 
-test('reject incomplete comparison pagination instead of trusting the first 100', async () => {
+test('reject truncated GitHub compare pagination', async () => {
   const sample = harness({
     ['/compare/' + MAIN + '...' + FEATURE + '?per_page=100&page=2']: null
   });
