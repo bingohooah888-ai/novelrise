@@ -7,6 +7,9 @@ import { REVIEWED_COMMUNITY_FILES } from '../scripts/community-phase1-reviewed-c
 
 const MAIN = 'a'.repeat(40);
 const FEATURE = 'b'.repeat(40);
+const COMMITS = Array.from({ length: 101 }, (_, i) => ({
+  sha: i === 100 ? FEATURE : (i + 1).toString(16).padStart(40, '0')
+}));
 const TOKEN = 'synthetic-readonly-token-long-enough-for-test';
 const REPO = 'bingohooah888-ai/novelrise';
 const NOW = Date.parse('2026-10-23T00:15:00.000Z');
@@ -53,18 +56,26 @@ function harness(overrides = {}) {
       head: { sha: FEATURE, repo: { full_name: REPO } }
     },
     '/issues/188': { number: 188, state: 'closed' },
-    ['/compare/' + MAIN + '...' + FEATURE + '?per_page=250']: {
+    ['/compare/' + MAIN + '...' + FEATURE + '?per_page=100&page=1']: {
       status: 'ahead',
       behind_by: 0,
-      ahead_by: 1,
-      total_commits: 1,
+      ahead_by: 101,
+      total_commits: 101,
       base_commit: { sha: MAIN },
-      commits: [{ sha: FEATURE }],
+      commits: COMMITS.slice(0, 100),
       files: REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({
         filename: path,
         sha,
         status
       }))
+    },
+    ['/compare/' + MAIN + '...' + FEATURE + '?per_page=100&page=2']: {
+      status: 'ahead',
+      behind_by: 0,
+      ahead_by: 101,
+      total_commits: 101,
+      base_commit: { sha: MAIN },
+      commits: COMMITS.slice(100)
     },
     '/environments/community-hosted-isolated': ENV,
     '/environments/community-hosted-isolated/deployment-branch-policies?per_page=100':
@@ -182,13 +193,13 @@ test('reject changed blobs and nonindependent reviewers', async () => {
   }));
   bad[0].sha = 'f'.repeat(40);
   const sample = harness({
-    ['/compare/' + MAIN + '...' + FEATURE + '?per_page=250']: {
+    ['/compare/' + MAIN + '...' + FEATURE + '?per_page=100&page=1']: {
       status: 'ahead',
       behind_by: 0,
-      ahead_by: 1,
-      total_commits: 1,
+      ahead_by: 101,
+      total_commits: 101,
       base_commit: { sha: MAIN },
-      commits: [{ sha: FEATURE }],
+      commits: COMMITS.slice(0, 100),
       files: bad
     },
     '/environments/community-hosted-isolated': {
@@ -209,6 +220,48 @@ test('reject changed blobs and nonindependent reviewers', async () => {
   const result = await run(sample);
   assert.equal(result.checks.candidateReview, false);
   assert.equal(result.checks.independentEnvironment, false);
+});
+
+test('reject incomplete comparison pagination instead of trusting the first 100', async () => {
+  const sample = harness({
+    ['/compare/' + MAIN + '...' + FEATURE + '?per_page=100&page=2']: null
+  });
+  const result = await run(sample);
+  assert.equal(result.checks.candidateReview, false);
+  assert.ok(sample.requests.some((request) => request.url.includes('page=2')));
+  assert.equal(result.mayRunBrowser, false);
+});
+
+test('reject drifted metadata on a later comparison page', async () => {
+  const sample = harness({
+    ['/compare/' + MAIN + '...' + FEATURE + '?per_page=100&page=2']: {
+      status: 'ahead',
+      behind_by: 1,
+      ahead_by: 101,
+      total_commits: 101,
+      base_commit: { sha: MAIN },
+      commits: COMMITS.slice(100)
+    }
+  });
+  const result = await run(sample);
+  assert.equal(result.checks.candidateReview, false);
+});
+
+test('reject a short first page despite claiming 101 commits', async () => {
+  const sample = harness({
+    ['/compare/' + MAIN + '...' + FEATURE + '?per_page=100&page=1']: {
+      status: 'ahead',
+      behind_by: 0,
+      ahead_by: 101,
+      total_commits: 101,
+      base_commit: { sha: MAIN },
+      commits: COMMITS.slice(0, 99),
+      files: REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({
+        filename: path, sha, status
+      }))
+    }
+  });
+  assert.equal((await run(sample)).checks.candidateReview, false);
 });
 
 test('invalid trusted input prevents network requests', async () => {
