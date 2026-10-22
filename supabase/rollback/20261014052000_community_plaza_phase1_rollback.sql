@@ -33,6 +33,7 @@ DROP FUNCTION IF EXISTS public.novelight_community_my_notifications(integer);
 DROP FUNCTION IF EXISTS public.novelight_community_post_author(text);
 DROP FUNCTION IF EXISTS public.novelight_manage_my_author_notes_v2(integer);
 DROP FUNCTION IF EXISTS public.novelight_save_my_author_note_v2(bigint,text,text,bigint,boolean,boolean);
+DROP FUNCTION IF EXISTS public.novelight_community_delete_my_comment(uuid);
 DROP FUNCTION IF EXISTS public.novelight_community_report_comment(uuid,text);
 DROP FUNCTION IF EXISTS public.novelight_community_report(text,text);
 DROP FUNCTION IF EXISTS public.novelight_community_post_comment(text,text,uuid);

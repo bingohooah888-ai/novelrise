@@ -227,6 +227,30 @@
         });
         reportForm.append(reason, send, cancel);
         c.append(reportComment, reportForm, reportFeedback);
+        if (comment.is_mine === true) {
+          const deleteButton = el('button', 'community-action', '自分のコメントを削除');
+          deleteButton.type = 'button';
+          deleteButton.addEventListener('click', async () => {
+            if (!window.confirm('このコメントを削除しますか？')) return;
+            deleteButton.disabled = true;
+            reportFeedback.hidden = true;
+            try {
+              if (!await authed()) return requireLogin();
+              const removed = await rpc('novelight_community_delete_my_comment', {
+                p_comment_id: comment.id
+              });
+              if (removed !== true) throw new Error('Comment deletion failed');
+              if (typeof onPosted === 'function') onPosted(-1);
+              await comments(container,row,onPosted,displayLimit);
+            } catch(error) {
+              console.warn('community comment deletion failed',error);
+              reportFeedback.textContent = '削除できませんでした。もう一度お試しください。';
+              reportFeedback.hidden = false;
+              deleteButton.disabled = false;
+            }
+          });
+          c.append(deleteButton);
+        }
         container.append(c);
       }
       if (data.length >= 20) {
@@ -320,8 +344,8 @@
     comment.addEventListener('click',()=>{
       commentArea.hidden=!commentArea.hidden;
       comment.setAttribute('aria-expanded',String(!commentArea.hidden));
-      if (!commentArea.hidden) void comments(commentArea,row,()=>{
-        row.comment_count=Number(row.comment_count||0)+1;
+      if (!commentArea.hidden) void comments(commentArea,row,(delta=1)=>{
+        row.comment_count=Math.max(0,Number(row.comment_count||0)+delta);
         comment.textContent='コメント '+row.comment_count;
       });
     });

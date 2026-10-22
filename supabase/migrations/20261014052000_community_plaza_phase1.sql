@@ -405,10 +405,11 @@ BEGIN
   END IF;
   SELECT coalesce(jsonb_agg(jsonb_build_object(
     'id',r.id,'body',r.body,'parent_comment_id',r.parent_comment_id,
-    'display_name',r.display_name,'created_at',r.created_at
+    'display_name',r.display_name,'created_at',r.created_at,
+    'is_mine',r.user_id=v_uid
    ) ORDER BY r.created_at ASC),'[]'::jsonb)
    INTO v_output FROM (
-    SELECT c.id,c.body,c.parent_comment_id,p.display_name,c.created_at
+    SELECT c.id,c.user_id,c.body,c.parent_comment_id,p.display_name,c.created_at
     FROM public.community_comments c
     JOIN public.profiles p ON p.id=c.user_id
     WHERE c.post_key=p_post_key AND c.deleted_at IS NULL AND c.admin_hidden_at IS NULL
@@ -478,7 +479,7 @@ BEGIN
   END IF;
   IF EXISTS(SELECT 1 FROM public.community_comments c WHERE c.user_id=v_user
       AND c.post_key=p_post_key AND c.body=v_body
-      AND c.created_at>now()-interval '1 day') THEN
+      AND c.deleted_at IS NULL AND c.created_at>now()-interval '1 day') THEN
     RAISE EXCEPTION 'Duplicate comment' USING errcode='23505';
   END IF;
   INSERT INTO public.community_comments(post_key,user_id,body,parent_comment_id)
@@ -500,6 +501,30 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.novelight_community_post_comment(text,text,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.novelight_community_post_comment(text,text,uuid) TO authenticated;
+
+-- Only a comment's original author can remove it; no scoring/reading writes.
+CREATE OR REPLACE FUNCTION public.novelight_community_delete_my_comment(p_comment_id uuid)
+RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_user uuid := (SELECT auth.uid()); v_updated integer;
+BEGIN
+ IF v_user IS NULL THEN RAISE EXCEPTION 'Login required' USING errcode='42501'; END IF;
+ IF p_comment_id IS NULL THEN RAISE EXCEPTION 'Invalid comment ID' USING errcode='22023'; END IF;
+ UPDATE public.community_comments c SET deleted_at=now()
+  WHERE c.id=p_comment_id AND c.user_id=v_user AND c.deleted_at IS NULL;
+ GET DIAGNOSTICS v_updated = ROW_COUNT;
+ IF v_updated<>1 THEN
+   RAISE EXCEPTION 'Own comment unavailable' USING errcode='42501';
+ END IF;
+ DELETE FROM public.community_notifications n
+  WHERE n.event_key IN ('comment:'||p_comment_id::text,'reply:'||p_comment_id::text);
+ RETURN true;
+END
+$$;
+REVOKE ALL ON FUNCTION public.novelight_community_delete_my_comment(uuid)
+ FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.novelight_community_delete_my_comment(uuid)
+ TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.novelight_community_report(p_post_key text,p_reason text)
 RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER
