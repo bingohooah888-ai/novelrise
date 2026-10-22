@@ -693,9 +693,38 @@
         target.scrollIntoView({block:'center'});
         target.focus({preventScroll:true});
       } else {
-        const note = el('p','community-state','指定されたコメントは表示できません。削除・非表示または最新50件の範囲外の可能性があります。');
-        note.setAttribute('role','status');
-        commentArea.prepend(note);
+        try {
+          const detail = await rpc('novelight_community_comment_detail',{
+            p_post_key:row.post_key,p_comment_id:commentId
+          });
+          if (!detail || String(detail.id || '').toLowerCase() !== commentId.toLowerCase()) {
+            throw new Error('Comment unavailable');
+          }
+          const preview = el('div','community-comment community-comment-target');
+          preview.id = 'community-comment-' + commentId;
+          preview.setAttribute('tabindex','-1');
+          preview.append(
+            el('strong','',detail.display_name || 'ユーザー'),
+            el('span','',detail.body || '')
+          );
+          const when = dateString(detail.created_at);
+          if (when) {
+            const stamp = el('time','community-comment-time',when);
+            stamp.dateTime = detail.created_at;
+            preview.append(stamp);
+          }
+          if (detail.edited_at) preview.append(el('small','community-comment-edited','編集済み'));
+          const context = el('p','community-comment-tip','過去のコメントを表示しています。');
+          commentArea.prepend(context,preview);
+          preview.scrollIntoView({block:'center'});
+          preview.focus({preventScroll:true});
+        } catch(error) {
+          console.warn('community linked comment unavailable',error);
+          const note = el('p','community-state',
+            '指定されたコメントは表示できません。削除・非表示または閲覧制限の可能性があります。');
+          note.setAttribute('role','status');
+          commentArea.prepend(note);
+        }
       }
     };
     actions.append(like,comment,likeStatus);

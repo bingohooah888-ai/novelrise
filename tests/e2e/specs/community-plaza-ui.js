@@ -80,6 +80,9 @@ async function installIsolatedMock(page, enabled, options = {}) {
                 return {data: {id:'c0a00000-0000-4000-8000-000000000013'},error:null};
               }
               if (name === 'novelight_community_edit_my_comment') return {data:true,error:null};
+              if (name === 'novelight_community_comment_detail') {
+                return {data: {id:payload.p_comment_id,body:'過去のコメント本文',display_name:'前の読者',created_at:'2026-10-10T09:00:00Z'},error:null};
+              }
               if (name === 'novelight_community_report') return {data: true,error:null};
               if (name === 'novelight_community_my_notifications') return {data: [],error:null};
               return {data: [],error:null};
@@ -245,4 +248,18 @@ test('community UI interactions use mocked data', async ({ page }) => {
   ]) {
     expect(calls).toContain(operation);
   }
+});
+
+test('a shared older comment link opens a permitted single-comment preview', async ({ page }) => {
+  await installIsolatedMock(page, true);
+  const oldId = 'c0a00000-0000-4000-8000-000000000099';
+  await page.goto('/community.html?comment=' + oldId + '#post-note%3A42', {
+    waitUntil: 'domcontentloaded'
+  });
+  await expect(page.locator('#community-comment-' + oldId)).toContainText(
+    '過去のコメント本文'
+  );
+  await expect(page.locator('.community-comment-target')).toBeFocused();
+  const calls = await page.evaluate(() => globalThis.__communityTestCalls);
+  expect(calls).toContain('novelight_community_comment_detail');
 });

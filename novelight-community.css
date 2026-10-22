@@ -124,3 +124,5 @@
 .community-comment-context-missing{display:block;margin-top:6px;color:#adbbcc;font-size:.76rem}
 .community-comment-share-status{display:block;margin-top:7px;color:#d8dce3;font-size:.8rem}
 .community-comment-share-status[hidden]{display:none}
+
+.community-comment-target:focus{outline:2px solid #d6a447;outline-offset:3px}

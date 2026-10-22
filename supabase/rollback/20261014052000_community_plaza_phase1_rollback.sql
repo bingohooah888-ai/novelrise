@@ -39,6 +39,7 @@ DROP FUNCTION IF EXISTS public.novelight_community_delete_my_comment(uuid);
 DROP FUNCTION IF EXISTS public.novelight_community_report_comment(uuid,text);
 DROP FUNCTION IF EXISTS public.novelight_community_report(text,text);
 DROP FUNCTION IF EXISTS public.novelight_community_post_comment(text,text,uuid);
+DROP FUNCTION IF EXISTS public.novelight_community_comment_detail(text,uuid);
 DROP FUNCTION IF EXISTS public.novelight_community_comments(text,integer);
 DROP FUNCTION IF EXISTS public.novelight_community_toggle_like(text);
 DROP FUNCTION IF EXISTS public.novelight_community_interaction_allowed(text);

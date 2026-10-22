@@ -430,6 +430,48 @@ $$;
 REVOKE ALL ON FUNCTION public.novelight_community_comments(text,integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.novelight_community_comments(text,integer) TO anon,authenticated;
 
+-- A deep-link fetch retrieves only the requested, currently visible comment.
+-- It must not expose deleted/hidden comments or bypass mutual blocks and mutes.
+CREATE OR REPLACE FUNCTION public.novelight_community_comment_detail(
+  p_post_key text,p_comment_id uuid
+)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE v_user uuid := (SELECT auth.uid()); v_result jsonb;
+BEGIN
+ IF p_comment_id IS NULL OR NOT public.novelight_community_post_visible(p_post_key) THEN
+   RETURN NULL;
+ END IF;
+ IF v_user IS NOT NULL AND
+   NOT public.novelight_community_interaction_allowed(p_post_key) THEN
+   RETURN NULL;
+ END IF;
+ SELECT jsonb_build_object(
+   'id',c.id,'body',c.body,'parent_comment_id',c.parent_comment_id,
+   'display_name',coalesce(p.display_name,'ユーザー'),
+   'created_at',c.created_at,'edited_at',c.edited_at,
+   'is_mine',c.user_id=v_user
+ ) INTO v_result
+ FROM public.community_comments c
+ JOIN public.profiles p ON p.id=c.user_id
+ WHERE c.id=p_comment_id AND c.post_key=p_post_key
+   AND c.deleted_at IS NULL AND c.admin_hidden_at IS NULL
+   AND (v_user IS NULL OR (
+     NOT EXISTS(SELECT 1 FROM public.user_blocks b
+       WHERE (b.blocker_user_id=v_user AND b.blocked_user_id=c.user_id)
+          OR (b.blocker_user_id=c.user_id AND b.blocked_user_id=v_user))
+     AND NOT EXISTS(SELECT 1 FROM public.user_mutes m
+       WHERE m.muter_user_id=v_user AND m.muted_user_id=c.user_id)
+   ));
+ RETURN v_result;
+END
+$$;
+REVOKE ALL ON FUNCTION public.novelight_community_comment_detail(text,uuid)
+ FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.novelight_community_comment_detail(text,uuid)
+ TO anon,authenticated;
+
 CREATE OR REPLACE FUNCTION public.novelight_community_post_comment(
  p_post_key text,p_body text,p_parent_comment_id uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER
