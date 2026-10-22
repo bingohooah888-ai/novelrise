@@ -12,6 +12,7 @@
     '/account-settings.html',
     '/profile-settings.html',
     '/interaction-settings.html',
+    '/community.html',
     '/pricing.html',
     '/scout-record.html',
     '/scout-lv10-campaign.html',
@@ -42,7 +43,20 @@
       const url = new URL(raw, global.location.origin);
       if (url.origin !== global.location.origin) return fallbackTarget;
       if (!ALLOWED_PATHS.has(url.pathname)) return fallbackTarget;
-      return url.pathname.replace(/^\//, '') + url.search;
+      // Preserve only validated Community post fragments, never arbitrary
+      // login redirect hashes or fragments on unrelated account pages.
+      let postHash = '';
+      if (url.pathname === '/community.html' && url.hash.startsWith('#post-')) {
+        try {
+          const postId = decodeURIComponent(url.hash.slice(1));
+          if (/^post-(?:novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[0-9a-f-]{36}|official:[0-9]+|ep:[0-9a-f-]{36}:[0-9]+:[0-9]+)$/i.test(postId)) {
+            postHash = '#' + encodeURIComponent(postId);
+          }
+        } catch {
+          // Malformed encodings are not carried across authentication.
+        }
+      }
+      return url.pathname.replace(/^\//, '') + url.search + postHash;
     } catch {
       return fallbackTarget;
     }
