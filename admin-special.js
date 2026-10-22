@@ -19,7 +19,22 @@ function renderContents(){const list=$('contentList');list.replaceChildren();con
 function editContent(c){contentChosen=c.id;const f=$('contentForm');for(const element of f.elements){if(!element.name)continue;element.value=c[element.name]??'';}message(`「${c.title}」を編集中です`);}
 function newContent(){$('contentForm').reset();contentChosen=null;}
 function renderRights(){const list=$('rightsList');list.replaceChildren();for(const p of detail.permissions){textNode(list,`${p.kind} / ${p.rights_holder} / ${p.revoked_at?'取消済み':p.expires_at||'期限未設定'} / 確認 ${p.confirmed_at}`,'record');}if(!detail.permissions.length)textNode(list,'掲載許諾はまだ登録されていません。','muted');}
-function renderMetrics(){const m=detail.metrics||{};$('metrics').textContent=`直近30日・PV ${m.last30dPageviews||0} / 日別UU延べ数（IP推定） ${m.last30dVisitors||0} / コンテンツ遷移クリック ${m.last30dContentClicks||0} / 通常作品遷移クリック ${m.last30dNovelClicks||0}${m.metricsCapped?' ※集計上限に到達':''}`;const a=$('audit');a.replaceChildren();for(const x of detail.log||[])textNode(a,`${new Date(x.created_at).toLocaleString('ja-JP')} ${x.operation}`,'record');}
+function renderMetrics(){const m=detail.metrics||{};$('metrics').textContent=`直近30日・PV ${m.last30dPageviews||0} / 日別UU延べ数（IP推定） ${m.last30dVisitors||0} / コンテンツ遷移クリック ${m.last30dContentClicks||0} / 通常作品遷移クリック ${m.last30dNovelClicks||0}${m.metricsCapped?' ※集計上限に到達':''}`;const a=$('audit');a.replaceChildren();for(const x of detail.log||[]){
+ const entry=textNode(a,`${new Date(x.created_at).toLocaleString('ja-JP')} ${x.operation}`,'record');
+ if(x.restorable){
+   const btn=document.createElement('button');
+   btn.type='button';
+   btn.textContent='以前の版へ復元';
+   btn.style.marginLeft='12px';
+   btn.onclick=()=>guard(async()=>{
+     if(!confirm('以前の内容へ戻します。企画は一時停止、本文は下書きになります。再公開には掲載権利の確認が必要です。続けますか？'))return;
+     await api('POST',{action:'restore',id:chosen,log_id:x.id});
+     await open(chosen);
+     message('以前の版へ戻しました。権利を確認してから再公開してください');
+   });
+   entry.append(btn);
+ }
+}}
 function reset(){chosen=null;contentChosen=null;detail=null;$('rightsForm').reset();$('evidenceUploadStatus').textContent='';$('projectForm').reset();$('projectForm').elements.slug.readOnly=false;$('editorTitle').textContent='新規企画';for(const id of ['statusControl','rightsControl','contentForm'])$(id).classList.add('hidden');$('contentList').textContent='企画を選択してください。';}
 async function guard(fn){try{await fn();}catch(error){message(error?.message||'操作に失敗しました',true)}}
 $('clone').onclick=()=>guard(async()=>{if(!chosen)throw new Error('複製する企画を選択してください');const r=await api('POST',{action:'clone',id:chosen});await open(r.project.id);message('下書きとして複製しました。掲載権利は引き継がれません');});
