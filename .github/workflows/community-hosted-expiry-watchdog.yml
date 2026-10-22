@@ -1,0 +1,47 @@
+name: Community Hosted Independent Expiry Watchdog
+
+# Independent of browser job. DISABLED until a trusted OWNER runner registers
+# signed intents and secrets/cleanup environment are separately approved.
+# GitHub schedule is best-effort, not a provider-backed hard billing stop.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: community-hosted-watchdog-independent
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: vars.NOVELIGHT_COMMUNITY_WATCHDOG_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: community-hosted-cleanup
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Verify trusted current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$GITHUB_SHA"
+      - name: Clean only signed expired isolated branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOVELIGHT_WATCHDOG_SUPABASE_TOKEN: ${{ secrets.NOVELIGHT_WATCHDOG_SUPABASE_TOKEN }}
+          NOVELIGHT_WATCHDOG_SIGNING_KEY: ${{ secrets.NOVELIGHT_WATCHDOG_SIGNING_KEY }}
+        run: node scripts/community-hosted-expiry-watchdog.mjs run
