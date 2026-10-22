@@ -340,7 +340,12 @@ export function createSpecialPageHandler(
             .order('sort_order', { ascending: true })
         );
         const episodeIds = contents
-          .filter((c) => c.mode === 'episode' && c.episode_id !== null && c.episode_id !== undefined)
+          .filter(
+            (c) =>
+              c.mode === 'episode' &&
+              c.episode_id !== null &&
+              c.episode_id !== undefined
+          )
           .map((c) => c.episode_id);
         const episodes = episodeIds.length
           ? await rows(

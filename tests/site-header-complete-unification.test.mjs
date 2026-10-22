@@ -21,7 +21,13 @@ test('no root HTML page exposes the retired Features header link', () => {
 });
 
 test('managed public headers include the SPECIAL navigation link', () => {
-  const labels = ['作品を探す', 'ランキング', '特別企画', 'お知らせ', '料金プラン'];
+  const labels = [
+    '作品を探す',
+    'ランキング',
+    '特別企画',
+    'お知らせ',
+    '料金プラン'
+  ];
   let audited = 0;
   for (const page of htmlFiles) {
     const header = read(page).match(HEADER_PATTERN)?.[0] || '';
