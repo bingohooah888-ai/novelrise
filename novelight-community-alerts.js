@@ -80,6 +80,26 @@
         li.append(item('span',(notice.actor_name || 'ユーザー') + 'さんから' + label + 'が届きました'));
         const link = item('a','投稿を確認');
         link.href = 'community.html#post-' + encodeURIComponent(key);
+        if (!hasRead) {
+          // Read acknowledgement precedes navigation, but never prevents
+          // visiting the post if the network is slow or unavailable.
+          link.addEventListener('click', event => {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey ||
+                event.shiftKey || event.altKey || event.defaultPrevented) return;
+            event.preventDefault();
+            let navigated = false;
+            const navigate = () => {
+              if (navigated) return;
+              navigated = true;
+              window.location.assign(link.href);
+            };
+            const timeout = window.setTimeout(navigate, 1500);
+            void markRead([id]).finally(() => {
+              window.clearTimeout(timeout);
+              navigate();
+            });
+          });
+        }
         li.append(link);
         if (!hasRead && !unread.has(id)) {
           const button = item('button','既読にする','community-notice-mark');

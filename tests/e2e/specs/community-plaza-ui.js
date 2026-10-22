@@ -184,7 +184,7 @@ test('community UI interactions use mocked data', async ({ page }) => {
     .click();
   await expect(card.locator('.community-report-form')).toBeVisible();
   await card.locator('.community-report-form textarea').fill('テスト理由');
-  await card.locator('.community-report-submit').click();
+  await card.locator('.community-report-form .community-report-submit').click();
   await expect(card.locator('.community-report-form')).toBeHidden();
   await expect(
     card.locator('.community-actions button', { hasText: /^通報済み$/ })
