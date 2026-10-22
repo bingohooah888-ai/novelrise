@@ -100,6 +100,83 @@ export function verifyCommunityStagingPreparation({
   });
 }
 
+// Strictly read-only comparison of two independently retrieved migration lists.
+// The caller must verify that each list is complete and source-authentic;
+// this function cannot establish freshness or grant hosted execution.
+export function inspectCommunityStagingLedger({
+  productionRef,
+  stagingRef,
+  productionMigrations,
+  stagingMigrations,
+  productionLedgerComplete = false,
+  stagingLedgerComplete = false,
+  stagingManagementStatus
+} = {}) {
+  if (productionRef !== 'fiepaguycecrredwrcwx' ||
+      stagingRef !== 'wmlzjgvxgoyrovdhbqbg' ||
+      productionRef === stagingRef) {
+    fail('production/staging resource identities are unverified');
+  }
+  if (productionLedgerComplete !== true || stagingLedgerComplete !== true) {
+    fail('migration snapshots are incomplete; pagination/freshness must be checked');
+  }
+
+  const buildLedger = (rows, label) => {
+    if (!Array.isArray(rows) || rows.length === 0 || rows.length > 500) {
+      fail(label + ' migration list missing or unbounded');
+    }
+    const result = new Map();
+    for (const row of rows) {
+      if (!row || typeof row !== 'object' || Array.isArray(row) ||
+          !/^[0-9]{14}$/u.test(row.version ?? '') ||
+          !/^[a-z0-9_]+$/u.test(row.name ?? '')) {
+        fail(label + ' migration row is malformed');
+      }
+      if (result.has(row.version)) {
+        fail(label + ' migration version repeated: ' + row.version);
+      }
+      result.set(row.version, row.name);
+    }
+    return result;
+  };
+  const production = buildLedger(productionMigrations, 'production');
+  const staging = buildLedger(stagingMigrations, 'staging');
+  const productionOnly = [...production.keys()]
+    .filter((version) => !staging.has(version)).sort();
+  const stagingOnly = [...staging.keys()]
+    .filter((version) => !production.has(version)).sort();
+  const nameConflicts = [...production.keys()]
+    .filter((version) => staging.has(version) &&
+      production.get(version) !== staging.get(version)).sort();
+  const stageCommunity = staging.get(COMMUNITY_MIGRATION_VERSION) ===
+    'community_plaza_phase1';
+  const productionCommunity = production.has(COMMUNITY_MIGRATION_VERSION);
+  const managementBlocked = stagingManagementStatus !== 'FUNCTIONS_DEPLOYED';
+  const diverged = productionOnly.length > 0 || stagingOnly.length > 0 ||
+    nameConflicts.length > 0;
+  const blockers = [];
+  if (diverged) blockers.push('migration history differs');
+  if (!stageCommunity) blockers.push('expected staging community migration missing');
+  if (productionCommunity) blockers.push('community already recorded in production');
+  if (managementBlocked) blockers.push('staging management is not ready');
+  // Even zero blockers would not establish OWNER authorization, browser tests,
+  // immutable candidate provenance, safe disposable isolation or budget.
+  return Object.freeze({
+    verdict: 'READ_ONLY_LEDGER_AUDIT',
+    productionMigrationCount: production.size,
+    stagingMigrationCount: staging.size,
+    productionOnly: Object.freeze(productionOnly),
+    stagingOnly: Object.freeze(stagingOnly),
+    nameConflicts: Object.freeze(nameConflicts),
+    stagingManagementStatus,
+    blockers: Object.freeze(blockers),
+    stagingExecutionApproved: false,
+    canSyncOrReset: false,
+    canRunHostedAcceptance: false,
+    canMergeOrDeployProduction: false
+  });
+}
+
 if (process.argv[1] &&
     import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [mainSha, candidateSha] = process.argv.slice(2);
