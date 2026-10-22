@@ -18,7 +18,13 @@ const FEATURE = '6bf0ea608183e4977fcdaa17d36b1712974d5a49';
 const PROJECT = 'cccccccccccccccccccc';
 const ORIGIN = 'https://isolated-community-preview.vercel.app';
 
-function fixture({ failBrowser = false, failClaim = false } = {}) {
+function fixture({
+  failBrowser = false,
+  failClaim = false,
+  omitBudget = false,
+  watchdogCredentials,
+  watchdogFetch
+} = {}) {
   const calls = [];
   const event = {
     action: 'created',
@@ -35,6 +41,22 @@ function fixture({ failBrowser = false, failClaim = false } = {}) {
       body:
         'NOVELIGHT_STAGING_COMMUNITY_HOSTED_PRE_COST_APPROVE ' +
         JSON.stringify({
+          ...(omitBudget
+            ? {}
+            : {
+                budget: {
+                  acknowledgement:
+                    'TIMEBOX IS NOT A PROVIDER BILLING HARD STOP',
+                  cleanupGraceMinutes: 15,
+                  currency: 'JPY',
+                  maxMinutes: 120,
+                  maxTotalMinor: 500,
+                  strategy: 'timeboxed-independent-cleanup-v1',
+                  supabaseMaxMinor: 300,
+                  vercelMaxMinor: 200,
+                  watchdogIntervalMinutes: 5
+                }
+              }),
           confirmation: 'STAGING COST APPROVED',
           featureSha: FEATURE,
           mainSha: MAIN,
@@ -212,7 +234,9 @@ function fixture({ failBrowser = false, failClaim = false } = {}) {
     preparation,
     githubActions,
     isolatedTarget: target,
-    isolatedActions
+    isolatedActions,
+    watchdogCredentials,
+    watchdogFetch
   });
   const operations = {
     verifyFreshProtectedBoundary: async () => {
@@ -231,6 +255,20 @@ function fixture({ failBrowser = false, failClaim = false } = {}) {
       };
     },
     ...bindings,
+    registerAndVerifyCleanupWatch: async () => {
+      calls.push('watch');
+      return {
+        ...run,
+        status: 'CLEANUP_WATCH_REGISTERED_NO_PROVISION',
+        claimCommentId: '124',
+        registrationCommentId: '126',
+        signatureReadBackVerified: true,
+        providerBranchAbsentAtRegistration: true,
+        independentWatchdogReadyVerified: true,
+        runAuthorized: false,
+        mayCreateBranch: false
+      };
+    },
     obtainIndependentExecutionGrant: async () => {
       calls.push('grant');
       return {
@@ -325,4 +363,47 @@ test('candidate and request identity drift is denied before GitHub mutations', a
     /DENIED/u
   );
   assert.deepEqual(x.calls, []);
+});
+
+test('missing watchdog secrets deny without calling any external adapter', async () => {
+  const x = fixture();
+  await assert.rejects(
+    x.bindings.registerAndVerifyCleanupWatch(x.run, {}, {}),
+    /COMMUNITY_HOSTED_BINDINGS_DENIED/u
+  );
+  assert.deepEqual(x.calls, []);
+});
+
+test('watchdog connector uses authenticated GitHub reads, not fake flags', async () => {
+  let requests = 0;
+  const x = fixture({
+    watchdogCredentials: {
+      signingKey: 'synthetic-test-signing-key-at-least-32-characters',
+      githubToken: 'synthetic-test-github-token-at-least-32-characters',
+      supabaseToken: 'synthetic-test-supabase-token-at-least-32-chars'
+    },
+    watchdogFetch: async () => {
+      requests += 1;
+      return { status: 403 };
+    }
+  });
+  const grant = await x.operations.obtainIndependentExecutionGrant();
+  const claim = {
+    ...x.run,
+    status: 'RESERVATION_AND_CLAIM_RECORDED_NO_RUN_AUTHORIZATION',
+    claimCommentId: '124'
+  };
+  await assert.rejects(
+    x.bindings.registerAndVerifyCleanupWatch(x.run, grant, claim),
+    /COMMUNITY_WATCHDOG_LIVE_DENIED/u
+  );
+  assert.equal(requests, 1);
+  assert.ok(!x.calls.includes('runBrowser'));
+});
+
+test('legacy OWNER request without budget cannot construct coordinator', () => {
+  assert.throws(
+    () => fixture({ omitBudget: true }),
+    /COMMUNITY_HOSTED_BINDINGS_DENIED/u
+  );
 });
