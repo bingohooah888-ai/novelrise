@@ -803,6 +803,14 @@ BEGIN
   FROM public.community_notifications n JOIN public.profiles p ON p.id=n.actor_user_id
   WHERE n.recipient_user_id=v_user
     AND public.novelight_community_post_visible(n.post_key)
+    -- Moderated or deleted comments must never be rediscovered via notices.
+    -- Like notices are independent of comment visibility.
+    AND (n.kind='like' OR EXISTS (
+      SELECT 1 FROM public.community_comments c
+      WHERE c.post_key=n.post_key AND c.deleted_at IS NULL
+        AND c.admin_hidden_at IS NULL
+        AND n.event_key=n.kind||':'||c.id::text
+    ))
     AND NOT EXISTS(SELECT 1 FROM public.user_blocks b
          WHERE (b.blocker_user_id=v_user AND b.blocked_user_id=n.actor_user_id)
             OR (b.blocker_user_id=n.actor_user_id AND b.blocked_user_id=v_user))
