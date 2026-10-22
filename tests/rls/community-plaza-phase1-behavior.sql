@@ -439,15 +439,20 @@ RESET ROLE;
 -- Hiding a comment must resolve its report and restoring it must not
 -- reinstate the already-handled report. Dismissing a separate report
 -- must not hide the underlying post.
+-- The service role is deliberately not granted raw private-table SELECT.
+-- Invoke staff RPCs under that role, then inspect outcomes after RESET ROLE
+-- as the disposable CI database owner. Never weaken the private table grants.
 SET LOCAL ROLE service_role;
-DO $community_staff_moderation$
+SELECT public.novelight_admin_community_moderate(
+ 'c0a00000-0000-4000-8000-000000000001','hide',
+ 'comment:'||current_setting('novelight.test.community_comment'),NULL,
+ 'CI hide moderation'
+);
+RESET ROLE;
+
+DO $community_hidden_moderation$
 DECLARE v_comment uuid:=current_setting('novelight.test.community_comment')::uuid;
- v_post_key text:='note:'||current_setting('novelight.test.community_note');
- v_report_id uuid;
- v_admin uuid:='c0a00000-0000-4000-8000-000000000001';
 BEGIN
- PERFORM public.novelight_admin_community_moderate(
-   v_admin,'hide','comment:'||v_comment::text,NULL,'CI hide moderation');
  IF NOT EXISTS (SELECT 1 FROM public.community_comments c
                 WHERE c.id=v_comment AND c.admin_hidden_at IS NOT NULL) THEN
    RAISE EXCEPTION 'Moderator failed to hide a community comment';
@@ -457,33 +462,74 @@ BEGIN
                   AND r.status='resolved') THEN
    RAISE EXCEPTION 'Hiding a reported comment failed to resolve its report';
  END IF;
- PERFORM public.novelight_admin_community_moderate(
-   v_admin,'restore','comment:'||v_comment::text,NULL,'CI restore moderation');
+END
+$community_hidden_moderation$;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000001',true);
+DO $community_hidden_detail$
+BEGIN
+ IF public.novelight_community_comment_detail(
+    'note:'||current_setting('novelight.test.community_note'),
+    current_setting('novelight.test.community_comment')::uuid
+ ) IS NOT NULL THEN
+   RAISE EXCEPTION 'Hidden comment leaked from direct-detail RPC';
+ END IF;
+END
+$community_hidden_detail$;
+RESET ROLE;
+
+SET LOCAL ROLE service_role;
+SELECT public.novelight_admin_community_moderate(
+ 'c0a00000-0000-4000-8000-000000000001','restore',
+ 'comment:'||current_setting('novelight.test.community_comment'),NULL,
+ 'CI restore moderation'
+);
+RESET ROLE;
+
+DO $community_restored_moderation$
+DECLARE v_comment uuid:=current_setting('novelight.test.community_comment')::uuid;
+ v_report uuid;
+BEGIN
  IF NOT EXISTS (SELECT 1 FROM public.community_comments c
                 WHERE c.id=v_comment AND c.admin_hidden_at IS NULL) THEN
    RAISE EXCEPTION 'Moderator failed to restore community comment';
  END IF;
- SELECT r.id INTO v_report_id FROM public.community_reports r
- WHERE r.post_key=v_post_key
+ SELECT r.id INTO v_report FROM public.community_reports r
+ WHERE r.post_key='note:'||current_setting('novelight.test.community_note')
   AND r.reporter_user_id='c0a00000-0000-4000-8000-000000000002';
- IF v_report_id IS NULL OR public.novelight_admin_community_dismiss_report(
-   v_admin,v_report_id) IS DISTINCT FROM true THEN
-   RAISE EXCEPTION 'Moderator failed to dismiss separate post report';
+ IF v_report IS NULL THEN
+   RAISE EXCEPTION 'Fixture post report unavailable for dismissal';
  END IF;
- IF NOT EXISTS(SELECT 1 FROM public.community_reports r
-       WHERE r.id=v_report_id AND r.status='dismissed')
-    OR EXISTS(SELECT 1 FROM public.community_hidden_posts h
-       WHERE h.post_key=v_post_key) THEN
-   RAISE EXCEPTION 'Dismissing a report incorrectly hid the post';
+ PERFORM set_config('novelight.test.community_post_report',v_report::text,true);
+END
+$community_restored_moderation$;
+
+SET LOCAL ROLE service_role;
+SELECT public.novelight_admin_community_dismiss_report(
+ 'c0a00000-0000-4000-8000-000000000001',
+ current_setting('novelight.test.community_post_report')::uuid
+);
+RESET ROLE;
+
+DO $community_dismissed_moderation$
+DECLARE v_report uuid:=current_setting('novelight.test.community_post_report')::uuid;
+ v_post_key text:='note:'||current_setting('novelight.test.community_note');
+ v_admin uuid:='c0a00000-0000-4000-8000-000000000001';
+BEGIN
+ IF NOT EXISTS (SELECT 1 FROM public.community_reports r
+                  WHERE r.id=v_report AND r.status='dismissed')
+    OR EXISTS (SELECT 1 FROM public.community_hidden_posts h
+                 WHERE h.post_key=v_post_key) THEN
+    RAISE EXCEPTION 'Dismissing a report incorrectly hid the post';
  END IF;
  IF (SELECT count(*) FROM public.admin_operation_audit a
-     WHERE a.admin_user_id=v_admin AND a.action IN
-       ('community.hide','community.restore','community.dismiss_report'))<3 THEN
-   RAISE EXCEPTION 'Staff moderation actions were not audited';
+       WHERE a.admin_user_id=v_admin AND a.action IN
+         ('community.hide','community.restore','community.dismiss_report'))<3 THEN
+    RAISE EXCEPTION 'Staff moderation actions were not audited';
  END IF;
 END
-$community_staff_moderation$;
-RESET ROLE;
+$community_dismissed_moderation$;
 
 -- Admin-hidden comments must not be readable via the ordinary RPC
 -- even while the containing post itself remains visible.
