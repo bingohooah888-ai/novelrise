@@ -8,6 +8,7 @@ import {
   HOSTED_SCOPE
 } from './community-hosted-write-admission.mjs';
 import { HOSTED_PRE_COST_APPROVE } from './community-hosted-precost-admission.mjs';
+import { inspectCommunityHostedOwnerBudgetEnvelope } from './community-hosted-owner-budget-envelope.mjs';
 
 const OWNER = 'bingohooah888-ai';
 const REPO = OWNER + '/novelrise';
@@ -19,7 +20,7 @@ function deny(reason) {
   throw new Error('COMMUNITY_HOSTED_LEDGER_AUDIT_DENIED: ' + reason);
 }
 
-function parse(body, prefix, keys) {
+function parse(body, prefix, keys, allowBudget = false) {
   if (typeof body !== 'string' || body.length > 2048 || !body.startsWith(prefix)) {
     deny('invalid ledger marker');
   }
@@ -33,7 +34,10 @@ function parse(body, prefix, keys) {
     !value ||
     typeof value !== 'object' ||
     Array.isArray(value) ||
-    Object.keys(value).sort().join(',') !== [...keys].sort().join(',')
+    ![
+      [...keys].sort().join(','),
+      ...(allowBudget ? [[...keys, 'budget'].sort().join(',')] : [])
+    ].includes(Object.keys(value).sort().join(','))
   ) {
     deny('ledger fields missing or injected');
   }
@@ -94,7 +98,15 @@ function requestAndPreparation(event, preparation) {
     'mainSha',
     'scope',
     'target'
-  ]);
+  ], true);
+  if (request.budget !== undefined) {
+    inspectCommunityHostedOwnerBudgetEnvelope(request.budget);
+    if (preparation.ownerBudgetShapeVerified !== true) {
+      deny('budget envelope does not match preparation evidence');
+    }
+  } else if (preparation.ownerBudgetShapeVerified === true) {
+    deny('prepared budget envelope is missing from OWNER ledger');
+  }
   if (
     request.scope !== HOSTED_SCOPE ||
     request.confirmation !== 'STAGING COST APPROVED' ||

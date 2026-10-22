@@ -76,6 +76,22 @@ function fixture(options = {}) {
       if (options.throwAt === 'grant') throw Error('SECRET');
       return grant;
     },
+    registerAndVerifyCleanupWatch: async () => {
+      calls.push('watch');
+      if (options.throwAt === 'watch') throw Error('SECRET');
+      return {
+        ...testedRun,
+        status: 'CLEANUP_WATCH_REGISTERED_NO_PROVISION',
+        claimCommentId: '124',
+        registrationCommentId: '126',
+        signatureReadBackVerified: true,
+        providerBranchAbsentAtRegistration: true,
+        independentWatchdogReadyVerified: true,
+        runAuthorized: false,
+        mayCreateBranch: false,
+        ...options.watch
+      };
+    },
     runIsolatedLifecycle: async () => {
       calls.push('isolated');
       if (options.throwAt === 'isolated') throw Error('SECRET');
@@ -114,6 +130,7 @@ test('exact single-run order: protected preflight, CLAIM, isolated, CONSUME', as
     'preflight',
     'claim',
     'grant',
+    'watch',
     'isolated',
     'consume:success'
   ]);
@@ -187,6 +204,8 @@ test('grant failure records one terminal failure, never runs browser', async () 
 
 test('browser or cleanup failure must not be a success CONSUME', async () => {
   for (const options of [
+    { throwAt: 'watch' },
+    { watch: { signatureReadBackVerified: false } },
     { throwAt: 'isolated' },
     { proof: { cleanupVerified: false } },
     { proof: { runId: '999' } }
@@ -237,6 +256,7 @@ test('a newly synced candidate stays bound to the trusted run through CONSUME', 
     'preflight',
     'claim',
     'grant',
+    'watch',
     'isolated',
     'consume:success'
   ]);
@@ -252,4 +272,31 @@ test('a main-identical candidate fails before touching any adapter', async () =>
     /DENIED/u
   );
   assert.deepEqual(x.calls, []);
+});
+
+test('missing cleanup watch adapter refuses even the preflight', async () => {
+  const x = fixture();
+  delete x.operations.registerAndVerifyCleanupWatch;
+  await assert.rejects(
+    runCommunityHostedSingleLifecycle({ run: RUN, operations: x.operations }),
+    /DENIED/u
+  );
+  assert.deepEqual(x.calls, []);
+});
+
+test('watch registration failure consumes claim but does not provision', async () => {
+  const x = fixture({
+    watch: { independentWatchdogReadyVerified: false }
+  });
+  await assert.rejects(
+    runCommunityHostedSingleLifecycle({ run: RUN, operations: x.operations }),
+    /terminal failure recorded/u
+  );
+  assert.deepEqual(x.calls, [
+    'preflight',
+    'claim',
+    'grant',
+    'watch',
+    'consume:failure'
+  ]);
 });

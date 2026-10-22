@@ -29,7 +29,8 @@ export function inspectCommunityHostedExecutorPreclaim({
     proposal.runId !== owner.runId ||
     proposal.stagingCostApproved !== false ||
     proposal.runAuthorized !== false ||
-    proposal.mayClaim !== false
+    proposal.mayClaim !== false ||
+    proposal.ownerBudgetShapeVerified !== true
   ) deny();
   return Object.freeze({
     status: 'COMMUNITY_HOSTED_EXECUTOR_PRECLAIM_READONLY_ONLY',
@@ -39,6 +40,8 @@ export function inspectCommunityHostedExecutorPreclaim({
     runId: owner.runId,
     ownerEvidenceVerified: true,
     exactApprovalSnapshotVerified: true,
+    ownerBudgetStructureVerified: true,
+    providerCostHardStopVerified: false,
     claimAuthorized: false,
     stagingCostApproved: false,
     runAuthorized: false,
