@@ -41,9 +41,40 @@
       .schedule-wrap{grid-template-columns:1fr}
       .btn.publish-now{width:100%}
     }
+
+    /* This page uses the shared workspace header. Prevent global legacy
+       header scaling from forcing the return link into vertical wrapping. */
+    @media(max-width:700px){
+      html body#novelight-schedule-page > header > .header-inner{
+        width:calc(100% - 24px)!important;
+        min-height:74px!important;
+        padding:8px 6px!important;
+        gap:10px;
+        align-items:center;
+        justify-content:space-between;
+      }
+      html body#novelight-schedule-page > header > .header-inner .logo{
+        display:inline-flex;
+        align-items:center;
+        flex:0 1 auto;
+        min-width:0;
+      }
+      html body#novelight-schedule-page > header > .header-inner .logo img{
+        width:auto!important;
+        height:48px!important;
+        max-width:min(47vw,170px)!important;
+        object-fit:contain;
+      }
+      html body#novelight-schedule-page > header > .header-inner .back{
+        flex:0 0 auto;
+        font-size:14px!important;
+        line-height:1.4;
+        white-space:nowrap;
+      }
+    }
   </style>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
-<link rel="stylesheet" href="novelight-accessibility.css"><script src="novelight-episode-title-display.js"></script></head><body class="novelight-theme novelight-page-episode-schedule"><a class="skip-link" href="#main-content">本文へスキップ</a>
+<link rel="stylesheet" href="novelight-accessibility.css"><script src="novelight-episode-title-display.js"></script></head><body id="novelight-schedule-page" class="novelight-theme novelight-page-episode-schedule"><a class="skip-link" href="#main-content">本文へスキップ</a>
 <header>
   <div class="header-inner">
     <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
