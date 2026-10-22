@@ -277,7 +277,7 @@ async function kakuyomuEpisode(url) {
       break;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const temporary = /HTTP (?:429|500|502|503|504)\\b/.test(message) ||
+      const temporary = /HTTP (?:429|500|502|503|504)\b/.test(message) ||
         /fetch failed|socket hang up|network timeout/i.test(message);
       if (!temporary || attempt === 2) throw error;
       // Back off instead of hammering Kakuyomu after transient failures.
