@@ -64,7 +64,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "index.html",
-      "sha": "7cef83bbaa236c2a9a45ca80020395f75b943d77",
+      "sha": "3acd9fc20b3f891d94427abc7448ccdcd7cf84b4",
       "status": "modified"
     },
     {
@@ -144,7 +144,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "tests/accessibility-baseline.test.mjs",
-      "sha": "cb72484530f211c56c335b2fe62dcc81e8d9b831",
+      "sha": "ff4d22ab2c3fb54d63f99d5ba069edc7ae647e86",
       "status": "modified"
     },
     {
@@ -164,7 +164,7 @@ export const REVIEWED_COMMUNITY_FILES = Object.freeze(
     },
     {
       "path": "tests/e2e/specs/async-ui.spec.js",
-      "sha": "477962f8349fcd7f26a498d8df12e315dfc568fb",
+      "sha": "24c5759d4c1238d4f59a2dda1a4b9a1f80bf0ecd",
       "status": "modified"
     },
     {
