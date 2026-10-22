@@ -1,5 +1,5 @@
 -- Approved DECEMBER calendar amendment, no history or contest identifier rewriting.
--- Precondition: original registration live, no contest reads, snapshots or awards.
+-- Precondition: original live registration OR unopened fresh draft; no reads, rankings or awards.
 begin;
 select pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('novelight:20261022:starfestival:reschedule'));
 do $starfestival_reschedule$
@@ -9,13 +9,22 @@ declare
 begin
   select * into strict v_contest from public.novelight_contests
    where contest_key='novelight-november-2026' for update;
-  if v_contest.status <> 'registration'
-     or v_contest.public_visible is not true
-     or v_contest.entry_deadline_at <> '2026-10-31 14:59:59.999999+00'::timestamptz
+  -- Production is already accepting entries; fresh CI/installation is draft.
+  -- Both must preserve their status and visibility while shifting the dates.
+  if v_contest.entry_deadline_at <> '2026-10-31 14:59:59.999999+00'::timestamptz
      or v_contest.starts_at <> '2026-10-31 15:00:00+00'::timestamptz
      or v_contest.ends_at <> '2026-11-30 15:00:00+00'::timestamptz
-     or v_contest.terms_version <> 'november-2026-v1'
-     or v_contest.terms_url <> 'https://novelight.jp/contest-terms'
+     or not (
+       (v_contest.status = 'registration'
+        and v_contest.public_visible is true
+        and v_contest.terms_version = 'november-2026-v1'
+        and v_contest.terms_url = 'https://novelight.jp/contest-terms')
+       or
+       (v_contest.status = 'draft'
+        and v_contest.public_visible is false
+        and v_contest.terms_version = ''
+        and v_contest.terms_url = '')
+     )
      or pg_catalog.clock_timestamp() >= '2026-11-30 14:59:59.999999+00'::timestamptz then
     raise exception 'STARFESTIVAL_RESCHEDULE_BLOCKED: unexpected original contest state';
   end if;
@@ -29,9 +38,10 @@ begin
     entry_deadline_at='2026-11-30 14:59:59.999999+00'::timestamptz,
     starts_at='2026-11-30 15:00:00+00'::timestamptz,
     ends_at='2026-12-31 15:00:00+00'::timestamptz,
-    terms_version='december-2026-v2',
+    terms_version=case when v_contest.status='registration'
+      then 'december-2026-v2' else v_contest.terms_version end,
     updated_at=pg_catalog.clock_timestamp()
-  where id=v_contest.id and status='registration';
+  where id=v_contest.id and status in ('draft','registration');
   get diagnostics v_updated = row_count;
   if v_updated <> 1 then
     raise exception 'STARFESTIVAL_RESCHEDULE_BLOCKED: update mismatch';

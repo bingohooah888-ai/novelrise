@@ -15,7 +15,8 @@ const startPlan = load('../scripts/november-contest-start-plan.mjs');
 
 test('reschedule preserves original contest key and existing entries', () => {
   assert.match(migration, /contest_key='novelight-november-2026'/);
-  assert.match(migration, /status <> 'registration'/);
+  assert.match(migration, /v_contest.status = 'registration'/);
+  assert.match(migration, /v_contest.status = 'draft'/);
   assert.match(migration, /novelight_contest_read_events/);
   assert.match(migration, /novelight_contest_rank_snapshots/);
   assert.match(migration, /novelight_contest_awards/);
