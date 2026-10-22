@@ -1,0 +1,246 @@
+name: Community Staging Forward Reconcile (OWNER one-use)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: community-staging-forward-one-use
+  cancel-in-progress: false
+
+jobs:
+  admit:
+    name: Admit exact OWNER forward-only Staging repair
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_COMMUNITY_FORWARD_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.bind.outputs.main_sha }}
+      candidate_sha: ${{ steps.bind.outputs.candidate_sha }}
+      request_id: ${{ steps.bind.outputs.request_id }}
+    steps:
+      - name: Checkout trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify fresh current-main and exact OWNER issue event
+        id: bind
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/forward-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2222" > /tmp/forward-pr.json
+          main="$(jq -er '.object.sha' /tmp/forward-main.json)"
+          head="$(jq -er '.head.sha' /tmp/forward-pr.json)"
+          test "$main" = "$GITHUB_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/forward-compare.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/forward-ledger.json
+          node scripts/community-staging-forward-admission.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/forward-main.json \
+            /tmp/forward-pr.json /tmp/forward-compare.json \
+            /tmp/forward-ledger.json > /tmp/forward-admission.json
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/forward-admission.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/forward-admission.json)"
+            echo "request_id=$(jq -er '.requestId' /tmp/forward-admission.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: CLAIM the single-use approval before any Staging access
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.bind.outputs.main_sha }}
+          HEAD: ${{ steps.bind.outputs.candidate_sha }}
+          REQUEST: ${{ steps.bind.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ledger="$(jq -cn --arg requestCommentId "$REQUEST" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_FORWARD_CLAIMED $ledger" > /dev/null
+
+  reconcile:
+    name: Apply pinned forward-only SQL to existing Staging, no Preview
+    if: needs.admit.result == 'success'
+    needs: admit
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      MAIN: ${{ needs.admit.outputs.main_sha }}
+      HEAD: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-forward-staging-db-url
+      PGSSLMODE: require
+    steps:
+      - name: Checkout approved trusted-main revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Reject stale PR/main, Production ref or missing credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')" = "$HEAD"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.draft')" = true
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.state')" = open
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+      - name: Retrieve ONLY exact reviewed migration Git blob
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          path='supabase/migrations/20261014052000_community_plaza_phase1.sql'
+          expected='df651446da99e299005b4c8ec262c528bf477922'
+          gh api "repos/$GITHUB_REPOSITORY/contents/$path?ref=$HEAD" > /tmp/forward-source.json
+          jq -e --arg sha "$expected" \
+            '.sha == $sha and .encoding == "base64"' \
+            /tmp/forward-source.json > /dev/null
+          jq -r .content /tmp/forward-source.json | base64 -d \
+            > /tmp/novelight-community-reviewed.sql
+          test "$(git hash-object /tmp/novelight-community-reviewed.sql)" = "$expected"
+          node scripts/community-staging-forward-render.mjs render \
+            /tmp/novelight-community-reviewed.sql > /tmp/novelight-forward.sql
+          test -s /tmp/novelight-forward.sql
+      - name: Verify dedicated Staging URL and preflight WITHOUT mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/resolve-staging-session-pooler.mjs
+          export STAGING_DATABASE_URL
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT count(*) FROM supabase_migrations.schema_migrations" \
+            | grep -Fxq 188
+          psql "$STAGING_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT md5(string_agg(version, ',' ORDER BY version)) FROM supabase_migrations.schema_migrations" \
+            | grep -Fxq 3851f0dfc1e5bdb6bc7c0e317c5c4fd4
+          psql "$STAGING_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT count(*)::text || '|' || md5(string_agg(
+              p.proname || '(' || pg_get_function_identity_arguments(p.oid) ||
+              ')' || ':' || md5(pg_get_functiondef(p.oid)), '|'
+              ORDER BY p.proname, pg_get_function_identity_arguments(p.oid)))
+              FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+              WHERE n.nspname='public'
+              AND (p.proname LIKE 'novelight_community_%'
+              OR p.proname LIKE 'novelight_admin_community_%'
+              OR p.proname IN (
+               'novelight_save_my_author_note_v2',
+               'novelight_manage_my_author_notes_v2',
+               'novelight_manage_my_curation_lists_v2',
+               'novelight_set_my_curation_community_share',
+               'novelight_curation_share_reset_private',
+               'novelight_my_seed_community_shares',
+               'novelight_set_my_seed_community_share'))" \
+            | grep -Fxq '19|ccd2c2b8c66f3b9fa025b0163d75b156'
+      - name: Repeat exact refs before the ONE guarded atomic SQL transaction
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2222" --jq '.head.sha')" = "$HEAD"
+          export STAGING_DATABASE_URL
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -f /tmp/novelight-forward.sql
+          echo 'One Staging-only atomic forward reconciliation attempted.'
+      - name: Prove public gate OFF and same ledger after commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          export STAGING_DATABASE_URL
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -c "SELECT CASE WHEN
+              (SELECT md5(string_agg(version, ',' ORDER BY version))
+               FROM supabase_migrations.schema_migrations)
+               = '3851f0dfc1e5bdb6bc7c0e317c5c4fd4'
+              AND (SELECT count(*) FROM public.community_runtime_control
+                   WHERE singleton AND NOT public_enabled AND activated_at IS NULL)=1
+              AND to_regprocedure('public.novelight_community_comment_detail(text,uuid)') IS NOT NULL
+              AND to_regprocedure('public.novelight_admin_community_dismiss_report(uuid,uuid)') IS NOT NULL
+              THEN 'FORWARD_OK'
+              ELSE 'FORWARD_BAD' END" -t -A \
+            | grep -Fxq FORWARD_OK
+      - name: Fail-closed final postcheck even if transaction failed
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$STAGING_DATABASE_URL_FILE"
+          export STAGING_DATABASE_URL
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 \
+            -c 'SELECT public_enabled::text FROM public.community_runtime_control WHERE singleton' \
+            | grep -Fxq false
+
+  record:
+    name: CONSUME one-use OWNER approval on success or failure
+    needs: [admit, reconcile]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Append immutable outcome to Staging control ledger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          HEAD: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST: ${{ needs.admit.outputs.request_id }}
+          RESULT: ${{ needs.reconcile.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ledger="$(jq -cn --arg requestCommentId "$REQUEST" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_COMMUNITY_FORWARD_CONSUMED $ledger" > /dev/null
