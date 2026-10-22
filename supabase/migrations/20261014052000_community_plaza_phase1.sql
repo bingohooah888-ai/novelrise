@@ -803,6 +803,8 @@ BEGIN
   FROM public.community_notifications n JOIN public.profiles p ON p.id=n.actor_user_id
   WHERE n.recipient_user_id=v_user
     AND public.novelight_community_post_visible(n.post_key)
+    -- Third-party replies cannot revive notifications from blocked/muted authors.
+    AND public.novelight_community_interaction_allowed(n.post_key)
     -- Moderated or deleted comments must never be rediscovered via notices.
     -- Like notices are independent of comment visibility.
     AND (n.kind='like' OR EXISTS (

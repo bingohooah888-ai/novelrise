@@ -64,8 +64,9 @@
         try {
           const result = await client.rpc('novelight_community_mark_notifications_read',{p_ids:ids});
           if (result.error) throw result.error;
-          if (!Number.isSafeInteger(result.data) || result.data < 0 || result.data > ids.length) {
-            throw new Error('Invalid read receipt');
+          // Partial receipts do not reveal which IDs changed. Preserve unread UI.
+          if (!Number.isSafeInteger(result.data) || result.data !== ids.length) {
+            throw new Error('Incomplete read receipt');
           }
           for (const id of ids) {
             const notice = unread.get(id);

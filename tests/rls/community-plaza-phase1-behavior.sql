@@ -416,6 +416,75 @@ END
 $owner_notifications_plaza$;
 RESET ROLE;
 
+-- A third-person reply must not revive a muted author's post in notices.
+-- These synthetic users, rows and notices all roll back in disposable CI.
+INSERT INTO auth.users(id,raw_user_meta_data) VALUES
+ ('c0a00000-0000-4000-8000-000000000003',
+  '{"display_name":"Plaza Test Replier"}'::jsonb)
+ON CONFLICT(id) DO NOTHING;
+INSERT INTO public.profiles(id,display_name,created_at) VALUES
+ ('c0a00000-0000-4000-8000-000000000003',
+  'Plaza Test Replier',now()-interval '2 days')
+ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name;
+
+DO $third_party_reply_fixture$
+DECLARE v_reply uuid;
+ v_post text:='note:'||current_setting('novelight.test.community_note');
+BEGIN
+ INSERT INTO public.community_comments(post_key,user_id,body,parent_comment_id)
+ VALUES(v_post,'c0a00000-0000-4000-8000-000000000003',
+        'Third-person reply to a reader comment',
+        current_setting('novelight.test.community_comment')::uuid)
+ RETURNING id INTO v_reply;
+ INSERT INTO public.community_notifications(
+   recipient_user_id,actor_user_id,post_key,kind,event_key)
+ VALUES('c0a00000-0000-4000-8000-000000000002',
+        'c0a00000-0000-4000-8000-000000000003',
+        v_post,'reply','reply:'||v_reply::text);
+ PERFORM set_config('novelight.test.third_party_reply',v_reply::text,true);
+END
+$third_party_reply_fixture$;
+
+INSERT INTO public.user_mutes(muter_user_id,muted_user_id) VALUES
+ ('c0a00000-0000-4000-8000-000000000002',
+  'c0a00000-0000-4000-8000-000000000001');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub',
+ 'c0a00000-0000-4000-8000-000000000002',true);
+DO $muted_author_reply_alert$
+BEGIN
+ IF jsonb_array_length(public.novelight_community_my_notifications(40))<>0 THEN
+  RAISE EXCEPTION 'Muted author leaked through third-person reply notice';
+ END IF;
+END
+$muted_author_reply_alert$;
+RESET ROLE;
+
+DELETE FROM public.user_mutes
+ WHERE muter_user_id='c0a00000-0000-4000-8000-000000000002'
+   AND muted_user_id='c0a00000-0000-4000-8000-000000000001';
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub',
+ 'c0a00000-0000-4000-8000-000000000002',true);
+DO $unmuted_author_reply_alert$
+DECLARE v_alerts jsonb;
+BEGIN
+ v_alerts:=public.novelight_community_my_notifications(40);
+ IF jsonb_array_length(v_alerts)<>1
+    OR v_alerts->0->>'comment_id'
+       IS DISTINCT FROM current_setting('novelight.test.third_party_reply') THEN
+  RAISE EXCEPTION 'Unmuted third-person reply not restored';
+ END IF;
+END
+$unmuted_author_reply_alert$;
+RESET ROLE;
+
+-- Restore the earlier two-user fixture before checking notification ownership.
+DELETE FROM public.community_notifications
+ WHERE event_key='reply:'||current_setting('novelight.test.third_party_reply');
+DELETE FROM public.community_comments
+ WHERE id=current_setting('novelight.test.third_party_reply')::uuid;
+
 -- A normal logged-in user cannot invoke staff moderation or dismiss reports.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','c0a00000-0000-4000-8000-000000000002',true);

@@ -15,10 +15,24 @@ const FIXTURE = {
   liked_by_me: false
 };
 
-function initializeCommunityMock(delayFeed) {
+function initializeCommunityMock(options) {
   globalThis.__communityTestCalls = [];
   globalThis.__communityTestFeedFilters = [];
-  globalThis.__communityDelayFirstFeed = delayFeed;
+  globalThis.__communityDelayFirstFeed = options.delayFeed;
+  globalThis.__communityTestReadAttempts = 0;
+  globalThis.__communityTestNotifications = options.notifications
+    ? [
+        {
+          id: 15,
+          kind: 'reply',
+          post_key: 'note:42',
+          actor_name: 'テスト読者',
+          comment_id: 'c0a00000-0000-4000-8000-000000000012',
+          created_at: '2026-10-14T10:00:00Z',
+          read_at: null
+        }
+      ]
+    : [];
   globalThis.__communityRejectNextCommentReceipt = false;
 }
 
@@ -28,7 +42,10 @@ async function installIsolatedMock(page, enabled, options = {}) {
   const delayFirstFeed = options.delayFirstFeed === true;
   // Fulfill the vendor library locally so the hard-coded Production URL
   // is never sent to the network; record any unexpected RPC names.
-  await page.addInitScript(initializeCommunityMock, delayFirstFeed);
+  await page.addInitScript(initializeCommunityMock, {
+    delayFeed: delayFirstFeed,
+    notifications: options.notifications === true
+  });
   await page.route('**/*.supabase.co/**', (route) =>
     route.abort('blockedbyclient')
   );
@@ -89,7 +106,14 @@ async function installIsolatedMock(page, enabled, options = {}) {
                 return {data: {id:payload.p_comment_id,body:'過去のコメント本文',display_name:'前の読者',created_at:'2026-10-10T09:00:00Z'},error:null};
               }
               if (name === 'novelight_community_report') return {data: true,error:null};
-              if (name === 'novelight_community_my_notifications') return {data: [],error:null};
+              if (name === 'novelight_community_my_notifications') {
+                return {data: globalThis.__communityTestNotifications,error:null};
+              }
+              if (name === 'novelight_community_mark_notifications_read') {
+                globalThis.__communityTestReadAttempts += 1;
+                return {data: globalThis.__communityTestReadAttempts === 1 ? 0
+                  : payload.p_ids.length,error:null};
+              }
               return {data: [],error:null};
             },
             from: () => {
@@ -146,6 +170,29 @@ test('latest filter wins during pending feed request', async ({ page }) => {
   await expect(page.locator('.community-card')).toHaveCount(0);
   await expect(page.locator('#communityPageFeed .community-state')).toContainText(
     'まだ公開中の交流はありません'
+  );
+});
+
+test('incomplete notice-read receipt never clears unread state', async ({
+  page
+}) => {
+  await installIsolatedMock(page, true, { notifications: true });
+  await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
+  const notices = page.locator('#communityNotifications');
+  await expect(notices).toBeVisible();
+  const row = notices.locator('.community-notice-list li');
+  const mark = notices.locator('.community-notice-mark');
+  await expect(row).toHaveClass(/community-notice-unread/);
+  await mark.click();
+  await expect(notices.locator('.community-notice-feedback')).toContainText(
+    '既読にできませんでした'
+  );
+  await expect(row).toHaveClass(/community-notice-unread/);
+  await expect(mark).toBeEnabled();
+  await mark.click();
+  await expect(row).toHaveClass(/community-notice-read/);
+  await expect(notices.locator('.community-notice-count')).toContainText(
+    '表示中の通知は確認済みです'
   );
 });
 
