@@ -16,10 +16,20 @@
     },
     "api/seo/author.js": {
       "includeFiles": "author.html"
+    },
+    "api/special-page.js": {
+      "includeFiles": "shared/header/public-header.html"
     }
   },
   "images": {
-    "sizes": [128, 256, 384, 640, 1080, 1600],
+    "sizes": [
+      128,
+      256,
+      384,
+      640,
+      1080,
+      1600
+    ],
     "localPatterns": [
       {
         "pathname": "/assets/**",
@@ -35,8 +45,16 @@
       }
     ],
     "minimumCacheTTL": 2678400,
-    "qualities": [70, 75, 80, 85],
-    "formats": ["image/avif", "image/webp"]
+    "qualities": [
+      70,
+      75,
+      80,
+      85
+    ],
+    "formats": [
+      "image/avif",
+      "image/webp"
+    ]
   },
   "redirects": [
     {
@@ -78,6 +96,14 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/special.html",
+      "destination": "/api/special-page"
+    },
+    {
+      "source": "/special/:slug",
+      "destination": "/api/special-page?slug=:slug"
+    },
     {
       "source": "/contest.html",
       "destination": "/api/contest-page"
