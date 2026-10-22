@@ -120,15 +120,43 @@ export async function auditCommunityHostedNoCostReadiness({
       feature.head?.repo?.full_name === REPO &&
       SHA.test(feature.head?.sha ?? '')) {
     candidateSha = feature.head.sha;
-    const compare = await get('/compare/' + expectedMainSha +
-      '...' + candidateSha + '?per_page=250');
+    // GitHub caps compare pagination at 100 commits even when asked for 250.
+    // Feature PR #2222 already exceeds that cap. Files appear on page 1 only.
+    // Fetch every commit page before using the existing immutable blob manifest.
+    const comparePath = '/compare/' + expectedMainSha + '...' + candidateSha;
+    const first = await get(comparePath + '?per_page=100&page=1');
     try {
+      if (!Number.isSafeInteger(first?.total_commits) ||
+          first.total_commits < 1 || first.total_commits > 250 ||
+          !Array.isArray(first.commits)) {
+        throw new Error('incomplete comparison');
+      }
+      const commits = [...first.commits];
+      if (commits.length !== Math.min(100, first.total_commits)) {
+        throw new Error('incomplete first page');
+      }
+      for (let page = 2; page <= Math.ceil(first.total_commits / 100); page++) {
+        const next = await get(comparePath + '?per_page=100&page=' + page);
+        const expectedPageLength = Math.min(
+          100, first.total_commits - 100 * (page - 1)
+        );
+        if (next?.total_commits !== first.total_commits ||
+            next.ahead_by !== first.ahead_by ||
+            next.behind_by !== first.behind_by ||
+            next.base_commit?.sha !== first.base_commit?.sha ||
+            !Array.isArray(next.commits) ||
+            next.commits.length !== expectedPageLength) {
+          throw new Error('inconsistent comparison page');
+        }
+        commits.push(...next.commits);
+      }
       assertReviewedCommunityCandidate({
-        mainSha: expectedMainSha, candidateSha, compare
+        mainSha: expectedMainSha, candidateSha,
+        compare: { ...first, commits }
       });
       checks.candidateReview = true;
     } catch {
-      // A missing, incomplete or mismatched comparison is not verified.
+      // Failed page, mismatched refs or blobs = not verified.
     }
   }
 
