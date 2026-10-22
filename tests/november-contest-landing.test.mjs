@@ -44,16 +44,16 @@ test('contest navigation includes the official entry rules on all widths', () =>
 });
 
 test('contest awards and scoring milestones', () => {
-  assert.match(page, /11月1日（日）〜30日（月）/);
-  assert.match(page, /10月31日（土）23:59/);
+  assert.match(page, /12月1日（火）〜31日（木）/);
+  assert.match(page, /11月30日（月）23:59/);
   assert.match(page, /10話以上/);
   assert.match(page, /1万円/);
   assert.match(page, /3話以上/);
   assert.match(page, /5話以上/);
   assert.match(page, /10話以上/);
-  assert.match(page, /11月7日/);
-  assert.match(page, /11月15日/);
-  assert.match(page, /11月22日/);
+  assert.match(page, /12月7日/);
+  assert.match(page, /12月15日/);
+  assert.match(page, /12月22日/);
   assert.match(page, /正午12:00/);
   assert.match(page, /同順位/);
 });
@@ -65,7 +65,7 @@ test('contest public copy matches the owner-approved stage 05 rules', () => {
   assert.match(page, /公開済み10話以上の全年齢・R15作品/);
   assert.match(page, /R18・AI生成主体の作品は対象外/);
   assert.match(page, /コンテスト終了まで公開10話以上を維持/);
-  assert.match(page, /12月1日/);
+  assert.match(page, /2027年1月1日以降/);
   assert.match(page, /NOVELIGHT登録メール/);
   assert.match(page, /受賞者は通知から1か月以内に返信/);
   assert.match(page, /返信受信から1か月以内に楽天銀行/);
@@ -271,14 +271,14 @@ test('registration shows non-clickable entered works', async () => {
   );
   assert.match(
     gallery.ids.get('contestEntriesIntro').textContent,
-    /11月1日の開幕後/
+    /12月1日の開幕後/
   );
   for (const card of entries.children) {
     assert.equal(
       card.children.some((part) => part.tagName === 'A'),
       false
     );
-    assert.match(card.children.at(-1).textContent, /11月1日の開幕後に読めます/);
+    assert.match(card.children.at(-1).textContent, /12月1日の開幕後に読めます/);
   }
   assert.equal(more.hidden, false);
   assert.equal(gallery.requests[0].params.p_limit, 6);
