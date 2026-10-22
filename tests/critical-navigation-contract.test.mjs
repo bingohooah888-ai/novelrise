@@ -57,11 +57,26 @@ test('root HTML links do not point to missing local HTML pages', async () => {
     contestHandler.includes('notFound(res)') &&
     !htmlSet.has('contest.html');
 
+  const specialRewrite = vercel.rewrites.some(
+    (route) =>
+      route.source === '/special.html' &&
+      route.destination === '/api/special-page'
+  );
+  const specialHandler = specialRewrite
+    ? await read('api/special-page.js')
+    : '';
+  const gatedSpecial =
+    specialRewrite &&
+    specialHandler.includes('projectIsVisible') &&
+    !htmlSet.has('special.html');
+
   for (const page of htmlFiles) {
     const source = await read(page);
     for (const target of localHtmlTargets(source)) {
       assert.ok(
-        htmlSet.has(target) || (target === 'contest.html' && gatedContest),
+        htmlSet.has(target) ||
+          (target === 'contest.html' && gatedContest) ||
+          (target === 'special.html' && gatedSpecial),
         `${page} links to missing local page ${target}`
       );
     }
