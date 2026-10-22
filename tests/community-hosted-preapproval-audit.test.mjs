@@ -228,7 +228,9 @@ test('reject incomplete comparison pagination instead of trusting the first 100'
   });
   const result = await run(sample);
   assert.equal(result.checks.candidateReview, false);
-  assert.ok(sample.requests.some((request) => request.url.includes('page=2')));
+  assert.ok(
+    sample.requests.some((request) => request.url.includes('page=2'))
+  );
   assert.equal(result.mayRunBrowser, false);
 });
 
@@ -257,7 +259,9 @@ test('reject a short first page despite claiming 101 commits', async () => {
       base_commit: { sha: MAIN },
       commits: COMMITS.slice(0, 99),
       files: REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({
-        filename: path, sha, status
+        filename: path,
+        sha,
+        status
       }))
     }
   });
