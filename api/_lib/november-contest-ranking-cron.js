@@ -41,7 +41,7 @@ export function createContestRankingPrepareHandler({
     }
     const slot =
       timestamp.getUTCFullYear() === 2026 &&
-      timestamp.getUTCMonth() === 10 &&
+      timestamp.getUTCMonth() === 11 &&
       timestamp.getUTCHours() === 3 &&
       timestamp.getUTCMinutes() < 15
         ? SLOTS.get(timestamp.getUTCDate())

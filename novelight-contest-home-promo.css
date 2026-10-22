@@ -5,3 +5,18 @@
 .novelight-contest-home-promo-link picture,.novelight-contest-home-promo-link img{display:block;width:100%;height:auto}
 .novelight-contest-home-promo-link:focus-visible{outline:3px solid #f7d48a;outline-offset:5px}
 @media(max-width:680px){.novelight-contest-home-promo{padding:10px 16px 25px}.novelight-contest-home-promo-link{max-width:420px;border-radius:12px}}
+
+/* Old image assets include the former deadline; current banner text is live HTML. */
+.novelight-contest-home-promo-link{line-height:normal;text-decoration:none;color:#fff}
+.starfestival-banner{position:relative;isolation:isolate;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:295px;padding:30px 24px;text-align:center;overflow:hidden;background:radial-gradient(ellipse at 50% 38%,rgba(171,125,57,.22),transparent 52%),linear-gradient(115deg,#091a2f,#10223b 50%,#070e1e)}
+.starfestival-banner::before{content:"✦  ✧   ✦   ✧  ✦";position:absolute;inset:12px;display:flex;align-items:flex-start;justify-content:center;letter-spacing:15px;color:#d6af6a;font-size:32px;opacity:.35;pointer-events:none}
+.starfestival-banner-eyebrow{color:#dec18b;font-size:clamp(11px,1.2vw,13px);font-weight:700;letter-spacing:.22em}
+.starfestival-banner-title{font-family:serif;color:#f6d798;font-size:clamp(42px,6vw,72px);font-weight:700;line-height:1.2;text-shadow:0 3px 16px rgba(193,147,62,.35);margin:7px 0}
+.starfestival-banner-subtitle{font-size:clamp(13px,1.6vw,19px);letter-spacing:.08em;color:#ece4d7}
+.starfestival-banner-awards{margin-top:15px;font-size:clamp(20px,2.7vw,30px);font-weight:800;color:#fff0ce}
+.starfestival-banner-awards small{display:block;font-size:12px;font-weight:400;color:#dcc8ab}
+.starfestival-banner-deadline{margin-top:14px;color:#ffe2a8;font-weight:700;font-size:clamp(13px,1.8vw,19px)}
+.starfestival-banner-dates{margin-top:3px;color:#dfe5ef;font-size:clamp(12px,1.4vw,16px)}
+.starfestival-banner-cta{margin-top:17px;padding:9px 32px;border:1px solid #e7c389;border-radius:22px;background:linear-gradient(130deg,#efce85,#b78944);color:#132033;font-weight:800;font-size:15px}
+.novelight-contest-home-promo-link:hover .starfestival-banner-cta{filter:brightness(1.08)}
+@media(max-width:680px){.starfestival-banner{min-height:360px;padding:32px 18px}.starfestival-banner::before{letter-spacing:5px;font-size:22px}.starfestival-banner-title{font-size:50px}.starfestival-banner-subtitle,.starfestival-banner-deadline{max-width:22em}}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 
 const source = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -8,29 +8,19 @@ const page = source('../index.html');
 const css = source('../novelight-contest-home-promo.css');
 const script = source('../novelight-contest-home-promo.js');
 
-test('approved desktop and mobile contest images replace homepage copy promo', () => {
-  assert.match(page, /starfestival-entry-desktop\.webp/);
-  assert.match(page, /starfestival-entry-mobile\.webp/);
-  assert.match(page, /media="\(max-width: 680px\)"/);
-  assert.match(page, /href="contest\.html#enter"/);
+test('responsive star festival banner uses live updated copy rather than stale dated WebP', () => {
   assert.match(page, /id="novelightContestHomePromo"[^>]* hidden>/);
-  assert.match(page, /id="novelightContestHomePromoHeading"/);
+  assert.match(page, /href="contest\.html#enter"/);
+  assert.match(page, /2026年11月30日（月）23:59/);
+  assert.match(page, /12月1日（火）〜31日（木）/);
+  assert.doesNotMatch(page, /starfestival-entry-(desktop|mobile)\.webp/);
+  assert.match(css, /\.starfestival-banner-title/);
+  assert.match(css, /@media\(max-width:680px\)/);
 });
 
-test('home promo preserves picture and hides closed registration', () => {
+test('home promo remains registration-only and checks the deadline', () => {
   assert.doesNotMatch(script, /link\.textContent\s*=/);
   assert.match(script, /data\.contest_status === 'registration'/);
-  assert.doesNotMatch(script, /data\.contest_status === 'active'/);
+  assert.match(script, /11月30日23:59/);
   assert.match(script, /area\.hidden = true/);
-  assert.match(css, /\.novelight-contest-home-promo-link picture/);
-  assert.match(css, /height:auto/);
-});
-
-test('approved binary assets must exist before production merge', () => {
-  for (const filename of [
-    '../assets/contest/starfestival-entry-desktop.webp',
-    '../assets/contest/starfestival-entry-mobile.webp'
-  ]) {
-    assert.ok(existsSync(new URL(filename, import.meta.url)), filename);
-  }
 });

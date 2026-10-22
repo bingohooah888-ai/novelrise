@@ -36,7 +36,7 @@ export function validateReadOnlyRows(rows, phase, approvalCommentId) {
     }
   } else if (phase === 'after') {
     if (row.status !== 'registration' || row.public_visible !== true ||
-        row.terms_version !== 'november-2026-v1' ||
+        row.terms_version !== 'december-2026-v2' ||
         row.terms_url !== 'https://novelight.jp/contest-terms' ||
         Number(row.audit_count) !== 1 ||
         !Number.isSafeInteger(approvalCommentId)) {
