@@ -92,16 +92,25 @@
     a.href = 'curation.html?share=' + encodeURIComponent(token);
     return a;
   }
-  async function toggleLike(button, row) {
+  async function toggleLike(button, row, status) {
     button.disabled = true;
+    status.hidden = true;
     try {
       if (!await authed()) return requireLogin();
       const result = await rpc('novelight_community_toggle_like', {p_post_key:row.post_key});
-      button.setAttribute('aria-pressed', String(result?.liked === true));
-      button.textContent = '♡ ' + Number(result?.like_count || 0);
+      const count = Number(result?.like_count);
+      if (typeof result?.liked !== 'boolean' || !Number.isSafeInteger(count) || count < 0) {
+        throw new Error('Invalid reaction response');
+      }
+      row.liked_by_me = result.liked;
+      row.like_count = count;
+      button.setAttribute('aria-pressed', String(result.liked));
+      button.textContent = '♡ ' + count;
+      button.removeAttribute('title');
     } catch(error) {
       console.warn('community like failed', error);
-      button.title = '操作できませんでした。もう一度お試しください';
+      status.textContent = 'いいねを更新できませんでした。もう一度お試しください。';
+      status.hidden = false;
     } finally { button.disabled = false; }
   }
   async function comments(container, row, onPosted) {
@@ -207,7 +216,10 @@
     like.type='button';
     like.setAttribute('aria-label','いいね');
     like.setAttribute('aria-pressed',String(row.liked_by_me===true));
-    like.addEventListener('click',()=>{void toggleLike(like,row);});
+    const likeStatus = el('span', 'community-like-status');
+    likeStatus.setAttribute('role', 'status');
+    likeStatus.hidden = true;
+    like.addEventListener('click',()=>{void toggleLike(like,row,likeStatus);});
     const comment = el('button','community-action','コメント '+Number(row.comment_count||0));
     comment.type='button';
     comment.setAttribute('aria-expanded','false');
@@ -221,7 +233,7 @@
         comment.textContent='コメント '+row.comment_count;
       });
     });
-    actions.append(like,comment);
+    actions.append(like,comment,likeStatus);
     const report = el('button', 'community-action', '通報');
     report.type = 'button';
     report.setAttribute('aria-expanded', 'false');
@@ -301,7 +313,14 @@
     loading=true;
     const revision=filterRevision;
     const requestedFollowing=following;
-    if(reset){page=0; message('交流を読み込んでいます...');}
+    if(reset){
+      page=0;
+      message('交流を読み込んでいます...');
+      const more = document.getElementById('communityLoadMore');
+      if (more) more.hidden = true;
+    } else {
+      root.querySelector('.community-load-error')?.remove();
+    }
     try {
       if (page * limit > 300) {
         const more = document.getElementById('communityLoadMore');
@@ -327,7 +346,19 @@
       return true;
     } catch(error) {
       console.warn('community feed unavailable; rest of page remains usable',error);
-      if(reset && revision===filterRevision)message('交流を読み込めませんでした。作品の閲覧は通常どおり利用できます。');
+      if (revision===filterRevision) {
+        const errorState=el('p','community-state',reset
+          ? '交流を読み込めませんでした。作品の閲覧は通常どおり利用できます。'
+          : '追加の投稿を読み込めませんでした。');
+        errorState.classList.add('community-load-error');
+        errorState.setAttribute('role','status');
+        const retry=el('button','community-action','もう一度読み込む');
+        retry.type='button';
+        retry.addEventListener('click',()=>{void load(reset);});
+        errorState.append(el('span','', ' '),retry);
+        if(reset)root.replaceChildren(errorState);
+        else root.append(errorState);
+      }
       return false;
     } finally {
       loading=false;

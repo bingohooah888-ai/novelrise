@@ -50,3 +50,7 @@
 .community-report-submit{border:0;border-radius:7px;background:#d2a555;color:#091622;padding:8px 12px;font:inherit;font-size:.85rem;font-weight:700;cursor:pointer}
 .community-report-submit:disabled,.community-report-buttons button:disabled{opacity:.6;cursor:wait}
 .community-report-status{margin:0;color:#d8dce3;font-size:.82rem}
+
+.community-actions{flex-wrap:wrap}
+.community-like-status{flex-basis:100%;font-size:.82rem;color:#d8dce3}
+.community-like-status[hidden]{display:none}
