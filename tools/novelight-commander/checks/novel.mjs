@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { detectNovelSite } from "../src/novel.js";
+import { detectNovelSite, parseKakuyomuIndexHtml, readNovel } from "../src/novel.js";
 
 test("detects novel sites", () => {
   assert.equal(
@@ -54,4 +54,202 @@ test("Alphapolis reader falls back to browser-rendered index and body DOM", asyn
   assert.match(source, /dumpDomWithBrowser/);
   assert.match(source, /openVisibleBrowserSession/);
   assert.match(source, /after static and browser-rendered reads/);
+});
+
+
+function kakuyomuFixture({
+  workId = "123456789", episodeCount = 12, visibleLinks = 3,
+  reportedCount = episodeCount, nested = false
+} = {}) {
+  const root = "https://kakuyomu.jp/works/" + workId;
+  const apollo = {
+    ["Work:" + workId]: {
+      __typename: "Work",
+      title: "Test novel",
+      publicEpisodeCount: reportedCount,
+      author: { __ref: "User:author1" },
+      tableOfContentsV2: [
+        { __ref: "TableOfContentsChapter:one" },
+        { __ref: "TableOfContentsChapter:two" }
+      ]
+    },
+    "User:author1": { activityName: "Test author" },
+    "TableOfContentsChapter:one": {
+      __typename: "TableOfContentsChapter", episodeUnions: []
+    },
+    "TableOfContentsChapter:two": {
+      __typename: "TableOfContentsChapter", episodeUnions: []
+    }
+  };
+  for (let i = 1; i <= episodeCount; i += 1) {
+    const id = String(900000 + i);
+    const ref = "Episode:" + id;
+    apollo[ref] = { id, title: "第" + i + "話", __typename: "Episode" };
+    const chapter = i <= Math.ceil(episodeCount / 2)
+      ? apollo["TableOfContentsChapter:one"]
+      : apollo["TableOfContentsChapter:two"];
+    chapter.episodeUnions.push({ __ref: ref });
+  }
+  if (nested) {
+    apollo["TableOfContentsChapter:one"].children = [
+      { __ref: "TableOfContentsChapter:nested" }
+    ];
+    apollo["TableOfContentsChapter:nested"] = {
+      __typename: "TableOfContentsChapter",
+      episodeUnions: [{ __ref: "EmptyEpisode:empty" }]
+    };
+    apollo["EmptyEpisode:empty"] = { __typename: "EmptyEpisode" };
+  }
+  const data = { props: { pageProps: { __APOLLO_STATE__: apollo } } };
+  const html =
+    '<html><body><h1>Fallback title</h1><p>連載中 全' + reportedCount + '話</p>' +
+    Array.from({ length: visibleLinks }, (_, index) =>
+      '<a href="/works/' + workId + '/episodes/' + (900001 + index) + '">preview</a>'
+    ).join("") +
+    '<script id="__NEXT_DATA__" type="application/json">' +
+    JSON.stringify(data) + '</script></body></html>';
+  return { html, root, apollo };
+}
+
+test("Kakuyomu indexes all 432 episodes despite only three visible preview links", () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 432 });
+  const parsed = parseKakuyomuIndexHtml(html, root);
+  assert.equal(parsed.episodes.length, 432);
+  assert.equal(parsed.totalEpisodesHint, 432);
+  assert.equal(parsed.author, "Test author");
+  assert.equal(parsed.episodes[0].url, root + "/episodes/900001");
+  assert.equal(parsed.episodes[431].url, root + "/episodes/900432");
+});
+
+test("Kakuyomu supports short works and nested chapters without empty episodes", () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 8, nested: true });
+  const parsed = parseKakuyomuIndexHtml(html, root);
+  assert.deepEqual(parsed.episodes.map(episode => episode.label),
+    Array.from({ length: 8 }, (_, i) => "第" + (i + 1) + "話"));
+});
+
+test("Kakuyomu fails closed when the listed count and discovered count disagree", () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 3, reportedCount: 432 });
+  assert.throws(
+    () => parseKakuyomuIndexHtml(html, root),
+    /incomplete episode index: expected 432, discovered 3/
+  );
+});
+
+test("Kakuyomu does not mistake a three-link HTML preview for a complete index", () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 432 });
+  const withoutNextData = html.replace(/<script id="__NEXT_DATA__"[^>]*>[\s\S]*?<\/script>/, "");
+  assert.throws(
+    () => parseKakuyomuIndexHtml(withoutNextData, root),
+    /complete episode index was not found/
+  );
+});
+
+test("Kakuyomu rejects damaged embedded metadata instead of silently falling back", () => {
+  const { root } = kakuyomuFixture();
+  const html = '<html><body>全12話<script id="__NEXT_DATA__">{bad}</script></body></html>';
+  assert.throws(
+    () => parseKakuyomuIndexHtml(html, root),
+    /embedded episode index could not be parsed/
+  );
+});
+
+test("Kakuyomu refuses completion when the public count is missing from both sources", () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 3 });
+  const withoutCounts = html
+    .replace(/"publicEpisodeCount":3,/, "")
+    .replace(/連載中 全3話/, "連載中");
+  assert.throws(
+    () => parseKakuyomuIndexHtml(withoutCounts, root),
+    /episode count cannot be verified/
+  );
+});
+
+test("Kakuyomu allows a legacy HTML index only when its episode count is verified", () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 3, visibleLinks: 3 });
+  const withoutNextData = html.replace(/<script id="__NEXT_DATA__"[^>]*>[\s\S]*?<\/script>/, "");
+  const parsed = parseKakuyomuIndexHtml(withoutNextData, root);
+  assert.equal(parsed.episodes.length, 3);
+  assert.equal(parsed.totalEpisodesHint, 3);
+});
+
+
+test("Kakuyomu retries a temporary HTTP 503 and completes without lost episodes", async () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 1, visibleLinks: 1 });
+  const originalFetch = globalThis.fetch;
+  let episodeRequests = 0;
+  globalThis.fetch = async url => {
+    if (String(url) === root) return new Response(html, { status: 200 });
+    if (String(url).startsWith(root + "/episodes/")) {
+      episodeRequests += 1;
+      if (episodeRequests === 1) return new Response("temporary error", { status: 503 });
+      return new Response(
+        '<html><h1>第1話</h1><div class="widget-episodeBody">一話の本文。</div></html>',
+        { status: 200 }
+      );
+    }
+    throw new Error("Unexpected fetch: " + url);
+  };
+  try {
+    const novel = await readNovel(root, { maxEpisodes: 1 });
+    assert.equal(episodeRequests, 2);
+    assert.equal(novel.fetchedEpisodes, 1);
+    assert.equal(novel.complete, true);
+    assert.match(novel.episodes[0].body, /一話の本文/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+
+test("Kakuyomu retries the index request after a temporary 503", async () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 1, visibleLinks: 1 });
+  const originalFetch = globalThis.fetch;
+  let indexRequests = 0;
+  globalThis.fetch = async url => {
+    if (String(url) === root) {
+      indexRequests += 1;
+      if (indexRequests === 1) return new Response("temporary error", { status: 503 });
+      return new Response(html, { status: 200 });
+    }
+    if (String(url).startsWith(root + "/episodes/")) {
+      return new Response(
+        '<html><h1>第1話</h1><div class="widget-episodeBody"><p>本文です。</p></div></html>',
+        { status: 200 }
+      );
+    }
+    throw new Error("Unexpected fetch: " + url);
+  };
+  try {
+    const novel = await readNovel(root, { maxEpisodes: 1 });
+    assert.equal(indexRequests, 2);
+    assert.equal(novel.fetchedEpisodes, 1);
+    assert.equal(novel.complete, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Kakuyomu removes ruby readings and brackets while keeping base characters and paragraphs", async () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 1, visibleLinks: 1 });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async url => {
+    if (String(url) === root) return new Response(html, { status: 200 });
+    if (String(url).startsWith(root + "/episodes/")) {
+      return new Response(
+        '<html><h1>第1話</h1><div class="widget-episodeBody">' +
+        '<p><ruby><rb>仙台</rb><rp>（</rp><rt>せんだい</rt><rp>）</rp></ruby>さん。</p>' +
+        '<p class="blank"><br></p><p>五千円で会う。</p></div></html>',
+        { status: 200 }
+      );
+    }
+    throw new Error("Unexpected fetch: " + url);
+  };
+  try {
+    const novel = await readNovel(root, { maxEpisodes: 1 });
+    assert.equal(novel.complete, true);
+    assert.equal(novel.episodes[0].body, "仙台さん。\n五千円で会う。");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
