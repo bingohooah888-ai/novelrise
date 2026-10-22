@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { detectNovelSite, parseKakuyomuIndexHtml } from "../src/novel.js";
+import { detectNovelSite, parseKakuyomuIndexHtml, readNovel } from "../src/novel.js";
 
 test("detects novel sites", () => {
   assert.equal(
@@ -160,4 +160,32 @@ test("Kakuyomu allows a legacy HTML index only when its episode count is verifie
   const parsed = parseKakuyomuIndexHtml(withoutNextData, root);
   assert.equal(parsed.episodes.length, 3);
   assert.equal(parsed.totalEpisodesHint, 3);
+});
+
+
+test("Kakuyomu retries a temporary HTTP 503 and completes without lost episodes", async () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 1, visibleLinks: 1 });
+  const originalFetch = globalThis.fetch;
+  let episodeRequests = 0;
+  globalThis.fetch = async url => {
+    if (String(url) === root) return new Response(html, { status: 200 });
+    if (String(url).startsWith(root + "/episodes/")) {
+      episodeRequests += 1;
+      if (episodeRequests === 1) return new Response("temporary error", { status: 503 });
+      return new Response(
+        '<html><h1>第1話</h1><div class="widget-episodeBody">一話の本文。</div></html>',
+        { status: 200 }
+      );
+    }
+    throw new Error("Unexpected fetch: " + url);
+  };
+  try {
+    const novel = await readNovel(root, { maxEpisodes: 1 });
+    assert.equal(episodeRequests, 2);
+    assert.equal(novel.fetchedEpisodes, 1);
+    assert.equal(novel.complete, true);
+    assert.match(novel.episodes[0].body, /一話の本文/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
