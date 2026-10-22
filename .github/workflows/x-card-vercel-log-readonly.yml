@@ -1,0 +1,104 @@
+name: NOVELIGHT X Card Vercel Log Diagnostic (read only)
+
+on:
+  push:
+    branches:
+      - diagnostics/x-card-twitterbot-20261022
+    paths:
+      - .github/workflows/x-card-vercel-log-readonly.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      VERCEL_TEAM_ID: team_2XFgtRCPJQ6pbrEa4mOLQAEx
+      VERCEL_PROJECT_ID: prj_SmotUNrcyuUntdWTayzWeJ8eQGqe
+    steps:
+      - name: Verify token scope without printing credentials
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${VERCEL_TOKEN:-}" ]]; then
+            echo 'diagnosis=vercel_token_unconfigured'
+            echo 'usable=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          code="$(curl -sS -o /tmp/vercel-project-read.json -w '%{http_code}' --max-time 20 \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_TEAM_ID")"
+          echo "vercel_project_read_http=$code"
+          if [[ "$code" == 200 ]] && jq -e --arg id "$VERCEL_PROJECT_ID" '.id == $id' /tmp/vercel-project-read.json >/dev/null; then
+            echo 'usable=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'usable=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Query bounded read-only Vercel request logs
+        if: steps.scope.outputs.usable == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund --prefix /tmp/nl-vercel-cli vercel@latest >/dev/null 2>&1
+          set +e
+          /tmp/nl-vercel-cli/node_modules/.bin/vercel logs --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_TEAM_ID" --environment production --since 24h --limit 300 --json > /tmp/nl-request-logs.ndjson 2> /tmp/nl-logs-error.txt
+          result=$?
+          set -e
+          echo "vercel_logs_cli_exit=$result"
+          python3 - <<'PY'
+          import json, os
+          from collections import Counter
+          path='/tmp/nl-request-logs.ndjson'
+          lines=open(path,errors='replace').read().splitlines() if os.path.exists(path) else []
+          events=[]
+          for line in lines:
+              try:
+                  value=json.loads(line)
+                  if isinstance(value,list): events.extend(x for x in value if isinstance(x,dict))
+                  elif isinstance(value,dict): events.append(value)
+              except (ValueError,TypeError): pass
+          print('log_line_count=',len(lines),'json_events=',len(events))
+          if events:
+              print('available_field_names=',','.join(sorted(str(x) for x in events[0].keys())[:30]))
+          hits=[]
+          for e in events:
+              ua=str(e.get('userAgent') or e.get('user_agent') or e.get('useragent') or '')
+              path=str(e.get('requestPath') or e.get('path') or e.get('url') or '')
+              blob=json.dumps(e,ensure_ascii=False,default=str).lower()
+              if 'twitterbot' in blob or 'novelight-card-20261022.png' in path or 'welcome.html' in path:
+                  hits.append({
+                      'twitterbot': 'twitterbot' in blob,
+                      'path_class': 'welcome' if 'welcome.html' in path else ('card_image' if 'novelight-card-20261022.png' in path else 'other'),
+                      'http_status': str(e.get('status') or e.get('statusCode') or e.get('status_code') or 'unknown'),
+                  })
+          print('matching_request_count=',len(hits))
+          print('matching_statuses=',dict(Counter((r['twitterbot'],r['path_class'],r['http_status']) for r in hits)))
+          PY
+          if [[ "$result" != 0 ]]; then
+            echo "vercel_logs_cli_error_kind=$(grep -Eio '(403|401|forbidden|unauthorized|permission denied|unrecognized option|unknown option|missing scope|not found|rate limit)' /tmp/nl-logs-error.txt | head -1 || true)"
+          fi
+      - name: Query read-only firewall bot aggregate
+        if: steps.scope.outputs.usable == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          /tmp/nl-vercel-cli/node_modules/.bin/vercel firewall traffic list --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_TEAM_ID" --since 24h --dimension user-agent --json > /tmp/nl-traffic.json 2> /tmp/nl-traffic-err.txt
+          code=$?
+          set -e
+          echo "vercel_firewall_traffic_cli_exit=$code"
+          if [[ "$code" == 0 ]]; then
+            python3 - <<'PY'
+          import json
+          v=json.load(open('/tmp/nl-traffic.json'))
+          s=json.dumps(v,ensure_ascii=False)
+          print('aggregate_has_twitterbot=', 'twitterbot' in s.lower())
+          print('aggregate_shape=',list(v.keys())[:15] if isinstance(v,dict) else type(v).__name__)
+          PY
+          else
+            echo "vercel_firewall_error_kind=$(grep -Eio '(403|401|forbidden|unauthorized|permission denied|unrecognized option|unknown option|missing scope|not found|requires observability plus)' /tmp/nl-traffic-err.txt | head -1 || true)"
+          fi
