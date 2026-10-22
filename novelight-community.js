@@ -104,7 +104,7 @@
       button.title = '操作できませんでした。もう一度お試しください';
     } finally { button.disabled = false; }
   }
-  async function comments(container, row) {
+  async function comments(container, row, onPosted) {
     container.replaceChildren(el('p', 'community-state', 'コメントを読み込んでいます...'));
     try {
       const data = await rpc('novelight_community_comments', {p_post_key:row.post_key,p_limit:20});
@@ -116,6 +116,18 @@
       input.placeholder = 'コメントを書く（500文字以内）';
       input.setAttribute('aria-label', 'コメント');
       let replyTo = null;
+      const replyHint = el('p', 'community-reply-target');
+      replyHint.hidden = true;
+      const cancelReply = el('button', 'community-action', '返信を取り消す');
+      cancelReply.type = 'button';
+      cancelReply.hidden = true;
+      cancelReply.addEventListener('click', () => {
+        replyTo = null;
+        replyHint.hidden = true;
+        cancelReply.hidden = true;
+        input.placeholder = 'コメントを書く（500文字以内）';
+        input.focus();
+      });
       for (const comment of Array.isArray(data) ? data : []) {
         const c = el('div', 'community-comment');
         const author = el('strong', '', (comment.parent_comment_id ? '↳ ' : '') + (comment.display_name || 'ユーザー'));
@@ -123,8 +135,13 @@
         const replyButton = el('button','community-action','返信');
         replyButton.type='button';
         replyButton.addEventListener('click',()=>{
-          replyTo = String(comment.id || '');
-          input.placeholder = (comment.display_name || 'ユーザー') + 'さんへの返信';
+          const id = String(comment.id || '');
+          if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id)) return;
+          replyTo = id;
+          replyHint.textContent = (comment.display_name || 'ユーザー') + 'さんに返信中';
+          replyHint.hidden = false;
+          cancelReply.hidden = false;
+          input.placeholder = '返信を書く（500文字以内）';
           input.focus();
         });
         c.append(replyButton);
@@ -132,16 +149,24 @@
       }
       const submit = el('button', '', '送信');
       submit.type = 'submit';
-      form.append(input,submit);
+      form.append(replyHint, cancelReply, input, submit);
       form.addEventListener('submit', async evt => {
         evt.preventDefault();
         submit.disabled = true;
         try {
           if (!await authed()) return requireLogin();
+          const body = input.value.trim();
+          if (!body) {
+            input.setCustomValidity('コメントを入力してください');
+            input.reportValidity();
+            input.setCustomValidity('');
+            return;
+          }
           await rpc('novelight_community_post_comment',{
-            p_post_key:row.post_key,p_body:input.value.trim(),p_parent_comment_id:replyTo
+            p_post_key:row.post_key,p_body:body,p_parent_comment_id:replyTo
           });
-          await comments(container,row);
+          if (typeof onPosted === 'function') onPosted();
+          await comments(container,row,onPosted);
         } catch(error) {
           console.warn('community comment failed',error);
           input.setCustomValidity('コメントを送信できませんでした');
@@ -191,7 +216,10 @@
     comment.addEventListener('click',()=>{
       commentArea.hidden=!commentArea.hidden;
       comment.setAttribute('aria-expanded',String(!commentArea.hidden));
-      if (!commentArea.hidden) void comments(commentArea,row);
+      if (!commentArea.hidden) void comments(commentArea,row,()=>{
+        row.comment_count=Number(row.comment_count||0)+1;
+        comment.textContent='コメント '+row.comment_count;
+      });
     });
     actions.append(like,comment);
     const report = el('button','community-action','通報');
@@ -221,6 +249,11 @@
     const requestedFollowing=following;
     if(reset){page=0; message('交流を読み込んでいます...');}
     try {
+      if (page * limit > 300) {
+        const more = document.getElementById('communityLoadMore');
+        if (more) more.hidden = true;
+        return;
+      }
       const data=await rpc('novelight_community_feed',{p_limit:limit,p_offset:page*limit,p_following:requestedFollowing});
       // A stale response must never overwrite the selected filter.
       if (revision !== filterRevision) return;
@@ -235,7 +268,7 @@
       }
       for(const item of list) root.append(card(item));
       const more=document.getElementById('communityLoadMore');
-      if(more)more.hidden=list.length<limit;
+      if(more)more.hidden=list.length<limit || (page+1)*limit>300;
       page += 1;
     } catch(error) {
       console.warn('community feed unavailable; rest of page remains usable',error);
@@ -261,9 +294,38 @@
       void load(true);
     });
   });
-  void load().then(() => {
-    if (!isHome && location.hash.startsWith('#post-')) {
-      document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({block:'center'});
+  // Notification links may reference a post older than the first 15 rows.
+  // Only a direct #post-* visit performs this bounded lookup; ordinary pages
+  // never prefetch extra activity. The RPC itself caps offsets at 300.
+  function linkedPostId() {
+    if (isHome || !location.hash.startsWith('#post-')) return null;
+    let id;
+    try { id = decodeURIComponent(location.hash.slice(1)); } catch { return null; }
+    return /^post-(?:novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[a-f0-9-]{36}|official:[0-9]+|ep:[a-f0-9-]{36}:[0-9]+:[0-9]+)$/i.test(id)
+      ? id : null;
+  }
+  void (async () => {
+    await load();
+    const target = linkedPostId();
+    if (!target) return;
+    const revision = filterRevision;
+    for (let attempt = 0; attempt <= 20; attempt += 1) {
+      if (filterRevision !== revision) return;
+      const found = document.getElementById(target);
+      if (found) {
+        found.setAttribute('tabindex', '-1');
+        found.scrollIntoView({block:'center'});
+        found.focus({preventScroll:true});
+        return;
+      }
+      const more = document.getElementById('communityLoadMore');
+      if (!more || more.hidden) break;
+      await load(false);
     }
-  });
+    if (filterRevision === revision) {
+      const notice = el('p', 'community-state', '指定された投稿は見つかりませんでした。公開終了または閲覧制限の可能性があります。');
+      notice.setAttribute('role', 'status');
+      root.prepend(notice);
+    }
+  })();
 })();
