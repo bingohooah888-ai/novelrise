@@ -61,6 +61,12 @@ async function installIsolatedMock(page, enabled, options = {}) {
                 }
                 return {data: payload.p_following ? [] : [feed], error:null};
               }
+              if (name === 'novelight_author_follow_state') {
+                return {data: {following: false, notify_new_works: true, notify_updates: true}, error:null};
+              }
+              if (name === 'novelight_set_author_follow') {
+                return {data: {following: payload.p_following, notify_new_works: true, notify_updates: true}, error:null};
+              }
               if (name === 'novelight_community_toggle_like') {
                 return {data: {liked: true, like_count: 2}, error:null};
               }
@@ -159,6 +165,13 @@ test('community UI interactions use mocked data', async ({ page }) => {
     'aria-expanded',
     'true'
   );
+
+  await card.locator('.community-follow-open').click();
+  const follow = card.locator('.community-follow-toggle');
+  await expect(follow).toHaveText('フォローする');
+  await follow.click();
+  await expect(follow).toHaveText('フォローを解除');
+  await expect(follow).toHaveAttribute('aria-pressed', 'true');
 
   const like = card.locator('[aria-label="いいね"]');
   await like.click();
