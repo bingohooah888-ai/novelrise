@@ -143,21 +143,130 @@ function kakuyomuRoot(rawUrl) {
   return m ? u.origin + "/works/" + m[1] : null;
 }
 
+// Kakuyomu renders only a few episode <a> links in its initial HTML.
+// The complete, ordered public TOC lives in the embedded Next.js Apollo state.
+// Parse that TOC rather than treating those preview links as the full novel.
+export function parseKakuyomuIndexHtml(html, root) {
+  const $ = cheerio.load(html);
+  const workId = new URL(root).pathname.match(/^\/works\/(\d+)\/?$/)?.[1];
+  if (!workId) throw new Error("Unsupported Kakuyomu work URL.");
+
+  const legacyLinks = uniqueLinks($, root, href => {
+    const u = new URL(href);
+    return u.hostname === "kakuyomu.jp" &&
+      new RegExp("^/works/" + workId + "/episodes/\\d+$").test(u.pathname);
+  });
+  const nextDataText = $("#__NEXT_DATA__").first().html();
+  let work = null;
+  let apollo = null;
+  if (nextDataText) {
+    let nextData;
+    try {
+      nextData = JSON.parse(nextDataText);
+    } catch {
+      throw new Error("Kakuyomu embedded episode index could not be parsed.");
+    }
+    apollo = nextData?.props?.pageProps?.__APOLLO_STATE__;
+    work = apollo?.["Work:" + workId] || null;
+    if (!work) {
+      throw new Error("Kakuyomu work was not found in embedded episode index.");
+    }
+  }
+
+  const title = clean(work?.title) ||
+    clean($("h1").first().text()) ||
+    clean($('meta[property="og:title"]').attr("content"));
+  const authorRecord = work?.author?.__ref ? apollo?.[work.author.__ref] : work?.author;
+  const author = clean(authorRecord?.activityName || authorRecord?.name) ||
+    clean($('[itemprop="author"]').first().text()) ||
+    clean($('a[href^="/users/"]').first().text());
+  const synopsis = clean(work?.introduction || work?.catchphrase) ||
+    clean($('[itemprop="description"]').first().text()) ||
+    clean($('meta[property="og:description"]').attr("content"));
+
+  const episodes = [];
+  const seenEpisodeIds = new Set();
+  const visitedReferences = new Set();
+  const addEpisode = (item, referenceKey) => {
+    const id = String(item.id || referenceKey?.match(/^Episode:(\d+)$/)?.[1] || "");
+    if (!/^\d+$/.test(id) || seenEpisodeIds.has(id)) return;
+    seenEpisodeIds.add(id);
+    episodes.push({
+      url: root + "/episodes/" + id,
+      label: clean(item.title) || "Episode " + episodes.length + 1
+    });
+  };
+  const visit = (node, depth = 0) => {
+    if (!node || depth > 24) return;
+    if (Array.isArray(node)) {
+      for (const child of node) visit(child, depth + 1);
+      return;
+    }
+    if (typeof node !== "object") return;
+    const ref = typeof node.__ref === "string" ? node.__ref : null;
+    if (ref) {
+      if (visitedReferences.has(ref)) return;
+      visitedReferences.add(ref);
+    }
+    const item = ref ? apollo?.[ref] : node;
+    if (!item || typeof item !== "object") return;
+    if (item.__typename === "EmptyEpisode") return;
+    if (item.__typename === "Episode" || /^Episode:\d+$/.test(ref || "")) {
+      addEpisode(item, ref);
+      return;
+    }
+    // TOC entries may be chapters, nested chapters, or direct episode unions.
+    // Preserve the site's editorial order, not publication timestamp order.
+    for (const key of [
+      "episodeUnions", "chapters", "subChapters", "children",
+      "tableOfContentsV2", "tableOfContents", "episodes"
+    ]) {
+      if (item[key]) visit(item[key], depth + 1);
+    }
+  };
+
+  if (work) {
+    const toc = (Array.isArray(work.tableOfContentsV2) && work.tableOfContentsV2.length)
+      ? work.tableOfContentsV2 : work.tableOfContents;
+    visit(toc);
+  }
+
+  // When the embedded schema changes, only accept the visible HTML fallback
+  // if it demonstrably contains every publicly listed episode.
+  const reportedCount = Number(work?.publicEpisodeCount);
+  const workCount = work?.publicEpisodeCount != null &&
+    Number.isSafeInteger(reportedCount) && reportedCount >= 0
+    ? reportedCount : null;
+  const htmlCountMatch = $("body").text().match(/全\s*([\d,]+)\s*話/);
+  const htmlCount = htmlCountMatch ? Number(htmlCountMatch[1].replace(/,/g, "")) : null;
+  const expectedCount = workCount ?? htmlCount;
+  if (!episodes.length && expectedCount != null && legacyLinks.length === expectedCount) {
+    episodes.push(...legacyLinks);
+  }
+  if (!episodes.length) {
+    throw new Error("Kakuyomu complete episode index was not found; refusing a partial read.");
+  }
+  if (expectedCount != null && episodes.length !== expectedCount) {
+    throw new Error(
+      "Kakuyomu incomplete episode index: expected " + expectedCount +
+      ", discovered " + episodes.length + "."
+    );
+  }
+  if (!work && expectedCount == null) {
+    throw new Error("Kakuyomu episode count cannot be verified; refusing a partial read.");
+  }
+
+  return {
+    site: "kakuyomu", workUrl: root, title, author, synopsis, episodes,
+    totalEpisodesHint: expectedCount ?? episodes.length
+  };
+}
+
 async function kakuyomuIndex(rawUrl) {
   const root = kakuyomuRoot(rawUrl);
   if (!root) throw new Error("Unsupported Kakuyomu URL.");
   const { html } = await fetchHtml(root);
-  const $ = cheerio.load(html);
-  const title = clean($("h1").first().text()) || clean($("meta[property=\"og:title\"]").attr("content"));
-  const author = clean($("[itemprop=\"author\"]").first().text()) || clean($("a[href^=\"/users/\"]").first().text());
-  const synopsis = clean($("[itemprop=\"description\"]").first().text()) || clean($("meta[property=\"og:description\"]").attr("content"));
-  const workId = new URL(root).pathname.split("/").filter(Boolean)[1];
-  const episodes = uniqueLinks($, root, href => {
-    const u = new URL(href);
-    return u.hostname === "kakuyomu.jp" && new RegExp("^/works/" + workId + "/episodes/\\d+").test(u.pathname);
-  });
-  if (!episodes.length) throw new Error("Kakuyomu episode list was not found. Layout may have changed or access may be restricted.");
-  return { site: "kakuyomu", workUrl: root, title, author, synopsis, episodes };
+  return parseKakuyomuIndexHtml(html, root);
 }
 
 async function kakuyomuEpisode(url) {
