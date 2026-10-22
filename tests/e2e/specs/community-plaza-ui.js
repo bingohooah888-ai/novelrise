@@ -70,7 +70,7 @@ async function installIsolatedMock(page, enabled, options = {}) {
               if (name === 'novelight_community_post_comment') {
                 return {data: {id:'c0a00000-0000-4000-8000-000000000013'},error:null};
               }
-              if (name === 'novelight_community_report') return {data: {id:'report'},error:null};
+              if (name === 'novelight_community_report') return {data: true,error:null};
               if (name === 'novelight_community_my_notifications') return {data: [],error:null};
               return {data: [],error:null};
             },
@@ -179,8 +179,11 @@ test('community UI interactions use mocked data', async ({ page }) => {
   }));
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
 
-  page.once('dialog', (dialog) => dialog.accept('テスト理由'));
   await card.locator('.community-action', { hasText: '通報' }).click();
+  await expect(card.locator('.community-report-form')).toBeVisible();
+  await card.locator('.community-report-form textarea').fill('テスト理由');
+  await card.locator('.community-report-submit').click();
+  await expect(card.locator('.community-report-form')).toBeHidden();
   await expect(
     card.locator('.community-action', { hasText: '通報済み' })
   ).toBeDisabled();
