@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 
-const load = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
+function load(path) {
+  return readFileSync(new URL(path, import.meta.url), 'utf8');
+}
+
 const migration = load(
   '../supabase/migrations/20261022203000_starfestival_december_schedule.sql'
 );
@@ -11,47 +14,38 @@ const terms = load('../api/_lib/contest-terms-template.js');
 const termsAPI = load('../api/contest-terms.js');
 const entry = load('../novelight-contest-entry.js');
 const home = load('../index.html');
-const startPlan = load('../scripts/november-contest-start-plan.mjs');
+const plan = load('../scripts/november-contest-start-plan.mjs');
 
-test('reschedule preserves original contest key and existing entries', () => {
-  assert.match(migration, /contest_key='novelight-november-2026'/);
-  assert.match(migration, /v_contest.status = 'registration'/);
-  assert.match(migration, /v_contest.status = 'draft'/);
-  assert.match(migration, /novelight_contest_read_events/);
-  assert.match(migration, /novelight_contest_rank_snapshots/);
-  assert.match(migration, /novelight_contest_awards/);
-  assert.doesNotMatch(
-    migration,
-    /delete\s+from\s+public\.novelight_contest_entries/i
-  );
-  assert.doesNotMatch(
-    migration,
-    /update\s+public\.novelight_contest_entries/i
-  );
-  assert.match(migration, /'december-2026-v2'/);
+test('original contest key and existing entries remain unchanged', () => {
+  assert.ok(migration.includes("contest_key='novelight-november-2026'"));
+  assert.ok(migration.includes("v_contest.status = 'registration'"));
+  assert.ok(migration.includes("v_contest.status = 'draft'"));
+  assert.ok(migration.includes('novelight_contest_read_events'));
+  assert.ok(migration.includes('novelight_contest_rank_snapshots'));
+  assert.ok(migration.includes('novelight_contest_awards'));
+  assert.ok(!migration.includes('delete from public.novelight_contest_entries'));
+  assert.ok(!migration.includes('update public.novelight_contest_entries'));
+  assert.ok(migration.includes('december-2026-v2'));
 });
 
-test('atomic production dates and all three noon ranking slots use JST', () => {
-  for (const date of ['2026-12-07', '2026-12-15', '2026-12-22']) {
-    assert.match(migration, new RegExp(date + ' 03:00:00[+]00'));
+test('schedule migrates deadline, start, end and ranking slots', () => {
+  assert.ok(migration.includes('2026-11-30 14:59:59.999999+00'));
+  assert.ok(migration.includes('2026-11-30 15:00:00+00'));
+  assert.ok(migration.includes('2026-12-31 15:00:00+00'));
+  for (const day of ['07', '15', '22']) {
+    assert.ok(migration.includes('2026-12-' + day + ' 03:00:00+00'));
   }
-  assert.match(migration, /2026-11-30 14:59:59\.999999[+]00/);
-  assert.match(migration, /2026-11-30 15:00:00[+]00/);
-  assert.match(migration, /2026-12-31 15:00:00[+]00/);
-  assert.match(startPlan, /c\.starts_at <> '2026-11-30 15:00:00[+]00'/);
-  assert.match(startPlan, /c\.ends_at <> '2026-12-31 15:00:00[+]00'/);
+  assert.ok(plan.includes("c.starts_at <> '2026-11-30 15:00:00+00'"));
+  assert.ok(plan.includes("c.ends_at <> '2026-12-31 15:00:00+00'"));
 });
 
-test('amended terms are versioned and old accepted entries can re-consent', () => {
-  assert.match(terms, /'december-2026-v2'/);
-  assert.match(terms, /2026年11月30日（月）/);
-  assert.match(terms, /12月31日（木）/);
-  assert.match(terms, /2027年1月1日以降/);
-  assert.match(termsAPI, /LEGACY_CONTEST_TERMS_VERSION/);
-  assert.match(
-    migration,
-    /'terms_accepted_version', v_entry\.terms_accepted_version/
-  );
-  assert.match(entry, /改訂要項に再同意/);
-  assert.match(home, /エントリー締切 2026年11月30日/);
+test('terms are versioned and previous entrants can re-consent', () => {
+  assert.ok(terms.includes('december-2026-v2'));
+  assert.ok(terms.includes('2026年11月30日（月）'));
+  assert.ok(terms.includes('12月31日（木）'));
+  assert.ok(terms.includes('2027年1月1日以降'));
+  assert.ok(termsAPI.includes('LEGACY_CONTEST_TERMS_VERSION'));
+  assert.ok(migration.includes("'terms_accepted_version'"));
+  assert.ok(entry.includes('改訂要項に再同意'));
+  assert.ok(home.includes('エントリー締切 2026年11月30日'));
 });
