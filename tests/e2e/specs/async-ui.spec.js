@@ -8,3 +8,4 @@ import './mobile-synopsis-layout.js';
 import './contest-admin-review.js';
 import './community-plaza-ui.js';
 import './community-admin-ui.js';
+import './inquiry71-author-profile.js';
