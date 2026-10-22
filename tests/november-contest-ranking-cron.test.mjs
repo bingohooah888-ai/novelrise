@@ -54,7 +54,7 @@ test('cron is inert by default, even with the correct secret', async () => {
   const handler = createContestRankingPrepareHandler({
     supabase: client,
     env: { CRON_SECRET: 'genuine-secret' },
-    now: () => new Date('2026-11-07T03:00:00Z')
+    now: () => new Date('2026-12-07T03:00:00Z')
   });
   const response = res();
   await handler(
@@ -75,11 +75,11 @@ test('cron fails closed outside exactly three JST noon slots', async () => {
     NOVELIGHT_CONTEST_RANKING_AUTO_PREP_ENABLED: 'true'
   };
   for (const iso of [
-    '2026-11-06T03:00:00Z',
-    '2026-11-07T02:59:59Z',
-    '2026-11-07T03:15:00Z',
-    '2026-11-15T02:00:00Z',
-    '2026-11-23T03:00:00Z'
+    '2026-12-06T03:00:00Z',
+    '2026-12-07T02:59:59Z',
+    '2026-12-07T03:15:00Z',
+    '2026-12-15T02:00:00Z',
+    '2026-12-23T03:00:00Z'
   ]) {
     const handler = createContestRankingPrepareHandler({
       supabase: client,
@@ -107,7 +107,7 @@ test('cron never publishes, even in an approved private preparation window', asy
       CRON_SECRET: 'genuine-secret',
       NOVELIGHT_CONTEST_RANKING_AUTO_PREP_ENABLED: 'true'
     },
-    now: () => new Date('2026-11-15T03:04:00Z')
+    now: () => new Date('2026-12-15T03:04:00Z')
   });
   const response = res();
   await handler(
@@ -134,7 +134,7 @@ test('wrong secret is rejected before Supabase read', async () => {
       CRON_SECRET: 'real-secret',
       NOVELIGHT_CONTEST_RANKING_AUTO_PREP_ENABLED: 'true'
     },
-    now: () => new Date('2026-11-22T03:00:00Z')
+    now: () => new Date('2026-12-22T03:00:00Z')
   });
   const response = res();
   await handler(
