@@ -12,9 +12,9 @@ const CURRENT_BLOBS = {
   'curation-lists.html': '5c21090e36753d60fc4baa7e617c940abc19ff72',
   'light-seed-history.html': '49c5e4ab426e70750abdca070d09e3a3c29252ac',
   'author-notes.html': 'c6e28d122f323ce8544c5ffeb8596795f6d0ec22',
-  'index.html': '7cef83bbaa236c2a9a45ca80020395f75b943d77',
+  'index.html': 'fcef7b7c3e0392d9ccd82dbfec0fdd899fba509c',
   'tests/accessibility-baseline.test.mjs':
-    'cb72484530f211c56c335b2fe62dcc81e8d9b831'
+    'ff4d22ab2c3fb54d63f99d5ba069edc7ae647e86'
 };
 const REVIEWED_SMOKE = Object.freeze({
   path: 'tests/e2e/specs/smoke.spec.js',
@@ -48,8 +48,8 @@ function evidence() {
   };
 }
 
-test('only three reviewed integration blobs replace prior fingerprints', () => {
-  assert.equal(REVIEWED_COMMUNITY_FILES.length, 37);
+test('latest 39 reviewed files preserve pinned integration boundaries', () => {
+  assert.equal(REVIEWED_COMMUNITY_FILES.length, 39);
   for (const [path, sha] of Object.entries(CURRENT_BLOBS)) {
     const found = REVIEWED_COMMUNITY_FILES.find((x) => x.path === path);
     assert.ok(found);
@@ -58,7 +58,7 @@ test('only three reviewed integration blobs replace prior fingerprints', () => {
   }
   assert.equal(
     assertReviewedCommunityCandidate(evidence()).reviewedFileCount,
-    37
+    39
   );
 });
 
@@ -71,7 +71,7 @@ test('current Phase 1 and public-header smoke Git blob is pinned', () => {
   assert.equal(found.sha, REVIEWED_SMOKE.current);
   assert.equal(
     assertReviewedCommunityCandidate(evidence()).reviewedFileCount,
-    37
+    39
   );
   const retired = evidence();
   const oldFile = retired.compare.files.find(
