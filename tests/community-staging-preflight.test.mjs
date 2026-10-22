@@ -60,7 +60,10 @@ test('migration must leave the public database gate disabled', () => {
 const productionRef = 'fiepaguycecrredwrcwx';
 const stagingRef = 'wmlzjgvxgoyrovdhbqbg';
 const common = { version: '20261013235500', name: 'known_baseline' };
-const community = { version: '20261014052000', name: 'community_plaza_phase1' };
+const community = {
+  version: '20261014052000',
+  name: 'community_plaza_phase1'
+};
 const prodRecent = {
   version: '20261022010000',
   name: 'author_activity_publication_timestamps'
@@ -112,7 +115,8 @@ test('audit rejects wrong environment and incomplete snapshots', () => {
 
 test('audit rejects duplicated or malformed migration versions', () => {
   invalid({ stagingMigrations: [common, community, community] }, /repeated/u);
-  invalid({ productionMigrations: [{ version: 'main', name: 'bad' }] }, /malformed/u);
+  const malformed = [{ version: 'main', name: 'bad' }];
+  invalid({ productionMigrations: malformed }, /malformed/u);
   invalid({ productionMigrations: [] }, /missing or unbounded/u);
 });
 
@@ -136,5 +140,6 @@ test('matching ledgers still cannot authorize writes', () => {
   assert.equal(audit.stagingExecutionApproved, false);
   assert.equal(audit.canRunHostedAcceptance, false);
   assert.equal(audit.canSyncOrReset, false);
-  assert.ok(audit.blockers.includes('community already recorded in production'));
+  const productionGate = 'community already recorded in production';
+  assert.ok(audit.blockers.includes(productionGate));
 });
