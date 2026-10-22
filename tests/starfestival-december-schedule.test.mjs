@@ -48,5 +48,10 @@ test('terms are versioned and previous entrants can re-consent', () => {
   assert.ok(termsAPI.includes('LEGACY_CONTEST_TERMS_VERSION'));
   assert.ok(migration.includes("'terms_accepted_version'"));
   assert.ok(entry.includes('改訂要項に再同意'));
+  const section = migration.split(`if v_entry.status = 'entered'\n`)[1];
+  const reconsent = section?.split('end if;')[0] ?? '';
+  assert.ok(reconsent.includes('terms_accepted_at = v_now'));
+  assert.ok(reconsent.includes("'state', 'terms_updated'"));
+  assert.ok(!reconsent.includes('entered_at = v_now'));
   assert.ok(home.includes('エントリー締切 2026年11月30日'));
 });
