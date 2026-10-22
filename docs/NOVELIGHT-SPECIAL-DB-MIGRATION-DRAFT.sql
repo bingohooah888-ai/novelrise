@@ -191,6 +191,9 @@ begin
     pid := case when tg_op='DELETE' then old.id else new.id end;
     cid := null;
     operation_name := 'project.' || lower(tg_op);
+    if tg_op='UPDATE' and old.status is distinct from new.status then
+      operation_name := 'status.' || new.status;
+    end if;
   elsif tg_table_name = 'special_contents' then
     actor := case when tg_op='DELETE' then old.updated_by else new.updated_by end;
     pid := case when tg_op='DELETE' then old.project_id else new.project_id end;
@@ -216,6 +219,22 @@ begin
 end
 $;
 
+
+-- Freeze public slug after first publication (even direct service mutations).
+create or replace function public.special_guard_published_slug()
+returns trigger language plpgsql security invoker set search_path=''
+as $
+begin
+  if old.first_published_at is not null and new.slug is distinct from old.slug then
+    raise exception 'SPECIAL_PUBLISHED_SLUG_IMMUTABLE';
+  end if;
+  return new;
+end
+$;
+create trigger special_published_slug_lock
+before update on public.special_projects
+for each row execute function public.special_guard_published_slug();
+
 create trigger special_project_audit
 after insert or update or delete on public.special_projects
 for each row execute function public.special_audit_row();
@@ -238,6 +257,9 @@ create trigger special_audit_immutable before update or delete
 on public.special_change_log for each row
 execute function public.special_prevent_audit_mutation();
 
+revoke all on function public.special_guard_published_slug()
+  from public,anon,authenticated;
+grant execute on function public.special_guard_published_slug() to service_role;
 revoke all on function public.special_audit_row() from public,anon,authenticated;
 revoke all on function public.special_prevent_audit_mutation()
   from public,anon,authenticated;
