@@ -262,40 +262,50 @@ export function parseKakuyomuIndexHtml(html, root) {
   };
 }
 
+// Retry only transient Kakuyomu HTTP/network failures. The same guard applies
+// to the work TOC and every individual episode.
+async function fetchKakuyomuHtmlWithRetry(url) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await fetchHtml(url);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const temporary = /HTTP (?:429|500|502|503|504)\b/.test(message) ||
+        /fetch failed|socket hang up|network timeout|ETIMEDOUT|ECONNRESET|UND_ERR/i.test(message);
+      if (!temporary || attempt === 2) throw error;
+      await sleep(1500 * (attempt + 1));
+    }
+  }
+  throw new Error("Kakuyomu fetch retries exhausted.");
+}
+
 async function kakuyomuIndex(rawUrl) {
   const root = kakuyomuRoot(rawUrl);
   if (!root) throw new Error("Unsupported Kakuyomu URL.");
-  const { html } = await fetchHtml(root);
+  const { html } = await fetchKakuyomuHtmlWithRetry(root);
   return parseKakuyomuIndexHtml(html, root);
 }
 
 async function kakuyomuEpisode(url) {
-  let response;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      response = await fetchHtml(url);
-      break;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const temporary = /HTTP (?:429|500|502|503|504)\b/.test(message) ||
-        /fetch failed|socket hang up|network timeout/i.test(message);
-      if (!temporary || attempt === 2) throw error;
-      // Back off instead of hammering Kakuyomu after transient failures.
-      await sleep(1500 * (attempt + 1));
-    }
-  }
-  const { html, url: finalUrl } = response;
+  const { html, url: finalUrl } = await fetchKakuyomuHtmlWithRetry(url);
   const $ = cheerio.load(html);
   const title = clean($("h1").first().text()) || clean($("[itemprop=\"name\"]").first().text());
   let body = "";
   for (const selector of ["[itemprop=\"articleBody\"]", ".widget-episodeBody", ".episode-body", "article"]) {
-    body = clean($(selector).first().text());
+    const container = $(selector).first();
+    if (!container.length) continue;
+    // Kakuyomu ruby <rt> readings and <rp> fallback brackets are display aids,
+    // not additional story text. Keep <rb> base characters intact.
+    container.find("rt, rp").remove();
+    const paragraphs = container.find("p").toArray()
+      .map(node => clean($(node).text()))
+      .filter(Boolean);
+    body = paragraphs.length ? clean(paragraphs.join("\n")) : clean(container.text());
     if (body) break;
   }
   if (!body) throw new Error("Kakuyomu body not found: " + finalUrl);
   return { url: finalUrl || url, title, body };
 }
-
 
 function alphapolisRoot(rawUrl) {
   const u = new URL(rawUrl);

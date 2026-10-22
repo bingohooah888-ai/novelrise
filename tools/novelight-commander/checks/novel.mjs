@@ -200,3 +200,56 @@ test("Kakuyomu retries a temporary HTTP 503 and completes without lost episodes"
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("Kakuyomu retries the index request after a temporary 503", async () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 1, visibleLinks: 1 });
+  const originalFetch = globalThis.fetch;
+  let indexRequests = 0;
+  globalThis.fetch = async url => {
+    if (String(url) === root) {
+      indexRequests += 1;
+      if (indexRequests === 1) return new Response("temporary error", { status: 503 });
+      return new Response(html, { status: 200 });
+    }
+    if (String(url).startsWith(root + "/episodes/")) {
+      return new Response(
+        '<html><h1>第1話</h1><div class="widget-episodeBody"><p>本文です。</p></div></html>',
+        { status: 200 }
+      );
+    }
+    throw new Error("Unexpected fetch: " + url);
+  };
+  try {
+    const novel = await readNovel(root, { maxEpisodes: 1 });
+    assert.equal(indexRequests, 2);
+    assert.equal(novel.fetchedEpisodes, 1);
+    assert.equal(novel.complete, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Kakuyomu removes ruby readings and brackets while keeping base characters and paragraphs", async () => {
+  const { html, root } = kakuyomuFixture({ episodeCount: 1, visibleLinks: 1 });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async url => {
+    if (String(url) === root) return new Response(html, { status: 200 });
+    if (String(url).startsWith(root + "/episodes/")) {
+      return new Response(
+        '<html><h1>第1話</h1><div class="widget-episodeBody">' +
+        '<p><ruby><rb>仙台</rb><rp>（</rp><rt>せんだい</rt><rp>）</rp></ruby>さん。</p>' +
+        '<p class="blank"><br></p><p>五千円で会う。</p></div></html>',
+        { status: 200 }
+      );
+    }
+    throw new Error("Unexpected fetch: " + url);
+  };
+  try {
+    const novel = await readNovel(root, { maxEpisodes: 1 });
+    assert.equal(novel.complete, true);
+    assert.equal(novel.episodes[0].body, "仙台さん。\n五千円で会う。");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
