@@ -101,3 +101,12 @@
 .community-comment-form textarea{background:#081626;color:#fff;border:1px solid #5d5034;border-radius:7px;padding:9px;min-height:76px;resize:vertical;width:100%;font:inherit;font-size:.86rem;line-height:1.6;box-sizing:border-box}
 .community-comment-counter{flex:1;align-self:center;font-size:.78rem;color:#adb9c7}
 .community-comments-refresh{display:block;margin:8px 0;color:#e6bd6e}
+
+.community-comment-edited{display:inline-block;margin-left:8px;color:#a6b3c4;font-size:.75rem}
+.community-comment-edit{margin-top:8px;padding:10px;border:1px solid var(--community-line);border-radius:8px;display:flex;flex-wrap:wrap;gap:8px}
+.community-comment-edit[hidden]{display:none}
+.community-comment-edit textarea{flex-basis:100%;width:100%;min-height:70px;resize:vertical;background:#081626;color:#fff;border:1px solid #5d5034;border-radius:7px;padding:9px;font:inherit;box-sizing:border-box}
+
+.community-notice-filter{padding:5px 10px;border:1px solid #8c7649;border-radius:7px;background:#14283e;color:#f3dba8;font:inherit;font-size:.81rem;cursor:pointer}
+.community-notice-filter[aria-pressed="true"]{background:#3f5267}
+.community-notice-list li[hidden]{display:none}

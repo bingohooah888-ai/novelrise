@@ -294,7 +294,9 @@
       for (const comment of Array.isArray(data) ? data : []) {
         const c = el('div', 'community-comment');
         const author = el('strong', '', (comment.parent_comment_id ? '↳ ' : '') + (comment.display_name || 'ユーザー'));
-        c.append(author, el('span', '', comment.body || ''));
+        const commentText = el('span', '', comment.body || '');
+        c.append(author, commentText);
+        if (comment.edited_at) c.append(el('small','community-comment-edited','編集済み'));
         const replyButton = el('button','community-action','返信');
         replyButton.type='button';
         replyButton.addEventListener('click',()=>{
@@ -371,6 +373,68 @@
         reportForm.append(reason, send, cancel);
         c.append(reportComment, reportForm, reportFeedback);
         if (comment.is_mine === true) {
+          const editButton = el('button','community-action','編集');
+          editButton.type='button';
+          const editForm = el('form','community-comment-edit');
+          editForm.hidden = true;
+          const editText = el('textarea');
+          editText.value = String(comment.body || '');
+          editText.maxLength = 500;
+          editText.required = true;
+          editText.rows = 3;
+          editText.setAttribute('aria-label','コメントを編集');
+          const editSave = el('button','community-report-submit','保存');
+          editSave.type = 'submit';
+          const editCancel = el('button','community-action','キャンセル');
+          editCancel.type = 'button';
+          const editStatus = el('span','community-comment-feedback');
+          editStatus.setAttribute('role','status');
+          editStatus.hidden = true;
+          editCancel.addEventListener('click', () => {
+            editForm.hidden = true;
+            editText.value = commentText.textContent;
+            editStatus.hidden = true;
+            editButton.focus();
+          });
+          editButton.addEventListener('click', () => {
+            editForm.hidden = !editForm.hidden;
+            editStatus.hidden = true;
+            if (!editForm.hidden) editText.focus();
+          });
+          editForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            const body = editText.value.trim();
+            if (!body) {
+              editText.setCustomValidity('コメントを入力してください');
+              editText.reportValidity();
+              editText.setCustomValidity('');
+              return;
+            }
+            editSave.disabled = true;
+            editCancel.disabled = true;
+            try {
+              if (!await authed()) return requireLogin();
+              const updated = await rpc('novelight_community_edit_my_comment',{
+                p_comment_id:comment.id,p_body:body
+              });
+              if (updated !== true) throw new Error('Edit not accepted');
+              commentText.textContent = body;
+              if (!c.querySelector('.community-comment-edited')) {
+                c.append(el('small','community-comment-edited','編集済み'));
+              }
+              editForm.hidden = true;
+              editStatus.hidden = true;
+            } catch(error) {
+              console.warn('community comment edit failed',error);
+              editStatus.textContent = '編集できませんでした。しばらくして再度お試しください。';
+              editStatus.hidden = false;
+            } finally {
+              editSave.disabled = false;
+              editCancel.disabled = false;
+            }
+          });
+          editForm.append(editText,editSave,editCancel,editStatus);
+          c.append(editButton,editForm);
           const deleteButton = el('button', 'community-action', '自分のコメントを削除');
           deleteButton.type = 'button';
           deleteButton.addEventListener('click', async () => {

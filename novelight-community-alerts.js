@@ -14,7 +14,7 @@
     try {
       const auth = await client.auth.getSession();
       if (auth.error || !auth.data.session?.user) return;
-      const {data,error} = await client.rpc('novelight_community_my_notifications',{p_limit:10});
+      const {data,error} = await client.rpc('novelight_community_my_notifications',{p_limit:40});
       if (error) throw error;
       if (!Array.isArray(data) || !data.length) return;
 
@@ -24,18 +24,35 @@
       const allRead = item('button','表示中をすべて既読にする','community-notice-all-read');
       allRead.type = 'button';
       const toolbar = item('div',undefined,'community-notice-toolbar');
-      toolbar.append(summary,allRead);
+      const unreadOnly = item('button','未読のみ表示','community-notice-filter');
+      unreadOnly.type = 'button';
+      unreadOnly.setAttribute('aria-pressed','false');
+      toolbar.append(summary,unreadOnly,allRead);
       const list = item('ul',undefined,'community-notice-list');
       const feedback = item('p',undefined,'community-notice-feedback');
       feedback.setAttribute('role','status');
       feedback.hidden = true;
       let pending = false;
+      let showingUnreadOnly = false;
       const unread = new Map();
-
+      function syncFilter() {
+        for (const row of list.children) {
+          row.hidden = showingUnreadOnly && !row.classList.contains('community-notice-unread');
+        }
+      }
+      unreadOnly.addEventListener('click', () => {
+        showingUnreadOnly = !showingUnreadOnly;
+        unreadOnly.setAttribute('aria-pressed',String(showingUnreadOnly));
+        unreadOnly.textContent = showingUnreadOnly ? 'すべて表示' : '未読のみ表示';
+        syncFilter();
+      });
       function updateCount() {
         const remaining = unread.size;
-        summary.textContent = remaining ? '未読 ' + remaining + '件' : '表示中の通知は確認済みです';
+        summary.textContent = remaining
+          ? '最新40件中、未読 ' + remaining + '件'
+          : '表示中の通知は確認済みです';
         allRead.hidden = remaining === 0;
+        syncFilter();
       }
 
       async function markRead(ids) {

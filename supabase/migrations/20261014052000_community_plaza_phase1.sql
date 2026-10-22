@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.community_comments (
   body text NOT NULL CHECK (char_length(body) BETWEEN 1 AND 500),
   parent_comment_id uuid REFERENCES public.community_comments(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
+  edited_at timestamptz,
   deleted_at timestamptz,
   admin_hidden_at timestamptz,
   CONSTRAINT community_comments_key_len CHECK (length(post_key) BETWEEN 3 AND 150)
@@ -406,10 +407,10 @@ BEGIN
   SELECT coalesce(jsonb_agg(jsonb_build_object(
     'id',r.id,'body',r.body,'parent_comment_id',r.parent_comment_id,
     'display_name',r.display_name,'created_at',r.created_at,
-    'is_mine',r.user_id=v_uid
+    'edited_at',r.edited_at,'is_mine',r.user_id=v_uid
    ) ORDER BY r.created_at ASC),'[]'::jsonb)
    INTO v_output FROM (
-    SELECT c.id,c.user_id,c.body,c.parent_comment_id,p.display_name,c.created_at
+    SELECT c.id,c.user_id,c.body,c.parent_comment_id,p.display_name,c.created_at,c.edited_at
     FROM public.community_comments c
     JOIN public.profiles p ON p.id=c.user_id
     WHERE c.post_key=p_post_key AND c.deleted_at IS NULL AND c.admin_hidden_at IS NULL
@@ -503,6 +504,39 @@ REVOKE ALL ON FUNCTION public.novelight_community_post_comment(text,text,uuid) F
 GRANT EXECUTE ON FUNCTION public.novelight_community_post_comment(text,text,uuid) TO authenticated;
 
 -- Only a comment's original author can remove it; no scoring/reading writes.
+-- Only the original commenter may edit an extant visible comment.
+-- An edit never creates extra notifications or affects discovery metrics.
+CREATE OR REPLACE FUNCTION public.novelight_community_edit_my_comment(
+ p_comment_id uuid,p_body text
+)
+RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_user uuid := (SELECT auth.uid());
+ v_body text := btrim(coalesce(p_body,'')); v_updated integer;
+BEGIN
+ IF v_user IS NULL THEN RAISE EXCEPTION 'Login required' USING errcode='42501'; END IF;
+ IF p_comment_id IS NULL OR char_length(v_body) NOT BETWEEN 1 AND 500 THEN
+   RAISE EXCEPTION 'Invalid comment edit' USING errcode='22023';
+ END IF;
+ UPDATE public.community_comments c
+    SET body=v_body,edited_at=now()
+  WHERE c.id=p_comment_id AND c.user_id=v_user
+    AND c.deleted_at IS NULL AND c.admin_hidden_at IS NULL
+    AND c.body IS DISTINCT FROM v_body
+    AND (c.edited_at IS NULL OR c.edited_at<now()-interval '10 seconds')
+    AND public.novelight_community_interaction_allowed(c.post_key);
+ GET DIAGNOSTICS v_updated = ROW_COUNT;
+ IF v_updated<>1 THEN
+   RAISE EXCEPTION 'Edit unavailable or too frequent' USING errcode='42501';
+ END IF;
+ RETURN true;
+END
+$$;
+REVOKE ALL ON FUNCTION public.novelight_community_edit_my_comment(uuid,text)
+ FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.novelight_community_edit_my_comment(uuid,text)
+ TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.novelight_community_delete_my_comment(p_comment_id uuid)
 RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
 AS $$
