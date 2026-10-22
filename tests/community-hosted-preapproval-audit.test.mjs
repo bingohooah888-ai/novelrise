@@ -21,13 +21,17 @@ const ENV = {
     protected_branches: false,
     custom_branch_policies: true
   },
-  protection_rules: [{
-    type: 'required_reviewers',
-    reviewers: [{
-      type: 'User',
-      reviewer: { login: 'independent-reviewer' }
-    }]
-  }]
+  protection_rules: [
+    {
+      type: 'required_reviewers',
+      reviewers: [
+        {
+          type: 'User',
+          reviewer: { login: 'independent-reviewer' }
+        }
+      ]
+    }
+  ]
 };
 const CLEANUP = {
   ...ENV,
@@ -70,7 +74,8 @@ function harness(overrides = {}) {
     '/environments/community-hosted-cleanup/deployment-branch-policies?per_page=100':
       POLICY,
     '/actions/workflows/community-hosted-expiry-watchdog.yml': {
-      id: 123, state: 'active',
+      id: 123,
+      state: 'active',
       path: '.github/workflows/community-hosted-expiry-watchdog.yml'
     },
     '/actions/variables/NOVELIGHT_COMMUNITY_WATCHDOG_ENABLED': {
@@ -78,19 +83,27 @@ function harness(overrides = {}) {
       value: 'true'
     },
     '/actions/workflows/123/runs?event=schedule&branch=main&per_page=20': {
-      workflow_runs: [{
-        id: 456, event: 'schedule',
-        head_sha: MAIN, head_branch: 'main',
-        status: 'completed', conclusion: 'success',
-        created_at: '2026-10-23T00:10:00.000Z'
-      }]
+      workflow_runs: [
+        {
+          id: 456,
+          event: 'schedule',
+          head_sha: MAIN,
+          head_branch: 'main',
+          status: 'completed',
+          conclusion: 'success',
+          created_at: '2026-10-23T00:10:00.000Z'
+        }
+      ]
     },
     '/actions/runs/456/jobs?per_page=100': {
-      jobs: [{
-        name: 'cleanup',
-        status: 'completed', conclusion: 'success',
-        completed_at: '2026-10-23T00:11:00.000Z'
-      }]
+      jobs: [
+        {
+          name: 'cleanup',
+          status: 'completed',
+          conclusion: 'success',
+          completed_at: '2026-10-23T00:11:00.000Z'
+        }
+      ]
     },
     ...overrides
   };
@@ -101,9 +114,9 @@ function harness(overrides = {}) {
       assert.equal(options.method, 'GET');
       assert.equal(options.redirect, 'error');
       assert.equal(options.headers.Authorization, 'Bearer ' + TOKEN);
-      const path = new URL(url).pathname.replace(
-        '/repos/' + REPO, ''
-      ) + new URL(url).search;
+      const path =
+        new URL(url).pathname.replace('/repos/' + REPO, '') +
+        new URL(url).search;
       const value = routes[path];
       return value === undefined || value === null
         ? { status: 403, json: async () => ({}) }
@@ -131,25 +144,26 @@ test('all GitHub GET checks do not grant billable execution', async () => {
   assert.equal(result.checks.watchdogConfigured, true);
   assert.equal(result.checks.recentCleanupJob, true);
   assert.equal(result.checks.costGateClosed, true);
-  assert.deepEqual(
-    result.blockers, ['providerBillingAndIsolationUnverified']
-  );
+  assert.deepEqual(result.blockers, ['providerBillingAndIsolationUnverified']);
   assert.equal(result.mayClaim, false);
   assert.equal(result.mayCreateBranch, false);
   assert.equal(result.mayDeployPreview, false);
   assert.equal(result.mayRunBrowser, false);
   assert.equal(result.releaseAuthorized, false);
-  assert.ok(sample.requests.every((item) =>
-    item.url.startsWith('https://api.github.com/repos/' + REPO + '/')
-  ));
+  assert.ok(
+    sample.requests.every((item) =>
+      item.url.startsWith('https://api.github.com/repos/' + REPO + '/')
+    )
+  );
 });
 
-test('unreadable environment, disabled watchdog and open issue block', async () => {
+test('blocked by unreadable environment and disabled watchdog', async () => {
   const sample = harness({
     '/issues/188': { number: 188, state: 'open' },
     '/environments/community-hosted-isolated': null,
     '/actions/variables/NOVELIGHT_COMMUNITY_WATCHDOG_ENABLED': {
-      name: 'NOVELIGHT_COMMUNITY_WATCHDOG_ENABLED', value: 'false'
+      name: 'NOVELIGHT_COMMUNITY_WATCHDOG_ENABLED',
+      value: 'false'
     }
   });
   const result = await run(sample);
@@ -161,26 +175,34 @@ test('unreadable environment, disabled watchdog and open issue block', async () 
   assert.equal(result.stagingCostApproved, false);
 });
 
-test('unreviewed candidate blob and owner-only reviewers are rejected', async () => {
+test('reject changed blobs and nonindependent reviewers', async () => {
   const bad = REVIEWED_COMMUNITY_FILES.map(({ path, sha, status }) => ({
     filename: path, sha, status
   }));
   bad[0].sha = 'f'.repeat(40);
   const sample = harness({
     ['/compare/' + MAIN + '...' + FEATURE + '?per_page=250']: {
-      status: 'ahead', behind_by: 0, ahead_by: 1,
-      total_commits: 1, base_commit: { sha: MAIN },
-      commits: [{ sha: FEATURE }], files: bad
+      status: 'ahead',
+      behind_by: 0,
+      ahead_by: 1,
+      total_commits: 1,
+      base_commit: { sha: MAIN },
+      commits: [{ sha: FEATURE }],
+      files: bad
     },
     '/environments/community-hosted-isolated': {
       ...ENV,
-      protection_rules: [{
-        type: 'required_reviewers',
-        reviewers: [{
-          type: 'User',
-          reviewer: { login: 'bingohooah888-ai' }
-        }]
-      }]
+      protection_rules: [
+        {
+          type: 'required_reviewers',
+          reviewers: [
+            {
+              type: 'User',
+              reviewer: { login: 'bingohooah888-ai' }
+            }
+          ]
+        }
+      ]
     }
   });
   const result = await run(sample);
@@ -188,17 +210,18 @@ test('unreviewed candidate blob and owner-only reviewers are rejected', async ()
   assert.equal(result.checks.independentEnvironment, false);
 });
 
-test('invalid trusted input is refused before any network request', async () => {
+test('invalid trusted input prevents network requests', async () => {
   let requests = 0;
   await assert.rejects(
-    () => auditCommunityHostedNoCostReadiness({
-      expectedMainSha: 'wrong',
-      githubToken: TOKEN,
-      fetchImpl: async () => {
-        requests += 1;
-        throw Error('never call');
-      }
-    }),
+    () =>
+      auditCommunityHostedNoCostReadiness({
+        expectedMainSha: 'wrong',
+        githubToken: TOKEN,
+        fetchImpl: async () => {
+          requests += 1;
+          throw Error('never call');
+        }
+      }),
     /COMMUNITY_PREAPPROVAL_READ_DENIED/u
   );
   assert.equal(requests, 0);
