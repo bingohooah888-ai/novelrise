@@ -132,7 +132,7 @@ test('fresh authenticated snapshot only reads exact main/PR and full bounded led
   const state = await x.transport.loadLiveSnapshot();
   assert.equal(state.main.object.sha, SHA);
   assert.equal(state.liveIssue.state, 'open');
-  assert.equal(state.compare.files.length, 37);
+  assert.equal(state.compare.files.length, 39);
   assert.equal(state.ledgerPages.length, 1);
   assert.equal(state.ledgerPages[0][0].id, 123);
   assert.deepEqual(
