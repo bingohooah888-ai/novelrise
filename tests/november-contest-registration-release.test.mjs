@@ -17,17 +17,17 @@ function makeHarness() {
   const adoption = {
     operation: 'adopt-november-contest-terms',
     confirmation: 'CHAT_CONTEST_TERMS_ADOPTED',
-    termsVersion: 'november-2026-v1',
+    termsVersion: 'december-2026-v2',
     termsUrl: 'https://novelight.jp/contest-terms',
     termsSourceSha: TERMS
   };
   const approved = {
     version: 1,
-    operation: 'open-november-contest-registration',
+    operation: 'open-december-contest-registration',
     requestId: 'contest-regopen-unit-test-release',
     mainSha: MAIN,
     contestKey: 'novelight-november-2026',
-    termsVersion: 'november-2026-v1',
+    termsVersion: 'december-2026-v2',
     termsUrl: 'https://novelight.jp/contest-terms',
     termsSourceSha: TERMS,
     termsAdoptionCommentId: 10001,
@@ -129,7 +129,7 @@ function makeHarness() {
         mutations++;
         state.status = 'registration';
         state.public_visible = true;
-        state.terms_version = 'november-2026-v1';
+        state.terms_version = 'december-2026-v2';
         state.terms_url = 'https://novelight.jp/contest-terms';
         return [];
       }
@@ -226,7 +226,7 @@ test('malformed DB results fail closed', () => {
           {
             status: 'registration',
             public_visible: true,
-            terms_version: 'november-2026-v1',
+            terms_version: 'december-2026-v2',
             terms_url: 'https://novelight.jp/contest-terms',
             audit_count: 0
           }

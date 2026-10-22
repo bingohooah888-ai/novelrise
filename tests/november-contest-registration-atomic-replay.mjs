@@ -36,7 +36,7 @@ begin
    where contest_key = 'novelight-november-2026';
   if v_contest.status <> 'registration'
      or v_contest.public_visible is not true
-     or v_contest.terms_version <> 'november-2026-v1'
+     or v_contest.terms_version <> 'december-2026-v2'
      or v_contest.terms_url <> 'https://novelight.jp/contest-terms'
   then
     raise exception 'Disposable registration state mismatch';
