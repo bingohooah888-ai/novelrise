@@ -222,20 +222,74 @@
       });
     });
     actions.append(like,comment);
-    const report = el('button','community-action','通報');
-    report.type='button';
-    report.addEventListener('click', async()=>{
-      if (!await authed()) return requireLogin();
-      const reason=window.prompt('通報理由を入力してください（500文字以内）');
-      if (!reason?.trim()) return;
-      try {
-        await rpc('novelight_community_report',{p_post_key:row.post_key,p_reason:reason.trim().slice(0,500)});
-        report.textContent='通報済み';
-        report.disabled=true;
-      } catch(error){console.warn('community report failed',error);report.title='通報できませんでした';}
+    const report = el('button', 'community-action', '通報');
+    report.type = 'button';
+    report.setAttribute('aria-expanded', 'false');
+    const reportForm = el('form', 'community-report-form');
+    reportForm.id = article.id + '-report';
+    reportForm.hidden = true;
+    report.setAttribute('aria-controls', reportForm.id);
+    const reason = el('textarea');
+    reason.required = true;
+    reason.maxLength = 500;
+    reason.rows = 3;
+    reason.placeholder = '通報理由を入力（500文字以内）';
+    reason.setAttribute('aria-label', '通報理由');
+    const reportButtons = el('div', 'community-report-buttons');
+    const sendReport = el('button', 'community-report-submit', '通報を送信');
+    sendReport.type = 'submit';
+    const cancelReport = el('button', 'community-action', 'キャンセル');
+    cancelReport.type = 'button';
+    const reportStatus = el('p', 'community-report-status');
+    reportStatus.setAttribute('role', 'status');
+    reportStatus.hidden = true;
+    function closeReport() {
+      reportForm.hidden = true;
+      report.setAttribute('aria-expanded', 'false');
+      report.focus();
+    }
+    report.addEventListener('click', () => {
+      reportForm.hidden = !reportForm.hidden;
+      report.setAttribute('aria-expanded', String(!reportForm.hidden));
+      reportStatus.hidden = true;
+      if (!reportForm.hidden) reason.focus();
     });
+    cancelReport.addEventListener('click', closeReport);
+    reportForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const text = reason.value.trim();
+      if (!text) {
+        reason.setCustomValidity('通報理由を入力してください');
+        reason.reportValidity();
+        reason.setCustomValidity('');
+        return;
+      }
+      sendReport.disabled = true;
+      cancelReport.disabled = true;
+      try {
+        if (!await authed()) return requireLogin();
+        const accepted = await rpc('novelight_community_report', {
+          p_post_key: row.post_key, p_reason: text
+        });
+        if (accepted !== true) throw new Error('Report was not accepted');
+        report.textContent = '通報済み';
+        report.disabled = true;
+        reportStatus.textContent = '通報を受け付けました';
+        reportStatus.hidden = false;
+        closeReport();
+      } catch(error) {
+        console.warn('community report failed', error);
+        reportStatus.textContent = '送信できませんでした。時間をおいて再度お試しください。';
+        reportStatus.hidden = false;
+      } finally {
+        sendReport.disabled = false;
+        cancelReport.disabled = false;
+      }
+    });
+    reportButtons.append(sendReport, cancelReport);
+    reportForm.append(reason, reportButtons, reportStatus);
     actions.append(report);
-    article.append(actions,commentArea);
+    article.append(actions, commentArea, reportForm);
     return article;
   }
   async function load(reset=true) {
