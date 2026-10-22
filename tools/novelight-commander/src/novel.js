@@ -252,7 +252,7 @@ export function parseKakuyomuIndexHtml(html, root) {
       ", discovered " + episodes.length + "."
     );
   }
-  if (!work && expectedCount == null) {
+  if (expectedCount == null) {
     throw new Error("Kakuyomu episode count cannot be verified; refusing a partial read.");
   }
 
