@@ -85,6 +85,38 @@ jobs:
           if [[ "$result" != 0 ]]; then
             echo "vercel_logs_cli_error_kind=$(grep -Eio '(403|401|forbidden|unauthorized|permission denied|unrecognized option|unknown option|missing scope|not found|rate limit)' /tmp/nl-logs-error.txt | head -1 || true)"
           fi
+      - name: Filter production request logs for X-card resource paths
+        if: steps.scope.outputs.usable == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for query in 'welcome.html' 'novelight-card-20261022.png' 'Twitterbot'; do
+            echo "--- search_class=$([[ "$query" == 'welcome.html' ]] && echo 'share_page' || ([[ "$query" == 'Twitterbot' ]] && echo 'bot_string' || echo 'card_png')) ---"
+            set +e
+            /tmp/nl-vercel-cli/node_modules/.bin/vercel logs --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_TEAM_ID" --environment production --since 24h --limit 250 --query "$query" --json > /tmp/nl-search.jsonl 2> /tmp/nl-search.err
+            code=$?
+            set -e
+            echo "query_exit=$code"
+            python3 - <<'PY'
+          import json
+          from collections import Counter
+          lines=open('/tmp/nl-search.jsonl',errors='replace').read().splitlines()
+          ev=[]
+          for line in lines:
+            try:
+              x=json.loads(line)
+              if isinstance(x,dict): ev.append(x)
+              elif isinstance(x,list): ev.extend(z for z in x if isinstance(z,dict))
+            except ValueError: pass
+          print('request_matches=',len(ev))
+          print('status_counts=',dict(Counter(str(x.get('responseStatusCode','unknown')) for x in ev)))
+          print('path_classes=',dict(Counter('welcome' if '/welcome.html' in str(x.get('requestPath','')) else ('card_png' if '/assets/ogp/novelight-card-20261022.png' in str(x.get('requestPath','')) else 'other') for x in ev)))
+          print('date_bounds=',(min((str(x.get('timestamp','')) for x in ev),default=''),max((str(x.get('timestamp','')) for x in ev),default='')))
+          PY
+            if [[ "$code" != 0 ]]; then
+              echo "query_error_kind=$(grep -Eio '(403|401|forbidden|unauthorized|permission denied|unrecognized option|unknown option|bad request|not found)' /tmp/nl-search.err | head -1 || true)"
+            fi
+          done
       - name: Query read-only firewall bot aggregate
         if: steps.scope.outputs.usable == 'true'
         shell: bash
