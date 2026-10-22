@@ -1,14 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
+import { projectIsVisible } from './_lib/special-core.js';
 
 const SITE_ORIGIN = 'https://novelight.jp';
 const PAGE_SIZE = 1000;
 const SITEMAP_CACHE = 'public, s-maxage=900, stale-while-revalidate=86400';
-const VALID_TYPES = new Set(['core', 'novels', 'episodes', 'authors']);
+const VALID_TYPES = new Set(['core', 'novels', 'episodes', 'authors', 'special']);
 const CORE_PATHS = [
   '/',
   '/search.html',
   '/ranking.html',
   '/pricing.html',
+  '/special.html',
   '/beta-authors'
 ];
 
@@ -59,6 +61,36 @@ async function fetchRows(supabase, table, columns) {
 
 async function pathsForType(supabase, type) {
   if (type === 'core') return CORE_PATHS;
+  if (type === 'special') {
+    const projects = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await supabase.from('special_projects')
+        .select('*').eq('status','published').order('id',{ascending:true})
+        .range(from,from+PAGE_SIZE-1);
+      if (error) {
+        if (['42P01','PGRST205'].includes(error.code)) return [];
+        throw error;
+      }
+      projects.push(...(data || []));
+      if (!data || data.length < PAGE_SIZE) break;
+    }
+    const paths = [];
+    for (let offset = 0; offset < projects.length; offset += 100) {
+      const slice = projects.slice(offset,offset+100);
+      const {data:rights,error} = await supabase.from('special_permissions')
+        .select('project_id,kind,content_id,approved_digest,confirmed_at,valid_from,expires_at,revoked_at')
+        .in('project_id',slice.map(p=>p.id));
+      if (error) throw error;
+      const byId = new Map();
+      for (const right of rights || [])
+        byId.set(right.project_id,[...(byId.get(right.project_id)||[]),right]);
+      const now = new Date();
+      for (const project of slice)
+        if (projectIsVisible(project,byId.get(project.id)||[],now))
+          paths.push('/special/'+encodeURIComponent(project.slug));
+    }
+    return paths;
+  }
 
   if (type === 'novels') {
     const novels = await fetchRows(supabase, 'novels', 'id');
@@ -99,7 +131,7 @@ export function createSitemapHandler({ supabase }) {
       const xml = buildSitemapDocument(paths);
 
       res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-      res.setHeader('Cache-Control', SITEMAP_CACHE);
+      res.setHeader('Cache-Control', type === 'special' ? 'no-store, max-age=0' : SITEMAP_CACHE);
       return res.status(200).send(req.method === 'HEAD' ? '' : xml);
     } catch (error) {
       console.error('Sitemap generation failed', {
