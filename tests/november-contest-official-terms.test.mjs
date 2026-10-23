@@ -66,6 +66,21 @@ test('rendered terms show the exact consent version saved by the server', () => 
   assert.match(contestTermsTemplate, /応募要項の版ID/);
 });
 
+test('contest terms link to the contest above and below', () => {
+  const cta = '<a href="/contest">星灯祭のコンテストページへ →</a>';
+  const occurrences = contestTermsTemplate.split(cta).length - 1;
+  assert.equal(occurrences, 2);
+  const first = contestTermsTemplate.indexOf(cta);
+  const last = contestTermsTemplate.lastIndexOf(cta);
+  assert.ok(first < contestTermsTemplate.indexOf('<h2>1. 応募・開催期間</h2>'));
+  assert.ok(last > contestTermsTemplate.indexOf('主催者へのお問い合わせ'));
+  const route = vercel.rewrites.find((item) => item.source === '/contest');
+  assert.equal(route?.destination, '/api/contest-page');
+  const css = readFileSync(new URL('../legal.css', import.meta.url), 'utf8');
+  assert.match(css, /main\.legal-container \.contest-terms-nav a \{/);
+  assert.match(css, /\.contest-terms-nav a:focus-visible/);
+});
+
 test('payout retries on failure without duplicate payment', () => {
   const fragments = [
     '振込ができなかった場合',
