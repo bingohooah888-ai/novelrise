@@ -60,7 +60,7 @@ test('timeline and board share one page', () => {
   assert.match(html, /id="communityTimeline"/);
   assert.match(html, /id="communityBoardInfo"/);
   assert.match(html, /location\.hash==='#board'/);
-  assert.match(html, /タイムラインとあわせて公開/);
+  assert.match(html, /両機能が完成してから同時に公開/);
   assert.match(html, /id="communityPending"/);
   assert.match(html, /if \(!flags\.timeline && !flags\.board\)/);
 });
