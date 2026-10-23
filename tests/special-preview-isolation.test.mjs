@@ -52,7 +52,7 @@ for (const [label, handlerFactory] of [
 test('SPECIAL ADMIN browser never invokes Production auth before Preview target resolution', () => {
   const src = readFileSync(new URL('../admin-special.js', import.meta.url), 'utf8');
   assert.match(src, /await fetch\('\/api\/staging-browser-config'/);
-  assert.match(src, /config\.supabaseUrl !== STAGING_URL/);
+  assert.match(src, /config\?\.supabaseUrl\s*!==\s*STAGING_URL/);
   assert.match(src, /initializeAdminClient\(\)[\s\S]*\.then\(\(\) => load\(\)\)/);
   assert.doesNotMatch(src, /const sb\s*=\s*supabase\.createClient\(/);
 });
