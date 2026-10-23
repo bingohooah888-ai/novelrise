@@ -118,7 +118,8 @@
       const lead = document.getElementById('homeLeadVisual');
       const leadLink = document.getElementById('homeLeadLink');
       const leadVisual = homeLeadVisuals[currentLeadVisual];
-      lead.dataset.src = leadVisual.src;
+      // The campaign is immediately visible while the festival registration gate is checked.
+      lead.src = leadVisual.src;
       lead.alt = leadVisual.alt;
       if (leadVisual.href) {
         leadLink.href = leadVisual.href;
@@ -157,6 +158,9 @@
       const previousButton = carousel.querySelector('[data-carousel-prev]');
       const nextButton = carousel.querySelector('[data-carousel-next]');
       const dots = [...carousel.querySelectorAll('[data-carousel-dot]')];
+      dots.forEach((dot, index) => {
+        dot.setAttribute('aria-label', `${index + 1}枚目を表示`);
+      });
       const originals = [...track.querySelectorAll('.home-promo-slide')];
       if (originals.length < 2) return;
 
