@@ -197,13 +197,13 @@ jobs:
           gh api -X POST "repos/$GITHUB_REPOSITORY/issues/2457/comments" \
             -f body="NOVELIGHT_COMMUNITY_JOINT_RUNTIME_EXECUTED $receipt" >/dev/null
 
-      - name: Emergency fail-closed when post-mutation checks fail
-        if: failure() && steps.mutate.outcome == 'success' && steps.admission.outputs.action == 'enable'
+      - name: Emergency fail-closed after any claimed enable failure
+        if: failure() && steps.claim.outcome == 'success' && steps.admission.outputs.action == 'enable'
         shell: bash
         run: |
           set -euo pipefail
           sql="UPDATE public.community_runtime_control SET public_enabled=false,
-            activated_at=null,activated_by=null WHERE singleton=true AND public_enabled=true
+            activated_at=null,activated_by=null WHERE singleton=true
             RETURNING public_enabled"
           jq -cn --arg query "$sql" '{query:$query}' > /tmp/joint-fail-closed-request.json
           curl --fail --silent --show-error --max-time 30 \
