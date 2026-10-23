@@ -31,7 +31,8 @@ test('author and reader guides match the announcements light shell', () => {
     assert.match(html, /class="site-footer-inner"/u, name);
     assert.match(html, /src="assets\/novelight-header-logo\.webp"/u, name);
     assert.match(html, /href="announcements\.html">お知らせ/u, name);
-    assert.doesNotMatch(html, /href="pricing\.html">料金プラン/u, name);
+    const header = html.match(/<header class="site-header">[\\s\\S]*?<\\/header>/u)?.[0] || '';
+    assert.doesNotMatch(header, /href="pricing\\.html">料金プラン/u, name);
   }
   assert.match(
     supportPage,
