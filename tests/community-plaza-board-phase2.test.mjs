@@ -123,3 +123,30 @@ test('opt-in author and reader surfaces respect the joint gate', () => {
     assert.ok(html.includes('NOVELIGHT_COMMUNITY_FLAGS?.board===true'));
   }
 });
+
+test('CLI-generated migration and guarded rollback match reviewed SQL', () => {
+  const migration = read(
+    'supabase/migrations/20261023055617_community_plaza_phase2_board.sql'
+  );
+  assert.equal(migration, read('docs/community/phase2-board-schema-review.sql'));
+  const rollback = read(
+    'supabase/rollback/20261023055617_community_plaza_phase2_board_rollback.sql'
+  );
+  assert.equal(
+    rollback,
+    read('docs/community/phase2-board-rollback-review.sql')
+  );
+  assert.match(
+    rollback,
+    /Board-related records exist; refuse destructive rollback/
+  );
+  assert.doesNotMatch(rollback, /DROP TABLE .* CASCADE/);
+  const pre = read(
+    'supabase/checks/20261023055617_community_plaza_phase2_precheck.sql'
+  );
+  const post = read(
+    'supabase/checks/20261023055617_community_plaza_phase2_postcheck.sql'
+  );
+  assert.match(pre, /community_runtime_control/);
+  assert.match(post, /community_board_threads/);
+});
