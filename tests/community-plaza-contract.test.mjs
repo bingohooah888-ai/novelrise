@@ -9,10 +9,10 @@ function read(path) {
 const COMMUNITY_SQL =
   'supabase/migrations/' + '20261014052000_community_plaza_phase1.sql';
 
-test('community is hidden before approval', () => {
+test('community flags are paired for joint release', () => {
   const flags = read('novelight-client.js');
-  assert.match(flags, /timeline:\s*false/);
-  assert.match(flags, /board:\s*false/);
+  assert.match(flags, /timeline:\s*true/);
+  assert.match(flags, /board:\s*true/);
   const config = read('novelight-community-config.js');
   assert.match(config, /timeline:false, board:false/);
 });
