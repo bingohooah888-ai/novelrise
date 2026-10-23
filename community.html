@@ -17,6 +17,9 @@
  <div class="community-inner">
   <h1 id="communityPageHeading">交流広場</h1>
   <p class="community-intro">作品の更新や近況を通じて、まだ知らない物語と出会おう。</p>
+  <section id="communityJointReleaseHold" aria-label="交流広場公開準備" hidden>
+   <p class="community-state" role="status">タイムラインと掲示板は、セットでの公開に向けて準備中です。</p>
+  </section>
   <nav class="community-tabs" aria-label="交流広場の機能">
     <a class="community-tab" href="community.html" aria-current="page">タイムライン</a>
     <a class="community-tab" href="#board" id="communityBoardTab">掲示板</a>
@@ -33,7 +36,7 @@
    <div class="community-pagination"><button id="communityLoadMore" class="community-refresh" type="button" hidden>さらに見る</button></div>
   </section>
   <section id="communityBoardInfo" aria-label="掲示板" hidden>
-    <p class="community-state">掲示板はタイムライン公開後、利用状況を確認してから公開します。現在は準備中です。</p>
+    <p class="community-state">掲示板はタイムラインと同時公開の準備中です。</p>
   </section>
  </div>
 </section>
@@ -46,6 +49,16 @@
 <script src="novelight-community-alerts.js" defer></script>
 <script>
 (() => {
+ const flags=window.NOVELIGHT_COMMUNITY_FLAGS||{};
+ // Never display a partial exchange plaza while the two features are held.
+ if(!flags.timeline||!flags.board){
+  document.getElementById("communityJointReleaseHold").hidden=false;
+  document.querySelector(".community-tabs").hidden=true;
+  document.getElementById("communityTimeline").hidden=true;
+  document.getElementById("communityBoardInfo").hidden=true;
+  document.getElementById("communityNotifications").hidden=true;
+  return;
+ }
  const boardTab=document.getElementById('communityBoardTab');
  const timeline=document.getElementById('communityTimeline');
  const board=document.getElementById('communityBoardInfo');
