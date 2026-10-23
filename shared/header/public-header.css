@@ -57,6 +57,25 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu > nav {
     z-index: 60;
   }
+  /* Fixed slots prevent the menu from jumping after sign-in removes signup. */
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+    display: grid !important;
+    grid-template-columns: 44px 132px 138px 46px !important;
+    justify-content: end !important;
+    gap: 8px !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .header-search {
+    grid-column: 1 !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .login-action {
+    grid-column: 2 !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .signup-action {
+    grid-column: 3 !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .mobile-menu {
+    grid-column: 4 !important;
+  }
   /* Middle widths use the mobile navigation instead of squeezing account and
      owner shortcuts into the same compact action row. Those destinations remain
      available in the menu, while the logo/search/login/menu coordinates stay fixed. */
