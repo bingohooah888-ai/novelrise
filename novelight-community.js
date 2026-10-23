@@ -832,7 +832,19 @@
     // Keep the live feedback outside the form so it remains visible to
     // readers and assistive technology after closeReport() hides the form.
     reportForm.append(reason, reportButtons);
-    actions.append(report);
+    if (isHome) {
+      actions.append(report);
+    } else {
+      // Plaza: move the unchanged report control beneath the post timestamp.
+      const date = article.querySelector('.community-date');
+      if (date) {
+        const meta = el('div', 'community-post-meta');
+        date.replaceWith(meta);
+        meta.append(date, report);
+      } else {
+        actions.append(report);
+      }
+    }
     article.append(actions, commentArea, reportForm, reportStatus);
     return article;
   }

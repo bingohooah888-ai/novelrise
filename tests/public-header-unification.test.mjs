@@ -32,7 +32,7 @@ test('public header keeps requested navigation order', () => {
   const start = client.indexOf('header.innerHTML =');
   const end = client.indexOf('return true;', start);
   const markup = client.slice(start, end);
-  const labels = ['作品を探す', 'ランキング', 'お知らせ', '料金プラン'];
+  const labels = ['作品を探す', 'ランキング', '交流', 'お知らせ'];
   let previous = -1;
   for (const label of labels) {
     const index = markup.indexOf(label);
@@ -127,7 +127,7 @@ test('non-isolated legal pages keep the full public navigation', () => {
     assert.match(header, />作品を探す</u);
     assert.doesNotMatch(header, />特徴</u);
     assert.match(header, />お知らせ</u);
-    assert.match(header, />料金プラン</u);
+    assert.doesNotMatch(header, />料金プラン</u);
     assert.match(header, />ランキング</u);
     assert.match(header, />ログイン</u);
     assert.match(header, />会員登録</u);

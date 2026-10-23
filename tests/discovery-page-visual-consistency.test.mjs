@@ -53,7 +53,7 @@ test('discovery pages use the unified public header composition', () => {
     assert.doesNotMatch(header, /aria-current="page"/u);
     assert.doesNotMatch(header, />ホーム</u);
 
-    const labels = ['作品を探す', 'ランキング', 'お知らせ', '料金プラン'];
+    const labels = ['作品を探す', 'ランキング', '交流', 'お知らせ'];
     let previous = -1;
     for (const label of labels) {
       const index = header.indexOf(label);
