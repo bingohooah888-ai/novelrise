@@ -9,7 +9,8 @@ import {
   findPublishedSpecial
 } from '../novelight-special-data.js';
 
-const read = (path) => readFileSync(join(import.meta.dirname, '..', path), 'utf8');
+const read = (path) =>
+  readFileSync(join(import.meta.dirname, '..', path), 'utf8');
 const example = Object.freeze({
   slug: 'writer-feature',
   status: 'published',
@@ -47,21 +48,30 @@ test('all rendered links reject executable schemes and preserve native reader ga
   assert.equal(safeSpecialLink('data:text/html,<script>'), null);
   assert.equal(safeSpecialLink('//malicious.example/novel.html'), null);
   assert.equal(safeSpecialLink('http://example.com'), null);
-  assert.equal(safeSpecialLink('https://example.com/official'), 'https://example.com/official');
+  assert.equal(
+    safeSpecialLink('https://example.com/official'),
+    'https://example.com/official'
+  );
 });
 
 test('SPECIAL pages are static: no ADMIN or Supabase API and basic keyboard navigation exists', () => {
   const pages = [read('special.html'), read('special-detail.html')];
   for (const html of pages) {
     assert.match(html, /novelight-accessibility\.css/);
-    assert.match(html, /<a class="skip-link" href="#main-content">本文へスキップ<\/a>/);
+    assert.match(
+      html,
+      /<a class="skip-link" href="#main-content">本文へスキップ<\/a>/
+    );
     assert.match(html, /<main id="main-content" tabindex="-1"/);
     assert.match(html, /src="novelight-special\.js"/);
     assert.doesNotMatch(html, /\/api\/|supabase|admin-special/i);
   }
   const renderer = read('novelight-special.js');
   assert.match(renderer, /textContent/);
-  assert.doesNotMatch(renderer, /innerHTML|insertAdjacentHTML|createClient|fetch\(/);
+  assert.doesNotMatch(
+    renderer,
+    /innerHTML|insertAdjacentHTML|createClient|fetch\(/
+  );
   assert.match(read('index.html'), /href="special\.html"/);
 });
 
