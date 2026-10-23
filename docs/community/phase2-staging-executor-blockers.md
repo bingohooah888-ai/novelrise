@@ -109,3 +109,12 @@ Supabase/Vercel Secret、Issue書込、ワークフロートリガーを付け�
 Phase 2の`novelight_community_board_save`はDBの`community_runtime_control.public_enabled`がOFFだと書き込みを拒否する。Hosted受入テストでは**本番と共用StagingのgateはOFFのまま**、独立して生成されデータを持たないSupabase branchの実体IDだけを検証した上で、schema導入後にそのbranchのテストゲートを短時間ONにする必要がある。ブラウザ試験を終えたらまずテストゲートをOFFに戻し、その後Preview/branchを消去する。例外が発生してもOFF操作と削除と独立watchdogによる回復を試み、read-backが欠けるなら成功にしない。
 
 この要件は`community-phase2-hosted-execution-contract.mjs`に順序契約として追加済み。実際のDB RPC、Secret、実行Grantはまだ接続していない。
+
+
+## 三役割テスト前の隔離Auth・管理者許可リスト（2026-10-23）
+
+独立runnerは隔離DBへ3種類の**合成テスト専用**Auth利用者（作者・読者・運営）を作り、Production/共有Stagingからユーザーやパスワードを複製しない。正式掲示板RPCの作者プロフィール作成後10分の制限を維持し、データを偽装して時間制限を回避しない。
+
+Preview側の`NOVELIGHT_ADMIN_EMAILS`はテスト運営の1件だけとし、`/api/admin-community`のサービスロールは隔離DB用に固定する。PreviewのSupabase公開キー／サーバーSecretの参照先と、Stripeのtest modeを確認する。これらが確認されるまでは隔離DBをONにせず、保護Previewを起動しない。
+
+`scripts/community-phase2-synthetic-fixture-readiness.mjs`は実行時証跡の**形・整合性**のみ検証する。提出されたJSONを本物のプロバイダー証跡と認証する機能は持たない。実際のプロビジョン／環境接続／課金Grantは未実装であり、なおStaging実行は不可。

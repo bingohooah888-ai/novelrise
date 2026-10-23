@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as lifecycle from '../scripts/community-phase2-hosted-execution-contract.mjs';
+import * as readiness from '../scripts/community-phase2-synthetic-fixture-readiness.mjs';
 
 const mainSha = 'f6028c77915ffce5f01149cd374d03a3c81dca8f';
 const candidateSha = 'feb1d7728e4d8cef917df52355d873807eba5cc9';
@@ -103,6 +104,37 @@ function harness({
       productionExcluded: true,
       publicEnabled: false
     }),
+    provisionIsolatedSyntheticAccounts: wrap('provision_users', {
+      status: 'SYNTHETIC_ACCOUNTS_PROVISIONED'
+    }),
+    verifyIsolatedSyntheticAccounts: wrap('verify_users', {
+      ...fields,
+      projectRef,
+      databaseUrl: 'https://' + projectRef + '.supabase.co',
+      productionExcluded: true,
+      accounts: {
+        author: {
+          id: '11111111-1111-4111-8111-111111111111',
+          email: 'phase2-author@example.test',
+          createdAt: '2026-10-23T00:00:00.000Z'
+        },
+        reader: {
+          id: '22222222-2222-4222-8222-222222222222',
+          email: 'phase2-reader@example.test'
+        },
+        admin: {
+          id: '33333333-3333-4333-8333-333333333333',
+          email: 'phase2-admin@example.test'
+        }
+      },
+      previewAdminEmailAllowlist: ['phase2-admin@example.test'],
+      adminApiUsesIsolatedServiceRole: true,
+      previewEnvironment: 'preview',
+      stripeMode: 'test',
+      isolatedPublishableKeyVerified: true,
+      isolatedServerSecretVerified: true,
+      hostedCredentialsScopedToBranch: true
+    }),
     enableIsolatedCommunityForProof: wrap('enable_isolated_gate', {
       ...fields,
       status: 'ISOLATED_COMMUNITY_TEST_GATE_ON',
@@ -173,7 +205,8 @@ test('success path executes exact one-use ordering and cleanup', async () => {
     'THREE_ROLE_PHASE2_VERIFIED_AND_ISOLATED_RESOURCES_REMOVED');
   assert.deepEqual(h.names, [
     'boundary', 'claim', 'grant', 'watch', 'create_branch', 'apply_schema',
-    'enable_isolated_gate', 'deploy_preview', 'verify_preview', 'browser',
+    'provision_users', 'verify_users', 'enable_isolated_gate',
+    'deploy_preview', 'verify_preview', 'browser',
     'disable_isolated_gate', 'remove_preview', 'remove_branch',
     'check_cleanup', 'consume'
   ]);
@@ -237,6 +270,8 @@ test('missing adapter fails before even inspecting the approval ledger', async (
 test('the database test gate opens only in the isolated branch and is closed before cleanup', async () => {
   const h = harness();
   await lifecycle.executePhase2JointHostedContract(h);
+  assert.ok(h.names.indexOf('apply_schema') < h.names.indexOf('provision_users'));
+  assert.ok(h.names.indexOf('verify_users') < h.names.indexOf('enable_isolated_gate'));
   assert.ok(h.names.indexOf('apply_schema') < h.names.indexOf('enable_isolated_gate'));
   assert.ok(h.names.indexOf('enable_isolated_gate') < h.names.indexOf('browser'));
   assert.ok(h.names.indexOf('browser') < h.names.indexOf('disable_isolated_gate'));
@@ -249,5 +284,76 @@ test('missing isolated gate activation cannot access Preview', async () => {
   await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
     /execution_or_cleanup_incomplete/);
   assert.ok(!h.names.includes('deploy_preview'));
+  assert.ok(h.names.includes('disable_isolated_gate'));
+});
+
+// prettier-ignore
+test('author under ten minutes and missing admin allowlist block acceptance', () => {
+  const run = {
+    runId: '120123',
+    candidateSha
+  };
+  const branch = { ref: projectRef };
+  const base = {
+    runId: '120123',
+    candidateSha,
+    projectRef,
+    databaseUrl: 'https://' + projectRef + '.supabase.co',
+    productionExcluded: true,
+    accounts: {
+      author: {
+        id: '11111111-1111-4111-8111-111111111111',
+        email: 'a@example.test',
+        createdAt: '2026-10-23T12:00:00.000Z'
+      },
+      reader: {
+        id: '22222222-2222-4222-8222-222222222222',
+        email: 'r@example.test'
+      },
+      admin: {
+        id: '33333333-3333-4333-8333-333333333333',
+        email: 'z@example.test'
+      }
+    },
+    previewAdminEmailAllowlist: [],
+    adminApiUsesIsolatedServiceRole: true,
+    previewEnvironment: 'preview',
+    stripeMode: 'test',
+    isolatedPublishableKeyVerified: true,
+    isolatedServerSecretVerified: true,
+    hostedCredentialsScopedToBranch: true
+  };
+  const actual = readiness.inspectPhase2SyntheticFixtureReadiness({
+    run, branch, evidence: base,
+    nowMs: Date.parse('2026-10-23T12:05:00.000Z')
+  });
+  assert.equal(actual.status, 'PHASE2_HOSTED_FIXTURE_NOT_READY');
+  assert.ok(actual.errors.includes('AUTHOR_ACCOUNT_AGE_NOT_VERIFIED'));
+  assert.ok(actual.errors.includes('SYNTHETIC_ADMIN_ALLOWLIST_NOT_ISOLATED'));
+  assert.equal(actual.authorized, false);
+});
+
+// prettier-ignore
+test('production or shared staging cannot pass synthetic fixture checks', () => {
+  const run = { runId: '120123', candidateSha };
+  for (const ref of [
+    'fiepaguycecrredwrcwx',
+    'wmlzjgvxgoyrovdhbqbg'
+  ]) {
+    const actual = readiness.inspectPhase2SyntheticFixtureReadiness({
+      run, branch: { ref }, evidence: {},
+      nowMs: Date.now()
+    });
+    assert.ok(actual.errors.includes('ISOLATED_BRANCH_UNVERIFIED'));
+    assert.equal(actual.mayRunBrowser, false);
+  }
+});
+
+// prettier-ignore
+test('a fixture read failure never activates the isolated DB gate', async () => {
+  const h = harness({ failStep: 'verify_users' });
+  await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
+    /execution_or_cleanup_incomplete/);
+  assert.ok(!h.names.includes('enable_isolated_gate'));
   assert.ok(h.names.includes('disable_isolated_gate'));
 });

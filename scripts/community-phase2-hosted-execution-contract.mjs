@@ -1,3 +1,5 @@
+import { inspectPhase2SyntheticFixtureReadiness } from './community-phase2-synthetic-fixture-readiness.mjs';
+
 // Phase 2 joint-hosted execution ordering contract.
 // This is a dependency-injected library, not an executable workflow or grant.
 // It has no credentials, HTTP client, filesystem side-effects or auto-run path.
@@ -18,6 +20,8 @@ export const REQUIRED_PHASE2_HOSTED_OPERATIONS = Object.freeze([
   'createIsolatedBranch',
   'reconcileIsolatedBranch',
   'applyPinnedPhase2Schema',
+  'provisionIsolatedSyntheticAccounts',
+  'verifyIsolatedSyntheticAccounts',
   'enableIsolatedCommunityForProof',
   'createProtectedPreview',
   'verifyIsolatedPreviewBinding',
@@ -208,6 +212,23 @@ export async function executePhase2JointHostedContract({ run, operations }) {
       db.productionExcluded !== true ||
       db.publicEnabled !== false
     ) stop('isolated_schema_not_proven');
+    // Provision only synthetic isolated identities, then require the real
+    // author profile to age naturally past the DB anti-spam time limit.
+    // Never bypass that rule or copy Production accounts into Staging.
+    await operations.provisionIsolatedSyntheticAccounts(run, branch, grant);
+    const fixtures = await operations.verifyIsolatedSyntheticAccounts(
+      run, branch, grant
+    );
+    const fixtureVerdict = inspectPhase2SyntheticFixtureReadiness({
+      run,
+      branch,
+      evidence: fixtures,
+      nowMs: Date.now()
+    });
+    if (fixtureVerdict.status !==
+      'PHASE2_HOSTED_FIXTURE_READINESS_ASSERTED') {
+      stop('isolated_synthetic_accounts_not_ready');
+    }
     // Only this fresh data-less branch may be opened for the isolated write
     // proof. Production and shared staging are excluded by checkBranch().
     const active = await operations.enableIsolatedCommunityForProof(
