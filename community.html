@@ -112,7 +112,10 @@
    event.preventDefault();
    setTab(false);
  });
- if(location.hash==='#board') setTab(true);
+ if(location.hash.startsWith('#board-thread-')) {
+   window.NOVELIGHT_BOARD_INITIAL_THREAD=location.hash.slice('#board-thread-'.length);
+   setTab(true);
+ } else if(location.hash==='#board') setTab(true);
 })();
 </script>
 </body></html>
