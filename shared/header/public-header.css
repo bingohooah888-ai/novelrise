@@ -30,3 +30,31 @@ html header.site-header {
 html body.novelight-theme.novelight-public-header-page:not(.novelight-public-dark) header.site-header {
   height: auto !important;
 }
+
+/* Five-link navigation cannot wrap; a menu replaces it before desktop collision. */
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+}
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
+  text-decoration: none !important;
+}
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+  flex-wrap: nowrap !important;
+}
+@media (min-width: 901px) and (max-width: 1510px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
+    display: none !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+    display: block !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu > nav {
+    z-index: 60;
+  }
+}
