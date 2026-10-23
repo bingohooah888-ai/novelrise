@@ -44,8 +44,14 @@ test('homepage promotional carousel uses approved artwork and avoids fake scale 
   assert.match(home, /時刻による自動切替は行わない/u);
   assert.match(home, /class="home-promo-track"/u);
   assert.doesNotMatch(home, /02_hero_mobile_900x1600\.png/u);
-  assert.match(home, /src="assets\/home\/06_starfestival_hero_1600x900\.webp"/u);
-  assert.doesNotMatch(home, /src="assets\/home\/01_hero_pc_2560x1280\.png"/u);
+  assert.match(
+    home,
+    /src="assets\/home\/06_starfestival_hero_1600x900\.webp"/u
+  );
+  assert.doesNotMatch(
+    home,
+    /src="assets\/home\/01_hero_pc_2560x1280\.png"/u
+  );
   assert.match(
     home,
     /data-src="assets\/home\/03_author_features_1600x900\.png"[^>]*loading="lazy"/u
@@ -57,9 +63,15 @@ test('homepage promotional carousel uses approved artwork and avoids fake scale 
 
   const festival = home.indexOf('id="novelightContestHeroSlide"');
   const campaign = home.indexOf('id="homeLeadVisual"');
-  const author = home.indexOf('data-src="assets/home/03_author_features_1600x900.png"');
-  const reader = home.indexOf('data-src="assets/home/04_reader_promo_1600x900.png"');
-  assert.ok(festival >= 0 && campaign > festival && author > campaign && reader > author);
+  const author = home.indexOf(
+    'data-src="assets/home/03_author_features_1600x900.png"'
+  );
+  const reader = home.indexOf(
+    'data-src="assets/home/04_reader_promo_1600x900.png"'
+  );
+  assert.ok(
+    festival >= 0 && campaign > festival && author > campaign && reader > author
+  );
 
   assert.match(home, /class="recommend-ribbon">おすすめ<\/div>/u);
   assert.match(css, /--public-gold:/u);
