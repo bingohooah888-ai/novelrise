@@ -59,3 +59,17 @@ Phase 1/2順序付き適用、匿名／作者／読者／運営検証、
 保持する一方、技術的に付与できないStaging実行許可を捏造しない。
 
 **この文書とテストの作成では外部環境・main・Productionに変更なし。**
+
+## 追加：不変のPhase 2レビュー済みBlob境界
+
+承認前read-only gateはPR #2457のgit commit/treeを独立取得し、
+正式migration、rollback、pre/postcheck、RLS試験、サイト共通フラグ、
+掲示板JS、隔離hosted 3役割受入テストと専用bootstrapの
+**9ファイルすべてを完全一致するgit blob SHA**で拘束する。
+treeがtruncated、git commitとtreeが不一致、ファイル欠落・差替え、
+またはPR HEADが更新された場合は拒否する。
+
+workflow_dispatchの結果はIssue #188が閉じたままでは
+**failed gate**として終了する。承認がないのに「成功」扱いにはしない。
+実行Grantは正しいblobでも一切付与せず、実装中のコードを読み取り
+監査対象とするためだけの機構である。

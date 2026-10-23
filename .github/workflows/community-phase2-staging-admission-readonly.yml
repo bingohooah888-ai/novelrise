@@ -40,11 +40,16 @@ jobs:
           head="$(jq -er '.head.sha' /tmp/phase2-pr.json)"
           test "$main" = "$GITHUB_SHA"
           gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/phase2-compare.json
+          gh api "repos/$GITHUB_REPOSITORY/git/commits/$head" > /tmp/phase2-commit.json
+          tree="$(jq -er '.tree.sha' /tmp/phase2-commit.json)"
+          gh api "repos/$GITHUB_REPOSITORY/git/trees/$tree?recursive=1" > /tmp/phase2-tree.json
           node scripts/community-phase2-staging-admission-readonly.mjs inspect \
             /tmp/phase2-main.json /tmp/phase2-pr.json /tmp/phase2-compare.json \
             /tmp/phase2-preview-ledger.json /tmp/phase2-staging-ledger.json \
+            /tmp/phase2-commit.json /tmp/phase2-tree.json \
             "$GITHUB_SHA" "$GITHUB_ACTOR" > /tmp/phase2-verdict.json
-          jq -e '.stagingCostApproved == false and
+          jq -e '.status == "PHASE2_READINESS_FACTS_PASSED_NO_EXECUTION" and
+            .stagingCostApproved == false and
             .ownerOneUseClaimAuthorized == false and .mayCreatePreview == false and
             .mayCreateBranch == false and .mayRunHostedBrowser == false and
             .mayChangeProduction == false and .publicReleaseAuthorized == false' \

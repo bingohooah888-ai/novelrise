@@ -1,6 +1,7 @@
 // Independent, read-only Phase 2 staging admission inventory.
 // It DOES NOT authorize a CLAIM, Preview, Supabase branch or hosted write.
 import { readFileSync } from 'node:fs';
+import { inspectPhase2ReviewedBlobs } from './community-phase2-staging-reviewed-blobs.mjs';
 
 const OWNER = 'bingohooah888-ai';
 const REPO = OWNER + '/novelrise';
@@ -10,7 +11,7 @@ const SHA = /^[0-9a-f]{40}$/u;
 
 export function inspectPhase2StagingAdmission({
   repository, actor, checkedOutSha, main, feature, compare, previewLedger,
-  stagingLedger
+  stagingLedger, featureCommit, featureTree
 }) {
   const reasons = [];
   const reject = (code, condition) => {
@@ -58,6 +59,13 @@ export function inspectPhase2StagingAdmission({
       compare?.commits?.at(-1)?.sha !== feature?.head?.sha
   );
 
+  const reviewed = inspectPhase2ReviewedBlobs({
+    feature,
+    featureCommit,
+    featureTree
+  });
+  if (!reviewed.valid) reasons.push(...reviewed.reasons);
+
   // A positive read-only inventory is NEVER executable cost authorization.
   return Object.freeze({
     status: reasons.length === 0
@@ -83,9 +91,9 @@ export function inspectPhase2StagingAdmission({
 if (process.argv[2] === 'inspect') {
   try {
     const args = process.argv.slice(3);
-    if (args.length !== 7) throw new Error('invalid invocation');
+    if (args.length !== 9) throw new Error('invalid invocation');
     const [mainPath, featurePath, comparePath, previewPath, stagingPath,
-      checkoutSha, actor] = args;
+      commitPath, treePath, checkoutSha, actor] = args;
     const json = (path) => JSON.parse(readFileSync(path, 'utf8'));
     const result = inspectPhase2StagingAdmission({
       repository: process.env.GITHUB_REPOSITORY,
@@ -95,7 +103,9 @@ if (process.argv[2] === 'inspect') {
       feature: json(featurePath),
       compare: json(comparePath),
       previewLedger: json(previewPath),
-      stagingLedger: json(stagingPath)
+      stagingLedger: json(stagingPath),
+      featureCommit: json(commitPath),
+      featureTree: json(treePath)
     });
     process.stdout.write(JSON.stringify(result) + '\n');
   } catch {

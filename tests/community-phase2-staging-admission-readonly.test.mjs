@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as admission from '../scripts/community-phase2-staging-admission-readonly.mjs';
+import * as reviewed from '../scripts/community-phase2-staging-reviewed-blobs.mjs';
 
 const MAIN_SHA = 'f6028c77915ffce5f01149cd374d03a3c81dca8f';
 const FEATURE_SHA = 'feb1d7728e4d8cef917df52355d873807eba5cc9';
@@ -22,6 +23,17 @@ function facts() {
         ref: 'feat/community-plaza-board-phase2-20261023',
         repo: { full_name: 'bingohooah888-ai/novelrise' }
       }
+    },
+    featureCommit: {
+      sha: FEATURE_SHA,
+      tree: { sha: 'a'.repeat(40) }
+    },
+    featureTree: {
+      sha: 'a'.repeat(40),
+      truncated: false,
+      tree: Object.entries(reviewed.REVIEWED_PHASE2_BLOBS).map(
+        ([path, sha]) => ({ path, sha, type: 'blob', mode: '100644' })
+      )
     },
     compare: {
       behind_by: 0,
@@ -104,4 +116,36 @@ test('a forged candidate repository fails closed', () => {
   input.feature.head.repo.full_name = 'attacker/novelrise';
   const actual = admission.inspectPhase2StagingAdmission(input);
   assert.ok(actual.reasons.includes('WRONG_OR_MISSING_PHASE2_PR'));
+});
+
+// prettier-ignore
+test('an unreviewed board migration blob is rejected without a write grant', () => {
+  const input = facts();
+  input.featureTree.tree[0].sha = 'b'.repeat(40);
+  const result = admission.inspectPhase2StagingAdmission(input);
+  assert.equal(result.status, 'PHASE2_STAGING_ADMISSION_BLOCKED');
+  assert.ok(result.reasons.some((reason) =>
+    reason.startsWith('UNREVIEWED_PHASE2_BLOB_')));
+  assert.equal(result.mayRunHostedBrowser, false);
+});
+
+// prettier-ignore
+test('truncated or unbound feature tree fails closed', () => {
+  const input = facts();
+  input.featureTree.truncated = true;
+  input.featureTree.sha = 'b'.repeat(40);
+  const result = admission.inspectPhase2StagingAdmission(input);
+  assert.ok(result.reasons.includes('FEATURE_TREE_TRUNCATED_OR_MISSING'));
+  assert.ok(result.reasons.includes('FEATURE_COMMIT_TREE_NOT_VERIFIED'));
+});
+
+// prettier-ignore
+test('missing isolated three-role acceptance script is rejected', () => {
+  const input = facts();
+  input.featureTree.tree = input.featureTree.tree.filter(
+    (item) => item.path !== 'tests/e2e/staging/community-hosted-auth-write.spec.js'
+  );
+  const result = admission.inspectPhase2StagingAdmission(input);
+  assert.ok(result.reasons.some((reason) =>
+    reason.includes('community-hosted-auth-write.spec.js')));
 });
