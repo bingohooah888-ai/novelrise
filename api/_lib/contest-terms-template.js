@@ -15,7 +15,7 @@ export const contestTermsTemplate = String.raw`<!DOCTYPE html>
 <body>
   <main id="main-content" class="legal-container">
     <h1>NOVELIGHT 第1回 星灯祭 応募要項</h1>
-    <p>この応募要項の版ID：<strong>${CONTEST_TERMS_VERSION_CANDIDATE}</strong></p>
+    <p>応募要項（2026年12月開催・改訂版）</p>
     <p>主催：NOVELIGHT。読者が物語を読み進めた実績によって作品を評価する小説コンテストです。</p>
     <nav class="contest-terms-nav" aria-label="星灯祭コンテストページへの移動">
       <a href="/contest">星灯祭のコンテストページへ →</a>
