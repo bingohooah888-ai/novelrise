@@ -50,8 +50,14 @@ test('Home promo loops manually and advances automatically', () => {
     /track\.addEventListener\('pointerup', startAutoplay/u
   );
   assert.match(homeHtml, /prefers-reduced-motion: reduce/u);
-  assert.match(homeHtml, /src="assets\/home\/06_starfestival_hero_1600x900\.webp"/u);
-  assert.doesNotMatch(homeHtml, /data-src="assets\/home\/01_hero_pc_2560x1280\.png"/u);
+  assert.match(
+    homeHtml,
+    /src="assets\/home\/06_starfestival_hero_1600x900\.webp"/u
+  );
+  assert.doesNotMatch(
+    homeHtml,
+    /data-src="assets\/home\/01_hero_pc_2560x1280\.png"/u
+  );
   assert.match(homeHtml, /fetchpriority="low"/u);
   assert.match(homeHtml, /const hydrateSlide = index =>/u);
   assert.match(
