@@ -183,7 +183,7 @@ body:is(
     .novelight-page-author,
     .novelight-page-novel,
     .novelight-page-episode
-  ) button {
+  ) button:not(.mobile-menu):not(.nav-scrim) {
   min-height: 44px;
   border: 1px solid var(--novelight-border);
   border-radius: 9px;
@@ -208,7 +208,7 @@ body:is(
     .novelight-page-author,
     .novelight-page-novel,
     .novelight-page-episode
-  ) button:hover:not(:disabled) {
+  ) button:not(.mobile-menu):not(.nav-scrim):hover:not(:disabled) {
   border-color: var(--novelight-gold);
   background: #fff9eb;
 }
