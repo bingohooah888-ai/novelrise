@@ -523,6 +523,7 @@
     const viewerOwnsNovel = typeof isOwner === 'function' && isOwner();
     const target = viewerOwnsNovel ? null : continueTarget(rows, readProgress(id));
     const grid = node('div', 'nl-work-detail-grid');
+    grid.id = 'novelightWorkDetailGrid';
     header.insertAdjacentElement('beforebegin', grid);
     const left = node('aside', 'nl-work-detail-left');
     const cover = node('div', 'nl-work-detail-cover');
