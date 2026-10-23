@@ -255,5 +255,12 @@
     void loadList(true);
   }
   byId('communityBoardTab').addEventListener('click', activateBoard);
-  if (location.hash === '#board') activateBoard();
+  const deepLink = window.NOVELIGHT_BOARD_INITIAL_THREAD;
+  if (UUID.test(deepLink || '')) {
+    firstBoardOpen = true;
+    void (async () => {
+      await loadList(true);
+      await openThread(deepLink);
+    })();
+  } else if (location.hash === '#board') activateBoard();
 })();
