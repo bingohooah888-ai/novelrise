@@ -135,7 +135,7 @@
       const contestSlide = document.getElementById('novelightContestHeroSlide');
       if (contestSlide && Date.now() > Date.parse('2026-11-30T23:59:00+09:00')) {
         contestSlide.remove();
-        carousel.querySelector('.home-promo-dot:last-child')?.remove();
+        carousel.querySelector('.home-promo-dot:first-child')?.remove();
       }
       const track = carousel.querySelector('.home-promo-track');
       const previousButton = carousel.querySelector('[data-carousel-prev]');
