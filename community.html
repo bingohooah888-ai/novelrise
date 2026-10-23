@@ -93,12 +93,12 @@
  if (!flags.timeline || !flags.board) return;
  document.getElementById('communityPending').hidden=true;
  document.getElementById('communityTabs').hidden=false;
- function setTab(showingBoard){
+ function setTab(showingBoard,preserveLocation=false){
    board.hidden=!showingBoard;
    timeline.hidden=showingBoard;
    tabs.forEach(tab=>tab.removeAttribute('aria-current'));
    tabs[showingBoard?1:0].setAttribute('aria-current','page');
-   history.replaceState(null,'',showingBoard?'community.html#board':'community.html');
+   if(!preserveLocation) history.replaceState(null,'',showingBoard?'community.html#board':'community.html');
  }
  boardTab.addEventListener('click',event=>{
    event.preventDefault();
@@ -110,9 +110,9 @@
  });
  if(location.hash.startsWith('#board-thread-')) {
    window.NOVELIGHT_BOARD_INITIAL_THREAD=location.hash.slice('#board-thread-'.length);
-   setTab(true);
- } else if(location.hash==='#board') setTab(true);
- else setTab(false);
+   setTab(true,true);
+ } else if(location.hash==='#board') setTab(true,true);
+ else setTab(false,true);
 })();
 </script>
 </body></html>
