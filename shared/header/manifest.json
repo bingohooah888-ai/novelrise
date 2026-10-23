@@ -4,6 +4,7 @@
     "index.html",
     "search.html",
     "ranking.html",
+    "community.html",
     "recommended.html",
     "new-arrivals.html",
     "light-seed.html",
@@ -30,9 +31,6 @@
     "api/seo/templates/episode.html"
   ],
   "overrides": {
-    "pricing.html": {
-      "active": "pricing.html"
-    },
     "announcements.html": {
       "active": "announcements.html",
       "logoLabel": "NOVELIGHT ホーム",
@@ -164,5 +162,7 @@
     "standaloneAuthor": [
       "interaction-settings.html"
     ]
-  }
+  },
+  "defaultPublicPageTheme": "ivory",
+  "publicPageThemeExceptions": {}
 }

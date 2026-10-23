@@ -18,7 +18,7 @@
     "preflight:e2e": "npm --prefix tests/e2e test",
     "preflight:full": "npm run preflight:fast && npm run preflight:db && npm run preflight:e2e",
     "header:sync": "node scripts/sync-public-header.mjs --write",
-    "header:check": "node scripts/sync-public-header.mjs --check",
+    "header:check": "node scripts/sync-public-header.mjs --check && node scripts/check-public-page-standards.mjs",
     "header:watch": "node scripts/sync-public-header.mjs --watch"
   },
   "engines": {

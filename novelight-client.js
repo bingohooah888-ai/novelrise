@@ -6,6 +6,13 @@
     timeline: true,
     board: true
   });
+  // Keep static public navigation behind the existing joint release gate.
+  // This runs before first paint so an inactive plaza never flashes a link.
+  document.documentElement.classList.toggle(
+    'novelight-community-released',
+    window.NOVELIGHT_COMMUNITY_FLAGS.timeline &&
+      window.NOVELIGHT_COMMUNITY_FLAGS.board
+  );
   const VISITOR_KEY = 'novelight_visitor_token';
   const TRAFFIC_KEY = 'novelight_first_touch';
   const TOUCH_SESSION_KEY = 'novelight_touch_recorded';
@@ -303,7 +310,6 @@
     if (!header) return false;
 
     const discoverCurrent = publicHeaderCurrent(slug, 'discover');
-    const pricingCurrent = publicHeaderCurrent(slug, 'pricing');
     const announcementsCurrent = publicHeaderCurrent(slug, 'announcements');
     const rankingCurrent = publicHeaderCurrent(slug, 'ranking');
     const communityCurrent = publicHeaderCurrent(slug, 'community');
@@ -326,8 +332,8 @@
       const currentLinks = [
         ['search.html', discoverCurrent],
         ['ranking.html', rankingCurrent],
-        ['announcements.html', announcementsCurrent],
-        ['pricing.html', pricingCurrent]
+        ['community.html', communityCurrent],
+        ['announcements.html', announcementsCurrent]
       ];
       header.querySelectorAll('.site-nav a, .mobile-menu nav a').forEach((link) => {
         const current = currentLinks.find(([href]) => link.getAttribute('href') === href);
@@ -355,9 +361,8 @@
       '<nav class="site-nav desktop-nav" aria-label="メインナビ">' +
       `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
-      ((window.NOVELIGHT_COMMUNITY_FLAGS.timeline && window.NOVELIGHT_COMMUNITY_FLAGS.board) ? `<a href="community.html"${communityCurrent}>交流</a>` : '') +
+      `<a href="community.html"${communityCurrent}>交流</a>` +
       `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
-      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       '</nav>' +
       '<div class="header-actions">' +
       '<a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>' +
@@ -366,9 +371,8 @@
       '<details class="mobile-menu"><summary aria-label="メニューを開く">☰</summary><nav aria-label="モバイルナビ">' +
       `<a href="search.html"${discoverCurrent}>作品を探す</a>` +
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
-      ((window.NOVELIGHT_COMMUNITY_FLAGS.timeline && window.NOVELIGHT_COMMUNITY_FLAGS.board) ? `<a href="community.html"${communityCurrent}>交流</a>` : '') +
+      `<a href="community.html"${communityCurrent}>交流</a>` +
       `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
-      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       `<a class="mobile-login-action" href="login.html"${loginCurrent}>ログイン</a>` +
       `<a class="mobile-signup-action" href="signup.html"${signupCurrent}>会員登録</a>` +
       '</nav></details>' +

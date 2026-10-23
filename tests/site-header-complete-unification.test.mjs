@@ -20,10 +20,11 @@ test('no root HTML page exposes the retired Features header link', () => {
   assert.doesNotMatch(client, /index\.html#features/u);
 });
 
-test('public headers use the four requested navigation links', () => {
-  const labels = ['作品を探す', 'ランキング', 'お知らせ', '料金プラン'];
+test('public headers use the four shared navigation links', () => {
+  const labels = ['作品を探す', 'ランキング', '交流', 'お知らせ'];
   let audited = 0;
   for (const page of htmlFiles) {
+    if (page === 'scout-lv10-campaign.html') continue; // documented custom campaign header
     const header = read(page).match(HEADER_PATTERN)?.[0] || '';
     if (!header.includes('class="site-nav desktop-nav"')) continue;
     audited += 1;
@@ -66,7 +67,7 @@ test('static public navigation does not silently lose its header', () => {
     assert.match(header, /class="header-inner public-header-inner"/u, page);
     assert.match(header, /href="index\.html"/u, page);
     assert.match(header, /href="search\.html"/u, page);
-    assert.match(header, /href="pricing\.html"/u, page);
+    assert.doesNotMatch(header, /href="pricing\.html"/u, page);
     assert.match(header, /href="ranking\.html"/u, page);
     assert.match(source, /href="novelight-header-light\.css"/u, page);
   }

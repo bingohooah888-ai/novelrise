@@ -1,0 +1,232 @@
+/* The plaza alone adopts the ivory discovery-page language.
+   The dark community teaser on Home remains unchanged. */
+body.novelight-page-community,
+body.novelight-page-community .community-page {
+  background: #f7f4ed !important;
+  color: #352719;
+}
+body.novelight-page-community .community-page {
+  min-height: 70vh;
+  padding: 42px 0 76px;
+  font-size: 17px;
+  line-height: 1.75;
+}
+body.novelight-page-community .community-page h1 {
+  margin: 0 0 10px;
+  color: #302214;
+  font-size: clamp(32px, 3.5vw, 44px);
+}
+body.novelight-page-community .community-page .community-intro {
+  color: #5d4b36;
+  font-size: 18px;
+  line-height: 1.75;
+}
+body.novelight-page-community .community-page :is(h2, h3) { color: #382718; }
+body.novelight-page-community .community-tabs { gap: 12px; margin: 28px 0 34px; }
+body.novelight-page-community .community-tab {
+  padding: 12px 20px;
+  background: #fffdf8;
+  border-color: #bf9a60;
+  color: #513817;
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+}
+body.novelight-page-community .community-tab[aria-current=page] {
+  background: #d2a555;
+  color: #261904;
+  border-color: #94621d;
+}
+body.novelight-page-community .community-filters button {
+  padding: 10px 16px;
+  border-color: #ad8852;
+  background: #fffdf8;
+  color: #513718;
+  font-size: 16px;
+}
+body.novelight-page-community .community-filters button[aria-pressed=true] { background: #ead2a5; }
+body.novelight-page-community :is(.community-card, #communityNotifications, .board-compose, .board-detail, .board-thread-card, .board-reply) {
+  background: #fffdf8;
+  color: #352719;
+  border: 1px solid #d8c4a1;
+  box-shadow: 0 4px 16px rgba(65,46,22,.05);
+}
+body.novelight-page-community .community-card { padding: 20px; }
+body.novelight-page-community .community-person { font-size: 16px; }
+body.novelight-page-community .community-person a { color: #453017; }
+body.novelight-page-community .community-avatar { background: #e4c389; color: #281907; }
+body.novelight-page-community .community-date { color: #6c5741; font-size: 14px; }
+body.novelight-page-community .community-type { color: #815217; font-size: 15px; }
+body.novelight-page-community .community-card-title { color: #372619; font-size: 19px; }
+body.novelight-page-community .community-card-body { color: #433729; font-size: 17px; line-height: 1.75; }
+body.novelight-page-community .community-link {
+  background: #f6eddc;
+  border: 1px solid #e1cfad;
+  color: #453018;
+  font-size: 16px;
+}
+body.novelight-page-community :is(.community-actions, .community-comment-panel, .community-report-form) { border-color: #e4d4b7; }
+body.novelight-page-community :is(.community-expand, .community-action, .community-button, .community-more, .community-links a, .community-follow-open, .community-comments-older, .community-comments-refresh, .community-share-url, .community-comment-context) {
+  color: #805017;
+  font-size: 15px;
+}
+body.novelight-page-community :is(.community-comment, .community-comment-body, .community-comment-tip, .community-comment-feedback, .community-share-status, .community-like-status, .community-comment-share-status) {
+  color: #4b3c2e;
+  font-size: 16px;
+}
+body.novelight-page-community :is(.community-comment strong, .community-reply-target) { color: #704817; }
+body.novelight-page-community :is(.community-comment-time, .community-comment-edited, .community-comment-context-missing, .community-comment-counter) {
+  color: #6c5844;
+  font-size: 14px;
+}
+body.novelight-page-community :is(.community-state, .community-filter-status, .community-report-status, .community-follow-status, .community-notice-feedback) {
+  color: #5a4730;
+  font-size: 16px;
+}
+body.novelight-page-community .community-state { background: #fffdf8; border-color: #dcc7a3; }
+body.novelight-page-community :is(.community-follow-panel, .community-comment-report) {
+  background: #faf3e7;
+  border-color: #dcc7a3;
+}
+body.novelight-page-community :is(.community-follow-choice, .community-notice-count, .community-notice-list li, .board-heading p, .board-meta) {
+  color: #65513a;
+  font-size: 15px;
+}
+body.novelight-page-community :is(.community-notice-unread, .community-notice-read) {
+  background: #f7e9cf;
+  opacity: 1;
+}
+body.novelight-page-community .community-notice-list a { color: #765017; }
+body.novelight-page-community :is(.community-notice-mark, .community-notice-all-read, .community-notice-filter, .community-follow-toggle, .community-comment-form .community-action) {
+  background: #f6ead5;
+  color: #553914;
+  border-color: #ba975d;
+  font-size: 15px;
+}
+body.novelight-page-community :is(.community-comment-form input, .community-comment-form textarea, .community-comment-report textarea, .community-report-form textarea, .community-comment-edit textarea, .board-compose input:not([type=checkbox]), .board-compose textarea, .board-compose select, .board-filter-label select, .board-reply-form textarea) {
+  background: #fff;
+  color: #30251a;
+  border: 1px solid #ad9775;
+  border-radius: 8px;
+  font-size: 17px;
+}
+body.novelight-page-community .community-page .community-refresh,
+body.novelight-page-community .community-comment-form button,
+body.novelight-page-community .community-report-submit,
+body.novelight-page-community #communityBoardInfo .community-refresh {
+  background: #c99945;
+  border: 1px solid #a87521;
+  color: #261904;
+  font-size: 16px;
+}
+body.novelight-page-community .board-heading h2 { font-size: 25px; }
+body.novelight-page-community :is(.board-compose label, .board-filter-label, .board-reply-form label, .board-detail-body) {
+  color: #3c3023;
+  font-size: 17px;
+}
+body.novelight-page-community .board-secondary {
+  background: #f9f0df;
+  color: #654217;
+  border-color: #ba9256;
+  font-size: 16px;
+}
+body.novelight-page-community .board-thread-card h3 { color: #352414; font-size: 20px; }
+body.novelight-page-community .board-thread-card p { color: #493b2c; font-size: 17px; }
+body.novelight-page-community .board-category { color: #83551a; font-size: 15px; }
+body.novelight-page-community .board-reply p { color: #453627; font-size: 17px; }
+body.novelight-page-community .board-reply .board-secondary { font-size: 15px; }
+@media(max-width:640px) {
+  body.novelight-page-community .community-page { padding: 28px 0 56px; font-size: 16px; }
+  body.novelight-page-community .community-page h1 { font-size: 30px; }
+  body.novelight-page-community .community-page .community-intro { font-size: 16px; }
+  body.novelight-page-community .community-card { padding: 15px; }
+  body.novelight-page-community .community-card-body { font-size: 16px; }
+}
+
+/* Timeline cards retain the original navy-and-gold treatment on ivory pages.
+   The board and the page background remain ivory. */
+body.novelight-page-community .community-page .community-card {
+  background: #102035;
+  color: #f5f2ea;
+  border-color: rgba(214, 164, 71, .35);
+  box-shadow: 0 4px 18px rgba(17, 32, 53, .14);
+}
+body.novelight-page-community .community-page .community-card .community-person a,
+body.novelight-page-community .community-page .community-card .community-card-title {
+  color: #f5f2ea;
+}
+body.novelight-page-community .community-page .community-card .community-date {
+  color: #bdcadd;
+  margin-left: 0;
+}
+body.novelight-page-community .community-page .community-card .community-type {
+  color: #e2b86e;
+}
+body.novelight-page-community .community-page .community-card .community-card-body {
+  color: #dae2ec;
+}
+body.novelight-page-community .community-page .community-card .community-link {
+  background: #0b1728;
+  border-color: #253d56;
+  color: #f7e1a6;
+}
+body.novelight-page-community .community-page .community-card :is(
+  .community-expand, .community-follow-open, .community-more,
+  .community-comment-context, .community-comments-older
+) {
+  color: #f1c989;
+}
+body.novelight-page-community .community-page .community-card .community-follow-panel {
+  background: #0b192b;
+  border-color: rgba(214, 164, 71, .3);
+}
+body.novelight-page-community .community-page .community-card .community-follow-status,
+body.novelight-page-community .community-page .community-card .community-follow-choice,
+body.novelight-page-community .community-page .community-card .community-comment,
+body.novelight-page-community .community-page .community-card .community-comment-body {
+  color: #d8e1ed;
+}
+body.novelight-page-community .community-page .community-card .community-comment strong,
+body.novelight-page-community .community-page .community-card .community-reply-target {
+  color: #f0cd89;
+}
+body.novelight-page-community .community-page .community-card .community-post-meta {
+  margin-left: auto;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+body.novelight-page-community .community-page .community-card .community-post-meta > .community-action {
+  color: #e3bd7c;
+  font-size: 14px;
+  padding: 0 3px;
+  text-decoration: none;
+}
+body.novelight-page-community .community-page .community-card .community-post-meta > .community-action:hover {
+  text-decoration: underline;
+}
+/* Remove the three visible timeline controls; their stored data and linked
+   comment deep-link support remain unchanged. The report is now above. */
+body.novelight-page-community .community-page .community-card > .community-actions {
+  display: none;
+}
+body.novelight-page-community .community-page .community-card .community-report-form {
+  border-color: rgba(214, 164, 71, .3);
+}
+body.novelight-page-community .community-page .community-card .community-report-status {
+  color: #e9d5aa;
+}
+body.novelight-page-community .community-page .community-card .community-report-form textarea {
+  background: #0b1728;
+  color: #f5f2ea;
+  border-color: #715b3a;
+}
+@media (max-width: 640px) {
+  body.novelight-page-community .community-page .community-card .community-post-meta {
+    white-space: normal;
+    text-align: right;
+  }
+}
