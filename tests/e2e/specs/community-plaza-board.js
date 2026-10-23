@@ -246,4 +246,3 @@ test('back navigation wins over a delayed reply response', async ({ page }) => {
   await expect(page).toHaveURL(/community\.html#board$/);
   await expect(page.locator('#boardThreadDetail')).toBeHidden();
 });
-
