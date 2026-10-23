@@ -18,9 +18,11 @@ export const REQUIRED_PHASE2_HOSTED_OPERATIONS = Object.freeze([
   'createIsolatedBranch',
   'reconcileIsolatedBranch',
   'applyPinnedPhase2Schema',
+  'enableIsolatedCommunityForProof',
   'createProtectedPreview',
   'verifyIsolatedPreviewBinding',
   'runThreeRoleHostedAcceptance',
+  'disableIsolatedCommunityAfterProof',
   'disposeProtectedPreview',
   'destroyIsolatedBranch',
   'readBackCleanup',
@@ -129,6 +131,8 @@ function checkPreview(p, run, branch) {
     p.vercelEnvironment !== 'preview' ||
     !url.hostname.endsWith('.vercel.app') ||
     url.protocol !== 'https:' ||
+    url.username !== '' || url.password !== '' ||
+    url.port !== '' ||
     url.hostname === 'novelrise.vercel.app' ||
     url.pathname !== '/' || url.search !== '' || url.hash !== ''
   ) stop('preview_binding_not_proven');
@@ -204,6 +208,18 @@ export async function executePhase2JointHostedContract({ run, operations }) {
       db.productionExcluded !== true ||
       db.publicEnabled !== false
     ) stop('isolated_schema_not_proven');
+    // Only this fresh data-less branch may be opened for the isolated write
+    // proof. Production and shared staging are excluded by checkBranch().
+    const active = await operations.enableIsolatedCommunityForProof(
+      run, branch, grant
+    );
+    if (
+      !sameRun(active, run) ||
+      active.status !== 'ISOLATED_COMMUNITY_TEST_GATE_ON' ||
+      active.projectRef !== branch.ref ||
+      active.publicEnabled !== true ||
+      active.productionExcluded !== true
+    ) stop('isolated_test_gate_activation_unverified');
     preview = await operations.createProtectedPreview(run, branch, grant);
     const observed = await operations.verifyIsolatedPreviewBinding(
       run, branch, preview
@@ -219,6 +235,16 @@ export async function executePhase2JointHostedContract({ run, operations }) {
     failure = true;
   } finally {
     // Never short circuit cleanup, even when browser or migration fails.
+    let disabled;
+    try {
+      // Isolation gate must be OFF before branch destruction. If this fails,
+      // cleanup continues but the result is NEVER marked successful.
+      disabled = await operations.disableIsolatedCommunityAfterProof(
+        run, branch
+      );
+    } catch {
+      disabled = null;
+    }
     const removals = await Promise.allSettled([
       operations.disposeProtectedPreview(run, preview),
       operations.destroyIsolatedBranch(run, branch)
@@ -231,6 +257,8 @@ export async function executePhase2JointHostedContract({ run, operations }) {
       verification = null;
     }
     cleanupVerified =
+      disabled?.status === 'ISOLATED_COMMUNITY_GATE_CONFIRMED_OFF' &&
+      (branch === null || disabled?.projectRef === branch.ref) &&
       removals.every((entry) =>
         entry.status === 'fulfilled' &&
         entry.value?.status === 'CONFIRMED_CLEAN'

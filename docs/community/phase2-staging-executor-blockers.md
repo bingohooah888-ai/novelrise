@@ -102,3 +102,10 @@ Production project `fiepaguycecrredwrcwx`、共用Staging
 Supabase/Vercel Secret、Issue書込、ワークフロートリガーを付けていない。
 純粋なモックを使った失敗時テストに成功しても、実際のHosted
 実行経路が完成したとはみなさない。**
+
+
+## 重要：隔離DBゲートの短時間ON/OFF（2026-10-23）
+
+Phase 2の`novelight_community_board_save`はDBの`community_runtime_control.public_enabled`がOFFだと書き込みを拒否する。Hosted受入テストでは**本番と共用StagingのgateはOFFのまま**、独立して生成されデータを持たないSupabase branchの実体IDだけを検証した上で、schema導入後にそのbranchのテストゲートを短時間ONにする必要がある。ブラウザ試験を終えたらまずテストゲートをOFFに戻し、その後Preview/branchを消去する。例外が発生してもOFF操作と削除と独立watchdogによる回復を試み、read-backが欠けるなら成功にしない。
+
+この要件は`community-phase2-hosted-execution-contract.mjs`に順序契約として追加済み。実際のDB RPC、Secret、実行Grantはまだ接続していない。

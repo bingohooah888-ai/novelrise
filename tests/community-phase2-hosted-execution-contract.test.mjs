@@ -103,6 +103,13 @@ function harness({
       productionExcluded: true,
       publicEnabled: false
     }),
+    enableIsolatedCommunityForProof: wrap('enable_isolated_gate', {
+      ...fields,
+      status: 'ISOLATED_COMMUNITY_TEST_GATE_ON',
+      projectRef,
+      publicEnabled: true,
+      productionExcluded: true
+    }),
     createProtectedPreview: wrap('deploy_preview', {
       ...fields,
       status: 'PROTECTED_PREVIEW_VERIFIED',
@@ -127,6 +134,10 @@ function harness({
       ...Object.fromEntries(
         lifecycle.REQUIRED_PHASE2_BROWSER_PROOFS.map((key) => [key, true])
       )
+    }),
+    disableIsolatedCommunityAfterProof: wrap('disable_isolated_gate', {
+      status: 'ISOLATED_COMMUNITY_GATE_CONFIRMED_OFF',
+      projectRef
     }),
     disposeProtectedPreview: wrap('remove_preview', clean()),
     destroyIsolatedBranch: wrap('remove_branch', clean()),
@@ -162,8 +173,9 @@ test('success path executes exact one-use ordering and cleanup', async () => {
     'THREE_ROLE_PHASE2_VERIFIED_AND_ISOLATED_RESOURCES_REMOVED');
   assert.deepEqual(h.names, [
     'boundary', 'claim', 'grant', 'watch', 'create_branch', 'apply_schema',
-    'deploy_preview', 'verify_preview', 'browser',
-    'remove_preview', 'remove_branch', 'check_cleanup', 'consume'
+    'enable_isolated_gate', 'deploy_preview', 'verify_preview', 'browser',
+    'disable_isolated_gate', 'remove_preview', 'remove_branch',
+    'check_cleanup', 'consume'
   ]);
   assert.equal(proof.publicReleaseAuthorized, false);
 });
@@ -174,8 +186,8 @@ test('missing grant blocks ALL hosted staging operations', async () => {
   await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
     /execution_or_cleanup_incomplete/);
   assert.deepEqual(h.names, [
-    'boundary', 'claim', 'grant', 'remove_preview', 'remove_branch',
-    'check_cleanup', 'consume'
+    'boundary', 'claim', 'grant', 'disable_isolated_gate',
+    'remove_preview', 'remove_branch', 'check_cleanup', 'consume'
   ]);
 });
 
@@ -192,8 +204,9 @@ test('failed hosted browser still removes resources and consumes claim', async (
   const h = harness({ failStep: 'browser' });
   await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
     /execution_or_cleanup_incomplete/);
-  assert.deepEqual(h.names.slice(-4),
-    ['remove_preview', 'remove_branch', 'check_cleanup', 'consume']);
+  assert.deepEqual(h.names.slice(-5),
+    ['disable_isolated_gate', 'remove_preview', 'remove_branch',
+      'check_cleanup', 'consume']);
 });
 
 // prettier-ignore
@@ -219,4 +232,22 @@ test('missing adapter fails before even inspecting the approval ledger', async (
   await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
     /untrusted_run_or_missing_adapter/);
   assert.equal(h.names.length, 0);
+});
+// prettier-ignore
+test('the database test gate opens only in the isolated branch and is closed before cleanup', async () => {
+  const h = harness();
+  await lifecycle.executePhase2JointHostedContract(h);
+  assert.ok(h.names.indexOf('apply_schema') < h.names.indexOf('enable_isolated_gate'));
+  assert.ok(h.names.indexOf('enable_isolated_gate') < h.names.indexOf('browser'));
+  assert.ok(h.names.indexOf('browser') < h.names.indexOf('disable_isolated_gate'));
+  assert.ok(h.names.indexOf('disable_isolated_gate') < h.names.indexOf('remove_branch'));
+});
+
+// prettier-ignore
+test('missing isolated gate activation cannot access Preview', async () => {
+  const h = harness({ failStep: 'enable_isolated_gate' });
+  await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
+    /execution_or_cleanup_incomplete/);
+  assert.ok(!h.names.includes('deploy_preview'));
+  assert.ok(h.names.includes('disable_isolated_gate'));
 });
