@@ -60,3 +60,15 @@ html body.novelight-special-page .novelight-special-home {
   .novelight-special-hero{padding:32px 23px}
   .novelight-special-detail{padding:26px 22px}
 }
+
+
+/* The sitewide theme targets every <header> element. Its higher-specificity
+   parchment background must not override this deliberately dark hero. */
+html body.novelight-special-page header.novelight-special-hero {
+  background: linear-gradient(118deg, #0a182e, #192640);
+  box-shadow: none;
+}
+
+html body.novelight-special-page header.novelight-special-hero h1 {
+  color: #fff;
+}

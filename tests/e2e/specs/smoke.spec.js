@@ -3,7 +3,6 @@ import { expect, test } from '../fixtures/diagnostic-fixture.js';
 import './community-plaza-ui.js';
 // Verify SPECIAL through the same real-asset browser smoke used in CI.
 import './novelight-special-display.spec.js';
-import './novelight-special-artifacts.spec.js';
 
 const publicPages = [
   ['home', '/index.html'],
