@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { URL } from 'node:url';
 import test from 'node:test';
 import * as lifecycle from '../scripts/community-phase2-hosted-execution-contract.mjs';
 import * as readiness from '../scripts/community-phase2-synthetic-fixture-readiness.mjs';
