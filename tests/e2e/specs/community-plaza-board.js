@@ -120,14 +120,14 @@ async function installBoardMock(page, enabled, seeded = false) {
   await page.route('**/novelight-client.js', async route => {
     const response = await route.fetch();
     const source = await response.text();
-    if (!/timeline: false,/.test(source) || !/board: false/.test(source)) {
-      throw new Error('Release flags changed; mock refuses to run');
+    if (!/timeline: (?:false|true),/.test(source) || !/board: (?:false|true)/.test(source)) {
+      throw new Error('Isolated mock cannot identify paired release flags');
     }
     await route.fulfill({
       response,
       body: source
-        .replace('timeline: false,', enabled ? 'timeline: true,' : 'timeline: false,')
-        .replace('board: false', enabled ? 'board: true' : 'board: false')
+        .replace(/timeline: (?:false|true),/, enabled ? 'timeline: true,' : 'timeline: false,')
+        .replace(/board: (?:false|true)/, enabled ? 'board: true' : 'board: false')
     });
   });
 }
