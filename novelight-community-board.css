@@ -1,4 +1,6 @@
 /* Community board shares the timeline colors and typography. */
+/* Fail closed before JS initialization and if any required script fails. */
+#communityTabs[hidden],#communityTimeline[hidden],#communityPending[hidden]{display:none!important}
 #communityBoardInfo{max-width:900px;margin:0 auto}
 #communityBoardInfo[hidden],#communityBoardInfo [hidden]{display:none!important}
 .board-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:12px 0 20px}
