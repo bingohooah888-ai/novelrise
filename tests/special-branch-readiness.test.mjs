@@ -21,19 +21,25 @@ function sample({
   migrationOverride
 } = {}) {
   return assessSpecialBranchReadiness({
-    branches: [{
-      id: branchId,
-      name: 'special-2442-disposable-20261023',
-      project_ref: branchRef,
-      parent_project_ref: productionRef,
-      is_default: false,
-      with_data: false,
-      status,
-      ...branchOverride
-    }],
+    branches: [
+      {
+        id: branchId,
+        name: 'special-2442-disposable-20261023',
+        project_ref: branchRef,
+        parent_project_ref: productionRef,
+        is_default: false,
+        with_data: false,
+        status,
+        ...branchOverride
+      }
+    ],
     migrations: migrationOverride ?? history.slice(0, count),
     productionMigrations: history,
-    branchId, branchRef, productionRef, sharedStagingRef, elapsedMs
+    branchId,
+    branchRef,
+    productionRef,
+    sharedStagingRef,
+    elapsedMs
   });
 }
 
@@ -63,7 +69,8 @@ test('explicit provider migration failure stops immediately', () => {
 });
 test('bounded startup timeout stops, not ignores, incomplete migration history', () => {
   assert.equal(
-    sample({ count: 28, elapsedMs: SPECIAL_BRANCH_MAX_INITIALIZATION_MS }).reason,
+    sample({ count: 28, elapsedMs: SPECIAL_BRANCH_MAX_INITIALIZATION_MS })
+      .reason,
     'INITIALIZATION_TIMEOUT_OR_INVALID_CLOCK'
   );
 });
@@ -87,9 +94,13 @@ test('never allow Production or existing Staging as an ephemeral target', () => 
 });
 test('unknown migration versions or duplicated versions stop and require investigation', () => {
   assert.equal(
-    sample({ count: 28, migrationOverride: [
-      ...history.slice(0, 28), { version: '20990101000000', name: 'stranger' }
-    ] }).reason,
+    sample({
+      count: 28,
+      migrationOverride: [
+        ...history.slice(0, 28),
+        { version: '20990101000000', name: 'stranger' }
+      ]
+    }).reason,
     'UNEXPECTED_MIGRATION_HISTORY'
   );
   assert.equal(
@@ -99,19 +110,36 @@ test('unknown migration versions or duplicated versions stop and require investi
 });
 test('missing or contradictory provider identity fails closed', () => {
   const args = {
-    branches: [], migrations: history, productionMigrations: history,
-    branchId, branchRef, productionRef, sharedStagingRef
+    branches: [],
+    migrations: history,
+    productionMigrations: history,
+    branchId,
+    branchRef,
+    productionRef,
+    sharedStagingRef
   };
-  assert.equal(assessSpecialBranchReadiness(args).reason, 'NEW_BRANCH_NOT_FOUND');
   assert.equal(
-    assessSpecialBranchReadiness({ ...args, branches: sampleBranch(), branchRef: productionRef }).reason,
+    assessSpecialBranchReadiness(args).reason,
+    'NEW_BRANCH_NOT_FOUND'
+  );
+  assert.equal(
+    assessSpecialBranchReadiness({
+      ...args,
+      branches: sampleBranch(),
+      branchRef: productionRef
+    }).reason,
     'PROJECT_REF_COLLISION'
   );
 });
 function sampleBranch() {
-  return [{
-    id: branchId, project_ref: branchRef,
-    parent_project_ref: productionRef, is_default: false, with_data: false,
-    status: 'FUNCTIONS_DEPLOYED'
-  }];
+  return [
+    {
+      id: branchId,
+      project_ref: branchRef,
+      parent_project_ref: productionRef,
+      is_default: false,
+      with_data: false,
+      status: 'FUNCTIONS_DEPLOYED'
+    }
+  ];
 }
