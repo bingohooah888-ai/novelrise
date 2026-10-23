@@ -17,6 +17,9 @@ export const contestTermsTemplate = String.raw`<!DOCTYPE html>
     <h1>NOVELIGHT 第1回 星灯祭 応募要項</h1>
     <p>この応募要項の版ID：<strong>${CONTEST_TERMS_VERSION_CANDIDATE}</strong></p>
     <p>主催：NOVELIGHT。読者が物語を読み進めた実績によって作品を評価する小説コンテストです。</p>
+    <nav class="contest-terms-nav" aria-label="星灯祭コンテストページへの移動">
+      <a href="/contest">星灯祭のコンテストページへ →</a>
+    </nav>
     <h2>1. 応募・開催期間</h2>
     <p>作品応募締切は2026年11月30日（月）23:59:59（日本時間）。開催期間は2026年12月1日（火）00:00から12月31日（木）23:59:59（日本時間）です。締切までの作品変更・応募取消はできますが、その後はできません。</p>
     <h2>2. 応募資格</h2>
@@ -45,6 +48,9 @@ export const contestTermsTemplate = String.raw`<!DOCTYPE html>
     <p>応募時には本応募要項を確認し、チェックボックスで明示的に同意してください。旧日程で応募済みの作品は応募状態を維持しますが、日程変更後の最新版への同意を改めてお願いしています。運営は同意版と日時を記録します。個人情報は<a href="/privacy.html">プライバシーポリシー</a>に従って管理し、賞金の配布がすべて完了した時点でコンテスト目的の不要な情報を削除・匿名化します。ただし法令上保存が必要な記録等は必要な範囲で保管します。</p>
     <p>応募作品の著作権は作者に残ります。NOVELIGHTの<a href="/terms.html">利用規約</a>および<a href="/content-guidelines.html">投稿ガイドライン</a>も適用されます。</p>
     <p><a href="/contact.html">主催者へのお問い合わせ</a></p>
+    <nav class="contest-terms-nav" aria-label="星灯祭コンテストページへの移動">
+      <a href="/contest">星灯祭のコンテストページへ →</a>
+    </nav>
   </main>
 </body>
 </html>`;
