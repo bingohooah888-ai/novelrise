@@ -128,12 +128,16 @@ test('CLI-generated migration and guarded rollback match reviewed SQL', () => {
   const migration = read(
     'supabase/migrations/20261023055617_community_plaza_phase2_board.sql'
   );
-  const reviewedMigration = read('docs/community/phase2-board-schema-review.sql');
+  const reviewedMigration = read(
+    'docs/community/phase2-board-schema-review.sql'
+  );
   assert.equal(migration, reviewedMigration);
   const rollback = read(
     'supabase/rollback/20261023055617_community_plaza_phase2_board_rollback.sql'
   );
-  const reviewedRollback = read('docs/community/phase2-board-rollback-review.sql');
+  const reviewedRollback = read(
+    'docs/community/phase2-board-rollback-review.sql'
+  );
   assert.equal(rollback, reviewedRollback);
   assert.match(
     rollback,
