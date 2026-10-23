@@ -32,7 +32,10 @@ test('one exchange destination is gated on shared headers', () => {
   const client = read('novelight-client.js');
   const matches = client.match(/href="community\.html"\$\{communityCurrent\}/g);
   assert.equal(matches?.length, 2);
-  assert.match(client, /NOVELIGHT_COMMUNITY_FLAGS\.timeline && window\.NOVELIGHT_COMMUNITY_FLAGS\.board/);
+  assert.match(
+    client,
+    /NOVELIGHT_COMMUNITY_FLAGS\.timeline && window\.NOVELIGHT_COMMUNITY_FLAGS\.board/
+  );
   const index = read('index.html');
   assert.doesNotMatch(index, /href="community\.html">交流<\/a>/);
 });
