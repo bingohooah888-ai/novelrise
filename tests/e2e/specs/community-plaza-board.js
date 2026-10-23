@@ -4,6 +4,8 @@ import { expect, test } from '../fixtures/diagnostic-fixture.js';
 const THREAD_ID = 'c0a00000-0000-4000-8000-000000000123';
 const REPLY_ID = 'c0a00000-0000-4000-8000-000000000124';
 
+// Preserve the standalone browser mock verbatim (no hosted calls).
+// prettier-ignore
 function installFakeSupabase(seeded) {
   const id = 'c0a00000-0000-4000-8000-000000000123';
   const replyId = 'c0a00000-0000-4000-8000-000000000124';
@@ -92,6 +94,8 @@ function installFakeSupabase(seeded) {
   window.supabase = { createClient: () => client };
 }
 
+// Preserve the standalone browser mock verbatim (no hosted calls).
+// prettier-ignore
 async function installBoardMock(page, enabled, seeded = false) {
   await page.addInitScript(() => {
     window.__boardCalls = [];
@@ -122,6 +126,8 @@ async function installBoardMock(page, enabled, seeded = false) {
   });
 }
 
+// Preserve the standalone browser mock verbatim (no hosted calls).
+// prettier-ignore
 test('board remains closed with joint release flags disabled', async ({ page }) => {
   await installBoardMock(page, false);
   await page.goto('/community.html#board', { waitUntil: 'domcontentloaded' });
@@ -132,6 +138,8 @@ test('board remains closed with joint release flags disabled', async ({ page }) 
   expect(calls.some(name => name.includes('community_board'))).toBe(false);
 });
 
+// Preserve the standalone browser mock verbatim (no hosted calls).
+// prettier-ignore
 test('board create, reply, owner edit and soft delete use isolated RPCs', async ({
   page
 }) => {
@@ -186,6 +194,8 @@ test('board create, reply, owner edit and soft delete use isolated RPCs', async 
   }
 });
 
+// Preserve the standalone browser mock verbatim (no hosted calls).
+// prettier-ignore
 test('board thread deep link is shareable and content is escaped', async ({
   page
 }) => {
