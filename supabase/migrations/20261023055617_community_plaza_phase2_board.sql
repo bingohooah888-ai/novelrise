@@ -114,8 +114,11 @@ BEGIN
   WHERE r.user_id=v_me AND r.expires_at>now()) THEN
   RAISE EXCEPTION 'Posting restricted' USING errcode='42501'; END IF;
  IF p_thread_id IS NULL THEN
-  IF EXISTS(SELECT 1 FROM public.profiles p
-    WHERE p.id=v_me AND p.created_at>now()-interval '10 minutes') THEN
+  -- Auth creation time is authoritative. A missing or backdated public
+  -- profile must never bypass the 10-minute new-account throttle.
+  IF NOT EXISTS(SELECT 1 FROM auth.users u
+    WHERE u.id=v_me AND u.created_at IS NOT NULL
+      AND u.created_at<=now()-interval '10 minutes') THEN
     RAISE EXCEPTION 'Account too new' USING errcode='42501'; END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(v_me::text));
   IF EXISTS(SELECT 1 FROM public.community_board_threads t WHERE

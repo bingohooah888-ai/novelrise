@@ -52,10 +52,11 @@ END
 $board_guest$;
 RESET ROLE;
 
-INSERT INTO auth.users(id,raw_user_meta_data) VALUES
- ('c0b00000-0000-4000-8000-000000000001','{"display_name":"Board CI Author"}'::jsonb),
- ('c0b00000-0000-4000-8000-000000000002','{"display_name":"Board CI Reader"}'::jsonb)
-ON CONFLICT(id) DO NOTHING;
+INSERT INTO auth.users(id,raw_user_meta_data,created_at) VALUES
+ ('c0b00000-0000-4000-8000-000000000001','{"display_name":"Board CI Author"}'::jsonb,now()-interval '2 days'),
+ ('c0b00000-0000-4000-8000-000000000002','{"display_name":"Board CI Reader"}'::jsonb,now()-interval '2 days'),
+ ('c0b00000-0000-4000-8000-000000000003','{"display_name":"Board CI New User"}'::jsonb,now())
+ON CONFLICT(id) DO UPDATE SET created_at=excluded.created_at;
 INSERT INTO public.profiles(id,display_name,created_at) VALUES
  ('c0b00000-0000-4000-8000-000000000001','Board CI Author',now()-interval '2 days'),
  ('c0b00000-0000-4000-8000-000000000002','Board CI Reader',now()-interval '2 days')
@@ -77,6 +78,22 @@ RESET ROLE;
 
 -- Enable only inside the isolated, rollback-contained transaction.
 UPDATE public.community_runtime_control SET public_enabled=true WHERE singleton;
+
+-- A missing/backdated profile cannot override a newly created Auth account.
+SET LOCAL ROLE authenticated;
+SELECT pg_catalog.set_config('request.jwt.claim.sub','c0b00000-0000-4000-8000-000000000003',true);
+DO $board_new_auth_user$
+BEGIN
+  BEGIN
+    PERFORM public.novelight_community_board_save(
+      'stories','New-user bypass attempt','Should not post',true,NULL);
+    RAISE EXCEPTION 'New Auth user bypassed the board age restriction';
+  EXCEPTION WHEN insufficient_privilege THEN
+    IF SQLERRM IS DISTINCT FROM 'Account too new' THEN RAISE; END IF;
+  END;
+END
+$board_new_auth_user$;
+RESET ROLE;
 
 SET LOCAL ROLE authenticated;
 SELECT pg_catalog.set_config('request.jwt.claim.sub','c0b00000-0000-4000-8000-000000000001',true);
