@@ -58,5 +58,5 @@ test('terms are versioned and previous entrants can re-consent', () => {
   assert.ok(reconsent.includes("'previous_terms_version'"));
   assert.ok(reconsent.includes("'state', 'terms_updated'"));
   assert.ok(!reconsent.includes('entered_at = v_now'));
-  assert.ok(home.includes('エントリー締切 2026年11月30日'));
+  assert.ok(home.includes('エントリー締切は2026年11月30日23時59分'));
 });
