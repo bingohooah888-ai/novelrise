@@ -29,19 +29,19 @@ for (const url of specialPages) {
       page.locator('header.site-header .site-nav.desktop-nav a')
     ).toHaveCount(4);
     const styles = await page.evaluate(() => {
-      const header = document.querySelector('header.site-header');
+      const header = globalThis.document.querySelector('header.site-header');
       const img = header.querySelector('img');
-      const main = document.querySelector('#main-content');
-      const heading = document.querySelector('h1') ?? main;
-      const computed = (element) => getComputedStyle(element);
+      const main = globalThis.document.querySelector('#main-content');
+      const heading = globalThis.document.querySelector('h1') ?? main;
+      const computed = (element) => globalThis.getComputedStyle(element);
       return {
         logoOk: img.complete && img.naturalWidth > 0,
-        documentFont: computed(document.documentElement).fontFamily,
+        documentFont: computed(globalThis.document.documentElement).fontFamily,
         mainFont: computed(main).fontFamily,
         headingFont: computed(heading).fontFamily,
         headerColor: computed(header).backgroundColor,
-        htmlWidth: document.documentElement.scrollWidth,
-        viewportWidth: window.innerWidth
+        htmlWidth: globalThis.document.documentElement.scrollWidth,
+        viewportWidth: globalThis.window.innerWidth
       };
     });
     expect(styles.logoOk).toBe(true);
@@ -61,7 +61,7 @@ test('SPECIAL header matches the existing announcements page at the same viewpor
   const reference = await page
     .locator('header.site-header')
     .evaluate((header) => {
-      const styles = getComputedStyle(header);
+      const styles = globalThis.getComputedStyle(header);
       return {
         height: header.getBoundingClientRect().height,
         background: styles.backgroundColor,
@@ -70,7 +70,7 @@ test('SPECIAL header matches the existing announcements page at the same viewpor
     });
   await page.goto('/special.html');
   const actual = await page.locator('header.site-header').evaluate((header) => {
-    const styles = getComputedStyle(header);
+    const styles = globalThis.getComputedStyle(header);
     return {
       height: header.getBoundingClientRect().height,
       background: styles.backgroundColor,
