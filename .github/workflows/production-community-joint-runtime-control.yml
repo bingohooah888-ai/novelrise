@@ -109,7 +109,7 @@ jobs:
               "https://novelight.jp/novelight-client.js?community_joint=$MAIN_SHA" \
               > /tmp/live-joint-client.js
             grep -Eq 'timeline:[[:space:]]*true[[:space:]]*,' /tmp/live-joint-client.js
-            grep -Eq 'board:[[:space:]]*true[[:space:]]*[,}]' /tmp/live-joint-client.js
+            grep -Eq '^[[:space:]]*board:[[:space:]]*true[[:space:]]*,?[[:space:]]*$' /tmp/live-joint-client.js
             curl --fail --silent --show-error --max-time 25 \
               -H 'Cache-Control: no-cache' \
               "https://novelight.jp/community.html?community_joint=$MAIN_SHA" \

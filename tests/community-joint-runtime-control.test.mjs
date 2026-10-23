@@ -36,6 +36,9 @@ test('enable checks paired flags, schemas, permissions and backup', () => {
   matches(/check-production-backup-freshness\.mjs/);
   matches(/timeline:\[\[:space:\]\]\*true/);
   matches(/board:\[\[:space:\]\]\*true/);
+  const boardLineCheck =
+    "grep -Eq '^[[:space:]]*board:[[:space:]]*true[[:space:]]*,?[[:space:]]*$'";
+  assert.ok(workflow.includes(boardLineCheck));
   matches(/\.\[0\]\.enabled==false/);
   before('Read-only DB and release preflight', 'Claim approved action');
   before('Claim approved action', 'Change only the Production runtime gate');
